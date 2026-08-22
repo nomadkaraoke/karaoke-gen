@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, isAutoRetryPending, JobStep, STATUS_CONFIG } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, isAutoRetryPending, isWaitingForEncodingCapacity, isVisibilityChangeInProgress, shouldShowJobOnDashboard, JobStep, STATUS_CONFIG } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -595,5 +595,53 @@ describe('isAutoRetryPending', () => {
   it('returns false for malformed expires_at', () => {
     expect(isAutoRetryPending({ state_data: { cloud_run_retry_pending: { expires_at: 'not-a-date' } } })).toBe(false);
     expect(isAutoRetryPending({ state_data: { cloud_run_retry_pending: {} } })).toBe(false);
+  });
+});
+
+describe('isWaitingForEncodingCapacity', () => {
+  it('returns true when parked in render_pending_capacity', () => {
+    expect(isWaitingForEncodingCapacity(createJob('render_pending_capacity'))).toBe(true);
+  });
+
+  it('returns true during an in-flight retry attempt (status flips) with breadcrumb', () => {
+    const meta = { render_pending_capacity: { attempt_count: 2 } };
+    expect(isWaitingForEncodingCapacity(createJob('rendering_video', meta))).toBe(true);
+    expect(isWaitingForEncodingCapacity(createJob('review_complete', meta))).toBe(true);
+  });
+
+  it('returns false for a normal render with no capacity breadcrumb', () => {
+    expect(isWaitingForEncodingCapacity(createJob('rendering_video'))).toBe(false);
+    expect(isWaitingForEncodingCapacity(createJob('review_complete', { render_pending_capacity: {} }))).toBe(false);
+  });
+
+  it('does not show the note after the render succeeds even if the breadcrumb lingers', () => {
+    const meta = { render_pending_capacity: { attempt_count: 3 } };
+    expect(isWaitingForEncodingCapacity(createJob('encoding', meta))).toBe(false);
+    expect(isWaitingForEncodingCapacity(createJob('packaging', meta))).toBe(false);
+    expect(isWaitingForEncodingCapacity(createJob('complete', meta))).toBe(false);
+  });
+});
+
+describe('isVisibilityChangeInProgress', () => {
+  it('returns true only when the flag is set', () => {
+    expect(isVisibilityChangeInProgress(createJob('rendering_video', { visibility_change_in_progress: true }))).toBe(true);
+    expect(isVisibilityChangeInProgress(createJob('rendering_video'))).toBe(false);
+    expect(isVisibilityChangeInProgress(createJob('complete', {}))).toBe(false);
+  });
+});
+
+describe('shouldShowJobOnDashboard', () => {
+  it('shows normal (non-audio-selection) jobs', () => {
+    expect(shouldShowJobOnDashboard({ status: 'complete' })).toBe(true);
+    expect(shouldShowJobOnDashboard({ status: 'awaiting_review' })).toBe(true);
+  });
+
+  it('hides self-service jobs still in the guided-flow at awaiting_audio_selection', () => {
+    expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection' })).toBe(false);
+    expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection', made_for_you: false })).toBe(false);
+  });
+
+  it('keeps made-for-you orders visible even at awaiting_audio_selection', () => {
+    expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection', made_for_you: true })).toBe(true);
   });
 });

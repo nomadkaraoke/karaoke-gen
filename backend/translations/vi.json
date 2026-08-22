@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection không hợp lệ. Phải là một trong: {valid_selections}",
     "instrumentalSelected": "Đã chọn nhạc nền. Đã bắt đầu tạo video.",
     "instrumentalSelectionError": "Lỗi khi chọn nhạc nền cho công việc {job_id}: {error}",
-    "downloadUrlsError": "Lỗi khi lấy URL tải xuống: {error}"
+    "downloadUrlsError": "Lỗi khi lấy URL tải xuống: {error}",
+    "fileNoLongerAvailable": "Tệp không còn khả dụng"
   },
   "review": {
     "jobNotFound": "Không tìm thấy công việc",
@@ -92,7 +93,10 @@
     "selectAudioError": "Lỗi khi chọn âm thanh cho công việc {job_id}: {error}",
     "searchAudioError": "Lỗi khi tìm kiếm âm thanh: {error}",
     "searchCreatedSuccessfully": "Đã tạo công việc. Đang tìm kiếm âm thanh...",
-    "autoDownloadStarted": "Kết quả tốt nhất được chọn tự động. Đang bắt đầu tải xuống..."
+    "autoDownloadStarted": "Kết quả tốt nhất được chọn tự động. Đang bắt đầu tải xuống...",
+    "drmUrlUnsupported": "Các liên kết {platform} được bảo vệ bản quyền, vì vậy chúng tôi không thể tải chúng xuống trực tiếp. Hãy thử tải âm thanh bằng công cụ của bên thứ ba trước, sau đó tải tệp âm thanh lên đây. Bạn cũng có thể dán liên kết YouTube hoặc sử dụng Tìm kiếm Âm thanh để tìm bài hát này.",
+    "drmUrlUnsupportedWithLink": "Các liên kết {platform} được bảo vệ bản quyền, nên chúng tôi không thể tải xuống trực tiếp. Bạn có thể tải bài hát bằng công cụ như {downloader} rồi tải tệp âm thanh lên đây. Bạn cũng có thể dán liên kết YouTube, hoặc dùng Tìm kiếm Âm thanh để tìm bài hát này.",
+    "drmUrlUnsupportedSearch": "Các liên kết {platform} được bảo vệ bản quyền, nên chúng tôi không thể tải xuống trực tiếp. Hãy tìm kiếm trên mạng công cụ \"{platform} downloader\" để lấy tệp âm thanh — ví dụ {searchUrl} — sau đó tải tệp âm thanh lên đây. Bạn cũng có thể dán liên kết YouTube, hoặc dùng tính năng Tìm kiếm Âm thanh để tìm bài hát này."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

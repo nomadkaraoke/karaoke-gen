@@ -379,6 +379,47 @@ class WorkerService:
             worker_module="audio_download_worker",
         )
 
+    async def trigger_bulk_search_worker(self, batch_id: str) -> bool:
+        """Trigger the Bulk Mode search worker for a whole batch as a Cloud Run Job.
+
+        The worker processes every job stamped with ``batch_id``: it runs each
+        audio search, auto-selects confident lossless matches, and parks the rest
+        in AWAITING_AUDIO_SELECTION. Uses a Cloud Run Job (not BackgroundTasks) so
+        the batch survives API instance scale-down and the user can close the tab.
+        """
+        try:
+            from google.cloud import run_v2
+
+            project = self.settings.google_cloud_project
+            if not project:
+                logger.error("GOOGLE_CLOUD_PROJECT not set, cannot trigger bulk search job")
+                return False
+
+            location = self.settings.gcp_region
+            job_name = f"projects/{project}/locations/{location}/jobs/bulk-search-job"
+            client = run_v2.JobsClient()
+            request = run_v2.RunJobRequest(
+                name=job_name,
+                overrides=run_v2.RunJobRequest.Overrides(
+                    container_overrides=[
+                        run_v2.RunJobRequest.Overrides.ContainerOverride(
+                            args=[
+                                "python", "-m", "backend.workers.bulk_search_worker",
+                                "--batch-id", batch_id,
+                            ],
+                        )
+                    ]
+                ),
+            )
+            operation = client.run_job(request=request)
+            logger.info(f"[batch:{batch_id}] Started Cloud Run Job bulk-search-job: {operation.metadata}")
+            return True
+        except Exception as e:
+            logger.error(
+                f"[batch:{batch_id}] Failed to trigger bulk-search-job: {e}", exc_info=True
+            )
+            return False
+
     async def trigger_audio_worker(self, job_id: str) -> bool:
         """
         Trigger audio separation worker.
@@ -410,6 +451,34 @@ class WorkerService:
     async def trigger_screens_worker(self, job_id: str) -> bool:
         """Trigger screen generation worker."""
         return await self.trigger_worker("screens", job_id)
+
+    async def trigger_auto_correct(self, job_id: str, timeout_seconds: int = 200) -> bool:
+        """Trigger proactive auto-correct generation on the API service.
+
+        Direct, awaited HTTP call (NOT Cloud Tasks): the endpoint runs the work
+        synchronously, so awaiting it keeps both the caller (lyrics job) and the
+        service instance alive until the cache is written. Best-effort — returns
+        False on any failure and never raises, so it can't affect the job.
+        """
+        if not self._base_url:
+            logger.info(f"[job:{job_id}] auto-correct trigger skipped: no service base URL")
+            return False
+        url = f"{self._base_url}/api/internal/workers/auto-correct"
+        headers = {"Content-Type": "application/json"}
+        if self._admin_token:
+            headers["X-Admin-Token"] = self._admin_token
+        # Propagate trace context so the service-side span links to this job.
+        headers = inject_trace_context(headers)
+        try:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                resp = await client.post(url, json={"job_id": job_id}, headers=headers)
+            logger.info(
+                f"[job:{job_id}] auto-correct trigger -> HTTP {resp.status_code}"
+            )
+            return resp.status_code < 400
+        except Exception as e:  # noqa: BLE001 — best-effort, never fatal
+            logger.warning(f"[job:{job_id}] auto-correct trigger failed (non-fatal): {e}")
+            return False
     
     def _warmup_encoding_worker(self, job_id: str) -> None:
         """Fire-and-forget warmup of the encoding worker VM.
@@ -444,6 +513,7 @@ class WorkerService:
         uses Cloud Run Jobs for execution (supports >30 min encoding).
         Otherwise, uses Cloud Tasks or direct HTTP.
         """
+        self._bump_worker_generation(job_id)
         self._warmup_encoding_worker(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_video:
             return await self._trigger_cloud_run_job(job_id)
@@ -537,8 +607,26 @@ class WorkerService:
     
     async def trigger_render_video_worker(self, job_id: str) -> bool:
         """Trigger render video worker (post-review)."""
+        self._bump_worker_generation(job_id)
         self._warmup_encoding_worker(job_id)
         return await self.trigger_worker("render-video", job_id)
+
+    def _bump_worker_generation(self, job_id: str) -> None:
+        """
+        Advance the supersession fence before dispatching a render/video worker.
+
+        Bumping here (the single choke point for both workers) means every run
+        captures a unique generation at start. If an older run of the same stage
+        is still in flight — because an admin reset then re-triggered the job —
+        it will observe the newer generation and discard its stale result
+        instead of overwriting fresh outputs or failing the job. Best-effort:
+        a failed bump is logged and ignored (the status fence still applies).
+        """
+        try:
+            from backend.services.job_manager import JobManager
+            JobManager().bump_worker_generation(job_id)
+        except Exception as e:
+            logger.warning(f"[job:{job_id}] Failed to bump worker generation before trigger: {e}")
 
     async def schedule_idle_reminder(
         self,

@@ -94,6 +94,23 @@ class TestResolveFamily:
         fam = ep.resolve_family(["Self-Hosted", "Linux", "GPU"])
         assert fam.name == "gpu"
 
+    def test_windows_gpu_routes_to_windows_family(self):
+        ep = _fresh_module()
+        fam = ep.resolve_family(["self-hosted", "windows", "gpu"])
+        assert fam.name == "gpu-windows"
+
+    def test_windows_without_gpu_still_routes_to_windows_family(self):
+        # Only one Windows family exists; better to run the job on it than
+        # let a [self-hosted, windows] job queue forever.
+        ep = _fresh_module()
+        fam = ep.resolve_family(["self-hosted", "windows"])
+        assert fam.name == "gpu-windows"
+
+    def test_linux_gpu_does_not_route_to_windows(self):
+        ep = _fresh_module()
+        fam = ep.resolve_family(["self-hosted", "linux", "gpu"])
+        assert fam.name == "gpu"
+
 
 class TestRunnerLabelsFor:
     def test_general_labels_include_existing_set(self):
@@ -115,6 +132,14 @@ class TestRunnerLabelsFor:
     def test_gpu_labels_include_gpu(self):
         ep = _fresh_module()
         labels = ep.runner_labels_for(ep.FAMILIES["gpu"])
+        assert "gpu" in labels
+        assert "linux" in labels
+
+    def test_windows_labels_advertise_windows_not_linux(self):
+        ep = _fresh_module()
+        labels = ep.runner_labels_for(ep.FAMILIES["gpu-windows"])
+        assert "windows" in labels
+        assert "linux" not in labels
         assert "gpu" in labels
 
 
@@ -164,7 +189,9 @@ class TestCreateEphemeralRunner:
 
         assert result["family"] == "general"
         assert result["zone"] == "us-central1-a"
-        assert result["external_ip"] is False
+        # All runners now get an ephemeral external IP to bypass the Cloud NAT
+        # data-processing charge (runners were the NAT's only user).
+        assert result["external_ip"] is True
         assert result["runner_name"].startswith("gha-general-")
         compute_client.insert.assert_called_once()
 
@@ -238,6 +265,10 @@ class TestSchedulingPerFamily:
         kwargs = self._build_for("gpu")
         assert kwargs.get("on_host_maintenance") == "TERMINATE"
 
+    def test_gpu_windows_keeps_terminate(self):
+        kwargs = self._build_for("gpu-windows")
+        assert kwargs.get("on_host_maintenance") == "TERMINATE"
+
 
 class TestSecureBootPerFamily:
     """Secure Boot blocks unsigned DKMS-built NVIDIA modules.
@@ -276,9 +307,10 @@ class TestSecureBootPerFamily:
         assert kwargs["enable_integrity_monitoring"] is True
 
 
-def _make_instance(name, age_minutes, zone="us-central1-a"):
+def _make_instance(name, age_minutes, zone="us-central1-a", status="RUNNING"):
     inst = MagicMock()
     inst.name = name
+    inst.status = status
     created = datetime.now(timezone.utc) - timedelta(minutes=age_minutes)
     inst.creation_timestamp = created.isoformat().replace("+00:00", "Z")
     return inst
@@ -375,6 +407,39 @@ class TestCleanupOrphans:
         dereg.assert_called_once_with("ghp_test", 99)
         assert result["deregistered_runners"] == ["gha-general-zombie"]
 
+    def test_terminated_vm_deleted_immediately_even_when_young_and_registered(self):
+        # A self-shutdown ephemeral VM still holds GPU quota until deleted;
+        # it must be reaped on the next pass regardless of age/registration.
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-gpu-done", age_minutes=3, status="TERMINATED"))]
+        runners = [{"name": "gha-gpu-done", "id": 12, "status": "offline"}]
+
+        with self._patch_listing(ep, vms), patch.object(
+            ep, "list_org_runners", return_value=runners
+        ), patch.object(
+            ep, "_delete_vm", return_value=("gha-gpu-done", "deleted")
+        ), patch.object(ep, "_log_serial_tail") as serial_mock:
+            result = ep.cleanup_orphans("ghp_test")
+
+        assert "gha-gpu-done" in result["deleted_vms"]
+        # Registered VM ran its job normally — no serial dump needed.
+        serial_mock.assert_not_called()
+
+    def test_terminated_unregistered_vm_dumps_serial_before_delete(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-gpu-neverran", age_minutes=5, status="TERMINATED"))]
+        runners = []
+
+        with self._patch_listing(ep, vms), patch.object(
+            ep, "list_org_runners", return_value=runners
+        ), patch.object(
+            ep, "_delete_vm", return_value=("gha-gpu-neverran", "deleted")
+        ), patch.object(ep, "_log_serial_tail") as serial_mock:
+            result = ep.cleanup_orphans("ghp_test")
+
+        assert "gha-gpu-neverran" in result["deleted_vms"]
+        serial_mock.assert_called_once_with("us-central1-a", "gha-gpu-neverran")
+
     def test_delete_failure_is_recorded(self):
         ep = _fresh_module()
         vms = [("us-central1-a", _make_instance("gha-general-stuck", age_minutes=60))]
@@ -433,6 +498,52 @@ class TestStartupScript:
         assert "config.sh" not in ep.STARTUP_SCRIPT
         # Should pull the JIT config from instance metadata
         assert "metadata.google.internal" in ep.STARTUP_SCRIPT
+
+    def test_windows_startup_script_uses_jitconfig_and_shuts_down(self):
+        ep = _fresh_module()
+        ps1 = ep.WINDOWS_STARTUP_SCRIPT_PS1
+        assert "--jitconfig" in ps1
+        assert "run.cmd" in ps1
+        assert "shutdown /s" in ps1
+        assert "metadata.google.internal" in ps1
+        # finally-block shutdown must survive a runner crash
+        assert "finally" in ps1
+
+
+class TestStartupMetadataKeyPerFamily:
+    """Windows VMs only execute `windows-startup-script-ps1`; Linux VMs only
+    execute `startup-script`. Passing the wrong key silently does nothing and
+    the VM never registers."""
+
+    def _metadata_keys_for(self, family_name):
+        ep = _fresh_module()
+        _compute_stub.Items.reset_mock()
+        ep._build_instance(
+            name=f"gha-{family_name}-test",
+            family=ep.FAMILIES[family_name],
+            zone="us-central1-a",
+            jit_config="JIT",
+            image_self_link="projects/p/global/images/family/x",
+            use_external_ip=False,
+        )
+        return {c.kwargs.get("key"): c.kwargs.get("value") for c in _compute_stub.Items.call_args_list}
+
+    def test_linux_families_use_startup_script(self):
+        for fam in ("general", "build", "gpu"):
+            keys = self._metadata_keys_for(fam)
+            assert "startup-script" in keys, fam
+            assert "windows-startup-script-ps1" not in keys, fam
+
+    def test_windows_family_uses_ps1_key(self):
+        keys = self._metadata_keys_for("gpu-windows")
+        assert "windows-startup-script-ps1" in keys
+        assert "startup-script" not in keys
+        assert "run.cmd" in keys["windows-startup-script-ps1"]
+
+    def test_jit_config_present_for_all_families(self):
+        for fam in ("general", "build", "gpu", "gpu-windows"):
+            keys = self._metadata_keys_for(fam)
+            assert keys.get("jit-config") == "JIT", fam
 
 
 class TestSchedulerAuthGate:

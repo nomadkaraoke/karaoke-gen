@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { api, CreditPackage, getReferralInterstitial } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useTranslations, useLocale } from 'next-intl'
+import { parseServerDate } from '@/lib/utils'
 
 interface BuyCreditsDialogProps {
   open: boolean
@@ -101,7 +102,7 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
               )}
               {user.referral_discount_expires_at && (
                 <p className="text-green-600/70 dark:text-green-400/70 text-xs mt-1">
-                  {tRef('appliedAtCheckout')} · {tRef('expires', { date: new Date(user.referral_discount_expires_at).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) })}
+                  {tRef('appliedAtCheckout')} · {tRef('expires', { date: parseServerDate(user.referral_discount_expires_at).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) })}
                 </p>
               )}
             </div>

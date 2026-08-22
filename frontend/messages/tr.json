@@ -239,7 +239,10 @@
     "loadingJobs": "İşler yükleniyor...",
     "noJobsMatchFilters": "Filtrelerinle eşleşen iş yok.",
     "noJobsYet": "Henüz iş yok. Başlamak için bir tane oluştur!",
-    "referrals": "Referanslar"
+    "referrals": "Referanslar",
+    "bulkMode": "Toplu",
+    "singleMode": "Tekli",
+    "submitModeToggle": "Tekli veya toplu gönderim"
   },
   "auth": {
     "noVerificationToken": "Doğrulama belirteci sağlanmadı",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Bağlantıyı bulamadık",
     "resendSuccessBody": "{maskedEmail} adresine yeni bir giriş bağlantısı gönderdik. Bu bağlantı 24 saat boyunca geçerlidir.",
     "resendSuccessTitle": "E-postanı kontrol et",
-    "resending": "Gönderiliyor..."
+    "resending": "Gönderiliyor...",
+    "confirmBody": "Güvenliğin için, giriş işlemini tamamlamak üzere aşağıdaki butona tıkla. Bu ekstra adım, otomatik e-posta tarayıcılarının bağlantını senden önce kullanmasını engeller.",
+    "confirmButton": "Girişi Tamamla",
+    "confirmTitle": "Girişini tamamla"
   },
   "payment": {
     "title": "Ödeme Başarılı!",
@@ -372,7 +378,10 @@
     "backend": "Arkayüz",
     "encoder": "Kodlayıcı",
     "flacfetch": "Flacfetch",
-    "separator": "Ayırıcı"
+    "separator": "Ayırıcı",
+    "fallbackBadge": "Yedek",
+    "fallbackNote": "Ana kapasite kullanılamıyor — yedek bir sunucu tipine yönlendirildi.",
+    "liveWorker": "Canlı işlemci"
   },
   "credits": {
     "title": "Daha Fazla Kredi Al",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Bir bağlantı yapıştır",
     "urlSupportedSitesHint": "YouTube, Facebook, SoundCloud, TikTok, Vimeo ve yüzlerce başka siteyle çalışır.",
     "urlSupportedSitesLink": "Desteklenen tüm siteleri gör",
-    "useThisUrl": "Bu URL'yi Kullan"
+    "useThisUrl": "Bu URL'yi Kullan",
+    "matchCorrectedTo": "{value} olarak düzeltildi — “{typed}” yazmıştın",
+    "matchDidYouMean": "Bunu mu demek istedin?",
+    "matchKeepMine": "yazdığım gibi kalsın",
+    "matchTidiedTo": "{value} olarak düzenlendi",
+    "matchUndo": "Geri al",
+    "matchChecking": "Şarkı detayları kontrol ediliyor…",
+    "matchUseCorrection": "düzeltmeyi kullan",
+    "matchUseTidied": "düzenlenmiş sürümü kullan",
+    "matchUsingTyped": "Yazdığın kullanılıyor: {value}",
+    "checkingUrl": "Kontrol ediliyor…",
+    "submitNetworkError": "Ağ hatası — lütfen bağlantını kontrol et ve tekrar dene.",
+    "submitError": "Bir şeyler ters gitti. Lütfen tekrar dene."
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",
@@ -576,7 +597,9 @@
     "correcting": "Düzeltiliyor",
     "lyricsDone": "Sözler bitti",
     "lyrics": "Sözler",
-    "confirmDurationCost": "Maliyeti onayla"
+    "confirmDurationCost": "Maliyeti onayla",
+    "findingAudioSources": "Ses kaynakları aranıyor (yeniden deneniyor)",
+    "waitingForCapacity": "Kodlama sunucusu bekleniyor (yeniden deneniyor)"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",
@@ -588,7 +611,9 @@
     "autoSelect": "Otomatik seçecek",
     "willAutoSelectFirst": "İlkini otomatik seçecek",
     "noOutputsAvailable": "Henüz çıktı yok",
-    "confirmCost": "Ücreti Onayla"
+    "confirmCost": "Ücreti Onayla",
+    "makingPublicInProgress": "Bu parça herkese açık hale getiriliyor — varsayılan markalama ile yeniden işleniyor ve yeniden yayımlanıyor. Bu işlem genellikle 15–30 dakika sürer.",
+    "waitingForEncodingServer": "(kodlama sunucusunun müsait olması bekleniyor)"
   },
   "jobActions": {
     "delete": "Sil",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Şarkı Adı",
-    "artist": "Sanatçı"
+    "artist": "Sanatçı",
+    "loading": "Başlık ekranı önizlemesi yükleniyor"
   },
   "editTrack": {
     "title": "Tamamlanan Parçayı Düzenle",
@@ -739,7 +765,22 @@
     "views": "{count} görüntülenme",
     "moreVersions": "+{count} daha",
     "select": "Seç",
-    "creditCost": "{credits} kredi"
+    "creditCost": "{credits} kredi",
+    "chooseFile": "Bir ses dosyası seç (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Hiçbir ses kaynağı bulamadık. Yukarıdaki sanatçı veya başlık bilgisini düzenleyip tekrar aramayı dene ya da bir URL veya dosya yükleyerek kendi ses dosyanı ekle.",
+    "pasteUrl": "URL'yi yapıştır",
+    "researchFailed": "Arama başarısız oldu. Lütfen tekrar dene.",
+    "searchAgain": "Tekrar ara",
+    "selectFailed": "Ses seçilemedi",
+    "uploadFailed": "Yükleme başarısız oldu. Lütfen tekrar dene.",
+    "urlFailed": "Bu URL kullanılamadı. Başka bir kaynak dene.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Bu dosyayı kullan",
+    "useThisUrl": "Bu URL'yi kullan",
+    "artistLabel": "Sanatçı",
+    "loading": "Yükleniyor...",
+    "titleLabel": "Başlık",
+    "uploadFileAction": "Dosya yükle"
   },
   "audioEditor": {
     "loading": "Ses düzenleyici yükleniyor...",
@@ -776,7 +817,17 @@
     "undoFailed": "Geri alma başarısız oldu",
     "redoFailed": "Yineleme başarısız oldu",
     "restoreFailed": "Geri yükleme başarısız oldu — bazı düzenlemeler uygulanmamış olabilir",
-    "submitFailed": "Gönderme başarısız oldu"
+    "submitFailed": "Gönderme başarısız oldu",
+    "fadeIn": "Sesi Kademeli Artır",
+    "fadeInSelection": "Seçili bölgede sesi kademeli artır",
+    "fadeOut": "Sesi Kademeli Azalt",
+    "fadeOutSelection": "Seçili bölgede sesi kademeli azalt",
+    "fadeInDisabledHint": "Sesi yavaşça açmak için parçanın en başından başlayan bir bölge seç",
+    "fadeOutDisabledHint": "Sesi yavaşça kısmak için parçanın en sonunda biten bir bölge seç",
+    "trimEndDisabledHint": "Sonu kırpmak için parçanın en sonunda biten bir bölge seç",
+    "trimEndSelection": "Seçimden sonraki her şeyi kaldır",
+    "trimStartDisabledHint": "Başlangıcı kırpmak için parçanın en başından başlayan bir bölge seç",
+    "trimStartSelection": "Seçimden önceki her şeyi kaldır"
   },
   "audioEditRestore": {
     "title": "Kaydedilmiş Ses Düzenleme Oturumları",
@@ -803,7 +854,7 @@
       "acceptAll": "Tümünü Kabul Et",
       "revertAll": "Tümünü Geri Al",
       "undoAll": "Tümünü Geri Al",
-      "resetAllChanges": "Tüm değişiklikleri orijinal yapay zeka düzeltmeli sözlere sıfırla",
+      "resetAllChanges": "Tüm değişiklikleri sıfırla ve orijinal düzeltilmiş şarkı sözlerine geri dön",
       "undo": "Geri Al",
       "redo": "Yinele",
       "findReplace": "Bul/Değiştir",
@@ -816,7 +867,11 @@
       "playback": "Oynatma",
       "audioLoadError": "Ses yüklenemedi",
       "audioStillLoading": "Ses hâlâ yükleniyor...",
-      "loadingAudio": "Ses yükleniyor..."
+      "loadingAudio": "Ses yükleniyor...",
+      "autoCorrect": "Otomatik düzeltme",
+      "autoCorrectDesc": "Deşifreyi referans şarkı sözleriyle karşılaştırır ve senin için kelime düzeyinde düzeltmeler uygular. Düzeltilen kelimeler mor renkte gösterilir.",
+      "autoCorrectedCount": "Otomatik düzeltildi · {count}",
+      "autoCorrectedDesc": "{count, plural, =1 {# otomatik düzeltme} other {# otomatik düzeltme}} uyguladık (mor renkle gösterilir). Detayları görmek ve hatalı bulduklarını geri almak için tıkla."
     },
     "guidance": {
       "showTips": "İpuçlarını göster",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Turuncu vurgulanan kelimeler boşluklardır — referans sözlerle eşleştirilemeyen ve hatalar içerebilen bölümler (örn. benzer ses çıkaran yanlış duyulmuş kelimeler).",
       "useNAndP": "Boşluklar arasında atlamak için N ve P kullan. Her biri için, satırın yanındaki oynat düğmesine tıkla ve duyduğunu sağdaki referans sözlerle karşılaştır, ardından düzenlemek veya silmek için bir kelimeye tıkla.",
       "watchOutForPhantomWords": "Satırların başında veya sonunda \"and\" gibi hayalet kelimelere dikkat et — transkripsiyon genellikle bunları ekler.",
-      "tryTimelineView": "Genellikle bir zamanlama sorununu gösteren alışılmadık derecede uzun kelimeleri (10+ saniye) tespit etmek için Zaman Çizelgesi görünümünü dene.",
+      "tryTimelineView": "2 saniyeden uzun kelimeler ve 2 saniyeden uzun boşluklar kehribar rengi bir süre ile işaretlenir — zamanlama sorunları için bunları kontrol et. Her satırın bir zaman çizelgesine yayıldığını görmek için Gelişmiş'e geç.",
       "watchFullTutorial": "Tam eğitimi izle",
       "correctionHandlers": "Düzeltme İşleyicileri",
       "anchorSequences": "Çapa Dizileri",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Düzeltilmemiş Boşluklar",
       "uncorrectedGapsDesc": "Manuel inceleme gerektirebilecek bölümler",
       "wordsUncorrected": "Düzeltilmemiş Kelimeler",
-      "numberOfGaps": "Boşluk Sayısı"
+      "numberOfGaps": "Boşluk Sayısı",
+      "autoCorrectTip": "Senin için {count, plural, =1 {# kelime} other {# kelime}} otomatik düzeltildi (mor renkle gösterilir, orijinal kelime üstündedir). Düzeltilen her satırı oynat ve kelimelerin hala doğru hizalandığından emin ol — özellikle zamanlamanın tahmini olduğu ve muhtemelen ayarlama gerektirecek altı turuncu çizili olanları.",
+      "autoCorrected": "Otomatik düzeltildi",
+      "timingEstimated": "Tahmini zamanlama"
     },
     "transcription": {
       "syncedLyrics": "Senkronize Sözler",
@@ -854,7 +912,13 @@
       "text": "Metin",
       "timeline": "Zaman Çizelgesi",
       "deleteSegment": "Segmenti sil",
-      "playSegment": "Segmenti oynat"
+      "playSegment": "Segmenti oynat",
+      "aiTooltipEstimated": "Sistemimiz tarafından otomatik düzeltildi. Buradaki zamanlama tahmini olarak belirlendi, bu yüzden bu satırı oynat ve gerekirse kelime zamanlamalarını ayarla.",
+      "aiTooltipReplaced": "\"{original}\" kelimesi sistemimiz tarafından otomatik düzeltildi. Kelimelerin hala doğru hizalandığını doğrulamak için bu satırı oynat.",
+      "aiTooltipReplacedEstimated": "\"{original}\" kelimesi sistemimiz tarafından otomatik düzeltildi. Zamanlama tahmini olarak belirlendi, bu yüzden bu satırı oynat ve gerekirse kelime zamanlamalarını ayarla.",
+      "longGapWarning": "Sonraki kelimeden önce {seconds} sn boşluk var — genellikle yanlışlıkla erken eklenmiş bir kelime (ör. fazladan bir \"ve\"). Buradan itibaren oynatmak için tıkla.",
+      "longWordWarning": "Bu kelime {seconds} sn sürüyor — alışılmadık derecede uzun. Satırı oynat ve bitiş zamanının enstrümantal kısma taşmadığını kontrol et.",
+      "playFromGap": "Bu boşluğun sonundan itibaren oynat"
     },
     "editActionBar": {
       "reset": "Sıfırla",
@@ -990,7 +1054,9 @@
         "loadingAll": "Tüm kelimeler yükleniyor...",
         "loadingSegment": "Segment yükleniyor...",
         "noData": "Segment verisi mevcut değil",
-        "unCorrect": "Düzeltmeyi Geri Al"
+        "unCorrect": "Düzeltmeyi Geri Al",
+        "timingClamped": "\"{word}\" zamanlaması bölümün dışındaydı — {time}s'ye hizalandı.",
+        "timingSanitized": "Bu bölümün dışına çıkan {count} kelime zamanlaması düzeltildi."
       },
       "findReplace": {
         "title": "Bul ve Değiştir",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Özel şarkı sözleri uygulandı. Özelleştirilmiş sözlerde kelime zamanlamalarının doğru olduğundan emin olmak için düzenlenen her bölümü manuel olarak senkronize et."
+    },
+    "autoCorrect": {
+      "accept": "Öneriyi kabul et",
+      "acceptAll": "Tümünü kabul et",
+      "accepted": "Kabul edildi",
+      "adlibRemovalHint": "Referanslarda olmayan geri vokalleri silen önerilere izin ver",
+      "adlibRemovalLabel": "Adlib'leri kaldırmayı öner",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "biçim",
+      "category_grammar": "dilbilgisi",
+      "category_mishearing": "yanlış duyma",
+      "category_other": "diğer",
+      "category_repeated_chorus_fix": "nakarat",
+      "collapse": "Önerileri daralt",
+      "confidenceHint": "Bir önerinin gösterilmesi için gereken güvenilirlik seviyesi",
+      "confidenceLabel": "Öneri filtresi",
+      "confidence_all": "Tümünü göster",
+      "confidence_high": "Yüksek güven",
+      "description": "Otomatik düzeltme, yazıya dökülen şarkı sözlerini referans kaynaklarla karşılaştırır ve kelime bazında düzeltmeler önerir. Tüm önerileri sen incelersin — sen onaylamadan hiçbir değişiklik uygulanmaz.",
+      "dismiss": "Önerileri yoksay",
+      "expand": "Önerileri genişlet",
+      "insertMarker": "ekle:",
+      "insertionsHint": "Deşifrede eksik olan kelimeleri ekleyen önerilere izin ver",
+      "insertionsLabel": "Eksik kelimeleri öner",
+      "noReferences": "Bu şarkı için referans şarkı sözleri bulunmuyor, bu yüzden öneriler oluşturulamıyor. Önce referans panelinden şarkı sözlerini ekle.",
+      "noSuggestions": "Sorun bulunamadı — önerilen bir değişiklik yok.",
+      "reject": "Öneriyi reddet",
+      "rejectAll": "Tümünü reddet",
+      "rejected": "Reddedildi",
+      "runButton": "Önerileri al",
+      "running": "Şarkı sözleri analiz ediliyor… bu genellikle 15–60 saniye sürer.",
+      "staleHint": "Bu kelimeler öneriler oluşturulduktan sonra düzenlendi, bu yüzden bu öneri artık geçerli değil.",
+      "summary": "{total} öneri · {pending} bekleyen · {accepted} kabul edilen",
+      "title": "Otomatik düzeltme önerileri",
+      "undo": "Bu öneriyi geri al",
+      "cancel": "İptal",
+      "close": "Kapat",
+      "confidence_balanced": "Dengeli",
+      "compareHint": "Daha yavaş ve daha maliyetli, ancak birden fazla modelin hangi önerilerde uzlaştığını gösterir",
+      "compareLabel": "Birden fazla modeli karşılaştır",
+      "conflictBadge": "varyant",
+      "conflictTooltip": "Bu kelimeler için farklı öneriler var — bir seçeneği kabul ettiğinde diğerleri reddedilir.",
+      "consensusBadge": "{consensus}/{total} model",
+      "consensusTooltip": "Öneren: {models}",
+      "cachedBadge": "önbellekten",
+      "cachedTooltip": "Aynı şarkı sözleriyle yapılan önceki bir işlemden geri yüklendi — yapay zeka maliyeti oluşmadı.",
+      "appliedSummary": "{count} otomatik düzeltme uygulandı",
+      "hideDetails": "Detayları gizle",
+      "rerun": "Yeniden çalıştır",
+      "revertAllAuto": "Tümünü geri al",
+      "showDetails": "Detayları göster"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Tahmini — nihai maliyet indirmeden sonra kesinleşir",
     "reconcileTitle": "Bu şarkı beklenenden daha uzun",
     "cancel": "İptal"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Arka plan önizlemesi yükleniyor"
+  },
+  "bulk": {
+    "albumModeHint": "Bir sanatçı ara, bir albüm seç, ardından hangi parçaların yapılacağını seç.",
+    "artistSearchPlaceholder": "Bir sanatçı ara…",
+    "autoPickLossless": "En iyi sesi otomatik seç (sadece kayıpsız)",
+    "autoPickLosslessHint": "Güvenilir bir kayıpsız/FLAC eşleşmesi bulduğumuzda sesi otomatik olarak seç. Diğerleri inceleme sırasına gider.",
+    "backToAlbums": "Albümlere dön",
+    "backToArtists": "Sanatçılara dön",
+    "batchProgressTitle": "{total} şarkılık toplu işlem",
+    "batchSettings": "Toplu işlem ayarları",
+    "byAlbum": "Albüme göre",
+    "byText": "Metne göre",
+    "checking": "Kontrol ediliyor…",
+    "chooseAudio": "Ses seç",
+    "communityExists": "Topluluk sürümü mevcut",
+    "communityExistsWithBrands": "Topluluk sürümü: {brands}",
+    "countAwaiting": "{count} tanesi için seçim gerekiyor",
+    "countComplete": "{count} tamamlandı",
+    "countFailed": "{count} başarısız",
+    "countProcessing": "{count} işleniyor",
+    "countSearching": "{count} aranıyor",
+    "createBatch": "{count} karaoke videosu oluştur",
+    "creditsCost": "{cost} kredi · {balance} kredin var",
+    "edition": "Sürüm",
+    "extra": "Ekstra",
+    "loadingBatch": "Toplu işlem yükleniyor…",
+    "lookupFailed": "Arama başarısız oldu. Lütfen tekrar dene.",
+    "makePrivate": "Gizli tut",
+    "makePrivateHint": "YouTube'da yayınlamak yerine sadece Dropbox üzerinden teslim et.",
+    "noAlbums": "Bu sanatçı için albüm bulunamadı.",
+    "notEnoughCredits": "{needed} krediye ihtiyacın var ama {have} kredin var.",
+    "overLimit": "Tek seferde en fazla {max} şarkı gönderebilirsin.",
+    "progressError": "Toplu işlem ilerlemesi yüklenemedi.",
+    "reviewQueueHint": "Bunlar için kayıpsız bir kaynağı güvenle otomatik seçemedik. Her biri için bir tane seç.",
+    "reviewQueueTitle": "Bu parçalar için ses seç",
+    "selectedCount": "{count} şarkı seçildi",
+    "skipAudioEdit": "Ses düzenlemeyi atla",
+    "skipAudioEditHint": "Her parçanın sesini olduğu gibi kullan (kırpma yok).",
+    "skipCustomization": "Özelleştirmeyi atla",
+    "skipCustomizationHint": "Her parça için varsayılan temayı ve stili kullan.",
+    "startAnother": "Başka bir toplu işlem başlat",
+    "submitError": "Toplu işlem oluşturulamadı. Lütfen tekrar dene.",
+    "submitting": "Toplu işlem oluşturuluyor…",
+    "textModeHint": "En fazla {max} şarkı ekle. Zaten bir topluluk sürümü olanları işaretleyeceğiz.",
+    "title": "Başlık",
+    "tracklistHint": "Canlı, remiks ve bonus parçalar — ve zaten topluluk sürümü olan şarkılar — varsayılan olarak işaretsizdir.",
+    "addSong": "Şarkı ekle",
+    "artist": "Sanatçı",
+    "buyCredits": "Kredi satın al",
+    "removeRow": "Kaldır",
+    "trackCount": "{count} parça",
+    "changeEdition": "Değiştir",
+    "existingVersions": "Mevcut sürümler:",
+    "usingRelease": "{label} · {year} · {tracks} kullanılıyor",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Orijinal",
+    "variantReissue": "Yeniden basım"
+  },
+  "backendStatus": {
+    "reconnecting": "Yeniden bağlanıyor…",
+    "unavailable": {
+      "body": "Bu genellikle geçici bir durum — lütfen birkaç dakika sonra tekrar dene.",
+      "reassurance": "Şu anda oluşturulmakta olan karaoke videoları bu durumdan etkilenmez ve işlenmeye devam eder.",
+      "title": "Sunucularımıza ulaşmakta sorun yaşıyoruz"
+    },
+    "dismiss": "Kapat"
   }
 }

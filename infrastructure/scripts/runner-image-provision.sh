@@ -391,7 +391,7 @@ visudo -cf /etc/sudoers.d/runner
 # registers, gets rejected, and self-halts, leaving CI jobs queued forever.
 # When bumping, check https://github.com/actions/runner/releases/latest.
 ck "phase: github actions runner binary"
-RUNNER_VERSION="2.334.0"
+RUNNER_VERSION="2.336.0"
 RUNNER_DIR="/home/runner/actions-runner"
 mkdir -p "$RUNNER_DIR"
 

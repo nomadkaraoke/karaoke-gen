@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection inválido. Debe ser uno de: {valid_selections}",
     "instrumentalSelected": "Instrumental seleccionado. Generación de video iniciada.",
     "instrumentalSelectionError": "Error al seleccionar el instrumental para el trabajo {job_id}: {error}",
-    "downloadUrlsError": "Error al obtener las URLs de descarga: {error}"
+    "downloadUrlsError": "Error al obtener las URLs de descarga: {error}",
+    "fileNoLongerAvailable": "El archivo ya no está disponible"
   },
   "review": {
     "jobNotFound": "Trabajo no encontrado",
@@ -92,7 +93,10 @@
     "selectAudioError": "Error al seleccionar el audio para el trabajo {job_id}: {error}",
     "searchAudioError": "Error al buscar audio: {error}",
     "searchCreatedSuccessfully": "Trabajo creado. Buscando audio...",
-    "autoDownloadStarted": "Mejor resultado seleccionado automáticamente. Iniciando descarga..."
+    "autoDownloadStarted": "Mejor resultado seleccionado automáticamente. Iniciando descarga...",
+    "drmUrlUnsupported": "Los enlaces de {platform} están protegidos contra copia, así que no podemos descargarlos directamente. Intenta descargar el audio con una herramienta de terceros primero, y luego sube el archivo de audio aquí. También puedes pegar un enlace de YouTube, o usar la Búsqueda de Audio para encontrar esta canción.",
+    "drmUrlUnsupportedWithLink": "Los enlaces de {platform} están protegidos contra copia, por lo que no podemos descargarlos directamente. Puedes descargar la pista usando una herramienta como {downloader} y luego subir el archivo de audio aquí. También puedes pegar un enlace de YouTube, o usar la Búsqueda de Audio para encontrar esta canción.",
+    "drmUrlUnsupportedSearch": "Los enlaces de {platform} están protegidos por derechos de autor, así que no podemos descargarlos directamente. Busca en la web un \"descargador de {platform}\" para obtener el audio — por ejemplo {searchUrl} — y luego sube el archivo de audio aquí. También puedes pegar un enlace de YouTube, o usar la Búsqueda de Audio para encontrar esta canción."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

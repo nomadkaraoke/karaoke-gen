@@ -516,7 +516,10 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Build package
-        run: poetry build
+        # Wheel-only: we ship a universal py3-none-any wheel. The sdist bundles
+        # the 33-locale Next.js static export (~50 MB) as dead weight and pushed
+        # the PyPI project over its 10 GB cap. pip always installs from the wheel.
+        run: poetry build --format wheel
 
       - name: Test package installation
         run: |
@@ -831,7 +834,12 @@ jobs:
             venv-package-${{ runner.os }}-py3.13-
 
       - name: Build package
-        run: poetry build
+        # Wheel-only: we publish a universal py3-none-any wheel to PyPI. The
+        # sdist bundled the 33-locale Next.js static export (~50 MB/release) as
+        # dead weight and pushed the project over PyPI's 10 GB storage cap.
+        # pip always installs from the wheel; nothing builds karaoke-gen from
+        # source (the GCE encoding worker pulls the wheel from GCS).
+        run: poetry build --format wheel
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -925,7 +933,6 @@ jobs:
           prerelease: false
           files: |
             dist/*.whl
-            dist/*.tar.gz
 
   deploy-frontend:
     name: "Deploy - Frontend (Cloudflare Pages)"
@@ -1181,10 +1188,15 @@ jobs:
           data = doc.to_dict()
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               for key in ["primary_vm", "primary_ip", "primary_version",
-                          "secondary_vm", "secondary_ip"]:
+                          "secondary_vm", "secondary_ip",
+                          "active_override_vm", "active_override_ip", "active_override_zone"]:
                   f.write(f"{key}={data.get(key, '')}\n")
               f.write(f"deploy_in_progress={str(data.get('deploy_in_progress', False)).lower()}\n")
-          print(f"Config: primary={data['primary_vm']}, secondary={data['secondary_vm']}")
+              # capacity_state is a map — emit as single-line JSON so the green
+              # selection step can demote recently-stocked-out machine types.
+              f.write(f"capacity_state={json.dumps(data.get('capacity_state') or {})}\n")
+          print(f"Config: primary={data.get('primary_vm')}, secondary={data.get('secondary_vm')}, "
+                f"active_override={data.get('active_override_vm')}")
           PYEOF
 
       - name: Wait for concurrent deploy
@@ -1219,29 +1231,159 @@ jobs:
           print("Set deploy_in_progress=true")
           PYEOF
 
-      - name: Start secondary VM
+      # Capacity-aware green (staging) target. us-central1 is often in a c4d Spot
+      # stockout, so the c4d secondary can't start and the serving worker is an n2
+      # fallback recorded as active_override. We validate the new wheel on a FRESH
+      # green — the c4d secondary if it starts, else a different n2 fallback (never
+      # the current override, so it keeps serving) — then promote the green. See
+      # infrastructure/encoding-worker/deploy_promote.py.
+      - name: Select & start green target
+        id: green
+        # Never hard-fail the whole backend deploy just because no encoding
+        # worker could be validated — emit green_ok=false and let the gated
+        # health/encode/promote steps skip while the Cloud Run deploy proceeds.
+        continue-on-error: true
         run: |
-          SECONDARY_VM="${{ steps.config.outputs.secondary_vm }}"
-          echo "Starting secondary VM: $SECONDARY_VM"
-          gcloud compute instances start "$SECONDARY_VM" \
-            --zone=us-central1-c --project=nomadkaraoke || true
+          python3 << 'PYEOF'
+          import json, os, subprocess, sys, time
+          sys.path.insert(0, "infrastructure/encoding-worker")
+          import deploy_promote
 
-          for i in $(seq 1 12); do
-            STATUS=$(gcloud compute instances describe "$SECONDARY_VM" \
-              --zone=us-central1-c --project=nomadkaraoke \
-              --format='value(status)')
-            echo "VM status: $STATUS (attempt $i/12)"
-            if [ "$STATUS" = "RUNNING" ]; then
-              break
-            fi
-            sleep 10
-          done
+          try:
+              capacity_state = json.loads(os.environ.get("CAPACITY_STATE") or "{}")
+          except Exception:
+              capacity_state = {}
+          config = {
+              "primary_vm": os.environ.get("PRIMARY_VM") or None,
+              "primary_ip": os.environ.get("PRIMARY_IP") or None,
+              "secondary_vm": os.environ.get("SECONDARY_VM") or None,
+              "secondary_ip": os.environ.get("SECONDARY_IP") or None,
+              "secondary_zone": "us-central1-c",
+              "active_override_vm": os.environ.get("OVERRIDE_VM") or None,
+              "capacity_state": capacity_state,
+          }
+          raw = subprocess.run(
+              ["gcloud", "secrets", "versions", "access", "latest",
+               "--secret=encoding-worker-fallback-vms", "--project=nomadkaraoke"],
+              capture_output=True, text=True)
+          try:
+              fallbacks = json.loads(raw.stdout) if raw.returncode == 0 and raw.stdout.strip() else []
+          except Exception as e:
+              print(f"::warning::Could not parse fallback VM secret: {e}")
+              fallbacks = []
+
+          candidates = deploy_promote.select_green_candidates(config, fallbacks)
+          print("Green candidates (in order):", [f"{c['vm']}({c['kind']})" for c in candidates])
+
+          def vm_status(vm, zone):
+              r = subprocess.run(
+                  ["gcloud", "compute", "instances", "describe", vm,
+                   f"--zone={zone}", "--project=nomadkaraoke", "--format=value(status)"],
+                  capture_output=True, text=True)
+              return r.stdout.strip()
+
+          green = None
+          started = []  # every VM we issued `start` to — so we can stop losers
+          for c in candidates:
+              vm, zone = c["vm"], c["zone"]
+              print(f"Trying green candidate: {vm} ({zone}, kind={c['kind']})")
+              subprocess.run(["gcloud", "compute", "instances", "start", vm,
+                              f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+              started.append((vm, zone))
+              for i in range(12):
+                  st = vm_status(vm, zone)
+                  print(f"  {vm} status={st} ({i+1}/12)")
+                  if st == "RUNNING":
+                      green = c
+                      break
+                  time.sleep(10)
+              if green:
+                  break
+
+          # Stop every candidate we started but did NOT select, so a slow-booting
+          # loser can't come up later unmanaged (and billed) after the deploy.
+          selected_vm = green["vm"] if green else None
+          for vm, zone in started:
+              if vm != selected_vm:
+                  print(f"Stopping unselected candidate {vm} ({zone})")
+                  subprocess.run(["gcloud", "compute", "instances", "stop", vm,
+                                  f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+
+          started_fresh = "true"
+          inplace_failed = False
+          if green is None:
+              # Last resort: no separate green could start. Restart the current
+              # serving override in place (accepts a brief blip; auto-resubmit
+              # covers any in-flight render). If there's no override either, fail.
+              ov = os.environ.get("OVERRIDE_VM")
+              if ov:
+                  zone = os.environ.get("OVERRIDE_ZONE") or "us-central1-f"
+                  print(f"::warning::No separate green could start; restarting serving override {ov} in place")
+                  subprocess.run(["gcloud", "compute", "instances", "stop", ov,
+                                  f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+                  for _ in range(18):
+                      if vm_status(ov, zone) in ("TERMINATED", "STOPPED", ""):
+                          break
+                      time.sleep(5)
+                  subprocess.run(["gcloud", "compute", "instances", "start", ov,
+                                  f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+                  final_status = ""
+                  for _ in range(18):
+                      final_status = vm_status(ov, zone)
+                      if final_status == "RUNNING":
+                          break
+                      time.sleep(10)
+                  # Record it either way so rollback can recover it (we stopped it,
+                  # so if it didn't come back we must be able to start it again).
+                  green = {"vm": ov, "ip": os.environ.get("OVERRIDE_IP"),
+                           "zone": zone, "kind": "fallback"}
+                  started_fresh = "false"  # it's the serving worker — never stop on rollback
+                  if final_status != "RUNNING":
+                      inplace_failed = True
+                      print(f"::error::In-place restart of {ov} did not reach RUNNING (status={final_status or 'unknown'})")
+              else:
+                  print("::error::No green target could be started and no active override exists")
+
+          def _out(**kv):
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  for k, v in kv.items():
+                      f.write(f"{k}={v}\n")
+
+          # green_ok gates the downstream health/encode/promote steps. A missing
+          # green, a green with no IP, or an in-place restart that didn't come back
+          # RUNNING is "not ok" — the deploy skips the encoding-worker promote but
+          # does NOT fail; when a serving override is involved we still emit its
+          # vm/zone so the (always-run) rollback step can recover it.
+          if green is None:
+              _out(green_ok="false")
+              print("::warning::No green target selected; skipping encoding-worker promote")
+          elif not green.get("ip") or inplace_failed:
+              _out(green_ok="false", green_vm=green["vm"], green_zone=green["zone"],
+                   green_started_fresh=started_fresh)
+              reason = "has no IP" if not green.get("ip") else "did not return to RUNNING"
+              print(f"::error::Green {green['vm']} {reason}; skipping promote")
+          else:
+              _out(green_ok="true", green_vm=green["vm"], green_ip=green["ip"],
+                   green_zone=green["zone"], green_kind=green["kind"],
+                   green_started_fresh=started_fresh)
+              print(f"Green: {green['vm']} ({green['zone']}, kind={green['kind']}, started_fresh={started_fresh})")
+          PYEOF
+        env:
+          PRIMARY_VM: ${{ steps.config.outputs.primary_vm }}
+          PRIMARY_IP: ${{ steps.config.outputs.primary_ip }}
+          SECONDARY_VM: ${{ steps.config.outputs.secondary_vm }}
+          SECONDARY_IP: ${{ steps.config.outputs.secondary_ip }}
+          OVERRIDE_VM: ${{ steps.config.outputs.active_override_vm }}
+          OVERRIDE_IP: ${{ steps.config.outputs.active_override_ip }}
+          OVERRIDE_ZONE: ${{ steps.config.outputs.active_override_zone }}
+          CAPACITY_STATE: ${{ steps.config.outputs.capacity_state }}
 
       - name: Wait for service health
         id: health
+        if: steps.green.outputs.green_ok == 'true'
         continue-on-error: true
         run: |
-          SECONDARY_IP="${{ steps.config.outputs.secondary_ip }}"
+          SECONDARY_IP="${{ steps.green.outputs.green_ip }}"
           EXPECTED_VERSION="${{ steps.version_check.outputs.version }}"
           HEALTH_URL="http://${SECONDARY_IP}:8080/health"
 
@@ -1270,7 +1412,7 @@ jobs:
         id: encode-test
         continue-on-error: true
         run: |
-          SECONDARY_IP="${{ steps.config.outputs.secondary_ip }}"
+          SECONDARY_IP="${{ steps.green.outputs.green_ip }}"
           API_KEY=$(gcloud secrets versions access latest \
             --secret=encoding-worker-api-key --project=nomadkaraoke)
 
@@ -1334,13 +1476,35 @@ jobs:
           exit 1
 
       - name: Rollback on failure
-        if: steps.health.outputs.healthy != 'true' || steps.encode-test.outputs.passed != 'true'
+        # always() so the deploy_in_progress flag is ALWAYS cleared, even when the
+        # green step found no worker (its downstream steps skip, but the flag was
+        # already set). Skips only on a fully successful promote (passed == true).
+        if: always() && steps.encode-test.outputs.passed != 'true'
         run: |
-          SECONDARY_VM="${{ steps.config.outputs.secondary_vm }}"
-          if [ -n "$SECONDARY_VM" ]; then
-            echo "Stopping secondary VM $SECONDARY_VM due to failed deploy"
-            gcloud compute instances stop "$SECONDARY_VM" \
-              --zone=us-central1-c --project=nomadkaraoke || true
+          GREEN_VM="${{ steps.green.outputs.green_vm }}"
+          GREEN_ZONE="${{ steps.green.outputs.green_zone }}"
+          STARTED_FRESH="${{ steps.green.outputs.green_started_fresh }}"
+          # Only stop a green we started fresh. If green is the serving override
+          # (last-resort in-place restart), leave it running — it's serving
+          # known-good code and stopping it would take production down.
+          if [ "$STARTED_FRESH" = "true" ] && [ -n "$GREEN_VM" ]; then
+            echo "Stopping fresh green $GREEN_VM ($GREEN_ZONE) due to failed deploy"
+            gcloud compute instances stop "$GREEN_VM" \
+              --zone="$GREEN_ZONE" --project=nomadkaraoke || true
+          elif [ -n "$GREEN_VM" ] && [ -n "$GREEN_ZONE" ]; then
+            # Serving override (last-resort in-place restart). We stopped it during
+            # the restart, so if it isn't RUNNING we must bring it back — otherwise
+            # production stays down after a failed deploy.
+            echo "Green is the serving worker; ensuring $GREEN_VM is RUNNING"
+            STATUS=$(gcloud compute instances describe "$GREEN_VM" \
+              --zone="$GREEN_ZONE" --project=nomadkaraoke --format='value(status)' 2>/dev/null || echo "")
+            if [ "$STATUS" != "RUNNING" ]; then
+              echo "::warning::Serving worker $GREEN_VM is '${STATUS:-unknown}'; starting it back up"
+              gcloud compute instances start "$GREEN_VM" \
+                --zone="$GREEN_ZONE" --project=nomadkaraoke || true
+            fi
+          else
+            echo "No green VM recorded; nothing to stop or recover"
           fi
 
           python3 -c "
@@ -1353,77 +1517,120 @@ jobs:
           print('Cleared deploy_in_progress flag')
           " || true
 
-      - name: Swap primary in Firestore
+      # Promote the validated green to serving. For a c4d secondary green this is
+      # the classic primary/secondary swap (and clears any stale override); for a
+      # fallback green it becomes the active_override. Then drain + stop whatever
+      # VM(s) the promote plan says are no longer serving. See deploy_promote.py.
+      - name: Promote green to serving
         if: steps.encode-test.outputs.passed == 'true'
+        timeout-minutes: 25
         env:
-          NEW_PRIMARY: ${{ steps.config.outputs.secondary_vm }}
-          NEW_PRIMARY_IP: ${{ steps.config.outputs.secondary_ip }}
+          GREEN_VM: ${{ steps.green.outputs.green_vm }}
+          GREEN_IP: ${{ steps.green.outputs.green_ip }}
+          GREEN_ZONE: ${{ steps.green.outputs.green_zone }}
+          GREEN_KIND: ${{ steps.green.outputs.green_kind }}
           NEW_VERSION: ${{ steps.version_check.outputs.version }}
-          OLD_PRIMARY: ${{ steps.config.outputs.primary_vm }}
-          OLD_PRIMARY_IP: ${{ steps.config.outputs.primary_ip }}
-          OLD_VERSION: ${{ steps.config.outputs.primary_version }}
+          PRIMARY_VM: ${{ steps.config.outputs.primary_vm }}
+          PRIMARY_IP: ${{ steps.config.outputs.primary_ip }}
+          PRIMARY_VERSION: ${{ steps.config.outputs.primary_version }}
+          OVERRIDE_VM: ${{ steps.config.outputs.active_override_vm }}
+          OVERRIDE_IP: ${{ steps.config.outputs.active_override_ip }}
+          OVERRIDE_ZONE: ${{ steps.config.outputs.active_override_zone }}
         run: |
-          echo "Swapping: $OLD_PRIMARY -> secondary, $NEW_PRIMARY -> primary"
           python3 << 'PYEOF'
-          import os
+          import json, os, subprocess, sys, time, urllib.request
           from datetime import datetime, timezone
+          sys.path.insert(0, "infrastructure/encoding-worker")
+          import deploy_promote
           from google.cloud import firestore
 
-          db = firestore.Client(project="nomadkaraoke")
-          doc_ref = db.collection("config").document("encoding-worker")
+          green = {"vm": os.environ["GREEN_VM"], "ip": os.environ["GREEN_IP"],
+                   "zone": os.environ["GREEN_ZONE"], "kind": os.environ["GREEN_KIND"]}
+          config = {
+              "primary_vm": os.environ.get("PRIMARY_VM") or None,
+              "primary_ip": os.environ.get("PRIMARY_IP") or None,
+              "primary_version": os.environ.get("PRIMARY_VERSION") or None,
+              "primary_zone": "us-central1-c",
+              "active_override_vm": os.environ.get("OVERRIDE_VM") or None,
+              "active_override_ip": os.environ.get("OVERRIDE_IP") or None,
+              "active_override_zone": os.environ.get("OVERRIDE_ZONE") or None,
+          }
           now = datetime.now(timezone.utc).isoformat()
+          plan = deploy_promote.promote_plan(green, config, now=now, version=os.environ["NEW_VERSION"])
 
-          @firestore.transactional
-          def swap(transaction):
-              transaction.update(doc_ref, {
-                  "primary_vm": os.environ["NEW_PRIMARY"],
-                  "primary_ip": os.environ["NEW_PRIMARY_IP"],
-                  "primary_version": os.environ["NEW_VERSION"],
-                  "primary_deployed_at": now,
-                  "secondary_vm": os.environ["OLD_PRIMARY"],
-                  "secondary_ip": os.environ["OLD_PRIMARY_IP"],
-                  "secondary_version": os.environ["OLD_VERSION"],
-                  "secondary_deployed_at": now,
-                  "last_swap_at": now,
-                  "deploy_in_progress": False,
-                  "deploy_in_progress_since": None,
-              })
+          db = firestore.Client(project="nomadkaraoke")
+          db.collection("config").document("encoding-worker").update(plan["firestore_updates"])
+          print("Applied config update:", json.dumps(plan["firestore_updates"], default=str))
+          print(f"Green {green['vm']} ({green['kind']}) is now serving")
 
-          transaction = db.transaction()
-          swap(transaction)
-          print(f"Swapped: {os.environ['NEW_PRIMARY']} is now primary")
+          def active_jobs(ip):
+              # /health is unauthenticated; None == "unknown / maybe busy".
+              if not ip:
+                  return None
+              try:
+                  with urllib.request.urlopen(f"http://{ip}:8080/health", timeout=5) as r:
+                      return json.load(r).get("active_jobs")
+              except Exception:
+                  return None
+
+          def vm_status(vm, zone):
+              r = subprocess.run(
+                  ["gcloud", "compute", "instances", "describe", vm,
+                   f"--zone={zone}", "--project=nomadkaraoke", "--format=value(status)"],
+                  capture_output=True, text=True)
+              return r.stdout.strip()
+
+          # Drain (bounded) then stop each VM the plan retired. A non-RUNNING target
+          # is already gone — stop it (idempotent) without waiting. For a RUNNING one
+          # we wait for a confirmed 0 active_jobs so we never stop mid-render (#908
+          # resubmit would cover a loss, but we still avoid it). The drain budget is
+          # SHARED across all targets (one 20-min deadline, not per-target) so a slow
+          # or unreachable target can't stretch the step to N×20 min; the step also
+          # has a hard timeout-minutes. New renders already route to the promoted green.
+          deadline = time.monotonic() + 1200
+          for tgt in plan["drain_and_stop"]:
+              vm, ip, zone = tgt["vm"], tgt.get("ip"), tgt.get("zone")
+              if not vm or not zone:
+                  print(f"::warning::Skipping drain/stop with incomplete target: {tgt}")
+                  continue
+              status = vm_status(vm, zone)
+              if status != "RUNNING" or not ip:
+                  why = f"status={status or 'unknown'}" if status != "RUNNING" else "no IP to probe"
+                  print(f"{vm} ({why}); stopping without drain")
+                  subprocess.run(["gcloud", "compute", "instances", "stop", vm,
+                                  f"--zone={zone}", "--project=nomadkaraoke"], check=False)
+                  continue
+              print(f"Draining {vm} ({zone}) before stop...")
+              n = active_jobs(ip)
+              while n != 0 and time.monotonic() < deadline:
+                  time.sleep(15)
+                  n = active_jobs(ip)
+                  print(f"  {vm} active_jobs={n} ({int(deadline - time.monotonic())}s budget left)")
+              if n == 0:
+                  print(f"Drain confirmed for {vm}; stopping")
+              else:
+                  print(f"::warning::Drain budget exhausted for {vm} (last={n}); stopping anyway")
+              subprocess.run(["gcloud", "compute", "instances", "stop", vm,
+                              f"--zone={zone}", "--project=nomadkaraoke"], check=False)
           PYEOF
 
-      - name: Drain and stop old primary
-        if: steps.encode-test.outputs.passed == 'true'
+      # Safety net: the deploy_in_progress lock is set unconditionally earlier, and
+      # both Rollback (on failure) and Promote (on success) clear it — but if the
+      # Promote step itself errors or hits its timeout, neither runs. This always()
+      # step guarantees the lock is released so the next deploy doesn't stall 10 min
+      # in "Wait for concurrent deploy". Idempotent with the other clears.
+      - name: Clear encoding-worker deploy lock
+        if: always()
         run: |
-          OLD_PRIMARY="${{ steps.config.outputs.primary_vm }}"
-          OLD_PRIMARY_IP="${{ steps.config.outputs.primary_ip }}"
-          API_KEY=$(gcloud secrets versions access latest \
-            --secret=encoding-worker-api-key --project=nomadkaraoke)
-
-          ACTIVE_JOBS=$(curl -sf --connect-timeout 3 --max-time 5 "http://${OLD_PRIMARY_IP}:8080/health" \
-            | jq -r '.active_jobs // 0' 2>/dev/null || echo "0")
-
-          if [ "$ACTIVE_JOBS" -gt 0 ]; then
-            echo "Old primary has $ACTIVE_JOBS active jobs, waiting for drain..."
-            DRAIN_TIMEOUT=600
-            ELAPSED=0
-            while [ $ELAPSED -lt $DRAIN_TIMEOUT ]; do
-              sleep 15
-              ELAPSED=$((ELAPSED + 15))
-              ACTIVE_JOBS=$(curl -sf --connect-timeout 3 --max-time 5 "http://${OLD_PRIMARY_IP}:8080/health" \
-                | jq -r '.active_jobs // 0' 2>/dev/null || echo "0")
-              echo "Active jobs: $ACTIVE_JOBS (${ELAPSED}s elapsed)"
-              if [ "$ACTIVE_JOBS" -eq 0 ]; then
-                break
-              fi
-            done
-          fi
-
-          echo "Stopping old primary: $OLD_PRIMARY"
-          gcloud compute instances stop "$OLD_PRIMARY" \
-            --zone=us-central1-c --project=nomadkaraoke || true
+          python3 -c "
+          from google.cloud import firestore
+          db = firestore.Client(project='nomadkaraoke')
+          db.collection('config').document('encoding-worker').update({
+              'deploy_in_progress': False,
+              'deploy_in_progress_since': None,
+          })
+          print('Ensured deploy_in_progress is cleared')
+          " || true
 
       - name: Configure Docker for Artifact Registry
         run: |
@@ -1632,7 +1839,13 @@ jobs:
       # ============================================
       # Deploy to Cloud Run
       # ============================================
-
+      # EDGE-SECURITY: the `edge-origin-secret` Secret Manager secret is
+      # referenced in --set-secrets below (created 2026-07-20; has a value).
+      # EDGE_AUTH_MODE=enforce (in --set-env-vars) means the backend rejects
+      # requests to public routes that lack the Cloudflare-injected X-Edge-Auth
+      # header — i.e. direct-to-origin traffic bypassing the edge (health/root
+      # exempt). Cutover done 2026-07-20; validated via prod E2E with 0 blocked
+      # legit callers. To disable, set EDGE_AUTH_MODE=off here and redeploy.
       - name: Deploy to Cloud Run
         run: |
           VERSION="${{ steps.version_check.outputs.version }}"
@@ -1658,8 +1871,8 @@ jobs:
             --min-instances 1 \
             --vpc-connector projects/nomadkaraoke/locations/us-central1/connectors/cloud-run-connector \
             --vpc-egress private-ranges-only \
-            --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=karaoke-gen-storage-${{ env.PROJECT_ID }},FIRESTORE_COLLECTION=jobs,ENVIRONMENT=production,KARAOKE_GEN_VERSION=$VERSION,DEFAULT_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-Organized,DEFAULT_GDRIVE_FOLDER_ID=1laRKAyxo0v817SstfM5XkpbWiNKNAMSX,ENABLE_CLOUD_TASKS=true,CLOUD_RUN_SERVICE_URL=https://api.nomadkaraoke.com,GCP_REGION=us-central1,DEFAULT_ENABLE_YOUTUBE_UPLOAD=true,DEFAULT_BRAND_PREFIX=NOMAD,DEFAULT_PRIVATE_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-NonPublished,DEFAULT_PRIVATE_BRAND_PREFIX=NOMADNP,USE_GCE_ENCODING=true,USE_GCE_PREVIEW_ENCODING=true,ENABLE_PUSH_NOTIFICATIONS=true,USE_CLOUD_RUN_JOBS_FOR_VIDEO=true,EMAIL_PROVIDER=postmark,COMMIT_SHA=${{ steps.build-meta.outputs.sha }},PR_NUMBER=${{ steps.build-meta.outputs.pr_number }},PR_TITLE=${{ steps.build-meta.outputs.pr_title }}" \
-            --set-secrets "AUDIOSHAKE_API_TOKEN=audioshake-api-key:latest,GENIUS_API_TOKEN=genius-api-key:latest,SPOTIFY_COOKIE_SP_DC=spotify-cookie:latest,RAPIDAPI_KEY=rapidapi-key:latest,DEFAULT_DISCORD_WEBHOOK_URL=discord-releases-webhook:latest,ADMIN_TOKENS=admin-tokens:latest,RED_API_KEY=red-api-key:latest,RED_API_URL=red-api-url:latest,OPS_API_KEY=ops-api-key:latest,OPS_API_URL=ops-api-url:latest,FLACFETCH_API_URL=flacfetch-api-url:latest,FLACFETCH_API_KEY=flacfetch-api-key:latest,POSTMARK_SERVER_TOKEN=postmark-server-token:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,LANGFUSE_PUBLIC_KEY=langfuse-public-key:latest,LANGFUSE_SECRET_KEY=langfuse-secret-key:latest,LANGFUSE_HOST=langfuse-host:latest,ENCODING_WORKER_URL=encoding-worker-url:latest,ENCODING_WORKER_API_KEY=encoding-worker-api-key:latest,ENCODING_WORKER_FALLBACK_VMS=encoding-worker-fallback-vms:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,E2E_BYPASS_KEY=e2e-bypass-key:latest,GDRIVE_VALIDATOR_URL=gdrive-validator-url:latest"
+            --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=karaoke-gen-storage-${{ env.PROJECT_ID }},FIRESTORE_COLLECTION=jobs,ENVIRONMENT=production,KARAOKE_GEN_VERSION=$VERSION,DEFAULT_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-Organized,DEFAULT_GDRIVE_FOLDER_ID=1laRKAyxo0v817SstfM5XkpbWiNKNAMSX,ENABLE_CLOUD_TASKS=true,CLOUD_RUN_SERVICE_URL=https://api.nomadkaraoke.com,GCP_REGION=us-central1,DEFAULT_ENABLE_YOUTUBE_UPLOAD=true,DEFAULT_BRAND_PREFIX=NOMAD,DEFAULT_PRIVATE_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-NonPublished,DEFAULT_PRIVATE_BRAND_PREFIX=NOMADNP,USE_GCE_ENCODING=true,USE_GCE_PREVIEW_ENCODING=true,ENABLE_PUSH_NOTIFICATIONS=true,USE_CLOUD_RUN_JOBS_FOR_VIDEO=true,EMAIL_PROVIDER=postmark,AUTO_CORRECT_MODEL=claude-opus-4-8,AUTO_CORRECT_COMPARE_MODELS=claude-opus-4-8;gemini-3.1-pro-preview,AUTO_CORRECT_PROACTIVE_ENABLED=true,EDGE_AUTH_MODE=enforce,COMMIT_SHA=${{ steps.build-meta.outputs.sha }},PR_NUMBER=${{ steps.build-meta.outputs.pr_number }},PR_TITLE=${{ steps.build-meta.outputs.pr_title }}" \
+            --set-secrets "ANTHROPIC_API_KEY=anthropic-api-key:latest,AUDIOSHAKE_API_TOKEN=audioshake-api-key:latest,GENIUS_API_TOKEN=genius-api-key:latest,SPOTIFY_COOKIE_SP_DC=spotify-cookie:latest,RAPIDAPI_KEY=rapidapi-key:latest,DEFAULT_DISCORD_WEBHOOK_URL=discord-releases-webhook:latest,ADMIN_TOKENS=admin-tokens:latest,RED_API_KEY=red-api-key:latest,RED_API_URL=red-api-url:latest,OPS_API_KEY=ops-api-key:latest,OPS_API_URL=ops-api-url:latest,FLACFETCH_API_URL=flacfetch-api-url:latest,FLACFETCH_API_KEY=flacfetch-api-key:latest,POSTMARK_SERVER_TOKEN=postmark-server-token:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,LANGFUSE_PUBLIC_KEY=langfuse-public-key:latest,LANGFUSE_SECRET_KEY=langfuse-secret-key:latest,LANGFUSE_HOST=langfuse-host:latest,ENCODING_WORKER_URL=encoding-worker-url:latest,ENCODING_WORKER_API_KEY=encoding-worker-api-key:latest,ENCODING_WORKER_FALLBACK_VMS=encoding-worker-fallback-vms:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,E2E_BYPASS_KEY=e2e-bypass-key:latest,GDRIVE_VALIDATOR_URL=gdrive-validator-url:latest,EDGE_ORIGIN_SECRET=edge-origin-secret:latest"
 
       - name: Update Cloud Run Jobs with new image
         run: |
@@ -1676,6 +1889,14 @@ jobs:
             --quiet
 
           # Lyrics transcription job (CPU, us-central1)
+          # NOTE: image-only update. Adding --update-secrets here crashed gcloud
+          # ("Invalid secret path ... in annotation") because this job's existing
+          # secrets are stored via Cloud Run secret *aliases* that --update-secrets
+          # re-validates and rejects. Proactive auto-correct env/secret
+          # (AUTO_CORRECT_PROACTIVE_ENABLED + ANTHROPIC_API_KEY) must be wired by a
+          # method that handles the alias format (see proactive-autocorrect plan
+          # doc); until then the proactive flag stays unset and the worker's
+          # _run_proactive_auto_correct() returns early (no-op).
           gcloud run jobs update lyrics-transcription-job \
             --image "$IMAGE" \
             --region us-central1 \

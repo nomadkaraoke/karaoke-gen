@@ -7,6 +7,8 @@
  * preview. Persistence still flows through the existing replace-segments
  * Save path.
  */
+import { apiFetch } from '@/lib/api'
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? 'https://api.nomadkaraoke.com'
 
@@ -95,7 +97,7 @@ export async function generateCustomLyrics(
   const headers: Record<string, string> = {}
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_BASE}/api/review/${encodeURIComponent(jobId)}/custom-lyrics/generate`,
     { method: 'POST', body: form, headers, signal },
   )

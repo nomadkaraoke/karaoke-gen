@@ -209,7 +209,7 @@ TESTMAIL_NAMESPACE=...       # testmail.app namespace
 
 ## Encoding Worker Operations
 
-The encoding worker uses a blue-green deployment with two GCE VMs (`encoding-worker-a`, `encoding-worker-b`). See [ARCHITECTURE.md](ARCHITECTURE.md#encoding-worker-blue-green-deployment) for the full design.
+The encoding worker is a blue-green primary pair (`encoding-worker-a`/`-b`, c4d) plus a ranked pool of 8 stopped fallback VMs spanning 6 machine families (c4d/c4/n4d/c2d/n2d/n2) for stockout resilience — 10 VMs total. Candidate ordering (runtime + deploy) is the shared `backend/services/encoding_worker_preference.py`. See [ARCHITECTURE.md](ARCHITECTURE.md#encoding-worker-blue-green-primary-pair--multi-family-fallback-pool) for the full design.
 
 ### Seed Firestore config (initial setup or reset)
 

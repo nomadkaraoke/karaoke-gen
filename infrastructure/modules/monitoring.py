@@ -68,16 +68,30 @@ def create_alert_policies(
     notification_channels = _channel_names(channels)
     alerts = {}
 
-    # Alert: High Error Rate (>10% of requests returning errors)
+    # Alert: Sustained server errors (5xx).
+    #
+    # NOTE on semantics: with ALIGN_RATE + REDUCE_SUM the threshold is a request
+    # *rate* (requests/second), NOT a true percentage — the old "Error rate >
+    # 10%" name was a misnomer. It also matched ALL non-2xx codes, so a burst of
+    # 404s from an internet vuln-scanner (2026-07-20: 0.167 req/s of 404s from a
+    # single IP hammering /.env, /.ssh/... ) tripped it despite the service being
+    # perfectly healthy.
+    #
+    # Fix: scope to `response_code_class="5xx"` so only genuine *server* errors
+    # count — client/bot 404s never page us. WAF/rate-limiting at the Cloudflare
+    # edge (see modules/edge_security.py) is the primary defense that keeps that
+    # scan traffic off the metric entirely. Threshold = >0.1 5xx req/s sustained
+    # over 5 min. With COMPARISON_GT the boundary is strict: 6 errors/min
+    # (=0.1/s) does NOT fire; >=7/min sustained for 5 min does → real regression.
     alerts["error_rate"] = gcp.monitoring.AlertPolicy(
         "high-error-rate-alert",
-        display_name="Karaoke Backend - High Error Rate",
+        display_name="Karaoke Backend - High Server-Error Rate (5xx)",
         combiner="OR",
         conditions=[
             gcp.monitoring.AlertPolicyConditionArgs(
-                display_name="Error rate > 10%",
+                display_name="Sustained 5xx server errors > 0.1/s (5 min)",
                 condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
-                    filter='resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND metric.type="run.googleapis.com/request_count" AND metric.labels.response_code_class!="2xx"',
+                    filter='resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND metric.type="run.googleapis.com/request_count" AND metric.labels.response_code_class="5xx"',
                     comparison="COMPARISON_GT",
                     threshold_value=0.1,
                     duration="300s",
@@ -98,7 +112,7 @@ def create_alert_policies(
             auto_close="3600s",
         ),
         documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
-            content="High error rate detected on karaoke-backend. Check Cloud Run logs for details.\n\nDashboard: https://console.cloud.google.com/run/detail/us-central1/karaoke-backend/logs?project=nomadkaraoke",
+            content="Sustained 5xx server errors on karaoke-backend (not client/bot 404s). Check Cloud Run logs for crashes, timeouts, or dependency failures.\n\nDashboard: https://console.cloud.google.com/run/detail/us-central1/karaoke-backend/logs?project=nomadkaraoke",
             mime_type="text/markdown",
         ),
         enabled=True,
@@ -180,23 +194,124 @@ def create_alert_policies(
     )
 
     # Alert: Cloud Run Service Unavailable
+    #
+    # HISTORY — why this is NOT an instance-count-absence alert anymore:
+    #   The original condition used `condition_absent` on
+    #   `run.googleapis.com/container/instance_count` ("No healthy instances").
+    #   That metric is a *sampled* series: for a min-instances=1, low-traffic
+    #   service it legitimately stops reporting for short stretches even while
+    #   the single instance is alive and serving 200s. On 2026-08-19 03:15 UTC it
+    #   fired + auto-resolved in ~85s while the same instanceId was actively
+    #   answering the scheduled recover-stuck-jobs / retry-pending-render crons
+    #   with HTTP 200 — a pure metric blink, not an outage. Absence of an
+    #   instance-count sample is simply the wrong signal for "is the API down".
+    #
+    #   Fix: measure reachability directly with a Cloud Monitoring uptime check
+    #   against the public health endpoint (through the Cloudflare edge, exactly
+    #   the path real users take), and page only when it FAILS from more than one
+    #   checker location — so a single flaky checker can't page us, but a genuine
+    #   hard-down (every checker failing) does after the retest window (~5-6 min
+    #   with the 300s `duration`; see the HISTORY note on that below).
+    #
+    #   NOTE on granularity: with selected_regions unset the check runs from all
+    #   of Google's checker locations (several are in the USA alone). The
+    #   condition counts failing *checker locations* (REDUCE_COUNT_FALSE grouped
+    #   by host), NOT broad geographic regions — two failed US checkers is enough
+    #   to fire. That is intentional: >1 failing location is a real reachability
+    #   problem worth paging, and requiring >1 filters out single-checker noise.
+    #
+    #   HISTORY — why `duration` is 300s, not 60s:
+    #   The service runs on `--min-instances 1` (a single warm instance). Two
+    #   self-healing failure modes each briefly take health checks down from ALL
+    #   checker locations at once, tripping the >1-location threshold:
+    #     (a) Instance recycle. Cloud Run periodically replaces the lone instance
+    #         (host maintenance / max-lifetime). On 2026-08-22 06:02:30–06:03:50
+    #         UTC the instance was replaced (log: "Starting new instance …
+    #         MIN_INSTANCE" then AUTOSCALING; STARTUP probe ready ~06:03:13),
+    #         leaving ~80s with no warm origin — every uptime checker failed, then
+    #         it self-healed. The alert fired at 06:06 and auto-cleared in ~1m41s.
+    #     (b) Event-loop stall. The single instance can block on synchronous-ish
+    #         work (e.g. orchestrating an encoding-worker fallback cold-start with
+    #         blocking timeouts, seen 2026-08-22 00:11–00:12 UTC where four queued
+    #         health probes all flushed at the same instant), so probes queue past
+    #         the 10s uptime timeout across regions until it frees up.
+    #   Both clear on their own well under 5 minutes. Rather than pay for a second
+    #   always-on instance, we require the >1-location failure to PERSIST for 300s
+    #   before paging: sub-5-min blips are suppressed, a genuine sustained hard-down
+    #   still pages (at ~5–6 min instead of ~1–2). If real outages ever slip
+    #   through undetected, the cheaper-detection lever is `--min-instances 2`
+    #   (ci.yml) — that removes both failure modes at the source.
+    uptime_health = gcp.monitoring.UptimeCheckConfig(
+        "backend-health-uptime-check",
+        display_name="Karaoke Backend - /api/health",
+        timeout="10s",
+        period="60s",
+        monitored_resource=gcp.monitoring.UptimeCheckConfigMonitoredResourceArgs(
+            type="uptime_url",
+            labels={"project_id": PROJECT_ID, "host": "api.nomadkaraoke.com"},
+        ),
+        http_check=gcp.monitoring.UptimeCheckConfigHttpCheckArgs(
+            path="/api/health",
+            port=443,
+            use_ssl=True,
+            validate_ssl=True,
+            request_method="GET",
+            accepted_response_status_codes=[
+                gcp.monitoring.UptimeCheckConfigHttpCheckAcceptedResponseStatusCodeArgs(
+                    status_value=200,
+                ),
+            ],
+        ),
+        # Body must actually contain the health marker — guards against an edge
+        # that returns 200 with an error/placeholder page instead of the app.
+        content_matchers=[
+            gcp.monitoring.UptimeCheckConfigContentMatcherArgs(
+                content="healthy",
+                matcher="CONTAINS_STRING",
+            ),
+        ],
+    )
+    alerts["health_uptime_check"] = uptime_health
+
+    # Build the alert filter once the check id is known. `check_id` in the metric
+    # label is the short id exposed as `.uptime_check_id`.
+    _uptime_filter = uptime_health.uptime_check_id.apply(
+        lambda check_id: (
+            'resource.type="uptime_url" '
+            'AND metric.type="monitoring.googleapis.com/uptime_check/check_passed" '
+            f'AND metric.label.check_id="{check_id}"'
+        )
+    )
+
     alerts["service_unavailable"] = gcp.monitoring.AlertPolicy(
         "service-unavailable-alert",
         display_name="Karaoke Backend - Service Unavailable",
         combiner="OR",
         conditions=[
             gcp.monitoring.AlertPolicyConditionArgs(
-                display_name="No healthy instances",
-                condition_absent=gcp.monitoring.AlertPolicyConditionConditionAbsentArgs(
-                    filter='resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND metric.type="run.googleapis.com/container/instance_count"',
+                display_name="Health check failing from >1 checker location",
+                condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
+                    filter=_uptime_filter,
+                    # Count how many checker locations reported a *failed* check
+                    # over the window; fire when more than one location is failing.
+                    comparison="COMPARISON_GT",
+                    threshold_value=1,
+                    # Require the >1-location failure to persist for 5 minutes
+                    # before paging. Filters out sub-5-min self-healing blips on
+                    # the single min-instance (recycle gap + event-loop stall);
+                    # see the HISTORY note above. A sustained hard-down still fires.
                     duration="300s",
                     aggregations=[
-                        gcp.monitoring.AlertPolicyConditionConditionAbsentAggregationArgs(
-                            alignment_period="60s",
-                            per_series_aligner="ALIGN_MEAN",
-                            cross_series_reducer="REDUCE_SUM",
+                        gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
+                            alignment_period="1200s",
+                            per_series_aligner="ALIGN_NEXT_OLDER",
+                            cross_series_reducer="REDUCE_COUNT_FALSE",
+                            group_by_fields=["resource.label.host"],
                         ),
                     ],
+                    trigger=gcp.monitoring.AlertPolicyConditionConditionThresholdTriggerArgs(
+                        count=1,
+                    ),
                 ),
             ),
         ],
@@ -204,7 +319,7 @@ def create_alert_policies(
             auto_close="1800s",
         ),
         documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
-            content="Karaoke backend service appears to be down - no healthy Cloud Run instances detected.\n\nImmediate actions:\n1. Check Cloud Run logs for crash reasons\n2. Verify recent deployments\n3. Check external dependencies (Modal, AudioShake)\n\nService URL: https://api.nomadkaraoke.com/api/health",
+            content="Karaoke backend health check (https://api.nomadkaraoke.com/api/health) is failing from multiple checker locations - the API is likely unreachable or erroring.\n\nImmediate actions:\n1. Check Cloud Run logs for crash reasons\n2. Verify recent deployments\n3. Check the Cloudflare edge (api.nomadkaraoke.com) and external dependencies (Modal, AudioShake)\n\nService URL: https://api.nomadkaraoke.com/api/health",
             mime_type="text/markdown",
         ),
         enabled=True,

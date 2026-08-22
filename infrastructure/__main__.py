@@ -40,6 +40,7 @@ from modules import database, storage as storage_module, artifact_registry, secr
 from modules import cloud_tasks, cloud_run, monitoring, networking, runner_manager
 from modules import divebar_mirror, kn_data_sync, divebar_lookup, backup
 from modules import audio_separator_service
+from modules import edge_security
 from modules import gpu_artifact_registry
 from modules import encoding_worker_manager
 from modules import error_monitor as error_monitor_module
@@ -174,6 +175,13 @@ github_runner_iam_bindings = worker_sas.grant_github_runner_permissions(github_r
 # Domain mapping for api.nomadkaraoke.com
 domain_mapping = cloud_run.create_domain_mapping()
 
+# Cloudflare edge security (WAF / rate limiting / origin lock) for the backend.
+# No-op until `edge:cloudflareZoneId` + `cloudflare:apiToken` are set in Pulumi
+# config. Rollout is staged via `edge:rolloutStage` (staging|cutover); the
+# default "staging" is non-disruptive to the live `api` record. See
+# docs/archive/2026-07-20-edge-security-hardening-plan.md.
+edge_resources = edge_security.configure_edge_security()
+
 # Cloud Run Jobs for batch processing
 # These use Cloud Run Jobs instead of Cloud Tasks to avoid instance termination
 # during long-running processing (the BackgroundTasks issue)
@@ -181,6 +189,7 @@ video_encoding_job = cloud_run.create_video_encoding_job(bucket, backend_service
 lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
 audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
 audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account, vpc_connector)
+bulk_search_job = cloud_run.create_bulk_search_job(bucket, backend_service_account, vpc_connector)
 
 # ==================== Error Monitor ====================
 
@@ -459,6 +468,20 @@ retry_pending_render_jobs_scheduler = cloudscheduler.Job(
 
 divebar_mirror_resources = divebar_mirror.create_divebar_mirror_resources(all_secrets)
 
+# Grant the karaoke-backend SA write+delete on the Divebar files bucket so it can
+# fast-sync freshly-published Nomad 720p masters straight into the GCS mirror that
+# kjbox pulls from every 5 min (nomad-master fast-sync). objectAdmin (not just
+# objectCreator) because the edit/rename/delete path removes stale objects too.
+# Scoped in code to the "files/Nomad Karaoke/MP4-720p/" prefix + NOMAD brand only.
+gcp.storage.BucketIAMMember(
+    "backend-divebar-files-master-writer",
+    bucket=divebar_mirror_resources["files_bucket"].name,
+    role="roles/storage.objectAdmin",
+    member=backend_service_account.email.apply(
+        lambda email: f"serviceAccount:{email}"
+    ),
+)
+
 # ==================== KaraokeNerds Data Sync (Phase 2) ====================
 # Daily sync of KN catalog and community data to BigQuery/GCS
 
@@ -468,6 +491,19 @@ kn_data_sync_resources = kn_data_sync.create_kn_data_sync_resources(all_secrets)
 # Search/lookup API for KJ Controller + KN cross-reference index
 
 divebar_lookup_resources = divebar_lookup.create_divebar_lookup_resources(all_secrets)
+
+# The index function (divebar_mirror) chains the index-dependent scheduler jobs
+# (file-sync VM + xref rebuild) on completion, so its SA needs run permission on
+# those jobs — same least-privilege custom role the lookup SA uses for on-demand
+# refresh. Fixes the "Refresh catalog" race (sync VM ran before the index finished).
+gcp.projects.IAMMember(
+    "divebar-mirror-scheduler-runner",
+    project=PROJECT_ID,
+    role=divebar_lookup_resources["scheduler_runner_role"].id,
+    member=divebar_mirror_resources["service_account"].email.apply(
+        lambda email: f"serviceAccount:{email}"
+    ),
+)
 
 # ==================== Divebar File Sync VM ====================
 # Divebar File Sync VM (downloads karaoke files from Drive to GCS)
@@ -484,12 +520,25 @@ divebar_sync_scheduler = cloudscheduler.Job(
     schedule="0 3 * * *",  # 3:00 AM ET (after index refresh at 2 AM)
     time_zone="America/New_York",
     http_target=cloudscheduler.JobHttpTargetArgs(
-        uri=divebar_sync_instance.self_link.apply(
-            lambda link: f"https://compute.googleapis.com/compute/v1/{link}/start"
+        # Build the compute.instances.start endpoint from the instance name.
+        # NOTE: instance.self_link already resolves to a FULL URL
+        # (https://www.googleapis.com/compute/v1/projects/.../instances/divebar-sync),
+        # so prepending another host produced a doubled URL that 404'd (NOT_FOUND),
+        # silently stopping the nightly Drive->GCS byte sync. Construct the URL
+        # explicitly from project/zone/name to avoid depending on self_link's format.
+        uri=divebar_sync_instance.name.apply(
+            lambda name: (
+                f"https://compute.googleapis.com/compute/v1/"
+                f"projects/{PROJECT_ID}/zones/{ZONE}/instances/{name}/start"
+            )
         ),
         http_method="POST",
-        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+        # compute.googleapis.com is a native Google API, so it requires an OAuth 2.0
+        # access token (cloud-platform scope) — NOT an OIDC identity token. Using
+        # oidc_token here caused HTTP 401 UNAUTHENTICATED once the URL was correct.
+        oauth_token=cloudscheduler.JobHttpTargetOauthTokenArgs(
             service_account_email=divebar_mirror_resources["service_account"].email,
+            scope="https://www.googleapis.com/auth/cloud-platform",
         ),
     ),
     retry_config=cloudscheduler.JobRetryConfigArgs(
@@ -534,10 +583,12 @@ encoding_worker_instances = encoding_worker_vm.create_encoding_worker_vms(
     encoding_worker_ips, encoding_worker_sa
 )
 
-# Capacity-fallback Encoding Worker VMs in alternate zones
-# (us-central1-a, -f). Provisioned stopped; only started by the application
-# when the primary zone (us-central1-c) returns ZONE_RESOURCE_POOL_EXHAUSTED.
-# Cost when idle: ~$10/mo each for the boot disk.
+# Capacity-fallback Encoding Worker VMs — diversified across alternate zones
+# AND an alternate machine family (c4d in us-central1-a/-b + n2 in -c/-f) so a
+# region-wide c4d-highcpu-32 ZONE_RESOURCE_POOL_EXHAUSTED can't take out every
+# lane (incident 2026-08-12). Provisioned stopped; only started by the
+# application when the primary rejects a start. Cost when idle: ~$10/mo each.
+# See EncodingWorkerConfig.FALLBACKS for the fleet definition.
 encoding_worker_fallback_ips = encoding_worker_vm.create_encoding_worker_fallback_ips()
 encoding_worker_fallback_instances = encoding_worker_vm.create_encoding_worker_fallback_vms(
     encoding_worker_fallback_ips, encoding_worker_sa
@@ -617,19 +668,22 @@ pulumi.export("video_encoding_job", video_encoding_job.name)
 pulumi.export("lyrics_transcription_job", lyrics_transcription_job.name)
 pulumi.export("audio_separation_job", audio_separation_job.name)
 pulumi.export("audio_download_job", audio_download_job.name)
+pulumi.export("bulk_search_job", bulk_search_job.name)
 pulumi.export("backend_url", "https://api.nomadkaraoke.com")
 pulumi.export("backend_default_url", "https://karaoke-backend-ipzqd2k4yq-uc.a.run.app")
 
-# DNS configuration for Cloudflare
-domain_mapping.statuses.apply(
-    lambda statuses: pulumi.export("dns_records", {
-        "type": "CNAME",
-        "name": "api",
-        "value": "ghs.googlehosted.com",
-        "ttl": 300,
-        "proxied": False,
-    })
-)
+# Cloudflare edge (DNS records, WAF, rate limiting, origin lock) — now managed
+# in modules/edge_security.py rather than hand-configured in the dashboard. The
+# `api` CNAME is proxied only when `edge:proxyProdApi=true`; otherwise it stays
+# DNS-only, exactly as before. Edge rules scope to prod via `edge:rolloutStage`.
+if edge_resources:
+    pulumi.export("edge_rollout_stage", edge_resources.get("stage"))
+    pulumi.export("edge_proxy_prod", edge_resources.get("proxy_prod"))
+    pulumi.export("edge_protected_hosts", edge_resources.get("hosts"))
+    pulumi.export(
+        "edge_staging_domain",
+        edge_resources["staging_domain_mapping"].name,
+    )
 
 # Alert policies
 pulumi.export("error_rate_alert_id", alert_policies["error_rate"].name)

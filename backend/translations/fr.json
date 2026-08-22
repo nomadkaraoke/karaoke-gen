@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "instrumental_selection invalide. Doit être l'un de : {valid_selections}",
     "instrumentalSelected": "Instrumental sélectionné. La génération de la vidéo a commencé.",
     "instrumentalSelectionError": "Erreur lors de la sélection de l'instrumental pour la tâche {job_id} : {error}",
-    "downloadUrlsError": "Erreur lors de l'obtention des URL de téléchargement : {error}"
+    "downloadUrlsError": "Erreur lors de l'obtention des URL de téléchargement : {error}",
+    "fileNoLongerAvailable": "Le fichier n'est plus disponible"
   },
   "review": {
     "jobNotFound": "Tâche introuvable",
@@ -92,7 +93,10 @@
     "selectAudioError": "Erreur lors de la sélection de l'audio pour la tâche {job_id} : {error}",
     "searchAudioError": "Erreur lors de la recherche audio : {error}",
     "searchCreatedSuccessfully": "Tâche créée. Recherche de l'audio en cours...",
-    "autoDownloadStarted": "Meilleur résultat sélectionné automatiquement. Le téléchargement commence..."
+    "autoDownloadStarted": "Meilleur résultat sélectionné automatiquement. Le téléchargement commence...",
+    "drmUrlUnsupported": "Les liens {platform} sont protégés par le droit d'auteur, nous ne pouvons donc pas les télécharger directement. Essaie d'abord de télécharger l'audio avec un outil tiers, puis téléverse le fichier audio ici. Tu peux aussi coller un lien YouTube, ou utiliser la Recherche Audio pour trouver cette chanson.",
+    "drmUrlUnsupportedWithLink": "Les liens {platform} sont protégés contre la copie, nous ne pouvons donc pas les télécharger directement. Tu peux télécharger le morceau en utilisant un outil comme {downloader}, puis importer le fichier audio ici. Tu peux également coller un lien YouTube, ou utiliser la recherche audio pour trouver cette chanson.",
+    "drmUrlUnsupportedSearch": "Les liens {platform} sont protégés contre la copie, nous ne pouvons donc pas les télécharger directement. Cherche sur le web un « {platform} downloader » pour récupérer l'audio — par exemple {searchUrl} — puis importe le fichier audio ici. Tu peux aussi coller un lien YouTube, ou utiliser la Recherche Audio pour trouver cette chanson."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

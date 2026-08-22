@@ -32,6 +32,56 @@ DIVEBAR_FOLDER_ID = os.environ.get(
     "DIVEBAR_FOLDER_ID", "1zxnSZcE03gzy0YVGOdnTrEIi8It_3Wu8"
 )
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "nomadkaraoke")
+GCP_REGION = os.environ.get("GCP_REGION", "us-central1")
+
+# Jobs that depend on a fresh index. Triggered here, at the index build's ACTUAL
+# completion, rather than concurrently by the caller — this fixes the race where the
+# file-sync VM ran before the index had the newly-published rows (so a manual
+# "Refresh catalog" click reliably syncs just-published tracks). Order within the
+# list is not significant: xref reads the catalog (now fresh), the sync VM reads the
+# catalog for pending files (now fresh); neither depends on the other.
+DOWNSTREAM_SCHEDULER_JOBS = [
+    "divebar-sync-vm-daily",       # Drive -> GCS file byte-sync
+    "divebar-xref-rebuild-daily",  # KN <-> Divebar cross-reference rebuild
+]
+
+
+def _wants_downstream_chain(request) -> bool:
+    """True only when the caller explicitly asked to chain the index-dependent jobs.
+
+    The manual "Refresh catalog" path triggers a dedicated scheduler job whose body
+    sets ``chain_downstream``. The nightly mirror cron does NOT set it, so the nightly
+    pipeline keeps its own staggered sync/xref schedules and we never double-run them.
+    """
+    try:
+        body = request.get_json(silent=True) or {}
+        if isinstance(body, dict) and body.get("chain_downstream"):
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return str(request.args.get("chain_downstream", "")).lower() in ("1", "true", "yes")
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _trigger_downstream_jobs():
+    """Force-run the index-dependent scheduler jobs (file-sync VM + xref rebuild).
+    Best-effort: a failure here is logged and reported but never fails the index
+    build itself."""
+    from google.cloud import scheduler_v1
+
+    client = scheduler_v1.CloudSchedulerClient()
+    triggered, failed = [], []
+    for job in DOWNSTREAM_SCHEDULER_JOBS:
+        job_path = f"projects/{GCP_PROJECT_ID}/locations/{GCP_REGION}/jobs/{job}"
+        try:
+            client.run_job(name=job_path)
+            triggered.append(job)
+        except Exception as e:  # noqa: BLE001 - never fail the index on this
+            logger.warning("Failed to trigger downstream job %s: %s", job, e)
+            failed.append({"job": job, "error": str(e)})
+    return {"triggered": triggered, "failed": failed}
 
 
 def _json_response(data: dict, status: int = 200):
@@ -95,6 +145,15 @@ def sync_divebar_index(request):
             "list_duration_s": round(list_duration, 1),
             "total_duration_s": round(total_duration, 1),
         }
+
+        # Chain the index-dependent jobs (file-sync VM + xref) ONLY when the caller
+        # asked for it — the manual "Refresh catalog" path. Firing here, at the index's
+        # actual completion (which outlasts the caller's HTTP timeout), is what makes a
+        # refresh reliably sync just-published files instead of racing the sync VM ahead
+        # of the index. The nightly mirror cron doesn't set the flag, so it leaves the
+        # standalone nightly sync/xref schedules to run once — no double-run.
+        if _wants_downstream_chain(request):
+            result["downstream"] = _trigger_downstream_jobs()
 
         logger.info("Sync complete: %s", json.dumps(result))
         return _json_response(result)

@@ -481,6 +481,32 @@ async def verify_magic_link(
     )
 
 
+class MagicLinkStatusResponse(BaseModel):
+    status: str  # "valid" | "used" | "expired" | "invalid"
+
+
+@router.get("/auth/link-status", response_model=MagicLinkStatusResponse)
+async def magic_link_status(
+    token: str,
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Read-only status of a magic link — does NOT consume it.
+
+    The verify page calls this on load so it can show the correct UI upfront:
+    the "Complete Sign-In" gate for a valid link, or an "already used / expired"
+    message for a dead one — without making the user click only to then fail.
+
+    This endpoint is intentionally non-mutating so that an email link-scanner
+    which renders the verify page (and triggers this read) cannot burn a still-
+    valid token before the real user clicks. Token consumption happens only in
+    the separate GET /auth/verify, which requires an explicit user click.
+    """
+    if not token or not token.strip():
+        return MagicLinkStatusResponse(status="invalid")
+    return MagicLinkStatusResponse(status=user_service.get_magic_link_status(token))
+
+
 @router.post("/auth/resend-from-token", response_model=ResendFromTokenResponse)
 async def resend_magic_link_from_token(
     request: ResendFromTokenRequest,

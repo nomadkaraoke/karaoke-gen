@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "בחירת instrumental_selection לא חוקית. חייב להיות אחד מ: {valid_selections}",
     "instrumentalSelected": "הפלייבק נבחר. יצירת הווידאו התחילה.",
     "instrumentalSelectionError": "שגיאה בבחירת פלייבק עבור המשימה {job_id}: {error}",
-    "downloadUrlsError": "שגיאה בקבלת כתובות ההורדה: {error}"
+    "downloadUrlsError": "שגיאה בקבלת כתובות ההורדה: {error}",
+    "fileNoLongerAvailable": "הקובץ אינו זמין יותר"
   },
   "review": {
     "jobNotFound": "המשימה לא נמצאה",
@@ -92,7 +93,10 @@
     "selectAudioError": "שגיאה בבחירת אודיו עבור המשימה {job_id}: {error}",
     "searchAudioError": "שגיאה בחיפוש אודיו: {error}",
     "searchCreatedSuccessfully": "המשימה נוצרה. מחפש אודיו...",
-    "autoDownloadStarted": "התוצאה הטובה ביותר נבחרה אוטומטית. ההורדה מתחילה..."
+    "autoDownloadStarted": "התוצאה הטובה ביותר נבחרה אוטומטית. ההורדה מתחילה...",
+    "drmUrlUnsupported": "הקישורים של {platform} מוגנים מפני העתקה, ולכן איננו יכולים להוריד אותם ישירות. נסו להוריד את האודיו בעזרת כלי צד שלישי תחילה, ואז העלו את קובץ האודיו לכאן. תוכלו גם להדביק קישור ל-YouTube, או להשתמש בחיפוש אודיו כדי למצוא את השיר הזה.",
+    "drmUrlUnsupportedWithLink": "קישורים מ-{platform} מוגנים מפני העתקה, ולכן איננו יכולים להוריד אותם ישירות. ניתן להוריד את השיר באמצעות כלי כמו {downloader} ולאחר מכן להעלות את קובץ השמע לכאן. אפשר גם להדביק קישור של YouTube, או להשתמש בחיפוש שמע כדי למצוא את השיר הזה.",
+    "drmUrlUnsupportedSearch": "קישורים של {platform} מוגנים בזכויות יוצרים, ולכן איננו יכולים להוריד אותם ישירות. חפשו ברשת \"{platform} downloader\" כדי להשיג את קובץ השמע — לדוגמה {searchUrl} — ואז העלו את קובץ השמע לכאן. אפשר גם להדביק קישור של YouTube, או להשתמש בחיפוש שמע כדי למצוא את השיר הזה."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

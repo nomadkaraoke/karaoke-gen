@@ -25,6 +25,40 @@ export function isAutoRetryPending(job: Pick<Job, 'state_data'>): boolean {
   return expiresAt > Date.now();
 }
 
+/**
+ * Returns true when a job is stuck waiting for GCE encoding-worker capacity.
+ *
+ * The canonical signal is the `render_pending_capacity` status (parked, auto-
+ * retried every 5 min). During the retry cycle the status briefly flips to
+ * `review_complete`/`rendering_video` while an attempt is in flight, so we also
+ * treat those as "waiting" when the persistent `state_data.render_pending_capacity`
+ * breadcrumb (attempt_count >= 1) is present. Scoped to the render step so the
+ * lingering breadcrumb never shows the note after the render succeeds and the
+ * job moves on to encoding/packaging/complete.
+ */
+export function isWaitingForEncodingCapacity(job: Pick<Job, 'status' | 'state_data'>): boolean {
+  const status = job.status?.toLowerCase() || "";
+  if (status === "render_pending_capacity") return true;
+  if (status === "review_complete" || status === "rendering_video") {
+    const meta = job.state_data?.render_pending_capacity as
+      | { attempt_count?: number }
+      | undefined;
+    return !!meta && Number(meta.attempt_count ?? 0) >= 1;
+  }
+  return false;
+}
+
+/**
+ * Returns true while a private -> public visibility change is re-rendering and
+ * republishing the track. Backed by `state_data.visibility_change_in_progress`,
+ * set synchronously when the change starts and cleared when the job completes.
+ * The track's outputs (finals, distribution links) are deleted for the duration,
+ * so download buttons must be suppressed and the user told to wait (~15-30 min).
+ */
+export function isVisibilityChangeInProgress(job: Pick<Job, 'state_data'>): boolean {
+  return !!job.state_data?.visibility_change_in_progress;
+}
+
 export interface JobStep {
   step: number;
   total: number;
@@ -62,6 +96,9 @@ export const STATUS_CONFIG: Record<
 
   // Step 3: Download
   downloading_audio: { step: 3, label: "downloadingAudio", isBlocking: false, color: "text-blue-400" },
+  // Transient torrent-download issue (rare track / few seeders / tracker blip);
+  // auto-retried for up to 24h by the recover-stuck cron. Not blocking — no user action.
+  download_pending_retry: { step: 3, label: "findingAudioSources", isBlocking: false, color: "text-amber-400" },
   downloading: { step: 3, label: "downloading", isBlocking: false, color: "text-blue-400" },
 
   // Step 3.5: Audio Editing (optional, BLOCKING)
@@ -91,6 +128,9 @@ export const STATUS_CONFIG: Record<
   // Step 7: Video Rendering
   review_complete: { step: 7, label: "startingRender", isBlocking: false, color: "text-teal-400" },
   rendering_video: { step: 7, label: "renderingVideo", isBlocking: false, color: "text-indigo-400" },
+  // Parked waiting for GCE encoding capacity (or re-parked after a mid-render
+  // stall); auto-retried by the scheduler. Not blocking — no user action.
+  render_pending_capacity: { step: 7, label: "waitingForCapacity", isBlocking: false, color: "text-amber-400" },
 
   // Step 8: Instrumental Selection (BLOCKING - requires user action)
   awaiting_instrumental_selection: { step: 8, label: "selectInstrumental", isBlocking: true, color: "text-amber-400" },
@@ -314,5 +354,19 @@ export function sortJobsByDate(jobs: Job[]): Job[] {
   return [...jobs].sort((a, b) => {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
+}
+
+/**
+ * Whether a job should render as a standalone card on the main dashboard.
+ *
+ * Self-service jobs at `awaiting_audio_selection` are driven by the guided-flow
+ * wizard in the same browser session and must NOT appear as standalone cards
+ * (the wizard owns them). Made-for-you orders also sit at that status, but they
+ * are created server-side by the Stripe webhook with no active guided-flow
+ * session — so they'd otherwise be invisible to an admin. Keep those visible so
+ * their built-in "Open Audio Selection" action is reachable from the dashboard.
+ */
+export function shouldShowJobOnDashboard(job: Pick<Job, 'status' | 'made_for_you'>): boolean {
+  return job.status !== 'awaiting_audio_selection' || Boolean(job.made_for_you);
 }
 

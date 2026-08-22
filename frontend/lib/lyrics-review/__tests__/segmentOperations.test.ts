@@ -3,6 +3,7 @@ import {
   mergeSegment,
   addSegmentBefore,
   deleteSegment,
+  deleteWord,
 } from '../utils/segmentOperations'
 import type { CorrectionData } from '../types'
 
@@ -96,5 +97,66 @@ describe('segmentOperations — singer inheritance', () => {
     const result = deleteSegment(data, 0)
     expect(result.corrected_segments[0].id).toBe('s2')
     expect(result.corrected_segments[0].singer).toBe(2)
+  })
+})
+
+describe('deleteWord — segment timing recompute', () => {
+  const threeWordSegment = () => baseData([{
+    id: 's1', text: 'hello world foo', start_time: 0, end_time: 3,
+    words: [
+      { id: 'w1', text: 'hello', start_time: 0, end_time: 1 },
+      { id: 'w2', text: 'world', start_time: 1, end_time: 2 },
+      { id: 'w3', text: 'foo', start_time: 2, end_time: 3 },
+    ],
+  }])
+
+  it('deleting the first word tightens segment start_time to the next word', () => {
+    const result = deleteWord(threeWordSegment(), 'w1')
+    const seg = result.corrected_segments[0]
+    expect(seg.words.map((w: any) => w.id)).toEqual(['w2', 'w3'])
+    expect(seg.start_time).toBe(1) // was 0 (w1's start); now w2's start
+    expect(seg.end_time).toBe(3)
+    expect(seg.text).toBe('world foo')
+  })
+
+  it('deleting the last word tightens segment end_time to the previous word', () => {
+    const result = deleteWord(threeWordSegment(), 'w3')
+    const seg = result.corrected_segments[0]
+    expect(seg.words.map((w: any) => w.id)).toEqual(['w1', 'w2'])
+    expect(seg.start_time).toBe(0)
+    expect(seg.end_time).toBe(2) // was 3 (w3's end); now w2's end
+    expect(seg.text).toBe('hello world')
+  })
+
+  it('deleting a middle word leaves segment bounds unchanged', () => {
+    const result = deleteWord(threeWordSegment(), 'w2')
+    const seg = result.corrected_segments[0]
+    expect(seg.start_time).toBe(0)
+    expect(seg.end_time).toBe(3)
+  })
+
+  it('deleting a word when all remaining words are untimed nulls the segment bounds', () => {
+    const data = baseData([{
+      id: 's1', text: 'hello world', start_time: 0, end_time: 1,
+      words: [
+        { id: 'w1', text: 'hello', start_time: 0, end_time: 1 },
+        { id: 'w2', text: 'world', start_time: null, end_time: null },
+      ],
+    }])
+    const result = deleteWord(data, 'w1')
+    const seg = result.corrected_segments[0]
+    expect(seg.start_time).toBeNull()
+    expect(seg.end_time).toBeNull()
+  })
+
+  it('deleting the only word removes the whole segment', () => {
+    const data = baseData([
+      { id: 's1', text: 'hello', start_time: 0, end_time: 1,
+        words: [{ id: 'w1', text: 'hello', start_time: 0, end_time: 1 }] },
+      { id: 's2', text: 'world', start_time: 1, end_time: 2,
+        words: [{ id: 'w2', text: 'world', start_time: 1, end_time: 2 }] },
+    ])
+    const result = deleteWord(data, 'w1')
+    expect(result.corrected_segments.map((s: any) => s.id)).toEqual(['s2'])
   })
 })

@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { api, Job, getAccessToken } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { useAdminSettings } from "@/lib/admin-settings"
+import { parseServerDate } from "@/lib/utils"
 import { useJobNotifications, useVisibilityRefresh } from "@/hooks/use-notifications"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,10 +19,11 @@ import {
 } from "@/components/ui/select"
 import { Music2, RefreshCw, Loader2, Search, Gift, X, Shield, ShieldOff } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { sortJobsByDate } from "@/lib/job-status"
+import { sortJobsByDate, shouldShowJobOnDashboard } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
+import { BulkMode } from "@/components/job/bulk/BulkMode"
 import { TenantJobFlow } from "@/components/job/TenantJobFlow"
 import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
@@ -49,6 +51,7 @@ function AppPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [allJobs, setAllJobs] = useState<Job[]>([])
+  const [submitMode, setSubmitMode] = useState<"single" | "bulk">("single")
   const [isLoadingJobs, setIsLoadingJobs] = useState(true)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasFetchedSuccessfully, setHasFetchedSuccessfully] = useState(false)
@@ -86,9 +89,10 @@ function AppPageContent() {
   // Check if user is admin (for exclude_test parameter)
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
 
-  // Filter out in-progress search jobs (managed by the guided flow, not standalone cards)
+  // Hide self-service jobs still in the guided-flow wizard, but keep made-for-you orders
+  // visible even at awaiting_audio_selection (see shouldShowJobOnDashboard).
   const jobs = useMemo(
-    () => allJobs.filter(job => job.status !== 'awaiting_audio_selection'),
+    () => allJobs.filter(shouldShowJobOnDashboard),
     [allJobs]
   )
 
@@ -97,6 +101,20 @@ function AppPageContent() {
     const timer = setTimeout(() => setSearchQuery(searchInput), 300)
     return () => clearTimeout(timer)
   }, [searchInput])
+
+  // Honor a `status` URL param (e.g. made-for-you admin email deep-links to
+  // /app/?admin_token=...&status=awaiting_audio_selection). Applied on mount before
+  // the admin_token handler strips the query string, so the actionable queue is shown.
+  useEffect(() => {
+    const statusParam = searchParams.get("status")
+    if (statusParam) {
+      setStatusFilter(statusParam)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("nomad-karaoke-status-filter", statusParam)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Memoize loadJobs for use with visibility refresh
   const loadJobs = useCallback(async () => {
@@ -276,7 +294,7 @@ function AppPageContent() {
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {user.referred_by_code && <>Referred with code <strong>{user.referred_by_code}</strong> · </>}
-                Expires {new Date(user.referral_discount_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                Expires {parseServerDate(user.referral_discount_expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
             <button
@@ -336,18 +354,52 @@ function AppPageContent() {
           {/* Submit Job Card */}
           <Card className="backdrop-blur min-w-0" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card)' }}>
             <CardHeader>
-              <CardTitle style={{ color: 'var(--text)' }}>
-                {isDefaultTenant ? t('createKaraokeVideo') : t('submitTrack')}
-              </CardTitle>
-              <CardDescription style={{ color: 'var(--text-muted)' }}>
-                {isDefaultTenant
-                  ? t('createDescription')
-                  : t('submitDescription')}
-              </CardDescription>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <CardTitle style={{ color: 'var(--text)' }}>
+                    {isDefaultTenant ? t('createKaraokeVideo') : t('submitTrack')}
+                  </CardTitle>
+                  <CardDescription style={{ color: 'var(--text-muted)' }}>
+                    {isDefaultTenant
+                      ? t('createDescription')
+                      : t('submitDescription')}
+                  </CardDescription>
+                </div>
+                {isDefaultTenant && (
+                  <div
+                    className="shrink-0 inline-flex rounded-md p-0.5"
+                    style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                    role="tablist"
+                    aria-label={t('submitModeToggle')}
+                  >
+                    {(['single', 'bulk'] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        role="tab"
+                        aria-selected={submitMode === m}
+                        onClick={() => setSubmitMode(m)}
+                        className="px-2.5 py-1 rounded text-xs font-medium transition-colors"
+                        style={
+                          submitMode === m
+                            ? { backgroundColor: 'var(--card)', color: 'var(--text)' }
+                            : { color: 'var(--text-muted)', background: 'transparent' }
+                        }
+                      >
+                        {m === 'single' ? t('singleMode') : t('bulkMode')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {isDefaultTenant ? (
-                <GuidedJobFlow onJobCreated={loadJobs} />
+                submitMode === 'bulk' ? (
+                  <BulkMode onJobsChanged={loadJobs} />
+                ) : (
+                  <GuidedJobFlow onJobCreated={loadJobs} />
+                )
               ) : (
                 <TenantJobFlow onJobCreated={loadJobs} />
               )}

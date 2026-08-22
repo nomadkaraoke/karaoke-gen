@@ -238,6 +238,11 @@ const useTenantStore = create<TenantStore>()((set, get) => ({
         isInitialized: true,
       })
 
+      // Mirror to the edge-config global so synchronous, import-cycle-free consumers
+      // (e.g. getTenantId() in lib/api.ts) can read the tenant in dev/preview where the
+      // Cloudflare edge function does not inject __TENANT_CONFIG__.
+      mirrorTenantConfigToWindow(data)
+
       // Apply tenant branding to CSS variables
       if (data.tenant) {
         applyTenantBranding(data.tenant.branding)
@@ -256,6 +261,7 @@ const useTenantStore = create<TenantStore>()((set, get) => ({
 
   setTenant: (tenant, isDefault) => {
     set({ tenant, isDefault, isInitialized: true })
+    mirrorTenantConfigToWindow({ tenant, is_default: isDefault })
     if (tenant) {
       applyTenantBranding(tenant.branding)
     }
@@ -346,6 +352,19 @@ function applyTenantBranding(branding: TenantBranding) {
       link.href = branding.favicon_url
     }
   }
+}
+
+/**
+ * Mirror the resolved tenant config onto `window.__TENANT_CONFIG__`.
+ *
+ * The Cloudflare edge function injects this global on tenant subdomains in production,
+ * but not in local dev or admin preview (where the tenant is resolved by fetch or
+ * setTenant). Mirroring it here gives lib/api.ts a single synchronous, import-cycle-free
+ * source of truth for attaching the X-Tenant-ID header in every environment.
+ */
+function mirrorTenantConfigToWindow(data: TenantConfigResponse) {
+  if (typeof window === "undefined") return
+  ;(window as { __TENANT_CONFIG__?: TenantConfigResponse }).__TENANT_CONFIG__ = data
 }
 
 /**

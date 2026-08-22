@@ -171,7 +171,7 @@ class TestLocalEncodingServiceEncodingMethods:
 
     @patch.object(LocalEncodingService, "_execute_command_with_fallback")
     def test_convert_mov_to_mp4(self, mock_execute):
-        """Test MOV to MP4 conversion."""
+        """Test MOV to MP4 conversion produces a standard, portable "With Vocals" mp4."""
         mock_execute.return_value = True
 
         service = LocalEncodingService()
@@ -182,6 +182,19 @@ class TestLocalEncodingServiceEncodingMethods:
 
         assert result is True
         mock_execute.assert_called_once()
+        gpu_command, cpu_command = mock_execute.call_args[0][0], mock_execute.call_args[0][1]
+        # The CPU (software) command is what runs on prod encoding workers (no NVENC).
+        # It must normalize 4:4:4 -> 4:2:0 for playback compatibility, use a fast preset
+        # (this is the longest finalization stage), and emit portable AAC (not FLAC-in-mp4).
+        assert "-pix_fmt yuv420p" in cpu_command
+        assert "-preset veryfast" in cpu_command
+        assert "-c:a aac" in cpu_command
+        assert "-b:a 320k" in cpu_command
+        assert "-c:a copy" not in cpu_command  # regression guard: no FLAC-in-mp4
+        # GPU path also forces 4:2:0 (h264_nvenc can preserve yuv444p) and emits AAC.
+        assert "-pix_fmt yuv420p" in gpu_command
+        assert "-c:a aac" in gpu_command
+        assert "-b:a 320k" in gpu_command
 
     @patch.object(LocalEncodingService, "_execute_command_with_fallback")
     def test_encode_lossless_mp4_without_end(self, mock_execute):

@@ -239,7 +239,10 @@
     "loadingJobs": "Ladataan töitä...",
     "noJobsMatchFilters": "Yksikään työ ei vastaa suodattimiasi.",
     "noJobsYet": "Ei töitä vielä. Luo sellainen aloittaaksesi!",
-    "referrals": "Suosittelut"
+    "referrals": "Suosittelut",
+    "bulkMode": "Erä",
+    "singleMode": "Yksittäinen",
+    "submitModeToggle": "Yksittäis- tai joukkolähetys"
   },
   "auth": {
     "noVerificationToken": "Vahvistustunnusta ei annettu",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Emme löytäneet kyseistä linkkiä",
     "resendSuccessBody": "Lähetimme uuden kirjautumislinkin osoitteeseen {maskedEmail}. Se on voimassa seuraavat 24 tuntia.",
     "resendSuccessTitle": "Tarkista sähköpostisi",
-    "resending": "Lähetetään..."
+    "resending": "Lähetetään...",
+    "confirmBody": "Viimeistele kirjautuminen turvallisesti klikkaamalla alla olevaa painiketta. Tämä ylimääräinen vaihe estää automaattisia sähköpostiskannereita käyttämästä linkkiäsi ennen sinua.",
+    "confirmButton": "Viimeistele kirjautuminen",
+    "confirmTitle": "Viimeistele kirjautumisesi"
   },
   "payment": {
     "title": "Maksu onnistui!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Varajärjestelmä",
+    "fallbackNote": "Ensisijainen kapasiteetti ei ole käytettävissä — ohjattu varainstanssiin.",
+    "liveWorker": "Live-työprosessi"
   },
   "credits": {
     "title": "Osta lisää krediittejä",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Liitä linkki",
     "urlSupportedSitesHint": "Toimii YouTuben, Facebookin, SoundCloudin, TikTokin, Vimeon ja satojen muiden sivustojen kanssa.",
     "urlSupportedSitesLink": "Katso kaikki tuetut sivustot",
-    "useThisUrl": "Käytä tätä osoitetta"
+    "useThisUrl": "Käytä tätä osoitetta",
+    "matchCorrectedTo": "Korjattu muotoon {value} — kirjoitit ”{typed}”",
+    "matchDidYouMean": "Tarkoititko?",
+    "matchKeepMine": "säilytä kirjoittamani",
+    "matchTidiedTo": "Siistitty muotoon {value}",
+    "matchUndo": "Kumoa",
+    "matchChecking": "Tarkistetaan kappaleen tietoja…",
+    "matchUseCorrection": "käytä korjausta",
+    "matchUseTidied": "käytä siistittyä versiota",
+    "matchUsingTyped": "Käytetään kirjoittamaasi: {value}",
+    "checkingUrl": "Tarkistetaan…",
+    "submitNetworkError": "Verkkovirhe — tarkista yhteytesi ja yritä uudelleen.",
+    "submitError": "Jotain meni pieleen. Yritä uudelleen."
   },
   "jobStatus": {
     "settingUp": "Asetetaan",
@@ -576,7 +597,9 @@
     "correcting": "Korjataan",
     "lyricsDone": "Sanoitukset valmiit",
     "lyrics": "Sanoitukset",
-    "confirmDurationCost": "Vahvista hinta"
+    "confirmDurationCost": "Vahvista hinta",
+    "findingAudioSources": "Etsitään äänilähteitä (yritetään uudelleen)",
+    "waitingForCapacity": "Odotetaan enkoodauspalvelinta (yritetään uudelleen)"
   },
   "jobCard": {
     "actionNeeded": "Toimenpiteitä tarvitaan",
@@ -588,7 +611,9 @@
     "autoSelect": "Valitsee automaattisesti",
     "willAutoSelectFirst": "Valitsee automaattisesti ensimmäisen",
     "noOutputsAvailable": "Ei tulosteita vielä saatavilla",
-    "confirmCost": "Vahvista hinta"
+    "confirmCost": "Vahvista hinta",
+    "makingPublicInProgress": "Kappaleesta tehdään julkinen — se renderöidään uudelleen oletusbrändäyksellä ja julkaistaan uudestaan. Tämä kestää yleensä 15–30 minuuttia.",
+    "waitingForEncodingServer": "(odotetaan enkoodauspalvelimen vapautumista)"
   },
   "jobActions": {
     "delete": "Poista",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Kappaleen nimi",
-    "artist": "Esittäjä"
+    "artist": "Esittäjä",
+    "loading": "Ladataan otsikkonäytön esikatselua"
   },
   "editTrack": {
     "title": "Muokkaa valmista raitaa",
@@ -739,7 +765,22 @@
     "views": "{count} katselukertaa",
     "moreVersions": "+{count} muuta",
     "select": "Valitse",
-    "creditCost": "{credits} krediittiä"
+    "creditCost": "{credits} krediittiä",
+    "chooseFile": "Valitse äänitiedosto (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Emme löytäneet äänilähteitä. Kokeile muokata esittäjää tai kappaleen nimeä yllä ja hae uudelleen, tai lisää oma äänitiedostosi URL-osoitteella tai lataamalla tiedosto.",
+    "pasteUrl": "Liitä URL-osoite",
+    "researchFailed": "Haku epäonnistui. Yritä uudelleen.",
+    "searchAgain": "Hae uudelleen",
+    "selectFailed": "Äänitiedoston valinta epäonnistui",
+    "uploadFailed": "Lataus epäonnistui. Yritä uudelleen.",
+    "urlFailed": "Tuota URL-osoitetta ei voitu käyttää. Kokeile toista lähdettä.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Käytä tätä tiedostoa",
+    "useThisUrl": "Käytä tätä URL-osoitetta",
+    "artistLabel": "Artisti",
+    "loading": "Ladataan...",
+    "titleLabel": "Nimi",
+    "uploadFileAction": "Lataa tiedosto"
   },
   "audioEditor": {
     "loading": "Ladataan äänieditoria...",
@@ -776,7 +817,17 @@
     "undoFailed": "Kumoaminen epäonnistui",
     "redoFailed": "Uudelleentekeminen epäonnistui",
     "restoreFailed": "Palauttaminen epäonnistui — joitain muokkauksia ei ehkä ole sovellettu",
-    "submitFailed": "Lähetys epäonnistui"
+    "submitFailed": "Lähetys epäonnistui",
+    "fadeIn": "Häivytä sisään",
+    "fadeInSelection": "Häivytä sisään valitulla alueella",
+    "fadeOut": "Häivytä ulos",
+    "fadeOutSelection": "Häivytä ulos valitulla alueella",
+    "fadeInDisabledHint": "Jos haluat lisätä sisäänhäivytyksen, valitse alue, joka alkaa aivan raidan alusta",
+    "fadeOutDisabledHint": "Jos haluat lisätä uloshäivytyksen, valitse alue, joka päättyy aivan raidan loppuun",
+    "trimEndDisabledHint": "Jos haluat leikata lopun, valitse alue, joka päättyy aivan raidan loppuun",
+    "trimEndSelection": "Poista kaikki valinnan jälkeen",
+    "trimStartDisabledHint": "Jos haluat leikata alun, valitse alue, joka alkaa aivan raidan alusta",
+    "trimStartSelection": "Poista kaikki ennen valintaa"
   },
   "audioEditRestore": {
     "title": "Tallennetut äänimuokkausistunnot",
@@ -803,7 +854,7 @@
       "acceptAll": "Hyväksy kaikki",
       "revertAll": "Palauta kaikki",
       "undoAll": "Kumoa kaikki",
-      "resetAllChanges": "Palauta kaikki muutokset takaisin alkuperäisiin tekoälyn korjaamiin sanoituksiin",
+      "resetAllChanges": "Peru kaikki muutokset ja palauta alkuperäiset korjatut sanoitukset",
       "undo": "Kumoa",
       "redo": "Tee uudelleen",
       "findReplace": "Etsi/Korvaa",
@@ -816,7 +867,11 @@
       "playback": "Toisto",
       "audioLoadError": "Ääntä ei voitu ladata",
       "audioStillLoading": "Ääni latautuu yhä...",
-      "loadingAudio": "Ladataan ääntä..."
+      "loadingAudio": "Ladataan ääntä...",
+      "autoCorrect": "Automaattinen korjaus",
+      "autoCorrectDesc": "Vertailee transkriptiota viitesanoituksiin ja tekee sanakohtaisia korjauksia puolestasi. Korjatut sanat näkyvät violetteina.",
+      "autoCorrectedCount": "Automaattisesti korjattu · {count}",
+      "autoCorrectedDesc": "Teimme {count, plural, =1 {# automaattisen korjauksen} other {# automaattista korjausta}} (näkyy violettina). Napsauta nähdäksesi tiedot ja kumoa ne korjaukset, jotka haluat perua."
     },
     "guidance": {
       "showTips": "Näytä vinkit",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Oranssilla korostetut sanat ovat aukkoja — osioita, joita ei voitu yhdistää viitesanoituksiin ja jotka saattavat sisältää virheitä (esim. väärin kuullut sanat, jotka kuulostavat samalta).",
       "useNAndP": "Käytä N ja P hypätäksesi aukkojen välillä. Napsauta jokaisen kohdalla toista rivin vieressä ja vertaa kuulemaasi oikealla oleviin viitesanoituksiin, napsauta sitten sanaa muokataksesi tai poistaaksesi sen.",
       "watchOutForPhantomWords": "Varo haamusanoja kuten \"ja\" rivien alussa tai lopussa — litterointi lisää näitä usein.",
-      "tryTimelineView": "Kokeile Aikajana-näkymää havaitaksesi epätavallisen pitkät sanat (10+ sekuntia), jotka yleensä viittaavat ajoitusongelmaan.",
+      "tryTimelineView": "Yli 2 sekunnin sanat ja yli 2 sekunnin tauot on merkitty oranssilla kestolla — tarkista ne ajoitusongelmien varalta. Vaihda Edistynyt-tilaan nähdäksesi jokaisen rivin venytettynä aikajanalle.",
       "watchFullTutorial": "Katso koko opetusohjelma",
       "correctionHandlers": "Korjauskäsittelijät",
       "anchorSequences": "Ankkurisekvenssit",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Korjaamattomat aukot",
       "uncorrectedGapsDesc": "Osiot, jotka saattavat vaatia manuaalista tarkistusta",
       "wordsUncorrected": "Korjaamattomat sanat",
-      "numberOfGaps": "Aukkojen määrä"
+      "numberOfGaps": "Aukkojen määrä",
+      "autoCorrectTip": "{count, plural, =1 {# sana korjattiin automaattisesti} other {# sanaa korjattiin automaattisesti}} puolestasi (näkyy violettina, alkuperäinen sana yläpuolella). Toista jokainen korjattu rivi ja tarkista, että sanat osuvat yhä kohdalleen — erityisesti keltaisella alleviivatut, joiden ajoitus on arvioitu ja vaatii todennäköisesti säätämistä.",
+      "autoCorrected": "Automaattisesti korjattu",
+      "timingEstimated": "Ajoitus arvioitu"
     },
     "transcription": {
       "syncedLyrics": "Synkronoidut sanoitukset",
@@ -854,7 +912,13 @@
       "text": "Teksti",
       "timeline": "Aikajana",
       "deleteSegment": "Poista segmentti",
-      "playSegment": "Toista segmentti"
+      "playSegment": "Toista segmentti",
+      "aiTooltipEstimated": "Järjestelmämme automaattisesti korjaama. Ajoitus on tässä arvioitu, joten toista tämä rivi ja säädä sanojen ajoitusta tarvittaessa.",
+      "aiTooltipReplaced": "Järjestelmämme automaattisesti korjaama sanasta \"{original}\". Toista tämä rivi vahvistaaksesi, että sanat osuvat yhä kohdalleen.",
+      "aiTooltipReplacedEstimated": "Järjestelmämme automaattisesti korjaama sanasta \"{original}\". Ajoitus on arvioitu, joten toista tämä rivi ja säädä sanojen ajoitusta tarvittaessa.",
+      "longGapWarning": "{seconds} s tauko ennen seuraavaa sanaa — usein kyseessä on irrallinen, liian aikainen sana (esim. ylimääräinen \"ja\"). Toista tästä napsauttamalla.",
+      "longWordWarning": "Tämä sana kestää {seconds} s — epätavallisen pitkään. Toista rivi ja tarkista, ettei sen loppuaika ole mennyt instrumentaaliosuuden päälle.",
+      "playFromGap": "Toista tämän tauon lopusta"
     },
     "editActionBar": {
       "reset": "Nollaa",
@@ -990,7 +1054,9 @@
         "loadingAll": "Ladataan kaikkia sanoja...",
         "loadingSegment": "Ladataan segmenttiä...",
         "noData": "Segmentin dataa ei saatavilla",
-        "unCorrect": "Peru korjaus"
+        "unCorrect": "Peru korjaus",
+        "timingClamped": "\"{word}\" ajoitus oli segmentin ulkopuolella — kohdistettiin aikaan {time} s.",
+        "timingSanitized": "Korjattu {count} sanan ajoitus(ta), jotka jäivät tämän segmentin ulkopuolelle."
       },
       "findReplace": {
         "title": "Etsi ja korvaa",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Mukautetut sanoitukset otettu käyttöön. Synkronoi jokainen muokattu segmentti manuaalisesti varmistaaksesi, että sanojen ajoitukset sopivat mukautettuihin sanoituksiin."
+    },
+    "autoCorrect": {
+      "accept": "Hyväksy ehdotus",
+      "acceptAll": "Hyväksy kaikki",
+      "accepted": "Hyväksytty",
+      "adlibRemovalHint": "Salli ehdotukset, jotka poistavat taustalauluja, joita ei ole viitesanoituksissa",
+      "adlibRemovalLabel": "Ehdotukset adlibien poistamisesta",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "muotoilu",
+      "category_grammar": "kielioppi",
+      "category_mishearing": "väärin kuultu",
+      "category_other": "muu",
+      "category_repeated_chorus_fix": "kertosäe",
+      "collapse": "Pienennä ehdotukset",
+      "confidenceHint": "Kuinka varma ehdotuksen pitää olla, jotta se näytetään",
+      "confidenceLabel": "Ehdotusten suodatin",
+      "confidence_all": "Näytä kaikki",
+      "confidence_high": "Korkea varmuus",
+      "description": "Automaattinen korjaus vertaa litteroituja sanoituksia vertailulähteisiin ja ehdottaa sanakohtaisia korjauksia. Käyt läpi jokaisen ehdotuksen — mitään ei oteta käyttöön ennen kuin hyväksyt sen.",
+      "dismiss": "Ohita ehdotukset",
+      "expand": "Laajenna ehdotukset",
+      "insertMarker": "lisää:",
+      "insertionsHint": "Salli ehdotukset, jotka lisäävät transkriptiosta puuttuvia sanoja",
+      "insertionsLabel": "Ehdotukset puuttuvien sanojen lisäämisestä",
+      "noReferences": "Tälle kappaleelle ei ole saatavilla vertailusanoituksia, joten ehdotuksia ei voida luoda. Lisää sanoitukset ensin vertailupaneelista.",
+      "noSuggestions": "Ongelmia ei löytynyt — ei ehdotettuja muutoksia.",
+      "reject": "Hylkää ehdotus",
+      "rejectAll": "Hylkää kaikki",
+      "rejected": "Hylätty",
+      "runButton": "Hae ehdotuksia",
+      "running": "Analysoidaan sanoituksia… tässä kestää yleensä 15–60 sekuntia.",
+      "staleHint": "Näitä sanoja on muokattu sen jälkeen, kun ehdotukset luotiin, joten tämä ehdotus ei enää päde.",
+      "summary": "{total} ehdotusta · {pending} odottaa · {accepted} hyväksytty",
+      "title": "Automaattisen korjauksen ehdotukset",
+      "undo": "Kumoa tämä ehdotus",
+      "cancel": "Peruuta",
+      "close": "Sulje",
+      "confidence_balanced": "Tasapainoinen",
+      "compareHint": "Hitaampi ja kalliimpi, mutta näyttää, mistä ehdotuksista useampi malli on samaa mieltä",
+      "compareLabel": "Vertaile useita malleja",
+      "conflictBadge": "vaihtoehto",
+      "conflictTooltip": "Näille sanoille on eri ehdotuksia — yhden vaihtoehdon hyväksyminen hylkää muut.",
+      "consensusBadge": "{consensus}/{total} mallia",
+      "consensusTooltip": "Ehdottanut: {models}",
+      "cachedBadge": "välimuistissa",
+      "cachedTooltip": "Palautettu aiemmasta ajosta samoilla sanoituksilla — tekoälykustannuksia ei syntynyt.",
+      "appliedSummary": "{count} automaattista korjausta tehty",
+      "hideDetails": "Piilota tiedot",
+      "rerun": "Suorita uudelleen",
+      "revertAllAuto": "Kumoa kaikki",
+      "showDetails": "Näytä tiedot"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Arvioitu — lopullinen hinta vahvistetaan latauksen jälkeen",
     "reconcileTitle": "Tämä kappale on odotettua pidempi",
     "cancel": "Peruuta"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Ladataan taustan esikatselua"
+  },
+  "bulk": {
+    "albumModeHint": "Etsi artistia, valitse albumi ja valitse sitten, mitkä kappaleet haluat tehdä.",
+    "artistSearchPlaceholder": "Etsi artistia…",
+    "autoPickLossless": "Valitse paras ääni automaattisesti (vain häviötön)",
+    "autoPickLosslessHint": "Valitse ääni automaattisesti, kun löydämme varman häviöttömän/FLAC-osuman. Muut menevät tarkistusjonoon.",
+    "backToAlbums": "Takaisin albumeihin",
+    "backToArtists": "Takaisin artisteihin",
+    "batchProgressTitle": "{total} kappaleen erä",
+    "batchSettings": "Erän asetukset",
+    "byAlbum": "Albumin mukaan",
+    "byText": "Tekstin mukaan",
+    "checking": "Tarkistetaan…",
+    "chooseAudio": "Valitse ääni",
+    "communityExists": "Yhteisöversio on olemassa",
+    "communityExistsWithBrands": "Yhteisöversio: {brands}",
+    "countAwaiting": "{count} vaatii valinnan",
+    "countComplete": "{count} valmiina",
+    "countFailed": "{count} epäonnistui",
+    "countProcessing": "{count} käsitellään",
+    "countSearching": "{count} etsitään",
+    "createBatch": "Luo {count} karaokevideota",
+    "creditsCost": "{cost} krediittiä · sinulla on {balance}",
+    "edition": "Versio",
+    "extra": "Extra",
+    "loadingBatch": "Ladataan erää…",
+    "lookupFailed": "Haku epäonnistui. Yritä uudelleen.",
+    "makePrivate": "Pidä yksityisenä",
+    "makePrivateHint": "Toimita vain Dropboxin kautta sen sijaan, että julkaisisit YouTubeen.",
+    "noAlbums": "Tälle artistille ei löytynyt albumeita.",
+    "notEnoughCredits": "Tarvitset {needed} krediittiä, mutta sinulla on {have}.",
+    "overLimit": "Voit lähettää enintään {max} kappaletta kerrallaan.",
+    "progressError": "Erän edistymistä ei voitu ladata.",
+    "reviewQueueHint": "Emme voineet valita häviötöntä lähdettä näille automaattisesti varmuudella. Valitse yksi jokaiselle.",
+    "reviewQueueTitle": "Valitse ääni näille kappaleille",
+    "selectedCount": "{count} kappaletta valittu",
+    "skipAudioEdit": "Ohita äänen muokkaus",
+    "skipAudioEditHint": "Käytä jokaisen kappaleen ääntä sellaisenaan (ei leikkausta).",
+    "skipCustomization": "Ohita mukauttaminen",
+    "skipCustomizationHint": "Käytä oletusteemaa ja -tyyliä jokaiselle kappaleelle.",
+    "startAnother": "Aloita uusi erä",
+    "submitError": "Erää ei voitu luoda. Yritä uudelleen.",
+    "submitting": "Luodaan erää…",
+    "textModeHint": "Lisää enintään {max} kappaletta. Merkitsemme kaikki, joilla on jo yhteisöversio.",
+    "title": "Nimi",
+    "tracklistHint": "Live-, remix- ja bonuskappaleet — sekä kappaleet, joilla on jo yhteisöversio — ovat oletuksena valitsematta.",
+    "addSong": "Lisää kappale",
+    "artist": "Artisti",
+    "buyCredits": "Osta krediittejä",
+    "removeRow": "Poista",
+    "trackCount": "{count} raitaa",
+    "changeEdition": "Vaihda",
+    "existingVersions": "Olemassa olevat versiot:",
+    "usingRelease": "Käytössä {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonusta",
+    "variantOriginal": "Alkuperäinen",
+    "variantReissue": "Uudelleenjulkaisu"
+  },
+  "backendStatus": {
+    "reconnecting": "Yhdistetään uudelleen…",
+    "unavailable": {
+      "body": "Tämä on yleensä väliaikaista — yritä uudelleen parin minuutin kuluttua.",
+      "reassurance": "Tämä ei vaikuta parhaillaan luotaviin karaokevideoihin, vaan niiden käsittely jatkuu normaalisti.",
+      "title": "Palvelimiimme yhdistämisessä on ongelmia"
+    },
+    "dismiss": "Ohita"
   }
 }

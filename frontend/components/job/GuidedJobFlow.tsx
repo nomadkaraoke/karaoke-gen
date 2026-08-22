@@ -7,6 +7,7 @@ import { useTenant } from "@/lib/tenant"
 import { api, ApiError } from "@/lib/api"
 import { AlertTriangle, CheckCircle2, Music } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { LinkifiedText } from "@/components/ui/linkified-text"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 import { SongInfoStep } from "./steps/SongInfoStep"
 import { AudioSourceStep } from "./steps/AudioSourceStep"
@@ -490,7 +491,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
       {/* Submit error */}
       {submitError && (
         <div className="text-sm text-red-400 bg-red-500/10 rounded p-3">
-          <p>{submitError}</p>
+          <p><LinkifiedText text={submitError} /></p>
         </div>
       )}
 

@@ -57,6 +57,19 @@ def _is_youtube_url(url: str) -> bool:
 router = APIRouter(tags=["jobs"])
 
 
+def _select_mixed_audio_files(files):
+    """Filter a listing of ``uploads/{job_id}/audio/`` down to the mixed (with-vocals) audio.
+
+    When a job supplies its own instrumental (existing_instrumental flow, e.g. tenant
+    submissions), that file is uploaded into the SAME ``audio/`` directory as the mixed
+    audio (``existing_instrumental.*``). The ``audio/`` prefix therefore matches both, and
+    because ``existing_instrumental`` sorts before most filenames, ``files[0]`` would pick
+    the instrumental — so transcription would run on the backing track instead of the
+    vocals. Excluding it here ensures the mixed audio is selected as the transcription input.
+    """
+    return [f for f in files if not Path(f).name.startswith('existing_instrumental')]
+
+
 def _apply_tenant_overrides(
     dist: EffectiveDistributionSettings,
     tenant_config,
@@ -67,12 +80,20 @@ def _apply_tenant_overrides(
     """
     Apply tenant-specific overrides to distribution settings and job options.
 
+    White-label tenant config is AUTHORITATIVE: it replaces (not just fills in) the
+    distribution settings, so tenant outputs never inherit the global consumer defaults
+    (DEFAULT_BRAND_PREFIX / DEFAULT_DROPBOX_PATH / DEFAULT_GDRIVE_FOLDER_ID) that
+    ``get_effective_distribution_settings`` seeds into ``dist``. Without this, every
+    tenant job would land in the shared consumer Dropbox folder and upload to the global
+    Google Drive, regardless of the tenant's own config.
+
     For tenant jobs:
-    - Overlays brand_prefix, dropbox_path, gdrive_folder_id from tenant defaults
-      (only when not already set in the request body / dist)
+    - Sets brand_prefix, dropbox_path, gdrive_folder_id authoritatively from tenant config
+    - Routes Dropbox / Google Drive only when the matching feature flag is enabled;
+      otherwise disables that channel entirely (no global-default leak)
     - Forces is_private = True
     - Applies locked_theme as effective theme
-    - Disables YouTube upload
+    - Disables YouTube upload (tenants never publish to YouTube)
 
     Returns:
         Tuple of (dist, effective_theme_id, is_private, enable_youtube_upload)
@@ -81,14 +102,12 @@ def _apply_tenant_overrides(
         return dist, effective_theme_id, is_private, enable_youtube_upload
 
     defaults = tenant_config.defaults
+    features = tenant_config.features
 
-    # Overlay tenant distribution defaults (request-level values take precedence)
-    if defaults.brand_prefix and not dist.brand_prefix:
-        dist.brand_prefix = defaults.brand_prefix
-    if defaults.dropbox_path and not dist.dropbox_path:
-        dist.dropbox_path = defaults.dropbox_path
-    if defaults.gdrive_folder_id and not dist.gdrive_folder_id:
-        dist.gdrive_folder_id = defaults.gdrive_folder_id
+    # Authoritative distribution routing (overrides any global defaults in `dist`).
+    dist.brand_prefix = defaults.brand_prefix
+    dist.dropbox_path = defaults.dropbox_path if features.dropbox_upload else None
+    dist.gdrive_folder_id = defaults.gdrive_folder_id if features.gdrive_upload else None
 
     # Force private for all tenant jobs
     is_private = True
@@ -1382,12 +1401,14 @@ async def mark_uploads_complete(
             
             # List files with this prefix to find the actual uploaded file
             files = storage_service.list_files(prefix)
+            if file_type == 'audio':
+                files = _select_mixed_audio_files(files)
             if not files:
                 raise HTTPException(
                     status_code=400,
                     detail=f"File for '{file_type}' was not uploaded to GCS. Expected prefix: {prefix}"
                 )
-            
+
             # Use the first (and should be only) file found
             gcs_path = files[0]
             
@@ -1560,9 +1581,138 @@ def _validate_url(url: Optional[str]) -> bool:
     for supported in supported_domains:
         if domain == supported or domain.endswith('.' + supported):
             return True
-    
+
     # For other URLs, let yt-dlp try (it supports many more sites)
     return True
+
+
+# Streaming services whose catalogue is DRM-protected and therefore cannot be
+# downloaded by yt-dlp / flacfetch. Submitting one of these only creates a job
+# that fails deep in the download stage with a cryptic "Unsupported URL" error
+# (and lets the user trigger a futile retry), so we reject them at submission
+# time with a clear, actionable message. Maps host -> friendly platform name;
+# matching is suffix-based, so e.g. "spotify.com" also covers open./play.
+_UNSUPPORTED_DRM_HOSTS = {
+    'music.apple.com': 'Apple Music',
+    'itunes.apple.com': 'Apple Music',
+    'spotify.com': 'Spotify',
+    'tidal.com': 'Tidal',
+    'deezer.com': 'Deezer',
+    'pandora.com': 'Pandora',
+}
+
+# Third-party tools that can download audio from a DRM platform, which the user
+# can then upload to us. Listed where we know of working options; platforms
+# without an entry fall back to a web-search link for "<platform> downloader".
+_DRM_DOWNLOADER_SUGGESTIONS = {
+    'Apple Music': ['https://am-dl.pages.dev', 'https://aplmate.com'],
+    'Spotify': ['https://spotdown.org', 'https://spotmate.online'],
+}
+
+
+def _drm_unsupported_detail(locale: str, platform: str) -> str:
+    """
+    Build the user-facing 400 message for a rejected DRM streaming URL.
+
+    Platforms with known downloader tools get a "download from {tools}, then
+    upload" message linking each tool; everything else gets a "search the web
+    for a '<platform> downloader'" message linking a Google search. Either way
+    the goal is to guide the user to obtain the audio and upload it themselves.
+    """
+    downloaders = _DRM_DOWNLOADER_SUGGESTIONS.get(platform)
+    if downloaders:
+        # Join with commas (locale-neutral) rather than an English "or"; the
+        # message wording frames them as options and LinkifiedText makes each
+        # URL clickable in the frontend.
+        return t(
+            locale, "audioSearch.drmUrlUnsupportedWithLink",
+            platform=platform, downloader=", ".join(downloaders),
+        )
+
+    from urllib.parse import quote_plus
+    search_url = "https://www.google.com/search?q=" + quote_plus(f"{platform} downloader")
+    return t(
+        locale, "audioSearch.drmUrlUnsupportedSearch",
+        platform=platform, searchUrl=search_url,
+    )
+
+
+def _unsupported_url_platform(url: Optional[str]) -> Optional[str]:
+    """
+    Return a friendly platform name if the URL belongs to a known DRM-protected
+    streaming service that cannot be downloaded, else None.
+
+    These links (Apple Music, Spotify, Tidal, Amazon Music, Deezer, Pandora) are
+    rejected at submission time instead of being allowed to create a job that
+    always fails deep in the download stage. Note: YouTube Music
+    (music.youtube.com) is downloadable and is deliberately NOT included.
+    """
+    if not url or not isinstance(url, str):
+        return None
+
+    from urllib.parse import urlparse
+    try:
+        # .hostname is already lowercased and strips userinfo, port, and IPv6
+        # brackets, so it's safer than parsing .netloc by hand.
+        domain = (urlparse(url).hostname or "").lower()
+    except (ValueError, TypeError):
+        return None
+
+    if not domain:
+        return None
+    # Normalise leading www.
+    if domain.startswith('www.'):
+        domain = domain[4:]
+
+    for host, platform in _UNSUPPORTED_DRM_HOSTS.items():
+        if domain == host or domain.endswith('.' + host):
+            return platform
+
+    # Amazon Music spans many country domains (music.amazon.com, .co.uk, .co.jp,
+    # .fr, .de, ...), so match the music.amazon.* prefix generically.
+    if domain == 'music.amazon' or domain.startswith('music.amazon.'):
+        return 'Amazon Music'
+
+    return None
+
+
+class ValidateUrlRequest(BaseModel):
+    """Request to pre-validate a URL before submitting a job."""
+    url: str = Field(..., description="The URL the user intends to submit")
+
+
+class ValidateUrlResponse(BaseModel):
+    """Whether a URL can be used for a job, with a friendly reason if not."""
+    supported: bool
+    detail: Optional[str] = None
+
+
+@router.post("/jobs/validate-url", response_model=ValidateUrlResponse)
+async def validate_job_url(
+    request: Request,
+    body: ValidateUrlRequest,
+    auth_result: AuthResult = Depends(require_auth),
+) -> ValidateUrlResponse:
+    """
+    Lightweight pre-flight check for a job URL, used by the guided submission
+    flow so unsupported links are caught at the "Use this URL" step instead of
+    only at final submit. Mirrors the URL validation in create_job_from_url.
+    """
+    locale = get_locale_from_request(request)
+
+    platform = _unsupported_url_platform(body.url)
+    if platform:
+        return ValidateUrlResponse(
+            supported=False, detail=_drm_unsupported_detail(locale, platform)
+        )
+
+    if not _validate_url(body.url):
+        return ValidateUrlResponse(
+            supported=False,
+            detail="Invalid URL. Please provide a valid YouTube, Vimeo, SoundCloud, or other supported video URL.",
+        )
+
+    return ValidateUrlResponse(supported=True)
 
 
 @router.post("/jobs/create-from-url", response_model=CreateJobFromUrlResponse)
@@ -1598,6 +1748,17 @@ async def create_job_from_url(
         )
 
     try:
+        # Reject DRM-protected streaming links upfront (Apple Music, Spotify,
+        # Tidal, etc.). These can never be downloaded, so creating a job would
+        # only fail deep in the pipeline with a cryptic error and tempt the user
+        # into a futile retry storm.
+        unsupported_platform = _unsupported_url_platform(body.url)
+        if unsupported_platform:
+            raise HTTPException(
+                status_code=400,
+                detail=_drm_unsupported_detail(locale, unsupported_platform),
+            )
+
         # Validate URL
         if not _validate_url(body.url):
             raise HTTPException(

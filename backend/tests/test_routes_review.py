@@ -365,6 +365,44 @@ class TestCompleteReviewZeroSegmentValidation:
 
         assert response.status_code == 200
 
+    def test_existing_instrumental_defaults_selection_to_custom(self, _patched_client):
+        """Jobs that supplied their own instrumental (tenant/existing_instrumental flow)
+        have no instrumental-selection UI step, so complete-review must default the
+        selection to 'custom' — otherwise the render defaults to 'clean' (a separated
+        stem that was never produced) and fails the prerequisite check."""
+        client, mock_jm = _patched_client
+        job = self._make_job(state_data={'lyrics_metadata': {'segment_count': 5}})
+        job.existing_instrumental_gcs_path = "uploads/job-zero-seg/audio/existing_instrumental.mp3"
+        mock_jm.get_job.return_value = job
+
+        response = client.post(
+            "/api/jobs/job-zero-seg/complete-review",
+            headers={"Authorization": "Bearer test-admin-token"},
+        )
+
+        assert response.status_code == 200
+        mock_jm.update_state_data.assert_any_call(
+            "job-zero-seg", "instrumental_selection", "custom"
+        )
+
+    def test_existing_instrumental_does_not_override_explicit_selection(self, _patched_client):
+        """An explicit instrumental_selection in the request still wins over the default."""
+        client, mock_jm = _patched_client
+        job = self._make_job(state_data={'lyrics_metadata': {'segment_count': 5}})
+        job.existing_instrumental_gcs_path = "uploads/job-zero-seg/audio/existing_instrumental.mp3"
+        mock_jm.get_job.return_value = job
+
+        response = client.post(
+            "/api/jobs/job-zero-seg/complete-review",
+            headers={"Authorization": "Bearer test-admin-token"},
+            json={"instrumental_selection": "clean"},
+        )
+
+        assert response.status_code == 200
+        mock_jm.update_state_data.assert_any_call(
+            "job-zero-seg", "instrumental_selection", "clean"
+        )
+
 
 class TestPreviewStyleLoading:
     """Tests for the unified style loader used in preview video generation.

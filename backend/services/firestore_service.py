@@ -3,7 +3,7 @@ Firestore database operations for job management.
 """
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from google.cloud import firestore
 from google.cloud.firestore_v1 import FieldFilter
 
@@ -87,7 +87,9 @@ class FirestoreService:
             # Create timeline event
             timeline_event = TimelineEvent(
                 status=status.value,
-                timestamp=datetime.utcnow().isoformat(),
+                # Timezone-aware UTC so the serialized ISO string carries a
+                # "+00:00" offset (see job_manager.create_job for rationale).
+                timestamp=datetime.now(timezone.utc).isoformat(),
                 progress=progress,
                 message=message,
                 metadata=timeline_metadata,
@@ -177,11 +179,28 @@ class FirestoreService:
         except Exception as e:
             logger.error(f"Error listing jobs: {e}")
             raise
-    
+
+    def list_jobs_by_batch_id(self, batch_id: str, limit: int = 200) -> List[Job]:
+        """List all jobs belonging to a Bulk Mode batch (state_data.batch_id == batch_id).
+
+        Single-field equality, so no composite index is required.
+        """
+        try:
+            query = (
+                self.db.collection(self.collection)
+                .where(filter=FieldFilter('state_data.batch_id', '==', batch_id))
+                .limit(limit)
+            )
+            return [Job(**doc.to_dict()) for doc in query.stream()]
+        except Exception as e:
+            logger.error(f"Error listing jobs for batch {batch_id}: {e}")
+            raise
+
     # Fields needed by the dashboard summary view
     SUMMARY_FIELD_PATHS = [
         'job_id', 'status', 'progress', 'created_at', 'artist', 'title',
         'error_message', 'non_interactive', 'outputs_deleted_at', 'user_email', 'is_private',
+        'made_for_you', 'customer_email',
         'url', 'filename', 'audio_search_artist', 'audio_search_title',
         'audio_source_type', 'source_name', 'source_id', 'target_file', 'download_url',
         'state_data.brand_code', 'state_data.youtube_url', 'state_data.dropbox_link',
@@ -194,6 +213,8 @@ class FirestoreService:
         'state_data.pending_additional_credits',
         'state_data.duration_actual_seconds',
         'state_data.duration_confirm_reason',
+        'state_data.batch_id',
+        'state_data.bulk_auto_selected',
         'file_urls.finals', 'file_urls.videos', 'file_urls.packages',
         'processing_metadata',
     ]

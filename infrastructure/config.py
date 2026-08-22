@@ -48,6 +48,22 @@ class MachineTypes:
     GITHUB_BUILD_RUNNER = "e2-standard-8"  # 8 vCPU, 32GB RAM - dedicated Docker build runner
     GITHUB_GPU_RUNNER = "n1-standard-4"  # 4 vCPU, 15GB RAM - GPU runners need N1 series
     ENCODING_WORKER = "c4d-highcpu-32"  # 32 vCPU, AMD EPYC 9B45 Turin - 4.92x faster than c4-standard-8
+    # Capacity-fallback machine family, deliberately DIFFERENT from ENCODING_WORKER.
+    # c4d-highcpu-32 suffered a region-wide ZONE_RESOURCE_POOL_EXHAUSTED stockout across
+    # us-central1-a/-b/-c simultaneously (2026-08-12) which took out every same-family lane.
+    # n2-highcpu-32 (Intel Cascade/Ice Lake) draws from a much deeper, independent pool, so a
+    # c4d shortage cannot exhaust it. n2 does NOT support hyperdisk-balanced → uses pd-balanced.
+    ENCODING_WORKER_ALT = "n2-highcpu-32"  # 32 vCPU, Intel Cascade/Ice Lake - deep-capacity fallback pool
+    # Broadened ranked pool (2026-08-15) — ≥5 x86_64, 32-vCPU, ≥32 GB highcpu types
+    # across 4 distinct silicon lineages, so a stockout of the newest-gen cohort
+    # (c4d/c4, the crunch) cannot exhaust every lane. Encode-speed ranking lives in
+    # backend/services/encoding_worker_preference.py::SPEED_RANK. Disk-type rule:
+    # next-gen Titanium families (c4/c4d/n4/n4d) support hyperdisk-balanced ONLY;
+    # older families (c2d/n2/n2d) use pd-balanced. Getting this wrong = pulumi error.
+    ENCODING_WORKER_C4 = "c4-highcpu-32"    # 32 vCPU / 64 GB, Intel Emerald Rapids (hyperdisk-only)
+    ENCODING_WORKER_N4D = "n4d-highcpu-32"  # 32 vCPU / 64 GB, AMD Titanium (hyperdisk-only)
+    ENCODING_WORKER_C2D = "c2d-highcpu-32"  # 32 vCPU / 64 GB, AMD Milan (Zen3), deep pool (pd-balanced)
+    ENCODING_WORKER_N2D = "n2d-highcpu-32"  # 32 vCPU / 32 GB, AMD Rome/Milan, deep pool (pd-balanced)
     FLACFETCH = "e2-small"  # 0.5 vCPU, 2GB RAM
 
 
@@ -118,6 +134,151 @@ class SecretNames:
 
     GITHUB_RUNNER_PAT = "github-runner-pat"
     GITHUB_WEBHOOK_SECRET = "github-webhook-secret"
+    # Shared secret Cloudflare injects as a header on proxied requests; the
+    # backend edge-auth middleware rejects requests to public routes that lack
+    # it (blocks direct-to-origin bypass of the Cloudflare edge). See
+    # modules/edge_security.py and backend/middleware/edge_auth.py.
+    EDGE_ORIGIN_SECRET = "edge-origin-secret"
+
+
+class CloudflareConfig:
+    """
+    Configuration for the Cloudflare edge (WAF / rate limiting / origin lock).
+
+    Non-secret values (zone/account ids, hostnames) are read from Pulumi config
+    so they are version-controlled per stack without hardcoding account details.
+    The API token is a Pulumi *secret* config under the provider key
+    ``cloudflare:apiToken`` (set with ``pulumi config set --secret``).
+
+    Set the ids once known:
+        pulumi config set edge:cloudflareZoneId    <zone-id-for-nomadkaraoke.com>
+        pulumi config set edge:cloudflareAccountId <account-id>
+        pulumi config set --secret cloudflare:apiToken <token>   # Zone WAF:Edit + DNS:Edit
+    """
+
+    # Production backend host (already a Cloud Run domain mapping today).
+    PROD_API_HOST = "api.nomadkaraoke.com"
+    # Throwaway staging host used to validate the full edge stack against the
+    # SAME Cloud Run service before touching the prod `api` record. Torn down
+    # after cutover. See docs/archive/2026-07-20-edge-security-hardening-plan.md.
+    STAGING_API_HOST = "api-edge-test.nomadkaraoke.com"
+    # Cloud Run domain mappings both target this service origin.
+    DOMAIN_MAPPING_ROUTE = "karaoke-backend"
+    ORIGIN_CNAME_TARGET = "ghs.googlehosted.com"
+
+    # SSL/TLS NOTE (validated on staging 2026-07-20): the zone SSL mode is
+    # "full" (not strict). In "full" mode Cloudflare encrypts to the origin but
+    # does NOT validate the origin cert, so the Cloud Run domain-mapping managed
+    # cert's provisioning/renewal status is irrelevant through the proxy — the
+    # edge works even while that cert shows "pending". This sidesteps the 525
+    # "dragon" (which only bites in "full (strict)") WITHOUT needing a run.app
+    # Origin Rule. Keep the zone on "full" (never flip to strict without first
+    # provisioning/renewing the managed cert, which cannot issue behind CF).
+
+    # Header name Cloudflare injects and the backend checks (value = secret).
+    ORIGIN_AUTH_HEADER = "X-Edge-Auth"
+
+    # Rate limit: block a client IP that exceeds this many requests/period.
+    # Free plan constraints (enforced by the Cloudflare API): period must be 10s,
+    # and mitigation_timeout must equal the period (10s). A single flood control
+    # rule — the WAF path block (below) is the primary defense against the
+    # scanner class; this catches volumetric abuse. ~50 req / 10s = 5 req/s per
+    # IP, comfortably above legit page-load bursts to a control-plane API.
+    RATE_LIMIT_REQUESTS = 50
+    RATE_LIMIT_PERIOD_SECONDS = 10
+    RATE_LIMIT_MITIGATION_SECONDS = 10
+
+    # Paths that must never be rate-limited / header-gated at the edge:
+    # scheduler cron hits (OIDC-authed) to /api/internal/*.
+    INTERNAL_PATH_PREFIX = "/api/internal/"
+
+    @staticmethod
+    def managed_waf_enabled():
+        """
+        Whether to deploy the Cloudflare Managed (OWASP-style) Ruleset.
+
+        The nomadkaraoke.com zone is on the **Free** plan, where managed
+        rulesets are NOT available (Pro+ only) — deploying one errors. So this
+        defaults to False. The custom exploit-path rules + rate limiting +
+        origin lock + bot mitigation (all Free-tier) already cover the
+        path-scanning threat this was built for. If the zone is upgraded to
+        Pro, set ``edge:managedWafEnabled true`` to turn on the OWASP ruleset.
+        """
+        return pulumi.Config("edge").get_bool("managedWafEnabled") or False
+
+    # Cloudflare zone id for nomadkaraoke.com (not sensitive). Overridable via
+    # Pulumi config `edge:cloudflareZoneId`; defaults to the known zone so the
+    # edge module activates as soon as a WAF/DNS-scoped `cloudflare:apiToken`
+    # is set. NOTE: the zone is on the **Free** plan (managed WAF ruleset is
+    # Pro+; see managed_waf_enabled).
+    DEFAULT_ZONE_ID = "807f07f458f9cd38251f3b7948d55172"
+
+    @staticmethod
+    def enabled():
+        """
+        Master activation switch for the Cloudflare edge module
+        (``edge:enabled`` bool, default False).
+
+        MUST stay False until a WAF/DNS-scoped ``cloudflare:apiToken`` is set —
+        otherwise `pulumi up` would try to create Cloudflare resources with an
+        unauthorized token and fail, blocking all infra deploys. Flip to True
+        only after the token + config are in place (see the cutover runbook).
+        """
+        return pulumi.Config("edge").get_bool("enabled") or False
+
+    @staticmethod
+    def zone_id():
+        """Cloudflare zone id for nomadkaraoke.com."""
+        return pulumi.Config("edge").get("cloudflareZoneId") or CloudflareConfig.DEFAULT_ZONE_ID
+
+    @staticmethod
+    def account_id():
+        """Cloudflare account id (from Pulumi config)."""
+        return pulumi.Config("edge").get("cloudflareAccountId")
+
+    @staticmethod
+    def rollout_stage():
+        """
+        Which hosts the edge WAF/rate-limit/header rules apply to (from Pulumi
+        config ``edge:rolloutStage``):
+          - "staging" : rules scoped to the staging host only.
+          - "prod"    : rules apply to the prod host too (staging kept for soak).
+        Defaults to "staging" so a first apply is non-disruptive to prod.
+
+        NOTE: this does NOT flip the prod DNS proxy — that's a SEPARATE switch
+        (``proxy_prod_api``), so production edge rules can be provisioned and
+        verified while the API is still DNS-only, then the proxy flipped in an
+        isolated second apply (and rolled back without tearing down the rules).
+        """
+        stage = pulumi.Config("edge").get("rolloutStage") or "staging"
+        return "prod" if stage in ("prod", "cutover") else "staging"
+
+    @staticmethod
+    def proxy_staging_api():
+        """
+        Whether the staging ``api-edge-test`` record is proxied (``edge:proxyStaging``
+        bool, default False).
+
+        THE SSL DRAGON: a Cloud Run domain mapping provisions its Google-managed
+        cert via ACME, which needs the hostname to resolve DIRECTLY to
+        ``ghs.googlehosted.com``. While the record is proxied (orange-cloud) DNS
+        resolves to Cloudflare, so ACME can't validate and the cert never issues.
+        Sequence: create grey (proxied=False) → wait for cert → set this True.
+        """
+        return pulumi.Config("edge").get_bool("proxyStaging") or False
+
+    @staticmethod
+    def proxy_prod_api():
+        """
+        Whether the prod ``api`` DNS record is proxied through Cloudflare
+        (``edge:proxyProdApi`` bool, default False).
+
+        This is the ONE prod-affecting, instantly-reversible flip. Sequence:
+          1. rolloutStage=prod, apply  → prod edge rules live; api still DNS-only.
+          2. proxyProdApi=true, apply   → api proxied (only this record changes).
+        Rollback = proxyProdApi=false, apply (edge rules stay provisioned).
+        """
+        return pulumi.Config("edge").get_bool("proxyProdApi") or False
 
 # GitHub repository for runner registration
 GITHUB_REPO_OWNER = "nomadkaraoke"
@@ -134,18 +295,63 @@ class EncodingWorkerConfig:
     FUNCTION_MEMORY = "512M"  # Increased from 256M — OOM with gRPC/Firestore/Compute client libs
     FUNCTION_TIMEOUT = 120  # 2 minutes
 
-    # Capacity-resilience fallback VMs in alternate zones.
-    # c4d-highcpu-32 is available in us-central1-a / -b / -c / -f. When the
-    # primary zone (-c) is exhausted, the manager falls back to -a or -b.
-    # us-central1-f was originally selected for the second fallback, but
-    # provisioning consistently failed there with ZONE_RESOURCE_POOL_EXHAUSTED
-    # at create time (2026-05-06) — capacity is too tight in -f for it to be
-    # useful as a fallback. -b has reliable capacity. These VMs are
-    # provisioned stopped (cost: ~$10/mo each for the boot disk) and only
-    # started by the application when the primary zone rejects capacity.
-    FALLBACK_VM_NAMES = ["encoding-worker-fallback-a", "encoding-worker-fallback-b"]
-    FALLBACK_IP_NAMES = ["encoding-worker-fallback-ip-a", "encoding-worker-fallback-ip-b"]
-    FALLBACK_ZONE_SUFFIXES = ["a", "b"]  # zones {REGION}-{suffix}
+    # Capacity-resilience fallback fleet. Each VM is provisioned STOPPED in an
+    # alternate zone / machine family and is started on demand only when the
+    # primary zone rejects a start with ZONE_RESOURCE_POOL_EXHAUSTED. Cost when
+    # stopped is just the boot disk (~$10/mo each).
+    #
+    # Machine-family diversity is DELIBERATE. The primary pair and the two c4d
+    # fallbacks are all c4d-highcpu-32, so a region-wide c4d stockout (observed
+    # 2026-08-12 across us-central1-a/-b/-c at once) exhausts every lane
+    # simultaneously and forces slow local encoding (→ 524 on preview, parked
+    # renders). The n2-highcpu-32 fallbacks draw from an independent, much deeper
+    # pool so a c4d shortage cannot take them out. n2 does not support
+    # hyperdisk-balanced, hence pd-balanced boot disks on those entries.
+    #
+    # Each entry: name/IP suffix, zone suffix ({REGION}-{zone_suffix}),
+    # machine_type, boot disk_type. ORDER MATTERS — IPs and VMs are zipped by
+    # position. (Candidate PRIORITY is no longer positional: it is decided at
+    # runtime/deploy by the shared speed-rank + cooldown in
+    # backend/services/encoding_worker_preference.py.) Keep the existing a/b/n2c/n2f
+    # entries first and byte-identical so Pulumi does not recreate those VMs; the
+    # broadened-pool entries are APPENDED so the change is purely additive
+    # (verify `pulumi preview` shows only new IPs+VMs, zero replace).
+    #
+    # Zone spread: one machine type per zone where possible so a single
+    # (type × zone) stockout can't correlate across the pool. c4d primary lives in
+    # zone c (the primary pair), so the c4 fallback goes to a, n4d to b, c2d to f,
+    # n2d to a — 4 lineages across 4 zones.
+    FALLBACKS = [
+        {"suffix": "a", "zone_suffix": "a",
+         "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "b", "zone_suffix": "b",
+         "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "n2c", "zone_suffix": "c",
+         "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
+        {"suffix": "n2f", "zone_suffix": "f",
+         "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
+        # --- Broadened pool (2026-08-15), appended (additive-only) ---
+        {"suffix": "c4a", "zone_suffix": "a",
+         "machine_type": MachineTypes.ENCODING_WORKER_C4, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "n4db", "zone_suffix": "b",
+         "machine_type": MachineTypes.ENCODING_WORKER_N4D, "disk_type": "hyperdisk-balanced"},
+        {"suffix": "c2df", "zone_suffix": "f",
+         "machine_type": MachineTypes.ENCODING_WORKER_C2D, "disk_type": "pd-balanced"},
+        {"suffix": "n2da", "zone_suffix": "a",
+         "machine_type": MachineTypes.ENCODING_WORKER_N2D, "disk_type": "pd-balanced"},
+    ]
+
+    # Derived name lists (kept for readability / any external reference).
+    FALLBACK_VM_NAMES = [f"encoding-worker-fallback-{fb['suffix']}" for fb in FALLBACKS]
+    FALLBACK_IP_NAMES = [f"encoding-worker-fallback-ip-{fb['suffix']}" for fb in FALLBACKS]
+
+    @staticmethod
+    def fallback_vm_name(suffix: str) -> str:
+        return f"encoding-worker-fallback-{suffix}"
+
+    @staticmethod
+    def fallback_ip_name(suffix: str) -> str:
+        return f"encoding-worker-fallback-ip-{suffix}"
 
 
 class ErrorMonitorConfig:

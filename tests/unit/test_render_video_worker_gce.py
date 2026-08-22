@@ -40,6 +40,9 @@ WORKER_PATCHES = {
     "validate_worker_can_run": "backend.workers.render_video_worker.validate_worker_can_run",
     "job_span": "backend.workers.render_video_worker.job_span",
     "job_logging_context": "backend.workers.render_video_worker.job_logging_context",
+    # Supersession fences (#899) — neutralize so routing tests exercise the happy path.
+    "capture_generation": "backend.workers.render_video_worker.capture_generation",
+    "check_superseded": "backend.workers.render_video_worker.check_superseded",
 }
 
 
@@ -99,6 +102,11 @@ class TestRenderVideoWorkerGCERouting:
             encoding_service.is_enabled = encoding_enabled
             encoding_service.render_video_on_gce = AsyncMock(return_value=gce_result)
             mocks["get_encoding_service"].return_value = encoding_service
+
+            # Supersession fence: not superseded (fresh generation) so the render result
+            # is committed rather than discarded. check_superseded returns a truthy reason
+            # string when superseded; None means "proceed".
+            mocks["check_superseded"].return_value = None
 
             # Configure logging mocks
             job_log = MagicMock()
