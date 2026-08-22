@@ -2342,20 +2342,20 @@ class TestCreateAudioFetcherRemoteSelection:
         assert fetcher.api_key == "custom_key"
 
     @patch.dict(os.environ, {"FLACFETCH_API_URL": "http://localhost:8080"}, clear=False)
-    def test_falls_back_to_local_without_api_key(self):
-        """Test factory falls back to local when only URL is set."""
+    def test_half_configured_url_only_raises(self):
+        """Half-configured remote (URL only) must fail loudly, not silently use local."""
         # Clear FLACFETCH_API_KEY if it exists
         with patch.dict(os.environ, {"FLACFETCH_API_KEY": ""}, clear=False):
-            fetcher = create_audio_fetcher()
-            assert isinstance(fetcher, FlacFetchAudioFetcher)
+            with pytest.raises(AudioFetcherError, match="FLACFETCH_API_KEY is not"):
+                create_audio_fetcher()
 
     @patch.dict(os.environ, {"FLACFETCH_API_KEY": "test_key"}, clear=False)
-    def test_falls_back_to_local_without_api_url(self):
-        """Test factory falls back to local when only key is set."""
+    def test_half_configured_key_only_raises(self):
+        """Half-configured remote (key only) must fail loudly, not silently use local."""
         # Clear FLACFETCH_API_URL if it exists
         with patch.dict(os.environ, {"FLACFETCH_API_URL": ""}, clear=False):
-            fetcher = create_audio_fetcher()
-            assert isinstance(fetcher, FlacFetchAudioFetcher)
+            with pytest.raises(AudioFetcherError, match="FLACFETCH_API_URL is not"):
+                create_audio_fetcher()
 
     @patch.dict(os.environ, {}, clear=True)
     def test_creates_local_fetcher_by_default(self):
