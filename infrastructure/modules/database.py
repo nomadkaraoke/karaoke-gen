@@ -104,6 +104,23 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # Jobs: query by request_metadata.client_id + tenant_id, order by created_at.
+    # Powers GET /api/jobs?client_id= — the idempotency lookup for externally
+    # created jobs (the Fiverr agent tags jobs client_id="fiverr:{order_id}").
+    # Without it that query 400s ("The query requires an index").
+    resources["firestore_index_jobs_client_id"] = firestore.Index(
+        "firestore-index-jobs-client-id",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="jobs",
+        fields=[
+            firestore.IndexFieldArgs(field_path="request_metadata.client_id", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="tenant_id", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="created_at", order="DESCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
+    )
+
     # Sessions: query by user_email + is_active, order by created_at
     resources["firestore_index_sessions_active"] = firestore.Index(
         "firestore-index-sessions-active",
