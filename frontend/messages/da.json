@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
     "variantReissue": "Genudgivelse"
+  },
+  "backendStatus": {
+    "reconnecting": "Genopretter forbindelse…",
+    "unavailable": {
+      "body": "Dette er som regel midlertidigt — prøv igen om et par minutter.",
+      "reassurance": "Eventuelle karaokevideoer, der i øjeblikket bliver lavet, påvirkes ikke og vil fortsat blive behandlet.",
+      "title": "Vi har problemer med at få forbindelse til vores servere"
+    },
+    "dismiss": "Afvis"
   }
 }

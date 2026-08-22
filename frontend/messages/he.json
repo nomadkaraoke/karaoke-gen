@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} בונוס",
     "variantOriginal": "מקורי",
     "variantReissue": "הוצאה מחודשת"
+  },
+  "backendStatus": {
+    "reconnecting": "מתחבר מחדש…",
+    "unavailable": {
+      "body": "זה בדרך כלל זמני — אנא נסו שוב בעוד מספר דקות.",
+      "reassurance": "סרטוני קריוקי שנוצרים כרגע לא יושפעו וימשיכו בתהליך העיבוד.",
+      "title": "אנחנו מתקשים להתחבר לשרתים שלנו"
+    },
+    "dismiss": "התעלם"
   }
 }

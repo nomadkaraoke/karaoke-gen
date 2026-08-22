@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} tặng kèm",
     "variantOriginal": "Bản gốc",
     "variantReissue": "Tái bản"
+  },
+  "backendStatus": {
+    "reconnecting": "Đang kết nối lại…",
+    "unavailable": {
+      "body": "Sự cố này thường chỉ là tạm thời — vui lòng thử lại sau vài phút.",
+      "reassurance": "Các video karaoke đang được tạo sẽ không bị ảnh hưởng và vẫn tiếp tục được xử lý.",
+      "title": "Chúng tôi đang gặp sự cố khi kết nối với máy chủ"
+    },
+    "dismiss": "Bỏ qua"
   }
 }

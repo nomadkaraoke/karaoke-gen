@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Oryginał",
     "variantReissue": "Reedycja"
+  },
+  "backendStatus": {
+    "reconnecting": "Ponowne łączenie…",
+    "unavailable": {
+      "body": "To zazwyczaj problem tymczasowy — spróbuj ponownie za kilka minut.",
+      "reassurance": "Obecnie tworzone filmy karaoke są bezpieczne i będą nadal przetwarzane.",
+      "title": "Mamy problem z połączeniem z naszymi serwerami"
+    },
+    "dismiss": "Zamknij"
   }
 }

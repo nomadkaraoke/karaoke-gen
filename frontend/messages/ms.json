@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Asal",
     "variantReissue": "Keluaran semula"
+  },
+  "backendStatus": {
+    "reconnecting": "Menyambung semula…",
+    "unavailable": {
+      "body": "Ini biasanya sementara — sila cuba lagi dalam beberapa minit.",
+      "reassurance": "Sebarang video karaoke yang sedang dihasilkan tidak terjejas dan akan terus diproses.",
+      "title": "Kami menghadapi masalah menyambung ke pelayan kami"
+    },
+    "dismiss": "Tutup"
   }
 }

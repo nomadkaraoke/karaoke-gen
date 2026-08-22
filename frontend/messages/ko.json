@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} 보너스",
     "variantOriginal": "오리지널",
     "variantReissue": "재발매"
+  },
+  "backendStatus": {
+    "reconnecting": "다시 연결하는 중…",
+    "unavailable": {
+      "body": "대부분 일시적인 현상이니 몇 분 후에 다시 시도해 주세요.",
+      "reassurance": "현재 생성 중인 노래방 영상은 영향을 받지 않고 정상적으로 처리됩니다.",
+      "title": "서버에 연결하는 데 문제가 발생했습니다"
+    },
+    "dismiss": "닫기"
   }
 }

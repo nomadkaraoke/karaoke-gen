@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Orijinal",
     "variantReissue": "Yeniden basım"
+  },
+  "backendStatus": {
+    "reconnecting": "Yeniden bağlanıyor…",
+    "unavailable": {
+      "body": "Bu genellikle geçici bir durum — lütfen birkaç dakika sonra tekrar dene.",
+      "reassurance": "Şu anda oluşturulmakta olan karaoke videoları bu durumdan etkilenmez ve işlenmeye devam eder.",
+      "title": "Sunucularımıza ulaşmakta sorun yaşıyoruz"
+    },
+    "dismiss": "Kapat"
   }
 }

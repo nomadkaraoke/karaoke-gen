@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
     "variantReissue": "Reedició"
+  },
+  "backendStatus": {
+    "reconnecting": "Reconnectant…",
+    "unavailable": {
+      "body": "Això sol ser temporal — si us plau, torna-ho a provar d'aquí a un parell de minuts.",
+      "reassurance": "Els vídeos de karaoke que s'estiguin creant ara mateix no es veuran afectats i es continuaran processant.",
+      "title": "Tenim problemes per connectar amb els nostres servidors"
+    },
+    "dismiss": "Descarta"
   }
 }

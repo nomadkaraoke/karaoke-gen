@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Origineel",
     "variantReissue": "Heruitgave"
+  },
+  "backendStatus": {
+    "reconnecting": "Opnieuw verbinden…",
+    "unavailable": {
+      "body": "Dit is meestal tijdelijk — probeer het over een paar minuten opnieuw.",
+      "reassurance": "Karaokevideo's die momenteel worden gemaakt, ondervinden hier geen hinder van en worden gewoon verder verwerkt.",
+      "title": "We kunnen onze servers even niet bereiken"
+    },
+    "dismiss": "Sluiten"
   }
 }

@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonusta",
     "variantOriginal": "Alkuperäinen",
     "variantReissue": "Uudelleenjulkaisu"
+  },
+  "backendStatus": {
+    "reconnecting": "Yhdistetään uudelleen…",
+    "unavailable": {
+      "body": "Tämä on yleensä väliaikaista — yritä uudelleen parin minuutin kuluttua.",
+      "reassurance": "Tämä ei vaikuta parhaillaan luotaviin karaokevideoihin, vaan niiden käsittely jatkuu normaalisti.",
+      "title": "Palvelimiimme yhdistämisessä on ongelmia"
+    },
+    "dismiss": "Ohita"
   }
 }

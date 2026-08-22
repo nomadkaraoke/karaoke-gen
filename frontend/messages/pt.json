@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bônus",
     "variantOriginal": "Original",
     "variantReissue": "Reedição"
+  },
+  "backendStatus": {
+    "reconnecting": "Reconectando…",
+    "unavailable": {
+      "body": "Isso geralmente é temporário — por favor, tente novamente em alguns minutos.",
+      "reassurance": "Os vídeos de karaokê que estão sendo criados no momento não serão afetados e continuarão sendo processados.",
+      "title": "Estamos com problemas para acessar nossos servidores"
+    },
+    "dismiss": "Dispensar"
   }
 }

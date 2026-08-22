@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
     "variantReissue": "Reeditare"
+  },
+  "backendStatus": {
+    "reconnecting": "Se reconectează…",
+    "unavailable": {
+      "body": "Această situație este de obicei temporară — încearcă din nou în câteva minute.",
+      "reassurance": "Videoclipurile de karaoke aflate în curs de creare nu sunt afectate și vor continua să fie procesate.",
+      "title": "Întâmpinăm probleme la conectarea cu serverele noastre"
+    },
+    "dismiss": "Închide"
   }
 }

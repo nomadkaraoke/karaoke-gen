@@ -5,6 +5,7 @@
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
+import { reportBackendOnline, reportBackendTrouble } from './backend-status';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -431,13 +432,189 @@ export interface UploadProgress {
 class ApiError extends Error {
   status: number;
   data?: any;
-  
+
   constructor(message: string, status: number, data?: any) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.data = data;
   }
+}
+
+/**
+ * Thrown when we couldn't get any answer from our own backend — the request failed
+ * at the network/edge level (connection refused, timeout, or a Cloudflare 5xx),
+ * rather than the backend deliberately returning an error. Distinct from a normal
+ * ApiError (which means the backend WAS reached and replied with a 4xx/5xx). The
+ * app-wide <BackendStatusBanner> reacts to this via the backend-status store; pages
+ * can also detect it with `err instanceof BackendUnavailableError`.
+ *
+ * This is the client-side manifestation of a min-instance recycle blip — see
+ * lib/backend-status.ts and infrastructure/modules/monitoring.py.
+ */
+export class BackendUnavailableError extends ApiError {
+  readonly isBackendUnavailable = true;
+  readonly cause?: unknown;
+  constructor(cause?: unknown, status = 503) {
+    super('The server is temporarily unavailable. Please try again in a moment.', status);
+    this.name = 'BackendUnavailableError';
+    this.cause = cause;
+  }
+}
+
+// ===== Backend connectivity: timeout + safe retry wrapper =====
+//
+// Every `api.*` call goes through apiFetch instead of raw fetch so that a transient
+// backend blip (e.g. Cloud Run recycling its single min-instance) degrades
+// gracefully — a subtle "reconnecting" hint, transparent retries for idempotent
+// reads, and an app-wide "temporarily unavailable" banner — instead of every screen
+// throwing its own generic error. See lib/backend-status.ts for the UX states.
+
+/** Show the subtle "reconnecting…" hint if a request is still outstanding after this
+ *  long. Non-aborting: a slow-but-healthy response still completes and clears it, so
+ *  legitimately slow endpoints are never falsely failed. */
+const RECONNECTING_HINT_MS = 2500;
+/** Hard backstop: abort a request that has hung this long (Cloud Run holds requests
+ *  during a cold start, but not forever). Generous so genuine cold-starts can ride
+ *  out and still succeed rather than erroring the user. */
+const HARD_TIMEOUT_MS = 45_000;
+/** Max attempts for idempotent GETs (initial + retries). Non-GET is never retried. */
+const GET_MAX_ATTEMPTS = 3;
+/** Backoff between GET retries (ms), indexed by prior-attempt number. */
+const RETRY_BACKOFF_MS = [600, 1500];
+/** Edge/origin status codes that mean "backend briefly unreachable", not a real
+ *  application error: standard 502/503/504 plus Cloudflare's origin-reachability 52x. */
+const TRANSIENT_STATUS = new Set([502, 503, 504, 520, 521, 522, 523, 524]);
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** True only for calls to our own backend API — GCS signed-URL uploads and any other
+ *  third-party host pass straight through apiFetch untouched (no timeout/retry/status).
+ *  Resolves relative URLs and Request inputs (whose `.url` is always absolute) against
+ *  the current origin, then matches on `/api/*` path + backend origin. */
+function isManagedBackendUrl(input: RequestInfo | URL): boolean {
+  const urlStr =
+    typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  const base =
+    typeof window !== 'undefined' ? window.location.href : 'http://localhost';
+  let parsed: URL;
+  try {
+    parsed = new URL(urlStr, base);
+  } catch {
+    return false;
+  }
+  const isApiPath = parsed.pathname === '/api' || parsed.pathname.startsWith('/api/');
+  if (!isApiPath) return false;
+  if (API_BASE_URL) {
+    // Absolute backend URL (production): must target the configured backend origin.
+    try {
+      return parsed.origin === new URL(API_BASE_URL).origin;
+    } catch {
+      return false;
+    }
+  }
+  // Relative / same-origin proxy (local dev): our own origin owns /api/*.
+  return typeof window === 'undefined' || parsed.origin === window.location.origin;
+}
+
+export interface ApiFetchOptions {
+  /** Override the per-attempt hard-timeout (ms). */
+  timeoutMs?: number;
+  /** Force-disable retry even for GET (e.g. a GET with side effects). */
+  retry?: boolean;
+}
+
+/**
+ * Drop-in replacement for `fetch` for backend calls: adds a non-aborting
+ * "reconnecting" hint, a hard-timeout backstop, safe retries for GETs, and reports
+ * connectivity to the backend-status store. Signature matches fetch so call sites
+ * only change the function name.
+ */
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  opts?: ApiFetchOptions,
+): Promise<Response> {
+  // Not our backend (e.g. a GCS signed-URL PUT) → passthrough, no side effects.
+  if (!isManagedBackendUrl(input)) {
+    return globalThis.fetch(input, init);
+  }
+
+  // The method/signal can arrive either on `init` or on a `Request` input. Read
+  // both so a POST Request isn't mis-read as a retryable GET and its abort signal
+  // isn't dropped.
+  const request =
+    typeof Request !== 'undefined' && input instanceof Request ? input : undefined;
+  const method = (init?.method ?? request?.method ?? 'GET').toUpperCase();
+  const isGet = method === 'GET';
+  // Never auto-retry non-GET: replaying a create/submit/payment could double-charge
+  // or duplicate a job. Reads are idempotent and safe to retry.
+  const allowRetry = isGet && (opts?.retry ?? true);
+  const hardTimeout = opts?.timeoutMs ?? HARD_TIMEOUT_MS;
+  const maxAttempts = allowRetry ? GET_MAX_ATTEMPTS : 1;
+  const callerSignal = init?.signal ?? request?.signal ?? undefined;
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const hintTimer = setTimeout(reportBackendTrouble, RECONNECTING_HINT_MS);
+    const hardTimer = setTimeout(
+      () => controller.abort(new DOMException('Request timed out', 'AbortError')),
+      hardTimeout,
+    );
+    const onCallerAbort = () =>
+      controller.abort((callerSignal as AbortSignal | undefined)?.reason);
+    if (callerSignal) {
+      if (callerSignal.aborted) controller.abort(callerSignal.reason);
+      else callerSignal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+    const cleanup = () => {
+      clearTimeout(hintTimer);
+      clearTimeout(hardTimer);
+      callerSignal?.removeEventListener('abort', onCallerAbort);
+    };
+
+    let response: Response;
+    try {
+      response = await globalThis.fetch(input, { ...init, signal: controller.signal });
+    } catch (err) {
+      cleanup();
+      // The CALLER aborted (navigation, their own timeout) — not a backend problem.
+      if (callerSignal?.aborted) throw err;
+      lastError = err;
+      // reportBackendTrouble() (above) armed the escalation timer, so the banner
+      // still escalates to "unavailable" strictly on the UNAVAILABLE_AFTER_MS clock
+      // rather than the instant a fast-failing retry budget (~2s) runs out.
+      reportBackendTrouble();
+      if (attempt < maxAttempts) {
+        await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
+        continue;
+      }
+      throw new BackendUnavailableError(err);
+    }
+    cleanup();
+
+    if (TRANSIENT_STATUS.has(response.status)) {
+      reportBackendTrouble();
+      if (allowRetry && attempt < maxAttempts) {
+        await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
+        continue;
+      }
+      if (isGet) {
+        throw new BackendUnavailableError(undefined, response.status);
+      }
+      // Non-GET: hand the real transient response back so the caller's handleResponse
+      // surfaces it; the banner is already showing via reportBackendTrouble().
+      return response;
+    }
+
+    // A real reply from the backend (2xx, or a deterministic 4xx/5xx) → we're online.
+    reportBackendOnline();
+    return response;
+  }
+
+  // Unreachable (loop always returns or throws) — satisfies the compiler.
+  throw new BackendUnavailableError(lastError);
 }
 
 // Exported for testing
@@ -666,7 +843,7 @@ export const api = {
     if (params?.search) searchParams.set('search', params.search);
 
     const url = `${API_BASE_URL}/api/jobs${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse<Job[]>(response);
@@ -676,7 +853,7 @@ export const api = {
    * Get a single job by ID
    */
   async getJob(jobId: string): Promise<Job> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}`, {
       headers: getAuthHeaders()
     });
     return handleResponse<Job>(response);
@@ -734,7 +911,7 @@ export const api = {
       formData.append('requires_audio_edit', String(options.requires_audio_edit));
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/jobs/upload`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/upload`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: formData,
@@ -762,7 +939,7 @@ export const api = {
     if (options?.existing_instrumental !== undefined) body.existing_instrumental = options.existing_instrumental;
     if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
 
-    const response = await fetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
@@ -839,7 +1016,7 @@ export const api = {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       let response: Response;
       try {
-        response = await fetch(url, init);
+        response = await apiFetch(url, init);
       } catch (err) {
         lastError = err;
         if (attempt < MAX_ATTEMPTS) {
@@ -942,7 +1119,7 @@ export const api = {
     if (options?.is_private !== undefined) body.is_private = options.is_private;
     if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
 
-    const response = await fetch(`${API_BASE_URL}/api/jobs/create-from-url`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-from-url`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -962,7 +1139,7 @@ export const api = {
   async validateJobUrl(
     url: string
   ): Promise<{ supported: boolean; detail: string | null }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/validate-url`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/validate-url`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -984,7 +1161,7 @@ export const api = {
     artist?: string;
     title?: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/review-data`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/review-data`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -995,7 +1172,7 @@ export const api = {
    */
   async completeReview(jobId: string, instrumentalSelection?: InstrumentalSelectionType): Promise<{ status: string; job_status: string; message: string }> {
     const body = instrumentalSelection ? { instrumental_selection: instrumentalSelection } : undefined;
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
       method: 'POST',
       headers: body ? { 'Content-Type': 'application/json', ...getAuthHeaders() } : getAuthHeaders(),
       body: body ? JSON.stringify(body) : undefined
@@ -1007,7 +1184,7 @@ export const api = {
    * Get instrumental options
    */
   async getInstrumentalOptions(jobId: string): Promise<InstrumentalOptionsResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-options`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-options`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1020,7 +1197,7 @@ export const api = {
     jobId: string,
     selection: InstrumentalSelectionType
   ): Promise<{ status: string; job_status: string; selection: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/select-instrumental`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/select-instrumental`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ selection }),
@@ -1036,7 +1213,7 @@ export const api = {
    * Get input audio info for the audio editor.
    */
   async getInputAudioInfo(jobId: string): Promise<AudioEditInfo> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/input-audio-info`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/input-audio-info`, {
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
     return handleResponse(response);
@@ -1046,7 +1223,7 @@ export const api = {
    * Apply an audio edit operation (trim, cut, mute, join).
    */
   async applyAudioEdit(jobId: string, operation: string, params: Record<string, unknown>): Promise<AudioEditResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/apply`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ operation, params }),
@@ -1058,7 +1235,7 @@ export const api = {
    * Undo the last audio edit operation.
    */
   async undoAudioEdit(jobId: string): Promise<AudioEditResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/undo`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/undo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
@@ -1069,7 +1246,7 @@ export const api = {
    * Redo a previously undone audio edit.
    */
   async redoAudioEdit(jobId: string): Promise<AudioEditResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/redo`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/redo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     });
@@ -1082,7 +1259,7 @@ export const api = {
   async uploadAudioForJoin(jobId: string, file: File): Promise<{ upload_id: string; duration_seconds: number; filename: string }> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/upload`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/upload`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: formData,
@@ -1092,7 +1269,7 @@ export const api = {
 
   async submitAudioEdit(jobId: string, editLog?: unknown): Promise<{ status: string; message: string; job_id: string }> {
     const body = editLog ? { edit_log: editLog } : {};
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/submit`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(body),
@@ -1112,7 +1289,7 @@ export const api = {
       summary?: AudioEditSessionSummary;
     }
   ): Promise<{ status: string; session_id?: string; reason?: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(data),
@@ -1126,7 +1303,7 @@ export const api = {
   async listAudioEditSessions(
     jobId: string
   ): Promise<{ sessions: AudioEditSessionMeta[] }> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions`, {
       headers: getAuthHeaders(),
     });
     return handleResponse(response);
@@ -1139,7 +1316,7 @@ export const api = {
     jobId: string,
     sessionId: string
   ): Promise<AudioEditSessionWithData> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions/${sessionId}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/audio-edit-sessions/${sessionId}`, {
       headers: getAuthHeaders(),
     });
     return handleResponse(response);
@@ -1149,7 +1326,7 @@ export const api = {
    * Get instrumental analysis data for review
    */
   async getInstrumentalAnalysis(jobId: string): Promise<InstrumentalAnalysis> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-analysis`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-analysis`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1159,7 +1336,7 @@ export const api = {
    * Get waveform data for visualization
    */
   async getWaveformData(jobId: string, numPoints: number = 1000): Promise<WaveformData> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/jobs/${jobId}/waveform-data?num_points=${numPoints}`,
       { headers: getAuthHeaders() }
     );
@@ -1173,7 +1350,7 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/upload-instrumental`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/upload-instrumental`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: formData,
@@ -1185,7 +1362,7 @@ export const api = {
    * Create a custom instrumental with mute regions
    */
   async createCustomInstrumental(jobId: string, muteRegions: MuteRegion[]): Promise<{ status: string; message: string; audio_url?: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/create-custom-instrumental`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/create-custom-instrumental`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ mute_regions: muteRegions }),
@@ -1206,7 +1383,7 @@ export const api = {
    * Get download URLs for completed job
    */
   async getDownloadUrls(jobId: string): Promise<DownloadUrlsResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/download-urls`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/download-urls`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1216,7 +1393,7 @@ export const api = {
    * Cancel a job
    */
   async cancelJob(jobId: string, reason?: string): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/cancel`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/cancel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ reason: reason || 'Cancelled by user' }),
@@ -1228,7 +1405,7 @@ export const api = {
    * Delete a job
    */
   async deleteJob(jobId: string, deleteFiles: boolean = true): Promise<{ status: string; message: string }> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/jobs/${jobId}?delete_files=${deleteFiles}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
@@ -1281,7 +1458,7 @@ export const api = {
     if (options?.display_artist) body.display_artist = options.display_artist;
     if (options?.display_title) body.display_title = options.display_title;
 
-    const response = await fetch(`${API_BASE_URL}/api/audio-search/search`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/audio-search/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1305,7 +1482,7 @@ export const api = {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 45000);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/audio-search/search-standalone`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/audio-search/search-standalone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ artist, title }),
@@ -1331,7 +1508,7 @@ export const api = {
     is_private?: boolean;
     requires_audio_edit?: boolean;
   }): Promise<{ status: string; job_id: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/create-from-search`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-from-search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(params),
@@ -1342,14 +1519,14 @@ export const api = {
   // ===== Bulk Mode =====
 
   async searchAlbumArtists(q: string): Promise<BulkArtist[]> {
-    const response = await fetch(`${API_BASE_URL}/api/bulk/album/artists?q=${encodeURIComponent(q)}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/bulk/album/artists?q=${encodeURIComponent(q)}`, {
       headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
   },
 
   async getAlbums(artistMbid: string): Promise<BulkAlbum[]> {
-    const response = await fetch(`${API_BASE_URL}/api/bulk/album/albums?artist_mbid=${encodeURIComponent(artistMbid)}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/bulk/album/albums?artist_mbid=${encodeURIComponent(artistMbid)}`, {
       headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
@@ -1365,7 +1542,7 @@ export const api = {
     if (params.releaseGroupMbid) qs.set('release_group_mbid', params.releaseGroupMbid);
     if (params.releaseMbid) qs.set('release_mbid', params.releaseMbid);
     if (params.locale) qs.set('locale', params.locale);
-    const response = await fetch(`${API_BASE_URL}/api/bulk/album/tracklist?${qs.toString()}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/bulk/album/tracklist?${qs.toString()}`, {
       headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
@@ -1374,7 +1551,7 @@ export const api = {
   async checkBulkAvailability(
     tracks: Array<{ artist: string; title: string }>
   ): Promise<{ results: BulkAvailabilityResult[] }> {
-    const response = await fetch(`${API_BASE_URL}/api/bulk/availability`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/bulk/availability`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ tracks }),
@@ -1386,7 +1563,7 @@ export const api = {
     songs: Array<{ artist: string; title: string; display_artist?: string; display_title?: string }>;
     settings: BulkSettings;
   }): Promise<BulkSubmitResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/bulk/submit`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/bulk/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(params),
@@ -1395,7 +1572,7 @@ export const api = {
   },
 
   async getBulkBatch(batchId: string): Promise<BulkBatch> {
-    const response = await fetch(`${API_BASE_URL}/api/bulk/${encodeURIComponent(batchId)}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/bulk/${encodeURIComponent(batchId)}`, {
       headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
@@ -1408,7 +1585,7 @@ export const api = {
     jobId: string,
     files: Array<{ filename: string; content_type: string; file_type: string }>
   ): Promise<{ status: string; job_id: string; upload_urls: SignedUploadUrl[] }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/style-upload-urls`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/style-upload-urls`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ files }),
@@ -1420,7 +1597,7 @@ export const api = {
    * Upload a file directly to a GCS signed URL.
    */
   async uploadFileToSignedUrl(url: string, file: File, contentType: string): Promise<void> {
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': contentType },
       body: file,
@@ -1438,7 +1615,7 @@ export const api = {
     uploadedFiles: string[],
     colorOverrides?: { artist_color?: string; title_color?: string }
   ): Promise<{ status: string; job_id: string; message: string; assets_updated: string[] }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/style-uploads-complete`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/style-uploads-complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({
@@ -1453,7 +1630,7 @@ export const api = {
    * Get audio search results for a job
    */
   async getAudioSearchResults(jobId: string): Promise<AudioSearchResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/results`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/audio-search/${jobId}/results`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1467,7 +1644,7 @@ export const api = {
     index: number,
     overrides?: { is_private?: boolean; display_artist?: string; display_title?: string }
   ): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/select`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/audio-search/${jobId}/select`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ selection_index: index, ...overrides }),
@@ -1483,7 +1660,7 @@ export const api = {
     jobId: string,
     edits?: { artist?: string; title?: string }
   ): Promise<AudioSearchResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/research`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/audio-search/${jobId}/research`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ artist: edits?.artist, title: edits?.title }),
@@ -1499,7 +1676,7 @@ export const api = {
     jobId: string,
     url: string
   ): Promise<{ status: string; job_id: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/provide-url`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/audio-search/${jobId}/provide-url`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ url }),
@@ -1513,14 +1690,14 @@ export const api = {
    */
   async attachUploadToJob(jobId: string, file: File): Promise<{ status: string; message: string }> {
     const contentType = file.type || 'application/octet-stream';
-    const signed = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/attach-upload-url`, {
+    const signed = await apiFetch(`${API_BASE_URL}/api/audio-search/${jobId}/attach-upload-url`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ filename: file.name, content_type: contentType }),
     });
     const { upload_url, gcs_path } = await handleResponse<{ upload_url: string; gcs_path: string }>(signed);
     await this.uploadFileToSignedUrl(upload_url, file, contentType);
-    const done = await fetch(`${API_BASE_URL}/api/audio-search/${jobId}/attach-upload-complete`, {
+    const done = await apiFetch(`${API_BASE_URL}/api/audio-search/${jobId}/attach-upload-complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ gcs_path }),
@@ -1532,7 +1709,7 @@ export const api = {
    * Get job logs
    */
   async getJobLogs(jobId: string, limit: number = 100): Promise<JobLog[]> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/logs?limit=${limit}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/logs?limit=${limit}`, {
       headers: getAuthHeaders()
     });
     const data = await handleResponse<{ logs: JobLog[] }>(response);
@@ -1543,7 +1720,7 @@ export const api = {
    * Retry a failed job
    */
   async retryJob(jobId: string): Promise<{ status: string; job_id: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/retry`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/retry`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
@@ -1558,7 +1735,7 @@ export const api = {
    * List all available video themes
    */
   async listThemes(): Promise<VideoThemeSummary[]> {
-    const response = await fetch(`${API_BASE_URL}/api/themes`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/themes`, {
       headers: getAuthHeaders()
     });
     const data = await handleResponse<ThemesListResponse>(response);
@@ -1569,7 +1746,7 @@ export const api = {
    * Get full details for a specific theme
    */
   async getTheme(themeId: string): Promise<VideoThemeDetail> {
-    const response = await fetch(`${API_BASE_URL}/api/themes/${themeId}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/themes/${themeId}`, {
       headers: getAuthHeaders()
     });
     const data = await handleResponse<ThemeDetailResponse>(response);
@@ -1580,7 +1757,7 @@ export const api = {
    * Get preview URL for a theme
    */
   async getThemePreview(themeId: string): Promise<string | null> {
-    const response = await fetch(`${API_BASE_URL}/api/themes/${themeId}/preview`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/themes/${themeId}/preview`, {
       headers: getAuthHeaders()
     });
     const data = await handleResponse<{ preview_url: string | null }>(response);
@@ -1591,7 +1768,7 @@ export const api = {
    * Get YouTube description template for a theme
    */
   async getThemeYoutubeDescription(themeId: string): Promise<string | null> {
-    const response = await fetch(`${API_BASE_URL}/api/themes/${themeId}/youtube-description`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/themes/${themeId}/youtube-description`, {
       headers: getAuthHeaders()
     });
     const data = await handleResponse<{ description: string | null }>(response);
@@ -1613,7 +1790,7 @@ export const api = {
     if (referralCode) {
       body.referral_code = referralCode
     }
-    const response = await fetch(`${API_BASE_URL}/api/users/auth/magic-link`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/auth/magic-link`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1638,7 +1815,7 @@ export const api = {
    * message for a dead one) without making the user click only to then fail.
    */
   async getMagicLinkStatus(token: string): Promise<{ status: 'valid' | 'used' | 'expired' | 'invalid' }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/auth/link-status?token=${encodeURIComponent(token)}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/auth/link-status?token=${encodeURIComponent(token)}`, {
       method: 'GET',
     })
     return handleResponse(response)
@@ -1649,7 +1826,7 @@ export const api = {
     if (referralCode) {
       headers['x-referral-code'] = referralCode;
     }
-    const response = await fetch(`${API_BASE_URL}/api/users/auth/verify?token=${encodeURIComponent(token)}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/auth/verify?token=${encodeURIComponent(token)}`, {
       method: 'GET',
       headers,
     });
@@ -1666,7 +1843,7 @@ export const api = {
     masked_email: string | null;
     message: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/auth/resend-from-token`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/auth/resend-from-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1680,7 +1857,7 @@ export const api = {
    * Get the current user's profile
    */
   async getCurrentUser(): Promise<UserProfileResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/me`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1690,7 +1867,7 @@ export const api = {
    * Logout and invalidate the current session
    */
   async logout(): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/auth/logout`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/auth/logout`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
@@ -1705,7 +1882,7 @@ export const api = {
    * Submit product feedback to earn free credits
    */
   async submitFeedback(data: FeedbackRequest): Promise<FeedbackResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/users/feedback`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/feedback`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1726,7 +1903,7 @@ export const api = {
    */
   async getBackendInfo(): Promise<{ service: string; version: string; status: string }> {
     const url = API_BASE_URL ? `${API_BASE_URL}/` : '/backend-info';
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1736,7 +1913,7 @@ export const api = {
    * Get encoding worker health status
    */
   async getEncodingWorkerHealth(): Promise<EncodingWorkerHealth> {
-    const response = await fetch(`${API_BASE_URL}/api/health/encoding-worker`);
+    const response = await apiFetch(`${API_BASE_URL}/api/health/encoding-worker`);
     return handleResponse(response);
   },
 
@@ -1744,7 +1921,7 @@ export const api = {
    * Get flacfetch service health status
    */
   async getFlacfetchHealth(): Promise<FlacfetchHealth> {
-    const response = await fetch(`${API_BASE_URL}/api/health/flacfetch`);
+    const response = await apiFetch(`${API_BASE_URL}/api/health/flacfetch`);
     return handleResponse(response);
   },
 
@@ -1752,7 +1929,7 @@ export const api = {
    * Get audio separator service health status
    */
   async getAudioSeparatorHealth(): Promise<AudioSeparatorHealth> {
-    const response = await fetch(`${API_BASE_URL}/api/health/audio-separator`);
+    const response = await apiFetch(`${API_BASE_URL}/api/health/audio-separator`);
     return handleResponse(response);
   },
 
@@ -1760,7 +1937,7 @@ export const api = {
    * Get aggregated system status for all services
    */
   async getSystemStatus(): Promise<SystemStatus> {
-    const response = await fetch(`${API_BASE_URL}/api/health/system-status`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/health/system-status`, {
       headers: getAuthHeaders(),
     });
     return handleResponse(response);
@@ -1774,7 +1951,7 @@ export const api = {
    * Get available credit packages
    */
   async getCreditPackages(): Promise<CreditPackage[]> {
-    const response = await fetch(`${API_BASE_URL}/api/users/credits/packages`);
+    const response = await apiFetch(`${API_BASE_URL}/api/users/credits/packages`);
     const data = await handleResponse<{ packages: CreditPackage[] }>(response);
     return data.packages;
   },
@@ -1783,7 +1960,7 @@ export const api = {
    * Create a Stripe checkout session
    */
   async createCheckout(packageId: string, email: string): Promise<string> {
-    const response = await fetch(`${API_BASE_URL}/api/users/credits/checkout`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/credits/checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1808,7 +1985,7 @@ export const api = {
     youtube_url?: string;
     notes?: string;
   }): Promise<string> {
-    const response = await fetch(`${API_BASE_URL}/api/users/made-for-you/checkout`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/made-for-you/checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1838,7 +2015,7 @@ export const api = {
    * Returns whether push is enabled and the public key if so
    */
   async getVapidPublicKey(): Promise<{ enabled: boolean; vapid_public_key: string | null }> {
-    const response = await fetch(`${API_BASE_URL}/api/push/vapid-public-key`);
+    const response = await apiFetch(`${API_BASE_URL}/api/push/vapid-public-key`);
     return handleResponse(response);
   },
 
@@ -1851,7 +2028,7 @@ export const api = {
     deviceName?: string,
     tenantId?: string | null
   ): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/push/subscribe`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/push/subscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1871,7 +2048,7 @@ export const api = {
    * Unsubscribe from push notifications
    */
   async unsubscribePush(endpoint: string): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/push/unsubscribe`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/push/unsubscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1886,7 +2063,7 @@ export const api = {
    * List user's push notification subscriptions
    */
   async listPushSubscriptions(): Promise<PushSubscriptionsListResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/push/subscriptions`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/push/subscriptions`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1896,7 +2073,7 @@ export const api = {
 
   async searchCatalogArtists(query: string, limit: number = 10): Promise<CatalogArtistResult[]> {
     const params = new URLSearchParams({ q: query, limit: String(limit) });
-    const response = await fetch(`${API_BASE_URL}/api/catalog/artists?${params}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/catalog/artists?${params}`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -1905,14 +2082,14 @@ export const api = {
   async searchCatalogTracks(query: string, artist?: string, limit: number = 10): Promise<CatalogTrackResult[]> {
     const params = new URLSearchParams({ q: query, limit: String(limit) });
     if (artist) params.set('artist', artist);
-    const response = await fetch(`${API_BASE_URL}/api/catalog/tracks?${params}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/catalog/tracks?${params}`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
   },
 
   async checkCommunityVersions(artist: string, title: string): Promise<CommunityCheckResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/catalog/community-check`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/catalog/community-check`, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
@@ -1927,7 +2104,7 @@ export const api = {
     const body: Record<string, unknown> = { artist, title };
     if (opts?.audioConfidenceTier != null) body.audio_confidence_tier = opts.audioConfidenceTier;
     if (opts?.stage != null) body.stage = opts.stage;
-    const response = await fetch(`${API_BASE_URL}/api/catalog/match-judge`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/catalog/match-judge`, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
@@ -1939,7 +2116,7 @@ export const api = {
   },
 
   async changeVisibility(jobId: string, targetVisibility: 'public' | 'private'): Promise<ChangeVisibilityResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/change-visibility`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/change-visibility`, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
@@ -1951,7 +2128,7 @@ export const api = {
   },
 
   async editCompletedTrack(jobId: string, updates?: { artist?: string; title?: string }): Promise<EditTrackResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/edit`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/edit`, {
       method: 'POST',
       headers: {
         ...getAuthHeaders(),
@@ -1973,7 +2150,7 @@ export const api = {
     blocked: boolean;
     source: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/estimate`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/estimate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1990,7 +2167,7 @@ export const api = {
    * Both are surfaced as ApiError with a .status property so callers can branch.
    */
   async confirmDuration(jobId: string, acknowledgedCredits: number): Promise<Job> {
-    const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/confirm-duration`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/confirm-duration`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2188,7 +2365,7 @@ export const adminApi = {
       searchParams.set('exclude_test', String(params.exclude_test));
     }
     const url = `${API_BASE_URL}/api/admin/stats/overview${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -2216,7 +2393,7 @@ export const adminApi = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
 
     const url = `${API_BASE_URL}/api/users/admin/users${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -2226,7 +2403,7 @@ export const adminApi = {
    * Get detailed user information
    */
   async getUserDetail(email: string): Promise<AdminUserDetail> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/detail`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/detail`, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -2242,7 +2419,7 @@ export const adminApi = {
     new_balance: number;
     message: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/credits`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/admin/credits`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2261,7 +2438,7 @@ export const adminApi = {
     duration_days?: number;
     referral_code?: string;
   }): Promise<{ ok: boolean; message: string; discount_expires_at: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/apply-discount`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/referrals/admin/apply-discount`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, ...data }),
@@ -2278,7 +2455,7 @@ export const adminApi = {
     user_email: string;
     message: string;
   }> {
-    const response = await fetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/impersonate`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/impersonate`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
@@ -2289,7 +2466,7 @@ export const adminApi = {
    * Enable a user account
    */
   async enableUser(email: string): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/enable`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/enable`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
@@ -2300,7 +2477,7 @@ export const adminApi = {
    * Disable a user account
    */
   async disableUser(email: string): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/disable`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/disable`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
@@ -2311,7 +2488,7 @@ export const adminApi = {
    * Permanently delete a user and all associated data
    */
   async deleteUser(email: string): Promise<{ status: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}`, {
       method: 'DELETE',
       headers: getAuthHeaders()
     });
@@ -2332,7 +2509,7 @@ export const adminApi = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
 
     const url = `${API_BASE_URL}/api/jobs${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse<Job[]>(response);
@@ -2342,7 +2519,7 @@ export const adminApi = {
    * Delete a job (admin)
    */
   async deleteJob(jobId: string, deleteFiles: boolean = true): Promise<{ status: string; message: string }> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/jobs/${jobId}?delete_files=${deleteFiles}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
@@ -2363,7 +2540,7 @@ export const adminApi = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
 
     const url = `${API_BASE_URL}/api/admin/audio-searches${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -2373,7 +2550,7 @@ export const adminApi = {
    * Clear audio search cache for a job
    */
   async clearAudioSearchCache(jobId: string): Promise<ClearSearchCacheResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/audio-searches/${jobId}/clear-cache`,
       { method: 'POST', headers: getAuthHeaders() }
     );
@@ -2384,7 +2561,7 @@ export const adminApi = {
    * Clear all flacfetch search cache
    */
   async clearAllCache(): Promise<ClearAllCacheResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/cache`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
@@ -2395,7 +2572,7 @@ export const adminApi = {
    * Get flacfetch cache statistics
    */
   async getCacheStats(): Promise<CacheStatsResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/cache/stats`,
       { headers: getAuthHeaders() }
     );
@@ -2406,7 +2583,7 @@ export const adminApi = {
    * Get rendered completion message for a job (for copy to clipboard)
    */
   async getCompletionMessage(jobId: string): Promise<CompletionMessageResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/completion-message`,
       { headers: getAuthHeaders() }
     );
@@ -2417,7 +2594,7 @@ export const adminApi = {
    * Send completion email for a job
    */
   async sendCompletionEmail(jobId: string, toEmail: string, ccAdmin: boolean = true): Promise<SendCompletionEmailResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/send-completion-email`,
       {
         method: 'POST',
@@ -2435,7 +2612,7 @@ export const adminApi = {
    * Get all files for a job with signed download URLs
    */
   async getJobFiles(jobId: string): Promise<JobFilesResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/files`,
       { headers: getAuthHeaders() }
     );
@@ -2446,7 +2623,7 @@ export const adminApi = {
    * Update editable fields of a job (admin only)
    */
   async updateJob(jobId: string, updates: JobUpdateRequest): Promise<JobUpdateResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}`,
       {
         method: 'PATCH',
@@ -2464,7 +2641,7 @@ export const adminApi = {
    * Reset a job to a specific state for re-processing (admin only)
    */
   async resetJob(jobId: string, targetState: string): Promise<JobResetResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/reset`,
       {
         method: 'POST',
@@ -2484,7 +2661,7 @@ export const adminApi = {
    * Job record is preserved with outputs_deleted_at timestamp.
    */
   async deleteJobOutputs(jobId: string): Promise<DeleteOutputsResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/delete-outputs`,
       {
         method: 'POST',
@@ -2500,7 +2677,7 @@ export const adminApi = {
    * Does NOT change job status - use resetJob for that.
    */
   async clearWorkers(jobId: string): Promise<ClearWorkersResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/clear-workers`,
       {
         method: 'POST',
@@ -2515,7 +2692,7 @@ export const adminApi = {
    * Use when auto-trigger fails after reset, or to re-run processing.
    */
   async triggerWorker(jobId: string, workerType: string = "video"): Promise<TriggerWorkerResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/trigger-worker`,
       {
         method: 'POST',
@@ -2534,7 +2711,7 @@ export const adminApi = {
    * Use when you've edited artist/title and need screens to reflect the new metadata.
    */
   async regenerateScreens(jobId: string): Promise<RegenerateScreensResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/regenerate-screens`,
       {
         method: 'POST',
@@ -2549,7 +2726,7 @@ export const adminApi = {
    * Unlike reset (which just changes state), restart actually triggers workers.
    */
   async restartJob(jobId: string, options: RestartJobRequest): Promise<RestartJobResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/restart`,
       {
         method: 'POST',
@@ -2568,7 +2745,7 @@ export const adminApi = {
    * Switch from YouTube URL to audio search mode.
    */
   async overrideAudioSource(jobId: string, request: OverrideAudioSourceRequest): Promise<OverrideAudioSourceResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/override-audio-source`,
       {
         method: 'POST',
@@ -2590,7 +2767,7 @@ export const adminApi = {
    * Get all blocklists
    */
   async getBlocklists(): Promise<BlocklistsResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists`,
       { headers: getAuthHeaders() }
     );
@@ -2601,7 +2778,7 @@ export const adminApi = {
    * Add a disposable domain
    */
   async addDisposableDomain(domain: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/disposable-domains`,
       {
         method: 'POST',
@@ -2616,7 +2793,7 @@ export const adminApi = {
    * Remove a disposable domain
    */
   async removeDisposableDomain(domain: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/disposable-domains/${encodeURIComponent(domain)}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
@@ -2627,7 +2804,7 @@ export const adminApi = {
    * Add a blocked email
    */
   async addBlockedEmail(email: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/blocked-emails`,
       {
         method: 'POST',
@@ -2642,7 +2819,7 @@ export const adminApi = {
    * Remove a blocked email
    */
   async removeBlockedEmail(email: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/blocked-emails/${encodeURIComponent(email)}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
@@ -2653,7 +2830,7 @@ export const adminApi = {
    * Add a blocked IP
    */
   async addBlockedIP(ipAddress: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/blocked-ips`,
       {
         method: 'POST',
@@ -2668,7 +2845,7 @@ export const adminApi = {
    * Remove a blocked IP
    */
   async removeBlockedIP(ipAddress: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/blocked-ips/${encodeURIComponent(ipAddress)}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
@@ -2676,7 +2853,7 @@ export const adminApi = {
   },
 
   async syncDisposableDomains(): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/sync`,
       { method: 'POST', headers: getAuthHeaders() }
     );
@@ -2684,7 +2861,7 @@ export const adminApi = {
   },
 
   async addAllowlistedDomain(domain: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/allowlisted-domains`,
       {
         method: 'POST',
@@ -2696,7 +2873,7 @@ export const adminApi = {
   },
 
   async removeAllowlistedDomain(domain: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/blocklists/allowlisted-domains/${encodeURIComponent(domain)}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
@@ -2706,7 +2883,7 @@ export const adminApi = {
   // YouTube Upload Queue
 
   async getYouTubeQueue(): Promise<YouTubeQueueListResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/youtube-queue`,
       { headers: getAuthHeaders() }
     );
@@ -2714,7 +2891,7 @@ export const adminApi = {
   },
 
   async retryYouTubeUpload(jobId: string): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/youtube-queue/${encodeURIComponent(jobId)}/retry`,
       { method: 'POST', headers: getAuthHeaders() }
     );
@@ -2722,7 +2899,7 @@ export const adminApi = {
   },
 
   async processYouTubeQueue(): Promise<SuccessResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/rate-limits/youtube-queue/process`,
       { method: 'POST', headers: getAuthHeaders() }
     );
@@ -2738,7 +2915,7 @@ export const adminApi = {
     if (params?.days) searchParams.set('days', String(params.days));
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
     const url = `${API_BASE_URL}/api/admin/payments/summary${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
@@ -2748,7 +2925,7 @@ export const adminApi = {
     if (params?.group_by) searchParams.set('group_by', params.group_by);
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
     const url = `${API_BASE_URL}/api/admin/payments/revenue-chart${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
@@ -2768,12 +2945,12 @@ export const adminApi = {
     if (params?.email) searchParams.set('email', params.email);
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
     const url = `${API_BASE_URL}/api/admin/payments${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
   async getPaymentDetail(sessionId: string): Promise<PaymentRecord> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/payments/${encodeURIComponent(sessionId)}`,
       { headers: getAuthHeaders() }
     );
@@ -2781,7 +2958,7 @@ export const adminApi = {
   },
 
   async getStripeBalance(): Promise<StripeBalance> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/payments/balance`,
       { headers: getAuthHeaders() }
     );
@@ -2789,7 +2966,7 @@ export const adminApi = {
   },
 
   async getPayouts(limit: number = 20): Promise<PayoutRecord[]> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/payments/payouts?limit=${limit}`,
       { headers: getAuthHeaders() }
     );
@@ -2797,7 +2974,7 @@ export const adminApi = {
   },
 
   async getDisputes(): Promise<DisputeRecord[]> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/payments/disputes`,
       { headers: getAuthHeaders() }
     );
@@ -2805,7 +2982,7 @@ export const adminApi = {
   },
 
   async getUserPayments(email: string): Promise<UserPaymentHistory> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/payments/by-user/${encodeURIComponent(email)}`,
       { headers: getAuthHeaders() }
     );
@@ -2818,12 +2995,12 @@ export const adminApi = {
     if (params?.event_type) searchParams.set('event_type', params.event_type);
     if (params?.status) searchParams.set('status', params.status);
     const url = `${API_BASE_URL}/api/admin/payments/webhook-events${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
   async refundPayment(sessionId: string, request: RefundRequest): Promise<RefundResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/payments/${encodeURIComponent(sessionId)}/refund`,
       {
         method: 'POST',
@@ -2846,12 +3023,12 @@ export const adminApi = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
     if (params?.search) searchParams.set('search', params.search);
     const url = `${API_BASE_URL}/api/admin/edit-reviews${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
   async getEditReview(jobId: string): Promise<EditReviewDetail> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/edit-reviews/${encodeURIComponent(jobId)}`,
       { headers: getAuthHeaders() }
     );
@@ -2870,12 +3047,12 @@ export const adminApi = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
     if (params?.search) searchParams.set('search', params.search);
     const url = `${API_BASE_URL}/api/admin/audio-edit-reviews${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
   async getAudioEditReview(jobId: string): Promise<AudioEditReviewDetail> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/audio-edit-reviews/${encodeURIComponent(jobId)}`,
       { headers: getAuthHeaders() }
     );
@@ -2884,7 +3061,7 @@ export const adminApi = {
 
   // Anti-abuse investigation endpoints
   async getAbuseCorrelations(): Promise<AbuseCorrelationsResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/abuse/correlations`,
       { headers: getAuthHeaders() }
     );
@@ -2896,12 +3073,12 @@ export const adminApi = {
     if (params?.min_jobs) searchParams.set('min_jobs', String(params.min_jobs));
     if (params?.max_spend !== undefined) searchParams.set('max_spend', String(params.max_spend));
     const url = `${API_BASE_URL}/api/admin/abuse/suspicious${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
   async getAbuseRelated(email: string): Promise<AbuseRelatedResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/abuse/related/${encodeURIComponent(email)}`,
       { headers: getAuthHeaders() }
     );
@@ -2909,7 +3086,7 @@ export const adminApi = {
   },
 
   async getAbuseByIp(ip: string): Promise<AbuseByIpResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/abuse/by-ip/${encodeURIComponent(ip)}`,
       { headers: getAuthHeaders() }
     );
@@ -2917,7 +3094,7 @@ export const adminApi = {
   },
 
   async getAbuseByFingerprint(fingerprint: string): Promise<AbuseByFingerprintResponse> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/abuse/by-fingerprint/${encodeURIComponent(fingerprint)}`,
       { headers: getAuthHeaders() }
     );
@@ -2925,7 +3102,7 @@ export const adminApi = {
   },
 
   async getIpInfo(ip: string): Promise<IpGeoInfo> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/abuse/ip-info/${encodeURIComponent(ip)}`,
       { headers: getAuthHeaders() }
     );
@@ -2933,7 +3110,7 @@ export const adminApi = {
   },
 
   async getIpInfoBatch(ips: string[]): Promise<Record<string, IpGeoInfo>> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/admin/abuse/ip-info/batch`,
       {
         method: 'POST',
@@ -2957,7 +3134,7 @@ export const adminApi = {
     if (params?.exclude_test !== undefined) searchParams.set('exclude_test', String(params.exclude_test));
 
     const url = `${API_BASE_URL}/api/admin/feedback${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       headers: getAuthHeaders()
     });
     return handleResponse(response);
@@ -2969,7 +3146,7 @@ export const adminApi = {
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     const url = `${API_BASE_URL}/api/referrals/admin/links${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await apiFetch(url, { headers: getAuthHeaders() });
     return handleResponse(response);
   },
 
@@ -2981,7 +3158,7 @@ export const adminApi = {
     discount_percent?: number;
     kickback_percent?: number;
   }): Promise<{ ok: boolean; code: string; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/vanity`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/referrals/admin/vanity`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -2990,7 +3167,7 @@ export const adminApi = {
   },
 
   async updateReferralLink(code: string, updates: Record<string, any>): Promise<{ ok: boolean; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/links/${encodeURIComponent(code)}`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/referrals/admin/links/${encodeURIComponent(code)}`, {
       method: 'PUT',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
@@ -2999,7 +3176,7 @@ export const adminApi = {
   },
 
   async generateFlyer(code: string, theme: 'light' | 'dark', qrDataUrl: string): Promise<Blob> {
-    const response = await fetch(`${API_BASE_URL}/api/referrals/admin/links/${encodeURIComponent(code)}/flyer`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/referrals/admin/links/${encodeURIComponent(code)}/flyer`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme, qr_data_url: qrDataUrl }),
@@ -3343,7 +3520,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       if (isDuet !== undefined) {
         payload.is_duet = isDuet
       }
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/corrections`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/corrections`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3358,7 +3535,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * Submit human annotations/feedback on corrections
      */
     async submitAnnotations(annotations: Omit<CorrectionAnnotation, 'annotation_id' | 'timestamp'>[]): Promise<void> {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/v1/annotations`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/v1/annotations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3370,7 +3547,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     },
 
     async submitEditLog(editLog: EditLog): Promise<void> {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/edit-log`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/edit-log`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3385,7 +3562,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * Update enabled correction handlers and get recalculated corrections
      */
     async updateHandlers(handlers: string[]): Promise<CorrectionData> {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/handlers`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/handlers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3400,7 +3577,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * Add lyrics from a new source
      */
     async addLyrics(source: string, lyrics: string): Promise<CorrectionData> {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/add-lyrics`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/add-lyrics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3417,7 +3594,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * Search for lyrics from configured providers
      */
     async searchLyrics(artist: string, title: string, forceSources: string[] = []): Promise<SearchLyricsResponse> {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/search-lyrics`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/search-lyrics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3453,7 +3630,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       if (isDuet !== undefined) {
         body.is_duet = isDuet
       }
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/preview-video`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/preview-video`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3477,7 +3654,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
      * Complete the review and trigger video rendering
      */
     async completeReview(): Promise<{ status: string; job_status: string; message: string }> {
-      const response = await fetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/complete-review`, {
         method: 'POST',
         headers: getAuthHeaders()
       })
@@ -3486,7 +3663,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
 
     // Review session methods
     async saveReviewSession(data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/sessions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -3503,21 +3680,21 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     },
 
     async listReviewSessions() {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/sessions`, {
         headers: getAuthHeaders()
       })
       return handleResponse<{ sessions: ReviewSession[] }>(response)
     },
 
     async getReviewSession(sessionId: string) {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions/${sessionId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/sessions/${sessionId}`, {
         headers: getAuthHeaders()
       })
       return handleResponse<ReviewSessionWithData>(response)
     },
 
     async deleteReviewSession(sessionId: string) {
-      const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/sessions/${sessionId}`, {
+      const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/sessions/${sessionId}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       })
@@ -3532,7 +3709,7 @@ export const lyricsReviewApi = {
    * Get correction data for a job
    */
   async getCorrectionData(jobId: string): Promise<CorrectionData> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/correction-data`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/correction-data`, {
       headers: getAuthHeaders()
     })
     return handleResponse<CorrectionData>(response)
@@ -3557,7 +3734,7 @@ export const lyricsReviewApi = {
     instrumentalSelection: InstrumentalSelectionType,
     isDuet?: boolean
   ): Promise<{ status: string; instrumental_selection: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/complete`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3577,7 +3754,7 @@ export const lyricsReviewApi = {
    * Uses the review API endpoint (for cloud mode)
    */
   async getInstrumentalAnalysis(jobId: string): Promise<InstrumentalAnalysis> {
-    const response = await fetch(`${API_BASE_URL}/api/review/${jobId}/instrumental-analysis`, {
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/instrumental-analysis`, {
       headers: getAuthHeaders()
     })
     return handleResponse(response)
@@ -3588,7 +3765,7 @@ export const lyricsReviewApi = {
    * Uses the review API endpoint (for cloud mode)
    */
   async getWaveformData(jobId: string, numPoints: number = 1000): Promise<WaveformData> {
-    const response = await fetch(
+    const response = await apiFetch(
       `${API_BASE_URL}/api/review/${jobId}/waveform-data?num_points=${numPoints}`,
       { headers: getAuthHeaders() }
     )
@@ -3618,7 +3795,7 @@ export const lyricsReviewApi = {
 export async function warmupEncodingWorker(jobId: string): Promise<void> {
   if (!jobId) return
   try {
-    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/warmup/${encodeURIComponent(jobId)}`, {
+    await apiFetch(`${API_BASE_URL}/api/internal/encoding-worker/warmup/${encodeURIComponent(jobId)}`, {
       method: 'POST',
       headers: getAuthHeaders(),
     })
@@ -3634,7 +3811,7 @@ export async function warmupEncodingWorker(jobId: string): Promise<void> {
 export async function heartbeatEncodingWorker(jobId: string): Promise<void> {
   if (!jobId) return
   try {
-    await fetch(`${API_BASE_URL}/api/internal/encoding-worker/heartbeat/${encodeURIComponent(jobId)}`, {
+    await apiFetch(`${API_BASE_URL}/api/internal/encoding-worker/heartbeat/${encodeURIComponent(jobId)}`, {
       method: 'POST',
       headers: getAuthHeaders(),
     })
@@ -3993,13 +4170,13 @@ export { ApiError };
 
 export async function getReferralInterstitial(code: string, noTrack = false): Promise<ReferralInterstitial> {
   const url = `${API_BASE_URL}/api/referrals/r/${encodeURIComponent(code)}${noTrack ? '?no_track=true' : ''}`;
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (!response.ok) throw new Error('Failed to fetch referral info');
   return response.json();
 }
 
 export async function getReferralDashboard(): Promise<ReferralDashboard> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/me`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/referrals/me`, {
     headers: getAuthHeaders(),
   });
   if (!response.ok) throw new Error('Failed to fetch referral dashboard');
@@ -4010,7 +4187,7 @@ export async function updateReferralLink(updates: {
   display_name?: string;
   custom_message?: string;
 }): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/me`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/referrals/me`, {
     method: 'PUT',
     headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
@@ -4019,7 +4196,7 @@ export async function updateReferralLink(updates: {
 }
 
 export async function startConnectOnboarding(): Promise<{ account_id: string; onboarding_url: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/me/connect`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/referrals/me/connect`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -4028,7 +4205,7 @@ export async function startConnectOnboarding(): Promise<{ account_id: string; on
 }
 
 export async function getConnectDashboardLink(): Promise<{ url: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/me/connect/dashboard-link`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/referrals/me/connect/dashboard-link`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -4037,7 +4214,7 @@ export async function getConnectDashboardLink(): Promise<{ url: string }> {
 }
 
 export async function getConnectUpdateLink(): Promise<{ url: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/me/connect/update-link`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/referrals/me/connect/update-link`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -4046,7 +4223,7 @@ export async function getConnectUpdateLink(): Promise<{ url: string }> {
 }
 
 export async function requestVanityUrl(desiredCode: string): Promise<{ ok: boolean; message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/me/vanity-request`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/referrals/me/vanity-request`, {
     method: 'POST',
     headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ desired_code: desiredCode }),
@@ -4059,7 +4236,7 @@ export async function requestVanityUrl(desiredCode: string): Promise<{ ok: boole
 }
 
 export async function generateFlyer(theme: 'light' | 'dark', qrDataUrl: string): Promise<Blob> {
-  const response = await fetch(`${API_BASE_URL}/api/referrals/me/flyer`, {
+  const response = await apiFetch(`${API_BASE_URL}/api/referrals/me/flyer`, {
     method: 'POST',
     headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify({ theme, qr_data_url: qrDataUrl }),

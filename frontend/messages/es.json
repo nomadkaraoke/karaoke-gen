@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
     "variantReissue": "Reedición"
+  },
+  "backendStatus": {
+    "reconnecting": "Reconectando…",
+    "unavailable": {
+      "body": "Esto suele ser temporal — por favor, inténtalo de nuevo en un par de minutos.",
+      "reassurance": "Los videos de karaoke que se estén creando en este momento no se verán afectados y seguirán procesándose.",
+      "title": "Tenemos problemas para conectar con nuestros servidores"
+    },
+    "dismiss": "Descartar"
   }
 }

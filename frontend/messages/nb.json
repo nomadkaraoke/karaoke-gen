@@ -1683,5 +1683,14 @@
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
     "variantReissue": "Nyutgivelse"
+  },
+  "backendStatus": {
+    "reconnecting": "Kobler til på nytt…",
+    "unavailable": {
+      "body": "Dette er vanligvis midlertidig — prøv igjen om et par minutter.",
+      "reassurance": "Eventuelle karaokevideoer som lages akkurat nå påvirkes ikke, og vil fortsette å behandles.",
+      "title": "Vi har problemer med å nå serverne våre"
+    },
+    "dismiss": "Lukk"
   }
 }
