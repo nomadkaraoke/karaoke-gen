@@ -7,7 +7,11 @@
  */
 
 import { apiFetch, BackendUnavailableError } from '@/lib/api'
-import { getBackendStatus, reportBackendOnline } from '@/lib/backend-status'
+import {
+  getBackendStatus,
+  reportBackendOnline,
+  UNAVAILABLE_AFTER_MS,
+} from '@/lib/backend-status'
 
 function mockResponse(status: number, body: unknown = {}): Response {
   return {
@@ -63,6 +67,10 @@ describe('apiFetch', () => {
 
     await assertion
     expect(fetchMock).toHaveBeenCalledTimes(3)
+    // A fast-failing retry budget (~2s) still only shows the subtle "reconnecting"
+    // hint — the full banner is gated on the UNAVAILABLE_AFTER_MS (10s) clock.
+    expect(getBackendStatus()).toBe('reconnecting')
+    await jest.advanceTimersByTimeAsync(UNAVAILABLE_AFTER_MS)
     expect(getBackendStatus()).toBe('unavailable')
   })
 
@@ -78,7 +86,43 @@ describe('apiFetch', () => {
 
     await assertion
     expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(getBackendStatus()).toBe('reconnecting')
+    await jest.advanceTimersByTimeAsync(UNAVAILABLE_AFTER_MS)
     expect(getBackendStatus()).toBe('unavailable')
+  })
+
+  it('reads method + signal from a Request input (a POST Request is not retried)', async () => {
+    // jsdom has no global Request; provide a minimal stand-in with the fields
+    // apiFetch reads (url/method/signal) so `input instanceof Request` engages.
+    class FakeRequest {
+      url: string
+      method: string
+      signal?: AbortSignal
+      constructor(url: string, init?: { method?: string; signal?: AbortSignal }) {
+        this.url = url
+        this.method = init?.method ?? 'GET'
+        this.signal = init?.signal
+      }
+    }
+    ;(globalThis as unknown as { Request: unknown }).Request = FakeRequest
+
+    try {
+      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+
+      // A Request carrying method=POST must be treated as a non-idempotent mutation:
+      // one attempt only, never replayed (which could double-submit).
+      const req = new FakeRequest('http://localhost/api/jobs/create-from-url', {
+        method: 'POST',
+      })
+
+      await expect(apiFetch(req as unknown as Request)).rejects.toBeInstanceOf(
+        BackendUnavailableError,
+      )
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(getBackendStatus()).toBe('reconnecting')
+    } finally {
+      delete (globalThis as unknown as { Request?: unknown }).Request
+    }
   })
 
   it('recovers transparently when a retried GET succeeds on a later attempt', async () => {

@@ -5,7 +5,7 @@
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
-import { reportBackendOnline, reportBackendTrouble, reportBackendUnavailable } from './backend-status';
+import { reportBackendOnline, reportBackendTrouble } from './backend-status';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -489,16 +489,32 @@ const TRANSIENT_STATUS = new Set([502, 503, 504, 520, 521, 522, 523, 524]);
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** True only for calls to our own backend API — GCS signed-URL uploads and any other
- *  third-party host pass straight through apiFetch untouched (no timeout/retry/status). */
+ *  third-party host pass straight through apiFetch untouched (no timeout/retry/status).
+ *  Resolves relative URLs and Request inputs (whose `.url` is always absolute) against
+ *  the current origin, then matches on `/api/*` path + backend origin. */
 function isManagedBackendUrl(input: RequestInfo | URL): boolean {
   const urlStr =
     typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-  if (API_BASE_URL && urlStr.startsWith(API_BASE_URL)) {
-    const path = urlStr.slice(API_BASE_URL.length);
-    return path === '/api' || path.startsWith('/api/') || path.startsWith('/api?');
+  const base =
+    typeof window !== 'undefined' ? window.location.href : 'http://localhost';
+  let parsed: URL;
+  try {
+    parsed = new URL(urlStr, base);
+  } catch {
+    return false;
   }
-  // Local dev / same-origin proxy uses relative URLs.
-  return urlStr.startsWith('/api/') || urlStr.startsWith('/api?') || urlStr === '/api';
+  const isApiPath = parsed.pathname === '/api' || parsed.pathname.startsWith('/api/');
+  if (!isApiPath) return false;
+  if (API_BASE_URL) {
+    // Absolute backend URL (production): must target the configured backend origin.
+    try {
+      return parsed.origin === new URL(API_BASE_URL).origin;
+    } catch {
+      return false;
+    }
+  }
+  // Relative / same-origin proxy (local dev): our own origin owns /api/*.
+  return typeof window === 'undefined' || parsed.origin === window.location.origin;
 }
 
 export interface ApiFetchOptions {
@@ -524,14 +540,19 @@ export async function apiFetch(
     return globalThis.fetch(input, init);
   }
 
-  const method = (init?.method ?? 'GET').toUpperCase();
+  // The method/signal can arrive either on `init` or on a `Request` input. Read
+  // both so a POST Request isn't mis-read as a retryable GET and its abort signal
+  // isn't dropped.
+  const request =
+    typeof Request !== 'undefined' && input instanceof Request ? input : undefined;
+  const method = (init?.method ?? request?.method ?? 'GET').toUpperCase();
   const isGet = method === 'GET';
   // Never auto-retry non-GET: replaying a create/submit/payment could double-charge
   // or duplicate a job. Reads are idempotent and safe to retry.
   const allowRetry = isGet && (opts?.retry ?? true);
   const hardTimeout = opts?.timeoutMs ?? HARD_TIMEOUT_MS;
   const maxAttempts = allowRetry ? GET_MAX_ATTEMPTS : 1;
-  const callerSignal = init?.signal ?? undefined;
+  const callerSignal = init?.signal ?? request?.signal ?? undefined;
 
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -561,12 +582,14 @@ export async function apiFetch(
       // The CALLER aborted (navigation, their own timeout) — not a backend problem.
       if (callerSignal?.aborted) throw err;
       lastError = err;
+      // reportBackendTrouble() (above) armed the escalation timer, so the banner
+      // still escalates to "unavailable" strictly on the UNAVAILABLE_AFTER_MS clock
+      // rather than the instant a fast-failing retry budget (~2s) runs out.
       reportBackendTrouble();
       if (attempt < maxAttempts) {
         await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
         continue;
       }
-      if (isGet) reportBackendUnavailable();
       throw new BackendUnavailableError(err);
     }
     cleanup();
@@ -578,7 +601,6 @@ export async function apiFetch(
         continue;
       }
       if (isGet) {
-        reportBackendUnavailable();
         throw new BackendUnavailableError(undefined, response.status);
       }
       // Non-GET: hand the real transient response back so the caller's handleResponse

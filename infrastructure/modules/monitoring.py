@@ -210,7 +210,8 @@ def create_alert_policies(
     #   against the public health endpoint (through the Cloudflare edge, exactly
     #   the path real users take), and page only when it FAILS from more than one
     #   checker location — so a single flaky checker can't page us, but a genuine
-    #   hard-down (every checker failing) does within ~1-2 min.
+    #   hard-down (every checker failing) does after the retest window (~5-6 min
+    #   with the 300s `duration`; see the HISTORY note on that below).
     #
     #   NOTE on granularity: with selected_regions unset the check runs from all
     #   of Google's checker locations (several are in the USA alone). The
