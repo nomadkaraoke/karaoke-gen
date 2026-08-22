@@ -367,9 +367,20 @@ class VideoGenerator:
 
     def _create_background(self, format, resolution):
         """Create or load the background image."""
-        if format["background_image"] and os.path.exists(format["background_image"]):
-            self.logger.info(f"Using background image file: {format['background_image']}")
-            background = Image.open(format["background_image"])
+        background_image = format["background_image"]
+        if background_image:
+            if not os.path.exists(background_image):
+                # A themed background was specified but the file is missing.
+                # Refuse to silently fall back to a flat color on a paid title/end
+                # card — mirrors the karaoke video path, which raises on a missing
+                # background image. (Fallback audit, Theme 4.)
+                raise FileNotFoundError(
+                    f"Background image not found: {background_image}. The theme "
+                    "specifies a background image but the file is missing — refusing "
+                    "to silently render a flat color instead."
+                )
+            self.logger.info(f"Using background image file: {background_image}")
+            background = Image.open(background_image)
         else:
             self.logger.info(f"Using background color: {format['background_color']}")
             background = Image.new("RGB", resolution, color=self.hex_to_rgb(format["background_color"]))

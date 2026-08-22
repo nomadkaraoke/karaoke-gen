@@ -414,7 +414,17 @@ class VideoGenerator:
         karaoke_styles = self.styles.get("karaoke", {})
         font_path = karaoke_styles.get("font_path")
 
-        if font_path and os.path.isfile(font_path):
+        if font_path:
+            if not os.path.isfile(font_path):
+                # The theme specifies a branded karaoke font but the file is
+                # missing. Refuse to silently render the whole song with a libass
+                # system-fallback font on a paid deliverable — mirrors the
+                # background-image check in __init__. (Fallback audit, Theme 4.)
+                raise FileNotFoundError(
+                    f"Karaoke font not found: {font_path}. The theme specifies a "
+                    "branded font but the file is missing — refusing to silently "
+                    "render with a system fallback font."
+                )
             font_dir = os.path.dirname(font_path)
             escaped_font_dir = self._escape_ffmpeg_filter_path(font_dir)
             ass_filter += f":fontsdir={escaped_font_dir}"
