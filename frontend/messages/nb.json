@@ -239,7 +239,10 @@
     "loadingJobs": "Laster inn jobber...",
     "noJobsMatchFilters": "Ingen jobber samsvarer med filtrene dine.",
     "noJobsYet": "Ingen jobber ennå. Opprett en for å komme i gang!",
-    "referrals": "Henvisninger"
+    "referrals": "Henvisninger",
+    "bulkMode": "Bulk",
+    "singleMode": "Enkel",
+    "submitModeToggle": "Enkeltvis eller samlet innsending"
   },
   "auth": {
     "noVerificationToken": "Ingen bekreftelseskode oppgitt",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Vi fant ikke den lenken",
     "resendSuccessBody": "Vi har sendt en ny innloggingslenke til {maskedEmail}. Den er gyldig i 24 timer.",
     "resendSuccessTitle": "Sjekk e-posten din",
-    "resending": "Sender..."
+    "resending": "Sender...",
+    "confirmBody": "Av sikkerhetshensyn ber vi deg klikke på knappen nedenfor for å fullføre innloggingen. Dette ekstra trinnet forhindrer at automatiserte e-postskannere bruker opp lenken din før deg.",
+    "confirmButton": "Fullfør innlogging",
+    "confirmTitle": "Fullfør innloggingen"
   },
   "payment": {
     "title": "Betaling vellykket!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Koder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Reserve",
+    "fallbackNote": "Primærkapasitet er utilgjengelig — omdirigert til en reserveinstans.",
+    "liveWorker": "Aktiv arbeider"
   },
   "credits": {
     "title": "Kjøp flere kreditter",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Lim inn en lenke",
     "urlSupportedSitesHint": "Fungerer med YouTube, Facebook, SoundCloud, TikTok, Vimeo og hundrevis av andre nettsteder.",
     "urlSupportedSitesLink": "Se alle støttede nettsteder",
-    "useThisUrl": "Bruk denne URL-en"
+    "useThisUrl": "Bruk denne URL-en",
+    "matchCorrectedTo": "Rettet til {value} – du skrev «{typed}»",
+    "matchDidYouMean": "Mente du?",
+    "matchKeepMine": "behold det jeg skrev",
+    "matchTidiedTo": "Justert til {value}",
+    "matchUndo": "Angre",
+    "matchChecking": "Sjekker sangdetaljer…",
+    "matchUseCorrection": "bruk rettelsen",
+    "matchUseTidied": "bruk oppryddet versjon",
+    "matchUsingTyped": "Bruker det du skrev inn: {value}",
+    "checkingUrl": "Sjekker…",
+    "submitNetworkError": "Nettverksfeil — vennligst sjekk tilkoblingen din og prøv igjen.",
+    "submitError": "Noe gikk galt. Vennligst prøv igjen."
   },
   "jobStatus": {
     "settingUp": "Setter opp",
@@ -576,7 +597,9 @@
     "correcting": "Korrigerer",
     "lyricsDone": "Tekst ferdig",
     "lyrics": "Tekst",
-    "confirmDurationCost": "Bekreft pris"
+    "confirmDurationCost": "Bekreft pris",
+    "findingAudioSources": "Finner lydkilder (prøver på nytt)",
+    "waitingForCapacity": "Venter på kodingsserver (prøver på nytt)"
   },
   "jobCard": {
     "actionNeeded": "Handling kreves",
@@ -588,7 +611,9 @@
     "autoSelect": "Vil automatisk velge",
     "willAutoSelectFirst": "Vil automatisk velge første",
     "noOutputsAvailable": "Ingen utdata tilgjengelig ennå",
-    "confirmCost": "Bekreft kostnad"
+    "confirmCost": "Bekreft kostnad",
+    "makingPublicInProgress": "Gjør dette sporet offentlig — rendrer på nytt med standard profilering og publiserer på nytt. Dette tar vanligvis 15–30 minutter.",
+    "waitingForEncodingServer": "(venter på ledig kodingsserver)"
   },
   "jobActions": {
     "delete": "Slett",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Sangtittel",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Laster inn forhåndsvisning av tittelskjerm"
   },
   "editTrack": {
     "title": "Rediger fullført spor",
@@ -739,7 +765,22 @@
     "views": "{count} visninger",
     "moreVersions": "+{count} flere",
     "select": "Velg",
-    "creditCost": "{credits} kreditter"
+    "creditCost": "{credits} kreditter",
+    "chooseFile": "Velg en lydfil (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Vi fant ingen lydkilder. Prøv å endre artist eller tittel ovenfor og søk på nytt, eller legg til din egen lyd via en URL eller filopplasting.",
+    "pasteUrl": "Lim inn URL",
+    "researchFailed": "Søket mislyktes. Prøv igjen.",
+    "searchAgain": "Søk på nytt",
+    "selectFailed": "Kunne ikke velge lyd",
+    "uploadFailed": "Opplastingen mislyktes. Prøv igjen.",
+    "urlFailed": "Kunne ikke bruke den URL-en. Prøv en annen kilde.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Bruk denne filen",
+    "useThisUrl": "Bruk denne URL-en",
+    "artistLabel": "Artist",
+    "loading": "Laster...",
+    "titleLabel": "Tittel",
+    "uploadFileAction": "Last opp fil"
   },
   "audioEditor": {
     "loading": "Laster inn lydredigering...",
@@ -776,7 +817,17 @@
     "undoFailed": "Angre mislyktes",
     "redoFailed": "Gjør om mislyktes",
     "restoreFailed": "Gjenoppretting mislyktes — noen redigeringer kan ha blitt utelatt",
-    "submitFailed": "Innsending mislyktes"
+    "submitFailed": "Innsending mislyktes",
+    "fadeIn": "Ton inn",
+    "fadeInSelection": "Ton inn over det valgte området",
+    "fadeOut": "Ton ut",
+    "fadeOutSelection": "Ton ut over det valgte området",
+    "fadeInDisabledHint": "For å tone inn, velg et område som starter helt i begynnelsen av sporet",
+    "fadeOutDisabledHint": "For å tone ut, velg et område som går helt til slutten av sporet",
+    "trimEndDisabledHint": "For å trimme slutten, velg et område som går helt til slutten av sporet",
+    "trimEndSelection": "Fjern alt etter markeringen",
+    "trimStartDisabledHint": "For å trimme starten, velg et område som starter helt i begynnelsen av sporet",
+    "trimStartSelection": "Fjern alt før markeringen"
   },
   "audioEditRestore": {
     "title": "Lagrede lydredigeringsøkter",
@@ -803,7 +854,7 @@
       "acceptAll": "Godta alle",
       "revertAll": "Tilbakestill alle",
       "undoAll": "Angre alle",
-      "resetAllChanges": "Tilbakestill alle endringer til den originale AI-korrigerte teksten",
+      "resetAllChanges": "Tilbakestill alle endringer til den opprinnelige korrigerte teksten",
       "undo": "Angre",
       "redo": "Gjør om",
       "findReplace": "Finn/Erstatt",
@@ -816,7 +867,11 @@
       "playback": "Avspilling",
       "audioLoadError": "Kunne ikke laste inn lyd",
       "audioStillLoading": "Lyden laster fortsatt inn...",
-      "loadingAudio": "Laster inn lyd..."
+      "loadingAudio": "Laster inn lyd...",
+      "autoCorrect": "Autokorrektur",
+      "autoCorrectDesc": "Sammenligner transkripsjonen med referanseteksten og utfører rettelser på ordnivå for deg. Rettede ord vises i lilla.",
+      "autoCorrectedCount": "Autokorrigert · {count}",
+      "autoCorrectedDesc": "Vi utførte {count, plural, =1 {# autokorrigering} other {# autokorrigeringer}} (vist i lilla). Klikk for å se detaljene og angre de du er uenig i."
     },
     "guidance": {
       "showTips": "Vis tips",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "De oransje fremhevede ordene er hull — seksjoner som ikke kunne matches med referanseteksten og kan inneholde feil (f.eks. feilhørte ord som høres like ut).",
       "useNAndP": "Bruk N og P for å hoppe mellom hull. For hvert hull, klikk spill av ved siden av linjen og sammenlign det du hører med referanseteksten til høyre, og klikk deretter på et ord for å redigere eller slette det.",
       "watchOutForPhantomWords": "Se opp for fantomord som \"og\" i starten eller slutten av linjer — transkripsjonen legger ofte til disse.",
-      "tryTimelineView": "Prøv tidslinjevisningen for å oppdage uvanlig lange ord (10+ sekunder), som vanligvis indikerer et timingproblem.",
+      "tryTimelineView": "Ord over 2s og pauser over 2s markeres med oransje varighet — sjekk disse for timing-problemer. Bytt til Avansert for å se hver linje strukket ut i en tidslinje.",
       "watchFullTutorial": "Se hele veiledningen",
       "correctionHandlers": "Korrigeringshåndterere",
       "anchorSequences": "Ankersekvenser",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Ukorrigerte hull",
       "uncorrectedGapsDesc": "Seksjoner som kan trenge manuell gjennomgang",
       "wordsUncorrected": "Ord ukorrigert",
-      "numberOfGaps": "Antall hull"
+      "numberOfGaps": "Antall hull",
+      "autoCorrectTip": "{count, plural, =1 {# ord ble autokorrigert} other {# ord ble autokorrigert}} for deg (vist i lilla, med det opprinnelige ordet over). Spill av hver korrigerte linje og sjekk at ordene fortsatt stemmer overens — spesielt de som er understreket i gult, hvor timingen ble estimert og sannsynligvis må justeres.",
+      "autoCorrected": "Autokorrigert",
+      "timingEstimated": "Timing estimert"
     },
     "transcription": {
       "syncedLyrics": "Synkronisert tekst",
@@ -854,7 +912,13 @@
       "text": "Tekst",
       "timeline": "Tidslinje",
       "deleteSegment": "Slett segment",
-      "playSegment": "Spill av segment"
+      "playSegment": "Spill av segment",
+      "aiTooltipEstimated": "Autokorrigert av systemet vårt. Timingen her ble estimert, så spill av denne linjen og juster ordtimingen om nødvendig.",
+      "aiTooltipReplaced": "Autokorrigert av systemet vårt fra \"{original}\". Spill av denne linjen for å bekrefte at ordene fortsatt stemmer overens.",
+      "aiTooltipReplacedEstimated": "Autokorrigert av systemet vårt fra \"{original}\". Timingen ble estimert, så spill av denne linjen og juster ordtimingen om nødvendig.",
+      "longGapWarning": "{seconds} s mellomrom før neste ord — ofte et feilplassert tidlig ord (f.eks. et fantom-\"og\"). Klikk for å spille av herfra.",
+      "longWordWarning": "Dette ordet varer i {seconds} s — uvanlig lenge. Spill av linjen og sjekk at sluttiden ikke strekker seg inn i instrumentalen.",
+      "playFromGap": "Spill av fra slutten av dette mellomrommet"
     },
     "editActionBar": {
       "reset": "Tilbakestill",
@@ -990,7 +1054,9 @@
         "loadingAll": "Laster inn alle ord...",
         "loadingSegment": "Laster inn segment...",
         "noData": "Ingen segmentdata tilgjengelig",
-        "unCorrect": "Fjern korrigering"
+        "unCorrect": "Fjern korrigering",
+        "timingClamped": "Timingen for \"{word}\" var utenfor segmentet — justert til {time}s.",
+        "timingSanitized": "Rettet {count} ord-timing(er) som falt utenfor dette segmentet."
       },
       "findReplace": {
         "title": "Finn og erstatt",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Egendefinert tekst er lagt til. Synkroniser hvert redigerte segment manuelt for å sikre at timingen av ordene stemmer for den tilpassede teksten."
+    },
+    "autoCorrect": {
+      "accept": "Godta forslag",
+      "acceptAll": "Godta alle",
+      "accepted": "Godtatt",
+      "adlibRemovalHint": "Tillat forslag som fjerner bakgrunnsvokal som ikke finnes i referanseteksten",
+      "adlibRemovalLabel": "Foreslå å fjerne adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formatering",
+      "category_grammar": "grammatikk",
+      "category_mishearing": "feilhørt",
+      "category_other": "annet",
+      "category_repeated_chorus_fix": "refreng",
+      "collapse": "Skjul forslag",
+      "confidenceHint": "Hvor sikkert et forslag må være før det vises",
+      "confidenceLabel": "Forslagsfilter",
+      "confidence_all": "Vis alle",
+      "confidence_high": "Høy sikkerhet",
+      "description": "Autokorrektur sammenligner den transkriberte teksten med referansekildene og foreslår rettelser på ordnivå. Du går gjennom hvert forslag — ingenting tas i bruk før du godtar det.",
+      "dismiss": "Lukk forslag",
+      "expand": "Utvid forslag",
+      "insertMarker": "sett inn:",
+      "insertionsHint": "Tillat forslag som setter inn ord som mangler i transkripsjonen",
+      "insertionsLabel": "Foreslå manglende ord",
+      "noReferences": "Ingen referansetekst er tilgjengelig for denne sangen, så det kan ikke genereres forslag. Legg til tekst fra referansepanelet først.",
+      "noSuggestions": "Ingen problemer funnet — det er ingen foreslåtte endringer.",
+      "reject": "Avvis forslag",
+      "rejectAll": "Avvis alle",
+      "rejected": "Avvist",
+      "runButton": "Hent forslag",
+      "running": "Analyserer tekst… dette tar vanligvis 15–60 sekunder.",
+      "staleHint": "Disse ordene ble redigert etter at forslagene ble generert, så dette forslaget gjelder ikke lenger.",
+      "summary": "{total} forslag · {pending} ventende · {accepted} godtatt",
+      "title": "Forslag til autokorrektur",
+      "undo": "Angre dette forslaget",
+      "cancel": "Avbryt",
+      "close": "Lukk",
+      "confidence_balanced": "Balansert",
+      "compareHint": "Tar lengre tid og koster mer, men viser hvilke forslag flere modeller er enige om",
+      "compareLabel": "Sammenlign flere modeller",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Det finnes forskjellige forslag for disse ordene — hvis du godtar én variant, avvises de andre.",
+      "consensusBadge": "{consensus}/{total} modeller",
+      "consensusTooltip": "Foreslått av: {models}",
+      "cachedBadge": "bufret",
+      "cachedTooltip": "Hentet fra en tidligere kjøring på samme sangtekst — det påløp ingen AI-kostnader.",
+      "appliedSummary": "{count} autokorrigeringer utført",
+      "hideDetails": "Skjul detaljer",
+      "rerun": "Kjør på nytt",
+      "revertAllAuto": "Tilbakestill alle",
+      "showDetails": "Vis detaljer"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Estimert — endelig pris bekreftes etter nedlasting",
     "reconcileTitle": "Denne sangen er lengre enn forventet",
     "cancel": "Avbryt"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Laster inn forhåndsvisning av bakgrunn"
+  },
+  "bulk": {
+    "albumModeHint": "Søk etter en artist, velg et album, og velg deretter hvilke spor du vil lage.",
+    "artistSearchPlaceholder": "Søk etter en artist…",
+    "autoPickLossless": "Velg beste lyd automatisk (kun tapsfri)",
+    "autoPickLosslessHint": "Velg lyden automatisk når vi finner et sikkert tapsfritt/FLAC-treff. Andre går til en gjennomgangskø.",
+    "backToAlbums": "Tilbake til album",
+    "backToArtists": "Tilbake til artister",
+    "batchProgressTitle": "Parti med {total} sanger",
+    "batchSettings": "Partiinnstillinger",
+    "byAlbum": "Etter album",
+    "byText": "Etter tekst",
+    "checking": "Sjekker…",
+    "chooseAudio": "Velg lyd",
+    "communityExists": "Community-versjon finnes",
+    "communityExistsWithBrands": "Community-versjon: {brands}",
+    "countAwaiting": "{count} trenger et valg",
+    "countComplete": "{count} fullført",
+    "countFailed": "{count} mislyktes",
+    "countProcessing": "{count} behandles",
+    "countSearching": "{count} søker",
+    "createBatch": "Lag {count} karaokevideoer",
+    "creditsCost": "{cost} kreditter · du har {balance}",
+    "edition": "Utgave",
+    "extra": "Ekstra",
+    "loadingBatch": "Laster inn parti…",
+    "lookupFailed": "Oppslag mislyktes. Vennligst prøv igjen.",
+    "makePrivate": "Hold privat",
+    "makePrivateHint": "Lever kun via Dropbox i stedet for å publisere på YouTube.",
+    "noAlbums": "Ingen album funnet for denne artisten.",
+    "notEnoughCredits": "Du trenger {needed} kreditter, men har {have}.",
+    "overLimit": "Du kan sende inn maksimalt {max} sanger om gangen.",
+    "progressError": "Kunne ikke laste inn fremdrift for partiet.",
+    "reviewQueueHint": "Vi kunne ikke med sikkerhet velge en tapsfri kilde automatisk for disse. Velg en for hver.",
+    "reviewQueueTitle": "Velg lyd for disse sporene",
+    "selectedCount": "{count} sanger valgt",
+    "skipAudioEdit": "Hopp over lydredigering",
+    "skipAudioEditHint": "Bruk hvert spors lyd som den er (ingen trimming).",
+    "skipCustomization": "Hopp over tilpasning",
+    "skipCustomizationHint": "Bruk standardtema og -stil for hvert spor.",
+    "startAnother": "Start et nytt parti",
+    "submitError": "Kunne ikke opprette partiet. Vennligst prøv igjen.",
+    "submitting": "Oppretter parti…",
+    "textModeHint": "Legg til opptil {max} sanger. Vi vil markere de som allerede har en community-versjon.",
+    "title": "Tittel",
+    "tracklistHint": "Live-, remiks- og bonusspor — og sanger som allerede har en community-versjon — er ikke krysset av som standard.",
+    "addSong": "Legg til sang",
+    "artist": "Artist",
+    "buyCredits": "Kjøp kreditter",
+    "removeRow": "Fjern",
+    "trackCount": "{count} spor",
+    "changeEdition": "Endre",
+    "existingVersions": "Eksisterende versjoner:",
+    "usingRelease": "Bruker {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Nyutgivelse"
+  },
+  "backendStatus": {
+    "reconnecting": "Kobler til på nytt…",
+    "unavailable": {
+      "body": "Dette er vanligvis midlertidig — prøv igjen om et par minutter.",
+      "reassurance": "Eventuelle karaokevideoer som lages akkurat nå påvirkes ikke, og vil fortsette å behandles.",
+      "title": "Vi har problemer med å nå serverne våre"
+    },
+    "dismiss": "Lukk"
   }
 }

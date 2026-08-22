@@ -14,6 +14,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 
+from backend.services.encoding_errors import EncodingJobLostError
+
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +66,17 @@ class EncodingOutput:
     lossy_4k_mp4_path: Optional[str] = None  # Final lossy 4K MP4
     lossless_mkv_path: Optional[str] = None  # MKV with FLAC (for YouTube)
     lossy_720p_mp4_path: Optional[str] = None  # 720p web version
+
+    # Standalone 5-second screen videos generated from the title/end images.
+    # Kept so they land in the Dropbox folder (regression after #647/#650 moved
+    # screen generation to the encoder). Not used downstream.
+    title_mov_path: Optional[str] = None  # "<artist> - <title> (Title).mov"
+    end_mov_path: Optional[str] = None  # "<artist> - <title> (End).mov"
+
+    # Portrait (9:16) karaoke video for phone viewing / social sharing. Additive;
+    # distributed to GCS + Dropbox only (never Drive/YouTube). May be absent when the
+    # portrait render is disabled or fails (it is best-effort).
+    portrait_mp4_path: Optional[str] = None  # "<artist> - <title> (Final Karaoke Portrait 1080x1920).mp4"
 
     # All output files as a dict for convenience
     output_files: Dict[str, str] = field(default_factory=dict)
@@ -381,10 +394,16 @@ class GCEEncodingBackend(EncodingBackend):
                             output_files["mp4_4k_lossless"] = path
                     elif "lossy 4k" in filename_lower:
                         output_files["mp4_4k_lossy"] = path
+                    elif "portrait" in filename_lower:
+                        output_files["portrait_mp4"] = path
                     elif "720p" in filename_lower:
                         output_files["mp4_720p"] = path
                     elif "with vocals" in filename_lower and filename.endswith(".mp4"):
                         output_files["with_vocals_mp4"] = path
+                    elif filename_lower.endswith("(title).mov"):
+                        output_files["title_mov"] = path
+                    elif filename_lower.endswith("(end).mov"):
+                        output_files["end_mov"] = path
                 self.logger.info(f"Converted output_files list to dict: {output_files}")
             else:
                 output_files = raw_output_files if isinstance(raw_output_files, dict) else {}
@@ -396,11 +415,20 @@ class GCEEncodingBackend(EncodingBackend):
                 lossless_mkv_path=output_files.get("mkv_4k"),
                 lossy_720p_mp4_path=output_files.get("mp4_720p"),
                 with_vocals_mp4_path=output_files.get("with_vocals_mp4"),
+                title_mov_path=output_files.get("title_mov"),
+                end_mov_path=output_files.get("end_mov"),
+                portrait_mp4_path=output_files.get("portrait_mp4"),
                 output_files=output_files,
                 encoding_time_seconds=encoding_time,
                 encoding_backend=self.name
             )
 
+        except EncodingJobLostError:
+            # The worker lost this job mid-run (OOM/deploy restart). This is
+            # recoverable by resubmitting a fresh job id, so let the orchestrator
+            # decide — do NOT flatten it into success=False (which would fail the
+            # whole render). See video_worker_orchestrator's resubmit wrapper.
+            raise
         except Exception as e:
             encoding_time = time.time() - start_time
             self.logger.error(f"GCE encoding failed: {e}")

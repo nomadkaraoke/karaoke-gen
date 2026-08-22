@@ -327,6 +327,100 @@ describe("AudioEditor", () => {
     })
   })
 
+  it("shows Fade In button and applies fade_in for a start-anchored selection", async () => {
+    mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+    mockApi.applyAudioEdit.mockResolvedValue({ ...mockEditResponse, operation: "fade_in" })
+
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Audio Editor")).toBeInTheDocument()
+    })
+
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement
+    jest.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 1000, bottom: 140, width: 1000, height: 140, x: 0, y: 0,
+      toJSON: () => ({}),
+    } as DOMRect)
+
+    // Drag from the very start to ~6s (duration 200, width 1000 → 6s ≈ 30px)
+    fireEvent.mouseDown(canvas, { clientX: 0 })
+    fireEvent.mouseMove(canvas, { clientX: 30 })
+    fireEvent.mouseUp(canvas, { clientX: 30 })
+
+    const fadeInButton = await screen.findByText("Fade In")
+    fireEvent.click(fadeInButton)
+
+    await waitFor(() => {
+      expect(mockApi.applyAudioEdit).toHaveBeenCalledWith(
+        "test-job-123",
+        "fade_in",
+        expect.objectContaining({ start_seconds: 0 }),
+      )
+    })
+  })
+
+  it("shows Fade Out button and applies fade_out for an end-anchored selection", async () => {
+    mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+    mockApi.applyAudioEdit.mockResolvedValue({ ...mockEditResponse, operation: "fade_out" })
+
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Audio Editor")).toBeInTheDocument()
+    })
+
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement
+    jest.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 1000, bottom: 140, width: 1000, height: 140, x: 0, y: 0,
+      toJSON: () => ({}),
+    } as DOMRect)
+
+    // Drag from ~194s to the end (duration 200, width 1000 → 194s ≈ 970px, end ≈ 1000px)
+    fireEvent.mouseDown(canvas, { clientX: 970 })
+    fireEvent.mouseMove(canvas, { clientX: 1000 })
+    fireEvent.mouseUp(canvas, { clientX: 1000 })
+
+    const fadeOutButton = await screen.findByText("Fade Out")
+    fireEvent.click(fadeOutButton)
+
+    await waitFor(() => {
+      expect(mockApi.applyAudioEdit).toHaveBeenCalledWith(
+        "test-job-123",
+        "fade_out",
+        expect.objectContaining({ end_seconds: 200 }),
+      )
+    })
+  })
+
+  it("renders Trim/Fade buttons disabled for a mid-track selection", async () => {
+    mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+
+    render(<AudioEditor job={mockJob} />)
+    await waitFor(() => {
+      expect(screen.getByText("Audio Editor")).toBeInTheDocument()
+    })
+
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement
+    jest.spyOn(canvas, "getBoundingClientRect").mockReturnValue({
+      left: 0, top: 0, right: 1000, bottom: 140, width: 1000, height: 140, x: 0, y: 0,
+      toJSON: () => ({}),
+    } as DOMRect)
+
+    // Drag a mid-track region (duration 200, width 1000 → 100px≈20s, 300px≈60s)
+    fireEvent.mouseDown(canvas, { clientX: 100 })
+    fireEvent.mouseMove(canvas, { clientX: 300 })
+    fireEvent.mouseUp(canvas, { clientX: 300 })
+
+    // Buttons stay visible (discoverable) but disabled off-edge
+    const fadeIn = (await screen.findByText("Fade In")).closest("button")
+    const fadeOut = screen.getByText("Fade Out").closest("button")
+    const trimStart = screen.getByText("Trim Start").closest("button")
+    const trimEnd = screen.getByText("Trim End").closest("button")
+    expect(fadeIn).toBeDisabled()
+    expect(fadeOut).toBeDisabled()
+    expect(trimStart).toBeDisabled()
+    expect(trimEnd).toBeDisabled()
+  })
+
   it("shows playback controls", async () => {
     mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
     render(<AudioEditor job={mockJob} />)

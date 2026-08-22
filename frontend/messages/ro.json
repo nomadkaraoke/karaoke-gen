@@ -239,7 +239,10 @@
     "loadingJobs": "Se încarcă joburile...",
     "noJobsMatchFilters": "Niciun job nu se potrivește filtrelor tale.",
     "noJobsYet": "Niciun job încă. Creează unul pentru a începe!",
-    "referrals": "Recomandări"
+    "referrals": "Recomandări",
+    "bulkMode": "În masă",
+    "singleMode": "Individual",
+    "submitModeToggle": "Trimitere individuală sau în masă"
   },
   "auth": {
     "noVerificationToken": "Niciun token de verificare furnizat",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Nu am putut găsi acel link",
     "resendSuccessBody": "Am trimis un nou link de conectare la {maskedEmail}. Este valabil pentru următoarele 24 de ore.",
     "resendSuccessTitle": "Verifică-ți emailul",
-    "resending": "Se trimite..."
+    "resending": "Se trimite...",
+    "confirmBody": "Pentru securitatea ta, apasă pe butonul de mai jos pentru a finaliza conectarea. Acest pas suplimentar împiedică scanerele automate de e-mail să îți folosească linkul înaintea ta.",
+    "confirmButton": "Finalizează conectarea",
+    "confirmTitle": "Finalizează conectarea"
   },
   "payment": {
     "title": "Plată realizată cu succes!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Rezervă",
+    "fallbackNote": "Capacitatea principală este indisponibilă — redirecționată către un tip de instanță de rezervă.",
+    "liveWorker": "Worker activ"
   },
   "credits": {
     "title": "Cumpără mai multe credite",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Lipește un link",
     "urlSupportedSitesHint": "Funcționează cu YouTube, Facebook, SoundCloud, TikTok, Vimeo și sute de alte site-uri.",
     "urlSupportedSitesLink": "Vezi toate site-urile acceptate",
-    "useThisUrl": "Folosește acest URL"
+    "useThisUrl": "Folosește acest URL",
+    "matchCorrectedTo": "Corectat în {value} — ai scris „{typed}”",
+    "matchDidYouMean": "Ai vrut să spui?",
+    "matchKeepMine": "păstrează ce am scris",
+    "matchTidiedTo": "Ajustat în {value}",
+    "matchUndo": "Anulează",
+    "matchChecking": "Se verifică detaliile melodiei…",
+    "matchUseCorrection": "folosește corecția",
+    "matchUseTidied": "folosește versiunea curățată",
+    "matchUsingTyped": "Folosim ce ai tastat: {value}",
+    "checkingUrl": "Se verifică…",
+    "submitNetworkError": "Eroare de rețea — te rugăm să verifici conexiunea și să încerci din nou.",
+    "submitError": "Ceva nu a mers bine. Te rog să încerci din nou."
   },
   "jobStatus": {
     "settingUp": "Se configurează",
@@ -576,7 +597,9 @@
     "correcting": "Se corectează",
     "lyricsDone": "Versuri terminate",
     "lyrics": "Versuri",
-    "confirmDurationCost": "Confirmă costul"
+    "confirmDurationCost": "Confirmă costul",
+    "findingAudioSources": "Căutare surse audio (reîncercare)",
+    "waitingForCapacity": "Așteptăm serverul de codare (reîncercăm)"
   },
   "jobCard": {
     "actionNeeded": "Acțiune necesară",
@@ -588,7 +611,9 @@
     "autoSelect": "Se va selecta automat",
     "willAutoSelectFirst": "Se va selecta automat primul",
     "noOutputsAvailable": "Niciun rezultat disponibil încă",
-    "confirmCost": "Confirmă costul"
+    "confirmCost": "Confirmă costul",
+    "makingPublicInProgress": "Facem această piesă publică — o randăm din nou cu brandingul implicit și o republicăm. Acest lucru durează de obicei 15–30 de minute.",
+    "waitingForEncodingServer": "(așteptăm disponibilitatea serverului de codare)"
   },
   "jobActions": {
     "delete": "Șterge",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Titlul melodiei",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Se încarcă previzualizarea ecranului de titlu"
   },
   "editTrack": {
     "title": "Editează piesa finalizată",
@@ -739,7 +765,22 @@
     "views": "{count} vizualizări",
     "moreVersions": "+{count} mai multe",
     "select": "Selectează",
-    "creditCost": "{credits} credite"
+    "creditCost": "{credits} credite",
+    "chooseFile": "Alege un fișier audio (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Nu am putut găsi nicio sursă audio. Încearcă să editezi artistul sau titlul de mai sus și să cauți din nou, sau adaugă propriul fișier audio printr-un URL sau prin încărcare.",
+    "pasteUrl": "Lipește URL-ul",
+    "researchFailed": "Căutarea a eșuat. Încearcă din nou.",
+    "searchAgain": "Caută din nou",
+    "selectFailed": "Nu s-a putut selecta fișierul audio",
+    "uploadFailed": "Încărcarea a eșuat. Încearcă din nou.",
+    "urlFailed": "Nu am putut folosi acel URL. Încearcă o altă sursă.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Folosește acest fișier",
+    "useThisUrl": "Folosește acest URL",
+    "artistLabel": "Artist",
+    "loading": "Se încarcă...",
+    "titleLabel": "Titlu",
+    "uploadFileAction": "Încarcă fișier"
   },
   "audioEditor": {
     "loading": "Se încarcă editorul audio...",
@@ -776,7 +817,17 @@
     "undoFailed": "Anularea a eșuat",
     "redoFailed": "Refacerea a eșuat",
     "restoreFailed": "Restaurarea a eșuat — este posibil ca unele editări să nu fi fost aplicate",
-    "submitFailed": "Trimiterea a eșuat"
+    "submitFailed": "Trimiterea a eșuat",
+    "fadeIn": "Fade In",
+    "fadeInSelection": "Aplică fade in pe regiunea selectată",
+    "fadeOut": "Fade Out",
+    "fadeOutSelection": "Aplică fade out pe regiunea selectată",
+    "fadeInDisabledHint": "Pentru fade in, selectează o regiune care începe chiar de la începutul piesei",
+    "fadeOutDisabledHint": "Pentru fade out, selectează o regiune care se termină chiar la sfârșitul piesei",
+    "trimEndDisabledHint": "Pentru a tăia sfârșitul, selectează o regiune care se termină chiar la sfârșitul piesei",
+    "trimEndSelection": "Elimină totul de după selecție",
+    "trimStartDisabledHint": "Pentru a tăia începutul, selectează o regiune care începe chiar de la începutul piesei",
+    "trimStartSelection": "Elimină totul dinaintea selecției"
   },
   "audioEditRestore": {
     "title": "Sesiuni de editare audio salvate",
@@ -803,7 +854,7 @@
       "acceptAll": "Acceptă tot",
       "revertAll": "Revino la tot",
       "undoAll": "Anulează tot",
-      "resetAllChanges": "Resetează toate modificările înapoi la versurile originale corectate de AI",
+      "resetAllChanges": "Resetează toate modificările la versurile corectate inițial",
       "undo": "Anulează",
       "redo": "Refă",
       "findReplace": "Caută/Înlocuiește",
@@ -816,7 +867,11 @@
       "playback": "Redare",
       "audioLoadError": "Nu s-a putut încărca fișierul audio",
       "audioStillLoading": "Fișierul audio încă se încarcă...",
-      "loadingAudio": "Se încarcă fișierul audio..."
+      "loadingAudio": "Se încarcă fișierul audio...",
+      "autoCorrect": "Autocorectare",
+      "autoCorrectDesc": "Compară transcrierea cu versurile de referință și aplică corecții la nivel de cuvânt pentru tine. Cuvintele corectate sunt afișate cu mov.",
+      "autoCorrectedCount": "Autocorectat · {count}",
+      "autoCorrectedDesc": "Am aplicat {count, plural, =1 {# autocorecție} other {# autocorecții}} (afișate cu mov). Dă clic pentru a vedea detaliile și a anula orice modificare cu care nu ești de acord."
     },
     "guidance": {
       "showTips": "Arată sfaturi",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Cuvintele evidențiate cu portocaliu sunt goluri — secțiuni care nu au putut fi potrivite cu versurile de referință și pot conține erori (ex. cuvinte auzite greșit care sună similar).",
       "useNAndP": "Folosește N și P pentru a sări între goluri. Pentru fiecare, fă clic pe redare lângă rând și compară ceea ce auzi cu versurile de referință din dreapta, apoi fă clic pe un cuvânt pentru a-l edita sau șterge.",
       "watchOutForPhantomWords": "Fii atent la cuvintele fantomă precum „and” la începutul sau sfârșitul rândurilor — transcrierea adaugă adesea acestea.",
-      "tryTimelineView": "Încearcă vizualizarea Cronologie pentru a observa orice cuvinte neobișnuit de lungi (10+ secunde), care indică de obicei o problemă de sincronizare.",
+      "tryTimelineView": "Cuvintele de peste 2s și pauzele de peste 2s sunt marcate cu o durată de culoare chihlimbar — verifică-le pentru probleme de sincronizare. Comută la Avansat pentru a vedea fiecare vers extins pe o axă a timpului.",
       "watchFullTutorial": "Urmărește tutorialul complet",
       "correctionHandlers": "Gestionari de corectare",
       "anchorSequences": "Secvențe ancoră",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Goluri necorectate",
       "uncorrectedGapsDesc": "Secțiuni care pot necesita revizuire manuală",
       "wordsUncorrected": "Cuvinte necorectate",
-      "numberOfGaps": "Număr de goluri"
+      "numberOfGaps": "Număr de goluri",
+      "autoCorrectTip": "{count, plural, =1 {# cuvânt a fost autocorectat} other {# cuvinte au fost autocorectate}} pentru tine (afișate cu mov, cu cuvântul original deasupra). Redă fiecare rând corectat și verifică dacă se aliniază în continuare cuvintele — în special cele subliniate cu portocaliu, unde sincronizarea a fost estimată și probabil va necesita ajustare.",
+      "autoCorrected": "Autocorectat",
+      "timingEstimated": "Sincronizare estimată"
     },
     "transcription": {
       "syncedLyrics": "Versuri sincronizate",
@@ -854,7 +912,13 @@
       "text": "Text",
       "timeline": "Cronologie",
       "deleteSegment": "Șterge segmentul",
-      "playSegment": "Redă segmentul"
+      "playSegment": "Redă segmentul",
+      "aiTooltipEstimated": "Autocorectat de sistemul nostru. Sincronizarea aici a fost estimată, așa că redă acest rând și ajustează sincronizarea cuvintelor dacă este necesar.",
+      "aiTooltipReplaced": "Autocorectat de sistemul nostru din \"{original}\". Redă acest rând pentru a confirma că se aliniază în continuare cuvintele.",
+      "aiTooltipReplacedEstimated": "Autocorectat de sistemul nostru din \"{original}\". Sincronizarea a fost estimată, așa că redă acest rând și ajustează sincronizarea cuvintelor dacă este necesar.",
+      "longGapWarning": "Pauză de {seconds}s înainte de următorul cuvânt — adesea un cuvânt rătăcit apărut prea devreme (de ex. un \"și\" fantomă). Dă clic pentru a reda de aici.",
+      "longWordWarning": "Acest cuvânt durează {seconds}s — neobișnuit de mult. Redă rândul și verifică dacă timpul său de final nu s-a suprapus peste instrumental.",
+      "playFromGap": "Redă de la sfârșitul acestei pauze"
     },
     "editActionBar": {
       "reset": "Resetează",
@@ -990,7 +1054,9 @@
         "loadingAll": "Se încarcă toate cuvintele...",
         "loadingSegment": "Se încarcă segmentul...",
         "noData": "Nu există date disponibile pentru segment",
-        "unCorrect": "Anulează corectura"
+        "unCorrect": "Anulează corectura",
+        "timingClamped": "Sincronizarea pentru \"{word}\" era în afara segmentului — a fost ajustată la {time}s.",
+        "timingSanitized": "Au fost corectate {count} sincronizări de cuvinte care se aflau în afara acestui segment."
       },
       "findReplace": {
         "title": "Caută și înlocuiește",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate."
+    },
+    "autoCorrect": {
+      "accept": "Acceptă sugestia",
+      "acceptAll": "Acceptă toate",
+      "accepted": "Acceptat",
+      "adlibRemovalHint": "Permite sugestii care elimină vocile de fundal care nu apar în referințe",
+      "adlibRemovalLabel": "Sugerează eliminarea adlib-urilor",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "formatare",
+      "category_grammar": "gramatică",
+      "category_mishearing": "auzite greșit",
+      "category_other": "altele",
+      "category_repeated_chorus_fix": "refren",
+      "collapse": "Restrânge sugestiile",
+      "confidenceHint": "Cât de sigură trebuie să fie o sugestie înainte de a fi afișată",
+      "confidenceLabel": "Filtru de sugestii",
+      "confidence_all": "Afișează toate",
+      "confidence_high": "Încredere ridicată",
+      "description": "Autocorectarea compară versurile transcrise cu sursele de referință și sugerează corecturi la nivel de cuvânt. Tu revizuiești fiecare sugestie — nimic nu este aplicat până nu o accepți.",
+      "dismiss": "Ignoră sugestiile",
+      "expand": "Extinde sugestiile",
+      "insertMarker": "inserează:",
+      "insertionsHint": "Permite sugestii care inserează cuvinte pe care transcrierea le-a omis",
+      "insertionsLabel": "Sugerează cuvintele lipsă",
+      "noReferences": "Nu există versuri de referință disponibile pentru această melodie, așa că nu pot fi generate sugestii. Adaugă mai întâi versuri din panoul de referință.",
+      "noSuggestions": "Nu s-au găsit probleme — nu există modificări sugerate.",
+      "reject": "Respinge sugestia",
+      "rejectAll": "Respinge toate",
+      "rejected": "Respins",
+      "runButton": "Obține sugestii",
+      "running": "Se analizează versurile… de obicei durează 15–60 de secunde.",
+      "staleHint": "Aceste cuvinte au fost editate după generarea sugestiilor, așa că această sugestie nu se mai aplică.",
+      "summary": "{total} sugestii · {pending} în așteptare · {accepted} acceptate",
+      "title": "Sugestii de autocorectare",
+      "undo": "Anulează această sugestie",
+      "cancel": "Anulează",
+      "close": "Închide",
+      "confidence_balanced": "Echilibrat",
+      "compareHint": "Mai lent și costă mai mult, dar îți arată cu ce sugestii sunt de acord mai multe modele",
+      "compareLabel": "Compară mai multe modele",
+      "conflictBadge": "variantă",
+      "conflictTooltip": "Există sugestii diferite pentru aceste cuvinte — acceptarea unei variante le respinge pe celelalte.",
+      "consensusBadge": "{consensus}/{total} modele",
+      "consensusTooltip": "Propus de: {models}",
+      "cachedBadge": "din cache",
+      "cachedTooltip": "Restaurat dintr-o rulare anterioară pentru aceleași versuri — nu a generat niciun cost AI.",
+      "appliedSummary": "{count} autocorecții aplicate",
+      "hideDetails": "Ascunde detaliile",
+      "rerun": "Rulează din nou",
+      "revertAllAuto": "Anulează tot",
+      "showDetails": "Arată detaliile"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Estimat — costul final va fi confirmat după descărcare",
     "reconcileTitle": "Această melodie este mai lungă decât era de așteptat",
     "cancel": "Anulează"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Se încarcă previzualizarea fundalului"
+  },
+  "bulk": {
+    "albumModeHint": "Caută un artist, alege un album, apoi selectează ce piese vrei să creezi.",
+    "artistSearchPlaceholder": "Caută un artist…",
+    "autoPickLossless": "Alege automat cel mai bun audio (doar lossless)",
+    "autoPickLosslessHint": "Alege automat fișierul audio când găsim o potrivire sigură lossless/FLAC. Celelalte merg într-o listă de așteptare pentru revizuire.",
+    "backToAlbums": "Înapoi la albume",
+    "backToArtists": "Înapoi la artiști",
+    "batchProgressTitle": "Lot de {total} melodii",
+    "batchSettings": "Setări lot",
+    "byAlbum": "După album",
+    "byText": "După text",
+    "checking": "Se verifică…",
+    "chooseAudio": "Alege audio",
+    "communityExists": "Există o versiune a comunității",
+    "communityExistsWithBrands": "Versiunea comunității: {brands}",
+    "countAwaiting": "{count} necesită o alegere",
+    "countComplete": "{count} finalizate",
+    "countFailed": "{count} eșuate",
+    "countProcessing": "{count} în procesare",
+    "countSearching": "{count} în căutare",
+    "createBatch": "Creează {count} videoclipuri de karaoke",
+    "creditsCost": "{cost} credite · ai {balance}",
+    "edition": "Ediție",
+    "extra": "Extra",
+    "loadingBatch": "Se încarcă lotul…",
+    "lookupFailed": "Căutarea a eșuat. Te rugăm să încerci din nou.",
+    "makePrivate": "Păstrează privat",
+    "makePrivateHint": "Livrează doar prin Dropbox în loc să publici pe YouTube.",
+    "noAlbums": "Nu s-au găsit albume pentru acest artist.",
+    "notEnoughCredits": "Ai nevoie de {needed} credite, dar ai {have}.",
+    "overLimit": "Poți trimite cel mult {max} melodii deodată.",
+    "progressError": "Nu s-a putut încărca progresul lotului.",
+    "reviewQueueHint": "Nu am putut alege automat cu certitudine o sursă lossless pentru acestea. Alege câte una pentru fiecare.",
+    "reviewQueueTitle": "Alege audio pentru aceste piese",
+    "selectedCount": "{count} melodii selectate",
+    "skipAudioEdit": "Sari peste editarea audio",
+    "skipAudioEditHint": "Folosește fișierul audio al fiecărei piese așa cum e (fără decupare).",
+    "skipCustomization": "Sari peste personalizare",
+    "skipCustomizationHint": "Folosește tema și stilul implicit pentru fiecare piesă.",
+    "startAnother": "Începe un alt lot",
+    "submitError": "Nu s-a putut crea lotul. Te rugăm să încerci din nou.",
+    "submitting": "Se creează lotul…",
+    "textModeHint": "Adaugă până la {max} melodii. Le vom marca pe cele care au deja o versiune a comunității.",
+    "title": "Titlu",
+    "tracklistHint": "Piesele live, remixurile și piesele bonus — precum și melodiile care au deja o versiune a comunității — sunt debifate implicit.",
+    "addSong": "Adaugă melodie",
+    "artist": "Artist",
+    "buyCredits": "Cumpără credite",
+    "removeRow": "Elimină",
+    "trackCount": "{count} piese",
+    "changeEdition": "Schimbă",
+    "existingVersions": "Versiuni existente:",
+    "usingRelease": "Folosind {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Reeditare"
+  },
+  "backendStatus": {
+    "reconnecting": "Se reconectează…",
+    "unavailable": {
+      "body": "Această situație este de obicei temporară — încearcă din nou în câteva minute.",
+      "reassurance": "Videoclipurile de karaoke aflate în curs de creare nu sunt afectate și vor continua să fie procesate.",
+      "title": "Întâmpinăm probleme la conectarea cu serverele noastre"
+    },
+    "dismiss": "Închide"
   }
 }

@@ -1,12 +1,16 @@
 name: Build GHA Runner Images
 
-# Produces three custom GCE images used by the ephemeral GitHub Actions runner
-# dispatcher: gha-runner-general, gha-runner-build, gha-runner-gpu.
+# Produces the custom GCE images used by the ephemeral GitHub Actions runner
+# dispatcher: gha-runner-general, gha-runner-build, gha-runner-gpu,
+# gha-runner-gpu-windows.
 #
 # Flow per variant:
-#   1. Create a temporary build VM from debian-cloud/debian-12 with
-#      infrastructure/scripts/runner-image-provision.sh as metadata-startup-script.
-#   2. Poll for /opt/runner-image-ready via gcloud ssh (survives kernel-upgrade reboots).
+#   1. Create a temporary build VM from the variant's base image with the
+#      variant's provisioning script as its startup script:
+#        - Linux variants:  debian-12 + runner-image-provision.sh (startup-script)
+#        - gpu-windows:     windows-2022 + runner-image-provision.ps1
+#                           (windows-startup-script-ps1)
+#   2. Poll the serial console for the READY/FAILED marker (survives reboots).
 #   3. Stop the VM, snapshot its boot disk to a new image in the `gha-runner-<variant>`
 #      image family with name gha-runner-<variant>-<timestamp>.
 #   4. Delete the build VM (boot disk auto-deletes).
@@ -16,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       variants:
-        description: 'Comma-separated variants to build (general,build,gpu) or "all"'
+        description: 'Comma-separated variants to build (general,build,gpu,gpu-windows) or "all"'
         required: false
         default: 'all'
       skip_prune:
@@ -50,7 +54,7 @@ jobs:
         run: |
           requested='${{ github.event.inputs.variants || 'all' }}'
           if [[ "$requested" == "all" || -z "$requested" ]]; then
-            echo 'variants=["general","build","gpu"]' >> "$GITHUB_OUTPUT"
+            echo 'variants=["general","build","gpu","gpu-windows"]' >> "$GITHUB_OUTPUT"
           else
             json="$(echo "$requested" | tr ',' '\n' | jq -R . | jq -sc .)"
             echo "variants=$json" >> "$GITHUB_OUTPUT"
@@ -88,6 +92,11 @@ jobs:
           family="gha-runner-${variant}"
           vm="gha-image-build-${variant}-${ts}"
 
+          # Per-variant base image + startup-script metadata key: Windows
+          # VMs only execute scripts under windows-startup-script-ps1.
+          image_flag="--image=${{ env.BASE_IMAGE }}"
+          metadata_file="startup-script=infrastructure/scripts/runner-image-provision.sh"
+
           case "$variant" in
             general|build)
               machine="n2-standard-8"
@@ -100,6 +109,16 @@ jobs:
               machine="n1-standard-4"
               disk_size="200"
               accel="--maintenance-policy=TERMINATE --accelerator=type=nvidia-tesla-t4,count=1"
+              ;;
+            gpu-windows)
+              # T4 attached so the GRID driver install can validate WDDM mode
+              # (required for DirectML). Keep disk in sync with the
+              # gpu-windows FamilySpec in runner_manager/ephemeral.py.
+              machine="n1-standard-4"
+              disk_size="100"
+              accel="--maintenance-policy=TERMINATE --accelerator=type=nvidia-tesla-t4,count=1"
+              image_flag="--image-family=windows-2022 --image-project=windows-cloud"
+              metadata_file="windows-startup-script-ps1=infrastructure/scripts/runner-image-provision.ps1"
               ;;
             *)
               echo "Unknown variant: $variant" >&2
@@ -114,6 +133,8 @@ jobs:
             echo "machine=$machine"
             echo "disk_size=$disk_size"
             echo "accel=$accel"
+            echo "image_flag=$image_flag"
+            echo "metadata_file=$metadata_file"
           } >> "$GITHUB_OUTPUT"
 
       - name: Create build VM
@@ -123,14 +144,14 @@ jobs:
             --project='${{ env.GCP_PROJECT }}' \
             --zone='${{ env.BUILD_ZONE }}' \
             --machine-type='${{ steps.params.outputs.machine }}' \
-            --image='${{ env.BASE_IMAGE }}' \
+            ${{ steps.params.outputs.image_flag }} \
             --boot-disk-size='${{ steps.params.outputs.disk_size }}GB' \
             --boot-disk-type=pd-balanced \
             --boot-disk-auto-delete \
             --service-account="${{ secrets.GCP_SERVICE_ACCOUNT }}" \
             --scopes=https://www.googleapis.com/auth/cloud-platform \
             --metadata=enable-oslogin=TRUE,image-variant='${{ matrix.variant }}' \
-            --metadata-from-file=startup-script=infrastructure/scripts/runner-image-provision.sh \
+            --metadata-from-file='${{ steps.params.outputs.metadata_file }}' \
             --labels=purpose=gha-runner-image-builder,variant='${{ matrix.variant }}' \
             ${{ steps.params.outputs.accel }}
 

@@ -37,6 +37,7 @@ class JobStatus(str, Enum):
     SEARCHING_AUDIO = "searching_audio"           # Searching for audio sources via flacfetch
     AWAITING_AUDIO_SELECTION = "awaiting_audio_selection"  # ⚠️ WAITING FOR USER - select audio source
     DOWNLOADING_AUDIO = "downloading_audio"       # Downloading selected audio from source
+    DOWNLOAD_PENDING_RETRY = "download_pending_retry"  # Download hit a transient issue (few/no seeders, tracker blip); auto-retrying for up to 24h
 
     DOWNLOADING = "downloading"                   # Downloading from URL or processing upload
 
@@ -110,7 +111,11 @@ STATE_TRANSITIONS = {
     # Audio search flow (for artist+title search mode)
     JobStatus.SEARCHING_AUDIO: [JobStatus.AWAITING_AUDIO_SELECTION, JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED],
     JobStatus.AWAITING_AUDIO_SELECTION: [JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED, JobStatus.CANCELLED],
-    JobStatus.DOWNLOADING_AUDIO: [JobStatus.DOWNLOADING, JobStatus.AWAITING_DURATION_CONFIRM, JobStatus.FAILED],
+    JobStatus.DOWNLOADING_AUDIO: [JobStatus.DOWNLOADING, JobStatus.AWAITING_DURATION_CONFIRM, JobStatus.DOWNLOAD_PENDING_RETRY, JobStatus.FAILED],
+    # DOWNLOAD_PENDING_RETRY = parked when a torrent download hits a transient
+    # issue (few/no seeders, tracker outage); auto-retried by the recover-stuck
+    # cron for up to 24h before failing permanently.
+    JobStatus.DOWNLOAD_PENDING_RETRY: [JobStatus.DOWNLOADING_AUDIO, JobStatus.FAILED, JobStatus.CANCELLED],
 
     # DOWNLOADING allows parallel processing (audio + lyrics) and then screens when both complete
     # Can also enter optional audio edit phase if requires_audio_edit flag is set

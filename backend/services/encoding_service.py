@@ -19,13 +19,17 @@ import asyncio
 import logging
 import os
 import time
+import uuid
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any, AsyncIterator
+from typing import Awaitable, Callable, Optional, Dict, Any, AsyncIterator
 
 import aiohttp
 
 from backend.config import get_settings
 from backend.services.encoding_errors import (
+    ENCODING_RESTART_FAILURE_CODE,
+    EncodingJobLostError,
+    EncodingJobNotFoundError,
     EncodingWorkerCapacityError,
     EncodingWorkerStartError,
 )
@@ -64,6 +68,94 @@ MAX_BACKOFF_SECONDS = 15.0
 # This prevents a single transient network blip during status polling from killing a
 # long-running encoding job. Similar pattern to flacfetch status polling (PR #446).
 MAX_CONSECUTIVE_POLL_FAILURES = 5
+
+_DEFAULT_QUEUE_TIMEOUT_SECONDS = float(4 * 3600)
+
+
+def _parse_queue_timeout() -> float:
+    """How long a job may sit *queued* (status "pending") before we give up.
+
+    Parsed defensively: a malformed / non-finite / non-positive value must not
+    crash the module at import nor make pending jobs fail immediately — fall back
+    to the generous default. Separate from the per-run `timeout`, which only
+    starts once the job is actually "running".
+    """
+    raw = os.environ.get("ENCODING_QUEUE_TIMEOUT")
+    if raw is None:
+        return _DEFAULT_QUEUE_TIMEOUT_SECONDS
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        logger.warning("Invalid ENCODING_QUEUE_TIMEOUT=%r; using default", raw)
+        return _DEFAULT_QUEUE_TIMEOUT_SECONDS
+    if not (value > 0) or value == float("inf"):
+        logger.warning("ENCODING_QUEUE_TIMEOUT=%r not a positive finite number; using default", raw)
+        return _DEFAULT_QUEUE_TIMEOUT_SECONDS
+    return value
+
+
+def _parse_resubmit_max() -> int:
+    """Bounded automatic resubmits when the worker loses a job mid-run.
+
+    Each resubmit is a fresh job id; see `run_with_lost_job_resubmit`. A bad
+    value falls back to 2; negatives clamp to 0 (no resubmits).
+    """
+    raw = os.environ.get("ENCODING_RESUBMIT_MAX", "2")
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        logger.warning("Invalid ENCODING_RESUBMIT_MAX=%r; using 2", raw)
+        return 2
+
+
+QUEUE_TIMEOUT_SECONDS = _parse_queue_timeout()
+ENCODING_RESUBMIT_MAX = _parse_resubmit_max()
+
+
+async def run_with_lost_job_resubmit(
+    operation: Callable[[str], Awaitable[Any]],
+    base_job_id: str,
+    *,
+    log: logging.Logger = logger,
+    max_resubmits: int = ENCODING_RESUBMIT_MAX,
+) -> Any:
+    """Run a submit+wait `operation(job_id)`, resubmitting if the worker loses it.
+
+    The encoding worker keeps job state in memory; an OOM/deploy restart wipes it
+    and the in-flight ffmpeg, so the original job id can never complete. When
+    `wait_for_completion` detects that (via `EncodingJobLostError`), we resubmit
+    the same work under a fresh `<base>_retry_<hex8>` id (the worker treats a new
+    id as a brand-new job). Bounded by `max_resubmits`.
+
+    `operation` must be an async callable taking the job id to use and performing
+    the whole submit-and-wait, returning the encode result. It should raise
+    `EncodingJobLostError` (propagated from `wait_for_completion`) when the job is
+    lost; any other exception aborts immediately.
+
+    Idempotency: only the *worker-side* job id changes between attempts — output
+    GCS paths are keyed by the real job (fixed input/output prefixes), so a
+    resubmit re-encodes and *overwrites* the same objects rather than producing
+    duplicates. Downstream side effects (uploads, distribution) run in the
+    orchestrator only after a successful encode, so a resubmit before "complete"
+    cannot double them.
+    """
+    attempt = 0
+    while True:
+        job_id = base_job_id if attempt == 0 else f"{base_job_id}_retry_{uuid.uuid4().hex[:8]}"
+        try:
+            return await operation(job_id)
+        except EncodingJobLostError as e:
+            attempt += 1
+            if attempt > max_resubmits:
+                log.error(
+                    f"[job:{base_job_id}] Encoding worker lost the job {attempt} time(s); "
+                    f"giving up after {max_resubmits} resubmit(s): {e}"
+                )
+                raise
+            log.warning(
+                f"[job:{base_job_id}] Encoding worker lost the job (restart/OOM); "
+                f"resubmitting as a fresh job (attempt {attempt + 1}/{max_resubmits + 1})"
+            )
 
 
 def _format_exception(e: BaseException) -> str:
@@ -173,12 +265,15 @@ class EncodingService:
             yield
 
     def _build_worker_candidates(self) -> list:
-        """Build the ordered candidate list for ensure_any_running.
+        """Build the ranked candidate list for ensure_any_running.
 
         Reads optional fallback VMs from settings (env var
-        ENCODING_WORKER_FALLBACK_VMS, JSON list of {vm, zone, ip}). Returns
-        an empty list when no worker manager / no configured fallbacks —
-        caller falls back to the single-VM ensure_primary_running path.
+        ENCODING_WORKER_FALLBACK_VMS, JSON list of {vm, zone, ip, machine_type?}).
+        The primary + all fallbacks are ranked by the shared preference logic
+        (fastest-first, demoting recently-stocked-out types) so runtime selection
+        stays in lock-step with the deploy green selection. Returns an empty list
+        when no worker manager / no configured fallbacks — caller falls back to
+        the single-VM ensure_primary_running path.
         """
         if not self._worker_manager:
             return []
@@ -189,42 +284,69 @@ class EncodingService:
             return []
 
         from backend.services.encoding_worker_manager import EncodingWorkerCandidate
+        from backend.services.encoding_worker_preference import (
+            PRIMARY_MACHINE_TYPE,
+            ordered_candidates,
+        )
 
-        # Primary always goes first. Single-zone deployments stop here.
-        candidates = [
-            EncodingWorkerCandidate(
-                vm_name=config.primary_vm,
-                zone=self._worker_manager._zone,
-                ip=config.primary_ip,
-            )
-        ]
+        # Build a dict pool (primary + fallbacks), each tagged with machine_type so
+        # the shared preference logic can rank them. The primary/secondary pair is
+        # always c4d; the config may override via primary_machine_type.
+        primary_mt = getattr(config, "primary_machine_type", None) or PRIMARY_MACHINE_TYPE
+        pool = [{
+            "vm": config.primary_vm,
+            "zone": self._worker_manager._zone,
+            "ip": config.primary_ip,
+            "machine_type": primary_mt,
+            "kind": "primary",
+            "is_primary": True,
+        }]
 
-        # Optional capacity-fallback VMs in alternate zones, configured via
-        # env var. Schema: '[{"vm":"encoding-worker-fallback-a","zone":"us-central1-a","ip":"34.x.x.x"}, ...]'
-        # The list is empty by default; user populates after `pulumi up`
-        # provisions the fallback VMs.
+        # Optional capacity-fallback VMs in alternate zones/families, configured via
+        # env var. Schema: '[{"vm":"encoding-worker-fallback-c4a","zone":"us-central1-a",
+        # "ip":"34.x.x.x","machine_type":"c4-highcpu-32"}, ...]'. machine_type is
+        # optional (inferred from the VM name for legacy entries). Empty by default;
+        # populated after `pulumi up` provisions the fallback VMs.
         import json as _json
         raw = self.settings.encoding_worker_fallback_vms
-        if not raw:
-            return candidates
-        try:
-            parsed = _json.loads(raw)
-        except (ValueError, TypeError) as e:
-            logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
-            return candidates
-
-        for item in parsed:
+        if raw:
             try:
-                candidates.append(EncodingWorkerCandidate(
-                    vm_name=item["vm"],
-                    zone=item["zone"],
-                    ip=item["ip"],
-                ))
-            except (KeyError, TypeError) as e:
-                logger.warning(f"Skipping malformed fallback candidate {item}: {e}")
-                continue
+                parsed = _json.loads(raw)
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
+                parsed = []
+            # A non-list root (null, dict, scalar) parses fine but would blow up
+            # `for item in parsed` and escape this method during connection
+            # recovery — degrade to no fallbacks instead.
+            if not isinstance(parsed, list):
+                logger.warning("ENCODING_WORKER_FALLBACK_VMS must be a JSON list; ignoring")
+                parsed = []
+            for item in parsed:
+                try:
+                    pool.append({
+                        "vm": item["vm"],
+                        "zone": item["zone"],
+                        "ip": item["ip"],
+                        "machine_type": item.get("machine_type"),
+                        "kind": "fallback",
+                    })
+                except (KeyError, TypeError) as e:
+                    logger.warning(f"Skipping malformed fallback candidate {item}: {e}")
+                    continue
 
-        return candidates
+        # Rank fastest-first, demoting types that recently stocked out. Keeps the
+        # primary (c4d) at the top whenever it has capacity.
+        ranked = ordered_candidates(pool, capacity_state=config.capacity_state)
+        return [
+            EncodingWorkerCandidate(
+                vm_name=c["vm"],
+                zone=c["zone"],
+                ip=c["ip"],
+                machine_type=c.get("machine_type"),
+                is_primary=c.get("is_primary", False),
+            )
+            for c in ranked
+        ]
 
     def _load_credentials(self):
         """Load encoding worker URL and API key from config/secrets."""
@@ -350,6 +472,7 @@ class EncodingService:
         timeout: float = 30.0,
         job_id: str = "unknown",
         path: Optional[str] = None,
+        allow_failover: bool = True,
     ) -> Dict[str, Any]:
         """
         Make an HTTP request with retry logic for transient failures.
@@ -371,6 +494,13 @@ class EncodingService:
                 fallback VM in another zone) and invalidate the URL cache; the
                 next retry then targets the freshly-routed URL instead of the
                 original primary which is dead.
+            allow_failover: When True (default), a connection error fires the
+                fallback-VM warmup and lets retries re-resolve the URL. Set False
+                for requests pinned to a specific worker (in-flight status polls):
+                a pinned poll must never re-route to active_url nor spin up a
+                fallback VM, because a different/fresh VM cannot have the job — it
+                would only return "not found" and orphan a render that is actually
+                succeeding on the pinned worker (incident 2026-06-16, job d3af33ae).
 
         Returns:
             Dict with keys:
@@ -392,7 +522,7 @@ class EncodingService:
             # active_override change made by the warmup actually takes effect.
             # Without this, all 8 retry attempts hammer the original (dead)
             # URL even though the warmup successfully routed to a fallback VM.
-            if path and warmup_ran and self._worker_manager is not None:
+            if allow_failover and path and warmup_ran and self._worker_manager is not None:
                 resolved = f"{self._get_worker_url()}{path}"
                 if resolved != url:
                     logger.info(
@@ -424,7 +554,7 @@ class EncodingService:
                             }
             except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError, asyncio.TimeoutError) as e:
                 last_exception = e
-                if attempt == 0:
+                if allow_failover and attempt == 0:
                     try:
                         await self._warmup_encoding_worker_fallback(job_id)
                         warmup_ran = True
@@ -530,12 +660,23 @@ class EncodingService:
 
         return resp["json"]
 
-    async def get_job_status(self, job_id: str) -> Dict[str, Any]:
+    async def get_job_status(
+        self, job_id: str, worker_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get the status of an encoding job.
 
         Args:
             job_id: Job identifier
+            worker_url: When set, pin the request to this worker base URL instead
+                of resolving the current active_url. In-flight polls must stay on
+                the worker that accepted the job: a blue-green deploy can swap the
+                active_url primary pointer mid-render, and an unpinned poll would
+                migrate to the new primary — which never received the job and 404s
+                "not found", orphaning a render that is succeeding on the original
+                worker (incident 2026-06-16, job d3af33ae). A pinned poll also
+                disables failover (allow_failover=False) so it never re-routes nor
+                starts a fallback VM.
 
         Returns:
             Job status including: status, progress, error, output_files
@@ -546,7 +687,10 @@ class EncodingService:
             raise RuntimeError("Encoding service not configured")
 
         path = f"/status/{job_id}"
-        url = f"{self._get_worker_url()}{path}"
+        if worker_url:
+            url = f"{worker_url}{path}"
+        else:
+            url = f"{self._get_worker_url()}{path}"
         headers = {"X-API-Key": self._api_key}
 
         resp = await self._request_with_retry(
@@ -555,13 +699,16 @@ class EncodingService:
             headers=headers,
             timeout=30.0,
             job_id=job_id,
-            path=path,
+            # When pinned, never re-resolve or fail over — the job lives on this
+            # exact worker; do not pass `path` (which drives re-resolution).
+            path=None if worker_url else path,
+            allow_failover=not worker_url,
         )
 
         if resp["status"] == 401:
             raise RuntimeError("Invalid API key for encoding worker")
         if resp["status"] == 404:
-            raise RuntimeError(f"Encoding job {job_id} not found")
+            raise EncodingJobNotFoundError(f"Encoding job {job_id} not found")
         if resp["status"] != 200:
             raise RuntimeError(f"Failed to get job status: {resp['status']} - {resp['text']}")
 
@@ -573,6 +720,8 @@ class EncodingService:
         poll_interval: float = 10.0,
         timeout: float = 3600.0,
         progress_callback=None,
+        worker_url: Optional[str] = None,
+        queue_timeout: float = QUEUE_TIMEOUT_SECONDS,
     ) -> Dict[str, Any]:
         """
         Poll for encoding job completion with tolerance for transient failures.
@@ -587,6 +736,11 @@ class EncodingService:
             poll_interval: Seconds between status checks
             timeout: Maximum time to wait (default 1 hour)
             progress_callback: Optional callback(progress: int) for progress updates
+            worker_url: Worker base URL the job was submitted to. When set, every
+                poll is pinned to this worker (see get_job_status) so a mid-render
+                blue-green primary swap can't migrate the poll to a worker that
+                never received the job. When None, polls resolve active_url (legacy
+                behaviour, e.g. direct callers/tests).
 
         Returns:
             Final job status with output files
@@ -600,18 +754,46 @@ class EncodingService:
         start_time = asyncio.get_event_loop().time()
         last_progress = 0
         consecutive_failures = 0
+        # Set to True after the first successful poll. Once we've seen the job,
+        # a later 404 means the worker LOST it (restart wiped in-memory state),
+        # not that it never existed — that is unrecoverable for this job id, so
+        # we resubmit rather than burn the transient-blip tolerance.
+        job_seen = False
+        # Set once the job is actually "running". The per-run `timeout` only
+        # counts from here; time spent "pending" in the worker's serialized
+        # heavy queue counts against `queue_timeout` instead.
+        run_started_at: Optional[float] = None
 
         while True:
-            elapsed = asyncio.get_event_loop().time() - start_time
-            if elapsed > timeout:
-                raise TimeoutError(f"Encoding job {job_id} timed out after {timeout}s")
+            now = asyncio.get_event_loop().time()
+            if run_started_at is not None:
+                if now - run_started_at > timeout:
+                    raise TimeoutError(f"Encoding job {job_id} timed out after {timeout}s")
+            elif now - start_time > queue_timeout:
+                raise TimeoutError(
+                    f"Encoding job {job_id} stuck in worker queue longer than {queue_timeout}s"
+                )
 
             try:
-                status = await self.get_job_status(job_id)
+                status = await self.get_job_status(job_id, worker_url=worker_url)
                 # Reset failure counter on successful poll
                 consecutive_failures = 0
             except (aiohttp.ClientConnectorError, aiohttp.ServerDisconnectedError,
                     asyncio.TimeoutError, RuntimeError) as e:
+                # A 404 *after* we've already seen the job = the worker lost it
+                # (OOM/deploy restart wiped its in-memory registry). Resubmitting
+                # the same id can never recover it, so surface a distinct signal
+                # immediately instead of polling 4 more times and mislabelling it
+                # "lost contact" (which callers treat as unrecoverable).
+                if job_seen and isinstance(e, EncodingJobNotFoundError):
+                    logger.warning(
+                        f"[job:{job_id}] Worker no longer has this job after previously "
+                        f"reporting it — treating as lost (worker restart): {e}"
+                    )
+                    raise EncodingJobLostError(
+                        f"Encoding job {job_id} was lost by the worker (restarted mid-run)",
+                        job_id=job_id,
+                    ) from e
                 consecutive_failures += 1
                 if consecutive_failures >= MAX_CONSECUTIVE_POLL_FAILURES:
                     logger.error(
@@ -636,12 +818,19 @@ class EncodingService:
                 logger.error(f"[job:{job_id}] Unexpected status type: {type(status)}")
                 status = {}
 
+            job_seen = True
             job_status = status.get("status", "unknown")
             progress = status.get("progress", 0)
+            if run_started_at is None and (job_status == "running" or progress):
+                run_started_at = now
 
             # Report progress
             if progress != last_progress:
-                logger.info(f"[job:{job_id}] Encoding progress: {progress}%")
+                queue_position = status.get("queue_position")
+                if job_status == "pending" and queue_position:
+                    logger.info(f"[job:{job_id}] Queued on worker (position {queue_position})")
+                else:
+                    logger.info(f"[job:{job_id}] Encoding progress: {progress}%")
                 last_progress = progress
                 if progress_callback:
                     try:
@@ -650,11 +839,21 @@ class EncodingService:
                         logger.warning(f"Progress callback failed: {e}")
 
             if job_status == "complete":
-                logger.info(f"[job:{job_id}] GCE encoding complete in {elapsed:.1f}s")
+                logger.info(f"[job:{job_id}] GCE encoding complete in {now - start_time:.1f}s")
                 return status
 
             if job_status == "failed":
                 error = status.get("error", "Unknown error")
+                # A restart-marked failure is recoverable by resubmission, same
+                # as a mid-run vanish — surface the typed signal so callers retry.
+                if status.get("restart_failure_code") == ENCODING_RESTART_FAILURE_CODE:
+                    logger.warning(
+                        f"[job:{job_id}] Worker marked job failed after a restart — treating as lost: {error}"
+                    )
+                    raise EncodingJobLostError(
+                        f"Encoding job {job_id} was lost by the worker (restarted mid-run)",
+                        job_id=job_id,
+                    )
                 raise RuntimeError(f"Encoding job {job_id} failed: {error}")
 
             await asyncio.sleep(poll_interval)
@@ -708,11 +907,14 @@ class EncodingService:
             if submit_status == "in_progress":
                 logger.info(f"[job:{job_id}] Encoding already in progress, joining poll")
 
+            # Pin polls to the worker the job landed on (see render_video_on_gce).
+            pinned_url = self._get_worker_url()
+
             # Wait for completion (still holding the slot — the worker is
             # actually doing CPU work for `job_id` until poll returns
             # complete/failed).
             return await self.wait_for_completion(
-                job_id, progress_callback=progress_callback
+                job_id, progress_callback=progress_callback, worker_url=pinned_url
             )
 
     async def submit_preview_encoding_job(
@@ -837,11 +1039,19 @@ class EncodingService:
         if submit_status == "in_progress":
             logger.info(f"[job:{job_id}] Preview encoding already in progress, waiting")
 
-        # Wait for completion with shorter timeout
+        # Pin polls to the worker the job landed on (see render_video_on_gce).
+        pinned_url = self._get_worker_url()
+
+        # Wait for completion with a short timeout. Previews are interactive
+        # (a user is waiting in the review UI), so cap the *total* wait at the
+        # same short bound — don't let a queued preview sit for the long default
+        # queue_timeout before its per-run timeout even starts.
         return await self.wait_for_completion(
             job_id=job_id,
             poll_interval=poll_interval,
             timeout=timeout,
+            worker_url=pinned_url,
+            queue_timeout=timeout,
         )
 
     async def submit_render_video_job(
@@ -961,11 +1171,18 @@ class EncodingService:
             if submit_status == "in_progress":
                 logger.info(f"[job:{job_id}] Render-video already in progress, joining poll")
 
+            # Pin status polls to the worker the job actually landed on. Resolving
+            # AFTER submit captures a capacity-fallback re-route (warmup invalidates
+            # the URL cache) while being BEFORE any later blue-green deploy swap —
+            # so the poll follows the job, not the floating active_url primary
+            # pointer (incident 2026-06-16, job d3af33ae).
+            pinned_url = self._get_worker_url()
+
             # Wait for completion (still holding the slot — the worker is
             # actively rendering for `job_id` until poll returns
             # complete/failed).
             return await self.wait_for_completion(
-                job_id, progress_callback=progress_callback
+                job_id, progress_callback=progress_callback, worker_url=pinned_url
             )
 
     async def health_check(self) -> Dict[str, Any]:

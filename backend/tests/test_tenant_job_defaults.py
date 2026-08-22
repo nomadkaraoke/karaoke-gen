@@ -56,6 +56,43 @@ def _make_job_mock(**kwargs):
     return job
 
 
+class TestSelectMixedAudioFiles:
+    """Regression tests for _select_mixed_audio_files() in file_upload.py.
+
+    The existing-instrumental file shares the uploads/{job}/audio/ directory with the
+    mixed audio, so the 'audio/' prefix matches both. Before the fix, files[0] resolved to
+    'existing_instrumental.mp3' (it sorts first) and transcription ran on the instrumental.
+    """
+
+    def _fn(self):
+        from backend.api.routes.file_upload import _select_mixed_audio_files
+        return _select_mixed_audio_files
+
+    def test_excludes_existing_instrumental(self):
+        fn = self._fn()
+        # Listing is sorted alphabetically by GCS, so the instrumental comes first.
+        files = [
+            "uploads/job123/audio/existing_instrumental.mp3",
+            "uploads/job123/audio/mixed.mp3",
+        ]
+        result = fn(files)
+        assert result == ["uploads/job123/audio/mixed.mp3"]
+        assert result[0] == "uploads/job123/audio/mixed.mp3"
+
+    def test_plain_audio_only_unchanged(self):
+        fn = self._fn()
+        files = ["uploads/job123/audio/My Song.flac"]
+        assert fn(files) == files
+
+    def test_real_filenames_with_instrumental(self):
+        fn = self._fn()
+        files = [
+            "uploads/job123/audio/existing_instrumental.mp3",
+            "uploads/job123/audio/Eddy Grant - I Don't Wanna Dance Guide.mp3",
+        ]
+        assert fn(files) == ["uploads/job123/audio/Eddy Grant - I Don't Wanna Dance Guide.mp3"]
+
+
 class TestApplyTenantOverrides:
     """Tests for _apply_tenant_overrides() in file_upload.py."""
 
@@ -125,24 +162,70 @@ class TestApplyTenantOverrides:
         _, _, _, yt_upload = apply_fn(dist, tenant_config, "default", False, True)
         assert yt_upload is False
 
-    def test_request_values_take_precedence(self):
-        """Explicit request-level values are not overridden by tenant defaults."""
+    def test_tenant_config_overrides_global_defaults(self):
+        """Tenant config is authoritative: it overrides any global/consumer default
+        distribution settings already seeded into `dist`.
+
+        Regression guard: prod sets DEFAULT_DROPBOX_PATH / DEFAULT_GDRIVE_FOLDER_ID /
+        DEFAULT_BRAND_PREFIX globally, which get_effective_distribution_settings seeds
+        into `dist`. If tenant overrides only filled in *unset* fields, every tenant job
+        would leak into the shared consumer Dropbox folder and global Google Drive.
+        """
         apply_fn = self._get_apply_fn()
         tenant_config = _make_tenant_config()
 
+        # `dist` arrives pre-seeded with the GLOBAL consumer defaults.
         dist = EffectiveDistributionSettings(
-            dropbox_path="/Custom/Path",
-            gdrive_folder_id="custom-folder",
+            dropbox_path="/MediaUnsynced/Karaoke/Tracks-Organized",  # global default
+            gdrive_folder_id="global-consumer-folder",               # global default
             discord_webhook_url=None,
-            brand_prefix="CUSTOM",
+            brand_prefix="NOMAD",                                    # global default
             enable_youtube_upload=True,
             youtube_description=None,
         )
 
         new_dist, _, _, _ = apply_fn(dist, tenant_config, "default", False, True)
-        assert new_dist.brand_prefix == "CUSTOM"
-        assert new_dist.dropbox_path == "/Custom/Path"
-        assert new_dist.gdrive_folder_id == "custom-folder"
+        # Tenant config wins on every distribution field.
+        assert new_dist.brand_prefix == "VSTAR"
+        assert new_dist.dropbox_path == "/Karaoke/Vocal-Star"
+        assert new_dist.gdrive_folder_id == "gdrive-folder-123"
+
+    def test_gdrive_disabled_clears_global_default(self):
+        """When the tenant disables gdrive_upload, the global default GDrive folder is
+        cleared so the tenant job never publishes to Google Drive (the B2B requirement)."""
+        apply_fn = self._get_apply_fn()
+        # Tenant has a gdrive folder configured but the feature is OFF — the disabled
+        # flag must win, clearing both the configured folder and any global default.
+        tenant_config = _make_tenant_config()
+        tenant_config.features.gdrive_upload = False
+
+        dist = EffectiveDistributionSettings(
+            dropbox_path=None,
+            gdrive_folder_id="global-consumer-folder",  # would otherwise leak
+            discord_webhook_url=None,
+            brand_prefix=None,
+            enable_youtube_upload=True,
+            youtube_description=None,
+        )
+
+        new_dist, _, _, yt_upload = apply_fn(dist, tenant_config, "default", False, True)
+        assert new_dist.gdrive_folder_id is None
+        assert yt_upload is False
+
+    def test_dropbox_disabled_clears_path(self):
+        """When the tenant disables dropbox_upload, the Dropbox path is cleared."""
+        apply_fn = self._get_apply_fn()
+        tenant_config = _make_tenant_config()
+        tenant_config.features.dropbox_upload = False
+
+        dist = EffectiveDistributionSettings(
+            dropbox_path="/MediaUnsynced/Karaoke/Tracks-Organized",
+            gdrive_folder_id=None, discord_webhook_url=None,
+            brand_prefix=None, enable_youtube_upload=True, youtube_description=None,
+        )
+
+        new_dist, _, _, _ = apply_fn(dist, tenant_config, "default", False, True)
+        assert new_dist.dropbox_path is None
 
     def test_no_tenant_config_passthrough(self):
         """When no tenant config, all values pass through unchanged."""

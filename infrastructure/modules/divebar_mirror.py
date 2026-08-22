@@ -10,6 +10,9 @@ Creates:
 - BigQuery table for the Divebar catalog index
 """
 
+import base64
+from pathlib import Path
+
 import pulumi
 import pulumi_gcp as gcp
 from pulumi_gcp import (
@@ -99,6 +102,18 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
     )
     resources["source_bucket"] = source_bucket
 
+    # Zip the function source and upload it as a content-hashed object so that
+    # `pulumi up` redeploys the function whenever the code changes (the previous
+    # static object name never triggered a redeploy on code edits).
+    source_dir = Path(__file__).parent.parent / "functions" / "divebar_mirror"
+    source_archive = storage.BucketObject(
+        "divebar-mirror-source",
+        bucket=source_bucket.name,
+        name="divebar-mirror-source.zip",
+        source=pulumi.FileArchive(str(source_dir)),
+    )
+    resources["source_archive"] = source_archive
+
     # ==================== BigQuery Table ====================
 
     # The table is in the karaoke_decide dataset (managed by karaoke-decide Pulumi).
@@ -143,7 +158,11 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
             source=cloudfunctionsv2.FunctionBuildConfigSourceArgs(
                 storage_source=cloudfunctionsv2.FunctionBuildConfigSourceStorageSourceArgs(
                     bucket=source_bucket.name,
-                    object="divebar-mirror-source.zip",
+                    object=source_archive.name,
+                    # Pin to the object generation so replacing the source bundle
+                    # (a code change) registers as a diff on the Function and
+                    # forces a redeploy, instead of silently serving the old copy.
+                    generation=source_archive.generation,
                 ),
             ),
         ),
@@ -156,6 +175,9 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
             environment_variables={
                 "DIVEBAR_FOLDER_ID": DIVEBAR_FOLDER_ID,
                 "GCP_PROJECT_ID": PROJECT_ID,
+                # Region the divebar scheduler jobs live in — the index function
+                # chains the sync-VM + xref jobs (via run_job) on completion.
+                "GCP_REGION": REGION,
             },
         ),
     )
@@ -205,5 +227,36 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
         ),
     )
     resources["scheduler"] = scheduler
+
+    # Refresh-only trigger. The manual "Refresh catalog" action force-runs THIS job
+    # (via run_job) instead of divebar-mirror-daily. Its body sets chain_downstream,
+    # so the index — on completion — chains the file-sync VM + xref rebuild, fixing
+    # the race where those ran before the fresh index existed. The nightly mirror cron
+    # omits the flag, so it leaves the standalone nightly sync/xref schedules to run
+    # once (no double-run). The cron below is a parked placeholder (Cloud Scheduler
+    # requires a schedule); this job is driven by run_job, not the clock.
+    refresh_scheduler = cloudscheduler.Job(
+        "divebar-mirror-refresh-scheduler",
+        name="divebar-mirror-refresh",
+        description="On-demand Divebar index refresh that chains the sync VM + xref (run via forceRun)",
+        region=REGION,
+        schedule="0 4 1 1 *",  # parked (Jan 1); driven by run_job, not the clock
+        time_zone="America/New_York",
+        http_target=cloudscheduler.JobHttpTargetArgs(
+            uri=function.url,
+            http_method="POST",
+            headers={"Content-Type": "application/json"},
+            body=base64.b64encode(b'{"chain_downstream": true}').decode("utf-8"),
+            oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+                service_account_email=sa.email,
+            ),
+        ),
+        retry_config=cloudscheduler.JobRetryConfigArgs(
+            retry_count=2,
+            min_backoff_duration="60s",
+            max_backoff_duration="300s",
+        ),
+    )
+    resources["refresh_scheduler"] = refresh_scheduler
 
     return resources

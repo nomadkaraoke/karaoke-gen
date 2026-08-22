@@ -363,11 +363,23 @@ export function deleteWord(data: CorrectionData, wordId: string): CorrectionData
   const updatedWords = segment.words.filter((_, index) => index !== wordIndex)
 
   if (updatedWords.length > 0) {
-    // Update the segment with the word removed
+    // Recompute the segment's boundary times from the remaining words so the
+    // segment no longer spans a deleted first/last word. This mirrors the
+    // Edit-segment modal's updateSegment behaviour (EditModal.tsx), keeping the
+    // Ctrl+click "delete word" path consistent with it.
+    const validStartTimes = updatedWords
+      .map((w) => w.start_time)
+      .filter((t): t is number => t !== null)
+    const validEndTimes = updatedWords
+      .map((w) => w.end_time)
+      .filter((t): t is number => t !== null)
+
     const updatedSegment = {
       ...segment,
       words: updatedWords,
       text: updatedWords.map((w) => w.text).join(' '),
+      start_time: validStartTimes.length > 0 ? Math.min(...validStartTimes) : null,
+      end_time: validEndTimes.length > 0 ? Math.max(...validEndTimes) : null,
     }
 
     // Update the data

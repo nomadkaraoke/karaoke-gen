@@ -1,0 +1,286 @@
+'use client'
+
+import { useTranslations } from 'next-intl'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
+  Sparkles,
+  Check,
+  X,
+  Undo2,
+  RefreshCw,
+  AlertTriangle,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { AiSuggestion } from '@/lib/api/autoCorrect'
+import type { AutoCorrectController } from '@/hooks/useAutoCorrect'
+
+interface AutoCorrectPanelProps {
+  controller: AutoCorrectController
+  isReadOnly: boolean
+  /** Details are shown on demand from the toolbar button, not as a standing
+   *  row — so the panel only renders when the reviewer opens it. */
+  open: boolean
+  onClose: () => void
+  /** Re-open the run/settings modal for another pass. */
+  onRerun?: () => void
+}
+
+function scrollToWord(wordId: string | undefined) {
+  if (!wordId) return
+  const el = document.getElementById(`word-${wordId}`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('animate-lyrics-flash')
+    setTimeout(() => el.classList.remove('animate-lyrics-flash'), 1300)
+  }
+}
+
+const CATEGORY_BADGE: Record<AiSuggestion['category'], string> = {
+  mishearing: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+  grammar: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+  adlib_removal: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+  repeated_chorus_fix: 'bg-teal-500/15 text-teal-600 dark:text-teal-400',
+  formatting: 'bg-slate-500/15 text-slate-600 dark:text-slate-400',
+  other: 'bg-slate-500/15 text-slate-600 dark:text-slate-400',
+}
+
+export default function AutoCorrectPanel({
+  controller,
+  isReadOnly,
+  open,
+  onClose,
+  onRerun,
+}: AutoCorrectPanelProps) {
+  const t = useTranslations('lyricsReview.autoCorrect')
+  const {
+    suggestions,
+    decisions,
+    pendingCount,
+    acceptedCount,
+    accept,
+    reject,
+    undoAccept,
+    acceptAll,
+    revertAll,
+    rejectAll,
+    isPendingAndStale,
+  } = controller
+
+  // Details are opened on demand from the toolbar button.
+  if (!open || controller.status !== 'reviewing') return null
+
+  return (
+    <Card className="mb-3 border-purple-500/40">
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles className="h-4 w-4 shrink-0 text-purple-500" />
+          <span className="text-sm font-medium truncate">
+            {suggestions.length === 0
+              ? t('noSuggestions')
+              : acceptedCount > 0 && pendingCount === 0
+                ? t('appliedSummary', { count: acceptedCount })
+                : t('summary', {
+                    total: suggestions.length,
+                    pending: pendingCount,
+                    accepted: acceptedCount,
+                  })}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Any remaining pending suggestions (e.g. ones that couldn't be
+              auto-applied) keep their bulk controls. */}
+          {!isReadOnly && pendingCount > 0 && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => acceptAll(false)}>
+                <Check className="h-3.5 w-3.5 mr-1" />
+                {t('acceptAll')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={rejectAll}>
+                <X className="h-3.5 w-3.5 mr-1" />
+                {t('rejectAll')}
+              </Button>
+            </>
+          )}
+          {!isReadOnly && acceptedCount > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-muted-foreground hover:text-destructive"
+              onClick={revertAll}
+            >
+              <Undo2 className="h-3.5 w-3.5 mr-1" />
+              {t('revertAllAuto')}
+            </Button>
+          )}
+          {!isReadOnly && onRerun && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-muted-foreground"
+              onClick={onRerun}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              {t('rerun')}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" onClick={onClose} aria-label={t('close')}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {suggestions.length > 0 && (
+        // Plain overflow div, NOT the ScrollArea component: its Radix root
+        // has no overflow-hidden, so a max-height there doesn't clip and
+        // long suggestion lists spill over the panel border.
+        <div className="max-h-64 overflow-y-auto border-t">
+          <ul className="divide-y">
+            {suggestions.map((s) => {
+              const decision = decisions[s.id]
+              const stale = decision === 'stale' || isPendingAndStale(s)
+              return (
+                <li
+                  key={s.id}
+                  role="button"
+                  tabIndex={0}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none',
+                    decision === 'rejected' && 'opacity-50',
+                  )}
+                  onClick={() => scrollToWord(s.word_ids[0])}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      scrollToWord(s.word_ids[0])
+                    }
+                  }}
+                >
+                  <Badge
+                    className={cn('shrink-0 text-[10px]', CATEGORY_BADGE[s.category])}
+                  >
+                    {t(`category_${s.category}`)}
+                  </Badge>
+                  {s.conflict_group && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 text-[10px] border-purple-500/50 text-purple-600 dark:text-purple-400"
+                          >
+                            {t('conflictBadge')}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          {t('conflictTooltip')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  <span className="min-w-0 flex-1 truncate">
+                    {s.op === 'insert_after' ? (
+                      <>
+                        <span className="text-muted-foreground">{t('insertMarker')} </span>
+                        <span className="text-green-600 dark:text-green-400">
+                          {s.new_text}
+                        </span>
+                      </>
+                    ) : s.op === 'delete' ? (
+                      <span className="line-through text-red-600 dark:text-red-400">
+                        {s.original_text}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="line-through text-red-600 dark:text-red-400">
+                          {s.original_text}
+                        </span>{' '}
+                        <span className="text-green-600 dark:text-green-400">
+                          {s.new_text}
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                          {Math.round(s.confidence * 100)}%
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">{s.reason}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <div
+                    className="flex items-center gap-1 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {stale ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          </TooltipTrigger>
+                          <TooltipContent>{t('staleHint')}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : decision === 'pending' && !isReadOnly ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-green-600 hover:text-green-700"
+                          onClick={() => accept(s.id)}
+                          aria-label={t('accept')}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-red-600 hover:text-red-700"
+                          onClick={() => reject(s.id)}
+                          aria-label={t('reject')}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : decision === 'accepted' ? (
+                      <>
+                        <Badge variant="outline" className="text-[10px] text-green-600">
+                          {t('accepted')}
+                        </Badge>
+                        {!isReadOnly && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2"
+                            onClick={() => undoAccept(s.id)}
+                            aria-label={t('undo')}
+                          >
+                            <Undo2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
+                    ) : decision === 'rejected' ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        {t('rejected')}
+                      </Badge>
+                    ) : null}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </Card>
+  )
+}

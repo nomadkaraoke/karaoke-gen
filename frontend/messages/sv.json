@@ -239,7 +239,10 @@
     "loadingJobs": "Laddar jobb...",
     "noJobsMatchFilters": "Inga jobb matchar dina filter.",
     "noJobsYet": "Inga jobb ännu. Skapa ett för att komma igång!",
-    "referrals": "Värvningar"
+    "referrals": "Värvningar",
+    "bulkMode": "Bulk",
+    "singleMode": "Enskild",
+    "submitModeToggle": "Enskild eller massinlämning"
   },
   "auth": {
     "noVerificationToken": "Ingen verifieringstoken angavs",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Vi kunde inte hitta den länken",
     "resendSuccessBody": "Vi har skickat en ny inloggningslänk till {maskedEmail}. Den är giltig i 24 timmar.",
     "resendSuccessTitle": "Kolla din e-post",
-    "resending": "Skickar..."
+    "resending": "Skickar...",
+    "confirmBody": "Av säkerhetsskäl ber vi dig klicka på knappen nedan för att slutföra inloggningen. Detta extra steg förhindrar att automatiserade e-postskannrar förbrukar din länk innan du hinner använda den.",
+    "confirmButton": "Slutför inloggning",
+    "confirmTitle": "Slutför din inloggning"
   },
   "payment": {
     "title": "Betalning lyckades!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Fallback",
+    "fallbackNote": "Primär kapacitet är otillgänglig — omdirigerad till en fallback-instans.",
+    "liveWorker": "Live-worker"
   },
   "credits": {
     "title": "Köp fler krediter",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Klistra in en länk",
     "urlSupportedSitesHint": "Fungerar med YouTube, Facebook, SoundCloud, TikTok, Vimeo och hundratals andra webbplatser.",
     "urlSupportedSitesLink": "Se alla webbplatser som stöds",
-    "useThisUrl": "Använd den här URL:en"
+    "useThisUrl": "Använd den här URL:en",
+    "matchCorrectedTo": "Korrigerat till {value} — du skrev ”{typed}”",
+    "matchDidYouMean": "Menade du?",
+    "matchKeepMine": "behåll det jag skrev",
+    "matchTidiedTo": "Justerat till {value}",
+    "matchUndo": "Ångra",
+    "matchChecking": "Kontrollerar låtdetaljer…",
+    "matchUseCorrection": "använd korrigeringen",
+    "matchUseTidied": "använd rensad version",
+    "matchUsingTyped": "Använder det du skrev: {value}",
+    "checkingUrl": "Kontrollerar…",
+    "submitNetworkError": "Nätverksfel — kontrollera din anslutning och försök igen.",
+    "submitError": "Något gick fel. Försök igen."
   },
   "jobStatus": {
     "settingUp": "Ställer in",
@@ -576,7 +597,9 @@
     "correcting": "Korrigerar",
     "lyricsDone": "Text klar",
     "lyrics": "Text",
-    "confirmDurationCost": "Bekräfta kostnad"
+    "confirmDurationCost": "Bekräfta kostnad",
+    "findingAudioSources": "Söker efter ljudkällor (försöker igen)",
+    "waitingForCapacity": "Väntar på kodningsserver (försöker igen)"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",
@@ -588,7 +611,9 @@
     "autoSelect": "Kommer att auto-välja",
     "willAutoSelectFirst": "Kommer att auto-välja första",
     "noOutputsAvailable": "Inga utdata tillgängliga ännu",
-    "confirmCost": "Bekräfta kostnad"
+    "confirmCost": "Bekräfta kostnad",
+    "makingPublicInProgress": "Gör det här spåret offentligt — renderar om med standardprofilering och publicerar på nytt. Detta tar vanligtvis 15–30 minuter.",
+    "waitingForEncodingServer": "(väntar på att kodningsservern ska bli tillgänglig)"
   },
   "jobActions": {
     "delete": "Ta bort",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Låttitel",
-    "artist": "Artist"
+    "artist": "Artist",
+    "loading": "Laddar förhandsgranskning av titelskärm"
   },
   "editTrack": {
     "title": "Redigera slutfört spår",
@@ -739,7 +765,22 @@
     "views": "{count} visningar",
     "moreVersions": "+{count} fler",
     "select": "Välj",
-    "creditCost": "{credits} krediter"
+    "creditCost": "{credits} krediter",
+    "chooseFile": "Välj en ljudfil (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Vi kunde inte hitta några ljudkällor. Prova att ändra artist eller titel ovan och sök igen, eller lägg till ditt eget ljud via en URL eller filuppladdning.",
+    "pasteUrl": "Klistra in URL",
+    "researchFailed": "Sökningen misslyckades. Försök igen.",
+    "searchAgain": "Sök igen",
+    "selectFailed": "Det gick inte att välja ljud",
+    "uploadFailed": "Uppladdningen misslyckades. Försök igen.",
+    "urlFailed": "Det gick inte att använda den URL:en. Prova en annan källa.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Använd den här filen",
+    "useThisUrl": "Använd den här URL:en",
+    "artistLabel": "Artist",
+    "loading": "Laddar...",
+    "titleLabel": "Titel",
+    "uploadFileAction": "Ladda upp fil"
   },
   "audioEditor": {
     "loading": "Laddar ljudredigerare...",
@@ -776,7 +817,17 @@
     "undoFailed": "Kunde inte ångra",
     "redoFailed": "Kunde inte göra om",
     "restoreFailed": "Kunde inte återställa — vissa redigeringar kanske inte har tillämpats",
-    "submitFailed": "Kunde inte skicka in"
+    "submitFailed": "Kunde inte skicka in",
+    "fadeIn": "Tona in",
+    "fadeInSelection": "Tona in över det markerade området",
+    "fadeOut": "Tona ut",
+    "fadeOutSelection": "Tona ut över det markerade området",
+    "fadeInDisabledHint": "För att tona in, markera ett område som börjar precis i början av spåret",
+    "fadeOutDisabledHint": "För att tona ut, markera ett område som slutar precis i slutet av spåret",
+    "trimEndDisabledHint": "För att trimma slutet, markera ett område som slutar precis i slutet av spåret",
+    "trimEndSelection": "Ta bort allt efter markeringen",
+    "trimStartDisabledHint": "För att trimma början, markera ett område som börjar precis i början av spåret",
+    "trimStartSelection": "Ta bort allt före markeringen"
   },
   "audioEditRestore": {
     "title": "Sparade ljudredigeringssessioner",
@@ -803,7 +854,7 @@
       "acceptAll": "Acceptera alla",
       "revertAll": "Återställ alla",
       "undoAll": "Ångra alla",
-      "resetAllChanges": "Återställ alla ändringar tillbaka till den ursprungliga AI-korrigerade texten",
+      "resetAllChanges": "Återställ alla ändringar till den ursprungliga korrigerade låttexten",
       "undo": "Ångra",
       "redo": "Gör om",
       "findReplace": "Sök/Ersätt",
@@ -816,7 +867,11 @@
       "playback": "Uppspelning",
       "audioLoadError": "Kunde inte ladda ljudet",
       "audioStillLoading": "Ljudet laddas fortfarande...",
-      "loadingAudio": "Laddar ljud..."
+      "loadingAudio": "Laddar ljud...",
+      "autoCorrect": "Autokorrigering",
+      "autoCorrectDesc": "Jämför transkriptionen med referenstexten och tillämpar korrigeringar på ordnivå åt dig. Korrigerade ord visas i lila.",
+      "autoCorrectedCount": "Autokorrigerat · {count}",
+      "autoCorrectedDesc": "Vi gjorde {count, plural, =1 {# autokorrigering} other {# autokorrigeringar}} (visas i lila). Klicka för att visa detaljerna och ångra de som inte stämmer."
     },
     "guidance": {
       "showTips": "Visa tips",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "De orange markerade orden är luckor — sektioner som inte kunde matchas till referenstexten och kan innehålla fel (t.ex. felhörda ord som låter liknande).",
       "useNAndP": "Använd N och P för att hoppa mellan luckor. För varje lucka, klicka på spela bredvid raden och jämför vad du hör med referenstexten till höger, klicka sedan på ett ord för att redigera eller ta bort det.",
       "watchOutForPhantomWords": "Se upp för fantomord som \"and\" i början eller slutet av rader — transkriberingen lägger ofta till dessa.",
-      "tryTimelineView": "Prova tidslinjevyn för att upptäcka ovanligt långa ord (10+ sekunder), vilket vanligtvis indikerar ett tajmingproblem.",
+      "tryTimelineView": "Ord över 2s och luckor över 2s markeras med en orange varaktighet — kontrollera dessa för tajmingsproblem. Byt till Avancerat för att se varje rad utsträckt i en tidslinje.",
       "watchFullTutorial": "Titta på hela handledningen",
       "correctionHandlers": "Korrigeringshanterare",
       "anchorSequences": "Ankarsekvenser",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Okorrigerade luckor",
       "uncorrectedGapsDesc": "Sektioner som kan behöva manuell granskning",
       "wordsUncorrected": "Okorrigerade ord",
-      "numberOfGaps": "Antal luckor"
+      "numberOfGaps": "Antal luckor",
+      "autoCorrectTip": "{count, plural, =1 {# ord autokorrigerades} other {# ord autokorrigerades}} åt dig (visas i lila, med det ursprungliga ordet ovanför). Spela upp varje korrigerad rad och kontrollera att orden fortfarande ligger rätt — särskilt de som är understrukna i orange, där tajmingen är uppskattad och förmodligen behöver justeras.",
+      "autoCorrected": "Autokorrigerat",
+      "timingEstimated": "Uppskattad tajming"
     },
     "transcription": {
       "syncedLyrics": "Synkroniserad text",
@@ -854,7 +912,13 @@
       "text": "Text",
       "timeline": "Tidslinje",
       "deleteSegment": "Ta bort segment",
-      "playSegment": "Spela segment"
+      "playSegment": "Spela segment",
+      "aiTooltipEstimated": "Autokorrigerat av vårt system. Tajmingen här är uppskattad, så spela upp den här raden och justera ordens tajming om det behövs.",
+      "aiTooltipReplaced": "Autokorrigerat av vårt system från \"{original}\". Spela upp den här raden för att bekräfta att orden fortfarande ligger rätt.",
+      "aiTooltipReplacedEstimated": "Autokorrigerat av vårt system från \"{original}\". Tajmingen är uppskattad, så spela upp den här raden och justera ordens tajming om det behövs.",
+      "longGapWarning": "{seconds} s mellanrum före nästa ord — ofta ett felplacerat tidigt ord (t.ex. ett extra \"och\"). Klicka för att spela upp härifrån.",
+      "longWordWarning": "Det här ordet är {seconds} s långt — ovanligt länge. Spela upp raden och kontrollera att sluttiden inte överlappar med musiken.",
+      "playFromGap": "Spela upp från slutet av detta mellanrum"
     },
     "editActionBar": {
       "reset": "Återställ",
@@ -990,7 +1054,9 @@
         "loadingAll": "Laddar alla ord...",
         "loadingSegment": "Laddar segment...",
         "noData": "Ingen segmentdata tillgänglig",
-        "unCorrect": "Av-korrigera"
+        "unCorrect": "Av-korrigera",
+        "timingClamped": "Tajmingen för \"{word}\" var utanför segmentet — justerades till {time}s.",
+        "timingSanitized": "Åtgärdade tajmingen för {count} ord som hamnade utanför detta segment."
       },
       "findReplace": {
         "title": "Sök och ersätt",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten."
+    },
+    "autoCorrect": {
+      "accept": "Acceptera förslag",
+      "acceptAll": "Acceptera alla",
+      "accepted": "Accepterat",
+      "adlibRemovalHint": "Tillåt förslag som tar bort bakgrundssång som referenserna inte har",
+      "adlibRemovalLabel": "Föreslå borttagning av adlibs",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "grammatik",
+      "category_mishearing": "felhört",
+      "category_other": "annat",
+      "category_repeated_chorus_fix": "refräng",
+      "collapse": "Fäll ihop förslag",
+      "confidenceHint": "Hur säkert ett förslag måste vara innan det visas",
+      "confidenceLabel": "Förslagsfilter",
+      "confidence_all": "Visa alla",
+      "confidence_high": "Hög säkerhet",
+      "description": "Autokorrigering jämför den transkriberade låttexten med referenskällorna och föreslår rättningar på ordnivå. Du granskar varje förslag — ingenting tillämpas förrän du accepterar det.",
+      "dismiss": "Avfärda förslag",
+      "expand": "Fäll ut förslag",
+      "insertMarker": "infoga:",
+      "insertionsHint": "Tillåt förslag som infogar ord som transkriberingen missade",
+      "insertionsLabel": "Föreslå saknade ord",
+      "noReferences": "Det finns inga referenstexter för den här låten, så det går inte att generera några förslag. Lägg till en text från referenspanelen först.",
+      "noSuggestions": "Inga problem hittades — det finns inga föreslagna ändringar.",
+      "reject": "Avvisa förslag",
+      "rejectAll": "Avvisa alla",
+      "rejected": "Avvisat",
+      "runButton": "Hämta förslag",
+      "running": "Analyserar låttext… detta tar vanligtvis 15–60 sekunder.",
+      "staleHint": "Dessa ord har redigerats sedan förslagen genererades, så detta förslag gäller inte längre.",
+      "summary": "{total} förslag · {pending} väntande · {accepted} accepterade",
+      "title": "Autokorrigeringsförslag",
+      "undo": "Ångra detta förslag",
+      "cancel": "Avbryt",
+      "close": "Stäng",
+      "confidence_balanced": "Balanserad",
+      "compareHint": "Långsammare och kostar mer, men visar vilka förslag flera modeller är överens om",
+      "compareLabel": "Jämför flera modeller",
+      "conflictBadge": "variant",
+      "conflictTooltip": "Det finns olika förslag för dessa ord — om du accepterar en variant avvisas de andra.",
+      "consensusBadge": "{consensus}/{total} modeller",
+      "consensusTooltip": "Föreslaget av: {models}",
+      "cachedBadge": "cachad",
+      "cachedTooltip": "Återställd från en tidigare körning på samma låttext — ingen AI-kostnad tillkom.",
+      "appliedSummary": "{count} autokorrigeringar genomfördes",
+      "hideDetails": "Dölj detaljer",
+      "rerun": "Kör igen",
+      "revertAllAuto": "Återställ alla",
+      "showDetails": "Visa detaljer"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Preliminärt — slutgiltig kostnad bekräftas efter nedladdning",
     "reconcileTitle": "Den här låten är längre än förväntat",
     "cancel": "Avbryt"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Laddar förhandsgranskning av bakgrund"
+  },
+  "bulk": {
+    "albumModeHint": "Sök efter en artist, välj ett album och välj sedan vilka spår du vill skapa.",
+    "artistSearchPlaceholder": "Sök efter en artist…",
+    "autoPickLossless": "Välj bästa ljud automatiskt (endast förlustfritt)",
+    "autoPickLosslessHint": "Välj ljudet automatiskt när vi hittar en säker förlustfri/FLAC-matchning. Övriga hamnar i en granskningskö.",
+    "backToAlbums": "Tillbaka till album",
+    "backToArtists": "Tillbaka till artister",
+    "batchProgressTitle": "Batch med {total} låtar",
+    "batchSettings": "Batchinställningar",
+    "byAlbum": "Efter album",
+    "byText": "Efter text",
+    "checking": "Kontrollerar…",
+    "chooseAudio": "Välj ljud",
+    "communityExists": "Community-version finns",
+    "communityExistsWithBrands": "Community-version: {brands}",
+    "countAwaiting": "{count} behöver ett val",
+    "countComplete": "{count} klara",
+    "countFailed": "{count} misslyckades",
+    "countProcessing": "{count} bearbetas",
+    "countSearching": "{count} söker",
+    "createBatch": "Skapa {count} karaokevideor",
+    "creditsCost": "{cost} krediter · du har {balance}",
+    "edition": "Utgåva",
+    "extra": "Extra",
+    "loadingBatch": "Laddar batch…",
+    "lookupFailed": "Sökningen misslyckades. Försök igen.",
+    "makePrivate": "Håll privat",
+    "makePrivateHint": "Leverera endast via Dropbox istället för att publicera på YouTube.",
+    "noAlbums": "Inga album hittades för den här artisten.",
+    "notEnoughCredits": "Du behöver {needed} krediter men har {have}.",
+    "overLimit": "Du kan skicka in högst {max} låtar åt gången.",
+    "progressError": "Kunde inte ladda batchförloppet.",
+    "reviewQueueHint": "Vi kunde inte med säkerhet välja en förlustfri källa automatiskt för dessa. Välj en för varje.",
+    "reviewQueueTitle": "Välj ljud för dessa spår",
+    "selectedCount": "{count} låtar valda",
+    "skipAudioEdit": "Hoppa över ljudredigering",
+    "skipAudioEditHint": "Använd varje spårs ljud som det är (ingen beskärning).",
+    "skipCustomization": "Hoppa över anpassning",
+    "skipCustomizationHint": "Använd standardtemat och stilen för varje spår.",
+    "startAnother": "Starta en ny batch",
+    "submitError": "Kunde inte skapa batchen. Försök igen.",
+    "submitting": "Skapar batch…",
+    "textModeHint": "Lägg till upp till {max} låtar. Vi markerar alla som redan har en community-version.",
+    "title": "Titel",
+    "tracklistHint": "Live-, remix- och bonusspår — samt låtar som redan har en community-version — är avmarkerade som standard.",
+    "addSong": "Lägg till låt",
+    "artist": "Artist",
+    "buyCredits": "Köp krediter",
+    "removeRow": "Ta bort",
+    "trackCount": "{count} spår",
+    "changeEdition": "Ändra",
+    "existingVersions": "Befintliga versioner:",
+    "usingRelease": "Använder {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Nyutgåva"
+  },
+  "backendStatus": {
+    "reconnecting": "Återansluter…",
+    "unavailable": {
+      "body": "Detta är oftast tillfälligt — försök igen om ett par minuter.",
+      "reassurance": "Karaokevideor som håller på att skapas påverkas inte, utan fortsätter att bearbetas.",
+      "title": "Vi har problem med att nå våra servrar"
+    },
+    "dismiss": "Avfärda"
   }
 }

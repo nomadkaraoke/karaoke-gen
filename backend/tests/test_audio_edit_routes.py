@@ -314,6 +314,24 @@ class TestApplyAudioEdit:
         assert resp.status_code == 400
         assert "Invalid operation" in resp.json()["detail"]
 
+    @pytest.mark.parametrize("operation", ["fade_in", "fade_out"])
+    def test_apply_fade_operations_accepted(self, operation, test_client, mock_job_manager, mock_services, audio_edit_job):
+        mock_job_manager.get_job.return_value = audio_edit_job
+        mock_services["edit"].apply_edit.return_value = (
+            AudioMetadata(duration_seconds=180.0, sample_rate=44100, channels=2,
+                          format="flac", file_size_bytes=25000000),
+            "jobs/edit-job-1/audio_edit/edit_fade.flac",
+        )
+
+        resp = test_client.post("/api/review/edit-job-1/audio-edit/apply", json={
+            "operation": operation,
+            "params": {"start_seconds": 0.0, "end_seconds": 3.0},
+        })
+
+        assert resp.status_code == 200
+        called_op = mock_services["edit"].apply_edit.call_args.kwargs["operation"]
+        assert called_op == operation
+
     def test_apply_wrong_status(self, test_client, mock_job_manager):
         job = _job(job_id="wrong-status", status=JobStatus.COMPLETE,
                    input_media_gcs_path="jobs/x/input/song.flac", state_data={})

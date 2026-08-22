@@ -38,9 +38,36 @@ class TestStorageServiceInit:
         assert service.bucket == mock_bucket
 
 
+class TestStorageServiceCopy:
+    """Test server-side copy (used to stage the tenant instrumental for the GCE encoder)."""
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_copy_blob(self, mock_settings, mock_client_class):
+        mock_settings.gcs_bucket_name = "test-bucket"
+        mock_src_blob = Mock()
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_src_blob
+        mock_client = Mock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_client_class.return_value = mock_client
+
+        service = StorageService()
+        result = service.copy_blob(
+            "uploads/job123/audio/existing_instrumental.mp3",
+            "jobs/job123/existing_instrumental.mp3",
+        )
+
+        mock_bucket.blob.assert_called_once_with("uploads/job123/audio/existing_instrumental.mp3")
+        mock_bucket.copy_blob.assert_called_once_with(
+            mock_src_blob, mock_bucket, "jobs/job123/existing_instrumental.mp3"
+        )
+        assert result == "jobs/job123/existing_instrumental.mp3"
+
+
 class TestStorageServiceUpload:
     """Test upload operations."""
-    
+
     @patch("backend.services.storage_service.storage.Client")
     @patch("backend.services.storage_service.settings")
     def test_upload_file(self, mock_settings, mock_client_class):
@@ -179,9 +206,34 @@ class TestStorageServiceDownload:
         
         with pytest.raises(Exception) as exc_info:
             service.download_file("missing/file.flac", "/local/path")
-        
+
         assert "File not found" in str(exc_info.value)
-    
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_download_file_missing_reraises_notfound(self, mock_settings, mock_client_class):
+        """A 404 from GCS re-raises NotFound (so callers can map it to HTTP 404)
+        and is logged at warning, not error, to avoid tripping the error-monitor."""
+        from google.cloud.exceptions import NotFound
+
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+
+        mock_blob = Mock()
+        mock_blob.download_to_filename.side_effect = NotFound("No such object")
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_client = Mock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_client_class.return_value = mock_client
+
+        service = StorageService()
+        with patch("backend.services.storage_service.logger") as mock_logger:
+            with pytest.raises(NotFound):
+                service.download_file("jobs/abc/finals/lossy_4k_mp4.mp4", "/local/path")
+            mock_logger.error.assert_not_called()
+            mock_logger.warning.assert_called_once()
+
     @patch("backend.services.storage_service.storage.Client")
     @patch("backend.services.storage_service.settings")
     def test_download_json(self, mock_settings, mock_client_class):

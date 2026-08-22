@@ -129,18 +129,56 @@ Notification channels are managed as Pulumi IaC in
 attached to every alert policy.
 
 **Current channel:** one email channel (`alerts-email`) delivering to the
-project owner. Cloud Monitoring puts new email channels in PENDING state and
-sends a one-time confirmation link to the address; the channel stays inactive
-until the link is clicked.
+project owner.
 
-If alerts seem to be firing but not delivering, check:
+### Gotcha: Pulumi-created email channels don't auto-send the verification email
+
+When an email channel is created through the **Cloud Console**, Cloud Monitoring
+automatically sends a verification link to the address. When it's created
+through the **API or Pulumi**, that auto-send does **not** happen — the channel
+lands in `verificationStatus=UNVERIFIED` and stays there silently. Alerts will
+fire and resolve but no email gets delivered.
+
+After `pulumi up` creates a new email channel, trigger the verification email
+explicitly:
 
 ```bash
-gcloud alpha monitoring channels list --project=nomadkaraoke \
-  --format='table(displayName,type,verificationStatus,enabled)'
+unset GOOGLE_APPLICATION_CREDENTIALS   # need admin creds, not claude-readonly
+CHANNEL_ID=$(gcloud alpha monitoring channels list --project=nomadkaraoke \
+  --filter='type=email AND displayName="Andrew (email)"' \
+  --format='value(name.basename())')
+
+curl -sS -X POST -d '{}' \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  "https://monitoring.googleapis.com/v3/projects/nomadkaraoke/notificationChannels/${CHANNEL_ID}:sendVerificationCode"
 ```
 
-`verificationStatus=VERIFIED` is the active state.
+The email arrives within a minute or two. Subject is something like
+"Verify your email address for Google Cloud Alerting" and the body contains
+a code in the form `G-NNNNNN` plus a clickable link. Either path completes
+the verification — clicking the link is simplest, or POST the code to
+`:verify`:
+
+```bash
+curl -sS -X POST -d '{"code":"G-NNNNNN"}' \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  "https://monitoring.googleapis.com/v3/projects/nomadkaraoke/notificationChannels/${CHANNEL_ID}:verify"
+```
+
+Confirm afterwards:
+
+```bash
+curl -sS -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  "https://monitoring.googleapis.com/v3/projects/nomadkaraoke/notificationChannels/${CHANNEL_ID}" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin).get('verificationStatus','(missing)'))"
+```
+
+Expected output: `VERIFIED`. Until that's true, `gcloud alpha monitoring
+channels list --format='table(...,verificationStatus,...)'` returns an
+empty `verificationStatus` column (which is itself a tell — verified
+channels populate the field).
 
 ### Adding a second channel (e.g. Discord)
 

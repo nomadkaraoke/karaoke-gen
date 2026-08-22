@@ -239,7 +239,10 @@
     "loadingJobs": "Đang tải công việc...",
     "noJobsMatchFilters": "Không có công việc nào khớp với bộ lọc của bạn.",
     "noJobsYet": "Chưa có công việc nào. Hãy tạo một công việc để bắt đầu!",
-    "referrals": "Giới thiệu"
+    "referrals": "Giới thiệu",
+    "bulkMode": "Hàng loạt",
+    "singleMode": "Đơn lẻ",
+    "submitModeToggle": "Gửi đơn lẻ hoặc hàng loạt"
   },
   "auth": {
     "noVerificationToken": "Không có mã xác minh được cung cấp",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Chúng tôi không tìm thấy liên kết đó",
     "resendSuccessBody": "Chúng tôi đã gửi một liên kết đăng nhập mới đến {maskedEmail}. Liên kết này có hiệu lực trong 24 giờ tới.",
     "resendSuccessTitle": "Kiểm tra email của bạn",
-    "resending": "Đang gửi..."
+    "resending": "Đang gửi...",
+    "confirmBody": "Để bảo mật, vui lòng nhấp vào nút bên dưới để hoàn tất đăng nhập. Bước bổ sung này giúp ngăn các trình quét email tự động kích hoạt liên kết trước khi bạn sử dụng.",
+    "confirmButton": "Hoàn tất đăng nhập",
+    "confirmTitle": "Hoàn tất đăng nhập"
   },
   "payment": {
     "title": "Thanh toán thành công!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Encoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Dự phòng",
+    "fallbackNote": "Tài nguyên chính không khả dụng — đã chuyển hướng sang máy chủ dự phòng.",
+    "liveWorker": "Worker đang hoạt động"
   },
   "credits": {
     "title": "Mua thêm credit",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Dán liên kết",
     "urlSupportedSitesHint": "Hỗ trợ YouTube, Facebook, SoundCloud, TikTok, Vimeo và hàng trăm trang web khác.",
     "urlSupportedSitesLink": "Xem tất cả các trang web được hỗ trợ",
-    "useThisUrl": "Sử dụng URL này"
+    "useThisUrl": "Sử dụng URL này",
+    "matchCorrectedTo": "Đã sửa thành {value} — bạn đã nhập “{typed}”",
+    "matchDidYouMean": "Có phải ý bạn là?",
+    "matchKeepMine": "giữ nguyên nội dung tôi đã nhập",
+    "matchTidiedTo": "Đã chỉnh gọn thành {value}",
+    "matchUndo": "Hoàn tác",
+    "matchChecking": "Đang kiểm tra chi tiết bài hát…",
+    "matchUseCorrection": "sử dụng bản sửa đổi",
+    "matchUseTidied": "sử dụng bản đã tinh chỉnh",
+    "matchUsingTyped": "Sử dụng nội dung bạn đã nhập: {value}",
+    "checkingUrl": "Đang kiểm tra…",
+    "submitNetworkError": "Lỗi mạng — vui lòng kiểm tra kết nối của bạn và thử lại.",
+    "submitError": "Đã xảy ra lỗi. Vui lòng thử lại."
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",
@@ -576,7 +597,9 @@
     "correcting": "Đang sửa",
     "lyricsDone": "Lời bài hát xong",
     "lyrics": "Lời bài hát",
-    "confirmDurationCost": "Xác nhận chi phí"
+    "confirmDurationCost": "Xác nhận chi phí",
+    "findingAudioSources": "Đang tìm nguồn âm thanh (đang thử lại)",
+    "waitingForCapacity": "Đang chờ máy chủ mã hóa (đang thử lại)"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",
@@ -588,7 +611,9 @@
     "autoSelect": "Sẽ tự động chọn",
     "willAutoSelectFirst": "Sẽ tự động chọn đầu tiên",
     "noOutputsAvailable": "Chưa có đầu ra nào",
-    "confirmCost": "Xác nhận chi phí"
+    "confirmCost": "Xác nhận chi phí",
+    "makingPublicInProgress": "Đang chuyển bài hát này sang chế độ công khai — đang xuất lại video với thương hiệu mặc định và đăng tải lại. Quá trình này thường mất 15–30 phút.",
+    "waitingForEncodingServer": "(đang chờ máy chủ mã hóa khả dụng)"
   },
   "jobActions": {
     "delete": "Xóa",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Tên bài hát",
-    "artist": "Nghệ sĩ"
+    "artist": "Nghệ sĩ",
+    "loading": "Đang tải bản xem trước màn hình tiêu đề"
   },
   "editTrack": {
     "title": "Chỉnh sửa bài hát đã hoàn thành",
@@ -739,7 +765,22 @@
     "views": "{count} lượt xem",
     "moreVersions": "+{count} phiên bản khác",
     "select": "Chọn",
-    "creditCost": "{credits} credit"
+    "creditCost": "{credits} credit",
+    "chooseFile": "Chọn tệp âm thanh (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Chúng tôi không tìm thấy nguồn âm thanh nào. Bạn hãy thử chỉnh sửa tên nghệ sĩ hoặc tiêu đề ở trên và tìm kiếm lại, hoặc tự cung cấp âm thanh bằng URL hoặc tải tệp lên.",
+    "pasteUrl": "Dán URL",
+    "researchFailed": "Tìm kiếm thất bại. Vui lòng thử lại.",
+    "searchAgain": "Tìm kiếm lại",
+    "selectFailed": "Không thể chọn âm thanh",
+    "uploadFailed": "Tải lên thất bại. Vui lòng thử lại.",
+    "urlFailed": "Không thể sử dụng URL đó. Bạn hãy thử một nguồn khác.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Sử dụng tệp này",
+    "useThisUrl": "Sử dụng URL này",
+    "artistLabel": "Nghệ sĩ",
+    "loading": "Đang tải...",
+    "titleLabel": "Tiêu đề",
+    "uploadFileAction": "Tải tệp lên"
   },
   "audioEditor": {
     "loading": "Đang tải trình chỉnh sửa âm thanh...",
@@ -776,7 +817,17 @@
     "undoFailed": "Hoàn tác thất bại",
     "redoFailed": "Làm lại thất bại",
     "restoreFailed": "Khôi phục thất bại — một số chỉnh sửa có thể chưa được áp dụng",
-    "submitFailed": "Gửi thất bại"
+    "submitFailed": "Gửi thất bại",
+    "fadeIn": "Tăng dần âm lượng",
+    "fadeInSelection": "Tăng dần âm lượng trong vùng đã chọn",
+    "fadeOut": "Giảm dần âm lượng",
+    "fadeOutSelection": "Giảm dần âm lượng trong vùng đã chọn",
+    "fadeInDisabledHint": "Để tăng dần âm lượng, hãy chọn một đoạn bắt đầu ngay từ đầu bản nhạc",
+    "fadeOutDisabledHint": "Để giảm dần âm lượng, hãy chọn một đoạn kết thúc ngay ở cuối bản nhạc",
+    "trimEndDisabledHint": "Để cắt phần cuối, hãy chọn một đoạn kết thúc ngay ở cuối bản nhạc",
+    "trimEndSelection": "Xóa mọi thứ sau phần được chọn",
+    "trimStartDisabledHint": "Để cắt phần đầu, hãy chọn một đoạn bắt đầu ngay từ đầu bản nhạc",
+    "trimStartSelection": "Xóa mọi thứ trước phần được chọn"
   },
   "audioEditRestore": {
     "title": "Các phiên chỉnh sửa âm thanh đã lưu",
@@ -803,7 +854,7 @@
       "acceptAll": "Chấp nhận tất cả",
       "revertAll": "Hoàn nguyên tất cả",
       "undoAll": "Hoàn tác tất cả",
-      "resetAllChanges": "Khôi phục tất cả thay đổi về lời bài hát gốc do AI tạo",
+      "resetAllChanges": "Khôi phục tất cả thay đổi về lời bài hát đã sửa ban đầu",
       "undo": "Hoàn tác",
       "redo": "Làm lại",
       "findReplace": "Tìm/Thay thế",
@@ -816,7 +867,11 @@
       "playback": "Phát lại",
       "audioLoadError": "Không thể tải âm thanh",
       "audioStillLoading": "Âm thanh vẫn đang tải...",
-      "loadingAudio": "Đang tải âm thanh..."
+      "loadingAudio": "Đang tải âm thanh...",
+      "autoCorrect": "Tự động sửa lỗi",
+      "autoCorrectDesc": "So sánh bản phiên âm với lời bài hát tham chiếu và áp dụng các bản sửa lỗi ở cấp độ từ cho bạn. Các từ đã sửa được hiển thị màu tím.",
+      "autoCorrectedCount": "Đã chỉnh sửa tự động · {count}",
+      "autoCorrectedDesc": "Chúng tôi đã áp dụng {count, plural, =1 {# chỉnh sửa tự động} other {# chỉnh sửa tự động}} (hiển thị màu tím). Nhấp để xem chi tiết và hoàn tác những thay đổi mà bạn không đồng ý."
     },
     "guidance": {
       "showTips": "Hiện mẹo",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Các từ được tô sáng màu cam là các đoạn trống — các phần không thể khớp với lời bài hát tham khảo và có thể chứa lỗi (ví dụ: các từ có âm thanh giống nhau dễ bị nghe nhầm).",
       "useNAndP": "Sử dụng N và P để nhảy giữa các đoạn trống. Đối với mỗi đoạn trống, hãy nhấp vào phát bên cạnh dòng và so sánh những gì bạn nghe được với lời bài hát tham khảo ở bên phải, sau đó nhấp vào một từ để chỉnh sửa hoặc xóa nó.",
       "watchOutForPhantomWords": "Chú ý các từ thừa như \"and\" ở đầu hoặc cuối dòng — bản chép lời thường thêm những từ này.",
-      "tryTimelineView": "Hãy thử chế độ xem Dòng thời gian để phát hiện bất kỳ từ nào dài bất thường (hơn 10 giây), điều này thường cho thấy có vấn đề về thời gian.",
+      "tryTimelineView": "Các từ trên 2 giây và khoảng trống trên 2 giây được đánh dấu bằng thời lượng màu hổ phách — hãy kiểm tra chúng để xem có vấn đề về thời gian không. Chuyển sang chế độ Nâng cao để xem từng dòng được kéo dài thành một dòng thời gian.",
       "watchFullTutorial": "Xem toàn bộ hướng dẫn",
       "correctionHandlers": "Trình xử lý sửa lỗi",
       "anchorSequences": "Chuỗi neo",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Đoạn trống chưa sửa",
       "uncorrectedGapsDesc": "Các phần có thể cần xem lại thủ công",
       "wordsUncorrected": "Số từ chưa sửa",
-      "numberOfGaps": "Số lượng đoạn trống"
+      "numberOfGaps": "Số lượng đoạn trống",
+      "autoCorrectTip": "{count, plural, =1 {Có # từ đã được chỉnh sửa tự động} other {Có # từ đã được chỉnh sửa tự động}} cho bạn (hiển thị màu tím, với từ gốc ở bên trên). Hãy phát từng dòng đã sửa và kiểm tra xem chữ có khớp nhịp không — đặc biệt chú ý những từ được gạch chân màu vàng cam, vì thời gian hiển thị chỉ là ước tính và có thể cần bạn điều chỉnh lại.",
+      "autoCorrected": "Đã chỉnh sửa tự động",
+      "timingEstimated": "Thời gian ước tính"
     },
     "transcription": {
       "syncedLyrics": "Lời bài hát được đồng bộ",
@@ -854,7 +912,13 @@
       "text": "Văn bản",
       "timeline": "Dòng thời gian",
       "deleteSegment": "Xóa phân đoạn",
-      "playSegment": "Phát phân đoạn"
+      "playSegment": "Phát phân đoạn",
+      "aiTooltipEstimated": "Được hệ thống chỉnh sửa tự động. Thời gian hiển thị ở đây chỉ là ước tính, vì vậy hãy phát dòng này và điều chỉnh lại thời gian của từ nếu cần.",
+      "aiTooltipReplaced": "Được hệ thống chỉnh sửa tự động từ \"{original}\". Hãy phát dòng này để đảm bảo chữ vẫn khớp nhịp.",
+      "aiTooltipReplacedEstimated": "Được hệ thống chỉnh sửa tự động từ \"{original}\". Thời gian hiển thị chỉ là ước tính, vì vậy hãy phát dòng này và điều chỉnh lại thời gian của từ nếu cần.",
+      "longGapWarning": "Có khoảng trống {seconds}s trước từ tiếp theo — thường là do một từ thừa xuất hiện sớm (ví dụ: từ \"and\" ảo). Nhấp để phát từ vị trí này.",
+      "longWordWarning": "Từ này kéo dài {seconds}s — dài bất thường. Hãy phát dòng này và kiểm tra xem thời gian kết thúc của từ có bị lấn sang đoạn nhạc không lời hay không.",
+      "playFromGap": "Phát từ cuối khoảng trống này"
     },
     "editActionBar": {
       "reset": "Đặt lại",
@@ -990,7 +1054,9 @@
         "loadingAll": "Đang tải tất cả các từ...",
         "loadingSegment": "Đang tải phân đoạn...",
         "noData": "Không có dữ liệu phân đoạn",
-        "unCorrect": "Bỏ sửa"
+        "unCorrect": "Bỏ sửa",
+        "timingClamped": "Thời gian của \"{word}\" nằm ngoài phân đoạn — đã được điều chỉnh về {time}s.",
+        "timingSanitized": "Đã sửa thời gian của {count} từ nằm ngoài phân đoạn này."
       },
       "findReplace": {
         "title": "Tìm và Thay thế",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh."
+    },
+    "autoCorrect": {
+      "accept": "Chấp nhận đề xuất",
+      "acceptAll": "Chấp nhận tất cả",
+      "accepted": "Đã chấp nhận",
+      "adlibRemovalHint": "Cho phép các đề xuất xóa phần hát bè mà bản tham khảo không có",
+      "adlibRemovalLabel": "Đề xuất xóa hát bè",
+      "category_adlib_removal": "hát bè",
+      "category_formatting": "định dạng",
+      "category_grammar": "ngữ pháp",
+      "category_mishearing": "nghe nhầm",
+      "category_other": "khác",
+      "category_repeated_chorus_fix": "điệp khúc",
+      "collapse": "Thu gọn đề xuất",
+      "confidenceHint": "Mức độ tin cậy cần thiết để hiển thị đề xuất",
+      "confidenceLabel": "Bộ lọc đề xuất",
+      "confidence_all": "Hiển thị tất cả",
+      "confidence_high": "Độ chắc chắn cao",
+      "description": "Tính năng Tự động sửa lỗi sẽ so sánh bản chép lời với các nguồn tham khảo và đề xuất sửa lỗi cho từng từ. Bạn có thể xem xét từng đề xuất — sẽ không có thay đổi nào được áp dụng cho đến khi bạn chấp nhận.",
+      "dismiss": "Bỏ qua đề xuất",
+      "expand": "Mở rộng đề xuất",
+      "insertMarker": "chèn:",
+      "insertionsHint": "Cho phép các đề xuất chèn những từ mà bản chép lời bỏ sót",
+      "insertionsLabel": "Đề xuất các từ còn thiếu",
+      "noReferences": "Không có lời bài hát tham khảo nào cho bài hát này, vì vậy không thể tạo đề xuất. Hãy thêm lời bài hát từ bảng tham khảo trước.",
+      "noSuggestions": "Không tìm thấy vấn đề nào — không có thay đổi nào được đề xuất.",
+      "reject": "Từ chối đề xuất",
+      "rejectAll": "Từ chối tất cả",
+      "rejected": "Đã từ chối",
+      "runButton": "Nhận đề xuất",
+      "running": "Đang phân tích lời bài hát… quá trình này thường mất 15–60 giây.",
+      "staleHint": "Những từ này đã được chỉnh sửa sau khi đề xuất được tạo, nên đề xuất này không còn phù hợp nữa.",
+      "summary": "{total} đề xuất · {pending} đang chờ · {accepted} đã chấp nhận",
+      "title": "Đề xuất tự động sửa lỗi",
+      "undo": "Hoàn tác đề xuất này",
+      "cancel": "Hủy",
+      "close": "Đóng",
+      "confidence_balanced": "Cân bằng",
+      "compareHint": "Chậm hơn và tốn phí hơn, nhưng cho thấy các gợi ý được nhiều mô hình cùng đồng thuận",
+      "compareLabel": "So sánh nhiều mô hình",
+      "conflictBadge": "biến thể",
+      "conflictTooltip": "Có nhiều đề xuất khác nhau cho những từ này — khi chấp nhận một phương án, các phương án khác sẽ bị loại bỏ.",
+      "consensusBadge": "{consensus}/{total} mô hình",
+      "consensusTooltip": "Đề xuất bởi: {models}",
+      "cachedBadge": "đã lưu cache",
+      "cachedTooltip": "Được khôi phục từ lần chạy trước với cùng lời bài hát — không phát sinh chi phí AI.",
+      "appliedSummary": "Đã áp dụng {count} chỉnh sửa tự động",
+      "hideDetails": "Ẩn chi tiết",
+      "rerun": "Chạy lại",
+      "revertAllAuto": "Hoàn tác tất cả",
+      "showDetails": "Hiện chi tiết"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Ước tính — chi phí cuối cùng sẽ được xác nhận sau khi tải xuống",
     "reconcileTitle": "Bài hát này dài hơn dự kiến",
     "cancel": "Hủy"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Đang tải bản xem trước hình nền"
+  },
+  "bulk": {
+    "albumModeHint": "Tìm kiếm nghệ sĩ, chọn một album, sau đó chọn các bài hát để tạo.",
+    "artistSearchPlaceholder": "Tìm kiếm nghệ sĩ…",
+    "autoPickLossless": "Tự động chọn âm thanh tốt nhất (chỉ lossless)",
+    "autoPickLosslessHint": "Tự động chọn âm thanh khi chúng tôi tìm thấy kết quả khớp lossless/FLAC đáng tin cậy. Các bài khác sẽ được đưa vào hàng đợi xem xét.",
+    "backToAlbums": "Quay lại các album",
+    "backToArtists": "Quay lại các nghệ sĩ",
+    "batchProgressTitle": "Lô gồm {total} bài hát",
+    "batchSettings": "Cài đặt lô",
+    "byAlbum": "Theo album",
+    "byText": "Theo văn bản",
+    "checking": "Đang kiểm tra…",
+    "chooseAudio": "Chọn âm thanh",
+    "communityExists": "Đã có phiên bản cộng đồng",
+    "communityExistsWithBrands": "Phiên bản cộng đồng: {brands}",
+    "countAwaiting": "{count} bài cần được chọn",
+    "countComplete": "{count} bài đã hoàn thành",
+    "countFailed": "{count} bài thất bại",
+    "countProcessing": "{count} bài đang xử lý",
+    "countSearching": "{count} bài đang tìm kiếm",
+    "createBatch": "Tạo {count} video karaoke",
+    "creditsCost": "{cost} tín dụng · bạn có {balance}",
+    "edition": "Phiên bản",
+    "extra": "Bổ sung",
+    "loadingBatch": "Đang tải lô…",
+    "lookupFailed": "Tra cứu thất bại. Vui lòng thử lại.",
+    "makePrivate": "Giữ riêng tư",
+    "makePrivateHint": "Chỉ phân phối qua Dropbox thay vì xuất bản lên YouTube.",
+    "noAlbums": "Không tìm thấy album nào cho nghệ sĩ này.",
+    "notEnoughCredits": "Bạn cần {needed} tín dụng nhưng chỉ có {have}.",
+    "overLimit": "Bạn có thể gửi tối đa {max} bài hát cùng lúc.",
+    "progressError": "Không thể tải tiến trình của lô.",
+    "reviewQueueHint": "Chúng tôi không thể tự động chọn nguồn lossless đáng tin cậy cho những bài này. Hãy chọn một nguồn cho mỗi bài.",
+    "reviewQueueTitle": "Chọn âm thanh cho những bài hát này",
+    "selectedCount": "Đã chọn {count} bài hát",
+    "skipAudioEdit": "Bỏ qua chỉnh sửa âm thanh",
+    "skipAudioEditHint": "Sử dụng âm thanh gốc của mỗi bài hát (không cắt xén).",
+    "skipCustomization": "Bỏ qua tùy chỉnh",
+    "skipCustomizationHint": "Sử dụng chủ đề và kiểu dáng mặc định cho mọi bài hát.",
+    "startAnother": "Bắt đầu một lô khác",
+    "submitError": "Không thể tạo lô. Vui lòng thử lại.",
+    "submitting": "Đang tạo lô…",
+    "textModeHint": "Thêm tối đa {max} bài hát. Chúng tôi sẽ đánh dấu bất kỳ bài nào đã có phiên bản cộng đồng.",
+    "title": "Tiêu đề",
+    "tracklistHint": "Các bài hát trực tiếp, phối lại và tặng kèm — cũng như các bài hát đã có phiên bản cộng đồng — được bỏ chọn theo mặc định.",
+    "addSong": "Thêm bài hát",
+    "artist": "Nghệ sĩ",
+    "buyCredits": "Mua credit",
+    "removeRow": "Xóa",
+    "trackCount": "{count} bản nhạc",
+    "changeEdition": "Thay đổi",
+    "existingVersions": "Các phiên bản hiện có:",
+    "usingRelease": "Đang sử dụng {label} · {year} · {tracks}",
+    "variantBonus": "+{count} tặng kèm",
+    "variantOriginal": "Bản gốc",
+    "variantReissue": "Tái bản"
+  },
+  "backendStatus": {
+    "reconnecting": "Đang kết nối lại…",
+    "unavailable": {
+      "body": "Sự cố này thường chỉ là tạm thời — vui lòng thử lại sau vài phút.",
+      "reassurance": "Các video karaoke đang được tạo sẽ không bị ảnh hưởng và vẫn tiếp tục được xử lý.",
+      "title": "Chúng tôi đang gặp sự cố khi kết nối với máy chủ"
+    },
+    "dismiss": "Bỏ qua"
   }
 }

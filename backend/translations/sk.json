@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Neplatný výber inštrumentálu. Musí byť jeden z: {valid_selections}",
     "instrumentalSelected": "Inštrumentál bol vybraný. Začalo sa generovanie videa.",
     "instrumentalSelectionError": "Chyba pri výbere inštrumentálu pre úlohu {job_id}: {error}",
-    "downloadUrlsError": "Chyba pri získavaní adries URL na stiahnutie: {error}"
+    "downloadUrlsError": "Chyba pri získavaní adries URL na stiahnutie: {error}",
+    "fileNoLongerAvailable": "Súbor už nie je dostupný"
   },
   "review": {
     "jobNotFound": "Úloha sa nenašla",
@@ -92,7 +93,10 @@
     "selectAudioError": "Chyba pri výbere zvuku pre úlohu {job_id}: {error}",
     "searchAudioError": "Chyba pri vyhľadávaní zvuku: {error}",
     "searchCreatedSuccessfully": "Úloha bola vytvorená. Vyhľadáva sa zvuk...",
-    "autoDownloadStarted": "Najlepší výsledok bol vybraný automaticky. Sťahovanie sa začína..."
+    "autoDownloadStarted": "Najlepší výsledok bol vybraný automaticky. Sťahovanie sa začína...",
+    "drmUrlUnsupported": "Odkazy {platform} sú chránené proti kopírovaniu, takže ich nemôžeme stiahnuť priamo. Skús najprv stiahnuť zvuk pomocou nástroja tretej strany a potom sem nahraj zvukový súbor. Môžeš tiež vložiť odkaz na YouTube alebo použiť vyhľadávanie zvuku na nájdenie tejto piesne.",
+    "drmUrlUnsupportedWithLink": "Odkazy {platform} sú chránené proti kopírovaniu, takže ich nemôžeme stiahnuť priamo. Skladbu si môžeš stiahnuť pomocou nástroja ako {downloader} a potom sem nahrať zvukový súbor. Môžeš tiež vložiť odkaz na YouTube, alebo použiť Vyhľadávanie zvuku na nájdenie tejto piesne.",
+    "drmUrlUnsupportedSearch": "Odkazy z {platform} sú chránené proti kopírovaniu, takže ich nemôžeme stiahnuť priamo. Vyhľadaj na webe „{platform} downloader“, aby si získal zvuk — napríklad {searchUrl} — a potom sem nahraj zvukový súbor. Môžeš tiež vložiť odkaz na YouTube alebo použiť vyhľadávanie zvuku na nájdenie tejto piesne."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

@@ -31,6 +31,7 @@ export const HIGHLIGHT_CLASSES = {
   highlighted: 'bg-amber-400/40',
   playing: 'text-blue-500',
   userEdited: 'bg-lime-400/40',
+  aiCorrected: 'bg-purple-500/30',
 } as const
 
 // CSS keyframes for flash animation (use with Tailwind animate utilities)

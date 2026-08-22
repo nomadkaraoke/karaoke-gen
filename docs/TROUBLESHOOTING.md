@@ -8,7 +8,9 @@ Operational runbooks for known production issues.
 
 **Cause:** Before v0.130.0, audio downloads ran as FastAPI BackgroundTasks. Cloud Run would terminate "idle" instances mid-download. Since v0.130.0, downloads use a Cloud Run Job (`audio-download-job`) and a Cloud Scheduler recovery job runs every 5 minutes to fail stuck downloads automatically.
 
-**Auto-recovery:** The `recover-stuck-downloads` scheduler detects jobs stuck in `downloading_audio` for >10 minutes and fails them. Use the admin retry button to re-attempt.
+**Auto-recovery:** The `recover-stuck-downloads` scheduler (`/api/internal/recover-stuck-jobs`, every 5 min) detects jobs stuck in `downloading_audio` for >10 minutes and, since v0.192.3:
+- **Torrent sources (RED/OPS)** → parks the job in `download_pending_retry` and keeps re-attempting the download for up to **24 hours** (handles rare tracks with few/intermittent seeders and transient tracker outages), then fails permanently with a clear message. No manual action needed. See `download_pending_retry` below.
+- **Other sources (YouTube/Spotify/URL)** → fails the job (deterministic); use the admin retry button to re-attempt.
 
 **Manual recovery:**
 
@@ -58,6 +60,12 @@ curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/video" \
 
 **Prevention:** The video worker now runs as a **Cloud Run Job** (`USE_CLOUD_RUN_JOBS_FOR_VIDEO=true`), which runs to completion and is immune to Cloud Run Service deployment rollouts. This replaces the `BackgroundTask` pattern that was vulnerable to instance termination during deployments. Additionally, CI performs a graceful drain before restarting the GCE encoding worker, the encoding client retries for ~90s, and status polling tolerates up to 5 consecutive failures.
 
+Since v0.184.2, in-flight status polls are also **pinned to the worker that accepted the job** (`get_job_status(..., worker_url=)`), so a blue-green deploy that swaps the `active_url` primary pointer mid-render no longer migrates the poll to a worker that never received the job. If you still see `lost contact with worker after 5 consecutive poll failures: Encoding job <ID> not found`, confirm via step 2 above that the worker the job was submitted to (not necessarily the current primary) still has the job — a `not found` from the *current* primary while the job is alive on the old primary was the pre-v0.184.2 failure mode (incident 2026-06-16, job d3af33ae).
+
+Since **v0.194.0**, a mid-run job loss is also **auto-recovered**: the encoding worker processes heavy renders/encodes **one at a time** (`heavy_executor`, `ENCODING_HEAVY_CONCURRENCY=1`) so it can no longer OOM from concurrent 4K encodes (the trigger for the 2026-08-15 Arctic Monkeys batch failure — 3 concurrent encodes OOM-killed the 32 GB fallback worker and restarted it, wiping its in-memory jobs). If the worker *does* restart mid-render (deploy/crash), `wait_for_completion` now raises `EncodingJobLostError` and the render/encode worker **resubmits the job under a fresh `<id>_retry_<hex8>`** (bounded by `ENCODING_RESUBMIT_MAX=2`) instead of failing. To confirm serialization is live on a worker: `curl -s localhost:8080/health` shows `queue_length` growing while `active_jobs` stays 1 under load. **Note:** `main.py` ships in the wheel but the running uvicorn process only picks up worker-side changes (executor split, `queue_position`) on a **fresh boot / service restart** — `ensure_latest_wheel` alone does not reload the app process.
+
+Since **v0.194.2**, the CI deploy handles that restart automatically even during a c4d Spot stockout. The old blue-green only targeted the c4d primary/secondary; when both were down it rolled back and **never refreshed the serving n2 fallback** (recorded as `active_override_vm`), so worker-side changes didn't reach prod until a manual restart (`primary_version` in the config doc went stale). The deploy is now **capacity-aware** (`infrastructure/encoding-worker/deploy_promote.py`): it validates the new wheel on a *fresh* green worker selected from the **ranked 6-family pool** (`select_green_candidates` → the shared `encoding_worker_preference.ordered_candidates` — fastest-first with capacity cooldown; the c4d secondary if it can start, else the fastest available fallback family, never the current override so it keeps serving) — then **promotes** the green (primary/secondary swap for a c4d green, or sets `active_override` for a fallback green) and drains+stops the retired worker. A c4d green also **clears a stale override** so traffic returns to the fresh primary. Zero-downtime, and it works while c4d is exhausted. Last resort if no separate green can start: an in-place restart of the serving override (brief blip, covered by auto-resubmit).
+
 ---
 
 ## CDG/TXT packages missing from completed job
@@ -86,15 +94,64 @@ The script is idempotent — re-running it skips regeneration if the CDG ZIP alr
 
 **Cause:** Worker picks up a new deploy but doesn't restart automatically.
 
+Target the **currently-serving** VM — `active_override_vm` in `config/encoding-worker`
+if set, else `primary_vm` (with its zone). There is no VM literally named
+`encoding-worker`; the examples below use the primary `encoding-worker-a` — swap in
+the active VM/zone if a fallback is serving.
+
 ```bash
-# Check current wheel version
-gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
+# Check current wheel version (example: the primary a in us-central1-c)
+gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
   --command="curl -s http://localhost:8080/health | python3 -m json.tool"
 
 # Restart to pick up latest wheel
-gcloud compute ssh encoding-worker --zone=us-central1-c --project=nomadkaraoke \
+gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke \
   --command="sudo systemctl restart encoding-worker"
 ```
+
+---
+
+## Render fails: `No module named '<pkg>'` (e.g. tenacity) on encoding worker
+
+**Symptoms:** A render fails with `OutputGenerator not available: No module named 'tenacity'. The karaoke-gen wheel must be installed. Check that ensure_latest_wheel() succeeded.` (or another missing package). Retries hit the same VM and fail identically.
+
+**Largely fixed in v0.195.0 (dep-bake):** the Packer image now bakes the **full** karaoke-gen dependency tree (with CPU-only torch) into the venv at build time, so a freshly-provisioned VM of any family boots self-sufficient — no first-job dependency install. This failure mode should now only appear on a VM whose boot disk predates the dep-bake image, or a venv left partial by an interrupted repair. The `ensure_latest_wheel()` runtime backstop below still exists for those cases.
+
+**Original cause (pre-v0.195.0):** A freshly-provisioned VM came up with only a handful of packages baked in, and boot installed the wheel with `--no-deps`. The full dependency tree (torch, langchain, tenacity, …) was installed lazily at the first job by `ensure_latest_wheel()`; a failed/partial install left the venv importable-but-incomplete and the render died on the first missing import. First seen 2026-08-13 (job 233b9536) on a fresh `n2-highcpu-32` fallback added in #903.
+
+**Fixed in v0.192.7:** `ensure_latest_wheel()` now downloads only the single latest wheel (was: copying the entire ~6 GiB `wheels/` dir every job with a 60 s timeout), retries the install (3× at 900 s), and **verifies the render/encode import chain** before returning — a clean `pip` exit is no longer trusted. Callers fail the job with a clear retryable error instead of proceeding. Fresh workers pick this up via the wheel-at-boot.
+
+**Also fixed in v0.194.1 (concurrency race):** `ensure_latest_wheel()` runs on the *light* lane (>1 thread) at the start of every job, so on a fresh boot several jobs would call it at once and race on the shared `/tmp` wheel path (`gsutil cp` clobbered mid-copy) and the venv (two `pip install`s at once) — one job then failed with `wheel/dependencies not ready ... retry on a healthy worker` (2026-08-15, job 374dec26, 3 jobs on a fresh n2f boot). Now it's guarded by a process-wide lock **and** short-circuits when the installed version already matches the latest GCS wheel (the common case — startup.sh installs it at boot). So only the *first* job after a new wheel actually installs; the rest wait briefly then take the verified fast path. A single job failing this way can simply be retried once a worker is warm.
+
+**Manual repair (if a running VM is stuck on an old wheel):** the venv is root-owned, so use `sudo`:
+
+```bash
+# Identify the running worker
+gcloud compute instances list --project=nomadkaraoke --filter="name~encoding AND status=RUNNING"
+
+# Repair: install the latest versioned wheel WITH deps, then verify
+gcloud compute ssh <worker-name> --zone=<zone> --project=nomadkaraoke --tunnel-through-iap --command='
+  V=$(gsutil ls "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl" | grep -v current | sort -V | tail -1)
+  WHEEL="/tmp/$(basename "$V")"   # keep the PEP 427 filename so pip accepts it
+  gsutil cp "$V" "$WHEEL"
+  sudo /opt/encoding-worker/venv/bin/python -m pip install --upgrade "$WHEEL"
+  /opt/encoding-worker/venv/bin/python -c "import tenacity; from karaoke_gen.lyrics_transcriber.output.generator import OutputGenerator; from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations; from backend.services.local_encoding_service import LocalEncodingService; print(\"OK\")"
+'
+```
+
+**Re-render a job that already failed past review:** a failed job is terminal, and admin `/jobs/{id}/reset` has no `review_complete` target. Reset to `awaiting_review`, then re-submit the review (reuses the existing GCS corrections):
+
+```bash
+ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
+curl -s -X POST "https://api.nomadkaraoke.com/api/admin/jobs/<id>/reset" \
+  -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"target_state": "awaiting_review"}'
+# instrumental_selection is "clean" or "with_backing" (read prior value from Firestore state_data before reset)
+curl -s -X POST "https://api.nomadkaraoke.com/api/review/<id>/complete?review_token=<token>" \
+  -H "Content-Type: application/json" -d '{"instrumental_selection": "with_backing"}'
+```
+
+Do **not** reset to `instrumental_selected` — that triggers the final video worker, which needs the (missing) lyrics video and fails "prerequisites not met"; and triggering render-video from `instrumental_selected` gets superseded (invalid `instrumental_selected → rendering_video`).
 
 ---
 
@@ -193,11 +250,47 @@ gcloud compute instances describe encoding-worker-a \
 
 ---
 
+## Job stuck at `rendering_video` (orphaned render)
+
+**Symptoms:** Job frozen at `rendering_video` (step 7/10) for a long time with **no error** and **no Retry button** (it's a processing state, not `failed`).
+
+**Cause:** The render worker started (VM up, rendering underway) then died mid-render — Cloud Run instance recycle / SIGKILL / OOM / lost GCE VM — without unregistering. `updated_at` stops advancing. Before v0.192.3 nothing recovered this: the capacity-retry cron only looks at `render_pending_capacity`, `recover-stuck-jobs` only looked at `downloading_audio`, and the render Cloud Task has finite attempts.
+
+**Auto-recovery (v0.192.3+):** `recover-stuck-jobs` (every 5 min) now flags a job in `rendering_video` with no progress for **>45 min** (`rendering_video_stuck`) and re-parks it into `render_pending_capacity`, so the existing `retry-pending-render-jobs` cron resets it to `review_complete` and re-renders (same 24h ceiling). No manual action needed.
+
+**Manual unstick (if needed):** don't re-trigger the render worker while status is `rendering_video` (it starts mid-state and fails with "Invalid state transition"). Instead let it fail (or re-park it), then use the admin **Retry** which resumes cleanly from `review_complete`. If a ghost `render_progress.stage='running'` blocks re-trigger, clear it first (`update({'state_data.render_progress': {'stage': 'pending'}})`).
+
+---
+
+## Job flips to `failed` right after an admin reset (reset/render race)
+
+**Symptoms:** An operator hit an admin **Reset** button (e.g. "Review") on a job that was `rendering_video`, and moments later the job went to `failed` with a message like *"Video render failed: Invalid state transition for job …: in_review -> instrumental_selected"*. The reset itself looked fine, but the job died on its own.
+
+**Cause (fixed in v0.192.4):** The reset moved the job backwards while the render worker was still running on the encoder. When that render finished it attempted its normal terminal transition (`rendering_video -> instrumental_selected`), which was now illegal, and the worker's generic error handler flipped the job to `failed` — clobbering the operator's reset. First seen on job `7f457087`.
+
+**Auto-handling (v0.192.4+):** Long-running render/video workers are now fenced against supersession — a reset or a newer trigger causes the in-flight worker to **discard its stale result quietly** instead of failing the job. Two nets: a **status fence** (job no longer in the status the worker owns) and a **generation fence** (`state_data.worker_generation`, bumped by every reset and every render/video trigger). An `InvalidStateTransitionError` at the terminal step is treated as supersession, not failure. So resetting a rendering job is now safe at any timing — no manual action needed.
+
+**If you still see a `failed` job from an older occurrence:** use the admin **Retry** endpoint. For a job that has corrections + screens but no committed `instrumental_selection`, it returns cleanly to `awaiting_review` so the review (and instrumental choice) can be re-submitted.
+
+---
+
+## Job in `download_pending_retry`
+
+**Symptoms:** Job status is `download_pending_retry` (introduced v0.192.3), step 3/10, message *"Still finding a good source for this track — … We'll keep trying automatically for up to 24 hours; no action needed."*
+
+**Background:** A **torrent** (RED/OPS) download stalled (few/no seeders or a brief tracker outage). Rather than dead-end the job at `failed` after ~1h, `recover-stuck-jobs` parks it here and re-triggers the download on later ticks for up to **24h**, then fails permanently with a "too rare to source right now" message. This is expected, self-healing behaviour — a seedless release simply may never complete. `state_data.download_retry` holds `{first_seen_at, attempt_count}`. To source it a different way, retry with an alternate release/source.
+
+---
+
 ## Job stuck in `render_pending_capacity`
 
-**Symptoms:** Job status is `render_pending_capacity` (introduced 2026-05-05). User-facing message says *"Encoding capacity is temporarily unavailable. Your job will retry automatically — no action needed."*
+**Symptoms:** Job status is `render_pending_capacity` (introduced 2026-05-05). User-facing message says *"Encoding capacity is temporarily unavailable. Your job will retry automatically — no action needed."* (As of v0.192.3 a mid-render stall can also land here — see "orphaned render" above.)
 
-**Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM (primary in `us-central1-c`, plus capacity fallbacks in `-a` and `-b`). The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
+**Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM. The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
+
+The fallback fleet is diversified across **6 machine families** (broadened to the full pool in v0.195.0): `c4d-highcpu-32` primaries (`encoding-worker-a`/`-b`) in `us-central1-c`, plus 8 stopped fallbacks — `c4d` (`-fallback-a`/`-b`, zones a/b), `n2` (`-n2c`/`-n2f`, zones c/f), `c4` (`-c4a`, zone a), `n4d` (`-n4db`, zone b), `c2d` (`-c2df`, zone f), `n2d` (`-n2da`, zone a). Candidates are tried **fastest-first with a 15-min capacity cooldown** (a family that stocks out is demoted, then re-probed) — see `backend/services/encoding_worker_preference.py`. A single-family region-wide stockout (which took out c4d a/b/c at once on 2026-08-12) now still finds capacity in the 5 other families. If you see EVERY family return stockout, that's a genuinely severe regional event — wait, or add a cross-region fallback. NOTE: creating a *new* fallback VM (or re-creating a deleted one) still needs a one-time boot allocation, so a deep enough crunch can even block provisioning — a `pulumi up` may show the missing VM as "to create / errored" until capacity returns.
+
+**Related symptom — preview 524 / "NetworkError":** the same capacity exhaustion also makes `POST /api/review/{id}/preview-video` fall back to slow local encoding (~130–160 s), which exceeds Cloudflare's ~100 s edge timeout → the browser shows a **524** or Firefox *"NetworkError when attempting to fetch resource"* even though the backend returns 200. If a user reports the review preview failing, check for a concurrent stockout; the already-rendered preview mp4 (if any) is fetchable via `GET /api/review/{id}/preview-video/{hash}` (302 → signed GCS URL) with a Bearer admin token. Completing the review does **not** require the preview.
 
 **Check how many retries have run:**
 ```bash
@@ -216,19 +309,39 @@ curl -X POST https://api.nomadkaraoke.com/api/internal/retry-pending-render-jobs
   -H "X-Admin-Token: $ADMIN_TOKEN"
 ```
 
-**Verify GCE has any capacity right now:**
+**Verify GCE has any capacity right now** (the real error reason is in the Compute op, not the app's "503"):
 ```bash
-# If this returns ZONE_RESOURCE_POOL_EXHAUSTED across all 4 zones, just wait
-for ZONE in us-central1-a us-central1-b us-central1-c us-central1-f; do
-  gcloud compute instances describe "encoding-worker-fallback-${ZONE##*-}" \
-    --zone=$ZONE --project=nomadkaraoke --format='value(status)' 2>/dev/null \
-    && echo "  ↑ in $ZONE"
+# See the actual stockout reason (ZONE_RESOURCE_POOL_EXHAUSTED / stockout) + vmType
+gcloud logging read 'protoPayload.methodName:"instances.start" AND "ZONE_RESOURCE_POOL_EXHAUSTED"' \
+  --project=nomadkaraoke --freshness=30m --limit=5 \
+  --format='value(timestamp, protoPayload.resourceName)'
+
+# Try starting a fallback in each of the 6 families; if ALL refuse, it's severe — wait.
+# Synchronous (no --async) so the start op surfaces stockout inline, and we capture
+# gcloud's own exit status rather than piping (a pipe would return sed's status).
+for VM_ZONE in \
+  "encoding-worker-fallback-a:us-central1-a" \
+  "encoding-worker-fallback-b:us-central1-b" \
+  "encoding-worker-fallback-n2c:us-central1-c" \
+  "encoding-worker-fallback-n2f:us-central1-f" \
+  "encoding-worker-fallback-c4a:us-central1-a" \
+  "encoding-worker-fallback-n4db:us-central1-b" \
+  "encoding-worker-fallback-c2df:us-central1-f" \
+  "encoding-worker-fallback-n2da:us-central1-a"; do
+  VM="${VM_ZONE%%:*}"; ZONE="${VM_ZONE##*:}"
+  if OUT=$(gcloud compute instances start "$VM" --zone="$ZONE" --project=nomadkaraoke 2>&1); then
+    echo "$VM: OK (started — remember to stop it)"
+  else
+    echo "$VM: FAILED — $(echo "$OUT" | tr '\n' ' ')"
+  fi
 done
 ```
 
 **Configuration knobs:** `MAX_PER_TICK = 1` and `MAX_WAIT_SECONDS = 24*3600` constants in `backend/api/routes/internal.py::retry_pending_render_jobs`.
 
-**Not an incident:** a *primary* warmup hitting `503 SERVICE_UNAVAILABLE` / capacity exhaustion is self-healing — the encoding flow's `ensure_any_running()` falls back to an alternate-zone worker and the job completes. As of 0.174.12 the `/internal/encoding-worker/warmup` endpoint logs this at **WARNING** (`"Primary encoding worker warmup failed (...); encoding will fall back..."`), specifically so it stays below the error monitor's `severity>=ERROR` filter and does **not** page Discord. Only a genuine, unexpected warmup failure (non-`EncodingWorkerStartError`) logs at ERROR. If you see the WARNING in logs with a job that still completed, no action is needed.
+**Not an incident:** a *primary* warmup hitting `503 SERVICE_UNAVAILABLE` / capacity exhaustion is self-healing — the encoding flow's `ensure_any_running()` falls back to an alternate-zone worker and the job completes. As of 0.174.12 the `/internal/encoding-worker/warmup/{job_id}` endpoint logs this at **WARNING** (`"Primary encoding worker warmup failed (...); encoding will fall back..."`), specifically so it stays below the error monitor's `severity>=ERROR` filter and does **not** page Discord. Only a genuine, unexpected warmup failure (non-`EncodingWorkerStartError`) logs at ERROR. If you see the WARNING in logs with a job that still completed, no action is needed.
+
+**403 on `/internal/encoding-worker/warmup` or `/heartbeat`:** as of 0.188.9 these endpoints are `{job_id}`-scoped and gated on `require_review_auth` (not `require_admin`). The lyrics-review page calls them on load / while editing so the encoding VM is warm by the time the reviewer previews a render. If you see 403s in the browser console, the caller lacks review access to that job — before 0.188.9 they required admin, so **every non-admin customer 403'd and the JIT pre-warm never fired** (renders paid the full cold-boot latency).
 
 ---
 

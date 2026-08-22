@@ -2,7 +2,7 @@
  * Tests for API client
  */
 
-import { api, ApiError, extractErrorMessage } from "../api"
+import { api, ApiError, BackendUnavailableError, extractErrorMessage } from "../api"
 
 // Mock fetch globally
 global.fetch = jest.fn()
@@ -292,6 +292,48 @@ describe("API Client", () => {
       const call = (global.fetch as jest.Mock).mock.calls[0]
       const body = JSON.parse(call[1].body)
       expect(body.uploaded_files).toEqual(["audio"])
+    })
+
+    it("retries on a transient network failure and then succeeds", async () => {
+      const mockResponse = { status: "success", message: "Processing started" }
+
+      ;(global.fetch as jest.Mock)
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValueOnce({ ok: true, json: async () => mockResponse })
+
+      const result = await api.completeJobUpload("job-789", ["audio"])
+
+      expect(result).toEqual(mockResponse)
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it("gives up after 3 network failures with BackendUnavailableError (preserving the cause)", async () => {
+      const networkError = new TypeError("Failed to fetch")
+      ;(global.fetch as jest.Mock).mockRejectedValue(networkError)
+
+      // apiFetch maps a network-level failure to a typed BackendUnavailableError
+      // (which drives the app-wide connectivity banner) while keeping the original
+      // error as `.cause`, so nothing is silently swallowed.
+      const err = await api
+        .completeJobUpload("job-789", ["audio"])
+        .catch((e) => e)
+      expect(err).toBeInstanceOf(BackendUnavailableError)
+      expect(err.cause).toBe(networkError)
+      expect(global.fetch).toHaveBeenCalledTimes(3)
+    })
+
+    it("does NOT retry on an HTTP error response (deterministic)", async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({ detail: "Job is not in pending state" }),
+      })
+
+      await expect(api.completeJobUpload("job-789", ["audio"])).rejects.toBeInstanceOf(
+        ApiError
+      )
+      // A 4xx is not a transient failure — it must not be retried.
+      expect(global.fetch).toHaveBeenCalledTimes(1)
     })
   })
 

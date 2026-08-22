@@ -112,8 +112,15 @@ export function hardReload(latestSha?: string): boolean {
 
 /**
  * Returns true if `err` looks like a chunk-load error from a post-deploy
- * mismatch. Next.js surfaces these as `ChunkLoadError` or messages mentioning
- * "Loading chunk" / "dynamically imported module".
+ * mismatch. Bundlers surface these differently:
+ *
+ * - webpack:   `ChunkLoadError` / "Loading chunk <id> failed"
+ * - native ESM: "Failed to fetch dynamically imported module" /
+ *               "Importing a module script failed"
+ * - Turbopack (Next.js 16 default): a plain `Error` whose message is
+ *   "Failed to load chunk <path> from module <n>" (also "… as a runtime
+ *   dependency of chunk <id>" / "… from an HMR update"). These carry NO
+ *   `ChunkLoadError` name, so they must be matched by message.
  */
 export function isChunkLoadError(err: unknown): boolean {
   if (!err) return false
@@ -123,6 +130,7 @@ export function isChunkLoadError(err: unknown): boolean {
   return (
     /ChunkLoadError/i.test(msg) ||
     /Loading chunk [\w-]+ failed/i.test(msg) ||
+    /Failed to load chunk/i.test(msg) ||
     /Failed to fetch dynamically imported module/i.test(msg) ||
     /Importing a module script failed/i.test(msg)
   )

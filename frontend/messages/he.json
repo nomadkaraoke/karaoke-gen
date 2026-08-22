@@ -239,7 +239,10 @@
     "loadingJobs": "טוען עבודות...",
     "noJobsMatchFilters": "אין עבודות התואמות למסננים שלך.",
     "noJobsYet": "אין עבודות עדיין. צור אחת כדי להתחיל!",
-    "referrals": "הפניות"
+    "referrals": "הפניות",
+    "bulkMode": "מקבץ",
+    "singleMode": "בודד",
+    "submitModeToggle": "שליחה בודדת או מרוכזת"
   },
   "auth": {
     "noVerificationToken": "לא סופק אסימון אימות",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "לא הצלחנו למצוא את הקישור הזה",
     "resendSuccessBody": "שלחנו קישור התחברות חדש לכתובת {maskedEmail}. הקישור תקף ל-24 השעות הקרובות.",
     "resendSuccessTitle": "בדקו את המייל שלכם",
-    "resending": "שולחים..."
+    "resending": "שולחים...",
+    "confirmBody": "למען אבטחתכם, לחצו על הכפתור למטה כדי להשלים את ההתחברות. שלב נוסף זה מונע מסורקי דוא״ל אוטומטיים להשתמש בקישור שלכם לפניכם.",
+    "confirmButton": "השלמת ההתחברות",
+    "confirmTitle": "השלימו את ההתחברות"
   },
   "payment": {
     "title": "התשלום בוצע בהצלחה!",
@@ -372,7 +378,10 @@
     "backend": "צד שרת",
     "encoder": "מקודד",
     "flacfetch": "Flacfetch",
-    "separator": "מפריד"
+    "separator": "מפריד",
+    "fallbackBadge": "גיבוי",
+    "fallbackNote": "הקיבולת הראשית אינה זמינה — נותב לסוג מופע גיבוי.",
+    "liveWorker": "תהליך פעיל"
   },
   "credits": {
     "title": "קנה עוד קרדיטים",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "הדבקת קישור",
     "urlSupportedSitesHint": "עובד עם YouTube, Facebook, SoundCloud, TikTok, Vimeo ומאות אתרים נוספים.",
     "urlSupportedSitesLink": "לצפייה בכל האתרים הנתמכים",
-    "useThisUrl": "שימוש בכתובת זו"
+    "useThisUrl": "שימוש בכתובת זו",
+    "matchCorrectedTo": "תוקן ל-{value} — הקלדת “{typed}”",
+    "matchDidYouMean": "האם התכוונת?",
+    "matchKeepMine": "להשאיר את מה שהקלדתי",
+    "matchTidiedTo": "סודר ל-{value}",
+    "matchUndo": "ביטול",
+    "matchChecking": "בודקים את פרטי השיר…",
+    "matchUseCorrection": "להשתמש בתיקון",
+    "matchUseTidied": "להשתמש בגרסה המסודרת",
+    "matchUsingTyped": "משתמשים במה שהקלדת: {value}",
+    "checkingUrl": "בודק…",
+    "submitNetworkError": "שגיאת רשת — אנא בדוק את החיבור שלך ונסה שוב.",
+    "submitError": "משהו השתבש. אנא נסה שוב."
   },
   "jobStatus": {
     "settingUp": "מגדיר",
@@ -576,7 +597,9 @@
     "correcting": "מתקן",
     "lyricsDone": "מילים הושלמו",
     "lyrics": "מילים",
-    "confirmDurationCost": "אישור עלות"
+    "confirmDurationCost": "אישור עלות",
+    "findingAudioSources": "מחפש מקורות שמע (מנסה שוב)",
+    "waitingForCapacity": "ממתין לשרת הקידוד (מנסה שוב)"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",
@@ -588,7 +611,9 @@
     "autoSelect": "יבחר אוטומטית",
     "willAutoSelectFirst": "יבחר אוטומטית ראשון",
     "noOutputsAvailable": "אין פלטים זמינים עדיין",
-    "confirmCost": "אישור עלות"
+    "confirmCost": "אישור עלות",
+    "makingPublicInProgress": "הופך את הרצועה הזו לציבורית — מעבד מחדש עם מיתוג ברירת המחדל ומפרסם מחדש. זה בדרך כלל לוקח 15–30 דקות.",
+    "waitingForEncodingServer": "(ממתין לזמינות שרת הקידוד)"
   },
   "jobActions": {
     "delete": "מחק",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "שם השיר",
-    "artist": "אמן"
+    "artist": "אמן",
+    "loading": "טעינת תצוגה מקדימה של מסך הכותרת"
   },
   "editTrack": {
     "title": "ערוך רצועה שהושלמה",
@@ -739,7 +765,22 @@
     "views": "{count} צפיות",
     "moreVersions": "+{count} נוספים",
     "select": "בחר",
-    "creditCost": "{credits} קרדיטים"
+    "creditCost": "{credits} קרדיטים",
+    "chooseFile": "בחירת קובץ שמע (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "לא הצלחנו למצוא מקורות שמע. נסו לערוך את שם האמן או השיר למעלה ולחפש שוב, או הוסיפו שמע משלכם באמצעות קישור או העלאת קובץ.",
+    "pasteUrl": "הדבקת קישור",
+    "researchFailed": "החיפוש נכשל. אנא נסו שוב.",
+    "searchAgain": "חיפוש מחדש",
+    "selectFailed": "בחירת השמע נכשלה",
+    "uploadFailed": "ההעלאה נכשלה. אנא נסו שוב.",
+    "urlFailed": "לא הצלחנו להשתמש בקישור הזה. נסו מקור אחר.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "שימוש בקובץ זה",
+    "useThisUrl": "שימוש בקישור זה",
+    "artistLabel": "אומן",
+    "loading": "טוען...",
+    "titleLabel": "כותרת",
+    "uploadFileAction": "העלאת קובץ"
   },
   "audioEditor": {
     "loading": "טוען עורך אודיו...",
@@ -776,7 +817,17 @@
     "undoFailed": "ביטול נכשל",
     "redoFailed": "ביצוע שוב נכשל",
     "restoreFailed": "שחזור נכשל — ייתכן שחלק מהעריכות לא הוחלו",
-    "submitFailed": "שליחה נכשלה"
+    "submitFailed": "שליחה נכשלה",
+    "fadeIn": "פייד אין",
+    "fadeInSelection": "החלת פייד אין על האזור הנבחר",
+    "fadeOut": "פייד אאוט",
+    "fadeOutSelection": "החלת פייד אאוט על האזור הנבחר",
+    "fadeInDisabledHint": "כדי לבצע הגברה הדרגתית, בחרו אזור שמתחיל בדיוק בתחילת הרצועה",
+    "fadeOutDisabledHint": "כדי לבצע הנמכה הדרגתית, בחרו אזור שמסתיים בדיוק בסוף הרצועה",
+    "trimEndDisabledHint": "כדי לחתוך את הסוף, בחרו אזור שמסתיים בדיוק בסוף הרצועה",
+    "trimEndSelection": "הסירו הכל אחרי האזור הנבחר",
+    "trimStartDisabledHint": "כדי לחתוך את ההתחלה, בחרו אזור שמתחיל בדיוק בתחילת הרצועה",
+    "trimStartSelection": "הסירו הכל לפני האזור הנבחר"
   },
   "audioEditRestore": {
     "title": "הפעלות עריכת אודיו שמורות",
@@ -803,7 +854,7 @@
       "acceptAll": "אשר הכל",
       "revertAll": "החזר הכל",
       "undoAll": "בטל הכל",
-      "resetAllChanges": "אפס את כל השינויים חזרה למילים המקוריות שתוקנו על ידי AI",
+      "resetAllChanges": "איפוס כל השינויים בחזרה למילים המתוקנות המקוריות",
       "undo": "בטל",
       "redo": "בצע שוב",
       "findReplace": "חפש/החלף",
@@ -816,7 +867,11 @@
       "playback": "השמעה",
       "audioLoadError": "לא הצלחנו לטעון את האודיו",
       "audioStillLoading": "האודיו עדיין נטען...",
-      "loadingAudio": "טוען אודיו..."
+      "loadingAudio": "טוען אודיו...",
+      "autoCorrect": "תיקון אוטומטי",
+      "autoCorrectDesc": "השוואת התמלול למילות השיר המקוריות וביצוע תיקונים ברמת המילה עבורך. מילים שתוקנו מוצגות בסגול.",
+      "autoCorrectedCount": "תוקן אוטומטית · {count}",
+      "autoCorrectedDesc": "ביצענו {count, plural, =1 {תיקון אוטומטי אחד} other {# תיקונים אוטומטיים}} (מוצגים בסגול). לחץ כדי לראות את הפרטים ולבטל את אלו שאינך מסכים איתם."
     },
     "guidance": {
       "showTips": "הצג טיפים",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "המילים המודגשות בכתום הן פערים — קטעים שלא ניתן היה להתאים למילות הייחוס ועשויים להכיל שגיאות (למשל מילים שלא נשמעו נכון ונשמעות דומות).",
       "useNAndP": "השתמש ב-N ו-P כדי לקפוץ בין פערים. עבור כל אחד, לחץ על נגן לצד השורה והשווה את מה שאתה שומע עם מילות הייחוס בצד ימין, ואז לחץ על מילה כדי לערוך או למחוק אותה.",
       "watchOutForPhantomWords": "שים לב למילות רפאים כמו \"and\" בתחילת או בסוף שורות — התמלול לעיתים קרובות מוסיף אותן.",
-      "tryTimelineView": "נסה את תצוגת ציר הזמן כדי לזהות מילים ארוכות במיוחד (10+ שניות), שבדרך כלל מצביעות על בעיית תזמון.",
+      "tryTimelineView": "מילים שאורכן מעל 2 שניות ורווחים של מעל 2 שניות מסומנים בצבע ענבר — כדאי לבדוק אם יש בהם בעיות תזמון. יש לעבור למצב 'מתקדם' כדי לראות כל שורה פרוסה על ציר זמן.",
       "watchFullTutorial": "צפה במדריך המלא",
       "correctionHandlers": "מטפלי תיקונים",
       "anchorSequences": "רצפי עוגן",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "פערים שלא תוקנו",
       "uncorrectedGapsDesc": "קטעים שעשויים לדרוש בדיקה ידנית",
       "wordsUncorrected": "מילים שלא תוקנו",
-      "numberOfGaps": "מספר פערים"
+      "numberOfGaps": "מספר פערים",
+      "autoCorrectTip": "{count, plural, =1 {מילה אחת תוקנה אוטומטית} other {# מילים תוקנו אוטומטית}} עבורך (הן מוצגות בסגול, והמילה המקורית מופיעה מעליהן). נגן כל שורה שתוקנה ובדוק שהמילים עדיין מסונכרנות — במיוחד אלו המודגשות בקו תחתון כתום, שבהן התזמון משוער וכנראה ידרוש התאמה.",
+      "autoCorrected": "תוקן אוטומטית",
+      "timingEstimated": "תזמון משוער"
     },
     "transcription": {
       "syncedLyrics": "מילים מסונכרנות",
@@ -854,7 +912,13 @@
       "text": "טקסט",
       "timeline": "ציר זמן",
       "deleteSegment": "מחק מקטע",
-      "playSegment": "נגן מקטע"
+      "playSegment": "נגן מקטע",
+      "aiTooltipEstimated": "תוקן אוטומטית על ידי המערכת שלנו. התזמון כאן משוער, לכן נגן את השורה הזו והתאם את תזמון המילים במידת הצורך.",
+      "aiTooltipReplaced": "תוקן אוטומטית על ידי המערכת שלנו במקום \"{original}\". נגן את השורה הזו כדי לוודא שהמילים עדיין מסונכרנות.",
+      "aiTooltipReplacedEstimated": "תוקן אוטומטית על ידי המערכת שלנו במקום \"{original}\". התזמון משוער, לכן נגן את השורה הזו והתאם את תזמון המילים במידת הצורך.",
+      "longGapWarning": "פער של {seconds} שניות לפני המילה הבאה — לרוב מדובר במילה מיותרת (למשל \"ו-\" שגויה). לחץ כדי לנגן מכאן.",
+      "longWordWarning": "המילה הזו נמשכת {seconds} שניות — זמן ארוך מהרגיל. נגן את השורה ובדוק שזמן הסיום שלה לא גולש לקטע האינסטרומנטלי.",
+      "playFromGap": "נגן מסוף הפער הזה"
     },
     "editActionBar": {
       "reset": "אפס",
@@ -990,7 +1054,9 @@
         "loadingAll": "טוען את כל המילים...",
         "loadingSegment": "טוען מקטע...",
         "noData": "אין נתוני מקטע זמינים",
-        "unCorrect": "בטל תיקון"
+        "unCorrect": "בטל תיקון",
+        "timingClamped": "התזמון של \"{word}\" היה מחוץ למקטע — הוצמד ל-{time} שניות.",
+        "timingSanitized": "תוקנו {count} תזמוני מילים שחרגו מהמקטע הזה."
       },
       "findReplace": {
         "title": "חפש והחלף",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "המילים המותאמות אישית הוחלו. יש לסנכרן ידנית כל מקטע שנערך כדי להבטיח שתזמוני המילים מדויקים."
+    },
+    "autoCorrect": {
+      "accept": "קבל הצעה",
+      "acceptAll": "קבל הכל",
+      "accepted": "התקבל",
+      "adlibRemovalHint": "אפשר הצעות שמוחקות קולות רקע שאינם מופיעים במקורות",
+      "adlibRemovalLabel": "הצע הסרת אלתורים",
+      "category_adlib_removal": "אלתור",
+      "category_formatting": "עיצוב",
+      "category_grammar": "דקדוק",
+      "category_mishearing": "שמיעה שגויה",
+      "category_other": "אחר",
+      "category_repeated_chorus_fix": "פזמון",
+      "collapse": "צמצם הצעות",
+      "confidenceHint": "רמת הוודאות הנדרשת לפני שהצעה תוצג",
+      "confidenceLabel": "מסנן הצעות",
+      "confidence_all": "הצג הכל",
+      "confidence_high": "ביטחון גבוה",
+      "description": "התיקון האוטומטי משווה את המילים שתומללו למקורות הייחוס ומציע תיקונים ברמת המילה. באפשרותך לעבור על כל הצעה — שום שינוי לא יחול עד לאישורו.",
+      "dismiss": "הסתר הצעות",
+      "expand": "הרחב הצעות",
+      "insertMarker": "הוסף:",
+      "insertionsHint": "אפשר הצעות שמוסיפות מילים שהתפספסו בתמלול",
+      "insertionsLabel": "הצע מילים חסרות",
+      "noReferences": "אין מילות ייחוס זמינות לשיר זה, ולכן לא ניתן להפיק הצעות. יש להוסיף תחילה מילים מחלונית הייחוס.",
+      "noSuggestions": "לא נמצאו בעיות — אין שינויים מוצעים.",
+      "reject": "דחה הצעה",
+      "rejectAll": "דחה הכל",
+      "rejected": "נדחה",
+      "runButton": "קבל הצעות",
+      "running": "מנתח מילים… פעולה זו אורכת בדרך כלל 15–60 שניות.",
+      "staleHint": "מילים אלו נערכו מאז שההצעות נוצרו, ולכן הצעה זו כבר אינה רלוונטית.",
+      "summary": "{total} הצעות · {pending} ממתינות · {accepted} התקבלו",
+      "title": "הצעות לתיקון אוטומטי",
+      "undo": "בטל הצעה זו",
+      "cancel": "ביטול",
+      "close": "סגירה",
+      "confidence_balanced": "מאוזנת",
+      "compareHint": "איטי ויקר יותר, אבל מראה על אילו הצעות מספר מודלים מסכימים",
+      "compareLabel": "השוואה בין מספר מודלים",
+      "conflictBadge": "גרסה",
+      "conflictTooltip": "ישנן הצעות שונות למילים אלו — אישור גרסה אחת ידחה את האחרות.",
+      "consensusBadge": "{consensus}/{total} מודלים",
+      "consensusTooltip": "הוצע על ידי: {models}",
+      "cachedBadge": "שמור במטמון",
+      "cachedTooltip": "שוחזר מהרצה קודמת על אותן מילים — ללא חיוב עלות AI.",
+      "appliedSummary": "{count} תיקונים אוטומטיים בוצעו",
+      "hideDetails": "הסתר פרטים",
+      "rerun": "הפעל מחדש",
+      "revertAllAuto": "בטל הכל",
+      "showDetails": "הצג פרטים"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "משוער — העלות הסופית תאושר לאחר ההורדה",
     "reconcileTitle": "השיר הזה ארוך מהצפוי",
     "cancel": "ביטול"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "טעינת תצוגה מקדימה של הרקע"
+  },
+  "bulk": {
+    "albumModeHint": "חפש אמן, בחר אלבום, ואז בחר אילו רצועות להכין.",
+    "artistSearchPlaceholder": "חפש אמן…",
+    "autoPickLossless": "בחר אוטומטית את האודיו הטוב ביותר (lossless בלבד)",
+    "autoPickLosslessHint": "בחר אוטומטית את האודיו כאשר אנו מוצאים התאמה ודאית של lossless/FLAC. השאר יעברו לתור בדיקה.",
+    "backToAlbums": "חזרה לאלבומים",
+    "backToArtists": "חזרה לאמנים",
+    "batchProgressTitle": "מקבץ של {total} שירים",
+    "batchSettings": "הגדרות מקבץ",
+    "byAlbum": "לפי אלבום",
+    "byText": "לפי טקסט",
+    "checking": "בודק…",
+    "chooseAudio": "בחר אודיו",
+    "communityExists": "קיימת גרסת קהילה",
+    "communityExistsWithBrands": "גרסת קהילה: {brands}",
+    "countAwaiting": "{count} ממתינים לבחירה",
+    "countComplete": "{count} הושלמו",
+    "countFailed": "{count} נכשלו",
+    "countProcessing": "{count} בעיבוד",
+    "countSearching": "{count} בחיפוש",
+    "createBatch": "צור {count} סרטוני קריוקי",
+    "creditsCost": "{cost} קרדיטים · יש לך {balance}",
+    "edition": "מהדורה",
+    "extra": "תוספת",
+    "loadingBatch": "טוען מקבץ…",
+    "lookupFailed": "החיפוש נכשל. אנא נסה שוב.",
+    "makePrivate": "שמור כפרטי",
+    "makePrivateHint": "ספק דרך Dropbox בלבד במקום לפרסם ב-YouTube.",
+    "noAlbums": "לא נמצאו אלבומים לאמן זה.",
+    "notEnoughCredits": "אתה צריך {needed} קרדיטים אבל יש לך {have}.",
+    "overLimit": "ניתן להגיש לכל היותר {max} שירים בבת אחת.",
+    "progressError": "לא ניתן לטעון את התקדמות המקבץ.",
+    "reviewQueueHint": "לא הצלחנו לבחור אוטומטית בוודאות מקור lossless עבור אלה. בחר אחד עבור כל אחד.",
+    "reviewQueueTitle": "בחר אודיו עבור רצועות אלו",
+    "selectedCount": "{count} שירים נבחרו",
+    "skipAudioEdit": "דלג על עריכת אודיו",
+    "skipAudioEditHint": "השתמש באודיו של כל רצועה כפי שהוא (ללא חיתוך).",
+    "skipCustomization": "דלג על התאמה אישית",
+    "skipCustomizationHint": "השתמש בערכת הנושא והעיצוב של ברירת המחדל עבור כל רצועה.",
+    "startAnother": "התחל מקבץ נוסף",
+    "submitError": "לא ניתן ליצור את המקבץ. אנא נסה שוב.",
+    "submitting": "יוצר מקבץ…",
+    "textModeHint": "הוסף עד {max} שירים. אנו נסמן כל שיר שכבר יש לו גרסת קהילה.",
+    "title": "כותרת",
+    "tracklistHint": "רצועות חיות, רמיקסים ורצועות בונוס — ושירים שכבר יש להם גרסת קהילה — אינם מסומנים כברירת מחדל.",
+    "addSong": "הוסף שיר",
+    "artist": "אומן",
+    "buyCredits": "רכישת קרדיטים",
+    "removeRow": "הסרה",
+    "trackCount": "{count} רצועות",
+    "changeEdition": "שינוי",
+    "existingVersions": "גרסאות קיימות:",
+    "usingRelease": "שימוש ב-{label} · {year} · {tracks}",
+    "variantBonus": "+{count} בונוס",
+    "variantOriginal": "מקורי",
+    "variantReissue": "הוצאה מחודשת"
+  },
+  "backendStatus": {
+    "reconnecting": "מתחבר מחדש…",
+    "unavailable": {
+      "body": "זה בדרך כלל זמני — אנא נסו שוב בעוד מספר דקות.",
+      "reassurance": "סרטוני קריוקי שנוצרים כרגע לא יושפעו וימשיכו בתהליך העיבוד.",
+      "title": "אנחנו מתקשים להתחבר לשרתים שלנו"
+    },
+    "dismiss": "התעלם"
   }
 }

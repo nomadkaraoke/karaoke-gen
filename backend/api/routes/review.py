@@ -44,6 +44,11 @@ from backend.services.custom_lyrics_service import (
     CustomLyricsServiceError,
     get_custom_lyrics_service,
 )
+from backend.services.auto_correct import (
+    AutoCorrectService,
+    AutoCorrectServiceError,
+    get_auto_correct_service,
+)
 
 
 class LineMetadataResponse(_PydBaseModel):
@@ -70,9 +75,47 @@ class CustomLyricsResponse(_PydBaseModel):
     model: str
 
 
+class AutoCorrectRequest(_PydBaseModel):
+    segments: list[dict]  # client's current working corrected_segments
+    reference_lyrics: dict  # client's reference sources (incl. user-added)
+    artist: Optional[str] = None
+    title: Optional[str] = None
+    settings: Optional[dict] = None  # AutoCorrectSettings knobs
+
+
+class AutoCorrectSuggestionResponse(_PydBaseModel):
+    id: str
+    op: str  # "replace" | "delete" | "insert_after"
+    word_ids: list[str]
+    segment_ids: list[str]
+    original_text: str
+    new_text: str
+    reason: str
+    category: str
+    confidence: float
+    models: list[str]
+    consensus: int
+    total_models: int
+    conflict_group: Optional[str] = None
+
+
+class AutoCorrectResponse(_PydBaseModel):
+    suggestions: list[AutoCorrectSuggestionResponse]
+    model: str
+    elapsed_seconds: float
+    settings_applied: dict
+    warnings: list[str]
+    cached: bool = False
+
+
 def _get_custom_lyrics_service_dep() -> CustomLyricsService:
     """FastAPI dependency wrapper around the singleton accessor."""
     return get_custom_lyrics_service()
+
+
+def _get_auto_correct_service_dep() -> AutoCorrectService:
+    """FastAPI dependency wrapper around the singleton accessor."""
+    return get_auto_correct_service()
 
 
 async def _load_target_segments_for_custom_lyrics(
@@ -142,6 +185,7 @@ def _synthesized_segments(target_lines: list[str]) -> list[dict]:
 from karaoke_gen.lyrics_transcriber.types import CorrectionResult
 from karaoke_gen.lyrics_transcriber.core.config import OutputConfig
 from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
+from karaoke_gen.lyrics_transcriber.output.timing_validation import LyricsTimingError
 
 # Import from the unified style loader
 from karaoke_gen.style_loader import load_styles_from_gcs
@@ -636,6 +680,79 @@ async def generate_custom_lyrics(
     )
 
 
+@router.post("/{job_id}/auto-correct", response_model=AutoCorrectResponse)
+async def auto_correct_suggestions(
+    job_id: str,
+    body: AutoCorrectRequest,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+    service: AutoCorrectService = Depends(_get_auto_correct_service_dep),
+) -> AutoCorrectResponse:
+    """Generate AI auto-correction suggestions for the lyrics review UI.
+
+    Stateless and strictly opt-in: one whole-song LLM call comparing the
+    client's current working transcription against the reference lyrics.
+    Returns word-id-keyed suggestions; nothing is applied server-side —
+    the reviewer accepts or rejects each suggestion individually and
+    persistence happens via the existing corrections/complete paths.
+    """
+    from backend.services.auto_correct.settings import settings_from_dict
+
+    try:
+        settings = settings_from_dict(body.settings or {})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"invalid settings: {exc}") from exc
+
+    with job_log_context(job_id), create_span("auto_correct_suggestions"):
+        add_span_attribute("job_id", job_id)
+        add_span_attribute("segment_count", len(body.segments))
+        logger.info(
+            "auto-correct requested job=%s segments=%d sources=%d",
+            job_id, len(body.segments), len(body.reference_lyrics),
+        )
+        try:
+            result = await asyncio.to_thread(
+                service.suggest,
+                job_id=job_id,
+                segments=body.segments,
+                reference_lyrics=body.reference_lyrics,
+                artist=body.artist,
+                title=body.title,
+                settings=settings,
+            )
+        except AutoCorrectServiceError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+        logger.info(
+            "auto-correct completed job=%s suggestions=%d model=%s elapsed=%.1fs",
+            job_id, len(result.suggestions), result.model, result.elapsed_seconds,
+        )
+
+    return AutoCorrectResponse(
+        suggestions=[
+            AutoCorrectSuggestionResponse(
+                id=s.id,
+                op=s.op,
+                word_ids=s.word_ids,
+                segment_ids=s.segment_ids,
+                original_text=s.original_text,
+                new_text=s.new_text,
+                reason=s.reason,
+                category=s.category,
+                confidence=s.confidence,
+                models=s.models,
+                consensus=s.consensus,
+                total_models=s.total_models,
+                conflict_group=s.conflict_group,
+            )
+            for s in result.suggestions
+        ],
+        model=result.model,
+        elapsed_seconds=result.elapsed_seconds,
+        settings_applied=result.settings_applied.to_dict(),
+        warnings=result.warnings,
+        cached=result.cached,
+    )
+
+
 @router.post("/{job_id}/handlers")
 async def update_handlers(
     job_id: str,
@@ -1110,6 +1227,13 @@ async def generate_preview_video(
 
                     return {"status": "success", "preview_hash": preview_hash}
 
+            except LyricsTimingError as timing_err:
+                # Untimed lyrics (e.g. custom lyrics not yet tap-synced) — this is a
+                # user-fixable input problem, not a server fault. Return 422 with an
+                # actionable message instead of a cryptic 500.
+                logger.warning(f"Job {job_id}: Preview blocked — lyrics not synchronized: {timing_err}")
+                span.set_attribute("error", "lyrics_not_synchronized")
+                raise HTTPException(status_code=422, detail=str(timing_err)) from timing_err
             except Exception as e:
                 logger.error(f"Job {job_id}: Failed to generate preview video: {e}", exc_info=True)
                 span.set_attribute("error", str(e))
@@ -1817,7 +1941,8 @@ async def apply_audio_edit(
     """
     Apply an edit operation to the input audio.
 
-    Supported operations: trim_start, trim_end, cut, mute, join_start, join_end.
+    Supported operations: trim_start, trim_end, cut, mute, fade_in, fade_out,
+    join_start, join_end.
     Returns updated waveform data and playback URL.
     """
     import uuid
@@ -1831,7 +1956,7 @@ async def apply_audio_edit(
     if not operation:
         raise HTTPException(status_code=400, detail="Missing 'operation' field")
 
-    valid_operations = {"trim_start", "trim_end", "cut", "mute", "join_start", "join_end"}
+    valid_operations = {"trim_start", "trim_end", "cut", "mute", "fade_in", "fade_out", "join_start", "join_end"}
     if operation not in valid_operations:
         raise HTTPException(status_code=400, detail=f"Invalid operation: {operation}. Valid: {valid_operations}")
 

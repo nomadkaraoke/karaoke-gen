@@ -21,6 +21,7 @@ import {
   Eye,
   CheckCircle2,
   XCircle,
+  Sparkles,
 } from 'lucide-react'
 import { CorrectionData, InteractionMode } from '@/lib/lyrics-review/types'
 import ModeSelector from './ModeSelector'
@@ -67,6 +68,10 @@ interface HeaderProps {
   onRevertAllCorrections?: () => void
   isDuet?: boolean
   onToggleDuet?: () => void
+  onAutoCorrect?: () => void
+  /** Number of corrections auto-applied — when > 0 the button reads
+   *  "Auto-corrected · N" and opens the applied-corrections details. */
+  autoCorrectedCount?: number
 }
 
 export default function Header({
@@ -100,6 +105,8 @@ export default function Header({
   onRevertAllCorrections,
   isDuet = false,
   onToggleDuet,
+  onAutoCorrect,
+  autoCorrectedCount = 0,
 }: HeaderProps) {
   const t = useTranslations('lyricsReview.header')
   const tDuet = useTranslations('lyricsReview.duet')
@@ -287,6 +294,31 @@ export default function Header({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">{t('editAllDesc')}</TooltipContent>
+                </Tooltip>
+              )}
+
+              {!isReadOnly && onAutoCorrect && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={autoCorrectedCount > 0 ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={onAutoCorrect}
+                      className={
+                        autoCorrectedCount > 0
+                          ? 'h-8 text-xs bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/50 hover:bg-purple-500/25'
+                          : 'h-8 text-xs text-purple-500 border-purple-500/50 hover:border-purple-500 hover:bg-purple-500/10'
+                      }
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1" />
+                      {autoCorrectedCount > 0
+                        ? t('autoCorrectedCount', { count: autoCorrectedCount })
+                        : t('autoCorrect')}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    {autoCorrectedCount > 0 ? t('autoCorrectedDesc') : t('autoCorrectDesc')}
+                  </TooltipContent>
                 </Tooltip>
               )}
 

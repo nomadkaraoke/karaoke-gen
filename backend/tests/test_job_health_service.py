@@ -202,6 +202,36 @@ class TestCheckJobConsistency:
         issues = check_job_consistency(job)
         assert not any("downloading_audio_stuck" in i for i in issues)
 
+    def test_rendering_video_recently_updated_not_flagged(self):
+        """A render that updated 20 min ago (< 45) should not be flagged."""
+        job = create_test_job(status=JobStatus.RENDERING_VIDEO)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=20)
+        issues = check_job_consistency(job)
+        assert not any("rendering_video_stuck" in i for i in issues)
+
+    def test_rendering_video_stuck_60_min_flagged(self):
+        """A render with no update for 60 min (worker died) should be flagged."""
+        job = create_test_job(status=JobStatus.RENDERING_VIDEO)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=60)
+        issues = check_job_consistency(job)
+        assert any("rendering_video_stuck" in i for i in issues)
+        stuck_issue = [i for i in issues if "rendering_video_stuck" in i][0]
+        assert "60 min" in stuck_issue
+
+    def test_rendering_video_at_44_min_not_flagged(self):
+        """At 44 min it must not flag yet (threshold is 45)."""
+        job = create_test_job(status=JobStatus.RENDERING_VIDEO)
+        job.updated_at = datetime.now(timezone.utc) - timedelta(minutes=44)
+        issues = check_job_consistency(job)
+        assert not any("rendering_video_stuck" in i for i in issues)
+
+    def test_rendering_video_stuck_with_naive_datetime(self):
+        """rendering_video_stuck handles naive datetime (no tzinfo)."""
+        job = create_test_job(status=JobStatus.RENDERING_VIDEO)
+        job.updated_at = datetime.utcnow() - timedelta(minutes=50)
+        issues = check_job_consistency(job)
+        assert any("rendering_video_stuck" in i for i in issues)
+
 
 class TestCheckJobConsistencyDetailed:
     """Tests for check_job_consistency_detailed function."""

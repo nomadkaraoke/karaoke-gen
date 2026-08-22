@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "Virheellinen instrumental_selection. Täytyy olla jokin näistä: {valid_selections}",
     "instrumentalSelected": "Instrumentaali valittu. Videon luonti aloitettu.",
     "instrumentalSelectionError": "Virhe valittaessa instrumentaalia työlle {job_id}: {error}",
-    "downloadUrlsError": "Virhe haettaessa latausosoitteita: {error}"
+    "downloadUrlsError": "Virhe haettaessa latausosoitteita: {error}",
+    "fileNoLongerAvailable": "Tiedosto ei ole enää saatavilla"
   },
   "review": {
     "jobNotFound": "Työtä ei löytynyt",
@@ -92,7 +93,10 @@
     "selectAudioError": "Virhe valittaessa ääntä työlle {job_id}: {error}",
     "searchAudioError": "Virhe haettaessa ääntä: {error}",
     "searchCreatedSuccessfully": "Työ luotu. Etsitään ääntä...",
-    "autoDownloadStarted": "Paras tulos valittu automaattisesti. Lataus alkaa..."
+    "autoDownloadStarted": "Paras tulos valittu automaattisesti. Lataus alkaa...",
+    "drmUrlUnsupported": "{platform}-linkit ovat kopiosuojattuja, joten emme voi ladata niitä suoraan. Kokeile ladata ääni ensin kolmannen osapuolen työkalulla ja lataa äänitiedosto sitten tänne. Voit myös liittää YouTube-linkin tai etsiä tämän kappaleen Äänihaun avulla.",
+    "drmUrlUnsupportedWithLink": "{platform}-linkit ovat kopiosuojattuja, joten emme voi ladata niitä suoraan. Voit ladata kappaleen esimerkiksi {downloader}-työkalulla ja ladata äänitiedoston sitten tänne. Voit myös liittää YouTube-linkin tai etsiä kappaleen Äänihaun avulla.",
+    "drmUrlUnsupportedSearch": "{platform}-linkit ovat kopiosuojattuja, joten emme voi ladata niitä suoraan. Etsi netistä \"{platform} downloader\" saadaksesi äänen — esimerkiksi {searchUrl} — ja lataa äänitiedosto sitten tänne. Voit myös liittää YouTube-linkin tai käyttää äänihakua löytääksesi tämän kappaleen."
   },
   "users": {
     "disposableEmailBlocked": "disposable_email_not_allowed",

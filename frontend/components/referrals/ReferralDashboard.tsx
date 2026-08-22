@@ -17,6 +17,7 @@ import {
   Loader2, Banknote, Settings,
 } from 'lucide-react';
 import ReferralToolsDialog from './ReferralToolsDialog';
+import { parseServerDate } from '@/lib/utils';
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -505,7 +506,7 @@ export default function ReferralDashboard() {
           <div className="space-y-2">
             {data.recent_payouts.map((p) => (
               <div key={p.id} className="flex justify-between text-sm">
-                <span style={{ color: 'var(--text-muted)' }}>{new Date(p.created_at).toLocaleDateString()}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{parseServerDate(p.created_at).toLocaleDateString()}</span>
                 <span className="font-mono">{formatCents(p.amount_cents)}</span>
               </div>
             ))}

@@ -24,6 +24,27 @@ def create_repository() -> artifactregistry.Repository:
         location=REGION,
         format="DOCKER",
         description="Docker repository for karaoke backend images",
+        # Cost control: keep the 10 most recent versions for rollback, and
+        # delete untagged digests older than 7 days (orphaned layers left by
+        # repeated :latest pushes). Tagged images are never auto-deleted.
+        cleanup_policies=[
+            artifactregistry.RepositoryCleanupPolicyArgs(
+                id="keep-recent-10",
+                action="KEEP",
+                most_recent_versions=artifactregistry.RepositoryCleanupPolicyMostRecentVersionsArgs(
+                    keep_count=10,
+                ),
+            ),
+            artifactregistry.RepositoryCleanupPolicyArgs(
+                id="delete-untagged-after-7d",
+                action="DELETE",
+                condition=artifactregistry.RepositoryCleanupPolicyConditionArgs(
+                    tag_state="UNTAGGED",
+                    older_than="604800s",  # 7 days
+                ),
+            ),
+        ],
+        cleanup_policy_dry_run=False,
     )
 
     return artifact_repo

@@ -1116,3 +1116,51 @@ class TestResetJobToAwaitingAudioEdit:
             # We check the update_job call for status change
             update_args = mock_jm.update_job.call_args[0][1]
             assert update_args["status"] == "awaiting_audio_edit"
+
+
+class TestResetBumpsWorkerGenerationFence:
+    """A reset is a 'stop what you're doing' event for in-flight workers.
+
+    It must atomically bump state_data.worker_generation so a render/video worker
+    that is still running (e.g. operator hit "Review" mid-render) detects it has
+    been superseded and discards its stale result instead of failing the reset.
+    Regression guard for the 7f457087 admin-reset race.
+    """
+
+    def test_reset_increments_worker_generation(self, client, mock_job):
+        from backend.services.user_service import get_user_service
+
+        mock_user_service = Mock()
+        mock_job_ref = Mock()
+        mock_user_service.db.collection.return_value.document.return_value = mock_job_ref
+
+        app.dependency_overrides[get_user_service] = lambda: mock_user_service
+        try:
+            # Patch the Increment symbol the endpoint imports so the assertion is
+            # robust even when another test replaced firestore_v1 with a mock.
+            with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+                 patch('google.cloud.firestore_v1.Increment') as mock_incr:
+                mock_incr.return_value = "INCREMENT(1)"
+                mock_jm = Mock()
+                mock_jm.get_job.return_value = mock_job
+                mock_jm.update_job.return_value = None
+                mock_jm_class.return_value = mock_jm
+
+                response = client.post(
+                    "/api/admin/jobs/test-job-123/reset",
+                    json={"target_state": "awaiting_review"},
+                )
+        finally:
+            del app.dependency_overrides[get_user_service]
+
+        assert response.status_code == 200
+        mock_incr.assert_called_once_with(1)  # atomic +1 on the fence
+
+        # The clear_updates payload sent to job_ref.update() must carry the fence bump.
+        update_payloads = [c.args[0] for c in mock_job_ref.update.call_args_list if c.args]
+        fence_updates = [
+            p for p in update_payloads
+            if isinstance(p, dict) and "state_data.worker_generation" in p
+        ]
+        assert fence_updates, "Reset must bump state_data.worker_generation"
+        assert fence_updates[-1]["state_data.worker_generation"] == "INCREMENT(1)"

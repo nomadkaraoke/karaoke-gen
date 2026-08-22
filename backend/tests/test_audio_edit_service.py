@@ -154,6 +154,84 @@ class TestFFmpegOperations:
 
     @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
     @patch("backend.services.audio_edit_service.subprocess.run")
+    def test_fade_in(self, mock_run, mock_meta):
+        mock_run.return_value = MagicMock(returncode=0)
+        mock_meta.return_value = AudioMetadata(
+            duration_seconds=245.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=35000000,
+        )
+
+        service = AudioEditService(storage_service=Mock())
+        result = service.fade_region("/tmp/input.flac", 0.0, 3.0, "in", "/tmp/output.flac")
+
+        cmd = mock_run.call_args[0][0]
+        assert "-af" in cmd
+        af_str = cmd[cmd.index("-af") + 1]
+        assert "afade=t=in:st=0.0:d=3.0" in af_str
+        assert result.duration_seconds == 245.0  # Duration preserved
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    def test_fade_out(self, mock_run, mock_meta):
+        mock_run.return_value = MagicMock(returncode=0)
+        mock_meta.return_value = AudioMetadata(
+            duration_seconds=245.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=35000000,
+        )
+
+        service = AudioEditService(storage_service=Mock())
+        result = service.fade_region("/tmp/input.flac", 240.0, 245.0, "out", "/tmp/output.flac")
+
+        cmd = mock_run.call_args[0][0]
+        assert "-af" in cmd
+        af_str = cmd[cmd.index("-af") + 1]
+        assert "afade=t=out:st=240.0:d=5.0" in af_str
+        assert result.duration_seconds == 245.0  # Duration preserved
+
+    def test_fade_region_rejects_invalid_direction(self):
+        service = AudioEditService(storage_service=Mock())
+        with pytest.raises(ValueError, match="Invalid fade direction"):
+            service.fade_region("/tmp/input.flac", 0.0, 3.0, "sideways", "/tmp/output.flac")
+
+    def test_fade_region_rejects_inverted_region(self):
+        service = AudioEditService(storage_service=Mock())
+        with pytest.raises(ValueError, match="Invalid fade region"):
+            service.fade_region("/tmp/input.flac", 3.0, 3.0, "in", "/tmp/output.flac")
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    def test_fade_in_rejects_unanchored_start(self, mock_meta):
+        # Backend must reject a fade-in that isn't anchored to the clip start,
+        # even if a caller bypasses the UI gating (afade would silence the lead-in).
+        mock_meta.return_value = AudioMetadata(
+            duration_seconds=245.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=35000000,
+        )
+        service = AudioEditService(storage_service=Mock())
+        with pytest.raises(ValueError, match="anchored to the clip start"):
+            service.fade_region("/tmp/input.flac", 50.0, 53.0, "in", "/tmp/output.flac")
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    def test_fade_out_rejects_unanchored_end(self, mock_meta):
+        mock_meta.return_value = AudioMetadata(
+            duration_seconds=245.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=35000000,
+        )
+        service = AudioEditService(storage_service=Mock())
+        with pytest.raises(ValueError, match="anchored to the clip end"):
+            service.fade_region("/tmp/input.flac", 50.0, 55.0, "out", "/tmp/output.flac")
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    def test_fade_region_rejects_end_beyond_duration(self, mock_meta):
+        mock_meta.return_value = AudioMetadata(
+            duration_seconds=245.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=35000000,
+        )
+        service = AudioEditService(storage_service=Mock())
+        with pytest.raises(ValueError, match="exceeds clip duration"):
+            service.fade_region("/tmp/input.flac", 0.0, 300.0, "in", "/tmp/output.flac")
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    @patch("backend.services.audio_edit_service.subprocess.run")
     def test_join_audio_end(self, mock_run, mock_meta):
         mock_run.return_value = MagicMock(returncode=0)
         mock_meta.return_value = AudioMetadata(
@@ -228,6 +306,61 @@ class TestApplyEdit:
         mock_storage.upload_file.assert_called_once()
         assert result_path == "jobs/123/audio_edit/edit_abc.flac"
         assert metadata.duration_seconds == 200.0
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    @patch("backend.services.audio_edit_service.tempfile.TemporaryDirectory")
+    def test_apply_edit_fade_in(self, mock_tmpdir, mock_run, mock_meta):
+        mock_tmpdir.return_value.__enter__ = Mock(return_value="/tmp/edit")
+        mock_tmpdir.return_value.__exit__ = Mock(return_value=False)
+        mock_run.return_value = MagicMock(returncode=0)
+        mock_meta.return_value = AudioMetadata(
+            duration_seconds=200.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=30000000,
+        )
+
+        mock_storage = Mock()
+        service = AudioEditService(storage_service=mock_storage)
+
+        metadata, result_path = service.apply_edit(
+            input_gcs_path="jobs/123/input/song.flac",
+            operation="fade_in",
+            params={"start_seconds": 0.0, "end_seconds": 3.0},
+            output_gcs_path="jobs/123/audio_edit/edit_abc.flac",
+            job_id="123",
+        )
+
+        cmd = mock_run.call_args[0][0]
+        af_str = cmd[cmd.index("-af") + 1]
+        assert "afade=t=in:st=0.0:d=3.0" in af_str
+        assert metadata.duration_seconds == 200.0  # Duration preserved
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    @patch("backend.services.audio_edit_service.tempfile.TemporaryDirectory")
+    def test_apply_edit_fade_out(self, mock_tmpdir, mock_run, mock_meta):
+        mock_tmpdir.return_value.__enter__ = Mock(return_value="/tmp/edit")
+        mock_tmpdir.return_value.__exit__ = Mock(return_value=False)
+        mock_run.return_value = MagicMock(returncode=0)
+        mock_meta.return_value = AudioMetadata(
+            duration_seconds=200.0, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=30000000,
+        )
+
+        mock_storage = Mock()
+        service = AudioEditService(storage_service=mock_storage)
+
+        service.apply_edit(
+            input_gcs_path="jobs/123/input/song.flac",
+            operation="fade_out",
+            params={"start_seconds": 197.0, "end_seconds": 200.0},
+            output_gcs_path="jobs/123/audio_edit/edit_abc.flac",
+            job_id="123",
+        )
+
+        cmd = mock_run.call_args[0][0]
+        af_str = cmd[cmd.index("-af") + 1]
+        assert "afade=t=out:st=197.0:d=3.0" in af_str
 
     @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
     @patch("backend.services.audio_edit_service.subprocess.run")

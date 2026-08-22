@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-testing';
 import { completeStripeCheckout } from '../helpers/stripe-checkout';
-import { getPageAuthToken } from '../helpers/auth';
+import { getPageAuthToken, clickCompleteSignInGate } from '../helpers/auth';
 import { URLS, TIMEOUTS } from '../helpers/constants';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -82,6 +82,11 @@ test.describe('Real Credit Purchase Flow', () => {
 
       // Navigate to magic link
       await page.goto(magicLink);
+
+      // Click the "Complete Sign-In" gate (verify page no longer auto-consumes
+      // the token on mount — see #870). This spends the single-use token.
+      await clickCompleteSignInGate(page);
+      console.log('  Clicked "Complete Sign-In" gate');
 
       // Handle verification result (new user interstitial or direct success)
       const verifyResult = await Promise.race([

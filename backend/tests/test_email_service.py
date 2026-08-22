@@ -670,6 +670,30 @@ class TestMadeForYouAdminNotification:
         html_content = call_kwargs.get('html_content')
         assert "abc-def-123" in html_content
 
+    def test_send_admin_notification_link_deep_links_to_audio_queue(self):
+        """Admin 'Open Job' link must one-click login AND deep-link to the
+        awaiting-audio-selection queue so the made-for-you order is visible
+        (a bare /app link lands on a dashboard that filters it out)."""
+        service = EmailService()
+        service.provider = Mock()
+        service.provider.send_email.return_value = True
+
+        service.send_made_for_you_admin_notification(
+            to_email="admin@nomadkaraoke.com",
+            customer_email="customer@example.com",
+            artist="Test Artist",
+            title="Test Song",
+            job_id="job-123",
+            admin_login_token="tok-xyz",
+        )
+
+        call_kwargs = service.provider.send_email.call_args.kwargs
+        html_content = call_kwargs.get('html_content')
+        text_content = call_kwargs.get('text_content')
+        for body in (html_content, text_content):
+            assert "admin_token=tok-xyz" in body
+            assert "status=awaiting_audio_selection" in body
+
     def test_send_admin_notification_includes_audio_count(self):
         """Test admin notification includes audio source count."""
         service = EmailService()

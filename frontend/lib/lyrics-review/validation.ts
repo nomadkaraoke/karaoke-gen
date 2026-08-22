@@ -8,6 +8,11 @@ const WordSchema = z.object({
   end_time: z.number().nullable(),
   confidence: z.number().optional(),
   created_during_correction: z.boolean().optional(),
+  // AI auto-correct provenance (see Word interface in types.ts)
+  ai_corrected: z.boolean().optional(),
+  original_text: z.string().optional(),
+  timing_estimated: z.boolean().optional(),
+  correction_span_id: z.string().optional(),
 })
 
 const LyricsSegmentSchema = z.object({

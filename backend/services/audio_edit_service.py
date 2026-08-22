@@ -106,6 +106,54 @@ class AudioEditService:
         ])
         return self.get_metadata(output_path)
 
+    # Fades must be anchored to a clip edge — FFmpeg's afade silences audio outside
+    # the ramp, so a mid-clip fade would unexpectedly mute the rest of the track.
+    # The tolerance matches the editor UI's edge gating (start < 1s / end within 1s).
+    FADE_ANCHOR_TOLERANCE_SECONDS = 1.0
+
+    def fade_region(
+        self, input_path: str, start: float, end: float, direction: str, output_path: str
+    ) -> AudioMetadata:
+        """Apply a fade in or out anchored to a clip edge (preserves duration).
+
+        direction='in' ramps the volume from silence to full over [0, end];
+        direction='out' ramps from full to silence over [start, clip_end].
+
+        Anchoring is enforced server-side (not just in the UI) because FFmpeg's
+        afade filter silences audio outside the ramp window: a fade-in is forced
+        to begin at the clip start, and a fade-out to finish at the clip end, so a
+        non-anchored request can never silently mute the rest of the track.
+        """
+        if direction not in ("in", "out"):
+            raise ValueError(f"Invalid fade direction: {direction}")
+        if start < 0 or end <= start:
+            raise ValueError(f"Invalid fade region: start={start}, end={end}")
+
+        total = self.get_metadata(input_path).duration_seconds
+        tol = self.FADE_ANCHOR_TOLERANCE_SECONDS
+        if end > total + tol:
+            raise ValueError(f"Fade region exceeds clip duration ({end} > {total})")
+
+        if direction == "in":
+            if start > tol:
+                raise ValueError(f"fade_in must be anchored to the clip start (got start={start})")
+            fade_start, fade_duration = 0.0, end
+        else:
+            if end < total - tol:
+                raise ValueError(f"fade_out must be anchored to the clip end (got end={end}, duration={total})")
+            fade_start, fade_duration = start, total - start
+
+        if fade_duration <= 0:
+            raise ValueError(f"Fade region must have positive duration (got {fade_duration})")
+
+        self._run_ffmpeg([
+            "-i", input_path,
+            "-af", f"afade=t={direction}:st={fade_start}:d={fade_duration}",
+            "-c:a", "flac",
+            output_path,
+        ])
+        return self.get_metadata(output_path)
+
     def join_audio(self, input_path: str, other_path: str, position: str, output_path: str) -> AudioMetadata:
         """Join two audio files. position: 'start' (prepend other) or 'end' (append other)."""
         if position == "start":
@@ -155,6 +203,11 @@ class AudioEditService:
             elif operation == "mute":
                 metadata = self.mute_region(
                     local_input, params["start_seconds"], params["end_seconds"], local_output
+                )
+            elif operation in ("fade_in", "fade_out"):
+                direction = "in" if operation == "fade_in" else "out"
+                metadata = self.fade_region(
+                    local_input, params["start_seconds"], params["end_seconds"], direction, local_output
                 )
             elif operation in ("join_start", "join_end"):
                 # Download the upload file

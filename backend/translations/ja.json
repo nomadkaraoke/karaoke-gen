@@ -47,7 +47,8 @@
     "invalidInstrumentalSelection": "無効な instrumental_selection です。次のいずれかである必要があります: {valid_selections}",
     "instrumentalSelected": "インストゥルメンタルが選択されました。動画の生成を開始しました。",
     "instrumentalSelectionError": "ジョブ {job_id} のインストゥルメンタル選択中にエラーが発生しました: {error}",
-    "downloadUrlsError": "ダウンロードURLの取得中にエラーが発生しました: {error}"
+    "downloadUrlsError": "ダウンロードURLの取得中にエラーが発生しました: {error}",
+    "fileNoLongerAvailable": "ファイルはご利用いただけなくなりました"
   },
   "review": {
     "jobNotFound": "ジョブが見つかりません",
@@ -92,7 +93,10 @@
     "selectAudioError": "ジョブ {job_id} のオーディオ選択中にエラーが発生しました: {error}",
     "searchAudioError": "オーディオの検索中にエラーが発生しました: {error}",
     "searchCreatedSuccessfully": "ジョブが作成されました。オーディオを検索しています...",
-    "autoDownloadStarted": "最適な結果が自動的に選択されました。ダウンロードを開始します..."
+    "autoDownloadStarted": "最適な結果が自動的に選択されました。ダウンロードを開始します...",
+    "drmUrlUnsupported": "{platform}のリンクはコピー保護されているため、直接ダウンロードできません。サードパーティのツールでオーディオをダウンロードしてから、ここにアップロードしてみてください。または、YouTubeのリンクを貼り付けるか、オーディオ検索を使ってこの曲を探すこともできます。",
+    "drmUrlUnsupportedWithLink": "{platform}のリンクはコピーガードで保護されているため、直接ダウンロードすることはできません。{downloader}のようなツールを使用してトラックをダウンロードし、その音声ファイルをここにアップロードしてください。また、YouTubeのリンクを貼り付けるか、オーディオ検索を使用してこの曲を見つけることもできます。",
+    "drmUrlUnsupportedSearch": "{platform}のリンクはコピープロテクトされているため、直接ダウンロードすることはできません。音声を取得するには、ウェブで「{platform} downloader」を検索し（例：{searchUrl}）、その音声ファイルをここにアップロードしてください。また、YouTubeのリンクを貼り付けるか、オーディオ検索を使用してこの曲を見つけることもできます。"
   },
   "users": {
     "disposableEmailBlocked": "使い捨てメールアドレスは許可されていません",

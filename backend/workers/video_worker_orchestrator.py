@@ -28,6 +28,10 @@ from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.tracing import job_span, add_span_event
+from backend.services.original_audio import (
+    original_audio_gcs_path,
+    original_audio_output_filename,
+)
 from karaoke_gen.utils import sanitize_filename
 
 logger = logging.getLogger(__name__)
@@ -67,6 +71,11 @@ class OrchestratorConfig:
     dropbox_path: Optional[str] = None
     gdrive_folder_id: Optional[str] = None
 
+    # Original input audio to include in the uploaded folder (the archival master,
+    # e.g. "<artist> - <title> (flacfetch).flac"). GCS blob path + target filename.
+    original_audio_gcs_path: Optional[str] = None
+    original_audio_filename: Optional[str] = None
+
     # Keep existing brand code (for re-processing)
     keep_brand_code: Optional[str] = None
 
@@ -96,6 +105,14 @@ class OrchestratorConfig:
     dry_run: bool = False
     non_interactive: bool = True
 
+    # Redistribution mode: when True, this orchestrator run is redistributing the
+    # finals of an already-`complete` job (e.g. a public->private visibility change)
+    # rather than driving a fresh job through its lifecycle. In this mode
+    # _update_progress must NOT attempt job status transitions — the job is (and
+    # stays) `complete`, and `complete -> packaging`/`encoding` are illegal
+    # transitions that would otherwise abort the redistribution.
+    redistribute_mode: bool = False
+
 
 @dataclass
 class OrchestratorResult:
@@ -111,6 +128,15 @@ class OrchestratorResult:
     final_with_vocals_mp4: Optional[str] = None  # With Vocals MP4 (encoded from raw MKV)
     final_karaoke_cdg_zip: Optional[str] = None
     final_karaoke_txt_zip: Optional[str] = None
+
+    # Standalone 5-second screen videos (downloaded from GCE finals so they land in
+    # the Dropbox folder). Not used downstream — kept for archival/upload only.
+    title_mov: Optional[str] = None
+    end_mov: Optional[str] = None
+
+    # Portrait (9:16) karaoke video. Downloaded so it lands in the Dropbox folder;
+    # intentionally excluded from YouTube/Drive uploads. Best-effort — may be None.
+    portrait_video: Optional[str] = None
 
     # Organization
     brand_code: Optional[str] = None
@@ -216,14 +242,28 @@ class VideoWorkerOrchestrator:
         return self._discord_service
 
     def _update_progress(self, status: JobStatus, progress: int, message: str):
-        """Update job progress if job_manager is available."""
-        if self.job_manager:
-            self.job_manager.transition_to_state(
-                job_id=self.config.job_id,
-                new_status=status,
-                progress=progress,
-                message=message
+        """Update job progress if job_manager is available.
+
+        In redistribute_mode the job is already `complete` and must stay that way,
+        so we update only the progress percentage/message and skip the (illegal)
+        status transition. Outside redistribute_mode this drives the normal
+        lifecycle transition with validation.
+        """
+        if not self.job_manager:
+            return
+        if self.config.redistribute_mode:
+            # Progress-only update; do not transition status (job stays `complete`).
+            self.job_manager.update_job(
+                self.config.job_id,
+                {"progress": progress},
             )
+            return
+        self.job_manager.transition_to_state(
+            job_id=self.config.job_id,
+            new_status=status,
+            progress=progress,
+            message=message
+        )
 
     async def run(self) -> OrchestratorResult:
         """
@@ -452,11 +492,44 @@ class VideoWorkerOrchestrator:
         if self.config.countdown_padding_seconds:
             self.job_log.info(f"Countdown padding: {self.config.countdown_padding_seconds}s - instrumental will be padded")
 
+        # The GCE encoder downloads its inputs from input_gcs_path (jobs/{job_id}/) and resolves
+        # the instrumental via find_file. For jobs that supply their own instrumental
+        # (existing_instrumental flow, e.g. tenant submissions), the file lives under
+        # uploads/{job_id}/audio/existing_instrumental.* — which is NOT under jobs/{job_id}/ and
+        # is NOT a name the encoder's 'custom' branch looks for. The encoder's 'custom' branch
+        # globs for "*custom_instrumental*.{flac,mp3}" / "*Instrumental Custom*", so copy the
+        # supplied instrumental into jobs/{job_id}/custom_instrumental.<ext> (server-side, from
+        # the authoritative GCS source — no dependency on local temp files). Without this,
+        # existing-instrumental jobs fail at the encoder with "No instrumental audio found".
+        if encoding_backend.name == "gce" and self.storage:
+            try:
+                srcs = self.storage.list_files(f"uploads/{self.config.job_id}/audio/existing_instrumental")
+                if srcs:
+                    src = srcs[0]
+                    ext = os.path.splitext(src)[1].lower() or ".mp3"
+                    dest = f"jobs/{self.config.job_id}/custom_instrumental{ext}"
+                    self.storage.copy_blob(src, dest)
+                    self.job_log.info(f"Staged custom instrumental for GCE encoder: {dest}")
+            except Exception as e:
+                self.job_log.warning(f"Failed to stage custom instrumental for GCE encoder: {e}")
+
+        # Submit the encode under `encode_job_id`, resubmitting under a fresh id
+        # if the worker loses the job mid-run (OOM/deploy restart wipes its
+        # in-memory registry — the original id can never complete). See
+        # run_with_lost_job_resubmit.
+        from backend.services.encoding_service import run_with_lost_job_resubmit
+
+        async def _submit_encode(encode_job_id: str):
+            encoding_input.options["job_id"] = encode_job_id
+            return await encoding_backend.encode(encoding_input)
+
         # Run encoding
         with job_span("encoding", self.config.job_id) as span:
             add_span_event("encoding_started", {"backend": encoding_backend.name})
 
-            output = await encoding_backend.encode(encoding_input)
+            output = await run_with_lost_job_resubmit(
+                _submit_encode, self.config.job_id, log=self.job_log
+            )
 
             add_span_event("encoding_completed", {
                 "success": output.success,
@@ -490,10 +563,11 @@ class VideoWorkerOrchestrator:
                         f"Stale GCE cache detected, re-encoding as {retry_job_id}: {e}"
                     )
 
-                    # Update the encoding input with the retry job ID
-                    encoding_input.options["job_id"] = retry_job_id
-
-                    output = await encoding_backend.encode(encoding_input)
+                    # Re-encode under the fresh id, still resubmitting if the worker
+                    # loses the job mid-run.
+                    output = await run_with_lost_job_resubmit(
+                        _submit_encode, retry_job_id, log=self.job_log
+                    )
                     if not output.success:
                         raise Exception(f"Encoding failed on retry: {output.error_message}")
 
@@ -532,6 +606,12 @@ class VideoWorkerOrchestrator:
             ('lossy_4k_mp4_path', 'final_video_lossy'),
             ('lossy_720p_mp4_path', 'final_video_720p'),
             ('with_vocals_mp4_path', 'final_with_vocals_mp4'),
+            # Standalone screen videos — pulled back so they reach the Dropbox folder
+            ('title_mov_path', 'title_mov'),
+            ('end_mov_path', 'end_mov'),
+            # Portrait karaoke — pulled back so it reaches the Dropbox folder (upload_folder
+            # sweeps the whole output dir); excluded from YouTube/Drive by design.
+            ('portrait_mp4_path', 'portrait_video'),
         ]
 
         downloaded_count = 0
@@ -601,6 +681,16 @@ class VideoWorkerOrchestrator:
         """Run the distribution stage (YouTube, Dropbox, GDrive uploads)."""
         self.job_log.info("Starting distribution stage")
         self._update_progress(JobStatus.PACKAGING, 90, "Uploading files")
+
+        # Stage the original input audio into output_dir before any folder upload
+        # (Dropbox/GDrive upload the whole directory). Only worth the GCS fetch when
+        # such an upload will actually happen.
+        will_upload_folder = (
+            (self.config.dropbox_path and self.config.brand_prefix)
+            or self.config.gdrive_folder_id
+        )
+        if will_upload_folder:
+            self._stage_original_audio_for_upload()
 
         # YouTube upload
         if self.config.enable_youtube_upload and self.config.youtube_credentials:
@@ -738,6 +828,32 @@ class VideoWorkerOrchestrator:
                 f"YouTube upload skipped (quota exceeded) and failed to queue: {e}"
             )
 
+    def _stage_original_audio_for_upload(self):
+        """Copy the original input audio into output_dir so uploads include it.
+
+        The source audio (e.g. "<artist> - <title> (flacfetch).flac" /
+        "(uploaded).mp3") is the archival master used for separation/transcription.
+        The distributed pipeline otherwise leaves it in GCS only, so it stopped
+        appearing in the Dropbox track folder. Best-effort: never fail the pipeline.
+        """
+        gcs_path = self.config.original_audio_gcs_path
+        filename = self.config.original_audio_filename
+        if not gcs_path or not filename:
+            return
+
+        dest = os.path.join(self.config.output_dir, filename)
+        if os.path.exists(dest):
+            self.job_log.info(f"Original audio already present, skipping: {filename}")
+            return
+
+        try:
+            self.job_log.info(f"Staging original audio for upload: {filename}")
+            self.storage.download_file(gcs_path, dest)
+            self.job_log.info(f"Staged original audio: {dest}")
+        except Exception as e:
+            self.job_log.warning(f"Failed to stage original audio ({filename}): {e}")
+            self.result.distribution_warnings.append(f"Original audio not included: {e}")
+
     async def _upload_to_dropbox(self):
         """Upload files to Dropbox."""
         self.job_log.info("Uploading to Dropbox")
@@ -797,11 +913,19 @@ class VideoWorkerOrchestrator:
                 'final_karaoke_cdg_zip': self.result.final_karaoke_cdg_zip,
             }
 
+            # Emit the padded original-vocals guide for public NOMAD releases so kjbox can
+            # layer it under the master at the "Original Vocals" slider. Best-effort: a
+            # failure just omits the guide (the upload layer pushes it if present).
+            guide_path = await self._emit_original_vocals_guide(brand_code)
+            if guide_path:
+                output_files['original_vocals_guide'] = guide_path
+
             uploaded = gdrive.upload_to_public_share(
                 root_folder_id=self.config.gdrive_folder_id,
                 brand_code=brand_code,
                 base_name=base_name,
                 output_files=output_files,
+                warnings=self.result.distribution_warnings,
             )
 
             self.result.gdrive_files = uploaded
@@ -811,6 +935,78 @@ class VideoWorkerOrchestrator:
             self.job_log.error(f"Google Drive upload failed: {e}")
             self.result.distribution_warnings.append(f"Google Drive upload failed: {e}")
             # Don't fail the pipeline - GDrive is optional
+
+    async def _emit_original_vocals_guide(self, brand_code) -> Optional[str]:
+        """Build the padded original-vocals guide (silence[intro] + mixed_vocals, capped to
+        the master's duration) for a public NOMAD release, and return its local path.
+
+        The mixed-vocals stem is a byproduct of the karaoke separation (uploaded to
+        ``jobs/{job_id}/stems/vocals_clean.flac``) and the intro offset is the job's own
+        style ``intro_video_duration`` — so no correlation/review is needed. Best-effort:
+        returns ``None`` (and never raises) for non-NOMAD brands, a missing stem, or any
+        build failure — the guide simply won't be distributed.
+        """
+        try:
+            from backend.services.nomad_master_mirror import is_nomad_public_brand
+            if not is_nomad_public_brand(brand_code):
+                return None
+            master_720p = self.result.final_video_720p
+            if not master_720p or not os.path.exists(master_720p):
+                return None
+            if not self.storage:
+                return None
+
+            import tempfile
+            from backend.services.original_vocals_guide import (
+                build_original_vocals_guide,
+                probe_duration,
+            )
+
+            work_dir = tempfile.mkdtemp(prefix="vocals_guide_")
+            stem_gcs = f"jobs/{self.config.job_id}/stems/vocals_clean.flac"
+            local_stem = os.path.join(work_dir, "vocals_clean.flac")
+            try:
+                self.storage.download_file(stem_gcs, local_stem)
+            except Exception as e:  # noqa: BLE001
+                self.job_log.warning(
+                    f"Original-vocals guide: mixed-vocals stem unavailable ({stem_gcs}): {e}"
+                )
+                return None
+
+            intro_seconds = await self._resolve_intro_seconds()
+            master_duration = probe_duration(master_720p)
+            dest = os.path.join(work_dir, "original_vocals_guide.flac")
+            guide = build_original_vocals_guide(
+                local_stem, intro_seconds, dest, master_duration=master_duration
+            )
+            if guide:
+                self.job_log.info(
+                    f"Built original-vocals guide for {brand_code} (intro={intro_seconds}s)"
+                )
+            return guide
+        except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
+            self.job_log.warning(f"Original-vocals guide emit skipped: {e}")
+            return None
+
+    async def _resolve_intro_seconds(self) -> float:
+        """The master's silent title-card length = the job's style intro ``video_duration``
+        (default 5s). Read the *actual* value — long-intro styles exist. Falls back to 5s
+        (``get_intro_format`` raises when no theme is loaded — that's the fallback path)."""
+        try:
+            from backend.workers.style_helper import load_style_config
+            import tempfile
+
+            job = self.job_manager.get_job(self.config.job_id) if self.job_manager else None
+            if job is None:
+                return 5.0
+            style = await load_style_config(job, self.storage, tempfile.mkdtemp(prefix="style_"))
+            # Preserve an intentional 0 (a style with no title card); only None/absent
+            # falls back to the 5s default. A truthiness check would misalign the guide.
+            intro = style.get_intro_format().get("video_duration", 5)
+            return float(intro) if intro is not None else 5.0
+        except Exception as e:  # noqa: BLE001
+            self.job_log.warning(f"Original-vocals guide: intro-duration lookup fell back to 5s: {e}")
+            return 5.0
 
     async def _run_notifications(self):
         """Run the notifications stage (Discord)."""
@@ -973,6 +1169,10 @@ def create_orchestrator_config_from_job(
         # Dropbox/GDrive (overridden for private tracks)
         dropbox_path=dist.dropbox_path,
         gdrive_folder_id=dist.gdrive_folder_id,
+
+        # Original input audio to include in the uploaded folder (archival master)
+        original_audio_gcs_path=original_audio_gcs_path(job),
+        original_audio_filename=original_audio_output_filename(job, base_name),
 
         # Keep existing brand code
         keep_brand_code=getattr(job, 'keep_brand_code', None),

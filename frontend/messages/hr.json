@@ -239,7 +239,10 @@
     "loadingJobs": "Učitavanje poslova...",
     "noJobsMatchFilters": "Nijedan posao ne odgovara tvojim filterima.",
     "noJobsYet": "Još nema poslova. Izradi jedan za početak!",
-    "referrals": "Preporuke"
+    "referrals": "Preporuke",
+    "bulkMode": "Grupno",
+    "singleMode": "Pojedinačno",
+    "submitModeToggle": "Pojedinačno ili grupno slanje"
   },
   "auth": {
     "noVerificationToken": "Nije naveden token za provjeru",
@@ -311,7 +314,10 @@
     "resendNoTokenTitle": "Nismo mogli pronaći tu poveznicu",
     "resendSuccessBody": "Poslali smo novu poveznicu za prijavu na {maskedEmail}. Vrijedi sljedeća 24 sata.",
     "resendSuccessTitle": "Provjeri svoju e-poštu",
-    "resending": "Slanje..."
+    "resending": "Slanje...",
+    "confirmBody": "Radi tvoje sigurnosti, klikni gumb u nastavku za dovršetak prijave. Ovaj dodatni korak sprječava automatizirane skenere e-pošte da iskoriste tvoju poveznicu prije tebe.",
+    "confirmButton": "Dovrši prijavu",
+    "confirmTitle": "Dovrši svoju prijavu"
   },
   "payment": {
     "title": "Plaćanje uspješno!",
@@ -372,7 +378,10 @@
     "backend": "Backend",
     "encoder": "Enkoder",
     "flacfetch": "Flacfetch",
-    "separator": "Separator"
+    "separator": "Separator",
+    "fallbackBadge": "Pričuva",
+    "fallbackNote": "Primarni kapacitet nije dostupan — preusmjereno na pričuvnu vrstu instance.",
+    "liveWorker": "Aktivni radnik"
   },
   "credits": {
     "title": "Kupi još kredita",
@@ -533,7 +542,19 @@
     "pasteUrlButton": "Zalijepi poveznicu",
     "urlSupportedSitesHint": "Radi s platformama YouTube, Facebook, SoundCloud, TikTok, Vimeo i stotinama drugih stranica.",
     "urlSupportedSitesLink": "Pogledaj sve podržane stranice",
-    "useThisUrl": "Upotrijebi ovaj URL"
+    "useThisUrl": "Upotrijebi ovaj URL",
+    "matchCorrectedTo": "Ispravljeno u {value} — tvoj unos: “{typed}”",
+    "matchDidYouMean": "Jesi li mislio/la?",
+    "matchKeepMine": "zadrži moj unos",
+    "matchTidiedTo": "Uređeno u {value}",
+    "matchUndo": "Poništi",
+    "matchChecking": "Provjera detalja pjesme…",
+    "matchUseCorrection": "koristi ispravak",
+    "matchUseTidied": "koristi uređenu verziju",
+    "matchUsingTyped": "Koristimo ono što si upisao: {value}",
+    "checkingUrl": "Provjera…",
+    "submitNetworkError": "Mrežna pogreška — molim te, provjeri svoju vezu i pokušaj ponovno.",
+    "submitError": "Nešto je pošlo po zlu. Pokušaj ponovno."
   },
   "jobStatus": {
     "settingUp": "Postavljanje",
@@ -576,7 +597,9 @@
     "correcting": "Ispravljanje",
     "lyricsDone": "Tekst gotov",
     "lyrics": "Tekst",
-    "confirmDurationCost": "Potvrdi cijenu"
+    "confirmDurationCost": "Potvrdi cijenu",
+    "findingAudioSources": "Traženje izvora zvuka (ponovni pokušaj)",
+    "waitingForCapacity": "Čeka se server za kodiranje (ponovni pokušaj)"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",
@@ -588,7 +611,9 @@
     "autoSelect": "Automatski će odabrati",
     "willAutoSelectFirst": "Automatski će odabrati prvo",
     "noOutputsAvailable": "Još nema dostupnih izlaza",
-    "confirmCost": "Potvrdi cijenu"
+    "confirmCost": "Potvrdi cijenu",
+    "makingPublicInProgress": "Objavljivanje ove pjesme — ponovno renderiranje sa zadanim brendiranjem i ponovno objavljivanje. To obično traje 15–30 minuta.",
+    "waitingForEncodingServer": "(čeka se dostupnost servera za kodiranje)"
   },
   "jobActions": {
     "delete": "Izbriši",
@@ -683,7 +708,8 @@
   },
   "titleCardPreview": {
     "songTitle": "Naslov pjesme",
-    "artist": "Izvođač"
+    "artist": "Izvođač",
+    "loading": "Učitavanje pregleda naslovnog zaslona"
   },
   "editTrack": {
     "title": "Uredi završenu pjesmu",
@@ -739,7 +765,22 @@
     "views": "{count} pregleda",
     "moreVersions": "+{count} više",
     "select": "Odaberi",
-    "creditCost": "{credits} kredita"
+    "creditCost": "{credits} kredita",
+    "chooseFile": "Odaberi audio datoteku (MP3, WAV, FLAC, M4A, OGG)",
+    "noResultsHelp": "Nismo uspjeli pronaći nijedan audio izvor. Pokušaj izmijeniti izvođača ili naslov iznad i pretražiti ponovno, ili dodaj vlastiti audio putem URL-a ili učitavanjem datoteke.",
+    "pasteUrl": "Zalijepi URL",
+    "researchFailed": "Pretraživanje nije uspjelo. Pokušaj ponovno.",
+    "searchAgain": "Pretraži ponovno",
+    "selectFailed": "Odabir audija nije uspio",
+    "uploadFailed": "Učitavanje nije uspjelo. Pokušaj ponovno.",
+    "urlFailed": "Nismo mogli upotrijebiti taj URL. Pokušaj s drugim izvorom.",
+    "urlPlaceholder": "https://youtube.com/watch?v=...",
+    "useThisFile": "Koristi ovu datoteku",
+    "useThisUrl": "Koristi ovaj URL",
+    "artistLabel": "Izvođač",
+    "loading": "Učitavanje...",
+    "titleLabel": "Naslov",
+    "uploadFileAction": "Prenesi datoteku"
   },
   "audioEditor": {
     "loading": "Učitavanje audio uređivača...",
@@ -776,7 +817,17 @@
     "undoFailed": "Poništavanje nije uspjelo",
     "redoFailed": "Ponavljanje nije uspjelo",
     "restoreFailed": "Vraćanje nije uspjelo — neka uređivanja možda nisu primijenjena",
-    "submitFailed": "Slanje nije uspjelo"
+    "submitFailed": "Slanje nije uspjelo",
+    "fadeIn": "Postupno pojačavanje",
+    "fadeInSelection": "Postupno pojačaj odabrano područje",
+    "fadeOut": "Postupno stišavanje",
+    "fadeOutSelection": "Postupno stišaj odabrano područje",
+    "fadeInDisabledHint": "Za postepeno pojačavanje zvuka, odaberi dio koji počinje na samom početku trake",
+    "fadeOutDisabledHint": "Za postepeno stišavanje zvuka, odaberi dio koji završava na samom kraju trake",
+    "trimEndDisabledHint": "Za skraćivanje kraja, odaberi dio koji završava na samom kraju trake",
+    "trimEndSelection": "Ukloni sve nakon odabira",
+    "trimStartDisabledHint": "Za skraćivanje početka, odaberi dio koji počinje na samom početku trake",
+    "trimStartSelection": "Ukloni sve prije odabira"
   },
   "audioEditRestore": {
     "title": "Spremljene sesije uređivanja zvuka",
@@ -803,7 +854,7 @@
       "acceptAll": "Prihvati sve",
       "revertAll": "Vrati sve",
       "undoAll": "Poništi sve",
-      "resetAllChanges": "Poništi sve promjene natrag na originalni AI-ispravljeni tekst",
+      "resetAllChanges": "Poništi sve promjene i vrati na izvorni ispravljeni tekst",
       "undo": "Poništi",
       "redo": "Ponovi",
       "findReplace": "Pronađi/Zamijeni",
@@ -816,7 +867,11 @@
       "playback": "Reprodukcija",
       "audioLoadError": "Nije moguće učitati audio",
       "audioStillLoading": "Audio se još uvijek učitava...",
-      "loadingAudio": "Učitavanje audija..."
+      "loadingAudio": "Učitavanje audija...",
+      "autoCorrect": "Automatski ispravak",
+      "autoCorrectDesc": "Uspoređuje transkripciju s referentnim tekstom i primjenjuje ispravke na razini riječi za tebe. Ispravljene riječi prikazane su ljubičastom bojom.",
+      "autoCorrectedCount": "Automatski ispravljeno · {count}",
+      "autoCorrectedDesc": "Primijenili smo {count, plural, =1 {# automatski ispravak} other {# automatskih ispravaka}} (prikazano ljubičastom bojom). Klikni za prikaz detalja i poništi one s kojima se ne slažeš."
     },
     "guidance": {
       "showTips": "Prikaži savjete",
@@ -831,7 +886,7 @@
       "orangeHighlightedWords": "Narančasto istaknute riječi su praznine — dijelovi koji se nisu mogli uskladiti s referentnim tekstom i mogu sadržavati greške (npr. pogrešno shvaćene riječi koje zvuče slično).",
       "useNAndP": "Koristi N i P za preskakanje između praznina. Za svaku od njih, klikni reproduciraj pored retka i usporedi ono što čuješ s referentnim tekstom s desne strane, zatim klikni riječ za uređivanje ili brisanje.",
       "watchOutForPhantomWords": "Pazi na fantomske riječi poput \"and\" na početku ili kraju redaka — transkripcija ih često dodaje.",
-      "tryTimelineView": "Isprobaj prikaz Vremenske trake za uočavanje bilo kakvih neobično dugih riječi (10+ sekundi), koje obično ukazuju na problem s tempiranjem.",
+      "tryTimelineView": "Riječi duže od 2s i pauze duže od 2s označene su žutom bojom trajanja — provjeri ih zbog problema s tajmingom. Prebaci se na Napredno za prikaz svake linije razvučene u vremensku traku.",
       "watchFullTutorial": "Pogledaj cijeli vodič",
       "correctionHandlers": "Rukovatelji ispravcima",
       "anchorSequences": "Sidrišne sekvence",
@@ -845,7 +900,10 @@
       "uncorrectedGaps": "Neispravljene praznine",
       "uncorrectedGapsDesc": "Dijelovi koji bi mogli zahtijevati ručni pregled",
       "wordsUncorrected": "Neispravljene riječi",
-      "numberOfGaps": "Broj praznina"
+      "numberOfGaps": "Broj praznina",
+      "autoCorrectTip": "{count, plural, =1 {# riječ je automatski ispravljena} other {# riječi je automatski ispravljeno}} za tebe (prikazano ljubičastom bojom, s originalnom riječi iznad). Reproduciraj svaki ispravljeni redak i provjeri poklapaju li se riječi i dalje — posebno one podcrtane narančastom bojom, gdje je tajming procijenjen i vjerojatno će ga trebati prilagoditi.",
+      "autoCorrected": "Automatski ispravljeno",
+      "timingEstimated": "Procijenjen tajming"
     },
     "transcription": {
       "syncedLyrics": "Sinkronizirani tekst",
@@ -854,7 +912,13 @@
       "text": "Tekst",
       "timeline": "Vremenska traka",
       "deleteSegment": "Izbriši segment",
-      "playSegment": "Reproduciraj segment"
+      "playSegment": "Reproduciraj segment",
+      "aiTooltipEstimated": "Naš sustav je ovo automatski ispravio. Tajming je ovdje procijenjen, stoga reproduciraj ovaj redak i po potrebi prilagodi tajming riječi.",
+      "aiTooltipReplaced": "Naš sustav je ovo automatski ispravio iz \"{original}\". Reproduciraj ovaj redak da potvrdiš da se riječi i dalje poklapaju.",
+      "aiTooltipReplacedEstimated": "Naš sustav je ovo automatski ispravio iz \"{original}\". Tajming je procijenjen, stoga reproduciraj ovaj redak i po potrebi prilagodi tajming riječi.",
+      "longGapWarning": "Pauza od {seconds} s prije sljedeće riječi — često zalutala rana riječ (npr. fantomsko \"i\"). Klikni za reprodukciju odavde.",
+      "longWordWarning": "Ova riječ traje {seconds} s — neobično dugo. Reproduciraj redak i provjeri da njezino vrijeme završetka ne ulazi u instrumental.",
+      "playFromGap": "Reproduciraj od kraja ove pauze"
     },
     "editActionBar": {
       "reset": "Poništi",
@@ -990,7 +1054,9 @@
         "loadingAll": "Učitavanje svih riječi...",
         "loadingSegment": "Učitavanje segmenta...",
         "noData": "Nema dostupnih podataka o segmentu",
-        "unCorrect": "Poništi ispravak"
+        "unCorrect": "Poništi ispravak",
+        "timingClamped": "Tajming za \"{word}\" bio je izvan segmenta — postavljen na {time} s.",
+        "timingSanitized": "Ispravljen je tajming za {count} riječ(i) koje su bile izvan ovog segmenta."
       },
       "findReplace": {
         "title": "Pronađi i zamijeni",
@@ -1272,6 +1338,57 @@
     },
     "toasts": {
       "customLyricsSaved": "Prilagođeni tekst je primijenjen. Ručno sinkroniziraj svaki uređeni segment kako bi tempiranje riječi bilo točno za prilagođeni tekst."
+    },
+    "autoCorrect": {
+      "accept": "Prihvati prijedlog",
+      "acceptAll": "Prihvati sve",
+      "accepted": "Prihvaćeno",
+      "adlibRemovalHint": "Dopusti prijedloge za brisanje pratećih vokala kojih nema u referentnom tekstu",
+      "adlibRemovalLabel": "Predloži uklanjanje adlibova",
+      "category_adlib_removal": "adlib",
+      "category_formatting": "format",
+      "category_grammar": "gramatika",
+      "category_mishearing": "pogrešno prepoznato",
+      "category_other": "ostalo",
+      "category_repeated_chorus_fix": "refren",
+      "collapse": "Sažmi prijedloge",
+      "confidenceHint": "Koliko prijedlog mora biti pouzdan prije nego što se prikaže",
+      "confidenceLabel": "Filtar prijedloga",
+      "confidence_all": "Prikaži sve",
+      "confidence_high": "Visoka pouzdanost",
+      "description": "Automatski ispravak uspoređuje transkribirani tekst s referentnim izvorima i predlaže ispravke na razini riječi. Pregledavaš svaki prijedlog — ništa se ne primjenjuje dok ga ne prihvatiš.",
+      "dismiss": "Odbaci prijedloge",
+      "expand": "Proširi prijedloge",
+      "insertMarker": "umetni:",
+      "insertionsHint": "Dopusti prijedloge za umetanje riječi koje nedostaju u transkripciji",
+      "insertionsLabel": "Predloži riječi koje nedostaju",
+      "noReferences": "Za ovu pjesmu nema dostupnog referentnog teksta, pa se prijedlozi ne mogu generirati. Prvo dodaj tekst iz referentnog panela.",
+      "noSuggestions": "Nisu pronađeni problemi — nema predloženih promjena.",
+      "reject": "Odbij prijedlog",
+      "rejectAll": "Odbij sve",
+      "rejected": "Odbijeno",
+      "runButton": "Dohvati prijedloge",
+      "running": "Analiziram tekst… ovo obično traje 15–60 sekundi.",
+      "staleHint": "Ove su riječi uređene nakon generiranja prijedloga, pa ovaj prijedlog više ne vrijedi.",
+      "summary": "{total} prijedloga · {pending} na čekanju · {accepted} prihvaćeno",
+      "title": "Prijedlozi automatskog ispravka",
+      "undo": "Poništi ovaj prijedlog",
+      "cancel": "Odustani",
+      "close": "Zatvori",
+      "confidence_balanced": "Uravnoteženo",
+      "compareHint": "Sporije je i košta više, ali pokazuje oko kojih se prijedloga slaže više modela",
+      "compareLabel": "Usporedi više modela",
+      "conflictBadge": "varijanta",
+      "conflictTooltip": "Postoje različiti prijedlozi za ove riječi — prihvaćanjem jedne varijante odbacuješ ostale.",
+      "consensusBadge": "{consensus}/{total} modela",
+      "consensusTooltip": "Predložili: {models}",
+      "cachedBadge": "predmemorirano",
+      "cachedTooltip": "Obnovljeno iz prethodnog pokretanja s istim tekstom pjesme — nije bilo troškova za AI.",
+      "appliedSummary": "Primijenjeno {count} automatskih ispravaka",
+      "hideDetails": "Sakrij detalje",
+      "rerun": "Pokreni ponovno",
+      "revertAllAuto": "Poništi sve",
+      "showDetails": "Prikaži detalje"
     }
   },
   "instrumentalReview": {
@@ -1506,5 +1623,74 @@
     "estimatedLabel": "Procijenjeno — konačna cijena potvrđuje se nakon preuzimanja",
     "reconcileTitle": "Ova pjesma je duža od očekivanog",
     "cancel": "Odustani"
+  },
+  "karaokeBackgroundPreview": {
+    "loading": "Učitavanje pregleda pozadine"
+  },
+  "bulk": {
+    "albumModeHint": "Pretraži izvođača, odaberi album, a zatim odaberi koje pjesme želiš napraviti.",
+    "artistSearchPlaceholder": "Pretraži izvođača…",
+    "autoPickLossless": "Automatski odaberi najbolji zvuk (samo bez gubitaka)",
+    "autoPickLosslessHint": "Automatski odaberi zvuk kada pronađemo pouzdano podudaranje bez gubitaka/FLAC. Ostali idu u red za pregled.",
+    "backToAlbums": "Natrag na albume",
+    "backToArtists": "Natrag na izvođače",
+    "batchProgressTitle": "Serija od {total} pjesama",
+    "batchSettings": "Postavke serije",
+    "byAlbum": "Po albumu",
+    "byText": "Po tekstu",
+    "checking": "Provjera…",
+    "chooseAudio": "Odaberi zvuk",
+    "communityExists": "Postoji verzija zajednice",
+    "communityExistsWithBrands": "Verzija zajednice: {brands}",
+    "countAwaiting": "{count} treba odabir",
+    "countComplete": "{count} završeno",
+    "countFailed": "{count} nije uspjelo",
+    "countProcessing": "{count} u obradi",
+    "countSearching": "{count} u pretraživanju",
+    "createBatch": "Napravi {count} karaoke videa",
+    "creditsCost": "{cost} kredita · imaš {balance}",
+    "edition": "Izdanje",
+    "extra": "Dodatno",
+    "loadingBatch": "Učitavanje serije…",
+    "lookupFailed": "Pretraživanje nije uspjelo. Molimo pokušaj ponovno.",
+    "makePrivate": "Zadrži privatno",
+    "makePrivateHint": "Isporuči samo putem Dropboxa umjesto objavljivanja na YouTubeu.",
+    "noAlbums": "Nisu pronađeni albumi za ovog izvođača.",
+    "notEnoughCredits": "Trebaš {needed} kredita, ali imaš {have}.",
+    "overLimit": "Možeš poslati najviše {max} pjesama odjednom.",
+    "progressError": "Nije moguće učitati napredak serije.",
+    "reviewQueueHint": "Nismo mogli sa sigurnošću automatski odabrati izvor bez gubitaka za ove pjesme. Odaberi jedan za svaku.",
+    "reviewQueueTitle": "Odaberi zvuk za ove pjesme",
+    "selectedCount": "{count} pjesama odabrano",
+    "skipAudioEdit": "Preskoči uređivanje zvuka",
+    "skipAudioEditHint": "Koristi zvuk svake pjesme kakav jest (bez rezanja).",
+    "skipCustomization": "Preskoči prilagodbu",
+    "skipCustomizationHint": "Koristi zadanu temu i stil za svaku pjesmu.",
+    "startAnother": "Započni novu seriju",
+    "submitError": "Nije moguće napraviti seriju. Molimo pokušaj ponovno.",
+    "submitting": "Stvaranje serije…",
+    "textModeHint": "Dodaj do {max} pjesama. Označit ćemo one koje već imaju verziju zajednice.",
+    "title": "Naslov",
+    "tracklistHint": "Uživo, remiksi i bonus pjesme — te pjesme koje već imaju verziju zajednice — prema zadanim su postavkama odznačene.",
+    "addSong": "Dodaj pjesmu",
+    "artist": "Izvođač",
+    "buyCredits": "Kupi kredite",
+    "removeRow": "Ukloni",
+    "trackCount": "{count} pjesama",
+    "changeEdition": "Promijeni",
+    "existingVersions": "Postojeće verzije:",
+    "usingRelease": "Koristiš {label} · {year} · {tracks}",
+    "variantBonus": "+{count} bonus",
+    "variantOriginal": "Original",
+    "variantReissue": "Reizdanje"
+  },
+  "backendStatus": {
+    "reconnecting": "Ponovno povezivanje…",
+    "unavailable": {
+      "body": "Ovo je obično privremeno — molim te pokušaj ponovno za nekoliko minuta.",
+      "reassurance": "Ovo ne utječe na karaoke videozapise koji se trenutno izrađuju i njihova će se obrada nastaviti.",
+      "title": "Imamo problema s povezivanjem na naše servere"
+    },
+    "dismiss": "Odbaci"
   }
 }

@@ -43,7 +43,9 @@ import {
   findAndReplace,
   deleteWord,
 } from '@/lib/lyrics-review/utils/segmentOperations'
-import { loadSavedData, saveData, clearSavedData } from '@/lib/lyrics-review/utils/localStorage'
+import { generateStorageKey } from '@/lib/lyrics-review/utils/localStorage'
+import { countUntimedWords } from '@/lib/lyrics-review/utils/timingCompleteness'
+import { createLocalSessionStore, type LocalSessionStore } from '@/lib/lyrics-review/utils/localSessionStore'
 import {
   setupKeyboardHandlers,
   setModalHandler,
@@ -55,6 +57,9 @@ import { hasMultipleSingers } from '@/lib/lyrics-review/duet'
 import SessionRestoreDialog from './SessionRestoreDialog'
 import Header from './Header'
 import GapNavigator from './GapNavigator'
+import AutoCorrectModal from './AutoCorrectModal'
+import AutoCorrectPanel from './AutoCorrectPanel'
+import { useAutoCorrect } from '@/hooks/useAutoCorrect'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
 import { applyOffsetToCorrectionData, applyOffsetToSegment } from '@/lib/lyrics-review/utils/timingUtils'
 
@@ -154,6 +159,12 @@ export default function LyricsAnalyzer({
   const [countdown, setCountdown] = useState(2)
   const [showInstrumentalReview, setShowInstrumentalReview] = useState(false)
 
+  // AI auto-correct state
+  const [isAutoCorrectModalOpen, setIsAutoCorrectModalOpen] = useState(false)
+  // The applied-corrections details are opened on demand from the toolbar
+  // button rather than shown as a standing row.
+  const [autoCorrectDetailsOpen, setAutoCorrectDetailsOpen] = useState(false)
+
   // Edit log state
   const [editLog] = useState<EditLog>(() => createEditLog(jobId ?? 'unknown', audioHash))
   const [lastEditEntry, setLastEditEntry] = useState<EditLogEntry | null>(null)
@@ -214,7 +225,64 @@ export default function LyricsAnalyzer({
     [history, historyIndex]
   )
 
-  // Compute which word IDs have been edited by the user (compared to initial state)
+  // Collapse history to a single baseline entry (used by the on-load auto-apply
+  // so auto-corrections are the starting point, not an undoable "edit").
+  const rebaseHistory = useCallback((next: CorrectionData) => {
+    setHistory([next])
+    setHistoryIndex(0)
+  }, [])
+
+  // AI auto-correct suggestions (opt-in; nothing runs unless triggered)
+  const autoCorrect = useAutoCorrect({
+    jobId,
+    data,
+    updateDataWithHistory,
+    rebaseData: rebaseHistory,
+    editLog,
+    getAuthToken: () => getAccessToken() ?? undefined,
+    // Auto-run + auto-apply once on load so the reviewer starts from the
+    // corrected lyrics (= clicking "Accept All"). The backend pre-generates +
+    // caches suggestions during lyrics processing, so this is normally an
+    // instant cache hit. Skipped in read-only / local mode, and only when a
+    // jobId exists (the request needs one).
+    autoRunOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId),
+    autoApplyOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId),
+  })
+
+  // Close the run modal once suggestions arrive (panel takes over)
+  useEffect(() => {
+    if (autoCorrect.status === 'reviewing') {
+      setIsAutoCorrectModalOpen(false)
+    }
+  }, [autoCorrect.status])
+
+  // AI auto-correction provenance, derived from the stamped word fields so it
+  // survives reloads of an already-corrected job:
+  //  - aiCorrectedWordIds → purple highlight
+  //  - aiOriginalTextByWordId → the original-text bubble (first word of a span)
+  //  - aiEstimatedWordIds → the "guessed timing, needs review" marker
+  const { aiCorrectedWordIds, aiOriginalTextByWordId, aiEstimatedWordIds } = useMemo(() => {
+    const ids = new Set<string>()
+    const originalText = new Map<string, string>()
+    const estimated = new Set<string>()
+    for (const segment of data.corrected_segments) {
+      for (const word of segment.words) {
+        if (!word.ai_corrected) continue
+        ids.add(word.id)
+        if (word.original_text) originalText.set(word.id, word.original_text)
+        if (word.timing_estimated) estimated.add(word.id)
+      }
+    }
+    return {
+      aiCorrectedWordIds: ids,
+      aiOriginalTextByWordId: originalText,
+      aiEstimatedWordIds: estimated,
+    }
+  }, [data])
+
+  // Compute which word IDs have been edited by the user (compared to initial
+  // state), rendered green. AI-corrected words are excluded — they get their
+  // own purple treatment so the two sources stay visually distinct.
   const editedWordIds = useMemo(() => {
     const initial = history[0]
     if (!initial || data === initial) return new Set<string>()
@@ -228,6 +296,7 @@ export default function LyricsAnalyzer({
     const edited = new Set<string>()
     for (const segment of data.corrected_segments) {
       for (const word of segment.words) {
+        if (word.ai_corrected) continue
         const originalText = initialWordText.get(word.id)
         if (originalText === undefined) {
           // Word was added by the user
@@ -259,44 +328,45 @@ export default function LyricsAnalyzer({
     }
   }, [])
 
-  // Load saved sessions on mount - check server first, fall back to localStorage
-  useEffect(() => {
-    if (isReadOnly || !apiClient?.listReviewSessions) {
-      // Local mode or read-only: use localStorage fallback
-      const savedData = loadSavedData(initialData)
-      if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
-        applyRestoredData(savedData)
-      }
-      return
+  // Session storage: the real (server) client in cloud mode, or a
+  // localStorage-backed store when running locally — so the same Session Restore
+  // dialog is used everywhere instead of an ad-hoc native confirm.
+  const sessionClient: LocalSessionStore = useMemo(() => {
+    if (apiClient?.listReviewSessions && apiClient.getReviewSession) {
+      return apiClient as unknown as LocalSessionStore
     }
+    return createLocalSessionStore({
+      storeKey: jobId || generateStorageKey(initialData),
+      jobId: jobId || '',
+      artist: initialData.metadata?.artist ?? null,
+      title: initialData.metadata?.title ?? null,
+    })
+  }, [apiClient, jobId, initialData])
 
-    // Cloud mode: check for server-side sessions
+  // Load saved sessions on mount → offer the Session Restore dialog if any
+  // exist. Only genuine manual-edit sessions are ever saved (see the auto-save
+  // guard), so auto-corrections alone never trigger this.
+  useEffect(() => {
+    if (isReadOnly) return
     let cancelled = false
     setSessionsLoading(true)
-    apiClient.listReviewSessions().then(result => {
-      if (cancelled) return
-      setSessionsLoading(false)
-      if (result.sessions.length > 0) {
-        setSavedSessions(result.sessions)
-        setSessionRestoreOpen(true)
-      } else {
-        // Fall back to localStorage if no server sessions
-        const savedData = loadSavedData(initialData)
-        if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
-          applyRestoredData(savedData)
+    sessionClient
+      .listReviewSessions()
+      .then((result) => {
+        if (cancelled) return
+        setSessionsLoading(false)
+        if (result.sessions.length > 0) {
+          setSavedSessions(result.sessions)
+          setSessionRestoreOpen(true)
         }
-      }
-    }).catch(() => {
-      if (cancelled) return
-      setSessionsLoading(false)
-      // Fall back to localStorage on error
-      const savedData = loadSavedData(initialData)
-      if (savedData && typeof window !== 'undefined' && window.confirm('Found saved progress for this song. Would you like to restore it?')) {
-        applyRestoredData(savedData)
-      }
-    })
-
-    return () => { cancelled = true }
+      })
+      .catch(() => {
+        if (cancelled) return
+        setSessionsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [initialData, isReadOnly]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handler for restoring a session from the dialog
@@ -306,42 +376,43 @@ export default function LyricsAnalyzer({
 
   // Handler to open session browser from toolbar
   const handleOpenSessionBrowser = useCallback(async () => {
-    if (!apiClient?.listReviewSessions) return
     setSessionsLoading(true)
     try {
-      const result = await apiClient.listReviewSessions()
+      const result = await sessionClient.listReviewSessions()
       setSavedSessions(result.sessions)
     } catch {
       setSavedSessions([])
     }
     setSessionsLoading(false)
     setSessionRestoreOpen(true)
-  }, [apiClient])
+  }, [sessionClient])
 
-  // Warm up encoding worker VM when lyrics review page loads
+  // Warm up encoding worker VM when lyrics review page loads.
+  // Only in cloud mode (jobId present) — the endpoint is review-auth scoped to
+  // the job, and there's no cloud encoding VM to warm in local mode.
   useEffect(() => {
-    if (!isReadOnly) {
-      warmupEncodingWorker()
+    if (!isReadOnly && jobId) {
+      warmupEncodingWorker(jobId)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced heartbeat — keeps VM alive during active editing
   const lastHeartbeat = useRef(0)
   const sendHeartbeat = useCallback(() => {
+    if (!jobId) return
     const now = Date.now()
     if (now - lastHeartbeat.current > 60_000) {
       lastHeartbeat.current = now
-      heartbeatEncodingWorker()
+      heartbeatEncodingWorker(jobId)
     }
-  }, [])
+  }, [jobId])
 
-  // Save data (localStorage - instant crash recovery) + heartbeat encoding worker
+  // Heartbeat the encoding worker as the reviewer works. Crash recovery /
+  // restore now flows entirely through review sessions (server in cloud mode,
+  // localStorage when local) via the auto-save hook below.
   useEffect(() => {
-    if (!isReadOnly) {
-      saveData(data, initialData)
-      sendHeartbeat()
-    }
-  }, [data, isReadOnly, initialData, sendHeartbeat])
+    if (!isReadOnly) sendHeartbeat()
+  }, [data, isReadOnly, sendHeartbeat])
 
   // Server-side session auto-save (periodic backup)
   const { saveSession } = useReviewSessionAutoSave({
@@ -350,7 +421,7 @@ export default function LyricsAnalyzer({
     initialData,
     historyLength: history.length,
     isReadOnly: isReadOnly || !apiClient?.saveReviewSession,
-    apiClient: apiClient as LyricsReviewApiClient,
+    apiClient: sessionClient as LyricsReviewApiClient,
   })
 
   // Flash handler (defined early so gap navigation can use it)
@@ -922,6 +993,18 @@ export default function LyricsAnalyzer({
   const handleSubmitToServer = useCallback(async () => {
     if (!apiClient) return
 
+    // Block submission of lyrics that still have no timing (e.g. custom lyrics
+    // pasted into the synchronizer but never tap-synced). These otherwise reach
+    // the render pipeline and fail the job with a cryptic NoneType error; catch
+    // it here with an actionable message so the user can synchronize first.
+    const untimed = countUntimedWords(data.corrected_segments)
+    if (untimed > 0) {
+      toast.error(
+        `${untimed} lyric word(s) have no timing yet. Open the synchronizer and tap each line to the beat before generating the video.`
+      )
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const dataToSubmit =
@@ -987,6 +1070,9 @@ export default function LyricsAnalyzer({
       if (typeof window !== 'undefined' && window.seekAndPlayAudio) {
         const adjustedStartTime =
           timingOffsetMs !== 0 ? startTime + timingOffsetMs / 1000 : startTime
+        // A caller can resolve to a non-finite time (e.g. an untimed segment or
+        // a zero-width timeline click); don't forward it to the media element.
+        if (!Number.isFinite(adjustedStartTime)) return
         window.seekAndPlayAudio(adjustedStartTime)
       }
     },
@@ -999,7 +1085,6 @@ export default function LyricsAnalyzer({
       typeof window !== 'undefined' &&
       window.confirm('Are you sure you want to reset all corrections?')
     ) {
-      clearSavedData(initialData)
       setHistory([JSON.parse(JSON.stringify(initialData))])
       setHistoryIndex(0)
       setModalContent(null)
@@ -1299,6 +1384,26 @@ export default function LyricsAnalyzer({
         onRevertAllCorrections={handleRevertAllCorrections}
         isDuet={isDuet}
         onToggleDuet={() => setIsDuet(d => !d)}
+        onAutoCorrect={
+          !isLocalMode && jobId
+            ? () =>
+                autoCorrect.acceptedCount > 0
+                  ? setAutoCorrectDetailsOpen((o) => !o)
+                  : setIsAutoCorrectModalOpen(true)
+            : undefined
+        }
+        autoCorrectedCount={autoCorrect.acceptedCount}
+      />
+
+      <AutoCorrectPanel
+        controller={autoCorrect}
+        isReadOnly={isReadOnly}
+        open={autoCorrectDetailsOpen}
+        onClose={() => setAutoCorrectDetailsOpen(false)}
+        onRerun={() => {
+          setAutoCorrectDetailsOpen(false)
+          setIsAutoCorrectModalOpen(true)
+        }}
       />
 
       <div className={cn('grid gap-2', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
@@ -1325,6 +1430,9 @@ export default function LyricsAnalyzer({
           advancedMode={advancedMode}
           onAdvancedModeToggle={handleAdvancedModeToggle}
           editedWordIds={editedWordIds}
+          aiCorrectedWordIds={aiCorrectedWordIds}
+          aiOriginalTextByWordId={aiOriginalTextByWordId}
+          aiEstimatedWordIds={aiEstimatedWordIds}
           isDuet={isDuet}
           onSegmentSingerChange={(segmentIdx, next) => {
             const segments = [...data.corrected_segments]
@@ -1509,6 +1617,16 @@ export default function LyricsAnalyzer({
         authToken={getAccessToken() ?? undefined}
       />
 
+      <AutoCorrectModal
+        open={isAutoCorrectModalOpen}
+        onClose={() => setIsAutoCorrectModalOpen(false)}
+        onRun={(settings) => void autoCorrect.run(settings)}
+        onCancelRun={autoCorrect.cancel}
+        status={autoCorrect.status}
+        error={autoCorrect.error}
+        hasReferences={autoCorrect.hasReferences}
+      />
+
       <EditFeedbackBar
         entry={lastEditEntry}
         visible={showFeedbackBar}
@@ -1548,13 +1666,13 @@ export default function LyricsAnalyzer({
         />
       )}
 
-      {apiClient?.saveReviewSession && (
+      {!isReadOnly && (
         <SessionRestoreDialog
           open={sessionRestoreOpen}
           onClose={() => setSessionRestoreOpen(false)}
           onRestore={handleSessionRestore}
           sessions={savedSessions}
-          apiClient={apiClient as LyricsReviewApiClient}
+          apiClient={sessionClient as LyricsReviewApiClient}
           isLoading={sessionsLoading}
         />
       )}

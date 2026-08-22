@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from backend.services.custom_lyrics.result import StopReason
-from backend.services.custom_lyrics.service import CustomLyricsService
+from backend.services.custom_lyrics.service import CustomLyricsService, CustomLyricsServiceError
 from backend.services.custom_lyrics.settings import GenerationSettings, StrictnessLevel
 
 
@@ -95,6 +95,67 @@ def test_repairs_one_line(service: CustomLyricsService) -> None:
     assert result.lines == ["xx", "yy"]
     assert result.iterations_used == 1
     assert result.stop_reason is StopReason.SUCCESS
+
+
+def test_repair_failure_falls_back_to_best(service: CustomLyricsService) -> None:
+    """A failed repair call must keep the successful initial result, not 500.
+
+    Regression for job dc60ebf4: the initial generation succeeded but the repair
+    Gemini call returned response.text=None -> json.loads(None) TypeError ->
+    uncaught 500 (no CORS headers) -> browser "NetworkError". The whole good
+    generation was thrown away by a best-effort improvement step.
+    """
+    target_segments = [_segment(0.0, 1.0, "aa"), _segment(1.0, 2.0, "bb")]
+    target_lines = ["aa", "bb"]
+    calls = {"n": 0}
+
+    def _fake_call(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return ["xx yy zz qq", "yy"]  # initial: 1 violation → triggers a repair
+        raise RuntimeError("Gemini returned an empty response")  # repair blows up
+
+    with patch.object(CustomLyricsService, "_call_gemini", side_effect=_fake_call):
+        result = service.generate(
+            job_id="j1",
+            target_lines=target_lines,
+            target_segments=target_segments,
+            artist=None, title=None, custom_text="c",
+            file_bytes=None, file_mime=None, file_name=None,
+            notes=None,
+            settings=GenerationSettings(strictness=StrictnessLevel.BALANCED),
+        )
+
+    assert result.stop_reason is StopReason.REPAIR_FAILED
+    assert result.lines == ["xx yy zz qq", "yy"]  # fell back to the initial (best)
+    assert calls["n"] == 2  # initial + exactly one failed repair, then stop
+
+
+def test_empty_gemini_response_raises_clean_error(service: CustomLyricsService) -> None:
+    """response.text=None -> CustomLyricsServiceError(502), never a raw TypeError.
+
+    The endpoint maps CustomLyricsServiceError to a proper HTTP error (with CORS);
+    a raw TypeError escapes to a 500 with no CORS headers, which the browser shows
+    as an opaque "NetworkError".
+    """
+    fake_response = MagicMock()
+    fake_response.text = None
+    fake_response.candidates = []
+    fake_response.prompt_feedback = None
+    fake_client = MagicMock()
+    fake_client.models.generate_content.return_value = fake_response
+
+    with patch("backend.services.custom_lyrics.service.genai.Client", return_value=fake_client):
+        with pytest.raises(CustomLyricsServiceError) as exc:
+            service._call_gemini(
+                system_prompt="s",
+                user_prompt="u",
+                pdf_bytes=None,
+                settings=GenerationSettings(),
+            )
+
+    assert exc.value.status_code == 502
+    assert "empty response" in str(exc.value).lower()
 
 
 def test_plateau_detection(service: CustomLyricsService) -> None:
