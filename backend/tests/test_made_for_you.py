@@ -1848,10 +1848,11 @@ class TestMadeForYouYouTubeDownloadContract:
     ):
         """
         Resilience: if the customer confirmation email itself fails to send, order
-        processing (audio acquisition + admin notification) must still proceed. An
+        processing (audio acquisition + admin notification) must still proceed, and the
+        failed confirmation must be escalated to the admin (never silently lost). An
         email-provider hiccup should never block the actual work.
         """
-        from backend.api.routes.users import _handle_made_for_you_order
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
 
         # Confirmation email raises, but the order must still be processed
         mock_email_service.send_made_for_you_order_confirmation.side_effect = \
@@ -1882,8 +1883,83 @@ class TestMadeForYouYouTubeDownloadContract:
         # Download still happened and admin notification still sent
         mock_youtube_service.download.assert_called_once()
         mock_email_service.send_made_for_you_admin_notification.assert_called_once()
-        # No [FAILED] alert - the order itself succeeded
-        mock_email_service.send_email.assert_not_called()
+        # The failed customer confirmation is escalated to the admin so it can be
+        # resent manually — a paid confirmation must never be silently lost.
+        mock_email_service.send_email.assert_called_once()
+        alert_kwargs = mock_email_service.send_email.call_args.kwargs
+        assert alert_kwargs['to_email'] == ADMIN_EMAIL
+        assert "[FAILED]" in alert_kwargs['subject']
+
+    @pytest.mark.asyncio
+    async def test_confirmation_provider_rejection_is_escalated(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, youtube_order_metadata
+    ):
+        """
+        Providers return False (not an exception) when a send is rejected. A rejected
+        customer confirmation must be escalated to the admin, not silently logged as
+        sent. Regression guard for the "log success even on False" bug.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
+
+        # Provider rejects the confirmation (returns False, does not raise)
+        mock_email_service.send_made_for_you_order_confirmation.return_value = False
+        mock_job_manager.start_job_processing = AsyncMock()
+
+        mock_youtube_service = MagicMock()
+        mock_youtube_service.download = AsyncMock(
+            return_value="uploads/test-job-123/audio/test.webm"
+        )
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service', return_value=MagicMock()), \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.api.routes.users.get_youtube_download_service', return_value=mock_youtube_service):
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=youtube_order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+        # Rejected confirmation escalated to admin; order still processed
+        mock_email_service.send_email.assert_called_once()
+        assert mock_email_service.send_email.call_args.kwargs['to_email'] == ADMIN_EMAIL
+        mock_email_service.send_made_for_you_admin_notification.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_job_creation_failure_reraises_for_stripe_retry(
+        self, mock_email_service, mock_user_service, mock_theme_service,
+        youtube_order_metadata
+    ):
+        """
+        If job creation fails (no job_id, session never marked processed), the handler
+        must re-raise so the Stripe webhook returns non-2xx and Stripe retries — a paid
+        order must not be silently dropped. The admin is still alerted first.
+        """
+        from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.create_job.side_effect = RuntimeError("Firestore unavailable")
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service):
+
+            with pytest.raises(RuntimeError, match="Firestore unavailable"):
+                await _handle_made_for_you_order(
+                    session_id="sess_123",
+                    metadata=youtube_order_metadata,
+                    user_service=mock_user_service,
+                    email_service=mock_email_service,
+                )
+
+        # Admin alerted before the re-raise; no confirmation (job never created)
+        mock_email_service.send_email.assert_called_once()
+        assert mock_email_service.send_email.call_args.kwargs['to_email'] == ADMIN_EMAIL
+        mock_email_service.send_made_for_you_order_confirmation.assert_not_called()
 
 
 class TestMadeForYouYouTubeImports:

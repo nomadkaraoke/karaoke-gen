@@ -866,13 +866,19 @@ def _send_mfy_failure_alert(
     safe_error = html.escape(str(error))
     job_line_html = f"<li><strong>Job ID:</strong> {html.escape(job_id)}</li>" if job_id else ""
     job_line_text = f"Job ID: {job_id}\n" if job_id else ""
+    remediation = (
+        "The customer's order-confirmation email is sent separately and up-front, so it "
+        "is unaffected by failures during processing. Please review this order and take "
+        "any needed manual action — e.g. provide/repair the audio source, or resend the "
+        "customer confirmation."
+    )
     try:
-        email_service.send_email(
+        sent = email_service.send_email(
             to_email=ADMIN_EMAIL,
             subject=f"[FAILED] Made For You Order: {artist} - {title}",
             html_content=f"""
-                <h2>Made-For-You Order Failed</h2>
-                <p>An error occurred processing this order:</p>
+                <h2>Made-For-You Order — Action Needed</h2>
+                <p>A problem occurred while processing this order:</p>
                 <ul>
                     <li><strong>Customer:</strong> {safe_customer}</li>
                     <li><strong>Artist:</strong> {safe_artist}</li>
@@ -880,25 +886,24 @@ def _send_mfy_failure_alert(
                     {job_line_html}
                     <li><strong>Error:</strong> {safe_error}</li>
                 </ul>
-                <p>The customer's order-confirmation email was still sent (if the job
-                was created), so no immediate customer action is needed. Please manually
-                complete this job — e.g. provide/repair the audio source — and it will be
-                delivered as normal.</p>
+                <p>{remediation}</p>
             """,
             text_content=(
-                "Made-For-You Order Failed\n\n"
+                "Made-For-You Order — Action Needed\n\n"
                 f"Customer: {customer_email}\n"
                 f"Artist: {artist}\n"
                 f"Title: {title}\n"
                 f"{job_line_text}"
                 f"Error: {error}\n\n"
-                "The customer's order-confirmation email was still sent (if the job was "
-                "created), so no immediate customer action is needed. Please manually "
-                "complete this job (e.g. provide/repair the audio source) and it will be "
-                "delivered as normal."
+                f"{remediation}"
             ),
         )
-        logger.info(f"Sent made-for-you failure alert to admin for job {job_id}")
+        if sent:
+            logger.info(f"Sent made-for-you failure alert to admin for job {job_id}")
+        else:
+            logger.error(
+                f"Made-for-you failure alert to admin was rejected by the email provider (job {job_id})"
+            )
     except Exception as email_error:
         logger.error(
             f"Failed to send made-for-you failure alert (job {job_id}): {email_error}",
@@ -1047,20 +1052,42 @@ async def _handle_made_for_you_order(
         # acquisition. The order is paid and confirmed regardless of whether the
         # (fallible) YouTube download / audio search succeeds, so a failure there must
         # never rob the customer of their confirmation email. Resilient: a delivery
-        # error is logged but does not abort order processing.
+        # failure is logged but does not abort order processing.
+        confirmation_ok = False
         try:
-            email_service.send_made_for_you_order_confirmation(
+            # Providers return False (not an exception) when the send is rejected, so
+            # check the result rather than assuming success.
+            confirmation_ok = bool(email_service.send_made_for_you_order_confirmation(
                 to_email=customer_email,
                 artist=artist,
                 title=title,
                 job_id=job_id,
                 notes=notes,
-            )
-            logger.info(f"Sent made-for-you customer confirmation for job {job_id}")
+            ))
+            if confirmation_ok:
+                logger.info(f"Sent made-for-you customer confirmation for job {job_id}")
+            else:
+                logger.error(
+                    f"Job {job_id}: customer order-confirmation email was rejected by the email provider"
+                )
         except Exception as confirm_error:
             logger.error(
                 f"Job {job_id}: Failed to send customer order-confirmation email: {confirm_error}",
                 exc_info=True,
+            )
+
+        if not confirmation_ok:
+            # A paid customer must never silently miss their confirmation. Escalate to
+            # the admin so it can be resent manually. Order processing still continues.
+            _send_mfy_failure_alert(
+                email_service,
+                customer_email=customer_email,
+                artist=artist,
+                title=title,
+                job_id=job_id,
+                error=RuntimeError(
+                    "Customer order-confirmation email failed to send — please resend it manually"
+                ),
             )
 
         # Handle based on whether we have a YouTube URL or need to search
@@ -1194,7 +1221,7 @@ async def _handle_made_for_you_order(
                 email=ADMIN_EMAIL,
                 expiry_hours=24,
             )
-            email_service.send_made_for_you_admin_notification(
+            admin_notified = bool(email_service.send_made_for_you_admin_notification(
                 to_email=ADMIN_EMAIL,
                 customer_email=customer_email,
                 artist=artist,
@@ -1203,8 +1230,13 @@ async def _handle_made_for_you_order(
                 admin_login_token=admin_login.token,
                 notes=notes,
                 audio_source_count=audio_source_count,
-            )
-            logger.info(f"Sent made-for-you admin notification for job {job_id}")
+            ))
+            if admin_notified:
+                logger.info(f"Sent made-for-you admin notification for job {job_id}")
+            else:
+                logger.error(
+                    f"Job {job_id}: admin order notification was rejected by the email provider"
+                )
         except Exception as admin_email_error:
             logger.error(
                 f"Job {job_id}: Failed to send admin order notification: {admin_email_error}",
@@ -1225,6 +1257,14 @@ async def _handle_made_for_you_order(
             job_id=job_id,
             error=e,
         )
+        # If we failed before the job was even created, no job exists and the Stripe
+        # session was never marked processed — re-raise so the webhook returns non-2xx
+        # and Stripe retries the (likely transient) failure rather than silently
+        # dropping a paid order. Post-creation failures keep job_id set: those return
+        # normally (job exists, session marked processed, admin already alerted), so a
+        # retry would be a no-op / risk a duplicate job.
+        if job_id is None:
+            raise
 
 
 @router.post("/webhooks/stripe")

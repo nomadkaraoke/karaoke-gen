@@ -502,8 +502,12 @@ class TestMadeForYouYouTubeErrorHandling:
         youtube_order_metadata
     ):
         """
-        Test that exceptions during processing send failure notification to admin.
+        Test that a job-creation failure sends a failure notification to admin AND
+        re-raises so the Stripe webhook returns non-2xx and Stripe retries the (likely
+        transient) failure — a paid order must not be silently dropped when no job was
+        ever created.
         """
+        import pytest
         from backend.api.routes.users import _handle_made_for_you_order, ADMIN_EMAIL
 
         # Make job creation fail
@@ -516,15 +520,16 @@ class TestMadeForYouYouTubeErrorHandling:
              patch('backend.api.routes.users.get_effective_distribution_settings', return_value=mock_distribution_settings), \
              patch('backend.api.routes.users.resolve_cdg_txt_defaults', return_value=(False, False)):
 
-            # Should not raise - error is handled internally
-            await _handle_made_for_you_order(
-                session_id="sess_test_error",
-                metadata=youtube_order_metadata,
-                user_service=mock_user_service_for_webhook,
-                email_service=mock_email_service,
-            )
+            # Re-raises (job never created) so the webhook returns non-2xx -> Stripe retries
+            with pytest.raises(Exception, match="Database error"):
+                await _handle_made_for_you_order(
+                    session_id="sess_test_error",
+                    metadata=youtube_order_metadata,
+                    user_service=mock_user_service_for_webhook,
+                    email_service=mock_email_service,
+                )
 
-            # Verify failure email was sent to admin
+            # Verify failure email was sent to admin before re-raising
             mock_email_service.send_email.assert_called()
             call_args = mock_email_service.send_email.call_args
             assert call_args.kwargs['to_email'] == ADMIN_EMAIL
