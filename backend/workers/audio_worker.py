@@ -24,6 +24,7 @@ from typing import Optional, Dict, Any
 
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
+from backend.services.audio_search_service import DownloadError
 from backend.services.job_health_service import validate_worker_can_run
 from backend.config import get_settings
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
@@ -213,9 +214,9 @@ async def process_audio_separation(job_id: str) -> bool:
                 # Download audio file from GCS or URL
                 with job_span("download-audio", job_id) as download_span:
                     job_log.info("Downloading audio file...")
+                    # download_audio raises DownloadError with a specific reason
+                    # on failure (no silent None → generic-error fallback).
                     audio_path = await download_audio(job_id, temp_dir, storage, job, job_manager_instance=job_manager)
-                    if not audio_path:
-                        raise Exception("Failed to download audio file")
                     job_log.info(f"Audio downloaded: {os.path.basename(audio_path)}")
                     download_span.set_attribute("audio_file", os.path.basename(audio_path))
                     download_span.set_attribute("source", "url" if job.url else "gcs")
@@ -363,6 +364,16 @@ async def process_audio_separation(job_id: str) -> bool:
                 logger.info(f"[job:{job_id}] WORKER_END worker=audio status=success duration={duration:.1f}s")
                 return True
         
+    except DownloadError as e:
+        duration = time.time() - start_time
+        logger.error(f"[job:{job_id}] WORKER_END worker=audio status=error duration={duration:.1f}s error={e}", exc_info=True)
+        job_manager.mark_job_failed(
+            job_id=job_id,
+            error_message=f"Audio download failed: {str(e)}",
+            error_details={"stage": "download_audio", "error": str(e)}
+        )
+        return False
+
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=audio status=error duration={duration:.1f}s error={e}", exc_info=True)
@@ -396,7 +407,7 @@ async def download_audio(
     storage: StorageService,
     job,
     job_manager_instance: JobManager = None
-) -> Optional[str]:
+) -> str:
     """
     Fetch the job's audio file from GCS to a local temp directory.
 
@@ -414,9 +425,14 @@ async def download_audio(
         storage: StorageService instance
         job: Job object with URL or GCS path
         job_manager_instance: Optional JobManager instance for updating job metadata
-    
+
     Returns:
-        Path to downloaded audio file, or None if failed
+        Path to the downloaded audio file.
+
+    Raises:
+        DownloadError: with a specific reason if the audio can't be obtained.
+            We fail loudly with the real cause rather than returning None and
+            surfacing a generic "Failed to download audio file" to the user.
     """
     try:
         from karaoke_gen.utils import sanitize_filename
@@ -464,14 +480,22 @@ async def download_audio(
                 "fetched via the flacfetch service before processing; refusing to "
                 "download locally."
             )
-            return None
+            raise DownloadError(
+                "URL job reached the audio worker without a downloaded input file. "
+                "URLs must be fetched via the flacfetch service before processing; "
+                "we never download locally on Cloud Run."
+            )
 
         logger.error(f"Job {job_id}: No input source found (no GCS path or file_urls)")
-        return None
-        
+        raise DownloadError(
+            "No input audio source found for this job (no GCS path and no file_urls)."
+        )
+
+    except DownloadError:
+        raise
     except Exception as e:
         logger.error(f"Job {job_id}: Failed to download audio: {e}", exc_info=True)
-        return None
+        raise DownloadError(f"Failed to download audio from storage: {e}") from e
 
 
 async def upload_separation_results(
