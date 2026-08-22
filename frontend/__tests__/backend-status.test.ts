@@ -2,24 +2,29 @@
  * @jest-environment jsdom
  *
  * Tests for the backend-connectivity status store (lib/backend-status.ts).
+ * Status is derived from how long the OLDEST in-flight tracked read has been
+ * outstanding — a read that completes promptly never surfaces the banner.
  */
 
 import {
   getBackendStatus,
-  reportBackendOnline,
-  reportBackendTrouble,
-  reportBackendUnavailable,
-  UNAVAILABLE_AFTER_MS,
+  beginRequest,
+  endRequest,
+  STALL_RECONNECTING_MS,
+  STALL_UNAVAILABLE_MS,
 } from '@/lib/backend-status'
 
-describe('backend-status store', () => {
+describe('backend-status store (stall-based)', () => {
+  let open: number[] = []
+
   beforeEach(() => {
-    // Reset the module singleton to a known-good baseline before each test.
-    reportBackendOnline()
     jest.useFakeTimers()
+    open = []
   })
 
   afterEach(() => {
+    // Settle anything still in flight so the module singleton resets to online.
+    open.forEach((id) => endRequest(id))
     jest.clearAllTimers()
     jest.useRealTimers()
   })
@@ -28,51 +33,58 @@ describe('backend-status store', () => {
     expect(getBackendStatus()).toBe('online')
   })
 
-  it('moves to "reconnecting" on first trouble, then escalates to "unavailable" after the threshold', async () => {
-    reportBackendTrouble()
-    expect(getBackendStatus()).toBe('reconnecting')
-
-    // Just before the threshold it should still be reconnecting...
-    await jest.advanceTimersByTimeAsync(UNAVAILABLE_AFTER_MS - 1)
-    expect(getBackendStatus()).toBe('reconnecting')
-
-    // ...and cross it to become unavailable.
-    await jest.advanceTimersByTimeAsync(2)
-    expect(getBackendStatus()).toBe('unavailable')
-  })
-
-  it('does not reset the escalation clock on repeated trouble reports', async () => {
-    reportBackendTrouble()
-    await jest.advanceTimersByTimeAsync(UNAVAILABLE_AFTER_MS - 2000)
-    // A second failure partway through must NOT push the deadline out.
-    reportBackendTrouble()
-    expect(getBackendStatus()).toBe('reconnecting')
-    await jest.advanceTimersByTimeAsync(2001)
-    expect(getBackendStatus()).toBe('unavailable')
-  })
-
-  it('reportBackendUnavailable escalates immediately without waiting', () => {
-    reportBackendTrouble()
-    reportBackendUnavailable()
-    expect(getBackendStatus()).toBe('unavailable')
-  })
-
-  it('reportBackendOnline clears trouble and cancels a pending escalation', async () => {
-    reportBackendTrouble()
-    expect(getBackendStatus()).toBe('reconnecting')
-
-    reportBackendOnline()
+  it('stays online while a read is young, then escalates as it stalls', async () => {
+    open.push(beginRequest())
     expect(getBackendStatus()).toBe('online')
 
-    // The previously-armed escalation timer must have been cancelled.
-    await jest.advanceTimersByTimeAsync(UNAVAILABLE_AFTER_MS + 1000)
+    await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS - 1000)
+    expect(getBackendStatus()).toBe('online')
+
+    await jest.advanceTimersByTimeAsync(1000) // cross the reconnecting threshold
+    expect(getBackendStatus()).toBe('reconnecting')
+
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS - STALL_RECONNECTING_MS)
+    expect(getBackendStatus()).toBe('unavailable')
+  })
+
+  it('returns to online the moment the stalled read settles', async () => {
+    const id = beginRequest()
+    open.push(id)
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS + 100)
+    expect(getBackendStatus()).toBe('unavailable')
+
+    endRequest(id)
+    open = []
     expect(getBackendStatus()).toBe('online')
   })
 
-  it('recovers to online from the unavailable state', () => {
-    reportBackendUnavailable()
-    expect(getBackendStatus()).toBe('unavailable')
-    reportBackendOnline()
+  it('a read that completes quickly never surfaces the banner', async () => {
+    const id = beginRequest()
+    await jest.advanceTimersByTimeAsync(3000) // 3s — normal-slow, not a stall
+    endRequest(id)
+    expect(getBackendStatus()).toBe('online')
+
+    // ...and nothing appears later either (nothing is in flight).
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS)
+    expect(getBackendStatus()).toBe('online')
+  })
+
+  it('tracks the OLDEST outstanding read, not the newest', async () => {
+    const a = beginRequest()
+    open.push(a)
+    await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS)
+    expect(getBackendStatus()).toBe('reconnecting')
+
+    const b = beginRequest() // fresh read starts while `a` is still stalled
+    open.push(b)
+    expect(getBackendStatus()).toBe('reconnecting')
+
+    endRequest(b) // settling the young one doesn't clear the old stall
+    open = [a]
+    expect(getBackendStatus()).toBe('reconnecting')
+
+    endRequest(a)
+    open = []
     expect(getBackendStatus()).toBe('online')
   })
 })

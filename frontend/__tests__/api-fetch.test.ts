@@ -9,8 +9,8 @@
 import { apiFetch, BackendUnavailableError } from '@/lib/api'
 import {
   getBackendStatus,
-  reportBackendOnline,
-  UNAVAILABLE_AFTER_MS,
+  STALL_RECONNECTING_MS,
+  STALL_UNAVAILABLE_MS,
 } from '@/lib/backend-status'
 
 function mockResponse(status: number, body: unknown = {}): Response {
@@ -21,34 +21,44 @@ function mockResponse(status: number, body: unknown = {}): Response {
   } as unknown as Response
 }
 
+/** A fetch mock that returns a promise you resolve/reject by hand, so a request can
+ *  be held "in flight" under fake timers and then settled to clean up. */
+function deferredFetch() {
+  let settle!: (r: Response) => void
+  let fail!: (e: unknown) => void
+  const fn = jest.fn(
+    () =>
+      new Promise<Response>((res, rej) => {
+        settle = res
+        fail = rej
+      }),
+  )
+  return { fn, settle: (r: Response) => settle(r), fail: (e: unknown) => fail(e) }
+}
+
 describe('apiFetch', () => {
   const fetchMock = jest.fn()
 
   beforeEach(() => {
     fetchMock.mockReset()
     ;(globalThis as unknown as { fetch: unknown }).fetch = fetchMock
-    reportBackendOnline()
   })
 
   afterEach(() => {
     jest.useRealTimers()
   })
 
-  it('returns the response and marks the backend online on a successful GET', async () => {
+  it('returns the response and stays online on a fast successful GET', async () => {
     fetchMock.mockResolvedValue(mockResponse(200, { ok: true }))
-
     const res = await apiFetch('/api/jobs/abc')
-
     expect(res.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(getBackendStatus()).toBe('online')
   })
 
-  it('does NOT retry a deterministic 404 and stays online (backend was reached)', async () => {
+  it('does NOT retry a deterministic 404 and stays online', async () => {
     fetchMock.mockResolvedValue(mockResponse(404))
-
     const res = await apiFetch('/api/jobs/missing')
-
     expect(res.status).toBe(404)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(getBackendStatus()).toBe('online')
@@ -60,18 +70,13 @@ describe('apiFetch', () => {
 
     const p = apiFetch('/api/jobs/abc')
     const assertion = expect(p).rejects.toBeInstanceOf(BackendUnavailableError)
-
-    // Drive the two backoff sleeps (600ms, then 1500ms) between the 3 attempts.
     await jest.advanceTimersByTimeAsync(600)
     await jest.advanceTimersByTimeAsync(1500)
-
     await assertion
+
     expect(fetchMock).toHaveBeenCalledTimes(3)
-    // A fast-failing retry budget (~2s) still only shows the subtle "reconnecting"
-    // hint — the full banner is gated on the UNAVAILABLE_AFTER_MS (10s) clock.
-    expect(getBackendStatus()).toBe('reconnecting')
-    await jest.advanceTimersByTimeAsync(UNAVAILABLE_AFTER_MS)
-    expect(getBackendStatus()).toBe('unavailable')
+    // A fast total failure (~2s) is NOT a stall, so the banner never appears.
+    expect(getBackendStatus()).toBe('online')
   })
 
   it('retries a GET that keeps returning a transient 503, then throws', async () => {
@@ -80,15 +85,90 @@ describe('apiFetch', () => {
 
     const p = apiFetch('/api/jobs/abc')
     const assertion = expect(p).rejects.toBeInstanceOf(BackendUnavailableError)
-
     await jest.advanceTimersByTimeAsync(600)
     await jest.advanceTimersByTimeAsync(1500)
-
     await assertion
+
     expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(getBackendStatus()).toBe('online')
+  })
+
+  it('recovers transparently when a retried GET succeeds on a later attempt', async () => {
+    jest.useFakeTimers()
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(mockResponse(200, { ok: true }))
+
+    const p = apiFetch('/api/jobs/abc')
+    await jest.advanceTimersByTimeAsync(600)
+    const res = await p
+
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(getBackendStatus()).toBe('online')
+  })
+
+  it('surfaces the banner only once a GET has STALLED past the thresholds, then clears', async () => {
+    jest.useFakeTimers()
+    const d = deferredFetch()
+    fetchMock.mockImplementation(d.fn)
+
+    const p = apiFetch('/api/jobs/abc')
+    p.catch(() => {}) // avoid unhandled rejection if it ever fails
+
+    expect(getBackendStatus()).toBe('online')
+    await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS)
     expect(getBackendStatus()).toBe('reconnecting')
-    await jest.advanceTimersByTimeAsync(UNAVAILABLE_AFTER_MS)
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS - STALL_RECONNECTING_MS)
     expect(getBackendStatus()).toBe('unavailable')
+
+    d.settle(mockResponse(200, { ok: true }))
+    await p
+    expect(getBackendStatus()).toBe('online')
+  })
+
+  it('never surfaces the banner for a slow POST (mutations are not tracked)', async () => {
+    jest.useFakeTimers()
+    const d = deferredFetch()
+    fetchMock.mockImplementation(d.fn)
+
+    const p = apiFetch('/api/jobs/create-from-url', { method: 'POST', body: '{}' })
+    p.catch(() => {})
+
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS + 5000)
+    expect(getBackendStatus()).toBe('online')
+
+    d.settle(mockResponse(200, { ok: true }))
+    await p
+  })
+
+  it('does NOT impose a hard timeout on a long-running POST (e.g. preview render)', async () => {
+    jest.useFakeTimers()
+    let capturedSignal: AbortSignal | undefined
+    const d = deferredFetch()
+    fetchMock.mockImplementation((_url: unknown, init: RequestInit) => {
+      capturedSignal = init.signal ?? undefined
+      return d.fn()
+    })
+
+    const p = apiFetch('/api/review/abc/preview-video', { method: 'POST', body: '{}' })
+    p.catch(() => {})
+
+    // Well past the GET hard-timeout (45s): a POST must still be running, unaborted.
+    await jest.advanceTimersByTimeAsync(60_000)
+    expect(capturedSignal?.aborted).toBe(false)
+
+    d.settle(mockResponse(200, { ok: true }))
+    await expect(p).resolves.toBeDefined()
+  })
+
+  it('never auto-retries a non-GET, even on network failure', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+    await expect(
+      apiFetch('/api/jobs/create-from-url', { method: 'POST', body: '{}' }),
+    ).rejects.toBeInstanceOf(BackendUnavailableError)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getBackendStatus()).toBe('online')
   })
 
   it('reads method + signal from a Request input (a POST Request is not retried)', async () => {
@@ -108,73 +188,36 @@ describe('apiFetch', () => {
 
     try {
       fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
-
-      // A Request carrying method=POST must be treated as a non-idempotent mutation:
-      // one attempt only, never replayed (which could double-submit).
       const req = new FakeRequest('http://localhost/api/jobs/create-from-url', {
         method: 'POST',
       })
-
       await expect(apiFetch(req as unknown as Request)).rejects.toBeInstanceOf(
         BackendUnavailableError,
       )
       expect(fetchMock).toHaveBeenCalledTimes(1)
-      expect(getBackendStatus()).toBe('reconnecting')
     } finally {
       delete (globalThis as unknown as { Request?: unknown }).Request
     }
   })
 
-  it('recovers transparently when a retried GET succeeds on a later attempt', async () => {
-    jest.useFakeTimers()
-    fetchMock
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValueOnce(mockResponse(200, { ok: true }))
-
-    const p = apiFetch('/api/jobs/abc')
-    await jest.advanceTimersByTimeAsync(600)
-    const res = await p
-
-    expect(res.status).toBe(200)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(getBackendStatus()).toBe('online')
-  })
-
-  it('never auto-retries a non-GET (avoids duplicate submits) and does not hard-fail to "unavailable"', async () => {
-    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
-
-    await expect(
-      apiFetch('/api/jobs/create-from-url', { method: 'POST', body: '{}' }),
-    ).rejects.toBeInstanceOf(BackendUnavailableError)
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    // A single mutation blip shows the subtle hint, not the full "unavailable" banner.
-    expect(getBackendStatus()).toBe('reconnecting')
-  })
-
   it('passes non-backend URLs (e.g. GCS uploads) straight through with the original error', async () => {
     const gcsError = new TypeError('gcs unreachable')
     fetchMock.mockRejectedValue(gcsError)
-
     await expect(
       apiFetch('https://storage.googleapis.com/bucket/obj', { method: 'PUT', body: 'x' }),
     ).rejects.toBe(gcsError)
-
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    // Third-party hosts must not drive our backend-status banner.
     expect(getBackendStatus()).toBe('online')
   })
 
-  it('propagates a caller-initiated abort without reporting backend trouble', async () => {
+  it('propagates a caller-initiated abort without surfacing the banner', async () => {
     const abortErr = new DOMException('Aborted', 'AbortError')
     fetchMock.mockRejectedValue(abortErr)
     const controller = new AbortController()
     controller.abort()
-
     await expect(
       apiFetch('/api/jobs/abc', { signal: controller.signal }),
     ).rejects.toBe(abortErr)
-
     expect(getBackendStatus()).toBe('online')
   })
 })

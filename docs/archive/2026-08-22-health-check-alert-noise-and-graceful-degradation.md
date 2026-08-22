@@ -49,16 +49,24 @@ Goal: during a blip, retry transparently and show one reassuring app-wide messag
 instead of every screen throwing a generic error.
 
 - **`lib/backend-status.ts`** — framework-agnostic connectivity store
-  (`online | reconnecting | unavailable`) + `useBackendStatus()`. Escalates to
-  `unavailable` after `UNAVAILABLE_AFTER_MS` (10s) of unbroken trouble; any
-  success returns to `online`.
+  (`online | reconnecting | unavailable`) + `useBackendStatus()`. **Status is
+  derived purely from how long the OLDEST in-flight tracked read has been
+  outstanding** (`beginRequest`/`endRequest`): `reconnecting` at
+  `STALL_RECONNECTING_MS` (10s), `unavailable` at `STALL_UNAVAILABLE_MS` (20s),
+  back to `online` the instant the stalled read settles.
 - **`lib/api.ts` — `apiFetch`** wraps every backend call (drop-in for `fetch`;
   internals use `globalThis.fetch`). Design decisions:
-  - **Decoupled** the non-aborting "reconnecting" hint (2.5s) from the hard
-    backstop (45s) + transient-status/network detection — so a legitimately slow
-    GET shows the hint then clears on success and is **never falsely failed**.
+  - **The banner keys on a genuine STALL, not slowness.** A read that completes —
+    even a normal-slow 3–5s one — surfaces nothing; only a read still outstanding
+    past 10s shows the hint. (The original 2.5s "slow-request" hint was too
+    trigger-happy — it fired during normal lyrics-review loads.)
+  - **Only GETs are tracked, and only GETs get a hard-timeout (45s) backstop.**
+    Long-running POSTs (preview video, generate, search, auto-correct) are
+    legitimately slow: they must never trip the banner nor be aborted mid-encode.
+    Callers can opt a slow read out with `opts.trackConnectivity: false`, or
+    time-box any request with `opts.timeoutMs`.
   - **Retries GET only** (idempotent); **never auto-retries non-GET** (a replayed
-    create/submit/payment could double-charge). GETs retry within a ~10s budget,
+    create/submit/payment could double-charge). GETs retry within a ~2s budget,
     then throw `BackendUnavailableError`.
   - Transient = 502/503/504 + Cloudflare 520–524. Third-party hosts (GCS
     signed-URL uploads) pass straight through untouched.
