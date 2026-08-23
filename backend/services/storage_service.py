@@ -64,7 +64,20 @@ class StorageService:
         except Exception as e:
             logger.error(f"Error downloading file {source_path}: {e}")
             raise
-    
+
+    def download_bytes(self, source_path: str) -> bytes:
+        """Download an object from GCS fully into memory. Only use for small
+        objects (e.g. transcoded review audio); large files should stream."""
+        try:
+            blob = self.bucket.blob(source_path)
+            return blob.download_as_bytes()
+        except NotFound:
+            logger.warning(f"Object not found downloading {source_path}")
+            raise
+        except Exception as e:
+            logger.error(f"Error downloading bytes {source_path}: {e}")
+            raise
+
     def copy_blob(self, source_path: str, destination_path: str) -> str:
         """Server-side copy of a blob within the bucket (no download/upload)."""
         try:

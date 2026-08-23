@@ -1135,11 +1135,14 @@ class TestGetPreviewVideoRedirect:
 
 
 class TestGetVocalsAudio:
-    """The vocals waveform endpoint streams the full vocal stem for the timeline.
+    """The vocals waveform endpoint proxies the full vocal stem for the timeline.
 
-    Real jobs never store a plain 'vocals' key — separation writes
-    'vocals_clean' / 'lead_vocals' / 'backing_vocals'. The endpoint must select
-    the fullest vocal mix (vocals_clean) rather than KeyError on 'vocals'.
+    Two behaviours: (1) select the fullest vocal mix (vocals_clean) — real jobs
+    never store a plain 'vocals' key, they store vocals_clean / lead_vocals /
+    backing_vocals. (2) Return the bytes directly (not a 302 to GCS): the
+    waveform fetch()es + decodeAudioData()s the audio, and a cross-origin
+    redirect makes the browser send `Origin: null` which the bucket CORS rejects,
+    so the waveform never loads.
     """
 
     def _call(self, stems):
@@ -1154,8 +1157,8 @@ class TestGetVocalsAudio:
         job_manager.get_job.return_value = job
 
         transcoding = MagicMock()
-        transcoding.get_review_audio_url_async = AsyncMock(
-            return_value="https://signed.example/vocals.ogg?sig=xyz"
+        transcoding.get_review_audio_bytes_async = AsyncMock(
+            return_value=(b"OggS-fake-vocals-bytes", "audio/ogg")
         )
 
         with patch("backend.api.routes.review.JobManager", return_value=job_manager), patch(
@@ -1167,11 +1170,21 @@ class TestGetVocalsAudio:
             )
         return resp, transcoding
 
-    def test_selects_vocals_clean_when_no_plain_vocals_key(self):
-        from starlette.responses import RedirectResponse
+    def test_proxies_bytes_not_redirect(self):
+        from starlette.responses import RedirectResponse, Response
 
+        resp, _ = self._call({"vocals_clean": "jobs/j/stems/vocals_clean.flac"})
+
+        # Must serve the bytes from the API (CORS-friendly), never 302 to GCS.
+        assert not isinstance(resp, RedirectResponse)
+        assert isinstance(resp, Response)
+        assert resp.status_code == 200
+        assert resp.media_type == "audio/ogg"
+        assert resp.body == b"OggS-fake-vocals-bytes"
+
+    def test_selects_vocals_clean_when_no_plain_vocals_key(self):
         # The shape produced by real cloud jobs (no plain "vocals").
-        resp, transcoding = self._call(
+        _, transcoding = self._call(
             {
                 "instrumental_clean": "jobs/j/stems/instrumental_clean.flac",
                 "vocals_clean": "jobs/j/stems/vocals_clean.flac",
@@ -1179,20 +1192,17 @@ class TestGetVocalsAudio:
                 "backing_vocals": "jobs/j/stems/backing_vocals.flac",
             }
         )
-
-        assert isinstance(resp, RedirectResponse)
-        assert resp.status_code == 302
         # Must pick the full vocal mix (vocals_clean), not lead_vocals or KeyError.
-        assert transcoding.get_review_audio_url_async.call_args[0][0] == "jobs/j/stems/vocals_clean.flac"
+        assert transcoding.get_review_audio_bytes_async.call_args[0][0] == "jobs/j/stems/vocals_clean.flac"
 
     def test_prefers_plain_vocals_then_falls_back_to_lead(self):
         # 2-stem split exposes a plain "vocals" — preferred.
         _, transcoding = self._call({"vocals": "jobs/j/stems/vocals.flac"})
-        assert transcoding.get_review_audio_url_async.call_args[0][0] == "jobs/j/stems/vocals.flac"
+        assert transcoding.get_review_audio_bytes_async.call_args[0][0] == "jobs/j/stems/vocals.flac"
 
         # Only lead_vocals available — last-resort fallback.
         _, transcoding = self._call({"lead_vocals": "jobs/j/stems/lead_vocals.flac"})
-        assert transcoding.get_review_audio_url_async.call_args[0][0] == "jobs/j/stems/lead_vocals.flac"
+        assert transcoding.get_review_audio_bytes_async.call_args[0][0] == "jobs/j/stems/lead_vocals.flac"
 
     def test_404_when_no_vocal_stem_present(self):
         from fastapi import HTTPException
