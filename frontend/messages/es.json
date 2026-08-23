@@ -1389,6 +1389,14 @@
       "rerun": "Volver a ejecutar",
       "revertAllAuto": "Revertir todo",
       "showDetails": "Mostrar detalles"
+    },
+    "editTimeline": {
+      "holdingRelease": "Manteniendo presionado... Suelta cuando termine la palabra",
+      "pressSpacebarHint": "Presiona la barra espaciadora cuando empiece la palabra (toca para palabras cortas, mantén presionado para palabras largas)",
+      "tapToSync": "Toca para sincronizar",
+      "tapWhenStarts": "Toca el botón cuando empiece la palabra",
+      "wordProgress": "Palabra {index} de {total}:",
+      "cancelSync": "Cancelar"
     }
   },
   "instrumentalReview": {

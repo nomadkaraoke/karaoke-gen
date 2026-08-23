@@ -1389,6 +1389,14 @@
       "rerun": "Rulează din nou",
       "revertAllAuto": "Anulează tot",
       "showDetails": "Arată detaliile"
+    },
+    "editTimeline": {
+      "holdingRelease": "Ții apăsat... Eliberează când se termină cuvântul",
+      "pressSpacebarHint": "Apasă tasta Space când începe cuvântul (apasă scurt pentru cuvinte scurte, ține apăsat pentru cuvinte lungi)",
+      "tapToSync": "Apasă pentru a sincroniza",
+      "tapWhenStarts": "Apasă butonul când începe cuvântul",
+      "wordProgress": "Cuvântul {index} din {total}:",
+      "cancelSync": "Anulează"
     }
   },
   "instrumentalReview": {

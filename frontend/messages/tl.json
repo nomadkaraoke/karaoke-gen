@@ -1389,6 +1389,14 @@
       "rerun": "Patakbuhin muli",
       "revertAllAuto": "Ibalik lahat",
       "showDetails": "Ipakita ang mga detalye"
+    },
+    "editTimeline": {
+      "holdingRelease": "Naka-hold... Bitawan kapag tapos na ang salita",
+      "pressSpacebarHint": "Pindutin ang spacebar kapag nagsimula ang salita (i-tap para sa maiikling salita, i-hold para sa mahahabang salita)",
+      "tapToSync": "I-tap Para I-sync",
+      "tapWhenStarts": "I-tap ang button kapag nagsimula ang salita",
+      "wordProgress": "Salita {index} ng {total}:",
+      "cancelSync": "Kanselahin"
     }
   },
   "instrumentalReview": {

@@ -1389,6 +1389,14 @@
       "rerun": "Torna a executar",
       "revertAllAuto": "Reverteix-ho tot",
       "showDetails": "Mostra els detalls"
+    },
+    "editTimeline": {
+      "holdingRelease": "Mantenint premut... Deixa anar quan acabi la paraula",
+      "pressSpacebarHint": "Prem la barra espaiadora quan comenci la paraula (toca per a paraules curtes, mantén premut per a paraules llargues)",
+      "tapToSync": "Toca per sincronitzar",
+      "tapWhenStarts": "Toca el botó quan comenci la paraula",
+      "wordProgress": "Paraula {index} de {total}:",
+      "cancelSync": "Cancel·la"
     }
   },
   "instrumentalReview": {

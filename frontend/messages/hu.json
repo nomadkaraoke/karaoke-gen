@@ -1389,6 +1389,14 @@
       "rerun": "Újrafuttatás",
       "revertAllAuto": "Összes visszavonása",
       "showDetails": "Részletek megjelenítése"
+    },
+    "editTimeline": {
+      "holdingRelease": "Nyomva tartva... Engedd fel, amikor a szó véget ér",
+      "pressSpacebarHint": "Nyomd meg a szóköz billentyűt, amikor a szó elkezdődik (rövid szavaknál röviden nyomd meg, hosszú szavaknál tartsd nyomva)",
+      "tapToSync": "Koppints a szinkronizáláshoz",
+      "tapWhenStarts": "Koppints a gombra, amikor a szó elkezdődik",
+      "wordProgress": "{index}. szó a(z) {total} közül:",
+      "cancelSync": "Mégse"
     }
   },
   "instrumentalReview": {

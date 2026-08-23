@@ -1389,6 +1389,14 @@
       "rerun": "Uruchom ponownie",
       "revertAllAuto": "Cofnij wszystko",
       "showDetails": "Pokaż szczegóły"
+    },
+    "editTimeline": {
+      "holdingRelease": "Przytrzymujesz... Puść, gdy słowo się skończy",
+      "pressSpacebarHint": "Naciśnij spację, gdy zaczyna się słowo (naciśnij krótko przy krótkich słowach, przytrzymaj przy długich)",
+      "tapToSync": "Stuknij, aby zsynchronizować",
+      "tapWhenStarts": "Stuknij przycisk, gdy zaczyna się słowo",
+      "wordProgress": "Słowo {index} z {total}:",
+      "cancelSync": "Anuluj"
     }
   },
   "instrumentalReview": {

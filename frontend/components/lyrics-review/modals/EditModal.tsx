@@ -57,6 +57,7 @@ export default function EditModal({
   const t = useTranslations('lyricsReview.modals.editAll')
   const tActions = useTranslations('lyricsReview.editActionBar')
   const tHeader = useTranslations('lyricsReview.header')
+  const tTimeline = useTranslations('lyricsReview.editTimeline')
   const { ready: audioReady } = useAudioReady()
   const [editedSegment, setEditedSegment] = useState<LyricsSegment | null>(segment)
   const [timingFixCount, setTimingFixCount] = useState(0)
@@ -432,12 +433,12 @@ export default function EditModal({
                 {isManualSyncing ? (
                   <>
                     <XCircle className="h-4 w-4 mr-1" />
-                    Cancel
+                    {tTimeline('cancelSync')}
                   </>
                 ) : (
                   <>
                     <Play className="h-4 w-4 mr-1" />
-                    Tap To Sync
+                    {tTimeline('tapToSync')}
                   </>
                 )}
               </Button>

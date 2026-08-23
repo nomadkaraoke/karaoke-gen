@@ -1389,6 +1389,14 @@
       "rerun": "إعادة التنفيذ",
       "revertAllAuto": "التراجع عن الكل",
       "showDetails": "عرض التفاصيل"
+    },
+    "editTimeline": {
+      "holdingRelease": "جاري الضغط... أفلت عندما تنتهي الكلمة",
+      "pressSpacebarHint": "اضغط على زر المسافة عندما تبدأ الكلمة (انقر للكلمات القصيرة، واستمر بالضغط للكلمات الطويلة)",
+      "tapToSync": "انقر للمزامنة",
+      "tapWhenStarts": "انقر على الزر عندما تبدأ الكلمة",
+      "wordProgress": "الكلمة {index} من {total}:",
+      "cancelSync": "إلغاء"
     }
   },
   "instrumentalReview": {

@@ -1389,6 +1389,14 @@
       "rerun": "फिर से चलाओ",
       "revertAllAuto": "सब पहले जैसा करो",
       "showDetails": "विवरण दिखाओ"
+    },
+    "editTimeline": {
+      "holdingRelease": "दबाए हुए... शब्द खत्म होने पर छोड़ दो",
+      "pressSpacebarHint": "शब्द शुरू होने पर स्पेसबार दबाओ (छोटे शब्दों के लिए टैप करो, लंबे शब्दों के लिए दबाए रखो)",
+      "tapToSync": "सिंक करने के लिए टैप करो",
+      "tapWhenStarts": "शब्द शुरू होने पर बटन टैप करो",
+      "wordProgress": "{total} में से {index} शब्द:",
+      "cancelSync": "कैंसल"
     }
   },
   "instrumentalReview": {

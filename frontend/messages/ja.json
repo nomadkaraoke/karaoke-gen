@@ -1389,6 +1389,14 @@
       "rerun": "再実行",
       "revertAllAuto": "すべて元に戻す",
       "showDetails": "詳細を表示"
+    },
+    "editTimeline": {
+      "holdingRelease": "長押し中... 単語が終わったら離してください",
+      "pressSpacebarHint": "単語が始まったらスペースキーを押してください（短い単語はタップ、長い単語は長押し）",
+      "tapToSync": "タップして同期",
+      "tapWhenStarts": "単語が始まったらボタンをタップしてください",
+      "wordProgress": "単語 {index} / {total}:",
+      "cancelSync": "キャンセル"
     }
   },
   "instrumentalReview": {

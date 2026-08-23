@@ -1389,6 +1389,14 @@
       "rerun": "다시 실행",
       "revertAllAuto": "모두 되돌리기",
       "showDetails": "세부 정보 보기"
+    },
+    "editTimeline": {
+      "holdingRelease": "누르는 중... 단어가 끝나면 떼세요",
+      "pressSpacebarHint": "단어가 시작될 때 스페이스바를 누르세요 (짧은 단어는 짧게, 긴 단어는 길게 누르세요)",
+      "tapToSync": "탭하여 동기화",
+      "tapWhenStarts": "단어가 시작될 때 버튼을 탭하세요",
+      "wordProgress": "단어 {index} / {total}:",
+      "cancelSync": "취소"
     }
   },
   "instrumentalReview": {

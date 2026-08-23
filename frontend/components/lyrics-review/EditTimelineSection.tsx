@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useRef, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Hand } from 'lucide-react'
 import { Word } from '@/lib/lyrics-review/types'
@@ -85,6 +86,7 @@ export default function EditTimelineSection({
   onTapStart,
   onTapEnd,
 }: EditTimelineSectionProps) {
+  const t = useTranslations('lyricsReview.editTimeline')
   // Simple mobile detection
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
 
@@ -127,15 +129,18 @@ export default function EditTimelineSection({
           {currentWordInfo && (
             <div className={cn('text-center', isMobile ? '' : 'text-left')}>
               <div className="text-sm">
-                Word {currentWordInfo.index} of {currentWordInfo.total}:{' '}
+                {t('wordProgress', {
+                  index: currentWordInfo.index,
+                  total: currentWordInfo.total,
+                })}{' '}
                 <strong>{currentWordInfo.text}</strong>
               </div>
               <div className="text-xs text-muted-foreground">
                 {isSpacebarPressed
-                  ? 'Holding... Release when word ends'
+                  ? t('holdingRelease')
                   : isMobile
-                    ? 'Tap the button when word starts'
-                    : 'Press spacebar when word starts (tap for short words, hold for long words)'}
+                    ? t('tapWhenStarts')
+                    : t('pressSpacebarHint')}
               </div>
             </div>
           )}

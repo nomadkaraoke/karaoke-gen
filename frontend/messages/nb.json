@@ -1389,6 +1389,14 @@
       "rerun": "Kjør på nytt",
       "revertAllAuto": "Tilbakestill alle",
       "showDetails": "Vis detaljer"
+    },
+    "editTimeline": {
+      "holdingRelease": "Holder inne... Slipp når ordet slutter",
+      "pressSpacebarHint": "Trykk på mellomromstasten når ordet starter (trykk kort for korte ord, hold inne for lange ord)",
+      "tapToSync": "Trykk for å synkronisere",
+      "tapWhenStarts": "Trykk på knappen når ordet starter",
+      "wordProgress": "Ord {index} av {total}:",
+      "cancelSync": "Avbryt"
     }
   },
   "instrumentalReview": {

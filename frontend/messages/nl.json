@@ -1389,6 +1389,14 @@
       "rerun": "Opnieuw uitvoeren",
       "revertAllAuto": "Alles ongedaan maken",
       "showDetails": "Details tonen"
+    },
+    "editTimeline": {
+      "holdingRelease": "Vasthouden... Laat los wanneer het woord eindigt",
+      "pressSpacebarHint": "Druk op de spatiebalk wanneer het woord begint (tik voor korte woorden, houd ingedrukt voor lange woorden)",
+      "tapToSync": "Tik om te synchroniseren",
+      "tapWhenStarts": "Tik op de knop wanneer het woord begint",
+      "wordProgress": "Woord {index} van {total}:",
+      "cancelSync": "Annuleren"
     }
   },
   "instrumentalReview": {

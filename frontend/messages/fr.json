@@ -1389,6 +1389,14 @@
       "rerun": "Relancer",
       "revertAllAuto": "Tout rétablir",
       "showDetails": "Afficher les détails"
+    },
+    "editTimeline": {
+      "holdingRelease": "Maintiens... Relâche quand le mot se termine",
+      "pressSpacebarHint": "Appuie sur la barre d'espace quand le mot commence (appuie brièvement pour les mots courts, maintiens pour les mots longs)",
+      "tapToSync": "Appuie pour synchroniser",
+      "tapWhenStarts": "Appuie sur le bouton quand le mot commence",
+      "wordProgress": "Mot {index} sur {total} :",
+      "cancelSync": "Annuler"
     }
   },
   "instrumentalReview": {

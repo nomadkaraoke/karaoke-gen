@@ -1389,6 +1389,14 @@
       "rerun": "הפעל מחדש",
       "revertAllAuto": "בטל הכל",
       "showDetails": "הצג פרטים"
+    },
+    "editTimeline": {
+      "holdingRelease": "לחוץ... שחרר כשהמילה מסתיימת",
+      "pressSpacebarHint": "לחץ על מקש הרווח כשהמילה מתחילה (הקש למילים קצרות, החזק למילים ארוכות)",
+      "tapToSync": "הקש לסנכרון",
+      "tapWhenStarts": "הקש על הכפתור כשהמילה מתחילה",
+      "wordProgress": "מילה {index} מתוך {total}:",
+      "cancelSync": "ביטול"
     }
   },
   "instrumentalReview": {

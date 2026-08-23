@@ -1389,6 +1389,14 @@
       "rerun": "Pokreni ponovno",
       "revertAllAuto": "Poništi sve",
       "showDetails": "Prikaži detalje"
+    },
+    "editTimeline": {
+      "holdingRelease": "Drži... Otpusti kada riječ završi",
+      "pressSpacebarHint": "Pritisni razmaknicu kada riječ počne (dodirni za kratke riječi, drži za duge riječi)",
+      "tapToSync": "Dodirni za sinkronizaciju",
+      "tapWhenStarts": "Dodirni gumb kada riječ počne",
+      "wordProgress": "Riječ {index} od {total}:",
+      "cancelSync": "Odustani"
     }
   },
   "instrumentalReview": {

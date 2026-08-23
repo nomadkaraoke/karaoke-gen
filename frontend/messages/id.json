@@ -1389,6 +1389,14 @@
       "rerun": "Jalankan ulang",
       "revertAllAuto": "Kembalikan semua",
       "showDetails": "Tampilkan detail"
+    },
+    "editTimeline": {
+      "holdingRelease": "Menahan... Lepaskan saat kata selesai",
+      "pressSpacebarHint": "Tekan spasi saat kata dimulai (ketuk untuk kata pendek, tahan untuk kata panjang)",
+      "tapToSync": "Ketuk Untuk Sinkronisasi",
+      "tapWhenStarts": "Ketuk tombol saat kata dimulai",
+      "wordProgress": "Kata {index} dari {total}:",
+      "cancelSync": "Batal"
     }
   },
   "instrumentalReview": {
