@@ -5,7 +5,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Loader2, Play, Square, RotateCcw, Trash2, History } from 'lucide-react'
+import { Loader2, Play, Square, RotateCcw, Trash2, History, XCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { LyricsSegment, Word } from '@/lib/lyrics-review/types'
 import { nanoid } from 'nanoid'
 import EditWordList from '../EditWordList'
@@ -385,21 +386,63 @@ export default function EditModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col" onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {isGlobal ? t('title') : t('editSegment', { index: segmentIndex ?? 0 })}
-            {segment && segment.start_time !== null && onPlaySegment && (
+          {/* Left: title (+ play) with the consolidated time range beneath it.
+              Right: Tap To Sync, moved up here to reclaim vertical space above
+              the word list. pr-10 keeps it clear of the dialog close button. */}
+          <div className="flex items-start justify-between gap-4 pr-10">
+            <div className="flex flex-col gap-0.5">
+              <DialogTitle className="flex items-center gap-2">
+                {isGlobal ? t('title') : t('editSegment', { index: segmentIndex ?? 0 })}
+                {segment && segment.start_time !== null && onPlaySegment && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={handlePlayToggle}
+                    disabled={!audioReady}
+                    title={audioReady ? undefined : tHeader('audioStillLoading')}
+                  >
+                    {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                )}
+              </DialogTitle>
+              {!isGlobal &&
+                editedSegment &&
+                editedSegment.start_time !== null &&
+                editedSegment.end_time !== null && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Time Range: {editedSegment.start_time.toFixed(2)} -{' '}
+                    {editedSegment.end_time.toFixed(2)}
+                  </span>
+                )}
+            </div>
+
+            {/* Tap To Sync toggle (relocated from EditTimelineSection) */}
+            {editedSegment && editedSegment.words.some((w) => w.start_time !== null) && (
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handlePlayToggle}
-                disabled={!audioReady}
-                title={audioReady ? undefined : tHeader('audioStillLoading')}
+                variant={isManualSyncing ? 'outline' : 'default'}
+                onClick={startManualSync}
+                className={cn(
+                  'shrink-0',
+                  isManualSyncing
+                    ? 'border-destructive text-destructive hover:bg-destructive/10'
+                    : 'bg-primary'
+                )}
               >
-                {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {isManualSyncing ? (
+                  <>
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Cancel
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-1" />
+                    Tap To Sync
+                  </>
+                )}
               </Button>
             )}
-          </DialogTitle>
+          </div>
         </DialogHeader>
 
         {isLoading ? (
@@ -429,17 +472,12 @@ export default function EditModal({
                   words={editedSegment.words}
                   startTime={startTime}
                   endTime={endTime}
-                  originalStartTime={originalSegment?.start_time ?? null}
-                  originalEndTime={originalSegment?.end_time ?? null}
-                  currentStartTime={editedSegment.start_time}
-                  currentEndTime={editedSegment.end_time}
                   currentTime={currentTime}
                   isManualSyncing={isManualSyncing}
                   syncWordIndex={syncWordIndex}
                   isSpacebarPressed={isSpacebarPressed}
                   onWordUpdate={handleWordChange}
                   onPlaySegment={onPlaySegment}
-                  startManualSync={startManualSync}
                   isGlobal={isGlobal}
                   onTapStart={handleTapStart}
                   onTapEnd={handleTapEnd}

@@ -2,7 +2,7 @@
 
 import { memo, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Play, XCircle, Hand } from 'lucide-react'
+import { Hand } from 'lucide-react'
 import { Word } from '@/lib/lyrics-review/types'
 import TimelineEditor from './TimelineEditor'
 import { cn } from '@/lib/utils'
@@ -60,17 +60,12 @@ interface EditTimelineSectionProps {
   words: Word[]
   startTime: number
   endTime: number
-  originalStartTime: number | null
-  originalEndTime: number | null
-  currentStartTime: number | null
-  currentEndTime: number | null
   currentTime?: number
   isManualSyncing: boolean
   syncWordIndex: number
   isSpacebarPressed: boolean
   onWordUpdate: (index: number, updates: Partial<Word>) => void
   onPlaySegment?: (time: number) => void
-  startManualSync: () => void
   isGlobal?: boolean
   onTapStart?: () => void
   onTapEnd?: () => void
@@ -80,17 +75,12 @@ export default function EditTimelineSection({
   words,
   startTime,
   endTime,
-  originalStartTime,
-  originalEndTime,
-  currentStartTime,
-  currentEndTime,
   currentTime,
   isManualSyncing,
   syncWordIndex,
   isSpacebarPressed,
   onWordUpdate,
   onPlaySegment,
-  startManualSync,
   isGlobal = false,
   onTapStart,
   onTapEnd,
@@ -122,57 +112,16 @@ export default function EditTimelineSection({
         />
       </div>
 
-      {/* Time range info and controls */}
-      <div
-        className={cn(
-          'flex items-center justify-between gap-2',
-          isMobile ? 'flex-col items-stretch mt-2 mb-3' : 'flex-row mt-0 mb-0'
-        )}
-      >
-        {/* Time range info - hidden on mobile to save space */}
-        {!isMobile && (
-          <div className="text-xs text-muted-foreground">
-            <div>
-              Original Time Range: {originalStartTime?.toFixed(2) ?? 'N/A'} -{' '}
-              {originalEndTime?.toFixed(2) ?? 'N/A'}
-            </div>
-            <div>
-              Current Time Range: {currentStartTime?.toFixed(2) ?? 'N/A'} -{' '}
-              {currentEndTime?.toFixed(2) ?? 'N/A'}
-            </div>
-          </div>
-        )}
-
-        {/* Controls */}
+      {/* Sync helper — only visible while manually syncing. The Tap To Sync
+          toggle and the time-range readout now live in the modal header to
+          reclaim the vertical space above the word list. */}
+      {(currentWordInfo || (isMobile && isManualSyncing)) && (
         <div
           className={cn(
             'flex items-center gap-2',
-            isMobile ? 'flex-col items-stretch' : 'flex-row'
+            isMobile ? 'flex-col items-stretch mt-2 mb-3' : 'flex-row mt-0 mb-0'
           )}
         >
-          {/* Tap To Sync button */}
-          <Button
-            variant={isManualSyncing ? 'outline' : 'default'}
-            onClick={startManualSync}
-            className={cn(
-              isManualSyncing
-                ? 'border-destructive text-destructive hover:bg-destructive/10'
-                : 'bg-primary'
-            )}
-          >
-            {isManualSyncing ? (
-              <>
-                <XCircle className="h-4 w-4 mr-1" />
-                Cancel
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 mr-1" />
-                Tap To Sync
-              </>
-            )}
-          </Button>
-
           {/* Current word info during sync */}
           {currentWordInfo && (
             <div className={cn('text-center', isMobile ? '' : 'text-left')}>
@@ -199,7 +148,7 @@ export default function EditTimelineSection({
             />
           )}
         </div>
-      </div>
+      )}
     </>
   )
 }
