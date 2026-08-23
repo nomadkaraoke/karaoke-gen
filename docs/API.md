@@ -1504,9 +1504,34 @@ Authorization: Bearer ADMIN_TOKEN
 
 Returns full user profile including:
 - User info and stats
+- `locale` (email locale: en/es/de) and `ui_locale` (full UI language, any of 33)
 - Recent credit transactions (last 20)
-- Recent jobs (last 10)
+- Recent jobs (last 10, each with its `locale`)
 - Active sessions count
+
+### Email History (Admin)
+
+List every email ever sent to a user, then fetch one for full-fidelity preview.
+Merges the Postmark Messages API (last ~45 days, with delivery metadata) with a
+persisted Firestore `email_log` (permanent), de-duplicated by message id.
+
+```http
+GET /api/admin/users/{email}/emails
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Response: `{ email, count, postmark_available, emails: [{ message_id, source,
+subject, to, from_email, sent_at, status, email_type, has_stored_html }] }`.
+
+```http
+GET /api/admin/emails/{message_id}?source=postmark
+Authorization: Bearer ADMIN_TOKEN
+```
+
+`source` is `postmark` (default; falls back to the stored log on 404/expiry) or
+`log` (read the persisted copy directly). Returns the full rendered `html_body`,
+`text_body`, addressing, `status`, `delivered_at`, `open_count`, `click_count`,
+`bounce`, and the raw `events`.
 
 ### Add Credits (Admin)
 

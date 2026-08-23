@@ -91,8 +91,15 @@ class User(BaseModel):
     # Optional profile fields for future use
     display_name: Optional[str] = None
 
-    # i18n locale preference (set from Accept-Language on login, used for emails/push)
+    # i18n locale preference (set from Accept-Language on login, used for emails/push).
+    # Narrowed to the 3 email-supported locales (en/es/de) — do NOT widen, email
+    # rendering depends on it.
     locale: Optional[str] = None
+
+    # Actual UI language the user browses in (primary Accept-Language subtag, any
+    # of the 33 supported locales, e.g. "pt", "ja"). Captured on login and job
+    # creation. Admin-only signal so support knows what language to communicate in.
+    ui_locale: Optional[str] = None
 
     # Push notification subscriptions (Web Push API)
     # Users can subscribe from multiple devices/browsers

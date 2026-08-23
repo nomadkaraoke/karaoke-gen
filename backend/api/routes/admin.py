@@ -2977,6 +2977,37 @@ async def get_user_payments(
     return service.get_user_payment_history(email)
 
 
+@router.get("/users/{email}/emails")
+async def get_user_emails(
+    email: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """List every email ever sent to a user (Postmark + our persisted log)."""
+    from backend.services.postmark_admin_service import get_postmark_admin_service
+    service = get_postmark_admin_service()
+    return service.get_user_email_history(email)
+
+
+@router.get("/emails/{message_id}")
+async def get_email_detail(
+    message_id: str,
+    source: str = "postmark",
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Full detail for a single email — rendered HTML + delivery metadata.
+
+    ``source=log`` reads our persisted copy directly (for mail older than
+    Postmark's ~45-day retention); otherwise Postmark is queried with a
+    fallback to the stored log.
+    """
+    from backend.services.postmark_admin_service import get_postmark_admin_service
+    service = get_postmark_admin_service()
+    result = service.get_email_detail(message_id, source=source)
+    if not result:
+        raise HTTPException(status_code=404, detail="Email not found")
+    return result
+
+
 @router.get("/payments/{session_id}")
 async def get_payment_detail(
     session_id: str,

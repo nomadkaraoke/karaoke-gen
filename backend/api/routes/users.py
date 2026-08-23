@@ -36,7 +36,7 @@ def _mask_email(email: str) -> str:
 from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from pydantic import BaseModel, EmailStr
 
-from backend.i18n import t, get_locale_from_request
+from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 from backend.services.email_validation_service import get_email_validation_service
 from backend.models.user import (
     UserRole,
@@ -438,10 +438,22 @@ async def verify_magic_link(
         except Exception as ref_err:
             logger.warning(f"Referral attribution failed for {_mask_email(user.email)}: {ref_err}")
 
-    # Persist user's locale preference (from Accept-Language header)
-    if locale and locale != (user.locale or "en"):
+    # Persist user's locale preference (from Accept-Language header).
+    # `locale` is narrowed to en/es/de for email rendering; `ui_locale` is the
+    # full UI language (any of 33) so admins know what language to communicate in.
+    ui_locale = get_full_locale_from_request(http_request)
+    has_accept_language = bool(http_request.headers.get("accept-language"))
+    locale_updates = {}
+    # Only touch locale when the client actually sent an Accept-Language header —
+    # otherwise get_locale_from_request()'s "en" default would clobber a user's
+    # real stored locale on token-only logins (e.g. magic-link scanners).
+    if has_accept_language and locale and locale != (user.locale or "en"):
+        locale_updates["locale"] = locale
+    if ui_locale and ui_locale != user.ui_locale:
+        locale_updates["ui_locale"] = ui_locale
+    if locale_updates:
         try:
-            user_service.update_user(user.email, locale=locale)
+            user_service.update_user(user.email, **locale_updates)
         except Exception:
             pass  # Non-critical — don't block login
 
@@ -801,6 +813,7 @@ async def create_checkout(
 @router.post("/made-for-you/checkout", response_model=CreateCheckoutResponse)
 async def create_made_for_you_checkout(
     request: MadeForYouCheckoutRequest,
+    http_request: Request,
     stripe_service: StripeService = Depends(get_stripe_service),
 ):
     """
@@ -825,6 +838,7 @@ async def create_made_for_you_checkout(
         source_type=request.source_type,
         youtube_url=request.youtube_url,
         notes=request.notes,
+        locale=get_full_locale_from_request(http_request),
     )
 
     if not success or not checkout_url:
@@ -1008,6 +1022,8 @@ async def _handle_made_for_you_order(
             brand_prefix=dist.brand_prefix,
             discord_webhook_url=dist.discord_webhook_url,
             youtube_description=dist.youtube_description,
+            # UI language the customer ordered in (captured at checkout, admin-only signal)
+            locale=metadata.get("locale") or None,
         )
         # Made-for-you jobs are created by admin (via Stripe webhook) - bypass rate limits
         job = job_manager.create_job(job_create, is_admin=True)
@@ -1758,6 +1774,10 @@ class UserDetailResponse(BaseModel):
     display_name: Optional[str] = None
     is_active: bool = True
     email_verified: bool = False
+    # Language: `locale` is the email locale (en/es/de); `ui_locale` is the full UI
+    # language (any of 33) the user browses in — what admins should communicate in.
+    locale: Optional[str] = None
+    ui_locale: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     last_login_at: Optional[str] = None
@@ -1922,6 +1942,7 @@ async def get_user_detail(
             "artist": job_data.get("artist"),
             "title": job_data.get("title"),
             "created_at": created_at_str,
+            "locale": job_data.get("locale"),
         })
 
     # Get active sessions with details
@@ -1958,6 +1979,8 @@ async def get_user_detail(
         display_name=user.display_name,
         is_active=user.is_active,
         email_verified=user.email_verified,
+        locale=user.locale,
+        ui_locale=user.ui_locale,
         created_at=user.created_at.isoformat() if user.created_at else None,
         updated_at=user.updated_at.isoformat() if user.updated_at else None,
         last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,

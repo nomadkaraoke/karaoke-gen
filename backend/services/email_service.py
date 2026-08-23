@@ -10,9 +10,11 @@ Provider selection: POSTMARK_SERVER_TOKEN env var enables Postmark.
 import html
 import logging
 import os
+import re
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List
+from typing import NamedTuple, Optional, List
 from zoneinfo import ZoneInfo
 
 import requests
@@ -23,6 +25,18 @@ from karaoke_gen.utils import sanitize_filename
 
 
 logger = logging.getLogger(__name__)
+
+
+class SendResult(NamedTuple):
+    """Outcome of a provider send.
+
+    ``message_id`` is the provider's unique id for the sent message (Postmark's
+    ``MessageID``) when available — used to link a send to its Postmark record and
+    to dedupe the persisted ``email_log`` entry. ``None`` for providers that don't
+    expose one (console/preview).
+    """
+    success: bool
+    message_id: Optional[str] = None
 
 
 class EmailProvider(ABC):
@@ -52,6 +66,32 @@ class EmailProvider(ABC):
             from_email_override: Override the default sender email (optional, for multi-tenant)
         """
         pass
+
+    def send_email_detailed(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
+        bcc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
+    ) -> SendResult:
+        """Send an email and report the provider message id when available.
+
+        Default implementation delegates to :meth:`send_email` and reports no
+        message id. Providers that expose one (Postmark) override this.
+        """
+        success = self.send_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            cc_emails=cc_emails,
+            bcc_emails=bcc_emails,
+            from_email_override=from_email_override,
+        )
+        return SendResult(success=success, message_id=None)
 
 
 class ConsoleEmailProvider(EmailProvider):
@@ -133,6 +173,9 @@ class PostmarkEmailProvider(EmailProvider):
         self.server_token = server_token
         self.from_email = from_email
         self.from_name = from_name
+        # Postmark MessageID of the most recent successful send, so the email_log
+        # chokepoint can link a persisted record to its Postmark message.
+        self.last_message_id: Optional[str] = None
 
     def send_email(
         self,
@@ -144,6 +187,26 @@ class PostmarkEmailProvider(EmailProvider):
         bcc_emails: Optional[List[str]] = None,
         from_email_override: Optional[str] = None,
     ) -> bool:
+        return self.send_email_detailed(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            cc_emails=cc_emails,
+            bcc_emails=bcc_emails,
+            from_email_override=from_email_override,
+        ).success
+
+    def send_email_detailed(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
+        bcc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
+    ) -> SendResult:
         try:
             sender_email = from_email_override or self.from_email
             payload = {
@@ -176,7 +239,15 @@ class PostmarkEmailProvider(EmailProvider):
                 cc_info = f" (CC: {', '.join(cc_emails)})" if cc_emails else ""
                 bcc_info = f" (BCC: {', '.join(bcc_emails)})" if bcc_emails else ""
                 logger.info(f"Email sent to {to_email}{cc_info}{bcc_info} via Postmark")
-                return True
+                # Capture Postmark's MessageID so the send can be linked to its
+                # Postmark record and the persisted email_log entry deduped.
+                message_id = None
+                try:
+                    message_id = response.json().get("MessageID")
+                except ValueError:
+                    pass
+                self.last_message_id = message_id
+                return SendResult(success=True, message_id=message_id)
 
             # Surface Postmark's structured error so we can see suppressions, invalid signature, etc.
             try:
@@ -187,11 +258,25 @@ class PostmarkEmailProvider(EmailProvider):
                 )
             except ValueError:
                 logger.error(f"Postmark returned status {response.status_code}: {response.text[:200]}")
-            return False
+            return SendResult(success=False, message_id=None)
 
         except requests.RequestException:
             logger.exception("Failed to send email via Postmark")
-            return False
+            return SendResult(success=False, message_id=None)
+
+
+# Query params that carry single-use auth/capability tokens (magic-link sign-in,
+# lyrics/instrumental review access, referral codes). We persist a redacted copy
+# so the admin email-history log never becomes a store of live credentials — the
+# email still renders faithfully, only the secret value is masked.
+_SENSITIVE_QUERY_PARAM = re.compile(r"([?&](?:token|ref|review_token|instrumental_token)=)[^&\"'\s<]+", re.IGNORECASE)
+
+
+def _redact_sensitive_tokens(content: Optional[str]) -> Optional[str]:
+    """Mask token/ref query-param values in email content before persistence."""
+    if not content:
+        return content
+    return _SENSITIVE_QUERY_PARAM.sub(r"\1[REDACTED]", content)
 
 
 def _dedupe_emails(emails: List[str]) -> List[str]:
@@ -275,7 +360,51 @@ class EmailService:
         (e.g. internal failure alerts) without a dedicated template method.
         Prefer a dedicated ``send_*`` template method for customer-facing mail.
         """
-        return self.provider.send_email(
+        return self._log_and_send(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+            cc_emails=cc_emails,
+            bcc_emails=bcc_emails,
+            from_email_override=from_email_override,
+            email_type="raw",
+        )
+
+    def _log_and_send(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str] = None,
+        cc_emails: Optional[List[str]] = None,
+        bcc_emails: Optional[List[str]] = None,
+        from_email_override: Optional[str] = None,
+        email_type: Optional[str] = None,
+    ) -> bool:
+        """Single send chokepoint: dispatch via the provider, then persist a
+        record of the send for the admin email-history view.
+
+        Every ``send_*`` template method routes through here so the persisted
+        ``email_log`` mirrors exactly what left the building. Persistence is
+        strictly best-effort — a Firestore failure must never break or delay a
+        real email send.
+        """
+        # Categorize by the calling send_* method name (e.g. send_magic_link →
+        # "magic_link") so the admin UI can group emails without threading an
+        # explicit type through every template method.
+        if email_type is None:
+            try:
+                caller = sys._getframe(1).f_code.co_name
+                email_type = caller[len("send_"):] if caller.startswith("send_") else caller
+            except Exception:
+                email_type = None
+
+        # Dispatch via the provider's public send_email (as keyword args) so
+        # callers/mocks that observe that method still see it. PostmarkEmailProvider
+        # records the returned MessageID on ``last_message_id`` for us to link the
+        # log entry.
+        success = self.provider.send_email(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -284,6 +413,71 @@ class EmailService:
             bcc_emails=bcc_emails,
             from_email_override=from_email_override,
         )
+
+        # Only persist genuine outbound mail (Postmark). Console/preview providers
+        # are dev/test only and have no real inbox to reflect.
+        if success and isinstance(self.provider, PostmarkEmailProvider):
+            try:
+                self._record_sent_email(
+                    to_email=to_email,
+                    subject=subject,
+                    html_content=html_content,
+                    text_content=text_content,
+                    cc_emails=cc_emails,
+                    bcc_emails=bcc_emails,
+                    from_email=from_email_override or getattr(self.provider, "from_email", None),
+                    email_type=email_type,
+                    message_id=getattr(self.provider, "last_message_id", None),
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to persist email_log record (the email itself was sent OK)"
+                )
+
+        return success
+
+    def _record_sent_email(
+        self,
+        *,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str],
+        cc_emails: Optional[List[str]],
+        bcc_emails: Optional[List[str]],
+        from_email: Optional[str],
+        email_type: Optional[str],
+        message_id: Optional[str],
+    ) -> None:
+        """Write one Firestore ``email_log`` doc mirroring a sent email.
+
+        Keyed by the Postmark MessageID when available (idempotent), else an
+        auto-id. Stores the rendered HTML so the admin UI can show older mail
+        after Postmark's ~45-day content retention expires — with single-use
+        auth/capability tokens redacted so the log never holds live credentials.
+        """
+        from backend.services.firestore_service import FirestoreService
+
+        db = FirestoreService().db
+        doc = {
+            "recipient": (to_email or "").strip().lower(),
+            "recipient_raw": to_email,
+            "cc": _dedupe_emails(cc_emails) if cc_emails else [],
+            "bcc": _dedupe_emails(bcc_emails) if bcc_emails else [],
+            "from_email": from_email,
+            "subject": subject,
+            "html_content": _redact_sensitive_tokens(html_content),
+            "text_content": _redact_sensitive_tokens(text_content),
+            "email_type": email_type,
+            "message_stream": "outbound",
+            "postmark_message_id": message_id,
+            "created_at": datetime.now(timezone.utc),
+        }
+        collection = db.collection("email_log")
+        if message_id:
+            collection.document(message_id).set(doc)
+        else:
+            collection.add(doc)
 
     def send_magic_link(
         self,
@@ -378,7 +572,7 @@ class EmailService:
 © {self._get_year()} {brand_name}
 """
 
-        return self.provider.send_email(
+        return self._log_and_send(
             email, subject, html_content, text_content, from_email_override=sender_email
         )
 
@@ -451,7 +645,7 @@ class EmailService:
 © {self._get_year()} Nomad Karaoke
 """
 
-        return self.provider.send_email(email, subject, html_content, text_content)
+        return self._log_and_send(email, subject, html_content, text_content)
 
     def send_welcome_email(self, email: str, credits: int = 0, locale: str = "en") -> bool:
         """
@@ -593,7 +787,7 @@ class EmailService:
 © {self._get_year()} Nomad Karaoke
 """
 
-        return self.provider.send_email(email, subject, html_content, text_content)
+        return self._log_and_send(email, subject, html_content, text_content)
 
     def _get_year(self) -> int:
         """Get current year for copyright notices."""
@@ -973,7 +1167,7 @@ class EmailService:
 
         cc_emails = ["gen@nomadkaraoke.com"] if cc_admin else None
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1050,7 +1244,7 @@ class EmailService:
 
         html_content = self._build_email_html(content, extra_styles, locale=locale)
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1150,7 +1344,7 @@ class EmailService:
             f"{t(locale, 'emails.reviewReminder.expiryWarning')}"
         )
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1292,7 +1486,7 @@ class EmailService:
             f"If you have any questions, just reply to this email — we're happy to help."
         )
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1385,7 +1579,7 @@ class EmailService:
             f"{t(locale, 'emails.reviewExpired.helpOffer')}"
         )
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1527,7 +1721,7 @@ class EmailService:
             f"If you have any questions, just reply to this email — we're happy to help."
         )
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1577,7 +1771,7 @@ class EmailService:
 
         html_content = self._build_email_html(content, extra_styles, locale=locale)
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1670,7 +1864,7 @@ class EmailService:
 
         html_content = self._build_email_html(content, extra_styles, locale=locale)
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1780,7 +1974,7 @@ Open Job: {app_url}
 
         html_content = self._build_email_html(content, extra_styles)
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -1912,7 +2106,7 @@ View all feedback: {admin_url}
 
         html_content = self._build_email_html(content, extra_styles)
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=admin_email,
             subject=subject,
             html_content=html_content,
@@ -2027,7 +2221,7 @@ If the user looks legitimate, grant them credits from their admin page.
 
         html_content = self._build_email_html(content)
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email="andrew@beveridge.uk",
             subject=subject,
             html_content=html_content,
@@ -2082,7 +2276,7 @@ If the user looks legitimate, grant them credits from their admin page.
 
         html_content = self._build_email_html(content, locale=locale)
 
-        return self.provider.send_email(
+        return self._log_and_send(
             to_email=email,
             subject=subject,
             html_content=html_content,

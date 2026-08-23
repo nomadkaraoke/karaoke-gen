@@ -39,7 +39,7 @@ from backend.services.tracing import add_span_attribute
 from backend.api.dependencies import require_admin, require_auth
 from backend.services.auth_service import AuthResult
 from backend.services.metrics import metrics
-from backend.i18n import t, get_locale_from_request
+from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
 from backend.exceptions import InsufficientCreditsError
@@ -164,6 +164,7 @@ async def create_job(
             user_email=user_email,
             is_private=request.is_private or False,
             credits=credits,
+            locale=get_full_locale_from_request(http_request),
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
 
@@ -2541,6 +2542,7 @@ async def create_job_from_search(
             request_metadata=request_metadata,
             is_private=body.is_private,
             tenant_id=tenant_id,
+            locale=get_full_locale_from_request(request),
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
