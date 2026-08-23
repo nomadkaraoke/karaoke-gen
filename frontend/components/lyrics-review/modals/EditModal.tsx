@@ -384,7 +384,7 @@ export default function EditModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col" onKeyDown={handleKeyDown}>
+      <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col gap-2" onKeyDown={handleKeyDown}>
         <DialogHeader>
           {/* Left: title (with the segment's time range folded into the heading)
               + play. Right: Tap To Sync, moved up here to reclaim vertical space
@@ -453,7 +453,7 @@ export default function EditModal({
             </p>
           </div>
         ) : editedSegment ? (
-          <div className="flex flex-col flex-1 space-y-4 overflow-hidden">
+          <div className="flex flex-col flex-1 space-y-2 overflow-hidden">
             {timingFixCount > 0 && (
               <div
                 role="status"
