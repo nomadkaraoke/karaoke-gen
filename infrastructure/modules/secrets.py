@@ -61,6 +61,10 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # GitHub
         "github-runner-pat",
         "github-webhook-secret",  # For runner manager webhook verification
+        # DR: PAT (repo + read:org) the nightly backup uses to clone every repo
+        # under github.com/nomadkaraoke + github.com/beveradb into git bundles on
+        # S3, so code survives loss of GitHub access. Value added manually.
+        "github-backup-token",
 
         # E2E Testing
         "e2e-bypass-key",

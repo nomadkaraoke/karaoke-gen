@@ -157,8 +157,13 @@ def create_backup_resources(all_secrets: dict) -> dict:
             ),
         ),
         service_config=cloudfunctionsv2.FunctionServiceConfigArgs(
-            available_memory="2Gi",
-            available_cpu="1",
+            # 4Gi/2CPU (up from 2Gi/1CPU): the git-repo backup mirror-clones each
+            # repo into the in-memory /tmp (Cloud Run tmpfs counts against
+            # memory) before bundling. Repos are processed serially and cleaned
+            # up between each, so peak is one repo's working set, but the bump
+            # gives headroom for the largest repo + faster clone/pack on 2 CPU.
+            available_memory="4Gi",
+            available_cpu="2",
             # Kept in lockstep with the scheduler's attempt_deadline (1800s, the
             # Cloud Scheduler max) below. If the function could run longer than
             # the scheduler waits, runs in that gap would re-trigger the very
@@ -175,6 +180,9 @@ def create_backup_resources(all_secrets: dict) -> dict:
                 # The matching private key lives only in 1Password — function cannot decrypt.
                 # Set via: pulumi config set backupEncryptionPubkey <64-char-hex>
                 "BACKUP_ENCRYPTION_PUBKEY": pulumi.Config().require("backupEncryptionPubkey"),
+                # GitHub owners whose repos get bundled to S3 nightly (comma-sep).
+                # Backs up code + full history so it survives a GitHub account ban.
+                "GIT_BACKUP_OWNERS": "nomadkaraoke,beveradb",
             },
             secret_environment_variables=[
                 cloudfunctionsv2.FunctionServiceConfigSecretEnvironmentVariableArgs(
@@ -183,6 +191,14 @@ def create_backup_resources(all_secrets: dict) -> dict:
                     secret=all_secrets["discord-alert-webhook"].secret_id,
                     version="latest",
                 ),
+                # NOTE: the GitHub backup PAT (secret "github-backup-token") is
+                # deliberately NOT wired as a secret env var. A version=latest
+                # env var fails the function deploy until the secret has a value,
+                # but the secret is created empty (value added manually). Instead
+                # the function reads it from Secret Manager at *runtime*
+                # (git_repos_export.get_github_token) and skips the git-repo step
+                # if it's absent — so deploy never blocks on it. The SA already
+                # holds project-wide secretmanager.secretAccessor.
             ],
         ),
     )
