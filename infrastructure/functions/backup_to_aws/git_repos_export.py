@@ -292,9 +292,11 @@ def export_git_repos(
     )
     logger.info(summary)
 
-    # Systemic failure: repos existed but nothing bundled and nothing was a
-    # benign skip → surface it as a hard error (bad token, git broken, etc.).
-    if repos and bundled == 0 and skipped == 0:
+    # Systemic failure: nothing bundled successfully yet repos errored → surface
+    # it as a hard error (bad token, git broken, network down). A run where every
+    # repo was a *benign* skip (empty/oversized) or where at least one bundled is
+    # not systemic, so it stays green with the counts noted in the summary.
+    if bundled == 0 and errors > 0:
         raise RuntimeError(summary)
 
     return summary

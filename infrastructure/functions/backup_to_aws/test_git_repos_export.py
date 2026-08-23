@@ -183,6 +183,45 @@ def test_total_failure_raises_but_manifest_still_written():
     assert "git-repos/manifest.json" in uploads
 
 
+def test_all_benign_skips_do_not_raise():
+    # Every repo is an empty repo (clean skip) → nothing bundled, but no errors,
+    # so this is not a systemic failure and must NOT raise.
+    def side_effect(cmd, **kw):
+        if "bundle" in cmd:
+            raise subprocess.CalledProcessError(128, cmd, output=b"", stderr=b"fatal: Refusing to create empty bundle.")
+        return MagicMock()
+
+    pages = [[_make_repo("nomadkaraoke", "a"), _make_repo("nomadkaraoke", "b")]]
+    summary, uploads, _ = _run(pages, subprocess_side_effect=side_effect)
+    manifest = _manifest(uploads)
+    assert manifest["bundled"] == 0
+    assert manifest["errors"] == 0
+    assert manifest["skipped"] == 2
+    assert "Bundled 0/2" in summary
+
+
+def test_zero_bundled_with_errors_and_a_skip_still_raises():
+    # 1 error + 1 empty-skip, nothing bundled → systemic failure, must raise.
+    def side_effect(cmd, **kw):
+        if cmd[:2] == ["git", "clone"] and "broken" in cmd[-1]:
+            raise subprocess.CalledProcessError(128, cmd, output=b"", stderr=b"fatal: not found")
+        if "bundle" in cmd:  # the other repo is empty
+            raise subprocess.CalledProcessError(128, cmd, output=b"", stderr=b"fatal: Refusing to create empty bundle.")
+        return MagicMock()
+
+    pages = [[_make_repo("nomadkaraoke", "broken"), _make_repo("nomadkaraoke", "empty")]]
+    client, uploads = _fake_gcs()
+    with patch("git_repos_export.requests.get", side_effect=_fake_requests_get(pages)), \
+         patch("git_repos_export.gcs_storage.Client", return_value=client), \
+         patch("git_repos_export.shutil.which", return_value="/usr/bin/git"), \
+         patch("git_repos_export.subprocess.run", side_effect=side_effect), \
+         patch("git_repos_export.tempfile.mkdtemp", return_value="/tmp/gitbak-x"), \
+         patch("git_repos_export.shutil.rmtree"):
+        with pytest.raises(RuntimeError, match="Bundled 0/2"):
+            export_git_repos(staging_bucket="staging", github_token="ghp_test", owners=["nomadkaraoke"])
+    assert "git-repos/manifest.json" in uploads
+
+
 def test_empty_token_raises():
     with pytest.raises(ValueError, match="GITHUB_BACKUP_TOKEN"):
         export_git_repos(staging_bucket="staging", github_token="")
