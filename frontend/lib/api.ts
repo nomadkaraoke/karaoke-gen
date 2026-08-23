@@ -13,7 +13,7 @@ import { beginRequest, endRequest } from './backend-status';
 const isLocalHostname = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 export const API_BASE_URL = isLocalHostname
-  ? ''  // Relative URL - goes to the local server
+  ? new URLSearchParams(location.search).get('baseApiUrl') || ('' /* Relative URL - goes to the local server */)
   : (process.env.NEXT_PUBLIC_API_URL || 'https://api.nomadkaraoke.com');
 
 // Token management - stored in localStorage (client-side only)
