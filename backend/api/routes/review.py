@@ -433,6 +433,16 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
                 audio_gcs_path = stems[key]
                 break
     if not audio_gcs_path:
+        # Audio separation is decoupled from the lyrics-review critical path, so a
+        # user can open review before the vocal stems have been uploaded (the stem
+        # arrives a minute or two later). Signal "not ready yet, retry" with a 202
+        # so the frontend polls instead of treating it as a terminal 404.
+        # state_data.audio_complete is set both when separation finishes and when
+        # it's skipped entirely (existing-instrumental jobs), so a missing stem
+        # with audio_complete=True really is a permanent 404.
+        if stem == "vocals" and not job.state_data.get("audio_complete", False):
+            logger.info(f"Job {job_id}: Vocal stem not yet available (separation in progress), returning 202")
+            return Response(status_code=202, headers={"Retry-After": "15"})
         raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
 
     try:
