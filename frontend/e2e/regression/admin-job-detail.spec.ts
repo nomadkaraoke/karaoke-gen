@@ -490,10 +490,11 @@ test.describe('Admin Job Detail Page', () => {
     await expect(sourceButton).toBeVisible();
 
     // Click to open modal, which should contain the clickable YouTube link
+    // (both the "Open in ..." banner and the raw URL row link to YouTube)
     await sourceButton.click();
     const modal = page.getByLabel('Audio Source Details');
     await expect(modal).toBeVisible();
-    const sourceLink = modal.locator('a[href*="youtube.com"]');
+    const sourceLink = modal.locator('a[href*="youtube.com"]').first();
     await expect(sourceLink).toBeVisible();
     await expect(sourceLink).toHaveAttribute('target', '_blank');
   });

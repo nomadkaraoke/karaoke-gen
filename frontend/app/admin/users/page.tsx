@@ -242,7 +242,7 @@ export default function AdminUsersPage() {
             placeholder="Search by email..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             className="max-w-sm"
           />
           <Button variant="secondary" onClick={handleSearch}>
@@ -288,7 +288,7 @@ export default function AdminUsersPage() {
                   {sortBy === "email" ? (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
                 </span>
               </TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead className="hidden sm:table-cell">Role</TableHead>
               <TableHead
                 className="text-right cursor-pointer select-none"
                 onClick={() => { setSortBy("credits"); setSortOrder(sortBy === "credits" && sortOrder === "desc" ? "asc" : "desc"); setOffset(0) }}
@@ -299,10 +299,10 @@ export default function AdminUsersPage() {
                   {sortBy === "credits" ? (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}
                 </span>
               </TableHead>
-              <TableHead className="text-right">Spent</TableHead>
-              <TableHead className="text-right">Jobs</TableHead>
+              <TableHead className="hidden lg:table-cell text-right">Spent</TableHead>
+              <TableHead className="hidden md:table-cell text-right">Jobs</TableHead>
               <TableHead
-                className="cursor-pointer select-none"
+                className="hidden lg:table-cell cursor-pointer select-none"
                 onClick={() => { setSortBy("created_at"); setSortOrder(sortBy === "created_at" && sortOrder === "desc" ? "asc" : "desc"); setOffset(0) }}
                 title="Sort by creation date"
               >
@@ -312,7 +312,7 @@ export default function AdminUsersPage() {
                 </span>
               </TableHead>
               <TableHead
-                className="cursor-pointer select-none"
+                className="hidden md:table-cell cursor-pointer select-none"
                 onClick={() => { setSortBy("last_login_at"); setSortOrder(sortBy === "last_login_at" && sortOrder === "desc" ? "asc" : "desc"); setOffset(0) }}
                 title="Sort by last login"
               >
@@ -345,30 +345,30 @@ export default function AdminUsersPage() {
                   onClick={() => router.push(`/admin/users/detail?email=${encodeURIComponent(user.email)}`)}
                   title="View user details"
                 >
-                  <TableCell className="font-medium">
-                    {user.display_name || user.email}
+                  <TableCell className="font-medium max-w-[180px] sm:max-w-[260px]">
+                    <span className="block truncate">{user.display_name || user.email}</span>
                     {user.display_name && (
-                      <span className="text-muted-foreground text-sm block">
+                      <span className="text-muted-foreground text-sm block truncate">
                         {user.email}
                       </span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={user.role === "admin" ? "default" : "secondary"}>
                       {user.role}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">{user.credits}</TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">
+                  <TableCell className="hidden lg:table-cell text-right text-sm text-muted-foreground">
                     {(user.total_spent ?? 0) > 0 ? `$${((user.total_spent ?? 0) / 100).toFixed(2)}` : "—"}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="hidden md:table-cell text-right">
                     {user.total_jobs_created ?? 0} / {user.total_jobs_completed ?? 0}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground" title={formatFullDate(user.created_at)}>
+                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground" title={formatFullDate(user.created_at)}>
                     {formatRelativeTime(user.created_at)}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground" title={formatFullDate(user.last_login_at)}>
+                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground" title={formatFullDate(user.last_login_at)}>
                     {formatRelativeTime(user.last_login_at)}
                   </TableCell>
                   <TableCell className="text-right">

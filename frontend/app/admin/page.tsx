@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { adminApi, AdminStatsOverview, RevenueSummary } from "@/lib/api"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { StatsCard, StatsGrid } from "@/components/admin/stats-card"
@@ -88,6 +89,7 @@ export default function AdminDashboardPage() {
           description={`${stats?.active_users_7d ?? 0} active in last 7 days`}
           icon={Users}
           loading={loading}
+          href="/admin/users"
         />
         <StatsCard
           title="Total Jobs"
@@ -95,6 +97,7 @@ export default function AdminDashboardPage() {
           description={`${stats?.jobs_last_7d ?? 0} in last 7 days`}
           icon={Briefcase}
           loading={loading}
+          href="/admin/jobs"
         />
         <StatsCard
           title="Revenue (30d)"
@@ -103,6 +106,7 @@ export default function AdminDashboardPage() {
           icon={DollarSign}
           loading={loading}
           valueClassName="text-green-600 dark:text-green-400"
+          href="/admin/payments"
         />
         <StatsCard
           title="Credits Issued (30d)"
@@ -110,6 +114,7 @@ export default function AdminDashboardPage() {
           description="Credits added to accounts"
           icon={CreditCard}
           loading={loading}
+          href="/admin/payments"
         />
       </StatsGrid>
 
@@ -127,56 +132,29 @@ export default function AdminDashboardPage() {
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-yellow-500" />
-                    <span className="text-sm">Pending</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status?.pending ?? 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm">Processing</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status?.processing ?? 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm">Awaiting Review</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status?.awaiting_review ?? 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm">Awaiting Instrumental</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status?.awaiting_instrumental ?? 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span className="text-sm">Complete</span>
-                  </div>
-                  <Badge variant="secondary">{stats?.jobs_by_status?.complete ?? 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-red-500" />
-                    <span className="text-sm">Failed</span>
-                  </div>
-                  <Badge variant="destructive">{stats?.jobs_by_status?.failed ?? 0}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">Cancelled</span>
-                  </div>
-                  <Badge variant="outline">{stats?.jobs_by_status?.cancelled ?? 0}</Badge>
-                </div>
+              <div className="space-y-1">
+                {[
+                  { label: "Pending", icon: Clock, iconClass: "text-yellow-500", count: stats?.jobs_by_status?.pending ?? 0, href: "/admin/jobs?status=pending", badge: "secondary" as const },
+                  { label: "Processing", icon: Loader2, iconClass: "text-blue-500", count: stats?.jobs_by_status?.processing ?? 0, href: "/admin/jobs", badge: "secondary" as const },
+                  { label: "Awaiting Review", icon: AlertCircle, iconClass: "text-orange-500", count: stats?.jobs_by_status?.awaiting_review ?? 0, href: "/admin/jobs?status=awaiting_review", badge: "secondary" as const },
+                  { label: "Awaiting Instrumental", icon: AlertCircle, iconClass: "text-purple-500", count: stats?.jobs_by_status?.awaiting_instrumental ?? 0, href: "/admin/jobs?status=awaiting_instrumental_selection", badge: "secondary" as const },
+                  { label: "Complete", icon: CheckCircle, iconClass: "text-green-500", count: stats?.jobs_by_status?.complete ?? 0, href: "/admin/jobs?status=complete", badge: "secondary" as const },
+                  { label: "Failed", icon: XCircle, iconClass: "text-red-500", count: stats?.jobs_by_status?.failed ?? 0, href: "/admin/jobs?status=failed", badge: "destructive" as const },
+                  { label: "Cancelled", icon: XCircle, iconClass: "text-muted-foreground", count: stats?.jobs_by_status?.cancelled ?? 0, href: "/admin/jobs?status=cancelled", badge: "outline" as const },
+                ].map(({ label, icon: RowIcon, iconClass, count, href, badge }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    className="flex items-center justify-between rounded-md px-2 py-1.5 -mx-2 hover:bg-muted/60 transition-colors"
+                    title={`View ${label.toLowerCase()} jobs`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <RowIcon className={`w-4 h-4 ${iconClass}`} />
+                      <span className="text-sm">{label}</span>
+                    </div>
+                    <Badge variant={badge}>{count}</Badge>
+                  </Link>
+                ))}
               </div>
             )}
           </CardContent>
