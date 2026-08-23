@@ -9,6 +9,7 @@ Handles:
 """
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Tuple, List, Optional, Any, Dict
 
@@ -194,20 +195,37 @@ def _compute_admin_stats_overview(db, exclude_test: bool) -> AdminStatsOverview:
 
     if exclude_test:
         # When excluding test data, we must stream and filter in Python
-        # because Firestore doesn't support "not ends with" queries
+        # because Firestore doesn't support "not ends with" queries.
+        # The two streams are independent, so run them concurrently.
 
-        # Stream all users and filter (field mask: only the fields the stats need)
-        all_users = []
-        users_fetched = 0
-        for doc in users_collection.select(_OVERVIEW_USER_FIELDS).limit(USERS_STREAM_LIMIT).stream():
-            users_fetched += 1
-            user_data = doc.to_dict()
-            email = user_data.get("email", "")
-            if not is_test_email(email):
-                all_users.append(user_data)
+        def _stream_users():
+            users, fetched = [], 0
+            for doc in users_collection.select(_OVERVIEW_USER_FIELDS).limit(USERS_STREAM_LIMIT).stream():
+                fetched += 1
+                user_data = doc.to_dict()
+                if not is_test_email(user_data.get("email", "")):
+                    users.append(user_data)
+            return users, fetched
+
+        def _stream_jobs():
+            jobs, fetched = [], 0
+            for doc in jobs_collection.select(_OVERVIEW_JOB_FIELDS).limit(JOBS_STREAM_LIMIT).stream():
+                fetched += 1
+                job_data = doc.to_dict()
+                if not is_test_email(job_data.get("user_email", "")):
+                    jobs.append(job_data)
+            return jobs, fetched
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            users_future = executor.submit(_stream_users)
+            jobs_future = executor.submit(_stream_jobs)
+            all_users, users_fetched = users_future.result()
+            all_jobs, jobs_fetched = jobs_future.result()
 
         if users_fetched >= USERS_STREAM_LIMIT:
             logger.warning(f"Users stream hit limit ({USERS_STREAM_LIMIT}), stats may be incomplete")
+        if jobs_fetched >= JOBS_STREAM_LIMIT:
+            logger.warning(f"Jobs stream hit limit ({JOBS_STREAM_LIMIT}), stats may be incomplete")
 
         # Calculate user stats from filtered list
         total_users = len(all_users)
@@ -229,20 +247,6 @@ def _compute_admin_stats_overview(db, exclude_test: bool) -> AdminStatsOverview:
                     amount = txn.get("amount", 0)
                     if amount > 0:
                         total_credits_issued_30d += amount
-
-        # Stream all jobs and filter by user_email (field mask keeps this fast —
-        # full job docs carry huge state_data payloads)
-        all_jobs = []
-        jobs_fetched = 0
-        for doc in jobs_collection.select(_OVERVIEW_JOB_FIELDS).limit(JOBS_STREAM_LIMIT).stream():
-            jobs_fetched += 1
-            job_data = doc.to_dict()
-            user_email = job_data.get("user_email", "")
-            if not is_test_email(user_email):
-                all_jobs.append(job_data)
-
-        if jobs_fetched >= JOBS_STREAM_LIMIT:
-            logger.warning(f"Jobs stream hit limit ({JOBS_STREAM_LIMIT}), stats may be incomplete")
 
         # Calculate job stats from filtered list
         total_jobs = len(all_jobs)
