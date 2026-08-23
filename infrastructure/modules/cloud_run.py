@@ -373,6 +373,20 @@ def create_audio_download_job(
                                 name="GOOGLE_CLOUD_PROJECT",
                                 value=PROJECT_ID,
                             ),
+                            # Email provider (Postmark). The worker's duration
+                            # reconcile can send an over-limit cancellation email
+                            # to the customer; without this the EmailService "fail
+                            # loudly" guard raised in production and crashed the
+                            # whole download (job a453d1d5).
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="POSTMARK_SERVER_TOKEN",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/postmark-server-token",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
                         ],
                     )
                 ],

@@ -138,7 +138,24 @@ async def reconcile_and_maybe_pause(job_id: str) -> bool:
     user_service = get_user_service()
     storage = StorageService()
     # JobManager/StorageService have no singleton accessor; instantiate directly (matches audio_download_worker).
-    email_service = get_email_service()
+    #
+    # Email is only actually sent on the rare over-limit *cancel* branch. Building
+    # the service must never crash an otherwise-successful download: EmailService()
+    # raises in production when POSTMARK_SERVER_TOKEN is unset (the "fail loudly"
+    # guard from the 2026-06-09 fallback audit), and this worker runs as the
+    # audio-download-job Cloud Run Job. If the provider can't be built, reconcile
+    # still proceeds (reconcile_duration tolerates email_service=None); we log
+    # loudly so a config regression is visible rather than silently dropping a
+    # customer notification. (Job a453d1d5: token missing on the job crashed the
+    # download entirely.)
+    try:
+        email_service = get_email_service()
+    except Exception as e:
+        logger.error(
+            "Job %s: could not construct email service for duration reconcile "
+            "(%s); proceeding without customer email notifications", job_id, e,
+        )
+        email_service = None
 
     result = await asyncio.get_running_loop().run_in_executor(
         None,
