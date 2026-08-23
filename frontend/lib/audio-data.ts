@@ -14,7 +14,14 @@ export interface AudioData {
 const PEAKS_PER_SECOND = 400
 
 export async function fetchAudioData(url: string): Promise<AudioData> {
-	const arrayBuffer = await fetch(url).then((response) => response.arrayBuffer())
+	// fetch() resolves even for 4xx/5xx; the vocals endpoint 404s when a job has
+	// no vocal stem. Fail explicitly so the caller sees "no vocals" rather than an
+	// opaque decodeAudioData error on the JSON/HTML error body.
+	const response = await fetch(url)
+	if (!response.ok) {
+		throw new Error(`Failed to fetch vocals audio: ${response.status}`)
+	}
+	const arrayBuffer = await response.arrayBuffer()
 
 	const context = new AudioContext()
 
@@ -27,16 +34,25 @@ export async function fetchAudioData(url: string): Promise<AudioData> {
 		const peaks = new Float32Array(bucketCount)
 
 		// Collapse all channels into a single envelope by taking the maximum
-		// absolute sample value in each bucket. The raw decoded buffer is released
-		// when this function returns; only the compact `peaks` array is retained.
+		// absolute sample value in each bucket. Iterate per bucket (not per sample)
+		// so we avoid a division + Math.floor on every one of the ~millions of
+		// samples, which would otherwise freeze the main thread while loading.
+		// The raw decoded buffer is released when this function returns; only the
+		// compact `peaks` array is retained.
 		for (let channelIdx = 0; channelIdx < numberOfChannels; channelIdx++) {
 			const channelData = decoded.getChannelData(channelIdx)
-			for (let i = 0; i < length; i++) {
-				const bucket = Math.min(bucketCount - 1, Math.floor(i / samplesPerBucket))
-				const amplitude = Math.abs(channelData[i])
-				if (amplitude > peaks[bucket]) {
-					peaks[bucket] = amplitude
+			for (let bucket = 0; bucket < bucketCount; bucket++) {
+				const start = bucket * samplesPerBucket
+				if (start >= length) break
+				const end = bucket === bucketCount - 1 ? length : Math.min(length, start + samplesPerBucket)
+				let peak = peaks[bucket]
+				for (let i = start; i < end; i++) {
+					const amplitude = Math.abs(channelData[i])
+					if (amplitude > peak) {
+						peak = amplitude
+					}
 				}
+				peaks[bucket] = peak
 			}
 		}
 

@@ -13,11 +13,24 @@ export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderPro
 	useEffect(() => {
 		if (!audioUrl) return
 
-		fetchAudioData(audioUrl).then((audioData) => {
-			setAudioData(audioData)
-		})
+		// Guard against (a) an unhandled rejection when the endpoint 404s (no vocal
+		// stem for this job) and (b) a stale in-flight fetch resolving after a newer
+		// audioUrl has already been set.
+		let cancelled = false
+
+		fetchAudioData(audioUrl)
+			.then((audioData) => {
+				if (!cancelled) setAudioData(audioData)
+			})
+			.catch((error) => {
+				if (!cancelled) {
+					console.error('Failed to load vocals audio data', error)
+					setAudioData(null)
+				}
+			})
 
 		return () => {
+			cancelled = true
 			setAudioData(null)
 		}
 	}, [audioUrl])

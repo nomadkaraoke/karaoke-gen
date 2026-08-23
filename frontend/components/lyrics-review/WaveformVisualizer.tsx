@@ -53,11 +53,7 @@ export const WaveformVisualizer = ({
 		return audioData.peaks.slice(startIndex, endIndex)
 	}, [audioData])
 
-	useEffect(() => {
-		render(startTime, endTime)
-	}, [audioReady.ready, startTime, endTime, canvasSize])
-
-	const render = (startTime: number, endTime: number) => {
+	const render = useCallback((startTime: number, endTime: number) => {
 		const ctx = canvasCtxRef.current
 		if (!ctx) return
 
@@ -69,7 +65,9 @@ export const WaveformVisualizer = ({
 		if (!audioData) return
 
 		for (let x = 0; x < ctx.canvas.width; x++) {
-			const dataPointIndex = Math.floor((x - 0.5) / ctx.canvas.width * audioData.length)
+			// Clamp the first pixel: (x - 0.5) is negative at x=0, and a negative
+			// slice start would sample peaks from the end of the window instead.
+			const dataPointIndex = Math.max(0, Math.floor((x - 0.5) / ctx.canvas.width * audioData.length))
 			const nextDataPointIndex = Math.floor((x + 0.5) / ctx.canvas.width * audioData.length)
 
 			const amplitude = audioData
@@ -80,7 +78,15 @@ export const WaveformVisualizer = ({
 
 			ctx.fillRect(x, (ctx.canvas.height - barHeight) / 2, 1, barHeight)
 		}
-	}
+	}, [readAudioData, barColor])
+
+	// Re-render when the data (readAudioData is memoized on audioData), the window,
+	// the canvas size, or the colour changes. audioData arrives asynchronously, so
+	// omitting `render` here would leave the canvas blank until an unrelated prop
+	// changed.
+	useEffect(() => {
+		render(startTime, endTime)
+	}, [render, startTime, endTime, canvasSize, audioReady.ready])
 
 	return (
 		<div
