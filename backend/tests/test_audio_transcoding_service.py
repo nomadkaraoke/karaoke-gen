@@ -394,3 +394,52 @@ class TestGetReviewAudioUrlAsync:
         result = await service.get_review_audio_url_async("jobs/abc/input/song.flac")
 
         assert result == "https://signed/url"
+
+
+class TestGetReviewAudioBytes:
+    """get_review_audio_bytes() proxies the audio through the API (CORS-safe)."""
+
+    def test_returns_ogg_bytes_on_success(self):
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_storage = Mock()
+        mock_storage.file_exists.return_value = True  # cache hit
+        mock_storage.download_bytes.return_value = b"OggS-transcoded-bytes"
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        data, content_type = service.get_review_audio_bytes("jobs/abc/stems/vocals_clean.flac")
+
+        assert data == b"OggS-transcoded-bytes"
+        assert content_type == "audio/ogg"
+        mock_storage.download_bytes.assert_called_once_with("jobs/abc/review-audio/vocals_clean.ogg")
+
+    def test_falls_back_to_source_bytes_on_transcode_error(self):
+        """A transient transcode failure serves the original source, not a 500."""
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_storage = Mock()
+        mock_storage.file_exists.return_value = False  # cache miss → transcode path
+        mock_storage.download_file.side_effect = Exception("ffmpeg input download failed")
+        mock_storage.download_bytes.return_value = b"fLaC-source-bytes"
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        data, content_type = service.get_review_audio_bytes("jobs/abc/stems/vocals_clean.flac")
+
+        assert data == b"fLaC-source-bytes"
+        assert content_type == "audio/flac"
+        # Fell back to proxying the original source object.
+        mock_storage.download_bytes.assert_called_once_with("jobs/abc/stems/vocals_clean.flac")
+
+    @pytest.mark.asyncio
+    async def test_async_wrapper_delegates(self):
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_storage = Mock()
+        mock_storage.file_exists.return_value = True
+        mock_storage.download_bytes.return_value = b"OggS"
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        data, content_type = await service.get_review_audio_bytes_async("jobs/abc/stems/vocals_clean.flac")
+
+        assert data == b"OggS"
+        assert content_type == "audio/ogg"

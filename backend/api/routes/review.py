@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Literal, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 
 from backend.models.job import JobStatus
 from backend.models.review_session import ReviewSession, ReviewSessionSummary
@@ -437,6 +437,19 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
 
     try:
         transcoding = AudioTranscodingService()
+
+        if stem == "vocals":
+            # Proxy the vocals bytes through the API rather than 302-redirecting to
+            # a signed GCS URL. The waveform visualizer fetch()es + decodeAudioData()s
+            # this (a cross-origin READ), and a cross-origin redirect makes the
+            # browser send `Origin: null`, which the bucket CORS rejects. Serving
+            # the (~3 MB) bytes from the API keeps it same-origin to api.* whose
+            # CORS already allows the frontend. <audio> playback (stem="input")
+            # doesn't need CORS, so it keeps the lighter redirect below.
+            audio_bytes, content_type = await transcoding.get_review_audio_bytes_async(audio_gcs_path)
+            logger.info(f"Job {job_id}: Proxying {len(audio_bytes)}B vocals audio for waveform")
+            return Response(content=audio_bytes, media_type=content_type)
+
         signed_url = await transcoding.get_review_audio_url_async(audio_gcs_path, expiration_minutes=120)
         logger.info(f"Job {job_id}: Redirecting to signed URL for audio review")
         return RedirectResponse(url=signed_url, status_code=302)

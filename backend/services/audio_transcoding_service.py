@@ -137,6 +137,34 @@ class AudioTranscodingService:
             self.get_review_audio_url, source_gcs_path, expiration_minutes
         )
 
+    def get_review_audio_bytes(self, source_gcs_path: str) -> tuple[bytes, str]:
+        """Return (bytes, content_type) of the transcoded review audio.
+
+        Used to proxy the audio through the API instead of 302-redirecting to a
+        signed GCS URL. The waveform visualizer fetch()es + decodeAudioData()s
+        this, which is a cross-origin read; a redirect to storage.googleapis.com
+        makes the browser send `Origin: null` on the redirected request, which
+        the bucket CORS rejects. Proxying keeps it same-origin to the API (which
+        sets the right CORS headers). The transcoded OGG is small (~3 MB), well
+        under Cloud Run's 32 MB response cap.
+
+        Falls back to the original (FLAC) source if transcoding fails, mirroring
+        get_review_audio_url, so a transient ffmpeg/cache error doesn't blank the
+        waveform while the source still exists. (A very long FLAC could exceed
+        Cloud Run's 32 MB cap on that rare fallback path — the frontend then just
+        hides the waveform, which is acceptable degradation.)
+        """
+        try:
+            cache_path = self.transcode_if_needed(source_gcs_path)
+            return self.storage.download_bytes(cache_path), "audio/ogg"
+        except Exception as e:
+            logger.warning(f"Transcoding failed for {source_gcs_path}, serving source audio: {e}")
+            return self.storage.download_bytes(source_gcs_path), "audio/flac"
+
+    async def get_review_audio_bytes_async(self, source_gcs_path: str) -> tuple[bytes, str]:
+        """Async wrapper around get_review_audio_bytes via asyncio.to_thread."""
+        return await asyncio.to_thread(self.get_review_audio_bytes, source_gcs_path)
+
     def prepare_review_audio_for_job(self, job) -> list[str]:
         """
         Transcode all review audio files for a job (eager transcoding).
