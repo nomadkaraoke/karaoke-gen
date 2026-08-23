@@ -45,9 +45,12 @@ export const WaveformVisualizer = ({
 	const readAudioData = useCallback((startTime: number, endTime: number) => {
 		if (audioData == null) return null
 
-		const startIndex = Math.floor(startTime / audioData.duration * audioData.buffer.length)
-		const endIndex = Math.floor(endTime / audioData.duration * audioData.buffer.length)
-		return audioData.buffer.slice(startIndex, endIndex)
+		// Index directly into the time-based peak envelope (peaksPerSecond buckets
+		// per second) so we only ever touch the window being drawn, never the whole
+		// track.
+		const startIndex = Math.max(0, Math.floor(startTime * audioData.peaksPerSecond))
+		const endIndex = Math.min(audioData.peaks.length, Math.ceil(endTime * audioData.peaksPerSecond))
+		return audioData.peaks.slice(startIndex, endIndex)
 	}, [audioData])
 
 	useEffect(() => {
