@@ -96,6 +96,29 @@ class TestLogAndSend:
             ok = postmark_service.send_credits_added("u@example.com", 1, 1)
         assert ok is True
 
+    def test_redacts_magic_link_and_review_tokens(self, postmark_service):
+        captured = {}
+        fake_db = MagicMock()
+        fake_db.collection.return_value.document.return_value.set = lambda doc: captured.update(doc=doc)
+
+        html = ('<a href="https://gen.nomadkaraoke.com/en/auth/verify?token=SECRET123&ref=ABC">Sign in</a>'
+                ' and review at https://gen.nomadkaraoke.com/app/jobs?token=REVIEWTOK')
+        text = "Sign in: https://gen.nomadkaraoke.com/en/auth/verify?token=SECRET123"
+        with patch.object(email_module.requests, "post", return_value=_fake_response(message_id="m1")), \
+             patch("backend.services.firestore_service.FirestoreService") as FS:
+            FS.return_value.db = fake_db
+            postmark_service.send_email("u@example.com", "Sign in", html, text_content=text)
+
+        stored_html = captured["doc"]["html_content"]
+        stored_text = captured["doc"]["text_content"]
+        assert "SECRET123" not in stored_html
+        assert "REVIEWTOK" not in stored_html
+        assert "ABC" not in stored_html
+        assert "[REDACTED]" in stored_html
+        assert "SECRET123" not in stored_text
+        # Non-sensitive structure is preserved.
+        assert "Sign in" in stored_html
+
     def test_no_persistence_when_send_fails(self, postmark_service):
         with patch.object(email_module.requests, "post", return_value=_fake_response(status_code=500)), \
              patch("backend.services.firestore_service.FirestoreService") as FS:

@@ -10,6 +10,7 @@ Provider selection: POSTMARK_SERVER_TOKEN env var enables Postmark.
 import html
 import logging
 import os
+import re
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
@@ -260,6 +261,20 @@ class PostmarkEmailProvider(EmailProvider):
             return SendResult(success=False, message_id=None)
 
 
+# Query params that carry single-use auth/capability tokens (magic-link sign-in,
+# lyrics/instrumental review access, referral codes). We persist a redacted copy
+# so the admin email-history log never becomes a store of live credentials — the
+# email still renders faithfully, only the secret value is masked.
+_SENSITIVE_QUERY_PARAM = re.compile(r"([?&](?:token|ref|review_token|instrumental_token)=)[^&\"'\s<]+", re.IGNORECASE)
+
+
+def _redact_sensitive_tokens(content: Optional[str]) -> Optional[str]:
+    """Mask token/ref query-param values in email content before persistence."""
+    if not content:
+        return content
+    return _SENSITIVE_QUERY_PARAM.sub(r"\1[REDACTED]", content)
+
+
 def _dedupe_emails(emails: List[str]) -> List[str]:
     """Lowercase-normalize and deduplicate a list of email addresses, preserving order."""
     seen = set()
@@ -429,8 +444,9 @@ class EmailService:
         """Write one Firestore ``email_log`` doc mirroring a sent email.
 
         Keyed by the Postmark MessageID when available (idempotent), else an
-        auto-id. Stores the exact rendered HTML so the admin UI can show older
-        mail after Postmark's ~45-day content retention expires.
+        auto-id. Stores the rendered HTML so the admin UI can show older mail
+        after Postmark's ~45-day content retention expires — with single-use
+        auth/capability tokens redacted so the log never holds live credentials.
         """
         from backend.services.firestore_service import FirestoreService
 
@@ -442,8 +458,8 @@ class EmailService:
             "bcc": _dedupe_emails(bcc_emails) if bcc_emails else [],
             "from_email": from_email,
             "subject": subject,
-            "html_content": html_content,
-            "text_content": text_content,
+            "html_content": _redact_sensitive_tokens(html_content),
+            "text_content": _redact_sensitive_tokens(text_content),
             "email_type": email_type,
             "message_stream": "outbound",
             "postmark_message_id": message_id,

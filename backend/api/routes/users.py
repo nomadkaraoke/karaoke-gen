@@ -442,8 +442,12 @@ async def verify_magic_link(
     # `locale` is narrowed to en/es/de for email rendering; `ui_locale` is the
     # full UI language (any of 33) so admins know what language to communicate in.
     ui_locale = get_full_locale_from_request(http_request)
+    has_accept_language = bool(http_request.headers.get("accept-language"))
     locale_updates = {}
-    if locale and locale != (user.locale or "en"):
+    # Only touch locale when the client actually sent an Accept-Language header —
+    # otherwise get_locale_from_request()'s "en" default would clobber a user's
+    # real stored locale on token-only logins (e.g. magic-link scanners).
+    if has_accept_language and locale and locale != (user.locale or "en"):
         locale_updates["locale"] = locale
     if ui_locale and ui_locale != user.ui_locale:
         locale_updates["ui_locale"] = ui_locale

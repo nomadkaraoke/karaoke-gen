@@ -26,8 +26,11 @@ logger = logging.getLogger(__name__)
 POSTMARK_API_BASE = "https://api.postmarkapp.com"
 EMAIL_LOG_COLLECTION = "email_log"
 
-# Postmark requires count+offset on the outbound list; cap what we surface.
-_LIST_COUNT = 100
+# Postmark's outbound list is paginated (count+offset, count max 500). We page
+# through until exhausted or the safety cap, so a user with a long history isn't
+# silently truncated at one batch.
+_PAGE_SIZE = 100
+_MAX_RECORDS = 500  # safety cap per source (admin view; avoids unbounded fetches)
 _HTTP_TIMEOUT = 12
 
 
@@ -66,26 +69,41 @@ class PostmarkAdminService:
 
     # -- Postmark queries --------------------------------------------------
     def _fetch_postmark_messages(self, email: str) -> List[Dict[str, Any]]:
-        """List outbound Postmark messages sent to ``email`` (best-effort)."""
+        """List outbound Postmark messages sent to ``email`` (best-effort, paginated)."""
         if not self.server_token:
             return []
-        try:
-            resp = requests.get(
-                f"{POSTMARK_API_BASE}/messages/outbound",
-                headers=self._postmark_headers(),
-                params={"recipient": email, "count": _LIST_COUNT, "offset": 0},
-                timeout=_HTTP_TIMEOUT,
-            )
-            if resp.status_code != 200:
-                logger.warning(
-                    "Postmark outbound list returned %s for recipient=%s: %s",
-                    resp.status_code, email, resp.text[:200],
+
+        messages: List[Dict[str, Any]] = []
+        offset = 0
+        while len(messages) < _MAX_RECORDS:
+            try:
+                resp = requests.get(
+                    f"{POSTMARK_API_BASE}/messages/outbound",
+                    headers=self._postmark_headers(),
+                    params={"recipient": email, "count": _PAGE_SIZE, "offset": offset},
+                    timeout=_HTTP_TIMEOUT,
                 )
-                return []
-            messages = resp.json().get("Messages", []) or []
-        except (requests.RequestException, ValueError):
-            logger.exception("Failed to fetch Postmark outbound messages for %s", email)
-            return []
+                if resp.status_code != 200:
+                    logger.warning(
+                        "Postmark outbound list returned %s for recipient=%s: %s",
+                        resp.status_code, email, resp.text[:200],
+                    )
+                    break
+                body = resp.json()
+                batch = body.get("Messages", []) or []
+            except (requests.RequestException, ValueError):
+                logger.exception("Failed to fetch Postmark outbound messages for %s", email)
+                break
+
+            messages.extend(batch)
+            total = body.get("TotalCount", 0)
+            offset += _PAGE_SIZE
+            # Stop when this batch was short or we've read everything Postmark has.
+            if len(batch) < _PAGE_SIZE or offset >= total:
+                break
+
+        if len(messages) >= _MAX_RECORDS:
+            logger.info("Postmark history for %s capped at %d records", email, _MAX_RECORDS)
 
         summaries = []
         for m in messages:
@@ -111,7 +129,7 @@ class PostmarkAdminService:
                 self.db.collection(EMAIL_LOG_COLLECTION)
                 .where(filter=FieldFilter("recipient", "==", recipient))
                 .order_by("created_at", direction=firestore.Query.DESCENDING)
-                .limit(_LIST_COUNT)
+                .limit(_MAX_RECORDS)
             )
             docs = list(query.stream())
         except Exception:

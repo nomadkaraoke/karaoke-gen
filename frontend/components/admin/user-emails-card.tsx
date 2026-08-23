@@ -136,8 +136,17 @@ export function UserEmailsCard({ email }: { email: string }) {
               {emails.map((item, i) => (
                 <TableRow
                   key={item.message_id || item.doc_id || i}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open email: ${item.subject || "(no subject)"}`}
                   onClick={() => openEmail(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      openEmail(item)
+                    }
+                  }}
                 >
                   <TableCell className="text-sm whitespace-nowrap">{formatDate(item.sent_at)}</TableCell>
                   <TableCell className="text-sm max-w-[280px] truncate">{item.subject || "(no subject)"}</TableCell>

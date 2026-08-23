@@ -52,3 +52,9 @@ def test_does_not_narrow_to_email_locales():
 def test_skips_unparseable_leading_entry():
     # Leading empty/garbage token is skipped in favour of the next valid one.
     assert get_full_locale_from_request(_req(",,vi-VN")) == "vi"
+
+
+def test_skips_q0_rejected_ranges():
+    # A client that explicitly rejects English (q=0) but accepts French.
+    assert get_full_locale_from_request(_req("en;q=0, fr;q=0.9")) == "fr"
+    assert get_full_locale_from_request(_req("de;q=0.0,es")) == "es"

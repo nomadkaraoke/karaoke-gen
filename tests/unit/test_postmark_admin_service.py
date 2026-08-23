@@ -66,6 +66,24 @@ class TestHistoryMerge:
         assert m2["source"] == "postmark"
         assert m2["has_stored_html"] is True
 
+    def test_paginates_postmark_until_exhausted(self):
+        svc, _ = _make_service([])
+        # 250 total messages across pages of 100 → 3 requests (100, 100, 50).
+        def fake_get(url, headers=None, params=None, timeout=None):
+            offset = params["offset"]
+            remaining = max(0, 250 - offset)
+            n = min(params["count"], remaining)
+            msgs = [{"MessageID": f"m{offset+i}", "Subject": "s", "Recipients": ["u@x.com"],
+                     "ReceivedAt": f"2026-08-20T{(offset+i) % 24:02d}:00:00Z"} for i in range(n)]
+            r = MagicMock(status_code=200)
+            r.json.return_value = {"Messages": msgs, "TotalCount": 250}
+            return r
+
+        with patch.object(pm.requests, "get", side_effect=fake_get) as get_mock:
+            history = svc.get_user_email_history("u@x.com")
+        assert get_mock.call_count == 3  # paged, not a single batch
+        assert history["count"] == 250
+
     def test_no_postmark_token_returns_log_only(self):
         svc, _ = _make_service([
             _log_doc("auto1", {"postmark_message_id": None, "recipient": "u@x.com",

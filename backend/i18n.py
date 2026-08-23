@@ -108,8 +108,13 @@ def get_full_locale_from_request(request: Request) -> str | None:
     for part in accept_lang.split(","):
         # Each part looks like "en-US;q=0.9" — take the language-region token
         # before the quality factor, then the primary subtag before any region.
-        token = part.split(";")[0].strip()
+        segments = part.split(";")
+        token = segments[0].strip()
         if not token or token == "*":
+            continue
+        # Skip ranges the client explicitly rejects with q=0.
+        if any(seg.strip().lower().replace(" ", "") in ("q=0", "q=0.0", "q=0.00", "q=0.000")
+               for seg in segments[1:]):
             continue
         lang = token.split("-")[0].strip().lower()
         if lang.isalpha() and len(lang) >= 2:
