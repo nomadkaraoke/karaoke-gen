@@ -6,9 +6,10 @@
  * and backend calls are addressed with relative "/api/..." URLs.
  */
 
-import { apiFetch, BackendUnavailableError } from '@/lib/api'
+import { apiFetch, BackendUnavailableError, __backendHealthProbe } from '@/lib/api'
 import {
   getBackendStatus,
+  configureHealthProbe,
   STALL_RECONNECTING_MS,
   STALL_UNAVAILABLE_MS,
 } from '@/lib/backend-status'
@@ -42,6 +43,8 @@ describe('apiFetch', () => {
   beforeEach(() => {
     fetchMock.mockReset()
     ;(globalThis as unknown as { fetch: unknown }).fetch = fetchMock
+    // Re-register the real probe so its cached verdict resets between tests.
+    configureHealthProbe(__backendHealthProbe)
   })
 
   afterEach(() => {
@@ -108,21 +111,57 @@ describe('apiFetch', () => {
     expect(getBackendStatus()).toBe('online')
   })
 
-  it('surfaces the banner only once a GET has STALLED past the thresholds, then clears', async () => {
+  it('surfaces the banner for a stalled GET once the health probe confirms the outage, then clears', async () => {
     jest.useFakeTimers()
-    const d = deferredFetch()
-    fetchMock.mockImplementation(d.fn)
+    // Everything hangs — the backend is genuinely unreachable (recycle-style: the
+    // origin holds requests open, so the probe only fails via its own timeout).
+    let settleGet!: (r: Response) => void
+    fetchMock.mockImplementation((url: unknown) => {
+      if (String(url).includes('/api/health')) return new Promise<Response>(() => {})
+      return new Promise<Response>((res) => {
+        settleGet = res
+      })
+    })
 
     const p = apiFetch('/api/jobs/abc')
     p.catch(() => {}) // avoid unhandled rejection if it ever fails
 
     expect(getBackendStatus()).toBe('online')
+    // Stall threshold crossed → probe fires, but until it has a verdict the banner
+    // stays hidden (a slow endpoint must not alarm the user without evidence).
     await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS)
+    expect(getBackendStatus()).toBe('online')
+    // Probe times out (~4s) → outage confirmed → the hint appears.
+    await jest.advanceTimersByTimeAsync(5_000)
     expect(getBackendStatus()).toBe('reconnecting')
-    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS - STALL_RECONNECTING_MS)
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS - STALL_RECONNECTING_MS - 5_000)
     expect(getBackendStatus()).toBe('unavailable')
 
-    d.settle(mockResponse(200, { ok: true }))
+    settleGet(mockResponse(200, { ok: true }))
+    await p
+    expect(getBackendStatus()).toBe('online')
+  })
+
+  it('never surfaces the banner for a slow GET while the backend is reachable (health probe OK)', async () => {
+    jest.useFakeTimers()
+    // The read is legitimately slow (e.g. first-time instrumental-analysis
+    // transcoding) but /api/health answers instantly — no banner, ever.
+    let settleGet!: (r: Response) => void
+    fetchMock.mockImplementation((url: unknown) => {
+      if (String(url).includes('/api/health')) return Promise.resolve(mockResponse(200))
+      return new Promise<Response>((res) => {
+        settleGet = res
+      })
+    })
+
+    const p = apiFetch('/api/jobs/abc')
+    p.catch(() => {})
+
+    // Well past both stall thresholds (but under the 45s hard timeout).
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS + 15_000)
+    expect(getBackendStatus()).toBe('online')
+
+    settleGet(mockResponse(200, { ok: true }))
     await p
     expect(getBackendStatus()).toBe('online')
   })

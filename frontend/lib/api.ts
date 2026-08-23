@@ -5,7 +5,7 @@
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
-import { beginRequest, endRequest } from './backend-status';
+import { beginRequest, endRequest, configureHealthProbe } from './backend-status';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -488,6 +488,31 @@ const RETRY_BACKOFF_MS = [600, 1500];
 const TRANSIENT_STATUS = new Set([502, 503, 504, 520, 521, 522, 523, 524]);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** How long the reachability probe gets before we treat the backend as unreachable.
+ *  During a recycle the origin HANGS (rather than erroring), so the probe must race
+ *  its own timer — fetch abort support can't be relied on to settle the promise. */
+const HEALTH_PROBE_TIMEOUT_MS = 4_000;
+
+// Confirm-before-banner probe: a stalled GET only surfaces the connectivity banner
+// once this probe says the backend is genuinely unreachable (see backend-status.ts).
+// /api/health is unauthenticated and returns instantly, so a legitimately slow read
+// (first-time instrumental-analysis / lyrics-review transcoding) never false-fires.
+/** Exported so tests can re-register the real probe to reset its cached verdict. */
+export function __backendHealthProbe(): Promise<boolean> {
+  const controller = new AbortController();
+  return Promise.race([
+    globalThis
+      .fetch(`${API_BASE_URL}/api/health`, { cache: 'no-store', signal: controller.signal })
+      .then((res) => res.ok)
+      .catch(() => false),
+    sleep(HEALTH_PROBE_TIMEOUT_MS).then(() => {
+      controller.abort();
+      return false;
+    }),
+  ]);
+}
+configureHealthProbe(__backendHealthProbe);
 
 /** True only for calls to our own backend API — GCS signed-URL uploads and any other
  *  third-party host pass straight through apiFetch untouched (no timeout/retry/status).
