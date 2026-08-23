@@ -101,6 +101,7 @@ const statusOptions = [
   { value: "in_review", label: "In Review" },
   { value: "rendering_video", label: "Rendering Video" },
   { value: "awaiting_instrumental_selection", label: "Awaiting Instrumental" },
+  { value: "generating_screens", label: "Generating Screens" },
   { value: "generating_video", label: "Generating Video" },
   { value: "encoding", label: "Encoding" },
   { value: "complete", label: "Complete" },
@@ -123,6 +124,7 @@ const statusLabels: Record<string, string> = {
   in_review: "In Review",
   rendering_video: "Rendering",
   awaiting_instrumental_selection: "Awaiting Inst.",
+  generating_screens: "Gen. Screens",
   generating_video: "Generating",
   encoding: "Encoding",
   complete: "Complete",
@@ -143,7 +145,7 @@ function AdminJobsPageContent() {
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "all")
   const [userEmailFilter, setUserEmailFilter] = useState("")
   const [searchInput, setSearchInput] = useState("")
 
@@ -202,6 +204,9 @@ function AdminJobsPageContent() {
   const [overrideAudioDialogOpen, setOverrideAudioDialogOpen] = useState(false)
   const [overridingAudio, setOverridingAudio] = useState(false)
 
+  // Timeline expand state (long timelines are collapsed by default)
+  const [timelineExpanded, setTimelineExpanded] = useState(false)
+
   const loadJobs = useCallback(async () => {
     try {
       setLoading(true)
@@ -231,11 +236,14 @@ function AdminJobsPageContent() {
       setSelectedJob(data)
     } catch (err: any) {
       console.error("Failed to load job:", err)
-      toast({
-        title: "Error",
-        description: err.message || "Failed to load job",
-        variant: "destructive",
-      })
+      // A 404 is fully communicated by the "Job not found" view — no toast needed
+      if (err?.status !== 404) {
+        toast({
+          title: "Error",
+          description: err.message || "Failed to load job",
+          variant: "destructive",
+        })
+      }
       setSelectedJob(null)
     } finally {
       setDetailLoading(false)
@@ -268,10 +276,14 @@ function AdminJobsPageContent() {
   }, [])
 
   useEffect(() => {
-    loadJobs()
-  }, [loadJobs])
+    // Skip the (expensive) list load while a single job is being viewed
+    if (!selectedJobId) {
+      loadJobs()
+    }
+  }, [loadJobs, selectedJobId])
 
   useEffect(() => {
+    setTimelineExpanded(false)
     if (selectedJobId) {
       loadJobDetail(selectedJobId)
       loadLogs(selectedJobId)
@@ -284,7 +296,19 @@ function AdminJobsPageContent() {
   }, [selectedJobId, loadJobDetail, loadLogs, loadFiles])
 
   const handleSearch = () => {
-    setUserEmailFilter(searchInput)
+    const query = searchInput.trim()
+    // A bare hex string is a job ID — jump straight to its detail page
+    if (/^[0-9a-f]{8}(-[0-9a-f-]{4,})?$/i.test(query)) {
+      router.push(`/admin/jobs?id=${query}`)
+      return
+    }
+    setUserEmailFilter(query)
+  }
+
+  // Keep the status filter in the URL so dashboard links and reloads work
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value)
+    router.replace(value !== "all" ? `/admin/jobs?status=${value}` : "/admin/jobs")
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -434,8 +458,34 @@ function AdminJobsPageContent() {
     }
   }
 
-  // Note: handleClearWorkers and handleTriggerWorker removed
-  // These low-level escape hatches are replaced by Full Restart and Regen Screens
+  // Trigger a worker manually (used from the reset-result dialog when
+  // resetting to instrumental_selected didn't auto-trigger the video worker)
+  const handleTriggerWorker = async (workerType: string) => {
+    if (!selectedJobId) return
+    try {
+      const result = await adminApi.triggerWorker(selectedJobId, workerType)
+      if (result.triggered) {
+        toast({
+          title: "Worker Triggered",
+          description: result.message || `${workerType} worker is starting`,
+        })
+      } else {
+        toast({
+          title: "Worker Not Triggered",
+          description: result.error || result.message,
+          variant: "destructive",
+        })
+      }
+      loadJobDetail(selectedJobId)
+      loadLogs(selectedJobId)
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || `Failed to trigger ${workerType} worker`,
+        variant: "destructive",
+      })
+    }
+  }
 
   // Handle regenerate screens - regenerates title/end screens with current metadata
   const handleRegenerateScreens = async () => {
@@ -643,6 +693,16 @@ function AdminJobsPageContent() {
     return { type: "unknown" as const, icon: FileText, label: "Unknown", detail: undefined }
   }
 
+  // Build a clickable external URL for the job's audio source, when one exists
+  const getExternalSourceUrl = (job: Job): string | null => {
+    if (job.url) return job.url
+    if (!job.source_id) return null
+    const provider = (job.source_name || "").toLowerCase()
+    if (provider.includes("youtube")) return `https://www.youtube.com/watch?v=${job.source_id}`
+    if (provider.includes("spotify")) return `https://open.spotify.com/track/${job.source_id}`
+    return null
+  }
+
   // Calculate stage durations from timeline
   const getStageDurations = (job: Job) => {
     if (!job?.timeline || job.timeline.length < 2) return []
@@ -823,6 +883,15 @@ function AdminJobsPageContent() {
     const SourceIcon = jobSource.icon
     const canDeleteOutputs = ["complete", "prep_complete", "failed", "cancelled"].includes(selectedJob.status)
 
+    // Collapse long timelines (retries/edits create many entries) to the most recent stages
+    const TIMELINE_TAIL = 6
+    const timelineCollapsible = stageDurations.length > TIMELINE_TAIL + 2
+    const visibleStages = timelineCollapsible && !timelineExpanded
+      ? stageDurations.slice(stageDurations.length - TIMELINE_TAIL)
+      : stageDurations
+    const hiddenStages = stageDurations.slice(0, stageDurations.length - visibleStages.length)
+    const hiddenFailures = hiddenStages.filter((s) => s.status === "failed").length
+
     return (
       <TooltipProvider>
         <div className="space-y-4">
@@ -873,7 +942,7 @@ function AdminJobsPageContent() {
           </div>
 
           {/* ===== STICKY ACTION TOOLBAR ===== */}
-          <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-background/95 backdrop-blur border-b">
+          <div className="sticky top-0 z-10 -mx-4 px-4 md:-mx-6 md:px-6 py-2 bg-background/95 backdrop-blur border-b">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide mr-1">Reset to:</span>
               {[
@@ -1051,8 +1120,40 @@ function AdminJobsPageContent() {
           {/* ===== HORIZONTAL TIMELINE ===== */}
           <div className="py-3 border-b">
             <div className="flex flex-wrap items-start gap-y-2">
-              {stageDurations.map((stage, i) => {
-                const isLast = i === stageDurations.length - 1
+              {timelineCollapsible && !timelineExpanded && (
+                <div className="flex items-start">
+                  <button
+                    className="flex flex-col items-center px-2 py-1 rounded-md border border-dashed text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    onClick={() => setTimelineExpanded(true)}
+                    title="Show all timeline entries"
+                  >
+                    <span className="text-xs font-medium whitespace-nowrap">
+                      +{hiddenStages.length} earlier
+                      {hiddenFailures > 0 && (
+                        <span className="text-red-500"> ({hiddenFailures} failed)</span>
+                      )}
+                    </span>
+                    <span className="text-[10px] font-mono mt-0.5">
+                      {formatTimeOnly(hiddenStages[0]?.startTime)}
+                    </span>
+                  </button>
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/40 mx-0.5 mt-2" />
+                </div>
+              )}
+              {timelineCollapsible && timelineExpanded && (
+                <div className="flex items-start">
+                  <button
+                    className="flex items-center px-2 py-2 rounded-md border border-dashed text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    onClick={() => setTimelineExpanded(false)}
+                    title="Collapse older timeline entries"
+                  >
+                    <span className="text-xs font-medium whitespace-nowrap">Collapse</span>
+                  </button>
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/40 mx-0.5 mt-2" />
+                </div>
+              )}
+              {visibleStages.map((stage, i) => {
+                const isLast = i === visibleStages.length - 1
                 const isCurrent = isLast
                 const bgColor = getTimelineStageColor(stage.status, isCurrent)
                 const textColor = getTimelineTextColor(stage.status)
@@ -1112,7 +1213,7 @@ function AdminJobsPageContent() {
 
           {/* ===== JOB INFO GRID ===== */}
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 py-3">
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">User</p>
               {selectedJob.user_email ? (
                 <p
@@ -1126,28 +1227,28 @@ function AdminJobsPageContent() {
                 <p className="text-sm truncate text-muted-foreground">Unknown</p>
               )}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Source</p>
               <button
-                className="text-sm flex items-center gap-1.5 text-primary hover:underline cursor-pointer truncate text-left"
+                className="w-full max-w-full min-w-0 text-sm flex items-center gap-1.5 text-primary hover:underline cursor-pointer text-left"
                 title="Click for source details"
                 onClick={() => setSourceModalOpen(true)}
               >
                 <SourceIcon className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">
+                <span className="truncate min-w-0">
                   {jobSource.type === "url" && jobSource.detail
-                    ? jobSource.detail.replace(/^https?:\/\/(www\.)?/, "").slice(0, 40)
+                    ? jobSource.detail.replace(/^https?:\/\/(www\.)?/, "")
                     : jobSource.detail || "Unknown"}
                 </span>
               </button>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Created</p>
               <p className="text-sm" title={formatDate(selectedJob.created_at)}>
                 {formatDateCompact(selectedJob.created_at)}
               </p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Progress</p>
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[60px]">
@@ -1160,19 +1261,19 @@ function AdminJobsPageContent() {
               </div>
             </div>
             {/* Timing stats */}
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Total Time</p>
               <p className="text-sm font-mono">{formatDurationLong(timingStats.total) || "—"}</p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Processing</p>
               <p className="text-sm font-mono text-blue-600 dark:text-blue-400">{formatDurationLong(timingStats.processing) || "—"}</p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Waiting</p>
               <p className="text-sm font-mono text-amber-600 dark:text-amber-400">{formatDurationLong(timingStats.waiting) || "—"}</p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Theme</p>
               <p className="text-sm truncate">{selectedJob.theme_id || "default"}</p>
             </div>
@@ -1232,15 +1333,21 @@ function AdminJobsPageContent() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <span className="text-xs truncate flex-1">{value || "—"}</span>
+                            <button
+                              className="text-xs truncate flex-1 text-left rounded px-1 py-0.5 -mx-1 hover:bg-muted/70 cursor-text decoration-dotted underline-offset-2 group-hover:underline min-w-0"
+                              onClick={() => startEditing(key, value || "")}
+                              title={`Click to edit ${label.toLowerCase()}`}
+                            >
+                              {value || <span className="text-muted-foreground">— click to set</span>}
+                            </button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-5 w-5 opacity-0 group-hover:opacity-100"
+                              className="h-5 w-5 shrink-0 text-muted-foreground/60 hover:text-foreground"
                               onClick={() => startEditing(key, value || "")}
                               title={`Edit ${label}`}
                             >
-                              <Pencil className="w-2.5 h-2.5" />
+                              <Pencil className="w-3 h-3" />
                             </Button>
                           </div>
                         )}
@@ -1250,7 +1357,7 @@ function AdminJobsPageContent() {
                     {/* Private (non-published) toggle */}
                     <div className="flex items-center gap-2 pt-2 border-t">
                       <span className="text-[10px] font-medium text-muted-foreground uppercase w-20 shrink-0">Private</span>
-                      <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
                         <input
                           type="checkbox"
                           id="admin-is-private"
@@ -1430,7 +1537,7 @@ function AdminJobsPageContent() {
 
           {/* ===== SOURCE INFO MODAL ===== */}
           <Dialog open={sourceModalOpen} onOpenChange={setSourceModalOpen}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <SourceIcon className="w-4 h-4" />
@@ -1441,69 +1548,62 @@ function AdminJobsPageContent() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 text-sm">
-                {selectedJob.audio_source_type && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Source Type</span>
-                    <span className="font-medium">{selectedJob.audio_source_type.replace(/_/g, " ")}</span>
-                  </div>
-                )}
-                {selectedJob.source_name && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Provider</span>
-                    <span className="font-medium">{selectedJob.source_name}</span>
-                  </div>
-                )}
-                {selectedJob.source_id && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Source ID</span>
-                    <span className="font-mono text-xs">{selectedJob.source_id}</span>
-                  </div>
+                {(() => {
+                  const externalUrl = getExternalSourceUrl(selectedJob)
+                  return externalUrl ? (
+                    <a
+                      href={externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-2.5 rounded-md border bg-muted/40 text-primary hover:bg-muted transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 shrink-0" />
+                      <span className="font-medium">
+                        Open in {selectedJob.source_name || (selectedJob.url ? "YouTube" : "provider")}
+                      </span>
+                      <span className="ml-auto font-mono text-xs text-muted-foreground truncate max-w-[50%]">
+                        {externalUrl.replace(/^https?:\/\/(www\.)?/, "")}
+                      </span>
+                    </a>
+                  ) : null
+                })()}
+                {[
+                  { label: "Source Type", value: selectedJob.audio_source_type?.replace(/_/g, " "), mono: false },
+                  { label: "Provider", value: selectedJob.source_name, mono: false },
+                  { label: "Source ID", value: selectedJob.source_id, mono: true },
+                  { label: "Search Artist", value: selectedJob.audio_search_artist, mono: false },
+                  { label: "Search Title", value: selectedJob.audio_search_title, mono: false },
+                  { label: "Filename", value: selectedJob.filename, mono: true },
+                  {
+                    label: "Target File",
+                    value: selectedJob.target_file !== selectedJob.filename ? selectedJob.target_file : undefined,
+                    mono: true,
+                  },
+                ].map(({ label, value, mono }) =>
+                  value ? (
+                    <div key={label} className="space-y-0.5">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+                      <p className={`break-all ${mono ? "font-mono text-xs" : "font-medium"}`}>{value}</p>
+                    </div>
+                  ) : null
                 )}
                 {selectedJob.url && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground shrink-0">URL</span>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">URL</p>
                     <a
                       href={selectedJob.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary hover:underline truncate font-mono text-xs"
+                      className="block text-primary hover:underline break-all font-mono text-xs"
                     >
                       {selectedJob.url}
                     </a>
                   </div>
                 )}
-                {selectedJob.filename && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground shrink-0">Filename</span>
-                    <span className="truncate font-mono text-xs">{selectedJob.filename}</span>
-                  </div>
-                )}
-                {selectedJob.target_file && selectedJob.target_file !== selectedJob.filename && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground shrink-0">Target File</span>
-                    <span className="truncate font-mono text-xs">{selectedJob.target_file}</span>
-                  </div>
-                )}
-                {(selectedJob.audio_search_artist || selectedJob.audio_search_title) && (
-                  <>
-                    {selectedJob.audio_search_artist && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Search Artist</span>
-                        <span>{selectedJob.audio_search_artist}</span>
-                      </div>
-                    )}
-                    {selectedJob.audio_search_title && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Search Title</span>
-                        <span>{selectedJob.audio_search_title}</span>
-                      </div>
-                    )}
-                  </>
-                )}
                 {selectedJob.download_url && (
-                  <div className="flex justify-between gap-2">
-                    <span className="text-muted-foreground shrink-0">Download URL</span>
-                    <span className="truncate font-mono text-xs">{selectedJob.download_url}</span>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Download URL</p>
+                    <p className="break-all font-mono text-xs">{selectedJob.download_url}</p>
                   </div>
                 )}
                 {!selectedJob.audio_source_type && !selectedJob.url && !selectedJob.filename && (
@@ -2087,7 +2187,7 @@ function AdminJobsPageContent() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 flex gap-2">
           <Input
-            placeholder="Filter by user email..."
+            placeholder="Filter by email, or paste a job ID..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleKeyPress}
@@ -2097,7 +2197,7 @@ function AdminJobsPageContent() {
             <Search className="w-4 h-4" />
           </Button>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -2117,11 +2217,11 @@ function AdminJobsPageContent() {
           <TableHeader>
             <TableRow>
               <TableHead>Job ID</TableHead>
-              <TableHead>User</TableHead>
+              <TableHead className="hidden md:table-cell">User</TableHead>
               <TableHead>Artist / Title</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Progress</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead className="hidden sm:table-cell">Progress</TableHead>
+              <TableHead className="hidden lg:table-cell">Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -2146,7 +2246,7 @@ function AdminJobsPageContent() {
                   onClick={() => router.push(`/admin/jobs?id=${job.job_id}`)}
                 >
                   <TableCell className="font-mono text-sm">{job.job_id}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">
+                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[150px] truncate">
                     {job.user_email || "—"}
                   </TableCell>
                   <TableCell>
@@ -2167,7 +2267,7 @@ function AdminJobsPageContent() {
                       {job.status.replace(/_/g, " ")}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <div className="flex items-center gap-2">
                       <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                         <div
@@ -2180,8 +2280,8 @@ function AdminJobsPageContent() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {formatDate(job.created_at)}
+                  <TableCell className="hidden lg:table-cell text-sm whitespace-nowrap" title={formatDate(job.created_at)}>
+                    {formatDateCompact(job.created_at)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>

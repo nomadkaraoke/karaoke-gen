@@ -40,7 +40,9 @@ function AdminBreadcrumb() {
             breadcrumbs.push({ label: "Users" })
           } else {
             breadcrumbs.push({ label: "Users", href: "/admin/users" })
-            breadcrumbs.push({ label: decodeURIComponent(segments[2]) })
+            breadcrumbs.push({
+              label: segments[2] === "detail" ? "User Detail" : decodeURIComponent(segments[2]),
+            })
           }
         } else if (segments[1] === "jobs") {
           if (segments.length === 2) {
@@ -49,18 +51,18 @@ function AdminBreadcrumb() {
             breadcrumbs.push({ label: "Jobs", href: "/admin/jobs" })
             breadcrumbs.push({ label: decodeURIComponent(segments[2]) })
           }
-        } else if (segments[1] === "payments") {
-          breadcrumbs.push({ label: "Payments" })
-        } else if (segments[1] === "referrals") {
-          breadcrumbs.push({ label: "Referrals" })
         } else if (segments[1] === "searches") {
           breadcrumbs.push({ label: "Audio Searches" })
-        } else if (segments[1] === "payments") {
-          breadcrumbs.push({ label: "Payments" })
-        } else if (segments[1] === "rate-limits") {
-          breadcrumbs.push({ label: "Rate Limits" })
         } else if (segments[1] === "abuse") {
           breadcrumbs.push({ label: "Abuse Investigation" })
+        } else {
+          // Fallback: prettify the URL segment (payments, referrals, rate-limits, ...)
+          breadcrumbs.push({
+            label: segments[1]
+              .split("-")
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(" "),
+          })
         }
       }
     }
@@ -145,15 +147,18 @@ export default function AdminLayout({
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <AdminBreadcrumb />
-          <div className="ml-auto flex items-center gap-2">
+          <div className="min-w-0 overflow-hidden">
+            <AdminBreadcrumb />
+          </div>
+          <div className="ml-auto flex items-center gap-2 shrink-0">
             <Switch
               id="show-test-data"
               checked={showTestData}
               onCheckedChange={setShowTestData}
             />
-            <Label htmlFor="show-test-data" className="text-sm text-muted-foreground cursor-pointer">
-              Show test data
+            <Label htmlFor="show-test-data" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+              <span className="hidden sm:inline">Show test data</span>
+              <span className="sm:hidden">Test data</span>
             </Label>
           </div>
         </header>

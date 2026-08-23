@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
@@ -18,6 +19,8 @@ interface StatsCardProps {
   loading?: boolean
   className?: string
   valueClassName?: string
+  /** When set, the whole card becomes a link to this page */
+  href?: string
 }
 
 export function StatsCard({
@@ -29,6 +32,7 @@ export function StatsCard({
   loading,
   className,
   valueClassName,
+  href,
 }: StatsCardProps) {
   if (loading) {
     return (
@@ -46,8 +50,8 @@ export function StatsCard({
     )
   }
 
-  return (
-    <Card className={cn("", className)}>
+  const card = (
+    <Card className={cn(href && "transition-colors hover:bg-muted/50 hover:border-primary/30", className)}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -70,6 +74,11 @@ export function StatsCard({
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return <Link href={href} className="block">{card}</Link>
+  }
+  return card
 }
 
 interface StatsGridProps {
