@@ -72,8 +72,12 @@ class ReviewServer:
         correction_result: CorrectionResult,
         output_config: OutputConfig,
         audio_filepath: str,
-        vocals_filepath: str,
         logger: logging.Logger,
+        # Optional vocals stem powering the timeline waveform. May be absent when a
+        # separation produced no vocals stem; the vocals endpoint 404s and the
+        # frontend hides the waveform. Keyword-only in practice (callers pass it by
+        # name), so relocating it here from before `logger` is safe.
+        vocals_filepath: Optional[str] = None,
         # Instrumental review data (optional - for combined review flow)
         instrumental_options: Optional[List[Dict[str, Any]]] = None,
         backing_vocals_analysis: Optional[Dict[str, Any]] = None,
