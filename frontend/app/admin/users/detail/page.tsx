@@ -70,6 +70,8 @@ import { cn } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth"
 import { IpInfo } from "@/components/admin/ip-info"
+import { LocaleBadge } from "@/components/admin/locale-badge"
+import { UserEmailsCard } from "@/components/admin/user-emails-card"
 
 export default function AdminUserDetailPage() {
   const searchParams = useSearchParams()
@@ -345,6 +347,9 @@ export default function AdminUserDetailPage() {
                 {user.role}
               </Badge>
               {!user.is_active && <Badge variant="destructive">Disabled</Badge>}
+              {/* UI language the user browses in — so support communicates in the
+                  right language. Falls back to the email locale if unknown. */}
+              <LocaleBadge locale={user.ui_locale || user.locale} showName />
             </h1>
             <p className="text-muted-foreground break-all">{user.email}</p>
           </div>
@@ -696,7 +701,12 @@ export default function AdminUserDetailPage() {
                   >
                     <TableCell className="font-mono text-sm">{job.job_id}</TableCell>
                     <TableCell>
-                      {job.artist && job.title ? `${job.artist} - ${job.title}` : "—"}
+                      <span className="inline-flex items-center gap-2">
+                        {job.artist && job.title ? `${job.artist} - ${job.title}` : "—"}
+                        {job.locale && (
+                          <LocaleBadge locale={job.locale} className="text-[10px] py-0 px-1.5 h-auto" />
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={
@@ -717,6 +727,9 @@ export default function AdminUserDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Emails sent to this user */}
+      <UserEmailsCard email={email} />
 
       {/* Add Credits Dialog */}
       <Dialog open={creditDialogOpen} onOpenChange={setCreditDialogOpen}>

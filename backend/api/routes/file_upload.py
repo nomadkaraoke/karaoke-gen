@@ -44,7 +44,7 @@ from backend.services.youtube_download_service import (
     get_youtube_download_service,
     YouTubeDownloadError,
 )
-from backend.i18n import t, get_locale_from_request
+from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -685,6 +685,8 @@ async def upload_and_create_job(
             is_private=is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
+            # UI language the job was submitted in (admin-only signal)
+            locale=get_full_locale_from_request(request),
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
@@ -1269,6 +1271,8 @@ async def create_job_with_upload_urls(
             is_private=effective_is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
+            # UI language the job was submitted in (admin-only signal)
+            locale=get_full_locale_from_request(request),
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
@@ -1897,6 +1901,8 @@ async def create_job_from_url(
             is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
+            # UI language the job was submitted in (admin-only signal)
+            locale=get_full_locale_from_request(request),
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
@@ -2202,6 +2208,8 @@ async def create_finalise_only_job(
             is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
+            # UI language the job was submitted in (admin-only signal)
+            locale=get_full_locale_from_request(request),
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id

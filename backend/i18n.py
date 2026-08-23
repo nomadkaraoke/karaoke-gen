@@ -92,6 +92,32 @@ def get_locale_from_request(request: Request) -> str:
     return DEFAULT_LOCALE
 
 
+def get_full_locale_from_request(request: Request) -> str | None:
+    """Extract the user's actual UI language tag from Accept-Language.
+
+    Unlike :func:`get_locale_from_request`, this does NOT narrow to the 3
+    email-supported locales (en/es/de). It returns the primary language subtag
+    of the first entry in the header (e.g. ``pt``, ``ja``, ``zh``) so the admin
+    UI can show the real language a customer was using the product in.
+
+    Returns the lowercased language subtag, or ``None`` if the header is absent
+    or unparseable.
+    """
+    accept_lang = request.headers.get("accept-language", "")
+
+    for part in accept_lang.split(","):
+        # Each part looks like "en-US;q=0.9" — take the language-region token
+        # before the quality factor, then the primary subtag before any region.
+        token = part.split(";")[0].strip()
+        if not token or token == "*":
+            continue
+        lang = token.split("-")[0].strip().lower()
+        if lang.isalpha() and len(lang) >= 2:
+            return lang
+
+    return None
+
+
 def get_locale_prefix(locale: str) -> str:
     """Get URL locale prefix for frontend URLs (e.g., '/en', '/es')."""
     if locale not in SUPPORTED_LOCALES:

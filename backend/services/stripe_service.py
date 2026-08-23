@@ -185,6 +185,7 @@ class StripeService:
         notes: Optional[str] = None,
         success_url: Optional[str] = None,
         cancel_url: Optional[str] = None,
+        locale: Optional[str] = None,
     ) -> Tuple[bool, Optional[str], str]:
         """
         Create a Stripe Checkout session for a made-for-you order.
@@ -228,6 +229,9 @@ class StripeService:
             if notes:
                 # Truncate notes to fit Stripe's 500 char limit per metadata value
                 metadata['notes'] = notes[:500] if len(notes) > 500 else notes
+            if locale:
+                # UI language the customer ordered in — surfaced admin-side on the job
+                metadata['locale'] = locale
 
             # Build checkout session params
             session_params = {

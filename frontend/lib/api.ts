@@ -147,6 +147,10 @@ export interface Job {
   // Customer order fields
   customer_email?: string;
   made_for_you?: boolean;
+  // UI language the job was submitted in (admin-only signal, any of 33 locales)
+  locale?: string;
+  // IP at job creation (admin-only; used to derive country)
+  creation_ip?: string;
   // Request tracking metadata
   request_metadata?: Record<string, any>;
 }
@@ -2260,6 +2264,9 @@ export interface AdminUserDetail {
   display_name?: string;
   is_active: boolean;
   email_verified: boolean;
+  // Language: locale = email locale (en/es/de); ui_locale = full UI language (33 locales)
+  locale?: string | null;
+  ui_locale?: string | null;
   created_at?: string;
   updated_at?: string;
   last_login_at?: string;
@@ -2280,6 +2287,7 @@ export interface AdminUserDetail {
     artist?: string;
     title?: string;
     created_at?: string;
+    locale?: string | null;
   }>;
   active_sessions_count: number;
   // Anti-abuse fields
@@ -2298,6 +2306,53 @@ export interface AdminUserDetail {
     created_at?: string;
     last_activity_at?: string;
   }>;
+}
+
+export interface UserEmailSummary {
+  message_id?: string | null;
+  source: 'postmark' | 'log';
+  subject?: string | null;
+  to?: string | null;
+  from_email?: string | null;
+  sent_at?: string | null;
+  status?: string | null;
+  email_type?: string | null;
+  has_stored_html?: boolean;
+  doc_id?: string;
+}
+
+export interface UserEmailHistory {
+  email: string;
+  count: number;
+  postmark_available: boolean;
+  emails: UserEmailSummary[];
+}
+
+export interface EmailDetailEvent {
+  type?: string;
+  received_at?: string | null;
+  details?: Record<string, any>;
+}
+
+export interface EmailDetail {
+  message_id?: string | null;
+  source: 'postmark' | 'log';
+  subject?: string | null;
+  from_email?: string | null;
+  to?: string | null;
+  cc?: string | string[] | null;
+  bcc?: string | string[] | null;
+  sent_at?: string | null;
+  message_stream?: string | null;
+  html_body?: string | null;
+  text_body?: string | null;
+  status?: string | null;
+  delivered_at?: string | null;
+  open_count?: number;
+  click_count?: number;
+  bounce?: Record<string, any> | null;
+  email_type?: string | null;
+  events?: EmailDetailEvent[];
 }
 
 export interface AdminJobListParams {
@@ -2415,6 +2470,28 @@ export const adminApi = {
     const response = await apiFetch(`${API_BASE_URL}/api/users/admin/users/${encodeURIComponent(email)}/detail`, {
       headers: getAuthHeaders()
     });
+    return handleResponse(response);
+  },
+
+  /**
+   * List every email ever sent to a user (Postmark + persisted log)
+   */
+  async getUserEmails(email: string): Promise<UserEmailHistory> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/users/${encodeURIComponent(email)}/emails`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Full detail for one sent email — rendered HTML + delivery metadata.
+   * `source` is "postmark" (default) or "log" (our stored copy for older mail).
+   */
+  async getEmailDetail(messageId: string, source: string = 'postmark'): Promise<EmailDetail> {
+    const response = await apiFetch(
+      `${API_BASE_URL}/api/admin/emails/${encodeURIComponent(messageId)}?source=${encodeURIComponent(source)}`,
+      { headers: getAuthHeaders() }
+    );
     return handleResponse(response);
   },
 

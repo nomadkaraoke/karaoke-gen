@@ -274,7 +274,13 @@ class Job(BaseModel):
 
     # Multi-tenant support ("" = consumer portal, "vocalstar"/etc = tenant portal)
     tenant_id: str = ""                          # Tenant ID for white-label portal scoping
-    
+
+    # UI language the job was submitted in (primary Accept-Language subtag, e.g.
+    # "pt", "ja", "zh"). Any of the 33 supported UI locales — NOT narrowed to the
+    # 3 email locales. Admin-only signal for support/intervention. None for jobs
+    # created before this field existed or where the header was absent.
+    locale: Optional[str] = None
+
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")
     color_overrides: Dict[str, str] = Field(default_factory=dict)
@@ -630,6 +636,10 @@ class JobCreate(BaseModel):
 
     # Tenant scoping for white-label portals ("" = consumer, "vocalstar"/etc = tenant)
     tenant_id: str = ""                          # Tenant ID for job scoping
+
+    # UI language the job was submitted in (primary Accept-Language subtag, e.g.
+    # "pt", "ja"). Set by the API endpoint from the request header; admin-only.
+    locale: Optional[str] = None
 
     @validator('url')
     def validate_url(cls, v):

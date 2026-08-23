@@ -240,6 +240,20 @@ def create_database() -> dict:
         opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
     )
 
+    # Email log: query by recipient, order by created_at
+    # Used for the admin user-detail "Emails sent to this user" history view
+    resources["firestore_index_email_log_recipient"] = firestore.Index(
+        "firestore-index-email-log-recipient",
+        project=PROJECT_ID,
+        database=firestore_db.name,
+        collection="email_log",
+        fields=[
+            firestore.IndexFieldArgs(field_path="recipient", order="ASCENDING"),
+            firestore.IndexFieldArgs(field_path="created_at", order="DESCENDING"),
+        ],
+        opts=pulumi.ResourceOptions(depends_on=[firestore_db]),
+    )
+
     # Audio separation jobs: query by status + updated_at (for cleanup of old jobs)
     resources["firestore_index_audio_separation_jobs_cleanup"] = firestore.Index(
         "firestore-index-audio-separation-jobs-cleanup",
