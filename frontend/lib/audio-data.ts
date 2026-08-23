@@ -13,11 +13,24 @@ export interface AudioData {
 // whole track tiny in memory. 400/s over a 4-minute song ≈ 96k floats (~384 KB).
 const PEAKS_PER_SECOND = 400
 
+// The vocals endpoint returns 202 while audio separation is still running (the
+// user can open lyrics review before the vocal stem has been uploaded). Callers
+// should catch this and retry after a delay rather than giving up.
+export class AudioNotReadyError extends Error {
+	constructor() {
+		super('Vocals audio not ready yet (separation in progress)')
+		this.name = 'AudioNotReadyError'
+	}
+}
+
 export async function fetchAudioData(url: string): Promise<AudioData> {
 	// fetch() resolves even for 4xx/5xx; the vocals endpoint 404s when a job has
 	// no vocal stem. Fail explicitly so the caller sees "no vocals" rather than an
 	// opaque decodeAudioData error on the JSON/HTML error body.
 	const response = await fetch(url)
+	if (response.status === 202) {
+		throw new AudioNotReadyError()
+	}
 	if (!response.ok) {
 		throw new Error(`Failed to fetch vocals audio: ${response.status}`)
 	}

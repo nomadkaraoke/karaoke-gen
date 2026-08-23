@@ -1145,13 +1145,14 @@ class TestGetVocalsAudio:
     so the waveform never loads.
     """
 
-    def _call(self, stems):
+    def _call(self, stems, audio_complete=True):
         import asyncio
         from backend.api.routes.review import _stream_audio
 
         job = MagicMock()
         job.input_media_gcs_path = "jobs/j/input.flac"
         job.file_urls = {"stems": stems}
+        job.state_data = {"audio_complete": audio_complete}
 
         job_manager = MagicMock()
         job_manager.get_job.return_value = job
@@ -1205,8 +1206,29 @@ class TestGetVocalsAudio:
         assert transcoding.get_review_audio_bytes_async.call_args[0][0] == "jobs/j/stems/lead_vocals.flac"
 
     def test_404_when_no_vocal_stem_present(self):
+        """audio_complete=True + no vocal stem = the stem will never exist -> 404."""
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
             self._call({"instrumental_clean": "jobs/j/stems/instrumental_clean.flac"})
+        assert exc_info.value.status_code == 404
+
+    def test_202_when_separation_still_in_progress(self):
+        """Users can open lyrics review before audio separation finishes (it's
+        decoupled from the critical path), so a missing vocal stem while
+        audio_complete=False means "not yet" — return 202 so the frontend polls
+        instead of permanently hiding the waveform on a terminal 404."""
+        resp, transcoding = self._call({}, audio_complete=False)
+
+        assert resp.status_code == 202
+        assert resp.headers.get("Retry-After") == "15"
+        transcoding.get_review_audio_bytes_async.assert_not_called()
+
+    def test_404_when_separation_skipped_and_no_vocal_stem(self):
+        """Existing-instrumental jobs set audio_complete=True without ever
+        producing vocal stems — must 404 (terminal), not 202 (retry forever)."""
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._call({}, audio_complete=True)
         assert exc_info.value.status_code == 404
