@@ -1389,6 +1389,16 @@
       "rerun": "Jalankan semula",
       "revertAllAuto": "Kembalikan semua",
       "showDetails": "Papar butiran"
+    },
+    "editTimeline": {
+      "holdingRelease": "Sedang ditahan... Lepaskan apabila perkataan tamat",
+      "pressSpacebarHint": "Tekan bar ruang apabila perkataan bermula (ketik untuk perkataan pendek, tahan untuk perkataan panjang)",
+      "tapToSync": "Ketik Untuk Segerakkan",
+      "tapWhenStarts": "Ketik butang apabila perkataan bermula",
+      "wordProgress": "Perkataan {index} daripada {total}:",
+      "cancelSync": "Batal",
+      "hold": "TAHAN...",
+      "tap": "TEKAN"
     }
   },
   "instrumentalReview": {

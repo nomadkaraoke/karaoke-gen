@@ -1389,6 +1389,16 @@
       "rerun": "Chạy lại",
       "revertAllAuto": "Hoàn tác tất cả",
       "showDetails": "Hiện chi tiết"
+    },
+    "editTimeline": {
+      "holdingRelease": "Đang giữ... Thả ra khi từ kết thúc",
+      "pressSpacebarHint": "Nhấn phím cách khi từ bắt đầu (nhấn thả cho từ ngắn, nhấn giữ cho từ dài)",
+      "tapToSync": "Nhấn để đồng bộ",
+      "tapWhenStarts": "Nhấn nút khi từ bắt đầu",
+      "wordProgress": "Từ {index} trên {total}:",
+      "cancelSync": "Hủy",
+      "hold": "GIỮ...",
+      "tap": "CHẠM"
     }
   },
   "instrumentalReview": {

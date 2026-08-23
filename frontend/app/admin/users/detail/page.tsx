@@ -333,23 +333,23 @@ export default function AdminUserDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/admin/users")} title="Back to users list">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start gap-2 sm:gap-4 min-w-0">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => router.push("/admin/users")} title="Back to users list">
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              {user.display_name || user.email}
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
+              <span className="break-all">{user.display_name || user.email}</span>
               <Badge variant={user.role === "admin" ? "default" : "secondary"}>
                 {user.role}
               </Badge>
               {!user.is_active && <Badge variant="destructive">Disabled</Badge>}
             </h1>
-            <p className="text-muted-foreground">{user.email}</p>
+            <p className="text-muted-foreground break-all">{user.email}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={loadUser} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -422,7 +422,7 @@ export default function AdminUserDetailPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -527,9 +527,9 @@ export default function AdminUserDetailPage() {
               <span className="text-muted-foreground">Signup IP</span>
               <IpInfo ip={user.signup_ip} />
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Device Fingerprint</span>
-              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{user.device_fingerprint || "unknown"}</code>
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground shrink-0">Device Fingerprint</span>
+              <code className="text-xs bg-muted px-1.5 py-0.5 rounded break-all text-right">{user.device_fingerprint || "unknown"}</code>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Welcome Credits</span>

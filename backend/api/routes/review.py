@@ -19,7 +19,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Set, Tuple
+from typing import Dict, Any, List, Literal, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
 from fastapi.responses import RedirectResponse
@@ -372,6 +372,15 @@ async def get_correction_data(
         raise HTTPException(status_code=500, detail=t("en", "review.correctionsLoadFailed", error=str(e)))
 
 
+@router.get("/{job_id}/audio/vocals")
+async def get_vocals_audio(
+    job_id: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """Stream the vocals audio file for playback."""
+    return await _stream_audio(job_id, stem="vocals")
+
+
 @router.get("/{job_id}/audio/{audio_hash}")
 async def get_audio_with_hash(
     job_id: str,
@@ -392,7 +401,7 @@ async def get_audio_no_hash(
     return await _stream_audio(job_id)
 
 
-async def _stream_audio(job_id: str):
+async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] = "input"):
     """
     Redirect to a signed GCS URL for audio playback in the review interface.
 
@@ -407,7 +416,22 @@ async def _stream_audio(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
-    audio_gcs_path = job.input_media_gcs_path
+    audio_gcs_path = None
+    if stem == "input":
+        audio_gcs_path = job.input_media_gcs_path
+    elif stem == "vocals":
+        stems = job.file_urls.get("stems", {}) if job.file_urls else {}
+        # Stem keys vary by separation model. We want the full vocal mix
+        # (lead + backing) so every word can be lined up against the waveform:
+        #   - "vocals"       : full vocal from a 2-stem split (rare)
+        #   - "vocals_clean" : full vocal from the primary vocal/instrumental
+        #                      split (present on essentially all cloud jobs)
+        #   - "lead_vocals"  : last-resort fallback (misses backing lines)
+        # Use .get() so a missing key yields a clean 404 below, not a KeyError/500.
+        for key in ("vocals", "vocals_clean", "lead_vocals"):
+            if stems.get(key):
+                audio_gcs_path = stems[key]
+                break
     if not audio_gcs_path:
         raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
 

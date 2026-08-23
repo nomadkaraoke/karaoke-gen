@@ -1389,6 +1389,16 @@
       "rerun": "Spustit znovu",
       "revertAllAuto": "Vrátit vše",
       "showDetails": "Zobrazit podrobnosti"
+    },
+    "editTimeline": {
+      "holdingRelease": "Držíš... Pusť, když slovo skončí",
+      "pressSpacebarHint": "Stiskni mezerník, když slovo začne (ťukni pro krátká slova, podrž pro dlouhá slova)",
+      "tapToSync": "Ťukni pro synchronizaci",
+      "tapWhenStarts": "Ťukni na tlačítko, když slovo začne",
+      "wordProgress": "Slovo {index} z {total}:",
+      "cancelSync": "Zrušit",
+      "hold": "DRŽ...",
+      "tap": "KLEPNI"
     }
   },
   "instrumentalReview": {

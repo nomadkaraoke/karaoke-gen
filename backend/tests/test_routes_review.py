@@ -1132,3 +1132,71 @@ class TestGetPreviewVideoRedirect:
             self._call(mock_storage)
         assert exc_info.value.status_code == 404
         mock_storage.generate_signed_url.assert_not_called()
+
+
+class TestGetVocalsAudio:
+    """The vocals waveform endpoint streams the full vocal stem for the timeline.
+
+    Real jobs never store a plain 'vocals' key — separation writes
+    'vocals_clean' / 'lead_vocals' / 'backing_vocals'. The endpoint must select
+    the fullest vocal mix (vocals_clean) rather than KeyError on 'vocals'.
+    """
+
+    def _call(self, stems):
+        import asyncio
+        from backend.api.routes.review import _stream_audio
+
+        job = MagicMock()
+        job.input_media_gcs_path = "jobs/j/input.flac"
+        job.file_urls = {"stems": stems}
+
+        job_manager = MagicMock()
+        job_manager.get_job.return_value = job
+
+        transcoding = MagicMock()
+        transcoding.get_review_audio_url_async = AsyncMock(
+            return_value="https://signed.example/vocals.ogg?sig=xyz"
+        )
+
+        with patch("backend.api.routes.review.JobManager", return_value=job_manager), patch(
+            "backend.services.audio_transcoding_service.AudioTranscodingService",
+            return_value=transcoding,
+        ):
+            resp = asyncio.run(
+                _stream_audio(job_id="j", stem="vocals")
+            )
+        return resp, transcoding
+
+    def test_selects_vocals_clean_when_no_plain_vocals_key(self):
+        from starlette.responses import RedirectResponse
+
+        # The shape produced by real cloud jobs (no plain "vocals").
+        resp, transcoding = self._call(
+            {
+                "instrumental_clean": "jobs/j/stems/instrumental_clean.flac",
+                "vocals_clean": "jobs/j/stems/vocals_clean.flac",
+                "lead_vocals": "jobs/j/stems/lead_vocals.flac",
+                "backing_vocals": "jobs/j/stems/backing_vocals.flac",
+            }
+        )
+
+        assert isinstance(resp, RedirectResponse)
+        assert resp.status_code == 302
+        # Must pick the full vocal mix (vocals_clean), not lead_vocals or KeyError.
+        assert transcoding.get_review_audio_url_async.call_args[0][0] == "jobs/j/stems/vocals_clean.flac"
+
+    def test_prefers_plain_vocals_then_falls_back_to_lead(self):
+        # 2-stem split exposes a plain "vocals" — preferred.
+        _, transcoding = self._call({"vocals": "jobs/j/stems/vocals.flac"})
+        assert transcoding.get_review_audio_url_async.call_args[0][0] == "jobs/j/stems/vocals.flac"
+
+        # Only lead_vocals available — last-resort fallback.
+        _, transcoding = self._call({"lead_vocals": "jobs/j/stems/lead_vocals.flac"})
+        assert transcoding.get_review_audio_url_async.call_args[0][0] == "jobs/j/stems/lead_vocals.flac"
+
+    def test_404_when_no_vocal_stem_present(self):
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._call({"instrumental_clean": "jobs/j/stems/instrumental_clean.flac"})
+        assert exc_info.value.status_code == 404

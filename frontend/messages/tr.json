@@ -1389,6 +1389,16 @@
       "rerun": "Yeniden çalıştır",
       "revertAllAuto": "Tümünü geri al",
       "showDetails": "Detayları göster"
+    },
+    "editTimeline": {
+      "holdingRelease": "Basılı tutuluyor... Kelime bittiğinde bırak",
+      "pressSpacebarHint": "Kelime başladığında boşluk tuşuna bas (kısa kelimeler için dokun, uzun kelimeler için basılı tut)",
+      "tapToSync": "Senkronize Etmek İçin Dokun",
+      "tapWhenStarts": "Kelime başladığında düğmeye dokun",
+      "wordProgress": "Kelime {index} / {total}:",
+      "cancelSync": "İptal",
+      "hold": "BASILI TUT...",
+      "tap": "DOKUN"
     }
   },
   "instrumentalReview": {

@@ -213,11 +213,20 @@ def run_combined_review(
             backing_vocals_path = None
 
     clean_instrumental_path = None
+    vocals_path = None
     clean_result = separated.get("clean_instrumental", {})
-    if isinstance(clean_result, dict) and clean_result.get("instrumental"):
-        clean_instrumental_path = _resolve_path_for_cwd(clean_result["instrumental"], track_dir)
-        if not os.path.exists(clean_instrumental_path):
-            clean_instrumental_path = None
+    if isinstance(clean_result, dict):
+        if clean_result.get("instrumental"):
+            clean_instrumental_path = _resolve_path_for_cwd(clean_result["instrumental"], track_dir)
+            if not os.path.exists(clean_instrumental_path):
+                clean_instrumental_path = None
+        # Vocals stem drives the (optional) timeline waveform. A partial separation
+        # may have an instrumental but no "vocals" key — use .get() and never crash
+        # the review over a missing waveform; the frontend tolerates its absence.
+        vocals_source = clean_result.get("vocals")
+        if vocals_source:
+            candidate = _resolve_path_for_cwd(vocals_source, track_dir)
+            vocals_path = candidate if os.path.exists(candidate) else None
 
     with_backing_path = None
     combined_result = separated.get("combined_instrumentals", {})
@@ -303,6 +312,7 @@ def run_combined_review(
             correction_result=correction_result,
             output_config=output_config,
             audio_filepath=resolved_audio or "",
+            vocals_filepath=vocals_path,
             logger=logger,
             # Instrumental review data
             instrumental_options=instrumental_options,

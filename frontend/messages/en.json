@@ -1337,6 +1337,16 @@
       },
       "upcomingMore": "+{count} more"
     },
+    "editTimeline": {
+      "tapToSync": "Tap To Sync",
+      "cancelSync": "Cancel",
+      "wordProgress": "Word {index} of {total}:",
+      "holdingRelease": "Holding... Release when word ends",
+      "tapWhenStarts": "Tap the button when word starts",
+      "pressSpacebarHint": "Press spacebar when word starts (tap for short words, hold for long words)",
+      "tap": "TAP",
+      "hold": "HOLD..."
+    },
     "duet": {
       "markAsDuet": "Duet Mode",
       "duetOn": "Duet: ON",

@@ -73,6 +73,11 @@ class ReviewServer:
         output_config: OutputConfig,
         audio_filepath: str,
         logger: logging.Logger,
+        # Optional vocals stem powering the timeline waveform. May be absent when a
+        # separation produced no vocals stem; the vocals endpoint 404s and the
+        # frontend hides the waveform. Keyword-only in practice (callers pass it by
+        # name), so relocating it here from before `logger` is safe.
+        vocals_filepath: Optional[str] = None,
         # Instrumental review data (optional - for combined review flow)
         instrumental_options: Optional[List[Dict[str, Any]]] = None,
         backing_vocals_analysis: Optional[Dict[str, Any]] = None,
@@ -85,7 +90,8 @@ class ReviewServer:
         Args:
             correction_result: The lyrics correction result to review
             output_config: Output configuration
-            audio_filepath: Path to the main audio file (vocals)
+            audio_filepath: Path to the main audio file
+            vocals_filepath: Path the vocals (lead & backing) audio file
             logger: Logger instance
             instrumental_options: List of instrumental options for selection
                 Each option: {"id": str, "label": str, "audio_path": str}
@@ -97,6 +103,7 @@ class ReviewServer:
         self.correction_result = correction_result
         self.output_config = output_config
         self.audio_filepath = audio_filepath
+        self.vocals_filepath = vocals_filepath
         self.logger = logger or logging.getLogger(__name__)
         self.review_completed = False
         self.corrections_saved = False  # Flag for intermediate save (before instrumental review)
@@ -416,6 +423,8 @@ class ReviewServer:
         async def get_audio_with_job_id(job_id: str, audio_hash: str):
             if audio_hash in _stem_names:
                 return await self.get_instrumental_audio(audio_hash)
+            elif audio_hash == "vocals":
+                return await self.get_vocals_audio()
             return await self.get_audio(audio_hash)
         self.app.add_api_route("/api/review/{job_id}/audio/{audio_hash}", get_audio_with_job_id, methods=["GET"])
 
@@ -1059,6 +1068,25 @@ class ReviewServer:
         audio_path = path_map.get(stem_type)
         if not audio_path or not os.path.exists(audio_path):
             raise HTTPException(status_code=404, detail=f"Instrumental audio not found: {stem_type}")
+
+        # Determine content type based on file extension
+        ext = os.path.splitext(audio_path)[1].lower()
+        content_types = {
+            ".flac": "audio/flac",
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".m4a": "audio/mp4",
+        }
+        content_type = content_types.get(ext, "application/octet-stream")
+
+        return FileResponse(audio_path, media_type=content_type, filename=os.path.basename(audio_path))
+
+    async def get_vocals_audio(self):
+        """Stream the vocals audio file."""
+
+        audio_path = self.vocals_filepath
+        if not audio_path or not os.path.exists(audio_path):
+            raise HTTPException(status_code=404, detail="Vocals audio not found")
 
         # Determine content type based on file extension
         ext = os.path.splitext(audio_path)[1].lower()

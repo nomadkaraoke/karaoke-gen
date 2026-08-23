@@ -1389,6 +1389,16 @@
       "rerun": "Επανεκτέλεση",
       "revertAllAuto": "Αναίρεση όλων",
       "showDetails": "Εμφάνιση λεπτομερειών"
+    },
+    "editTimeline": {
+      "holdingRelease": "Κρατάς πατημένο... Άφησέ το όταν τελειώσει η λέξη",
+      "pressSpacebarHint": "Πάτησε το spacebar όταν ξεκινάει η λέξη (πάτησε στιγμιαία για μικρές λέξεις, κράτα πατημένο για μεγάλες λέξεις)",
+      "tapToSync": "Πάτησε για συγχρονισμό",
+      "tapWhenStarts": "Πάτησε το κουμπί όταν ξεκινάει η λέξη",
+      "wordProgress": "Λέξη {index} από {total}:",
+      "cancelSync": "Ακύρωση",
+      "hold": "ΚΡΑΤΑ...",
+      "tap": "ΠΑΤΑ"
     }
   },
   "instrumentalReview": {

@@ -5,7 +5,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Loader2, Play, Square, RotateCcw, Trash2, History } from 'lucide-react'
+import { Loader2, Play, Square, RotateCcw, Trash2, History, XCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { LyricsSegment, Word } from '@/lib/lyrics-review/types'
 import { nanoid } from 'nanoid'
 import EditWordList from '../EditWordList'
@@ -56,6 +57,7 @@ export default function EditModal({
   const t = useTranslations('lyricsReview.modals.editAll')
   const tActions = useTranslations('lyricsReview.editActionBar')
   const tHeader = useTranslations('lyricsReview.header')
+  const tTimeline = useTranslations('lyricsReview.editTimeline')
   const { ready: audioReady } = useAudioReady()
   const [editedSegment, setEditedSegment] = useState<LyricsSegment | null>(segment)
   const [timingFixCount, setTimingFixCount] = useState(0)
@@ -383,23 +385,65 @@ export default function EditModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col" onKeyDown={handleKeyDown}>
+      <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col gap-2" onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {isGlobal ? t('title') : t('editSegment', { index: segmentIndex ?? 0 })}
-            {segment && segment.start_time !== null && onPlaySegment && (
+          {/* Left: title (with the segment's time range folded into the heading)
+              + play. Right: Tap To Sync, moved up here to reclaim vertical space
+              above the word list. pr-10 keeps it clear of the dialog close button. */}
+          <div className="flex items-center justify-between gap-4 pr-10">
+            <DialogTitle className="flex items-center gap-2">
+              <span>
+                {isGlobal ? t('title') : t('editSegment', { index: segmentIndex ?? 0 })}
+                {!isGlobal &&
+                  editedSegment &&
+                  editedSegment.start_time !== null &&
+                  editedSegment.end_time !== null && (
+                    <span className="font-normal text-muted-foreground">
+                      {' '}
+                      ({editedSegment.start_time.toFixed(2)} - {editedSegment.end_time.toFixed(2)})
+                    </span>
+                  )}
+              </span>
+              {segment && segment.start_time !== null && onPlaySegment && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handlePlayToggle}
+                  disabled={!audioReady}
+                  title={audioReady ? undefined : tHeader('audioStillLoading')}
+                >
+                  {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </Button>
+              )}
+            </DialogTitle>
+
+            {/* Tap To Sync toggle (relocated from EditTimelineSection) */}
+            {editedSegment && editedSegment.words.some((w) => w.start_time !== null) && (
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handlePlayToggle}
-                disabled={!audioReady}
-                title={audioReady ? undefined : tHeader('audioStillLoading')}
+                variant={isManualSyncing ? 'outline' : 'default'}
+                onClick={startManualSync}
+                className={cn(
+                  'shrink-0',
+                  isManualSyncing
+                    ? 'border-destructive text-destructive hover:bg-destructive/10'
+                    : 'bg-primary'
+                )}
               >
-                {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                {isManualSyncing ? (
+                  <>
+                    <XCircle className="h-4 w-4 mr-1" />
+                    {tTimeline('cancelSync')}
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 mr-1" />
+                    {tTimeline('tapToSync')}
+                  </>
+                )}
               </Button>
             )}
-          </DialogTitle>
+          </div>
         </DialogHeader>
 
         {isLoading ? (
@@ -410,7 +454,7 @@ export default function EditModal({
             </p>
           </div>
         ) : editedSegment ? (
-          <div className="flex-1 overflow-auto space-y-4">
+          <div className="flex flex-col flex-1 space-y-2 overflow-hidden">
             {timingFixCount > 0 && (
               <div
                 role="status"
@@ -424,41 +468,40 @@ export default function EditModal({
 
             {/* Timeline editor with Tap To Sync */}
             {editedSegment.words.some((w) => w.start_time !== null) && (
-              <EditTimelineSection
-                words={editedSegment.words}
-                startTime={startTime}
-                endTime={endTime}
-                originalStartTime={originalSegment?.start_time ?? null}
-                originalEndTime={originalSegment?.end_time ?? null}
-                currentStartTime={editedSegment.start_time}
-                currentEndTime={editedSegment.end_time}
-                currentTime={currentTime}
-                isManualSyncing={isManualSyncing}
-                syncWordIndex={syncWordIndex}
-                isSpacebarPressed={isSpacebarPressed}
-                onWordUpdate={handleWordChange}
-                onPlaySegment={onPlaySegment}
-                startManualSync={startManualSync}
-                isGlobal={isGlobal}
-                onTapStart={handleTapStart}
-                onTapEnd={handleTapEnd}
-              />
+              <div className="flex-grow">
+                <EditTimelineSection
+                  words={editedSegment.words}
+                  startTime={startTime}
+                  endTime={endTime}
+                  currentTime={currentTime}
+                  isManualSyncing={isManualSyncing}
+                  syncWordIndex={syncWordIndex}
+                  isSpacebarPressed={isSpacebarPressed}
+                  onWordUpdate={handleWordChange}
+                  onPlaySegment={onPlaySegment}
+                  isGlobal={isGlobal}
+                  onTapStart={handleTapStart}
+                  onTapEnd={handleTapEnd}
+                />
+              </div>
             )}
 
-            {/* Word list */}
-            <EditWordList
-              words={editedSegment.words}
-              onWordUpdate={handleWordChange}
-              onSplitWord={handleSplitWord}
-              onMergeWords={handleMergeWords}
-              onAddWord={handleAddWord}
-              onRemoveWord={handleRemoveWord}
-              onReplaceAllWords={handleReplaceAllWords}
-              onSplitSegment={handleSplitSegment}
-              onAddSegment={handleAddSegmentAt}
-              onMergeSegment={handleMergeSegment}
-              isGlobal={isGlobal}
-            />
+            <div className="overflow-auto px-[12px]">
+              {/* Word list */}
+              <EditWordList
+                words={editedSegment.words}
+                onWordUpdate={handleWordChange}
+                onSplitWord={handleSplitWord}
+                onMergeWords={handleMergeWords}
+                onAddWord={handleAddWord}
+                onRemoveWord={handleRemoveWord}
+                onReplaceAllWords={handleReplaceAllWords}
+                onSplitSegment={handleSplitSegment}
+                onAddSegment={handleAddSegmentAt}
+                onMergeSegment={handleMergeSegment}
+                isGlobal={isGlobal}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center flex-1">

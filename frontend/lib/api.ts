@@ -13,7 +13,7 @@ import { beginRequest, endRequest } from './backend-status';
 const isLocalHostname = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 export const API_BASE_URL = isLocalHostname
-  ? ''  // Relative URL - goes to the local server
+  ? new URLSearchParams(location.search).get('baseApiUrl') || ('' /* Relative URL - goes to the local server */)
   : (process.env.NEXT_PUBLIC_API_URL || 'https://api.nomadkaraoke.com');
 
 // Token management - stored in localStorage (client-side only)
@@ -3488,6 +3488,7 @@ export interface LyricsReviewApiClient {
   addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
   searchLyrics: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
+  getVocalsAudioUrl: () => string
   generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
@@ -3624,6 +3625,15 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     getAudioUrl(hash: string): string {
       const token = getAccessToken()
       const base = `${API_BASE_URL}/api/review/${jobId}/audio/${hash}`
+      return token ? `${base}?token=${encodeURIComponent(token)}` : base
+    },
+
+    /**
+     * Get vocals audio URL for playback
+     */
+    getVocalsAudioUrl(): string {
+      const token = getAccessToken()
+      const base = `${API_BASE_URL}/api/review/${jobId}/audio/vocals`
       return token ? `${base}?token=${encodeURIComponent(token)}` : base
     },
 
