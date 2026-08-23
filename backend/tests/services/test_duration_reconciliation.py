@@ -258,3 +258,58 @@ def test_stale_48h_expiry_sends_email_with_timeout_reason():
         assert "48" not in sent['subject'] and "not confirmed" not in sent['subject'], (
             f"over_limit email should not say '48 hours'. subject={sent.get('subject')!r}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Regression (job a453d1d5): a failing email-service construction must NOT
+# crash an otherwise-successful audio download. reconcile_and_maybe_pause runs
+# in the audio-download-job Cloud Run Job; EmailService() raises in production
+# when POSTMARK_SERVER_TOKEN is unset. Reconcile must degrade to no-email.
+# ---------------------------------------------------------------------------
+
+def _patch_reconcile_singletons(monkeypatch, jm, us, actual_seconds):
+    """Patch the function-scoped imports reconcile_and_maybe_pause pulls in.
+
+    These are imported inside the function (to avoid circular imports), so they
+    must be patched at their source modules, not on duration_reconciliation.
+    """
+    from backend.services import duration_reconciliation as dr
+    monkeypatch.setattr("backend.services.job_manager.JobManager", lambda: jm)
+    monkeypatch.setattr("backend.services.user_service.get_user_service", lambda: us)
+    monkeypatch.setattr("backend.services.storage_service.StorageService", lambda: MagicMock())
+    monkeypatch.setattr(
+        "backend.services.email_service.get_email_service",
+        MagicMock(side_effect=RuntimeError("POSTMARK_SERVER_TOKEN is not set in production")),
+    )
+    monkeypatch.setattr(dr, "_ffprobe_seconds", lambda job, storage: actual_seconds)
+
+
+@pytest.mark.asyncio
+async def test_reconcile_and_maybe_pause_survives_email_service_failure(monkeypatch):
+    from backend.services import duration_reconciliation as dr
+
+    jm = MagicMock()
+    jm.get_job.return_value = _job(credits_charged=2)
+    # Duration matches estimate → proceed, no email needed anyway.
+    _patch_reconcile_singletons(monkeypatch, jm, MagicMock(), actual_seconds=900.0)  # 15min -> 2 credits
+
+    # Must not raise despite email service construction failing.
+    blocked = await dr.reconcile_and_maybe_pause("job1")
+    assert blocked is False  # proceeds normally
+
+
+@pytest.mark.asyncio
+async def test_reconcile_and_maybe_pause_over_limit_still_cancels_without_email(monkeypatch):
+    """Over-limit cancel must still refund+cancel even if email can't be built."""
+    from backend.services import duration_reconciliation as dr
+
+    jm = MagicMock()
+    jm.get_job.return_value = _job(credits_charged=2)
+    us = MagicMock()
+    us.add_credits.return_value = (True, 99, "ok")
+    _patch_reconcile_singletons(monkeypatch, jm, us, actual_seconds=4000.0)  # >60min
+
+    blocked = await dr.reconcile_and_maybe_pause("job1")
+    assert blocked is True  # cancelled
+    jm.cancel_job.assert_called_once()
+    us.add_credits.assert_called_once()  # full refund still happens

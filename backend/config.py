@@ -107,11 +107,13 @@ class Settings(BaseSettings):
     # Models used by the multi-model "compare" mode (semicolon-separated —
     # Cloud Run --set-env-vars is comma-delimited). Empty = single-model only.
     auto_correct_compare_models: str = os.getenv("AUTO_CORRECT_COMPARE_MODELS", "")
-    # Proactively generate (and cache) auto-correct suggestions in the lyrics
-    # worker once transcription + references are ready, so the review UI has
-    # them instantly. Best-effort: failures never block or fail the job. Only
-    # meaningful where ANTHROPIC_API_KEY + AUTO_CORRECT_COMPARE_MODELS are set
-    # (the lyrics-transcription-job, via ci.yml). Default off.
+    # Proactively generate (and cache) auto-correct suggestions once
+    # transcription + references are ready, so the review UI has them instantly.
+    # This flag gates whether the lyrics worker fires the trigger; the actual
+    # multi-model LLM call + caching runs on the API service (auto_correct_worker),
+    # which holds the model credentials — the lyrics-transcription-job itself does
+    # NOT need ANTHROPIC_API_KEY / AUTO_CORRECT_COMPARE_MODELS. Best-effort:
+    # failures never block or fail the job. Default off.
     auto_correct_proactive_enabled: bool = os.getenv(
         "AUTO_CORRECT_PROACTIVE_ENABLED", "false"
     ).lower() in ("true", "1", "yes")
