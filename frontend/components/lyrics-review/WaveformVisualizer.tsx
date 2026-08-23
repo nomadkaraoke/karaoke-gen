@@ -68,7 +68,13 @@ export const WaveformVisualizer = ({
 			// Clamp the first pixel: (x - 0.5) is negative at x=0, and a negative
 			// slice start would sample peaks from the end of the window instead.
 			const dataPointIndex = Math.max(0, Math.floor((x - 0.5) / ctx.canvas.width * audioData.length))
-			const nextDataPointIndex = Math.floor((x + 0.5) / ctx.canvas.width * audioData.length)
+			// When fewer peaks than pixels are visible (zoomed in), adjacent columns
+			// floor to the same index; force at least one peak per column so the
+			// waveform doesn't render zero-height gaps.
+			const nextDataPointIndex = Math.max(
+				dataPointIndex + 1,
+				Math.floor((x + 0.5) / ctx.canvas.width * audioData.length)
+			)
 
 			const amplitude = audioData
 				.slice(dataPointIndex, nextDataPointIndex)

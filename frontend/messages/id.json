@@ -1396,7 +1396,9 @@
       "tapToSync": "Ketuk Untuk Sinkronisasi",
       "tapWhenStarts": "Ketuk tombol saat kata dimulai",
       "wordProgress": "Kata {index} dari {total}:",
-      "cancelSync": "Batal"
+      "cancelSync": "Batal",
+      "hold": "TAHAN...",
+      "tap": "KETUK"
     }
   },
   "instrumentalReview": {

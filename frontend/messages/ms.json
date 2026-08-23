@@ -1396,7 +1396,9 @@
       "tapToSync": "Ketik Untuk Segerakkan",
       "tapWhenStarts": "Ketik butang apabila perkataan bermula",
       "wordProgress": "Perkataan {index} daripada {total}:",
-      "cancelSync": "Batal"
+      "cancelSync": "Batal",
+      "hold": "TAHAN...",
+      "tap": "TEKAN"
     }
   },
   "instrumentalReview": {

@@ -1396,7 +1396,9 @@
       "tapToSync": "Trykk for å synkronisere",
       "tapWhenStarts": "Trykk på knappen når ordet starter",
       "wordProgress": "Ord {index} av {total}:",
-      "cancelSync": "Avbryt"
+      "cancelSync": "Avbryt",
+      "hold": "HOLD...",
+      "tap": "TRYKK"
     }
   },
   "instrumentalReview": {

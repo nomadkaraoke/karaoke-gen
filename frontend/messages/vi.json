@@ -1396,7 +1396,9 @@
       "tapToSync": "Nhấn để đồng bộ",
       "tapWhenStarts": "Nhấn nút khi từ bắt đầu",
       "wordProgress": "Từ {index} trên {total}:",
-      "cancelSync": "Hủy"
+      "cancelSync": "Hủy",
+      "hold": "GIỮ...",
+      "tap": "CHẠM"
     }
   },
   "instrumentalReview": {

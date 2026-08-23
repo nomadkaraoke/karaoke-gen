@@ -1396,7 +1396,9 @@
       "tapToSync": "सिंक करने के लिए टैप करो",
       "tapWhenStarts": "शब्द शुरू होने पर बटन टैप करो",
       "wordProgress": "{total} में से {index} शब्द:",
-      "cancelSync": "कैंसल"
+      "cancelSync": "कैंसल",
+      "hold": "दबाए रखो...",
+      "tap": "टैप करो"
     }
   },
   "instrumentalReview": {

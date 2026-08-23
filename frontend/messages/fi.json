@@ -1396,7 +1396,9 @@
       "tapToSync": "Napauta synkronoidaksesi",
       "tapWhenStarts": "Napauta painiketta, kun sana alkaa",
       "wordProgress": "Sana {index}/{total}:",
-      "cancelSync": "Peruuta"
+      "cancelSync": "Peruuta",
+      "hold": "PIDÄ...",
+      "tap": "NAPAUTA"
     }
   },
   "instrumentalReview": {

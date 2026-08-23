@@ -1396,7 +1396,9 @@
       "tapToSync": "הקש לסנכרון",
       "tapWhenStarts": "הקש על הכפתור כשהמילה מתחילה",
       "wordProgress": "מילה {index} מתוך {total}:",
-      "cancelSync": "ביטול"
+      "cancelSync": "ביטול",
+      "hold": "החזק...",
+      "tap": "הקש"
     }
   },
   "instrumentalReview": {

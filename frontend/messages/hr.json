@@ -1396,7 +1396,9 @@
       "tapToSync": "Dodirni za sinkronizaciju",
       "tapWhenStarts": "Dodirni gumb kada riječ počne",
       "wordProgress": "Riječ {index} od {total}:",
-      "cancelSync": "Odustani"
+      "cancelSync": "Odustani",
+      "hold": "DRŽI...",
+      "tap": "TAPNI"
     }
   },
   "instrumentalReview": {

@@ -18,6 +18,7 @@ const TapButton = memo(function TapButton({
   onTapStart: () => void
   onTapEnd: () => void
 }) {
+  const t = useTranslations('lyricsReview.editTimeline')
   const isPressedRef = useRef(false)
 
   const handleTapStart = useCallback(() => {
@@ -52,7 +53,7 @@ const TapButton = memo(function TapButton({
       )}
     >
       <Hand className="h-5 w-5 mr-2" />
-      {isSpacebarPressed ? 'HOLD...' : 'TAP'}
+      {isSpacebarPressed ? t('hold') : t('tap')}
     </Button>
   )
 })

@@ -1396,7 +1396,9 @@
       "tapToSync": "Senkronize Etmek İçin Dokun",
       "tapWhenStarts": "Kelime başladığında düğmeye dokun",
       "wordProgress": "Kelime {index} / {total}:",
-      "cancelSync": "İptal"
+      "cancelSync": "İptal",
+      "hold": "BASILI TUT...",
+      "tap": "DOKUN"
     }
   },
   "instrumentalReview": {

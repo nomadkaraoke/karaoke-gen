@@ -1396,7 +1396,9 @@
       "tapToSync": "Ťukni pro synchronizaci",
       "tapWhenStarts": "Ťukni na tlačítko, když slovo začne",
       "wordProgress": "Slovo {index} z {total}:",
-      "cancelSync": "Zrušit"
+      "cancelSync": "Zrušit",
+      "hold": "DRŽ...",
+      "tap": "KLEPNI"
     }
   },
   "instrumentalReview": {

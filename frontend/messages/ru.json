@@ -1396,7 +1396,9 @@
       "tapToSync": "Нажми для синхронизации",
       "tapWhenStarts": "Нажми кнопку, когда начнется слово",
       "wordProgress": "Слово {index} из {total}:",
-      "cancelSync": "Отмена"
+      "cancelSync": "Отмена",
+      "hold": "УДЕРЖИВАЙ...",
+      "tap": "НАЖМИ"
     }
   },
   "instrumentalReview": {

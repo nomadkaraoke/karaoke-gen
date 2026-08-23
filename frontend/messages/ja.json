@@ -1396,7 +1396,9 @@
       "tapToSync": "タップして同期",
       "tapWhenStarts": "単語が始まったらボタンをタップしてください",
       "wordProgress": "単語 {index} / {total}:",
-      "cancelSync": "キャンセル"
+      "cancelSync": "キャンセル",
+      "hold": "長押し...",
+      "tap": "タップ"
     }
   },
   "instrumentalReview": {

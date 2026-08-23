@@ -1396,7 +1396,9 @@
       "tapToSync": "Πάτησε για συγχρονισμό",
       "tapWhenStarts": "Πάτησε το κουμπί όταν ξεκινάει η λέξη",
       "wordProgress": "Λέξη {index} από {total}:",
-      "cancelSync": "Ακύρωση"
+      "cancelSync": "Ακύρωση",
+      "hold": "ΚΡΑΤΑ...",
+      "tap": "ΠΑΤΑ"
     }
   },
   "instrumentalReview": {

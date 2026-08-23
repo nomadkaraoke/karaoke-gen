@@ -1396,7 +1396,9 @@
       "tapToSync": "点击同步",
       "tapWhenStarts": "在字词开始时点击按钮",
       "wordProgress": "第 {index} 个词，共 {total} 个：",
-      "cancelSync": "取消"
+      "cancelSync": "取消",
+      "hold": "按住...",
+      "tap": "点击"
     }
   },
   "instrumentalReview": {

@@ -1396,7 +1396,9 @@
       "tapToSync": "Koppints a szinkronizáláshoz",
       "tapWhenStarts": "Koppints a gombra, amikor a szó elkezdődik",
       "wordProgress": "{index}. szó a(z) {total} közül:",
-      "cancelSync": "Mégse"
+      "cancelSync": "Mégse",
+      "hold": "TARTSD...",
+      "tap": "KOPPINTS"
     }
   },
   "instrumentalReview": {

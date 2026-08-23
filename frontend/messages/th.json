@@ -1396,7 +1396,9 @@
       "tapToSync": "แตะเพื่อซิงค์",
       "tapWhenStarts": "แตะปุ่มเมื่อเริ่มคำ",
       "wordProgress": "คำที่ {index} จาก {total}:",
-      "cancelSync": "ยกเลิก"
+      "cancelSync": "ยกเลิก",
+      "hold": "กดค้าง...",
+      "tap": "แตะ"
     }
   },
   "instrumentalReview": {

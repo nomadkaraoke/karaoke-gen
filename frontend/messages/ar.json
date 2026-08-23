@@ -1396,7 +1396,9 @@
       "tapToSync": "انقر للمزامنة",
       "tapWhenStarts": "انقر على الزر عندما تبدأ الكلمة",
       "wordProgress": "الكلمة {index} من {total}:",
-      "cancelSync": "إلغاء"
+      "cancelSync": "إلغاء",
+      "hold": "اضغط مطولاً...",
+      "tap": "انقر"
     }
   },
   "instrumentalReview": {

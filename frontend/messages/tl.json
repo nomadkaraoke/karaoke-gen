@@ -1396,7 +1396,9 @@
       "tapToSync": "I-tap Para I-sync",
       "tapWhenStarts": "I-tap ang button kapag nagsimula ang salita",
       "wordProgress": "Salita {index} ng {total}:",
-      "cancelSync": "Kanselahin"
+      "cancelSync": "Kanselahin",
+      "hold": "I-HOLD...",
+      "tap": "I-TAP"
     }
   },
   "instrumentalReview": {

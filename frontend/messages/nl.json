@@ -1396,7 +1396,9 @@
       "tapToSync": "Tik om te synchroniseren",
       "tapWhenStarts": "Tik op de knop wanneer het woord begint",
       "wordProgress": "Woord {index} van {total}:",
-      "cancelSync": "Annuleren"
+      "cancelSync": "Annuleren",
+      "hold": "HOUD VAST...",
+      "tap": "TIK"
     }
   },
   "instrumentalReview": {

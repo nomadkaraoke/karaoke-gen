@@ -1396,7 +1396,9 @@
       "tapToSync": "Toca para sincronizar",
       "tapWhenStarts": "Toca el botón cuando empiece la palabra",
       "wordProgress": "Palabra {index} de {total}:",
-      "cancelSync": "Cancelar"
+      "cancelSync": "Cancelar",
+      "hold": "MANTÉN...",
+      "tap": "TOCA"
     }
   },
   "instrumentalReview": {
