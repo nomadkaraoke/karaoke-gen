@@ -410,7 +410,7 @@ export default function EditModal({
             </p>
           </div>
         ) : editedSegment ? (
-          <div className="flex-1 overflow-auto space-y-4">
+          <div className="flex flex-col flex-1 space-y-4 overflow-hidden">
             {timingFixCount > 0 && (
               <div
                 role="status"
@@ -424,41 +424,45 @@ export default function EditModal({
 
             {/* Timeline editor with Tap To Sync */}
             {editedSegment.words.some((w) => w.start_time !== null) && (
-              <EditTimelineSection
-                words={editedSegment.words}
-                startTime={startTime}
-                endTime={endTime}
-                originalStartTime={originalSegment?.start_time ?? null}
-                originalEndTime={originalSegment?.end_time ?? null}
-                currentStartTime={editedSegment.start_time}
-                currentEndTime={editedSegment.end_time}
-                currentTime={currentTime}
-                isManualSyncing={isManualSyncing}
-                syncWordIndex={syncWordIndex}
-                isSpacebarPressed={isSpacebarPressed}
-                onWordUpdate={handleWordChange}
-                onPlaySegment={onPlaySegment}
-                startManualSync={startManualSync}
-                isGlobal={isGlobal}
-                onTapStart={handleTapStart}
-                onTapEnd={handleTapEnd}
-              />
+              <div className="flex-grow">
+                <EditTimelineSection
+                  words={editedSegment.words}
+                  startTime={startTime}
+                  endTime={endTime}
+                  originalStartTime={originalSegment?.start_time ?? null}
+                  originalEndTime={originalSegment?.end_time ?? null}
+                  currentStartTime={editedSegment.start_time}
+                  currentEndTime={editedSegment.end_time}
+                  currentTime={currentTime}
+                  isManualSyncing={isManualSyncing}
+                  syncWordIndex={syncWordIndex}
+                  isSpacebarPressed={isSpacebarPressed}
+                  onWordUpdate={handleWordChange}
+                  onPlaySegment={onPlaySegment}
+                  startManualSync={startManualSync}
+                  isGlobal={isGlobal}
+                  onTapStart={handleTapStart}
+                  onTapEnd={handleTapEnd}
+                />
+              </div>
             )}
 
-            {/* Word list */}
-            <EditWordList
-              words={editedSegment.words}
-              onWordUpdate={handleWordChange}
-              onSplitWord={handleSplitWord}
-              onMergeWords={handleMergeWords}
-              onAddWord={handleAddWord}
-              onRemoveWord={handleRemoveWord}
-              onReplaceAllWords={handleReplaceAllWords}
-              onSplitSegment={handleSplitSegment}
-              onAddSegment={handleAddSegmentAt}
-              onMergeSegment={handleMergeSegment}
-              isGlobal={isGlobal}
-            />
+            <div className="overflow-auto px-[12px]">
+              {/* Word list */}
+              <EditWordList
+                words={editedSegment.words}
+                onWordUpdate={handleWordChange}
+                onSplitWord={handleSplitWord}
+                onMergeWords={handleMergeWords}
+                onAddWord={handleAddWord}
+                onRemoveWord={handleRemoveWord}
+                onReplaceAllWords={handleReplaceAllWords}
+                onSplitSegment={handleSplitSegment}
+                onAddSegment={handleAddSegmentAt}
+                onMergeSegment={handleMergeSegment}
+                isGlobal={isGlobal}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-center flex-1">
