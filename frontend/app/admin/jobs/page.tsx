@@ -55,6 +55,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { LocaleBadge } from "@/components/admin/locale-badge"
+import { IpInfo } from "@/components/admin/ip-info"
 import {
   Search,
   RefreshCw,
@@ -1228,6 +1230,22 @@ function AdminJobsPageContent() {
               )}
             </div>
             <div className="space-y-1 min-w-0">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Language</p>
+              {selectedJob.locale ? (
+                <LocaleBadge locale={selectedJob.locale} showName />
+              ) : (
+                <p className="text-sm text-muted-foreground">—</p>
+              )}
+            </div>
+            <div className="space-y-1 min-w-0">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Country</p>
+              {selectedJob.creation_ip ? (
+                <div className="text-sm"><IpInfo ip={selectedJob.creation_ip} compact /></div>
+              ) : (
+                <p className="text-sm text-muted-foreground">—</p>
+              )}
+            </div>
+            <div className="space-y-1 min-w-0">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Source</p>
               <button
                 className="w-full max-w-full min-w-0 text-sm flex items-center gap-1.5 text-primary hover:underline cursor-pointer text-left"
@@ -2250,17 +2268,22 @@ function AdminJobsPageContent() {
                     {job.user_email || "—"}
                   </TableCell>
                   <TableCell>
-                    {job.artist && job.title ? (
-                      <span className="max-w-[200px] truncate block">
-                        {job.artist} - {job.title}
-                      </span>
-                    ) : job.filename ? (
-                      <span className="max-w-[200px] truncate block text-muted-foreground">
-                        {job.filename}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
+                    <div className="flex items-center gap-2 min-w-0">
+                      {job.artist && job.title ? (
+                        <span className="max-w-[200px] truncate block">
+                          {job.artist} - {job.title}
+                        </span>
+                      ) : job.filename ? (
+                        <span className="max-w-[200px] truncate block text-muted-foreground">
+                          {job.filename}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                      {job.locale && (
+                        <LocaleBadge locale={job.locale} className="shrink-0 text-[10px] py-0 px-1.5 h-auto" />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusVariant(job.status)}>

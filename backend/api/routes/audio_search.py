@@ -55,7 +55,7 @@ from backend.services.firestore_service import FirestoreService
 from backend.services.user_service import get_user_service
 from backend.services.pricing import duration_to_credits, is_blocked
 from pathlib import Path
-from backend.i18n import t, get_locale_from_request
+from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 
 logger = logging.getLogger(__name__)
 
@@ -806,6 +806,7 @@ async def search_audio(
             is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
+            locale=get_full_locale_from_request(request),
         )
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id

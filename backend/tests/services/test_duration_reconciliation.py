@@ -231,7 +231,7 @@ def test_stale_48h_expiry_sends_email_with_timeout_reason():
         sent = {}
 
         class _CapturingProvider:
-            def send_email(self, to_email, subject, html_content, text_content):
+            def send_email(self, to_email, subject, html_content, text_content=None, **kwargs):
                 sent['subject'] = subject
                 sent['text'] = text_content
                 return True

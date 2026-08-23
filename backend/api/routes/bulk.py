@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.api.dependencies import require_auth
+from backend.i18n import get_full_locale_from_request
 from backend.services.auth_service import AuthResult
 
 logger = logging.getLogger(__name__)
@@ -348,6 +349,7 @@ async def bulk_submit(
             dropbox_path=settings.default_dropbox_path,
             gdrive_folder_id=settings.default_gdrive_folder_id,
             request_metadata=request_metadata,
+            locale=get_full_locale_from_request(request),
         )
         try:
             job = job_manager.create_job(job_create, is_admin=is_admin)

@@ -11,6 +11,28 @@ from backend.models.user import VerifyMagicLinkResponse, UserPublic
 from backend.services.auth_service import AuthResult, AuthService, UserType
 
 
+def _sent_fields(call_args):
+    """Extract the sent email's fields regardless of positional/keyword call style.
+
+    Sends now flow through EmailService._log_and_send, which invokes the provider
+    with keyword args; older direct calls used positionals. Read both.
+    """
+    args, kwargs = call_args.args, call_args.kwargs
+
+    def pick(name, idx):
+        if name in kwargs:
+            return kwargs[name]
+        return args[idx] if len(args) > idx else None
+
+    return {
+        "to_email": pick("to_email", 0),
+        "subject": pick("subject", 1),
+        "html_content": pick("html_content", 2),
+        "text_content": pick("text_content", 3),
+        "from_email_override": kwargs.get("from_email_override"),
+    }
+
+
 class TestTenantConfigGetFrontendUrl:
     """Tests for TenantConfig.get_frontend_url()."""
 
@@ -47,10 +69,10 @@ class TestSendMagicLinkTenantParams:
         """Without tenant params, email uses default Nomad Karaoke branding."""
         email_service.send_magic_link("user@test.com", "abc123")
 
-        call_args = email_service.provider.send_email.call_args
-        subject = call_args[0][1]
-        html_content = call_args[0][2]
-        text_content = call_args[0][3]
+        f = _sent_fields(email_service.provider.send_email.call_args)
+        subject = f["subject"]
+        html_content = f["html_content"]
+        text_content = f["text_content"]
 
         assert subject == "Sign in to Nomad Karaoke"
         assert "Nomad Karaoke" in html_content
@@ -66,9 +88,9 @@ class TestSendMagicLinkTenantParams:
             tenant_frontend_url="https://vocalstar.nomadkaraoke.com",
         )
 
-        call_args = email_service.provider.send_email.call_args
-        html_content = call_args[0][2]
-        text_content = call_args[0][3]
+        f = _sent_fields(email_service.provider.send_email.call_args)
+        html_content = f["html_content"]
+        text_content = f["text_content"]
 
         assert "https://vocalstar.nomadkaraoke.com/en/auth/verify?token=abc123" in html_content
         assert "https://vocalstar.nomadkaraoke.com/en/auth/verify?token=abc123" in text_content
@@ -83,10 +105,10 @@ class TestSendMagicLinkTenantParams:
             tenant_name="Vocal Star",
         )
 
-        call_args = email_service.provider.send_email.call_args
-        subject = call_args[0][1]
-        html_content = call_args[0][2]
-        text_content = call_args[0][3]
+        f = _sent_fields(email_service.provider.send_email.call_args)
+        subject = f["subject"]
+        html_content = f["html_content"]
+        text_content = f["text_content"]
 
         assert subject == "Sign in to Vocal Star"
         assert "Vocal Star" in html_content
@@ -100,8 +122,7 @@ class TestSendMagicLinkTenantParams:
             tenant_name='<script>alert("xss")</script>',
         )
 
-        call_args = email_service.provider.send_email.call_args
-        html_content = call_args[0][2]
+        html_content = _sent_fields(email_service.provider.send_email.call_args)["html_content"]
 
         # Should be escaped in HTML
         assert "<script>" not in html_content
@@ -119,14 +140,14 @@ class TestSendMagicLinkTenantParams:
 
         assert result is True
 
-        call_args = email_service.provider.send_email.call_args
-        subject = call_args[0][1]
-        html_content = call_args[0][2]
+        f = _sent_fields(email_service.provider.send_email.call_args)
+        subject = f["subject"]
+        html_content = f["html_content"]
 
         assert subject == "Sign in to Vocal Star"
         assert "https://vocalstar.nomadkaraoke.com/en/auth/verify?token=token123" in html_content
         # Check sender email override was passed through
-        assert call_args[1]["from_email_override"] == "vocalstar@nomadkaraoke.com"
+        assert f["from_email_override"] == "vocalstar@nomadkaraoke.com"
 
 
 class TestVerifyMagicLinkResponseTenantSubdomain:

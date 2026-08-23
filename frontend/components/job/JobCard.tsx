@@ -13,6 +13,7 @@ import { DurationCostConfirm } from "./DurationCostConfirm"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
 import { getJobStep, formatStepIndicator, getJobProgressPercent, isWaitingForEncodingCapacity, isVisibilityChangeInProgress } from "@/lib/job-status"
 import { useAuth } from "@/lib/auth"
+import { LocaleBadge } from "@/components/admin/locale-badge"
 import { useDurationConfirm } from "@/hooks/use-duration-confirm"
 import { parseServerDate } from "@/lib/utils"
 
@@ -231,6 +232,11 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
         <span>{createdAt}</span>
         <span style={{ opacity: 0.7 }}>•</span>
         <StatusIndicator job={job} />
+        {/* Admin-only: what UI language the job was submitted in. Hidden from
+            regular users (redundant — it's always their own language). */}
+        {isAdmin && job.locale && (
+          <LocaleBadge locale={job.locale} className="text-[10px] py-0 px-1.5 h-auto" />
+        )}
       </p>
 
       {/* Progress bar for active jobs */}
