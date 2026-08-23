@@ -1,6 +1,10 @@
 [tool.poetry]
 name = "karaoke-gen"
+<<<<<<< HEAD
 version = "0.198.0"
+=======
+version = "0.197.4"
+>>>>>>> aaea0854 (perf(admin): stats overview 18s → ~1s — field masks + unblock event loop)
 description = "Generate karaoke videos with synchronized lyrics. Handles the entire process from downloading audio and lyrics to creating the final video with title screens."
 authors = ["Andrew Beveridge <andrew@beveridge.uk>"]
 license = "MIT"

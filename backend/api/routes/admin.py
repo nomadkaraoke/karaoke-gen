@@ -7,6 +7,7 @@ Handles:
 - Admin-only operations
 - Audio search cache management
 """
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Tuple, List, Optional, Any, Dict
@@ -153,10 +154,23 @@ async def get_admin_stats_overview(
     - Credit statistics
     - Beta program stats
     """
+    # The Firestore streaming below is synchronous; run it in a worker thread so
+    # it can't block the event loop and stall every other request on this instance.
+    return await asyncio.to_thread(_compute_admin_stats_overview, user_service.db, exclude_test)
+
+
+# Field masks for the overview stats streams. Job documents carry large payloads
+# (state_data, timeline, corrections — ~100MB across the collection), so streaming
+# full documents just to count statuses takes ~15-20s; with these masks it's ~1s.
+_OVERVIEW_USER_FIELDS = ["email", "last_login_at", "credit_transactions"]
+_OVERVIEW_JOB_FIELDS = ["user_email", "created_at", "status"]
+
+
+def _compute_admin_stats_overview(db, exclude_test: bool) -> AdminStatsOverview:
+    """Synchronous stats computation — called via asyncio.to_thread from the route."""
     from google.cloud.firestore_v1 import FieldFilter
     from google.cloud.firestore_v1 import aggregation
 
-    db = user_service.db
     now = datetime.utcnow()
     seven_days_ago = now - timedelta(days=7)
     thirty_days_ago = now - timedelta(days=30)
@@ -182,10 +196,10 @@ async def get_admin_stats_overview(
         # When excluding test data, we must stream and filter in Python
         # because Firestore doesn't support "not ends with" queries
 
-        # Stream all users and filter
+        # Stream all users and filter (field mask: only the fields the stats need)
         all_users = []
         users_fetched = 0
-        for doc in users_collection.limit(USERS_STREAM_LIMIT).stream():
+        for doc in users_collection.select(_OVERVIEW_USER_FIELDS).limit(USERS_STREAM_LIMIT).stream():
             users_fetched += 1
             user_data = doc.to_dict()
             email = user_data.get("email", "")
@@ -216,10 +230,11 @@ async def get_admin_stats_overview(
                     if amount > 0:
                         total_credits_issued_30d += amount
 
-        # Stream all jobs and filter by user_email
+        # Stream all jobs and filter by user_email (field mask keeps this fast —
+        # full job docs carry huge state_data payloads)
         all_jobs = []
         jobs_fetched = 0
-        for doc in jobs_collection.limit(JOBS_STREAM_LIMIT).stream():
+        for doc in jobs_collection.select(_OVERVIEW_JOB_FIELDS).limit(JOBS_STREAM_LIMIT).stream():
             jobs_fetched += 1
             job_data = doc.to_dict()
             user_email = job_data.get("user_email", "")
@@ -313,7 +328,7 @@ async def get_admin_stats_overview(
         total_credits_issued_30d = 0
         try:
             users_fetched = 0
-            for user_doc in users_collection.limit(USERS_STREAM_LIMIT).stream():
+            for user_doc in users_collection.select(["credit_transactions"]).limit(USERS_STREAM_LIMIT).stream():
                 users_fetched += 1
                 user_data = user_doc.to_dict()
                 transactions = user_data.get("credit_transactions", [])
