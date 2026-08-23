@@ -386,36 +386,36 @@ export default function EditModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col" onKeyDown={handleKeyDown}>
         <DialogHeader>
-          {/* Left: title (+ play) with the consolidated time range beneath it.
-              Right: Tap To Sync, moved up here to reclaim vertical space above
-              the word list. pr-10 keeps it clear of the dialog close button. */}
-          <div className="flex items-start justify-between gap-4 pr-10">
-            <div className="flex flex-col gap-0.5">
-              <DialogTitle className="flex items-center gap-2">
+          {/* Left: title (with the segment's time range folded into the heading)
+              + play. Right: Tap To Sync, moved up here to reclaim vertical space
+              above the word list. pr-10 keeps it clear of the dialog close button. */}
+          <div className="flex items-center justify-between gap-4 pr-10">
+            <DialogTitle className="flex items-center gap-2">
+              <span>
                 {isGlobal ? t('title') : t('editSegment', { index: segmentIndex ?? 0 })}
-                {segment && segment.start_time !== null && onPlaySegment && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={handlePlayToggle}
-                    disabled={!audioReady}
-                    title={audioReady ? undefined : tHeader('audioStillLoading')}
-                  >
-                    {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
-                )}
-              </DialogTitle>
-              {!isGlobal &&
-                editedSegment &&
-                editedSegment.start_time !== null &&
-                editedSegment.end_time !== null && (
-                  <span className="text-xs font-normal text-muted-foreground">
-                    Time Range: {editedSegment.start_time.toFixed(2)} -{' '}
-                    {editedSegment.end_time.toFixed(2)}
-                  </span>
-                )}
-            </div>
+                {!isGlobal &&
+                  editedSegment &&
+                  editedSegment.start_time !== null &&
+                  editedSegment.end_time !== null && (
+                    <span className="font-normal text-muted-foreground">
+                      {' '}
+                      ({editedSegment.start_time.toFixed(2)} - {editedSegment.end_time.toFixed(2)})
+                    </span>
+                  )}
+              </span>
+              {segment && segment.start_time !== null && onPlaySegment && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handlePlayToggle}
+                  disabled={!audioReady}
+                  title={audioReady ? undefined : tHeader('audioStillLoading')}
+                >
+                  {isPlaying ? <Square className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                </Button>
+              )}
+            </DialogTitle>
 
             {/* Tap To Sync toggle (relocated from EditTimelineSection) */}
             {editedSegment && editedSegment.words.some((w) => w.start_time !== null) && (
