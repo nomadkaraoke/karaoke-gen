@@ -32,7 +32,12 @@ def create_bucket() -> storage.Bucket:
                     "https://singa.nomadkaraoke.com",
                     "http://localhost:3000",
                 ],
-                methods=["PUT"],
+                # PUT: direct-to-GCS uploads. GET/HEAD: the lyrics-review vocals
+                # waveform fetch()es the signed stem URL and reads its bytes via
+                # decodeAudioData — unlike <audio> playback, that's a cross-origin
+                # read and needs CORS. Without GET the browser blocks it with
+                # "Access-Control-Allow-Origin missing".
+                methods=["GET", "HEAD", "PUT"],
                 response_headers=["Content-Type"],
                 max_age_seconds=3600,
             ),
