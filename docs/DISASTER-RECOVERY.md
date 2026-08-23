@@ -14,6 +14,7 @@
 | BigQuery (monthly) | S3 `bigquery/musicbrainz/` | Load Parquet files | 30 days |
 | BigQuery (Spotify) | S3 `bigquery/spotify/` | Load from Glacier Deep Archive | N/A (static) |
 | GCS job files | S3 `gcs/job-files/` | Sync to new bucket | 24h |
+| Git repos (code) | S3 `git-repos/{owner}/{repo}.bundle` (+ `manifest.json`) | `git clone <bundle>` then push to a new remote | 24h |
 | Secret Manager | S3 `secrets/YYYY-MM-DD.bin` (sealed-box encrypted) | Decrypt with private key from KeepassXC | 24h |
 | AWS credentials (function) | GCP Secret Manager `aws-backup-credentials` | Read directly | On-change |
 | AWS credentials (offline) | KeepassXC — "Nomad Karaoke — DR backup AWS access" | Manual lookup | On-change |
@@ -24,6 +25,7 @@
 - [ ] KeepassXC contains "Nomad Karaoke — DR backup AWS access" (access key, secret key, region, S3 bucket name)
 - [ ] KeepassXC contains "Nomad Karaoke — DR backup decryption key" (Curve25519 private key, 64 hex chars)
 - [ ] GitHub repo `nomadkaraoke/karaoke-gen` has the secrets `AWS_BACKUP_READONLY_ACCESS_KEY_ID`, `AWS_BACKUP_READONLY_SECRET_ACCESS_KEY`, `DR_MONITOR_DISCORD_WEBHOOK` configured (powers the freshness monitor)
+- [ ] GCP Secret Manager `github-backup-token` holds a valid GitHub PAT (`repo` + `read:org`) so the nightly job can bundle every repo — without it the git-repo backup silently skips (see § "Git repo backup setup")
 - [ ] You can decrypt yesterday's secrets backup locally (run the drill in § "Quarterly restore drill")
 - [ ] Your KeepassXC database itself is backed up off-machine (cloud sync, second device, or printed paper recovery)
 
@@ -301,6 +303,111 @@ Some external services lock to redirect URIs or treat the old GCP project ID as 
 - Discord webhook URLs (re-issue if old GCP exposure could have leaked them)
 - Cloudflare API tokens (rotate)
 
+## Scenario 3: Loss of GitHub access (account ban / repo takedown)
+
+If the GitHub account is suspended (e.g. an automated copyright false-positive)
+or repos are taken down, **the code and its full history are still in S3**. The
+nightly backup bundles every repo under `github.com/nomadkaraoke` and
+`github.com/beveradb` into a single `git bundle` per repo — a self-contained
+file you can clone from directly, no GitHub required. GCP is unaffected, so
+production keeps running; this is purely about recovering the source of truth to
+a new home.
+
+### What's backed up
+
+- `s3://nomadkaraoke-backup/git-repos/{owner}/{repo}.bundle` — one bundle per
+  repo, containing **all branches and tags** (entire reachable history).
+- `s3://nomadkaraoke-backup/git-repos/manifest.json` — inventory of every repo
+  at backup time: visibility, default branch, description, size, fork/archived
+  flags, and per-repo backup status. Use it to know exactly what existed and to
+  recreate repo settings on the new host.
+
+Forks are excluded by default (recoverable from upstream). Repos are only as
+fresh as the last nightly run (24h RPO).
+
+### Restore
+
+```bash
+# 1. Set AWS creds (see § "Setting AWS creds locally") and pull the bundles.
+aws s3 sync s3://nomadkaraoke-backup/git-repos/ /tmp/git-repos/
+
+# 2. Review the inventory — what existed, and did every repo back up cleanly?
+jq '{total, bundled, errors, skipped, repos: [.repos[] | {full_name, status, default_branch, private}]}' \
+  /tmp/git-repos/manifest.json
+
+# 3. Reconstruct a working clone from any bundle (full history, all branches).
+cd /tmp/git-repos/nomadkaraoke
+git clone karaoke-gen.bundle karaoke-gen
+cd karaoke-gen
+git branch -a      # every branch is present
+git tag            # every tag is present
+
+# 4. Point it at a new remote and push everything.
+#    New home options: a fresh GitHub org/account, GitLab, Codeberg, or a
+#    self-hosted Gitea. Create the empty repo there first, then:
+git remote remove origin
+git remote add origin <NEW_REMOTE_URL>
+git push origin --all
+git push origin --tags
+```
+
+To restore *all* repos in one pass:
+
+```bash
+cd /tmp/git-repos
+for owner in */; do
+  for bundle in "$owner"*.bundle; do
+    name=$(basename "$bundle" .bundle)
+    git clone "$bundle" "restored/${owner}${name}"
+    # then add the new remote + push --all/--tags per repo (see above)
+  done
+done
+```
+
+**Verify a bundle without cloning:** `git bundle verify /tmp/git-repos/nomadkaraoke/karaoke-gen.bundle`.
+
+### After restore — repoint tooling
+
+The DR runbook, CI, `poetry`/`pip` VCS deps, and cross-repo scripts reference
+`github.com/nomadkaraoke/...` URLs. Once repos live at a new host, update:
+
+- Git remotes in every local clone / worktree
+- CI/CD config that clones sibling repos (e.g. `flacfetch` in `karaoke-gen`)
+- Any `poetry`/`pip` dependency pinned to a GitHub URL
+- Webhooks / deploy keys / Actions secrets on the new host
+- `GIT_BACKUP_OWNERS` + the `github-backup-token` PAT so the nightly backup keeps
+  bundling from the new location
+
+## Git repo backup setup
+
+One-time setup so the nightly job can bundle private repos:
+
+1. Create a GitHub PAT owned by **beveradb** (a member of the `nomadkaraoke` org):
+   - **Classic PAT:** scopes `repo` (full, to read private repos) + `read:org`
+     (to enumerate org repos). Simplest.
+   - **Fine-grained PAT:** resource owner = beveradb *and* a second token for the
+     nomadkaraoke org (fine-grained tokens are single-owner); grant
+     `Contents: Read-only` + `Metadata: Read-only`. Classic is easier here.
+2. Store it in Secret Manager (value added manually — Pulumi only creates the
+   empty secret resource):
+   ```bash
+   printf %s '<PAT>' | gcloud secrets versions add github-backup-token \
+     --data-file=- --project=nomadkaraoke
+   ```
+   Also keep a copy in KeepassXC as "Nomad Karaoke — DR GitHub backup PAT".
+3. The owners backed up are set by the `GIT_BACKUP_OWNERS` env var on the
+   `backup-to-aws` function (default `nomadkaraoke,beveradb`), wired in
+   `infrastructure/modules/backup.py`.
+4. Trigger a run and confirm bundles appear:
+   ```bash
+   curl -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+     https://us-central1-nomadkaraoke.cloudfunctions.net/backup-to-aws
+   aws s3 ls s3://nomadkaraoke-backup/git-repos/ --recursive | head
+   ```
+
+If the PAT is missing/expired the git-repo step logs a warning and skips; the
+freshness monitor then flags `git-repos/` as stale within ~36h.
+
 ## Decrypting the secrets backup
 
 ```bash
@@ -341,13 +448,13 @@ export AWS_DEFAULT_REGION=us-east-1
 
 ## Backup freshness monitor
 
-A GitHub Actions cron (`.github/workflows/dr-backup-freshness.yml`) runs daily at 14:00 UTC and checks that the most recent objects in `s3://nomadkaraoke-backup/firestore/`, `gcs/job-files/`, `secrets/`, and `bigquery/daily-refresh/` are no older than their per-prefix limit. Stale or missing backups → Discord alert + workflow failure.
+A GitHub Actions cron (`.github/workflows/dr-backup-freshness.yml`) runs daily at 14:00 UTC and checks that the most recent objects in `s3://nomadkaraoke-backup/firestore/`, `gcs/job-files/`, `secrets/`, `bigquery/daily-refresh/`, and `git-repos/` are no older than their per-prefix limit. Stale or missing backups → Discord alert + workflow failure.
 
 Per-prefix limits reflect each prefix's **S3 (off-site)** cadence, which is not the same as its GCS-staging cadence:
 
 | Prefix | S3 upload cadence | Monitor limit |
 |--------|-------------------|---------------|
-| `gcs/job-files/`, `secrets/` | nightly | 36h |
+| `gcs/job-files/`, `secrets/`, `git-repos/` | nightly | 36h |
 | `firestore/`, `bigquery/daily-refresh/` | weekly (Sundays) | 192h (≈8 days) |
 
 Firestore exports to GCS staging nightly (24h local restore point) but only ships to S3 weekly to cut cross-cloud egress (see `backup_to_aws/main.py` → `firestore_to_s3_today`). The monitor only sees the S3 copy, so its Firestore limit must allow a full week — using the 36h nightly figure caused a false "DR backup is stale" alert every Tue–Sat (fixed 2026-06-18).

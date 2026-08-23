@@ -65,6 +65,7 @@ jobs:
               ("GCS job files",     "gcs/job-files/",          36),
               ("Encrypted secrets", "secrets/",                36),
               ("BigQuery weekly",   "bigquery/daily-refresh/", 192),
+              ("Git repos",         "git-repos/",              36),
           ]
 
           s3 = boto3.client("s3")

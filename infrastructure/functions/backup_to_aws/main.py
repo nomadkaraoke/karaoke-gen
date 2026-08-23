@@ -6,6 +6,8 @@ Nightly backup pipeline:
 2. BigQuery export to GCS staging (weekly/monthly schedule)
 3. GCS job files delta sync to staging
 4. Secret Manager export (encrypted with sealed-box public key) to staging
+4b. Git repos backup — bundle every repo under the configured GitHub owners to
+    staging (nightly; survives loss of GitHub access, e.g. an account ban)
 5. Upload staging files to S3 (Firestore export held back except Sundays)
 6. Discord alert
 
@@ -27,6 +29,7 @@ from discord_alert import send_alert
 from firestore_export import export_firestore
 from bigquery_export import export_bigquery_tables
 from gcs_sync import sync_gcs_to_staging
+from git_repos_export import export_git_repos, get_github_token
 from secrets_export import export_secrets
 from s3_upload import upload_staging_to_s3
 
@@ -38,6 +41,10 @@ S3_BUCKET = os.environ.get("S3_BUCKET", "nomadkaraoke-backup")
 GCP_PROJECT = os.environ.get("GCP_PROJECT", "nomadkaraoke")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 BACKUP_ENCRYPTION_PUBKEY = os.environ.get("BACKUP_ENCRYPTION_PUBKEY", "")
+# GitHub owners (comma-sep) whose repos get bundled to S3. The PAT itself is
+# read at runtime from Secret Manager ("github-backup-token"); if it has no
+# value the git-repo step is skipped and the rest of the pipeline still runs.
+GIT_BACKUP_OWNERS = os.environ.get("GIT_BACKUP_OWNERS", "")
 
 
 @functions_framework.http
@@ -132,6 +139,26 @@ def backup_to_aws(request):
     except Exception as e:
         logger.error(f"Secrets export failed: {e}")
         errors.append(f"Secrets: {e}")
+
+    # Step 4b: Git repos backup (nightly). Bundle every repo under the
+    # configured GitHub owners so code + full history survives loss of GitHub
+    # access (e.g. an account ban). Bundles are small, so they ship to S3 every
+    # night (not held back like Firestore). Cleanly skipped if no token is set.
+    try:
+        github_token = get_github_token(GCP_PROJECT)
+        if github_token:
+            owners = [o.strip() for o in GIT_BACKUP_OWNERS.split(",") if o.strip()] or None
+            results["git_repos"] = export_git_repos(
+                staging_bucket=STAGING_BUCKET,
+                github_token=github_token,
+                owners=owners,
+            )
+        else:
+            logger.warning("github-backup-token has no value — skipping git repo backup")
+            results["git_repos"] = "skipped (no token)"
+    except Exception as e:
+        logger.error(f"Git repos backup failed: {e}")
+        errors.append(f"Git repos: {e}")
 
     # Step 5: Upload to S3. On non-Sundays, hold the Firestore export back
     # (it stays in GCS staging as a daily local backup); it ships to S3 weekly.
