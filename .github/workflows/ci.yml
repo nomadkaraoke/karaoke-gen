@@ -515,11 +515,34 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --legacy-peer-deps
+
+      - name: Build frontend into the package
+        # The Next.js static export (karaoke_gen/nextjs_frontend/out) is gitignored
+        # (#876) and bundled into the wheel via pyproject `include`. Build it here,
+        # BEFORE `poetry build`, so the wheel contains the CLI local-review UI.
+        # node_modules is already installed above, so this just builds + copies.
+        # `make build-frontend` fails loudly if the frontend build fails.
+        run: make build-frontend
+
       - name: Build package
         # Wheel-only: we ship a universal py3-none-any wheel. The sdist bundles
         # the 33-locale Next.js static export (~50 MB) as dead weight and pushed
         # the PyPI project over its 10 GB cap. pip always installs from the wheel.
         run: poetry build --format wheel
+
+      - name: Verify frontend is bundled in the wheel
+        # Guard against silently shipping a frontend-less wheel.
+        run: python scripts/verify_wheel_frontend.py dist/*.whl
 
       - name: Test package installation
         run: |
@@ -833,6 +856,25 @@ jobs:
           restore-keys: |
             venv-package-${{ runner.os }}-py3.13-
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --legacy-peer-deps
+
+      - name: Build frontend into the package
+        # The Next.js static export (karaoke_gen/nextjs_frontend/out) is gitignored
+        # (#876) and bundled into the wheel via pyproject `include`. Build it here,
+        # BEFORE `poetry build`, so the shipped wheel contains the CLI local-review
+        # UI. node_modules is already installed above, so this just builds + copies.
+        # `make build-frontend` fails loudly if the frontend build fails.
+        run: make build-frontend
+
       - name: Build package
         # Wheel-only: we publish a universal py3-none-any wheel to PyPI. The
         # sdist bundled the 33-locale Next.js static export (~50 MB/release) as
@@ -840,6 +882,10 @@ jobs:
         # pip always installs from the wheel; nothing builds karaoke-gen from
         # source (the GCE encoding worker pulls the wheel from GCS).
         run: poetry build --format wheel
+
+      - name: Verify frontend is bundled in the wheel
+        # Loud guard against shipping a frontend-less wheel to PyPI / the GCE worker.
+        run: python scripts/verify_wheel_frontend.py dist/*.whl
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

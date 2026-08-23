@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "karaoke-gen"
-version = "0.197.2"
+version = "0.197.3"
 description = "Generate karaoke videos with synchronized lyrics. Handles the entire process from downloading audio and lyrics to creating the final video with title screens."
 authors = ["Andrew Beveridge <andrew@beveridge.uk>"]
 license = "MIT"
@@ -10,8 +10,12 @@ packages = [
     { include = "backend" }
 ]
 include = [
-    "karaoke_gen/nextjs_frontend/out",
-    "karaoke_gen/nextjs_frontend/out/**/*",
+    # The Next.js static export is generated at build time and gitignored (see #876).
+    # Poetry's plain-string include respects .gitignore and would DROP a gitignored
+    # path from the wheel; the dict form with an explicit `format` overrides .gitignore
+    # so the built frontend is still bundled (needed for the CLI local-review UI).
+    # Wheel-only: the sdist would balloon past PyPI's 10 GB cap, so bundle in the wheel only.
+    { path = "karaoke_gen/nextjs_frontend/out/**/*", format = ["wheel"] },
     "karaoke_gen/lyrics_transcriber/output/fonts/*",
     "karaoke_gen/lyrics_transcriber/output/cdgmaker/images/*",
     "karaoke_gen/lyrics_transcriber/output/cdgmaker/transitions/*"

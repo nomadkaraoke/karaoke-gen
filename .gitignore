@@ -28,6 +28,9 @@ frontend/.swc/
 frontend/.turbo/
 frontend/build/
 frontend/dist/
+# Generated Next.js static export copied into the Python package at build time (#876).
+# Bundled into the wheel via pyproject `include`; must not be tracked in git.
+karaoke_gen/nextjs_frontend/out/
 
 # Next.js specific
 frontend/*.tsbuildinfo
