@@ -178,7 +178,7 @@ export function UserEmailsCard({ email }: { email: string }) {
           <DialogHeader>
             <DialogTitle className="truncate">{selected?.subject || "Email"}</DialogTitle>
             <DialogDescription>
-              Rendered exactly as it appeared in the recipient's inbox.
+              Rendered exactly as it appeared in the recipient&apos;s inbox.
             </DialogDescription>
           </DialogHeader>
 
@@ -212,7 +212,7 @@ export function UserEmailsCard({ email }: { email: string }) {
                 )}
                 {detail.source === "log" && (
                   <p className="text-muted-foreground italic pt-1">
-                    From our stored copy (older than Postmark's 45-day retention).
+                    From our stored copy (older than Postmark&apos;s 45-day retention).
                   </p>
                 )}
               </div>

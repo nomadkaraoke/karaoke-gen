@@ -173,6 +173,9 @@ class PostmarkEmailProvider(EmailProvider):
         self.server_token = server_token
         self.from_email = from_email
         self.from_name = from_name
+        # Postmark MessageID of the most recent successful send, so the email_log
+        # chokepoint can link a persisted record to its Postmark message.
+        self.last_message_id: Optional[str] = None
 
     def send_email(
         self,
@@ -243,6 +246,7 @@ class PostmarkEmailProvider(EmailProvider):
                     message_id = response.json().get("MessageID")
                 except ValueError:
                     pass
+                self.last_message_id = message_id
                 return SendResult(success=True, message_id=message_id)
 
             # Surface Postmark's structured error so we can see suppressions, invalid signature, etc.
@@ -396,7 +400,11 @@ class EmailService:
             except Exception:
                 email_type = None
 
-        result = self.provider.send_email_detailed(
+        # Dispatch via the provider's public send_email (as keyword args) so
+        # callers/mocks that observe that method still see it. PostmarkEmailProvider
+        # records the returned MessageID on ``last_message_id`` for us to link the
+        # log entry.
+        success = self.provider.send_email(
             to_email=to_email,
             subject=subject,
             html_content=html_content,
@@ -408,7 +416,7 @@ class EmailService:
 
         # Only persist genuine outbound mail (Postmark). Console/preview providers
         # are dev/test only and have no real inbox to reflect.
-        if result.success and isinstance(self.provider, PostmarkEmailProvider):
+        if success and isinstance(self.provider, PostmarkEmailProvider):
             try:
                 self._record_sent_email(
                     to_email=to_email,
@@ -419,14 +427,14 @@ class EmailService:
                     bcc_emails=bcc_emails,
                     from_email=from_email_override or getattr(self.provider, "from_email", None),
                     email_type=email_type,
-                    message_id=result.message_id,
+                    message_id=getattr(self.provider, "last_message_id", None),
                 )
             except Exception:
                 logger.exception(
                     "Failed to persist email_log record (the email itself was sent OK)"
                 )
 
-        return result.success
+        return success
 
     def _record_sent_email(
         self,
