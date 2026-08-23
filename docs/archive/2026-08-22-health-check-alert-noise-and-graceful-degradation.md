@@ -54,6 +54,18 @@ instead of every screen throwing a generic error.
   outstanding** (`beginRequest`/`endRequest`): `reconnecting` at
   `STALL_RECONNECTING_MS` (10s), `unavailable` at `STALL_UNAVAILABLE_MS` (20s),
   back to `online` the instant the stalled read settles.
+
+  **Addendum (2026-08-23, v0.198.3): stall + health-probe confirmation.** A stall
+  alone turned out not to be proof of an outage either — first-time
+  instrumental-analysis / lyrics-review loads transcode audio server-side and can
+  legitimately run 20–60s, false-firing the banner. Now, once a stall crosses the
+  threshold, the store confirms with a cheap `GET /api/health` probe (registered by
+  `lib/api.ts` via `configureHealthProbe`; 4s timeout, `Promise.race`d so a hung
+  origin can't wedge it). While the probe answers OK — or has no verdict yet — the
+  banner stays hidden; only a failed/timed-out probe (as during a real recycle,
+  when the origin hangs) lets it surface (~4s later than before). The probe
+  re-fires every `PROBE_FRESH_MS` (10s) while the stall persists, so recovery
+  clears the banner even if the original read is still hung.
 - **`lib/api.ts` — `apiFetch`** wraps every backend call (drop-in for `fetch`;
   internals use `globalThis.fetch`). Design decisions:
   - **The banner keys on a genuine STALL, not slowness.** A read that completes —
