@@ -53,7 +53,11 @@ jobs:
           import os, sys, datetime, boto3
 
           BUCKET = os.environ["BUCKET"]
-          # (label, prefix, max_age_hours)
+          # (label, prefix, max_age_hours, require_suffix)
+          # require_suffix: only objects with this key suffix count toward
+          # freshness (None = any object). git-repos/ requires ".bundle" so the
+          # always-written manifest.json can't mark the prefix fresh when every
+          # bundle failed / nothing was bundled — 0 bundles then reads as stale.
           # NOTE: Firestore and BigQuery export to GCS staging nightly but are
           # only uploaded to S3 *weekly* (Sundays) to cut cross-cloud egress —
           # see backup_to_aws/main.py (firestore_to_s3_today). This monitor only
@@ -61,11 +65,11 @@ jobs:
           # plus slack (192h ≈ 8 days), NOT the 36h nightly cadence. GCS job
           # files and secrets DO upload to S3 nightly, so they stay at 36h.
           TARGETS = [
-              ("Firestore",         "firestore/",              192),
-              ("GCS job files",     "gcs/job-files/",          36),
-              ("Encrypted secrets", "secrets/",                36),
-              ("BigQuery weekly",   "bigquery/daily-refresh/", 192),
-              ("Git repos",         "git-repos/",              36),
+              ("Firestore",         "firestore/",              192, None),
+              ("GCS job files",     "gcs/job-files/",          36,  None),
+              ("Encrypted secrets", "secrets/",                36,  None),
+              ("BigQuery weekly",   "bigquery/daily-refresh/", 192, None),
+              ("Git repos",         "git-repos/",              36,  ".bundle"),
           ]
 
           s3 = boto3.client("s3")
@@ -76,10 +80,12 @@ jobs:
           # operates per-page, which silently breaks "newest across all pages"
           # queries on prefixes with >1000 objects (e.g. firestore/ has ~22k).
           paginator = s3.get_paginator("list_objects_v2")
-          for label, prefix, max_hours in TARGETS:
+          for label, prefix, max_hours, require_suffix in TARGETS:
               latest = None
               for page in paginator.paginate(Bucket=BUCKET, Prefix=prefix):
                   for obj in page.get("Contents", []):
+                      if require_suffix and not obj["Key"].endswith(require_suffix):
+                          continue
                       if latest is None or obj["LastModified"] > latest:
                           latest = obj["LastModified"]
 

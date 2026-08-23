@@ -183,6 +183,39 @@ def test_total_failure_raises_but_manifest_still_written():
     assert "git-repos/manifest.json" in uploads
 
 
+def test_pat_never_appears_in_subprocess_argv():
+    pages = [[_make_repo("nomadkaraoke", "karaoke-gen")]]
+    _, _, run_mock = _run(pages)
+    for call in run_mock.call_args_list:
+        cmd = call.args[0]
+        assert all("ghp_test" not in str(part) for part in cmd), f"PAT leaked into argv: {cmd}"
+        # Auth is injected via the git config header env instead.
+        env = call.kwargs.get("env", {})
+        assert "GIT_CONFIG_VALUE_0" in env
+        assert "Authorization: Basic " in env["GIT_CONFIG_VALUE_0"]
+
+
+def test_pat_redacted_from_persisted_error():
+    def side_effect(cmd, **kw):
+        # A non-CalledProcessError whose message happens to contain the token.
+        raise RuntimeError("clone failed for https://x-access-token:ghp_test@github.com/x")
+
+    pages = [[_make_repo("nomadkaraoke", "only")]]
+    client, uploads = _fake_gcs()
+    with patch("git_repos_export.requests.get", side_effect=_fake_requests_get(pages)), \
+         patch("git_repos_export.gcs_storage.Client", return_value=client), \
+         patch("git_repos_export.shutil.which", return_value="/usr/bin/git"), \
+         patch("git_repos_export.subprocess.run", side_effect=side_effect), \
+         patch("git_repos_export.tempfile.mkdtemp", return_value="/tmp/gitbak-x"), \
+         patch("git_repos_export.shutil.rmtree"):
+        with pytest.raises(RuntimeError):
+            export_git_repos(staging_bucket="staging", github_token="ghp_test", owners=["nomadkaraoke"])
+    manifest = json.loads(uploads["git-repos/manifest.json"]["data"])
+    err = manifest["repos"][0]["error"]
+    assert "ghp_test" not in err
+    assert "***" in err
+
+
 def test_all_benign_skips_do_not_raise():
     # Every repo is an empty repo (clean skip) → nothing bundled, but no errors,
     # so this is not a systemic failure and must NOT raise.

@@ -21,6 +21,7 @@ backup time (visibility, default branch, description, size, fork/archived flags)
 — essential when recreating repos and settings from scratch after a ban.
 """
 
+import base64
 import json
 import logging
 import os
@@ -129,6 +130,34 @@ def _list_repos(token: str, owners: list[str], include_forks: bool) -> list[dict
     return repos
 
 
+def _git_auth_env(token: str) -> dict:
+    """Git environment that authenticates via an ``Authorization`` header
+    injected through ``GIT_CONFIG_*`` rather than the clone URL.
+
+    Keeping the PAT out of the URL (and therefore out of ``argv`` and out of
+    git's own error output, which echoes the *clean* URL) means it can't leak
+    via ``ps``, ``subprocess.TimeoutExpired``, or captured stderr. This mirrors
+    how ``actions/checkout`` injects credentials. ``GIT_TERMINAL_PROMPT=0``
+    guarantees git fails fast on a private/renamed/deleted repo instead of
+    blocking on a credential prompt.
+    """
+    basic = base64.b64encode(f"x-access-token:{token}".encode()).decode()
+    return {
+        **os.environ,
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+        "GIT_CONFIG_VALUE_0": f"Authorization: Basic {basic}",
+    }
+
+
+def _redact(text: str, token: str) -> str:
+    """Belt-and-suspenders: strip the PAT from any text before it's persisted."""
+    if token and text:
+        return text.replace(token, "***")
+    return text
+
+
 def _bundle_repo(repo: dict, token: str, workdir: str) -> str:
     """Mirror-clone ``repo`` and produce a single-file bundle of all refs.
 
@@ -141,14 +170,12 @@ def _bundle_repo(repo: dict, token: str, workdir: str) -> str:
     mirror_dir = os.path.join(workdir, f"{name}.git")
     bundle_path = os.path.join(workdir, f"{name}.bundle")
 
-    # Token supplied via the x-access-token basic-auth scheme in the URL.
-    # GIT_TERMINAL_PROMPT=0 guarantees git never blocks waiting for credentials
-    # on a private/renamed/deleted repo — it fails fast instead of hanging.
-    auth_url = f"https://x-access-token:{token}@github.com/{owner}/{name}.git"
-    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+    # Clean URL (no credentials) — auth is supplied out-of-band via _git_auth_env.
+    clean_url = f"https://github.com/{owner}/{name}.git"
+    env = _git_auth_env(token)
 
     subprocess.run(
-        ["git", "clone", "--mirror", auth_url, mirror_dir],
+        ["git", "clone", "--mirror", clean_url, mirror_dir],
         check=True,
         capture_output=True,
         env=env,
@@ -255,7 +282,7 @@ def export_git_repos(
             entry["bundle_bytes"] = os.path.getsize(bundle_path)
             bundled += 1
         except subprocess.CalledProcessError as e:
-            stderr = (e.stderr or b"").decode("utf-8", "replace")
+            stderr = _redact((e.stderr or b"").decode("utf-8", "replace"), github_token)
             # An empty repo (no commits yet) legitimately has nothing to bundle.
             if "empty bundle" in stderr.lower() or "does not have any commits" in stderr.lower():
                 entry["status"] = "skipped_empty"
@@ -267,9 +294,9 @@ def export_git_repos(
                 logger.error(f"Failed to bundle {full}: {stderr[-500:]}")
         except Exception as e:  # noqa: BLE001 — record and continue, never abort the sweep
             entry["status"] = "error"
-            entry["error"] = str(e)
+            entry["error"] = _redact(str(e), github_token)
             errors += 1
-            logger.error(f"Failed to bundle {full}: {e}")
+            logger.error(f"Failed to bundle {full}: {entry['error']}")
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
 

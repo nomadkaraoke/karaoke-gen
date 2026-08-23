@@ -335,20 +335,20 @@ aws s3 sync s3://nomadkaraoke-backup/git-repos/ /tmp/git-repos/
 jq '{total, bundled, errors, skipped, repos: [.repos[] | {full_name, status, default_branch, private}]}' \
   /tmp/git-repos/manifest.json
 
-# 3. Reconstruct a working clone from any bundle (full history, all branches).
+# 3. Reconstruct the repo from any bundle. Use --mirror so EVERY branch and tag
+#    is restored as a real ref — a plain `git clone` keeps non-default branches
+#    only as remote-tracking refs, and `git push --all` would then omit them.
 cd /tmp/git-repos/nomadkaraoke
-git clone karaoke-gen.bundle karaoke-gen
-cd karaoke-gen
-git branch -a      # every branch is present
-git tag            # every tag is present
+git clone --mirror karaoke-gen.bundle karaoke-gen.git
+cd karaoke-gen.git
+git show-ref            # every branch + tag is present as a real ref
 
-# 4. Point it at a new remote and push everything.
+# 4. Point it at a new remote and push everything (--mirror pushes all refs).
 #    New home options: a fresh GitHub org/account, GitLab, Codeberg, or a
 #    self-hosted Gitea. Create the empty repo there first, then:
-git remote remove origin
-git remote add origin <NEW_REMOTE_URL>
-git push origin --all
-git push origin --tags
+git remote set-url origin <NEW_REMOTE_URL>   # bare mirror already has 'origin'
+git push --mirror origin
+# (For a normal working clone afterwards: `git clone <NEW_REMOTE_URL>`.)
 ```
 
 To restore *all* repos in one pass:
@@ -358,8 +358,9 @@ cd /tmp/git-repos
 for owner in */; do
   for bundle in "$owner"*.bundle; do
     name=$(basename "$bundle" .bundle)
-    git clone "$bundle" "restored/${owner}${name}"
-    # then add the new remote + push --all/--tags per repo (see above)
+    # --mirror preserves all branches/tags; `git clone` creates leading dirs.
+    git clone --mirror "$bundle" "restored/${owner}${name}.git"
+    # then: cd in, `git remote set-url origin <NEW_URL>`, `git push --mirror origin`
   done
 done
 ```
