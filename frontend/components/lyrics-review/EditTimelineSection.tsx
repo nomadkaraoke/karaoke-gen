@@ -100,8 +100,9 @@ export default function EditTimelineSection({
 
   return (
     <>
-      {/* Timeline Editor */}
-      <div className={cn('mb-0', isMobile ? 'h-30' : 'h-[120px]')}>
+      {/* Timeline Editor — height hugs its content (ruler + word bars + waveform)
+          instead of a fixed min-height, to avoid dead vertical space. */}
+      <div>
         <TimelineEditor
           words={words}
           startTime={startTime}

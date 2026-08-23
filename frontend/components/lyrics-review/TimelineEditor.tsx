@@ -243,7 +243,7 @@ export default function TimelineEditor({
   return (
     <div
       ref={containerRef}
-      className="relative bg-card rounded my-2 border border-border"
+      className="relative bg-card rounded border border-border"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
