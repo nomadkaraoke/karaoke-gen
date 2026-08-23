@@ -6,7 +6,7 @@
 #
 # Run this:
 #   - any time you change main.py / *_export.py / s3_upload.py / gcs_sync.py /
-#     discord_alert.py / requirements.txt
+#     git_repos_export.py / discord_alert.py / requirements.txt
 #   - after pulumi up if Pulumi reports no diff but the function is on stale code
 #
 # Prerequisites:
@@ -42,6 +42,7 @@ zip -r "${ZIP_PATH}" \
   firestore_export.py \
   bigquery_export.py \
   gcs_sync.py \
+  git_repos_export.py \
   secrets_export.py \
   s3_upload.py \
   discord_alert.py
