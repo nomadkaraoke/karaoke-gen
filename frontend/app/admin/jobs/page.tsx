@@ -283,6 +283,7 @@ function AdminJobsPageContent() {
   }, [loadJobs, selectedJobId])
 
   useEffect(() => {
+    setTimelineExpanded(false)
     if (selectedJobId) {
       loadJobDetail(selectedJobId)
       loadLogs(selectedJobId)
