@@ -420,9 +420,18 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
     if stem == "input":
         audio_gcs_path = job.input_media_gcs_path
     elif stem == "vocals":
-        stem_file_urls = job.file_urls.get("stems")
-        if stem_file_urls:
-            audio_gcs_path = stem_file_urls["vocals"]
+        stems = job.file_urls.get("stems", {}) if job.file_urls else {}
+        # Stem keys vary by separation model. We want the full vocal mix
+        # (lead + backing) so every word can be lined up against the waveform:
+        #   - "vocals"       : full vocal from a 2-stem split (rare)
+        #   - "vocals_clean" : full vocal from the primary vocal/instrumental
+        #                      split (present on essentially all cloud jobs)
+        #   - "lead_vocals"  : last-resort fallback (misses backing lines)
+        # Use .get() so a missing key yields a clean 404 below, not a KeyError/500.
+        for key in ("vocals", "vocals_clean", "lead_vocals"):
+            if stems.get(key):
+                audio_gcs_path = stems[key]
+                break
     if not audio_gcs_path:
         raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
 
