@@ -147,9 +147,19 @@ class AudioTranscodingService:
         the bucket CORS rejects. Proxying keeps it same-origin to the API (which
         sets the right CORS headers). The transcoded OGG is small (~3 MB), well
         under Cloud Run's 32 MB response cap.
+
+        Falls back to the original (FLAC) source if transcoding fails, mirroring
+        get_review_audio_url, so a transient ffmpeg/cache error doesn't blank the
+        waveform while the source still exists. (A very long FLAC could exceed
+        Cloud Run's 32 MB cap on that rare fallback path — the frontend then just
+        hides the waveform, which is acceptable degradation.)
         """
-        cache_path = self.transcode_if_needed(source_gcs_path)
-        return self.storage.download_bytes(cache_path), "audio/ogg"
+        try:
+            cache_path = self.transcode_if_needed(source_gcs_path)
+            return self.storage.download_bytes(cache_path), "audio/ogg"
+        except Exception as e:
+            logger.warning(f"Transcoding failed for {source_gcs_path}, serving source audio: {e}")
+            return self.storage.download_bytes(source_gcs_path), "audio/flac"
 
     async def get_review_audio_bytes_async(self, source_gcs_path: str) -> tuple[bytes, str]:
         """Async wrapper around get_review_audio_bytes via asyncio.to_thread."""
