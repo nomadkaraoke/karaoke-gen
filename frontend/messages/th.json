@@ -1389,6 +1389,16 @@
       "rerun": "รันอีกครั้ง",
       "revertAllAuto": "คืนค่าทั้งหมด",
       "showDetails": "แสดงรายละเอียด"
+    },
+    "editTimeline": {
+      "holdingRelease": "กำลังกดค้าง... ปล่อยเมื่อจบคำ",
+      "pressSpacebarHint": "กดสเปซบาร์เมื่อเริ่มคำ (แตะสำหรับคำสั้นๆ กดค้างสำหรับคำยาวๆ)",
+      "tapToSync": "แตะเพื่อซิงค์",
+      "tapWhenStarts": "แตะปุ่มเมื่อเริ่มคำ",
+      "wordProgress": "คำที่ {index} จาก {total}:",
+      "cancelSync": "ยกเลิก",
+      "hold": "กดค้าง...",
+      "tap": "แตะ"
     }
   },
   "instrumentalReview": {

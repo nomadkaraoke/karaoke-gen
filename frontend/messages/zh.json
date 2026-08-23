@@ -1389,6 +1389,16 @@
       "rerun": "重新运行",
       "revertAllAuto": "全部还原",
       "showDetails": "显示详情"
+    },
+    "editTimeline": {
+      "holdingRelease": "按住... 在字词结束时松开",
+      "pressSpacebarHint": "在字词开始时按空格键（短词轻按，长词按住）",
+      "tapToSync": "点击同步",
+      "tapWhenStarts": "在字词开始时点击按钮",
+      "wordProgress": "第 {index} 个词，共 {total} 个：",
+      "cancelSync": "取消",
+      "hold": "按住...",
+      "tap": "点击"
     }
   },
   "instrumentalReview": {

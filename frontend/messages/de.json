@@ -1389,6 +1389,16 @@
       "rerun": "Erneut ausführen",
       "revertAllAuto": "Alle rückgängig machen",
       "showDetails": "Details anzeigen"
+    },
+    "editTimeline": {
+      "holdingRelease": "Gedrückt halten... Loslassen, wenn das Wort endet",
+      "pressSpacebarHint": "Drücke die Leertaste, wenn das Wort beginnt (tippen für kurze Wörter, gedrückt halten für lange Wörter)",
+      "tapToSync": "Tippen zum Synchronisieren",
+      "tapWhenStarts": "Tippe auf den Button, wenn das Wort beginnt",
+      "wordProgress": "Wort {index} von {total}:",
+      "cancelSync": "Abbrechen",
+      "hold": "HALTEN...",
+      "tap": "TIPPEN"
     }
   },
   "instrumentalReview": {

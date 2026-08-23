@@ -1389,6 +1389,16 @@
       "rerun": "Suorita uudelleen",
       "revertAllAuto": "Kumoa kaikki",
       "showDetails": "Näytä tiedot"
+    },
+    "editTimeline": {
+      "holdingRelease": "Pidä painettuna... Vapauta, kun sana päättyy",
+      "pressSpacebarHint": "Paina välilyöntiä, kun sana alkaa (napauta lyhyiden sanojen kohdalla, pidä painettuna pitkien kohdalla)",
+      "tapToSync": "Napauta synkronoidaksesi",
+      "tapWhenStarts": "Napauta painiketta, kun sana alkaa",
+      "wordProgress": "Sana {index}/{total}:",
+      "cancelSync": "Peruuta",
+      "hold": "PIDÄ...",
+      "tap": "NAPAUTA"
     }
   },
   "instrumentalReview": {
