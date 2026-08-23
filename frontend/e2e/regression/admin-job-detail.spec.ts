@@ -821,4 +821,123 @@ test.describe('Admin Job Detail Page', () => {
     await expect(modal.getByText('file upload')).toBeVisible();
     await expect(modal.getByText('my-song.mp3')).toBeVisible();
   });
+
+  test('long timeline collapses to recent stages with expander', async ({ page }) => {
+    const longTimelineJob = {
+      ...mockJob,
+      status: 'awaiting_review',
+      timeline: [
+        { status: 'pending', timestamp: '2026-01-09T10:00:00Z', progress: 0 },
+        { status: 'downloading', timestamp: '2026-01-09T10:01:00Z', progress: 10 },
+        { status: 'failed', timestamp: '2026-01-09T10:02:00Z', progress: 10 },
+        { status: 'downloading', timestamp: '2026-01-09T10:03:00Z', progress: 10 },
+        { status: 'failed', timestamp: '2026-01-09T10:04:00Z', progress: 10 },
+        { status: 'downloading', timestamp: '2026-01-09T10:05:00Z', progress: 12 },
+        { status: 'separating_stage1', timestamp: '2026-01-09T10:06:00Z', progress: 30 },
+        { status: 'separating_stage2', timestamp: '2026-01-09T10:10:00Z', progress: 45 },
+        { status: 'transcribing', timestamp: '2026-01-09T10:15:00Z', progress: 50 },
+        { status: 'correcting', timestamp: '2026-01-09T10:20:00Z', progress: 52 },
+        { status: 'awaiting_review', timestamp: '2026-01-09T10:25:00Z', progress: 55 },
+      ],
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: longTimelineJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    // 11 stages > threshold: collapsed chip shows hidden count and failure count
+    const expander = page.locator('button[title="Show all timeline entries"]');
+    await expect(expander).toBeVisible();
+    await expect(expander).toContainText('+5 earlier');
+    await expect(expander).toContainText('(2 failed)');
+    // Early stages hidden, recent stages visible
+    await expect(page.getByText('Pending', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Transcribing', { exact: true })).toBeVisible();
+
+    // Expand shows everything and offers Collapse
+    await expander.click();
+    await expect(page.getByText('Pending', { exact: true })).toBeVisible();
+    const collapse = page.locator('button[title="Collapse older timeline entries"]');
+    await expect(collapse).toBeVisible();
+    await collapse.click();
+    await expect(page.getByText('Pending', { exact: true })).toHaveCount(0);
+  });
+
+  test('short timeline is not collapsed', async ({ page }) => {
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('button[title="Show all timeline entries"]')).toHaveCount(0);
+    await expect(page.getByText('Pending', { exact: true })).toBeVisible();
+  });
+
+  test('source modal builds provider link from source ID for search jobs', async ({ page }) => {
+    const youtubeSearchJob = {
+      ...mockJob,
+      url: undefined,
+      audio_source_type: 'audio_search',
+      source_name: 'YouTube',
+      source_id: 'dQw4w9WgXcQ',
+      filename: 'some-file.webm',
+    };
+
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: [] } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: youtubeSearchJob } },
+        { method: 'GET', path: '/api/jobs/test-job-123/logs', response: { body: mockLogs } },
+      ],
+    });
+
+    await page.goto('/admin/jobs?id=test-job-123');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('button[title="Click for source details"]').click();
+    const modal = page.getByLabel('Audio Source Details');
+    await expect(modal).toBeVisible();
+
+    // "Open in YouTube" link built from provider + source ID
+    const openLink = modal.locator('a[href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"]');
+    await expect(openLink).toBeVisible();
+    await expect(openLink).toContainText('Open in YouTube');
+    await expect(openLink).toHaveAttribute('target', '_blank');
+  });
+
+  test('jobs list search jumps to detail page when given a job ID', async ({ page }) => {
+    await setupApiFixtures(page, {
+      mocks: [
+        { method: 'GET', path: '/api/users/me', response: { body: mockAdminUser } },
+        { method: 'GET', path: '/api/jobs', response: { body: mockJobsList } },
+        { method: 'GET', path: '/api/jobs/test-job-123', response: { body: mockJob } },
+        { method: 'GET', path: '/api/jobs/abc12345', response: { status: 404, body: { detail: 'Job not found' } } },
+        { method: 'GET', path: '/api/jobs/abc12345/logs', response: { body: { logs: [] } } },
+      ],
+    });
+
+    await page.goto('/admin/jobs');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByPlaceholder('Filter by email, or paste a job ID...').fill('abc12345');
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/admin\/jobs\/?\?id=abc12345/);
+  });
 });
