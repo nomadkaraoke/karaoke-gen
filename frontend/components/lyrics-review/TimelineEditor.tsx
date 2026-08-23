@@ -43,11 +43,25 @@ export default function TimelineEditor({
     isResize: boolean
   ): boolean => {
     if (isResize) {
-      if (currentIndex === words.length - 1) return false
+      // Compare against the nearest *timed* neighbours, not just array neighbours:
+      // unsynchronized words (null timestamps) aren't drawn on the timeline, so an
+      // adjacent null-timed word must be skipped to reach the real neighbour bar.
+      const nextWord = words
+        .slice(currentIndex + 1)
+        .find((word) => word.start_time !== null && word.end_time !== null)
+      if (nextWord && nextWord.start_time !== null && proposedEnd > nextWord.start_time) {
+        return true
+      }
 
-      const nextWord = words[currentIndex + 1]
-      if (!nextWord || nextWord.start_time === null) return false
-      return proposedEnd > nextWord.start_time
+      const previousWord = words
+        .slice(0, currentIndex)
+        .reverse()
+        .find((word) => word.start_time !== null && word.end_time !== null)
+      if (previousWord && previousWord.end_time !== null && proposedStart < previousWord.end_time) {
+        return true
+      }
+
+      return false
     }
 
     return words.some((word, index) => {
