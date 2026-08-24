@@ -20,6 +20,7 @@ import {
   WordClickInfo,
   ModalContent,
   SearchLyricsResponse,
+  AddLyricsResult,
 } from '@/lib/lyrics-review/types'
 import type { EditLog, EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
 import type { InstrumentalSelectionType, LyricsReviewApiClient } from '@/lib/api'
@@ -79,7 +80,7 @@ interface ApiClient {
   submitAnnotations: (annotations: never[]) => Promise<void>
   submitEditLog: (editLog: EditLog) => Promise<void>
   updateHandlers: (handlers: string[]) => Promise<CorrectionData>
-  addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
+  addLyrics: (source: string, lyrics: string, force?: boolean) => Promise<AddLyricsResult>
   searchLyrics?: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
   getVocalsAudioUrl: () => string
@@ -1184,13 +1185,19 @@ export default function LyricsAnalyzer({
 
   // Add lyrics
   const handleAddLyrics = useCallback(
-    async (source: string, lyrics: string) => {
+    async (source: string, lyrics: string, force?: boolean): Promise<AddLyricsResult | void> => {
       if (!apiClient) return
 
       try {
         setIsAddingLyrics(true)
-        const newData = await apiClient.addLyrics(source, lyrics)
-        updateDataWithHistory(newData, 'add lyrics')
+        const result = await apiClient.addLyrics(source, lyrics, force)
+        // The relevance filter can reject the pasted lyrics — only apply the
+        // returned data when the source was actually kept; the caller shows
+        // the rejection and can retry with force=true.
+        if (result.status === 'success') {
+          updateDataWithHistory(result.data, 'add lyrics')
+        }
+        return result
       } finally {
         setIsAddingLyrics(false)
       }

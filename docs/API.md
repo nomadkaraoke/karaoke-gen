@@ -544,13 +544,25 @@ Content-Type: application/json
 {
   "source": "manual",
   "lyrics": "Full lyrics text...",
-  "force": false
+  "force": "false"
 }
 ```
 
-Adds user-pasted lyrics as a new reference source, re-runs the correction pipeline with all sources, and uploads updated corrections to GCS. The `force` flag (default `false`) bypasses the relevance threshold — use when the transcription is poor and a low match % doesn't mean wrong song.
+Adds user-pasted lyrics as a new reference source, re-runs the correction pipeline with all sources, and uploads updated corrections to GCS. The `force` flag (default `false`, sent as a string because the body is typed `Dict[str, str]`) bypasses the relevance threshold — use when the transcription is poor and a low match % doesn't mean wrong song.
 
-Returns `{ "status": "success", "data": <CorrectionData> }`.
+Returns `{ "status": "success", "data": <CorrectionData> }` when the source is kept.
+
+If the relevance filter drops the source (below the 30% anchor-match threshold), the corrections are **not** persisted and the response is instead:
+
+```json
+{
+  "status": "rejected",
+  "rejection": { "relevance": 0.013, "matched_words": 3, "total_words": 230 },
+  "data": { "...": "CorrectionData from the discarded rerun" }
+}
+```
+
+The frontend paste tab shows the match % and offers "Add Anyway", which retries with `force: "true"`.
 
 #### AI Auto-Correct Suggestions
 

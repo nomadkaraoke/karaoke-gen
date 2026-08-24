@@ -1167,7 +1167,9 @@
         "lyrics": "Letras",
         "lyricsPlaceholder": "Pega las letras aquí...",
         "addLyrics": "Añadir letras",
-        "adding": "Añadiendo..."
+        "adding": "Añadiendo...",
+        "addAnyway": "Añadir de todos modos",
+        "rejectedWarning": "Estas letras solo coincidieron en un {percent}% con el audio transcrito, por lo que no se añadieron — pueden ser de una canción o versión diferente. Revisa bien el texto pegado, o usa \"Añadir de todos modos\" para añadirlas igualmente."
       },
       "correctionAnnotation": {
         "title": "Anota tu corrección",

@@ -1230,18 +1230,30 @@ class ReviewServer:
         try:
             source = data.get("source", "").strip()
             lyrics_text = data.get("lyrics", "").strip()
+            raw_force = data.get("force", False)
+            force = raw_force if isinstance(raw_force, bool) else str(raw_force).lower() == "true"
 
-            self.logger.info(f"Received request to add lyrics source '{source}' with {len(lyrics_text)} characters")
+            self.logger.info(f"Received request to add lyrics source '{source}' with {len(lyrics_text)} characters (force={force})")
 
             # Use shared operation for adding lyrics source
-            self.correction_result = CorrectionOperations.add_lyrics_source(
+            updated_result = CorrectionOperations.add_lyrics_source(
                 correction_result=self.correction_result,
                 source=source,
                 lyrics_text=lyrics_text,
                 cache_dir=self.output_config.cache_dir,
-                logger=self.logger
+                logger=self.logger,
+                force=force,
             )
 
+            # The relevance filter may drop the new source during the rerun.
+            # Report it as rejected (keeping the previous in-memory result) so
+            # the frontend can offer a force-add, mirroring the cloud endpoint.
+            if source not in (updated_result.reference_lyrics or {}):
+                rejection = ((updated_result.metadata or {}).get("rejected_sources") or {}).get(source) or {}
+                self.logger.info(f"Lyrics source '{source}' rejected by relevance filter: {rejection}")
+                return {"status": "rejected", "rejection": rejection, "data": updated_result.to_dict()}
+
+            self.correction_result = updated_result
             return {"status": "success", "data": self.correction_result.to_dict()}
 
         except ValueError as e:

@@ -1167,7 +1167,9 @@
         "lyrics": "Sangtekster",
         "lyricsPlaceholder": "Indsæt sangtekster her...",
         "addLyrics": "Tilføj sangtekster",
-        "adding": "Tilføjer..."
+        "adding": "Tilføjer...",
+        "addAnyway": "Tilføj alligevel",
+        "rejectedWarning": "Sangteksten matchede kun {percent}% af den transskriberede lyd, så den blev ikke tilføjet — den hører måske til en anden sang eller version. Dobbelttjek den indsatte tekst, eller brug \"Tilføj alligevel\" for at tilføje den uanset hvad."
       },
       "correctionAnnotation": {
         "title": "Annoter din rettelse",

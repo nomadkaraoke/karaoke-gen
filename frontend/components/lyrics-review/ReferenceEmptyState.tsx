@@ -4,14 +4,14 @@ import { useTranslations } from 'next-intl'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Info } from 'lucide-react'
-import { SearchLyricsResponse } from '@/lib/lyrics-review/types'
+import { AddLyricsResult, SearchLyricsResponse } from '@/lib/lyrics-review/types'
 import SearchLyricsTab from './modals/SearchLyricsTab'
 import PasteLyricsTab from './modals/PasteLyricsTab'
 
 interface ReferenceEmptyStateProps {
   defaultArtist: string
   defaultTitle: string
-  onAdd: (source: string, lyrics: string) => Promise<void>
+  onAdd: (source: string, lyrics: string, force?: boolean) => Promise<AddLyricsResult | void>
   onSearch: (artist: string, title: string, forceSources: string[]) => Promise<SearchLyricsResponse>
 }
 

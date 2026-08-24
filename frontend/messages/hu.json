@@ -1167,7 +1167,9 @@
         "lyrics": "Dalszöveg",
         "lyricsPlaceholder": "Illeszd be a dalszöveget ide...",
         "addLyrics": "Dalszöveg hozzáadása",
-        "adding": "Hozzáadás..."
+        "adding": "Hozzáadás...",
+        "addAnyway": "Hozzáadás mindenképp",
+        "rejectedWarning": "Ez a dalszöveg csak {percent}%-ban egyezett a hanganyag leiratával, ezért nem adtuk hozzá — lehet, hogy egy másik dalhoz vagy verzióhoz tartozik. Ellenőrizd a beillesztett szöveget, vagy válaszd a \"Hozzáadás mindenképp\" lehetőséget, ha mégis hozzá szeretnéd adni."
       },
       "correctionAnnotation": {
         "title": "Javításod annotálása",

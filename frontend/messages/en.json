@@ -1249,7 +1249,9 @@
         "lyrics": "Lyrics",
         "lyricsPlaceholder": "Paste lyrics here...",
         "addLyrics": "Add Lyrics",
-        "adding": "Adding..."
+        "adding": "Adding...",
+        "rejectedWarning": "These lyrics only matched {percent}% of the transcribed audio, so they were not added — they may be for a different song or version. Double-check the pasted text, or use \"Add Anyway\" to add them regardless.",
+        "addAnyway": "Add Anyway"
       },
       "correctionAnnotation": {
         "title": "Annotate Your Correction",

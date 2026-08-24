@@ -1167,7 +1167,9 @@
         "lyrics": "Lletres",
         "lyricsPlaceholder": "Enganxa les lletres aquí...",
         "addLyrics": "Afegeix lletres",
-        "adding": "Afegint..."
+        "adding": "Afegint...",
+        "addAnyway": "Afegeix-ho igualment",
+        "rejectedWarning": "Aquesta lletra només coincideix en un {percent}% amb l'àudio transcrit, així que no s'ha afegit — pot ser que sigui d'una altra cançó o versió. Revisa el text enganxat o fes servir \"Afegeix-ho igualment\" per afegir-la de totes maneres."
       },
       "correctionAnnotation": {
         "title": "Anota la teva correcció",

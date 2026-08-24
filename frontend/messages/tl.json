@@ -1167,7 +1167,9 @@
         "lyrics": "Lyrics",
         "lyricsPlaceholder": "I-paste ang lyrics dito...",
         "addLyrics": "Magdagdag ng Lyrics",
-        "adding": "Idinadagdag..."
+        "adding": "Idinadagdag...",
+        "addAnyway": "Idagdag Pa Rin",
+        "rejectedWarning": "Tumugma lang ng {percent}% ang lyrics na ito sa na-transcribe na audio kaya hindi ito idinagdag — maaaring para ito sa ibang kanta o bersyon. I-double check ang nai-paste na text, o gamitin ang \"Idagdag Pa Rin\" para idagdag pa rin ito."
       },
       "correctionAnnotation": {
         "title": "I-annotate ang Iyong Pagwawasto",

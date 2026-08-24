@@ -1167,7 +1167,9 @@
         "lyrics": "Text",
         "lyricsPlaceholder": "Zde vlož text...",
         "addLyrics": "Přidat text",
-        "adding": "Přidávání..."
+        "adding": "Přidávání...",
+        "addAnyway": "Přesto přidat",
+        "rejectedWarning": "Tento text se shoduje s přepsaným zvukem pouze z {percent} %, a proto nebyl přidán — možná patří k jiné písni nebo verzi. Zkontroluj vložený text, nebo použij \"Přesto přidat\" a přidej ho i tak."
       },
       "correctionAnnotation": {
         "title": "Anotuj svou opravu",

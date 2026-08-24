@@ -442,7 +442,7 @@ export interface ReferenceViewProps extends BaseViewProps {
   corrected_segments: LyricsSegment[]
   corrections: WordCorrection[]
   onAddLyrics?: () => void
-  onAddLyricsInline?: (source: string, lyrics: string) => Promise<void>
+  onAddLyricsInline?: (source: string, lyrics: string, force?: boolean) => Promise<AddLyricsResult | void>
   onSearchLyrics?: (artist: string, title: string, forceSources: string[]) => Promise<SearchLyricsResponse>
   defaultArtist?: string
   defaultTitle?: string
@@ -454,6 +454,12 @@ export interface RejectedSource {
   total_words: number
   track_name: string
   artist_names: string
+}
+
+export interface AddLyricsResult {
+  status: 'success' | 'rejected'
+  data: CorrectionData
+  rejection?: Partial<RejectedSource>
 }
 
 export interface SearchLyricsResponse {

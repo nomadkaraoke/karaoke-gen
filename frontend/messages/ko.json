@@ -1167,7 +1167,9 @@
         "lyrics": "가사",
         "lyricsPlaceholder": "여기에 가사를 붙여넣으세요...",
         "addLyrics": "가사 추가",
-        "adding": "추가 중..."
+        "adding": "추가 중...",
+        "addAnyway": "그래도 추가하기",
+        "rejectedWarning": "이 가사는 인식된 오디오와 {percent}%만 일치하여 추가되지 않았습니다. 다른 노래나 다른 버전의 가사일 수 있습니다. 붙여넣은 텍스트를 다시 확인해 보시거나, 상관없이 추가하시려면 \"그래도 추가하기\"를 눌러주세요."
       },
       "correctionAnnotation": {
         "title": "수정 내용 주석 달기",

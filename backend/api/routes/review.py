@@ -898,16 +898,29 @@ async def add_lyrics(
                     updated_result.metadata['audio_hash'] = audio_hash
                     updated_result.metadata['artist'] = job.artist
                     updated_result.metadata['title'] = job.title
-                    
+
+                    # The relevance filter may silently drop the new source during the
+                    # correction rerun. Surface that as a "rejected" outcome (without
+                    # persisting the no-op rerun) so the frontend can offer force-add.
+                    source_kept = source in (updated_result.reference_lyrics or {})
+                    if not source_kept:
+                        rejection = (updated_result.metadata.get("rejected_sources") or {}).get(source) or {}
+                        logger.info(
+                            f"Job {job_id}: Lyrics source '{source}' rejected by relevance filter "
+                            f"({rejection.get('matched_words')}/{rejection.get('total_words')} words matched)"
+                        )
+                        span.set_attribute("rejected", True)
+                        return {"status": "rejected", "rejection": rejection, "data": updated_result.to_dict()}
+
                     # Upload updated corrections back to GCS
                     with create_span("upload-corrections") as upload_span:
                         updated_data = updated_result.to_dict()
                         storage.upload_json(corrections_gcs, updated_data)
                         upload_span.set_attribute("gcs_path", corrections_gcs)
-                    
+
                     logger.info(f"Job {job_id}: Successfully added lyrics source '{source}'")
                     span.set_attribute("success", True)
-                    
+
                     return {"status": "success", "data": updated_data}
                     
             except ValueError as e:

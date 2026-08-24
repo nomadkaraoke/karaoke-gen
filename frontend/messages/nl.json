@@ -1167,7 +1167,9 @@
         "lyrics": "Songteksten",
         "lyricsPlaceholder": "Plak songteksten hier...",
         "addLyrics": "Voeg songteksten toe",
-        "adding": "Toevoegen..."
+        "adding": "Toevoegen...",
+        "addAnyway": "Toch toevoegen",
+        "rejectedWarning": "Deze songtekst kwam voor slechts {percent}% overeen met de getranscribeerde audio en is daarom niet toegevoegd — mogelijk is deze van een ander nummer of een andere versie. Controleer de geplakte tekst nog even, of gebruik \"Toch toevoegen\" om de tekst alsnog toe te voegen."
       },
       "correctionAnnotation": {
         "title": "Annoteer je correctie",

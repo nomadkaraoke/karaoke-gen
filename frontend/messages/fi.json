@@ -1167,7 +1167,9 @@
         "lyrics": "Sanoitukset",
         "lyricsPlaceholder": "Liitä sanoitukset tähän...",
         "addLyrics": "Lisää sanoitukset",
-        "adding": "Lisätään..."
+        "adding": "Lisätään...",
+        "addAnyway": "Lisää silti",
+        "rejectedWarning": "Nämä sanat täsmäsivät vain {percent} % litteroidun äänen kanssa, joten niitä ei lisätty — ne saattavat olla eri kappaleesta tai versiosta. Tarkista liittämäsi teksti tai valitse \"Lisää silti\", jos haluat lisätä ne tästä huolimatta."
       },
       "correctionAnnotation": {
         "title": "Kommentoi korjaustasi",
