@@ -2052,8 +2052,8 @@ async def admin_create_user(
         user_service.update_user(email, **extra_updates)
 
     logger.info(
-        f"Admin {admin_id} created user {email} "
-        f"(initial_credits={request.initial_credits}, display_name={request.display_name or '—'})"
+        f"Admin {admin_id} created user {_mask_email(email)} "
+        f"(initial_credits={request.initial_credits})"
     )
 
     return AdminCreateUserResponse(

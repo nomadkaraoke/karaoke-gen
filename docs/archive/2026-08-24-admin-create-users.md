@@ -6,14 +6,14 @@
 > on their behalf (while logged in as admin, after impersonating the new user account) and
 > assign free credits to users who have never logged in before. I've actually just edited
 > an admin-created job to change the user email address to this:
-> "schreiber.uwe@googlemail.com" but that user didn't exist yet, so i'm not sure what
-> happens in this case. Ideally in this scenario that user account would get created on the
-> fly and the job would be assigned to the new user account
+> "[customer email redacted — public repo]" but that user didn't exist yet, so i'm not sure
+> what happens in this case. Ideally in this scenario that user account would get created
+> on the fly and the job would be assigned to the new user account
 
 ## What happened with the reassigned job (investigation)
 
-Job `0eebb248` (Jonny Hill & Linda Feller – Darling) had `user_email` set to
-`schreiber.uwe@googlemail.com`, but `PATCH /api/admin/jobs/{id}` only wrote the string to
+The reassigned job had `user_email` set to the customer's email, but
+`PATCH /api/admin/jobs/{id}` only wrote the string to
 the job doc — no `gen_users` account was created. Consequences: notification emails still
 send (notifier uses the raw email, falls back to `en` locale), and the job would appear in
 the user's list if they ever logged in (jobs are associated purely by the `user_email`
@@ -54,9 +54,10 @@ credits, impersonation 404s.
 
 ## Post-deploy TODO
 
-- Backfill the account for `schreiber.uwe@googlemail.com` (job `0eebb248`): either
-  re-save the `user_email` field on the job in the admin UI (now auto-creates), or call
-  the new create endpoint — then grant credits/impersonate as desired.
+- Backfill the account for the customer whose job was reassigned before this shipped
+  (details in agent memory, kept out of this public repo): either re-save the
+  `user_email` field on the job in the admin UI (now auto-creates), or call the new
+  create endpoint — then grant credits/impersonate as desired.
 
 ## Design decisions
 

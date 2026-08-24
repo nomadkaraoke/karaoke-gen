@@ -420,3 +420,21 @@ class TestUpdateJobUserEmailAutoCreate:
 
             assert response.status_code == 200
             mock_get_us.assert_not_called()
+
+    def test_blank_user_email_rejected(self, client, mock_job):
+        """Whitespace-only or non-email values for user_email return 400."""
+        for bad_value in ("   ", "not-an-email"):
+            with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+                 patch('backend.api.routes.admin.get_user_service') as mock_get_us:
+                mock_jm = Mock()
+                mock_jm.get_job.return_value = mock_job
+                mock_jm_class.return_value = mock_jm
+
+                response = client.patch(
+                    "/api/admin/jobs/test-job-123",
+                    json={"user_email": bad_value},
+                )
+
+                assert response.status_code == 400
+                assert "valid email" in response.json()["detail"]
+                mock_jm.update_job.assert_not_called()
