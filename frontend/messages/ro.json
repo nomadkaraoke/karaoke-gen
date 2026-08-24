@@ -1167,7 +1167,9 @@
         "lyrics": "Versuri",
         "lyricsPlaceholder": "Lipește versurile aici...",
         "addLyrics": "Adaugă versuri",
-        "adding": "Se adaugă..."
+        "adding": "Se adaugă...",
+        "addAnyway": "Adaugă oricum",
+        "rejectedWarning": "Aceste versuri s-au potrivit cu doar {percent}% din conținutul audio transcris, așa că nu au fost adăugate — s-ar putea să fie pentru o altă melodie sau versiune. Verifică din nou textul lipit sau folosește \"Adaugă oricum\" pentru a le adăuga totuși."
       },
       "correctionAnnotation": {
         "title": "Adnotează corectura ta",

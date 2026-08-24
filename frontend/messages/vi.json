@@ -1167,7 +1167,9 @@
         "lyrics": "Lời bài hát",
         "lyricsPlaceholder": "Dán lời bài hát vào đây...",
         "addLyrics": "Thêm lời bài hát",
-        "adding": "Đang thêm..."
+        "adding": "Đang thêm...",
+        "addAnyway": "Vẫn thêm",
+        "rejectedWarning": "Lời bài hát này chỉ khớp {percent}% với bản chép lời từ âm thanh nên chưa được thêm vào — có thể đây là lời của một bài hát hoặc phiên bản khác. Bạn hãy kiểm tra lại văn bản đã dán, hoặc nhấn \"Vẫn thêm\" nếu bạn vẫn muốn thêm."
       },
       "correctionAnnotation": {
         "title": "Chú thích phần sửa lỗi của bạn",

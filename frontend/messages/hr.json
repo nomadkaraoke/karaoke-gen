@@ -1167,7 +1167,9 @@
         "lyrics": "Tekst",
         "lyricsPlaceholder": "Zalijepi tekst ovdje...",
         "addLyrics": "Dodaj tekst",
-        "adding": "Dodavanje..."
+        "adding": "Dodavanje...",
+        "addAnyway": "Svejedno dodaj",
+        "rejectedWarning": "Ovaj tekst podudara se sa samo {percent}% transkribiranog zvuka pa nije dodan — možda je za neku drugu pjesmu ili verziju. Dobro provjeri zalijepljeni tekst ili odaberi \"Svejedno dodaj\" ako ga ipak želiš dodati."
       },
       "correctionAnnotation": {
         "title": "Anotiraj svoj ispravak",

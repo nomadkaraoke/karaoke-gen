@@ -4,7 +4,7 @@
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink } from './types';
-import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse } from './lyrics-review/types';
+import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse, AddLyricsResult } from './lyrics-review/types';
 import { beginRequest, endRequest, configureHealthProbe } from './backend-status';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
@@ -3613,7 +3613,7 @@ export interface LyricsReviewApiClient {
   submitAnnotations: (annotations: Omit<CorrectionAnnotation, 'annotation_id' | 'timestamp'>[]) => Promise<void>
   submitEditLog: (editLog: EditLog) => Promise<void>
   updateHandlers: (handlers: string[]) => Promise<CorrectionData>
-  addLyrics: (source: string, lyrics: string) => Promise<CorrectionData>
+  addLyrics: (source: string, lyrics: string, force?: boolean) => Promise<AddLyricsResult>
   searchLyrics: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
   getVocalsAudioUrl: () => string
@@ -3714,18 +3714,18 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     /**
      * Add lyrics from a new source
      */
-    async addLyrics(source: string, lyrics: string): Promise<CorrectionData> {
+    async addLyrics(source: string, lyrics: string, force: boolean = false): Promise<AddLyricsResult> {
       const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/add-lyrics`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...getAuthHeaders()
         },
-        body: JSON.stringify({ source, lyrics }),
+        // force is sent as a string because the endpoint body is typed Dict[str, str]
+        body: JSON.stringify({ source, lyrics, force: force ? 'true' : 'false' }),
       })
-      // Backend returns { status: "success", data: CorrectionData }
-      const result = await handleResponse<{ status: string; data: CorrectionData }>(response)
-      return result.data
+      // Backend returns { status: "success" | "rejected", data: CorrectionData, rejection?: {...} }
+      return handleResponse<AddLyricsResult>(response)
     },
 
     /**

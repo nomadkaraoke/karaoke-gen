@@ -1167,7 +1167,9 @@
         "lyrics": "Text",
         "lyricsPlaceholder": "Füge den Text hier ein...",
         "addLyrics": "Text hinzufügen",
-        "adding": "Füge hinzu..."
+        "adding": "Füge hinzu...",
+        "addAnyway": "Trotzdem hinzufügen",
+        "rejectedWarning": "Dieser Text stimmte nur zu {percent}% mit dem transkribierten Audio überein, daher wurde er nicht hinzugefügt — er könnte zu einem anderen Lied oder einer anderen Version gehören. Überprüfe den eingefügten Text noch einmal oder nutze \"Trotzdem hinzufügen\", um ihn dennoch zu übernehmen."
       },
       "correctionAnnotation": {
         "title": "Annotiere deine Korrektur",

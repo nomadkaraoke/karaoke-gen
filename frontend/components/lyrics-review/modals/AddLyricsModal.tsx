@@ -4,14 +4,14 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { SearchLyricsResponse } from '@/lib/lyrics-review/types'
+import { AddLyricsResult, SearchLyricsResponse } from '@/lib/lyrics-review/types'
 import SearchLyricsTab from './SearchLyricsTab'
 import PasteLyricsTab from './PasteLyricsTab'
 
 interface AddLyricsModalProps {
   open: boolean
   onClose: () => void
-  onAdd: (source: string, lyrics: string) => Promise<void>
+  onAdd: (source: string, lyrics: string, force?: boolean) => Promise<AddLyricsResult | void>
   onSearch: (artist: string, title: string, forceSources: string[]) => Promise<SearchLyricsResponse>
   defaultArtist: string
   defaultTitle: string

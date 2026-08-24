@@ -676,13 +676,41 @@ describe("createLyricsReviewApiClient", () => {
         })
       )
 
-      // Verify request body
+      // Verify request body (force is sent as a string — the endpoint body is Dict[str, str])
       const call = (global.fetch as jest.Mock).mock.calls[0]
       const body = JSON.parse(call[1].body)
-      expect(body).toEqual({ source: "genius", lyrics: "Some lyrics text" })
+      expect(body).toEqual({ source: "genius", lyrics: "Some lyrics text", force: "false" })
 
-      // Verify the client extracts the data field from the response
-      expect(result).toEqual(mockCorrectionData)
+      // Verify the client returns the full result envelope
+      expect(result).toEqual({ status: "success", data: mockCorrectionData })
+    })
+
+    it("should send force='true' when force-adding", async () => {
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: "success", data: {} }),
+      })
+
+      const client = createLyricsReviewApiClient("job123")
+      await client.addLyrics("manual", "Some lyrics text", true)
+
+      const call = (global.fetch as jest.Mock).mock.calls[0]
+      const body = JSON.parse(call[1].body)
+      expect(body).toEqual({ source: "manual", lyrics: "Some lyrics text", force: "true" })
+    })
+
+    it("should surface rejected status and rejection details", async () => {
+      const rejection = { relevance: 0.013, matched_words: 3, total_words: 230 }
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: "rejected", rejection, data: { reference_lyrics: {} } }),
+      })
+
+      const client = createLyricsReviewApiClient("job123")
+      const result = await client.addLyrics("manual", "Wrong song lyrics")
+
+      expect(result.status).toBe("rejected")
+      expect(result.rejection).toEqual(rejection)
     })
   })
 

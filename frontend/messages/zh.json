@@ -1167,7 +1167,9 @@
         "lyrics": "歌词",
         "lyricsPlaceholder": "在此处粘贴歌词...",
         "addLyrics": "添加歌词",
-        "adding": "添加中..."
+        "adding": "添加中...",
+        "addAnyway": "仍然添加",
+        "rejectedWarning": "这些歌词与转录音频的匹配度仅为 {percent}%，因此未被添加——它们可能属于其他歌曲或版本。请仔细检查粘贴的文本，或者点击“仍然添加”将其添加。"
       },
       "correctionAnnotation": {
         "title": "注释您的校对",

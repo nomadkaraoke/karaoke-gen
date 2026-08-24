@@ -1167,7 +1167,9 @@
         "lyrics": "Lirik",
         "lyricsPlaceholder": "Tampal lirik di sini...",
         "addLyrics": "Tambah Lirik",
-        "adding": "Menambah..."
+        "adding": "Menambah...",
+        "addAnyway": "Tambah Juga",
+        "rejectedWarning": "Lirik ini hanya sepadan sebanyak {percent}% dengan audio yang ditranskripsi, jadi ia tidak ditambahkan — ia mungkin untuk lagu atau versi yang berbeza. Semak semula teks yang ditampal, atau gunakan \"Tambah Juga\" jika anda tetap mahu menambahnya."
       },
       "correctionAnnotation": {
         "title": "Anotasi Pembetulan Anda",

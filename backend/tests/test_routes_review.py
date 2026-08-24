@@ -209,15 +209,108 @@ class TestAddLyricsEndpoint:
     def test_add_lyrics_uses_correction_operations(self):
         """Verify CorrectionOperations.add_lyrics_source is available."""
         from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
-        
+
         # The method should exist
         assert hasattr(CorrectionOperations, 'add_lyrics_source')
-        
+
         # It should be a static method
         import inspect
         # Get the method and check it's callable
         method = getattr(CorrectionOperations, 'add_lyrics_source')
         assert callable(method)
+
+
+class TestAddLyricsRejectionHandling:
+    """Endpoint tests for the relevance-filter rejection flow of add-lyrics.
+
+    The relevance filter can silently drop a pasted lyrics source during the
+    correction rerun. The endpoint must report that as status="rejected" (with
+    the relevance details) instead of a misleading generic success, and must
+    not persist the no-op rerun to GCS.
+    """
+
+    REJECTION = {"relevance": 0.013, "matched_words": 3, "total_words": 230}
+
+    @pytest.fixture(autouse=True)
+    def auth_overrides(self):
+        from backend.main import app
+        from backend.api.dependencies import require_review_auth
+
+        async def mock_require_review_auth(job_id: str = "test123"):
+            return (job_id, "full")
+
+        app.dependency_overrides[require_review_auth] = mock_require_review_auth
+        yield
+        app.dependency_overrides.pop(require_review_auth, None)
+
+    def _make_updated_result(self, source_kept: bool, source: str = "manual"):
+        result = MagicMock()
+        if source_kept:
+            result.reference_lyrics = {source: MagicMock()}
+            result.metadata = {}
+        else:
+            result.reference_lyrics = {}
+            result.metadata = {"rejected_sources": {source: dict(self.REJECTION)}}
+        result.to_dict.return_value = {"reference_lyrics": {}, "metadata": result.metadata}
+        return result
+
+    def _post_add_lyrics(self, test_client, updated_result, payload):
+        from backend.models.job import JobStatus
+
+        mock_job = MagicMock()
+        mock_job.status = JobStatus.IN_REVIEW
+        mock_job.artist = "Test Artist"
+        mock_job.title = "Test Song"
+
+        def fake_download(gcs_path, local_path):
+            with open(local_path, "w") as f:
+                json.dump({}, f)
+
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService") as mock_storage_cls, \
+                patch("backend.api.routes.review.CorrectionResult") as mock_cr, \
+                patch("backend.api.routes.review.CorrectionOperations") as mock_ops, \
+                patch("backend.api.routes.review._get_audio_hash", return_value="hash123"):
+            mock_jm.return_value.get_job.return_value = mock_job
+            mock_storage = mock_storage_cls.return_value
+            mock_storage.download_file.side_effect = fake_download
+            mock_cr.from_dict.return_value = MagicMock()
+            mock_ops.add_lyrics_source.return_value = updated_result
+
+            response = test_client.post("/api/review/job1/add-lyrics", json=payload)
+            return response, mock_ops, mock_storage
+
+    def test_kept_source_returns_success_and_uploads(self, test_client):
+        updated = self._make_updated_result(source_kept=True)
+        response, _, mock_storage = self._post_add_lyrics(
+            test_client, updated, {"source": "manual", "lyrics": "la la la"}
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "success"
+        mock_storage.upload_json.assert_called_once()
+
+    def test_rejected_source_returns_rejected_without_upload(self, test_client):
+        updated = self._make_updated_result(source_kept=False)
+        response, _, mock_storage = self._post_add_lyrics(
+            test_client, updated, {"source": "manual", "lyrics": "wrong song lyrics"}
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "rejected"
+        assert body["rejection"] == self.REJECTION
+        # The no-op rerun must not overwrite corrections.json
+        mock_storage.upload_json.assert_not_called()
+
+    def test_force_flag_is_passed_through(self, test_client):
+        updated = self._make_updated_result(source_kept=True)
+        _, mock_ops, _ = self._post_add_lyrics(
+            test_client, updated, {"source": "manual", "lyrics": "la la la", "force": "true"}
+        )
+
+        assert mock_ops.add_lyrics_source.call_args.kwargs["force"] is True
 
 
 class TestReviewResubmissionClearsWorkerProgress:

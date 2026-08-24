@@ -1167,7 +1167,9 @@
         "lyrics": "Tekst",
         "lyricsPlaceholder": "Lim inn tekst her...",
         "addLyrics": "Legg til tekst",
-        "adding": "Legger til..."
+        "adding": "Legger til...",
+        "addAnyway": "Legg til likevel",
+        "rejectedWarning": "Denne sangteksten samsvarte bare med {percent} % av den transkriberte lyden og ble derfor ikke lagt til — den kan være til en annen sang eller versjon. Dobbeltsjekk teksten du limte inn, eller bruk \"Legg til likevel\" for å legge den til uansett."
       },
       "correctionAnnotation": {
         "title": "Kommenter korrigeringen din",

@@ -1167,7 +1167,9 @@
         "lyrics": "Paroles",
         "lyricsPlaceholder": "Colle les paroles ici...",
         "addLyrics": "Ajouter des paroles",
-        "adding": "Ajout..."
+        "adding": "Ajout...",
+        "addAnyway": "Ajouter quand même",
+        "rejectedWarning": "Ces paroles ne correspondent qu'à {percent} % de l'audio transcrit, elles n'ont donc pas été ajoutées — il s'agit peut-être d'une autre chanson ou version. Vérifie le texte collé, ou utilise \"Ajouter quand même\" pour les ajouter malgré tout."
       },
       "correctionAnnotation": {
         "title": "Annote ta correction",

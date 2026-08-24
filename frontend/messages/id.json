@@ -1167,7 +1167,9 @@
         "lyrics": "Lirik",
         "lyricsPlaceholder": "Tempel lirik di sini...",
         "addLyrics": "Tambahkan Lirik",
-        "adding": "Menambahkan..."
+        "adding": "Menambahkan...",
+        "addAnyway": "Tetap Tambahkan",
+        "rejectedWarning": "Lirik ini hanya cocok {percent}% dengan hasil transkripsi audio, sehingga tidak ditambahkan — lirik ini mungkin untuk lagu atau versi yang berbeda. Silakan periksa kembali teks yang ditempel, atau gunakan \"Tetap Tambahkan\" untuk tetap menambahkannya."
       },
       "correctionAnnotation": {
         "title": "Anotasi Koreksi Anda",

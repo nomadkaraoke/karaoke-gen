@@ -1167,7 +1167,9 @@
         "lyrics": "Sözler",
         "lyricsPlaceholder": "Sözleri buraya yapıştır...",
         "addLyrics": "Söz Ekle",
-        "adding": "Ekleniyor..."
+        "adding": "Ekleniyor...",
+        "addAnyway": "Yine de Ekle",
+        "rejectedWarning": "Bu şarkı sözleri deşifre edilen sesle yalnızca %{percent} oranında eşleşti, bu yüzden eklenmedi — farklı bir şarkıya veya versiyona ait olabilir. Yapıştırdığın metni tekrar kontrol et veya buna rağmen eklemek için \"Yine de Ekle\"yi kullan."
       },
       "correctionAnnotation": {
         "title": "Düzeltmeni Notlandır",

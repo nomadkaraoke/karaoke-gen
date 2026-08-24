@@ -1167,7 +1167,9 @@
         "lyrics": "Text",
         "lyricsPlaceholder": "Klistra in text här...",
         "addLyrics": "Lägg till text",
-        "adding": "Lägger till..."
+        "adding": "Lägger till...",
+        "addAnyway": "Lägg till ändå",
+        "rejectedWarning": "Den här låttexten matchade bara {percent} % av det transkriberade ljudet och lades därför inte till — den kan vara från en annan låt eller version. Dubbelkolla den inklistrade texten eller använd \"Lägg till ändå\" för att lägga till den i alla fall."
       },
       "correctionAnnotation": {
         "title": "Kommentera din korrigering",
