@@ -10,8 +10,10 @@ import {
   getBackendStatus,
   beginRequest,
   endRequest,
+  configureHealthProbe,
   STALL_RECONNECTING_MS,
   STALL_UNAVAILABLE_MS,
+  PROBE_FRESH_MS,
 } from '@/lib/backend-status'
 
 describe('backend-status store (stall-based)', () => {
@@ -86,5 +88,74 @@ describe('backend-status store (stall-based)', () => {
     endRequest(a)
     open = []
     expect(getBackendStatus()).toBe('online')
+  })
+})
+
+describe('backend-status store (health-probe confirmation)', () => {
+  let open: number[] = []
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+    open = []
+  })
+
+  afterEach(() => {
+    open.forEach((id) => endRequest(id))
+    // Restore pure stall-based behavior so other suites are unaffected.
+    configureHealthProbe(null)
+    jest.clearAllTimers()
+    jest.useRealTimers()
+  })
+
+  it('suppresses the banner while the probe reports the backend reachable', async () => {
+    const probe = jest.fn(() => Promise.resolve(true))
+    configureHealthProbe(probe)
+
+    open.push(beginRequest())
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS + 5000)
+    expect(getBackendStatus()).toBe('online')
+    expect(probe).toHaveBeenCalled()
+  })
+
+  it('shows the banner once the probe confirms the backend is unreachable', async () => {
+    configureHealthProbe(() => Promise.resolve(false))
+
+    open.push(beginRequest())
+    await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS)
+    expect(getBackendStatus()).toBe('reconnecting')
+
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS - STALL_RECONNECTING_MS)
+    expect(getBackendStatus()).toBe('unavailable')
+  })
+
+  it('re-probes as the verdict goes stale, and clears the banner if the backend recovers', async () => {
+    let reachable = false
+    const probe = jest.fn(() => Promise.resolve(reachable))
+    configureHealthProbe(probe)
+
+    open.push(beginRequest())
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS)
+    expect(getBackendStatus()).toBe('unavailable')
+
+    // Backend comes back (even though the old read is still hung) — the next
+    // re-probe succeeds and the banner clears.
+    reachable = true
+    await jest.advanceTimersByTimeAsync(PROBE_FRESH_MS + 2000)
+    expect(getBackendStatus()).toBe('online')
+    expect(probe.mock.calls.length).toBeGreaterThan(1)
+  })
+
+  it('holds the banner back while the probe has no verdict yet', async () => {
+    // A probe that takes 3s to fail (e.g. its own timeout racing a hung origin).
+    configureHealthProbe(
+      () => new Promise((res) => setTimeout(() => res(false), 3000)),
+    )
+
+    open.push(beginRequest())
+    await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS)
+    expect(getBackendStatus()).toBe('online') // stalled, but not yet confirmed
+
+    await jest.advanceTimersByTimeAsync(3000) // verdict lands
+    expect(getBackendStatus()).toBe('reconnecting')
   })
 })
