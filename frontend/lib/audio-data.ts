@@ -38,8 +38,9 @@ export function computePeaks(decoded: DecodedAudioLike): AudioData {
 	// Fractional on purpose: at a 44.1 kHz AudioContext this is 110.25. Flooring
 	// it to an integer stride made the envelope's clock run ~0.23% fast, so the
 	// waveform drifted visibly late as the song progressed (~0.4s by the 3-minute
-	// mark). Bucket boundaries are floored per bucket instead, so bucket b always
-	// starts within one sample of real time b / PEAKS_PER_SECOND.
+	// mark). With floored per-bucket boundaries the remaining error is bounded by
+	// the ceil() rounding of bucketCount: under one bucket (2.5 ms) anywhere in
+	// the track, non-accumulating and sub-pixel at any timeline zoom.
 	const samplesPerBucket = length / bucketCount
 	const peaks = new Float32Array(bucketCount)
 
