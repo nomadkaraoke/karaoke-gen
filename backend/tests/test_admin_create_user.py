@@ -78,7 +78,7 @@ class TestAdminCreateUser:
             "/api/users/admin/users",
             json={
                 "email": "new@example.com",
-                "display_name": "Uwe Schreiber",
+                "display_name": "Jane Singer",
                 "initial_credits": 3,
                 "credit_reason": "made-for-you order",
             },
@@ -97,7 +97,7 @@ class TestAdminCreateUser:
         )
         # display_name saved + welcome credit suppressed (admin credits replace it)
         update_kwargs = mock_user_service.update_user.call_args.kwargs
-        assert update_kwargs["display_name"] == "Uwe Schreiber"
+        assert update_kwargs["display_name"] == "Jane Singer"
         assert update_kwargs["welcome_credits_granted"] is True
 
     def test_create_without_credits_leaves_welcome_credit_eligible(self, client, mock_user_service):
@@ -115,13 +115,13 @@ class TestAdminCreateUser:
         """Mixed-case emails are lowercased before lookup and creation."""
         response = client.post(
             "/api/users/admin/users",
-            json={"email": "Schreiber.Uwe@GoogleMail.com"},
+            json={"email": "Mixed.Case@Example.COM"},
         )
 
         assert response.status_code == 201
-        assert response.json()["email"] == "schreiber.uwe@googlemail.com"
-        mock_user_service.get_user.assert_called_once_with("schreiber.uwe@googlemail.com")
-        mock_user_service.get_or_create_user.assert_called_once_with("schreiber.uwe@googlemail.com")
+        assert response.json()["email"] == "mixed.case@example.com"
+        mock_user_service.get_user.assert_called_once_with("mixed.case@example.com")
+        mock_user_service.get_or_create_user.assert_called_once_with("mixed.case@example.com")
 
     def test_duplicate_user_returns_409(self, client, mock_user_service):
         """Creating a user that already exists returns 409."""

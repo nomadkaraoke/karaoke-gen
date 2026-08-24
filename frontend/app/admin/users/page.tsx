@@ -573,7 +573,7 @@ export default function AdminUsersPage() {
               <Label htmlFor="new-user-display-name">Display Name (optional)</Label>
               <Input
                 id="new-user-display-name"
-                placeholder="e.g., Uwe Schreiber"
+                placeholder="e.g., Jane Singer"
                 value={newUserDisplayName}
                 onChange={(e) => setNewUserDisplayName(e.target.value)}
               />

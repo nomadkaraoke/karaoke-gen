@@ -396,13 +396,14 @@ class TestUpdateJobUserEmailAutoCreate:
 
             response = client.patch(
                 "/api/admin/jobs/test-job-123",
-                json={"user_email": "  Schreiber.Uwe@GoogleMail.com "},
+                json={"user_email": "  Mixed.Case@Example.COM "},
             )
 
             assert response.status_code == 200
             call_args = mock_jm.update_job.call_args
-            assert call_args[0][1]["user_email"] == "schreiber.uwe@googlemail.com"
-            mock_us.get_or_create_user.assert_called_once_with("schreiber.uwe@googlemail.com")
+            assert call_args[0][1]["user_email"] == "mixed.case@example.com"
+            mock_us.get_user.assert_called_once_with("mixed.case@example.com")
+            mock_us.get_or_create_user.assert_called_once_with("mixed.case@example.com")
 
     def test_other_field_updates_skip_user_lookup(self, client, mock_job):
         """Updating non-email fields never touches the user service."""
