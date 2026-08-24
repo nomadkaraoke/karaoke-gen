@@ -2521,6 +2521,32 @@ export const adminApi = {
   },
 
   /**
+   * Create a user account directly (e.g. to grant credits or impersonate
+   * someone who has never logged in)
+   */
+  async createUser(data: {
+    email: string;
+    display_name?: string;
+    initial_credits?: number;
+    credit_reason?: string;
+  }): Promise<{
+    status: string;
+    email: string;
+    credits: number;
+    message: string;
+  }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Add credits to a user
    */
   async addCredits(email: string, amount: number, reason: string): Promise<{

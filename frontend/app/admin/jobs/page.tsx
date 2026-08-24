@@ -338,14 +338,17 @@ function AdminJobsPageContent() {
     try {
       setSaving(true)
       const updates: JobUpdateRequest = { [field]: editValue }
-      await adminApi.updateJob(selectedJobId, updates)
+      const result = await adminApi.updateJob(selectedJobId, updates)
 
       // Update local state
       setSelectedJob({ ...selectedJob, [field]: editValue })
 
+      // Surface anything beyond the generic success message (e.g. "Created new
+      // user account for x@y.com" when reassigning user_email)
+      const extra = result?.message?.replace(/^Successfully updated \d+ field\(s\)\.?\s*/, "")
       toast({
         title: "Updated",
-        description: `${field} has been updated`,
+        description: extra ? `${field} has been updated. ${extra}` : `${field} has been updated`,
       })
 
       setEditingField(null)

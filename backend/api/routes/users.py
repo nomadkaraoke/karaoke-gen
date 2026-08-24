@@ -48,6 +48,8 @@ from backend.models.user import (
     ResendFromTokenResponse,
     AddCreditsRequest,
     AddCreditsResponse,
+    AdminCreateUserRequest,
+    AdminCreateUserResponse,
     UserListResponse,
     UserFeedback,
     UserFeedbackRequest,
@@ -1998,6 +2000,68 @@ async def get_user_detail(
         referral_discount_expires_at=user.referral_discount_expires_at.isoformat() if user.referral_discount_expires_at and hasattr(user.referral_discount_expires_at, 'isoformat') else str(user.referral_discount_expires_at) if user.referral_discount_expires_at else None,
         referral_code=user.referral_code,
         recent_sessions=active_sessions,
+    )
+
+
+@router.post("/admin/users", response_model=AdminCreateUserResponse, status_code=201)
+async def admin_create_user(
+    request: AdminCreateUserRequest,
+    auth_data: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Create a user account directly (admin only).
+
+    Use this to set up an account for someone who has never logged in, so you can
+    grant them credits, submit jobs on their behalf, or impersonate them. The user
+    can later log in normally via magic link with the same email.
+
+    Users created this way with initial credits do NOT receive the automatic
+    welcome credit on first login (welcome_credits_granted is set to prevent
+    double-granting).
+    """
+    admin_id = auth_data.user_email or "admin:unknown"
+    email = request.email.strip().lower()
+
+    if request.initial_credits < 0 or request.initial_credits > 1000:
+        raise HTTPException(status_code=400, detail="initial_credits must be between 0 and 1000")
+
+    if user_service.get_user(email):
+        raise HTTPException(status_code=409, detail=f"User {email} already exists")
+
+    user = user_service.get_or_create_user(email)
+
+    extra_updates = {}
+    if request.display_name and request.display_name.strip():
+        extra_updates["display_name"] = request.display_name.strip()
+
+    if request.initial_credits > 0:
+        success, new_balance, message = user_service.add_credits(
+            email=email,
+            amount=request.initial_credits,
+            reason=request.credit_reason,
+            admin_email=admin_id,
+        )
+        if not success:
+            raise HTTPException(status_code=500, detail=f"User created but adding credits failed: {message}")
+        user.credits = new_balance
+        # Admin-granted starter credits replace the automatic welcome credit
+        extra_updates["welcome_credits_granted"] = True
+
+    if extra_updates:
+        user_service.update_user(email, **extra_updates)
+
+    logger.info(
+        f"Admin {admin_id} created user {email} "
+        f"(initial_credits={request.initial_credits}, display_name={request.display_name or '—'})"
+    )
+
+    return AdminCreateUserResponse(
+        status="success",
+        email=email,
+        credits=user.credits,
+        message=f"Created user {email}"
+        + (f" with {request.initial_credits} credit(s)" if request.initial_credits > 0 else ""),
     )
 
 

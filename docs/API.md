@@ -1533,6 +1533,41 @@ Authorization: Bearer ADMIN_TOKEN
 `text_body`, addressing, `status`, `delivered_at`, `open_count`, `click_count`,
 `bounce`, and the raw `events`.
 
+### Create User (Admin)
+
+Create a user account directly — e.g. to grant credits, submit jobs on behalf of,
+or impersonate someone who has never logged in. The user can later log in normally
+via magic link with the same email.
+
+```http
+POST /api/users/admin/users
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "display_name": "Optional Name",
+  "initial_credits": 3,
+  "credit_reason": "made-for-you order"
+}
+```
+
+Response (201):
+```json
+{
+  "status": "success",
+  "email": "user@example.com",
+  "credits": 3,
+  "message": "Created user user@example.com with 3 credit(s)"
+}
+```
+
+Notes:
+- `display_name`, `initial_credits` (0-1000), and `credit_reason` are optional
+- If `initial_credits` > 0, `welcome_credits_granted` is set so the user does NOT
+  also receive the automatic welcome credit on first login
+- Returns 409 if the user already exists
+
 ### Add Credits (Admin)
 
 ```http
@@ -1807,6 +1842,11 @@ Content-Type: application/json
 Updates editable job fields. Allowed fields: `artist`, `title`, `user_email`, `theme_id`, `brand_prefix`, `discord_webhook_url`, `youtube_description`, `youtube_description_template`, `customer_email`, `customer_notes`, `enable_cdg`, `enable_txt`, `enable_youtube_upload`, `non_interactive`, `prep_only`, `is_private`.
 
 **Note:** Setting `is_private=true` on a completed job with existing outputs triggers automatic output deletion.
+
+**Note:** `user_email` is trimmed and lowercased before saving. If no account exists
+for that email, one is auto-created (so the recipient can log in and see the job,
+and the admin can impersonate them immediately). The response message notes when
+an account was created.
 
 Response:
 ```json
