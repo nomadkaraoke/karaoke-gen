@@ -337,15 +337,21 @@ function AdminJobsPageContent() {
 
     try {
       setSaving(true)
-      const updates: JobUpdateRequest = { [field]: editValue }
-      await adminApi.updateJob(selectedJobId, updates)
+      // The backend trims + lowercases user_email; mirror that locally so the
+      // displayed value matches what was saved
+      const savedValue = field === "user_email" ? editValue.trim().toLowerCase() : editValue
+      const updates: JobUpdateRequest = { [field]: savedValue }
+      const result = await adminApi.updateJob(selectedJobId, updates)
 
       // Update local state
-      setSelectedJob({ ...selectedJob, [field]: editValue })
+      setSelectedJob({ ...selectedJob, [field]: savedValue })
 
+      // Surface anything beyond the generic success message (e.g. "Created new
+      // user account for x@y.com" when reassigning user_email)
+      const extra = result?.message?.replace(/^Successfully updated \d+ field\(s\)\.?\s*/, "")
       toast({
         title: "Updated",
-        description: `${field} has been updated`,
+        description: extra ? `${field} has been updated. ${extra}` : `${field} has been updated`,
       })
 
       setEditingField(null)

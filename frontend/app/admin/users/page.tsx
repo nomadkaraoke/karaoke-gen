@@ -38,6 +38,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  UserPlus,
   Loader2,
   CreditCard,
   LogIn,
@@ -100,6 +101,13 @@ export default function AdminUsersPage() {
 
   // Impersonation state - tracks which user is being impersonated (for loading indicator)
   const [impersonatingEmail, setImpersonatingEmail] = useState<string | null>(null)
+
+  // Create user dialog state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [newUserEmail, setNewUserEmail] = useState("")
+  const [newUserDisplayName, setNewUserDisplayName] = useState("")
+  const [newUserCredits, setNewUserCredits] = useState("")
+  const [creatingUser, setCreatingUser] = useState(false)
 
   const loadUsers = useCallback(async () => {
     try {
@@ -178,6 +186,60 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleCreateUser = async () => {
+    const email = newUserEmail.trim().toLowerCase()
+    if (!email || !email.includes("@")) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      })
+      return
+    }
+
+    let credits = 0
+    if (newUserCredits.trim()) {
+      credits = parseInt(newUserCredits.trim(), 10)
+      if (!Number.isInteger(credits) || credits < 0 || credits > 1000) {
+        toast({
+          title: "Invalid Credits",
+          description: "Initial credits must be between 0 and 1,000",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
+    try {
+      setCreatingUser(true)
+      const result = await adminApi.createUser({
+        email,
+        display_name: newUserDisplayName.trim() || undefined,
+        initial_credits: credits,
+      })
+      toast({
+        title: "User Created",
+        description: result.message,
+      })
+      setCreateDialogOpen(false)
+      setNewUserEmail("")
+      setNewUserDisplayName("")
+      setNewUserCredits("")
+      // Surface the new user in the list
+      setSearchInput(email)
+      setSearch(email)
+      setOffset(0)
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to create user",
+        variant: "destructive",
+      })
+    } finally {
+      setCreatingUser(false)
+    }
+  }
+
   const handleImpersonate = async (user: AdminUser) => {
     // Don't allow impersonating yourself
     if (user.email === currentUser?.email) {
@@ -229,10 +291,16 @@ export default function AdminUsersPage() {
             Manage user accounts and credits
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadUsers} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Create User
+          </Button>
+          <Button variant="outline" size="sm" onClick={loadUsers} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -474,6 +542,65 @@ export default function AdminUsersPage() {
             >
               {addingCredits && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Add Credits
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create User</DialogTitle>
+            <DialogDescription>
+              Create an account for someone who hasn&apos;t logged in yet, so you can
+              grant credits, submit jobs on their behalf, or impersonate them. They
+              can log in later via magic link with the same email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-user-email">Email</Label>
+              <Input
+                id="new-user-email"
+                type="email"
+                placeholder="user@example.com"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-user-display-name">Display Name (optional)</Label>
+              <Input
+                id="new-user-display-name"
+                placeholder="e.g., Jane Singer"
+                value={newUserDisplayName}
+                onChange={(e) => setNewUserDisplayName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-user-credits">Initial Credits (optional)</Label>
+              <Input
+                id="new-user-credits"
+                type="number"
+                min="0"
+                max="1000"
+                placeholder="0"
+                value={newUserCredits}
+                onChange={(e) => setNewUserCredits(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                If set, these replace the automatic welcome credit on first login.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser} disabled={!newUserEmail.trim() || creatingUser}>
+              {creatingUser && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create User
             </Button>
           </DialogFooter>
         </DialogContent>

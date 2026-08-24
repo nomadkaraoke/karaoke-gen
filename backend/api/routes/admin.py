@@ -967,6 +967,27 @@ async def update_job(
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
+    # Reassigning a job to an email with no account would orphan it (the user
+    # couldn't log in to see it, and impersonation would 404) — so normalize the
+    # email and auto-create the account if needed.
+    user_created_email = None
+    if isinstance(updates.get("user_email"), str):
+        normalized_email = updates["user_email"].strip().lower()
+        if not normalized_email or "@" not in normalized_email:
+            raise HTTPException(
+                status_code=400,
+                detail="user_email must be a valid email address"
+            )
+        updates["user_email"] = normalized_email
+        user_service = get_user_service()
+        if not user_service.get_user(normalized_email):
+            user_service.get_or_create_user(normalized_email)
+            user_created_email = normalized_email
+            logger.info(
+                f"Admin {admin_email} reassigned job {job_id} to {normalized_email} — "
+                f"no account existed, created one"
+            )
+
     # Check if we're toggling is_private from False to True on a completed job
     # If so, auto-delete existing outputs (YouTube, Dropbox, GDrive)
     toggling_to_private = (
@@ -1016,6 +1037,8 @@ async def update_job(
     )
 
     message = f"Successfully updated {len(updates)} field(s)"
+    if user_created_email:
+        message += f". Created new user account for {user_created_email}."
     if auto_deleted:
         message += ". Existing outputs were auto-deleted (job set to private)."
 

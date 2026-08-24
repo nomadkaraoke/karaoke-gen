@@ -127,11 +127,13 @@ class TestUpdateJob:
 
     def test_update_user_email(self, client, mock_job):
         """Test updating user_email field."""
-        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_get_us:
             mock_jm = Mock()
             mock_jm.get_job.return_value = mock_job
             mock_jm.update_job.return_value = True
             mock_jm_class.return_value = mock_jm
+            mock_get_us.return_value.get_user.return_value = Mock()  # user exists
 
             response = client.patch(
                 "/api/admin/jobs/test-job-123",
@@ -324,3 +326,116 @@ class TestUpdateJobAuthorization:
                 app.dependency_overrides[require_admin] = original_override
             else:
                 app.dependency_overrides[require_admin] = get_mock_admin
+
+
+class TestUpdateJobUserEmailAutoCreate:
+    """Tests for auto-creating a user account when user_email is reassigned."""
+
+    def _patch(self, mock_job, existing_user):
+        """Return patched JobManager + user_service context managers."""
+        jm_patch = patch('backend.api.routes.admin.JobManager')
+        us_patch = patch('backend.api.routes.admin.get_user_service')
+        return jm_patch, us_patch
+
+    def test_creates_user_when_email_unknown(self, client, mock_job):
+        """Reassigning to an email with no account auto-creates the account."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_get_us:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            mock_us = Mock()
+            mock_us.get_user.return_value = None  # no account exists
+            mock_get_us.return_value = mock_us
+
+            response = client.patch(
+                "/api/admin/jobs/test-job-123",
+                json={"user_email": "brandnew@example.com"},
+            )
+
+            assert response.status_code == 200
+            mock_us.get_or_create_user.assert_called_once_with("brandnew@example.com")
+            assert "Created new user account for brandnew@example.com" in response.json()["message"]
+
+    def test_does_not_create_when_user_exists(self, client, mock_job):
+        """Reassigning to an existing user's email does not create anything."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_get_us:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            mock_us = Mock()
+            mock_us.get_user.return_value = Mock()  # account exists
+            mock_get_us.return_value = mock_us
+
+            response = client.patch(
+                "/api/admin/jobs/test-job-123",
+                json={"user_email": "existing@example.com"},
+            )
+
+            assert response.status_code == 200
+            mock_us.get_or_create_user.assert_not_called()
+            assert "Created new user account" not in response.json()["message"]
+
+    def test_email_is_normalized_to_lowercase(self, client, mock_job):
+        """Mixed-case emails are lowercased before saving to the job."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_get_us:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            mock_us = Mock()
+            mock_us.get_user.return_value = None
+            mock_get_us.return_value = mock_us
+
+            response = client.patch(
+                "/api/admin/jobs/test-job-123",
+                json={"user_email": "  Mixed.Case@Example.COM "},
+            )
+
+            assert response.status_code == 200
+            call_args = mock_jm.update_job.call_args
+            assert call_args[0][1]["user_email"] == "mixed.case@example.com"
+            mock_us.get_user.assert_called_once_with("mixed.case@example.com")
+            mock_us.get_or_create_user.assert_called_once_with("mixed.case@example.com")
+
+    def test_other_field_updates_skip_user_lookup(self, client, mock_job):
+        """Updating non-email fields never touches the user service."""
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_get_us:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            response = client.patch(
+                "/api/admin/jobs/test-job-123",
+                json={"artist": "Someone Else"},
+            )
+
+            assert response.status_code == 200
+            mock_get_us.assert_not_called()
+
+    def test_blank_user_email_rejected(self, client, mock_job):
+        """Whitespace-only or non-email values for user_email return 400."""
+        for bad_value in ("   ", "not-an-email"):
+            with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+                 patch('backend.api.routes.admin.get_user_service') as mock_get_us:
+                mock_jm = Mock()
+                mock_jm.get_job.return_value = mock_job
+                mock_jm_class.return_value = mock_jm
+
+                response = client.patch(
+                    "/api/admin/jobs/test-job-123",
+                    json={"user_email": bad_value},
+                )
+
+                assert response.status_code == 400
+                assert "valid email" in response.json()["detail"]
+                mock_jm.update_job.assert_not_called()

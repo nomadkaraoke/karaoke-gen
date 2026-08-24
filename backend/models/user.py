@@ -10,7 +10,7 @@ Supports:
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional, List, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserRole(str, Enum):
@@ -254,6 +254,22 @@ class AddCreditsResponse(BaseModel):
     email: str
     credits_added: int
     new_balance: int
+    message: str
+
+
+class AdminCreateUserRequest(BaseModel):
+    """Admin request to create a user account directly."""
+    email: EmailStr
+    display_name: Optional[str] = None
+    initial_credits: int = 0
+    credit_reason: str = "admin_grant"
+
+
+class AdminCreateUserResponse(BaseModel):
+    """Response after admin creates a user."""
+    status: str
+    email: str
+    credits: int
     message: str
 
 
