@@ -417,6 +417,8 @@ export interface SignedUploadUrl {
   gcs_path: string;
   upload_url: string;
   content_type: string;
+  /** True when upload_url is a GCS resumable session URI (chunked, resumable). */
+  resumable?: boolean;
 }
 
 export interface CreateJobWithUploadUrlsResponse {
@@ -425,6 +427,34 @@ export interface CreateJobWithUploadUrlsResponse {
   message: string;
   upload_urls: SignedUploadUrl[];
   server_version: string;
+}
+
+export interface BulkProposedRow {
+  artist: string;
+  title: string;
+  mixed_filename: string;
+  instrumental_filename: string;
+  confidence: 'high' | 'medium' | 'low' | string;
+  warning: string | null;
+}
+
+export interface BulkUnpairedFile {
+  filename: string;
+  reason: string;
+  artist: string | null;
+  title: string | null;
+  role: 'mixed' | 'instrumental' | null;
+}
+
+export interface BulkIgnoredFile {
+  filename: string;
+  reason: string;
+}
+
+export interface BulkAnalyzeResponse {
+  rows: BulkProposedRow[];
+  unpaired: BulkUnpairedFile[];
+  ignored: BulkIgnoredFile[];
 }
 
 export interface UploadProgress {
@@ -970,12 +1000,17 @@ export const api = {
       is_private?: boolean;
       existing_instrumental?: boolean;
       requires_audio_edit?: boolean;
+      batch_id?: string;
+      /** "resumable" → backend returns GCS resumable session URIs instead of signed PUT URLs. */
+      upload_mode?: 'signed_put' | 'resumable';
     }
   ): Promise<CreateJobWithUploadUrlsResponse> {
     const body: Record<string, any> = { artist, title, files };
     if (options?.is_private !== undefined) body.is_private = options.is_private;
     if (options?.existing_instrumental !== undefined) body.existing_instrumental = options.existing_instrumental;
     if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
+    if (options?.batch_id) body.batch_id = options.batch_id;
+    if (options?.upload_mode) body.upload_mode = options.upload_mode;
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
       method: 'POST',
@@ -1067,6 +1102,22 @@ export const api = {
     }
     // Unreachable: the loop either returns or throws, but satisfies the compiler.
     throw lastError;
+  },
+
+  /**
+   * Tenant bulk upload: analyse a list of filenames into proposed
+   * Mixed/Instrumental job rows. Filenames only — no audio is uploaded here.
+   */
+  async analyzeBulk(filenames: string[]): Promise<BulkAnalyzeResponse> {
+    const response = await apiFetch(`${API_BASE_URL}/api/tenant/bulk/analyze`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ filenames }),
+    });
+    return handleResponse<BulkAnalyzeResponse>(response);
   },
 
   /**

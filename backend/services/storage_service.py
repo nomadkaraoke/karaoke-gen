@@ -113,7 +113,44 @@ class StorageService:
             A signed URL that accepts PUT requests with the file content
         """
         return self._generate_signed_url_internal(blob_path, "PUT", expiration_minutes, content_type)
-    
+
+    def create_resumable_upload_session(
+        self,
+        blob_path: str,
+        content_type: str = "application/octet-stream",
+        origin: Optional[str] = None,
+    ) -> str:
+        """Create a GCS resumable upload session and return its session URI.
+
+        Unlike a signed PUT URL (single-shot: any interruption restarts the whole
+        file), a resumable session accepts chunked uploads with Content-Range and
+        supports querying the persisted offset after a failure, so clients on
+        flaky connections can resume mid-file with no wasted bandwidth. Session
+        URIs are unauthenticated capability tokens valid for ~1 week.
+
+        Args:
+            blob_path: The destination path in GCS.
+            content_type: Content type fixed at session creation.
+            origin: Browser Origin that will upload. When set, GCS answers CORS
+                preflights on the session URI for that origin itself — no bucket
+                CORS config is needed for the chunk PUTs.
+
+        Returns:
+            The resumable session URI the client PUTs chunks to.
+        """
+        try:
+            blob = self.bucket.blob(blob_path)
+            session_uri = blob.create_resumable_upload_session(
+                content_type=content_type,
+                origin=origin,
+            )
+            logger.info(f"Created resumable upload session for {blob_path} (origin={origin})")
+            return session_uri
+        except Exception as e:
+            logger.error(f"Error creating resumable upload session for {blob_path}: {e}")
+            raise
+
+
     def _generate_signed_url_internal(self, blob_path: str, method: str, expiration_minutes: int = 60, content_type: Optional[str] = None) -> str:
         """Internal method to generate signed URLs for GET or PUT operations."""
         import google.auth

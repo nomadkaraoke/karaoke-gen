@@ -10,13 +10,14 @@ Supports two upload flows:
    - Client uploads files directly to GCS using signed URLs (no size limit)
    - POST /api/jobs/{job_id}/uploads-complete - Validates uploads, triggers workers
 """
+import asyncio
 import json
 import logging
 import tempfile
 import os
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Request, Depends
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Literal
 
 from pydantic import BaseModel, Field
 
@@ -248,13 +249,25 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # Private (non-published) track mode
     is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
 
+    # Bulk-upload grouping: jobs created from the same tenant bulk batch share a
+    # batch_id (stamped into state_data) so they can be grouped/filtered later.
+    batch_id: Optional[str] = Field(None, description="Groups jobs created together in one tenant bulk batch")
+
+    # Upload mechanism. "signed_put" (default) returns single-shot signed PUT
+    # URLs; "resumable" returns GCS resumable session URIs that support chunked
+    # uploads with mid-file resume after interruptions (flaky connections).
+    upload_mode: Literal["signed_put", "resumable"] = Field(
+        "signed_put", description="'signed_put' (default) or 'resumable'"
+    )
+
 
 class SignedUploadUrl(BaseModel):
-    """Signed URL for uploading a file."""
+    """Signed URL (or resumable session URI) for uploading a file."""
     file_type: str = Field(..., description="Type of file this URL is for")
     gcs_path: str = Field(..., description="The GCS path where file will be stored")
-    upload_url: str = Field(..., description="Signed URL to PUT the file to")
+    upload_url: str = Field(..., description="Signed URL to PUT the file to, or a resumable session URI")
     content_type: str = Field(..., description="Content-Type header to use when uploading")
+    resumable: bool = Field(False, description="True when upload_url is a GCS resumable session URI")
 
 
 class CreateJobWithUploadUrlsResponse(BaseModel):
@@ -1285,6 +1298,11 @@ async def create_job_with_upload_urls(
         # Record job creation metric
         metrics.record_job_created(job_id, source="upload")
 
+        # Stamp bulk-batch grouping so jobs created together can be grouped/filtered later.
+        if body.batch_id:
+            job_manager.update_state_data(job_id, 'batch_id', body.batch_id)
+            job_manager.update_state_data(job_id, 'created_from', 'tenant-bulk')
+
         logger.info(f"Created job {job_id} for {body.artist} - {body.title} (signed URL upload flow)")
 
         # If theme is set and no style_params uploaded, prepare theme style now
@@ -1302,27 +1320,50 @@ async def create_job_with_upload_urls(
             job_manager.update_job(job_id, update_data)
             logger.info(f"Applied theme '{effective_theme_id}' to job {job_id}")
         
-        # Generate signed upload URLs for each file
-        upload_urls = []
-        for file_info in body.files:
-            gcs_path = _get_gcs_path_for_file(job_id, file_info.file_type, file_info.filename)
-            
-            # Generate signed upload URL (valid for 60 minutes)
-            signed_url = storage_service.generate_signed_upload_url(
-                gcs_path,
-                content_type=file_info.content_type,
-                expiration_minutes=60
-            )
-            
-            upload_urls.append(SignedUploadUrl(
-                file_type=file_info.file_type,
-                gcs_path=gcs_path,
-                upload_url=signed_url,
-                content_type=file_info.content_type
-            ))
-            
-            logger.info(f"Generated signed upload URL for {file_info.file_type}: {gcs_path}")
-        
+        # Generate upload URLs for each file. Two modes:
+        # - "signed_put" (default): single-shot signed PUT URL — simple, but an
+        #   interrupted upload restarts the whole file.
+        # - "resumable": GCS resumable session URI — the client uploads in chunks
+        #   with Content-Range and can resume mid-file after any interruption
+        #   (network switch, sleep, reload). Sessions are created with the
+        #   caller's Origin so GCS handles CORS on the session itself.
+        use_resumable = body.upload_mode == "resumable"
+        request_origin = request.headers.get("Origin") if use_resumable else None
+
+        def _build_upload_urls() -> list:
+            urls = []
+            for file_info in body.files:
+                gcs_path = _get_gcs_path_for_file(job_id, file_info.file_type, file_info.filename)
+                if use_resumable:
+                    upload_url = storage_service.create_resumable_upload_session(
+                        gcs_path,
+                        content_type=file_info.content_type,
+                        origin=request_origin,
+                    )
+                else:
+                    # Signed PUT URL (valid for 60 minutes)
+                    upload_url = storage_service.generate_signed_upload_url(
+                        gcs_path,
+                        content_type=file_info.content_type,
+                        expiration_minutes=60
+                    )
+                urls.append(SignedUploadUrl(
+                    file_type=file_info.file_type,
+                    gcs_path=gcs_path,
+                    upload_url=upload_url,
+                    content_type=file_info.content_type,
+                    resumable=use_resumable,
+                ))
+                logger.info(
+                    f"Generated {'resumable session' if use_resumable else 'signed upload URL'} "
+                    f"for {file_info.file_type}: {gcs_path}"
+                )
+            return urls
+
+        # Resumable session creation makes a network round-trip to GCS per file;
+        # run off the event loop. (Signed URLs sign locally but share the path.)
+        upload_urls = await asyncio.to_thread(_build_upload_urls)
+
         return CreateJobWithUploadUrlsResponse(
             status="success",
             job_id=job_id,

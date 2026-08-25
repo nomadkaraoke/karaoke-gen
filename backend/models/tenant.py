@@ -53,6 +53,10 @@ class TenantFeatures(BaseModel):
         True, description="Enable audio search (flacfetch integration)"
     )
     file_upload: bool = Field(True, description="Enable direct file upload")
+    bulk_upload: bool = Field(
+        True,
+        description="Enable bulk folder upload (drop a folder of tracks, auto-pair Mixed/Instrumental)",
+    )
     youtube_url: bool = Field(True, description="Enable YouTube URL input")
 
     # Distribution options

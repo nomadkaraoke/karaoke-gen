@@ -25,6 +25,7 @@ import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
 import { BulkMode } from "@/components/job/bulk/BulkMode"
 import { TenantJobFlow } from "@/components/job/TenantJobFlow"
+import { TenantBulkFlow } from "@/components/job/TenantBulkFlow"
 import { AutoProcessor } from "@/components/AutoProcessor"
 import { VersionFooter } from "@/components/version-footer"
 import { PushNotificationPrompt } from "@/components/push-notification-prompt"
@@ -59,7 +60,10 @@ function AppPageContent() {
   const [isVerifyingToken, setIsVerifyingToken] = useState(false)
   const adminTokenHandled = useRef(false) // Track if admin_token was already processed
   const { user, fetchUser, verifyMagicLink } = useAuth()
-  const { isDefault: isDefaultTenant } = useTenant()
+  const { isDefault: isDefaultTenant, features: tenantFeatures } = useTenant()
+  // Bulk mode is available on the default portal (search-based) and on tenant
+  // portals with the bulk_upload feature (folder upload + auto-pair).
+  const showBulkToggle = isDefaultTenant || tenantFeatures.bulk_upload
   const { showTestData } = useAdminSettings()
   const [jobLimit, setJobLimit] = useState<number>(() => {
     if (typeof window === "undefined") return 10
@@ -365,7 +369,7 @@ function AppPageContent() {
                       : t('submitDescription')}
                   </CardDescription>
                 </div>
-                {isDefaultTenant && (
+                {showBulkToggle && (
                   <div
                     className="shrink-0 inline-flex rounded-md p-0.5"
                     style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
@@ -400,6 +404,8 @@ function AppPageContent() {
                 ) : (
                   <GuidedJobFlow onJobCreated={loadJobs} />
                 )
+              ) : tenantFeatures.bulk_upload && submitMode === 'bulk' ? (
+                <TenantBulkFlow onJobsChanged={loadJobs} />
               ) : (
                 <TenantJobFlow onJobCreated={loadJobs} />
               )}
