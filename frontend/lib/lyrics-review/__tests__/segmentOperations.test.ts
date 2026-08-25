@@ -89,6 +89,33 @@ describe('segmentOperations — singer inheritance', () => {
     expect(result.corrected_segments[0].singer).toBe(2)
   })
 
+  it('addSegmentBefore: appends after the last segment without crashing (beforeIndex === length)', () => {
+    // "Add segment after" on the final segment calls addSegmentBefore with an
+    // index one past the end. Previously this dereferenced undefined and threw
+    // "Cannot read properties of undefined (reading 'start_time')".
+    const data = baseData([
+      { id: 's1', text: 'hello', start_time: 3, end_time: 5, words: [], singer: 2 },
+    ])
+    const result = addSegmentBefore(data, 1)
+    expect(result.corrected_segments).toHaveLength(2)
+    // New segment is appended at the end...
+    const appended = result.corrected_segments[1]
+    expect(appended.id).not.toBe('s1')
+    // ...starting just after the previous segment's end, and inheriting its singer.
+    expect(appended.start_time).toBe(5)
+    expect(appended.end_time).toBe(6)
+    expect(appended.singer).toBe(2)
+  })
+
+  it('addSegmentBefore: appends into an empty segment list without crashing', () => {
+    const data = baseData([])
+    const result = addSegmentBefore(data, 0)
+    expect(result.corrected_segments).toHaveLength(1)
+    expect(result.corrected_segments[0].start_time).toBe(0)
+    expect(result.corrected_segments[0].end_time).toBe(1)
+    expect(result.corrected_segments[0].singer).toBeUndefined()
+  })
+
   it('delete: remaining segments unchanged', () => {
     const data = baseData([
       { id: 's1', text: 'a', start_time: 0, end_time: 1, words: [], singer: 1 },

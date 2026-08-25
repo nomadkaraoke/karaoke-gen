@@ -46,6 +46,40 @@ class TestFirestoreExport(unittest.TestCase):
         assert "2026-03-29" in result
 
 
+    @patch("firestore_export.storage.Client")
+    @patch("firestore_export.firestore_admin_v1.FirestoreAdminClient")
+    def test_export_clears_target_prefix_first(self, mock_client_class, mock_storage):
+        """A same-day re-run must delete today's leftover export before exporting,
+        otherwise Firestore fails with 'Path already exists'."""
+        from firestore_export import export_firestore
+
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_operation = MagicMock()
+        mock_operation.result.return_value = MagicMock()
+        mock_client.export_documents.return_value = mock_operation
+
+        def _blob(name):
+            b = MagicMock()
+            b.name = name
+            return b
+
+        stale = _blob("firestore/2026-03-29/2026-03-29.overall_export_metadata")
+
+        # First list_blobs call (target-prefix clear) returns today's stale export;
+        # second call (prior-exports cleanup) returns nothing.
+        mock_storage.return_value.bucket.return_value.list_blobs.side_effect = [
+            [stale],
+            [],
+        ]
+
+        export_firestore("proj", "test-staging", "2026-03-29")
+
+        # The stale same-day export was deleted before the export ran.
+        stale.delete.assert_called_once()
+        mock_client.export_documents.assert_called_once()
+
+
 class TestClearPriorExports(unittest.TestCase):
     @patch("firestore_export.storage.Client")
     def test_keeps_latest_deletes_others(self, mock_storage):

@@ -6,6 +6,33 @@ from google.cloud import firestore_admin_v1, storage
 logger = logging.getLogger(__name__)
 
 
+def _clear_target_prefix(staging_bucket: str, date_str: str) -> None:
+    """Delete any existing export under firestore/{date_str}/ before re-exporting.
+
+    Firestore's export_documents refuses to write into an output prefix that
+    already contains an export, failing with
+    "400 Path already exists: .../firestore/<date>/<date>.overall_export_metadata".
+    This happens on a same-day re-run: the whole backup function returns HTTP 500
+    if *any* step fails, and Cloud Scheduler retries the function — but an earlier
+    run may have already written today's Firestore export. Clearing today's prefix
+    first makes the export idempotent so a retry (or manual re-invocation) succeeds
+    instead of colliding with the prior run's output.
+    """
+    target_prefix = f"firestore/{date_str}/"
+    try:
+        client = storage.Client()
+        bucket = client.bucket(staging_bucket)
+        for blob in bucket.list_blobs(prefix=target_prefix):
+            try:
+                blob.delete()
+            except Exception as e:
+                logger.warning(f"Failed to delete stale firestore export {blob.name}: {e}")
+    except Exception as e:
+        # Best-effort — if listing fails the export below will surface any real
+        # collision, so don't abort here.
+        logger.warning(f"Failed to list/clear target firestore prefix {target_prefix}: {e}")
+
+
 def _clear_prior_exports(staging_bucket: str, keep_date: str) -> None:
     """Delete prior firestore/ exports in staging except the keep_date one.
 
@@ -47,6 +74,11 @@ def export_firestore(project: str, staging_bucket: str, date_str: str) -> str:
     output_uri = f"gs://{staging_bucket}/firestore/{date_str}"
 
     logger.info(f"Starting Firestore export to {output_uri}")
+
+    # Clear any leftover export at today's prefix so a same-day retry doesn't
+    # collide with "Path already exists" (Cloud Scheduler retries the whole
+    # function on any step's 500, after an earlier run wrote today's export).
+    _clear_target_prefix(staging_bucket, date_str)
 
     operation = client.export_documents(
         request={
