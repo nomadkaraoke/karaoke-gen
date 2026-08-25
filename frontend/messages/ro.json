@@ -1707,5 +1707,38 @@
       "title": "Întâmpinăm probleme la conectarea cu serverele noastre"
     },
     "dismiss": "Închide"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} piese sunt acum în curs de procesare.",
+    "allSubmittedTitle": "Toate piesele au fost trimise",
+    "analyzeError": "Ceva nu a mers bine la analizarea fișierelor. Te rugăm să încerci din nou.",
+    "analyzing": "Se analizează numele fișierelor…",
+    "ignoredCount": "{count} fișiere non-audio ignorate",
+    "instrumental": "Instrumental",
+    "intro": "Selectează un folder cu piese și vom asocia automat fișierele mixate și instrumentale și vom extrage artistul și titlul, astfel încât să le poți revizui și trimite pe toate deodată.",
+    "mixed": "Mixat (cu voce)",
+    "pickFiles": "Alege fișiere",
+    "pickFolder": "Alege un folder",
+    "reasonNoInstrumental": "nu a fost găsit niciun instrumental corespunzător",
+    "reasonNoMixed": "nu a fost găsit niciun fișier mixat (cu voce) corespunzător",
+    "reasonUnparseable": "nu s-a putut citi artistul/titlul din numele fișierului",
+    "removeRow": "Elimină piesa",
+    "reviewSummary": "{rows} piese detectate · {valid} pregătite pentru trimitere",
+    "rowMissingFile": "Un fișier selectat lipsește",
+    "rowSubmitError": "Trimiterea a eșuat pentru această piesă",
+    "selectFile": "Selectează un fișier…",
+    "startOver": "Începe din nou",
+    "statusDone": "Trimis",
+    "statusNeedsFix": "Necesită un fișier mixat și unul instrumental",
+    "statusReady": "Pregătit",
+    "statusSubmitting": "Se trimite…",
+    "submitAll": "Trimite {count} piese",
+    "submitAnotherBatch": "Trimite un alt lot",
+    "submitting": "Se trimite…",
+    "tooManyFiles": "Prea multe fișiere. Te rugăm să selectezi cel mult {max} o dată.",
+    "warningsTitle": "Unele fișiere necesită atenție",
+    "artist": "Artist",
+    "statusError": "Eșuat",
+    "title": "Titlu"
   }
 }

@@ -1707,5 +1707,38 @@
       "title": "Abbiamo problemi a raggiungere i nostri server"
     },
     "dismiss": "Ignora"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} tracce sono ora in fase di elaborazione.",
+    "allSubmittedTitle": "Tutte le tracce inviate",
+    "analyzeError": "Qualcosa è andato storto durante l'analisi di questi file. Riprova.",
+    "analyzing": "Analisi dei nomi dei file in corso…",
+    "ignoredCount": "{count} file non audio ignorati",
+    "instrumental": "Strumentale",
+    "intro": "Seleziona una cartella di tracce: abbineremo automaticamente i file Misti e Strumentali ed estrarremo artista e titolo, così potrai controllarli e inviarli tutti in una volta.",
+    "mixed": "Misto (con voce)",
+    "pickFiles": "Scegli i file",
+    "pickFolder": "Scegli una cartella",
+    "reasonNoInstrumental": "file strumentale corrispondente non trovato",
+    "reasonNoMixed": "file misto (con voce) corrispondente non trovato",
+    "reasonUnparseable": "impossibile leggere artista/titolo dal nome del file",
+    "removeRow": "Rimuovi traccia",
+    "reviewSummary": "{rows} tracce rilevate · {valid} pronte per l'invio",
+    "rowMissingFile": "Manca un file selezionato",
+    "rowSubmitError": "Invio non riuscito per questa traccia",
+    "selectFile": "Seleziona un file…",
+    "startOver": "Ricomincia",
+    "statusDone": "Inviato",
+    "statusNeedsFix": "Richiede un file misto e uno strumentale",
+    "statusReady": "Pronto",
+    "statusSubmitting": "Invio in corso…",
+    "submitAll": "Invia {count} tracce",
+    "submitAnotherBatch": "Invia un altro gruppo",
+    "submitting": "Invio in corso…",
+    "tooManyFiles": "Troppi file. Selezionane al massimo {max} alla volta.",
+    "warningsTitle": "Alcuni file richiedono attenzione",
+    "artist": "Artista",
+    "statusError": "Fallito",
+    "title": "Titolo"
   }
 }

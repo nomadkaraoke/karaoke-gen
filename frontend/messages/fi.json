@@ -1707,5 +1707,38 @@
       "title": "Palvelimiimme yhdistämisessä on ongelmia"
     },
     "dismiss": "Ohita"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} kappaletta on nyt käsittelyssä.",
+    "allSubmittedTitle": "Kaikki kappaleet lähetetty",
+    "analyzeError": "Jotain meni pieleen näiden tiedostojen analysoinnissa. Yritä uudelleen.",
+    "analyzing": "Analysoidaan tiedostonimiä…",
+    "ignoredCount": "{count} ei-äänitiedostoa ohitettiin",
+    "instrumental": "Instrumentaali",
+    "intro": "Valitse kappaleita sisältävä kansio, niin paritamme automaattisesti miksatut ja instrumentaalitiedostot sekä poimimme esittäjän ja kappaleen nimen. Näin voit tarkistaa ja lähettää ne kaikki kerralla.",
+    "mixed": "Miksattu (laulun kanssa)",
+    "pickFiles": "Valitse tiedostot",
+    "pickFolder": "Valitse kansio",
+    "reasonNoInstrumental": "vastaavaa instrumentaalia ei löytynyt",
+    "reasonNoMixed": "vastaavaa miksattua (laulun sisältävää) tiedostoa ei löytynyt",
+    "reasonUnparseable": "esittäjää/nimeä ei voitu lukea tiedostonimestä",
+    "removeRow": "Poista kappale",
+    "reviewSummary": "{rows} kappaletta havaittu · {valid} valmiina lähetettäväksi",
+    "rowMissingFile": "Valittu tiedosto puuttuu",
+    "rowSubmitError": "Tämän kappaleen lähetys epäonnistui",
+    "selectFile": "Valitse tiedosto…",
+    "startOver": "Aloita alusta",
+    "statusDone": "Lähetetty",
+    "statusNeedsFix": "Tarvitsee miksatun ja instrumentaalitiedoston",
+    "statusReady": "Valmis",
+    "statusSubmitting": "Lähetetään…",
+    "submitAll": "Lähetä {count} kappaletta",
+    "submitAnotherBatch": "Lähetä toinen erä",
+    "submitting": "Lähetetään…",
+    "tooManyFiles": "Liian monta tiedostoa. Valitse kerrallaan enintään {max}.",
+    "warningsTitle": "Jotkin tiedostot vaativat huomiota",
+    "artist": "Artisti",
+    "statusError": "Epäonnistui",
+    "title": "Nimi"
   }
 }

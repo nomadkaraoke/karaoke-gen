@@ -1707,5 +1707,38 @@
       "title": "Máme problémy s pripojením k našim serverom"
     },
     "dismiss": "Zavrieť"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} skladieb sa teraz spracúva.",
+    "allSubmittedTitle": "Všetky skladby boli odoslané",
+    "analyzeError": "Pri analýze týchto súborov sa niečo pokazilo. Skús to znova, prosím.",
+    "analyzing": "Analyzujú sa názvy súborov…",
+    "ignoredCount": "{count} neaudio súborov bolo ignorovaných",
+    "instrumental": "Inštrumentálna",
+    "intro": "Vyber priečinok so skladbami a my automaticky spárujeme zmiešané a inštrumentálne súbory a extrahujeme interpreta a názov, takže ich môžeš skontrolovať a odoslať všetky naraz.",
+    "mixed": "Zmiešaná (s vokálmi)",
+    "pickFiles": "Vybrať súbory",
+    "pickFolder": "Vybrať priečinok",
+    "reasonNoInstrumental": "nenašla sa žiadna zodpovedajúca inštrumentálna verzia",
+    "reasonNoMixed": "nenašiel sa žiadny zodpovedajúci zmiešaný súbor (s vokálmi)",
+    "reasonUnparseable": "nepodarilo sa prečítať interpreta/názov z názvu súboru",
+    "removeRow": "Odstrániť skladbu",
+    "reviewSummary": "Zistených {rows} skladieb · {valid} pripravených na odoslanie",
+    "rowMissingFile": "Vybraný súbor chýba",
+    "rowSubmitError": "Odoslanie tejto skladby zlyhalo",
+    "selectFile": "Vyber súbor…",
+    "startOver": "Začať odznova",
+    "statusDone": "Odoslané",
+    "statusNeedsFix": "Vyžaduje zmiešaný a inštrumentálny súbor",
+    "statusReady": "Pripravené",
+    "statusSubmitting": "Odosiela sa…",
+    "submitAll": "Odoslať {count} skladieb",
+    "submitAnotherBatch": "Odoslať ďalšiu dávku",
+    "submitting": "Odosiela sa…",
+    "tooManyFiles": "Príliš veľa súborov. Vyber naraz maximálne {max}.",
+    "warningsTitle": "Niektoré súbory vyžadujú pozornosť",
+    "artist": "Interpret",
+    "statusError": "Zlyhalo",
+    "title": "Názov"
   }
 }

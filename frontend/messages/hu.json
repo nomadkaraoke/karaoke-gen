@@ -1707,5 +1707,38 @@
       "title": "Nem tudjuk elérni a szervereinket"
     },
     "dismiss": "Elvetés"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} szám feldolgozása folyamatban van.",
+    "allSubmittedTitle": "Minden szám beküldve",
+    "analyzeError": "Valami hiba történt a fájlok elemzésekor. Kérlek, próbáld újra.",
+    "analyzing": "Fájlnevek elemzése…",
+    "ignoredCount": "{count} nem hangfájl figyelmen kívül hagyva",
+    "instrumental": "Instrumentális",
+    "intro": "Válassz ki egy mappát a számokkal, és mi automatikusan párosítjuk a kevert és az instrumentális fájlokat, valamint kinyerjük az előadót és a címet, így egyszerre átnézheted és beküldheted az összeset.",
+    "mixed": "Kevert (énekkel)",
+    "pickFiles": "Fájlok kiválasztása",
+    "pickFolder": "Mappa kiválasztása",
+    "reasonNoInstrumental": "nem található egyező instrumentális verzió",
+    "reasonNoMixed": "nem található egyező kevert (énekkel) fájl",
+    "reasonUnparseable": "nem sikerült kiolvasni az előadót/címet a fájlnévből",
+    "removeRow": "Szám eltávolítása",
+    "reviewSummary": "{rows} szám észlelve · {valid} készen áll a beküldésre",
+    "rowMissingFile": "Egy kiválasztott fájl hiányzik",
+    "rowSubmitError": "A beküldés sikertelen ennél a számnál",
+    "selectFile": "Válassz egy fájlt…",
+    "startOver": "Újrakezdés",
+    "statusDone": "Beküldve",
+    "statusNeedsFix": "Egy kevert és egy instrumentális fájlra van szükség",
+    "statusReady": "Kész",
+    "statusSubmitting": "Beküldés…",
+    "submitAll": "{count} szám beküldése",
+    "submitAnotherBatch": "Újabb adag beküldése",
+    "submitting": "Beküldés…",
+    "tooManyFiles": "Túl sok fájl. Kérlek, egyszerre legfeljebb {max} fájlt válassz ki.",
+    "warningsTitle": "Néhány fájl figyelmet igényel",
+    "artist": "Előadó",
+    "statusError": "Sikertelen",
+    "title": "Cím"
   }
 }

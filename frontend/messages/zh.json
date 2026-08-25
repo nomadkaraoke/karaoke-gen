@@ -1707,5 +1707,38 @@
       "title": "我们连接服务器时遇到了一些问题"
     },
     "dismiss": "忽略"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} 首曲目正在处理中。",
+    "allSubmittedTitle": "所有曲目已提交",
+    "analyzeError": "分析这些文件时出错。请重试。",
+    "analyzing": "正在分析文件名…",
+    "ignoredCount": "已忽略 {count} 个非音频文件",
+    "instrumental": "伴奏",
+    "intro": "选择一个包含曲目的文件夹，我们将自动配对原唱和伴奏文件，并提取歌手和标题，以便您一次性审核并提交所有内容。",
+    "mixed": "原唱（带人声）",
+    "pickFiles": "选择文件",
+    "pickFolder": "选择文件夹",
+    "reasonNoInstrumental": "未找到匹配的伴奏",
+    "reasonNoMixed": "未找到匹配的原唱（带人声）文件",
+    "reasonUnparseable": "无法从文件名中读取歌手/标题",
+    "removeRow": "移除曲目",
+    "reviewSummary": "检测到 {rows} 首曲目 · {valid} 首可提交",
+    "rowMissingFile": "缺少所选文件",
+    "rowSubmitError": "此曲目提交失败",
+    "selectFile": "选择文件…",
+    "startOver": "重新开始",
+    "statusDone": "已提交",
+    "statusNeedsFix": "需要原唱和伴奏文件",
+    "statusReady": "准备就绪",
+    "statusSubmitting": "正在提交…",
+    "submitAll": "提交 {count} 首曲目",
+    "submitAnotherBatch": "提交另一批",
+    "submitting": "正在提交…",
+    "tooManyFiles": "文件过多。请每次最多选择 {max} 个。",
+    "warningsTitle": "部分文件需要注意",
+    "artist": "歌手",
+    "statusError": "失败",
+    "title": "标题"
   }
 }

@@ -1707,5 +1707,38 @@
       "title": "Nedaří se nám spojit s našimi servery"
     },
     "dismiss": "Zavřít"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} skladeb se nyní zpracovává.",
+    "allSubmittedTitle": "Všechny skladby byly odeslány",
+    "analyzeError": "Při analýze těchto souborů se něco pokazilo. Zkus to prosím znovu.",
+    "analyzing": "Analyzuji názvy souborů…",
+    "ignoredCount": "{count} ne-audio souborů ignorováno",
+    "instrumental": "Instrumentální",
+    "intro": "Vyber složku se skladbami a my automaticky spárujeme mixované a instrumentální soubory a načteme interpreta a název. Vše si pak můžeš zkontrolovat a odeslat najednou.",
+    "mixed": "Mixované (se zpěvem)",
+    "pickFiles": "Vyber soubory",
+    "pickFolder": "Vyber složku",
+    "reasonNoInstrumental": "nebyla nalezena odpovídající instrumentální verze",
+    "reasonNoMixed": "nebyl nalezen odpovídající mixovaný soubor (se zpěvem)",
+    "reasonUnparseable": "z názvu souboru se nepodařilo přečíst interpreta/název",
+    "removeRow": "Odstranit skladbu",
+    "reviewSummary": "Detekováno {rows} skladeb · {valid} připraveno k odeslání",
+    "rowMissingFile": "Vybraný soubor chybí",
+    "rowSubmitError": "Odeslání této skladby selhalo",
+    "selectFile": "Vyber soubor…",
+    "startOver": "Začít znovu",
+    "statusDone": "Odesláno",
+    "statusNeedsFix": "Vyžaduje mixovaný a instrumentální soubor",
+    "statusReady": "Připraveno",
+    "statusSubmitting": "Odesílám…",
+    "submitAll": "Odeslat {count} skladeb",
+    "submitAnotherBatch": "Odeslat další várku",
+    "submitting": "Odesílám…",
+    "tooManyFiles": "Příliš mnoho souborů. Vyber jich prosím najednou maximálně {max}.",
+    "warningsTitle": "Některé soubory vyžadují pozornost",
+    "artist": "Umělec",
+    "statusError": "Selhalo",
+    "title": "Název"
   }
 }

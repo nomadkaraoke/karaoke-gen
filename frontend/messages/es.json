@@ -1707,5 +1707,38 @@
       "title": "Tenemos problemas para conectar con nuestros servidores"
     },
     "dismiss": "Descartar"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} pistas se están procesando ahora.",
+    "allSubmittedTitle": "Todas las pistas enviadas",
+    "analyzeError": "Algo salió mal al analizar esos archivos. Por favor, inténtalo de nuevo.",
+    "analyzing": "Analizando nombres de archivos…",
+    "ignoredCount": "Se ignoraron {count} archivos que no son de audio",
+    "instrumental": "Instrumental",
+    "intro": "Selecciona una carpeta de pistas y emparejaremos automáticamente los archivos mixtos y los instrumentales, y extraeremos el artista y el título para que puedas revisarlos y enviarlos todos a la vez.",
+    "mixed": "Mixto (con voces)",
+    "pickFiles": "Elegir archivos",
+    "pickFolder": "Elegir una carpeta",
+    "reasonNoInstrumental": "no se encontró un instrumental coincidente",
+    "reasonNoMixed": "no se encontró un archivo mixto (con voces) coincidente",
+    "reasonUnparseable": "no se pudo leer el artista/título del nombre del archivo",
+    "removeRow": "Eliminar pista",
+    "reviewSummary": "{rows} pistas detectadas · {valid} listas para enviar",
+    "rowMissingFile": "Falta un archivo seleccionado",
+    "rowSubmitError": "Error al enviar esta pista",
+    "selectFile": "Selecciona un archivo…",
+    "startOver": "Empezar de nuevo",
+    "statusDone": "Enviado",
+    "statusNeedsFix": "Necesita un archivo mixto y uno instrumental",
+    "statusReady": "Listo",
+    "statusSubmitting": "Enviando…",
+    "submitAll": "Enviar {count} pistas",
+    "submitAnotherBatch": "Enviar otro lote",
+    "submitting": "Enviando…",
+    "tooManyFiles": "Demasiados archivos. Por favor, selecciona como máximo {max} a la vez.",
+    "warningsTitle": "Algunos archivos necesitan atención",
+    "artist": "Artista",
+    "statusError": "Fallido",
+    "title": "Título"
   }
 }

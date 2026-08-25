@@ -248,6 +248,10 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # Private (non-published) track mode
     is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
 
+    # Bulk-upload grouping: jobs created from the same tenant bulk batch share a
+    # batch_id (stamped into state_data) so they can be grouped/filtered later.
+    batch_id: Optional[str] = Field(None, description="Groups jobs created together in one tenant bulk batch")
+
 
 class SignedUploadUrl(BaseModel):
     """Signed URL for uploading a file."""
@@ -1284,6 +1288,11 @@ async def create_job_with_upload_urls(
 
         # Record job creation metric
         metrics.record_job_created(job_id, source="upload")
+
+        # Stamp bulk-batch grouping so jobs created together can be grouped/filtered later.
+        if body.batch_id:
+            job_manager.update_state_data(job_id, 'batch_id', body.batch_id)
+            job_manager.update_state_data(job_id, 'created_from', 'tenant-bulk')
 
         logger.info(f"Created job {job_id} for {body.artist} - {body.title} (signed URL upload flow)")
 

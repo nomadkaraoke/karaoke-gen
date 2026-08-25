@@ -1707,5 +1707,38 @@
       "title": "אנחנו מתקשים להתחבר לשרתים שלנו"
     },
     "dismiss": "התעלם"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} רצועות נמצאות כעת בעיבוד.",
+    "allSubmittedTitle": "כל הרצועות נשלחו",
+    "analyzeError": "משהו השתבש בניתוח הקבצים האלה. אנא נסו שוב.",
+    "analyzing": "מנתח שמות קבצים…",
+    "ignoredCount": "{count} קבצים שאינם קבצי שמע לא נכללו",
+    "instrumental": "אינסטרומנטלי",
+    "intro": "בחרו תיקיית רצועות ואנחנו נתאים אוטומטית את הקבצים המעורבים והאינסטרומנטליים ונחלץ את שם האמן והשיר, כדי שתוכלו לעבור עליהם ולשלוח את כולם בבת אחת.",
+    "mixed": "מעורב (עם שירה)",
+    "pickFiles": "בחירת קבצים",
+    "pickFolder": "בחירת תיקייה",
+    "reasonNoInstrumental": "לא נמצא קובץ אינסטרומנטלי תואם",
+    "reasonNoMixed": "לא נמצא קובץ מעורב (עם שירה) תואם",
+    "reasonUnparseable": "לא ניתן לקרוא את שם האמן/השיר משם הקובץ",
+    "removeRow": "הסרת רצועה",
+    "reviewSummary": "זוהו {rows} רצועות · {valid} מוכנות לשליחה",
+    "rowMissingFile": "קובץ שנבחר חסר",
+    "rowSubmitError": "השליחה נכשלה עבור רצועה זו",
+    "selectFile": "בחירת קובץ…",
+    "startOver": "התחלה מחדש",
+    "statusDone": "נשלח",
+    "statusNeedsFix": "דרוש קובץ מעורב וקובץ אינסטרומנטלי",
+    "statusReady": "מוכן",
+    "statusSubmitting": "בשליחה…",
+    "submitAll": "שליחת {count} רצועות",
+    "submitAnotherBatch": "שליחת מקבץ נוסף",
+    "submitting": "בשליחה…",
+    "tooManyFiles": "יותר מדי קבצים. אנא בחרו לכל היותר {max} בכל פעם.",
+    "warningsTitle": "חלק מהקבצים דורשים תשומת לב",
+    "artist": "אומן",
+    "statusError": "נכשל",
+    "title": "כותרת"
   }
 }

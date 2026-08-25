@@ -1707,5 +1707,38 @@
       "title": "Sunucularımıza ulaşmakta sorun yaşıyoruz"
     },
     "dismiss": "Kapat"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} parça şu anda işleniyor.",
+    "allSubmittedTitle": "Tüm parçalar gönderildi",
+    "analyzeError": "Bu dosyaları analiz ederken bir şeyler ters gitti. Lütfen tekrar dene.",
+    "analyzing": "Dosya adları analiz ediliyor…",
+    "ignoredCount": "{count} ses dışı dosya yoksayıldı",
+    "instrumental": "Enstrümantal",
+    "intro": "Bir parça klasörü seç; Miksli ve Enstrümantal dosyaları otomatik olarak eşleştirip sanatçı ve şarkı adı bilgilerini çıkaralım, böylece hepsini tek seferde gözden geçirip gönderebilirsin.",
+    "mixed": "Miksli (vokalli)",
+    "pickFiles": "Dosyaları seç",
+    "pickFolder": "Bir klasör seç",
+    "reasonNoInstrumental": "eşleşen enstrümantal dosya bulunamadı",
+    "reasonNoMixed": "eşleşen miksli (vokalli) dosya bulunamadı",
+    "reasonUnparseable": "dosya adından sanatçı/şarkı adı okunamadı",
+    "removeRow": "Parçayı kaldır",
+    "reviewSummary": "{rows} parça algılandı · {valid} tanesi gönderilmeye hazır",
+    "rowMissingFile": "Seçilen bir dosya eksik",
+    "rowSubmitError": "Bu parça için gönderim başarısız oldu",
+    "selectFile": "Bir dosya seç…",
+    "startOver": "Baştan başla",
+    "statusDone": "Gönderildi",
+    "statusNeedsFix": "Miksli ve enstrümantal bir dosya gerekiyor",
+    "statusReady": "Hazır",
+    "statusSubmitting": "Gönderiliyor…",
+    "submitAll": "{count} parçayı gönder",
+    "submitAnotherBatch": "Başka bir parti gönder",
+    "submitting": "Gönderiliyor…",
+    "tooManyFiles": "Çok fazla dosya. Lütfen tek seferde en fazla {max} dosya seç.",
+    "warningsTitle": "Bazı dosyalar dikkat gerektiriyor",
+    "artist": "Sanatçı",
+    "statusError": "Başarısız",
+    "title": "Başlık"
   }
 }

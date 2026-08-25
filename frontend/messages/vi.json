@@ -1707,5 +1707,38 @@
       "title": "Chúng tôi đang gặp sự cố khi kết nối với máy chủ"
     },
     "dismiss": "Bỏ qua"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} bài hát hiện đang được xử lý.",
+    "allSubmittedTitle": "Tất cả bài hát đã được gửi",
+    "analyzeError": "Đã xảy ra lỗi khi phân tích các tệp đó. Vui lòng thử lại.",
+    "analyzing": "Đang phân tích tên tệp…",
+    "ignoredCount": "Đã bỏ qua {count} tệp không phải âm thanh",
+    "instrumental": "Nhạc nền",
+    "intro": "Chọn một thư mục chứa các bài hát và chúng tôi sẽ tự động ghép nối các tệp Nhạc có lời và Nhạc nền, đồng thời trích xuất tên nghệ sĩ và tên bài hát, để bạn có thể xem lại và gửi tất cả cùng một lúc.",
+    "mixed": "Nhạc có lời (bản mix)",
+    "pickFiles": "Chọn tệp",
+    "pickFolder": "Chọn thư mục",
+    "reasonNoInstrumental": "không tìm thấy nhạc nền phù hợp",
+    "reasonNoMixed": "không tìm thấy tệp nhạc có lời phù hợp",
+    "reasonUnparseable": "không thể đọc tên nghệ sĩ/bài hát từ tên tệp",
+    "removeRow": "Xóa bài hát",
+    "reviewSummary": "Đã phát hiện {rows} bài hát · {valid} bài sẵn sàng gửi",
+    "rowMissingFile": "Một tệp được chọn bị thiếu",
+    "rowSubmitError": "Gửi bài hát này thất bại",
+    "selectFile": "Chọn một tệp…",
+    "startOver": "Bắt đầu lại",
+    "statusDone": "Đã gửi",
+    "statusNeedsFix": "Cần tệp nhạc có lời và nhạc nền",
+    "statusReady": "Sẵn sàng",
+    "statusSubmitting": "Đang gửi…",
+    "submitAll": "Gửi {count} bài hát",
+    "submitAnotherBatch": "Gửi đợt khác",
+    "submitting": "Đang gửi…",
+    "tooManyFiles": "Quá nhiều tệp. Vui lòng chọn tối đa {max} tệp mỗi lần.",
+    "warningsTitle": "Một số tệp cần chú ý",
+    "artist": "Nghệ sĩ",
+    "statusError": "Thất bại",
+    "title": "Tiêu đề"
   }
 }

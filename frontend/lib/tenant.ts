@@ -19,6 +19,7 @@ export interface TenantBranding {
 export interface TenantFeatures {
   audio_search: boolean
   file_upload: boolean
+  bulk_upload: boolean
   youtube_url: boolean
   youtube_upload: boolean
   dropbox_upload: boolean
@@ -68,6 +69,7 @@ const DEFAULT_BRANDING: TenantBranding = {
 const DEFAULT_FEATURES: TenantFeatures = {
   audio_search: true,
   file_upload: true,
+  bulk_upload: true,
   youtube_url: true,
   youtube_upload: true,
   dropbox_upload: true,

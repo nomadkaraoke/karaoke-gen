@@ -1707,5 +1707,38 @@
       "title": "Tenim problemes per connectar amb els nostres servidors"
     },
     "dismiss": "Descarta"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "S'estan processant {count} pistes.",
+    "allSubmittedTitle": "Totes les pistes enviades",
+    "analyzeError": "Hi ha hagut un error en analitzar aquests fitxers. Si us plau, torna-ho a provar.",
+    "analyzing": "S'estan analitzant els noms dels fitxers…",
+    "ignoredCount": "S'han ignorat {count} fitxers que no són d'àudio",
+    "instrumental": "Instrumental",
+    "intro": "Selecciona una carpeta de pistes i emparellarem automàticament els fitxers mesclats i els instrumentals, i n'extraurem l'artista i el títol perquè puguis revisar-los i enviar-los tots alhora.",
+    "mixed": "Mesclat (amb veu)",
+    "pickFiles": "Tria fitxers",
+    "pickFolder": "Tria una carpeta",
+    "reasonNoInstrumental": "no s'ha trobat cap fitxer instrumental coincident",
+    "reasonNoMixed": "no s'ha trobat cap fitxer mesclat (amb veu) coincident",
+    "reasonUnparseable": "no s'ha pogut llegir l'artista/títol del nom del fitxer",
+    "removeRow": "Elimina la pista",
+    "reviewSummary": "{rows} pistes detectades · {valid} a punt per enviar",
+    "rowMissingFile": "Falta un fitxer seleccionat",
+    "rowSubmitError": "L'enviament ha fallat per a aquesta pista",
+    "selectFile": "Selecciona un fitxer…",
+    "startOver": "Torna a començar",
+    "statusDone": "Enviat",
+    "statusNeedsFix": "Necessita un fitxer mesclat i un d'instrumental",
+    "statusReady": "A punt",
+    "statusSubmitting": "S'està enviant…",
+    "submitAll": "Envia {count} pistes",
+    "submitAnotherBatch": "Envia un altre lot",
+    "submitting": "S'està enviant…",
+    "tooManyFiles": "Hi ha massa fitxers. Si us plau, selecciona'n un màxim de {max} a la vegada.",
+    "warningsTitle": "Alguns fitxers necessiten atenció",
+    "artist": "Artista",
+    "statusError": "Ha fallat",
+    "title": "Títol"
   }
 }

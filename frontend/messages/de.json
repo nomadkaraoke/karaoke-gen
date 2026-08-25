@@ -1707,5 +1707,38 @@
       "title": "Wir haben Probleme, unsere Server zu erreichen"
     },
     "dismiss": "Ausblenden"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} Tracks werden jetzt verarbeitet.",
+    "allSubmittedTitle": "Alle Tracks eingereicht",
+    "analyzeError": "Beim Analysieren dieser Dateien ist etwas schiefgelaufen. Bitte versuche es erneut.",
+    "analyzing": "Dateinamen werden analysiert…",
+    "ignoredCount": "{count} Nicht-Audio-Dateien ignoriert",
+    "instrumental": "Instrumental",
+    "intro": "Wähle einen Ordner mit Tracks aus und wir ordnen die gemischten und Instrumental-Dateien automatisch einander zu und extrahieren Künstler und Titel, damit du sie alle auf einmal überprüfen und einreichen kannst.",
+    "mixed": "Gemischt (mit Gesang)",
+    "pickFiles": "Dateien auswählen",
+    "pickFolder": "Ordner auswählen",
+    "reasonNoInstrumental": "kein passendes Instrumental gefunden",
+    "reasonNoMixed": "keine passende gemischte Datei (mit Gesang) gefunden",
+    "reasonUnparseable": "Künstler/Titel konnte nicht aus dem Dateinamen gelesen werden",
+    "removeRow": "Track entfernen",
+    "reviewSummary": "{rows} Tracks erkannt · {valid} bereit zum Einreichen",
+    "rowMissingFile": "Eine ausgewählte Datei fehlt",
+    "rowSubmitError": "Einreichen dieses Tracks fehlgeschlagen",
+    "selectFile": "Wähle eine Datei aus…",
+    "startOver": "Von vorn anfangen",
+    "statusDone": "Eingereicht",
+    "statusNeedsFix": "Benötigt eine gemischte und eine Instrumental-Datei",
+    "statusReady": "Bereit",
+    "statusSubmitting": "Wird eingereicht…",
+    "submitAll": "{count} Tracks einreichen",
+    "submitAnotherBatch": "Weiteren Stapel einreichen",
+    "submitting": "Wird eingereicht…",
+    "tooManyFiles": "Zu viele Dateien. Bitte wähle höchstens {max} auf einmal aus.",
+    "warningsTitle": "Einige Dateien erfordern Aufmerksamkeit",
+    "artist": "Künstler",
+    "statusError": "Fehlgeschlagen",
+    "title": "Titel"
   }
 }

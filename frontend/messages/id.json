@@ -1707,5 +1707,38 @@
       "title": "Kami kesulitan terhubung ke server"
     },
     "dismiss": "Abaikan"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} trek sedang diproses.",
+    "allSubmittedTitle": "Semua trek berhasil dikirim",
+    "analyzeError": "Terjadi kesalahan saat menganalisis file tersebut. Silakan coba lagi.",
+    "analyzing": "Menganalisis nama file…",
+    "ignoredCount": "{count} file non-audio diabaikan",
+    "instrumental": "Instrumental",
+    "intro": "Pilih folder berisi trek dan kami akan memasangkan file Campuran dan Instrumental secara otomatis, serta mengekstrak nama artis dan judulnya. Anda bisa meninjau dan mengirimkan semuanya sekaligus.",
+    "mixed": "Campuran (dengan vokal)",
+    "pickFiles": "Pilih file",
+    "pickFolder": "Pilih folder",
+    "reasonNoInstrumental": "file instrumental yang cocok tidak ditemukan",
+    "reasonNoMixed": "file campuran (dengan vokal) yang cocok tidak ditemukan",
+    "reasonUnparseable": "tidak dapat membaca nama artis/judul dari nama file",
+    "removeRow": "Hapus trek",
+    "reviewSummary": "{rows} trek terdeteksi · {valid} siap dikirim",
+    "rowMissingFile": "File yang dipilih tidak ditemukan",
+    "rowSubmitError": "Gagal mengirim trek ini",
+    "selectFile": "Pilih file…",
+    "startOver": "Mulai dari awal",
+    "statusDone": "Terkirim",
+    "statusNeedsFix": "Butuh file campuran dan instrumental",
+    "statusReady": "Siap",
+    "statusSubmitting": "Mengirim…",
+    "submitAll": "Kirim {count} trek",
+    "submitAnotherBatch": "Kirim kumpulan lainnya",
+    "submitting": "Mengirim…",
+    "tooManyFiles": "Terlalu banyak file. Silakan pilih maksimal {max} file sekaligus.",
+    "warningsTitle": "Beberapa file perlu diperhatikan",
+    "artist": "Artis",
+    "statusError": "Gagal",
+    "title": "Judul"
   }
 }

@@ -1707,5 +1707,38 @@
       "title": "We kunnen onze servers even niet bereiken"
     },
     "dismiss": "Sluiten"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} tracks worden nu verwerkt.",
+    "allSubmittedTitle": "Alle tracks ingediend",
+    "analyzeError": "Er is iets misgegaan bij het analyseren van deze bestanden. Probeer het opnieuw.",
+    "analyzing": "Bestandsnamen analyseren…",
+    "ignoredCount": "{count} niet-audiobestanden genegeerd",
+    "instrumental": "Instrumentaal",
+    "intro": "Selecteer een map met tracks en we koppelen automatisch de gemixte en instrumentale bestanden en halen de artiest en titel eruit, zodat je ze allemaal tegelijk kunt controleren en indienen.",
+    "mixed": "Gemixt (met zang)",
+    "pickFiles": "Kies bestanden",
+    "pickFolder": "Kies een map",
+    "reasonNoInstrumental": "geen bijpassende instrumentale versie gevonden",
+    "reasonNoMixed": "geen bijpassend gemixt bestand (met zang) gevonden",
+    "reasonUnparseable": "kon artiest/titel niet uit de bestandsnaam lezen",
+    "removeRow": "Track verwijderen",
+    "reviewSummary": "{rows} tracks gedetecteerd · {valid} klaar om in te dienen",
+    "rowMissingFile": "Een geselecteerd bestand ontbreekt",
+    "rowSubmitError": "Indienen mislukt voor deze track",
+    "selectFile": "Selecteer een bestand…",
+    "startOver": "Opnieuw beginnen",
+    "statusDone": "Ingediend",
+    "statusNeedsFix": "Heeft een gemixt en instrumentaal bestand nodig",
+    "statusReady": "Klaar",
+    "statusSubmitting": "Indienen…",
+    "submitAll": "{count} tracks indienen",
+    "submitAnotherBatch": "Nog een batch indienen",
+    "submitting": "Indienen…",
+    "tooManyFiles": "Te veel bestanden. Selecteer er maximaal {max} tegelijk.",
+    "warningsTitle": "Sommige bestanden hebben aandacht nodig",
+    "artist": "Artiest",
+    "statusError": "Mislukt",
+    "title": "Titel"
   }
 }

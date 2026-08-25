@@ -1707,5 +1707,38 @@
       "title": "Nous avons des difficultés à joindre nos serveurs"
     },
     "dismiss": "Ignorer"
+  },
+  "tenantBulk": {
+    "allSubmittedDesc": "{count} pistes sont maintenant en cours de traitement.",
+    "allSubmittedTitle": "Toutes les pistes ont été soumises",
+    "analyzeError": "Un problème est survenu lors de l'analyse de ces fichiers. Essaie à nouveau.",
+    "analyzing": "Analyse des noms de fichiers…",
+    "ignoredCount": "{count} fichiers non audio ignorés",
+    "instrumental": "Instrumental",
+    "intro": "Sélectionne un dossier de pistes et nous associerons automatiquement les fichiers mixtes et instrumentaux, puis nous extrairons l'artiste et le titre, pour que tu puisses les vérifier et tous les soumettre en une seule fois.",
+    "mixed": "Mixte (avec voix)",
+    "pickFiles": "Choisir des fichiers",
+    "pickFolder": "Choisir un dossier",
+    "reasonNoInstrumental": "aucun instrumental correspondant trouvé",
+    "reasonNoMixed": "aucun fichier mixte (avec voix) correspondant trouvé",
+    "reasonUnparseable": "impossible de lire l'artiste/le titre à partir du nom de fichier",
+    "removeRow": "Supprimer la piste",
+    "reviewSummary": "{rows} pistes détectées · {valid} prêtes à être soumises",
+    "rowMissingFile": "Un fichier sélectionné est manquant",
+    "rowSubmitError": "La soumission a échoué pour cette piste",
+    "selectFile": "Sélectionner un fichier…",
+    "startOver": "Recommencer",
+    "statusDone": "Soumis",
+    "statusNeedsFix": "Nécessite un fichier mixte et un fichier instrumental",
+    "statusReady": "Prêt",
+    "statusSubmitting": "Soumission en cours…",
+    "submitAll": "Soumettre {count} pistes",
+    "submitAnotherBatch": "Soumettre un autre lot",
+    "submitting": "Soumission en cours…",
+    "tooManyFiles": "Trop de fichiers. Sélectionne un maximum de {max} fichiers à la fois.",
+    "warningsTitle": "Certains fichiers nécessitent ton attention",
+    "artist": "Artiste",
+    "statusError": "Échoué",
+    "title": "Titre"
   }
 }
