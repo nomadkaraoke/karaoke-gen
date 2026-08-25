@@ -244,7 +244,112 @@ class TestWorkerService:
                 call_args = mock_run_v2.RunJobRequest.call_args
                 assert call_args is not None
                 assert "lyrics-transcription-job" in str(call_args)
-    
+
+    def _mock_run_v2(self, run_job_side_effect):
+        """Build a mocked run_v2 module whose JobsClient.run_job uses side_effect."""
+        mock_jobs_client = MagicMock()
+        mock_jobs_client.run_job.side_effect = run_job_side_effect
+        mock_run_v2 = MagicMock()
+        mock_run_v2.JobsClient.return_value = mock_jobs_client
+        mock_run_v2.RunJobRequest = MagicMock()
+        mock_run_v2.RunJobRequest.Overrides = MagicMock()
+        mock_run_v2.RunJobRequest.Overrides.ContainerOverride = MagicMock()
+        return mock_run_v2, mock_jobs_client
+
+    @pytest.mark.asyncio
+    async def test_trigger_worker_retries_transient_503_then_succeeds(self):
+        """A one-off transient 503 from the Jobs Admin API is retried, not fatal."""
+        from google.api_core import exceptions as gcp_exceptions
+        from backend.services.worker_service import (
+            WorkerService, reset_worker_service, _RUN_JOB_MAX_ATTEMPTS,
+        )
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings, \
+             patch('backend.services.worker_service.asyncio.sleep', new=AsyncMock()) as mock_sleep:
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = False
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_video = False
+
+            mock_operation = MagicMock()
+            mock_operation.metadata = "test-metadata"
+            # Fail once with a transient 503, then succeed on retry.
+            mock_run_v2, mock_jobs_client = self._mock_run_v2(
+                [gcp_exceptions.ServiceUnavailable("503 unavailable"), mock_operation]
+            )
+
+            import google.cloud
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
+                service = WorkerService()
+                result = await service.trigger_lyrics_worker("test123")
+
+            assert result is True
+            assert mock_jobs_client.run_job.call_count == 2  # first fails, retry succeeds
+            assert mock_sleep.await_count == 1  # backed off once between attempts
+            assert _RUN_JOB_MAX_ATTEMPTS >= 2
+
+    @pytest.mark.asyncio
+    async def test_trigger_worker_gives_up_after_max_attempts(self):
+        """Persistent transient errors exhaust retries and return False (not a raise)."""
+        from google.api_core import exceptions as gcp_exceptions
+        from backend.services.worker_service import (
+            WorkerService, reset_worker_service, _RUN_JOB_MAX_ATTEMPTS,
+        )
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings, \
+             patch('backend.services.worker_service.asyncio.sleep', new=AsyncMock()):
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = False
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_video = False
+
+            mock_run_v2, mock_jobs_client = self._mock_run_v2(
+                gcp_exceptions.ServiceUnavailable("503 unavailable")
+            )
+
+            import google.cloud
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
+                service = WorkerService()
+                result = await service.trigger_lyrics_worker("test123")
+
+            assert result is False
+            assert mock_jobs_client.run_job.call_count == _RUN_JOB_MAX_ATTEMPTS
+
+    @pytest.mark.asyncio
+    async def test_trigger_worker_does_not_retry_permanent_error(self):
+        """Non-transient errors (e.g. PermissionDenied) fail fast without retry."""
+        from google.api_core import exceptions as gcp_exceptions
+        from backend.services.worker_service import WorkerService, reset_worker_service
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings, \
+             patch('backend.services.worker_service.asyncio.sleep', new=AsyncMock()) as mock_sleep:
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = False
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_video = False
+
+            mock_run_v2, mock_jobs_client = self._mock_run_v2(
+                gcp_exceptions.PermissionDenied("permission denied")
+            )
+
+            import google.cloud
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
+                service = WorkerService()
+                result = await service.trigger_lyrics_worker("test123")
+
+            assert result is False
+            assert mock_jobs_client.run_job.call_count == 1  # no retry on permanent error
+            assert mock_sleep.await_count == 0
+
     @pytest.mark.asyncio
     async def test_trigger_screens_worker(self):
         """Test triggering screens worker via internal HTTP."""
