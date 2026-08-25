@@ -1735,10 +1735,11 @@
     "submitAll": "Lähetä {count} kappaletta",
     "submitAnotherBatch": "Lähetä toinen erä",
     "submitting": "Lähetetään…",
-    "tooManyFiles": "Liian monta tiedostoa. Valitse kerrallaan enintään {max}.",
+    "tooManyFiles": "Liian monta kappaletta. Valitse enintään {max} kerrallaan.",
     "warningsTitle": "Jotkin tiedostot vaativat huomiota",
     "artist": "Artisti",
     "statusError": "Epäonnistui",
-    "title": "Nimi"
+    "title": "Nimi",
+    "noAudioFound": "Valinnastasi ei löytynyt äänitiedostoja."
   }
 }

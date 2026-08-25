@@ -1735,10 +1735,11 @@
     "submitAll": "Gửi {count} bài hát",
     "submitAnotherBatch": "Gửi đợt khác",
     "submitting": "Đang gửi…",
-    "tooManyFiles": "Quá nhiều tệp. Vui lòng chọn tối đa {max} tệp mỗi lần.",
+    "tooManyFiles": "Quá nhiều bản nhạc. Vui lòng chọn tối đa {max} bài cùng lúc.",
     "warningsTitle": "Một số tệp cần chú ý",
     "artist": "Nghệ sĩ",
     "statusError": "Thất bại",
-    "title": "Tiêu đề"
+    "title": "Tiêu đề",
+    "noAudioFound": "Không tìm thấy tệp âm thanh nào trong lựa chọn của bạn."
   }
 }

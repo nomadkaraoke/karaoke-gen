@@ -1735,10 +1735,11 @@
     "submitAll": "Hantar {count} trek",
     "submitAnotherBatch": "Hantar kumpulan lain",
     "submitting": "Menghantar…",
-    "tooManyFiles": "Terlalu banyak fail. Sila pilih maksimum {max} pada satu masa.",
+    "tooManyFiles": "Terlalu banyak trek. Sila pilih maksimum {max} pada satu masa.",
     "warningsTitle": "Beberapa fail memerlukan perhatian",
     "artist": "Artis",
     "statusError": "Gagal",
-    "title": "Tajuk"
+    "title": "Tajuk",
+    "noAudioFound": "Tiada fail audio ditemui dalam pilihan anda."
   }
 }

@@ -1735,10 +1735,11 @@
     "submitAll": "Skicka in {count} spår",
     "submitAnotherBatch": "Skicka in en ny omgång",
     "submitting": "Skickar in…",
-    "tooManyFiles": "För många filer. Välj högst {max} åt gången.",
+    "tooManyFiles": "För många spår. Välj max {max} åt gången.",
     "warningsTitle": "Vissa filer behöver åtgärdas",
     "artist": "Artist",
     "statusError": "Misslyckades",
-    "title": "Titel"
+    "title": "Titel",
+    "noAudioFound": "Inga ljudfiler hittades i ditt urval."
   }
 }

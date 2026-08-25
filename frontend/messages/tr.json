@@ -1735,10 +1735,11 @@
     "submitAll": "{count} parçayı gönder",
     "submitAnotherBatch": "Başka bir parti gönder",
     "submitting": "Gönderiliyor…",
-    "tooManyFiles": "Çok fazla dosya. Lütfen tek seferde en fazla {max} dosya seç.",
+    "tooManyFiles": "Çok fazla parça var. Lütfen tek seferde en fazla {max} parça seç.",
     "warningsTitle": "Bazı dosyalar dikkat gerektiriyor",
     "artist": "Sanatçı",
     "statusError": "Başarısız",
-    "title": "Başlık"
+    "title": "Başlık",
+    "noAudioFound": "Seçiminde ses dosyası bulunamadı."
   }
 }

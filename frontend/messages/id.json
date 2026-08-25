@@ -1735,10 +1735,11 @@
     "submitAll": "Kirim {count} trek",
     "submitAnotherBatch": "Kirim kumpulan lainnya",
     "submitting": "Mengirim…",
-    "tooManyFiles": "Terlalu banyak file. Silakan pilih maksimal {max} file sekaligus.",
+    "tooManyFiles": "Terlalu banyak trek. Silakan pilih maksimal {max} sekaligus.",
     "warningsTitle": "Beberapa file perlu diperhatikan",
     "artist": "Artis",
     "statusError": "Gagal",
-    "title": "Judul"
+    "title": "Judul",
+    "noAudioFound": "Tidak ada file audio yang ditemukan dalam pilihan Anda."
   }
 }

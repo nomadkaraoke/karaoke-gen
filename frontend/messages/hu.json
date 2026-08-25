@@ -1735,10 +1735,11 @@
     "submitAll": "{count} szám beküldése",
     "submitAnotherBatch": "Újabb adag beküldése",
     "submitting": "Beküldés…",
-    "tooManyFiles": "Túl sok fájl. Kérlek, egyszerre legfeljebb {max} fájlt válassz ki.",
+    "tooManyFiles": "Túl sok zeneszám. Kérlek, egyszerre legfeljebb {max} darabot válassz ki.",
     "warningsTitle": "Néhány fájl figyelmet igényel",
     "artist": "Előadó",
     "statusError": "Sikertelen",
-    "title": "Cím"
+    "title": "Cím",
+    "noAudioFound": "Nem található hangfájl a kiválasztottak között."
   }
 }

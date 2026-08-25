@@ -1735,10 +1735,11 @@
     "submitAll": "Trimite {count} piese",
     "submitAnotherBatch": "Trimite un alt lot",
     "submitting": "Se trimite…",
-    "tooManyFiles": "Prea multe fișiere. Te rugăm să selectezi cel mult {max} o dată.",
+    "tooManyFiles": "Prea multe piese. Te rugăm să selectezi cel mult {max} o dată.",
     "warningsTitle": "Unele fișiere necesită atenție",
     "artist": "Artist",
     "statusError": "Eșuat",
-    "title": "Titlu"
+    "title": "Titlu",
+    "noAudioFound": "Nu au fost găsite fișiere audio în selecția ta."
   }
 }

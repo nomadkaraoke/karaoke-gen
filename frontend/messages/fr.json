@@ -1735,10 +1735,11 @@
     "submitAll": "Soumettre {count} pistes",
     "submitAnotherBatch": "Soumettre un autre lot",
     "submitting": "Soumission en cours…",
-    "tooManyFiles": "Trop de fichiers. Sélectionne un maximum de {max} fichiers à la fois.",
+    "tooManyFiles": "Trop de pistes. Sélectionnes-en au maximum {max} à la fois.",
     "warningsTitle": "Certains fichiers nécessitent ton attention",
     "artist": "Artiste",
     "statusError": "Échoué",
-    "title": "Titre"
+    "title": "Titre",
+    "noAudioFound": "Aucun fichier audio trouvé dans ta sélection."
   }
 }

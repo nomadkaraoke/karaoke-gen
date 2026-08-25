@@ -1735,10 +1735,11 @@
     "submitAll": "提交 {count} 首曲目",
     "submitAnotherBatch": "提交另一批",
     "submitting": "正在提交…",
-    "tooManyFiles": "文件过多。请每次最多选择 {max} 个。",
+    "tooManyFiles": "曲目过多。每次请最多选择 {max} 首。",
     "warningsTitle": "部分文件需要注意",
     "artist": "歌手",
     "statusError": "失败",
-    "title": "标题"
+    "title": "标题",
+    "noAudioFound": "您选择的项目中未找到音频文件。"
   }
 }

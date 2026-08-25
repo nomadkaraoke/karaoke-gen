@@ -1735,10 +1735,11 @@
     "submitAll": "Enviar {count} pistas",
     "submitAnotherBatch": "Enviar otro lote",
     "submitting": "Enviando…",
-    "tooManyFiles": "Demasiados archivos. Por favor, selecciona como máximo {max} a la vez.",
+    "tooManyFiles": "Demasiadas pistas. Por favor, selecciona un máximo de {max} a la vez.",
     "warningsTitle": "Algunos archivos necesitan atención",
     "artist": "Artista",
     "statusError": "Fallido",
-    "title": "Título"
+    "title": "Título",
+    "noAudioFound": "No se encontraron archivos de audio en tu selección."
   }
 }

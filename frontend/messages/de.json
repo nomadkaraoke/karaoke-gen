@@ -1735,10 +1735,11 @@
     "submitAll": "{count} Tracks einreichen",
     "submitAnotherBatch": "Weiteren Stapel einreichen",
     "submitting": "Wird eingereicht…",
-    "tooManyFiles": "Zu viele Dateien. Bitte wähle höchstens {max} auf einmal aus.",
+    "tooManyFiles": "Zu viele Titel. Bitte wähle höchstens {max} auf einmal aus.",
     "warningsTitle": "Einige Dateien erfordern Aufmerksamkeit",
     "artist": "Künstler",
     "statusError": "Fehlgeschlagen",
-    "title": "Titel"
+    "title": "Titel",
+    "noAudioFound": "Keine Audiodateien in deiner Auswahl gefunden."
   }
 }

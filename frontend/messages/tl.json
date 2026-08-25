@@ -1735,10 +1735,11 @@
     "submitAll": "Isumite ang {count} track",
     "submitAnotherBatch": "Magsumite ng isa pang batch",
     "submitting": "Isinusumite…",
-    "tooManyFiles": "Masyadong maraming file. Pakipili ng hanggang {max} lang sa bawat pagkakataon.",
+    "tooManyFiles": "Masyadong maraming track. Pumili lang ng hanggang {max} sa bawat pagkakataon.",
     "warningsTitle": "May mga file na kailangan ng pansin",
     "artist": "Artist",
     "statusError": "Bigo",
-    "title": "Pamagat"
+    "title": "Pamagat",
+    "noAudioFound": "Walang nahanap na audio file sa mga pinili mo."
   }
 }

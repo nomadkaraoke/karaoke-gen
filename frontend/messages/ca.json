@@ -1735,10 +1735,11 @@
     "submitAll": "Envia {count} pistes",
     "submitAnotherBatch": "Envia un altre lot",
     "submitting": "S'està enviant…",
-    "tooManyFiles": "Hi ha massa fitxers. Si us plau, selecciona'n un màxim de {max} a la vegada.",
+    "tooManyFiles": "Massa pistes. Si us plau, selecciona'n un màxim de {max} a la vegada.",
     "warningsTitle": "Alguns fitxers necessiten atenció",
     "artist": "Artista",
     "statusError": "Ha fallat",
-    "title": "Títol"
+    "title": "Títol",
+    "noAudioFound": "No s'han trobat fitxers d'àudio a la teva selecció."
   }
 }

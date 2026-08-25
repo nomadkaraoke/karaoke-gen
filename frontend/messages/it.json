@@ -1735,10 +1735,11 @@
     "submitAll": "Invia {count} tracce",
     "submitAnotherBatch": "Invia un altro gruppo",
     "submitting": "Invio in corso…",
-    "tooManyFiles": "Troppi file. Selezionane al massimo {max} alla volta.",
+    "tooManyFiles": "Troppe tracce. Selezionane al massimo {max} alla volta.",
     "warningsTitle": "Alcuni file richiedono attenzione",
     "artist": "Artista",
     "statusError": "Fallito",
-    "title": "Titolo"
+    "title": "Titolo",
+    "noAudioFound": "Nessun file audio trovato nella tua selezione."
   }
 }

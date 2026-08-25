@@ -1735,10 +1735,11 @@
     "submitAll": "שליחת {count} רצועות",
     "submitAnotherBatch": "שליחת מקבץ נוסף",
     "submitting": "בשליחה…",
-    "tooManyFiles": "יותר מדי קבצים. אנא בחרו לכל היותר {max} בכל פעם.",
+    "tooManyFiles": "יותר מדי רצועות. נא לבחור עד {max} בכל פעם.",
     "warningsTitle": "חלק מהקבצים דורשים תשומת לב",
     "artist": "אומן",
     "statusError": "נכשל",
-    "title": "כותרת"
+    "title": "כותרת",
+    "noAudioFound": "לא נמצאו קובצי שמע בבחירה שלך."
   }
 }

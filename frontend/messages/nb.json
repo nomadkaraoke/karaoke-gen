@@ -1735,10 +1735,11 @@
     "submitAll": "Send inn {count} låter",
     "submitAnotherBatch": "Send inn en ny runde",
     "submitting": "Sender inn…",
-    "tooManyFiles": "For mange filer. Velg maksimalt {max} om gangen.",
+    "tooManyFiles": "For mange spor. Velg maksimalt {max} om gangen.",
     "warningsTitle": "Noen filer må sjekkes",
     "artist": "Artist",
     "statusError": "Mislyktes",
-    "title": "Tittel"
+    "title": "Tittel",
+    "noAudioFound": "Ingen lydfiler funnet i utvalget ditt."
   }
 }

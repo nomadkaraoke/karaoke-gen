@@ -1735,10 +1735,11 @@
     "submitAll": "{count} tracks indienen",
     "submitAnotherBatch": "Nog een batch indienen",
     "submitting": "Indienen…",
-    "tooManyFiles": "Te veel bestanden. Selecteer er maximaal {max} tegelijk.",
+    "tooManyFiles": "Te veel nummers. Selecteer er maximaal {max} tegelijk.",
     "warningsTitle": "Sommige bestanden hebben aandacht nodig",
     "artist": "Artiest",
     "statusError": "Mislukt",
-    "title": "Titel"
+    "title": "Titel",
+    "noAudioFound": "Geen audiobestanden gevonden in je selectie."
   }
 }

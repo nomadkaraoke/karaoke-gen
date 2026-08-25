@@ -1735,10 +1735,11 @@
     "submitAll": "Pošalji {count} pjesama",
     "submitAnotherBatch": "Pošalji još jednu grupu",
     "submitting": "Šaljem…",
-    "tooManyFiles": "Previše datoteka. Odaberi najviše {max} odjednom.",
+    "tooManyFiles": "Previše zapisa. Molim te, odaberi najviše {max} odjednom.",
     "warningsTitle": "Neke datoteke zahtijevaju pažnju",
     "artist": "Izvođač",
     "statusError": "Nije uspjelo",
-    "title": "Naslov"
+    "title": "Naslov",
+    "noAudioFound": "Nisu pronađene audio datoteke u tvom odabiru."
   }
 }

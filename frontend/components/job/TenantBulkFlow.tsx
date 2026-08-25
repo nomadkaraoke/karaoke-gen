@@ -103,8 +103,14 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   const analyze = useCallback(async (selected: File[]) => {
     setError("")
     if (selected.length === 0) return
-    if (selected.length > MAX_FILES) {
+    // Cap on audio files (candidate tracks), not incidental non-audio files.
+    const audioCount = selected.filter(f => isAudio(f.name)).length
+    if (audioCount > MAX_FILES) {
       setError(t('tooManyFiles', { max: MAX_FILES }))
+      return
+    }
+    if (audioCount === 0) {
+      setError(t('noAudioFound'))
       return
     }
     setFiles(selected)

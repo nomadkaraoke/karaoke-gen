@@ -1735,10 +1735,11 @@
     "submitAll": "Prześlij {count} utworów",
     "submitAnotherBatch": "Prześlij kolejną partię",
     "submitting": "Przesyłanie…",
-    "tooManyFiles": "Zbyt wiele plików. Wybierz maksymalnie {max} naraz.",
+    "tooManyFiles": "Za dużo utworów. Wybierz maksymalnie {max} naraz.",
     "warningsTitle": "Niektóre pliki wymagają uwagi",
     "artist": "Wykonawca",
     "statusError": "Nie powiodło się",
-    "title": "Tytuł"
+    "title": "Tytuł",
+    "noAudioFound": "W wybranych elementach nie znaleziono plików audio."
   }
 }

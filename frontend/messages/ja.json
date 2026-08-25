@@ -1735,10 +1735,11 @@
     "submitAll": "{count}曲のトラックを送信",
     "submitAnotherBatch": "別のバッチを送信",
     "submitting": "送信中…",
-    "tooManyFiles": "ファイルが多すぎます。一度に選択できるのは最大{max}個までです。",
+    "tooManyFiles": "トラック数が多すぎます。一度に選択できるのは最大{max}までです。",
     "warningsTitle": "一部のファイルに確認が必要です",
     "artist": "アーティスト",
     "statusError": "失敗",
-    "title": "タイトル"
+    "title": "タイトル",
+    "noAudioFound": "選択した項目の中にオーディオファイルが見つかりませんでした。"
   }
 }

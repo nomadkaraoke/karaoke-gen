@@ -1735,10 +1735,11 @@
     "submitAll": "Indsend {count} numre",
     "submitAnotherBatch": "Indsend en ny portion",
     "submitting": "Indsender…",
-    "tooManyFiles": "For mange filer. Vælg højst {max} ad gangen.",
+    "tooManyFiles": "For mange numre. Vælg højst {max} ad gangen.",
     "warningsTitle": "Nogle filer kræver opmærksomhed",
     "artist": "Kunstner",
     "statusError": "Mislykkedes",
-    "title": "Titel"
+    "title": "Titel",
+    "noAudioFound": "Ingen lydfiler fundet i din markering."
   }
 }

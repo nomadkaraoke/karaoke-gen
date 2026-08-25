@@ -1735,10 +1735,11 @@
     "submitAll": "{count}개의 트랙 제출",
     "submitAnotherBatch": "추가 제출하기",
     "submitting": "제출 중…",
-    "tooManyFiles": "파일이 너무 많습니다. 한 번에 최대 {max}개까지만 선택해 주세요.",
+    "tooManyFiles": "트랙이 너무 많습니다. 한 번에 최대 {max}개까지만 선택해 주세요.",
     "warningsTitle": "일부 파일에 확인이 필요합니다",
     "artist": "아티스트",
     "statusError": "실패",
-    "title": "제목"
+    "title": "제목",
+    "noAudioFound": "선택하신 항목에서 오디오 파일을 찾을 수 없습니다."
   }
 }

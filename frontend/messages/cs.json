@@ -1735,10 +1735,11 @@
     "submitAll": "Odeslat {count} skladeb",
     "submitAnotherBatch": "Odeslat další várku",
     "submitting": "Odesílám…",
-    "tooManyFiles": "Příliš mnoho souborů. Vyber jich prosím najednou maximálně {max}.",
+    "tooManyFiles": "Příliš mnoho skladeb. Vyber jich najednou maximálně {max}.",
     "warningsTitle": "Některé soubory vyžadují pozornost",
     "artist": "Umělec",
     "statusError": "Selhalo",
-    "title": "Název"
+    "title": "Název",
+    "noAudioFound": "Ve tvém výběru nebyly nalezeny žádné zvukové soubory."
   }
 }

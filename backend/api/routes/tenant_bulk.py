@@ -13,15 +13,21 @@ from pydantic import BaseModel, Field
 from backend.api.dependencies import require_auth
 from backend.middleware.tenant import get_tenant_config_from_request
 from backend.services.auth_service import AuthResult
+from pathlib import Path
+
 from backend.services.tenant_bulk import analyze_filenames
-from backend.services.tenant_bulk.analyze import default_generate
+from backend.services.tenant_bulk.analyze import AUDIO_EXTENSIONS, default_generate
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/tenant/bulk", tags=["tenant-bulk"])
 
-# Mirror consumer Bulk Mode's cap to bound LLM cost and upload load.
-MAX_FILENAMES = 100
+# Mirror consumer Bulk Mode's cap to bound LLM cost and upload load. Counts
+# audio files (candidate tracks), not incidental non-audio files a folder pick
+# may include (cover art, etc.), so an image-heavy folder isn't falsely blocked.
+MAX_AUDIO_FILES = 100
+# Absolute payload guard so a single request can't send an unbounded list.
+MAX_FILENAMES = 2000
 
 
 class BulkAnalyzeRequest(BaseModel):
@@ -55,9 +61,14 @@ async def analyze_bulk_filenames(
     if not filenames:
         raise HTTPException(status_code=400, detail="No filenames provided")
     if len(filenames) > MAX_FILENAMES:
+        raise HTTPException(status_code=400, detail="Too many files in request")
+    audio_count = sum(
+        1 for f in filenames if Path(f).suffix.lower() in AUDIO_EXTENSIONS
+    )
+    if audio_count > MAX_AUDIO_FILES:
         raise HTTPException(
             status_code=400,
-            detail=f"Too many files ({len(filenames)}). Please submit at most {MAX_FILENAMES} at a time.",
+            detail=f"Too many tracks ({audio_count}). Please submit at most {MAX_AUDIO_FILES} at a time.",
         )
 
     # The LLM pass is a blocking Vertex call; run it off the event loop. It only
