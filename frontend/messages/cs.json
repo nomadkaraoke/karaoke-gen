@@ -599,7 +599,9 @@
     "lyrics": "Text",
     "confirmDurationCost": "Potvrdit cenu",
     "findingAudioSources": "Hledání zdrojů zvuku (opakování pokusu)",
-    "waitingForCapacity": "Čeká se na kódovací server (opakovaný pokus)"
+    "waitingForCapacity": "Čeká se na kódovací server (opakovaný pokus)",
+    "preparingAudio": "Připravujeme tvoje audio",
+    "processing": "Zpracovává se"
   },
   "jobCard": {
     "actionNeeded": "Vyžadována akce",

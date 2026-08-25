@@ -599,7 +599,9 @@
     "lyrics": "מילים",
     "confirmDurationCost": "אישור עלות",
     "findingAudioSources": "מחפש מקורות שמע (מנסה שוב)",
-    "waitingForCapacity": "ממתין לשרת הקידוד (מנסה שוב)"
+    "waitingForCapacity": "ממתין לשרת הקידוד (מנסה שוב)",
+    "preparingAudio": "מכינים את האודיו שלך",
+    "processing": "בעיבוד"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",

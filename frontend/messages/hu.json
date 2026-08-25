@@ -599,7 +599,9 @@
     "lyrics": "Dalszöveg",
     "confirmDurationCost": "Költség megerősítése",
     "findingAudioSources": "Hangforrások keresése (újrapróbálkozás)",
-    "waitingForCapacity": "Várakozás a kódoló szerverre (újrapróbálkozás)"
+    "waitingForCapacity": "Várakozás a kódoló szerverre (újrapróbálkozás)",
+    "preparingAudio": "Hanganyagod előkészítése",
+    "processing": "Feldolgozás"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",

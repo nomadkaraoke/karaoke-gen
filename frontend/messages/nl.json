@@ -599,7 +599,9 @@
     "lyrics": "Songteksten",
     "confirmDurationCost": "Kosten bevestigen",
     "findingAudioSources": "Audiobronnen zoeken (opnieuw proberen)",
-    "waitingForCapacity": "Wachten op encodingserver (opnieuw proberen)"
+    "waitingForCapacity": "Wachten op encodingserver (opnieuw proberen)",
+    "preparingAudio": "Je audio voorbereiden",
+    "processing": "Verwerken"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",

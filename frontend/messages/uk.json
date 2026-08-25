@@ -599,7 +599,9 @@
     "lyrics": "Текст",
     "confirmDurationCost": "Підтвердити вартість",
     "findingAudioSources": "Пошук джерел аудіо (повторна спроба)",
-    "waitingForCapacity": "Очікуємо на сервер кодування (повторна спроба)"
+    "waitingForCapacity": "Очікуємо на сервер кодування (повторна спроба)",
+    "preparingAudio": "Готуємо твоє аудіо",
+    "processing": "Обробка"
   },
   "jobCard": {
     "actionNeeded": "Потрібна дія",

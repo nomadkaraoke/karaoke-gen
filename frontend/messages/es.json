@@ -599,7 +599,9 @@
     "lyrics": "Letras",
     "confirmDurationCost": "Confirmar costo",
     "findingAudioSources": "Buscando fuentes de audio (reintentando)",
-    "waitingForCapacity": "Esperando al servidor de codificación (reintentando)"
+    "waitingForCapacity": "Esperando al servidor de codificación (reintentando)",
+    "preparingAudio": "Preparando tu audio",
+    "processing": "Procesando"
   },
   "jobCard": {
     "actionNeeded": "Acción necesaria",

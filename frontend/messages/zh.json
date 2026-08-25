@@ -599,7 +599,9 @@
     "lyrics": "歌词",
     "confirmDurationCost": "确认费用",
     "findingAudioSources": "正在查找音频源（重试中）",
-    "waitingForCapacity": "等待编码服务器 (正在重试)"
+    "waitingForCapacity": "等待编码服务器 (正在重试)",
+    "preparingAudio": "正在准备您的音频",
+    "processing": "处理中"
   },
   "jobCard": {
     "actionNeeded": "需要操作",

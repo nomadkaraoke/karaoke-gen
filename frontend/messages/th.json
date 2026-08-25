@@ -599,7 +599,9 @@
     "lyrics": "เนื้อเพลง",
     "confirmDurationCost": "ยืนยันค่าใช้จ่าย",
     "findingAudioSources": "กำลังค้นหาแหล่งเสียง (กำลังลองอีกครั้ง)",
-    "waitingForCapacity": "กำลังรอเซิร์ฟเวอร์เข้ารหัส (กำลังลองใหม่)"
+    "waitingForCapacity": "กำลังรอเซิร์ฟเวอร์เข้ารหัส (กำลังลองใหม่)",
+    "preparingAudio": "กำลังเตรียมไฟล์เสียงของคุณ",
+    "processing": "กำลังประมวลผล"
   },
   "jobCard": {
     "actionNeeded": "ต้องการการดำเนินการ",

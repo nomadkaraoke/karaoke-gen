@@ -599,7 +599,9 @@
     "lyrics": "Στίχοι",
     "confirmDurationCost": "Επιβεβαίωση κόστους",
     "findingAudioSources": "Εύρεση πηγών ήχου (επαναπροσπάθεια)",
-    "waitingForCapacity": "Αναμονή για διακομιστή κωδικοποίησης (νέα προσπάθεια)"
+    "waitingForCapacity": "Αναμονή για διακομιστή κωδικοποίησης (νέα προσπάθεια)",
+    "preparingAudio": "Προετοιμασία του ήχου σου",
+    "processing": "Επεξεργασία"
   },
   "jobCard": {
     "actionNeeded": "Απαιτείται ενέργεια",

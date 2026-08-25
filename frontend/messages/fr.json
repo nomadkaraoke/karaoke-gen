@@ -599,7 +599,9 @@
     "lyrics": "Paroles",
     "confirmDurationCost": "Confirmer le coût",
     "findingAudioSources": "Recherche de sources audio (nouvelle tentative)",
-    "waitingForCapacity": "En attente du serveur d'encodage (nouvelle tentative)"
+    "waitingForCapacity": "En attente du serveur d'encodage (nouvelle tentative)",
+    "preparingAudio": "Préparation de ton audio",
+    "processing": "Traitement en cours"
   },
   "jobCard": {
     "actionNeeded": "Action requise",
