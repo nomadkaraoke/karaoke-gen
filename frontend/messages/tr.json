@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Manuel düzeltme algılanmadı. Önizlemede her şey iyi görünüyorsa, enstrümantalini seçmeye devam et.",
         "totalSegments": "Toplam segment: {count}",
         "proceedToInstrumental": "Enstrümantal İncelemesine İlerle",
-        "saving": "Kaydediliyor..."
+        "saving": "Kaydediliyor...",
+        "completeTrack": "Parçayı Tamamla"
       },
       "searchLyrics": {
         "artist": "Sanatçı",

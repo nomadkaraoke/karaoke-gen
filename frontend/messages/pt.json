@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Nenhuma correção manual detectada. Se tudo parecer bem na visualização, prossiga para selecionar seu instrumental.",
         "totalSegments": "Total de segmentos: {count}",
         "proceedToInstrumental": "Prosseguir para Revisão Instrumental",
-        "saving": "Salvando..."
+        "saving": "Salvando...",
+        "completeTrack": "Faixa completa"
       },
       "searchLyrics": {
         "artist": "Artista",

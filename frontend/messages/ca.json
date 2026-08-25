@@ -1134,7 +1134,8 @@
         "noManualCorrections": "No s'han detectat correccions manuals. Si tot es veu bé a la previsualització, procedeix a seleccionar el teu instrumental.",
         "totalSegments": "Total de segments: {count}",
         "proceedToInstrumental": "Procedeix a la revisió instrumental",
-        "saving": "Desant..."
+        "saving": "Desant...",
+        "completeTrack": "Pista completa"
       },
       "searchLyrics": {
         "artist": "Artista",

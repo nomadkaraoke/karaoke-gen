@@ -1134,7 +1134,8 @@
         "noManualCorrections": "수동 수정 사항이 감지되지 않았습니다. 미리보기에서 모든 것이 좋아 보이면 반주 선택으로 진행하세요.",
         "totalSegments": "총 세그먼트: {count}",
         "proceedToInstrumental": "반주 검토로 진행",
-        "saving": "저장 중..."
+        "saving": "저장 중...",
+        "completeTrack": "트랙 완료"
       },
       "searchLyrics": {
         "artist": "아티스트",

@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Nessuna correzione manuale rilevata. Se tutto sembra a posto nell'anteprima, procedi alla selezione della tua base strumentale.",
         "totalSegments": "Segmenti totali: {count}",
         "proceedToInstrumental": "Procedi alla revisione strumentale",
-        "saving": "Salvataggio..."
+        "saving": "Salvataggio...",
+        "completeTrack": "Traccia completa"
       },
       "searchLyrics": {
         "artist": "Artista",

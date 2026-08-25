@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Nie wykryto ręcznych poprawek. Jeśli wszystko wygląda dobrze w podglądzie, przejdź do wyboru podkładu.",
         "totalSegments": "Całkowita liczba segmentów: {count}",
         "proceedToInstrumental": "Przejdź do sprawdzania podkładu",
-        "saving": "Zapisywanie..."
+        "saving": "Zapisywanie...",
+        "completeTrack": "Ukończ utwór"
       },
       "searchLyrics": {
         "artist": "Wykonawca",

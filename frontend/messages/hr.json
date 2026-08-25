@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Nisu detektirani ručni ispravci. Ako sve izgleda dobro u pregledu, nastavi s odabirom svog instrumentala.",
         "totalSegments": "Ukupno segmenata: {count}",
         "proceedToInstrumental": "Nastavi na pregled instrumentala",
-        "saving": "Spremanje..."
+        "saving": "Spremanje...",
+        "completeTrack": "Dovrši pjesmu"
       },
       "searchLyrics": {
         "artist": "Izvođač",

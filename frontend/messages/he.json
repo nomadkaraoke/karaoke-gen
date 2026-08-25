@@ -1134,7 +1134,8 @@
         "noManualCorrections": "לא זוהו תיקונים ידניים. אם הכל נראה טוב בתצוגה המקדימה, המשך לבחירת הפלייבק שלך.",
         "totalSegments": "סה\"כ מקטעים: {count}",
         "proceedToInstrumental": "המשך לבדיקת פלייבק",
-        "saving": "שומר..."
+        "saving": "שומר...",
+        "completeTrack": "השלמת הרצועה"
       },
       "searchLyrics": {
         "artist": "אמן",

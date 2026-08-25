@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Walang na-detect na manual corrections. Kung maayos ang lahat sa preview, magpatuloy sa pagpili ng iyong instrumental.",
         "totalSegments": "Kabuuang mga segment: {count}",
         "proceedToInstrumental": "Magpatuloy sa Instrumental Review",
-        "saving": "Sina-save..."
+        "saving": "Sina-save...",
+        "completeTrack": "Kumpletuhin ang Track"
       },
       "searchLyrics": {
         "artist": "Artist",

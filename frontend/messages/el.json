@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Δεν εντοπίστηκαν χειροκίνητες διορθώσεις. Αν όλα φαίνονται καλά στην προεπισκόπηση, προχώρα στην επιλογή του instrumental σου.",
         "totalSegments": "Συνολικά τμήματα: {count}",
         "proceedToInstrumental": "Προχώρα στον Έλεγχο Instrumental",
-        "saving": "Αποθήκευση..."
+        "saving": "Αποθήκευση...",
+        "completeTrack": "Ολοκλήρωση κομματιού"
       },
       "searchLyrics": {
         "artist": "Καλλιτέχνης",

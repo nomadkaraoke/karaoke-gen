@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Ei manuaalisia korjauksia havaittu. Jos kaikki näyttää hyvältä esikatselussa, siirry valitsemaan instrumentaalisi.",
         "totalSegments": "Segmenttejä yhteensä: {count}",
         "proceedToInstrumental": "Siirry instrumentaalin tarkistukseen",
-        "saving": "Tallennetaan..."
+        "saving": "Tallennetaan...",
+        "completeTrack": "Viimeistele kappale"
       },
       "searchLyrics": {
         "artist": "Esittäjä",

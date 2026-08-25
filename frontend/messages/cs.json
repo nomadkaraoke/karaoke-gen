@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Nebyly detekovány žádné manuální opravy. Pokud v náhledu vypadá vše v pořádku, pokračuj k výběru instrumentálky.",
         "totalSegments": "Celkem segmentů: {count}",
         "proceedToInstrumental": "Pokračovat na kontrolu instrumentálky",
-        "saving": "Ukládání..."
+        "saving": "Ukládání...",
+        "completeTrack": "Dokončit skladbu"
       },
       "searchLyrics": {
         "artist": "Interpret",

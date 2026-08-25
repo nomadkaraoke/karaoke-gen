@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Không phát hiện sửa lỗi thủ công nào. Nếu mọi thứ có vẻ ổn trong bản xem trước, hãy tiến hành chọn nhạc nền của bạn.",
         "totalSegments": "Tổng số phân đoạn: {count}",
         "proceedToInstrumental": "Tiến hành xem lại nhạc nền",
-        "saving": "Đang lưu..."
+        "saving": "Đang lưu...",
+        "completeTrack": "Hoàn tất bài hát"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

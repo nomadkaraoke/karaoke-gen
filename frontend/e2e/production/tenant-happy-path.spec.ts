@@ -191,7 +191,9 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     // Approve the review through the UI (Preview -> Instrumental -> Confirm)
     // =====================================================================
     // Preview Video (bottom of the review page) — generates a preview using the
-    // now-warm encoder, then opens a modal with a "Proceed to Instrumental" CTA.
+    // now-warm encoder, then opens a modal whose CTA reads "Complete Track" for
+    // tenant/uploaded-instrumental jobs (no instrumental-review step); older builds
+    // said "Proceed to Instrumental Review". Match either so the test is deploy-safe.
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     const previewBtn = page.getByRole('button', { name: /preview video/i });
     await expect(previewBtn).toBeVisible({ timeout: T.action });
@@ -204,7 +206,7 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
       .waitFor({ state: 'hidden', timeout: 180_000 })
       .catch(() => {});
 
-    const proceedBtn = page.getByRole('button', { name: /proceed to instrumental/i });
+    const proceedBtn = page.getByRole('button', { name: /complete track|proceed to instrumental/i });
     await expect(proceedBtn).toBeVisible({ timeout: T.action });
     await proceedBtn.click();
 
