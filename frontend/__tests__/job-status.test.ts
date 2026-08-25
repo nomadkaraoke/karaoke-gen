@@ -139,6 +139,69 @@ describe('getJobStep', () => {
     });
   });
 
+  describe('Upload-based (tenant / existing-instrumental) jobs', () => {
+    const withInstrumental = (status: string, stateData?: Record<string, any>): Job => ({
+      ...createJob(status, stateData),
+      existing_instrumental_gcs_path: 'uploads/test-job-123/audio/existing_instrumental.mp3',
+    });
+
+    it('shows "preparingAudio" instead of "downloading" while staging uploads', () => {
+      const result = getJobStep(withInstrumental('downloading'));
+      expect(result.step).toBe(3);
+      expect(result.label).toBe('preparingAudio');
+    });
+
+    it('also relabels the downloading_audio stage for uploaded audio', () => {
+      const result = getJobStep(withInstrumental('downloading_audio'));
+      expect(result.step).toBe(3);
+      expect(result.label).toBe('preparingAudio');
+    });
+
+    it('advances to step 4 (transcribing) once the lyrics worker starts', () => {
+      const result = getJobStep(withInstrumental('downloading', {
+        lyrics_progress: { stage: 'transcribing', progress: 10 },
+      }));
+      expect(result.step).toBe(4);
+      expect(result.label).toBe('transcribing');
+    });
+
+    it('does not relabel a normal download job (no uploaded instrumental)', () => {
+      const result = getJobStep(createJob('downloading'));
+      expect(result.step).toBe(3);
+      expect(result.label).toBe('downloading');
+    });
+  });
+
+  describe('Status labels are always valid i18n keys (no raw "jobStatus.X")', () => {
+    // Regression: the "downloading + workers" path used to pass the literal
+    // "Processing" (not a jobStatus key), which rendered as "jobStatus.Processing".
+    it('returns a valid key (transcribing) for lyrics-only progress, not "Processing"', () => {
+      const result = getJobStep(createJob('downloading', {
+        lyrics_progress: { stage: 'transcribing', progress: 5 },
+      }));
+      expect(result.step).toBe(4);
+      expect(result.label).toBe('transcribing');
+      expect(result.label).not.toBe('Processing');
+    });
+
+    it('every label getJobStep can emit exists in en.json jobStatus', () => {
+      const en = require('../messages/en.json');
+      const jobStatusKeys = new Set(Object.keys(en.jobStatus));
+      // Static labels from STATUS_CONFIG plus keys emitted by the parallel/upload helpers.
+      const dynamicKeys = [
+        'processing', 'preparingAudio', 'processingComplete',
+        'audio1of2', 'audio2of2', 'audioDone', 'audio',
+        'transcribing', 'correcting', 'lyricsDone', 'lyrics',
+      ];
+      for (const cfg of Object.values(STATUS_CONFIG)) {
+        expect(jobStatusKeys.has((cfg as any).label)).toBe(true);
+      }
+      for (const k of dynamicKeys) {
+        expect(jobStatusKeys.has(k)).toBe(true);
+      }
+    });
+  });
+
   describe('Step 4: Parallel Processing', () => {
     it('returns step 4 for separating_stage1', () => {
       const job = createJob('separating_stage1');

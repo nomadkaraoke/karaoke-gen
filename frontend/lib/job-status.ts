@@ -189,12 +189,30 @@ export function getJobStep(job: Job): JobStep {
     };
   }
 
+  // Upload-based jobs (tenant portals, or any job with a pre-supplied instrumental)
+  // have nothing to download — the "download" stage is really just staging the user's
+  // own uploaded files. Show a clear label instead of the misleading "Downloading".
+  const isUploadedAudioJob = !!job.existing_instrumental_gcs_path;
+  if (
+    isUploadedAudioJob &&
+    (status === "downloading" || status === "downloading_audio") &&
+    !isParallelProcessingActive(job)
+  ) {
+    return {
+      step: 3,
+      total: TOTAL_STEPS,
+      label: "preparingAudio",
+      isBlocking: false,
+      color: "text-blue-400",
+    };
+  }
+
   // Special case: "downloading" status but parallel workers are actually running.
   // The backend sets status to "downloading" when audio download completes and workers start,
   // but doesn't update to step 4 statuses until screens_worker runs.
   // Show step 4 with detailed progress to avoid appearing "stuck" at downloading.
   if (status === "downloading" && isParallelProcessingActive(job)) {
-    const enhancedLabel = getParallelProcessingLabel(job, "Processing");
+    const enhancedLabel = getParallelProcessingLabel(job, "processing");
     return {
       step: 4,
       total: TOTAL_STEPS,
@@ -262,6 +280,12 @@ function getParallelProcessingLabel(job: Job, defaultLabel: string): string {
       return parts.join(" + ");
     }
   }
+
+  // Only one worker is reporting progress (e.g. tenant / existing-instrumental jobs
+  // run lyrics only — no audio separation). Show that worker's specific status
+  // rather than falling back to a generic label.
+  if (audioProgress?.stage && !lyricsProgress?.stage) return getShortAudioStatus(audioProgress.stage);
+  if (lyricsProgress?.stage && !audioProgress?.stage) return getShortLyricsStatus(lyricsProgress.stage);
 
   return defaultLabel;
 }

@@ -599,7 +599,9 @@
     "lyrics": "歌詞",
     "confirmDurationCost": "料金を確認",
     "findingAudioSources": "音源を検索中（再試行中）",
-    "waitingForCapacity": "エンコーディングサーバーの空きを待機中（再試行中）"
+    "waitingForCapacity": "エンコーディングサーバーの空きを待機中（再試行中）",
+    "preparingAudio": "音源を準備中",
+    "processing": "処理中"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",

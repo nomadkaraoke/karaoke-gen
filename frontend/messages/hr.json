@@ -599,7 +599,9 @@
     "lyrics": "Tekst",
     "confirmDurationCost": "Potvrdi cijenu",
     "findingAudioSources": "Traženje izvora zvuka (ponovni pokušaj)",
-    "waitingForCapacity": "Čeka se server za kodiranje (ponovni pokušaj)"
+    "waitingForCapacity": "Čeka se server za kodiranje (ponovni pokušaj)",
+    "preparingAudio": "Priprema tvog audiozapisa",
+    "processing": "Obrada"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",

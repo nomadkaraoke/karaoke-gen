@@ -573,6 +573,8 @@
     "findingAudioSources": "Finding audio sources (retrying)",
     "waitingForCapacity": "Waiting for encoding server (retrying)",
     "downloading": "Downloading",
+    "preparingAudio": "Preparing your audio",
+    "processing": "Processing",
     "editAudio": "Edit audio",
     "editingAudio": "Editing audio",
     "audioEdited": "Audio edited",

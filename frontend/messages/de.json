@@ -599,7 +599,9 @@
     "lyrics": "Text",
     "confirmDurationCost": "Kosten bestätigen",
     "findingAudioSources": "Suche nach Audioquellen (erneuter Versuch)",
-    "waitingForCapacity": "Warten auf Kodierungsserver (erneuter Versuch)"
+    "waitingForCapacity": "Warten auf Kodierungsserver (erneuter Versuch)",
+    "preparingAudio": "Dein Audio wird vorbereitet",
+    "processing": "Wird verarbeitet"
   },
   "jobCard": {
     "actionNeeded": "Aktion erforderlich",

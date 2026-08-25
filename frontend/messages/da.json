@@ -599,7 +599,9 @@
     "lyrics": "Sangtekster",
     "confirmDurationCost": "Bekræft pris",
     "findingAudioSources": "Finder lydkilder (prøver igen)",
-    "waitingForCapacity": "Venter på kodningsserver (prøver igen)"
+    "waitingForCapacity": "Venter på kodningsserver (prøver igen)",
+    "preparingAudio": "Forbereder din lyd",
+    "processing": "Behandler"
   },
   "jobCard": {
     "actionNeeded": "Handling påkrævet",

@@ -599,7 +599,9 @@
     "lyrics": "Lời bài hát",
     "confirmDurationCost": "Xác nhận chi phí",
     "findingAudioSources": "Đang tìm nguồn âm thanh (đang thử lại)",
-    "waitingForCapacity": "Đang chờ máy chủ mã hóa (đang thử lại)"
+    "waitingForCapacity": "Đang chờ máy chủ mã hóa (đang thử lại)",
+    "preparingAudio": "Đang chuẩn bị âm thanh của bạn",
+    "processing": "Đang xử lý"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",

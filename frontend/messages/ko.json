@@ -599,7 +599,9 @@
     "lyrics": "가사",
     "confirmDurationCost": "비용 확인",
     "findingAudioSources": "오디오 소스 찾는 중 (재시도 중)",
-    "waitingForCapacity": "인코딩 서버 대기 중 (재시도 중)"
+    "waitingForCapacity": "인코딩 서버 대기 중 (재시도 중)",
+    "preparingAudio": "오디오 준비 중",
+    "processing": "처리 중"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",
