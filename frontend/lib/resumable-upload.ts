@@ -101,10 +101,14 @@ export function queryUploadOffset(
   sessionUri: string,
   total: number,
   signal?: AbortSignal,
+  timeoutMs = 30_000,
 ): Promise<number | "complete"> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open("PUT", sessionUri, true)
+    // Unlike chunk PUTs (which have stall detection), this tiny request gets a
+    // hard timeout — a hung socket here would otherwise stall the row forever.
+    xhr.timeout = timeoutMs
     xhr.setRequestHeader("Content-Range", `bytes */${total}`)
     const onAbort = () => xhr.abort()
     signal?.addEventListener("abort", onAbort, { once: true })
@@ -121,7 +125,14 @@ export function queryUploadOffset(
       signal?.removeEventListener("abort", onAbort)
       reject(new ResumableUploadError("Offset query failed: network error", 0, false))
     }
-    xhr.onabort = () => reject(new DOMException("Upload aborted", "AbortError"))
+    xhr.ontimeout = () => {
+      signal?.removeEventListener("abort", onAbort)
+      reject(new ResumableUploadError("Offset query timed out", 0, false))
+    }
+    xhr.onabort = () => {
+      signal?.removeEventListener("abort", onAbort)
+      reject(new DOMException("Upload aborted", "AbortError"))
+    }
     xhr.send()
   })
 }
@@ -311,15 +322,22 @@ export async function uploadResumable(
         },
         signal,
       )
-      consecutiveFailures = 0
-
       if (result.complete) {
         report(file.size, "uploading")
         return
       }
       // Trust the Range header when readable; otherwise our own accounting
-      // (a 308 acknowledges the range we just sent).
-      offset = result.confirmedOffset ?? end
+      // (a 308 acknowledges the range we just sent). A 308 whose offset does
+      // NOT advance would loop forever re-sending the same chunk — treat it as
+      // a transient failure so the retry cap can end the loop.
+      const nextOffset = result.confirmedOffset ?? end
+      if (nextOffset <= offset) {
+        throw new ResumableUploadError(
+          `Session did not advance past byte ${offset}`, result.status, false,
+        )
+      }
+      consecutiveFailures = 0
+      offset = nextOffset
 
       // Adapt chunk size to the observed connection speed.
       const secs = (Date.now() - chunkStart) / 1000

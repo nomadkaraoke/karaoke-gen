@@ -19,6 +19,7 @@ interface Scripted {
   range?: string
   progress?: number[]
   networkError?: boolean
+  timeout?: boolean
 }
 
 interface RecordedRequest {
@@ -35,10 +36,12 @@ class MockXHR {
   method = ''
   url = ''
   status = 0
+  timeout = 0
   upload: { onprogress: ((e: { lengthComputable: boolean; loaded: number }) => void) | null } = { onprogress: null }
   onload: (() => void) | null = null
   onerror: (() => void) | null = null
   onabort: (() => void) | null = null
+  ontimeout: (() => void) | null = null
   private headers: Record<string, string> = {}
   private responseHeaders: Record<string, string> = {}
   private aborted = false
@@ -72,6 +75,10 @@ class MockXHR {
       }
       if (script.networkError) {
         this.onerror?.()
+        return
+      }
+      if (script.timeout) {
+        this.ontimeout?.()
         return
       }
       this.status = script.status ?? 200
@@ -185,6 +192,30 @@ describe('uploadResumable — failure recovery', () => {
       permanent: true,
     })
     expect(MockXHR.requests).toHaveLength(2) // no retries
+  })
+
+  it('treats a non-advancing 308 as a transient failure (no infinite loop)', async () => {
+    // GCS acknowledges the chunk but reports the SAME offset every time —
+    // without the guard this would re-send the identical chunk forever.
+    MockXHR.queue = [{ status: 308 }] // initial offset query: 0
+    for (let i = 0; i < 20; i++) {
+      MockXHR.queue.push({ status: 308, range: 'bytes=0-0' }) // never advances (offset stays ~0)
+      MockXHR.queue.push({ status: 308, range: 'bytes=0-0' }) // recovery query, same story
+    }
+
+    await expect(
+      uploadResumable(SESSION, makeFile(2 * CHUNK_ALIGNMENT), { ...OPTS, maxConsecutiveFailures: 3 }),
+    ).rejects.toMatchObject({ name: 'ResumableUploadError', permanent: false })
+    // Bounded attempts, not an endless loop.
+    expect(MockXHR.requests.length).toBeLessThan(15)
+  })
+
+  it('offset-query timeout is surfaced as a transient error', async () => {
+    MockXHR.queue = [{ timeout: true }]
+    await expect(queryUploadOffset(SESSION, 1000)).rejects.toMatchObject({
+      name: 'ResumableUploadError',
+      permanent: false,
+    })
   })
 
   it('gives up after maxConsecutiveFailures transient failures', async () => {
