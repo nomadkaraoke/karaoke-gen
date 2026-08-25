@@ -6,9 +6,23 @@ export const addSegmentBefore = (data: CorrectionData, beforeIndex: number): Cor
   const newData = { ...data }
   const beforeSegment = newData.corrected_segments[beforeIndex]
 
-  // Create new segment starting 1 second before the target segment
-  // Use 0 as default if start_time is null
-  const newStartTime = Math.max(0, (beforeSegment.start_time ?? 1) - 1)
+  // `beforeIndex` may equal corrected_segments.length when appending a segment
+  // after the last one ("Add segment after" on the final segment), in which case
+  // there is no segment at that index. Fall back to the previous segment so we
+  // don't dereference `undefined` (which threw
+  // "Cannot read properties of undefined (reading 'start_time')").
+  const anchorSegment = beforeSegment ?? newData.corrected_segments[beforeIndex - 1]
+
+  let newStartTime: number
+  if (beforeSegment) {
+    // Inserting before an existing segment: start 1 second before it.
+    // Use 0 as default if start_time is null.
+    newStartTime = Math.max(0, (beforeSegment.start_time ?? 1) - 1)
+  } else {
+    // Appending at the end: start just after the previous segment's end,
+    // or at 0 if there is no previous segment (empty list).
+    newStartTime = Math.max(0, anchorSegment?.end_time ?? 0)
+  }
   const newEndTime = newStartTime + 1
 
   const newSegment: LyricsSegment = {
@@ -16,7 +30,7 @@ export const addSegmentBefore = (data: CorrectionData, beforeIndex: number): Cor
     text: 'REPLACE',
     start_time: newStartTime,
     end_time: newEndTime,
-    ...(beforeSegment.singer !== undefined ? { singer: beforeSegment.singer } : {}),
+    ...(anchorSegment?.singer !== undefined ? { singer: anchorSegment.singer } : {}),
     words: [
       {
         id: nanoid(),
