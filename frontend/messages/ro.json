@@ -1744,6 +1744,6 @@
     "checkPairing": "Asociat automat — te rugăm să verifici încă o dată artistul, titlul și fișierele.",
     "lowConfidence": "Potrivire nesigură — te rugăm să verifici încă o dată artistul, titlul și fișierele.",
     "statusCheck": "Verifică asocierea",
-    "statusCreatedButFailed": "Sarcină creată, dar încărcarea a eșuat — verifică lista de sarcini"
+    "willRetry": "va reîncerca la trimitere"
   }
 }

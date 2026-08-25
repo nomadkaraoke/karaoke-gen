@@ -1744,6 +1744,6 @@
     "checkPairing": "Đã tự động ghép nối — vui lòng kiểm tra lại ca sĩ, tên bài hát và các tệp.",
     "lowConfidence": "Ghép nối có độ tin cậy thấp — vui lòng kiểm tra lại ca sĩ, tên bài hát và các tệp.",
     "statusCheck": "Kiểm tra ghép nối",
-    "statusCreatedButFailed": "Đã tạo tác vụ nhưng tải lên thất bại — vui lòng kiểm tra danh sách tác vụ"
+    "willRetry": "sẽ thử lại khi gửi"
   }
 }

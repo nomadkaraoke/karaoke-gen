@@ -1744,6 +1744,6 @@
     "checkPairing": "Emparejado automáticamente — por favor, revisa bien el artista, el título y los archivos.",
     "lowConfidence": "Emparejamiento de baja confianza — por favor, revisa bien el artista, el título y los archivos.",
     "statusCheck": "Revisar emparejamiento",
-    "statusCreatedButFailed": "Trabajo creado pero la subida falló — revisa la lista de trabajos"
+    "willRetry": "se reintentará al enviar"
   }
 }

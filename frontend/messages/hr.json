@@ -1744,6 +1744,6 @@
     "checkPairing": "Automatski upareno — obavezno provjeri izvođača, naslov i datoteke.",
     "lowConfidence": "Uparivanje niske pouzdanosti — obavezno provjeri izvođača, naslov i datoteke.",
     "statusCheck": "Provjeri uparivanje",
-    "statusCreatedButFailed": "Zadatak je kreiran, ali prijenos nije uspio — provjeri popis zadataka"
+    "willRetry": "ponovno će pokušati pri slanju"
   }
 }

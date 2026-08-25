@@ -91,6 +91,51 @@ class TestRegexFastPath:
         result = analyze_filenames([]).to_dict()
         assert result == {"rows": [], "unpaired": [], "ignored": []}
 
+    def test_title_ending_in_weak_label_word_is_not_mis_roled(self):
+        # "Off" is a title word here, not an instrumental label; the -1/-2 slots
+        # must still pair these correctly and keep the full title.
+        files = [
+            "S2000-1 The Artist - Turn It Off Guide.mp3",   # mixed (Guide strong)
+            "S2000-2 The Artist - Turn It Off Instru.mp3",  # instrumental
+        ]
+        result = analyze_filenames(files).to_dict()
+        assert len(result["rows"]) == 1
+        row = result["rows"][0]
+        assert row["title"] == "Turn It Off"
+        assert row["mixed_filename"] == "S2000-1 The Artist - Turn It Off Guide.mp3"
+
+    def test_bare_weak_label_falls_back_to_slot(self):
+        # No strong label / brackets: "Off" and "Lead" stay in the title and the
+        # slot decides the role, so the pair is preserved.
+        files = [
+            "S2001-1 Band - Show Off.mp3",   # slot 1 -> mixed, title keeps "Off"
+            "S2001-2 Band - Show Off.mp3",   # slot 2 -> instrumental
+        ]
+        result = analyze_filenames(files).to_dict()
+        assert len(result["rows"]) == 1
+        assert result["rows"][0]["title"] == "Show Off"
+
+    def test_bracketed_weak_label_is_trusted(self):
+        files = [
+            "Adele - Hello (Vocals).mp3",
+            "Adele - Hello (Karaoke).mp3",
+        ]
+        result = analyze_filenames(files).to_dict()
+        assert len(result["rows"]) == 1
+        row = result["rows"][0]
+        assert row["title"] == "Hello"
+        assert row["mixed_filename"] == "Adele - Hello (Vocals).mp3"
+
+    def test_scode_file_with_subfolder_path_still_parses(self):
+        # Frontend may send a webkitRelativePath; Path().stem uses the basename.
+        files = [
+            "batch/S3000-1 A - Song Guide.mp3",
+            "batch/S3000-2 A - Song Instru.mp3",
+        ]
+        result = analyze_filenames(files).to_dict()
+        assert len(result["rows"]) == 1
+        assert result["rows"][0]["instrumental_filename"] == "batch/S3000-2 A - Song Instru.mp3"
+
 
 class TestLLMPass:
     def test_llm_pairs_leftovers_regex_missed(self):

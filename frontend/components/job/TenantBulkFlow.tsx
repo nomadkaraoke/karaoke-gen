@@ -29,6 +29,9 @@ interface EditableRow {
   progress: number
   error?: string
   jobId?: string
+  // Signed URLs from a successful create call, kept so a retry after a failed
+  // upload/complete resumes the SAME job instead of creating a duplicate.
+  uploadUrls?: { file_type: string; upload_url: string; content_type: string }[]
 }
 
 type Phase = "select" | "analyzing" | "review" | "done"
@@ -97,11 +100,12 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     [rows, fileMap]
   )
 
-  // Rows we can still create a job for: structurally valid, not already done, and
-  // not already carrying a job (a row keeps its jobId once created, so a retry
-  // after a mid-flight failure never creates a duplicate job for the same track).
+  // Rows we can still submit or retry: structurally valid and either not yet
+  // started (pending) or previously failed (error). In-flight and done rows are
+  // excluded. A retry of an errored row reuses its jobId + stored upload URLs, so
+  // it resumes the same job rather than creating a duplicate.
   const submittableCount = useMemo(
-    () => rows.filter(r => rowIsValid(r, fileMap) && r.status !== "done" && !r.jobId).length,
+    () => rows.filter(r => rowIsValid(r, fileMap) && (r.status === "pending" || r.status === "error")).length,
     [rows, fileMap]
   )
 
@@ -182,20 +186,30 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       return false
     }
     try {
-      updateRow(row.id, { status: "creating", progress: 0, error: undefined })
-      const createResponse = await api.createJobWithUploadUrls(
-        row.artist.trim(),
-        row.title.trim(),
-        [
-          { filename: mixedFile.name, content_type: mixedFile.type || "application/octet-stream", file_type: "audio" },
-          { filename: instrumentalFile.name, content_type: instrumentalFile.type || "application/octet-stream", file_type: "existing_instrumental" },
-        ],
-        { is_private: true, existing_instrumental: true, batch_id: batchId },
-      )
+      // Reuse an existing job + its signed URLs when retrying a row that already
+      // created a job; otherwise create a fresh job. This makes a failed row
+      // resumable without ever creating a duplicate job for the same track.
+      let jobId = row.jobId
+      let uploadUrls = row.uploadUrls
+      if (!jobId || !uploadUrls) {
+        updateRow(row.id, { status: "creating", progress: 0, error: undefined })
+        const createResponse = await api.createJobWithUploadUrls(
+          row.artist.trim(),
+          row.title.trim(),
+          [
+            { filename: mixedFile.name, content_type: mixedFile.type || "application/octet-stream", file_type: "audio" },
+            { filename: instrumentalFile.name, content_type: instrumentalFile.type || "application/octet-stream", file_type: "existing_instrumental" },
+          ],
+          { is_private: true, existing_instrumental: true, batch_id: batchId },
+        )
+        jobId = createResponse.job_id
+        uploadUrls = createResponse.upload_urls
+        updateRow(row.id, { jobId, uploadUrls })
+      }
 
-      updateRow(row.id, { status: "uploading", jobId: createResponse.job_id })
-      const audioUrl = createResponse.upload_urls.find(u => u.file_type === "audio")
-      const instrumentalUrl = createResponse.upload_urls.find(u => u.file_type === "existing_instrumental")
+      updateRow(row.id, { status: "uploading", progress: 0, error: undefined })
+      const audioUrl = uploadUrls.find(u => u.file_type === "audio")
+      const instrumentalUrl = uploadUrls.find(u => u.file_type === "existing_instrumental")
       if (!audioUrl || !instrumentalUrl) throw new ApiError("Missing upload URL", 500)
 
       await api.uploadToSignedUrl(audioUrl.upload_url, mixedFile, audioUrl.content_type,
@@ -204,7 +218,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
         (loaded, total) => updateRow(row.id, { progress: 50 + Math.round((loaded / total) * 50) }))
 
       updateRow(row.id, { status: "completing", progress: 100 })
-      await api.completeJobUpload(createResponse.job_id, ["audio", "existing_instrumental"])
+      await api.completeJobUpload(jobId, ["audio", "existing_instrumental"])
       updateRow(row.id, { status: "done" })
       return true
     } catch (err: any) {
@@ -215,9 +229,9 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   }
 
   async function handleSubmitAll() {
-    // Skip rows that already created a job (see submittableCount) so a retry
-    // never double-creates for the same track.
-    const submittable = rows.filter(r => rowIsValid(r, fileMap) && r.status !== "done" && !r.jobId)
+    // Submit pending rows and retry previously-failed ones (submitOneRow reuses
+    // an existing jobId, so a retry never double-creates for the same track).
+    const submittable = rows.filter(r => rowIsValid(r, fileMap) && (r.status === "pending" || r.status === "error"))
     if (submittable.length === 0) return
     setIsSubmitting(true)
     setError("")
@@ -442,10 +456,8 @@ function StatusBadge({ row, valid, t }: { row: EditableRow; valid: boolean; t: R
     return <span className="flex items-center gap-1 text-green-500"><CheckCircle2 className="w-3.5 h-3.5" />{t('statusDone')}{row.jobId ? ` (${row.jobId.slice(0, 8)})` : ""}</span>
   }
   if (row.status === "error") {
-    // The job was created but a later step failed — say so, so the operator
-    // checks the jobs list rather than resubmitting (which won't recreate it).
-    const msg = row.jobId ? t('statusCreatedButFailed') : (row.error || t('statusError'))
-    return <span className="flex items-center gap-1 text-red-400 truncate"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />{msg}</span>
+    // Retryable — "Submit" will resume this row (reusing its job if one exists).
+    return <span className="flex items-center gap-1 text-red-400 truncate"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />{row.error || t('statusError')} · {t('willRetry')}</span>
   }
   if (row.status === "creating" || row.status === "uploading" || row.status === "completing") {
     return <span className="flex items-center gap-1"><Loader2 className="w-3.5 h-3.5 animate-spin" />{t('statusSubmitting')}</span>

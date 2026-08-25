@@ -1744,6 +1744,6 @@
     "checkPairing": "Automatisk matchet — dobbelttjek kunstner, titel og filer.",
     "lowConfidence": "Usikkert match — dobbelttjek kunstner, titel og filer.",
     "statusCheck": "Tjek match",
-    "statusCreatedButFailed": "Job oprettet, men upload fejlede — tjek joblisten"
+    "willRetry": "vil prøve igen ved indsendelse"
   }
 }

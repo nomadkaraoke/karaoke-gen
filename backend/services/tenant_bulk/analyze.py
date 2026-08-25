@@ -44,24 +44,36 @@ _INSTRUMENTAL_LABELS = (
     "off",
 )
 
-# All labels, longest-first so multi-word labels match before their prefixes.
+# STRONG labels are unambiguous role markers: a bare trailing "Guide"/"Instru"
+# is a real label, so it OVERRIDES the -1/-2 slot (this is what flags the
+# S1102 "-2 … Guide" anomaly as a mixed-only file). WEAK labels double as
+# ordinary title words ("Turn It Off", "Take the Lead", "…Vocals") — a bare
+# trailing weak word is treated as part of the title, and role falls back to
+# the slot; a weak word is only trusted as a label when it is bracketed
+# ("(Karaoke)" / "[Backing]").
+_STRONG_LABELS = {"guide", "instrumental", "instru", "bv", "backing vocals"}
+
 _ALL_LABELS = sorted(
     set(_MIXED_LABELS) | set(_INSTRUMENTAL_LABELS), key=len, reverse=True
 )
 _LABEL_ALTERNATION = "|".join(re.escape(lbl) for lbl in _ALL_LABELS)
 
 # ``S1100-1 Eddy Grant - I Don't Wanna Dance Guide`` (extension already stripped).
-#   group("code") -> "1100"   group("slot") -> "1"
-#   group("body") -> "Eddy Grant - I Don't Wanna Dance"   group("label") -> "Guide"
+#   group("code") -> "1100"   group("slot") -> "1"   group("rest") -> everything after
 _CODED_RE = re.compile(
-    r"^S?(?P<code>\d+)\s*-\s*(?P<slot>[12])\s+(?P<body>.+?)"
-    rf"(?:\s+(?P<label>{_LABEL_ALTERNATION}))?$",
+    r"^S?(?P<code>\d+)\s*-\s*(?P<slot>[12])\s+(?P<rest>.+)$",
     re.IGNORECASE,
 )
 
-# Fallback for filenames with no S-code prefix, e.g. ``Adele - Hello (Guide)``.
-_LABELLED_RE = re.compile(
-    rf"^(?P<body>.+?)\s*[\(\[]?\s*(?P<label>{_LABEL_ALTERNATION})\s*[\)\]]?$",
+# A bracketed trailing label, e.g. ``Adele - Hello (Guide)`` / ``… [Instrumental]``.
+_BRACKETED_LABEL_RE = re.compile(
+    rf"^(?P<body>.+?)\s*[\(\[]\s*(?P<label>{_LABEL_ALTERNATION})\s*[\)\]]\s*$",
+    re.IGNORECASE,
+)
+
+# A bare trailing label word, e.g. ``… Straight Up Guide``.
+_BARE_LABEL_RE = re.compile(
+    rf"^(?P<body>.+?)\s+(?P<label>{_LABEL_ALTERNATION})$",
     re.IGNORECASE,
 )
 
@@ -150,25 +162,48 @@ class _Parsed:
 Generate = Callable[[str, str], dict]
 
 
-def _label_role(label: Optional[str], slot: Optional[str]) -> Optional[str]:
-    """Classify a file as mixed/instrumental from its label, then slot number.
+def _role_of(label: str) -> Optional[str]:
+    lbl = label.lower()
+    if lbl in _MIXED_LABELS:
+        return MIXED
+    if lbl in _INSTRUMENTAL_LABELS:
+        return INSTRUMENTAL
+    return None
 
-    The label takes precedence over the ``-1``/``-2`` slot: a ``-2 ... Guide``
-    file (the S1102 anomaly) is a *mixed* file that happens to sit in slot 2, so
-    it should be reported as mixed-only + unpaired rather than silently treated
-    as an instrumental.
-    """
-    if label:
-        lbl = label.lower()
-        if lbl in _MIXED_LABELS:
-            return MIXED
-        if lbl in _INSTRUMENTAL_LABELS:
-            return INSTRUMENTAL
+
+def _slot_role(slot: Optional[str]) -> Optional[str]:
     if slot == "1":
         return MIXED
     if slot == "2":
         return INSTRUMENTAL
     return None
+
+
+def _peel_label(text: str, slot: Optional[str]) -> tuple[str, Optional[str]]:
+    """Split ``text`` into (body, role), trusting a trailing label only when safe.
+
+    - A **bracketed** label ("(Instrumental)", "[Guide]") is always trusted.
+    - A bare **strong** label ("Guide", "Instru", "BV", …) is trusted and
+      OVERRIDES the slot — this is what surfaces the S1102 "-2 … Guide" anomaly.
+    - A bare **weak** label ("Off", "Lead", "Vocals", "Karaoke", …) doubles as a
+      title word, so it is left in the title and the role falls back to the slot;
+      e.g. ``S1100-1 Artist - Turn It Off`` stays a mixed file titled "Turn It Off".
+
+    When no label is trusted, role comes from the slot (may be None).
+    """
+    m = _BRACKETED_LABEL_RE.match(text)
+    if m:
+        role = _role_of(m.group("label"))
+        if role:
+            return m.group("body").strip(), role
+
+    m = _BARE_LABEL_RE.match(text)
+    if m and m.group("label").lower() in _STRONG_LABELS:
+        role = _role_of(m.group("label"))
+        if role:
+            return m.group("body").strip(), role
+
+    return text.strip(), _slot_role(slot)
 
 
 def _split_artist_title(body: str) -> tuple[str, str]:
@@ -185,17 +220,18 @@ def _parse_one(filename: str) -> Optional[_Parsed]:
 
     m = _CODED_RE.match(stem)
     if m:
-        role = _label_role(m.group("label"), m.group("slot"))
-        artist, title = _split_artist_title(m.group("body"))
+        body, role = _peel_label(m.group("rest"), m.group("slot"))
+        artist, title = _split_artist_title(body)
         return _Parsed(filename, m.group("code"), role, artist, title)
 
-    m = _LABELLED_RE.match(stem)
-    if m:
-        role = _label_role(m.group("label"), None)
-        artist, title = _split_artist_title(m.group("body"))
-        return _Parsed(filename, None, role, artist, title)
-
-    return None
+    # No S-code: only a strong/bracketed trailing label can classify it; a bare
+    # weak trailing word can't be told apart from the title, so leave role unknown
+    # (the file becomes a leftover for the LLM pass / warnings).
+    body, role = _peel_label(stem, None)
+    if role is None:
+        return None
+    artist, title = _split_artist_title(body)
+    return _Parsed(filename, None, role, artist, title)
 
 
 def _pair_key(p: _Parsed) -> str:

@@ -1735,7 +1735,7 @@
     "statusSubmitting": "Submitting…",
     "statusDone": "Submitted",
     "statusError": "Failed",
-    "statusCreatedButFailed": "Job created but upload failed — check the jobs list",
+    "willRetry": "will retry on submit",
     "lowConfidence": "Low-confidence match — please double-check the artist, title and files.",
     "checkPairing": "Auto-matched — please double-check the artist, title and files.",
     "submitAll": "Submit {count} tracks",

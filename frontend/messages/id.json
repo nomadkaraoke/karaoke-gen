@@ -1744,6 +1744,6 @@
     "checkPairing": "Dicocokkan otomatis — mohon periksa kembali artis, judul, dan file.",
     "lowConfidence": "Tingkat kecocokan rendah — mohon periksa kembali artis, judul, dan file.",
     "statusCheck": "Periksa pencocokan",
-    "statusCreatedButFailed": "Tugas dibuat tetapi unggahan gagal — periksa daftar tugas"
+    "willRetry": "akan dicoba lagi saat dikirim"
   }
 }

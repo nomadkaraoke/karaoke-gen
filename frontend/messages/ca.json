@@ -1744,6 +1744,6 @@
     "checkPairing": "Emparellat automàticament — si us plau, revisa l'artista, el títol i els fitxers.",
     "lowConfidence": "Coincidència poc segura — si us plau, revisa l'artista, el títol i els fitxers.",
     "statusCheck": "Revisa l'emparellament",
-    "statusCreatedButFailed": "Tasca creada però la pujada ha fallat — revisa la llista de tasques"
+    "willRetry": "es tornarà a intentar en enviar"
   }
 }

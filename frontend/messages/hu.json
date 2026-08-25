@@ -1744,6 +1744,6 @@
     "checkPairing": "Automatikusan párosítva — kérlek, ellenőrizd az előadót, a címet és a fájlokat.",
     "lowConfidence": "Bizonytalan egyezés — kérlek, ellenőrizd az előadót, a címet és a fájlokat.",
     "statusCheck": "Párosítás ellenőrzése",
-    "statusCreatedButFailed": "Feladat létrehozva, de a feltöltés sikertelen — ellenőrizd a feladatok listáját"
+    "willRetry": "beküldéskor újra megpróbálja"
   }
 }

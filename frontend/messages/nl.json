@@ -1744,6 +1744,6 @@
     "checkPairing": "Automatisch gekoppeld — controleer voor de zekerheid de artiest, titel en bestanden.",
     "lowConfidence": "Onzekere match — controleer voor de zekerheid de artiest, titel en bestanden.",
     "statusCheck": "Controleer koppeling",
-    "statusCreatedButFailed": "Taak aangemaakt maar uploaden mislukt — controleer de takenlijst"
+    "willRetry": "wordt opnieuw geprobeerd bij verzenden"
   }
 }

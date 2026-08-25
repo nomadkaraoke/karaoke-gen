@@ -1744,6 +1744,6 @@
     "checkPairing": "Automatisk matchning — dubbelkolla artist, titel och filer.",
     "lowConfidence": "Osäker matchning — dubbelkolla artist, titel och filer.",
     "statusCheck": "Kontrollera matchning",
-    "statusCreatedButFailed": "Jobbet skapades men uppladdningen misslyckades — se jobblistan"
+    "willRetry": "försöker igen när du skickar in"
   }
 }

@@ -1744,6 +1744,6 @@
     "checkPairing": "Yhdistetty automaattisesti — tarkistathan vielä esittäjän, kappaleen nimen ja tiedostot.",
     "lowConfidence": "Epävarma osuma — tarkistathan vielä esittäjän, kappaleen nimen ja tiedostot.",
     "statusCheck": "Tarkista yhdistäminen",
-    "statusCreatedButFailed": "Työ luotu, mutta lataus epäonnistui — tarkista työlista"
+    "willRetry": "yritetään uudelleen lähetettäessä"
   }
 }

@@ -1744,6 +1744,6 @@
     "checkPairing": "Otomatik eşleşti — lütfen sanatçıyı, başlığı ve dosyaları tekrar kontrol et.",
     "lowConfidence": "Düşük güvenilirlikli eşleşme — lütfen sanatçıyı, başlığı ve dosyaları tekrar kontrol et.",
     "statusCheck": "Eşleşmeyi kontrol et",
-    "statusCreatedButFailed": "İş oluşturuldu ancak yükleme başarısız oldu — iş listesini kontrol et"
+    "willRetry": "gönderildiğinde tekrar denenecek"
   }
 }

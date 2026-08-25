@@ -1744,6 +1744,6 @@
     "checkPairing": "Automaticky spárované — prosím, dôkladne skontroluj interpreta, názov a súbory.",
     "lowConfidence": "Neistá zhoda — prosím, dôkladne skontroluj interpreta, názov a súbory.",
     "statusCheck": "Skontroluj spárovanie",
-    "statusCreatedButFailed": "Úloha bola vytvorená, ale nahrávanie zlyhalo — skontroluj zoznam úloh"
+    "willRetry": "pri odoslaní to skúsi znova"
   }
 }

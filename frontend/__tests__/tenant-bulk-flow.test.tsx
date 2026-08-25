@@ -150,26 +150,34 @@ it('submits every valid row sharing a single batch_id', async () => {
   expect(new Set(batchIds).size).toBe(1)
 })
 
-it('does not re-create a job for a row that already created one (retry safety)', async () => {
-  // Job creation succeeds, but the upload fails — the row keeps its jobId and
-  // must not be recreated on a subsequent submit.
-  mockApi.uploadToSignedUrl.mockRejectedValue(new Error('network blip'))
+it('retries a failed row by resuming its job, never creating a duplicate', async () => {
+  // First submit: creation succeeds but the upload fails → row goes to error,
+  // keeping its jobId + signed URLs.
+  mockApi.uploadToSignedUrl.mockRejectedValueOnce(new Error('network blip'))
+
+  // Use a single-row analysis for a precise assertion.
+  mockApi.analyzeBulk.mockResolvedValue({
+    rows: [
+      { artist: 'Eddy Grant', title: 'I Dont Wanna Dance', mixed_filename: MIXED_1, instrumental_filename: INST_1, confidence: 'high', warning: null },
+    ],
+    unpaired: [],
+    ignored: [],
+  })
 
   render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
   selectFiles()
   await screen.findAllByLabelText('Artist')
 
-  fireEvent.click(screen.getByRole('button', { name: /Submit 2 tracks/i }))
-  // Both rows create a job, then fail on upload.
-  await waitFor(() => expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(2))
-  await waitFor(() =>
-    expect(screen.getAllByText(/check the jobs list/i).length).toBe(2),
-  )
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+  await waitFor(() => expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(screen.getByText(/will retry on submit/i)).toBeInTheDocument())
 
-  // Nothing left to submit → button disabled, so no duplicate jobs can be created.
-  const submitBtn = screen.getByRole('button', { name: /Submit 0 tracks/i })
-  expect(submitBtn).toBeDisabled()
-  expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(2)
+  // Retry: the row is still submittable and resumes the SAME job (no 2nd create).
+  const retryBtn = screen.getByRole('button', { name: /Submit 1 tracks/i })
+  expect(retryBtn).not.toBeDisabled()
+  fireEvent.click(retryBtn)
+  await waitFor(() => expect(mockApi.completeJobUpload).toHaveBeenCalledTimes(1))
+  expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(1) // never duplicated
 })
 
 it('surfaces a caution for low-confidence / warned rows', async () => {

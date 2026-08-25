@@ -1744,6 +1744,6 @@
     "checkPairing": "Awtomatikong naitugma — pakisuri ulit ang artist, pamagat, at mga file.",
     "lowConfidence": "Hindi siguradong tugma — pakisuri ulit ang artist, pamagat, at mga file.",
     "statusCheck": "Suriin ang pagtugma",
-    "statusCreatedButFailed": "Nagawa ang job pero nabigo ang pag-upload — suriin ang listahan ng mga job"
+    "willRetry": "susubukan muli sa pag-submit"
   }
 }

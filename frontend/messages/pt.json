@@ -1744,6 +1744,6 @@
     "checkPairing": "Pareamento automático — por favor, confira o artista, o título e os arquivos.",
     "lowConfidence": "Pareamento de baixa confiança — por favor, confira o artista, o título e os arquivos.",
     "statusCheck": "Verificar pareamento",
-    "statusCreatedButFailed": "Tarefa criada, mas o upload falhou — verifique a lista de tarefas"
+    "willRetry": "tentará novamente ao enviar"
   }
 }

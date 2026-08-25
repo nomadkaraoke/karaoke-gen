@@ -1744,6 +1744,6 @@
     "checkPairing": "Dipadankan secara automatik — sila semak semula artis, tajuk dan fail.",
     "lowConfidence": "Padanan kurang pasti — sila semak semula artis, tajuk dan fail.",
     "statusCheck": "Semak padanan",
-    "statusCreatedButFailed": "Tugasan dicipta tetapi muat naik gagal — semak senarai tugasan"
+    "willRetry": "akan cuba semula apabila dihantar"
   }
 }

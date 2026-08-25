@@ -1744,6 +1744,6 @@
     "checkPairing": "Associé automatiquement — vérifie bien l'artiste, le titre et les fichiers.",
     "lowConfidence": "Correspondance peu fiable — vérifie bien l'artiste, le titre et les fichiers.",
     "statusCheck": "Vérifier l'association",
-    "statusCreatedButFailed": "Tâche créée mais l'envoi a échoué — vérifie la liste des tâches"
+    "willRetry": "réessaiera lors de l'envoi"
   }
 }

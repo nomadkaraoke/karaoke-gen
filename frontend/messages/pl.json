@@ -1744,6 +1744,6 @@
     "checkPairing": "Dopasowano automatycznie — sprawdź dokładnie wykonawcę, tytuł i pliki.",
     "lowConfidence": "Niska pewność dopasowania — sprawdź dokładnie wykonawcę, tytuł i pliki.",
     "statusCheck": "Sprawdź dopasowanie",
-    "statusCreatedButFailed": "Zadanie utworzone, ale przesyłanie nie powiodło się — sprawdź listę zadań"
+    "willRetry": "ponowi próbę przy wysyłaniu"
   }
 }
