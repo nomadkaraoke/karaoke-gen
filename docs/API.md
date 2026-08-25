@@ -213,6 +213,17 @@ Content-Type: application/json
 
 Triggers async processing.
 
+**Optional fields:**
+- `upload_mode`: `"signed_put"` (default) or `"resumable"`. With `"resumable"`, each
+  `upload_urls` entry has `resumable: true` and `upload_url` is a **GCS resumable session
+  URI** — upload in 256KiB-aligned chunks with `Content-Range` headers, query the persisted
+  offset after an interruption (`PUT` with `Content-Range: bytes */<total>` → `308` +
+  `Range` header), and resume mid-file. Sessions are created with the caller's `Origin` so
+  GCS answers session CORS itself. Used by the tenant bulk-upload flow
+  (`frontend/lib/resumable-upload.ts`).
+- `batch_id`: groups jobs created together in one bulk batch — stamped into
+  `state_data.batch_id` with `created_from: "tenant-bulk"`.
+
 #### Get Job Status
 
 ```http
@@ -1143,6 +1154,41 @@ Serves tenant assets (logos, etc.) from GCS. No authentication required. Returns
 - Returns 404 if asset not found
 
 Used by the frontend `TenantLogo` component to load tenant logos. Tenant configs store logo paths as `https://api.nomadkaraoke.com/api/tenant/asset/{tenant_id}/logo.png` (the frontend also converts legacy `gs://` paths to this format as a fallback).
+
+#### Tenant Bulk Upload — Filename Analysis
+
+```http
+POST /api/tenant/bulk/analyze
+Content-Type: application/json
+Authorization: Bearer <tenant session token>
+
+{"filenames": ["S1100-1 Eddy Grant - I Don't Wanna Dance Guide.mp3", "S1100-2 Eddy Grant - I Don't Wanna Dance BV.mp3", "cover.png"]}
+```
+
+Analyses a flat list of filenames (from a browser folder pick) into proposed karaoke jobs:
+pairs each **Mixed** (with-vocals) file with its **Instrumental** counterpart and extracts
+Artist/Title. Pure analysis — filenames only, no uploads, no state written.
+
+- **Auth:** tenant session required; gated on the tenant's `features.bulk_upload` flag (403 otherwise).
+- **Limits:** max 100 audio files per request (non-audio files don't count toward the cap; 2000-filename payload guard).
+- **Two passes:** deterministic regex for the `S<code>-<1|2> Artist - Title <Guide|BV|Instru>`
+  convention, then a Vertex-Gemini pass (`backend/services/tenant_bulk/analyze.py`) for
+  whatever the regex couldn't confidently pair. Falls back to regex-only if the model errors.
+
+Response:
+```json
+{
+  "rows": [{"artist": "Eddy Grant", "title": "I Don't Wanna Dance",
+             "mixed_filename": "…Guide.mp3", "instrumental_filename": "…BV.mp3",
+             "confidence": "high", "warning": null}],
+  "unpaired": [{"filename": "…", "reason": "no_instrumental", "artist": "…", "title": "…", "role": "mixed"}],
+  "ignored": [{"filename": "cover.png", "reason": "non_audio"}]
+}
+```
+
+The tenant portal's Bulk mode (`TenantBulkFlow.tsx`) renders these rows as an editable review
+table, then submits each confirmed row through the standard signed-URL upload flow
+(`upload_mode: "resumable"`, `batch_id` grouping).
 
 ### Internal (Admin Only)
 
