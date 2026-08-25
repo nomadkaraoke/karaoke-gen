@@ -599,7 +599,9 @@
     "lyrics": "Lyrics",
     "confirmDurationCost": "Kumpirmahin ang halaga",
     "findingAudioSources": "Naghahanap ng mga audio source (sinusubukang muli)",
-    "waitingForCapacity": "Naghihintay sa encoding server (sinusubukan muli)"
+    "waitingForCapacity": "Naghihintay sa encoding server (sinusubukan muli)",
+    "preparingAudio": "Inihahanda ang iyong audio",
+    "processing": "Pinoproseso"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",

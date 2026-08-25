@@ -599,7 +599,9 @@
     "lyrics": "الكلمات",
     "confirmDurationCost": "تأكيد التكلفة",
     "findingAudioSources": "جارٍ البحث عن مصادر الصوت (إعادة المحاولة)",
-    "waitingForCapacity": "في انتظار خادم الترميز (جاري إعادة المحاولة)"
+    "waitingForCapacity": "في انتظار خادم الترميز (جاري إعادة المحاولة)",
+    "preparingAudio": "جارٍ تجهيز الصوت",
+    "processing": "قيد المعالجة"
   },
   "jobCard": {
     "actionNeeded": "إجراء مطلوب",

@@ -599,7 +599,9 @@
     "lyrics": "Sanoitukset",
     "confirmDurationCost": "Vahvista hinta",
     "findingAudioSources": "Etsitään äänilähteitä (yritetään uudelleen)",
-    "waitingForCapacity": "Odotetaan enkoodauspalvelinta (yritetään uudelleen)"
+    "waitingForCapacity": "Odotetaan enkoodauspalvelinta (yritetään uudelleen)",
+    "preparingAudio": "Valmistellaan ääniraitaasi",
+    "processing": "Käsitellään"
   },
   "jobCard": {
     "actionNeeded": "Toimenpiteitä tarvitaan",

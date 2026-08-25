@@ -599,7 +599,9 @@
     "lyrics": "Text",
     "confirmDurationCost": "Bekräfta kostnad",
     "findingAudioSources": "Söker efter ljudkällor (försöker igen)",
-    "waitingForCapacity": "Väntar på kodningsserver (försöker igen)"
+    "waitingForCapacity": "Väntar på kodningsserver (försöker igen)",
+    "preparingAudio": "Förbereder ditt ljud",
+    "processing": "Bearbetar"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",

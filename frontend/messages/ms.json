@@ -599,7 +599,9 @@
     "lyrics": "Lirik",
     "confirmDurationCost": "Sahkan kos",
     "findingAudioSources": "Mencari sumber audio (mencuba semula)",
-    "waitingForCapacity": "Menunggu pelayan pengekodan (mencuba semula)"
+    "waitingForCapacity": "Menunggu pelayan pengekodan (mencuba semula)",
+    "preparingAudio": "Menyediakan audio anda",
+    "processing": "Memproses"
   },
   "jobCard": {
     "actionNeeded": "Tindakan diperlukan",

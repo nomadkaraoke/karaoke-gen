@@ -599,7 +599,9 @@
     "lyrics": "Lletres",
     "confirmDurationCost": "Confirma el cost",
     "findingAudioSources": "Cercant fonts d'àudio (reintentant)",
-    "waitingForCapacity": "Esperant el servidor de codificació (reintentant)"
+    "waitingForCapacity": "Esperant el servidor de codificació (reintentant)",
+    "preparingAudio": "Preparant el teu àudio",
+    "processing": "Processant"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",

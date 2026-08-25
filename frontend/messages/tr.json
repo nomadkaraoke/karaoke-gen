@@ -599,7 +599,9 @@
     "lyrics": "Sözler",
     "confirmDurationCost": "Maliyeti onayla",
     "findingAudioSources": "Ses kaynakları aranıyor (yeniden deneniyor)",
-    "waitingForCapacity": "Kodlama sunucusu bekleniyor (yeniden deneniyor)"
+    "waitingForCapacity": "Kodlama sunucusu bekleniyor (yeniden deneniyor)",
+    "preparingAudio": "Ses dosyan hazırlanıyor",
+    "processing": "İşleniyor"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",

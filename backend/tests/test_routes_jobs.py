@@ -76,6 +76,13 @@ class TestSummaryFieldPathsIncludesRetryPending:
         from backend.api.routes.jobs import _SUMMARY_STATE_DATA_KEYS
         assert 'cloud_run_retry_pending' in _SUMMARY_STATE_DATA_KEYS
 
+    def test_firestore_projection_includes_existing_instrumental_path(self):
+        # Top-level field (not state_data), so only SUMMARY_FIELD_PATHS is needed —
+        # the frontend job list uses it to relabel the "downloading" step as
+        # "Preparing your audio" for tenant / upload-based jobs.
+        from backend.services.firestore_service import FirestoreService
+        assert 'existing_instrumental_gcs_path' in FirestoreService.SUMMARY_FIELD_PATHS
+
 
 class TestSummaryFieldPathsIncludesDurationPricing:
     """Regression: duration-pricing fields must be in both SUMMARY_FIELD_PATHS

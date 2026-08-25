@@ -599,7 +599,9 @@
     "lyrics": "Versuri",
     "confirmDurationCost": "Confirmă costul",
     "findingAudioSources": "Căutare surse audio (reîncercare)",
-    "waitingForCapacity": "Așteptăm serverul de codare (reîncercăm)"
+    "waitingForCapacity": "Așteptăm serverul de codare (reîncercăm)",
+    "preparingAudio": "Îți pregătim fișierul audio",
+    "processing": "Se procesează"
   },
   "jobCard": {
     "actionNeeded": "Acțiune necesară",
