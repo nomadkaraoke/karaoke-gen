@@ -15,11 +15,13 @@ Observability:
 - Propagates trace context through Cloud Tasks for distributed tracing
 - All worker invocations create spans linked to original request trace
 """
+import asyncio
 import logging
 import os
 import json
 from typing import Optional
 import httpx
+from google.api_core import exceptions as gcp_exceptions
 from google.protobuf import duration_pb2
 
 from backend.config import get_settings
@@ -27,6 +29,21 @@ from backend.services.tracing import inject_trace_context
 
 
 logger = logging.getLogger(__name__)
+
+
+# Transient control-plane errors from the Cloud Run Jobs Admin API (`JobsClient.run_job`)
+# that are safe to retry. run_job only *enqueues* an execution, so a one-off 5xx/429 from
+# the API control plane should be retried rather than hard-failing a real job's trigger.
+# (2026-08-24: a single 503 from lyrics-transcription-job's trigger failed a real job's
+# transcription with no retry — this is the guard.)
+_TRANSIENT_RUN_JOB_ERRORS = (
+    gcp_exceptions.ServiceUnavailable,    # 503
+    gcp_exceptions.InternalServerError,   # 500
+    gcp_exceptions.GatewayTimeout,        # 504
+    gcp_exceptions.TooManyRequests,       # 429
+)
+_RUN_JOB_MAX_ATTEMPTS = 3
+_RUN_JOB_BASE_DELAY_SECONDS = 1.0
 
 
 # Mapping of worker types to their Cloud Tasks queue names
@@ -411,7 +428,9 @@ class WorkerService:
                     ]
                 ),
             )
-            operation = client.run_job(request=request)
+            operation = await self._run_job_with_retry(
+                client, request, log_prefix=f"[batch:{batch_id}]"
+            )
             logger.info(f"[batch:{batch_id}] Started Cloud Run Job bulk-search-job: {operation.metadata}")
             return True
         except Exception as e:
@@ -538,6 +557,33 @@ class WorkerService:
             worker_module="video_worker",
         )
 
+    async def _run_job_with_retry(self, client, request, log_prefix: str):
+        """Invoke ``JobsClient.run_job`` with a small bounded retry on transient errors.
+
+        ``run_job`` only enqueues an execution, so a one-off 5xx/429 from the Cloud Run
+        Jobs Admin control plane is safe to retry rather than hard-failing the trigger.
+        Non-transient errors (NotFound / PermissionDenied / InvalidArgument) are NOT
+        caught here — they propagate immediately to the caller's error handling.
+        Sleeps with ``asyncio.sleep`` so the event loop isn't blocked between attempts.
+        """
+        last_exc: Optional[Exception] = None
+        for attempt in range(1, _RUN_JOB_MAX_ATTEMPTS + 1):
+            try:
+                return client.run_job(request=request)
+            except _TRANSIENT_RUN_JOB_ERRORS as e:
+                last_exc = e
+                if attempt >= _RUN_JOB_MAX_ATTEMPTS:
+                    break
+                delay = _RUN_JOB_BASE_DELAY_SECONDS * (2 ** (attempt - 1))
+                logger.warning(
+                    f"{log_prefix} transient error triggering Cloud Run Job "
+                    f"({type(e).__name__}, attempt {attempt}/{_RUN_JOB_MAX_ATTEMPTS}); "
+                    f"retrying in {delay:.0f}s"
+                )
+                await asyncio.sleep(delay)
+        # Exhausted transient retries — re-raise so the caller logs + returns False.
+        raise last_exc
+
     async def _trigger_worker_cloud_run_job(
         self,
         job_id: str,
@@ -590,8 +636,10 @@ class WorkerService:
                 )
             )
 
-            # Run the job (async operation)
-            operation = client.run_job(request=request)
+            # Run the job (async operation), retrying transient control-plane errors.
+            operation = await self._run_job_with_retry(
+                client, request, log_prefix=f"[job:{job_id}]"
+            )
             logger.info(
                 f"[job:{job_id}] Started Cloud Run Job {cloud_run_job_name}: "
                 f"{operation.metadata}"

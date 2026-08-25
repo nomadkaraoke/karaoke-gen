@@ -217,24 +217,22 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
       return r.json();
     };
 
-    // For a pre-supplied (tenant) instrumental there is nothing to pick, so
-    // "Proceed to Instrumental Review" completes the review directly and the
-    // instrumental route redirects to /app. For a selectable instrumental an
-    // InstrumentalSelector (#submit-btn) renders instead. Handle both.
+    // Core tenant invariant: the operator ALWAYS uploads their own instrumental, so
+    // there is no audio separation and therefore NO instrumental-selection step —
+    // "Proceed to Instrumental Review" must complete the review directly (redirect to
+    // /app). If the InstrumentalSelector (#submit-btn) ever renders, the tenant flow
+    // has regressed (separation ran / the operator is being asked to pick a stem),
+    // which is exactly the real-world scenario this test exists to protect.
     const submitBtn = page.locator('#submit-btn');
-    let hasInstrumentalStep = false;
-    try {
-      // waitFor actually blocks up to the timeout (isVisible would not); if the
-      // selector never appears the review already completed on "Proceed".
-      await submitBtn.waitFor({ state: 'visible', timeout: 15_000 });
-      hasInstrumentalStep = true;
-    } catch { /* pre-supplied tenant instrumental: review completed directly */ }
-    if (hasInstrumentalStep) {
-      const opt = page.locator('.selection-option').first();
-      if (await opt.isVisible().catch(() => false)) await opt.click();
-      await submitBtn.click();
-      console.log(`[${TENANT_ID}] Instrumental confirmed`);
-    }
+    const instrumentalStepAppeared = await submitBtn
+      .waitFor({ state: 'visible', timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    expect(
+      instrumentalStepAppeared,
+      'tenant with a pre-supplied instrumental must NOT be shown an instrumental-selection step (no audio separation)',
+    ).toBe(false);
+    console.log(`[${TENANT_ID}] No instrumental-selection step (as expected for pre-supplied instrumental)`);
 
     // Confirm the review actually advanced (left awaiting_review) before waiting
     // on the render — otherwise a silent no-op would masquerade as a render hang.
@@ -275,6 +273,14 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     for (const f of ['lossy_4k_mp4', 'lossy_720p_mp4', 'with_vocals_mp4']) expect(finals).toContain(f);
     for (const p of ['cdg_zip', 'txt_zip']) expect(packages).toContain(p);
     expect(job.is_private, 'tenant job is private').toBeTruthy();
-    console.log(`[${TENANT_ID}] PASSED — complete, Dropbox present, no YouTube, downloads available`);
+
+    // Real-world tenant-scenario invariants (beyond "it completed"): these guard the
+    // exact flow tenant operators rely on — they upload their own audio + instrumental,
+    // so audio search / separation / instrumental review must all be bypassed.
+    // 1. The operator's uploaded instrumental is what's used, not a separated stem.
+    expect(sd.instrumental_selection, 'uploaded instrumental used (custom), not a separated stem').toBe('custom');
+    // 2. Lyrics were transcribed + corrected — the job did real work, not a short-circuit.
+    expect(sd.lyrics_complete, 'lyrics transcription completed').toBeTruthy();
+    console.log(`[${TENANT_ID}] PASSED — complete, private, Dropbox present, no YouTube, uploaded instrumental used, downloads available`);
   });
 });
