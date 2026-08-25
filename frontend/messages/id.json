@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Tidak ada koreksi manual yang terdeteksi. Jika semuanya terlihat bagus di pratinjau, lanjutkan untuk memilih instrumental Anda.",
         "totalSegments": "Total segmen: {count}",
         "proceedToInstrumental": "Lanjutkan ke Tinjauan Instrumental",
-        "saving": "Menyimpan..."
+        "saving": "Menyimpan...",
+        "completeTrack": "Trek Lengkap"
       },
       "searchLyrics": {
         "artist": "Artis",

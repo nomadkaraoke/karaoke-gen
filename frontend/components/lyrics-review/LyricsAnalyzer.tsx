@@ -1596,6 +1596,7 @@ export default function LyricsAnalyzer({
           apiClient={apiClient}
           timingOffsetMs={timingOffsetMs}
           isDuet={isDuet}
+          completesReview={hasExistingInstrumental}
         />
 
         <AddLyricsModal

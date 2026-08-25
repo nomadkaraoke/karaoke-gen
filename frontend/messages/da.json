@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Ingen manuelle rettelser opdaget. Hvis alt ser godt ud i forhåndsvisningen, skal du fortsætte med at vælge din instrumental.",
         "totalSegments": "Samlede segmenter: {count}",
         "proceedToInstrumental": "Fortsæt til gennemgang af instrumental",
-        "saving": "Gemmer..."
+        "saving": "Gemmer...",
+        "completeTrack": "Færdiggør nummer"
       },
       "searchLyrics": {
         "artist": "Kunstner",

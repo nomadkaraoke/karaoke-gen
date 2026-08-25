@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Geen handmatige correcties gedetecteerd. Als alles er goed uitziet in het voorbeeld, ga dan verder met het selecteren van je instrumental.",
         "totalSegments": "Totaal aantal segmenten: {count}",
         "proceedToInstrumental": "Doorgaan naar instrumental-beoordeling",
-        "saving": "Opslaan..."
+        "saving": "Opslaan...",
+        "completeTrack": "Track voltooien"
       },
       "searchLyrics": {
         "artist": "Artiest",

@@ -1134,7 +1134,8 @@
         "noManualCorrections": "لم يتم اكتشاف تصحيحات يدوية. إذا كان كل شيء يبدو جيداً في المعاينة، فتابع لاختيار الموسيقى الخاصة بك.",
         "totalSegments": "إجمالي المقاطع: {count}",
         "proceedToInstrumental": "المتابعة إلى مراجعة الموسيقى",
-        "saving": "جاري الحفظ..."
+        "saving": "جاري الحفظ...",
+        "completeTrack": "إكمال المسار"
       },
       "searchLyrics": {
         "artist": "الفنان",

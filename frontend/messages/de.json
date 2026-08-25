@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Keine manuellen Korrekturen erkannt. Wenn in der Vorschau alles gut aussieht, fahre mit der Auswahl deines Instrumentals fort.",
         "totalSegments": "Gesamte Segmente: {count}",
         "proceedToInstrumental": "Weiter zur Instrumental-Überprüfung",
-        "saving": "Speichere..."
+        "saving": "Speichere...",
+        "completeTrack": "Kompletter Track"
       },
       "searchLyrics": {
         "artist": "Künstler",

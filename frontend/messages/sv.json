@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Inga manuella korrigeringar upptäcktes. Om allt ser bra ut i förhandsgranskningen, fortsätt till att välja din instrumental.",
         "totalSegments": "Totalt antal segment: {count}",
         "proceedToInstrumental": "Fortsätt till granskning av instrumental",
-        "saving": "Sparar..."
+        "saving": "Sparar...",
+        "completeTrack": "Slutför spåret"
       },
       "searchLyrics": {
         "artist": "Artist",

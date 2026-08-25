@@ -99,4 +99,20 @@ describe('ReviewChangesModal', () => {
     await user.click(screen.getByRole('button', { name: /proceed to instrumental/i }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
+
+  it('shows "Complete Track" CTA when the review completes directly (no instrumental step)', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        data={makeData({ corrected_segments: segments as any })}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /complete track/i })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /proceed to instrumental/i })
+    ).not.toBeInTheDocument()
+  })
 })

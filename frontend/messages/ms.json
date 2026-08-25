@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Tiada pembetulan manual dikesan. Jika semuanya kelihatan baik dalam pratonton, teruskan untuk memilih instrumental anda.",
         "totalSegments": "Jumlah segmen: {count}",
         "proceedToInstrumental": "Teruskan ke Semakan Instrumental",
-        "saving": "Menyimpan..."
+        "saving": "Menyimpan...",
+        "completeTrack": "Lengkapkan Trek"
       },
       "searchLyrics": {
         "artist": "Artis",

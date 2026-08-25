@@ -1134,7 +1134,8 @@
         "noManualCorrections": "未检测到手动校对。如果预览中一切正常，请继续选择您的伴奏。",
         "totalSegments": "总片段数：{count}",
         "proceedToInstrumental": "继续进行伴奏审核",
-        "saving": "保存中..."
+        "saving": "保存中...",
+        "completeTrack": "完成曲目"
       },
       "searchLyrics": {
         "artist": "歌手",

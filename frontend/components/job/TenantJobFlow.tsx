@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { api, ApiError } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
@@ -57,6 +57,15 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
     if (mixedInputRef.current) mixedInputRef.current.value = ""
     if (instrumentalInputRef.current) instrumentalInputRef.current.value = ""
   }, [])
+
+  // After a successful submit, briefly show the confirmation then auto-return to a
+  // blank form (~2s) so operators can submit one track after another quickly. The
+  // "Submit Another" button remains for anyone who wants to reset sooner.
+  useEffect(() => {
+    if (phase !== "done") return
+    const timer = setTimeout(resetFlow, 2000)
+    return () => clearTimeout(timer)
+  }, [phase, resetFlow])
 
   async function handleSubmit() {
     if (!canSubmit || !mixedFile || !instrumentalFile) return

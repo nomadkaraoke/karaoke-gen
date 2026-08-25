@@ -1134,7 +1134,8 @@
         "noManualCorrections": "Nu au fost detectate corecturi manuale. Dacă totul arată bine în previzualizare, treci la selectarea instrumentalului tău.",
         "totalSegments": "Total segmente: {count}",
         "proceedToInstrumental": "Treci la revizuirea instrumentalului",
-        "saving": "Se salvează..."
+        "saving": "Se salvează...",
+        "completeTrack": "Piesa completă"
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -25,6 +25,9 @@ interface ReviewChangesModalProps {
   apiClient?: ApiClient | null
   timingOffsetMs?: number
   isDuet?: boolean
+  /** When true (e.g. tenant / uploaded-instrumental jobs) approving here completes the
+   *  track directly — there is no instrumental-review step — so the CTA reflects that. */
+  completesReview?: boolean
 }
 
 export default function ReviewChangesModal({
@@ -36,6 +39,7 @@ export default function ReviewChangesModal({
   apiClient = null,
   timingOffsetMs = 0,
   isDuet,
+  completesReview = false,
 }: ReviewChangesModalProps) {
   const t = useTranslations('lyricsReview.modals.reviewChanges')
   const corrections = data.corrections || []
@@ -111,7 +115,7 @@ export default function ReviewChangesModal({
               </>
             ) : (
               <>
-                {t('proceedToInstrumental')}
+                {completesReview ? t('completeTrack') : t('proceedToInstrumental')}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </>
             )}

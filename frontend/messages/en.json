@@ -1216,6 +1216,7 @@
         "noManualCorrections": "No manual corrections detected. If everything looks good in the preview, proceed to select your instrumental.",
         "totalSegments": "Total segments: {count}",
         "proceedToInstrumental": "Proceed to Instrumental Review",
+        "completeTrack": "Complete Track",
         "saving": "Saving..."
       },
       "searchLyrics": {

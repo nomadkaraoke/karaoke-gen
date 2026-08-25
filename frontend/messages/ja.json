@@ -1134,7 +1134,8 @@
         "noManualCorrections": "手動による修正は検出されませんでした。プレビューで問題がなければ、インストゥルメンタルの選択に進んでください。",
         "totalSegments": "合計セグメント: {count}",
         "proceedToInstrumental": "インストゥルメンタルの確認に進む",
-        "saving": "保存中..."
+        "saving": "保存中...",
+        "completeTrack": "トラックを完了"
       },
       "searchLyrics": {
         "artist": "アーティスト",
