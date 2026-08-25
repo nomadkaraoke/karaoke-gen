@@ -1744,6 +1744,16 @@
     "checkPairing": "Automatski upareno — obavezno provjeri izvođača, naslov i datoteke.",
     "lowConfidence": "Uparivanje niske pouzdanosti — obavezno provjeri izvođača, naslov i datoteke.",
     "statusCheck": "Provjeri uparivanje",
-    "willRetry": "ponovno će pokušati pri slanju"
+    "willRetry": "ponovno će pokušati pri slanju",
+    "etaMinSec": "{m}m {s}s preostalo",
+    "etaSec": "{s}s preostalo",
+    "pausedOffline": "Čekanje veze — nastavit će se automatski",
+    "resumeBannerDesc": "{count} pjesama iz ranije sesije može se nastaviti. Ponovno odaberi istu mapu za nastavak — već preneseni dijelovi neće se ponovno slati.",
+    "resumeBannerTitle": "Nastaviti nedovršenu seriju?",
+    "resumeChoose": "Odaberi mapu za nastavak",
+    "resumeDiscard": "Odbaci",
+    "retryingConn": "Problem s vezom — pokušavam ponovno…",
+    "sessionExpired": "Sesija prijenosa je istekla — ukloni ovu pjesmu i pokreni je ponovno",
+    "speedMBs": "{mb} MB/s"
   }
 }

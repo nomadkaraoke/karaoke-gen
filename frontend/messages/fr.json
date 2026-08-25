@@ -1744,6 +1744,16 @@
     "checkPairing": "Associé automatiquement — vérifie bien l'artiste, le titre et les fichiers.",
     "lowConfidence": "Correspondance peu fiable — vérifie bien l'artiste, le titre et les fichiers.",
     "statusCheck": "Vérifier l'association",
-    "willRetry": "réessaiera lors de l'envoi"
+    "willRetry": "réessaiera lors de l'envoi",
+    "etaMinSec": "{m}m {s}s restantes",
+    "etaSec": "{s}s restantes",
+    "pausedOffline": "En attente de connexion — reprendra automatiquement",
+    "resumeBannerDesc": "{count} pistes d'une session précédente peuvent être reprises. Sélectionne à nouveau le même dossier pour continuer — les parties déjà envoyées ne seront pas transférées à nouveau.",
+    "resumeBannerTitle": "Reprendre le lot inachevé ?",
+    "resumeChoose": "Choisir le dossier pour reprendre",
+    "resumeDiscard": "Abandonner",
+    "retryingConn": "Problème de connexion — nouvelle tentative…",
+    "sessionExpired": "La session d'envoi a expiré — retire cette piste et recommence",
+    "speedMBs": "{mb} Mo/s"
   }
 }

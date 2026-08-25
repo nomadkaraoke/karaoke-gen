@@ -1744,6 +1744,16 @@
     "checkPairing": "Đã tự động ghép nối — vui lòng kiểm tra lại ca sĩ, tên bài hát và các tệp.",
     "lowConfidence": "Ghép nối có độ tin cậy thấp — vui lòng kiểm tra lại ca sĩ, tên bài hát và các tệp.",
     "statusCheck": "Kiểm tra ghép nối",
-    "willRetry": "sẽ thử lại khi gửi"
+    "willRetry": "sẽ thử lại khi gửi",
+    "etaMinSec": "Còn {m} phút {s} giây",
+    "etaSec": "Còn {s} giây",
+    "pausedOffline": "Đang chờ kết nối — sẽ tự động tiếp tục",
+    "resumeBannerDesc": "{count} bài hát từ phiên trước có thể được tiếp tục. Hãy chọn lại thư mục cũ để tiếp tục — những phần đã tải lên sẽ không cần tải lại.",
+    "resumeBannerTitle": "Tiếp tục tải lên hàng loạt chưa hoàn tất?",
+    "resumeChoose": "Chọn thư mục để tiếp tục",
+    "resumeDiscard": "Hủy bỏ",
+    "retryingConn": "Gián đoạn kết nối — đang thử lại…",
+    "sessionExpired": "Phiên tải lên đã hết hạn — hãy xóa bài hát này và bắt đầu lại",
+    "speedMBs": "{mb} MB/s"
   }
 }

@@ -1744,6 +1744,16 @@
     "checkPairing": "Emparellat automàticament — si us plau, revisa l'artista, el títol i els fitxers.",
     "lowConfidence": "Coincidència poc segura — si us plau, revisa l'artista, el títol i els fitxers.",
     "statusCheck": "Revisa l'emparellament",
-    "willRetry": "es tornarà a intentar en enviar"
+    "willRetry": "es tornarà a intentar en enviar",
+    "etaMinSec": "{m}m {s}s restants",
+    "etaSec": "{s}s restants",
+    "pausedOffline": "Esperant connexió — es reprendrà automàticament",
+    "resumeBannerDesc": "Es poden reprendre {count} pistes d'una sessió anterior. Torna a seleccionar la mateixa carpeta per continuar — les parts ja pujades no s'enviaran de nou.",
+    "resumeBannerTitle": "Vols reprendre el lot inacabat?",
+    "resumeChoose": "Tria la carpeta per reprendre",
+    "resumeDiscard": "Descarta",
+    "retryingConn": "Problema de connexió — reintentant…",
+    "sessionExpired": "La sessió de pujada ha caducat — elimina aquesta pista i torna-la a començar",
+    "speedMBs": "{mb} MB/s"
   }
 }

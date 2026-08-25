@@ -1744,6 +1744,16 @@
     "checkPairing": "Yhdistetty automaattisesti — tarkistathan vielä esittäjän, kappaleen nimen ja tiedostot.",
     "lowConfidence": "Epävarma osuma — tarkistathan vielä esittäjän, kappaleen nimen ja tiedostot.",
     "statusCheck": "Tarkista yhdistäminen",
-    "willRetry": "yritetään uudelleen lähetettäessä"
+    "willRetry": "yritetään uudelleen lähetettäessä",
+    "etaMinSec": "{m}m {s}s jäljellä",
+    "etaSec": "{s}s jäljellä",
+    "pausedOffline": "Odotetaan yhteyttä — jatkuu automaattisesti",
+    "resumeBannerDesc": "Voit jatkaa {count} kappaleen latausta aiemmasta istunnosta. Valitse sama kansio uudelleen jatkaaksesi — jo ladattuja osia ei lähetetä uudelleen.",
+    "resumeBannerTitle": "Jatketaanko keskeneräistä erää?",
+    "resumeChoose": "Valitse kansio jatkaaksesi",
+    "resumeDiscard": "Hylkää",
+    "retryingConn": "Yhteys pätkii — yritetään uudelleen…",
+    "sessionExpired": "Latausistunto vanhentui — poista tämä kappale ja aloita alusta",
+    "speedMBs": "{mb} MB/s"
   }
 }

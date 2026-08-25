@@ -1744,6 +1744,16 @@
     "checkPairing": "Automaticky spárované — prosím, dôkladne skontroluj interpreta, názov a súbory.",
     "lowConfidence": "Neistá zhoda — prosím, dôkladne skontroluj interpreta, názov a súbory.",
     "statusCheck": "Skontroluj spárovanie",
-    "willRetry": "pri odoslaní to skúsi znova"
+    "willRetry": "pri odoslaní to skúsi znova",
+    "etaMinSec": "Zostáva {m}m {s}s",
+    "etaSec": "Zostáva {s}s",
+    "pausedOffline": "Čaká sa na pripojenie — automaticky sa obnoví",
+    "resumeBannerDesc": "{count} skladieb z predchádzajúcej relácie je možné obnoviť. Znovu vyber ten istý priečinok a pokračuj — už nahrané časti sa nebudú posielať znova.",
+    "resumeBannerTitle": "Obnoviť nedokončenú dávku?",
+    "resumeChoose": "Vyber priečinok na obnovenie",
+    "resumeDiscard": "Zahodiť",
+    "retryingConn": "Výpadok pripojenia — skúšam znova…",
+    "sessionExpired": "Relácia nahrávania vypršala — odstráň túto skladbu a začni znova",
+    "speedMBs": "{mb} MB/s"
   }
 }

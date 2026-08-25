@@ -1744,6 +1744,16 @@
     "checkPairing": "Abbinato automaticamente — ricontrolla l'artista, il titolo e i file.",
     "lowConfidence": "Abbinamento a bassa attendibilità — ricontrolla l'artista, il titolo e i file.",
     "statusCheck": "Controlla l'abbinamento",
-    "willRetry": "riproverà all'invio"
+    "willRetry": "riproverà all'invio",
+    "etaMinSec": "{m}m {s}s rimanenti",
+    "etaSec": "{s}s rimanenti",
+    "pausedOffline": "In attesa di connessione — riprenderà automaticamente",
+    "resumeBannerDesc": "Puoi riprendere {count} tracce da una sessione precedente. Seleziona di nuovo la stessa cartella per continuare — le parti già caricate non verranno inviate di nuovo.",
+    "resumeBannerTitle": "Riprendere il batch incompleto?",
+    "resumeChoose": "Scegli la cartella per riprendere",
+    "resumeDiscard": "Scarta",
+    "retryingConn": "Problema di connessione — nuovo tentativo…",
+    "sessionExpired": "Sessione di caricamento scaduta — rimuovi questa traccia e caricala di nuovo",
+    "speedMBs": "{mb} MB/s"
   }
 }

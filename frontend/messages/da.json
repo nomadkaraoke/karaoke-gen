@@ -1744,6 +1744,16 @@
     "checkPairing": "Automatisk matchet — dobbelttjek kunstner, titel og filer.",
     "lowConfidence": "Usikkert match — dobbelttjek kunstner, titel og filer.",
     "statusCheck": "Tjek match",
-    "willRetry": "vil prøve igen ved indsendelse"
+    "willRetry": "vil prøve igen ved indsendelse",
+    "etaMinSec": "{m}m {s}s tilbage",
+    "etaSec": "{s}s tilbage",
+    "pausedOffline": "Venter på forbindelse — genoptages automatisk",
+    "resumeBannerDesc": "{count} numre fra en tidligere session kan genoptages. Vælg den samme mappe igen for at fortsætte — dele, der allerede er uploadet, sendes ikke igen.",
+    "resumeBannerTitle": "Genoptag uafsluttet batch?",
+    "resumeChoose": "Vælg mappe for at genoptage",
+    "resumeDiscard": "Kassér",
+    "retryingConn": "Forbindelsesproblem — prøver igen…",
+    "sessionExpired": "Upload-sessionen er udløbet — fjern dette nummer og start det igen",
+    "speedMBs": "{mb} MB/s"
   }
 }

@@ -1744,6 +1744,16 @@
     "rowSubmitError": "Submission failed for this track",
     "allSubmittedTitle": "All tracks submitted",
     "allSubmittedDesc": "{count} tracks are now being processed.",
-    "submitAnotherBatch": "Submit another batch"
+    "submitAnotherBatch": "Submit another batch",
+    "pausedOffline": "Waiting for connection — will resume automatically",
+    "retryingConn": "Connection hiccup — retrying…",
+    "speedMBs": "{mb} MB/s",
+    "etaMinSec": "{m}m {s}s left",
+    "etaSec": "{s}s left",
+    "sessionExpired": "Upload session expired — remove this track and start it again",
+    "resumeBannerTitle": "Resume unfinished batch?",
+    "resumeBannerDesc": "{count} tracks from an earlier session can be resumed. Re-select the same folder to continue — already-uploaded parts won't be sent again.",
+    "resumeChoose": "Choose folder to resume",
+    "resumeDiscard": "Discard"
   }
 }

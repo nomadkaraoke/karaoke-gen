@@ -1744,6 +1744,16 @@
     "checkPairing": "Automatisch gekoppeld — controleer voor de zekerheid de artiest, titel en bestanden.",
     "lowConfidence": "Onzekere match — controleer voor de zekerheid de artiest, titel en bestanden.",
     "statusCheck": "Controleer koppeling",
-    "willRetry": "wordt opnieuw geprobeerd bij verzenden"
+    "willRetry": "wordt opnieuw geprobeerd bij verzenden",
+    "etaMinSec": "{m}m {s}s te gaan",
+    "etaSec": "{s}s te gaan",
+    "pausedOffline": "Wachten op verbinding — wordt automatisch hervat",
+    "resumeBannerDesc": "{count} tracks van een eerdere sessie kunnen worden hervat. Selecteer dezelfde map opnieuw om door te gaan — reeds geüploade delen worden niet opnieuw verzonden.",
+    "resumeBannerTitle": "Onvoltooide batch hervatten?",
+    "resumeChoose": "Kies map om te hervatten",
+    "resumeDiscard": "Negeren",
+    "retryingConn": "Verbindingsprobleem — opnieuw proberen…",
+    "sessionExpired": "Uploadsessie verlopen — verwijder deze track en start opnieuw",
+    "speedMBs": "{mb} MB/s"
   }
 }

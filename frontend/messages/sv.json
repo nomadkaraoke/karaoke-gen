@@ -1744,6 +1744,16 @@
     "checkPairing": "Automatisk matchning — dubbelkolla artist, titel och filer.",
     "lowConfidence": "Osäker matchning — dubbelkolla artist, titel och filer.",
     "statusCheck": "Kontrollera matchning",
-    "willRetry": "försöker igen när du skickar in"
+    "willRetry": "försöker igen när du skickar in",
+    "etaMinSec": "{m}m {s}s kvar",
+    "etaSec": "{s}s kvar",
+    "pausedOffline": "Väntar på anslutning — återupptas automatiskt",
+    "resumeBannerDesc": "{count} spår från en tidigare session kan återupptas. Välj samma mapp igen för att fortsätta — redan uppladdade delar kommer inte att skickas igen.",
+    "resumeBannerTitle": "Återuppta oavslutad uppladdning?",
+    "resumeChoose": "Välj mapp för att återuppta",
+    "resumeDiscard": "Kassera",
+    "retryingConn": "Anslutningsproblem — försöker igen…",
+    "sessionExpired": "Uppladdningssessionen har löpt ut — ta bort det här spåret och starta om det",
+    "speedMBs": "{mb} MB/s"
   }
 }

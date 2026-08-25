@@ -417,6 +417,8 @@ export interface SignedUploadUrl {
   gcs_path: string;
   upload_url: string;
   content_type: string;
+  /** True when upload_url is a GCS resumable session URI (chunked, resumable). */
+  resumable?: boolean;
 }
 
 export interface CreateJobWithUploadUrlsResponse {
@@ -999,6 +1001,8 @@ export const api = {
       existing_instrumental?: boolean;
       requires_audio_edit?: boolean;
       batch_id?: string;
+      /** "resumable" → backend returns GCS resumable session URIs instead of signed PUT URLs. */
+      upload_mode?: 'signed_put' | 'resumable';
     }
   ): Promise<CreateJobWithUploadUrlsResponse> {
     const body: Record<string, any> = { artist, title, files };
@@ -1006,6 +1010,7 @@ export const api = {
     if (options?.existing_instrumental !== undefined) body.existing_instrumental = options.existing_instrumental;
     if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
     if (options?.batch_id) body.batch_id = options.batch_id;
+    if (options?.upload_mode) body.upload_mode = options.upload_mode;
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
       method: 'POST',

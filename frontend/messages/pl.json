@@ -1744,6 +1744,16 @@
     "checkPairing": "Dopasowano automatycznie — sprawdź dokładnie wykonawcę, tytuł i pliki.",
     "lowConfidence": "Niska pewność dopasowania — sprawdź dokładnie wykonawcę, tytuł i pliki.",
     "statusCheck": "Sprawdź dopasowanie",
-    "willRetry": "ponowi próbę przy wysyłaniu"
+    "willRetry": "ponowi próbę przy wysyłaniu",
+    "etaMinSec": "pozostało {m}m {s}s",
+    "etaSec": "pozostało {s}s",
+    "pausedOffline": "Oczekiwanie na połączenie — przesyłanie wznowi się automatycznie",
+    "resumeBannerDesc": "Możesz wznowić {count} utworów z wcześniejszej sesji. Wybierz ponownie ten sam folder, aby kontynuować — już przesłane części nie będą wysyłane ponownie.",
+    "resumeBannerTitle": "Wznowić niedokończoną partię?",
+    "resumeChoose": "Wybierz folder, aby wznowić",
+    "resumeDiscard": "Odrzuć",
+    "retryingConn": "Problem z połączeniem — ponawianie…",
+    "sessionExpired": "Sesja przesyłania wygasła — usuń ten utwór i zacznij od nowa",
+    "speedMBs": "{mb} MB/s"
   }
 }

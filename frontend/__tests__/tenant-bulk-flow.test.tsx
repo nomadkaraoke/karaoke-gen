@@ -36,7 +36,41 @@ jest.mock('@/lib/api', () => ({
   },
 }))
 
+// The resumable engine is unit-tested separately; here we assert the component
+// routes resumable entries through it (and legacy entries through signed PUT).
+jest.mock('@/lib/resumable-upload', () => ({
+  uploadResumable: jest.fn().mockResolvedValue(undefined),
+  ResumableUploadError: class ResumableUploadError extends Error {
+    status: number
+    permanent: boolean
+    constructor(message: string, status: number, permanent: boolean) {
+      super(message)
+      this.name = 'ResumableUploadError'
+      this.status = status
+      this.permanent = permanent
+    }
+  },
+}))
+
+// IndexedDB isn't available in jsdom; mock persistence but keep the real
+// matchRepickedFile so the recovery flow exercises genuine matching logic.
+jest.mock('@/lib/upload-recovery', () => {
+  const actual = jest.requireActual('@/lib/upload-recovery')
+  return {
+    ...actual,
+    saveRowSessions: jest.fn().mockResolvedValue(undefined),
+    markRowDone: jest.fn().mockResolvedValue(undefined),
+    clearBatch: jest.fn().mockResolvedValue(undefined),
+    loadPendingBatch: jest.fn().mockResolvedValue(null),
+  }
+})
+
+import { uploadResumable } from '@/lib/resumable-upload'
+import { saveRowSessions, markRowDone, loadPendingBatch } from '@/lib/upload-recovery'
+
 const mockApi = api as jest.Mocked<typeof api>
+const mockUploadResumable = uploadResumable as jest.MockedFunction<typeof uploadResumable>
+const mockLoadPendingBatch = loadPendingBatch as jest.MockedFunction<typeof loadPendingBatch>
 
 const MIXED_1 = 'S1100-1 Eddy Grant - I Dont Wanna Dance Guide.mp3'
 const INST_1 = 'S1100-2 Eddy Grant - I Dont Wanna Dance BV.mp3'
@@ -70,6 +104,8 @@ function selectFiles() {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockLoadPendingBatch.mockResolvedValue(null)
+  mockUploadResumable.mockResolvedValue(undefined)
   mockApi.analyzeBulk.mockResolvedValue(analysisResponse())
   mockApi.createJobWithUploadUrls.mockImplementation(async (_a, _t, _files) => ({
     status: 'success',
@@ -198,6 +234,103 @@ it('surfaces a caution for low-confidence / warned rows', async () => {
   expect(screen.getByText(/Low-confidence match/i)).toBeInTheDocument()
   // Explicit analyzer warning is shown verbatim.
   expect(screen.getByText(/labels were ambiguous/i)).toBeInTheDocument()
+})
+
+it('requests resumable mode and uploads via the resumable engine', async () => {
+  mockApi.analyzeBulk.mockResolvedValue({
+    rows: [
+      { artist: 'Eddy Grant', title: 'I Dont Wanna Dance', mixed_filename: MIXED_1, instrumental_filename: INST_1, confidence: 'high', warning: null },
+    ],
+    unpaired: [],
+    ignored: [],
+  })
+  mockApi.createJobWithUploadUrls.mockResolvedValue({
+    status: 'success',
+    job_id: 'job-resumable',
+    message: 'ok',
+    upload_urls: [
+      { file_type: 'audio', gcs_path: 'p1', upload_url: 'https://session/audio', content_type: 'audio/mpeg', resumable: true },
+      { file_type: 'existing_instrumental', gcs_path: 'p2', upload_url: 'https://session/inst', content_type: 'audio/mpeg', resumable: true },
+    ],
+    server_version: '1',
+  })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+  await waitFor(() => expect(mockApi.completeJobUpload).toHaveBeenCalledTimes(1))
+
+  // Backend asked for resumable session URIs.
+  const options = mockApi.createJobWithUploadUrls.mock.calls[0][3] as any
+  expect(options.upload_mode).toBe('resumable')
+  // Both files went through the resumable engine, not the signed-PUT path.
+  expect(mockUploadResumable).toHaveBeenCalledTimes(2)
+  expect(mockUploadResumable.mock.calls.map(c => c[0])).toEqual(['https://session/audio', 'https://session/inst'])
+  expect(mockApi.uploadToSignedUrl).not.toHaveBeenCalled()
+  // Session state persisted for re-pick recovery, then cleaned up on success.
+  expect(saveRowSessions).toHaveBeenCalledTimes(1)
+  expect((saveRowSessions as jest.Mock).mock.calls[0][0]).toMatchObject({
+    jobId: 'job-resumable',
+    files: expect.arrayContaining([expect.objectContaining({ sessionUri: 'https://session/audio' })]),
+  })
+  expect(markRowDone).toHaveBeenCalledTimes(1)
+})
+
+it('offers to resume an unfinished batch and resumes without re-creating jobs', async () => {
+  const mixedFile = new File(['x'], MIXED_1, { type: 'audio/mpeg', lastModified: 111 })
+  const instFile = new File(['x'], INST_1, { type: 'audio/mpeg', lastModified: 222 })
+  mockLoadPendingBatch.mockResolvedValue({
+    batchId: 'batch-recovered',
+    rows: [
+      {
+        key: 'batch-recovered:row-1',
+        batchId: 'batch-recovered',
+        rowId: 'row-1',
+        jobId: 'job-restored',
+        artist: 'Eddy Grant',
+        title: 'I Dont Wanna Dance',
+        createdAt: Date.now(),
+        files: [
+          { fileType: 'audio', identity: MIXED_1, name: MIXED_1, size: mixedFile.size, lastModified: 111, sessionUri: 'https://session/audio' },
+          { fileType: 'existing_instrumental', identity: INST_1, name: INST_1, size: instFile.size, lastModified: 222, sessionUri: 'https://session/inst' },
+        ],
+      },
+    ],
+  })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+
+  // Banner appears; choose to resume, then re-pick the folder.
+  await screen.findByTestId('resume-banner')
+  fireEvent.click(screen.getByRole('button', { name: /Choose folder to resume/i }))
+  fireEvent.change(screen.getByTestId('bulk-folder-input'), { target: { files: [mixedFile, instFile] } })
+
+  // Review table rebuilt from the persisted batch — no fresh analyze call.
+  const artistInputs = await screen.findAllByLabelText('Artist') as HTMLInputElement[]
+  expect(artistInputs).toHaveLength(1)
+  expect(artistInputs[0].value).toBe('Eddy Grant')
+  expect(mockApi.analyzeBulk).not.toHaveBeenCalled()
+
+  // Submitting resumes the existing job's sessions — no job creation.
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+  await waitFor(() => expect(mockApi.completeJobUpload).toHaveBeenCalledWith('job-restored', ['audio', 'existing_instrumental']))
+  expect(mockApi.createJobWithUploadUrls).not.toHaveBeenCalled()
+  expect(mockUploadResumable.mock.calls.map(c => c[0])).toEqual(['https://session/audio', 'https://session/inst'])
+})
+
+it('matchRepickedFile requires an exact size and disambiguates by mtime', () => {
+  const { matchRepickedFile } = jest.requireActual('@/lib/upload-recovery')
+  const persisted = { fileType: 'audio', identity: 'a.mp3', name: 'a.mp3', size: 1, lastModified: 111, sessionUri: 's' }
+  const right = new File(['x'], 'a.mp3', { lastModified: 111 })
+  const wrongSize = new File(['xx'], 'a.mp3', { lastModified: 111 })
+  const wrongMtime = new File(['x'], 'a.mp3', { lastModified: 999 })
+
+  expect(matchRepickedFile(persisted, [right])).toBe(right)
+  // Same name but different size = a different file — never resumed.
+  expect(matchRepickedFile(persisted, [wrongSize])).toBeNull()
+  // Ambiguous same-name same-size candidates → mtime decides.
+  expect(matchRepickedFile(persisted, [wrongMtime, right])).toBe(right)
 })
 
 it('exports TenantBulkFlow as a named export', () => {

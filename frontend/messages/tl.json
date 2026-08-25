@@ -1744,6 +1744,16 @@
     "checkPairing": "Awtomatikong naitugma — pakisuri ulit ang artist, pamagat, at mga file.",
     "lowConfidence": "Hindi siguradong tugma — pakisuri ulit ang artist, pamagat, at mga file.",
     "statusCheck": "Suriin ang pagtugma",
-    "willRetry": "susubukan muli sa pag-submit"
+    "willRetry": "susubukan muli sa pag-submit",
+    "etaMinSec": "{m}m {s}s na lang",
+    "etaSec": "{s}s na lang",
+    "pausedOffline": "Naghihintay ng koneksyon — awtomatikong magpapatuloy",
+    "resumeBannerDesc": "Maaaring ipagpatuloy ang {count} tracks mula sa nakaraang session. Piliin muli ang parehong folder para magpatuloy — hindi na ipapadala muli ang mga na-upload na bahagi.",
+    "resumeBannerTitle": "Ipagpatuloy ang hindi natapos na batch?",
+    "resumeChoose": "Pumili ng folder para ipagpatuloy",
+    "resumeDiscard": "I-discard",
+    "retryingConn": "May problema sa koneksyon — sinusubukang muli…",
+    "sessionExpired": "Nag-expire na ang upload session — alisin ang track na ito at simulan muli",
+    "speedMBs": "{mb} MB/s"
   }
 }

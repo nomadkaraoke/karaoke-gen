@@ -1744,6 +1744,16 @@
     "checkPairing": "Emparejado automáticamente — por favor, revisa bien el artista, el título y los archivos.",
     "lowConfidence": "Emparejamiento de baja confianza — por favor, revisa bien el artista, el título y los archivos.",
     "statusCheck": "Revisar emparejamiento",
-    "willRetry": "se reintentará al enviar"
+    "willRetry": "se reintentará al enviar",
+    "etaMinSec": "Quedan {m}m {s}s",
+    "etaSec": "Quedan {s}s",
+    "pausedOffline": "Esperando conexión — se reanudará automáticamente",
+    "resumeBannerDesc": "Se pueden reanudar {count} pistas de una sesión anterior. Vuelve a seleccionar la misma carpeta para continuar — las partes ya subidas no se enviarán de nuevo.",
+    "resumeBannerTitle": "¿Reanudar lote sin terminar?",
+    "resumeChoose": "Elige la carpeta para reanudar",
+    "resumeDiscard": "Descartar",
+    "retryingConn": "Problema de conexión — reintentando…",
+    "sessionExpired": "La sesión de subida ha caducado — elimina esta pista y vuelve a empezar",
+    "speedMBs": "{mb} MB/s"
   }
 }

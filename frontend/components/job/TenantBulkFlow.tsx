@@ -1,10 +1,15 @@
 "use client"
 
-import { useState, useRef, useCallback, useMemo } from "react"
+import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { api, ApiError, type BulkAnalyzeResponse } from "@/lib/api"
+import { uploadResumable, ResumableUploadError } from "@/lib/resumable-upload"
 import {
-  Upload, Music, Loader2, AlertTriangle, CheckCircle2, X, FolderOpen, Files,
+  saveRowSessions, markRowDone, clearBatch, loadPendingBatch, matchRepickedFile,
+  type PersistedRow,
+} from "@/lib/upload-recovery"
+import {
+  Upload, Music, Loader2, AlertTriangle, CheckCircle2, X, FolderOpen, Files, History,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,9 +34,14 @@ interface EditableRow {
   progress: number
   error?: string
   jobId?: string
-  // Signed URLs from a successful create call, kept so a retry after a failed
+  // Upload URLs from a successful create call (resumable session URIs when the
+  // backend supports upload_mode=resumable), kept so a retry after a failed
   // upload/complete resumes the SAME job instead of creating a duplicate.
-  uploadUrls?: { file_type: string; upload_url: string; content_type: string }[]
+  uploadUrls?: { file_type: string; upload_url: string; content_type: string; resumable?: boolean }[]
+  // Live upload telemetry (resumable engine): throughput, ETA and connection state.
+  bytesPerSecond?: number | null
+  etaSeconds?: number | null
+  uploadState?: "uploading" | "waiting-online" | "retrying"
 }
 
 type Phase = "select" | "analyzing" | "review" | "done"
@@ -79,9 +89,39 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   const [ignored, setIgnored] = useState<BulkAnalyzeResponse["ignored"]>([])
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // One batch id per review-table lifetime (fresh analyze or recovery), shared
+  // by every row's job and by the IndexedDB recovery records.
+  const [batchId, setBatchId] = useState<string | null>(null)
+  // An unfinished batch found in IndexedDB from a previous session, offered for
+  // "re-pick to resume". recoveryMode=true routes the next folder pick to the
+  // resume path instead of a fresh analyze.
+  const [recovery, setRecovery] = useState<{ batchId: string; rows: PersistedRow[] } | null>(null)
+  const recoveryModeRef = useRef(false)
 
   const folderInputRef = useRef<HTMLInputElement>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
+
+  // Detect an unfinished batch from an earlier session (page reload / crash).
+  useEffect(() => {
+    let cancelled = false
+    loadPendingBatch().then(pending => {
+      if (!cancelled && pending) setRecovery(pending)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  // Uploads survive most interruptions, but warn before an intentional
+  // navigation away mid-batch (the in-memory File handles would be lost;
+  // recovery would then require a re-pick).
+  useEffect(() => {
+    if (!isSubmitting) return
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [isSubmitting])
 
   // Map file identity -> File for uploads and dropdown validation.
   const fileMap = useMemo(() => {
@@ -117,6 +157,8 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     setIgnored([])
     setError("")
     setIsSubmitting(false)
+    setBatchId(null)
+    recoveryModeRef.current = false
     if (folderInputRef.current) folderInputRef.current.value = ""
     if (filesInputRef.current) filesInputRef.current.value = ""
   }, [])
@@ -135,6 +177,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       return
     }
     setFiles(selected)
+    setBatchId(null) // fresh analyze → fresh batch
     setPhase("analyzing")
     try {
       const result = await api.analyzeBulk(selected.map(identityOf))
@@ -160,14 +203,61 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     }
   }, [t])
 
+  // Rebuild the review table from a persisted batch + a re-picked selection.
+  // Matched files resume their existing jobs (the resumable engine asks each
+  // session for its offset, so nothing already uploaded is re-sent). Unmatched
+  // rows appear as invalid so the operator can fix or remove them.
+  const resumeFromFiles = useCallback((pending: { batchId: string; rows: PersistedRow[] }, picked: File[]) => {
+    setError("")
+    setFiles(picked)
+    const rebuilt: EditableRow[] = pending.rows.map(pr => {
+      const mixed = pr.files.find(f => f.fileType === "audio")
+      const instrumental = pr.files.find(f => f.fileType === "existing_instrumental")
+      const mixedFile = mixed ? matchRepickedFile(mixed, picked) : null
+      const instrumentalFile = instrumental ? matchRepickedFile(instrumental, picked) : null
+      return {
+        id: pr.rowId,
+        artist: pr.artist,
+        title: pr.title,
+        mixedFilename: mixedFile ? identityOf(mixedFile) : (mixed?.identity ?? ""),
+        instrumentalFilename: instrumentalFile ? identityOf(instrumentalFile) : (instrumental?.identity ?? ""),
+        confidence: "high",
+        warning: null,
+        status: "pending",
+        progress: 0,
+        jobId: pr.jobId,
+        uploadUrls: pr.files.map(f => ({
+          file_type: f.fileType,
+          upload_url: f.sessionUri,
+          content_type: "",
+          resumable: true,
+        })),
+      }
+    })
+    setRows(rebuilt)
+    setUnpaired([])
+    setIgnored([])
+    setBatchId(pending.batchId)
+    setRecovery(null)
+    recoveryModeRef.current = false
+    setPhase("review")
+  }, [])
+
+  function handlePick(picked: File[]) {
+    if (recoveryModeRef.current && recovery) {
+      resumeFromFiles(recovery, picked)
+    } else {
+      analyze(picked)
+    }
+  }
+
   function handleFolderPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = Array.from(e.target.files ?? [])
     // Folder pick includes non-audio files; keep them so they surface as "ignored".
-    analyze(picked)
+    handlePick(Array.from(e.target.files ?? []))
   }
 
   function handleFilesPick(e: React.ChangeEvent<HTMLInputElement>) {
-    analyze(Array.from(e.target.files ?? []))
+    handlePick(Array.from(e.target.files ?? []))
   }
 
   function updateRow(id: string, patch: Partial<EditableRow>) {
@@ -178,17 +268,19 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     setRows(prev => prev.filter(r => r.id !== id))
   }
 
-  async function submitOneRow(row: EditableRow, batchId: string): Promise<boolean> {
+  async function submitOneRow(row: EditableRow, currentBatchId: string): Promise<boolean> {
     const mixedFile = fileMap.get(row.mixedFilename)
     const instrumentalFile = fileMap.get(row.instrumentalFilename)
     if (!mixedFile || !instrumentalFile) {
       updateRow(row.id, { status: "error", error: t('rowMissingFile') })
       return false
     }
+    // True when this attempt is a retry/resume of a job created earlier.
+    const hadExistingJob = Boolean(row.jobId && row.uploadUrls)
     try {
-      // Reuse an existing job + its signed URLs when retrying a row that already
-      // created a job; otherwise create a fresh job. This makes a failed row
-      // resumable without ever creating a duplicate job for the same track.
+      // Reuse an existing job + its upload URLs when retrying a row that already
+      // created a job; otherwise create a fresh job (resumable mode: the backend
+      // returns GCS session URIs supporting chunked, mid-file-resumable uploads).
       let jobId = row.jobId
       let uploadUrls = row.uploadUrls
       if (!jobId || !uploadUrls) {
@@ -200,30 +292,95 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
             { filename: mixedFile.name, content_type: mixedFile.type || "application/octet-stream", file_type: "audio" },
             { filename: instrumentalFile.name, content_type: instrumentalFile.type || "application/octet-stream", file_type: "existing_instrumental" },
           ],
-          { is_private: true, existing_instrumental: true, batch_id: batchId },
+          { is_private: true, existing_instrumental: true, batch_id: currentBatchId, upload_mode: "resumable" },
         )
         jobId = createResponse.job_id
         uploadUrls = createResponse.upload_urls
         updateRow(row.id, { jobId, uploadUrls })
+        // Persist sessions so a page reload / crash can re-pick and resume.
+        const persistFile = (file: File, fileType: string, sessionUri: string) => ({
+          fileType,
+          identity: identityOf(file),
+          name: file.name,
+          size: file.size,
+          lastModified: file.lastModified,
+          sessionUri,
+        })
+        const audioEntry = uploadUrls.find(u => u.file_type === "audio")
+        const instEntry = uploadUrls.find(u => u.file_type === "existing_instrumental")
+        if (audioEntry?.resumable && instEntry?.resumable) {
+          saveRowSessions({
+            batchId: currentBatchId,
+            rowId: row.id,
+            jobId,
+            artist: row.artist.trim(),
+            title: row.title.trim(),
+            createdAt: Date.now(),
+            files: [
+              persistFile(mixedFile, "audio", audioEntry.upload_url),
+              persistFile(instrumentalFile, "existing_instrumental", instEntry.upload_url),
+            ],
+          })
+        }
       }
 
-      updateRow(row.id, { status: "uploading", progress: 0, error: undefined })
+      updateRow(row.id, { status: "uploading", progress: 0, error: undefined, uploadState: "uploading" })
       const audioUrl = uploadUrls.find(u => u.file_type === "audio")
       const instrumentalUrl = uploadUrls.find(u => u.file_type === "existing_instrumental")
       if (!audioUrl || !instrumentalUrl) throw new ApiError("Missing upload URL", 500)
 
-      await api.uploadToSignedUrl(audioUrl.upload_url, mixedFile, audioUrl.content_type,
-        (loaded, total) => updateRow(row.id, { progress: Math.round((loaded / total) * 50) }))
-      await api.uploadToSignedUrl(instrumentalUrl.upload_url, instrumentalFile, instrumentalUrl.content_type,
-        (loaded, total) => updateRow(row.id, { progress: 50 + Math.round((loaded / total) * 50) }))
+      // Byte-accurate row progress across both files, with throughput + ETA.
+      const totalBytes = mixedFile.size + instrumentalFile.size
+      const reportBytes = (loadedBytes: number, rate: number | null, state: EditableRow["uploadState"]) => {
+        updateRow(row.id, {
+          progress: Math.min(100, Math.round((loadedBytes / totalBytes) * 100)),
+          bytesPerSecond: rate,
+          etaSeconds: rate && rate > 0 ? Math.max(0, (totalBytes - loadedBytes) / rate) : null,
+          uploadState: state,
+        })
+      }
+      const uploadOne = async (
+        entry: { upload_url: string; content_type: string; resumable?: boolean },
+        file: File,
+        baseBytes: number,
+      ) => {
+        if (entry.resumable) {
+          await uploadResumable(entry.upload_url, file, {
+            onProgress: p => reportBytes(baseBytes + p.loaded, p.bytesPerSecond, p.state),
+          })
+        } else {
+          // Legacy single-shot signed PUT (backend without resumable support).
+          await api.uploadToSignedUrl(entry.upload_url, file, entry.content_type,
+            (loaded) => reportBytes(baseBytes + loaded, null, "uploading"))
+        }
+      }
+      await uploadOne(audioUrl, mixedFile, 0)
+      await uploadOne(instrumentalUrl, instrumentalFile, mixedFile.size)
 
-      updateRow(row.id, { status: "completing", progress: 100 })
-      await api.completeJobUpload(jobId, ["audio", "existing_instrumental"])
+      updateRow(row.id, { status: "completing", progress: 100, etaSeconds: 0 })
+      try {
+        await api.completeJobUpload(jobId, ["audio", "existing_instrumental"])
+      } catch (completeErr: any) {
+        // A recovered/retried row may have already completed before the previous
+        // session died; the job then rejects a second uploads-complete. The
+        // uploads themselves are verified done (session offsets), so treat it
+        // as success rather than stranding the row.
+        const alreadyStarted = hadExistingJob && completeErr instanceof ApiError && completeErr.status === 400
+        if (!alreadyStarted) throw completeErr
+        console.warn("[TenantBulkFlow] uploads-complete rejected for recovered row; assuming already processing:", jobId)
+      }
+      markRowDone(currentBatchId, row.id)
       updateRow(row.id, { status: "done" })
       return true
     } catch (err: any) {
       console.error("[TenantBulkFlow] row submit failed:", row.id, err)
-      updateRow(row.id, { status: "error", error: err instanceof ApiError ? err.message : t('rowSubmitError') })
+      let message = err instanceof ApiError ? err.message : t('rowSubmitError')
+      if (err instanceof ResumableUploadError && err.permanent) {
+        // Session expired/invalid (e.g. resumed after ~a week) — resuming is
+        // impossible; the operator should start this row over.
+        message = t('sessionExpired')
+      }
+      updateRow(row.id, { status: "error", error: message, uploadState: undefined })
       return false
     }
   }
@@ -235,9 +392,12 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     if (submittable.length === 0) return
     setIsSubmitting(true)
     setError("")
-    const batchId = (typeof crypto !== "undefined" && crypto.randomUUID)
+    // Reuse the batch id across retries/recovery so jobs and IndexedDB records
+    // stay grouped under one batch.
+    const currentBatchId = batchId ?? ((typeof crypto !== "undefined" && crypto.randomUUID)
       ? crypto.randomUUID()
-      : `batch-${Date.now()}-${Math.round(Math.random() * 1e6)}`
+      : `batch-${Date.now()}-${Math.round(Math.random() * 1e6)}`)
+    setBatchId(currentBatchId)
 
     // Bounded-concurrency worker pool; track how many rows succeeded.
     const queue = [...submittable]
@@ -246,7 +406,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       while (queue.length > 0) {
         const row = queue.shift()
         if (!row) break
-        if (await submitOneRow(row, batchId)) succeeded++
+        if (await submitOneRow(row, currentBatchId)) succeeded++
       }
     }
     await Promise.all(Array.from({ length: Math.min(SUBMIT_CONCURRENCY, queue.length) }, worker))
@@ -263,6 +423,32 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     return (
       <div className="space-y-4">
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>{t('intro')}</p>
+
+        {/* Unfinished batch from an earlier session → offer re-pick-to-resume. */}
+        {recovery && (
+          <div className="rounded-lg border p-3 space-y-2" data-testid="resume-banner"
+            style={{ borderColor: "var(--tenant-primary, var(--brand-pink))", backgroundColor: "rgba(255,255,255,0.03)" }}>
+            <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "var(--text)" }}>
+              <History className="w-4 h-4" style={{ color: "var(--tenant-primary, var(--brand-pink))" }} />
+              {t('resumeBannerTitle')}
+            </div>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {t('resumeBannerDesc', { count: recovery.rows.length })}
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm"
+                onClick={() => { recoveryModeRef.current = true; folderInputRef.current?.click() }}
+                style={{ backgroundColor: "var(--tenant-primary, var(--brand-pink))", color: "var(--primary-foreground)" }}>
+                {t('resumeChoose')}
+              </Button>
+              <Button size="sm" variant="outline"
+                onClick={() => { clearBatch(recovery.batchId); setRecovery(null) }}
+                style={{ borderColor: "var(--card-border)", color: "var(--text-muted)" }}>
+                {t('resumeDiscard')}
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <button
@@ -426,8 +612,22 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
               )}
 
               {(row.status === "uploading" || row.status === "creating" || row.status === "completing") && (
-                <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: "var(--card-border)" }}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${row.progress}%`, backgroundColor: "var(--tenant-primary, var(--brand-pink))" }} />
+                <div className="space-y-1">
+                  <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: "var(--card-border)" }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${row.progress}%`, backgroundColor: "var(--tenant-primary, var(--brand-pink))" }} />
+                  </div>
+                  {row.status === "uploading" && (
+                    <div className="flex items-center justify-between text-[10px]" style={{ color: "var(--text-muted)" }}>
+                      <span>
+                        {row.uploadState === "waiting-online"
+                          ? t('pausedOffline')
+                          : row.uploadState === "retrying"
+                            ? t('retryingConn')
+                            : `${row.progress}%`}
+                      </span>
+                      <span>{formatSpeedEta(row, t)}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -449,6 +649,21 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       </Button>
     </div>
   )
+}
+
+// "3.2 MB/s · 2m 10s left" — empty until the engine has a throughput sample.
+function formatSpeedEta(row: EditableRow, t: ReturnType<typeof useTranslations>): string {
+  const parts: string[] = []
+  if (row.bytesPerSecond && row.bytesPerSecond > 0) {
+    parts.push(t('speedMBs', { mb: (row.bytesPerSecond / (1024 * 1024)).toFixed(1) }))
+  }
+  if (row.etaSeconds !== null && row.etaSeconds !== undefined && isFinite(row.etaSeconds)) {
+    const total = Math.round(row.etaSeconds)
+    const m = Math.floor(total / 60)
+    const s = total % 60
+    parts.push(m > 0 ? t('etaMinSec', { m, s }) : t('etaSec', { s }))
+  }
+  return parts.join(" · ")
 }
 
 function StatusBadge({ row, valid, t }: { row: EditableRow; valid: boolean; t: ReturnType<typeof useTranslations> }) {

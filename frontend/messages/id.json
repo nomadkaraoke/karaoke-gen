@@ -1744,6 +1744,16 @@
     "checkPairing": "Dicocokkan otomatis — mohon periksa kembali artis, judul, dan file.",
     "lowConfidence": "Tingkat kecocokan rendah — mohon periksa kembali artis, judul, dan file.",
     "statusCheck": "Periksa pencocokan",
-    "willRetry": "akan dicoba lagi saat dikirim"
+    "willRetry": "akan dicoba lagi saat dikirim",
+    "etaMinSec": "{m}m {s}s tersisa",
+    "etaSec": "{s}s tersisa",
+    "pausedOffline": "Menunggu koneksi — akan dilanjutkan secara otomatis",
+    "resumeBannerDesc": "{count} trek dari sesi sebelumnya dapat dilanjutkan. Pilih kembali folder yang sama untuk melanjutkan — bagian yang sudah diunggah tidak akan dikirim ulang.",
+    "resumeBannerTitle": "Lanjutkan batch yang belum selesai?",
+    "resumeChoose": "Pilih folder untuk melanjutkan",
+    "resumeDiscard": "Abaikan",
+    "retryingConn": "Gangguan koneksi — mencoba lagi…",
+    "sessionExpired": "Sesi unggah kedaluwarsa — hapus trek ini dan mulai lagi",
+    "speedMBs": "{mb} MB/s"
   }
 }

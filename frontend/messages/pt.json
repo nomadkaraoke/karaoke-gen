@@ -1744,6 +1744,16 @@
     "checkPairing": "Pareamento automático — por favor, confira o artista, o título e os arquivos.",
     "lowConfidence": "Pareamento de baixa confiança — por favor, confira o artista, o título e os arquivos.",
     "statusCheck": "Verificar pareamento",
-    "willRetry": "tentará novamente ao enviar"
+    "willRetry": "tentará novamente ao enviar",
+    "etaMinSec": "{m}m {s}s restantes",
+    "etaSec": "{s}s restantes",
+    "pausedOffline": "Aguardando conexão — será retomado automaticamente",
+    "resumeBannerDesc": "{count} faixas de uma sessão anterior podem ser retomadas. Selecione novamente a mesma pasta para continuar — as partes já enviadas não serão reenviadas.",
+    "resumeBannerTitle": "Retomar lote inacabado?",
+    "resumeChoose": "Escolher pasta para retomar",
+    "resumeDiscard": "Descartar",
+    "retryingConn": "Problema de conexão — tentando novamente…",
+    "sessionExpired": "Sessão de envio expirada — remova esta faixa e comece novamente",
+    "speedMBs": "{mb} MB/s"
   }
 }

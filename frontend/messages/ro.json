@@ -1744,6 +1744,16 @@
     "checkPairing": "Asociat automat — te rugăm să verifici încă o dată artistul, titlul și fișierele.",
     "lowConfidence": "Potrivire nesigură — te rugăm să verifici încă o dată artistul, titlul și fișierele.",
     "statusCheck": "Verifică asocierea",
-    "willRetry": "va reîncerca la trimitere"
+    "willRetry": "va reîncerca la trimitere",
+    "etaMinSec": "{m}m {s}s rămase",
+    "etaSec": "{s}s rămase",
+    "pausedOffline": "În așteptarea conexiunii — se va relua automat",
+    "resumeBannerDesc": "{count} piese dintr-o sesiune anterioară pot fi reluate. Selectează din nou același folder pentru a continua — părțile deja încărcate nu vor fi trimise din nou.",
+    "resumeBannerTitle": "Reluare lot neterminat?",
+    "resumeChoose": "Alege folderul pentru a relua",
+    "resumeDiscard": "Renunță",
+    "retryingConn": "Problemă de conexiune — reîncercăm…",
+    "sessionExpired": "Sesiunea de încărcare a expirat — elimină această piesă și începe din nou",
+    "speedMBs": "{mb} MB/s"
   }
 }

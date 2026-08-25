@@ -1744,6 +1744,16 @@
     "checkPairing": "Dipadankan secara automatik — sila semak semula artis, tajuk dan fail.",
     "lowConfidence": "Padanan kurang pasti — sila semak semula artis, tajuk dan fail.",
     "statusCheck": "Semak padanan",
-    "willRetry": "akan cuba semula apabila dihantar"
+    "willRetry": "akan cuba semula apabila dihantar",
+    "etaMinSec": "Tinggal {m}m {s}s",
+    "etaSec": "Tinggal {s}s",
+    "pausedOffline": "Menunggu sambungan — akan disambung semula secara automatik",
+    "resumeBannerDesc": "{count} trek daripada sesi sebelumnya boleh disambung semula. Pilih semula folder yang sama untuk meneruskan — bahagian yang telah dimuat naik tidak akan dihantar lagi.",
+    "resumeBannerTitle": "Sambung semula kelompok yang belum selesai?",
+    "resumeChoose": "Pilih folder untuk sambung semula",
+    "resumeDiscard": "Buang",
+    "retryingConn": "Gangguan sambungan — mencuba semula…",
+    "sessionExpired": "Sesi muat naik tamat tempoh — buang trek ini dan mulakan semula",
+    "speedMBs": "{mb} MB/s"
   }
 }

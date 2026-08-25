@@ -1744,6 +1744,16 @@
     "checkPairing": "自動マッチングされました — アーティスト名、タイトル、ファイルを再度ご確認ください。",
     "lowConfidence": "マッチングの確度が低めです — アーティスト名、タイトル、ファイルを再度ご確認ください。",
     "statusCheck": "ペアリングを確認",
-    "willRetry": "送信時に再試行します"
+    "willRetry": "送信時に再試行します",
+    "etaMinSec": "残り{m}分{s}秒",
+    "etaSec": "残り{s}秒",
+    "pausedOffline": "接続待ちです — 自動的に再開します",
+    "resumeBannerDesc": "以前のセッションの{count}曲を再開できます。同じフォルダを再度選択して続行してください。アップロード済みのデータは再送信されません。",
+    "resumeBannerTitle": "未完了のアップロードを再開しますか？",
+    "resumeChoose": "再開するフォルダを選択",
+    "resumeDiscard": "破棄",
+    "retryingConn": "接続が不安定です — 再試行中…",
+    "sessionExpired": "アップロードセッションの期限が切れました — このトラックを削除して、もう一度やり直してください",
+    "speedMBs": "{mb} MB/s"
   }
 }

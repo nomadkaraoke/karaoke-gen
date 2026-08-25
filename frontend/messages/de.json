@@ -1744,6 +1744,16 @@
     "checkPairing": "Automatisch zugeordnet — bitte überprüfe Künstler, Titel und Dateien noch einmal.",
     "lowConfidence": "Zuordnung mit geringer Sicherheit — bitte überprüfe Künstler, Titel und Dateien noch einmal.",
     "statusCheck": "Zuordnung überprüfen",
-    "willRetry": "wird beim Absenden erneut versucht"
+    "willRetry": "wird beim Absenden erneut versucht",
+    "etaMinSec": "Noch {m}m {s}s",
+    "etaSec": "Noch {s}s",
+    "pausedOffline": "Warten auf Verbindung — wird automatisch fortgesetzt",
+    "resumeBannerDesc": "{count} Tracks aus einer früheren Sitzung können fortgesetzt werden. Wähle denselben Ordner erneut aus, um fortzufahren — bereits hochgeladene Teile werden nicht noch einmal gesendet.",
+    "resumeBannerTitle": "Unvollständigen Batch fortsetzen?",
+    "resumeChoose": "Ordner zum Fortsetzen auswählen",
+    "resumeDiscard": "Verwerfen",
+    "retryingConn": "Verbindungsproblem — erneuter Versuch…",
+    "sessionExpired": "Upload-Sitzung abgelaufen — entferne diesen Track und starte ihn neu",
+    "speedMBs": "{mb} MB/s"
   }
 }

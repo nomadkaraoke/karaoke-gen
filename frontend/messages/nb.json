@@ -1744,6 +1744,16 @@
     "checkPairing": "Automatisk matchet — vennligst dobbeltsjekk artist, tittel og filer.",
     "lowConfidence": "Usikker match — vennligst dobbeltsjekk artist, tittel og filer.",
     "statusCheck": "Sjekk matching",
-    "willRetry": "vil prøve på nytt ved innsending"
+    "willRetry": "vil prøve på nytt ved innsending",
+    "etaMinSec": "{m}m {s}s igjen",
+    "etaSec": "{s}s igjen",
+    "pausedOffline": "Venter på tilkobling — gjenopptas automatisk",
+    "resumeBannerDesc": "{count} spor fra en tidligere økt kan gjenopptas. Velg samme mappe på nytt for å fortsette — deler som allerede er lastet opp, vil ikke bli sendt på nytt.",
+    "resumeBannerTitle": "Gjenoppta uferdig batch?",
+    "resumeChoose": "Velg mappe for å gjenoppta",
+    "resumeDiscard": "Forkast",
+    "retryingConn": "Tilkoblingsproblem — prøver på nytt…",
+    "sessionExpired": "Opplastingsøkten er utløpt — fjern dette sporet og start det på nytt",
+    "speedMBs": "{mb} MB/s"
   }
 }

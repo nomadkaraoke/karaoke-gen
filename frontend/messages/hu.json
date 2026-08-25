@@ -1744,6 +1744,16 @@
     "checkPairing": "Automatikusan párosítva — kérlek, ellenőrizd az előadót, a címet és a fájlokat.",
     "lowConfidence": "Bizonytalan egyezés — kérlek, ellenőrizd az előadót, a címet és a fájlokat.",
     "statusCheck": "Párosítás ellenőrzése",
-    "willRetry": "beküldéskor újra megpróbálja"
+    "willRetry": "beküldéskor újra megpróbálja",
+    "etaMinSec": "{m} p {s} mp van hátra",
+    "etaSec": "{s} mp van hátra",
+    "pausedOffline": "Várakozás a kapcsolatra — automatikusan folytatódik",
+    "resumeBannerDesc": "{count} szám egy korábbi munkamenetből folytatható. A folytatáshoz válaszd ki újra ugyanazt a mappát — a már feltöltött részeket nem küldjük el újra.",
+    "resumeBannerTitle": "Befejezetlen feltöltés folytatása?",
+    "resumeChoose": "Válassz mappát a folytatáshoz",
+    "resumeDiscard": "Elvetés",
+    "retryingConn": "Kapcsolati hiba — újrapróbálkozás…",
+    "sessionExpired": "A feltöltési munkamenet lejárt — távolítsd el ezt a számot, és kezdd újra",
+    "speedMBs": "{mb} MB/s"
   }
 }
