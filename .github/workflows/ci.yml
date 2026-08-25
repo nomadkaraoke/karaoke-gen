@@ -1218,7 +1218,11 @@ jobs:
           echo "GCS deployment complete"
 
       - name: Install Firestore client
-        run: pip install google-cloud-firestore
+        # Pinned to the app's version. google-cloud-firestore 2.29.0 (2026-08-24)
+        # percent-encodes the default database id, so the config read below fails
+        # with "400 Invalid database id %28default%29" — an unpinned install broke
+        # every backend deploy after 2.29.0 shipped. Keep in sync with pyproject.
+        run: pip install 'google-cloud-firestore==2.26.0'
 
       - name: Read Firestore config
         id: config
