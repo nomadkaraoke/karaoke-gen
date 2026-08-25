@@ -1740,6 +1740,10 @@
     "artist": "Umělec",
     "statusError": "Selhalo",
     "title": "Název",
-    "noAudioFound": "Ve tvém výběru nebyly nalezeny žádné zvukové soubory."
+    "noAudioFound": "Ve tvém výběru nebyly nalezeny žádné zvukové soubory.",
+    "checkPairing": "Automaticky spárováno — prosím zkontroluj interpreta, název a soubory.",
+    "lowConfidence": "Nejistá shoda — prosím zkontroluj interpreta, název a soubory.",
+    "statusCheck": "Zkontroluj spárování",
+    "statusCreatedButFailed": "Úloha byla vytvořena, ale nahrávání selhalo — zkontroluj seznam úloh"
   }
 }

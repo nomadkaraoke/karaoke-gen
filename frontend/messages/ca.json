@@ -1740,6 +1740,10 @@
     "artist": "Artista",
     "statusError": "Ha fallat",
     "title": "Títol",
-    "noAudioFound": "No s'han trobat fitxers d'àudio a la teva selecció."
+    "noAudioFound": "No s'han trobat fitxers d'àudio a la teva selecció.",
+    "checkPairing": "Emparellat automàticament — si us plau, revisa l'artista, el títol i els fitxers.",
+    "lowConfidence": "Coincidència poc segura — si us plau, revisa l'artista, el títol i els fitxers.",
+    "statusCheck": "Revisa l'emparellament",
+    "statusCreatedButFailed": "Tasca creada però la pujada ha fallat — revisa la llista de tasques"
   }
 }

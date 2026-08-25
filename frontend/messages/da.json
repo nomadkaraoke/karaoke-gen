@@ -1740,6 +1740,10 @@
     "artist": "Kunstner",
     "statusError": "Mislykkedes",
     "title": "Titel",
-    "noAudioFound": "Ingen lydfiler fundet i din markering."
+    "noAudioFound": "Ingen lydfiler fundet i din markering.",
+    "checkPairing": "Automatisk matchet — dobbelttjek kunstner, titel og filer.",
+    "lowConfidence": "Usikkert match — dobbelttjek kunstner, titel og filer.",
+    "statusCheck": "Tjek match",
+    "statusCreatedButFailed": "Job oprettet, men upload fejlede — tjek joblisten"
   }
 }

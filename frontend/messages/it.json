@@ -1740,6 +1740,10 @@
     "artist": "Artista",
     "statusError": "Fallito",
     "title": "Titolo",
-    "noAudioFound": "Nessun file audio trovato nella tua selezione."
+    "noAudioFound": "Nessun file audio trovato nella tua selezione.",
+    "checkPairing": "Abbinato automaticamente — ricontrolla l'artista, il titolo e i file.",
+    "lowConfidence": "Abbinamento a bassa attendibilità — ricontrolla l'artista, il titolo e i file.",
+    "statusCheck": "Controlla l'abbinamento",
+    "statusCreatedButFailed": "Processo creato ma caricamento non riuscito — controlla la lista dei processi"
   }
 }

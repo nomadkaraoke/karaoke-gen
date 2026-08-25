@@ -1740,6 +1740,10 @@
     "artist": "Előadó",
     "statusError": "Sikertelen",
     "title": "Cím",
-    "noAudioFound": "Nem található hangfájl a kiválasztottak között."
+    "noAudioFound": "Nem található hangfájl a kiválasztottak között.",
+    "checkPairing": "Automatikusan párosítva — kérlek, ellenőrizd az előadót, a címet és a fájlokat.",
+    "lowConfidence": "Bizonytalan egyezés — kérlek, ellenőrizd az előadót, a címet és a fájlokat.",
+    "statusCheck": "Párosítás ellenőrzése",
+    "statusCreatedButFailed": "Feladat létrehozva, de a feltöltés sikertelen — ellenőrizd a feladatok listáját"
   }
 }

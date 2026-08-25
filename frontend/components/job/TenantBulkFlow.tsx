@@ -38,6 +38,15 @@ function isAudio(name: string): boolean {
   return AUDIO_EXTENSIONS.some(ext => lower.endsWith(ext))
 }
 
+// Stable per-file identity. A folder pick can contain multiple files that share
+// a basename across subfolders; webkitRelativePath disambiguates them. We thread
+// this identity through analysis, row selection, and upload lookup so a row never
+// resolves to the wrong file. The backend parses the basename regardless
+// (Path().stem uses the final path component), so pairing is unaffected.
+function identityOf(f: File): string {
+  return (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name
+}
+
 // Row is submittable only when both a mixed AND an instrumental file are chosen
 // (tenant jobs require a supplied instrumental — mixed-only rows are blocked and
 // flagged), the two differ, artist/title are filled, and both files are present.
@@ -71,20 +80,28 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   const folderInputRef = useRef<HTMLInputElement>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
 
-  // Map filename -> File for uploads and dropdown validation.
+  // Map file identity -> File for uploads and dropdown validation.
   const fileMap = useMemo(() => {
     const m = new Map<string, File>()
-    for (const f of files) m.set(f.name, f)
+    for (const f of files) m.set(identityOf(f), f)
     return m
   }, [files])
 
   const audioFilenames = useMemo(
-    () => files.filter(f => isAudio(f.name)).map(f => f.name).sort(),
+    () => files.filter(f => isAudio(f.name)).map(identityOf).sort(),
     [files]
   )
 
   const validCount = useMemo(
     () => rows.filter(r => rowIsValid(r, fileMap)).length,
+    [rows, fileMap]
+  )
+
+  // Rows we can still create a job for: structurally valid, not already done, and
+  // not already carrying a job (a row keeps its jobId once created, so a retry
+  // after a mid-flight failure never creates a duplicate job for the same track).
+  const submittableCount = useMemo(
+    () => rows.filter(r => rowIsValid(r, fileMap) && r.status !== "done" && !r.jobId).length,
     [rows, fileMap]
   )
 
@@ -116,7 +133,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     setFiles(selected)
     setPhase("analyzing")
     try {
-      const result = await api.analyzeBulk(selected.map(f => f.name))
+      const result = await api.analyzeBulk(selected.map(identityOf))
       const editable: EditableRow[] = result.rows.map((r, i) => ({
         id: `row-${i}-${r.mixed_filename}`,
         artist: r.artist,
@@ -198,7 +215,9 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   }
 
   async function handleSubmitAll() {
-    const submittable = rows.filter(r => rowIsValid(r, fileMap) && r.status !== "done")
+    // Skip rows that already created a job (see submittableCount) so a retry
+    // never double-creates for the same track.
+    const submittable = rows.filter(r => rowIsValid(r, fileMap) && r.status !== "done" && !r.jobId)
     if (submittable.length === 0) return
     setIsSubmitting(true)
     setError("")
@@ -383,6 +402,15 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
                 )}
               </div>
 
+              {/* Surface analyzer uncertainty so an operator doesn't blindly submit
+                  a low-confidence or explicitly-warned pairing. */}
+              {row.status === "pending" && valid && (row.warning || row.confidence !== "high") && (
+                <div className="flex items-start gap-1.5 text-xs" style={{ color: "#eab308" }}>
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{row.warning || (row.confidence === "low" ? t('lowConfidence') : t('checkPairing'))}</span>
+                </div>
+              )}
+
               {(row.status === "uploading" || row.status === "creating" || row.status === "completing") && (
                 <div className="w-full h-1 rounded-full overflow-hidden" style={{ backgroundColor: "var(--card-border)" }}>
                   <div className="h-full rounded-full transition-all" style={{ width: `${row.progress}%`, backgroundColor: "var(--tenant-primary, var(--brand-pink))" }} />
@@ -400,10 +428,10 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
         </div>
       )}
 
-      <Button onClick={handleSubmitAll} disabled={validCount === 0 || isSubmitting} className="w-full"
-        style={{ backgroundColor: validCount > 0 && !isSubmitting ? "var(--tenant-primary, var(--brand-pink))" : undefined, color: validCount > 0 && !isSubmitting ? "var(--primary-foreground)" : undefined }}>
+      <Button onClick={handleSubmitAll} disabled={submittableCount === 0 || isSubmitting} className="w-full"
+        style={{ backgroundColor: submittableCount > 0 && !isSubmitting ? "var(--tenant-primary, var(--brand-pink))" : undefined, color: submittableCount > 0 && !isSubmitting ? "var(--primary-foreground)" : undefined }}>
         {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-        {isSubmitting ? t('submitting') : t('submitAll', { count: validCount })}
+        {isSubmitting ? t('submitting') : t('submitAll', { count: submittableCount })}
       </Button>
     </div>
   )
@@ -414,13 +442,19 @@ function StatusBadge({ row, valid, t }: { row: EditableRow; valid: boolean; t: R
     return <span className="flex items-center gap-1 text-green-500"><CheckCircle2 className="w-3.5 h-3.5" />{t('statusDone')}{row.jobId ? ` (${row.jobId.slice(0, 8)})` : ""}</span>
   }
   if (row.status === "error") {
-    return <span className="flex items-center gap-1 text-red-400 truncate"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />{row.error || t('statusError')}</span>
+    // The job was created but a later step failed — say so, so the operator
+    // checks the jobs list rather than resubmitting (which won't recreate it).
+    const msg = row.jobId ? t('statusCreatedButFailed') : (row.error || t('statusError'))
+    return <span className="flex items-center gap-1 text-red-400 truncate"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />{msg}</span>
   }
   if (row.status === "creating" || row.status === "uploading" || row.status === "completing") {
     return <span className="flex items-center gap-1"><Loader2 className="w-3.5 h-3.5 animate-spin" />{t('statusSubmitting')}</span>
   }
   if (!valid) {
     return <span className="text-red-400">{t('statusNeedsFix')}</span>
+  }
+  if (row.warning || row.confidence !== "high") {
+    return <span style={{ color: "#eab308" }}>{t('statusCheck')}</span>
   }
   return <span>{t('statusReady')}</span>
 }

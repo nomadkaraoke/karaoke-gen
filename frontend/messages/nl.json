@@ -1740,6 +1740,10 @@
     "artist": "Artiest",
     "statusError": "Mislukt",
     "title": "Titel",
-    "noAudioFound": "Geen audiobestanden gevonden in je selectie."
+    "noAudioFound": "Geen audiobestanden gevonden in je selectie.",
+    "checkPairing": "Automatisch gekoppeld — controleer voor de zekerheid de artiest, titel en bestanden.",
+    "lowConfidence": "Onzekere match — controleer voor de zekerheid de artiest, titel en bestanden.",
+    "statusCheck": "Controleer koppeling",
+    "statusCreatedButFailed": "Taak aangemaakt maar uploaden mislukt — controleer de takenlijst"
   }
 }

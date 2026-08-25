@@ -1740,6 +1740,10 @@
     "artist": "Artisti",
     "statusError": "Epäonnistui",
     "title": "Nimi",
-    "noAudioFound": "Valinnastasi ei löytynyt äänitiedostoja."
+    "noAudioFound": "Valinnastasi ei löytynyt äänitiedostoja.",
+    "checkPairing": "Yhdistetty automaattisesti — tarkistathan vielä esittäjän, kappaleen nimen ja tiedostot.",
+    "lowConfidence": "Epävarma osuma — tarkistathan vielä esittäjän, kappaleen nimen ja tiedostot.",
+    "statusCheck": "Tarkista yhdistäminen",
+    "statusCreatedButFailed": "Työ luotu, mutta lataus epäonnistui — tarkista työlista"
   }
 }

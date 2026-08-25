@@ -1740,6 +1740,10 @@
     "artist": "Artista",
     "statusError": "Fallido",
     "title": "Título",
-    "noAudioFound": "No se encontraron archivos de audio en tu selección."
+    "noAudioFound": "No se encontraron archivos de audio en tu selección.",
+    "checkPairing": "Emparejado automáticamente — por favor, revisa bien el artista, el título y los archivos.",
+    "lowConfidence": "Emparejamiento de baja confianza — por favor, revisa bien el artista, el título y los archivos.",
+    "statusCheck": "Revisar emparejamiento",
+    "statusCreatedButFailed": "Trabajo creado pero la subida falló — revisa la lista de trabajos"
   }
 }

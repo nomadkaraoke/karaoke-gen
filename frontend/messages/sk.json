@@ -1714,9 +1714,9 @@
     "analyzeError": "Pri analýze týchto súborov sa niečo pokazilo. Skús to znova, prosím.",
     "analyzing": "Analyzujú sa názvy súborov…",
     "ignoredCount": "{count} neaudio súborov bolo ignorovaných",
-    "instrumental": "Inštrumentálna",
+    "instrumental": "Inštrumentál",
     "intro": "Vyber priečinok so skladbami a my automaticky spárujeme zmiešané a inštrumentálne súbory a extrahujeme interpreta a názov, takže ich môžeš skontrolovať a odoslať všetky naraz.",
-    "mixed": "Zmiešaná (s vokálmi)",
+    "mixed": "Mix (s vokálmi)",
     "pickFiles": "Vybrať súbory",
     "pickFolder": "Vybrať priečinok",
     "reasonNoInstrumental": "nenašla sa žiadna zodpovedajúca inštrumentálna verzia",
@@ -1740,6 +1740,10 @@
     "artist": "Interpret",
     "statusError": "Zlyhalo",
     "title": "Názov",
-    "noAudioFound": "V tvojom výbere sa nenašli žiadne audio súbory."
+    "noAudioFound": "V tvojom výbere sa nenašli žiadne audio súbory.",
+    "checkPairing": "Automaticky spárované — prosím, dôkladne skontroluj interpreta, názov a súbory.",
+    "lowConfidence": "Neistá zhoda — prosím, dôkladne skontroluj interpreta, názov a súbory.",
+    "statusCheck": "Skontroluj spárovanie",
+    "statusCreatedButFailed": "Úloha bola vytvorená, ale nahrávanie zlyhalo — skontroluj zoznam úloh"
   }
 }

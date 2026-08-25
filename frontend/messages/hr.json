@@ -1740,6 +1740,10 @@
     "artist": "Izvođač",
     "statusError": "Nije uspjelo",
     "title": "Naslov",
-    "noAudioFound": "Nisu pronađene audio datoteke u tvom odabiru."
+    "noAudioFound": "Nisu pronađene audio datoteke u tvom odabiru.",
+    "checkPairing": "Automatski upareno — obavezno provjeri izvođača, naslov i datoteke.",
+    "lowConfidence": "Uparivanje niske pouzdanosti — obavezno provjeri izvođača, naslov i datoteke.",
+    "statusCheck": "Provjeri uparivanje",
+    "statusCreatedButFailed": "Zadatak je kreiran, ali prijenos nije uspio — provjeri popis zadataka"
   }
 }

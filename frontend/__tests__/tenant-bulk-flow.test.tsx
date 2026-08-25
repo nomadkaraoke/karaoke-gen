@@ -150,6 +150,48 @@ it('submits every valid row sharing a single batch_id', async () => {
   expect(new Set(batchIds).size).toBe(1)
 })
 
+it('does not re-create a job for a row that already created one (retry safety)', async () => {
+  // Job creation succeeds, but the upload fails — the row keeps its jobId and
+  // must not be recreated on a subsequent submit.
+  mockApi.uploadToSignedUrl.mockRejectedValue(new Error('network blip'))
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  await screen.findAllByLabelText('Artist')
+
+  fireEvent.click(screen.getByRole('button', { name: /Submit 2 tracks/i }))
+  // Both rows create a job, then fail on upload.
+  await waitFor(() => expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(2))
+  await waitFor(() =>
+    expect(screen.getAllByText(/check the jobs list/i).length).toBe(2),
+  )
+
+  // Nothing left to submit → button disabled, so no duplicate jobs can be created.
+  const submitBtn = screen.getByRole('button', { name: /Submit 0 tracks/i })
+  expect(submitBtn).toBeDisabled()
+  expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(2)
+})
+
+it('surfaces a caution for low-confidence / warned rows', async () => {
+  mockApi.analyzeBulk.mockResolvedValue({
+    rows: [
+      { artist: 'Eddy Grant', title: 'I Dont Wanna Dance', mixed_filename: MIXED_1, instrumental_filename: INST_1, confidence: 'low', warning: null },
+      { artist: 'Smokey', title: 'Some Cats Know', mixed_filename: MIXED_2, instrumental_filename: INST_2, confidence: 'high', warning: 'labels were ambiguous' },
+    ],
+    unpaired: [],
+    ignored: [],
+  })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  await screen.findAllByLabelText('Artist')
+
+  // Low-confidence row shows the generic double-check caution.
+  expect(screen.getByText(/Low-confidence match/i)).toBeInTheDocument()
+  // Explicit analyzer warning is shown verbatim.
+  expect(screen.getByText(/labels were ambiguous/i)).toBeInTheDocument()
+})
+
 it('exports TenantBulkFlow as a named export', () => {
   expect(typeof TenantBulkFlow).toBe('function')
 })

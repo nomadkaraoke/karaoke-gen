@@ -1740,6 +1740,10 @@
     "artist": "Artist",
     "statusError": "Mislyktes",
     "title": "Tittel",
-    "noAudioFound": "Ingen lydfiler funnet i utvalget ditt."
+    "noAudioFound": "Ingen lydfiler funnet i utvalget ditt.",
+    "checkPairing": "Automatisk matchet — vennligst dobbeltsjekk artist, tittel og filer.",
+    "lowConfidence": "Usikker match — vennligst dobbeltsjekk artist, tittel og filer.",
+    "statusCheck": "Sjekk matching",
+    "statusCreatedButFailed": "Jobb opprettet, men opplasting mislyktes — sjekk jobblisten"
   }
 }

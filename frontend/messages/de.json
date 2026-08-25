@@ -1740,6 +1740,10 @@
     "artist": "Künstler",
     "statusError": "Fehlgeschlagen",
     "title": "Titel",
-    "noAudioFound": "Keine Audiodateien in deiner Auswahl gefunden."
+    "noAudioFound": "Keine Audiodateien in deiner Auswahl gefunden.",
+    "checkPairing": "Automatisch zugeordnet — bitte überprüfe Künstler, Titel und Dateien noch einmal.",
+    "lowConfidence": "Zuordnung mit geringer Sicherheit — bitte überprüfe Künstler, Titel und Dateien noch einmal.",
+    "statusCheck": "Zuordnung überprüfen",
+    "statusCreatedButFailed": "Auftrag erstellt, aber Upload fehlgeschlagen — überprüfe die Auftragsliste"
   }
 }

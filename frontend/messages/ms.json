@@ -1740,6 +1740,10 @@
     "artist": "Artis",
     "statusError": "Gagal",
     "title": "Tajuk",
-    "noAudioFound": "Tiada fail audio ditemui dalam pilihan anda."
+    "noAudioFound": "Tiada fail audio ditemui dalam pilihan anda.",
+    "checkPairing": "Dipadankan secara automatik — sila semak semula artis, tajuk dan fail.",
+    "lowConfidence": "Padanan kurang pasti — sila semak semula artis, tajuk dan fail.",
+    "statusCheck": "Semak padanan",
+    "statusCreatedButFailed": "Tugasan dicipta tetapi muat naik gagal — semak senarai tugasan"
   }
 }

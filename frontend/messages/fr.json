@@ -1735,11 +1735,15 @@
     "submitAll": "Soumettre {count} pistes",
     "submitAnotherBatch": "Soumettre un autre lot",
     "submitting": "Soumission en cours…",
-    "tooManyFiles": "Trop de pistes. Sélectionnes-en au maximum {max} à la fois.",
+    "tooManyFiles": "Trop de pistes. Sélectionne-en au maximum {max} à la fois.",
     "warningsTitle": "Certains fichiers nécessitent ton attention",
     "artist": "Artiste",
     "statusError": "Échoué",
     "title": "Titre",
-    "noAudioFound": "Aucun fichier audio trouvé dans ta sélection."
+    "noAudioFound": "Aucun fichier audio trouvé dans ta sélection.",
+    "checkPairing": "Associé automatiquement — vérifie bien l'artiste, le titre et les fichiers.",
+    "lowConfidence": "Correspondance peu fiable — vérifie bien l'artiste, le titre et les fichiers.",
+    "statusCheck": "Vérifier l'association",
+    "statusCreatedButFailed": "Tâche créée mais l'envoi a échoué — vérifie la liste des tâches"
   }
 }

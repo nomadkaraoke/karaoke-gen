@@ -1740,6 +1740,10 @@
     "artist": "Artis",
     "statusError": "Gagal",
     "title": "Judul",
-    "noAudioFound": "Tidak ada file audio yang ditemukan dalam pilihan Anda."
+    "noAudioFound": "Tidak ada file audio yang ditemukan dalam pilihan Anda.",
+    "checkPairing": "Dicocokkan otomatis — mohon periksa kembali artis, judul, dan file.",
+    "lowConfidence": "Tingkat kecocokan rendah — mohon periksa kembali artis, judul, dan file.",
+    "statusCheck": "Periksa pencocokan",
+    "statusCreatedButFailed": "Tugas dibuat tetapi unggahan gagal — periksa daftar tugas"
   }
 }

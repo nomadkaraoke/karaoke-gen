@@ -1740,6 +1740,10 @@
     "artist": "Sanatçı",
     "statusError": "Başarısız",
     "title": "Başlık",
-    "noAudioFound": "Seçiminde ses dosyası bulunamadı."
+    "noAudioFound": "Seçiminde ses dosyası bulunamadı.",
+    "checkPairing": "Otomatik eşleşti — lütfen sanatçıyı, başlığı ve dosyaları tekrar kontrol et.",
+    "lowConfidence": "Düşük güvenilirlikli eşleşme — lütfen sanatçıyı, başlığı ve dosyaları tekrar kontrol et.",
+    "statusCheck": "Eşleşmeyi kontrol et",
+    "statusCreatedButFailed": "İş oluşturuldu ancak yükleme başarısız oldu — iş listesini kontrol et"
   }
 }

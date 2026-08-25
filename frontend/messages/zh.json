@@ -1740,6 +1740,10 @@
     "artist": "歌手",
     "statusError": "失败",
     "title": "标题",
-    "noAudioFound": "您选择的项目中未找到音频文件。"
+    "noAudioFound": "您选择的项目中未找到音频文件。",
+    "checkPairing": "已自动匹配 — 请再次核对歌手、标题和文件。",
+    "lowConfidence": "低置信度匹配 — 请再次核对歌手、标题和文件。",
+    "statusCheck": "检查配对",
+    "statusCreatedButFailed": "任务已创建但上传失败 — 请查看任务列表"
   }
 }
