@@ -48,7 +48,9 @@ function getCardDetailsFromEnv(): CardDetails {
     );
   }
 
-  return { number, expiry, cvc, name };
+  // Default the name so a missing/empty secret can't leave the (now required)
+  // "Name on card" field blank and get the Pay click rejected.
+  return { number, expiry, cvc, name: name || 'E2E Test' };
 }
 
 /**
@@ -155,34 +157,51 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
   console.log('  Filling CVC...');
   await fillCardField(page, 'cardCvc', card.cvc);
 
-  // Step 6: Fill cardholder name if the field exists (any frame)
+  // Step 6: Fill cardholder name if the field exists (any frame).
+  // Stripe renames/relabels this field across layouts — we've seen the
+  // accessible name be "Cardholder name", "Name on card", or "Full name on
+  // card", and the placeholder be "Full name on card" or "First and last
+  // name". Match all known variants so an empty name field can't silently
+  // block the Pay button (which produced a false "payment broken" alarm — the
+  // Pay click was rejected with "Please provide the name on your card").
   if (card.name) {
     const nameInput = await locateVisibleInFrames(
       page,
       (f) =>
         f
-          .locator('#billingName, input[name="billingName"], input[placeholder="Full name on card"]')
-          .or(f.getByRole('textbox', { name: /cardholder name/i })),
-      2_000
+          .locator(
+            '[data-elements-stable-field-name="billingName"], #billingName, input[name="billingName"], input[placeholder="Full name on card"], input[placeholder="First and last name"]'
+          )
+          .or(f.getByRole('textbox', { name: /name on card|cardholder name/i })),
+      8_000
     );
     if (nameInput) {
       console.log('  Filling cardholder name...');
       await nameInput.fill(card.name);
+    } else {
+      console.log('  WARNING: cardholder name field not found — Pay may be rejected');
     }
   }
 
-  // Step 6b: Fill ZIP code (required for US cards) — search any frame
+  // Step 6b: Fill ZIP code (required for US cards) — search any frame.
+  // The accessible name is "ZIP code" (not exactly "ZIP"), so the regex must
+  // not anchor to ^zip$. Placeholder is often absent, so rely on the stable
+  // field name / accessible name too.
   const zipInput = await locateVisibleInFrames(
     page,
     (f) =>
       f
-        .locator('#billingPostalCode, input[name="billingPostalCode"], input[placeholder="ZIP"]')
-        .or(f.getByRole('textbox', { name: /^zip$|postal code/i })),
-    2_000
+        .locator(
+          '[data-elements-stable-field-name="billingPostalCode"], #billingPostalCode, input[name="billingPostalCode"], input[placeholder="ZIP"]'
+        )
+        .or(f.getByRole('textbox', { name: /zip|postal code/i })),
+    8_000
   );
   if (zipInput) {
     console.log('  Filling ZIP code...');
     await zipInput.fill(process.env.E2E_STRIPE_ZIP || '10001');
+  } else {
+    console.log('  WARNING: ZIP code field not found — Pay may be rejected');
   }
 
   // Step 6c: Uncheck "Save my information" to avoid a phone-number requirement
