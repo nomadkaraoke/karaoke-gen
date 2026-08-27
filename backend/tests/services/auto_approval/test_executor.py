@@ -253,6 +253,29 @@ async def test_duplicate_word_artifact_aborts_to_review() -> None:
 
 
 @pytest.mark.asyncio
+async def test_state_change_during_enforce_aborts() -> None:
+    # A human opening the editor between the snapshot read and the enforce
+    # writes (AWAITING_REVIEW -> IN_REVIEW) must abort — IN_REVIEW ->
+    # REVIEW_COMPLETE is a legal transition, so validation alone won't stop it.
+    eligible = _job(backing=_clean_backing())
+    editing = _job(status=JobStatus.IN_REVIEW, backing=_clean_backing())
+    job_manager = MagicMock()
+    job_manager.get_job.side_effect = [eligible, editing]
+    storage = MagicMock()
+    storage.file_exists.return_value = True
+    storage.list_files.return_value = []
+    storage.download_json.return_value = _confident_corrections()
+    with patch("backend.services.job_manager.JobManager", return_value=job_manager), \
+         patch("backend.services.storage_service.StorageService", return_value=storage), \
+         patch("backend.config.get_settings", return_value=_settings()):
+        result = await maybe_auto_complete_review("j1", trigger="screens_worker")
+    assert result["outcome"] == "aborted"
+    assert result["reason"] == "state_changed_during_enforce"
+    job_manager.transition_to_state.assert_not_called()
+    storage.upload_json.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_missing_corrections_is_noop() -> None:
     job_manager = MagicMock()
     job_manager.get_job.return_value = _job(backing=_clean_backing())

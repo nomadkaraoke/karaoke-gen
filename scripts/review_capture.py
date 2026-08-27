@@ -9,6 +9,12 @@ Given a job that Andrew has already reviewed (or an auto/unedited job), this:
   4. writes a per-job Markdown record (with blanks for Andrew's reasoning) + a
      machine-readable JSONL row into the corpus.
 
+⚠️ CAVEAT (2026-08-27): the raw→final diff this script reports includes the
+load-time AI auto-apply changes, NOT just the reviewer's edits (and word-id
+regeneration can inflate delete+insert counts). The authoritative human-edit
+record is the edit_log's non-``ai_suggestion`` ops via the replay tool; treat
+this script's diff as a raw-vs-shipped reconciliation only.
+
 The *reasoning* — "what did I correct and why" / "what did I hear and how did I
 decide on backing vocals" — is filled in during the interactive Claude session
 (Andrew dictates / shares screenshots; the agent edits the Markdown). This script

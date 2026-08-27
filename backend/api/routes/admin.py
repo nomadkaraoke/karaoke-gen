@@ -991,6 +991,14 @@ async def update_job(
                 f"no account existed, created one"
             )
 
+    # The executor treats any value other than "auto" as an enforcement blocker,
+    # so a typo (e.g. "always-review") would silently force human review.
+    if "review_mode" in updates and updates["review_mode"] not in ("auto", "always_review"):
+        raise HTTPException(
+            status_code=400,
+            detail='review_mode must be "auto" or "always_review"',
+        )
+
     # Check if we're toggling is_private from False to True on a completed job
     # If so, auto-delete existing outputs (YouTube, Dropbox, GDrive)
     toggling_to_private = (

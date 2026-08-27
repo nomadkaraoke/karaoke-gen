@@ -230,7 +230,7 @@ of what happened is the `edit_log_*.json`** (ordered, typed ops: `ai_suggestion_
 `original_text` / `timing_estimated` provenance baked into saved words. My earlier raw
 `corrections.json → corrections_updated.json` id-diff was misleading (word-id
 regeneration inflated del/ins). **Right baseline = post-AI; the interesting signal =
-residual manual edits + AI rejections + timing.**
+residual manual edits + AI rejections (⚠️ superseded: session-3 established these are the auto-apply's own conflict resolution, NOT human decisions — see session-4 update) + timing.**
 
 Findings from the 20 admin jobs (edit_log counts): AI solves lyrics outright on several
 (0 manual, 0 reject: d508adb6, 69ca7c1e, 507513ba, b5a7b8aa, 35ed9697, f986dfe5); AI

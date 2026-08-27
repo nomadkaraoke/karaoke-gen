@@ -128,6 +128,13 @@ def test_non_contiguous_words_are_stale() -> None:
     assert is_suggestion_stale(_segments(), _sug("replace", ["w0", "w2"], "x"))
 
 
+def test_empty_word_ids_is_stale_not_crash() -> None:
+    # all([]) is vacuously True — a cached suggestion with missing/empty
+    # word_ids must be treated as stale, not crash min() on an empty list.
+    assert is_suggestion_stale(_segments(), _sug("replace", [], "x"))
+    assert apply_suggestion(_segments(), _sug("replace", [], "x")) is None
+
+
 # --- conflict groups / accept-all ---
 
 def test_conflict_group_winner_by_consensus_then_confidence() -> None:

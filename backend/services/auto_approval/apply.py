@@ -60,6 +60,10 @@ def pick_accept_all_winners(suggestions: List[Suggestion]) -> List[str]:
 def _find_segment_with_words(
     segments: List[Segment], word_ids: List[str]
 ) -> Optional[Tuple[int, List[int]]]:
+    if not word_ids:
+        # all([]) is vacuously True — an empty/missing word_ids must read as
+        # not-found, not as "matches the first segment".
+        return None
     for i, seg in enumerate(segments):
         words = seg.get("words") or []
         indices = []

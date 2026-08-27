@@ -153,6 +153,21 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
                     "blockers": blockers}
 
         # ---- ENFORCE: complete the review exactly like a human would ----
+        # The status gate above used a snapshot read. Re-read now so a human who
+        # opened the editor in the meantime (AWAITING_REVIEW -> IN_REVIEW) is not
+        # overwritten — IN_REVIEW -> REVIEW_COMPLETE is a legal transition and
+        # would otherwise pass validation mid-edit.
+        fresh = job_manager.get_job(job_id)
+        if (
+            not fresh
+            or fresh.status not in expected_statuses
+            or (fresh.state_data or {}).get("instrumental_selection")
+        ):
+            payload["outcome"] = "aborted"
+            payload["abort_reason"] = "state_changed_during_enforce"
+            job_manager.update_processing_metadata(job_id, "auto_approval", payload)
+            return {"outcome": "aborted", "reason": "state_changed_during_enforce"}
+
         applied_info = _build_auto_corrections(
             job_id, corrections, ai_suggestions or [], storage
         )
@@ -174,11 +189,6 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
         progress_keys = ["render_progress", "video_progress", "encoding_progress"]
         job_manager.delete_state_data_keys(job_id, progress_keys)
 
-        payload["mode"] = "enforce"
-        payload["outcome"] = "auto_completed"
-        payload["applied_suggestions"] = len(applied_info.get("applied_ids") or [])
-        job_manager.update_processing_metadata(job_id, "auto_approval", payload)
-
         job_manager.transition_to_state(
             job_id=job_id,
             new_status=JobStatus.REVIEW_COMPLETE,
@@ -188,6 +198,13 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
                 "audible backing vocals — skipping review, rendering video"
             ),
         )
+
+        # Record the verdict AFTER the transition so the metadata never claims
+        # auto-completion for a job that in fact fell back to human review.
+        payload["mode"] = "enforce"
+        payload["outcome"] = "auto_completed"
+        payload["applied_suggestions"] = len(applied_info.get("applied_ids") or [])
+        job_manager.update_processing_metadata(job_id, "auto_approval", payload)
 
         from backend.services.worker_service import get_worker_service
         await get_worker_service().trigger_render_video_worker(job_id)
