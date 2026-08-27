@@ -157,11 +157,11 @@ def render_markdown(g: Dict[str, Any], captured_at: str) -> str:
     A("")
 
     # --- What actually changed ---
-    A("## What was changed in review (raw transcription → final)")
+    A("## Raw transcription → shipped final (includes auto-applied AI corrections — NOT purely human edits)")
     A("")
     if not diff.has_changes:
-        A("**No lyric edits** — the reviewer accepted the transcription as-is. "
-          "(Strong signal this class may be auto-approvable.)")
+        A("**No changes raw→final** — neither the auto-applied AI nor the reviewer "
+          "changed anything. (Strong signal this class may be auto-approvable.)")
     else:
         A(f"**{diff.total_changes} changes**: "
           f"{len(diff.replacements)} word swaps, {len(diff.text_edits)} in-place text, "
