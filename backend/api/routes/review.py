@@ -711,9 +711,9 @@ async def get_dev_audio(job_id: str, path: str, request: Request):
     """
     if not _dev_audio_proxy_enabled():
         raise HTTPException(status_code=404, detail="Not found")
-    # Scope guard: only this job's own artifacts (the job id must appear in the
-    # path), and no traversal. Localhost-dev-only, so this is belt-and-braces.
-    if f"/{job_id}/" not in f"/{path}" or ".." in path:
+    # Scope guard: only this job's own artifacts (path anchored under the job's
+    # prefix), and no traversal. Localhost-dev-only, so this is belt-and-braces.
+    if not path.startswith(f"jobs/{job_id}/") or ".." in path:
         raise HTTPException(status_code=400, detail="Invalid path")
 
     try:

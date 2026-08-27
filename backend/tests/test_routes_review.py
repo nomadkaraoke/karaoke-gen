@@ -1431,3 +1431,15 @@ class TestDevAudioProxy:
         client = TestClient(app)
         resp = client.get("/api/review/job1/dev-audio?path=jobs/other/stems/x.flac")
         assert resp.status_code == 400
+
+    def test_dev_audio_rejects_prefix_bypass_shapes(self, monkeypatch):
+        # The path must be anchored at jobs/{job_id}/ — a job_id that merely
+        # appears somewhere in the path (e.g. job_id="jobs") must not pass.
+        from backend.main import app
+        from fastapi.testclient import TestClient
+        monkeypatch.setenv("REVIEW_AUDIO_PROXY", "1")
+        client = TestClient(app)
+        resp = client.get("/api/review/jobs/dev-audio?path=jobs/other/stems/x.flac")
+        assert resp.status_code == 400
+        resp = client.get("/api/review/job1/dev-audio?path=jobs/job1/../other/x.flac")
+        assert resp.status_code == 400

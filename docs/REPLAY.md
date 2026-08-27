@@ -71,4 +71,3 @@ easy to talk through what the AI got right, what you overrode, and what's left.
   AI-corrected words tagged (`ai_corrected`, `original_text`, `timing_estimated`).
 - If a job had its outputs deleted (admin "delete outputs"), stems may be gone and
   audio won't load — the lyrics/action-log still work.
-</content>

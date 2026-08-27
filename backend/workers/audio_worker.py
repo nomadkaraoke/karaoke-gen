@@ -360,6 +360,19 @@ async def process_audio_separation(job_id: str) -> bool:
                 # This will check if lyrics are also complete and transition to next stage if so
                 job_manager.mark_audio_complete(job_id)
 
+                # Auto-approval second chance: when lyrics/screens finished BEFORE
+                # audio, the job is already parked in AWAITING_REVIEW and the
+                # screens-worker scoring ran without backing analysis. Now that
+                # stems + analysis exist, re-score and auto-complete the review if
+                # fully confident. No-op (fail-safe) in every other state.
+                try:
+                    from backend.services.auto_approval.executor import maybe_auto_complete_review
+                    auto_result = await maybe_auto_complete_review(job_id, trigger="audio_worker")
+                    if auto_result.get("outcome") == "auto_completed":
+                        job_log.info("Auto-approved after audio completion: review skipped")
+                except Exception as e:
+                    logger.warning(f"[job:{job_id}] auto-approval attempt failed (non-fatal): {e}")
+
                 root_span.set_attribute("duration_seconds", duration)
                 logger.info(f"[job:{job_id}] WORKER_END worker=audio status=success duration={duration:.1f}s")
                 return True

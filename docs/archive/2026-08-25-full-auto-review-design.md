@@ -284,8 +284,6 @@ cut-off sustained words), and the backing-vocals decider + up-front toggle
 | Instrumental selection → stem mapping | `backend/workers/video_worker.py:1341-1380,1438-1464` |
 | Submission-time options | `backend/models/requests.py:8-40`, `backend/models/job.py:540-609` (`JobCreate`) |
 | Existing "what changed" records | `backend/models/review_session.py:14`, `backend/api/routes/review.py:1345` |
-</content>
-</invoke>
 
 ---
 
@@ -311,3 +309,38 @@ from human-needed jobs; suggestion coverage does.
 Next per SYNTHESIS build order: collect shadow verdicts on live traffic; build the Pattern 4
 leading-connective auto-fixer (+P1 dedupe, P5 reference-majority); then revisit thresholds and
 begin enforcement (tenant jobs first).
+
+---
+
+## Session 4b update (2026-08-27, same session) — ENFORCEMENT SHIPPED
+
+Andrew's directive: *"keep driving towards eventually shipping fully auto processing, on by
+default, for all gen users, only showing the lyrics and/or instrumental review screens when one
+or the other is unsolved / definitely needs human review"* → shipped the framework + the
+narrow fully-confident class:
+
+- **`Job.review_mode`** (`"auto"` default | `"always_review"`, admin-PATCH-editable) — the
+  autonomy/review-level setting. Legacy `non_interactive` is untouched (CLI packaging semantics;
+  never gated the cloud review).
+- **`backend/services/auto_approval/apply.py`** — faithful server-side port of the review UI's
+  on-load auto-apply (`autoCorrectApply.ts` + `autoCorrectConflicts.ts` + `acceptAll`):
+  replace/insert_after/delete ops, timing distribution, word provenance flags, conflict-group
+  winners by consensus→confidence. Plus `find_suspicious_duplicates` (the P1 self-conflict
+  duplicate-word signature, reference-aware).
+- **`backend/services/auto_approval/executor.py`** — `maybe_auto_complete_review(job_id, trigger)`
+  called from `screens_worker` (pre-AWAITING_REVIEW) and `audio_worker` (post-analysis, for
+  audio-lags-lyrics ordering). Scores + records `processing_metadata.auto_approval` on EVERY job;
+  enforces only when: flag on + review_mode=auto + not made-for-you + no existing/custom
+  instrumental + `overall_auto` + audio complete + clean stem present. Enforce = apply cached AI
+  suggestions server-side → sanity checks (stale/duplicates/empty ⇒ abort to review) →
+  `corrections_updated.json` → instrumental=clean → clear progress keys →
+  GENERATING_SCREENS→REVIEW_COMPLETE (new legal edge; skips the review notification entirely) →
+  trigger render worker. FAIL-SAFE: every anomaly/exception falls back to normal human review.
+- **Backing-analysis-error trap fixed**: a failed analysis stores `has_audible_content=None`,
+  which previously read as `False` ("no audible content") in the scorer — would have wrongly
+  auto-picked clean. Now treated as analysis-absent → review.
+- Kill switch: `AUTO_APPROVAL_ENFORCE_ENABLED=false` (scoring/recording continues).
+
+Expected initial auto rate ~5% of jobs (1/20 in the calibration corpus): lyrics must be
+synced-perfect or ai-resolved AND backing must be non-subjectively clean. Widening comes from
+build-order #2-#4 (P4 fixer, vocalization detector already gating, backing decider).

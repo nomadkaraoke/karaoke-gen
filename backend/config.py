@@ -123,6 +123,15 @@ class Settings(BaseSettings):
         "AUTO_CORRECT_PROACTIVE_ENABLED", "false"
     ).lower() in ("true", "1", "yes")
 
+    # Auto-approval ENFORCEMENT: when the auto-approval scorer is fully confident
+    # (see backend/services/auto_approval/), skip the combined review screens and
+    # go straight to render. Scoring + verdict recording happen on every job
+    # regardless of this flag; it only gates actually skipping the human.
+    # Per-job opt-out via Job.review_mode="always_review". Kill switch: false.
+    auto_approval_enforce_enabled: bool = os.getenv(
+        "AUTO_APPROVAL_ENFORCE_ENABLED", "true"
+    ).lower() in ("true", "1", "yes")
+
     # Match judge — artist/title formatting + match-acceptance for the job
     # submission flow. Deterministic + catalog layers always run; the light AI
     # layer (Vertex Gemini Flash) fires only when those aren't confident.

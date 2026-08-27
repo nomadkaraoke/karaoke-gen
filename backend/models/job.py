@@ -144,7 +144,10 @@ STATE_TRANSITIONS = {
     JobStatus.LYRICS_COMPLETE: [JobStatus.GENERATING_SCREENS, JobStatus.FAILED],
 
     # Post-parallel processing (screens + backing vocals analysis)
-    JobStatus.GENERATING_SCREENS: [JobStatus.APPLYING_PADDING, JobStatus.AWAITING_REVIEW, JobStatus.FAILED],
+    # GENERATING_SCREENS -> REVIEW_COMPLETE is the auto-approval path: when the
+    # scorer is fully confident the review screens are skipped entirely (no
+    # review token / "ready for review" notification is ever issued).
+    JobStatus.GENERATING_SCREENS: [JobStatus.APPLYING_PADDING, JobStatus.AWAITING_REVIEW, JobStatus.REVIEW_COMPLETE, JobStatus.FAILED],
     JobStatus.APPLYING_PADDING: [JobStatus.AWAITING_REVIEW, JobStatus.FAILED],
 
     # Combined human review flow (lyrics + instrumental selection)
@@ -271,6 +274,13 @@ class Job(BaseModel):
     webhook_url: Optional[str] = None            # Webhook for notifications
     user_email: Optional[str] = None             # Email for notifications
     non_interactive: bool = False                # Skip interactive steps (lyrics review, instrumental selection)
+
+    # Review autonomy level. "auto" (default): skip the combined review screens
+    # whenever the auto-approval scorer is fully confident, falling back to human
+    # review otherwise. "always_review": every job stops at the review screens.
+    # (Distinct from legacy non_interactive, which is CLI packaging/upload
+    # semantics and never gated the cloud review flow.)
+    review_mode: str = "auto"
 
     # Multi-tenant support ("" = consumer portal, "vocalstar"/etc = tenant portal)
     tenant_id: str = ""                          # Tenant ID for white-label portal scoping
@@ -557,6 +567,9 @@ class JobCreate(BaseModel):
     webhook_url: Optional[str] = None
     user_email: Optional[str] = None
     non_interactive: bool = False  # Skip interactive steps (lyrics review, instrumental selection)
+    # "auto" (default) = skip review screens when the auto-approval scorer is
+    # fully confident; "always_review" = always stop at the review screens.
+    review_mode: str = "auto"
     
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")

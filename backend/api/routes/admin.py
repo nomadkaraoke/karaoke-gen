@@ -93,6 +93,8 @@ class JobUpdateRequest(BaseModel):
     youtube_description_template: Optional[str] = None
     customer_email: Optional[str] = None
     customer_notes: Optional[str] = None
+    # Review autonomy: "auto" (skip review when confident) | "always_review"
+    review_mode: Optional[str] = None
 
     # Editable boolean fields
     enable_cdg: Optional[bool] = None
@@ -129,6 +131,7 @@ EDITABLE_JOB_FIELDS = {
     "non_interactive",
     "prep_only",
     "is_private",
+    "review_mode",
 }
 
 

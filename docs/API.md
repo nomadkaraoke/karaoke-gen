@@ -296,6 +296,15 @@ Response:
 
 The combined review flow allows users to review lyrics AND select instrumental track in a single session.
 
+**Auto-approval:** jobs default to `review_mode="auto"` — when the auto-approval scorer is fully
+confident (lyrics verified against a synced reference with every gap covered by the auto-applied
+AI suggestions, AND no audible backing vocals), the review screens are skipped entirely: the AI
+suggestions are applied server-side, the clean instrumental is selected, and the job goes
+straight to render. All other jobs stop at review as before. The verdict for every job is
+recorded in `processing_metadata.auto_approval` (fields: `mode`, `outcome`, per-axis verdicts +
+signals). Set `review_mode="always_review"` (admin job PATCH) to force the review screens;
+global kill switch: `AUTO_APPROVAL_ENFORCE_ENABLED=false`.
+
 #### Get Correction Data
 
 ```http

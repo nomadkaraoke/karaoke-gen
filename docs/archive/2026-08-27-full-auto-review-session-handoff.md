@@ -6,12 +6,12 @@ Read this + the two design docs + the private corpus, then continue from **§8 N
 - **Initiative goal (Andrew's spec):** make karaoke-gen able to SKIP the manual lyrics-review +
   instrumental-selection steps for tracks where we're confident it's safe — without sloppy releases.
   Start with easy cases, record real review decisions, then build heuristics + gating.
-- **Worktree:** `/Users/andrew/Projects/nomadkaraoke/karaoke-gen-full-auto-review`
+- **Worktree:** `<workspace>/karaoke-gen-full-auto-review`
   **Branch:** `feat/sess-20260825-0000-full-auto-review` (all work UNCOMMITTED).
 - **Design docs:** `docs/archive/2026-08-25-full-auto-review-design.md` (original plan + session-2 update),
   this handoff, `docs/REPLAY.md` (how to run the replay tool).
 - **Corpus (PRIVATE, workspace root — NOT in the public repo):**
-  `/Users/andrew/Projects/nomadkaraoke/docs/automation-corpus/` →
+  `<workspace>/docs/automation-corpus/ (private, outside this repo)` →
   `SYNTHESIS.md` (★ read first), `lyrics-manual-edit-patterns.md`, `backing-vocals-decision-logic.md`,
   `REVIEW-QUEUE.md`, `jobs/*.md` (20 per-job records), `snapshots/`.
 
@@ -23,7 +23,7 @@ Read this + the two design docs + the private corpus, then continue from **§8 N
   scaffold; validated against 30 real jobs.
 - **Session 2:** built the **replay tool** — reopen the real lyrics/instrumental review UIs read-only for
   COMPLETED jobs, with audio, running LOCALLY against prod data (read-only).
-- **Session 3 (this one):** walked all **20** most-recent `admin@nomadkaraoke.com` jobs in the replay UI
+- **Session 3 (this one):** walked all **20** most-recent `the admin account` jobs in the replay UI
   with Andrew, recording his reasoning → produced the full **pattern catalogue + SYNTHESIS.md**. Also
   hardened the replay tool (nav bar, Post-AI toggle, audio seeking) and fixed several reconstruction bugs.
 
@@ -91,7 +91,7 @@ Modified (the replay tool):
 Backend + frontend may still be running from this session (check `curl localhost:8000/api/health` and
 `localhost:3000`). To (re)start:
 ```bash
-cd /Users/andrew/Projects/nomadkaraoke/karaoke-gen-full-auto-review
+cd <workspace>/karaoke-gen-full-auto-review
 ./scripts/run-replay-local.sh          # backend :8000, REAL prod data (read-only), REVIEW_AUDIO_PROXY on
 # in another terminal:
 cd frontend && npm run dev             # :3000
@@ -145,4 +145,3 @@ that `REVIEW_AUDIO_PROXY` is unset in prod. (Frontend `?replay=1` is admin-only 
 
 No new transcription model needed for 1–4; hard problems are *gated*, not solved. Start with #1 (validates
 the whole thesis cheaply) unless Andrew redirects.
-</content>

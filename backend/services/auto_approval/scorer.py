@@ -407,6 +407,11 @@ def extract_backing_signals(backing_analysis: Optional[Dict[str, Any]]) -> Backi
     """Pull backing-vocals signals out of ``state_data.backing_vocals_analysis``."""
     if not backing_analysis:
         return BackingSignals(analysis_present=False)
+    # A FAILED analysis stores has_audible_content=None + analysis_error; that
+    # must never read as "no audible content" (which would wrongly auto-select
+    # clean). Treat it as no-analysis -> review.
+    if backing_analysis.get("analysis_error") or backing_analysis.get("has_audible_content") is None:
+        return BackingSignals(analysis_present=False)
 
     segments = backing_analysis.get("audible_segments") or []
     loud = 0

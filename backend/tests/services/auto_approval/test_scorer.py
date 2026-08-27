@@ -331,6 +331,19 @@ def test_missing_backing_analysis_is_review() -> None:
     assert res.non_subjective is False
 
 
+def test_errored_backing_analysis_is_review_not_clean() -> None:
+    # A failed analysis stores has_audible_content=None + analysis_error; it
+    # must NOT read as "no audible content" (that would wrongly auto-pick clean).
+    res = score_backing({
+        "has_audible_content": None,
+        "analysis_error": "download failed",
+        "recommended_selection": "clean",
+    })
+    assert res.verdict == BackingVerdict.REVIEW
+    assert res.non_subjective is False
+    assert res.signals.analysis_present is False
+
+
 # --- Combined ---
 
 def test_overall_auto_requires_both() -> None:
