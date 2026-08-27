@@ -21,19 +21,22 @@ export PORT="${PORT:-8000}"
 if [[ "$1" == "--with-emulators" ]]; then
     echo "📦 Starting GCP emulators..."
     "$SCRIPT_DIR/start-emulators.sh"
-    
+
     export FIRESTORE_EMULATOR_HOST="127.0.0.1:8080"
     export STORAGE_EMULATOR_HOST="http://127.0.0.1:4443"
+    export GOOGLE_CLOUD_PROJECT="test-project"
     export GCS_BUCKET_NAME="test-bucket"
     export FIRESTORE_COLLECTION="test-jobs"
-    
-    # Create test bucket
-    curl -s -X POST "http://127.0.0.1:4443/storage/v1/b" \
-        -H "Content-Type: application/json" \
-        -d '{"name":"test-bucket"}' \
-        --data-urlencode "project=test-project" || true
-    
+    export FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
+
+    # Create the bucket and seed a default theme (idempotent) so jobs can be created
+    poetry run python "$SCRIPT_DIR/seed-local-data.py"
+
     echo "✅ Emulators running"
+else
+    echo "⚠️  Running WITHOUT emulators: this targets the real GCP project"
+    echo "   ($GOOGLE_CLOUD_PROJECT) and requires GCP credentials."
+    echo "   External contributors should use: $0 --with-emulators"
 fi
 
 # Change to project root

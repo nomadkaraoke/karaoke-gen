@@ -814,8 +814,10 @@ async def upload_and_create_job(
             update_data['style_assets'] = style_assets
             if 'style_params' in style_assets:
                 update_data['style_params_gcs_path'] = style_assets['style_params']
-        elif theme_style_assets:
-            # Theme style assets (no custom uploads)
+        elif theme_style_assets or theme_style_params_path:
+            # Theme style assets (no custom uploads). A theme may have style
+            # params but no asset files (e.g. the minimal local-dev seed theme),
+            # so the params path must be written even when the assets dict is empty.
             update_data['style_assets'] = theme_style_assets
             if theme_style_params_path:
                 update_data['style_params_gcs_path'] = theme_style_params_path

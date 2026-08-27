@@ -155,7 +155,28 @@ class StorageService:
         """Internal method to generate signed URLs for GET or PUT operations."""
         import google.auth
         from google.auth.transport import requests
-        
+
+        # Local development against fake-gcs-server: real URL signing requires
+        # service-account credentials, which contributors don't have. The emulator
+        # serves objects unauthenticated, so return a plain emulator URL instead.
+        emulator_host = os.getenv("STORAGE_EMULATOR_HOST")
+        if emulator_host:
+            from urllib.parse import quote
+
+            base = emulator_host.rstrip("/")
+            if method == "GET":
+                url = f"{base}/download/storage/v1/b/{self.bucket.name}/o/{quote(blob_path, safe='')}?alt=media"
+            else:
+                # fake-gcs-server treats a PUT with X-Goog signature params as a
+                # signed-URL upload without validating the signature. Requires the
+                # server to run with -public-host matching this host.
+                url = (
+                    f"{base}/{self.bucket.name}/{quote(blob_path)}"
+                    "?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Signature=local-dev"
+                )
+            logger.info(f"Generated emulator {method} URL for {blob_path} (STORAGE_EMULATOR_HOST set)")
+            return url
+
         try:
             blob = self.bucket.blob(blob_path)
             

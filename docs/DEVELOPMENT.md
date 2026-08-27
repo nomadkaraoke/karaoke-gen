@@ -1,5 +1,10 @@
 # Development Guide
 
+> **External contributor?** See [CONTRIBUTING.md](../CONTRIBUTING.md) at the repo
+> root — the backend runs fully locally against emulators with **no GCP
+> credentials or paid API keys**. This file covers the full setup including
+> production/deployment concerns.
+
 ## Quick Start
 
 ### Prerequisites
@@ -24,9 +29,9 @@ source venv/bin/activate
 # Install dependencies
 poetry install
 
-# Copy environment template
+# Optional: copy environment template for API keys / overrides
+# (nothing in it is required to run locally with emulators)
 cp .env.example .env
-# Edit .env with required API keys
 ```
 
 ### Frontend Setup
@@ -43,12 +48,19 @@ cp .env.example .env.local
 ### Backend with Emulators
 
 ```bash
-# Start emulators and backend
+# Start emulators, create the bucket, seed a default theme, run the backend
 ./scripts/run-backend-local.sh --with-emulators
 
 # Backend runs at http://localhost:8000
 # API docs at http://localhost:8000/docs
 ```
+
+In emulator mode no GCP credentials are needed: workers run as local
+subprocesses, signed URLs are rewritten to emulator URLs, and magic-link
+login emails are printed to the console. Jobs must be created via **file
+upload** (URL jobs require the flacfetch cloud service). Set `MODEL_DIR` to
+enable local audio separation. See [CONTRIBUTING.md](../CONTRIBUTING.md) for
+the full walkthrough.
 
 ### Frontend
 
