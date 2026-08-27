@@ -151,6 +151,18 @@ export interface CorrectionData {
   // Instrumental selection data (added for combined review flow)
   instrumental_options?: InstrumentalOption[]
   backing_vocals_analysis?: BackingVocalsAnalysis | null
+  // Replay mode (read-only re-open of a completed job via ?replay=true). Present
+  // only in replay; carries the reviewer's ordered edit log for narration.
+  replay?: {
+    is_replay: boolean
+    job_status: string
+    instrumental_selection?: string | null
+    edit_log?: EditLog | null
+    // "Post-AI, pre-human" lyrics (raw + accepted AI suggestions, before manual edits).
+    // Present only when the reviewer made manual edits.
+    post_ai_segments?: LyricsSegment[] | null
+    has_manual_edits?: boolean
+  }
 }
 
 /** Instrumental option from the combined review endpoint */

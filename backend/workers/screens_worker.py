@@ -209,6 +209,12 @@ async def generate_screens(job_id: str) -> bool:
                         worker_service = get_worker_service()
                         await worker_service.trigger_render_video_worker(job_id)
                 else:
+                    # SHADOW MODE auto-approval scoring: compute + record the verdict
+                    # that will eventually gate auto-ship vs human review. No behaviour
+                    # change — every job still goes to review below.
+                    with job_span("auto-approval-shadow", job_id):
+                        await _record_auto_approval_shadow(job_id, job_manager, storage, job_log)
+
                     # Normal flow: transition to combined review
                     logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
                     job_manager.transition_to_state(
@@ -635,6 +641,83 @@ async def _analyze_backing_vocals(
             'analysis_error': str(e),
             'recommended_selection': 'clean',
         })
+
+
+async def _record_auto_approval_shadow(
+    job_id: str,
+    job_manager: JobManager,
+    storage: StorageService,
+    job_log: logging.Logger,
+) -> None:
+    """
+    Compute the auto-approvability verdict and record it in processing_metadata.
+
+    SHADOW MODE: this changes nothing about the job's path — it exists to validate
+    the scorer against real human review outcomes before it is allowed to gate.
+    See backend/services/auto_approval/ and
+    docs/archive/2026-08-25-full-auto-review-design.md.
+
+    Non-fatal: any failure is logged and the job proceeds to review as normal.
+    """
+    from datetime import datetime, timezone
+
+    from backend.services.auto_approval.scorer import score_job
+
+    corrections_path = f"jobs/{job_id}/lyrics/corrections.json"
+    try:
+        # file_exists first: download_json logs at ERROR on a missing blob, and
+        # jobs without lyrics (audio-only) legitimately have no corrections.json.
+        if not storage.file_exists(corrections_path):
+            job_log.info("Auto-approval shadow: no corrections.json — skipping (not a lyrics job?)")
+            return
+        corrections = storage.download_json(corrections_path)
+    except Exception as e:
+        job_log.warning(f"Auto-approval shadow: corrections.json unreadable ({e}) — skipping")
+        return
+
+    # The proactive auto-correct worker caches the suggestions the review UI will
+    # auto-apply on load; score against them so gap coverage reflects the post-AI
+    # state. Missing cache (proactive run failed/disabled) -> score without.
+    ai_suggestions = None
+    try:
+        cache_prefix = f"jobs/{job_id}/lyrics/auto_correct_cache/"
+        for cache_path in sorted(storage.list_files(cache_prefix)):
+            cached = storage.download_json(cache_path)
+            suggestions = cached.get('suggestions')
+            if isinstance(suggestions, list):
+                ai_suggestions = suggestions
+                break
+    except Exception as e:
+        job_log.info(f"Auto-approval shadow: no auto-correct cache readable ({e})")
+
+    try:
+        job = job_manager.get_job(job_id)
+        state_data = (job.state_data or {}) if job else {}
+        backing_analysis = state_data.get('backing_vocals_analysis')
+        audio_complete = bool(state_data.get('audio_complete', False))
+
+        verdict = score_job(corrections, backing_analysis, ai_suggestions)
+        payload = verdict.to_dict()
+        payload.update({
+            'shadow': True,
+            # Backing analysis runs in audio_worker after stems upload; if audio is
+            # still separating when we score, the backing verdict is provisional.
+            'audio_complete_at_scoring': audio_complete,
+            'backing_analysis_available': backing_analysis is not None,
+            'scored_at': datetime.now(timezone.utc).isoformat(),
+        })
+        job_manager.update_processing_metadata(job_id, 'auto_approval_shadow', payload)
+
+        summary = (
+            f"Auto-approval shadow verdict: overall_auto={verdict.overall_auto} "
+            f"lyrics={verdict.lyrics.verdict.value}/{verdict.lyrics.tier} "
+            f"backing={verdict.backing.verdict.value} (scorer v{verdict.scorer_version})"
+        )
+        job_log.info(summary)
+        logger.info(f"[job:{job_id}] {summary}")
+    except Exception as e:
+        job_log.warning(f"Auto-approval shadow scoring failed (non-fatal): {e}")
+        logger.warning(f"[job:{job_id}] Auto-approval shadow scoring failed: {e}")
 
 
 async def _transcode_review_audio(
