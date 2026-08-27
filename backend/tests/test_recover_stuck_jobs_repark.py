@@ -55,16 +55,19 @@ def _job(job_id, status, *, minutes_stale=0, source_name=None, download_retry=No
     )
 
 
-def _mock_jm(*, downloading=None, pending=None, rendering=None, jobs=None):
-    """Wire a JobManager mock for the endpoint's 3 status queries.
+def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=None, jobs=None):
+    """Wire a JobManager mock for the endpoint's 4 status queries.
 
-    downloading/rendering use .where().stream(); pending uses .where().limit().stream().
-    `jobs` maps job_id -> Job returned by get_job().
+    downloading/rendering/review_complete use .where().stream(); pending uses
+    .where().limit().stream(). `jobs` maps job_id -> Job returned by get_job().
     """
     mock_jm = MagicMock()
     where = mock_jm.firestore.db.collection.return_value.where.return_value
-    # Two non-limited .stream() calls in order: downloading_audio, rendering_video
-    where.stream.side_effect = [iter(downloading or []), iter(rendering or [])]
+    # Non-limited .stream() calls in order: downloading_audio, rendering_video,
+    # review_complete (lost-render-trigger sweep)
+    where.stream.side_effect = [
+        iter(downloading or []), iter(rendering or []), iter(review_complete or []),
+    ]
     # One .limit().stream() call: download_pending_retry
     where.limit.return_value.stream.return_value = iter(pending or [])
     mock_jm.get_job.side_effect = lambda jid: (jobs or {}).get(jid)
@@ -175,3 +178,38 @@ def test_fresh_render_not_reparked(client):
     resp, _ = _run(client, mock_jm)
     assert resp.json()["reparked_render_count"] == 0
     mock_jm.transition_to_state.assert_not_called()
+
+
+def test_stalled_review_complete_render_is_retriggered(client):
+    """REVIEW_COMPLETE >10 min with no render_progress = lost render trigger
+    (e.g. Cloud Tasks enqueue failed from the GPU worker) -> re-trigger."""
+    job = _job("rc1", JobStatus.REVIEW_COMPLETE, minutes_stale=30)
+    mock_jm = _mock_jm(
+        review_complete=[_doc("rc1", JobStatus.REVIEW_COMPLETE)],
+        jobs={"rc1": job},
+    )
+    mock_ws = MagicMock()
+    mock_ws.trigger_audio_download_worker = AsyncMock(return_value=True)
+    mock_ws.trigger_render_video_worker = AsyncMock(return_value=True)
+    with patch("backend.api.routes.internal.JobManager", return_value=mock_jm), \
+         patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+        resp = client.post("/api/internal/recover-stuck-jobs")
+    assert resp.status_code == 200
+    assert resp.json()["render_retriggered_jobs"] == ["rc1"]
+    mock_ws.trigger_render_video_worker.assert_awaited_once_with("rc1")
+
+
+def test_fresh_review_complete_is_left_alone(client):
+    job = _job("rc2", JobStatus.REVIEW_COMPLETE, minutes_stale=1)
+    mock_jm = _mock_jm(
+        review_complete=[_doc("rc2", JobStatus.REVIEW_COMPLETE)],
+        jobs={"rc2": job},
+    )
+    mock_ws = MagicMock()
+    mock_ws.trigger_render_video_worker = AsyncMock(return_value=True)
+    with patch("backend.api.routes.internal.JobManager", return_value=mock_jm), \
+         patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+        resp = client.post("/api/internal/recover-stuck-jobs")
+    assert resp.status_code == 200
+    assert resp.json()["render_retriggered_jobs"] == []
+    mock_ws.trigger_render_video_worker.assert_not_awaited()
