@@ -907,11 +907,17 @@ async def recover_stuck_jobs(
     # enqueue failure). Without this, the job sits at review_complete forever
     # with no error and no Retry button. Re-trigger is idempotent (worker
     # generation fence + status validation).
+    # REVIEW_COMPLETE is a transient state (render normally starts in seconds),
+    # so the population is tiny — scan it all (no limit, which could otherwise
+    # return only fresh jobs and starve stalled ones) and cap re-triggers per
+    # tick to bound the blast radius.
     render_retriggered = []
     rc_query = jobs_ref.where(
         filter=FieldFilter("status", "==", JobStatus.REVIEW_COMPLETE.value)
-    ).limit(50).stream()
+    ).stream()
     for doc in rc_query:
+        if len(render_retriggered) >= RENDER_RETRIGGERS_PER_TICK:
+            break
         job_id = (doc.to_dict() or {}).get("job_id", doc.id)
         job = job_manager.get_job(job_id)
         if not job:
@@ -954,6 +960,7 @@ async def recover_stuck_jobs(
 
 
 REVIEW_COMPLETE_STALL_SECONDS = 10 * 60  # render normally starts within seconds
+RENDER_RETRIGGERS_PER_TICK = 10          # bound the blast radius per 5-min tick
 
 
 def _review_complete_stalled(job) -> bool:
