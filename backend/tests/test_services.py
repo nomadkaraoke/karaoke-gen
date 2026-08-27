@@ -268,6 +268,35 @@ class TestWorkerService:
             assert cmd[1:] == ["-m", "backend.workers.audio_worker", "--job-id", "test123"]
 
     @pytest.mark.asyncio
+    async def test_no_local_subprocess_in_production_even_without_cloud_tasks(self):
+        """A prod deploy that omits ENABLE_CLOUD_TASKS must still use Cloud Run Jobs."""
+        from backend.services.worker_service import WorkerService, reset_worker_service
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings, \
+             patch('backend.services.worker_service.is_production', return_value=True):
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = False
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_video = False
+
+            mock_operation = MagicMock()
+            mock_operation.metadata = "test-metadata"
+            mock_run_v2, mock_jobs_client = self._mock_run_v2([mock_operation])
+
+            import google.cloud
+            with patch('subprocess.Popen') as mock_popen, \
+                 patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
+                service = WorkerService()
+                result = await service.trigger_audio_worker("test123")
+
+            assert result is True
+            mock_popen.assert_not_called()
+            mock_jobs_client.run_job.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_trigger_bulk_search_worker_local_subprocess_in_dev_mode(self):
         """Bulk search worker also falls back to a local subprocess in dev mode."""
         from backend.services.worker_service import WorkerService, reset_worker_service

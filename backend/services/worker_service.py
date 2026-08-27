@@ -24,7 +24,7 @@ import httpx
 from google.api_core import exceptions as gcp_exceptions
 from google.protobuf import duration_pb2
 
-from backend.config import get_settings
+from backend.config import get_settings, is_production
 from backend.services.tracing import inject_trace_context
 
 
@@ -404,7 +404,7 @@ class WorkerService:
         in AWAITING_AUDIO_SELECTION. Uses a Cloud Run Job (not BackgroundTasks) so
         the batch survives API instance scale-down and the user can close the tab.
         """
-        if not self._use_cloud_tasks:
+        if not self._use_cloud_tasks and not is_production():
             return self._run_worker_module_locally(
                 "bulk_search_worker", ["--batch-id", batch_id], log_prefix=f"[batch:{batch_id}]"
             )
@@ -636,9 +636,9 @@ class WorkerService:
         """
         # Local development (ENABLE_CLOUD_TASKS=false): run the worker module as a
         # local subprocess with the exact args the Cloud Run Job would receive.
-        # Production always sets ENABLE_CLOUD_TASKS=true, so this branch never
-        # fires in Cloud Run.
-        if not self._use_cloud_tasks:
+        # The is_production() guard ensures a deployed environment that omits
+        # ENABLE_CLOUD_TASKS still dispatches to Cloud Run Jobs, never Popen.
+        if not self._use_cloud_tasks and not is_production():
             return self._run_worker_module_locally(
                 worker_module, ["--job-id", job_id], log_prefix=f"[job:{job_id}]"
             )
