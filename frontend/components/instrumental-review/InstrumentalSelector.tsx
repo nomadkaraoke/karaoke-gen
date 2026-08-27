@@ -27,6 +27,8 @@ import { InstrumentalGuidancePanel } from "./InstrumentalGuidancePanel"
 interface InstrumentalSelectorProps {
   job: Job
   isLocalMode?: boolean
+  /** Replay/read-only: load + play audio but hide submit and all mutating actions. */
+  isReadOnly?: boolean
 }
 
 type ZoomLevel = 1 | 2 | 4
@@ -48,7 +50,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalSelectorProps) {
+export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = false }: InstrumentalSelectorProps) {
   const router = useRouter()
   const t = useTranslations('instrumentalReview')
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -157,9 +159,16 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
         setAnalysisData(analysis)
         setWaveformData(waveform)
 
-        // Set initial selection based on recommendation
-        const recommended = analysis.analysis.recommended_selection
-        setSelectedOption(recommended === "clean" ? "clean" : "with_backing")
+        // Set initial selection. In replay/read-only, reflect the ACTUAL saved
+        // choice; otherwise seed from the analyzer's recommendation.
+        const savedSelection = (job as { state_data?: { instrumental_selection?: string } })
+          .state_data?.instrumental_selection
+        if (isReadOnly && (savedSelection === "clean" || savedSelection === "with_backing" || savedSelection === "custom")) {
+          setSelectedOption(savedSelection as InstrumentalSelectionType)
+        } else {
+          const recommended = analysis.analysis.recommended_selection
+          setSelectedOption(recommended === "clean" ? "clean" : "with_backing")
+        }
 
         // Set duration from waveform data
         const dur = waveform.duration_seconds ?? waveform.duration ?? 0
@@ -177,7 +186,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
     }
 
     fetchData()
-  }, [job.job_id, isLocalMode, waitingForAudio])
+  }, [job.job_id, isLocalMode, waitingForAudio, isReadOnly, job])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -737,7 +746,8 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
 
       {/* Bottom section */}
       <div className="flex flex-col lg:flex-row gap-2 md:gap-3 flex-shrink-0">
-        {/* Left column: Custom Mix + Alternate Instrumental */}
+        {/* Left column: Custom Mix + Alternate Instrumental (editing only) */}
+        {!isReadOnly && (
         <div className="flex flex-col gap-2 md:gap-3 lg:flex-1 lg:min-w-0">
           <MuteRegionEditor
             regions={muteRegions}
@@ -773,6 +783,7 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
             )}
           </div>
         </div>
+        )}
 
         {/* Right column: Selection panel */}
         <div className="w-full lg:w-[340px] lg:flex-shrink-0 bg-card border border-border rounded-lg p-3 flex flex-col gap-2">
@@ -787,16 +798,22 @@ export function InstrumentalSelector({ job, isLocalMode = false }: InstrumentalS
             muteRegionsCount={muteRegions.length}
             backingVocalAnalysis={analysisData?.analysis}
           />
-          <Button
-            id="submit-btn"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            size="lg"
-            className="mt-auto w-full min-h-[44px] text-base font-semibold"
-          >
-            <Check className="w-5 h-5 mr-2" />
-            {isSubmitting ? t('submitting') : t('confirmContinue')}
-          </Button>
+          {isReadOnly ? (
+            <div className="mt-auto w-full rounded-md border border-border bg-muted/40 px-3 py-2 text-center text-sm">
+              Replay — chosen instrumental: <code className="font-semibold">{selectedOption}</code>
+            </div>
+          ) : (
+            <Button
+              id="submit-btn"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              size="lg"
+              className="mt-auto w-full min-h-[44px] text-base font-semibold"
+            >
+              <Check className="w-5 h-5 mr-2" />
+              {isSubmitting ? t('submitting') : t('confirmContinue')}
+            </Button>
+          )}
         </div>
       </div>
     </div>

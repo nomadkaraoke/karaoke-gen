@@ -209,14 +209,28 @@ async def generate_screens(job_id: str) -> bool:
                         worker_service = get_worker_service()
                         await worker_service.trigger_render_video_worker(job_id)
                 else:
-                    # Normal flow: transition to combined review
-                    logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
-                    job_manager.transition_to_state(
-                        job_id=job_id,
-                        new_status=JobStatus.AWAITING_REVIEW,
-                        progress=55,
-                        message="Ready for review. Please review lyrics and select your instrumental."
-                    )
+                    # Auto-approval: score the job (verdict always recorded in
+                    # processing_metadata.auto_approval) and, when fully confident
+                    # and eligible, complete the review here — skipping the
+                    # AWAITING_REVIEW state (and its notifications) entirely.
+                    # Fail-safe: anything short of confident falls through to
+                    # normal human review.
+                    from backend.services.auto_approval.executor import maybe_auto_complete_review
+                    with job_span("auto-approval", job_id):
+                        auto_result = await maybe_auto_complete_review(job_id, trigger="screens_worker")
+
+                    if auto_result.get("outcome") == "auto_completed":
+                        job_log.info("Auto-approved: review screens skipped, render triggered")
+                        logger.info(f"[job:{job_id}] Auto-approved — review skipped")
+                    else:
+                        # Normal flow: transition to combined review
+                        logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
+                        job_manager.transition_to_state(
+                            job_id=job_id,
+                            new_status=JobStatus.AWAITING_REVIEW,
+                            progress=55,
+                            message="Ready for review. Please review lyrics and select your instrumental."
+                        )
                 
                 duration = time.time() - start_time
                 # Store worker-level timing

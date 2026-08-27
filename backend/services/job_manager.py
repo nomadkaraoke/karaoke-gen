@@ -101,6 +101,8 @@ class JobManager:
             youtube_description_template=job_create.youtube_description_template,  # video_worker reads this
             webhook_url=job_create.webhook_url,
             user_email=job_create.user_email,
+            # Review autonomy ("auto" = skip review screens when confident)
+            review_mode=job_create.review_mode,
             # Distribution settings
             brand_prefix=job_create.brand_prefix,
             discord_webhook_url=job_create.discord_webhook_url,

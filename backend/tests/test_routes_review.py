@@ -1325,3 +1325,121 @@ class TestGetVocalsAudio:
         with pytest.raises(HTTPException) as exc_info:
             self._call({}, audio_complete=True)
         assert exc_info.value.status_code == 404
+
+
+class TestReplayCorrectionData:
+    """Replay mode for correction-data: re-open a COMPLETED job read-only.
+
+    Verifies the status gate is bypassed with ?replay=true (full auth only), the
+    AWAITING_REVIEW->IN_REVIEW transition is skipped, and the edit_log is attached.
+    """
+
+    def _client_with_auth(self, auth_type: str = "full"):
+        from backend.main import app
+        from backend.api.dependencies import require_review_auth
+        from fastapi.testclient import TestClient
+
+        async def _mock_auth(job_id: str = "job1"):
+            return (job_id, auth_type)
+
+        app.dependency_overrides[require_review_auth] = _mock_auth
+        return TestClient(app)
+
+    def _teardown(self):
+        from backend.main import app
+        from backend.api.dependencies import require_review_auth
+        app.dependency_overrides.pop(require_review_auth, None)
+
+    def _completed_job(self):
+        from backend.models.job import JobStatus
+        job = MagicMock()
+        job.status = JobStatus.COMPLETE
+        job.job_id = "job1"
+        job.artist = "A"
+        job.title = "T"
+        job.input_media_gcs_path = "jobs/job1/input/audio.flac"
+        job.file_urls = {"lyrics": {"corrections_updated": "jobs/job1/lyrics/corrections_updated.json"},
+                         "stems": {}, "analysis": {}}
+        job.state_data = {"instrumental_selection": "with_backing",
+                          "last_edit_log_path": "jobs/job1/lyrics/edit_log_x.json"}
+        return job
+
+    def test_replay_bypasses_status_gate_and_attaches_edit_log(self):
+        client = self._client_with_auth("full")
+        try:
+            with patch("backend.api.routes.review.JobManager") as jm, \
+                 patch("backend.api.routes.review.StorageService") as storage_cls, \
+                 patch("backend.api.routes.review._get_audio_hash", return_value="h1"):
+                jm.return_value.get_job.return_value = self._completed_job()
+                storage = storage_cls.return_value
+                storage.file_exists.return_value = True
+                storage.download_json.side_effect = lambda p: (
+                    {"entries": [{"operation": "ai_suggestion_accept"}]}
+                    if p.endswith("edit_log_x.json")
+                    else {"corrected_segments": [], "metadata": {}}
+                )
+                resp = client.get("/api/review/job1/correction-data?replay=true")
+                assert resp.status_code == 200
+                body = resp.json()
+                assert body["replay"]["is_replay"] is True
+                assert body["replay"]["instrumental_selection"] == "with_backing"
+                assert body["replay"]["job_status"]  # some status string
+                assert len(body["replay"]["edit_log"]["entries"]) == 1
+                # Read-only: must NOT transition state.
+                jm.return_value.transition_to_state.assert_not_called()
+        finally:
+            self._teardown()
+
+    def test_non_replay_completed_job_is_rejected(self):
+        client = self._client_with_auth("full")
+        try:
+            with patch("backend.api.routes.review.JobManager") as jm, \
+                 patch("backend.api.routes.review.StorageService"):
+                jm.return_value.get_job.return_value = self._completed_job()
+                resp = client.get("/api/review/job1/correction-data")
+                assert resp.status_code == 400
+        finally:
+            self._teardown()
+
+    def test_replay_requires_full_auth(self):
+        client = self._client_with_auth("review_token")
+        try:
+            with patch("backend.api.routes.review.JobManager") as jm, \
+                 patch("backend.api.routes.review.StorageService"):
+                jm.return_value.get_job.return_value = self._completed_job()
+                resp = client.get("/api/review/job1/correction-data?replay=true")
+                assert resp.status_code == 403
+        finally:
+            self._teardown()
+
+
+class TestDevAudioProxy:
+    """The dev-only audio byte-proxy is inert unless REVIEW_AUDIO_PROXY is set."""
+
+    def test_dev_audio_404_when_flag_disabled(self, monkeypatch):
+        from backend.main import app
+        from fastapi.testclient import TestClient
+        monkeypatch.delenv("REVIEW_AUDIO_PROXY", raising=False)
+        client = TestClient(app)
+        resp = client.get("/api/review/job1/dev-audio?path=jobs/job1/stems/x.flac")
+        assert resp.status_code == 404
+
+    def test_dev_audio_rejects_out_of_scope_path(self, monkeypatch):
+        from backend.main import app
+        from fastapi.testclient import TestClient
+        monkeypatch.setenv("REVIEW_AUDIO_PROXY", "1")
+        client = TestClient(app)
+        resp = client.get("/api/review/job1/dev-audio?path=jobs/other/stems/x.flac")
+        assert resp.status_code == 400
+
+    def test_dev_audio_rejects_prefix_bypass_shapes(self, monkeypatch):
+        # The path must be anchored at jobs/{job_id}/ — a job_id that merely
+        # appears somewhere in the path (e.g. job_id="jobs") must not pass.
+        from backend.main import app
+        from fastapi.testclient import TestClient
+        monkeypatch.setenv("REVIEW_AUDIO_PROXY", "1")
+        client = TestClient(app)
+        resp = client.get("/api/review/jobs/dev-audio?path=jobs/other/stems/x.flac")
+        assert resp.status_code == 400
+        resp = client.get("/api/review/job1/dev-audio?path=jobs/job1/../other/x.flac")
+        assert resp.status_code == 400

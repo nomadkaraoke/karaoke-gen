@@ -55,6 +55,13 @@ export function JobRouterClient() {
     typeof window !== 'undefined' ? window.location.hash : ''
   )
 
+  // Replay mode: read-only re-open of a COMPLETED job's review UI for the
+  // fully-automated-review recording program. Enabled via ?replay=1 (admin only).
+  const [isReplay] = useState(() =>
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('replay') === '1'
+  )
+
   // Listen for hash changes
   useEffect(() => {
     const handleHashChange = () => {
@@ -125,9 +132,11 @@ export function JobRouterClient() {
           return
         }
 
-        // Check job is in correct state
+        // Check job is in correct state.
+        // Replay mode (admin only) bypasses the state gate so a COMPLETED job's
+        // review UI can be re-opened read-only.
         const expectedStates = getExpectedStates(routeType)
-        if (!expectedStates.includes(job.status)) {
+        if (!(isReplay && isAdmin) && !expectedStates.includes(job.status)) {
           setAccessState({
             status: "wrong_state",
             currentState: job.status,
@@ -152,7 +161,7 @@ export function JobRouterClient() {
     }
 
     checkAccess()
-  }, [inLocalMode, jobId, routeType, user, authLoading, hasHydrated])
+  }, [inLocalMode, jobId, routeType, user, authLoading, hasHydrated, isReplay])
 
   // Loading state
   if (accessState.status === "loading") {
@@ -281,23 +290,27 @@ export function JobRouterClient() {
   if (currentRouteType === "instrumental") {
     return (
       <CrashReportBoundary source="instrumental-review" backHref="/app">
-        <InstrumentalReviewWrapper job={job} isLocalMode={inLocalMode} />
+        <InstrumentalReviewWrapper job={job} isLocalMode={inLocalMode} isReplay={isReplay} />
       </CrashReportBoundary>
     )
   }
 
   return (
     <CrashReportBoundary source="lyrics-review" backHref="/app">
-      <LyricsReviewWrapper job={job} isLocalMode={inLocalMode} />
+      <LyricsReviewWrapper job={job} isLocalMode={inLocalMode} isReplay={isReplay} />
     </CrashReportBoundary>
   )
 }
 
 // Lyrics Review Component Wrapper
-function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMode?: boolean }) {
+function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { job: Job; isLocalMode?: boolean; isReplay?: boolean }) {
   const [correctionData, setCorrectionData] = useState<CorrectionData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Replay: toggle between the final lyrics and the "post-AI, pre-human" state so
+  // manual edits are obvious. Reset whenever the job changes.
+  const [showPostAi, setShowPostAi] = useState(false)
+  useEffect(() => { setShowPostAi(false) }, [job.job_id])
 
   // Create the API client for this job
   const apiClient = createLyricsReviewApiClient(job.job_id)
@@ -308,7 +321,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
       try {
         setIsLoading(true)
         setError(null)
-        const data = await lyricsReviewApi.getCorrectionData(job.job_id)
+        const data = await lyricsReviewApi.getCorrectionData(job.job_id, { replay: isReplay })
         setCorrectionData(data)
       } catch (err) {
         console.error("Failed to load correction data:", err)
@@ -318,7 +331,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
       }
     }
     loadData()
-  }, [job.job_id])
+  }, [job.job_id, isReplay])
 
   // File load handler (opens file picker for local file)
   const handleFileLoad = useCallback(() => {
@@ -386,7 +399,9 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
               alt="Nomad Karaoke"
               style={{ height: 40 }}
             />
-            <h1 className="text-lg font-bold">Lyrics Transcription Review</h1>
+            <h1 className="text-lg font-bold">
+              {isReplay ? "Lyrics Review — Replay (read-only)" : "Lyrics Transcription Review"}
+            </h1>
             {(job.artist || job.title) && (
               <span className="text-xs md:text-sm text-muted-foreground truncate">
                 {[job.artist, job.title].filter(Boolean).join(" - ")}
@@ -397,13 +412,44 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
         </div>
       </header>
 
+      {isReplay && <ReplayNavBar jobId={job.job_id} screen="review" />}
+      {isReplay && (
+        <ReplayActionLog
+          editLog={correctionData.replay?.edit_log ?? null}
+          instrumentalSelection={correctionData.replay?.instrumental_selection ?? null}
+          jobStatus={correctionData.replay?.job_status ?? job.status}
+        />
+      )}
+
+      {isReplay && correctionData.replay?.has_manual_edits && correctionData.replay?.post_ai_segments && (
+        <div className="mx-4 mt-2 flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-50/40 dark:bg-amber-900/10 px-3 py-2 text-sm">
+          <span className="text-muted-foreground">Viewing lyrics:</span>
+          <button
+            className={`px-3 py-1 rounded font-medium ${!showPostAi ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+            onClick={() => setShowPostAi(false)}
+          >Final (my result)</button>
+          <button
+            className={`px-3 py-1 rounded font-medium ${showPostAi ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+            onClick={() => setShowPostAi(true)}
+          >Post-AI (pre-human)</button>
+          <span className="text-xs text-muted-foreground ml-1">
+            {showPostAi ? "← what the AI produced, before your manual edits" : "← your final version"}
+          </span>
+        </div>
+      )}
+
       <main className="px-4 py-2">
         <LyricsAnalyzer
-          data={correctionData}
+          key={showPostAi ? "postai" : "final"}
+          data={
+            showPostAi && correctionData.replay?.post_ai_segments
+              ? { ...correctionData, corrected_segments: correctionData.replay.post_ai_segments }
+              : correctionData
+          }
           onFileLoad={handleFileLoad}
           onShowMetadata={handleShowMetadata}
           apiClient={apiClient}
-          isReadOnly={false}
+          isReadOnly={isReplay}
           audioHash={correctionData.metadata?.audio_hash || job.audio_hash || job.job_id}
           isLocalMode={isLocalMode}
           jobId={job.job_id}
@@ -414,12 +460,140 @@ function LyricsReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMo
   )
 }
 
+/**
+ * ReplayNavBar — replay-only navigation: toggle Lyrics⇄Instrumental for the current
+ * job, and step Prev/Next through the job list (passed as a comma-separated `queue`
+ * URL param). All navigation is hash-only (`#/<id>/<screen>`), so the query params
+ * (baseApiUrl, replay, queue) are preserved and the app re-renders via hashchange.
+ */
+function ReplayNavBar({ jobId, screen }: { jobId: string; screen: "review" | "instrumental" }) {
+  const queue = (typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("queue")
+    : null)?.split(",").map((s) => s.trim()).filter(Boolean) ?? []
+  const idx = queue.indexOf(jobId)
+  const prev = idx > 0 ? queue[idx - 1] : null
+  const next = idx >= 0 && idx < queue.length - 1 ? queue[idx + 1] : null
+  const go = (id: string, s: "review" | "instrumental") => { window.location.hash = `#/${id}/${s}` }
+
+  const tabCls = (active: boolean) =>
+    `px-3 py-1 rounded text-sm font-medium ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`
+  const navCls = (enabled: boolean) =>
+    `px-3 py-1 rounded text-sm font-medium border ${enabled ? "hover:bg-muted" : "opacity-40 cursor-not-allowed"}`
+
+  return (
+    <div className="mx-4 mt-2 flex items-center gap-2 rounded-lg border bg-card px-3 py-2">
+      <span className="text-xs text-muted-foreground mr-1">Replay:</span>
+      <button className={tabCls(screen === "review")} onClick={() => go(jobId, "review")}>Lyrics</button>
+      <button className={tabCls(screen === "instrumental")} onClick={() => go(jobId, "instrumental")}>Instrumental</button>
+      <div className="ml-auto flex items-center gap-2">
+        <button className={navCls(!!prev)} disabled={!prev} onClick={() => prev && go(prev, "review")}>← Prev</button>
+        {idx >= 0 && queue.length > 0 && (
+          <span className="text-xs text-muted-foreground tabular-nums">{idx + 1} / {queue.length}</span>
+        )}
+        <button className={navCls(!!next)} disabled={!next} onClick={() => next && go(next, "review")}>Next job →</button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * ReplayActionLog — read-only summary of the reviewer's ordered edit_log for a
+ * completed job, shown in replay mode so Andrew can narrate what he did and why.
+ * Distinguishes AI-accepted / AI-rejected / manual / timing ops. Internal admin
+ * tool (English-only, like /admin).
+ */
+function ReplayActionLog({
+  editLog,
+  instrumentalSelection,
+  jobStatus,
+}: {
+  editLog: import("@/lib/lyrics-review/types").EditLog | null
+  instrumentalSelection: string | null
+  jobStatus: string
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  const entries = editLog?.entries ?? []
+
+  const counts = entries.reduce(
+    (acc, e) => {
+      if (e.operation === "ai_suggestion_accept") acc.aiAccept++
+      else if (e.operation === "ai_suggestion_reject") acc.aiReject++
+      else if (e.operation === "timing_change") acc.timing++
+      else if (e.operation === "ai_suggestion_run" || e.operation === "ai_suggestion_undo") acc.other++
+      else acc.manual++
+      return acc
+    },
+    { aiAccept: 0, aiReject: 0, manual: 0, timing: 0, other: 0 }
+  )
+
+  const badge = (op: string): { label: string; cls: string } => {
+    if (op === "ai_suggestion_accept") return { label: "AI ✓", cls: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" }
+    if (op === "ai_suggestion_reject") return { label: "AI ✗", cls: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" }
+    if (op === "timing_change") return { label: "timing", cls: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" }
+    if (op.startsWith("ai_suggestion")) return { label: op.replace("ai_suggestion_", "AI "), cls: "bg-muted text-muted-foreground" }
+    return { label: "manual", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" }
+  }
+
+  return (
+    <div className="mx-4 my-2 rounded-lg border bg-card">
+      <button
+        onClick={() => setCollapsed((c) => !c)}
+        className="w-full flex items-center justify-between px-4 py-2 text-sm font-medium"
+      >
+        <span>
+          Replay — actions in this review:{" "}
+          <span className="text-green-700 dark:text-green-400">{counts.aiAccept} AI accepted</span>,{" "}
+          <span className="text-red-700 dark:text-red-400">{counts.aiReject} AI rejected</span>,{" "}
+          <span className="text-amber-700 dark:text-amber-400">{counts.manual} manual</span>,{" "}
+          <span className="text-blue-700 dark:text-blue-400">{counts.timing} timing</span>
+          {"  ·  instrumental: "}
+          <code>{instrumentalSelection ?? "—"}</code>
+          {"  ·  status: "}
+          <code>{jobStatus}</code>
+        </span>
+        <span className="text-muted-foreground">{collapsed ? "▸ show" : "▾ hide"}</span>
+      </button>
+      {!collapsed && (
+        <div className="max-h-64 overflow-y-auto border-t px-2 py-2 text-xs">
+          {entries.length === 0 && (
+            <p className="px-2 py-1 text-muted-foreground">
+              No edit log recorded for this job.
+            </p>
+          )}
+          <ol className="space-y-0.5">
+            {entries.map((e, i) => {
+              const b = badge(e.operation)
+              const cat = (e.details?.category as string) || (e.details?.gap_category as string) || ""
+              return (
+                <li key={e.id || i} className="flex items-start gap-2 px-2 py-1 rounded hover:bg-muted/50">
+                  <span className="text-muted-foreground tabular-nums w-6 text-right">{i + 1}</span>
+                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${b.cls}`}>{b.label}</span>
+                  <span className="flex-1 break-words">
+                    {e.text_before && <span className="line-through text-muted-foreground">{e.text_before}</span>}
+                    {e.text_before && e.text_after && <span className="mx-1">→</span>}
+                    {e.text_after && <span className="font-medium">{e.text_after}</span>}
+                    {!e.text_before && !e.text_after && <span className="text-muted-foreground">{e.operation}</span>}
+                    {cat && <span className="ml-2 text-muted-foreground">[{cat}]</span>}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Instrumental Review Component Wrapper
 // The InstrumentalSelector component handles its own data fetching and submission
 // It uses the appropriate API based on isLocalMode
-function InstrumentalReviewWrapper({ job, isLocalMode = false }: { job: Job; isLocalMode?: boolean }) {
+function InstrumentalReviewWrapper({ job, isLocalMode = false, isReplay = false }: { job: Job; isLocalMode?: boolean; isReplay?: boolean }) {
   return (
-    <InstrumentalSelector job={job} isLocalMode={isLocalMode} />
+    <>
+      {isReplay && <ReplayNavBar jobId={job.job_id} screen="instrumental" />}
+      <InstrumentalSelector job={job} isLocalMode={isLocalMode} isReadOnly={isReplay} />
+    </>
   )
 }
 

@@ -3906,8 +3906,11 @@ export const lyricsReviewApi = {
   /**
    * Get correction data for a job
    */
-  async getCorrectionData(jobId: string): Promise<CorrectionData> {
-    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/correction-data`, {
+  async getCorrectionData(jobId: string, opts?: { replay?: boolean }): Promise<CorrectionData> {
+    // Replay mode (admin/owner) re-opens a COMPLETED job's review data read-only,
+    // without the status gate or the AWAITING_REVIEW->IN_REVIEW transition.
+    const qs = opts?.replay ? "?replay=true" : ""
+    const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/correction-data${qs}`, {
       headers: getAuthHeaders()
     })
     return handleResponse<CorrectionData>(response)

@@ -237,9 +237,159 @@ async def ping(job_id: str):
     return {"status": "ok"}
 
 
+def _dev_audio_proxy_enabled() -> bool:
+    """True when the backend should proxy review audio bytes instead of returning
+    GCS signed URLs. Enabled via ``REVIEW_AUDIO_PROXY=1`` on a LOCAL dev backend
+    that lacks URL-signing credentials (plain user ADC can't sign). Never set in
+    prod — prod keeps the lighter signed-URL/redirect path.
+    """
+    return os.environ.get("REVIEW_AUDIO_PROXY", "").lower() in ("1", "true", "yes")
+
+
+def _dev_audio_url(job_id: str, gcs_path: Optional[str], base_url: str = "") -> Optional[str]:
+    """Build an ABSOLUTE dev-proxy URL for a review audio/image artifact.
+
+    The URL is used directly as an ``<audio>``/``<img>`` src by the frontend, which
+    resolves relative URLs against the page origin (localhost:3000), not the API host.
+    So we must return the full backend URL (``request.base_url``, e.g. http://127.0.0.1:8000/).
+    """
+    if not gcs_path:
+        return None
+    from urllib.parse import quote
+    return f"{base_url.rstrip('/')}/api/review/{job_id}/dev-audio?path={quote(gcs_path, safe='')}"
+
+
+def _reconstruct_post_ai_segments(
+    raw_segments: List[Dict[str, Any]],
+    edit_log: Optional[Dict[str, Any]],
+) -> Optional[List[Dict[str, Any]]]:
+    """Reconstruct the "post-AI, pre-human" lyrics state for replay.
+
+    Forward-replays the reviewer's edit log onto the RAW transcription
+    (``corrections.json`` corrected_segments), applying only the accepted AI
+    suggestion ops and STOPPING at the first manual op. The result is what the
+    reviewer saw right after the AI auto-corrections were applied but before they
+    made any manual edits — so a "Post-AI" toggle vs the final state makes the
+    human's manual edits obvious (e.g. cleaning up an AI self-conflict that inserted
+    a duplicate word).
+
+    Best-effort: ops that can't be applied are skipped rather than raising. Returns
+    None if there's no edit log (nothing to reconstruct) or no manual edits at all
+    (post-AI == final, so a toggle would be pointless).
+    """
+    import copy
+
+    if not edit_log:
+        return None
+    entries = edit_log.get("entries") or []
+    if not any(e.get("operation") and not str(e["operation"]).startswith("ai_suggestion") for e in entries):
+        return None  # no manual edits → nothing to distinguish
+
+    segments = copy.deepcopy(raw_segments)
+
+    def _find(word_id):
+        for seg in segments:
+            words = seg.get("words") or []
+            for i, w in enumerate(words):
+                if w.get("id") == word_id:
+                    return seg, words, i
+        return None, None, None
+
+    _new_id = [0]
+
+    def _gen_id():
+        _new_id[0] += 1
+        return f"postai_{_new_id[0]}"
+
+    for e in entries:
+        op = e.get("operation") or ""
+        if not op.startswith("ai_suggestion"):
+            break  # reached the human's manual edits — stop
+        if op != "ai_suggestion_accept":
+            continue  # run/reject/undo: not an applied change
+        details = e.get("details") or {}
+        sub_op = details.get("op") or "replace"
+        before_ids = e.get("word_ids_before") or []
+        text_after = (e.get("text_after") or "").strip()
+        anchor_id = before_ids[0] if before_ids else None
+        seg, words, idx = (_find(anchor_id) if anchor_id else (None, None, None))
+
+        def _make_words(text, start, end):
+            # Split the replacement/insertion text into individual words, distributing
+            # the [start, end] span evenly so multi-word replacements get distinct
+            # timestamps (not all crammed into one slot with identical timing).
+            toks = text.split()
+            n = len(toks) or 1
+            if end is None or start is None or end < start:
+                end = start
+            step = (end - start) / n
+            out = []
+            for i, tok in enumerate(toks):
+                ws = start + i * step
+                we = start + (i + 1) * step
+                out.append({"id": _gen_id(), "text": tok, "start_time": ws, "end_time": we,
+                            "ai_corrected": True, "original_text": ""})
+            return out
+
+        try:
+            if sub_op == "replace":
+                if words is not None:
+                    # word_ids_before may span MULTIPLE words (e.g.
+                    # 'quite a picket fence' -> 'white picket fences'). Replace the
+                    # whole contiguous span with the space-split replacement text,
+                    # spreading the original span's [start,end] across the new words.
+                    id_set = set(before_ids)
+                    span = [k for k, w in enumerate(words) if w.get("id") in id_set]
+                    if span:
+                        lo, hi = min(span), max(span)
+                        s0 = words[lo].get("start_time", 0.0)
+                        e0 = words[hi].get("end_time", s0)
+                        words[lo:hi + 1] = _make_words(text_after, s0, e0) if text_after else []
+            elif sub_op in ("insert_after", "insert_before", "insert"):
+                if words is not None:
+                    at = idx if sub_op == "insert_before" else idx + 1
+                    anchor = words[idx]
+                    a_s = anchor.get("start_time", 0.0)
+                    a_e = anchor.get("end_time", a_s)
+                    words[at:at] = _make_words(text_after, a_s, a_e)
+            elif sub_op in ("delete", "remove", "adlib_removal"):
+                if words is not None:
+                    id_set = set(before_ids)
+                    seg["words"] = [w for w in words if w.get("id") not in id_set]
+        except Exception:
+            continue  # best-effort
+
+    # Refresh each segment's joined text for display.
+    for seg in segments:
+        seg["text"] = " ".join((w.get("text") or "") for w in (seg.get("words") or [])).strip()
+    return segments
+
+
+def _load_edit_log(job, storage) -> Optional[Dict[str, Any]]:
+    """Load the reviewer's persisted edit log for replay, or None if absent.
+
+    Prefers the ``state_data.last_edit_log_path`` pointer written by the
+    submit-edit-log endpoint; the file lives at
+    ``jobs/{job_id}/lyrics/edit_log_{session_id}.json`` and holds ordered,
+    typed ops (``ai_suggestion_accept/reject`` vs manual ``word_*``/``timing_change``).
+    """
+    try:
+        path = (job.state_data or {}).get('last_edit_log_path')
+        if not path:
+            return None
+        if not storage.file_exists(path):
+            return None
+        return storage.download_json(path)
+    except Exception as e:  # never let replay fail on a missing/corrupt log
+        logger.warning(f"Job {job.job_id}: could not load edit_log for replay: {e}")
+        return None
+
+
 @router.get("/{job_id}/correction-data")
 async def get_correction_data(
     job_id: str,
+    request: Request,
+    replay: bool = False,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """
@@ -252,6 +402,15 @@ async def get_correction_data(
     - All lyrics correction data (segments, reference lyrics, anchors, etc.)
     - instrumental_options: List of available instrumental tracks with audio URLs
     - backing_vocals_analysis: Analysis data to help users choose instrumental
+
+    Replay mode (``?replay=true``, requires full auth — admin/owner, not a
+    review-token link): serves the SAME payload for a job in ANY status so the
+    review UI can be re-opened read-only for a completed job. It skips the
+    AWAITING_REVIEW/IN_REVIEW status gate and the AWAITING_REVIEW→IN_REVIEW
+    transition side-effect, and additionally attaches the reviewer's ordered
+    ``edit_log`` (AI-accept/reject/manual ops) under ``replay``. Purely read-only;
+    used for the fully-automated-review recording program. See
+    docs/archive/2026-08-25-full-auto-review-design.md.
     """
     job_manager = JobManager()
     storage = StorageService()
@@ -260,7 +419,12 @@ async def get_correction_data(
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
-    if job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
+    if replay and auth_info[1] != "full":
+        # Replay reopens completed jobs; restrict to authenticated admin/owner,
+        # never anonymous review-token links.
+        raise HTTPException(status_code=403, detail="Replay mode requires admin/owner authentication")
+
+    if not replay and job.status not in [JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW]:
         raise HTTPException(
             status_code=400,
             detail=t("en", "review.reviewNotReady", status=job.status)
@@ -314,18 +478,25 @@ async def get_correction_data(
         clean_url = stems.get('instrumental_clean')
         backing_url = stems.get('instrumental_with_backing')
 
-        # Build instrumental options with transcoded signed URLs (OGG Opus)
+        # Build instrumental options with transcoded signed URLs (OGG Opus).
+        # In local dev without signing creds, use same-origin byte-proxy URLs.
         instrumental_options = []
-        url_tasks = {}
-        if clean_url:
-            url_tasks['clean'] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
-        if backing_url:
-            url_tasks['with_backing'] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
-
         signed_urls = {}
-        if url_tasks:
-            results = await asyncio.gather(*url_tasks.values())
-            signed_urls = dict(zip(url_tasks.keys(), results))
+        if _dev_audio_proxy_enabled():
+            _base = str(request.base_url)
+            if clean_url:
+                signed_urls['clean'] = _dev_audio_url(job_id, clean_url, _base)
+            if backing_url:
+                signed_urls['with_backing'] = _dev_audio_url(job_id, backing_url, _base)
+        else:
+            url_tasks = {}
+            if clean_url:
+                url_tasks['clean'] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
+            if backing_url:
+                url_tasks['with_backing'] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
+            if url_tasks:
+                results = await asyncio.gather(*url_tasks.values())
+                signed_urls = dict(zip(url_tasks.keys(), results))
 
         if clean_url:
             instrumental_options.append({
@@ -352,19 +523,43 @@ async def get_correction_data(
         analysis_files = job.file_urls.get('analysis', {})
         waveform_url = analysis_files.get('backing_vocals_waveform')
         if waveform_url:
-            corrections_data['backing_vocals_waveform_url'] = storage.generate_signed_url(
-                waveform_url, expiration_minutes=120
+            corrections_data['backing_vocals_waveform_url'] = (
+                _dev_audio_url(job_id, waveform_url, str(request.base_url)) if _dev_audio_proxy_enabled()
+                else storage.generate_signed_url(waveform_url, expiration_minutes=120)
             )
 
-        # Transition to IN_REVIEW if not already
-        if job.status == JobStatus.AWAITING_REVIEW:
+        # Transition to IN_REVIEW if not already (never in replay — read-only)
+        if not replay and job.status == JobStatus.AWAITING_REVIEW:
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.IN_REVIEW,
                 message="User opened combined review interface"
             )
 
-        logger.info(f"Job {job_id}: Serving correction data with instrumental options for combined review")
+        # Replay: attach the reviewer's ordered edit_log so the UI can show the
+        # sequence of actions (AI-accept/reject/manual/timing) beside the final state.
+        if replay:
+            edit_log = _load_edit_log(job, storage)
+            post_ai_segments = None
+            try:
+                raw_data = storage.download_json(f"jobs/{job_id}/lyrics/corrections.json")
+                post_ai_segments = _reconstruct_post_ai_segments(
+                    raw_data.get('corrected_segments', []), edit_log
+                )
+            except Exception as e:
+                logger.warning(f"Job {job_id}: could not reconstruct post-AI segments: {e}")
+            corrections_data['replay'] = {
+                'is_replay': True,
+                'job_status': str(job.status),
+                'instrumental_selection': job.state_data.get('instrumental_selection'),
+                'edit_log': edit_log,
+                # Present only when the reviewer made manual edits — lets the UI offer a
+                # "Post-AI (pre-human)" toggle vs the final state.
+                'post_ai_segments': post_ai_segments,
+                'has_manual_edits': post_ai_segments is not None,
+            }
+
+        logger.info(f"Job {job_id}: Serving correction data (replay={replay}) for combined review")
         return corrections_data
 
     except Exception as e:
@@ -460,6 +655,13 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
             logger.info(f"Job {job_id}: Proxying {len(audio_bytes)}B vocals audio for waveform")
             return Response(content=audio_bytes, media_type=content_type)
 
+        if _dev_audio_proxy_enabled():
+            # Local dev (no GCS URL-signing creds): proxy the bytes instead of
+            # 302-redirecting to a signed URL. Prod (flag unset) is unchanged.
+            audio_bytes, content_type = await transcoding.get_review_audio_bytes_async(audio_gcs_path)
+            logger.info(f"Job {job_id}: [dev-proxy] streaming {len(audio_bytes)}B input audio")
+            return Response(content=audio_bytes, media_type=content_type)
+
         signed_url = await transcoding.get_review_audio_url_async(audio_gcs_path, expiration_minutes=120)
         logger.info(f"Job {job_id}: Redirecting to signed URL for audio review")
         return RedirectResponse(url=signed_url, status_code=302)
@@ -467,6 +669,68 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
     except Exception as e:
         logger.error(f"Job {job_id}: Error generating audio signed URL: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=t("en", "review.audioServeError", error=str(e)))
+
+
+# In-memory cache of already-fetched/transcoded dev-audio bytes so HTTP Range
+# requests (seeking) don't re-transcode the whole file each time. Dev-only.
+_DEV_AUDIO_CACHE: Dict[str, Tuple[bytes, str]] = {}
+
+
+def _ranged_response(request: Request, data: bytes, content_type: str) -> Response:
+    """Serve ``data`` honoring an HTTP Range header (206) so <audio> can seek."""
+    total = len(data)
+    range_header = request.headers.get("range")
+    headers = {"Accept-Ranges": "bytes"}
+    if range_header and range_header.startswith("bytes="):
+        try:
+            spec = range_header.split("=", 1)[1].split(",")[0].strip()
+            start_s, _, end_s = spec.partition("-")
+            start = int(start_s) if start_s else 0
+            end = int(end_s) if end_s else total - 1
+            end = min(end, total - 1)
+            if start > end or start >= total:
+                return Response(status_code=416, headers={"Content-Range": f"bytes */{total}"})
+            chunk = data[start:end + 1]
+            headers["Content-Range"] = f"bytes {start}-{end}/{total}"
+            headers["Content-Length"] = str(len(chunk))
+            return Response(content=chunk, status_code=206, media_type=content_type, headers=headers)
+        except Exception:
+            pass  # fall through to full 200
+    headers["Content-Length"] = str(total)
+    return Response(content=data, media_type=content_type, headers=headers)
+
+
+@router.get("/{job_id}/dev-audio")
+async def get_dev_audio(job_id: str, path: str, request: Request):
+    """LOCAL-DEV ONLY audio/image byte proxy for replay when signing creds are absent.
+
+    Returns 404 unless ``REVIEW_AUDIO_PROXY`` is enabled, so it is inert in prod.
+    No auth dependency (dev backend binds to localhost); it only ever serves bytes
+    under ``jobs/{job_id}/`` so it can't be used to read arbitrary blobs. Supports
+    HTTP Range so audio elements can seek.
+    """
+    if not _dev_audio_proxy_enabled():
+        raise HTTPException(status_code=404, detail="Not found")
+    # Scope guard: only this job's own artifacts (path anchored under the job's
+    # prefix), and no traversal. Localhost-dev-only, so this is belt-and-braces.
+    if not path.startswith(f"jobs/{job_id}/") or ".." in path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    try:
+        cached = _DEV_AUDIO_CACHE.get(path)
+        if cached is None:
+            storage = StorageService()
+            if path.lower().endswith(".png"):
+                cached = (storage.download_bytes(path), "image/png")
+            else:
+                from backend.services.audio_transcoding_service import AudioTranscodingService
+                cached = await AudioTranscodingService().get_review_audio_bytes_async(path)
+            _DEV_AUDIO_CACHE[path] = cached
+        data, content_type = cached
+        return _ranged_response(request, data, content_type)
+    except Exception as e:
+        logger.error(f"Job {job_id}: [dev-proxy] error serving {path}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="dev-audio proxy error")
 
 
 @router.post("/{job_id}/complete")
@@ -1405,6 +1669,7 @@ async def get_annotation_stats(
 @router.get("/{job_id}/instrumental-analysis")
 async def get_instrumental_analysis(
     job_id: str,
+    request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """
@@ -1434,21 +1699,28 @@ async def get_instrumental_analysis(
     backing_url = stems.get('instrumental_with_backing')
     backing_vocals_path = stems.get('backing_vocals')
 
-    # Build audio URLs with transcoded signed access (OGG Opus, parallel)
-    url_tasks = {}
-    if clean_url:
-        url_tasks['clean'] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
-    if backing_url:
-        url_tasks['with_backing'] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
-    if job.input_media_gcs_path:
-        url_tasks['original'] = transcoding.get_review_audio_url_async(job.input_media_gcs_path, expiration_minutes=120)
-    if backing_vocals_path:
-        url_tasks['backing_vocals'] = transcoding.get_review_audio_url_async(backing_vocals_path, expiration_minutes=120)
-
+    # Build audio URLs with transcoded signed access (OGG Opus, parallel).
+    # In local dev without signing creds, use same-origin byte-proxy URLs.
+    audio_url_sources = {
+        'clean': clean_url,
+        'with_backing': backing_url,
+        'original': job.input_media_gcs_path,
+        'backing_vocals': backing_vocals_path,
+    }
     audio_urls = {}
-    if url_tasks:
-        results = await asyncio.gather(*url_tasks.values())
-        audio_urls = dict(zip(url_tasks.keys(), results))
+    if _dev_audio_proxy_enabled():
+        _base = str(request.base_url)
+        for key, src in audio_url_sources.items():
+            if src:
+                audio_urls[key] = _dev_audio_url(job_id, src, _base)
+    else:
+        url_tasks = {
+            key: transcoding.get_review_audio_url_async(src, expiration_minutes=120)
+            for key, src in audio_url_sources.items() if src
+        }
+        if url_tasks:
+            results = await asyncio.gather(*url_tasks.values())
+            audio_urls = dict(zip(url_tasks.keys(), results))
 
     # Format response to match InstrumentalAnalysis type
     return {
