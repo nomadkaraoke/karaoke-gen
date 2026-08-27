@@ -249,7 +249,7 @@ class WorkerService:
                 logger.error("GOOGLE_CLOUD_PROJECT not set, cannot enqueue Cloud Task")
                 return False
                 
-            location = self.settings.gcp_region  # Must match queue location
+            location = self.settings.cloud_tasks_region  # queues all live here, NOT gcp_region
             
             # Build queue path
             parent = self.tasks_client.queue_path(project, location, queue_name)
@@ -754,7 +754,7 @@ class WorkerService:
                 logger.error("GOOGLE_CLOUD_PROJECT not set")
                 return False
 
-            location = self.settings.gcp_region
+            location = self.settings.cloud_tasks_region  # queues all live here, NOT gcp_region
 
             # Build queue path
             parent = self.tasks_client.queue_path(project, location, queue_name)
@@ -843,7 +843,7 @@ class WorkerService:
                 logger.error("GOOGLE_CLOUD_PROJECT not set")
                 return False
 
-            location = self.settings.gcp_region
+            location = self.settings.cloud_tasks_region  # queues all live here, NOT gcp_region
 
             # Build queue path
             parent = self.tasks_client.queue_path(project, location, queue_name)

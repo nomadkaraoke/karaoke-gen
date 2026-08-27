@@ -901,10 +901,35 @@ async def recover_stuck_jobs(
             if _repark_stalled_render(job_manager, job_id):
                 reparked.append(job_id)
 
+    # --- REVIEW_COMPLETE with no render started: lost render trigger ---
+    # Both the human complete-review endpoint (fire-and-forget task) and the
+    # auto-approval executor can lose the render trigger (e.g. Cloud Tasks
+    # enqueue failure). Without this, the job sits at review_complete forever
+    # with no error and no Retry button. Re-trigger is idempotent (worker
+    # generation fence + status validation).
+    render_retriggered = []
+    rc_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.REVIEW_COMPLETE.value)
+    ).limit(50).stream()
+    for doc in rc_query:
+        job_id = (doc.to_dict() or {}).get("job_id", doc.id)
+        job = job_manager.get_job(job_id)
+        if not job:
+            continue
+        if not _review_complete_stalled(job):
+            continue
+        logger.warning(f"[job:{job_id}] REVIEW_COMPLETE stalled >10 min with no render — re-triggering")
+        try:
+            if await worker_service.trigger_render_video_worker(job_id):
+                render_retriggered.append(job_id)
+        except Exception as e:
+            logger.warning(f"[job:{job_id}] render re-trigger failed: {e}")
+
     logger.info(
         f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} "
         f"download_parked={len(download_parked)} download_retried={len(download_retried)} "
-        f"download_timed_out={len(download_timed_out)} reparked={len(reparked)}"
+        f"download_timed_out={len(download_timed_out)} reparked={len(reparked)} "
+        f"render_retriggered={len(render_retriggered)}"
     )
     add_span_event("recovery_complete", {
         "recovered_count": len(recovered),
@@ -923,7 +948,35 @@ async def recover_stuck_jobs(
         "download_timed_out_jobs": download_timed_out,
         "reparked_render_jobs": reparked,
         "reparked_render_count": len(reparked),
+        "render_retriggered_jobs": render_retriggered,
+        "render_retriggered_count": len(render_retriggered),
     }
+
+
+REVIEW_COMPLETE_STALL_SECONDS = 10 * 60  # render normally starts within seconds
+
+
+def _review_complete_stalled(job) -> bool:
+    """True when a REVIEW_COMPLETE job has sat >10 min with no render underway.
+
+    ``render_progress`` is cleared on review completion and (re)written by the
+    render worker — its absence plus a stale ``updated_at`` means the trigger
+    was lost.
+    """
+    if (job.state_data or {}).get("render_progress"):
+        return False
+    updated_at = getattr(job, "updated_at", None)
+    if updated_at is None:
+        return False
+    from datetime import datetime, timezone as _tz
+    now = datetime.now(_tz.utc)
+    if updated_at.tzinfo is None:
+        now = datetime.utcnow()
+    try:
+        age = (now - updated_at).total_seconds()
+    except TypeError:
+        return False
+    return age > REVIEW_COMPLETE_STALL_SECONDS
 
 
 # Torrent sources whose downloads are worth auto-retrying over a long window —

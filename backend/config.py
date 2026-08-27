@@ -163,6 +163,11 @@ class Settings(BaseSettings):
     # When disabled (default), workers are triggered via direct HTTP (for development)
     enable_cloud_tasks: bool = os.getenv("ENABLE_CLOUD_TASKS", "false").lower() in ("true", "1", "yes")
     gcp_region: str = os.getenv("GCP_REGION", "us-central1")
+    # ALL Cloud Tasks queues live in us-central1, but workers running in other
+    # regions (the GPU audio-separation-job sets GCP_REGION to its GPU region)
+    # must still enqueue to the real queue location — building queue paths from
+    # gcp_region 404s from those workers ("Queue does not exist").
+    cloud_tasks_region: str = os.getenv("CLOUD_TASKS_REGION", "us-central1")
     
     # Cloud Run Jobs (for long-running video encoding)
     # When enabled AND enable_cloud_tasks is true, video worker uses Cloud Run Jobs
