@@ -448,7 +448,14 @@ class TestStorageServiceFileOperations:
 
 class TestStorageServiceSignedUrls:
     """Test signed URL generation."""
-    
+
+    @pytest.fixture(autouse=True)
+    def _no_emulator_env(self, monkeypatch):
+        # Other test modules (e.g. test_emulator_integration) export
+        # STORAGE_EMULATOR_HOST at import time, which would divert these tests
+        # into the emulator URL fallback instead of real signing.
+        monkeypatch.delenv("STORAGE_EMULATOR_HOST", raising=False)
+
     @patch("backend.services.storage_service.storage.Client")
     @patch("backend.services.storage_service.settings")
     def test_generate_signed_url(self, mock_settings, mock_client_class):
@@ -541,3 +548,42 @@ class TestStorageServiceSignedUrls:
         assert call_kwargs["service_account_email"] == "sa@project.iam.gserviceaccount.com"
         assert call_kwargs["access_token"] == "access-token-123"
 
+
+
+class TestStorageServiceEmulatorUrls:
+    """Test emulator URL fallback when STORAGE_EMULATOR_HOST is set (local dev)."""
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_get_url_uses_emulator_download_path(self, mock_settings, mock_client_class, monkeypatch):
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+        mock_bucket = Mock()
+        mock_bucket.name = "test-bucket"
+        mock_client_class.return_value.bucket.return_value = mock_bucket
+        monkeypatch.setenv("STORAGE_EMULATOR_HOST", "http://127.0.0.1:4443")
+
+        from backend.services.storage_service import StorageService
+        url = StorageService().generate_signed_url("jobs/abc/review-audio/song.ogg")
+
+        assert url == (
+            "http://127.0.0.1:4443/download/storage/v1/b/test-bucket/o/"
+            "jobs%2Fabc%2Freview-audio%2Fsong.ogg?alt=media"
+        )
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_put_url_uses_emulator_signed_style_path(self, mock_settings, mock_client_class, monkeypatch):
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+        mock_bucket = Mock()
+        mock_bucket.name = "test-bucket"
+        mock_client_class.return_value.bucket.return_value = mock_bucket
+        monkeypatch.setenv("STORAGE_EMULATOR_HOST", "http://127.0.0.1:4443")
+
+        from backend.services.storage_service import StorageService
+        url = StorageService().generate_signed_upload_url("uploads/x/file.bin")
+
+        # fake-gcs-server accepts PUTs with (unvalidated) X-Goog signature params
+        assert url.startswith("http://127.0.0.1:4443/test-bucket/uploads/x/file.bin?")
+        assert "X-Goog-Signature=" in url

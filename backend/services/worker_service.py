@@ -24,7 +24,7 @@ import httpx
 from google.api_core import exceptions as gcp_exceptions
 from google.protobuf import duration_pb2
 
-from backend.config import get_settings
+from backend.config import get_settings, is_production
 from backend.services.tracing import inject_trace_context
 
 
@@ -404,6 +404,10 @@ class WorkerService:
         in AWAITING_AUDIO_SELECTION. Uses a Cloud Run Job (not BackgroundTasks) so
         the batch survives API instance scale-down and the user can close the tab.
         """
+        if not self._use_cloud_tasks and not is_production():
+            return self._run_worker_module_locally(
+                "bulk_search_worker", ["--batch-id", batch_id], log_prefix=f"[batch:{batch_id}]"
+            )
         try:
             from google.cloud import run_v2
 
@@ -584,6 +588,29 @@ class WorkerService:
         # Exhausted transient retries — re-raise so the caller logs + returns False.
         raise last_exc
 
+    def _run_worker_module_locally(
+        self, worker_module: str, args: list[str], log_prefix: str = ""
+    ) -> bool:
+        """
+        Run a worker module as a detached local subprocess (development mode).
+
+        Mirrors what the corresponding Cloud Run Job would execute
+        (``python -m backend.workers.<module> <args>``), so contributors can run
+        the full pipeline locally against the emulators without GCP credentials.
+        Worker output is streamed to the backend console.
+        """
+        import subprocess
+        import sys
+
+        cmd = [sys.executable, "-m", f"backend.workers.{worker_module}", *args]
+        try:
+            subprocess.Popen(cmd, env=os.environ.copy())
+            logger.info(f"{log_prefix} Started local worker subprocess: {' '.join(cmd)}")
+            return True
+        except Exception as e:
+            logger.error(f"{log_prefix} Failed to start local worker {worker_module}: {e}", exc_info=True)
+            return False
+
     async def _trigger_worker_cloud_run_job(
         self,
         job_id: str,
@@ -607,6 +634,15 @@ class WorkerService:
         Returns:
             True if job was triggered successfully, False otherwise
         """
+        # Local development (ENABLE_CLOUD_TASKS=false): run the worker module as a
+        # local subprocess with the exact args the Cloud Run Job would receive.
+        # The is_production() guard ensures a deployed environment that omits
+        # ENABLE_CLOUD_TASKS still dispatches to Cloud Run Jobs, never Popen.
+        if not self._use_cloud_tasks and not is_production():
+            return self._run_worker_module_locally(
+                worker_module, ["--job-id", job_id], log_prefix=f"[job:{job_id}]"
+            )
+
         try:
             from google.cloud import run_v2
 

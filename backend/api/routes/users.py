@@ -36,6 +36,7 @@ def _mask_email(email: str) -> str:
 from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from pydantic import BaseModel, EmailStr
 
+from backend.config import is_production
 from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 from backend.services.email_validation_service import get_email_validation_service
 from backend.models.user import (
@@ -274,8 +275,10 @@ async def send_magic_link(
                 message=t(locale, "users.magicLinkSent")
             )
 
-    # Check if email service is configured
-    if not email_service.is_configured():
+    # Check if email service is configured. In development the console provider
+    # logs the magic link to the backend console instead of emailing it, so
+    # contributors can log in locally without a Postmark token.
+    if not email_service.is_configured() and is_production():
         logger.error("Email service not configured - cannot send magic links")
         raise HTTPException(
             status_code=503,

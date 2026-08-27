@@ -675,4 +675,6 @@ MIT
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please see our contributing guidelines.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) — the whole
+backend runs locally against emulators with no Google Cloud credentials or
+paid API keys required.

@@ -4,9 +4,14 @@ Configuration management for the karaoke generation backend.
 import os
 import logging
 from typing import Optional, Dict
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 from google.cloud import secretmanager
 
+# Load .env for local development (no-op when absent, e.g. in Cloud Run).
+# Must run before the Settings class body below, which reads os.getenv at
+# class-definition time. Real environment variables take precedence.
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

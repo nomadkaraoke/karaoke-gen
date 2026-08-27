@@ -57,4 +57,7 @@ regexes = [
   # Firebase / GCP client API keys — public by design (identify the project,
   # access is gated by Firebase Security Rules).
   '''AIzaSy[A-Za-z0-9_-]{33}''',
+
+  # Documented local-development placeholder token (CONTRIBUTING.md, dev scripts)
+  '''local-dev-token''',
 ]

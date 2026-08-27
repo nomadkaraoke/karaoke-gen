@@ -43,14 +43,16 @@ else
     # Stop any existing container
     docker rm -f test-gcs-emulator >/dev/null 2>&1 || true
     
-    # Start fake-gcs-server
+    # Start fake-gcs-server. -public-host makes it accept signed-URL-style
+    # PUT uploads on this host (see StorageService emulator URL fallback).
     docker run -d \
         --name test-gcs-emulator \
         -p 4443:4443 \
         fsouza/fake-gcs-server:latest \
         -scheme http \
         -port 4443 \
-        -external-url http://localhost:4443 \
+        -external-url http://127.0.0.1:4443 \
+        -public-host 127.0.0.1:4443 \
         > "$EMULATOR_LOG_DIR/gcs.log" 2>&1
     
     GCS_CONTAINER=$(docker ps -q -f name=test-gcs-emulator)
