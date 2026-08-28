@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from backend.models.job import JobStatus
+from backend.services.auto_approval.models import BackingVerdict
 
 logger = logging.getLogger(__name__)
 
@@ -121,8 +122,16 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
 
         verdict = score_job(corrections, backing_analysis, ai_suggestions)
         blockers = _enforcement_blockers(job, settings)
+        keep_backing = verdict.backing.verdict == BackingVerdict.WITH_BACKING
         if not audio_complete:
             blockers.append("audio_incomplete")
+        elif keep_backing:
+            # Confident-keep (3-stem decider) selects the with-backing
+            # instrumental — gated shadow-first behind its own flag.
+            if not settings.auto_approval_backing_keep_enabled:
+                blockers.append("backing_keep_disabled")
+            if not stems.get("instrumental_with_backing"):
+                blockers.append("no_with_backing_stem")
         elif not stems.get("instrumental_clean"):
             blockers.append("no_clean_stem")
 
@@ -181,8 +190,11 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             )
             return {"outcome": "aborted", "reason": applied_info["aborted"]}
 
-        # Backing verdict CLEAN (non-subjective "no audible backing") -> clean stem.
-        job_manager.update_state_data(job_id, "instrumental_selection", "clean")
+        # Non-subjective backing verdict -> matching instrumental selection:
+        # CLEAN ("no audible backing") -> clean stem; WITH_BACKING (confident
+        # 3-stem decider keep, flag-gated above) -> with-backing stem.
+        selection = "with_backing" if keep_backing else "clean"
+        job_manager.update_state_data(job_id, "instrumental_selection", selection)
 
         # Clear worker progress keys so downstream workers run fresh (mirrors
         # complete_review — idempotency keys would otherwise skip re-runs).
@@ -194,8 +206,13 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             new_status=JobStatus.REVIEW_COMPLETE,
             progress=70,
             message=(
-                "Auto-approved: lyrics verified against synced references and no "
-                "audible backing vocals — skipping review, rendering video"
+                "Auto-approved: lyrics verified against synced references and "
+                + (
+                    "clear backing vocals retained"
+                    if keep_backing
+                    else "no audible backing vocals"
+                )
+                + " — skipping review, rendering video"
             ),
         )
 

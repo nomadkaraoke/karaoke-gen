@@ -387,3 +387,33 @@ scorer's gap-coverage signal, and the proactive cache.
   auto-ship WITH the human's exact edit applied**; ae0cd7e8 (Samson corpus job) now has its P4
   edits actually applied when auto-shipping. `ai-resolved` caps deliberately NOT loosened
   (69ca7c1e still 14 uncovered words — needs more coverage, not looser caps).
+
+## Session 6 update (2026-08-28) — Phase 2B: 3-stem backing decider (v0.204.0)
+
+Build-order item #4 shipped (decider + signals; enforcement shadow-first):
+
+- **`karaoke_gen/instrumental_review/stem_comparison.py`** (new, pure pydub) — compares the
+  backing / lead / full-vocals stems: audible coverage per stem + coverage ratio, envelope
+  Pearson correlations (backing↔vocals, backing↔lead), median audible levels, lead-overlap
+  fraction, within-run flatness. Wired into `_analyze_backing_vocals` (screens_worker →
+  AudioAnalysisService) → stored as `backing_vocals_analysis.stem_comparison` on every new job.
+- **Scorer v0.3.0** — `score_backing` decides the pink-present branch (previously always
+  review): confident **WITH_BACKING** (non-subjective keep) unless one of the corpus-validated
+  "pink but don't keep" modes fires: backing-stem-IS-the-lead (covR ≥0.80 + corr ≥0.80 +
+  backing more present than lead — the decisive discriminator; the dB-margin idea nearly
+  misfired on a genuine keep), noise-floor signature (median ≤ −35 dB over ≥15% of track,
+  corr ≤0.05 — REVIEW, marginal per corpus), narrow bleed rule (≤3% audible, lead overlap
+  ≥0.95 — d508adb6's genuine 0.89-overlap harmonies must stay keepable).
+- **Corpus validation (validate_backing_decider.py, private; ~2.4 GB stems cached locally):
+  13/14 true keeps → confident WITH_BACKING — including BOTH jobs the human under-kept
+  (44622ffa, 35ed9697): the decider beats the human's quick review. 95d8e844 (marginal
+  grungegaze) → review. All clean-correct jobs → clean. 1d45b286 (catastrophic
+  backing-is-lead) → review. Zero unsafe outcomes.**
+- **Executor**: WITH_BACKING verdict enforces `instrumental_selection="with_backing"` ONLY
+  behind `AUTO_APPROVAL_BACKING_KEEP_ENABLED` (default **false** — shadow-first per plan);
+  while off, such jobs record blocker `backing_keep_disabled` + full verdict/signals in
+  `processing_metadata.auto_approval` for prod shadow calibration alongside human picks.
+  Requires the `instrumental_with_backing` stem (blocker `no_with_backing_stem`).
+- Flip-on procedure: review shadow verdicts vs human picks for a while, then set
+  `AUTO_APPROVAL_BACKING_KEEP_ENABLED=true` on the backend service. The Cher-class jobs
+  (lyrics solved, gated only by audible backing — 46201da4) then become fully auto.

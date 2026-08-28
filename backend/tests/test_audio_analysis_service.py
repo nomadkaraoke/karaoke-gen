@@ -177,11 +177,12 @@ class TestAnalyzeAndGenerateWaveform:
         service = AudioAnalysisService()
         
         # Call method
-        result, waveform_path = service.analyze_and_generate_waveform(
+        result, waveform_path, comparison = service.analyze_and_generate_waveform(
             gcs_audio_path="uploads/job123/backing.flac",
             job_id="job123",
             gcs_waveform_destination="uploads/job123/waveform.png",
         )
+        assert comparison is None  # no lead/vocals stems passed
         
         # Verify analysis was performed
         mock_analyzer.analyze.assert_called_once()

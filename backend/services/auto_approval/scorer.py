@@ -40,7 +40,7 @@ from backend.services.auto_approval.models import (
     LyricsVerdict,
 )
 
-SCORER_VERSION = "0.2.0"
+SCORER_VERSION = "0.3.0"
 
 # --- Lyrics thresholds (deliberately conservative; the safe intersection first) ---
 # The AUTO tier requires a synced reference the transcription matches with ZERO
@@ -92,6 +92,36 @@ PHANTOM_PARENTHETICAL_MAX_WORDS = 4
 # A tiny non-zero floor absorbs separation noise but stays extremely conservative.
 NON_SUBJECTIVE_MAX_AUDIBLE_PCT = 0.5  # percent
 LOUD_SEGMENT_DB = -20.0
+
+# --- 3-stem backing decider thresholds (Phase 2B) ---
+# Calibrated on the 20-job replay-review corpus signals (private
+# validate_backing_decider.py — rerun after ANY change here). Corpus rules:
+# pink present -> KEEP (the human under-keeps; every with_backing pick was
+# correct), EXCEPT the "pink but don't keep" modes below.
+#
+# Backing-stem-IS-the-lead (1d45b286 — catastrophic if kept): the backing stem
+# tracks the whole vocal line while the real lead stem is comparatively
+# sparse. Corpus values: covR 0.94 / corr 0.95 / backing 60% audible vs lead
+# 18%. The coverage comparison (backing > lead) is the decisive discriminator:
+# the nearest genuine keep (33453fa0) hits covR 0.77 / corr 0.86 but its
+# backing coverage (28%) sits well BELOW its lead coverage (34%).
+BACKING_IS_LEAD_MIN_COVERAGE_RATIO = 0.80
+BACKING_IS_LEAD_MIN_CORR = 0.80
+# Noise-floor pink (95d8e844, grungegaze): a fuzzy mix pushes the backing
+# stem's noise floor just above the -40 dB threshold, producing widespread
+# near-threshold "pink" that does not correlate with the vocal line (corpus:
+# median -38.6 dB over 30% of the track, corr -0.23). Genuine quiet harmonies
+# (d508adb6: -38.1 dB but only 1% audible; 44622ffa: -35.9 dB, 11%) are sparse.
+# Marginal either way per the corpus -> REVIEW, never a confident verdict.
+NOISE_FLOOR_MAX_MEDIAN_DB = -35.0
+NOISE_FLOOR_MIN_AUDIBLE_FRACTION = 0.15
+NOISE_FLOOR_MAX_CORR = 0.05
+# Lead bleed (ae0cd7e8): tiny audible content riding entirely on lead
+# activity. The corpus bleed case is already caught by the near-silent rule;
+# this catches slightly-larger blobs. Deliberately NARROW (overlap >= 0.95):
+# d508adb6's genuine harmonies overlap the lead 0.89 and must stay keepable.
+BLEED_MAX_AUDIBLE_PCT = 3.0
+BLEED_MIN_LEAD_OVERLAP = 0.95
 
 _TOKEN_STRIP_RE = re.compile(r"^[^\w]+|[^\w]+$")
 
@@ -424,7 +454,7 @@ def extract_backing_signals(backing_analysis: Optional[Dict[str, Any]]) -> Backi
         if isinstance(pk, (int, float)):
             peak = pk if peak is None else max(peak, pk)
 
-    return BackingSignals(
+    signals = BackingSignals(
         analysis_present=True,
         has_audible_content=bool(backing_analysis.get("has_audible_content", True)),
         audible_percentage=float(backing_analysis.get("audible_percentage", 0.0) or 0.0),
@@ -433,6 +463,31 @@ def extract_backing_signals(backing_analysis: Optional[Dict[str, Any]]) -> Backi
         peak_amplitude_db=peak,
         recommended_selection=backing_analysis.get("recommended_selection"),
     )
+
+    # 3-stem comparison (Phase 2B). A comparison that errored is treated as
+    # absent — never as evidence in either direction.
+    comparison = backing_analysis.get("stem_comparison") or {}
+    if comparison and not comparison.get("error"):
+        def _num(key: str, default: float = 0.0) -> float:
+            value = comparison.get(key)
+            return float(value) if isinstance(value, (int, float)) else default
+
+        signals.comparison_present = True
+        signals.coverage_ratio = _num("coverage_ratio")
+        signals.corr_backing_vocals = _num("corr_backing_vocals")
+        signals.corr_backing_lead = _num("corr_backing_lead")
+        signals.lead_overlap_fraction = _num("lead_overlap_fraction")
+        signals.lead_audible_fraction = _num("lead_audible_fraction")
+        signals.backing_audible_fraction = _num("backing_audible_fraction")
+        signals.backing_db_std = _num("backing_db_std")
+        signals.flat_fraction = _num("flat_fraction")
+        backing_median = comparison.get("backing_median_db")
+        lead_median = comparison.get("lead_median_db")
+        if isinstance(backing_median, (int, float)):
+            signals.backing_median_db = float(backing_median)
+        if isinstance(lead_median, (int, float)):
+            signals.lead_median_db = float(lead_median)
+    return signals
 
 
 def score_backing(backing_analysis: Optional[Dict[str, Any]]) -> BackingResult:
@@ -456,13 +511,72 @@ def score_backing(backing_analysis: Optional[Dict[str, Any]]) -> BackingResult:
         )
         return BackingResult(BackingVerdict.CLEAN, True, s, reasons)
 
-    # Audible backing exists -> the clean-vs-with call is a taste/quality judgement.
+    # Audible backing exists. Without the 3-stem comparison the clean-vs-with
+    # call stays a human judgement (pre-Phase-2B jobs, or comparison failed).
+    if not s.comparison_present:
+        reasons.append(
+            f"audible backing present ({s.audible_percentage:.1f}%, {s.segment_count} segments, "
+            f"{s.loud_segment_count} loud) but no 3-stem comparison available — "
+            "retain-or-not needs a human listen"
+        )
+        return BackingResult(BackingVerdict.REVIEW, False, s, reasons)
+
+    # -- "pink but don't keep" mode 1: the backing stem IS the lead --
+    # (separation misclassified a quiet/reverby lead; keeping it would put the
+    # lead vocal back into the karaoke track — the worst possible output.)
+    if (
+        s.coverage_ratio >= BACKING_IS_LEAD_MIN_COVERAGE_RATIO
+        and s.corr_backing_vocals >= BACKING_IS_LEAD_MIN_CORR
+        and s.backing_audible_fraction > s.lead_audible_fraction
+    ):
+        reasons.append(
+            f"backing stem appears to BE the lead vocal: covers "
+            f"{s.coverage_ratio:.0%} of the vocal line with envelope correlation "
+            f"{s.corr_backing_vocals:.2f}, and is more present than the lead stem "
+            f"({s.backing_audible_fraction:.0%} vs {s.lead_audible_fraction:.0%} "
+            "audible) — keeping it would re-insert the lead; needs a human listen"
+        )
+        return BackingResult(BackingVerdict.REVIEW, False, s, reasons)
+
+    # -- mode 2: noise-floor pink (lo-fi/fuzzy mix) --
+    if (
+        s.backing_median_db is not None
+        and s.backing_median_db <= NOISE_FLOOR_MAX_MEDIAN_DB
+        and s.backing_audible_fraction >= NOISE_FLOOR_MIN_AUDIBLE_FRACTION
+        and s.corr_backing_vocals <= NOISE_FLOOR_MAX_CORR
+    ):
+        reasons.append(
+            f"widespread near-threshold backing (median "
+            f"{s.backing_median_db:.1f} dB over {s.backing_audible_fraction:.0%} "
+            f"of the track) uncorrelated with the vocal line "
+            f"({s.corr_backing_vocals:.2f}) — noise-floor signature; marginal "
+            "either way, needs a human listen"
+        )
+        return BackingResult(BackingVerdict.REVIEW, False, s, reasons)
+
+    # -- mode 3: lead bleed (small blobs riding entirely on lead activity) --
+    if (
+        s.audible_percentage <= BLEED_MAX_AUDIBLE_PCT
+        and s.lead_overlap_fraction >= BLEED_MIN_LEAD_OVERLAP
+    ):
+        reasons.append(
+            f"sparse backing ({s.audible_percentage:.1f}%) almost entirely "
+            f"overlapping lead activity ({s.lead_overlap_fraction:.0%}) — "
+            "likely lead bleed, not harmony; needs a human listen"
+        )
+        return BackingResult(BackingVerdict.REVIEW, False, s, reasons)
+
+    # Real pink harmony remains -> KEEP. Corpus: the human under-keeps (every
+    # with_backing pick was right, 2 of 8 clean picks were wrong); with the
+    # three don't-keep modes carved out above, retaining is the non-subjective
+    # default ("retain backing vocals where possible").
     reasons.append(
-        f"audible backing present ({s.audible_percentage:.1f}%, {s.segment_count} segments, "
-        f"{s.loud_segment_count} loud) — retain-or-not is subjective; energy heuristic says "
-        f"'{s.recommended_selection}'"
+        f"clear backing-vocal content present ({s.audible_percentage:.1f}%, "
+        f"{s.segment_count} segments, {s.loud_segment_count} loud; flat fraction "
+        f"{s.flat_fraction:.0%}, vocal-line coverage {s.coverage_ratio:.0%}) with "
+        "no lead-bleed / misclassified-lead / noise signature — retain"
     )
-    return BackingResult(BackingVerdict.REVIEW, False, s, reasons)
+    return BackingResult(BackingVerdict.WITH_BACKING, True, s, reasons)
 
 
 def score_job(

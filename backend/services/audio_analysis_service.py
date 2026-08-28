@@ -101,35 +101,43 @@ class AudioAnalysisService:
         gcs_audio_path: str,
         job_id: str,
         gcs_waveform_destination: str,
-    ) -> tuple[AnalysisResult, str]:
+        gcs_lead_vocals_path: Optional[str] = None,
+        gcs_vocals_path: Optional[str] = None,
+    ) -> tuple[AnalysisResult, str, Optional[dict]]:
         """
-        Analyze backing vocals and generate a waveform image.
-        
+        Analyze backing vocals, generate a waveform image, and (when the lead
+        and full-vocals stems are provided) compute the 3-stem comparison
+        signals for the backing-vocals decider.
+
         This method:
         1. Downloads the audio file from GCS
         2. Runs analysis using AudioAnalyzer
         3. Generates waveform image using WaveformGenerator
         4. Uploads the waveform image to GCS
-        5. Returns analysis result and waveform GCS path
-        
+        5. Optionally downloads lead_vocals + vocals stems and runs
+           compare_stems (best-effort — a failure yields a comparison dict
+           with ``error`` set, never an exception)
+
         Args:
-            gcs_audio_path: Path to the audio file in GCS
+            gcs_audio_path: Path to the backing-vocals audio file in GCS
             job_id: Job ID for logging
             gcs_waveform_destination: Where to upload the waveform image in GCS
-        
+            gcs_lead_vocals_path: Optional GCS path of the lead_vocals stem
+            gcs_vocals_path: Optional GCS path of the full vocals stem
+
         Returns:
-            Tuple of (AnalysisResult, waveform_gcs_path)
+            Tuple of (AnalysisResult, waveform_gcs_path, stem_comparison dict or None)
         """
         logger.info(f"[{job_id}] Analyzing and generating waveform: {gcs_audio_path}")
-        
+
         with tempfile.TemporaryDirectory() as temp_dir:
             # Download audio file
             local_audio_path = os.path.join(temp_dir, "backing_vocals.flac")
             self.storage_service.download_file(gcs_audio_path, local_audio_path)
-            
+
             # Run analysis
             result = self.analyzer.analyze(local_audio_path)
-            
+
             # Generate waveform
             local_waveform_path = os.path.join(temp_dir, "waveform.png")
             self.waveform_generator.generate(
@@ -139,19 +147,64 @@ class AudioAnalysisService:
                 show_time_axis=True,
                 silence_threshold_db=self.analyzer.silence_threshold_db,
             )
-            
+
             # Upload waveform to GCS
             self.storage_service.upload_file(
                 local_waveform_path,
                 gcs_waveform_destination
             )
-            
+
+            comparison: Optional[dict] = None
+            if gcs_lead_vocals_path and gcs_vocals_path:
+                comparison = self._compare_stems(
+                    job_id, temp_dir, local_audio_path,
+                    gcs_lead_vocals_path, gcs_vocals_path,
+                )
+
             logger.info(
                 f"[{job_id}] Analysis and waveform generation complete. "
                 f"Waveform uploaded to: {gcs_waveform_destination}"
             )
-            
-            return result, gcs_waveform_destination
+
+            return result, gcs_waveform_destination, comparison
+
+    def _compare_stems(
+        self,
+        job_id: str,
+        temp_dir: str,
+        local_backing_path: str,
+        gcs_lead_vocals_path: str,
+        gcs_vocals_path: str,
+    ) -> Optional[dict]:
+        """Download lead + vocals stems and run the 3-stem comparison.
+
+        Best-effort: returns None when the extra stems can't even be
+        downloaded; compare_stems itself reports internal failures via the
+        ``error`` field rather than raising.
+        """
+        from karaoke_gen.instrumental_review.stem_comparison import compare_stems
+
+        try:
+            local_lead = os.path.join(temp_dir, "lead_vocals.flac")
+            local_vocals = os.path.join(temp_dir, "vocals.flac")
+            self.storage_service.download_file(gcs_lead_vocals_path, local_lead)
+            self.storage_service.download_file(gcs_vocals_path, local_vocals)
+        except Exception as e:
+            logger.warning(f"[{job_id}] stem comparison skipped (download failed): {e}")
+            return None
+        comparison = compare_stems(
+            local_backing_path,
+            local_lead,
+            local_vocals,
+            silence_threshold_db=self.analyzer.silence_threshold_db,
+        )
+        logger.info(
+            f"[{job_id}] Stem comparison: coverage_ratio={comparison.coverage_ratio}, "
+            f"corr_backing_vocals={comparison.corr_backing_vocals}, "
+            f"lead_overlap={comparison.lead_overlap_fraction}, "
+            f"flat_fraction={comparison.flat_fraction}, error={comparison.error}"
+        )
+        return comparison.to_dict()
     
     def get_waveform_data(
         self,
