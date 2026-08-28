@@ -344,3 +344,46 @@ narrow fully-confident class:
 Expected initial auto rate ~5% of jobs (1/20 in the calibration corpus): lyrics must be
 synced-perfect or ai-resolved AND backing must be non-subjectively clean. Widening comes from
 build-order #2-#4 (P4 fixer, vocalization detector already gating, backing decider).
+
+## Session 5 update (2026-08-28) — Phase 2A: deterministic P4/P1/P5 fixers (v0.203.0)
+
+Build-order item #2 shipped: the three mechanical residual-edit classes from the corpus are now
+**deterministic suggestion generators inside the auto-correct pipeline** (not executor hacks), so
+one mechanism feeds the review UI's on-load auto-apply, the executor's server-side apply, the
+scorer's gap-coverage signal, and the proactive cache.
+
+- **`backend/services/auto_correct/deterministic.py`** (new) — pure generators keyed off
+  `corrections.json` gap/anchor alignment:
+  - **P4 leading-connective delete**: segment starts with And/But/So/Oh/A, the word is a gap
+    word, and no reference source's reading of that gap contains it → emit `delete` (+ a
+    `replace` re-capitalizing the next word when lowercase). Guard: skipped when the next word is
+    a vocalization token (an "Oh- whoa," run is musical judgement, corpus 5c80991d).
+  - **P5 reference-majority replace**: a gap whose transcription contains an implausible proper
+    noun (capitalized mid-line token absent from every reference) and where ≥2/3 of reference
+    sources agree on the same reading → replace with the majority reading. The red flag is
+    REQUIRED — plain 2/3 majority over-fires on gaps the human deliberately left (6d0640fa
+    "though"→"dog", explicit-lyrics rewrite). Spelling-variant guard: a red-flag token
+    string-similar (≥0.75) to a reference token is a transliteration/truncation ("Crick"~
+    "Cricket", "Projectorinsky"~"Projektorinski") whose gap alignment is often junk → skip
+    (that's the LLM's fix).
+  - Per-source gap readings come from the gap's own `reference_word_ids`, else are derived by
+    walking the reference stream past the surrounding anchors (the 6d0640fa "Come here," case —
+    the aligner had empty alignments for 2 of 3 sources).
+- **P1 self-conflict grouping at source** — `service._assign_conflict_groups` (extracted, reused
+  post-integration) now also unions an `insert_after` with any suggestion targeting/anchored on
+  the same word whose new_text shares a token: the f6439692 "insert you're + replace fire→fire,
+  you're → 'you're you're'" signature becomes a pick-one conflict group (winner by consensus→
+  confidence picks the 0.95 replace — correct). Executor's `find_suspicious_duplicates` abort
+  stays as belt-and-braces.
+- Pipeline: `suggest(..., correction_data=None)` — proactive worker passes corrections.json in;
+  the review route lets the service fetch it (best-effort). Deterministic suggestions identical
+  to an LLM one just tag it (`models += ["deterministic"]`); new ones append; conflict groups are
+  recomputed over the combined set. Suggestion-cache key bumped to v2 (old cached results predate
+  the fixers).
+- **Corpus validation** (private validate_scorer.py, extended with FIXER assertions): safety
+  still 100% (all MUST_NOT_AUTO stay review; gates unchanged). P4 fires on all six corpus
+  examples; P5 reproduces Andrew's one ref-majority edit ("yo Mick,"→"Come here,") and fires
+  nowhere it must not. **6d0640fa (Miguel) now scores lyrics=auto + clean backing → would fully
+  auto-ship WITH the human's exact edit applied**; ae0cd7e8 (Samson corpus job) now has its P4
+  edits actually applied when auto-shipping. `ai-resolved` caps deliberately NOT loosened
+  (69ca7c1e still 14 uncovered words — needs more coverage, not looser caps).

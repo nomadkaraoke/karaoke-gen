@@ -70,6 +70,9 @@ async def process_proactive_auto_correct(job_id: str) -> dict:
                 # Must match what the review UI sends (default settings,
                 # multi-model) or the cache key won't line up.
                 settings=AutoCorrectSettings(compare_models=True),
+                # Already loaded — saves the service re-fetching it for the
+                # deterministic (P4/P5) generators.
+                correction_data=data,
             ),
             timeout=180,
         )
