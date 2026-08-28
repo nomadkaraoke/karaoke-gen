@@ -145,17 +145,78 @@ class TestAudioAnalysisService:
         mock_storage_service.upload_file.return_value = "jobs/test/analysis/waveform.png"
         
         service = AudioAnalysisService(storage_service=mock_storage_service)
-        result, waveform_path = service.analyze_and_generate_waveform(
+        result, waveform_path, comparison = service.analyze_and_generate_waveform(
             gcs_audio_path="jobs/test/stems/backing_vocals.flac",
             job_id="test-job",
             gcs_waveform_destination="jobs/test/analysis/waveform.png",
         )
-        
+
         # Verify upload was called
         mock_storage_service.upload_file.assert_called_once()
-        
+
         # Verify waveform path is returned
         assert waveform_path == "jobs/test/analysis/waveform.png"
+        # No lead/vocals stems passed -> no 3-stem comparison
+        assert comparison is None
+
+    def test_analyze_with_extra_stems_returns_comparison(
+        self, mock_storage_service, temp_audio_file
+    ):
+        """Passing lead + vocals stem paths yields a stem_comparison dict."""
+        from backend.services.audio_analysis_service import AudioAnalysisService
+
+        def mock_download(gcs_path, local_path):
+            import shutil
+            shutil.copy(temp_audio_file, local_path)
+            return local_path
+
+        mock_storage_service.download_file.side_effect = mock_download
+        mock_storage_service.upload_file.return_value = "jobs/test/analysis/waveform.png"
+
+        service = AudioAnalysisService(storage_service=mock_storage_service)
+        _result, _waveform, comparison = service.analyze_and_generate_waveform(
+            gcs_audio_path="jobs/test/stems/backing_vocals.flac",
+            job_id="test-job",
+            gcs_waveform_destination="jobs/test/analysis/waveform.png",
+            gcs_lead_vocals_path="jobs/test/stems/lead_vocals.flac",
+            gcs_vocals_path="jobs/test/stems/vocals_clean.flac",
+        )
+
+        assert comparison is not None
+        assert comparison["error"] is None
+        # All three "stems" are the same file here -> full coverage + corr 1.
+        assert comparison["coverage_ratio"] == 1.0
+
+    def test_comparison_download_failure_is_non_fatal(
+        self, mock_storage_service, temp_audio_file
+    ):
+        """A failure fetching the extra stems yields comparison=None, no raise."""
+        from backend.services.audio_analysis_service import AudioAnalysisService
+
+        calls = {"n": 0}
+
+        def mock_download(gcs_path, local_path):
+            import shutil
+            calls["n"] += 1
+            if calls["n"] > 1:  # backing succeeds, extra stems fail
+                raise RuntimeError("gcs down")
+            shutil.copy(temp_audio_file, local_path)
+            return local_path
+
+        mock_storage_service.download_file.side_effect = mock_download
+        mock_storage_service.upload_file.return_value = "jobs/test/analysis/waveform.png"
+
+        service = AudioAnalysisService(storage_service=mock_storage_service)
+        _result, waveform_path, comparison = service.analyze_and_generate_waveform(
+            gcs_audio_path="jobs/test/stems/backing_vocals.flac",
+            job_id="test-job",
+            gcs_waveform_destination="jobs/test/analysis/waveform.png",
+            gcs_lead_vocals_path="jobs/test/stems/lead_vocals.flac",
+            gcs_vocals_path="jobs/test/stems/vocals_clean.flac",
+        )
+
+        assert waveform_path == "jobs/test/analysis/waveform.png"
+        assert comparison is None
     
     def test_get_waveform_data_returns_amplitudes(
         self, mock_storage_service, temp_audio_file

@@ -575,7 +575,8 @@ async def _analyze_backing_vocals(
             return
 
         # Get backing vocals path
-        backing_vocals_path = job.file_urls.get('stems', {}).get('backing_vocals')
+        stems = job.file_urls.get('stems', {})
+        backing_vocals_path = stems.get('backing_vocals')
         if not backing_vocals_path:
             job_log.warning("No backing vocals file found - skipping analysis")
             return
@@ -588,11 +589,16 @@ async def _analyze_backing_vocals(
         # Define output path for waveform
         waveform_gcs_path = f"jobs/{job_id}/analysis/backing_vocals_waveform.png"
 
-        # Run analysis and generate waveform
-        result, waveform_path = analysis_service.analyze_and_generate_waveform(
+        # Run analysis and generate waveform. Passing the lead + full-vocals
+        # stems as well enables the 3-stem comparison the backing-vocals
+        # decider uses to tell genuine harmonies from lead bleed / a
+        # misclassified lead / flat noise (best-effort — None when missing).
+        result, waveform_path, stem_comparison = analysis_service.analyze_and_generate_waveform(
             gcs_audio_path=backing_vocals_path,
             job_id=job_id,
             gcs_waveform_destination=waveform_gcs_path,
+            gcs_lead_vocals_path=stems.get('lead_vocals'),
+            gcs_vocals_path=stems.get('vocals_clean'),
         )
 
         # Store analysis results in job state_data
@@ -614,6 +620,8 @@ async def _analyze_backing_vocals(
             'audible_percentage': result.audible_percentage,
             'silence_threshold_db': result.silence_threshold_db,
         }
+        if stem_comparison is not None:
+            analysis_data['stem_comparison'] = stem_comparison
 
         job_manager.update_state_data(job_id, 'backing_vocals_analysis', analysis_data)
 

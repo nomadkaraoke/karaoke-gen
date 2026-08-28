@@ -80,6 +80,19 @@ class BackingSignals:
     loud_segment_count: int = 0
     peak_amplitude_db: Optional[float] = None
     recommended_selection: Optional[str] = None
+    # 3-stem comparison (backing vs lead vs full vocals) — present on jobs
+    # analyzed since the Phase-2B backing decider; absent before that.
+    comparison_present: bool = False
+    coverage_ratio: float = 0.0
+    corr_backing_vocals: float = 0.0
+    corr_backing_lead: float = 0.0
+    lead_overlap_fraction: float = 0.0
+    lead_audible_fraction: float = 0.0
+    backing_audible_fraction: float = 0.0
+    backing_median_db: Optional[float] = None
+    lead_median_db: Optional[float] = None
+    backing_db_std: float = 0.0
+    flat_fraction: float = 0.0
 
 
 @dataclass
