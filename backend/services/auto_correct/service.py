@@ -541,7 +541,13 @@ class AutoCorrectService:
             key = (s.op, tuple(s.word_ids), " ".join(s.new_text.lower().split()))
             existing = by_key.get(key)
             if existing is not None:
+                # The deterministic generator counts as an agreeing source:
+                # keeps the consensus == len(models) invariant, and lets an
+                # LLM+deterministic agreement outrank a conflicting
+                # single-model suggestion in winner selection.
                 existing.models.append("deterministic")
+                existing.consensus += 1
+                existing.total_models += 1
                 existing.confidence = max(existing.confidence, s.confidence)
                 continue
             merged.append(s)

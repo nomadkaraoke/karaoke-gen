@@ -392,6 +392,10 @@ def test_suggest_dedupes_identical_llm_and_deterministic() -> None:
     assert len(deletes) == 1
     assert "deterministic" in deletes[0].models
     assert deletes[0].confidence == 0.9  # bumped to the deterministic confidence
+    # The deterministic generator counts as an agreeing source.
+    assert deletes[0].consensus == 2
+    assert deletes[0].total_models == 2
+    assert deletes[0].consensus == len(deletes[0].models)
 
 
 def test_suggest_groups_conflicting_llm_and_deterministic() -> None:
