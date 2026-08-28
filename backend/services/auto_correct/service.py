@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -14,6 +15,7 @@ from google import genai
 from google.genai import types
 
 from backend.config import get_settings
+from backend.services.auto_correct.deterministic import deterministic_suggestions
 from backend.services.auto_correct.pricing import TokenUsage, estimate_cost_usd
 from backend.services.auto_correct.prompts import (
     RESPONSE_SCHEMA,
@@ -127,6 +129,84 @@ class AutoCorrectResult:
     cached: bool = False
 
 
+_NORM_TOKEN_RE = re.compile(r"^[^\w]+|[^\w]+$")
+
+
+def _norm_tokens(text: str) -> set:
+    return {t for t in (_NORM_TOKEN_RE.sub("", w.lower()) for w in (text or "").split()) if t}
+
+
+def _assign_conflict_groups(result: list[Suggestion]) -> None:
+    """(Re)compute conflict groups over a suggestion list, in place.
+
+    Two rules union suggestions into a pick-at-most-one group:
+    - Non-insert suggestions sharing any target word disagree about that span.
+    - An ``insert_after`` whose inserted token(s) also appear in another
+      suggestion's new_text targeting (or anchored on) the same word is the P1
+      self-conflict signature — two overlapping suggestions both adding the
+      same token (corpus f6439692: ``insert_after "fire" -> "you're"`` plus
+      ``replace "fire" -> "fire, you're"`` produced "you're you're"). Grouping
+      them lets accept-all pick one winner instead of double-applying.
+      A plain insert next to an edit with disjoint tokens stays independent.
+    """
+    for s in result:
+        s.conflict_group = None
+
+    parent = list(range(len(result)))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int) -> None:
+        parent[find(b)] = find(a)
+
+    by_word: dict[str, list[int]] = {}
+    for i, s in enumerate(result):
+        if s.op == "insert_after":
+            continue
+        for wid in s.word_ids:
+            by_word.setdefault(wid, []).append(i)
+    for overlapping in by_word.values():
+        for other in overlapping[1:]:
+            union(overlapping[0], other)
+
+    for i, s in enumerate(result):
+        if s.op != "insert_after" or not s.word_ids:
+            continue
+        anchor = s.word_ids[0]
+        tokens = _norm_tokens(s.new_text)
+        if not tokens:
+            continue
+        for j, r in enumerate(result):
+            if j == i:
+                continue
+            anchored = (
+                anchor in r.word_ids
+                if r.op != "insert_after"
+                else bool(r.word_ids) and r.word_ids[0] == anchor
+            )
+            if anchored and tokens & _norm_tokens(r.new_text):
+                union(i, j)
+
+    roots: dict[int, list[int]] = {}
+    for i in range(len(result)):
+        roots.setdefault(find(i), []).append(i)
+    for members in roots.values():
+        if len(members) < 2:
+            continue
+        group = str(uuid.uuid4())
+        for i in members:
+            result[i].conflict_group = group
+
+
+def _sort_by_position(result: list[Suggestion], flat: list[tuple[str, str, str]]) -> None:
+    position = {word_id: i for i, (word_id, _, _) in enumerate(flat)}
+    result.sort(key=lambda s: position.get(s.word_ids[0], 0) if s.word_ids else 0)
+
+
 class AutoCorrectService:
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -140,6 +220,7 @@ class AutoCorrectService:
         artist: Optional[str],
         title: Optional[str],
         settings: AutoCorrectSettings,
+        correction_data: Optional[dict] = None,
     ) -> AutoCorrectResult:
         if not segments:
             raise AutoCorrectServiceError("segments is empty")
@@ -227,6 +308,9 @@ class AutoCorrectService:
                 )
 
         merged = self._merge(per_model, flat)
+        merged = self._add_deterministic(
+            merged, job_id, segments, reference_lyrics, correction_data, settings, flat
+        )
         elapsed = time.time() - t0
         model_label = ", ".join(per_model.keys())
         logger.info(
@@ -307,8 +391,10 @@ class AutoCorrectService:
         artist: Optional[str],
         title: Optional[str],
     ) -> str:
+        # v2: deterministic suggestions (P4/P1/P5 fixers) joined the pipeline —
+        # older cached results predate them, so they must not be served.
         payload = {
-            "v": 1,
+            "v": 2,
             "models": models,
             "settings": settings.to_dict(),
             "words": [[word_id, text] for word_id, text, _seg in flat],
@@ -402,41 +488,71 @@ class AutoCorrectService:
                     existing.confidence = max(existing.confidence, s.confidence)
 
         result = list(merged.values())
-
-        # Conflict groups: suggestions sharing any target word but not merged
-        # above disagree about the same span — reviewer picks at most one.
-        # (insert_after anchors are excluded: inserting after a word does not
-        # conflict with editing that word.)
-        by_word: dict[str, list[int]] = {}
-        for i, s in enumerate(result):
-            if s.op == "insert_after":
-                continue
-            for wid in s.word_ids:
-                by_word.setdefault(wid, []).append(i)
-        parent = list(range(len(result)))
-
-        def find(x: int) -> int:
-            while parent[x] != x:
-                parent[x] = parent[parent[x]]
-                x = parent[x]
-            return x
-
-        for overlapping in by_word.values():
-            for other in overlapping[1:]:
-                parent[find(other)] = find(overlapping[0])
-        roots: dict[int, list[int]] = {}
-        for i in range(len(result)):
-            roots.setdefault(find(i), []).append(i)
-        for members in roots.values():
-            if len(members) < 2:
-                continue
-            group = str(uuid.uuid4())
-            for i in members:
-                result[i].conflict_group = group
-
-        position = {word_id: i for i, (word_id, _, _) in enumerate(flat)}
-        result.sort(key=lambda s: position.get(s.word_ids[0], 0) if s.word_ids else 0)
+        _assign_conflict_groups(result)
+        _sort_by_position(result, flat)
         return result
+
+    def _add_deterministic(
+        self,
+        merged: list[Suggestion],
+        job_id: str,
+        segments: list[dict],
+        reference_lyrics: dict[str, dict],
+        correction_data: Optional[dict],
+        settings: AutoCorrectSettings,
+        flat: list[tuple[str, str, str]],
+    ) -> list[Suggestion]:
+        """Fold the deterministic (P4/P5) suggestions into the LLM set.
+
+        A deterministic suggestion identical to an LLM one just tags the
+        existing suggestion; new ones are appended. Conflict groups are then
+        recomputed over the combined set so a deterministic fix that disagrees
+        with an LLM suggestion becomes a pick-one conflict, not a double-apply.
+        """
+        if correction_data is None:
+            # The proactive worker passes corrections.json in; the review-UI
+            # route doesn't have it, so fetch it (best-effort) — it holds the
+            # gap/anchor alignment the generators key off.
+            try:
+                path = f"jobs/{job_id}/lyrics/corrections.json"
+                storage = self._get_storage()
+                if storage.bucket.blob(path).exists():
+                    correction_data = storage.download_json(path)
+            except Exception:
+                logger.warning(
+                    "auto-correct: corrections.json unavailable for %s; "
+                    "skipping deterministic suggestions", job_id, exc_info=True,
+                )
+        raw = deterministic_suggestions(segments, reference_lyrics, correction_data)
+        deterministic = [
+            Suggestion(**s)
+            for s in raw
+            if float(s.get("confidence", 0.0)) >= settings.min_confidence
+        ]
+        if not deterministic:
+            return merged
+
+        by_key = {
+            (s.op, tuple(s.word_ids), " ".join(s.new_text.lower().split())): s
+            for s in merged
+        }
+        added = 0
+        for s in deterministic:
+            key = (s.op, tuple(s.word_ids), " ".join(s.new_text.lower().split()))
+            existing = by_key.get(key)
+            if existing is not None:
+                existing.models.append("deterministic")
+                existing.confidence = max(existing.confidence, s.confidence)
+                continue
+            merged.append(s)
+            added += 1
+        logger.info(
+            "auto-correct deterministic job=%s generated=%d added=%d",
+            job_id, len(deterministic), added,
+        )
+        _assign_conflict_groups(merged)
+        _sort_by_position(merged, flat)
+        return merged
 
     # ---- internals ----
 
