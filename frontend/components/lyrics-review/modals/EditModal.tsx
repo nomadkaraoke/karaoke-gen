@@ -11,6 +11,7 @@ import { LyricsSegment, Word } from '@/lib/lyrics-review/types'
 import { nanoid } from 'nanoid'
 import EditWordList from '../EditWordList'
 import EditTimelineSection from '../EditTimelineSection'
+import { TIMELINE_PAD_SECONDS } from '../TimelineEditor'
 import useManualSync from '@/hooks/useManualSync'
 import { setModalHandler } from '@/lib/lyrics-review/utils/keyboardHandlers'
 import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
@@ -26,6 +27,8 @@ interface EditModalProps {
   onSave: (updatedSegment: LyricsSegment) => void
   onPlaySegment?: (startTime: number) => void
   currentTime?: number
+  /** Words from neighbouring segments near this one, shown as greyed read-only context in the timeline padding. */
+  contextWords?: Word[]
   onDelete?: (segmentIndex: number) => void
   onAddSegment?: (segmentIndex: number) => void
   onSplitSegment?: (segmentIndex: number, afterWordIndex: number) => void
@@ -45,6 +48,7 @@ export default function EditModal({
   onSave,
   onPlaySegment,
   currentTime = 0,
+  contextWords,
   onDelete,
   onAddSegment,
   onSplitSegment,
@@ -144,11 +148,12 @@ export default function EditModal({
     }
   }, [open, handleSpacebar])
 
-  // Auto-stop playback at segment end (not during manual sync or for global segments)
+  // Auto-stop playback a lead-out past the segment end (matches the padded timeline view, so the
+  // last word's run-out is audible). Not during manual sync or for global segments.
   useEffect(() => {
     if (!editedSegment || isManualSyncing || isGlobal) return
 
-    const endTime = editedSegment.end_time ?? 0
+    const endTime = (editedSegment.end_time ?? 0) + TIMELINE_PAD_SECONDS
     if (isPlaying && currentTime > endTime) {
       window.toggleAudioPlayback?.()
     }
@@ -328,7 +333,9 @@ export default function EditModal({
     if (isPlaying) {
       window.toggleAudioPlayback?.()
     } else {
-      onPlaySegment(segment.start_time ?? 0)
+      // Start a lead-in before the segment (matches the padded timeline view) so the first
+      // word's onset is audible in context.
+      onPlaySegment(Math.max(0, (segment.start_time ?? 0) - TIMELINE_PAD_SECONDS))
     }
   }, [segment, onPlaySegment, isPlaying])
 
@@ -385,7 +392,7 @@ export default function EditModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col gap-2" onKeyDown={handleKeyDown}>
+      <DialogContent className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-hidden flex flex-col gap-2" onKeyDown={handleKeyDown}>
         <DialogHeader>
           {/* Left: title (with the segment's time range folded into the heading)
               + play. Right: Tap To Sync, moved up here to reclaim vertical space
@@ -471,6 +478,7 @@ export default function EditModal({
               <div className="flex-grow">
                 <EditTimelineSection
                   words={editedSegment.words}
+                  contextWords={contextWords}
                   startTime={startTime}
                   endTime={endTime}
                   currentTime={currentTime}

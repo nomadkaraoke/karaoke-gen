@@ -6,8 +6,14 @@ import { cn } from '@/lib/utils'
 import { WaveformVisualizer } from './WaveformVisualizer'
 import { VocalsAudioDataLoaderContext } from './VocalsAudioDataLoader'
 
+// Seconds of context shown (and playable) on each side of the segment in the Edit Segment
+// timeline. Exported so the modal's play/stop range matches the visible padded view.
+export const TIMELINE_PAD_SECONDS = 1
+
 interface TimelineEditorProps {
   words: Word[]
+  /** Neighbouring segments' words, drawn greyed/read-only where they fall in the padded view. */
+  contextWords?: Word[]
   startTime: number
   endTime: number
   onWordUpdate: (index: number, updates: Partial<Word>) => void
@@ -19,6 +25,7 @@ interface TimelineEditorProps {
 
 export default function TimelineEditor({
   words,
+  contextWords,
   startTime,
   endTime,
   onWordUpdate,
@@ -37,6 +44,14 @@ export default function TimelineEditor({
   } | null>(null)
 
   const MIN_DURATION = 0.1 // Minimum word duration in seconds
+
+  // Show a little context on each side of the segment (greyed out) so the first word can be
+  // dragged/synced earlier and the last word later, and so the surrounding waveform + any word
+  // blocks that spill just outside the segment stay visible. The whole timeline maps this padded
+  // "view domain" to 0–100%; the segment itself is the un-shaded band in the middle.
+  const viewStart = Math.max(0, startTime - TIMELINE_PAD_SECONDS)
+  const viewEnd = endTime + TIMELINE_PAD_SECONDS
+  const viewDuration = viewEnd - viewStart
 
   const checkCollision = (
     proposedStart: number,
@@ -79,18 +94,17 @@ export default function TimelineEditor({
   }
 
   const timeToPosition = (time: number): number => {
-    const duration = endTime - startTime
-    const position = ((time - startTime) / duration) * 100
+    const position = ((time - viewStart) / viewDuration) * 100
     return Math.max(0, Math.min(100, position))
   }
 
   const generateTimelineMarks = () => {
     const marks = []
-    const startSecond = Math.floor(startTime)
-    const endSecond = Math.ceil(endTime)
+    const startSecond = Math.floor(viewStart)
+    const endSecond = Math.ceil(viewEnd)
 
     for (let time = startSecond; time <= endSecond; time++) {
-      if (time >= startTime && time <= endTime) {
+      if (time >= viewStart && time <= viewEnd) {
         const position = timeToPosition(time)
         marks.push(
           <div key={time}>
@@ -123,7 +137,7 @@ export default function TimelineEditor({
     if (word.start_time === null || word.end_time === null) return
 
     const initialX = e.clientX - rect.left
-    const initialTime = (initialX / rect.width) * (endTime - startTime)
+    const initialTime = (initialX / rect.width) * viewDuration
 
     setDragState({
       wordIndex,
@@ -152,7 +166,7 @@ export default function TimelineEditor({
 
     if (dragState.type === 'resize-right') {
       const initialWordDuration = dragState.word.end_time - dragState.word.start_time
-      const initialWordWidth = (initialWordDuration / (endTime - startTime)) * width
+      const initialWordWidth = (initialWordDuration / viewDuration) * width
       const pixelDelta = x - dragState.initialX
       const percentageMoved = pixelDelta / initialWordWidth
       const timeDelta = initialWordDuration * percentageMoved
@@ -170,7 +184,7 @@ export default function TimelineEditor({
       })
     } else if (dragState.type === 'resize-left') {
       const initialWordDuration = dragState.word.end_time - dragState.word.start_time
-      const initialWordWidth = (initialWordDuration / (endTime - startTime)) * width
+      const initialWordWidth = (initialWordDuration / viewDuration) * width
       const pixelDelta = x - dragState.initialX
       const percentageMoved = pixelDelta / initialWordWidth
       const timeDelta = initialWordDuration * percentageMoved
@@ -187,7 +201,7 @@ export default function TimelineEditor({
         end_time: currentWord.end_time,
       })
     } else if (dragState.type === 'move') {
-      const pixelsPerSecond = width / (endTime - startTime)
+      const pixelsPerSecond = width / viewDuration
       const pixelDelta = x - dragState.initialX
       const timeDelta = pixelDelta / pixelsPerSecond
 
@@ -195,7 +209,9 @@ export default function TimelineEditor({
       const proposedStart = dragState.word.start_time + timeDelta
       const proposedEnd = proposedStart + wordDuration
 
-      if (proposedStart < startTime || proposedEnd > endTime) return
+      // Allow dragging a little outside the segment (into the padded view) so the first/last
+      // word can extend the segment; updateSegment recomputes the segment bounds from the words.
+      if (proposedStart < viewStart || proposedEnd > viewEnd) return
       if (checkCollision(proposedStart, proposedEnd, dragState.wordIndex, false)) return
 
       onWordUpdate(dragState.wordIndex, {
@@ -234,7 +250,7 @@ export default function TimelineEditor({
     if (rect.width <= 0) return
 
     const x = e.clientX - rect.left
-    const clickedPosition = (x / rect.width) * (endTime - startTime) + startTime
+    const clickedPosition = (x / rect.width) * viewDuration + viewStart
     if (!Number.isFinite(clickedPosition)) return
 
     onPlaySegment(clickedPosition)
@@ -248,6 +264,18 @@ export default function TimelineEditor({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
+      {/* Out-of-segment padding: greyed bands on each side of the real segment. These sit above
+          the waveform but below the word bars and are click-through so playback scrubbing still
+          works. Boundary lines mark exactly where the current segment starts/ends. */}
+      <div
+        className="absolute inset-y-0 left-0 bg-muted-foreground/10 pointer-events-none z-[5] border-r border-dashed border-muted-foreground/40"
+        style={{ width: `${timeToPosition(startTime)}%` }}
+      />
+      <div
+        className="absolute inset-y-0 right-0 bg-muted-foreground/10 pointer-events-none z-[5] border-l border-dashed border-muted-foreground/40"
+        style={{ width: `${100 - timeToPosition(endTime)}%` }}
+      />
+
       {/* Timeline ruler */}
       <div
         className="h-10 border-b border-border cursor-pointer"
@@ -256,8 +284,8 @@ export default function TimelineEditor({
         {generateTimelineMarks()}
       </div>
 
-      {/* Playback cursor */}
-      {showPlaybackIndicator && currentTime >= startTime && currentTime <= endTime && (
+      {/* Playback cursor — visible across the padded view (incl. lead-in/out) */}
+      {showPlaybackIndicator && currentTime >= viewStart && currentTime <= viewEnd && (
         <div
           className="absolute top-0 w-0.5 h-full bg-destructive pointer-events-none transition-[left] duration-100 z-10"
           style={{ left: `${timeToPosition(currentTime)}%` }}
@@ -266,6 +294,34 @@ export default function TimelineEditor({
 
       {/* Word blocks */}
       <div className="relative h-[30px]">
+        {/* Neighbouring segments' words that fall in the padded view — greyed, read-only context. */}
+        {(contextWords ?? []).map((word, index) => {
+          if (word.start_time === null || word.end_time === null) return null
+          if (word.end_time < viewStart || word.start_time > viewEnd) return null
+
+          const leftPosition = timeToPosition(word.start_time)
+          const rightPosition = timeToPosition(word.end_time)
+          const width = rightPosition - leftPosition
+
+          return (
+            <div
+              key={`ctx-${word.id ?? index}`}
+              className={cn(
+                'absolute bg-muted-foreground/25 text-muted-foreground rounded px-2 py-1',
+                'select-none flex items-center text-sm font-sans pointer-events-none',
+                'border border-dashed border-muted-foreground/40 overflow-hidden whitespace-nowrap'
+              )}
+              style={{
+                left: `${leftPosition}%`,
+                width: `${width}%`,
+                maxWidth: `calc(${100 - leftPosition}%)`,
+              }}
+              title={`${word.text} (neighbouring segment)`}
+            >
+              {word.text}
+            </div>
+          )
+        })}
         {words.map((word, index) => {
           if (word.start_time === null || word.end_time === null) return null
 
@@ -317,8 +373,10 @@ export default function TimelineEditor({
       <VocalsAudioDataLoaderContext.Consumer>
         {({ audioData: vocalsAudioData }) => (
           vocalsAudioData && <WaveformVisualizer
-            startTime={startTime}
-            endTime={endTime}
+            startTime={viewStart}
+            endTime={viewEnd}
+            fadeBeforeTime={startTime}
+            fadeAfterTime={endTime}
             audioData={vocalsAudioData}
             className="w-[100%] h-[35px]"
           />

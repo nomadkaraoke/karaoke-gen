@@ -312,6 +312,15 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
   const [showPostAi, setShowPostAi] = useState(false)
   useEffect(() => { setShowPostAi(false) }, [job.job_id])
 
+  // DEV-ONLY: `&edit=1` makes a replay session editable so the review UI (incl. Tap To Sync)
+  // can be exercised against REAL job data + audio locally. Ignored in production builds — replay
+  // stays strictly read-only there.
+  const replayEditable =
+    isReplay &&
+    process.env.NODE_ENV !== 'production' &&
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('edit') === '1'
+
   // Create the API client for this job
   const apiClient = createLyricsReviewApiClient(job.job_id)
 
@@ -400,7 +409,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
               style={{ height: 40 }}
             />
             <h1 className="text-lg font-bold">
-              {isReplay ? "Lyrics Review — Replay (read-only)" : "Lyrics Transcription Review"}
+              {isReplay ? (replayEditable ? "Lyrics Review — Replay (editable · dev)" : "Lyrics Review — Replay (read-only)") : "Lyrics Transcription Review"}
             </h1>
             {(job.artist || job.title) && (
               <span className="text-xs md:text-sm text-muted-foreground truncate">
@@ -449,7 +458,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
           onFileLoad={handleFileLoad}
           onShowMetadata={handleShowMetadata}
           apiClient={apiClient}
-          isReadOnly={isReplay}
+          isReadOnly={isReplay && !replayEditable}
           audioHash={correctionData.metadata?.audio_hash || job.audio_hash || job.job_id}
           isLocalMode={isLocalMode}
           jobId={job.job_id}

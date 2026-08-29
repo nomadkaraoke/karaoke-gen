@@ -11,19 +11,39 @@ interface UseManualSyncProps {
   onTimingClamped?: (wordText: string, snappedTo: number) => void
 }
 
+// Manual sync plays this many seconds before the segment starts, so the user can hear the
+// run-up and tap the very first word on time. Taps anywhere in that lead-in are legitimate.
+const LEAD_IN_SECONDS = 3
+// Symmetric window AFTER the segment end: the user may tap/hold the last word past the old end
+// (extending the segment). Taps within this lead-out are legitimate and grow the segment.
+const LEAD_OUT_SECONDS = 3
+
 /**
- * Clamp a manual-sync tap time into the segment's audio window. A tap should always land
- * within the segment being synced; a value outside (e.g. the playhead sitting at 0) is a
- * sync glitch — the source of the start=0/end=-0.005 corruption. Null bounds => no clamp.
+ * Clamp a manual-sync tap time into the segment's *playback* window `[segStart - leadIn, segEnd + leadOut]`.
+ *
+ * A tap should land within the window Tap To Sync actually plays/allows. Playback starts `leadIn`
+ * seconds BEFORE the segment (see LEAD_IN_SECONDS) because the user hears the run-up and often taps
+ * the first word just before the old segment start (especially when re-syncing to move it earlier).
+ * Symmetrically, `leadOut` lets the last word be tapped/held just past the old end to extend the
+ * segment. Only values outside that widened window (e.g. the playhead stuck at 0 for a mid-song
+ * segment) are sync glitches worth clamping. Clamping to the tight `[segStart, segEnd]` instead
+ * would (a) shove every legitimate lead-in tap up to segStart, (b) ratchet the segment start forward
+ * so it could never be re-synced earlier, and (c) hard-cut the last word at the old end. The lower
+ * bound is floored at 0. `leadIn`/`leadOut` default to 0 for back-compat; pass the constants from
+ * the sync handlers. Null start/end => that bound is skipped.
  */
 export function clampSyncTime(
   time: number,
   segStart: number | null,
-  segEnd: number | null
+  segEnd: number | null,
+  leadIn: number = 0,
+  leadOut: number = 0
 ): number {
   let t = time
-  if (typeof segStart === 'number' && Number.isFinite(segStart)) t = Math.max(t, segStart)
-  if (typeof segEnd === 'number' && Number.isFinite(segEnd)) t = Math.min(t, segEnd)
+  if (typeof segStart === 'number' && Number.isFinite(segStart)) {
+    t = Math.max(t, Math.max(0, segStart - leadIn))
+  }
+  if (typeof segEnd === 'number' && Number.isFinite(segEnd)) t = Math.min(t, segEnd + leadOut)
   return t
 }
 
@@ -55,6 +75,13 @@ export default function useManualSync({
   useEffect(() => {
     currentTimeRef.current = currentTime
   }, [currentTime])
+
+  // Mirror isSpacebarPressed into a ref so the auto-stop interval can read the live value
+  // (its closure would otherwise capture a stale state snapshot) without restarting the interval.
+  const isSpacebarPressedRef = useRef(isSpacebarPressed)
+  useEffect(() => {
+    isSpacebarPressedRef.current = isSpacebarPressed
+  }, [isSpacebarPressed])
 
   // Keep wordsRef up to date
   useEffect(() => {
@@ -143,7 +170,9 @@ export default function useManualSync({
           const currentStartTime = clampSyncTime(
             rawStartTime,
             editedSegment?.start_time ?? null,
-            editedSegment?.end_time ?? null
+            editedSegment?.end_time ?? null,
+            LEAD_IN_SECONDS,
+            LEAD_OUT_SECONDS
           )
           if (currentStartTime !== rawStartTime) {
             onTimingClamped?.(newWords[syncWordIndex]?.text ?? '', currentStartTime)
@@ -256,23 +285,33 @@ export default function useManualSync({
     [isManualSyncing, editedSegment, syncWordIndex, isSpacebarPressed, isPaused]
   )
 
-  // Add a handler for when the next word starts to adjust previous word's end time if needed
+  // Safety net for when we advance to the next word: if the word we just synced ends
+  // after the *next* word's start, pull its end back so they don't overlap.
+  //
+  // Two guards are essential here. When this effect fires, `currentWord` (the next word)
+  // has NOT been re-synced yet — it still holds its OLD start_time from a previous sync.
+  // So we must only act when that start is genuinely *later* than the previous word's
+  // start (`currentWord.start_time > prevWord.start_time`); otherwise a re-sync that moves
+  // words to later times would pull the just-tapped word's end back to a stale, earlier
+  // timestamp — producing end_time < start_time (a negative-duration word the segment
+  // sanitizer then has to "fix" on reopen). We also clamp the new end to never fall below
+  // the previous word's own start_time.
   useEffect(() => {
     if (isManualSyncing && editedSegment && syncWordIndex > 0) {
       const newWords = [...wordsRef.current]
       const prevWord = newWords[syncWordIndex - 1]
       const currentWord = newWords[syncWordIndex]
 
-      // If the previous word's end time overlaps with the current word's start time,
-      // adjust the previous word's end time
       if (
         prevWord &&
         currentWord &&
         prevWord.end_time !== null &&
+        prevWord.start_time !== null &&
         currentWord.start_time !== null &&
+        currentWord.start_time > prevWord.start_time &&
         prevWord.end_time > currentWord.start_time
       ) {
-        prevWord.end_time = currentWord.start_time - OVERLAP_BUFFER
+        prevWord.end_time = Math.max(currentWord.start_time - OVERLAP_BUFFER, prevWord.start_time)
 
         // Update our ref
         wordsRef.current = newWords
@@ -422,7 +461,7 @@ export default function useManualSync({
     spacebarPressTimeRef.current = null
     needsSegmentUpdateRef.current = false
     // Start playing 3 seconds before segment start
-    onPlaySegment((editedSegment.start_time ?? 0) - 3)
+    onPlaySegment((editedSegment.start_time ?? 0) - LEAD_IN_SECONDS)
   }, [isManualSyncing, editedSegment, onPlaySegment, cleanupManualSync])
 
   // Auto-stop sync if we go past the end time (but not for global replacement segments)
@@ -438,7 +477,12 @@ export default function useManualSync({
     const checkAutoStop = () => {
       const endTime = editedSegment.end_time ?? 0
 
-      if (window.isAudioPlaying && currentTimeRef.current > endTime) {
+      // Never cut the user off mid-tap/hold: they may be holding the LAST word past the old
+      // segment end to extend it (updateSegment grows end_time once the word lands). Only stop
+      // once playback is a full lead-out past the end AND the spacebar isn't currently down.
+      if (isSpacebarPressedRef.current) return
+
+      if (window.isAudioPlaying && currentTimeRef.current > endTime + LEAD_OUT_SECONDS) {
         window.toggleAudioPlayback?.()
         cleanupManualSync()
       }

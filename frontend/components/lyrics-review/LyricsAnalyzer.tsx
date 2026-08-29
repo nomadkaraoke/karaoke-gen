@@ -62,7 +62,7 @@ import AutoCorrectModal from './AutoCorrectModal'
 import AutoCorrectPanel from './AutoCorrectPanel'
 import { useAutoCorrect } from '@/hooks/useAutoCorrect'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
-import { applyOffsetToCorrectionData, applyOffsetToSegment } from '@/lib/lyrics-review/utils/timingUtils'
+import { applyOffsetToCorrectionData, applyOffsetToSegment, applyOffsetToWord } from '@/lib/lyrics-review/utils/timingUtils'
 import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
 
 // Add type for window augmentation
@@ -1334,6 +1334,27 @@ export default function LyricsAnalyzer({
     return timingOffsetMs !== 0 ? applyOffsetToCorrectionData(data, timingOffsetMs) : data
   }, [data, timingOffsetMs])
 
+  // Words from OTHER segments that sit near the segment being edited, so the Edit Segment
+  // timeline can show them as greyed read-only context in its ±padding. Kept to a small window
+  // around the segment (the timeline filters again to its exact view); offset-applied to match.
+  const editContextWords = useMemo(() => {
+    if (!editModalSegment) return []
+    const seg = editModalSegment.segment
+    const segStart = seg.start_time ?? 0
+    const segEnd = seg.end_time ?? segStart
+    const lo = segStart - 2
+    const hi = segEnd + 2
+    const nearby: Word[] = []
+    data.corrected_segments.forEach((s, i) => {
+      if (i === editModalSegment.index) return
+      s.words.forEach((w) => {
+        if (w.start_time === null || w.end_time === null) return
+        if (w.end_time >= lo && w.start_time <= hi) nearby.push(w)
+      })
+    })
+    return timingOffsetMs !== 0 ? nearby.map((w) => applyOffsetToWord(w, timingOffsetMs)) : nearby
+  }, [editModalSegment, data.corrected_segments, timingOffsetMs])
+
   // Timing offset handlers
   const handleOpenTimingOffsetModal = useCallback(() => {
     setIsTimingOffsetModalOpen(true)
@@ -1574,6 +1595,7 @@ export default function LyricsAnalyzer({
           onMergeSegment={handleMergeSegment}
           onPlaySegment={handlePlaySegment}
           currentTime={currentAudioTime}
+          contextWords={editContextWords}
           originalTranscribedSegment={
             editModalSegment?.segment &&
             editModalSegment?.index !== null &&

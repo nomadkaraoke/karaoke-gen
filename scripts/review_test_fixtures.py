@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
@@ -436,13 +436,92 @@ class FixtureReviewServer:
 
         @self.app.get("/api/audio/{audio_hash}")
         async def get_audio(audio_hash: str):
-            """No audio available for fixture review."""
-            raise HTTPException(status_code=404, detail="Audio not available in fixture review mode")
+            """Serve synthetic audio so the review UI's player/waveform can load."""
+            return Response(content=self._get_synthetic_wav(), media_type="audio/wav")
 
         @self.app.get("/api/review/{job_id}/audio/{audio_hash}")
         async def get_audio_review(job_id: str, audio_hash: str):
-            """No audio available for fixture review."""
-            raise HTTPException(status_code=404, detail="Audio not available in fixture review mode")
+            """Serve synthetic audio (vocals/instrumental/etc.) for fixture review.
+
+            Real stems aren't available offline, but the manual "Tap To Sync" flow needs a
+            playable, seekable audio element and a decodable buffer for the waveform. A quiet
+            synthetic tone satisfies both without any external asset.
+            """
+            return Response(content=self._get_synthetic_wav(), media_type="audio/wav")
+
+    def _get_synthetic_wav(self, sample_rate: int = 16000) -> bytes:
+        """Generate (and cache per fixture) a mono WAV *click track* for the review audio player.
+
+        Real vocal stems aren't available offline, so a flat tone gives nothing to sync to. Instead
+        we place a short audible click at every word's onset (start_time) for the CURRENT fixture,
+        so the manual "Tap To Sync" flow can actually be exercised — tap on each click. Also yields a
+        decodable buffer for the waveform and a seekable element for playback. Cached per fixture.
+        """
+        cache = getattr(self, "_synthetic_wav_cache", None)
+        if cache is None:
+            cache = {}
+            self._synthetic_wav_cache = cache
+        idx = self.current_index
+        if idx in cache:
+            return cache[idx]
+
+        import io
+        import math
+        import struct
+        import wave
+
+        # Collect word onsets (and the latest end) from the current fixture's segments.
+        onsets: List[float] = []
+        max_end = 0.0
+        try:
+            fixture_data = self.fixtures[idx][1]
+            for seg in fixture_data.get("original_segments", []):
+                for w in seg.get("words", []):
+                    st = w.get("start_time")
+                    en = w.get("end_time")
+                    if isinstance(st, (int, float)):
+                        onsets.append(float(st))
+                    if isinstance(en, (int, float)):
+                        max_end = max(max_end, float(en))
+        except (IndexError, KeyError, TypeError):
+            pass
+
+        duration_s = max(int(max_end) + 5, 30)
+        n_frames = duration_s * sample_rate
+        samples = [0] * n_frames
+
+        # Percussive 1 kHz click, ~60ms with exponential decay, at each onset.
+        click_len = int(0.06 * sample_rate)
+        click_amp = 9000  # ~27% of int16 full-scale — clearly audible
+        two_pi_click = 2 * math.pi * 1000.0
+        for onset in onsets:
+            start = int(onset * sample_rate)
+            for j in range(click_len):
+                pos = start + j
+                if 0 <= pos < n_frames:
+                    tau = j / sample_rate
+                    env = math.exp(-tau * 45.0)
+                    samples[pos] += int(click_amp * env * math.sin(two_pi_click * tau))
+
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)  # 16-bit PCM
+            wav.setframerate(sample_rate)
+            frames = bytearray()
+            for s in samples:
+                # Clamp to int16 range in case overlapping clicks sum past the limit.
+                s = 32767 if s > 32767 else -32768 if s < -32768 else s
+                frames += struct.pack("<h", s)
+            wav.writeframes(bytes(frames))
+
+        data = buf.getvalue()
+        cache[idx] = data
+        logging.info(
+            f"🔊 Generated {duration_s}s click-track WAV ({len(data) // 1024} KB, "
+            f"{len(onsets)} word onsets) for fixture #{idx}"
+        )
+        return data
 
     def _do_navigate(self, direction: str) -> dict:
         """Perform navigation to next/previous fixture."""
