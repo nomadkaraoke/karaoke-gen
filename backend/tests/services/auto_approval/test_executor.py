@@ -192,12 +192,41 @@ async def test_incomplete_audio_blocks_enforcement() -> None:
 
 
 @pytest.mark.asyncio
-async def test_existing_instrumental_blocks_enforcement() -> None:
+async def test_existing_instrumental_completes_with_custom_selection() -> None:
+    # Tenant/bulk jobs with a user-supplied instrumental have NO instrumental
+    # decision — confident lyrics alone auto-complete with selection="custom",
+    # even with NO backing analysis at all (the backing verdict is moot).
     result, jm, _, _ = await _run(
-        _job(backing=_clean_backing(), existing_instrumental="jobs/j1/custom.flac")
+        _job(backing=None, existing_instrumental="jobs/j1/custom.flac")
+    )
+    assert result["outcome"] == "auto_completed"
+    jm.update_state_data.assert_any_call("j1", "instrumental_selection", "custom")
+    payload = jm.update_processing_metadata.call_args.args[2]
+    assert payload["enforcement_basis"] == "lyrics_only_custom_instrumental"
+    assert payload["custom_instrumental"] is True
+
+
+@pytest.mark.asyncio
+async def test_custom_instrumental_stem_also_selects_custom() -> None:
+    job = _job(backing=None)
+    job.file_urls["stems"]["custom_instrumental"] = "jobs/j1/stems/custom.flac"
+    # No separated instrumental required for custom jobs.
+    del job.file_urls["stems"]["instrumental_clean"]
+    result, jm, _, _ = await _run(job)
+    assert result["outcome"] == "auto_completed"
+    jm.update_state_data.assert_any_call("j1", "instrumental_selection", "custom")
+
+
+@pytest.mark.asyncio
+async def test_existing_instrumental_still_requires_confident_lyrics() -> None:
+    corrections = _confident_corrections()
+    corrections["reference_lyrics"] = {}  # no references -> lyrics review
+    result, jm, _, _ = await _run(
+        _job(backing=None, existing_instrumental="jobs/j1/custom.flac"),
+        corrections=corrections,
     )
     assert result["outcome"] == "review"
-    assert "custom_instrumental" in result["blockers"]
+    jm.transition_to_state.assert_not_called()
 
 
 @pytest.mark.asyncio

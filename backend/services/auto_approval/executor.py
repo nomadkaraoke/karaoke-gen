@@ -11,11 +11,15 @@ Every call scores the job and records the verdict in
 Enforcement — actually skipping the review screens — happens only when ALL of:
 - the feature flag is on and the job's ``review_mode`` is "auto" (the default);
 - the job is not a made-for-you order (the human QC pass is part of that
-  product) and has no existing/custom instrumental (different selection
-  semantics — revisit later);
-- the scorer's ``overall_auto`` is True (confident lyrics AND non-subjective
-  no-audible-backing decision);
-- audio separation is complete and the clean instrumental stem exists.
+  product);
+- the job is ELIGIBLE: with a user-supplied instrumental (tenant bulk uploads,
+  the existing-instrumental upload option, mute-region edits) there is no
+  instrumental decision to make, so confident lyrics alone qualify and the
+  selection is "custom" — mirroring the human tenant complete-review flow.
+  Otherwise the scorer's ``overall_auto`` must be True (confident lyrics AND a
+  non-subjective backing decision);
+- audio separation is complete and the required instrumental exists (clean or
+  with-backing stem; the video worker validates custom sources itself).
 
 The enforce path replicates exactly what a human clicking "Complete Review"
 does after the UI's on-load auto-apply: apply the cached AI suggestions
@@ -34,7 +38,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from backend.models.job import JobStatus
-from backend.services.auto_approval.models import BackingVerdict
+from backend.services.auto_approval.models import BackingVerdict, LyricsVerdict
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +74,22 @@ def _enforcement_blockers(job, settings) -> List[str]:
         blockers.append(f"review_mode:{review_mode}")
     if getattr(job, "made_for_you", False):
         blockers.append("made_for_you")
-    stems = (job.file_urls or {}).get("stems", {}) if job.file_urls else {}
-    if getattr(job, "existing_instrumental_gcs_path", None) or stems.get("custom_instrumental"):
-        blockers.append("custom_instrumental")
     return blockers
+
+
+def _has_custom_instrumental(job) -> bool:
+    """True when the user supplied their own instrumental (tenant bulk uploads,
+    the upload flow's existing-instrumental option, or a mute-region edit).
+
+    For these jobs there is NO instrumental decision to make — the human
+    complete-review flow submits ``instrumental_selection="custom"`` — so the
+    auto class is lyrics-only and the backing verdict is moot.
+    """
+    stems = (job.file_urls or {}).get("stems", {}) if job.file_urls else {}
+    return bool(
+        getattr(job, "existing_instrumental_gcs_path", None)
+        or stems.get("custom_instrumental")
+    )
 
 
 async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any]:
@@ -122,9 +138,18 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
 
         verdict = score_job(corrections, backing_analysis, ai_suggestions)
         blockers = _enforcement_blockers(job, settings)
-        keep_backing = verdict.backing.verdict == BackingVerdict.WITH_BACKING
+        custom_instrumental = _has_custom_instrumental(job)
+        keep_backing = (
+            not custom_instrumental
+            and verdict.backing.verdict == BackingVerdict.WITH_BACKING
+        )
         if not audio_complete:
             blockers.append("audio_incomplete")
+        elif custom_instrumental:
+            # User-supplied instrumental -> selection is "custom" by
+            # definition; no separated-stem requirements. The video worker
+            # validates the custom source itself.
+            pass
         elif keep_backing:
             # Confident-keep (3-stem decider) selects the with-backing
             # instrumental — gated shadow-first behind its own flag.
@@ -135,10 +160,22 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
         elif not stems.get("instrumental_clean"):
             blockers.append("no_clean_stem")
 
+        # Eligibility: with a user-supplied instrumental the backing decision
+        # is moot, so confident lyrics alone qualify; otherwise the narrow
+        # intersection (confident lyrics AND non-subjective backing) applies.
+        if custom_instrumental:
+            eligible = verdict.lyrics.verdict == LyricsVerdict.AUTO
+            enforcement_basis = "lyrics_only_custom_instrumental"
+        else:
+            eligible = verdict.overall_auto
+            enforcement_basis = "overall_auto"
+
         payload = verdict.to_dict()
         payload.update({
             "mode": "shadow",  # flipped to "enforce" only when we actually enforce
             "enforcement_eligible": not blockers,
+            "enforcement_basis": enforcement_basis,
+            "custom_instrumental": custom_instrumental,
             "trigger": trigger,
             "enforcement_blockers": blockers,
             "audio_complete_at_scoring": audio_complete,
@@ -148,14 +185,14 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
         })
 
         summary = (
-            f"auto-approval [{trigger}]: overall_auto={verdict.overall_auto} "
+            f"auto-approval [{trigger}]: eligible={eligible} ({enforcement_basis}) "
             f"lyrics={verdict.lyrics.verdict.value}/{verdict.lyrics.tier} "
             f"backing={verdict.backing.verdict.value} blockers={blockers or 'none'} "
             f"(scorer v{verdict.scorer_version})"
         )
         logger.info(f"[job:{job_id}] {summary}")
 
-        if not verdict.overall_auto or blockers:
+        if not eligible or blockers:
             payload["outcome"] = "review"
             job_manager.update_processing_metadata(job_id, "auto_approval", payload)
             return {"outcome": "review", "overall_auto": verdict.overall_auto,
@@ -190,10 +227,15 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             )
             return {"outcome": "aborted", "reason": applied_info["aborted"]}
 
-        # Non-subjective backing verdict -> matching instrumental selection:
-        # CLEAN ("no audible backing") -> clean stem; WITH_BACKING (confident
-        # 3-stem decider keep, flag-gated above) -> with-backing stem.
-        selection = "with_backing" if keep_backing else "clean"
+        # Instrumental selection: user-supplied instrumental -> "custom"
+        # (mirrors the human tenant complete-review flow); otherwise the
+        # non-subjective backing verdict picks the separated stem — CLEAN
+        # ("no audible backing") -> clean, WITH_BACKING (confident 3-stem
+        # decider keep, flag-gated above) -> with-backing.
+        if custom_instrumental:
+            selection = "custom"
+        else:
+            selection = "with_backing" if keep_backing else "clean"
         job_manager.update_state_data(job_id, "instrumental_selection", selection)
 
         # Clear worker progress keys so downstream workers run fresh (mirrors
@@ -208,9 +250,13 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             message=(
                 "Auto-approved: lyrics verified against synced references and "
                 + (
-                    "clear backing vocals retained"
-                    if keep_backing
-                    else "no audible backing vocals"
+                    "using your provided instrumental"
+                    if custom_instrumental
+                    else (
+                        "clear backing vocals retained"
+                        if keep_backing
+                        else "no audible backing vocals"
+                    )
                 )
                 + " — skipping review, rendering video"
             ),
