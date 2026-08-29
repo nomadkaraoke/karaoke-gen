@@ -102,7 +102,12 @@ def test_has_custom_instrumental_false():
 # ---- summary + resolver over stored verdict ---------------------------------
 
 def _job_with_verdict(backing_verdict, non_subjective, lyrics_verdict="auto", pref="auto",
-                      custom=False):
+                      custom=False, review_mode="auto", stems=None):
+    if stems is None:
+        stems = {
+            "instrumental_clean": "jobs/j/clean.flac",
+            "instrumental_with_backing": "jobs/j/backing.flac",
+        }
     return SimpleNamespace(
         processing_metadata={
             "auto_approval": {
@@ -111,8 +116,9 @@ def _job_with_verdict(backing_verdict, non_subjective, lyrics_verdict="auto", pr
             }
         },
         backing_preference=pref,
+        review_mode=review_mode,
         existing_instrumental_gcs_path=("jobs/j/inst.flac" if custom else None),
-        file_urls={"stems": {}},
+        file_urls={"stems": stems},
     )
 
 
@@ -151,3 +157,37 @@ def test_resolve_auto_instrumental_with_backing_gated():
 
 def test_resolve_auto_instrumental_custom():
     assert resolve_auto_instrumental(_job_with_verdict("review", False, custom=True), _settings()) == "custom"
+
+
+def test_always_review_never_confident():
+    # review_mode="always_review" -> the user wants every screen; nothing skips.
+    s = auto_approval_summary(_job_with_verdict("clean", True, review_mode="always_review"), _settings())
+    assert s["backing"]["confident"] is False
+    assert s["backing"]["resolved_selection"] is None
+    assert s["lyrics"]["confident"] is False
+    assert resolve_auto_instrumental(
+        _job_with_verdict("clean", True, review_mode="always_review"), _settings()) is None
+
+
+def test_resolve_returns_none_when_clean_stem_absent():
+    # Confident clean verdict but the clean stem isn't present -> a human must pick.
+    job = _job_with_verdict("clean", True, stems={"instrumental_with_backing": "x"})
+    assert resolve_auto_instrumental(job, _settings()) is None
+    assert auto_approval_summary(job, _settings())["backing"]["confident"] is False
+
+
+def test_resolve_returns_none_when_with_backing_stem_absent():
+    job = _job_with_verdict("with_backing", True, stems={"instrumental_clean": "x"})
+    assert resolve_auto_instrumental(job, _settings(keep=True)) is None
+
+
+# ---- JobCreate coercion (typo must never silently flip intent) ---------------
+
+def test_jobcreate_coerces_out_of_set_preferences():
+    from backend.models.job import JobCreate
+    assert JobCreate(backing_preference="cleen").backing_preference == "auto"
+    assert JobCreate(backing_preference="clean").backing_preference == "clean"
+    # review_mode fails safe toward MORE review, never toward auto-skip.
+    assert JobCreate(review_mode="typo").review_mode == "always_review"
+    assert JobCreate(review_mode="auto").review_mode == "auto"
+    assert JobCreate().backing_preference == "auto" and JobCreate().review_mode == "auto"

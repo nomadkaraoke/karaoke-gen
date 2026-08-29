@@ -90,6 +90,18 @@ def auto_approval_summary(job, settings) -> Dict[str, Any]:
     backing = aa.get("backing") or {}
     lyrics = aa.get("lyrics") or {}
     custom = has_custom_instrumental(job)
+
+    # ``always_review`` (or any non-"auto" review_mode) means the user asked to
+    # see every screen — no half is ever "confident" enough to skip.
+    review_mode = getattr(job, "review_mode", "auto") or "auto"
+    if review_mode != "auto":
+        return {
+            "backing": {"verdict": backing.get("verdict"), "confident": False, "resolved_selection": None},
+            "lyrics": {"verdict": lyrics.get("verdict"), "confident": False},
+            "custom_instrumental": custom,
+            "verdict_present": bool(aa),
+        }
+
     decision = backing_decision(
         backing_verdict=backing.get("verdict"),
         backing_non_subjective=bool(backing.get("non_subjective")),
@@ -97,11 +109,12 @@ def auto_approval_summary(job, settings) -> Dict[str, Any]:
         backing_keep_enabled=bool(getattr(settings, "auto_approval_backing_keep_enabled", False)),
         custom_instrumental=custom,
     )
+    selection = _selection_with_stem_check(job, decision["selection"])
     return {
         "backing": {
             "verdict": backing.get("verdict"),
-            "confident": decision["ok"],
-            "resolved_selection": decision["selection"],
+            "confident": selection is not None,
+            "resolved_selection": selection,
         },
         "lyrics": {
             "verdict": lyrics.get("verdict"),
@@ -110,6 +123,18 @@ def auto_approval_summary(job, settings) -> Dict[str, Any]:
         "custom_instrumental": custom,
         "verdict_present": bool(aa),
     }
+
+
+def _selection_with_stem_check(job, selection: Optional[str]) -> Optional[str]:
+    """None out a separated-stem selection when that stem isn't present, so the
+    complete endpoint never persists an instrumental the render worker can't use
+    (mirrors the executor's no_*_stem blockers). "custom" is validated elsewhere."""
+    if selection in ("clean", "with_backing"):
+        stems = (job.file_urls or {}).get("stems", {}) if job.file_urls else {}
+        stem_key = "instrumental_with_backing" if selection == "with_backing" else "instrumental_clean"
+        if not stems.get(stem_key):
+            return None
+    return selection
 
 
 def resolve_auto_instrumental(job, settings) -> Optional[str]:

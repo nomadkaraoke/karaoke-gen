@@ -671,6 +671,20 @@ class JobCreate(BaseModel):
             raise ValueError("Field cannot be empty string")
         return v.strip() if isinstance(v, str) else v
 
+    @validator('review_mode')
+    def _normalize_review_mode(cls, v):
+        """Coerce an out-of-set value to the fail-safe default (always_review =
+        more human oversight), so a typo can never silently skip review. The
+        executor already treats any non-"auto" value as an enforcement blocker."""
+        return v if v in ("auto", "always_review") else "always_review"
+
+    @validator('backing_preference')
+    def _normalize_backing_preference(cls, v):
+        """Coerce an out-of-set value to the default. Every creation route passes
+        the client value straight through, so this is the single choke point that
+        keeps a typo from reaching the instrumental decision as an unknown value."""
+        return v if v in ("auto", "clean", "review") else "auto"
+
     @validator('artist', 'title')
     def normalize_artist_title(cls, v):
         """Normalize artist/title text to standardize Unicode characters.
