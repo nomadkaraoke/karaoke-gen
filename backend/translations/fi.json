@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumentaali valittu. Videon luonti aloitettu.",
     "instrumentalSelectionError": "Virhe valittaessa instrumentaalia työlle {job_id}: {error}",
     "downloadUrlsError": "Virhe haettaessa latausosoitteita: {error}",
-    "fileNoLongerAvailable": "Tiedosto ei ole enää saatavilla"
+    "fileNoLongerAvailable": "Tiedosto ei ole enää saatavilla",
+    "deletePublishedRequiresFiles": "Tämän kappaleen julkaistut tiedostot täytyy poistaa työn poistamisen yhteydessä. Yritä poistoa uudelleen ilman delete_files=false -määritystä."
   },
   "review": {
     "jobNotFound": "Työtä ei löytynyt",

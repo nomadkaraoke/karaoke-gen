@@ -48,7 +48,8 @@
     "instrumentalSelected": "Інструментал вибрано. Розпочато генерацію відео.",
     "instrumentalSelectionError": "Помилка вибору інструменталу для завдання {job_id}: {error}",
     "downloadUrlsError": "Помилка отримання URL-адрес для завантаження: {error}",
-    "fileNoLongerAvailable": "Файл більше недоступний"
+    "fileNoLongerAvailable": "Файл більше недоступний",
+    "deletePublishedRequiresFiles": "Опубліковані файли цього треку потрібно видалити під час видалення завдання. Повтори спробу видалення без delete_files=false."
   },
   "review": {
     "jobNotFound": "Завдання не знайдено",

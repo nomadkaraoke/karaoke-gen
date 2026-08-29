@@ -48,7 +48,8 @@
     "invalidInstrumentalSelection": "Invalid instrumental_selection. Must be one of: {valid_selections}",
     "instrumentalSelected": "Instrumental selected. Video generation started.",
     "instrumentalSelectionError": "Error selecting instrumental for job {job_id}: {error}",
-    "downloadUrlsError": "Error getting download URLs: {error}"
+    "downloadUrlsError": "Error getting download URLs: {error}",
+    "deletePublishedRequiresFiles": "This track's published files must be removed when the job is deleted. Retry the delete without delete_files=false."
   },
   "review": {
     "jobNotFound": "Job not found",

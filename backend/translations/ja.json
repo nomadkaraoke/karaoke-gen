@@ -48,7 +48,8 @@
     "instrumentalSelected": "インストゥルメンタルが選択されました。動画の生成を開始しました。",
     "instrumentalSelectionError": "ジョブ {job_id} のインストゥルメンタル選択中にエラーが発生しました: {error}",
     "downloadUrlsError": "ダウンロードURLの取得中にエラーが発生しました: {error}",
-    "fileNoLongerAvailable": "ファイルはご利用いただけなくなりました"
+    "fileNoLongerAvailable": "ファイルはご利用いただけなくなりました",
+    "deletePublishedRequiresFiles": "ジョブを削除する際は、このトラックの公開済みファイルも削除する必要があります。delete_files=false を指定せずに、削除を再試行してください。"
   },
   "review": {
     "jobNotFound": "ジョブが見つかりません",

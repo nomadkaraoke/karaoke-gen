@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental geselecteerd. Videogeneratie is gestart.",
     "instrumentalSelectionError": "Fout bij het selecteren van instrumental voor taak {job_id}: {error}",
     "downloadUrlsError": "Fout bij het ophalen van download-URL's: {error}",
-    "fileNoLongerAvailable": "Bestand niet meer beschikbaar"
+    "fileNoLongerAvailable": "Bestand niet meer beschikbaar",
+    "deletePublishedRequiresFiles": "De gepubliceerde bestanden van deze track moeten worden verwijderd als de taak wordt verwijderd. Probeer het verwijderen opnieuw zonder delete_files=false."
   },
   "review": {
     "jobNotFound": "Taak niet gevonden",

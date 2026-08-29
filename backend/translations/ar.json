@@ -48,7 +48,8 @@
     "instrumentalSelected": "تم تحديد المسار الموسيقي. بدأ إنشاء الفيديو.",
     "instrumentalSelectionError": "خطأ في تحديد المسار الموسيقي للمهمة {job_id}: {error}",
     "downloadUrlsError": "خطأ في الحصول على روابط التنزيل: {error}",
-    "fileNoLongerAvailable": "الملف لم يعد متاحاً"
+    "fileNoLongerAvailable": "الملف لم يعد متاحاً",
+    "deletePublishedRequiresFiles": "يجب إزالة الملفات المنشورة لهذا المسار عند حذف المهمة. يُرجى إعادة محاولة الحذف بدون delete_files=false."
   },
   "review": {
     "jobNotFound": "المهمة غير موجودة",

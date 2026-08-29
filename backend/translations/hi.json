@@ -48,7 +48,8 @@
     "instrumentalSelected": "इंस्ट्रुमेंटल चुना गया। वीडियो जनरेशन शुरू हो गया है।",
     "instrumentalSelectionError": "जॉब {job_id} के लिए इंस्ट्रुमेंटल चुनने में त्रुटि: {error}",
     "downloadUrlsError": "डाउनलोड URLs प्राप्त करने में त्रुटि: {error}",
-    "fileNoLongerAvailable": "फ़ाइल अब उपलब्ध नहीं है"
+    "fileNoLongerAvailable": "फ़ाइल अब उपलब्ध नहीं है",
+    "deletePublishedRequiresFiles": "जॉब डिलीट करते समय इस ट्रैक की पब्लिश की गई फ़ाइलों को हटाना ज़रूरी है। delete_files=false के बिना डिलीट करने की दोबारा कोशिश करो।"
   },
   "review": {
     "jobNotFound": "जॉब नहीं मिली",

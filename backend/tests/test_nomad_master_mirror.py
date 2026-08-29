@@ -206,3 +206,92 @@ def test_cleanup_nomad_masters_noop_for_non_nomad(brand, monkeypatch):
     # Must not even construct the mirror (no GCS client) for non-Nomad brands.
     monkeypatch.setattr(mod, "NomadMasterMirror", lambda: (_ for _ in ()).throw(AssertionError("should not construct")))
     assert mod.cleanup_nomad_masters(brand) == 0
+
+
+# --- delete_track_objects_by_filename_prefix (single-track orphan cleanup) ---
+
+def _blob(name):
+    b = MagicMock()
+    b.name = name
+    return b
+
+
+def _mirror_with_blobs_per_prefix(blobs_by_prefix):
+    """Mirror whose bucket.list_blobs returns blobs matching the requested prefix,
+    like real GCS (the shared-list shortcut breaks delimiter-bound tests)."""
+    bucket = MagicMock()
+
+    def list_blobs(prefix):
+        return [b for b in blobs_by_prefix if b.name.startswith(prefix)]
+
+    bucket.list_blobs.side_effect = list_blobs
+    client = MagicMock()
+    client.bucket.return_value = bucket
+    return NomadMasterMirror(client=client), bucket
+
+
+def test_delete_track_objects_by_filename_prefix_deletes_from_both_prefixes():
+    # One master + one vocals guide for the orphaned track; both must go.
+    master = _blob("files/Nomad Karaoke/MP4-720p/NOMAD-1583 - Mazzy Star - Fade Into You.mp4")
+    guide = _blob("files/Nomad Karaoke/vocals-padded/NOMAD-1583 - Mazzy Star - Fade Into You.flac")
+    mirror, bucket = _mirror_with_blobs_per_prefix([master, guide])
+
+    counts = mirror.delete_track_objects_by_filename_prefix("NOMAD-1583 - Mazzy Star")
+
+    assert counts == {"masters_deleted": 1, "vocals_guides_deleted": 1}
+    prefixes = [c.kwargs.get("prefix") or c.args[0] for c in bucket.list_blobs.call_args_list]
+    assert prefixes == [
+        "files/Nomad Karaoke/MP4-720p/NOMAD-1583 - Mazzy Star",
+        "files/Nomad Karaoke/vocals-padded/NOMAD-1583 - Mazzy Star",
+    ]
+    master.delete.assert_called_once()
+    guide.delete.assert_called_once()
+
+
+def test_delete_track_objects_by_filename_prefix_is_delimiter_bounded():
+    # "NOMAD-1583 - Mazzy Star" must NOT match a different track by a longer-named
+    # artist that happens to share the recycled brand code and the string prefix.
+    orphan = _blob("files/Nomad Karaoke/MP4-720p/NOMAD-1583 - Mazzy Star - Fade Into You.mp4")
+    other = _blob("files/Nomad Karaoke/MP4-720p/NOMAD-1583 - Mazzy Starlight - Other Song.mp4")
+    mirror, _bucket = _mirror_with_blobs_per_prefix([orphan, other])
+
+    counts = mirror.delete_track_objects_by_filename_prefix("NOMAD-1583 - Mazzy Star")
+
+    assert counts == {"masters_deleted": 1, "vocals_guides_deleted": 0}
+    orphan.delete.assert_called_once()
+    other.delete.assert_not_called()
+
+
+def test_delete_track_objects_full_stem_matches_extension_boundary():
+    # A full "brand - artist - title" stem must still match its own files (".mp4").
+    master = _blob("files/Nomad Karaoke/MP4-720p/NOMAD-1583 - Mazzy Star - Fade Into You.mp4")
+    mirror, _bucket = _mirror_with_blobs_per_prefix([master])
+
+    counts = mirror.delete_track_objects_by_filename_prefix(
+        "NOMAD-1583 - Mazzy Star - Fade Into You"
+    )
+
+    assert counts == {"masters_deleted": 1, "vocals_guides_deleted": 0}
+    master.delete.assert_called_once()
+
+
+@pytest.mark.parametrize("prefix", [
+    "NOMAD-1583",            # bare brand code — would match BOTH tracks sharing it
+    "NOMAD-1583 - ",         # brand code + separator but no artist text
+    "NOMADNP-0001 - X",      # private prefix
+    "Mazzy Star",            # no brand code
+    "",
+    None,
+])
+def test_delete_track_objects_by_filename_prefix_refuses_unsafe_prefixes(prefix):
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    with pytest.raises(ValueError):
+        mirror.delete_track_objects_by_filename_prefix(prefix)
+    bucket.list_blobs.assert_not_called()
+
+
+def test_delete_track_objects_by_filename_prefix_non_fatal_on_list_error():
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    bucket.list_blobs.side_effect = RuntimeError("gcs down")
+    counts = mirror.delete_track_objects_by_filename_prefix("NOMAD-1583 - Mazzy Star")
+    assert counts == {"masters_deleted": 0, "vocals_guides_deleted": 0}

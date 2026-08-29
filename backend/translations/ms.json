@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental dipilih. Penjanaan video bermula.",
     "instrumentalSelectionError": "Ralat memilih instrumental untuk tugasan {job_id}: {error}",
     "downloadUrlsError": "Ralat mendapatkan URL muat turun: {error}",
-    "fileNoLongerAvailable": "Fail tidak lagi tersedia"
+    "fileNoLongerAvailable": "Fail tidak lagi tersedia",
+    "deletePublishedRequiresFiles": "Fail terbitan trek ini mesti dipadamkan apabila tugas dipadamkan. Sila cuba padam semula tanpa delete_files=false."
   },
   "review": {
     "jobNotFound": "Tugasan tidak dijumpai",

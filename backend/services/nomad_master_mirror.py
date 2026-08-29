@@ -14,6 +14,7 @@ Scoped to public Nomad Karaoke masters only (brand prefix ``NOMAD``, excluding t
 here must never break the distribution pipeline — the nightly VM remains the safety net.
 """
 import logging
+import re
 from typing import Optional
 
 from google.cloud import storage
@@ -22,6 +23,17 @@ from google.cloud.exceptions import NotFound
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
+
+# A single-track filename prefix must be a full public brand code PLUS at least part
+# of the artist name ("NOMAD-#### - X..."). Stricter than the by-brand deletes: when a
+# recycled brand code is shared by two tracks (orphaned files), this lets cleanup
+# target exactly one of them without touching the other.
+_TRACK_FILENAME_PREFIX_RE = re.compile(r"^NOMAD-\d{4,} - \S.*")
+
+
+def is_safe_track_filename_prefix(filename_prefix: Optional[str]) -> bool:
+    """True if the prefix is specific enough for a single-track mirror delete."""
+    return bool(_TRACK_FILENAME_PREFIX_RE.match(filename_prefix or ""))
 
 
 def is_nomad_public_brand(brand_code: Optional[str]) -> bool:
@@ -160,6 +172,53 @@ class NomadMasterMirror:
         except Exception as e:  # noqa: BLE001 - never fatal to the pipeline
             logger.warning("Nomad master mirror prefix-delete failed for %s: %s", prefix, e)
         return deleted
+
+
+    def delete_track_objects_by_filename_prefix(self, filename_prefix: str) -> dict:
+        """Delete mirror objects (720p masters + original-vocals guides) whose filename
+        starts with ``filename_prefix`` — e.g. ``"NOMAD-1583 - Mazzy Star"``.
+
+        Used by orphaned-output cleanup when the owning job doc is gone and a recycled
+        brand code is shared with a live track: the prefix must include artist text
+        (enforced by ``_TRACK_FILENAME_PREFIX_RE``) so only the orphaned track's
+        objects match, never the whole brand code. Matching is delimiter-bounded — the
+        character after the prefix must be a space or ``.`` — so ``"NOMAD-1583 - Mazzy
+        Star"`` can never match a different track named ``"NOMAD-1583 - Mazzy Starlight
+        - ..."``. Raises ``ValueError`` for an unsafe prefix (callers validate with
+        ``is_safe_track_filename_prefix``); GCS errors stay best-effort.
+        """
+        if not is_safe_track_filename_prefix(filename_prefix):
+            raise ValueError(
+                f"Unsafe mirror track prefix {filename_prefix!r} "
+                f"(must look like 'NOMAD-#### - Artist...')"
+            )
+
+        counts = {"masters_deleted": 0, "vocals_guides_deleted": 0}
+        targets = [
+            ("masters_deleted", settings.nomad_master_gcs_prefix.strip("/")),
+            ("vocals_guides_deleted", settings.nomad_vocals_guide_gcs_prefix.strip("/")),
+        ]
+        for key, gcs_prefix in targets:
+            prefix = f"{gcs_prefix}/{filename_prefix}"
+            try:
+                for blob in self._bucket.list_blobs(prefix=prefix):
+                    remainder = blob.name[len(prefix):]
+                    if remainder and remainder[0] not in " .":
+                        # Prefix ends mid-word (a longer artist/title shares it) —
+                        # this object belongs to a different track.
+                        continue
+                    try:
+                        blob.delete()
+                        counts[key] += 1
+                        logger.info(
+                            "Removed orphaned mirror object gs://%s/%s",
+                            settings.divebar_files_bucket, blob.name,
+                        )
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning("Failed to delete mirror object %s: %s", blob.name, e)
+            except Exception as e:  # noqa: BLE001 - never fatal to the caller
+                logger.warning("Mirror track prefix-delete failed for %s: %s", prefix, e)
+        return counts
 
 
 def cleanup_nomad_masters(brand_code: Optional[str]) -> int:

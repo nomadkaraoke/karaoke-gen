@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumentál vybrán. Začalo generování videa.",
     "instrumentalSelectionError": "Chyba při výběru instrumentálu pro úlohu {job_id}: {error}",
     "downloadUrlsError": "Chyba při získávání adres URL ke stažení: {error}",
-    "fileNoLongerAvailable": "Soubor již není dostupný"
+    "fileNoLongerAvailable": "Soubor již není dostupný",
+    "deletePublishedRequiresFiles": "Při mazání úlohy je nutné odstranit i publikované soubory této skladby. Zkus to smazat znovu bez delete_files=false."
   },
   "review": {
     "jobNotFound": "Úloha nebyla nalezena",

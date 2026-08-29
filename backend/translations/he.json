@@ -48,7 +48,8 @@
     "instrumentalSelected": "הפלייבק נבחר. יצירת הווידאו התחילה.",
     "instrumentalSelectionError": "שגיאה בבחירת פלייבק עבור המשימה {job_id}: {error}",
     "downloadUrlsError": "שגיאה בקבלת כתובות ההורדה: {error}",
-    "fileNoLongerAvailable": "הקובץ אינו זמין יותר"
+    "fileNoLongerAvailable": "הקובץ אינו זמין יותר",
+    "deletePublishedRequiresFiles": "יש להסיר את הקבצים שפורסמו עבור רצועה זו בעת מחיקת המשימה. נסה שוב את המחיקה ללא delete_files=false."
   },
   "review": {
     "jobNotFound": "המשימה לא נמצאה",

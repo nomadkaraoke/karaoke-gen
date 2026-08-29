@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental sélectionné. La génération de la vidéo a commencé.",
     "instrumentalSelectionError": "Erreur lors de la sélection de l'instrumental pour la tâche {job_id} : {error}",
     "downloadUrlsError": "Erreur lors de l'obtention des URL de téléchargement : {error}",
-    "fileNoLongerAvailable": "Le fichier n'est plus disponible"
+    "fileNoLongerAvailable": "Le fichier n'est plus disponible",
+    "deletePublishedRequiresFiles": "Les fichiers publiés de cette piste doivent être supprimés en même temps que la tâche. Réessaie la suppression sans delete_files=false."
   },
   "review": {
     "jobNotFound": "Tâche introuvable",

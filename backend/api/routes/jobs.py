@@ -813,27 +813,53 @@ async def delete_job(
         if not _check_job_ownership(job, auth_result):
             raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionDelete"))
 
-        # Recycle any unreturned brand code before deleting the job record
+        # If the job still has published outputs (brand code allocated, outputs never
+        # cleaned up), delete the distributed files BEFORE deleting the job record.
+        # The brand code is recycled inside the cleanup only once Dropbox + GDrive are
+        # confirmed clean: recycling while files remain in the public share hands the
+        # same NOMAD-#### to a future job and creates duplicate brand codes (NOMAD-1583
+        # incident, 2026-08-29). If cleanup fails, the code stays allocated — a sequence
+        # gap the GDrive validator surfaces, which is safe and recoverable.
         state_data = job.state_data or {}
         brand_code = state_data.get('brand_code')
-        if brand_code:
-            if not job.outputs_deleted_at:
-                logger.warning(
-                    f"Deleting job {job_id} with brand_code {brand_code} whose outputs "
-                    f"were not cleaned up first. Brand code will be recycled but "
-                    f"distributed files (GDrive/Dropbox/YouTube) may be orphaned."
+        distribution_cleanup = None
+        if brand_code and not job.outputs_deleted_at:
+            if not delete_files:
+                # Published outputs cannot be preserved when their job record is
+                # deleted — the record holds the only file IDs/paths needed to ever
+                # clean them up or reconcile the brand code.
+                raise HTTPException(
+                    status_code=400,
+                    detail=t(locale, "jobs.deletePublishedRequiresFiles"),
                 )
-            try:
-                from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
-                prefix, number = BrandCodeService.parse_brand_code(brand_code)
-                get_brand_code_service().recycle_brand_code(prefix, number)
-                logger.info(f"Recycled brand code {brand_code} before deleting job {job_id}")
-            except (ValueError, Exception) as e:
-                logger.warning(f"Failed to recycle brand code {brand_code}: {e}")
+            logger.warning(
+                f"Deleting job {job_id} with brand_code {brand_code} whose outputs "
+                f"were not cleaned up first — running distribution cleanup before delete."
+            )
+            distribution_cleanup = _run_distribution_cleanup(job_id, job)
+            incomplete = [
+                svc for svc in ("youtube", "dropbox", "gdrive")
+                if distribution_cleanup.get(svc, {}).get("status") in ("failed", "partial", "error")
+            ]
+            if incomplete:
+                # Keep the job record: it holds the file IDs/paths needed to retry.
+                # Deleting it anyway would orphan the remaining published files with
+                # no way to resolve them later (NOMAD-1583 incident).
+                logger.error(
+                    f"Aborting delete of job {job_id}: distribution cleanup incomplete "
+                    f"for {incomplete} — {distribution_cleanup}"
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail=t(locale, "jobs.cleanupFailed", services=", ".join(incomplete)),
+                )
 
         job_manager.delete_job(job_id, delete_files=delete_files)
 
-        return {"status": "success", "message": f"Job {job_id} deleted"}
+        response = {"status": "success", "message": f"Job {job_id} deleted"}
+        if distribution_cleanup is not None:
+            response["distribution_cleanup"] = distribution_cleanup
+        return response
     except HTTPException:
         raise
     except Exception as e:
@@ -2165,41 +2191,23 @@ async def get_worker_logs(
     }
 
 
-@router.post("/{job_id}/cleanup-distribution")
-async def cleanup_distribution(
-    job_id: str,
-    request: Request,
-    delete_job: bool = True,
-    auth_result: AuthResult = Depends(require_admin)
-) -> dict:
+def _run_distribution_cleanup(job_id: str, job) -> dict:
     """
-    Clean up all distributed content for a job (YouTube, Dropbox, Google Drive).
+    Delete a job's distributed outputs (YouTube video, Dropbox folder, Google Drive
+    files, kjbox GCS mirror objects) and recycle its brand code once Dropbox AND
+    GDrive are confirmed clean.
 
-    This admin-only endpoint is designed for E2E test cleanup. It:
-    1. Deletes YouTube video (if uploaded)
-    2. Deletes Dropbox folder (if uploaded)
-    3. Deletes Google Drive files (if uploaded)
-    4. Optionally deletes the job itself
-
-    Args:
-        job_id: Job ID to clean up
-        delete_job: If True, also delete the job after cleaning up distribution
-
-    Returns:
-        Cleanup results for each service
+    Shared by the admin cleanup-distribution endpoint and job deletion. Deleting a
+    job whose outputs are still published MUST run this first: recycling the brand
+    code while the files remain in the public share hands the same NOMAD-#### to a
+    future job and creates duplicate brand codes (NOMAD-1583 incident, 2026-08-29).
     """
-    locale = get_locale_from_request(request)
-    job = job_manager.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
-
     state_data = job.state_data or {}
     results = {
         "job_id": job_id,
         "youtube": {"status": "skipped", "reason": "no youtube_url in state_data"},
         "dropbox": {"status": "skipped", "reason": "no brand_code or dropbox_path"},
         "gdrive": {"status": "skipped", "reason": "no gdrive_files in state_data"},
-        "job_deleted": False
     }
 
     # Clean up YouTube
@@ -2357,6 +2365,41 @@ async def cleanup_distribution(
             f"(gdrive_cleaned={gdrive_cleaned}). Brand code will remain reserved to prevent "
             f"collisions with leftover GDrive files."
         )
+
+
+    return results
+
+
+@router.post("/{job_id}/cleanup-distribution")
+async def cleanup_distribution(
+    job_id: str,
+    request: Request,
+    delete_job: bool = True,
+    auth_result: AuthResult = Depends(require_admin)
+) -> dict:
+    """
+    Clean up all distributed content for a job (YouTube, Dropbox, Google Drive).
+
+    This admin-only endpoint is designed for E2E test cleanup. It:
+    1. Deletes YouTube video (if uploaded)
+    2. Deletes Dropbox folder (if uploaded)
+    3. Deletes Google Drive files (if uploaded)
+    4. Optionally deletes the job itself
+
+    Args:
+        job_id: Job ID to clean up
+        delete_job: If True, also delete the job after cleaning up distribution
+
+    Returns:
+        Cleanup results for each service
+    """
+    locale = get_locale_from_request(request)
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+
+    results = _run_distribution_cleanup(job_id, job)
+    results["job_deleted"] = False
 
     # Delete the job if requested
     if delete_job:
