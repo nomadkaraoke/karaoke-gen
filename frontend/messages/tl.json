@@ -554,7 +554,17 @@
     "matchUsingTyped": "Ginagamit ang iyong nai-type: {value}",
     "checkingUrl": "Sinusuri…",
     "submitNetworkError": "Error sa network — paki-check ang iyong koneksyon at subukang muli.",
-    "submitError": "May nangyaring mali. Pakisubukan muli."
+    "submitError": "May nangyaring mali. Pakisubukan muli.",
+    "backingPrefAuto": "Panatilihin kung maaari",
+    "backingPrefClean": "Alisin (malinis)",
+    "backingPrefLabel": "Backing vocals",
+    "backingPrefReview": "Hayaan akong pumili",
+    "processingOptions": "Mga opsyon sa pagproseso",
+    "reviewModeAlways": "Palaging hayaan akong suriin",
+    "reviewModeAlwaysHint": "Palagi kaming hihinto at hahayaan kang suriin ang lyrics at pumili ng instrumental bago mag-render.",
+    "reviewModeAuto": "Ganap na awtomatiko",
+    "reviewModeAutoHint": "Hihilingin lang namin sa iyo na suriin ang lyrics o instrumental kung kailangan talaga ng tao. Awtomatikong natatapos ang mga siguradong track.",
+    "reviewModeLabel": "Pagsusuri"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Kabuuang mga segment: {count}",
         "proceedToInstrumental": "Magpatuloy sa Instrumental Review",
         "saving": "Sina-save...",
-        "completeTrack": "Kumpletuhin ang Track"
+        "completeTrack": "Kumpletuhin ang Track",
+        "autoInstrumentalBacking": "Awtomatiko naming pananatilihin ang mga backing vocals sa instrumental — hindi na kailangan ng pagsusuri sa instrumental.",
+        "autoInstrumentalClean": "Awtomatiko naming gagamitin ang malinis na instrumental (walang mga backing vocals) — hindi na kailangan ng pagsusuri sa instrumental.",
+        "reviewInstrumentalAnyway": "Hayaan akong ako mismo ang pumili ng instrumental"
       },
       "searchLyrics": {
         "artist": "Artist",

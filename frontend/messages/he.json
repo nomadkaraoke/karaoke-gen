@@ -554,7 +554,17 @@
     "matchUsingTyped": "משתמשים במה שהקלדת: {value}",
     "checkingUrl": "בודק…",
     "submitNetworkError": "שגיאת רשת — אנא בדוק את החיבור שלך ונסה שוב.",
-    "submitError": "משהו השתבש. אנא נסה שוב."
+    "submitError": "משהו השתבש. אנא נסה שוב.",
+    "backingPrefAuto": "לשמור במידת האפשר",
+    "backingPrefClean": "להסיר (נקי)",
+    "backingPrefLabel": "קולות רקע",
+    "backingPrefReview": "לאפשר לי לבחור",
+    "processingOptions": "אפשרויות עיבוד",
+    "reviewModeAlways": "תמיד לאפשר לי לבדוק",
+    "reviewModeAlwaysHint": "תמיד נעצור ונאפשר לך לבדוק את המילים ולבחור את הפלייבק לפני ההפקה.",
+    "reviewModeAuto": "אוטומטי לחלוטין",
+    "reviewModeAutoHint": "נבקש ממך לבדוק את המילים או הפלייבק רק אם משהו באמת דורש התערבות אנושית. שירים עם רמת ודאות גבוהה יעובדו באופן אוטומטי.",
+    "reviewModeLabel": "בדיקה"
   },
   "jobStatus": {
     "settingUp": "מגדיר",
@@ -1138,7 +1148,10 @@
         "totalSegments": "סה\"כ מקטעים: {count}",
         "proceedToInstrumental": "המשך לבדיקת פלייבק",
         "saving": "שומר...",
-        "completeTrack": "השלמת הרצועה"
+        "completeTrack": "השלמת הרצועה",
+        "autoInstrumentalBacking": "נשאיר את קולות הרקע בפלייבק באופן אוטומטי — אין צורך בבדיקת הפלייבק.",
+        "autoInstrumentalClean": "נשתמש בפלייבק הנקי (ללא קולות רקע) באופן אוטומטי — אין צורך בבדיקת הפלייבק.",
+        "reviewInstrumentalAnyway": "לאפשר לי לבחור את הפלייבק בעצמי"
       },
       "searchLyrics": {
         "artist": "אמן",

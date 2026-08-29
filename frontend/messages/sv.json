@@ -554,7 +554,17 @@
     "matchUsingTyped": "Använder det du skrev: {value}",
     "checkingUrl": "Kontrollerar…",
     "submitNetworkError": "Nätverksfel — kontrollera din anslutning och försök igen.",
-    "submitError": "Något gick fel. Försök igen."
+    "submitError": "Något gick fel. Försök igen.",
+    "backingPrefAuto": "Behåll där det är möjligt",
+    "backingPrefClean": "Ta bort (ren)",
+    "backingPrefLabel": "Bakgrundssång",
+    "backingPrefReview": "Låt mig välja",
+    "processingOptions": "Bearbetningsalternativ",
+    "reviewModeAlways": "Låt mig alltid granska",
+    "reviewModeAlwaysHint": "Vi stannar alltid och låter dig granska texten och välja instrumentalversion före rendering.",
+    "reviewModeAuto": "Helt automatiskt",
+    "reviewModeAutoHint": "Vi ber dig bara granska texten eller instrumentalversionen om något verkligen kräver mänsklig bedömning. Spår vi är säkra på slutförs automatiskt.",
+    "reviewModeLabel": "Granskning"
   },
   "jobStatus": {
     "settingUp": "Ställer in",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Totalt antal segment: {count}",
         "proceedToInstrumental": "Fortsätt till granskning av instrumental",
         "saving": "Sparar...",
-        "completeTrack": "Slutför spåret"
+        "completeTrack": "Slutför spåret",
+        "autoInstrumentalBacking": "Vi behåller bakgrundssången i instrumentalversionen automatiskt — ingen granskning av instrumentalversionen behövs.",
+        "autoInstrumentalClean": "Vi använder den rena instrumentalversionen (utan bakgrundssång) automatiskt — ingen granskning av instrumentalversionen behövs.",
+        "reviewInstrumentalAnyway": "Låt mig välja instrumentalversion själv"
       },
       "searchLyrics": {
         "artist": "Artist",

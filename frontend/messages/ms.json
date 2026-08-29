@@ -554,7 +554,17 @@
     "matchUsingTyped": "Menggunakan apa yang anda taip: {value}",
     "checkingUrl": "Menyemak…",
     "submitNetworkError": "Ralat rangkaian — sila semak sambungan anda dan cuba lagi.",
-    "submitError": "Sesuatu yang tidak kena berlaku. Sila cuba lagi."
+    "submitError": "Sesuatu yang tidak kena berlaku. Sila cuba lagi.",
+    "backingPrefAuto": "Kekalkan jika boleh",
+    "backingPrefClean": "Buang (bersih)",
+    "backingPrefLabel": "Vokal latar",
+    "backingPrefReview": "Biar saya pilih",
+    "processingOptions": "Pilihan pemprosesan",
+    "reviewModeAlways": "Sentiasa benarkan saya semak",
+    "reviewModeAlwaysHint": "Kami akan sentiasa berhenti dan membenarkan anda menyemak lirik dan memilih instrumental sebelum proses render.",
+    "reviewModeAuto": "Sepenuhnya automatik",
+    "reviewModeAutoHint": "Kami hanya akan meminta anda menyemak lirik atau instrumental jika ia benar-benar memerlukan semakan manusia. Trek yang diyakini tepat akan disiapkan secara automatik.",
+    "reviewModeLabel": "Semakan"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Jumlah segmen: {count}",
         "proceedToInstrumental": "Teruskan ke Semakan Instrumental",
         "saving": "Menyimpan...",
-        "completeTrack": "Lengkapkan Trek"
+        "completeTrack": "Lengkapkan Trek",
+        "autoInstrumentalBacking": "Kami akan mengekalkan vokal latar dalam instrumental secara automatik — tiada semakan instrumental diperlukan.",
+        "autoInstrumentalClean": "Kami akan menggunakan instrumental bersih (tiada vokal latar) secara automatik — tiada semakan instrumental diperlukan.",
+        "reviewInstrumentalAnyway": "Biar saya pilih instrumental sendiri"
       },
       "searchLyrics": {
         "artist": "Artis",

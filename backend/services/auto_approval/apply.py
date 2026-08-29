@@ -229,6 +229,41 @@ def apply_all_suggestions(
     }
 
 
+def build_applied_segments(
+    corrections: Dict[str, Any], ai_suggestions: Optional[List[Suggestion]]
+) -> Dict[str, Any]:
+    """Apply the AI suggestions to a corrections payload with the safety gates.
+
+    Shared by the executor (auto-complete) and the review-gate pre-apply. Returns
+    ``{"aborted": <reason>}`` on any anomaly (caller falls back to human review /
+    client-side apply), else ``{"segments", "applied_ids", "rejected_ids"}``.
+    """
+    segments = corrections.get("corrected_segments") or []
+    if not segments:
+        return {"aborted": "no_segments"}
+
+    result = apply_all_suggestions(segments, ai_suggestions or [])
+    if result["stale_ids"]:
+        # Nothing edits segments between generation and now, so staleness means
+        # the cache doesn't match this corrections.json -> don't trust the apply.
+        return {"aborted": f"stale_suggestions:{len(result['stale_ids'])}"}
+
+    new_segments = result["segments"]
+    if not new_segments or any(not (s.get("words") or []) for s in new_segments):
+        return {"aborted": "empty_segments_after_apply"}
+
+    duplicates = find_suspicious_duplicates(new_segments, corrections.get("reference_lyrics"))
+    if duplicates:
+        # P1 signature: overlapping suggestions doubled a word ("you're you're").
+        return {"aborted": f"duplicate_words:{','.join(duplicates[:5])}"}
+
+    return {
+        "segments": new_segments,
+        "applied_ids": result["applied_ids"],
+        "rejected_ids": result["rejected_ids"],
+    }
+
+
 def _norm_token(text: str) -> str:
     return _TOKEN_NORM_RE.sub("", (text or "").lower())
 

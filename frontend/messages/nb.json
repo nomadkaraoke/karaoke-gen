@@ -554,7 +554,17 @@
     "matchUsingTyped": "Bruker det du skrev inn: {value}",
     "checkingUrl": "Sjekker…",
     "submitNetworkError": "Nettverksfeil — vennligst sjekk tilkoblingen din og prøv igjen.",
-    "submitError": "Noe gikk galt. Vennligst prøv igjen."
+    "submitError": "Noe gikk galt. Vennligst prøv igjen.",
+    "backingPrefAuto": "Behold der det er mulig",
+    "backingPrefClean": "Fjern (ren)",
+    "backingPrefLabel": "Bakgrunnsvokal",
+    "backingPrefReview": "La meg velge",
+    "processingOptions": "Behandlingsvalg",
+    "reviewModeAlways": "La meg alltid se over",
+    "reviewModeAlwaysHint": "Vi stopper alltid og lar deg se over teksten og velge instrumentalen før rendring.",
+    "reviewModeAuto": "Helt automatisk",
+    "reviewModeAutoHint": "Vi ber deg bare om å se over teksten eller instrumentalen hvis noe faktisk krever et menneske. Spor vi er sikre på, fullføres automatisk.",
+    "reviewModeLabel": "Gjennomgang"
   },
   "jobStatus": {
     "settingUp": "Setter opp",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Totalt antall segmenter: {count}",
         "proceedToInstrumental": "Fortsett til instrumentalgjennomgang",
         "saving": "Lagrer...",
-        "completeTrack": "Fullfør spor"
+        "completeTrack": "Fullfør spor",
+        "autoInstrumentalBacking": "Vi beholder bakgrunnsvokalen i instrumentalen automatisk — ingen gjennomgang av instrumentalen er nødvendig.",
+        "autoInstrumentalClean": "Vi bruker den rene instrumentalen (uten bakgrunnsvokal) automatisk — ingen gjennomgang av instrumentalen er nødvendig.",
+        "reviewInstrumentalAnyway": "La meg velge instrumentalen selv"
       },
       "searchLyrics": {
         "artist": "Artist",

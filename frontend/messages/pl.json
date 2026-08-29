@@ -554,7 +554,17 @@
     "matchUsingTyped": "Używam wpisanego tekstu: {value}",
     "checkingUrl": "Sprawdzanie…",
     "submitNetworkError": "Błąd sieci — sprawdź połączenie i spróbuj ponownie.",
-    "submitError": "Coś poszło nie tak. Spróbuj ponownie."
+    "submitError": "Coś poszło nie tak. Spróbuj ponownie.",
+    "backingPrefAuto": "Zachowaj tam, gdzie to możliwe",
+    "backingPrefClean": "Usuń (czysty)",
+    "backingPrefLabel": "Chórki",
+    "backingPrefReview": "Pozwól mi wybrać",
+    "processingOptions": "Opcje przetwarzania",
+    "reviewModeAlways": "Zawsze pozwól mi sprawdzić",
+    "reviewModeAlwaysHint": "Zawsze zatrzymamy proces i pozwolimy Ci sprawdzić tekst oraz wybrać podkład przed renderowaniem.",
+    "reviewModeAuto": "W pełni automatyczny",
+    "reviewModeAutoHint": "Poprosimy Cię o sprawdzenie tekstu lub podkładu tylko wtedy, gdy coś naprawdę wymaga weryfikacji przez człowieka. Utwory, co do których system ma pewność, są kończone automatycznie.",
+    "reviewModeLabel": "Weryfikacja"
   },
   "jobStatus": {
     "settingUp": "Konfigurowanie",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Całkowita liczba segmentów: {count}",
         "proceedToInstrumental": "Przejdź do sprawdzania podkładu",
         "saving": "Zapisywanie...",
-        "completeTrack": "Ukończ utwór"
+        "completeTrack": "Ukończ utwór",
+        "autoInstrumentalBacking": "Automatycznie zachowamy chórki w podkładzie — weryfikacja podkładu nie jest potrzebna.",
+        "autoInstrumentalClean": "Automatycznie użyjemy czystego podkładu (bez chórków) — weryfikacja podkładu nie jest potrzebna.",
+        "reviewInstrumentalAnyway": "Pozwól mi samodzielnie wybrać podkład"
       },
       "searchLyrics": {
         "artist": "Wykonawca",

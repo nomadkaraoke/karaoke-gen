@@ -554,7 +554,17 @@
     "matchUsingTyped": "Käytetään kirjoittamaasi: {value}",
     "checkingUrl": "Tarkistetaan…",
     "submitNetworkError": "Verkkovirhe — tarkista yhteytesi ja yritä uudelleen.",
-    "submitError": "Jotain meni pieleen. Yritä uudelleen."
+    "submitError": "Jotain meni pieleen. Yritä uudelleen.",
+    "backingPrefAuto": "Säilytä mahdollisuuksien mukaan",
+    "backingPrefClean": "Poista (puhdas)",
+    "backingPrefLabel": "Taustalaulut",
+    "backingPrefReview": "Anna minun valita",
+    "processingOptions": "Käsittelyasetukset",
+    "reviewModeAlways": "Anna minun aina tarkistaa",
+    "reviewModeAlwaysHint": "Pysäytämme käsittelyn aina, jotta voit tarkistaa sanoitukset ja valita instrumentaaliversion ennen renderöintiä.",
+    "reviewModeAuto": "Täysin automaattinen",
+    "reviewModeAutoHint": "Pyydämme sinua tarkistamaan sanoitukset tai instrumentaaliversion vain, jos jokin todella vaatii ihmisen arviota. Ongelmattomat kappaleet valmistuvat automaattisesti.",
+    "reviewModeLabel": "Tarkistus"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Segmenttejä yhteensä: {count}",
         "proceedToInstrumental": "Siirry instrumentaalin tarkistukseen",
         "saving": "Tallennetaan...",
-        "completeTrack": "Viimeistele kappale"
+        "completeTrack": "Viimeistele kappale",
+        "autoInstrumentalBacking": "Säilytämme taustalaulut instrumentaaliversiossa automaattisesti — instrumentaaliversion tarkistusta ei tarvita.",
+        "autoInstrumentalClean": "Käytämme puhdasta instrumentaaliversiota (ei taustalauluja) automaattisesti — instrumentaaliversion tarkistusta ei tarvita.",
+        "reviewInstrumentalAnyway": "Anna minun valita instrumentaaliversio itse"
       },
       "searchLyrics": {
         "artist": "Esittäjä",

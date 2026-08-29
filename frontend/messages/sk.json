@@ -554,7 +554,17 @@
     "matchUsingTyped": "Používam to, čo si zadal: {value}",
     "checkingUrl": "Kontroluje sa…",
     "submitNetworkError": "Chyba siete — skontroluj pripojenie a skús to znova.",
-    "submitError": "Niečo sa pokazilo. Skús to znova."
+    "submitError": "Niečo sa pokazilo. Skús to znova.",
+    "backingPrefAuto": "Ponechať, kde je to možné",
+    "backingPrefClean": "Odstrániť (čisté)",
+    "backingPrefLabel": "Sprievodné vokály",
+    "backingPrefReview": "Nechaj ma vybrať",
+    "processingOptions": "Možnosti spracovania",
+    "reviewModeAlways": "Vždy ma nechaj skontrolovať",
+    "reviewModeAlwaysHint": "Vždy sa zastavíme a necháme ťa skontrolovať text a vybrať inštrumentálnu verziu pred renderovaním.",
+    "reviewModeAuto": "Plne automatické",
+    "reviewModeAutoHint": "Požiadame ťa o kontrolu textu alebo inštrumentálnej verzie len vtedy, ak to skutočne vyžaduje ľudský zásah. Skladby s vysokou istotou sa dokončia automaticky.",
+    "reviewModeLabel": "Kontrola"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Celkový počet segmentov: {count}",
         "proceedToInstrumental": "Pokračovať na kontrolu inštrumentálky",
         "saving": "Ukladá sa...",
-        "completeTrack": "Dokončiť skladbu"
+        "completeTrack": "Dokončiť skladbu",
+        "autoInstrumentalBacking": "Sprievodné vokály v inštrumentálnej verzii ponecháme automaticky — kontrola inštrumentálnej verzie nie je potrebná.",
+        "autoInstrumentalClean": "Automaticky použijeme čistú inštrumentálnu verziu (bez sprievodných vokálov) — kontrola inštrumentálnej verzie nie je potrebná.",
+        "reviewInstrumentalAnyway": "Nechaj ma vybrať si inštrumentálnu verziu"
       },
       "searchLyrics": {
         "artist": "Interpret",

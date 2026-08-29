@@ -554,7 +554,17 @@
     "matchUsingTyped": "Folosim ce ai tastat: {value}",
     "checkingUrl": "Se verifică…",
     "submitNetworkError": "Eroare de rețea — te rugăm să verifici conexiunea și să încerci din nou.",
-    "submitError": "Ceva nu a mers bine. Te rog să încerci din nou."
+    "submitError": "Ceva nu a mers bine. Te rog să încerci din nou.",
+    "backingPrefAuto": "Păstrează unde este posibil",
+    "backingPrefClean": "Elimină (curat)",
+    "backingPrefLabel": "Voci de fundal",
+    "backingPrefReview": "Lasă-mă să aleg",
+    "processingOptions": "Opțiuni de procesare",
+    "reviewModeAlways": "Lasă-mă mereu să revizuiesc",
+    "reviewModeAlwaysHint": "Ne vom opri mereu și te vom lăsa să revizuiești versurile și să alegi instrumentalul înainte de randare.",
+    "reviewModeAuto": "Complet automat",
+    "reviewModeAutoHint": "Te vom ruga să revizuiești versurile sau instrumentalul doar dacă este cu adevărat nevoie de intervenție umană. Piesele fără probleme se finalizează automat.",
+    "reviewModeLabel": "Revizuire"
   },
   "jobStatus": {
     "settingUp": "Se configurează",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Total segmente: {count}",
         "proceedToInstrumental": "Treci la revizuirea instrumentalului",
         "saving": "Se salvează...",
-        "completeTrack": "Piesa completă"
+        "completeTrack": "Piesa completă",
+        "autoInstrumentalBacking": "Vom păstra vocile de fundal în instrumental în mod automat — nu este necesară revizuirea instrumentalului.",
+        "autoInstrumentalClean": "Vom folosi instrumentalul curat (fără voci de fundal) în mod automat — nu este necesară revizuirea instrumentalului.",
+        "reviewInstrumentalAnyway": "Lasă-mă să aleg singur instrumentalul"
       },
       "searchLyrics": {
         "artist": "Artist",

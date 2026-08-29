@@ -32,6 +32,15 @@ interface ReviewChangesModalProps {
   /** When true (e.g. tenant / uploaded-instrumental jobs) approving here completes the
    *  track directly — there is no instrumental-review step — so the CTA reflects that. */
   completesReview?: boolean
+  /** Per-screen skip (C1): the backing decision was confidently auto-resolved, so
+   *  approving here can complete the whole job and the instrumental screen is skipped.
+   *  Shows a "review instrumental anyway" escape hatch. */
+  autoInstrumentalConfident?: boolean
+  /** The server-resolved instrumental ("clean" | "with_backing" | ...) for the note. */
+  autoInstrumentalSelection?: string | null
+  /** Whether the reviewer opted back into the instrumental screen. */
+  reviewInstrumentalAnyway?: boolean
+  onToggleReviewInstrumental?: (val: boolean) => void
 }
 
 export default function ReviewChangesModal({
@@ -44,6 +53,10 @@ export default function ReviewChangesModal({
   timingOffsetMs = 0,
   isDuet,
   completesReview = false,
+  autoInstrumentalConfident = false,
+  autoInstrumentalSelection = null,
+  reviewInstrumentalAnyway = false,
+  onToggleReviewInstrumental,
 }: ReviewChangesModalProps) {
   const t = useTranslations('lyricsReview.modals.reviewChanges')
   const corrections = data.corrections || []
@@ -99,6 +112,27 @@ export default function ReviewChangesModal({
               <p>{t('noManualCorrections')}</p>
             )}
             <p>{t('totalSegments', { count: totalSegments })}</p>
+          </div>
+        )}
+
+        {/* Per-screen skip (C1): backing decision auto-resolved — the instrumental
+            screen is skipped unless the reviewer opts back in. */}
+        {autoInstrumentalConfident && (
+          <div className="rounded-lg border border-purple-500/40 bg-purple-500/5 p-3 text-sm space-y-2">
+            <p className="text-muted-foreground">
+              {autoInstrumentalSelection === 'with_backing'
+                ? t('autoInstrumentalBacking')
+                : t('autoInstrumentalClean')}
+            </p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={reviewInstrumentalAnyway}
+                onChange={(e) => onToggleReviewInstrumental?.(e.target.checked)}
+              />
+              <span>{t('reviewInstrumentalAnyway')}</span>
+            </label>
           </div>
         )}
 

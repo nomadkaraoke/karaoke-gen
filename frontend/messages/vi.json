@@ -554,7 +554,17 @@
     "matchUsingTyped": "Sử dụng nội dung bạn đã nhập: {value}",
     "checkingUrl": "Đang kiểm tra…",
     "submitNetworkError": "Lỗi mạng — vui lòng kiểm tra kết nối của bạn và thử lại.",
-    "submitError": "Đã xảy ra lỗi. Vui lòng thử lại."
+    "submitError": "Đã xảy ra lỗi. Vui lòng thử lại.",
+    "backingPrefAuto": "Giữ lại khi có thể",
+    "backingPrefClean": "Loại bỏ (sạch)",
+    "backingPrefLabel": "Giọng bè",
+    "backingPrefReview": "Để tôi chọn",
+    "processingOptions": "Tùy chọn xử lý",
+    "reviewModeAlways": "Luôn để tôi xem lại",
+    "reviewModeAlwaysHint": "Chúng tôi sẽ luôn tạm dừng và để bạn xem lại lời bài hát cũng như chọn nhạc nền trước khi xuất video.",
+    "reviewModeAuto": "Hoàn toàn tự động",
+    "reviewModeAutoHint": "Chúng tôi sẽ chỉ yêu cầu bạn xem lại lời bài hát hoặc nhạc nền nếu thực sự cần bạn kiểm tra. Các bài hát có độ chính xác cao sẽ tự động hoàn thành.",
+    "reviewModeLabel": "Xem lại"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Tổng số phân đoạn: {count}",
         "proceedToInstrumental": "Tiến hành xem lại nhạc nền",
         "saving": "Đang lưu...",
-        "completeTrack": "Hoàn tất bài hát"
+        "completeTrack": "Hoàn tất bài hát",
+        "autoInstrumentalBacking": "Chúng tôi sẽ tự động giữ lại giọng bè trong nhạc nền — không cần xem lại nhạc nền.",
+        "autoInstrumentalClean": "Chúng tôi sẽ tự động sử dụng nhạc nền sạch (không có giọng bè) — không cần xem lại nhạc nền.",
+        "reviewInstrumentalAnyway": "Để tôi tự chọn nhạc nền"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

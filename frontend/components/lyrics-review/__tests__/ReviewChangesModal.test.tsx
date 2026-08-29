@@ -115,4 +115,64 @@ describe('ReviewChangesModal', () => {
       screen.queryByRole('button', { name: /proceed to instrumental/i })
     ).not.toBeInTheDocument()
   })
+
+  // Per-screen skip (C1): backing decision auto-resolved.
+  it('shows the auto-instrumental note + escape-hatch checkbox when backing is confident', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        data={makeData({ corrected_segments: segments as any })}
+      />
+    )
+    expect(screen.getByRole('button', { name: /complete track/i })).toBeInTheDocument()
+    expect(screen.getByText(/keep the backing vocals/i)).toBeInTheDocument()
+    expect(screen.getByRole('checkbox')).toBeInTheDocument()
+  })
+
+  it('shows the clean-instrumental note when the resolved selection is clean', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="clean"
+        data={makeData({ corrected_segments: segments as any })}
+      />
+    )
+    expect(screen.getByText(/clean instrumental/i)).toBeInTheDocument()
+  })
+
+  it('toggling the escape hatch calls onToggleReviewInstrumental', async () => {
+    const user = userEvent.setup()
+    const onToggleReviewInstrumental = jest.fn()
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        onToggleReviewInstrumental={onToggleReviewInstrumental}
+        data={makeData({ corrected_segments: segments as any })}
+      />
+    )
+    await user.click(screen.getByRole('checkbox'))
+    expect(onToggleReviewInstrumental).toHaveBeenCalledWith(true)
+  })
+
+  it('hides the auto-instrumental note when backing is not confident', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        data={makeData({ corrected_segments: segments as any })}
+      />
+    )
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
 })

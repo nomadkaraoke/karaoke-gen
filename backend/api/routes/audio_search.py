@@ -143,6 +143,10 @@ class AudioSearchRequest(BaseModel):
     # Non-interactive mode
     non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
 
+    # Review autonomy + backing-vocals preference (full-auto review, workstream C)
+    review_mode: str = Field("auto", description="'auto' (skip review when confident) or 'always_review'")
+    backing_preference: str = Field("auto", description="'auto' (retain backing where safe), 'clean', or 'review'")
+
     # Private (non-published) track mode
     is_private: bool = Field(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive")
 
@@ -803,6 +807,8 @@ async def search_audio(
             auto_download=body.auto_download,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            review_mode=body.review_mode,
+            backing_preference=body.backing_preference,
             is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",

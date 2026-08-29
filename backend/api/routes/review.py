@@ -669,6 +669,14 @@ async def get_correction_data(
         backing_vocals_analysis = job.state_data.get('backing_vocals_analysis', {})
         corrections_data['backing_vocals_analysis'] = backing_vocals_analysis
 
+        # Per-screen skip (C1): tell the frontend whether each review half is
+        # confidently auto-resolved, so it can skip the instrumental screen (or the
+        # lyrics screen). Derived from the stored auto-approval verdict + the job's
+        # backing_preference — the same decision the executor / complete endpoint use.
+        from backend.config import get_settings as _get_settings
+        from backend.services.auto_approval.instrumental import auto_approval_summary
+        corrections_data['auto_approval'] = auto_approval_summary(job, _get_settings())
+
         # Get waveform URL if available
         analysis_files = job.file_urls.get('analysis', {})
         waveform_url = analysis_files.get('backing_vocals_waveform')
@@ -919,6 +927,21 @@ async def complete_review(
             status_code=400,
             detail=t("en", "review.instrumentalSelectionRequired")
         )
+
+    # Per-screen skip (C1): a client that skipped the instrumental screen because
+    # the backing decision was confidently auto-resolved sends "auto"; resolve it
+    # from the stored verdict here so CLI/tenant clients get the skip for free.
+    if instrumental_selection == "auto":
+        from backend.config import get_settings as _get_settings
+        from backend.services.auto_approval.instrumental import resolve_auto_instrumental
+        resolved = resolve_auto_instrumental(job, _get_settings())
+        if not resolved:
+            raise HTTPException(
+                status_code=400,
+                detail=t("en", "review.instrumentalSelectionRequired"),
+            )
+        logger.info(f"Job {job_id}: Resolved instrumental_selection='auto' -> '{resolved}'")
+        instrumental_selection = resolved
 
     valid_selections = ["clean", "with_backing"]
     # Allow "custom" for mute-region instrumentals or user-uploaded instrumentals

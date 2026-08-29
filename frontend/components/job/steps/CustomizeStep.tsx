@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, Loader2, Palette, Image as ImageIcon, Paintbrush } from "lucide-react"
+import { ArrowLeft, Loader2, Palette, Image as ImageIcon, Paintbrush, Sparkles } from "lucide-react"
 import { TitleCardPreview } from "../TitleCardPreview"
 import { KaraokeBackgroundPreview } from "../KaraokeBackgroundPreview"
 import { ImageUploadField } from "../ImageUploadField"
@@ -16,6 +16,9 @@ export interface ColorOverrides {
   sung_lyrics_color?: string
   unsung_lyrics_color?: string
 }
+
+export type ReviewMode = "auto" | "always_review"
+export type BackingPreference = "auto" | "clean" | "review"
 
 interface CustomizeStepProps {
   artist: string
@@ -31,6 +34,10 @@ interface CustomizeStepProps {
   onIntroBackgroundChange: (file: File | null) => void
   colorOverrides: ColorOverrides
   onColorOverridesChange: (overrides: ColorOverrides) => void
+  reviewMode: ReviewMode
+  onReviewModeChange: (value: ReviewMode) => void
+  backingPreference: BackingPreference
+  onBackingPreferenceChange: (value: BackingPreference) => void
   onConfirm: () => void
   onBack: () => void
   isSubmitting: boolean
@@ -194,6 +201,86 @@ function BgModeToggle({
   )
 }
 
+/** Full-auto review (workstream C): up-front autonomy + backing-vocals choice.
+ *  Rendered on the final step so it applies to every audio source. */
+function ProcessingOptions({
+  reviewMode,
+  onReviewModeChange,
+  backingPreference,
+  onBackingPreferenceChange,
+  disabled,
+  t,
+}: {
+  reviewMode: ReviewMode
+  onReviewModeChange: (v: ReviewMode) => void
+  backingPreference: BackingPreference
+  onBackingPreferenceChange: (v: BackingPreference) => void
+  disabled?: boolean
+  t: ReturnType<typeof useTranslations>
+}) {
+  const pill = (active: boolean) =>
+    `flex-1 px-3 py-2 rounded-md border text-xs font-medium transition-colors ${
+      active
+        ? 'border-[var(--brand-pink)] text-[var(--text)]'
+        : 'border-[var(--card-border)] text-[var(--text-muted)] hover:border-[var(--text-muted)]'
+    }`
+  const pillStyle = (active: boolean) => ({
+    backgroundColor: active ? 'rgba(255,122,204,0.05)' : 'var(--secondary)',
+  })
+  return (
+    <div
+      className="space-y-4 rounded-lg border p-4"
+      style={{ borderColor: 'var(--card-border)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+    >
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4" style={{ color: 'var(--brand-pink)' }} />
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+          {t('processingOptions')}
+        </h3>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {t('reviewModeLabel')}
+        </Label>
+        <div className="flex gap-2">
+          <button type="button" disabled={disabled} className={pill(reviewMode === 'auto')}
+            style={pillStyle(reviewMode === 'auto')} onClick={() => onReviewModeChange('auto')}>
+            {t('reviewModeAuto')}
+          </button>
+          <button type="button" disabled={disabled} className={pill(reviewMode === 'always_review')}
+            style={pillStyle(reviewMode === 'always_review')} onClick={() => onReviewModeChange('always_review')}>
+            {t('reviewModeAlways')}
+          </button>
+        </div>
+        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          {reviewMode === 'auto' ? t('reviewModeAutoHint') : t('reviewModeAlwaysHint')}
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {t('backingPrefLabel')}
+        </Label>
+        <div className="flex gap-2">
+          <button type="button" disabled={disabled} className={pill(backingPreference === 'auto')}
+            style={pillStyle(backingPreference === 'auto')} onClick={() => onBackingPreferenceChange('auto')}>
+            {t('backingPrefAuto')}
+          </button>
+          <button type="button" disabled={disabled} className={pill(backingPreference === 'clean')}
+            style={pillStyle(backingPreference === 'clean')} onClick={() => onBackingPreferenceChange('clean')}>
+            {t('backingPrefClean')}
+          </button>
+          <button type="button" disabled={disabled} className={pill(backingPreference === 'review')}
+            style={pillStyle(backingPreference === 'review')} onClick={() => onBackingPreferenceChange('review')}>
+            {t('backingPrefReview')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function CustomizeStep({
   artist,
   title,
@@ -208,6 +295,10 @@ export function CustomizeStep({
   onIntroBackgroundChange,
   colorOverrides,
   onColorOverridesChange,
+  reviewMode,
+  onReviewModeChange,
+  backingPreference,
+  onBackingPreferenceChange,
   onConfirm,
   onBack,
   isSubmitting,
@@ -360,6 +451,15 @@ export function CustomizeStep({
         <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
           {t('defaultsToSearchValues')}
         </p>
+
+        <ProcessingOptions
+          reviewMode={reviewMode}
+          onReviewModeChange={onReviewModeChange}
+          backingPreference={backingPreference}
+          onBackingPreferenceChange={onBackingPreferenceChange}
+          disabled={disabled || isSubmitting}
+          t={t}
+        />
 
         <Button
           onClick={onConfirm}
@@ -633,6 +733,15 @@ export function CustomizeStep({
           {t('leaveColorsBlank')}
         </p>
       </div>
+
+      <ProcessingOptions
+        reviewMode={reviewMode}
+        onReviewModeChange={onReviewModeChange}
+        backingPreference={backingPreference}
+        onBackingPreferenceChange={onBackingPreferenceChange}
+        disabled={disabled || isSubmitting}
+        t={t}
+      />
 
       {/* Create button */}
       <Button

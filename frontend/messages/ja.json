@@ -554,7 +554,17 @@
     "matchUsingTyped": "入力された内容を使用します: {value}",
     "checkingUrl": "確認中…",
     "submitNetworkError": "ネットワークエラーが発生しました。接続を確認して、もう一度お試しください。",
-    "submitError": "問題が発生しました。もう一度お試しください。"
+    "submitError": "問題が発生しました。もう一度お試しください。",
+    "backingPrefAuto": "可能な限り残す",
+    "backingPrefClean": "削除する（クリーン）",
+    "backingPrefLabel": "バックボーカル",
+    "backingPrefReview": "自分で選択する",
+    "processingOptions": "処理オプション",
+    "reviewModeAlways": "常に確認する",
+    "reviewModeAlwaysHint": "レンダリング前に必ず一時停止し、歌詞の確認とインストゥルメンタルの選択ができるようにします。",
+    "reviewModeAuto": "完全自動",
+    "reviewModeAutoHint": "本当に人の手が必要な場合のみ、歌詞やインストゥルメンタルの確認をお願いします。問題のないトラックは自動的に完了します。",
+    "reviewModeLabel": "確認"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",
@@ -1138,7 +1148,10 @@
         "totalSegments": "合計セグメント: {count}",
         "proceedToInstrumental": "インストゥルメンタルの確認に進む",
         "saving": "保存中...",
-        "completeTrack": "トラックを完了"
+        "completeTrack": "トラックを完了",
+        "autoInstrumentalBacking": "インストゥルメンタルにバックボーカルを自動的に残します。インストゥルメンタルの確認は不要です。",
+        "autoInstrumentalClean": "クリーンなインストゥルメンタル（バックボーカルなし）を自動的に使用します。インストゥルメンタルの確認は不要です。",
+        "reviewInstrumentalAnyway": "自分でインストゥルメンタルを選択する"
       },
       "searchLyrics": {
         "artist": "アーティスト",

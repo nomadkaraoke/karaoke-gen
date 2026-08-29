@@ -294,7 +294,10 @@ export interface AudioEditResponse {
   can_redo: boolean;
 }
 
-export type InstrumentalSelectionType = 'clean' | 'with_backing' | 'custom' | 'uploaded' | 'original';
+// 'auto' (C1 per-screen skip): the client skipped the instrumental screen because
+// the backing decision was confidently auto-resolved; the backend resolves 'auto'
+// to a concrete selection from the stored verdict.
+export type InstrumentalSelectionType = 'clean' | 'with_backing' | 'custom' | 'uploaded' | 'original' | 'auto';
 
 export interface DownloadUrlsResponse {
   job_id: string;
@@ -944,6 +947,8 @@ export const api = {
       non_interactive?: boolean;
       is_private?: boolean;
       requires_audio_edit?: boolean;
+      review_mode?: string;
+      backing_preference?: string;
     }
   ): Promise<UploadJobResponse> {
     const formData = new FormData();
@@ -978,6 +983,12 @@ export const api = {
     if (options?.requires_audio_edit) {
       formData.append('requires_audio_edit', String(options.requires_audio_edit));
     }
+    if (options?.review_mode) {
+      formData.append('review_mode', options.review_mode);
+    }
+    if (options?.backing_preference) {
+      formData.append('backing_preference', options.backing_preference);
+    }
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/upload`, {
       method: 'POST',
@@ -1003,6 +1014,8 @@ export const api = {
       batch_id?: string;
       /** "resumable" → backend returns GCS resumable session URIs instead of signed PUT URLs. */
       upload_mode?: 'signed_put' | 'resumable';
+      review_mode?: string;
+      backing_preference?: string;
     }
   ): Promise<CreateJobWithUploadUrlsResponse> {
     const body: Record<string, any> = { artist, title, files };
@@ -1011,6 +1024,8 @@ export const api = {
     if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
     if (options?.batch_id) body.batch_id = options.batch_id;
     if (options?.upload_mode) body.upload_mode = options.upload_mode;
+    if (options?.review_mode) body.review_mode = options.review_mode;
+    if (options?.backing_preference) body.backing_preference = options.backing_preference;
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
       method: 'POST',
@@ -1128,7 +1143,7 @@ export const api = {
     file: File,
     artist: string,
     title: string,
-    options?: { is_private?: boolean; requires_audio_edit?: boolean },
+    options?: { is_private?: boolean; requires_audio_edit?: boolean; review_mode?: string; backing_preference?: string },
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<UploadJobResponse> {
     const SIGNED_URL_THRESHOLD = 25 * 1024 * 1024; // 25MB
@@ -1193,6 +1208,8 @@ export const api = {
       non_interactive?: boolean;
       is_private?: boolean;
       requires_audio_edit?: boolean;
+      review_mode?: string;
+      backing_preference?: string;
     }
   ): Promise<{ status: string; job_id: string; message: string }> {
     const body: Record<string, any> = { url };
@@ -1207,6 +1224,8 @@ export const api = {
     if (options?.non_interactive !== undefined) body.non_interactive = options.non_interactive;
     if (options?.is_private !== undefined) body.is_private = options.is_private;
     if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
+    if (options?.review_mode) body.review_mode = options.review_mode;
+    if (options?.backing_preference) body.backing_preference = options.backing_preference;
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-from-url`, {
       method: 'POST',
@@ -1596,6 +1615,8 @@ export const api = {
     display_title?: string;
     is_private?: boolean;
     requires_audio_edit?: boolean;
+    review_mode?: string;
+    backing_preference?: string;
   }): Promise<{ status: string; job_id: string; message: string }> {
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-from-search`, {
       method: 'POST',
