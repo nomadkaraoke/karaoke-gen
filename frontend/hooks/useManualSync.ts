@@ -51,6 +51,33 @@ export function clampSyncTime(
 const TAP_THRESHOLD_MS = 200 // If spacebar is pressed for less than this time, it's considered a tap
 const DEFAULT_WORD_DURATION = 0.5 // Default duration in seconds when tapping (500ms)
 const OVERLAP_BUFFER = 0.01 // Buffer to prevent word overlap (10ms)
+// A *tapped* word only marks its onset — the user expects it to hold until the next word starts
+// (the natural karaoke feel), so we grow its end to fill the gap up to the next onset. This caps
+// the resulting word duration so a long gap before the next word can't stretch a word absurdly.
+const MAX_TAP_GAP_FILL_SECONDS = 1.0
+
+/**
+ * Set the previous word's end_time once the *next* word's onset (`nextStart`) is known.
+ *
+ * - If the previous word was a **tap** (the user only marked its onset), grow its end to fill the
+ *   gap up to `nextStart − OVERLAP_BUFFER`, capped at `start + MAX_TAP_GAP_FILL_SECONDS` so a long
+ *   gap can't create an absurdly long word. This replaces the old "> 1.0s gap ⇒ keep it 0.5s" cap,
+ *   which left a dead gap after tapped words.
+ * - If it was a **hold** (deliberate release), keep that duration and only pull the end back if it
+ *   would overlap the next word.
+ *
+ * Mutates `previousWord` in place. `previousWord.start_time` must be non-null (callers guard this).
+ * Never lets the end fall below the word's own start.
+ */
+export function adjustPreviousWordEnd(previousWord: Word, nextStart: number, wasTap: boolean): void {
+  const start = previousWord.start_time as number
+  if (wasTap) {
+    const gapFillEnd = Math.min(nextStart - OVERLAP_BUFFER, start + MAX_TAP_GAP_FILL_SECONDS)
+    previousWord.end_time = Math.max(gapFillEnd, start)
+  } else if (previousWord.end_time === null || previousWord.end_time > nextStart) {
+    previousWord.end_time = Math.max(nextStart - OVERLAP_BUFFER, start)
+  }
+}
 
 export default function useManualSync({
   editedSegment,
@@ -67,6 +94,10 @@ export default function useManualSync({
   const wordStartTimeRef = useRef<number | null>(null)
   const wordsRef = useRef<Word[]>([])
   const spacebarPressTimeRef = useRef<number | null>(null)
+  // Whether the word we just finished syncing was a *tap* (vs a hold). Read when the NEXT word's
+  // start becomes known so we know whether to gap-fill the previous word (taps) or respect its
+  // deliberate release (holds). Set at keyup/tapEnd; only read for syncWordIndex > 0.
+  const previousWordWasTapRef = useRef(false)
 
   // Use ref to track if we need to update segment to avoid calling it too frequently
   const needsSegmentUpdateRef = useRef(false)
@@ -105,6 +136,7 @@ export default function useManualSync({
     setIsSpacebarPressed(false)
     wordStartTimeRef.current = null
     spacebarPressTimeRef.current = null
+    previousWordWasTapRef.current = false
     needsSegmentUpdateRef.current = false
 
     // Stop audio playback when cleaning up manual sync
@@ -181,25 +213,12 @@ export default function useManualSync({
           // Set the start time for the current word
           currentWord.start_time = currentStartTime
 
-          // Handle the end time of the previous word (if it exists)
+          // Handle the end time of the previous word (if it exists). A tapped previous word
+          // grows to fill the gap up to this word's onset; a held one keeps its release.
           if (syncWordIndex > 0) {
             const previousWord = newWords[syncWordIndex - 1]
             if (previousWord.start_time !== null) {
-              const timeSincePreviousStart = currentStartTime - previousWord.start_time
-
-              const needsAdjustment =
-                previousWord.end_time === null ||
-                (previousWord.end_time !== null && previousWord.end_time > currentStartTime)
-
-              if (needsAdjustment) {
-                if (timeSincePreviousStart > 1.0) {
-                  // Gap of over 1 second - set previous word's end time to 500ms after its start
-                  previousWord.end_time = previousWord.start_time + 0.5
-                } else {
-                  // Normal flow - set previous word's end time to current word's start time minus 5ms
-                  previousWord.end_time = Math.max(currentStartTime - 0.005, previousWord.start_time ?? (currentStartTime - 0.005))
-                }
-              }
+              adjustPreviousWordEnd(previousWord, currentStartTime, previousWordWasTapRef.current)
             }
           }
 
@@ -243,6 +262,8 @@ export default function useManualSync({
           ? Date.now() - spacebarPressTimeRef.current
           : 0
         const isTap = pressDuration < TAP_THRESHOLD_MS
+        // Remember tap-vs-hold so the NEXT word's keydown can decide whether to gap-fill this word.
+        previousWordWasTapRef.current = isTap
 
         setIsSpacebarPressed(false)
 
@@ -366,23 +387,12 @@ export default function useManualSync({
       // Set the start time for the current word
       currentWord.start_time = currentStartTime
 
-      // Handle the end time of the previous word (if it exists)
+      // Handle the end time of the previous word (if it exists). A tapped previous word
+      // grows to fill the gap up to this word's onset; a held one keeps its release.
       if (syncWordIndex > 0) {
         const previousWord = newWords[syncWordIndex - 1]
         if (previousWord.start_time !== null) {
-          const timeSincePreviousStart = currentStartTime - previousWord.start_time
-
-          const needsAdjustment =
-            previousWord.end_time === null ||
-            (previousWord.end_time !== null && previousWord.end_time > currentStartTime)
-
-          if (needsAdjustment) {
-            if (timeSincePreviousStart > 1.0) {
-              previousWord.end_time = previousWord.start_time + 0.5
-            } else {
-              previousWord.end_time = Math.max(currentStartTime - 0.005, previousWord.start_time ?? (currentStartTime - 0.005))
-            }
-          }
+          adjustPreviousWordEnd(previousWord, currentStartTime, previousWordWasTapRef.current)
         }
       }
 
@@ -401,6 +411,8 @@ export default function useManualSync({
       ? Date.now() - spacebarPressTimeRef.current
       : 0
     const isTap = pressDuration < TAP_THRESHOLD_MS
+    // Remember tap-vs-hold so the NEXT word's tap can decide whether to gap-fill this word.
+    previousWordWasTapRef.current = isTap
 
     setIsSpacebarPressed(false)
 
@@ -461,6 +473,7 @@ export default function useManualSync({
     setIsSpacebarPressed(false)
     wordStartTimeRef.current = null
     spacebarPressTimeRef.current = null
+    previousWordWasTapRef.current = false
     needsSegmentUpdateRef.current = false
     // Start playing 3 seconds before segment start
     onPlaySegment((editedSegment.start_time ?? 0) - LEAD_IN_SECONDS)
