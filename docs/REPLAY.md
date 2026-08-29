@@ -47,6 +47,19 @@ Then in the browser:
 Audio, vocals waveform, and backing-vocals previews all play (proxied through the
 local backend). The submit/mutation controls are hidden; nothing can be changed.
 
+### Editable replay (`&edit=1`) — dev only
+
+Append `&edit=1` to the replay URL to make the review UI **editable** against the
+real job's data + audio (e.g. to exercise Tap To Sync / segment editing locally):
+
+```
+http://localhost:3000/en/app/jobs?baseApiUrl=http://127.0.0.1:8000&replay=1&edit=1#/<JOB_ID>/review
+```
+
+The header reads "Replay (editable · dev)". This flag is guarded by
+`NODE_ENV !== 'production'` — it is ignored in production builds, where replay stays
+strictly read-only. Edits are local-only (the replay backend makes no writes).
+
 ## Using it for the recording sessions
 
 Work through the job list in the private corpus
