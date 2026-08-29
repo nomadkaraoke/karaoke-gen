@@ -134,12 +134,16 @@ class Settings(BaseSettings):
 
     # Backing decider ENFORCEMENT (Phase 2B): allow a confident WITH_BACKING
     # verdict from the 3-stem decider to auto-select the with-backing
-    # instrumental. SHADOW-FIRST: default off — the verdict is scored and
-    # recorded on every job regardless, so prod shadow data accumulates
-    # alongside human picks; flip on after reviewing it. While off, confident
-    # WITH_BACKING jobs simply go to normal human review (status quo).
+    # instrumental. Shadow-validated 2026-08-28/29 (20-job corpus + live
+    # batteries + human review pass: 10/11 pick agreement, the one
+    # auto-eligible job shipped identically to the human) -> default ON.
+    # Default lives HERE, not per-environment env vars, because the executor
+    # runs in BOTH the backend service and the audio-separation Cloud Run Job
+    # (independent env; a service-only env flip left the audio_worker trigger
+    # reading false). Kill switch: set false in ci.yml backend deploy env
+    # AND infrastructure audio-separation-job envs (or revert this default).
     auto_approval_backing_keep_enabled: bool = os.getenv(
-        "AUTO_APPROVAL_BACKING_KEEP_ENABLED", "false"
+        "AUTO_APPROVAL_BACKING_KEEP_ENABLED", "true"
     ).lower() in ("true", "1", "yes")
 
     # Match judge — artist/title formatting + match-acceptance for the job
