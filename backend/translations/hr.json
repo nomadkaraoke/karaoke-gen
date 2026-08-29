@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental je odabran. Generiranje videa je započelo.",
     "instrumentalSelectionError": "Pogreška pri odabiru instrumentala za zadatak {job_id}: {error}",
     "downloadUrlsError": "Pogreška pri dohvaćanju URL-ova za preuzimanje: {error}",
-    "fileNoLongerAvailable": "Datoteka više nije dostupna"
+    "fileNoLongerAvailable": "Datoteka više nije dostupna",
+    "deletePublishedRequiresFiles": "Objavljene datoteke ove pjesme moraju se ukloniti kada se zadatak izbriše. Pokušaj ponovno obrisati bez delete_files=false."
   },
   "review": {
     "jobNotFound": "Zadatak nije pronađen",

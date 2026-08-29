@@ -48,7 +48,8 @@
     "instrumentalSelected": "Pista instrumental seleccionada. S'ha iniciat la generació del vídeo.",
     "instrumentalSelectionError": "Error en seleccionar la pista instrumental per a la tasca {job_id}: {error}",
     "downloadUrlsError": "Error en obtenir els URL de descàrrega: {error}",
-    "fileNoLongerAvailable": "El fitxer ja no està disponible"
+    "fileNoLongerAvailable": "El fitxer ja no està disponible",
+    "deletePublishedRequiresFiles": "Els fitxers publicats d'aquesta pista s'han d'eliminar quan s'elimini la tasca. Torna a intentar l'eliminació sense delete_files=false."
   },
   "review": {
     "jobNotFound": "Tasca no trobada",

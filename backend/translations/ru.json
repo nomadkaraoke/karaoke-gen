@@ -48,7 +48,8 @@
     "instrumentalSelected": "Инструментал выбран. Началась генерация видео.",
     "instrumentalSelectionError": "Ошибка при выборе инструментала для задачи {job_id}: {error}",
     "downloadUrlsError": "Ошибка при получении URL-адресов для скачивания: {error}",
-    "fileNoLongerAvailable": "Файл больше недоступен"
+    "fileNoLongerAvailable": "Файл больше недоступен",
+    "deletePublishedRequiresFiles": "Опубликованные файлы этого трека нужно удалить вместе с задачей. Повтори удаление без delete_files=false."
   },
   "review": {
     "jobNotFound": "Задача не найдена",

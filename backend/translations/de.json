@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental ausgewählt. Video-Generierung gestartet.",
     "instrumentalSelectionError": "Fehler bei der Auswahl des Instrumentals für Auftrag {job_id}: {error}",
     "downloadUrlsError": "Fehler beim Abrufen der Download-URLs: {error}",
-    "fileNoLongerAvailable": "Datei nicht mehr verfügbar"
+    "fileNoLongerAvailable": "Datei nicht mehr verfügbar",
+    "deletePublishedRequiresFiles": "Die veröffentlichten Dateien dieses Tracks müssen entfernt werden, wenn der Auftrag gelöscht wird. Versuche den Löschvorgang ohne delete_files=false erneut."
   },
   "review": {
     "jobNotFound": "Auftrag nicht gefunden",

@@ -48,7 +48,8 @@
     "instrumentalSelected": "Napili na ang instrumental. Nagsimula na ang paggawa ng video.",
     "instrumentalSelectionError": "Error sa pagpili ng instrumental para sa job {job_id}: {error}",
     "downloadUrlsError": "Error sa pagkuha ng mga download URL: {error}",
-    "fileNoLongerAvailable": "Hindi na available ang file"
+    "fileNoLongerAvailable": "Hindi na available ang file",
+    "deletePublishedRequiresFiles": "Kailangang tanggalin ang mga na-publish na file ng track na ito kapag na-delete ang job. Subukang i-delete muli nang walang delete_files=false."
   },
   "review": {
     "jobNotFound": "Hindi nahanap ang job",

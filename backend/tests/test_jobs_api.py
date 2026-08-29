@@ -285,6 +285,49 @@ class TestDeleteJobBrandCodeRecycling:
         mock_job_manager.delete_job.assert_called_once()
         assert "distribution_cleanup" not in response.json()
 
+    def test_delete_files_false_rejected_for_published_job(self, mock_worker_service, mock_theme_service, auth_headers):
+        """Published outputs can't be preserved when their job record is deleted —
+        the record holds the only file IDs/paths needed to ever clean them up."""
+        job = self._job_with_brand("test-bc-df", outputs_deleted_at=None)
+        cleanup = MagicMock()
+        mock_job_manager = MagicMock()
+        mock_job_manager.get_job.return_value = job
+        mock_creds = MagicMock()
+        mock_creds.universe_domain = 'googleapis.com'
+
+        with patch('backend.api.routes.jobs.job_manager', mock_job_manager), \
+             patch('backend.api.routes.jobs.worker_service', mock_worker_service), \
+             patch('backend.api.routes.jobs.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.services.job_manager.JobManager', lambda *a, **k: mock_job_manager), \
+             patch('backend.services.firestore_service.firestore'), \
+             patch('backend.services.storage_service.storage'), \
+             patch('google.auth.default', return_value=(mock_creds, 'test-project')), \
+             patch('backend.api.routes.jobs._run_distribution_cleanup', cleanup):
+            from backend.main import app
+            client = TestClient(app)
+            response = client.delete("/api/jobs/test-bc-df?delete_files=false", headers=auth_headers)
+
+        assert response.status_code == 400
+        cleanup.assert_not_called()
+        mock_job_manager.delete_job.assert_not_called()
+
+    def test_incomplete_cleanup_aborts_deletion(self, mock_worker_service, mock_theme_service, auth_headers):
+        """If any provider cleanup reports failed/partial/error, the job record must
+        be kept so the cleanup can be retried with its IDs intact."""
+        job = self._job_with_brand("test-bc-incomplete", outputs_deleted_at=None)
+        cleanup = MagicMock(return_value={
+            "youtube": {"status": "success"},
+            "dropbox": {"status": "failed", "path": "/x"},
+            "gdrive": {"status": "success"},
+        })
+
+        response, mock_job_manager, _mock_cleanup = self._delete(
+            job, auth_headers, mock_worker_service, mock_theme_service, cleanup)
+
+        assert response.status_code == 502
+        assert "dropbox" in response.json()["detail"]
+        mock_job_manager.delete_job.assert_not_called()
+
     def test_unexpected_cleanup_error_aborts_deletion(self, mock_worker_service, mock_theme_service, auth_headers):
         """If cleanup crashes outright (per-service failures are handled internally),
         the job record must be preserved — deleting it would orphan the outputs with

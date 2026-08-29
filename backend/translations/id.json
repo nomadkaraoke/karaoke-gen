@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental dipilih. Pembuatan video dimulai.",
     "instrumentalSelectionError": "Kesalahan saat memilih instrumental untuk tugas {job_id}: {error}",
     "downloadUrlsError": "Kesalahan saat mendapatkan URL unduhan: {error}",
-    "fileNoLongerAvailable": "File sudah tidak tersedia"
+    "fileNoLongerAvailable": "File sudah tidak tersedia",
+    "deletePublishedRequiresFiles": "File yang telah dipublikasikan dari trek ini harus ikut dihapus saat tugas dihapus. Silakan ulangi penghapusan tanpa delete_files=false."
   },
   "review": {
     "jobNotFound": "Tugas tidak ditemukan",

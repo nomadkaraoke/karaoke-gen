@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental seleccionado. Generación de video iniciada.",
     "instrumentalSelectionError": "Error al seleccionar el instrumental para el trabajo {job_id}: {error}",
     "downloadUrlsError": "Error al obtener las URLs de descarga: {error}",
-    "fileNoLongerAvailable": "El archivo ya no está disponible"
+    "fileNoLongerAvailable": "El archivo ya no está disponible",
+    "deletePublishedRequiresFiles": "Los archivos publicados de esta pista deben eliminarse cuando se elimine el trabajo. Vuelve a intentar la eliminación sin delete_files=false."
   },
   "review": {
     "jobNotFound": "Trabajo no encontrado",

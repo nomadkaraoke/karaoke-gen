@@ -48,7 +48,8 @@
     "instrumentalSelected": "เลือกดนตรีบรรเลงแล้ว กำลังเริ่มสร้างวิดีโอ",
     "instrumentalSelectionError": "เกิดข้อผิดพลาดในการเลือกดนตรีบรรเลงสำหรับงาน {job_id}: {error}",
     "downloadUrlsError": "เกิดข้อผิดพลาดในการรับ URL สำหรับดาวน์โหลด: {error}",
-    "fileNoLongerAvailable": "ไฟล์ไม่พร้อมใช้งานแล้ว"
+    "fileNoLongerAvailable": "ไฟล์ไม่พร้อมใช้งานแล้ว",
+    "deletePublishedRequiresFiles": "ไฟล์ที่เผยแพร่แล้วของแทร็กนี้ต้องถูกลบออกเมื่อลบงาน โปรดลองลบใหม่อีกครั้งโดยไม่ใช้ delete_files=false"
   },
   "review": {
     "jobNotFound": "ไม่พบงาน",

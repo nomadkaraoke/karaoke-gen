@@ -1923,6 +1923,19 @@ async def cleanup_orphaned_outputs(
     if not any([req.youtube_video_id, req.dropbox_folder_path, req.gdrive_file_ids, req.mirror_filename_prefix]):
         raise HTTPException(status_code=400, detail="No cleanup targets specified")
 
+    if req.mirror_filename_prefix:
+        from backend.services.nomad_master_mirror import is_safe_track_filename_prefix
+
+        if not is_safe_track_filename_prefix(req.mirror_filename_prefix):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Unsafe mirror_filename_prefix {req.mirror_filename_prefix!r}: must be "
+                    f"'NOMAD-#### - Artist...' (brand code plus artist text) so it cannot "
+                    f"match another track sharing a recycled brand code"
+                ),
+            )
+
     logger.info(
         f"Admin {admin_email} cleaning up orphaned outputs: "
         f"youtube={req.youtube_video_id}, dropbox={req.dropbox_folder_path}, "

@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental selecionado. Geração de vídeo iniciada.",
     "instrumentalSelectionError": "Erro ao selecionar instrumental para o job {job_id}: {error}",
     "downloadUrlsError": "Erro ao obter URLs de download: {error}",
-    "fileNoLongerAvailable": "O arquivo não está mais disponível"
+    "fileNoLongerAvailable": "O arquivo não está mais disponível",
+    "deletePublishedRequiresFiles": "Os arquivos publicados desta faixa devem ser removidos quando a tarefa for excluída. Tente excluir novamente sem delete_files=false."
   },
   "review": {
     "jobNotFound": "Job não encontrado",

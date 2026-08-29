@@ -48,7 +48,8 @@
     "instrumentalSelected": "Đã chọn nhạc nền. Đã bắt đầu tạo video.",
     "instrumentalSelectionError": "Lỗi khi chọn nhạc nền cho công việc {job_id}: {error}",
     "downloadUrlsError": "Lỗi khi lấy URL tải xuống: {error}",
-    "fileNoLongerAvailable": "Tệp không còn khả dụng"
+    "fileNoLongerAvailable": "Tệp không còn khả dụng",
+    "deletePublishedRequiresFiles": "Các tệp đã xuất bản của bài hát này phải được xóa khi xóa tác vụ. Vui lòng thử xóa lại mà không có delete_files=false."
   },
   "review": {
     "jobNotFound": "Không tìm thấy công việc",

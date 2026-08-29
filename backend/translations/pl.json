@@ -48,7 +48,8 @@
     "instrumentalSelected": "Wybrano podkład. Rozpoczęto generowanie wideo.",
     "instrumentalSelectionError": "Błąd podczas wybierania podkładu dla zadania {job_id}: {error}",
     "downloadUrlsError": "Błąd podczas pobierania linków: {error}",
-    "fileNoLongerAvailable": "Plik nie jest już dostępny"
+    "fileNoLongerAvailable": "Plik nie jest już dostępny",
+    "deletePublishedRequiresFiles": "Opublikowane pliki tego utworu muszą zostać usunięte podczas usuwania zadania. Spróbuj usunąć ponownie bez delete_files=false."
   },
   "review": {
     "jobNotFound": "Nie znaleziono zadania",

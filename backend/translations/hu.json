@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumentális sáv kiválasztva. A videó generálása megkezdődött.",
     "instrumentalSelectionError": "Hiba a(z) {job_id} feladat instrumentális sávjának kiválasztásakor: {error}",
     "downloadUrlsError": "Hiba a letöltési URL-ek lekérésekor: {error}",
-    "fileNoLongerAvailable": "A fájl már nem elérhető"
+    "fileNoLongerAvailable": "A fájl már nem elérhető",
+    "deletePublishedRequiresFiles": "Ennek a számnak a közzétett fájljait el kell távolítani a feladat törlésekor. Próbáld újra a törlést a delete_files=false nélkül."
   },
   "review": {
     "jobNotFound": "A feladat nem található",

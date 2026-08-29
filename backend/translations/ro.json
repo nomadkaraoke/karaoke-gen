@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental selectat. A început generarea videoclipului.",
     "instrumentalSelectionError": "Eroare la selectarea instrumentalului pentru jobul {job_id}: {error}",
     "downloadUrlsError": "Eroare la obținerea adreselor URL de descărcare: {error}",
-    "fileNoLongerAvailable": "Fișierul nu mai este disponibil"
+    "fileNoLongerAvailable": "Fișierul nu mai este disponibil",
+    "deletePublishedRequiresFiles": "Fișierele publicate ale acestei piese trebuie eliminate la ștergerea jobului. Încearcă din nou ștergerea fără delete_files=false."
   },
   "review": {
     "jobNotFound": "Jobul nu a fost găsit",

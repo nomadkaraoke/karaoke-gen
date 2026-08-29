@@ -48,7 +48,8 @@
     "instrumentalSelected": "Το instrumental επιλέχθηκε. Ξεκίνησε η δημιουργία βίντεο.",
     "instrumentalSelectionError": "Σφάλμα κατά την επιλογή instrumental για την εργασία {job_id}: {error}",
     "downloadUrlsError": "Σφάλμα κατά τη λήψη των URL λήψης: {error}",
-    "fileNoLongerAvailable": "Το αρχείο δεν είναι πλέον διαθέσιμο"
+    "fileNoLongerAvailable": "Το αρχείο δεν είναι πλέον διαθέσιμο",
+    "deletePublishedRequiresFiles": "Τα δημοσιευμένα αρχεία αυτού του κομματιού πρέπει να αφαιρεθούν όταν διαγράφεται η εργασία. Δοκίμασε ξανά τη διαγραφή χωρίς το delete_files=false."
   },
   "review": {
     "jobNotFound": "Η εργασία δεν βρέθηκε",

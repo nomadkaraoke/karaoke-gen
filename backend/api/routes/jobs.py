@@ -824,11 +824,35 @@ async def delete_job(
         brand_code = state_data.get('brand_code')
         distribution_cleanup = None
         if brand_code and not job.outputs_deleted_at:
+            if not delete_files:
+                # Published outputs cannot be preserved when their job record is
+                # deleted — the record holds the only file IDs/paths needed to ever
+                # clean them up or reconcile the brand code.
+                raise HTTPException(
+                    status_code=400,
+                    detail=t(locale, "jobs.deletePublishedRequiresFiles"),
+                )
             logger.warning(
                 f"Deleting job {job_id} with brand_code {brand_code} whose outputs "
                 f"were not cleaned up first — running distribution cleanup before delete."
             )
             distribution_cleanup = _run_distribution_cleanup(job_id, job)
+            incomplete = [
+                svc for svc in ("youtube", "dropbox", "gdrive")
+                if distribution_cleanup.get(svc, {}).get("status") in ("failed", "partial", "error")
+            ]
+            if incomplete:
+                # Keep the job record: it holds the file IDs/paths needed to retry.
+                # Deleting it anyway would orphan the remaining published files with
+                # no way to resolve them later (NOMAD-1583 incident).
+                logger.error(
+                    f"Aborting delete of job {job_id}: distribution cleanup incomplete "
+                    f"for {incomplete} — {distribution_cleanup}"
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail=t(locale, "jobs.cleanupFailed", services=", ".join(incomplete)),
+                )
 
         job_manager.delete_job(job_id, delete_files=delete_files)
 

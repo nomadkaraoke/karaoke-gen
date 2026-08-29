@@ -48,7 +48,8 @@
     "instrumentalSelected": "Instrumental valgt. Videogenerering startet.",
     "instrumentalSelectionError": "Feil ved valg av instrumental for jobb {job_id}: {error}",
     "downloadUrlsError": "Feil ved henting av nedlastings-URL-er: {error}",
-    "fileNoLongerAvailable": "Filen er ikke lenger tilgjengelig"
+    "fileNoLongerAvailable": "Filen er ikke lenger tilgjengelig",
+    "deletePublishedRequiresFiles": "De publiserte filene for dette sporet må fjernes når jobben slettes. Prøv å slette på nytt uten delete_files=false."
   },
   "review": {
     "jobNotFound": "Jobben ble ikke funnet",

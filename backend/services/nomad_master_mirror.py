@@ -31,6 +31,11 @@ logger = logging.getLogger(__name__)
 _TRACK_FILENAME_PREFIX_RE = re.compile(r"^NOMAD-\d{4,} - \S.*")
 
 
+def is_safe_track_filename_prefix(filename_prefix: Optional[str]) -> bool:
+    """True if the prefix is specific enough for a single-track mirror delete."""
+    return bool(_TRACK_FILENAME_PREFIX_RE.match(filename_prefix or ""))
+
+
 def is_nomad_public_brand(brand_code: Optional[str]) -> bool:
     """True only for public Nomad releases (``NOMAD-####``), not ``NOMADNP`` privates."""
     if not brand_code:
@@ -176,14 +181,17 @@ class NomadMasterMirror:
         Used by orphaned-output cleanup when the owning job doc is gone and a recycled
         brand code is shared with a live track: the prefix must include artist text
         (enforced by ``_TRACK_FILENAME_PREFIX_RE``) so only the orphaned track's
-        objects match, never the whole brand code. Best-effort; returns counts.
+        objects match, never the whole brand code. Matching is delimiter-bounded — the
+        character after the prefix must be a space or ``.`` — so ``"NOMAD-1583 - Mazzy
+        Star"`` can never match a different track named ``"NOMAD-1583 - Mazzy Starlight
+        - ..."``. Raises ``ValueError`` for an unsafe prefix (callers validate with
+        ``is_safe_track_filename_prefix``); GCS errors stay best-effort.
         """
-        if not _TRACK_FILENAME_PREFIX_RE.match(filename_prefix or ""):
-            logger.warning(
-                "Refusing mirror track delete for unsafe prefix %r "
-                "(must look like 'NOMAD-#### - Artist...')", filename_prefix,
+        if not is_safe_track_filename_prefix(filename_prefix):
+            raise ValueError(
+                f"Unsafe mirror track prefix {filename_prefix!r} "
+                f"(must look like 'NOMAD-#### - Artist...')"
             )
-            return {"masters_deleted": 0, "vocals_guides_deleted": 0}
 
         counts = {"masters_deleted": 0, "vocals_guides_deleted": 0}
         targets = [
@@ -194,6 +202,11 @@ class NomadMasterMirror:
             prefix = f"{gcs_prefix}/{filename_prefix}"
             try:
                 for blob in self._bucket.list_blobs(prefix=prefix):
+                    remainder = blob.name[len(prefix):]
+                    if remainder and remainder[0] not in " .":
+                        # Prefix ends mid-word (a longer artist/title shares it) —
+                        # this object belongs to a different track.
+                        continue
                     try:
                         blob.delete()
                         counts[key] += 1

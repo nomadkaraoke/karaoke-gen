@@ -51,6 +51,20 @@ class TestOrphanedOutputsCleanupValidation:
         assert response.status_code == 400
         assert "No cleanup targets" in response.json()["detail"]
 
+    @pytest.mark.parametrize("prefix", ["NOMAD-1583", "NOMAD-1583 - ", "Mazzy Star"])
+    def test_unsafe_mirror_prefix_returns_400_before_any_cleanup(self, client, prefix):
+        """An unsafe mirror prefix fails the whole request up front — even the other
+        (valid) targets must not run, so a bad call can be corrected and retried
+        atomically."""
+        with patch("backend.services.youtube_service.get_youtube_service") as mock_get_yt:
+            response = client.post(URL, json={
+                "youtube_video_id": "vid",
+                "mirror_filename_prefix": prefix,
+            })
+        assert response.status_code == 400
+        assert "mirror_filename_prefix" in response.json()["detail"]
+        mock_get_yt.assert_not_called()
+
 
 class TestOrphanedOutputsCleanupYouTube:
     def test_deletes_youtube_video_by_id(self, client):
