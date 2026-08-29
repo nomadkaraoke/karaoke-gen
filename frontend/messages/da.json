@@ -554,7 +554,17 @@
     "matchUsingTyped": "Bruger det, du indtastede: {value}",
     "checkingUrl": "Tjekker…",
     "submitNetworkError": "Netværksfejl — tjek venligst din forbindelse, og prøv igen.",
-    "submitError": "Noget gik galt. Prøv venligst igen."
+    "submitError": "Noget gik galt. Prøv venligst igen.",
+    "backingPrefAuto": "Behold hvor muligt",
+    "backingPrefClean": "Fjern (ren)",
+    "backingPrefLabel": "Baggrundsvokaler",
+    "backingPrefReview": "Lad mig vælge",
+    "processingOptions": "Behandlingsindstillinger",
+    "reviewModeAlways": "Lad mig altid gennemgå",
+    "reviewModeAlwaysHint": "Vi stopper altid og lader dig gennemgå sangteksten og vælge instrumentalnummeret før rendering.",
+    "reviewModeAuto": "Fuldautomatisk",
+    "reviewModeAutoHint": "Vi beder dig kun om at gennemgå sangteksten eller instrumentalnummeret, hvis der virkelig er brug for et menneske. Numre, vi er sikre på, færdiggøres automatisk.",
+    "reviewModeLabel": "Gennemgang"
   },
   "jobStatus": {
     "settingUp": "Sætter op",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Samlede segmenter: {count}",
         "proceedToInstrumental": "Fortsæt til gennemgang af instrumental",
         "saving": "Gemmer...",
-        "completeTrack": "Færdiggør nummer"
+        "completeTrack": "Færdiggør nummer",
+        "autoInstrumentalBacking": "Vi beholder automatisk baggrundsvokalerne i instrumentalnummeret — ingen gennemgang af instrumentalnummeret er nødvendig.",
+        "autoInstrumentalClean": "Vi bruger automatisk det rene instrumentalnummer (ingen baggrundsvokaler) — ingen gennemgang af instrumentalnummeret er nødvendig.",
+        "reviewInstrumentalAnyway": "Lad mig selv vælge instrumentalnummeret"
       },
       "searchLyrics": {
         "artist": "Kunstner",

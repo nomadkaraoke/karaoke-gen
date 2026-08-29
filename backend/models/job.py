@@ -282,6 +282,13 @@ class Job(BaseModel):
     # semantics and never gated the cloud review flow.)
     review_mode: str = "auto"
 
+    # Backing-vocals preference chosen up-front at submission. "auto" (default):
+    # retain backing vocals wherever the 3-stem decider is confident it's safe,
+    # else fall through to human review. "clean": always use the clean
+    # instrumental (never retain backing). "review": always let a human pick the
+    # instrumental. Consumed by the auto-approval instrumental decision.
+    backing_preference: str = "auto"
+
     # Multi-tenant support ("" = consumer portal, "vocalstar"/etc = tenant portal)
     tenant_id: str = ""                          # Tenant ID for white-label portal scoping
 
@@ -570,7 +577,10 @@ class JobCreate(BaseModel):
     # "auto" (default) = skip review screens when the auto-approval scorer is
     # fully confident; "always_review" = always stop at the review screens.
     review_mode: str = "auto"
-    
+    # "auto" (default) = retain backing vocals where confidently safe; "clean" =
+    # always strip backing vocals; "review" = always let a human pick the instrumental.
+    backing_preference: str = "auto"
+
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")
     color_overrides: Dict[str, str] = Field(default_factory=dict)
@@ -660,6 +670,20 @@ class JobCreate(BaseModel):
         if v is not None and isinstance(v, str) and not v.strip():
             raise ValueError("Field cannot be empty string")
         return v.strip() if isinstance(v, str) else v
+
+    @validator('review_mode')
+    def _normalize_review_mode(cls, v):
+        """Coerce an out-of-set value to the fail-safe default (always_review =
+        more human oversight), so a typo can never silently skip review. The
+        executor already treats any non-"auto" value as an enforcement blocker."""
+        return v if v in ("auto", "always_review") else "always_review"
+
+    @validator('backing_preference')
+    def _normalize_backing_preference(cls, v):
+        """Coerce an out-of-set value to the default. Every creation route passes
+        the client value straight through, so this is the single choke point that
+        keeps a typo from reaching the instrumental decision as an unknown value."""
+        return v if v in ("auto", "clean", "review") else "auto"
 
     @validator('artist', 'title')
     def normalize_artist_title(cls, v):

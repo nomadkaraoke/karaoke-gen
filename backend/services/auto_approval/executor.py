@@ -38,7 +38,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from backend.models.job import JobStatus
-from backend.services.auto_approval.models import BackingVerdict, LyricsVerdict
+from backend.services.auto_approval.instrumental import (
+    backing_decision,
+    has_custom_instrumental,
+)
+from backend.services.auto_approval.models import LyricsVerdict
 
 logger = logging.getLogger(__name__)
 
@@ -75,21 +79,6 @@ def _enforcement_blockers(job, settings) -> List[str]:
     if getattr(job, "made_for_you", False):
         blockers.append("made_for_you")
     return blockers
-
-
-def _has_custom_instrumental(job) -> bool:
-    """True when the user supplied their own instrumental (tenant bulk uploads,
-    the upload flow's existing-instrumental option, or a mute-region edit).
-
-    For these jobs there is NO instrumental decision to make — the human
-    complete-review flow submits ``instrumental_selection="custom"`` — so the
-    auto class is lyrics-only and the backing verdict is moot.
-    """
-    stems = (job.file_urls or {}).get("stems", {}) if job.file_urls else {}
-    return bool(
-        getattr(job, "existing_instrumental_gcs_path", None)
-        or stems.get("custom_instrumental")
-    )
 
 
 async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any]:
@@ -138,37 +127,52 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
 
         verdict = score_job(corrections, backing_analysis, ai_suggestions)
         blockers = _enforcement_blockers(job, settings)
-        custom_instrumental = _has_custom_instrumental(job)
-        keep_backing = (
-            not custom_instrumental
-            and verdict.backing.verdict == BackingVerdict.WITH_BACKING
+        custom_instrumental = has_custom_instrumental(job)
+        backing_preference = getattr(job, "backing_preference", "auto") or "auto"
+        backing_keep_enabled = getattr(settings, "auto_approval_backing_keep_enabled", False)
+        # Single source of truth for the instrumental decision (shared with the
+        # complete-review "auto" resolver and the per-screen-skip UI summary).
+        decision = backing_decision(
+            backing_verdict=verdict.backing.verdict.value,
+            backing_non_subjective=verdict.backing.non_subjective,
+            backing_preference=backing_preference,
+            backing_keep_enabled=backing_keep_enabled,
+            custom_instrumental=custom_instrumental,
         )
+        keep_backing = decision["keep_backing"]
+
+        # Eligibility: confident lyrics AND a resolvable instrumental decision.
+        # With a user-supplied instrumental the backing decision is moot, so
+        # confident lyrics alone qualify (selection="custom").
+        lyrics_auto = verdict.lyrics.verdict == LyricsVerdict.AUTO
+        if custom_instrumental:
+            eligible = lyrics_auto
+            enforcement_basis = "lyrics_only_custom_instrumental"
+        else:
+            eligible = lyrics_auto and decision["ok"]
+            enforcement_basis = (
+                "overall_auto"
+                if backing_preference == "auto"
+                else f"lyrics_auto_backing_pref:{backing_preference}"
+            )
+
+        # Stem / audio blockers (the instrumental the selection needs must exist).
         if not audio_complete:
             blockers.append("audio_incomplete")
         elif custom_instrumental:
-            # User-supplied instrumental -> selection is "custom" by
-            # definition; no separated-stem requirements. The video worker
-            # validates the custom source itself.
+            # User-supplied instrumental -> "custom"; the video worker validates
+            # the custom source itself, no separated-stem requirements.
             pass
         elif keep_backing:
             # Confident-keep (3-stem decider) selects the with-backing
             # instrumental — gated shadow-first behind its own flag.
-            if not settings.auto_approval_backing_keep_enabled:
+            if not backing_keep_enabled:
                 blockers.append("backing_keep_disabled")
             if not stems.get("instrumental_with_backing"):
                 blockers.append("no_with_backing_stem")
         elif not stems.get("instrumental_clean"):
+            # Clean selection (auto-clean verdict OR backing_preference="clean").
             blockers.append("no_clean_stem")
-
-        # Eligibility: with a user-supplied instrumental the backing decision
-        # is moot, so confident lyrics alone qualify; otherwise the narrow
-        # intersection (confident lyrics AND non-subjective backing) applies.
-        if custom_instrumental:
-            eligible = verdict.lyrics.verdict == LyricsVerdict.AUTO
-            enforcement_basis = "lyrics_only_custom_instrumental"
-        else:
-            eligible = verdict.overall_auto
-            enforcement_basis = "overall_auto"
 
         payload = verdict.to_dict()
         payload.update({
@@ -176,6 +180,8 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             "enforcement_eligible": eligible and not blockers,
             "enforcement_basis": enforcement_basis,
             "custom_instrumental": custom_instrumental,
+            "backing_preference": backing_preference,
+            "resolved_instrumental_selection": decision["selection"],
             "trigger": trigger,
             "enforcement_blockers": blockers,
             "audio_complete_at_scoring": audio_complete,
@@ -227,15 +233,10 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             )
             return {"outcome": "aborted", "reason": applied_info["aborted"]}
 
-        # Instrumental selection: user-supplied instrumental -> "custom"
-        # (mirrors the human tenant complete-review flow); otherwise the
-        # non-subjective backing verdict picks the separated stem — CLEAN
-        # ("no audible backing") -> clean, WITH_BACKING (confident 3-stem
-        # decider keep, flag-gated above) -> with-backing.
-        if custom_instrumental:
-            selection = "custom"
-        else:
-            selection = "with_backing" if keep_backing else "clean"
+        # Instrumental selection resolved by the shared decision: user-supplied
+        # instrumental -> "custom"; otherwise the non-subjective backing verdict
+        # (or the user's backing_preference) picks the separated stem.
+        selection = decision["selection"] or ("with_backing" if keep_backing else "clean")
         job_manager.update_state_data(job_id, "instrumental_selection", selection)
 
         # Clear worker progress keys so downstream workers run fresh (mirrors
@@ -302,34 +303,14 @@ def _build_auto_corrections(
     Returns ``{"aborted": <reason>}`` on any anomaly (caller falls back to
     human review), else ``{"applied_ids": [...]}``.
     """
-    segments = corrections.get("corrected_segments") or []
-    if not segments:
-        return {"aborted": "no_segments"}
+    from backend.services.auto_approval.apply import build_applied_segments
 
-    from backend.services.auto_approval.apply import (
-        apply_all_suggestions,
-        find_suspicious_duplicates,
-    )
-
-    result = apply_all_suggestions(segments, ai_suggestions)
-    if result["stale_ids"]:
-        # Nothing edits segments between generation and now, so staleness means
-        # the cache doesn't match this corrections.json -> don't trust the apply.
-        return {"aborted": f"stale_suggestions:{len(result['stale_ids'])}"}
-
-    new_segments = result["segments"]
-    if not new_segments or any(not (s.get("words") or []) for s in new_segments):
-        return {"aborted": "empty_segments_after_apply"}
-
-    duplicates = find_suspicious_duplicates(
-        new_segments, corrections.get("reference_lyrics")
-    )
-    if duplicates:
-        # P1 signature: overlapping suggestions doubled a word ("you're you're").
-        return {"aborted": f"duplicate_words:{','.join(duplicates[:5])}"}
+    result = build_applied_segments(corrections, ai_suggestions)
+    if result.get("aborted"):
+        return {"aborted": result["aborted"]}
 
     updated = dict(corrections)
-    updated["corrected_segments"] = new_segments
+    updated["corrected_segments"] = result["segments"]
     metadata = dict(updated.get("metadata") or {})
     metadata["auto_approval"] = {
         "auto_approved": True,

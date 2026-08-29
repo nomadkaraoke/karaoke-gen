@@ -554,7 +554,17 @@
     "matchUsingTyped": "Uso quello che hai digitato: {value}",
     "checkingUrl": "Controllo in corso…",
     "submitNetworkError": "Errore di rete — controlla la tua connessione e riprova.",
-    "submitError": "Qualcosa è andato storto. Riprova."
+    "submitError": "Qualcosa è andato storto. Riprova.",
+    "backingPrefAuto": "Mantieni dove possibile",
+    "backingPrefClean": "Rimuovi (pulita)",
+    "backingPrefLabel": "Cori",
+    "backingPrefReview": "Fammi scegliere",
+    "processingOptions": "Opzioni di elaborazione",
+    "reviewModeAlways": "Fammi sempre controllare",
+    "reviewModeAlwaysHint": "Ci fermeremo sempre per farti controllare il testo e scegliere la base strumentale prima del rendering.",
+    "reviewModeAuto": "Completamente automatico",
+    "reviewModeAutoHint": "Ti chiederemo di controllare il testo o la base strumentale solo se c'è davvero bisogno di un intervento umano. Le tracce con un alto livello di sicurezza vengono completate automaticamente.",
+    "reviewModeLabel": "Revisione"
   },
   "jobStatus": {
     "settingUp": "Configurazione",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Segmenti totali: {count}",
         "proceedToInstrumental": "Procedi alla revisione strumentale",
         "saving": "Salvataggio...",
-        "completeTrack": "Traccia completa"
+        "completeTrack": "Traccia completa",
+        "autoInstrumentalBacking": "Manterremo automaticamente i cori nella base strumentale — non è necessario controllare la base.",
+        "autoInstrumentalClean": "Useremo automaticamente la base strumentale pulita (senza cori) — non è necessario controllare la base.",
+        "reviewInstrumentalAnyway": "Fammi scegliere la base strumentale"
       },
       "searchLyrics": {
         "artist": "Artista",

@@ -554,7 +554,17 @@
     "matchUsingTyped": "استخدام ما كتبته: {value}",
     "checkingUrl": "جاري التحقق...",
     "submitNetworkError": "خطأ في الشبكة — يرجى التحقق من اتصالك والمحاولة مرة أخرى.",
-    "submitError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+    "submitError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "backingPrefAuto": "الاحتفاظ بها حيثما أمكن",
+    "backingPrefClean": "إزالتها (نظيف)",
+    "backingPrefLabel": "الأصوات الخلفية",
+    "backingPrefReview": "دعني أختار",
+    "processingOptions": "خيارات المعالجة",
+    "reviewModeAlways": "دعني أراجع دائمًا",
+    "reviewModeAlwaysHint": "سنتوقف دائمًا ونسمح لك بمراجعة الكلمات واختيار المسار الموسيقي قبل المعالجة النهائية.",
+    "reviewModeAuto": "تلقائي بالكامل",
+    "reviewModeAutoHint": "سنطلب منك مراجعة الكلمات أو المسار الموسيقي فقط إذا كان هناك شيء يحتاج حقًا إلى تدخل بشري. المسارات الموثوقة تكتمل تلقائيًا.",
+    "reviewModeLabel": "المراجعة"
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",
@@ -1138,7 +1148,10 @@
         "totalSegments": "إجمالي المقاطع: {count}",
         "proceedToInstrumental": "المتابعة إلى مراجعة الموسيقى",
         "saving": "جاري الحفظ...",
-        "completeTrack": "إكمال المسار"
+        "completeTrack": "إكمال المسار",
+        "autoInstrumentalBacking": "سنحتفظ بالأصوات الخلفية في المسار الموسيقي تلقائيًا — لا حاجة لمراجعة المسار الموسيقي.",
+        "autoInstrumentalClean": "سنستخدم المسار الموسيقي النظيف (بدون أصوات خلفية) تلقائيًا — لا حاجة لمراجعة المسار الموسيقي.",
+        "reviewInstrumentalAnyway": "دعني أختار المسار الموسيقي بنفسي"
       },
       "searchLyrics": {
         "artist": "الفنان",

@@ -143,6 +143,33 @@ export interface CorrectionData {
     enabled_handlers?: string[]
     artist?: string
     title?: string
+    // Server-side pre-apply marker (C2): when present, the backend already
+    // applied the AI corrections before the review-ready notification, so the
+    // review UI must NOT auto-run/auto-apply again. `suggestions` carries the
+    // cached suggestions (typed loosely to avoid an import cycle; cast to
+    // AiSuggestion[] at the call site).
+    auto_approval?: {
+      pre_applied?: boolean
+      applied_suggestion_ids?: string[]
+      rejected_suggestion_ids?: string[]
+      suggestions?: unknown[]
+      applied_at?: string
+    }
+  }
+  // Per-screen skip summary (C1): whether each review half is confidently
+  // auto-resolved, so the UI can skip that screen. Absent on replay / old jobs.
+  auto_approval?: {
+    backing?: {
+      verdict?: string | null
+      confident?: boolean
+      resolved_selection?: string | null
+    }
+    lyrics?: {
+      verdict?: string | null
+      confident?: boolean
+    }
+    custom_instrumental?: boolean
+    verdict_present?: boolean
   }
   correction_steps: CorrectionStep[]
   word_id_map: Record<string, string>

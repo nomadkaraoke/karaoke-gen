@@ -554,7 +554,17 @@
     "matchUsingTyped": "使用您输入的内容：{value}",
     "checkingUrl": "检查中…",
     "submitNetworkError": "网络错误 —— 请检查您的网络连接并重试。",
-    "submitError": "出了点问题，请重试。"
+    "submitError": "出了点问题，请重试。",
+    "backingPrefAuto": "尽可能保留",
+    "backingPrefClean": "移除 (纯净版)",
+    "backingPrefLabel": "伴唱",
+    "backingPrefReview": "让我自己选择",
+    "processingOptions": "处理选项",
+    "reviewModeAlways": "始终让我审核",
+    "reviewModeAlwaysHint": "我们始终会在渲染前暂停，让您审核歌词并选择伴奏。",
+    "reviewModeAuto": "全自动",
+    "reviewModeAutoHint": "只有在确实需要人工处理时，我们才会请您审核歌词或伴奏。系统有把握的曲目会自动完成。",
+    "reviewModeLabel": "审核"
   },
   "jobStatus": {
     "settingUp": "设置中",
@@ -1138,7 +1148,10 @@
         "totalSegments": "总片段数：{count}",
         "proceedToInstrumental": "继续进行伴奏审核",
         "saving": "保存中...",
-        "completeTrack": "完成曲目"
+        "completeTrack": "完成曲目",
+        "autoInstrumentalBacking": "我们将自动在伴奏中保留伴唱 — 无需审核伴奏。",
+        "autoInstrumentalClean": "我们将自动使用纯净版伴奏（无伴唱） — 无需审核伴奏。",
+        "reviewInstrumentalAnyway": "让我自己选择伴奏"
       },
       "searchLyrics": {
         "artist": "歌手",

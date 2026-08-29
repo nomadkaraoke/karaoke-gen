@@ -13,7 +13,7 @@ import { SongInfoStep } from "./steps/SongInfoStep"
 import { AudioSourceStep } from "./steps/AudioSourceStep"
 import { VisibilityStep } from "./steps/VisibilityStep"
 import { CustomizeStep } from "./steps/CustomizeStep"
-import type { ColorOverrides } from "./steps/CustomizeStep"
+import type { ColorOverrides, ReviewMode, BackingPreference } from "./steps/CustomizeStep"
 
 interface GuidedJobFlowProps {
   onJobCreated: () => void
@@ -109,6 +109,9 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   const [displayTitle, setDisplayTitle] = useState("")
   const [isPrivate, setIsPrivate] = useState(false)
   const [requiresAudioEdit, setRequiresAudioEdit] = useState(false)
+  // Full-auto review (workstream C): up-front autonomy + backing-vocals preference.
+  const [reviewMode, setReviewMode] = useState<ReviewMode>("auto")
+  const [backingPreference, setBackingPreference] = useState<BackingPreference>("auto")
 
   // Custom style state
   const [karaokeBackground, setKaraokeBackground] = useState<File | null>(null)
@@ -171,13 +174,20 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         const response = await api.createJobFromUrl(pendingUrl, effectiveArtist, effectiveTitle, {
           is_private: isPrivate,
           requires_audio_edit: requiresAudioEdit || undefined,
+          review_mode: reviewMode,
+          backing_preference: backingPreference,
         })
         createdJobId = response.job_id
       } else if (audioSource === "upload" && pendingFile) {
         // Upload fallback path — upload and create job now with visibility from Step 3
         const response = await api.uploadJobSmart(
           pendingFile, effectiveArtist, effectiveTitle,
-          { is_private: isPrivate, requires_audio_edit: requiresAudioEdit || undefined },
+          {
+            is_private: isPrivate,
+            requires_audio_edit: requiresAudioEdit || undefined,
+            review_mode: reviewMode,
+            backing_preference: backingPreference,
+          },
         )
         createdJobId = response.job_id
       } else if (searchSessionId && selectedResultIndex !== null) {
@@ -191,6 +201,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           display_title: displayTitle.trim() || undefined,
           is_private: isPrivate,
           requires_audio_edit: requiresAudioEdit || undefined,
+          review_mode: reviewMode,
+          backing_preference: backingPreference,
         })
         createdJobId = response.job_id
       } else {
@@ -247,6 +259,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setDisplayTitle("")
     setIsPrivate(false)
     setRequiresAudioEdit(false)
+    setReviewMode("auto")
+    setBackingPreference("auto")
     setKaraokeBackground(null)
     setIntroBackground(null)
     setColorOverrides({})
@@ -546,6 +560,10 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           onIntroBackgroundChange={setIntroBackground}
           colorOverrides={colorOverrides}
           onColorOverridesChange={setColorOverrides}
+          reviewMode={reviewMode}
+          onReviewModeChange={setReviewMode}
+          backingPreference={backingPreference}
+          onBackingPreferenceChange={setBackingPreference}
           onConfirm={handleConfirm}
           onBack={() => setStep(3)}
           isSubmitting={isSubmitting}

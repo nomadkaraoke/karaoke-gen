@@ -554,7 +554,17 @@
     "matchUsingTyped": "Usando o que você digitou: {value}",
     "checkingUrl": "Verificando…",
     "submitNetworkError": "Erro de rede — por favor, verifique sua conexão e tente novamente.",
-    "submitError": "Algo deu errado. Tente novamente."
+    "submitError": "Algo deu errado. Tente novamente.",
+    "backingPrefAuto": "Manter quando possível",
+    "backingPrefClean": "Remover (limpo)",
+    "backingPrefLabel": "Vocais de apoio",
+    "backingPrefReview": "Deixe-me escolher",
+    "processingOptions": "Opções de processamento",
+    "reviewModeAlways": "Sempre me deixe revisar",
+    "reviewModeAlwaysHint": "Sempre vamos parar e deixar você revisar a letra e escolher o instrumental antes de renderizar.",
+    "reviewModeAuto": "Totalmente automático",
+    "reviewModeAutoHint": "Só pediremos que você revise a letra ou o instrumental se algo realmente precisar de um toque humano. Faixas com alta precisão são finalizadas automaticamente.",
+    "reviewModeLabel": "Revisão"
   },
   "jobStatus": {
     "settingUp": "Configurando",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Total de segmentos: {count}",
         "proceedToInstrumental": "Prosseguir para Revisão Instrumental",
         "saving": "Salvando...",
-        "completeTrack": "Faixa completa"
+        "completeTrack": "Faixa completa",
+        "autoInstrumentalBacking": "Manteremos os vocais de apoio no instrumental automaticamente — não é necessário revisar o instrumental.",
+        "autoInstrumentalClean": "Usaremos o instrumental limpo (sem vocais de apoio) automaticamente — não é necessário revisar o instrumental.",
+        "reviewInstrumentalAnyway": "Deixe-me escolher o instrumental"
       },
       "searchLyrics": {
         "artist": "Artista",

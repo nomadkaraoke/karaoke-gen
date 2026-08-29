@@ -554,7 +554,17 @@
     "matchUsingTyped": "Verwende deine Eingabe: {value}",
     "checkingUrl": "Überprüfen…",
     "submitNetworkError": "Netzwerkfehler — bitte überprüfe deine Verbindung und versuche es erneut.",
-    "submitError": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+    "submitError": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "backingPrefAuto": "Wenn möglich beibehalten",
+    "backingPrefClean": "Entfernen (rein)",
+    "backingPrefLabel": "Hintergrundgesang",
+    "backingPrefReview": "Selbst auswählen",
+    "processingOptions": "Verarbeitungsoptionen",
+    "reviewModeAlways": "Immer selbst überprüfen",
+    "reviewModeAlwaysHint": "Wir pausieren immer, damit du vor dem Rendern den Text überprüfen und das Instrumental auswählen kannst.",
+    "reviewModeAuto": "Vollautomatisch",
+    "reviewModeAutoHint": "Wir bitten dich nur dann, den Text oder das Instrumental zu überprüfen, wenn wirklich menschliches Eingreifen nötig ist. Titel mit hoher Erkennungsrate werden automatisch fertiggestellt.",
+    "reviewModeLabel": "Überprüfung"
   },
   "jobStatus": {
     "settingUp": "Richte ein",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Gesamte Segmente: {count}",
         "proceedToInstrumental": "Weiter zur Instrumental-Überprüfung",
         "saving": "Speichere...",
-        "completeTrack": "Kompletter Track"
+        "completeTrack": "Kompletter Track",
+        "autoInstrumentalBacking": "Wir behalten den Hintergrundgesang im Instrumental automatisch bei — keine Überprüfung des Instrumentals erforderlich.",
+        "autoInstrumentalClean": "Wir verwenden automatisch das reine Instrumental (ohne Hintergrundgesang) — keine Überprüfung des Instrumentals erforderlich.",
+        "reviewInstrumentalAnyway": "Instrumental selbst auswählen"
       },
       "searchLyrics": {
         "artist": "Künstler",
