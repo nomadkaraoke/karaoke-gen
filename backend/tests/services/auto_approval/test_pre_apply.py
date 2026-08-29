@@ -7,9 +7,10 @@ back to its client-side on-load auto-apply.
 """
 from __future__ import annotations
 
-import asyncio
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from backend.services.auto_approval.pre_apply import ensure_and_pre_apply
 
@@ -68,13 +69,13 @@ class _FakeStorage:
         self._files[path] = data
 
 
-def _run(storage, *, proactive=True):
+async def _run(storage, *, proactive=True):
     settings = MagicMock(auto_correct_proactive_enabled=proactive)
     jm = MagicMock()
     with patch("backend.config.get_settings", return_value=settings), \
          patch("backend.services.storage_service.StorageService", return_value=storage), \
          patch("backend.services.job_manager.JobManager", return_value=jm):
-        return asyncio.run(ensure_and_pre_apply("j1")), jm
+        return await ensure_and_pre_apply("j1"), jm
 
 
 CORR = "jobs/j1/lyrics/corrections.json"
@@ -82,12 +83,13 @@ UPD = "jobs/j1/lyrics/corrections_updated.json"
 CACHE = "jobs/j1/lyrics/auto_correct_cache/x.json"
 
 
-def test_pre_apply_writes_marker_and_applies():
+@pytest.mark.asyncio
+async def test_pre_apply_writes_marker_and_applies():
     storage = _FakeStorage({
         CORR: _corrections(),
         CACHE: {"suggestions": [_replace_suggestion()]},
     })
-    result, jm = _run(storage)
+    result, jm = await _run(storage)
     assert result["outcome"] == "pre_applied"
     assert result["applied"] == 1
     written = storage.uploads[UPD]
@@ -100,37 +102,41 @@ def test_pre_apply_writes_marker_and_applies():
     jm.update_file_url.assert_called_once()
 
 
-def test_pre_apply_empty_suggestions_still_marks():
+@pytest.mark.asyncio
+async def test_pre_apply_empty_suggestions_still_marks():
     # Known-empty cache: mark pre_applied so the UI doesn't run client-side.
     storage = _FakeStorage({CORR: _corrections(), CACHE: {"suggestions": []}})
-    result, _ = _run(storage)
+    result, _ = await _run(storage)
     assert result["outcome"] == "pre_applied"
     assert result["applied"] == 0
     assert storage.uploads[UPD]["metadata"]["auto_approval"]["pre_applied"] is True
 
 
-def test_pre_apply_no_cache_and_proactive_disabled_is_noop():
+@pytest.mark.asyncio
+async def test_pre_apply_no_cache_and_proactive_disabled_is_noop():
     # No cache + proactive off -> unknown suggestion set -> do NOT mark (fall back).
     storage = _FakeStorage({CORR: _corrections()})
-    result, _ = _run(storage, proactive=False)
+    result, _ = await _run(storage, proactive=False)
     assert result["outcome"] == "skipped"
     assert result["reason"] == "no_suggestions_cache"
     assert UPD not in storage.uploads
 
 
-def test_pre_apply_skips_when_already_applied():
+@pytest.mark.asyncio
+async def test_pre_apply_skips_when_already_applied():
     storage = _FakeStorage({
         CORR: _corrections(),
         UPD: {"metadata": {"auto_approval": {"auto_approved": True}}},
         CACHE: {"suggestions": [_replace_suggestion()]},
     })
-    result, _ = _run(storage)
+    result, _ = await _run(storage)
     assert result["outcome"] == "skipped"
     assert result["reason"] == "already_applied"
 
 
-def test_pre_apply_no_corrections_is_noop():
+@pytest.mark.asyncio
+async def test_pre_apply_no_corrections_is_noop():
     storage = _FakeStorage({})
-    result, _ = _run(storage)
+    result, _ = await _run(storage)
     assert result["outcome"] == "skipped"
     assert result["reason"] == "no_corrections"
