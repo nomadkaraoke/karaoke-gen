@@ -417,3 +417,15 @@ Build-order item #4 shipped (decider + signals; enforcement shadow-first):
 - Flip-on procedure: review shadow verdicts vs human picks for a while, then set
   `AUTO_APPROVAL_BACKING_KEEP_ENABLED=true` on the backend service. The Cher-class jobs
   (lyrics solved, gated only by audible backing — 46201da4) then become fully auto.
+
+## Session 7 update (2026-08-28 evening) — Phase 2D: user-supplied-instrumental jobs auto-complete (v0.205.0)
+
+Tenant/bulk jobs (and any job with `existing_instrumental_gcs_path` or a `custom_instrumental`
+stem) previously carried the `custom_instrumental` enforcement blocker. But these jobs have NO
+instrumental decision — the human flow completes them with `instrumental_selection="custom"`
+(validated in review.py complete; video worker prefers the user-provided source). Executor now:
+confident lyrics alone ⇒ auto-complete with selection="custom"
+(`enforcement_basis="lyrics_only_custom_instrumental"` recorded in the payload; backing verdict
+moot). Non-custom jobs unchanged (`overall_auto`). Per-job opt-out stays `review_mode=
+"always_review"`; per-tenant default config is future work (workstream C/D follow-up).
+This makes tenant bulk uploads the highest-auto-rate population (B2B throughput).
