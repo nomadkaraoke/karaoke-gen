@@ -60,6 +60,8 @@ const TapButton = memo(function TapButton({
 
 interface EditTimelineSectionProps {
   words: Word[]
+  /** Neighbouring segments' words, drawn greyed/read-only in the timeline padding for context. */
+  contextWords?: Word[]
   startTime: number
   endTime: number
   currentTime?: number
@@ -75,6 +77,7 @@ interface EditTimelineSectionProps {
 
 export default function EditTimelineSection({
   words,
+  contextWords,
   startTime,
   endTime,
   currentTime,
@@ -108,6 +111,7 @@ export default function EditTimelineSection({
       <div>
         <TimelineEditor
           words={words}
+          contextWords={contextWords}
           startTime={startTime}
           endTime={endTime}
           onWordUpdate={onWordUpdate}

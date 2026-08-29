@@ -8,6 +8,12 @@ export interface WaveformVisualizerProps extends Omit<HTMLProps<HTMLCanvasElemen
 	endTime: number
 	audioData: AudioData | null
 	barColor?: string
+	/** Bars whose time is before this are drawn faded (used to dim the out-of-segment lead-in). */
+	fadeBeforeTime?: number
+	/** Bars whose time is after this are drawn faded (used to dim the out-of-segment lead-out). */
+	fadeAfterTime?: number
+	/** Opacity applied to faded (out-of-segment) bars. */
+	fadedOpacity?: number
 }
 
 export const WaveformVisualizer = ({
@@ -16,6 +22,9 @@ export const WaveformVisualizer = ({
 	audioData,
 	className,
 	barColor = colors.yellow['500'],
+	fadeBeforeTime,
+	fadeAfterTime,
+	fadedOpacity = 0.28,
 	... canvasProps
 }: WaveformVisualizerProps) => {
 	const containerRef = useRef<HTMLDivElement | null>(null)
@@ -64,7 +73,16 @@ export const WaveformVisualizer = ({
 		const audioData = readAudioData(startTime, endTime)
 		if (!audioData) return
 
+		const windowDuration = endTime - startTime
+
 		for (let x = 0; x < ctx.canvas.width; x++) {
+			// Dim bars that fall outside the segment (the padded lead-in/out context regions).
+			const barTime = startTime + ((x + 0.5) / ctx.canvas.width) * windowDuration
+			const isFaded =
+				(fadeBeforeTime !== undefined && barTime < fadeBeforeTime) ||
+				(fadeAfterTime !== undefined && barTime > fadeAfterTime)
+			ctx.globalAlpha = isFaded ? fadedOpacity : 1
+
 			// Clamp the first pixel: (x - 0.5) is negative at x=0, and a negative
 			// slice start would sample peaks from the end of the window instead.
 			const dataPointIndex = Math.max(0, Math.floor((x - 0.5) / ctx.canvas.width * audioData.length))
@@ -84,7 +102,9 @@ export const WaveformVisualizer = ({
 
 			ctx.fillRect(x, (ctx.canvas.height - barHeight) / 2, 1, barHeight)
 		}
-	}, [readAudioData, barColor])
+
+		ctx.globalAlpha = 1
+	}, [readAudioData, barColor, fadeBeforeTime, fadeAfterTime, fadedOpacity])
 
 	// Re-render when the data (readAudioData is memoized on audioData), the window,
 	// the canvas size, or the colour changes. audioData arrives asynchronously, so
