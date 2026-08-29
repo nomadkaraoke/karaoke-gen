@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Generazione video di anteprima...",
-      "startingEncoder": "Avvio del worker di codifica... Questo di solito richiede circa un minuto.",
       "failed": "Impossibile generare il video di anteprima",
-      "unsupportedBrowser": "Il tuo browser non supporta il tag video."
+      "unsupportedBrowser": "Il tuo browser non supporta il tag video.",
+      "encoding": "Codifica del video di anteprima in corso...",
+      "timedOut": "Il video di anteprima sta impiegando più tempo del previsto. Riprova.",
+      "retry": "Riprova",
+      "startingEncoder": "Stiamo avviando un server di codifica — potrebbe volerci un paio di minuti. Un attimo di pazienza!"
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",

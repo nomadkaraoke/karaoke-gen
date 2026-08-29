@@ -3673,6 +3673,10 @@ export interface LyricsReviewApiClient {
     message?: string
     preview_hash?: string
   }>
+  getPreviewVideoStatus: (hash: string) => Promise<{
+    status: string
+    message?: string
+  }>
   getPreviewVideoUrl: (hash: string) => string
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods
@@ -3817,7 +3821,11 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     },
 
     /**
-     * Generate a preview video from the current correction data
+     * Generate a preview video from the current correction data.
+     *
+     * Returns status "success" when the video is immediately available
+     * (local render or cache hit), or "generating" when encoding continues
+     * in the background — poll getPreviewVideoStatus() until it's ready.
      */
     async generatePreviewVideo(data: CorrectionData, isDuet?: boolean): Promise<{
       status: string
@@ -3836,6 +3844,20 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
         },
         body: JSON.stringify(body),
       })
+      return handleResponse(response)
+    },
+
+    /**
+     * Poll the state of a background preview encode ("ready" | "generating" | "error")
+     */
+    async getPreviewVideoStatus(hash: string): Promise<{
+      status: string
+      message?: string
+    }> {
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/review/${jobId}/preview-video/${hash}/status`,
+        { headers: getAuthHeaders() }
+      )
       return handleResponse(response)
     },
 

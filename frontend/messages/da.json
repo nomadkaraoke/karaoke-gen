@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Genererer forhåndsvisningsvideo...",
-      "startingEncoder": "Starter kodningsarbejder... Dette tager normalt omkring et minut.",
       "failed": "Kunne ikke generere forhåndsvisningsvideo",
-      "unsupportedBrowser": "Din browser understøtter ikke video-tagget."
+      "unsupportedBrowser": "Din browser understøtter ikke video-tagget.",
+      "encoding": "Koder preview-video...",
+      "timedOut": "Preview-videoen tager længere tid end forventet. Prøv igen.",
+      "retry": "Prøv igen",
+      "startingEncoder": "Starter en kodningsserver — det kan tage et par minutter. Hæng på!"
     },
     "gapNavigator": {
       "previousGap": "Forrige hul (P)",

@@ -35,8 +35,11 @@ function makeMockApiClient(): LyricsReviewApiClient {
     submitEditLog: jest.fn(),
     updateHandlers: jest.fn(),
     addLyrics: jest.fn(),
+    searchLyrics: jest.fn(),
     getAudioUrl: jest.fn(),
+    getVocalsAudioUrl: jest.fn(),
     generatePreviewVideo: jest.fn(),
+    getPreviewVideoStatus: jest.fn(),
     getPreviewVideoUrl: jest.fn(),
     completeReview: jest.fn(),
     saveReviewSession: jest.fn(),
@@ -44,7 +47,7 @@ function makeMockApiClient(): LyricsReviewApiClient {
     getReviewSession: jest.fn().mockResolvedValue({
       session_id: 'session-1',
       correction_data: { corrected_segments: [] },
-    } as Partial<ReviewSessionWithData>),
+    } as unknown as Partial<ReviewSessionWithData>),
     deleteReviewSession: jest.fn(),
   }
 }

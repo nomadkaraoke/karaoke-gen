@@ -1007,8 +1007,11 @@
     },
     "previewVideo": {
       "generating": "Generating preview video...",
-      "startingEncoder": "Starting encoding worker... This usually takes about a minute.",
+      "encoding": "Encoding preview video...",
+      "startingEncoder": "Starting up an encoding server \u2014 this can take a couple of minutes. Hang tight!",
       "failed": "Failed to generate preview video",
+      "timedOut": "The preview video is taking longer than expected. Please try again.",
+      "retry": "Retry",
       "unsupportedBrowser": "Your browser does not support the video tag."
     },
     "gapNavigator": {

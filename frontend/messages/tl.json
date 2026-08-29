@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Bumubuo ng preview video...",
-      "startingEncoder": "Sinisimulan ang encoding worker... Karaniwang tumatagal ito nang halos isang minuto.",
       "failed": "Nabigong bumuo ng preview video",
-      "unsupportedBrowser": "Hindi sinusuportahan ng iyong browser ang video tag."
+      "unsupportedBrowser": "Hindi sinusuportahan ng iyong browser ang video tag.",
+      "encoding": "Ini-encode ang preview video...",
+      "timedOut": "Inaabot nang mas matagal kaysa sa inaasahan ang preview video. Pakisubukan muli.",
+      "retry": "Subukan Muli",
+      "startingEncoder": "Sinisimulan ang encoding server — maaari itong tumagal ng ilang minuto. Konting hintay lang!"
     },
     "gapNavigator": {
       "previousGap": "Nakaraang gap (P)",

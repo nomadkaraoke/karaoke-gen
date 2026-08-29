@@ -1,0 +1,173 @@
+import { render, screen, act } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import PreviewVideoSection from '../PreviewVideoSection'
+import type { CorrectionData } from '@/lib/lyrics-review/types'
+
+// The preview flow is async: POST /preview-video returns either "success"
+// (video already exists) or "generating" (encode continues on a GCE worker,
+// which can cold-start for minutes). In the generating case the component
+// polls getPreviewVideoStatus until "ready"/"error" — it must NOT depend on
+// the POST staying open (Cloudflare cuts connections at ~100s).
+
+const data = { corrected_segments: [], metadata: {} } as unknown as CorrectionData
+
+function makeApiClient(overrides: Record<string, jest.Mock> = {}) {
+  return {
+    generatePreviewVideo: jest.fn().mockResolvedValue({
+      status: 'success',
+      preview_hash: 'hash1',
+    }),
+    getPreviewVideoStatus: jest.fn().mockResolvedValue({ status: 'generating' }),
+    getPreviewVideoUrl: jest.fn((hash: string) => `http://test/preview/${hash}`),
+    ...overrides,
+  }
+}
+
+function renderSection(apiClient: ReturnType<typeof makeApiClient>) {
+  return render(
+    <PreviewVideoSection apiClient={apiClient} isModalOpen={true} updatedData={data} />
+  )
+}
+
+const flush = () => act(async () => { await Promise.resolve() })
+
+describe('PreviewVideoSection', () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('shows the video immediately when the preview already exists (cache hit)', async () => {
+    const apiClient = makeApiClient()
+    renderSection(apiClient)
+    await flush()
+
+    const video = document.querySelector('video')
+    expect(video).not.toBeNull()
+    expect(video!.src).toBe('http://test/preview/hash1')
+    expect(apiClient.getPreviewVideoStatus).not.toHaveBeenCalled()
+  })
+
+  it('polls the status endpoint until ready when encoding runs in background', async () => {
+    const apiClient = makeApiClient({
+      generatePreviewVideo: jest.fn().mockResolvedValue({
+        status: 'generating',
+        preview_hash: 'hash2',
+      }),
+      getPreviewVideoStatus: jest
+        .fn()
+        .mockResolvedValueOnce({ status: 'generating' })
+        .mockResolvedValueOnce({ status: 'ready' }),
+    })
+    renderSection(apiClient)
+    await flush()
+
+    // Encoding state shown, no video yet
+    expect(screen.getByText('Encoding preview video...')).toBeInTheDocument()
+    expect(document.querySelector('video')).toBeNull()
+
+    await act(async () => { await jest.advanceTimersByTimeAsync(3000) })
+    expect(apiClient.getPreviewVideoStatus).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('video')).toBeNull()
+
+    await act(async () => { await jest.advanceTimersByTimeAsync(3000) })
+    expect(apiClient.getPreviewVideoStatus).toHaveBeenCalledTimes(2)
+    const video = document.querySelector('video')
+    expect(video).not.toBeNull()
+    expect(video!.src).toBe('http://test/preview/hash2')
+  })
+
+  it('keeps polling through transient status-poll failures', async () => {
+    const apiClient = makeApiClient({
+      generatePreviewVideo: jest.fn().mockResolvedValue({
+        status: 'generating',
+        preview_hash: 'hash3',
+      }),
+      getPreviewVideoStatus: jest
+        .fn()
+        .mockRejectedValueOnce(new Error('network blip'))
+        .mockResolvedValueOnce({ status: 'ready' }),
+    })
+    renderSection(apiClient)
+    await flush()
+
+    await act(async () => { await jest.advanceTimersByTimeAsync(3000) })
+    expect(document.querySelector('video')).toBeNull()
+
+    await act(async () => { await jest.advanceTimersByTimeAsync(3000) })
+    expect(document.querySelector('video')).not.toBeNull()
+  })
+
+  it('surfaces a background encode failure reported by the status endpoint', async () => {
+    const apiClient = makeApiClient({
+      generatePreviewVideo: jest.fn().mockResolvedValue({
+        status: 'generating',
+        preview_hash: 'hash4',
+      }),
+      getPreviewVideoStatus: jest.fn().mockResolvedValue({
+        status: 'error',
+        message: 'encoder exploded',
+      }),
+    })
+    renderSection(apiClient)
+    await flush()
+
+    await act(async () => { await jest.advanceTimersByTimeAsync(3000) })
+    expect(screen.getByText('encoder exploded')).toBeInTheDocument()
+    // Polling must stop after a terminal error
+    await act(async () => { await jest.advanceTimersByTimeAsync(9000) })
+    expect(apiClient.getPreviewVideoStatus).toHaveBeenCalledTimes(1)
+  })
+
+  it('times out with an error after polling too long', async () => {
+    const apiClient = makeApiClient({
+      generatePreviewVideo: jest.fn().mockResolvedValue({
+        status: 'generating',
+        preview_hash: 'hash5',
+      }),
+      getPreviewVideoStatus: jest.fn().mockResolvedValue({ status: 'generating' }),
+    })
+    renderSection(apiClient)
+    await flush()
+
+    await act(async () => { await jest.advanceTimersByTimeAsync(5 * 60 * 1000 + 5000) })
+    expect(
+      screen.getByText('The preview video is taking longer than expected. Please try again.')
+    ).toBeInTheDocument()
+  })
+
+  it('Retry re-runs generation after an error', async () => {
+    const apiClient = makeApiClient({
+      generatePreviewVideo: jest
+        .fn()
+        .mockRejectedValueOnce(new Error('boom'))
+        .mockResolvedValueOnce({ status: 'success', preview_hash: 'hash6' }),
+    })
+    renderSection(apiClient)
+    await flush()
+
+    expect(screen.getByText('boom')).toBeInTheDocument()
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await act(async () => { await jest.advanceTimersByTimeAsync(0) })
+
+    expect(apiClient.generatePreviewVideo).toHaveBeenCalledTimes(2)
+    const video = document.querySelector('video')
+    expect(video).not.toBeNull()
+    expect(video!.src).toBe('http://test/preview/hash6')
+  })
+
+  it('shows an error when the server responds without a preview hash', async () => {
+    const apiClient = makeApiClient({
+      generatePreviewVideo: jest.fn().mockResolvedValue({ status: 'success' }),
+    })
+    renderSection(apiClient)
+    await flush()
+
+    expect(screen.getByText('Failed to generate preview video')).toBeInTheDocument()
+  })
+})

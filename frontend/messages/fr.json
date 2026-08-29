@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Génération de la vidéo d'aperçu...",
-      "startingEncoder": "Démarrage du worker d'encodage... Cela prend généralement environ une minute.",
       "failed": "Échec de la génération de la vidéo d'aperçu",
-      "unsupportedBrowser": "Ton navigateur ne prend pas en charge la balise vidéo."
+      "unsupportedBrowser": "Ton navigateur ne prend pas en charge la balise vidéo.",
+      "encoding": "Encodage de la vidéo d'aperçu...",
+      "timedOut": "La vidéo d'aperçu prend plus de temps que prévu. Réessaie s'il te plaît.",
+      "retry": "Réessayer",
+      "startingEncoder": "Démarrage d'un serveur d'encodage — cela peut prendre quelques minutes. Patiente un peu !"
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",

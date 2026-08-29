@@ -89,6 +89,10 @@ interface ApiClient {
     message?: string
     preview_hash?: string
   }>
+  getPreviewVideoStatus: (hash: string) => Promise<{
+    status: string
+    message?: string
+  }>
   getPreviewVideoUrl: (hash: string) => string
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods (optional - available in cloud mode)

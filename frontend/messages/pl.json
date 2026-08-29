@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Generowanie podglądu wideo...",
-      "startingEncoder": "Uruchamianie workera kodowania... Zazwyczaj zajmuje to około minuty.",
       "failed": "Nie udało się wygenerować podglądu wideo",
-      "unsupportedBrowser": "Twoja przeglądarka nie obsługuje tagu wideo."
+      "unsupportedBrowser": "Twoja przeglądarka nie obsługuje tagu wideo.",
+      "encoding": "Kodowanie podglądu wideo...",
+      "timedOut": "Przygotowanie podglądu wideo trwa dłużej niż oczekiwano. Spróbuj ponownie.",
+      "retry": "Spróbuj ponownie",
+      "startingEncoder": "Uruchamiamy serwer kodujący — może to potrwać kilka minut. Poczekaj chwilę!"
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",

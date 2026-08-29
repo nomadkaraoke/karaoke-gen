@@ -346,7 +346,17 @@ Content-Type: application/json
 }
 ```
 
-Generates preview video during review. The `use_background_image` option controls whether the preview renders with the theme's background image (slower, ~30-60s) or a solid black background (faster, ~10s). Defaults to black background for speed.
+Generates a preview video during review. Returns `{"status": "success", "preview_hash": "..."}` when the video is immediately available (cache hit — the hash is deterministic over the correction data — or local render), or `{"status": "generating", "preview_hash": "..."}` when encoding continues in the background on a GCE worker. In the generating case, poll the status endpoint below; the request never waits for the encoder (cold-starting a worker VM can take minutes, longer than Cloudflare's edge timeout).
+
+The `use_background_image` option controls whether the preview renders with the theme's background image (slower, ~30-60s) or a solid black background (faster, ~10s). Defaults to black background for speed.
+
+#### Poll Preview Status
+
+```http
+GET /api/review/{job_id}/preview-video/{preview_hash}/status
+```
+
+Returns `{"status": "ready" | "generating" | "error", "preview_hash": "...", "message"?: "..."}`. Backed by GCS (mp4 existence / error marker), so polls work across Cloud Run instances. Once ready, fetch the video via `GET /api/review/{job_id}/preview-video/{preview_hash}`.
 
 #### Stream Audio
 

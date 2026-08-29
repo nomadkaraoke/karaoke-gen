@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Đang tạo video xem trước...",
-      "startingEncoder": "Đang bắt đầu worker mã hóa... Quá trình này thường mất khoảng một phút.",
       "failed": "Không thể tạo video xem trước",
-      "unsupportedBrowser": "Trình duyệt của bạn không hỗ trợ thẻ video."
+      "unsupportedBrowser": "Trình duyệt của bạn không hỗ trợ thẻ video.",
+      "encoding": "Đang mã hóa video xem trước...",
+      "timedOut": "Việc xử lý video xem trước đang mất nhiều thời gian hơn dự kiến. Vui lòng thử lại.",
+      "retry": "Thử lại",
+      "startingEncoder": "Đang khởi động máy chủ mã hóa — quá trình này có thể mất vài phút. Bạn đợi một chút nhé!"
     },
     "gapNavigator": {
       "previousGap": "Đoạn trống trước (P)",

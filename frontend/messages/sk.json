@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Generuje sa náhľadové video...",
-      "startingEncoder": "Spúšťa sa kódovací pracovník... Toto zvyčajne trvá asi minútu.",
       "failed": "Nepodarilo sa vygenerovať náhľadové video",
-      "unsupportedBrowser": "Tvoj prehliadač nepodporuje značku video."
+      "unsupportedBrowser": "Tvoj prehliadač nepodporuje značku video.",
+      "encoding": "Kódovanie ukážkového videa...",
+      "timedOut": "Spracovanie ukážkového videa trvá dlhšie, než sa očakávalo. Prosím, skús to znova.",
+      "retry": "Skúsiť znova",
+      "startingEncoder": "Spúšťa sa kódovací server — môže to trvať niekoľko minút. Vydrž!"
     },
     "gapNavigator": {
       "previousGap": "Predchádzajúca medzera (P)",

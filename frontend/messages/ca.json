@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Generant el vídeo de previsualització...",
-      "startingEncoder": "Iniciant el treballador de codificació... Això normalment triga aproximadament un minut.",
       "failed": "No s'ha pogut generar el vídeo de previsualització",
-      "unsupportedBrowser": "El teu navegador no admet l'etiqueta de vídeo."
+      "unsupportedBrowser": "El teu navegador no admet l'etiqueta de vídeo.",
+      "encoding": "Codificant el vídeo de previsualització...",
+      "timedOut": "El vídeo de previsualització està trigant més del previst. Si us plau, torna-ho a provar.",
+      "retry": "Reintenta",
+      "startingEncoder": "S'està iniciant un servidor de codificació — això pot trigar un parell de minuts. Espera una mica!"
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",

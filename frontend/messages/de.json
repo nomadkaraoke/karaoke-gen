@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Generiere Vorschau-Video...",
-      "startingEncoder": "Starte Kodierungs-Worker... Dies dauert normalerweise etwa eine Minute.",
       "failed": "Vorschau-Video konnte nicht generiert werden",
-      "unsupportedBrowser": "Dein Browser unterstützt das Video-Tag nicht."
+      "unsupportedBrowser": "Dein Browser unterstützt das Video-Tag nicht.",
+      "encoding": "Kodierung des Vorschauvideos...",
+      "timedOut": "Das Erstellen des Vorschauvideos dauert länger als erwartet. Bitte versuche es erneut.",
+      "retry": "Erneut versuchen",
+      "startingEncoder": "Ein Kodierungsserver wird gestartet — das kann ein paar Minuten dauern. Bitte hab etwas Geduld!"
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",

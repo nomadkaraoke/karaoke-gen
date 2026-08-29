@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "正在生成预览视频...",
-      "startingEncoder": "正在启动编码工作程序... 这通常需要大约一分钟。",
       "failed": "生成预览视频失败",
-      "unsupportedBrowser": "您的浏览器不支持视频标签。"
+      "unsupportedBrowser": "您的浏览器不支持视频标签。",
+      "encoding": "正在编码预览视频...",
+      "timedOut": "预览视频处理时间超过预期，请重试。",
+      "retry": "重试",
+      "startingEncoder": "正在启动编码服务器，这可能需要几分钟时间。请耐心等待！"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",

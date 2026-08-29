@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Generando video de vista previa...",
-      "startingEncoder": "Iniciando trabajador de codificación... Esto suele tardar alrededor de un minuto.",
       "failed": "Error al generar el video de vista previa",
-      "unsupportedBrowser": "Tu navegador no soporta la etiqueta de video."
+      "unsupportedBrowser": "Tu navegador no soporta la etiqueta de video.",
+      "encoding": "Codificando el video de vista previa...",
+      "timedOut": "El video de vista previa está tardando más de lo esperado. Por favor, inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "startingEncoder": "Iniciando un servidor de codificación — esto puede tardar un par de minutos. ¡Espera un momento!"
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",
