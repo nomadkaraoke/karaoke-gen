@@ -355,7 +355,9 @@ export default function useManualSync({
       const currentStartTime = clampSyncTime(
         rawStartTime,
         editedSegment?.start_time ?? null,
-        editedSegment?.end_time ?? null
+        editedSegment?.end_time ?? null,
+        LEAD_IN_SECONDS,
+        LEAD_OUT_SECONDS
       )
       if (currentStartTime !== rawStartTime) {
         onTimingClamped?.(newWords[syncWordIndex]?.text ?? '', currentStartTime)
