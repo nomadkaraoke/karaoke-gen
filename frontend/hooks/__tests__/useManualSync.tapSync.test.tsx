@@ -102,6 +102,192 @@ describe('useManualSync — tap-to-sync end times', () => {
     })
   })
 
+  it('expands a tapped word to fill the gap up to the next word onset', () => {
+    // "a simple call [gap] seems" — after tapping "call", the next word "seems" starts ~2s
+    // later. "call" should stretch to ~seems.start (no dead gap), not stay a fixed 0.5s block.
+    const initial = makeSegment([
+      w('a', 'a', null, null),
+      w('b', 'call', null, null),
+      w('c', 'seems', null, null),
+    ])
+
+    let segment = initial
+    let currentTime = 0
+
+    const { result, rerender } = renderHook(
+      ({ seg, time }) =>
+        useManualSync({
+          editedSegment: seg,
+          currentTime: time,
+          onPlaySegment: () => {},
+          updateSegment: (newWords: Word[]) => {
+            segment = recompute(segment, newWords)
+          },
+        }),
+      { initialProps: { seg: segment, time: currentTime } }
+    )
+
+    act(() => result.current.startManualSync())
+
+    // Tap "a" @1.0, "call" @2.0, then "seems" @2.8 — a 0.8s gap after "call" (within the 1s cap).
+    const tapTimes = [1.0, 2.0, 2.8]
+    tapTimes.forEach((t) => {
+      currentTime = t
+      rerender({ seg: segment, time: currentTime })
+      tap(result)
+      rerender({ seg: segment, time: currentTime })
+    })
+
+    const call = segment.words[1]
+    // "call" fills the gap right up to "seems".start (2.8) minus a tiny overlap buffer,
+    // instead of the old fixed 2.0 + 0.5 = 2.5 that left a dead gap.
+    expect(call.end_time as number).toBeGreaterThan(2.7)
+    expect(call.end_time as number).toBeLessThan(2.8)
+    // No overlap with the next word.
+    expect(call.end_time as number).toBeLessThanOrEqual(segment.words[2].start_time as number)
+  })
+
+  it('caps a tapped word at 1s when the gap to the next word is large', () => {
+    // Gap of 6s after "call" — the fill must cap at 1s (word can't stretch the whole instrumental).
+    const initial = makeSegment([
+      w('a', 'call', null, null),
+      w('b', 'seems', null, null),
+    ])
+
+    let segment = initial
+    let currentTime = 0
+
+    const { result, rerender } = renderHook(
+      ({ seg, time }) =>
+        useManualSync({
+          editedSegment: seg,
+          currentTime: time,
+          onPlaySegment: () => {},
+          updateSegment: (newWords: Word[]) => {
+            segment = recompute(segment, newWords)
+          },
+        }),
+      { initialProps: { seg: segment, time: currentTime } }
+    )
+
+    act(() => result.current.startManualSync())
+
+    const tapTimes = [1.0, 7.0]
+    tapTimes.forEach((t) => {
+      currentTime = t
+      rerender({ seg: segment, time: currentTime })
+      tap(result)
+      rerender({ seg: segment, time: currentTime })
+    })
+
+    const call = segment.words[0]
+    // Filled beyond the 0.5s default, but capped at start + MAX_TAP_GAP_FILL_SECONDS (1.0 + 1.0),
+    // well short of "seems".start (7.0).
+    expect(call.end_time as number).toBeCloseTo(1.0 + 1.0, 5)
+  })
+
+  it('does not gap-fill a held word (respects the deliberate release)', () => {
+    // A HOLD sets the word's end to the release playhead. A following gap must not stretch it.
+    const initial = makeSegment([
+      w('a', 'ohhh', null, null),
+      w('b', 'yeah', null, null),
+    ])
+
+    let segment = initial
+    let currentTime = 0
+
+    const { result, rerender } = renderHook(
+      ({ seg, time }) =>
+        useManualSync({
+          editedSegment: seg,
+          currentTime: time,
+          onPlaySegment: () => {},
+          updateSegment: (newWords: Word[]) => {
+            segment = recompute(segment, newWords)
+          },
+        }),
+      { initialProps: { seg: segment, time: currentTime } }
+    )
+
+    act(() => result.current.startManualSync())
+
+    const mk = (type: 'keydown' | 'keyup') =>
+      ({ type, code: 'Space', preventDefault: () => {}, stopPropagation: () => {} } as unknown as KeyboardEvent)
+
+    // HOLD "ohhh": press at playhead 1.0, release at playhead 2.0 after >200ms held.
+    const nowSpy = jest.spyOn(Date, 'now')
+    currentTime = 1.0
+    rerender({ seg: segment, time: currentTime })
+    nowSpy.mockReturnValue(10_000)
+    act(() => result.current.handleSpacebar(mk('keydown')))
+    currentTime = 2.0
+    rerender({ seg: segment, time: currentTime })
+    nowSpy.mockReturnValue(10_400) // held 400ms > TAP_THRESHOLD_MS
+    act(() => result.current.handleSpacebar(mk('keyup')))
+    nowSpy.mockRestore()
+    rerender({ seg: segment, time: currentTime })
+
+    // Tap "yeah" @6.0 — a 4s gap after the held "ohhh".
+    currentTime = 6.0
+    rerender({ seg: segment, time: currentTime })
+    tap(result)
+    rerender({ seg: segment, time: currentTime })
+
+    const ohhh = segment.words[0]
+    // The held release (~2.0) is preserved; NOT stretched toward "yeah" (6.0).
+    expect(ohhh.end_time as number).toBeCloseTo(2.0, 1)
+  })
+
+  it('does not crush a held word against the STALE start of a not-yet-resynced next word', () => {
+    // Real bug (job 3ecab928 seg 28): re-syncing a segment whose "call"/"seems" were adjacent
+    // (seems.start ≈ 155.50, right after call). Holding "call" then advancing must NOT let the
+    // overlap safety-net pull call.end back to seems' OLD start (155.50 → crushed to ~0.01s),
+    // because "seems" hasn't been re-tapped yet. The held duration must survive.
+    const initial = makeSegment([
+      w('a', 'call', 155.4, 155.5), // old: 0.1s
+      w('b', 'seems', 155.5, 155.56), // old start 155.5, right after call (STALE once we advance)
+    ])
+
+    let segment = initial
+    let currentTime = 0
+
+    const { result, rerender } = renderHook(
+      ({ seg, time }) =>
+        useManualSync({
+          editedSegment: seg,
+          currentTime: time,
+          onPlaySegment: () => {},
+          updateSegment: (newWords: Word[]) => {
+            segment = recompute(segment, newWords)
+          },
+        }),
+      { initialProps: { seg: segment, time: currentTime } }
+    )
+
+    act(() => result.current.startManualSync())
+
+    const mk = (type: 'keydown' | 'keyup') =>
+      ({ type, code: 'Space', preventDefault: () => {}, stopPropagation: () => {} } as unknown as KeyboardEvent)
+
+    // HOLD "call": press at playhead 155.30, release at 155.60 after >200ms held.
+    const nowSpy = jest.spyOn(Date, 'now')
+    currentTime = 155.3
+    rerender({ seg: segment, time: currentTime })
+    nowSpy.mockReturnValue(10_000)
+    act(() => result.current.handleSpacebar(mk('keydown')))
+    currentTime = 155.6
+    rerender({ seg: segment, time: currentTime })
+    nowSpy.mockReturnValue(10_400) // held 400ms > TAP_THRESHOLD_MS
+    act(() => result.current.handleSpacebar(mk('keyup')))
+    nowSpy.mockRestore()
+    rerender({ seg: segment, time: currentTime })
+
+    const call = segment.words[0]
+    // The held release (~155.60) is preserved; NOT crushed to seems' stale start (~155.49).
+    expect(call.end_time as number).toBeCloseTo(155.6, 1)
+    expect(call.end_time as number).toBeGreaterThan(155.5)
+  })
+
   it('extends the segment end when the last word is tapped near the old end', () => {
     // Segment ends at 3.00; re-tap so the LAST word lands at 2.90 — its default 0.5s tap
     // duration pushes its end to ~3.40, past the old end. The segment must grow to include it,
