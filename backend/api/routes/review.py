@@ -1553,13 +1553,18 @@ async def generate_preview_video(
                     # — so the request must not wait for it; the frontend polls
                     # the /status endpoint until the mp4 lands in GCS.
                     with tempfile.TemporaryDirectory() as temp_dir:
-                        correction_result, audio_path, output_config = _prepare_preview_inputs(
-                            job=job, temp_dir=temp_dir, storage=storage, is_duet=is_duet
+                        # Blocking work (GCS downloads, ASS generation) runs in a
+                        # worker thread so other requests on this instance don't
+                        # stall behind it.
+                        correction_result, audio_path, output_config = await asyncio.to_thread(
+                            _prepare_preview_inputs,
+                            job=job, temp_dir=temp_dir, storage=storage, is_duet=is_duet,
                         )
 
                         try:
                             with create_span("generate-ass-subtitles") as ass_span:
-                                result = CorrectionOperations.generate_preview_video(
+                                result = await asyncio.to_thread(
+                                    CorrectionOperations.generate_preview_video,
                                     correction_result=correction_result,
                                     updated_data=updated_data,
                                     output_config=output_config,
