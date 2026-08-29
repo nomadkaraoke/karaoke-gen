@@ -8,11 +8,21 @@ import { Loader2 } from 'lucide-react'
 import { CorrectionData } from '@/lib/lyrics-review/types'
 import { applyOffsetToCorrectionData } from '@/lib/lyrics-review/utils/timingUtils'
 
+const POLL_INTERVAL_MS = 3000
+// Cold-starting a fallback encoder VM can take 2-3 minutes; give up after 5.
+const ENCODE_TIMEOUT_MS = 5 * 60 * 1000
+// After this long, explain the wait (an encoder VM is probably cold-starting).
+const SLOW_ENCODE_THRESHOLD_MS = 30 * 1000
+
 interface ApiClient {
   generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
     preview_hash?: string
+  }>
+  getPreviewVideoStatus: (hash: string) => Promise<{
+    status: string
+    message?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
 }
@@ -26,6 +36,12 @@ interface PreviewVideoSectionProps {
   isDuet?: boolean
 }
 
+type PreviewState =
+  | { status: 'generating' }
+  | { status: 'encoding'; slow: boolean }
+  | { status: 'ready'; videoUrl: string }
+  | { status: 'error'; error: string }
+
 export default function PreviewVideoSection({
   apiClient,
   isModalOpen,
@@ -35,84 +51,122 @@ export default function PreviewVideoSection({
   isDuet,
 }: PreviewVideoSectionProps) {
   const t = useTranslations('lyricsReview.previewVideo')
-  const [previewState, setPreviewState] = useState<{
-    status: 'loading' | 'warming_up' | 'ready' | 'error'
-    videoUrl?: string
-    error?: string
-  }>({ status: 'loading' })
+  const [previewState, setPreviewState] = useState<PreviewState>({ status: 'generating' })
+  const [retryNonce, setRetryNonce] = useState(0)
 
-  // Generate preview when modal opens
+  // Generate preview when modal opens (or when Retry is clicked).
+  // The POST returns quickly: "success" when the video already exists (cache
+  // hit / local render), or "generating" when encoding continues on a GCE
+  // worker — in that case we poll the status endpoint until the mp4 exists.
   useEffect(() => {
-    if (isModalOpen && apiClient) {
-      const generatePreview = async () => {
-        setPreviewState({ status: 'loading' })
+    if (!isModalOpen || !apiClient) return
+
+    let cancelled = false
+    let pollTimer: ReturnType<typeof setTimeout> | undefined
+
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => {
+        pollTimer = setTimeout(resolve, ms)
+      })
+
+    const setReady = (hash: string) => {
+      setPreviewState({ status: 'ready', videoUrl: apiClient.getPreviewVideoUrl(hash) })
+    }
+
+    const pollUntilReady = async (hash: string) => {
+      const startedAt = Date.now()
+      while (!cancelled) {
+        await sleep(POLL_INTERVAL_MS)
+        if (cancelled) return
+        if (Date.now() - startedAt > ENCODE_TIMEOUT_MS) {
+          setPreviewState({ status: 'error', error: t('timedOut') })
+          return
+        }
         try {
-          // Apply timing offset if needed
-          const dataToPreview =
-            timingOffsetMs !== 0
-              ? applyOffsetToCorrectionData(updatedData, timingOffsetMs)
-              : updatedData
-
-          const response = await apiClient.generatePreviewVideo(dataToPreview, isDuet)
-
-          if (response.status === 'worker_starting') {
-            setPreviewState({
-              status: 'warming_up',
-              error: response.message,
-            })
+          const result = await apiClient.getPreviewVideoStatus(hash)
+          if (cancelled) return
+          if (result.status === 'ready') {
+            setReady(hash)
             return
           }
-
-          if (response.status === 'error') {
-            setPreviewState({
-              status: 'error',
-              error: response.message || 'Failed to generate preview video',
-            })
+          if (result.status === 'error') {
+            setPreviewState({ status: 'error', error: result.message || t('failed') })
             return
           }
+        } catch {
+          // Transient poll failure (network blip) — keep polling until timeout
+        }
+        setPreviewState({
+          status: 'encoding',
+          slow: Date.now() - startedAt > SLOW_ENCODE_THRESHOLD_MS,
+        })
+      }
+    }
 
-          if (!response.preview_hash) {
-            setPreviewState({
-              status: 'error',
-              error: 'No preview hash received from server',
-            })
-            return
-          }
+    const generatePreview = async () => {
+      setPreviewState({ status: 'generating' })
+      try {
+        // Apply timing offset if needed
+        const dataToPreview =
+          timingOffsetMs !== 0
+            ? applyOffsetToCorrectionData(updatedData, timingOffsetMs)
+            : updatedData
 
-          const videoUrl = apiClient.getPreviewVideoUrl(response.preview_hash)
-          setPreviewState({
-            status: 'ready',
-            videoUrl,
-          })
-        } catch (error) {
+        const response = await apiClient.generatePreviewVideo(dataToPreview, isDuet)
+        if (cancelled) return
+
+        if (response.status === 'error' || !response.preview_hash) {
           setPreviewState({
             status: 'error',
-            error: (error as Error).message || 'Failed to generate preview video',
+            error: response.message || t('failed'),
+          })
+          return
+        }
+
+        if (response.status === 'generating') {
+          setPreviewState({ status: 'encoding', slow: false })
+          await pollUntilReady(response.preview_hash)
+          return
+        }
+
+        setReady(response.preview_hash)
+      } catch (error) {
+        if (!cancelled) {
+          setPreviewState({
+            status: 'error',
+            error: (error as Error).message || t('failed'),
           })
         }
       }
-
-      generatePreview()
     }
-  }, [isModalOpen, apiClient, updatedData, timingOffsetMs, isDuet])
+
+    generatePreview()
+
+    return () => {
+      cancelled = true
+      if (pollTimer) clearTimeout(pollTimer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` is not referentially stable across renders
+  }, [isModalOpen, apiClient, updatedData, timingOffsetMs, isDuet, retryNonce])
 
   if (!apiClient) return null
 
   return (
     <div className="mb-4">
-      {previewState.status === 'loading' && (
+      {previewState.status === 'generating' && (
         <div className="flex items-center gap-3 p-4">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span>{t('generating')}</span>
         </div>
       )}
 
-      {previewState.status === 'warming_up' && (
+      {previewState.status === 'encoding' && (
         <div className="flex flex-col items-center justify-center p-8 text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500 mb-4" />
-          <p className="text-sm text-gray-600">
-            {t('startingEncoder')}
-          </p>
+          <p className="text-sm">{t('encoding')}</p>
+          {previewState.slow && (
+            <p className="mt-2 text-sm text-gray-600">{t('startingEncoder')}</p>
+          )}
         </div>
       )}
 
@@ -123,15 +177,15 @@ export default function PreviewVideoSection({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setPreviewState({ status: 'loading' })}
+              onClick={() => setRetryNonce((n) => n + 1)}
             >
-              Retry
+              {t('retry')}
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {previewState.status === 'ready' && previewState.videoUrl && (
+      {previewState.status === 'ready' && (
         <div className="w-full">
           <video
             ref={videoRef as RefObject<HTMLVideoElement>}

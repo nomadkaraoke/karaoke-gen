@@ -13,6 +13,10 @@ interface ApiClient {
     message?: string
     preview_hash?: string
   }>
+  getPreviewVideoStatus: (hash: string) => Promise<{
+    status: string
+    message?: string
+  }>
   getPreviewVideoUrl: (hash: string) => string
 }
 

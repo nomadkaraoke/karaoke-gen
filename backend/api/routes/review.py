@@ -210,6 +210,156 @@ def _get_audio_hash(job_id: str) -> str:
     return hashlib.md5(job_id.encode()).hexdigest()
 
 
+def _preview_error_marker_path(job_id: str, preview_hash: str) -> str:
+    """GCS marker written when a background preview encode fails permanently.
+
+    The status-poll endpoint reports it so the review UI can stop polling and
+    show a real error. GCS (not memory) because polls may hit a different
+    Cloud Run instance than the one running the encode task.
+    """
+    return f"jobs/{job_id}/previews/{preview_hash}.error.json"
+
+
+def _record_preview_video(job_id: str, preview_hash: str, gcs_path: str) -> None:
+    if job_id not in _preview_videos:
+        _preview_videos[job_id] = {}
+    _preview_videos[job_id][preview_hash] = gcs_path
+
+
+def _prepare_preview_inputs(job, temp_dir: str, storage, is_duet: bool):
+    """Download corrections/audio/styles for a preview render into temp_dir.
+
+    Returns (correction_result, audio_path, output_config). Blocking (GCS
+    downloads) — shared by the preview endpoint and the local-encode fallback.
+    """
+    job_id = job.job_id
+    with create_span("download-corrections-and-audio") as download_span:
+        corrections_gcs = f"jobs/{job_id}/lyrics/corrections.json"
+        corrections_path = os.path.join(temp_dir, "corrections.json")
+        storage.download_file(corrections_gcs, corrections_path)
+
+        with open(corrections_path, 'r', encoding='utf-8') as f:
+            original_data = json.load(f)
+
+        audio_path = os.path.join(temp_dir, "audio.flac")
+        storage.download_file(job.input_media_gcs_path, audio_path)
+        download_span.set_attribute("audio_gcs_path", job.input_media_gcs_path)
+
+    correction_result = CorrectionResult.from_dict(original_data)
+    add_span_event("corrections_loaded")
+
+    with create_span("load-styles") as styles_span:
+        styles_path, _ = load_styles_from_gcs(
+            style_params_gcs_path=job.style_params_gcs_path,
+            style_assets=job.style_assets,
+            temp_dir=temp_dir,
+            download_func=storage.download_file,
+            logger=logger,
+        )
+        styles_span.set_attribute("styles_path", styles_path)
+
+    output_dir = os.path.join(temp_dir, "output")
+    cache_dir = os.path.join(temp_dir, "cache")
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(cache_dir, exist_ok=True)
+
+    output_config = OutputConfig(
+        output_styles_json=styles_path,
+        output_dir=output_dir,
+        cache_dir=cache_dir,
+        video_resolution="360p",
+        is_duet=is_duet,
+    )
+    return correction_result, audio_path, output_config
+
+
+def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
+    """Render the full 360p preview locally and upload it to GCS.
+
+    Blocking (downloads + ffmpeg) — call via asyncio.to_thread. Used when GCE
+    preview encoding is disabled and as the fallback when it fails.
+    """
+    job_id = job.job_id
+    storage = StorageService()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        correction_result, audio_path, output_config = _prepare_preview_inputs(
+            job=job, temp_dir=temp_dir, storage=storage, is_duet=is_duet
+        )
+
+        with create_span("render-preview-video-local") as render_span:
+            render_span.set_attribute("resolution", "360p")
+            result = CorrectionOperations.generate_preview_video(
+                correction_result=correction_result,
+                updated_data=updated_data,
+                output_config=output_config,
+                audio_filepath=audio_path,
+                artist=job.artist,
+                title=job.title,
+                logger=logger,
+                ass_only=False,
+            )
+            preview_hash = result["preview_hash"]
+            video_path = result["video_path"]
+            add_span_event("render_complete")
+
+        with create_span("upload-preview-video") as upload_span:
+            preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
+            storage.upload_file(video_path, preview_gcs_path)
+            upload_span.set_attribute("gcs_path", preview_gcs_path)
+
+    _record_preview_video(job_id, preview_hash, preview_gcs_path)
+    return preview_hash
+
+
+async def _encode_preview_in_background(
+    job,
+    preview_hash: str,
+    encode_kwargs: Dict[str, Any],
+    updated_data: Dict[str, Any],
+    is_duet: bool,
+) -> None:
+    """Run the GCE preview encode without holding the HTTP request open.
+
+    Cold-starting a fallback encoder VM can take 2-3 minutes — longer than
+    Cloudflare's ~100s edge timeout — so POST /preview-video returns as soon
+    as the ASS is uploaded and the browser polls the /status endpoint, which
+    reports ready once the mp4 exists in GCS. On GCE failure this falls back
+    to a local render; if that also fails an error marker is written so the
+    poll can surface the failure instead of spinning until its timeout.
+    """
+    job_id = job.job_id
+    storage = StorageService()
+    encoding_service = get_encoding_service()
+    preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
+
+    with job_log_context(job_id, worker="preview"):
+        try:
+            with create_span("gce-preview-encoding", {"job_id": job_id, "preview_hash": preview_hash}) as gce_span:
+                gce_result = await encoding_service.encode_preview_video(**encode_kwargs)
+                gce_span.set_attribute("gce_status", gce_result.get("status"))
+            _record_preview_video(job_id, preview_hash, preview_gcs_path)
+            logger.info(f"Job {job_id}: Preview generated via GCE: {preview_hash}")
+            return
+        except Exception as gce_error:
+            logger.warning(f"Job {job_id}: GCE preview encoding failed, falling back to local: {gce_error}")
+
+        try:
+            await asyncio.to_thread(_render_preview_locally, job, updated_data, is_duet)
+            logger.info(f"Job {job_id}: Preview generated locally after GCE failure: {preview_hash}")
+        except Exception as local_error:
+            logger.error(
+                f"Job {job_id}: Preview generation failed (GCE and local fallback): {local_error}",
+                exc_info=True,
+            )
+            try:
+                storage.upload_json(
+                    _preview_error_marker_path(job_id, preview_hash),
+                    {"error": str(local_error)},
+                )
+            except Exception:
+                logger.exception(f"Job {job_id}: Failed to write preview error marker")
+
+
 # Cross-job search endpoint MUST be registered before {job_id} routes
 # to avoid FastAPI matching "sessions" as a job_id path parameter.
 @router.get("/sessions/search")
@@ -1395,56 +1545,18 @@ async def generate_preview_video(
     with create_span("generate-preview-video", {"job_id": job_id, "use_gce": use_gce_preview}) as span:
         with job_log_context(job_id, worker="preview"):
             try:
-                # Create temp directory for this preview operation
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    # 1. Download original corrections.json (has full structure)
-                    with create_span("download-corrections-and-audio") as download_span:
-                        corrections_gcs = f"jobs/{job_id}/lyrics/corrections.json"
-                        corrections_path = os.path.join(temp_dir, "corrections.json")
-                        storage.download_file(corrections_gcs, corrections_path)
-
-                        with open(corrections_path, 'r', encoding='utf-8') as f:
-                            original_data = json.load(f)
-
-                        # 2. Download input audio
-                        audio_path = os.path.join(temp_dir, "audio.flac")
-                        storage.download_file(job.input_media_gcs_path, audio_path)
-                        download_span.set_attribute("audio_gcs_path", job.input_media_gcs_path)
-
-                    # 3. Load original as CorrectionResult
-                    correction_result = CorrectionResult.from_dict(original_data)
-                    add_span_event("corrections_loaded")
-
-                    # 4. Get or create styles file for preview using unified style loader
-                    with create_span("load-styles") as styles_span:
-                        styles_path, _ = load_styles_from_gcs(
-                            style_params_gcs_path=job.style_params_gcs_path,
-                            style_assets=job.style_assets,
-                            temp_dir=temp_dir,
-                            download_func=storage.download_file,
-                            logger=logger,
+                if use_gce_preview:
+                    # GCE path: prepare inputs and generate ASS subtitles inline
+                    # (fast), then hand the video encode to a background task and
+                    # return immediately. Encoding can take minutes when a worker
+                    # VM cold-starts — longer than Cloudflare's ~100s edge timeout
+                    # — so the request must not wait for it; the frontend polls
+                    # the /status endpoint until the mp4 lands in GCS.
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        correction_result, audio_path, output_config = _prepare_preview_inputs(
+                            job=job, temp_dir=temp_dir, storage=storage, is_duet=is_duet
                         )
-                        styles_span.set_attribute("styles_path", styles_path)
 
-                    # 5. Set up output config for preview
-                    output_dir = os.path.join(temp_dir, "output")
-                    cache_dir = os.path.join(temp_dir, "cache")
-                    os.makedirs(output_dir, exist_ok=True)
-                    os.makedirs(cache_dir, exist_ok=True)
-
-                    output_config = OutputConfig(
-                        output_styles_json=styles_path,
-                        output_dir=output_dir,
-                        cache_dir=cache_dir,
-                        video_resolution="360p",
-                        is_duet=is_duet,
-                    )
-
-                    # 6. Generate preview (ASS-only if using GCE, or full video if local)
-                    preview_gcs_path = None
-
-                    if use_gce_preview:
-                        # GCE path: Generate ASS only, then offload encoding to GCE
                         try:
                             with create_span("generate-ass-subtitles") as ass_span:
                                 result = CorrectionOperations.generate_preview_video(
@@ -1462,94 +1574,95 @@ async def generate_preview_video(
                                 ass_span.set_attribute("ass_path", ass_path)
                                 add_span_event("ass_generated")
 
+                            span.set_attribute("preview_hash", preview_hash)
+                            preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
+
+                            # The hash is deterministic over the correction data, so
+                            # if this exact preview already exists (e.g. the user
+                            # retried after a dropped connection) skip encoding.
+                            if storage.file_exists(preview_gcs_path):
+                                _record_preview_video(job_id, preview_hash, preview_gcs_path)
+                                span.set_attribute("preview_cache_hit", True)
+                                logger.info(f"Job {job_id}: Preview cache hit: {preview_hash}")
+                                return {"status": "success", "preview_hash": preview_hash}
+
                             # Upload ASS to GCS
                             with create_span("upload-ass-to-gcs") as upload_ass_span:
                                 ass_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.ass"
                                 storage.upload_file(ass_path, ass_gcs_path)
                                 upload_ass_span.set_attribute("ass_gcs_path", ass_gcs_path)
 
-                            # Call GCE encoding service
-                            with create_span("gce-preview-encoding") as gce_span:
-                                bucket_name = settings.gcs_bucket_name
-                                preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
+                            # A stale error marker from an earlier failed attempt at
+                            # this same hash would make the status poll fail instantly.
+                            storage.delete_file(
+                                _preview_error_marker_path(job_id, preview_hash),
+                                ignore_missing=True,
+                            )
 
-                                # Get background image and font from style assets if available
-                                style_assets = job.style_assets or {}
+                            bucket_name = settings.gcs_bucket_name
+                            style_assets = job.style_assets or {}
 
-                                # Only use background image if user explicitly requested it
-                                # Default is black background for faster preview generation (~10s vs ~30-60s)
-                                background_image_gcs_path = None
-                                if use_background_image:
-                                    for key in ["karaoke_background", "style_karaoke_background"]:
-                                        if key in style_assets:
-                                            background_image_gcs_path = f"gs://{bucket_name}/{style_assets[key]}"
-                                            gce_span.set_attribute("background_image", background_image_gcs_path)
-                                            break
-                                gce_span.set_attribute("use_background_image", use_background_image)
-
-                                font_gcs_path = None
-                                for key in ["font", "style_font"]:
+                            # Only use background image if user explicitly requested it.
+                            # Default is black background for faster preview generation.
+                            background_image_gcs_path = None
+                            if use_background_image:
+                                for key in ["karaoke_background", "style_karaoke_background"]:
                                     if key in style_assets:
-                                        font_gcs_path = f"gs://{bucket_name}/{style_assets[key]}"
-                                        gce_span.set_attribute("font", font_gcs_path)
+                                        background_image_gcs_path = f"gs://{bucket_name}/{style_assets[key]}"
                                         break
+                            span.set_attribute("use_background_image", use_background_image)
 
-                                gce_result = await encoding_service.encode_preview_video(
-                                    job_id=f"preview_{job_id}_{preview_hash}",
-                                    ass_gcs_path=f"gs://{bucket_name}/{ass_gcs_path}",
-                                    audio_gcs_path=f"gs://{bucket_name}/{job.input_media_gcs_path}",
-                                    output_gcs_path=f"gs://{bucket_name}/{preview_gcs_path}",
-                                    background_color="black",
-                                    background_image_gcs_path=background_image_gcs_path,
-                                    font_gcs_path=font_gcs_path,
+                            font_gcs_path = None
+                            for key in ["font", "style_font"]:
+                                if key in style_assets:
+                                    font_gcs_path = f"gs://{bucket_name}/{style_assets[key]}"
+                                    break
+
+                            encode_kwargs = {
+                                "job_id": f"preview_{job_id}_{preview_hash}",
+                                "ass_gcs_path": f"gs://{bucket_name}/{ass_gcs_path}",
+                                "audio_gcs_path": f"gs://{bucket_name}/{job.input_media_gcs_path}",
+                                "output_gcs_path": f"gs://{bucket_name}/{preview_gcs_path}",
+                                "background_color": "black",
+                                "background_image_gcs_path": background_image_gcs_path,
+                                "font_gcs_path": font_gcs_path,
+                            }
+                            task = asyncio.create_task(
+                                _encode_preview_in_background(
+                                    job=job,
+                                    preview_hash=preview_hash,
+                                    encode_kwargs=encode_kwargs,
+                                    updated_data=updated_data,
+                                    is_duet=is_duet,
                                 )
-                                gce_span.set_attribute("gce_status", gce_result.get("status"))
-                                add_span_event("gce_encoding_complete")
+                            )
+                            _background_tasks.add(task)
+                            task.add_done_callback(_background_tasks.discard)
 
-                            logger.info(f"Job {job_id}: Preview generated via GCE: {preview_hash}")
+                            logger.info(f"Job {job_id}: Preview encode running in background: {preview_hash}")
+                            return {"status": "generating", "preview_hash": preview_hash}
 
+                        except LyricsTimingError:
+                            raise
                         except Exception as gce_error:
-                            # Fall back to local encoding if GCE fails
+                            # Fall back to synchronous local encoding if GCE setup fails
                             logger.warning(
-                                f"Job {job_id}: GCE preview encoding failed, falling back to local: {gce_error}"
+                                f"Job {job_id}: GCE preview setup failed, falling back to local: {gce_error}"
                             )
                             span.set_attribute("gce_fallback", True)
                             use_gce_preview = False  # Fall through to local encoding below
 
-                    if not use_gce_preview:
-                        # Local path: Generate full preview video locally
-                        with create_span("render-preview-video-local") as render_span:
-                            render_span.set_attribute("resolution", "360p")
-                            result = CorrectionOperations.generate_preview_video(
-                                correction_result=correction_result,
-                                updated_data=updated_data,
-                                output_config=output_config,
-                                audio_filepath=audio_path,
-                                artist=job.artist,
-                                title=job.title,
-                                logger=logger,
-                                ass_only=False,  # Generate full video locally
-                            )
-                            preview_hash = result["preview_hash"]
-                            video_path = result["video_path"]
-                            add_span_event("render_complete")
+                # Local path (GCE preview disabled, or GCE setup failed): render
+                # the full preview synchronously — no cold-start problem, but slow.
+                preview_hash = await asyncio.to_thread(
+                    _render_preview_locally, job, updated_data, is_duet
+                )
 
-                        # Upload preview video to GCS
-                        with create_span("upload-preview-video") as upload_span:
-                            preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
-                            storage.upload_file(video_path, preview_gcs_path)
-                            upload_span.set_attribute("gcs_path", preview_gcs_path)
+                logger.info(f"Job {job_id}: Preview video generated: {preview_hash}")
+                span.set_attribute("preview_hash", preview_hash)
+                span.set_attribute("success", True)
 
-                    # Store the GCS path for serving
-                    if job_id not in _preview_videos:
-                        _preview_videos[job_id] = {}
-                    _preview_videos[job_id][preview_hash] = preview_gcs_path
-
-                    logger.info(f"Job {job_id}: Preview video generated: {preview_hash}")
-                    span.set_attribute("preview_hash", preview_hash)
-                    span.set_attribute("success", True)
-
-                    return {"status": "success", "preview_hash": preview_hash}
+                return {"status": "success", "preview_hash": preview_hash}
 
             except LyricsTimingError as timing_err:
                 # Untimed lyrics (e.g. custom lyrics not yet tap-synced) — this is a
@@ -1604,6 +1717,41 @@ async def get_preview_video(
     except Exception as e:
         logger.error(f"Job {job_id}: Error serving preview video: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=t("en", "review.previewVideoStreamError", error=str(e)))
+
+
+@router.get("/{job_id}/preview-video/{preview_hash}/status")
+async def get_preview_video_status(
+    job_id: str,
+    preview_hash: str,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """Poll the state of a background preview encode.
+
+    POST /preview-video returns {"status": "generating"} immediately and the
+    encode runs in a background task (_encode_preview_in_background). The
+    browser polls this endpoint until the mp4 appears in GCS. GCS is the
+    source of truth so polls work regardless of which Cloud Run instance
+    they hit.
+    """
+    storage = StorageService()
+
+    if storage.file_exists(f"jobs/{job_id}/previews/{preview_hash}.mp4"):
+        return {"status": "ready", "preview_hash": preview_hash}
+
+    marker_path = _preview_error_marker_path(job_id, preview_hash)
+    if storage.file_exists(marker_path):
+        message = None
+        try:
+            message = storage.download_json(marker_path).get("error")
+        except Exception:
+            logger.warning(f"Job {job_id}: Unreadable preview error marker {marker_path}")
+        return {
+            "status": "error",
+            "preview_hash": preview_hash,
+            "message": message or t("en", "review.previewVideoGenerationError", error="encoding failed"),
+        }
+
+    return {"status": "generating", "preview_hash": preview_hash}
 
 
 @router.post("/{job_id}/v1/annotations")

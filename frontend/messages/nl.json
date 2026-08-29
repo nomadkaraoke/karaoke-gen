@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Voorbeeldvideo genereren...",
-      "startingEncoder": "Codering worker starten... Dit duurt meestal ongeveer een minuut.",
       "failed": "Kan voorbeeldvideo niet genereren",
-      "unsupportedBrowser": "Je browser ondersteunt de video tag niet."
+      "unsupportedBrowser": "Je browser ondersteunt de video tag niet.",
+      "encoding": "Voorbeeldvideo coderen...",
+      "timedOut": "Het verwerken van de voorbeeldvideo duurt langer dan verwacht. Probeer het opnieuw.",
+      "retry": "Opnieuw proberen",
+      "startingEncoder": "Bezig met het opstarten van een encodingserver — dit kan een paar minuten duren. Even geduld!"
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",

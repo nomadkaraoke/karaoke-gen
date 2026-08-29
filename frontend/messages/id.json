@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Membuat video pratinjau...",
-      "startingEncoder": "Memulai worker encoding... Ini biasanya memakan waktu sekitar satu menit.",
       "failed": "Gagal membuat video pratinjau",
-      "unsupportedBrowser": "Browser Anda tidak mendukung tag video."
+      "unsupportedBrowser": "Browser Anda tidak mendukung tag video.",
+      "encoding": "Sedang memproses video pratinjau...",
+      "timedOut": "Video pratinjau memakan waktu lebih lama dari perkiraan. Silakan coba lagi.",
+      "retry": "Coba lagi",
+      "startingEncoder": "Memulai server encoding — ini mungkin memakan waktu beberapa menit. Tunggu sebentar ya!"
     },
     "gapNavigator": {
       "previousGap": "Celah sebelumnya (P)",

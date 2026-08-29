@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Előnézeti videó generálása...",
-      "startingEncoder": "Kódoló worker indítása... Ez általában körülbelül egy percet vesz igénybe.",
       "failed": "Nem sikerült legenerálni az előnézeti videót",
-      "unsupportedBrowser": "A böngésződ nem támogatja a videó taget."
+      "unsupportedBrowser": "A böngésződ nem támogatja a videó taget.",
+      "encoding": "Előnézeti videó kódolása...",
+      "timedOut": "Az előnézeti videó elkészítése a vártnál tovább tart. Kérlek, próbáld újra.",
+      "retry": "Újrapróbálkozás",
+      "startingEncoder": "Kódolószerver indítása — ez eltarthat néhány percig. Kis türelmet!"
     },
     "gapNavigator": {
       "previousGap": "Előző hézag (P)",

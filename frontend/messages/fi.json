@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Luodaan esikatseluvideota...",
-      "startingEncoder": "Käynnistetään koodaustyöntekijää... Tämä kestää yleensä noin minuutin.",
       "failed": "Esikatseluvideon luominen epäonnistui",
-      "unsupportedBrowser": "Selaimesi ei tue videotunnistetta."
+      "unsupportedBrowser": "Selaimesi ei tue videotunnistetta.",
+      "encoding": "Esikatseluvideota luodaan...",
+      "timedOut": "Esikatseluvideon luomisessa kestää odotettua kauemmin. Yritä uudelleen.",
+      "retry": "Yritä uudelleen",
+      "startingEncoder": "Käynnistetään koodauspalvelinta — tässä voi kestää pari minuuttia. Malta hetki!"
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",

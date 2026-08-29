@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Generiranje preglednog videa...",
-      "startingEncoder": "Pokretanje radnika za kodiranje... Ovo obično traje oko minutu.",
       "failed": "Nije uspjelo generiranje preglednog videa",
-      "unsupportedBrowser": "Tvoj preglednik ne podržava video oznaku."
+      "unsupportedBrowser": "Tvoj preglednik ne podržava video oznaku.",
+      "encoding": "Kodiranje video pregleda...",
+      "timedOut": "Priprema video pregleda traje dulje od očekivanog. Molim te, pokušaj ponovno.",
+      "retry": "Pokušaj ponovno",
+      "startingEncoder": "Pokrećemo poslužitelj za kodiranje — to može potrajati nekoliko minuta. Malo se strpi!"
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",

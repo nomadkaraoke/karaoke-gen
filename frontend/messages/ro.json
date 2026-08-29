@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Se generează videoclipul de previzualizare...",
-      "startingEncoder": "Se pornește worker-ul de codare... Acest lucru durează de obicei aproximativ un minut.",
       "failed": "Generarea videoclipului de previzualizare a eșuat",
-      "unsupportedBrowser": "Browserul tău nu suportă eticheta video."
+      "unsupportedBrowser": "Browserul tău nu suportă eticheta video.",
+      "encoding": "Se codează videoclipul de previzualizare...",
+      "timedOut": "Procesarea videoclipului de previzualizare durează mai mult decât ne așteptam. Te rugăm să încerci din nou.",
+      "retry": "Încearcă din nou",
+      "startingEncoder": "Pornim un server de codare — acest lucru poate dura câteva minute. Rămâi pe aproape!"
     },
     "gapNavigator": {
       "previousGap": "Golul anterior (P)",

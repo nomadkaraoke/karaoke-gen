@@ -1443,3 +1443,191 @@ class TestDevAudioProxy:
         assert resp.status_code == 400
         resp = client.get("/api/review/job1/dev-audio?path=jobs/job1/../other/x.flac")
         assert resp.status_code == 400
+
+
+class TestPreviewVideoAsyncFlow:
+    """Tests for the async (non-blocking) GCE preview flow.
+
+    POST /preview-video must NOT wait for GCE encoding — cold-starting a
+    fallback encoder VM can take 2-3 minutes, longer than Cloudflare's ~100s
+    edge timeout (incident 2026-08-29, job 326e1aef: preview encoded fine but
+    the browser connection was cut and the UI spun forever). Instead the
+    endpoint returns {"status": "generating"} immediately and the browser
+    polls the /status endpoint until the mp4 exists in GCS.
+    """
+
+    @pytest.fixture
+    def mock_job(self):
+        from backend.models.job import Job, JobStatus
+        job = MagicMock(spec=Job)
+        job.job_id = "job-preview-async"
+        job.status = JobStatus.AWAITING_REVIEW
+        job.input_media_gcs_path = "jobs/job-preview-async/audio/input.flac"
+        job.style_params_gcs_path = None
+        job.style_assets = {}
+        job.artist = "Test Artist"
+        job.title = "Test Song"
+        return job
+
+    def _run_gce_preview(self, mock_job, *, mp4_exists, background_mock):
+        """Run generate_preview_video with GCE enabled and heavy deps mocked."""
+        import asyncio
+        from backend.api.routes.review import generate_preview_video
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_storage = MagicMock()
+        mock_storage.file_exists.return_value = mp4_exists
+
+        mock_encoding_service = MagicMock()
+        mock_encoding_service.is_preview_enabled = True
+
+        mock_settings = MagicMock()
+        mock_settings.gcs_bucket_name = "test-bucket"
+
+        async def _run():
+            result = await generate_preview_video(
+                job_id=mock_job.job_id,
+                updated_data={},
+                auth_info=("user@test.com", "job_owner"),
+            )
+            # Let any create_task'd background coroutine start
+            await asyncio.sleep(0)
+            return result
+
+        with patch("backend.api.routes.review.JobManager", return_value=mock_job_manager), \
+             patch("backend.api.routes.review.StorageService", return_value=mock_storage), \
+             patch("backend.api.routes.review.get_encoding_service", return_value=mock_encoding_service), \
+             patch("backend.api.routes.review.get_settings", return_value=mock_settings), \
+             patch("backend.api.routes.review._prepare_preview_inputs",
+                   return_value=(MagicMock(), "/tmp/audio.flac", MagicMock())), \
+             patch("backend.api.routes.review._encode_preview_in_background", background_mock), \
+             patch("backend.api.routes.review.CorrectionOperations") as mock_co, \
+             patch("tempfile.TemporaryDirectory") as mock_tmpdir:
+            mock_tmpdir.return_value.__enter__ = MagicMock(return_value="/tmp/preview_test")
+            mock_tmpdir.return_value.__exit__ = MagicMock(return_value=False)
+            mock_co.generate_preview_video.return_value = {
+                "preview_hash": "hash123",
+                "ass_path": "/tmp/preview.ass",
+            }
+            result = asyncio.run(_run())
+        return result, mock_storage, mock_co
+
+    def test_cache_hit_returns_success_without_encoding(self, mock_job):
+        """Same edits → same hash: if the mp4 already exists (e.g. user retried
+        after a dropped connection), return success immediately."""
+        background_mock = AsyncMock()
+        result, mock_storage, mock_co = self._run_gce_preview(
+            mock_job, mp4_exists=True, background_mock=background_mock)
+        assert result == {"status": "success", "preview_hash": "hash123"}
+        background_mock.assert_not_called()
+        # ASS is generated with ass_only=True (no local video render)
+        assert mock_co.generate_preview_video.call_args.kwargs["ass_only"] is True
+
+    def test_cache_miss_returns_generating_and_spawns_background_encode(self, mock_job):
+        """When the mp4 doesn't exist, the endpoint must return immediately
+        with status=generating and hand encoding to a background task."""
+        background_mock = AsyncMock()
+        result, mock_storage, _ = self._run_gce_preview(
+            mock_job, mp4_exists=False, background_mock=background_mock)
+        assert result == {"status": "generating", "preview_hash": "hash123"}
+        background_mock.assert_called_once()
+        kwargs = background_mock.call_args.kwargs
+        assert kwargs["preview_hash"] == "hash123"
+        assert kwargs["encode_kwargs"]["job_id"] == "preview_job-preview-async_hash123"
+        assert kwargs["encode_kwargs"]["output_gcs_path"] == \
+            "gs://test-bucket/jobs/job-preview-async/previews/hash123.mp4"
+        # Stale error marker from a previous failed attempt must be cleared
+        mock_storage.delete_file.assert_called_once_with(
+            "jobs/job-preview-async/previews/hash123.error.json", ignore_missing=True)
+
+
+class TestPreviewVideoStatusEndpoint:
+    """GET /{job_id}/preview-video/{hash}/status — poll target for async encodes."""
+
+    def _call(self, mock_storage, job_id="job-x", preview_hash="abc123"):
+        import asyncio
+        from backend.api.routes.review import get_preview_video_status
+        with patch("backend.api.routes.review.StorageService", return_value=mock_storage):
+            return asyncio.run(get_preview_video_status(
+                job_id=job_id,
+                preview_hash=preview_hash,
+                auth_info=("user@test.com", "job_owner"),
+            ))
+
+    def test_ready_when_mp4_exists(self):
+        mock_storage = MagicMock()
+        mock_storage.file_exists.side_effect = lambda p: p.endswith(".mp4")
+        result = self._call(mock_storage)
+        assert result == {"status": "ready", "preview_hash": "abc123"}
+
+    def test_error_when_marker_exists(self):
+        mock_storage = MagicMock()
+        mock_storage.file_exists.side_effect = lambda p: p.endswith(".error.json")
+        mock_storage.download_json.return_value = {"error": "encoder exploded"}
+        result = self._call(mock_storage)
+        assert result["status"] == "error"
+        assert result["message"] == "encoder exploded"
+
+    def test_generating_when_neither_exists(self):
+        mock_storage = MagicMock()
+        mock_storage.file_exists.return_value = False
+        result = self._call(mock_storage)
+        assert result == {"status": "generating", "preview_hash": "abc123"}
+
+
+class TestEncodePreviewInBackground:
+    """The background encode task: GCE first, local fallback, error marker last."""
+
+    @pytest.fixture
+    def mock_job(self):
+        from backend.models.job import Job
+        job = MagicMock(spec=Job)
+        job.job_id = "job-bg"
+        return job
+
+    def _run(self, mock_job, encoding_service, storage, local_render):
+        import asyncio
+        from backend.api.routes.review import _encode_preview_in_background
+        with patch("backend.api.routes.review.get_encoding_service", return_value=encoding_service), \
+             patch("backend.api.routes.review.StorageService", return_value=storage), \
+             patch("backend.api.routes.review._render_preview_locally", local_render):
+            asyncio.run(_encode_preview_in_background(
+                job=mock_job,
+                preview_hash="h1",
+                encode_kwargs={"job_id": "preview_job-bg_h1"},
+                updated_data={},
+                is_duet=False,
+            ))
+
+    def test_gce_success_skips_local_fallback(self, mock_job):
+        encoding_service = MagicMock()
+        encoding_service.encode_preview_video = AsyncMock(return_value={"status": "complete"})
+        storage = MagicMock()
+        local_render = MagicMock()
+        self._run(mock_job, encoding_service, storage, local_render)
+        local_render.assert_not_called()
+        storage.upload_json.assert_not_called()
+
+    def test_gce_failure_falls_back_to_local(self, mock_job):
+        encoding_service = MagicMock()
+        encoding_service.encode_preview_video = AsyncMock(side_effect=RuntimeError("stockout"))
+        storage = MagicMock()
+        local_render = MagicMock(return_value="h1")
+        self._run(mock_job, encoding_service, storage, local_render)
+        local_render.assert_called_once()
+        storage.upload_json.assert_not_called()
+
+    def test_both_failures_write_error_marker(self, mock_job):
+        """If GCE and the local fallback both fail, an error marker must land in
+        GCS so the status poll surfaces the failure instead of timing out."""
+        encoding_service = MagicMock()
+        encoding_service.encode_preview_video = AsyncMock(side_effect=RuntimeError("stockout"))
+        storage = MagicMock()
+        local_render = MagicMock(side_effect=RuntimeError("ffmpeg died"))
+        self._run(mock_job, encoding_service, storage, local_render)
+        storage.upload_json.assert_called_once_with(
+            "jobs/job-bg/previews/h1.error.json",
+            {"error": "ffmpeg died"},
+        )

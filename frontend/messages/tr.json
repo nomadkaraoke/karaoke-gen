@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Önizleme videosu oluşturuluyor...",
-      "startingEncoder": "Kodlama çalışanı başlatılıyor... Bu genellikle yaklaşık bir dakika sürer.",
       "failed": "Önizleme videosu oluşturulamadı",
-      "unsupportedBrowser": "Tarayıcın video etiketini desteklemiyor."
+      "unsupportedBrowser": "Tarayıcın video etiketini desteklemiyor.",
+      "encoding": "Önizleme videosu kodlanıyor...",
+      "timedOut": "Önizleme videosunun hazırlanması beklenenden uzun sürüyor. Lütfen tekrar dene.",
+      "retry": "Tekrar Dene",
+      "startingEncoder": "Kodlama sunucusu başlatılıyor — bu birkaç dakika sürebilir. Lütfen bekle!"
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",

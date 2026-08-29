@@ -995,9 +995,12 @@
     },
     "previewVideo": {
       "generating": "Menjana video pratonton...",
-      "startingEncoder": "Memulakan pekerja pengekodan... Ini biasanya mengambil masa kira-kira seminit.",
       "failed": "Gagal menjana video pratonton",
-      "unsupportedBrowser": "Pelayar anda tidak menyokong tag video."
+      "unsupportedBrowser": "Pelayar anda tidak menyokong tag video.",
+      "encoding": "Sedang mengekod video pratonton...",
+      "timedOut": "Video pratonton mengambil masa lebih lama daripada yang dijangkakan. Sila cuba lagi.",
+      "retry": "Cuba lagi",
+      "startingEncoder": "Sedang memulakan pelayan pengekodan — ini mungkin mengambil masa beberapa minit. Tunggu sebentar!"
     },
     "gapNavigator": {
       "previousGap": "Jurang sebelumnya (P)",
