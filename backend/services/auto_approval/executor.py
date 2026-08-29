@@ -173,7 +173,7 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
         payload = verdict.to_dict()
         payload.update({
             "mode": "shadow",  # flipped to "enforce" only when we actually enforce
-            "enforcement_eligible": not blockers,
+            "enforcement_eligible": eligible and not blockers,
             "enforcement_basis": enforcement_basis,
             "custom_instrumental": custom_instrumental,
             "trigger": trigger,
