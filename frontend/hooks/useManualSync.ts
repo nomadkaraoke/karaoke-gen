@@ -98,6 +98,11 @@ export default function useManualSync({
   // start becomes known so we know whether to gap-fill the previous word (taps) or respect its
   // deliberate release (holds). Set at keyup/tapEnd; only read for syncWordIndex > 0.
   const previousWordWasTapRef = useRef(false)
+  // Word indices that have received a FRESH start_time in the current manual-sync pass. The overlap
+  // safety-net must only compare against a next word that's actually been re-synced this pass —
+  // otherwise it pulls the just-tapped word's end back to the next word's STALE (old) start,
+  // crushing it (e.g. "call" → 0.01s before "seems" was re-tapped). Reset on start/cleanup.
+  const syncedIndicesRef = useRef<Set<number>>(new Set())
 
   // Use ref to track if we need to update segment to avoid calling it too frequently
   const needsSegmentUpdateRef = useRef(false)
@@ -137,6 +142,7 @@ export default function useManualSync({
     wordStartTimeRef.current = null
     spacebarPressTimeRef.current = null
     previousWordWasTapRef.current = false
+    syncedIndicesRef.current = new Set()
     needsSegmentUpdateRef.current = false
 
     // Stop audio playback when cleaning up manual sync
@@ -212,6 +218,7 @@ export default function useManualSync({
 
           // Set the start time for the current word
           currentWord.start_time = currentStartTime
+          syncedIndicesRef.current.add(syncWordIndex)
 
           // Handle the end time of the previous word (if it exists). A tapped previous word
           // grows to fill the gap up to this word's onset; a held one keeps its release.
@@ -309,14 +316,15 @@ export default function useManualSync({
   // Safety net for when we advance to the next word: if the word we just synced ends
   // after the *next* word's start, pull its end back so they don't overlap.
   //
-  // Two guards are essential here. When this effect fires, `currentWord` (the next word)
-  // has NOT been re-synced yet — it still holds its OLD start_time from a previous sync.
-  // So we must only act when that start is genuinely *later* than the previous word's
-  // start (`currentWord.start_time > prevWord.start_time`); otherwise a re-sync that moves
-  // words to later times would pull the just-tapped word's end back to a stale, earlier
-  // timestamp — producing end_time < start_time (a negative-duration word the segment
-  // sanitizer then has to "fix" on reopen). We also clamp the new end to never fall below
-  // the previous word's own start_time.
+  // Critically, this must only act when the next word (`currentWord`) has ALREADY been
+  // re-synced in this pass (`syncedIndicesRef` holds its index). During a normal forward
+  // pass the next word still carries its OLD start_time when we advance to it, and comparing
+  // against that stale value crushes the just-tapped word's end down to the old (often very
+  // close) next-word start — e.g. "call" collapsing to 0.01s because "seems" hadn't been
+  // re-tapped yet. The forward correction is handled properly at the next word's keydown
+  // (adjustPreviousWordEnd, using its REAL start). We also keep the original guards: only act
+  // when the next start is genuinely later than the previous word's start, and clamp the new
+  // end to never fall below the previous word's own start_time (no negative durations).
   useEffect(() => {
     if (isManualSyncing && editedSegment && syncWordIndex > 0) {
       const newWords = [...wordsRef.current]
@@ -326,6 +334,7 @@ export default function useManualSync({
       if (
         prevWord &&
         currentWord &&
+        syncedIndicesRef.current.has(syncWordIndex) &&
         prevWord.end_time !== null &&
         prevWord.start_time !== null &&
         currentWord.start_time !== null &&
@@ -386,6 +395,7 @@ export default function useManualSync({
 
       // Set the start time for the current word
       currentWord.start_time = currentStartTime
+      syncedIndicesRef.current.add(syncWordIndex)
 
       // Handle the end time of the previous word (if it exists). A tapped previous word
       // grows to fill the gap up to this word's onset; a held one keeps its release.
@@ -474,6 +484,7 @@ export default function useManualSync({
     wordStartTimeRef.current = null
     spacebarPressTimeRef.current = null
     previousWordWasTapRef.current = false
+    syncedIndicesRef.current = new Set()
     needsSegmentUpdateRef.current = false
     // Start playing 3 seconds before segment start
     onPlaySegment((editedSegment.start_time ?? 0) - LEAD_IN_SECONDS)

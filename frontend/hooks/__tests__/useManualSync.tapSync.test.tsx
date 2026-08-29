@@ -238,6 +238,56 @@ describe('useManualSync — tap-to-sync end times', () => {
     expect(ohhh.end_time as number).toBeCloseTo(2.0, 1)
   })
 
+  it('does not crush a held word against the STALE start of a not-yet-resynced next word', () => {
+    // Real bug (job 3ecab928 seg 28): re-syncing a segment whose "call"/"seems" were adjacent
+    // (seems.start ≈ 155.50, right after call). Holding "call" then advancing must NOT let the
+    // overlap safety-net pull call.end back to seems' OLD start (155.50 → crushed to ~0.01s),
+    // because "seems" hasn't been re-tapped yet. The held duration must survive.
+    const initial = makeSegment([
+      w('a', 'call', 155.4, 155.5), // old: 0.1s
+      w('b', 'seems', 155.5, 155.56), // old start 155.5, right after call (STALE once we advance)
+    ])
+
+    let segment = initial
+    let currentTime = 0
+
+    const { result, rerender } = renderHook(
+      ({ seg, time }) =>
+        useManualSync({
+          editedSegment: seg,
+          currentTime: time,
+          onPlaySegment: () => {},
+          updateSegment: (newWords: Word[]) => {
+            segment = recompute(segment, newWords)
+          },
+        }),
+      { initialProps: { seg: segment, time: currentTime } }
+    )
+
+    act(() => result.current.startManualSync())
+
+    const mk = (type: 'keydown' | 'keyup') =>
+      ({ type, code: 'Space', preventDefault: () => {}, stopPropagation: () => {} } as unknown as KeyboardEvent)
+
+    // HOLD "call": press at playhead 155.30, release at 155.60 after >200ms held.
+    const nowSpy = jest.spyOn(Date, 'now')
+    currentTime = 155.3
+    rerender({ seg: segment, time: currentTime })
+    nowSpy.mockReturnValue(10_000)
+    act(() => result.current.handleSpacebar(mk('keydown')))
+    currentTime = 155.6
+    rerender({ seg: segment, time: currentTime })
+    nowSpy.mockReturnValue(10_400) // held 400ms > TAP_THRESHOLD_MS
+    act(() => result.current.handleSpacebar(mk('keyup')))
+    nowSpy.mockRestore()
+    rerender({ seg: segment, time: currentTime })
+
+    const call = segment.words[0]
+    // The held release (~155.60) is preserved; NOT crushed to seems' stale start (~155.49).
+    expect(call.end_time as number).toBeCloseTo(155.6, 1)
+    expect(call.end_time as number).toBeGreaterThan(155.5)
+  })
+
   it('extends the segment end when the last word is tapped near the old end', () => {
     // Segment ends at 3.00; re-tap so the LAST word lands at 2.90 — its default 0.5s tap
     // duration pushes its end to ~3.40, past the old end. The segment must grow to include it,
