@@ -250,9 +250,37 @@ The post-job trigger uses a 5-minute Cloud Tasks delay (via `gdrive-validation-q
 
 This is the most critical alert. Steps:
 1. Check which files have the duplicate: the notification lists them
-2. Determine which is correct (check Firestore job records)
-3. Remove or rename the incorrect file in Google Drive
+2. Determine which is correct (check Firestore job records — usually only ONE of the
+   two tracks still has a job with that `state_data.brand_code`; the other is orphaned)
+3. Remove the orphaned track's outputs (see below)
 4. Re-trigger validation to confirm the fix
+
+**Known cause — job deleted while outputs still published** (NOMAD-1583 incident,
+2026-08-29): before v0.206.0, `DELETE /api/jobs/{id}` recycled the brand code even
+when the job's outputs had never been cleaned up, leaving the files live in the
+public share. The next job to allocate reused the recycled number → duplicate.
+Since v0.206.0, deleting a job with published outputs runs the full distribution
+cleanup first (YouTube + Dropbox + GDrive + kjbox mirror) and only recycles the
+code once Dropbox and GDrive are confirmed clean.
+
+**Cleaning up orphaned outputs when the job doc is gone** — use the admin endpoint
+`POST /api/admin/orphaned-outputs/cleanup` with explicit targets (find file IDs and
+the YouTube video ID in Cloud Run logs from the job's publish window):
+
+```bash
+curl -X POST "https://api.nomadkaraoke.com/api/admin/orphaned-outputs/cleanup" \
+  -H "Authorization: Bearer $KARAOKE_ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "youtube_video_id": "VIDEO_ID",
+    "dropbox_folder_path": "/MediaUnsynced/Karaoke/Tracks-Organized/NOMAD-XXXX - Artist - Title",
+    "gdrive_file_ids": ["...", "...", "..."],
+    "mirror_filename_prefix": "NOMAD-XXXX - Artist"
+  }'
+```
+
+The `mirror_filename_prefix` must include artist text after the brand code — the
+mirror delete refuses a bare `NOMAD-XXXX` so it can never touch the OTHER track
+legitimately holding the recycled code.
 
 ## Cloud Function vs Local Script
 
@@ -274,4 +302,5 @@ The cloud function does metadata-only checks via the GDrive API (fast, cheap, ca
 - **2026-02-28**: Added SendGrid email (primary), kept Pushbullet (fallback). Added post-job trigger from backend. Added `scripts/check_public_share.py` for manual invocation. Motivated by NOMAD-1271 duplicate brand code incident where daily-only checks left a duplicate undetected for ~24 hours.
 - **2026-03-02**: NOMAD-1276 incident fix. Post-job trigger now uses 5-minute Cloud Tasks delay instead of immediate invocation, preventing false "all clear" when E2E test files are still in GDrive during cleanup. Also fixed cross-folder gap detection (uses global max across all folders) and added 28 unit tests for the Cloud Function.
 - **2026-03-06**: NOMAD-1295 gap. Stale GCE encoding cache (#499) caused job `f4a552bf` to produce bad output on first run (allocated NOMAD-1295, only CDG uploaded). Admin re-triggered the job, which allocated a new brand code (NOMAD-1297) without recycling 1295. Fix: recycled 1295 back to the pool. Updated docs to clarify that new gaps must always be investigated and fixed, never added to KNOWN_GAPS.
+- **2026-08-29**: NOMAD-1583 duplicate. Job `e97475ff` (`Mazzy Star – Fade Into You`) published at 02:15 UTC with NOMAD-1583, then was deleted at 03:02 via `DELETE /api/jobs/{id}?delete_files=true` — which recycled the brand code but left all published outputs live (GDrive ×3, Dropbox folder, YouTube video, kjbox mirror ×2). At 04:16 job `326e1aef` (`Chase & Status – No Problem`) reused the recycled 1583 → duplicate in all three share folders. Fixes (v0.206.0): `DELETE /api/jobs/{id}` now runs full distribution cleanup before deleting when outputs are still published (recycle stays gated on Dropbox+GDrive success, shared `_run_distribution_cleanup` helper); jobs whose outputs were already deleted no longer re-recycle; new `POST /api/admin/orphaned-outputs/cleanup` endpoint removes orphaned outputs by explicit IDs when the job doc is gone (used to clean up the Mazzy Star orphans).
 - **2026-08-18**: NOMAD-1537 gap. A **public→private visibility change** on job `25d076e5` (`Alma Nocturna – Mejor Cállate`) deleted the public GDrive/YouTube/Dropbox outputs and recycled 1537, then the private redistribution crashed (`redistribute_video` drove an illegal `complete → packaging` transition), so the change failed *after* the public files were already gone — a delete-first, no-rollback flow. The daily validator caught the hole; it self-closed when an unrelated public job reused the recycled 1537. **Going-private is a legitimate cause of a transient gap** (the number is recycled and refilled by the next public track) — the alert is expected and desired, not suppressed. Fixes (v0.196.1): `redistribute_video` runs in `redistribute_mode` (no status transition, stays `complete`); `change_to_private` is now **distribute-then-delete** (public outputs removed only after the private archive succeeds; on failure the job stays fully public); failed redistributions recycle any allocated `NOMADNP` code. Validator intentionally left unchanged.

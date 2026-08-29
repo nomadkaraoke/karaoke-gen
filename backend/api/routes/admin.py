@@ -1888,6 +1888,120 @@ async def delete_job_outputs(
     )
 
 
+class OrphanedOutputsCleanupRequest(BaseModel):
+    """Explicit targets for cleaning up distributed outputs whose owning job doc no
+    longer exists (e.g. a job deleted before its outputs were cleaned up)."""
+    youtube_video_id: Optional[str] = None
+    dropbox_folder_path: Optional[str] = None
+    gdrive_file_ids: List[str] = []
+    mirror_filename_prefix: Optional[str] = None  # e.g. "NOMAD-1583 - Mazzy Star"
+
+
+@router.post("/orphaned-outputs/cleanup")
+async def cleanup_orphaned_outputs(
+    req: OrphanedOutputsCleanupRequest,
+    auth_data: AuthResult = Depends(require_admin),
+) -> dict:
+    """
+    Delete distributed outputs that no longer have an owning job doc (admin only).
+
+    The per-job cleanup endpoints (delete-outputs, cleanup-distribution) all require
+    the job document to resolve file IDs and paths. When a job was deleted while its
+    outputs were still published (the pre-fix DELETE /api/jobs/{id} behavior), those
+    outputs are orphaned and must be targeted explicitly:
+
+    - youtube_video_id: YouTube video to delete (bare video ID)
+    - dropbox_folder_path: full Dropbox folder path to delete
+    - gdrive_file_ids: Google Drive file IDs to delete (from upload logs)
+    - mirror_filename_prefix: "NOMAD-#### - Artist..." prefix for kjbox GCS mirror
+      objects (masters + vocals guides); must include artist text so it can't match
+      another track sharing a recycled brand code
+
+    Returns per-service results; each requested service reports success/failed/error.
+    """
+    admin_email = auth_data.user_email or "unknown"
+    if not any([req.youtube_video_id, req.dropbox_folder_path, req.gdrive_file_ids, req.mirror_filename_prefix]):
+        raise HTTPException(status_code=400, detail="No cleanup targets specified")
+
+    logger.info(
+        f"Admin {admin_email} cleaning up orphaned outputs: "
+        f"youtube={req.youtube_video_id}, dropbox={req.dropbox_folder_path}, "
+        f"gdrive={req.gdrive_file_ids}, mirror_prefix={req.mirror_filename_prefix}"
+    )
+    results: Dict[str, Any] = {}
+
+    if req.youtube_video_id:
+        try:
+            from karaoke_gen.karaoke_finalise.karaoke_finalise import KaraokeFinalise
+            from backend.services.youtube_service import get_youtube_service
+
+            youtube_service = get_youtube_service()
+            if youtube_service.is_configured:
+                finalise = KaraokeFinalise(
+                    dry_run=False,
+                    non_interactive=True,
+                    user_youtube_credentials=youtube_service.get_credentials_dict(),
+                )
+                success = finalise.delete_youtube_video(req.youtube_video_id)
+                results["youtube"] = {
+                    "status": "success" if success else "failed",
+                    "video_id": req.youtube_video_id,
+                }
+            else:
+                results["youtube"] = {"status": "failed", "reason": "YouTube credentials not configured"}
+        except Exception as e:
+            logger.error(f"Error deleting orphaned YouTube video {req.youtube_video_id}: {e}", exc_info=True)
+            results["youtube"] = {"status": "error", "error": str(e)}
+
+    if req.dropbox_folder_path:
+        try:
+            from backend.services.dropbox_service import get_dropbox_service
+
+            dropbox = get_dropbox_service()
+            if dropbox.is_configured:
+                success = dropbox.delete_folder(req.dropbox_folder_path)
+                results["dropbox"] = {
+                    "status": "success" if success else "failed",
+                    "path": req.dropbox_folder_path,
+                }
+            else:
+                results["dropbox"] = {"status": "failed", "reason": "Dropbox credentials not configured"}
+        except Exception as e:
+            logger.error(f"Error deleting orphaned Dropbox folder {req.dropbox_folder_path}: {e}", exc_info=True)
+            results["dropbox"] = {"status": "error", "error": str(e)}
+
+    if req.gdrive_file_ids:
+        try:
+            from backend.services.gdrive_service import get_gdrive_service
+
+            gdrive = get_gdrive_service()
+            if gdrive.is_configured:
+                delete_results = gdrive.delete_files(req.gdrive_file_ids)
+                all_success = all(delete_results.values())
+                results["gdrive"] = {
+                    "status": "success" if all_success else "partial",
+                    "files": delete_results,
+                }
+            else:
+                results["gdrive"] = {"status": "failed", "reason": "Google Drive credentials not configured"}
+        except Exception as e:
+            logger.error(f"Error deleting orphaned GDrive files {req.gdrive_file_ids}: {e}", exc_info=True)
+            results["gdrive"] = {"status": "error", "error": str(e)}
+
+    if req.mirror_filename_prefix:
+        try:
+            from backend.services.nomad_master_mirror import NomadMasterMirror
+
+            counts = NomadMasterMirror().delete_track_objects_by_filename_prefix(req.mirror_filename_prefix)
+            results["mirror"] = {"status": "success", **counts}
+        except Exception as e:
+            logger.error(f"Error deleting orphaned mirror objects for {req.mirror_filename_prefix}: {e}", exc_info=True)
+            results["mirror"] = {"status": "error", "error": str(e)}
+
+    logger.info(f"Orphaned-outputs cleanup by {admin_email} complete: {results}")
+    return {"status": "complete", "results": results}
+
+
 @router.get("/jobs/{job_id}/completion-message", response_model=CompletionMessageResponse)
 async def get_job_completion_message(
     job_id: str,

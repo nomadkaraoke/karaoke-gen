@@ -206,3 +206,45 @@ def test_cleanup_nomad_masters_noop_for_non_nomad(brand, monkeypatch):
     # Must not even construct the mirror (no GCS client) for non-Nomad brands.
     monkeypatch.setattr(mod, "NomadMasterMirror", lambda: (_ for _ in ()).throw(AssertionError("should not construct")))
     assert mod.cleanup_nomad_masters(brand) == 0
+
+
+# --- delete_track_objects_by_filename_prefix (single-track orphan cleanup) ---
+
+def test_delete_track_objects_by_filename_prefix_deletes_from_both_prefixes():
+    # One master + one vocals guide for the orphaned track; both must go.
+    mirror, bucket, blobs = _mirror_with_blobs([
+        "files/Nomad Karaoke/MP4-720p/NOMAD-1583 - Mazzy Star - Fade Into You.mp4",
+    ])
+    counts = mirror.delete_track_objects_by_filename_prefix("NOMAD-1583 - Mazzy Star")
+    # list_blobs is called once per GCS prefix (masters, vocals guides)
+    assert bucket.list_blobs.call_count == 2
+    prefixes = [c.kwargs["prefix"] for c in bucket.list_blobs.call_args_list]
+    assert prefixes == [
+        "files/Nomad Karaoke/MP4-720p/NOMAD-1583 - Mazzy Star",
+        "files/Nomad Karaoke/vocals-padded/NOMAD-1583 - Mazzy Star",
+    ]
+    # Mock returns the same blob list for both prefixes: 1 each
+    assert counts == {"masters_deleted": 1, "vocals_guides_deleted": 1}
+    assert blobs[0].delete.call_count == 2
+
+
+@pytest.mark.parametrize("prefix", [
+    "NOMAD-1583",            # bare brand code — would match BOTH tracks sharing it
+    "NOMAD-1583 - ",         # brand code + separator but no artist text
+    "NOMADNP-0001 - X",      # private prefix
+    "Mazzy Star",            # no brand code
+    "",
+    None,
+])
+def test_delete_track_objects_by_filename_prefix_refuses_unsafe_prefixes(prefix):
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    counts = mirror.delete_track_objects_by_filename_prefix(prefix)
+    assert counts == {"masters_deleted": 0, "vocals_guides_deleted": 0}
+    bucket.list_blobs.assert_not_called()
+
+
+def test_delete_track_objects_by_filename_prefix_non_fatal_on_list_error():
+    mirror, bucket, _blobs = _mirror_with_blobs([])
+    bucket.list_blobs.side_effect = RuntimeError("gcs down")
+    counts = mirror.delete_track_objects_by_filename_prefix("NOMAD-1583 - Mazzy Star")
+    assert counts == {"masters_deleted": 0, "vocals_guides_deleted": 0}
