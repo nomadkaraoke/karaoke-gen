@@ -282,6 +282,13 @@ class Job(BaseModel):
     # semantics and never gated the cloud review flow.)
     review_mode: str = "auto"
 
+    # Backing-vocals preference chosen up-front at submission. "auto" (default):
+    # retain backing vocals wherever the 3-stem decider is confident it's safe,
+    # else fall through to human review. "clean": always use the clean
+    # instrumental (never retain backing). "review": always let a human pick the
+    # instrumental. Consumed by the auto-approval instrumental decision.
+    backing_preference: str = "auto"
+
     # Multi-tenant support ("" = consumer portal, "vocalstar"/etc = tenant portal)
     tenant_id: str = ""                          # Tenant ID for white-label portal scoping
 
@@ -570,7 +577,10 @@ class JobCreate(BaseModel):
     # "auto" (default) = skip review screens when the auto-approval scorer is
     # fully confident; "always_review" = always stop at the review screens.
     review_mode: str = "auto"
-    
+    # "auto" (default) = retain backing vocals where confidently safe; "clean" =
+    # always strip backing vocals; "review" = always let a human pick the instrumental.
+    backing_preference: str = "auto"
+
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")
     color_overrides: Dict[str, str] = Field(default_factory=dict)

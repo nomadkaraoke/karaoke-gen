@@ -554,7 +554,17 @@
     "matchUsingTyped": "Utilisation de ce que tu as tapé : {value}",
     "checkingUrl": "Vérification…",
     "submitNetworkError": "Erreur réseau — vérifie ta connexion et réessaie.",
-    "submitError": "Quelque chose s'est mal passé. Réessaie."
+    "submitError": "Quelque chose s'est mal passé. Réessaie.",
+    "backingPrefAuto": "Conserver si possible",
+    "backingPrefClean": "Retirer (propre)",
+    "backingPrefLabel": "Chœurs",
+    "backingPrefReview": "Me laisser choisir",
+    "processingOptions": "Options de traitement",
+    "reviewModeAlways": "Toujours me laisser vérifier",
+    "reviewModeAlwaysHint": "Nous ferons toujours une pause pour te laisser vérifier les paroles et choisir l'instrumental avant le rendu.",
+    "reviewModeAuto": "Entièrement automatique",
+    "reviewModeAutoHint": "Nous te demanderons de vérifier les paroles ou l'instrumental uniquement si une intervention humaine est vraiment nécessaire. Les pistes fiables sont finalisées automatiquement.",
+    "reviewModeLabel": "Vérification"
   },
   "jobStatus": {
     "settingUp": "Configuration",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Total des segments : {count}",
         "proceedToInstrumental": "Passer à la révision instrumentale",
         "saving": "Enregistrement...",
-        "completeTrack": "Terminer la piste"
+        "completeTrack": "Terminer la piste",
+        "autoInstrumentalBacking": "Nous conserverons automatiquement les chœurs dans l'instrumental — aucune vérification de l'instrumental n'est requise.",
+        "autoInstrumentalClean": "Nous utiliserons automatiquement l'instrumental propre (sans chœurs) — aucune vérification de l'instrumental n'est requise.",
+        "reviewInstrumentalAnyway": "Me laisser choisir l'instrumental moi-même"
       },
       "searchLyrics": {
         "artist": "Artiste",

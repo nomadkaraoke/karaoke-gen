@@ -185,6 +185,10 @@ class CreateJobFromUrlRequest(BaseModel):
     # Audio editing
     requires_audio_edit: bool = Field(False, description="Pause after download for user to edit input audio")
 
+    # Review autonomy + backing-vocals preference (full-auto review, workstream C)
+    review_mode: str = Field("auto", description="'auto' (skip review when confident) or 'always_review'")
+    backing_preference: str = Field("auto", description="'auto' (retain backing where safe), 'clean', or 'review'")
+
 
 class CreateJobFromUrlResponse(BaseModel):
     """Response from creating a job from URL."""
@@ -242,6 +246,10 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # Two-phase workflow configuration (Batch 6)
     prep_only: bool = Field(False, description="Stop after review phase, don't run finalisation")
     keep_brand_code: Optional[str] = Field(None, description="Preserve existing brand code instead of generating new one")
+
+    # Review autonomy + backing-vocals preference (full-auto review, workstream C)
+    review_mode: str = Field("auto", description="'auto' (skip review when confident) or 'always_review'")
+    backing_preference: str = Field("auto", description="'auto' (retain backing where safe), 'clean', or 'review'")
 
     # Non-interactive mode
     non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
@@ -466,6 +474,9 @@ async def upload_and_create_job(
     other_stems_models: Optional[str] = Form(None, description="Comma-separated list of models for other stems (bass, drums, guitar, etc.)"),
     # Non-interactive mode
     non_interactive: bool = Form(False, description="Skip interactive steps (lyrics review, instrumental selection)"),
+    # Review autonomy + backing-vocals preference (full-auto review, workstream C)
+    review_mode: str = Form("auto", description="'auto' (skip review when confident) or 'always_review'"),
+    backing_preference: str = Form("auto", description="'auto' (retain backing where safe), 'clean', or 'review'"),
     # Private (non-published) track mode
     is_private: bool = Form(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive"),
     # Audio editing
@@ -694,6 +705,9 @@ async def upload_and_create_job(
             request_metadata=request_metadata,
             # Non-interactive mode
             non_interactive=non_interactive,
+            # Review autonomy + backing-vocals preference (full-auto review)
+            review_mode=review_mode,
+            backing_preference=backing_preference,
             # Private (non-published) track mode
             is_private=is_private,
             # Tenant scoping
@@ -1283,6 +1297,8 @@ async def create_job_with_upload_urls(
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            review_mode=body.review_mode,
+            backing_preference=body.backing_preference,
             is_private=effective_is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
@@ -1941,6 +1957,8 @@ async def create_job_from_url(
             other_stems_models=body.other_stems_models,
             request_metadata=request_metadata,
             non_interactive=body.non_interactive,
+            review_mode=body.review_mode,
+            backing_preference=body.backing_preference,
             is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",

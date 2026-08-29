@@ -554,7 +554,17 @@
     "matchUsingTyped": "Yazdığın kullanılıyor: {value}",
     "checkingUrl": "Kontrol ediliyor…",
     "submitNetworkError": "Ağ hatası — lütfen bağlantını kontrol et ve tekrar dene.",
-    "submitError": "Bir şeyler ters gitti. Lütfen tekrar dene."
+    "submitError": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+    "backingPrefAuto": "Mümkün olduğunda koru",
+    "backingPrefClean": "Kaldır (temiz)",
+    "backingPrefLabel": "Geri vokaller",
+    "backingPrefReview": "Ben seçeyim",
+    "processingOptions": "İşlem seçenekleri",
+    "reviewModeAlways": "Her zaman incelememe izin ver",
+    "reviewModeAlwaysHint": "Oluşturmadan önce her zaman durup şarkı sözlerini incelemene ve enstrümantali seçmene izin vereceğiz.",
+    "reviewModeAuto": "Tam otomatik",
+    "reviewModeAutoHint": "Sadece gerçekten insan müdahalesi gereken bir durum olursa şarkı sözlerini veya enstrümantali incelemeni isteyeceğiz. Emin olduğumuz parçalar otomatik olarak tamamlanır.",
+    "reviewModeLabel": "İnceleme"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Toplam segment: {count}",
         "proceedToInstrumental": "Enstrümantal İncelemesine İlerle",
         "saving": "Kaydediliyor...",
-        "completeTrack": "Parçayı Tamamla"
+        "completeTrack": "Parçayı Tamamla",
+        "autoInstrumentalBacking": "Geri vokalleri otomatik olarak enstrümantalde koruyacağız — enstrümantali incelemene gerek yok.",
+        "autoInstrumentalClean": "Otomatik olarak temiz enstrümantal (geri vokal yok) kullanacağız — enstrümantali incelemene gerek yok.",
+        "reviewInstrumentalAnyway": "Enstrümantali kendim seçeyim"
       },
       "searchLyrics": {
         "artist": "Sanatçı",

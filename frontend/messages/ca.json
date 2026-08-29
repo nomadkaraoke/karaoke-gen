@@ -554,7 +554,17 @@
     "matchUsingTyped": "Utilitzant el que has escrit: {value}",
     "checkingUrl": "Comprovant…",
     "submitNetworkError": "Error de xarxa — si us plau, comprova la teva connexió i torna-ho a provar.",
-    "submitError": "Alguna cosa ha anat malament. Torna-ho a provar."
+    "submitError": "Alguna cosa ha anat malament. Torna-ho a provar.",
+    "backingPrefAuto": "Mantenir on sigui possible",
+    "backingPrefClean": "Eliminar (net)",
+    "backingPrefLabel": "Veus de fons",
+    "backingPrefReview": "Deixa'm triar",
+    "processingOptions": "Opcions de processament",
+    "reviewModeAlways": "Deixa'm revisar sempre",
+    "reviewModeAlwaysHint": "Sempre ens aturarem perquè puguis revisar la lletra i triar l'instrumental abans de renderitzar.",
+    "reviewModeAuto": "Totalment automàtic",
+    "reviewModeAutoHint": "Només et demanarem que revisis la lletra o l'instrumental si alguna cosa realment requereix intervenció humana. Les pistes sense dubtes es completen automàticament.",
+    "reviewModeLabel": "Revisió"
   },
   "jobStatus": {
     "settingUp": "Configurant",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Total de segments: {count}",
         "proceedToInstrumental": "Procedeix a la revisió instrumental",
         "saving": "Desant...",
-        "completeTrack": "Pista completa"
+        "completeTrack": "Pista completa",
+        "autoInstrumentalBacking": "Mantindrem les veus de fons a l'instrumental automàticament — no cal revisar l'instrumental.",
+        "autoInstrumentalClean": "Utilitzarem l'instrumental net (sense veus de fons) automàticament — no cal revisar l'instrumental.",
+        "reviewInstrumentalAnyway": "Deixa'm triar l'instrumental jo mateix"
       },
       "searchLyrics": {
         "artist": "Artista",

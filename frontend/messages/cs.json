@@ -554,7 +554,17 @@
     "matchUsingTyped": "Používám to, co jsi zadal: {value}",
     "checkingUrl": "Probíhá kontrola…",
     "submitNetworkError": "Chyba sítě — zkontroluj prosím své připojení a zkus to znovu.",
-    "submitError": "Něco se pokazilo. Zkus to prosím znovu."
+    "submitError": "Něco se pokazilo. Zkus to prosím znovu.",
+    "backingPrefAuto": "Ponechat, kde je to možné",
+    "backingPrefClean": "Odstranit (čisté)",
+    "backingPrefLabel": "Doprovodné vokály",
+    "backingPrefReview": "Nech mě vybrat",
+    "processingOptions": "Možnosti zpracování",
+    "reviewModeAlways": "Vždy mě nech zkontrolovat",
+    "reviewModeAlwaysHint": "Vždy se zastavíme a necháme tě zkontrolovat text a vybrat instrumentálku před renderováním.",
+    "reviewModeAuto": "Plně automatické",
+    "reviewModeAutoHint": "O kontrolu textu nebo instrumentálky tě požádáme jen tehdy, když je opravdu potřeba lidský zásah. Skladby, u kterých jsme si jistí, se dokončí automaticky.",
+    "reviewModeLabel": "Kontrola"
   },
   "jobStatus": {
     "settingUp": "Nastavování",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Celkem segmentů: {count}",
         "proceedToInstrumental": "Pokračovat na kontrolu instrumentálky",
         "saving": "Ukládání...",
-        "completeTrack": "Dokončit skladbu"
+        "completeTrack": "Dokončit skladbu",
+        "autoInstrumentalBacking": "Doprovodné vokály v instrumentálce ponecháme automaticky — kontrola instrumentálky není nutná.",
+        "autoInstrumentalClean": "Automaticky použijeme čistou instrumentálku (bez doprovodných vokálů) — kontrola instrumentálky není nutná.",
+        "reviewInstrumentalAnyway": "Nech mě vybrat instrumentálku"
       },
       "searchLyrics": {
         "artist": "Interpret",

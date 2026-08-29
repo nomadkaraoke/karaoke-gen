@@ -327,3 +327,38 @@ async def test_any_exception_is_nonfatal() -> None:
          patch("backend.config.get_settings", return_value=_settings()):
         result = await maybe_auto_complete_review("j1", trigger="screens_worker")
     assert result["outcome"] == "error"
+
+
+def _audible_backing() -> Dict[str, Any]:
+    # Pink backing present, no 3-stem comparison -> scorer verdict REVIEW.
+    return {
+        "has_audible_content": True,
+        "audible_percentage": 40.0,
+        "audible_segments": [{"avg_amplitude_db": -10.0}],
+        "recommended_selection": "with_backing",
+    }
+
+
+@pytest.mark.asyncio
+async def test_backing_preference_clean_forces_clean_completion() -> None:
+    # Backing is subjective (would normally gate), but the user chose "clean"
+    # up-front -> auto-complete on lyrics alone with a clean instrumental.
+    job = _job(backing=_audible_backing())
+    job.backing_preference = "clean"
+    result, jm, storage, ws = await _run(job)
+    assert result["outcome"] == "auto_completed"
+    jm.update_state_data.assert_any_call("j1", "instrumental_selection", "clean")
+    ws.trigger_render_video_worker.assert_awaited_once_with("j1")
+    payload = jm.update_processing_metadata.call_args.args[2]
+    assert payload["enforcement_basis"] == "lyrics_auto_backing_pref:clean"
+
+
+@pytest.mark.asyncio
+async def test_backing_preference_review_blocks_even_confident_clean() -> None:
+    # User wants to always pick the instrumental -> never auto-skip the backing half.
+    job = _job(backing=_clean_backing())
+    job.backing_preference = "review"
+    result, jm, _, ws = await _run(job)
+    assert result["outcome"] == "review"
+    jm.transition_to_state.assert_not_called()
+    ws.trigger_render_video_worker.assert_not_awaited()

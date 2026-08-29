@@ -61,6 +61,7 @@ import GapNavigator from './GapNavigator'
 import AutoCorrectModal from './AutoCorrectModal'
 import AutoCorrectPanel from './AutoCorrectPanel'
 import { useAutoCorrect } from '@/hooks/useAutoCorrect'
+import type { AiSuggestion } from '@/lib/api/autoCorrect'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
 import { applyOffsetToCorrectionData, applyOffsetToSegment, applyOffsetToWord } from '@/lib/lyrics-review/utils/timingUtils'
 import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
@@ -160,6 +161,11 @@ export default function LyricsAnalyzer({
   const [timingOffsetMs, setTimingOffsetMs] = useState(0)
   const [reviewMode, setReviewMode] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Per-screen skip (C1): when the backing decision is confidently auto-resolved,
+  // completing the lyrics review finishes the job and the instrumental screen is
+  // never shown. The reviewer can opt back in via a "review instrumental anyway"
+  // toggle in the finish modal (the verdict is confident, not infallible).
+  const [reviewInstrumentalAnyway, setReviewInstrumentalAnyway] = useState(false)
 
   const [vocalsAudioUrl, setVocalsAudioUrl] = useState<string | null>(null)
 
@@ -241,6 +247,21 @@ export default function LyricsAnalyzer({
     setHistoryIndex(0)
   }, [])
 
+  // Server-side pre-apply (C2): when the backend applied the AI corrections
+  // before the review-ready notification, `initialData` already carries them and
+  // marks `metadata.auto_approval.pre_applied`. In that case the UI must NOT
+  // auto-run/auto-apply again (no in-browser race) — it just displays what was
+  // applied. Keyed on the marker only (not live edits) so it doesn't churn.
+  const preApplied = useMemo(() => {
+    const m = initialData.metadata?.auto_approval
+    if (isReadOnly || isLocalMode || !m?.pre_applied || !Array.isArray(m.suggestions)) return null
+    return {
+      suggestions: m.suggestions as unknown as AiSuggestion[],
+      appliedIds: m.applied_suggestion_ids ?? [],
+      rejectedIds: m.rejected_suggestion_ids ?? [],
+    }
+  }, [initialData.metadata?.auto_approval, isReadOnly, isLocalMode])
+
   // AI auto-correct suggestions (opt-in; nothing runs unless triggered)
   const autoCorrect = useAutoCorrect({
     jobId,
@@ -253,10 +274,23 @@ export default function LyricsAnalyzer({
     // corrected lyrics (= clicking "Accept All"). The backend pre-generates +
     // caches suggestions during lyrics processing, so this is normally an
     // instant cache hit. Skipped in read-only / local mode, and only when a
-    // jobId exists (the request needs one).
-    autoRunOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId),
-    autoApplyOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId),
+    // jobId exists (the request needs one). Also skipped when the server already
+    // pre-applied (C2) — the corrections are already in the loaded data.
+    autoRunOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId) && !preApplied,
+    autoApplyOnLoad: !isReadOnly && !isLocalMode && Boolean(jobId) && !preApplied,
+    preApplied,
   })
+
+  // Per-screen skip (C1): when the backing decision is confidently auto-resolved
+  // by the server, completing the lyrics review finishes the whole job (with the
+  // server-resolved instrumental selection) and the instrumental screen is never
+  // shown. Custom / uploaded-instrumental jobs keep the existing skip path.
+  const autoInstrumentalConfident =
+    !isReadOnly &&
+    !isLocalMode &&
+    Boolean(jobId) &&
+    !hasExistingInstrumental &&
+    Boolean(data.auto_approval?.backing?.confident)
 
   // Close the run modal once suggestions arrive (panel takes over)
   useEffect(() => {
@@ -1055,6 +1089,23 @@ export default function LyricsAnalyzer({
           console.error('Failed to complete review with uploaded instrumental:', err)
           toast.error('Failed to start video generation. Please try again.')
         }
+      } else if (autoInstrumentalConfident && !reviewInstrumentalAnyway && jobId) {
+        // Per-screen skip (C1): the backing decision was confidently auto-resolved
+        // -> complete the review now with "auto" (the backend resolves it from the
+        // stored verdict) and skip the instrumental screen entirely.
+        toast.success('Lyrics saved! Instrumental auto-selected, generating video...')
+        try {
+          const correctionData = await lyricsReviewApi.getCorrectionData(jobId)
+          await lyricsReviewApi.completeReview(jobId, correctionData, 'auto', isDuet)
+          setShowSuccess(true)
+          setCountdown(3)
+        } catch (err) {
+          // Fall back to the manual instrumental screen if auto-resolution fails
+          // (e.g. the verdict wasn't resolvable server-side) — never strand the user.
+          console.error('Auto instrumental selection failed, falling back to review:', err)
+          toast('Please choose your instrumental to finish.')
+          window.location.hash = `/${jobId}/instrumental`
+        }
       } else if (isLocalMode) {
         // Local mode: Show transition message, navigation handled by browser/server
         toast.success('Lyrics saved! Loading instrumental review...')
@@ -1074,7 +1125,7 @@ export default function LyricsAnalyzer({
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental])
+  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, reviewInstrumentalAnyway])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
@@ -1622,7 +1673,11 @@ export default function LyricsAnalyzer({
           apiClient={apiClient}
           timingOffsetMs={timingOffsetMs}
           isDuet={isDuet}
-          completesReview={hasExistingInstrumental}
+          completesReview={hasExistingInstrumental || (autoInstrumentalConfident && !reviewInstrumentalAnyway)}
+          autoInstrumentalConfident={autoInstrumentalConfident}
+          autoInstrumentalSelection={data.auto_approval?.backing?.resolved_selection ?? null}
+          reviewInstrumentalAnyway={reviewInstrumentalAnyway}
+          onToggleReviewInstrumental={setReviewInstrumentalAnyway}
         />
 
         <AddLyricsModal

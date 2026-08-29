@@ -49,6 +49,16 @@ interface UseAutoCorrectArgs {
    *  equivalent of clicking "Accept All") so the reviewer starts from the
    *  corrected lyrics. Implies autoRunOnLoad. */
   autoApplyOnLoad?: boolean
+  /** Server-side pre-apply (C2): when the backend already applied the AI
+   *  corrections before the review-ready notification, the working `data` is the
+   *  final state. The hook then seeds the panel in read-only "already applied"
+   *  mode and does NOT auto-run / auto-apply (no in-browser race). The caller
+   *  passes autoRunOnLoad/autoApplyOnLoad = false in this case. */
+  preApplied?: {
+    suggestions: AiSuggestion[]
+    appliedIds: string[]
+    rejectedIds: string[]
+  } | null
 }
 
 export function useAutoCorrect({
@@ -60,6 +70,7 @@ export function useAutoCorrect({
   getAuthToken,
   autoRunOnLoad = false,
   autoApplyOnLoad = false,
+  preApplied = null,
 }: UseAutoCorrectArgs) {
   const [status, setStatus] = useState<AutoCorrectStatus>('idle')
   const [suggestions, setSuggestions] = useState<AiSuggestion[]>([])
@@ -154,6 +165,26 @@ export function useAutoCorrect({
     autoRanRef.current = true
     void run()
   }, [autoRunOnLoad, autoApplyOnLoad, jobId, status, hasReferences, data.corrected_segments, run])
+
+  // Pre-applied mode (C2): the backend already applied the corrections and the
+  // working `data` is the final state. Seed the panel to show what was applied
+  // (read-only) WITHOUT running the network call or re-applying. One-shot.
+  const isPreApplied = Boolean(preApplied)
+  const preAppliedSeededRef = useRef(false)
+  useEffect(() => {
+    if (!preApplied || preAppliedSeededRef.current) return
+    if (status !== 'idle') return
+    preAppliedSeededRef.current = true
+    const applied = new Set(preApplied.appliedIds)
+    const seeded: Record<string, SuggestionDecision> = {}
+    for (const s of preApplied.suggestions) {
+      seeded[s.id] = applied.has(s.id) ? 'accepted' : 'rejected'
+    }
+    setSuggestions(preApplied.suggestions)
+    setDecisions(seeded)
+    setCached(true)
+    setStatus('reviewing')
+  }, [preApplied, status])
 
   const logDecision = useCallback(
     (s: AiSuggestion, op: 'ai_suggestion_accept' | 'ai_suggestion_reject' | 'ai_suggestion_undo') => {
@@ -361,6 +392,7 @@ export function useAutoCorrect({
     cached,
     error,
     hasReferences,
+    isPreApplied,
     pendingCount,
     acceptedCount,
     run,

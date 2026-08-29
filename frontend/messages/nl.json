@@ -554,7 +554,17 @@
     "matchUsingTyped": "We gebruiken wat je hebt getypt: {value}",
     "checkingUrl": "Controleren…",
     "submitNetworkError": "Netwerkfout — controleer je verbinding en probeer het opnieuw.",
-    "submitError": "Er is iets misgegaan. Probeer het opnieuw."
+    "submitError": "Er is iets misgegaan. Probeer het opnieuw.",
+    "backingPrefAuto": "Behouden waar mogelijk",
+    "backingPrefClean": "Verwijderen (schoon)",
+    "backingPrefLabel": "Achtergrondzang",
+    "backingPrefReview": "Laat mij kiezen",
+    "processingOptions": "Verwerkingsopties",
+    "reviewModeAlways": "Laat mij altijd controleren",
+    "reviewModeAlwaysHint": "We stoppen altijd zodat je de songtekst kunt controleren en de instrumentale versie kunt kiezen voordat we renderen.",
+    "reviewModeAuto": "Volledig automatisch",
+    "reviewModeAutoHint": "We vragen je alleen de songtekst of instrumentale versie te controleren als er echt een menselijke blik nodig is. Nummers waarvan we zeker zijn, worden automatisch afgerond.",
+    "reviewModeLabel": "Controleren"
   },
   "jobStatus": {
     "settingUp": "Instellen",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Totaal aantal segmenten: {count}",
         "proceedToInstrumental": "Doorgaan naar instrumental-beoordeling",
         "saving": "Opslaan...",
-        "completeTrack": "Track voltooien"
+        "completeTrack": "Track voltooien",
+        "autoInstrumentalBacking": "We behouden de achtergrondzang automatisch in de instrumentale versie — geen instrumentale controle nodig.",
+        "autoInstrumentalClean": "We gebruiken automatisch de schone instrumentale versie (zonder achtergrondzang) — geen instrumentale controle nodig.",
+        "reviewInstrumentalAnyway": "Laat mij zelf de instrumentale versie kiezen"
       },
       "searchLyrics": {
         "artist": "Artiest",

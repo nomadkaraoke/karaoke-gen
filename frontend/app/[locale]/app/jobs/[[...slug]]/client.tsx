@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useAuth } from "@/lib/auth"
 import { api, Job, createLyricsReviewApiClient, lyricsReviewApi } from "@/lib/api"
 import { Spinner } from "@/components/ui/spinner"
@@ -342,6 +342,25 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
     loadData()
   }, [job.job_id, isReplay])
 
+  // Per-screen skip — mirror case (C1): when the lyrics are confidently
+  // auto-resolved but only the backing decision needs a human, skip the lyrics
+  // screen entirely and jump straight to the instrumental screen. The server
+  // pre-applied the corrections, so completing the instrumental alone finalizes
+  // the whole job. Real review flow only (never replay / local).
+  const willSkipToInstrumental = Boolean(
+    !isReplay &&
+    !isLocalMode &&
+    correctionData?.auto_approval?.lyrics?.confident &&
+    !correctionData?.auto_approval?.backing?.confident &&
+    !correctionData?.auto_approval?.custom_instrumental
+  )
+  const mirrorRedirectedRef = useRef(false)
+  useEffect(() => {
+    if (!willSkipToInstrumental || mirrorRedirectedRef.current) return
+    mirrorRedirectedRef.current = true
+    window.location.hash = `/${job.job_id}/instrumental`
+  }, [willSkipToInstrumental, job.job_id])
+
   // File load handler (opens file picker for local file)
   const handleFileLoad = useCallback(() => {
     // For now, this is a no-op since we load from API
@@ -383,6 +402,18 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
               </Link>
             </Button>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // Mirror-case redirect in flight — don't flash the lyrics screen.
+  if (willSkipToInstrumental) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Spinner className="w-8 h-8 mx-auto mb-4" />
+          <p className="text-muted-foreground">Lyrics auto-verified — loading instrumental review...</p>
         </div>
       </div>
     )

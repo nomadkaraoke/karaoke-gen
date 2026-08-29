@@ -72,6 +72,7 @@ export default function AutoCorrectPanel({
     revertAll,
     rejectAll,
     isPendingAndStale,
+    isPreApplied,
   } = controller
 
   // Details are opened on demand from the toolbar button.
@@ -109,7 +110,11 @@ export default function AutoCorrectPanel({
               </Button>
             </>
           )}
-          {!isReadOnly && acceptedCount > 0 && (
+          {/* Pre-applied server-side (C2): the corrections were baked into the
+              loaded data before this screen opened, so client-side revert/undo
+              (which needs in-session undo info) is not available — editing a word
+              directly is the escape. Only offered for client-applied suggestions. */}
+          {!isReadOnly && !isPreApplied && acceptedCount > 0 && (
             <Button
               size="sm"
               variant="ghost"
@@ -257,7 +262,7 @@ export default function AutoCorrectPanel({
                         <Badge variant="outline" className="text-[10px] text-green-600">
                           {t('accepted')}
                         </Badge>
-                        {!isReadOnly && (
+                        {!isReadOnly && !isPreApplied && (
                           <Button
                             size="sm"
                             variant="ghost"

@@ -554,7 +554,17 @@
     "matchUsingTyped": "Usando lo que escribiste: {value}",
     "checkingUrl": "Comprobando…",
     "submitNetworkError": "Error de red — por favor, revisa tu conexión y vuelve a intentarlo.",
-    "submitError": "Algo salió mal. Por favor, inténtalo de nuevo."
+    "submitError": "Algo salió mal. Por favor, inténtalo de nuevo.",
+    "backingPrefAuto": "Mantener donde sea posible",
+    "backingPrefClean": "Eliminar (limpio)",
+    "backingPrefLabel": "Coros",
+    "backingPrefReview": "Déjame elegir",
+    "processingOptions": "Opciones de procesamiento",
+    "reviewModeAlways": "Siempre déjame revisar",
+    "reviewModeAlwaysHint": "Siempre nos detendremos y te dejaremos revisar las letras y elegir el instrumental antes del renderizado.",
+    "reviewModeAuto": "Completamente automático",
+    "reviewModeAutoHint": "Solo te pediremos que revises las letras o el instrumental si algo realmente necesita a un humano. Las pistas con alta confianza terminan automáticamente.",
+    "reviewModeLabel": "Revisión"
   },
   "jobStatus": {
     "settingUp": "Configurando",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Total de segmentos: {count}",
         "proceedToInstrumental": "Proceder a la revisión instrumental",
         "saving": "Guardando...",
-        "completeTrack": "Completar pista"
+        "completeTrack": "Completar pista",
+        "autoInstrumentalBacking": "Mantendremos los coros en el instrumental automáticamente — no se necesita revisión del instrumental.",
+        "autoInstrumentalClean": "Usaremos el instrumental limpio (sin coros) automáticamente — no se necesita revisión del instrumental.",
+        "reviewInstrumentalAnyway": "Déjame elegir el instrumental yo mismo"
       },
       "searchLyrics": {
         "artist": "Artista",

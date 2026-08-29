@@ -258,6 +258,9 @@ class BulkSettings(BaseModel):
     is_private: bool = False
     skip_audio_edit: bool = True
     skip_customization: bool = True
+    # Full-auto review (workstream C): batch default autonomy + backing preference.
+    review_mode: str = "auto"
+    backing_preference: str = "auto"
 
 
 class BulkSubmitRequest(BaseModel):
@@ -342,6 +345,8 @@ async def bulk_submit(
             audio_search_title=song.title.strip(),
             auto_download=False,
             is_private=body.settings.is_private,
+            review_mode=body.settings.review_mode,
+            backing_preference=body.settings.backing_preference,
             brand_prefix=settings.default_brand_prefix,
             enable_youtube_upload=settings.default_enable_youtube_upload,
             youtube_description=settings.default_youtube_description,

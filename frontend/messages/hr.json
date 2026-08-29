@@ -554,7 +554,17 @@
     "matchUsingTyped": "Koristimo ono što si upisao: {value}",
     "checkingUrl": "Provjera…",
     "submitNetworkError": "Mrežna pogreška — molim te, provjeri svoju vezu i pokušaj ponovno.",
-    "submitError": "Nešto je pošlo po zlu. Pokušaj ponovno."
+    "submitError": "Nešto je pošlo po zlu. Pokušaj ponovno.",
+    "backingPrefAuto": "Zadrži gdje je moguće",
+    "backingPrefClean": "Ukloni (čisto)",
+    "backingPrefLabel": "Prateći vokali",
+    "backingPrefReview": "Želim odabrati",
+    "processingOptions": "Opcije obrade",
+    "reviewModeAlways": "Uvijek želim pregledati",
+    "reviewModeAlwaysHint": "Uvijek ćemo stati i dopustiti ti da pregledaš tekst i odabereš instrumental prije renderiranja.",
+    "reviewModeAuto": "Potpuno automatski",
+    "reviewModeAutoHint": "Tražit ćemo od tebe pregled teksta ili instrumentala samo ako je zaista potrebna ljudska provjera. Ako smo sigurni u rezultat, obrada se završava automatski.",
+    "reviewModeLabel": "Pregled"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",
@@ -1138,7 +1148,10 @@
         "totalSegments": "Ukupno segmenata: {count}",
         "proceedToInstrumental": "Nastavi na pregled instrumentala",
         "saving": "Spremanje...",
-        "completeTrack": "Dovrši pjesmu"
+        "completeTrack": "Dovrši pjesmu",
+        "autoInstrumentalBacking": "Automatski ćemo zadržati prateće vokale u instrumentalu — pregled instrumentala nije potreban.",
+        "autoInstrumentalClean": "Automatski ćemo koristiti čisti instrumental (bez pratećih vokala) — pregled instrumentala nije potreban.",
+        "reviewInstrumentalAnyway": "Želim sam odabrati instrumental"
       },
       "searchLyrics": {
         "artist": "Izvođač",

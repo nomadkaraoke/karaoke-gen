@@ -103,6 +103,8 @@ class JobManager:
             user_email=job_create.user_email,
             # Review autonomy ("auto" = skip review screens when confident)
             review_mode=job_create.review_mode,
+            # Backing-vocals preference ("auto"=retain-where-safe | clean | review)
+            backing_preference=job_create.backing_preference,
             # Distribution settings
             brand_prefix=job_create.brand_prefix,
             discord_webhook_url=job_create.discord_webhook_url,

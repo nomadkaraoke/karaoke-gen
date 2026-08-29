@@ -95,6 +95,8 @@ class JobUpdateRequest(BaseModel):
     customer_notes: Optional[str] = None
     # Review autonomy: "auto" (skip review when confident) | "always_review"
     review_mode: Optional[str] = None
+    # Backing-vocals preference: "auto" | "clean" | "review"
+    backing_preference: Optional[str] = None
 
     # Editable boolean fields
     enable_cdg: Optional[bool] = None
@@ -132,6 +134,7 @@ EDITABLE_JOB_FIELDS = {
     "prep_only",
     "is_private",
     "review_mode",
+    "backing_preference",
 }
 
 
@@ -997,6 +1000,15 @@ async def update_job(
         raise HTTPException(
             status_code=400,
             detail='review_mode must be "auto" or "always_review"',
+        )
+
+    # backing_preference likewise gates the instrumental decision — reject typos.
+    if "backing_preference" in updates and updates["backing_preference"] not in (
+        "auto", "clean", "review",
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail='backing_preference must be "auto", "clean", or "review"',
         )
 
     # Check if we're toggling is_private from False to True on a completed job
