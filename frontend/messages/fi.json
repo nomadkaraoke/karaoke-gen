@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Siirry instrumentaalin tarkistukseen",
         "saving": "Tallennetaan...",
         "completeTrack": "Viimeistele kappale",
-        "autoInstrumentalBacking": "Säilytämme taustalaulut instrumentaaliversiossa. Kuuntele alta — jos kuulet liikaa päälaulua tai häiriöääniä, vaihda puhtaaseen instrumentaaliversioon.",
         "autoInstrumentalClean": "Käytämme tässä kappaleessa puhdasta instrumentaaliversiota (ei taustalauluja).",
-        "reviewInstrumentalAnyway": "Haluan säilyttää taustalaulut, mutta mykistää tiettyjä osioita, tai ladata oman instrumentaaliversion",
         "previewTitle": "Videon esikatselu",
         "autoInstrumentalCleanChosen": "Olet valinnut tähän kappaleeseen puhtaan instrumentaaliversion (ei taustalauluja).",
-        "reviewInstrumentalCleanHatch": "Haluan tarkistaa instrumentaaliversion itse tai ladata oman instrumentaaliversion"
+        "advancedModeClean": "Edistynyt tila (tarkista tai lataa oma instrumentaaliversio)",
+        "finalChoiceLabel": "Karaokevideossasi käytetään:",
+        "recommended": "suositeltu",
+        "autoInstrumentalBacking": "Säilytämme taustalaulut instrumentaalissa. Kuuntele — jos päälaulajan ääni kuuluu läpi, vaihda yllä olevaan ”Puhdas instrumentaali” -vaihtoehtoon.",
+        "advancedMode": "Edistynyt tila (muokkaa taustalauluja tai lataa oma instrumentaaliversiosi)"
       },
       "searchLyrics": {
         "artist": "Esittäjä",

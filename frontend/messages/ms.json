@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Teruskan ke Semakan Instrumental",
         "saving": "Menyimpan...",
         "completeTrack": "Lengkapkan Trek",
-        "autoInstrumentalBacking": "Kami akan kekalkan vokal latar dalam instrumental. Cuba dengar di bawah — jika terdapat terlalu banyak bunyi vokal utama atau hingar, tukar kepada instrumental bersih.",
         "autoInstrumentalClean": "Kami akan gunakan instrumental bersih (tiada vokal latar) untuk trek ini.",
-        "reviewInstrumentalAnyway": "Biar saya kekalkan vokal latar tetapi senyapkan bahagian tertentu, atau muat naik instrumental tersuai",
         "previewTitle": "Pratonton Video",
         "autoInstrumentalCleanChosen": "Anda telah memilih instrumental bersih (tiada vokal latar) untuk trek ini.",
-        "reviewInstrumentalCleanHatch": "Biar saya semak instrumental sendiri, atau muat naik instrumental tersuai"
+        "advancedModeClean": "Mod lanjutan (semak atau muat naik instrumental tersuai)",
+        "finalChoiceLabel": "Video karaoke anda akan menggunakan:",
+        "recommended": "disyorkan",
+        "autoInstrumentalBacking": "Kami mengekalkan vokal latar dalam instrumental. Cuba dengar — jika suara penyanyi utama masih kedengaran, tukar kepada “Instrumental bersih” di atas.",
+        "advancedMode": "Mod lanjutan (sunting vokal latar atau muat naik instrumental anda sendiri)"
       },
       "searchLyrics": {
         "artist": "Artis",

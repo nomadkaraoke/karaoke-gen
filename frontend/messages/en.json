@@ -1023,7 +1023,7 @@
       "timedOut": "The preview video is taking longer than expected. Please try again.",
       "retry": "Retry",
       "unsupportedBrowser": "Your browser does not support the video tag.",
-      "audioLabel": "Audio:",
+      "audioLabel": "Preview audio:",
       "audioOriginal": "Original (with vocals)",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + backing vocals",
@@ -1234,12 +1234,14 @@
         "manualCorrectionsDetected": "Manual corrections detected. Review the preview to ensure the lyrics are synchronized correctly.",
         "proceedToInstrumental": "Proceed to Instrumental Review",
         "completeTrack": "Complete Track",
-        "reviewInstrumentalAnyway": "Let me keep the backing vocals but mute specific sections, or upload a custom instrumental",
-        "reviewInstrumentalCleanHatch": "Let me review the instrumental myself, or upload a custom instrumental",
-        "autoInstrumentalBacking": "We'll keep the backing vocals in the instrumental. Have a listen below — if you hear too much lead-vocal bleed or noise, switch to the clean instrumental.",
+        "autoInstrumentalBacking": "We're keeping the backing vocals in the instrumental. Have a listen — if you can hear the lead singer's voice coming through, switch to “Clean instrumental” above.",
         "autoInstrumentalClean": "We'll use the clean instrumental (no backing vocals) for this track.",
         "autoInstrumentalCleanChosen": "You've chosen the clean instrumental (no backing vocals) for this track.",
-        "saving": "Saving..."
+        "saving": "Saving...",
+        "finalChoiceLabel": "Your karaoke video will use:",
+        "recommended": "recommended",
+        "advancedMode": "Advanced mode (edit backing vocals or upload your own instrumental)",
+        "advancedModeClean": "Advanced mode (review or upload a custom instrumental)"
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Proceder a la revisión instrumental",
         "saving": "Guardando...",
         "completeTrack": "Completar pista",
-        "autoInstrumentalBacking": "Mantendremos los coros en el instrumental. Escucha a continuación — si notas demasiada filtración de la voz principal o ruido, cambia al instrumental limpio.",
         "autoInstrumentalClean": "Usaremos el instrumental limpio (sin coros) para esta pista.",
-        "reviewInstrumentalAnyway": "Déjame mantener los coros pero silenciar secciones específicas, o subir un instrumental personalizado",
         "previewTitle": "Vista previa del video",
         "autoInstrumentalCleanChosen": "Has elegido el instrumental limpio (sin coros) para esta pista.",
-        "reviewInstrumentalCleanHatch": "Déjame revisar el instrumental yo mismo, o subir un instrumental personalizado"
+        "advancedModeClean": "Modo avanzado (revisar o subir un instrumental personalizado)",
+        "finalChoiceLabel": "Tu video de karaoke usará:",
+        "recommended": "recomendado",
+        "autoInstrumentalBacking": "Hemos dejado los coros en el instrumental. Escúchalo y, si notas que se cuela la voz del cantante principal, cambia a “Instrumental limpio” arriba.",
+        "advancedMode": "Modo avanzado (edita los coros o sube tu propio instrumental)"
       },
       "searchLyrics": {
         "artist": "Artista",

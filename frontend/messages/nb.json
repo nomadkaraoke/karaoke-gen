@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Fortsett til instrumentalgjennomgang",
         "saving": "Lagrer...",
         "completeTrack": "Fullfør spor",
-        "autoInstrumentalBacking": "Vi beholder bakgrunnsvokalen i instrumentalsporet. Hør på den nedenfor — hvis du hører for mye av hovedvokalen eller støy, bytt til den rene instrumentalen.",
         "autoInstrumentalClean": "Vi bruker den rene instrumentalen (uten bakgrunnsvokal) for dette sporet.",
-        "reviewInstrumentalAnyway": "La meg beholde bakgrunnsvokalen, men dempe spesifikke deler, eller laste opp en egendefinert instrumental",
         "previewTitle": "Forhåndsvis video",
         "autoInstrumentalCleanChosen": "Du har valgt den rene instrumentalen (uten bakgrunnsvokal) for dette sporet.",
-        "reviewInstrumentalCleanHatch": "La meg gå gjennom instrumentalen selv, eller laste opp en egendefinert instrumental"
+        "advancedModeClean": "Avansert modus (se over eller last opp en egendefinert instrumental)",
+        "finalChoiceLabel": "Karaokevideoen din vil bruke:",
+        "recommended": "anbefalt",
+        "autoInstrumentalBacking": "Vi beholder bakgrunnsvokalen i instrumentalsporet. Hør på det — hvis du kan høre hovedvokalistens stemme, bytt til «Ren instrumental» ovenfor.",
+        "advancedMode": "Avansert modus (rediger bakgrunnsvokal eller last opp din egen instrumental)"
       },
       "searchLyrics": {
         "artist": "Artist",

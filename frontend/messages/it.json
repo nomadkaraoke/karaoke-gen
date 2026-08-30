@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Procedi alla revisione strumentale",
         "saving": "Salvataggio...",
         "completeTrack": "Traccia completa",
-        "autoInstrumentalBacking": "Manterremo i cori nella base musicale. Ascolta qui sotto — se senti troppi residui della voce principale o rumore, passa alla base musicale pulita.",
         "autoInstrumentalClean": "Useremo la base musicale pulita (senza cori) per questa traccia.",
-        "reviewInstrumentalAnyway": "Voglio mantenere i cori ma silenziare sezioni specifiche, o caricare una base musicale personalizzata",
         "previewTitle": "Anteprima video",
         "autoInstrumentalCleanChosen": "Hai scelto la base musicale pulita (senza cori) per questa traccia.",
-        "reviewInstrumentalCleanHatch": "Voglio controllare la base musicale personalmente, o caricarne una personalizzata"
+        "advancedModeClean": "Modalità avanzata (rivedi o carica una base strumentale personalizzata)",
+        "finalChoiceLabel": "Il tuo video karaoke utilizzerà:",
+        "recommended": "consigliato",
+        "autoInstrumentalBacking": "Stiamo mantenendo i cori nella base strumentale. Ascolta — se riesci a sentire la voce del cantante principale, passa a “Strumentale pulita” qui sopra.",
+        "advancedMode": "Modalità avanzata (modifica i cori o carica la tua base strumentale)"
       },
       "searchLyrics": {
         "artist": "Artista",

@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Weiter zur Instrumental-Überprüfung",
         "saving": "Speichere...",
         "completeTrack": "Kompletter Track",
-        "autoInstrumentalBacking": "Wir behalten den Hintergrundgesang im Instrumental. Hör unten mal rein — wenn du zu viel vom Hauptgesang oder Rauschen hörst, wechsle zum reinen Instrumental.",
         "autoInstrumentalClean": "Wir verwenden das reine Instrumental (ohne Hintergrundgesang) für diesen Track.",
-        "reviewInstrumentalAnyway": "Hintergrundgesang behalten, aber bestimmte Abschnitte stummschalten, oder ein eigenes Instrumental hochladen",
         "previewTitle": "Video-Vorschau",
         "autoInstrumentalCleanChosen": "Du hast das reine Instrumental (ohne Hintergrundgesang) für diesen Track ausgewählt.",
-        "reviewInstrumentalCleanHatch": "Instrumental selbst überprüfen oder ein eigenes Instrumental hochladen"
+        "advancedModeClean": "Erweiterter Modus (Instrumental überprüfen oder eigenes hochladen)",
+        "finalChoiceLabel": "Dein Karaoke-Video verwendet:",
+        "recommended": "empfohlen",
+        "autoInstrumentalBacking": "Wir behalten den Hintergrundgesang im Instrumental. Hör mal rein — wenn du die Stimme des Hauptsängers heraushören kannst, wechsle oben zu „reines Instrumental“.",
+        "advancedMode": "Erweiterter Modus (Hintergrundgesang bearbeiten oder dein eigenes Instrumental hochladen)"
       },
       "searchLyrics": {
         "artist": "Künstler",

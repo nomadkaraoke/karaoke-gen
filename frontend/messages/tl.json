@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Magpatuloy sa Instrumental Review",
         "saving": "Sina-save...",
         "completeTrack": "Kumpletuhin ang Track",
-        "autoInstrumentalBacking": "Pananatilihin namin ang mga backing vocal sa instrumental. Pakinggan sa ibaba — kung masyadong rinig ang lead-vocal bleed o ingay, lumipat sa clean instrumental.",
         "autoInstrumentalClean": "Gagamitin namin ang clean instrumental (walang mga backing vocal) para sa track na ito.",
-        "reviewInstrumentalAnyway": "Gusto kong panatilihin ang mga backing vocal pero i-mute ang ilang bahagi, o mag-upload ng custom na instrumental",
         "previewTitle": "I-preview ang Video",
         "autoInstrumentalCleanChosen": "Pinili mo ang clean instrumental (walang mga backing vocal) para sa track na ito.",
-        "reviewInstrumentalCleanHatch": "Gusto kong suriin mismo ang instrumental, o mag-upload ng custom na instrumental"
+        "advancedModeClean": "Advanced mode (i-review o mag-upload ng custom na instrumental)",
+        "finalChoiceLabel": "Gagamitin sa iyong karaoke video ang:",
+        "recommended": "inirerekomenda",
+        "autoInstrumentalBacking": "Pinanatili namin ang mga backing vocal sa instrumental. Pakinggan mo — kung naririnig mo ang boses ng lead singer, lumipat sa “Clean instrumental” sa itaas.",
+        "advancedMode": "Advanced mode (i-edit ang backing vocals o i-upload ang sarili mong instrumental)"
       },
       "searchLyrics": {
         "artist": "Artist",
