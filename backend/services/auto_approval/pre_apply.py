@@ -29,10 +29,16 @@ CORRECTIONS_PATH = "jobs/{job_id}/lyrics/corrections.json"
 CORRECTIONS_UPDATED_PATH = "jobs/{job_id}/lyrics/corrections_updated.json"
 
 
-async def ensure_and_pre_apply(job_id: str) -> Dict[str, Any]:
+async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) -> Dict[str, Any]:
     """Ensure the suggestion cache exists, apply it, and persist the pre-applied
     corrections with a ``pre_applied`` marker. Returns a small status dict; never
     raises.
+
+    ``generate_on_miss`` (default True, the screens_worker path): when the proactive
+    cache is absent, generate it synchronously (bounded) before applying. The
+    ``/correction-data`` load path passes False — it only applies an EXISTING cache
+    so a review page never blocks on a multi-model LLM call; a cache-miss there
+    falls through to the UI's own client-side apply.
     """
     try:
         from backend.config import get_settings
@@ -62,9 +68,11 @@ async def ensure_and_pre_apply(job_id: str) -> Dict[str, Any]:
 
         corrections = storage.download_json(corrections_path)
 
-        # 1) Ensure the proactive suggestion cache exists (generate on miss).
+        # 1) Ensure the proactive suggestion cache exists (generate on miss, unless
+        #    the caller — e.g. the load-time path — asked to only apply an existing
+        #    cache so the request doesn't block on an LLM call).
         ai_suggestions = _load_ai_suggestions(storage, job_id)
-        if ai_suggestions is None and settings.auto_correct_proactive_enabled:
+        if ai_suggestions is None and generate_on_miss and settings.auto_correct_proactive_enabled:
             logger.info(f"[job:{job_id}] pre-apply: cache miss, generating suggestions synchronously")
             from backend.workers.auto_correct_worker import process_proactive_auto_correct
             await process_proactive_auto_correct(job_id)  # bounded (180s) + best-effort
@@ -94,7 +102,19 @@ async def ensure_and_pre_apply(job_id: str) -> Dict[str, Any]:
             "applied_at": datetime.now(timezone.utc).isoformat(),
         }
         updated["metadata"] = metadata
-        storage.upload_json(updated_path, updated)
+        # Create-only write: we only reach here when corrections_updated.json was
+        # absent at the check above, so if_generation_match=0 makes the write atomic —
+        # a concurrent writer (executor auto-complete, or an edit submission) that
+        # created it in the meantime wins and we don't clobber their (newer) state.
+        try:
+            from google.api_core.exceptions import PreconditionFailed
+        except Exception:  # pragma: no cover - google libs always present in prod
+            PreconditionFailed = ()  # type: ignore[assignment]
+        try:
+            storage.upload_json(updated_path, updated, if_generation_match=0)
+        except PreconditionFailed:
+            logger.info(f"[job:{job_id}] pre-apply raced a concurrent write — theirs wins")
+            return {"outcome": "skipped", "reason": "raced_concurrent_write"}
         JobManager().update_file_url(job_id, "lyrics", "corrections_updated", updated_path)
 
         logger.info(
