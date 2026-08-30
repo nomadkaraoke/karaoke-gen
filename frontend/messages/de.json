@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Original (mit Gesang)",
       "backingVocalsWaveformHint": "Hintergrundgesang im Instrumental beibehalten — klicke, um diesen Teil zu hören.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + Hintergrundgesang",
+      "audioInstrumentalClean": "Reines Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Weiter zur Instrumental-Überprüfung",
         "saving": "Speichere...",
         "completeTrack": "Kompletter Track",
-        "autoInstrumentalBacking": "Wir behalten den Hintergrundgesang im Instrumental automatisch bei — keine Überprüfung des Instrumentals erforderlich.",
-        "autoInstrumentalClean": "Wir verwenden automatisch das reine Instrumental (ohne Hintergrundgesang) — keine Überprüfung des Instrumentals erforderlich.",
-        "reviewInstrumentalAnyway": "Instrumental selbst auswählen",
-        "previewTitle": "Video-Vorschau"
+        "autoInstrumentalBacking": "Wir behalten den Hintergrundgesang im Instrumental. Hör unten mal rein — wenn du zu viel vom Hauptgesang oder Rauschen hörst, wechsle zum reinen Instrumental.",
+        "autoInstrumentalClean": "Wir verwenden das reine Instrumental (ohne Hintergrundgesang) für diesen Track.",
+        "reviewInstrumentalAnyway": "Hintergrundgesang behalten, aber bestimmte Abschnitte stummschalten, oder ein eigenes Instrumental hochladen",
+        "previewTitle": "Video-Vorschau",
+        "autoInstrumentalCleanChosen": "Du hast das reine Instrumental (ohne Hintergrundgesang) für diesen Track ausgewählt.",
+        "reviewInstrumentalCleanHatch": "Instrumental selbst überprüfen oder ein eigenes Instrumental hochladen"
       },
       "searchLyrics": {
         "artist": "Künstler",

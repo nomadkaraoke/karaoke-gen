@@ -1014,7 +1014,9 @@
       "audioLabel": "Áudio:",
       "audioOriginal": "Original (com vocais)",
       "backingVocalsWaveformHint": "Vocais de apoio mantidos no instrumental — clique para ouvir esta parte.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + vocais de apoio",
+      "audioInstrumentalClean": "Instrumental limpo"
     },
     "gapNavigator": {
       "previousGap": "Lacuna anterior (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Prosseguir para Revisão Instrumental",
         "saving": "Salvando...",
         "completeTrack": "Faixa completa",
-        "autoInstrumentalBacking": "Manteremos os vocais de apoio no instrumental automaticamente — não é necessário revisar o instrumental.",
-        "autoInstrumentalClean": "Usaremos o instrumental limpo (sem vocais de apoio) automaticamente — não é necessário revisar o instrumental.",
-        "reviewInstrumentalAnyway": "Deixe-me escolher o instrumental",
-        "previewTitle": "Pré-visualizar Vídeo"
+        "autoInstrumentalBacking": "Vamos manter os vocais de apoio no instrumental. Ouça abaixo — se notar muito vazamento do vocal principal ou ruído, mude para o instrumental limpo.",
+        "autoInstrumentalClean": "Vamos usar o instrumental limpo (sem vocais de apoio) para esta faixa.",
+        "reviewInstrumentalAnyway": "Quero manter os vocais de apoio, mas silenciar seções específicas, ou enviar um instrumental personalizado",
+        "previewTitle": "Pré-visualizar Vídeo",
+        "autoInstrumentalCleanChosen": "Você escolheu o instrumental limpo (sem vocais de apoio) para esta faixa.",
+        "reviewInstrumentalCleanHatch": "Quero revisar o instrumental, ou enviar um instrumental personalizado"
       },
       "searchLyrics": {
         "artist": "Artista",

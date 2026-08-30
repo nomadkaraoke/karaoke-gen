@@ -1014,7 +1014,9 @@
       "audioLabel": "الصوت:",
       "audioOriginal": "الأصلي (مع الغناء)",
       "backingVocalsWaveformHint": "تم الاحتفاظ بالأصوات الخلفية في الموسيقى — انقر للاستماع إلى هذا الجزء.",
-      "audioInstrumental": "موسيقى (بدون غناء)"
+      "audioInstrumental": "موسيقى (بدون غناء)",
+      "audioInstrumentalBacking": "موسيقى + أصوات مساندة",
+      "audioInstrumentalClean": "موسيقى نقية"
     },
     "gapNavigator": {
       "previousGap": "الفجوة السابقة (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "المتابعة إلى مراجعة الموسيقى",
         "saving": "جاري الحفظ...",
         "completeTrack": "إكمال المسار",
-        "autoInstrumentalBacking": "سنحتفظ بالأصوات الخلفية في المسار الموسيقي تلقائيًا — لا حاجة لمراجعة المسار الموسيقي.",
-        "autoInstrumentalClean": "سنستخدم المسار الموسيقي النظيف (بدون أصوات خلفية) تلقائيًا — لا حاجة لمراجعة المسار الموسيقي.",
-        "reviewInstrumentalAnyway": "دعني أختار المسار الموسيقي بنفسي",
-        "previewTitle": "معاينة الفيديو"
+        "autoInstrumentalBacking": "سنحتفظ بالأصوات الخلفية في النسخة الموسيقية. استمع أدناه — إذا لاحظت تداخلاً كبيراً من الصوت الرئيسي أو ضوضاء، يمكنك التبديل إلى النسخة الموسيقية النقية.",
+        "autoInstrumentalClean": "سنستخدم النسخة الموسيقية النقية (بدون أصوات خلفية) لهذه الأغنية.",
+        "reviewInstrumentalAnyway": "أريد الاحتفاظ بالأصوات الخلفية مع كتم أجزاء معينة، أو رفع نسخة موسيقية مخصصة",
+        "previewTitle": "معاينة الفيديو",
+        "autoInstrumentalCleanChosen": "لقد اخترت النسخة الموسيقية النقية (بدون أصوات خلفية) لهذه الأغنية.",
+        "reviewInstrumentalCleanHatch": "أريد مراجعة النسخة الموسيقية بنفسي، أو رفع نسخة موسيقية مخصصة"
       },
       "searchLyrics": {
         "artist": "الفنان",

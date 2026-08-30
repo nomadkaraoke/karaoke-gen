@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Originale (con voce)",
       "backingVocalsWaveformHint": "Cori mantenuti nella base strumentale — clicca per ascoltare questa parte.",
-      "audioInstrumental": "Strumentale"
+      "audioInstrumental": "Strumentale",
+      "audioInstrumentalBacking": "Strumentale + cori",
+      "audioInstrumentalClean": "Strumentale pulita"
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Procedi alla revisione strumentale",
         "saving": "Salvataggio...",
         "completeTrack": "Traccia completa",
-        "autoInstrumentalBacking": "Manterremo automaticamente i cori nella base strumentale — non è necessario controllare la base.",
-        "autoInstrumentalClean": "Useremo automaticamente la base strumentale pulita (senza cori) — non è necessario controllare la base.",
-        "reviewInstrumentalAnyway": "Fammi scegliere la base strumentale",
-        "previewTitle": "Anteprima video"
+        "autoInstrumentalBacking": "Manterremo i cori nella base musicale. Ascolta qui sotto — se senti troppi residui della voce principale o rumore, passa alla base musicale pulita.",
+        "autoInstrumentalClean": "Useremo la base musicale pulita (senza cori) per questa traccia.",
+        "reviewInstrumentalAnyway": "Voglio mantenere i cori ma silenziare sezioni specifiche, o caricare una base musicale personalizzata",
+        "previewTitle": "Anteprima video",
+        "autoInstrumentalCleanChosen": "Hai scelto la base musicale pulita (senza cori) per questa traccia.",
+        "reviewInstrumentalCleanHatch": "Voglio controllare la base musicale personalmente, o caricarne una personalizzata"
       },
       "searchLyrics": {
         "artist": "Artista",

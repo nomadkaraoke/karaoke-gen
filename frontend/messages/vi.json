@@ -1014,7 +1014,9 @@
       "audioLabel": "Âm thanh:",
       "audioOriginal": "Bản gốc (có giọng hát)",
       "backingVocalsWaveformHint": "Giọng hát bè được giữ lại trong nhạc nền — nhấp để nghe phần này.",
-      "audioInstrumental": "Nhạc nền"
+      "audioInstrumental": "Nhạc nền",
+      "audioInstrumentalBacking": "Nhạc nền + hát bè",
+      "audioInstrumentalClean": "Nhạc nền thuần"
     },
     "gapNavigator": {
       "previousGap": "Đoạn trống trước (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Tiến hành xem lại nhạc nền",
         "saving": "Đang lưu...",
         "completeTrack": "Hoàn tất bài hát",
-        "autoInstrumentalBacking": "Chúng tôi sẽ tự động giữ lại giọng bè trong nhạc nền — không cần xem lại nhạc nền.",
-        "autoInstrumentalClean": "Chúng tôi sẽ tự động sử dụng nhạc nền sạch (không có giọng bè) — không cần xem lại nhạc nền.",
-        "reviewInstrumentalAnyway": "Để tôi tự chọn nhạc nền",
-        "previewTitle": "Xem trước video"
+        "autoInstrumentalBacking": "Chúng tôi sẽ giữ lại giọng hát bè trong bản nhạc nền. Hãy nghe thử bên dưới — nếu bạn thấy giọng hát chính bị lẫn vào quá nhiều hoặc có tiếng ồn, hãy chuyển sang bản nhạc nền sạch.",
+        "autoInstrumentalClean": "Chúng tôi sẽ sử dụng bản nhạc nền sạch (không có giọng hát bè) cho bài hát này.",
+        "reviewInstrumentalAnyway": "Để tôi giữ lại giọng hát bè nhưng tắt tiếng ở một số đoạn cụ thể, hoặc tải lên bản nhạc nền tùy chỉnh",
+        "previewTitle": "Xem trước video",
+        "autoInstrumentalCleanChosen": "Bạn đã chọn bản nhạc nền sạch (không có giọng hát bè) cho bài hát này.",
+        "reviewInstrumentalCleanHatch": "Để tôi tự nghe lại bản nhạc nền, hoặc tải lên bản nhạc nền tùy chỉnh"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

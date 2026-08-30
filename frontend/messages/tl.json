@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Orihinal (may vocals)",
       "backingVocalsWaveformHint": "Pinanatili ang backing vocals sa instrumental — i-click para mapakinggan ang bahaging ito.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + backing vocals",
+      "audioInstrumentalClean": "Malinis na instrumental"
     },
     "gapNavigator": {
       "previousGap": "Nakaraang gap (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Magpatuloy sa Instrumental Review",
         "saving": "Sina-save...",
         "completeTrack": "Kumpletuhin ang Track",
-        "autoInstrumentalBacking": "Awtomatiko naming pananatilihin ang mga backing vocals sa instrumental — hindi na kailangan ng pagsusuri sa instrumental.",
-        "autoInstrumentalClean": "Awtomatiko naming gagamitin ang malinis na instrumental (walang mga backing vocals) — hindi na kailangan ng pagsusuri sa instrumental.",
-        "reviewInstrumentalAnyway": "Hayaan akong ako mismo ang pumili ng instrumental",
-        "previewTitle": "I-preview ang Video"
+        "autoInstrumentalBacking": "Pananatilihin namin ang mga backing vocal sa instrumental. Pakinggan sa ibaba — kung masyadong rinig ang lead-vocal bleed o ingay, lumipat sa clean instrumental.",
+        "autoInstrumentalClean": "Gagamitin namin ang clean instrumental (walang mga backing vocal) para sa track na ito.",
+        "reviewInstrumentalAnyway": "Gusto kong panatilihin ang mga backing vocal pero i-mute ang ilang bahagi, o mag-upload ng custom na instrumental",
+        "previewTitle": "I-preview ang Video",
+        "autoInstrumentalCleanChosen": "Pinili mo ang clean instrumental (walang mga backing vocal) para sa track na ito.",
+        "reviewInstrumentalCleanHatch": "Gusto kong suriin mismo ang instrumental, o mag-upload ng custom na instrumental"
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -1014,7 +1014,9 @@
       "audioLabel": "Ses:",
       "audioOriginal": "Orijinal (vokalli)",
       "backingVocalsWaveformHint": "Geri vokaller enstrümantalde bırakıldı — bu kısmı duymak için tıkla.",
-      "audioInstrumental": "Enstrümantal"
+      "audioInstrumental": "Enstrümantal",
+      "audioInstrumentalBacking": "Enstrümantal + geri vokaller",
+      "audioInstrumentalClean": "Temiz enstrümantal"
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Enstrümantal İncelemesine İlerle",
         "saving": "Kaydediliyor...",
         "completeTrack": "Parçayı Tamamla",
-        "autoInstrumentalBacking": "Geri vokalleri otomatik olarak enstrümantalde koruyacağız — enstrümantali incelemene gerek yok.",
-        "autoInstrumentalClean": "Otomatik olarak temiz enstrümantal (geri vokal yok) kullanacağız — enstrümantali incelemene gerek yok.",
-        "reviewInstrumentalAnyway": "Enstrümantali kendim seçeyim",
-        "previewTitle": "Videoyu Önizle"
+        "autoInstrumentalBacking": "Geri vokalleri enstrümantalde tutacağız. Aşağıdan bir dinle — eğer çok fazla ana vokal karışması veya gürültü duyarsan, temiz enstrümantale geç.",
+        "autoInstrumentalClean": "Bu parça için temiz enstrümantal (geri vokal yok) kullanacağız.",
+        "reviewInstrumentalAnyway": "Geri vokalleri tutayım ama belirli bölümleri sessize alayım veya özel bir enstrümantal yükleyeyim",
+        "previewTitle": "Videoyu Önizle",
+        "autoInstrumentalCleanChosen": "Bu parça için temiz enstrümantali (geri vokal yok) seçtin.",
+        "reviewInstrumentalCleanHatch": "Enstrümantali kendim gözden geçireyim veya özel bir enstrümantal yükleyeyim"
       },
       "searchLyrics": {
         "artist": "Sanatçı",

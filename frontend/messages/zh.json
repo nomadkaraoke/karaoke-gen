@@ -1014,7 +1014,9 @@
       "audioLabel": "音频：",
       "audioOriginal": "原声（带人声）",
       "backingVocalsWaveformHint": "伴奏中保留了伴唱——点击试听此部分。",
-      "audioInstrumental": "伴奏"
+      "audioInstrumental": "伴奏",
+      "audioInstrumentalBacking": "伴奏 + 伴唱",
+      "audioInstrumentalClean": "纯伴奏"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "继续进行伴奏审核",
         "saving": "保存中...",
         "completeTrack": "完成曲目",
-        "autoInstrumentalBacking": "我们将自动在伴奏中保留伴唱 — 无需审核伴奏。",
-        "autoInstrumentalClean": "我们将自动使用纯净版伴奏（无伴唱） — 无需审核伴奏。",
-        "reviewInstrumentalAnyway": "让我自己选择伴奏",
-        "previewTitle": "预览视频"
+        "autoInstrumentalBacking": "我们会在伴奏中保留和声。请在下方试听——如果听到太多主唱的漏音或杂音，请切换到纯净版伴奏。",
+        "autoInstrumentalClean": "我们会为此曲目使用纯净版伴奏（无和声）。",
+        "reviewInstrumentalAnyway": "让我保留和声，但将特定部分静音，或上传自定义伴奏",
+        "previewTitle": "预览视频",
+        "autoInstrumentalCleanChosen": "您已为此曲目选择了纯净版伴奏（无和声）。",
+        "reviewInstrumentalCleanHatch": "让我自己确认伴奏，或上传自定义伴奏"
       },
       "searchLyrics": {
         "artist": "歌手",

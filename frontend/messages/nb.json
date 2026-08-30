@@ -1014,7 +1014,9 @@
       "audioLabel": "Lyd:",
       "audioOriginal": "Original (med vokal)",
       "backingVocalsWaveformHint": "Bakgrunnsvokalen er beholdt i instrumentalen — klikk for å høre denne delen.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + bakgrunnsvokal",
+      "audioInstrumentalClean": "Ren instrumental"
     },
     "gapNavigator": {
       "previousGap": "Forrige hull (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Fortsett til instrumentalgjennomgang",
         "saving": "Lagrer...",
         "completeTrack": "Fullfør spor",
-        "autoInstrumentalBacking": "Vi beholder bakgrunnsvokalen i instrumentalen automatisk — ingen gjennomgang av instrumentalen er nødvendig.",
-        "autoInstrumentalClean": "Vi bruker den rene instrumentalen (uten bakgrunnsvokal) automatisk — ingen gjennomgang av instrumentalen er nødvendig.",
-        "reviewInstrumentalAnyway": "La meg velge instrumentalen selv",
-        "previewTitle": "Forhåndsvis video"
+        "autoInstrumentalBacking": "Vi beholder bakgrunnsvokalen i instrumentalsporet. Hør på den nedenfor — hvis du hører for mye av hovedvokalen eller støy, bytt til den rene instrumentalen.",
+        "autoInstrumentalClean": "Vi bruker den rene instrumentalen (uten bakgrunnsvokal) for dette sporet.",
+        "reviewInstrumentalAnyway": "La meg beholde bakgrunnsvokalen, men dempe spesifikke deler, eller laste opp en egendefinert instrumental",
+        "previewTitle": "Forhåndsvis video",
+        "autoInstrumentalCleanChosen": "Du har valgt den rene instrumentalen (uten bakgrunnsvokal) for dette sporet.",
+        "reviewInstrumentalCleanHatch": "La meg gå gjennom instrumentalen selv, eller laste opp en egendefinert instrumental"
       },
       "searchLyrics": {
         "artist": "Artist",
