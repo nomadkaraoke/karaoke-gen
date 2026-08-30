@@ -79,9 +79,16 @@ export default function ReviewChangesModal({
   const [previewTime, setPreviewTime] = useState(0)
   const instrumentalOptions = data.instrumental_options
   const getWaveformData = apiClient?.getWaveformData
+  // Only offer the backing waveform (which clicks through to the backing stem)
+  // when that stem is actually playable — otherwise the seek would switch audio
+  // to the wrong/absent track.
+  const hasBackingStem = !!instrumentalOptions?.some(
+    (o) => o.id === 'with_backing' && o.audio_url
+  )
   const showBackingWaveform =
     autoInstrumentalConfident &&
     autoInstrumentalSelection === 'with_backing' &&
+    hasBackingStem &&
     !!getWaveformData
 
   const handleSubmit = () => {

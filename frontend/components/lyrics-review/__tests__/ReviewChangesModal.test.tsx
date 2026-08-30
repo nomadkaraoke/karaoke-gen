@@ -142,12 +142,43 @@ describe('ReviewChangesModal', () => {
         completesReview
         autoInstrumentalConfident
         autoInstrumentalSelection="with_backing"
-        data={makeData({ corrected_segments: segments as any })}
+        data={makeData({
+          corrected_segments: segments as any,
+          instrumental_options: [
+            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
+            { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
+          ] as any,
+        })}
       />
     )
     // Hint text from BackingVocalsWaveform
     expect(screen.getByText(/click to hear this part/i)).toBeInTheDocument()
     expect(apiClient.getWaveformData).toHaveBeenCalled()
+  })
+
+  it('does not render the backing-vocals waveform when the backing stem URL is unavailable', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    const apiClient = {
+      generatePreviewVideo: jest.fn(),
+      getPreviewVideoStatus: jest.fn(),
+      getPreviewVideoUrl: jest.fn(),
+      getWaveformData: jest.fn().mockResolvedValue({ amplitudes: [0.1], duration_seconds: 10 }),
+    }
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        apiClient={apiClient as any}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        data={makeData({
+          corrected_segments: segments as any,
+          instrumental_options: [{ id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' }] as any,
+        })}
+      />
+    )
+    expect(screen.queryByText(/click to hear this part/i)).not.toBeInTheDocument()
+    expect(apiClient.getWaveformData).not.toHaveBeenCalled()
   })
 
   it('does not render the backing-vocals waveform when the clean instrumental was chosen', () => {

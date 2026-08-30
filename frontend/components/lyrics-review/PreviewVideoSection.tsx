@@ -224,6 +224,7 @@ function PreviewVideoSection(
       if (!audio) return
       audio.muted = !active
       if (active) {
+        audio.playbackRate = video.playbackRate
         if (Math.abs(audio.currentTime - video.currentTime) > AUDIO_SYNC_TOLERANCE_S) {
           audio.currentTime = video.currentTime
         }
