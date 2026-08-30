@@ -580,6 +580,18 @@ async def get_correction_data(
             detail=t("en", "review.reviewNotReady", status=job.status)
         )
 
+    # Server-side pre-apply ON LOAD (C2 completeness): jobs processed before the
+    # screens_worker pre-apply shipped (or whose cache landed after that gate) reach
+    # this endpoint without a pre_applied marker, so the review UI would still run its
+    # on-load client-side apply (the visible ~4s "uncorrected -> corrected" flicker).
+    # Apply here from an EXISTING cache only (generate_on_miss=False so the page never
+    # blocks on a multi-model LLM call). Best-effort + idempotent: a no-op when the
+    # job was already pre-applied, already human-edited, or has no cache. The direct
+    # corrections_updated path below then serves the freshly-written corrected state.
+    if not replay:
+        from backend.services.auto_approval.pre_apply import ensure_and_pre_apply
+        await ensure_and_pre_apply(job_id, generate_on_miss=False)
+
     # Check for updated corrections first (from previous review sessions where user edited lyrics)
     # This mirrors the logic in render_video_worker.py to ensure consistency
     corrections_updated_gcs = job.file_urls.get('lyrics', {}).get('corrections_updated')

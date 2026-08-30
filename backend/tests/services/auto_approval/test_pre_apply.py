@@ -69,13 +69,21 @@ class _FakeStorage:
         self._files[path] = data
 
 
-async def _run(storage, *, proactive=True):
+async def _run(storage, *, proactive=True, generate_on_miss=True):
     settings = MagicMock(auto_correct_proactive_enabled=proactive)
     jm = MagicMock()
+    generated = {"called": False}
+
+    async def _fake_generate(job_id):
+        generated["called"] = True
+        return {"status": "generated"}
+
     with patch("backend.config.get_settings", return_value=settings), \
          patch("backend.services.storage_service.StorageService", return_value=storage), \
-         patch("backend.services.job_manager.JobManager", return_value=jm):
-        return await ensure_and_pre_apply("j1"), jm
+         patch("backend.services.job_manager.JobManager", return_value=jm), \
+         patch("backend.workers.auto_correct_worker.process_proactive_auto_correct", _fake_generate):
+        result = await ensure_and_pre_apply("j1", generate_on_miss=generate_on_miss)
+        return result, jm, generated
 
 
 CORR = "jobs/j1/lyrics/corrections.json"
@@ -89,7 +97,7 @@ async def test_pre_apply_writes_marker_and_applies():
         CORR: _corrections(),
         CACHE: {"suggestions": [_replace_suggestion()]},
     })
-    result, jm = await _run(storage)
+    result, jm, _gen = await _run(storage)
     assert result["outcome"] == "pre_applied"
     assert result["applied"] == 1
     written = storage.uploads[UPD]
@@ -106,7 +114,7 @@ async def test_pre_apply_writes_marker_and_applies():
 async def test_pre_apply_empty_suggestions_still_marks():
     # Known-empty cache: mark pre_applied so the UI doesn't run client-side.
     storage = _FakeStorage({CORR: _corrections(), CACHE: {"suggestions": []}})
-    result, _ = await _run(storage)
+    result, _, _gen = await _run(storage)
     assert result["outcome"] == "pre_applied"
     assert result["applied"] == 0
     assert storage.uploads[UPD]["metadata"]["auto_approval"]["pre_applied"] is True
@@ -116,7 +124,7 @@ async def test_pre_apply_empty_suggestions_still_marks():
 async def test_pre_apply_no_cache_and_proactive_disabled_is_noop():
     # No cache + proactive off -> unknown suggestion set -> do NOT mark (fall back).
     storage = _FakeStorage({CORR: _corrections()})
-    result, _ = await _run(storage, proactive=False)
+    result, _, _gen = await _run(storage, proactive=False)
     assert result["outcome"] == "skipped"
     assert result["reason"] == "no_suggestions_cache"
     assert UPD not in storage.uploads
@@ -129,7 +137,7 @@ async def test_pre_apply_skips_when_already_applied():
         UPD: {"metadata": {"auto_approval": {"auto_approved": True}}},
         CACHE: {"suggestions": [_replace_suggestion()]},
     })
-    result, _ = await _run(storage)
+    result, _, _gen = await _run(storage)
     assert result["outcome"] == "skipped"
     assert result["reason"] == "already_applied"
 
@@ -137,6 +145,41 @@ async def test_pre_apply_skips_when_already_applied():
 @pytest.mark.asyncio
 async def test_pre_apply_no_corrections_is_noop():
     storage = _FakeStorage({})
-    result, _ = await _run(storage)
+    result, _, _gen = await _run(storage)
     assert result["outcome"] == "skipped"
     assert result["reason"] == "no_corrections"
+
+
+@pytest.mark.asyncio
+async def test_load_path_applies_existing_cache_without_generating():
+    # generate_on_miss=False (the /correction-data load path): an existing cache is
+    # applied, but generation is never triggered (page must not block on an LLM call).
+    storage = _FakeStorage({
+        CORR: _corrections(),
+        CACHE: {"suggestions": [_replace_suggestion()]},
+    })
+    result, jm, gen = await _run(storage, generate_on_miss=False)
+    assert result["outcome"] == "pre_applied"
+    assert gen["called"] is False
+    assert storage.uploads[UPD]["metadata"]["auto_approval"]["pre_applied"] is True
+
+
+@pytest.mark.asyncio
+async def test_load_path_cache_miss_does_not_generate_or_mark():
+    # No cache + proactive ON but generate_on_miss=False -> no generation, no marker;
+    # the UI falls back to its client-side apply (no page hang).
+    storage = _FakeStorage({CORR: _corrections()})
+    result, _, gen = await _run(storage, proactive=True, generate_on_miss=False)
+    assert gen["called"] is False
+    assert result["outcome"] == "skipped"
+    assert result["reason"] == "no_suggestions_cache"
+    assert UPD not in storage.uploads
+
+
+@pytest.mark.asyncio
+async def test_screens_path_generates_on_cache_miss():
+    # Default generate_on_miss=True (screens_worker path): generation IS triggered
+    # on a cache miss.
+    storage = _FakeStorage({CORR: _corrections()})
+    result, _, gen = await _run(storage, proactive=True, generate_on_miss=True)
+    assert gen["called"] is True
