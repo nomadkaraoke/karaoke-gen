@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Doprovodné vokály zůstaly v instrumentální verzi – kliknutím si tuto část poslechneš.",
       "audioInstrumental": "Instrumentální",
       "audioInstrumentalBacking": "Instrumentální verze + doprovodné vokály",
-      "audioInstrumentalClean": "Čistá instrumentální verze"
+      "audioInstrumentalClean": "Čistá instrumentální verze",
+      "audioInstrumentalPillBacking": "Instrumentální (plus doprovodné vokály)",
+      "audioInstrumentalPillClean": "Instrumentální (čistá)"
     },
     "gapNavigator": {
       "previousGap": "Předchozí mezera (P)",

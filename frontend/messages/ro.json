@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Vocile de fundal păstrate în instrumental — dă click pentru a asculta această parte.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + voci de fundal",
-      "audioInstrumentalClean": "Instrumental curat"
+      "audioInstrumentalClean": "Instrumental curat",
+      "audioInstrumentalPillBacking": "Instrumental (plus voci de fundal)",
+      "audioInstrumentalPillClean": "Instrumental (curat)"
     },
     "gapNavigator": {
       "previousGap": "Golul anterior (P)",

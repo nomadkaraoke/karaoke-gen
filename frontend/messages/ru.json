@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Бэк-вокал сохранен в инструментале — нажми, чтобы послушать эту часть.",
       "audioInstrumental": "Инструментал",
       "audioInstrumentalBacking": "Инструментал + бэк-вокал",
-      "audioInstrumentalClean": "Чистый инструментал"
+      "audioInstrumentalClean": "Чистый инструментал",
+      "audioInstrumentalPillBacking": "Инструментал (с бэк-вокалом)",
+      "audioInstrumentalPillClean": "Инструментал (чистый)"
     },
     "gapNavigator": {
       "previousGap": "Предыдущий пробел (P)",

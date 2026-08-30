@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Baggrundsvokalen er bevaret i instrumentalsporet — klik for at høre denne del.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + baggrundsvokal",
-      "audioInstrumentalClean": "Ren instrumental"
+      "audioInstrumentalClean": "Ren instrumental",
+      "audioInstrumentalPillBacking": "Instrumental (plus baggrundsvokal)",
+      "audioInstrumentalPillClean": "Instrumental (ren)"
     },
     "gapNavigator": {
       "previousGap": "Forrige hul (P)",

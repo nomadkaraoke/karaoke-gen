@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Chórki zachowane w wersji instrumentalnej — kliknij, aby usłyszeć ten fragment.",
       "audioInstrumental": "Wersja instrumentalna",
       "audioInstrumentalBacking": "Wersja instrumentalna + chórki",
-      "audioInstrumentalClean": "Czysta wersja instrumentalna"
+      "audioInstrumentalClean": "Czysta wersja instrumentalna",
+      "audioInstrumentalPillBacking": "Instrumentalny (z chórkami)",
+      "audioInstrumentalPillClean": "Instrumentalny (czysty)"
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",

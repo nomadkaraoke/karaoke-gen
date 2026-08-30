@@ -1026,6 +1026,8 @@
       "audioLabel": "Preview audio:",
       "audioOriginal": "Original (with vocals)",
       "audioInstrumental": "Instrumental",
+      "audioInstrumentalPillBacking": "Instrumental (plus backing vocals)",
+      "audioInstrumentalPillClean": "Instrumental (clean)",
       "audioInstrumentalBacking": "Instrumental + backing vocals",
       "audioInstrumentalClean": "Clean instrumental",
       "backingVocalsWaveformHint": "Backing vocals kept in the instrumental — click to hear this part."

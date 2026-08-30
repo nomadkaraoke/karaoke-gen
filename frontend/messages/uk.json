@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Бек-вокал збережено в інструменталі — натисни, щоб почути цю частину.",
       "audioInstrumental": "Інструментал",
       "audioInstrumentalBacking": "Інструментал + бек-вокал",
-      "audioInstrumentalClean": "Чистий інструментал"
+      "audioInstrumentalClean": "Чистий інструментал",
+      "audioInstrumentalPillBacking": "Інструментал (з бек-вокалом)",
+      "audioInstrumentalPillClean": "Інструментал (чистий)"
     },
     "gapNavigator": {
       "previousGap": "Попередня прогалина (P)",

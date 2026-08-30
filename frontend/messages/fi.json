@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Taustalaulut on säilytetty instrumentaalissa — klikkaa kuullaksesi tämän kohdan.",
       "audioInstrumental": "Instrumentaali",
       "audioInstrumentalBacking": "Instrumentaali + taustalaulut",
-      "audioInstrumentalClean": "Puhdas instrumentaali"
+      "audioInstrumentalClean": "Puhdas instrumentaali",
+      "audioInstrumentalPillBacking": "Instrumentaali (mukana taustalaulut)",
+      "audioInstrumentalPillClean": "Instrumentaali (puhdas)"
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",

@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "इंस्ट्रुमेंटल में बैकिंग वोकल्स रखे गए हैं — इस हिस्से को सुनने के लिए क्लिक करो।",
       "audioInstrumental": "इंस्ट्रुमेंटल",
       "audioInstrumentalBacking": "इंस्ट्रुमेंटल + बैकिंग वोकल्स",
-      "audioInstrumentalClean": "क्लीन इंस्ट्रुमेंटल"
+      "audioInstrumentalClean": "क्लीन इंस्ट्रुमेंटल",
+      "audioInstrumentalPillBacking": "इंस्ट्रुमेंटल (बैकिंग वोकल्स के साथ)",
+      "audioInstrumentalPillClean": "इंस्ट्रुमेंटल (क्लीन)"
     },
     "gapNavigator": {
       "previousGap": "पिछला गैप (P)",

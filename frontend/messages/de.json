@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Hintergrundgesang im Instrumental beibehalten — klicke, um diesen Teil zu hören.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + Hintergrundgesang",
-      "audioInstrumentalClean": "Reines Instrumental"
+      "audioInstrumentalClean": "Reines Instrumental",
+      "audioInstrumentalPillBacking": "Instrumental (plus Hintergrundgesang)",
+      "audioInstrumentalPillClean": "Instrumental (rein)"
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",

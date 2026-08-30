@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "반주에 백보컬이 유지되어 있습니다 — 클릭해서 이 부분을 들어보세요.",
       "audioInstrumental": "반주",
       "audioInstrumentalBacking": "반주 + 백보컬",
-      "audioInstrumentalClean": "순수 반주"
+      "audioInstrumentalClean": "순수 반주",
+      "audioInstrumentalPillBacking": "반주 (백보컬 포함)",
+      "audioInstrumentalPillClean": "반주 (보컬 없음)"
     },
     "gapNavigator": {
       "previousGap": "이전 공백 (P)",

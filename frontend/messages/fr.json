@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Chœurs conservés dans l'instrumental — clique pour écouter cette partie.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + chœurs",
-      "audioInstrumentalClean": "Instrumental pur"
+      "audioInstrumentalClean": "Instrumental pur",
+      "audioInstrumentalPillBacking": "Instrumental (avec chœurs)",
+      "audioInstrumentalPillClean": "Instrumental (pur)"
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",

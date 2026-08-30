@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Vokal latar dikekalkan dalam instrumental — klik untuk mendengar bahagian ini.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + vokal latar",
-      "audioInstrumentalClean": "Instrumental bersih"
+      "audioInstrumentalClean": "Instrumental bersih",
+      "audioInstrumentalPillBacking": "Instrumental (dengan vokal latar)",
+      "audioInstrumentalPillClean": "Instrumental (bersih)"
     },
     "gapNavigator": {
       "previousGap": "Jurang sebelumnya (P)",

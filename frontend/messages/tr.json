@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Geri vokaller enstrümantalde bırakıldı — bu kısmı duymak için tıkla.",
       "audioInstrumental": "Enstrümantal",
       "audioInstrumentalBacking": "Enstrümantal + geri vokaller",
-      "audioInstrumentalClean": "Temiz enstrümantal"
+      "audioInstrumentalClean": "Temiz enstrümantal",
+      "audioInstrumentalPillBacking": "Enstrümantal (+ geri vokal)",
+      "audioInstrumentalPillClean": "Enstrümantal (temiz)"
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",

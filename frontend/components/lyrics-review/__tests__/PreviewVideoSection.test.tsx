@@ -191,7 +191,8 @@ describe('PreviewVideoSection', () => {
     await flush()
 
     expect(screen.getByRole('button', { name: /original \(with vocals\)/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^instrumental$/i })).toBeInTheDocument()
+    // Pill names the auto-selected variant (with_backing).
+    expect(screen.getByRole('button', { name: /instrumental \(plus backing vocals\)/i })).toBeInTheDocument()
     // Hidden stem player points at the auto-selected (with_backing) stem.
     const audio = document.querySelector('audio')
     expect(audio).not.toBeNull()
@@ -224,7 +225,8 @@ describe('PreviewVideoSection', () => {
     expect(video.muted).toBe(false)
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
-    await user.click(screen.getByRole('button', { name: /^instrumental$/i }))
+    // autoSelection=clean → pill reads "Instrumental (clean)".
+    await user.click(screen.getByRole('button', { name: /instrumental \(clean\)/i }))
     await flush()
 
     expect(video.muted).toBe(true)
@@ -243,7 +245,7 @@ describe('PreviewVideoSection', () => {
     )
     await flush()
 
-    expect(screen.getByRole('button', { name: /^instrumental$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /instrumental \(plus backing vocals\)/i })).toBeInTheDocument()
     // No decision pills here anymore — those moved to the modal's radio group.
     expect(screen.queryByRole('button', { name: /instrumental \+ backing vocals/i })).not.toBeInTheDocument()
     // Hidden stem player starts on the auto-selected (with_backing) stem.
@@ -268,6 +270,8 @@ describe('PreviewVideoSection', () => {
     const video = document.querySelector('video') as HTMLVideoElement
     expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/backing.ogg')
     expect(video.muted).toBe(false)
+    // Pill starts on the backing variant.
+    expect(screen.getByRole('button', { name: /instrumental \(plus backing vocals\)/i })).toBeInTheDocument()
 
     act(() => {
       ref.current!.auditionInstrumental('clean', 5)
@@ -278,5 +282,7 @@ describe('PreviewVideoSection', () => {
     expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/clean.ogg')
     expect(video.muted).toBe(true)
     expect(video.currentTime).toBe(5)
+    // Pill label tracks the new selection.
+    expect(screen.getByRole('button', { name: /instrumental \(clean\)/i })).toBeInTheDocument()
   })
 })

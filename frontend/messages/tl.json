@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Pinanatili ang backing vocals sa instrumental — i-click para mapakinggan ang bahaging ito.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + backing vocals",
-      "audioInstrumentalClean": "Malinis na instrumental"
+      "audioInstrumentalClean": "Malinis na instrumental",
+      "audioInstrumentalPillBacking": "Instrumental (may kasamang backing vocals)",
+      "audioInstrumentalPillClean": "Instrumental (malinis)"
     },
     "gapNavigator": {
       "previousGap": "Nakaraang gap (P)",

@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Veus de fons mantingudes a l'instrumental — fes clic per escoltar aquesta part.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + cors",
-      "audioInstrumentalClean": "Instrumental net"
+      "audioInstrumentalClean": "Instrumental net",
+      "audioInstrumentalPillBacking": "Instrumental (amb cors)",
+      "audioInstrumentalPillClean": "Instrumental (net)"
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",
