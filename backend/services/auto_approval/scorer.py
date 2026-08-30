@@ -30,6 +30,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from backend.services.auto_approval.apply import pick_accept_all_winners
 from backend.services.auto_approval.models import (
     AutoApprovabilityVerdict,
     BackingResult,
@@ -154,13 +155,20 @@ def _word_duration(word: Dict[str, Any]) -> float:
 
 def _extract_gating_signals(
     correction_data: Dict[str, Any],
+    deleted_word_ids: Optional[set] = None,
 ) -> Tuple[int, int, int, bool, float, int, int, bool]:
     """Scan corrected_segments for the two never-auto gating classes.
+
+    ``deleted_word_ids`` are words an auto-applied delete suggestion will remove
+    before any human (or the auto-shipped render) sees the lyrics — e.g. the P8
+    phantom-parenthetical fixer. Those words are excluded from the scan so a
+    phantom that WILL be deleted no longer trips the phantom gate.
 
     Returns (vocalization_word_count, vocalization_max_run, long_vocalization_word_count,
     has_vocalization_section, max_word_duration_s, absurd_duration_word_count,
     suspicious_parenthetical_count, has_phantom_signature).
     """
+    deleted = deleted_word_ids or set()
     voc_count = 0
     max_run = 0
     run = 0  # runs continue across segment boundaries (consecutive vocalization lines)
@@ -171,7 +179,8 @@ def _extract_gating_signals(
     suspicious_paren = 0
 
     for seg in correction_data.get("corrected_segments") or []:
-        words = seg.get("words") or []
+        # Only the words that survive the auto-applied deletes.
+        words = [w for w in (seg.get("words") or []) if w.get("id") not in deleted]
         for word in words:
             duration = _word_duration(word)
             max_duration = max(max_duration, duration)
@@ -190,14 +199,17 @@ def _extract_gating_signals(
                 run = 0
 
         # Phantom signature: a short parenthetical line stretched over several seconds
-        # (e.g. three "(I'm sorry)" lines, one 7.4s — corpus job 33453fa0).
-        seg_text = (seg.get("text") or "").strip()
+        # (e.g. three "(I'm sorry)" lines, one 7.4s — corpus job 33453fa0). Recompute
+        # from surviving words so a partially-deleted line is judged on what remains.
+        if not words:
+            continue
+        seg_text = " ".join((w.get("text") or "") for w in words).strip()
         if (
             seg_text.startswith("(")
             and seg_text.endswith(")")
-            and 0 < len(words) <= PHANTOM_PARENTHETICAL_MAX_WORDS
+            and len(words) <= PHANTOM_PARENTHETICAL_MAX_WORDS
         ):
-            seg_start, seg_end = seg.get("start_time"), seg.get("end_time")
+            seg_start, seg_end = words[0].get("start_time"), words[-1].get("end_time")
             if (
                 isinstance(seg_start, (int, float))
                 and isinstance(seg_end, (int, float))
@@ -236,6 +248,25 @@ def _gap_word_ids(correction_data: Dict[str, Any]) -> set:
     ids: set = set()
     for seq in correction_data.get("gap_sequences") or []:
         ids.update(seq.get("transcribed_word_ids") or [])
+    return ids
+
+
+def _deleted_word_ids(ai_suggestions: Optional[List[Dict[str, Any]]]) -> set:
+    """Word ids that an auto-applied WINNING delete suggestion will remove.
+
+    Only winners count: a delete that loses its conflict group to another
+    suggestion won't actually remove the words (the winner rewrites them
+    instead), so treating it as deleted would be optimistic. Mirrors the apply
+    step's accept-all winner selection so the scorer reasons about the exact
+    post-apply state.
+    """
+    if not ai_suggestions:
+        return set()
+    winners = set(pick_accept_all_winners(ai_suggestions))
+    ids: set = set()
+    for s in ai_suggestions:
+        if s.get("op") == "delete" and (s.get("id") in winners):
+            ids.update(s.get("word_ids") or [])
     return ids
 
 
@@ -309,7 +340,7 @@ def extract_lyrics_signals(
         absurd,
         suspicious_paren,
         has_phantom,
-    ) = _extract_gating_signals(correction_data)
+    ) = _extract_gating_signals(correction_data, _deleted_word_ids(ai_suggestions))
 
     return LyricsSignals(
         total_words=total_words,
