@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Dein Karaoke-Video verwendet:",
         "recommended": "empfohlen",
         "autoInstrumentalBacking": "Wir behalten den Hintergrundgesang im Instrumental. Hör mal rein — wenn du die Stimme des Hauptsängers heraushören kannst, wechsle oben zu „reines Instrumental“.",
-        "advancedMode": "Erweiterter Modus (Hintergrundgesang bearbeiten oder dein eigenes Instrumental hochladen)"
+        "advancedMode": "Erweiterter Modus (Hintergrundgesang bearbeiten oder dein eigenes Instrumental hochladen)",
+        "chooseInstrumentalPrompt": "Hör rein und wähle, welches Instrumental dein Video verwenden soll."
       },
       "searchLyrics": {
         "artist": "Künstler",

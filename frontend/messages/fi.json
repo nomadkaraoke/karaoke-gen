@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Karaokevideossasi käytetään:",
         "recommended": "suositeltu",
         "autoInstrumentalBacking": "Säilytämme taustalaulut instrumentaalissa. Kuuntele — jos päälaulajan ääni kuuluu läpi, vaihda yllä olevaan ”Puhdas instrumentaali” -vaihtoehtoon.",
-        "advancedMode": "Edistynyt tila (muokkaa taustalauluja tai lataa oma instrumentaaliversiosi)"
+        "advancedMode": "Edistynyt tila (muokkaa taustalauluja tai lataa oma instrumentaaliversiosi)",
+        "chooseInstrumentalPrompt": "Kuuntele ja valitse, mitä instrumentaaliversiota videossasi käytetään."
       },
       "searchLyrics": {
         "artist": "Esittäjä",

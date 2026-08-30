@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Je karaokevideo gebruikt:",
         "recommended": "aanbevolen",
         "autoInstrumentalBacking": "We laten de achtergrondzang in de instrumentale versie staan. Luister even — als je de stem van de leadzanger er nog doorheen hoort, kies dan hierboven voor “Schone instrumentale versie”.",
-        "advancedMode": "Geavanceerde modus (bewerk achtergrondzang of upload je eigen instrumentale versie)"
+        "advancedMode": "Geavanceerde modus (bewerk achtergrondzang of upload je eigen instrumentale versie)",
+        "chooseInstrumentalPrompt": "Luister even en kies welke instrumentale versie je voor je video wilt gebruiken."
       },
       "searchLyrics": {
         "artist": "Artiest",

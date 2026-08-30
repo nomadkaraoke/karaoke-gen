@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Seu vídeo de karaokê usará:",
         "recommended": "recomendado",
         "autoInstrumentalBacking": "Estamos mantendo os vocais de apoio no instrumental. Dê uma ouvida — se você conseguir ouvir a voz do vocalista principal, mude para “Instrumental limpo” acima.",
-        "advancedMode": "Modo avançado (edite os vocais de apoio ou envie seu próprio instrumental)"
+        "advancedMode": "Modo avançado (edite os vocais de apoio ou envie seu próprio instrumental)",
+        "chooseInstrumentalPrompt": "Ouça e escolha qual instrumental o seu vídeo deve usar."
       },
       "searchLyrics": {
         "artist": "Artista",

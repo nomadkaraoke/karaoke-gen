@@ -167,10 +167,11 @@ export default function LyricsAnalyzer({
   // never shown. The reviewer can opt back in via a "review instrumental anyway"
   // toggle in the finish modal (the verdict is confident, not infallible).
   const [reviewInstrumentalAnyway, setReviewInstrumentalAnyway] = useState(false)
-  // Inline single-click override in the finish modal: when the confident backing
-  // verdict is with_backing, let the reviewer switch to the clean instrumental
-  // (submits "clean" instead of "auto") without visiting the instrumental screen.
-  const [useCleanOverride, setUseCleanOverride] = useState(false)
+  // The reviewer's inline instrumental pick in the finish modal ("clean" |
+  // "with_backing"), or null to use the recommended default. Completing the review
+  // submits this concrete selection so the /instrumental screen is only needed for
+  // the "Advanced mode" opt-in (section muting / custom upload).
+  const [instrumentalChoice, setInstrumentalChoice] = useState<'clean' | 'with_backing' | null>(null)
 
   const [vocalsAudioUrl, setVocalsAudioUrl] = useState<string | null>(null)
 
@@ -296,6 +297,35 @@ export default function LyricsAnalyzer({
     Boolean(jobId) &&
     !hasExistingInstrumental &&
     Boolean(data.auto_approval?.backing?.confident)
+
+  // Inline instrumental choice: offer the clean-vs-with-backing picker in the finish
+  // modal whenever BOTH stems exist — even when the auto-scorer wasn't confident — so
+  // the reviewer never has to visit the heavy /instrumental screen just to make the
+  // basic choice. That screen becomes the "Advanced mode" opt-in.
+  const instrumentalStemOptions = data.instrumental_options ?? []
+  const hasCleanStem = instrumentalStemOptions.some((o) => o.id === 'clean' && o.audio_url)
+  const hasBackingStem = instrumentalStemOptions.some((o) => o.id === 'with_backing' && o.audio_url)
+  const offerInlineInstrumentalChoice =
+    !isReadOnly && !isLocalMode && Boolean(jobId) && !hasExistingInstrumental && hasCleanStem && hasBackingStem
+
+  // Which instrumental to preselect / recommend: the confident server resolution,
+  // else the backing-vocals analysis's recommendation, else keep backing where a
+  // backing stem exists ("retain where possible"), falling back to clean. Both
+  // sources can carry non-stem values (null / "review_needed"), so validate.
+  const asStem = (v: unknown): 'clean' | 'with_backing' | undefined =>
+    v === 'clean' || v === 'with_backing' ? v : undefined
+  const rawRecommended =
+    asStem(data.auto_approval?.backing?.resolved_selection) ??
+    asStem(data.backing_vocals_analysis?.recommended_selection) ??
+    (hasBackingStem ? 'with_backing' : 'clean')
+  // Clamp to a stem that actually exists.
+  const recommendedInstrumental: 'clean' | 'with_backing' =
+    rawRecommended === 'with_backing' && !hasBackingStem
+      ? 'clean'
+      : rawRecommended === 'clean' && !hasCleanStem && hasBackingStem
+        ? 'with_backing'
+        : rawRecommended
+  const currentInstrumental: 'clean' | 'with_backing' = instrumentalChoice ?? recommendedInstrumental
 
   // Close the run modal once suggestions arrive (panel takes over)
   useEffect(() => {
@@ -1096,16 +1126,18 @@ export default function LyricsAnalyzer({
           toast.error('Failed to start video generation. Please try again.')
           setIsSubmitting(false) // Keep modal open so the user can retry
         }
-      } else if (autoInstrumentalConfident && !reviewInstrumentalAnyway && jobId) {
-        // Per-screen skip (C1): the backing decision was confidently auto-resolved
-        // -> complete the review now and skip the instrumental screen entirely.
-        // "auto" lets the backend resolve the stored verdict; the inline override
-        // sends "clean" explicitly when the reviewer switched away from backing.
-        const selection = useCleanOverride ? 'clean' : 'auto'
+      } else if ((offerInlineInstrumentalChoice || autoInstrumentalConfident) && !reviewInstrumentalAnyway && jobId) {
+        // Inline instrumental choice: complete the review now with the reviewer's
+        // pick (or the recommended default) and skip the /instrumental screen.
+        // When both stems exist we submit the concrete selection; the confident
+        // single-stem case falls back to "auto" (backend resolves the verdict).
+        const selection = offerInlineInstrumentalChoice ? currentInstrumental : 'auto'
         toast.success(
-          useCleanOverride
+          selection === 'clean'
             ? 'Lyrics saved! Using clean instrumental, generating video...'
-            : 'Lyrics saved! Instrumental auto-selected, generating video...'
+            : selection === 'with_backing'
+              ? 'Lyrics saved! Using instrumental with backing vocals, generating video...'
+              : 'Lyrics saved! Instrumental auto-selected, generating video...'
         )
         try {
           const correctionData = await lyricsReviewApi.getCorrectionData(jobId)
@@ -1113,9 +1145,9 @@ export default function LyricsAnalyzer({
           setShowSuccess(true)
           setCountdown(3)
         } catch (err) {
-          // Fall back to the manual instrumental screen if auto-resolution fails
-          // (e.g. the verdict wasn't resolvable server-side) — never strand the user.
-          console.error('Auto instrumental selection failed, falling back to review:', err)
+          // Fall back to the manual instrumental screen if completion fails
+          // (e.g. the selected stem is unexpectedly missing) — never strand the user.
+          console.error('Inline instrumental selection failed, falling back to review:', err)
           setIsReviewModalOpen(false)
           setIsSubmitting(false)
           toast('Please choose your instrumental to finish.')
@@ -1145,7 +1177,7 @@ export default function LyricsAnalyzer({
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, reviewInstrumentalAnyway, useCleanOverride])
+  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, offerInlineInstrumentalChoice, currentInstrumental, reviewInstrumentalAnyway])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
@@ -1693,13 +1725,14 @@ export default function LyricsAnalyzer({
           apiClient={apiClient}
           timingOffsetMs={timingOffsetMs}
           isDuet={isDuet}
-          completesReview={hasExistingInstrumental || (autoInstrumentalConfident && !reviewInstrumentalAnyway)}
-          autoInstrumentalConfident={autoInstrumentalConfident}
-          autoInstrumentalSelection={data.auto_approval?.backing?.resolved_selection ?? null}
+          completesReview={hasExistingInstrumental || ((offerInlineInstrumentalChoice || autoInstrumentalConfident) && !reviewInstrumentalAnyway)}
+          offerInlineChoice={offerInlineInstrumentalChoice}
+          autoConfident={autoInstrumentalConfident}
+          recommendedSelection={recommendedInstrumental}
+          currentSelection={currentInstrumental}
+          onSelectInstrumental={setInstrumentalChoice}
           reviewInstrumentalAnyway={reviewInstrumentalAnyway}
           onToggleReviewInstrumental={setReviewInstrumentalAnyway}
-          cleanOverride={useCleanOverride}
-          onInstrumentalChoiceChange={(choice) => setUseCleanOverride(choice === 'clean')}
         />
 
         <AddLyricsModal

@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "노래방 비디오에 다음이 사용됩니다:",
         "recommended": "추천",
         "autoInstrumentalBacking": "반주에 백보컬을 남겨두었습니다. 한번 들어보시고 메인 보컬의 목소리가 들린다면, 상단의 “Clean instrumental”로 변경해 주세요.",
-        "advancedMode": "고급 모드 (백보컬 편집 또는 직접 반주 업로드)"
+        "advancedMode": "고급 모드 (백보컬 편집 또는 직접 반주 업로드)",
+        "chooseInstrumentalPrompt": "들어보시고 영상에 사용할 반주를 선택해 주세요."
       },
       "searchLyrics": {
         "artist": "아티스트",

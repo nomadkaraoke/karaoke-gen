@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Video karaoke của bạn sẽ sử dụng:",
         "recommended": "khuyên dùng",
         "autoInstrumentalBacking": "Chúng tôi đang giữ lại phần hát bè trong bản nhạc nền. Hãy nghe thử nhé — nếu bạn vẫn nghe thấy giọng ca sĩ chính, hãy chuyển sang “Nhạc nền sạch” ở bên trên.",
-        "advancedMode": "Chế độ nâng cao (chỉnh sửa giọng bè hoặc tải lên nhạc nền của riêng bạn)"
+        "advancedMode": "Chế độ nâng cao (chỉnh sửa giọng bè hoặc tải lên nhạc nền của riêng bạn)",
+        "chooseInstrumentalPrompt": "Hãy nghe thử và chọn bản nhạc nền cho video của bạn."
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

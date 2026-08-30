@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Ve tvém karaoke videu se použije:",
         "recommended": "doporučeno",
         "autoInstrumentalBacking": "V instrumentální verzi ponecháváme doprovodné vokály. Poslechni si to — pokud v ní slyšíš hlas hlavního zpěváka, přepni výše na možnost „Čistá instrumentální verze“.",
-        "advancedMode": "Pokročilý režim (uprav doprovodné vokály nebo nahraj vlastní instrumentální verzi)"
+        "advancedMode": "Pokročilý režim (uprav doprovodné vokály nebo nahraj vlastní instrumentální verzi)",
+        "chooseInstrumentalPrompt": "Poslechni si to a vyber, kterou instrumentální verzi má tvé video použít."
       },
       "searchLyrics": {
         "artist": "Interpret",

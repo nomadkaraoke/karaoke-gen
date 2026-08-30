@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Din karaokevideo vil bruge:",
         "recommended": "anbefales",
         "autoInstrumentalBacking": "Vi beholder baggrundsvokalerne i instrumentalen. Prøv at lytte — hvis du kan høre forsangerens stemme trænge igennem, så skift til “Ren instrumental” ovenfor.",
-        "advancedMode": "Avanceret tilstand (rediger baggrundsvokaler eller upload dit eget instrumentalspor)"
+        "advancedMode": "Avanceret tilstand (rediger baggrundsvokaler eller upload dit eget instrumentalspor)",
+        "chooseInstrumentalPrompt": "Prøv at lytte, og vælg hvilket instrumentalspor din video skal bruge."
       },
       "searchLyrics": {
         "artist": "Kunstner",

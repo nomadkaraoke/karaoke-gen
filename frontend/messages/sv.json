@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Din karaokevideo kommer att använda:",
         "recommended": "rekommenderas",
         "autoInstrumentalBacking": "Vi behåller bakgrundssången i instrumentalversionen. Lyssna — om du hör huvudsångarens röst tränga igenom, byt till ”Ren instrumental” ovan.",
-        "advancedMode": "Avancerat läge (redigera bakgrundssång eller ladda upp ditt eget instrumentalspår)"
+        "advancedMode": "Avancerat läge (redigera bakgrundssång eller ladda upp ditt eget instrumentalspår)",
+        "chooseInstrumentalPrompt": "Lyssna och välj vilken instrumentalversion din video ska använda."
       },
       "searchLyrics": {
         "artist": "Artist",

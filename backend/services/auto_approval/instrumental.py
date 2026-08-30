@@ -79,6 +79,38 @@ def backing_decision(
     return {"ok": True, "selection": "clean", "keep_backing": False}
 
 
+def _backing_verdict_with_late_analysis(job, aa: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the stored backing verdict, re-derived from the backing-vocals
+    analysis when that analysis arrived *after* the verdict was scored.
+
+    The auto-approval verdict is scored by ``screens_worker`` on lyrics completion.
+    When audio separation is still running at that point the backing-vocals analysis
+    isn't available yet, so the backing half is (correctly) scored ``review``. The
+    ``audio_worker`` re-score is meant to fix this once the analysis lands, but it is
+    skipped when a human has already opened the editor (the job is ``IN_REVIEW``, not
+    ``AWAITING_REVIEW``) — leaving a stale "no backing analysis" verdict forever.
+
+    Whenever the stored verdict was scored without the analysis but the analysis now
+    exists on the job, re-run the (pure) backing scorer so the instrumental half of
+    the review reflects reality. Read-only: enforcement/auto-complete is unaffected.
+    """
+    backing = aa.get("backing") or {}
+    if aa.get("backing_analysis_available"):
+        return backing
+    state = getattr(job, "state_data", None) or {}
+    analysis = state.get("backing_vocals_analysis")
+    if not analysis:
+        return backing
+    from backend.services.auto_approval.scorer import score_backing
+
+    fresh = score_backing(analysis)
+    return {
+        **backing,
+        "verdict": fresh.verdict.value,
+        "non_subjective": fresh.non_subjective,
+    }
+
+
 def auto_approval_summary(job, settings) -> Dict[str, Any]:
     """Compact block for the ``/correction-data`` response (C1 per-screen skip).
 
@@ -87,7 +119,7 @@ def auto_approval_summary(job, settings) -> Dict[str, Any]:
     confidently resolved (so it can skip that screen).
     """
     aa = (getattr(job, "processing_metadata", None) or {}).get("auto_approval") or {}
-    backing = aa.get("backing") or {}
+    backing = _backing_verdict_with_late_analysis(job, aa)
     lyrics = aa.get("lyrics") or {}
     custom = has_custom_instrumental(job)
 

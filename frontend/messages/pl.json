@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "W Twoim wideo karaoke wykorzystamy:",
         "recommended": "zalecane",
         "autoInstrumentalBacking": "Zostawiamy chórki w podkładzie. Posłuchaj — jeśli słyszysz przebijający się głos głównego wokalisty, przełącz na „Czysty podkład” powyżej.",
-        "advancedMode": "Tryb zaawansowany (edytuj chórki lub prześlij własny podkład)"
+        "advancedMode": "Tryb zaawansowany (edytuj chórki lub prześlij własny podkład)",
+        "chooseInstrumentalPrompt": "Posłuchaj i wybierz, którego podkładu chcesz użyć w swoim wideo."
       },
       "searchLyrics": {
         "artist": "Wykonawca",

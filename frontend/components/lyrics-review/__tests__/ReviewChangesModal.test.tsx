@@ -127,50 +127,47 @@ describe('ReviewChangesModal', () => {
     expect(screen.getByText(/manual corrections detected/i)).toBeInTheDocument()
   })
 
-  it('renders the backing-vocals waveform when backing is kept and waveform data is available', () => {
+  const bothStems = [
+    { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
+    { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
+  ]
+  const waveformApiClient = () => ({
+    generatePreviewVideo: jest.fn(),
+    getPreviewVideoStatus: jest.fn(),
+    getPreviewVideoUrl: jest.fn(),
+    getWaveformData: jest.fn().mockResolvedValue({ amplitudes: [0.1, 0.2], duration_seconds: 10 }),
+  })
+
+  it('renders the backing-vocals waveform when backing is the current selection', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
-    const apiClient = {
-      generatePreviewVideo: jest.fn(),
-      getPreviewVideoStatus: jest.fn(),
-      getPreviewVideoUrl: jest.fn(),
-      getWaveformData: jest.fn().mockResolvedValue({ amplitudes: [0.1, 0.2], duration_seconds: 10 }),
-    }
+    const apiClient = waveformApiClient()
     render(
       <ReviewChangesModal
         {...defaultProps}
         apiClient={apiClient as any}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
-        data={makeData({
-          corrected_segments: segments as any,
-          instrumental_options: [
-            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
-            { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
-          ] as any,
-        })}
+        offerInlineChoice
+        autoConfident
+        recommendedSelection="with_backing"
+        currentSelection="with_backing"
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
-    // Hint text from BackingVocalsWaveform
     expect(screen.getByText(/click to hear this part/i)).toBeInTheDocument()
     expect(apiClient.getWaveformData).toHaveBeenCalled()
   })
 
-  it('does not render the backing-vocals waveform when the backing stem URL is unavailable', () => {
+  it('does not render the backing-vocals waveform when the backing stem is unavailable', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
-    const apiClient = {
-      generatePreviewVideo: jest.fn(),
-      getPreviewVideoStatus: jest.fn(),
-      getPreviewVideoUrl: jest.fn(),
-      getWaveformData: jest.fn().mockResolvedValue({ amplitudes: [0.1], duration_seconds: 10 }),
-    }
+    const apiClient = waveformApiClient()
     render(
       <ReviewChangesModal
         {...defaultProps}
         apiClient={apiClient as any}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
+        autoConfident
+        recommendedSelection="clean"
+        currentSelection="clean"
         data={makeData({
           corrected_segments: segments as any,
           instrumental_options: [{ id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' }] as any,
@@ -181,33 +178,27 @@ describe('ReviewChangesModal', () => {
     expect(apiClient.getWaveformData).not.toHaveBeenCalled()
   })
 
-  it('does not render the backing-vocals waveform when the clean instrumental was chosen', () => {
+  it('does not render the backing-vocals waveform when clean is the current selection', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
-    const apiClient = {
-      generatePreviewVideo: jest.fn(),
-      getPreviewVideoStatus: jest.fn(),
-      getPreviewVideoUrl: jest.fn(),
-      getWaveformData: jest.fn().mockResolvedValue({ amplitudes: [0.1], duration_seconds: 10 }),
-    }
+    const apiClient = waveformApiClient()
     render(
       <ReviewChangesModal
         {...defaultProps}
         apiClient={apiClient as any}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="clean"
-        data={makeData({ corrected_segments: segments as any })}
+        offerInlineChoice
+        currentSelection="clean"
+        recommendedSelection="with_backing"
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
     expect(screen.queryByText(/click to hear this part/i)).not.toBeInTheDocument()
-    expect(apiClient.getWaveformData).not.toHaveBeenCalled()
   })
 
   it('calls onSubmit when button clicked with valid segments', async () => {
     const user = userEvent.setup()
     const onSubmit = jest.fn()
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
-
     render(
       <ReviewChangesModal
         {...defaultProps}
@@ -215,7 +206,6 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any })}
       />
     )
-
     await user.click(screen.getByRole('button', { name: /proceed to instrumental/i }))
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
@@ -229,85 +219,66 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any })}
       />
     )
-
     expect(screen.getByRole('button', { name: /complete track/i })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: /proceed to instrumental/i })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /proceed to instrumental/i })).not.toBeInTheDocument()
   })
 
-  // Per-screen skip (C1): backing decision auto-resolved. The final-output choice
-  // is a single radio group ("Your karaoke video will use:") whose recommended
-  // option is the auto-selected instrumental; "Advanced mode" is the escape hatch.
-  it('shows the final-output radio group + backing note when backing is confident', () => {
+  it('shows the chooser with a green "recommended" badge + backing note when confident', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal
         {...defaultProps}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
-        data={makeData({ corrected_segments: segments as any })}
+        offerInlineChoice
+        autoConfident
+        recommendedSelection="with_backing"
+        currentSelection="with_backing"
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
     expect(screen.getByRole('button', { name: /complete track/i })).toBeInTheDocument()
     expect(screen.getByText(/your karaoke video will use/i)).toBeInTheDocument()
-    // Recommended option = backing; escape hatch = Advanced mode.
-    const backingRadio = screen.getByRole('radio', { name: /instrumental \+ backing vocals/i })
-    expect(backingRadio).toBeChecked()
+    expect(screen.getByRole('radio', { name: /instrumental \+ backing vocals/i })).toBeChecked()
+    expect(screen.getByText(/recommended/i)).toBeInTheDocument()
+    expect(screen.queryByText(/^suggested$/i)).not.toBeInTheDocument()
     expect(screen.getByText(/backing vocals in the instrumental/i)).toBeInTheDocument()
     expect(
       screen.getByRole('radio', { name: /advanced mode \(edit backing vocals or upload your own instrumental\)/i })
     ).toBeInTheDocument()
   })
 
-  it('offers a Clean instrumental radio only when a clean stem exists alongside backing', () => {
+  it('shows the chooser with a preselected default and no badge when NOT confident', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal
         {...defaultProps}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
-        data={makeData({
-          corrected_segments: segments as any,
-          instrumental_options: [
-            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
-            { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
-          ] as any,
-        })}
+        offerInlineChoice
+        recommendedSelection="with_backing"
+        currentSelection="with_backing"
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
+    expect(screen.getByRole('radio', { name: /instrumental \+ backing vocals/i })).toBeChecked()
     expect(screen.getByRole('radio', { name: /^clean instrumental$/i })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /advanced mode/i })).toBeInTheDocument()
+    // No "recommended" badge when the scorer wasn't confident — just the neutral
+    // prompt and a preselected default.
+    expect(screen.queryByText(/recommended/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/have a listen and choose/i)).toBeInTheDocument()
   })
 
-  it('reflects the clean choice in the note when the reviewer selects the clean radio', () => {
-    // The decision state is owned by LyricsAnalyzer and passed via cleanOverride;
-    // selecting clean marks that radio and swaps the note.
+  it('checks the clean radio when clean is the current selection', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
-    const options = [
-      { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
-      { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
-    ]
-    const { rerender } = render(
+    render(
       <ReviewChangesModal
         {...defaultProps}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
-        data={makeData({ corrected_segments: segments as any, instrumental_options: options as any })}
-      />
-    )
-    expect(screen.getByText(/backing vocals in the instrumental/i)).toBeInTheDocument()
-
-    rerender(
-      <ReviewChangesModal
-        {...defaultProps}
-        completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
-        cleanOverride
-        data={makeData({ corrected_segments: segments as any, instrumental_options: options as any })}
+        offerInlineChoice
+        autoConfident
+        recommendedSelection="with_backing"
+        currentSelection="clean"
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
     expect(screen.getByRole('radio', { name: /^clean instrumental$/i })).toBeChecked()
@@ -316,65 +287,61 @@ describe('ReviewChangesModal', () => {
 
   it('selecting the clean radio reports the choice and clears the review-anyway flag', async () => {
     const user = userEvent.setup()
-    const onInstrumentalChoiceChange = jest.fn()
+    const onSelectInstrumental = jest.fn()
     const onToggleReviewInstrumental = jest.fn()
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal
         {...defaultProps}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
-        onInstrumentalChoiceChange={onInstrumentalChoiceChange}
+        offerInlineChoice
+        recommendedSelection="with_backing"
+        currentSelection="with_backing"
+        onSelectInstrumental={onSelectInstrumental}
         onToggleReviewInstrumental={onToggleReviewInstrumental}
-        data={makeData({
-          corrected_segments: segments as any,
-          instrumental_options: [
-            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
-            { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
-          ] as any,
-        })}
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
     await user.click(screen.getByRole('radio', { name: /^clean instrumental$/i }))
-    expect(onInstrumentalChoiceChange).toHaveBeenCalledWith('clean')
+    expect(onSelectInstrumental).toHaveBeenCalledWith('clean')
     expect(onToggleReviewInstrumental).toHaveBeenCalledWith(false)
   })
 
-  it('uses the clean-case Advanced-mode wording when clean is already the default', () => {
+  it('selecting the backing radio reports with_backing', async () => {
+    const user = userEvent.setup()
+    const onSelectInstrumental = jest.fn()
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal
         {...defaultProps}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="clean"
-        data={makeData({
-          corrected_segments: segments as any,
-          instrumental_options: [
-            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
-          ] as any,
-        })}
+        offerInlineChoice
+        recommendedSelection="clean"
+        currentSelection="clean"
+        onSelectInstrumental={onSelectInstrumental}
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
+      />
+    )
+    await user.click(screen.getByRole('radio', { name: /instrumental \+ backing vocals/i }))
+    expect(onSelectInstrumental).toHaveBeenCalledWith('with_backing')
+  })
+
+  it('uses the clean-context Advanced-mode wording when clean is recommended', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        offerInlineChoice
+        autoConfident
+        recommendedSelection="clean"
+        currentSelection="clean"
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
     expect(
       screen.getByRole('radio', { name: /advanced mode \(review or upload a custom instrumental\)/i })
     ).toBeInTheDocument()
-    // No clean-override radio when clean is already the recommended default.
-    expect(screen.queryByRole('radio', { name: /^clean instrumental$/i })).not.toBeInTheDocument()
-  })
-
-  it('shows the clean-instrumental note when the resolved selection is clean', () => {
-    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
-    render(
-      <ReviewChangesModal
-        {...defaultProps}
-        completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="clean"
-        data={makeData({ corrected_segments: segments as any })}
-      />
-    )
     expect(screen.getByText(/we'll use the clean instrumental/i)).toBeInTheDocument()
   })
 
@@ -386,17 +353,18 @@ describe('ReviewChangesModal', () => {
       <ReviewChangesModal
         {...defaultProps}
         completesReview
-        autoInstrumentalConfident
-        autoInstrumentalSelection="with_backing"
+        offerInlineChoice
+        recommendedSelection="with_backing"
+        currentSelection="with_backing"
         onToggleReviewInstrumental={onToggleReviewInstrumental}
-        data={makeData({ corrected_segments: segments as any })}
+        data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
     await user.click(screen.getByRole('radio', { name: /advanced mode/i }))
     expect(onToggleReviewInstrumental).toHaveBeenCalledWith(true)
   })
 
-  it('hides the final-output radio group when backing is not confident', () => {
+  it('hides the chooser when neither confident nor both stems are available', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal

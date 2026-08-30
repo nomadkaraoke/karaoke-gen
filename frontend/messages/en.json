@@ -1241,6 +1241,7 @@
         "autoInstrumentalCleanChosen": "You've chosen the clean instrumental (no backing vocals) for this track.",
         "saving": "Saving...",
         "finalChoiceLabel": "Your karaoke video will use:",
+        "chooseInstrumentalPrompt": "Have a listen and choose which instrumental your video should use.",
         "recommended": "recommended",
         "advancedMode": "Advanced mode (edit backing vocals or upload your own instrumental)",
         "advancedModeClean": "Advanced mode (review or upload a custom instrumental)"
