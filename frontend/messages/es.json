@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Coros mantenidos en el instrumental — haz clic para escuchar esta parte.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + coros",
-      "audioInstrumentalClean": "Instrumental limpio"
+      "audioInstrumentalClean": "Instrumental limpio",
+      "audioInstrumentalPillBacking": "Instrumental (con coros)",
+      "audioInstrumentalPillClean": "Instrumental (limpio)"
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",

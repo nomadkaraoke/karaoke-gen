@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Vocais de apoio mantidos no instrumental — clique para ouvir esta parte.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + vocais de apoio",
-      "audioInstrumentalClean": "Instrumental limpo"
+      "audioInstrumentalClean": "Instrumental limpo",
+      "audioInstrumentalPillBacking": "Instrumental (com vocais de apoio)",
+      "audioInstrumentalPillClean": "Instrumental (limpo)"
     },
     "gapNavigator": {
       "previousGap": "Lacuna anterior (P)",

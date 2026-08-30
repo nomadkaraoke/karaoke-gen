@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Bakgrundssången finns kvar i instrumentalen — klicka för att höra den här delen.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + bakgrundssång",
-      "audioInstrumentalClean": "Ren instrumental"
+      "audioInstrumentalClean": "Ren instrumental",
+      "audioInstrumentalPillBacking": "Instrumental (plus bakgrundssång)",
+      "audioInstrumentalPillClean": "Instrumental (ren)"
     },
     "gapNavigator": {
       "previousGap": "Föregående lucka (P)",

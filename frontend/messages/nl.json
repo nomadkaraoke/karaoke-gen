@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Achtergrondzang behouden in de instrumentale versie — klik om dit deel te horen.",
       "audioInstrumental": "Instrumentaal",
       "audioInstrumentalBacking": "Instrumentaal + achtergrondzang",
-      "audioInstrumentalClean": "Puur instrumentaal"
+      "audioInstrumentalClean": "Puur instrumentaal",
+      "audioInstrumentalPillBacking": "Instrumentaal (plus achtergrondzang)",
+      "audioInstrumentalPillClean": "Instrumentaal (clean)"
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",

@@ -106,6 +106,16 @@ function PreviewVideoSection(
   const selectedOption = options.find((o) => o.id === selectedId) ?? defaultOption
   const instrumentalUrl = selectedOption?.audio_url ?? null
 
+  // The "Instrumental" preview pill names the variant it will play so it's clear
+  // whether you're auditioning the clean or the with-backing stem (it tracks the
+  // reviewer's final-output choice in the modal below).
+  const instrumentalPillLabel =
+    selectedOption?.id === 'with_backing'
+      ? t('audioInstrumentalPillBacking')
+      : selectedOption?.id === 'clean'
+        ? t('audioInstrumentalPillClean')
+        : t('audioInstrumental')
+
   const setVideoEl = useCallback(
     (el: HTMLVideoElement | null) => {
       internalVideoRef.current = el
@@ -338,7 +348,9 @@ function PreviewVideoSection(
             controls
             autoPlay
             src={previewState.videoUrl}
-            className="block w-full h-auto"
+            // Cap the height so the audio toggle + final-output choice below stay
+            // visible without scrolling; keep the aspect ratio (works for portrait too).
+            className="mx-auto block h-auto max-h-[45vh] w-auto max-w-full"
           >
             {t('unsupportedBrowser')}
           </video>
@@ -376,7 +388,7 @@ function PreviewVideoSection(
                   : 'bg-muted text-muted-foreground hover:bg-muted/70'
               }`}
             >
-              {t('audioInstrumental')}
+              {instrumentalPillLabel}
             </button>
           </div>
         </div>

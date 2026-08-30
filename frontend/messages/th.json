@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "เสียงร้องประสานยังคงอยู่ในเสียงดนตรี — คลิกเพื่อฟังท่อนนี้",
       "audioInstrumental": "ดนตรีบรรเลง",
       "audioInstrumentalBacking": "ดนตรีบรรเลง + เสียงร้องประสาน",
-      "audioInstrumentalClean": "ดนตรีบรรเลงล้วน"
+      "audioInstrumentalClean": "ดนตรีบรรเลงล้วน",
+      "audioInstrumentalPillBacking": "ดนตรีบรรเลง (พร้อมเสียงร้องประสาน)",
+      "audioInstrumentalPillClean": "ดนตรีบรรเลง (ไม่มีเสียงร้อง)"
     },
     "gapNavigator": {
       "previousGap": "ช่องว่างก่อนหน้า (P)",

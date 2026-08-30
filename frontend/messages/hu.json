@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "A háttérvokálok megmaradtak az instrumentális sávban — kattints ide, hogy meghallgasd ezt a részt.",
       "audioInstrumental": "Instrumentális",
       "audioInstrumentalBacking": "Zenei alap + háttérvokál",
-      "audioInstrumentalClean": "Tiszta zenei alap"
+      "audioInstrumentalClean": "Tiszta zenei alap",
+      "audioInstrumentalPillBacking": "Instrumentális (plusz háttérvokál)",
+      "audioInstrumentalPillClean": "Instrumentális (tiszta)"
     },
     "gapNavigator": {
       "previousGap": "Előző hézag (P)",

@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "تم الاحتفاظ بالأصوات الخلفية في الموسيقى — انقر للاستماع إلى هذا الجزء.",
       "audioInstrumental": "موسيقى (بدون غناء)",
       "audioInstrumentalBacking": "موسيقى + أصوات مساندة",
-      "audioInstrumentalClean": "موسيقى نقية"
+      "audioInstrumentalClean": "موسيقى نقية",
+      "audioInstrumentalPillBacking": "موسيقى (مع غناء مساند)",
+      "audioInstrumentalPillClean": "موسيقى (صافية)"
     },
     "gapNavigator": {
       "previousGap": "الفجوة السابقة (P)",

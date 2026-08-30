@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Τα δεύτερα φωνητικά διατηρήθηκαν στο ορχηστρικό — κάνε κλικ για να ακούσεις αυτό το μέρος.",
       "audioInstrumental": "Ορχηστρικό",
       "audioInstrumentalBacking": "Ορχηστρικό + δεύτερες φωνές",
-      "audioInstrumentalClean": "Καθαρό ορχηστρικό"
+      "audioInstrumentalClean": "Καθαρό ορχηστρικό",
+      "audioInstrumentalPillBacking": "Ορχηστρικό (με δεύτερες φωνές)",
+      "audioInstrumentalPillClean": "Ορχηστρικό (καθαρό)"
     },
     "gapNavigator": {
       "previousGap": "Προηγούμενο κενό (P)",

@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "伴奏中保留了伴唱——点击试听此部分。",
       "audioInstrumental": "伴奏",
       "audioInstrumentalBacking": "伴奏 + 伴唱",
-      "audioInstrumentalClean": "纯伴奏"
+      "audioInstrumentalClean": "纯伴奏",
+      "audioInstrumentalPillBacking": "伴奏（含伴唱）",
+      "audioInstrumentalPillClean": "伴奏（纯净）"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",

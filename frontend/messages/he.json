@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "קולות רקע נשמרו בגרסה האינסטרומנטלית — לחצו כדי לשמוע חלק זה.",
       "audioInstrumental": "אינסטרומנטלי",
       "audioInstrumentalBacking": "אינסטרומנטלי + קולות רקע",
-      "audioInstrumentalClean": "אינסטרומנטלי נקי"
+      "audioInstrumentalClean": "אינסטרומנטלי נקי",
+      "audioInstrumentalPillBacking": "אינסטרומנטלי (כולל קולות רקע)",
+      "audioInstrumentalPillClean": "אינסטרומנטלי (נקי)"
     },
     "gapNavigator": {
       "previousGap": "פער קודם (P)",

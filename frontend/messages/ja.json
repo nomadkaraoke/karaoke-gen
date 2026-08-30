@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "インスト音源に残っているバックコーラス — クリックするとこの部分を試聴できます。",
       "audioInstrumental": "インストゥルメンタル",
       "audioInstrumentalBacking": "インストゥルメンタル + バックボーカル",
-      "audioInstrumentalClean": "インストゥルメンタルのみ"
+      "audioInstrumentalClean": "インストゥルメンタルのみ",
+      "audioInstrumentalPillBacking": "インストゥルメンタル（バックボーカル入り）",
+      "audioInstrumentalPillClean": "インストゥルメンタル（バックボーカルなし）"
     },
     "gapNavigator": {
       "previousGap": "前のギャップ (P)",

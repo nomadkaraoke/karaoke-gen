@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Prateći vokali zadržani u instrumentalu — klikni da čuješ ovaj dio.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + prateći vokali",
-      "audioInstrumentalClean": "Čisti instrumental"
+      "audioInstrumentalClean": "Čisti instrumental",
+      "audioInstrumentalPillBacking": "Instrumental (s pratećim vokalima)",
+      "audioInstrumentalPillClean": "Instrumental (čisti)"
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",

@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Cori mantenuti nella base strumentale — clicca per ascoltare questa parte.",
       "audioInstrumental": "Strumentale",
       "audioInstrumentalBacking": "Strumentale + cori",
-      "audioInstrumentalClean": "Strumentale pulita"
+      "audioInstrumentalClean": "Strumentale pulita",
+      "audioInstrumentalPillBacking": "Strumentale (con cori)",
+      "audioInstrumentalPillClean": "Strumentale (pulita)"
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",

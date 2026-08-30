@@ -1016,7 +1016,9 @@
       "backingVocalsWaveformHint": "Giọng hát bè được giữ lại trong nhạc nền — nhấp để nghe phần này.",
       "audioInstrumental": "Nhạc nền",
       "audioInstrumentalBacking": "Nhạc nền + hát bè",
-      "audioInstrumentalClean": "Nhạc nền thuần"
+      "audioInstrumentalClean": "Nhạc nền thuần",
+      "audioInstrumentalPillBacking": "Nhạc nền (kèm hát bè)",
+      "audioInstrumentalPillClean": "Nhạc nền (không bè)"
     },
     "gapNavigator": {
       "previousGap": "Đoạn trống trước (P)",
