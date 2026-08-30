@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Procedeix a la revisió instrumental",
         "saving": "Desant...",
         "completeTrack": "Pista completa",
-        "autoInstrumentalBacking": "Mantindrem els cors a l'instrumental. Escolta-ho aquí sota — si sents massa la veu principal o soroll, canvia a l'instrumental net.",
         "autoInstrumentalClean": "Utilitzarem l'instrumental net (sense cors) per a aquesta pista.",
-        "reviewInstrumentalAnyway": "Vull mantenir els cors però silenciar seccions específiques, o pujar un instrumental personalitzat",
         "previewTitle": "Previsualització del vídeo",
         "autoInstrumentalCleanChosen": "Has triat l'instrumental net (sense cors) per a aquesta pista.",
-        "reviewInstrumentalCleanHatch": "Vull revisar l'instrumental jo mateix, o pujar un instrumental personalitzat"
+        "advancedModeClean": "Mode avançat (revisa o puja una pista instrumental personalitzada)",
+        "finalChoiceLabel": "El teu vídeo de karaoke utilitzarà:",
+        "recommended": "recomanat",
+        "autoInstrumentalBacking": "Mantenim els cors a l'instrumental. Escolta-ho — si sents la veu del cantant principal, canvia a «Instrumental net» més amunt.",
+        "advancedMode": "Mode avançat (edita les veus de fons o puja la teva pròpia instrumental)"
       },
       "searchLyrics": {
         "artist": "Artista",

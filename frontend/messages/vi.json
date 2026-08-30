@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Tiến hành xem lại nhạc nền",
         "saving": "Đang lưu...",
         "completeTrack": "Hoàn tất bài hát",
-        "autoInstrumentalBacking": "Chúng tôi sẽ giữ lại giọng hát bè trong bản nhạc nền. Hãy nghe thử bên dưới — nếu bạn thấy giọng hát chính bị lẫn vào quá nhiều hoặc có tiếng ồn, hãy chuyển sang bản nhạc nền sạch.",
         "autoInstrumentalClean": "Chúng tôi sẽ sử dụng bản nhạc nền sạch (không có giọng hát bè) cho bài hát này.",
-        "reviewInstrumentalAnyway": "Để tôi giữ lại giọng hát bè nhưng tắt tiếng ở một số đoạn cụ thể, hoặc tải lên bản nhạc nền tùy chỉnh",
         "previewTitle": "Xem trước video",
         "autoInstrumentalCleanChosen": "Bạn đã chọn bản nhạc nền sạch (không có giọng hát bè) cho bài hát này.",
-        "reviewInstrumentalCleanHatch": "Để tôi tự nghe lại bản nhạc nền, hoặc tải lên bản nhạc nền tùy chỉnh"
+        "advancedModeClean": "Chế độ nâng cao (xem lại hoặc tải lên bản nhạc nền tùy chỉnh)",
+        "finalChoiceLabel": "Video karaoke của bạn sẽ sử dụng:",
+        "recommended": "khuyên dùng",
+        "autoInstrumentalBacking": "Chúng tôi đang giữ lại phần hát bè trong bản nhạc nền. Hãy nghe thử nhé — nếu bạn vẫn nghe thấy giọng ca sĩ chính, hãy chuyển sang “Nhạc nền sạch” ở bên trên.",
+        "advancedMode": "Chế độ nâng cao (chỉnh sửa giọng bè hoặc tải lên nhạc nền của riêng bạn)"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

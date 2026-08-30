@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Fortsæt til gennemgang af instrumental",
         "saving": "Gemmer...",
         "completeTrack": "Færdiggør nummer",
-        "autoInstrumentalBacking": "Vi beholder baggrundsvokalerne i instrumentalnummeret. Lyt herunder — hvis hovedvokalen skinner for meget igennem, eller der er støj, så skift til det rene instrumentalnummer.",
         "autoInstrumentalClean": "Vi bruger det rene instrumentalnummer (ingen baggrundsvokaler) til dette nummer.",
-        "reviewInstrumentalAnyway": "Lad mig beholde baggrundsvokalerne, men slå lyden fra i bestemte dele, eller uploade mit eget instrumentalnummer",
         "previewTitle": "Forhåndsvis video",
         "autoInstrumentalCleanChosen": "Du har valgt det rene instrumentalnummer (ingen baggrundsvokaler) til dette nummer.",
-        "reviewInstrumentalCleanHatch": "Lad mig selv gennemgå instrumentalnummeret, eller uploade mit eget instrumentalnummer"
+        "advancedModeClean": "Avanceret tilstand (gennemgå eller upload et tilpasset instrumentalspor)",
+        "finalChoiceLabel": "Din karaokevideo vil bruge:",
+        "recommended": "anbefales",
+        "autoInstrumentalBacking": "Vi beholder baggrundsvokalerne i instrumentalen. Prøv at lytte — hvis du kan høre forsangerens stemme trænge igennem, så skift til “Ren instrumental” ovenfor.",
+        "advancedMode": "Avanceret tilstand (rediger baggrundsvokaler eller upload dit eget instrumentalspor)"
       },
       "searchLyrics": {
         "artist": "Kunstner",

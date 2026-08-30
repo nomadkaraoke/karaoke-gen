@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Tovább a zenei alap áttekintéséhez",
         "saving": "Mentés...",
         "completeTrack": "Szám befejezése",
-        "autoInstrumentalBacking": "Megtartjuk a háttérvokált a zenei alapban. Hallgass bele alább — ha túlságosan behallatszik a főének, vagy zajt hallasz, válts a tiszta zenei alapra.",
         "autoInstrumentalClean": "A tiszta zenei alapot (háttérvokál nélkül) fogjuk használni ehhez a számhoz.",
-        "reviewInstrumentalAnyway": "Szeretném megtartani a háttérvokált, de lenémítani bizonyos részeket, vagy feltölteni egy egyedi zenei alapot",
         "previewTitle": "Videó előnézete",
         "autoInstrumentalCleanChosen": "A tiszta zenei alapot (háttérvokál nélkül) választottad ehhez a számhoz.",
-        "reviewInstrumentalCleanHatch": "Szeretném én magam ellenőrizni a zenei alapot, vagy feltölteni egy egyedi zenei alapot"
+        "advancedModeClean": "Haladó mód (ellenőrzés vagy saját instrumentális alap feltöltése)",
+        "finalChoiceLabel": "A karaoke videódhoz ezt fogjuk használni:",
+        "recommended": "ajánlott",
+        "autoInstrumentalBacking": "Megtartjuk a háttérvokálokat a zenei alapban. Hallgasd meg — ha behallatszik a főénekes hangja, válts a fenti „Tiszta zenei alap” lehetőségre.",
+        "advancedMode": "Haladó mód (szerkeszd a háttérvokálokat, vagy töltsd fel a saját zenei alapodat)"
       },
       "searchLyrics": {
         "artist": "Előadó",

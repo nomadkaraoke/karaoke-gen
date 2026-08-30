@@ -1,6 +1,7 @@
+import { createRef } from 'react'
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import PreviewVideoSection from '../PreviewVideoSection'
+import PreviewVideoSection, { PreviewVideoHandle } from '../PreviewVideoSection'
 import type { CorrectionData } from '@/lib/lyrics-review/types'
 
 // The preview flow is async: POST /preview-video returns either "success"
@@ -229,7 +230,7 @@ describe('PreviewVideoSection', () => {
     expect(video.muted).toBe(true)
   })
 
-  it('splits the toggle into backing/clean pills when offerInstrumentalChoice is set', async () => {
+  it('always shows the single Instrumental preview pill (final choice lives in the modal)', async () => {
     const apiClient = makeApiClient()
     render(
       <PreviewVideoSection
@@ -238,59 +239,44 @@ describe('PreviewVideoSection', () => {
         updatedData={data}
         instrumentalOptions={instrumentalOptions as any}
         autoSelection="with_backing"
-        offerInstrumentalChoice
-      />
-    )
-    await flush()
-
-    // No single "Instrumental" pill; two named instrumental pills instead.
-    expect(screen.queryByRole('button', { name: /^instrumental$/i })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /instrumental \+ backing vocals/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /clean instrumental/i })).toBeInTheDocument()
-    // Hidden stem player starts on the auto-selected (with_backing) stem.
-    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/backing.ogg')
-  })
-
-  it('reports the choice and swaps the stem when the clean pill is clicked', async () => {
-    const apiClient = makeApiClient()
-    const onInstrumentalChoiceChange = jest.fn()
-    render(
-      <PreviewVideoSection
-        apiClient={apiClient}
-        isModalOpen={true}
-        updatedData={data}
-        instrumentalOptions={instrumentalOptions as any}
-        autoSelection="with_backing"
-        offerInstrumentalChoice
-        onInstrumentalChoiceChange={onInstrumentalChoiceChange}
-      />
-    )
-    await flush()
-
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
-    await user.click(screen.getByRole('button', { name: /clean instrumental/i }))
-    await flush()
-
-    expect(onInstrumentalChoiceChange).toHaveBeenCalledWith('clean')
-    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/clean.ogg')
-    expect((document.querySelector('video') as HTMLVideoElement).muted).toBe(true)
-  })
-
-  it('keeps the single Instrumental pill when only one stem is available', async () => {
-    const apiClient = makeApiClient()
-    render(
-      <PreviewVideoSection
-        apiClient={apiClient}
-        isModalOpen={true}
-        updatedData={data}
-        instrumentalOptions={[instrumentalOptions[0]] as any}
-        autoSelection="clean"
-        offerInstrumentalChoice
       />
     )
     await flush()
 
     expect(screen.getByRole('button', { name: /^instrumental$/i })).toBeInTheDocument()
+    // No decision pills here anymore — those moved to the modal's radio group.
     expect(screen.queryByRole('button', { name: /instrumental \+ backing vocals/i })).not.toBeInTheDocument()
+    // Hidden stem player starts on the auto-selected (with_backing) stem.
+    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/backing.ogg')
+  })
+
+  it('auditionInstrumental swaps the stem, mutes the video, and seeks/plays', async () => {
+    const apiClient = makeApiClient()
+    const ref = createRef<PreviewVideoHandle>()
+    render(
+      <PreviewVideoSection
+        ref={ref}
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="with_backing"
+      />
+    )
+    await flush()
+
+    const video = document.querySelector('video') as HTMLVideoElement
+    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/backing.ogg')
+    expect(video.muted).toBe(false)
+
+    act(() => {
+      ref.current!.auditionInstrumental('clean', 5)
+    })
+    await flush()
+
+    // Stem swapped to clean, video muted (stem plays instead), and it seeked.
+    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/clean.ogg')
+    expect(video.muted).toBe(true)
+    expect(video.currentTime).toBe(5)
   })
 })

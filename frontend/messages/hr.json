@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Nastavi na pregled instrumentala",
         "saving": "Spremanje...",
         "completeTrack": "Dovrši pjesmu",
-        "autoInstrumentalBacking": "Zadržat ćemo prateće vokale u instrumentalu. Poslušaj u nastavku — ako čuješ previše probijanja glavnog vokala ili šuma, prebaci se na čisti instrumental.",
         "autoInstrumentalClean": "Koristit ćemo čisti instrumental (bez pratećih vokala) za ovu pjesmu.",
-        "reviewInstrumentalAnyway": "Želim zadržati prateće vokale, ali utišati određene dijelove, ili učitati prilagođeni instrumental",
         "previewTitle": "Pregled videa",
         "autoInstrumentalCleanChosen": "Odabrao/la si čisti instrumental (bez pratećih vokala) za ovu pjesmu.",
-        "reviewInstrumentalCleanHatch": "Želim samostalno pregledati instrumental ili učitati prilagođeni instrumental"
+        "advancedModeClean": "Napredni način (pregledaj ili prenesi vlastiti instrumental)",
+        "finalChoiceLabel": "Tvoj karaoke video koristit će:",
+        "recommended": "preporučeno",
+        "autoInstrumentalBacking": "Zadržavamo prateće vokale u instrumentalu. Poslušaj — ako čuješ glas glavnog pjevača, prebaci na „Čisti instrumental” iznad.",
+        "advancedMode": "Napredni način rada (uredi prateće vokale ili prenesi vlastiti instrumental)"
       },
       "searchLyrics": {
         "artist": "Izvođač",

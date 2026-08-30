@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Doorgaan naar instrumental-beoordeling",
         "saving": "Opslaan...",
         "completeTrack": "Track voltooien",
-        "autoInstrumentalBacking": "We behouden de achtergrondzang in de instrumentale versie. Luister hieronder — als de leadzang te veel doorklinkt of als je ruis hoort, schakel dan over naar de zuivere instrumentale versie.",
         "autoInstrumentalClean": "We gebruiken de zuivere instrumentale versie (zonder achtergrondzang) voor dit nummer.",
-        "reviewInstrumentalAnyway": "Laat me de achtergrondzang behouden maar specifieke delen dempen, of een eigen instrumentale versie uploaden",
         "previewTitle": "Voorbeeldvideo",
         "autoInstrumentalCleanChosen": "Je hebt gekozen voor de zuivere instrumentale versie (zonder achtergrondzang) voor dit nummer.",
-        "reviewInstrumentalCleanHatch": "Laat me de instrumentale versie zelf controleren, of een eigen instrumentale versie uploaden"
+        "advancedModeClean": "Geavanceerde modus (een eigen instrumentale versie beoordelen of uploaden)",
+        "finalChoiceLabel": "Je karaokevideo gebruikt:",
+        "recommended": "aanbevolen",
+        "autoInstrumentalBacking": "We laten de achtergrondzang in de instrumentale versie staan. Luister even — als je de stem van de leadzanger er nog doorheen hoort, kies dan hierboven voor “Schone instrumentale versie”.",
+        "advancedMode": "Geavanceerde modus (bewerk achtergrondzang of upload je eigen instrumentale versie)"
       },
       "searchLyrics": {
         "artist": "Artiest",

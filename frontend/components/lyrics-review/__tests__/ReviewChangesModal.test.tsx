@@ -11,7 +11,7 @@ jest.mock('../PreviewVideoSection', () => {
   return {
     __esModule: true,
     default: React.forwardRef(function MockPreview(_props: unknown, ref: unknown) {
-      React.useImperativeHandle(ref, () => ({ switchToInstrumentalAndSeek: jest.fn() }))
+      React.useImperativeHandle(ref, () => ({ auditionInstrumental: jest.fn() }))
       return <div data-testid="preview-video">Preview</div>
     }),
   }
@@ -236,8 +236,10 @@ describe('ReviewChangesModal', () => {
     ).not.toBeInTheDocument()
   })
 
-  // Per-screen skip (C1): backing decision auto-resolved.
-  it('shows the auto-instrumental note + escape-hatch checkbox when backing is confident', () => {
+  // Per-screen skip (C1): backing decision auto-resolved. The final-output choice
+  // is a single radio group ("Your karaoke video will use:") whose recommended
+  // option is the auto-selected instrumental; "Advanced mode" is the escape hatch.
+  it('shows the final-output radio group + backing note when backing is confident', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal
@@ -249,19 +251,39 @@ describe('ReviewChangesModal', () => {
       />
     )
     expect(screen.getByRole('button', { name: /complete track/i })).toBeInTheDocument()
+    expect(screen.getByText(/your karaoke video will use/i)).toBeInTheDocument()
+    // Recommended option = backing; escape hatch = Advanced mode.
+    const backingRadio = screen.getByRole('radio', { name: /instrumental \+ backing vocals/i })
+    expect(backingRadio).toBeChecked()
+    expect(screen.getByText(/backing vocals in the instrumental/i)).toBeInTheDocument()
     expect(
-      screen.getByText(/we'll keep the backing vocals in the instrumental/i)
-    ).toBeInTheDocument()
-    expect(screen.getByRole('checkbox')).toBeInTheDocument()
-    // Escape hatch is reworded to the specific, rarely-used action.
-    expect(
-      screen.getByText(/mute specific sections, or upload a custom instrumental/i)
+      screen.getByRole('radio', { name: /advanced mode \(edit backing vocals or upload your own instrumental\)/i })
     ).toBeInTheDocument()
   })
 
-  it('reflects the clean choice in the note once the reviewer switches via the audio toggle', () => {
-    // The keep-backing / clean pills live in PreviewVideoSection (mocked here);
-    // the modal just reflects the reported choice via the cleanOverride prop.
+  it('offers a Clean instrumental radio only when a clean stem exists alongside backing', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        data={makeData({
+          corrected_segments: segments as any,
+          instrumental_options: [
+            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
+            { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
+          ] as any,
+        })}
+      />
+    )
+    expect(screen.getByRole('radio', { name: /^clean instrumental$/i })).toBeInTheDocument()
+  })
+
+  it('reflects the clean choice in the note when the reviewer selects the clean radio', () => {
+    // The decision state is owned by LyricsAnalyzer and passed via cleanOverride;
+    // selecting clean marks that radio and swaps the note.
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     const options = [
       { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
@@ -276,9 +298,7 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any, instrumental_options: options as any })}
       />
     )
-    expect(
-      screen.getByText(/we'll keep the backing vocals in the instrumental/i)
-    ).toBeInTheDocument()
+    expect(screen.getByText(/backing vocals in the instrumental/i)).toBeInTheDocument()
 
     rerender(
       <ReviewChangesModal
@@ -290,10 +310,38 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any, instrumental_options: options as any })}
       />
     )
+    expect(screen.getByRole('radio', { name: /^clean instrumental$/i })).toBeChecked()
     expect(screen.getByText(/you've chosen the clean instrumental/i)).toBeInTheDocument()
   })
 
-  it('uses the clean-case escape-hatch wording when clean is already the default', () => {
+  it('selecting the clean radio reports the choice and clears the review-anyway flag', async () => {
+    const user = userEvent.setup()
+    const onInstrumentalChoiceChange = jest.fn()
+    const onToggleReviewInstrumental = jest.fn()
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        onInstrumentalChoiceChange={onInstrumentalChoiceChange}
+        onToggleReviewInstrumental={onToggleReviewInstrumental}
+        data={makeData({
+          corrected_segments: segments as any,
+          instrumental_options: [
+            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
+            { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
+          ] as any,
+        })}
+      />
+    )
+    await user.click(screen.getByRole('radio', { name: /^clean instrumental$/i }))
+    expect(onInstrumentalChoiceChange).toHaveBeenCalledWith('clean')
+    expect(onToggleReviewInstrumental).toHaveBeenCalledWith(false)
+  })
+
+  it('uses the clean-case Advanced-mode wording when clean is already the default', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal
@@ -309,7 +357,11 @@ describe('ReviewChangesModal', () => {
         })}
       />
     )
-    expect(screen.getByText(/review the instrumental myself/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: /advanced mode \(review or upload a custom instrumental\)/i })
+    ).toBeInTheDocument()
+    // No clean-override radio when clean is already the recommended default.
+    expect(screen.queryByRole('radio', { name: /^clean instrumental$/i })).not.toBeInTheDocument()
   })
 
   it('shows the clean-instrumental note when the resolved selection is clean', () => {
@@ -323,10 +375,10 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any })}
       />
     )
-    expect(screen.getByText(/clean instrumental/i)).toBeInTheDocument()
+    expect(screen.getByText(/we'll use the clean instrumental/i)).toBeInTheDocument()
   })
 
-  it('toggling the escape hatch calls onToggleReviewInstrumental', async () => {
+  it('selecting Advanced mode calls onToggleReviewInstrumental', async () => {
     const user = userEvent.setup()
     const onToggleReviewInstrumental = jest.fn()
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
@@ -340,11 +392,11 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any })}
       />
     )
-    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('radio', { name: /advanced mode/i }))
     expect(onToggleReviewInstrumental).toHaveBeenCalledWith(true)
   })
 
-  it('hides the auto-instrumental note when backing is not confident', () => {
+  it('hides the final-output radio group when backing is not confident', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     render(
       <ReviewChangesModal
@@ -352,6 +404,6 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any })}
       />
     )
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   })
 })

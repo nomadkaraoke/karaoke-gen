@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "반주 검토로 진행",
         "saving": "저장 중...",
         "completeTrack": "트랙 완료",
-        "autoInstrumentalBacking": "반주에 백보컬을 유지할게요. 아래에서 들어보시고, 리드 보컬이 너무 많이 섞여 들리거나 노이즈가 있다면 깔끔한 반주로 전환해 보세요.",
         "autoInstrumentalClean": "이 트랙에는 깔끔한 반주(백보컬 없음)를 사용할게요.",
-        "reviewInstrumentalAnyway": "백보컬을 유지하되 특정 구간을 음소거하거나, 직접 만든 반주를 업로드할게요",
         "previewTitle": "영상 미리보기",
         "autoInstrumentalCleanChosen": "이 트랙에 깔끔한 반주(백보컬 없음)를 선택하셨어요.",
-        "reviewInstrumentalCleanHatch": "반주를 직접 확인하거나, 직접 만든 반주를 업로드할게요"
+        "advancedModeClean": "고급 모드 (커스텀 반주 확인 또는 직접 업로드)",
+        "finalChoiceLabel": "노래방 비디오에 다음이 사용됩니다:",
+        "recommended": "추천",
+        "autoInstrumentalBacking": "반주에 백보컬을 남겨두었습니다. 한번 들어보시고 메인 보컬의 목소리가 들린다면, 상단의 “Clean instrumental”로 변경해 주세요.",
+        "advancedMode": "고급 모드 (백보컬 편집 또는 직접 반주 업로드)"
       },
       "searchLyrics": {
         "artist": "아티스트",

@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Treci la revizuirea instrumentalului",
         "saving": "Se salvează...",
         "completeTrack": "Piesa completă",
-        "autoInstrumentalBacking": "Vom păstra vocile de fundal în instrumental. Ascultă mai jos — dacă auzi prea mult din vocea principală sau zgomot, treci la instrumentalul curat.",
         "autoInstrumentalClean": "Vom folosi instrumentalul curat (fără voci de fundal) pentru această piesă.",
-        "reviewInstrumentalAnyway": "Vreau să păstrez vocile de fundal, dar să pun pe mut anumite secțiuni sau să încarc un instrumental personalizat",
         "previewTitle": "Previzualizare videoclip",
         "autoInstrumentalCleanChosen": "Ai ales instrumentalul curat (fără voci de fundal) pentru această piesă.",
-        "reviewInstrumentalCleanHatch": "Vreau să verific eu instrumentalul sau să încarc un instrumental personalizat"
+        "advancedModeClean": "Mod avansat (revizuiește sau încarcă un instrumental personalizat)",
+        "finalChoiceLabel": "Videoclipul tău de karaoke va folosi:",
+        "recommended": "recomandat",
+        "autoInstrumentalBacking": "Păstrăm vocile de fundal în instrumental. Ascultă — dacă se aude vocea solistului principal, schimbă pe „Instrumental curat” mai sus.",
+        "advancedMode": "Mod avansat (editează vocile de fundal sau încarcă propriul tău instrumental)"
       },
       "searchLyrics": {
         "artist": "Artist",

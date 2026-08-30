@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Prosseguir para Revisão Instrumental",
         "saving": "Salvando...",
         "completeTrack": "Faixa completa",
-        "autoInstrumentalBacking": "Vamos manter os vocais de apoio no instrumental. Ouça abaixo — se notar muito vazamento do vocal principal ou ruído, mude para o instrumental limpo.",
         "autoInstrumentalClean": "Vamos usar o instrumental limpo (sem vocais de apoio) para esta faixa.",
-        "reviewInstrumentalAnyway": "Quero manter os vocais de apoio, mas silenciar seções específicas, ou enviar um instrumental personalizado",
         "previewTitle": "Pré-visualizar Vídeo",
         "autoInstrumentalCleanChosen": "Você escolheu o instrumental limpo (sem vocais de apoio) para esta faixa.",
-        "reviewInstrumentalCleanHatch": "Quero revisar o instrumental, ou enviar um instrumental personalizado"
+        "advancedModeClean": "Modo avançado (revise ou faça upload de um instrumental personalizado)",
+        "finalChoiceLabel": "Seu vídeo de karaokê usará:",
+        "recommended": "recomendado",
+        "autoInstrumentalBacking": "Estamos mantendo os vocais de apoio no instrumental. Dê uma ouvida — se você conseguir ouvir a voz do vocalista principal, mude para “Instrumental limpo” acima.",
+        "advancedMode": "Modo avançado (edite os vocais de apoio ou envie seu próprio instrumental)"
       },
       "searchLyrics": {
         "artist": "Artista",

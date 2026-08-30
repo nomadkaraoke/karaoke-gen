@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Passer à la révision instrumentale",
         "saving": "Enregistrement...",
         "completeTrack": "Terminer la piste",
-        "autoInstrumentalBacking": "Nous garderons les chœurs dans la version instrumentale. Écoute ci-dessous — si tu entends trop la voix principale ou des bruits parasites, passe à la version instrumentale propre.",
         "autoInstrumentalClean": "Nous utiliserons la version instrumentale propre (sans chœurs) pour ce morceau.",
-        "reviewInstrumentalAnyway": "Je veux garder les chœurs mais couper le son de certaines sections, ou importer une version instrumentale personnalisée",
         "previewTitle": "Aperçu de la vidéo",
         "autoInstrumentalCleanChosen": "Tu as choisi la version instrumentale propre (sans chœurs) pour ce morceau.",
-        "reviewInstrumentalCleanHatch": "Je veux vérifier la version instrumentale moi-même, ou importer une version instrumentale personnalisée"
+        "advancedModeClean": "Mode avancé (vérifie ou importe un instrumental personnalisé)",
+        "finalChoiceLabel": "Ta vidéo karaoké utilisera :",
+        "recommended": "recommandé",
+        "autoInstrumentalBacking": "Nous gardons les chœurs dans l'instrumental. Écoute bien : si tu entends la voix du chanteur principal, passe à « Instrumental propre » ci-dessus.",
+        "advancedMode": "Mode avancé (modifier les chœurs ou importer ton propre instrumental)"
       },
       "searchLyrics": {
         "artist": "Artiste",

@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Przejdź do sprawdzania podkładu",
         "saving": "Zapisywanie...",
         "completeTrack": "Ukończ utwór",
-        "autoInstrumentalBacking": "Zostawimy chórki w podkładzie instrumentalnym. Posłuchaj poniżej — jeśli słyszysz zbyt dużo przebić wokalu prowadzącego lub szumów, przełącz się na czysty podkład instrumentalny.",
         "autoInstrumentalClean": "Użyjemy czystego podkładu instrumentalnego (bez chórków) dla tego utworu.",
-        "reviewInstrumentalAnyway": "Chcę zostawić chórki, ale wyciszyć określone fragmenty, lub przesłać własny podkład instrumentalny",
         "previewTitle": "Podgląd wideo",
         "autoInstrumentalCleanChosen": "Wybrałeś/aś czysty podkład instrumentalny (bez chórków) dla tego utworu.",
-        "reviewInstrumentalCleanHatch": "Chcę samodzielnie sprawdzić podkład instrumentalny lub przesłać własny"
+        "advancedModeClean": "Tryb zaawansowany (sprawdź lub prześlij własny podkład instrumentalny)",
+        "finalChoiceLabel": "W Twoim wideo karaoke wykorzystamy:",
+        "recommended": "zalecane",
+        "autoInstrumentalBacking": "Zostawiamy chórki w podkładzie. Posłuchaj — jeśli słyszysz przebijający się głos głównego wokalisty, przełącz na „Czysty podkład” powyżej.",
+        "advancedMode": "Tryb zaawansowany (edytuj chórki lub prześlij własny podkład)"
       },
       "searchLyrics": {
         "artist": "Wykonawca",

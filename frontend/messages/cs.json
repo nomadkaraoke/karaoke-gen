@@ -1152,12 +1152,14 @@
         "proceedToInstrumental": "Pokračovat na kontrolu instrumentálky",
         "saving": "Ukládání...",
         "completeTrack": "Dokončit skladbu",
-        "autoInstrumentalBacking": "V instrumentální verzi ponecháme doprovodné vokály. Poslechni si ukázku níže — pokud uslyšíš příliš mnoho přeslechů hlavního zpěvu nebo šumu, přepni na čistou instrumentální verzi.",
         "autoInstrumentalClean": "Pro tuto skladbu použijeme čistou instrumentální verzi (bez doprovodných vokálů).",
-        "reviewInstrumentalAnyway": "Chci ponechat doprovodné vokály, ale ztlumit konkrétní části, nebo nahrát vlastní instrumentální verzi",
         "previewTitle": "Náhled videa",
         "autoInstrumentalCleanChosen": "Pro tuto skladbu máš zvolenou čistou instrumentální verzi (bez doprovodných vokálů).",
-        "reviewInstrumentalCleanHatch": "Chci si instrumentální verzi zkontrolovat, nebo nahrát vlastní instrumentální verzi"
+        "advancedModeClean": "Pokročilý režim (zkontrolovat nebo nahrát vlastní instrumentální verzi)",
+        "finalChoiceLabel": "Ve tvém karaoke videu se použije:",
+        "recommended": "doporučeno",
+        "autoInstrumentalBacking": "V instrumentální verzi ponecháváme doprovodné vokály. Poslechni si to — pokud v ní slyšíš hlas hlavního zpěváka, přepni výše na možnost „Čistá instrumentální verze“.",
+        "advancedMode": "Pokročilý režim (uprav doprovodné vokály nebo nahraj vlastní instrumentální verzi)"
       },
       "searchLyrics": {
         "artist": "Interpret",
