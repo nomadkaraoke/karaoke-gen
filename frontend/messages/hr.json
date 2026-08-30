@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {promjena} few {promjene} other {promjena}} u {segments} segmenata"
     },
     "previewVideo": {
-      "generating": "Generiranje preglednog videa...",
+      "generating": "Priprema se tvoj pregled…",
       "failed": "Nije uspjelo generiranje preglednog videa",
       "unsupportedBrowser": "Tvoj preglednik ne podržava video oznaku.",
       "encoding": "Kodiranje video pregleda...",
       "timedOut": "Priprema video pregleda traje dulje od očekivanog. Molim te, pokušaj ponovno.",
       "retry": "Pokušaj ponovno",
-      "startingEncoder": "Pokrećemo poslužitelj za kodiranje — to može potrajati nekoliko minuta. Malo se strpi!"
+      "startingEncoder": "Pokrećemo poslužitelj za kodiranje — to može potrajati nekoliko minuta. Malo se strpi!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Original (s vokalima)",
+      "backingVocalsWaveformHint": "Prateći vokali zadržani u instrumentalu — klikni da čuješ ovaj dio.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Odaberi stil veličine slova za primjenu na cijeli tekst:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Pregledni video (s vokalima)",
         "noLyricsTitle": "Nije detektiran tekst",
         "noLyricsDesc": "U zvuku nije pronađen tekst. Ovo se obično događa kada ulazni zvuk nema vokale (npr. karaoke pjesma ili instrumental).",
         "noLyricsHint": "Možeš se vratiti i ručno zalijepiti tekst koristeći Zamijeni sve, ili otkazati ovaj posao i pokušati ponovno s audio datotekom koja sadrži vokale.",
         "manualCorrectionsDetected": "Detektirani su ručni ispravci. Pregledaj pregled kako bi osigurao da je tekst ispravno sinkroniziran.",
-        "noManualCorrections": "Nisu detektirani ručni ispravci. Ako sve izgleda dobro u pregledu, nastavi s odabirom svog instrumentala.",
-        "totalSegments": "Ukupno segmenata: {count}",
         "proceedToInstrumental": "Nastavi na pregled instrumentala",
         "saving": "Spremanje...",
         "completeTrack": "Dovrši pjesmu",
         "autoInstrumentalBacking": "Automatski ćemo zadržati prateće vokale u instrumentalu — pregled instrumentala nije potreban.",
         "autoInstrumentalClean": "Automatski ćemo koristiti čisti instrumental (bez pratećih vokala) — pregled instrumentala nije potreban.",
-        "reviewInstrumentalAnyway": "Želim sam odabrati instrumental"
+        "reviewInstrumentalAnyway": "Želim sam odabrati instrumental",
+        "previewTitle": "Pregled videa"
       },
       "searchLyrics": {
         "artist": "Izvođač",

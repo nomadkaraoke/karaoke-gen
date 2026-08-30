@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {ändring} other {ändringar}} över {segments} segment"
     },
     "previewVideo": {
-      "generating": "Genererar förhandsgranskningsvideo...",
+      "generating": "Förbereder din förhandsvisning…",
       "failed": "Kunde inte generera förhandsgranskningsvideo",
       "unsupportedBrowser": "Din webbläsare stöder inte video-taggen.",
       "encoding": "Kodar förhandsvisning...",
       "timedOut": "Förhandsvisningen tar längre tid än förväntat. Vänligen försök igen.",
       "retry": "Försök igen",
-      "startingEncoder": "Startar en kodningsserver — detta kan ta ett par minuter. Häng kvar!"
+      "startingEncoder": "Startar en kodningsserver — detta kan ta ett par minuter. Häng kvar!",
+      "audioLabel": "Ljud:",
+      "audioOriginal": "Original (med sång)",
+      "backingVocalsWaveformHint": "Bakgrundssången finns kvar i instrumentalen — klicka för att höra den här delen.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Föregående lucka (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Välj ett skiftläge att tillämpa på all sångtext:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Förhandsgranska video (med sång)",
         "noLyricsTitle": "Ingen text upptäcktes",
         "noLyricsDesc": "Ingen text hittades i ljudet. Detta händer vanligtvis när inmatningsljudet inte har någon sång (t.ex. ett karaokespår eller instrumental).",
         "noLyricsHint": "Du kan gå tillbaka och klistra in text manuellt med Ersätt alla, eller avbryta detta jobb och försöka igen med en ljudfil som innehåller sång.",
         "manualCorrectionsDetected": "Manuella korrigeringar upptäcktes. Granska förhandsgranskningen för att säkerställa att texten är korrekt synkroniserad.",
-        "noManualCorrections": "Inga manuella korrigeringar upptäcktes. Om allt ser bra ut i förhandsgranskningen, fortsätt till att välja din instrumental.",
-        "totalSegments": "Totalt antal segment: {count}",
         "proceedToInstrumental": "Fortsätt till granskning av instrumental",
         "saving": "Sparar...",
         "completeTrack": "Slutför spåret",
         "autoInstrumentalBacking": "Vi behåller bakgrundssången i instrumentalversionen automatiskt — ingen granskning av instrumentalversionen behövs.",
         "autoInstrumentalClean": "Vi använder den rena instrumentalversionen (utan bakgrundssång) automatiskt — ingen granskning av instrumentalversionen behövs.",
-        "reviewInstrumentalAnyway": "Låt mig välja instrumentalversion själv"
+        "reviewInstrumentalAnyway": "Låt mig välja instrumentalversion själv",
+        "previewTitle": "Förhandsgranska video"
       },
       "searchLyrics": {
         "artist": "Artist",

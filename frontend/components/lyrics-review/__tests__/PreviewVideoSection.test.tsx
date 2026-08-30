@@ -170,4 +170,62 @@ describe('PreviewVideoSection', () => {
 
     expect(screen.getByText('Failed to generate preview video')).toBeInTheDocument()
   })
+
+  const instrumentalOptions = [
+    { id: 'clean', label: 'Clean', audio_url: 'http://test/clean.ogg' },
+    { id: 'with_backing', label: 'Backing', audio_url: 'http://test/backing.ogg' },
+  ]
+
+  it('shows an audio toggle and a hidden stem player when instrumental options exist', async () => {
+    const apiClient = makeApiClient()
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="with_backing"
+      />
+    )
+    await flush()
+
+    expect(screen.getByRole('button', { name: /original \(with vocals\)/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^instrumental$/i })).toBeInTheDocument()
+    // Hidden stem player points at the auto-selected (with_backing) stem.
+    const audio = document.querySelector('audio')
+    expect(audio).not.toBeNull()
+    expect(audio!.src).toBe('http://test/backing.ogg')
+  })
+
+  it('does not show the audio toggle when no instrumental options are available', async () => {
+    const apiClient = makeApiClient()
+    renderSection(apiClient)
+    await flush()
+
+    expect(screen.queryByRole('button', { name: /original \(with vocals\)/i })).not.toBeInTheDocument()
+    expect(document.querySelector('audio')).toBeNull()
+  })
+
+  it('mutes the video when switching to the instrumental track', async () => {
+    const apiClient = makeApiClient()
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="clean"
+      />
+    )
+    await flush()
+
+    const video = document.querySelector('video') as HTMLVideoElement
+    expect(video.muted).toBe(false)
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    await user.click(screen.getByRole('button', { name: /^instrumental$/i }))
+    await flush()
+
+    expect(video.muted).toBe(true)
+  })
 })

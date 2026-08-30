@@ -3699,6 +3699,7 @@ export interface LyricsReviewApiClient {
     message?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
+  getWaveformData: (numPoints?: number) => Promise<WaveformData>
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods
   saveReviewSession: (data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) => Promise<{ status: string; session_id?: string; reason?: string }>
@@ -3889,6 +3890,17 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       const token = getAccessToken()
       const base = `${API_BASE_URL}/api/review/${jobId}/preview-video/${hash}`
       return token ? `${base}?token=${encodeURIComponent(token)}` : base
+    },
+
+    /**
+     * Get waveform amplitude data (backing-vocals stem) for client-side rendering.
+     */
+    async getWaveformData(numPoints: number = 1000): Promise<WaveformData> {
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/review/${jobId}/waveform-data?num_points=${numPoints}`,
+        { headers: getAuthHeaders() }
+      )
+      return handleResponse(response)
     },
 
     /**

@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {ændring} other {ændringer}} på tværs af {segments} segmenter"
     },
     "previewVideo": {
-      "generating": "Genererer forhåndsvisningsvideo...",
+      "generating": "Forbereder din forhåndsvisning…",
       "failed": "Kunne ikke generere forhåndsvisningsvideo",
       "unsupportedBrowser": "Din browser understøtter ikke video-tagget.",
       "encoding": "Koder preview-video...",
       "timedOut": "Preview-videoen tager længere tid end forventet. Prøv igen.",
       "retry": "Prøv igen",
-      "startingEncoder": "Starter en kodningsserver — det kan tage et par minutter. Hæng på!"
+      "startingEncoder": "Starter en kodningsserver — det kan tage et par minutter. Hæng på!",
+      "audioLabel": "Lyd:",
+      "audioOriginal": "Original (med vokal)",
+      "backingVocalsWaveformHint": "Baggrundsvokalen er bevaret i instrumentalsporet — klik for at høre denne del.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Forrige hul (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Vælg en stil for store/små bogstaver, der skal anvendes på hele teksten:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Forhåndsvisningsvideo (med vokal)",
         "noLyricsTitle": "Ingen sangtekster opdaget",
         "noLyricsDesc": "Der blev ikke fundet nogen sangtekster i lyden. Dette sker normalt, når inputlyden ikke har nogen vokal (f.eks. et karaokenummer eller instrumental).",
         "noLyricsHint": "Du kan gå tilbage og indsætte sangtekster manuelt ved hjælp af Erstat alle, eller annullere dette job og prøve igen med en lydfil, der indeholder vokal.",
         "manualCorrectionsDetected": "Manuelle rettelser opdaget. Gennemgå forhåndsvisningen for at sikre, at sangteksterne er synkroniseret korrekt.",
-        "noManualCorrections": "Ingen manuelle rettelser opdaget. Hvis alt ser godt ud i forhåndsvisningen, skal du fortsætte med at vælge din instrumental.",
-        "totalSegments": "Samlede segmenter: {count}",
         "proceedToInstrumental": "Fortsæt til gennemgang af instrumental",
         "saving": "Gemmer...",
         "completeTrack": "Færdiggør nummer",
         "autoInstrumentalBacking": "Vi beholder automatisk baggrundsvokalerne i instrumentalnummeret — ingen gennemgang af instrumentalnummeret er nødvendig.",
         "autoInstrumentalClean": "Vi bruger automatisk det rene instrumentalnummer (ingen baggrundsvokaler) — ingen gennemgang af instrumentalnummeret er nødvendig.",
-        "reviewInstrumentalAnyway": "Lad mig selv vælge instrumentalnummeret"
+        "reviewInstrumentalAnyway": "Lad mig selv vælge instrumentalnummeret",
+        "previewTitle": "Forhåndsvis video"
       },
       "searchLyrics": {
         "artist": "Kunstner",

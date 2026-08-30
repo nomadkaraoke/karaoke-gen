@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {modification} other {modifications}} sur {segments} segments"
     },
     "previewVideo": {
-      "generating": "Génération de la vidéo d'aperçu...",
+      "generating": "Préparation de ton aperçu…",
       "failed": "Échec de la génération de la vidéo d'aperçu",
       "unsupportedBrowser": "Ton navigateur ne prend pas en charge la balise vidéo.",
       "encoding": "Encodage de la vidéo d'aperçu...",
       "timedOut": "La vidéo d'aperçu prend plus de temps que prévu. Réessaie s'il te plaît.",
       "retry": "Réessayer",
-      "startingEncoder": "Démarrage d'un serveur d'encodage — cela peut prendre quelques minutes. Patiente un peu !"
+      "startingEncoder": "Démarrage d'un serveur d'encodage — cela peut prendre quelques minutes. Patiente un peu !",
+      "audioLabel": "Audio :",
+      "audioOriginal": "Original (avec voix)",
+      "backingVocalsWaveformHint": "Chœurs conservés dans l'instrumental — clique pour écouter cette partie.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Choisis un style de casse à appliquer à toutes les paroles :"
       },
       "reviewChanges": {
-        "previewWithVocals": "Aperçu vidéo (Avec voix)",
         "noLyricsTitle": "Aucune parole détectée",
         "noLyricsDesc": "Aucune parole n'a été trouvée dans l'audio. Cela se produit généralement lorsque l'audio d'entrée n'a pas de voix (ex. une piste karaoké ou instrumentale).",
         "noLyricsHint": "Tu peux revenir en arrière et coller des paroles manuellement en utilisant Tout remplacer, ou annuler ce projet et réessayer avec un fichier audio qui contient des voix.",
         "manualCorrectionsDetected": "Corrections manuelles détectées. Vérifie l'aperçu pour t'assurer que les paroles sont synchronisées correctement.",
-        "noManualCorrections": "Aucune correction manuelle détectée. Si tout semble correct dans l'aperçu, passe à la sélection de ton instrumental.",
-        "totalSegments": "Total des segments : {count}",
         "proceedToInstrumental": "Passer à la révision instrumentale",
         "saving": "Enregistrement...",
         "completeTrack": "Terminer la piste",
         "autoInstrumentalBacking": "Nous conserverons automatiquement les chœurs dans l'instrumental — aucune vérification de l'instrumental n'est requise.",
         "autoInstrumentalClean": "Nous utiliserons automatiquement l'instrumental propre (sans chœurs) — aucune vérification de l'instrumental n'est requise.",
-        "reviewInstrumentalAnyway": "Me laisser choisir l'instrumental moi-même"
+        "reviewInstrumentalAnyway": "Me laisser choisir l'instrumental moi-même",
+        "previewTitle": "Aperçu de la vidéo"
       },
       "searchLyrics": {
         "artist": "Artiste",

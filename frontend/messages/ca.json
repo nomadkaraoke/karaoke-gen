@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {canvi} other {canvis}} en {segments} segments"
     },
     "previewVideo": {
-      "generating": "Generant el vídeo de previsualització...",
+      "generating": "Preparant la teva vista prèvia…",
       "failed": "No s'ha pogut generar el vídeo de previsualització",
       "unsupportedBrowser": "El teu navegador no admet l'etiqueta de vídeo.",
       "encoding": "Codificant el vídeo de previsualització...",
       "timedOut": "El vídeo de previsualització està trigant més del previst. Si us plau, torna-ho a provar.",
       "retry": "Reintenta",
-      "startingEncoder": "S'està iniciant un servidor de codificació — això pot trigar un parell de minuts. Espera una mica!"
+      "startingEncoder": "S'està iniciant un servidor de codificació — això pot trigar un parell de minuts. Espera una mica!",
+      "audioLabel": "Àudio:",
+      "audioOriginal": "Original (amb veus)",
+      "backingVocalsWaveformHint": "Veus de fons mantingudes a l'instrumental — fes clic per escoltar aquesta part.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Tria un estil de majúscules/minúscules per aplicar a tota la lletra:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Previsualitza el vídeo (Amb veus)",
         "noLyricsTitle": "No s'han detectat lletres",
         "noLyricsDesc": "No s'han trobat lletres a l'àudio. Això sol passar quan l'àudio d'entrada no té veus (p. ex. una pista de karaoke o instrumental).",
         "noLyricsHint": "Pots tornar enrere i enganxar les lletres manualment utilitzant Reemplaça-ho tot, o cancel·lar aquest treball i tornar-ho a provar amb un fitxer d'àudio que contingui veus.",
         "manualCorrectionsDetected": "S'han detectat correccions manuals. Revisa la previsualització per assegurar-te que les lletres estan sincronitzades correctament.",
-        "noManualCorrections": "No s'han detectat correccions manuals. Si tot es veu bé a la previsualització, procedeix a seleccionar el teu instrumental.",
-        "totalSegments": "Total de segments: {count}",
         "proceedToInstrumental": "Procedeix a la revisió instrumental",
         "saving": "Desant...",
         "completeTrack": "Pista completa",
         "autoInstrumentalBacking": "Mantindrem les veus de fons a l'instrumental automàticament — no cal revisar l'instrumental.",
         "autoInstrumentalClean": "Utilitzarem l'instrumental net (sense veus de fons) automàticament — no cal revisar l'instrumental.",
-        "reviewInstrumentalAnyway": "Deixa'm triar l'instrumental jo mateix"
+        "reviewInstrumentalAnyway": "Deixa'm triar l'instrumental jo mateix",
+        "previewTitle": "Previsualització del vídeo"
       },
       "searchLyrics": {
         "artist": "Artista",

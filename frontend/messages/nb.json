@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {endring} other {endringer}} over {segments} segmenter"
     },
     "previewVideo": {
-      "generating": "Genererer forhåndsvisningsvideo...",
+      "generating": "Forbereder forhåndsvisningen din…",
       "failed": "Kunne ikke generere forhåndsvisningsvideo",
       "unsupportedBrowser": "Nettleseren din støtter ikke video-taggen.",
       "encoding": "Koder forhåndsvisningsvideo...",
       "timedOut": "Forhåndsvisningsvideoen tar lengre tid enn forventet. Prøv igjen.",
       "retry": "Prøv igjen",
-      "startingEncoder": "Starter opp en kodingsserver — dette kan ta et par minutter. Takk for tålmodigheten!"
+      "startingEncoder": "Starter opp en kodingsserver — dette kan ta et par minutter. Takk for tålmodigheten!",
+      "audioLabel": "Lyd:",
+      "audioOriginal": "Original (med vokal)",
+      "backingVocalsWaveformHint": "Bakgrunnsvokalen er beholdt i instrumentalen — klikk for å høre denne delen.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Forrige hull (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Velg en stil for store/små bokstaver som skal brukes på all tekst:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Forhåndsvis video (med vokal)",
         "noLyricsTitle": "Ingen tekst oppdaget",
         "noLyricsDesc": "Ingen tekst ble funnet i lyden. Dette skjer vanligvis når inngangslyden ikke har vokal (f.eks. et karaokespor eller instrumental).",
         "noLyricsHint": "Du kan gå tilbake og lime inn tekst manuelt ved å bruke Erstatt alle, eller avbryte denne jobben og prøve igjen med en lydfil som inneholder vokal.",
         "manualCorrectionsDetected": "Manuelle korrigeringer oppdaget. Se over forhåndsvisningen for å sikre at teksten er riktig synkronisert.",
-        "noManualCorrections": "Ingen manuelle korrigeringer oppdaget. Hvis alt ser bra ut i forhåndsvisningen, fortsett til å velge instrumentalen din.",
-        "totalSegments": "Totalt antall segmenter: {count}",
         "proceedToInstrumental": "Fortsett til instrumentalgjennomgang",
         "saving": "Lagrer...",
         "completeTrack": "Fullfør spor",
         "autoInstrumentalBacking": "Vi beholder bakgrunnsvokalen i instrumentalen automatisk — ingen gjennomgang av instrumentalen er nødvendig.",
         "autoInstrumentalClean": "Vi bruker den rene instrumentalen (uten bakgrunnsvokal) automatisk — ingen gjennomgang av instrumentalen er nødvendig.",
-        "reviewInstrumentalAnyway": "La meg velge instrumentalen selv"
+        "reviewInstrumentalAnyway": "La meg velge instrumentalen selv",
+        "previewTitle": "Forhåndsvis video"
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {változtatás} other {változtatás}} {segments} szegmensben"
     },
     "previewVideo": {
-      "generating": "Előnézeti videó generálása...",
+      "generating": "Az előnézeted készül…",
       "failed": "Nem sikerült legenerálni az előnézeti videót",
       "unsupportedBrowser": "A böngésződ nem támogatja a videó taget.",
       "encoding": "Előnézeti videó kódolása...",
       "timedOut": "Az előnézeti videó elkészítése a vártnál tovább tart. Kérlek, próbáld újra.",
       "retry": "Újrapróbálkozás",
-      "startingEncoder": "Kódolószerver indítása — ez eltarthat néhány percig. Kis türelmet!"
+      "startingEncoder": "Kódolószerver indítása — ez eltarthat néhány percig. Kis türelmet!",
+      "audioLabel": "Audió:",
+      "audioOriginal": "Eredeti (énekkel)",
+      "backingVocalsWaveformHint": "A háttérvokálok megmaradtak az instrumentális sávban — kattints ide, hogy meghallgasd ezt a részt.",
+      "audioInstrumental": "Instrumentális"
     },
     "gapNavigator": {
       "previousGap": "Előző hézag (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Válassz egy betűstílust, amit az összes dalszövegre alkalmazni szeretnél:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Előnézeti videó (Énekkel)",
         "noLyricsTitle": "Nincs dalszöveg észlelve",
         "noLyricsDesc": "Nem találtunk dalszöveget a hangban. Ez általában akkor fordul elő, ha a bemeneti hangban nincs ének (pl. karaoke szám vagy zenei alap).",
         "noLyricsHint": "Visszamehetsz és beillesztheted a dalszöveget manuálisan az Összes cseréje funkcióval, vagy törölheted ezt a projektet, és újra próbálkozhatsz egy olyan hangfájllal, amely tartalmaz éneket.",
         "manualCorrectionsDetected": "Manuális javításokat észleltünk. Nézd meg az előnézetet, hogy megbizonyosodj a dalszöveg helyes szinkronizálásáról.",
-        "noManualCorrections": "Nem észleltünk manuális javításokat. Ha minden jónak tűnik az előnézetben, lépj tovább a zenei alap kiválasztásához.",
-        "totalSegments": "Összes szegmens: {count}",
         "proceedToInstrumental": "Tovább a zenei alap áttekintéséhez",
         "saving": "Mentés...",
         "completeTrack": "Szám befejezése",
         "autoInstrumentalBacking": "Automatikusan megtartjuk a háttérvokált az instrumentális alapban — nincs szükség az alap ellenőrzésére.",
         "autoInstrumentalClean": "Automatikusan a tiszta (háttérvokál nélküli) instrumentális alapot fogjuk használni — nincs szükség az alap ellenőrzésére.",
-        "reviewInstrumentalAnyway": "Hadd válasszam ki én az instrumentális alapot"
+        "reviewInstrumentalAnyway": "Hadd válasszam ki én az instrumentális alapot",
+        "previewTitle": "Videó előnézete"
       },
       "searchLyrics": {
         "artist": "Előadó",

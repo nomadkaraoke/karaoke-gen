@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {cambio} other {cambios}} en {segments} segmentos"
     },
     "previewVideo": {
-      "generating": "Generando video de vista previa...",
+      "generating": "Preparando tu vista previa…",
       "failed": "Error al generar el video de vista previa",
       "unsupportedBrowser": "Tu navegador no soporta la etiqueta de video.",
       "encoding": "Codificando el video de vista previa...",
       "timedOut": "El video de vista previa está tardando más de lo esperado. Por favor, inténtalo de nuevo.",
       "retry": "Reintentar",
-      "startingEncoder": "Iniciando un servidor de codificación — esto puede tardar un par de minutos. ¡Espera un momento!"
+      "startingEncoder": "Iniciando un servidor de codificación — esto puede tardar un par de minutos. ¡Espera un momento!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Original (con voces)",
+      "backingVocalsWaveformHint": "Coros mantenidos en el instrumental — haz clic para escuchar esta parte.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Elige un estilo de mayúsculas y minúsculas para aplicar a todas las letras:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Video de vista previa (Con voces)",
         "noLyricsTitle": "No se detectaron letras",
         "noLyricsDesc": "No se encontraron letras en el audio. Esto suele suceder cuando el audio de entrada no tiene voces (ej. una pista de karaoke o instrumental).",
         "noLyricsHint": "Puedes volver atrás y pegar letras manualmente usando Reemplazar todo, o cancelar este trabajo e intentarlo de nuevo con un archivo de audio que contenga voces.",
         "manualCorrectionsDetected": "Se detectaron correcciones manuales. Revisa la vista previa para asegurarte de que las letras estén sincronizadas correctamente.",
-        "noManualCorrections": "No se detectaron correcciones manuales. Si todo se ve bien en la vista previa, procede a seleccionar tu instrumental.",
-        "totalSegments": "Total de segmentos: {count}",
         "proceedToInstrumental": "Proceder a la revisión instrumental",
         "saving": "Guardando...",
         "completeTrack": "Completar pista",
         "autoInstrumentalBacking": "Mantendremos los coros en el instrumental automáticamente — no se necesita revisión del instrumental.",
         "autoInstrumentalClean": "Usaremos el instrumental limpio (sin coros) automáticamente — no se necesita revisión del instrumental.",
-        "reviewInstrumentalAnyway": "Déjame elegir el instrumental yo mismo"
+        "reviewInstrumentalAnyway": "Déjame elegir el instrumental yo mismo",
+        "previewTitle": "Vista previa del video"
       },
       "searchLyrics": {
         "artist": "Artista",

@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{segments}개 세그먼트에서 {changes}개의 변경 사항"
     },
     "previewVideo": {
-      "generating": "미리보기 비디오 생성 중...",
+      "generating": "미리보기를 준비하는 중입니다…",
       "failed": "미리보기 비디오 생성 실패",
       "unsupportedBrowser": "브라우저가 비디오 태그를 지원하지 않습니다.",
       "encoding": "미리보기 영상 인코딩 중...",
       "timedOut": "미리보기 영상 처리가 예상보다 오래 걸리고 있습니다. 다시 시도해 주세요.",
       "retry": "다시 시도",
-      "startingEncoder": "인코딩 서버를 시작하는 중입니다 — 몇 분 정도 걸릴 수 있으니 잠시만 기다려 주세요!"
+      "startingEncoder": "인코딩 서버를 시작하는 중입니다 — 몇 분 정도 걸릴 수 있으니 잠시만 기다려 주세요!",
+      "audioLabel": "오디오:",
+      "audioOriginal": "원본 (보컬 포함)",
+      "backingVocalsWaveformHint": "반주에 백보컬이 유지되어 있습니다 — 클릭해서 이 부분을 들어보세요.",
+      "audioInstrumental": "반주"
     },
     "gapNavigator": {
       "previousGap": "이전 공백 (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "모든 가사에 적용할 대소문자 스타일을 선택하세요:"
       },
       "reviewChanges": {
-        "previewWithVocals": "비디오 미리보기 (보컬 포함)",
         "noLyricsTitle": "가사가 감지되지 않음",
         "noLyricsDesc": "오디오에서 가사를 찾을 수 없습니다. 이는 보통 입력 오디오에 보컬이 없을 때(예: 노래방 트랙이나 반주) 발생합니다.",
         "noLyricsHint": "뒤로 돌아가서 '모두 교체'를 사용하여 가사를 수동으로 붙여넣거나, 이 작업을 취소하고 보컬이 포함된 오디오 파일로 다시 시도할 수 있습니다.",
         "manualCorrectionsDetected": "수동 수정 사항이 감지되었습니다. 미리보기를 검토하여 가사가 올바르게 동기화되었는지 확인하세요.",
-        "noManualCorrections": "수동 수정 사항이 감지되지 않았습니다. 미리보기에서 모든 것이 좋아 보이면 반주 선택으로 진행하세요.",
-        "totalSegments": "총 세그먼트: {count}",
         "proceedToInstrumental": "반주 검토로 진행",
         "saving": "저장 중...",
         "completeTrack": "트랙 완료",
         "autoInstrumentalBacking": "반주에 백보컬을 자동으로 유지합니다 — 별도의 반주 검토가 필요하지 않습니다.",
         "autoInstrumentalClean": "클린 반주(백보컬 없음)를 자동으로 사용합니다 — 별도의 반주 검토가 필요하지 않습니다.",
-        "reviewInstrumentalAnyway": "반주를 직접 선택할게요"
+        "reviewInstrumentalAnyway": "반주를 직접 선택할게요",
+        "previewTitle": "영상 미리보기"
       },
       "searchLyrics": {
         "artist": "아티스트",

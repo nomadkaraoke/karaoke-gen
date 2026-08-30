@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {Änderung} other {Änderungen}} über {segments} Segmente"
     },
     "previewVideo": {
-      "generating": "Generiere Vorschau-Video...",
+      "generating": "Deine Vorschau wird vorbereitet…",
       "failed": "Vorschau-Video konnte nicht generiert werden",
       "unsupportedBrowser": "Dein Browser unterstützt das Video-Tag nicht.",
       "encoding": "Kodierung des Vorschauvideos...",
       "timedOut": "Das Erstellen des Vorschauvideos dauert länger als erwartet. Bitte versuche es erneut.",
       "retry": "Erneut versuchen",
-      "startingEncoder": "Ein Kodierungsserver wird gestartet — das kann ein paar Minuten dauern. Bitte hab etwas Geduld!"
+      "startingEncoder": "Ein Kodierungsserver wird gestartet — das kann ein paar Minuten dauern. Bitte hab etwas Geduld!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Original (mit Gesang)",
+      "backingVocalsWaveformHint": "Hintergrundgesang im Instrumental beibehalten — klicke, um diesen Teil zu hören.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Wähle einen Stil für die Groß-/Kleinschreibung, der auf den gesamten Text angewendet werden soll:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Vorschau-Video (Mit Gesang)",
         "noLyricsTitle": "Kein Text erkannt",
         "noLyricsDesc": "Es wurde kein Text im Audio gefunden. Dies passiert normalerweise, wenn das Eingabe-Audio keinen Gesang enthält (z.B. ein Karaoke-Track oder Instrumental).",
         "noLyricsHint": "Du kannst zurückgehen und den Text manuell über 'Alle ersetzen' einfügen, oder diesen Auftrag abbrechen und es erneut mit einer Audiodatei versuchen, die Gesang enthält.",
         "manualCorrectionsDetected": "Manuelle Korrekturen erkannt. Überprüfe die Vorschau, um sicherzustellen, dass der Text korrekt synchronisiert ist.",
-        "noManualCorrections": "Keine manuellen Korrekturen erkannt. Wenn in der Vorschau alles gut aussieht, fahre mit der Auswahl deines Instrumentals fort.",
-        "totalSegments": "Gesamte Segmente: {count}",
         "proceedToInstrumental": "Weiter zur Instrumental-Überprüfung",
         "saving": "Speichere...",
         "completeTrack": "Kompletter Track",
         "autoInstrumentalBacking": "Wir behalten den Hintergrundgesang im Instrumental automatisch bei — keine Überprüfung des Instrumentals erforderlich.",
         "autoInstrumentalClean": "Wir verwenden automatisch das reine Instrumental (ohne Hintergrundgesang) — keine Überprüfung des Instrumentals erforderlich.",
-        "reviewInstrumentalAnyway": "Instrumental selbst auswählen"
+        "reviewInstrumentalAnyway": "Instrumental selbst auswählen",
+        "previewTitle": "Video-Vorschau"
       },
       "searchLyrics": {
         "artist": "Künstler",

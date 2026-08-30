@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {muutos} other {muutosta}} {segments} segmentissä"
     },
     "previewVideo": {
-      "generating": "Luodaan esikatseluvideota...",
+      "generating": "Valmistellaan esikatseluasi…",
       "failed": "Esikatseluvideon luominen epäonnistui",
       "unsupportedBrowser": "Selaimesi ei tue videotunnistetta.",
       "encoding": "Esikatseluvideota luodaan...",
       "timedOut": "Esikatseluvideon luomisessa kestää odotettua kauemmin. Yritä uudelleen.",
       "retry": "Yritä uudelleen",
-      "startingEncoder": "Käynnistetään koodauspalvelinta — tässä voi kestää pari minuuttia. Malta hetki!"
+      "startingEncoder": "Käynnistetään koodauspalvelinta — tässä voi kestää pari minuuttia. Malta hetki!",
+      "audioLabel": "Ääni:",
+      "audioOriginal": "Alkuperäinen (laulun kanssa)",
+      "backingVocalsWaveformHint": "Taustalaulut on säilytetty instrumentaalissa — klikkaa kuullaksesi tämän kohdan.",
+      "audioInstrumental": "Instrumentaali"
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Valitse kirjainkoko, jota käytetään kaikkiin sanoituksiin:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Esikatseluvideo (laulun kanssa)",
         "noLyricsTitle": "Sanoituksia ei havaittu",
         "noLyricsDesc": "Äänestä ei löytynyt sanoituksia. Tämä tapahtuu yleensä, kun syöteäänessä ei ole laulua (esim. karaokeraita tai instrumentaali).",
         "noLyricsHint": "Voit palata takaisin ja liittää sanoitukset manuaalisesti käyttämällä Korvaa kaikki, tai peruuttaa tämän työn ja yrittää uudelleen äänitiedostolla, joka sisältää laulua.",
         "manualCorrectionsDetected": "Manuaalisia korjauksia havaittu. Tarkista esikatselu varmistaaksesi, että sanoitukset on synkronoitu oikein.",
-        "noManualCorrections": "Ei manuaalisia korjauksia havaittu. Jos kaikki näyttää hyvältä esikatselussa, siirry valitsemaan instrumentaalisi.",
-        "totalSegments": "Segmenttejä yhteensä: {count}",
         "proceedToInstrumental": "Siirry instrumentaalin tarkistukseen",
         "saving": "Tallennetaan...",
         "completeTrack": "Viimeistele kappale",
         "autoInstrumentalBacking": "Säilytämme taustalaulut instrumentaaliversiossa automaattisesti — instrumentaaliversion tarkistusta ei tarvita.",
         "autoInstrumentalClean": "Käytämme puhdasta instrumentaaliversiota (ei taustalauluja) automaattisesti — instrumentaaliversion tarkistusta ei tarvita.",
-        "reviewInstrumentalAnyway": "Anna minun valita instrumentaaliversio itse"
+        "reviewInstrumentalAnyway": "Anna minun valita instrumentaaliversio itse",
+        "previewTitle": "Videon esikatselu"
       },
       "searchLyrics": {
         "artist": "Esittäjä",

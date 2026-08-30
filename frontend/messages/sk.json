@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {zmena} few {zmeny} other {zmien}} naprieč {segments} segmentmi"
     },
     "previewVideo": {
-      "generating": "Generuje sa náhľadové video...",
+      "generating": "Pripravujeme tvoju ukážku…",
       "failed": "Nepodarilo sa vygenerovať náhľadové video",
       "unsupportedBrowser": "Tvoj prehliadač nepodporuje značku video.",
       "encoding": "Kódovanie ukážkového videa...",
       "timedOut": "Spracovanie ukážkového videa trvá dlhšie, než sa očakávalo. Prosím, skús to znova.",
       "retry": "Skúsiť znova",
-      "startingEncoder": "Spúšťa sa kódovací server — môže to trvať niekoľko minút. Vydrž!"
+      "startingEncoder": "Spúšťa sa kódovací server — môže to trvať niekoľko minút. Vydrž!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Originál (so spevom)",
+      "backingVocalsWaveformHint": "Sprievodné vokály ponechané v inštrumentálnej verzii — klikni a vypočuj si túto časť.",
+      "audioInstrumental": "Inštrumentálna"
     },
     "gapNavigator": {
       "previousGap": "Predchádzajúca medzera (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Vyber si štýl veľkosti písmen, ktorý sa použije na celý text:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Náhľad videa (s vokálmi)",
         "noLyricsTitle": "Nezistil sa žiadny text",
         "noLyricsDesc": "Vo zvuku sa nenašiel žiadny text. Toto sa zvyčajne stáva, keď vstupný zvuk nemá žiadne vokály (napr. karaoke stopa alebo inštrumentálka).",
         "noLyricsHint": "Môžeš sa vrátiť a vložiť text manuálne pomocou Nahradiť všetky, alebo zrušiť túto úlohu a skúsiť to znova so zvukovým súborom, ktorý obsahuje vokály.",
         "manualCorrectionsDetected": "Zistené manuálne opravy. Skontroluj náhľad, aby si sa uistil, že je text správne synchronizovaný.",
-        "noManualCorrections": "Nezistili sa žiadne manuálne opravy. Ak v náhľade vyzerá všetko dobre, pokračuj výberom inštrumentálky.",
-        "totalSegments": "Celkový počet segmentov: {count}",
         "proceedToInstrumental": "Pokračovať na kontrolu inštrumentálky",
         "saving": "Ukladá sa...",
         "completeTrack": "Dokončiť skladbu",
         "autoInstrumentalBacking": "Sprievodné vokály v inštrumentálnej verzii ponecháme automaticky — kontrola inštrumentálnej verzie nie je potrebná.",
         "autoInstrumentalClean": "Automaticky použijeme čistú inštrumentálnu verziu (bez sprievodných vokálov) — kontrola inštrumentálnej verzie nie je potrebná.",
-        "reviewInstrumentalAnyway": "Nechaj ma vybrať si inštrumentálnu verziu"
+        "reviewInstrumentalAnyway": "Nechaj ma vybrať si inštrumentálnu verziu",
+        "previewTitle": "Náhľad videa"
       },
       "searchLyrics": {
         "artist": "Interpret",

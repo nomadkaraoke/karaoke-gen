@@ -95,6 +95,7 @@ interface ApiClient {
     message?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
+  getWaveformData?: (numPoints?: number) => Promise<{ amplitudes: number[]; duration_seconds?: number; duration?: number }>
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods (optional - available in cloud mode)
   saveReviewSession?: LyricsReviewApiClient['saveReviewSession']
@@ -1071,11 +1072,12 @@ export default function LyricsAnalyzer({
         }
       }
 
-      // 3. Close modal
-      setIsReviewModalOpen(false)
-      setIsSubmitting(false)
-
-      // 4. Navigate to instrumental review (or skip if existing instrumental uploaded)
+      // 3. Complete or navigate. The branches that finish the whole job
+      // (existing/auto instrumental) run a slow completeReview — keep the modal
+      // open in its "Saving…" state the entire time so the UI doesn't flash back
+      // to the review screen. The success screen (setShowSuccess) then replaces
+      // the whole view, unmounting the modal. Branches that navigate to the
+      // instrumental screen close the modal first (they're instant).
       if (hasExistingInstrumental && jobId) {
         // Job has an instrumental uploaded at creation time — skip instrumental review
         // Submit with "custom" selection (maps to the uploaded instrumental)
@@ -1088,6 +1090,7 @@ export default function LyricsAnalyzer({
         } catch (err) {
           console.error('Failed to complete review with uploaded instrumental:', err)
           toast.error('Failed to start video generation. Please try again.')
+          setIsSubmitting(false) // Keep modal open so the user can retry
         }
       } else if (autoInstrumentalConfident && !reviewInstrumentalAnyway && jobId) {
         // Per-screen skip (C1): the backing decision was confidently auto-resolved
@@ -1103,11 +1106,15 @@ export default function LyricsAnalyzer({
           // Fall back to the manual instrumental screen if auto-resolution fails
           // (e.g. the verdict wasn't resolvable server-side) — never strand the user.
           console.error('Auto instrumental selection failed, falling back to review:', err)
+          setIsReviewModalOpen(false)
+          setIsSubmitting(false)
           toast('Please choose your instrumental to finish.')
           window.location.hash = `/${jobId}/instrumental`
         }
       } else if (isLocalMode) {
         // Local mode: Show transition message, navigation handled by browser/server
+        setIsReviewModalOpen(false)
+        setIsSubmitting(false)
         toast.success('Lyrics saved! Loading instrumental review...')
         setShowInstrumentalReview(true)
       } else {
@@ -1115,8 +1122,11 @@ export default function LyricsAnalyzer({
         if (!jobId) {
           console.error('No jobId available for cloud mode navigation')
           toast.error('Navigation error - please return to dashboard')
+          setIsSubmitting(false)
           return
         }
+        setIsReviewModalOpen(false)
+        setIsSubmitting(false)
         toast.success('Lyrics saved! Proceeding to instrumental review...')
         window.location.hash = `/${jobId}/instrumental`
       }
