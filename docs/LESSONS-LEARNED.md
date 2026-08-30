@@ -6,6 +6,38 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Measure Human Edits by RECONSTRUCTION, Not the edit_log (Aug 2026)
+
+The lyrics-review `edit_log_*.json` (typed frontend ops) is **unreliable** as a
+measure of what a human changed during review — do not calibrate the auto-approval
+scorer/gates on edit-log counts:
+
+- **Timing edits are never logged.** `timing_change` exists in the op-type union and
+  the replay UI badges it, but no code path emits it — the TimelineEditor drag/resize
+  and the synchronizer tap-to-sync handlers never call `addEditEntry`.
+- **A null `state_data.last_edit_log_path` is ambiguous.** The log is POSTed only
+  `if (editLog.entries.length > 0)` and best-effort (silent failure), so null means
+  *either* zero edits, edits-not-instrumented, *or* submission-failed.
+- It's an intent-log, not an outcome-diff, so any un-instrumented edit path vanishes.
+
+**Reliable method:** reconstruct the post-AI/pre-human state and diff it against the
+human's final. `apply.build_applied_segments(raw_corrections, suggestions)` gives the
+post-AI segments; `difflib` over word text vs `corrections_updated.json` isolates human
+TEXT edits, and >20 ms start/end deltas on unchanged words isolate TIMING edits.
+Suggestion source: `corrections_updated.metadata.auto_approval.suggestions` (pre_applied
+jobs) or `auto_correct_cache/<hash>.json` (client-applied). Tool + full write-up:
+workspace `docs/automation-corpus/reconstruct_edits.py` +
+`reconstruction-remeasure-2026-08-30.md`.
+
+**P8 phantom-parenthetical fixer (v0.212.0):** the re-measure showed deleting phantom
+parentheticals ("(Instrumental break)", "(I'm sorry)", unanchored "(Angel baby)"
+duplicates) is a recurring, cleanly-deterministic human edit. The decisive signal is
+that **every word of the parenthetical run is a gap word** (no confident reference
+match) — this correctly deletes the duplicate even when its tokens appear elsewhere in
+the references. `deterministic.phantom_parenthetical_suggestions` emits the delete, and
+`scorer._extract_gating_signals` now excludes words a WINNING delete suggestion removes,
+so a phantom that will be auto-deleted no longer trips the phantom gate.
+
 ## Don't Invent Silent Fallbacks — Ask or Fail Loud (Jun 2026)
 
 When the desired behaviour for an edge case is unclear, **do not** invent a quiet

@@ -20,6 +20,19 @@ human deliberately left alone (Miguel 6d0640fa "though"->"dog" and an
 explicit-lyrics rewrite), while the one edit he did make ("yo Mick," ->
 "Come here,") had the proper-noun signature.
 
+Pattern 8 (fix) — phantom parenthetical: AudioShake hallucinates or mis-segments
+short parenthetical phrases that no confident reference match backs — standalone
+lines "(Instrumental break)" / "(I'm sorry)" / "(Angel baby)", or unanchored
+duplicate copies of a real line wrapped in parens. The 2026-08-30 reconstruction
+re-measure showed these are a recurring human deletion (Clean Bandit 894781ab,
+33453fa0). Previously these only *gated* the job to human review (scorer's
+phantom signature); here we delete the phantom run so the job can auto-ship. The
+decisive signal is that EVERY word of the parenthetical run is a gap word (no
+confident reference match) — this correctly deletes the "(Angel baby)" duplicate
+even though "angel"/"baby" appear elsewhere in the references. Pure vocalization
+parentheticals ("(ooh)") are left to the vocalization gate (timing/grouping is a
+musical judgement, not a clean delete).
+
 Everything here is pure and conservative: no evidence -> no suggestion.
 """
 from __future__ import annotations
@@ -46,6 +59,13 @@ LEADING_CONNECTIVES = frozenset({"and", "but", "so", "oh", "a"})
 # conflicting multi-model AI suggestion wins its conflict group.
 P4_CONFIDENCE = 0.9
 P5_CONFIDENCE = 0.85
+
+# P8 phantom-parenthetical delete: a strong deterministic signal (all-gap
+# parenthetical run), so confident enough to auto-apply.
+P8_CONFIDENCE = 0.9
+# Never delete a long parenthetical block deterministically — a multi-word
+# parenthetical could be a genuine sung aside. The corpus phantoms are 2-4 words.
+P8_MAX_RUN_WORDS = 5
 
 # P5 size guards: never rewrite long spans deterministically.
 P5_MAX_GAP_WORDS = 6
@@ -344,6 +364,90 @@ def reference_majority_suggestions(
     return out
 
 
+def _parenthetical_runs(
+    words: List[Dict[str, Any]],
+) -> List[Tuple[int, int]]:
+    """Maximal (start, end-inclusive) index runs whose words form one parenthetical
+    unit — the first word opens with "(" and the paren balance closes at the end.
+    Handles single-word "(word)" and multi-word "(Instrumental break)"."""
+    runs: List[Tuple[int, int]] = []
+    i = 0
+    n = len(words)
+    while i < n:
+        text = (words[i].get("text") or "").lstrip()
+        if text[:1] == "(":
+            balance = 0
+            j = i
+            closed = False
+            while j < n:
+                tj = words[j].get("text") or ""
+                balance += tj.count("(") - tj.count(")")
+                if balance <= 0:
+                    closed = True
+                    break
+                j += 1
+            if closed and j < n:
+                runs.append((i, j))
+                i = j + 1
+                continue
+        i += 1
+    return runs
+
+
+def phantom_parenthetical_suggestions(
+    segments: List[Dict[str, Any]],
+    correction_data: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Pattern 8 (fix): delete an all-gap parenthetical run that no confident
+    reference match backs (phantom / mis-segmented backing bit).
+
+    Guards: every word of the run is a gap word (the decisive signal); the run is
+    not purely vocalization (those go to the vocalization gate); and it's short
+    (<= P8_MAX_RUN_WORDS). Deleting a whole segment's words is fine — the apply
+    step drops the now-empty segment."""
+    gap_ids: set = set()
+    for gap in correction_data.get("gap_sequences") or []:
+        gap_ids.update(gap.get("transcribed_word_ids") or [])
+    if not gap_ids:
+        return []
+
+    out: List[Dict[str, Any]] = []
+    for seg in segments or []:
+        words = seg.get("words") or []
+        seg_id = seg.get("id") or ""
+        for start, end in _parenthetical_runs(words):
+            run = words[start : end + 1]
+            if not (1 <= len(run) <= P8_MAX_RUN_WORDS):
+                continue
+            run_ids = [w.get("id") for w in run]
+            if not all(run_ids):
+                continue
+            # Decisive signal: the entire parenthetical is unanchored (all gap).
+            if not all(wid in gap_ids for wid in run_ids):
+                continue
+            # Leave pure-vocalization parentheticals to the vocalization gate.
+            if all(_is_vocalization_token(w.get("text") or "") for w in run):
+                continue
+            original = " ".join((w.get("text") or "") for w in run)
+            out.append(
+                _make_suggestion(
+                    op="delete",
+                    word_ids=list(run_ids),
+                    segment_ids=[seg_id],
+                    original_text=original,
+                    new_text="",
+                    reason=(
+                        f'Removed phantom parenthetical "{original.strip()}" — no '
+                        "reference source confidently matches it; the transcription "
+                        "hallucinated or mis-segmented a backing/aside bit"
+                    ),
+                    category="phantom",
+                    confidence=P8_CONFIDENCE,
+                )
+            )
+    return out
+
+
 def deterministic_suggestions(
     segments: List[Dict[str, Any]],
     reference_lyrics: Dict[str, Any],
@@ -361,9 +465,11 @@ def deterministic_suggestions(
         streams = _ref_word_streams(reference_lyrics)
         if not streams:
             return []
-        return leading_connective_suggestions(
-            segments, correction_data, streams
-        ) + reference_majority_suggestions(segments, correction_data, streams)
+        return (
+            leading_connective_suggestions(segments, correction_data, streams)
+            + reference_majority_suggestions(segments, correction_data, streams)
+            + phantom_parenthetical_suggestions(segments, correction_data)
+        )
     except Exception:
         logger.warning("deterministic suggestion generation failed", exc_info=True)
         return []

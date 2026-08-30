@@ -286,6 +286,52 @@ def test_normal_parenthetical_backing_bit_does_not_gate() -> None:
     assert res.verdict == LyricsVerdict.AUTO
 
 
+def _delete_suggestion(sid: str, word_ids: List[str], conflict_group=None,
+                       consensus: int = 1, confidence: float = 0.9) -> Dict[str, Any]:
+    return {
+        "id": sid, "op": "delete", "word_ids": word_ids, "new_text": "",
+        "conflict_group": conflict_group, "consensus": consensus,
+        "confidence": confidence, "total_models": consensus,
+    }
+
+
+def test_phantom_gate_clears_when_a_delete_suggestion_removes_the_phantom() -> None:
+    # The P8 phantom-parenthetical fixer emits a delete for the phantom line; the
+    # scorer treats those words as removed, so the phantom gate no longer fires.
+    data = _corrections_json(anchor_words=20, gap_words=0, synced=True)
+    data = _with_extra_segment(
+        data,
+        [_timed_word("p0", "(I'm", 0.0, 0.4), _timed_word("p1", "sorry)", 4.4, 4.8)],
+        0.0, 4.8, anchored=False,
+    )
+    gated = score_lyrics(data)
+    assert gated.tier == "phantom-gate"
+
+    cleared = score_lyrics(data, [_delete_suggestion("d0", ["p0", "p1"])])
+    assert not cleared.signals.has_phantom_signature
+    assert cleared.tier != "phantom-gate"
+
+
+def test_phantom_gate_stays_when_the_delete_loses_its_conflict_group() -> None:
+    # A delete that loses its conflict group won't actually remove the words, so
+    # the scorer must NOT treat the phantom as handled.
+    data = _corrections_json(anchor_words=20, gap_words=0, synced=True)
+    data = _with_extra_segment(
+        data,
+        [_timed_word("p0", "(I'm", 0.0, 0.4), _timed_word("p1", "sorry)", 4.4, 4.8)],
+        0.0, 4.8, anchored=False,
+    )
+    losing_delete = _delete_suggestion("d0", ["p0", "p1"], conflict_group="c1",
+                                       consensus=1, confidence=0.9)
+    winning_replace = {
+        "id": "r0", "op": "replace", "word_ids": ["p0", "p1"], "new_text": "I'm sorry",
+        "conflict_group": "c1", "consensus": 3, "confidence": 0.95, "total_models": 3,
+    }
+    res = score_lyrics(data, [losing_delete, winning_replace])
+    assert res.signals.has_phantom_signature
+    assert res.tier == "phantom-gate"
+
+
 def test_verdict_to_dict_is_json_safe() -> None:
     import json
 

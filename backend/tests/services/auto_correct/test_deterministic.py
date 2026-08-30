@@ -12,6 +12,7 @@ from unittest.mock import patch
 from backend.services.auto_correct.deterministic import (
     deterministic_suggestions,
     leading_connective_suggestions,
+    phantom_parenthetical_suggestions,
     reference_majority_suggestions,
     _ref_word_streams,
 )
@@ -460,6 +461,105 @@ def test_deterministic_respects_min_confidence_setting() -> None:
             correction_data=cd,
         )
     assert result.suggestions == []
+
+
+# ---- Pattern 8: phantom parenthetical ----
+
+
+def _phantom_cd(segments, gap_ids):
+    """correction_data whose gap_sequences mark ``gap_ids`` as gap words."""
+    return {
+        "gap_sequences": [{"id": "g", "transcribed_word_ids": list(gap_ids)}],
+        "anchor_sequences": [],
+    }
+
+
+def test_p8_deletes_all_gap_standalone_parenthetical() -> None:
+    # Clean Bandit 894781ab: "(Instrumental break)" — an all-gap phantom line.
+    segments = [_seg("seg-0", [("w0", "(Instrumental"), ("w1", "break)")])]
+    cd = _phantom_cd(segments, ["w0", "w1"])
+    out = phantom_parenthetical_suggestions(segments, cd)
+    assert len(out) == 1
+    assert out[0]["op"] == "delete"
+    assert out[0]["word_ids"] == ["w0", "w1"]
+    assert out[0]["category"] == "phantom"
+
+
+def test_p8_deletes_single_word_parenthetical() -> None:
+    # Atomic Kitten 5f90b799: trailing "(Dreaming)" echo the human removed.
+    segments = [
+        _seg("seg-0", [("w0", "dreaming?"), ("w1", "(Dreaming)")]),
+    ]
+    cd = _phantom_cd(segments, ["w1"])
+    out = phantom_parenthetical_suggestions(segments, cd)
+    assert len(out) == 1
+    assert out[0]["word_ids"] == ["w1"]
+
+
+def test_p8_deletes_unanchored_duplicate_even_when_tokens_in_refs() -> None:
+    # 33453fa0 "(Angel baby) Angel baby": the parenthetical copy is unanchored
+    # (all gap) so it's deleted; the trailing anchored "Angel baby" is kept —
+    # even though "angel"/"baby" appear elsewhere in the references.
+    segments = [
+        _seg("seg-0", [("w0", "(Angel"), ("w1", "baby)"), ("w2", "Angel"), ("w3", "baby")]),
+    ]
+    cd = _phantom_cd(segments, ["w0", "w1"])  # only the paren copy is a gap
+    out = phantom_parenthetical_suggestions(segments, cd)
+    assert len(out) == 1
+    assert out[0]["word_ids"] == ["w0", "w1"]
+
+
+def test_p8_skips_partially_anchored_parenthetical() -> None:
+    # If any word of the parenthetical is anchored (matched a reference), it is
+    # not a clean phantom — leave it for a human.
+    segments = [_seg("seg-0", [("w0", "(real"), ("w1", "lyric)")])]
+    cd = _phantom_cd(segments, ["w0"])  # w1 anchored
+    assert phantom_parenthetical_suggestions(segments, cd) == []
+
+
+def test_p8_skips_pure_vocalization_parenthetical() -> None:
+    # "(ooh ooh)" is a musical judgement — the vocalization gate handles it.
+    segments = [_seg("seg-0", [("w0", "(ooh"), ("w1", "ooh)")])]
+    cd = _phantom_cd(segments, ["w0", "w1"])
+    assert phantom_parenthetical_suggestions(segments, cd) == []
+
+
+def test_p8_skips_long_parenthetical_block() -> None:
+    words = [("w0", "(this"), ("w1", "is"), ("w2", "a"), ("w3", "very"),
+             ("w4", "long"), ("w5", "aside)")]
+    segments = [_seg("seg-0", words)]
+    cd = _phantom_cd(segments, [w for w, _ in words])
+    assert phantom_parenthetical_suggestions(segments, cd) == []
+
+
+def test_p8_no_gaps_no_suggestions() -> None:
+    segments = [_seg("seg-0", [("w0", "(Instrumental"), ("w1", "break)")])]
+    assert phantom_parenthetical_suggestions(segments, {"gap_sequences": []}) == []
+
+
+def test_p8_three_repeated_phantoms_each_deleted() -> None:
+    # 33453fa0: three separate "(I'm sorry)" phantom segments.
+    segments = [
+        _seg("seg-0", [("a0", "(I'm"), ("a1", "sorry)")]),
+        _seg("seg-1", [("b0", "(I'm"), ("b1", "sorry)")]),
+        _seg("seg-2", [("c0", "(I'm"), ("c1", "sorry)")]),
+    ]
+    cd = _phantom_cd(segments, ["a0", "a1", "b0", "b1", "c0", "c1"])
+    out = phantom_parenthetical_suggestions(segments, cd)
+    assert len(out) == 3
+    assert all(s["op"] == "delete" for s in out)
+
+
+def test_p8_flows_through_deterministic_suggestions() -> None:
+    segments = [_seg("seg-0", [("w0", "(Instrumental"), ("w1", "break)")])]
+    refs = {"genius": _ref_source(["some", "real", "lyrics"], "r")}
+    cd = _phantom_cd(segments, ["w0", "w1"])
+    cd["reference_lyrics"] = refs
+    out = deterministic_suggestions(segments, refs, cd)
+    assert any(
+        s["op"] == "delete" and s["reason"].startswith("Removed phantom parenthetical")
+        for s in out
+    )
 
 
 # ---- module-level helpers ----
