@@ -64,7 +64,12 @@ class _FakeStorage:
     def list_files(self, prefix: str) -> List[str]:
         return [p for p in self._files if p.startswith(prefix)]
 
-    def upload_json(self, path: str, data: Any):
+    def upload_json(self, path: str, data: Any, if_generation_match=None):
+        # Model create-only semantics: if_generation_match=0 fails when the object
+        # already exists (mirrors GCS raising PreconditionFailed).
+        if if_generation_match == 0 and path in self._files:
+            from google.api_core.exceptions import PreconditionFailed
+            raise PreconditionFailed("object exists")
         self.uploads[path] = data
         self._files[path] = data
 
@@ -183,3 +188,21 @@ async def test_screens_path_generates_on_cache_miss():
     storage = _FakeStorage({CORR: _corrections()})
     result, _, gen = await _run(storage, proactive=True, generate_on_miss=True)
     assert gen["called"] is True
+
+
+@pytest.mark.asyncio
+async def test_pre_apply_raced_concurrent_write_does_not_clobber():
+    # A concurrent writer created corrections_updated.json AFTER our existence check
+    # (invisible to the check, present for the create-only upload) -> theirs wins.
+    storage = _FakeStorage({
+        CORR: _corrections(),
+        CACHE: {"suggestions": [_replace_suggestion()]},
+        UPD: {"metadata": {}, "corrected_segments": [{"id": "s0", "words": [{"id": "x"}]}]},
+    })
+    orig_exists = storage.file_exists
+    storage.file_exists = lambda p: False if p == UPD else orig_exists(p)
+    result, _, _gen = await _run(storage)
+    assert result["outcome"] == "skipped"
+    assert result["reason"] == "raced_concurrent_write"
+    # The concurrent writer's content is untouched.
+    assert storage._files[UPD]["metadata"] == {}

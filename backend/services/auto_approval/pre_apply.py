@@ -102,7 +102,19 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
             "applied_at": datetime.now(timezone.utc).isoformat(),
         }
         updated["metadata"] = metadata
-        storage.upload_json(updated_path, updated)
+        # Create-only write: we only reach here when corrections_updated.json was
+        # absent at the check above, so if_generation_match=0 makes the write atomic —
+        # a concurrent writer (executor auto-complete, or an edit submission) that
+        # created it in the meantime wins and we don't clobber their (newer) state.
+        try:
+            from google.api_core.exceptions import PreconditionFailed
+        except Exception:  # pragma: no cover - google libs always present in prod
+            PreconditionFailed = ()  # type: ignore[assignment]
+        try:
+            storage.upload_json(updated_path, updated, if_generation_match=0)
+        except PreconditionFailed:
+            logger.info(f"[job:{job_id}] pre-apply raced a concurrent write — theirs wins")
+            return {"outcome": "skipped", "reason": "raced_concurrent_write"}
         JobManager().update_file_url(job_id, "lyrics", "corrections_updated", updated_path)
 
         logger.info(

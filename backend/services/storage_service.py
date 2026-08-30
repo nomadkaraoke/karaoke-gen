@@ -288,14 +288,28 @@ class StorageService:
             logger.error(f"Error checking file existence {blob_path}: {e}")
             raise
     
-    def upload_json(self, destination_path: str, data: Dict[str, Any]) -> str:
-        """Upload a JSON object to GCS."""
+    def upload_json(
+        self,
+        destination_path: str,
+        data: Dict[str, Any],
+        if_generation_match: Optional[int] = None,
+    ) -> str:
+        """Upload a JSON object to GCS.
+
+        ``if_generation_match=0`` makes the write a create-only operation: GCS raises
+        ``PreconditionFailed`` (412) if the object already exists, so concurrent
+        writers can't clobber each other. Callers that need this must handle the
+        exception.
+        """
         try:
             blob = self.bucket.blob(destination_path)
             blob.content_type = "application/json"
+            upload_kwargs = {"content_type": "application/json"}
+            if if_generation_match is not None:
+                upload_kwargs["if_generation_match"] = if_generation_match
             blob.upload_from_string(
                 json.dumps(data, indent=2, ensure_ascii=False),
-                content_type="application/json"
+                **upload_kwargs,
             )
             logger.info(f"Uploaded JSON to gs://{settings.gcs_bucket_name}/{destination_path}")
             return destination_path
