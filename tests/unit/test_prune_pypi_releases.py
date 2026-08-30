@@ -19,9 +19,9 @@ sys.modules[_spec.name] = prune
 _spec.loader.exec_module(prune)
 
 
-def _release(date: str, size: int = 62_000_000) -> list[dict]:
-    """A one-file release uploaded on ``date`` (YYYY-MM-DD)."""
-    return [{"size": size, "upload_time_iso_8601": f"{date}T12:00:00.000000Z"}]
+def _release(date: str, size: int = 62_000_000, time: str = "12:00:00.000000") -> list[dict]:
+    """A one-file release uploaded on ``date`` (YYYY-MM-DD) at ``time`` (UTC)."""
+    return [{"size": size, "upload_time_iso_8601": f"{date}T{time}Z"}]
 
 
 NOW = datetime.date(2026, 8, 29)
@@ -112,6 +112,34 @@ def test_delete_list_sorted_most_recent_first():
     plan = prune.compute_plan(releases, keep_days=60, now=NOW)
     # Deleted are the earlier-in-month ones; list must be newest-first.
     assert plan.delete == ["0.3.0", "0.2.0", "0.1.0"]
+
+
+def test_same_day_uploads_ranked_by_time_not_api_order():
+    # Two releases on the same (old) day: the later-in-day one must win as the
+    # month's keeper, regardless of the dict/API insertion order.
+    releases = {
+        # Insertion order deliberately puts the EARLIER upload last.
+        "0.1.1": _release("2026-01-20", time="18:30:00.000000"),  # later -> keeper
+        "0.1.0": _release("2026-01-20", time="03:00:00.000000"),  # earlier -> delete
+        "9.9.9": _release("2026-08-29"),  # latest overall
+    }
+    plan = prune.compute_plan(releases, keep_days=60, now=NOW)
+    assert "0.1.1" in plan.keep
+    assert plan.delete == ["0.1.0"]
+
+
+def test_same_day_uploads_pick_latest_overall():
+    # When the newest *day* is also outside the window (abandoned project) and
+    # has multiple uploads, the genuinely-latest one is the kept "latest overall".
+    releases = {
+        "2.0.0": _release("2025-01-01", time="09:00:00.000000"),
+        "2.0.2": _release("2025-01-01", time="23:00:00.000000"),  # truly latest
+        "2.0.1": _release("2025-01-01", time="15:00:00.000000"),
+    }
+    plan = prune.compute_plan(releases, keep_days=60, now=NOW)
+    # All share one month, so the month keeper == latest overall == 2.0.2.
+    assert "2.0.2" in plan.keep
+    assert set(plan.delete) == {"2.0.0", "2.0.1"}
 
 
 def test_console_js_is_wellformed_and_contains_versions():

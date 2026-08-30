@@ -55,12 +55,20 @@ class ReleasePlan:
         return self.current_bytes - self.delete_bytes
 
 
-def _version_date(files: list[dict]) -> datetime.date | None:
-    """Latest upload date across a version's files (None if none dated)."""
-    dates = [f["upload_time_iso_8601"][:10] for f in files if f.get("upload_time_iso_8601")]
-    if not dates:
+def _version_timestamp(files: list[dict]) -> str | None:
+    """Latest upload timestamp (full ISO 8601) across a version's files.
+
+    Returns the raw ``upload_time_iso_8601`` string (e.g.
+    ``2026-08-29T23:56:57.396484Z``), or None if no file is dated. PyPI always
+    reports these in UTC with a fixed format, so lexicographic ordering equals
+    chronological ordering — we keep the full timestamp (not just the day) so
+    same-day releases are ranked by actual upload time, independent of the JSON
+    API's mapping order.
+    """
+    stamps = [f["upload_time_iso_8601"] for f in files if f.get("upload_time_iso_8601")]
+    if not stamps:
         return None
-    return datetime.date.fromisoformat(max(dates))
+    return max(stamps)
 
 
 def compute_plan(
@@ -82,39 +90,43 @@ def compute_plan(
     """
     plan = ReleasePlan(keep_days=keep_days)
 
-    # Collect (version, date, size) for every non-empty release.
-    dated: list[tuple[str, datetime.date, int]] = []
+    # Collect (version, full_timestamp, size) for every non-empty release. The
+    # full ISO timestamp (not just the day) drives every chronological
+    # comparison so same-day releases rank by real upload time.
+    dated: list[tuple[str, str, int]] = []
     for version, files in releases.items():
         if not files:
             continue
-        date = _version_date(files)
-        if date is None:
+        ts = _version_timestamp(files)
+        if ts is None:
             continue
         size = sum(int(f.get("size") or 0) for f in files)
-        dated.append((version, date, size))
+        dated.append((version, ts, size))
         plan.sizes[version] = size
         plan.current_bytes += size
 
     if not dated:
         return plan
 
-    # Always keep the newest release overall, regardless of policy.
+    def _age_days(ts: str) -> int:
+        return (now - datetime.date.fromisoformat(ts[:10])).days
+
+    # Always keep the newest release overall, regardless of policy (full-
+    # timestamp max, so a same-day burst keeps the genuinely-latest one).
     newest_version = max(dated, key=lambda d: d[1])[0]
 
     # For releases older than the window, keep the newest per calendar month.
-    month_latest: dict[str, tuple[datetime.date, str]] = {}
-    for version, date, _ in dated:
-        age_days = (now - date).days
-        if age_days <= keep_days:
+    month_latest: dict[str, tuple[str, str]] = {}  # "YYYY-MM" -> (timestamp, version)
+    for version, ts, _ in dated:
+        if _age_days(ts) <= keep_days:
             continue  # inside the full-fidelity window; handled below
-        ym = date.strftime("%Y-%m")
-        if ym not in month_latest or date > month_latest[ym][0]:
-            month_latest[ym] = (date, version)
+        ym = ts[:7]
+        if ym not in month_latest or ts > month_latest[ym][0]:
+            month_latest[ym] = (ts, version)
     monthly_keepers = {v for _, v in month_latest.values()}
 
-    for version, date, size in dated:
-        age_days = (now - date).days
-        keep = age_days <= keep_days or version == newest_version or version in monthly_keepers
+    for version, ts, size in dated:
+        keep = _age_days(ts) <= keep_days or version == newest_version or version in monthly_keepers
         if keep:
             plan.keep.append(version)
         else:
@@ -123,9 +135,9 @@ def compute_plan(
 
     # Present most-recent-first so a human scanning the delete list sees the
     # boundary of what's being removed.
-    date_by_version = {v: d for v, d, _ in dated}
-    plan.keep.sort(key=lambda v: date_by_version[v], reverse=True)
-    plan.delete.sort(key=lambda v: date_by_version[v], reverse=True)
+    ts_by_version = {v: ts for v, ts, _ in dated}
+    plan.keep.sort(key=lambda v: ts_by_version[v], reverse=True)
+    plan.delete.sort(key=lambda v: ts_by_version[v], reverse=True)
     return plan
 
 

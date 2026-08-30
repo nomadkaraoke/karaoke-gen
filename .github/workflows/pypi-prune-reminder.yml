@@ -30,6 +30,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       PROJECT: karaoke-gen
       KEEP_DAYS: "60"
+      # Only nag once the project crosses this watermark — pruning holds it at
+      # ~4-7 GB, and there are always old releases to consolidate, so without a
+      # threshold this would open an issue every month for no real reason. 7 GB
+      # leaves ~1 month of ~3 GB/month growth before the 10 GB cap.
+      NAG_THRESHOLD_GB: "7"
       ISSUE_TITLE: "🧹 PyPI storage prune due: karaoke-gen"
     steps:
       - uses: actions/checkout@v4
@@ -49,18 +54,21 @@ jobs:
             --project "$PROJECT" --keep-days "$KEEP_DAYS" \
             --format json --output plan.json
           python - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
+          import json, os
           d = json.load(open("plan.json"))
+          threshold = float(os.environ["NAG_THRESHOLD_GB"])
+          should_nag = d["delete_count"] > 0 and d["current_gb"] >= threshold
           print(f"delete_count={d['delete_count']}")
           print(f"reclaimable_gb={d['reclaimable_gb']:.2f}")
           print(f"current_gb={d['current_gb']:.2f}")
+          print(f"should_nag={'true' if should_nag else 'false'}")
           PY
 
       - name: Job summary
         run: cat plan.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Open or update tracking issue
-        if: steps.plan.outputs.delete_count != '0'
+        if: steps.plan.outputs.should_nag == 'true'
         run: |
           # Search by a stable ASCII substring (emoji in search queries is
           # flaky); the exact-title jq filter below is the real dedupe guard.
