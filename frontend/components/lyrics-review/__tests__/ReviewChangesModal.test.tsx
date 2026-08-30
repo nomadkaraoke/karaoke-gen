@@ -249,8 +249,67 @@ describe('ReviewChangesModal', () => {
       />
     )
     expect(screen.getByRole('button', { name: /complete track/i })).toBeInTheDocument()
-    expect(screen.getByText(/keep the backing vocals/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/we'll keep the backing vocals in the instrumental/i)
+    ).toBeInTheDocument()
     expect(screen.getByRole('checkbox')).toBeInTheDocument()
+    // Escape hatch is reworded to the specific, rarely-used action.
+    expect(
+      screen.getByText(/mute specific sections, or upload a custom instrumental/i)
+    ).toBeInTheDocument()
+  })
+
+  it('reflects the clean choice in the note once the reviewer switches via the audio toggle', () => {
+    // The keep-backing / clean pills live in PreviewVideoSection (mocked here);
+    // the modal just reflects the reported choice via the cleanOverride prop.
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    const options = [
+      { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
+      { id: 'with_backing', label: 'Backing', audio_url: 'http://x/backing.ogg' },
+    ]
+    const { rerender } = render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        data={makeData({ corrected_segments: segments as any, instrumental_options: options as any })}
+      />
+    )
+    expect(
+      screen.getByText(/we'll keep the backing vocals in the instrumental/i)
+    ).toBeInTheDocument()
+
+    rerender(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        cleanOverride
+        data={makeData({ corrected_segments: segments as any, instrumental_options: options as any })}
+      />
+    )
+    expect(screen.getByText(/you've chosen the clean instrumental/i)).toBeInTheDocument()
+  })
+
+  it('uses the clean-case escape-hatch wording when clean is already the default', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="clean"
+        data={makeData({
+          corrected_segments: segments as any,
+          instrumental_options: [
+            { id: 'clean', label: 'Clean', audio_url: 'http://x/clean.ogg' },
+          ] as any,
+        })}
+      />
+    )
+    expect(screen.getByText(/review the instrumental myself/i)).toBeInTheDocument()
   })
 
   it('shows the clean-instrumental note when the resolved selection is clean', () => {

@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Original (cu voce)",
       "backingVocalsWaveformHint": "Vocile de fundal păstrate în instrumental — dă click pentru a asculta această parte.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + voci de fundal",
+      "audioInstrumentalClean": "Instrumental curat"
     },
     "gapNavigator": {
       "previousGap": "Golul anterior (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Treci la revizuirea instrumentalului",
         "saving": "Se salvează...",
         "completeTrack": "Piesa completă",
-        "autoInstrumentalBacking": "Vom păstra vocile de fundal în instrumental în mod automat — nu este necesară revizuirea instrumentalului.",
-        "autoInstrumentalClean": "Vom folosi instrumentalul curat (fără voci de fundal) în mod automat — nu este necesară revizuirea instrumentalului.",
-        "reviewInstrumentalAnyway": "Lasă-mă să aleg singur instrumentalul",
-        "previewTitle": "Previzualizare videoclip"
+        "autoInstrumentalBacking": "Vom păstra vocile de fundal în instrumental. Ascultă mai jos — dacă auzi prea mult din vocea principală sau zgomot, treci la instrumentalul curat.",
+        "autoInstrumentalClean": "Vom folosi instrumentalul curat (fără voci de fundal) pentru această piesă.",
+        "reviewInstrumentalAnyway": "Vreau să păstrez vocile de fundal, dar să pun pe mut anumite secțiuni sau să încarc un instrumental personalizat",
+        "previewTitle": "Previzualizare videoclip",
+        "autoInstrumentalCleanChosen": "Ai ales instrumentalul curat (fără voci de fundal) pentru această piesă.",
+        "reviewInstrumentalCleanHatch": "Vreau să verific eu instrumentalul sau să încarc un instrumental personalizat"
       },
       "searchLyrics": {
         "artist": "Artist",

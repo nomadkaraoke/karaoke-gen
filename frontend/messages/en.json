@@ -1026,6 +1026,8 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Original (with vocals)",
       "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + backing vocals",
+      "audioInstrumentalClean": "Clean instrumental",
       "backingVocalsWaveformHint": "Backing vocals kept in the instrumental — click to hear this part."
     },
     "gapNavigator": {
@@ -1232,9 +1234,11 @@
         "manualCorrectionsDetected": "Manual corrections detected. Review the preview to ensure the lyrics are synchronized correctly.",
         "proceedToInstrumental": "Proceed to Instrumental Review",
         "completeTrack": "Complete Track",
-        "reviewInstrumentalAnyway": "Let me choose the instrumental myself",
-        "autoInstrumentalBacking": "We'll keep the backing vocals in the instrumental automatically — no instrumental review needed.",
-        "autoInstrumentalClean": "We'll use the clean instrumental (no backing vocals) automatically — no instrumental review needed.",
+        "reviewInstrumentalAnyway": "Let me keep the backing vocals but mute specific sections, or upload a custom instrumental",
+        "reviewInstrumentalCleanHatch": "Let me review the instrumental myself, or upload a custom instrumental",
+        "autoInstrumentalBacking": "We'll keep the backing vocals in the instrumental. Have a listen below — if you hear too much lead-vocal bleed or noise, switch to the clean instrumental.",
+        "autoInstrumentalClean": "We'll use the clean instrumental (no backing vocals) for this track.",
+        "autoInstrumentalCleanChosen": "You've chosen the clean instrumental (no backing vocals) for this track.",
         "saving": "Saving..."
       },
       "searchLyrics": {

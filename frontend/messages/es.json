@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Original (con voces)",
       "backingVocalsWaveformHint": "Coros mantenidos en el instrumental — haz clic para escuchar esta parte.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + coros",
+      "audioInstrumentalClean": "Instrumental limpio"
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Proceder a la revisión instrumental",
         "saving": "Guardando...",
         "completeTrack": "Completar pista",
-        "autoInstrumentalBacking": "Mantendremos los coros en el instrumental automáticamente — no se necesita revisión del instrumental.",
-        "autoInstrumentalClean": "Usaremos el instrumental limpio (sin coros) automáticamente — no se necesita revisión del instrumental.",
-        "reviewInstrumentalAnyway": "Déjame elegir el instrumental yo mismo",
-        "previewTitle": "Vista previa del video"
+        "autoInstrumentalBacking": "Mantendremos los coros en el instrumental. Escucha a continuación — si notas demasiada filtración de la voz principal o ruido, cambia al instrumental limpio.",
+        "autoInstrumentalClean": "Usaremos el instrumental limpio (sin coros) para esta pista.",
+        "reviewInstrumentalAnyway": "Déjame mantener los coros pero silenciar secciones específicas, o subir un instrumental personalizado",
+        "previewTitle": "Vista previa del video",
+        "autoInstrumentalCleanChosen": "Has elegido el instrumental limpio (sin coros) para esta pista.",
+        "reviewInstrumentalCleanHatch": "Déjame revisar el instrumental yo mismo, o subir un instrumental personalizado"
       },
       "searchLyrics": {
         "artist": "Artista",

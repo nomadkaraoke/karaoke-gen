@@ -228,4 +228,69 @@ describe('PreviewVideoSection', () => {
 
     expect(video.muted).toBe(true)
   })
+
+  it('splits the toggle into backing/clean pills when offerInstrumentalChoice is set', async () => {
+    const apiClient = makeApiClient()
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="with_backing"
+        offerInstrumentalChoice
+      />
+    )
+    await flush()
+
+    // No single "Instrumental" pill; two named instrumental pills instead.
+    expect(screen.queryByRole('button', { name: /^instrumental$/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /instrumental \+ backing vocals/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /clean instrumental/i })).toBeInTheDocument()
+    // Hidden stem player starts on the auto-selected (with_backing) stem.
+    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/backing.ogg')
+  })
+
+  it('reports the choice and swaps the stem when the clean pill is clicked', async () => {
+    const apiClient = makeApiClient()
+    const onInstrumentalChoiceChange = jest.fn()
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="with_backing"
+        offerInstrumentalChoice
+        onInstrumentalChoiceChange={onInstrumentalChoiceChange}
+      />
+    )
+    await flush()
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    await user.click(screen.getByRole('button', { name: /clean instrumental/i }))
+    await flush()
+
+    expect(onInstrumentalChoiceChange).toHaveBeenCalledWith('clean')
+    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe('http://test/clean.ogg')
+    expect((document.querySelector('video') as HTMLVideoElement).muted).toBe(true)
+  })
+
+  it('keeps the single Instrumental pill when only one stem is available', async () => {
+    const apiClient = makeApiClient()
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={[instrumentalOptions[0]] as any}
+        autoSelection="clean"
+        offerInstrumentalChoice
+      />
+    )
+    await flush()
+
+    expect(screen.getByRole('button', { name: /^instrumental$/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /instrumental \+ backing vocals/i })).not.toBeInTheDocument()
+  })
 })

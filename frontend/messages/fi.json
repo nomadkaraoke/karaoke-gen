@@ -1014,7 +1014,9 @@
       "audioLabel": "Ääni:",
       "audioOriginal": "Alkuperäinen (laulun kanssa)",
       "backingVocalsWaveformHint": "Taustalaulut on säilytetty instrumentaalissa — klikkaa kuullaksesi tämän kohdan.",
-      "audioInstrumental": "Instrumentaali"
+      "audioInstrumental": "Instrumentaali",
+      "audioInstrumentalBacking": "Instrumentaali + taustalaulut",
+      "audioInstrumentalClean": "Puhdas instrumentaali"
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Siirry instrumentaalin tarkistukseen",
         "saving": "Tallennetaan...",
         "completeTrack": "Viimeistele kappale",
-        "autoInstrumentalBacking": "Säilytämme taustalaulut instrumentaaliversiossa automaattisesti — instrumentaaliversion tarkistusta ei tarvita.",
-        "autoInstrumentalClean": "Käytämme puhdasta instrumentaaliversiota (ei taustalauluja) automaattisesti — instrumentaaliversion tarkistusta ei tarvita.",
-        "reviewInstrumentalAnyway": "Anna minun valita instrumentaaliversio itse",
-        "previewTitle": "Videon esikatselu"
+        "autoInstrumentalBacking": "Säilytämme taustalaulut instrumentaaliversiossa. Kuuntele alta — jos kuulet liikaa päälaulua tai häiriöääniä, vaihda puhtaaseen instrumentaaliversioon.",
+        "autoInstrumentalClean": "Käytämme tässä kappaleessa puhdasta instrumentaaliversiota (ei taustalauluja).",
+        "reviewInstrumentalAnyway": "Haluan säilyttää taustalaulut, mutta mykistää tiettyjä osioita, tai ladata oman instrumentaaliversion",
+        "previewTitle": "Videon esikatselu",
+        "autoInstrumentalCleanChosen": "Olet valinnut tähän kappaleeseen puhtaan instrumentaaliversion (ei taustalauluja).",
+        "reviewInstrumentalCleanHatch": "Haluan tarkistaa instrumentaaliversion itse tai ladata oman instrumentaaliversion"
       },
       "searchLyrics": {
         "artist": "Esittäjä",

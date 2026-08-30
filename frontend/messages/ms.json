@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Asal (dengan vokal)",
       "backingVocalsWaveformHint": "Vokal latar dikekalkan dalam instrumental — klik untuk mendengar bahagian ini.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + vokal latar",
+      "audioInstrumentalClean": "Instrumental bersih"
     },
     "gapNavigator": {
       "previousGap": "Jurang sebelumnya (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Teruskan ke Semakan Instrumental",
         "saving": "Menyimpan...",
         "completeTrack": "Lengkapkan Trek",
-        "autoInstrumentalBacking": "Kami akan mengekalkan vokal latar dalam instrumental secara automatik — tiada semakan instrumental diperlukan.",
-        "autoInstrumentalClean": "Kami akan menggunakan instrumental bersih (tiada vokal latar) secara automatik — tiada semakan instrumental diperlukan.",
-        "reviewInstrumentalAnyway": "Biar saya pilih instrumental sendiri",
-        "previewTitle": "Pratonton Video"
+        "autoInstrumentalBacking": "Kami akan kekalkan vokal latar dalam instrumental. Cuba dengar di bawah — jika terdapat terlalu banyak bunyi vokal utama atau hingar, tukar kepada instrumental bersih.",
+        "autoInstrumentalClean": "Kami akan gunakan instrumental bersih (tiada vokal latar) untuk trek ini.",
+        "reviewInstrumentalAnyway": "Biar saya kekalkan vokal latar tetapi senyapkan bahagian tertentu, atau muat naik instrumental tersuai",
+        "previewTitle": "Pratonton Video",
+        "autoInstrumentalCleanChosen": "Anda telah memilih instrumental bersih (tiada vokal latar) untuk trek ini.",
+        "reviewInstrumentalCleanHatch": "Biar saya semak instrumental sendiri, atau muat naik instrumental tersuai"
       },
       "searchLyrics": {
         "artist": "Artis",

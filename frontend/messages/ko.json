@@ -1014,7 +1014,9 @@
       "audioLabel": "오디오:",
       "audioOriginal": "원본 (보컬 포함)",
       "backingVocalsWaveformHint": "반주에 백보컬이 유지되어 있습니다 — 클릭해서 이 부분을 들어보세요.",
-      "audioInstrumental": "반주"
+      "audioInstrumental": "반주",
+      "audioInstrumentalBacking": "반주 + 백보컬",
+      "audioInstrumentalClean": "순수 반주"
     },
     "gapNavigator": {
       "previousGap": "이전 공백 (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "반주 검토로 진행",
         "saving": "저장 중...",
         "completeTrack": "트랙 완료",
-        "autoInstrumentalBacking": "반주에 백보컬을 자동으로 유지합니다 — 별도의 반주 검토가 필요하지 않습니다.",
-        "autoInstrumentalClean": "클린 반주(백보컬 없음)를 자동으로 사용합니다 — 별도의 반주 검토가 필요하지 않습니다.",
-        "reviewInstrumentalAnyway": "반주를 직접 선택할게요",
-        "previewTitle": "영상 미리보기"
+        "autoInstrumentalBacking": "반주에 백보컬을 유지할게요. 아래에서 들어보시고, 리드 보컬이 너무 많이 섞여 들리거나 노이즈가 있다면 깔끔한 반주로 전환해 보세요.",
+        "autoInstrumentalClean": "이 트랙에는 깔끔한 반주(백보컬 없음)를 사용할게요.",
+        "reviewInstrumentalAnyway": "백보컬을 유지하되 특정 구간을 음소거하거나, 직접 만든 반주를 업로드할게요",
+        "previewTitle": "영상 미리보기",
+        "autoInstrumentalCleanChosen": "이 트랙에 깔끔한 반주(백보컬 없음)를 선택하셨어요.",
+        "reviewInstrumentalCleanHatch": "반주를 직접 확인하거나, 직접 만든 반주를 업로드할게요"
       },
       "searchLyrics": {
         "artist": "아티스트",

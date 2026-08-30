@@ -167,6 +167,10 @@ export default function LyricsAnalyzer({
   // never shown. The reviewer can opt back in via a "review instrumental anyway"
   // toggle in the finish modal (the verdict is confident, not infallible).
   const [reviewInstrumentalAnyway, setReviewInstrumentalAnyway] = useState(false)
+  // Inline single-click override in the finish modal: when the confident backing
+  // verdict is with_backing, let the reviewer switch to the clean instrumental
+  // (submits "clean" instead of "auto") without visiting the instrumental screen.
+  const [useCleanOverride, setUseCleanOverride] = useState(false)
 
   const [vocalsAudioUrl, setVocalsAudioUrl] = useState<string | null>(null)
 
@@ -1094,12 +1098,18 @@ export default function LyricsAnalyzer({
         }
       } else if (autoInstrumentalConfident && !reviewInstrumentalAnyway && jobId) {
         // Per-screen skip (C1): the backing decision was confidently auto-resolved
-        // -> complete the review now with "auto" (the backend resolves it from the
-        // stored verdict) and skip the instrumental screen entirely.
-        toast.success('Lyrics saved! Instrumental auto-selected, generating video...')
+        // -> complete the review now and skip the instrumental screen entirely.
+        // "auto" lets the backend resolve the stored verdict; the inline override
+        // sends "clean" explicitly when the reviewer switched away from backing.
+        const selection = useCleanOverride ? 'clean' : 'auto'
+        toast.success(
+          useCleanOverride
+            ? 'Lyrics saved! Using clean instrumental, generating video...'
+            : 'Lyrics saved! Instrumental auto-selected, generating video...'
+        )
         try {
           const correctionData = await lyricsReviewApi.getCorrectionData(jobId)
-          await lyricsReviewApi.completeReview(jobId, correctionData, 'auto', isDuet)
+          await lyricsReviewApi.completeReview(jobId, correctionData, selection, isDuet)
           setShowSuccess(true)
           setCountdown(3)
         } catch (err) {
@@ -1135,7 +1145,7 @@ export default function LyricsAnalyzer({
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, reviewInstrumentalAnyway])
+  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, reviewInstrumentalAnyway, useCleanOverride])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
@@ -1688,6 +1698,8 @@ export default function LyricsAnalyzer({
           autoInstrumentalSelection={data.auto_approval?.backing?.resolved_selection ?? null}
           reviewInstrumentalAnyway={reviewInstrumentalAnyway}
           onToggleReviewInstrumental={setReviewInstrumentalAnyway}
+          cleanOverride={useCleanOverride}
+          onInstrumentalChoiceChange={(choice) => setUseCleanOverride(choice === 'clean')}
         />
 
         <AddLyricsModal

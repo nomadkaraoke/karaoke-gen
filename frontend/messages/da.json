@@ -1014,7 +1014,9 @@
       "audioLabel": "Lyd:",
       "audioOriginal": "Original (med vokal)",
       "backingVocalsWaveformHint": "Baggrundsvokalen er bevaret i instrumentalsporet — klik for at høre denne del.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + baggrundsvokal",
+      "audioInstrumentalClean": "Ren instrumental"
     },
     "gapNavigator": {
       "previousGap": "Forrige hul (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Fortsæt til gennemgang af instrumental",
         "saving": "Gemmer...",
         "completeTrack": "Færdiggør nummer",
-        "autoInstrumentalBacking": "Vi beholder automatisk baggrundsvokalerne i instrumentalnummeret — ingen gennemgang af instrumentalnummeret er nødvendig.",
-        "autoInstrumentalClean": "Vi bruger automatisk det rene instrumentalnummer (ingen baggrundsvokaler) — ingen gennemgang af instrumentalnummeret er nødvendig.",
-        "reviewInstrumentalAnyway": "Lad mig selv vælge instrumentalnummeret",
-        "previewTitle": "Forhåndsvis video"
+        "autoInstrumentalBacking": "Vi beholder baggrundsvokalerne i instrumentalnummeret. Lyt herunder — hvis hovedvokalen skinner for meget igennem, eller der er støj, så skift til det rene instrumentalnummer.",
+        "autoInstrumentalClean": "Vi bruger det rene instrumentalnummer (ingen baggrundsvokaler) til dette nummer.",
+        "reviewInstrumentalAnyway": "Lad mig beholde baggrundsvokalerne, men slå lyden fra i bestemte dele, eller uploade mit eget instrumentalnummer",
+        "previewTitle": "Forhåndsvis video",
+        "autoInstrumentalCleanChosen": "Du har valgt det rene instrumentalnummer (ingen baggrundsvokaler) til dette nummer.",
+        "reviewInstrumentalCleanHatch": "Lad mig selv gennemgå instrumentalnummeret, eller uploade mit eget instrumentalnummer"
       },
       "searchLyrics": {
         "artist": "Kunstner",

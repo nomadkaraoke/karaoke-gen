@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Original (s vokalima)",
       "backingVocalsWaveformHint": "Prateći vokali zadržani u instrumentalu — klikni da čuješ ovaj dio.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + prateći vokali",
+      "audioInstrumentalClean": "Čisti instrumental"
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Nastavi na pregled instrumentala",
         "saving": "Spremanje...",
         "completeTrack": "Dovrši pjesmu",
-        "autoInstrumentalBacking": "Automatski ćemo zadržati prateće vokale u instrumentalu — pregled instrumentala nije potreban.",
-        "autoInstrumentalClean": "Automatski ćemo koristiti čisti instrumental (bez pratećih vokala) — pregled instrumentala nije potreban.",
-        "reviewInstrumentalAnyway": "Želim sam odabrati instrumental",
-        "previewTitle": "Pregled videa"
+        "autoInstrumentalBacking": "Zadržat ćemo prateće vokale u instrumentalu. Poslušaj u nastavku — ako čuješ previše probijanja glavnog vokala ili šuma, prebaci se na čisti instrumental.",
+        "autoInstrumentalClean": "Koristit ćemo čisti instrumental (bez pratećih vokala) za ovu pjesmu.",
+        "reviewInstrumentalAnyway": "Želim zadržati prateće vokale, ali utišati određene dijelove, ili učitati prilagođeni instrumental",
+        "previewTitle": "Pregled videa",
+        "autoInstrumentalCleanChosen": "Odabrao/la si čisti instrumental (bez pratećih vokala) za ovu pjesmu.",
+        "reviewInstrumentalCleanHatch": "Želim samostalno pregledati instrumental ili učitati prilagođeni instrumental"
       },
       "searchLyrics": {
         "artist": "Izvođač",

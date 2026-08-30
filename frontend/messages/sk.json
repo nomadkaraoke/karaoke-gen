@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Originál (so spevom)",
       "backingVocalsWaveformHint": "Sprievodné vokály ponechané v inštrumentálnej verzii — klikni a vypočuj si túto časť.",
-      "audioInstrumental": "Inštrumentálna"
+      "audioInstrumental": "Inštrumentálna",
+      "audioInstrumentalBacking": "Inštrumentál + sprievodné vokály",
+      "audioInstrumentalClean": "Čistý inštrumentál"
     },
     "gapNavigator": {
       "previousGap": "Predchádzajúca medzera (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Pokračovať na kontrolu inštrumentálky",
         "saving": "Ukladá sa...",
         "completeTrack": "Dokončiť skladbu",
-        "autoInstrumentalBacking": "Sprievodné vokály v inštrumentálnej verzii ponecháme automaticky — kontrola inštrumentálnej verzie nie je potrebná.",
-        "autoInstrumentalClean": "Automaticky použijeme čistú inštrumentálnu verziu (bez sprievodných vokálov) — kontrola inštrumentálnej verzie nie je potrebná.",
-        "reviewInstrumentalAnyway": "Nechaj ma vybrať si inštrumentálnu verziu",
-        "previewTitle": "Náhľad videa"
+        "autoInstrumentalBacking": "V inštrumentálnej verzii ponecháme sprievodné vokály. Vypočuj si to nižšie — ak počuješ príliš veľa presahov hlavného vokálu alebo šumu, prepni na čistú inštrumentálnu verziu.",
+        "autoInstrumentalClean": "Pre túto skladbu použijeme čistú inštrumentálnu verziu (bez sprievodných vokálov).",
+        "reviewInstrumentalAnyway": "Chcem ponechať sprievodné vokály, ale stlmiť konkrétne úseky, alebo nahrať vlastnú inštrumentálnu verziu",
+        "previewTitle": "Náhľad videa",
+        "autoInstrumentalCleanChosen": "Pre túto skladbu máš zvolenú čistú inštrumentálnu verziu (bez sprievodných vokálov).",
+        "reviewInstrumentalCleanHatch": "Chcem si inštrumentálnu verziu skontrolovať, alebo nahrať vlastnú inštrumentálnu verziu"
       },
       "searchLyrics": {
         "artist": "Interpret",

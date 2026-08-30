@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio :",
       "audioOriginal": "Original (avec voix)",
       "backingVocalsWaveformHint": "Chœurs conservés dans l'instrumental — clique pour écouter cette partie.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + chœurs",
+      "audioInstrumentalClean": "Instrumental pur"
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Passer à la révision instrumentale",
         "saving": "Enregistrement...",
         "completeTrack": "Terminer la piste",
-        "autoInstrumentalBacking": "Nous conserverons automatiquement les chœurs dans l'instrumental — aucune vérification de l'instrumental n'est requise.",
-        "autoInstrumentalClean": "Nous utiliserons automatiquement l'instrumental propre (sans chœurs) — aucune vérification de l'instrumental n'est requise.",
-        "reviewInstrumentalAnyway": "Me laisser choisir l'instrumental moi-même",
-        "previewTitle": "Aperçu de la vidéo"
+        "autoInstrumentalBacking": "Nous garderons les chœurs dans la version instrumentale. Écoute ci-dessous — si tu entends trop la voix principale ou des bruits parasites, passe à la version instrumentale propre.",
+        "autoInstrumentalClean": "Nous utiliserons la version instrumentale propre (sans chœurs) pour ce morceau.",
+        "reviewInstrumentalAnyway": "Je veux garder les chœurs mais couper le son de certaines sections, ou importer une version instrumentale personnalisée",
+        "previewTitle": "Aperçu de la vidéo",
+        "autoInstrumentalCleanChosen": "Tu as choisi la version instrumentale propre (sans chœurs) pour ce morceau.",
+        "reviewInstrumentalCleanHatch": "Je veux vérifier la version instrumentale moi-même, ou importer une version instrumentale personnalisée"
       },
       "searchLyrics": {
         "artist": "Artiste",

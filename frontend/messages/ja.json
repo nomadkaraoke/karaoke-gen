@@ -1014,7 +1014,9 @@
       "audioLabel": "音声:",
       "audioOriginal": "オリジナル（ボーカルあり）",
       "backingVocalsWaveformHint": "インスト音源に残っているバックコーラス — クリックするとこの部分を試聴できます。",
-      "audioInstrumental": "インストゥルメンタル"
+      "audioInstrumental": "インストゥルメンタル",
+      "audioInstrumentalBacking": "インストゥルメンタル + バックボーカル",
+      "audioInstrumentalClean": "インストゥルメンタルのみ"
     },
     "gapNavigator": {
       "previousGap": "前のギャップ (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "インストゥルメンタルの確認に進む",
         "saving": "保存中...",
         "completeTrack": "トラックを完了",
-        "autoInstrumentalBacking": "インストゥルメンタルにバックボーカルを自動的に残します。インストゥルメンタルの確認は不要です。",
-        "autoInstrumentalClean": "クリーンなインストゥルメンタル（バックボーカルなし）を自動的に使用します。インストゥルメンタルの確認は不要です。",
-        "reviewInstrumentalAnyway": "自分でインストゥルメンタルを選択する",
-        "previewTitle": "動画プレビュー"
+        "autoInstrumentalBacking": "インストゥルメンタルにバックボーカルを残します。以下で試聴してみてください。リードボーカルの混入やノイズが多すぎる場合は、クリーンなインストゥルメンタルに切り替えてください。",
+        "autoInstrumentalClean": "このトラックにはクリーンなインストゥルメンタル（バックボーカルなし）を使用します。",
+        "reviewInstrumentalAnyway": "バックボーカルを残しつつ特定のセクションをミュートするか、カスタムのインストゥルメンタルをアップロードする",
+        "previewTitle": "動画プレビュー",
+        "autoInstrumentalCleanChosen": "このトラックにはクリーンなインストゥルメンタル（バックボーカルなし）を選択しました。",
+        "reviewInstrumentalCleanHatch": "自分でインストゥルメンタルを確認するか、カスタムのインストゥルメンタルをアップロードする"
       },
       "searchLyrics": {
         "artist": "アーティスト",

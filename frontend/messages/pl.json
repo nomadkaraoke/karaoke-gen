@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Oryginał (z wokalem)",
       "backingVocalsWaveformHint": "Chórki zachowane w wersji instrumentalnej — kliknij, aby usłyszeć ten fragment.",
-      "audioInstrumental": "Wersja instrumentalna"
+      "audioInstrumental": "Wersja instrumentalna",
+      "audioInstrumentalBacking": "Wersja instrumentalna + chórki",
+      "audioInstrumentalClean": "Czysta wersja instrumentalna"
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Przejdź do sprawdzania podkładu",
         "saving": "Zapisywanie...",
         "completeTrack": "Ukończ utwór",
-        "autoInstrumentalBacking": "Automatycznie zachowamy chórki w podkładzie — weryfikacja podkładu nie jest potrzebna.",
-        "autoInstrumentalClean": "Automatycznie użyjemy czystego podkładu (bez chórków) — weryfikacja podkładu nie jest potrzebna.",
-        "reviewInstrumentalAnyway": "Pozwól mi samodzielnie wybrać podkład",
-        "previewTitle": "Podgląd wideo"
+        "autoInstrumentalBacking": "Zostawimy chórki w podkładzie instrumentalnym. Posłuchaj poniżej — jeśli słyszysz zbyt dużo przebić wokalu prowadzącego lub szumów, przełącz się na czysty podkład instrumentalny.",
+        "autoInstrumentalClean": "Użyjemy czystego podkładu instrumentalnego (bez chórków) dla tego utworu.",
+        "reviewInstrumentalAnyway": "Chcę zostawić chórki, ale wyciszyć określone fragmenty, lub przesłać własny podkład instrumentalny",
+        "previewTitle": "Podgląd wideo",
+        "autoInstrumentalCleanChosen": "Wybrałeś/aś czysty podkład instrumentalny (bez chórków) dla tego utworu.",
+        "reviewInstrumentalCleanHatch": "Chcę samodzielnie sprawdzić podkład instrumentalny lub przesłać własny"
       },
       "searchLyrics": {
         "artist": "Wykonawca",

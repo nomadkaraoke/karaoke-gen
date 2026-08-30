@@ -50,6 +50,12 @@ interface ReviewChangesModalProps {
   /** Whether the reviewer opted back into the instrumental screen. */
   reviewInstrumentalAnyway?: boolean
   onToggleReviewInstrumental?: (val: boolean) => void
+  /** Inline single-click override, driven by the "Audio:" toggle's clean pill:
+   *  true once the reviewer has switched the auto-selected backing instrumental to
+   *  the clean one. Only offered when the verdict is with_backing and a clean stem
+   *  exists (no need to show it when clean is already the default). */
+  cleanOverride?: boolean
+  onInstrumentalChoiceChange?: (choice: 'clean' | 'with_backing') => void
 }
 
 export default function ReviewChangesModal({
@@ -66,6 +72,8 @@ export default function ReviewChangesModal({
   autoInstrumentalSelection = null,
   reviewInstrumentalAnyway = false,
   onToggleReviewInstrumental,
+  cleanOverride = false,
+  onInstrumentalChoiceChange,
 }: ReviewChangesModalProps) {
   const t = useTranslations('lyricsReview.modals.reviewChanges')
   const corrections = data.corrections || []
@@ -85,11 +93,25 @@ export default function ReviewChangesModal({
   const hasBackingStem = !!instrumentalOptions?.some(
     (o) => o.id === 'with_backing' && o.audio_url
   )
+  const hasCleanStem = !!instrumentalOptions?.some(
+    (o) => o.id === 'clean' && o.audio_url
+  )
   const showBackingWaveform =
     autoInstrumentalConfident &&
     autoInstrumentalSelection === 'with_backing' &&
     hasBackingStem &&
     !!getWaveformData
+
+  // Split the audio toggle into "Instrumental + backing vocals" / "Clean
+  // instrumental" pills only when the auto-selection is the backing instrumental
+  // AND a clean stem exists to switch to (i.e. the two are meaningfully
+  // different). When clean is already the default there is nothing to offer.
+  const offerInstrumentalChoice =
+    autoInstrumentalConfident &&
+    autoInstrumentalSelection === 'with_backing' &&
+    hasCleanStem &&
+    hasBackingStem
+  const cleanChosen = offerInstrumentalChoice && cleanOverride
 
   const handleSubmit = () => {
     if (isSubmitting) return
@@ -114,6 +136,8 @@ export default function ReviewChangesModal({
           instrumentalOptions={instrumentalOptions}
           autoSelection={autoInstrumentalSelection}
           onTimeUpdate={setPreviewTime}
+          offerInstrumentalChoice={offerInstrumentalChoice}
+          onInstrumentalChoiceChange={onInstrumentalChoiceChange}
         />
 
         {/* No lyrics warning */}
@@ -145,7 +169,9 @@ export default function ReviewChangesModal({
           <div className="rounded-lg border border-purple-500/40 bg-purple-500/5 p-3 text-sm space-y-2">
             <p className="text-muted-foreground">
               {autoInstrumentalSelection === 'with_backing'
-                ? t('autoInstrumentalBacking')
+                ? cleanChosen
+                  ? t('autoInstrumentalCleanChosen')
+                  : t('autoInstrumentalBacking')
                 : t('autoInstrumentalClean')}
             </p>
             {showBackingWaveform && getWaveformData && (
@@ -155,6 +181,8 @@ export default function ReviewChangesModal({
                 onSeek={(time) => previewRef.current?.switchToInstrumentalAndSeek(time)}
               />
             )}
+            {/* The keep-backing / use-clean choice lives in the "Audio:" toggle
+                above (a single click both previews and selects the variant). */}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -162,7 +190,11 @@ export default function ReviewChangesModal({
                 checked={reviewInstrumentalAnyway}
                 onChange={(e) => onToggleReviewInstrumental?.(e.target.checked)}
               />
-              <span>{t('reviewInstrumentalAnyway')}</span>
+              <span>
+                {autoInstrumentalSelection === 'with_backing'
+                  ? t('reviewInstrumentalAnyway')
+                  : t('reviewInstrumentalCleanHatch')}
+              </span>
             </label>
           </div>
         )}

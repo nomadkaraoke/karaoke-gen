@@ -1014,7 +1014,9 @@
       "audioLabel": "Zvuk:",
       "audioOriginal": "Originál (se zpěvem)",
       "backingVocalsWaveformHint": "Doprovodné vokály zůstaly v instrumentální verzi – kliknutím si tuto část poslechneš.",
-      "audioInstrumental": "Instrumentální"
+      "audioInstrumental": "Instrumentální",
+      "audioInstrumentalBacking": "Instrumentální verze + doprovodné vokály",
+      "audioInstrumentalClean": "Čistá instrumentální verze"
     },
     "gapNavigator": {
       "previousGap": "Předchozí mezera (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Pokračovat na kontrolu instrumentálky",
         "saving": "Ukládání...",
         "completeTrack": "Dokončit skladbu",
-        "autoInstrumentalBacking": "Doprovodné vokály v instrumentálce ponecháme automaticky — kontrola instrumentálky není nutná.",
-        "autoInstrumentalClean": "Automaticky použijeme čistou instrumentálku (bez doprovodných vokálů) — kontrola instrumentálky není nutná.",
-        "reviewInstrumentalAnyway": "Nech mě vybrat instrumentálku",
-        "previewTitle": "Náhled videa"
+        "autoInstrumentalBacking": "V instrumentální verzi ponecháme doprovodné vokály. Poslechni si ukázku níže — pokud uslyšíš příliš mnoho přeslechů hlavního zpěvu nebo šumu, přepni na čistou instrumentální verzi.",
+        "autoInstrumentalClean": "Pro tuto skladbu použijeme čistou instrumentální verzi (bez doprovodných vokálů).",
+        "reviewInstrumentalAnyway": "Chci ponechat doprovodné vokály, ale ztlumit konkrétní části, nebo nahrát vlastní instrumentální verzi",
+        "previewTitle": "Náhled videa",
+        "autoInstrumentalCleanChosen": "Pro tuto skladbu máš zvolenou čistou instrumentální verzi (bez doprovodných vokálů).",
+        "reviewInstrumentalCleanHatch": "Chci si instrumentální verzi zkontrolovat, nebo nahrát vlastní instrumentální verzi"
       },
       "searchLyrics": {
         "artist": "Interpret",

@@ -1014,7 +1014,9 @@
       "audioLabel": "Audio:",
       "audioOriginal": "Origineel (met zang)",
       "backingVocalsWaveformHint": "Achtergrondzang behouden in de instrumentale versie — klik om dit deel te horen.",
-      "audioInstrumental": "Instrumentaal"
+      "audioInstrumental": "Instrumentaal",
+      "audioInstrumentalBacking": "Instrumentaal + achtergrondzang",
+      "audioInstrumentalClean": "Puur instrumentaal"
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Doorgaan naar instrumental-beoordeling",
         "saving": "Opslaan...",
         "completeTrack": "Track voltooien",
-        "autoInstrumentalBacking": "We behouden de achtergrondzang automatisch in de instrumentale versie — geen instrumentale controle nodig.",
-        "autoInstrumentalClean": "We gebruiken automatisch de schone instrumentale versie (zonder achtergrondzang) — geen instrumentale controle nodig.",
-        "reviewInstrumentalAnyway": "Laat mij zelf de instrumentale versie kiezen",
-        "previewTitle": "Voorbeeldvideo"
+        "autoInstrumentalBacking": "We behouden de achtergrondzang in de instrumentale versie. Luister hieronder — als de leadzang te veel doorklinkt of als je ruis hoort, schakel dan over naar de zuivere instrumentale versie.",
+        "autoInstrumentalClean": "We gebruiken de zuivere instrumentale versie (zonder achtergrondzang) voor dit nummer.",
+        "reviewInstrumentalAnyway": "Laat me de achtergrondzang behouden maar specifieke delen dempen, of een eigen instrumentale versie uploaden",
+        "previewTitle": "Voorbeeldvideo",
+        "autoInstrumentalCleanChosen": "Je hebt gekozen voor de zuivere instrumentale versie (zonder achtergrondzang) voor dit nummer.",
+        "reviewInstrumentalCleanHatch": "Laat me de instrumentale versie zelf controleren, of een eigen instrumentale versie uploaden"
       },
       "searchLyrics": {
         "artist": "Artiest",

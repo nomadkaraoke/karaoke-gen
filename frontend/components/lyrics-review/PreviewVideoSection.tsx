@@ -38,6 +38,7 @@ interface ApiClient {
 }
 
 export type AudioMode = 'original' | 'instrumental'
+export type InstrumentalChoice = 'clean' | 'with_backing'
 
 export interface PreviewVideoHandle {
   /** Seek the preview to `time` and switch audio to the instrumental track. */
@@ -57,6 +58,14 @@ interface PreviewVideoSectionProps {
   autoSelection?: string | null
   /** Reports the video's current playback time (drives the backing-vocals playhead). */
   onTimeUpdate?: (currentTime: number) => void
+  /** When true (both the clean and with-backing stems exist and are meaningfully
+   *  different) the audio toggle splits the single "Instrumental" pill into two —
+   *  "Instrumental + backing vocals" and "Clean instrumental" — so the reviewer can
+   *  A/B them and pick one in a single click. Selecting a variant reports it up. */
+  offerInstrumentalChoice?: boolean
+  /** Fired when the reviewer activates an instrumental variant (pill or waveform
+   *  seek) — the last one activated is the instrumental they'll get. */
+  onInstrumentalChoiceChange?: (choice: InstrumentalChoice) => void
 }
 
 type PreviewState =
@@ -76,26 +85,50 @@ function PreviewVideoSection(
     instrumentalOptions,
     autoSelection,
     onTimeUpdate,
+    offerInstrumentalChoice = false,
+    onInstrumentalChoiceChange,
   }: PreviewVideoSectionProps,
   ref: React.Ref<PreviewVideoHandle>
 ) {
   const t = useTranslations('lyricsReview.previewVideo')
   const [previewState, setPreviewState] = useState<PreviewState>({ status: 'generating' })
   const [retryNonce, setRetryNonce] = useState(0)
-  const [audioMode, setAudioMode] = useState<AudioMode>('original')
+  // Whether the instrumental stem (vs the original with-vocals audio) is playing.
+  const [isInstrumental, setIsInstrumental] = useState(false)
 
   const internalVideoRef = useRef<HTMLVideoElement | null>(null)
   const instrumentalAudioRef = useRef<HTMLAudioElement | null>(null)
-  const audioModeRef = useRef<AudioMode>('original')
-  audioModeRef.current = audioMode
+  const isInstrumentalRef = useRef(false)
+  isInstrumentalRef.current = isInstrumental
 
-  // The instrumental track the toggle switches to: the auto-selected option,
-  // falling back to the clean instrumental (or the first available option).
-  const instrumentalOption =
-    instrumentalOptions?.find((o) => o.id === autoSelection) ??
-    instrumentalOptions?.find((o) => o.id === 'clean') ??
-    instrumentalOptions?.[0]
-  const instrumentalUrl = instrumentalOption?.audio_url ?? null
+  const options = instrumentalOptions?.filter((o) => o.audio_url) ?? []
+  const cleanOption = options.find((o) => o.id === 'clean')
+  const backingOption = options.find((o) => o.id === 'with_backing')
+  // Split the toggle into two instrumental pills only when both stems are present
+  // and the caller says they're meaningfully different.
+  const showChoice = offerInstrumentalChoice && !!cleanOption && !!backingOption
+
+  // Which instrumental variant is selected. In choice mode the reviewer switches
+  // it via the pills / waveform; otherwise it's just the auto-selected option
+  // (falling back to clean, then the first available).
+  const defaultOption =
+    options.find((o) => o.id === autoSelection) ?? cleanOption ?? options[0]
+  const [selectedId, setSelectedId] = useState<string | undefined>(defaultOption?.id)
+  const selectedOption = options.find((o) => o.id === selectedId) ?? defaultOption
+  const instrumentalUrl = selectedOption?.audio_url ?? null
+
+  // Activate an instrumental variant (from a pill or a waveform seek) and report
+  // the choice up — the last variant activated is the one the reviewer gets.
+  const selectVariant = useCallback(
+    (id: string) => {
+      setSelectedId(id)
+      setIsInstrumental(true)
+      if (id === 'clean' || id === 'with_backing') {
+        onInstrumentalChoiceChange?.(id)
+      }
+    },
+    [onInstrumentalChoiceChange]
+  )
 
   const setVideoEl = useCallback(
     (el: HTMLVideoElement | null) => {
@@ -202,9 +235,10 @@ function PreviewVideoSection(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` is not referentially stable across renders
   }, [isModalOpen, apiClient, updatedData, timingOffsetMs, isDuet, retryNonce])
 
-  // Reset audio mode back to original each time a fresh preview starts encoding.
+  // Reset to the original audio each time a fresh preview starts encoding. The
+  // selected instrumental variant persists (it's the reviewer's choice).
   useEffect(() => {
-    if (previewState.status !== 'ready') setAudioMode('original')
+    if (previewState.status !== 'ready') setIsInstrumental(false)
   }, [previewState.status])
 
   // Keep the overlaid instrumental audio in lock-step with the video element.
@@ -216,7 +250,7 @@ function PreviewVideoSection(
     const audio = instrumentalAudioRef.current
     if (!video) return
 
-    const instrumentalActive = () => audioModeRef.current === 'instrumental' && !!audio
+    const instrumentalActive = () => isInstrumentalRef.current && !!audio
 
     const applyMode = () => {
       const active = instrumentalActive()
@@ -267,7 +301,7 @@ function PreviewVideoSection(
       video.removeEventListener('ratechange', onRateChange)
       video.removeEventListener('timeupdate', onTimeUpdateEvt)
     }
-  }, [audioMode, previewState.status, instrumentalUrl, onTimeUpdate])
+  }, [isInstrumental, previewState.status, instrumentalUrl, onTimeUpdate])
 
   useImperativeHandle(
     ref,
@@ -275,12 +309,15 @@ function PreviewVideoSection(
       switchToInstrumentalAndSeek: (time: number) => {
         const video = internalVideoRef.current
         if (!video || !Number.isFinite(time)) return
-        if (instrumentalUrl) setAudioMode('instrumental')
+        // Auditioning a backing-vocals region: play the with-backing stem when it
+        // exists (that's what the waveform represents), else the selected stem.
+        if (backingOption) selectVariant('with_backing')
+        else if (instrumentalUrl) setIsInstrumental(true)
         video.currentTime = Math.max(0, time)
         video.play()?.catch(() => {})
       },
     }),
-    [instrumentalUrl]
+    [instrumentalUrl, backingOption, selectVariant]
   )
 
   if (!apiClient) return null
@@ -340,26 +377,53 @@ function PreviewVideoSection(
           <div className="inline-flex rounded-md border border-border overflow-hidden">
             <button
               type="button"
-              onClick={() => setAudioMode('original')}
+              onClick={() => setIsInstrumental(false)}
               className={`px-3 py-1 text-sm transition-colors ${
-                audioMode === 'original'
+                !isInstrumental
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/70'
               }`}
             >
               {t('audioOriginal')}
             </button>
-            <button
-              type="button"
-              onClick={() => setAudioMode('instrumental')}
-              className={`px-3 py-1 text-sm transition-colors ${
-                audioMode === 'instrumental'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
-              }`}
-            >
-              {t('audioInstrumental')}
-            </button>
+            {showChoice ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => selectVariant('with_backing')}
+                  className={`px-3 py-1 text-sm transition-colors ${
+                    isInstrumental && selectedOption?.id === 'with_backing'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                  }`}
+                >
+                  {t('audioInstrumentalBacking')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectVariant('clean')}
+                  className={`px-3 py-1 text-sm transition-colors ${
+                    isInstrumental && selectedOption?.id === 'clean'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                  }`}
+                >
+                  {t('audioInstrumentalClean')}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsInstrumental(true)}
+                className={`px-3 py-1 text-sm transition-colors ${
+                  isInstrumental
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                }`}
+              >
+                {t('audioInstrumental')}
+              </button>
+            )}
           </div>
         </div>
       )}

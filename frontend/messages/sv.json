@@ -1014,7 +1014,9 @@
       "audioLabel": "Ljud:",
       "audioOriginal": "Original (med sång)",
       "backingVocalsWaveformHint": "Bakgrundssången finns kvar i instrumentalen — klicka för att höra den här delen.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + bakgrundssång",
+      "audioInstrumentalClean": "Ren instrumental"
     },
     "gapNavigator": {
       "previousGap": "Föregående lucka (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Fortsätt till granskning av instrumental",
         "saving": "Sparar...",
         "completeTrack": "Slutför spåret",
-        "autoInstrumentalBacking": "Vi behåller bakgrundssången i instrumentalversionen automatiskt — ingen granskning av instrumentalversionen behövs.",
-        "autoInstrumentalClean": "Vi använder den rena instrumentalversionen (utan bakgrundssång) automatiskt — ingen granskning av instrumentalversionen behövs.",
-        "reviewInstrumentalAnyway": "Låt mig välja instrumentalversion själv",
-        "previewTitle": "Förhandsgranska video"
+        "autoInstrumentalBacking": "Vi behåller bakgrundssången i instrumentalversionen. Lyssna nedan — om du hör för mycket läckage från huvudsången eller brus, byt till den rena instrumentalversionen.",
+        "autoInstrumentalClean": "Vi använder den rena instrumentalversionen (utan bakgrundssång) för det här spåret.",
+        "reviewInstrumentalAnyway": "Låt mig behålla bakgrundssången men tysta specifika delar, eller ladda upp en egen instrumentalversion",
+        "previewTitle": "Förhandsgranska video",
+        "autoInstrumentalCleanChosen": "Du har valt den rena instrumentalversionen (utan bakgrundssång) för det här spåret.",
+        "reviewInstrumentalCleanHatch": "Låt mig granska instrumentalversionen själv, eller ladda upp en egen instrumentalversion"
       },
       "searchLyrics": {
         "artist": "Artist",

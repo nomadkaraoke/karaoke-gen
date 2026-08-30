@@ -1014,7 +1014,9 @@
       "audioLabel": "Àudio:",
       "audioOriginal": "Original (amb veus)",
       "backingVocalsWaveformHint": "Veus de fons mantingudes a l'instrumental — fes clic per escoltar aquesta part.",
-      "audioInstrumental": "Instrumental"
+      "audioInstrumental": "Instrumental",
+      "audioInstrumentalBacking": "Instrumental + cors",
+      "audioInstrumentalClean": "Instrumental net"
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",
@@ -1150,10 +1152,12 @@
         "proceedToInstrumental": "Procedeix a la revisió instrumental",
         "saving": "Desant...",
         "completeTrack": "Pista completa",
-        "autoInstrumentalBacking": "Mantindrem les veus de fons a l'instrumental automàticament — no cal revisar l'instrumental.",
-        "autoInstrumentalClean": "Utilitzarem l'instrumental net (sense veus de fons) automàticament — no cal revisar l'instrumental.",
-        "reviewInstrumentalAnyway": "Deixa'm triar l'instrumental jo mateix",
-        "previewTitle": "Previsualització del vídeo"
+        "autoInstrumentalBacking": "Mantindrem els cors a l'instrumental. Escolta-ho aquí sota — si sents massa la veu principal o soroll, canvia a l'instrumental net.",
+        "autoInstrumentalClean": "Utilitzarem l'instrumental net (sense cors) per a aquesta pista.",
+        "reviewInstrumentalAnyway": "Vull mantenir els cors però silenciar seccions específiques, o pujar un instrumental personalitzat",
+        "previewTitle": "Previsualització del vídeo",
+        "autoInstrumentalCleanChosen": "Has triat l'instrumental net (sense cors) per a aquesta pista.",
+        "reviewInstrumentalCleanHatch": "Vull revisar l'instrumental jo mateix, o pujar un instrumental personalitzat"
       },
       "searchLyrics": {
         "artist": "Artista",
