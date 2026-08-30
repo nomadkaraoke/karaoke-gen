@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "您的卡拉OK视频将使用：",
         "recommended": "推荐",
         "autoInstrumentalBacking": "我们在伴奏中保留了伴唱。请试听一下——如果您能听到主唱的声音，请切换到上方的“纯净伴奏”。",
-        "advancedMode": "高级模式（编辑伴唱或上传您自己的伴奏）"
+        "advancedMode": "高级模式（编辑伴唱或上传您自己的伴奏）",
+        "chooseInstrumentalPrompt": "试听一下，然后选择您的视频要使用的伴奏。"
       },
       "searchLyrics": {
         "artist": "歌手",

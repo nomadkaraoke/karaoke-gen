@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Karaoke videonda şunlar kullanılacak:",
         "recommended": "önerilen",
         "autoInstrumentalBacking": "Enstrümantalde geri vokalleri koruyoruz. Bir dinle — eğer ana solistin sesini hala duyabiliyorsan, yukarıdaki “Temiz enstrümantal” seçeneğine geç.",
-        "advancedMode": "Gelişmiş mod (geri vokalleri düzenle veya kendi enstrümantalini yükle)"
+        "advancedMode": "Gelişmiş mod (geri vokalleri düzenle veya kendi enstrümantalini yükle)",
+        "chooseInstrumentalPrompt": "Dinle ve videon için hangi enstrümantali kullanacağını seç."
       },
       "searchLyrics": {
         "artist": "Sanatçı",

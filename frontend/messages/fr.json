@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Ta vidéo karaoké utilisera :",
         "recommended": "recommandé",
         "autoInstrumentalBacking": "Nous gardons les chœurs dans l'instrumental. Écoute bien : si tu entends la voix du chanteur principal, passe à « Instrumental propre » ci-dessus.",
-        "advancedMode": "Mode avancé (modifier les chœurs ou importer ton propre instrumental)"
+        "advancedMode": "Mode avancé (modifier les chœurs ou importer ton propre instrumental)",
+        "chooseInstrumentalPrompt": "Écoute et choisis l'instrumental à utiliser pour ta vidéo."
       },
       "searchLyrics": {
         "artist": "Artiste",

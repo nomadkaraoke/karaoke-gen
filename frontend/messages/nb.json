@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Karaokevideoen din vil bruke:",
         "recommended": "anbefalt",
         "autoInstrumentalBacking": "Vi beholder bakgrunnsvokalen i instrumentalsporet. Hør på det — hvis du kan høre hovedvokalistens stemme, bytt til «Ren instrumental» ovenfor.",
-        "advancedMode": "Avansert modus (rediger bakgrunnsvokal eller last opp din egen instrumental)"
+        "advancedMode": "Avansert modus (rediger bakgrunnsvokal eller last opp din egen instrumental)",
+        "chooseInstrumentalPrompt": "Hør gjennom og velg hvilken instrumental videoen din skal bruke."
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Videoclipul tău de karaoke va folosi:",
         "recommended": "recomandat",
         "autoInstrumentalBacking": "Păstrăm vocile de fundal în instrumental. Ascultă — dacă se aude vocea solistului principal, schimbă pe „Instrumental curat” mai sus.",
-        "advancedMode": "Mod avansat (editează vocile de fundal sau încarcă propriul tău instrumental)"
+        "advancedMode": "Mod avansat (editează vocile de fundal sau încarcă propriul tău instrumental)",
+        "chooseInstrumentalPrompt": "Ascultă și alege ce instrumental să folosească videoclipul tău."
       },
       "searchLyrics": {
         "artist": "Artist",

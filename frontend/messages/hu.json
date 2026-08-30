@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "A karaoke videódhoz ezt fogjuk használni:",
         "recommended": "ajánlott",
         "autoInstrumentalBacking": "Megtartjuk a háttérvokálokat a zenei alapban. Hallgasd meg — ha behallatszik a főénekes hangja, válts a fenti „Tiszta zenei alap” lehetőségre.",
-        "advancedMode": "Haladó mód (szerkeszd a háttérvokálokat, vagy töltsd fel a saját zenei alapodat)"
+        "advancedMode": "Haladó mód (szerkeszd a háttérvokálokat, vagy töltsd fel a saját zenei alapodat)",
+        "chooseInstrumentalPrompt": "Hallgasd meg, és válaszd ki, hogy melyik zenei alapot használja a videód."
       },
       "searchLyrics": {
         "artist": "Előadó",

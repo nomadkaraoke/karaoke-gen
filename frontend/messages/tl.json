@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Gagamitin sa iyong karaoke video ang:",
         "recommended": "inirerekomenda",
         "autoInstrumentalBacking": "Pinanatili namin ang mga backing vocal sa instrumental. Pakinggan mo — kung naririnig mo ang boses ng lead singer, lumipat sa “Clean instrumental” sa itaas.",
-        "advancedMode": "Advanced mode (i-edit ang backing vocals o i-upload ang sarili mong instrumental)"
+        "advancedMode": "Advanced mode (i-edit ang backing vocals o i-upload ang sarili mong instrumental)",
+        "chooseInstrumentalPrompt": "Pakinggan at piliin kung aling instrumental ang dapat gamitin sa iyong video."
       },
       "searchLyrics": {
         "artist": "Artist",

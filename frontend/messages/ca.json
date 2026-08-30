@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "El teu vídeo de karaoke utilitzarà:",
         "recommended": "recomanat",
         "autoInstrumentalBacking": "Mantenim els cors a l'instrumental. Escolta-ho — si sents la veu del cantant principal, canvia a «Instrumental net» més amunt.",
-        "advancedMode": "Mode avançat (edita les veus de fons o puja la teva pròpia instrumental)"
+        "advancedMode": "Mode avançat (edita les veus de fons o puja la teva pròpia instrumental)",
+        "chooseInstrumentalPrompt": "Escolta-ho i tria quina instrumental vols fer servir al teu vídeo."
       },
       "searchLyrics": {
         "artist": "Artista",

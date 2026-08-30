@@ -181,6 +181,83 @@ def test_resolve_returns_none_when_with_backing_stem_absent():
     assert resolve_auto_instrumental(job, _settings(keep=True)) is None
 
 
+# ---- late backing analysis self-correction (race fix) -----------------------
+
+def _job_scored_before_analysis(analysis, stems=None):
+    """A job whose stored verdict was scored WITHOUT the backing analysis
+    (screens_worker ran while audio was still separating), but the analysis has
+    since landed in state_data. Mirrors the real race for job be8231fd."""
+    if stems is None:
+        stems = {
+            "instrumental_clean": "jobs/j/clean.flac",
+            "instrumental_with_backing": "jobs/j/backing.flac",
+        }
+    return SimpleNamespace(
+        processing_metadata={
+            "auto_approval": {
+                # verdict recorded while audio was incomplete: no analysis -> review
+                "backing": {"verdict": "review", "non_subjective": False},
+                "lyrics": {"verdict": "review"},
+                "backing_analysis_available": False,
+            }
+        },
+        state_data={"backing_vocals_analysis": analysis},
+        backing_preference="auto",
+        review_mode="auto",
+        existing_instrumental_gcs_path=None,
+        file_urls={"stems": stems},
+    )
+
+
+# Real signals from be8231fd ("The Qemists - Take It Back"): genuine backing,
+# not a misclassified lead (corr 0.75 < 0.80), above the noise floor (-28.7 dB),
+# well over the bleed threshold (64% audible) -> confident WITH_BACKING keep.
+_GENUINE_BACKING_ANALYSIS = {
+    "has_audible_content": True,
+    "audible_percentage": 63.99,
+    "recommended_selection": "with_backing",
+    "audible_segments": [],
+    "stem_comparison": {
+        "coverage_ratio": 0.9182,
+        "corr_backing_vocals": 0.7478,
+        "corr_backing_lead": 0.5107,
+        "backing_median_db": -28.74,
+        "backing_audible_fraction": 0.5396,
+        "lead_audible_fraction": 0.4869,
+        "lead_overlap_fraction": 0.8305,
+        "backing_db_std": 5.213,
+        "flat_fraction": 0.1403,
+        "error": None,
+    },
+}
+
+
+def test_summary_self_corrects_when_analysis_arrives_after_scoring():
+    # Stored verdict is a stale "review" (no analysis); the analysis is now present
+    # -> the summary re-derives a confident with_backing keep.
+    job = _job_scored_before_analysis(_GENUINE_BACKING_ANALYSIS)
+    s = auto_approval_summary(job, _settings(keep=True))
+    assert s["backing"]["confident"] is True
+    assert s["backing"]["resolved_selection"] == "with_backing"
+
+
+def test_summary_self_correction_respects_keep_flag():
+    # Same late analysis, but the keep flag is off -> still needs a human pick.
+    job = _job_scored_before_analysis(_GENUINE_BACKING_ANALYSIS)
+    s = auto_approval_summary(job, _settings(keep=False))
+    assert s["backing"]["confident"] is False
+    assert s["backing"]["resolved_selection"] is None
+
+
+def test_summary_does_not_self_correct_when_analysis_was_present():
+    # When the stored verdict already had the analysis, trust it verbatim (no
+    # re-derivation) even if state_data carries an analysis.
+    job = _job_scored_before_analysis(_GENUINE_BACKING_ANALYSIS)
+    job.processing_metadata["auto_approval"]["backing_analysis_available"] = True
+    s = auto_approval_summary(job, _settings(keep=True))
+    assert s["backing"]["confident"] is False  # trusts the stored "review"
+
+
 # ---- JobCreate coercion (typo must never silently flip intent) ---------------
 
 def test_jobcreate_coerces_out_of_set_preferences():

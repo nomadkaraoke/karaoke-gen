@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Tvoj karaoke video koristit će:",
         "recommended": "preporučeno",
         "autoInstrumentalBacking": "Zadržavamo prateće vokale u instrumentalu. Poslušaj — ako čuješ glas glavnog pjevača, prebaci na „Čisti instrumental” iznad.",
-        "advancedMode": "Napredni način rada (uredi prateće vokale ili prenesi vlastiti instrumental)"
+        "advancedMode": "Napredni način rada (uredi prateće vokale ili prenesi vlastiti instrumental)",
+        "chooseInstrumentalPrompt": "Poslušaj i odaberi koji instrumental želiš koristiti u svom videu."
       },
       "searchLyrics": {
         "artist": "Izvođač",

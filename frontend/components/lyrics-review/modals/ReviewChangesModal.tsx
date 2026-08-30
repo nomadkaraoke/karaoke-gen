@@ -41,21 +41,23 @@ interface ReviewChangesModalProps {
   /** When true (e.g. tenant / uploaded-instrumental jobs) approving here completes the
    *  track directly — there is no instrumental-review step — so the CTA reflects that. */
   completesReview?: boolean
-  /** Per-screen skip (C1): the backing decision was confidently auto-resolved, so
-   *  approving here can complete the whole job and the instrumental screen is skipped.
-   *  Shows a "review instrumental anyway" escape hatch. */
-  autoInstrumentalConfident?: boolean
-  /** The server-resolved instrumental ("clean" | "with_backing" | ...) for the note. */
-  autoInstrumentalSelection?: string | null
-  /** Whether the reviewer opted back into the instrumental screen. */
+  /** Show the inline instrumental chooser ("Your karaoke video will use:") — true
+   *  whenever both a clean and a with-backing stem exist, so the reviewer picks the
+   *  instrumental here and the heavy /instrumental screen becomes an opt-in ("Advanced
+   *  mode"). Independent of scorer confidence. */
+  offerInlineChoice?: boolean
+  /** The auto-scorer was confident about the backing decision → the recommended
+   *  option gets a green "✓ recommended" badge + the confident helper copy. When
+   *  false the recommended option is a softer "suggested" default. */
+  autoConfident?: boolean
+  /** Which instrumental to badge + preselect ("clean" | "with_backing"). */
+  recommendedSelection?: 'clean' | 'with_backing' | null
+  /** The instrumental currently chosen for the produced video. */
+  currentSelection?: 'clean' | 'with_backing'
+  onSelectInstrumental?: (choice: 'clean' | 'with_backing') => void
+  /** Whether the reviewer opted into the full instrumental screen ("Advanced mode"). */
   reviewInstrumentalAnyway?: boolean
   onToggleReviewInstrumental?: (val: boolean) => void
-  /** Inline single-click override, driven by the "Audio:" toggle's clean pill:
-   *  true once the reviewer has switched the auto-selected backing instrumental to
-   *  the clean one. Only offered when the verdict is with_backing and a clean stem
-   *  exists (no need to show it when clean is already the default). */
-  cleanOverride?: boolean
-  onInstrumentalChoiceChange?: (choice: 'clean' | 'with_backing') => void
 }
 
 export default function ReviewChangesModal({
@@ -68,12 +70,13 @@ export default function ReviewChangesModal({
   timingOffsetMs = 0,
   isDuet,
   completesReview = false,
-  autoInstrumentalConfident = false,
-  autoInstrumentalSelection = null,
+  offerInlineChoice = false,
+  autoConfident = false,
+  recommendedSelection = null,
+  currentSelection,
+  onSelectInstrumental,
   reviewInstrumentalAnyway = false,
   onToggleReviewInstrumental,
-  cleanOverride = false,
-  onInstrumentalChoiceChange,
 }: ReviewChangesModalProps) {
   const t = useTranslations('lyricsReview.modals.reviewChanges')
   // Instrumental variant labels are shared with the preview toggle.
@@ -89,60 +92,46 @@ export default function ReviewChangesModal({
   const [previewTime, setPreviewTime] = useState(0)
   const instrumentalOptions = data.instrumental_options
   const getWaveformData = apiClient?.getWaveformData
-  // Only offer the backing waveform (which clicks through to the backing stem)
-  // when that stem is actually playable — otherwise the seek would switch audio
-  // to the wrong/absent track.
   const hasBackingStem = !!instrumentalOptions?.some(
     (o) => o.id === 'with_backing' && o.audio_url
   )
   const hasCleanStem = !!instrumentalOptions?.some(
     (o) => o.id === 'clean' && o.audio_url
   )
+
+  // Render the "Your karaoke video will use:" chooser when both stems exist (the
+  // reviewer picks inline) or when a confident single-stem verdict still wants the
+  // recommended-option + Advanced-mode framing.
+  const showChoiceBlock = offerInlineChoice || autoConfident
+  // The instrumental currently chosen for the produced video (ignoring Advanced).
+  const selected: 'clean' | 'with_backing' =
+    currentSelection ?? recommendedSelection ?? (hasBackingStem ? 'with_backing' : 'clean')
+
+  // Only offer the backing waveform (which clicks through to the backing stem)
+  // when that stem is playable and the reviewer is currently keeping backing.
   const showBackingWaveform =
-    autoInstrumentalConfident &&
-    autoInstrumentalSelection === 'with_backing' &&
-    hasBackingStem &&
-    !!getWaveformData
+    !reviewInstrumentalAnyway && selected === 'with_backing' && hasBackingStem && !!getWaveformData
 
-  // Split the audio toggle into "Instrumental + backing vocals" / "Clean
-  // instrumental" pills only when the auto-selection is the backing instrumental
-  // AND a clean stem exists to switch to (i.e. the two are meaningfully
-  // different). When clean is already the default there is nothing to offer.
-  const offerInstrumentalChoice =
-    autoInstrumentalConfident &&
-    autoInstrumentalSelection === 'with_backing' &&
-    hasCleanStem &&
-    hasBackingStem
-  const cleanChosen = offerInstrumentalChoice && cleanOverride
-
-  // The three mutually-exclusive final-output outcomes, surfaced as one radio
-  // group so it's unambiguous which instrumental the produced video will use.
-  //  - 'auto'     → the auto-selected instrumental (backing, or clean when that's
-  //                 the verdict). Submits "auto"/backing.
-  //  - 'clean'    → override to the clean instrumental (only offered when backing
-  //                 was auto-picked and a clean stem exists). Submits "clean".
-  //  - 'advanced' → opt into the full instrumental screen (mute sections / upload).
-  const decision: 'auto' | 'clean' | 'advanced' = reviewInstrumentalAnyway
-    ? 'advanced'
-    : cleanChosen
-      ? 'clean'
-      : 'auto'
-
-  const selectAuto = () => {
+  const chooseInstrumental = (choice: 'clean' | 'with_backing') => {
     onToggleReviewInstrumental?.(false)
-    if (autoInstrumentalSelection === 'with_backing') {
-      onInstrumentalChoiceChange?.('with_backing')
-      previewRef.current?.auditionInstrumental('with_backing')
-    } else {
-      previewRef.current?.auditionInstrumental('clean')
-    }
+    onSelectInstrumental?.(choice)
+    previewRef.current?.auditionInstrumental(choice)
   }
-  const selectClean = () => {
-    onToggleReviewInstrumental?.(false)
-    onInstrumentalChoiceChange?.('clean')
-    previewRef.current?.auditionInstrumental('clean')
+  const chooseAdvanced = () => onToggleReviewInstrumental?.(true)
+
+  // A firm "✓ recommended" badge next to the recommended option — only when the
+  // scorer was confident. When it wasn't, the option is still preselected but
+  // carries no badge (the neutral "have a listen and choose" prompt says it's the
+  // reviewer's call), avoiding a subtle recommended-vs-suggested distinction that
+  // doesn't survive translation.
+  const recommendedBadge = (value: 'clean' | 'with_backing') => {
+    if (!autoConfident || recommendedSelection !== value) return null
+    return (
+      <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+        ✓ {t('recommended')}
+      </span>
+    )
   }
-  const selectAdvanced = () => onToggleReviewInstrumental?.(true)
 
   const handleSubmit = () => {
     if (isSubmitting) return
@@ -165,7 +154,7 @@ export default function ReviewChangesModal({
           timingOffsetMs={timingOffsetMs}
           isDuet={isDuet}
           instrumentalOptions={instrumentalOptions}
-          autoSelection={autoInstrumentalSelection}
+          autoSelection={selected}
           onTimeUpdate={setPreviewTime}
         />
 
@@ -192,45 +181,41 @@ export default function ReviewChangesModal({
           </div>
         )}
 
-        {/* Per-screen skip (C1): the backing decision was auto-resolved, so this
-            modal completes the whole job. The single radio group makes the
-            final-output choice explicit (and the escape hatch is just another
-            option — "Advanced mode"), separate from the preview-audio toggle
-            above which only controls what you hear right now. */}
-        {autoInstrumentalConfident && (
+        {/* "Your karaoke video will use:" — the explicit final-output choice,
+            separate from the preview-audio toggle above (which only controls what
+            you hear). Shown whenever both stems exist so the reviewer picks the
+            instrumental here; the full /instrumental screen is the "Advanced mode"
+            opt-in. When the scorer was confident the recommended option carries a
+            green ✓; otherwise it's a softer preselected "suggested" default. */}
+        {showChoiceBlock && (
           <div className="rounded-lg border border-purple-500/40 bg-purple-500/5 p-3 text-sm space-y-3">
             <p className="font-medium">🎬 {t('finalChoiceLabel')}</p>
             <div role="radiogroup" className="space-y-2">
-              {/* Recommended: the auto-selected instrumental */}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="final-instrumental"
-                  className="h-4 w-4"
-                  checked={decision === 'auto'}
-                  onChange={selectAuto}
-                />
-                <span>
-                  {autoInstrumentalSelection === 'with_backing'
-                    ? tPreview('audioInstrumentalBacking')
-                    : tPreview('audioInstrumentalClean')}
-                </span>
-                <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
-                  ✓ {t('recommended')}
-                </span>
-              </label>
-
-              {/* Clean override — only when backing was auto-picked and a clean stem exists */}
-              {offerInstrumentalChoice && (
+              {hasBackingStem && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
                     name="final-instrumental"
                     className="h-4 w-4"
-                    checked={decision === 'clean'}
-                    onChange={selectClean}
+                    checked={!reviewInstrumentalAnyway && selected === 'with_backing'}
+                    onChange={() => chooseInstrumental('with_backing')}
+                  />
+                  <span>{tPreview('audioInstrumentalBacking')}</span>
+                  {recommendedBadge('with_backing')}
+                </label>
+              )}
+
+              {hasCleanStem && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="final-instrumental"
+                    className="h-4 w-4"
+                    checked={!reviewInstrumentalAnyway && selected === 'clean'}
+                    onChange={() => chooseInstrumental('clean')}
                   />
                   <span>{tPreview('audioInstrumentalClean')}</span>
+                  {recommendedBadge('clean')}
                 </label>
               )}
 
@@ -240,21 +225,27 @@ export default function ReviewChangesModal({
                   type="radio"
                   name="final-instrumental"
                   className="h-4 w-4"
-                  checked={decision === 'advanced'}
-                  onChange={selectAdvanced}
+                  checked={!!reviewInstrumentalAnyway}
+                  onChange={chooseAdvanced}
                 />
                 <span>
-                  {autoInstrumentalSelection === 'with_backing'
-                    ? t('advancedMode')
-                    : t('advancedModeClean')}
+                  {recommendedSelection === 'clean' ? t('advancedModeClean') : t('advancedMode')}
                 </span>
               </label>
             </div>
 
-            {/* Context for the current decision */}
-            {decision === 'auto' && autoInstrumentalSelection === 'with_backing' && (
+            {/* Context for the current choice */}
+            {!reviewInstrumentalAnyway && (
               <>
-                <p className="text-muted-foreground">{t('autoInstrumentalBacking')}</p>
+                {!autoConfident ? (
+                  <p className="text-muted-foreground">{t('chooseInstrumentalPrompt')}</p>
+                ) : selected === 'with_backing' ? (
+                  <p className="text-muted-foreground">{t('autoInstrumentalBacking')}</p>
+                ) : recommendedSelection === 'clean' ? (
+                  <p className="text-muted-foreground">{t('autoInstrumentalClean')}</p>
+                ) : (
+                  <p className="text-muted-foreground">{t('autoInstrumentalCleanChosen')}</p>
+                )}
                 {showBackingWaveform && getWaveformData && (
                   <BackingVocalsWaveform
                     getWaveformData={getWaveformData}
@@ -263,12 +254,6 @@ export default function ReviewChangesModal({
                   />
                 )}
               </>
-            )}
-            {decision === 'auto' && autoInstrumentalSelection !== 'with_backing' && (
-              <p className="text-muted-foreground">{t('autoInstrumentalClean')}</p>
-            )}
-            {decision === 'clean' && (
-              <p className="text-muted-foreground">{t('autoInstrumentalCleanChosen')}</p>
             )}
           </div>
         )}

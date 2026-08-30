@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Video karaoke anda akan menggunakan:",
         "recommended": "disyorkan",
         "autoInstrumentalBacking": "Kami mengekalkan vokal latar dalam instrumental. Cuba dengar — jika suara penyanyi utama masih kedengaran, tukar kepada “Instrumental bersih” di atas.",
-        "advancedMode": "Mod lanjutan (sunting vokal latar atau muat naik instrumental anda sendiri)"
+        "advancedMode": "Mod lanjutan (sunting vokal latar atau muat naik instrumental anda sendiri)",
+        "chooseInstrumentalPrompt": "Dengarkan dan pilih instrumental mana yang patut digunakan untuk video anda."
       },
       "searchLyrics": {
         "artist": "Artis",

@@ -1161,7 +1161,8 @@
         "finalChoiceLabel": "Tu video de karaoke usará:",
         "recommended": "recomendado",
         "autoInstrumentalBacking": "Hemos dejado los coros en el instrumental. Escúchalo y, si notas que se cuela la voz del cantante principal, cambia a “Instrumental limpio” arriba.",
-        "advancedMode": "Modo avanzado (edita los coros o sube tu propio instrumental)"
+        "advancedMode": "Modo avanzado (edita los coros o sube tu propio instrumental)",
+        "chooseInstrumentalPrompt": "Escucha y elige qué instrumental debe usar tu video."
       },
       "searchLyrics": {
         "artist": "Artista",
