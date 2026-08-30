@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {modificare} other {modificări}} în {segments} segmente"
     },
     "previewVideo": {
-      "generating": "Se generează videoclipul de previzualizare...",
+      "generating": "Îți pregătim previzualizarea…",
       "failed": "Generarea videoclipului de previzualizare a eșuat",
       "unsupportedBrowser": "Browserul tău nu suportă eticheta video.",
       "encoding": "Se codează videoclipul de previzualizare...",
       "timedOut": "Procesarea videoclipului de previzualizare durează mai mult decât ne așteptam. Te rugăm să încerci din nou.",
       "retry": "Încearcă din nou",
-      "startingEncoder": "Pornim un server de codare — acest lucru poate dura câteva minute. Rămâi pe aproape!"
+      "startingEncoder": "Pornim un server de codare — acest lucru poate dura câteva minute. Rămâi pe aproape!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Original (cu voce)",
+      "backingVocalsWaveformHint": "Vocile de fundal păstrate în instrumental — dă click pentru a asculta această parte.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Golul anterior (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Alege un format pentru a-l aplica tuturor versurilor:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Previzualizare video (Cu voce)",
         "noLyricsTitle": "Nu au fost detectate versuri",
         "noLyricsDesc": "Nu au fost găsite versuri în fișierul audio. Acest lucru se întâmplă de obicei când fișierul audio de intrare nu are voce (ex. o piesă de karaoke sau un instrumental).",
         "noLyricsHint": "Te poți întoarce și poți lipi versurile manual folosind Înlocuiește tot, sau poți anula acest job și încerca din nou cu un fișier audio care conține voce.",
         "manualCorrectionsDetected": "Au fost detectate corecturi manuale. Revizuiește previzualizarea pentru a te asigura că versurile sunt sincronizate corect.",
-        "noManualCorrections": "Nu au fost detectate corecturi manuale. Dacă totul arată bine în previzualizare, treci la selectarea instrumentalului tău.",
-        "totalSegments": "Total segmente: {count}",
         "proceedToInstrumental": "Treci la revizuirea instrumentalului",
         "saving": "Se salvează...",
         "completeTrack": "Piesa completă",
         "autoInstrumentalBacking": "Vom păstra vocile de fundal în instrumental în mod automat — nu este necesară revizuirea instrumentalului.",
         "autoInstrumentalClean": "Vom folosi instrumentalul curat (fără voci de fundal) în mod automat — nu este necesară revizuirea instrumentalului.",
-        "reviewInstrumentalAnyway": "Lasă-mă să aleg singur instrumentalul"
+        "reviewInstrumentalAnyway": "Lasă-mă să aleg singur instrumentalul",
+        "previewTitle": "Previzualizare videoclip"
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {perubahan} other {perubahan}} merentas {segments} segmen"
     },
     "previewVideo": {
-      "generating": "Menjana video pratonton...",
+      "generating": "Menyediakan pratonton anda…",
       "failed": "Gagal menjana video pratonton",
       "unsupportedBrowser": "Pelayar anda tidak menyokong tag video.",
       "encoding": "Sedang mengekod video pratonton...",
       "timedOut": "Video pratonton mengambil masa lebih lama daripada yang dijangkakan. Sila cuba lagi.",
       "retry": "Cuba lagi",
-      "startingEncoder": "Sedang memulakan pelayan pengekodan — ini mungkin mengambil masa beberapa minit. Tunggu sebentar!"
+      "startingEncoder": "Sedang memulakan pelayan pengekodan — ini mungkin mengambil masa beberapa minit. Tunggu sebentar!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Asal (dengan vokal)",
+      "backingVocalsWaveformHint": "Vokal latar dikekalkan dalam instrumental — klik untuk mendengar bahagian ini.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Jurang sebelumnya (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Pilih gaya kes huruf untuk digunakan pada semua lirik:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Video Pratonton (Dengan Vokal)",
         "noLyricsTitle": "Tiada lirik dikesan",
         "noLyricsDesc": "Tiada lirik ditemui dalam audio. Ini biasanya berlaku apabila audio input tidak mempunyai vokal (cth. trek karaoke atau instrumental).",
         "noLyricsHint": "Anda boleh kembali dan menampal lirik secara manual menggunakan Ganti Semua, atau batalkan kerja ini dan cuba lagi dengan fail audio yang mengandungi vokal.",
         "manualCorrectionsDetected": "Pembetulan manual dikesan. Semak pratonton untuk memastikan lirik disegerakkan dengan betul.",
-        "noManualCorrections": "Tiada pembetulan manual dikesan. Jika semuanya kelihatan baik dalam pratonton, teruskan untuk memilih instrumental anda.",
-        "totalSegments": "Jumlah segmen: {count}",
         "proceedToInstrumental": "Teruskan ke Semakan Instrumental",
         "saving": "Menyimpan...",
         "completeTrack": "Lengkapkan Trek",
         "autoInstrumentalBacking": "Kami akan mengekalkan vokal latar dalam instrumental secara automatik — tiada semakan instrumental diperlukan.",
         "autoInstrumentalClean": "Kami akan menggunakan instrumental bersih (tiada vokal latar) secara automatik — tiada semakan instrumental diperlukan.",
-        "reviewInstrumentalAnyway": "Biar saya pilih instrumental sendiri"
+        "reviewInstrumentalAnyway": "Biar saya pilih instrumental sendiri",
+        "previewTitle": "Pratonton Video"
       },
       "searchLyrics": {
         "artist": "Artis",

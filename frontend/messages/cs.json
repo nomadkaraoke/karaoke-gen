@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {změna} few {změny} other {změn}} napříč {segments} segmenty"
     },
     "previewVideo": {
-      "generating": "Generování náhledového videa...",
+      "generating": "Připravujeme tvůj náhled…",
       "failed": "Nepodařilo se vygenerovat náhledové video",
       "unsupportedBrowser": "Tvůj prohlížeč nepodporuje značku video.",
       "encoding": "Kódování náhledového videa...",
       "timedOut": "Příprava náhledového videa trvá déle, než se očekávalo. Zkus to prosím znovu.",
       "retry": "Zkusit znovu",
-      "startingEncoder": "Spouští se kódovací server — může to trvat pár minut. Vydrž!"
+      "startingEncoder": "Spouští se kódovací server — může to trvat pár minut. Vydrž!",
+      "audioLabel": "Zvuk:",
+      "audioOriginal": "Originál (se zpěvem)",
+      "backingVocalsWaveformHint": "Doprovodné vokály zůstaly v instrumentální verzi – kliknutím si tuto část poslechneš.",
+      "audioInstrumental": "Instrumentální"
     },
     "gapNavigator": {
       "previousGap": "Předchozí mezera (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Vyber styl velikosti písmen, který se použije na celý text:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Náhled videa (S vokály)",
         "noLyricsTitle": "Nebyl detekován žádný text",
         "noLyricsDesc": "Ve zvuku nebyl nalezen žádný text. To se obvykle stává, když vstupní zvuk neobsahuje žádné vokály (např. karaoke stopa nebo instrumentálka).",
         "noLyricsHint": "Můžeš se vrátit a vložit text manuálně pomocí Nahradit vše, nebo zrušit tuto úlohu a zkusit to znovu se zvukovým souborem, který obsahuje vokály.",
         "manualCorrectionsDetected": "Byly detekovány manuální opravy. Zkontroluj náhled, abys zajistil, že je text správně synchronizován.",
-        "noManualCorrections": "Nebyly detekovány žádné manuální opravy. Pokud v náhledu vypadá vše v pořádku, pokračuj k výběru instrumentálky.",
-        "totalSegments": "Celkem segmentů: {count}",
         "proceedToInstrumental": "Pokračovat na kontrolu instrumentálky",
         "saving": "Ukládání...",
         "completeTrack": "Dokončit skladbu",
         "autoInstrumentalBacking": "Doprovodné vokály v instrumentálce ponecháme automaticky — kontrola instrumentálky není nutná.",
         "autoInstrumentalClean": "Automaticky použijeme čistou instrumentálku (bez doprovodných vokálů) — kontrola instrumentálky není nutná.",
-        "reviewInstrumentalAnyway": "Nech mě vybrat instrumentálku"
+        "reviewInstrumentalAnyway": "Nech mě vybrat instrumentálku",
+        "previewTitle": "Náhled videa"
       },
       "searchLyrics": {
         "artist": "Interpret",

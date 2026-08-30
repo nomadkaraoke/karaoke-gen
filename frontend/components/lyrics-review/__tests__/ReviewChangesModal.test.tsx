@@ -3,11 +3,19 @@ import userEvent from '@testing-library/user-event'
 import ReviewChangesModal from '../modals/ReviewChangesModal'
 import type { CorrectionData } from '@/lib/lyrics-review/types'
 
-// Mock PreviewVideoSection since it has complex dependencies
-jest.mock('../PreviewVideoSection', () => ({
-  __esModule: true,
-  default: () => <div data-testid="preview-video">Preview</div>,
-}))
+// Mock PreviewVideoSection since it has complex dependencies. It's a
+// forwardRef component, so the mock must forward the ref too (the modal
+// attaches one for the backing-vocals seek handle).
+jest.mock('../PreviewVideoSection', () => {
+  const React = require('react')
+  return {
+    __esModule: true,
+    default: React.forwardRef(function MockPreview(_props: unknown, ref: unknown) {
+      React.useImperativeHandle(ref, () => ({ switchToInstrumentalAndSeek: jest.fn() }))
+      return <div data-testid="preview-video">Preview</div>
+    }),
+  }
+})
 
 function makeData(overrides: Partial<CorrectionData> = {}): CorrectionData {
   return {
@@ -80,7 +88,88 @@ describe('ReviewChangesModal', () => {
     )
 
     expect(screen.queryByText('No lyrics detected')).not.toBeInTheDocument()
-    expect(screen.getByText(/total segments: 1/i)).toBeInTheDocument()
+  })
+
+  it('uses a neutral "Preview Video" title (not "With Vocals")', () => {
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        data={makeData({ corrected_segments: [] })}
+      />
+    )
+    expect(screen.getByText('Preview Video')).toBeInTheDocument()
+    expect(screen.queryByText(/with vocals/i)).not.toBeInTheDocument()
+  })
+
+  it('no longer shows the removed "no manual corrections" / "total segments" text', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        data={makeData({ corrected_segments: segments as any, corrections: [] })}
+      />
+    )
+    expect(screen.queryByText(/no manual corrections/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/total segments/i)).not.toBeInTheDocument()
+  })
+
+  it('shows the manual-corrections note only when the user made edits', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        data={makeData({
+          corrected_segments: segments as any,
+          corrections: [{ handler: 'ManualCorrector' } as any],
+        })}
+      />
+    )
+    expect(screen.getByText(/manual corrections detected/i)).toBeInTheDocument()
+  })
+
+  it('renders the backing-vocals waveform when backing is kept and waveform data is available', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    const apiClient = {
+      generatePreviewVideo: jest.fn(),
+      getPreviewVideoStatus: jest.fn(),
+      getPreviewVideoUrl: jest.fn(),
+      getWaveformData: jest.fn().mockResolvedValue({ amplitudes: [0.1, 0.2], duration_seconds: 10 }),
+    }
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        apiClient={apiClient as any}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="with_backing"
+        data={makeData({ corrected_segments: segments as any })}
+      />
+    )
+    // Hint text from BackingVocalsWaveform
+    expect(screen.getByText(/click to hear this part/i)).toBeInTheDocument()
+    expect(apiClient.getWaveformData).toHaveBeenCalled()
+  })
+
+  it('does not render the backing-vocals waveform when the clean instrumental was chosen', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+    const apiClient = {
+      generatePreviewVideo: jest.fn(),
+      getPreviewVideoStatus: jest.fn(),
+      getPreviewVideoUrl: jest.fn(),
+      getWaveformData: jest.fn().mockResolvedValue({ amplitudes: [0.1], duration_seconds: 10 }),
+    }
+    render(
+      <ReviewChangesModal
+        {...defaultProps}
+        apiClient={apiClient as any}
+        completesReview
+        autoInstrumentalConfident
+        autoInstrumentalSelection="clean"
+        data={makeData({ corrected_segments: segments as any })}
+      />
+    )
+    expect(screen.queryByText(/click to hear this part/i)).not.toBeInTheDocument()
+    expect(apiClient.getWaveformData).not.toHaveBeenCalled()
   })
 
   it('calls onSubmit when button clicked with valid segments', async () => {

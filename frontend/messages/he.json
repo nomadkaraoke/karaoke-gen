@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {שינוי} other {שינויים}} על פני {segments} מקטעים"
     },
     "previewVideo": {
-      "generating": "יוצר וידאו תצוגה מקדימה...",
+      "generating": "מכינים את התצוגה המקדימה שלך…",
       "failed": "יצירת וידאו תצוגה מקדימה נכשלה",
       "unsupportedBrowser": "הדפדפן שלך אינו תומך בתגית וידאו.",
       "encoding": "קידוד סרטון תצוגה מקדימה...",
       "timedOut": "הכנת סרטון התצוגה המקדימה לוקחת יותר זמן מהצפוי. אנא נסה שוב.",
       "retry": "נסה שוב",
-      "startingEncoder": "מפעילים שרת קידוד — זה עשוי לקחת כמה דקות. הישאר איתנו!"
+      "startingEncoder": "מפעילים שרת קידוד — זה עשוי לקחת כמה דקות. הישאר איתנו!",
+      "audioLabel": "שמע:",
+      "audioOriginal": "מקורי (עם שירה)",
+      "backingVocalsWaveformHint": "קולות רקע נשמרו בגרסה האינסטרומנטלית — לחצו כדי לשמוע חלק זה.",
+      "audioInstrumental": "אינסטרומנטלי"
     },
     "gapNavigator": {
       "previousGap": "פער קודם (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "בחירת סגנון אותיות להחלה על כל המילים:"
       },
       "reviewChanges": {
-        "previewWithVocals": "וידאו תצוגה מקדימה (עם קולות)",
         "noLyricsTitle": "לא זוהו מילים",
         "noLyricsDesc": "לא נמצאו מילים באודיו. זה קורה בדרך כלל כאשר לאודיו הקלט אין שירה (למשל רצועת קריוקי או פלייבק).",
         "noLyricsHint": "אתה יכול לחזור ולהדביק מילים ידנית באמצעות החלף הכל, או לבטל עבודה זו ולנסות שוב עם קובץ אודיו שמכיל שירה.",
         "manualCorrectionsDetected": "זוהו תיקונים ידניים. בדוק את התצוגה המקדימה כדי לוודא שהמילים מסונכרנות כראוי.",
-        "noManualCorrections": "לא זוהו תיקונים ידניים. אם הכל נראה טוב בתצוגה המקדימה, המשך לבחירת הפלייבק שלך.",
-        "totalSegments": "סה\"כ מקטעים: {count}",
         "proceedToInstrumental": "המשך לבדיקת פלייבק",
         "saving": "שומר...",
         "completeTrack": "השלמת הרצועה",
         "autoInstrumentalBacking": "נשאיר את קולות הרקע בפלייבק באופן אוטומטי — אין צורך בבדיקת הפלייבק.",
         "autoInstrumentalClean": "נשתמש בפלייבק הנקי (ללא קולות רקע) באופן אוטומטי — אין צורך בבדיקת הפלייבק.",
-        "reviewInstrumentalAnyway": "לאפשר לי לבחור את הפלייבק בעצמי"
+        "reviewInstrumentalAnyway": "לאפשר לי לבחור את הפלייבק בעצמי",
+        "previewTitle": "תצוגה מקדימה של הסרטון"
       },
       "searchLyrics": {
         "artist": "אמן",

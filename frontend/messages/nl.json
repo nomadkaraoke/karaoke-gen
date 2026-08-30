@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {wijziging} other {wijzigingen}} over {segments} segmenten"
     },
     "previewVideo": {
-      "generating": "Voorbeeldvideo genereren...",
+      "generating": "Je preview wordt voorbereid…",
       "failed": "Kan voorbeeldvideo niet genereren",
       "unsupportedBrowser": "Je browser ondersteunt de video tag niet.",
       "encoding": "Voorbeeldvideo coderen...",
       "timedOut": "Het verwerken van de voorbeeldvideo duurt langer dan verwacht. Probeer het opnieuw.",
       "retry": "Opnieuw proberen",
-      "startingEncoder": "Bezig met het opstarten van een encodingserver — dit kan een paar minuten duren. Even geduld!"
+      "startingEncoder": "Bezig met het opstarten van een encodingserver — dit kan een paar minuten duren. Even geduld!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Origineel (met zang)",
+      "backingVocalsWaveformHint": "Achtergrondzang behouden in de instrumentale versie — klik om dit deel te horen.",
+      "audioInstrumental": "Instrumentaal"
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Kies een stijl voor het hoofdlettergebruik om toe te passen op alle songteksten:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Voorbeeldvideo (met zang)",
         "noLyricsTitle": "Geen songteksten gedetecteerd",
         "noLyricsDesc": "Er zijn geen songteksten gevonden in de audio. Dit gebeurt meestal wanneer de invoeraudio geen zang bevat (bijv. een karaoke track of instrumental).",
         "noLyricsHint": "Je kunt teruggaan en songteksten handmatig plakken met Vervang Alles, of deze taak annuleren en het opnieuw proberen met een audiobestand dat zang bevat.",
         "manualCorrectionsDetected": "Handmatige correcties gedetecteerd. Controleer het voorbeeld om er zeker van te zijn dat de songteksten correct zijn gesynchroniseerd.",
-        "noManualCorrections": "Geen handmatige correcties gedetecteerd. Als alles er goed uitziet in het voorbeeld, ga dan verder met het selecteren van je instrumental.",
-        "totalSegments": "Totaal aantal segmenten: {count}",
         "proceedToInstrumental": "Doorgaan naar instrumental-beoordeling",
         "saving": "Opslaan...",
         "completeTrack": "Track voltooien",
         "autoInstrumentalBacking": "We behouden de achtergrondzang automatisch in de instrumentale versie — geen instrumentale controle nodig.",
         "autoInstrumentalClean": "We gebruiken automatisch de schone instrumentale versie (zonder achtergrondzang) — geen instrumentale controle nodig.",
-        "reviewInstrumentalAnyway": "Laat mij zelf de instrumentale versie kiezen"
+        "reviewInstrumentalAnyway": "Laat mij zelf de instrumentale versie kiezen",
+        "previewTitle": "Voorbeeldvideo"
       },
       "searchLyrics": {
         "artist": "Artiest",

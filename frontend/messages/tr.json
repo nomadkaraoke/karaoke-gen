@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{segments} segmentte {changes} {changes, plural, one {değişiklik} other {değişiklik}}"
     },
     "previewVideo": {
-      "generating": "Önizleme videosu oluşturuluyor...",
+      "generating": "Önizlemen hazırlanıyor…",
       "failed": "Önizleme videosu oluşturulamadı",
       "unsupportedBrowser": "Tarayıcın video etiketini desteklemiyor.",
       "encoding": "Önizleme videosu kodlanıyor...",
       "timedOut": "Önizleme videosunun hazırlanması beklenenden uzun sürüyor. Lütfen tekrar dene.",
       "retry": "Tekrar Dene",
-      "startingEncoder": "Kodlama sunucusu başlatılıyor — bu birkaç dakika sürebilir. Lütfen bekle!"
+      "startingEncoder": "Kodlama sunucusu başlatılıyor — bu birkaç dakika sürebilir. Lütfen bekle!",
+      "audioLabel": "Ses:",
+      "audioOriginal": "Orijinal (vokalli)",
+      "backingVocalsWaveformHint": "Geri vokaller enstrümantalde bırakıldı — bu kısmı duymak için tıkla.",
+      "audioInstrumental": "Enstrümantal"
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Tüm şarkı sözlerine uygulamak için bir harf stili seç:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Videoyu Önizle (Vokalli)",
         "noLyricsTitle": "Söz algılanmadı",
         "noLyricsDesc": "Seste söz bulunamadı. Bu genellikle giriş sesinde vokal olmadığında (örn. bir karaoke parçası veya enstrümantal) olur.",
         "noLyricsHint": "Geri dönüp Tümünü Değiştir'i kullanarak sözleri manuel olarak yapıştırabilir veya bu işi iptal edip vokal içeren bir ses dosyasıyla tekrar deneyebilirsin.",
         "manualCorrectionsDetected": "Manuel düzeltmeler algılandı. Sözlerin doğru şekilde senkronize edildiğinden emin olmak için önizlemeyi incele.",
-        "noManualCorrections": "Manuel düzeltme algılanmadı. Önizlemede her şey iyi görünüyorsa, enstrümantalini seçmeye devam et.",
-        "totalSegments": "Toplam segment: {count}",
         "proceedToInstrumental": "Enstrümantal İncelemesine İlerle",
         "saving": "Kaydediliyor...",
         "completeTrack": "Parçayı Tamamla",
         "autoInstrumentalBacking": "Geri vokalleri otomatik olarak enstrümantalde koruyacağız — enstrümantali incelemene gerek yok.",
         "autoInstrumentalClean": "Otomatik olarak temiz enstrümantal (geri vokal yok) kullanacağız — enstrümantali incelemene gerek yok.",
-        "reviewInstrumentalAnyway": "Enstrümantali kendim seçeyim"
+        "reviewInstrumentalAnyway": "Enstrümantali kendim seçeyim",
+        "previewTitle": "Videoyu Önizle"
       },
       "searchLyrics": {
         "artist": "Sanatçı",

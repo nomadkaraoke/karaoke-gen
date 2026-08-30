@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {zmiana} few {zmiany} many {zmian} other {zmian}} w {segments} segmentach"
     },
     "previewVideo": {
-      "generating": "Generowanie podglądu wideo...",
+      "generating": "Przygotowujemy Twój podgląd…",
       "failed": "Nie udało się wygenerować podglądu wideo",
       "unsupportedBrowser": "Twoja przeglądarka nie obsługuje tagu wideo.",
       "encoding": "Kodowanie podglądu wideo...",
       "timedOut": "Przygotowanie podglądu wideo trwa dłużej niż oczekiwano. Spróbuj ponownie.",
       "retry": "Spróbuj ponownie",
-      "startingEncoder": "Uruchamiamy serwer kodujący — może to potrwać kilka minut. Poczekaj chwilę!"
+      "startingEncoder": "Uruchamiamy serwer kodujący — może to potrwać kilka minut. Poczekaj chwilę!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Oryginał (z wokalem)",
+      "backingVocalsWaveformHint": "Chórki zachowane w wersji instrumentalnej — kliknij, aby usłyszeć ten fragment.",
+      "audioInstrumental": "Wersja instrumentalna"
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Wybierz styl wielkości liter, który chcesz zastosować do całego tekstu:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Podgląd wideo (Z wokalem)",
         "noLyricsTitle": "Nie wykryto tekstu",
         "noLyricsDesc": "W dźwięku nie znaleziono żadnego tekstu. Zazwyczaj dzieje się tak, gdy wejściowy dźwięk nie ma wokalu (np. ścieżka karaoke lub podkład).",
         "noLyricsHint": "Możesz wrócić i wkleić tekst ręcznie za pomocą Zastąp wszystko, lub anulować to zadanie i spróbować ponownie z plikiem audio, który zawiera wokal.",
         "manualCorrectionsDetected": "Wykryto ręczne poprawki. Sprawdź podgląd, aby upewnić się, że tekst jest poprawnie zsynchronizowany.",
-        "noManualCorrections": "Nie wykryto ręcznych poprawek. Jeśli wszystko wygląda dobrze w podglądzie, przejdź do wyboru podkładu.",
-        "totalSegments": "Całkowita liczba segmentów: {count}",
         "proceedToInstrumental": "Przejdź do sprawdzania podkładu",
         "saving": "Zapisywanie...",
         "completeTrack": "Ukończ utwór",
         "autoInstrumentalBacking": "Automatycznie zachowamy chórki w podkładzie — weryfikacja podkładu nie jest potrzebna.",
         "autoInstrumentalClean": "Automatycznie użyjemy czystego podkładu (bez chórków) — weryfikacja podkładu nie jest potrzebna.",
-        "reviewInstrumentalAnyway": "Pozwól mi samodzielnie wybrać podkład"
+        "reviewInstrumentalAnyway": "Pozwól mi samodzielnie wybrać podkład",
+        "previewTitle": "Podgląd wideo"
       },
       "searchLyrics": {
         "artist": "Wykonawca",

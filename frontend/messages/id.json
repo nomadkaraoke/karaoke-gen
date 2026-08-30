@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {perubahan} other {perubahan}} di {segments} segmen"
     },
     "previewVideo": {
-      "generating": "Membuat video pratinjau...",
+      "generating": "Menyiapkan pratinjau Anda…",
       "failed": "Gagal membuat video pratinjau",
       "unsupportedBrowser": "Browser Anda tidak mendukung tag video.",
       "encoding": "Sedang memproses video pratinjau...",
       "timedOut": "Video pratinjau memakan waktu lebih lama dari perkiraan. Silakan coba lagi.",
       "retry": "Coba lagi",
-      "startingEncoder": "Memulai server encoding — ini mungkin memakan waktu beberapa menit. Tunggu sebentar ya!"
+      "startingEncoder": "Memulai server encoding — ini mungkin memakan waktu beberapa menit. Tunggu sebentar ya!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Asli (dengan vokal)",
+      "backingVocalsWaveformHint": "Vokal latar dipertahankan dalam instrumental — klik untuk mendengarkan bagian ini.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Celah sebelumnya (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Pilih gaya kapitalisasi untuk diterapkan ke semua lirik:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Pratinjau Video (Dengan Vokal)",
         "noLyricsTitle": "Tidak ada lirik yang terdeteksi",
         "noLyricsDesc": "Tidak ada lirik yang ditemukan di audio. Ini biasanya terjadi ketika audio input tidak memiliki vokal (mis. track karaoke atau instrumental).",
         "noLyricsHint": "Anda dapat kembali dan menempelkan lirik secara manual menggunakan Ganti Semua, atau membatalkan proyek ini dan mencoba lagi dengan file audio yang berisi vokal.",
         "manualCorrectionsDetected": "Koreksi manual terdeteksi. Tinjau pratinjau untuk memastikan lirik disinkronkan dengan benar.",
-        "noManualCorrections": "Tidak ada koreksi manual yang terdeteksi. Jika semuanya terlihat bagus di pratinjau, lanjutkan untuk memilih instrumental Anda.",
-        "totalSegments": "Total segmen: {count}",
         "proceedToInstrumental": "Lanjutkan ke Tinjauan Instrumental",
         "saving": "Menyimpan...",
         "completeTrack": "Trek Lengkap",
         "autoInstrumentalBacking": "Kami akan mempertahankan vokal latar pada instrumental secara otomatis — Anda tidak perlu meninjau instrumental.",
         "autoInstrumentalClean": "Kami akan menggunakan instrumental bersih (tanpa vokal latar) secara otomatis — Anda tidak perlu meninjau instrumental.",
-        "reviewInstrumentalAnyway": "Biar saya sendiri yang memilih instrumental"
+        "reviewInstrumentalAnyway": "Biar saya sendiri yang memilih instrumental",
+        "previewTitle": "Pratinjau Video"
       },
       "searchLyrics": {
         "artist": "Artis",

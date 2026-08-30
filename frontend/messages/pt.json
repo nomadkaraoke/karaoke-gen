@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {alteração} other {alterações}} em {segments} segmentos"
     },
     "previewVideo": {
-      "generating": "Gerando vídeo de visualização...",
+      "generating": "Preparando sua prévia…",
       "failed": "Falha ao gerar vídeo de visualização",
       "unsupportedBrowser": "Seu navegador não suporta a tag de vídeo.",
       "encoding": "Codificando o vídeo de prévia...",
       "timedOut": "O vídeo de prévia está demorando mais do que o esperado. Por favor, tente novamente.",
       "retry": "Tentar Novamente",
-      "startingEncoder": "Iniciando um servidor de codificação — isso pode levar alguns minutos. Aguarde só um instante!"
+      "startingEncoder": "Iniciando um servidor de codificação — isso pode levar alguns minutos. Aguarde só um instante!",
+      "audioLabel": "Áudio:",
+      "audioOriginal": "Original (com vocais)",
+      "backingVocalsWaveformHint": "Vocais de apoio mantidos no instrumental — clique para ouvir esta parte.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Lacuna anterior (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Escolha um estilo de maiúsculas/minúsculas para aplicar a todas as letras:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Visualizar Vídeo (Com Vocais)",
         "noLyricsTitle": "Nenhuma letra detectada",
         "noLyricsDesc": "Nenhuma letra foi encontrada no áudio. Isso geralmente acontece quando o áudio de entrada não tem vocais (ex. uma faixa de karaokê ou instrumental).",
         "noLyricsHint": "Você pode voltar e colar as letras manualmente usando Substituir Tudo, ou cancelar este trabalho e tentar novamente com um arquivo de áudio que contenha vocais.",
         "manualCorrectionsDetected": "Correções manuais detectadas. Revise a visualização para garantir que as letras estejam sincronizadas corretamente.",
-        "noManualCorrections": "Nenhuma correção manual detectada. Se tudo parecer bem na visualização, prossiga para selecionar seu instrumental.",
-        "totalSegments": "Total de segmentos: {count}",
         "proceedToInstrumental": "Prosseguir para Revisão Instrumental",
         "saving": "Salvando...",
         "completeTrack": "Faixa completa",
         "autoInstrumentalBacking": "Manteremos os vocais de apoio no instrumental automaticamente — não é necessário revisar o instrumental.",
         "autoInstrumentalClean": "Usaremos o instrumental limpo (sem vocais de apoio) automaticamente — não é necessário revisar o instrumental.",
-        "reviewInstrumentalAnyway": "Deixe-me escolher o instrumental"
+        "reviewInstrumentalAnyway": "Deixe-me escolher o instrumental",
+        "previewTitle": "Pré-visualizar Vídeo"
       },
       "searchLyrics": {
         "artist": "Artista",

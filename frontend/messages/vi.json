@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {thay đổi} other {thay đổi}} trên {segments} phân đoạn"
     },
     "previewVideo": {
-      "generating": "Đang tạo video xem trước...",
+      "generating": "Đang chuẩn bị bản xem trước của bạn…",
       "failed": "Không thể tạo video xem trước",
       "unsupportedBrowser": "Trình duyệt của bạn không hỗ trợ thẻ video.",
       "encoding": "Đang mã hóa video xem trước...",
       "timedOut": "Việc xử lý video xem trước đang mất nhiều thời gian hơn dự kiến. Vui lòng thử lại.",
       "retry": "Thử lại",
-      "startingEncoder": "Đang khởi động máy chủ mã hóa — quá trình này có thể mất vài phút. Bạn đợi một chút nhé!"
+      "startingEncoder": "Đang khởi động máy chủ mã hóa — quá trình này có thể mất vài phút. Bạn đợi một chút nhé!",
+      "audioLabel": "Âm thanh:",
+      "audioOriginal": "Bản gốc (có giọng hát)",
+      "backingVocalsWaveformHint": "Giọng hát bè được giữ lại trong nhạc nền — nhấp để nghe phần này.",
+      "audioInstrumental": "Nhạc nền"
     },
     "gapNavigator": {
       "previousGap": "Đoạn trống trước (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Chọn một kiểu viết hoa để áp dụng cho toàn bộ lời bài hát:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Xem trước video (Có giọng hát)",
         "noLyricsTitle": "Không phát hiện thấy lời bài hát",
         "noLyricsDesc": "Không tìm thấy lời bài hát nào trong âm thanh. Điều này thường xảy ra khi âm thanh đầu vào không có giọng hát (ví dụ: nhạc karaoke hoặc nhạc nền).",
         "noLyricsHint": "Bạn có thể quay lại và dán lời bài hát theo cách thủ công bằng cách sử dụng Thay thế tất cả, hoặc hủy công việc này và thử lại với tệp âm thanh có chứa giọng hát.",
         "manualCorrectionsDetected": "Đã phát hiện các sửa lỗi thủ công. Xem lại bản xem trước để đảm bảo lời bài hát được đồng bộ chính xác.",
-        "noManualCorrections": "Không phát hiện sửa lỗi thủ công nào. Nếu mọi thứ có vẻ ổn trong bản xem trước, hãy tiến hành chọn nhạc nền của bạn.",
-        "totalSegments": "Tổng số phân đoạn: {count}",
         "proceedToInstrumental": "Tiến hành xem lại nhạc nền",
         "saving": "Đang lưu...",
         "completeTrack": "Hoàn tất bài hát",
         "autoInstrumentalBacking": "Chúng tôi sẽ tự động giữ lại giọng bè trong nhạc nền — không cần xem lại nhạc nền.",
         "autoInstrumentalClean": "Chúng tôi sẽ tự động sử dụng nhạc nền sạch (không có giọng bè) — không cần xem lại nhạc nền.",
-        "reviewInstrumentalAnyway": "Để tôi tự chọn nhạc nền"
+        "reviewInstrumentalAnyway": "Để tôi tự chọn nhạc nền",
+        "previewTitle": "Xem trước video"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

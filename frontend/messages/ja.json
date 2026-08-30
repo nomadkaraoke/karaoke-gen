@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{segments} 個のセグメントにわたる {changes} {changes, plural, one {件の変更} other {件の変更}}"
     },
     "previewVideo": {
-      "generating": "プレビュー動画を生成中...",
+      "generating": "プレビューを準備しています…",
       "failed": "プレビュー動画の生成に失敗しました",
       "unsupportedBrowser": "お使いのブラウザは video タグをサポートしていません。",
       "encoding": "プレビュー動画をエンコードしています...",
       "timedOut": "プレビュー動画の処理に予想以上の時間がかかっています。もう一度お試しください。",
       "retry": "再試行",
-      "startingEncoder": "エンコードサーバーを起動しています。数分かかる場合がありますので、もうしばらくお待ちください！"
+      "startingEncoder": "エンコードサーバーを起動しています。数分かかる場合がありますので、もうしばらくお待ちください！",
+      "audioLabel": "音声:",
+      "audioOriginal": "オリジナル（ボーカルあり）",
+      "backingVocalsWaveformHint": "インスト音源に残っているバックコーラス — クリックするとこの部分を試聴できます。",
+      "audioInstrumental": "インストゥルメンタル"
     },
     "gapNavigator": {
       "previousGap": "前のギャップ (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "すべての歌詞に適用する文字スタイルを選択してください："
       },
       "reviewChanges": {
-        "previewWithVocals": "プレビュー動画（ボーカル入り）",
         "noLyricsTitle": "歌詞が検出されませんでした",
         "noLyricsDesc": "オーディオに歌詞が見つかりませんでした。これは通常、入力オーディオにボーカルがない場合（カラオケトラックやインストゥルメンタルなど）に発生します。",
         "noLyricsHint": "戻って「すべて置換」を使用して手動で歌詞を貼り付けるか、このジョブをキャンセルしてボーカルが含まれるオーディオファイルで再試行できます。",
         "manualCorrectionsDetected": "手動による修正が検出されました。プレビューを確認して、歌詞が正しく同期されていることを確認してください。",
-        "noManualCorrections": "手動による修正は検出されませんでした。プレビューで問題がなければ、インストゥルメンタルの選択に進んでください。",
-        "totalSegments": "合計セグメント: {count}",
         "proceedToInstrumental": "インストゥルメンタルの確認に進む",
         "saving": "保存中...",
         "completeTrack": "トラックを完了",
         "autoInstrumentalBacking": "インストゥルメンタルにバックボーカルを自動的に残します。インストゥルメンタルの確認は不要です。",
         "autoInstrumentalClean": "クリーンなインストゥルメンタル（バックボーカルなし）を自動的に使用します。インストゥルメンタルの確認は不要です。",
-        "reviewInstrumentalAnyway": "自分でインストゥルメンタルを選択する"
+        "reviewInstrumentalAnyway": "自分でインストゥルメンタルを選択する",
+        "previewTitle": "動画プレビュー"
       },
       "searchLyrics": {
         "artist": "アーティスト",

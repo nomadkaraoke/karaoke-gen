@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{segments} 个片段中的 {changes} {changes, plural, one {个更改} other {个更改}}"
     },
     "previewVideo": {
-      "generating": "正在生成预览视频...",
+      "generating": "正在准备您的预览…",
       "failed": "生成预览视频失败",
       "unsupportedBrowser": "您的浏览器不支持视频标签。",
       "encoding": "正在编码预览视频...",
       "timedOut": "预览视频处理时间超过预期，请重试。",
       "retry": "重试",
-      "startingEncoder": "正在启动编码服务器，这可能需要几分钟时间。请耐心等待！"
+      "startingEncoder": "正在启动编码服务器，这可能需要几分钟时间。请耐心等待！",
+      "audioLabel": "音频：",
+      "audioOriginal": "原声（带人声）",
+      "backingVocalsWaveformHint": "伴奏中保留了伴唱——点击试听此部分。",
+      "audioInstrumental": "伴奏"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "选择要应用于所有歌词的大小写样式："
       },
       "reviewChanges": {
-        "previewWithVocals": "预览视频（带人声）",
         "noLyricsTitle": "未检测到歌词",
         "noLyricsDesc": "在音频中未找到歌词。这通常发生在输入音频没有主唱人声时（例如卡拉OK伴奏或纯音乐）。",
         "noLyricsHint": "您可以返回并使用“替换所有”手动粘贴歌词，或者取消此任务并使用包含人声的音频文件重试。",
         "manualCorrectionsDetected": "检测到手动校对。检查预览以确保歌词同步正确。",
-        "noManualCorrections": "未检测到手动校对。如果预览中一切正常，请继续选择您的伴奏。",
-        "totalSegments": "总片段数：{count}",
         "proceedToInstrumental": "继续进行伴奏审核",
         "saving": "保存中...",
         "completeTrack": "完成曲目",
         "autoInstrumentalBacking": "我们将自动在伴奏中保留伴唱 — 无需审核伴奏。",
         "autoInstrumentalClean": "我们将自动使用纯净版伴奏（无伴唱） — 无需审核伴奏。",
-        "reviewInstrumentalAnyway": "让我自己选择伴奏"
+        "reviewInstrumentalAnyway": "让我自己选择伴奏",
+        "previewTitle": "预览视频"
       },
       "searchLyrics": {
         "artist": "歌手",

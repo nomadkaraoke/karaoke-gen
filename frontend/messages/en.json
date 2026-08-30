@@ -1016,13 +1016,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {change} other {changes}} across {segments} segments"
     },
     "previewVideo": {
-      "generating": "Generating preview video...",
+      "generating": "Preparing your preview…",
       "encoding": "Encoding preview video...",
-      "startingEncoder": "Starting up an encoding server \u2014 this can take a couple of minutes. Hang tight!",
+      "startingEncoder": "Starting up an encoding server — this can take a couple of minutes. Hang tight!",
       "failed": "Failed to generate preview video",
       "timedOut": "The preview video is taking longer than expected. Please try again.",
       "retry": "Retry",
-      "unsupportedBrowser": "Your browser does not support the video tag."
+      "unsupportedBrowser": "Your browser does not support the video tag.",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Original (with vocals)",
+      "audioInstrumental": "Instrumental",
+      "backingVocalsWaveformHint": "Backing vocals kept in the instrumental — click to hear this part."
     },
     "gapNavigator": {
       "previousGap": "Previous gap (P)",
@@ -1221,13 +1225,11 @@
         "changeCaseApply": "Apply {case}"
       },
       "reviewChanges": {
-        "previewWithVocals": "Preview Video (With Vocals)",
+        "previewTitle": "Preview Video",
         "noLyricsTitle": "No lyrics detected",
         "noLyricsDesc": "No lyrics were found in the audio. This usually happens when the input audio has no vocals (e.g. a karaoke track or instrumental).",
         "noLyricsHint": "You can go back and paste lyrics manually using Replace All, or cancel this job and try again with an audio file that contains vocals.",
         "manualCorrectionsDetected": "Manual corrections detected. Review the preview to ensure the lyrics are synchronized correctly.",
-        "noManualCorrections": "No manual corrections detected. If everything looks good in the preview, proceed to select your instrumental.",
-        "totalSegments": "Total segments: {count}",
         "proceedToInstrumental": "Proceed to Instrumental Review",
         "completeTrack": "Complete Track",
         "reviewInstrumentalAnyway": "Let me choose the instrumental myself",

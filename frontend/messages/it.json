@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {modifica} other {modifiche}} in {segments} segmenti"
     },
     "previewVideo": {
-      "generating": "Generazione video di anteprima...",
+      "generating": "Preparazione della tua anteprima…",
       "failed": "Impossibile generare il video di anteprima",
       "unsupportedBrowser": "Il tuo browser non supporta il tag video.",
       "encoding": "Codifica del video di anteprima in corso...",
       "timedOut": "Il video di anteprima sta impiegando più tempo del previsto. Riprova.",
       "retry": "Riprova",
-      "startingEncoder": "Stiamo avviando un server di codifica — potrebbe volerci un paio di minuti. Un attimo di pazienza!"
+      "startingEncoder": "Stiamo avviando un server di codifica — potrebbe volerci un paio di minuti. Un attimo di pazienza!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Originale (con voce)",
+      "backingVocalsWaveformHint": "Cori mantenuti nella base strumentale — clicca per ascoltare questa parte.",
+      "audioInstrumental": "Strumentale"
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Scegli uno stile di maiuscole/minuscole da applicare a tutto il testo:"
       },
       "reviewChanges": {
-        "previewWithVocals": "Anteprima video (Con voce)",
         "noLyricsTitle": "Nessun testo rilevato",
         "noLyricsDesc": "Nessun testo è stato trovato nell'audio. Questo di solito accade quando l'audio di input non ha voce (es. una traccia karaoke o strumentale).",
         "noLyricsHint": "Puoi tornare indietro e incollare il testo manualmente usando Sostituisci tutto, oppure annullare questo lavoro e riprovare con un file audio che contiene la voce.",
         "manualCorrectionsDetected": "Correzioni manuali rilevate. Rivedi l'anteprima per assicurarti che il testo sia sincronizzato correttamente.",
-        "noManualCorrections": "Nessuna correzione manuale rilevata. Se tutto sembra a posto nell'anteprima, procedi alla selezione della tua base strumentale.",
-        "totalSegments": "Segmenti totali: {count}",
         "proceedToInstrumental": "Procedi alla revisione strumentale",
         "saving": "Salvataggio...",
         "completeTrack": "Traccia completa",
         "autoInstrumentalBacking": "Manterremo automaticamente i cori nella base strumentale — non è necessario controllare la base.",
         "autoInstrumentalClean": "Useremo automaticamente la base strumentale pulita (senza cori) — non è necessario controllare la base.",
-        "reviewInstrumentalAnyway": "Fammi scegliere la base strumentale"
+        "reviewInstrumentalAnyway": "Fammi scegliere la base strumentale",
+        "previewTitle": "Anteprima video"
       },
       "searchLyrics": {
         "artist": "Artista",

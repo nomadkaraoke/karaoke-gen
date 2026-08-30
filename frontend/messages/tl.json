@@ -1004,13 +1004,17 @@
       "changesAcrossSegments": "{changes} {changes, plural, one {pagbabago} other {mga pagbabago}} sa {segments} na segment"
     },
     "previewVideo": {
-      "generating": "Bumubuo ng preview video...",
+      "generating": "Inihahanda ang iyong preview…",
       "failed": "Nabigong bumuo ng preview video",
       "unsupportedBrowser": "Hindi sinusuportahan ng iyong browser ang video tag.",
       "encoding": "Ini-encode ang preview video...",
       "timedOut": "Inaabot nang mas matagal kaysa sa inaasahan ang preview video. Pakisubukan muli.",
       "retry": "Subukan Muli",
-      "startingEncoder": "Sinisimulan ang encoding server — maaari itong tumagal ng ilang minuto. Konting hintay lang!"
+      "startingEncoder": "Sinisimulan ang encoding server — maaari itong tumagal ng ilang minuto. Konting hintay lang!",
+      "audioLabel": "Audio:",
+      "audioOriginal": "Orihinal (may vocals)",
+      "backingVocalsWaveformHint": "Pinanatili ang backing vocals sa instrumental — i-click para mapakinggan ang bahaging ito.",
+      "audioInstrumental": "Instrumental"
     },
     "gapNavigator": {
       "previousGap": "Nakaraang gap (P)",
@@ -1139,19 +1143,17 @@
         "changeCasePrompt": "Pumili ng istilo ng case na ia-apply sa lahat ng lyrics:"
       },
       "reviewChanges": {
-        "previewWithVocals": "I-preview ang Video (With Vocals)",
         "noLyricsTitle": "Walang na-detect na lyrics",
         "noLyricsDesc": "Walang nahanap na lyrics sa audio. Karaniwang nangyayari ito kapag ang input audio ay walang vocals (hal. isang karaoke track o instrumental).",
         "noLyricsHint": "Maaari kang bumalik at i-paste ang lyrics nang manual gamit ang Palitan Lahat, o kanselahin ang job na ito at subukan muli gamit ang isang audio file na naglalaman ng vocals.",
         "manualCorrectionsDetected": "May na-detect na manual corrections. I-review ang preview para makasigurong naka-synchronize nang tama ang lyrics.",
-        "noManualCorrections": "Walang na-detect na manual corrections. Kung maayos ang lahat sa preview, magpatuloy sa pagpili ng iyong instrumental.",
-        "totalSegments": "Kabuuang mga segment: {count}",
         "proceedToInstrumental": "Magpatuloy sa Instrumental Review",
         "saving": "Sina-save...",
         "completeTrack": "Kumpletuhin ang Track",
         "autoInstrumentalBacking": "Awtomatiko naming pananatilihin ang mga backing vocals sa instrumental — hindi na kailangan ng pagsusuri sa instrumental.",
         "autoInstrumentalClean": "Awtomatiko naming gagamitin ang malinis na instrumental (walang mga backing vocals) — hindi na kailangan ng pagsusuri sa instrumental.",
-        "reviewInstrumentalAnyway": "Hayaan akong ako mismo ang pumili ng instrumental"
+        "reviewInstrumentalAnyway": "Hayaan akong ako mismo ang pumili ng instrumental",
+        "previewTitle": "I-preview ang Video"
       },
       "searchLyrics": {
         "artist": "Artist",

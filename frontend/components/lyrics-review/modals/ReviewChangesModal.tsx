@@ -1,11 +1,19 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { CorrectionData } from '@/lib/lyrics-review/types'
 import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
-import PreviewVideoSection from '../PreviewVideoSection'
+import PreviewVideoSection, { PreviewVideoHandle } from '../PreviewVideoSection'
+import BackingVocalsWaveform from '../BackingVocalsWaveform'
+
+interface WaveformDataResult {
+  amplitudes: number[]
+  duration_seconds?: number
+  duration?: number
+}
 
 interface ApiClient {
   generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
@@ -18,6 +26,7 @@ interface ApiClient {
     message?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
+  getWaveformData?: (numPoints?: number) => Promise<WaveformDataResult>
 }
 
 interface ReviewChangesModalProps {
@@ -66,6 +75,15 @@ export default function ReviewChangesModal({
   // Check if there are manual corrections (user-made changes)
   const hasManualCorrections = corrections.some(c => c.handler === 'ManualCorrector' || c.handler === 'UserEdit')
 
+  const previewRef = useRef<PreviewVideoHandle>(null)
+  const [previewTime, setPreviewTime] = useState(0)
+  const instrumentalOptions = data.instrumental_options
+  const getWaveformData = apiClient?.getWaveformData
+  const showBackingWaveform =
+    autoInstrumentalConfident &&
+    autoInstrumentalSelection === 'with_backing' &&
+    !!getWaveformData
+
   const handleSubmit = () => {
     if (isSubmitting) return
     onSubmit()
@@ -75,16 +93,20 @@ export default function ReviewChangesModal({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{t('previewWithVocals')}</DialogTitle>
+          <DialogTitle>{t('previewTitle')}</DialogTitle>
         </DialogHeader>
 
         {/* Video Preview Section */}
         <PreviewVideoSection
+          ref={previewRef}
           apiClient={apiClient}
           isModalOpen={open}
           updatedData={data}
           timingOffsetMs={timingOffsetMs}
           isDuet={isDuet}
+          instrumentalOptions={instrumentalOptions}
+          autoSelection={autoInstrumentalSelection}
+          onTimeUpdate={setPreviewTime}
         />
 
         {/* No lyrics warning */}
@@ -103,15 +125,10 @@ export default function ReviewChangesModal({
           </div>
         )}
 
-        {/* Info text */}
-        {!hasNoLyrics && (
-          <div className="text-sm text-muted-foreground space-y-1">
-            {hasManualCorrections ? (
-              <p>{t('manualCorrectionsDetected')}</p>
-            ) : (
-              <p>{t('noManualCorrections')}</p>
-            )}
-            <p>{t('totalSegments', { count: totalSegments })}</p>
+        {/* Info text — only surfaced when the user made manual edits. */}
+        {!hasNoLyrics && hasManualCorrections && (
+          <div className="text-sm text-muted-foreground">
+            <p>{t('manualCorrectionsDetected')}</p>
           </div>
         )}
 
@@ -124,6 +141,13 @@ export default function ReviewChangesModal({
                 ? t('autoInstrumentalBacking')
                 : t('autoInstrumentalClean')}
             </p>
+            {showBackingWaveform && getWaveformData && (
+              <BackingVocalsWaveform
+                getWaveformData={getWaveformData}
+                currentTime={previewTime}
+                onSeek={(time) => previewRef.current?.switchToInstrumentalAndSeek(time)}
+              />
+            )}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
