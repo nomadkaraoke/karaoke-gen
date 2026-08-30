@@ -4,6 +4,21 @@ Operational runbooks for known production issues.
 
 ---
 
+## CI "Deploy - Publish to PyPI" fails: "Project size too large"
+
+**Cause:** PyPI caps total project size at 10 GB. Each `karaoke-gen` release is a
+~62 MiB wheel (bundled 33-locale frontend) auto-published on every merge, so the
+project refills the cap every few months. Only the public `pip install` publish
+step fails — Cloud Run and the GCE encoding worker (pulls the wheel from GCS) are
+unaffected.
+
+**Fix:** prune old releases per the retention policy. A monthly workflow
+(`pypi-prune-reminder.yml`) opens/updates a tracking issue with a paste-in
+deletion snippet, or run `python scripts/prune_pypi_releases.py` yourself. Full
+runbook: **[docs/PYPI-STORAGE-PRUNE.md](PYPI-STORAGE-PRUNE.md)**.
+
+---
+
 ## Job stuck at `downloading_audio` status
 
 **Cause:** Before v0.130.0, audio downloads ran as FastAPI BackgroundTasks. Cloud Run would terminate "idle" instances mid-download. Since v0.130.0, downloads use a Cloud Run Job (`audio-download-job`) and a Cloud Scheduler recovery job runs every 5 minutes to fail stuck downloads automatically.
