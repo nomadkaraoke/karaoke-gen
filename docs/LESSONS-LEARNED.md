@@ -6,6 +6,27 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Update Firestore Job Maps with Dot-Path Fields, Never Read-Modify-Write (Aug 2026)
+
+`JobManager.update_file_url` and `update_state_data` used to `get_job()`, copy the
+whole `file_urls`/`state_data` map, set one key, and re-persist the entire map. The
+audio and screens workers run **in parallel** and both write these maps, so a write
+built from a stale snapshot silently dropped a sibling key set in between (a classic
+lost update). Real symptom: a `backing_vocals.flac` stem uploaded to GCS but **missing
+from `file_urls.stems`** → the instrumental-review UI couldn't load the backing preview,
+and `_analyze_backing_vocals` early-returned ("0% backing detected"). Rare — needs a
+precise interleaving (~1 in 4 parallel jobs).
+
+**Fix / rule:** write a single Firestore dot-path field so the server merges siblings —
+`update_job(job_id, {f"file_urls.{category}.{file_type}": url})`, exactly like
+`update_processing_metadata` already did. Any code that does read-copy-mutate-write on a
+nested job map is exposed to the same race. Keys must be plain identifiers (no dots), or
+the path is misread as further nesting. Belt-and-suspenders: `_analyze_backing_vocals`
+now recovers a stem that exists at the conventional GCS path but is unregistered, and
+stores a fallback analysis instead of a silent early-return.
+
+---
+
 ## Measure Human Edits by RECONSTRUCTION, Not the edit_log (Aug 2026)
 
 The lyrics-review `edit_log_*.json` (typed frontend ops) is **unreliable** as a
