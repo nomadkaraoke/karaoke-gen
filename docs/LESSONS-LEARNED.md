@@ -22,12 +22,21 @@ scorer/gates on edit-log counts:
 
 **Reliable method:** reconstruct the post-AI/pre-human state and diff it against the
 human's final. `apply.build_applied_segments(raw_corrections, suggestions)` gives the
-post-AI segments; `difflib` over word text vs `corrections_updated.json` isolates human
-TEXT edits, and >20 ms start/end deltas on unchanged words isolate TIMING edits.
+post-AI segments; diff vs `corrections_updated.json` across **all three edit axes** —
+measure everything, not just text:
+- **TEXT** — `difflib` over word text (insert/delete/replace).
+- **TIMING** — >20 ms start/end deltas on unchanged words (the axis edit_log is 100% blind
+  to; e.g. Pendulum "The Other Side" = 45 timing edits, 0 text).
+- **STRUCTURE** — line split/merge, via segment membership of untouched words (a flat
+  word-stream diff misses these).
+
 Suggestion source: `corrections_updated.metadata.auto_approval.suggestions` (pre_applied
-jobs) or `auto_correct_cache/<hash>.json` (client-applied). Tool + full write-up:
-workspace `docs/automation-corpus/reconstruct_edits.py` +
-`reconstruction-remeasure-2026-08-30.md`.
+jobs) or `auto_correct_cache/<hash>.json` (client-applied). The tool also has a
+`best_effort` mode (bypasses production safety-aborts so vocalization-heavy jobs still
+measure) and handles correction-disabled jobs (raw IS the post-AI state). Known limit: it
+measures the human's **net** change vs the AI accept-all state — an edit that coincides
+with a suggestion nets to 0. Tool + full write-up: workspace
+`docs/automation-corpus/reconstruct_edits.py` + `reconstruction-remeasure-2026-08-30.md`.
 
 **P8 phantom-parenthetical fixer (v0.212.0):** the re-measure showed deleting phantom
 parentheticals ("(Instrumental break)", "(I'm sorry)", unanchored "(Angel baby)"
