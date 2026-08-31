@@ -122,7 +122,7 @@ class TestGetOrCreateLink:
     def test_returns_existing_link(self, service, mock_db):
         # Set up mock: query returns an existing doc
         mock_query = MagicMock()
-        mock_db.collection.return_value.where.return_value.limit.return_value.stream.return_value = [
+        mock_db.collection.return_value.where.return_value.stream.return_value = [
             MagicMock(to_dict=lambda: {
                 "code": "abc12345",
                 "owner_email": "user@example.com",
@@ -146,7 +146,7 @@ class TestGetOrCreateLink:
 
     def test_creates_new_if_none_exists(self, service, mock_db):
         # Query returns empty — no existing link
-        mock_db.collection.return_value.where.return_value.limit.return_value.stream.return_value = []
+        mock_db.collection.return_value.where.return_value.stream.return_value = []
         # doc.get() returns a doc that doesn't exist (no collision)
         mock_doc_ref = MagicMock()
         mock_doc_snapshot = MagicMock()
@@ -816,7 +816,7 @@ class TestGetDashboardData:
 
         # Complex mock setup for multiple collection queries
         mock_link_query = MagicMock()
-        mock_link_query.limit.return_value.stream.return_value = [mock_link_doc]
+        mock_link_query.stream.return_value = [mock_link_doc]
 
         mock_earnings_query = MagicMock()
         mock_earnings_query.order_by.return_value.limit.return_value.stream.return_value = []

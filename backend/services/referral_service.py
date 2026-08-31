@@ -14,6 +14,7 @@ import string
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
+from google.api_core.exceptions import AlreadyExists
 from google.cloud import firestore
 
 from backend.models.referral import (
@@ -21,6 +22,7 @@ from backend.models.referral import (
     ReferralLinkStats,
     ReferralEarning,
     ReferralPayout,
+    VanityRequestDoc,
 )
 
 
@@ -34,6 +36,8 @@ logger = logging.getLogger(__name__)
 REFERRAL_LINKS_COLLECTION = "referral_links"
 REFERRAL_EARNINGS_COLLECTION = "referral_earnings"
 REFERRAL_PAYOUTS_COLLECTION = "referral_payouts"
+REFERRAL_VANITY_REQUESTS_COLLECTION = "referral_vanity_requests"
+USERS_COLLECTION = "gen_users"
 
 RESERVED_CODES = frozenset({
     "admin", "app", "api", "r", "pricing", "order", "payment",
@@ -103,15 +107,22 @@ class ReferralService:
 
         Retries up to 10 times if generated code collides with existing doc.
         """
-        # Check for existing link
+        # Check for an existing link. Prefer an enabled one — a link that was
+        # renamed (vanity approval) leaves a disabled alias doc behind with the
+        # same owner_email, and we must never hand that stale code back.
         existing = (
             self.db.collection(REFERRAL_LINKS_COLLECTION)
             .where("owner_email", "==", owner_email)
-            .limit(1)
             .stream()
         )
+        fallback: Optional[ReferralLink] = None
         for doc in existing:
-            return ReferralLink(**doc.to_dict())
+            link = ReferralLink(**doc.to_dict())
+            if link.enabled:
+                return link
+            fallback = fallback or link
+        if fallback is not None:
+            return fallback
 
         # Create new link with retry for code collision
         for attempt in range(10):
@@ -189,6 +200,168 @@ class ReferralService:
         updates["updated_at"] = datetime.utcnow()
         doc_ref.update(updates)
         return True, "Link updated"
+
+    def rename_link(self, old_code: str, new_code: str) -> Tuple[bool, Optional[ReferralLink], str]:
+        """Rename a referral link's code in place, preserving stats and config.
+
+        The Firestore doc id *is* the code, so this copies the old doc to a new
+        doc under ``new_code`` (marked as a vanity link), migrates referral
+        attribution that pointed at ``old_code``, then disables the old doc and
+        records ``renamed_to`` so stale links resolve to nothing.
+
+        Returns (success, new_link_or_none, message).
+        """
+        old_code = old_code.lower()
+        valid, msg = self._validate_vanity_code(new_code)
+        if not valid:
+            return False, None, msg
+
+        new_code = new_code.lower()
+        if new_code == old_code:
+            return False, None, "New code is the same as the current code"
+
+        old_ref = self.db.collection(REFERRAL_LINKS_COLLECTION).document(old_code)
+        old_snapshot = old_ref.get()
+        if not old_snapshot.exists:
+            return False, None, f"Link '{old_code}' not found"
+
+        data = old_snapshot.to_dict()
+        now = datetime.utcnow()
+        data["code"] = new_code
+        data["is_vanity"] = True
+        data["enabled"] = True
+        data["updated_at"] = now
+        data.pop("renamed_to", None)
+
+        # create() (not set()) atomically claims the new code — it fails fast if
+        # the code was taken between here and the caller's checks, closing the
+        # time-of-check/time-of-use race for two concurrent approvals.
+        new_ref = self.db.collection(REFERRAL_LINKS_COLLECTION).document(new_code)
+        try:
+            new_ref.create(data)
+        except AlreadyExists:
+            return False, None, f"Code '{new_code}' is already taken"
+
+        # Migrate attribution that referenced the old code so existing referred
+        # users keep earning under the renamed link.
+        self._migrate_code_references(old_code, new_code)
+
+        # Disable the old doc, leaving a breadcrumb. Keeping (not deleting) it
+        # reserves the code so it can't be re-issued to someone else. Stats now
+        # live on the new doc, so zero them here to avoid double-counting in the
+        # admin dashboard's aggregate totals.
+        old_ref.update({
+            "enabled": False,
+            "renamed_to": new_code,
+            "updated_at": now,
+            "stats": ReferralLinkStats().model_dump(),
+        })
+
+        return True, ReferralLink(**data), f"Renamed '{old_code}' to '{new_code}'"
+
+    def _migrate_code_references(self, old_code: str, new_code: str) -> None:
+        """Repoint user attribution and earnings records from old_code to new_code."""
+        users = (
+            self.db.collection(USERS_COLLECTION)
+            .where("referred_by_code", "==", old_code)
+            .stream()
+        )
+        for doc in users:
+            doc.reference.update({"referred_by_code": new_code})
+
+        earnings = (
+            self.db.collection(REFERRAL_EARNINGS_COLLECTION)
+            .where("referral_code", "==", old_code)
+            .stream()
+        )
+        for doc in earnings:
+            doc.reference.update({"referral_code": new_code})
+
+    # ========================================================================
+    # Vanity requests (user-requested code changes, admin-reviewed)
+    # ========================================================================
+
+    def create_vanity_request(
+        self, owner_email: str, current_code: str, desired_code: str
+    ) -> VanityRequestDoc:
+        """Persist a pending vanity request. Keyed by owner so re-requests overwrite."""
+        owner_email = owner_email.lower()
+        req = VanityRequestDoc(
+            id=owner_email,
+            owner_email=owner_email,
+            current_code=current_code.lower(),
+            desired_code=desired_code.lower(),
+            status="pending",
+            created_at=datetime.utcnow(),
+        )
+        self.db.collection(REFERRAL_VANITY_REQUESTS_COLLECTION).document(owner_email).set(
+            req.model_dump()
+        )
+        return req
+
+    def get_vanity_request(self, request_id: str) -> Optional[VanityRequestDoc]:
+        doc = (
+            self.db.collection(REFERRAL_VANITY_REQUESTS_COLLECTION)
+            .document(request_id.lower())
+            .get()
+        )
+        if not doc.exists:
+            return None
+        return VanityRequestDoc(**doc.to_dict())
+
+    def list_vanity_requests(self, status: Optional[str] = "pending") -> List[VanityRequestDoc]:
+        """List vanity requests, optionally filtered by status."""
+        col = self.db.collection(REFERRAL_VANITY_REQUESTS_COLLECTION)
+        query = col.where("status", "==", status) if status else col
+        requests = [VanityRequestDoc(**doc.to_dict()) for doc in query.stream()]
+        requests.sort(key=lambda r: r.created_at, reverse=True)
+        return requests
+
+    def approve_vanity_request(
+        self, request_id: str, resolved_by: Optional[str] = None
+    ) -> Tuple[bool, Optional[ReferralLink], str]:
+        """Approve a pending vanity request by renaming the owner's link.
+
+        Returns (success, new_link_or_none, message).
+        """
+        req = self.get_vanity_request(request_id)
+        if not req:
+            return False, None, "Request not found"
+        if req.status != "pending":
+            return False, None, f"Request already {req.status}"
+
+        # Re-fetch the owner's current enabled link rather than trusting the
+        # stored current_code, in case it changed since the request was filed.
+        current = self.get_or_create_link(req.owner_email)
+
+        success, link, message = self.rename_link(current.code, req.desired_code)
+        if not success:
+            return False, None, message
+
+        self.db.collection(REFERRAL_VANITY_REQUESTS_COLLECTION).document(req.id).update({
+            "status": "approved",
+            "resolved_at": datetime.utcnow(),
+            "resolved_by": resolved_by,
+        })
+        return True, link, message
+
+    def deny_vanity_request(
+        self, request_id: str, resolved_by: Optional[str] = None, note: Optional[str] = None
+    ) -> Tuple[bool, str]:
+        """Deny a pending vanity request."""
+        req = self.get_vanity_request(request_id)
+        if not req:
+            return False, "Request not found"
+        if req.status != "pending":
+            return False, f"Request already {req.status}"
+
+        self.db.collection(REFERRAL_VANITY_REQUESTS_COLLECTION).document(req.id).update({
+            "status": "denied",
+            "resolved_at": datetime.utcnow(),
+            "resolved_by": resolved_by,
+            "note": note,
+        })
+        return True, "Request denied"
 
     def increment_clicks(self, code: str) -> None:
         """Increment the click counter for a referral link."""
