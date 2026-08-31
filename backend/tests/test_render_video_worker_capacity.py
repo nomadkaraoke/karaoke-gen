@@ -237,3 +237,52 @@ async def test_generic_start_error_also_parks_for_retry():
         c.kwargs.get("new_status") == JobStatus.RENDER_PENDING_CAPACITY
         for c in transitions
     ), "Worker must park on generic start error, not fail hard"
+
+
+@pytest.mark.asyncio
+async def test_worker_infra_error_parks_for_retry():
+    """A worker-side infra/auth failure (metadata server unreachable — job 6452888e)
+    must park for auto-retry, not fail the customer's job.
+
+    EncodingWorkerInfraError subclasses EncodingWorkerStartError precisely so it
+    flows through the same park path; before this fix the failure arrived as a bare
+    RuntimeError and hit fail_job, losing the job after the encoding VM demotion.
+    """
+    from backend.workers import render_video_worker as rvw
+    from backend.services.encoding_errors import (
+        EncodingWorkerInfraError,
+        WORKER_INFRA_FAILURE_CODE,
+    )
+
+    infra_error = EncodingWorkerInfraError(
+        "Encoding worker infrastructure failure for job test-job-id: "
+        "Compute Engine Metadata server unavailable ... SSLCertVerificationError",
+        vm_name="encoding-worker-fallback-c4a",
+        code=WORKER_INFRA_FAILURE_CODE,
+    )
+
+    mock_job_manager = MagicMock()
+    mock_job_manager.get_job.return_value = _build_minimal_job()
+    mock_job_manager.transition_to_state.return_value = True
+
+    mock_encoding_service = MagicMock()
+    mock_encoding_service.is_enabled = True
+    mock_encoding_service.render_video_on_gce = AsyncMock(side_effect=infra_error)
+
+    with patch.object(rvw, "JobManager", return_value=mock_job_manager), \
+         patch.object(rvw, "StorageService"), \
+         patch.object(rvw, "get_settings"), \
+         patch.object(rvw, "create_job_logger", return_value=MagicMock()), \
+         patch.object(rvw, "setup_job_logging", return_value=MagicMock()), \
+         patch.object(rvw, "validate_worker_can_run", return_value=None), \
+         patch.object(rvw, "get_encoding_service", return_value=mock_encoding_service):
+
+        result = await rvw.process_render_video("test-job-id")
+
+    assert result is False
+    mock_job_manager.fail_job.assert_not_called()
+    transitions = mock_job_manager.transition_to_state.call_args_list
+    assert any(
+        c.kwargs.get("new_status") == JobStatus.RENDER_PENDING_CAPACITY
+        for c in transitions
+    ), "Worker must park on worker infra failure, not fail hard"

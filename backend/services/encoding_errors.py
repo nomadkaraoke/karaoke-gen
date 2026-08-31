@@ -15,6 +15,44 @@ CAPACITY_ERROR_CODES: FrozenSet[str] = frozenset({
 })
 
 
+# Sentinel code stamped on an EncodingWorkerInfraError so log filters and the
+# park/retry path can tell a runtime worker-infra failure apart from a real
+# GCE VM-start failure.
+WORKER_INFRA_FAILURE_CODE = "worker_infra_failure"
+
+
+# Substrings (matched case-insensitively) that identify a worker-side *infrastructure*
+# failure — the VM booted and accepted the job but then could not talk to GCP to do
+# real work. The canonical case (job 6452888e, 2026-08-31) was a fallback VM that
+# could not reach the metadata server to fetch its default service-account token:
+#   "Failed to retrieve https://metadata.google.internal/.../service-accounts/default/
+#    ... Compute Engine Metadata server unavailable ... SSLCertVerificationError ..."
+# These are properties of the *VM*, not the encode job — the same work will succeed on
+# a healthy worker, so they must be retried/re-dispatched rather than failing the job.
+# Kept deliberately specific so a genuine encode error (bad codec, corrupt input) never
+# matches. Compared lowercase.
+WORKER_INFRA_ERROR_MARKERS: FrozenSet[str] = frozenset({
+    "metadata.google.internal",
+    "metadata server unavailable",
+    "compute engine metadata",
+    "service-accounts/default",
+    "sslcertverificationerror",
+    "certificate_verify_failed",
+    "could not automatically determine credentials",
+    "defaultcredentialserror",
+})
+
+
+def is_worker_infra_error(message: str) -> bool:
+    """True if a worker-reported error string looks like a VM-level infra/auth
+    failure (metadata server unreachable, SSL/cert, missing credentials) rather
+    than a genuine problem with the encode job itself."""
+    if not message:
+        return False
+    lowered = message.lower()
+    return any(marker in lowered for marker in WORKER_INFRA_ERROR_MARKERS)
+
+
 class EncodingWorkerStartError(Exception):
     """Raised when an attempt to start an encoding worker VM fails.
 
@@ -41,6 +79,20 @@ class EncodingWorkerCapacityError(EncodingWorkerStartError):
     The zone temporarily cannot allocate the requested machine type. Callers
     should treat this as recoverable — retrying after a wait, or trying an
     alternate zone, is likely to succeed.
+    """
+
+
+class EncodingWorkerInfraError(EncodingWorkerStartError):
+    """A worker VM accepted the job but then hit a VM-level infrastructure/auth
+    failure mid-run (e.g. it could not reach the GCE metadata server to fetch its
+    service-account token — job 6452888e, 2026-08-31).
+
+    Subclasses ``EncodingWorkerStartError`` on purpose: the failure is a property
+    of the *worker*, not the encode job, so it should flow through the same
+    recoverable path as a VM-start failure (the render worker parks the job for
+    auto-retry; the final-encode Cloud Run Job retries). Before raising this,
+    callers demote the offending VM so the retry lands on a healthy worker rather
+    than looping on the broken one.
     """
 
 

@@ -28,10 +28,13 @@ import aiohttp
 from backend.config import get_settings
 from backend.services.encoding_errors import (
     ENCODING_RESTART_FAILURE_CODE,
+    WORKER_INFRA_FAILURE_CODE,
     EncodingJobLostError,
     EncodingJobNotFoundError,
     EncodingWorkerCapacityError,
+    EncodingWorkerInfraError,
     EncodingWorkerStartError,
+    is_worker_infra_error,
 )
 
 logger = logging.getLogger(__name__)
@@ -853,6 +856,42 @@ class EncodingService:
                     raise EncodingJobLostError(
                         f"Encoding job {job_id} was lost by the worker (restarted mid-run)",
                         job_id=job_id,
+                    )
+                # A VM-level infra/auth failure (metadata server unreachable, SSL/cert,
+                # missing credentials) is a property of the *worker*, not this job — the
+                # same work succeeds on a healthy VM. Demote the broken worker and raise
+                # a recoverable signal so the render worker parks for auto-retry (and the
+                # final-encode Cloud Run Job retries) instead of failing the customer's
+                # job outright. See job 6452888e (2026-08-31). worker_url is the VM the
+                # job ran on; zone comes from active_override for logging.
+                if is_worker_infra_error(error):
+                    logger.warning(
+                        f"[job:{job_id}] Worker reported an infrastructure/auth failure "
+                        f"(not a job problem) — demoting the worker and retrying: {error}"
+                    )
+                    failed_vm = ""
+                    if self._worker_manager:
+                        # Capture the offending VM before demoting (which clears the
+                        # active_override), then demote and force URL re-resolution so
+                        # the retry lands on a different worker.
+                        try:
+                            failed_vm = self._worker_manager.get_config().active_override_vm or ""
+                        except Exception:  # noqa: BLE001 — vm name is only for logging
+                            failed_vm = ""
+                        try:
+                            self._worker_manager.demote_active_worker(
+                                reason=f"job {job_id}: {error}"
+                            )
+                        except Exception as demote_err:  # noqa: BLE001
+                            logger.warning(
+                                f"[job:{job_id}] Could not demote worker after infra "
+                                f"failure (continuing to retry anyway): {demote_err}"
+                            )
+                        self._invalidate_cached_url()
+                    raise EncodingWorkerInfraError(
+                        f"Encoding worker infrastructure failure for job {job_id}: {error}",
+                        vm_name=failed_vm,
+                        code=WORKER_INFRA_FAILURE_CODE,
                     )
                 raise RuntimeError(f"Encoding job {job_id} failed: {error}")
 
