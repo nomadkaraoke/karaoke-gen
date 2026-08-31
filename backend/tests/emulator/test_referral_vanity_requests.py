@@ -67,6 +67,11 @@ class TestRenameLink:
         assert new_doc["enabled"] is True
         assert old_doc["enabled"] is False
         assert old_doc["renamed_to"] == new
+        # Stats moved to the new doc; the alias is zeroed so aggregate admin
+        # totals don't double-count the same clicks/earnings.
+        assert new_doc["stats"]["clicks"] == 5
+        assert old_doc["stats"]["clicks"] == 0
+        assert old_doc["stats"]["total_earned_cents"] == 0
 
     def test_rejects_invalid_new_code(self, service):
         suffix = _uniq()

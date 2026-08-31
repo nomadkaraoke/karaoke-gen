@@ -347,6 +347,48 @@ class TestAdminUpdateLink:
         mock_service.update_link.assert_called_once_with("abc12345", enabled=False)
 
 
+class TestRequestVanityUrl:
+    """Tests for POST /api/referrals/me/vanity-request (user-facing request)."""
+
+    @patch("backend.services.email_service.get_email_service")
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_valid_request_persists_and_emails(
+        self, mock_get_service, mock_get_email, client, mock_auth_result
+    ):
+        """A valid request is validated, persisted, and emailed to the admin."""
+        app.dependency_overrides[require_auth] = lambda: mock_auth_result
+
+        mock_service = Mock()
+        mock_service.get_or_create_link.return_value = _make_referral_link(code="odu4brd8")
+        mock_service._validate_vanity_code.return_value = (True, "Valid")
+        mock_service.get_link_by_code.return_value = None
+        mock_get_service.return_value = mock_service
+        mock_get_email.return_value = Mock()
+
+        response = client.post("/api/referrals/me/vanity-request", json={"desired_code": "youtube"})
+
+        assert response.status_code == 200
+        mock_service.create_vanity_request.assert_called_once()
+        assert mock_service.create_vanity_request.call_args.kwargs["desired_code"] == "youtube"
+
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_reserved_code_rejected_before_persisting(
+        self, mock_get_service, client, mock_auth_result
+    ):
+        """A code that fails vanity validation is rejected (400) and not persisted."""
+        app.dependency_overrides[require_auth] = lambda: mock_auth_result
+
+        mock_service = Mock()
+        mock_service.get_or_create_link.return_value = _make_referral_link(code="odu4brd8")
+        mock_service._validate_vanity_code.return_value = (False, "'admin' is a reserved code")
+        mock_get_service.return_value = mock_service
+
+        response = client.post("/api/referrals/me/vanity-request", json={"desired_code": "admin"})
+
+        assert response.status_code == 400
+        mock_service.create_vanity_request.assert_not_called()
+
+
 class TestAdminVanityRequests:
     """Tests for the vanity request approve/deny queue endpoints."""
 

@@ -175,6 +175,13 @@ async def request_vanity_url(
     service = get_referral_service()
     link = service.get_or_create_link(auth.user_email)
 
+    # Validate up-front against the same rules approval enforces (reserved words,
+    # vanity pattern) so a request that would later be auto-rejected never lands
+    # in the admin queue.
+    valid, msg = service._validate_vanity_code(request.desired_code)
+    if not valid:
+        raise HTTPException(status_code=400, detail=msg)
+
     # Check if code is already taken
     existing = service.get_link_by_code(request.desired_code)
     if existing:

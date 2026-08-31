@@ -14,6 +14,7 @@ import string
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
+from google.api_core.exceptions import AlreadyExists
 from google.cloud import firestore
 
 from backend.models.referral import (
@@ -224,10 +225,6 @@ class ReferralService:
         if not old_snapshot.exists:
             return False, None, f"Link '{old_code}' not found"
 
-        new_ref = self.db.collection(REFERRAL_LINKS_COLLECTION).document(new_code)
-        if new_ref.get().exists:
-            return False, None, f"Code '{new_code}' is already taken"
-
         data = old_snapshot.to_dict()
         now = datetime.utcnow()
         data["code"] = new_code
@@ -235,18 +232,29 @@ class ReferralService:
         data["enabled"] = True
         data["updated_at"] = now
         data.pop("renamed_to", None)
-        new_ref.set(data)
+
+        # create() (not set()) atomically claims the new code — it fails fast if
+        # the code was taken between here and the caller's checks, closing the
+        # time-of-check/time-of-use race for two concurrent approvals.
+        new_ref = self.db.collection(REFERRAL_LINKS_COLLECTION).document(new_code)
+        try:
+            new_ref.create(data)
+        except AlreadyExists:
+            return False, None, f"Code '{new_code}' is already taken"
 
         # Migrate attribution that referenced the old code so existing referred
         # users keep earning under the renamed link.
         self._migrate_code_references(old_code, new_code)
 
         # Disable the old doc, leaving a breadcrumb. Keeping (not deleting) it
-        # reserves the code so it can't be re-issued to someone else.
+        # reserves the code so it can't be re-issued to someone else. Stats now
+        # live on the new doc, so zero them here to avoid double-counting in the
+        # admin dashboard's aggregate totals.
         old_ref.update({
             "enabled": False,
             "renamed_to": new_code,
             "updated_at": now,
+            "stats": ReferralLinkStats().model_dump(),
         })
 
         return True, ReferralLink(**data), f"Renamed '{old_code}' to '{new_code}'"
