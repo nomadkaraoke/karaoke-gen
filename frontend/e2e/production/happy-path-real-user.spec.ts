@@ -743,10 +743,13 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       // the preview modal rather than failing the whole smoke test on flaky infra.
       // The final assertion below stays authoritative: if the button never appears
       // even after recovery, generation really is broken and the test fails.
+      // Require the button to be present AND enabled: ReviewChangesModal keeps it
+      // visible but disabled when there are no lyrics, so a visibility-only check
+      // could accept an unusable button (and the later click would just time out).
       const proceedName = /proceed to instrumental/i;
       let proceedBtn = reviewPage.getByRole('button', { name: proceedName });
-      if (!(await proceedBtn.isVisible({ timeout: TIMEOUTS.action }).catch(() => false))) {
-        console.log('  WARNING: Proceed button not visible after preview — recovering (reload review + reopen preview)...');
+      if (!(await proceedBtn.isEnabled({ timeout: TIMEOUTS.action }).catch(() => false))) {
+        console.log('  WARNING: Proceed button not ready (missing/disabled) after preview — recovering (reload review + reopen preview)...');
         await gotoWithRetry(reviewPage, reviewUrl);
         await reviewPage.waitForTimeout(3000);
         await reviewPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -758,8 +761,8 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         }
         proceedBtn = reviewPage.getByRole('button', { name: proceedName });
       }
-      await expect(proceedBtn).toBeVisible({ timeout: TIMEOUTS.action });
-      console.log('  Found "Proceed to Instrumental Review" button');
+      await expect(proceedBtn).toBeEnabled({ timeout: TIMEOUTS.action });
+      console.log('  Found enabled "Proceed to Instrumental Review" button');
 
       await proceedBtn.click();
       console.log('  Clicked "Proceed to Instrumental Review" button');
