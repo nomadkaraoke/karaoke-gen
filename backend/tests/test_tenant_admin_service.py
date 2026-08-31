@@ -50,6 +50,13 @@ class FakeStorage:
         self.blobs[path] = fileobj.read()
         return path
 
+    def delete_file(self, path, ignore_missing=False):
+        existed = path in self.blobs
+        self.blobs.pop(path, None)
+        if not existed and not ignore_missing:
+            raise FileNotFoundError(path)
+        return existed
+
     def generate_signed_url(self, path, expiration_minutes=60):
         return f"https://signed/{path}"
 
@@ -169,6 +176,42 @@ def test_duplicate_tenant_rejected(fake_storage):
     fake_storage.blobs["tenants/dup/config.json"] = json.dumps({"id": "dup"}).encode()
     with pytest.raises(tas.TenantConflictError):
         tas.create_tenant(name="Dup", tenant_id="dup", storage=fake_storage)
+
+
+def test_conflict_does_not_clobber_existing_theme(fake_storage):
+    """A create for an existing id must fail before touching the live theme."""
+    tas.create_tenant(name="Existing", colors=ColorOverrides(title_color="#abcabc"), storage=fake_storage)
+    theme_before = fake_storage.blobs["themes/existing/style_params.json"]
+
+    with pytest.raises(tas.TenantConflictError):
+        tas.create_tenant(
+            name="Existing",
+            tenant_id="existing",
+            style_params_override={"intro": {"title_color": "#000000"}},
+            storage=fake_storage,
+        )
+    # Live theme untouched
+    assert fake_storage.blobs["themes/existing/style_params.json"] == theme_before
+
+
+def test_create_rolls_back_reservation_on_theme_failure(fake_storage, monkeypatch):
+    """If theme provisioning fails after reservation, the config is rolled back."""
+    def boom(*args, **kwargs):
+        raise RuntimeError("theme boom")
+
+    monkeypatch.setattr(tas, "_register_theme_metadata", boom)
+    with pytest.raises(RuntimeError):
+        tas.create_tenant(name="Boomer", storage=fake_storage)
+    assert "tenants/boomer/config.json" not in fake_storage.blobs
+
+
+def test_list_tenants_skips_config_without_id(fake_storage):
+    fake_storage.blobs["tenants/broken/config.json"] = json.dumps({"name": "No Id"}).encode()
+    tas.create_tenant(name="Good", storage=fake_storage)
+    listed = tas.list_tenants(storage=fake_storage)
+    ids = [t["id"] for t in listed]
+    assert "good" in ids
+    assert all(t["id"] for t in listed)  # no null-id rows
 
 
 def test_missing_default_theme_errors(fake_storage):

@@ -233,50 +233,12 @@ def create_tenant(
 
     theme_id = tenant_id  # 1:1 theme per tenant, mirrors the setup scripts
 
-    _copy_default_theme_assets(storage, base_theme_id, theme_id)
-
-    if style_params_override is not None:
-        # Admin supplied a full theme document — it is authoritative. Default
-        # assets are still copied above so any inherited basenames resolve.
-        style_params = copy.deepcopy(_validate_style_params(style_params_override))
-    else:
-        style_params = copy.deepcopy(base_style)
-        if colors and colors.has_overrides():
-            style_params = theme_service.apply_color_overrides(style_params, colors)
-
-    for field, (data, ext) in (backgrounds or {}).items():
-        section = BACKGROUND_SECTIONS.get(field)
-        if not section:
-            continue
-        ext = ext.lower().lstrip(".")
-        filename = f"{field}.{ext}"
-        storage.upload_fileobj(
-            io.BytesIO(data),
-            f"{THEMES_PREFIX}/{theme_id}/assets/{filename}",
-            content_type=_content_type_for(ext),
-        )
-        style_params.setdefault(section, {})["background_image"] = filename
-
-    storage.upload_json(f"{THEMES_PREFIX}/{theme_id}/style_params.json", style_params)
-    _register_theme_metadata(storage, theme_id, name)
-
-    # --- Logo ----------------------------------------------------------------
-    logo_url: Optional[str] = None
-    if logo:
-        logo_data, logo_ext = logo
-        logo_ext = logo_ext.lower().lstrip(".")
-        logo_path = f"{TENANTS_PREFIX}/{tenant_id}/logo.{logo_ext}"
-        storage.upload_fileobj(
-            io.BytesIO(logo_data), logo_path, content_type=_content_type_for(logo_ext)
-        )
-        logo_url = f"gs://{settings.gcs_bucket_name}/{logo_path}"
-
-    # --- Tenant config -------------------------------------------------------
+    # --- Build the tenant config (logo_url filled in after reservation) -------
     domains = sorted({d.strip().lower() for d in (allowed_email_domains or []) if d.strip()})
     now = datetime.now(timezone.utc)
 
     branding = TenantBranding(
-        logo_url=logo_url,
+        logo_url=None,
         site_title=f"{name} Karaoke Generator",
         tagline=tagline or None,
     )
@@ -326,11 +288,63 @@ def create_tenant(
         updated_at=now,
     )
 
+    # --- Reserve the tenant id FIRST (atomic create-only write) --------------
+    # This must happen before any theme/asset/logo write, so a concurrent or
+    # retried create for an existing id fails immediately without clobbering
+    # the live tenant's theme.
     config_path = f"{TENANTS_PREFIX}/{tenant_id}/config.json"
     try:
         storage.upload_json(config_path, config.model_dump(mode="json"), if_generation_match=0)
     except PreconditionFailed as exc:
         raise TenantConflictError(f"Tenant '{tenant_id}' already exists.") from exc
+
+    # --- Build the theme (rollback the reservation if anything fails) --------
+    try:
+        _copy_default_theme_assets(storage, base_theme_id, theme_id)
+
+        if style_params_override is not None:
+            # Admin supplied a full theme document — authoritative. Default
+            # assets are still copied above so any inherited basenames resolve.
+            style_params = copy.deepcopy(_validate_style_params(style_params_override))
+        else:
+            style_params = copy.deepcopy(base_style)
+            if colors and colors.has_overrides():
+                style_params = theme_service.apply_color_overrides(style_params, colors)
+
+        for field, (data, ext) in (backgrounds or {}).items():
+            section = BACKGROUND_SECTIONS.get(field)
+            if not section:
+                continue
+            ext = ext.lower().lstrip(".")
+            filename = f"{field}.{ext}"
+            storage.upload_fileobj(
+                io.BytesIO(data),
+                f"{THEMES_PREFIX}/{theme_id}/assets/{filename}",
+                content_type=_content_type_for(ext),
+            )
+            style_params.setdefault(section, {})["background_image"] = filename
+
+        storage.upload_json(f"{THEMES_PREFIX}/{theme_id}/style_params.json", style_params)
+        _register_theme_metadata(storage, theme_id, name)
+
+        if logo:
+            logo_data, logo_ext = logo
+            logo_ext = logo_ext.lower().lstrip(".")
+            logo_path = f"{TENANTS_PREFIX}/{tenant_id}/logo.{logo_ext}"
+            storage.upload_fileobj(
+                io.BytesIO(logo_data), logo_path, content_type=_content_type_for(logo_ext)
+            )
+            config.branding.logo_url = f"gs://{settings.gcs_bucket_name}/{logo_path}"
+            config.updated_at = datetime.now(timezone.utc)
+            storage.upload_json(config_path, config.model_dump(mode="json"))
+    except Exception:
+        # Roll back the reservation so a failed create doesn't leave a
+        # half-provisioned tenant behind.
+        try:
+            storage.delete_file(config_path, ignore_missing=True)
+        except Exception:  # pragma: no cover - best effort
+            logger.warning(f"Failed to roll back tenant reservation for '{tenant_id}'")
+        raise
 
     tenant_service.invalidate_cache(tenant_id)
     theme_service.invalidate_cache()
@@ -484,6 +498,11 @@ def list_tenants(storage: Optional[StorageService] = None) -> List[Dict[str, obj
             data = storage.download_json(path)
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning(f"Skipping unreadable tenant config {path}: {exc}")
+            continue
+        if not data.get("id"):
+            # A config without an id can't be addressed by the UI (would produce
+            # a null React key and a request to /api/admin/tenants/null) — skip.
+            logger.warning(f"Skipping tenant config without an id: {path}")
             continue
         defaults = data.get("defaults") or {}
         summaries.append(

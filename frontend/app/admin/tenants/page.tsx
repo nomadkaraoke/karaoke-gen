@@ -29,9 +29,10 @@ function ColorField({
   onChange: (v: string) => void
   placeholder: string
 }) {
+  const id = `color-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
       <div className="flex items-center gap-2">
         <input
           type="color"
@@ -40,7 +41,7 @@ function ColorField({
           onChange={(e) => onChange(e.target.value)}
           className="h-9 w-9 cursor-pointer rounded border border-input bg-transparent p-0.5"
         />
-        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-mono" />
+        <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="font-mono" />
       </div>
     </div>
   )
@@ -48,8 +49,9 @@ function ColorField({
 
 // --- Full theme JSON editor -------------------------------------------------
 function ThemeJsonEditor({
-  value, onChange, error,
+  id, value, onChange, error,
 }: {
+  id: string
   value: string
   onChange: (v: string) => void
   error: string | null
@@ -64,10 +66,11 @@ function ThemeJsonEditor({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <Label className="flex items-center gap-1.5"><Code2 className="h-3.5 w-3.5" /> Theme JSON (full customisation)</Label>
+        <Label htmlFor={id} className="flex items-center gap-1.5"><Code2 className="h-3.5 w-3.5" /> Theme JSON (full customisation)</Label>
         <Button type="button" variant="ghost" size="sm" onClick={format} disabled={!value.trim()}>Format</Button>
       </div>
       <textarea
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         spellCheck={false}
@@ -410,22 +413,22 @@ export default function AdminTenantsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Name</Label>
-                  <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Randy Vild" />
+                  <Label htmlFor="create-name">Name</Label>
+                  <Input id="create-name" value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Randy Vild" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Tenant ID</Label>
-                  <Input value={form.tenant_id} onChange={(e) => set("tenant_id", e.target.value)} placeholder="randy-vild" className="font-mono" />
+                  <Label htmlFor="create-tenant-id">Tenant ID</Label>
+                  <Input id="create-tenant-id" value={form.tenant_id} onChange={(e) => set("tenant_id", e.target.value)} placeholder="randy-vild" className="font-mono" />
                 </div>
               </div>
               <div className="space-y-1">
-                <Label>Subdomain</Label>
-                <Input value={form.subdomain} onChange={(e) => setForm((f) => ({ ...f, subdomain: e.target.value }))} placeholder="randy-vild.nomadkaraoke.com" className="font-mono text-sm" />
+                <Label htmlFor="create-subdomain">Subdomain</Label>
+                <Input id="create-subdomain" value={form.subdomain} onChange={(e) => setForm((f) => ({ ...f, subdomain: e.target.value }))} placeholder="randy-vild.nomadkaraoke.com" className="font-mono text-sm" />
                 <p className="text-xs text-muted-foreground">Only needed for a real client portal (DNS + Cloudflare). The preview link works without it.</p>
               </div>
               <div className="space-y-1">
-                <Label>Allowed email domains <span className="text-muted-foreground">(optional)</span></Label>
-                <Input value={form.allowed_email_domains} onChange={(e) => set("allowed_email_domains", e.target.value)} placeholder="client.com, label.com" />
+                <Label htmlFor="create-domains">Allowed email domains <span className="text-muted-foreground">(optional)</span></Label>
+                <Input id="create-domains" value={form.allowed_email_domains} onChange={(e) => set("allowed_email_domains", e.target.value)} placeholder="client.com, label.com" />
                 <p className="text-xs text-muted-foreground">Comma-separated. Blank = no restriction (you can always log in as admin).</p>
               </div>
 
@@ -441,30 +444,30 @@ export default function AdminTenantsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Karaoke background <span className="text-muted-foreground">(optional)</span></Label>
-                  <Input type="file" accept=".png,.jpg,.jpeg,.gif,.webp" onChange={(e) => setKaraokeBg(e.target.files?.[0] ?? null)} />
+                  <Label htmlFor="create-karaoke-bg">Karaoke background <span className="text-muted-foreground">(optional)</span></Label>
+                  <Input id="create-karaoke-bg" type="file" accept=".png,.jpg,.jpeg,.gif,.webp" onChange={(e) => setKaraokeBg(e.target.files?.[0] ?? null)} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Title-card background <span className="text-muted-foreground">(optional)</span></Label>
-                  <Input type="file" accept=".png,.jpg,.jpeg,.gif,.webp" onChange={(e) => setIntroBg(e.target.files?.[0] ?? null)} />
+                  <Label htmlFor="create-intro-bg">Title-card background <span className="text-muted-foreground">(optional)</span></Label>
+                  <Input id="create-intro-bg" type="file" accept=".png,.jpg,.jpeg,.gif,.webp" onChange={(e) => setIntroBg(e.target.files?.[0] ?? null)} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Dropbox path <span className="text-muted-foreground">(optional)</span></Label>
-                  <Input value={form.dropbox_path} onChange={(e) => set("dropbox_path", e.target.value)} placeholder="/MediaUnsynced/Karaoke/Tracks-RandyVild" className="font-mono text-sm" />
+                  <Label htmlFor="create-dropbox">Dropbox path <span className="text-muted-foreground">(optional)</span></Label>
+                  <Input id="create-dropbox" value={form.dropbox_path} onChange={(e) => set("dropbox_path", e.target.value)} placeholder="/MediaUnsynced/Karaoke/Tracks-RandyVild" className="font-mono text-sm" />
                   <p className="text-xs text-muted-foreground">Set = deliver to Dropbox. Blank = download only.</p>
                 </div>
                 <div className="space-y-1">
-                  <Label>Brand prefix <span className="text-muted-foreground">(optional)</span></Label>
-                  <Input value={form.brand_prefix} onChange={(e) => set("brand_prefix", e.target.value)} placeholder="RVILD" />
+                  <Label htmlFor="create-brand-prefix">Brand prefix <span className="text-muted-foreground">(optional)</span></Label>
+                  <Input id="create-brand-prefix" value={form.brand_prefix} onChange={(e) => set("brand_prefix", e.target.value)} placeholder="RVILD" />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label>Logo <span className="text-muted-foreground">(optional)</span></Label>
-                <Input type="file" accept=".png,.jpg,.jpeg,.gif,.webp" onChange={(e) => setLogo(e.target.files?.[0] ?? null)} />
+                <Label htmlFor="create-logo">Logo <span className="text-muted-foreground">(optional)</span></Label>
+                <Input id="create-logo" type="file" accept=".png,.jpg,.jpeg,.gif,.webp" onChange={(e) => setLogo(e.target.files?.[0] ?? null)} />
               </div>
 
               {/* Advanced: full theme JSON */}
@@ -482,7 +485,7 @@ export default function AdminTenantsPage() {
                 </div>
                 {showAdvanced && (
                   <>
-                    <ThemeJsonEditor value={createStyleText} onChange={setCreateStyleText} error={createStyleError} />
+                    <ThemeJsonEditor id="create-theme-json" value={createStyleText} onChange={setCreateStyleText} error={createStyleError} />
                     <p className="text-xs text-muted-foreground">If provided, this full theme JSON is authoritative — colours above are ignored.</p>
                   </>
                 )}
@@ -516,32 +519,32 @@ export default function AdminTenantsPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Name</Label>
-                  <Input value={mCfg.name} onChange={(e) => setMCfg((c) => ({ ...c, name: e.target.value }))} />
+                  <Label htmlFor="manage-name">Name</Label>
+                  <Input id="manage-name" value={mCfg.name} onChange={(e) => setMCfg((c) => ({ ...c, name: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Subdomain</Label>
-                  <Input value={mCfg.subdomain} onChange={(e) => setMCfg((c) => ({ ...c, subdomain: e.target.value }))} className="font-mono text-sm" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Dropbox path</Label>
-                  <Input value={mCfg.dropbox_path} onChange={(e) => setMCfg((c) => ({ ...c, dropbox_path: e.target.value }))} className="font-mono text-sm" placeholder="download only if blank" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Brand prefix</Label>
-                  <Input value={mCfg.brand_prefix} onChange={(e) => setMCfg((c) => ({ ...c, brand_prefix: e.target.value }))} />
+                  <Label htmlFor="manage-subdomain">Subdomain</Label>
+                  <Input id="manage-subdomain" value={mCfg.subdomain} onChange={(e) => setMCfg((c) => ({ ...c, subdomain: e.target.value }))} className="font-mono text-sm" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Allowed email domains</Label>
-                  <Input value={mCfg.allowed_email_domains} onChange={(e) => setMCfg((c) => ({ ...c, allowed_email_domains: e.target.value }))} placeholder="client.com, label.com" />
+                  <Label htmlFor="manage-dropbox">Dropbox path</Label>
+                  <Input id="manage-dropbox" value={mCfg.dropbox_path} onChange={(e) => setMCfg((c) => ({ ...c, dropbox_path: e.target.value }))} className="font-mono text-sm" placeholder="download only if blank" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Tagline</Label>
-                  <Input value={mCfg.tagline} onChange={(e) => setMCfg((c) => ({ ...c, tagline: e.target.value }))} />
+                  <Label htmlFor="manage-brand-prefix">Brand prefix</Label>
+                  <Input id="manage-brand-prefix" value={mCfg.brand_prefix} onChange={(e) => setMCfg((c) => ({ ...c, brand_prefix: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="manage-domains">Allowed email domains</Label>
+                  <Input id="manage-domains" value={mCfg.allowed_email_domains} onChange={(e) => setMCfg((c) => ({ ...c, allowed_email_domains: e.target.value }))} placeholder="client.com, label.com" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="manage-tagline">Tagline</Label>
+                  <Input id="manage-tagline" value={mCfg.tagline} onChange={(e) => setMCfg((c) => ({ ...c, tagline: e.target.value }))} />
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -549,7 +552,7 @@ export default function AdminTenantsPage() {
                 <Label htmlFor="active-switch">Active</Label>
               </div>
 
-              <ThemeJsonEditor value={styleText} onChange={setStyleText} error={styleError} />
+              <ThemeJsonEditor id="manage-theme-json" value={styleText} onChange={setStyleText} error={styleError} />
 
               <div className="space-y-1">
                 <Label>Current theme assets</Label>
@@ -560,8 +563,8 @@ export default function AdminTenantsPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label>Add / replace assets <span className="text-muted-foreground">(image or font; filename becomes the asset name)</span></Label>
-                <Input type="file" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.ttf,.otf,.woff,.woff2" onChange={(e) => setNewAssets(Array.from(e.target.files ?? []))} />
+                <Label htmlFor="manage-assets">Add / replace assets <span className="text-muted-foreground">(image or font; filename becomes the asset name)</span></Label>
+                <Input id="manage-assets" type="file" multiple accept=".png,.jpg,.jpeg,.gif,.webp,.ttf,.otf,.woff,.woff2" onChange={(e) => setNewAssets(Array.from(e.target.files ?? []))} />
                 {newAssets.length > 0 && (
                   <p className="text-xs text-muted-foreground">Uploading: {newAssets.map((f) => f.name).join(", ")}</p>
                 )}

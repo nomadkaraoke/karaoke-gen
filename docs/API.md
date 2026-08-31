@@ -1245,9 +1245,10 @@ Admin-only endpoints (`require_admin`) that mint and manage white-label tenants 
   `preview_url` (for the manage/edit view). 404 if not found.
 - **`PUT /{id}`** (multipart) updates a tenant so a client's feedback can be iterated on: `config`
   (partial TenantConfig JSON, merged one level deep — `id` immutable), `style_params` (full theme
-  JSON, replaces the theme), and repeatable `assets` file uploads (images **or fonts**; each file's
-  name becomes the theme asset name, so uploading `karaoke_background.jpg` replaces it). Re-render
-  jobs to apply an updated theme. Errors: 400 (invalid JSON/theme), 404 (not found).
+  JSON, replaces the theme), an optional `logo` image (updates `branding.logo_url`), and repeatable
+  `assets` file uploads (images **or fonts**; each file's name becomes the theme asset name, so
+  uploading `karaoke_background.jpg` replaces it). Re-render jobs to apply an updated theme.
+  Errors: 400 (invalid JSON/theme), 404 (not found).
 
   Implemented in `backend/services/tenant_admin_service.py` + `backend/api/routes/tenant_admin.py`.
 
