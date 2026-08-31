@@ -2516,7 +2516,51 @@ export interface CacheStatsResponse {
 }
 
 // Admin API namespace
+export interface TenantSummary {
+  id: string;
+  name: string;
+  subdomain: string;
+  is_active: boolean;
+  locked_theme?: string | null;
+  dropbox_path?: string | null;
+  created_at?: string | null;
+}
+
+export interface TenantCreateResult {
+  tenant: {
+    id: string;
+    name: string;
+    subdomain: string;
+    is_active: boolean;
+  };
+  preview_url: string;
+  subdomain_url: string;
+}
+
 export const adminApi = {
+  /**
+   * List all white-label tenants
+   */
+  async listTenants(): Promise<{ tenants: TenantSummary[] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Create a white-label tenant (multipart: fields + optional background/logo images).
+   * Do NOT set Content-Type — the browser sets the multipart boundary.
+   */
+  async createTenant(formData: FormData): Promise<TenantCreateResult> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
   /**
    * Get admin dashboard statistics
    */

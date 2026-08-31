@@ -1209,6 +1209,34 @@ The tenant portal's Bulk mode (`TenantBulkFlow.tsx`) renders these rows as an ed
 table, then submits each confirmed row through the standard signed-URL upload flow
 (`upload_mode: "resumable"`, `batch_id` grouping).
 
+#### Tenant Provisioning (Admin Only)
+
+```
+GET  /api/admin/tenants
+POST /api/admin/tenants        (multipart/form-data)
+Authorization: Bearer <admin token>
+```
+
+Admin-only endpoints (`require_admin`) that mint a white-label tenant from the admin panel
+(`/admin/tenants`), replacing the hand-run `scripts/setup-*-tenant.py` recipe.
+
+- **`GET`** returns a summary list of all tenants (`id`, `name`, `subdomain`, `is_active`,
+  `locked_theme`, `dropbox_path`, `created_at`) read from `tenants/*/config.json` in GCS.
+- **`POST`** (multipart) creates a tenant. Form fields: `name` (required), optional `tenant_id`
+  (slug, derived from name if omitted), `subdomain`, `allowed_email_domains` (comma-separated),
+  `artist_color`/`title_color`/`sung_lyrics_color`/`unsung_lyrics_color` (hex), `tagline`,
+  `distribution_mode` (`download_only`|`all`|`cloud_only`), `dropbox_path`, `brand_prefix`; optional
+  image files `karaoke_background`, `intro_background`, `end_background`, `logo` (PNG/JPG/GIF/WEBP,
+  ≤15MB). It derives a **self-contained theme** from the default Nomad theme (copies its assets so
+  every `background_image` basename resolves against the new theme's own `assets/`), applies the
+  colour overrides, overlays any provided backgrounds, registers the theme in
+  `themes/_metadata.json`, and writes `tenants/{id}/config.json` with B2B defaults (audio search off,
+  YouTube/GDrive off, `theme_selection` off, `locked_theme={id}`, jobs private). Returns the public
+  config plus a `preview_url` (`?preview_tenant={id}`) that drives the tenant — including its bulk
+  flow — **without any DNS setup**. Errors: 400 (bad slug/reserved/invalid colour/image),
+  409 (tenant already exists). Implemented in `backend/services/tenant_admin_service.py` +
+  `backend/api/routes/tenant_admin.py`.
+
 ### Internal (Admin Only)
 
 These endpoints are used by workers and require admin tokens.
