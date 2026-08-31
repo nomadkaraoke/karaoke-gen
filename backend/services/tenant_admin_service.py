@@ -223,6 +223,17 @@ def create_tenant(
     if tenant_service.tenant_exists(tenant_id):
         raise TenantConflictError(f"Tenant '{tenant_id}' already exists.")
 
+    theme_id = tenant_id  # 1:1 theme per tenant, mirrors the setup scripts
+
+    # The tenant id doubles as the theme id, and theme writes are not create-only.
+    # Guard against an id that collides with an existing theme (e.g. the default
+    # 'nomad' theme) — otherwise provisioning would overwrite that theme's
+    # style_params and break every job/tenant using it.
+    if storage.file_exists(f"{THEMES_PREFIX}/{theme_id}/style_params.json"):
+        raise TenantConflictError(
+            f"A theme named '{theme_id}' already exists; choose a different tenant id."
+        )
+
     # --- Derive theme from the default Nomad theme ---------------------------
     base_theme_id = theme_service.get_default_theme_id()
     if not base_theme_id:
@@ -230,8 +241,6 @@ def create_tenant(
     base_style = theme_service.get_theme_style_params(base_theme_id)
     if base_style is None:
         raise ValueError(f"Default theme '{base_theme_id}' style params could not be loaded.")
-
-    theme_id = tenant_id  # 1:1 theme per tenant, mirrors the setup scripts
 
     # --- Build the tenant config (logo_url filled in after reservation) -------
     domains = sorted({d.strip().lower() for d in (allowed_email_domains or []) if d.strip()})

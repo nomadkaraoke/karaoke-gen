@@ -194,6 +194,20 @@ def test_conflict_does_not_clobber_existing_theme(fake_storage):
     assert fake_storage.blobs["themes/existing/style_params.json"] == theme_before
 
 
+def test_id_colliding_with_existing_theme_rejected(fake_storage):
+    """A tenant id that matches an existing theme (e.g. the default) must not clobber it."""
+    theme_before = fake_storage.blobs["themes/nomad/style_params.json"]
+    with pytest.raises(tas.TenantConflictError):
+        tas.create_tenant(
+            name="Nomad",
+            tenant_id="nomad",
+            style_params_override={"intro": {"title_color": "#000000"}},
+            storage=fake_storage,
+        )
+    assert fake_storage.blobs["themes/nomad/style_params.json"] == theme_before
+    assert "tenants/nomad/config.json" not in fake_storage.blobs
+
+
 def test_create_rolls_back_reservation_on_theme_failure(fake_storage, monkeypatch):
     """If theme provisioning fails after reservation, the config is rolled back."""
     def boom(*args, **kwargs):
