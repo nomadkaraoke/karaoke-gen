@@ -747,6 +747,58 @@ class TestWaitForCompletionLostJob:
                 pass
 
     @pytest.mark.asyncio
+    async def test_worker_infra_failure_raises_infra_error_and_demotes(self, encoding_service):
+        """A metadata/auth failure reported by the worker is a VM problem, not a job
+        problem (job 6452888e): raise the recoverable EncodingWorkerInfraError, demote
+        the broken worker and invalidate the URL cache so the retry lands elsewhere."""
+        from backend.services.encoding_errors import EncodingWorkerInfraError
+
+        metadata_error = (
+            "Failed to retrieve https://metadata.google.internal/computeMetadata/v1/"
+            "instance/service-accounts/default/?recursive=true from the Google Compute "
+            "Engine metadata service. Compute Engine Metadata server unavailable. Last "
+            "exception: SSLError(SSLCertVerificationError(1, '[SSL: CERTIFICATE_VERIFY_"
+            "FAILED] certificate verify failed: unable to get local issuer certificate'))"
+        )
+
+        async def mock_get_status(job_id, worker_url=None):
+            return {"status": "failed", "error": metadata_error}
+
+        mock_manager = MagicMock()
+        mock_manager.get_config.return_value.active_override_vm = "encoding-worker-fallback-c4a"
+        encoding_service._worker_manager = mock_manager
+
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch.object(encoding_service, "_invalidate_cached_url") as mock_invalidate, \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingWorkerInfraError) as exc_info:
+                await encoding_service.wait_for_completion("j1")
+
+        # Captured the offending VM, demoted it, and forced URL re-resolution.
+        assert exc_info.value.vm_name == "encoding-worker-fallback-c4a"
+        mock_manager.demote_active_worker.assert_called_once()
+        mock_invalidate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_worker_infra_failure_without_manager_still_recoverable(self, encoding_service):
+        """Even with no worker manager wired (static-URL fallback), an infra failure is
+        classified as recoverable (EncodingWorkerInfraError), never a terminal error."""
+        from backend.services.encoding_errors import EncodingWorkerInfraError
+
+        async def mock_get_status(job_id, worker_url=None):
+            return {"status": "failed", "error": "Compute Engine Metadata server unavailable"}
+
+        encoding_service._worker_manager = None
+        with patch.object(encoding_service, "get_job_status", side_effect=mock_get_status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingWorkerInfraError):
+                await encoding_service.wait_for_completion("j1")
+
+    @pytest.mark.asyncio
     async def test_pending_does_not_count_toward_run_timeout(self, encoding_service):
         """Time spent queued (pending) is bounded by queue_timeout, not the per-run
         timeout — a burst can wait in the serialized heavy queue and still succeed."""

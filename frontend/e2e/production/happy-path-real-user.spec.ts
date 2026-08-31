@@ -708,14 +708,22 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log('  WARNING: Loading indicator timeout - checking for video anyway');
       }
 
-      // Now check for the video element or an error message
+      // Now check for the video element or an error message. Scope the alert
+      // lookup to the modal — a page-level `[role="alert"]` notifications region
+      // is always present and empty, which previously logged a spurious
+      // "Preview error:" with no text (run #151).
       const videoElement = reviewPage.locator('video');
-      const errorAlert = reviewPage.locator('[role="alert"]');
+      const errorAlert = previewModal.locator('[role="alert"]');
 
-      // Check if there's an error
-      if (await errorAlert.isVisible({ timeout: 5000 }).catch(() => false)) {
-        const errorText = await errorAlert.textContent();
-        console.log(`  WARNING: Preview error: ${errorText}`);
+      // Check if there's a *real* error (non-empty alert text inside the modal).
+      // Gate on isVisible() (immediate — it does not auto-wait) so the happy path
+      // with no alert doesn't block on textContent()'s default 30s wait-for-element.
+      let alertText = '';
+      if (await errorAlert.first().isVisible().catch(() => false)) {
+        alertText = ((await errorAlert.first().textContent().catch(() => '')) || '').trim();
+      }
+      if (alertText) {
+        console.log(`  WARNING: Preview error: ${alertText}`);
         // Continue anyway - we can still proceed to instrumental even if preview failed
       } else if (await videoElement.isVisible({ timeout: 10000 }).catch(() => false)) {
         console.log('  Video element visible in modal');
@@ -727,11 +735,34 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
 
       await reviewPage.screenshot({ path: 'test-results/07d-preview-ready.png', fullPage: true });
 
-      // Click "Proceed to Instrumental Review" button in the modal
-      // This button saves corrections and navigates to the instrumental selection UI
-      const proceedBtn = reviewPage.getByRole('button', { name: /proceed to instrumental/i });
-      await expect(proceedBtn).toBeVisible({ timeout: TIMEOUTS.action });
-      console.log('  Found "Proceed to Instrumental Review" button');
+      // Locate the "Proceed to Instrumental Review" button (saves corrections and
+      // navigates to instrumental selection). A transient encoder cold-start can
+      // leave the preview modal in an error/closed state (the encoder was offline
+      // during run #151) — but proceeding to instrumental does NOT depend on the
+      // preview succeeding. Recover once by reloading the review page and re-opening
+      // the preview modal rather than failing the whole smoke test on flaky infra.
+      // The final assertion below stays authoritative: if the button never appears
+      // even after recovery, generation really is broken and the test fails.
+      // Require the button to be present AND enabled: ReviewChangesModal keeps it
+      // visible but disabled when there are no lyrics, so a visibility-only check
+      // could accept an unusable button (and the later click would just time out).
+      const proceedName = /proceed to instrumental/i;
+      let proceedBtn = reviewPage.getByRole('button', { name: proceedName });
+      if (!(await proceedBtn.isEnabled({ timeout: TIMEOUTS.action }).catch(() => false))) {
+        console.log('  WARNING: Proceed button not ready (missing/disabled) after preview — recovering (reload review + reopen preview)...');
+        await gotoWithRetry(reviewPage, reviewUrl);
+        await reviewPage.waitForTimeout(3000);
+        await reviewPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        const reopenBtn = reviewPage.getByRole('button', { name: /preview video/i });
+        if (await reopenBtn.isVisible({ timeout: TIMEOUTS.action }).catch(() => false)) {
+          await reopenBtn.click();
+          await expect(reviewPage.getByRole('dialog')).toBeVisible({ timeout: TIMEOUTS.action });
+          console.log('  Re-opened preview modal after recovery');
+        }
+        proceedBtn = reviewPage.getByRole('button', { name: proceedName });
+      }
+      await expect(proceedBtn).toBeEnabled({ timeout: TIMEOUTS.action });
+      console.log('  Found enabled "Proceed to Instrumental Review" button');
 
       await proceedBtn.click();
       console.log('  Clicked "Proceed to Instrumental Review" button');

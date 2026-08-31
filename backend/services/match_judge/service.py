@@ -106,8 +106,13 @@ async def judge_match(
         try:
             ai_verdict = await ai(artist, title, candidates, audio_tier)
         except Exception:
-            logger.exception(
-                "match-judge AI verification failed; keeping catalog verdict"
+            # Graceful degradation: a transient Vertex/Gemini blip just means we
+            # keep the catalog verdict. Log at WARNING (with traceback) so it does
+            # not page as a red "new error pattern" — it self-heals and needs no
+            # action. Downgraded 2026-08-31 after a single benign occurrence alerted.
+            logger.warning(
+                "match-judge AI verification failed; keeping catalog verdict",
+                exc_info=True,
             )
             return catalog_verdict
         if ai_verdict.confident and ai_verdict.kind != KIND_NONE:
@@ -122,7 +127,12 @@ async def judge_match(
     try:
         return await ai(artist, title, candidates, audio_tier)
     except Exception:
-        logger.exception("match-judge AI call failed; returning no-suggestion")
+        # Graceful degradation: returning no-suggestion is a safe fallback (the
+        # user just gets no auto-match). Log at WARNING (with traceback) so a
+        # transient AI blip does not page as a red "new error pattern".
+        logger.warning(
+            "match-judge AI call failed; returning no-suggestion", exc_info=True
+        )
         return MatchVerdict(
             KIND_NONE, True, artist, title, engine="ai", reason="ai failed"
         )

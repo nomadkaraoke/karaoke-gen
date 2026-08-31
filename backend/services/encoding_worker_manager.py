@@ -586,6 +586,55 @@ class EncodingWorkerManager:
         })
         logger.info("Cleared active_override (primary is healthy again)")
 
+    def demote_active_worker(self, reason: str = "") -> None:
+        """Demote the currently-serving fallback worker after a runtime infra failure.
+
+        Called when a worker VM accepted a job but then failed with a VM-level
+        infrastructure/auth error (e.g. it could not reach the metadata server —
+        job 6452888e). We only act when a *fallback* VM is serving (active_override
+        set): record a capacity-state cooldown for that VM's (machine_type, zone) so
+        ``ordered_candidates`` deprioritises its family for the cooldown window, then
+        clear the override so the retry re-resolves selection from the primary. When
+        the primary pair is serving we deliberately do nothing here — a metadata blip
+        on the stable c4d pair is vanishingly rare and family-demoting it would push
+        all traffic onto slow fallbacks; a bounded retry on the primary is safer.
+
+        Best-effort: never raises. Selection/telemetry hint only.
+        """
+        from backend.services.encoding_worker_preference import cooldown_key
+
+        try:
+            config = self.get_config()
+        except Exception as e:  # noqa: BLE001 — must never break the failure path
+            logger.warning("demote_active_worker: could not read config (%s): %s", reason, e)
+            return
+
+        vm = config.active_override_vm
+        zone = config.active_override_zone
+        if not vm:
+            # Primary pair was serving — see docstring; leave selection untouched.
+            logger.warning(
+                "Active encoding worker hit an infra failure while the primary was "
+                "serving; leaving selection unchanged for bounded retry: %s", reason,
+            )
+            return
+
+        key = cooldown_key({"vm_name": vm, "zone": zone})
+        if key:
+            try:
+                self._doc_ref().set(
+                    {"capacity_state": {key: datetime.now(UTC).isoformat()}}, merge=True
+                )
+                logger.warning(
+                    "Demoted fallback encoding worker %s (%s) after infra failure: %s",
+                    vm, key, reason,
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "demote_active_worker: could not record cooldown for %s: %s", key, e
+                )
+        self._clear_active_override()
+
     # ------------------------------------------------------------------
     # Compute operation helpers
     # ------------------------------------------------------------------

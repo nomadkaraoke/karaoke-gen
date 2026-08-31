@@ -2516,7 +2516,91 @@ export interface CacheStatsResponse {
 }
 
 // Admin API namespace
+export interface TenantSummary {
+  id: string;
+  name: string;
+  subdomain: string;
+  is_active: boolean;
+  locked_theme?: string | null;
+  dropbox_path?: string | null;
+  created_at?: string | null;
+}
+
+export interface TenantCreateResult {
+  tenant: {
+    id: string;
+    name: string;
+    subdomain: string;
+    is_active: boolean;
+  };
+  preview_url: string;
+  subdomain_url: string;
+}
+
+export interface TenantDetail {
+  tenant: Record<string, any>;
+  theme_id: string;
+  style_params: Record<string, any>;
+  assets: string[];
+  preview_url: string;
+}
+
 export const adminApi = {
+  /**
+   * List all white-label tenants
+   */
+  async listTenants(): Promise<{ tenants: TenantSummary[] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Create a white-label tenant (multipart: fields + optional background/logo images).
+   * Do NOT set Content-Type — the browser sets the multipart boundary.
+   */
+  async createTenant(formData: FormData): Promise<TenantCreateResult> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get a tenant's full config, theme style_params, and asset list (for editing).
+   */
+  async getTenant(tenantId: string): Promise<TenantDetail> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Update a tenant (multipart: optional config JSON, style_params JSON, and asset files).
+   */
+  async updateTenant(tenantId: string, formData: FormData): Promise<{ tenant: TenantCreateResult['tenant'] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get the default Nomad theme's full style_params — a starting template for a new theme.
+   */
+  async getThemeTemplate(): Promise<{ style_params: Record<string, any> }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/_template`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
   /**
    * Get admin dashboard statistics
    */
