@@ -10,11 +10,17 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 
 const listTenants = jest.fn()
 const createTenant = jest.fn()
+const getTenant = jest.fn()
+const updateTenant = jest.fn()
+const getThemeTemplate = jest.fn()
 
 jest.mock('@/lib/api', () => ({
   adminApi: {
     listTenants: (...args: unknown[]) => listTenants(...args),
     createTenant: (...args: unknown[]) => createTenant(...args),
+    getTenant: (...args: unknown[]) => getTenant(...args),
+    updateTenant: (...args: unknown[]) => updateTenant(...args),
+    getThemeTemplate: (...args: unknown[]) => getThemeTemplate(...args),
   },
 }))
 
@@ -38,6 +44,23 @@ beforeEach(() => {
     preview_url: 'https://gen.nomadkaraoke.com/en/app?preview_tenant=randy-vild',
     subdomain_url: 'https://randy-vild.nomadkaraoke.com',
   })
+  getTenant.mockResolvedValue({
+    tenant: {
+      id: 'vocalstar',
+      name: 'Vocal Star',
+      subdomain: 'vocalstar.nomadkaraoke.com',
+      is_active: true,
+      branding: { tagline: 'Be a Vocal Star' },
+      defaults: { dropbox_path: '/Karaoke/Tracks-VocalStar', brand_prefix: 'VSTAR', distribution_mode: 'download_only' },
+      auth: { allowed_email_domains: ['vocal-star.com'] },
+    },
+    theme_id: 'vocalstar',
+    style_params: { intro: { title_color: '#ffff00' }, karaoke: {}, end: {}, cdg: {} },
+    assets: ['karaoke_background.jpg', 'Oswald-SemiBold.ttf'],
+    preview_url: 'https://gen.nomadkaraoke.com/en/app?preview_tenant=vocalstar',
+  })
+  updateTenant.mockResolvedValue({ tenant: { id: 'vocalstar', name: 'Vocal Star', subdomain: 'vocalstar.nomadkaraoke.com', is_active: true } })
+  getThemeTemplate.mockResolvedValue({ style_params: { intro: {}, karaoke: {}, end: {}, cdg: {} } })
 })
 
 describe('Admin Tenants page', () => {
@@ -75,5 +98,39 @@ describe('Admin Tenants page', () => {
     ).toBeInTheDocument()
     // List refreshed (initial + post-create)
     await waitFor(() => expect(listTenants).toHaveBeenCalledTimes(2))
+  })
+
+  it('manage loads the full theme JSON and saves config + style_params', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+
+    await waitFor(() => expect(getTenant).toHaveBeenCalledWith('vocalstar'))
+
+    // Theme JSON prefilled into the editor
+    const editor = await screen.findByPlaceholderText(/"intro":/)
+    expect((editor as HTMLTextAreaElement).value).toContain('#ffff00')
+    // Existing assets listed
+    expect(screen.getByText('karaoke_background.jpg')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }))
+
+    await waitFor(() => expect(updateTenant).toHaveBeenCalledTimes(1))
+    const [tid, fd] = updateTenant.mock.calls[0] as [string, FormData]
+    expect(tid).toBe('vocalstar')
+    const config = JSON.parse(fd.get('config') as string)
+    expect(config.name).toBe('Vocal Star')
+    expect(config.defaults.dropbox_path).toBe('/Karaoke/Tracks-VocalStar')
+    expect(JSON.parse(fd.get('style_params') as string).intro.title_color).toBe('#ffff00')
+  })
+
+  it('blocks save when the theme JSON is invalid', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+    const editor = await screen.findByPlaceholderText(/"intro":/)
+    fireEvent.change(editor, { target: { value: '{ not valid json' } })
+    expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled()
   })
 })

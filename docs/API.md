@@ -1213,11 +1213,14 @@ table, then submits each confirmed row through the standard signed-URL upload fl
 
 ```
 GET  /api/admin/tenants
-POST /api/admin/tenants        (multipart/form-data)
+GET  /api/admin/tenants/_template
+GET  /api/admin/tenants/{id}
+POST /api/admin/tenants           (multipart/form-data)
+PUT  /api/admin/tenants/{id}      (multipart/form-data)
 Authorization: Bearer <admin token>
 ```
 
-Admin-only endpoints (`require_admin`) that mint a white-label tenant from the admin panel
+Admin-only endpoints (`require_admin`) that mint and manage white-label tenants from the admin panel
 (`/admin/tenants`), replacing the hand-run `scripts/setup-*-tenant.py` recipe.
 
 - **`GET`** returns a summary list of all tenants (`id`, `name`, `subdomain`, `is_active`,
@@ -1233,9 +1236,20 @@ Admin-only endpoints (`require_admin`) that mint a white-label tenant from the a
   `themes/_metadata.json`, and writes `tenants/{id}/config.json` with B2B defaults (audio search off,
   YouTube/GDrive off, `theme_selection` off, `locked_theme={id}`, jobs private). Returns the public
   config plus a `preview_url` (`?preview_tenant={id}`) that drives the tenant — including its bulk
-  flow — **without any DNS setup**. Errors: 400 (bad slug/reserved/invalid colour/image),
-  409 (tenant already exists). Implemented in `backend/services/tenant_admin_service.py` +
-  `backend/api/routes/tenant_admin.py`.
+  flow — **without any DNS setup**. For **full theme customisation** at create time, pass a
+  `style_params` field (full theme JSON string) — when present it is authoritative and the colour
+  fields are ignored. Errors: 400 (bad slug/reserved/invalid colour/image/JSON), 409 (exists).
+- **`GET /_template`** returns the default Nomad theme's full `style_params` — a starting point for
+  editing a new theme (the admin UI seeds its JSON editor from this).
+- **`GET /{id}`** returns a tenant's full config, its theme `style_params`, its `assets` list, and a
+  `preview_url` (for the manage/edit view). 404 if not found.
+- **`PUT /{id}`** (multipart) updates a tenant so a client's feedback can be iterated on: `config`
+  (partial TenantConfig JSON, merged one level deep — `id` immutable), `style_params` (full theme
+  JSON, replaces the theme), and repeatable `assets` file uploads (images **or fonts**; each file's
+  name becomes the theme asset name, so uploading `karaoke_background.jpg` replaces it). Re-render
+  jobs to apply an updated theme. Errors: 400 (invalid JSON/theme), 404 (not found).
+
+  Implemented in `backend/services/tenant_admin_service.py` + `backend/api/routes/tenant_admin.py`.
 
 ### Internal (Admin Only)
 

@@ -82,6 +82,14 @@ class TenantConflictError(ValueError):
     """Raised when a tenant with the same id already exists."""
 
 
+class TenantNotFoundError(ValueError):
+    """Raised when the requested tenant does not exist."""
+
+
+# Top-level sections a valid theme style_params document may contain.
+STYLE_PARAM_SECTIONS = {"intro", "karaoke", "end", "cdg"}
+
+
 def slugify_tenant_id(name: str) -> str:
     """Derive a tenant id slug from a display name."""
     slug = re.sub(r"[^a-z0-9]+", "-", (name or "").strip().lower()).strip("-")
@@ -100,6 +108,31 @@ def _validate_tenant_id(tenant_id: str) -> None:
 
 def _content_type_for(ext: str) -> str:
     return IMAGE_CONTENT_TYPES.get(ext.lower(), "application/octet-stream")
+
+
+def _safe_asset_name(name: str) -> str:
+    """Reduce an uploaded filename to a safe bare basename (no path traversal)."""
+    base = name.replace("\\", "/").rsplit("/", 1)[-1].strip()
+    base = re.sub(r"[^A-Za-z0-9._-]", "_", base)
+    return base.lstrip(".") or "asset"
+
+
+def _validate_style_params(style_params: object) -> Dict:
+    """Validate a full theme style_params document supplied by an admin."""
+    if not isinstance(style_params, dict):
+        raise TenantValidationError("Theme style_params must be a JSON object.")
+    if not style_params:
+        raise TenantValidationError("Theme style_params cannot be empty.")
+    unknown = set(style_params) - STYLE_PARAM_SECTIONS
+    if unknown:
+        raise TenantValidationError(
+            f"Unknown theme section(s): {', '.join(sorted(unknown))}. "
+            f"Allowed: {', '.join(sorted(STYLE_PARAM_SECTIONS))}."
+        )
+    for section, value in style_params.items():
+        if not isinstance(value, dict):
+            raise TenantValidationError(f"Theme section '{section}' must be a JSON object.")
+    return style_params
 
 
 def _copy_default_theme_assets(storage: StorageService, base_theme_id: str, theme_id: str) -> None:
@@ -141,6 +174,7 @@ def create_tenant(
     subdomain: Optional[str] = None,
     allowed_email_domains: Optional[List[str]] = None,
     colors: Optional[ColorOverrides] = None,
+    style_params_override: Optional[Dict] = None,
     tagline: Optional[str] = None,
     distribution_mode: str = "download_only",
     dropbox_path: Optional[str] = None,
@@ -201,9 +235,14 @@ def create_tenant(
 
     _copy_default_theme_assets(storage, base_theme_id, theme_id)
 
-    style_params = copy.deepcopy(base_style)
-    if colors and colors.has_overrides():
-        style_params = theme_service.apply_color_overrides(style_params, colors)
+    if style_params_override is not None:
+        # Admin supplied a full theme document — it is authoritative. Default
+        # assets are still copied above so any inherited basenames resolve.
+        style_params = copy.deepcopy(_validate_style_params(style_params_override))
+    else:
+        style_params = copy.deepcopy(base_style)
+        if colors and colors.has_overrides():
+            style_params = theme_service.apply_color_overrides(style_params, colors)
 
     for field, (data, ext) in (backgrounds or {}).items():
         section = BACKGROUND_SECTIONS.get(field)
@@ -297,6 +336,140 @@ def create_tenant(
     theme_service.invalidate_cache()
 
     logger.info(f"Created tenant '{tenant_id}' (theme '{theme_id}', subdomain '{subdomain}')")
+    return config
+
+
+def _theme_id_for(config: TenantConfig) -> str:
+    """The theme id backing a tenant (locked theme, else default theme, else id)."""
+    return config.defaults.locked_theme or config.defaults.theme_id or config.id
+
+
+def get_default_style_params(storage: Optional[StorageService] = None) -> Dict:
+    """Return the default Nomad theme's full style_params (a starting template)."""
+    theme_service = get_theme_service()
+    base_theme_id = theme_service.get_default_theme_id()
+    if not base_theme_id:
+        raise ValueError("No default theme is configured.")
+    style = theme_service.get_theme_style_params(base_theme_id)
+    if style is None:
+        raise ValueError(f"Default theme '{base_theme_id}' style params could not be loaded.")
+    return style
+
+
+def get_tenant_detail(tenant_id: str, storage: Optional[StorageService] = None) -> Dict[str, object]:
+    """Return a tenant's full config, its theme style_params, and its asset list."""
+    storage = storage or StorageService()
+    tenant_service = get_tenant_service()
+    config = tenant_service.get_tenant_config(tenant_id, force_refresh=True)
+    if not config:
+        raise TenantNotFoundError(f"Tenant '{tenant_id}' not found.")
+
+    theme_id = _theme_id_for(config)
+    try:
+        style_params = storage.download_json(f"{THEMES_PREFIX}/{theme_id}/style_params.json")
+    except Exception:
+        style_params = {}
+    assets = sorted(
+        p.rsplit("/", 1)[-1]
+        for p in storage.list_files(f"{THEMES_PREFIX}/{theme_id}/assets/")
+        if p.rsplit("/", 1)[-1]
+    )
+    return {
+        "tenant": config.model_dump(mode="json"),
+        "theme_id": theme_id,
+        "style_params": style_params,
+        "assets": assets,
+    }
+
+
+def _merge_config(config: TenantConfig, updates: Dict) -> TenantConfig:
+    """Merge a partial update dict over an existing TenantConfig (id is immutable)."""
+    base = config.model_dump(mode="json")
+    for key, value in updates.items():
+        if key == "id":
+            continue
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            base[key] = {**base[key], **value}
+        else:
+            base[key] = value
+    base["id"] = config.id  # never allow id to change
+    return TenantConfig(**base)
+
+
+def update_tenant(
+    tenant_id: str,
+    *,
+    config_updates: Optional[Dict] = None,
+    style_params: Optional[Dict] = None,
+    assets: Optional[Dict[str, Tuple[bytes, str]]] = None,
+    logo: Optional[Tuple[bytes, str]] = None,
+    storage: Optional[StorageService] = None,
+) -> TenantConfig:
+    """
+    Update an existing tenant: merge config fields, replace the full theme
+    style_params, and/or add/replace theme assets (backgrounds, fonts).
+
+    Iteration loop for a client: edit the theme JSON here, re-render jobs.
+
+    Args:
+        tenant_id: Tenant to update.
+        config_updates: Partial TenantConfig fields to merge (one-level deep).
+        style_params: Full theme document to write (replaces existing).
+        assets: {target_filename -> (bytes, ext)} written to the theme's assets/.
+        logo: (bytes, ext) -> tenants/{id}/logo.<ext> + branding.logo_url.
+        storage: Injected StorageService (for tests).
+
+    Raises:
+        TenantNotFoundError, TenantValidationError.
+    """
+    storage = storage or StorageService()
+    tenant_service = get_tenant_service()
+    theme_service = get_theme_service()
+
+    config = tenant_service.get_tenant_config(tenant_id, force_refresh=True)
+    if not config:
+        raise TenantNotFoundError(f"Tenant '{tenant_id}' not found.")
+
+    theme_id = _theme_id_for(config)
+
+    # 1. Assets (uploaded files -> theme assets, keyed by their target basename)
+    for name, (data, ext) in (assets or {}).items():
+        safe = _safe_asset_name(name)
+        storage.upload_fileobj(
+            io.BytesIO(data),
+            f"{THEMES_PREFIX}/{theme_id}/assets/{safe}",
+            content_type=_content_type_for(ext),
+        )
+
+    # 2. Full theme style_params replace
+    if style_params is not None:
+        _validate_style_params(style_params)
+        storage.upload_json(f"{THEMES_PREFIX}/{theme_id}/style_params.json", style_params)
+
+    # 3. Logo
+    merged_updates = dict(config_updates or {})
+    if logo:
+        logo_data, logo_ext = logo
+        logo_ext = logo_ext.lower().lstrip(".")
+        logo_path = f"{TENANTS_PREFIX}/{tenant_id}/logo.{logo_ext}"
+        storage.upload_fileobj(
+            io.BytesIO(logo_data), logo_path, content_type=_content_type_for(logo_ext)
+        )
+        branding = dict(merged_updates.get("branding") or {})
+        branding["logo_url"] = f"gs://{settings.gcs_bucket_name}/{logo_path}"
+        merged_updates["branding"] = branding
+
+    # 4. Config merge
+    if merged_updates:
+        config = _merge_config(config, merged_updates)
+
+    config.updated_at = datetime.now(timezone.utc)
+    storage.upload_json(f"{TENANTS_PREFIX}/{tenant_id}/config.json", config.model_dump(mode="json"))
+
+    tenant_service.invalidate_cache(tenant_id)
+    theme_service.invalidate_cache()
+
+    logger.info(f"Updated tenant '{tenant_id}' (theme '{theme_id}')")
     return config
 
 

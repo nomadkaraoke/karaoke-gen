@@ -13,7 +13,11 @@ from backend.api.routes import tenant_admin
 from backend.api.routes.tenant_admin import router
 from backend.api.dependencies import require_admin
 from backend.services.auth_service import AuthResult, UserType
-from backend.services.tenant_admin_service import TenantConflictError, TenantValidationError
+from backend.services.tenant_admin_service import (
+    TenantConflictError,
+    TenantNotFoundError,
+    TenantValidationError,
+)
 from backend.models.tenant import TenantConfig, TenantDefaults, TenantFeatures
 
 
@@ -121,6 +125,106 @@ def test_create_tenant_rejects_bad_image_type(client, monkeypatch):
 def test_create_tenant_rejects_bad_distribution_mode(client, monkeypatch):
     monkeypatch.setattr(tenant_admin, "create_tenant", lambda **k: _sample_config())
     resp = client.post("/api/admin/tenants", data={"name": "X", "distribution_mode": "wat"})
+    assert resp.status_code == 400
+
+
+def test_create_tenant_with_full_style_params(client, monkeypatch):
+    captured = {}
+
+    def fake_create(**kwargs):
+        captured.update(kwargs)
+        return _sample_config()
+
+    monkeypatch.setattr(tenant_admin, "create_tenant", fake_create)
+    resp = client.post(
+        "/api/admin/tenants",
+        data={"name": "Randy Vild", "style_params": '{"intro": {"title_color": "#abcdef"}}'},
+    )
+    assert resp.status_code == 201, resp.text
+    assert captured["style_params_override"] == {"intro": {"title_color": "#abcdef"}}
+
+
+def test_create_tenant_bad_style_params_json(client, monkeypatch):
+    monkeypatch.setattr(tenant_admin, "create_tenant", lambda **k: _sample_config())
+    resp = client.post("/api/admin/tenants", data={"name": "X", "style_params": "{not json"})
+    assert resp.status_code == 400
+
+
+def test_get_tenant_detail(client, monkeypatch):
+    monkeypatch.setattr(
+        tenant_admin,
+        "get_tenant_detail",
+        lambda tid: {
+            "tenant": {"id": tid, "name": "Randy Vild"},
+            "theme_id": tid,
+            "style_params": {"intro": {"title_color": "#fff"}},
+            "assets": ["intro_bg.png"],
+        },
+    )
+    resp = client.get("/api/admin/tenants/randy-vild")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["style_params"]["intro"]["title_color"] == "#fff"
+    assert body["preview_url"].endswith("?preview_tenant=randy-vild")
+
+
+def test_get_tenant_detail_404(client, monkeypatch):
+    def raise_nf(tid):
+        raise TenantNotFoundError("nope")
+
+    monkeypatch.setattr(tenant_admin, "get_tenant_detail", raise_nf)
+    resp = client.get("/api/admin/tenants/ghost")
+    assert resp.status_code == 404
+
+
+def test_theme_template(client, monkeypatch):
+    monkeypatch.setattr(
+        tenant_admin, "get_default_style_params", lambda: {"intro": {}, "karaoke": {}}
+    )
+    resp = client.get("/api/admin/tenants/_template")
+    assert resp.status_code == 200
+    assert "intro" in resp.json()["style_params"]
+
+
+def test_update_tenant(client, monkeypatch):
+    captured = {}
+
+    def fake_update(tid, **kwargs):
+        captured["tid"] = tid
+        captured.update(kwargs)
+        return _sample_config(tid)
+
+    monkeypatch.setattr(tenant_admin, "update_tenant", fake_update)
+    resp = client.put(
+        "/api/admin/tenants/randy-vild",
+        data={
+            "config": '{"name": "Deluxe"}',
+            "style_params": '{"intro": {"title_color": "#123456"}}',
+        },
+        files={"assets": ("kbg.jpg", b"img", "image/jpeg")},
+    )
+    assert resp.status_code == 200, resp.text
+    assert captured["tid"] == "randy-vild"
+    assert captured["config_updates"] == {"name": "Deluxe"}
+    assert captured["style_params"] == {"intro": {"title_color": "#123456"}}
+    assert "kbg.jpg" in captured["assets"]
+
+
+def test_update_tenant_404(client, monkeypatch):
+    def raise_nf(tid, **kwargs):
+        raise TenantNotFoundError("nope")
+
+    monkeypatch.setattr(tenant_admin, "update_tenant", raise_nf)
+    resp = client.put("/api/admin/tenants/ghost", data={"config": "{}"})
+    assert resp.status_code == 404
+
+
+def test_update_tenant_bad_style_params(client, monkeypatch):
+    def raise_val(tid, **kwargs):
+        raise TenantValidationError("bad")
+
+    monkeypatch.setattr(tenant_admin, "update_tenant", raise_val)
+    resp = client.put("/api/admin/tenants/randy-vild", data={"style_params": '{"nope": {}}'})
     assert resp.status_code == 400
 
 

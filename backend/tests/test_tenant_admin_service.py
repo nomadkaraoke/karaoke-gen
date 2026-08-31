@@ -178,6 +178,80 @@ def test_missing_default_theme_errors(fake_storage):
         tas.create_tenant(name="No Theme", storage=fake_storage)
 
 
+def test_create_with_full_style_params_override(fake_storage):
+    override = {
+        "intro": {"title_color": "#abcdef", "background_image": "custom.png"},
+        "karaoke": {"primary_color": "9,9,9,255"},
+    }
+    tas.create_tenant(name="Override Co", style_params_override=override, storage=fake_storage)
+    style = json.loads(fake_storage.blobs["themes/override-co/style_params.json"].decode())
+    assert style["intro"]["title_color"] == "#abcdef"
+    assert style["karaoke"]["primary_color"] == "9,9,9,255"
+    # default assets still copied so inherited basenames resolve
+    assert "themes/override-co/assets/Oswald-SemiBold.ttf" in fake_storage.blobs
+
+
+def test_create_with_invalid_style_params_override_rejected(fake_storage):
+    with pytest.raises(tas.TenantValidationError):
+        tas.create_tenant(name="Bad", style_params_override={"bogus": {}}, storage=fake_storage)
+
+
+def test_get_tenant_detail(fake_storage):
+    tas.create_tenant(name="Randy Vild", colors=ColorOverrides(title_color="#ffdf6b"), storage=fake_storage)
+    detail = tas.get_tenant_detail("randy-vild", storage=fake_storage)
+    assert detail["tenant"]["id"] == "randy-vild"
+    assert detail["theme_id"] == "randy-vild"
+    assert detail["style_params"]["intro"]["title_color"] == "#ffdf6b"
+    assert "Oswald-SemiBold.ttf" in detail["assets"]
+
+
+def test_get_tenant_detail_missing_raises(fake_storage):
+    with pytest.raises(tas.TenantNotFoundError):
+        tas.get_tenant_detail("nope", storage=fake_storage)
+
+
+def test_update_tenant_full_theme_and_config(fake_storage):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+
+    new_style = {
+        "intro": {"title_color": "#123456", "background_image": "intro_bg.png"},
+        "karaoke": {"primary_color": "5,5,5,255", "background_image": "kbg.jpg"},
+        "end": {},
+        "cdg": {},
+    }
+    updated = tas.update_tenant(
+        "randy-vild",
+        config_updates={"name": "Randy Vild Deluxe", "defaults": {"brand_prefix": "RVD"}},
+        style_params=new_style,
+        assets={"kbg.jpg": (b"replacement", "jpg")},
+        storage=fake_storage,
+    )
+    assert updated.name == "Randy Vild Deluxe"
+    assert updated.defaults.brand_prefix == "RVD"
+    assert updated.id == "randy-vild"  # id immutable
+    # theme replaced
+    style = json.loads(fake_storage.blobs["themes/randy-vild/style_params.json"].decode())
+    assert style["intro"]["title_color"] == "#123456"
+    # asset replaced
+    assert fake_storage.blobs["themes/randy-vild/assets/kbg.jpg"] == b"replacement"
+
+
+def test_update_tenant_rejects_bad_style_params(fake_storage):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    with pytest.raises(tas.TenantValidationError):
+        tas.update_tenant("randy-vild", style_params={"nope": {}}, storage=fake_storage)
+
+
+def test_update_tenant_missing_raises(fake_storage):
+    with pytest.raises(tas.TenantNotFoundError):
+        tas.update_tenant("ghost", config_updates={"name": "x"}, storage=fake_storage)
+
+
+def test_get_default_style_params(fake_storage):
+    params = tas.get_default_style_params(storage=fake_storage)
+    assert set(params.keys()) == {"intro", "karaoke", "end", "cdg"}
+
+
 def test_list_tenants(fake_storage):
     tas.create_tenant(name="Bravo", storage=fake_storage)
     tas.create_tenant(name="Alpha", storage=fake_storage)

@@ -2537,6 +2537,14 @@ export interface TenantCreateResult {
   subdomain_url: string;
 }
 
+export interface TenantDetail {
+  tenant: Record<string, any>;
+  theme_id: string;
+  style_params: Record<string, any>;
+  assets: string[];
+  preview_url: string;
+}
+
 export const adminApi = {
   /**
    * List all white-label tenants
@@ -2557,6 +2565,38 @@ export const adminApi = {
       method: 'POST',
       headers: getAuthHeaders(),
       body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get a tenant's full config, theme style_params, and asset list (for editing).
+   */
+  async getTenant(tenantId: string): Promise<TenantDetail> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Update a tenant (multipart: optional config JSON, style_params JSON, and asset files).
+   */
+  async updateTenant(tenantId: string, formData: FormData): Promise<{ tenant: TenantCreateResult['tenant'] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get the default Nomad theme's full style_params — a starting template for a new theme.
+   */
+  async getThemeTemplate(): Promise<{ style_params: Record<string, any> }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/_template`, {
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },
