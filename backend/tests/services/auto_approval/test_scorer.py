@@ -408,3 +408,40 @@ def test_overall_not_auto_when_backing_subjective() -> None:
     )
     assert v.lyrics.verdict == LyricsVerdict.AUTO
     assert v.overall_auto is False
+
+
+# --- Timing-plausibility gate (never-auto; signals computed by the executor) ---
+
+def test_fired_timing_signals_gate_confident_lyrics() -> None:
+    from backend.services.auto_approval.timing_check import TimingSignals
+
+    sig = TimingSignals(
+        n_words=100, pct_start_inactive=40.0, n_suspect_bad=30,
+        max_unclaimed_run_s=4.9, fired=["start-silence", "suspect-mistimed"],
+    )
+    res = score_lyrics(_corrections_json(), timing_signals=sig)
+    assert res.verdict == LyricsVerdict.REVIEW
+    assert res.tier == "timing-gate"
+    assert "timing-plausibility gate fired" in res.reasons[0]
+
+
+def test_unfired_timing_signals_leave_auto_untouched() -> None:
+    from backend.services.auto_approval.timing_check import TimingSignals
+
+    res = score_lyrics(_corrections_json(), timing_signals=TimingSignals(n_words=100))
+    assert res.verdict == LyricsVerdict.AUTO
+    assert res.tier == "synced-perfect"
+
+
+def test_absent_timing_signals_leave_auto_untouched() -> None:
+    res = score_lyrics(_corrections_json(), timing_signals=None)
+    assert res.verdict == LyricsVerdict.AUTO
+
+
+def test_timing_gate_flows_through_score_job() -> None:
+    from backend.services.auto_approval.timing_check import TimingSignals
+
+    sig = TimingSignals(n_words=50, pct_start_inactive=40.0, fired=["start-silence"])
+    verdict = score_job(_corrections_json(), None, None, timing_signals=sig)
+    assert verdict.lyrics.tier == "timing-gate"
+    assert verdict.overall_auto is False

@@ -362,3 +362,113 @@ async def test_backing_preference_review_blocks_even_confident_clean() -> None:
     assert result["outcome"] == "review"
     jm.transition_to_state.assert_not_called()
     ws.trigger_render_video_worker.assert_not_awaited()
+
+
+# ---- timing-plausibility gate wiring ----------------------------------------
+
+def _timing_signals(fired):
+    from backend.services.auto_approval.timing_check import TimingSignals
+
+    return TimingSignals(
+        n_words=100,
+        pct_start_inactive=40.0 if fired else 0.0,
+        n_suspect_bad=30 if fired else 0,
+        max_unclaimed_run_s=5.0 if fired else 0.5,
+        fired=["start-silence", "suspect-mistimed"] if fired else [],
+    )
+
+
+def _job_with_lead_stem(**kwargs):
+    kwargs.setdefault("backing", _clean_backing())
+    job = _job(**kwargs)
+    job.file_urls["stems"]["lead_vocals"] = "jobs/j1/stems/lead_vocals.flac"
+    return job
+
+
+@pytest.mark.asyncio
+async def test_fired_timing_gate_demotes_to_review() -> None:
+    with patch(
+        "backend.services.auto_approval.executor._compute_timing_signals",
+        return_value=_timing_signals(fired=True),
+    ):
+        result, job_manager, _, worker = await _run(_job_with_lead_stem())
+    assert result["outcome"] == "review"
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["timing"]["status"] == "checked"
+    assert payload["timing"]["fired"] == ["start-silence", "suspect-mistimed"]
+    assert payload["lyrics"]["tier"] == "timing-gate"
+    worker.trigger_render_video_worker.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_clean_timing_signals_allow_auto_completion() -> None:
+    with patch(
+        "backend.services.auto_approval.executor._compute_timing_signals",
+        return_value=_timing_signals(fired=False),
+    ):
+        result, job_manager, _, _ = await _run(_job_with_lead_stem())
+    assert result["outcome"] == "auto_completed"
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["timing"]["status"] == "checked"
+    assert payload["timing"]["fired"] == []
+
+
+@pytest.mark.asyncio
+async def test_incomplete_audio_records_timing_pending() -> None:
+    result, job_manager, _, _ = await _run(_job_with_lead_stem(audio_complete=False))
+    assert result["outcome"] == "review"  # blocked by audio_incomplete
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["timing"]["status"] == "pending_audio"
+
+
+@pytest.mark.asyncio
+async def test_timing_gate_flag_disabled_fails_open() -> None:
+    settings = SimpleNamespace(
+        auto_approval_enforce_enabled=True,
+        auto_approval_timing_gate_enabled=False,
+    )
+    result, job_manager, _, _ = await _run(_job_with_lead_stem(), settings=settings)
+    assert result["outcome"] == "auto_completed"
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["timing"]["status"] == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_missing_lead_stem_fails_open() -> None:
+    with patch(
+        "backend.services.auto_approval.executor._compute_timing_signals",
+        return_value=None,
+    ):
+        result, job_manager, _, _ = await _run(_job_with_lead_stem())
+    assert result["outcome"] == "auto_completed"
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["timing"]["status"] == "no_lead_stem"
+
+
+@pytest.mark.asyncio
+async def test_timing_analysis_error_fails_open() -> None:
+    from backend.services.auto_approval.timing_check import TimingSignals
+
+    with patch(
+        "backend.services.auto_approval.executor._compute_timing_signals",
+        return_value=TimingSignals(error="boom"),
+    ):
+        result, job_manager, _, _ = await _run(_job_with_lead_stem())
+    assert result["outcome"] == "auto_completed"
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["timing"]["status"] == "error"
+    assert payload["timing"]["error"] == "boom"
+
+
+@pytest.mark.asyncio
+async def test_gated_lyrics_skip_timing_compute() -> None:
+    # Lyrics already gated (no reference sources) -> no audio work needed.
+    data = _confident_corrections()
+    data["reference_lyrics"] = {}
+    with patch(
+        "backend.services.auto_approval.executor._compute_timing_signals"
+    ) as compute:
+        result, job_manager, _, _ = await _run(_job_with_lead_stem(), corrections=data)
+    compute.assert_not_called()
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["timing"]["status"] == "not_needed"
