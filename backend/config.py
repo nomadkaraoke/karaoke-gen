@@ -146,6 +146,17 @@ class Settings(BaseSettings):
         "AUTO_APPROVAL_BACKING_KEEP_ENABLED", "true"
     ).lower() in ("true", "1", "yes")
 
+    # Timing-plausibility gate: when the text signals say AUTO, check the word
+    # timing against the lead-vocal stem (backend/services/auto_approval/
+    # timing_check.py) and demote to review when it fires. Only ever ADDS
+    # review (never auto-ships more), so it defaults on. Code-level default for
+    # the same reason as backing_keep above (executor runs in both the backend
+    # service and the audio-separation job). Kill switch: set false in ci.yml
+    # backend deploy env AND the infrastructure audio-separation-job envs.
+    auto_approval_timing_gate_enabled: bool = os.getenv(
+        "AUTO_APPROVAL_TIMING_GATE_ENABLED", "true"
+    ).lower() in ("true", "1", "yes")
+
     # Match judge — artist/title formatting + match-acceptance for the job
     # submission flow. Deterministic + catalog layers always run; the light AI
     # layer (Vertex Gemini Flash) fires only when those aren't confident.

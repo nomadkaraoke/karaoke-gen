@@ -41,7 +41,7 @@ from backend.services.auto_approval.models import (
     LyricsVerdict,
 )
 
-SCORER_VERSION = "0.3.0"
+SCORER_VERSION = "0.4.0"
 
 # --- Lyrics thresholds (deliberately conservative; the safe intersection first) ---
 # The AUTO tier requires a synced reference the transcription matches with ZERO
@@ -376,8 +376,17 @@ def extract_lyrics_signals(
 def score_lyrics(
     correction_data: Dict[str, Any],
     ai_suggestions: Optional[List[Dict[str, Any]]] = None,
+    timing_signals: Optional[Any] = None,
 ) -> LyricsResult:
-    """Decide whether the lyrics look safe to auto-approve."""
+    """Decide whether the lyrics look safe to auto-approve.
+
+    ``timing_signals`` (a ``timing_check.TimingSignals``) is optional because
+    computing it needs the lead-vocal stem (audio IO the executor performs only
+    when the text signals would otherwise be AUTO). When provided and fired,
+    it is a never-auto gate: word timing that contradicts the vocal audio is a
+    quality problem no text signal can see (corpus: timing is the dominant
+    residual human-edit class, median retime 0.70s).
+    """
     s = extract_lyrics_signals(correction_data, ai_suggestions)
     reasons: List[str] = []
 
@@ -406,6 +415,17 @@ def score_lyrics(
             f"{s.suspicious_parenthetical_count} multi-second short parenthetical lines"
         )
         return LyricsResult(LyricsVerdict.REVIEW, "phantom-gate", s, reasons)
+
+    if timing_signals is not None and getattr(timing_signals, "fired", None):
+        sig = timing_signals
+        reasons.append(
+            f"timing-plausibility gate fired ({', '.join(sig.fired)}): "
+            f"{sig.pct_start_inactive:.1f}% of word starts in vocal silence, "
+            f"{sig.n_suspect_bad} structurally-suspect words contradicted by the "
+            f"audio, longest unclaimed vocal run {sig.max_unclaimed_run_s:.1f}s — "
+            "word timing likely needs human retiming"
+        )
+        return LyricsResult(LyricsVerdict.REVIEW, "timing-gate", s, reasons)
 
     if not s.accepted_reference_sources:
         reasons.append("no reference lyrics survived the relevance filter")
@@ -614,13 +634,14 @@ def score_job(
     correction_data: Dict[str, Any],
     backing_analysis: Optional[Dict[str, Any]],
     ai_suggestions: Optional[List[Dict[str, Any]]] = None,
+    timing_signals: Optional[Any] = None,
 ) -> AutoApprovabilityVerdict:
     """Produce the combined shadow verdict for a job.
 
     ``overall_auto`` is the narrow safe intersection: confident lyrics AND a
     non-subjective (no-audible-backing) backing decision.
     """
-    lyrics = score_lyrics(correction_data, ai_suggestions)
+    lyrics = score_lyrics(correction_data, ai_suggestions, timing_signals)
     backing = score_backing(backing_analysis)
     overall_auto = lyrics.verdict == LyricsVerdict.AUTO and backing.non_subjective
     return AutoApprovabilityVerdict(
