@@ -379,7 +379,6 @@ class TestRequestVanityUrl:
         app.dependency_overrides[require_auth] = lambda: mock_auth_result
 
         mock_service = Mock()
-        mock_service.get_or_create_link.return_value = _make_referral_link(code="odu4brd8")
         mock_service._validate_vanity_code.return_value = (False, "'admin' is a reserved code")
         mock_get_service.return_value = mock_service
 
@@ -387,6 +386,8 @@ class TestRequestVanityUrl:
 
         assert response.status_code == 400
         mock_service.create_vanity_request.assert_not_called()
+        # A rejected request must not create a link for a brand-new user
+        mock_service.get_or_create_link.assert_not_called()
 
 
 class TestAdminVanityRequests:

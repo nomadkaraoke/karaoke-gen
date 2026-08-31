@@ -173,11 +173,11 @@ async def request_vanity_url(
     from backend.services.email_service import get_email_service
 
     service = get_referral_service()
-    link = service.get_or_create_link(auth.user_email)
 
     # Validate up-front against the same rules approval enforces (reserved words,
     # vanity pattern) so a request that would later be auto-rejected never lands
-    # in the admin queue.
+    # in the admin queue. Do this before get_or_create_link so a rejected request
+    # from a brand-new user doesn't leave an orphaned auto-generated link behind.
     valid, msg = service._validate_vanity_code(request.desired_code)
     if not valid:
         raise HTTPException(status_code=400, detail=msg)
@@ -186,6 +186,8 @@ async def request_vanity_url(
     existing = service.get_link_by_code(request.desired_code)
     if existing:
         raise HTTPException(status_code=409, detail="That code is already taken. Please try another.")
+
+    link = service.get_or_create_link(auth.user_email)
 
     # Persist the request so it shows up as a pending item in the admin dashboard.
     service.create_vanity_request(
