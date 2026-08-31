@@ -97,6 +97,15 @@ export interface ReferralLink {
   is_vanity: boolean;
 }
 
+export interface VanityRequest {
+  id: string;
+  owner_email: string;
+  current_code: string;
+  desired_code: string;
+  status: 'pending' | 'approved' | 'denied';
+  created_at: string;
+}
+
 export interface ReferralEarning {
   id: string;
   referred_email: string;

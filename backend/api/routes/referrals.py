@@ -19,6 +19,7 @@ from backend.models.referral import (
     CreateReferralLinkRequest,
     UpdateReferralLinkRequest,
     ReferralInterstitialResponse,
+    VanityRequestResponse,
 )
 from backend.services.flyer_service import get_flyer_service, FlyerError
 from backend.services.referral_service import get_referral_service
@@ -179,6 +180,13 @@ async def request_vanity_url(
     if existing:
         raise HTTPException(status_code=409, detail="That code is already taken. Please try another.")
 
+    # Persist the request so it shows up as a pending item in the admin dashboard.
+    service.create_vanity_request(
+        owner_email=auth.user_email,
+        current_code=link.code,
+        desired_code=request.desired_code,
+    )
+
     email_service = get_email_service()
     email_service.provider.send_email(
         to_email="andrew@nomadkaraoke.com",
@@ -188,7 +196,7 @@ async def request_vanity_url(
         <p><strong>User:</strong> {auth.user_email}</p>
         <p><strong>Current code:</strong> {link.code}</p>
         <p><strong>Desired vanity code:</strong> {request.desired_code}</p>
-        <p>To approve, create the vanity link in the <a href="https://gen.nomadkaraoke.com/admin/referrals">admin dashboard</a>.</p>
+        <p>Approve or deny it under "Pending Vanity Requests" in the <a href="https://gen.nomadkaraoke.com/admin/referrals">admin dashboard</a>.</p>
         """,
         text_content=f"Vanity URL request from {auth.user_email}: {request.desired_code} (current: {link.code})",
     )
@@ -256,6 +264,76 @@ async def create_vanity_link(
         raise HTTPException(status_code=400, detail=message)
 
     return {"ok": True, "code": link.code, "message": message}
+
+
+@router.get("/admin/vanity-requests")
+async def list_vanity_requests(
+    status: str = Query("pending", pattern="^(pending|approved|denied)$"),
+    auth=Depends(require_admin),
+):
+    """Admin: list vanity code requests (pending by default)."""
+    service = get_referral_service()
+    requests = service.list_vanity_requests(status=status)
+    return {
+        "requests": [
+            VanityRequestResponse(**r.model_dump()).model_dump(mode="json")
+            for r in requests
+        ],
+        "count": len(requests),
+    }
+
+
+@router.post("/admin/vanity-requests/{request_id}/approve")
+async def approve_vanity_request(
+    request_id: str,
+    auth=Depends(require_admin),
+):
+    """Admin: approve a vanity request by renaming the owner's link, then notify them."""
+    from backend.services.email_service import get_email_service
+
+    service = get_referral_service()
+    req = service.get_vanity_request(request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    success, link, message = service.approve_vanity_request(
+        request_id, resolved_by=auth.user_email
+    )
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    # Notify the requester that their vanity URL is live.
+    try:
+        referral_url = f"https://nomadkaraoke.com/r/{link.code}"
+        get_email_service().provider.send_email(
+            to_email=req.owner_email,
+            subject="Your custom referral link is live 🎉",
+            html_content=f"""
+            <h2>Your custom referral link is ready</h2>
+            <p>Good news — your requested referral code <strong>{link.code}</strong> is now active.</p>
+            <p>Share it anywhere: <a href="{referral_url}">{referral_url}</a></p>
+            <p>All your existing clicks, signups, and earnings carried over automatically.</p>
+            """,
+            text_content=f"Your custom referral link is live: {referral_url}",
+        )
+    except Exception:
+        logger.warning("Failed to send vanity-approved email to %s", req.owner_email, exc_info=True)
+
+    return {"ok": True, "code": link.code, "message": message}
+
+
+@router.post("/admin/vanity-requests/{request_id}/deny")
+async def deny_vanity_request(
+    request_id: str,
+    auth=Depends(require_admin),
+):
+    """Admin: deny a vanity request."""
+    service = get_referral_service()
+    success, message = service.deny_vanity_request(request_id, resolved_by=auth.user_email)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    return {"ok": True, "message": message}
 
 
 @router.get("/admin/links")

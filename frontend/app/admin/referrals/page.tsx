@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { adminApi } from "@/lib/api"
-import type { ReferralLink } from "@/lib/types"
+import type { ReferralLink, VanityRequest } from "@/lib/types"
 import { StatsCard, StatsGrid } from "@/components/admin/stats-card"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +19,7 @@ import {
 import {
   Share2, Link as LinkIcon, Users, MousePointerClick, DollarSign,
   Plus, Copy, Check, RefreshCw, Loader2, ToggleLeft, ToggleRight, Pencil, QrCode,
+  Sparkles, ArrowRight, X,
 } from "lucide-react"
 import ReferralToolsDialog from "@/components/referrals/ReferralToolsDialog"
 import { NextIntlClientProvider } from "next-intl"
@@ -47,6 +48,9 @@ export default function ReferralsPage() {
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
   const [qrDialogCode, setQrDialogCode] = useState<string | null>(null)
+  const [pendingRequests, setPendingRequests] = useState<VanityRequest[]>([])
+  const [actioningRequestId, setActioningRequestId] = useState<string | null>(null)
+  const [requestError, setRequestError] = useState<string | null>(null)
 
   // Edit form state
   const [editDisplayName, setEditDisplayName] = useState("")
@@ -70,8 +74,15 @@ export default function ReferralsPage() {
     setLoading(true)
     setError(null)
     try {
-      const result = await adminApi.listReferralLinks({ limit: 200 })
+      const [result, requests] = await Promise.all([
+        adminApi.listReferralLinks({ limit: 200 }),
+        adminApi.listVanityRequests("pending").catch((err) => {
+          console.error("Failed to load vanity requests:", err)
+          return { requests: [] as VanityRequest[], count: 0 }
+        }),
+      ])
       setLinks(result.links as AdminReferralLink[])
+      setPendingRequests(requests.requests)
     } catch (err) {
       console.error("Failed to load referral links:", err)
       setError(err instanceof Error ? err.message : "Failed to load referral links")
@@ -79,6 +90,34 @@ export default function ReferralsPage() {
       setLoading(false)
     }
   }, [])
+
+  const handleApproveRequest = async (req: VanityRequest) => {
+    setActioningRequestId(req.id)
+    setRequestError(null)
+    try {
+      await adminApi.approveVanityRequest(req.id)
+      await loadData()
+    } catch (err) {
+      console.error("Failed to approve vanity request:", err)
+      setRequestError(err instanceof Error ? err.message : "Failed to approve request")
+    } finally {
+      setActioningRequestId(null)
+    }
+  }
+
+  const handleDenyRequest = async (req: VanityRequest) => {
+    setActioningRequestId(req.id)
+    setRequestError(null)
+    try {
+      await adminApi.denyVanityRequest(req.id)
+      await loadData()
+    } catch (err) {
+      console.error("Failed to deny vanity request:", err)
+      setRequestError(err instanceof Error ? err.message : "Failed to deny request")
+    } finally {
+      setActioningRequestId(null)
+    }
+  }
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -352,6 +391,64 @@ export default function ReferralsPage() {
           valueClassName="text-green-600 dark:text-green-400"
         />
       </StatsGrid>
+
+      {/* Pending Vanity Requests */}
+      {pendingRequests.length > 0 && (
+        <Card className="border-primary/50">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              Pending Vanity Requests
+              <Badge variant="default">{pendingRequests.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Approving renames the user&apos;s existing code — stats and earnings carry over, and they get an email.
+            </p>
+            {requestError && <p className="text-sm text-destructive">{requestError}</p>}
+            <div className="space-y-2">
+              {pendingRequests.map((req) => {
+                const busy = actioningRequestId === req.id
+                return (
+                  <div
+                    key={req.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+                  >
+                    <div className="flex flex-col gap-1 text-sm">
+                      <span className="font-medium">{req.owner_email}</span>
+                      <span className="flex items-center gap-2 font-mono text-xs">
+                        <code className="bg-muted px-1.5 py-0.5 rounded">{req.current_code}</code>
+                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded">{req.desired_code}</code>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleApproveRequest(req)}
+                        disabled={busy}
+                      >
+                        {busy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDenyRequest(req)}
+                        disabled={busy}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Deny
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Error State */}
       {error && (

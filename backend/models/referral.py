@@ -57,6 +57,24 @@ class ReferralLink(BaseModel):
     stats: ReferralLinkStats = Field(default_factory=ReferralLinkStats)
 
 
+class VanityRequestDoc(BaseModel):
+    """
+    A user's request for a custom vanity referral code, awaiting admin review.
+
+    Stored in Firestore keyed by ``owner_email`` so a re-request overwrites the
+    previous pending one (a user only ever has one outstanding request).
+    """
+    id: str  # Firestore doc id (owner_email, lowercased)
+    owner_email: str
+    current_code: str  # The user's existing (usually auto-generated) code
+    desired_code: str  # The vanity code they want
+    status: str = "pending"  # pending, approved, denied
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[str] = None  # Admin who approved/denied
+    note: Optional[str] = None  # Optional reason (e.g. denial reason)
+
+
 class ReferralEarning(BaseModel):
     """
     Record of a single earning from a referred purchase.
@@ -133,6 +151,16 @@ class ReferralLinkResponse(BaseModel):
     is_vanity: bool
     enabled: bool
     stats: ReferralLinkStats
+    created_at: datetime
+
+
+class VanityRequestResponse(BaseModel):
+    """Pending vanity request info for the admin dashboard."""
+    id: str
+    owner_email: str
+    current_code: str
+    desired_code: str
+    status: str
     created_at: datetime
 
 

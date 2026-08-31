@@ -3,7 +3,7 @@
  */
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
-import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink } from './types';
+import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse, AddLyricsResult } from './lyrics-review/types';
 import { beginRequest, endRequest, configureHealthProbe } from './backend-status';
 
@@ -3380,6 +3380,29 @@ export const adminApi = {
       method: 'PUT',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
+    });
+    return handleResponse(response);
+  },
+
+  async listVanityRequests(status: 'pending' | 'approved' | 'denied' = 'pending'): Promise<{ requests: VanityRequest[]; count: number }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/referrals/admin/vanity-requests?status=${status}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  async approveVanityRequest(requestId: string): Promise<{ ok: boolean; code: string; message: string }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/referrals/admin/vanity-requests/${encodeURIComponent(requestId)}/approve`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  async denyVanityRequest(requestId: string): Promise<{ ok: boolean; message: string }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/referrals/admin/vanity-requests/${encodeURIComponent(requestId)}/deny`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },

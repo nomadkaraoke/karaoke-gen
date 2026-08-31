@@ -345,3 +345,127 @@ class TestAdminUpdateLink:
         assert response.status_code == 200
         assert response.json()["ok"] is True
         mock_service.update_link.assert_called_once_with("abc12345", enabled=False)
+
+
+class TestAdminVanityRequests:
+    """Tests for the vanity request approve/deny queue endpoints."""
+
+    def _make_request_doc(self, **overrides):
+        from backend.models.referral import VanityRequestDoc
+        from datetime import datetime
+
+        defaults = {
+            "id": "user@example.com",
+            "owner_email": "user@example.com",
+            "current_code": "odu4brd8",
+            "desired_code": "youtube",
+            "status": "pending",
+            "created_at": datetime.utcnow(),
+        }
+        defaults.update(overrides)
+        return VanityRequestDoc(**defaults)
+
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_list_pending_requests(self, mock_get_service, client, mock_admin_auth_result):
+        """Admin can list pending vanity requests."""
+        app.dependency_overrides[require_admin] = lambda: mock_admin_auth_result
+
+        mock_service = Mock()
+        mock_service.list_vanity_requests.return_value = [self._make_request_doc()]
+        mock_get_service.return_value = mock_service
+
+        response = client.get("/api/referrals/admin/vanity-requests")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 1
+        assert data["requests"][0]["desired_code"] == "youtube"
+        mock_service.list_vanity_requests.assert_called_once_with(status="pending")
+
+    def test_list_requests_non_admin_403(self, client, mock_auth_result):
+        """Non-admin cannot list vanity requests."""
+        app.dependency_overrides[require_auth] = lambda: mock_auth_result
+        response = client.get("/api/referrals/admin/vanity-requests")
+        assert response.status_code == 403
+
+    @patch("backend.services.email_service.get_email_service")
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_approve_request_renames_and_emails(
+        self, mock_get_service, mock_get_email, client, mock_admin_auth_result
+    ):
+        """Approving renames the link and emails the requester."""
+        app.dependency_overrides[require_admin] = lambda: mock_admin_auth_result
+
+        mock_service = Mock()
+        mock_service.get_vanity_request.return_value = self._make_request_doc()
+        link = _make_referral_link(code="youtube", is_vanity=True)
+        mock_service.approve_vanity_request.return_value = (True, link, "Renamed 'odu4brd8' to 'youtube'")
+        mock_get_service.return_value = mock_service
+
+        mock_email = Mock()
+        mock_get_email.return_value = mock_email
+
+        response = client.post("/api/referrals/admin/vanity-requests/user@example.com/approve")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["ok"] is True
+        assert data["code"] == "youtube"
+        mock_service.approve_vanity_request.assert_called_once_with(
+            "user@example.com", resolved_by="admin@nomadkaraoke.com"
+        )
+        # Requester notified
+        mock_email.provider.send_email.assert_called_once()
+        assert mock_email.provider.send_email.call_args.kwargs["to_email"] == "user@example.com"
+
+    @patch("backend.services.email_service.get_email_service")
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_approve_request_not_found(
+        self, mock_get_service, mock_get_email, client, mock_admin_auth_result
+    ):
+        """Approving a missing request returns 404."""
+        app.dependency_overrides[require_admin] = lambda: mock_admin_auth_result
+
+        mock_service = Mock()
+        mock_service.get_vanity_request.return_value = None
+        mock_get_service.return_value = mock_service
+
+        response = client.post("/api/referrals/admin/vanity-requests/missing@example.com/approve")
+
+        assert response.status_code == 404
+        mock_get_email.return_value.provider.send_email.assert_not_called()
+
+    @patch("backend.services.email_service.get_email_service")
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_approve_request_code_taken(
+        self, mock_get_service, mock_get_email, client, mock_admin_auth_result
+    ):
+        """Approving fails (400) if the desired code was taken meanwhile, no email."""
+        app.dependency_overrides[require_admin] = lambda: mock_admin_auth_result
+
+        mock_service = Mock()
+        mock_service.get_vanity_request.return_value = self._make_request_doc()
+        mock_service.approve_vanity_request.return_value = (False, None, "Code 'youtube' is already taken")
+        mock_get_service.return_value = mock_service
+
+        response = client.post("/api/referrals/admin/vanity-requests/user@example.com/approve")
+
+        assert response.status_code == 400
+        mock_get_email.return_value.provider.send_email.assert_not_called()
+
+    @patch("backend.api.routes.referrals.get_referral_service")
+    def test_deny_request(self, mock_get_service, client, mock_admin_auth_result):
+        """Admin can deny a vanity request."""
+        app.dependency_overrides[require_admin] = lambda: mock_admin_auth_result
+
+        mock_service = Mock()
+        mock_service.deny_vanity_request.return_value = (True, "Request denied")
+        mock_get_service.return_value = mock_service
+
+        response = client.post("/api/referrals/admin/vanity-requests/user@example.com/deny")
+
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+        mock_service.deny_vanity_request.assert_called_once_with(
+            "user@example.com", resolved_by="admin@nomadkaraoke.com"
+        )
