@@ -16,6 +16,7 @@ import {
   Fingerprint,
   MessageSquare,
   Share2,
+  Building2,
 } from "lucide-react"
 
 import {
@@ -57,6 +58,11 @@ const navItems = [
     title: "Referrals",
     href: "/admin/referrals",
     icon: Share2,
+  },
+  {
+    title: "Tenants",
+    href: "/admin/tenants",
+    icon: Building2,
   },
   {
     title: "Audio Searches",
