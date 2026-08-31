@@ -911,10 +911,12 @@ class TestStartJobProcessing:
             # Lyrics worker should still be triggered
             mock_worker.trigger_lyrics_worker.assert_called_once_with("test123")
 
-            # audio_complete should be set via update_job (update_state_data calls update_job)
+            # audio_complete should be set via update_state_data, which now writes
+            # an atomic dot-path field ("state_data.audio_complete") rather than
+            # re-persisting the whole state_data map.
             update_calls = mock_firestore_service.update_job.call_args_list
             audio_complete_set = any(
-                call.args[1].get('state_data', {}).get('audio_complete') is True
+                call.args[1].get('state_data.audio_complete') is True
                 for call in update_calls
                 if len(call.args) > 1 and isinstance(call.args[1], dict)
             )
@@ -986,6 +988,78 @@ class TestStartJobProcessing:
             # workers must NOT have been triggered
             mock_worker.trigger_audio_worker.assert_not_called()
             mock_worker.trigger_lyrics_worker.assert_not_called()
+
+
+class TestAtomicNestedUpdates:
+    """update_state_data / update_file_url must write atomic dot-path fields.
+
+    Previously both copied the whole map and re-persisted it, so two workers
+    updating different keys concurrently could clobber each other's writes
+    (lost-update race — e.g. a backing_vocals stem vanishing while the audio and
+    screens workers ran in parallel). Writing a single nested field path lets
+    Firestore merge sibling entries server-side.
+    """
+
+    def _job(self, job_id="job-1", file_urls=None, state_data=None):
+        return Job(
+            job_id=job_id,
+            status=JobStatus.SEPARATING_STAGE1,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            file_urls=file_urls or {},
+            state_data=state_data or {},
+        )
+
+    def test_update_state_data_writes_dotted_field(self, job_manager, mock_firestore_service):
+        mock_firestore_service.get_job.return_value = self._job()
+
+        job_manager.update_state_data("job-1", "audio_complete", True)
+
+        mock_firestore_service.update_job.assert_called_once()
+        args = mock_firestore_service.update_job.call_args.args
+        assert args[0] == "job-1"
+        assert args[1] == {"state_data.audio_complete": True}
+        # Must NOT re-persist the whole map.
+        assert "state_data" not in args[1]
+
+    def test_update_file_url_writes_dotted_field(self, job_manager, mock_firestore_service):
+        mock_firestore_service.get_job.return_value = self._job()
+
+        job_manager.update_file_url("job-1", "stems", "backing_vocals", "jobs/job-1/stems/backing_vocals.flac")
+
+        mock_firestore_service.update_job.assert_called_once()
+        args = mock_firestore_service.update_job.call_args.args
+        assert args[1] == {"file_urls.stems.backing_vocals": "jobs/job-1/stems/backing_vocals.flac"}
+        assert "file_urls" not in args[1]
+
+    def test_concurrent_stem_registrations_do_not_clobber(self, job_manager, mock_firestore_service):
+        """Two stem registrations issue independent field-path writes.
+
+        With the old copy-and-rewrite approach, a registration built from a stale
+        snapshot would drop a sibling stem written in between. Independent dot-path
+        writes target different fields, so Firestore never loses either.
+        """
+        # Both callers see the same stale snapshot (missing each other's write).
+        mock_firestore_service.get_job.return_value = self._job(
+            file_urls={"stems": {"lead_vocals": "jobs/job-1/stems/lead_vocals.flac"}}
+        )
+
+        job_manager.update_file_url("job-1", "stems", "backing_vocals", "bv.flac")
+        job_manager.update_file_url("job-1", "stems", "instrumental_with_backing", "iwb.flac")
+
+        writes = [c.args[1] for c in mock_firestore_service.update_job.call_args_list]
+        assert {"file_urls.stems.backing_vocals": "bv.flac"} in writes
+        assert {"file_urls.stems.instrumental_with_backing": "iwb.flac"} in writes
+        # Neither write rewrites the whole map, so neither can drop the other.
+        assert all("file_urls" not in w for w in writes)
+
+    def test_missing_job_is_a_noop(self, job_manager, mock_firestore_service):
+        mock_firestore_service.get_job.return_value = None
+
+        job_manager.update_state_data("gone", "k", "v")
+        job_manager.update_file_url("gone", "stems", "backing_vocals", "x.flac")
+
+        mock_firestore_service.update_job.assert_not_called()
 
 
 if __name__ == "__main__":

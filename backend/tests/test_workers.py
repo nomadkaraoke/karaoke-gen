@@ -933,29 +933,64 @@ class TestBackingVocalsAnalysis:
         mock_job_manager.update_state_data.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_analyze_backing_vocals_handles_missing_stems(self):
-        """Test that analysis returns early when stems not found (no error stored)."""
+    async def test_analyze_backing_vocals_stores_fallback_when_stem_truly_absent(self):
+        """When the stem is registered nowhere AND absent from GCS, record a
+        fallback analysis so the review UI can distinguish 'genuinely no backing
+        vocals' from 'analysis never ran' — instead of silently implying 0%."""
         mock_job = MagicMock()
-        mock_job.file_urls = {}  # No stems
+        mock_job.file_urls = {}  # No stems registered
 
         mock_job_manager = MagicMock()
         mock_job_manager.get_job.return_value = mock_job
         mock_job_manager.update_state_data = MagicMock()
 
         mock_storage = MagicMock()
+        mock_storage.file_exists.return_value = False  # Not recoverable from GCS
         mock_logger = MagicMock()
 
         from backend.workers.screens_worker import _analyze_backing_vocals
 
-        # Should not raise when stems not found, just log warning and return
         await _analyze_backing_vocals(
             "test123", mock_job_manager, mock_storage, mock_logger
         )
 
-        # Should log warning but not update state (early return)
         mock_logger.warning.assert_called()
-        # No state_data update since we return early
-        mock_job_manager.update_state_data.assert_not_called()
+        # A fallback analysis is stored (not a silent early return), and no stem
+        # is re-registered because none exists.
+        mock_job_manager.update_state_data.assert_called_once()
+        args = mock_job_manager.update_state_data.call_args.args
+        assert args[1] == "backing_vocals_analysis"
+        assert args[2].get("analysis_error")
+        mock_job_manager.update_file_url.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_analyze_backing_vocals_recovers_stem_missing_from_file_urls(self):
+        """If the backing_vocals stem exists in GCS but was dropped from file_urls
+        (the lost-update race), recover by re-registering it from the conventional
+        path so the review UI can load it and analysis can run."""
+        mock_job = MagicMock()
+        mock_job.file_urls = {"stems": {"lead_vocals": "jobs/test123/stems/lead_vocals.flac"}}
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.get_job.return_value = mock_job
+
+        mock_storage = MagicMock()
+        mock_storage.file_exists.return_value = True  # Present in GCS
+        mock_logger = MagicMock()
+
+        # Patch the analysis service so the test asserts the recovery, not the
+        # (heavy) downstream waveform analysis.
+        with patch("backend.services.audio_analysis_service.AudioAnalysisService") as MockSvc:
+            MockSvc.return_value.analyze_and_generate_waveform.side_effect = RuntimeError("stop")
+            from backend.workers.screens_worker import _analyze_backing_vocals
+            await _analyze_backing_vocals(
+                "test123", mock_job_manager, mock_storage, mock_logger
+            )
+
+        # The dropped stem is re-registered atomically from the conventional path.
+        mock_job_manager.update_file_url.assert_called_once_with(
+            "test123", "stems", "backing_vocals", "jobs/test123/stems/backing_vocals.flac"
+        )
     
     def test_analysis_service_can_be_instantiated(self):
         """Test that AudioAnalysisService can be instantiated."""

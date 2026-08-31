@@ -592,8 +592,31 @@ async def _analyze_backing_vocals(
         stems = job.file_urls.get('stems', {})
         backing_vocals_path = stems.get('backing_vocals')
         if not backing_vocals_path:
-            job_log.warning("No backing vocals file found - skipping analysis")
-            return
+            # The stem may exist in GCS but be missing from file_urls if a
+            # concurrent write dropped its registration (the lost-update race
+            # this change also fixes at the source). Recover by checking the
+            # conventional path and re-registering it so the review UI can load
+            # the preview and the analysis below can run.
+            conventional_path = f"jobs/{job_id}/stems/backing_vocals.flac"
+            if storage.file_exists(conventional_path):
+                backing_vocals_path = conventional_path
+                stems['backing_vocals'] = conventional_path
+                job_manager.update_file_url(job_id, 'stems', 'backing_vocals', conventional_path)
+                job_log.warning(
+                    "backing_vocals missing from file_urls but present in GCS "
+                    "— re-registered from the conventional path"
+                )
+            else:
+                job_log.warning("No backing vocals file found - skipping analysis")
+                # Record that analysis was attempted with no stem, so the review
+                # UI can distinguish "genuinely no backing vocals" from "analysis
+                # never ran" instead of silently implying 0% backing.
+                job_manager.update_state_data(job_id, 'backing_vocals_analysis', {
+                    'has_audible_content': None,
+                    'analysis_error': 'backing_vocals stem not found',
+                    'recommended_selection': 'clean',
+                })
+                return
 
         job_log.info(f"Analyzing backing vocals: {backing_vocals_path}")
 
