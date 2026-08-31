@@ -294,3 +294,16 @@ def test_summary_lyrics_confident_without_timing_block():
     # their confidence semantics are unchanged.
     s = auto_approval_summary(_job_with_verdict("clean", True), _settings())
     assert s["lyrics"]["confident"] is True
+
+
+def test_summary_timing_pending_ignored_when_gate_disabled():
+    # Kill switch consistency: with the timing gate disabled the executor can
+    # auto-complete, so the C1 summary must not hold the lyrics screen either.
+    job = _job_with_verdict("clean", True)
+    job.processing_metadata["auto_approval"]["timing"] = {"status": "pending_audio"}
+    settings = SimpleNamespace(
+        auto_approval_backing_keep_enabled=True,
+        auto_approval_timing_gate_enabled=False,
+    )
+    s = auto_approval_summary(job, settings)
+    assert s["lyrics"]["confident"] is True

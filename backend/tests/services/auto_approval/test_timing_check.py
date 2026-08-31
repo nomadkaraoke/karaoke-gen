@@ -185,3 +185,12 @@ class TestComputeTimingSignals:
         stem = _synth_stem(tmp_path, [(1.0, 1.5)], duration_s=5.0)
         sig = compute_timing_signals(_segments(words), stem)
         json.dumps(sig.to_dict())  # must not raise
+
+    def test_silent_stem_is_analysis_unavailable(self, tmp_path):
+        # A silent (failed-separation) stem must NOT mark every word start
+        # inactive and fire — it goes down the fail-open error path.
+        words = [(f"word{i}", 1.0 + i, 1.8 + i) for i in range(10)]
+        stem = _synth_stem(tmp_path, [])  # no sung regions at all
+        sig = compute_timing_signals(_segments(words), stem)
+        assert sig.error is not None
+        assert sig.fired == []

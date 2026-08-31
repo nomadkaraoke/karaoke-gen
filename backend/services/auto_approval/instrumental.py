@@ -147,7 +147,10 @@ def auto_approval_summary(job, settings) -> Dict[str, Any]:
     # audio_worker re-score clears that "pending_audio" marker, the lyrics half
     # is not confident enough to skip its screen — otherwise a job with
     # machine-mistimed words could bypass the lyrics review via the C1 skip.
-    timing_pending = (aa.get("timing") or {}).get("status") == "pending_audio"
+    timing_pending = (
+        bool(getattr(settings, "auto_approval_timing_gate_enabled", True))
+        and (aa.get("timing") or {}).get("status") == "pending_audio"
+    )
     return {
         "backing": {
             "verdict": backing.get("verdict"),

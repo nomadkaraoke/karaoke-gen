@@ -131,11 +131,25 @@ def _detect_onsets(samples: np.ndarray, sr: int) -> np.ndarray:
     n = (len(samples) - ONSET_NFFT) // ONSET_HOP
     if n < 3:
         return np.zeros(0)
-    idx = np.arange(n)[:, None] * ONSET_HOP + np.arange(ONSET_NFFT)[None, :]
-    frames = samples[idx] * np.hanning(ONSET_NFFT)[None, :]
-    mag = np.abs(np.fft.rfft(frames, axis=1))
-    logmag = np.log1p(1000.0 * mag)
-    flux = np.maximum(0.0, np.diff(logmag, axis=0)).sum(axis=1)
+    # Batched STFT flux: a full-track frame matrix would be O(minutes * 60MB)
+    # and can OOM a worker on long inputs. Each batch re-computes one overlap
+    # frame so the flux diff is continuous across batch boundaries.
+    window = np.hanning(ONSET_NFFT)
+    batch = 4096
+    flux_parts = []
+    prev_last_logmag = None
+    for b0 in range(0, n, batch):
+        b1 = min(n, b0 + batch)
+        idx = (
+            np.arange(b0, b1)[:, None] * ONSET_HOP
+            + np.arange(ONSET_NFFT)[None, :]
+        )
+        logmag = np.log1p(1000.0 * np.abs(np.fft.rfft(samples[idx] * window, axis=1)))
+        if prev_last_logmag is not None:
+            logmag = np.vstack([prev_last_logmag, logmag])
+        flux_parts.append(np.maximum(0.0, np.diff(logmag, axis=0)).sum(axis=1))
+        prev_last_logmag = logmag[-1]
+    flux = np.concatenate(flux_parts)
     if not flux.size or flux.max() <= 0:
         return np.zeros(0)
     flux = flux / flux.max()
@@ -257,8 +271,10 @@ def compute_timing_signals(
             raise ValueError("no words")
         samples, sr = _load_mono(lead_vocals_path)
         active, frame_s = _rms_activity(samples, sr)
-        if not len(active):
-            raise ValueError("empty audio")
+        if not len(active) or not active.any():
+            # A silent/failed separation output would mark every word start
+            # inactive and falsely fire — treat as analysis-unavailable.
+            raise ValueError("empty or silent audio")
         onsets = _detect_onsets(samples, sr)
 
         rep = _repetition_run_flags([_norm(w["text"]) for w in words])
