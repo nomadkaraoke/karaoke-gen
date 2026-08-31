@@ -864,7 +864,7 @@ class EncodingService:
                 # final-encode Cloud Run Job retries) instead of failing the customer's
                 # job outright. See job 6452888e (2026-08-31). worker_url is the VM the
                 # job ran on; zone comes from active_override for logging.
-                if is_worker_infra_error(error):
+                if is_worker_infra_error(str(error)):
                     logger.warning(
                         f"[job:{job_id}] Worker reported an infrastructure/auth failure "
                         f"(not a job problem) — demoting the worker and retrying: {error}"

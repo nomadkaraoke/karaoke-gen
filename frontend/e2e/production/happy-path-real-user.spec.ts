@@ -715,8 +715,13 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       const videoElement = reviewPage.locator('video');
       const errorAlert = previewModal.locator('[role="alert"]');
 
-      // Check if there's a *real* error (non-empty alert text inside the modal)
-      const alertText = (await errorAlert.first().textContent().catch(() => ''))?.trim() || '';
+      // Check if there's a *real* error (non-empty alert text inside the modal).
+      // Gate on isVisible() (immediate — it does not auto-wait) so the happy path
+      // with no alert doesn't block on textContent()'s default 30s wait-for-element.
+      let alertText = '';
+      if (await errorAlert.first().isVisible().catch(() => false)) {
+        alertText = ((await errorAlert.first().textContent().catch(() => '')) || '').trim();
+      }
       if (alertText) {
         console.log(`  WARNING: Preview error: ${alertText}`);
         // Continue anyway - we can still proceed to instrumental even if preview failed
