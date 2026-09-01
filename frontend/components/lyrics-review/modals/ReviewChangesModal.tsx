@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 import { useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { CorrectionData } from '@/lib/lyrics-review/types'
+import { CorrectionData, InstrumentalOption } from '@/lib/lyrics-review/types'
 import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import PreviewVideoSection, { PreviewVideoHandle } from '../PreviewVideoSection'
 import BackingVocalsWaveform from '../BackingVocalsWaveform'
@@ -27,6 +27,7 @@ interface ApiClient {
   }>
   getPreviewVideoUrl: (hash: string) => string
   getWaveformData?: (numPoints?: number) => Promise<WaveformDataResult>
+  refreshInstrumentalUrls?: () => Promise<InstrumentalOption[]>
 }
 
 interface ReviewChangesModalProps {
