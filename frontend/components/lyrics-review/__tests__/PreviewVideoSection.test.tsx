@@ -1,5 +1,5 @@
 import { createRef } from 'react'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PreviewVideoSection, { PreviewVideoHandle } from '../PreviewVideoSection'
 import type { CorrectionData } from '@/lib/lyrics-review/types'
@@ -284,5 +284,92 @@ describe('PreviewVideoSection', () => {
     expect(video.currentTime).toBe(5)
     // Pill label tracks the new selection.
     expect(screen.getByRole('button', { name: /instrumental \(clean\)/i })).toBeInTheDocument()
+  })
+
+  it('re-fetches a fresh signed URL and swaps it in when the stem fails to load', async () => {
+    // Simulates the expired-signed-URL case: the baked-in stem URL 404s/expires,
+    // the <audio> fires `error`, and the component silently re-signs and retries.
+    const refreshInstrumentalUrls = jest.fn().mockResolvedValue([
+      { id: 'clean', label: 'Clean', audio_url: 'http://test/clean-fresh.ogg' },
+      { id: 'with_backing', label: 'Backing', audio_url: 'http://test/backing-fresh.ogg' },
+    ])
+    const apiClient = makeApiClient({ refreshInstrumentalUrls })
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="with_backing"
+      />
+    )
+    await flush()
+
+    const audio = document.querySelector('audio') as HTMLAudioElement
+    expect(audio.src).toBe('http://test/backing.ogg')
+
+    await act(async () => {
+      fireEvent.error(audio)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(refreshInstrumentalUrls).toHaveBeenCalledTimes(1)
+    // Same selected variant (with_backing), but now the freshly-signed URL.
+    expect((document.querySelector('audio') as HTMLAudioElement).src).toBe(
+      'http://test/backing-fresh.ogg'
+    )
+  })
+
+  it('stops re-fetching after the cap so a broken stem cannot loop', async () => {
+    // Refresh keeps returning the same (still-broken) URL, so each swap re-errors.
+    const refreshInstrumentalUrls = jest.fn().mockResolvedValue([
+      { id: 'with_backing', label: 'Backing', audio_url: 'http://test/backing.ogg' },
+    ])
+    const apiClient = makeApiClient({ refreshInstrumentalUrls })
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="with_backing"
+      />
+    )
+    await flush()
+
+    const audio = document.querySelector('audio') as HTMLAudioElement
+    for (let i = 0; i < 6; i++) {
+      await act(async () => {
+        fireEvent.error(audio)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+    }
+
+    // Capped at MAX_URL_REFRESHES (3) — no infinite refresh↔error loop.
+    expect(refreshInstrumentalUrls).toHaveBeenCalledTimes(3)
+  })
+
+  it('does nothing on a stem error when no refresh function is provided', async () => {
+    const apiClient = makeApiClient()
+    render(
+      <PreviewVideoSection
+        apiClient={apiClient}
+        isModalOpen={true}
+        updatedData={data}
+        instrumentalOptions={instrumentalOptions as any}
+        autoSelection="with_backing"
+      />
+    )
+    await flush()
+
+    const audio = document.querySelector('audio') as HTMLAudioElement
+    // Must not throw when the client can't re-sign (e.g. older client shape).
+    await act(async () => {
+      fireEvent.error(audio)
+      await Promise.resolve()
+    })
+    expect(audio.src).toBe('http://test/backing.ogg')
   })
 })

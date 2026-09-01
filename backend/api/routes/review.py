@@ -409,6 +409,57 @@ def _dev_audio_url(job_id: str, gcs_path: Optional[str], base_url: str = "") -> 
     return f"{base_url.rstrip('/')}/api/review/{job_id}/dev-audio?path={quote(gcs_path, safe='')}"
 
 
+async def _build_instrumental_options(job, storage, request) -> List[Dict[str, Any]]:
+    """Build the ``instrumental_options`` list (transcoded, freshly-signed OGG URLs).
+
+    Signed GCS URLs expire (see ``AudioTranscodingService`` — 120 min), so the
+    review payload's baked-in URLs go stale during a long review session. This
+    helper is shared by the combined-review corrections endpoint (initial load)
+    and ``GET /{job_id}/instrumental-urls`` (frontend refresh-on-expiry), so both
+    return the identical shape with URLs signed at call time.
+    """
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
+    transcoding = AudioTranscodingService(storage_service=storage)
+    stems = job.file_urls.get("stems", {})
+    clean_url = stems.get("instrumental_clean")
+    backing_url = stems.get("instrumental_with_backing")
+
+    signed_urls: Dict[str, Optional[str]] = {}
+    if _dev_audio_proxy_enabled():
+        _base = str(request.base_url)
+        if clean_url:
+            signed_urls["clean"] = _dev_audio_url(job.job_id, clean_url, _base)
+        if backing_url:
+            signed_urls["with_backing"] = _dev_audio_url(job.job_id, backing_url, _base)
+    else:
+        url_tasks = {}
+        if clean_url:
+            url_tasks["clean"] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
+        if backing_url:
+            url_tasks["with_backing"] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
+        if url_tasks:
+            results = await asyncio.gather(*url_tasks.values())
+            signed_urls = dict(zip(url_tasks.keys(), results))
+
+    instrumental_options: List[Dict[str, Any]] = []
+    if clean_url:
+        instrumental_options.append({
+            "id": "clean",
+            "label": "Clean Instrumental",
+            "description": "No backing vocals - just the music",
+            "audio_url": signed_urls.get("clean"),
+        })
+    if backing_url:
+        instrumental_options.append({
+            "id": "with_backing",
+            "label": "Instrumental with Backing Vocals",
+            "description": "Includes harmonies and background vocals",
+            "audio_url": signed_urls.get("with_backing"),
+        })
+    return instrumental_options
+
+
 def _reconstruct_post_ai_segments(
     raw_segments: List[Dict[str, Any]],
     edit_log: Optional[Dict[str, Any]],
@@ -632,50 +683,11 @@ async def get_correction_data(
         }
 
         # === Add instrumental data for combined review ===
-        from backend.services.audio_transcoding_service import AudioTranscodingService
-        transcoding = AudioTranscodingService(storage_service=storage)
-
-        # Get instrumental stem URLs
-        stems = job.file_urls.get('stems', {})
-        clean_url = stems.get('instrumental_clean')
-        backing_url = stems.get('instrumental_with_backing')
-
-        # Build instrumental options with transcoded signed URLs (OGG Opus).
-        # In local dev without signing creds, use same-origin byte-proxy URLs.
-        instrumental_options = []
-        signed_urls = {}
-        if _dev_audio_proxy_enabled():
-            _base = str(request.base_url)
-            if clean_url:
-                signed_urls['clean'] = _dev_audio_url(job_id, clean_url, _base)
-            if backing_url:
-                signed_urls['with_backing'] = _dev_audio_url(job_id, backing_url, _base)
-        else:
-            url_tasks = {}
-            if clean_url:
-                url_tasks['clean'] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
-            if backing_url:
-                url_tasks['with_backing'] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
-            if url_tasks:
-                results = await asyncio.gather(*url_tasks.values())
-                signed_urls = dict(zip(url_tasks.keys(), results))
-
-        if clean_url:
-            instrumental_options.append({
-                "id": "clean",
-                "label": "Clean Instrumental",
-                "description": "No backing vocals - just the music",
-                "audio_url": signed_urls['clean'],
-            })
-        if backing_url:
-            instrumental_options.append({
-                "id": "with_backing",
-                "label": "Instrumental with Backing Vocals",
-                "description": "Includes harmonies and background vocals",
-                "audio_url": signed_urls['with_backing'],
-            })
-
-        corrections_data['instrumental_options'] = instrumental_options
+        # Transcoded signed OGG URLs (freshly signed here; the frontend re-fetches
+        # them via GET /{job_id}/instrumental-urls when they expire mid-review).
+        corrections_data['instrumental_options'] = await _build_instrumental_options(
+            job, storage, request
+        )
 
         # Get backing vocals analysis from state_data (populated by screens_worker)
         backing_vocals_analysis = job.state_data.get('backing_vocals_analysis', {})
@@ -1852,6 +1864,31 @@ async def get_annotation_stats(
         return {"total_annotations": len(annotations), "by_type": by_type}
     except Exception:
         return {"total_annotations": 0, "by_type": {}}
+
+
+@router.get("/{job_id}/instrumental-urls")
+async def get_instrumental_urls(
+    job_id: str,
+    request: Request,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """Return freshly-signed instrumental stem URLs for the combined review.
+
+    The signed URLs baked into the initial review payload expire after 120 min,
+    and a long review session (or a page reload that rehydrates cached correction
+    data from localStorage) can outlive them — the preview modal's instrumental
+    audio then fails to load (``NS_ERROR_DOM_NETWORK_ERR``). The frontend calls
+    this on an audio load error to swap in a fresh URL and resume playback.
+    """
+    job_manager = JobManager()
+    storage = StorageService()
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
+
+    instrumental_options = await _build_instrumental_options(job, storage, request)
+    return {"instrumental_options": instrumental_options}
 
 
 @router.get("/{job_id}/instrumental-analysis")

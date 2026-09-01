@@ -3807,6 +3807,7 @@ export interface LyricsReviewApiClient {
   }>
   getPreviewVideoUrl: (hash: string) => string
   getWaveformData: (numPoints?: number) => Promise<WaveformData>
+  refreshInstrumentalUrls: () => Promise<InstrumentalOption[]>
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods
   saveReviewSession: (data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) => Promise<{ status: string; session_id?: string; reason?: string }>
@@ -4008,6 +4009,23 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
         { headers: getAuthHeaders() }
       )
       return handleResponse(response)
+    },
+
+    /**
+     * Re-fetch freshly-signed instrumental stem URLs.
+     *
+     * The signed URLs baked into the review payload expire after 120 min, and a
+     * long review session (or a reload that rehydrates cached correction data
+     * from localStorage) can outlive them. The preview modal calls this on an
+     * audio load error to swap in a fresh URL and resume playback.
+     */
+    async refreshInstrumentalUrls(): Promise<InstrumentalOption[]> {
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/review/${jobId}/instrumental-urls`,
+        { headers: getAuthHeaders() }
+      )
+      const data = await handleResponse<{ instrumental_options?: InstrumentalOption[] }>(response)
+      return data.instrumental_options ?? []
     },
 
     /**
