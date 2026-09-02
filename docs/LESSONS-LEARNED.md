@@ -25,6 +25,18 @@ the path is misread as further nesting. Belt-and-suspenders: `_analyze_backing_v
 now recovers a stem that exists at the conventional GCS path but is unregistered, and
 stores a fallback analysis instead of a silent early-return.
 
+**Follow-up sweep (Sep 2026):** a codebase-wide audit found the same read-copy-mutate-write
+pattern in 8 more sites, now converted to atomic dot-path writes: the video worker's three
+distribution/redistribution writes (`video_worker.py`), the audio-editor undo/redo/apply/
+upload endpoints (`review.py`), and the deferred YouTube-URL write (`youtube_queue_processor.py`).
+The video-worker ones were the most dangerous — they `.pop('visibility_change_in_progress')`
+and rewrote the whole map, so a stale write could **revert the `worker_generation`
+supersession-fence `Increment`** or clobber the visibility flag (the
+"visibility-recycle-dataloss" surface). Clearing a key now uses `DELETE_FIELD` in the same
+dot-path write. When you add a new nested-map write, grep for `{'state_data':` / `{**job.state_data`
+before shipping. (Correct reference pattern: `duration_reconciliation.py` copies state only
+to *read*, and writes via `state_data.<key>`.)
+
 ---
 
 ## Measure Human Edits by RECONSTRUCTION, Not the edit_log (Aug 2026)

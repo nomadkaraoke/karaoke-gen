@@ -2585,13 +2585,14 @@ async def apply_audio_edit(
             "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
         })
 
-        # Clear redo stack on new edit
-        updated_state_data = {
-            **state_data,
-            'audio_edit_stack': edit_stack,
-            'audio_edit_redo_stack': [],
-        }
-        job_manager.update_job(job_id, {'state_data': updated_state_data})
+        # Clear redo stack on new edit. Atomic per-field writes so a rapid
+        # follow-up edit/undo — or the idle-reminder scheduler that runs during
+        # the audio-edit phase — can't clobber unrelated state_data keys by
+        # re-persisting a stale copy of the whole map.
+        job_manager.update_job(job_id, {
+            'state_data.audio_edit_stack': edit_stack,
+            'state_data.audio_edit_redo_stack': [],
+        })
 
         return _build_audio_edit_response(
             job_id=job_id,
@@ -2633,12 +2634,13 @@ async def undo_audio_edit(
     undone_edit = edit_stack.pop()
     redo_stack.append(undone_edit)
 
-    updated_state_data = {
-        **state_data,
-        'audio_edit_stack': edit_stack,
-        'audio_edit_redo_stack': redo_stack,
-    }
-    job_manager.update_job(job_id, {'state_data': updated_state_data})
+    # Atomic per-field writes so a rapid undo/redo (or the idle-reminder
+    # scheduler active during audio-edit) can't clobber unrelated state_data
+    # keys by re-persisting a stale copy of the whole map.
+    job_manager.update_job(job_id, {
+        'state_data.audio_edit_stack': edit_stack,
+        'state_data.audio_edit_redo_stack': redo_stack,
+    })
 
     # Get the now-current audio (previous edit or original)
     current_gcs_path = edit_stack[-1]['gcs_path'] if edit_stack else job.input_media_gcs_path
@@ -2680,12 +2682,13 @@ async def redo_audio_edit(
     redone_edit = redo_stack.pop()
     edit_stack.append(redone_edit)
 
-    updated_state_data = {
-        **state_data,
-        'audio_edit_stack': edit_stack,
-        'audio_edit_redo_stack': redo_stack,
-    }
-    job_manager.update_job(job_id, {'state_data': updated_state_data})
+    # Atomic per-field writes so a rapid undo/redo (or the idle-reminder
+    # scheduler active during audio-edit) can't clobber unrelated state_data
+    # keys by re-persisting a stale copy of the whole map.
+    job_manager.update_job(job_id, {
+        'state_data.audio_edit_stack': edit_stack,
+        'state_data.audio_edit_redo_stack': redo_stack,
+    })
 
     current_gcs_path = edit_stack[-1]['gcs_path']
 
@@ -2779,8 +2782,9 @@ async def upload_audio_for_join(
             "duration_seconds": metadata.duration_seconds,
             "filename": filename,
         }
-        updated_state_data = {**state_data, 'audio_edit_uploads': uploads}
-        job_manager.update_job(job_id, {'state_data': updated_state_data})
+        # Atomic write of just the uploads map so a concurrent state_data write
+        # isn't clobbered by re-persisting a stale copy of the whole map.
+        job_manager.update_job(job_id, {'state_data.audio_edit_uploads': uploads})
 
         return {
             "upload_id": upload_id,

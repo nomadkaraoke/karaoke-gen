@@ -402,11 +402,12 @@ class TestUndoAudioEdit:
         assert data["can_undo"] is False
         assert data["can_redo"] is True
 
-        # Verify state_data was updated
-        update_call = mock_job_manager.update_job.call_args[0]
-        state_data = update_call[1]["state_data"]
-        assert len(state_data["audio_edit_stack"]) == 0
-        assert len(state_data["audio_edit_redo_stack"]) == 1
+        # Verify state_data was updated via atomic dot-path writes (not a
+        # full-map rewrite that could clobber a concurrent sibling key).
+        payload = mock_job_manager.update_job.call_args[0][1]
+        assert "state_data" not in payload
+        assert len(payload["state_data.audio_edit_stack"]) == 0
+        assert len(payload["state_data.audio_edit_redo_stack"]) == 1
 
     def test_undo_nothing_to_undo(self, test_client, mock_job_manager, audio_edit_job):
         mock_job_manager.get_job.return_value = audio_edit_job
