@@ -247,7 +247,7 @@ class TestUpdateJobYouTubeUrl:
     """Test updating job state_data with YouTube URL."""
 
     def test_updates_state_data(self):
-        """Should set youtube_url and clear queued flag."""
+        """Should set youtube_url and clear queued flag via atomic dot-path writes."""
         from backend.workers.youtube_queue_processor import _update_job_youtube_url
 
         mock_job = Mock()
@@ -260,9 +260,12 @@ class TestUpdateJobYouTubeUrl:
 
         update_call = mock_job_manager.update_job.call_args[0]
         assert update_call[0] == "job-123"
-        state_data = update_call[1]["state_data"]
-        assert state_data["youtube_url"] == "https://youtube.com/watch?v=abc"
-        assert state_data["youtube_upload_queued"] is False
+        payload = update_call[1]
+        assert payload["state_data.youtube_url"] == "https://youtube.com/watch?v=abc"
+        assert payload["state_data.youtube_upload_queued"] is False
+        # Atomic field writes only — must NOT re-persist the whole state_data map
+        # (which would clobber a concurrently-changed sibling like brand_code).
+        assert "state_data" not in payload
 
     def test_handles_missing_job(self):
         """Should not raise when job not found."""

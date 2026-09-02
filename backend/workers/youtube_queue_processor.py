@@ -278,10 +278,13 @@ def _update_job_youtube_url(job_id: str, youtube_url: str) -> None:
         job_manager = JobManager()
         job = job_manager.get_job(job_id)
         if job:
-            state_data = job.state_data or {}
-            state_data["youtube_url"] = youtube_url
-            state_data["youtube_upload_queued"] = False  # No longer queued
-            job_manager.update_job(job_id, {"state_data": state_data})
+            # Atomic per-field writes: this deferred upload can land while other
+            # state_data is being written, so rewriting the whole map from a
+            # snapshot could clobber a sibling key.
+            job_manager.update_job(job_id, {
+                "state_data.youtube_url": youtube_url,
+                "state_data.youtube_upload_queued": False,  # No longer queued
+            })
             logger.info(f"Updated job {job_id} state_data with YouTube URL")
     except Exception as e:
         logger.error(f"Failed to update job {job_id} with YouTube URL: {e}")

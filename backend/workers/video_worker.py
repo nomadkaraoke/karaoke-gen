@@ -31,6 +31,8 @@ import json
 from typing import Optional, Dict, Any
 from pathlib import Path
 
+from google.cloud.firestore_v1 import DELETE_FIELD
+
 from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
@@ -378,19 +380,23 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             # Store result metadata in job BEFORE transitioning to COMPLETE
             # This ensures youtube_url is available when completion email is sent
             logger.info(f"[job:{job_id}] Video generation complete")
-            state_update = {
-                **job.state_data,
-                'brand_code': result.brand_code,
-                'youtube_url': result.youtube_url,
-                'youtube_upload_queued': result.youtube_upload_queued,
-                'dropbox_link': result.dropbox_link,
-                'gdrive_files': result.gdrive_files,
+            # Atomic per-field writes. Rewriting the whole state_data map from a
+            # snapshot could clobber a concurrent write here — most dangerously the
+            # visibility-change flow or the worker_generation supersession fence
+            # (an Increment reverted by a stale full-map write). Dot-path writes
+            # touch only the distribution-result keys.
+            state_updates: Dict[str, Any] = {
+                'state_data.brand_code': result.brand_code,
+                'state_data.youtube_url': result.youtube_url,
+                'state_data.youtube_upload_queued': result.youtube_upload_queued,
+                'state_data.dropbox_link': result.dropbox_link,
+                'state_data.gdrive_files': result.gdrive_files,
+                # Clear the visibility-change guard flag (previously popped from the map).
+                'state_data.visibility_change_in_progress': DELETE_FIELD,
             }
             if result.distribution_warnings:
-                state_update['distribution_warnings'] = result.distribution_warnings
-            # Clear visibility change guard flag if set (from visibility change flow)
-            state_update.pop('visibility_change_in_progress', None)
-            job_manager.update_job(job_id, {'state_data': state_update})
+                state_updates['state_data.distribution_warnings'] = result.distribution_warnings
+            job_manager.update_job(job_id, state_updates)
 
             # Send Pushbullet alert if any distribution uploads failed
             if result.distribution_warnings:
@@ -627,16 +633,15 @@ async def redistribute_video(job_id: str) -> bool:
             if dropbox_failed:
                 raise RuntimeError("Redistribution failed to upload the Dropbox archive")
 
-        # Update job state_data with new distribution results
-        state_update = dict(job.state_data or {})
-        state_update['brand_code'] = orchestrator.result.brand_code
-        state_update['youtube_url'] = orchestrator.result.youtube_url
-        state_update['dropbox_link'] = orchestrator.result.dropbox_link
-        state_update['gdrive_files'] = orchestrator.result.gdrive_files
-        state_update.pop('visibility_change_in_progress', None)
-
+        # Update job state_data with new distribution results. Atomic per-field
+        # writes so this redistribution can't clobber a concurrent state_data
+        # write (e.g. the visibility-change flow or worker_generation fence).
         job_manager.update_job(job_id, {
-            'state_data': state_update,
+            'state_data.brand_code': orchestrator.result.brand_code,
+            'state_data.youtube_url': orchestrator.result.youtube_url,
+            'state_data.dropbox_link': orchestrator.result.dropbox_link,
+            'state_data.gdrive_files': orchestrator.result.gdrive_files,
+            'state_data.visibility_change_in_progress': DELETE_FIELD,
             'outputs_deleted_at': None,
             'outputs_deleted_by': None,
         })
@@ -1220,15 +1225,16 @@ async def _handle_native_distribution(
     # Update job state_data with brand code and links
     if brand_code or result.get('dropbox_link') or result.get('gdrive_files'):
         try:
-            state_update = {
-                **job.state_data,
-                'brand_code': brand_code,
-                'dropbox_link': result.get('dropbox_link'),
-                'gdrive_files': result.get('gdrive_files'),
+            # Atomic per-field writes so this distribution update can't clobber a
+            # concurrent state_data write from a stale full-map snapshot.
+            state_updates: Dict[str, Any] = {
+                'state_data.brand_code': brand_code,
+                'state_data.dropbox_link': result.get('dropbox_link'),
+                'state_data.gdrive_files': result.get('gdrive_files'),
             }
             if result.get('distribution_warnings'):
-                state_update['distribution_warnings'] = result['distribution_warnings']
-            job_manager.update_job(job_id, {'state_data': state_update})
+                state_updates['state_data.distribution_warnings'] = result['distribution_warnings']
+            job_manager.update_job(job_id, state_updates)
         except Exception as e:
             job_log.warning(f"Failed to update job state_data: {e}")
 
