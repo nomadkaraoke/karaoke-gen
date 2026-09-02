@@ -23,6 +23,7 @@ from typing import Dict, Any, List, Literal, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
 from fastapi.responses import RedirectResponse, Response
+from google.cloud.firestore_v1.field_path import FieldPath
 
 from backend.models.job import JobStatus
 from backend.models.review_session import ReviewSession, ReviewSessionSummary
@@ -2588,7 +2589,11 @@ async def apply_audio_edit(
         # Clear redo stack on new edit. Atomic per-field writes so a rapid
         # follow-up edit/undo — or the idle-reminder scheduler that runs during
         # the audio-edit phase — can't clobber unrelated state_data keys by
-        # re-persisting a stale copy of the whole map.
+        # re-persisting a stale copy of the whole map. NOTE: these two list
+        # fields are still last-write-wins across concurrent edits to the SAME
+        # job (a list can't be dot-path-merged); that's acceptable for the
+        # single-reviewer, sequential audio-editor UI. True multi-writer safety
+        # would need a transaction / optimistic-concurrency CAS.
         job_manager.update_job(job_id, {
             'state_data.audio_edit_stack': edit_stack,
             'state_data.audio_edit_redo_stack': [],
@@ -2636,7 +2641,10 @@ async def undo_audio_edit(
 
     # Atomic per-field writes so a rapid undo/redo (or the idle-reminder
     # scheduler active during audio-edit) can't clobber unrelated state_data
-    # keys by re-persisting a stale copy of the whole map.
+    # keys by re-persisting a stale copy of the whole map. NOTE: the two list
+    # fields remain last-write-wins across concurrent edits to the SAME job —
+    # acceptable for the single-reviewer sequential UI; true multi-writer safety
+    # would need a transaction / optimistic-concurrency CAS.
     job_manager.update_job(job_id, {
         'state_data.audio_edit_stack': edit_stack,
         'state_data.audio_edit_redo_stack': redo_stack,
@@ -2684,7 +2692,10 @@ async def redo_audio_edit(
 
     # Atomic per-field writes so a rapid undo/redo (or the idle-reminder
     # scheduler active during audio-edit) can't clobber unrelated state_data
-    # keys by re-persisting a stale copy of the whole map.
+    # keys by re-persisting a stale copy of the whole map. NOTE: the two list
+    # fields remain last-write-wins across concurrent edits to the SAME job —
+    # acceptable for the single-reviewer sequential UI; true multi-writer safety
+    # would need a transaction / optimistic-concurrency CAS.
     job_manager.update_job(job_id, {
         'state_data.audio_edit_stack': edit_stack,
         'state_data.audio_edit_redo_stack': redo_stack,
@@ -2774,17 +2785,21 @@ async def upload_audio_for_join(
         finally:
             os.unlink(tmp_path)
 
-        # Store upload info in state_data
-        state_data = job.state_data or {}
-        uploads = dict(state_data.get('audio_edit_uploads', {}))
-        uploads[upload_id] = {
-            "gcs_path": gcs_path,
-            "duration_seconds": metadata.duration_seconds,
-            "filename": filename,
-        }
-        # Atomic write of just the uploads map so a concurrent state_data write
-        # isn't clobbered by re-persisting a stale copy of the whole map.
-        job_manager.update_job(job_id, {'state_data.audio_edit_uploads': uploads})
+        # Store upload info in state_data. Write ONLY this upload's entry, keyed
+        # by its uuid. FieldPath.to_api_repr() backtick-escapes the uuid segment
+        # (it contains hyphens, so a raw dotted path would be misparsed) and keeps
+        # the key a string so it doesn't clash with the string 'updated_at' key
+        # update_job appends. Merging at the entry level means two concurrent
+        # uploads no longer drop each other — the old whole-map replace would
+        # orphan a GCS file and 404 later on join_start/join_end.
+        uploads_field = FieldPath("state_data", "audio_edit_uploads", upload_id).to_api_repr()
+        job_manager.update_job(job_id, {
+            uploads_field: {
+                "gcs_path": gcs_path,
+                "duration_seconds": metadata.duration_seconds,
+                "filename": filename,
+            },
+        })
 
         return {
             "upload_id": upload_id,

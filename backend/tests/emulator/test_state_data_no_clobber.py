@@ -26,6 +26,7 @@ pytestmark = pytest.mark.skipif(
 
 if emulators_running():
     from google.cloud.firestore_v1 import DELETE_FIELD, Increment
+    from google.cloud.firestore_v1.field_path import FieldPath
     from backend.models.job import Job, JobStatus
     from backend.services.job_manager import JobManager
     from backend.services.firestore_service import FirestoreService
@@ -111,6 +112,36 @@ class TestDistributionWriteNoClobber:
             sd = firestore_service.get_job(job_id).state_data
             # The full-map write reverted the fence back to the stale value of 1.
             assert sd.get('worker_generation') == 1
+        finally:
+            try:
+                firestore_service.delete_job(job_id)
+            except Exception:
+                pass
+
+    def test_concurrent_audio_edit_uploads_both_survive(self, job_manager, firestore_service):
+        """Two concurrent upload-for-join requests (distinct uuids) must both
+        persist. The audio-edit upload endpoint writes only its own entry via a
+        FieldPath, so neither drops the other (which would orphan a GCS file and
+        404 later on join_start/join_end)."""
+        job_id = f"uploads-{datetime.now(UTC).timestamp()}"
+        try:
+            self._create_job(firestore_service, job_id, {"keep": "me"})
+            id_a = "550e8400-e29b-41d4-a716-446655440000"
+            id_b = "111e8400-e29b-41d4-a716-000000000000"
+
+            job_manager.update_job(job_id, {
+                FieldPath("state_data", "audio_edit_uploads", id_a).to_api_repr(): {"gcs_path": "g/a.flac"},
+            })
+            job_manager.update_job(job_id, {
+                FieldPath("state_data", "audio_edit_uploads", id_b).to_api_repr(): {"gcs_path": "g/b.flac"},
+            })
+
+            sd = firestore_service.get_job(job_id).state_data
+            uploads = sd.get("audio_edit_uploads") or {}
+            assert set(uploads.keys()) == {id_a, id_b}
+            assert uploads[id_a]["gcs_path"] == "g/a.flac"
+            assert uploads[id_b]["gcs_path"] == "g/b.flac"
+            assert sd.get("keep") == "me"
         finally:
             try:
                 firestore_service.delete_job(job_id)
