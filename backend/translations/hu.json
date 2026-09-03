@@ -341,7 +341,17 @@
         "greatNews": "Nagyszerű hír! A karaoke videód a(z) \"{artist} - {title}\" dalhoz fel lett töltve a YouTube-ra:",
         "delayNote": "Ez a feltöltés rövid ideig késett, amíg a rendszereink más feltöltéseket dolgoztak fel, de most már minden rendben van.",
         "signOff": "Köszönöm!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Nagyszerű hír — a(z) \"{artist} - {title}\", egy karaoke dal, amire a Nomad Karaoke kérések oldalán szavaztál, már elérhető a YouTube-on:",
+        "callToAction": "Szeretnéd te kiválasztani a következő ingyenes dalt? Szavazz itt: https://requests.nomadkaraoke.com",
+        "greeting": "Szia {name},",
+        "signOff": "Köszönöm, hogy szavaztál!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} már elérhető a YouTube-on! 🎉",
+      "subjectFallback": "Egy dal, amire szavaztál, már elérhető!"
     }
   }
 }

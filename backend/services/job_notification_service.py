@@ -219,6 +219,36 @@ class JobNotificationService:
             logger.exception(f"Error sending YouTube upload notification for job {job_id}: {e}")
             return False
 
+    async def send_community_track_live_email(
+        self,
+        to_email: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        youtube_url: Optional[str] = None,
+    ) -> bool:
+        """Notify one voter that a community track they voted for is now live.
+
+        Returns True if the email was sent. Best-effort: swallows errors so a
+        single bad address never aborts the voter fan-out.
+        """
+        if not ENABLE_AUTO_EMAILS:
+            logger.info("Auto emails disabled, skipping community-track-live notification")
+            return False
+        if not to_email:
+            return False
+        try:
+            user_locale = self._get_user_locale(to_email)
+            message_content = self.template_service.render_community_track_live(
+                artist=artist, title=title, youtube_url=youtube_url, locale=user_locale,
+            )
+            return self.email_service.send_community_track_live(
+                to_email=to_email, message_content=message_content,
+                artist=artist, title=title, locale=user_locale,
+            )
+        except Exception as e:
+            logger.exception(f"Error sending community-track-live email to {_mask_email(to_email)}: {e}")
+            return False
+
     async def send_action_reminder_email(
         self,
         job_id: str,

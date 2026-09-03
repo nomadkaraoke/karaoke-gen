@@ -341,7 +341,17 @@
         "greatNews": "좋은 소식입니다! \"{artist} - {title}\" 노래방 비디오가 YouTube에 업로드되었습니다:",
         "delayNote": "시스템에서 다른 업로드를 처리하는 동안 이 업로드가 잠시 지연되었으나, 이제 모두 완료되었습니다.",
         "signOff": "감사합니다!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "기쁜 소식입니다! Nomad Karaoke 요청 게시판에서 투표하신 노래방 트랙 \"{artist} - {title}\"이(가) YouTube에 공개되었습니다:",
+        "callToAction": "다음 무료 트랙을 직접 선택하고 싶으신가요? https://requests.nomadkaraoke.com 에서 투표해 주세요.",
+        "greeting": "안녕하세요 {name}님,",
+        "signOff": "투표해 주셔서 감사합니다!\n- Andrew 드림"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} 트랙이 YouTube에 공개되었습니다! 🎉",
+      "subjectFallback": "투표하신 트랙이 공개되었습니다!"
     }
   }
 }

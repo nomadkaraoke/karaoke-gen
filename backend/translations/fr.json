@@ -341,7 +341,17 @@
         "greatNews": "Bonne nouvelle ! Ta vidéo karaoké pour \"{artist} - {title}\" a été mise en ligne sur YouTube :",
         "delayNote": "Cette mise en ligne a été brièvement retardée pendant que nos systèmes traitaient d'autres mises en ligne, mais tout est prêt maintenant.",
         "signOff": "Merci !\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Excellente nouvelle — \"{artist} - {title}\", un titre de karaoké pour lequel tu as voté sur le tableau des requêtes de Nomad Karaoke, est maintenant en ligne sur YouTube :",
+        "callToAction": "Tu veux choisir le prochain titre gratuit ? Vote sur https://requests.nomadkaraoke.com",
+        "greeting": "Salut {name},",
+        "signOff": "Merci d'avoir voté !\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} est en ligne sur YouTube ! 🎉",
+      "subjectFallback": "Un titre pour lequel tu as voté est maintenant en ligne !"
     }
   }
 }

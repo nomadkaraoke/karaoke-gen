@@ -341,7 +341,17 @@
         "greatNews": "好消息！您制作的卡拉OK视频（{artist} - {title}）已上传至 YouTube：",
         "delayNote": "由于系统正在处理其他任务，此上传稍有延迟，但现在一切都已就绪。",
         "signOff": "谢谢！\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "好消息——您在 Nomad Karaoke 点歌板上投票的卡拉OK曲目“{artist} - {title}”现已在 YouTube 上线：",
+        "callToAction": "想挑选下一首免费曲目吗？请访问 https://requests.nomadkaraoke.com 投票",
+        "greeting": "嗨，{name}，",
+        "signOff": "感谢您的投票！\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} 已在 YouTube 上线！🎉",
+      "subjectFallback": "您投票的曲目现已上线！"
     }
   }
 }

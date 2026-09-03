@@ -341,7 +341,17 @@
         "greatNews": "Отличные новости! Твое караоке-видео для \"{artist} - {title}\" было загружено на YouTube:",
         "delayNote": "Эта загрузка была ненадолго отложена, пока наши системы обрабатывали другие загрузки, но теперь все готово.",
         "signOff": "Спасибо!\n-Эндрю"
+      },
+      "communityTrackLive": {
+        "body": "Отличные новости — караоке-трек \"{artist} - {title}\", получивший твой голос на доске заявок Nomad Karaoke, теперь доступен на YouTube:",
+        "callToAction": "Хочешь выбрать следующий бесплатный трек? Голосуй на https://requests.nomadkaraoke.com",
+        "greeting": "Привет, {name},",
+        "signOff": "Спасибо за твой голос!\n-Эндрю"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} теперь на YouTube! 🎉",
+      "subjectFallback": "Трек, получивший твой голос, теперь доступен!"
     }
   }
 }

@@ -89,6 +89,10 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
                 # Send follow-up email
                 await _send_youtube_upload_notification(job_id, entry, youtube_url)
 
+                # If this was a requests-board community pick, mark it published
+                # and fan out "your track is live" emails to everyone who voted.
+                await _notify_community_voters(job_id, entry, youtube_url)
+
                 processed += 1
             else:
                 queue_service.mark_failed(job_id, "Upload returned no URL")
@@ -298,6 +302,68 @@ def _update_job_youtube_url(job_id: str, youtube_url: str) -> None:
             logger.info(f"Updated job {job_id} state_data with YouTube URL")
     except Exception as e:
         logger.error(f"Failed to update job {job_id} with YouTube URL: {e}")
+
+
+async def _notify_community_voters(
+    job_id: str, entry: Dict[str, Any], youtube_url: str
+) -> None:
+    """Publish fan-out for requests-board picks: mark the request published and
+    email every up-voter (except the owner, who already got the completion email).
+
+    Idempotent via the request's ``voters_notified`` flag. Best-effort — never
+    fails the upload over a notification error.
+    """
+    try:
+        from backend.services.song_request_service import get_song_request_service
+        service = get_song_request_service()
+        request = service.get_by_job_id(job_id)
+        if request is None:
+            return  # Not a community pick — normal job.
+
+        service.mark_published(request.id, youtube_url)
+
+        if request.voters_notified:
+            return
+
+        # Email up-voters we haven't already reached (retry-safe): exclude the
+        # owner (already got the completion email) and anyone previously notified.
+        owner = (request.owner_email or request.submitted_by or "").lower()
+        already = {v.lower() for v in (request.notified_voters or [])}
+        pending = [
+            v for v in service.list_upvoters(request.id)
+            if v != owner and v not in already
+        ]
+
+        from backend.services.job_notification_service import get_job_notification_service
+        notification_service = get_job_notification_service()
+        succeeded = 0
+        for voter in pending:
+            try:
+                ok = await notification_service.send_community_track_live_email(
+                    to_email=voter,
+                    artist=request.artist,
+                    title=request.title,
+                    youtube_url=youtube_url,
+                )
+            except Exception:
+                logger.exception("Failed community voter email for job %s / %s", job_id, voter)
+                continue
+            if ok:
+                # Record each success immediately so a crash mid-loop never
+                # re-emails an already-notified voter on the retry.
+                service.add_notified_voters(request.id, [voter])
+                succeeded += 1
+
+        # Only flag "fully notified" when every pending voter was reached — a
+        # partial failure leaves the flag unset so a re-run retries just the misses.
+        if succeeded == len(pending):
+            service.mark_voters_notified(request.id)
+        logger.info(
+            "community pick %s published (job %s): notified %d/%d pending voters",
+            request.id, job_id, len(succeeded), len(pending),
+        )
+    except Exception as e:
+        logger.error(f"Failed community voter fan-out for job {job_id}: {e}")
 
 
 async def _send_youtube_upload_notification(

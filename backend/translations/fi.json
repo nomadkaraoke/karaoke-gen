@@ -341,7 +341,17 @@
         "greatNews": "Loistavia uutisia! Karaokevideosi kappaleelle \"{artist} - {title}\" on ladattu YouTube-palveluun:",
         "delayNote": "Tämä lataus viivästyi hetkellisesti, kun järjestelmämme käsittelivät muita latauksia, mutta nyt kaikki on valmista.",
         "signOff": "Kiitos!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Mahtavia uutisia — karaokekappale \"{artist} - {title}\", jota äänestit Nomad Karaoke -toivelistalla, on nyt YouTubessa:",
+        "callToAction": "Haluatko valita seuraavan ilmaisen kappaleen? Äänestä osoitteessa https://requests.nomadkaraoke.com",
+        "greeting": "Hei {name},",
+        "signOff": "Kiitos äänestämisestä!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} on nyt YouTubessa! 🎉",
+      "subjectFallback": "Äänestämäsi kappale on nyt julkaistu!"
     }
   }
 }

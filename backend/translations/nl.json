@@ -341,7 +341,17 @@
         "greatNews": "Goed nieuws! Je karaokevideo voor \"{artist} - {title}\" is geüpload naar YouTube:",
         "delayNote": "Deze upload was even vertraagd terwijl onze systemen andere uploads verwerkten, maar alles is nu in orde.",
         "signOff": "Bedankt!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Goed nieuws — \"{artist} - {title}\", een karaokenummer waar je op hebt gestemd op het Nomad Karaoke-verzoekenbord, is nu live op YouTube:",
+        "callToAction": "Wil je het volgende gratis nummer kiezen? Stem op https://requests.nomadkaraoke.com",
+        "greeting": "Hoi {name},",
+        "signOff": "Bedankt voor het stemmen!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} is live op YouTube! 🎉",
+      "subjectFallback": "Een nummer waar je op hebt gestemd is nu live!"
     }
   }
 }
