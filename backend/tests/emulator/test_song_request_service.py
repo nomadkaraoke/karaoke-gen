@@ -240,3 +240,61 @@ async def test_list_in_progress_and_stalled(service):
     service.mark_stalled(a.id)
     assert service.get_request(a.id).status == "stalled"
     assert service.list_in_progress() == []
+
+
+# ---------------------------------------------------------------------------
+# Existing-community-version review flow (A/B follow-up)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_pick_candidates_excludes_review_states(service):
+    from datetime import datetime, timedelta, timezone
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    b, _, _, _ = await _submit(service, "o2@x.com", "Artist B", "Song B")
+    c, _, _, _ = await _submit(service, "o3@x.com", "Artist C", "Song C")
+    # Flag A pending; snooze B into the future; C stays clean.
+    service.set_review_pending(a.id, {"best_youtube_url": "https://y/x", "tracks": []})
+    service.snooze_review(b.id, datetime.now(timezone.utc) + timedelta(days=10))
+    ids = [r.id for r in service.list_pick_candidates()]
+    assert c.id in ids
+    assert a.id not in ids  # pending
+    assert b.id not in ids  # snoozed (future)
+
+
+@pytest.mark.asyncio
+async def test_expired_snooze_becomes_pickable_again(service):
+    from datetime import datetime, timedelta, timezone
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    service.snooze_review(a.id, datetime.now(timezone.utc) - timedelta(days=1))  # already expired
+    assert a.id in [r.id for r in service.list_pick_candidates()]
+
+
+@pytest.mark.asyncio
+async def test_set_review_pending_idempotent(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    versions = {"best_youtube_url": "https://y/x", "tracks": [{"brand_name": "Z", "youtube_url": "https://y/x"}]}
+    assert service.set_review_pending(a.id, versions) is True   # newly flagged
+    assert service.set_review_pending(a.id, versions) is False  # already pending
+    r = service.get_request(a.id)
+    assert r.review_state == "pending" and r.community_versions["best_youtube_url"] == "https://y/x"
+    assert a.id in [x.id for x in service.list_pending_reviews()]
+
+
+@pytest.mark.asyncio
+async def test_snooze_clear_and_reject(service):
+    from datetime import datetime, timedelta, timezone
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    service.set_review_pending(a.id, {"best_youtube_url": None, "tracks": []})
+    # keep → snoozed, off the pending queue
+    service.snooze_review(a.id, datetime.now(timezone.utc) + timedelta(days=30))
+    assert service.get_request(a.id).review_state == "snoozed"
+    assert service.list_pending_reviews() == []
+    # clear → back to no review flag
+    service.clear_review(a.id)
+    assert service.get_request(a.id).review_state is None
+    # reject → status rejected, off the board
+    service.reject_request(a.id)
+    r = service.get_request(a.id)
+    assert r.status == "rejected" and r.review_state is None
+    assert a.id not in [x.id for x in service.list_active()]

@@ -347,11 +347,21 @@
         "callToAction": "อยากเป็นคนเลือกเพลงฟรีเพลงต่อไปไหม? ร่วมโหวตได้ที่ https://requests.nomadkaraoke.com",
         "greeting": "สวัสดี {name},",
         "signOff": "ขอบคุณที่ร่วมโหวต!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "ข่าวดี — มีเวอร์ชันคาราโอเกะของเพลง \"{artist} - {title}\" (ที่คุณโหวตไว้บนกระดานขอเพลงของ Nomad Karaoke) ออนไลน์อยู่แล้ว เราจึงไม่ได้ทำขึ้นมาใหม่ นี่คือเวอร์ชันที่คุณสามารถนำไปใช้ได้เลย:",
+        "callToAction": "อยากช่วยเราเลือกเพลงฟรีเพลงต่อไปไหม? โหวตได้ที่ https://requests.nomadkaraoke.com",
+        "signOff": "ขอให้สนุกกับการร้องเพลงนะ!\n-Andrew",
+        "greeting": "สวัสดี {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} พร้อมให้ร้องแล้วบน YouTube! 🎉",
       "subjectFallback": "เพลงที่คุณโหวตพร้อมให้ร้องแล้ว!"
+    },
+    "communityExistingVersion": {
+      "subject": "มีเวอร์ชันคาราโอเกะของเพลง {artist} - {title} อยู่แล้ว",
+      "subjectFallback": "มีเวอร์ชันคาราโอเกะของเพลงที่คุณขออยู่แล้ว"
     }
   }
 }

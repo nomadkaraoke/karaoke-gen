@@ -347,11 +347,21 @@
         "callToAction": "Bir sonraki ücretsiz parçayı seçmek ister misin? https://requests.nomadkaraoke.com adresinden oy ver",
         "greeting": "Merhaba {name},",
         "signOff": "Oy verdiğin için teşekkürler!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "İyi haber! Nomad Karaoke istek panosunda oy verdiğin \"{artist} - {title}\" şarkısının bir karaoke versiyonu internette zaten mevcut, bu yüzden bu şarkıyı yeniden yapmayacağız. İşte hemen şimdi kullanabileceğin bir versiyon:",
+        "callToAction": "Yapacağımız bir sonraki ÜCRETSİZ parçayı seçmemize yardım etmek ister misin? https://requests.nomadkaraoke.com adresinden oy ver",
+        "signOff": "Keyifli şarkılar!\n-Andrew",
+        "greeting": "Merhaba {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} YouTube'da yayında! 🎉",
       "subjectFallback": "Oy verdiğin bir parça artık yayında!"
+    },
+    "communityExistingVersion": {
+      "subject": "{artist} - {title} şarkısının bir karaoke versiyonu zaten mevcut",
+      "subjectFallback": "İstediğin şarkının bir karaoke versiyonu zaten mevcut"
     }
   }
 }

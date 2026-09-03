@@ -1,9 +1,10 @@
 # Requests Voting Board (`requests.nomadkaraoke.com`)
 
-**Status:** Phase 1 **LIVE in production** (karaoke-gen v0.219.0, PR #975, 2026-09-02).
-Phase 2 (the daily automation) is **built and merged, deployed dark** behind a kill-switch
-(`COMMUNITY_DAILY_PICK_ENABLED`, default off) — flip it on to go live. Trending-agent fallback
-source is the one deferred piece. Design: `docs/archive/2026-09-03-requests-board-phase2-plan.md`.
+**Status:** Phase 1 + Phase 2 **LIVE in production** (Phase 1 v0.219.0 #975; Phase 2 automation
+v0.220.0 #977 — **enabled** `COMMUNITY_DAILY_PICK_ENABLED=true`, daily picker fires noon US Eastern).
+Existing-community-version checks (submission-time soft warning + pick-time review) shipped v0.222.0.
+Trending-agent fallback source is the one deferred piece. Design:
+`docs/archive/2026-09-03-requests-board-phase2-plan.md`.
 
 This doc is the single self-contained explanation of what the requests system is, what users
 experience, and how it works. Point marketing / YouTube-description work here.
@@ -75,6 +76,20 @@ source** (auto-submit a candidate when the board is empty), deliberately deferre
   live" email.
 - Every step is idempotent (durable per-day lock phase + per-request guard flags) so a retried
   Scheduler delivery or a mid-run crash can't double-grant credits or make two tracks in a day.
+
+**Avoiding duplicates of existing community versions (v0.222.0):** we don't want to spend a free
+track (or waste voters' time) on a song that already has a good community karaoke version online, so
+the same KaraokeNerds check the normal job-submission flow uses runs at two points:
+- **At submission time (soft):** as someone types an artist/title on the board, we surface any
+  existing community versions in a dismissible banner (with YouTube links) — non-blocking, they can
+  still request it, but many will just watch the existing one.
+- **At pick time (review):** when the daily picker reaches a request, it KaraokeNerds-checks it first.
+  If a community version now exists (it may not have when the request was submitted), the pick is
+  **held for review** instead of auto-made, Andrew is emailed, and the picker **skips to the next
+  clean request** so a fresh free track still ships that day. Andrew resolves held picks at
+  **`/admin/community-reviews`**: *Make ours anyway* (creates the job), *Reject* (declines and emails
+  every up-voter a link to the existing version), or *Keep on board* (leaves it votable, snoozing
+  re-review for 30 days). Held requests stay visible/votable on the board; they just aren't auto-made.
 
 ## How it works (technical, brief)
 

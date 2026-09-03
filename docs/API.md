@@ -1448,6 +1448,16 @@ X-Admin-Token: ADMIN_TOKEN
 
 Internal (admin/OIDC). Called hourly by Cloud Scheduler. For each in-progress community pick whose owner hasn't completed their review within 24h (and whose job is blocked waiting on the owner), reassigns the job to the next up-voter (oldest-first, skipping those already tried) and emails them — up to 5 voters, then parks the track (`stalled`). Returns `{status, checked, handed_off, parked, errors}`.
 
+### Community Review Queue (existing-version, admin)
+
+```http
+GET  /api/admin/community-reviews
+POST /api/admin/community-reviews/{request_id}   {"action": "make" | "reject" | "keep"}
+X-Admin-Token: ADMIN_TOKEN
+```
+
+Admin. The daily picker KaraokeNerds-checks each candidate; a request that already has a community karaoke version is flagged (`review_state=pending`) instead of auto-made, and the picker skips to the next clean request. `GET` lists flagged picks `{id, artist, title, submitted_by, vote_count, upvoter_count, community_versions, community_checked_at}`. `POST` resolves one: `make` = clear the flag and make our version now (grants the credit + creates the job like a normal pick); `reject` = mark `rejected` and email every up-voter a link to the existing community version; `keep` = leave it on the board, snoozing re-review for `COMMUNITY_REVIEW_SNOOZE_DAYS` (default 30). The public board also runs the same check at submission time (`POST /api/catalog/community-check`) to soft-warn requesters.
+
 ## Credits & Payments (PR #90)
 
 ### List Credit Packages

@@ -249,6 +249,33 @@ class JobNotificationService:
             logger.exception(f"Error sending community-track-live email to {_mask_email(to_email)}: {e}")
             return False
 
+    async def send_community_existing_version_email(
+        self,
+        to_email: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        youtube_url: Optional[str] = None,
+    ) -> bool:
+        """Notify one up-voter that their request was rejected because a community
+        karaoke version already exists (linking them to it). Best-effort."""
+        if not ENABLE_AUTO_EMAILS:
+            logger.info("Auto emails disabled, skipping community-existing-version notification")
+            return False
+        if not to_email:
+            return False
+        try:
+            user_locale = self._get_user_locale(to_email)
+            message_content = self.template_service.render_community_existing_version(
+                artist=artist, title=title, youtube_url=youtube_url, locale=user_locale,
+            )
+            return self.email_service.send_community_existing_version(
+                to_email=to_email, message_content=message_content,
+                artist=artist, title=title, locale=user_locale,
+            )
+        except Exception as e:
+            logger.exception(f"Error sending community-existing-version email to {_mask_email(to_email)}: {e}")
+            return False
+
     async def send_action_reminder_email(
         self,
         job_id: str,

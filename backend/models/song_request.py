@@ -27,6 +27,14 @@ RequestStatus = Literal[
 # source="trending_agent"; everything a human submits is "human".
 RequestSource = Literal["human", "trending_agent"]
 
+# Existing-community-version review state (set when the daily picker's KaraokeNerds
+# check finds an existing community karaoke version for a would-be pick):
+#   pending  -> flagged, awaiting Andrew's keep/make/reject decision (admin queue)
+#   snoozed  -> Andrew chose "keep on board"; not re-flagged until review_snoozed_until
+# None means never flagged. The request stays votable/visible on the board throughout;
+# the picker just won't auto-make a flagged (pending, or still-snoozed) request.
+ReviewState = Literal["pending", "snoozed"]
+
 
 class SongRequest(BaseModel):
     """A single song request on the public board (Firestore: song_requests)."""
@@ -70,6 +78,14 @@ class SongRequest(BaseModel):
     # Voters already successfully emailed on publish — lets a re-run retry only the
     # failures instead of re-emailing everyone (voters_notified is the all-done flag).
     notified_voters: list[str] = Field(default_factory=list)
+
+    # Existing-community-version review (set by the daily picker's KaraokeNerds check).
+    review_state: Optional[ReviewState] = None
+    # The community versions we found, stored so the admin queue + reject email can
+    # show/link them: {"best_youtube_url": str|None, "tracks": [{"brand_name","youtube_url"}]}.
+    community_versions: Optional[dict] = None
+    community_checked_at: Optional[datetime] = None
+    review_snoozed_until: Optional[datetime] = None
 
 
 class Vote(BaseModel):

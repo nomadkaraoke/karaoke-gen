@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Wykonawca",
     "emailPlaceholder": "Wpisz swój e-mail",
     "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie.",
-    "submitting": "Przesyłanie…"
+    "submitting": "Przesyłanie…",
+    "communityExistsNote": "Nadal możesz o to poprosić lub po prostu obejrzeć dostępną wersję poniżej:"
   }
 }

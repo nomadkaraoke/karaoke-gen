@@ -11,7 +11,7 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-from typing import Tuple, List, Optional, Any, Dict
+from typing import Tuple, List, Literal, Optional, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -4188,4 +4188,124 @@ def list_user_feedback(
         avg_ease_of_use_rating=round(avg_ease, 2) if avg_ease is not None else None,
         avg_lyrics_accuracy_rating=round(avg_lyrics, 2) if avg_lyrics is not None else None,
         avg_correction_experience_rating=round(avg_correction, 2) if avg_correction is not None else None,
+    )
+
+
+# =============================================================================
+# Requests board — existing-community-version review queue
+# =============================================================================
+
+class CommunityReviewItem(BaseModel):
+    """A requests-board pick held for existing-community-version review."""
+    id: str
+    artist: str
+    title: str
+    submitted_by: str
+    vote_count: int
+    upvoter_count: int
+    community_versions: Optional[Dict[str, Any]] = None
+    community_checked_at: Optional[str] = None
+
+
+class CommunityReviewListResponse(BaseModel):
+    reviews: List[CommunityReviewItem]
+
+
+class CommunityReviewActionBody(BaseModel):
+    # make = make our own version anyway; reject = decline + notify up-voters of the
+    # existing version; keep = leave on the board, snooze re-review.
+    action: Literal["make", "reject", "keep"]
+
+
+class CommunityReviewActionResponse(BaseModel):
+    status: str
+    request_id: str
+    message: str
+
+
+@router.get("/community-reviews", response_model=CommunityReviewListResponse)
+async def list_community_reviews(
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """List requests-board picks the daily picker flagged because an existing
+    community karaoke version was found (awaiting keep/make/reject)."""
+    from backend.services.song_request_service import get_song_request_service
+    service = get_song_request_service()
+    items = []
+    for r in service.list_pending_reviews():
+        try:
+            upvoters = service.list_upvoters(r.id)
+        except Exception:
+            upvoters = []
+        items.append(CommunityReviewItem(
+            id=r.id, artist=r.artist, title=r.title, submitted_by=r.submitted_by,
+            vote_count=r.vote_count, upvoter_count=len(upvoters),
+            community_versions=r.community_versions,
+            community_checked_at=r.community_checked_at.isoformat() if r.community_checked_at else None,
+        ))
+    return CommunityReviewListResponse(reviews=items)
+
+
+@router.post("/community-reviews/{request_id}", response_model=CommunityReviewActionResponse)
+async def action_community_review(
+    request_id: str,
+    body: CommunityReviewActionBody,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Resolve a flagged pick: make our own version, reject (notify up-voters of the
+    existing version), or keep it on the board (snooze re-review)."""
+    from backend.config import get_settings
+    from backend.services.song_request_service import get_song_request_service
+    service = get_song_request_service()
+    settings = get_settings()
+
+    req = service.get_request(request_id)
+    if req is None or req.review_state != "pending":
+        raise HTTPException(status_code=404, detail="No pending review for that request.")
+
+    if body.action == "keep":
+        until = datetime.now(timezone.utc) + timedelta(days=settings.community_review_snooze_days)
+        service.snooze_review(request_id, until)
+        return CommunityReviewActionResponse(
+            status="snoozed", request_id=request_id,
+            message=f"Kept on the board; won't be re-flagged for {settings.community_review_snooze_days} days.",
+        )
+
+    if body.action == "reject":
+        versions = req.community_versions or {}
+        best_url = versions.get("best_youtube_url")
+        if not best_url:
+            tracks = versions.get("tracks") or []
+            best_url = tracks[0].get("youtube_url") if tracks else None
+        service.reject_request(request_id)
+        # Notify up-voters of the existing community version (best-effort fan-out).
+        notified = 0
+        try:
+            from backend.services.job_notification_service import get_job_notification_service
+            notifier = get_job_notification_service()
+            for voter in service.list_upvoters(request_id):
+                ok = await notifier.send_community_existing_version_email(
+                    to_email=voter, artist=req.artist, title=req.title, youtube_url=best_url,
+                )
+                notified += 1 if ok else 0
+        except Exception:
+            logger.exception("community-review reject: voter notify failed for %s", request_id)
+        return CommunityReviewActionResponse(
+            status="rejected", request_id=request_id,
+            message=f"Rejected; notified {notified} up-voter(s) of the existing version.",
+        )
+
+    # action == "make": clear the flag and provision the job now (grant + create).
+    from backend.workers.community_daily_pick import _provision_and_start
+    service.clear_review(request_id)
+    owner = (req.owner_email or req.submitted_by).lower()
+    result = await _provision_and_start(service, settings, req, owner)
+    if result.get("status") != "made":
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to make request ({result.get('step')}): {result.get('message')}",
+        )
+    return CommunityReviewActionResponse(
+        status="made", request_id=request_id,
+        message=f"Making our version (job {result.get('job_id')}).",
     )

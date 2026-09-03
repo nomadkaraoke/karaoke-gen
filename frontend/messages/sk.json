@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Interpret",
     "emailPlaceholder": "Zadaj svoj e-mail",
     "errorGeneric": "Niečo sa pokazilo. Skús to znova.",
-    "submitting": "Odosiela sa…"
+    "submitting": "Odosiela sa…",
+    "communityExistsNote": "Stále o to môžeš požiadať, alebo si jednoducho pozrieť existujúcu verziu nižšie:"
   }
 }

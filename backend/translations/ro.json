@@ -347,11 +347,21 @@
         "callToAction": "Vrei să alegi următoarea piesă gratuită? Votează la https://requests.nomadkaraoke.com",
         "greeting": "Salut, {name},",
         "signOff": "Îți mulțumesc pentru vot!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Vești bune — o versiune de karaoke pentru \"{artist} - {title}\" (pentru care ai votat pe pagina de cereri Nomad Karaoke) există deja online, așa că nu o vom reface. Iată o versiune pe care o poți folosi chiar acum:",
+        "callToAction": "Vrei să ne ajuți să alegem următoarea piesă GRATUITĂ pe care o vom crea? Votează pe https://requests.nomadkaraoke.com",
+        "signOff": "Spor la cântat!\n-Andrew",
+        "greeting": "Salut, {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} este live pe YouTube! 🎉",
       "subjectFallback": "O piesă pentru care ai votat este acum live!"
+    },
+    "communityExistingVersion": {
+      "subject": "O versiune de karaoke pentru {artist} - {title} există deja",
+      "subjectFallback": "O versiune de karaoke a melodiei pe care ai cerut-o există deja"
     }
   }
 }

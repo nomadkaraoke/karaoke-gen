@@ -347,11 +347,21 @@
         "callToAction": "想挑选下一首免费曲目吗？请访问 https://requests.nomadkaraoke.com 投票",
         "greeting": "嗨，{name}，",
         "signOff": "感谢您的投票！\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "好消息 —— 您在 Nomad Karaoke 点歌板上投票的 \"{artist} - {title}\" 的卡拉OK版本网上已经有了，所以我们就不重复制作了。您可以直接使用以下版本：",
+        "callToAction": "想帮忙挑选我们制作的下一首免费伴奏吗？请前往 https://requests.nomadkaraoke.com 投票",
+        "signOff": "祝您欢唱愉快！\n-Andrew",
+        "greeting": "嗨，{name}，"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} 已在 YouTube 上线！🎉",
       "subjectFallback": "您投票的曲目现已上线！"
+    },
+    "communityExistingVersion": {
+      "subject": "{artist} - {title} 的卡拉OK版本已存在",
+      "subjectFallback": "您请求的歌曲的卡拉OK版本已存在"
     }
   }
 }

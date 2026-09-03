@@ -7,9 +7,12 @@ import type { CommunityCheckResponse } from "@/lib/api"
 interface CommunityVersionBannerProps {
   data: CommunityCheckResponse
   onDismiss: () => void
+  /** Overrides the default "check before using a credit" line (e.g. on the free
+   *  requests board, where nothing is charged). */
+  subtitle?: string
 }
 
-export function CommunityVersionBanner({ data, onDismiss }: CommunityVersionBannerProps) {
+export function CommunityVersionBanner({ data, onDismiss, subtitle }: CommunityVersionBannerProps) {
   const t = useTranslations('communityVersion')
   if (!data.has_community || data.songs.length === 0) return null
 
@@ -47,7 +50,7 @@ export function CommunityVersionBanner({ data, onDismiss }: CommunityVersionBann
           {t('exists')}
         </p>
         <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-          {t('checkFirst')}
+          {subtitle ?? t('checkFirst')}
         </p>
 
         <div className="mt-2 space-y-1.5">

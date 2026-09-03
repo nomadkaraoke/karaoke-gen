@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "アーティスト",
     "emailPlaceholder": "メールアドレスを入力",
     "errorGeneric": "問題が発生しました。もう一度お試しください。",
-    "submitting": "送信中…"
+    "submitting": "送信中…",
+    "communityExistsNote": "このままリクエストすることも、以下の既存バージョンを視聴することもできます："
   }
 }

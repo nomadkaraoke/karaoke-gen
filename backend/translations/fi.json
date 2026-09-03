@@ -347,11 +347,21 @@
         "callToAction": "Haluatko valita seuraavan ilmaisen kappaleen? Äänestä osoitteessa https://requests.nomadkaraoke.com",
         "greeting": "Hei {name},",
         "signOff": "Kiitos äänestämisestä!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Hyviä uutisia — karaokeversio kappaleesta \"{artist} - {title}\" (jota äänestit Nomad Karaoke -toivetaululla) löytyy jo verkosta, joten emme tee siitä uutta versiota. Tässä on versio, jota voit käyttää heti:",
+        "callToAction": "Haluatko auttaa valitsemaan seuraavan ILMAISEN kappaleen, jonka teemme? Äänestä osoitteessa https://requests.nomadkaraoke.com",
+        "signOff": "Mukavia lauluhetkiä!\n-Andrew",
+        "greeting": "Hei {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} on nyt YouTubessa! 🎉",
       "subjectFallback": "Äänestämäsi kappale on nyt julkaistu!"
+    },
+    "communityExistingVersion": {
+      "subject": "Karaokeversio kappaleesta {artist} - {title} on jo olemassa",
+      "subjectFallback": "Karaokeversio pyytämästäsi kappaleesta on jo olemassa"
     }
   }
 }

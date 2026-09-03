@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Izvođač",
     "emailPlaceholder": "Unesi svoju e-poštu",
     "errorGeneric": "Nešto je pošlo po zlu. Pokušaj ponovno.",
-    "submitting": "Šaljem…"
+    "submitting": "Šaljem…",
+    "communityExistsNote": "Svejedno ga možeš zatražiti ili jednostavno pogledati postojeću verziju u nastavku:"
   }
 }

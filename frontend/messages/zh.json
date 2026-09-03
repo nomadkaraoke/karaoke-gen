@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "歌手",
     "emailPlaceholder": "输入您的邮箱",
     "errorGeneric": "出了点问题，请重试。",
-    "submitting": "正在提交…"
+    "submitting": "正在提交…",
+    "communityExistsNote": "您仍然可以提交请求，或者直接观看下方已有的版本："
   }
 }

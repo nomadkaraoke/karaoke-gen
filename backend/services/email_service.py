@@ -1816,6 +1816,40 @@ class EmailService:
             text_content=message_content,
         )
 
+    def send_community_existing_version(
+        self,
+        to_email: str,
+        message_content: str,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        locale: str = "en",
+    ) -> bool:
+        """Notify an up-voter that a requests-board pick was rejected because a good
+        community karaoke version already exists (with a link to it)."""
+        safe_artist = sanitize_filename(artist) if artist else None
+        safe_title = sanitize_filename(title) if title else None
+        if safe_artist and safe_title:
+            subject = t(locale, "emails.communityExistingVersion.subject", artist=safe_artist, title=safe_title)
+        else:
+            subject = t(locale, "emails.communityExistingVersion.subjectFallback")
+
+        extra_styles = """
+        .content {
+            white-space: pre-wrap;
+        }
+"""
+        content = f"""
+    <div class="content">{html.escape(message_content)}</div>
+"""
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
+
+        return self._log_and_send(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=message_content,
+        )
+
     def send_made_for_you_order_confirmation(
         self,
         to_email: str,

@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "אומן",
     "emailPlaceholder": "הזן את האימייל שלך",
     "errorGeneric": "משהו השתבש. אנא נסה שוב.",
-    "submitting": "בשליחה…"
+    "submitting": "בשליחה…",
+    "communityExistsNote": "עדיין אפשר לבקש אותו, או פשוט לצפות בגרסה קיימת למטה:"
   }
 }

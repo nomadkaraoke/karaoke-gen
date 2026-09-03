@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "아티스트",
     "emailPlaceholder": "이메일 입력",
     "errorGeneric": "문제가 발생했습니다. 다시 시도해 주세요.",
-    "submitting": "제출 중…"
+    "submitting": "제출 중…",
+    "communityExistsNote": "그래도 요청을 진행하시거나, 아래에서 기존 버전을 감상해 보세요:"
   }
 }

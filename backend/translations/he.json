@@ -347,11 +347,21 @@
         "callToAction": "רוצה לבחור את השיר החינמי הבא? אפשר להצביע בכתובת https://requests.nomadkaraoke.com",
         "greeting": "היי {name},",
         "signOff": "תודה על ההצבעה!\n- אנדרו"
+      },
+      "communityExistingVersion": {
+        "body": "חדשות טובות — גרסת קריוקי של \"{artist} - {title}\" (שהצבעתם עבורה בלוח הבקשות של Nomad Karaoke) כבר קיימת ברשת, אז לא ניצור אותה מחדש. הנה גרסה שתוכלו להשתמש בה כבר עכשיו:",
+        "callToAction": "רוצים לעזור לבחור את הרצועה החינמית הבאה שניצור? הצביעו ב-https://requests.nomadkaraoke.com",
+        "signOff": "שירה מהנה!\n-Andrew",
+        "greeting": "היי {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} עלה ל-YouTube! 🎉",
       "subjectFallback": "שיר שהצבעת עבורו עלה לאוויר!"
+    },
+    "communityExistingVersion": {
+      "subject": "גרסת קריוקי של {artist} - {title} כבר קיימת",
+      "subjectFallback": "גרסת קריוקי של השיר שביקשתם כבר קיימת"
     }
   }
 }

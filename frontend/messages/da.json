@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Kunstner",
     "emailPlaceholder": "Indtast din e-mail",
     "errorGeneric": "Noget gik galt. Prøv venligst igen.",
-    "submitting": "Indsender…"
+    "submitting": "Indsender…",
+    "communityExistsNote": "Du kan stadig anmode om den, eller bare se en eksisterende version nedenfor:"
   }
 }

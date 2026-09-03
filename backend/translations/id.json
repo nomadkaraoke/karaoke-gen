@@ -347,11 +347,21 @@
         "callToAction": "Ingin memilih lagu gratis berikutnya? Vote di https://requests.nomadkaraoke.com",
         "greeting": "Hai {name},",
         "signOff": "Terima kasih telah memilih!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Kabar baik — versi karaoke dari \"{artist} - {title}\" (yang Anda pilih di papan permintaan Nomad Karaoke) sudah tersedia online, jadi kami tidak akan membuatnya ulang. Berikut versi yang bisa Anda gunakan sekarang juga:",
+        "callToAction": "Ingin membantu memilih lagu GRATIS berikutnya yang akan kami buat? Berikan suara Anda di https://requests.nomadkaraoke.com",
+        "signOff": "Selamat bernyanyi!\n-Andrew",
+        "greeting": "Hai {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} sudah tayang di YouTube! 🎉",
       "subjectFallback": "Lagu yang Anda pilih kini sudah tayang!"
+    },
+    "communityExistingVersion": {
+      "subject": "Versi karaoke dari {artist} - {title} sudah ada",
+      "subjectFallback": "Versi karaoke dari lagu yang Anda minta sudah ada"
     }
   }
 }

@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Artisti",
     "emailPlaceholder": "Syötä sähköpostisi",
     "errorGeneric": "Jotain meni pieleen. Yritä uudelleen.",
-    "submitting": "Lähetetään…"
+    "submitting": "Lähetetään…",
+    "communityExistsNote": "Voit silti pyytää sitä tai vain katsoa olemassa olevan version alta:"
   }
 }

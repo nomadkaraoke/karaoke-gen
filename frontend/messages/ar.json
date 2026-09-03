@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "فنان",
     "emailPlaceholder": "أدخل بريدك الإلكتروني",
     "errorGeneric": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
-    "submitting": "جارٍ الإرسال..."
+    "submitting": "جارٍ الإرسال...",
+    "communityExistsNote": "لا يزال بإمكانك طلبه، أو مشاهدة نسخة متوفرة أدناه:"
   }
 }

@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Előadó",
     "emailPlaceholder": "Add meg az e-mail címed",
     "errorGeneric": "Valami hiba történt. Kérlek, próbáld újra.",
-    "submitting": "Beküldés…"
+    "submitting": "Beküldés…",
+    "communityExistsNote": "Továbbra is kérheted, vagy csak nézz meg egy meglévő verziót lent:"
   }
 }

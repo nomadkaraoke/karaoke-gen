@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Artis",
     "emailPlaceholder": "Masukkan email Anda",
     "errorGeneric": "Terjadi kesalahan. Silakan coba lagi.",
-    "submitting": "Mengirim…"
+    "submitting": "Mengirim…",
+    "communityExistsNote": "Anda masih bisa memintanya, atau tonton saja versi yang sudah ada di bawah ini:"
   }
 }

@@ -347,11 +347,21 @@
         "callToAction": "다음 무료 트랙을 직접 선택하고 싶으신가요? https://requests.nomadkaraoke.com 에서 투표해 주세요.",
         "greeting": "안녕하세요 {name}님,",
         "signOff": "투표해 주셔서 감사합니다!\n- Andrew 드림"
+      },
+      "communityExistingVersion": {
+        "body": "기쁜 소식을 전해드립니다! Nomad Karaoke 요청 게시판에서 투표해 주신 \"{artist} - {title}\" 가라오케 버전이 이미 온라인에 있어, 저희가 새로 제작하지 않기로 했습니다. 지금 바로 이용하실 수 있는 버전은 다음과 같습니다:",
+        "callToAction": "저희가 제작할 다음 무료 트랙을 직접 골라보시겠어요? https://requests.nomadkaraoke.com 에서 투표해 주세요.",
+        "signOff": "즐거운 시간 되세요!\n- Andrew 드림",
+        "greeting": "안녕하세요 {name}님,"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} 트랙이 YouTube에 공개되었습니다! 🎉",
       "subjectFallback": "투표하신 트랙이 공개되었습니다!"
+    },
+    "communityExistingVersion": {
+      "subject": "{artist} - {title} 가라오케 버전이 이미 있습니다",
+      "subjectFallback": "요청하신 노래의 가라오케 버전이 이미 있습니다"
     }
   }
 }

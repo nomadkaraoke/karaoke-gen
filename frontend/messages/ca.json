@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Artista",
     "emailPlaceholder": "Introdueix el teu correu electrònic",
     "errorGeneric": "Alguna cosa ha anat malament. Torna-ho a provar.",
-    "submitting": "S'està enviant…"
+    "submitting": "S'està enviant…",
+    "communityExistsNote": "Encara pots demanar-la, o simplement veure una versió existent a continuació:"
   }
 }
