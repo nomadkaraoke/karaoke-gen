@@ -100,10 +100,15 @@ async def process_community_handoffs() -> Dict[str, Any]:
                 continue
 
             new_owner = candidates[0]
+            # Compare-and-set the owner FIRST (guards against a stale/overlapping
+            # run clobbering a fresher assignment); only then move the job. Skip if
+            # another run already advanced this request past the owner we observed.
+            if not service.assign_owner(req.id, new_owner, expected_owner=req.owner_email):
+                logger.info("handoff: request %s changed owner mid-run; skipping", req.id)
+                continue
             # Reassign the job to the next voter (does not move credits — the job
             # was already paid for at creation; review completion needs no credit).
             job_manager.update_job(req.job_id, {"user_email": new_owner})
-            service.assign_owner(req.id, new_owner)  # resets clock, bumps attempts
 
             try:
                 email_service.send_review_reminder(

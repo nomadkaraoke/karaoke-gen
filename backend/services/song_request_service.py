@@ -290,14 +290,25 @@ class SongRequestService:
             {"job_id": job_id, "updated_at": _now_iso()}
         )
 
-    def assign_owner(self, request_id: str, email: str) -> None:
+    def assign_owner(
+        self, request_id: str, email: str, expected_owner: Optional[str] = None
+    ) -> bool:
         """Make ``email`` the current owner and (re)start their 24h review clock.
+
         Records the email in attempted_owners and bumps handoff_attempts when it is
-        a genuinely new owner (so the initial assignment counts as attempt #1)."""
+        a genuinely new owner (so the initial assignment counts as attempt #1).
+
+        ``expected_owner`` is a compare-and-set guard for the handoff: pass the
+        owner you observed, and the write is skipped (returns False) if a newer
+        run already moved the request to someone else — preventing a stale handoff
+        from clobbering a fresher assignment. The picker passes None (initial
+        assignment always applies). Returns True if the assignment was written.
+        """
         email = email.lower()
+        expected = expected_owner.lower() if expected_owner else None
         ref = self.db.collection(REQUESTS_COLLECTION).document(request_id)
         transaction = self.db.transaction()
-        _assign_owner_txn(transaction, ref, email)
+        return _assign_owner_txn(transaction, ref, email, expected)
 
     def mark_stalled(self, request_id: str) -> None:
         self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
@@ -333,7 +344,10 @@ class SongRequestService:
         )
         rows = [doc.to_dict() for doc in query.stream()]
         upvotes = [r for r in rows if int(r.get("value", 0)) > 0]
-        upvotes.sort(key=lambda r: r.get("created_at", ""))
+        # Order by when the voter last committed to THIS request: a moved vote keeps
+        # its original created_at but refreshes updated_at, so updated_at reflects the
+        # moment they actually backed this request (created_at as a fallback).
+        upvotes.sort(key=lambda r: r.get("updated_at") or r.get("created_at", ""))
         # De-dupe by email, preserving earliest.
         seen: set[str] = set()
         emails: list[str] = []
@@ -379,11 +393,14 @@ def _transition_status_txn(transaction, ref, expected_from, new_status, extra):
 
 
 @firestore.transactional
-def _assign_owner_txn(transaction, ref, email):
+def _assign_owner_txn(transaction, ref, email, expected_owner):
     snap = ref.get(transaction=transaction)
     if not snap.exists:
-        return
+        return False
     data = snap.to_dict()
+    # Compare-and-set: a handoff aborts if the request already moved on.
+    if expected_owner is not None and (data.get("owner_email") or "").lower() != expected_owner:
+        return False
     attempted = list(data.get("attempted_owners") or [])
     is_new = email not in attempted
     if is_new:
@@ -395,6 +412,7 @@ def _assign_owner_txn(transaction, ref, email):
         "handoff_attempts": int(data.get("handoff_attempts", 0)) + (1 if is_new else 0),
         "updated_at": _now_iso(),
     })
+    return True
 
 
 @firestore.transactional

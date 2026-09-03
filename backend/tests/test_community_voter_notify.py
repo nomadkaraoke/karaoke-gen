@@ -52,7 +52,10 @@ async def test_publishes_and_fans_out_excluding_owner():
     # Owner excluded (already got the completion email); two voters emailed.
     emailed = {c.kwargs["to_email"] for c in notifier.send_community_track_live_email.call_args_list}
     assert emailed == {"v2@x.com", "v3@x.com"}
-    svc.add_notified_voters.assert_called_once_with("req1", ["v2@x.com", "v3@x.com"])
+    # Each success is recorded immediately (crash-safe), then the all-done flag.
+    assert [c.args for c in svc.add_notified_voters.call_args_list] == [
+        ("req1", ["v2@x.com"]), ("req1", ["v3@x.com"]),
+    ]
     svc.mark_voters_notified.assert_called_once_with("req1")
 
 
@@ -70,7 +73,7 @@ async def test_skips_already_notified_voters_and_retries_failures():
     # Only the un-notified voter (v3) is attempted; v2 skipped.
     emailed = {c.kwargs["to_email"] for c in notifier.send_community_track_live_email.call_args_list}
     assert emailed == {"v3@x.com"}
-    svc.add_notified_voters.assert_called_once_with("req1", [])  # none succeeded
+    svc.add_notified_voters.assert_not_called()  # v3 send failed → nothing recorded
     svc.mark_voters_notified.assert_not_called()  # partial → leave flag unset for retry
 
 

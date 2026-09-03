@@ -326,22 +326,27 @@ async def _notify_community_voters(
 
         from backend.services.job_notification_service import get_job_notification_service
         notification_service = get_job_notification_service()
-        succeeded = []
+        succeeded = 0
         for voter in pending:
-            ok = await notification_service.send_community_track_live_email(
-                to_email=voter,
-                artist=request.artist,
-                title=request.title,
-                youtube_url=youtube_url,
-            )
+            try:
+                ok = await notification_service.send_community_track_live_email(
+                    to_email=voter,
+                    artist=request.artist,
+                    title=request.title,
+                    youtube_url=youtube_url,
+                )
+            except Exception:
+                logger.exception("Failed community voter email for job %s / %s", job_id, voter)
+                continue
             if ok:
-                succeeded.append(voter)
+                # Record each success immediately so a crash mid-loop never
+                # re-emails an already-notified voter on the retry.
+                service.add_notified_voters(request.id, [voter])
+                succeeded += 1
 
-        service.add_notified_voters(request.id, succeeded)
         # Only flag "fully notified" when every pending voter was reached — a
-        # partial failure leaves the flag unset so a re-run retries just the
-        # missed voters (add_notified_voters keeps us from re-emailing the rest).
-        if len(succeeded) == len(pending):
+        # partial failure leaves the flag unset so a re-run retries just the misses.
+        if succeeded == len(pending):
             service.mark_voters_notified(request.id)
         logger.info(
             "community pick %s published (job %s): notified %d/%d pending voters",

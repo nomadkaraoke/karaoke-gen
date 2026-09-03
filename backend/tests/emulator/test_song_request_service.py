@@ -199,6 +199,12 @@ async def test_assign_owner_tracks_attempts(service):
     r = service.get_request(a.id)
     assert r.owner_email == "v2@x.com" and r.handoff_attempts == 2
     assert r.attempted_owners == ["o1@x.com", "v2@x.com"]
+    # Compare-and-set: a stale handoff expecting the OLD owner is rejected.
+    assert service.assign_owner(a.id, "v3@x.com", expected_owner="o1@x.com") is False
+    assert service.get_request(a.id).owner_email == "v2@x.com"  # unchanged
+    # CAS with the current owner succeeds.
+    assert service.assign_owner(a.id, "v3@x.com", expected_owner="v2@x.com") is True
+    assert service.get_request(a.id).owner_email == "v3@x.com"
 
 
 @pytest.mark.asyncio

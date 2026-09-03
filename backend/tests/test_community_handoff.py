@@ -29,6 +29,7 @@ def _settings():
 
 
 def _patched(svc, job_status=JobStatus.AWAITING_REVIEW):
+    svc.assign_owner.return_value = True  # CAS succeeds by default
     jm = MagicMock()
     jm.get_job.return_value = SimpleNamespace(status=job_status, job_id="j1")
     email = MagicMock()
@@ -54,9 +55,24 @@ async def test_reassigns_to_next_untried_voter():
         result = await ch.process_community_handoffs()
     assert result["handed_off"] == 1 and result["parked"] == 0
     jm.update_job.assert_called_once_with("j1", {"user_email": "v2@x.com"})
-    svc.assign_owner.assert_called_once_with("req1", "v2@x.com")
+    svc.assign_owner.assert_called_once_with("req1", "v2@x.com", expected_owner="owner@x.com")
     email.send_review_reminder.assert_called_once()
     svc.mark_stalled.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_skips_when_owner_changed_mid_run():
+    # CAS fails (a fresher run already moved the request) → don't touch the job.
+    svc = MagicMock()
+    svc.list_in_progress.return_value = [_req()]
+    svc.list_upvoters.return_value = ["owner@x.com", "v2@x.com"]
+    ctx, jm, email = _patched(svc)
+    svc.assign_owner.return_value = False
+    with ctx:
+        result = await ch.process_community_handoffs()
+    assert result["handed_off"] == 0
+    jm.update_job.assert_not_called()
+    email.send_review_reminder.assert_not_called()
 
 
 @pytest.mark.asyncio
