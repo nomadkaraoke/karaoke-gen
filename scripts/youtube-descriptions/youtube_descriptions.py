@@ -291,6 +291,14 @@ def cmd_apply(args):
                 continue
             entry = classify(live[vid])
 
+        # Guard: refuse to rewrite when we couldn't parse an artist/title (e.g. a
+        # forced --video-id pointed at a non-karaoke/tutorial video) — otherwise
+        # we'd push a description like 'Sing along to "..." by  —'.
+        if not entry.get("artist") or not entry.get("song_title"):
+            print(f"  {vid}: SKIP — could not parse artist/title from "
+                  f"{entry.get('yt_title')!r}; not a karaoke track?")
+            continue
+
         if args.dry_run:
             print(f"[dry-run] would update {vid} — {entry['yt_title']}")
             updated += 1

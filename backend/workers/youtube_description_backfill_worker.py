@@ -141,8 +141,8 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
     state["last_run_pending_after"] = pending_after
     state["last_run_budget"] = budget
     state["completed"] = completed
-    if errors:
-        state["recent_errors"] = dict(list(errors.items())[:_MAX_STORED_ERRORS])
+    # Always refresh (clear when this run had none) so stale errors don't linger.
+    state["recent_errors"] = dict(list(errors.items())[:_MAX_STORED_ERRORS])
 
     summary = {
         "status": "ok",
@@ -167,8 +167,15 @@ def run_backfill_sync(max_updates: Optional[int] = None, dry_run: bool = False) 
         if just_completed:
             _send_completion_email(settings, state, summary)
             state["completed_notified"] = True
-        elif updated > 0 or (pending_before > 0 and budget == 0):
+        elif updated > 0:
+            # Only email on real progress; a quota-starved 0-update run just logs
+            # (avoids a daily "0 updated" email while uploads hog the quota).
             _send_progress_email(settings, state, summary, stats, errors)
+        elif pending_before > 0 and budget == 0:
+            logger.info(
+                "YOUTUBE_BACKFILL: no budget this run (quota reserved for uploads); "
+                f"{pending_before} still pending."
+            )
     except Exception as exc:  # noqa: BLE001
         logger.error(f"YOUTUBE_BACKFILL: failed to send report email: {exc}")
 
