@@ -63,7 +63,7 @@ export default function CommunityReviewsPage() {
             <ListChecks className="w-6 h-6" /> Community Reviews
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Requests-board picks the daily picker flagged because a community karaoke
+            Requests-board picks that the daily picker flagged because a community karaoke
             version already exists. Choose to make ours anyway, reject (and notify
             up-voters of the existing one), or keep it on the board.
           </p>
