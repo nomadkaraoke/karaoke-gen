@@ -341,7 +341,17 @@
         "greatNews": "Vești bune! Videoclipul tău de karaoke pentru \"{artist} - {title}\" a fost încărcat pe YouTube:",
         "delayNote": "Această încărcare a fost întârziată scurt timp în timp ce sistemele noastre au procesat alte încărcări, dar acum totul este gata.",
         "signOff": "Mulțumesc!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Vești bune — \"{artist} - {title}\", o piesă de karaoke pentru care ai votat în lista de cereri Nomad Karaoke, este acum live pe YouTube:",
+        "callToAction": "Vrei să alegi următoarea piesă gratuită? Votează la https://requests.nomadkaraoke.com",
+        "greeting": "Salut, {name},",
+        "signOff": "Îți mulțumesc pentru vot!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} este live pe YouTube! 🎉",
+      "subjectFallback": "O piesă pentru care ai votat este acum live!"
     }
   }
 }

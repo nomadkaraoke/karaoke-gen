@@ -341,7 +341,17 @@
         "greatNews": "¡Excelentes noticias! Tu video de karaoke para \"{artist} - {title}\" ha sido subido a YouTube:",
         "delayNote": "Esta subida se retrasó brevemente mientras nuestros sistemas procesaban otras subidas, pero ya está todo listo.",
         "signOff": "¡Gracias!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Excelentes noticias: \"{artist} - {title}\", una pista de karaoke por la que votaste en el tablero de solicitudes de Nomad Karaoke, ya está disponible en YouTube:",
+        "callToAction": "¿Quieres elegir la próxima pista gratuita? Vota en https://requests.nomadkaraoke.com",
+        "greeting": "Hola {name},",
+        "signOff": "¡Gracias por votar!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "¡{artist} - {title} ya está disponible en YouTube! 🎉",
+      "subjectFallback": "¡Una pista por la que votaste ya está disponible!"
     }
   }
 }

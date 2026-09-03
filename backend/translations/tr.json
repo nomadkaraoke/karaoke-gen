@@ -341,7 +341,17 @@
         "greatNews": "Harika haber! \"{artist} - {title}\" için karaoke videon YouTube'a yüklendi:",
         "delayNote": "Sistemlerimiz diğer yüklemeleri işlerken bu yükleme kısa bir süreliğine gecikti, ancak şimdi her şey hazır.",
         "signOff": "Teşekkürler!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Harika haber — Nomad Karaoke istek panosunda oy verdiğin karaoke parçası \"{artist} - {title}\" artık YouTube'da yayında:",
+        "callToAction": "Bir sonraki ücretsiz parçayı seçmek ister misin? https://requests.nomadkaraoke.com adresinden oy ver",
+        "greeting": "Merhaba {name},",
+        "signOff": "Oy verdiğin için teşekkürler!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} YouTube'da yayında! 🎉",
+      "subjectFallback": "Oy verdiğin bir parça artık yayında!"
     }
   }
 }

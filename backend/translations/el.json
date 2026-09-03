@@ -341,7 +341,17 @@
         "greatNews": "Υπέροχα νέα! Το καραόκε βίντεό σου για το \"{artist} - {title}\" ανέβηκε στο YouTube:",
         "delayNote": "Αυτό το ανέβασμα καθυστέρησε για λίγο ενώ τα συστήματά μας επεξεργάζονταν άλλα ανεβάσματα, αλλά τώρα όλα είναι έτοιμα.",
         "signOff": "Ευχαριστώ!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Υπέροχα νέα — το \"{artist} - {title}\", ένα κομμάτι καραόκε που ψήφισες στον πίνακα αιτημάτων του Nomad Karaoke, είναι πλέον διαθέσιμο στο YouTube:",
+        "callToAction": "Θέλεις να επιλέξεις το επόμενο δωρεάν κομμάτι; Ψήφισε στο https://requests.nomadkaraoke.com",
+        "greeting": "Γεια σου {name},",
+        "signOff": "Ευχαριστώ που ψήφισες!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} είναι διαθέσιμο στο YouTube! 🎉",
+      "subjectFallback": "Ένα κομμάτι που ψήφισες είναι πλέον διαθέσιμο!"
     }
   }
 }

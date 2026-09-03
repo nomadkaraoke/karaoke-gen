@@ -1,8 +1,9 @@
 # Requests Voting Board (`requests.nomadkaraoke.com`)
 
 **Status:** Phase 1 **LIVE in production** (karaoke-gen v0.219.0, PR #975, 2026-09-02).
-Phase 2 (the daily automation) is designed but **not yet built** — see
-`docs/archive/2026-09-03-requests-voting-board-phase2-handoff.md`.
+Phase 2 (the daily automation) is **built and merged, deployed dark** behind a kill-switch
+(`COMMUNITY_DAILY_PICK_ENABLED`, default off) — flip it on to go live. Trending-agent fallback
+source is the one deferred piece. Design: `docs/archive/2026-09-03-requests-board-phase2-plan.md`.
 
 This doc is the single self-contained explanation of what the requests system is, what users
 experience, and how it works. Point marketing / YouTube-description work here.
@@ -50,11 +51,30 @@ into paying [gen.nomadkaraoke.com](https://gen.nomadkaraoke.com) customers over 
    user jump straight into the full generator and make their video immediately — and *that* path
    grants them the standard free welcome credit (once per account, the normal way).
 
-### What's **not** live yet (Phase 2)
-The daily automatic pick-and-generate, the free-credit grant to the winning requester, the 24-hour
+### Phase 2 — the automation (built, deployed dark)
+The daily pick-and-generate, the free-credit grant to the winning requester, the 24-hour
 "if you don't finish it, it passes to the next voter" hand-off, and the "your song is live on
-YouTube!" emails to everyone who voted — all of that is **Phase 2**, not built yet. Today the board
-**collects requests and votes**; a human (or Phase 2) turns the top pick into a video.
+YouTube!" fan-out to every voter are all **built and merged**, gated behind the
+`COMMUNITY_DAILY_PICK_ENABLED` kill-switch (default **off**). While off, the daily Scheduler still
+runs but only **shadow-logs** the pick it *would* make (also reachable manually with
+`?dry_run=true`) — so behavior can be verified before going live. Flip the env var on to start
+donating one free track per day. The only outstanding piece is the **trending-agent fallback
+source** (auto-submit a candidate when the board is empty), deliberately deferred to a follow-up.
+
+**How the automation works:**
+- **Daily picker** (`community_daily_pick.py`, Scheduler noon US Eastern) claims the UTC day with a
+  create-only lock (`daily_community_pick/{YYYY-MM-DD}` → **one free track/day, total**), picks the
+  top open request with net votes ≥ 0 (source-agnostic; skips community-rejected), grants the
+  requester a free credit, and submits the job **as that user** (so it's owned by them and the credit
+  is consumed) via the same search → auto-select → download path the web flow uses.
+- **24h hand-off** (`community_handoff.py`, hourly) reassigns a track to the next up-voter if the
+  owner hasn't completed their review within 24h — up to 5 voters, then it parks the track
+  (`stalled`). Community jobs are excluded from the normal stale-review auto-cancel.
+- **Publish fan-out** hooks the YouTube upload queue: when a community pick goes live it's marked
+  `published` and every up-voter (except the owner, already emailed) gets a "track you voted for is
+  live" email.
+- Every step is idempotent (durable per-day lock phase + per-request guard flags) so a retried
+  Scheduler delivery or a mid-run crash can't double-grant credits or make two tracks in a day.
 
 ## How it works (technical, brief)
 

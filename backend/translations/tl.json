@@ -341,7 +341,17 @@
         "greatNews": "Magandang balita! Na-upload na sa YouTube ang iyong karaoke video para sa \"{artist} - {title}\":",
         "delayNote": "Saglit na naantala ang upload na ito habang pinoproseso ng aming mga system ang iba pang mga upload, pero ayos na ang lahat ngayon.",
         "signOff": "Salamat!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Magandang balita — live na sa YouTube ang \"{artist} - {title}\", ang karaoke track na binoto mo sa requests board ng Nomad Karaoke:",
+        "callToAction": "Gusto mong pumili ng susunod na libreng track? Bumoto sa https://requests.nomadkaraoke.com",
+        "greeting": "Hi {name},",
+        "signOff": "Salamat sa pagboto!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} ay live na sa YouTube! 🎉",
+      "subjectFallback": "Live na ang track na binoto mo!"
     }
   }
 }

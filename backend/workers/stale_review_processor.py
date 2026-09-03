@@ -96,6 +96,12 @@ async def process_stale_reviews() -> Dict[str, Any]:
 
             # Get blocking state entry time from state_data
             state_data = job.state_data or {}
+
+            # Skip requests-board community picks — their ownership handoff worker
+            # (community_handoff) owns their review lifecycle; auto-cancel+refund
+            # here would kill a track voters are still waiting on.
+            if state_data.get('community_request_id'):
+                continue
             blocking_entered_at_str = state_data.get('blocking_state_entered_at')
             if not blocking_entered_at_str:
                 continue

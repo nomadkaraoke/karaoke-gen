@@ -341,7 +341,17 @@
         "greatNews": "Berita baik! Video karaoke anda untuk \"{artist} - {title}\" telah dimuat naik ke YouTube:",
         "delayNote": "Muat naik ini tertangguh seketika semasa sistem kami memproses muat naik lain, tetapi semuanya sudah sedia sekarang.",
         "signOff": "Terima kasih!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Berita baik — \"{artist} - {title}\", lagu karaoke yang anda undi di papan permintaan Nomad Karaoke, kini tersedia di YouTube:",
+        "callToAction": "Ingin memilih lagu percuma yang seterusnya? Undi di https://requests.nomadkaraoke.com",
+        "greeting": "Hai {name},",
+        "signOff": "Terima kasih kerana mengundi!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} kini tersedia di YouTube! 🎉",
+      "subjectFallback": "Lagu yang anda undi kini tersedia!"
     }
   }
 }

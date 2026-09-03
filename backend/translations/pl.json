@@ -341,7 +341,17 @@
         "greatNews": "Świetne wieści! Twoje wideo karaoke dla \"{artist} - {title}\" zostało przesłane na YouTube:",
         "delayNote": "Przesyłanie było przez chwilę opóźnione, ponieważ nasze systemy przetwarzały inne pliki, ale teraz wszystko jest już gotowe.",
         "signOff": "Dzięki!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Świetne wieści — \"{artist} - {title}\", utwór karaoke, na który zagłosowałeś/aś na tablicy życzeń Nomad Karaoke, jest już dostępny na YouTube:",
+        "callToAction": "Chcesz wybrać kolejny darmowy utwór? Zagłosuj na https://requests.nomadkaraoke.com",
+        "greeting": "Cześć {name},",
+        "signOff": "Dzięki za głos!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} jest już na YouTube! 🎉",
+      "subjectFallback": "Utwór, na który zagłosowałeś/aś, jest już dostępny!"
     }
   }
 }

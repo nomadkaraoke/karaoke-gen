@@ -257,6 +257,17 @@ class Settings(BaseSettings):
     default_enable_youtube_upload: bool = os.getenv("DEFAULT_ENABLE_YOUTUBE_UPLOAD", "false").lower() in ("true", "1", "yes")
     default_brand_prefix: Optional[str] = os.getenv("DEFAULT_BRAND_PREFIX")
 
+    # Requests voting board — Phase 2 daily free-community-track automation.
+    # Master kill-switch: when False the daily picker claims the day and records a
+    # "skipped" lock but never grants credits or creates a job (safe to deploy dark).
+    community_daily_pick_enabled: bool = os.getenv(
+        "COMMUNITY_DAILY_PICK_ENABLED", "false"
+    ).lower() in ("true", "1", "yes")
+    # Max distinct voters the 24h ownership handoff will try before parking a track.
+    community_handoff_max_attempts: int = int(os.getenv("COMMUNITY_HANDOFF_MAX_ATTEMPTS", "5"))
+    # Hours an owner has to complete their review before the job is handed off.
+    community_handoff_hours: int = int(os.getenv("COMMUNITY_HANDOFF_HOURS", "24"))
+
     # Private (non-published) track distribution settings
     default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")
     default_private_brand_prefix: Optional[str] = os.getenv("DEFAULT_PRIVATE_BRAND_PREFIX", "NOMADNP")

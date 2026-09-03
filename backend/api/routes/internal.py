@@ -600,6 +600,57 @@ async def process_stale_reviews_endpoint(
     }
 
 
+@router.post("/community-daily-pick")
+async def community_daily_pick_endpoint(
+    http_request: Request,
+    dry_run: bool = False,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """Pick + make the daily free community track (requests voting board Phase 2).
+
+    Called by Cloud Scheduler once a day (noon US Eastern). Idempotent: the
+    per-UTC-day lock guarantees at most one free track per day even if retried.
+
+    Query param ``dry_run=true`` shadow-runs (logs the pick, makes nothing) —
+    handy for verifying behavior before flipping the kill-switch on. The master
+    switch is settings.community_daily_pick_enabled (off ⇒ always shadow).
+    """
+    from backend.workers.community_daily_pick import run_daily_pick
+
+    logger.info("COMMUNITY_DAILY_PICK starting (dry_run=%s)", dry_run)
+    add_span_attribute("operation", "community_daily_pick")
+    try:
+        result = await run_daily_pick(dry_run=dry_run)
+        logger.info(f"COMMUNITY_DAILY_PICK complete: {result}")
+        return result
+    except Exception as e:
+        logger.exception(f"COMMUNITY_DAILY_PICK failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/community-handoffs")
+async def community_handoffs_endpoint(
+    http_request: Request,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """Run the 24h ownership handoff for community picks (requests board Phase 2).
+
+    Called by Cloud Scheduler hourly. Reassigns tracks whose owner hasn't
+    completed the review within 24h to the next up-voter (capped), or parks them.
+    """
+    from backend.workers.community_handoff import process_community_handoffs
+
+    logger.info("COMMUNITY_HANDOFFS starting")
+    add_span_attribute("operation", "community_handoffs")
+    try:
+        result = await process_community_handoffs()
+        logger.info(f"COMMUNITY_HANDOFFS complete: {result}")
+        return result
+    except Exception as e:
+        logger.exception(f"COMMUNITY_HANDOFFS failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/trigger-gdrive-validation")
 async def trigger_gdrive_validation_endpoint(
     http_request: Request,

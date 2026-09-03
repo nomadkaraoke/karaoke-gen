@@ -17,14 +17,18 @@ from typing import Optional, Tuple
 from google.cloud import firestore
 from google.cloud.firestore_v1 import FieldFilter
 
+from google.api_core import exceptions as gcloud_exceptions
+
 from backend.config import get_settings
-from backend.models.song_request import SongRequest, Vote
+from backend.models.song_request import DailyCommunityPick, SongRequest, Vote
 from backend.services.match_judge.classifier import normalize_for_match
 
 logger = logging.getLogger(__name__)
 
 REQUESTS_COLLECTION = "song_requests"
 VOTES_COLLECTION = "song_request_votes"
+# Per-UTC-day lock/ledger for the daily free-track picker (Phase 2).
+DAILY_PICK_COLLECTION = "daily_community_pick"
 
 # Soft anti-spam cap on how many distinct requests one person can submit per day.
 MAX_SUBMISSIONS_PER_DAY = 15
@@ -221,6 +225,167 @@ class SongRequestService:
 
         transaction = self.db.transaction()
         return _cast_vote_txn(transaction, self, vote_ref, target_ref, request_id, email, day, value)
+
+    # -------------------------------------------------------------------------
+    # Phase 2 — daily picker, ownership handoff, publish fan-out
+    # -------------------------------------------------------------------------
+
+    # --- per-day lock / ledger ---
+
+    def claim_day(self, date: str) -> Tuple[DailyCommunityPick, bool]:
+        """Atomically claim the day for the daily picker.
+
+        Returns (lock, claimed_new). ``claimed_new`` is True only for the run that
+        created the lock; every other (retried/overlapping) run gets the existing
+        lock and False. This is what enforces "one free track per day, total".
+        """
+        ref = self.db.collection(DAILY_PICK_COLLECTION).document(date)
+        lock = DailyCommunityPick(date=date, phase="claimed")
+        try:
+            ref.create(lock.model_dump(mode="json"))
+            logger.info("daily-pick: claimed day %s", date)
+            return lock, True
+        except gcloud_exceptions.AlreadyExists:
+            existing = ref.get()
+            return DailyCommunityPick(**existing.to_dict()), False
+
+    def get_lock(self, date: str) -> Optional[DailyCommunityPick]:
+        doc = self.db.collection(DAILY_PICK_COLLECTION).document(date).get()
+        return DailyCommunityPick(**doc.to_dict()) if doc.exists else None
+
+    def update_lock(self, date: str, **fields) -> None:
+        fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+        self.db.collection(DAILY_PICK_COLLECTION).document(date).update(fields)
+
+    # --- picking ---
+
+    def pick_eligible(self) -> Optional[SongRequest]:
+        """The next request to auto-make: highest net votes, oldest-first tiebreak,
+        skipping community-rejected (net < 0) requests. Source-agnostic — human
+        votes and trending-agent submissions share the same open queue."""
+        for req in self.list_active():  # already ranked -vote_count, created_at asc
+            if req.vote_count >= 0:
+                return req
+        return None
+
+    def transition_status(
+        self, request_id: str, expected_from: str, new_status: str, **extra
+    ) -> bool:
+        """Move a request's status inside a transaction, guarding on the current
+        value so two runners can't both advance the same request. Extra fields are
+        written alongside. Returns True if the transition was applied."""
+        ref = self.db.collection(REQUESTS_COLLECTION).document(request_id)
+        transaction = self.db.transaction()
+        return _transition_status_txn(
+            transaction, ref, expected_from, new_status, extra
+        )
+
+    def mark_credit_granted(self, request_id: str) -> None:
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"community_credit_granted": True, "updated_at": _now_iso()}
+        )
+
+    def set_job_id(self, request_id: str, job_id: str) -> None:
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"job_id": job_id, "updated_at": _now_iso()}
+        )
+
+    def assign_owner(self, request_id: str, email: str) -> None:
+        """Make ``email`` the current owner and (re)start their 24h review clock.
+        Records the email in attempted_owners and bumps handoff_attempts when it is
+        a genuinely new owner (so the initial assignment counts as attempt #1)."""
+        email = email.lower()
+        ref = self.db.collection(REQUESTS_COLLECTION).document(request_id)
+        transaction = self.db.transaction()
+        _assign_owner_txn(transaction, ref, email)
+
+    def mark_stalled(self, request_id: str) -> None:
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"status": "stalled", "updated_at": _now_iso()}
+        )
+
+    # --- reads for handoff / publish ---
+
+    def get_by_job_id(self, job_id: str) -> Optional[SongRequest]:
+        query = self.db.collection(REQUESTS_COLLECTION).where(
+            filter=FieldFilter("job_id", "==", job_id)
+        ).limit(1)
+        for doc in query.stream():
+            return SongRequest(**doc.to_dict())
+        return None
+
+    def list_in_progress(self) -> list[SongRequest]:
+        """Community picks currently owned by someone reviewing (status in_progress)."""
+        query = self.db.collection(REQUESTS_COLLECTION).where(
+            filter=FieldFilter("status", "==", "in_progress")
+        ).limit(ACTIVE_FETCH_LIMIT)
+        return [SongRequest(**doc.to_dict()) for doc in query.stream()]
+
+    def list_upvoters(self, request_id: str) -> list[str]:
+        """Emails that up-voted this request (value > 0), oldest vote first.
+
+        Votes are stored per-day at doc id {email}__{date}, and a mover's vote row
+        reflects only their *latest* request — so a voter appears here iff their
+        current daily vote still points at this request with a positive value.
+        """
+        query = self.db.collection(VOTES_COLLECTION).where(
+            filter=FieldFilter("request_id", "==", request_id)
+        )
+        rows = [doc.to_dict() for doc in query.stream()]
+        upvotes = [r for r in rows if int(r.get("value", 0)) > 0]
+        upvotes.sort(key=lambda r: r.get("created_at", ""))
+        # De-dupe by email, preserving earliest.
+        seen: set[str] = set()
+        emails: list[str] = []
+        for r in upvotes:
+            e = (r.get("voter_email") or "").lower()
+            if e and e not in seen:
+                seen.add(e)
+                emails.append(e)
+        return emails
+
+    def mark_published(self, request_id: str, youtube_url: str) -> None:
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"status": "published", "youtube_url": youtube_url, "updated_at": _now_iso()}
+        )
+
+    def mark_voters_notified(self, request_id: str) -> None:
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"voters_notified": True, "updated_at": _now_iso()}
+        )
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+@firestore.transactional
+def _transition_status_txn(transaction, ref, expected_from, new_status, extra):
+    snap = ref.get(transaction=transaction)
+    if not snap.exists or snap.to_dict().get("status") != expected_from:
+        return False
+    update = {"status": new_status, "updated_at": _now_iso(), **extra}
+    transaction.update(ref, update)
+    return True
+
+
+@firestore.transactional
+def _assign_owner_txn(transaction, ref, email):
+    snap = ref.get(transaction=transaction)
+    if not snap.exists:
+        return
+    data = snap.to_dict()
+    attempted = list(data.get("attempted_owners") or [])
+    is_new = email not in attempted
+    if is_new:
+        attempted.append(email)
+    transaction.update(ref, {
+        "owner_email": email,
+        "owner_assigned_at": _now_iso(),
+        "attempted_owners": attempted,
+        "handoff_attempts": int(data.get("handoff_attempts", 0)) + (1 if is_new else 0),
+        "updated_at": _now_iso(),
+    })
 
 
 @firestore.transactional

@@ -341,7 +341,17 @@
         "greatNews": "Goda nyheter! Din karaokevideo för \"{artist} - {title}\" har laddats upp på YouTube:",
         "delayNote": "Denna uppladdning fördröjdes kort medan våra system bearbetade andra uppladdningar, men allt är klart nu.",
         "signOff": "Tack!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Goda nyheter — \"{artist} - {title}\", en karaokelåt du röstade på via Nomad Karaokes önskelista, är nu live på YouTube:",
+        "callToAction": "Vill du välja nästa gratislåt? Rösta på https://requests.nomadkaraoke.com",
+        "greeting": "Hej {name},",
+        "signOff": "Tack för att du röstade!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} är live på YouTube! 🎉",
+      "subjectFallback": "En låt du röstade på är nu live!"
     }
   }
 }

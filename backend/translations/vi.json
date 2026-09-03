@@ -341,7 +341,17 @@
         "greatNews": "Tin tuyệt vời! Video karaoke của bạn cho bài hát \"{artist} - {title}\" đã được tải lên YouTube:",
         "delayNote": "Bản tải lên này đã bị trì hoãn một thời gian ngắn trong khi hệ thống của chúng tôi xử lý các bản tải lên khác, nhưng mọi thứ hiện đã sẵn sàng.",
         "signOff": "Cảm ơn bạn!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Tin vui đây — \"{artist} - {title}\", bài hát karaoke mà bạn đã bình chọn trên bảng yêu cầu của Nomad Karaoke, hiện đã có trên YouTube:",
+        "callToAction": "Bạn muốn chọn bài hát miễn phí tiếp theo? Hãy bình chọn tại https://requests.nomadkaraoke.com",
+        "greeting": "Chào {name},",
+        "signOff": "Cảm ơn bạn đã bình chọn!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} đã có trên YouTube! 🎉",
+      "subjectFallback": "Bài hát bạn bình chọn đã lên sóng!"
     }
   }
 }

@@ -341,7 +341,17 @@
         "greatNews": "أخبار رائعة! تم رفع فيديو الكاريوكي الخاص بك لأغنية \"{artist} - {title}\" على YouTube:",
         "delayNote": "تأخر هذا الرفع لفترة وجيزة بينما قامت أنظمتنا بمعالجة عمليات الرفع الأخرى، ولكن كل شيء جاهز الآن.",
         "signOff": "شكراً!\n- أندرو"
+      },
+      "communityTrackLive": {
+        "body": "أخبار رائعة — \"{artist} - {title}\"، مقطع الكاريوكي الذي صوّت له في لوحة طلبات Nomad Karaoke، متاح الآن على YouTube:",
+        "callToAction": "هل ترغب في اختيار المقطع المجاني التالي؟ صوّت عبر https://requests.nomadkaraoke.com",
+        "greeting": "مرحباً {name}،",
+        "signOff": "شكراً لتصويتك!\n- أندرو"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} متاح الآن على YouTube! 🎉",
+      "subjectFallback": "المقطع الذي صوّت له متاح الآن!"
     }
   }
 }

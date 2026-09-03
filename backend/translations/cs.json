@@ -341,7 +341,17 @@
         "greatNews": "Skvělé zprávy! Tvoje karaoke video pro \"{artist} - {title}\" bylo nahráno na YouTube:",
         "delayNote": "Toto nahrání bylo krátce zpožděno, zatímco naše systémy zpracovávaly jiná nahrání, ale teď už je vše připraveno.",
         "signOff": "Díky!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Skvělá zpráva — karaoke skladba „{artist} - {title}“, pro kterou jsi hlasoval/a na nástěnce přání Nomad Karaoke, je nyní na YouTube:",
+        "callToAction": "Chceš vybrat další skladbu zdarma? Hlasuj na https://requests.nomadkaraoke.com",
+        "greeting": "Ahoj {name},",
+        "signOff": "Díky za hlasování!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} je nyní na YouTube! 🎉",
+      "subjectFallback": "Skladba, pro kterou jsi hlasoval/a, je nyní online!"
     }
   }
 }

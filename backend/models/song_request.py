@@ -15,8 +15,13 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 # Request lifecycle. Phase 1 only ever sets/reads "open"; the later states are
-# reserved so the daily picker (Phase 2) can advance a request without a schema change.
-RequestStatus = Literal["open", "queued", "in_progress", "published", "rejected"]
+# advanced by the daily picker (Phase 2):
+#   open -> queued (picked, job being created) -> in_progress (job created, owner reviewing)
+#   -> published (live on YouTube) | rejected (manually killed)
+#   -> stalled (handoff exhausted its voter cap without anyone completing the review)
+RequestStatus = Literal[
+    "open", "queued", "in_progress", "published", "rejected", "stalled"
+]
 
 # Where a request came from. Phase 2's trending-karaoke agent submits with
 # source="trending_agent"; everything a human submits is "human".
@@ -46,10 +51,22 @@ class SongRequest(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Phase-2 placeholders (never set in Phase 1).
+    # Phase-2 fields (never set in Phase 1).
     job_id: Optional[str] = None
     youtube_url: Optional[str] = None
     picked_at: Optional[datetime] = None
+
+    # Current owner of the generated job (starts as the requester; the 24h handoff
+    # reassigns it to successive up-voters). owner_assigned_at gates the 24h clock.
+    owner_email: Optional[str] = None
+    owner_assigned_at: Optional[datetime] = None
+    # Emails already made owner (submitter first, then handoff targets) — never retry one.
+    attempted_owners: list[str] = Field(default_factory=list)
+    handoff_attempts: int = 0
+
+    # Idempotency guards for the daily-pick side effects.
+    community_credit_granted: bool = False  # the free credit was granted for this pick
+    voters_notified: bool = False  # publish fan-out email already sent to up-voters
 
 
 class Vote(BaseModel):
@@ -64,6 +81,30 @@ class Vote(BaseModel):
     request_id: str
     value: int  # +1 (up) or -1 (down)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DailyCommunityPick(BaseModel):
+    """Per-UTC-day lock/ledger for the daily free-track picker (Firestore:
+    daily_community_pick, doc id = "YYYY-MM-DD").
+
+    Created create-only so only one run per day can proceed (enforces "one free
+    track per day, total"). ``phase`` lets a crashed run resume the same day
+    without double-granting credits or creating a second job.
+    """
+
+    date: str  # UTC "YYYY-MM-DD" (also the doc id)
+    # claimed  -> credit_granted -> job_created -> done
+    # empty    -> board had nothing eligible (no track made today)
+    # skipped  -> disabled / dry-run
+    phase: Literal[
+        "claimed", "credit_granted", "job_created", "done", "empty", "skipped"
+    ] = "claimed"
+    request_id: Optional[str] = None
+    job_id: Optional[str] = None
+    owner_email: Optional[str] = None
+    note: Optional[str] = None
+    claimed_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 

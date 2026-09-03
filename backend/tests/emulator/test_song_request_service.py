@@ -21,6 +21,7 @@ def service(monkeypatch):
     suffix = uuid.uuid4().hex[:8]
     monkeypatch.setattr(srs, "REQUESTS_COLLECTION", f"test_song_requests_{suffix}")
     monkeypatch.setattr(srs, "VOTES_COLLECTION", f"test_song_request_votes_{suffix}")
+    monkeypatch.setattr(srs, "DAILY_PICK_COLLECTION", f"test_daily_pick_{suffix}")
     return SongRequestService()
 
 
@@ -124,3 +125,109 @@ async def test_vote_on_missing_request_raises(service):
     from backend.services.song_request_service import RequestNotFound
     with pytest.raises(RequestNotFound):
         service.cast_vote("v@x.com", "does-not-exist", "up")
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — daily picker, ownership handoff, publish fan-out
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_claim_day_is_single_winner(service):
+    lock1, new1 = service.claim_day("2026-09-03")
+    lock2, new2 = service.claim_day("2026-09-03")
+    assert new1 is True and new2 is False
+    assert lock1.date == lock2.date == "2026-09-03"
+    # Different day is independently claimable.
+    _, new3 = service.claim_day("2026-09-04")
+    assert new3 is True
+
+
+@pytest.mark.asyncio
+async def test_update_and_get_lock(service):
+    service.claim_day("2026-09-03")
+    service.update_lock("2026-09-03", phase="done", request_id="req1", job_id="j1")
+    lock = service.get_lock("2026-09-03")
+    assert lock.phase == "done" and lock.request_id == "req1" and lock.job_id == "j1"
+
+
+@pytest.mark.asyncio
+async def test_pick_eligible_skips_negative_and_ranks(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    b, _, _, _ = await _submit(service, "o2@x.com", "Artist B", "Song B")
+    # Give B more votes → B should rank first.
+    service.cast_vote("v1@x.com", b.id, "up")
+    assert service.pick_eligible().id == b.id
+    # Drive A negative → still eligible-skipping keeps B; then make B negative too.
+    service.cast_vote("v2@x.com", a.id, "down")  # A: owner(+1) + down(-1) = 0
+    service.cast_vote("v3@x.com", a.id, "down")  # A: -1 now
+    assert service.pick_eligible().id == b.id
+    assert service.get_request(a.id).vote_count < 0
+
+
+@pytest.mark.asyncio
+async def test_pick_eligible_none_when_all_negative(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    service.cast_vote("v1@x.com", a.id, "down")  # 0
+    service.cast_vote("v2@x.com", a.id, "down")  # -1
+    assert service.get_request(a.id).vote_count < 0
+    assert service.pick_eligible() is None
+
+
+@pytest.mark.asyncio
+async def test_transition_status_guards_on_current(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    assert service.transition_status(a.id, "open", "queued") is True
+    assert service.get_request(a.id).status == "queued"
+    # Wrong expected_from → no-op.
+    assert service.transition_status(a.id, "open", "in_progress") is False
+    assert service.get_request(a.id).status == "queued"
+
+
+@pytest.mark.asyncio
+async def test_assign_owner_tracks_attempts(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    service.assign_owner(a.id, "o1@x.com")
+    r = service.get_request(a.id)
+    assert r.owner_email == "o1@x.com" and r.handoff_attempts == 1
+    assert r.attempted_owners == ["o1@x.com"]
+    # Re-assigning the SAME owner does not double-count.
+    service.assign_owner(a.id, "o1@x.com")
+    assert service.get_request(a.id).handoff_attempts == 1
+    # A new owner bumps the count.
+    service.assign_owner(a.id, "v2@x.com")
+    r = service.get_request(a.id)
+    assert r.owner_email == "v2@x.com" and r.handoff_attempts == 2
+    assert r.attempted_owners == ["o1@x.com", "v2@x.com"]
+
+
+@pytest.mark.asyncio
+async def test_list_upvoters_oldest_first_positive_only(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")  # o1 auto-upvote
+    service.cast_vote("v2@x.com", a.id, "up")
+    service.cast_vote("v3@x.com", a.id, "down")  # negative — excluded
+    voters = service.list_upvoters(a.id)
+    assert "o1@x.com" in voters and "v2@x.com" in voters
+    assert "v3@x.com" not in voters
+
+
+@pytest.mark.asyncio
+async def test_get_by_job_id_and_mark_published(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    service.set_job_id(a.id, "job-42")
+    assert service.get_by_job_id("job-42").id == a.id
+    service.mark_published(a.id, "https://youtu.be/xyz")
+    r = service.get_request(a.id)
+    assert r.status == "published" and r.youtube_url == "https://youtu.be/xyz"
+    service.mark_voters_notified(a.id)
+    assert service.get_request(a.id).voters_notified is True
+
+
+@pytest.mark.asyncio
+async def test_list_in_progress_and_stalled(service):
+    a, _, _, _ = await _submit(service, "o1@x.com", "Artist A", "Song A")
+    service.transition_status(a.id, "open", "in_progress")
+    assert [r.id for r in service.list_in_progress()] == [a.id]
+    service.mark_stalled(a.id)
+    assert service.get_request(a.id).status == "stalled"
+    assert service.list_in_progress() == []
