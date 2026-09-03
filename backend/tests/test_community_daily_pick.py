@@ -54,8 +54,9 @@ async def test_kill_switch_off_shadows_no_side_effects():
     assert result["reason"] == "kill_switch_off"
     user.add_credits.assert_not_called()
     svc.transition_status.assert_not_called()
-    # Records a skipped lock for observability.
-    assert any(c.kwargs.get("phase") == "skipped" for c in svc.update_lock.call_args_list)
+    # Shadow must NOT claim the day (else a dry-run would block the real run).
+    svc.claim_day.assert_not_called()
+    svc.update_lock.assert_not_called()
 
 
 @pytest.mark.asyncio

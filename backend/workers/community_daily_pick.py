@@ -59,33 +59,16 @@ async def run_daily_pick(dry_run: bool = False) -> Dict[str, Any]:
     settings = get_settings()
     date = _utc_today()
 
-    lock, claimed_new = service.claim_day(date)
-    if not claimed_new:
-        if lock.phase in ("done", "empty", "skipped"):
-            logger.info("daily-pick: day %s already resolved (phase=%s)", date, lock.phase)
-            return {"status": "already_done", "date": date, "phase": lock.phase,
-                    "request_id": lock.request_id, "job_id": lock.job_id}
-        # A prior run claimed but did not finish — resume it below.
-        logger.info("daily-pick: resuming incomplete day %s (phase=%s)", date, lock.phase)
-
+    # Shadow mode (explicit dry-run OR the master kill-switch is off) must NOT
+    # claim the day — otherwise a manual dry-run would burn the per-day lock and
+    # block the real scheduler run. It only peeks at what it would pick.
     shadow = dry_run or not settings.community_daily_pick_enabled
-
-    # Pick the request (resume uses the one already recorded on the lock).
-    if lock.request_id:
-        request = service.get_request(lock.request_id)
-    else:
-        request = service.pick_eligible()
-
-    if request is None:
-        # Board empty / nothing eligible → nothing happens today (per spec).
-        service.update_lock(date, phase="empty", note="no eligible request")
-        logger.info("daily-pick: no eligible request for %s; nothing made", date)
-        return {"status": "empty", "date": date}
-
     if shadow:
         reason = "dry_run" if dry_run else "kill_switch_off"
-        service.update_lock(date, phase="skipped", request_id=request.id,
-                            note=f"shadow ({reason})")
+        request = service.pick_eligible()
+        if request is None:
+            logger.info("daily-pick[SHADOW:%s]: no eligible request for %s", reason, date)
+            return {"status": "shadow", "reason": reason, "date": date, "request_id": None}
         logger.info(
             "daily-pick[SHADOW:%s]: would pick request %s — %s - %s (net votes=%d)",
             reason, request.id, request.artist, request.title, request.vote_count,
@@ -93,6 +76,25 @@ async def run_daily_pick(dry_run: bool = False) -> Dict[str, Any]:
         return {"status": "shadow", "reason": reason, "date": date,
                 "request_id": request.id, "artist": request.artist,
                 "title": request.title, "vote_count": request.vote_count}
+
+    # Real path — claim the day atomically so at most one run proceeds.
+    lock, claimed_new = service.claim_day(date)
+    if not claimed_new:
+        if lock.phase in ("done", "empty"):
+            logger.info("daily-pick: day %s already resolved (phase=%s)", date, lock.phase)
+            return {"status": "already_done", "date": date, "phase": lock.phase,
+                    "request_id": lock.request_id, "job_id": lock.job_id}
+        # A prior run claimed but did not finish — resume it below.
+        logger.info("daily-pick: resuming incomplete day %s (phase=%s)", date, lock.phase)
+
+    # Pick the request (resume uses the one already recorded on the lock).
+    request = service.get_request(lock.request_id) if lock.request_id else service.pick_eligible()
+
+    if request is None:
+        # Board empty / nothing eligible → nothing happens today (per spec).
+        service.update_lock(date, phase="empty", note="no eligible request")
+        logger.info("daily-pick: no eligible request for %s; nothing made", date)
+        return {"status": "empty", "date": date}
 
     return await _make_request(service, settings, date, request)
 
