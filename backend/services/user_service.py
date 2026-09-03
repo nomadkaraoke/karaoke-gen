@@ -220,6 +220,7 @@ class UserService:
         tenant_id: Optional[str] = None,
         device_fingerprint: Optional[str] = None,
         referral_code: Optional[str] = None,
+        purpose: Optional[str] = None,
     ) -> MagicLinkToken:
         """
         Create a magic link token for email authentication.
@@ -256,6 +257,7 @@ class UserService:
             tenant_id=tenant_id,
             device_fingerprint=device_fingerprint,
             referral_code=referral_code,
+            purpose=purpose,
         )
 
         # Save to Firestore

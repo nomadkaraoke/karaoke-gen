@@ -65,7 +65,7 @@ from backend.services.job_defaults_service import (
     get_effective_distribution_settings,
     resolve_cdg_txt_defaults,
 )
-from backend.api.dependencies import require_admin
+from backend.api.dependencies import require_admin, require_auth
 from backend.services.auth_service import AuthResult
 from backend.api.routes.file_upload import _prepare_theme_for_job
 from backend.services.auth_service import UserType
@@ -259,10 +259,14 @@ async def send_magic_link(
             message=t(locale, "users.magicLinkSent")
         )
 
+    # Board sign-in ("requests_board") is passwordless identity only: no welcome credit
+    # and no per-IP signup limit, so a whole venue on shared WiFi can sign in to vote.
+    is_board_signin = request.purpose == "requests_board"
+
     # Per-IP and per-fingerprint signup rate limit (only for new users)
     device_fingerprint = request.device_fingerprint
     existing_user = user_service.get_user(email)
-    if existing_user is None:
+    if existing_user is None and not is_board_signin:
         if user_service.is_signup_rate_limited(
             ip_address=ip_address, device_fingerprint=device_fingerprint
         ):
@@ -310,6 +314,7 @@ async def send_magic_link(
         tenant_id=tenant_id,
         device_fingerprint=device_fingerprint,
         referral_code=request.referral_code,
+        purpose=request.purpose,
     )
 
     # Get tenant-specific email configuration
@@ -341,7 +346,8 @@ async def send_magic_link(
     # By the time they check their email and click the link, the decision
     # will be ready and verification will be instant.
     # Skip for test emails — they get auto-granted without evaluation.
-    if existing_user is None and not is_test_email(email):
+    # Skip for board sign-in — it never grants a welcome credit, so there's nothing to eval.
+    if existing_user is None and not is_test_email(email) and not is_board_signin:
         thread = threading.Thread(
             target=_precompute_credit_eval,
             args=(magic_link.token, email),
@@ -385,9 +391,11 @@ async def verify_magic_link(
     magic_link_doc = user_service.db.collection(MAGIC_LINKS_COLLECTION).document(token).get()
     is_first_login = False
     magic_link_tenant_id = None
+    magic_link_purpose = None
     if magic_link_doc.exists:
         magic_link_data = magic_link_doc.to_dict()
         magic_link_tenant_id = magic_link_data.get('tenant_id')
+        magic_link_purpose = magic_link_data.get('purpose')
         pre_verify_user = user_service.get_user(magic_link_data.get('email', ''))
         if pre_verify_user:
             is_first_login = pre_verify_user.total_jobs_created == 0 and not pre_verify_user.last_login_at
@@ -410,9 +418,15 @@ async def verify_magic_link(
 
     credits_granted = 0
     credit_status = "not_applicable"  # returning user, not first login
-    granted, credit_status = user_service.grant_welcome_credits_if_eligible(
-        user.email, precomputed_eval=precomputed_eval,
-    )
+    # Board sign-in grants NO welcome credit — it's identity only. The credit is granted
+    # later, when the user converts via the "make it yourself now" flow (claim endpoint),
+    # or when their requested track gets picked (Phase 2).
+    is_board_signin = magic_link_purpose == "requests_board"
+    granted = False
+    if not is_board_signin:
+        granted, credit_status = user_service.grant_welcome_credits_if_eligible(
+            user.email, precomputed_eval=precomputed_eval,
+        )
     if granted:
         credits_granted = user_service.NEW_USER_FREE_CREDITS
         logger.info(f"Granted {credits_granted} welcome credits to {_mask_email(user.email)}")
@@ -472,8 +486,9 @@ async def verify_magic_link(
         device_fingerprint=magic_link_fingerprint,
     )
 
-    # Send welcome email to first-time users
-    if is_first_login:
+    # Send welcome email to first-time users (not for board sign-in — no credit granted,
+    # and the credit-centric welcome copy would be confusing with a 0 balance).
+    if is_first_login and not is_board_signin:
         email_service.send_welcome_email(user.email, user.credits, locale=locale)
 
     # Return user info with tenant_id
@@ -496,6 +511,40 @@ async def verify_magic_link(
         tenant_subdomain=tenant_subdomain,
         credits_granted=credits_granted,
         credit_status=credit_status,
+        redirect_path="/requests" if is_board_signin else None,
+    )
+
+
+class ClaimWelcomeCreditResponse(BaseModel):
+    """Response for the convert-to-gen welcome-credit claim."""
+    status: str  # "granted" | "already_granted" | "denied" | "pending_review" | ...
+    credits: int
+    credits_granted: int = 0
+
+
+@router.post("/claim-welcome-credit", response_model=ClaimWelcomeCreditResponse)
+async def claim_welcome_credit(
+    auth_result: AuthResult = Depends(require_auth),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Grant the standard one-time welcome credit to a signed-in user.
+
+    Powers the requests-board "Don't want to wait? Make it yourself now" conversion:
+    board sign-in itself grants no credit, so when a board user decides to use the
+    generator we grant their welcome credit here (idempotent — once per account, with
+    the usual abuse evaluation). Returns the resulting balance.
+    """
+    email = auth_result.user_email
+    if not email:
+        raise HTTPException(status_code=403, detail="A signed-in email is required.")
+
+    granted, credit_status = user_service.grant_welcome_credits_if_eligible(email)
+    user = user_service.get_user(email)
+    balance = user.credits if user else 0
+    return ClaimWelcomeCreditResponse(
+        status=credit_status,
+        credits=balance,
+        credits_granted=user_service.NEW_USER_FREE_CREDITS if granted else 0,
     )
 
 

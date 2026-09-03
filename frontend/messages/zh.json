@@ -1782,5 +1782,32 @@
     "retryingConn": "连接出现小问题 — 正在重试…",
     "sessionExpired": "上传会话已过期 — 请移除此曲目并重新开始",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "现在就使用 Generator 亲自制作您的卡拉OK视频吧 —— 首个视频免费。",
+    "convertButton": "立即自己制作",
+    "convertHeading": "不想等待？",
+    "correctedNote": "我们已将其整理为 {artist} — {title}",
+    "invalidEmail": "请输入有效的邮箱地址。",
+    "linkSent": "请检查您的邮箱 —— 我们已将登录链接发送至 {email}。",
+    "noPasswordNeeded": "我们将向您的邮箱发送免密登录链接。无需密码。",
+    "noRequests": "暂无点歌 —— 成为第一个点歌的人吧！",
+    "publishedHeading": "最近制作",
+    "sendLink": "发送登录链接到我的邮箱",
+    "sending": "发送中…",
+    "signInToSubmit": "使用邮箱登录即可点歌并投票。",
+    "statusBeingMade": "制作中",
+    "submitButton": "提交点歌请求",
+    "submitHeading": "点歌",
+    "subtitle": "每天我们都会将得票最多的歌曲制作成免费的卡拉OK视频。每天一票 —— 请好好把握。",
+    "title": "为下一首免费卡拉OK歌曲投票",
+    "titlePlaceholder": "歌曲名称",
+    "votedTodayNote": "您已用完今天的投票机会 —— 请明天再来，或者点击另一首歌曲来更改投票。",
+    "votes": "{count, plural, one {# 票} other {# 票}}",
+    "watchOnYoutube": "在 YouTube 上观看",
+    "artistPlaceholder": "歌手",
+    "emailPlaceholder": "输入您的邮箱",
+    "errorGeneric": "出了点问题，请重试。",
+    "submitting": "正在提交…"
   }
 }

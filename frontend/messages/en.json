@@ -1782,5 +1782,32 @@
     "resumeBannerDesc": "{count} tracks from an earlier session can be resumed. Re-select the same folder to continue — already-uploaded parts won't be sent again.",
     "resumeChoose": "Choose folder to resume",
     "resumeDiscard": "Discard"
+  },
+  "requests": {
+    "title": "Vote for the next free karaoke track",
+    "subtitle": "Every day we turn the most-voted song into a free karaoke video. One vote per day — make it count.",
+    "submitHeading": "Request a song",
+    "artistPlaceholder": "Artist",
+    "titlePlaceholder": "Song title",
+    "submitButton": "Submit request",
+    "submitting": "Submitting…",
+    "correctedNote": "We tidied that to {artist} — {title}",
+    "signInToSubmit": "Sign in with your email to request a song and vote.",
+    "emailPlaceholder": "Enter your email",
+    "sendLink": "Email me a sign-in link",
+    "sending": "Sending…",
+    "noPasswordNeeded": "We'll email you a magic link to sign in. No password needed.",
+    "linkSent": "Check your email — we sent a sign-in link to {email}.",
+    "invalidEmail": "Please enter a valid email address.",
+    "votedTodayNote": "You've used today's vote — come back tomorrow, or tap another song to move it.",
+    "noRequests": "No requests yet — be the first to add one!",
+    "votes": "{count, plural, one {# vote} other {# votes}}",
+    "statusBeingMade": "Being made",
+    "publishedHeading": "Recently made",
+    "watchOnYoutube": "Watch on YouTube",
+    "convertHeading": "Don't want to wait?",
+    "convertBody": "Use the generator yourself and make your karaoke video right now — your first one is on us.",
+    "convertButton": "Make it yourself now",
+    "errorGeneric": "Something went wrong. Please try again."
   }
 }

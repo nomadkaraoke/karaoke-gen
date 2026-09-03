@@ -1782,5 +1782,32 @@
     "retryingConn": "Problema de conexão — tentando novamente…",
     "sessionExpired": "Sessão de envio expirada — remova esta faixa e comece novamente",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Use o Generator e crie seu vídeo de karaokê agora mesmo — o primeiro é por nossa conta.",
+    "convertButton": "Crie você mesmo agora",
+    "convertHeading": "Não quer esperar?",
+    "correctedNote": "Ajustamos para {artist} — {title}",
+    "invalidEmail": "Por favor, insira um e-mail válido.",
+    "linkSent": "Verifique seu e-mail — enviamos um link de login para {email}.",
+    "noPasswordNeeded": "Enviaremos um link mágico por e-mail para você fazer login. Não precisa de senha.",
+    "noRequests": "Nenhum pedido ainda — seja o primeiro a fazer um!",
+    "publishedHeading": "Criados recentemente",
+    "sendLink": "Me envie um link de login por e-mail",
+    "sending": "Enviando…",
+    "signInToSubmit": "Faça login com seu e-mail para pedir uma música e votar.",
+    "statusBeingMade": "Em produção",
+    "submitButton": "Enviar pedido",
+    "submitHeading": "Pedir uma música",
+    "subtitle": "Todos os dias transformamos a música mais votada em um vídeo de karaokê gratuito. Um voto por dia — faça valer a pena.",
+    "title": "Vote na próxima faixa de karaokê gratuita",
+    "titlePlaceholder": "Título da música",
+    "votedTodayNote": "Você já usou seu voto de hoje — volte amanhã, ou toque em outra música para mudar seu voto.",
+    "votes": "{count, plural, one {# voto} other {# votos}}",
+    "watchOnYoutube": "Assistir no YouTube",
+    "artistPlaceholder": "Artista",
+    "emailPlaceholder": "Insira seu e-mail",
+    "errorGeneric": "Algo deu errado. Tente novamente.",
+    "submitting": "Enviando…"
   }
 }

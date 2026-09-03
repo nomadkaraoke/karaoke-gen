@@ -1782,5 +1782,32 @@
     "retryingConn": "Problema di connessione — nuovo tentativo…",
     "sessionExpired": "Sessione di caricamento scaduta — rimuovi questa traccia e caricala di nuovo",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Usa il Generator e crea subito il tuo video karaoke — il primo te lo offriamo noi.",
+    "convertButton": "Crealo tu stesso ora",
+    "convertHeading": "Non vuoi aspettare?",
+    "correctedNote": "Lo abbiamo corretto in {artist} — {title}",
+    "invalidEmail": "Inserisci un indirizzo email valido.",
+    "linkSent": "Controlla la tua email — abbiamo inviato un link di accesso a {email}.",
+    "noPasswordNeeded": "Ti invieremo un link magico via email per accedere. Non serve la password.",
+    "noRequests": "Ancora nessuna richiesta — sii il primo ad aggiungerne una!",
+    "publishedHeading": "Creati di recente",
+    "sendLink": "Inviami un link di accesso via email",
+    "sending": "Invio in corso…",
+    "signInToSubmit": "Accedi con la tua email per richiedere una canzone e votare.",
+    "statusBeingMade": "In fase di creazione",
+    "submitButton": "Invia richiesta",
+    "submitHeading": "Richiedi una canzone",
+    "subtitle": "Ogni giorno trasformiamo la canzone più votata in un video karaoke gratuito. Un voto al giorno — usalo bene.",
+    "title": "Vota per il prossimo brano karaoke gratuito",
+    "titlePlaceholder": "Titolo della canzone",
+    "votedTodayNote": "Hai già usato il tuo voto di oggi — torna domani, oppure tocca un'altra canzone per spostarlo.",
+    "votes": "{count, plural, one {# voto} other {# voti}}",
+    "watchOnYoutube": "Guarda su YouTube",
+    "artistPlaceholder": "Artista",
+    "emailPlaceholder": "Inserisci la tua email",
+    "errorGeneric": "Qualcosa è andato storto. Riprova.",
+    "submitting": "Invio in corso…"
   }
 }

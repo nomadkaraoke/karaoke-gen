@@ -1782,5 +1782,32 @@
     "retryingConn": "Verbindingsprobleem — opnieuw proberen…",
     "sessionExpired": "Uploadsessie verlopen — verwijder deze track en start opnieuw",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Gebruik de Generator zelf en maak nu meteen je karaokevideo — de eerste krijg je van ons.",
+    "convertButton": "Maak het nu zelf",
+    "convertHeading": "Wil je niet wachten?",
+    "correctedNote": "We hebben dat aangepast naar {artist} — {title}",
+    "invalidEmail": "Voer een geldig e-mailadres in.",
+    "linkSent": "Controleer je e-mail — we hebben een inloglink naar {email} gestuurd.",
+    "noPasswordNeeded": "We e-mailen je een magische link om in te loggen. Geen wachtwoord nodig.",
+    "noRequests": "Nog geen verzoeken — wees de eerste die er een toevoegt!",
+    "publishedHeading": "Recent gemaakt",
+    "sendLink": "E-mail me een inloglink",
+    "sending": "Verzenden…",
+    "signInToSubmit": "Log in met je e-mailadres om een nummer aan te vragen en te stemmen.",
+    "statusBeingMade": "Wordt gemaakt",
+    "submitButton": "Aanvraag indienen",
+    "submitHeading": "Vraag een nummer aan",
+    "subtitle": "Elke dag maken we van het nummer met de meeste stemmen een gratis karaokevideo. Eén stem per dag — gebruik hem goed.",
+    "title": "Stem op de volgende gratis karaoketrack",
+    "titlePlaceholder": "Titel van het nummer",
+    "votedTodayNote": "Je hebt je stem voor vandaag gebruikt — kom morgen terug, of tik op een ander nummer om je stem te verplaatsen.",
+    "votes": "{count, plural, one {# stem} other {# stemmen}}",
+    "watchOnYoutube": "Bekijk op YouTube",
+    "artistPlaceholder": "Artiest",
+    "emailPlaceholder": "Vul je e-mailadres in",
+    "errorGeneric": "Er is iets misgegaan. Probeer het opnieuw.",
+    "submitting": "Indienen…"
   }
 }

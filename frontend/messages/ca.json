@@ -1782,5 +1782,32 @@
     "retryingConn": "Problema de connexió — reintentant…",
     "sessionExpired": "La sessió de pujada ha caducat — elimina aquesta pista i torna-la a començar",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Fes servir el Generator tu mateix i crea el teu vídeo de karaoke ara mateix — el primer va a càrrec nostre.",
+    "convertButton": "Crea'l tu mateix ara",
+    "convertHeading": "No vols esperar?",
+    "correctedNote": "Ho hem corregit a {artist} — {title}",
+    "invalidEmail": "Si us plau, introdueix una adreça de correu electrònic vàlida.",
+    "linkSent": "Comprova el teu correu — hem enviat un enllaç d'inici de sessió a {email}.",
+    "noPasswordNeeded": "T'enviarem un enllaç màgic per iniciar sessió. No cal contrasenya.",
+    "noRequests": "Encara no hi ha peticions — sigues el primer a afegir-ne una!",
+    "publishedHeading": "Creats recentment",
+    "sendLink": "Envia'm un enllaç d'inici de sessió",
+    "sending": "Enviant…",
+    "signInToSubmit": "Inicia sessió amb el teu correu per demanar una cançó i votar.",
+    "statusBeingMade": "S'està creant",
+    "submitButton": "Envia la petició",
+    "submitHeading": "Demana una cançó",
+    "subtitle": "Cada dia convertim la cançó més votada en un vídeo de karaoke gratuït. Un vot per dia — aprofita'l.",
+    "title": "Vota la propera pista de karaoke gratuïta",
+    "titlePlaceholder": "Títol de la cançó",
+    "votedTodayNote": "Ja has utilitzat el vot d'avui — torna demà, o toca una altra cançó per moure'l.",
+    "votes": "{count, plural, one {# vot} other {# vots}}",
+    "watchOnYoutube": "Mira-ho a YouTube",
+    "artistPlaceholder": "Artista",
+    "emailPlaceholder": "Introdueix el teu correu electrònic",
+    "errorGeneric": "Alguna cosa ha anat malament. Torna-ho a provar.",
+    "submitting": "S'està enviant…"
   }
 }

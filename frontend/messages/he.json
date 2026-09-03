@@ -1782,5 +1782,32 @@
     "retryingConn": "תקלת חיבור קלה — מנסים שוב…",
     "sessionExpired": "פג תוקף סשן ההעלאה — הסירו את הרצועה הזו והתחילו מחדש",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "השתמשו ב-Generator בעצמכם והכינו סרטון קריוקי ממש עכשיו — הראשון עלינו.",
+    "convertButton": "הכינו בעצמכם עכשיו",
+    "convertHeading": "לא רוצים לחכות?",
+    "correctedNote": "סידרנו את זה ל-{artist} — {title}",
+    "invalidEmail": "אנא הזינו כתובת אימייל תקינה.",
+    "linkSent": "בדקו את המייל שלכם — שלחנו קישור התחברות אל {email}.",
+    "noPasswordNeeded": "נשלח לכם קישור קסם לאימייל כדי להתחבר. אין צורך בסיסמה.",
+    "noRequests": "אין בקשות עדיין — היו הראשונים להוסיף אחת!",
+    "publishedHeading": "נוצרו לאחרונה",
+    "sendLink": "שלחו לי קישור התחברות לאימייל",
+    "sending": "שולח…",
+    "signInToSubmit": "התחברו עם האימייל שלכם כדי לבקש שיר ולהצביע.",
+    "statusBeingMade": "בהכנה",
+    "submitButton": "שליחת בקשה",
+    "submitHeading": "בקשו שיר",
+    "subtitle": "בכל יום אנחנו הופכים את השיר שקיבל הכי הרבה קולות לסרטון קריוקי בחינם. הצבעה אחת ביום — נצלו אותה היטב.",
+    "title": "הצביעו לשיר הקריוקי החינמי הבא",
+    "titlePlaceholder": "שם השיר",
+    "votedTodayNote": "ניצלתם את ההצבעה שלכם להיום — חזרו מחר, או לחצו על שיר אחר כדי להעביר אותה.",
+    "votes": "{count, plural, one {קול אחד} other {# קולות}}",
+    "watchOnYoutube": "צפו ב-YouTube",
+    "artistPlaceholder": "אומן",
+    "emailPlaceholder": "הזן את האימייל שלך",
+    "errorGeneric": "משהו השתבש. אנא נסה שוב.",
+    "submitting": "בשליחה…"
   }
 }

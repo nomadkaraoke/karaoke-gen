@@ -1315,6 +1315,8 @@ Content-Type: application/json
 
 The `device_fingerprint` field is optional. If provided, it's used alongside the client IP for signup rate limiting (max 2 new accounts per IP or fingerprint per 24 hours). Existing users are never rate limited. Rate-limited requests receive a silent 200 response (anti-enumeration).
 
+The optional `purpose` field controls sign-in context. `purpose: "requests_board"` is used by the public voting board: it creates a passwordless identity **only** — no welcome credit is granted and the per-IP signup limit is skipped (so many voters on a shared venue WiFi can all sign in). The verify response for a board sign-in returns `redirect_path: "/requests"` so the frontend lands the user back on the board.
+
 ### Verify Magic Link
 
 ```http
@@ -1375,6 +1377,58 @@ Response includes `feedback_eligible: bool` indicating whether the user can earn
 POST /api/users/auth/logout
 Authorization: Bearer SESSION_TOKEN
 ```
+
+### Claim Welcome Credit
+
+```http
+POST /api/users/claim-welcome-credit
+Authorization: Bearer SESSION_TOKEN
+```
+
+Grants the standard one-time welcome credit to a signed-in user (idempotent — once per account, with the usual abuse evaluation). Powers the voting board's "Make it yourself now" conversion: board sign-in grants no credit, so this claims it before sending the user into the generator. Returns `{status, credits, credits_granted}`.
+
+## Requests Voting Board
+
+Public Hacker-News-style board (served at `requests.nomadkaraoke.com`) where anyone signed in with an email magic link can submit a song request and cast **one vote per calendar day**. Phase 1 = the board; the daily auto-picker / free-credit grant / ownership handoff / voter emails are Phase 2.
+
+### List Board
+
+```http
+GET /api/requests-board/requests
+```
+
+Public (auth optional). Returns `{requests: [...], published: [...], voted_today, your_vote_request_id}`. Each request is `{id, artist, title, status, source, vote_count, created_at, youtube_url, was_corrected, your_vote}` — never includes voter emails. `requests` are open items ranked by `vote_count` desc; `published` are recently-made tracks with `youtube_url`. When the caller is signed in, `your_vote` (+1/-1/null) and `voted_today` are annotated.
+
+### Submit Request
+
+```http
+POST /api/requests-board/requests
+Authorization: Bearer SESSION_TOKEN
+
+{"artist": "beatles", "title": "hey jude"}
+```
+
+Auto-corrects artist/title via the same `match_judge` used in job submission, dedupes against existing open requests (a re-submission counts as an up-vote), and records the submitter's endorsement as their daily vote. Returns `{status: "created"|"already_exists", request, canonical_artist, canonical_title, was_corrected}`. `429` if the per-day submission cap is exceeded.
+
+### Vote
+
+```http
+POST /api/requests-board/requests/{request_id}/vote
+Authorization: Bearer SESSION_TOKEN
+
+{"direction": "up"}
+```
+
+Casts/moves/undoes the caller's single daily vote (one total per person per UTC day). Voting the same request+direction again toggles the vote off (frees the day's vote); voting a different request or direction moves it. Returns the updated request. `404` if the request no longer exists.
+
+### My Daily Vote Status
+
+```http
+GET /api/requests-board/me
+Authorization: Bearer SESSION_TOKEN
+```
+
+Returns `{voted_today, request_id, value}` for the caller.
 
 ## Credits & Payments (PR #90)
 

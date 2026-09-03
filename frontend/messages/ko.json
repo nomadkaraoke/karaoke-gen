@@ -1782,5 +1782,32 @@
     "retryingConn": "연결이 불안정합니다 — 다시 시도 중…",
     "sessionExpired": "업로드 세션이 만료되었습니다 — 해당 트랙을 삭제한 후 다시 시작해 주세요",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "직접 Generator를 사용해 지금 바로 가라오케 영상을 만들어 보세요 — 첫 번째는 무료입니다.",
+    "convertButton": "지금 직접 만들기",
+    "convertHeading": "기다리기 싫으신가요?",
+    "correctedNote": "{artist} — {title}(으)로 수정해 두었습니다.",
+    "invalidEmail": "유효한 이메일 주소를 입력해 주세요.",
+    "linkSent": "이메일을 확인해 주세요 — {email}(으)로 로그인 링크를 보냈습니다.",
+    "noPasswordNeeded": "로그인할 수 있는 매직 링크를 이메일로 보내드립니다. 비밀번호는 필요 없습니다.",
+    "noRequests": "아직 요청이 없습니다 — 첫 번째로 추가해 보세요!",
+    "publishedHeading": "최근 제작됨",
+    "sendLink": "이메일로 로그인 링크 받기",
+    "sending": "전송 중…",
+    "signInToSubmit": "노래를 요청하고 투표하려면 이메일로 로그인해 주세요.",
+    "statusBeingMade": "제작 중",
+    "submitButton": "요청 제출하기",
+    "submitHeading": "노래 요청하기",
+    "subtitle": "매일 가장 많은 표를 얻은 노래를 무료 가라오케 영상으로 만들어 드립니다. 하루에 한 번 투표할 수 있으니 — 신중하게 투표해 주세요.",
+    "title": "다음 무료 가라오케 트랙에 투표하세요",
+    "titlePlaceholder": "노래 제목",
+    "votedTodayNote": "오늘의 투표권을 사용하셨습니다 — 내일 다시 오시거나, 다른 노래를 탭하여 투표를 변경해 보세요.",
+    "votes": "{count, plural, one {#표} other {#표}}",
+    "watchOnYoutube": "YouTube에서 보기",
+    "artistPlaceholder": "아티스트",
+    "emailPlaceholder": "이메일 입력",
+    "errorGeneric": "문제가 발생했습니다. 다시 시도해 주세요.",
+    "submitting": "제출 중…"
   }
 }
