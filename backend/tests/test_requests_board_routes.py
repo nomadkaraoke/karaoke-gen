@@ -5,16 +5,36 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
-from backend.main import app
 from backend.api.routes import requests_board
 from backend.api.routes.requests_board import optional_user_email
 from backend.models.song_request import SongRequest, Vote
+from backend.services.auth_service import AuthResult, UserType
 from backend.services.song_request_service import RequestNotFound, SubmissionRateLimited
 
 
 @pytest.fixture
-def client():
-    return TestClient(app)
+def app():
+    # Import at fixture time (not module level): some earlier test modules reload
+    # backend.main / backend.api.dependencies, so a module-level capture would go stale.
+    from backend.main import app as _app
+    return _app
+
+
+@pytest.fixture
+def client(app):
+    # Override the require_auth object THIS router actually uses. The conftest autouse
+    # fixture overrides dependencies.require_auth, but earlier tests that reload backend
+    # modules can make that a different object than our router captured at import — so we
+    # override our router's own reference, which is reload-proof.
+    async def _mock_auth():
+        return AuthResult(
+            is_valid=True, user_type=UserType.LIMITED, remaining_uses=999,
+            message="test", is_admin=False, user_email="test@example.com",
+        )
+    app.dependency_overrides[requests_board.require_auth] = _mock_auth
+    c = TestClient(app)
+    yield c
+    app.dependency_overrides.pop(requests_board.require_auth, None)
 
 
 @pytest.fixture
@@ -115,7 +135,7 @@ def test_vote_missing_request(client, auth_headers, fake_service):
     assert resp.status_code == 404
 
 
-def test_list_public_no_viewer(client, fake_service):
+def test_list_public_no_viewer(client, app, fake_service):
     """GET /requests is public; with no viewer there is no per-user annotation."""
     app.dependency_overrides[optional_user_email] = lambda: None
     try:
@@ -132,7 +152,7 @@ def test_list_public_no_viewer(client, fake_service):
         app.dependency_overrides.pop(optional_user_email, None)
 
 
-def test_list_annotates_viewer_vote(client, fake_service):
+def test_list_annotates_viewer_vote(client, app, fake_service):
     app.dependency_overrides[optional_user_email] = lambda: "test@example.com"
     try:
         fake_service.list_active.return_value = [_req(id="r1"), _req(id="r2")]
