@@ -52,7 +52,26 @@ async def test_publishes_and_fans_out_excluding_owner():
     # Owner excluded (already got the completion email); two voters emailed.
     emailed = {c.kwargs["to_email"] for c in notifier.send_community_track_live_email.call_args_list}
     assert emailed == {"v2@x.com", "v3@x.com"}
+    svc.add_notified_voters.assert_called_once_with("req1", ["v2@x.com", "v3@x.com"])
     svc.mark_voters_notified.assert_called_once_with("req1")
+
+
+@pytest.mark.asyncio
+async def test_skips_already_notified_voters_and_retries_failures():
+    # v2 already notified; v3 fails this run → not marked fully-notified, v3 retried later.
+    svc = MagicMock()
+    svc.get_by_job_id.return_value = _req(voters_notified=False, notified_voters=["v2@x.com"])
+    svc.list_upvoters.return_value = ["owner@x.com", "v2@x.com", "v3@x.com"]
+    notifier = MagicMock()
+    notifier.send_community_track_live_email = AsyncMock(return_value=False)  # v3 send fails
+    p1, p2 = _ctx(svc, notifier)
+    with p1, p2:
+        await yqp._notify_community_voters("j1", {}, "https://youtu.be/x")
+    # Only the un-notified voter (v3) is attempted; v2 skipped.
+    emailed = {c.kwargs["to_email"] for c in notifier.send_community_track_live_email.call_args_list}
+    assert emailed == {"v3@x.com"}
+    svc.add_notified_voters.assert_called_once_with("req1", [])  # none succeeded
+    svc.mark_voters_notified.assert_not_called()  # partial → leave flag unset for retry
 
 
 @pytest.mark.asyncio

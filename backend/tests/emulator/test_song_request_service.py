@@ -219,6 +219,9 @@ async def test_get_by_job_id_and_mark_published(service):
     service.mark_published(a.id, "https://youtu.be/xyz")
     r = service.get_request(a.id)
     assert r.status == "published" and r.youtube_url == "https://youtu.be/xyz"
+    service.add_notified_voters(a.id, ["v1@x.com", "v2@x.com"])
+    service.add_notified_voters(a.id, ["v2@x.com", "v3@x.com"])  # ArrayUnion dedupes
+    assert set(service.get_request(a.id).notified_voters) == {"v1@x.com", "v2@x.com", "v3@x.com"}
     service.mark_voters_notified(a.id)
     assert service.get_request(a.id).voters_notified is True
 

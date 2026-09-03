@@ -66,7 +66,10 @@ class SongRequest(BaseModel):
 
     # Idempotency guards for the daily-pick side effects.
     community_credit_granted: bool = False  # the free credit was granted for this pick
-    voters_notified: bool = False  # publish fan-out email already sent to up-voters
+    voters_notified: bool = False  # publish fan-out fully delivered to every up-voter
+    # Voters already successfully emailed on publish — lets a re-run retry only the
+    # failures instead of re-emailing everyone (voters_notified is the all-done flag).
+    notified_voters: list[str] = Field(default_factory=list)
 
 
 class Vote(BaseModel):

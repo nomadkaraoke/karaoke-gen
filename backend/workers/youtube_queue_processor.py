@@ -315,25 +315,37 @@ async def _notify_community_voters(
         if request.voters_notified:
             return
 
+        # Email up-voters we haven't already reached (retry-safe): exclude the
+        # owner (already got the completion email) and anyone previously notified.
         owner = (request.owner_email or request.submitted_by or "").lower()
-        voters = [v for v in service.list_upvoters(request.id) if v != owner]
+        already = {v.lower() for v in (request.notified_voters or [])}
+        pending = [
+            v for v in service.list_upvoters(request.id)
+            if v != owner and v not in already
+        ]
 
         from backend.services.job_notification_service import get_job_notification_service
         notification_service = get_job_notification_service()
-        sent = 0
-        for voter in voters:
+        succeeded = []
+        for voter in pending:
             ok = await notification_service.send_community_track_live_email(
                 to_email=voter,
                 artist=request.artist,
                 title=request.title,
                 youtube_url=youtube_url,
             )
-            sent += 1 if ok else 0
+            if ok:
+                succeeded.append(voter)
 
-        service.mark_voters_notified(request.id)
+        service.add_notified_voters(request.id, succeeded)
+        # Only flag "fully notified" when every pending voter was reached — a
+        # partial failure leaves the flag unset so a re-run retries just the
+        # missed voters (add_notified_voters keeps us from re-emailing the rest).
+        if len(succeeded) == len(pending):
+            service.mark_voters_notified(request.id)
         logger.info(
-            "community pick %s published (job %s): notified %d/%d voters",
-            request.id, job_id, sent, len(voters),
+            "community pick %s published (job %s): notified %d/%d pending voters",
+            request.id, job_id, len(succeeded), len(pending),
         )
     except Exception as e:
         logger.error(f"Failed community voter fan-out for job {job_id}: {e}")

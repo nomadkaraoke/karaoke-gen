@@ -349,6 +349,15 @@ class SongRequestService:
             {"status": "published", "youtube_url": youtube_url, "updated_at": _now_iso()}
         )
 
+    def add_notified_voters(self, request_id: str, emails: list[str]) -> None:
+        """Record voters that were successfully emailed on publish (ArrayUnion so
+        concurrent/retried fan-outs can't clobber each other)."""
+        if not emails:
+            return
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"notified_voters": firestore.ArrayUnion(emails), "updated_at": _now_iso()}
+        )
+
     def mark_voters_notified(self, request_id: str) -> None:
         self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
             {"voters_notified": True, "updated_at": _now_iso()}
