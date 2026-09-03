@@ -462,6 +462,31 @@ disposable_domains_sync_scheduler = cloudscheduler.Job(
     ),
 )
 
+# Cloud Scheduler job to rewrite existing YouTube video descriptions to the
+# current template (drains a quota-capped batch daily until the channel is done;
+# self-restarts a fresh cycle whenever the template changes). See
+# backend/workers/youtube_description_backfill_worker.py.
+youtube_description_backfill_scheduler = cloudscheduler.Job(
+    "youtube-description-backfill-scheduler",
+    name="youtube-description-backfill-daily",
+    description="Daily batch rewrite of existing YouTube video descriptions to the current template",
+    region=REGION,
+    schedule="0 9 * * *",  # 09:00 UTC daily
+    time_zone="UTC",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/youtube-backfill/run",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Stuck Job Recovery ====================
 
 # Cloud Scheduler job to detect and recover stuck audio downloads

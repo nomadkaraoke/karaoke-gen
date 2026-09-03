@@ -1,0 +1,29 @@
+# Video IDs that should NEVER have their description rewritten by the bulk tool.
+# One YouTube video ID per line. Everything after a '#' is ignored.
+#
+# The "unparseable" videos are already auto-skipped by the classifier; these are
+# listed explicitly for the record + belt-and-suspenders (so they stay skipped
+# even if a title changes later).
+
+# --- Lyrics videos WITH vocals (NOT instrumental karaoke) ---
+SUkl49w9GPA  # buildspace, MAYV - the end (Lyrics Video)
+jAAhbfmh8Bc  # 100 gecs - mememe (Lyrics Video With Vocals)
+mcZtK8kkx3E  # Fleet Foxes - Montezuma (Lyrics / With Vocals)
+
+# --- Demos / tutorials / screencasts / pitch / channel-explainer (not karaoke) ---
+VTR3oaqgn0A  # Nomad karaoke-gen hosted demo screencast 2026-05-16
+-dI3r7qXo3A  # Nomad Karaoke Generator - Full Tutorial
+C0Zyy_9V5F8  # Purim Shpiel custom lyrics karaoke tracks production screencast
+josVDsYwsFM  # Nomad Karaoke Lyrics Review Demo (for AudioShake) Screencast
+NZ8j0uxq6tA  # YouTube "Reused content" claim appeal - channel explanation
+asnwjLyqY4k  # Nomad Karaoke production workflow (real time) 2025-02-26
+dPWyYfjfHvw  # Pitch Night - BIC Energy
+63-Fk3mfZ7Q  # Nomad Karaoke Creation Workflow (Normal Speed) 2023-12-19
+ZsROHgqAVHs  # Nomad Karaoke Creation Workflow (MidiCo Tutorial) 2023-12-19
+
+# --- Unparseable-title non-karaoke (already auto-skipped; explicit for record) ---
+RLkIEHGwFcU  # Nomad Karaoke Generator Quick Demo
+GJY60IfIHOQ  # Nomad Karaoke Generator Demo 2026
+v1Hox6XMYEw  # "YouTube Karaoke just suffered a major loss" (short/commentary)
+R3eOl1aeq5c  # Nomad Karaoke stands with Lemmy Caution (commentary)
+wHiMti3xLJE  # Nomad Karaoke Creation Tutorial / Demo 1 (MidiCo, July 2023)

@@ -600,6 +600,43 @@ async def process_stale_reviews_endpoint(
     }
 
 
+@router.post("/youtube-backfill/run")
+async def youtube_backfill_run_endpoint(
+    http_request: Request,
+    background_tasks: BackgroundTasks,
+    max_updates: Optional[int] = None,
+    dry_run: bool = False,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    Rewrite existing YouTube video descriptions to the current template.
+
+    Called by Cloud Scheduler (daily). Drains a quota-capped batch each run until
+    the whole channel matches the template, emailing progress + a completion note.
+    Optional query params for manual testing: ?max_updates=N&dry_run=true
+    """
+    from backend.config import get_settings
+    from backend.workers.youtube_description_backfill_worker import run_backfill_sync
+
+    if not get_settings().youtube_backfill_enabled:
+        return {"status": "disabled", "message": "YOUTUBE_BACKFILL_ENABLED is false"}
+
+    logger.info(f"YOUTUBE_BACKFILL starting (max_updates={max_updates}, dry_run={dry_run})")
+
+    async def _process():
+        try:
+            result = await asyncio.to_thread(run_backfill_sync, max_updates, dry_run)
+            logger.info(f"YOUTUBE_BACKFILL complete: {result}")
+        except Exception as e:
+            logger.exception(f"YOUTUBE_BACKFILL failed: {e}")
+
+    background_tasks.add_task(_process)
+    return {
+        "status": "started",
+        "message": "YouTube description backfill started in background",
+    }
+
+
 @router.post("/community-daily-pick")
 async def community_daily_pick_endpoint(
     http_request: Request,

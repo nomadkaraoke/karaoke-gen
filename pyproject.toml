@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "karaoke-gen"
-version = "0.220.0"
+version = "0.221.0"
 description = "Generate karaoke videos with synchronized lyrics. Handles the entire process from downloading audio and lyrics to creating the final video with title screens."
 authors = ["Andrew Beveridge <andrew@beveridge.uk>"]
 license = "MIT"
@@ -18,7 +18,10 @@ include = [
     { path = "karaoke_gen/nextjs_frontend/out/**/*", format = ["wheel"] },
     "karaoke_gen/lyrics_transcriber/output/fonts/*",
     "karaoke_gen/lyrics_transcriber/output/cdgmaker/images/*",
-    "karaoke_gen/lyrics_transcriber/output/cdgmaker/transitions/*"
+    "karaoke_gen/lyrics_transcriber/output/cdgmaker/transitions/*",
+    # Skip/include lists for the YouTube description backfill worker (must ship in
+    # the Cloud Run image so the scheduled worker can read them).
+    "backend/data/youtube_backfill/*.txt"
 ]
 homepage = "https://github.com/nomadkaraoke/karaoke-gen"
 repository = "https://github.com/nomadkaraoke/karaoke-gen"
