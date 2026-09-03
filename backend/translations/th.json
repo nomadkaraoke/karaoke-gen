@@ -341,7 +341,17 @@
         "greatNews": "ข่าวดี! วิดีโอคาราโอเกะของคุณสำหรับ \"{artist} - {title}\" ถูกอัปโหลดไปยัง YouTube แล้ว:",
         "delayNote": "การอัปโหลดนี้ล่าช้าไปเล็กน้อยในขณะที่ระบบของเราประมวลผลการอัปโหลดอื่นๆ แต่ตอนนี้ทุกอย่างเรียบร้อยแล้ว",
         "signOff": "ขอบคุณ!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "ข่าวดี — เพลงคาราโอเกะ \"{artist} - {title}\" ที่คุณโหวตไว้บนบอร์ดขอเพลงของ Nomad Karaoke พร้อมให้ร้องแล้วบน YouTube:",
+        "callToAction": "อยากเป็นคนเลือกเพลงฟรีเพลงต่อไปไหม? ร่วมโหวตได้ที่ https://requests.nomadkaraoke.com",
+        "greeting": "สวัสดี {name},",
+        "signOff": "ขอบคุณที่ร่วมโหวต!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} พร้อมให้ร้องแล้วบน YouTube! 🎉",
+      "subjectFallback": "เพลงที่คุณโหวตพร้อมให้ร้องแล้ว!"
     }
   }
 }

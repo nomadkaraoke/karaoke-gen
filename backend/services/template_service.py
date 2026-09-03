@@ -474,6 +474,37 @@ class TemplateService:
         }
         return self.render_template(template, variables)
 
+    def render_community_track_live(
+        self,
+        name: Optional[str] = None,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        youtube_url: Optional[str] = None,
+        locale: str = "en",
+    ) -> str:
+        """Render the "a track you voted for is live" email (requests board).
+
+        Built directly from i18n strings (no GCS template) — sent to every voter
+        when a community-picked track is published to YouTube.
+        """
+        ns = "emails.templates.communityTrackLive"
+        template = f"""{t(locale, f"{ns}.greeting")}
+
+{t(locale, f"{ns}.body")}
+{{youtube_url}}
+
+{t(locale, f"{ns}.callToAction")}
+
+{t(locale, f"{ns}.signOff")}
+"""
+        variables = {
+            "name": name or "there",
+            "artist": artist or "Unknown Artist",
+            "title": title or "Unknown Title",
+            "youtube_url": youtube_url or "[YouTube URL not available]",
+        }
+        return self.render_template(template, variables)
+
     def upload_template(self, template_name: str, content: str) -> bool:
         """
         Upload a template to GCS.

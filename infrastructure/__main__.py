@@ -389,6 +389,55 @@ stale_review_scheduler = cloudscheduler.Job(
     ),
 )
 
+# ==================== Requests Voting Board — Daily Community Track ====================
+
+# Cloud Scheduler job to pick + make the daily free community track. Fires at noon
+# US Eastern (DST-aware) so the picked requester has the afternoon/evening to do
+# their lyrics review. Idempotent: the per-UTC-day lock enforces one track/day.
+# Deploys dark — the picker no-ops until COMMUNITY_DAILY_PICK_ENABLED is set.
+community_daily_pick_scheduler = cloudscheduler.Job(
+    "community-daily-pick-scheduler",
+    name="community-daily-pick",
+    description="Pick and make the daily free community track from the requests board",
+    region=REGION,
+    schedule="0 12 * * *",  # Noon, in the timezone below
+    time_zone="America/New_York",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/community-daily-pick",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
+# Cloud Scheduler job to run the 24h ownership handoff for community picks hourly.
+community_handoff_scheduler = cloudscheduler.Job(
+    "community-handoff-scheduler",
+    name="community-handoff-hourly",
+    description="Hand off stale community-pick reviews to the next voter",
+    region=REGION,
+    schedule="30 * * * *",  # Every hour at :30 (offset from other hourly crons)
+    time_zone="UTC",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/community-handoffs",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Disposable Domain Blocklist Sync ====================
 
 # Cloud Scheduler job to sync disposable email domain blocklist daily

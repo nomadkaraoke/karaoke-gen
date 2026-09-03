@@ -1389,7 +1389,7 @@ Grants the standard one-time welcome credit to a signed-in user (idempotent — 
 
 ## Requests Voting Board
 
-Public Hacker-News-style board (served at `requests.nomadkaraoke.com`) where anyone signed in with an email magic link can submit a song request and cast **one vote per calendar day**. Phase 1 = the board; the daily auto-picker / free-credit grant / ownership handoff / voter emails are Phase 2.
+Public Hacker-News-style board (served at `requests.nomadkaraoke.com`) where anyone signed in with an email magic link can submit a song request and cast **one vote per calendar day**. Phase 1 = the board (below); Phase 2 = the daily automation (internal endpoints at the end of this section), built and deployed dark behind `COMMUNITY_DAILY_PICK_ENABLED`.
 
 ### List Board
 
@@ -1429,6 +1429,24 @@ Authorization: Bearer SESSION_TOKEN
 ```
 
 Returns `{voted_today, request_id, value}` for the caller.
+
+### Daily Community Pick (Phase 2, internal)
+
+```http
+POST /api/internal/community-daily-pick[?dry_run=true]
+X-Admin-Token: ADMIN_TOKEN
+```
+
+Internal (admin/OIDC). Called daily by Cloud Scheduler (noon US Eastern). Claims the UTC day with a create-only lock (`daily_community_pick/{YYYY-MM-DD}` → one free track/day total), picks the top open request with net votes ≥ 0, grants the requester a free credit, and submits the job as that user. Idempotent (resumable per-day lock phase + per-request guard flags). `dry_run=true` — or the master switch `COMMUNITY_DAILY_PICK_ENABLED` being off — shadow-runs (logs the pick, makes nothing). Returns a summary `{status: made|shadow|empty|already_done|error, ...}`.
+
+### Community Ownership Handoff (Phase 2, internal)
+
+```http
+POST /api/internal/community-handoffs
+X-Admin-Token: ADMIN_TOKEN
+```
+
+Internal (admin/OIDC). Called hourly by Cloud Scheduler. For each in-progress community pick whose owner hasn't completed their review within 24h (and whose job is blocked waiting on the owner), reassigns the job to the next up-voter (oldest-first, skipping those already tried) and emails them — up to 5 voters, then parks the track (`stalled`). Returns `{status, checked, handed_off, parked, errors}`.
 
 ## Credits & Payments (PR #90)
 

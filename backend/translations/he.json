@@ -341,7 +341,17 @@
         "greatNews": "חדשות מעולות! סרטון הקריוקי שלכם עבור \"{artist} - {title}\" הועלה ל-YouTube:",
         "delayNote": "העלאה זו עוכבה לזמן קצר בזמן שהמערכות שלנו עיבדו העלאות אחרות, אבל עכשיו הכל מוכן.",
         "signOff": "תודה!\n-אנדרו"
+      },
+      "communityTrackLive": {
+        "body": "חדשות מעולות — \"{artist} - {title}\", שיר קריוקי שהצבעת עבורו בלוח הבקשות של Nomad Karaoke, עלה עכשיו ל-YouTube:",
+        "callToAction": "רוצה לבחור את השיר החינמי הבא? אפשר להצביע בכתובת https://requests.nomadkaraoke.com",
+        "greeting": "היי {name},",
+        "signOff": "תודה על ההצבעה!\n- אנדרו"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} עלה ל-YouTube! 🎉",
+      "subjectFallback": "שיר שהצבעת עבורו עלה לאוויר!"
     }
   }
 }

@@ -341,7 +341,17 @@
         "greatNews": "Bones notícies! El teu vídeo de karaoke per a \"{artist} - {title}\" s'ha pujat a YouTube:",
         "delayNote": "Aquesta pujada s'ha endarrerit breument mentre els nostres sistemes processaven altres pujades, però ara ja està tot llest.",
         "signOff": "Gràcies!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Bones notícies — \"{artist} - {title}\", una pista de karaoke que vas votar al tauler de peticions de Nomad Karaoke, ja està disponible a YouTube:",
+        "callToAction": "Vols triar la propera pista gratuïta? Vota a https://requests.nomadkaraoke.com",
+        "greeting": "Hola {name},",
+        "signOff": "Gràcies per votar!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} ja està disponible a YouTube! 🎉",
+      "subjectFallback": "Una pista que vas votar ja està disponible!"
     }
   }
 }

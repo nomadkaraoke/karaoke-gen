@@ -341,7 +341,17 @@
         "greatNews": "बढ़िया खबर! \"{artist} - {title}\" के लिए तुम्हारा कराओके वीडियो YouTube पर अपलोड कर दिया गया है:",
         "delayNote": "इस अपलोड में थोड़ी देरी हुई क्योंकि हमारे सिस्टम अन्य अपलोड प्रोसेस कर रहे थे, लेकिन अब सब कुछ सेट है।",
         "signOff": "धन्यवाद!\n-एंड्रयू"
+      },
+      "communityTrackLive": {
+        "body": "खुशखबरी — \"{artist} - {title}\", वह कराओके ट्रैक जिसके लिए तुमने Nomad Karaoke रिक्वेस्ट बोर्ड पर वोट किया था, अब YouTube पर लाइव है:",
+        "callToAction": "क्या तुम अगला फ्री ट्रैक चुनना चाहते हो? https://requests.nomadkaraoke.com पर वोट करो",
+        "greeting": "हाय {name},",
+        "signOff": "वोट करने के लिए धन्यवाद!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} YouTube पर लाइव है! 🎉",
+      "subjectFallback": "जिस ट्रैक के लिए तुमने वोट किया था, वह अब लाइव है!"
     }
   }
 }

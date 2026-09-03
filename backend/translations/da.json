@@ -341,7 +341,17 @@
         "greatNews": "Gode nyheder! Din karaokevideo til \"{artist} - {title}\" er blevet uploadet til YouTube:",
         "delayNote": "Denne upload blev kortvarigt forsinket, mens vores systemer behandlede andre uploads, men alt er klar nu.",
         "signOff": "Tak!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Gode nyheder — \"{artist} - {title}\", et karaoke-nummer, du stemte på via Nomad Karaokes ønskeside, er nu live på YouTube:",
+        "callToAction": "Vil du være med til at vælge det næste gratis nummer? Stem på https://requests.nomadkaraoke.com",
+        "greeting": "Hej {name},",
+        "signOff": "Tak for din stemme!\n-Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} er live på YouTube! 🎉",
+      "subjectFallback": "Et nummer, du har stemt på, er nu live!"
     }
   }
 }

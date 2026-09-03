@@ -341,7 +341,17 @@
         "greatNews": "お知らせです！「{artist} - {title}」のカラオケ動画がYouTubeにアップロードされました:",
         "delayNote": "システムが他のアップロードを処理していたため一時的に遅延していましたが、現在はすべて完了しています。",
         "signOff": "よろしくお願いします！\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "嬉しいお知らせです！Nomad Karaokeのリクエストボードで投票していただいたカラオケトラック「{artist} - {title}」が、YouTubeで公開されました：",
+        "callToAction": "次の無料トラックも選んでみませんか？投票はこちらから： https://requests.nomadkaraoke.com",
+        "greeting": "{name}さん、",
+        "signOff": "ご投票ありがとうございました！\n- Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} がYouTubeで公開されました！ 🎉",
+      "subjectFallback": "投票していただいた曲が公開されました！"
     }
   }
 }

@@ -341,7 +341,17 @@
         "greatNews": "Sjajne vijesti! Tvoj karaoke video za \"{artist} - {title}\" je prenesen na YouTube:",
         "delayNote": "Ovaj prijenos je bio nakratko odgođen dok su naši sustavi obrađivali druge prijenose, ali sada je sve spremno.",
         "signOff": "Hvala!\n-Andrew"
+      },
+      "communityTrackLive": {
+        "body": "Odlične vijesti — \"{artist} - {title}\", karaoke pjesma za koju si glasao/la na Nomad Karaoke stranici za prijedloge, sada je objavljena na YouTubeu:",
+        "callToAction": "Želiš li odabrati sljedeću besplatnu pjesmu? Glasaj na https://requests.nomadkaraoke.com",
+        "greeting": "Bok, {name},",
+        "signOff": "Hvala na glasanju!\n- Andrew"
       }
+    },
+    "communityTrackLive": {
+      "subject": "{artist} - {title} je objavljena na YouTubeu! 🎉",
+      "subjectFallback": "Pjesma za koju si glasao/la sada je objavljena!"
     }
   }
 }
