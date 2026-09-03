@@ -3,7 +3,7 @@
  */
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
-import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest } from './types';
+import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest, BoardResponse, SubmitRequestResponse, SongRequestPublic, DailyVoteStatus, ClaimWelcomeCreditResponse } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse, AddLyricsResult } from './lyrics-review/types';
 import { beginRequest, endRequest, configureHealthProbe } from './backend-status';
 
@@ -1892,13 +1892,16 @@ export const api = {
   /**
    * Send a magic link email for passwordless login
    */
-  async sendMagicLink(email: string, deviceFingerprint?: string | null, referralCode?: string | null): Promise<MagicLinkResponse> {
+  async sendMagicLink(email: string, deviceFingerprint?: string | null, referralCode?: string | null, purpose?: string | null): Promise<MagicLinkResponse> {
     const body: Record<string, string> = { email }
     if (deviceFingerprint) {
       body.device_fingerprint = deviceFingerprint
     }
     if (referralCode) {
       body.referral_code = referralCode
+    }
+    if (purpose) {
+      body.purpose = purpose
     }
     const response = await apiFetch(`${API_BASE_URL}/api/users/auth/magic-link`, {
       method: 'POST',
@@ -1959,6 +1962,61 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ token }),
+    });
+    return handleResponse(response);
+  },
+
+  // ==========================================================================
+  // Requests voting board (requests.nomadkaraoke.com)
+  // ==========================================================================
+
+  /** Public board listing (auth optional — annotates the caller's vote if signed in). */
+  async getRequestsBoard(): Promise<BoardResponse> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /** Submit a song request (auth required). Auto-corrects artist/title and dedupes. */
+  async submitSongRequest(artist: string, title: string): Promise<SubmitRequestResponse> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artist, title }),
+    });
+    return handleResponse(response);
+  },
+
+  /** Cast/move/undo the caller's single daily vote (auth required). */
+  async voteSongRequest(requestId: string, direction: 'up' | 'down'): Promise<SongRequestPublic> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests/${encodeURIComponent(requestId)}/vote`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ direction }),
+    });
+    return handleResponse(response);
+  },
+
+  /** The caller's daily-vote status (auth required). */
+  async getDailyVoteStatus(): Promise<DailyVoteStatus> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/me`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Grant the standard one-time welcome credit to a signed-in user (auth required).
+   * Powers the board's "make it yourself now" conversion — board sign-in grants no
+   * credit, so this claims it (idempotent) before sending the user into the generator.
+   */
+  async claimWelcomeCredit(): Promise<ClaimWelcomeCreditResponse> {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/claim-welcome-credit`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },

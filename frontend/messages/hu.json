@@ -1782,5 +1782,32 @@
     "retryingConn": "Kapcsolati hiba — újrapróbálkozás…",
     "sessionExpired": "A feltöltési munkamenet lejárt — távolítsd el ezt a számot, és kezdd újra",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Használd a Generatort, és készítsd el a saját karaoke videódat most azonnal — az első a mi ajándékunk.",
+    "convertButton": "Készítsd el saját magad",
+    "convertHeading": "Nem akarsz várni?",
+    "correctedNote": "Ezt kijavítottuk erre: {artist} — {title}",
+    "invalidEmail": "Kérlek, adj meg egy érvényes e-mail címet.",
+    "linkSent": "Nézd meg az e-mailjeidet — küldtünk egy bejelentkezési linket a(z) {email} címre.",
+    "noPasswordNeeded": "E-mailben küldünk egy varázslinket a bejelentkezéshez. Nincs szükség jelszóra.",
+    "noRequests": "Még nincsenek kérések — legyél te az első, aki kér egyet!",
+    "publishedHeading": "Nemrég készült",
+    "sendLink": "Kérek egy bejelentkezési linket e-mailben",
+    "sending": "Küldés…",
+    "signInToSubmit": "Jelentkezz be az e-mail címeddel, hogy dalt kérhess és szavazhass.",
+    "statusBeingMade": "Készül",
+    "submitButton": "Kérés beküldése",
+    "submitHeading": "Kérj egy dalt",
+    "subtitle": "Minden nap a legtöbb szavazatot kapott dalból ingyenes karaoke videót készítünk. Napi egy szavazat — használd okosan.",
+    "title": "Szavazz a következő ingyenes karaoke dalra",
+    "titlePlaceholder": "Dal címe",
+    "votedTodayNote": "Már felhasználtad a mai szavazatodat — gyere vissza holnap, vagy koppints egy másik dalra a szavazatod áthelyezéséhez.",
+    "votes": "{count, plural, one {# szavazat} other {# szavazat}}",
+    "watchOnYoutube": "Megtekintés YouTube-on",
+    "artistPlaceholder": "Előadó",
+    "emailPlaceholder": "Add meg az e-mail címed",
+    "errorGeneric": "Valami hiba történt. Kérlek, próbáld újra.",
+    "submitting": "Beküldés…"
   }
 }

@@ -1782,5 +1782,32 @@
     "retryingConn": "May problema sa koneksyon — sinusubukang muli…",
     "sessionExpired": "Nag-expire na ang upload session — alisin ang track na ito at simulan muli",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Gamitin ang Generator at gumawa ng sarili mong karaoke video ngayon din — sagot namin ang una mo.",
+    "convertButton": "Ikaw na mismo ang gumawa ngayon",
+    "convertHeading": "Ayaw maghintay?",
+    "correctedNote": "Inayos namin iyan sa {artist} — {title}",
+    "invalidEmail": "Pakilagay ang wastong email address.",
+    "linkSent": "I-check ang iyong email — nagpadala kami ng sign-in link sa {email}.",
+    "noPasswordNeeded": "I-e-email namin sa iyo ang magic link para mag-sign in. Hindi na kailangan ng password.",
+    "noRequests": "Wala pang request — ikaw ang unang magdagdag!",
+    "publishedHeading": "Mga bagong gawa",
+    "sendLink": "I-email sa akin ang sign-in link",
+    "sending": "Ipinapadala…",
+    "signInToSubmit": "Mag-sign in gamit ang iyong email para mag-request ng kanta at bumoto.",
+    "statusBeingMade": "Ginagawa na",
+    "submitButton": "I-submit ang request",
+    "submitHeading": "Mag-request ng kanta",
+    "subtitle": "Araw-araw naming ginagawang libreng karaoke video ang kantang may pinakamaraming boto. Isang boto kada araw — sulitin mo ito.",
+    "title": "Bumoto para sa susunod na libreng karaoke track",
+    "titlePlaceholder": "Pamagat ng kanta",
+    "votedTodayNote": "Nagamit mo na ang boto mo ngayong araw — bumalik bukas, o i-tap ang ibang kanta para ilipat ito.",
+    "votes": "{count, plural, one {# boto} other {# boto}}",
+    "watchOnYoutube": "Panoorin sa YouTube",
+    "artistPlaceholder": "Artist",
+    "emailPlaceholder": "Ilagay ang iyong email",
+    "errorGeneric": "May nangyaring mali. Pakisubukan muli.",
+    "submitting": "Isinusumite…"
   }
 }

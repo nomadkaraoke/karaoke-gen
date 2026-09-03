@@ -20,7 +20,7 @@ interface AuthStore {
   impersonatedUserEmail: string | null
 
   // Actions
-  sendMagicLink: (email: string) => Promise<boolean>
+  sendMagicLink: (email: string, purpose?: string) => Promise<boolean>
   verifyMagicLink: (token: string) => Promise<boolean>
   fetchUser: () => Promise<boolean>
   logout: () => Promise<void>
@@ -51,14 +51,14 @@ export const useAuth = create<AuthStore>()(
 
       setHasHydrated: (state: boolean) => set({ hasHydrated: state }),
 
-      sendMagicLink: async (email: string) => {
+      sendMagicLink: async (email: string, purpose?: string) => {
         set({ isLoading: true, error: null })
         try {
           // Get device fingerprint for anti-abuse rate limiting
           const { getDeviceFingerprint } = await import('./fingerprint')
           const fingerprint = await getDeviceFingerprint()
           const referralCode = getReferralCode()
-          await api.sendMagicLink(email, fingerprint, referralCode)
+          await api.sendMagicLink(email, fingerprint, referralCode, purpose)
           set({ isLoading: false })
           return true
         } catch (err) {
@@ -88,6 +88,7 @@ export const useAuth = create<AuthStore>()(
               tenant_subdomain: response.tenant_subdomain,
               credits_granted: response.credits_granted || 0,
               credit_status: response.credit_status || "not_applicable",
+              redirect_path: response.redirect_path || null,
             }
           }
 

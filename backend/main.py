@@ -201,6 +201,8 @@ app.include_router(push.router, prefix="/api")  # Push notification subscription
 app.include_router(catalog.router, prefix="/api")  # Catalog proxy for song/artist autocomplete
 app.include_router(parse_titles.router, prefix="/api")  # kjbox karaoke-filename parser
 app.include_router(bulk.router, prefix="/api")  # Bulk Mode: multi-job submission
+from backend.api.routes import requests_board
+app.include_router(requests_board.router, prefix="/api")  # Public song-request voting board
 app.include_router(client_errors.router, prefix="/api")  # Frontend crash reports
 app.include_router(tenant.router)  # Tenant/white-label configuration (no /api prefix, router has it)
 app.include_router(tenant_admin.router)  # Admin tenant provisioning (router has /api prefix)

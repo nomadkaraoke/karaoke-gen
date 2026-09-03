@@ -1782,5 +1782,32 @@
     "retryingConn": "Anslutningsproblem — försöker igen…",
     "sessionExpired": "Uppladdningssessionen har löpt ut — ta bort det här spåret och starta om det",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Använd Generator själv och gör din karaokevideo direkt — vi bjuder på din första.",
+    "convertButton": "Gör den själv nu",
+    "convertHeading": "Vill du inte vänta?",
+    "correctedNote": "Vi justerade det till {artist} — {title}",
+    "invalidEmail": "Ange en giltig e-postadress.",
+    "linkSent": "Kolla din e-post — vi skickade en inloggningslänk till {email}.",
+    "noPasswordNeeded": "Vi mejlar dig en magisk länk för att logga in. Inget lösenord behövs.",
+    "noRequests": "Inga önskemål ännu — bli den första att lägga till ett!",
+    "publishedHeading": "Nyligen skapade",
+    "sendLink": "Mejla mig en inloggningslänk",
+    "sending": "Skickar…",
+    "signInToSubmit": "Logga in med din e-post för att önska en låt och rösta.",
+    "statusBeingMade": "Skapas",
+    "submitButton": "Skicka önskemål",
+    "submitHeading": "Önska en låt",
+    "subtitle": "Varje dag gör vi låten med flest röster till en gratis karaokevideo. En röst per dag — se till att den räknas.",
+    "title": "Rösta på nästa gratis karaokelåt",
+    "titlePlaceholder": "Låttitel",
+    "votedTodayNote": "Du har använt dagens röst — kom tillbaka imorgon, eller tryck på en annan låt för att flytta den.",
+    "votes": "{count, plural, one {# röst} other {# röster}}",
+    "watchOnYoutube": "Titta på YouTube",
+    "artistPlaceholder": "Artist",
+    "emailPlaceholder": "Ange din e-post",
+    "errorGeneric": "Något gick fel. Försök igen.",
+    "submitting": "Skickar in…"
   }
 }

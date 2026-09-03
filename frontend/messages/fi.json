@@ -1782,5 +1782,32 @@
     "retryingConn": "Yhteys pätkii — yritetään uudelleen…",
     "sessionExpired": "Latausistunto vanhentui — poista tämä kappale ja aloita alusta",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Käytä Generatoria itse ja tee karaokevideosi heti — me tarjoamme ensimmäisen.",
+    "convertButton": "Tee se itse heti",
+    "convertHeading": "Etkö halua odottaa?",
+    "correctedNote": "Korjasimme sen muotoon {artist} — {title}",
+    "invalidEmail": "Syötä kelvollinen sähköpostiosoite.",
+    "linkSent": "Tarkista sähköpostisi — lähetimme kirjautumislinkin osoitteeseen {email}.",
+    "noPasswordNeeded": "Lähetämme sinulle sähköpostitse taikalinkin kirjautumista varten. Salasanaa ei tarvita.",
+    "noRequests": "Ei vielä pyyntöjä — ole ensimmäinen ja lisää omasi!",
+    "publishedHeading": "Äskettäin tehdyt",
+    "sendLink": "Lähetä minulle kirjautumislinkki sähköpostitse",
+    "sending": "Lähetetään…",
+    "signInToSubmit": "Kirjaudu sisään sähköpostillasi, jotta voit pyytää kappaletta ja äänestää.",
+    "statusBeingMade": "Työn alla",
+    "submitButton": "Lähetä pyyntö",
+    "submitHeading": "Pyydä kappaletta",
+    "subtitle": "Joka päivä teemme eniten ääniä saaneesta kappaleesta ilmaisen karaokevideon. Yksi ääni päivässä — käytä se harkiten.",
+    "title": "Äänestä seuraavaa ilmaista karaokekappaletta",
+    "titlePlaceholder": "Kappaleen nimi",
+    "votedTodayNote": "Olet käyttänyt tämän päivän äänesi — palaa huomenna tai siirrä äänesi napauttamalla toista kappaletta.",
+    "votes": "{count, plural, one {# ääni} other {# ääntä}}",
+    "watchOnYoutube": "Katso YouTubessa",
+    "artistPlaceholder": "Artisti",
+    "emailPlaceholder": "Syötä sähköpostisi",
+    "errorGeneric": "Jotain meni pieleen. Yritä uudelleen.",
+    "submitting": "Lähetetään…"
   }
 }

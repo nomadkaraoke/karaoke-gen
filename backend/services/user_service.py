@@ -8,6 +8,7 @@ Handles:
 - User CRUD operations
 """
 import logging
+import os
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -30,6 +31,19 @@ from backend.models.user import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_positive_int_env(name: str, default: int) -> int:
+    """Parse a positive-int env var, falling back to default on empty/invalid/<=0.
+
+    Used for BOARD_MAX_SIGNUPS_PER_IP — a bad value must not crash import or (if 0/
+    negative) rate-limit every signup.
+    """
+    try:
+        value = int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
 
 
 # Collection names
@@ -220,6 +234,7 @@ class UserService:
         tenant_id: Optional[str] = None,
         device_fingerprint: Optional[str] = None,
         referral_code: Optional[str] = None,
+        purpose: Optional[str] = None,
     ) -> MagicLinkToken:
         """
         Create a magic link token for email authentication.
@@ -256,6 +271,7 @@ class UserService:
             tenant_id=tenant_id,
             device_fingerprint=device_fingerprint,
             referral_code=referral_code,
+            purpose=purpose,
         )
 
         # Save to Firestore
@@ -541,6 +557,12 @@ class UserService:
     # Maximum new signups allowed per IP address in the rate limit window
     MAX_SIGNUPS_PER_IP = 2
     SIGNUP_RATE_LIMIT_HOURS = 24
+    # Higher cap for requests-board sign-ins: a shared venue WiFi can register many
+    # voters, but we still keep a deterministic ceiling against scripted abuse (each
+    # board account can later claim a welcome credit via /users/claim-welcome-credit).
+    # Applies to the shared-IP check ONLY — the per-fingerprint cap stays strict, since
+    # a venue is many devices on one IP, not many accounts on one device.
+    BOARD_MAX_SIGNUPS_PER_IP = _safe_positive_int_env("BOARD_MAX_SIGNUPS_PER_IP", 30)
 
     def count_recent_signups_from_ip(self, ip_address: str, hours: int = 24) -> int:
         """
@@ -607,18 +629,27 @@ class UserService:
             return 0
 
     def is_signup_rate_limited(
-        self, ip_address: Optional[str] = None, device_fingerprint: Optional[str] = None
+        self,
+        ip_address: Optional[str] = None,
+        device_fingerprint: Optional[str] = None,
+        max_signups: Optional[int] = None,
     ) -> bool:
         """
         Check if a signup should be rate limited based on IP and/or fingerprint.
 
-        Either signal hitting the limit triggers a block.
+        Either signal hitting the limit triggers a block. `max_signups` overrides the
+        per-IP cap ONLY — the requests board passes a higher limit (BOARD_MAX_SIGNUPS_PER_IP)
+        so a whole venue on shared WiFi can sign in. The per-fingerprint cap always stays
+        strict (self.MAX_SIGNUPS_PER_IP): a venue is many devices behind one IP, so raising
+        the fingerprint cap would let one browser script many accounts.
         """
+        ip_limit = max_signups if max_signups is not None else self.MAX_SIGNUPS_PER_IP
+
         if ip_address:
             ip_count = self.count_recent_signups_from_ip(
                 ip_address, hours=self.SIGNUP_RATE_LIMIT_HOURS
             )
-            if ip_count >= self.MAX_SIGNUPS_PER_IP:
+            if ip_count >= ip_limit:
                 return True
 
         if device_fingerprint:

@@ -1782,5 +1782,32 @@
     "retryingConn": "Výpadok pripojenia — skúšam znova…",
     "sessionExpired": "Relácia nahrávania vypršala — odstráň túto skladbu a začni znova",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Použi Generator sám a vytvor si svoje karaoke video hneď teraz — prvé máš od nás zadarmo.",
+    "convertButton": "Vytvor si ho teraz sám",
+    "convertHeading": "Nechceš čakať?",
+    "correctedNote": "Upravili sme to na {artist} — {title}",
+    "invalidEmail": "Zadaj platnú e-mailovú adresu.",
+    "linkSent": "Skontroluj si e-mail — poslali sme prihlasovací odkaz na {email}.",
+    "noPasswordNeeded": "Pošleme ti e-mailom magický odkaz na prihlásenie. Nepotrebuješ žiadne heslo.",
+    "noRequests": "Zatiaľ žiadne žiadosti — buď prvý, kto nejakú pridá!",
+    "publishedHeading": "Nedávno vytvorené",
+    "sendLink": "Poslať prihlasovací odkaz na e-mail",
+    "sending": "Odosiela sa…",
+    "signInToSubmit": "Prihlás sa pomocou svojho e-mailu, aby si mohol požiadať o pieseň a hlasovať.",
+    "statusBeingMade": "Vytvára sa",
+    "submitButton": "Odoslať žiadosť",
+    "submitHeading": "Požiadaj o pieseň",
+    "subtitle": "Každý deň premeníme pieseň s najväčším počtom hlasov na bezplatné karaoke video. Jeden hlas denne — využi ho naplno.",
+    "title": "Hlasuj za ďalšiu bezplatnú karaoke skladbu",
+    "titlePlaceholder": "Názov piesne",
+    "votedTodayNote": "Dnešný hlas si už využil — vráť sa zajtra, alebo klikni na inú pieseň a presuň ho.",
+    "votes": "{count, plural, one {# hlas} few {# hlasy} other {# hlasov}}",
+    "watchOnYoutube": "Pozrieť na YouTube",
+    "artistPlaceholder": "Interpret",
+    "emailPlaceholder": "Zadaj svoj e-mail",
+    "errorGeneric": "Niečo sa pokazilo. Skús to znova.",
+    "submitting": "Odosiela sa…"
   }
 }

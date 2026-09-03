@@ -149,6 +149,11 @@ class MagicLinkToken(BaseModel):
     # Referral attribution (travels with magic link for cross-device support)
     referral_code: Optional[str] = None
 
+    # Sign-in context. "requests_board" = passwordless identity only: skip the welcome
+    # credit + the per-IP signup limit (so a whole venue on shared WiFi can sign in to
+    # vote), and route the user back to the board after verifying.
+    purpose: Optional[str] = None
+
     # Pre-computed credit evaluation (set asynchronously after magic link is sent)
     credit_eval_decision: Optional[str] = None  # "grant", "deny", "pending_review"
     credit_eval_reasoning: Optional[str] = None
@@ -185,6 +190,8 @@ class SendMagicLinkRequest(BaseModel):
     email: str
     device_fingerprint: Optional[str] = None
     referral_code: Optional[str] = None  # From referral interstitial
+    # "requests_board" = board sign-in (identity only; no welcome credit / no IP limit).
+    purpose: Optional[str] = None
 
 
 class SendMagicLinkResponse(BaseModel):
@@ -219,6 +226,8 @@ class VerifyMagicLinkResponse(BaseModel):
     tenant_subdomain: Optional[str] = None
     credits_granted: int = 0
     credit_status: str = "not_applicable"  # "granted", "denied", "pending_review", "already_granted", "not_applicable"
+    # Where the frontend should land after verifying (e.g. "/requests" for board sign-in).
+    redirect_path: Optional[str] = None
 
 
 class UserPublic(BaseModel):

@@ -1782,5 +1782,32 @@
     "retryingConn": "Tilkoblingsproblem — prøver på nytt…",
     "sessionExpired": "Opplastingsøkten er utløpt — fjern dette sporet og start det på nytt",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Bruk Generator selv og lag karaokevideoen din akkurat nå — den første spanderer vi.",
+    "convertButton": "Lag den selv nå",
+    "convertHeading": "Vil du ikke vente?",
+    "correctedNote": "Vi rettet det til {artist} — {title}",
+    "invalidEmail": "Vennligst skriv inn en gyldig e-postadresse.",
+    "linkSent": "Sjekk e-posten din — vi har sendt en påloggingslenke til {email}.",
+    "noPasswordNeeded": "Vi sender deg en magisk lenke på e-post for å logge inn. Du trenger ikke passord.",
+    "noRequests": "Ingen ønsker ennå — vær den første til å legge til et!",
+    "publishedHeading": "Nylig laget",
+    "sendLink": "Send meg en påloggingslenke på e-post",
+    "sending": "Sender…",
+    "signInToSubmit": "Logg inn med e-posten din for å ønske deg en sang og stemme.",
+    "statusBeingMade": "Lages nå",
+    "submitButton": "Send inn ønske",
+    "submitHeading": "Ønsk deg en sang",
+    "subtitle": "Hver dag gjør vi sangen med flest stemmer om til en gratis karaokevideo. Én stemme per dag — bruk den godt.",
+    "title": "Stem på neste gratis karaokespor",
+    "titlePlaceholder": "Sangtittel",
+    "votedTodayNote": "Du har brukt dagens stemme — kom tilbake i morgen, eller trykk på en annen sang for å flytte den.",
+    "votes": "{count, plural, one {# stemme} other {# stemmer}}",
+    "watchOnYoutube": "Se på YouTube",
+    "artistPlaceholder": "Artist",
+    "emailPlaceholder": "Skriv inn e-posten din",
+    "errorGeneric": "Noe gikk galt. Vennligst prøv igjen.",
+    "submitting": "Sender inn…"
   }
 }

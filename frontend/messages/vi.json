@@ -1782,5 +1782,32 @@
     "retryingConn": "Gián đoạn kết nối — đang thử lại…",
     "sessionExpired": "Phiên tải lên đã hết hạn — hãy xóa bài hát này và bắt đầu lại",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Hãy tự dùng Generator để tạo video karaoke ngay bây giờ — video đầu tiên hoàn toàn miễn phí.",
+    "convertButton": "Tự tạo ngay",
+    "convertHeading": "Không muốn chờ đợi?",
+    "correctedNote": "Chúng tôi đã chỉnh sửa thành {artist} — {title}",
+    "invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ.",
+    "linkSent": "Vui lòng kiểm tra email — chúng tôi đã gửi liên kết đăng nhập đến {email}.",
+    "noPasswordNeeded": "Chúng tôi sẽ gửi cho bạn liên kết đăng nhập qua email. Không cần mật khẩu.",
+    "noRequests": "Chưa có yêu cầu nào — hãy là người đầu tiên gửi yêu cầu!",
+    "publishedHeading": "Mới tạo gần đây",
+    "sendLink": "Gửi liên kết đăng nhập qua email",
+    "sending": "Đang gửi…",
+    "signInToSubmit": "Đăng nhập bằng email để yêu cầu bài hát và bình chọn.",
+    "statusBeingMade": "Đang tạo",
+    "submitButton": "Gửi yêu cầu",
+    "submitHeading": "Yêu cầu bài hát",
+    "subtitle": "Mỗi ngày, chúng tôi sẽ tạo video karaoke miễn phí cho bài hát được bình chọn nhiều nhất. Bạn có một lượt bình chọn mỗi ngày — hãy sử dụng thật ý nghĩa.",
+    "title": "Bình chọn bài hát karaoke miễn phí tiếp theo",
+    "titlePlaceholder": "Tên bài hát",
+    "votedTodayNote": "Bạn đã dùng lượt bình chọn của hôm nay — hãy quay lại vào ngày mai, hoặc chọn một bài hát khác để chuyển lượt.",
+    "votes": "{count, plural, one {# bình chọn} other {# bình chọn}}",
+    "watchOnYoutube": "Xem trên YouTube",
+    "artistPlaceholder": "Nghệ sĩ",
+    "emailPlaceholder": "Nhập email của bạn",
+    "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại.",
+    "submitting": "Đang gửi…"
   }
 }

@@ -1782,5 +1782,32 @@
     "retryingConn": "Problem s vezom — pokušavam ponovno…",
     "sessionExpired": "Sesija prijenosa je istekla — ukloni ovu pjesmu i pokreni je ponovno",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Upotrijebi Generator i napravi svoj karaoke video odmah — prvi je na naš račun.",
+    "convertButton": "Napravi ga sam odmah",
+    "convertHeading": "Ne želiš čekati?",
+    "correctedNote": "Ispravili smo to u {artist} — {title}",
+    "invalidEmail": "Unesi važeću e-mail adresu.",
+    "linkSent": "Provjeri svoj e-mail — poslali smo poveznicu za prijavu na {email}.",
+    "noPasswordNeeded": "Na e-mail ćemo ti poslati magičnu poveznicu za prijavu. Lozinka nije potrebna.",
+    "noRequests": "Još nema zahtjeva — budi prvi koji će ga dodati!",
+    "publishedHeading": "Nedavno napravljeno",
+    "sendLink": "Pošalji mi poveznicu za prijavu na e-mail",
+    "sending": "Slanje…",
+    "signInToSubmit": "Prijavi se svojim e-mailom kako bi zatražio pjesmu i glasao.",
+    "statusBeingMade": "U izradi",
+    "submitButton": "Pošalji zahtjev",
+    "submitHeading": "Zatraži pjesmu",
+    "subtitle": "Svaki dan pretvaramo pjesmu s najviše glasova u besplatni karaoke video. Jedan glas dnevno — iskoristi ga pametno.",
+    "title": "Glasaj za sljedeću besplatnu karaoke pjesmu",
+    "titlePlaceholder": "Naslov pjesme",
+    "votedTodayNote": "Iskoristio si današnji glas — vrati se sutra ili dodirni drugu pjesmu da ga premjestiš.",
+    "votes": "{count, plural, one {# glas} few {# glasa} other {# glasova}}",
+    "watchOnYoutube": "Gledaj na YouTube",
+    "artistPlaceholder": "Izvođač",
+    "emailPlaceholder": "Unesi svoju e-poštu",
+    "errorGeneric": "Nešto je pošlo po zlu. Pokušaj ponovno.",
+    "submitting": "Šaljem…"
   }
 }
