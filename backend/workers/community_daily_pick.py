@@ -20,7 +20,7 @@ Master kill-switch: settings.community_daily_pick_enabled (default off — deplo
 """
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from backend.config import get_settings
 from backend.models.job import JobCreate, JobStatus
