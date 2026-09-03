@@ -88,6 +88,31 @@ traffic to the board. Single source: `backend/config.py` `default_youtube_descri
 both publish paths via `job.youtube_description_template`). Coordinate with the YouTube-descriptions
 work Andrew is doing in a parallel session.
 
+## Concurrency & idempotency (CRITICAL — the daily cron WILL double-fire otherwise)
+
+The daily flow has multiple separate side effects (pick → grant credit → create job → advance
+status → publish → email). A retried Scheduler delivery, an overlapping run, or a crash between
+steps can double-grant credits, create duplicate jobs, or make **two** free tracks in a day. Design
+for this from the start:
+
+- **Claim the day atomically before doing anything.** The "board empty?" check is NOT a claim. Take a
+  durable per-UTC-day lock first — e.g. a Firestore doc `daily_pick/{YYYY-MM-DD}` created with a
+  transaction / `if_generation_match=0` (create-only); if it already exists, this run exits. Only the
+  run that wins the claim proceeds to pick + trending-fallback. This is what actually enforces "one
+  free track per day, total".
+- **Transition the chosen request atomically.** Move the selected request `open → queued` inside a
+  transaction (guard on current status) so two runners can't both grab the same request.
+- **Make grant + submit idempotent.** Carry a durable idempotency key (e.g. `daily-pick-{date}` or
+  `{request_id}`): record `credit_granted_for` on the request before/with the grant and check it so a
+  retry can't re-grant; pass a deterministic key when creating the job and store `job_id` on the
+  request so a retry finds the existing job instead of creating another. Define the recovery rule for
+  each partial-failure point (claimed-but-no-credit, credit-but-no-job, job-but-no-status).
+- Same idea for the **hand-off** (don't double-reassign / double-email on retry) and **publish
+  emails** (mark voters-notified so a re-run doesn't email everyone twice).
+
+`cast_vote`'s transactional pattern in `song_request_service.py` is the model to copy. (These points
+were raised by CodeRabbit on this handoff — they're real; bake them in.)
+
 ## Reuse map (for Phase 2)
 | Need | Reuse |
 |---|---|
