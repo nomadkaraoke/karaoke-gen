@@ -1782,5 +1782,32 @@
     "retryingConn": "接続が不安定です — 再試行中…",
     "sessionExpired": "アップロードセッションの期限が切れました — このトラックを削除して、もう一度やり直してください",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Generatorを使って、今すぐご自身でカラオケ動画を作成してみましょう。最初の1曲は無料です。",
+    "convertButton": "今すぐ自分で作成する",
+    "convertHeading": "待ちきれませんか？",
+    "correctedNote": "{artist} — {title} に修正しました。",
+    "invalidEmail": "有効なメールアドレスを入力してください。",
+    "linkSent": "メールをご確認ください。{email} にサインインリンクを送信しました。",
+    "noPasswordNeeded": "サインイン用のマジックリンクをメールで送信します。パスワードは不要です。",
+    "noRequests": "まだリクエストはありません。最初のリクエストを追加しましょう！",
+    "publishedHeading": "最近作成された動画",
+    "sendLink": "サインインリンクをメールで送信",
+    "sending": "送信中…",
+    "signInToSubmit": "曲をリクエストしたり投票したりするには、メールアドレスでサインインしてください。",
+    "statusBeingMade": "作成中",
+    "submitButton": "リクエストを送信",
+    "submitHeading": "曲をリクエストする",
+    "subtitle": "毎日、最も投票数の多かった曲を無料のカラオケ動画にします。投票は1日1回まで。とっておきの1曲に投票しましょう。",
+    "title": "次の無料カラオケトラックに投票する",
+    "titlePlaceholder": "曲名",
+    "votedTodayNote": "本日の投票は完了しています。明日また投票するか、別の曲をタップして投票先を変更してください。",
+    "votes": "{count, plural, one {# 票} other {# 票}}",
+    "watchOnYoutube": "YouTubeで見る",
+    "artistPlaceholder": "アーティスト",
+    "emailPlaceholder": "メールアドレスを入力",
+    "errorGeneric": "問題が発生しました。もう一度お試しください。",
+    "submitting": "送信中…"
   }
 }

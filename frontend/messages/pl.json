@@ -1782,5 +1782,32 @@
     "retryingConn": "Problem z połączeniem — ponawianie…",
     "sessionExpired": "Sesja przesyłania wygasła — usuń ten utwór i zacznij od nowa",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Użyj Generatora i stwórz swoje wideo karaoke już teraz — pierwsze jest na nasz koszt.",
+    "convertButton": "Stwórz je samodzielnie",
+    "convertHeading": "Nie chcesz czekać?",
+    "correctedNote": "Poprawiliśmy to na {artist} — {title}",
+    "invalidEmail": "Podaj prawidłowy adres e-mail.",
+    "linkSent": "Sprawdź swoją skrzynkę — wysłaliśmy link do logowania na adres {email}.",
+    "noPasswordNeeded": "Wyślemy Ci na e-mail magiczny link do logowania. Hasło nie jest potrzebne.",
+    "noRequests": "Nie ma jeszcze żadnych propozycji — dodaj pierwszą!",
+    "publishedHeading": "Ostatnio stworzone",
+    "sendLink": "Wyślij mi link do logowania",
+    "sending": "Wysyłanie…",
+    "signInToSubmit": "Zaloguj się e-mailem, aby zgłosić piosenkę i zagłosować.",
+    "statusBeingMade": "W trakcie tworzenia",
+    "submitButton": "Wyślij zgłoszenie",
+    "submitHeading": "Zgłoś piosenkę",
+    "subtitle": "Każdego dnia zamieniamy piosenkę z największą liczbą głosów w darmowe wideo karaoke. Masz jeden głos dziennie — dobrze go wykorzystaj.",
+    "title": "Zagłosuj na kolejny darmowy utwór karaoke",
+    "titlePlaceholder": "Tytuł piosenki",
+    "votedTodayNote": "Twój dzisiejszy głos został już wykorzystany — wróć jutro lub dotknij innej piosenki, aby go przenieść.",
+    "votes": "{count, plural, one {# głos} few {# głosy} many {# głosów} other {# głosów}}",
+    "watchOnYoutube": "Obejrzyj na YouTube",
+    "artistPlaceholder": "Wykonawca",
+    "emailPlaceholder": "Wpisz swój e-mail",
+    "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie.",
+    "submitting": "Przesyłanie…"
   }
 }

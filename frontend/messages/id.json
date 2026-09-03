@@ -1782,5 +1782,32 @@
     "retryingConn": "Gangguan koneksi — mencoba lagi…",
     "sessionExpired": "Sesi unggah kedaluwarsa — hapus trek ini dan mulai lagi",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Gunakan Generator dan buat sendiri video karaoke Anda sekarang juga — video pertama Anda gratis dari kami.",
+    "convertButton": "Buat sendiri sekarang",
+    "convertHeading": "Tidak ingin menunggu?",
+    "correctedNote": "Kami merapikannya menjadi {artist} — {title}",
+    "invalidEmail": "Masukkan alamat email yang valid.",
+    "linkSent": "Periksa email Anda — kami telah mengirimkan tautan masuk ke {email}.",
+    "noPasswordNeeded": "Kami akan mengirimkan tautan ajaib ke email Anda untuk masuk. Tidak perlu kata sandi.",
+    "noRequests": "Belum ada permintaan — jadilah yang pertama menambahkannya!",
+    "publishedHeading": "Baru saja dibuat",
+    "sendLink": "Kirimkan tautan masuk ke email saya",
+    "sending": "Mengirim…",
+    "signInToSubmit": "Masuk dengan email Anda untuk meminta lagu dan memberikan suara.",
+    "statusBeingMade": "Sedang dibuat",
+    "submitButton": "Kirim permintaan",
+    "submitHeading": "Minta lagu",
+    "subtitle": "Setiap hari kami mengubah lagu dengan suara terbanyak menjadi video karaoke gratis. Satu suara per hari — gunakan sebaik-baiknya.",
+    "title": "Berikan suara untuk trek karaoke gratis berikutnya",
+    "titlePlaceholder": "Judul lagu",
+    "votedTodayNote": "Anda sudah menggunakan suara hari ini — kembali lagi besok, atau ketuk lagu lain untuk memindahkannya.",
+    "votes": "{count, plural, one {# suara} other {# suara}}",
+    "watchOnYoutube": "Tonton di YouTube",
+    "artistPlaceholder": "Artis",
+    "emailPlaceholder": "Masukkan email Anda",
+    "errorGeneric": "Terjadi kesalahan. Silakan coba lagi.",
+    "submitting": "Mengirim…"
   }
 }

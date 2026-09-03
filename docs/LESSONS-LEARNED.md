@@ -6,6 +6,39 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Update Firestore Job Maps with Dot-Path Fields, Never Read-Modify-Write (Aug 2026)
+
+`JobManager.update_file_url` and `update_state_data` used to `get_job()`, copy the
+whole `file_urls`/`state_data` map, set one key, and re-persist the entire map. The
+audio and screens workers run **in parallel** and both write these maps, so a write
+built from a stale snapshot silently dropped a sibling key set in between (a classic
+lost update). Real symptom: a `backing_vocals.flac` stem uploaded to GCS but **missing
+from `file_urls.stems`** → the instrumental-review UI couldn't load the backing preview,
+and `_analyze_backing_vocals` early-returned ("0% backing detected"). Rare — needs a
+precise interleaving (~1 in 4 parallel jobs).
+
+**Fix / rule:** write a single Firestore dot-path field so the server merges siblings —
+`update_job(job_id, {f"file_urls.{category}.{file_type}": url})`, exactly like
+`update_processing_metadata` already did. Any code that does read-copy-mutate-write on a
+nested job map is exposed to the same race. Keys must be plain identifiers (no dots), or
+the path is misread as further nesting. Belt-and-suspenders: `_analyze_backing_vocals`
+now recovers a stem that exists at the conventional GCS path but is unregistered, and
+stores a fallback analysis instead of a silent early-return.
+
+**Follow-up sweep (Sep 2026):** a codebase-wide audit found the same read-copy-mutate-write
+pattern in 8 more sites, now converted to atomic dot-path writes: the video worker's three
+distribution/redistribution writes (`video_worker.py`), the audio-editor undo/redo/apply/
+upload endpoints (`review.py`), and the deferred YouTube-URL write (`youtube_queue_processor.py`).
+The video-worker ones were the most dangerous — they `.pop('visibility_change_in_progress')`
+and rewrote the whole map, so a stale write could **revert the `worker_generation`
+supersession-fence `Increment`** or clobber the visibility flag (the
+"visibility-recycle-dataloss" surface). Clearing a key now uses `DELETE_FIELD` in the same
+dot-path write. When you add a new nested-map write, grep for `{'state_data':` / `{**job.state_data`
+before shipping. (Correct reference pattern: `duration_reconciliation.py` copies state only
+to *read*, and writes via `state_data.<key>`.)
+
+---
+
 ## Measure Human Edits by RECONSTRUCTION, Not the edit_log (Aug 2026)
 
 The lyrics-review `edit_log_*.json` (typed frontend ops) is **unreliable** as a
@@ -22,12 +55,21 @@ scorer/gates on edit-log counts:
 
 **Reliable method:** reconstruct the post-AI/pre-human state and diff it against the
 human's final. `apply.build_applied_segments(raw_corrections, suggestions)` gives the
-post-AI segments; `difflib` over word text vs `corrections_updated.json` isolates human
-TEXT edits, and >20 ms start/end deltas on unchanged words isolate TIMING edits.
+post-AI segments; diff vs `corrections_updated.json` across **all three edit axes** —
+measure everything, not just text:
+- **TEXT** — `difflib` over word text (insert/delete/replace).
+- **TIMING** — >20 ms start/end deltas on unchanged words (the axis edit_log is 100% blind
+  to; e.g. Pendulum "The Other Side" = 45 timing edits, 0 text).
+- **STRUCTURE** — line split/merge, via segment membership of untouched words (a flat
+  word-stream diff misses these).
+
 Suggestion source: `corrections_updated.metadata.auto_approval.suggestions` (pre_applied
-jobs) or `auto_correct_cache/<hash>.json` (client-applied). Tool + full write-up:
-workspace `docs/automation-corpus/reconstruct_edits.py` +
-`reconstruction-remeasure-2026-08-30.md`.
+jobs) or `auto_correct_cache/<hash>.json` (client-applied). The tool also has a
+`best_effort` mode (bypasses production safety-aborts so vocalization-heavy jobs still
+measure) and handles correction-disabled jobs (raw IS the post-AI state). Known limit: it
+measures the human's **net** change vs the AI accept-all state — an edit that coincides
+with a suggestion nets to 0. Tool + full write-up: workspace
+`docs/automation-corpus/reconstruct_edits.py` + `reconstruction-remeasure-2026-08-30.md`.
 
 **P8 phantom-parenthetical fixer (v0.212.0):** the re-measure showed deleting phantom
 parentheticals ("(Instrumental break)", "(I'm sorry)", unanchored "(Angel baby)"

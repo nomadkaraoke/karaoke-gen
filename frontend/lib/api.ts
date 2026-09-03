@@ -3,7 +3,7 @@
  */
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
-import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest } from './types';
+import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest, BoardResponse, SubmitRequestResponse, SongRequestPublic, DailyVoteStatus, ClaimWelcomeCreditResponse } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse, AddLyricsResult } from './lyrics-review/types';
 import { beginRequest, endRequest, configureHealthProbe } from './backend-status';
 
@@ -1892,13 +1892,16 @@ export const api = {
   /**
    * Send a magic link email for passwordless login
    */
-  async sendMagicLink(email: string, deviceFingerprint?: string | null, referralCode?: string | null): Promise<MagicLinkResponse> {
+  async sendMagicLink(email: string, deviceFingerprint?: string | null, referralCode?: string | null, purpose?: string | null): Promise<MagicLinkResponse> {
     const body: Record<string, string> = { email }
     if (deviceFingerprint) {
       body.device_fingerprint = deviceFingerprint
     }
     if (referralCode) {
       body.referral_code = referralCode
+    }
+    if (purpose) {
+      body.purpose = purpose
     }
     const response = await apiFetch(`${API_BASE_URL}/api/users/auth/magic-link`, {
       method: 'POST',
@@ -1959,6 +1962,61 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ token }),
+    });
+    return handleResponse(response);
+  },
+
+  // ==========================================================================
+  // Requests voting board (requests.nomadkaraoke.com)
+  // ==========================================================================
+
+  /** Public board listing (auth optional — annotates the caller's vote if signed in). */
+  async getRequestsBoard(): Promise<BoardResponse> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /** Submit a song request (auth required). Auto-corrects artist/title and dedupes. */
+  async submitSongRequest(artist: string, title: string): Promise<SubmitRequestResponse> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artist, title }),
+    });
+    return handleResponse(response);
+  },
+
+  /** Cast/move/undo the caller's single daily vote (auth required). */
+  async voteSongRequest(requestId: string, direction: 'up' | 'down'): Promise<SongRequestPublic> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests/${encodeURIComponent(requestId)}/vote`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ direction }),
+    });
+    return handleResponse(response);
+  },
+
+  /** The caller's daily-vote status (auth required). */
+  async getDailyVoteStatus(): Promise<DailyVoteStatus> {
+    const response = await apiFetch(`${API_BASE_URL}/api/requests-board/me`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Grant the standard one-time welcome credit to a signed-in user (auth required).
+   * Powers the board's "make it yourself now" conversion — board sign-in grants no
+   * credit, so this claims it (idempotent) before sending the user into the generator.
+   */
+  async claimWelcomeCredit(): Promise<ClaimWelcomeCreditResponse> {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/claim-welcome-credit`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },
@@ -2516,7 +2574,91 @@ export interface CacheStatsResponse {
 }
 
 // Admin API namespace
+export interface TenantSummary {
+  id: string;
+  name: string;
+  subdomain: string;
+  is_active: boolean;
+  locked_theme?: string | null;
+  dropbox_path?: string | null;
+  created_at?: string | null;
+}
+
+export interface TenantCreateResult {
+  tenant: {
+    id: string;
+    name: string;
+    subdomain: string;
+    is_active: boolean;
+  };
+  preview_url: string;
+  subdomain_url: string;
+}
+
+export interface TenantDetail {
+  tenant: Record<string, any>;
+  theme_id: string;
+  style_params: Record<string, any>;
+  assets: string[];
+  preview_url: string;
+}
+
 export const adminApi = {
+  /**
+   * List all white-label tenants
+   */
+  async listTenants(): Promise<{ tenants: TenantSummary[] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Create a white-label tenant (multipart: fields + optional background/logo images).
+   * Do NOT set Content-Type — the browser sets the multipart boundary.
+   */
+  async createTenant(formData: FormData): Promise<TenantCreateResult> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get a tenant's full config, theme style_params, and asset list (for editing).
+   */
+  async getTenant(tenantId: string): Promise<TenantDetail> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Update a tenant (multipart: optional config JSON, style_params JSON, and asset files).
+   */
+  async updateTenant(tenantId: string, formData: FormData): Promise<{ tenant: TenantCreateResult['tenant'] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get the default Nomad theme's full style_params — a starting template for a new theme.
+   */
+  async getThemeTemplate(): Promise<{ style_params: Record<string, any> }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/_template`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
   /**
    * Get admin dashboard statistics
    */
@@ -3723,6 +3865,7 @@ export interface LyricsReviewApiClient {
   }>
   getPreviewVideoUrl: (hash: string) => string
   getWaveformData: (numPoints?: number) => Promise<WaveformData>
+  refreshInstrumentalUrls: () => Promise<InstrumentalOption[]>
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods
   saveReviewSession: (data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) => Promise<{ status: string; session_id?: string; reason?: string }>
@@ -3924,6 +4067,23 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
         { headers: getAuthHeaders() }
       )
       return handleResponse(response)
+    },
+
+    /**
+     * Re-fetch freshly-signed instrumental stem URLs.
+     *
+     * The signed URLs baked into the review payload expire after 120 min, and a
+     * long review session (or a reload that rehydrates cached correction data
+     * from localStorage) can outlive them. The preview modal calls this on an
+     * audio load error to swap in a fresh URL and resume playback.
+     */
+    async refreshInstrumentalUrls(): Promise<InstrumentalOption[]> {
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/review/${jobId}/instrumental-urls`,
+        { headers: getAuthHeaders() }
+      )
+      const data = await handleResponse<{ instrumental_options?: InstrumentalOption[] }>(response)
+      return data.instrumental_options ?? []
     },
 
     /**

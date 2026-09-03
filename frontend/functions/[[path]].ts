@@ -57,7 +57,7 @@ function getContrastColor(hexColor: string): string {
  */
 function extractTenantFromHost(hostname: string): string | null {
   const parts = hostname.toLowerCase().split(".")
-  const nonTenantSubdomains = ["gen", "api", "www", "buy", "admin", "app", "beta"]
+  const nonTenantSubdomains = ["gen", "api", "www", "buy", "admin", "app", "beta", "requests"]
 
   // Accept exactly 3 parts (tenant.nomadkaraoke.com)
   // or exactly 4 parts where second is "gen" (tenant.gen.nomadkaraoke.com)

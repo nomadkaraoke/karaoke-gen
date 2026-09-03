@@ -268,3 +268,42 @@ def test_jobcreate_coerces_out_of_set_preferences():
     assert JobCreate(review_mode="typo").review_mode == "always_review"
     assert JobCreate(review_mode="auto").review_mode == "auto"
     assert JobCreate().backing_preference == "auto" and JobCreate().review_mode == "auto"
+
+
+# ---- timing gate interaction with the C1 lyrics-skip ------------------------
+
+def test_summary_lyrics_not_confident_while_timing_pending_audio():
+    # A verdict scored before audio separation finished could not run the
+    # timing check; the lyrics screen must not be skipped until the
+    # audio_worker re-score clears the pending marker.
+    job = _job_with_verdict("clean", True)
+    job.processing_metadata["auto_approval"]["timing"] = {"status": "pending_audio"}
+    s = auto_approval_summary(job, _settings())
+    assert s["lyrics"]["confident"] is False
+
+
+def test_summary_lyrics_confident_when_timing_checked():
+    job = _job_with_verdict("clean", True)
+    job.processing_metadata["auto_approval"]["timing"] = {"status": "checked", "fired": []}
+    s = auto_approval_summary(job, _settings())
+    assert s["lyrics"]["confident"] is True
+
+
+def test_summary_lyrics_confident_without_timing_block():
+    # Jobs scored before the timing gate existed have no timing block at all —
+    # their confidence semantics are unchanged.
+    s = auto_approval_summary(_job_with_verdict("clean", True), _settings())
+    assert s["lyrics"]["confident"] is True
+
+
+def test_summary_timing_pending_ignored_when_gate_disabled():
+    # Kill switch consistency: with the timing gate disabled the executor can
+    # auto-complete, so the C1 summary must not hold the lyrics screen either.
+    job = _job_with_verdict("clean", True)
+    job.processing_metadata["auto_approval"]["timing"] = {"status": "pending_audio"}
+    settings = SimpleNamespace(
+        auto_approval_backing_keep_enabled=True,
+        auto_approval_timing_gate_enabled=False,
+    )
+    s = auto_approval_summary(job, settings)
+    assert s["lyrics"]["confident"] is True

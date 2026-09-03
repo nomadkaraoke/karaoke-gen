@@ -43,6 +43,49 @@ export interface VerifyMagicLinkResponse {
   tenant_subdomain?: string | null
   credits_granted?: number
   credit_status?: string  // "granted", "denied", "already_granted", "not_applicable"
+  redirect_path?: string | null  // e.g. "/requests" for board sign-in
+}
+
+// --- Requests voting board ---
+
+export interface SongRequestPublic {
+  id: string
+  artist: string
+  title: string
+  status: "open" | "queued" | "in_progress" | "published" | "rejected"
+  source: "human" | "trending_agent"
+  vote_count: number
+  created_at: string
+  youtube_url?: string | null
+  was_corrected: boolean
+  your_vote?: number | null
+}
+
+export interface BoardResponse {
+  requests: SongRequestPublic[]
+  published: SongRequestPublic[]
+  voted_today?: boolean | null
+  your_vote_request_id?: string | null
+}
+
+export interface SubmitRequestResponse {
+  status: "created" | "already_exists"
+  request: SongRequestPublic
+  canonical_artist: string
+  canonical_title: string
+  was_corrected: boolean
+}
+
+export interface DailyVoteStatus {
+  voted_today: boolean
+  request_id?: string | null
+  value?: number | null
+}
+
+export interface ClaimWelcomeCreditResponse {
+  status: string
+  credits: number
+  credits_granted: number
 }
 
 export interface UserProfileResponse {

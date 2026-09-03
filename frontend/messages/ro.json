@@ -1782,5 +1782,32 @@
     "retryingConn": "Problemă de conexiune — reîncercăm…",
     "sessionExpired": "Sesiunea de încărcare a expirat — elimină această piesă și începe din nou",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Folosește chiar tu Generator și creează-ți videoclipul de karaoke acum — primul este din partea noastră.",
+    "convertButton": "Creează-l chiar tu acum",
+    "convertHeading": "Nu vrei să aștepți?",
+    "correctedNote": "Am corectat în {artist} — {title}",
+    "invalidEmail": "Te rugăm să introduci o adresă de email validă.",
+    "linkSent": "Verifică-ți emailul — am trimis un link de conectare la {email}.",
+    "noPasswordNeeded": "Îți vom trimite pe email un link magic pentru conectare. Nu este nevoie de parolă.",
+    "noRequests": "Nicio cerere încă — fii primul care adaugă una!",
+    "publishedHeading": "Create recent",
+    "sendLink": "Trimite-mi un link de conectare pe email",
+    "sending": "Se trimite…",
+    "signInToSubmit": "Conectează-te cu emailul tău pentru a cere o melodie și a vota.",
+    "statusBeingMade": "În lucru",
+    "submitButton": "Trimite cererea",
+    "submitHeading": "Cere o melodie",
+    "subtitle": "În fiecare zi transformăm cea mai votată melodie într-un videoclip de karaoke gratuit. Un vot pe zi — fă-l să conteze.",
+    "title": "Votează pentru următoarea piesă de karaoke gratuită",
+    "titlePlaceholder": "Titlul melodiei",
+    "votedTodayNote": "Ți-ai folosit votul de astăzi — revino mâine, sau apasă pe altă melodie pentru a-l muta.",
+    "votes": "{count, plural, one {# vot} few {# voturi} other {# de voturi}}",
+    "watchOnYoutube": "Urmărește pe YouTube",
+    "artistPlaceholder": "Artist",
+    "emailPlaceholder": "Introdu emailul tău",
+    "errorGeneric": "Ceva nu a mers bine. Te rog să încerci din nou.",
+    "submitting": "Se trimite…"
   }
 }

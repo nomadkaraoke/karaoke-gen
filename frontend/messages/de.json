@@ -1782,5 +1782,32 @@
     "retryingConn": "Verbindungsproblem — erneuter Versuch…",
     "sessionExpired": "Upload-Sitzung abgelaufen — entferne diesen Track und starte ihn neu",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Nutze den Generator selbst und erstelle dein Karaoke-Video sofort — dein erstes geht auf uns.",
+    "convertButton": "Mach es jetzt selbst",
+    "convertHeading": "Du willst nicht warten?",
+    "correctedNote": "Wir haben das zu {artist} — {title} korrigiert",
+    "invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
+    "linkSent": "Schau in dein Postfach — wir haben einen Anmeldelink an {email} gesendet.",
+    "noPasswordNeeded": "Wir senden dir einen magischen Link zur Anmeldung per E-Mail. Kein Passwort erforderlich.",
+    "noRequests": "Noch keine Anfragen — mach den Anfang!",
+    "publishedHeading": "Kürzlich erstellt",
+    "sendLink": "Sende mir einen Anmeldelink per E-Mail",
+    "sending": "Wird gesendet…",
+    "signInToSubmit": "Melde dich mit deiner E-Mail an, um einen Song anzufragen und abzustimmen.",
+    "statusBeingMade": "Wird erstellt",
+    "submitButton": "Anfrage einreichen",
+    "submitHeading": "Song anfragen",
+    "subtitle": "Jeden Tag verwandeln wir den Song mit den meisten Stimmen in ein kostenloses Karaoke-Video. Eine Stimme pro Tag — nutze sie gut.",
+    "title": "Stimme für den nächsten kostenlosen Karaoke-Track ab",
+    "titlePlaceholder": "Songtitel",
+    "votedTodayNote": "Du hast deine heutige Stimme bereits genutzt — komm morgen wieder oder tippe auf einen anderen Song, um sie zu verschieben.",
+    "votes": "{count, plural, one {# Stimme} other {# Stimmen}}",
+    "watchOnYoutube": "Auf YouTube ansehen",
+    "artistPlaceholder": "Künstler",
+    "emailPlaceholder": "Gib deine E-Mail ein",
+    "errorGeneric": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "submitting": "Wird eingereicht…"
   }
 }

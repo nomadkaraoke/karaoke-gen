@@ -1782,5 +1782,32 @@
     "retryingConn": "Gangguan sambungan — mencuba semula…",
     "sessionExpired": "Sesi muat naik tamat tempoh — buang trek ini dan mulakan semula",
     "speedMBs": "{mb} MB/s"
+  },
+  "requests": {
+    "convertBody": "Gunakan Generator sendiri dan hasilkan video karaoke anda sekarang — video pertama anda adalah percuma daripada kami.",
+    "convertButton": "Hasilkan sendiri sekarang",
+    "convertHeading": "Tidak mahu menunggu?",
+    "correctedNote": "Kami telah membetulkannya kepada {artist} — {title}",
+    "invalidEmail": "Sila masukkan alamat e-mel yang sah.",
+    "linkSent": "Semak e-mel anda — kami telah menghantar pautan log masuk ke {email}.",
+    "noPasswordNeeded": "Kami akan e-melkan pautan ajaib untuk anda log masuk. Tiada kata laluan diperlukan.",
+    "noRequests": "Belum ada permintaan — jadilah yang pertama untuk menambahnya!",
+    "publishedHeading": "Baru dihasilkan",
+    "sendLink": "E-melkan saya pautan log masuk",
+    "sending": "Menghantar…",
+    "signInToSubmit": "Log masuk dengan e-mel anda untuk meminta lagu dan mengundi.",
+    "statusBeingMade": "Sedang dihasilkan",
+    "submitButton": "Hantar permintaan",
+    "submitHeading": "Minta lagu",
+    "subtitle": "Setiap hari kami menukarkan lagu yang mendapat undian terbanyak menjadi video karaoke percuma. Satu undian setiap hari — pastikan ia bermakna.",
+    "title": "Undi untuk trek karaoke percuma yang seterusnya",
+    "titlePlaceholder": "Tajuk lagu",
+    "votedTodayNote": "Anda telah menggunakan undian hari ini — kembali esok, atau ketik lagu lain untuk mengalihkannya.",
+    "votes": "{count, plural, one {# undian} other {# undian}}",
+    "watchOnYoutube": "Tonton di YouTube",
+    "artistPlaceholder": "Artis",
+    "emailPlaceholder": "Masukkan e-mel anda",
+    "errorGeneric": "Sesuatu yang tidak kena berlaku. Sila cuba lagi.",
+    "submitting": "Menghantar…"
   }
 }

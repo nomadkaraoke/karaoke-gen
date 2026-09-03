@@ -1072,3 +1072,67 @@ class TestCapacityStateFeedback:
 
         assert result["fell_back"] is False
         assert result["vm_name"] == "encoding-worker-blue"
+
+
+# ---------------------------------------------------------------------------
+# demote_active_worker: skip a broken fallback VM after a runtime infra failure
+# ---------------------------------------------------------------------------
+
+class TestDemoteActiveWorker:
+    """A worker VM that accepted a job but then hit a VM-level infra/auth failure
+    (e.g. could not reach the metadata server — job 6452888e) must be demoted so
+    the retry lands on a healthy worker."""
+
+    def test_demotes_fallback_and_clears_override(self, manager):
+        """When a fallback is serving, record its family cooldown then clear the
+        override so selection re-resolves from the primary."""
+        doc_ref = manager._doc_ref()
+        doc_ref.get.return_value.exists = True
+        doc_ref.get.return_value.to_dict.return_value = _make_firestore_data(
+            active_override_vm="encoding-worker-fallback-c4a",
+            active_override_ip="10.128.0.99",
+            active_override_zone="us-central1-c",
+            active_override_set_at="2026-08-31T12:00:00Z",
+        )
+
+        manager.demote_active_worker(reason="job 6452888e: metadata server unavailable")
+
+        # Recorded a cooldown for the fallback's (machine_type@zone).
+        assert doc_ref.set.called
+        set_args, set_kwargs = doc_ref.set.call_args
+        assert "capacity_state" in set_args[0]
+        assert "c4-highcpu-32@us-central1-c" in set_args[0]["capacity_state"]
+        assert set_kwargs.get("merge") is True
+
+        # Cleared the active_override so the retry starts from the primary.
+        override_clears = [
+            c for c in doc_ref.update.call_args_list
+            if c.args and "active_override_vm" in c.args[0]
+        ]
+        assert override_clears, "expected active_override to be cleared"
+        assert override_clears[-1].args[0]["active_override_vm"] is None
+
+    def test_no_op_when_primary_is_serving(self, manager):
+        """When no fallback override is set (primary pair serving), demote is a no-op:
+        we don't family-demote the fast c4d primary on a rare blip."""
+        doc_ref = manager._doc_ref()
+        doc_ref.get.return_value.exists = True
+        doc_ref.get.return_value.to_dict.return_value = _make_firestore_data()  # no override
+
+        manager.demote_active_worker(reason="job zzz: metadata server unavailable")
+
+        assert not doc_ref.set.called
+        override_clears = [
+            c for c in doc_ref.update.call_args_list
+            if c.args and "active_override_vm" in c.args[0]
+        ]
+        assert not override_clears
+
+    def test_never_raises_on_config_read_failure(self, manager):
+        """Demotion is best-effort telemetry — a Firestore hiccup must not break the
+        failure path it runs on."""
+        doc_ref = manager._doc_ref()
+        doc_ref.get.side_effect = RuntimeError("firestore unavailable")
+
+        # Should swallow the error rather than propagate.
+        manager.demote_active_worker(reason="job qqq")

@@ -789,10 +789,12 @@ class JobManager:
             logger.error(f"Job {job_id} not found")
             return
 
-        state_data = job.state_data.copy()
-        state_data[key] = value
-
-        self.update_job(job_id, {'state_data': state_data})
+        # Atomic nested-field write. Previously this copied the whole state_data
+        # map and re-persisted it, so two workers updating different keys
+        # concurrently could clobber each other (lost-update race). Writing a
+        # single dot-path field merges without touching sibling keys — same
+        # approach as update_processing_metadata.
+        self.update_job(job_id, {f"state_data.{key}": value})
         logger.debug(f"Job {job_id} state_data updated: {key} = {value}")
 
     def bump_worker_generation(self, job_id: str) -> Optional[int]:
@@ -1013,14 +1015,14 @@ class JobManager:
         if not job:
             logger.error(f"Job {job_id} not found")
             return
-        
-        file_urls = job.file_urls.copy()
-        if category not in file_urls:
-            file_urls[category] = {}
-        
-        file_urls[category][file_type] = url
-        
-        self.update_job(job_id, {'file_urls': file_urls})
+
+        # Atomic nested-field write. Previously this copied the whole file_urls
+        # map and re-persisted it, so two workers registering different files
+        # concurrently could clobber each other. That lost-update race dropped
+        # freshly-registered stems (e.g. backing_vocals vanishing while the
+        # audio + screens workers ran in parallel). Writing a single dot-path
+        # field merges without touching sibling entries.
+        self.update_job(job_id, {f"file_urls.{category}.{file_type}": url})
         logger.debug(f"Job {job_id} file URL updated: {category}.{file_type}")
     
     def check_parallel_processing_complete(self, job_id: str) -> bool:

@@ -1782,5 +1782,32 @@
     "retryingConn": "Bağlantı sorunu — tekrar deneniyor…",
     "sessionExpired": "Yükleme oturumunun süresi doldu — bu parçayı kaldır ve tekrar başlat",
     "speedMBs": "{mb} MB/sn"
+  },
+  "requests": {
+    "convertBody": "Generator'ı kendin kullan ve karaoke videonu hemen şimdi yap — ilki bizden.",
+    "convertButton": "Şimdi kendin yap",
+    "convertHeading": "Beklemek istemiyor musun?",
+    "correctedNote": "Bunu {artist} — {title} olarak düzelttik",
+    "invalidEmail": "Lütfen geçerli bir e-posta adresi gir.",
+    "linkSent": "E-postanı kontrol et — {email} adresine bir giriş bağlantısı gönderdik.",
+    "noPasswordNeeded": "Giriş yapman için sana e-postayla sihirli bir bağlantı göndereceğiz. Şifreye gerek yok.",
+    "noRequests": "Henüz istek yok — ilk ekleyen sen ol!",
+    "publishedHeading": "Son yapılanlar",
+    "sendLink": "Bana e-postayla giriş bağlantısı gönder",
+    "sending": "Gönderiliyor…",
+    "signInToSubmit": "Şarkı istemek ve oy vermek için e-postanla giriş yap.",
+    "statusBeingMade": "Yapılıyor",
+    "submitButton": "İsteği gönder",
+    "submitHeading": "Şarkı iste",
+    "subtitle": "Her gün en çok oy alan şarkıyı ücretsiz bir karaoke videosuna dönüştürüyoruz. Günde bir oy hakkın var — iyi değerlendir.",
+    "title": "Sıradaki ücretsiz karaoke şarkısı için oy ver",
+    "titlePlaceholder": "Şarkı adı",
+    "votedTodayNote": "Bugünkü oyunu kullandın — yarın tekrar gel veya oyunu taşımak için başka bir şarkıya dokun.",
+    "votes": "{count, plural, one {# oy} other {# oy}}",
+    "watchOnYoutube": "YouTube'da izle",
+    "artistPlaceholder": "Sanatçı",
+    "emailPlaceholder": "E-postanı gir",
+    "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene.",
+    "submitting": "Gönderiliyor…"
   }
 }

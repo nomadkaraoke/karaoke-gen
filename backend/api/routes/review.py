@@ -23,6 +23,7 @@ from typing import Dict, Any, List, Literal, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
 from fastapi.responses import RedirectResponse, Response
+from google.cloud.firestore_v1.field_path import FieldPath
 
 from backend.models.job import JobStatus
 from backend.models.review_session import ReviewSession, ReviewSessionSummary
@@ -409,6 +410,57 @@ def _dev_audio_url(job_id: str, gcs_path: Optional[str], base_url: str = "") -> 
     return f"{base_url.rstrip('/')}/api/review/{job_id}/dev-audio?path={quote(gcs_path, safe='')}"
 
 
+async def _build_instrumental_options(job, storage, request) -> List[Dict[str, Any]]:
+    """Build the ``instrumental_options`` list (transcoded, freshly-signed OGG URLs).
+
+    Signed GCS URLs expire (see ``AudioTranscodingService`` — 120 min), so the
+    review payload's baked-in URLs go stale during a long review session. This
+    helper is shared by the combined-review corrections endpoint (initial load)
+    and ``GET /{job_id}/instrumental-urls`` (frontend refresh-on-expiry), so both
+    return the identical shape with URLs signed at call time.
+    """
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
+    transcoding = AudioTranscodingService(storage_service=storage)
+    stems = job.file_urls.get("stems", {})
+    clean_url = stems.get("instrumental_clean")
+    backing_url = stems.get("instrumental_with_backing")
+
+    signed_urls: Dict[str, Optional[str]] = {}
+    if _dev_audio_proxy_enabled():
+        _base = str(request.base_url)
+        if clean_url:
+            signed_urls["clean"] = _dev_audio_url(job.job_id, clean_url, _base)
+        if backing_url:
+            signed_urls["with_backing"] = _dev_audio_url(job.job_id, backing_url, _base)
+    else:
+        url_tasks = {}
+        if clean_url:
+            url_tasks["clean"] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
+        if backing_url:
+            url_tasks["with_backing"] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
+        if url_tasks:
+            results = await asyncio.gather(*url_tasks.values())
+            signed_urls = dict(zip(url_tasks.keys(), results))
+
+    instrumental_options: List[Dict[str, Any]] = []
+    if clean_url:
+        instrumental_options.append({
+            "id": "clean",
+            "label": "Clean Instrumental",
+            "description": "No backing vocals - just the music",
+            "audio_url": signed_urls.get("clean"),
+        })
+    if backing_url:
+        instrumental_options.append({
+            "id": "with_backing",
+            "label": "Instrumental with Backing Vocals",
+            "description": "Includes harmonies and background vocals",
+            "audio_url": signed_urls.get("with_backing"),
+        })
+    return instrumental_options
+
+
 def _reconstruct_post_ai_segments(
     raw_segments: List[Dict[str, Any]],
     edit_log: Optional[Dict[str, Any]],
@@ -632,50 +684,11 @@ async def get_correction_data(
         }
 
         # === Add instrumental data for combined review ===
-        from backend.services.audio_transcoding_service import AudioTranscodingService
-        transcoding = AudioTranscodingService(storage_service=storage)
-
-        # Get instrumental stem URLs
-        stems = job.file_urls.get('stems', {})
-        clean_url = stems.get('instrumental_clean')
-        backing_url = stems.get('instrumental_with_backing')
-
-        # Build instrumental options with transcoded signed URLs (OGG Opus).
-        # In local dev without signing creds, use same-origin byte-proxy URLs.
-        instrumental_options = []
-        signed_urls = {}
-        if _dev_audio_proxy_enabled():
-            _base = str(request.base_url)
-            if clean_url:
-                signed_urls['clean'] = _dev_audio_url(job_id, clean_url, _base)
-            if backing_url:
-                signed_urls['with_backing'] = _dev_audio_url(job_id, backing_url, _base)
-        else:
-            url_tasks = {}
-            if clean_url:
-                url_tasks['clean'] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
-            if backing_url:
-                url_tasks['with_backing'] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
-            if url_tasks:
-                results = await asyncio.gather(*url_tasks.values())
-                signed_urls = dict(zip(url_tasks.keys(), results))
-
-        if clean_url:
-            instrumental_options.append({
-                "id": "clean",
-                "label": "Clean Instrumental",
-                "description": "No backing vocals - just the music",
-                "audio_url": signed_urls['clean'],
-            })
-        if backing_url:
-            instrumental_options.append({
-                "id": "with_backing",
-                "label": "Instrumental with Backing Vocals",
-                "description": "Includes harmonies and background vocals",
-                "audio_url": signed_urls['with_backing'],
-            })
-
-        corrections_data['instrumental_options'] = instrumental_options
+        # Transcoded signed OGG URLs (freshly signed here; the frontend re-fetches
+        # them via GET /{job_id}/instrumental-urls when they expire mid-review).
+        corrections_data['instrumental_options'] = await _build_instrumental_options(
+            job, storage, request
+        )
 
         # Get backing vocals analysis from state_data (populated by screens_worker)
         backing_vocals_analysis = job.state_data.get('backing_vocals_analysis', {})
@@ -1854,6 +1867,31 @@ async def get_annotation_stats(
         return {"total_annotations": 0, "by_type": {}}
 
 
+@router.get("/{job_id}/instrumental-urls")
+async def get_instrumental_urls(
+    job_id: str,
+    request: Request,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """Return freshly-signed instrumental stem URLs for the combined review.
+
+    The signed URLs baked into the initial review payload expire after 120 min,
+    and a long review session (or a page reload that rehydrates cached correction
+    data from localStorage) can outlive them — the preview modal's instrumental
+    audio then fails to load (``NS_ERROR_DOM_NETWORK_ERR``). The frontend calls
+    this on an audio load error to swap in a fresh URL and resume playback.
+    """
+    job_manager = JobManager()
+    storage = StorageService()
+
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
+
+    instrumental_options = await _build_instrumental_options(job, storage, request)
+    return {"instrumental_options": instrumental_options}
+
+
 @router.get("/{job_id}/instrumental-analysis")
 async def get_instrumental_analysis(
     job_id: str,
@@ -2548,13 +2586,18 @@ async def apply_audio_edit(
             "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
         })
 
-        # Clear redo stack on new edit
-        updated_state_data = {
-            **state_data,
-            'audio_edit_stack': edit_stack,
-            'audio_edit_redo_stack': [],
-        }
-        job_manager.update_job(job_id, {'state_data': updated_state_data})
+        # Clear redo stack on new edit. Atomic per-field writes so a rapid
+        # follow-up edit/undo — or the idle-reminder scheduler that runs during
+        # the audio-edit phase — can't clobber unrelated state_data keys by
+        # re-persisting a stale copy of the whole map. NOTE: these two list
+        # fields are still last-write-wins across concurrent edits to the SAME
+        # job (a list can't be dot-path-merged); that's acceptable for the
+        # single-reviewer, sequential audio-editor UI. True multi-writer safety
+        # would need a transaction / optimistic-concurrency CAS.
+        job_manager.update_job(job_id, {
+            'state_data.audio_edit_stack': edit_stack,
+            'state_data.audio_edit_redo_stack': [],
+        })
 
         return _build_audio_edit_response(
             job_id=job_id,
@@ -2596,12 +2639,16 @@ async def undo_audio_edit(
     undone_edit = edit_stack.pop()
     redo_stack.append(undone_edit)
 
-    updated_state_data = {
-        **state_data,
-        'audio_edit_stack': edit_stack,
-        'audio_edit_redo_stack': redo_stack,
-    }
-    job_manager.update_job(job_id, {'state_data': updated_state_data})
+    # Atomic per-field writes so a rapid undo/redo (or the idle-reminder
+    # scheduler active during audio-edit) can't clobber unrelated state_data
+    # keys by re-persisting a stale copy of the whole map. NOTE: the two list
+    # fields remain last-write-wins across concurrent edits to the SAME job —
+    # acceptable for the single-reviewer sequential UI; true multi-writer safety
+    # would need a transaction / optimistic-concurrency CAS.
+    job_manager.update_job(job_id, {
+        'state_data.audio_edit_stack': edit_stack,
+        'state_data.audio_edit_redo_stack': redo_stack,
+    })
 
     # Get the now-current audio (previous edit or original)
     current_gcs_path = edit_stack[-1]['gcs_path'] if edit_stack else job.input_media_gcs_path
@@ -2643,12 +2690,16 @@ async def redo_audio_edit(
     redone_edit = redo_stack.pop()
     edit_stack.append(redone_edit)
 
-    updated_state_data = {
-        **state_data,
-        'audio_edit_stack': edit_stack,
-        'audio_edit_redo_stack': redo_stack,
-    }
-    job_manager.update_job(job_id, {'state_data': updated_state_data})
+    # Atomic per-field writes so a rapid undo/redo (or the idle-reminder
+    # scheduler active during audio-edit) can't clobber unrelated state_data
+    # keys by re-persisting a stale copy of the whole map. NOTE: the two list
+    # fields remain last-write-wins across concurrent edits to the SAME job —
+    # acceptable for the single-reviewer sequential UI; true multi-writer safety
+    # would need a transaction / optimistic-concurrency CAS.
+    job_manager.update_job(job_id, {
+        'state_data.audio_edit_stack': edit_stack,
+        'state_data.audio_edit_redo_stack': redo_stack,
+    })
 
     current_gcs_path = edit_stack[-1]['gcs_path']
 
@@ -2734,16 +2785,21 @@ async def upload_audio_for_join(
         finally:
             os.unlink(tmp_path)
 
-        # Store upload info in state_data
-        state_data = job.state_data or {}
-        uploads = dict(state_data.get('audio_edit_uploads', {}))
-        uploads[upload_id] = {
-            "gcs_path": gcs_path,
-            "duration_seconds": metadata.duration_seconds,
-            "filename": filename,
-        }
-        updated_state_data = {**state_data, 'audio_edit_uploads': uploads}
-        job_manager.update_job(job_id, {'state_data': updated_state_data})
+        # Store upload info in state_data. Write ONLY this upload's entry, keyed
+        # by its uuid. FieldPath.to_api_repr() backtick-escapes the uuid segment
+        # (it contains hyphens, so a raw dotted path would be misparsed) and keeps
+        # the key a string so it doesn't clash with the string 'updated_at' key
+        # update_job appends. Merging at the entry level means two concurrent
+        # uploads no longer drop each other — the old whole-map replace would
+        # orphan a GCS file and 404 later on join_start/join_end.
+        uploads_field = FieldPath("state_data", "audio_edit_uploads", upload_id).to_api_repr()
+        job_manager.update_job(job_id, {
+            uploads_field: {
+                "gcs_path": gcs_path,
+                "duration_seconds": metadata.duration_seconds,
+                "filename": filename,
+            },
+        })
 
         return {
             "upload_id": upload_id,

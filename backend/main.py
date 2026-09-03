@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings, validate_production_config
-from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, tenant_bulk, rate_limits, push, catalog, encoding_worker, client_errors, bulk, parse_titles
+from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, tenant_admin, tenant_bulk, rate_limits, push, catalog, encoding_worker, client_errors, bulk, parse_titles
 from backend.services.tracing import setup_tracing, instrument_app, get_current_trace_id
 from backend.services.structured_logging import setup_structured_logging
 from backend.services.spacy_preloader import preload_spacy_model
@@ -201,8 +201,11 @@ app.include_router(push.router, prefix="/api")  # Push notification subscription
 app.include_router(catalog.router, prefix="/api")  # Catalog proxy for song/artist autocomplete
 app.include_router(parse_titles.router, prefix="/api")  # kjbox karaoke-filename parser
 app.include_router(bulk.router, prefix="/api")  # Bulk Mode: multi-job submission
+from backend.api.routes import requests_board
+app.include_router(requests_board.router, prefix="/api")  # Public song-request voting board
 app.include_router(client_errors.router, prefix="/api")  # Frontend crash reports
 app.include_router(tenant.router)  # Tenant/white-label configuration (no /api prefix, router has it)
+app.include_router(tenant_admin.router)  # Admin tenant provisioning (router has /api prefix)
 app.include_router(tenant_bulk.router)  # Tenant bulk-upload filename analysis (router has /api prefix)
 
 

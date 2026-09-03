@@ -687,8 +687,20 @@ jobs:
             curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
               sudo gpg --dearmor --yes -o /usr/share/keyrings/cloud.google.gpg
           fi
-          sudo apt-get update -y
-          sudo apt-get install -y google-cloud-cli-firestore-emulator
+          # Google's cloud-sdk apt mirror intermittently serves a Packages index
+          # whose checksum doesn't match its Release file ("Hash Sum mismatch"),
+          # and a stale runner apt-lists cache triggers the same error. Clearing
+          # the cache forces a fresh fetch; retry to ride out mirror desyncs.
+          for attempt in 1 2 3 4 5; do
+            sudo rm -rf /var/lib/apt/lists/*
+            if sudo apt-get update -y && \
+               sudo apt-get install -y google-cloud-cli-firestore-emulator; then
+              break
+            fi
+            echo "apt install attempt ${attempt} failed (likely a transient Hash Sum mismatch); retrying in 15s..."
+            sleep 15
+          done
+          dpkg -s google-cloud-cli-firestore-emulator >/dev/null 2>&1
 
       - name: Install dependencies
         run: poetry install

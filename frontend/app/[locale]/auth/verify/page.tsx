@@ -122,10 +122,12 @@ function VerifyMagicLinkContent() {
         } else if (status === "pending_review") {
           setState("credits_pending")
         } else {
-          // Returning user or not applicable — go straight to app
+          // Returning user or not applicable — go to the intended destination.
+          // Board sign-in sets redirect_path="/requests" so voters land back on the board.
+          const dest = lastVerifyResponse?.redirect_path || "/app"
           setState("success")
           setTimeout(() => {
-            router.push("/app")
+            router.push(dest)
           }, 1500)
         }
       } else {

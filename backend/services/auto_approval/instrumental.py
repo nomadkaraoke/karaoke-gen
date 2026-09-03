@@ -142,6 +142,15 @@ def auto_approval_summary(job, settings) -> Dict[str, Any]:
         custom_instrumental=custom,
     )
     selection = _selection_with_stem_check(job, decision["selection"])
+    # A lyrics verdict scored before audio separation finished could not run
+    # the timing-plausibility check (it needs the lead-vocal stem). Until the
+    # audio_worker re-score clears that "pending_audio" marker, the lyrics half
+    # is not confident enough to skip its screen — otherwise a job with
+    # machine-mistimed words could bypass the lyrics review via the C1 skip.
+    timing_pending = (
+        bool(getattr(settings, "auto_approval_timing_gate_enabled", True))
+        and (aa.get("timing") or {}).get("status") == "pending_audio"
+    )
     return {
         "backing": {
             "verdict": backing.get("verdict"),
@@ -150,7 +159,7 @@ def auto_approval_summary(job, settings) -> Dict[str, Any]:
         },
         "lyrics": {
             "verdict": lyrics.get("verdict"),
-            "confident": lyrics.get("verdict") == "auto",
+            "confident": lyrics.get("verdict") == "auto" and not timing_pending,
         },
         "custom_instrumental": custom,
         "verdict_present": bool(aa),

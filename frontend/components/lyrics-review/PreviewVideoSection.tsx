@@ -35,7 +35,14 @@ interface ApiClient {
     message?: string
   }>
   getPreviewVideoUrl: (hash: string) => string
+  /** Re-fetch freshly-signed instrumental stem URLs (used when the baked-in
+   *  signed URL expires mid-review and the overlaid audio fails to load). */
+  refreshInstrumentalUrls?: () => Promise<InstrumentalOption[]>
 }
+
+// Cap how many times we silently re-fetch fresh signed URLs per modal open, so a
+// genuinely-broken stem (404, not just expiry) can't spin in a refresh→error loop.
+const MAX_URL_REFRESHES = 3
 
 export type InstrumentalChoice = 'clean' | 'with_backing'
 
@@ -94,7 +101,14 @@ function PreviewVideoSection(
   const isInstrumentalRef = useRef(false)
   isInstrumentalRef.current = isInstrumental
 
-  const options = instrumentalOptions?.filter((o) => o.audio_url) ?? []
+  // Signed stem URLs expire (120 min) and can outlive a long review session — the
+  // overlaid <audio> then fails to load. On that error we re-fetch fresh URLs and
+  // hold them here, overriding the (now-stale) prop options for playback.
+  const [refreshedOptions, setRefreshedOptions] = useState<InstrumentalOption[] | null>(null)
+  const refreshingRef = useRef(false)
+  const refreshCountRef = useRef(0)
+
+  const options = (refreshedOptions ?? instrumentalOptions)?.filter((o) => o.audio_url) ?? []
   const cleanOption = options.find((o) => o.id === 'clean')
 
   // Which instrumental stem the "Instrumental" preview pill plays. Defaults to the
@@ -289,6 +303,31 @@ function PreviewVideoSection(
     }
   }, [isInstrumental, previewState.status, instrumentalUrl, onTimeUpdate])
 
+  // Allow a fresh batch of refreshes each time the modal (re)opens.
+  useEffect(() => {
+    if (isModalOpen) refreshCountRef.current = 0
+  }, [isModalOpen])
+
+  // The overlaid stem failed to load — most often the baked-in signed URL expired
+  // during a long review session. Re-fetch freshly-signed URLs and swap them in;
+  // the sync effect (keyed on instrumentalUrl) then resumes playback in-place.
+  const handleInstrumentalAudioError = useCallback(() => {
+    if (refreshingRef.current) return
+    if (refreshCountRef.current >= MAX_URL_REFRESHES) return
+    const refresh = apiClient?.refreshInstrumentalUrls
+    if (!refresh) return
+    refreshingRef.current = true
+    refreshCountRef.current += 1
+    refresh()
+      .then((fresh) => {
+        if (fresh && fresh.length > 0) setRefreshedOptions(fresh)
+      })
+      .catch(() => {})
+      .finally(() => {
+        refreshingRef.current = false
+      })
+  }, [apiClient])
+
   useImperativeHandle(
     ref,
     () => ({
@@ -356,7 +395,12 @@ function PreviewVideoSection(
           </video>
           {instrumentalUrl && (
             // Hidden stem player kept in sync with the video for the audio toggle.
-            <audio ref={instrumentalAudioRef} src={instrumentalUrl} preload="auto" />
+            <audio
+              ref={instrumentalAudioRef}
+              src={instrumentalUrl}
+              preload="auto"
+              onError={handleInstrumentalAudioError}
+            />
           )}
         </div>
       )}
