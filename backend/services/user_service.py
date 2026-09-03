@@ -8,6 +8,7 @@ Handles:
 - User CRUD operations
 """
 import logging
+import os
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -543,6 +544,10 @@ class UserService:
     # Maximum new signups allowed per IP address in the rate limit window
     MAX_SIGNUPS_PER_IP = 2
     SIGNUP_RATE_LIMIT_HOURS = 24
+    # Higher cap for requests-board sign-ins: a shared venue WiFi can register many
+    # voters, but we still keep a deterministic ceiling against scripted abuse (each
+    # board account can later claim a welcome credit via /users/claim-welcome-credit).
+    BOARD_MAX_SIGNUPS_PER_IP = int(os.getenv("BOARD_MAX_SIGNUPS_PER_IP", "30"))
 
     def count_recent_signups_from_ip(self, ip_address: str, hours: int = 24) -> int:
         """
@@ -609,25 +614,33 @@ class UserService:
             return 0
 
     def is_signup_rate_limited(
-        self, ip_address: Optional[str] = None, device_fingerprint: Optional[str] = None
+        self,
+        ip_address: Optional[str] = None,
+        device_fingerprint: Optional[str] = None,
+        max_signups: Optional[int] = None,
     ) -> bool:
         """
         Check if a signup should be rate limited based on IP and/or fingerprint.
 
-        Either signal hitting the limit triggers a block.
+        Either signal hitting the limit triggers a block. `max_signups` overrides the
+        default per-IP/per-fingerprint cap — the requests board passes a higher limit
+        (BOARD_MAX_SIGNUPS_PER_IP) so a whole venue on shared WiFi can sign in, while
+        still keeping a deterministic ceiling against scripted account creation.
         """
+        limit = max_signups if max_signups is not None else self.MAX_SIGNUPS_PER_IP
+
         if ip_address:
             ip_count = self.count_recent_signups_from_ip(
                 ip_address, hours=self.SIGNUP_RATE_LIMIT_HOURS
             )
-            if ip_count >= self.MAX_SIGNUPS_PER_IP:
+            if ip_count >= limit:
                 return True
 
         if device_fingerprint:
             fp_count = self.count_recent_signups_from_fingerprint(
                 device_fingerprint, hours=self.SIGNUP_RATE_LIMIT_HOURS
             )
-            if fp_count >= self.MAX_SIGNUPS_PER_IP:
+            if fp_count >= limit:
                 return True
 
         return False

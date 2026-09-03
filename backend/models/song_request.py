@@ -12,7 +12,7 @@ docs/archive/2026-09-02-requests-voting-board-plan.md.
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Request lifecycle. Phase 1 only ever sets/reads "open"; the later states are
 # reserved so the daily picker (Phase 2) can advance a request without a schema change.
@@ -73,6 +73,16 @@ class Vote(BaseModel):
 class SubmitRequestBody(BaseModel):
     artist: str = Field(..., min_length=1, max_length=200)
     title: str = Field(..., min_length=1, max_length=200)
+
+    @field_validator("artist", "title")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        # min_length=1 accepts " " — strip first so whitespace-only input is rejected
+        # (the service also strips, but this stops a blank request at the API boundary).
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
 
 
 class VoteBody(BaseModel):

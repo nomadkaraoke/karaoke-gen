@@ -1974,6 +1974,7 @@ export const api = {
   async getRequestsBoard(): Promise<BoardResponse> {
     const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests`, {
       method: 'GET',
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },
@@ -1982,7 +1983,7 @@ export const api = {
   async submitSongRequest(artist: string, title: string): Promise<SubmitRequestResponse> {
     const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ artist, title }),
     });
     return handleResponse(response);
@@ -1992,7 +1993,7 @@ export const api = {
   async voteSongRequest(requestId: string, direction: 'up' | 'down'): Promise<SongRequestPublic> {
     const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests/${encodeURIComponent(requestId)}/vote`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ direction }),
     });
     return handleResponse(response);
@@ -2002,6 +2003,7 @@ export const api = {
   async getDailyVoteStatus(): Promise<DailyVoteStatus> {
     const response = await apiFetch(`${API_BASE_URL}/api/requests-board/me`, {
       method: 'GET',
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },
@@ -2014,6 +2016,7 @@ export const api = {
   async claimWelcomeCredit(): Promise<ClaimWelcomeCreditResponse> {
     const response = await apiFetch(`${API_BASE_URL}/api/users/claim-welcome-credit`, {
       method: 'POST',
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },

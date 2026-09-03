@@ -58,6 +58,18 @@ async def test_resubmit_same_song_dedupes_and_upvotes(service):
 
 
 @pytest.mark.asyncio
+async def test_resubmit_own_song_is_idempotent_not_toggle_off(service):
+    # Submitting a song you already up-voted today must NOT toggle the vote off.
+    req1, _, _, _ = await _submit(service, "u1@x.com", "The Beatles", "Hey Jude")
+    assert req1.vote_count == 1
+    req2, existed, _, _ = await _submit(service, "u1@x.com", "The Beatles", "Hey Jude")
+    assert existed is True
+    assert req2.id == req1.id
+    assert req2.vote_count == 1  # still 1 — the up-vote was preserved, not removed
+    assert service.get_daily_vote("u1@x.com").request_id == req1.id
+
+
+@pytest.mark.asyncio
 async def test_one_vote_per_day_moves_not_adds(service):
     a, _, _, _ = await _submit(service, "owner@x.com", "Artist A", "Song A")
     b, _, _, _ = await _submit(service, "owner2@x.com", "Artist B", "Song B")

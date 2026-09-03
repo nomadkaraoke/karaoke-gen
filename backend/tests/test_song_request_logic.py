@@ -2,8 +2,11 @@
 import re
 from datetime import datetime, timezone
 
+import pytest
+from pydantic import ValidationError
+
 from backend.api.routes.requests_board import _to_public, _was_corrected
-from backend.models.song_request import SongRequest
+from backend.models.song_request import SongRequest, SubmitRequestBody
 from backend.services.song_request_service import (
     SongRequestService,
     _dedupe_key,
@@ -53,6 +56,19 @@ def test_was_corrected_true_when_canonical_differs():
 def test_was_corrected_false_when_only_cosmetic_whitespace():
     # Same after normalization → not flagged as a correction
     assert _was_corrected(_req(artist_raw="The Beatles", artist="The Beatles", title_raw="hey jude", title="Hey Jude")) is False
+
+
+def test_submit_body_rejects_blank_artist_or_title():
+    with pytest.raises(ValidationError):
+        SubmitRequestBody(artist="   ", title="Hey Jude")
+    with pytest.raises(ValidationError):
+        SubmitRequestBody(artist="The Beatles", title="  ")
+
+
+def test_submit_body_strips_whitespace():
+    body = SubmitRequestBody(artist="  The Beatles ", title=" Hey Jude ")
+    assert body.artist == "The Beatles"
+    assert body.title == "Hey Jude"
 
 
 def test_to_public_hides_email_and_serializes():

@@ -82,7 +82,12 @@ class SongRequestService:
         existing = self._find_open_by_key(key)
         if existing is not None:
             # Same song already requested — treat this as an up-vote and resurface it.
-            self.cast_vote(email, existing.id, "up")
+            # Idempotent: cast_vote toggles OFF a matching same-request/same-direction
+            # vote, so re-submitting a song you already up-voted today would REMOVE the
+            # vote. Only cast when the user isn't already up-voting this request today.
+            current = self.get_daily_vote(email)
+            if not (current and current.request_id == existing.id and current.value == 1):
+                self.cast_vote(email, existing.id, "up")
             refreshed = self.get_request(existing.id) or existing
             return refreshed, True, canonical_artist, canonical_title
 

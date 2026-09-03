@@ -259,16 +259,18 @@ async def send_magic_link(
             message=t(locale, "users.magicLinkSent")
         )
 
-    # Board sign-in ("requests_board") is passwordless identity only: no welcome credit
-    # and no per-IP signup limit, so a whole venue on shared WiFi can sign in to vote.
+    # Board sign-in ("requests_board") is passwordless identity only: no welcome credit,
+    # and a HIGHER per-IP signup cap (BOARD_MAX_SIGNUPS_PER_IP) so a whole venue on shared
+    # WiFi can sign in to vote — but still a deterministic ceiling, not an open door.
     is_board_signin = request.purpose == "requests_board"
 
     # Per-IP and per-fingerprint signup rate limit (only for new users)
     device_fingerprint = request.device_fingerprint
     existing_user = user_service.get_user(email)
-    if existing_user is None and not is_board_signin:
+    if existing_user is None:
+        signup_limit = user_service.BOARD_MAX_SIGNUPS_PER_IP if is_board_signin else None
         if user_service.is_signup_rate_limited(
-            ip_address=ip_address, device_fingerprint=device_fingerprint
+            ip_address=ip_address, device_fingerprint=device_fingerprint, max_signups=signup_limit
         ):
             logger.warning(
                 f"Signup rate limit hit: IP={ip_address} for {_mask_email(email)}"
