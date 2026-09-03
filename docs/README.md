@@ -254,6 +254,7 @@
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Local setup, testing, deployment |
 | [TESTING.md](TESTING.md) | Testing standards, CI requirements, Playwright |
 | [API.md](API.md) | Backend endpoint reference |
+| [REQUESTS-BOARD.md](REQUESTS-BOARD.md) | Public voting board (requests.nomadkaraoke.com) — what it is, UX, how it works; Phase 2 handoff linked |
 | [BRAND-STYLE-GUIDE.md](BRAND-STYLE-GUIDE.md) | Brand colors, typography, UI patterns |
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | Key insights for future agents |
 | [STRIPE-SETUP.md](STRIPE-SETUP.md) | Payment integration setup |
