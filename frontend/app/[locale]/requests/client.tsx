@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import {
@@ -44,14 +44,18 @@ export function RequestsBoardClient() {
 
   const isSignedIn = !!user;
 
+  // Guards against an older refresh resolving after a newer one and clobbering state
+  // (refresh can fire concurrently from hydration + submit + vote).
+  const refreshGeneration = useRef(0);
   const refresh = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
     try {
       const data = await api.getRequestsBoard();
-      setBoard(data);
+      if (generation === refreshGeneration.current) setBoard(data);
     } catch {
-      setError(t('errorGeneric'));
+      if (generation === refreshGeneration.current) setError(t('errorGeneric'));
     } finally {
-      setLoading(false);
+      if (generation === refreshGeneration.current) setLoading(false);
     }
   }, [t]);
 
