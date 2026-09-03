@@ -1,0 +1,17 @@
+# Video IDs to FORCE-rewrite even though the title isn't high-confidence
+# "Artist - Title (Karaoke)" — e.g. genuine tracks whose "(Karaoke)" suffix was
+# truncated by YouTube's 100-char title limit.
+#
+# Two forms per line ('#' starts a comment):
+#   <id>                         use the tool's best-effort parsed artist/title
+#   <id> | <Artist> | <Title>    override artist/title (for truncated titles)
+#
+# --- Genuine tracks rescued from the "review candidates" bucket (2026-09-03) ---
+
+# Truncated titles restored to full song titles:
+5zSFKuCEIhs | Los Campesinos! | This Is How You Spell "HAHAHA, We Destroyed the Hopes and Dreams of a Generation of Faux-Romantics"
+kkT-bZhi9jI | Arctic Monkeys | You Probably Couldn't See for the Lights but You Were Looking Straight at Me
+
+# Long medley titles parsed fine — no override needed:
+le347q8nHT4  # Daniel O'Donnell - Medley: Galway Bay, The Mountains Of Mourne, ...
+3ihDlPse--k  # Daniel O'Donnell - Medley: It's a Long Way to Tipperary / ...

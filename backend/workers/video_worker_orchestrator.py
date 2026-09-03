@@ -764,10 +764,19 @@ class VideoWorkerOrchestrator:
             # Build video title
             title = f"{self.config.artist} - {self.config.title} (Karaoke)"
 
-            # Build description
-            description = self.config.youtube_description_template or ""
-            if self.result.brand_code:
-                description = f"{description}\n\nBrand Code: {self.result.brand_code}".strip()
+            # Build description + tags via the shared renderer (single source of
+            # truth, also used by the bulk-rewrite tool).
+            from backend.services.youtube_description import (
+                build_youtube_tags,
+                render_youtube_description,
+            )
+
+            description = render_youtube_description(
+                artist=self.config.artist,
+                title=self.config.title,
+                brand_code=self.result.brand_code,
+                template=self.config.youtube_description_template or None,
+            )
 
             # Upload
             video_id, video_url = youtube_service.upload_video(
@@ -775,7 +784,7 @@ class VideoWorkerOrchestrator:
                 title=title,
                 description=description,
                 thumbnail_path=self.config.title_jpg_path,
-                tags=["karaoke", self.config.artist, self.config.title],
+                tags=build_youtube_tags(self.config.artist, self.config.title),
                 replace_existing=True,  # Server-side always replaces
             )
 

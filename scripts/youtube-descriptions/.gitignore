@@ -1,0 +1,3 @@
+.state/
+creds.json
+*.local.*

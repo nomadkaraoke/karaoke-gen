@@ -169,10 +169,20 @@ async def _process_single_upload(
         if len(youtube_title) > 95:
             youtube_title = youtube_title[:92] + " ..."
 
-        description = settings.default_youtube_description or ""
         brand_code = entry.get("brand_code") or job.state_data.get("brand_code")
-        if brand_code:
-            description = f"{description}\n\nBrand Code: {brand_code}".strip()
+        # Render description + tags via the shared renderer (single source of
+        # truth, also used by the bulk-rewrite tool).
+        from backend.services.youtube_description import (
+            build_youtube_tags,
+            render_youtube_description,
+        )
+
+        description = render_youtube_description(
+            artist=artist,
+            title=title,
+            brand_code=brand_code,
+            template=settings.default_youtube_description or None,
+        )
 
         # Upload
         video_id, video_url = youtube_service.upload_video(
@@ -180,7 +190,7 @@ async def _process_single_upload(
             title=youtube_title,
             description=description,
             thumbnail_path=thumbnail_path,
-            tags=["karaoke", artist, title],
+            tags=build_youtube_tags(artist, title),
             replace_existing=True,
         )
 
