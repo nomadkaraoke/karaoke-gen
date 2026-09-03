@@ -347,11 +347,21 @@
         "callToAction": "Хочешь выбрать следующий бесплатный трек? Голосуй на https://requests.nomadkaraoke.com",
         "greeting": "Привет, {name},",
         "signOff": "Спасибо за твой голос!\n-Эндрю"
+      },
+      "communityExistingVersion": {
+        "body": "Хорошие новости — караоке-версия \"{artist} - {title}\" (за которую ты голосовал(а) на доске заявок Nomad Karaoke) уже есть в сети, поэтому мы не будем делать её заново. Вот версия, которую можно использовать прямо сейчас:",
+        "callToAction": "Хочешь помочь выбрать следующий БЕСПЛАТНЫЙ трек, который мы сделаем? Голосуй на https://requests.nomadkaraoke.com",
+        "signOff": "Приятного пения!\n-Эндрю",
+        "greeting": "Привет, {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} теперь на YouTube! 🎉",
       "subjectFallback": "Трек, получивший твой голос, теперь доступен!"
+    },
+    "communityExistingVersion": {
+      "subject": "Караоке-версия {artist} - {title} уже существует",
+      "subjectFallback": "Караоке-версия запрошенной тобой песни уже существует"
     }
   }
 }

@@ -347,11 +347,21 @@
         "body": "Great news — \"{artist} - {title}\", a karaoke track you voted for on the Nomad Karaoke requests board, is now live on YouTube:",
         "callToAction": "Want to pick the next free track? Vote at https://requests.nomadkaraoke.com",
         "signOff": "Thanks for voting!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "greeting": "Hi {name},",
+        "body": "Good news — a karaoke version of \"{artist} - {title}\" (which you voted for on the Nomad Karaoke requests board) already exists online, so we won't be re-making it. Here's a version you can use right now:",
+        "callToAction": "Want to help pick the next FREE track we make? Vote at https://requests.nomadkaraoke.com",
+        "signOff": "Happy singing!\n-Andrew"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} is live on YouTube! 🎉",
       "subjectFallback": "A track you voted for is now live!"
+    },
+    "communityExistingVersion": {
+      "subject": "A karaoke version of {artist} - {title} already exists",
+      "subjectFallback": "A karaoke version of the song you requested already exists"
     }
   }
 }

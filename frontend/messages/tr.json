@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Sanatçı",
     "emailPlaceholder": "E-postanı gir",
     "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene.",
-    "submitting": "Gönderiliyor…"
+    "submitting": "Gönderiliyor…",
+    "communityExistsNote": "Yine de istekte bulunabilirsin veya aşağıdan mevcut bir versiyonu izleyebilirsin:"
   }
 }

@@ -347,11 +347,21 @@
         "callToAction": "Bạn muốn chọn bài hát miễn phí tiếp theo? Hãy bình chọn tại https://requests.nomadkaraoke.com",
         "greeting": "Chào {name},",
         "signOff": "Cảm ơn bạn đã bình chọn!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Tin vui đây — phiên bản karaoke của \"{artist} - {title}\" (mà bạn đã bình chọn trên bảng yêu cầu của Nomad Karaoke) đã có sẵn trên mạng, nên chúng tôi sẽ không làm lại bài này nữa. Dưới đây là phiên bản bạn có thể sử dụng ngay:",
+        "callToAction": "Bạn muốn giúp chọn bài hát MIỄN PHÍ tiếp theo mà chúng tôi sẽ làm? Hãy bình chọn tại https://requests.nomadkaraoke.com",
+        "signOff": "Chúc bạn hát vui vẻ!\n-Andrew",
+        "greeting": "Chào {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} đã có trên YouTube! 🎉",
       "subjectFallback": "Bài hát bạn bình chọn đã lên sóng!"
+    },
+    "communityExistingVersion": {
+      "subject": "Đã có sẵn phiên bản karaoke của {artist} - {title}",
+      "subjectFallback": "Đã có sẵn phiên bản karaoke của bài hát bạn yêu cầu"
     }
   }
 }

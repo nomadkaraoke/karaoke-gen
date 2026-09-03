@@ -347,11 +347,21 @@
         "callToAction": "هل ترغب في اختيار المقطع المجاني التالي؟ صوّت عبر https://requests.nomadkaraoke.com",
         "greeting": "مرحباً {name}،",
         "signOff": "شكراً لتصويتك!\n- أندرو"
+      },
+      "communityExistingVersion": {
+        "body": "أخبار سارة — توجد بالفعل نسخة كاريوكي لأغنية \"{artist} - {title}\" (التي قمت بالتصويت لها في لوحة طلبات Nomad Karaoke) متاحة على الإنترنت، لذا لن نقوم بإعادة إنتاجها. إليك نسخة يمكنك استخدامها الآن:",
+        "callToAction": "هل ترغب في المساعدة في اختيار الأغنية المجانية التالية التي سنقوم بإنتاجها؟ صوّت عبر https://requests.nomadkaraoke.com",
+        "signOff": "غناء ممتع!\n-أندرو",
+        "greeting": "مرحباً {name}،"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} متاح الآن على YouTube! 🎉",
       "subjectFallback": "المقطع الذي صوّت له متاح الآن!"
+    },
+    "communityExistingVersion": {
+      "subject": "توجد بالفعل نسخة كاريوكي لأغنية {artist} - {title}",
+      "subjectFallback": "توجد بالفعل نسخة كاريوكي للأغنية التي طلبتها"
     }
   }
 }

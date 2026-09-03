@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Umělec",
     "emailPlaceholder": "Zadej svůj e-mail",
     "errorGeneric": "Něco se pokazilo. Zkus to prosím znovu.",
-    "submitting": "Odesílám…"
+    "submitting": "Odesílám…",
+    "communityExistsNote": "Stále o to můžeš požádat, nebo se rovnou podívej na existující verzi níže:"
   }
 }

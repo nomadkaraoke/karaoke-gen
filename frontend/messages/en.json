@@ -1792,6 +1792,7 @@
     "submitButton": "Submit request",
     "submitting": "Submitting…",
     "correctedNote": "We tidied that to {artist} — {title}",
+    "communityExistsNote": "You can still request it, or just watch an existing version below:",
     "signInToSubmit": "Sign in with your email to request a song and vote.",
     "emailPlaceholder": "Enter your email",
     "sendLink": "Email me a sign-in link",

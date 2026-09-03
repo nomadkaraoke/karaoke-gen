@@ -15,7 +15,9 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { api, getAccessToken } from '@/lib/api';
+import type { CommunityCheckResponse } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { CommunityVersionBanner } from '@/components/job/CommunityVersionBanner';
 import type { BoardResponse, SongRequestPublic } from '@/lib/types';
 
 const BOARD_PURPOSE = 'requests_board';
@@ -34,6 +36,9 @@ export function RequestsBoardClient() {
   const [title, setTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [correctionNote, setCorrectionNote] = useState('');
+  // Soft "an existing community karaoke version exists" check (non-blocking).
+  const [communityData, setCommunityData] = useState<CommunityCheckResponse | null>(null);
+  const [communityDismissed, setCommunityDismissed] = useState(false);
 
   // Sign-in
   const [email, setEmail] = useState('');
@@ -66,6 +71,35 @@ export function RequestsBoardClient() {
     }
     refresh();
   }, [refresh, fetchUser, user]);
+
+  // Debounced KaraokeNerds check as the user types artist/title (signed-in only —
+  // the check endpoint requires auth). Soft/non-blocking: we just surface existing
+  // community versions so they can watch one on YouTube instead if they prefer.
+  useEffect(() => {
+    if (!isSignedIn) return;
+    const a = artist.trim();
+    const ti = title.trim();
+    if (!a || !ti) {
+      setCommunityData(null);
+      return;
+    }
+    setCommunityDismissed(false);
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      api
+        .checkCommunityVersions(a, ti)
+        .then((res) => {
+          if (!cancelled) setCommunityData(res);
+        })
+        .catch(() => {
+          /* non-blocking — never let the check disrupt requesting */
+        });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [artist, title, isSignedIn]);
 
   const handleSendLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +134,7 @@ export function RequestsBoardClient() {
       }
       setArtist('');
       setTitle('');
+      setCommunityData(null);
       await refresh();
     } catch {
       setError(t('errorGeneric'));
@@ -183,6 +218,13 @@ export function RequestsBoardClient() {
               >
                 {submitting ? (<><Loader2 className="w-5 h-5 animate-spin" />{t('submitting')}</>) : t('submitButton')}
               </button>
+              {communityData && !communityDismissed && (
+                <CommunityVersionBanner
+                  data={communityData}
+                  subtitle={t('communityExistsNote')}
+                  onDismiss={() => setCommunityDismissed(true)}
+                />
+              )}
             </form>
           ) : linkSent ? (
             <div className="flex items-center gap-2" style={{ color: 'var(--accent)' }}>

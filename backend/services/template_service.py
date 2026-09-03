@@ -505,6 +505,35 @@ class TemplateService:
         }
         return self.render_template(template, variables)
 
+    def render_community_existing_version(
+        self,
+        name: Optional[str] = None,
+        artist: Optional[str] = None,
+        title: Optional[str] = None,
+        youtube_url: Optional[str] = None,
+        locale: str = "en",
+    ) -> str:
+        """Render the "a version of the song you voted for already exists" email,
+        sent to up-voters when a flagged requests-board pick is rejected in favour
+        of an existing community karaoke version."""
+        ns = "emails.templates.communityExistingVersion"
+        template = f"""{t(locale, f"{ns}.greeting")}
+
+{t(locale, f"{ns}.body")}
+{{youtube_url}}
+
+{t(locale, f"{ns}.callToAction")}
+
+{t(locale, f"{ns}.signOff")}
+"""
+        variables = {
+            "name": name or "there",
+            "artist": artist or "Unknown Artist",
+            "title": title or "Unknown Title",
+            "youtube_url": youtube_url or "[link not available]",
+        }
+        return self.render_template(template, variables)
+
     def upload_template(self, template_name: str, content: str) -> bool:
         """
         Upload a template to GCS.

@@ -347,11 +347,21 @@
         "callToAction": "Gusto mong pumili ng susunod na libreng track? Bumoto sa https://requests.nomadkaraoke.com",
         "greeting": "Hi {name},",
         "signOff": "Salamat sa pagboto!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Magandang balita — mayroon nang karaoke version online ng \"{artist} - {title}\" (na binoto mo sa Nomad Karaoke requests board), kaya hindi na namin ito gagawin ulit. Heto ang version na magagamit mo ngayon:",
+        "callToAction": "Gusto mo bang tumulong sa pagpili ng susunod na LIBRENG track na gagawin namin? Bumoto sa https://requests.nomadkaraoke.com",
+        "signOff": "Happy singing!\n-Andrew",
+        "greeting": "Hi {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} ay live na sa YouTube! 🎉",
       "subjectFallback": "Live na ang track na binoto mo!"
+    },
+    "communityExistingVersion": {
+      "subject": "Mayroon nang karaoke version ng {artist} - {title}",
+      "subjectFallback": "Mayroon nang karaoke version ang kantang ni-request mo"
     }
   }
 }

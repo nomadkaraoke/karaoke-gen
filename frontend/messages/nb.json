@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Artist",
     "emailPlaceholder": "Skriv inn e-posten din",
     "errorGeneric": "Noe gikk galt. Vennligst prøv igjen.",
-    "submitting": "Sender inn…"
+    "submitting": "Sender inn…",
+    "communityExistsNote": "Du kan fortsatt be om den, eller bare se en eksisterende versjon nedenfor:"
   }
 }

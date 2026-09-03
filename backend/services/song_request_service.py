@@ -260,13 +260,69 @@ class SongRequestService:
     # --- picking ---
 
     def pick_eligible(self) -> Optional[SongRequest]:
-        """The next request to auto-make: highest net votes, oldest-first tiebreak,
-        skipping community-rejected (net < 0) requests. Source-agnostic — human
-        votes and trending-agent submissions share the same open queue."""
+        """The single highest-priority auto-makeable request (net votes >= 0, oldest
+        tiebreak), ignoring the community-version review flow. Kept for callers that
+        just want the top request; the daily picker uses list_pick_candidates so it
+        can community-check each candidate in rank order."""
+        candidates = self.list_pick_candidates()
+        return candidates[0] if candidates else None
+
+    def list_pick_candidates(self) -> list[SongRequest]:
+        """Ranked auto-make candidates: open, net votes >= 0, oldest-first, EXCLUDING
+        requests currently held for existing-community-version review (pending, or
+        snoozed and not yet past their cooldown). The daily picker walks these in
+        order, community-checks each, and makes the first with no existing version."""
+        now = datetime.now(timezone.utc)
+        out: list[SongRequest] = []
         for req in self.list_active():  # already ranked -vote_count, created_at asc
-            if req.vote_count >= 0:
-                return req
-        return None
+            if req.vote_count < 0:
+                continue
+            if req.review_state == "pending":
+                continue
+            if req.review_state == "snoozed":
+                until = _as_aware(req.review_snoozed_until)
+                if until and until > now:
+                    continue  # still in its keep-cooldown
+            out.append(req)
+        return out
+
+    def set_review_pending(self, request_id: str, versions: dict) -> bool:
+        """Flag a request as needing existing-version review. Transactional and
+        idempotent: returns True only the first time it transitions to pending (so
+        the picker emails Andrew about a newly-flagged pick exactly once)."""
+        ref = self.db.collection(REQUESTS_COLLECTION).document(request_id)
+        transaction = self.db.transaction()
+        return _set_review_pending_txn(transaction, ref, versions)
+
+    def list_pending_reviews(self) -> list[SongRequest]:
+        """Requests flagged pending existing-version review (the admin queue)."""
+        query = self.db.collection(REQUESTS_COLLECTION).where(
+            filter=FieldFilter("review_state", "==", "pending")
+        ).limit(ACTIVE_FETCH_LIMIT)
+        items = [SongRequest(**doc.to_dict()) for doc in query.stream()]
+        items.sort(key=lambda r: (-r.vote_count, r.created_at))
+        return items
+
+    def snooze_review(self, request_id: str, until: datetime) -> None:
+        """'Keep on board': clear the pending flag but snooze re-review until `until`."""
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update({
+            "review_state": "snoozed",
+            "review_snoozed_until": until.isoformat(),
+            "updated_at": _now_iso(),
+        })
+
+    def clear_review(self, request_id: str) -> None:
+        """Clear any review flag (used when admin chooses to make our version anyway)."""
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"review_state": None, "updated_at": _now_iso()}
+        )
+
+    def reject_request(self, request_id: str) -> None:
+        """Reject a request (admin declined to make it — e.g. a good community
+        version already exists). Removes it from the board and clears review flags."""
+        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
+            {"status": "rejected", "review_state": None, "updated_at": _now_iso()}
+        )
 
     def transition_status(
         self, request_id: str, expected_from: str, new_status: str, **extra
@@ -380,6 +436,29 @@ class SongRequestService:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _as_aware(dt: Optional[datetime]) -> Optional[datetime]:
+    """Coerce a (possibly naive) datetime to UTC-aware for safe comparison."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+@firestore.transactional
+def _set_review_pending_txn(transaction, ref, versions):
+    snap = ref.get(transaction=transaction)
+    if not snap.exists:
+        return False
+    if snap.to_dict().get("review_state") == "pending":
+        return False  # already flagged — don't re-notify
+    transaction.update(ref, {
+        "review_state": "pending",
+        "community_versions": versions,
+        "community_checked_at": _now_iso(),
+        "updated_at": _now_iso(),
+    })
+    return True
 
 
 @firestore.transactional

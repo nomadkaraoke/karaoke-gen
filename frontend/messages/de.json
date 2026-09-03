@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Künstler",
     "emailPlaceholder": "Gib deine E-Mail ein",
     "errorGeneric": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
-    "submitting": "Wird eingereicht…"
+    "submitting": "Wird eingereicht…",
+    "communityExistsNote": "Du kannst es trotzdem anfragen oder dir einfach unten eine bereits vorhandene Version ansehen:"
   }
 }

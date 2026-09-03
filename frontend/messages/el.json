@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Καλλιτέχνης",
     "emailPlaceholder": "Βάλε το email σου",
     "errorGeneric": "Κάτι πήγε στραβά. Παρακαλώ δοκίμασε ξανά.",
-    "submitting": "Υποβολή…"
+    "submitting": "Υποβολή…",
+    "communityExistsNote": "Μπορείς ακόμα να το ζητήσεις, ή απλά να δεις μια υπάρχουσα έκδοση παρακάτω:"
   }
 }

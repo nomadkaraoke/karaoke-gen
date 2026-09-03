@@ -347,11 +347,21 @@
         "callToAction": "次の無料トラックも選んでみませんか？投票はこちらから： https://requests.nomadkaraoke.com",
         "greeting": "{name}さん、",
         "signOff": "ご投票ありがとうございました！\n- Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "嬉しいお知らせです！Nomad Karaokeのリクエストボードで投票していただいた「{artist} - {title}」ですが、すでにオンライン上にカラオケバージョンが存在していることがわかりました。そのため、こちらでの新規作成は見送らせていただきます。今すぐご利用いただけるバージョンはこちらです：",
+        "callToAction": "次に無料で作成する曲を一緒に選びませんか？ぜひ https://requests.nomadkaraoke.com から投票してください。",
+        "signOff": "カラオケをお楽しみください！\n-Andrew",
+        "greeting": "{name}さん、"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} がYouTubeで公開されました！ 🎉",
       "subjectFallback": "投票していただいた曲が公開されました！"
+    },
+    "communityExistingVersion": {
+      "subject": "{artist} - {title} のカラオケバージョンはすでに存在しています",
+      "subjectFallback": "リクエストいただいた曲のカラオケバージョンはすでに存在しています"
     }
   }
 }

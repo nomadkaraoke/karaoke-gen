@@ -347,11 +347,21 @@
         "callToAction": "Vil du være med til at vælge det næste gratis nummer? Stem på https://requests.nomadkaraoke.com",
         "greeting": "Hej {name},",
         "signOff": "Tak for din stemme!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Gode nyheder — en karaoke-version af \"{artist} - {title}\" (som du stemte på på Nomad Karaokes ønsketavle) findes allerede online, så vi kommer ikke til at lave en ny version. Her er en version, du kan bruge med det samme:",
+        "callToAction": "Vil du hjælpe med at vælge det næste GRATIS nummer, vi laver? Stem på https://requests.nomadkaraoke.com",
+        "signOff": "God sanglyst!\n-Andrew",
+        "greeting": "Hej {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} er live på YouTube! 🎉",
       "subjectFallback": "Et nummer, du har stemt på, er nu live!"
+    },
+    "communityExistingVersion": {
+      "subject": "En karaoke-version af {artist} - {title} findes allerede",
+      "subjectFallback": "En karaoke-version af den sang, du efterspurgte, findes allerede"
     }
   }
 }

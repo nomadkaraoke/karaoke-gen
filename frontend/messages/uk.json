@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Виконавець",
     "emailPlaceholder": "Введи свій email",
     "errorGeneric": "Щось пішло не так. Будь ласка, спробуй ще раз.",
-    "submitting": "Надсилання…"
+    "submitting": "Надсилання…",
+    "communityExistsNote": "Ти все ще можеш замовити її, або просто переглянути наявну версію нижче:"
   }
 }

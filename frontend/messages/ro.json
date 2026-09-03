@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Artist",
     "emailPlaceholder": "Introdu emailul tău",
     "errorGeneric": "Ceva nu a mers bine. Te rog să încerci din nou.",
-    "submitting": "Se trimite…"
+    "submitting": "Se trimite…",
+    "communityExistsNote": "Poți în continuare să o soliciți sau pur și simplu să vizionezi o versiune existentă mai jos:"
   }
 }

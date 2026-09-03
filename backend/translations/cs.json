@@ -347,11 +347,21 @@
         "callToAction": "Chceš vybrat další skladbu zdarma? Hlasuj na https://requests.nomadkaraoke.com",
         "greeting": "Ahoj {name},",
         "signOff": "Díky za hlasování!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Máme dobrou zprávu — karaoke verze \"{artist} - {title}\" (která dostala tvůj hlas na nástěnce přání Nomad Karaoke) už na internetu existuje, takže ji nebudeme vytvářet znovu. Tady je verze, kterou můžeš rovnou použít:",
+        "callToAction": "Chceš pomoct vybrat další písničku, kterou vytvoříme ZDARMA? Hlasuj na https://requests.nomadkaraoke.com",
+        "signOff": "Příjemné zpívání!\n-Andrew",
+        "greeting": "Ahoj {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} je nyní na YouTube! 🎉",
       "subjectFallback": "Skladba, pro kterou jsi hlasoval/a, je nyní online!"
+    },
+    "communityExistingVersion": {
+      "subject": "Karaoke verze {artist} - {title} už existuje",
+      "subjectFallback": "Karaoke verze požadované písničky už existuje"
     }
   }
 }

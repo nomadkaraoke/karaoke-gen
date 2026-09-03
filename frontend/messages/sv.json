@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Artist",
     "emailPlaceholder": "Ange din e-post",
     "errorGeneric": "Något gick fel. Försök igen.",
-    "submitting": "Skickar in…"
+    "submitting": "Skickar in…",
+    "communityExistsNote": "Du kan fortfarande önska den, eller bara se en befintlig version nedan:"
   }
 }

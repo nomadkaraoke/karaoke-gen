@@ -347,11 +347,21 @@
         "callToAction": "क्या तुम अगला फ्री ट्रैक चुनना चाहते हो? https://requests.nomadkaraoke.com पर वोट करो",
         "greeting": "हाय {name},",
         "signOff": "वोट करने के लिए धन्यवाद!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "अच्छी ख़बर — \"{artist} - {title}\" का कराओके वर्ज़न (जिसके लिए तुमने Nomad Karaoke रिक्वेस्ट बोर्ड पर वोट किया था) ऑनलाइन पहले से ही मौजूद है, इसलिए हम इसे दोबारा नहीं बनाएंगे। यहाँ एक वर्ज़न है जिसका तुम अभी इस्तेमाल कर सकते हो:",
+        "callToAction": "क्या तुम हमारा अगला मुफ़्त (FREE) ट्रैक चुनने में मदद करना चाहते हो? https://requests.nomadkaraoke.com पर वोट करो",
+        "signOff": "गाने का आनंद लो!\n-Andrew",
+        "greeting": "हाय {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} YouTube पर लाइव है! 🎉",
       "subjectFallback": "जिस ट्रैक के लिए तुमने वोट किया था, वह अब लाइव है!"
+    },
+    "communityExistingVersion": {
+      "subject": "{artist} - {title} का कराओके वर्ज़न पहले से मौजूद है",
+      "subjectFallback": "तुमने जिस गाने की रिक्वेस्ट की थी, उसका कराओके वर्ज़न पहले से मौजूद है"
     }
   }
 }

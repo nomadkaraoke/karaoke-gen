@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Artiste",
     "emailPlaceholder": "Entre ton e-mail",
     "errorGeneric": "Quelque chose s'est mal passé. Réessaie.",
-    "submitting": "Soumission en cours…"
+    "submitting": "Soumission en cours…",
+    "communityExistsNote": "Tu peux quand même le demander, ou simplement regarder une version existante ci-dessous :"
   }
 }

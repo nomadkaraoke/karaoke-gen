@@ -2603,7 +2603,49 @@ export interface TenantDetail {
   preview_url: string;
 }
 
+export interface CommunityReviewItem {
+  id: string;
+  artist: string;
+  title: string;
+  submitted_by: string;
+  vote_count: number;
+  upvoter_count: number;
+  community_versions?: {
+    best_youtube_url?: string | null;
+    tracks?: { brand_name: string; youtube_url: string }[];
+  } | null;
+  community_checked_at?: string | null;
+}
+
 export const adminApi = {
+  /**
+   * List requests-board picks flagged for existing-community-version review.
+   */
+  async listCommunityReviews(): Promise<{ reviews: CommunityReviewItem[] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/community-reviews`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Resolve a flagged pick: 'make' our version, 'reject' (notify up-voters), or 'keep'.
+   */
+  async actionCommunityReview(
+    requestId: string,
+    action: 'make' | 'reject' | 'keep',
+  ): Promise<{ status: string; request_id: string; message: string }> {
+    const response = await apiFetch(
+      `${API_BASE_URL}/api/admin/community-reviews/${encodeURIComponent(requestId)}`,
+      {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      },
+    );
+    return handleResponse(response);
+  },
+
   /**
    * List all white-label tenants
    */

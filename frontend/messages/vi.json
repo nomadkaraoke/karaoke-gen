@@ -1808,6 +1808,7 @@
     "artistPlaceholder": "Nghệ sĩ",
     "emailPlaceholder": "Nhập email của bạn",
     "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại.",
-    "submitting": "Đang gửi…"
+    "submitting": "Đang gửi…",
+    "communityExistsNote": "Bạn vẫn có thể gửi yêu cầu, hoặc xem phiên bản có sẵn dưới đây:"
   }
 }

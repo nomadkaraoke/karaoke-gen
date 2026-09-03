@@ -267,6 +267,8 @@ class Settings(BaseSettings):
     community_handoff_max_attempts: int = int(os.getenv("COMMUNITY_HANDOFF_MAX_ATTEMPTS", "5"))
     # Hours an owner has to complete their review before the job is handed off.
     community_handoff_hours: int = int(os.getenv("COMMUNITY_HANDOFF_HOURS", "24"))
+    # When a flagged pick is "kept on board", how long before it can be re-flagged.
+    community_review_snooze_days: int = int(os.getenv("COMMUNITY_REVIEW_SNOOZE_DAYS", "30"))
 
     # Private (non-published) track distribution settings
     default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")

@@ -17,6 +17,7 @@ import {
   MessageSquare,
   Share2,
   Building2,
+  ListChecks,
 } from "lucide-react"
 
 import {
@@ -58,6 +59,11 @@ const navItems = [
     title: "Referrals",
     href: "/admin/referrals",
     icon: Share2,
+  },
+  {
+    title: "Community Reviews",
+    href: "/admin/community-reviews",
+    icon: ListChecks,
   },
   {
     title: "Tenants",

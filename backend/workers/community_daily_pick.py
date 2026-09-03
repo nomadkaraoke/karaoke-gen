@@ -18,6 +18,7 @@ can resume the same day without double-granting credits or making two tracks.
 Triggered by Cloud Scheduler (noon US Eastern) via POST /api/internal/community-daily-pick.
 Master kill-switch: settings.community_daily_pick_enabled (default off — deploys dark).
 """
+import html
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
@@ -39,6 +40,7 @@ from backend.services.worker_service import get_worker_service
 logger = logging.getLogger(__name__)
 
 COMMUNITY_CREDIT_REASON = "community_daily_pick"
+COMMUNITY_REVIEW_ADMIN_EMAIL = "andrew@nomadkaraoke.com"
 
 
 def _utc_today() -> str:
@@ -46,36 +48,38 @@ def _utc_today() -> str:
 
 
 async def run_daily_pick(dry_run: bool = False) -> Dict[str, Any]:
-    """Claim today, pick the top eligible request, and make it (idempotently).
+    """Claim today, walk the ranked requests, and make the first one that has no
+    existing community karaoke version (idempotently).
+
+    For each candidate in rank order we run the same KaraokeNerds check the job
+    flow uses. A candidate that already has a community version is flagged for
+    Andrew's review (kept off auto-make, emailed to him) and we move on to the
+    next — so a fresh, non-duplicate free track still ships that day.
 
     Args:
-        dry_run: shadow mode — logs the pick and records a "skipped" lock but does
-            NOT grant credits or create a job. Also used implicitly when the
-            master kill-switch is off.
-
-    Returns a summary dict (status + what it did / would have done).
+        dry_run: shadow mode — logs what it would make/flag but persists nothing.
+            Also used implicitly when the master kill-switch is off.
     """
     service = get_song_request_service()
     settings = get_settings()
     date = _utc_today()
 
     # Shadow mode (explicit dry-run OR the master kill-switch is off) must NOT
-    # claim the day — otherwise a manual dry-run would burn the per-day lock and
-    # block the real scheduler run. It only peeks at what it would pick.
+    # claim the day or persist flags — otherwise a manual dry-run would burn the
+    # per-day lock and block the real scheduler run. It only peeks.
     shadow = dry_run or not settings.community_daily_pick_enabled
     if shadow:
         reason = "dry_run" if dry_run else "kill_switch_off"
-        request = service.pick_eligible()
-        if request is None:
-            logger.info("daily-pick[SHADOW:%s]: no eligible request for %s", reason, date)
-            return {"status": "shadow", "reason": reason, "date": date, "request_id": None}
+        chosen, flagged = await _select_candidate(service, shadow=True)
         logger.info(
-            "daily-pick[SHADOW:%s]: would pick request %s — %s - %s (net votes=%d)",
-            reason, request.id, request.artist, request.title, request.vote_count,
+            "daily-pick[SHADOW:%s]: would make %s; would flag %d existing-version dup(s)",
+            reason, f"{chosen.artist} - {chosen.title}" if chosen else "nothing", len(flagged),
         )
         return {"status": "shadow", "reason": reason, "date": date,
-                "request_id": request.id, "artist": request.artist,
-                "title": request.title, "vote_count": request.vote_count}
+                "request_id": chosen.id if chosen else None,
+                "artist": chosen.artist if chosen else None,
+                "title": chosen.title if chosen else None,
+                "would_flag": [f["request"].id for f in flagged]}
 
     # Real path — claim the day atomically so at most one run proceeds.
     lock, claimed_new = service.claim_day(date)
@@ -84,24 +88,146 @@ async def run_daily_pick(dry_run: bool = False) -> Dict[str, Any]:
             logger.info("daily-pick: day %s already resolved (phase=%s)", date, lock.phase)
             return {"status": "already_done", "date": date, "phase": lock.phase,
                     "request_id": lock.request_id, "job_id": lock.job_id}
-        # A prior run claimed but did not finish — resume it below.
         logger.info("daily-pick: resuming incomplete day %s (phase=%s)", date, lock.phase)
 
-    # Pick the request (resume uses the one already recorded on the lock).
-    request = service.get_request(lock.request_id) if lock.request_id else service.pick_eligible()
+    # Resume: a prior run already chose a request — finish making it.
+    if lock.request_id:
+        request = service.get_request(lock.request_id)
+        if request is None:
+            service.update_lock(date, phase="empty", note="chosen request vanished")
+            return {"status": "empty", "date": date}
+        return await _make_request(service, settings, date, request)
 
-    if request is None:
-        # Board empty / nothing eligible → nothing happens today (per spec).
-        service.update_lock(date, phase="empty", note="no eligible request")
-        logger.info("daily-pick: no eligible request for %s; nothing made", date)
-        return {"status": "empty", "date": date}
+    # Fresh: walk candidates, flag existing-version dups, pick the first clean one.
+    chosen, flagged = await _select_candidate(service, shadow=False)
+    newly_flagged = [f for f in flagged if f["newly"]]
+    if newly_flagged:
+        _email_admin_flagged(newly_flagged)
 
-    return await _make_request(service, settings, date, request)
+    if chosen is None:
+        service.update_lock(
+            date, phase="empty", note=f"no clean candidate ({len(flagged)} flagged)"
+        )
+        logger.info(
+            "daily-pick: nothing makeable for %s (%d flagged for review)", date, len(flagged)
+        )
+        return {"status": "empty", "date": date,
+                "flagged": [f["request"].id for f in flagged]}
+
+    result = await _make_request(service, settings, date, chosen)
+    result["flagged"] = [f["request"].id for f in flagged]
+    return result
+
+
+async def _select_candidate(service, shadow: bool):
+    """Walk ranked pick-candidates, KaraokeNerds-checking each. Returns
+    (chosen_request | None, flagged) where flagged is a list of
+    {request, versions, newly} for candidates that already have a community
+    version. In real mode dups are persisted as review_state=pending (idempotent;
+    ``newly`` is True only the first time). Shadow mode persists nothing."""
+    from backend.services.karaokenerds_service import check_community_versions
+
+    chosen = None
+    flagged = []
+    for req in service.list_pick_candidates():
+        try:
+            result = await check_community_versions(req.artist, req.title)
+        except Exception:  # noqa: BLE001 (defensive — the service already swallows)
+            logger.warning(
+                "daily-pick: community check errored for %s - %s; treating as clean",
+                req.artist, req.title, exc_info=True,
+            )
+            result = {"has_community": False}
+
+        if result.get("has_community"):
+            versions = _versions_payload(result)
+            newly = True if shadow else service.set_review_pending(req.id, versions)
+            logger.info(
+                "daily-pick: %s existing community version for %s — %s - %s",
+                "would flag" if shadow else "flagged", req.id, req.artist, req.title,
+            )
+            flagged.append({"request": req, "versions": versions, "newly": newly})
+            continue
+
+        chosen = req
+        break
+    return chosen, flagged
+
+
+def _versions_payload(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Flatten a KaraokeNerds check result into the subset we store on the request
+    (for the admin queue + the reject-to-voters email)."""
+    tracks = []
+    for song in result.get("songs", []) or []:
+        for tr in song.get("community_tracks", []) or []:
+            if tr.get("youtube_url"):
+                tracks.append({
+                    "brand_name": tr.get("brand_name") or "Unknown",
+                    "youtube_url": tr.get("youtube_url"),
+                })
+    return {"best_youtube_url": result.get("best_youtube_url"), "tracks": tracks[:10]}
+
+
+def _email_admin_flagged(flagged) -> None:
+    """Email Andrew a summary of newly-flagged picks (referrals.py pattern)."""
+    try:
+        from backend.services.email_service import get_email_service
+
+        rows = []
+        for f in flagged:
+            r = f["request"]
+            v = f["versions"] or {}
+            links = ", ".join(
+                f'<a href="{html.escape(t["youtube_url"])}">{html.escape(t["brand_name"])}</a>'
+                for t in (v.get("tracks") or [])[:3] if t.get("youtube_url")
+            )
+            rows.append(
+                f"<li><strong>{html.escape(r.artist)} - {html.escape(r.title)}</strong> "
+                f"({r.vote_count} votes) — existing: {links or html.escape(v.get('best_youtube_url') or '?')}</li>"
+            )
+        html_content = (
+            f"<p>The daily community picker flagged {len(flagged)} top request(s) that already "
+            f"have community karaoke versions online:</p><ul>{''.join(rows)}</ul>"
+            f"<p>Keep / make ours / reject at "
+            f'<a href="https://gen.nomadkaraoke.com/admin/community-reviews">/admin/community-reviews</a>.</p>'
+        )
+        get_email_service().provider.send_email(
+            to_email=COMMUNITY_REVIEW_ADMIN_EMAIL,
+            subject=f"[Requests board] {len(flagged)} pick(s) need review — existing karaoke versions",
+            html_content=html_content,
+            text_content=(
+                f"{len(flagged)} flagged requests-board picks already have community versions. "
+                f"Review at https://gen.nomadkaraoke.com/admin/community-reviews"
+            ),
+        )
+        logger.info("daily-pick: emailed admin about %d flagged pick(s)", len(flagged))
+    except Exception:  # noqa: BLE001
+        logger.exception("daily-pick: failed to email admin about flagged picks")
 
 
 async def _make_request(service, settings, date: str, request: SongRequest) -> Dict[str, Any]:
-    """Drive a picked request to in_progress idempotently. Safe to re-enter."""
+    """Drive a chosen request to in_progress idempotently, threading the per-day
+    lock's phase markers. Safe to re-enter (resume)."""
     owner = (request.owner_email or request.submitted_by).lower()
+
+    def phase_cb(p, **kw):
+        service.update_lock(date, phase=p, **kw)
+
+    result = await _provision_and_start(service, settings, request, owner, phase_cb)
+    result["date"] = date
+    return result
+
+
+async def _provision_and_start(service, settings, request, owner, phase_cb=None) -> Dict[str, Any]:
+    """Grant the free credit, create the job as the requester, kick off search +
+    download, and advance the request to in_progress + assign the owner. Idempotent
+    and re-entrant. ``phase_cb(phase, **fields)`` (optional) records progress on the
+    daily lock for the picker; the admin "make ours" path passes None.
+
+    Returns a "made"/"error" summary (no date — callers add their own context)."""
+    def phase(p, **kw):
+        if phase_cb:
+            phase_cb(p, **kw)
 
     # 1) Claim the request: open -> queued (no-op if already advanced).
     if request.status == "open":
@@ -109,7 +235,7 @@ async def _make_request(service, settings, date: str, request: SongRequest) -> D
             request.id, "open", "queued",
             picked_at=datetime.now(timezone.utc).isoformat(),
         )
-    service.update_lock(date, phase="claimed", request_id=request.id, owner_email=owner)
+    phase("claimed", request_id=request.id, owner_email=owner)
 
     # 2) Grant the free credit (guarded so a retry can't re-grant).
     request = service.get_request(request.id) or request
@@ -119,11 +245,11 @@ async def _make_request(service, settings, date: str, request: SongRequest) -> D
         )
         if not ok:
             logger.error("daily-pick: credit grant failed for %s: %s", owner, msg)
-            return {"status": "error", "step": "grant_credit", "date": date,
+            return {"status": "error", "step": "grant_credit",
                     "request_id": request.id, "message": msg}
         service.mark_credit_granted(request.id)
         logger.info("daily-pick: granted 1 credit to %s (balance=%s)", owner, balance)
-    service.update_lock(date, phase="credit_granted")
+    phase("credit_granted")
 
     # 3) Create the job as the requester (non-admin → consumes the granted credit).
     request = service.get_request(request.id) or request
@@ -133,10 +259,10 @@ async def _make_request(service, settings, date: str, request: SongRequest) -> D
             job_id = _create_community_job(request, owner, settings)
         except Exception as e:  # noqa: BLE001
             logger.exception("daily-pick: job creation failed for request %s", request.id)
-            return {"status": "error", "step": "create_job", "date": date,
+            return {"status": "error", "step": "create_job",
                     "request_id": request.id, "message": str(e)}
         service.set_job_id(request.id, job_id)
-    service.update_lock(date, phase="job_created", job_id=job_id)
+    phase("job_created", job_id=job_id)
 
     # 4) Kick off search + auto-download for the job (idempotent trigger).
     search_ok = await _search_and_download(job_id, request)
@@ -145,13 +271,13 @@ async def _make_request(service, settings, date: str, request: SongRequest) -> D
     if request.status in ("open", "queued"):
         service.transition_status(request.id, request.status, "in_progress")
     service.assign_owner(request.id, owner)
-    service.update_lock(date, phase="done")
+    phase("done")
 
     logger.info(
         "daily-pick: made request %s (job %s, owner %s, search_ok=%s)",
         request.id, job_id, owner, search_ok,
     )
-    return {"status": "made", "date": date, "request_id": request.id,
+    return {"status": "made", "request_id": request.id,
             "job_id": job_id, "owner": owner, "search_ok": search_ok,
             "artist": request.artist, "title": request.title}
 

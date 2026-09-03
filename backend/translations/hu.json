@@ -347,11 +347,21 @@
         "callToAction": "Szeretnéd te kiválasztani a következő ingyenes dalt? Szavazz itt: https://requests.nomadkaraoke.com",
         "greeting": "Szia {name},",
         "signOff": "Köszönöm, hogy szavaztál!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Jó hír — a(z) \"{artist} - {title}\" (amelyre a Nomad Karaoke kérésfalán szavaztál) karaoke verziója már elérhető az interneten, így mi nem készítjük el újra. Íme egy verzió, amit azonnal használhatsz:",
+        "callToAction": "Szívesen segítenél kiválasztani a következő INGYENES dalt, amit elkészítünk? Szavazz itt: https://requests.nomadkaraoke.com",
+        "signOff": "Jó éneklést!\n-Andrew",
+        "greeting": "Szia {name},"
       }
     },
     "communityTrackLive": {
       "subject": "{artist} - {title} már elérhető a YouTube-on! 🎉",
       "subjectFallback": "Egy dal, amire szavaztál, már elérhető!"
+    },
+    "communityExistingVersion": {
+      "subject": "Már létezik a(z) {artist} - {title} karaoke verziója",
+      "subjectFallback": "Az általad kért dalból már létezik karaoke verzió"
     }
   }
 }

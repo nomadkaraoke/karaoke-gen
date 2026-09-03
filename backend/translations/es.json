@@ -347,11 +347,21 @@
         "callToAction": "¿Quieres elegir la próxima pista gratuita? Vota en https://requests.nomadkaraoke.com",
         "greeting": "Hola {name},",
         "signOff": "¡Gracias por votar!\n-Andrew"
+      },
+      "communityExistingVersion": {
+        "body": "Buenas noticias: ya existe en línea una versión de karaoke de \"{artist} - {title}\" (por la que votaste en el tablero de solicitudes de Nomad Karaoke), así que no haremos una nueva versión. Aquí tienes una versión que puedes usar ahora mismo:",
+        "callToAction": "¿Quieres ayudar a elegir la próxima pista GRATUITA que hagamos? Vota en https://requests.nomadkaraoke.com",
+        "signOff": "¡Que disfrutes cantando!\n-Andrew",
+        "greeting": "Hola {name},"
       }
     },
     "communityTrackLive": {
       "subject": "¡{artist} - {title} ya está disponible en YouTube! 🎉",
       "subjectFallback": "¡Una pista por la que votaste ya está disponible!"
+    },
+    "communityExistingVersion": {
+      "subject": "Ya existe una versión de karaoke de {artist} - {title}",
+      "subjectFallback": "Ya existe una versión de karaoke de la canción que solicitaste"
     }
   }
 }
