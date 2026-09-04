@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="690" viewBox="0 0 1080 690" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="aGray" markerWidth="9" markerHeight="8" refX="7" refY="3" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 z" fill="#475569"/>
+    </marker>
+    <marker id="aGreen" markerWidth="9" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 z" fill="#188038"/>
+    </marker>
+    <marker id="aRed" markerWidth="9" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 z" fill="#d93025"/>
+    </marker>
+  </defs>
+
+  <rect width="1080" height="690" fill="#ffffff"/>
+
+  <!-- ======================= Title ======================= -->
+  <text x="540" y="38" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">Nomad Karaoke — YouTube description-maintenance client</text>
+  <text x="540" y="60" text-anchor="middle" font-size="12" fill="#64748b">Scheduled Python worker that rewrites the descriptions of the channel's OWN videos to one canonical template</text>
+
+  <!-- ======================= GCP group ======================= -->
+  <rect x="30" y="86" width="650" height="520" rx="14" fill="#f4f8fe" stroke="#4285F4" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <!-- cloud glyph -->
+  <g fill="#4285F4">
+    <circle cx="66" cy="112" r="8"/>
+    <circle cx="79" cy="106" r="11"/>
+    <circle cx="92" cy="112" r="8"/>
+    <rect x="58" y="110" width="42" height="10" rx="5"/>
+  </g>
+  <text x="112" y="117" font-size="14" font-weight="700" fill="#1a73e8">Google Cloud Platform — project: nomadkaraoke</text>
+
+  <!-- Cloud Scheduler -->
+  <rect x="56" y="140" width="220" height="78" rx="10" fill="#ffffff" stroke="#4285F4" stroke-width="1.5"/>
+  <text x="70" y="165" font-size="14" font-weight="700" fill="#0f172a">Cloud Scheduler</text>
+  <text x="70" y="185" font-size="11" fill="#475569">cron · daily at 09:00 UTC</text>
+  <text x="70" y="201" font-size="11" fill="#475569">Pulumi-managed trigger</text>
+
+  <!-- Secret Manager -->
+  <rect x="56" y="286" width="220" height="88" rx="10" fill="#ffffff" stroke="#4285F4" stroke-width="1.5"/>
+  <text x="70" y="311" font-size="14" font-weight="700" fill="#0f172a">Secret Manager</text>
+  <text x="70" y="331" font-size="11" fill="#475569" font-family="Menlo, monospace">youtube-oauth-credentials</text>
+  <text x="70" y="349" font-size="11" fill="#475569">OAuth 2.0 · channel-owner grant</text>
+
+  <!-- Firestore -->
+  <rect x="56" y="442" width="220" height="88" rx="10" fill="#ffffff" stroke="#4285F4" stroke-width="1.5"/>
+  <text x="70" y="467" font-size="14" font-weight="700" fill="#0f172a">Firestore</text>
+  <text x="70" y="487" font-size="11" fill="#475569" font-family="Menlo, monospace">youtube_backfill/state</text>
+  <text x="70" y="505" font-size="11" fill="#475569">template fingerprint + counts only</text>
+  <text x="70" y="521" font-size="11" fill="#475569">— no YouTube user data stored</text>
+
+  <!-- Cloud Run -->
+  <rect x="330" y="140" width="316" height="440" rx="10" fill="#ffffff" stroke="#4285F4" stroke-width="1.5"/>
+  <text x="488" y="166" text-anchor="middle" font-size="15" font-weight="700" fill="#0f172a">Cloud Run — Python worker (FastAPI)</text>
+  <text x="488" y="184" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="Menlo, monospace">POST /api/internal/youtube-backfill/run</text>
+
+  <!-- steps -->
+  <rect x="346" y="196" width="284" height="58" rx="8" fill="#e6f4ea" stroke="#188038" stroke-width="1.2"/>
+  <text x="360" y="219" font-size="13" font-weight="700" fill="#0f172a">1 · channels.list(mine=True)</text>
+  <text x="360" y="239" font-size="11" fill="#475569">resolve OUR uploads playlist</text>
+
+  <rect x="346" y="262" width="284" height="58" rx="8" fill="#e6f4ea" stroke="#188038" stroke-width="1.2"/>
+  <text x="360" y="285" font-size="13" font-weight="700" fill="#0f172a">2 · playlistItems.list</text>
+  <text x="360" y="305" font-size="11" fill="#475569">enumerate our own video IDs</text>
+
+  <rect x="346" y="328" width="284" height="58" rx="8" fill="#e6f4ea" stroke="#188038" stroke-width="1.2"/>
+  <text x="360" y="351" font-size="13" font-weight="700" fill="#0f172a">3 · videos.list — snippet,status</text>
+  <text x="360" y="371" font-size="11" fill="#475569">read current descriptions</text>
+
+  <rect x="346" y="394" width="284" height="58" rx="8" fill="#ffffff" stroke="#64748b" stroke-width="1.2"/>
+  <text x="360" y="417" font-size="13" font-weight="700" fill="#0f172a">4 · render template + diff</text>
+  <text x="360" y="437" font-size="11" fill="#475569">pending = live description ≠ rendered</text>
+
+  <rect x="346" y="460" width="284" height="64" rx="8" fill="#fce8e6" stroke="#d93025" stroke-width="1.2"/>
+  <text x="360" y="483" font-size="13" font-weight="700" fill="#0f172a">5 · videos.update — snippet</text>
+  <text x="360" y="501" font-size="11" fill="#475569">pending videos only · 50 units each</text>
+  <text x="360" y="515" font-size="11" fill="#475569">capped at ≤ 150 updates/day</text>
+
+  <text x="488" y="548" text-anchor="middle" font-size="11" fill="#64748b">reserves 3,000 units/day for the upload pipeline</text>
+  <text x="488" y="564" text-anchor="middle" font-size="11" fill="#64748b">stops instantly on quotaExceeded · resumes next day</text>
+
+  <!-- ======================= External: YouTube ======================= -->
+  <rect x="730" y="196" width="310" height="210" rx="10" fill="#ffffff" stroke="#cc0000" stroke-width="1.5"/>
+  <rect x="744" y="212" width="38" height="27" rx="7" fill="#FF0000"/>
+  <path d="M757,218.5 L757,232.5 L770,225.5 z" fill="#ffffff"/>
+  <text x="792" y="230" font-size="15" font-weight="700" fill="#0f172a">YouTube Data API v3</text>
+  <text x="885" y="266" text-anchor="middle" font-size="12" fill="#334155">Nomad Karaoke channel — @nomadkaraoke</text>
+  <text x="885" y="284" text-anchor="middle" font-size="10.5" fill="#64748b" font-family="Menlo, monospace">UCroMk5b4XILdeP7ZCGFicpw</text>
+  <text x="885" y="314" text-anchor="middle" font-size="12" font-weight="700" fill="#b91c1c">only videos owned by the authenticated channel</text>
+  <text x="885" y="334" text-anchor="middle" font-size="11" fill="#475569">no other users' data is read, stored, or modified</text>
+  <text x="885" y="360" text-anchor="middle" font-size="10.5" font-style="italic" fill="#64748b">external Google API · 10,000 units/day quota</text>
+
+  <!-- ======================= External: Email ======================= -->
+  <rect x="730" y="530" width="310" height="80" rx="10" fill="#fffbeb" stroke="#b45309" stroke-width="1.2"/>
+  <text x="885" y="555" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Daily progress email (Postmark)</text>
+  <text x="885" y="573" text-anchor="middle" font-size="11" fill="#475569">to andrew@nomadkaraoke.com</text>
+  <text x="885" y="591" text-anchor="middle" font-size="10.5" fill="#64748b">"129 updated · 267 / 1619 done · 1352 remaining"</text>
+
+  <!-- ======================= Connectors ======================= -->
+  <!-- Scheduler -> Cloud Run -->
+  <line x1="276" y1="179" x2="326" y2="179" stroke="#475569" stroke-width="1.5" marker-end="url(#aGray)"/>
+  <!-- Secret Manager -> Cloud Run -->
+  <line x1="276" y1="330" x2="326" y2="330" stroke="#475569" stroke-width="1.5" marker-end="url(#aGray)"/>
+  <!-- Cloud Run <-> Firestore (state read/write) -->
+  <line x1="330" y1="486" x2="282" y2="486" stroke="#475569" stroke-width="1.5" marker-end="url(#aGray)" marker-start="url(#aGray)"/>
+
+  <!-- reads: steps 1-3 -> YouTube -->
+  <line x1="632" y1="225" x2="726" y2="225" stroke="#188038" stroke-width="1.5" marker-end="url(#aGreen)"/>
+  <line x1="632" y1="291" x2="726" y2="291" stroke="#188038" stroke-width="1.5" marker-end="url(#aGreen)"/>
+  <line x1="632" y1="357" x2="726" y2="357" stroke="#188038" stroke-width="1.5" marker-end="url(#aGreen)"/>
+  <text x="679" y="215" text-anchor="middle" font-size="10.5" font-weight="700" fill="#188038">reads</text>
+
+  <!-- write: step 5 -> YouTube (right then up into box bottom) -->
+  <path d="M632,492 L800,492 L800,412" fill="none" stroke="#d93025" stroke-width="1.8" marker-end="url(#aRed)"/>
+  <text x="700" y="484" text-anchor="middle" font-size="10.5" font-weight="700" fill="#d93025">writes</text>
+
+  <!-- Cloud Run -> email -->
+  <line x1="646" y1="556" x2="726" y2="556" stroke="#475569" stroke-width="1.5" marker-end="url(#aGray)"/>
+  <text x="686" y="548" text-anchor="middle" font-size="10.5" fill="#475569">summary</text>
+
+  <!-- ======================= Legend + tagline ======================= -->
+  <rect x="330" y="634" width="12" height="12" rx="3" fill="#e6f4ea" stroke="#188038"/>
+  <text x="350" y="644" font-size="11" fill="#334155">read-only calls (~70 units/run)</text>
+  <rect x="545" y="634" width="12" height="12" rx="3" fill="#fce8e6" stroke="#d93025"/>
+  <text x="565" y="644" font-size="11" fill="#334155">writes — videos.update (50 units each)</text>
+  <text x="540" y="672" text-anchor="middle" font-size="11.5" fill="#64748b">Idempotent: each video is written at most once per template change — the job converges to zero writes, then idles.</text>
+</svg>
