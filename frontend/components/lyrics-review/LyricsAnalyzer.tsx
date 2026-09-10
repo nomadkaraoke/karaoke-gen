@@ -62,6 +62,7 @@ import AutoCorrectModal from './AutoCorrectModal'
 import AutoCorrectPanel from './AutoCorrectPanel'
 import { useAutoCorrect } from '@/hooks/useAutoCorrect'
 import type { AiSuggestion } from '@/lib/api/autoCorrect'
+import type { ServerSuggestionUndoInfo } from '@/lib/lyrics-review/utils/autoCorrectApply'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
 import { applyOffsetToCorrectionData, applyOffsetToSegment, applyOffsetToWord } from '@/lib/lyrics-review/utils/timingUtils'
 import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
@@ -265,6 +266,7 @@ export default function LyricsAnalyzer({
       suggestions: m.suggestions as unknown as AiSuggestion[],
       appliedIds: m.applied_suggestion_ids ?? [],
       rejectedIds: m.rejected_suggestion_ids ?? [],
+      undoInfo: m.undo_info as unknown as Record<string, ServerSuggestionUndoInfo> | undefined,
     }
   }, [initialData.metadata?.auto_approval, isReadOnly, isLocalMode])
 

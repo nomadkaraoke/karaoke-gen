@@ -99,6 +99,10 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
             "applied_suggestion_ids": result["applied_ids"],
             "rejected_suggestion_ids": result["rejected_ids"],
             "suggestions": ai_suggestions,
+            # Per-suggestion undo info (SuggestionUndoInfo shape) so the review
+            # UI can still revert an individual pre-applied correction even
+            # though it never applied it client-side itself.
+            "undo_info": result["undo_info"],
             "applied_at": datetime.now(timezone.utc).isoformat(),
         }
         updated["metadata"] = metadata

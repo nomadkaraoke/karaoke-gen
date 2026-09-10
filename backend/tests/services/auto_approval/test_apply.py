@@ -160,6 +160,70 @@ def test_apply_all_flags_stale() -> None:
     assert out["applied_ids"] == []
 
 
+# --- undo_out / undo_info ---
+
+def test_apply_suggestion_populates_undo_out_for_replace() -> None:
+    undo: Dict[str, Any] = {}
+    result = apply_suggestion(
+        _segments(), _sug("replace", ["w1"], "was", original_text="am"), undo_out=undo
+    )
+    assert result is not None
+    assert undo["op"] == "replace"
+    assert undo["segment_id"] == "s0"
+    assert undo["prev_word_id"] == "w0"
+    assert undo["removed_words"] == [_word("w1", "am", 0.3, 0.6)]
+    assert undo["new_word_ids"] == [result[0]["words"][1]["id"]]
+    assert undo["removed_segment"] is None
+
+
+def test_apply_suggestion_populates_undo_out_for_delete_whole_segment() -> None:
+    undo: Dict[str, Any] = {}
+    result = apply_suggestion(_segments(), _sug("delete", ["w4"]), undo_out=undo)
+    assert result is not None
+    assert undo["op"] == "delete"
+    assert undo["new_word_ids"] == []
+    assert undo["removed_words"] == [_word("w4", "gasoline", 2.0, 2.8)]
+    assert undo["removed_segment"] == {"segment": _segments()[1], "index": 1}
+
+
+def test_apply_all_suggestions_reports_undo_info_per_applied_id() -> None:
+    out = apply_all_suggestions(_segments(), [_sug("replace", ["w1"], "was", id="a")])
+    assert out["applied_ids"] == ["a"]
+    assert set(out["undo_info"].keys()) == {"a"}
+    assert out["undo_info"]["a"]["op"] == "replace"
+
+
+def test_apply_suggestion_populates_undo_out_for_insert_after() -> None:
+    undo: Dict[str, Any] = {}
+    result = apply_suggestion(
+        _segments(), _sug("insert_after", ["w3"], "burning"), undo_out=undo
+    )
+    assert result is not None
+    new_word = result[0]["words"][4]
+    assert undo == {
+        "op": "insert_after",
+        "new_word_ids": [new_word["id"]],
+        "removed_words": [],
+        "segment_id": "s0",
+        "prev_word_id": "w3",
+        "removed_segment": None,
+    }
+
+
+def test_apply_suggestion_populates_undo_out_for_partial_delete() -> None:
+    undo: Dict[str, Any] = {}
+    result = apply_suggestion(_segments(), _sug("delete", ["w0"]), undo_out=undo)
+    assert result is not None
+    assert undo == {
+        "op": "delete",
+        "new_word_ids": [],
+        "removed_words": [_word("w0", "I", 0.0, 0.3)],
+        "segment_id": "s0",
+        "prev_word_id": None,
+        "removed_segment": None,
+    }
+
+
 def test_p1_self_conflict_produces_detectable_duplicate() -> None:
     # Corpus f6439692: overlapping suggestions (conflict_group=null) both add
     # "you're" -> "fire, you're you're gasoline". The apply engine mirrors the
