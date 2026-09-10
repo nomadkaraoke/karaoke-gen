@@ -101,9 +101,19 @@ def _copy_segments(segments: List[Segment]) -> List[Segment]:
 
 
 def apply_suggestion(
-    segments: List[Segment], suggestion: Suggestion
+    segments: List[Segment],
+    suggestion: Suggestion,
+    undo_out: Optional[Dict[str, Any]] = None,
 ) -> Optional[List[Segment]]:
-    """Apply one suggestion; returns new segments or None when stale."""
+    """Apply one suggestion; returns new segments or None when stale.
+
+    When ``undo_out`` is passed, it is populated with enough information to
+    reverse this single suggestion later (mirrors the frontend's
+    ``SuggestionUndoInfo`` in ``autoCorrectApply.ts``), so a suggestion applied
+    server-side (pre-apply / auto-approval) can still be undone per-item once
+    the client has this data — independent of any other suggestions applied
+    around it.
+    """
     if is_suggestion_stale(segments, suggestion):
         return None
     found = _find_segment_with_words(segments, suggestion.get("word_ids") or [])
@@ -116,6 +126,7 @@ def apply_suggestion(
     result = _copy_segments(segments)
     seg = result[seg_index]
     words = seg["words"]
+    prev_word_id = words[span_start - 1]["id"] if span_start > 0 else None
     op = suggestion.get("op")
     new_text = suggestion.get("new_text") or ""
 
@@ -153,18 +164,44 @@ def apply_suggestion(
         ]
         words[span_end + 1 : span_end + 1] = new_words
         seg["text"] = _rebuild_text(words)
+        if undo_out is not None:
+            undo_out.update(
+                {
+                    "op": op,
+                    "new_word_ids": [w["id"] for w in new_words],
+                    "removed_words": [],
+                    "segment_id": seg["id"],
+                    "prev_word_id": anchor["id"],
+                    "removed_segment": None,
+                }
+            )
         return result
 
     removed = words[span_start : span_end + 1]
+    removed_snapshot = [dict(w) for w in removed]
+    segment_snapshot = {**seg, "words": [dict(w) for w in words]}
 
     if op == "delete":
         del words[span_start : span_start + len(removed)]
+        removed_segment_info = None
         if not words:
+            removed_segment_info = {"segment": segment_snapshot, "index": seg_index}
             del result[seg_index]
         else:
             seg["text"] = _rebuild_text(words)
             seg["start_time"] = words[0].get("start_time")
             seg["end_time"] = words[-1].get("end_time")
+        if undo_out is not None:
+            undo_out.update(
+                {
+                    "op": op,
+                    "new_word_ids": [],
+                    "removed_words": removed_snapshot,
+                    "segment_id": segment_snapshot["id"],
+                    "prev_word_id": prev_word_id,
+                    "removed_segment": removed_segment_info,
+                }
+            )
         return result
 
     # replace
@@ -195,6 +232,17 @@ def apply_suggestion(
         new_words.append(w)
     words[span_start : span_start + len(removed)] = new_words
     seg["text"] = _rebuild_text(words)
+    if undo_out is not None:
+        undo_out.update(
+            {
+                "op": "replace",
+                "new_word_ids": [w["id"] for w in new_words],
+                "removed_words": removed_snapshot,
+                "segment_id": seg["id"],
+                "prev_word_id": prev_word_id,
+                "removed_segment": None,
+            }
+        )
     return result
 
 
@@ -203,29 +251,35 @@ def apply_all_suggestions(
 ) -> Dict[str, Any]:
     """Accept-all with conflict resolution, mirroring the UI's on-load auto-apply.
 
-    Returns ``{"segments", "applied_ids", "rejected_ids", "stale_ids"}``.
+    Returns ``{"segments", "applied_ids", "rejected_ids", "stale_ids", "undo_info"}``.
+    ``undo_info`` maps each applied suggestion id to its ``SuggestionUndoInfo``-shaped
+    dict, so an applied suggestion can be individually reverted later.
     """
     winners = set(pick_accept_all_winners(suggestions))
     current = segments
     applied: List[str] = []
     rejected: List[str] = []
     stale: List[str] = []
+    undo_info: Dict[str, Any] = {}
     for s in suggestions:
         sid = s.get("id") or ""
         if sid not in winners:
             rejected.append(sid)
             continue
-        result = apply_suggestion(current, s)
+        undo: Dict[str, Any] = {}
+        result = apply_suggestion(current, s, undo_out=undo)
         if result is None:
             stale.append(sid)
             continue
         current = result
         applied.append(sid)
+        undo_info[sid] = undo
     return {
         "segments": current,
         "applied_ids": applied,
         "rejected_ids": rejected,
         "stale_ids": stale,
+        "undo_info": undo_info,
     }
 
 
@@ -261,6 +315,7 @@ def build_applied_segments(
         "segments": new_segments,
         "applied_ids": result["applied_ids"],
         "rejected_ids": result["rejected_ids"],
+        "undo_info": result["undo_info"],
     }
 
 

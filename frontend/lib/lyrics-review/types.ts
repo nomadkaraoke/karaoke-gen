@@ -153,6 +153,9 @@ export interface CorrectionData {
       applied_suggestion_ids?: string[]
       rejected_suggestion_ids?: string[]
       suggestions?: unknown[]
+      // Per-suggestion undo info (typed loosely, same reason as `suggestions`;
+      // cast to Record<string, ServerSuggestionUndoInfo> at the call site).
+      undo_info?: Record<string, unknown>
       applied_at?: string
     }
   }

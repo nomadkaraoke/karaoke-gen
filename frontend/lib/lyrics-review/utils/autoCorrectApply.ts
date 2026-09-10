@@ -26,6 +26,37 @@ export interface SuggestionUndoInfo {
   removedSegment: { segment: LyricsSegment; index: number } | null
 }
 
+/**
+ * Wire shape for undo info computed server-side (backend
+ * ``services/auto_approval/apply.py::apply_suggestion``'s ``undo_out``) and
+ * persisted in ``metadata.auto_approval.undo_info`` when a suggestion is
+ * applied before the review page loads (pre-apply / auto-approval). Same
+ * fields as {@link SuggestionUndoInfo}, snake_cased for the JSON wire format.
+ */
+export interface ServerSuggestionUndoInfo {
+  op: AiSuggestion['op']
+  new_word_ids: string[]
+  removed_words: Word[]
+  segment_id: string
+  prev_word_id: string | null
+  removed_segment: { segment: LyricsSegment; index: number } | null
+}
+
+export function fromServerUndoInfo(
+  suggestionId: string,
+  raw: ServerSuggestionUndoInfo,
+): SuggestionUndoInfo {
+  return {
+    suggestionId,
+    op: raw.op,
+    newWordIds: raw.new_word_ids,
+    removedWords: raw.removed_words,
+    segmentId: raw.segment_id,
+    prevWordId: raw.prev_word_id,
+    removedSegment: raw.removed_segment,
+  }
+}
+
 function rebuildText(words: Word[]): string {
   return words.map((w) => w.text).join(' ')
 }

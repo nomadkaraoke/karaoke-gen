@@ -81,4 +81,76 @@ describe('useAutoCorrect pre-applied mode (C2)', () => {
     expect(result.current.status).toBe('idle')
     expect(fetchSpy).not.toHaveBeenCalled()
   })
+
+  it('seeds undo info from the server so a pre-applied suggestion can still be undone', async () => {
+    const suggestions = [
+      { id: 'a', op: 'replace', category: 'mishearing', word_ids: ['w0'], segment_ids: ['s0'],
+        original_text: 'an', new_text: 'not', confidence: 0.9, models: ['m'], consensus: 1, total_models: 1 },
+    ] as any
+    const updateDataWithHistory = jest.fn()
+
+    const { result } = renderHook(() =>
+      useAutoCorrect({
+        ...baseArgs,
+        updateDataWithHistory,
+        data: {
+          ...makeData(),
+          corrected_segments: [
+            { id: 's0', text: 'not much here', words: [{ id: 'w0', text: 'not', start_time: 0, end_time: 0.3 }], start_time: 0, end_time: 1 },
+          ],
+        },
+        autoRunOnLoad: false,
+        autoApplyOnLoad: false,
+        preApplied: {
+          suggestions,
+          appliedIds: ['a'],
+          rejectedIds: [],
+          undoInfo: {
+            a: {
+              op: 'replace',
+              new_word_ids: ['w0'],
+              removed_words: [{ id: 'w0-orig', text: 'an', start_time: 0, end_time: 0.3 }],
+              segment_id: 's0',
+              prev_word_id: null,
+              removed_segment: null,
+            },
+          },
+        },
+      }),
+    )
+
+    await waitFor(() => expect(result.current.status).toBe('reviewing'))
+    expect(result.current.canUndo('a')).toBe(true)
+
+    const undone = result.current.undoAccept('a')
+    expect(undone).toBe(true)
+    expect(updateDataWithHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        corrected_segments: [
+          expect.objectContaining({ words: [{ id: 'w0-orig', text: 'an', start_time: 0, end_time: 0.3 }] }),
+        ],
+      }),
+      'undo AI suggestion',
+    )
+  })
+
+  it('canUndo is false for a pre-applied suggestion with no server undo info (older jobs)', async () => {
+    const suggestions = [
+      { id: 'a', op: 'replace', category: 'mishearing', word_ids: ['w0'], segment_ids: ['s0'],
+        original_text: 'an', new_text: 'not', confidence: 0.9, models: ['m'], consensus: 1, total_models: 1 },
+    ] as any
+
+    const { result } = renderHook(() =>
+      useAutoCorrect({
+        ...baseArgs,
+        data: makeData(),
+        autoRunOnLoad: false,
+        autoApplyOnLoad: false,
+        preApplied: { suggestions, appliedIds: ['a'], rejectedIds: [] },
+      }),
+    )
+
+    await waitFor(() => expect(result.current.status).toBe('reviewing'))
+    expect(result.current.canUndo('a')).toBe(false)
+  })
 })

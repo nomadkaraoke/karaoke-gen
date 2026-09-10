@@ -20,7 +20,9 @@ import {
   applySuggestion,
   revertSuggestion,
   isSuggestionStale,
+  fromServerUndoInfo,
   SuggestionUndoInfo,
+  ServerSuggestionUndoInfo,
 } from '@/lib/lyrics-review/utils/autoCorrectApply'
 import {
   getConflictSiblings,
@@ -58,6 +60,13 @@ interface UseAutoCorrectArgs {
     suggestions: AiSuggestion[]
     appliedIds: string[]
     rejectedIds: string[]
+    /** Per-suggestion undo info computed server-side at apply time (see
+     *  ``backend/services/auto_approval/apply.py``), keyed by suggestion id.
+     *  Seeds ``undoInfos`` so pre-applied suggestions stay individually
+     *  undoable even though the browser never applied them itself. Missing
+     *  entries (older jobs processed before this existed) simply can't be
+     *  undone — same as a stale suggestion. */
+    undoInfo?: Record<string, ServerSuggestionUndoInfo>
   } | null
 }
 
@@ -179,6 +188,11 @@ export function useAutoCorrect({
     const seeded: Record<string, SuggestionDecision> = {}
     for (const s of preApplied.suggestions) {
       seeded[s.id] = applied.has(s.id) ? 'accepted' : 'rejected'
+    }
+    // Seed undoInfos from the server-computed undo data so applied suggestions
+    // stay individually undoable even though the browser never applied them.
+    for (const [id, raw] of Object.entries(preApplied.undoInfo ?? {})) {
+      undoInfos.current[id] = fromServerUndoInfo(id, raw)
     }
     setSuggestions(preApplied.suggestions)
     setDecisions(seeded)
@@ -381,6 +395,10 @@ export function useAutoCorrect({
     [decisions, data.corrected_segments],
   )
 
+  /** Whether an accepted suggestion actually has undo info available — false
+   *  for older pre-applied jobs processed before the server persisted it. */
+  const canUndo = useCallback((id: string) => Boolean(undoInfos.current[id]), [])
+
   const pendingCount = suggestions.filter((s) => decisions[s.id] === 'pending').length
   const acceptedCount = suggestions.filter((s) => decisions[s.id] === 'accepted').length
 
@@ -405,6 +423,7 @@ export function useAutoCorrect({
     rejectAll,
     dismiss,
     isPendingAndStale,
+    canUndo,
   }
 }
 

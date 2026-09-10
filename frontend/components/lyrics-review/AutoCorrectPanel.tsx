@@ -72,8 +72,12 @@ export default function AutoCorrectPanel({
     revertAll,
     rejectAll,
     isPendingAndStale,
-    isPreApplied,
+    canUndo,
   } = controller
+
+  const anyAcceptedUndoable = suggestions.some(
+    (s) => decisions[s.id] === 'accepted' && canUndo(s.id),
+  )
 
   // Details are opened on demand from the toolbar button.
   if (!open || controller.status !== 'reviewing') return null
@@ -110,11 +114,12 @@ export default function AutoCorrectPanel({
               </Button>
             </>
           )}
-          {/* Pre-applied server-side (C2): the corrections were baked into the
-              loaded data before this screen opened, so client-side revert/undo
-              (which needs in-session undo info) is not available — editing a word
-              directly is the escape. Only offered for client-applied suggestions. */}
-          {!isReadOnly && !isPreApplied && acceptedCount > 0 && (
+          {/* Suggestions applied server-side before this screen opened (C2)
+              carry undo info persisted at apply time, so they revert the same
+              way as client-applied ones. Only unavailable for jobs processed
+              before the server started persisting it — editing a word
+              directly is the escape there. */}
+          {!isReadOnly && acceptedCount > 0 && anyAcceptedUndoable && (
             <Button
               size="sm"
               variant="ghost"
@@ -262,7 +267,7 @@ export default function AutoCorrectPanel({
                         <Badge variant="outline" className="text-[10px] text-green-600">
                           {t('accepted')}
                         </Badge>
-                        {!isReadOnly && !isPreApplied && (
+                        {!isReadOnly && canUndo(s.id) && (
                           <Button
                             size="sm"
                             variant="ghost"
