@@ -193,6 +193,37 @@ def test_apply_all_suggestions_reports_undo_info_per_applied_id() -> None:
     assert out["undo_info"]["a"]["op"] == "replace"
 
 
+def test_apply_suggestion_populates_undo_out_for_insert_after() -> None:
+    undo: Dict[str, Any] = {}
+    result = apply_suggestion(
+        _segments(), _sug("insert_after", ["w3"], "burning"), undo_out=undo
+    )
+    assert result is not None
+    new_word = result[0]["words"][4]
+    assert undo == {
+        "op": "insert_after",
+        "new_word_ids": [new_word["id"]],
+        "removed_words": [],
+        "segment_id": "s0",
+        "prev_word_id": "w3",
+        "removed_segment": None,
+    }
+
+
+def test_apply_suggestion_populates_undo_out_for_partial_delete() -> None:
+    undo: Dict[str, Any] = {}
+    result = apply_suggestion(_segments(), _sug("delete", ["w0"]), undo_out=undo)
+    assert result is not None
+    assert undo == {
+        "op": "delete",
+        "new_word_ids": [],
+        "removed_words": [_word("w0", "I", 0.0, 0.3)],
+        "segment_id": "s0",
+        "prev_word_id": None,
+        "removed_segment": None,
+    }
+
+
 def test_p1_self_conflict_produces_detectable_duplicate() -> None:
     # Corpus f6439692: overlapping suggestions (conflict_group=null) both add
     # "you're" -> "fire, you're you're gasoline". The apply engine mirrors the

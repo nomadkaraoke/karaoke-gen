@@ -134,6 +134,55 @@ describe('useAutoCorrect pre-applied mode (C2)', () => {
     )
   })
 
+  it('revertAll reverts pre-applied suggestions that have server undo info', async () => {
+    const suggestions = [
+      { id: 'a', op: 'replace', category: 'mishearing', word_ids: ['w0'], segment_ids: ['s0'],
+        original_text: 'an', new_text: 'not', confidence: 0.9, models: ['m'], consensus: 1, total_models: 1 },
+    ] as any
+    const updateDataWithHistory = jest.fn()
+
+    const { result } = renderHook(() =>
+      useAutoCorrect({
+        ...baseArgs,
+        updateDataWithHistory,
+        data: {
+          ...makeData(),
+          corrected_segments: [
+            { id: 's0', text: 'not much here', words: [{ id: 'w0', text: 'not', start_time: 0, end_time: 0.3 }], start_time: 0, end_time: 1 },
+          ],
+        },
+        autoRunOnLoad: false,
+        autoApplyOnLoad: false,
+        preApplied: {
+          suggestions,
+          appliedIds: ['a'],
+          rejectedIds: [],
+          undoInfo: {
+            a: {
+              op: 'replace',
+              new_word_ids: ['w0'],
+              removed_words: [{ id: 'w0-orig', text: 'an', start_time: 0, end_time: 0.3 }],
+              segment_id: 's0',
+              prev_word_id: null,
+              removed_segment: null,
+            },
+          },
+        },
+      }),
+    )
+
+    await waitFor(() => expect(result.current.status).toBe('reviewing'))
+    result.current.revertAll()
+    expect(updateDataWithHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        corrected_segments: [
+          expect.objectContaining({ words: [{ id: 'w0-orig', text: 'an', start_time: 0, end_time: 0.3 }] }),
+        ],
+      }),
+      'revert all AI suggestions',
+    )
+  })
+
   it('canUndo is false for a pre-applied suggestion with no server undo info (older jobs)', async () => {
     const suggestions = [
       { id: 'a', op: 'replace', category: 'mishearing', word_ids: ['w0'], segment_ids: ['s0'],
