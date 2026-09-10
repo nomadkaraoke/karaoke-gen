@@ -6,6 +6,33 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Server-Applied State Needs Its Own Undo Data, Not Just Client Undo State (Sep 2026)
+
+The pre-apply feature (C2, PR #957) started baking AI lyric corrections into
+`corrections_updated.json` server-side, before the review page ever loads, so the
+review UI's `data` is already the corrected state on first render. But the per-item
+Undo and "Revert all" controls in the auto-correct panel were built around
+`undoInfos` — an in-memory map (`useAutoCorrect.ts`) only ever populated at the
+moment the *browser* applied a suggestion. For pre-applied jobs nothing ever
+populated it client-side, so both controls were silently hidden — Andrew reported
+"the 6 auto-corrections applied section doesn't let me undo or revert any". The
+"Undo All" header button looked similarly broken, but is actually a different,
+correctly-behaving feature (resets in-session manual edits back to page-load state)
+that has nothing to undo when the only "changes" are ones baked in before load.
+
+**Fix / rule:** when a mutation moves from client-side to server-side, any UI
+affordance that depended on client-side-only bookkeeping (undo stacks, dirty flags,
+"can revert" state) needs that data to move too — hiding the affordance for the new
+path is a silent feature regression, not a safe default. Here, `apply.py`'s
+`apply_suggestion` now takes an optional `undo_out` dict and records enough to
+reverse itself (removed words, new word ids, segment id) exactly like the frontend's
+own `SuggestionUndoInfo`; `pre_apply.py` persists it in
+`metadata.auto_approval.undo_info`, and `useAutoCorrect` seeds its undo map from
+that on load. Jobs pre-applied *before* this fix shipped simply have no undo info —
+same as a stale suggestion — so the buttons correctly stay hidden only for those.
+
+---
+
 ## Update Firestore Job Maps with Dot-Path Fields, Never Read-Modify-Write (Aug 2026)
 
 `JobManager.update_file_url` and `update_state_data` used to `get_job()`, copy the
