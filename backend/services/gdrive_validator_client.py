@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 GDRIVE_VALIDATOR_URL = os.environ.get("GDRIVE_VALIDATOR_URL", "")
 
 
-def trigger_gdrive_validation(brand_code: str | None = None) -> dict | None:
+def trigger_gdrive_validation(
+    brand_code: str | None = None, expect_cdg: bool = False
+) -> dict | None:
     """
     Invoke the GDrive validator Cloud Function.
 
@@ -30,6 +32,8 @@ def trigger_gdrive_validation(brand_code: str | None = None) -> dict | None:
         brand_code: Optional brand code of the just-published track. When set, the
             validator additionally verifies this track is present in all expected
             folders same-run (incident-hardening D2).
+        expect_cdg: Whether the just-published track produced a CDG package (so the
+            validator requires the CDG folder for it). Ignored without brand_code.
 
     Returns:
         Parsed JSON response from the function, or None on error.
@@ -46,7 +50,7 @@ def trigger_gdrive_validation(brand_code: str | None = None) -> dict | None:
         response = requests.post(
             GDRIVE_VALIDATOR_URL,
             headers={"Authorization": f"Bearer {token}"},
-            json={"brand_code": brand_code} if brand_code else None,
+            json={"brand_code": brand_code, "expect_cdg": expect_cdg} if brand_code else None,
             timeout=60,
         )
         response.raise_for_status()

@@ -167,6 +167,24 @@ def test_best_effort_never_raises_on_broken_db(enabled, captured):
 def test_fail_open_when_dedup_read_errors(enabled, captured, monkeypatch):
     """If the dedup lookup fails we should still alert (missing an outage is worse)."""
     db = FakeFirestore(jobs={"job-1": _job()})
-    monkeypatch.setattr(ops_alerts, "_dedup_decision", lambda *a, **k: (True, False, 0))
+    monkeypatch.setattr(ops_alerts, "_should_alert", lambda *a, **k: (True, False, 0, None))
     assert ops_alerts.notify_job_failed(db, "jobs", "job-1", message="boom") is True
     assert len(captured) == 1
+
+
+def test_failed_delivery_does_not_suppress_next(enabled, monkeypatch):
+    """A failed Discord send must NOT advance the throttle window."""
+    db = FakeFirestore(jobs={"job-1": _job(), "job-2": _job()})
+    calls = []
+
+    def flaky_send(msg):
+        calls.append(msg)
+        return len(calls) > 1  # first send fails, second succeeds
+
+    monkeypatch.setattr(ops_alerts, "send_ops_alert", flaky_send)
+    # First failure: send attempted but delivery fails → not acked.
+    assert ops_alerts.notify_job_failed(db, "jobs", "job-1", additional_fields={"error_message": "same err"}) is False
+    # Second failure, same signature, within window: because the first never
+    # acked, this must still be attempted (not throttled away) and now succeed.
+    assert ops_alerts.notify_job_failed(db, "jobs", "job-2", additional_fields={"error_message": "same err"}) is True
+    assert len(calls) == 2

@@ -1092,15 +1092,20 @@ class VideoWorkerOrchestrator:
             worker_service = get_worker_service()
             # Name the just-published track so the validator can check *its own*
             # completeness same-run (incident-hardening D2), not just global gaps.
+            # Only require CDG when this job actually produced one (video-only /
+            # lyric-less releases legitimately ship no CDG).
             brand_code = self.result.brand_code
-            success = await worker_service.schedule_gdrive_validation(brand_code=brand_code)
+            expect_cdg = bool(self.result.final_karaoke_cdg_zip)
+            success = await worker_service.schedule_gdrive_validation(
+                brand_code=brand_code, expect_cdg=expect_cdg
+            )
             if success:
                 self.job_log.info("Scheduled delayed GDrive validation (5 min)")
             else:
                 # Fallback: trigger immediately if scheduling failed
                 self.job_log.warning("Cloud Tasks scheduling failed, triggering validation immediately")
                 from backend.services.gdrive_validator_client import trigger_gdrive_validation
-                trigger_gdrive_validation(brand_code=brand_code)
+                trigger_gdrive_validation(brand_code=brand_code, expect_cdg=expect_cdg)
         except Exception as e:
             self.job_log.warning(f"GDrive validation trigger failed (non-fatal): {e}")
             # Never fail the pipeline for validation

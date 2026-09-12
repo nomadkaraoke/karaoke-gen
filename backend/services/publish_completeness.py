@@ -35,15 +35,19 @@ _LABELS = {
 }
 
 
-def expected_gdrive_outputs(config: Any) -> list[str]:
+def expected_gdrive_outputs(config: Any, result: Any) -> list[str]:
     """The gdrive_files keys a public-share release is expected to contain.
 
-    Always the lossy 4K MP4 and the 720p MP4; the CDG zip only when the job has
-    CDG enabled. Mirrors what ``_upload_to_gdrive`` feeds into
-    ``upload_to_public_share``.
+    Always the lossy 4K MP4 and the 720p MP4. The CDG zip is expected only when
+    the job actually **produced** a CDG package (``result.final_karaoke_cdg_zip``
+    is set). Keying CDG off ``config.enable_cdg`` alone false-fires on legitimate
+    skips: a lyric-less track (``_lrc_has_lyrics_content()`` False) is packaged
+    without a CDG even when ``enable_cdg`` is True, so the upload omits ``cdg`` by
+    design. Basing the expectation on the produced artifact still catches the real
+    fault we care about — a CDG that WAS made but never distributed.
     """
     expected = [_LOSSY_4K_KEY, _720P_KEY]
-    if getattr(config, "enable_cdg", False):
+    if getattr(result, "final_karaoke_cdg_zip", None):
         expected.append(_CDG_KEY)
     return expected
 
@@ -60,7 +64,7 @@ def compute_publish_shortfall(config: Any, result: Any) -> list[str]:
 
     distributed = getattr(result, "gdrive_files", None) or {}
     missing: list[str] = []
-    for key in expected_gdrive_outputs(config):
+    for key in expected_gdrive_outputs(config, result):
         # A key is satisfied only if present AND truthy (an empty id/url means the
         # upload didn't actually land).
         if not distributed.get(key):

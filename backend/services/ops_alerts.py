@@ -134,34 +134,47 @@ def _signature(error_message: str) -> str:
         return hashlib.sha256((error_message or "").encode("utf-8")).hexdigest()
 
 
-def _dedup_decision(db: Any, signature: str, now: datetime) -> tuple[bool, bool, int]:
-    """Decide whether to send, consulting/updating the dedup doc.
+def _should_alert(db: Any, signature: str, now: datetime) -> tuple[bool, bool, int, Any]:
+    """Decide whether to send, WITHOUT yet acknowledging delivery.
 
-    Returns ``(should_send, is_novel, suppressed_since_last)``:
+    Returns ``(should_send, is_novel, suppressed_since_last, doc_ref)``:
       * ``should_send`` — emit a Discord alert this time.
       * ``is_novel`` — we have never seen this signature before.
       * ``suppressed_since_last`` — how many failures were collapsed (throttled)
-        since the last alert for this signature (0 for a novel signature).
+        since the last *successful* alert for this signature.
+      * ``doc_ref`` — the dedup doc, passed to :func:`_mark_alerted` **only after a
+        successful send** so a failed Discord delivery does NOT advance the
+        throttle window (which would suppress the next real failure). ``None`` if
+        Firestore was unreachable.
 
-    Best-effort: on any Firestore error we default to *send* (fail open — an
-    extra alert is far better than a missed outage).
+    This records ``first_seen`` / ``total_count`` (and, when throttled, the
+    suppressed counter) but deliberately does NOT touch ``last_alerted_at`` — that
+    is the delivery acknowledgement, set separately once the alert actually sends.
+
+    Best-effort: on any Firestore error we default to *send* (fail open — an extra
+    alert is far better than a missed outage). NOTE: the ``get()`` + ``update()``
+    are not transactional, so two truly-concurrent failures of the same signature
+    could each send once. That's an acceptable trade (a duplicate alert is
+    harmless; a missed one is not), so we don't pay for a transaction here.
     """
     try:
         doc_ref = db.collection(_DEDUP_COLLECTION).document(signature)
         snap = doc_ref.get()
         now_iso = now.isoformat()
         if not snap.exists:
+            # Create the record but leave last_alerted_at unset — it's stamped by
+            # _mark_alerted only if the send succeeds.
             doc_ref.set(
                 {
                     "signature": signature,
                     "first_seen": now_iso,
-                    "last_alerted_at": now_iso,
+                    "last_alerted_at": None,
                     "total_count": 1,
-                    "alert_count": 1,
+                    "alert_count": 0,
                     "suppressed_since_last": 0,
                 }
             )
-            return True, True, 0
+            return True, True, 0, doc_ref
 
         data = snap.to_dict() or {}
         last_alerted_raw = data.get("last_alerted_at")
@@ -181,21 +194,35 @@ def _dedup_decision(db: Any, signature: str, now: datetime) -> tuple[bool, bool,
                     "suppressed_since_last": (data.get("suppressed_since_last", 0) or 0) + 1,
                 }
             )
-            return False, False, 0
+            return False, False, 0, doc_ref
 
+        doc_ref.update({"total_count": (data.get("total_count", 0) or 0) + 1})
         suppressed = data.get("suppressed_since_last", 0) or 0
+        return True, False, suppressed, doc_ref
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("ops_alerts: dedup lookup failed (%s); defaulting to send", exc)
+        return True, False, 0, None
+
+
+def _mark_alerted(doc_ref: Any, now: datetime) -> None:
+    """Acknowledge a successful send: advance the throttle window + reset counters.
+
+    Called ONLY after :func:`send_ops_alert` returns True. Best-effort.
+    """
+    if doc_ref is None:
+        return
+    try:
+        snap = doc_ref.get()
+        data = snap.to_dict() or {} if snap.exists else {}
         doc_ref.update(
             {
-                "last_alerted_at": now_iso,
-                "total_count": (data.get("total_count", 0) or 0) + 1,
+                "last_alerted_at": now.isoformat(),
                 "alert_count": (data.get("alert_count", 0) or 0) + 1,
                 "suppressed_since_last": 0,
             }
         )
-        return True, False, suppressed
     except Exception as exc:  # noqa: BLE001
-        logger.debug("ops_alerts: dedup lookup failed (%s); defaulting to send", exc)
-        return True, False, 0
+        logger.debug("ops_alerts: could not record alert delivery: %s", exc)
 
 
 def notify_job_failed(
@@ -244,7 +271,7 @@ def notify_job_failed(
 
         now = datetime.now(timezone.utc)
         signature = _signature(error_message)
-        should_send, is_novel, suppressed = _dedup_decision(db, signature, now)
+        should_send, is_novel, suppressed, doc_ref = _should_alert(db, signature, now)
         if not should_send:
             return False
 
@@ -265,7 +292,13 @@ def notify_job_failed(
             if len(err) > 1500:
                 err = err[:1500] + " …[truncated]"
             lines.append(f"**Error:** ```{err}```")
-        return send_ops_alert("\n".join(lines))
+
+        sent = send_ops_alert("\n".join(lines))
+        # Only advance the throttle window once delivery actually succeeded — a
+        # failed send must NOT suppress the next occurrence of this signature.
+        if sent:
+            _mark_alerted(doc_ref, now)
+        return sent
     except Exception as exc:  # noqa: BLE001 - alerting must never raise
         logger.warning("ops_alerts: notify_job_failed failed: %s", exc)
         return False

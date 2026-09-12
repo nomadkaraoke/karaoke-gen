@@ -268,12 +268,17 @@ def validate_files(files_by_folder: dict[str, list[str]]) -> dict:
     return issues
 
 
-# Folders a public release must appear in. (CDG is included — every public NOMAD
-# release ships a CDG zip; a track missing from CDG is a real shortfall.)
-REQUIRED_TRACK_FOLDERS = ('MP4', 'MP4-720p', 'CDG')
+# Folders every public release must appear in. MP4 (lossy 4K) and MP4-720p are
+# always produced; CDG is conditional (a lyric-less / video-only release ships no
+# CDG package), so it is only required when the caller says the job produced one.
+BASE_TRACK_FOLDERS = ('MP4', 'MP4-720p')
 
 
-def check_track_completeness(files_by_folder: dict[str, list[str]], brand_code: str) -> list[str]:
+def check_track_completeness(
+    files_by_folder: dict[str, list[str]],
+    brand_code: str,
+    expect_cdg: bool = False,
+) -> list[str]:
     """Return the folders a specific brand code is MISSING from.
 
     Incident-hardening D2: when the post-job trigger names the just-published
@@ -281,6 +286,10 @@ def check_track_completeness(files_by_folder: dict[str, list[str]], brand_code: 
     expected folder — *independent of the global-max gap logic*, which only
     notices a missing latest track once a later track raises the max. This fires
     same-run (5 min post-job) instead of up to 24h later.
+
+    MP4 and MP4-720p are always required. CDG is required only when
+    ``expect_cdg`` is True (the caller passes this when the job actually produced
+    a CDG package); otherwise a legitimate video-only release would false-fire.
 
     Matching is by the ``NOMAD-#### `` filename prefix, so it ignores the
     (differing) artist/title tail.
@@ -291,8 +300,12 @@ def check_track_completeness(files_by_folder: dict[str, list[str]], brand_code: 
         code = f"NOMAD-{code}"
     prefix = f"{code} "
 
+    expected_folders = list(BASE_TRACK_FOLDERS)
+    if expect_cdg:
+        expected_folders.append('CDG')
+
     missing_from = []
-    for folder in REQUIRED_TRACK_FOLDERS:
+    for folder in expected_folders:
         files = files_by_folder.get(folder, [])
         if not any(f.startswith(prefix) for f in files):
             missing_from.append(folder)
@@ -469,14 +482,19 @@ def validate_gdrive(request):
     # track so we can verify *its own* completeness same-run. Accept brand_code
     # from the JSON body or a query param; absent → full-scan behaviour as before.
     brand_code = None
+    expect_cdg = False
     try:
         body = request.get_json(silent=True) if hasattr(request, "get_json") else None
         if isinstance(body, dict):
             brand_code = body.get("brand_code")
+            expect_cdg = bool(body.get("expect_cdg", False))
         if not brand_code and hasattr(request, "args"):
             brand_code = request.args.get("brand_code")
+            if request.args.get("expect_cdg") is not None:
+                expect_cdg = request.args.get("expect_cdg") in ("1", "true", "True")
     except Exception:  # noqa: BLE001 - request parsing must not break validation
         brand_code = None
+        expect_cdg = False
 
     try:
         # Get Drive service
@@ -497,7 +515,7 @@ def validate_gdrive(request):
 
         # Targeted same-run completeness for the just-published track.
         if brand_code:
-            missing_from = check_track_completeness(files_by_folder, brand_code)
+            missing_from = check_track_completeness(files_by_folder, brand_code, expect_cdg=expect_cdg)
             if missing_from:
                 issues['missing_for_track'] = {str(brand_code): missing_from}
                 logger.warning(
