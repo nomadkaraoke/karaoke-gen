@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Kopioi Dropbox-URL",
     "dropboxUrlCopied": "Dropbox-URL kopioitu",
     "copyCompletionMessage": "Kopioi valmistumisviesti leikepöydälle",
-    "copied": "Kopioitu!"
+    "copied": "Kopioitu!",
+    "portrait": "Pystyvideo"
   },
   "themeSelector": {
     "videoTheme": "Videoteema",

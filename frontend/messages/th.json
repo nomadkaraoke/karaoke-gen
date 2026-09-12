@@ -707,7 +707,8 @@
     "copyDropboxUrl": "คัดลอก URL ของ Dropbox",
     "dropboxUrlCopied": "คัดลอก URL ของ Dropbox แล้ว",
     "copyCompletionMessage": "คัดลอกข้อความแจ้งความสำเร็จไปยังคลิปบอร์ด",
-    "copied": "คัดลอกแล้ว!"
+    "copied": "คัดลอกแล้ว!",
+    "portrait": "วิดีโอแนวตั้ง"
   },
   "themeSelector": {
     "videoTheme": "ธีมวิดีโอ",

@@ -10,6 +10,8 @@ can be swapped without changing the orchestration logic.
 """
 
 import logging
+import os
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
@@ -17,6 +19,81 @@ from typing import Dict, List, Optional, Any
 from backend.services.encoding_errors import EncodingJobLostError
 
 logger = logging.getLogger(__name__)
+
+
+def classify_encoded_output(filename: str) -> Optional[str]:
+    """Classify a GCE-encoded output file by format, robust to artist/title text.
+
+    GCE finals are named ``<artist> - <title> (<format tag>).<ext>``, e.g.
+    ``Nat King Cole - Portrait of Jennie (Final Karaoke Lossy 720p).mp4``. The
+    format is entirely in the trailing parenthetical, so we match on THAT tag only
+    — never the whole filename. Matching the whole filename is what caused the
+    NOMAD-1632 gap: the title "Portrait of Jennie" contains "portrait", so the
+    720p master matched the portrait-video branch (checked before "720p") and was
+    never mapped to ``mp4_720p`` — it published to MP4/ + CDG/ with no 720p, and
+    only the daily GDrive validator caught it. Any song whose artist/title contains
+    a format word ("portrait", "720p", "4k", "lossless", "vocals", …) hit the same
+    class of bug.
+
+    Returns a canonical token or ``None`` if the file isn't a recognised final:
+    ``mp4_4k_lossless``, ``mkv_4k``, ``mp4_4k_lossy``, ``mp4_720p``,
+    ``portrait_mp4``, ``with_vocals_mp4``, ``title_mov``, ``end_mov``,
+    ``cdg_zip``, ``txt_zip``.
+    """
+    name = os.path.basename(filename)
+    stem, ext = os.path.splitext(name)
+    ext = ext.lower()
+
+    # System-generated short canonical names, e.g. jobs/{id}/finals/lossy_720p_mp4.mp4
+    # (uploaded by _upload_results) and packages/cdg_zip.zip. They carry no artist/title
+    # text, so an exact-stem match is unambiguous — and the redistribution flow reads
+    # these back from GCS. Checked first so the underscore forms don't fall through.
+    # (stem, ext) so a mismatched extension can't slip a stray file into a slot.
+    short_name = {
+        ("lossless_4k_mp4", ".mp4"): "mp4_4k_lossless",
+        ("lossless_4k_mkv", ".mkv"): "mkv_4k",
+        ("lossy_4k_mp4", ".mp4"): "mp4_4k_lossy",
+        ("lossy_720p_mp4", ".mp4"): "mp4_720p",
+        ("portrait_1080x1920", ".mp4"): "portrait_mp4",
+        ("cdg_zip", ".zip"): "cdg_zip",
+        ("txt_zip", ".zip"): "txt_zip",
+    }.get((stem.lower(), ext))
+    if short_name:
+        return short_name
+
+    # Otherwise the format tag is the LAST parenthetical group before the extension.
+    # A file without that parenthetical isn't a recognised final. Every branch also
+    # pins the expected extension, so a stray file whose artist/title happens to
+    # contain a format word (e.g. "Artist 720p notes.txt") can't be misclassified
+    # into a slot and then falsely satisfy the completeness guard.
+    match = re.search(r"\(([^()]*)\)[^()]*$", name)
+    if not match:
+        return None
+    tag = match.group(1).lower()
+
+    if "720p" in tag and ext == ".mp4":
+        return "mp4_720p"
+    if ("portrait" in tag or "1080x1920" in tag) and ext == ".mp4":
+        return "portrait_mp4"
+    if "lossless 4k" in tag:
+        if ext == ".mkv":
+            return "mkv_4k"
+        if ext == ".mp4":
+            return "mp4_4k_lossless"
+        return None
+    if "lossy 4k" in tag and ext == ".mp4":
+        return "mp4_4k_lossy"
+    if "with vocals" in tag and ext == ".mp4":
+        return "with_vocals_mp4"
+    if tag == "title" and ext == ".mov":
+        return "title_mov"
+    if tag == "end" and ext == ".mov":
+        return "end_mov"
+    if "cdg" in tag and ext == ".zip":
+        return "cdg_zip"
+    if "txt" in tag and ext == ".zip":
+        return "txt_zip"
+    return None
 
 
 @dataclass
@@ -380,33 +457,45 @@ class GCEEncodingBackend(EncodingBackend):
             # We need dict like: {"mp4_4k_lossless": "path/...", "mp4_720p": "path/..."}
             if isinstance(raw_output_files, list):
                 output_files = {}
+                # Classify each returned final by its format tag (the trailing
+                # parenthetical), NOT the whole filename — see classify_encoded_output.
+                # Matching the whole filename misfiled the 720p of "Portrait of Jennie"
+                # as the portrait video (NOMAD-1632).
                 for path in raw_output_files:
                     if not isinstance(path, str):
                         continue
-                    filename = path.split("/")[-1] if "/" in path else path
-                    filename_lower = filename.lower()
-                    # Map filename patterns to output format keys
-                    # Files are named like "Artist - Title (Final Karaoke Lossless 4k).mp4"
-                    if "lossless 4k" in filename_lower:
-                        if filename.endswith(".mkv"):
-                            output_files["mkv_4k"] = path
-                        else:
-                            output_files["mp4_4k_lossless"] = path
-                    elif "lossy 4k" in filename_lower:
-                        output_files["mp4_4k_lossy"] = path
-                    elif "portrait" in filename_lower:
-                        output_files["portrait_mp4"] = path
-                    elif "720p" in filename_lower:
-                        output_files["mp4_720p"] = path
-                    elif "with vocals" in filename_lower and filename.endswith(".mp4"):
-                        output_files["with_vocals_mp4"] = path
-                    elif filename_lower.endswith("(title).mov"):
-                        output_files["title_mov"] = path
-                    elif filename_lower.endswith("(end).mov"):
-                        output_files["end_mov"] = path
+                    key = classify_encoded_output(path)
+                    if key:
+                        output_files[key] = path
                 self.logger.info(f"Converted output_files list to dict: {output_files}")
             else:
                 output_files = raw_output_files if isinstance(raw_output_files, dict) else {}
+
+            # Completeness guard (defense-in-depth): a worker must return every
+            # format we requested. Whatever the cause of a partial result — the
+            # title-collision mapping bug that dropped the 720p (NOMAD-1632, fixed
+            # above by classify_encoded_output), a stale-wheel fallback VM, or an
+            # output lost before the worker's glob/upload — it must NOT sail through
+            # to distribution and publish an incomplete public release, leaving a
+            # sequence gap the daily GDrive validator only flags ~24h later. Fail
+            # loud so the orchestrator errors the job (it is retried on a healthy
+            # worker) and the alert fires immediately.
+            requested_formats = encoding_config.get("formats", [])
+            missing_formats = [f for f in requested_formats if not output_files.get(f)]
+            if missing_formats:
+                error_message = (
+                    f"Encoder returned an incomplete result: missing {missing_formats} "
+                    f"(requested {requested_formats}, got {sorted(output_files.keys())}). "
+                    "Refusing to publish a partial release."
+                )
+                self.logger.error(f"[job:{job_id}] {error_message}")
+                return EncodingOutput(
+                    success=False,
+                    error_message=error_message,
+                    output_files=output_files,
+                    encoding_time_seconds=encoding_time,
+                    encoding_backend=self.name,
+                )
 
             return EncodingOutput(
                 success=True,

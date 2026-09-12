@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Dropbox URL másolása",
     "dropboxUrlCopied": "Dropbox URL másolva",
     "copyCompletionMessage": "Befejezési üzenet másolása a vágólapra",
-    "copied": "Másolva!"
+    "copied": "Másolva!",
+    "portrait": "Álló videó"
   },
   "themeSelector": {
     "videoTheme": "Videó téma",

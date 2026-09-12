@@ -707,7 +707,8 @@
     "copyDropboxUrl": "نسخ رابط Dropbox",
     "dropboxUrlCopied": "تم نسخ رابط Dropbox",
     "copyCompletionMessage": "نسخ رسالة الاكتمال إلى الحافظة",
-    "copied": "تم النسخ!"
+    "copied": "تم النسخ!",
+    "portrait": "فيديو عمودي"
   },
   "themeSelector": {
     "videoTheme": "سمة الفيديو",

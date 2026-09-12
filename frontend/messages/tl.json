@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Kopyahin ang Dropbox URL",
     "dropboxUrlCopied": "Nakopya na ang Dropbox URL",
     "copyCompletionMessage": "Kopyahin ang completion message sa clipboard",
-    "copied": "Nakopya na!"
+    "copied": "Nakopya na!",
+    "portrait": "Portrait na Video"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",

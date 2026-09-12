@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Sao chép URL Dropbox",
     "dropboxUrlCopied": "Đã sao chép URL Dropbox",
     "copyCompletionMessage": "Sao chép tin nhắn hoàn thành vào khay nhớ tạm",
-    "copied": "Đã sao chép!"
+    "copied": "Đã sao chép!",
+    "portrait": "Video dọc"
   },
   "themeSelector": {
     "videoTheme": "Chủ đề video",

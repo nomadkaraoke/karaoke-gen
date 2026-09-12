@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Kopiraj Dropbox URL",
     "dropboxUrlCopied": "Dropbox URL kopiran",
     "copyCompletionMessage": "Kopiraj poruku o završetku u međuspremnik",
-    "copied": "Kopirano!"
+    "copied": "Kopirano!",
+    "portrait": "Okomiti video"
   },
   "themeSelector": {
     "videoTheme": "Video tema",

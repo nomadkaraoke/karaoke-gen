@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Αντιγραφή Dropbox URL",
     "dropboxUrlCopied": "Το Dropbox URL αντιγράφηκε",
     "copyCompletionMessage": "Αντιγραφή μηνύματος ολοκλήρωσης στο πρόχειρο",
-    "copied": "Αντιγράφηκε!"
+    "copied": "Αντιγράφηκε!",
+    "portrait": "Κάθετο βίντεο"
   },
   "themeSelector": {
     "videoTheme": "Θέμα Βίντεο",

@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Dropbox-URL kopieren",
     "dropboxUrlCopied": "Dropbox-URL kopiert",
     "copyCompletionMessage": "Abschlussnachricht in die Zwischenablage kopieren",
-    "copied": "Kopiert!"
+    "copied": "Kopiert!",
+    "portrait": "Hochformat-Video"
   },
   "themeSelector": {
     "videoTheme": "Video-Theme",

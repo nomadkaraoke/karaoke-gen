@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Dropbox URL'sini Kopyala",
     "dropboxUrlCopied": "Dropbox URL'si kopyalandı",
     "copyCompletionMessage": "Tamamlama mesajını panoya kopyala",
-    "copied": "Kopyalandı!"
+    "copied": "Kopyalandı!",
+    "portrait": "Dikey Video"
   },
   "themeSelector": {
     "videoTheme": "Video Teması",

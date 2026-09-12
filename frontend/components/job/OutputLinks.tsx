@@ -196,6 +196,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
     downloadUrls?.finals?.lossy_4k_mp4 ||
     downloadUrls?.finals?.with_vocals_mp4 ||
     downloadUrls?.videos?.with_vocals ||
+    downloadUrls?.finals?.portrait_1080x1920 ||
     downloadUrls?.packages?.cdg_zip ||
     downloadUrls?.packages?.txt_zip
   )
@@ -294,6 +295,16 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                   >
                     <Download className="w-3 h-3" />
                     {t('withVocals')}
+                  </a>
+                )}
+                {downloadUrls?.finals?.portrait_1080x1920 && (
+                  <a
+                    href={api.getDownloadUrl(job.job_id, "finals", "portrait_1080x1920")}
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Download className="w-3 h-3" />
+                    {t('portrait')}
                   </a>
                 )}
                 {downloadUrls?.packages?.cdg_zip && (

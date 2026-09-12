@@ -1667,6 +1667,7 @@ DOWNLOAD_FILENAME_SUFFIXES = {
     "lossless_4k_mkv": " (Final Karaoke Lossless 4k).mkv",
     "lossy_4k_mp4": " (Final Karaoke Lossy 4k).mp4",
     "lossy_720p_mp4": " (Final Karaoke Lossy 720p).mp4",
+    "portrait_1080x1920": " (Final Karaoke Portrait 1080x1920).mp4",
     "cdg_zip": " (Final Karaoke CDG).zip",
     "txt_zip": " (Final Karaoke TXT).zip",
     "with_vocals_mp4": " (With Vocals).mp4",

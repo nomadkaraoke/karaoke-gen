@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Kopieer Dropbox URL",
     "dropboxUrlCopied": "Dropbox URL gekopieerd",
     "copyCompletionMessage": "Kopieer voltooiingsbericht naar klembord",
-    "copied": "Gekopieerd!"
+    "copied": "Gekopieerd!",
+    "portrait": "Portretvideo"
   },
   "themeSelector": {
     "videoTheme": "Video Thema",

@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Copiar URL de Dropbox",
     "dropboxUrlCopied": "URL de Dropbox copiada",
     "copyCompletionMessage": "Copiar mensaje de finalización al portapapeles",
-    "copied": "¡Copiado!"
+    "copied": "¡Copiado!",
+    "portrait": "Video vertical"
   },
   "themeSelector": {
     "videoTheme": "Tema de video",

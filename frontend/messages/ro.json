@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Copiază URL Dropbox",
     "dropboxUrlCopied": "URL Dropbox copiat",
     "copyCompletionMessage": "Copiază mesajul de finalizare în clipboard",
-    "copied": "Copiat!"
+    "copied": "Copiat!",
+    "portrait": "Video portret"
   },
   "themeSelector": {
     "videoTheme": "Temă video",

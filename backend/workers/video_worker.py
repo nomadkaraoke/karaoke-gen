@@ -594,21 +594,24 @@ async def redistribute_video(job_id: str) -> bool:
             job_logger=job_log,
         )
 
-        # Map downloaded files to orchestrator result attributes by filename patterns
+        # Map downloaded files to orchestrator result attributes by their format tag.
+        # Classify on the trailing parenthetical (not the whole filename) so a track
+        # whose artist/title contains a format word — e.g. "Portrait of Jennie", whose
+        # 720p was misfiled as the portrait video in the encode path (NOMAD-1632) —
+        # redistributes correctly here too.
+        from backend.services.encoding_interface import classify_encoded_output
+        _RESULT_ATTR_BY_FORMAT = {
+            'mp4_4k_lossless': 'final_video',
+            'mkv_4k': 'final_video_mkv',
+            'mp4_4k_lossy': 'final_video_lossy',
+            'mp4_720p': 'final_video_720p',
+            'cdg_zip': 'final_karaoke_cdg_zip',
+            'txt_zip': 'final_karaoke_txt_zip',
+        }
         for filename, path in downloaded_files.items():
-            lower = filename.lower()
-            if 'lossless' in lower and '4k' in lower and lower.endswith('.mp4'):
-                orchestrator.result.final_video = path
-            elif 'lossless' in lower and lower.endswith('.mkv'):
-                orchestrator.result.final_video_mkv = path
-            elif 'lossy' in lower and '4k' in lower:
-                orchestrator.result.final_video_lossy = path
-            elif '720p' in lower:
-                orchestrator.result.final_video_720p = path
-            elif 'cdg' in lower and lower.endswith('.zip'):
-                orchestrator.result.final_karaoke_cdg_zip = path
-            elif 'txt' in lower and lower.endswith('.zip'):
-                orchestrator.result.final_karaoke_txt_zip = path
+            attr = _RESULT_ATTR_BY_FORMAT.get(classify_encoded_output(filename))
+            if attr:
+                setattr(orchestrator.result, attr, path)
 
         # Run only organization + distribution + notifications
         await orchestrator._run_organization()
