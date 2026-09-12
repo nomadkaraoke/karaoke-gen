@@ -21,9 +21,14 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
-from typing import Awaitable, Callable, Optional, Dict, Any, AsyncIterator
+from typing import Awaitable, Callable, Optional, Dict, Any, AsyncIterator, TYPE_CHECKING
 
 import aiohttp
+
+if TYPE_CHECKING:
+    # Shared seam contract. Type-only import (no runtime cost, no import cycle —
+    # encoding_interface imports encoding_service lazily inside methods).
+    from backend.services.encoding_interface import GceEncodeResponse
 
 from backend.config import get_settings
 from backend.services.encoding_errors import (
@@ -904,7 +909,7 @@ class EncodingService:
         output_gcs_path: str,
         encoding_config: Optional[Dict[str, Any]] = None,
         progress_callback=None,
-    ) -> Dict[str, Any]:
+    ) -> "GceEncodeResponse":
         """
         Submit encoding job and wait for completion.
 

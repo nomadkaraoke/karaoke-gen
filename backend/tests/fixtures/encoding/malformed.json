@@ -1,0 +1,10 @@
+{
+  "status": "complete",
+  "progress": 100,
+  "output_files": [
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/finals/notes.txt",
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/finals/Nat King Cole 720p demo.txt",
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/finals/Nat King Cole - Portrait of Jennie (Final Karaoke Lossy 720p).webm",
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/thumbnail.jpg"
+  ]
+}

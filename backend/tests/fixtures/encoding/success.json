@@ -1,0 +1,10 @@
+{
+  "status": "complete",
+  "progress": 100,
+  "output_files": [
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/finals/Nat King Cole - Portrait of Jennie (Final Karaoke Lossless 4k).mp4",
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/finals/Nat King Cole - Portrait of Jennie (Final Karaoke Lossless 4k).mkv",
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/finals/Nat King Cole - Portrait of Jennie (Final Karaoke Lossy 4k).mp4",
+    "gs://nomadkaraoke-media/jobs/NOMAD-1632/finals/Nat King Cole - Portrait of Jennie (Final Karaoke Lossy 720p).mp4"
+  ]
+}
