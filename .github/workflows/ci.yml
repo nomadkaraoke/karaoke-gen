@@ -1158,22 +1158,29 @@ jobs:
         id: version_changed
         run: |
           NEW_VERSION="${{ steps.version_check.outputs.version }}"
-          SERVICE_URL=$(gcloud run services describe karaoke-backend \
-            --region us-central1 \
-            --format='value(status.url)' 2>/dev/null || echo "")
+          # Read the currently-serving version via the EDGE (api.nomadkaraoke.com),
+          # NOT the raw Cloud Run origin URL, and retry. The single un-retried
+          # origin probe returned empty on #987 (cold start on the scaled-to-zero
+          # prior revision and/or origin edge-auth on the detailed endpoint), so
+          # the gate fail-opened and ran the canary on a no-bump deploy — which
+          # then flake-failed and paged. The edge URL is warm (real traffic) and
+          # Cloudflare-fronted, so it returns the version reliably.
           CURRENT_VERSION=""
-          if [ -n "$SERVICE_URL" ]; then
-            CURRENT_VERSION=$(curl -sf --connect-timeout 5 --max-time 20 \
-              "$SERVICE_URL/api/health/detailed" | jq -r '.version // empty' 2>/dev/null || echo "")
-          fi
+          for attempt in 1 2 3 4; do
+            CURRENT_VERSION=$(curl -sf --connect-timeout 5 --max-time 25 \
+              "https://api.nomadkaraoke.com/api/health/detailed" | jq -r '.version // empty' 2>/dev/null || echo "")
+            [ -n "$CURRENT_VERSION" ] && break
+            echo "  version probe attempt $attempt/4 empty; retrying…"
+            sleep 5
+          done
           echo "Currently-serving version: ${CURRENT_VERSION:-<unknown>}"
           echo "New version:               $NEW_VERSION"
           if [ -n "$CURRENT_VERSION" ] && [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "↩️  Backend version unchanged — post-deploy canary will be SKIPPED."
           else
-            # Unknown current version (first deploy / unreachable) → run the
-            # canary to be safe rather than skip a potentially real change.
+            # Unknown current version (first deploy / unreachable after retries) →
+            # run the canary to be safe rather than skip a potentially real change.
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "✅ Backend version changed (or current unknown) — post-deploy canary will RUN."
           fi
@@ -2210,10 +2217,15 @@ jobs:
           echo "=== Post-deploy canary: happy path against production ==="
           echo "Deployed version: ${{ needs.deploy-backend.outputs.version }}"
           echo "Time: $(date)"
+          # --retries=2: the happy-path has inherently flaky UI waits (e.g. the
+          # review page's "proceed to instrumental" enable), and this canary
+          # PAGES on failure — a single flaky attempt must not cry wolf. Only a
+          # failure that survives 2 retries is treated as real.
           npx playwright test happy-path-real-user.spec.ts \
             --config=playwright.production.config.ts \
             --project=chromium \
             --reporter=list \
+            --retries=2 \
             --timeout=3600000 \
             2>&1 | tee test-output-canary.log
           # Capture Playwright's real exit code, not tee's (0). Matches
