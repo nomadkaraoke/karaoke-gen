@@ -1089,6 +1089,10 @@ jobs:
       id-token: write
     outputs:
       base_rebuilt: ${{ steps.check-base.outputs.needs_rebuild }}
+      version: ${{ steps.version_check.outputs.version }}
+      # R1: gates the post-deploy canary — "true" only when the backend version
+      # actually changed (see "Detect backend version change" step).
+      version_changed: ${{ steps.version_changed.outputs.changed }}
     env:
       REGISTRY: us-central1-docker.pkg.dev
       PROJECT_ID: nomadkaraoke
@@ -1143,6 +1147,36 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📋 Current version: $VERSION"
           echo "🚀 Deploying on every push to main"
+
+      # R1 gate — only run the post-deploy functional canary when the BACKEND
+      # version actually changed. A frontend-/docs-/infra-only merge still runs
+      # deploy-backend (image rebuild) but ships an identical version; a real
+      # karaoke generation is slow + resource-heavy, so we short-circuit the
+      # canary in that case. We compare the version we're about to ship against
+      # the version currently served by production.
+      - name: Detect backend version change
+        id: version_changed
+        run: |
+          NEW_VERSION="${{ steps.version_check.outputs.version }}"
+          SERVICE_URL=$(gcloud run services describe karaoke-backend \
+            --region us-central1 \
+            --format='value(status.url)' 2>/dev/null || echo "")
+          CURRENT_VERSION=""
+          if [ -n "$SERVICE_URL" ]; then
+            CURRENT_VERSION=$(curl -sf --connect-timeout 5 --max-time 20 \
+              "$SERVICE_URL/api/health/detailed" | jq -r '.version // empty' 2>/dev/null || echo "")
+          fi
+          echo "Currently-serving version: ${CURRENT_VERSION:-<unknown>}"
+          echo "New version:               $NEW_VERSION"
+          if [ -n "$CURRENT_VERSION" ] && [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "↩️  Backend version unchanged — post-deploy canary will be SKIPPED."
+          else
+            # Unknown current version (first deploy / unreachable) → run the
+            # canary to be safe rather than skip a potentially real change.
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Backend version changed (or current unknown) — post-deploy canary will RUN."
+          fi
 
       - name: Capture build metadata
         id: build-meta
@@ -1908,17 +1942,37 @@ jobs:
       # header — i.e. direct-to-origin traffic bypassing the edge (health/root
       # exempt). Cutover done 2026-07-20; validated via prod E2E with 0 blocked
       # legit callers. To disable, set EDGE_AUTH_MODE=off here and redeploy.
-      - name: Deploy to Cloud Run
+      # R3/R4 — traffic-gated service canary.
+      # Deploy the new revision with NO traffic and a `candidate` tag, smoke the
+      # tagged candidate URL, then migrate 100% traffic only on pass. If the
+      # smoke fails we simply don't migrate: traffic stays on the prior revision,
+      # so a bad revision serves 0% instead of 100% (auto-revert by default).
+      # NOTE: this protects only the Cloud Run *service*. The Cloud Run *jobs*
+      # updated below cannot traffic-split, so they still rely on R1's real-job
+      # post-deploy canary + the codified `scripts/rollback.sh` (R2).
+      - name: Deploy to Cloud Run (candidate revision, no traffic)
+        id: deploy_candidate
         run: |
           VERSION="${{ steps.version_check.outputs.version }}"
           IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:${{ github.sha }}"
 
-          echo "🚀 Deploying to Cloud Run..."
+          # Capture the revision currently serving traffic so we can name it in
+          # logs / the failure message (it's what we auto-revert to on a failed
+          # smoke — no action needed since we deploy --no-traffic).
+          PREV_REVISION=$(gcloud run services describe karaoke-backend \
+            --region us-central1 \
+            --format='value(status.traffic[0].revisionName)' 2>/dev/null || echo "")
+          echo "prev_revision=$PREV_REVISION" >> "$GITHUB_OUTPUT"
+
+          echo "🚀 Deploying candidate revision to Cloud Run (no traffic)..."
           echo "Image: $IMAGE"
           echo "Version: $VERSION"
+          echo "Previously-serving revision: ${PREV_REVISION:-<unknown>}"
 
           gcloud run deploy karaoke-backend \
             --image $IMAGE \
+            --no-traffic \
+            --tag candidate \
             --region us-central1 \
             --platform managed \
             --allow-unauthenticated \
@@ -1936,7 +1990,61 @@ jobs:
             --set-env-vars "GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GCS_BUCKET_NAME=karaoke-gen-storage-${{ env.PROJECT_ID }},FIRESTORE_COLLECTION=jobs,ENVIRONMENT=production,KARAOKE_GEN_VERSION=$VERSION,DEFAULT_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-Organized,DEFAULT_GDRIVE_FOLDER_ID=1laRKAyxo0v817SstfM5XkpbWiNKNAMSX,ENABLE_CLOUD_TASKS=true,CLOUD_RUN_SERVICE_URL=https://api.nomadkaraoke.com,GCP_REGION=us-central1,DEFAULT_ENABLE_YOUTUBE_UPLOAD=true,DEFAULT_BRAND_PREFIX=NOMAD,DEFAULT_PRIVATE_DROPBOX_PATH=/MediaUnsynced/Karaoke/Tracks-NonPublished,DEFAULT_PRIVATE_BRAND_PREFIX=NOMADNP,USE_GCE_ENCODING=true,USE_GCE_PREVIEW_ENCODING=true,ENABLE_PUSH_NOTIFICATIONS=true,USE_CLOUD_RUN_JOBS_FOR_VIDEO=true,EMAIL_PROVIDER=postmark,AUTO_CORRECT_MODEL=claude-opus-4-8,AUTO_CORRECT_COMPARE_MODELS=claude-opus-4-8;gemini-3.1-pro-preview,AUTO_CORRECT_PROACTIVE_ENABLED=true,AUTO_APPROVAL_BACKING_KEEP_ENABLED=true,COMMUNITY_DAILY_PICK_ENABLED=true,EDGE_AUTH_MODE=enforce,COMMIT_SHA=${{ steps.build-meta.outputs.sha }},PR_NUMBER=${{ steps.build-meta.outputs.pr_number }},PR_TITLE=${{ steps.build-meta.outputs.pr_title }}" \
             --set-secrets "ANTHROPIC_API_KEY=anthropic-api-key:latest,AUDIOSHAKE_API_TOKEN=audioshake-api-key:latest,GENIUS_API_TOKEN=genius-api-key:latest,SPOTIFY_COOKIE_SP_DC=spotify-cookie:latest,RAPIDAPI_KEY=rapidapi-key:latest,DEFAULT_DISCORD_WEBHOOK_URL=discord-releases-webhook:latest,ADMIN_TOKENS=admin-tokens:latest,RED_API_KEY=red-api-key:latest,RED_API_URL=red-api-url:latest,OPS_API_KEY=ops-api-key:latest,OPS_API_URL=ops-api-url:latest,FLACFETCH_API_URL=flacfetch-api-url:latest,FLACFETCH_API_KEY=flacfetch-api-key:latest,POSTMARK_SERVER_TOKEN=postmark-server-token:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,LANGFUSE_PUBLIC_KEY=langfuse-public-key:latest,LANGFUSE_SECRET_KEY=langfuse-secret-key:latest,LANGFUSE_HOST=langfuse-host:latest,ENCODING_WORKER_URL=encoding-worker-url:latest,ENCODING_WORKER_API_KEY=encoding-worker-api-key:latest,ENCODING_WORKER_FALLBACK_VMS=encoding-worker-fallback-vms:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,E2E_BYPASS_KEY=e2e-bypass-key:latest,GDRIVE_VALIDATOR_URL=gdrive-validator-url:latest,EDGE_ORIGIN_SECRET=edge-origin-secret:latest"
 
+      # R3/R4 — smoke the tagged candidate revision BEFORE it serves any traffic.
+      - name: Smoke candidate revision
+        run: |
+          EXPECTED_VERSION="${{ steps.version_check.outputs.version }}"
+
+          # The `candidate` tag gives the new (0%-traffic) revision its own URL.
+          CANDIDATE_URL=$(gcloud run services describe karaoke-backend \
+            --region us-central1 \
+            --format='json' | jq -r '.status.traffic[] | select(.tag=="candidate") | .url' | head -1)
+
+          if [ -z "$CANDIDATE_URL" ] || [ "$CANDIDATE_URL" = "null" ]; then
+            echo "❌ Could not resolve the candidate revision URL — aborting before traffic migration."
+            exit 1
+          fi
+          echo "Candidate URL: $CANDIDATE_URL"
+
+          # Health check on the candidate only (traffic still on prior revision).
+          curl -f --connect-timeout 5 --max-time 30 "$CANDIDATE_URL/api/health" || {
+            echo "❌ Candidate health check failed — NOT migrating traffic (prior revision keeps serving)."
+            exit 1
+          }
+
+          # Version check with retries (new revision may take a moment to be routable).
+          MAX_RETRIES=6
+          RETRY_DELAY=10
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Checking candidate version (attempt $i/$MAX_RETRIES)..."
+            CAND_VERSION=$(curl -sf --connect-timeout 5 --max-time 30 "$CANDIDATE_URL/api/health/detailed" | jq -r '.version // empty')
+            if [ "$CAND_VERSION" = "$EXPECTED_VERSION" ]; then
+              echo "✅ Candidate serving expected version: $CAND_VERSION"
+              break
+            fi
+            echo "⚠️  Candidate version: deployed=$CAND_VERSION expected=$EXPECTED_VERSION"
+            if [ $i -lt $MAX_RETRIES ]; then
+              sleep $RETRY_DELAY
+            else
+              echo "❌ Candidate never reported the expected version — NOT migrating traffic."
+              echo "   Prior revision '${{ steps.deploy_candidate.outputs.prev_revision }}' keeps serving 100%."
+              exit 1
+            fi
+          done
+
+      - name: Migrate 100% traffic to candidate
+        run: |
+          echo "✅ Candidate passed smoke — migrating 100% traffic to the new revision."
+          gcloud run services update-traffic karaoke-backend \
+            --region us-central1 \
+            --to-latest
+
       - name: Update Cloud Run Jobs with new image
+        # NOTE: Cloud Run *Jobs* cannot traffic-split or canary — this is an
+        # image-only, all-or-nothing update picked up on each job's next
+        # invocation. There is no per-revision smoke here; the jobs rely on R1's
+        # post-deploy real-job canary and the codified `scripts/rollback.sh` (R2)
+        # for recovery if a bad image reaches them.
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:${{ github.sha }}"
           GPU_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:${{ github.sha }}"
@@ -2025,6 +2133,129 @@ jobs:
           echo ""
           echo "📊 Built on self-hosted GCP runner (200GB SSD, no disk space issues)"
           echo "   Runner: gcp-runner with 4 vCPU, 16GB RAM"
+
+  # ============================================
+  # R1 — POST-DEPLOY FUNCTIONAL CANARY (version-change-gated)
+  # Runs the real production happy-path (admin-credit variant, no Stripe) after
+  # a backend deploy — but ONLY when the backend version actually changed
+  # (deploy-backend.outputs.version_changed == 'true'). A frontend-/docs-/
+  # infra-only merge ships an identical backend version and short-circuits here,
+  # so we don't burn encode-VM time + a real Drive/YouTube publish on a no-op.
+  # On failure: the workflow fails loudly (Discord) — this is where an operator
+  # invokes `scripts/rollback.sh` (R2) to revert the service + jobs.
+  # ============================================
+  deploy-verify:
+    name: "Deploy - Post-Deploy Canary (Happy Path)"
+    needs: [deploy-backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: >-
+      github.ref == 'refs/heads/main' && github.event_name == 'push' &&
+      needs.deploy-backend.result == 'success' &&
+      needs.deploy-backend.outputs.version_changed == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Create test-results directory
+        working-directory: frontend
+        run: mkdir -p test-results
+
+      - name: Ensure testmail.app domain is allowlisted
+        run: |
+          curl -sf -X POST \
+            "https://api.nomadkaraoke.com/api/admin/rate-limits/blocklists/allowlisted-domains" \
+            -H "X-Admin-Token: ${{ secrets.E2E_ADMIN_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"domain": "inbox.testmail.app"}' || echo "Warning: allowlist may already exist"
+
+      # Admin-credit variant: impersonate the E2E test runner (which holds
+      # admin-granted credits) instead of going through Stripe. Same token-refresh
+      # pattern as e2e-daily.yml's use_test_token path.
+      - name: Refresh E2E session token
+        id: refresh_token
+        run: |
+          RESPONSE=$(curl -sf --connect-timeout 5 --max-time 30 -X POST \
+            "https://api.nomadkaraoke.com/api/admin/users/e2e-test-runner@nomadkaraoke.com/impersonate" \
+            -H "X-Admin-Token: ${{ secrets.E2E_ADMIN_TOKEN }}" \
+            -H "Content-Type: application/json")
+          TOKEN=$(echo "$RESPONSE" | python3 -c 'import json,sys; print(json.load(sys.stdin)["session_token"])')
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Run post-deploy happy-path canary
+        id: run_test
+        working-directory: frontend
+        env:
+          TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
+          TESTMAIL_NAMESPACE: ${{ secrets.TESTMAIL_NAMESPACE }}
+          E2E_TEST_TOKEN: ${{ steps.refresh_token.outputs.token }}
+          E2E_ADMIN_TOKEN: ${{ secrets.E2E_ADMIN_TOKEN }}
+          E2E_BYPASS_KEY: ${{ secrets.E2E_BYPASS_KEY }}
+        run: |
+          echo "=== Post-deploy canary: happy path against production ==="
+          echo "Deployed version: ${{ needs.deploy-backend.outputs.version }}"
+          echo "Time: $(date)"
+          npx playwright test happy-path-real-user.spec.ts \
+            --config=playwright.production.config.ts \
+            --project=chromium \
+            --reporter=list \
+            --timeout=3600000 \
+            2>&1 | tee test-output-canary.log
+          # Capture Playwright's real exit code, not tee's (0). Matches
+          # e2e-daily.yml's rationale (grepping the log is fragile).
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Check canary result
+        id: test_result
+        run: |
+          if [ "${{ steps.run_test.outputs.exit_code }}" = "0" ]; then
+            echo "result=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload canary artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-verify-canary-${{ github.run_number }}
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+            frontend/test-output-canary.log
+          retention-days: 30
+
+      - name: Discord notification (canary failed)
+        if: steps.test_result.outputs.result == 'failure'
+        run: |
+          curl -s -H "Content-Type: application/json" \
+            -d "{\"embeds\": [{\"title\": \"🚨 Post-deploy canary FAILED (v${{ needs.deploy-backend.outputs.version }})\", \"description\": \"The production happy-path failed AFTER deploying v${{ needs.deploy-backend.outputs.version }}. The service already migrated 100% traffic to the new revision — consider rolling back with scripts/rollback.sh.\n\n**Run:** #${{ github.run_number }}\n**Details:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\", \"color\": 15158332}]}" \
+            "${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}" || echo "Discord notify failed (non-fatal)"
+
+      - name: Fail if canary failed
+        if: steps.test_result.outputs.result == 'failure'
+        run: |
+          echo "::error::Post-deploy canary failed for v${{ needs.deploy-backend.outputs.version }}."
+          echo "Roll back now with:"
+          echo "  scripts/rollback.sh --list   # find the previous good revision + version"
+          echo "  scripts/rollback.sh --to-revision <PREV_REV> --image-version <PREV_VERSION>"
+          exit 1
 
   # ============================================
   # PROPAGATE BASE IMAGE TO ALL RUNNERS

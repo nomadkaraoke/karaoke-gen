@@ -4,6 +4,56 @@ Operational runbooks for known production issues.
 
 ---
 
+## Fast rollback (bad backend deploy)
+
+**When to use:** a merge-to-main deploy shipped a bad backend revision — the
+post-deploy canary failed, the error monitor/Discord is alerting, or you can see
+failing jobs/5xx in production — and you want to get back to the last known-good
+state *now* rather than wait for a forward fix to build and deploy.
+
+**What it rolls back:**
+- the `karaoke-backend` Cloud Run **service** (shifts 100% traffic to a previous
+  revision — instant, no rebuild), and
+- the three Cloud Run **jobs** that share the backend image
+  (`video-encoding-job`, `lyrics-transcription-job`, `audio-separation-job`) by
+  re-pinning them to a previous image tag. Cloud Run Jobs can't traffic-split, so
+  they are re-pinned; the old image takes effect on each job's **next** invocation
+  (in-flight runs are unaffected).
+
+**Runbook:**
+```bash
+# 1. See what known-good targets exist (service revisions + image tags).
+scripts/rollback.sh --list
+
+# 2. Preview the exact gcloud commands without running them.
+scripts/rollback.sh \
+  --to-revision <PREVIOUS_GOOD_REVISION> \
+  --image-version <PREVIOUS_GOOD_VERSION e.g. v0.222.2> \
+  --dry-run
+
+# 3. Execute. Roll service + jobs together (typical full rollback):
+scripts/rollback.sh \
+  --to-revision karaoke-backend-00XYZ-abc \
+  --image-version v0.222.2
+
+# Scope to just one surface if that's all that's bad:
+scripts/rollback.sh --to-revision karaoke-backend-00XYZ-abc --service-only
+scripts/rollback.sh --image-version v0.222.2 --jobs-only
+```
+
+**Notes:**
+- The script requires an explicit target — it never guesses a revision/version.
+- Images are addressable by version tag (`vX.Y.Z`) or git SHA — both are pushed
+  by CI (`.github/workflows/ci.yml` ~`:1809`).
+- After rollback, confirm the serving version:
+  `curl -s https://api.nomadkaraoke.com/api/health/detailed | jq .version`.
+- This is the manual counterpart to CI's automatic service canary: a failed
+  post-deploy canary leaves the *service* on the prior revision automatically
+  (the new revision is deployed `--no-traffic`), but the **jobs** have no
+  auto-rollback — if a bad deploy reached the jobs, re-pin them with this script.
+
+---
+
 ## CI "Deploy - Publish to PyPI" fails: "Project size too large"
 
 **Cause:** PyPI caps total project size at 10 GB. Each `karaoke-gen` release is a

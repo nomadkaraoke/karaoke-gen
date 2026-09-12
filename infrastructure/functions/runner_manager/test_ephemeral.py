@@ -231,6 +231,70 @@ class TestCreateEphemeralRunner:
         # Should NOT have retried in fallback zone
         assert compute_client.insert.call_count == 1
 
+    def test_failed_insert_operation_raises_not_silently_strands(self):
+        # Fire-and-forget regression guard: the API accepted the insert but the
+        # operation then FAILED. This must surface (raise) so the webhook
+        # redelivers, not silently strand the queued job for 15 min.
+        ep = _fresh_module()
+        import pytest
+
+        op = MagicMock(name="op")
+        op.name = "operation-bad"
+        op.result.side_effect = RuntimeError("INTERNAL_ERROR creating instance")
+
+        compute_client = MagicMock()
+        compute_client.insert.return_value = op
+        ep._compute_client = compute_client
+
+        with patch.object(ep, "mint_jit_config", return_value="JIT_TOKEN"):
+            with pytest.raises(Exception, match="INTERNAL_ERROR"):
+                ep.create_ephemeral_runner(["self-hosted", "linux", "gcp"], "ghp_test")
+        # The insert op was confirmed (result() awaited).
+        op.result.assert_called_once()
+
+    def test_insert_operation_stockout_falls_back_to_secondary_zone(self):
+        # Stockout can surface on the operation (not the initial insert call).
+        # Confirming the op lets us still fall back to the secondary zone.
+        ep = _fresh_module()
+
+        primary_op = MagicMock(name="primary_op")
+        primary_op.name = "operation-primary"
+        primary_op.result.side_effect = Exception("ZONE_RESOURCE_POOL_EXHAUSTED")
+
+        fallback_op = MagicMock(name="fallback_op")
+        fallback_op.name = "operation-fallback"
+
+        compute_client = MagicMock()
+        compute_client.insert.side_effect = [primary_op, fallback_op]
+        ep._compute_client = compute_client
+
+        with patch.object(ep, "mint_jit_config", return_value="JIT_TOKEN"):
+            result = ep.create_ephemeral_runner(["self-hosted", "gpu"], "ghp_test")
+
+        assert result["zone"] == "us-east4-c"
+        assert compute_client.insert.call_count == 2
+
+    def test_insert_confirm_timeout_is_not_a_failure(self):
+        # A polling timeout means "still provisioning" — the VM will register on
+        # boot; treating it as a failure would wrongly reject a good launch.
+        import concurrent.futures
+
+        ep = _fresh_module()
+
+        op = MagicMock(name="op")
+        op.name = "operation-slow"
+        op.result.side_effect = concurrent.futures.TimeoutError()
+
+        compute_client = MagicMock()
+        compute_client.insert.return_value = op
+        ep._compute_client = compute_client
+
+        with patch.object(ep, "mint_jit_config", return_value="JIT_TOKEN"):
+            result = ep.create_ephemeral_runner(["self-hosted", "linux", "gcp"], "ghp_test")
+
+        assert result["family"] == "general"
+        assert result["zone"] == "us-central1-a"
+
 
 class TestSchedulingPerFamily:
     """e2 instances reject on_host_maintenance=TERMINATE unless preemptible.
