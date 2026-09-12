@@ -12,6 +12,7 @@ This module is invoked from main.py when RUNNER_MODE=ephemeral.
 from __future__ import annotations
 
 import base64
+import concurrent.futures
 import json
 import os
 import urllib.error
@@ -36,6 +37,13 @@ RUNNER_SERVICE_ACCOUNT = os.environ.get(
 # Orphan cleanup thresholds
 ORPHAN_GRACE_MINUTES = int(os.environ.get("ORPHAN_GRACE_MINUTES", "30"))
 MAX_VM_LIFETIME_MINUTES = int(os.environ.get("MAX_VM_LIFETIME_MINUTES", "120"))
+
+# Max seconds to block confirming the VM *insert operation* succeeded (NOT VM
+# boot — just that the API accepted and fulfilled instance creation). A timeout
+# here means "still provisioning" and is treated as success; only an explicit
+# operation error is a failure. Kept well under the dispatcher's function
+# timeout so we never get killed mid-wait.
+INSERT_CONFIRM_TIMEOUT_SECONDS = int(os.environ.get("INSERT_CONFIRM_TIMEOUT_SECONDS", "90"))
 
 VM_PURPOSE_LABEL = "gha-ephemeral-runner"
 
@@ -397,6 +405,41 @@ def _is_zone_exhausted(exc: Exception) -> bool:
     return any(tok in msg for tok in _ZONE_EXHAUSTED_TOKENS)
 
 
+def _confirm_insert_succeeded(operation, *, zone: str, runner_name: str) -> None:
+    """Block briefly on the VM insert operation and raise if it actually failed.
+
+    Previously the dispatcher fired the insert and returned immediately
+    ("fire and forget"). The failure mode: the API *accepts* the insert but the
+    operation then fails (zone stockout surfaced on the operation rather than
+    the initial call, quota, transient INTERNAL_ERROR, …). With fire-and-forget
+    that left the queued CI job with no runner and NO signal until the 15-min
+    orphan sweep / GitHub webhook redelivery — the "stuck queued" pain.
+
+    Confirming the operation lets the caller:
+      * fall back to the secondary zone on a stockout that shows up late, and
+      * re-raise a genuine failure so the webhook returns non-200 and GitHub
+        redelivers the ``workflow_job.queued`` event promptly.
+
+    ``ExtendedOperation.result()`` blocks until the zonal insert operation
+    resolves and raises on error. A polling *timeout* is NOT a failure — the
+    instance is still being created and will register once it boots — so we
+    swallow it and let the VM come up asynchronously.
+    """
+    result_fn = getattr(operation, "result", None)
+    if not callable(result_fn):
+        # Older compute client without ExtendedOperation.result(); nothing to
+        # wait on — preserve prior fire-and-forget behavior rather than break.
+        return
+    try:
+        operation.result(timeout=INSERT_CONFIRM_TIMEOUT_SECONDS)
+    except concurrent.futures.TimeoutError:
+        print(
+            f"Insert op for {runner_name} in {zone} still provisioning after "
+            f"{INSERT_CONFIRM_TIMEOUT_SECONDS}s — continuing; the VM will "
+            f"register once it finishes booting."
+        )
+
+
 def create_ephemeral_runner(labels: Iterable[str], pat: str) -> dict:
     """Mint a JIT config and launch a fresh GCE VM to run a single CI job.
 
@@ -438,8 +481,12 @@ def create_ephemeral_runner(labels: Iterable[str], pat: str) -> dict:
                 zone=zone,
                 instance_resource=instance,
             )
-            # Don't wait for the operation to fully resolve — fire and forget,
-            # the VM will boot in the background and pick up its queued job.
+            # Confirm the insert operation actually succeeded instead of
+            # fire-and-forget. A failed insert that surfaces on the operation
+            # (late stockout, quota, transient error) would otherwise silently
+            # strand the queued job; raising here triggers the zone-fallback
+            # below or webhook redelivery. VM *boot* still happens async.
+            _confirm_insert_succeeded(operation, zone=zone, runner_name=runner_name)
             print(
                 f"Dispatched ephemeral runner: name={runner_name} "
                 f"family={family.name} zone={zone} image={image_url} "
