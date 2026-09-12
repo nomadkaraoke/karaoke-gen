@@ -720,6 +720,49 @@ class VideoWorkerOrchestrator:
                 })
                 self.job_log.info("Cleared outputs_deleted_at flag (job was re-processed)")
 
+        # Incident-hardening G1 (SHADOW): before a public release is considered
+        # done, assert the outputs it *should* have shipped (lossy 4K + 720p, plus
+        # CDG when enabled) actually landed on the public GDrive share. This closes
+        # the residual silent-partial hole — e.g. a per-file download failure in
+        # _download_gce_encoded_files clears one result attr, so the upload skips a
+        # None path and publishes a partial release without the encode() guard ever
+        # tripping (exactly the NOMAD-1632 class). Shadow-first: log + alert only,
+        # never fail the job, until a clean shadow window justifies enforcing.
+        self._check_publish_completeness()
+
+    def _check_publish_completeness(self):
+        """SHADOW check that a public-share release shipped all expected outputs."""
+        try:
+            from backend.services.publish_completeness import compute_publish_shortfall
+
+            missing = compute_publish_shortfall(self.config, self.result)
+            if not missing:
+                return
+
+            missing_str = ", ".join(missing)
+            self.job_log.error(
+                f"PUBLISH_COMPLETENESS shortfall (SHADOW) for job {self.config.job_id}: "
+                f"public release is missing {missing_str}. gdrive_files="
+                f"{self.result.gdrive_files}"
+            )
+            try:
+                from backend.services.ops_alerts import send_ops_alert
+
+                brand = self.result.brand_code or "(no brand)"
+                track = f"{self.config.artist} - {self.config.title}"
+                send_ops_alert(
+                    "🟠 **Publish completeness SHADOW** — partial public release detected\n"
+                    f"**Job:** `{self.config.job_id}`  ({brand})\n"
+                    f"**Track:** {track}\n"
+                    f"**Missing:** {missing_str}\n"
+                    "_Shadow mode: the job was NOT failed. Investigate the "
+                    "encode→publish path (silent-partial class, NOMAD-1632)._"
+                )
+            except Exception as alert_exc:  # noqa: BLE001
+                self.job_log.warning(f"Publish-completeness alert did not send: {alert_exc}")
+        except Exception as e:  # noqa: BLE001 - shadow check must never break distribution
+            self.job_log.warning(f"Publish-completeness check skipped (non-fatal): {e}")
+
     async def _upload_to_youtube(self):
         """Upload video to YouTube."""
         self.job_log.info("Uploading to YouTube")
@@ -1047,14 +1090,22 @@ class VideoWorkerOrchestrator:
         try:
             from backend.services.worker_service import get_worker_service
             worker_service = get_worker_service()
-            success = await worker_service.schedule_gdrive_validation()
+            # Name the just-published track so the validator can check *its own*
+            # completeness same-run (incident-hardening D2), not just global gaps.
+            # Only require CDG when this job actually produced one (video-only /
+            # lyric-less releases legitimately ship no CDG).
+            brand_code = self.result.brand_code
+            expect_cdg = bool(self.result.final_karaoke_cdg_zip)
+            success = await worker_service.schedule_gdrive_validation(
+                brand_code=brand_code, expect_cdg=expect_cdg
+            )
             if success:
                 self.job_log.info("Scheduled delayed GDrive validation (5 min)")
             else:
                 # Fallback: trigger immediately if scheduling failed
                 self.job_log.warning("Cloud Tasks scheduling failed, triggering validation immediately")
                 from backend.services.gdrive_validator_client import trigger_gdrive_validation
-                trigger_gdrive_validation()
+                trigger_gdrive_validation(brand_code=brand_code, expect_cdg=expect_cdg)
         except Exception as e:
             self.job_log.warning(f"GDrive validation trigger failed (non-fatal): {e}")
             # Never fail the pipeline for validation

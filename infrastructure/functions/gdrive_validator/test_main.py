@@ -30,6 +30,7 @@ from main import (  # noqa: E402
     get_sequence_number,
     expand_gaps,
     has_issues,
+    check_track_completeness,
 )
 
 
@@ -81,6 +82,66 @@ class TestValidateFilenameFormat:
 
     def test_ignored_file_passes_keep(self):
         assert validate_filename_format(".gitkeep")
+
+
+class TestCheckTrackCompleteness:
+    """Incident-hardening D2: same-run per-brand-code completeness."""
+
+    def _folders(self, present):
+        """Build files_by_folder where `present` is a set of folder names that
+        contain NOMAD-1632 (all folders also carry an unrelated track)."""
+        out = {}
+        for folder, ext in (("MP4", "mp4"), ("MP4-720p", "mp4"), ("CDG", "zip")):
+            files = [f"NOMAD-1600 - Other - Song.{ext}"]
+            if folder in present:
+                files.append(f"NOMAD-1632 - Artist - Title.{ext}")
+            out[folder] = files
+        return out
+
+    def test_present_everywhere_no_missing(self):
+        files = self._folders({"MP4", "MP4-720p", "CDG"})
+        assert check_track_completeness(files, "NOMAD-1632", expect_cdg=True) == []
+
+    def test_missing_from_720p_is_the_nomad1632_case(self):
+        files = self._folders({"MP4", "CDG"})  # 720p missing — the real incident
+        assert check_track_completeness(files, "NOMAD-1632", expect_cdg=True) == ["MP4-720p"]
+
+    def test_missing_from_multiple(self):
+        files = self._folders({"MP4"})
+        assert check_track_completeness(files, "NOMAD-1632", expect_cdg=True) == ["MP4-720p", "CDG"]
+
+    def test_cdg_not_required_by_default(self):
+        """Video-only release (no CDG produced) must NOT report CDG missing."""
+        files = self._folders({"MP4", "MP4-720p"})  # no CDG
+        assert check_track_completeness(files, "NOMAD-1632") == []
+        assert check_track_completeness(files, "NOMAD-1632", expect_cdg=False) == []
+
+    def test_missing_cdg_only_when_expected(self):
+        files = self._folders({"MP4", "MP4-720p"})  # no CDG
+        assert check_track_completeness(files, "NOMAD-1632", expect_cdg=True) == ["CDG"]
+
+    def test_accepts_bare_number(self):
+        files = self._folders({"MP4", "MP4-720p", "CDG"})
+        assert check_track_completeness(files, "1632", expect_cdg=True) == []
+
+    def test_accepts_lowercase(self):
+        files = self._folders({"MP4", "CDG"})
+        assert check_track_completeness(files, "nomad-1632", expect_cdg=True) == ["MP4-720p"]
+
+    def test_prefix_not_substring(self):
+        # NOMAD-163 must NOT satisfy a NOMAD-1632 check (prefix includes trailing space)
+        files = {
+            "MP4": ["NOMAD-1632 - A - B.mp4"],
+            "MP4-720p": ["NOMAD-1632 - A - B.mp4"],
+            "CDG": ["NOMAD-1632 - A - B.zip"],
+        }
+        assert check_track_completeness(files, "NOMAD-163", expect_cdg=True) == ["MP4", "MP4-720p", "CDG"]
+
+    def test_has_issues_flags_missing_for_track(self):
+        assert has_issues({
+            'duplicates': {}, 'invalid_filenames': {}, 'gaps': {},
+            'missing_for_track': {'NOMAD-1632': ['MP4-720p']},
+        })
 
 
 class TestGetSequenceNumber:

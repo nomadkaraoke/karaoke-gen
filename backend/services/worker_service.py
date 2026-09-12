@@ -807,7 +807,9 @@ class WorkerService:
 
     async def schedule_gdrive_validation(
         self,
-        delay_seconds: int = GDRIVE_VALIDATION_DELAY_SECONDS
+        delay_seconds: int = GDRIVE_VALIDATION_DELAY_SECONDS,
+        brand_code: Optional[str] = None,
+        expect_cdg: bool = False,
     ) -> bool:
         """
         Schedule a delayed GDrive validation check.
@@ -817,6 +819,9 @@ class WorkerService:
 
         Args:
             delay_seconds: Delay before executing the validation (default: 5 minutes)
+            brand_code: Optional brand code of the just-published track. When set,
+                the validator additionally checks this track is present in all
+                expected folders same-run (incident-hardening D2).
 
         Returns:
             True if task was scheduled successfully, False otherwise
@@ -864,13 +869,22 @@ class WorkerService:
 
             dispatch_deadline_seconds = WORKER_DISPATCH_DEADLINES.get("gdrive-validation", 120)
 
+            # Carry the brand code so the validator can check this track's own
+            # completeness same-run (incident-hardening D2). Absent → "{}".
+            # expect_cdg tells the validator whether to require the CDG folder.
+            body_bytes = b"{}"
+            if brand_code:
+                body_bytes = json.dumps(
+                    {"brand_code": brand_code, "expect_cdg": expect_cdg}
+                ).encode("utf-8")
+
             # Build task payload
             task = {
                 "http_request": {
                     "http_method": tasks_v2.HttpMethod.POST,
                     "url": f"{self._base_url}/api/internal/trigger-gdrive-validation",
                     "headers": headers,
-                    "body": b"{}",
+                    "body": body_bytes,
                     "oidc_token": {
                         "service_account_email": f"karaoke-backend@{project}.iam.gserviceaccount.com",
                     },

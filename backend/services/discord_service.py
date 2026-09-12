@@ -104,7 +104,11 @@ class DiscordNotificationService:
             return True
 
         self.logger.info(f"Posting message to Discord webhook...")
-        data = {"content": message}
+        # Disable all mentions: message content can include user-supplied text
+        # (artist/title in ops alerts), so an embedded @everyone / <@id> must not
+        # trigger a Discord ping. (CWE-74 — output injection into a downstream
+        # component.)
+        data = {"content": message, "allowed_mentions": {"parse": []}}
         response = requests.post(url, json=data, timeout=30)
         response.raise_for_status()
         self.logger.info("Message posted to Discord successfully")

@@ -268,12 +268,57 @@ def validate_files(files_by_folder: dict[str, list[str]]) -> dict:
     return issues
 
 
+# Folders every public release must appear in. MP4 (lossy 4K) and MP4-720p are
+# always produced; CDG is conditional (a lyric-less / video-only release ships no
+# CDG package), so it is only required when the caller says the job produced one.
+BASE_TRACK_FOLDERS = ('MP4', 'MP4-720p')
+
+
+def check_track_completeness(
+    files_by_folder: dict[str, list[str]],
+    brand_code: str,
+    expect_cdg: bool = False,
+) -> list[str]:
+    """Return the folders a specific brand code is MISSING from.
+
+    Incident-hardening D2: when the post-job trigger names the just-published
+    ``brand_code`` (e.g. "NOMAD-1632"), verify that track is present in every
+    expected folder — *independent of the global-max gap logic*, which only
+    notices a missing latest track once a later track raises the max. This fires
+    same-run (5 min post-job) instead of up to 24h later.
+
+    MP4 and MP4-720p are always required. CDG is required only when
+    ``expect_cdg`` is True (the caller passes this when the job actually produced
+    a CDG package); otherwise a legitimate video-only release would false-fire.
+
+    Matching is by the ``NOMAD-#### `` filename prefix, so it ignores the
+    (differing) artist/title tail.
+    """
+    # Normalize "1632" / "NOMAD-1632" / "nomad-1632" to the "NOMAD-1632 " prefix.
+    code = str(brand_code).strip().upper()
+    if not code.startswith("NOMAD-"):
+        code = f"NOMAD-{code}"
+    prefix = f"{code} "
+
+    expected_folders = list(BASE_TRACK_FOLDERS)
+    if expect_cdg:
+        expected_folders.append('CDG')
+
+    missing_from = []
+    for folder in expected_folders:
+        files = files_by_folder.get(folder, [])
+        if not any(f.startswith(prefix) for f in files):
+            missing_from.append(folder)
+    return missing_from
+
+
 def has_issues(issues: dict) -> bool:
     """Check if there are any validation issues."""
     return (
-        bool(issues['duplicates']) or 
+        bool(issues['duplicates']) or
         bool(issues['invalid_filenames']) or
-        bool(issues['gaps'])
+        bool(issues['gaps']) or
+        bool(issues.get('missing_for_track'))
     )
 
 
@@ -283,7 +328,16 @@ def format_notification(issues: dict) -> tuple[str, str]:
     
     lines = []
     issue_count = 0
-    
+
+    # Missing-for-track (same-run, per just-published brand code) — most urgent,
+    # list first so a silent partial publish is the headline.
+    if issues.get('missing_for_track'):
+        lines.append("🚨 PARTIAL PUBLISH (just-published track missing from folder(s)):")
+        for code, folders in issues['missing_for_track'].items():
+            issue_count += 1
+            lines.append(f"  • {code}: missing from {', '.join(folders)}")
+        lines.append("")
+
     # Duplicates
     if issues['duplicates']:
         lines.append("DUPLICATES:")
@@ -423,24 +477,51 @@ def validate_gdrive(request):
     Returns JSON with validation results.
     """
     logger.info("Starting Google Drive validation...")
-    
+
+    # Incident-hardening D2: the post-job trigger may name the just-published
+    # track so we can verify *its own* completeness same-run. Accept brand_code
+    # from the JSON body or a query param; absent → full-scan behaviour as before.
+    brand_code = None
+    expect_cdg = False
+    try:
+        body = request.get_json(silent=True) if hasattr(request, "get_json") else None
+        if isinstance(body, dict):
+            brand_code = body.get("brand_code")
+            expect_cdg = bool(body.get("expect_cdg", False))
+        if not brand_code and hasattr(request, "args"):
+            brand_code = request.args.get("brand_code")
+            if request.args.get("expect_cdg") is not None:
+                expect_cdg = request.args.get("expect_cdg") in ("1", "true", "True")
+    except Exception:  # noqa: BLE001 - request parsing must not break validation
+        brand_code = None
+        expect_cdg = False
+
     try:
         # Get Drive service
         service = get_drive_service()
-        
+
         # List all files
         files_by_folder = list_folder_contents(service, GDRIVE_FOLDER_ID)
-        
+
         if not files_by_folder:
             logger.warning("No folders found in Google Drive")
             return json.dumps({
                 "status": "warning",
                 "message": "No folders found in Google Drive folder"
             }), 200, {"Content-Type": "application/json"}
-        
+
         # Validate files
         issues = validate_files(files_by_folder)
-        
+
+        # Targeted same-run completeness for the just-published track.
+        if brand_code:
+            missing_from = check_track_completeness(files_by_folder, brand_code, expect_cdg=expect_cdg)
+            if missing_from:
+                issues['missing_for_track'] = {str(brand_code): missing_from}
+                logger.warning(
+                    "Track %s missing from folder(s): %s", brand_code, missing_from
+                )
+
         # Check if there are any issues
         if has_issues(issues):
             logger.warning(f"Validation issues found: {issues}")

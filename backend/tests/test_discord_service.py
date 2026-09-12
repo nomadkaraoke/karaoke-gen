@@ -98,7 +98,7 @@ class TestDiscordNotificationServicePostMessage:
         assert result is True
         mock_post.assert_called_once_with(
             url,
-            json={"content": "Test message"},
+            json={"content": "Test message", "allowed_mentions": {"parse": []}},
             timeout=30
         )
 
@@ -117,7 +117,7 @@ class TestDiscordNotificationServicePostMessage:
         assert result is True
         mock_post.assert_called_once_with(
             custom_url,
-            json={"content": "Test message"},
+            json={"content": "Test message", "allowed_mentions": {"parse": []}},
             timeout=30
         )
 

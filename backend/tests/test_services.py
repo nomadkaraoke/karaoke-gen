@@ -825,12 +825,56 @@ class TestFirestoreService:
             
             assert job is None
     
+    def test_failed_status_triggers_failure_alert(self):
+        """Incident-hardening D1: a transition to FAILED fires the failure alert."""
+        with patch('backend.services.firestore_service.firestore') as mock_firestore:
+            mock_client = MagicMock()
+            mock_firestore.Client.return_value = mock_client
+            mock_collection = MagicMock()
+            mock_client.collection.return_value = mock_collection
+            mock_collection.document.return_value = MagicMock()
+
+            firestore_service = FirestoreService()
+            with patch('backend.services.ops_alerts.notify_job_failed') as mock_notify:
+                firestore_service.update_job_status("job1", JobStatus.FAILED, message="boom")
+                mock_notify.assert_called_once()
+                # Reuses the caller's client + collection (no second Firestore client).
+                _, kwargs = mock_notify.call_args
+                assert kwargs["job_id"] == "job1"
+                assert kwargs["db"] is mock_client
+
+    def test_non_failed_status_does_not_alert(self):
+        """A normal status transition must NOT fire the failure alert."""
+        with patch('backend.services.firestore_service.firestore') as mock_firestore:
+            mock_client = MagicMock()
+            mock_firestore.Client.return_value = mock_client
+            mock_client.collection.return_value.document.return_value = MagicMock()
+
+            firestore_service = FirestoreService()
+            with patch('backend.services.ops_alerts.notify_job_failed') as mock_notify:
+                firestore_service.update_job_status("job1", JobStatus.COMPLETE, message="done")
+                mock_notify.assert_not_called()
+
+    def test_failure_alert_error_does_not_break_status_write(self):
+        """If the alerter raises, the status write must still succeed (best-effort)."""
+        with patch('backend.services.firestore_service.firestore') as mock_firestore:
+            mock_client = MagicMock()
+            mock_firestore.Client.return_value = mock_client
+            mock_doc_ref = MagicMock()
+            mock_client.collection.return_value.document.return_value = mock_doc_ref
+
+            firestore_service = FirestoreService()
+            with patch('backend.services.ops_alerts.notify_job_failed', side_effect=RuntimeError("x")):
+                # Should not raise.
+                firestore_service.update_job_status("job1", JobStatus.FAILED, message="boom")
+            mock_doc_ref.update.assert_called_once()
+
     def test_update_job(self):
         """Test updating a job in Firestore."""
         with patch('backend.services.firestore_service.firestore') as mock_firestore:
             mock_client = MagicMock()
             mock_firestore.Client.return_value = mock_client
-            
+
             mock_collection = MagicMock()
             mock_client.collection.return_value = mock_collection
             

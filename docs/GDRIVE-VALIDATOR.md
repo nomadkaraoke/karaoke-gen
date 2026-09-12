@@ -2,6 +2,15 @@
 
 Automated validation of the Nomad Karaoke public Google Drive share folder. Detects duplicate brand codes, invalid filenames, and sequence gaps.
 
+**Same-run partial-publish check (incident-hardening D2):** when the post-job trigger
+names the just-published `brand_code` (passed orchestrator → Cloud Tasks → internal
+endpoint → Cloud Function), the validator additionally verifies *that specific track*
+is present in all expected folders (MP4, MP4-720p, CDG) — independent of the global-max
+gap logic, which only notices a missing latest track once a *later* track raises the
+max. This surfaces a silent partial publish (e.g. NOMAD-1632's missing 720p variant)
+same-run (~5 min post-job) as a `missing_for_track` issue, instead of up to 24h later.
+The `brand_code` is optional; absent → full-scan behaviour as before.
+
 ## Overview
 
 The public share folder (`1laRKAyxo0v817SstfM5XkpbWiNKNAMSX`) contains all published karaoke tracks organized into subfolders:
