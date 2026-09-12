@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Скопировать URL Dropbox",
     "dropboxUrlCopied": "URL Dropbox скопирован",
     "copyCompletionMessage": "Скопировать сообщение о завершении в буфер обмена",
-    "copied": "Скопировано!"
+    "copied": "Скопировано!",
+    "portrait": "Вертикальное видео"
   },
   "themeSelector": {
     "videoTheme": "Тема видео",

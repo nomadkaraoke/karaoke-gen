@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Dropbox URL をコピー",
     "dropboxUrlCopied": "Dropbox URL をコピーしました",
     "copyCompletionMessage": "完了メッセージをクリップボードにコピー",
-    "copied": "コピーしました！"
+    "copied": "コピーしました！",
+    "portrait": "縦型動画"
   },
   "themeSelector": {
     "videoTheme": "動画テーマ",

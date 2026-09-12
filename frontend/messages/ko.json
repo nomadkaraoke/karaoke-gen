@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Dropbox URL 복사",
     "dropboxUrlCopied": "Dropbox URL 복사됨",
     "copyCompletionMessage": "완료 메시지를 클립보드에 복사",
-    "copied": "복사되었습니다!"
+    "copied": "복사되었습니다!",
+    "portrait": "세로 동영상"
   },
   "themeSelector": {
     "videoTheme": "비디오 테마",

@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Copia l'URL de Dropbox",
     "dropboxUrlCopied": "URL de Dropbox copiat",
     "copyCompletionMessage": "Copia el missatge de finalització al porta-retalls",
-    "copied": "Copiat!"
+    "copied": "Copiat!",
+    "portrait": "Vídeo vertical"
   },
   "themeSelector": {
     "videoTheme": "Tema del vídeo",

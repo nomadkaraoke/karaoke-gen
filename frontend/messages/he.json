@@ -707,7 +707,8 @@
     "copyDropboxUrl": "העתק קישור Dropbox",
     "dropboxUrlCopied": "קישור Dropbox הועתק",
     "copyCompletionMessage": "העתק הודעת סיום ללוח",
-    "copied": "הועתק!"
+    "copied": "הועתק!",
+    "portrait": "סרטון לאורך"
   },
   "themeSelector": {
     "videoTheme": "ערכת נושא לוידאו",

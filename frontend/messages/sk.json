@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Kopírovať Dropbox URL",
     "dropboxUrlCopied": "Dropbox URL skopírovaná",
     "copyCompletionMessage": "Kopírovať správu o dokončení do schránky",
-    "copied": "Skopírované!"
+    "copied": "Skopírované!",
+    "portrait": "Video na výšku"
   },
   "themeSelector": {
     "videoTheme": "Téma videa",

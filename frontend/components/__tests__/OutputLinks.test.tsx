@@ -47,6 +47,7 @@ describe('OutputLinks', () => {
       finals: {
         lossy_4k_mp4: 'gs://bucket/finals/4k.mp4',
         lossy_720p_mp4: 'gs://bucket/finals/720p.mp4',
+        portrait_1080x1920: 'gs://bucket/finals/portrait_1080x1920.mp4',
       },
       videos: {
         with_vocals: 'gs://bucket/videos/with_vocals.mkv',
@@ -75,9 +76,27 @@ describe('OutputLinks', () => {
 
       expect(screen.getByText('4K Video')).toBeInTheDocument()
       expect(screen.getByText('720p Video')).toBeInTheDocument()
+      expect(screen.getByText('Portrait Video')).toBeInTheDocument()
       expect(screen.getByText('With Vocals')).toBeInTheDocument()
       expect(screen.getByText('CDG')).toBeInTheDocument()
       expect(screen.getByText('TXT')).toBeInTheDocument()
+    })
+
+    it('hides the Portrait Video button when the job has no portrait output', () => {
+      const noPortrait = {
+        ...baseJob,
+        file_urls: {
+          ...baseJob.file_urls,
+          finals: {
+            lossy_4k_mp4: 'gs://bucket/finals/4k.mp4',
+            lossy_720p_mp4: 'gs://bucket/finals/720p.mp4',
+          },
+        },
+      }
+      render(<OutputLinks job={noPortrait} />)
+
+      expect(screen.getByText('720p Video')).toBeInTheDocument()
+      expect(screen.queryByText('Portrait Video')).not.toBeInTheDocument()
     })
 
     it('shows YouTube link when youtube_url is in state_data', () => {

@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Kopier Dropbox-URL",
     "dropboxUrlCopied": "Dropbox-URL kopieret",
     "copyCompletionMessage": "Kopier fuldførelsesbesked til udklipsholder",
-    "copied": "Kopieret!"
+    "copied": "Kopieret!",
+    "portrait": "Portrætvideo"
   },
   "themeSelector": {
     "videoTheme": "Videotema",

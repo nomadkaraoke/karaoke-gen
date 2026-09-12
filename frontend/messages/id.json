@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Salin URL Dropbox",
     "dropboxUrlCopied": "URL Dropbox disalin",
     "copyCompletionMessage": "Salin pesan penyelesaian ke clipboard",
-    "copied": "Tersalin!"
+    "copied": "Tersalin!",
+    "portrait": "Video Potret"
   },
   "themeSelector": {
     "videoTheme": "Tema Video",

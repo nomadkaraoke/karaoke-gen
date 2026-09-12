@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Copia URL di Dropbox",
     "dropboxUrlCopied": "URL di Dropbox copiato",
     "copyCompletionMessage": "Copia messaggio di completamento negli appunti",
-    "copied": "Copiato!"
+    "copied": "Copiato!",
+    "portrait": "Video verticale"
   },
   "themeSelector": {
     "videoTheme": "Tema video",

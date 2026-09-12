@@ -707,7 +707,8 @@
     "copyDropboxUrl": "Dropbox URL कॉपी करो",
     "dropboxUrlCopied": "Dropbox URL कॉपी हो गया",
     "copyCompletionMessage": "कम्प्लीशन मैसेज को क्लिपबोर्ड पर कॉपी करो",
-    "copied": "कॉपी हो गया!"
+    "copied": "कॉपी हो गया!",
+    "portrait": "पोर्ट्रेट वीडियो"
   },
   "themeSelector": {
     "videoTheme": "वीडियो थीम",
