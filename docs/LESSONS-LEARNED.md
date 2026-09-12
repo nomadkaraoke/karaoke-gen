@@ -1853,3 +1853,33 @@ carries the flag; the email now deep-links to
   item** — verify the deep-link, don't assume "/app shows everything".
 - Any field a frontend filter branches on must be in `SUMMARY_FIELD_PATHS`, or
   it arrives `undefined` and the branch silently takes the wrong path.
+
+---
+
+## Spike-based alerting is blind to novel low-volume failures (NOMAD-1632 follow-up, v0.223.0)
+
+**Context:** The production error monitor only alerts on a *spike* — `current_count`
+must exceed a rolling average by a multiplier and clear a min-count floor. A brand-new
+error has `rolling_avg == 0`, so it is mathematically never a spike. When a fix's new
+guard over-fired and failed exactly 2 real jobs with a never-before-seen error string,
+nothing paged; Andrew noticed failed jobs in the UI ~a day's-worth of risk later.
+
+**Fix (D1):** a **universal net** independent of the spike detector —
+`backend/services/ops_alerts.py` hooks the single status-write chokepoint
+(`FirestoreService.update_job_status`) on any transition to `FAILED` and sends an
+immediate Discord alert, de-duped by a normalized error signature; **novel signatures
+always alert** regardless of count. Best-effort (never raises into the status write),
+gated to deployed envs, skips test/dev.
+
+**Principles for next time:**
+- Spike/threshold detectors are for *volume regressions*, not *existence* of a new
+  failure. Always pair them with a per-event net on the terminal failure transition.
+- Put the net at the **single chokepoint** every path funnels through (here the
+  Firestore status write), not at each caller — that's what makes it universal and
+  future-proof.
+- A new *enforcement* guard is itself a change that can fail: ship it **shadow-first**
+  (log + alert, don't fail — see G1 `publish_completeness.py`), distinguish
+  "recoverable/empty" from "wrong result", and fail **open** on uncertainty.
+- Detect silent *partial success* at the **publish boundary** (what *should* have
+  shipped vs what did), and make the metadata backstop validate a just-published
+  track's **own** completeness same-run, not only via global-max gap math (D2).
