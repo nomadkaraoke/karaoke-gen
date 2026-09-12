@@ -113,6 +113,25 @@ class FirestoreService:
         except Exception as e:
             logger.error(f"Error updating job status {job_id}: {e}")
             raise
+
+        # Incident-hardening D1: near-real-time alert on ANY transition to FAILED.
+        # The spike-based error monitor is blind to a novel low-volume failure
+        # (rolling_avg==0 → never a spike), so a brand-new error on a couple of
+        # jobs can go unnoticed. This is the universal net. Best-effort: it must
+        # never turn a successful status write into a failure, hence the guard.
+        if status == JobStatus.FAILED:
+            try:
+                from backend.services.ops_alerts import notify_job_failed
+
+                notify_job_failed(
+                    db=self.db,
+                    collection=self.collection,
+                    job_id=job_id,
+                    message=message,
+                    additional_fields=additional_fields,
+                )
+            except Exception as alert_exc:  # noqa: BLE001
+                logger.warning(f"Failure alert for job {job_id} did not send: {alert_exc}")
     
     def list_jobs(
         self,

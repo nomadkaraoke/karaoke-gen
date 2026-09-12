@@ -20,11 +20,16 @@ logger = logging.getLogger(__name__)
 GDRIVE_VALIDATOR_URL = os.environ.get("GDRIVE_VALIDATOR_URL", "")
 
 
-def trigger_gdrive_validation() -> dict | None:
+def trigger_gdrive_validation(brand_code: str | None = None) -> dict | None:
     """
     Invoke the GDrive validator Cloud Function.
 
     Uses the backend service account's OIDC token for authentication.
+
+    Args:
+        brand_code: Optional brand code of the just-published track. When set, the
+            validator additionally verifies this track is present in all expected
+            folders same-run (incident-hardening D2).
 
     Returns:
         Parsed JSON response from the function, or None on error.
@@ -41,6 +46,7 @@ def trigger_gdrive_validation() -> dict | None:
         response = requests.post(
             GDRIVE_VALIDATOR_URL,
             headers={"Authorization": f"Bearer {token}"},
+            json={"brand_code": brand_code} if brand_code else None,
             timeout=60,
         )
         response.raise_for_status()

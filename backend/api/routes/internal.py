@@ -704,11 +704,23 @@ async def trigger_gdrive_validation_endpoint(
 
     trace_context = extract_trace_context(dict(http_request.headers))
 
+    # Optional brand code (incident-hardening D2): forwarded so the validator can
+    # check the just-published track's own completeness same-run.
+    brand_code = None
+    try:
+        body = await http_request.json()
+        if isinstance(body, dict):
+            brand_code = body.get("brand_code")
+    except Exception:  # noqa: BLE001 - empty/non-JSON body is the normal case
+        brand_code = None
+
     logger.info("GDRIVE_VALIDATION_TRIGGER starting (delayed post-job)")
     add_span_attribute("operation", "gdrive_validation_trigger")
+    if brand_code:
+        add_span_attribute("brand_code", str(brand_code))
 
     try:
-        result = trigger_gdrive_validation()
+        result = trigger_gdrive_validation(brand_code=brand_code)
         if result is None:
             return {"status": "skipped", "message": "GDRIVE_VALIDATOR_URL not configured"}
 
