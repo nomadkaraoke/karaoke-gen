@@ -48,29 +48,40 @@ def classify_encoded_output(filename: str) -> Optional[str]:
     # (uploaded by _upload_results) and packages/cdg_zip.zip. They carry no artist/title
     # text, so an exact-stem match is unambiguous — and the redistribution flow reads
     # these back from GCS. Checked first so the underscore forms don't fall through.
+    # (stem, ext) so a mismatched extension can't slip a stray file into a slot.
     short_name = {
-        "lossless_4k_mp4": "mp4_4k_lossless",
-        "lossless_4k_mkv": "mkv_4k",
-        "lossy_4k_mp4": "mp4_4k_lossy",
-        "lossy_720p_mp4": "mp4_720p",
-        "portrait_1080x1920": "portrait_mp4",
-        "cdg_zip": "cdg_zip",
-        "txt_zip": "txt_zip",
-    }.get(stem.lower())
+        ("lossless_4k_mp4", ".mp4"): "mp4_4k_lossless",
+        ("lossless_4k_mkv", ".mkv"): "mkv_4k",
+        ("lossy_4k_mp4", ".mp4"): "mp4_4k_lossy",
+        ("lossy_720p_mp4", ".mp4"): "mp4_720p",
+        ("portrait_1080x1920", ".mp4"): "portrait_mp4",
+        ("cdg_zip", ".zip"): "cdg_zip",
+        ("txt_zip", ".zip"): "txt_zip",
+    }.get((stem.lower(), ext))
     if short_name:
         return short_name
 
     # Otherwise the format tag is the LAST parenthetical group before the extension.
+    # A file without that parenthetical isn't a recognised final. Every branch also
+    # pins the expected extension, so a stray file whose artist/title happens to
+    # contain a format word (e.g. "Artist 720p notes.txt") can't be misclassified
+    # into a slot and then falsely satisfy the completeness guard.
     match = re.search(r"\(([^()]*)\)[^()]*$", name)
-    tag = (match.group(1) if match else name).lower()
+    if not match:
+        return None
+    tag = match.group(1).lower()
 
-    if "720p" in tag:
+    if "720p" in tag and ext == ".mp4":
         return "mp4_720p"
-    if "portrait" in tag or "1080x1920" in tag:
+    if ("portrait" in tag or "1080x1920" in tag) and ext == ".mp4":
         return "portrait_mp4"
     if "lossless 4k" in tag:
-        return "mkv_4k" if ext == ".mkv" else "mp4_4k_lossless"
-    if "lossy 4k" in tag:
+        if ext == ".mkv":
+            return "mkv_4k"
+        if ext == ".mp4":
+            return "mp4_4k_lossless"
+        return None
+    if "lossy 4k" in tag and ext == ".mp4":
         return "mp4_4k_lossy"
     if "with vocals" in tag and ext == ".mp4":
         return "with_vocals_mp4"

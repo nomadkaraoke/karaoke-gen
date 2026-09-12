@@ -58,6 +58,19 @@ class TestClassifyEncodedOutput:
         assert classify_encoded_output("Artist - Title (End).mov") == "end_mov"
         assert classify_encoded_output("Artist - Title (Karaoke).mp4") is None
 
+    def test_stray_files_do_not_slip_into_a_format_slot(self):
+        """Extension is pinned per format, and a file without a format parenthetical
+        is unrecognised — so a stray file whose name merely contains a format word
+        can't be misclassified and then falsely satisfy the completeness guard."""
+        # Format word in the artist/title but wrong extension / no format tag.
+        assert classify_encoded_output("Artist 720p notes.txt") is None
+        assert classify_encoded_output("Artist - 720p Dreams.mp4") is None
+        # Right tag, wrong extension.
+        assert classify_encoded_output("Artist - Title (Final Karaoke Lossy 720p).mkv") is None
+        assert classify_encoded_output("Artist - Title (Final Karaoke Lossless 4k).mov") is None
+        # Short canonical name with a mismatched extension is rejected too.
+        assert classify_encoded_output("jobs/x/finals/lossy_720p_mp4.mkv") is None
+
 
 class TestEncodingInput:
     """Test EncodingInput dataclass."""
