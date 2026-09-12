@@ -471,18 +471,26 @@ class GCEEncodingBackend(EncodingBackend):
             else:
                 output_files = raw_output_files if isinstance(raw_output_files, dict) else {}
 
-            # Completeness guard (defense-in-depth): a worker must return every
-            # format we requested. Whatever the cause of a partial result — the
-            # title-collision mapping bug that dropped the 720p (NOMAD-1632, fixed
-            # above by classify_encoded_output), a stale-wheel fallback VM, or an
-            # output lost before the worker's glob/upload — it must NOT sail through
-            # to distribution and publish an incomplete public release, leaving a
-            # sequence gap the daily GDrive validator only flags ~24h later. Fail
-            # loud so the orchestrator errors the job (it is retried on a healthy
-            # worker) and the alert fires immediately.
+            # Completeness guard (defense-in-depth): a worker that returns SOME formats
+            # but not every one we requested — the title-collision mapping bug that
+            # dropped the 720p (NOMAD-1632, fixed above by classify_encoded_output), a
+            # stale-wheel fallback VM, or an output lost before the worker's
+            # glob/upload — must NOT sail through to distribution and publish an
+            # incomplete public release, leaving a sequence gap the daily GDrive
+            # validator only flags ~24h later. Fail loud so the orchestrator errors the
+            # job (retried on a healthy worker) and the alert fires immediately.
+            #
+            # IMPORTANT: only fire on a PARTIAL result. An EMPTY output_files means the
+            # worker returned nothing at all — typically a stale GCE job cache whose
+            # finals were deleted from GCS (admin reset / re-run). That is a normal,
+            # recoverable condition the orchestrator already handles: it downloads zero
+            # files, raises a "stale" RuntimeError from _download_gce_encoded_files, and
+            # re-encodes under a fresh job id. Guarding the empty case here would
+            # short-circuit that recovery and hard-fail real jobs (regression fixed in
+            # v0.222.3).
             requested_formats = encoding_config.get("formats", [])
             missing_formats = [f for f in requested_formats if not output_files.get(f)]
-            if missing_formats:
+            if output_files and missing_formats:
                 error_message = (
                     f"Encoder returned an incomplete result: missing {missing_formats} "
                     f"(requested {requested_formats}, got {sorted(output_files.keys())}). "

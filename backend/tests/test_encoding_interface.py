@@ -430,6 +430,46 @@ class TestGCEEncodingBackend:
 
     @patch.object(GCEEncodingBackend, "_get_service")
     @pytest.mark.asyncio
+    async def test_encode_empty_result_does_not_trip_completeness_guard(self, mock_get_service):
+        """An EMPTY result must NOT hard-fail via the completeness guard.
+
+        Regression for the v0.222.3 outage: a stale GCE job cache returns
+        output_files=[] (finals deleted from GCS on an admin reset / re-run). The
+        orchestrator recovers from this by downloading zero files, raising a
+        "stale" RuntimeError, and re-encoding under a fresh job id. The guard must
+        only fire on a PARTIAL result — an empty result must return success=True so
+        that recovery path runs instead of a hard failure.
+        """
+        mock_service = MagicMock()
+        mock_service.encode_videos = AsyncMock(return_value={
+            "status": "cached",
+            "output_files": [],
+        })
+        mock_get_service.return_value = mock_service
+
+        backend = GCEEncodingBackend()
+        input_config = EncodingInput(
+            title_video_path="/input/title.mov",
+            karaoke_video_path="/input/karaoke.mov",
+            instrumental_audio_path="/input/audio.flac",
+            artist="Artist",
+            title="Title",
+            options={
+                "job_id": "test-job",
+                "input_gcs_path": "gs://bucket/input/",
+                "output_gcs_path": "gs://bucket/output/",
+            }
+        )
+
+        output = await backend.encode(input_config)
+
+        # Not blocked by the guard: the orchestrator's stale-cache re-encode handles it.
+        assert output.success is True
+        assert output.output_files == {}
+        assert output.lossy_720p_mp4_path is None
+
+    @patch.object(GCEEncodingBackend, "_get_service")
+    @pytest.mark.asyncio
     async def test_encode_failure(self, mock_get_service):
         """Test GCE encoding failure handling."""
         mock_service = MagicMock()
