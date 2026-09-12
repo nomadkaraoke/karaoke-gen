@@ -72,7 +72,7 @@ def classify_encoded_output(filename: str) -> Optional[str]:
         return "mkv_4k" if ext == ".mkv" else "mp4_4k_lossless"
     if "lossy 4k" in tag:
         return "mp4_4k_lossy"
-    if "with vocals" in tag:
+    if "with vocals" in tag and ext == ".mp4":
         return "with_vocals_mp4"
     if tag == "title" and ext == ".mov":
         return "title_mov"
