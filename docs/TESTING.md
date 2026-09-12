@@ -749,3 +749,98 @@ When adding a new feature:
 | Install deps | `make install` |
 | Start emulators | `make emulators-start` |
 | Stop emulators | `make emulators-stop` |
+
+## New Guard / New Enforcement Checklist
+
+> Added after the NOMAD-1632 incident pair (2026-09-11/12). The *fix* for a silent
+> partial-publish bug became a louder outage: a new completeness guard inside
+> `GCEEncodingBackend.encode()` conflated an **empty** (recoverable, stale-cache)
+> result with a **partial** (defective) one and shipped enforce-first with only
+> mocked unit tests. Both the original bug and its fix lived in the encode→publish
+> seam, which had **no composed integration test**. See
+> `docs/archive/2026-09-12-incident-hardening-plan.md` for the full post-mortem.
+
+Any **new enforcement on a critical path** (a check that can fail/block a job, reject
+a result, or change what gets published) MUST satisfy all of the following before it
+enforces:
+
+1. **Distinguish "nothing yet / recoverable" from "wrong result."** An empty, missing,
+   not-ready, or cached-but-stale input is usually a *recoverable* condition some
+   other layer already handles — it is NOT the same as a present-but-incorrect result.
+   Guarding the recoverable case short-circuits recovery and manufactures a new
+   failure mode (exactly Failure B: the guard fired on empty `output_files`, which the
+   orchestrator already recovers from by re-encoding).
+2. **Default to prior behavior on uncertainty — fail OPEN unless you are sure it's a
+   defect.** If you can't positively classify the input as wrong, let it through and
+   log, rather than blocking. A guard that is wrong in the blocking direction is an
+   outage; one that is wrong in the permissive direction degrades to the (known) prior
+   behavior.
+3. **Test against empty / partial / malformed / complete inputs** — not just the happy
+   shape. The data shape that broke us (empty) was simply never in the test corpus.
+4. **Ship in SHADOW mode first** (log + alert, do NOT fail/block), and enforce only
+   after a clean shadow window (~1–2 weeks of real traffic with no false positives).
+   Precedent: the timing gate's "G3 shadow" rollout.
+5. **Have a composed integration test, not only isolated unit mocks.** Wire the real
+   producer to the real consumer across the seam the guard lives in; patch only the
+   true external boundary (network/GCS). A whole-component mock proves nothing about
+   the seam. Reference implementation: `TestEncodePublishSeam` in
+   `backend/tests/test_video_worker_orchestrator.py` (real `GCEEncodingBackend.encode()`
+   through the real orchestrator) and the golden-fixture contract test in
+   `backend/tests/test_encoding_contract.py`.
+
+## Critical-Path Change Tier
+
+Some code paths are **critical path**: a silent or loud defect there directly damages
+customer deliverables or revenue. Treat **encode**, **publish**, and **distribution**
+changes (and anything they call at that seam) as critical-path.
+
+A change tagged critical-path requires, before it enforces new behavior:
+
+- A **composed integration test** of the affected seam (producer + consumer, real, with
+  only the external boundary mocked) — see the New Guard checklist item 5.
+- **Shadow-first** rollout for any new enforcement (checklist item 4).
+- A **post-deploy canary / real-job verification** before the change is trusted at 100%
+  (a fresh happy-path job plus, where relevant, an admin-reset + retry to exercise the
+  recovery path).
+
+Mock drift is the recurring root cause here: every encoding mock was hand-authored and
+the real "cached/empty" shape was never captured. Critical-path seams should be backed
+by **golden fixtures** captured from real responses and a **typed schema** shared by
+caller and callee (e.g. `GceEncodeResponse` in `backend/services/encoding_interface.py`
+with fixtures under `backend/tests/fixtures/encoding/`), so caller and worker can't
+drift apart silently.
+
+### Blameless Post-Mortem Template
+
+Keep a running incident log in `docs/` (archive the detailed write-up under
+`docs/archive/YYYY-MM-DD-<incident>.md`; the NOMAD-1632 hardening plan is the first
+entry). For each incident, capture — blamelessly, focused on the system and process,
+not the person:
+
+```markdown
+# Incident: <short title> (<date>)
+
+## Summary
+One or two sentences: what broke, who/what was affected, blast radius, duration.
+
+## Impact
+Jobs/customers affected, data integrity, revenue, how it was detected and when.
+
+## Timeline
+- <ts> trigger / deploy
+- <ts> first symptom
+- <ts> detected (by whom/what)
+- <ts> mitigated
+- <ts> resolved
+
+## Root cause
+The actual defect AND the process gap that let it reach prod (e.g. "no composed test
+of the seam", "guard enforced without shadow"). Distinguish recoverable vs defective
+if a guard/enforcement was involved.
+
+## What went well / what went poorly
+
+## Action items (with owners, tracked in BACKLOG.md)
+- Detection, guardrail, test, deploy, and process fixes — prefer the cheapest net that
+  catches the whole *class*, not just this instance.
+```
