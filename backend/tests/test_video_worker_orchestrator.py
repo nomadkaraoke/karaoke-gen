@@ -2182,3 +2182,178 @@ class TestRedistributeModeProgress:
 
         jm.transition_to_state.assert_called_once()
         jm.update_job.assert_not_called()
+
+
+class TestEncodePublishSeam:
+    """Composed integration test of the encode→publish seam (hardening plan T1).
+
+    Both NOMAD-1632 bugs lived in the boundary between ``GCEEncodingBackend.encode()``
+    and the orchestrator's ``_run_encoding`` / ``_download_gce_encoded_files``, yet
+    NO existing test composes those two real layers — the stale-cache test mocks the
+    *entire* backend, so the real classifier and completeness guard never run inside
+    an orchestrator test. These tests wire the **real** backend to the **real**
+    orchestrator and patch only the network boundary (the worker's ``encode_videos``
+    call) and storage (GCS download), replaying the golden fixtures from
+    ``backend/tests/fixtures/encoding/``.
+
+    Asserted shapes:
+    - empty     → guard must NOT trip → 0 downloads → "stale" RuntimeError →
+                  re-encode recovers (Failure B path).
+    - partial   → completeness guard trips → job fails loud (Failure A defense).
+    - complete  → success, all result attrs populated with local paths.
+    - malformed → classified out → treated as empty (no mis-slotting, no crash) →
+                  recovered via the same stale path.
+    """
+
+    FIXTURES_DIR = (
+        os.path.join(os.path.dirname(__file__), "fixtures", "encoding")
+    )
+
+    def _load_fixture(self, name):
+        import json
+        with open(os.path.join(self.FIXTURES_DIR, f"{name}.json")) as fh:
+            return json.load(fh)
+
+    def _make_config(self, temp_dir):
+        return OrchestratorConfig(
+            job_id="test-job",
+            artist="Nat King Cole",
+            title="Portrait of Jennie",
+            title_video_path=os.path.join(temp_dir, "title.mov"),
+            karaoke_video_path=os.path.join(temp_dir, "karaoke.mkv"),
+            instrumental_audio_path=os.path.join(temp_dir, "audio.flac"),
+            output_dir=temp_dir,
+            encoding_backend="gce",  # exercise the REAL GCEEncodingBackend
+        )
+
+    def _make_storage(self):
+        """Storage mock: no custom-instrumental staging; downloads write a file."""
+        mock_storage = MagicMock()
+        mock_storage.list_files = MagicMock(return_value=[])
+
+        def _download(gcs_path, local_path):
+            with open(local_path, "w") as f:
+                f.write("fake encoded bytes")
+
+        mock_storage.download_file = MagicMock(side_effect=_download)
+        return mock_storage
+
+    def _patch_worker(self, *, side_effect=None, return_value=None):
+        """Patch ONLY the network boundary: the GCE worker's encode_videos.
+
+        Returns (context_manager, mock_service). The real backend, real
+        classifier, real completeness guard and real orchestrator all run.
+        """
+        mock_service = MagicMock()
+        mock_service.encode_videos = AsyncMock(
+            side_effect=side_effect, return_value=return_value
+        )
+        cm = patch(
+            "backend.services.encoding_service.get_encoding_service",
+            return_value=mock_service,
+        )
+        return cm, mock_service
+
+    @pytest.mark.asyncio
+    async def test_empty_output_recovers_via_reencode(self):
+        """Failure B: empty output_files is recoverable, NOT a guard failure.
+
+        Real encode() must return success (guard does not fire on empty) →
+        orchestrator downloads 0 files → raises the 'stale' RuntimeError →
+        re-encodes under a fresh job id → recovers.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orchestrator = VideoWorkerOrchestrator(
+                self._make_config(temp_dir), storage=self._make_storage()
+            )
+            cm, mock_service = self._patch_worker(
+                side_effect=[self._load_fixture("empty"), self._load_fixture("success")]
+            )
+            with cm:
+                await orchestrator._run_encoding()
+
+            # encode() ran twice: empty (recoverable) then the fresh re-encode.
+            assert mock_service.encode_videos.call_count == 2
+            # The retry used a fresh suffixed worker job id.
+            retry_job_id = mock_service.encode_videos.call_args_list[1].kwargs["job_id"]
+            assert retry_job_id.startswith("test-job_retry_")
+            # Recovered: results point at downloaded local files.
+            assert orchestrator.result.final_video is not None
+            assert orchestrator.result.final_video.startswith(temp_dir)
+            assert orchestrator.result.final_video_720p is not None
+
+    @pytest.mark.asyncio
+    async def test_partial_output_fails_loud(self):
+        """Failure A defense: a partial result (720p missing) trips the guard and
+        fails the job loudly rather than publishing an incomplete release."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orchestrator = VideoWorkerOrchestrator(
+                self._make_config(temp_dir), storage=self._make_storage()
+            )
+            cm, mock_service = self._patch_worker(
+                return_value=self._load_fixture("partial")
+            )
+            with cm:
+                with pytest.raises(Exception) as exc_info:
+                    await orchestrator._run_encoding()
+
+            msg = str(exc_info.value)
+            assert "incomplete" in msg.lower()
+            assert "mp4_720p" in msg
+            # No retry — a partial result is a defect, not a recoverable empty.
+            assert mock_service.encode_videos.call_count == 1
+            # Nothing was published / downloaded.
+            assert orchestrator.result.final_video is None
+
+    @pytest.mark.asyncio
+    async def test_complete_output_populates_all_results(self):
+        """Happy path: all four formats present → success, all attrs populated
+        with local downloaded paths. Uses the NOMAD-1632 title to prove the
+        720p whose title contains 'Portrait' maps correctly."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            storage = self._make_storage()
+            orchestrator = VideoWorkerOrchestrator(
+                self._make_config(temp_dir), storage=storage
+            )
+            cm, mock_service = self._patch_worker(
+                return_value=self._load_fixture("success")
+            )
+            with cm:
+                await orchestrator._run_encoding()
+
+            assert mock_service.encode_videos.call_count == 1
+            for attr in (
+                "final_video",
+                "final_video_mkv",
+                "final_video_lossy",
+                "final_video_720p",
+            ):
+                val = getattr(orchestrator.result, attr)
+                assert val is not None, f"{attr} not populated"
+                assert val.startswith(temp_dir), f"{attr} not a downloaded local path"
+            assert storage.download_file.called
+
+    @pytest.mark.asyncio
+    async def test_malformed_output_treated_as_empty(self):
+        """Malformed names (stray / wrong-extension) classify to nothing, so the
+        guard must NOT mis-fire or mis-slot — the result is treated as empty.
+        With persistently malformed output, that surfaces as the recoverable
+        'stale' RuntimeError (handled, not a crash)."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orchestrator = VideoWorkerOrchestrator(
+                self._make_config(temp_dir), storage=self._make_storage()
+            )
+            cm, mock_service = self._patch_worker(
+                side_effect=[
+                    self._load_fixture("malformed"),
+                    self._load_fixture("malformed"),
+                ]
+            )
+            with cm:
+                with pytest.raises(RuntimeError, match="stale"):
+                    await orchestrator._run_encoding()
+
+            # Classified-out → empty → recoverable path attempted (re-encode),
+            # which with still-malformed output raises the stale signal again.
+            assert mock_service.encode_videos.call_count == 2
+            assert orchestrator.result.final_video is None

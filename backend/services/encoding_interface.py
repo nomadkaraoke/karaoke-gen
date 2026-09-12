@@ -14,11 +14,44 @@ import os
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TypedDict
 
 from backend.services.encoding_errors import EncodingJobLostError
 
 logger = logging.getLogger(__name__)
+
+
+class GceEncodeResponse(TypedDict, total=False):
+    """Typed schema for the raw response the GCE encoding worker returns from
+    ``encode_videos`` (forwarded up from ``wait_for_completion`` /
+    ``submit_encoding_job``).
+
+    This is the *single shared definition* of the encode→publish seam contract:
+    both the producer (``EncodingService.encode_videos``) and the consumer
+    (``GCEEncodingBackend.encode``) annotate against it, so the shape can't
+    silently drift between caller and callee. Mock drift on exactly this shape
+    is what hid NOMAD-1632's Failure B (the "empty output_files" / stale-cache
+    case was never in any test corpus). Golden fixtures under
+    ``backend/tests/fixtures/encoding/`` are validated against this schema.
+
+    Keys (``total=False`` — the worker omits most of them on the happy path):
+    - ``status``: terminal/intermediate job state, e.g. ``"complete"``,
+      ``"failed"``, ``"running"``, ``"pending"``. ``encode_videos`` normalises a
+      cached hit to ``"complete"``.
+    - ``output_files``: GCS paths to the encoded finals, classified by
+      :func:`classify_encoded_output`. The worker returns a **list**; a few
+      legacy/short-name paths arrive as a ``dict`` keyed by format token, which
+      ``encode`` still tolerates. **May be an empty list** on a stale/cached job
+      whose finals were deleted from GCS — a *recoverable* condition, NOT a
+      partial/defective result (see the completeness guard in ``encode``).
+    - ``progress``: 0–100 while running.
+    - ``error``: present when ``status == "failed"``.
+    """
+
+    status: str
+    output_files: List[str]
+    progress: int
+    error: str
 
 
 def classify_encoded_output(filename: str) -> Optional[str]:
