@@ -1,5 +1,29 @@
 # KaraokeHunt decommission + user outreach — session handoff (2026-09-13)
 
+> **SESSION 2 UPDATE (2026-09-13, later the same day)** — the §4 Segment-A pipeline is
+> BUILT and (at time of writing) running:
+> - `scripts/karaokehunt_outreach/phase1b_audio_search.py` — match-judge canonicalization
+>   → community re-check → search-standalone per song → ported `pick_auto_selection`
+>   tier-1 gate → buckets CONFIDENT / NEAR-MISS / no-match. Resumable via
+>   `outreach_out/audio_search_cache.json`; outputs `actions_v2.json` + `review_packet_v2.md`.
+>   NEAR MISS = lossless non-vinyl torrent, filename matches, <50 seeders — surfaced with
+>   saved session id + best index so Andrew can hand-approve (seeders≥50 proved strict:
+>   even Bohemian Rhapsody's best FLAC had 44).
+> - `scripts/karaokehunt_outreach/phase2_execute.py` — Phase 2 executor (dry-run by
+>   default, `--execute` to act; idempotent via `phase2_state.json`). KEY LEARNINGS baked
+>   in: (1) admin-created search sessions 403 on create-from-search under an impersonated
+>   user → phase 2 re-searches AS the user and exact-matches the reviewed pick
+>   (provider+target_file), skips (never substitutes) if gone; (2)
+>   `POST /api/users/admin/credits` EMAILS the user — existing gen users (3 of 89:
+>   anahilopez8682@, liuhsua91@, mudrocksebastian6@gmail.com, all 0 credits — see
+>   `outreach_out/existing_gen_users.txt`) are reported not silently granted;
+>   (3) match-judge does NOT reliably fix typos ("Bohemian Rapsody" came back cosmetic
+>   with typo intact) — the filename gate correctly blocks those; (4) create-from-search
+>   deducts 1 credit, so job-submitted users end with 2/3 — OPEN QUESTION for Andrew.
+> - **EMAIL POLICY (Andrew, verbatim intent)**: he reviews ALL emails before send; send in
+>   batches of ~10 via his Gmail andrew@nomadkaraoke.com. Nothing in phase1b/phase2 sends
+>   email; the send step should create Gmail DRAFTS for him.
+
 **Purpose:** hand a fresh Claude session everything needed to finish the KaraokeHunt
 requester-outreach work. Most of the decommission is DONE; the remaining build is the
 **Segment A generation pipeline** (find real audio for each requested song, only
