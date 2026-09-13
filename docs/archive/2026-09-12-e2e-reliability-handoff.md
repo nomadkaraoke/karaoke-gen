@@ -2,8 +2,41 @@
 
 **Date:** 2026-09-12
 **Author:** Claude (agent), for the next session
-**Status:** Open — root-cause + fix needed
+**Status:** ✅ RESOLVED 2026-09-13 — see the resolution note directly below
 **Scope:** karaoke-gen production E2E suites + the R1 post-deploy canary
+
+---
+
+## RESOLUTION (2026-09-13, PR #992)
+
+The §3 hypothesis (review page loads empty → `hasNoLyrics` → Proceed disabled)
+was **disproven** by run 34729291204's artifacts: the review loaded fine and the
+Playwright error was "waiting for getByRole" — the button was **absent**, not
+disabled. Real root cause: the finish modal's CTA is **nondeterministic per
+job**. When the auto-scorer's backing verdict is confident and/or both stems are
+transcoded, `ReviewChangesModal` renders **"Complete Track"** (`completesReview`,
+inline instrumental chooser — completes the whole review; the `/instrumental`
+screen never appears) instead of **"Proceed to Instrumental Review"**. The spec
+only knew the latter. Same v0.223.2 passed the 22:15 UTC canary (non-confident
+branch) and failed later runs (confident branch) — scorer confidence varies with
+each fresh transcription/separation.
+
+**Fix (test-side, PR #992):** the spec accepts either CTA (waits for the `/app`
+redirect on "Complete Track" and skips Step 8, including the product's
+completeReview-failure fallback to `#/instrumental`), handles the C1 mirror skip
+(lyrics-confident → hash-redirect straight to instrumental), replaces
+instant-snapshot `isVisible/isEnabled({timeout})` gates with real auto-waits,
+and fixes the always-firing "Review page content not found" reload (strict-mode
+violation from a multi-match `.or()` union).
+
+**DoD status:** 3 consecutive green dailies post-merge (runs 34732524778 —
+"Complete Track" branch; 34735803530 — "Proceed" branch; 34737171527 — "Complete
+Track"), covering both CTA variants. Tenant E2E green (34730560382, §4 one-off
+confirmed transient). Canary reuses the fixed spec, so criterion 3 is expected
+green on the next version-bumped deploy. Residual (separate, retry-mitigated):
+run 34732524778's first attempt hit a Step-9 "Timeout waiting for job
+completion" (render+encode exceeded the 35-min window); not related to the CTA
+bug. Memory: `project_gen_e2e_happy_path_cta_flake`.
 
 ---
 
