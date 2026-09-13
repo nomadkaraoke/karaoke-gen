@@ -165,9 +165,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
   // retries:0 a single flake hard-fails and PAGES (daily E2E + the post-deploy
   // canary). One retry lets a genuine flake self-heal on a clean run while
   // capping the wasted time at a single extra attempt — a passing run never
-  // retries, so there's no steady-state cost. (The former #1 "flake" — timing
-  // out when the review modal showed "Complete Track" instead of "Proceed to
-  // Instrumental Review" — was a real test bug, fixed in Step 7 below.)
+  // retries, so there's no steady-state cost.
   test.describe.configure({ retries: 1 });
 
   test('Complete flow: New user signup -> Karaoke generation -> Distribution -> Cleanup', async ({
@@ -701,11 +699,24 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       // Track" CTA below can also turn it off.
       let needsInstrumentalScreen = true;
       const previewVideoBtn = reviewPage.getByRole('button', { name: /preview video/i });
-      const onLyricsScreen = await previewVideoBtn.isVisible({ timeout: TIMEOUTS.action }).catch(() => false);
+      const getHash = () => reviewPage.evaluate(() => window.location.hash).catch(() => '');
+      // The mirror redirect fires as soon as the correction data loads, so check
+      // for it cheaply first; otherwise give the client-rendered lyrics screen a
+      // real auto-wait for the button. (isVisible() is an instant snapshot — its
+      // timeout option is deprecated/ignored — and would gamble the whole run on
+      // render timing.)
+      let onLyricsScreen = false;
+      if (!(await getHash()).includes('/instrumental')) {
+        onLyricsScreen = await previewVideoBtn
+          .waitFor({ state: 'visible', timeout: TIMEOUTS.action })
+          .then(() => true, () => false);
+      }
       if (!onLyricsScreen) {
-        const hash = await reviewPage.evaluate(() => window.location.hash).catch(() => '');
+        // Re-read the hash: the redirect may have landed while we waited above.
+        const hash = await getHash();
         if (hash.includes('/instrumental')) {
           console.log('  Lyrics auto-verified by server — redirected straight to instrumental selection (skipping preview modal)');
+          await reviewPage.screenshot({ path: 'test-results/07-mirror-redirect.png', fullPage: true });
         } else {
           await reviewPage.screenshot({ path: 'test-results/07-no-review-surface.png', fullPage: true });
           throw new Error(`Review page showed neither the lyrics screen nor the instrumental screen (hash: "${hash}")`);
@@ -790,7 +801,13 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         // visible but disabled when no lyrics are loaded.
         const finishCtaName = /proceed to instrumental|complete track/i;
         let finishBtn = reviewPage.getByRole('button', { name: finishCtaName });
-        if (!(await finishBtn.isEnabled({ timeout: TIMEOUTS.action }).catch(() => false))) {
+        // Auto-waiting readiness gate: isEnabled() is an instant snapshot (its
+        // timeout option is deprecated/ignored), and sampling mid-render would
+        // trigger the full-page recovery below on a perfectly healthy run.
+        const finishReady = await expect(finishBtn)
+          .toBeEnabled({ timeout: TIMEOUTS.action })
+          .then(() => true, () => false);
+        if (!finishReady) {
           console.log('  WARNING: Finish button not ready (missing/disabled) after preview — recovering (reload review + reopen preview)...');
           await gotoWithRetry(reviewPage, reviewUrl);
           await reviewPage.waitForTimeout(3000);
@@ -819,13 +836,26 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
           // "Complete Track": submits corrections + completes the review with the
           // inline/auto instrumental selection. The modal shows "Saving…" while the
           // (slow) completeReview call runs, then a success screen with a 3s
-          // countdown redirects to /app. Wait for that redirect — the pathname
-          // check must exclude the current /app/jobs page.
+          // countdown redirects to /app — the pathname check must exclude the
+          // current /app/jobs page. If completeReview fails, the product recovers
+          // by routing to the /instrumental screen instead (LyricsAnalyzer's
+          // inline-selection fallback) — detect that and fall through to Step 8
+          // rather than timing out on a redirect that will never come.
           console.log('  Inline instrumental flow — waiting for review completion + redirect to /app...');
-          try {
-            await reviewPage.waitForURL((url) => /\/app\/?$/.test(url.pathname), { timeout: 180_000 });
+          const completionDeadline = Date.now() + 180_000;
+          let completionOutcome: 'completed' | 'fallback' | null = null;
+          while (Date.now() < completionDeadline) {
+            const current = new URL(reviewPage.url());
+            if (/\/app\/?$/.test(current.pathname)) { completionOutcome = 'completed'; break; }
+            if (current.hash.includes('/instrumental')) { completionOutcome = 'fallback'; break; }
+            await reviewPage.waitForTimeout(1000);
+          }
+          if (completionOutcome === 'completed') {
             console.log('  Review completed (redirected to /app)');
-          } catch {
+          } else if (completionOutcome === 'fallback') {
+            console.log('  WARNING: Inline completion failed — product fell back to the instrumental screen; continuing with Step 8');
+            needsInstrumentalScreen = true;
+          } else {
             await reviewPage.screenshot({ path: 'test-results/07e-complete-track-timeout.png', fullPage: true });
             throw new Error('Timed out waiting for review completion after clicking "Complete Track"');
           }
@@ -898,9 +928,11 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         // The page redirects to /app after completion, or may close
         // Wait a bit for the redirect/close to happen
         if (!reviewPage.isClosed()) {
-          // Wait for potential redirect or success screen
+          // Wait for potential redirect or success screen. Anchor on the
+          // pathname: a bare /\/app/ regex matches the current /app/jobs URL
+          // and resolves instantly without any real redirect.
           try {
-            await reviewPage.waitForURL(/\/app/, { timeout: 10000 });
+            await reviewPage.waitForURL((url) => /\/app\/?$/.test(url.pathname), { timeout: 10000 });
             console.log('  Redirected to /app after instrumental selection');
           } catch {
             // If no redirect, close manually
