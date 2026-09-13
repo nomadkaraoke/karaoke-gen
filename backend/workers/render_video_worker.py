@@ -123,6 +123,47 @@ async def process_render_video(job_id: str) -> bool:
     if not job:
         logger.error(f"[job:{job_id}] Job not found in Firestore")
         job_log.error(f"Job {job_id} not found in Firestore!")
+        await worker_registry.unregister(job_id, "render-video")
+        return False
+
+    # Hard idempotency gate (worker-side). The legacy HTTP endpoint enforces
+    # this via _check_worker_idempotency at dispatch time, but the Cloud Run
+    # Job path invokes this worker directly — and Cloud Run may re-run the
+    # execution (max_retries=2) after an OOM/timeout/hard kill. The worker
+    # must therefore protect itself regardless of dispatch path:
+    #   - terminal job: never resurrect. A stale or duplicate trigger racing
+    #     a job that just finished would otherwise re-render and drag a
+    #     complete job back to instrumental_selected.
+    #   - already RENDERING_VIDEO: either another execution owns the render
+    #     (duplicate trigger) or a previous execution died mid-render (Cloud
+    #     Run Job retry). Never re-enter: a live render must not be disrupted,
+    #     and a dead one is recovered by the rendering_video_stuck sweep →
+    #     re-park → auto-retry. Re-entering would hit the same-state
+    #     transition guard and hard-fail the job with a spurious
+    #     "Invalid state transition" error.
+    #   (Legacy path unaffected: the worker enters with status
+    #   REVIEW_COMPLETE — RENDERING_VIDEO is only set below, by this worker.)
+    terminal_statuses = {"failed", "cancelled", "complete", "prep_complete", "error"}
+    status_value = job.status.value if hasattr(job.status, "value") else str(job.status)
+    if status_value in terminal_statuses:
+        logger.info(
+            f"[job:{job_id}] WORKER_END worker=render-video status=skipped "
+            f"reason=terminal_state:{status_value}"
+        )
+        job_log.info(f"Job in terminal state '{status_value}' — skipping render")
+        await worker_registry.unregister(job_id, "render-video")
+        return False
+    if job.status == JobStatus.RENDERING_VIDEO:
+        logger.warning(
+            f"[job:{job_id}] WORKER_END worker=render-video status=skipped "
+            f"reason=already_rendering"
+        )
+        job_log.warning(
+            "Job already in rendering_video — another execution owns this render "
+            "(or a previous one died and the rendering_video_stuck sweep will "
+            "recover it); not re-entering"
+        )
+        await worker_registry.unregister(job_id, "render-video")
         return False
 
     # Capture the supersession fence at start. If an admin reset (or a newer
@@ -334,7 +375,20 @@ async def process_render_video(job_id: str) -> bool:
                         from backend.services.worker_service import get_worker_service
                         worker_service = get_worker_service()
                         job_log.info("Triggering video worker for final encoding...")
-                        await worker_service.trigger_video_worker(job_id)
+                        video_triggered = await worker_service.trigger_video_worker(job_id)
+                        if not video_triggered:
+                            # No exception path reaches here (trigger returns False
+                            # instead of raising) — surface it loudly, or the job
+                            # sits at instrumental_selected with no error and no
+                            # sweep watching that state.
+                            job_log.error(
+                                "Video worker dispatch FAILED after render complete — "
+                                "job stalls at instrumental_selected until manually retried"
+                            )
+                            logger.error(
+                                f"[job:{job_id}] Video worker dispatch failed after GCE "
+                                f"render complete (job stalled at instrumental_selected)"
+                            )
 
                     job_manager.update_state_data(job_id, 'render_progress', {'stage': 'complete'})
                     return True
@@ -637,7 +691,16 @@ async def process_render_video(job_id: str) -> bool:
 
                             worker_service = get_worker_service()
                             job_log.info("Triggering video worker for final encoding...")
-                            await worker_service.trigger_video_worker(job_id)
+                            video_triggered = await worker_service.trigger_video_worker(job_id)
+                            if not video_triggered:
+                                job_log.error(
+                                    "Video worker dispatch FAILED after render complete — "
+                                    "job stalls at instrumental_selected until manually retried"
+                                )
+                                logger.error(
+                                    f"[job:{job_id}] Video worker dispatch failed after local "
+                                    f"render complete (job stalled at instrumental_selected)"
+                                )
 
                         # Mark render progress as complete for idempotency
                         # This allows the worker to be re-triggered after admin reset
