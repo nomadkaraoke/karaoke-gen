@@ -11,13 +11,15 @@ import * as path from 'path';
  * E2E Test: Real Credit Purchase via Stripe Checkout
  *
  * Tests the REAL payment flow that customers use:
- * 1. Sign up with referral code e2etest70 (70% discount)
+ * 1. Sign up with referral code e2etest95 (95% discount)
  * 2. Open Buy Credits dialog
- * 3. Purchase 1 credit via real Stripe Checkout ($3.00 after discount)
+ * 3. Purchase 1 credit via real Stripe Checkout (~$0.50 after 95% discount — Stripe's USD minimum)
  * 4. Verify credits allocated and confirmation email received
  *
- * This test uses a REAL credit card and processes a REAL charge.
- * The 70% referral discount keeps cost to ~$3/day.
+ * This test uses a REAL card and processes a REAL charge, but only ~$0.50/run:
+ * base credit is $10, the 95% e2etest95 referral code drops it to $0.50 — the
+ * floor, since Stripe rejects USD charges under $0.50. Point the
+ * E2E_STRIPE_CARD_* secrets at the Nomad debit card (not a personal card).
  *
  * Prerequisites:
  *   - E2E_STRIPE_CARD_NUMBER, E2E_STRIPE_CARD_EXPIRY, E2E_STRIPE_CARD_CVC
@@ -48,10 +50,10 @@ test.describe('Real Credit Purchase Flow', () => {
     try {
       // ===== STEP 1: Navigate with referral code =====
       console.log('\n=== STEP 1: Navigate with referral code ===');
-      await page.goto(`${PROD_URL}/?ref=e2etest70`);
+      await page.goto(`${PROD_URL}/?ref=e2etest95`);
       await page.waitForLoadState('networkidle');
       await page.screenshot({ path: 'test-results/01-landing-with-referral.png' });
-      console.log('  Landed with ?ref=e2etest70');
+      console.log('  Landed with ?ref=e2etest95');
 
       // ===== STEP 2: Sign up via magic link =====
       console.log('\n=== STEP 2: Sign up via magic link ===');
@@ -131,10 +133,10 @@ test.describe('Real Credit Purchase Flow', () => {
       await expect(creditsDialog).toBeVisible({ timeout: TIMEOUTS.action });
       await page.screenshot({ path: 'test-results/04-buy-credits-dialog.png' });
 
-      // Check for referral discount badge (may say "70% referral discount")
+      // Check for referral discount badge (may say "95% referral discount")
       // This is informational — don't fail the test if the badge isn't visible,
       // as the discount is applied server-side regardless of the UI badge
-      const discountBadge = creditsDialog.getByText(/70%/i).first();
+      const discountBadge = creditsDialog.getByText(/95%/i).first();
       if (await discountBadge.isVisible({ timeout: 5000 }).catch(() => false)) {
         console.log('  Referral discount badge visible');
       } else {
@@ -160,7 +162,7 @@ test.describe('Real Credit Purchase Flow', () => {
       await page.screenshot({ path: 'test-results/05-package-selected.png' });
       console.log('  Selected 1-credit package');
 
-      // Verify the discounted price ($3.00) is shown
+      // Verify the discounted price (~$0.50) is shown
       // The checkout button should show the price
       const checkoutButton = creditsDialog.getByRole('button', { name: /continue|checkout|pay/i }).last();
       await expect(checkoutButton).toBeVisible({ timeout: TIMEOUTS.action });
