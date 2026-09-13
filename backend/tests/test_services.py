@@ -512,6 +512,82 @@ class TestWorkerService:
                 assert "--job-id" in str(override_args)
                 assert "test123" in str(override_args)
 
+    @pytest.mark.asyncio
+    async def test_trigger_render_video_worker_routes_to_cloud_run_job(self):
+        """Test that render worker routes to Cloud Run Jobs when enabled.
+
+        When USE_CLOUD_RUN_JOBS_FOR_RENDER=true and ENABLE_CLOUD_TASKS=true,
+        trigger_render_video_worker should dispatch a Cloud Run Job (reusing
+        video-encoding-job with a render_video_worker args override) instead
+        of posting to the internal HTTP endpoint. As a BackgroundTask on the
+        service, the render poll was killed ~10s after SIGTERM whenever a
+        deploy rollout landed mid-render, freezing the job at rendering_video
+        (see incident 2026-09-13, job 41e06b90).
+        """
+        from backend.services.worker_service import WorkerService, reset_worker_service
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings:
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = True
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_render = True
+
+            mock_jobs_client = MagicMock()
+            mock_operation = MagicMock()
+            mock_operation.metadata = "test-metadata"
+            mock_jobs_client.run_job.return_value = mock_operation
+
+            mock_run_v2 = MagicMock()
+            mock_run_v2.JobsClient.return_value = mock_jobs_client
+            mock_run_v2.RunJobRequest = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides = MagicMock()
+            mock_run_v2.RunJobRequest.Overrides.ContainerOverride = MagicMock()
+
+            import google.cloud
+            with patch.dict('sys.modules', {'google.cloud.run_v2': mock_run_v2}), \
+                 patch.object(google.cloud, 'run_v2', mock_run_v2, create=True):
+                service = WorkerService()
+                result = await service.trigger_render_video_worker("test456")
+
+                assert result is True
+                mock_jobs_client.run_job.assert_called_once()
+
+                # Reuses the video-encoding-job Cloud Run Job resource
+                call_args = mock_run_v2.RunJobRequest.call_args
+                assert call_args is not None
+                assert "video-encoding-job" in str(call_args)
+
+                # But overrides the module to the render worker with the job id
+                override_args = mock_run_v2.RunJobRequest.Overrides.ContainerOverride.call_args
+                assert "backend.workers.render_video_worker" in str(override_args)
+                assert "--job-id" in str(override_args)
+                assert "test456" in str(override_args)
+
+    @pytest.mark.asyncio
+    async def test_trigger_render_video_worker_flag_off_uses_legacy_path(self):
+        """With USE_CLOUD_RUN_JOBS_FOR_RENDER off, the legacy Cloud Tasks /
+        HTTP path is used and no Cloud Run Job is dispatched (rollback path)."""
+        from backend.services.worker_service import WorkerService, reset_worker_service
+        reset_worker_service()
+
+        with patch('backend.services.worker_service.get_settings') as mock_settings:
+            mock_settings.return_value.admin_tokens = "test-token"
+            mock_settings.return_value.google_cloud_project = "test-project"
+            mock_settings.return_value.enable_cloud_tasks = True
+            mock_settings.return_value.gcp_region = "us-central1"
+            mock_settings.return_value.use_cloud_run_jobs_for_render = False
+
+            service = WorkerService()
+            with patch.object(service, '_trigger_worker_cloud_run_job', new=AsyncMock()) as mock_crj, \
+                 patch.object(service, 'trigger_worker', new=AsyncMock(return_value=True)) as mock_legacy:
+                result = await service.trigger_render_video_worker("test789")
+
+                assert result is True
+                mock_crj.assert_not_called()
+                mock_legacy.assert_called_once_with("render-video", "test789")
+
 
 class TestWorkerServiceWarmup:
     """Test encoding worker warmup in trigger methods."""

@@ -843,3 +843,59 @@ def park_active_render_jobs_for_shutdown() -> int:
 
 # For compatibility with worker service
 render_video_worker = process_render_video
+
+
+# ==================== CLI Entry Point for Cloud Run Jobs ====================
+# Allows the render worker to run as a standalone Cloud Run Job execution
+# (video-encoding-job with an args override), immune to Cloud Run Service
+# deployment rollouts. As a BackgroundTask on the service it was killed ~10s
+# after SIGTERM whenever a deploy landed mid-render (incident 2026-09-13).
+# Usage: python -m backend.workers.render_video_worker --job-id <job_id>
+
+def main():
+    """CLI entry point for running the render worker as a Cloud Run Job.
+
+    Exit-code contract (differs from video_worker deliberately): the Cloud Run
+    Job template has max_retries=2, and ``process_render_video`` handles every
+    expected failure internally — it parks the job (capacity/shutdown), fails
+    it with a user-facing message, or discards a superseded result. Re-running
+    the worker after any of those would re-enter a job that has already moved
+    to a non-render state. So a clean return (True OR False) exits 0, and only
+    an escaped exception (crash before state was handled) exits 1 to request a
+    Cloud Run retry.
+    """
+    import argparse
+    import asyncio
+    import sys
+
+    parser = argparse.ArgumentParser(
+        description="Post-review render video worker for karaoke generation"
+    )
+    parser.add_argument("--job-id", required=True, help="Job ID to process")
+    args = parser.parse_args()
+    job_id = args.job_id
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
+    logger.info(f"Starting render video worker CLI for job {job_id}")
+
+    try:
+        success = asyncio.run(process_render_video(job_id))
+        if success:
+            logger.info(f"Render video completed successfully for job {job_id}")
+        else:
+            logger.error(
+                f"Render video did not complete for job {job_id} "
+                "(job state already handled by the worker — parked, failed, or superseded)"
+            )
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Render video worker crashed: {e}", exc_info=True)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

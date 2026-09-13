@@ -668,6 +668,21 @@ def create_video_encoding_job(
                                 name="USE_GCE_ENCODING",
                                 value="true",
                             ),
+                            # The render worker also runs in this job (args
+                            # override → backend.workers.render_video_worker)
+                            # and triggers the video worker in-process when the
+                            # render completes. Without these flags that
+                            # downstream trigger would fall back to the
+                            # deploy-vulnerable Cloud Tasks → BackgroundTask
+                            # path this job exists to avoid.
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="USE_CLOUD_RUN_JOBS_FOR_VIDEO",
+                                value="true",
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="USE_CLOUD_RUN_JOBS_FOR_RENDER",
+                                value="true",
+                            ),
                         ],
                     )
                 ],

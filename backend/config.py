@@ -200,6 +200,15 @@ class Settings(BaseSettings):
     # Default is false - Cloud Tasks is sufficient for most videos (15-20 min).
     use_cloud_run_jobs_for_video: bool = os.getenv("USE_CLOUD_RUN_JOBS_FOR_VIDEO", "false").lower() in ("true", "1", "yes")
 
+    # When enabled AND enable_cloud_tasks is true, the post-review render worker
+    # also runs as a Cloud Run Job (reusing video-encoding-job with an args
+    # override). As a BackgroundTask on the service it was killed by every
+    # deploy rollout that landed mid-render — Cloud Run gives instances only
+    # 10s after SIGTERM, far less than a render takes, so the job froze at
+    # rendering_video until the 45-min stuck-job sweep (incident 2026-09-13,
+    # job 41e06b90; same class as incident 2026-03-08 for the video worker).
+    use_cloud_run_jobs_for_render: bool = os.getenv("USE_CLOUD_RUN_JOBS_FOR_RENDER", "false").lower() in ("true", "1", "yes")
+
     # GCE Encoding Worker (for high-performance video encoding)
     # When enabled, video encoding is offloaded to a dedicated C4 GCE instance
     # with faster CPU (Intel Granite Rapids 3.9 GHz) instead of Cloud Run.
