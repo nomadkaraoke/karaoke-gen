@@ -1,7 +1,13 @@
 # KaraokeHunt decommission + user outreach — session handoff (2026-09-13)
 
 > **SESSION 2 UPDATE (2026-09-13, later the same day)** — the §4 Segment-A pipeline is
-> BUILT and (at time of writing) running:
+> BUILT and the full run is DONE (searched 2026-09-13 ~07:00 UTC — sessions expire in
+> 7 days). **RESULTS: 89 requesters · 20 community (14 + 6 found after typo-fix, 51/139
+> titles canonicalized) · 28 CONFIDENT auto-submit · 105 no-match (55 of them NEAR
+> MISSES) · 0 errors.** NEXT STEP: **Andrew reviews `outreach_out/review_packet_v2.md`**,
+> flips `"approved": true` rows (+ optional `"manual_approve": true` on near-miss songs)
+> in `actions_v2.json`, then `phase2_execute.py --execute`; emails go out afterwards as
+> Gmail drafts in ~10-batches (see EMAIL POLICY below).
 > - `scripts/karaokehunt_outreach/phase1b_audio_search.py` — match-judge canonicalization
 >   → community re-check → search-standalone per song → ported `pick_auto_selection`
 >   tier-1 gate → buckets CONFIDENT / NEAR-MISS / no-match. Resumable via
