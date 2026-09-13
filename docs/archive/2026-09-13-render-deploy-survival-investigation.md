@@ -46,6 +46,8 @@ Recovery *would* have fired at ~05:44 (45-min staleness) and re-rendered from sc
 
 ## Deliberately not done (and why)
 
+- **Atomic (transactional) REVIEW_COMPLETE → RENDERING_VIDEO claim** (CodeRabbit finding on PR #994): two executions starting within the same sub-second window could both pass the worker-side gate and double-render. The identical read-then-write window exists in the legacy endpoint's `_check_worker_idempotency` (check stage → mark 'running' is not transactional), the worker-generation fence guarantees the stale result is discarded so final state is always correct, and the consequence is bounded wasted compute on a rare² race (requires two dispatches for one job AND <1s start skew). A conditional-write claim belongs in `JobManager`/`FirestoreService.update_job_status` — shared machinery for every worker — and deserves its own change, not a rider on this one.
+
 - **Adopt-completed-render on recovery** (query the pinned worker's `/status` during the stuck sweep and harvest finished outputs instead of re-rendering): meaningful only for the deploy-kill case this PR eliminates at the source; remaining orphan causes mostly kill the GCE worker too. Skipped to keep the change focused.
 - **Render-progress heartbeats + faster stuck threshold**: same reasoning — with the poller in a Cloud Run Job, poller death becomes rare enough that the 45-min net is acceptable.
 - **uvicorn `--timeout-graceful-shutdown` + CancelledError parking**: would make the lifespan hook genuinely reachable, but it's belt-and-braces once renders no longer run on the service; adds signal-handling risk to every request path.
