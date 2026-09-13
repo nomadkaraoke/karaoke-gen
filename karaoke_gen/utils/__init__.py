@@ -114,7 +114,7 @@ def normalize_text(text: str) -> str:
     - Strips leading/trailing whitespace
 
     Unlike sanitize_filename(), this does NOT:
-    - Remove filesystem-unsafe characters (/, \, :, *, ?, ", <, >, |)
+    - Remove filesystem-unsafe characters (/, \\, :, *, ?, ", <, >, |)
     - Collapse multiple underscores
     - Strip leading/trailing periods
 
