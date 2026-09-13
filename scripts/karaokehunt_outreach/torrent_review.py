@@ -101,6 +101,15 @@ def main() -> int:
     ap.add_argument("--actions", default="", help="phase1 actions.json (requester emails)")
     args = ap.parse_args()
 
+    # Optional per-requester language inference (language_inference.json in --out):
+    # [{email, locale, confidence, rationale}] -> "Inferred language" column.
+    lang_by_email: dict[str, str] = {}
+    lang_path = os.path.join(args.out, "language_inference.json")
+    if os.path.exists(lang_path):
+        for r in json.load(open(lang_path)):
+            if r["locale"] != "en" or r["confidence"] not in ("default",):
+                lang_by_email[r["email"]] = f"{r['locale']} ({r['confidence']}: {r['rationale']})"
+
     cache = json.load(open(os.path.join(args.out, "audio_search_cache.json")))
     requesters = build_requester_map(
         args.actions or os.path.join(args.out, "actions.json"),
@@ -213,7 +222,8 @@ def main() -> int:
         w = csv.writer(f)
         w.writerow(["Group", "#", "Song (canonical)", "Torrent filename", "Seeders",
                     "Quality", "Source", "Requested by", "Raw submission",
-                    "Results", "Best non-torrent option", "Review notes", "key"])
+                    "Inferred language", "Results", "Best non-torrent option",
+                    "Review notes", "key"])
         for group, rows in (("CONFIDENT", confident), ("A", group_a),
                             ("B", group_b), ("C", group_c)):
             for i, r in enumerate(rows, 1):
@@ -225,13 +235,15 @@ def main() -> int:
                                   if b else "—")
                     if r.get("vinyl_only"):
                         nontorrent += " (vinyl-only torrent exists)"
+                langs = "; ".join(sorted({lang_by_email[e] for e in r["emails"]
+                                          if e in lang_by_email}))
                 w.writerow([group + low, i, r["song"],
                             fname(b) if group != "C" else "",
                             r["seeders"] if group != "C" else "",
                             fmt(b) if group != "C" else "",
                             b.get("provider", "") if group != "C" else "",
                             ", ".join(r["emails"]), " ‖ ".join(r["raw"]),
-                            r["results_count"], nontorrent, "", r["key"]])
+                            langs, r["results_count"], nontorrent, "", r["key"]])
 
     print(f"WROTE {md_path}\nWROTE {csv_path}")
     print(f"confident={len(confident)} A={len(group_a)} B={len(group_b)} C={len(group_c)}")
