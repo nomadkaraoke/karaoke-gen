@@ -29,6 +29,19 @@
 > - **EMAIL POLICY (Andrew, verbatim intent)**: he reviews ALL emails before send; send in
 >   batches of ~10 via his Gmail andrew@nomadkaraoke.com. Nothing in phase1b/phase2 sends
 >   email; the send step should create Gmail DRAFTS for him.
+> - **RELAXED TORRENT RULE (Andrew)**: any FLAC torrent ≥2 seeders is acceptable if the
+>   torrent filename roughly matches — he eyeballs. Review surface = Google Sheet
+>   "KaraokeHunt Outreach — Torrent Review v2 (2026-09-13)" (his Drive; created via
+>   Drive MCP; `scripts/karaokehunt_outreach/torrent_review.py` regenerates the CSV).
+>   Groups: CONFIDENT 28 / A filename-matches 53 / B filename-differs 4 / C no-torrent 45.
+>   He fills the "Review notes" column; map notes back via the `key` column.
+> - **LOCALIZATION**: no direct country/language data exists anywhere (Firestore/Auth/
+>   Pushbullet empty; Kit geo 23/348 with 1 overlap). Inference from song language +
+>   domains → `outreach_out/language_inference.{json,csv}` (28 non-en of 89; high-conf:
+>   vi ar he ko hi id it fr es pt tl). Plan: bilingual emails for high-confidence rows;
+>   for everyone, footer links to a HOSTED LOCALIZED LETTER page (33 locales via existing
+>   translate.py) = true one-click "read this in your language" (Andrew approved) — build
+>   AFTER email wording is final. NOTE: fj/mr/ne/lt/ka NOT in the 33 locales.
 
 **Purpose:** hand a fresh Claude session everything needed to finish the KaraokeHunt
 requester-outreach work. Most of the decommission is DONE; the remaining build is the
