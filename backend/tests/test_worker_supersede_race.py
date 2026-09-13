@@ -123,7 +123,11 @@ def test_bump_worker_generation_is_best_effort():
 # render worker (GCE path) supersession behaviour
 # ---------------------------------------------------------------------------
 
-def _render_job(generation=1):
+def _render_job(generation=1, status=JobStatus.RENDERING_VIDEO):
+    # Entry snapshots (job_start) must use REVIEW_COMPLETE — the real dispatch
+    # state. A job already in RENDERING_VIDEO at entry is skipped by the
+    # worker-side idempotency gate (duplicate trigger / CRJ retry protection).
+    # Mid-render re-read snapshots (job_after) stay RENDERING_VIDEO.
     job = MagicMock()
     job.artist = "John Maus"
     job.title = "The Fear"
@@ -134,7 +138,7 @@ def _render_job(generation=1):
     job.prep_only = False
     job.state_data = {"worker_generation": generation, "is_duet": False}
     job.file_urls = {}
-    job.status = JobStatus.RENDERING_VIDEO
+    job.status = status
     return job
 
 
@@ -187,7 +191,7 @@ async def _run_gce_render(job_start, job_after, transition_side_effect=None):
 @pytest.mark.asyncio
 async def test_render_superseded_by_status_reset_does_not_fail_job():
     """Admin reset moved the job to awaiting_review mid-render → discard, don't fail."""
-    job_start = _render_job(generation=1)
+    job_start = _render_job(generation=1, status=JobStatus.REVIEW_COMPLETE)
     job_after = _render_job(generation=1)
     job_after.status = "awaiting_review"  # reset out from under the render
 
@@ -207,7 +211,7 @@ async def test_render_superseded_by_status_reset_does_not_fail_job():
 @pytest.mark.asyncio
 async def test_render_superseded_by_generation_bump_does_not_fail_job():
     """A newer render was triggered (generation bumped) → discard the stale run."""
-    job_start = _render_job(generation=1)
+    job_start = _render_job(generation=1, status=JobStatus.REVIEW_COMPLETE)
     job_after = _render_job(generation=2)  # newer run took over
 
     result, jm = await _run_gce_render(job_start, job_after)
@@ -225,7 +229,7 @@ async def test_invalid_terminal_transition_is_graceful_when_superseded():
     reset moved the job to awaiting_review). The worker must bail gracefully,
     exactly reproducing and fixing the 7f457087 incident.
     """
-    job_start = _render_job(generation=1)
+    job_start = _render_job(generation=1, status=JobStatus.REVIEW_COMPLETE)
     job_after = _render_job(generation=1)
     job_after.status = "awaiting_review"  # reset confirmed on re-read in the handler
 
@@ -252,7 +256,7 @@ async def test_invalid_transition_when_not_superseded_still_fails():
     workflow defect — it must still fail the job (loudly) rather than be silently
     swallowed and leave the job stuck. Guards against over-broad error suppression.
     """
-    job_start = _render_job(generation=1)
+    job_start = _render_job(generation=1, status=JobStatus.REVIEW_COMPLETE)
     job_after = _render_job(generation=1)  # same gen + still rendering_video => NOT superseded
 
     invalid = InvalidStateTransitionError(
@@ -272,7 +276,7 @@ async def test_progress_callback_skips_update_when_superseded():
     """A stale render's progress ticks must not drag a reset job's progress bar."""
     from backend.workers import render_video_worker as rvw
 
-    job_start = _render_job(generation=1)
+    job_start = _render_job(generation=1, status=JobStatus.REVIEW_COMPLETE)
     superseded = _render_job(generation=2)  # reset bumped the fence mid-render
 
     jm = MagicMock()
@@ -318,7 +322,7 @@ async def test_progress_callback_skips_update_when_superseded():
 @pytest.mark.asyncio
 async def test_normal_render_still_completes():
     """Un-superseded render must still write outputs and transition to INSTRUMENTAL_SELECTED."""
-    job_start = _render_job(generation=1)
+    job_start = _render_job(generation=1, status=JobStatus.REVIEW_COMPLETE)
     job_after = _render_job(generation=1)  # same gen, still rendering_video
 
     result, jm = await _run_gce_render(job_start, job_after)

@@ -111,19 +111,28 @@ async def lifespan(app: FastAPI):
     
     yield
 
-    # Shutdown - wait for any active workers to complete before terminating
-    # This prevents Cloud Run from killing workers mid-processing.
+    # Shutdown - best-effort parking of any still-registered workers.
     #
-    # Cloud Run gen2 default termination grace period is 600s. We wait up to
-    # 480s, leaving ~120s for the cleanup pass below to write Firestore state
-    # before SIGKILL. Without that headroom, render jobs that miss the wait
-    # would sit in `rendering_video` forever waiting for an operator.
+    # Reality check (incident 2026-09-13, job 41e06b90): Cloud Run services
+    # SIGKILL instances ~10 seconds after SIGTERM — NOT the 600s this comment
+    # previously claimed — and uvicorn only runs this lifespan-shutdown code
+    # AFTER all BackgroundTasks have completed ("Waiting for background tasks
+    # to complete"). A long-running worker task therefore keeps uvicorn stuck
+    # in that wait until SIGKILL, and this hook never executes at all. It can
+    # NOT be relied on to protect in-flight renders; that protection comes
+    # from running them as Cloud Run Jobs instead (USE_CLOUD_RUN_JOBS_FOR_RENDER,
+    # mirroring USE_CLOUD_RUN_JOBS_FOR_VIDEO from incident 2026-03-08).
+    #
+    # This hook is kept as a cheap safety net for the legacy flag-off path and
+    # for the narrow case where workers finish right as SIGTERM lands. The wait
+    # is capped well inside the 10s kill window so the parking pass below still
+    # gets a chance to write Firestore state.
     logger.info("Shutdown requested, checking for active workers...")
     if worker_registry.has_active_workers():
         active = worker_registry.get_active_workers()
         logger.info(f"Active workers found: {active}")
-        logger.info("Waiting for workers to complete (timeout: 480s)...")
-        completed = await worker_registry.wait_for_completion(timeout=480)
+        logger.info("Waiting for workers to complete (timeout: 5s)...")
+        completed = await worker_registry.wait_for_completion(timeout=5)
         if not completed:
             logger.error(
                 "Shutdown timeout - some workers may not have completed cleanly. "
