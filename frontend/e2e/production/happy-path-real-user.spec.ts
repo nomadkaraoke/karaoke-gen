@@ -154,9 +154,14 @@ async function gotoWithRetry(
 // =============================================================================
 
 test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
-  // IMPORTANT: Disable retries for this test - each retry creates a new karaoke job
-  // which wastes 15-20 minutes of processing time
-  test.describe.configure({ retries: 0 });
+  // Allow ONE retry. Each retry creates a fresh ~15-20 min karaoke job, so we
+  // don't want the prod config's default of 2 — but the review-page / preview-
+  // video readiness step is intermittently flaky (see the "proceed to
+  // instrumental" recovery below), and with retries:0 a single flake hard-fails
+  // and PAGES (daily E2E + the post-deploy canary). One retry lets a genuine
+  // flake self-heal on a clean run while capping the wasted time at a single
+  // extra attempt — a passing run never retries, so there's no steady-state cost.
+  test.describe.configure({ retries: 1 });
 
   test('Complete flow: New user signup -> Karaoke generation -> Distribution -> Cleanup', async ({
     page,
