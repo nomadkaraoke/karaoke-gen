@@ -17,8 +17,13 @@ import { clickCompleteSignInGate } from '../helpers/auth';
  * 4. Create Job - Guided flow Step 1 (Song Info) + Step 2 (Choose Audio)
  * 5. Audio Selection & Create - Guided flow Step 3 (Customize & Create) → "Job Created"
  * 6. Wait for Processing - Monitor via UI status updates
- * 7. Combined Review - Open review UI, preview video, proceed to instrumental
- * 8. Instrumental Selection - Select instrumental and submit (same page via hash nav)
+ * 7. Combined Review - Open review UI, preview video, then finish via whichever
+ *    CTA the (nondeterministic) auto-scorer produced: "Proceed to Instrumental
+ *    Review" or "Complete Track" (inline instrumental choice — completes the job).
+ *    A confident lyrics verdict can also skip the lyrics screen entirely
+ *    (redirect straight to instrumental).
+ * 8. Instrumental Selection - Select instrumental and submit (same page via hash
+ *    nav) — skipped when Step 7 completed the review via "Complete Track"
  * 9. Wait for Completion - Monitor via UI
  * 10. Verify Downloads - Check download links work
  * 11. Verify Distribution - Check YouTube/Dropbox/GDrive indicators
@@ -155,12 +160,14 @@ async function gotoWithRetry(
 
 test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
   // Allow ONE retry. Each retry creates a fresh ~15-20 min karaoke job, so we
-  // don't want the prod config's default of 2 — but the review-page / preview-
-  // video readiness step is intermittently flaky (see the "proceed to
-  // instrumental" recovery below), and with retries:0 a single flake hard-fails
-  // and PAGES (daily E2E + the post-deploy canary). One retry lets a genuine
-  // flake self-heal on a clean run while capping the wasted time at a single
-  // extra attempt — a passing run never retries, so there's no steady-state cost.
+  // don't want the prod config's default of 2 — but prod smoke tests can hit
+  // genuinely transient infra (encoder cold-start, network blips), and with
+  // retries:0 a single flake hard-fails and PAGES (daily E2E + the post-deploy
+  // canary). One retry lets a genuine flake self-heal on a clean run while
+  // capping the wasted time at a single extra attempt — a passing run never
+  // retries, so there's no steady-state cost. (The former #1 "flake" — timing
+  // out when the review modal showed "Complete Track" instead of "Proceed to
+  // Instrumental Review" — was a real test bug, fixed in Step 7 below.)
   test.describe.configure({ retries: 1 });
 
   test('Complete flow: New user signup -> Karaoke generation -> Distribution -> Cleanup', async ({
@@ -655,12 +662,16 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       await gotoWithRetry(reviewPage, reviewUrl);
 
       // Wait for the review page to actually render meaningful content
-      // The lyrics review page should show either the review UI or an auth prompt
+      // The lyrics review page should show either the review UI or an auth prompt.
+      // .first() matters: the union matches many elements (any text containing
+      // "review"), and expect() on a multi-element locator is a strict-mode
+      // violation that throws instantly — which made this reload on EVERY run.
       try {
         await expect(
           reviewPage.getByRole('button', { name: /preview video/i })
             .or(reviewPage.getByText(/review/i))
             .or(reviewPage.getByText(/sign in/i))
+            .first()
         ).toBeVisible({ timeout: TIMEOUTS.action });
         console.log('  Lyrics review UI loaded');
       } catch {
@@ -678,103 +689,148 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       await reviewPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await reviewPage.waitForTimeout(1000);
 
-      // Click "Preview Video" button (at bottom of the lyrics review page)
+      // Which review surface did we land on? The auto-review scorer's verdict is
+      // per-job nondeterministic (fresh transcription + separation every run), and
+      // it legitimately changes the UI flow (see LyricsAnalyzer/client.tsx):
+      //  - lyrics NOT auto-verified → normal lyrics screen with the "Preview Video"
+      //    button (the common case for this test song);
+      //  - lyrics auto-verified but backing not (C1 "mirror" skip) → the review
+      //    page immediately hash-redirects to #/{jobId}/instrumental and the
+      //    lyrics screen/preview modal never exist — jump straight to Step 8.
+      // Tracks whether Step 8's instrumental screen is expected; the "Complete
+      // Track" CTA below can also turn it off.
+      let needsInstrumentalScreen = true;
       const previewVideoBtn = reviewPage.getByRole('button', { name: /preview video/i });
-      await expect(previewVideoBtn).toBeVisible({ timeout: TIMEOUTS.action });
-      console.log('  Found "Preview Video" button');
-
-      await reviewPage.screenshot({ path: 'test-results/07b-before-preview-click.png', fullPage: true });
-      await previewVideoBtn.click();
-      console.log('  Clicked "Preview Video" button');
-
-      // Wait for the modal dialog to appear
-      // The modal has title "Preview Video (With Vocals)"
-      const previewModal = reviewPage.getByRole('dialog');
-      await expect(previewModal).toBeVisible({ timeout: TIMEOUTS.action });
-      console.log('  Preview modal opened');
-
-      // Wait for modal open animation to complete
-      await reviewPage.waitForTimeout(5000);
-      await reviewPage.screenshot({ path: 'test-results/07c-preview-modal.png', fullPage: true });
-
-      // Wait for video to load in the modal
-      // The PreviewVideoSection component first shows "Generating preview video..."
-      // then renders the <video> element once the preview is ready
-      console.log('  Waiting for preview video generation...');
-
-      // First wait for the loading indicator to disappear (or video to appear)
-      // The loading state shows "Generating preview video..."
-      const loadingText = reviewPage.getByText(/generating preview video/i);
-      try {
-        // Wait up to 2 minutes for preview generation (it can be slow)
-        await expect(loadingText).not.toBeVisible({ timeout: 120000 });
-        console.log('  Preview generation complete');
-      } catch {
-        console.log('  WARNING: Loading indicator timeout - checking for video anyway');
-      }
-
-      // Now check for the video element or an error message. Scope the alert
-      // lookup to the modal — a page-level `[role="alert"]` notifications region
-      // is always present and empty, which previously logged a spurious
-      // "Preview error:" with no text (run #151).
-      const videoElement = reviewPage.locator('video');
-      const errorAlert = previewModal.locator('[role="alert"]');
-
-      // Check if there's a *real* error (non-empty alert text inside the modal).
-      // Gate on isVisible() (immediate — it does not auto-wait) so the happy path
-      // with no alert doesn't block on textContent()'s default 30s wait-for-element.
-      let alertText = '';
-      if (await errorAlert.first().isVisible().catch(() => false)) {
-        alertText = ((await errorAlert.first().textContent().catch(() => '')) || '').trim();
-      }
-      if (alertText) {
-        console.log(`  WARNING: Preview error: ${alertText}`);
-        // Continue anyway - we can still proceed to instrumental even if preview failed
-      } else if (await videoElement.isVisible({ timeout: 10000 }).catch(() => false)) {
-        console.log('  Video element visible in modal');
-        // Give the video a moment to buffer/load
-        await reviewPage.waitForTimeout(3000);
-      } else {
-        console.log('  WARNING: No video element found, but continuing anyway');
-      }
-
-      await reviewPage.screenshot({ path: 'test-results/07d-preview-ready.png', fullPage: true });
-
-      // Locate the "Proceed to Instrumental Review" button (saves corrections and
-      // navigates to instrumental selection). A transient encoder cold-start can
-      // leave the preview modal in an error/closed state (the encoder was offline
-      // during run #151) — but proceeding to instrumental does NOT depend on the
-      // preview succeeding. Recover once by reloading the review page and re-opening
-      // the preview modal rather than failing the whole smoke test on flaky infra.
-      // The final assertion below stays authoritative: if the button never appears
-      // even after recovery, generation really is broken and the test fails.
-      // Require the button to be present AND enabled: ReviewChangesModal keeps it
-      // visible but disabled when there are no lyrics, so a visibility-only check
-      // could accept an unusable button (and the later click would just time out).
-      const proceedName = /proceed to instrumental/i;
-      let proceedBtn = reviewPage.getByRole('button', { name: proceedName });
-      if (!(await proceedBtn.isEnabled({ timeout: TIMEOUTS.action }).catch(() => false))) {
-        console.log('  WARNING: Proceed button not ready (missing/disabled) after preview — recovering (reload review + reopen preview)...');
-        await gotoWithRetry(reviewPage, reviewUrl);
-        await reviewPage.waitForTimeout(3000);
-        await reviewPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-        const reopenBtn = reviewPage.getByRole('button', { name: /preview video/i });
-        if (await reopenBtn.isVisible({ timeout: TIMEOUTS.action }).catch(() => false)) {
-          await reopenBtn.click();
-          await expect(reviewPage.getByRole('dialog')).toBeVisible({ timeout: TIMEOUTS.action });
-          console.log('  Re-opened preview modal after recovery');
+      const onLyricsScreen = await previewVideoBtn.isVisible({ timeout: TIMEOUTS.action }).catch(() => false);
+      if (!onLyricsScreen) {
+        const hash = await reviewPage.evaluate(() => window.location.hash).catch(() => '');
+        if (hash.includes('/instrumental')) {
+          console.log('  Lyrics auto-verified by server — redirected straight to instrumental selection (skipping preview modal)');
+        } else {
+          await reviewPage.screenshot({ path: 'test-results/07-no-review-surface.png', fullPage: true });
+          throw new Error(`Review page showed neither the lyrics screen nor the instrumental screen (hash: "${hash}")`);
         }
-        proceedBtn = reviewPage.getByRole('button', { name: proceedName });
       }
-      await expect(proceedBtn).toBeEnabled({ timeout: TIMEOUTS.action });
-      console.log('  Found enabled "Proceed to Instrumental Review" button');
 
-      await proceedBtn.click();
-      console.log('  Clicked "Proceed to Instrumental Review" button');
+      if (onLyricsScreen) {
+        console.log('  Found "Preview Video" button');
 
-      // Wait for the navigation to instrumental selection (happens via hash change)
-      // The page navigates to #/{jobId}/instrumental
-      await reviewPage.waitForTimeout(3000);
+        await reviewPage.screenshot({ path: 'test-results/07b-before-preview-click.png', fullPage: true });
+        await previewVideoBtn.click();
+        console.log('  Clicked "Preview Video" button');
+
+        // Wait for the modal dialog to appear
+        // The modal has title "Preview Video (With Vocals)"
+        const previewModal = reviewPage.getByRole('dialog');
+        await expect(previewModal).toBeVisible({ timeout: TIMEOUTS.action });
+        console.log('  Preview modal opened');
+
+        // Wait for modal open animation to complete
+        await reviewPage.waitForTimeout(5000);
+        await reviewPage.screenshot({ path: 'test-results/07c-preview-modal.png', fullPage: true });
+
+        // Wait for video to load in the modal
+        // The PreviewVideoSection component first shows "Generating preview video..."
+        // then renders the <video> element once the preview is ready
+        console.log('  Waiting for preview video generation...');
+
+        // First wait for the loading indicator to disappear (or video to appear)
+        // The loading state shows "Generating preview video..."
+        const loadingText = reviewPage.getByText(/generating preview video/i);
+        try {
+          // Wait up to 2 minutes for preview generation (it can be slow)
+          await expect(loadingText).not.toBeVisible({ timeout: 120000 });
+          console.log('  Preview generation complete');
+        } catch {
+          console.log('  WARNING: Loading indicator timeout - checking for video anyway');
+        }
+
+        // Now check for the video element or an error message. Scope the alert
+        // lookup to the modal — a page-level `[role="alert"]` notifications region
+        // is always present and empty, which previously logged a spurious
+        // "Preview error:" with no text (run #151).
+        const videoElement = reviewPage.locator('video');
+        const errorAlert = previewModal.locator('[role="alert"]');
+
+        // Check if there's a *real* error (non-empty alert text inside the modal).
+        // Gate on isVisible() (immediate — it does not auto-wait) so the happy path
+        // with no alert doesn't block on textContent()'s default 30s wait-for-element.
+        let alertText = '';
+        if (await errorAlert.first().isVisible().catch(() => false)) {
+          alertText = ((await errorAlert.first().textContent().catch(() => '')) || '').trim();
+        }
+        if (alertText) {
+          console.log(`  WARNING: Preview error: ${alertText}`);
+          // Continue anyway - we can still proceed to instrumental even if preview failed
+        } else if (await videoElement.isVisible({ timeout: 10000 }).catch(() => false)) {
+          console.log('  Video element visible in modal');
+          // Give the video a moment to buffer/load
+          await reviewPage.waitForTimeout(3000);
+        } else {
+          console.log('  WARNING: No video element found, but continuing anyway');
+        }
+
+        await reviewPage.screenshot({ path: 'test-results/07d-preview-ready.png', fullPage: true });
+
+        // Locate the finish CTA in the modal footer. Its label depends on the
+        // per-job (nondeterministic) auto-scorer output — see ReviewChangesModal's
+        // completesReview prop:
+        //  - "Proceed to Instrumental Review": navigates to the /instrumental
+        //    screen (Step 8 as a separate screen);
+        //  - "Complete Track": the inline instrumental chooser is shown in this
+        //    modal (both stems ready and/or a confident backing verdict), clicking
+        //    completes the WHOLE review — the /instrumental screen never appears.
+        // Both are correct product flows; the test must accept either. This was the
+        // long-standing Stage-2 "flake": the test only knew "Proceed to
+        // Instrumental" and timed out whenever the scorer was confident.
+        // A transient encoder cold-start can also leave the preview modal in an
+        // error/closed state — proceeding does NOT depend on the preview, so
+        // recover once by reloading the review page and re-opening the modal.
+        // Require the button present AND enabled: ReviewChangesModal keeps it
+        // visible but disabled when no lyrics are loaded.
+        const finishCtaName = /proceed to instrumental|complete track/i;
+        let finishBtn = reviewPage.getByRole('button', { name: finishCtaName });
+        if (!(await finishBtn.isEnabled({ timeout: TIMEOUTS.action }).catch(() => false))) {
+          console.log('  WARNING: Finish button not ready (missing/disabled) after preview — recovering (reload review + reopen preview)...');
+          await gotoWithRetry(reviewPage, reviewUrl);
+          await reviewPage.waitForTimeout(3000);
+          await reviewPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+          const reopenBtn = reviewPage.getByRole('button', { name: /preview video/i });
+          if (await reopenBtn.isVisible({ timeout: TIMEOUTS.action }).catch(() => false)) {
+            await reopenBtn.click();
+            await expect(reviewPage.getByRole('dialog')).toBeVisible({ timeout: TIMEOUTS.action });
+            console.log('  Re-opened preview modal after recovery');
+          }
+          finishBtn = reviewPage.getByRole('button', { name: finishCtaName });
+        }
+        await expect(finishBtn).toBeEnabled({ timeout: TIMEOUTS.action });
+        const finishLabel = ((await finishBtn.textContent()) || '').trim();
+        needsInstrumentalScreen = !/complete track/i.test(finishLabel);
+        console.log(`  Found enabled finish button: "${finishLabel}"`);
+
+        await finishBtn.click();
+        console.log(`  Clicked "${finishLabel}" button`);
+
+        if (needsInstrumentalScreen) {
+          // Wait for the navigation to instrumental selection (happens via hash change)
+          // The page navigates to #/{jobId}/instrumental
+          await reviewPage.waitForTimeout(3000);
+        } else {
+          // "Complete Track": submits corrections + completes the review with the
+          // inline/auto instrumental selection. The modal shows "Saving…" while the
+          // (slow) completeReview call runs, then a success screen with a 3s
+          // countdown redirects to /app. Wait for that redirect — the pathname
+          // check must exclude the current /app/jobs page.
+          console.log('  Inline instrumental flow — waiting for review completion + redirect to /app...');
+          try {
+            await reviewPage.waitForURL((url) => /\/app\/?$/.test(url.pathname), { timeout: 180_000 });
+            console.log('  Review completed (redirected to /app)');
+          } catch {
+            await reviewPage.screenshot({ path: 'test-results/07e-complete-track-timeout.png', fullPage: true });
+            throw new Error('Timed out waiting for review completion after clicking "Complete Track"');
+          }
+        }
+      } // end onLyricsScreen
 
       // =========================================================================
       // STEP 8: Instrumental Selection (continuation of combined flow)
@@ -784,70 +840,77 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
       console.log('STEP 8: Instrumental Selection');
       console.log('========================================');
 
-      // Wait for the instrumental selection UI to load
-      // The InstrumentalSelector component renders selection options
-      console.log('  Waiting for instrumental selection UI to load...');
-
-      // Wait for either the selection options or the loading indicator to appear
-      try {
-        await reviewPage.waitForSelector('.selection-option, .selection-panel, [class*="selection"]', { timeout: 30000 });
-        console.log('  Instrumental selection UI loaded');
-      } catch {
-        // If selector not found, check for loading state
-        const loadingState = reviewPage.getByText(/loading instrumental/i);
-        if (await loadingState.isVisible({ timeout: 5000 }).catch(() => false)) {
-          console.log('  Waiting for instrumental analysis to complete...');
-          await expect(loadingState).not.toBeVisible({ timeout: 60000 });
-        }
-      }
-
-      // Wait for waveform and UI to fully render
-      await reviewPage.waitForTimeout(5000);
-      await reviewPage.screenshot({ path: 'test-results/08a-instrumental-opened.png', fullPage: true });
-      console.log('  Instrumental selection UI opened');
-
-      // Select "Clean" instrumental option
-      // The options have class "selection-option" and contain labels with "Clean" or "With Backing"
-      const cleanOption = reviewPage.locator('.selection-option:has-text("Clean")').first();
-      if (await cleanOption.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await cleanOption.click();
-        console.log('  Selected "Clean" instrumental option');
-      } else {
-        // If we can't find "Clean" specifically, the first option might already be selected
-        console.log('  Clean option not found - using default selection');
-      }
-
-      await reviewPage.screenshot({ path: 'test-results/08b-clean-selected.png', fullPage: true });
-
-      // Click the submit button: "✓ Confirm & Continue" (id="submit-btn")
-      const submitBtn = reviewPage.locator('#submit-btn');
-      await expect(submitBtn).toBeVisible({ timeout: TIMEOUTS.action });
-      console.log('  Found submit button');
-
-      await submitBtn.click();
-      console.log('  Clicked "Confirm & Continue" button');
-
-      // Wait for submission to complete - the page shows a success screen then redirects
-      // In cloud mode, after success it redirects to /app after a countdown
-      await reviewPage.waitForTimeout(5000);
-
-      await reviewPage.screenshot({ path: 'test-results/08c-instrumental-submitted.png', fullPage: true });
-
-      // The page redirects to /app after completion, or may close
-      // Wait a bit for the redirect/close to happen
-      if (!reviewPage.isClosed()) {
-        // Wait for potential redirect or success screen
-        try {
-          await reviewPage.waitForURL(/\/app/, { timeout: 10000 });
-          console.log('  Redirected to /app after instrumental selection');
-        } catch {
-          // If no redirect, close manually
+      if (!needsInstrumentalScreen) {
+        console.log('  Instrumental screen skipped — review already completed via "Complete Track"');
+        if (!reviewPage.isClosed()) {
           await reviewPage.close();
-          console.log('  Closed review UI');
         }
       } else {
-        console.log('  Review UI closed automatically after submission');
-      }
+        // Wait for the instrumental selection UI to load
+        // The InstrumentalSelector component renders selection options
+        console.log('  Waiting for instrumental selection UI to load...');
+
+        // Wait for either the selection options or the loading indicator to appear
+        try {
+          await reviewPage.waitForSelector('.selection-option, .selection-panel, [class*="selection"]', { timeout: 30000 });
+          console.log('  Instrumental selection UI loaded');
+        } catch {
+          // If selector not found, check for loading state
+          const loadingState = reviewPage.getByText(/loading instrumental/i);
+          if (await loadingState.isVisible({ timeout: 5000 }).catch(() => false)) {
+            console.log('  Waiting for instrumental analysis to complete...');
+            await expect(loadingState).not.toBeVisible({ timeout: 60000 });
+          }
+        }
+
+        // Wait for waveform and UI to fully render
+        await reviewPage.waitForTimeout(5000);
+        await reviewPage.screenshot({ path: 'test-results/08a-instrumental-opened.png', fullPage: true });
+        console.log('  Instrumental selection UI opened');
+
+        // Select "Clean" instrumental option
+        // The options have class "selection-option" and contain labels with "Clean" or "With Backing"
+        const cleanOption = reviewPage.locator('.selection-option:has-text("Clean")').first();
+        if (await cleanOption.isVisible({ timeout: 5000 }).catch(() => false)) {
+          await cleanOption.click();
+          console.log('  Selected "Clean" instrumental option');
+        } else {
+          // If we can't find "Clean" specifically, the first option might already be selected
+          console.log('  Clean option not found - using default selection');
+        }
+
+        await reviewPage.screenshot({ path: 'test-results/08b-clean-selected.png', fullPage: true });
+
+        // Click the submit button: "✓ Confirm & Continue" (id="submit-btn")
+        const submitBtn = reviewPage.locator('#submit-btn');
+        await expect(submitBtn).toBeVisible({ timeout: TIMEOUTS.action });
+        console.log('  Found submit button');
+
+        await submitBtn.click();
+        console.log('  Clicked "Confirm & Continue" button');
+
+        // Wait for submission to complete - the page shows a success screen then redirects
+        // In cloud mode, after success it redirects to /app after a countdown
+        await reviewPage.waitForTimeout(5000);
+
+        await reviewPage.screenshot({ path: 'test-results/08c-instrumental-submitted.png', fullPage: true });
+
+        // The page redirects to /app after completion, or may close
+        // Wait a bit for the redirect/close to happen
+        if (!reviewPage.isClosed()) {
+          // Wait for potential redirect or success screen
+          try {
+            await reviewPage.waitForURL(/\/app/, { timeout: 10000 });
+            console.log('  Redirected to /app after instrumental selection');
+          } catch {
+            // If no redirect, close manually
+            await reviewPage.close();
+            console.log('  Closed review UI');
+          }
+        } else {
+          console.log('  Review UI closed automatically after submission');
+        }
+      } // end needsInstrumentalScreen
 
       // Refresh main app
       await page.bringToFront();
