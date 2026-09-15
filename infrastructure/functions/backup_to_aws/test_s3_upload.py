@@ -47,6 +47,44 @@ class TestUploadStagingToS3(unittest.TestCase):
         fs.delete.assert_called_once()
         sec.delete.assert_called_once()
 
+    @patch("s3_upload.boto3.client")
+    @patch("s3_upload.storage.Client")
+    @patch("s3_upload.get_aws_credentials")
+    def test_small_irreplaceable_prefixes_upload_before_large_finals(
+        self, mock_creds, mock_storage, mock_boto
+    ):
+        """Regression (DR incident 2026-09): a mid-run timeout must not starve
+        secrets/git-repos. The huge gcs/job-files/ prefix must upload LAST even
+        though it sorts before git-repos/ and secrets/ lexicographically."""
+        from s3_upload import upload_staging_to_s3
+
+        mock_creds.return_value = {"access_key_id": "x", "secret_access_key": "y"}
+        # Deliberately in lexicographic (list_blobs) order, which is the buggy order.
+        blobs = [
+            _blob("firestore/2026-09-14/out.bin"),
+            _blob("gcs/job-files/jobs/abc/finals/huge.mp4"),
+            _blob("gcs/kn-data/index.json"),
+            _blob("git-repos/nomadkaraoke/karaoke-gen.bundle"),
+            _blob("secrets/2026-09-14.bin"),
+        ]
+        mock_storage.return_value.bucket.return_value.list_blobs.return_value = blobs
+
+        uploaded_keys = []
+        mock_boto.return_value.upload_fileobj.side_effect = (
+            lambda Fileobj, Bucket, Key: uploaded_keys.append(Key)
+        )
+
+        upload_staging_to_s3("staging", "s3b")
+
+        # secrets + git-repos must both precede the large gcs/job-files/ final.
+        job_files_idx = next(i for i, k in enumerate(uploaded_keys) if k.startswith("gcs/job-files/"))
+        secrets_idx = next(i for i, k in enumerate(uploaded_keys) if k.startswith("secrets/"))
+        git_idx = next(i for i, k in enumerate(uploaded_keys) if k.startswith("git-repos/"))
+        self.assertLess(secrets_idx, job_files_idx)
+        self.assertLess(git_idx, job_files_idx)
+        # gcs/job-files/ is the largest — always uploaded last.
+        self.assertEqual(job_files_idx, len(uploaded_keys) - 1)
+
 
 if __name__ == "__main__":
     unittest.main()
