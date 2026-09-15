@@ -278,32 +278,41 @@ class TestKnCommunitySearch:
     def test_token_and_matching_builds_one_condition_per_token(self, monkeypatch):
         captured = self._patch_query(monkeypatch, [])
         main._search_kn_community("daft punk one more time")
-        # 5 tokens -> 5 token LIKE conditions, ANDed together, over our own table.
-        assert captured["sql"].count("LIKE @tok") == 5
-        assert " AND " in captured["sql"]
-        assert "karaokenerds_community" in captured["sql"]
-        # BigQuery LIKE uses backslash as its default escape char and has NO
-        # ESCAPE clause — adding one is a syntax error. Wildcards are escaped in
-        # the parameter value instead (see _like_escape).
-        assert "ESCAPE" not in captured["sql"]
+        sql = captured["sql"]
+        # 5 tokens -> one literal-substring (STRPOS) condition each, ANDed.
+        assert sql.count("STRPOS(hay, @tok") == 5
+        assert " AND " in sql
+        assert "karaokenerds_community" in sql
+        # STRPOS is literal (no LIKE wildcards) so there is nothing to escape.
+        assert "LIKE" not in sql and "ESCAPE" not in sql
         # Accent-insensitive: the haystack diacritic-folds (NORMALIZE NFD + drop
         # combining marks) so an ASCII query matches accented catalog values.
-        assert "NORMALIZE" in captured["sql"]
-        assert r"\p{Mn}" in captured["sql"]
+        assert "NORMALIZE" in sql and r"\p{Mn}" in sql
 
-    def test_metacharacter_token_does_not_add_escape_clause(self, monkeypatch):
-        # A token with %/_ must still produce valid SQL (no ESCAPE clause).
+    def test_long_tokens_get_fuzzy_edit_distance(self, monkeypatch):
+        # Tokens >= 4 chars add an EDIT_DISTANCE fuzzy fallback for typos.
+        captured = self._patch_query(monkeypatch, [])
+        main._search_kn_community("books boxs")  # both len>=4
+        assert captured["sql"].count("EDIT_DISTANCE") == 2
+
+    def test_short_tokens_are_exact_only(self, monkeypatch):
+        # Tokens < 4 chars stay exact-substring (no fuzzy, to avoid noise).
+        captured = self._patch_query(monkeypatch, [])
+        main._search_kn_community("abc")
+        assert "STRPOS(hay, @tok0)" in captured["sql"]
+        assert "EDIT_DISTANCE" not in captured["sql"]
+
+    def test_metacharacter_token_is_literal(self, monkeypatch):
+        # STRPOS treats %/_ literally — no LIKE, no ESCAPE, no crash.
         captured = self._patch_query(monkeypatch, [])
         main._search_kn_community("100%_off")
-        assert "LIKE @tok0" in captured["sql"]
-        assert "ESCAPE" not in captured["sql"]
+        assert "STRPOS(hay, @tok0)" in captured["sql"]
+        assert "LIKE" not in captured["sql"] and "ESCAPE" not in captured["sql"]
 
     def test_accented_query_token_is_folded(self, monkeypatch):
-        # An accented query still runs (tokens are folded before the LIKE), and
-        # a folded/ASCII query produces a token condition. Uses a real-world case.
         captured = self._patch_query(monkeypatch, [])
         main._search_kn_community("Maxïmo Park")
-        assert captured["sql"].count("LIKE @tok") == 2
+        assert captured["sql"].count("STRPOS(hay, @tok") == 2
         # Blank-after-fold input still short-circuits without hitting BigQuery.
         monkeypatch.setattr(main.bigquery, "Client",
                             MagicMock(side_effect=AssertionError("BQ should not be called")))
