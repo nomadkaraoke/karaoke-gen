@@ -286,6 +286,10 @@ class TestKnCommunitySearch:
         # ESCAPE clause — adding one is a syntax error. Wildcards are escaped in
         # the parameter value instead (see _like_escape).
         assert "ESCAPE" not in captured["sql"]
+        # Accent-insensitive: the haystack diacritic-folds (NORMALIZE NFD + drop
+        # combining marks) so an ASCII query matches accented catalog values.
+        assert "NORMALIZE" in captured["sql"]
+        assert r"\p{Mn}" in captured["sql"]
 
     def test_metacharacter_token_does_not_add_escape_clause(self, monkeypatch):
         # A token with %/_ must still produce valid SQL (no ESCAPE clause).
@@ -293,6 +297,17 @@ class TestKnCommunitySearch:
         main._search_kn_community("100%_off")
         assert "LIKE @tok0" in captured["sql"]
         assert "ESCAPE" not in captured["sql"]
+
+    def test_accented_query_token_is_folded(self, monkeypatch):
+        # An accented query still runs (tokens are folded before the LIKE), and
+        # a folded/ASCII query produces a token condition. Uses a real-world case.
+        captured = self._patch_query(monkeypatch, [])
+        main._search_kn_community("Maxïmo Park")
+        assert captured["sql"].count("LIKE @tok") == 2
+        # Blank-after-fold input still short-circuits without hitting BigQuery.
+        monkeypatch.setattr(main.bigquery, "Client",
+                            MagicMock(side_effect=AssertionError("BQ should not be called")))
+        assert main._search_kn_community("   ") == []
 
     def test_blank_query_returns_empty_without_bq(self, monkeypatch):
         # No tokens -> never touches BigQuery.
