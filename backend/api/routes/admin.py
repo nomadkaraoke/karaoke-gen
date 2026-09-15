@@ -635,7 +635,7 @@ async def clear_audio_search_cache(
         logger.debug(f"Skipping flacfetch cache clear - missing artist ({artist}) or title ({title})")
 
     logger.info(
-        f"Admin {auth_data[0]} cleared audio search cache for job {job_id}. "
+        f"Admin {auth_data.user_email} cleared audio search cache for job {job_id}. "
         f"Cleared {results_count} results. Status changed from {previous_status} to pending. "
         f"Flacfetch cache cleared: {flacfetch_cache_cleared}"
     )
@@ -685,7 +685,7 @@ async def reset_worker_state(
     job_manager.update_state_data(job_id, 'render_progress', {'stage': 'pending'})
     job_manager.update_state_data(job_id, 'screens_progress', {'stage': 'pending'})
 
-    logger.info(f"Admin {auth_data[0]} reset worker state for job {job_id}")
+    logger.info(f"Admin {auth_data.user_email} reset worker state for job {job_id}")
 
     return {
         "status": "success",
@@ -718,7 +718,7 @@ async def clear_all_flacfetch_cache(
     try:
         deleted_count = await flacfetch_client.clear_all_cache()
         logger.info(
-            f"Admin {auth_data[0]} cleared all flacfetch cache. "
+            f"Admin {auth_data.user_email} cleared all flacfetch cache. "
             f"Deleted {deleted_count} entries."
         )
         return ClearAllCacheResponse(
