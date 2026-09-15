@@ -35,6 +35,7 @@ import json
 import logging
 import os
 import time
+import unicodedata
 from datetime import datetime, timezone
 
 import functions_framework
@@ -141,7 +142,16 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
 
     Returns flat rows ``{artist, title, brand, watch}``; the caller groups them.
     """
-    tokens = [t for t in query.lower().split() if t][:12]
+    def _fold(s: str) -> str:
+        # Diacritic-fold + lowercase, mirroring the SQL haystack below, so an
+        # ASCII query ("maximo") matches an accented catalog value ("Maxïmo").
+        # KaraokeNerds stores accented artist/title names (e.g. "Maxïmo Park",
+        # mostly our own NOMAD tracks); without this the token LIKE never matched.
+        return "".join(
+            c for c in unicodedata.normalize("NFD", s or "") if not unicodedata.combining(c)
+        ).lower()
+
+    tokens = [t for t in (_fold(w) for w in query.split()) if t][:12]
     if not tokens:
         return []
 
@@ -153,7 +163,13 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
         return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     client = bigquery.Client(project=GCP_PROJECT_ID)
-    haystack = "LOWER(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')))"
+    # Diacritic-fold the columns too (NFD + drop combining marks, then lower) so
+    # matching is accent-insensitive on both sides — mirrors _fold() above.
+    haystack = (
+        "LOWER(REGEXP_REPLACE("
+        "NORMALIZE(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')), NFD),"
+        r" r'\p{Mn}', ''))"
+    )
     conditions = []
     params = []
     for i, tok in enumerate(tokens):
