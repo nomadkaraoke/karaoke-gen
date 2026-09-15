@@ -8,6 +8,28 @@ from google.cloud import storage, secretmanager
 
 logger = logging.getLogger(__name__)
 
+# Upload order matters: the function has a hard request timeout, and the multi-GB
+# ``gcs/job-files/`` prefix (regenerable video finals) can consume the whole budget.
+# ``list_blobs()`` returns objects in lexicographic order, which sorts
+# ``gcs/job-files/`` ahead of ``git-repos/`` and ``secrets/`` — so a mid-run timeout
+# starved the small, irreplaceable backups (DR incident 2026-09: secrets + git repos
+# went stale for days while GCS job-files stayed fresh). Upload the small,
+# irreplaceable prefixes first so a timeout can only ever cost the large regenerable
+# finals, never code history or secrets.
+_SMALL_FIRST_PREFIXES = ("secrets/", "git-repos/", "gcs/kn-data/", "firestore/")
+_LARGE_LAST_PREFIXES = ("gcs/job-files/",)
+
+
+def _upload_priority(name: str) -> int:
+    """Sort key for staging blobs: lower uploads first. Small/irreplaceable
+    prefixes first, unknown prefixes next, large regenerable finals last."""
+    for i, prefix in enumerate(_SMALL_FIRST_PREFIXES):
+        if name.startswith(prefix):
+            return i
+    if any(name.startswith(prefix) for prefix in _LARGE_LAST_PREFIXES):
+        return len(_SMALL_FIRST_PREFIXES) + 1
+    return len(_SMALL_FIRST_PREFIXES)
+
 
 def get_aws_credentials(project: str) -> dict:
     """Retrieve AWS credentials from GCP Secret Manager."""
@@ -33,6 +55,11 @@ def upload_staging_to_s3(
 
     Excluded objects are left in staging (not deleted), so they remain a local
     backup until the GCS lifecycle policy or the next weekly upload removes them.
+
+    Objects are uploaded in priority order (see ``_upload_priority``): small,
+    irreplaceable prefixes (secrets, git repos) first and the large, regenerable
+    ``gcs/job-files/`` finals last, so a mid-run timeout can only ever cost the
+    replaceable video finals.
     """
     exclude_prefixes = exclude_prefixes or []
     aws_creds = get_aws_credentials(project)
@@ -49,7 +76,8 @@ def upload_staging_to_s3(
     uploaded = 0
     errors = 0
 
-    for blob in bucket.list_blobs():
+    blobs = sorted(bucket.list_blobs(), key=lambda b: (_upload_priority(b.name), b.name))
+    for blob in blobs:
         if blob.name.startswith(".") or "/.last_sync" in blob.name:
             continue
 
