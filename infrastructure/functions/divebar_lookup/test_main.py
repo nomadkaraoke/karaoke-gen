@@ -307,3 +307,24 @@ class TestKnCommunitySearch:
             MockRequest({"action": "kn_community_search"})
         )
         assert status == 400
+
+    def test_dispatch_null_query_returns_400_not_500(self, monkeypatch):
+        # {"query": null} must not crash on .strip() -> generic 500.
+        body, status, _ = main.divebar_lookup(
+            MockRequest({"action": "kn_community_search", "query": None})
+        )
+        assert status == 400
+
+    def test_dispatch_non_integer_limit_returns_400(self, monkeypatch):
+        for bad in ("50", True, 1.5):
+            _body, status, _ = main.divebar_lookup(
+                MockRequest({"action": "kn_community_search", "query": "abba", "limit": bad})
+            )
+            assert status == 400, f"limit={bad!r} should be rejected"
+
+    def test_dispatch_negative_limit_clamped_not_500(self, monkeypatch):
+        self._patch_query(monkeypatch, [])
+        _body, status, _ = main.divebar_lookup(
+            MockRequest({"action": "kn_community_search", "query": "abba", "limit": -5})
+        )
+        assert status == 200

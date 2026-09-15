@@ -167,7 +167,13 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
         LIMIT @limit
     """
 
-    job_config = bigquery.QueryJobConfig(query_parameters=params)
+    # The endpoint is public/unauthenticated and each request runs a BigQuery job;
+    # LIMIT bounds rows, not bytes scanned. Cap bytes billed so a flood of queries
+    # against this small (~tens of MB) table can't run up cost (CWE-400).
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=params,
+        maximum_bytes_billed=1_000_000_000,  # 1 GB ceiling
+    )
 
     results = []
     for row in client.query(sql, job_config=job_config).result():
@@ -562,10 +568,13 @@ def divebar_lookup(request):
             return _json_response({"status": "ok", "results": results, "count": len(results)})
 
         elif action == "kn_community_search":
-            query = body.get("query", "").strip()
-            if not query:
+            raw_query = body.get("query")
+            if not isinstance(raw_query, str) or not (query := raw_query.strip()):
                 return _json_response({"status": "error", "message": "query required"}, 400)
-            limit = min(body.get("limit", 50), 200)
+            raw_limit = body.get("limit", 50)
+            if isinstance(raw_limit, bool) or not isinstance(raw_limit, int):
+                return _json_response({"status": "error", "message": "limit must be an integer"}, 400)
+            limit = max(0, min(raw_limit, 200))
             results = _search_kn_community(query, limit)
             return _json_response({"status": "ok", "results": results, "count": len(results)})
 
