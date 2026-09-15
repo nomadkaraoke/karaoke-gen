@@ -1,249 +1,179 @@
 """
 KaraokeNerds community version detection service.
 
-Scrapes karaokenerds.com to check if a song already has community-approved
-karaoke versions available on YouTube. Ported from kjbox/kj-controller/karaoke_nerds.py.
+Checks whether a song already has community-approved karaoke versions (free,
+directly-playable, on YouTube). This reads OUR OWN daily-refreshed copy of the
+KaraokeNerds community catalog — it does NOT scrape or live-query
+karaokenerds.com. The catalog is populated by the authorized `kn-data-sync`
+export job (the only thing permitted to hit karaokenerds.com) into BigQuery
+`karaoke_decide.karaokenerds_community` and mirrored to a gzipped-JSON object in
+GCS, which this module loads into an in-process index.
+
+Public API (`check_community_versions` / `check_community_versions_batch`) and
+its return shapes are unchanged from the previous scraping implementation, so
+callers and the frontend need no changes.
 """
 
 import asyncio
+import gzip
+import json
 import logging
-import re
 import time
 from typing import Any
-from urllib.parse import urlencode
 
-import httpx
-from bs4 import BeautifulSoup
+from google.cloud import storage
 
+from backend.config import settings
 from backend.services.match_judge.classifier import normalize_for_match
 
 logger = logging.getLogger(__name__)
 
-SEARCH_URL = "https://karaokenerds.com/Search"
-REQUEST_TIMEOUT = 8
-USER_AGENT = "NomadKaraokeGen/1.0"
+# Every row in the community catalog is, by definition, a community/web track, so
+# entries surfaced from it are always flagged as community versions.
+_IS_COMMUNITY = True
 
-# karaokenerds.com's search silently returns zero results once a query exceeds
-# ~10 whitespace-separated terms (observed: 10 terms match, 11 return nothing).
-# Long/repetitive titles like "I Do, I Do, I Do, I Do, I Do" combined with the
-# artist blow past this, so the song is falsely reported as having no community
-# version. When that happens we retry with the title alone (the highest-signal
-# term) and keep only results whose artist matches.
-MAX_RELIABLE_QUERY_TERMS = 10
+# In-process index built from the community export, refreshed on a TTL. Structure:
+#   { "<norm-artist>\x1f<norm-title>": {"title", "artist", "community_tracks": [...]} }
+_index: dict[str, dict[str, Any]] | None = None
+_index_expiry: float = 0.0
+_index_lock = asyncio.Lock()
 
-# In-memory TTL cache: { cache_key: (expiry_timestamp, data) }
-_cache: dict[str, tuple[float, Any]] = {}
-CACHE_TTL_SECONDS = 3600  # 1 hour
+# Separator for the (artist, title) match key — a control char that survives
+# normalization stripping so it can never appear inside a normalized value.
+_KEY_SEP = "\x1f"
 
 
-def _cache_get(key: str) -> Any | None:
-    """Get a value from cache if it exists and hasn't expired."""
-    if key in _cache:
-        expiry, data = _cache[key]
-        if time.monotonic() < expiry:
-            return data
-        del _cache[key]
-    return None
+def _match_key(artist: str, title: str) -> str:
+    return f"{normalize_for_match(artist)}{_KEY_SEP}{normalize_for_match(title)}"
 
 
-def _cache_set(key: str, data: Any, ttl: float = CACHE_TTL_SECONDS) -> None:
-    """Store a value in cache with TTL."""
-    _cache[key] = (time.monotonic() + ttl, data)
+def _build_index(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Build the (artist, title) -> song lookup from raw community rows.
+
+    Each raw row carries ``Artist, Title, Brand, Watch`` (YouTube URL). Rows for
+    the same normalized (artist, title) are grouped; their community tracks are
+    deduped by (brand, url).
+    """
+    index: dict[str, dict[str, Any]] = {}
+    for row in items:
+        artist = (row.get("Artist") or "").strip()
+        title = (row.get("Title") or "").strip()
+        if not artist or not title:
+            continue
+        brand = (row.get("Brand") or "").strip()
+        youtube_url = (row.get("Watch") or "").strip() or None
+
+        key = _match_key(artist, title)
+        song = index.get(key)
+        if song is None:
+            # Keep the first-seen display casing for artist/title.
+            song = {"title": title, "artist": artist, "community_tracks": [], "_seen": set()}
+            index[key] = song
+
+        dedup = (brand, youtube_url)
+        if dedup in song["_seen"]:
+            continue
+        song["_seen"].add(dedup)
+        song["community_tracks"].append({
+            "brand_name": brand,
+            "brand_code": "",
+            "youtube_url": youtube_url,
+            "is_community": _IS_COMMUNITY,
+        })
+
+    # Drop the internal dedup bookkeeping before returning.
+    for song in index.values():
+        song.pop("_seen", None)
+    return index
 
 
-def _clean_youtube_url(url: str) -> str:
-    """Strip playlist params from YouTube URLs, keep just the video URL."""
-    return re.sub(r"&list=[^&]*", "", url)
+def _load_index() -> dict[str, dict[str, Any]]:
+    """Download and parse the community export gzip from GCS (blocking)."""
+    client = storage.Client(project=settings.google_cloud_project)
+    bucket = client.bucket(settings.kn_community_bucket)
+    blob = bucket.blob(settings.kn_community_blob)
+    raw = blob.download_as_bytes()
+    data = json.loads(gzip.decompress(raw))
+    if isinstance(data, dict) and "Items" in data:
+        items = data["Items"]
+    elif isinstance(data, list):
+        items = data
+    else:
+        raise ValueError(f"Unexpected community export shape: {type(data).__name__}")
+    index = _build_index(items)
+    logger.info(
+        "Loaded KaraokeNerds community index: %d songs from gs://%s/%s",
+        len(index), settings.kn_community_bucket, settings.kn_community_blob,
+    )
+    return index
 
 
-def _parse_single_track(li) -> dict | None:
-    """Parse a single track <li> element from karaokenerds search results."""
-    # Brand name: first <a> in the li
-    brand_link = li.find("a")
-    brand_name = brand_link.get_text(strip=True) if brand_link else ""
+async def _get_index() -> dict[str, dict[str, Any]]:
+    """Return the community index, refreshing from GCS when the TTL has expired.
 
-    # Brand code: text inside .badge span
-    badge = li.find("span", class_="badge")
-    brand_code = ""
-    if badge:
-        brand_code = badge.get_text(strip=True)
+    Failures are non-fatal: a stale index keeps serving; if there is no index
+    yet, an empty one is returned (every song reads as "no community version",
+    which keeps tracks selectable — the same fail-open behaviour the scraper had).
+    """
+    global _index, _index_expiry
+    if _index is not None and time.monotonic() < _index_expiry:
+        return _index
 
-    # YouTube URL: link containing youtube.com
-    youtube_url = None
-    for a in li.find_all("a", href=True):
-        href = a["href"]
-        if "youtube.com" in href:
-            youtube_url = _clean_youtube_url(href)
+    async with _index_lock:
+        # Re-check after acquiring the lock — another coroutine may have loaded it.
+        if _index is not None and time.monotonic() < _index_expiry:
+            return _index
+        try:
+            fresh = await asyncio.to_thread(_load_index)
+            _index = fresh
+            _index_expiry = time.monotonic() + max(60, settings.kn_community_ttl_seconds)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Failed to load KaraokeNerds community index: %s", e)
+            if _index is None:
+                # No prior data — serve empty but retry soon (don't cache failure long).
+                _index = {}
+                _index_expiry = time.monotonic() + 60
+        return _index
+
+
+def _lookup(index: dict[str, dict[str, Any]], artist: str, title: str) -> dict:
+    """Build a check result for one (artist, title) from the index."""
+    song = index.get(_match_key(artist, title))
+    if not song or not song.get("community_tracks"):
+        return {"has_community": False, "songs": [], "best_youtube_url": None}
+
+    best_youtube_url = None
+    for track in song["community_tracks"]:
+        if track.get("youtube_url"):
+            best_youtube_url = track["youtube_url"]
             break
 
-    # Community: presence of img.check
-    is_community = bool(li.find("img", class_="check"))
-
-    if not youtube_url:
-        return None
-
     return {
-        "brand_name": brand_name,
-        "brand_code": brand_code,
-        "youtube_url": youtube_url,
-        "is_community": is_community,
+        "has_community": True,
+        "songs": [{
+            "title": song["title"],
+            "artist": song["artist"],
+            "community_tracks": song["community_tracks"],
+        }],
+        "best_youtube_url": best_youtube_url,
     }
-
-
-def _parse_tracks(details_row) -> list[dict]:
-    """Parse track list items from a details row."""
-    tracks = []
-    for li in details_row.find_all("li", class_="track"):
-        track = _parse_single_track(li)
-        if track:
-            tracks.append(track)
-    return tracks
-
-
-def parse_results(html: str) -> list[dict]:
-    """Parse karaokenerds.com search results HTML into structured data."""
-    soup = BeautifulSoup(html, "html.parser")
-    table = soup.find("table")
-    if not table:
-        return []
-
-    tbody = table.find("tbody")
-    if not tbody:
-        return []
-
-    songs = []
-    rows = tbody.find_all("tr", recursive=False)
-
-    i = 0
-    while i < len(rows):
-        row = rows[i]
-
-        # Song rows have class "group"
-        if "group" not in row.get("class", []):
-            i += 1
-            continue
-
-        # Extract title and artist from the song row
-        cells = row.find_all("td")
-        if len(cells) < 3:
-            i += 1
-            continue
-
-        title_link = cells[0].find("a")
-        artist_link = cells[1].find("a")
-        title = title_link.get_text(strip=True) if title_link else ""
-        artist = artist_link.get_text(strip=True) if artist_link else ""
-
-        # The next row should be the details row with tracks
-        tracks = []
-        if i + 1 < len(rows):
-            details_row = rows[i + 1]
-            if "details" in details_row.get("class", []):
-                tracks = _parse_tracks(details_row)
-                i += 2
-            else:
-                i += 1
-        else:
-            i += 1
-
-        if title:
-            songs.append({
-                "title": title,
-                "artist": artist,
-                "tracks": tracks,
-            })
-
-    return songs
-
-
-async def _search_songs(query: str) -> list[dict] | None:
-    """Run a single karaokenerds search and parse the results.
-
-    Returns the parsed song list, or ``None`` if the HTTP request failed (so the
-    caller can distinguish "search errored" from "search returned nothing").
-    """
-    params = urlencode({"query": query, "webFilter": "OnlyWeb"})
-    url = f"{SEARCH_URL}?{params}"
-    try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            resp = await client.get(
-                url,
-                headers={"User-Agent": USER_AGENT},
-                follow_redirects=True,
-            )
-            resp.raise_for_status()
-    except Exception as e:
-        logger.warning(f"KaraokeNerds search failed for '{query}': {e}")
-        return None
-    return parse_results(resp.text)
-
-
-def _extract_community_songs(songs: list[dict]) -> tuple[list[dict], str | None]:
-    """Filter parsed songs to those with community tracks; return (songs, best_url)."""
-    community_songs: list[dict] = []
-    best_youtube_url: str | None = None
-    for song in songs:
-        community_tracks = [t for t in song["tracks"] if t["is_community"]]
-        if community_tracks:
-            community_songs.append({
-                "title": song["title"],
-                "artist": song["artist"],
-                "community_tracks": community_tracks,
-            })
-            if best_youtube_url is None:
-                best_youtube_url = community_tracks[0]["youtube_url"]
-    return community_songs, best_youtube_url
 
 
 async def check_community_versions(artist: str, title: str) -> dict:
     """
-    Check if a song has community-approved karaoke versions on karaokenerds.
+    Check if a song has community-approved karaoke versions.
 
-    Returns a dict with:
+    Reads our own community catalog (never karaokenerds.com). Returns a dict with:
       - has_community: bool
       - songs: list of matched songs with community tracks
       - best_youtube_url: URL of the top community version (if any)
     """
-    query = f"{artist} {title}"
-    cache_key = f"community:{query.lower().strip()}"
-    cached = _cache_get(cache_key)
-    if cached is not None:
-        return cached
-
-    songs = await _search_songs(query)
-    if songs is None:
-        # Hard failure (network/HTTP) — cache a negative so we don't hammer the
-        # site, matching prior behaviour.
-        result = {"has_community": False, "songs": [], "best_youtube_url": None}
-        _cache_set(cache_key, result)
-        return result
-
-    # karaokenerds chokes on overlong queries and returns nothing. If the
-    # combined "artist title" query was too long AND came back empty, retry with
-    # the title alone, then keep only results whose artist matches (title-only is
-    # broader, so this guards against same-titled songs by other artists).
-    if (
-        not songs
-        and title.strip()
-        and len(query.split()) > MAX_RELIABLE_QUERY_TERMS
-    ):
-        fallback = await _search_songs(title)
-        if fallback:
-            key_artist = normalize_for_match(artist)
-            songs = [
-                s for s in fallback
-                if normalize_for_match(s.get("artist") or "") == key_artist
-            ]
-
-    community_songs, best_youtube_url = _extract_community_songs(songs)
-
-    result = {
-        "has_community": len(community_songs) > 0,
-        "songs": community_songs,
-        "best_youtube_url": best_youtube_url,
-    }
-    _cache_set(cache_key, result)
-    return result
+    artist = (artist or "").strip()
+    title = (title or "").strip()
+    if not artist or not title:
+        return {"has_community": False, "songs": [], "best_youtube_url": None}
+    index = await _get_index()
+    return _lookup(index, artist, title)
 
 
 async def check_community_versions_batch(
@@ -256,20 +186,20 @@ async def check_community_versions_batch(
     "brand_count": int, "versions": [{"brand": str, "url": str}]}``. ``versions`` is
     the per-community-version detail (deduped by brand, first YouTube URL kept) the UI
     uses to render clickable links; ``brands``/``brand_count`` are retained for
-    back-compat. Bounded concurrency keeps us polite to karaokenerds.com; per-song
-    results reuse the existing 1h cache. A failed lookup degrades to
-    ``available=False`` (the track simply stays selectable) — never raises.
+    back-compat. Lookups hit our in-process community index (no network per song), so
+    ``concurrency`` is accepted for back-compat but no longer meaningful. A missing
+    catalog degrades to ``available=False`` (the track simply stays selectable).
     """
-    sem = asyncio.Semaphore(max(1, concurrency))
+    _ = concurrency  # retained for call-site compatibility; lookups are in-memory now
+    index = await _get_index()
 
-    async def _one(song: dict) -> dict:
+    def _one(song: dict) -> dict:
         artist = (song.get("artist") or "").strip()
         title = (song.get("title") or "").strip()
         if not artist or not title:
             return {"artist": artist, "title": title, "available": False,
                     "brands": [], "brand_count": 0, "versions": []}
-        async with sem:
-            res = await check_community_versions(artist, title)
+        res = _lookup(index, artist, title)
         versions: list[dict] = []
         versioned_brands: set[str] = set()
         brands: list[str] = []
@@ -294,4 +224,11 @@ async def check_community_versions_batch(
             "versions": versions,
         }
 
-    return await asyncio.gather(*[_one(s) for s in songs])
+    return [_one(s) for s in songs]
+
+
+def _reset_index_for_tests() -> None:
+    """Clear the module-level cache (used by tests to isolate index state)."""
+    global _index, _index_expiry
+    _index = None
+    _index_expiry = 0.0

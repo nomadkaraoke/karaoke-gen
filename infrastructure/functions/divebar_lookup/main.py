@@ -130,6 +130,51 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
     return results
 
 
+def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
+    """Search our OWN KaraokeNerds community catalog (never scrapes karaokenerds.com).
+
+    Reads `karaokenerds_community` — the free, directly-playable (web/YouTube)
+    tracks populated daily by the authorized `kn-data-sync` export. Matching is
+    token-AND (every whitespace token must appear in "artist title"), which mirrors
+    the KaraokeNerds search box closely enough for kjbox's song-search use while
+    tolerating "artist title" / "title artist" / partial queries.
+
+    Returns flat rows ``{artist, title, brand, watch}``; the caller groups them.
+    """
+    tokens = [t for t in query.lower().split() if t][:12]
+    if not tokens:
+        return []
+
+    client = bigquery.Client(project=GCP_PROJECT_ID)
+    haystack = "LOWER(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')))"
+    conditions = []
+    params = []
+    for i, tok in enumerate(tokens):
+        conditions.append(f"{haystack} LIKE @tok{i}")
+        params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", f"%{tok}%"))
+    params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
+
+    sql = f"""
+        SELECT Artist, Title, Brand, Watch
+        FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community`
+        WHERE {" AND ".join(conditions)}
+        ORDER BY Artist, Title, Brand
+        LIMIT @limit
+    """
+
+    job_config = bigquery.QueryJobConfig(query_parameters=params)
+
+    results = []
+    for row in client.query(sql, job_config=job_config).result():
+        results.append({
+            "artist": row.Artist,
+            "title": row.Title,
+            "brand": row.Brand,
+            "watch": row.Watch,
+        })
+    return results
+
+
 def _lookup_kn_ids(kn_ids: list[int]) -> dict[int, list[dict]]:
     """Look up which KN songs have Divebar versions via the cross-reference table."""
     if not kn_ids:
@@ -509,6 +554,14 @@ def divebar_lookup(request):
                 return _json_response({"status": "error", "message": "query required"}, 400)
             limit = min(body.get("limit", 50), 200)
             results = _search_divebar(query, limit)
+            return _json_response({"status": "ok", "results": results, "count": len(results)})
+
+        elif action == "kn_community_search":
+            query = body.get("query", "").strip()
+            if not query:
+                return _json_response({"status": "error", "message": "query required"}, 400)
+            limit = min(body.get("limit", 50), 200)
+            results = _search_kn_community(query, limit)
             return _json_response({"status": "ok", "results": results, "count": len(results)})
 
         elif action == "lookup":
