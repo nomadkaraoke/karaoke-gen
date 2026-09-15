@@ -147,7 +147,9 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
 
     def _like_escape(s: str) -> str:
         # Escape LIKE metacharacters so a token containing % or _ matches
-        # literally instead of acting as a wildcard.
+        # literally. BigQuery's LIKE uses backslash as its escape character by
+        # default (there is NO `ESCAPE` clause in BigQuery — adding one is a
+        # syntax error), so escaping the pattern value is sufficient.
         return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
     client = bigquery.Client(project=GCP_PROJECT_ID)
@@ -155,7 +157,7 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
     conditions = []
     params = []
     for i, tok in enumerate(tokens):
-        conditions.append(f"{haystack} LIKE @tok{i} ESCAPE '\\\\'")
+        conditions.append(f"{haystack} LIKE @tok{i}")
         params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", f"%{_like_escape(tok)}%"))
     params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
 

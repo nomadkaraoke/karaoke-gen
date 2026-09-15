@@ -282,8 +282,17 @@ class TestKnCommunitySearch:
         assert captured["sql"].count("LIKE @tok") == 5
         assert " AND " in captured["sql"]
         assert "karaokenerds_community" in captured["sql"]
-        # LIKE wildcards in tokens are escaped via an ESCAPE clause.
-        assert "ESCAPE" in captured["sql"]
+        # BigQuery LIKE uses backslash as its default escape char and has NO
+        # ESCAPE clause — adding one is a syntax error. Wildcards are escaped in
+        # the parameter value instead (see _like_escape).
+        assert "ESCAPE" not in captured["sql"]
+
+    def test_metacharacter_token_does_not_add_escape_clause(self, monkeypatch):
+        # A token with %/_ must still produce valid SQL (no ESCAPE clause).
+        captured = self._patch_query(monkeypatch, [])
+        main._search_kn_community("100%_off")
+        assert "LIKE @tok0" in captured["sql"]
+        assert "ESCAPE" not in captured["sql"]
 
     def test_blank_query_returns_empty_without_bq(self, monkeypatch):
         # No tokens -> never touches BigQuery.
