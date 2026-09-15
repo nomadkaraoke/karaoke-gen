@@ -90,9 +90,10 @@ async def generate_screens(job_id: str) -> bool:
     # Log with structured markers for easy Cloud Logging queries
     logger.info(f"[job:{job_id}] WORKER_START worker=screens")
     
-    # Set up log capture for VideoGenerator and style_helper
-    log_handler = setup_job_logging(job_id, "screens", *SCREENS_WORKER_LOGGERS)
-    
+    # Resolve the job and run the cheap guards BEFORE attaching the job-log handler,
+    # so an early return (not-found / duplicate dispatch / prerequisites) cannot leak
+    # a JobLogHandler — each leaked handler re-appends log records to Firestore and
+    # retains memory.
     job = job_manager.get_job(job_id)
     if not job:
         logger.error(f"[job:{job_id}] Job not found")
@@ -114,7 +115,11 @@ async def generate_screens(job_id: str) -> bool:
     if not _validate_prerequisites(job):
         logger.error(f"[job:{job_id}] Prerequisites not met for screen generation")
         return False
-    
+
+    # Set up log capture for VideoGenerator and style_helper (after the guards above
+    # so their early returns don't leak handlers).
+    log_handler = setup_job_logging(job_id, "screens", *SCREENS_WORKER_LOGGERS)
+
     # Create temporary working directory
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_screens_{job_id}_")
     
@@ -126,13 +131,29 @@ async def generate_screens(job_id: str) -> bool:
                 job_log.info(f"Starting screen generation for {job.artist} - {job.title}")
                 logger.info(f"[job:{job_id}] Starting screen generation for {job.artist} - {job.title}")
                 
-                # Transition to GENERATING_SCREENS state
-                job_manager.transition_to_state(
+                # Claim the job for screen generation via the status transition
+                # itself. If a concurrent duplicate dispatch already advanced it,
+                # the transition is invalid and (raise_on_invalid=False) returns
+                # False — bail out cleanly instead of regenerating screens. Together
+                # with the entry-status guard above this narrows the concurrent
+                # lyrics+audio double-trigger window to near zero. (A fully
+                # transactional compare-and-set on the status field would close the
+                # residual sub-millisecond window; deferred as the worker is
+                # otherwise idempotent — worst case is duplicated work, not
+                # corruption.)
+                claimed = job_manager.transition_to_state(
                     job_id=job_id,
                     new_status=JobStatus.GENERATING_SCREENS,
                     progress=50,
-                    message="Generating title and end screens"
+                    message="Generating title and end screens",
+                    raise_on_invalid=False,
                 )
+                if not claimed:
+                    logger.info(
+                        f"[job:{job_id}] Screens already claimed by another dispatch "
+                        "(transition rejected); skipping duplicate"
+                    )
+                    return True
                 
                 # Log style assets info
                 style_assets = getattr(job, 'style_assets', {}) or {}

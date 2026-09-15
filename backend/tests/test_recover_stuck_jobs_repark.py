@@ -65,13 +65,15 @@ def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=
     mock_jm = MagicMock()
     where = mock_jm.firestore.db.collection.return_value.where.return_value
     # Non-limited .stream() calls in order: downloading_audio, rendering_video,
-    # review_complete (lost-render-trigger sweep), downloading (lost-screens-trigger sweep)
+    # review_complete (lost-render-trigger sweep)
     where.stream.side_effect = [
         iter(downloading or []), iter(rendering or []), iter(review_complete or []),
-        iter(downloading_prep or []),
     ]
-    # One .limit().stream() call: download_pending_retry
-    where.limit.return_value.stream.return_value = iter(pending or [])
+    # Two .limit().stream() calls in order: download_pending_retry, then downloading
+    # (lost-screens-trigger sweep, bounded by SCREENS_RECOVERY_SCAN_LIMIT)
+    where.limit.return_value.stream.side_effect = [
+        iter(pending or []), iter(downloading_prep or []),
+    ]
     mock_jm.get_job.side_effect = lambda jid: (jobs or {}).get(jid)
     mock_jm.transition_to_state.return_value = True
     return mock_jm

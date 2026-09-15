@@ -1182,8 +1182,11 @@ class JobManager:
             return False
         from backend.services.worker_service import get_worker_service
         logger.info(f"Job {job_id}: lyrics complete — triggering screens worker (awaited)")
-        await get_worker_service().trigger_screens_worker(job_id)
-        return True
+        # Propagate the dispatch result: trigger_screens_worker returns False on a
+        # Cloud Tasks enqueue failure / HTTP error / timeout. Returning False here
+        # keeps recover_stuck_jobs from counting a failed re-trigger against its
+        # per-tick cap (which would delay other stalled jobs), and lets it retry.
+        return await get_worker_service().trigger_screens_worker(job_id)
 
     def cancel_job(self, job_id: str, reason: Optional[str] = None) -> bool:
         """

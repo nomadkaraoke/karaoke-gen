@@ -1044,9 +1044,13 @@ async def recover_stuck_jobs(
     # idempotent (advance_to_screens_if_ready status-guards + the screens worker
     # no-ops a duplicate). Mirrors the REVIEW_COMPLETE lost-render recovery above.
     screens_retriggered = []
+    # Bound the scan so a large active DOWNLOADING population can't consume the
+    # request deadline / Firestore reads before the per-tick re-trigger cap kicks
+    # in. DOWNLOADING is a transient processing state (jobs move through in
+    # minutes), so this ceiling is far above any realistic concurrent population.
     dl_query = jobs_ref.where(
         filter=FieldFilter("status", "==", JobStatus.DOWNLOADING.value)
-    ).stream()
+    ).limit(SCREENS_RECOVERY_SCAN_LIMIT).stream()
     for doc in dl_query:
         if len(screens_retriggered) >= SCREENS_RETRIGGERS_PER_TICK:
             break
@@ -1101,6 +1105,7 @@ REVIEW_COMPLETE_STALL_SECONDS = 10 * 60  # render normally starts within seconds
 RENDER_RETRIGGERS_PER_TICK = 10          # bound the blast radius per 5-min tick
 PREP_SCREENS_STALL_SECONDS = 10 * 60     # screens normally start within seconds of lyrics done
 SCREENS_RETRIGGERS_PER_TICK = 10         # bound the blast radius per 5-min tick
+SCREENS_RECOVERY_SCAN_LIMIT = 500        # cap DOWNLOADING docs scanned per tick (transient state)
 
 
 def _job_updated_age_seconds(job):
