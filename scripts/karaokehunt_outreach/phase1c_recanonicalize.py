@@ -43,9 +43,10 @@ TORRENT_PROVIDERS = {"red", "ops"}
 
 def base_title(t: str) -> str:
     """Title without trailing parenthetical/feat, for loose matching."""
-    t = re.sub(r"\s*[\(\[][^)\]]*[\)\]]\s*$", "", t or "")
+    orig = (t or "").strip()
+    t = re.sub(r"\s*[\(\[][^)\]]*[\)\]]\s*$", "", orig)
     t = re.sub(r"\s+(feat\.|ft\.)\s+.*$", "", t, flags=re.I)
-    return t.strip() or (t or "").strip()
+    return t.strip() or orig
 
 
 def _norm_tokens(s: str) -> list[str]:
@@ -129,6 +130,8 @@ def main() -> int:
     # --- 1. availability re-check for corrected names (community-first/research/renamed) ---
     recheck_keys = []
     for k, d in decisions.items():
+        if k not in cache:
+            continue
         if d["action"] in ("community-first", "research", "keep", "cmake") and d.get("artist"):
             a, t = corrected(k)
             old = cache.get(k, {}).get("canonical") or {}

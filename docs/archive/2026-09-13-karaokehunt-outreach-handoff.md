@@ -39,9 +39,9 @@
 >   in: (1) admin-created search sessions 403 on create-from-search under an impersonated
 >   user → phase 2 re-searches AS the user and exact-matches the reviewed pick
 >   (provider+target_file), skips (never substitutes) if gone; (2)
->   `POST /api/users/admin/credits` EMAILS the user — existing gen users (3 of 89:
->   anahilopez8682@, liuhsua91@, mudrocksebastian6@gmail.com, all 0 credits — see
->   `outreach_out/existing_gen_users.txt`) are reported not silently granted;
+>   `POST /api/users/admin/credits` EMAILS the user — existing gen users (3 of 89,
+>   all 0 credits — listed in the LOCAL PII file `outreach_out/existing_gen_users.txt`,
+>   never committed) are reported not silently granted;
 >   (3) match-judge does NOT reliably fix typos ("Bohemian Rapsody" came back cosmetic
 >   with typo intact) — the filename gate correctly blocks those; (4) create-from-search
 >   deducts 1 credit, so job-submitted users end with 2/3 — OPEN QUESTION for Andrew.
