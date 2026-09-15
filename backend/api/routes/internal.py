@@ -185,6 +185,25 @@ async def trigger_audio_worker(
     )
 
 
+@router.post("/jobs/{job_id}/auto-approval-eval")
+async def trigger_auto_approval_eval(
+    job_id: str,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """
+    Re-run the auto-approval evaluation on a job parked at AWAITING_REVIEW
+    (admin only). Normally scoring runs from the screens/audio workers; this
+    endpoint lets an admin re-evaluate after conditions change (e.g. a batch
+    job's made_for_you enforcement blocker was lifted). Fail-safe: anything
+    short of fully confident leaves the job in review untouched.
+    """
+    from backend.services.auto_approval.executor import maybe_auto_complete_review
+
+    logger.info(f"[job:{job_id}] admin auto-approval eval requested")
+    result = await maybe_auto_complete_review(job_id, trigger="admin_eval")
+    return {"job_id": job_id, **result}
+
+
 @router.post("/workers/lyrics", response_model=WorkerResponse)
 async def trigger_lyrics_worker(
     request: WorkerRequest,
