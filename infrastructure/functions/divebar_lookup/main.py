@@ -130,6 +130,62 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
     return results
 
 
+def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
+    """Search our OWN KaraokeNerds community catalog (never scrapes karaokenerds.com).
+
+    Reads `karaokenerds_community` — the free, directly-playable (web/YouTube)
+    tracks populated daily by the authorized `kn-data-sync` export. Matching is
+    token-AND (every whitespace token must appear in "artist title"), which mirrors
+    the KaraokeNerds search box closely enough for kjbox's song-search use while
+    tolerating "artist title" / "title artist" / partial queries.
+
+    Returns flat rows ``{artist, title, brand, watch}``; the caller groups them.
+    """
+    tokens = [t for t in query.lower().split() if t][:12]
+    if not tokens:
+        return []
+
+    def _like_escape(s: str) -> str:
+        # Escape LIKE metacharacters so a token containing % or _ matches
+        # literally instead of acting as a wildcard.
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+    client = bigquery.Client(project=GCP_PROJECT_ID)
+    haystack = "LOWER(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')))"
+    conditions = []
+    params = []
+    for i, tok in enumerate(tokens):
+        conditions.append(f"{haystack} LIKE @tok{i} ESCAPE '\\\\'")
+        params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", f"%{_like_escape(tok)}%"))
+    params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
+
+    sql = f"""
+        SELECT Artist, Title, Brand, Watch
+        FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community`
+        WHERE {" AND ".join(conditions)}
+        ORDER BY Artist, Title, Brand
+        LIMIT @limit
+    """
+
+    # The endpoint is public/unauthenticated and each request runs a BigQuery job;
+    # LIMIT bounds rows, not bytes scanned. Cap bytes billed so a flood of queries
+    # against this small (~tens of MB) table can't run up cost (CWE-400).
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=params,
+        maximum_bytes_billed=1_000_000_000,  # 1 GB ceiling
+    )
+
+    results = []
+    for row in client.query(sql, job_config=job_config).result():
+        results.append({
+            "artist": row.Artist,
+            "title": row.Title,
+            "brand": row.Brand,
+            "watch": row.Watch,
+        })
+    return results
+
+
 def _lookup_kn_ids(kn_ids: list[int]) -> dict[int, list[dict]]:
     """Look up which KN songs have Divebar versions via the cross-reference table."""
     if not kn_ids:
@@ -509,6 +565,17 @@ def divebar_lookup(request):
                 return _json_response({"status": "error", "message": "query required"}, 400)
             limit = min(body.get("limit", 50), 200)
             results = _search_divebar(query, limit)
+            return _json_response({"status": "ok", "results": results, "count": len(results)})
+
+        elif action == "kn_community_search":
+            raw_query = body.get("query")
+            if not isinstance(raw_query, str) or not (query := raw_query.strip()):
+                return _json_response({"status": "error", "message": "query required"}, 400)
+            raw_limit = body.get("limit", 50)
+            if isinstance(raw_limit, bool) or not isinstance(raw_limit, int):
+                return _json_response({"status": "error", "message": "limit must be an integer"}, 400)
+            limit = max(0, min(raw_limit, 200))
+            results = _search_kn_community(query, limit)
             return _json_response({"status": "ok", "results": results, "count": len(results)})
 
         elif action == "lookup":

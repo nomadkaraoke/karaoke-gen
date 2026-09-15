@@ -236,3 +236,95 @@ class TestFullStatsPercent:
         _patch_bq(monkeypatch, _stats_row(total_files=5, gcs_synced=0, gcs_pending=0, gcs_unavailable=5))
         g = main._get_full_stats()["gcs_mirror"]
         assert g["percent"] == 0
+
+
+def _kn_row(artist, title, brand, watch):
+    row = MagicMock()
+    row.Artist, row.Title, row.Brand, row.Watch = artist, title, brand, watch
+    return row
+
+
+class TestKnCommunitySearch:
+    """`kn_community_search` reads our own karaokenerds_community — no scraping."""
+
+    def _patch_query(self, monkeypatch, rows):
+        """Capture the SQL + params passed to BigQuery and yield `rows`."""
+        captured = {}
+        client = MagicMock()
+
+        def _query(sql, job_config=None):
+            captured["sql"] = sql
+            captured["params"] = job_config.query_parameters if job_config else []
+            result = MagicMock()
+            result.result.return_value = rows
+            return result
+
+        client.query.side_effect = _query
+        monkeypatch.setattr(main.bigquery, "Client", lambda project=None: client)
+        return captured
+
+    def test_returns_flat_rows(self, monkeypatch):
+        rows = [
+            _kn_row("Fleetwood Mac", "Dreams", "Nomad Karaoke", "https://youtu.be/a"),
+            _kn_row("Fleetwood Mac", "Dreams", "WTF Karaoke", "https://youtu.be/b"),
+        ]
+        self._patch_query(monkeypatch, rows)
+        out = main._search_kn_community("fleetwood mac dreams")
+        assert out == [
+            {"artist": "Fleetwood Mac", "title": "Dreams", "brand": "Nomad Karaoke", "watch": "https://youtu.be/a"},
+            {"artist": "Fleetwood Mac", "title": "Dreams", "brand": "WTF Karaoke", "watch": "https://youtu.be/b"},
+        ]
+
+    def test_token_and_matching_builds_one_condition_per_token(self, monkeypatch):
+        captured = self._patch_query(monkeypatch, [])
+        main._search_kn_community("daft punk one more time")
+        # 5 tokens -> 5 token LIKE conditions, ANDed together, over our own table.
+        assert captured["sql"].count("LIKE @tok") == 5
+        assert " AND " in captured["sql"]
+        assert "karaokenerds_community" in captured["sql"]
+        # LIKE wildcards in tokens are escaped via an ESCAPE clause.
+        assert "ESCAPE" in captured["sql"]
+
+    def test_blank_query_returns_empty_without_bq(self, monkeypatch):
+        # No tokens -> never touches BigQuery.
+        monkeypatch.setattr(main.bigquery, "Client",
+                            MagicMock(side_effect=AssertionError("BQ should not be called")))
+        assert main._search_kn_community("   ") == []
+
+    def test_dispatch_returns_results_and_count(self, monkeypatch):
+        self._patch_query(monkeypatch, [_kn_row("ABBA", "SOS", "Nomad Karaoke", "https://youtu.be/s")])
+        body, status, _ = main.divebar_lookup(
+            MockRequest({"action": "kn_community_search", "query": "abba sos"})
+        )
+        assert status == 200
+        payload = json.loads(body)
+        assert payload["status"] == "ok"
+        assert payload["count"] == 1
+        assert payload["results"][0]["brand"] == "Nomad Karaoke"
+
+    def test_dispatch_missing_query_returns_400(self, monkeypatch):
+        body, status, _ = main.divebar_lookup(
+            MockRequest({"action": "kn_community_search"})
+        )
+        assert status == 400
+
+    def test_dispatch_null_query_returns_400_not_500(self, monkeypatch):
+        # {"query": null} must not crash on .strip() -> generic 500.
+        body, status, _ = main.divebar_lookup(
+            MockRequest({"action": "kn_community_search", "query": None})
+        )
+        assert status == 400
+
+    def test_dispatch_non_integer_limit_returns_400(self, monkeypatch):
+        for bad in ("50", True, 1.5):
+            _body, status, _ = main.divebar_lookup(
+                MockRequest({"action": "kn_community_search", "query": "abba", "limit": bad})
+            )
+            assert status == 400, f"limit={bad!r} should be rejected"
+
+    def test_dispatch_negative_limit_clamped_not_500(self, monkeypatch):
+        self._patch_query(monkeypatch, [])
+        _body, status, _ = main.divebar_lookup(
+            MockRequest({"action": "kn_community_search", "query": "abba", "limit": -5})
+        )
+        assert status == 200

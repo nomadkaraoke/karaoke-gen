@@ -30,24 +30,24 @@ class TestBatchHelper:
     async def test_batch_maps_community_results(self, monkeypatch):
         from backend.services import karaokenerds_service as kn
 
-        async def fake_single(artist, title):
-            if title == "One More Time":
-                return {
-                    "has_community": True,
-                    "songs": [{"community_tracks": [{"brand_name": "KV"}, {"brand_name": "KaraFun"}]}],
-                    "best_youtube_url": None,
-                }
-            return {"has_community": False, "songs": [], "best_youtube_url": None}
+        # Seed the in-process community index (the batch helper reads it directly).
+        # Brand is a CODE in the catalog; brand names resolve for display.
+        rows = [
+            {"Artist": "Daft Punk", "Title": "One More Time", "Brand": "KV", "Watch": ""},
+            {"Artist": "Daft Punk", "Title": "One More Time", "Brand": "OBSK", "Watch": ""},
+        ]
+        kn._reset_index_for_tests()
+        monkeypatch.setattr(kn, "_load_index", lambda: kn._build_index(rows))
 
-        monkeypatch.setattr(kn, "check_community_versions", fake_single)
         out = await kn.check_community_versions_batch(
             [{"artist": "Daft Punk", "title": "One More Time"},
              {"artist": "Daft Punk", "title": "Aerodynamic"}]
         )
         assert out[0]["available"] is True
-        assert out[0]["brands"] == ["KV", "KaraFun"]
+        assert out[0]["brands"] == ["Karaoke Version", "ObsKure Karaoke"]
         assert out[1]["available"] is False
         assert out[1]["brand_count"] == 0
+        kn._reset_index_for_tests()
 
 
 class TestAvailabilityRoute:
