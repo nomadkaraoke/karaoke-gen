@@ -136,36 +136,40 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
 
     Reads `karaokenerds_community` — the free, directly-playable (web/YouTube)
     tracks populated daily by the authorized `kn-data-sync` export. Matching is
-    token-AND (every whitespace token must appear in "artist title"), which mirrors
-    the KaraokeNerds search box closely enough for kjbox's song-search use while
-    tolerating "artist title" / "title artist" / partial queries.
+    token-AND (every whitespace token must match "artist title"), which mirrors
+    the KaraokeNerds search box while tolerating "artist title" / "title artist"
+    / partial queries. Two forms of tolerance per token:
+      • accent-insensitive — both sides are diacritic-folded (so "maximo" matches
+        "Maxïmo");
+      • typo-tolerant — a token matches a catalog word within a small Levenshtein
+        `EDIT_DISTANCE` (so "boxs" matches "Boxes"), scaled by token length to
+        avoid noise on short words. Exact substring still matches (partials).
 
     Returns flat rows ``{artist, title, brand, watch}``; the caller groups them.
     """
     def _fold(s: str) -> str:
         # Diacritic-fold + lowercase, mirroring the SQL haystack below, so an
         # ASCII query ("maximo") matches an accented catalog value ("Maxïmo").
-        # KaraokeNerds stores accented artist/title names (e.g. "Maxïmo Park",
-        # mostly our own NOMAD tracks); without this the token LIKE never matched.
         return "".join(
             c for c in unicodedata.normalize("NFD", s or "") if not unicodedata.combining(c)
         ).lower()
+
+    def _fuzz_threshold(tok: str) -> int:
+        # Max edit distance allowed for a fuzzy word match, scaled by length so
+        # short tokens stay exact (a distance-1 "the" would match far too much).
+        n = len(tok)
+        if n < 4:
+            return 0
+        return 1 if n <= 6 else 2
 
     tokens = [t for t in (_fold(w) for w in query.split()) if t][:12]
     if not tokens:
         return []
 
-    def _like_escape(s: str) -> str:
-        # Escape LIKE metacharacters so a token containing % or _ matches
-        # literally. BigQuery's LIKE uses backslash as its escape character by
-        # default (there is NO `ESCAPE` clause in BigQuery — adding one is a
-        # syntax error), so escaping the pattern value is sufficient.
-        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
     client = bigquery.Client(project=GCP_PROJECT_ID)
     # Diacritic-fold the columns too (NFD + drop combining marks, then lower) so
     # matching is accent-insensitive on both sides — mirrors _fold() above.
-    haystack = (
+    fold_sql = (
         "LOWER(REGEXP_REPLACE("
         "NORMALIZE(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')), NFD),"
         r" r'\p{Mn}', ''))"
@@ -173,13 +177,32 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
     conditions = []
     params = []
     for i, tok in enumerate(tokens):
-        conditions.append(f"{haystack} LIKE @tok{i}")
-        params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", f"%{_like_escape(tok)}%"))
+        # STRPOS = literal substring (handles exact + partial, no LIKE wildcards
+        # so nothing to escape). thr>0 adds a per-word fuzzy fallback for typos.
+        thr = _fuzz_threshold(tok)
+        if thr == 0:
+            conditions.append(f"STRPOS(hay, @tok{i}) > 0")
+        else:
+            # NB: do NOT pass EDIT_DISTANCE's `max_distance` — when the true
+            # distance exceeds it BigQuery returns a *capped* value (<= max_distance),
+            # so `<= thr` would be true for every word (matches the whole table).
+            # Compare the true distance instead; the table is small so full
+            # Levenshtein per word is cheap.
+            conditions.append(
+                f"(STRPOS(hay, @tok{i}) > 0 OR EXISTS("
+                f"SELECT 1 FROM UNNEST(SPLIT(hay, ' ')) AS w "
+                f"WHERE EDIT_DISTANCE(w, @tok{i}) <= {thr}))"
+            )
+        params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", tok))
     params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
 
     sql = f"""
+        WITH c AS (
+            SELECT Artist, Title, Brand, Watch, {fold_sql} AS hay
+            FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community`
+        )
         SELECT Artist, Title, Brand, Watch
-        FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community`
+        FROM c
         WHERE {" AND ".join(conditions)}
         ORDER BY Artist, Title, Brand
         LIMIT @limit
