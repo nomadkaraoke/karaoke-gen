@@ -306,7 +306,13 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
           try { window.localStorage.setItem('karaoke_access_token', token); } catch {}
         }, accessToken);
         await gotoWithRetry(page, `${PROD_URL}/app`);
-        await page.waitForLoadState('load');
+        // Wait for authentication to RESOLVE, not just the load event. The app reads
+        // the seeded token on load and fetchUser() then populates the credit
+        // indicator; sampling AuthStatus while fetchUser() is still pending would
+        // catch a transient "Login" and misclassify a valid token. The canary user
+        // always has credits, so the credit indicator is the authenticated signal.
+        await expect(page.getByText(/\d+\s+credits?/i).first())
+          .toBeVisible({ timeout: TIMEOUTS.action });
 
         await page.screenshot({ path: 'test-results/02-token-injected.png' });
         console.log('STEP 2 COMPLETE: Token injected, skipping signup');
