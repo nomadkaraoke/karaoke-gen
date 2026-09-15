@@ -63,11 +63,11 @@ def now_iso() -> str:
 
 
 def api_post(path: str, body: dict, token: str, timeout: int = 300,
-             ok_statuses: tuple = ()) -> tuple[int, dict]:
-    """POST helper. Returns (status, parsed_json). Raises unless status is 2xx
-    or listed in ok_statuses (e.g. 409 for idempotent create)."""
+             ok_statuses: tuple = (), method: str = "POST") -> tuple[int, dict]:
+    """HTTP helper (POST by default). Returns (status, parsed_json). Raises
+    unless status is 2xx or listed in ok_statuses (e.g. 409 for idempotent create)."""
     url = f"{API_BASE}{path}"
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST")
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), method=method)
     req.add_header("Authorization", f"Bearer {token}")
     req.add_header("Content-Type", "application/json")
     req.add_header("User-Agent", BROWSER_UA)

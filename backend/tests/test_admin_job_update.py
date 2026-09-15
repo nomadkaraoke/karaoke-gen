@@ -439,3 +439,40 @@ class TestUpdateJobUserEmailAutoCreate:
                 assert response.status_code == 400
                 assert "valid email" in response.json()["detail"]
                 mock_jm.update_job.assert_not_called()
+
+
+class TestUpdateJobMadeForYou:
+    """made_for_you is editable so admin batches can opt jobs out of the
+    stale-review auto-expiry (stale_review_processor skips MFY jobs)."""
+
+    def test_made_for_you_is_editable(self, client, mock_job):
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.update_job.return_value = True
+            mock_jm_class.return_value = mock_jm
+
+            response = client.patch(
+                "/api/admin/jobs/test-job-123",
+                json={"made_for_you": True},
+            )
+
+            assert response.status_code == 200
+            assert "made_for_you" in response.json()["updated_fields"]
+            call_args = mock_jm.update_job.call_args
+            assert call_args[0][1]["made_for_you"] is True
+
+    def test_made_for_you_rejects_non_bool(self, client, mock_job):
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm_class.return_value = mock_jm
+
+            response = client.patch(
+                "/api/admin/jobs/test-job-123",
+                json={"made_for_you": "yes"},
+            )
+
+            assert response.status_code == 400
+            assert "boolean" in response.json()["detail"]
+            mock_jm.update_job.assert_not_called()
