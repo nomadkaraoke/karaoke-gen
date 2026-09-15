@@ -294,15 +294,19 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         accessToken = getPreConfiguredToken();
         console.log(`  Using token: ${accessToken.substring(0, 8)}...`);
 
-        // Navigate to app and inject token into localStorage
-        await gotoWithRetry(page, `${PROD_URL}/app`);
-        await page.evaluate((token) => {
-          localStorage.setItem('karaoke_access_token', token);
+        // Seed the auth token via addInitScript BEFORE navigating, so the app is
+        // authenticated on first load with NO evaluate-after-navigation race.
+        // The previous "goto → page.evaluate(setItem) → reload" pattern raced the
+        // /app client-side redirect and threw "Execution context was destroyed"
+        // once gotoWithRetry began returning on 'domcontentloaded' (PR #1003)
+        // instead of waiting for network idle — which broke the post-deploy canary.
+        // addInitScript runs before page scripts on every navigation, so no reload
+        // or post-nav evaluate is needed.
+        await page.addInitScript((token) => {
+          try { window.localStorage.setItem('karaoke_access_token', token); } catch {}
         }, accessToken);
-
-        // Reload to apply the token
-        await page.reload();
-        await page.waitForLoadState('networkidle');
+        await gotoWithRetry(page, `${PROD_URL}/app`);
+        await page.waitForLoadState('load');
 
         await page.screenshot({ path: 'test-results/02-token-injected.png' });
         console.log('STEP 2 COMPLETE: Token injected, skipping signup');
