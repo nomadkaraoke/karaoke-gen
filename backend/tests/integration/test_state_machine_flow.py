@@ -158,19 +158,15 @@ class TestParallelProcessingCoordination:
         # Verify update_job was called to set the lyrics_complete flag
         job_manager.firestore.update_job.assert_called()
 
-    def test_both_complete_triggers_screens(self, job_manager, mock_firestore_service):
-        """Test that screens worker is triggered when both complete."""
-        # First call: Job with audio already complete (for update_state_data)
-        # Second call: Job with both complete (for check_parallel_processing_complete)
-        job_audio_only = Job(
-            job_id="test-parallel-003",
-            artist="Test Artist",
-            title="Test Song",
-            status=JobStatus.DOWNLOADING,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-            state_data={'audio_complete': True},
-        )
+    @pytest.mark.asyncio
+    async def test_both_complete_triggers_screens(self, job_manager, mock_firestore_service):
+        """When lyrics is complete and the job is still DOWNLOADING, advancing
+        triggers the screens worker via an AWAITED (durable) dispatch.
+
+        mark_lyrics_complete now only sets the flag; advance_to_screens_if_ready
+        does the dispatch (the old fire-and-forget trigger was lost on Cloud Run
+        Job loop teardown, orphaning jobs at `downloading`).
+        """
         job_both_complete = Job(
             job_id="test-parallel-003",
             artist="Test Artist",
@@ -180,17 +176,17 @@ class TestParallelProcessingCoordination:
             updated_at=datetime.now(UTC),
             state_data={'audio_complete': True, 'lyrics_complete': True},
         )
-        # Return different jobs on subsequent calls
-        job_manager.firestore.get_job.side_effect = [job_audio_only, job_both_complete]
+        job_manager.firestore.get_job.return_value = job_both_complete
         job_manager.firestore.update_job.return_value = True
 
-        # Mock the screens worker trigger
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            # Now lyrics completes
+        mock_ws = MagicMock()
+        mock_ws.trigger_screens_worker = AsyncMock(return_value=True)
+        with patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
             job_manager.mark_lyrics_complete("test-parallel-003")
+            result = await job_manager.advance_to_screens_if_ready("test-parallel-003")
 
-            # Verify screens worker was triggered (both complete)
-            mock_trigger.assert_called_once_with("test-parallel-003")
+        assert result is True
+        mock_ws.trigger_screens_worker.assert_awaited_once_with("test-parallel-003")
 
 
 class TestStateTransitionValidation:
