@@ -357,8 +357,14 @@ async def process_audio_separation(job_id: str) -> bool:
                     logger.warning(f"[job:{job_id}] Backing vocals analysis failed (non-fatal): {e}")
 
                 # Mark audio processing complete
-                # This will check if lyrics are also complete and transition to next stage if so
                 job_manager.mark_audio_complete(job_id)
+
+                # Fallback screens trigger: if lyrics already finished but its
+                # (primary) screens dispatch was lost, advancing here rescues the
+                # job. No-op unless lyrics are done AND the job is still at
+                # `downloading`, so the audio/review decoupling is preserved and a
+                # normal run never double-triggers.
+                await job_manager.advance_to_screens_if_ready(job_id)
 
                 # Auto-approval second chance: when lyrics/screens finished BEFORE
                 # audio, the job is already parked in AWAITING_REVIEW and the

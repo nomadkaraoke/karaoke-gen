@@ -129,6 +129,54 @@ async function getAuthToken(page: Page): Promise<string | null> {
   return await page.evaluate(() => localStorage.getItem('karaoke_access_token'));
 }
 
+// States a job sits in WHILE it is waiting for the reviewer to finish. Leaving
+// these means the review-completion POST (/api/review/{id}/complete) landed.
+const REVIEW_WAIT_STATES = ['awaiting_review', 'in_review'];
+
+/**
+ * Read a job's backend status via the API (as the job owner, falling back to the
+ * admin token), independent of any UI rendering.
+ */
+async function getJobStatus(page: Page, jobId: string): Promise<string> {
+  const token = await getAuthToken(page);
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  else if (process.env.E2E_ADMIN_TOKEN) headers['X-Admin-Token'] = process.env.E2E_ADMIN_TOKEN;
+  const res = await page.request.get(`${API_URL}/api/jobs/${jobId}`, { headers });
+  if (!res.ok()) throw new Error(`GET /api/jobs/${jobId} → ${res.status()}`);
+  const job = await res.json();
+  return String(job?.status || '');
+}
+
+/**
+ * Assert that a review-completion submit actually advanced the job past the
+ * review-wait states. A job frozen at `in_review`/`awaiting_review` means the
+ * approval POST never landed — historically the Stage-2 "flake" surfaced ~40 min
+ * later as a misleading "Timeout waiting for job completion". Verifying the
+ * transition here fails LOUD at the submit step with an actionable message, and
+ * lets the caller retry the submit deterministically instead of tolerating flake.
+ */
+async function assertReviewSubmitted(page: Page, jobId: string, timeoutMs = 90_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let last = '';
+  while (Date.now() < deadline) {
+    last = await getJobStatus(page, jobId).catch((e) => {
+      console.log(`  review-status poll error: ${e}`);
+      return '';
+    });
+    if (last && !REVIEW_WAIT_STATES.includes(last.toLowerCase())) {
+      console.log(`  Review submit confirmed — job advanced to "${last}"`);
+      return;
+    }
+    await page.waitForTimeout(3000);
+  }
+  throw new Error(
+    `Review submit did not advance job ${jobId} past review (still "${last}") after ` +
+    `${Math.round(timeoutMs / 1000)}s — the completeReview POST never landed. This is a ` +
+    `review-submit failure, NOT a slow render.`
+  );
+}
+
 /**
  * Navigate to a URL with retry logic for transient network errors.
  * Production tests can hit ERR_INTERNET_DISCONNECTED or similar when opening new pages.
@@ -139,7 +187,12 @@ async function gotoWithRetry(
   options: { waitUntil?: 'networkidle' | 'load' | 'domcontentloaded'; timeout?: number } = {},
   maxRetries = 3
 ): Promise<void> {
-  const { waitUntil = 'networkidle', timeout = 60000 } = options;
+  // Default to 'domcontentloaded': this is a long-polling SPA that keeps
+  // connections open, so 'networkidle' frequently never settles and the goto
+  // times out at 60s (a real Stage-2 retry failure, run #170). Callers that need
+  // a stronger wait pass waitUntil explicitly; they also assert on concrete
+  // elements after navigating, so they don't rely on network-idle for readiness.
+  const { waitUntil = 'domcontentloaded', timeout = 60000 } = options;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await page.goto(url, { waitUntil, timeout });
@@ -852,6 +905,9 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
           }
           if (completionOutcome === 'completed') {
             console.log('  Review completed (redirected to /app)');
+            // The /app redirect implies success, but confirm the backend actually
+            // advanced the job — a stale UI redirect must not mask a lost submit.
+            if (jobId) await assertReviewSubmitted(reviewPage, jobId, 60_000);
           } else if (completionOutcome === 'fallback') {
             console.log('  WARNING: Inline completion failed — product fell back to the instrumental screen; continuing with Step 8');
             needsInstrumentalScreen = true;
@@ -924,6 +980,26 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         await reviewPage.waitForTimeout(5000);
 
         await reviewPage.screenshot({ path: 'test-results/08c-instrumental-submitted.png', fullPage: true });
+
+        // Deterministically confirm the submit landed (job left the review states).
+        // Previously this step just clicked + slept, so a dropped click / swallowed
+        // completeReview left the job frozen at in_review and failed 40 min later at
+        // "job completion". Verify the transition here and retry the submit ONCE
+        // before failing loud — no flake tolerance.
+        if (jobId) {
+          try {
+            await assertReviewSubmitted(reviewPage, jobId, 60_000);
+          } catch (e) {
+            console.log(`  WARNING: ${e instanceof Error ? e.message : e}`);
+            console.log('  Retrying instrumental submit once...');
+            if (await submitBtn.isVisible().catch(() => false)) {
+              await submitBtn.click();
+              console.log('  Re-clicked "Confirm & Continue"');
+            }
+            await reviewPage.waitForTimeout(3000);
+            await assertReviewSubmitted(reviewPage, jobId, 60_000);
+          }
+        }
 
         // The page redirects to /app after completion, or may close
         // Wait a bit for the redirect/close to happen
