@@ -533,10 +533,14 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                     'message': 'Lyrics transcription complete'
                 })
                 
-                # Mark lyrics processing complete
-                # This will check if audio is also complete and transition to next stage if so
-                job_log.info("Lyrics worker complete, checking if audio is also done...")
+                # Mark lyrics processing complete, then durably (AWAITED) trigger
+                # the screens worker. The old fire-and-forget trigger was being
+                # cancelled on Cloud Run Job event-loop teardown, orphaning jobs at
+                # `downloading`; awaiting guarantees the screens Cloud Task is
+                # enqueued before this worker returns.
+                job_log.info("Lyrics worker complete, advancing to screen generation...")
                 job_manager.mark_lyrics_complete(job_id)
+                await job_manager.advance_to_screens_if_ready(job_id)
 
                 # Proactively pre-generate + cache AI auto-correct suggestions so
                 # they're ready when the reviewer opens the lyrics UI. The work

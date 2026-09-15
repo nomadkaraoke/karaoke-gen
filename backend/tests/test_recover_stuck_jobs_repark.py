@@ -55,7 +55,8 @@ def _job(job_id, status, *, minutes_stale=0, source_name=None, download_retry=No
     )
 
 
-def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=None, jobs=None):
+def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=None,
+             downloading_prep=None, jobs=None):
     """Wire a JobManager mock for the endpoint's 4 status queries.
 
     downloading/rendering/review_complete use .where().stream(); pending uses
@@ -64,9 +65,10 @@ def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=
     mock_jm = MagicMock()
     where = mock_jm.firestore.db.collection.return_value.where.return_value
     # Non-limited .stream() calls in order: downloading_audio, rendering_video,
-    # review_complete (lost-render-trigger sweep)
+    # review_complete (lost-render-trigger sweep), downloading (lost-screens-trigger sweep)
     where.stream.side_effect = [
         iter(downloading or []), iter(rendering or []), iter(review_complete or []),
+        iter(downloading_prep or []),
     ]
     # One .limit().stream() call: download_pending_retry
     where.limit.return_value.stream.return_value = iter(pending or [])
@@ -177,6 +179,41 @@ def test_fresh_render_not_reparked(client):
     mock_jm = _mock_jm(rendering=[_doc("r2", JobStatus.RENDERING_VIDEO)], jobs={"r2": job})
     resp, _ = _run(client, mock_jm)
     assert resp.json()["reparked_render_count"] == 0
+
+
+def test_stuck_downloading_with_lyrics_done_retriggers_screens(client):
+    """A job stuck at DOWNLOADING >10 min with lyrics_complete=True (a lost screens
+    trigger) is re-advanced to screen generation."""
+    job = _job("s1", JobStatus.DOWNLOADING, minutes_stale=15)
+    job.state_data["lyrics_complete"] = True
+    mock_jm = _mock_jm(downloading_prep=[_doc("s1", JobStatus.DOWNLOADING)], jobs={"s1": job})
+    mock_jm.advance_to_screens_if_ready = AsyncMock(return_value=True)
+    resp, _ = _run(client, mock_jm)
+    data = resp.json()
+    assert data["screens_retriggered_jobs"] == ["s1"]
+    mock_jm.advance_to_screens_if_ready.assert_awaited_once_with("s1")
+
+
+def test_fresh_downloading_not_retriggered(client):
+    """A DOWNLOADING job updated 2 min ago (audio still separating) is NOT re-triggered."""
+    job = _job("s2", JobStatus.DOWNLOADING, minutes_stale=2)
+    job.state_data["lyrics_complete"] = True
+    mock_jm = _mock_jm(downloading_prep=[_doc("s2", JobStatus.DOWNLOADING)], jobs={"s2": job})
+    mock_jm.advance_to_screens_if_ready = AsyncMock(return_value=True)
+    resp, _ = _run(client, mock_jm)
+    assert resp.json()["screens_retriggered_count"] == 0
+    mock_jm.advance_to_screens_if_ready.assert_not_awaited()
+
+
+def test_downloading_without_lyrics_not_retriggered(client):
+    """A DOWNLOADING job stale >10 min but WITHOUT lyrics_complete is still
+    legitimately processing (download/separate/transcribe) — not re-triggered."""
+    job = _job("s3", JobStatus.DOWNLOADING, minutes_stale=15)  # no lyrics_complete
+    mock_jm = _mock_jm(downloading_prep=[_doc("s3", JobStatus.DOWNLOADING)], jobs={"s3": job})
+    mock_jm.advance_to_screens_if_ready = AsyncMock(return_value=True)
+    resp, _ = _run(client, mock_jm)
+    assert resp.json()["screens_retriggered_count"] == 0
+    mock_jm.advance_to_screens_if_ready.assert_not_awaited()
     mock_jm.transition_to_state.assert_not_called()
 
 

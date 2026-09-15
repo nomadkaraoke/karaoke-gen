@@ -53,6 +53,18 @@ SCREENS_WORKER_LOGGERS = [
     "backend.workers.style_helper",
 ]
 
+# Statuses from which screen generation may legitimately start. The screens
+# worker can be dispatched more than once — the lyrics worker (primary) and the
+# audio worker (fallback) may both trigger it, and Cloud Tasks may redeliver — so
+# a dispatch that arrives when the job has already advanced past these states is a
+# duplicate and must no-op (see generate_screens).
+_SCREENS_ENTRY_STATUSES = frozenset({
+    JobStatus.DOWNLOADING,
+    JobStatus.AUDIO_EDIT_COMPLETE,
+    JobStatus.AUDIO_COMPLETE,
+    JobStatus.LYRICS_COMPLETE,
+})
+
 
 async def generate_screens(job_id: str) -> bool:
     """
@@ -85,7 +97,19 @@ async def generate_screens(job_id: str) -> bool:
     if not job:
         logger.error(f"[job:{job_id}] Job not found")
         return False
-    
+
+    # Idempotency guard: this worker may be dispatched twice (lyrics primary +
+    # audio fallback triggers, or a Cloud Tasks redelivery). Once the job has
+    # advanced past the pre-screens stage, a second dispatch is a duplicate — no-op
+    # rather than re-running the (invalid) GENERATING_SCREENS transition and
+    # regenerating screens.
+    if job.status not in _SCREENS_ENTRY_STATUSES:
+        logger.info(
+            f"[job:{job_id}] Screens already triggered/advanced "
+            f"(status={job.status}); skipping duplicate dispatch"
+        )
+        return True
+
     # Validate both audio and lyrics are complete
     if not _validate_prerequisites(job):
         logger.error(f"[job:{job_id}] Prerequisites not met for screen generation")

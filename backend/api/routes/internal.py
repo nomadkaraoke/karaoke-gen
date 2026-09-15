@@ -1035,11 +1035,43 @@ async def recover_stuck_jobs(
         except Exception as e:
             logger.warning(f"[job:{job_id}] render re-trigger failed: {e}")
 
+    # --- DOWNLOADING with lyrics done but screens never triggered: lost screens trigger ---
+    # The lyrics worker triggers screen generation once transcription completes
+    # (audio separation is decoupled). If that dispatch is lost — historically a
+    # fire-and-forget task cancelled on Cloud Run Job loop teardown, now awaited,
+    # but a Cloud Tasks enqueue can still fail — the job sits at `downloading` with
+    # lyrics_complete=True and never advances, with no error. Re-trigger is
+    # idempotent (advance_to_screens_if_ready status-guards + the screens worker
+    # no-ops a duplicate). Mirrors the REVIEW_COMPLETE lost-render recovery above.
+    screens_retriggered = []
+    dl_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.DOWNLOADING.value)
+    ).stream()
+    for doc in dl_query:
+        if len(screens_retriggered) >= SCREENS_RETRIGGERS_PER_TICK:
+            break
+        job_id = (doc.to_dict() or {}).get("job_id", doc.id)
+        job = job_manager.get_job(job_id)
+        if not job:
+            continue
+        if not _prep_screens_stalled(job):
+            continue
+        logger.warning(
+            f"[job:{job_id}] DOWNLOADING stalled >10 min with lyrics complete but "
+            "no screens — re-triggering"
+        )
+        try:
+            if await job_manager.advance_to_screens_if_ready(job_id):
+                screens_retriggered.append(job_id)
+        except Exception as e:
+            logger.warning(f"[job:{job_id}] screens re-trigger failed: {e}")
+
     logger.info(
         f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} "
         f"download_parked={len(download_parked)} download_retried={len(download_retried)} "
         f"download_timed_out={len(download_timed_out)} reparked={len(reparked)} "
-        f"render_retriggered={len(render_retriggered)}"
+        f"render_retriggered={len(render_retriggered)} "
+        f"screens_retriggered={len(screens_retriggered)}"
     )
     add_span_event("recovery_complete", {
         "recovered_count": len(recovered),
@@ -1060,11 +1092,44 @@ async def recover_stuck_jobs(
         "reparked_render_count": len(reparked),
         "render_retriggered_jobs": render_retriggered,
         "render_retriggered_count": len(render_retriggered),
+        "screens_retriggered_jobs": screens_retriggered,
+        "screens_retriggered_count": len(screens_retriggered),
     }
 
 
 REVIEW_COMPLETE_STALL_SECONDS = 10 * 60  # render normally starts within seconds
 RENDER_RETRIGGERS_PER_TICK = 10          # bound the blast radius per 5-min tick
+PREP_SCREENS_STALL_SECONDS = 10 * 60     # screens normally start within seconds of lyrics done
+SCREENS_RETRIGGERS_PER_TICK = 10         # bound the blast radius per 5-min tick
+
+
+def _job_updated_age_seconds(job):
+    """Seconds since a job's ``updated_at``, or None if unavailable/unparseable."""
+    updated_at = getattr(job, "updated_at", None)
+    if updated_at is None:
+        return None
+    from datetime import datetime, timezone as _tz
+    now = datetime.now(_tz.utc)
+    if updated_at.tzinfo is None:
+        now = datetime.utcnow()
+    try:
+        return (now - updated_at).total_seconds()
+    except TypeError:
+        return None
+
+
+def _prep_screens_stalled(job) -> bool:
+    """True when a DOWNLOADING job has lyrics complete but has sat >10 min without
+    advancing to screen generation — i.e. the screens trigger was lost.
+
+    While audio separation is still running it keeps ``updated_at`` fresh, so this
+    only fires once the job has genuinely gone quiet (both prep workers done, no
+    screens dispatch), which is exactly the orphaned-trigger signature.
+    """
+    if not (job.state_data or {}).get("lyrics_complete", False):
+        return False
+    age = _job_updated_age_seconds(job)
+    return age is not None and age > PREP_SCREENS_STALL_SECONDS
 
 
 def _review_complete_stalled(job) -> bool:
