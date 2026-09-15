@@ -135,6 +135,10 @@ EDITABLE_JOB_FIELDS = {
     "is_private",
     "review_mode",
     "backing_preference",
+    # Exempts a job from the stale-review auto-expiry (48h cancel+refund) —
+    # the stale_review_processor skips made_for_you jobs. Used for admin-driven
+    # batches (e.g. KaraokeHunt outreach) that must wait at review indefinitely.
+    "made_for_you",
 }
 
 
@@ -993,6 +997,13 @@ async def update_job(
                 f"Admin {admin_email} reassigned job {job_id} to {normalized_email} — "
                 f"no account existed, created one"
             )
+
+    # A non-bool would silently break the stale-review exemption check.
+    if "made_for_you" in updates and not isinstance(updates["made_for_you"], bool):
+        raise HTTPException(
+            status_code=400,
+            detail="made_for_you must be a boolean",
+        )
 
     # The executor treats any value other than "auto" as an enforcement blocker,
     # so a typo (e.g. "always-review") would silently force human review.
