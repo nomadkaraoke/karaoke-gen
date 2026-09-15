@@ -195,10 +195,16 @@ def main() -> int:
                 job_id = job.get("job_id") or job.get("id")
                 entry["job_id"] = job_id
                 entry["submitted_at"] = now_iso()
-                # Exempt from stale-review auto-expiry immediately.
-                st, _ = api_post(f"/api/admin/jobs/{job_id}",
-                                 {"made_for_you": True}, args.token, method="PATCH")
-                entry["made_for_you_set"] = (st == 200)
+                # Exempt from stale-review auto-expiry immediately. A PATCH
+                # failure must not mask the successful job creation — record
+                # it so a later pass can re-flag.
+                try:
+                    st, _ = api_post(f"/api/admin/jobs/{job_id}",
+                                     {"made_for_you": True}, args.token, method="PATCH")
+                    entry["made_for_you_set"] = (st == 200)
+                except Exception as pe:
+                    entry["made_for_you_set"] = False
+                    entry["mfy_error"] = str(pe)[:200]
                 msg = (f"OK   {a} – {t}: job {job_id} "
                        f"[{u['kind']}] mfy={'✅' if entry['made_for_you_set'] else '❌'}")
                 print(f"  {msg}", flush=True)

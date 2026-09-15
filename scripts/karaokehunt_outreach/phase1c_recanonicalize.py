@@ -154,6 +154,8 @@ def main() -> int:
     # --- 2. re-search corrected names (research + community-first fallbacks) ---
     to_search = []
     for k, d in decisions.items():
+        if k not in cache:
+            continue
         if d["action"] == "research" or \
            (d["action"] == "community-first" and not cache[k].get("recheck_v2", {}).get("available")):
             if "search_v2" not in cache[k]:

@@ -341,3 +341,26 @@ class TestWorkerIdempotency:
             data = response.json()
             assert data["status"] == "not_found"
 
+
+
+class TestAutoApprovalEval:
+    """POST /api/internal/jobs/{job_id}/auto-approval-eval — admin re-evaluation."""
+
+    def test_eval_calls_executor_and_returns_outcome(self, client):
+        with patch(
+            'backend.services.auto_approval.executor.maybe_auto_complete_review',
+            new=AsyncMock(return_value={"outcome": "auto_completed"}),
+        ) as mock_eval:
+            response = client.post(
+                "/api/internal/jobs/test123/auto-approval-eval",
+                headers={"Authorization": "Bearer test-admin-token"},
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["job_id"] == "test123"
+            assert data["outcome"] == "auto_completed"
+            mock_eval.assert_awaited_once_with("test123", trigger="admin_eval")
+
+    def test_eval_requires_admin(self, client):
+        response = client.post("/api/internal/jobs/test123/auto-approval-eval")
+        assert response.status_code == 401
