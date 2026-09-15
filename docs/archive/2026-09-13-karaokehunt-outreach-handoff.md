@@ -1,5 +1,22 @@
 # KaraokeHunt decommission + user outreach — session handoff (2026-09-13)
 
+> **SESSION 3 UPDATE (2026-09-14)** — canonicalization v2 DONE (`phase1c_recanonicalize.py`
+> + `outreach_out/canonical_v2.json`): resolved InputURL YouTube titles via oEmbed
+> (`inputurl_titles.json`), judged all 60 non-confident songs, collapsed 10 duplicates,
+> excluded 2 test requesters. Corrected names unlocked big torrents (Early Mornin' 189
+> seeders, KAYTRANADA 10% 209, BOOMPALA, Luther Vandross). **FINAL BUCKETS
+> (`review_summary_v3.md` / `actions_v3.json`): 87 requesters · 27 community (searched
+> songs; +20 phase-1 links) · 65 torrent-submit · 29 spotify/youtube-make · 7 no-match ·
+> 10 dropped.**
+> ⚠️ **PROD BUG FOUND**: karaokenerds.com now 429s the backend's `NomadKaraokeGen/1.0`
+> UA → `/api/bulk/availability` + community-check return available=false for EVERYTHING,
+> silently (worked 2026-09-13, broken by 2026-09-15). Outreach bypassed it with local
+> browser-UA checks (paced 2s); the backend fix (backoff/cache/UA — talk to KN?) is a
+> separate work item Andrew should backlog.
+> ⚠️ **OPEN DECISION**: 26 generate-bucket songs have BRAND (non-community) karaoke
+> versions on KN (Shake It Off ×8, Love Story ×13, Hero ×10, Neon Moon ×10, Golden ×3…)
+> — link those in emails instead of generating? Annotated in review_summary_v3.md.
+
 > **SESSION 2 UPDATE (2026-09-13, later the same day)** — the §4 Segment-A pipeline is
 > BUILT and the full run is DONE (searched 2026-09-13 ~07:00 UTC — sessions expire in
 > 7 days). **RESULTS: 89 requesters · 20 community (14 + 6 found after typo-fix, 51/139
