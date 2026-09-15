@@ -11,7 +11,7 @@ Covers:
 import os
 import tempfile
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 
 import pytest
 
@@ -58,8 +58,10 @@ class TestPipelineDecoupling:
 
     New behavior:
     - check_parallel_processing_complete() only checks lyrics_complete
-    - mark_audio_complete() sets flag but does NOT trigger screens
-    - mark_lyrics_complete() triggers screens on its own (no audio gate)
+    - mark_audio_complete() / mark_lyrics_complete() only set their flag
+    - advance_to_screens_if_ready() does the AWAITED, idempotent screens dispatch,
+      gated on lyrics_complete + status==DOWNLOADING (durability fix: the old
+      fire-and-forget trigger was lost on Cloud Run Job loop teardown).
     """
 
     def test_check_parallel_only_requires_lyrics(self, job_manager, mock_firestore_service):
@@ -83,76 +85,86 @@ class TestPipelineDecoupling:
 
         assert job_manager.check_parallel_processing_complete("test-001") is False
 
-    def test_mark_audio_complete_does_not_trigger_screens(self, job_manager, mock_firestore_service):
-        """Critical: audio completion must NOT trigger screens worker."""
+    def test_mark_audio_complete_only_sets_flag(self, job_manager, mock_firestore_service):
+        """mark_audio_complete only persists the flag; it never triggers screens
+        itself (the audio worker calls advance_to_screens_if_ready as a fallback)."""
         job = _make_job(state_data={"lyrics_complete": True})
         mock_firestore_service.get_job.return_value = job
         mock_firestore_service.update_job.return_value = True
 
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            job_manager.mark_audio_complete("test-001")
-            mock_trigger.assert_not_called()
+        job_manager.mark_audio_complete("test-001")
+        # Flag persisted via a dot-path state_data write.
+        assert mock_firestore_service.update_job.called
 
-    def test_mark_lyrics_complete_triggers_screens_without_audio(self, job_manager, mock_firestore_service):
-        """Critical: lyrics completion triggers screens even if audio isn't done."""
-        # After update_state_data sets lyrics_complete, get_job returns updated state
-        job_after_update = _make_job(state_data={"audio_complete": False, "lyrics_complete": True})
-        mock_firestore_service.get_job.return_value = job_after_update
+    def test_mark_lyrics_complete_only_sets_flag(self, job_manager, mock_firestore_service):
+        """mark_lyrics_complete only persists the flag; the durable AWAITED dispatch
+        is advance_to_screens_if_ready (called by the worker)."""
+        job = _make_job(state_data={"lyrics_complete": True})
+        mock_firestore_service.get_job.return_value = job
         mock_firestore_service.update_job.return_value = True
 
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            job_manager.mark_lyrics_complete("test-001")
-            mock_trigger.assert_called_once_with("test-001")
+        job_manager.mark_lyrics_complete("test-001")
+        assert mock_firestore_service.update_job.called
 
-    def test_mark_lyrics_complete_triggers_screens_with_audio(self, job_manager, mock_firestore_service):
-        """Lyrics completion triggers screens when audio is already done too."""
-        job_after_update = _make_job(state_data={"audio_complete": True, "lyrics_complete": True})
-        mock_firestore_service.get_job.return_value = job_after_update
-        mock_firestore_service.update_job.return_value = True
+    @pytest.mark.asyncio
+    async def test_advance_triggers_screens_when_lyrics_done(self, job_manager, mock_firestore_service):
+        """lyrics_complete + status DOWNLOADING → screens dispatched (awaited)."""
+        job = _make_job(state_data={"lyrics_complete": True, "audio_complete": False})
+        mock_firestore_service.get_job.return_value = job
+        mock_ws = MagicMock()
+        mock_ws.trigger_screens_worker = AsyncMock(return_value=True)
 
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            job_manager.mark_lyrics_complete("test-001")
-            mock_trigger.assert_called_once_with("test-001")
+        with patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+            result = await job_manager.advance_to_screens_if_ready("test-001")
 
-    def test_ordering_audio_first_then_lyrics(self, job_manager, mock_firestore_service):
-        """Typical flow: audio finishes first, then lyrics triggers screens."""
-        mock_firestore_service.update_job.return_value = True
+        assert result is True
+        mock_ws.trigger_screens_worker.assert_awaited_once_with("test-001")
 
-        # Audio completes first — get_job returns state without lyrics_complete
-        job_audio_only = _make_job(state_data={"audio_complete": True})
-        mock_firestore_service.get_job.return_value = job_audio_only
+    @pytest.mark.asyncio
+    async def test_advance_noop_when_lyrics_not_done(self, job_manager, mock_firestore_service):
+        """No screens trigger until lyrics complete, even if audio is done."""
+        job = _make_job(state_data={"lyrics_complete": False, "audio_complete": True})
+        mock_firestore_service.get_job.return_value = job
+        mock_ws = MagicMock()
+        mock_ws.trigger_screens_worker = AsyncMock(return_value=True)
 
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            job_manager.mark_audio_complete("test-001")
-            mock_trigger.assert_not_called()
+        with patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+            result = await job_manager.advance_to_screens_if_ready("test-001")
 
-        # Now lyrics completes — get_job returns state with both flags
-        job_both = _make_job(state_data={"audio_complete": True, "lyrics_complete": True})
-        mock_firestore_service.get_job.return_value = job_both
+        assert result is False
+        mock_ws.trigger_screens_worker.assert_not_called()
 
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            job_manager.mark_lyrics_complete("test-001")
-            mock_trigger.assert_called_once()
+    @pytest.mark.asyncio
+    async def test_advance_is_idempotent_when_already_advanced(self, job_manager, mock_firestore_service):
+        """Idempotency: once the job has advanced past DOWNLOADING, a second call
+        (e.g. the audio-worker fallback) must NOT re-dispatch screens."""
+        job = _make_job(state_data={"lyrics_complete": True}, status=JobStatus.AWAITING_REVIEW)
+        mock_firestore_service.get_job.return_value = job
+        mock_ws = MagicMock()
+        mock_ws.trigger_screens_worker = AsyncMock(return_value=True)
 
-    def test_ordering_lyrics_first_then_audio(self, job_manager, mock_firestore_service):
-        """Less common: lyrics finishes first, triggers screens immediately."""
-        mock_firestore_service.update_job.return_value = True
+        with patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+            result = await job_manager.advance_to_screens_if_ready("test-001")
 
-        # Lyrics completes first — get_job returns state with lyrics_complete
-        job_lyrics_only = _make_job(state_data={"lyrics_complete": True})
-        mock_firestore_service.get_job.return_value = job_lyrics_only
+        assert result is False
+        mock_ws.trigger_screens_worker.assert_not_called()
 
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            job_manager.mark_lyrics_complete("test-001")
-            mock_trigger.assert_called_once()
+    @pytest.mark.asyncio
+    async def test_audio_fallback_recovers_lost_lyrics_trigger(self, job_manager, mock_firestore_service):
+        """The exact incident: lyrics finished (flag set) but its screens dispatch
+        was lost, leaving the job at DOWNLOADING. The audio worker finishing later
+        calls advance_to_screens_if_ready and rescues it."""
+        job = _make_job(state_data={"lyrics_complete": True, "audio_complete": True},
+                        status=JobStatus.DOWNLOADING)
+        mock_firestore_service.get_job.return_value = job
+        mock_ws = MagicMock()
+        mock_ws.trigger_screens_worker = AsyncMock(return_value=True)
 
-        # Audio completes later — should NOT trigger screens again
-        job_both = _make_job(state_data={"lyrics_complete": True, "audio_complete": True})
-        mock_firestore_service.get_job.return_value = job_both
+        with patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+            result = await job_manager.advance_to_screens_if_ready("test-001")
 
-        with patch.object(job_manager, '_trigger_screens_worker') as mock_trigger:
-            job_manager.mark_audio_complete("test-001")
-            mock_trigger.assert_not_called()
+        assert result is True
+        mock_ws.trigger_screens_worker.assert_awaited_once_with("test-001")
 
 
 # ==================== P0: Preset Configuration ====================

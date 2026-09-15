@@ -354,17 +354,24 @@ background_tasks.add_task(worker_service.trigger_lyrics_worker, job_id)
 Coordination via job state:
 
 ```python
-# Audio worker completes
-job_manager.mark_audio_complete(job_id)
-→ Sets audio_complete flag
-→ Checks if lyrics also complete
-→ If both: triggers screens worker
+# Screen generation is gated on LYRICS ONLY — audio separation is decoupled so
+# reviewers can start while it finishes. mark_*_complete only persist a flag; the
+# screens dispatch is an AWAITED, idempotent call (advance_to_screens_if_ready).
+# A previous fire-and-forget asyncio trigger was cancelled on Cloud Run Job loop
+# teardown, orphaning jobs at `downloading` (E2E job-orchestration stall, 2026-09).
 
-# Lyrics worker completes
-job_manager.mark_lyrics_complete(job_id)
-→ Sets lyrics_complete flag
-→ Checks if audio also complete
-→ If both: triggers screens worker
+# Lyrics worker completes (PRIMARY trigger)
+job_manager.mark_lyrics_complete(job_id)          # sets lyrics_complete flag
+await job_manager.advance_to_screens_if_ready(job_id)
+→ if lyrics_complete and status == DOWNLOADING: await trigger_screens_worker()
+
+# Audio worker completes (FALLBACK trigger — rescues a lost lyrics dispatch)
+job_manager.mark_audio_complete(job_id)           # sets audio_complete flag
+await job_manager.advance_to_screens_if_ready(job_id)
+→ no-op unless lyrics already done AND still at DOWNLOADING (status guard)
+
+# Defense-in-depth: recover-stuck-jobs (every 5 min) re-triggers any job left at
+# DOWNLOADING with lyrics_complete but no screens (a lost/failed dispatch).
 ```
 
 Benefits:

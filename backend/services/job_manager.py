@@ -1136,49 +1136,58 @@ class JobManager:
 
     def mark_lyrics_complete(self, job_id: str) -> None:
         """
-        Mark lyrics processing as complete and trigger screens if ready.
+        Mark lyrics processing as complete.
 
-        Lyrics completion is the sole gate for screen generation and review.
-        Audio separation runs independently in the background.
+        Lyrics completion is the sole gate for screen generation and review
+        (audio separation runs independently in the background). This ONLY sets
+        the flag — the caller must then ``await advance_to_screens_if_ready()`` so
+        the screens dispatch is durable. A previous fire-and-forget
+        ``asyncio.create_task`` trigger was being cancelled when the lyrics Cloud
+        Run Job's event loop tore down, orphaning jobs at ``downloading`` with no
+        error (E2E job-orchestration stall incident, 2026-09).
         """
         self.update_state_data(job_id, 'lyrics_complete', True)
 
-        if self.check_parallel_processing_complete(job_id):
-            logger.info(f"Job {job_id}: Lyrics complete, triggering screens worker")
-            self._trigger_screens_worker(job_id)
-    
-    def _trigger_screens_worker(self, job_id: str) -> None:
+    async def advance_to_screens_if_ready(self, job_id: str) -> bool:
         """
-        Trigger screens generation worker.
-        
-        Uses WorkerService to make HTTP call to internal API.
-        This must be async, so we use asyncio to create a task.
+        Idempotently trigger the screens worker once lyrics processing is complete.
+
+        Awaited (not fire-and-forget) so the Cloud Task enqueue completes before
+        the calling worker's event loop tears down. Safe to call from BOTH the
+        lyrics worker (primary trigger) and the audio worker (fallback, in case
+        the lyrics trigger was lost): the status guard here plus the screens
+        worker's own idempotency make a double-trigger a harmless no-op.
+
+        Screen generation is gated on LYRICS only (audio separation is decoupled
+        so reviewers can start while it finishes), so this no-ops until lyrics are
+        done, and only fires while the job is still at ``downloading``.
+
+        Returns:
+            True iff a screens dispatch was issued.
         """
-        import asyncio
+        job = self.get_job(job_id)
+        if not job:
+            return False
+        if not job.state_data.get('lyrics_complete', False):
+            # Lyrics not finished yet — whichever worker finishes lyrics triggers.
+            return False
+        if job.status != JobStatus.DOWNLOADING:
+            # Already advanced past prep (or parked in a special state). Keeps the
+            # audio-worker fallback from re-triggering a job that already reached
+            # screens/review.
+            logger.info(
+                f"Job {job_id}: screens not (re)triggered — status={job.status} "
+                "(expected downloading)"
+            )
+            return False
         from backend.services.worker_service import get_worker_service
-        
-        logger.info(f"Job {job_id}: Triggering screens worker")
-        
-        # Create async task to trigger worker
-        # This allows us to call async code from sync context
-        async def _trigger():
-            worker_service = get_worker_service()
-            await worker_service.trigger_screens_worker(job_id)
-        
-        # Create task in event loop
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is already running, create task
-                asyncio.create_task(_trigger())
-            else:
-                # If no loop, run directly
-                asyncio.run(_trigger())
-        except RuntimeError:
-            # Fallback: just log
-            logger.warning(f"Job {job_id}: Could not trigger screens worker (no event loop)")
-            # TODO: In production, use message queue instead
-    
+        logger.info(f"Job {job_id}: lyrics complete — triggering screens worker (awaited)")
+        # Propagate the dispatch result: trigger_screens_worker returns False on a
+        # Cloud Tasks enqueue failure / HTTP error / timeout. Returning False here
+        # keeps recover_stuck_jobs from counting a failed re-trigger against its
+        # per-tick cap (which would delay other stalled jobs), and lets it retry.
+        return await get_worker_service().trigger_screens_worker(job_id)
+
     def cancel_job(self, job_id: str, reason: Optional[str] = None) -> bool:
         """
         Cancel a job.
