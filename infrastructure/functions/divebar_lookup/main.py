@@ -145,13 +145,18 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
     if not tokens:
         return []
 
+    def _like_escape(s: str) -> str:
+        # Escape LIKE metacharacters so a token containing % or _ matches
+        # literally instead of acting as a wildcard.
+        return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     client = bigquery.Client(project=GCP_PROJECT_ID)
     haystack = "LOWER(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')))"
     conditions = []
     params = []
     for i, tok in enumerate(tokens):
-        conditions.append(f"{haystack} LIKE @tok{i}")
-        params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", f"%{tok}%"))
+        conditions.append(f"{haystack} LIKE @tok{i} ESCAPE '\\\\'")
+        params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", f"%{_like_escape(tok)}%"))
     params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
 
     sql = f"""

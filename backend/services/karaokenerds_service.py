@@ -157,9 +157,11 @@ async def _get_index() -> dict[str, dict[str, Any]]:
         except Exception as e:  # noqa: BLE001
             logger.warning("Failed to load KaraokeNerds community index: %s", e)
             if _index is None:
-                # No prior data — serve empty but retry soon (don't cache failure long).
+                # No prior data — serve empty until the short retry window elapses.
                 _index = {}
-                _index_expiry = time.monotonic() + 60
+            # Retry soon whether we're serving empty or a stale index, so an
+            # outage doesn't make every request re-attempt the load immediately.
+            _index_expiry = time.monotonic() + 60
         return _index
 
 

@@ -282,6 +282,8 @@ class TestKnCommunitySearch:
         assert captured["sql"].count("LIKE @tok") == 5
         assert " AND " in captured["sql"]
         assert "karaokenerds_community" in captured["sql"]
+        # LIKE wildcards in tokens are escaped via an ESCAPE clause.
+        assert "ESCAPE" in captured["sql"]
 
     def test_blank_query_returns_empty_without_bq(self, monkeypatch):
         # No tokens -> never touches BigQuery.
