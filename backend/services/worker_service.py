@@ -690,9 +690,25 @@ class WorkerService:
             return False
     
     async def trigger_render_video_worker(self, job_id: str) -> bool:
-        """Trigger render video worker (post-review)."""
+        """
+        Trigger render video worker (post-review).
+
+        When USE_CLOUD_RUN_JOBS_FOR_RENDER=true and ENABLE_CLOUD_TASKS=true,
+        runs as a Cloud Run Job (reusing video-encoding-job with an args
+        override) so the render orchestration survives Cloud Run Service
+        deployment rollouts. As a BackgroundTask it was killed ~10s after
+        SIGTERM whenever a deploy landed mid-render, freezing the job at
+        rendering_video (incident 2026-09-13, job 41e06b90 — same class as
+        incident 2026-03-08 which migrated the video worker to Cloud Run Jobs).
+        """
         self._bump_worker_generation(job_id)
         self._warmup_encoding_worker(job_id)
+        if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_render:
+            return await self._trigger_worker_cloud_run_job(
+                job_id=job_id,
+                cloud_run_job_name="video-encoding-job",
+                worker_module="render_video_worker",
+            )
         return await self.trigger_worker("render-video", job_id)
 
     def _bump_worker_generation(self, job_id: str) -> None:

@@ -104,6 +104,9 @@ class TestIsDuetPropagation:
         job.style_assets = {}
         job.prep_only = False
         job.subtitle_offset_ms = 0
+        # Real dispatch state — the worker itself transitions to
+        # RENDERING_VIDEO (and skips jobs already in it / terminal).
+        job.status = JobStatus.REVIEW_COMPLETE
         return job
 
     def test_is_duet_true_passed_to_output_config_local_path(self):

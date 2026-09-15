@@ -1883,3 +1883,60 @@ gated to deployed envs, skips test/dev.
 - Detect silent *partial success* at the **publish boundary** (what *should* have
   shipped vs what did), and make the metadata backstop validate a just-published
   track's **own** completeness same-run, not only via global-max gap math (D2).
+
+## BackgroundTasks Cannot Survive Deploys — And the Shutdown Hook That "Protects" Them Never Runs (Sep 2026, v0.224.0)
+
+**Context:** Tenant-E2E run #107 failed: job `41e06b90` froze at `rendering_video`
+even though the GCE encoder finished the render and uploaded every output. A backend
+deploy landed mid-render. The render worker ran as a FastAPI BackgroundTask on the
+Cloud Run service; the deploy retired the old revision, SIGTERM arrived, and its last
+log lines were uvicorn's `Shutting down` / `Waiting for background tasks to complete`
+— then nothing. Nobody ever polled the encoder again.
+
+**The load-bearing wrong belief:** `main.py`'s lifespan shutdown hook (worker-registry
+wait + `park_active_render_jobs_for_shutdown()`) was built for exactly this scenario
+and commented "Cloud Run gen2 default termination grace period is 600s. We wait up to
+480s…". Both halves were wrong:
+
+1. **Cloud Run services SIGKILL ~10 seconds after SIGTERM**, not 600s.
+2. **Uvicorn runs lifespan shutdown only AFTER all background tasks complete.** A
+   render task with 30 minutes left keeps uvicorn stuck in its bg-task wait until
+   SIGKILL — so the parking hook is architecturally unreachable in the one scenario
+   it exists for. It had never once fired in anger.
+
+Three other layers also failed to save the job, each for a structural reason:
+- **Cloud Tasks retry** — defeated by design: the worker endpoint returns 200
+  immediately and does the work post-response, so the queue considers the task done
+  seconds after dispatch (`dispatch_deadline=1800s` protects nothing).
+- **`recover-stuck-jobs`** — keyed on `updated_at` staleness > 45 min; correct as a
+  slow safety net, but slower than the tenant E2E's 30-min render budget and a
+  ~50-60 min stall + wasted re-render for a real customer.
+- **Worker-side completion** — the GCE encoder finished and uploaded to GCS, but
+  results are pull-only (backend polls); there is no completion push, so a dead
+  poller means a done-but-unrecorded render.
+
+**Fix:** run the render worker as a **Cloud Run Job** (reuse `video-encoding-job`
+with a `render_video_worker` args override; flag `USE_CLOUD_RUN_JOBS_FOR_RENDER`,
+mirroring the 2026-03 `USE_CLOUD_RUN_JOBS_FOR_VIDEO` fix for the identical incident
+one stage later in the pipeline). Job executions run to completion; service deploys
+can't touch them. The job env also sets both `USE_CLOUD_RUN_JOBS_FOR_*` flags so the
+render execution's in-process trigger of the video worker dispatches a Cloud Run Job
+too instead of regressing to the vulnerable path.
+
+**Principles for next time:**
+- **Any work that outlives its HTTP response on Cloud Run is presumed dead on every
+  deploy.** BackgroundTasks are only acceptable for work that completes in seconds.
+  Long orchestration belongs in Cloud Run Jobs (audio-download, lyrics, separation,
+  video encode, and now render all migrated for this exact reason — when one worker
+  gets this fix, audit the *other* workers for the same pattern; render sat
+  vulnerable for 6 months after video was fixed).
+- **A graceful-shutdown hook is untested until it has provably fired.** Uvicorn's
+  shutdown ordering (bg tasks → lifespan) plus Cloud Run's 10s kill window made ours
+  dead code. If a safety net matters, verify it in logs during a real deploy.
+- **Returning 200-then-working silently discards the queue's retry semantics.** If
+  you accept work via Cloud Tasks, either do the work in-request or make sure some
+  other mechanism owns retries.
+- **Exit codes are API when Cloud Run Jobs retry:** `process_render_video` handles
+  its own failures (park/fail/supersede), so the CLI exits 0 on any clean return and
+  1 only on an escaped crash — otherwise `max_retries=2` would re-enter jobs that
+  already moved to a non-render state.

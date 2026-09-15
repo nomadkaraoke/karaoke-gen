@@ -23,7 +23,11 @@ from backend.models.job import JobStatus
 from backend.workers.registry import worker_registry
 
 
-def _build_minimal_job(status=JobStatus.RENDERING_VIDEO):
+def _build_minimal_job(status=JobStatus.REVIEW_COMPLETE):
+    # Default matches the real entry state: the worker is dispatched with the
+    # job in REVIEW_COMPLETE and transitions to RENDERING_VIDEO itself. A job
+    # already in RENDERING_VIDEO at entry is skipped by the worker-side
+    # idempotency gate (duplicate trigger / Cloud Run Job retry protection).
     job = MagicMock()
     job.artist = "Test Artist"
     job.title = "Test Title"
@@ -61,7 +65,15 @@ async def test_worker_registers_and_unregisters_on_success():
 
     mock_job_manager = MagicMock()
     mock_job_manager.get_job.return_value = job
-    mock_job_manager.transition_to_state.return_value = True
+
+    # Mirror real transitions on the shared mock so the supersession fence's
+    # mid-render re-reads see RENDERING_VIDEO (a frozen REVIEW_COMPLETE would
+    # read as "status reset" and discard the render).
+    def _transition(job_id=None, new_status=None, **kwargs):
+        job.status = new_status
+        return True
+
+    mock_job_manager.transition_to_state.side_effect = _transition
 
     mock_encoding_service = MagicMock()
     mock_encoding_service.is_enabled = True
@@ -226,3 +238,56 @@ def test_park_active_render_jobs_continues_after_per_job_failure():
 
     # The successful job should still have been parked
     assert parked == 1
+
+
+@pytest.mark.asyncio
+async def test_worker_skips_job_in_terminal_state():
+    """A stale/duplicate trigger for a finished job must never resurrect it.
+
+    The Cloud Run Job dispatch path bypasses the HTTP endpoint's
+    _check_worker_idempotency guard, so the worker enforces this itself.
+    """
+    from backend.workers import render_video_worker as rvw
+
+    mock_job_manager = MagicMock()
+    mock_job_manager.get_job.return_value = _build_minimal_job(JobStatus.COMPLETE)
+
+    with patch.object(rvw, "JobManager", return_value=mock_job_manager), \
+         patch.object(rvw, "StorageService"), \
+         patch.object(rvw, "get_settings"), \
+         patch.object(rvw, "create_job_logger", return_value=MagicMock()), \
+         patch.object(rvw, "setup_job_logging", return_value=MagicMock()):
+        result = await rvw.process_render_video("done-job")
+
+    assert result is False
+    # Must not touch job state at all
+    mock_job_manager.transition_to_state.assert_not_called()
+    mock_job_manager.fail_job.assert_not_called()
+    mock_job_manager.update_state_data.assert_not_called()
+    # And must not leak a registry entry
+    assert worker_registry.get_active_workers() == {}
+
+
+@pytest.mark.asyncio
+async def test_worker_skips_job_already_rendering():
+    """Re-entry on a job already in RENDERING_VIDEO (duplicate trigger, or a
+    Cloud Run Job max_retries re-run after a crash) must be a clean no-op —
+    NOT a hard fail via the same-state InvalidStateTransition path. A live
+    render must not be disrupted; a dead one is recovered by the
+    rendering_video_stuck sweep."""
+    from backend.workers import render_video_worker as rvw
+
+    mock_job_manager = MagicMock()
+    mock_job_manager.get_job.return_value = _build_minimal_job(JobStatus.RENDERING_VIDEO)
+
+    with patch.object(rvw, "JobManager", return_value=mock_job_manager), \
+         patch.object(rvw, "StorageService"), \
+         patch.object(rvw, "get_settings"), \
+         patch.object(rvw, "create_job_logger", return_value=MagicMock()), \
+         patch.object(rvw, "setup_job_logging", return_value=MagicMock()):
+        result = await rvw.process_render_video("mid-render-job")
+
+    assert result is False
+    mock_job_manager.transition_to_state.assert_not_called()
+    mock_job_manager.fail_job.assert_not_called()
+    assert worker_registry.get_active_workers() == {}

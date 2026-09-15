@@ -35,6 +35,7 @@ import json
 import logging
 import os
 import time
+import unicodedata
 from datetime import datetime, timezone
 
 import functions_framework
@@ -127,6 +128,102 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
             "in_gcs": row.gcs_path is not None,
         })
 
+    return results
+
+
+def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
+    """Search our OWN KaraokeNerds community catalog (never scrapes karaokenerds.com).
+
+    Reads `karaokenerds_community` — the free, directly-playable (web/YouTube)
+    tracks populated daily by the authorized `kn-data-sync` export. Matching is
+    token-AND (every whitespace token must match "artist title"), which mirrors
+    the KaraokeNerds search box while tolerating "artist title" / "title artist"
+    / partial queries. Two forms of tolerance per token:
+      • accent-insensitive — both sides are diacritic-folded (so "maximo" matches
+        "Maxïmo");
+      • typo-tolerant — a token matches a catalog word within a small Levenshtein
+        `EDIT_DISTANCE` (so "boxs" matches "Boxes"), scaled by token length to
+        avoid noise on short words. Exact substring still matches (partials).
+
+    Returns flat rows ``{artist, title, brand, watch}``; the caller groups them.
+    """
+    def _fold(s: str) -> str:
+        # Diacritic-fold + lowercase, mirroring the SQL haystack below, so an
+        # ASCII query ("maximo") matches an accented catalog value ("Maxïmo").
+        return "".join(
+            c for c in unicodedata.normalize("NFD", s or "") if not unicodedata.combining(c)
+        ).lower()
+
+    def _fuzz_threshold(tok: str) -> int:
+        # Max edit distance allowed for a fuzzy word match, scaled by length so
+        # short tokens stay exact (a distance-1 "the" would match far too much).
+        n = len(tok)
+        if n < 4:
+            return 0
+        return 1 if n <= 6 else 2
+
+    tokens = [t for t in (_fold(w) for w in query.split()) if t][:12]
+    if not tokens:
+        return []
+
+    client = bigquery.Client(project=GCP_PROJECT_ID)
+    # Diacritic-fold the columns too (NFD + drop combining marks, then lower) so
+    # matching is accent-insensitive on both sides — mirrors _fold() above.
+    fold_sql = (
+        "LOWER(REGEXP_REPLACE("
+        "NORMALIZE(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')), NFD),"
+        r" r'\p{Mn}', ''))"
+    )
+    conditions = []
+    params = []
+    for i, tok in enumerate(tokens):
+        # STRPOS = literal substring (handles exact + partial, no LIKE wildcards
+        # so nothing to escape). thr>0 adds a per-word fuzzy fallback for typos.
+        thr = _fuzz_threshold(tok)
+        if thr == 0:
+            conditions.append(f"STRPOS(hay, @tok{i}) > 0")
+        else:
+            # NB: do NOT pass EDIT_DISTANCE's `max_distance` — when the true
+            # distance exceeds it BigQuery returns a *capped* value (<= max_distance),
+            # so `<= thr` would be true for every word (matches the whole table).
+            # Compare the true distance instead; the table is small so full
+            # Levenshtein per word is cheap.
+            conditions.append(
+                f"(STRPOS(hay, @tok{i}) > 0 OR EXISTS("
+                f"SELECT 1 FROM UNNEST(SPLIT(hay, ' ')) AS w "
+                f"WHERE EDIT_DISTANCE(w, @tok{i}) <= {thr}))"
+            )
+        params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", tok))
+    params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
+
+    sql = f"""
+        WITH c AS (
+            SELECT Artist, Title, Brand, Watch, {fold_sql} AS hay
+            FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community`
+        )
+        SELECT Artist, Title, Brand, Watch
+        FROM c
+        WHERE {" AND ".join(conditions)}
+        ORDER BY Artist, Title, Brand
+        LIMIT @limit
+    """
+
+    # The endpoint is public/unauthenticated and each request runs a BigQuery job;
+    # LIMIT bounds rows, not bytes scanned. Cap bytes billed so a flood of queries
+    # against this small (~tens of MB) table can't run up cost (CWE-400).
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=params,
+        maximum_bytes_billed=1_000_000_000,  # 1 GB ceiling
+    )
+
+    results = []
+    for row in client.query(sql, job_config=job_config).result():
+        results.append({
+            "artist": row.Artist,
+            "title": row.Title,
+            "brand": row.Brand,
+            "watch": row.Watch,
+        })
     return results
 
 
@@ -509,6 +606,17 @@ def divebar_lookup(request):
                 return _json_response({"status": "error", "message": "query required"}, 400)
             limit = min(body.get("limit", 50), 200)
             results = _search_divebar(query, limit)
+            return _json_response({"status": "ok", "results": results, "count": len(results)})
+
+        elif action == "kn_community_search":
+            raw_query = body.get("query")
+            if not isinstance(raw_query, str) or not (query := raw_query.strip()):
+                return _json_response({"status": "error", "message": "query required"}, 400)
+            raw_limit = body.get("limit", 50)
+            if isinstance(raw_limit, bool) or not isinstance(raw_limit, int):
+                return _json_response({"status": "error", "message": "limit must be an integer"}, 400)
+            limit = max(0, min(raw_limit, 200))
+            results = _search_kn_community(query, limit)
             return _json_response({"status": "ok", "results": results, "count": len(results)})
 
         elif action == "lookup":

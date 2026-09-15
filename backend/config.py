@@ -36,7 +36,16 @@ class Settings(BaseSettings):
     # a sibling prefix in the same Divebar bucket, which kjbox mirrors into NOMAD-vocals-padded/
     # to power the "Original Vocals" sing-along slider. Same brand gating as the master push.
     nomad_vocals_guide_gcs_prefix: str = os.getenv("NOMAD_VOCALS_GUIDE_GCS_PREFIX", "files/Nomad Karaoke/vocals-padded")
-    
+
+    # KaraokeNerds community catalog: our own daily-refreshed copy of KN's community
+    # (web-only, directly-playable) tracks, written by the authorized `kn-data-sync`
+    # export job. The community-version check reads THIS, never scrapes karaokenerds.com.
+    # Source of truth is BigQuery `karaoke_decide.karaokenerds_community`; the export job
+    # also mirrors it to this gzipped-JSON GCS object, which the backend loads in-process.
+    kn_community_bucket: str = os.getenv("KN_COMMUNITY_BUCKET", "nomadkaraoke-kn-data")
+    kn_community_blob: str = os.getenv("KN_COMMUNITY_BLOB", "community/community-data-latest.json.gz")
+    kn_community_ttl_seconds: int = int(os.getenv("KN_COMMUNITY_TTL_SECONDS", "21600"))  # 6h
+
     # Audio Separator API (for GPU processing)
     audio_separator_api_url: Optional[str] = os.getenv("AUDIO_SEPARATOR_API_URL")
     
@@ -199,6 +208,15 @@ class Settings(BaseSettings):
     # instead of Cloud Tasks. This supports encoding times >30 minutes (up to 24 hours).
     # Default is false - Cloud Tasks is sufficient for most videos (15-20 min).
     use_cloud_run_jobs_for_video: bool = os.getenv("USE_CLOUD_RUN_JOBS_FOR_VIDEO", "false").lower() in ("true", "1", "yes")
+
+    # When enabled AND enable_cloud_tasks is true, the post-review render worker
+    # also runs as a Cloud Run Job (reusing video-encoding-job with an args
+    # override). As a BackgroundTask on the service it was killed by every
+    # deploy rollout that landed mid-render — Cloud Run gives instances only
+    # 10s after SIGTERM, far less than a render takes, so the job froze at
+    # rendering_video until the 45-min stuck-job sweep (incident 2026-09-13,
+    # job 41e06b90; same class as incident 2026-03-08 for the video worker).
+    use_cloud_run_jobs_for_render: bool = os.getenv("USE_CLOUD_RUN_JOBS_FOR_RENDER", "false").lower() in ("true", "1", "yes")
 
     # GCE Encoding Worker (for high-performance video encoding)
     # When enabled, video encoding is offloaded to a dedicated C4 GCE instance
