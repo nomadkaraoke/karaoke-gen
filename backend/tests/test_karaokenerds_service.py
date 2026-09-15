@@ -14,29 +14,33 @@ import pytest
 from backend.services import karaokenerds_service as svc
 from backend.services.karaokenerds_service import (
     _build_index,
+    _normalize_youtube_url,
     check_community_versions,
     check_community_versions_batch,
 )
 
 
-# Rows mirror the community export shape: Artist, Title, Brand, Watch (YouTube URL).
+# Rows mirror the community export shape: Artist, Title, Brand (a CODE), Watch.
 ROWS = [
-    {"Artist": "Fleetwood Mac", "Title": "Dreams", "Brand": "Nomad Karaoke",
-     "Watch": "https://www.youtube.com/watch?v=aaa"},
-    {"Artist": "Fleetwood Mac", "Title": "Dreams", "Brand": "WTF Karaoke",
-     "Watch": "https://www.youtube.com/watch?v=bbb"},
+    {"Artist": "Fleetwood Mac", "Title": "Dreams", "Brand": "NOMAD",
+     "Watch": "https://youtu.be/aaaaaaaaaaa"},
+    {"Artist": "Fleetwood Mac", "Title": "Dreams", "Brand": "OBSK",
+     "Watch": "https://youtu.be/bbbbbbbbbbb"},
     # Exact duplicate (brand + url) — must collapse.
-    {"Artist": "Fleetwood Mac", "Title": "Dreams", "Brand": "Nomad Karaoke",
-     "Watch": "https://www.youtube.com/watch?v=aaa"},
-    {"Artist": "ABBA", "Title": "Dancing Queen", "Brand": "SNDL Karaoke",
-     "Watch": "https://youtu.be/dq"},
+    {"Artist": "Fleetwood Mac", "Title": "Dreams", "Brand": "NOMAD",
+     "Watch": "https://youtu.be/aaaaaaaaaaa"},
+    {"Artist": "ABBA", "Title": "Dancing Queen", "Brand": "SDK",
+     "Watch": "https://youtu.be/ddddddddddd"},
     # Accents + ampersand exercise the normalized match key.
-    {"Artist": "Beyoncé", "Title": "Crazy in Love", "Brand": "Nomad Karaoke",
-     "Watch": "https://youtu.be/cil"},
-    {"Artist": "Hall & Oates", "Title": "Rich Girl", "Brand": "Nomad Karaoke",
-     "Watch": "https://youtu.be/rg"},
+    {"Artist": "Beyoncé", "Title": "Crazy in Love", "Brand": "NOMAD",
+     "Watch": "https://youtu.be/ccccccccccc"},
+    {"Artist": "Hall & Oates", "Title": "Rich Girl", "Brand": "NOMAD",
+     "Watch": "https://youtu.be/rrrrrrrrrrr"},
+    # Unknown brand code -> name falls back to the code.
+    {"Artist": "Some Band", "Title": "Obscure", "Brand": "ZZTOP7",
+     "Watch": "https://youtu.be/eeeeeeeeeee"},
     # Missing artist/title rows are skipped.
-    {"Artist": "", "Title": "No Artist", "Brand": "X", "Watch": "https://youtu.be/z"},
+    {"Artist": "", "Title": "No Artist", "Brand": "X", "Watch": "https://youtu.be/fffffffffff"},
 ]
 
 
@@ -49,6 +53,20 @@ def _seed_index(monkeypatch):
     svc._reset_index_for_tests()
 
 
+# --- YouTube URL normalization ---
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("https://youtu.be/dQw4w9WgXcQ", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+    ("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLx", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+    ("https://www.youtube.com/embed/dQw4w9WgXcQ", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+    ("", None),
+    ("not a url", "not a url"),  # unparseable -> returned as-is, never fabricated
+])
+def test_normalize_youtube_url(raw, expected):
+    assert _normalize_youtube_url(raw) == expected
+
+
 # --- Index building ---
 
 
@@ -57,9 +75,22 @@ def test_build_index_groups_and_dedupes():
     dreams = index[svc._match_key("Fleetwood Mac", "Dreams")]
     # Two distinct brands; the exact-duplicate row is collapsed.
     assert len(dreams["community_tracks"]) == 2
-    brands = {t["brand_name"] for t in dreams["community_tracks"]}
-    assert brands == {"Nomad Karaoke", "WTF Karaoke"}
+    codes = {t["brand_code"] for t in dreams["community_tracks"]}
+    names = {t["brand_name"] for t in dreams["community_tracks"]}
+    assert codes == {"NOMAD", "OBSK"}
+    assert names == {"Nomad Karaoke", "ObsKure Karaoke"}
     assert all(t["is_community"] is True for t in dreams["community_tracks"])
+    # youtu.be URLs are canonicalized to watch?v=.
+    assert all(t["youtube_url"].startswith("https://www.youtube.com/watch?v=")
+               for t in dreams["community_tracks"])
+
+
+def test_build_index_unknown_brand_name_falls_back_to_code():
+    index = _build_index(ROWS)
+    song = index[svc._match_key("Some Band", "Obscure")]
+    tr = song["community_tracks"][0]
+    assert tr["brand_code"] == "ZZTOP7"
+    assert tr["brand_name"] == "ZZTOP7"
 
 
 def test_build_index_skips_rows_without_artist_or_title():
@@ -74,7 +105,7 @@ def test_build_index_skips_rows_without_artist_or_title():
 async def test_match_returns_community_with_best_url():
     result = await check_community_versions("Fleetwood Mac", "Dreams")
     assert result["has_community"] is True
-    assert result["best_youtube_url"] == "https://www.youtube.com/watch?v=aaa"
+    assert result["best_youtube_url"] == "https://www.youtube.com/watch?v=aaaaaaaaaaa"
     assert len(result["songs"]) == 1
     assert result["songs"][0]["title"] == "Dreams"
     assert result["songs"][0]["artist"] == "Fleetwood Mac"
@@ -124,11 +155,11 @@ async def test_batch_returns_versions_deduped_by_brand():
 
     dreams = results[0]
     assert dreams["available"] is True
-    assert dreams["brands"] == ["Nomad Karaoke", "WTF Karaoke"]
+    assert dreams["brands"] == ["Nomad Karaoke", "ObsKure Karaoke"]
     assert dreams["brand_count"] == 2
     assert dreams["versions"] == [
-        {"brand": "Nomad Karaoke", "url": "https://www.youtube.com/watch?v=aaa"},
-        {"brand": "WTF Karaoke", "url": "https://www.youtube.com/watch?v=bbb"},
+        {"brand": "Nomad Karaoke", "url": "https://www.youtube.com/watch?v=aaaaaaaaaaa"},
+        {"brand": "ObsKure Karaoke", "url": "https://www.youtube.com/watch?v=bbbbbbbbbbb"},
     ]
 
     assert results[1]["available"] is False

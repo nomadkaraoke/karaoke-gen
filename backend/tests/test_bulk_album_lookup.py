@@ -31,9 +31,10 @@ class TestBatchHelper:
         from backend.services import karaokenerds_service as kn
 
         # Seed the in-process community index (the batch helper reads it directly).
+        # Brand is a CODE in the catalog; brand names resolve for display.
         rows = [
             {"Artist": "Daft Punk", "Title": "One More Time", "Brand": "KV", "Watch": ""},
-            {"Artist": "Daft Punk", "Title": "One More Time", "Brand": "KaraFun", "Watch": ""},
+            {"Artist": "Daft Punk", "Title": "One More Time", "Brand": "OBSK", "Watch": ""},
         ]
         kn._reset_index_for_tests()
         monkeypatch.setattr(kn, "_load_index", lambda: kn._build_index(rows))
@@ -43,7 +44,7 @@ class TestBatchHelper:
              {"artist": "Daft Punk", "title": "Aerodynamic"}]
         )
         assert out[0]["available"] is True
-        assert out[0]["brands"] == ["KV", "KaraFun"]
+        assert out[0]["brands"] == ["Karaoke Version", "ObsKure Karaoke"]
         assert out[1]["available"] is False
         assert out[1]["brand_count"] == 0
         kn._reset_index_for_tests()

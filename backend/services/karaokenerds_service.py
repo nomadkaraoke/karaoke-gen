@@ -18,15 +18,40 @@ import asyncio
 import gzip
 import json
 import logging
+import re
 import time
 from typing import Any
 
 from google.cloud import storage
 
 from backend.config import settings
+from backend.services.kn_brand_names import brand_name_for
 from backend.services.match_judge.classifier import normalize_for_match
 
 logger = logging.getLogger(__name__)
+
+# Extract a YouTube video id from any of KaraokeNerds' stored watch-URL forms
+# (youtu.be/<id>, /watch?v=<id>, /embed/<id>, /shorts/<id>) so we can emit the
+# canonical https://www.youtube.com/watch?v=<id> the old scrape produced.
+_YT_ID_RE = re.compile(
+    r"(?:youtu\.be/|youtube\.com/(?:watch\?(?:[^&]*&)*v=|embed/|shorts/|v/))"
+    r"([A-Za-z0-9_-]{11})"
+)
+
+
+def _normalize_youtube_url(watch: str | None) -> str | None:
+    """Canonicalize a KaraokeNerds watch URL to youtube.com/watch?v=<id>.
+
+    Returns the canonical URL, or the stripped original if no 11-char id can be
+    parsed (never fabricates), or None when empty.
+    """
+    watch = (watch or "").strip()
+    if not watch:
+        return None
+    m = _YT_ID_RE.search(watch)
+    if m:
+        return f"https://www.youtube.com/watch?v={m.group(1)}"
+    return watch
 
 # Every row in the community catalog is, by definition, a community/web track, so
 # entries surfaced from it are always flagged as community versions.
@@ -60,8 +85,10 @@ def _build_index(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         title = (row.get("Title") or "").strip()
         if not artist or not title:
             continue
-        brand = (row.get("Brand") or "").strip()
-        youtube_url = (row.get("Watch") or "").strip() or None
+        # The export stores the brand *code* (e.g. "NOMAD"); resolve the human
+        # name for display and keep the code, matching the old scrape's output.
+        brand_code = (row.get("Brand") or "").strip()
+        youtube_url = _normalize_youtube_url(row.get("Watch"))
 
         key = _match_key(artist, title)
         song = index.get(key)
@@ -70,13 +97,13 @@ def _build_index(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             song = {"title": title, "artist": artist, "community_tracks": [], "_seen": set()}
             index[key] = song
 
-        dedup = (brand, youtube_url)
+        dedup = (brand_code, youtube_url)
         if dedup in song["_seen"]:
             continue
         song["_seen"].add(dedup)
         song["community_tracks"].append({
-            "brand_name": brand,
-            "brand_code": "",
+            "brand_name": brand_name_for(brand_code),
+            "brand_code": brand_code,
             "youtube_url": youtube_url,
             "is_community": _IS_COMMUNITY,
         })
