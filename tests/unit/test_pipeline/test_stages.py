@@ -210,9 +210,85 @@ class TestTranscriptionStage:
         
         with patch('karaoke_gen.lyrics_processor.LyricsProcessor', side_effect=Exception("Test error")):
             result = await stage.execute(context)
-        
+
         assert result.status == StageStatus.FAILED
         assert "Test error" in result.error_message
+
+    @pytest.mark.asyncio
+    async def test_execute_happy_path_builds_outputs(self, tmp_path):
+        """Full execute: transcribe, collect file outputs, parse countdown padding."""
+        from karaoke_gen.pipeline.stages.transcription import TranscriptionStage
+        from karaoke_gen.pipeline.context import PipelineContext
+        from karaoke_gen.pipeline.base import StageStatus
+
+        output_dir = tmp_path / "out"
+        lyrics_dir = output_dir / "lyrics"
+        lyrics_dir.mkdir(parents=True)
+        # A countdown padding file the stage should read back as a float.
+        (lyrics_dir / "countdown_padding_seconds.txt").write_text("3.0\n")
+
+        stage = TranscriptionStage(skip_transcription=False)
+        # style_params (no style_params_json) -> exercises the temp-file write branch.
+        context = PipelineContext(
+            job_id="test",
+            artist="Artist",
+            title="Title",
+            input_audio_path="/audio.flac",
+            output_dir=str(output_dir),
+            style_params={"foo": "bar"},
+        )
+
+        mock_processor = MagicMock()
+        mock_processor.transcribe_lyrics.return_value = {
+            "lrc_filepath": "/out/lyrics.lrc",
+            "ass_filepath": "/out/lyrics.ass",
+            "corrected_txt_path": "/out/corrected.txt",
+        }
+        mock_processor.corrections_result = {"corrections": []}
+
+        with patch('karaoke_gen.lyrics_processor.LyricsProcessor', return_value=mock_processor):
+            result = await stage.execute(context)
+
+        assert result.status == StageStatus.COMPLETED
+        assert result.outputs["lrc_filepath"] == "/out/lyrics.lrc"
+        assert result.outputs["ass_filepath"] == "/out/lyrics.ass"
+        assert result.outputs["corrected_txt_path"] == "/out/corrected.txt"
+        assert result.outputs["corrections_result"] == {"corrections": []}
+        assert result.outputs["countdown_padding_seconds"] == 3.0
+        # transcribe_lyrics received the context's audio path and artist/title.
+        _, kwargs = mock_processor.transcribe_lyrics.call_args
+        assert kwargs["input_audio_wav"] == "/audio.flac"
+        assert kwargs["artist"] == "Artist"
+
+    @pytest.mark.asyncio
+    async def test_execute_ignores_malformed_countdown_file(self, tmp_path):
+        """A non-numeric countdown file is ignored, not fatal."""
+        from karaoke_gen.pipeline.stages.transcription import TranscriptionStage
+        from karaoke_gen.pipeline.context import PipelineContext
+        from karaoke_gen.pipeline.base import StageStatus
+
+        output_dir = tmp_path / "out"
+        lyrics_dir = output_dir / "lyrics"
+        lyrics_dir.mkdir(parents=True)
+        (lyrics_dir / "countdown_padding_seconds.txt").write_text("not-a-number")
+
+        stage = TranscriptionStage(skip_transcription=False)
+        context = PipelineContext(
+            job_id="test",
+            artist="Artist",
+            title="Title",
+            input_audio_path="/audio.flac",
+            output_dir=str(output_dir),
+        )
+
+        mock_processor = MagicMock()
+        mock_processor.transcribe_lyrics.return_value = {}
+
+        with patch('karaoke_gen.lyrics_processor.LyricsProcessor', return_value=mock_processor):
+            result = await stage.execute(context)
+
+        assert result.status == StageStatus.COMPLETED
+        assert "countdown_padding_seconds" not in result.outputs
 
 
 class TestScreensStage:

@@ -98,6 +98,11 @@ class TestProcessAudioSeparationMode:
 
             mock_jm = MagicMock()
             mock_jm.get_job.return_value = mock_job
+            # advance_to_screens_if_ready is an async method that the worker awaits
+            # after a successful separation (durable prep->screens handoff, #1002).
+            # It must be an AsyncMock, or `await` raises TypeError and the worker
+            # reports status=error / result=False.
+            mock_jm.advance_to_screens_if_ready = AsyncMock(return_value=True)
             mock_job_manager_cls.return_value = mock_jm
 
             mock_settings_obj = MagicMock()
