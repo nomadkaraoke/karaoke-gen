@@ -315,7 +315,11 @@ Returns lyrics correction data plus instrumental options for the review UI.
 
 Response includes:
 - `correction_data` - Lyrics and segments for editing
-- `instrumental_options` - Available instrumental tracks (`clean`, `with_backing`)
+- `instrumental_options` - Available instrumental tracks (`clean`, `with_backing`). Each
+  option's `audio_url` is a **relative same-origin proxy path** (`/api/review/{job_id}/instrumental-audio/{option_id}`),
+  not a signed GCS URL — since v0.229.0 the review hot path performs **no URL signing** (it
+  used to sign 2-3 URLs per load via IAM signBlob, which could stall). The frontend turns
+  the path into an absolute, token-authenticated `<audio>` src.
 - `backing_vocals_analysis` - Analysis data to help with selection
 
 #### Complete Review
@@ -365,6 +369,19 @@ GET /api/review/{job_id}/audio/{stem_type}
 ```
 
 Redirects to a signed GCS URL for review playback. Audio is served as OGG Opus (~3 MB) transcoded from the original FLAC (~35 MB). Transcoding happens eagerly during screen generation; if the transcoded file is missing, falls back to the original FLAC.
+
+#### Stream Instrumental Audio (same-origin proxy)
+
+```http
+GET /api/review/{job_id}/instrumental-audio/{option_id}   // option_id: "clean" | "with_backing"
+```
+
+Streams the transcoded OGG bytes for an instrumental option **through the API** (no GCS
+signed URL / redirect), with HTTP Range support (`206`) so `<audio>` can seek. Auth via
+`require_review_auth`; because this URL is used as a raw media `src`, the token rides in
+the query string (`?token=` for a full/owner token, `?review_token=` for a review link) —
+the same mechanism as `/audio/vocals`. The stem GCS path is resolved server-side from
+`option_id`. Added in v0.229.0 to remove IAM signBlob from the review load path (Option B).
 
 #### Create Custom Instrumental
 

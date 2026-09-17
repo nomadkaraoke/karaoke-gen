@@ -314,12 +314,12 @@ class TestAddLyricsRejectionHandling:
 
 
 class TestInstrumentalUrlsRefresh:
-    """GET /{job_id}/instrumental-urls re-signs the stem URLs on demand.
+    """GET /{job_id}/instrumental-urls returns same-origin audio proxy paths.
 
-    The signed URLs baked into the initial review payload expire after 120 min;
-    a long review session (or a reload that rehydrates cached correction data)
-    outlives them and the preview modal's overlaid audio fails to load. This
-    endpoint hands the frontend a freshly-signed batch to swap in.
+    Since the 2026-09-17 fast-load re-architecture (Option B) the review hot path no
+    longer signs GCS URLs. Each option's ``audio_url`` is a RELATIVE proxy path to
+    ``/{job_id}/instrumental-audio/{option_id}`` (served as bytes, no signing, never
+    expires). The frontend turns it into an absolute token URL before use.
     """
 
     @pytest.fixture(autouse=True)
@@ -334,7 +334,7 @@ class TestInstrumentalUrlsRefresh:
         yield
         app.dependency_overrides.pop(require_review_auth, None)
 
-    def test_returns_freshly_signed_options_for_both_stems(self, test_client):
+    def test_returns_proxy_paths_for_both_stems(self, test_client):
         mock_job = MagicMock()
         mock_job.job_id = "job1"
         mock_job.file_urls = {
@@ -344,22 +344,17 @@ class TestInstrumentalUrlsRefresh:
             }
         }
 
-        async def fake_sign(src, expiration_minutes=120):
-            return f"https://signed/{src}?fresh=1"
-
         with patch("backend.api.routes.review.JobManager") as mock_jm, \
                 patch("backend.api.routes.review.StorageService"), \
-                patch("backend.api.routes.review._dev_audio_proxy_enabled", return_value=False), \
-                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_url_async",
-                      side_effect=fake_sign):
+                patch("backend.api.routes.review._dev_audio_proxy_enabled", return_value=False):
             mock_jm.return_value.get_job.return_value = mock_job
             response = test_client.get("/api/review/job1/instrumental-urls")
 
         assert response.status_code == 200
         options = response.json()["instrumental_options"]
         ids = {o["id"]: o["audio_url"] for o in options}
-        assert ids["clean"].endswith("instrumental_clean.flac?fresh=1")
-        assert ids["with_backing"].endswith("instrumental_with_backing.flac?fresh=1")
+        assert ids["clean"] == "/api/review/job1/instrumental-audio/clean"
+        assert ids["with_backing"] == "/api/review/job1/instrumental-audio/with_backing"
 
     def test_omits_stems_that_do_not_exist(self, test_client):
         mock_job = MagicMock()
@@ -368,14 +363,9 @@ class TestInstrumentalUrlsRefresh:
             "stems": {"instrumental_clean": "jobs/job1/stems/instrumental_clean.flac"}
         }
 
-        async def fake_sign(src, expiration_minutes=120):
-            return f"https://signed/{src}"
-
         with patch("backend.api.routes.review.JobManager") as mock_jm, \
                 patch("backend.api.routes.review.StorageService"), \
-                patch("backend.api.routes.review._dev_audio_proxy_enabled", return_value=False), \
-                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_url_async",
-                      side_effect=fake_sign):
+                patch("backend.api.routes.review._dev_audio_proxy_enabled", return_value=False):
             mock_jm.return_value.get_job.return_value = mock_job
             response = test_client.get("/api/review/job1/instrumental-urls")
 
@@ -383,12 +373,9 @@ class TestInstrumentalUrlsRefresh:
         options = response.json()["instrumental_options"]
         assert [o["id"] for o in options] == ["clean"]
 
-    def test_signing_stall_degrades_to_null_url_not_500(self, test_client):
-        """A stalled IAM signBlob must not fail the refresh — the stem is returned
-        with a null audio_url so the client retries, rather than a 500/hang
-        (incident 2026-09-17)."""
-        from backend.services.storage_service import SignedUrlTimeout
-
+    def test_does_not_sign_urls_on_hot_path(self, test_client):
+        """The root-cause fix: building instrumental options must perform NO URL signing
+        (the IAM signBlob round-trip is what stalled and took gen down on 2026-09-17)."""
         mock_job = MagicMock()
         mock_job.job_id = "job1"
         mock_job.file_urls = {
@@ -398,24 +385,16 @@ class TestInstrumentalUrlsRefresh:
             }
         }
 
-        async def stalled_sign(src, expiration_minutes=120):
-            # 'clean' signs fine; 'with_backing' hits the stalled signer.
-            if "with_backing" in src:
-                raise SignedUrlTimeout("stalled")
-            return f"https://signed/{src}"
-
         with patch("backend.api.routes.review.JobManager") as mock_jm, \
-                patch("backend.api.routes.review.StorageService"), \
+                patch("backend.api.routes.review.StorageService") as mock_storage, \
                 patch("backend.api.routes.review._dev_audio_proxy_enabled", return_value=False), \
-                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_url_async",
-                      side_effect=stalled_sign):
+                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_url_async") as mock_sign_async:
             mock_jm.return_value.get_job.return_value = mock_job
             response = test_client.get("/api/review/job1/instrumental-urls")
 
         assert response.status_code == 200
-        options = {o["id"]: o["audio_url"] for o in response.json()["instrumental_options"]}
-        assert options["clean"].endswith("instrumental_clean.flac")
-        assert options["with_backing"] is None
+        mock_sign_async.assert_not_called()
+        mock_storage.return_value.generate_signed_url.assert_not_called()
 
     def test_missing_job_returns_404(self, test_client):
         with patch("backend.api.routes.review.JobManager") as mock_jm, \
@@ -423,6 +402,112 @@ class TestInstrumentalUrlsRefresh:
             mock_jm.return_value.get_job.return_value = None
             response = test_client.get("/api/review/job1/instrumental-urls")
         assert response.status_code == 404
+
+
+class TestInstrumentalAudioProxy:
+    """GET /{job_id}/instrumental-audio/{option_id} — same-origin byte proxy.
+
+    Option B of the 2026-09-17 fast-load re-architecture: serves the transcoded OGG
+    bytes with HTTP Range support instead of a signed GCS URL, so playback never depends
+    on IAM signBlob. The stem GCS path is resolved server-side from the option id.
+    """
+
+    @pytest.fixture(autouse=True)
+    def auth_overrides(self):
+        from backend.main import app
+        from backend.api.dependencies import require_review_auth
+
+        async def mock_require_review_auth(job_id: str = "test123"):
+            return (job_id, "full")
+
+        app.dependency_overrides[require_review_auth] = mock_require_review_auth
+        yield
+        app.dependency_overrides.pop(require_review_auth, None)
+
+    @pytest.fixture(autouse=True)
+    def clear_audio_cache(self):
+        # The proxy caches bytes per GCS path at module scope; clear it so a prior
+        # test's stubbed bytes don't leak into the next test's assertions.
+        from backend.api.routes import review as review_module
+        review_module._review_audio_cache.clear()
+        yield
+        review_module._review_audio_cache.clear()
+
+    def _mock_job(self):
+        job = MagicMock()
+        job.job_id = "job1"
+        job.file_urls = {
+            "stems": {
+                "instrumental_clean": "jobs/job1/stems/instrumental_clean.flac",
+                "instrumental_with_backing": "jobs/job1/stems/instrumental_with_backing.flac",
+            }
+        }
+        return job
+
+    def test_streams_transcoded_bytes(self, test_client):
+        audio = b"OggS" + b"\x00" * 100
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"), \
+                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_bytes_async",
+                      new=AsyncMock(return_value=(audio, "audio/ogg"))):
+            mock_jm.return_value.get_job.return_value = self._mock_job()
+            response = test_client.get("/api/review/job1/instrumental-audio/clean")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "audio/ogg"
+        assert response.headers["accept-ranges"] == "bytes"
+        assert response.content == audio
+
+    def test_supports_range_requests(self, test_client):
+        audio = bytes(range(50)) * 4  # 200 deterministic bytes
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"), \
+                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_bytes_async",
+                      new=AsyncMock(return_value=(audio, "audio/ogg"))):
+            mock_jm.return_value.get_job.return_value = self._mock_job()
+            response = test_client.get(
+                "/api/review/job1/instrumental-audio/clean",
+                headers={"Range": "bytes=10-19"},
+            )
+
+        assert response.status_code == 206
+        assert response.headers["content-range"] == f"bytes 10-19/{len(audio)}"
+        assert response.content == audio[10:20]
+
+    def test_unknown_option_id_returns_404(self, test_client):
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"):
+            mock_jm.return_value.get_job.return_value = self._mock_job()
+            response = test_client.get("/api/review/job1/instrumental-audio/bogus")
+        assert response.status_code == 404
+
+    def test_missing_stem_returns_404(self, test_client):
+        job = MagicMock()
+        job.job_id = "job1"
+        job.file_urls = {"stems": {"instrumental_clean": "jobs/job1/stems/instrumental_clean.flac"}}
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"):
+            mock_jm.return_value.get_job.return_value = job
+            response = test_client.get("/api/review/job1/instrumental-audio/with_backing")
+        assert response.status_code == 404
+
+    def test_missing_job_returns_404(self, test_client):
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"):
+            mock_jm.return_value.get_job.return_value = None
+            response = test_client.get("/api/review/job1/instrumental-audio/clean")
+        assert response.status_code == 404
+
+    def test_does_not_sign_urls(self, test_client):
+        audio = b"OggS"
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService") as mock_storage, \
+                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_bytes_async",
+                      new=AsyncMock(return_value=(audio, "audio/ogg"))):
+            mock_jm.return_value.get_job.return_value = self._mock_job()
+            response = test_client.get("/api/review/job1/instrumental-audio/clean")
+        assert response.status_code == 200
+        mock_storage.return_value.generate_signed_url.assert_not_called()
 
 
 class TestReviewResubmissionClearsWorkerProgress:

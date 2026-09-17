@@ -18,6 +18,8 @@ import hashlib
 import json
 import os
 import tempfile
+import threading
+from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, Any, List, Literal, Optional, Set, Tuple
 
@@ -410,47 +412,49 @@ def _dev_audio_url(job_id: str, gcs_path: Optional[str], base_url: str = "") -> 
     return f"{base_url.rstrip('/')}/api/review/{job_id}/dev-audio?path={quote(gcs_path, safe='')}"
 
 
-async def _build_instrumental_options(job, storage, request) -> List[Dict[str, Any]]:
-    """Build the ``instrumental_options`` list (transcoded, freshly-signed OGG URLs).
+# Maps the public instrumental option id to the stem key in job.file_urls["stems"].
+# Used both when building instrumental_options and when the byte-proxy endpoint
+# resolves an option id back to its GCS stem path (server-side, never client-supplied).
+_INSTRUMENTAL_OPTION_STEMS = {
+    "clean": "instrumental_clean",
+    "with_backing": "instrumental_with_backing",
+}
 
-    Signed GCS URLs expire (see ``AudioTranscodingService`` — 120 min), so the
-    review payload's baked-in URLs go stale during a long review session. This
-    helper is shared by the combined-review corrections endpoint (initial load)
-    and ``GET /{job_id}/instrumental-urls`` (frontend refresh-on-expiry), so both
-    return the identical shape with URLs signed at call time.
+
+def _instrumental_proxy_path(job_id: str, option_id: str) -> str:
+    """Relative same-origin proxy path for an instrumental option's audio bytes.
+
+    Returned as ``instrumental_options[*].audio_url``. The frontend turns this into an
+    absolute, token-authenticated URL (``API_BASE_URL`` + ``?token=``) before using it
+    as an ``<audio>`` src — see ``resolveInstrumentalAudioUrls()`` in ``frontend/lib/api.ts``.
+    Kept RELATIVE because the backend has no trustworthy public base URL behind Cloudflare
+    (``request.base_url`` reports the wrong scheme/host), and a raw absolute-to-the-wrong-host
+    src would break.
     """
-    from backend.services.audio_transcoding_service import AudioTranscodingService
+    return f"/api/review/{job_id}/instrumental-audio/{option_id}"
 
-    transcoding = AudioTranscodingService(storage_service=storage)
+
+async def _build_instrumental_options(job, request) -> List[Dict[str, Any]]:
+    """Build the ``instrumental_options`` list (id/label + same-origin audio proxy URL).
+
+    Root-cause fix (2026-09-17, Option B — see docs/archive/2026-09-17-review-fast-full-load-plan.md):
+    the review hot path no longer signs GCS URLs here. Signing went through the IAM
+    signBlob API over the network (~120 s worst-case), which made review loads slow and,
+    when it stalled, took the whole service down. Instead each option's ``audio_url`` is a
+    relative path to the ``GET /{job_id}/instrumental-audio/{option_id}`` byte proxy — no
+    signing, cannot stall, never expires. Shared by the corrections endpoint (initial
+    load) and ``GET /{job_id}/instrumental-urls`` (kept for backwards compatibility).
+    """
     stems = job.file_urls.get("stems", {})
     clean_url = stems.get("instrumental_clean")
     backing_url = stems.get("instrumental_with_backing")
 
-    signed_urls: Dict[str, Optional[str]] = {}
-    if _dev_audio_proxy_enabled():
-        _base = str(request.base_url)
-        if clean_url:
-            signed_urls["clean"] = _dev_audio_url(job.job_id, clean_url, _base)
-        if backing_url:
-            signed_urls["with_backing"] = _dev_audio_url(job.job_id, backing_url, _base)
-    else:
-        url_tasks = {}
-        if clean_url:
-            url_tasks["clean"] = transcoding.get_review_audio_url_async(clean_url, expiration_minutes=120)
-        if backing_url:
-            url_tasks["with_backing"] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
-        if url_tasks:
-            # Best-effort: signing goes through IAM signBlob over the network and is
-            # now bounded to SIGNED_URL_TIMEOUT_S (see storage_service). A stall must
-            # NOT blow up the whole review load — on failure we return the option with
-            # a null audio_url; the frontend re-fetches via GET /{job_id}/instrumental-urls.
-            results = await asyncio.gather(*url_tasks.values(), return_exceptions=True)
-            for key, res in zip(url_tasks.keys(), results):
-                if isinstance(res, Exception):
-                    logger.warning(f"Signing review audio URL failed ({key}): {res}")
-                    signed_urls[key] = None
-                else:
-                    signed_urls[key] = res
+    def _audio_url(option_id: str, source_gcs_path: str) -> Optional[str]:
+        # Local dev (no URL-signing creds) keeps its existing byte proxy, which takes the
+        # GCS path directly; prod/default returns the option-scoped proxy path.
+        if _dev_audio_proxy_enabled():
+            return _dev_audio_url(job.job_id, source_gcs_path, str(request.base_url))
+        return _instrumental_proxy_path(job.job_id, option_id)
 
     instrumental_options: List[Dict[str, Any]] = []
     if clean_url:
@@ -458,14 +462,14 @@ async def _build_instrumental_options(job, storage, request) -> List[Dict[str, A
             "id": "clean",
             "label": "Clean Instrumental",
             "description": "No backing vocals - just the music",
-            "audio_url": signed_urls.get("clean"),
+            "audio_url": _audio_url("clean", clean_url),
         })
     if backing_url:
         instrumental_options.append({
             "id": "with_backing",
             "label": "Instrumental with Backing Vocals",
             "description": "Includes harmonies and background vocals",
-            "audio_url": signed_urls.get("with_backing"),
+            "audio_url": _audio_url("with_backing", backing_url),
         })
     return instrumental_options
 
@@ -693,10 +697,9 @@ async def get_correction_data(
         }
 
         # === Add instrumental data for combined review ===
-        # Transcoded signed OGG URLs (freshly signed here; the frontend re-fetches
-        # them via GET /{job_id}/instrumental-urls when they expire mid-review).
+        # Same-origin audio proxy paths (no signing; see _build_instrumental_options).
         corrections_data['instrumental_options'] = await _build_instrumental_options(
-            job, storage, request
+            job, request
         )
 
         # Get backing vocals analysis from state_data (populated by screens_worker)
@@ -711,24 +714,12 @@ async def get_correction_data(
         from backend.services.auto_approval.instrumental import auto_approval_summary
         corrections_data['auto_approval'] = auto_approval_summary(job, _get_settings())
 
-        # Get waveform URL if available. Best-effort + off the event loop: signing is
-        # a network round-trip (IAM signBlob, bounded to SIGNED_URL_TIMEOUT_S), so run
-        # it in a thread and never let a stall/timeout fail the review load — the
-        # waveform is a nice-to-have, the lyrics are not.
-        analysis_files = job.file_urls.get('analysis', {})
-        waveform_url = analysis_files.get('backing_vocals_waveform')
-        if waveform_url:
-            try:
-                if _dev_audio_proxy_enabled():
-                    corrections_data['backing_vocals_waveform_url'] = _dev_audio_url(
-                        job_id, waveform_url, str(request.base_url)
-                    )
-                else:
-                    corrections_data['backing_vocals_waveform_url'] = await asyncio.to_thread(
-                        storage.generate_signed_url, waveform_url, expiration_minutes=120
-                    )
-            except Exception as e:
-                logger.warning(f"Job {job_id}: waveform URL signing failed, omitting: {e}")
+        # NOTE: we intentionally do NOT sign/emit a ``backing_vocals_waveform_url`` here.
+        # The frontend renders the backing-vocals waveform from the Bearer-authenticated
+        # JSON endpoint ``GET /{job_id}/waveform-data`` (amplitudes drawn on a canvas), and
+        # never consumed this field. Signing it was a pure IAM-signBlob round-trip on the
+        # review hot path with no consumer — removed as part of the 2026-09-17 fast-load
+        # re-architecture so ``correction-data`` performs zero signing.
 
         # Transition to IN_REVIEW if not already (never in replay — read-only)
         if not replay and job.status == JobStatus.AWAITING_REVIEW:
@@ -878,6 +869,33 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
 _DEV_AUDIO_CACHE: Dict[str, Tuple[bytes, str]] = {}
 
 
+# BOUNDED cache of transcoded review-audio bytes for the PROD byte proxy (Option B).
+# Serving the ~3 MB OGG through the API means each play/seek would otherwise re-download
+# the object from GCS; cache a small number of recently-served objects so Range seeks and
+# repeat plays are cheap. Unlike _DEV_AUDIO_CACHE this is size-capped (LRU) so a busy prod
+# instance can't grow memory without limit — worst case ~_REVIEW_AUDIO_CACHE_MAX × object
+# size. Keyed by GCS path (the transcoded-OGG source), guarded by a lock for thread safety.
+_REVIEW_AUDIO_CACHE_MAX = int(os.getenv("REVIEW_AUDIO_CACHE_MAX", "16"))
+_review_audio_cache: "OrderedDict[str, Tuple[bytes, str]]" = OrderedDict()
+_review_audio_cache_lock = threading.Lock()
+
+
+def _review_audio_cache_get(path: str) -> Optional[Tuple[bytes, str]]:
+    with _review_audio_cache_lock:
+        item = _review_audio_cache.get(path)
+        if item is not None:
+            _review_audio_cache.move_to_end(path)  # mark most-recently-used
+        return item
+
+
+def _review_audio_cache_put(path: str, value: Tuple[bytes, str]) -> None:
+    with _review_audio_cache_lock:
+        _review_audio_cache[path] = value
+        _review_audio_cache.move_to_end(path)
+        while len(_review_audio_cache) > _REVIEW_AUDIO_CACHE_MAX:
+            _review_audio_cache.popitem(last=False)  # evict least-recently-used
+
+
 def _ranged_response(request: Request, data: bytes, content_type: str) -> Response:
     """Serve ``data`` honoring an HTTP Range header (206) so <audio> can seek."""
     total = len(data)
@@ -933,6 +951,53 @@ async def get_dev_audio(job_id: str, path: str, request: Request):
     except Exception as e:
         logger.error(f"Job {job_id}: [dev-proxy] error serving {path}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="dev-audio proxy error")
+
+
+@router.get("/{job_id}/instrumental-audio/{option_id}")
+async def get_instrumental_audio(
+    job_id: str,
+    option_id: str,
+    request: Request,
+    auth_info: Tuple[str, str] = Depends(require_review_auth),
+):
+    """Stream a review instrumental stem's transcoded OGG bytes (same-origin proxy).
+
+    Option B of the fast-review-load re-architecture (2026-09-17): replaces the per-load
+    IAM signBlob round-trip with a same-origin byte proxy, so the review page never depends
+    on URL signing to play audio (signing could stall ~120 s and take the service down).
+
+    Serves the ~3 MB transcoded OGG with HTTP Range support so ``<audio>`` can seek,
+    authenticated by ``require_review_auth`` (the token rides in the query string for
+    raw-media-src use — the same mechanism as ``/audio/vocals``). The stem GCS path is
+    resolved SERVER-SIDE from ``option_id``, so a client can only ever fetch this job's own
+    instrumental stems, never an arbitrary blob.
+    """
+    stem_key = _INSTRUMENTAL_OPTION_STEMS.get(option_id)
+    if not stem_key:
+        raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
+
+    job = JobManager().get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
+
+    stems = job.file_urls.get("stems", {}) if job.file_urls else {}
+    source_gcs_path = stems.get(stem_key)
+    if not source_gcs_path:
+        raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
+
+    try:
+        cached = _review_audio_cache_get(source_gcs_path)
+        if cached is None:
+            from backend.services.audio_transcoding_service import AudioTranscodingService
+            transcoding = AudioTranscodingService(storage_service=StorageService())
+            cached = await transcoding.get_review_audio_bytes_async(source_gcs_path)
+            _review_audio_cache_put(source_gcs_path, cached)
+        data, content_type = cached
+        logger.info(f"Job {job_id}: Proxying {len(data)}B instrumental audio ({option_id})")
+        return _ranged_response(request, data, content_type)
+    except Exception as e:
+        logger.error(f"Job {job_id}: error proxying instrumental audio {option_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=t("en", "review.audioServeError", error=str(e)))
 
 
 @router.post("/{job_id}/complete")
@@ -1900,22 +1965,19 @@ async def get_instrumental_urls(
     request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
-    """Return freshly-signed instrumental stem URLs for the combined review.
+    """Return instrumental stem options (same-origin audio proxy paths) for the review.
 
-    The signed URLs baked into the initial review payload expire after 120 min,
-    and a long review session (or a page reload that rehydrates cached correction
-    data from localStorage) can outlive them — the preview modal's instrumental
-    audio then fails to load (``NS_ERROR_DOM_NETWORK_ERR``). The frontend calls
-    this on an audio load error to swap in a fresh URL and resume playback.
+    Since the 2026-09-17 fast-load re-architecture these are non-expiring proxy paths, so
+    a refresh is no longer strictly needed — but the preview modal still calls this on an
+    audio load error (e.g. a transient network blip) to swap in a fresh URL, and it's a
+    cheap, backwards-compatible way to do so. Returns the same shape as correction-data's
+    ``instrumental_options``.
     """
-    job_manager = JobManager()
-    storage = StorageService()
-
-    job = job_manager.get_job(job_id)
+    job = JobManager().get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
-    instrumental_options = await _build_instrumental_options(job, storage, request)
+    instrumental_options = await _build_instrumental_options(job, request)
     return {"instrumental_options": instrumental_options}
 
 

@@ -4137,12 +4137,12 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     },
 
     /**
-     * Re-fetch freshly-signed instrumental stem URLs.
+     * Re-fetch instrumental stem URLs.
      *
-     * The signed URLs baked into the review payload expire after 120 min, and a
-     * long review session (or a reload that rehydrates cached correction data
-     * from localStorage) can outlive them. The preview modal calls this on an
-     * audio load error to swap in a fresh URL and resume playback.
+     * Since the 2026-09-17 fast-load re-architecture these are same-origin proxy URLs
+     * that never expire, so a refresh is no longer strictly necessary — but the preview
+     * modal still calls this on an audio load error (e.g. a transient network blip), and
+     * it's cheap and harmless. Resolved to absolute token URLs like getCorrectionData.
      */
     async refreshInstrumentalUrls(): Promise<InstrumentalOption[]> {
       const response = await apiFetch(
@@ -4150,7 +4150,7 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
         { headers: getAuthHeaders() }
       )
       const data = await handleResponse<{ instrumental_options?: InstrumentalOption[] }>(response)
-      return data.instrumental_options ?? []
+      return resolveInstrumentalAudioUrls(jobId, data.instrumental_options ?? [])
     },
 
     /**
@@ -4206,6 +4206,29 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
   }
 }
 
+/**
+ * Resolve instrumental option audio URLs for playback.
+ *
+ * The combined-review endpoints return each option's `audio_url` as a RELATIVE
+ * same-origin proxy path (e.g. `/api/review/{jobId}/instrumental-audio/clean`) — the
+ * review hot path no longer signs GCS URLs (2026-09-17 fast-load re-architecture). A raw
+ * <audio> src needs an ABSOLUTE URL to the API host plus auth in the query string (it
+ * can't send an Authorization header), so turn each relative path into
+ * `${API_BASE_URL}...?token=`. Already-absolute URLs (the local dev byte proxy) and null
+ * audio_urls are left untouched.
+ */
+function resolveInstrumentalAudioUrls<T extends { id?: string; audio_url?: string | null }>(
+  jobId: string,
+  options: T[],
+): T[] {
+  const token = getAccessToken()
+  return options.map((o) => {
+    if (!o.audio_url || !o.id || /^https?:\/\//i.test(o.audio_url)) return o
+    const base = `${API_BASE_URL}/api/review/${jobId}/instrumental-audio/${o.id}`
+    return { ...o, audio_url: token ? `${base}?token=${encodeURIComponent(token)}` : base }
+  })
+}
+
 // Standalone lyrics review API functions (for use without jobId context)
 export const lyricsReviewApi = {
   /**
@@ -4218,7 +4241,12 @@ export const lyricsReviewApi = {
     const response = await apiFetch(`${API_BASE_URL}/api/review/${jobId}/correction-data${qs}`, {
       headers: getAuthHeaders()
     })
-    return handleResponse<CorrectionData>(response)
+    const data = await handleResponse<CorrectionData>(response)
+    if (data.instrumental_options) {
+      // Rewrite relative proxy paths into absolute, token-authenticated <audio> src URLs.
+      data.instrumental_options = resolveInstrumentalAudioUrls(jobId, data.instrumental_options)
+    }
+    return data
   },
 
   /**
