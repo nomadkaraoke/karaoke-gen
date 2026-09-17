@@ -684,6 +684,30 @@ async def community_daily_pick_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/community-requests/reconcile")
+async def community_requests_reconcile_endpoint(
+    http_request: Request,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """Reconcile community picks whose video is already live on YouTube but whose
+    request is still ``in_progress`` (publish fan-out never fired for them).
+
+    Idempotent safety net / backfill: advances each to ``published`` and fans out
+    voter emails. Safe to call any time.
+    """
+    from backend.services.community_publish import reconcile_community_publishes
+
+    logger.info("COMMUNITY_REQUESTS_RECONCILE starting")
+    add_span_attribute("operation", "community_requests_reconcile")
+    try:
+        result = await reconcile_community_publishes()
+        logger.info(f"COMMUNITY_REQUESTS_RECONCILE complete: {result}")
+        return result
+    except Exception as e:
+        logger.exception(f"COMMUNITY_REQUESTS_RECONCILE failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/community-handoffs")
 async def community_handoffs_endpoint(
     http_request: Request,

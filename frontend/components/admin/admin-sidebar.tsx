@@ -18,6 +18,7 @@ import {
   Share2,
   Building2,
   ListChecks,
+  History,
 } from "lucide-react"
 
 import {
@@ -59,6 +60,11 @@ const navItems = [
     title: "Referrals",
     href: "/admin/referrals",
     icon: Share2,
+  },
+  {
+    title: "Community Requests",
+    href: "/admin/community-requests",
+    icon: History,
   },
   {
     title: "Community Reviews",

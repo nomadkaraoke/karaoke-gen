@@ -170,6 +170,15 @@ class SongRequestService:
             return SongRequest(**doc.to_dict())
         return None
 
+    def list_all(self) -> list[SongRequest]:
+        """Every request across all statuses, newest first — the admin history view."""
+        items = [
+            SongRequest(**doc.to_dict())
+            for doc in self.db.collection(REQUESTS_COLLECTION).stream()
+        ]
+        items.sort(key=lambda r: r.created_at, reverse=True)
+        return items
+
     def list_active(self) -> list[SongRequest]:
         """Open requests, ranked by net votes desc then oldest-first."""
         query = self.db.collection(REQUESTS_COLLECTION).where(
