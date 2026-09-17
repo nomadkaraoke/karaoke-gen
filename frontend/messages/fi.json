@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Järjestelmämme automaattisesti korjaama sanasta \"{original}\". Ajoitus on arvioitu, joten toista tämä rivi ja säädä sanojen ajoitusta tarvittaessa.",
       "longGapWarning": "{seconds} s tauko ennen seuraavaa sanaa — usein kyseessä on irrallinen, liian aikainen sana (esim. ylimääräinen \"ja\"). Toista tästä napsauttamalla.",
       "longWordWarning": "Tämä sana kestää {seconds} s — epätavallisen pitkään. Toista rivi ja tarkista, ettei sen loppuaika ole mennyt instrumentaaliosuuden päälle.",
-      "playFromGap": "Toista tämän tauon lopusta"
+      "playFromGap": "Toista tämän tauon lopusta",
+      "editSegment": "Muokkaa segmenttiä {index}",
+      "untimedSegment": "Ei sana-ajoituksia — muokkaa klikkaamalla",
+      "waveforms": "Aaltomuodot"
     },
     "editActionBar": {
       "reset": "Nollaa",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Käynnistetään koodauspalvelinta — tässä voi kestää pari minuuttia. Malta hetki!",
       "audioLabel": "Ääni:",
       "audioOriginal": "Alkuperäinen (laulun kanssa)",
-      "backingVocalsWaveformHint": "Taustalaulut on säilytetty instrumentaalissa — klikkaa kuullaksesi tämän kohdan.",
       "audioInstrumental": "Instrumentaali",
       "audioInstrumentalBacking": "Instrumentaali + taustalaulut",
       "audioInstrumentalClean": "Puhdas instrumentaali",
       "audioInstrumentalPillBacking": "Instrumentaali (mukana taustalaulut)",
-      "audioInstrumentalPillClean": "Instrumentaali (puhdas)"
+      "audioInstrumentalPillClean": "Instrumentaali (puhdas)",
+      "backingVocalsWaveformKept": "Instrumentaalissa säilytetyt taustalaulut — klikkaa kuullaksesi ne.",
+      "backingVocalsWaveformRemoved": "Taustalaulut, jotka puhdas instrumentaaliversio poistaa — klikkaa kuullaksesi, mitä jäisi pois."
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Siirry instrumentaalin tarkistukseen",
         "saving": "Tallennetaan...",
         "completeTrack": "Viimeistele kappale",
-        "autoInstrumentalClean": "Käytämme tässä kappaleessa puhdasta instrumentaaliversiota (ei taustalauluja).",
+        "autoInstrumentalClean": "Puhdas instrumentaaliversio poistaa alla näkyvät taustalaulut. Kuuntele niitä ensin — jos ne kuulostavat hyviltä, valitse yläpuolelta ”Instrumentaali + taustalaulut” säilyttääksesi ne.",
         "previewTitle": "Videon esikatselu",
-        "autoInstrumentalCleanChosen": "Olet valinnut tähän kappaleeseen puhtaan instrumentaaliversion (ei taustalauluja).",
+        "autoInstrumentalCleanChosen": "Olet valinnut puhtaan instrumentaaliversion, joka poistaa alla näkyvät taustalaulut. Kuuntele niitä ensin — jos ne kuulostavat hyviltä, valitse yläpuolelta ”Instrumentaali + taustalaulut” säilyttääksesi ne.",
         "advancedModeClean": "Edistynyt tila (tarkista tai lataa oma instrumentaaliversio)",
         "finalChoiceLabel": "Karaokevideossasi käytetään:",
         "recommended": "suositeltu",

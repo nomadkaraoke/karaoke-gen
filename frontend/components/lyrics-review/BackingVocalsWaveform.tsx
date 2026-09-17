@@ -17,21 +17,26 @@ interface BackingVocalsWaveformProps {
   currentTime: number
   /** Seek the preview to this time and switch audio to the instrumental. */
   onSeek: (time: number) => void
+  /** Whether these backing vocals will be kept (with_backing) or removed (clean) in the
+      final video — drives the hint wording. Defaults to kept. */
+  kept?: boolean
 }
 
 const WAVEFORM_HEIGHT = 35
 const NUM_POINTS = 600
 
 /**
- * Thin waveform of the whole backing-vocals stem, shown when the instrumental
- * auto-selector chose to keep the backing vocals. Clicking seeks the preview
- * video to that point and switches its audio to the instrumental+backing track,
- * so the reviewer can quickly sanity-check the automatic choice.
+ * Thin waveform of the whole backing-vocals stem, shown whenever a playable backing stem
+ * exists — whether the reviewer is keeping them or has the clean instrumental selected — so
+ * the backing vocals are never discarded sight-unseen. Clicking seeks the preview video to
+ * that point and switches its audio to the instrumental+backing track, so the reviewer can
+ * hear the backing vocals before deciding.
  */
 export default function BackingVocalsWaveform({
   getWaveformData,
   currentTime,
   onSeek,
+  kept = true,
 }: BackingVocalsWaveformProps) {
   const t = useTranslations('lyricsReview.previewVideo')
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -119,7 +124,9 @@ export default function BackingVocalsWaveform({
 
   return (
     <div className="mt-2">
-      <p className="text-xs text-muted-foreground mb-1">{t('backingVocalsWaveformHint')}</p>
+      <p className="text-xs text-muted-foreground mb-1">
+        {kept ? t('backingVocalsWaveformKept') : t('backingVocalsWaveformRemoved')}
+      </p>
       <div
         ref={containerRef}
         className="w-full rounded-md overflow-hidden bg-[#0d1117]"

@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Corrigido automaticamente pelo nosso sistema a partir de \"{original}\". A sincronização foi estimada, então toque esta linha e ajuste o tempo das palavras, se necessário.",
       "longGapWarning": "Intervalo de {seconds}s antes da próxima palavra — muitas vezes uma palavra solta adiantada (ex: um \"e\" fantasma). Clique para tocar a partir daqui.",
       "longWordWarning": "Esta palavra dura {seconds}s — um tempo incomum. Toque a linha e verifique se o final dela não invadiu o instrumental.",
-      "playFromGap": "Tocar a partir do final deste intervalo"
+      "playFromGap": "Tocar a partir do final deste intervalo",
+      "editSegment": "Editar segmento {index}",
+      "untimedSegment": "Sem marcação de tempo nas palavras — clique para editar",
+      "waveforms": "Formas de onda"
     },
     "editActionBar": {
       "reset": "Redefinir",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Iniciando um servidor de codificação — isso pode levar alguns minutos. Aguarde só um instante!",
       "audioLabel": "Áudio:",
       "audioOriginal": "Original (com vocais)",
-      "backingVocalsWaveformHint": "Vocais de apoio mantidos no instrumental — clique para ouvir esta parte.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + vocais de apoio",
       "audioInstrumentalClean": "Instrumental limpo",
       "audioInstrumentalPillBacking": "Instrumental (com vocais de apoio)",
-      "audioInstrumentalPillClean": "Instrumental (limpo)"
+      "audioInstrumentalPillClean": "Instrumental (limpo)",
+      "backingVocalsWaveformKept": "Vocais de apoio mantidos no instrumental — clique para ouvi-los.",
+      "backingVocalsWaveformRemoved": "Vocais de apoio que o instrumental limpo remove — clique para ouvir o que vai ficar de fora."
     },
     "gapNavigator": {
       "previousGap": "Lacuna anterior (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Prosseguir para Revisão Instrumental",
         "saving": "Salvando...",
         "completeTrack": "Faixa completa",
-        "autoInstrumentalClean": "Vamos usar o instrumental limpo (sem vocais de apoio) para esta faixa.",
+        "autoInstrumentalClean": "O instrumental limpo remove os vocais de apoio mostrados abaixo. Ouça primeiro — se soarem bem, mude para “Instrumental + vocais de apoio” acima para mantê-los.",
         "previewTitle": "Pré-visualizar Vídeo",
-        "autoInstrumentalCleanChosen": "Você escolheu o instrumental limpo (sem vocais de apoio) para esta faixa.",
+        "autoInstrumentalCleanChosen": "Você escolheu o instrumental limpo, que remove os vocais de apoio mostrados abaixo. Ouça primeiro — se soarem bem, mude para “Instrumental + vocais de apoio” acima para mantê-los.",
         "advancedModeClean": "Modo avançado (revise ou faça upload de um instrumental personalizado)",
         "finalChoiceLabel": "Seu vídeo de karaokê usará:",
         "recommended": "recomendado",

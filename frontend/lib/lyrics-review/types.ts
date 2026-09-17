@@ -229,6 +229,10 @@ export interface HighlightInfo {
 
 export type InteractionMode = 'highlight' | 'edit' | 'delete_word'
 
+// Synced Lyrics panel view mode (Simple text / Advanced flex-pills / Waveforms).
+// 'waveforms' renders a compact inline copy of the Edit Segment timeline per segment.
+export type TranscriptionViewMode = 'simple' | 'advanced' | 'waveforms'
+
 // Edit Log Types — captures user edits for training data / feedback
 export type EditOperationType =
   | 'word_change' | 'word_delete' | 'word_add'
@@ -461,8 +465,12 @@ export interface TranscriptionViewProps {
   onEditCorrection?: (wordId: string) => void
   onAcceptCorrection?: (wordId: string) => void
   onShowCorrectionDetail?: (wordId: string) => void
-  advancedMode?: boolean
-  onAdvancedModeToggle?: (enabled: boolean) => void
+  viewMode?: TranscriptionViewMode
+  onViewModeChange?: (mode: TranscriptionViewMode) => void
+  /** Waveforms mode: commit a segment's word-timing changes (fires on drag release). */
+  onCommitSegment?: (segmentIndex: number, updatedSegment: LyricsSegment) => void
+  /** Waveforms mode: open the full Edit modal for a segment (text/split/merge/etc). */
+  onEditSegment?: (segmentIndex: number) => void
   editedWordIds?: Set<string>
   /** Word IDs produced by an applied AI auto-correction → rendered purple. */
   aiCorrectedWordIds?: Set<string>

@@ -317,7 +317,9 @@ export default function Header({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    {autoCorrectedCount > 0 ? t('autoCorrectedDesc') : t('autoCorrectDesc')}
+                    {autoCorrectedCount > 0
+                      ? t('autoCorrectedDesc', { count: autoCorrectedCount })
+                      : t('autoCorrectDesc')}
                   </TooltipContent>
                 </Tooltip>
               )}

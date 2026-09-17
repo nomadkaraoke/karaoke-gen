@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Autocorregit pel nostre sistema en lloc de \"{original}\". La sincronització s'ha estimat, així que reprodueix aquesta línia i ajusta el temps de les paraules si cal.",
       "longGapWarning": "Pausa de {seconds}s abans de la següent paraula — sovint una paraula solta avançada (p. ex. un \"and\" fantasma). Fes clic per reproduir des d'aquí.",
       "longWordWarning": "Aquesta paraula dura {seconds}s — és inusualment llarga. Reprodueix la línia i comprova que el seu temps final no s'hagi solapat amb la instrumental.",
-      "playFromGap": "Reprodueix des del final d'aquesta pausa"
+      "playFromGap": "Reprodueix des del final d'aquesta pausa",
+      "editSegment": "Edita el segment {index}",
+      "untimedSegment": "Sense sincronització de paraules — fes clic per editar",
+      "waveforms": "Formes d'ona"
     },
     "editActionBar": {
       "reset": "Restableix",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "S'està iniciant un servidor de codificació — això pot trigar un parell de minuts. Espera una mica!",
       "audioLabel": "Àudio:",
       "audioOriginal": "Original (amb veus)",
-      "backingVocalsWaveformHint": "Veus de fons mantingudes a l'instrumental — fes clic per escoltar aquesta part.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + cors",
       "audioInstrumentalClean": "Instrumental net",
       "audioInstrumentalPillBacking": "Instrumental (amb cors)",
-      "audioInstrumentalPillClean": "Instrumental (net)"
+      "audioInstrumentalPillClean": "Instrumental (net)",
+      "backingVocalsWaveformKept": "Cors mantinguts a l'instrumental — fes clic per escoltar-los.",
+      "backingVocalsWaveformRemoved": "Cors que l'instrumental net elimina — fes clic per escoltar què deixaries fora."
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Procedeix a la revisió instrumental",
         "saving": "Desant...",
         "completeTrack": "Pista completa",
-        "autoInstrumentalClean": "Utilitzarem l'instrumental net (sense cors) per a aquesta pista.",
+        "autoInstrumentalClean": "L'instrumental net elimina els cors que es mostren a continuació. Escolta'ls primer — si sonen bé, canvia a “Instrumental + cors” més amunt per mantenir-los.",
         "previewTitle": "Previsualització del vídeo",
-        "autoInstrumentalCleanChosen": "Has triat l'instrumental net (sense cors) per a aquesta pista.",
+        "autoInstrumentalCleanChosen": "Has triat l'instrumental net, que elimina els cors que es mostren a continuació. Escolta'ls primer — si sonen bé, canvia a “Instrumental + cors” més amunt per mantenir-los.",
         "advancedModeClean": "Mode avançat (revisa o puja una pista instrumental personalitzada)",
         "finalChoiceLabel": "El teu vídeo de karaoke utilitzarà:",
         "recommended": "recomanat",

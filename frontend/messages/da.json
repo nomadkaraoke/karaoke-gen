@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Automatisk rettet af vores system fra \"{original}\". Timingen blev estimeret, så afspil denne linje og juster ordets timing, hvis det er nødvendigt.",
       "longGapWarning": "{seconds}s pause før det næste ord — ofte et fejlplaceret tidligt ord (f.eks. et fantom-\"og\"). Klik for at afspille herfra.",
       "longWordWarning": "Dette ord varer {seconds}s — usædvanligt længe. Afspil linjen og tjek, at dets sluttidspunkt ikke fortsætter ind i det instrumentale.",
-      "playFromGap": "Afspil fra slutningen af denne pause"
+      "playFromGap": "Afspil fra slutningen af denne pause",
+      "editSegment": "Rediger segment {index}",
+      "untimedSegment": "Ingen tidsangivelser for ord — klik for at redigere",
+      "waveforms": "Bølgeformer"
     },
     "editActionBar": {
       "reset": "Nulstil",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Starter en kodningsserver — det kan tage et par minutter. Hæng på!",
       "audioLabel": "Lyd:",
       "audioOriginal": "Original (med vokal)",
-      "backingVocalsWaveformHint": "Baggrundsvokalen er bevaret i instrumentalsporet — klik for at høre denne del.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + baggrundsvokal",
       "audioInstrumentalClean": "Ren instrumental",
       "audioInstrumentalPillBacking": "Instrumental (plus baggrundsvokal)",
-      "audioInstrumentalPillClean": "Instrumental (ren)"
+      "audioInstrumentalPillClean": "Instrumental (ren)",
+      "backingVocalsWaveformKept": "Baggrundsvokaler bevaret i instrumentalen — klik for at høre dem.",
+      "backingVocalsWaveformRemoved": "Baggrundsvokaler, som den rene instrumental fjerner — klik for at høre, hvad du udelader."
     },
     "gapNavigator": {
       "previousGap": "Forrige hul (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Fortsæt til gennemgang af instrumental",
         "saving": "Gemmer...",
         "completeTrack": "Færdiggør nummer",
-        "autoInstrumentalClean": "Vi bruger det rene instrumentalnummer (ingen baggrundsvokaler) til dette nummer.",
+        "autoInstrumentalClean": "Den rene instrumental fjerner baggrundsvokalerne, der er vist nedenfor. Prøv at lytte til dem først — hvis de lyder godt, kan du skifte til “Instrumental + baggrundsvokaler” ovenfor for at beholde dem.",
         "previewTitle": "Forhåndsvis video",
-        "autoInstrumentalCleanChosen": "Du har valgt det rene instrumentalnummer (ingen baggrundsvokaler) til dette nummer.",
+        "autoInstrumentalCleanChosen": "Du har valgt den rene instrumental, som fjerner baggrundsvokalerne, der er vist nedenfor. Prøv at lytte til dem først — hvis de lyder godt, kan du skifte til “Instrumental + baggrundsvokaler” ovenfor for at beholde dem.",
         "advancedModeClean": "Avanceret tilstand (gennemgå eller upload et tilpasset instrumentalspor)",
         "finalChoiceLabel": "Din karaokevideo vil bruge:",
         "recommended": "anbefales",
