@@ -260,6 +260,10 @@ class TestTranscriptionStage:
         assert kwargs["input_audio_wav"] == "/audio.flac"
         assert kwargs["artist"] == "Artist"
 
+        # style_params (no style_params_json) makes the stage write a temp file and
+        # register it on the context; clean it up so the test leaves no /tmp files.
+        context.cleanup_temp_paths()
+
     @pytest.mark.asyncio
     async def test_execute_ignores_malformed_countdown_file(self, tmp_path):
         """A non-numeric countdown file is ignored, not fatal."""
