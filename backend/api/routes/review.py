@@ -25,6 +25,7 @@ from typing import Dict, Any, List, Literal, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
 from fastapi.responses import RedirectResponse, Response
+from google.cloud.exceptions import NotFound
 from google.cloud.firestore_v1.field_path import FieldPath
 
 from backend.models.job import JobStatus
@@ -995,6 +996,11 @@ async def get_instrumental_audio(
         data, content_type = cached
         logger.info(f"Job {job_id}: Proxying {len(data)}B instrumental audio ({option_id})")
         return _ranged_response(request, data, content_type)
+    except NotFound:
+        # The stem is referenced in file_urls but its GCS object (and any transcoded
+        # cache) is gone — a genuine 404, not a server error.
+        logger.warning(f"Job {job_id}: instrumental audio object missing for {option_id}")
+        raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
     except Exception as e:
         logger.error(f"Job {job_id}: error proxying instrumental audio {option_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=t("en", "review.audioServeError", error=str(e)))

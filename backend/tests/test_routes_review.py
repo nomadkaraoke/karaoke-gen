@@ -498,6 +498,16 @@ class TestInstrumentalAudioProxy:
             response = test_client.get("/api/review/job1/instrumental-audio/clean")
         assert response.status_code == 404
 
+    def test_deleted_gcs_object_returns_404_not_500(self, test_client):
+        from google.cloud.exceptions import NotFound
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"), \
+                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_bytes_async",
+                      new=AsyncMock(side_effect=NotFound("gone"))):
+            mock_jm.return_value.get_job.return_value = self._mock_job()
+            response = test_client.get("/api/review/job1/instrumental-audio/clean")
+        assert response.status_code == 404
+
     def test_does_not_sign_urls(self, test_client):
         audio = b"OggS"
         with patch("backend.api.routes.review.JobManager") as mock_jm, \
