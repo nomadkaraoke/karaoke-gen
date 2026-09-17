@@ -770,6 +770,9 @@ class TestSummaryEndpoint:
             {'job_id': '1', 'user_email': 'real@example.com'},
             {'job_id': '2', 'user_email': 'test@inbox.testmail.app'},
             {'job_id': '3', 'user_email': None},
+            # The persistent account impersonated by the CI canary + daily E2E
+            # runs. Its jobs must be filtered out of the admin dashboard too.
+            {'job_id': '4', 'user_email': 'e2e-test-runner@nomadkaraoke.com'},
         ]
 
         filtered = [j for j in job_dicts if not is_test_email(j.get('user_email') or "")]

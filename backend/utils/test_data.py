@@ -10,7 +10,18 @@ abuse investigation views.
 
 # Email domains used by automated testing frameworks
 TEST_EMAIL_DOMAINS = [
-    "inbox.testmail.app",  # Used by E2E happy path tests
+    "inbox.testmail.app",  # Used by E2E happy path tests (ephemeral throwaway users)
+]
+
+# Specific internal accounts that are only ever used by automated tests.
+# These live on the internal nomadkaraoke.com domain (so they'd otherwise pass
+# is_internal_email, not is_test_email), but every job they create is E2E test
+# data. Listed here so admin dashboards' exclude_test filter hides their jobs.
+# e2e-test-runner is the persistent account the CI post-deploy canary and daily
+# E2E workflows impersonate; without this entry its piri/dog jobs leak into the
+# admin "My Jobs" view.
+TEST_EMAIL_ADDRESSES = [
+    "e2e-test-runner@nomadkaraoke.com",
 ]
 
 # Email domains belonging to internal team members
@@ -28,11 +39,14 @@ def is_test_email(email: str) -> bool:
         email: Email address to check
 
     Returns:
-        True if the email matches a test email domain pattern
+        True if the email matches a test email domain pattern or is a known
+        automated-test account
     """
     if not email:
         return False
     email_lower = email.lower()
+    if email_lower in TEST_EMAIL_ADDRESSES:
+        return True
     return any(email_lower.endswith(f"@{domain}") for domain in TEST_EMAIL_DOMAINS)
 
 
