@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Tuple, List, Literal, Optional, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.dependencies import require_admin
 from backend.i18n import t, get_locale_from_request
@@ -2175,7 +2175,7 @@ async def send_job_completion_email(
 
 class MintLoginLinkRequest(BaseModel):
     """Request to mint a one-click login link for a user."""
-    expiry_hours: int = 168
+    expiry_hours: int = Field(168, ge=1, le=168)
     # e.g. "job_review:<job_id>" — verify maps known purposes to a redirect
     purpose: Optional[str] = None
 
