@@ -127,7 +127,14 @@ function VerifyMagicLinkContent() {
           const dest = lastVerifyResponse?.redirect_path || "/app"
           setState("success")
           setTimeout(() => {
-            router.push(dest)
+            if (dest.includes("#")) {
+              // Hash-carrying destinations (e.g. /app/jobs#/<id>/review) 404
+              // under a client-side push — do a full navigation so the static
+              // route serves the page (the locale shim preserves the hash).
+              window.location.assign(dest)
+            } else {
+              router.push(dest)
+            }
           }, 1500)
         }
       } else {
