@@ -1,6 +1,7 @@
 import { test, expect, Page, BrowserContext } from '@playwright/test';
 import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-testing';
 import { clickCompleteSignInGate } from '../helpers/auth';
+import { deleteTestJob } from '../helpers/test-cleanup';
 
 /**
  * E2E Happy Path Test - Real User Journey with Full UI Interactions
@@ -221,6 +222,31 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
   // retries, so there's no steady-state cost.
   test.describe.configure({ retries: 1 });
 
+  // Safety-net job tracker. The in-flow cleanup (Step 12) only runs on a fully
+  // successful pass through review -> complete. If the test fails or times out
+  // before Step 12 (e.g. stuck at "awaiting_review"), the job it created was
+  // being stranded in production under the e2e-test-runner account — visible in
+  // the admin dashboard and never cleaned up. The afterEach below deletes it
+  // regardless of where the test stopped, on every attempt (incl. retries).
+  let capturedJobId: string | null = null;
+
+  test.afterEach(async () => {
+    if (!capturedJobId) return;
+    const jobToDelete = capturedJobId;
+    capturedJobId = null;
+    const adminToken = process.env.E2E_ADMIN_TOKEN;
+    if (!adminToken) {
+      console.log(`  [teardown] No E2E_ADMIN_TOKEN — cannot delete job ${jobToDelete}; manual cleanup needed`);
+      return;
+    }
+    try {
+      const result = await deleteTestJob(jobToDelete, adminToken, { cleanupDistribution: true }, API_URL);
+      console.log(`  [teardown] ${result.message}`);
+    } catch (e) {
+      console.log(`  [teardown] Failed to delete job ${jobToDelete}: ${e}`);
+    }
+  });
+
   test('Complete flow: New user signup -> Karaoke generation -> Distribution -> Cleanup', async ({
     page,
     context,
@@ -254,6 +280,46 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         console.log('  [Request Intercept] Disabled YouTube upload for audio search');
         await route.continue({
           postData: JSON.stringify(postData),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    // Pin the song identity to the typed input so the created job is
+    // deterministically "piri - dog". The AI match-judge normally runs on the
+    // guided-flow search and may rewrite the typed artist to its canonical form
+    // (e.g. "piri" -> "piri & tommy"), nondeterministically depending on the
+    // audio-confidence tier and LLM output. That's a legitimate product feature,
+    // but it made the daily/canary jobs show up under two different names. Here
+    // we stub the judge to a no-op "none" verdict echoing the typed values so
+    // the correction never applies. (Does not affect the generation pipeline the
+    // happy path exists to exercise.)
+    await page.route('**/api/catalog/match-judge', async (route) => {
+      const request = route.request();
+      if (request.method() === 'POST') {
+        let artist = TEST_SONG.artist;
+        let title = TEST_SONG.title;
+        try {
+          const body = request.postDataJSON();
+          if (body?.artist) artist = body.artist;
+          if (body?.title) title = body.title;
+        } catch {
+          // fall back to TEST_SONG
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            kind: 'none',
+            confident: true,
+            canonical_artist: artist,
+            canonical_title: title,
+            alternatives: [],
+            engine: 'deterministic',
+            reason: 'E2E: match-judge stubbed to keep song identity deterministic',
+            needs_ai: false,
+          }),
         });
       } else {
         await route.continue();
@@ -591,6 +657,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
         const idMatch = idText.match(/ID:\s*([a-f0-9]{8,})/i);
         if (idMatch) {
           jobId = idMatch[1];
+          capturedJobId = jobId;  // hand to afterEach so a partial run still cleans up
           console.log(`  Job ID: ${jobId}`);
         }
       }
@@ -1308,6 +1375,7 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
             console.log(`    Dropbox: ${result.dropbox?.status}`);
             console.log(`    GDrive: ${result.gdrive?.status}`);
             console.log(`    Job deleted: ${result.job_deleted}`);
+            if (result.job_deleted) capturedJobId = null;  // already gone; skip afterEach re-delete
           } else {
             console.log(`  WARNING: Cleanup failed with status ${cleanupResponse.status()}`);
           }
