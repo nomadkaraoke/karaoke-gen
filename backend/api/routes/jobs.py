@@ -755,9 +755,18 @@ async def list_jobs(
                 limit=fetch_limit,
             )
 
-            # Exclude test user jobs (Python-side, same as full mode)
+            # Exclude test user jobs (Python-side, same as full mode).
+            # Never hide the caller's OWN jobs: an admin that is itself a test
+            # account (e.g. the e2e-test-runner the CI canary impersonates) must
+            # still see the jobs it just created in its own "My Jobs" list —
+            # otherwise the happy-path E2E breaks right after job creation.
             if exclude_test and auth_result.is_admin:
-                jobs_dicts = [j for j in jobs_dicts if not is_test_email(j.get('user_email') or "")]
+                own_email = (auth_result.user_email or "").lower()
+                jobs_dicts = [
+                    j for j in jobs_dicts
+                    if not is_test_email(j.get('user_email') or "")
+                    or (own_email and (j.get('user_email') or "").lower() == own_email)
+                ]
 
             # Apply search filter if provided
             if search:
@@ -782,9 +791,15 @@ async def list_jobs(
             limit=limit
         )
 
-        # Filter out test user jobs if exclude_test is True (admin only)
+        # Filter out test user jobs if exclude_test is True (admin only).
+        # Never hide the caller's OWN jobs (see summary-mode note above).
         if exclude_test and auth_result.is_admin:
-            jobs = [j for j in jobs if not is_test_email(j.user_email or "")]
+            own_email = (auth_result.user_email or "").lower()
+            jobs = [
+                j for j in jobs
+                if not is_test_email(j.user_email or "")
+                or (own_email and (j.user_email or "").lower() == own_email)
+            ]
 
         logger.debug(f"Listed {len(jobs)} jobs for user={auth_result.user_email}, admin={auth_result.is_admin}")
         return jobs
