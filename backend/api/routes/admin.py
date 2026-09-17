@@ -2173,6 +2173,41 @@ async def send_job_completion_email(
         )
 
 
+class MintLoginLinkRequest(BaseModel):
+    """Request to mint a one-click login link for a user."""
+    expiry_hours: int = 168
+    # e.g. "job_review:<job_id>" — verify maps known purposes to a redirect
+    purpose: Optional[str] = None
+
+
+@router.post("/users/{email}/login-link")
+async def mint_user_login_link(
+    email: str,
+    request: MintLoginLinkRequest,
+    auth_data: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Mint a one-click login link for a user (admin only). Sends NOTHING — returns
+    the URL for embedding in manually-reviewed outreach emails. The link logs the
+    user in and, when purpose is "job_review:<job_id>", lands them directly on
+    that job's lyrics review page. Expiry up to 168h (7 days).
+    """
+    import os as _os
+    token = user_service.create_admin_login_token(
+        email=email.strip().lower(),
+        expiry_hours=request.expiry_hours,
+        purpose=request.purpose,
+    )
+    frontend_url = _os.getenv("FRONTEND_URL", "https://gen.nomadkaraoke.com")
+    return {
+        "email": token.email,
+        "url": f"{frontend_url}/auth/verify?token={token.token}",
+        "expires_at": token.expires_at.isoformat(),
+        "purpose": request.purpose,
+    }
+
+
 # =============================================================================
 # User Impersonation
 # =============================================================================

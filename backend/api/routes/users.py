@@ -369,6 +369,23 @@ async def send_magic_link(
     )
 
 
+def _magic_link_redirect_path(purpose) -> "Optional[str]":
+    """Map a magic-link purpose to a post-login redirect path.
+
+    "requests_board" -> the voting board; "job_review:<job_id>" -> straight to
+    that job's lyrics review (used by outreach one-click links). Unknown or
+    malformed purposes fall through to None (frontend default: /app).
+    """
+    import re as _re
+    if purpose == "requests_board":
+        return "/requests"
+    if isinstance(purpose, str) and purpose.startswith("job_review:"):
+        job_id = purpose.split(":", 1)[1]
+        if _re.fullmatch(r"[A-Za-z0-9_-]{4,64}", job_id):
+            return f"/app/jobs#/{job_id}/review"
+    return None
+
+
 @router.get("/auth/verify", response_model=VerifyMagicLinkResponse)
 async def verify_magic_link(
     token: str,
@@ -519,7 +536,7 @@ async def verify_magic_link(
         tenant_subdomain=tenant_subdomain,
         credits_granted=credits_granted,
         credit_status=credit_status,
-        redirect_path="/requests" if is_board_signin else None,
+        redirect_path=_magic_link_redirect_path(magic_link_purpose),
     )
 
 
