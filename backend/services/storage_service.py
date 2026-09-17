@@ -1,9 +1,11 @@
 """
 Google Cloud Storage operations for file management.
 """
+import concurrent.futures
 import logging
 import os
 import json
+import threading
 from typing import Optional, BinaryIO, Any, Dict
 from pathlib import Path
 from google.cloud import storage
@@ -14,6 +16,39 @@ from backend.config import settings
 
 
 logger = logging.getLogger(__name__)
+
+
+# --- Signed-URL generation hardening (incident 2026-09-17) ---------------------
+# On Cloud Run we have no private key, so signing goes through the IAM signBlob API
+# over the network. google-cloud-storage gives that call a ~120s per-attempt
+# timeout PLUS retries, so a stalled IAM/metadata endpoint hangs the calling worker
+# thread for minutes. When enough review-page loads (each signs 2-3 audio URLs) hit
+# a stall at once, the request thread pool is exhausted and the whole service goes
+# unavailable — exactly what took gen down on 2026-09-17.
+#
+# Defense: run every sign on a DEDICATED, bounded thread pool and give it a short
+# wall-clock budget. A stall then (a) fails fast for the caller instead of hanging,
+# and (b) is confined to this pool so it can never starve GCS data-plane reads/writes
+# or the request handlers. Callers treat signing as best-effort (see the review
+# endpoint's fail-soft handling).
+SIGNED_URL_TIMEOUT_S = float(os.getenv("SIGNED_URL_TIMEOUT_S", "12"))
+_SIGNING_MAX_WORKERS = int(os.getenv("SIGNED_URL_MAX_WORKERS", "8"))
+_SIGNING_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+    max_workers=_SIGNING_MAX_WORKERS,
+    thread_name_prefix="gcs-sign",
+)
+# Bounded admission in front of the executor. If every worker is blocked on a stalled
+# signBlob, the executor's queue is unbounded — a burst of callers would each wait the
+# full SIGNED_URL_TIMEOUT_S then cancel a still-queued future. Cap total in-flight
+# (running + queued) so, once saturated, extra callers fail *immediately* instead of
+# waiting out the budget, and the queue can't grow without bound. Slack above the
+# worker count absorbs normal bursts (a job-detail load signs ~20 URLs concurrently).
+_SIGNING_MAX_INFLIGHT = int(os.getenv("SIGNED_URL_MAX_INFLIGHT", str(_SIGNING_MAX_WORKERS * 6)))
+_SIGNING_SLOTS = threading.BoundedSemaphore(_SIGNING_MAX_INFLIGHT)
+
+
+class SignedUrlTimeout(Exception):
+    """A signed-URL generation exceeded ``SIGNED_URL_TIMEOUT_S`` (IAM signBlob stall)."""
 
 
 class StorageService:
@@ -177,37 +212,69 @@ class StorageService:
             logger.info(f"Generated emulator {method} URL for {blob_path} (STORAGE_EMULATOR_HOST set)")
             return url
 
-        try:
+        def _sign() -> str:
+            """The actual (blocking, network-bound) signing work.
+
+            Run on the dedicated signing pool with a wall-clock timeout so a stalled
+            IAM signBlob can't hang the caller — see module docstring above.
+            """
             blob = self.bucket.blob(blob_path)
-            
+
             # Get default credentials and refresh to ensure we have a valid token
             credentials, project = google.auth.default()
-            
+
             # Common kwargs for signed URL generation
             kwargs = {
                 "version": "v4",
                 "expiration": timedelta(minutes=expiration_minutes),
                 "method": method,
             }
-            
+
             # For PUT requests, we need to specify the content type in headers
             if method == "PUT" and content_type:
                 kwargs["headers"] = {"Content-Type": content_type}
-            
+
             # Check if we're using compute credentials (Cloud Run/GCE)
             # These need to use IAM signBlob via service_account_email + access_token
             if hasattr(credentials, 'service_account_email'):
                 # Refresh credentials to get a valid access token
                 auth_request = requests.Request()
                 credentials.refresh(auth_request)
-                
+
                 kwargs["service_account_email"] = credentials.service_account_email
                 kwargs["access_token"] = credentials.token
-            
-            url = blob.generate_signed_url(**kwargs)
-            
+
+            return blob.generate_signed_url(**kwargs)
+
+        # Bounded admission: refuse immediately when signing is saturated (all workers
+        # stalled + queue full) instead of enqueuing work that would just time out.
+        if not _SIGNING_SLOTS.acquire(blocking=False):
+            logger.error(
+                f"Signing saturated (>{_SIGNING_MAX_INFLIGHT} in flight) — refusing signed "
+                f"{method} URL for {blob_path}; IAM signBlob likely stalled"
+            )
+            raise SignedUrlTimeout(f"Signing saturated for {blob_path}")
+
+        future = _SIGNING_EXECUTOR.submit(_sign)
+        # Release the slot whenever the work settles — success, error, OR cancellation
+        # (cancelling a still-queued future fires done callbacks, so queued-but-abandoned
+        # work frees its slot; a running future frees it only when it actually returns).
+        future.add_done_callback(lambda _f: _SIGNING_SLOTS.release())
+        try:
+            url = future.result(timeout=SIGNED_URL_TIMEOUT_S)
             logger.info(f"Generated signed {method} URL for {blob_path}")
             return url
+        except concurrent.futures.TimeoutError:
+            # Don't wait on the leaked thread — it caps itself at the library's own
+            # ~120s timeout and frees its (bounded) pool slot on its own. We bail now.
+            future.cancel()
+            logger.error(
+                f"Timed out (>{SIGNED_URL_TIMEOUT_S:g}s) generating signed {method} URL "
+                f"for {blob_path} — IAM signBlob likely stalled"
+            )
+            raise SignedUrlTimeout(
+                f"Signed URL generation timed out for {blob_path}"
+            )
         except Exception as e:
             logger.error(f"Error generating signed {method} URL for {blob_path}: {e}")
             raise
