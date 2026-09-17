@@ -54,8 +54,10 @@ Impact today is minor (he was the only voter, and got the standard completion em
 
 ### Part B — Backfill the first real request
 - Run the reconcile endpoint (Part below) in prod to mark the stuck request `published` with its
-  YouTube URL. (No voter email needed — the sole voter is the owner, already notified.) This makes
-  it appear in the board's "Recently made" list.
+  YouTube URL, making it appear in the board's "Recently made" list. In general, reconcile also
+  retries missing community "track is live" emails for any un-notified **non-owner** up-voters via
+  `notify_community_publish()`. For *this specific* request no extra email is sent — its sole voter
+  is the owner, who was already notified via the standard job-completion email.
 
 ### Part C — Admin history view (backend + frontend)
 - **Backend:** `GET /api/admin/community-requests` (admin-auth) returning ALL `song_requests`,
