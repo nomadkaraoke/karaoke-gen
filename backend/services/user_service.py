@@ -285,6 +285,7 @@ class UserService:
         self,
         email: str,
         expiry_hours: int = 24,
+        purpose: Optional[str] = None,
     ) -> MagicLinkToken:
         """
         Create an admin login token for email-embedded authentication links.
@@ -295,6 +296,8 @@ class UserService:
         Args:
             email: Admin's email address to authenticate as
             expiry_hours: Hours until token expires (default: 24, max: 168)
+            purpose: Optional purpose tag (e.g. "job_review:<job_id>") — the
+                verify endpoint maps known purposes to a post-login redirect
 
         Returns:
             MagicLinkToken object containing the token
@@ -318,6 +321,7 @@ class UserService:
             token=token,
             email=email,
             expires_at=datetime.utcnow() + timedelta(hours=expiry_hours),
+            purpose=purpose,
         )
 
         # Save to Firestore (same collection as magic links for unified verification)
