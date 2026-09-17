@@ -340,7 +340,13 @@ async def send_magic_link(
     )
 
     if not sent:
-        logger.error(f"Failed to send magic link email to {email}")
+        if getattr(email_service, "last_send_suppressed", False):
+            # Benign: the address is Postmark-suppressed (hard bounce / spam /
+            # manual suppression) — typically a junk/placeholder address entered
+            # at the sign-in form. Not an outage, so don't page on it.
+            logger.info(f"Magic link recipient {email} is suppressed by Postmark — skipping send")
+        else:
+            logger.error(f"Failed to send magic link email to {email}")
         # Don't reveal failure to prevent email enumeration
         # Still return success
 
@@ -703,7 +709,12 @@ async def resend_magic_link_from_token(
     )
 
     if not sent:
-        logger.error(f"Failed to resend magic link email to {_mask_email(email)}")
+        if getattr(email_service, "last_send_suppressed", False):
+            logger.info(
+                f"Resend magic link recipient {_mask_email(email)} is suppressed by Postmark — skipping send"
+            )
+        else:
+            logger.error(f"Failed to resend magic link email to {_mask_email(email)}")
 
     # Stamp the original token so the cooldown applies to subsequent clicks.
     try:

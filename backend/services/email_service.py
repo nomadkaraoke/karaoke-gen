@@ -37,6 +37,11 @@ class SendResult(NamedTuple):
     """
     success: bool
     message_id: Optional[str] = None
+    # True when the send failed specifically because Postmark has the recipient
+    # marked inactive (hard bounce / spam complaint / manual suppression). This
+    # is expected, benign traffic (e.g. someone typing a junk address into the
+    # sign-in form), not an outage — callers log it at INFO, not ERROR.
+    suppressed: bool = False
 
 
 class EmailProvider(ABC):
@@ -176,6 +181,11 @@ class PostmarkEmailProvider(EmailProvider):
         # Postmark MessageID of the most recent successful send, so the email_log
         # chokepoint can link a persisted record to its Postmark message.
         self.last_message_id: Optional[str] = None
+        # True when the most recent send failed because the recipient is
+        # suppressed by Postmark (see SendResult.suppressed). Lets the send
+        # chokepoint / route handlers downgrade the failure log from ERROR to
+        # INFO without threading a richer return type through every caller.
+        self.last_suppressed: bool = False
 
     def send_email(
         self,
@@ -207,6 +217,7 @@ class PostmarkEmailProvider(EmailProvider):
         bcc_emails: Optional[List[str]] = None,
         from_email_override: Optional[str] = None,
     ) -> SendResult:
+        self.last_suppressed = False
         try:
             sender_email = from_email_override or self.from_email
             payload = {
@@ -252,6 +263,18 @@ class PostmarkEmailProvider(EmailProvider):
             # Surface Postmark's structured error so we can see suppressions, invalid signature, etc.
             try:
                 err = response.json()
+                # ErrorCode 406 (InactiveRecipient) = the address is suppressed
+                # (hard bounce / spam complaint / manual suppression). This is
+                # expected when someone enters a junk/placeholder address at the
+                # sign-in form — it is not an outage, so log it at INFO and flag
+                # it so callers don't raise a scary "failed to send" ERROR.
+                if response.status_code == 422 and err.get("ErrorCode") == 406:
+                    self.last_suppressed = True
+                    logger.info(
+                        f"Postmark skipped suppressed recipient {to_email} "
+                        f"(inactive: hard bounce / spam complaint / manual suppression)"
+                    )
+                    return SendResult(success=False, message_id=None, suppressed=True)
                 logger.error(
                     f"Postmark returned status {response.status_code}: "
                     f"ErrorCode={err.get('ErrorCode')} Message={err.get('Message')}"
@@ -311,6 +334,9 @@ class EmailService:
         self.frontend_url = os.getenv("FRONTEND_URL", "https://gen.nomadkaraoke.com")
         # After consolidation, buy URL is the same as frontend URL
         self.buy_url = os.getenv("BUY_URL", self.frontend_url)
+        # Set by _log_and_send: True when the last send failed only because the
+        # recipient is Postmark-suppressed (benign — see SendResult.suppressed).
+        self.last_send_suppressed: bool = False
 
     def _get_provider(self) -> EmailProvider:
         """Get the configured email provider.
@@ -413,6 +439,12 @@ class EmailService:
             bcc_emails=bcc_emails,
             from_email_override=from_email_override,
         )
+
+        # Mirror the provider's suppression flag so route handlers can tell a
+        # benign "recipient suppressed" failure (junk sign-in address) apart
+        # from a real send failure without threading a richer return type
+        # through every send_* method.
+        self.last_send_suppressed = getattr(self.provider, "last_suppressed", False)
 
         # Only persist genuine outbound mail (Postmark). Console/preview providers
         # are dev/test only and have no real inbox to reflect.

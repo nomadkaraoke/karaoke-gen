@@ -83,9 +83,15 @@ async function locateVisibleInFrames(
  * Complete the Stripe Checkout page with card details from environment.
  *
  * @param page - Playwright page that will be redirected to checkout.stripe.com
- * @returns void — after this, the page will redirect to the success URL
+ * @returns `{ redirected }` — whether the browser was observed navigating back
+ *   to our success/app URL after payment. The redirect can be slow or dropped
+ *   even when the charge succeeds (Stripe→site hop, 3DS interstitial), so this
+ *   is reported rather than thrown: callers should treat the *server-side*
+ *   credit grant (Stripe webhook) as the source of truth and use `redirected`
+ *   only as a best-effort UX signal. Genuine failures (no Pay button, card
+ *   declined) still throw.
  */
-export async function completeStripeCheckout(page: Page): Promise<void> {
+export async function completeStripeCheckout(page: Page): Promise<{ redirected: boolean }> {
   const card = getCardDetailsFromEnv();
 
   // Step 1: Wait for Stripe Checkout page to fully load
@@ -232,12 +238,26 @@ export async function completeStripeCheckout(page: Page): Promise<void> {
   await finalPay.click();
 
   console.log('  Payment submitted, waiting for redirect...');
-  // Wait for redirect back to our site
-  await page.waitForURL(/nomadkaraoke\.com.*payment\/success|nomadkaraoke\.com.*\/app/, {
-    timeout: 60_000,
-  });
-  await page.screenshot({ path: 'test-results/stripe-checkout-complete.png' });
-  console.log('  Stripe Checkout complete — redirected to success page');
+  // Wait for redirect back to our site. The charge itself completes on Stripe's
+  // side and is confirmed to us via webhook; the browser redirect back is a
+  // separate, sometimes-slow hop (and can stall on a 3DS interstitial). So a
+  // redirect timeout is NOT a payment failure — report it and let the caller
+  // verify the credit grant server-side instead of failing the whole test.
+  try {
+    await page.waitForURL(/nomadkaraoke\.com.*payment\/success|nomadkaraoke\.com.*\/app/, {
+      timeout: 60_000,
+    });
+    await page.screenshot({ path: 'test-results/stripe-checkout-complete.png' });
+    console.log('  Stripe Checkout complete — redirected to success page');
+    return { redirected: true };
+  } catch {
+    await page.screenshot({ path: 'test-results/stripe-checkout-no-redirect.png' });
+    console.warn(
+      '  ⚠️ Payment submitted but no redirect within 60s — will verify the credit ' +
+      'grant server-side (charge may have succeeded with a slow/dropped redirect)'
+    );
+    return { redirected: false };
+  }
 }
 
 /**
