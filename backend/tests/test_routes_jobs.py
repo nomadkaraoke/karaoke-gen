@@ -780,6 +780,46 @@ class TestSummaryEndpoint:
         assert filtered[0]['job_id'] == '1'
         assert filtered[1]['job_id'] == '3'
 
+    def test_exclude_test_never_hides_requesters_own_jobs(self):
+        """An admin whose own account is a test email (the CI canary's e2e-test-runner)
+        must still see its OWN jobs, while OTHER test users' jobs stay filtered.
+
+        Regression: #1019 added e2e-test-runner to the test-email allowlist to keep its
+        jobs out of the admin dashboard, but that also hid the account's own jobs from
+        itself — the post-deploy happy-path canary (which impersonates e2e-test-runner,
+        an admin) then timed out waiting for its just-created job card to appear.
+        """
+        import asyncio
+        from backend.api.routes.jobs import list_jobs
+
+        runner = "e2e-test-runner@nomadkaraoke.com"
+        summary_dicts = [
+            {'job_id': 'real', 'user_email': 'real@example.com'},
+            {'job_id': 'other-test', 'user_email': 'someoneelse@inbox.testmail.app'},
+            {'job_id': 'own', 'user_email': runner},  # requester's own (test) job
+        ]
+
+        mock_jm = MagicMock()
+        mock_jm.list_jobs_summary.return_value = list(summary_dicts)
+        mock_request = MagicMock()
+
+        async def _run():
+            return await list_jobs(
+                request=mock_request,
+                exclude_test=True,
+                fields="summary",
+                auth_result=MagicMock(is_admin=True, user_email=runner),
+            )
+
+        with patch("backend.api.routes.jobs.job_manager", mock_jm), \
+             patch("backend.api.routes.jobs.get_tenant_from_request", return_value=""):
+            result = asyncio.run(_run())
+
+        ids = {j['job_id'] for j in result}
+        assert 'own' in ids, "requester's own test job must NOT be filtered out"
+        assert 'real' in ids
+        assert 'other-test' not in ids, "another user's test job must still be filtered"
+
     def test_full_response_unchanged_without_fields_param(self):
         """Verify the endpoint returns full Job models when fields is not set.
 

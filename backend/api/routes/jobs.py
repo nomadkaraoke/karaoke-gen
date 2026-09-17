@@ -755,9 +755,20 @@ async def list_jobs(
                 limit=fetch_limit,
             )
 
-            # Exclude test user jobs (Python-side, same as full mode)
+            # Exclude test user jobs (Python-side, same as full mode).
+            # Never hide the requester's OWN jobs: exclude_test is meant to keep other
+            # people's test-account noise out of an admin's dashboard, not to make a
+            # (test) account invisible to itself. Without this, the e2e-test-runner
+            # account — which is admin AND is_test_email (see backend/utils/test_data.py)
+            # — could no longer see its own freshly-created job in the jobs list, which
+            # broke the post-deploy happy-path canary at the "job card visible" step.
             if exclude_test and auth_result.is_admin:
-                jobs_dicts = [j for j in jobs_dicts if not is_test_email(j.get('user_email') or "")]
+                own_email = (auth_result.user_email or "").lower()
+                jobs_dicts = [
+                    j for j in jobs_dicts
+                    if not is_test_email(j.get('user_email') or "")
+                    or (j.get('user_email') or "").lower() == own_email
+                ]
 
             # Apply search filter if provided
             if search:
@@ -782,9 +793,15 @@ async def list_jobs(
             limit=limit
         )
 
-        # Filter out test user jobs if exclude_test is True (admin only)
+        # Filter out test user jobs if exclude_test is True (admin only).
+        # Never hide the requester's OWN jobs (see the summary-mode note above).
         if exclude_test and auth_result.is_admin:
-            jobs = [j for j in jobs if not is_test_email(j.user_email or "")]
+            own_email = (auth_result.user_email or "").lower()
+            jobs = [
+                j for j in jobs
+                if not is_test_email(j.user_email or "")
+                or (j.user_email or "").lower() == own_email
+            ]
 
         logger.debug(f"Listed {len(jobs)} jobs for user={auth_result.user_email}, admin={auth_result.is_admin}")
         return jobs
