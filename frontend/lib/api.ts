@@ -2617,7 +2617,32 @@ export interface CommunityReviewItem {
   community_checked_at?: string | null;
 }
 
+export interface CommunityRequestItem {
+  id: string;
+  artist: string;
+  title: string;
+  status: string;
+  submitted_by: string;
+  owner_email?: string | null;
+  vote_count: number;
+  job_id?: string | null;
+  youtube_url?: string | null;
+  review_state?: string | null;
+  created_at?: string | null;
+  picked_at?: string | null;
+}
+
 export const adminApi = {
+  /**
+   * Full history of requests-board submissions across every status.
+   */
+  async listCommunityRequests(): Promise<{ requests: CommunityRequestItem[] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/community-requests`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
   /**
    * List requests-board picks flagged for existing-community-version review.
    */

@@ -432,6 +432,18 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 timeline_metadata=completion_metadata,
             )
 
+            # If this was a requests-board community pick published directly here
+            # (i.e. not deferred to the youtube_upload_queue), advance its request
+            # to `published` and fan out "your track is live" voter emails. The
+            # queue path fires the same helper; jobs deferred to the queue are
+            # handled there instead, so we skip them to avoid a premature publish.
+            if result.youtube_url and not result.youtube_upload_queued:
+                try:
+                    from backend.services.community_publish import notify_community_publish
+                    await notify_community_publish(job_id, result.youtube_url)
+                except Exception:
+                    logger.exception(f"[job:{job_id}] Community publish fan-out failed (non-fatal)")
+
             root_span.set_attribute("duration_seconds", duration)
             root_span.set_attribute("brand_code", result.brand_code or '')
             logger.info(f"[job:{job_id}] WORKER_END worker=video orchestrator=true status=success duration={duration:.1f}s")
@@ -1023,6 +1035,15 @@ async def generate_video_legacy(job_id: str) -> bool:
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
             )
+
+            # Advance a requests-board community pick to `published` + fan out
+            # voter emails (legacy path always publishes directly here).
+            if result.get('youtube_url'):
+                try:
+                    from backend.services.community_publish import notify_community_publish
+                    await notify_community_publish(job_id, result.get('youtube_url'))
+                except Exception:
+                    logger.exception(f"[job:{job_id}] Community publish fan-out failed (non-fatal)")
 
             root_span.set_attribute("duration_seconds", duration)
             root_span.set_attribute("brand_code", result.get('brand_code', ''))
