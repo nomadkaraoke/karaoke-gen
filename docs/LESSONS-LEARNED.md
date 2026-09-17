@@ -1940,3 +1940,28 @@ too instead of regressing to the vulnerable path.
   its own failures (park/fail/supersede), so the CLI exits 0 on any clean return and
   1 only on an escaped crash — otherwise `max_retries=2` would re-enter jobs that
   already moved to a non-render state.
+
+## Lyrics-review "Waveforms" mode — two React/CSS gotchas (Sep 2026, v0.227.0)
+
+Added a third Synced Lyrics view ("Waveforms") that renders a compact inline copy of
+the Edit Segment timeline (`TimelineEditor`) per segment. Full write-up:
+`docs/archive/2026-09-17-waveforms-review-mode-plan.md`. Two bugs worth remembering:
+
+- **Never call a parent's setState from inside a `setState` updater.** The per-row
+  `WaveformSegmentRow` committed its dragged timing on mouse-up via
+  `setWords(cur => { onCommit(recompute(cur)); return cur })` — reading the latest words
+  through the updater. React runs updater functions *during render*, so `onCommit`
+  (which calls the parent's `updateDataWithHistory` → `setHistory`) fired a parent
+  update mid-render: *"Cannot update a component while rendering a different component."*
+  Fix: keep a `wordsRef` synced alongside the `words` state and read `wordsRef.current`
+  from the event handler — never call outward-facing callbacks from inside an updater.
+- **`overflow-hidden` on a bar clips anything positioned *above* it.** The
+  AI-correction "ghost" (original text, struck-through) floats above its word bar via
+  `absolute bottom-full`, so it's a visual child that lives outside the bar's box.
+  Adding `overflow-hidden` to the bar (to truncate long word text) silently hid the
+  ghost. Truncate the inner text span (`truncate min-w-0`) instead of clipping the bar.
+
+Also: colour-code the bars with the **exact** `HIGHLIGHT_CLASSES` tints the Advanced
+pills use (not hand-picked solids) so the two views read identically, and persist the
+view mode under a new `lyricsReviewViewMode` enum that migrates the old
+`lyricsReviewAdvancedMode` boolean.
