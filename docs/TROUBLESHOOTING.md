@@ -44,10 +44,10 @@ region — wait it out / open a GCP ticket.
 
 **Root-cause fix (shipped v0.229.0 — Option B):** `correction-data` no longer signs any
 URL on the review hot path, so it can't stall on IAM signBlob at all. The two instrumental
-options are delivered by a **same-origin byte proxy** (`GET /{job_id}/instrumental-audio/{option_id}`,
+options are delivered by a **same-origin byte proxy** (`GET /api/review/{job_id}/instrumental-audio/{option_id}`,
 served with HTTP Range so `<audio>` can seek — no signing, never expires), and the dead
 `backing_vocals_waveform_url` (never consumed; the waveform comes from the JSON
-`/{job_id}/waveform-data` endpoint) was removed. The frontend turns each option's relative
+`GET /api/review/{job_id}/waveform-data` endpoint) was removed. The frontend turns each option's relative
 `audio_url` into an absolute token URL exactly like `getVocalsAudioUrl`. See
 `docs/archive/2026-09-17-review-fast-full-load-plan.md`.
 
