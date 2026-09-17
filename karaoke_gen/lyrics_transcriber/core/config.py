@@ -36,10 +36,22 @@ class OutputConfig:
     output_styles_json: str
     default_max_line_length: int = 36
     styles: Dict[str, Any] = field(default_factory=dict)
-    output_dir: Optional[str] = os.getcwd()
-    cache_dir: str = os.getenv(
-        "LYRICS_TRANSCRIBER_CACHE_DIR",
-        os.path.join(os.path.expanduser("~"), "lyrics-transcriber-cache")
+    # output_dir / cache_dir MUST use default_factory so they are resolved at
+    # instantiation time, not at import time. The cloud lyrics worker sets
+    # LYRICS_TRANSCRIBER_CACHE_DIR to a per-job temp dir at *runtime* (after this
+    # module is already imported) so that the transcriber writes its cache where
+    # the GCS cache-sync agent reads/writes it. A bare `os.getenv(...)` default is
+    # captured once at import and ignores that runtime value — which silently
+    # broke the cross-container AudioShake cache (transcriber wrote to
+    # ~/lyrics-transcriber-cache while the sync used {temp}/lyrics-cache), so the
+    # GCS cache never populated and every job made a fresh, credit-spending
+    # AudioShake call. default_factory re-reads the env on each construction.
+    output_dir: Optional[str] = field(default_factory=os.getcwd)
+    cache_dir: str = field(
+        default_factory=lambda: os.getenv(
+            "LYRICS_TRANSCRIBER_CACHE_DIR",
+            os.path.join(os.path.expanduser("~"), "lyrics-transcriber-cache"),
+        )
     )
 
     fetch_lyrics: bool = True
