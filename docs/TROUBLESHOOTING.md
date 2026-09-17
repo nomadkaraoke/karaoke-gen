@@ -42,14 +42,21 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 If a restart doesn't clear it, the IAM Credentials API is genuinely degraded in the
 region — wait it out / open a GCP ticket.
 
-**Durable mitigation (shipped v0.228.1):** every sign now runs on a dedicated bounded
-thread pool with a wall-clock budget (`SIGNED_URL_TIMEOUT_S`, default 12s) and bounded
-admission (`SIGNED_URL_MAX_INFLIGHT`) in `storage_service._generate_signed_url_internal`
-— a stall raises `SignedUrlTimeout` fast instead of hanging, saturation is refused
-immediately rather than queued, and neither can starve GCS data-plane reads or the request pool.
-The review endpoints treat audio-URL signing as best-effort (return the option with a
-null `audio_url`; the frontend re-fetches via `GET /{job_id}/instrumental-urls`), so
-the lyrics page loads even during a signing stall.
+**Root-cause fix (shipped v0.229.0 — Option B):** `correction-data` no longer signs any
+URL on the review hot path, so it can't stall on IAM signBlob at all. The two instrumental
+options are delivered by a **same-origin byte proxy** (`GET /api/review/{job_id}/instrumental-audio/{option_id}`,
+served with HTTP Range so `<audio>` can seek — no signing, never expires), and the dead
+`backing_vocals_waveform_url` (never consumed; the waveform comes from the JSON
+`GET /api/review/{job_id}/waveform-data` endpoint) was removed. The frontend turns each option's relative
+`audio_url` into an absolute token URL exactly like `getVocalsAudioUrl`. See
+`docs/archive/2026-09-17-review-fast-full-load-plan.md`.
+
+**Safety net (still in place, v0.228.1):** signing anywhere else (e.g. preview-video)
+still runs on a dedicated bounded thread pool with a wall-clock budget
+(`SIGNED_URL_TIMEOUT_S`, default 12s) and bounded admission (`SIGNED_URL_MAX_INFLIGHT`) in
+`storage_service._generate_signed_url_internal` — a stall raises `SignedUrlTimeout` fast
+instead of hanging, and saturation is refused immediately rather than queued. Left as
+defense-in-depth beneath the signing-free review path.
 
 ---
 

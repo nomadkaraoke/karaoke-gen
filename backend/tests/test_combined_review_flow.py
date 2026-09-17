@@ -148,19 +148,19 @@ class TestGetCorrectionDataReturnsUpdatedCorrections:
             # Verify the returned data is the original
             assert result["corrected_segments"][0]["text"] == "Hello world"
 
-    def test_signing_stall_returns_200_and_omits_waveform_url(
+    def test_returns_proxy_audio_urls_and_omits_waveform_without_signing(
         self, mock_job, original_corrections
     ):
-        """A stalled IAM signBlob must not fail the review load (incident 2026-09-17).
-
-        When signing raises SignedUrlTimeout, get_correction_data must still return
-        the lyrics payload with HTTP 200, omit ``backing_vocals_waveform_url``, and
-        return instrumental options with null audio_url (the frontend re-fetches).
+        """Root-cause fix (2026-09-17, Option B): the review hot path performs NO URL
+        signing. get_correction_data returns 200 with the lyrics payload, same-origin
+        proxy paths for the instrumental options, and no ``backing_vocals_waveform_url``
+        (the frontend renders the waveform from the JSON /waveform-data endpoint, and
+        never consumed this field). The IAM signBlob round-trip that stalled and took gen
+        down on 2026-09-17 is gone entirely.
         """
         from backend.api.routes.review import get_correction_data
-        from backend.services.storage_service import SignedUrlTimeout
 
-        # Job has both a waveform and instrumental stems, so all signing paths run.
+        # Job has both a waveform and instrumental stems, so every former signing path runs.
         mock_job.file_urls["analysis"] = {
             "backing_vocals_waveform": "jobs/test-job-123/analysis/backing_vocals_waveform.png"
         }
@@ -179,21 +179,24 @@ class TestGetCorrectionDataReturnsUpdatedCorrections:
             storage = MockStorageService.return_value
             storage.file_exists.side_effect = lambda path: "corrections_updated" not in path
             storage.download_json.return_value = original_corrections.copy()
-            # Every sign stalls — the whole point of the incident.
-            storage.generate_signed_url.side_effect = SignedUrlTimeout("stalled")
 
             import asyncio
             result = asyncio.run(
                 get_correction_data("test-job-123", ("user@test.com", "job_owner"))
             )
 
-        # Endpoint succeeded with the lyrics payload despite the signing stall.
+        # Endpoint succeeded with the lyrics payload.
         assert result["corrected_segments"][0]["text"] == "Hello world"
-        # Waveform URL omitted rather than 500-ing the load.
+        # Waveform URL is not emitted at all (dead field, no consumer).
         assert "backing_vocals_waveform_url" not in result
-        # Instrumental options present but with null audio_url (client retries).
+        # Instrumental options carry same-origin proxy paths (no signing, never expire).
         opts = {o["id"]: o["audio_url"] for o in result["instrumental_options"]}
-        assert opts == {"clean": None, "with_backing": None}
+        assert opts == {
+            "clean": "/api/review/test-job-123/instrumental-audio/clean",
+            "with_backing": "/api/review/test-job-123/instrumental-audio/with_backing",
+        }
+        # The critical assertion: the hot path signed nothing.
+        storage.generate_signed_url.assert_not_called()
 
     def test_checks_direct_gcs_path_when_not_in_file_urls(
         self, mock_job, updated_corrections
