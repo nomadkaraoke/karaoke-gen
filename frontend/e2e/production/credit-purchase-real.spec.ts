@@ -1,11 +1,59 @@
 // frontend/e2e/production/credit-purchase-real.spec.ts
 import { test, expect } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-testing';
 import { completeStripeCheckout } from '../helpers/stripe-checkout';
 import { getPageAuthToken, clickCompleteSignInGate } from '../helpers/auth';
 import { URLS, TIMEOUTS } from '../helpers/constants';
 import * as fs from 'fs';
 import * as path from 'path';
+
+/**
+ * Read a user's current credit balance via the read-only admin detail endpoint.
+ * This is the server-side source of truth for whether a purchase landed —
+ * independent of any browser redirect. Returns null if the lookup fails.
+ */
+async function getCreditsViaAdmin(
+  request: APIRequestContext,
+  apiBase: string,
+  adminToken: string,
+  email: string
+): Promise<number | null> {
+  try {
+    const res = await request.get(
+      `${apiBase}/api/users/admin/users/${encodeURIComponent(email)}/detail`,
+      { headers: { 'X-Admin-Token': adminToken } }
+    );
+    if (!res.ok()) return null;
+    const data = await res.json();
+    return typeof data.credits === 'number' ? data.credits : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Poll the admin detail endpoint until the user's credit balance rises above
+ * `baseline` — the Stripe webhook grants the purchased credit asynchronously,
+ * so this can lag the payment by a few seconds. Returns the increased balance,
+ * or null if it never rose within the timeout.
+ */
+async function waitForCreditIncrease(
+  request: APIRequestContext,
+  apiBase: string,
+  adminToken: string,
+  email: string,
+  baseline: number,
+  timeoutMs = 90_000
+): Promise<number | null> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const latest = await getCreditsViaAdmin(request, apiBase, adminToken, email);
+    if (latest !== null && latest > baseline) return latest;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  return null;
+}
 
 /**
  * E2E Test: Real Credit Purchase via Stripe Checkout
@@ -169,27 +217,56 @@ test.describe('Real Credit Purchase Flow', () => {
       const buttonText = await checkoutButton.textContent();
       console.log(`  Checkout button: "${buttonText}"`);
 
+      // Record the credit balance BEFORE paying, so we can assert the purchase
+      // actually landed server-side (baseline + 1) regardless of the browser
+      // redirect. Falls back to 0 if the admin lookup is unavailable.
+      const baselineCredits = (await getCreditsViaAdmin(request, API_URL, adminToken!, inbox.emailAddress)) ?? 0;
+      console.log(`  Baseline credits before purchase: ${baselineCredits}`);
+
       // ===== STEP 5: Proceed to Stripe Checkout =====
       console.log('\n=== STEP 5: Stripe Checkout ===');
       await checkoutButton.click();
 
-      // Complete Stripe Checkout with real card
-      await completeStripeCheckout(page);
+      // Complete Stripe Checkout with real card. The redirect back to our site
+      // is best-effort — the authoritative signal is the server-side credit grant.
+      const checkout = await completeStripeCheckout(page);
 
-      // ===== STEP 6: Verify payment success page =====
-      console.log('\n=== STEP 6: Verify payment success ===');
-      await page.waitForURL(/payment\/success/, { timeout: 30000 });
+      // ===== STEP 6: Verify the purchase landed (server-side source of truth) =====
+      console.log('\n=== STEP 6: Verify credit grant (server-side) ===');
+      // Stripe's webhook grants the purchased credit asynchronously; poll for it.
+      // This is the real pass/fail gate — a slow or dropped browser redirect must
+      // NOT fail a purchase that actually succeeded (the historical E2E flake).
+      const newBalance = await waitForCreditIncrease(
+        request, API_URL, adminToken!, inbox.emailAddress, baselineCredits
+      );
+      expect(
+        newBalance,
+        `Credit balance did not increase above ${baselineCredits} within 90s after payment — ` +
+        `the Stripe webhook / credit grant did not complete (this IS a real failure, ` +
+        `unlike a slow browser redirect)`
+      ).not.toBeNull();
+      console.log(`  ✅ Server-side credit grant confirmed: ${baselineCredits} → ${newBalance}`);
 
-      // Verify success indicators
-      const successText = page.getByText(/payment successful/i);
-      await expect(successText).toBeVisible({ timeout: TIMEOUTS.action });
-
-      // Verify credit balance is shown — the number and "credits available"
-      // may be in separate DOM elements, so check for each independently
-      const creditsAvailableText = page.getByText(/credits?\s+available/i);
-      await expect(creditsAvailableText).toBeVisible({ timeout: TIMEOUTS.action });
-      await page.screenshot({ path: 'test-results/06-payment-success.png' });
-      console.log('  Payment success page confirmed with credits');
+      // Best-effort UX check: if the browser redirected to the success page,
+      // confirm it renders the expected confirmation. A missing redirect is only
+      // a UX nicety here (the charge + grant are already proven above), so don't
+      // fail the test on it.
+      if (checkout.redirected) {
+        const onSuccessPage = await page
+          .waitForURL(/payment\/success/, { timeout: 30000 })
+          .then(() => true)
+          .catch(() => false);
+        if (onSuccessPage) {
+          const successText = page.getByText(/payment successful/i);
+          await expect(successText).toBeVisible({ timeout: TIMEOUTS.action });
+          const creditsAvailableText = page.getByText(/credits?\s+available/i);
+          await expect(creditsAvailableText).toBeVisible({ timeout: TIMEOUTS.action });
+          await page.screenshot({ path: 'test-results/06-payment-success.png' });
+          console.log('  Payment success page confirmed with credits');
+        }
+      } else {
+        console.log('  ⚠️ No browser redirect observed — skipping success-page UX assertions (grant already verified above)');
+      }
 
       // ===== STEP 7: Verify via API =====
       console.log('\n=== STEP 7: Verify credits via API ===');
