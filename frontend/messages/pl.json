@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Automatycznie poprawione przez nasz system z \"{original}\". Czas został oszacowany, więc odtwórz tę linijkę i w razie potrzeby dostosuj synchronizację słów.",
       "longGapWarning": "{seconds} s przerwy przed następnym słowem — często oznacza to przypadkowe, przedwczesne słowo (np. nadmiarowe \"i\"). Kliknij, aby odtworzyć od tego miejsca.",
       "longWordWarning": "To słowo trwa {seconds} s — nietypowo długo. Odtwórz linijkę i sprawdź, czy jej czas zakończenia nie nakłada się na partię instrumentalną.",
-      "playFromGap": "Odtwórz od końca tej przerwy"
+      "playFromGap": "Odtwórz od końca tej przerwy",
+      "editSegment": "Edytuj segment {index}",
+      "untimedSegment": "Brak synchronizacji słów — kliknij, aby edytować",
+      "waveforms": "Fale dźwiękowe"
     },
     "editActionBar": {
       "reset": "Resetuj",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Uruchamiamy serwer kodujący — może to potrwać kilka minut. Poczekaj chwilę!",
       "audioLabel": "Audio:",
       "audioOriginal": "Oryginał (z wokalem)",
-      "backingVocalsWaveformHint": "Chórki zachowane w wersji instrumentalnej — kliknij, aby usłyszeć ten fragment.",
       "audioInstrumental": "Wersja instrumentalna",
       "audioInstrumentalBacking": "Wersja instrumentalna + chórki",
       "audioInstrumentalClean": "Czysta wersja instrumentalna",
       "audioInstrumentalPillBacking": "Instrumentalny (z chórkami)",
-      "audioInstrumentalPillClean": "Instrumentalny (czysty)"
+      "audioInstrumentalPillClean": "Instrumentalny (czysty)",
+      "backingVocalsWaveformKept": "Chórki zachowane w podkładzie instrumentalnym — kliknij, aby ich posłuchać.",
+      "backingVocalsWaveformRemoved": "Chórki, które usuwa czysty podkład instrumentalny — kliknij, aby posłuchać, co usuwasz."
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Przejdź do sprawdzania podkładu",
         "saving": "Zapisywanie...",
         "completeTrack": "Ukończ utwór",
-        "autoInstrumentalClean": "Użyjemy czystego podkładu instrumentalnego (bez chórków) dla tego utworu.",
+        "autoInstrumentalClean": "Czysty podkład instrumentalny usuwa chórki pokazane poniżej. Najpierw ich posłuchaj — jeśli brzmią dobrze, wybierz powyżej opcję „Podkład instrumentalny + chórki”, aby je zachować.",
         "previewTitle": "Podgląd wideo",
-        "autoInstrumentalCleanChosen": "Wybrałeś/aś czysty podkład instrumentalny (bez chórków) dla tego utworu.",
+        "autoInstrumentalCleanChosen": "Wybrano czysty podkład instrumentalny, który usuwa chórki pokazane poniżej. Najpierw ich posłuchaj — jeśli brzmią dobrze, wybierz powyżej opcję „Podkład instrumentalny + chórki”, aby je zachować.",
         "advancedModeClean": "Tryb zaawansowany (sprawdź lub prześlij własny podkład instrumentalny)",
         "finalChoiceLabel": "W Twoim wideo karaoke wykorzystamy:",
         "recommended": "zalecane",

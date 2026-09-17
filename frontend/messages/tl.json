@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Na-auto-correct ng aming system mula sa \"{original}\". Tinantya ang timing, kaya i-play ang linyang ito at i-adjust ang timing ng salita kung kinakailangan.",
       "longGapWarning": "{seconds}s na puwang bago ang susunod na salita — kadalasang isang ligaw na maagang salita (hal. isang phantom na \"and\"). I-click upang i-play mula rito.",
       "longWordWarning": "Tumatagal ang salitang ito ng {seconds}s — masyadong mahaba. I-play ang linya at suriin kung ang oras ng pagtatapos nito ay hindi umabot sa instrumental.",
-      "playFromGap": "I-play mula sa dulo ng puwang na ito"
+      "playFromGap": "I-play mula sa dulo ng puwang na ito",
+      "editSegment": "I-edit ang segment {index}",
+      "untimedSegment": "Walang timing ng salita — i-click para i-edit",
+      "waveforms": "Mga waveform"
     },
     "editActionBar": {
       "reset": "I-reset",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Sinisimulan ang encoding server — maaari itong tumagal ng ilang minuto. Konting hintay lang!",
       "audioLabel": "Audio:",
       "audioOriginal": "Orihinal (may vocals)",
-      "backingVocalsWaveformHint": "Pinanatili ang backing vocals sa instrumental — i-click para mapakinggan ang bahaging ito.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + backing vocals",
       "audioInstrumentalClean": "Malinis na instrumental",
       "audioInstrumentalPillBacking": "Instrumental (may kasamang backing vocals)",
-      "audioInstrumentalPillClean": "Instrumental (malinis)"
+      "audioInstrumentalPillClean": "Instrumental (malinis)",
+      "backingVocalsWaveformKept": "Mga backing vocals na pinanatili sa instrumental — i-click para mapakinggan.",
+      "backingVocalsWaveformRemoved": "Mga backing vocals na tinatanggal ng clean instrumental — i-click para mapakinggan kung ano ang mawawala."
     },
     "gapNavigator": {
       "previousGap": "Nakaraang gap (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Magpatuloy sa Instrumental Review",
         "saving": "Sina-save...",
         "completeTrack": "Kumpletuhin ang Track",
-        "autoInstrumentalClean": "Gagamitin namin ang clean instrumental (walang mga backing vocal) para sa track na ito.",
+        "autoInstrumentalClean": "Tinatanggal ng clean instrumental ang mga backing vocals na ipinapakita sa ibaba. Pakinggan mo muna — kung maganda ang tunog, lumipat sa “Instrumental + backing vocals” sa itaas para mapanatili ang mga ito.",
         "previewTitle": "I-preview ang Video",
-        "autoInstrumentalCleanChosen": "Pinili mo ang clean instrumental (walang mga backing vocal) para sa track na ito.",
+        "autoInstrumentalCleanChosen": "Pinili mo ang clean instrumental, na nagtatanggal sa mga backing vocals na ipinapakita sa ibaba. Pakinggan mo muna — kung maganda ang tunog, lumipat sa “Instrumental + backing vocals” sa itaas para mapanatili ang mga ito.",
         "advancedModeClean": "Advanced mode (i-review o mag-upload ng custom na instrumental)",
         "finalChoiceLabel": "Gagamitin sa iyong karaoke video ang:",
         "recommended": "inirerekomenda",

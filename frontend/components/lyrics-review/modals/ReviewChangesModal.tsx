@@ -108,10 +108,11 @@ export default function ReviewChangesModal({
   const selected: 'clean' | 'with_backing' =
     currentSelection ?? recommendedSelection ?? (hasBackingStem ? 'with_backing' : 'clean')
 
-  // Only offer the backing waveform (which clicks through to the backing stem)
-  // when that stem is playable and the reviewer is currently keeping backing.
+  // Always show the backing-vocals waveform whenever a playable backing stem exists — even
+  // when "clean" is selected — so the reviewer can see (and click to hear) the backing vocals
+  // they'd be discarding, rather than accepting the clean default sight-unseen.
   const showBackingWaveform =
-    !reviewInstrumentalAnyway && selected === 'with_backing' && hasBackingStem && !!getWaveformData
+    !reviewInstrumentalAnyway && hasBackingStem && !!getWaveformData
 
   const chooseInstrumental = (choice: 'clean' | 'with_backing') => {
     onToggleReviewInstrumental?.(false)
@@ -251,6 +252,7 @@ export default function ReviewChangesModal({
                   <BackingVocalsWaveform
                     getWaveformData={getWaveformData}
                     currentTime={previewTime}
+                    kept={selected === 'with_backing'}
                     onSeek={(time) => previewRef.current?.auditionInstrumental('with_backing', time)}
                   />
                 )}

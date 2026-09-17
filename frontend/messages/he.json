@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "תוקן אוטומטית על ידי המערכת שלנו במקום \"{original}\". התזמון משוער, לכן נגן את השורה הזו והתאם את תזמון המילים במידת הצורך.",
       "longGapWarning": "פער של {seconds} שניות לפני המילה הבאה — לרוב מדובר במילה מיותרת (למשל \"ו-\" שגויה). לחץ כדי לנגן מכאן.",
       "longWordWarning": "המילה הזו נמשכת {seconds} שניות — זמן ארוך מהרגיל. נגן את השורה ובדוק שזמן הסיום שלה לא גולש לקטע האינסטרומנטלי.",
-      "playFromGap": "נגן מסוף הפער הזה"
+      "playFromGap": "נגן מסוף הפער הזה",
+      "editSegment": "עריכת מקטע {index}",
+      "untimedSegment": "ללא תזמון מילים — לחצו לעריכה",
+      "waveforms": "צורות גל"
     },
     "editActionBar": {
       "reset": "אפס",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "מפעילים שרת קידוד — זה עשוי לקחת כמה דקות. הישאר איתנו!",
       "audioLabel": "שמע:",
       "audioOriginal": "מקורי (עם שירה)",
-      "backingVocalsWaveformHint": "קולות רקע נשמרו בגרסה האינסטרומנטלית — לחצו כדי לשמוע חלק זה.",
       "audioInstrumental": "אינסטרומנטלי",
       "audioInstrumentalBacking": "אינסטרומנטלי + קולות רקע",
       "audioInstrumentalClean": "אינסטרומנטלי נקי",
       "audioInstrumentalPillBacking": "אינסטרומנטלי (כולל קולות רקע)",
-      "audioInstrumentalPillClean": "אינסטרומנטלי (נקי)"
+      "audioInstrumentalPillClean": "אינסטרומנטלי (נקי)",
+      "backingVocalsWaveformKept": "קולות רקע שנשמרו בפלייבק — לחצו כדי לשמוע אותם.",
+      "backingVocalsWaveformRemoved": "קולות רקע שהפלייבק הנקי מסיר — לחצו כדי לשמוע על מה אתם מוותרים."
     },
     "gapNavigator": {
       "previousGap": "פער קודם (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "המשך לבדיקת פלייבק",
         "saving": "שומר...",
         "completeTrack": "השלמת הרצועה",
-        "autoInstrumentalClean": "נשתמש בגרסה האינסטרומנטלית הנקייה (ללא קולות רקע) לרצועה זו.",
+        "autoInstrumentalClean": "הפלייבק הנקי מסיר את קולות הרקע המוצגים למטה. כדאי להאזין קודם — אם הם נשמעים טוב, אפשר להחליף ל-\"פלייבק + קולות רקע\" למעלה כדי לשמור אותם.",
         "previewTitle": "תצוגה מקדימה של הסרטון",
-        "autoInstrumentalCleanChosen": "בחרתם בגרסה האינסטרומנטלית הנקייה (ללא קולות רקע) לרצועה זו.",
+        "autoInstrumentalCleanChosen": "בחרתם בפלייבק הנקי, שמסיר את קולות הרקע המוצגים למטה. כדאי להאזין קודם — אם הם נשמעים טוב, אפשר להחליף ל-\"פלייבק + קולות רקע\" למעלה כדי לשמור אותם.",
         "advancedModeClean": "מצב מתקדם (סקירה או העלאת פלייבק מותאם אישית)",
         "finalChoiceLabel": "סרטון הקריוקי שלך יכלול:",
         "recommended": "מומלץ",

@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "\"{original}\" kelimesi sistemimiz tarafından otomatik düzeltildi. Zamanlama tahmini olarak belirlendi, bu yüzden bu satırı oynat ve gerekirse kelime zamanlamalarını ayarla.",
       "longGapWarning": "Sonraki kelimeden önce {seconds} sn boşluk var — genellikle yanlışlıkla erken eklenmiş bir kelime (ör. fazladan bir \"ve\"). Buradan itibaren oynatmak için tıkla.",
       "longWordWarning": "Bu kelime {seconds} sn sürüyor — alışılmadık derecede uzun. Satırı oynat ve bitiş zamanının enstrümantal kısma taşmadığını kontrol et.",
-      "playFromGap": "Bu boşluğun sonundan itibaren oynat"
+      "playFromGap": "Bu boşluğun sonundan itibaren oynat",
+      "editSegment": "{index}. bölümü düzenle",
+      "untimedSegment": "Kelime zamanlaması yok — düzenlemek için tıkla",
+      "waveforms": "Dalga formları"
     },
     "editActionBar": {
       "reset": "Sıfırla",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Kodlama sunucusu başlatılıyor — bu birkaç dakika sürebilir. Lütfen bekle!",
       "audioLabel": "Ses:",
       "audioOriginal": "Orijinal (vokalli)",
-      "backingVocalsWaveformHint": "Geri vokaller enstrümantalde bırakıldı — bu kısmı duymak için tıkla.",
       "audioInstrumental": "Enstrümantal",
       "audioInstrumentalBacking": "Enstrümantal + geri vokaller",
       "audioInstrumentalClean": "Temiz enstrümantal",
       "audioInstrumentalPillBacking": "Enstrümantal (+ geri vokal)",
-      "audioInstrumentalPillClean": "Enstrümantal (temiz)"
+      "audioInstrumentalPillClean": "Enstrümantal (temiz)",
+      "backingVocalsWaveformKept": "Enstrümantalde korunan geri vokaller — dinlemek için tıkla.",
+      "backingVocalsWaveformRemoved": "Temiz enstrümantalin kaldırdığı geri vokaller — neleri çıkardığını dinlemek için tıkla."
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Enstrümantal İncelemesine İlerle",
         "saving": "Kaydediliyor...",
         "completeTrack": "Parçayı Tamamla",
-        "autoInstrumentalClean": "Bu parça için temiz enstrümantal (geri vokal yok) kullanacağız.",
+        "autoInstrumentalClean": "Temiz enstrümantal, aşağıda gösterilen geri vokalleri kaldırır. Önce bir dinle — kulağa hoş geliyorsa, onları korumak için yukarıdaki “Enstrümantal + geri vokaller” seçeneğine geç.",
         "previewTitle": "Videoyu Önizle",
-        "autoInstrumentalCleanChosen": "Bu parça için temiz enstrümantali (geri vokal yok) seçtin.",
+        "autoInstrumentalCleanChosen": "Aşağıda gösterilen geri vokalleri kaldıran temiz enstrümantali seçtin. Önce bir dinle — kulağa hoş geliyorsa, onları korumak için yukarıdaki “Enstrümantal + geri vokaller” seçeneğine geç.",
         "advancedModeClean": "Gelişmiş mod (gözden geçir veya kendi enstrümantalini yükle)",
         "finalChoiceLabel": "Karaoke videonda şunlar kullanılacak:",
         "recommended": "önerilen",

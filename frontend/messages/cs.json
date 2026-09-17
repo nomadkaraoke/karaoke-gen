@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Automaticky opraveno naším systémem z „{original}“. Časování bylo odhadnuto, takže si přehraj tento řádek a v případě potřeby uprav časování slov.",
       "longGapWarning": "Mezera {seconds} s před dalším slovem — často jde o zbloudilé slovo (např. přebytečné „a“). Kliknutím přehraješ odsud.",
       "longWordWarning": "Toto slovo trvá {seconds} s — neobvykle dlouho. Přehraj si řádek a zkontroluj, jestli jeho konec nezasahuje do instrumentální části.",
-      "playFromGap": "Přehrát od konce této mezery"
+      "playFromGap": "Přehrát od konce této mezery",
+      "editSegment": "Upravit segment {index}",
+      "untimedSegment": "Bez časování slov — klikni pro úpravu",
+      "waveforms": "Zvukové křivky"
     },
     "editActionBar": {
       "reset": "Resetovat",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Spouští se kódovací server — může to trvat pár minut. Vydrž!",
       "audioLabel": "Zvuk:",
       "audioOriginal": "Originál (se zpěvem)",
-      "backingVocalsWaveformHint": "Doprovodné vokály zůstaly v instrumentální verzi – kliknutím si tuto část poslechneš.",
       "audioInstrumental": "Instrumentální",
       "audioInstrumentalBacking": "Instrumentální verze + doprovodné vokály",
       "audioInstrumentalClean": "Čistá instrumentální verze",
       "audioInstrumentalPillBacking": "Instrumentální (plus doprovodné vokály)",
-      "audioInstrumentalPillClean": "Instrumentální (čistá)"
+      "audioInstrumentalPillClean": "Instrumentální (čistá)",
+      "backingVocalsWaveformKept": "Doprovodné vokály zachované v instrumentálce — klikni a poslechni si je.",
+      "backingVocalsWaveformRemoved": "Doprovodné vokály, které čistá instrumentálka odstraní — klikni a poslechni si, o co přijdeš."
     },
     "gapNavigator": {
       "previousGap": "Předchozí mezera (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Pokračovat na kontrolu instrumentálky",
         "saving": "Ukládání...",
         "completeTrack": "Dokončit skladbu",
-        "autoInstrumentalClean": "Pro tuto skladbu použijeme čistou instrumentální verzi (bez doprovodných vokálů).",
+        "autoInstrumentalClean": "Čistá instrumentálka odstraní doprovodné vokály zobrazené níže. Nejprve si je poslechni — pokud znějí dobře, přepni výše na „Instrumentálka + doprovodné vokály“, a tím je zachováš.",
         "previewTitle": "Náhled videa",
-        "autoInstrumentalCleanChosen": "Pro tuto skladbu máš zvolenou čistou instrumentální verzi (bez doprovodných vokálů).",
+        "autoInstrumentalCleanChosen": "Máš vybranou čistou instrumentálku, která odstraní doprovodné vokály zobrazené níže. Nejprve si je poslechni — pokud znějí dobře, přepni výše na „Instrumentálka + doprovodné vokály“, a tím je zachováš.",
         "advancedModeClean": "Pokročilý režim (zkontrolovat nebo nahrát vlastní instrumentální verzi)",
         "finalChoiceLabel": "Ve tvém karaoke videu se použije:",
         "recommended": "doporučeno",

@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Automaticky opravené naším systémom z „{original}“. Načasovanie bolo odhadnuté, takže si prehraj tento riadok a v prípade potreby uprav načasovanie slov.",
       "longGapWarning": "Medzera {seconds} s pred ďalším slovom — často ide o predčasné slovo (napr. falošné „a“). Klikni pre prehratie odtiaľto.",
       "longWordWarning": "Toto slovo trvá {seconds} s — čo je nezvyčajne dlho. Prehraj si riadok a skontroluj, či jeho koniec nezasahuje do inštrumentálnej pasáže.",
-      "playFromGap": "Prehrať od konca tejto medzery"
+      "playFromGap": "Prehrať od konca tejto medzery",
+      "editSegment": "Uprav segment {index}",
+      "untimedSegment": "Žiadne časovanie slov — klikni pre úpravu",
+      "waveforms": "Zvukové vlny"
     },
     "editActionBar": {
       "reset": "Obnoviť",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Spúšťa sa kódovací server — môže to trvať niekoľko minút. Vydrž!",
       "audioLabel": "Audio:",
       "audioOriginal": "Originál (so spevom)",
-      "backingVocalsWaveformHint": "Sprievodné vokály ponechané v inštrumentálnej verzii — klikni a vypočuj si túto časť.",
       "audioInstrumental": "Inštrumentálna",
       "audioInstrumentalBacking": "Inštrumentál + sprievodné vokály",
       "audioInstrumentalClean": "Čistý inštrumentál",
       "audioInstrumentalPillBacking": "Inštrumentál (so sprievodnými vokálmi)",
-      "audioInstrumentalPillClean": "Inštrumentál (čistý)"
+      "audioInstrumentalPillClean": "Inštrumentál (čistý)",
+      "backingVocalsWaveformKept": "Sprievodné vokály ponechané v inštrumentáli — klikni a vypočuj si ich.",
+      "backingVocalsWaveformRemoved": "Sprievodné vokály, ktoré čistý inštrumentál odstraňuje — klikni a vypočuj si, čo by sa vynechalo."
     },
     "gapNavigator": {
       "previousGap": "Predchádzajúca medzera (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Pokračovať na kontrolu inštrumentálky",
         "saving": "Ukladá sa...",
         "completeTrack": "Dokončiť skladbu",
-        "autoInstrumentalClean": "Pre túto skladbu použijeme čistú inštrumentálnu verziu (bez sprievodných vokálov).",
+        "autoInstrumentalClean": "Čistý inštrumentál odstraňuje sprievodné vokály zobrazené nižšie. Najprv si ich vypočuj — ak znejú dobre, prepni vyššie na „Inštrumentál + sprievodné vokály“, aby sa zachovali.",
         "previewTitle": "Náhľad videa",
-        "autoInstrumentalCleanChosen": "Pre túto skladbu máš zvolenú čistú inštrumentálnu verziu (bez sprievodných vokálov).",
+        "autoInstrumentalCleanChosen": "Máš vybratý čistý inštrumentál, ktorý odstraňuje sprievodné vokály zobrazené nižšie. Najprv si ich vypočuj — ak znejú dobre, prepni vyššie na „Inštrumentál + sprievodné vokály“, aby sa zachovali.",
         "advancedModeClean": "Pokročilý režim (skontroluj alebo nahraj vlastnú inštrumentálnu verziu)",
         "finalChoiceLabel": "V tvojom karaoke videu sa použije:",
         "recommended": "odporúčané",

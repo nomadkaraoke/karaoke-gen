@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Autokorrigerat av vårt system från \"{original}\". Tajmingen är uppskattad, så spela upp den här raden och justera ordens tajming om det behövs.",
       "longGapWarning": "{seconds} s mellanrum före nästa ord — ofta ett felplacerat tidigt ord (t.ex. ett extra \"och\"). Klicka för att spela upp härifrån.",
       "longWordWarning": "Det här ordet är {seconds} s långt — ovanligt länge. Spela upp raden och kontrollera att sluttiden inte överlappar med musiken.",
-      "playFromGap": "Spela upp från slutet av detta mellanrum"
+      "playFromGap": "Spela upp från slutet av detta mellanrum",
+      "editSegment": "Redigera segment {index}",
+      "untimedSegment": "Ingen ordtajming — klicka för att redigera",
+      "waveforms": "Vågformer"
     },
     "editActionBar": {
       "reset": "Återställ",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Startar en kodningsserver — detta kan ta ett par minuter. Häng kvar!",
       "audioLabel": "Ljud:",
       "audioOriginal": "Original (med sång)",
-      "backingVocalsWaveformHint": "Bakgrundssången finns kvar i instrumentalen — klicka för att höra den här delen.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + bakgrundssång",
       "audioInstrumentalClean": "Ren instrumental",
       "audioInstrumentalPillBacking": "Instrumental (plus bakgrundssång)",
-      "audioInstrumentalPillClean": "Instrumental (ren)"
+      "audioInstrumentalPillClean": "Instrumental (ren)",
+      "backingVocalsWaveformKept": "Bakgrundssång som behålls i instrumentalversionen — klicka för att höra den.",
+      "backingVocalsWaveformRemoved": "Bakgrundssång som den rena instrumentalversionen tar bort — klicka för att höra vad du väljer bort."
     },
     "gapNavigator": {
       "previousGap": "Föregående lucka (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Fortsätt till granskning av instrumental",
         "saving": "Sparar...",
         "completeTrack": "Slutför spåret",
-        "autoInstrumentalClean": "Vi använder den rena instrumentalversionen (utan bakgrundssång) för det här spåret.",
+        "autoInstrumentalClean": "Den rena instrumentalversionen tar bort bakgrundssången som visas nedan. Lyssna först — om den låter bra, byt till ”Instrumental + bakgrundssång” ovan för att behålla den.",
         "previewTitle": "Förhandsgranska video",
-        "autoInstrumentalCleanChosen": "Du har valt den rena instrumentalversionen (utan bakgrundssång) för det här spåret.",
+        "autoInstrumentalCleanChosen": "Du har valt den rena instrumentalversionen, som tar bort bakgrundssången som visas nedan. Lyssna först — om den låter bra, byt till ”Instrumental + bakgrundssång” ovan för att behålla den.",
         "advancedModeClean": "Avancerat läge (granska eller ladda upp ett eget instrumentalspår)",
         "finalChoiceLabel": "Din karaokevideo kommer att använda:",
         "recommended": "rekommenderas",
