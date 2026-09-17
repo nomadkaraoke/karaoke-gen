@@ -5,6 +5,7 @@ import concurrent.futures
 import logging
 import os
 import json
+import threading
 from typing import Optional, BinaryIO, Any, Dict
 from pathlib import Path
 from google.cloud import storage
@@ -31,10 +32,19 @@ logger = logging.getLogger(__name__)
 # or the request handlers. Callers treat signing as best-effort (see the review
 # endpoint's fail-soft handling).
 SIGNED_URL_TIMEOUT_S = float(os.getenv("SIGNED_URL_TIMEOUT_S", "12"))
+_SIGNING_MAX_WORKERS = int(os.getenv("SIGNED_URL_MAX_WORKERS", "8"))
 _SIGNING_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
-    max_workers=int(os.getenv("SIGNED_URL_MAX_WORKERS", "8")),
+    max_workers=_SIGNING_MAX_WORKERS,
     thread_name_prefix="gcs-sign",
 )
+# Bounded admission in front of the executor. If every worker is blocked on a stalled
+# signBlob, the executor's queue is unbounded — a burst of callers would each wait the
+# full SIGNED_URL_TIMEOUT_S then cancel a still-queued future. Cap total in-flight
+# (running + queued) so, once saturated, extra callers fail *immediately* instead of
+# waiting out the budget, and the queue can't grow without bound. Slack above the
+# worker count absorbs normal bursts (a job-detail load signs ~20 URLs concurrently).
+_SIGNING_MAX_INFLIGHT = int(os.getenv("SIGNED_URL_MAX_INFLIGHT", str(_SIGNING_MAX_WORKERS * 6)))
+_SIGNING_SLOTS = threading.BoundedSemaphore(_SIGNING_MAX_INFLIGHT)
 
 
 class SignedUrlTimeout(Exception):
@@ -236,7 +246,20 @@ class StorageService:
 
             return blob.generate_signed_url(**kwargs)
 
+        # Bounded admission: refuse immediately when signing is saturated (all workers
+        # stalled + queue full) instead of enqueuing work that would just time out.
+        if not _SIGNING_SLOTS.acquire(blocking=False):
+            logger.error(
+                f"Signing saturated (>{_SIGNING_MAX_INFLIGHT} in flight) — refusing signed "
+                f"{method} URL for {blob_path}; IAM signBlob likely stalled"
+            )
+            raise SignedUrlTimeout(f"Signing saturated for {blob_path}")
+
         future = _SIGNING_EXECUTOR.submit(_sign)
+        # Release the slot whenever the work settles — success, error, OR cancellation
+        # (cancelling a still-queued future fires done callbacks, so queued-but-abandoned
+        # work frees its slot; a running future frees it only when it actually returns).
+        future.add_done_callback(lambda _f: _SIGNING_SLOTS.release())
         try:
             url = future.result(timeout=SIGNED_URL_TIMEOUT_S)
             logger.info(f"Generated signed {method} URL for {blob_path}")

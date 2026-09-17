@@ -603,6 +603,36 @@ class TestStorageServiceSigningTimeout:
 
     @patch("backend.services.storage_service.storage.Client")
     @patch("backend.services.storage_service.settings")
+    def test_signing_refuses_immediately_when_saturated(
+        self, mock_settings, mock_client_class, monkeypatch
+    ):
+        """When admission is saturated, refuse at submit time — don't enqueue/wait."""
+        import threading
+
+        from backend.services.storage_service import SignedUrlTimeout, StorageService
+
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+        mock_blob = Mock()
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_client_class.return_value.bucket.return_value = mock_bucket
+
+        # Fully-acquired semaphore = no free admission slots.
+        full = threading.BoundedSemaphore(1)
+        assert full.acquire(blocking=False)
+        monkeypatch.setattr("backend.services.storage_service._SIGNING_SLOTS", full)
+
+        with patch("google.auth.default") as mock_auth_default:
+            mock_auth_default.return_value = (Mock(spec=[]), "test-project")
+            with pytest.raises(SignedUrlTimeout):
+                StorageService().generate_signed_url("jobs/abc/review-audio/song.ogg")
+
+        # Refused before any signing work was attempted.
+        mock_blob.generate_signed_url.assert_not_called()
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
     def test_signing_returns_url_normally(self, mock_settings, mock_client_class):
         """Sanity: the executor path still returns a normal (fast) signed URL."""
         from backend.services.storage_service import StorageService

@@ -26,12 +26,15 @@ job, not just one.
 gcloud run services update karaoke-backend --region=us-central1 --project=nomadkaraoke \
   --update-labels=forcerestart=$(date +%s)
 ```
-Non-destructive (config unchanged, new revision). Then verify signing resumed:
+Non-destructive (config unchanged, new revision). Then verify signing resumed
+(replace `JOB_ID` with any in-review job id — the URL is quoted so no placeholder
+angle-brackets reach the shell):
 ```bash
 # should return 200 fast, not hang
+JOB_ID="d93747cd"   # any in-review job
 curl -s -m 30 -o /dev/null -w "%{http_code} %{time_total}s\n" \
   -H "Authorization: Bearer $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d, -f1)" \
-  https://api.nomadkaraoke.com/api/review/<some-in-review-job>/correction-data
+  "https://api.nomadkaraoke.com/api/review/${JOB_ID}/correction-data"
 # and check signing is logging again
 gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND jsonPayload.message:"Generated signed"' \
   --project=nomadkaraoke --freshness=3m --limit=3 --format="value(timestamp,jsonPayload.message)"
@@ -39,10 +42,11 @@ gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.serv
 If a restart doesn't clear it, the IAM Credentials API is genuinely degraded in the
 region — wait it out / open a GCP ticket.
 
-**Durable mitigation (shipped v0.227.1):** every sign now runs on a dedicated bounded
-thread pool with a wall-clock budget (`SIGNED_URL_TIMEOUT_S`, default 12s) in
-`storage_service._generate_signed_url_internal` — a stall raises `SignedUrlTimeout`
-fast instead of hanging, and can't starve GCS data-plane reads or the request pool.
+**Durable mitigation (shipped v0.228.1):** every sign now runs on a dedicated bounded
+thread pool with a wall-clock budget (`SIGNED_URL_TIMEOUT_S`, default 12s) and bounded
+admission (`SIGNED_URL_MAX_INFLIGHT`) in `storage_service._generate_signed_url_internal`
+— a stall raises `SignedUrlTimeout` fast instead of hanging, saturation is refused
+immediately rather than queued, and neither can starve GCS data-plane reads or the request pool.
 The review endpoints treat audio-URL signing as best-effort (return the option with a
 null `audio_url`; the frontend re-fetches via `GET /{job_id}/instrumental-urls`), so
 the lyrics page loads even during a signing stall.
