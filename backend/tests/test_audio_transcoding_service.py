@@ -136,6 +136,26 @@ class TestGetReviewAudioUrl:
             "jobs/abc/review-audio/song.ogg", 120
         )
 
+    def test_signed_url_timeout_short_circuits_fallbacks(self):
+        """A signing stall must NOT trigger the FLAC/cache fallbacks (they'd stall too).
+
+        On a cache hit the first sign is the only sign attempted; a SignedUrlTimeout
+        propagates immediately so the caller degrades fast.
+        """
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+        from backend.services.storage_service import SignedUrlTimeout
+
+        mock_storage = Mock()
+        mock_storage.file_exists.return_value = True  # cache hit
+        mock_storage.generate_signed_url.side_effect = SignedUrlTimeout("stalled")
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        with pytest.raises(SignedUrlTimeout):
+            service.get_review_audio_url("jobs/abc/input/song.flac")
+
+        # Exactly one sign attempt — no fallback re-signing.
+        assert mock_storage.generate_signed_url.call_count == 1
+
     def test_falls_back_to_flac_on_error(self):
         """On transcoding error with no cache, fall back to original FLAC signed URL."""
         from backend.services.audio_transcoding_service import AudioTranscodingService

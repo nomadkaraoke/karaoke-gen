@@ -383,6 +383,40 @@ class TestInstrumentalUrlsRefresh:
         options = response.json()["instrumental_options"]
         assert [o["id"] for o in options] == ["clean"]
 
+    def test_signing_stall_degrades_to_null_url_not_500(self, test_client):
+        """A stalled IAM signBlob must not fail the refresh — the stem is returned
+        with a null audio_url so the client retries, rather than a 500/hang
+        (incident 2026-09-17)."""
+        from backend.services.storage_service import SignedUrlTimeout
+
+        mock_job = MagicMock()
+        mock_job.job_id = "job1"
+        mock_job.file_urls = {
+            "stems": {
+                "instrumental_clean": "jobs/job1/stems/instrumental_clean.flac",
+                "instrumental_with_backing": "jobs/job1/stems/instrumental_with_backing.flac",
+            }
+        }
+
+        async def stalled_sign(src, expiration_minutes=120):
+            # 'clean' signs fine; 'with_backing' hits the stalled signer.
+            if "with_backing" in src:
+                raise SignedUrlTimeout("stalled")
+            return f"https://signed/{src}"
+
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"), \
+                patch("backend.api.routes.review._dev_audio_proxy_enabled", return_value=False), \
+                patch("backend.services.audio_transcoding_service.AudioTranscodingService.get_review_audio_url_async",
+                      side_effect=stalled_sign):
+            mock_jm.return_value.get_job.return_value = mock_job
+            response = test_client.get("/api/review/job1/instrumental-urls")
+
+        assert response.status_code == 200
+        options = {o["id"]: o["audio_url"] for o in response.json()["instrumental_options"]}
+        assert options["clean"].endswith("instrumental_clean.flac")
+        assert options["with_backing"] is None
+
     def test_missing_job_returns_404(self, test_client):
         with patch("backend.api.routes.review.JobManager") as mock_jm, \
                 patch("backend.api.routes.review.StorageService"):

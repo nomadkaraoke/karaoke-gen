@@ -550,6 +550,72 @@ class TestStorageServiceSignedUrls:
 
 
 
+class TestStorageServiceSigningTimeout:
+    """A stalled IAM signBlob must fail fast, not hang the caller (incident 2026-09-17)."""
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_signing_raises_signed_url_timeout_when_stalled(
+        self, mock_settings, mock_client_class, monkeypatch
+    ):
+        import threading
+        import time
+
+        from backend.services.storage_service import SignedUrlTimeout, StorageService
+
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+
+        # Simulate a stalled signBlob: block until released, well past the timeout.
+        release = threading.Event()
+
+        def _hang(*_args, **_kwargs):
+            release.wait(timeout=5)
+            return "https://storage.googleapis.com/never-returned-in-time"
+
+        mock_blob = Mock()
+        mock_blob.generate_signed_url.side_effect = _hang
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_client_class.return_value.bucket.return_value = mock_bucket
+
+        # Tiny budget so the test is fast.
+        monkeypatch.setattr("backend.services.storage_service.SIGNED_URL_TIMEOUT_S", 0.2)
+
+        try:
+            with patch("google.auth.default") as mock_auth_default:
+                mock_auth_default.return_value = (Mock(spec=[]), "test-project")
+                started = time.monotonic()
+                with pytest.raises(SignedUrlTimeout):
+                    StorageService().generate_signed_url("jobs/abc/review-audio/song.ogg")
+                elapsed = time.monotonic() - started
+        finally:
+            release.set()  # let the leaked signing thread finish cleanly
+
+        # Must bail near the budget, not wait for the underlying stall.
+        assert elapsed < 2.0, f"signing did not fail fast (took {elapsed:.2f}s)"
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_signing_returns_url_normally(self, mock_settings, mock_client_class):
+        """Sanity: the executor path still returns a normal (fast) signed URL."""
+        from backend.services.storage_service import StorageService
+
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+        mock_blob = Mock()
+        mock_blob.generate_signed_url.return_value = "https://storage.googleapis.com/ok"
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_client_class.return_value.bucket.return_value = mock_bucket
+
+        with patch("google.auth.default") as mock_auth_default:
+            mock_auth_default.return_value = (Mock(spec=[]), "test-project")
+            url = StorageService().generate_signed_url("jobs/abc/review-audio/song.ogg")
+
+        assert url == "https://storage.googleapis.com/ok"
+
+
 class TestStorageServiceEmulatorUrls:
     """Test emulator URL fallback when STORAGE_EMULATOR_HOST is set (local dev)."""
 
