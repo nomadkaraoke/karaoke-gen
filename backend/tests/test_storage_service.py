@@ -553,6 +553,12 @@ class TestStorageServiceSignedUrls:
 class TestStorageServiceSigningTimeout:
     """A stalled IAM signBlob must fail fast, not hang the caller (incident 2026-09-17)."""
 
+    @pytest.fixture(autouse=True)
+    def _no_emulator_env(self, monkeypatch):
+        # In CI STORAGE_EMULATOR_HOST is set, which would divert signing into the
+        # emulator URL fallback and never exercise the timeout/executor path.
+        monkeypatch.delenv("STORAGE_EMULATOR_HOST", raising=False)
+
     @patch("backend.services.storage_service.storage.Client")
     @patch("backend.services.storage_service.settings")
     def test_signing_raises_signed_url_timeout_when_stalled(
