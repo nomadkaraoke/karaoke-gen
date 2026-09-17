@@ -101,11 +101,17 @@ async def notify_community_publish(job_id: str, youtube_url: str) -> Optional[st
 
 
 async def reconcile_community_publishes() -> Dict[str, Any]:
-    """Safety net / backfill: find community picks stuck at ``in_progress`` whose
-    job is actually live on YouTube, and run the publish transition for each.
+    """Safety net / backfill for the community publish fan-out. Two passes:
 
-    Covers picks that were published before the fan-out was wired into every
-    publish path (and any future path that forgets to call it). Fully idempotent.
+    1. Picks stuck at ``in_progress`` whose job is actually live on YouTube — run
+       the publish transition (covers picks published before the fan-out was wired
+       into every path, or any future path that forgets to call it).
+    2. Picks already ``published`` but with ``voters_notified == False`` — a voter
+       send failed (or raised) after the request was marked published, and no other
+       path retries them. Re-run the fan-out (idempotent; only un-notified voters
+       are re-emailed).
+
+    Fully idempotent — safe to call any time.
     """
     from backend.services.job_manager import JobManager
     from backend.services.song_request_service import get_song_request_service
@@ -115,6 +121,8 @@ async def reconcile_community_publishes() -> Dict[str, Any]:
 
     scanned = 0
     published = []
+
+    # Pass 1: in_progress picks whose job is live.
     for request in service.list_in_progress():
         scanned += 1
         if not request.job_id:
@@ -126,5 +134,21 @@ async def reconcile_community_publishes() -> Dict[str, Any]:
         if result_id:
             published.append({"request_id": result_id, "job_id": request.job_id, "youtube_url": url})
 
-    logger.info("community publish reconcile: scanned %d in_progress, published %d", scanned, len(published))
-    return {"scanned": scanned, "published": published}
+    # Pass 2: published picks whose voter fan-out never fully completed.
+    retried = 0
+    for request in service.list_published_unnotified():
+        scanned += 1
+        if not request.job_id:
+            continue
+        # Prefer the URL already recorded on the request; fall back to the job.
+        url = request.youtube_url or _youtube_url_for_job(job_manager.get_job(request.job_id))
+        if not url:
+            continue
+        if await notify_community_publish(request.job_id, url):
+            retried += 1
+
+    logger.info(
+        "community publish reconcile: scanned %d, published %d, retried-fanout %d",
+        scanned, len(published), retried,
+    )
+    return {"scanned": scanned, "published": published, "retried_fanout": retried}

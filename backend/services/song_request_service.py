@@ -397,6 +397,19 @@ class SongRequestService:
         ).limit(ACTIVE_FETCH_LIMIT)
         return [SongRequest(**doc.to_dict()) for doc in query.stream()]
 
+    def list_published_unnotified(self) -> list[SongRequest]:
+        """Published picks whose voter fan-out never fully completed
+        (``voters_notified == False``) — e.g. a send failed after the request was
+        already marked published. The reconcile job retries these; the per-voter
+        ``notified_voters`` guard keeps it from re-emailing anyone already reached.
+        """
+        query = self.db.collection(REQUESTS_COLLECTION).where(
+            filter=FieldFilter("status", "==", "published")
+        ).where(
+            filter=FieldFilter("voters_notified", "==", False)
+        ).limit(ACTIVE_FETCH_LIMIT)
+        return [SongRequest(**doc.to_dict()) for doc in query.stream()]
+
     def list_upvoters(self, request_id: str) -> list[str]:
         """Emails that up-voted this request (value > 0), oldest vote first.
 

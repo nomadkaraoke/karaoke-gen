@@ -9,19 +9,19 @@ Andrew asked whether we can see past community requests and whether our first re
 successfully got a video. Investigation (Firestore + `email_log`):
 
 - **Only 2 requests ever.** Both stuck at `status == "in_progress"`:
-  - `Maduk feat. Kye Sones – One Last Picture` — Sep 3 admin go-live test (`admin@`, job `741d6d65`, since deleted).
-  - `Sam Cooke and the Soul Stirrers – Wonderful` — **Sep 15, real user `tas041964@gmail.com`**, job `ebe83cd3`.
-- **First real user was fully served.** Job `ebe83cd3` completed, rendered all finals, and
-  published to YouTube (`MFu7t-F0VR0`, brand **NOMAD-1650**, GDrive + Dropbox). `email_log`
-  confirms magic-link → `action_reminder` (lyrics review) → `job_completion` emails all sent to
-  him; he emailed a thank-you. ✅ (He was notified via the **standard job-owner** path, not the
-  community fan-out.)
+  - Admin go-live test request — Sep 3 (submitted by `admin@`, job since deleted).
+  - A real community user's request — **Sep 15** (first genuine board user; PII kept out of this
+    public repo — see the private session record / Firestore for specifics).
+- **First real user was fully served.** The job completed, rendered all finals, and published to
+  YouTube (brand assigned, GDrive + Dropbox). `email_log` confirms magic-link → `action_reminder`
+  (lyrics review) → `job_completion` emails all sent to the requester; he emailed a thank-you. ✅
+  (He was notified via the **standard job-owner** path, not the community fan-out.)
 
 ### Root-cause bug found
 The community publish transition (`song_request_service.mark_published` + voter fan-out in
 `_notify_community_voters`) is invoked **only** inside `backend/workers/youtube_queue_processor.py`
-(the quota-managed `youtube_upload_queue` path). Job `ebe83cd3` got its YouTube URL via the
-**direct distribution path** during finalization (`processing_metadata.distribution.youtube_video_url`),
+(the quota-managed `youtube_upload_queue` path). The first real user's job got its YouTube URL via
+the **direct distribution path** during finalization (`processing_metadata.distribution.youtube_video_url`),
 which never enqueues to `youtube_upload_queue`. Result: `_notify_community_voters` never ran, so the
 request stayed `in_progress`, `youtube_url` stayed empty, `voters_notified` stayed `False`.
 
@@ -52,10 +52,10 @@ Impact today is minor (he was the only voter, and got the standard completion em
     is set. Locate that write and call the shared helper there (idempotent, so double-firing is safe).
 - Keep it idempotent so re-runs / both-paths-firing don't double-email.
 
-### Part B — Backfill Sam Cooke request
-- One-off script/`update`: mark request `2c289c39-…` `published`, set
-  `youtube_url=https://www.youtube.com/watch?v=MFu7t-F0VR0`. (No voter email needed — the sole voter
-  is the owner, already notified.) This makes it appear in the board's "Recently made" list.
+### Part B — Backfill the first real request
+- Run the reconcile endpoint (Part below) in prod to mark the stuck request `published` with its
+  YouTube URL. (No voter email needed — the sole voter is the owner, already notified.) This makes
+  it appear in the board's "Recently made" list.
 
 ### Part C — Admin history view (backend + frontend)
 - **Backend:** `GET /api/admin/community-requests` (admin-auth) returning ALL `song_requests`,

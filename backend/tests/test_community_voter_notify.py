@@ -130,6 +130,7 @@ async def test_reconcile_publishes_live_in_progress_requests():
     unpub = _req(id="r-unpub", job_id="j-unpub", voters_notified=True)
     nojob = _req(id="r-nojob", job_id=None)
     svc.list_in_progress.return_value = [live, unpub, nojob]
+    svc.list_published_unnotified.return_value = []
     # get_by_job_id (used inside notify_community_publish) resolves the live request.
     svc.get_by_job_id.side_effect = lambda jid: {"j-live": live}.get(jid)
 
@@ -148,4 +149,39 @@ async def test_reconcile_publishes_live_in_progress_requests():
     assert result["scanned"] == 3
     published_ids = {p["request_id"] for p in result["published"]}
     assert published_ids == {"r-live"}
+    assert result["retried_fanout"] == 0
     svc.mark_published.assert_called_once_with("r-live", "https://youtu.be/live")
+
+
+@pytest.mark.asyncio
+async def test_reconcile_retries_published_but_unnotified_fanout():
+    # A published pick whose voter fan-out never completed is retried using the
+    # URL already on the request (no job lookup needed).
+    svc = MagicMock()
+    svc.list_in_progress.return_value = []
+    stuck = _req(
+        id="r-stuck", job_id="j-stuck", status="published",
+        youtube_url="https://youtu.be/stuck", voters_notified=False,
+    )
+    svc.list_published_unnotified.return_value = [stuck]
+    svc.get_by_job_id.side_effect = lambda jid: {"j-stuck": stuck}.get(jid)
+    svc.list_upvoters.return_value = ["owner@x.com", "v2@x.com"]
+    notifier = MagicMock()
+    notifier.send_community_track_live_email = AsyncMock(return_value=True)
+
+    jm = MagicMock()
+    jm.get_job.return_value = None  # not needed — request already carries the URL
+
+    with patch.multiple(
+        "backend.services.song_request_service",
+        get_song_request_service=MagicMock(return_value=svc),
+    ), patch(
+        "backend.services.job_notification_service.get_job_notification_service",
+        MagicMock(return_value=notifier),
+    ), patch("backend.services.job_manager.JobManager", MagicMock(return_value=jm)):
+        result = await cp.reconcile_community_publishes()
+
+    assert result["retried_fanout"] == 1
+    # The un-notified voter (not the owner) gets emailed on the retry.
+    emailed = {c.kwargs["to_email"] for c in notifier.send_community_track_live_email.call_args_list}
+    assert emailed == {"v2@x.com"}
