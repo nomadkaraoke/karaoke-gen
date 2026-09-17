@@ -507,3 +507,130 @@ class TestWorkerLogEntryEdgeCases:
         # Should be ~30 days from now
         expected = datetime.now(timezone.utc) + timedelta(days=30)
         assert abs((entry.ttl_expiry - expected).total_seconds()) < 10
+
+
+class TestDocSizeRecovery:
+    """Self-healing when a job document hits Firestore's 1MB size limit.
+
+    A large legacy embedded ``worker_logs`` array (superseded by the logs
+    subcollection) can push an old job document to ~1MB, after which EVERY
+    write — including a customer submitting lyrics corrections — fails with
+    Firestore's "exceeds the maximum allowed size" 400. update_job /
+    update_job_status drop the deprecated array and retry once.
+    """
+
+    @pytest.fixture
+    def mock_db(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def firestore_service(self, mock_db):
+        with patch('backend.services.firestore_service.firestore') as mock_firestore:
+            mock_firestore.Client.return_value = mock_db
+            from backend.services.firestore_service import FirestoreService
+            service = FirestoreService()
+            service.db = mock_db
+            return service
+
+    @staticmethod
+    def _size_error():
+        return Exception(
+            "400 Document 'projects/nomadkaraoke/databases/(default)/documents/"
+            "jobs/d93747cd' cannot be written because its size (1,048,592 bytes) "
+            "exceeds the maximum allowed size of 1,048,576 bytes."
+        )
+
+    def test_update_job_recovers_by_clearing_worker_logs(self, firestore_service, mock_db):
+        doc_ref = MagicMock()
+        mock_db.collection.return_value.document.return_value = doc_ref
+        # payload write fails (too big), worker_logs delete succeeds, retry succeeds
+        doc_ref.update.side_effect = [self._size_error(), None, None]
+
+        firestore_service.update_job(
+            "d93747cd", {"state_data.corrected_lyrics": {"corrected_segment_count": 5}}
+        )
+
+        assert doc_ref.update.call_count == 3
+        # Second write clears the legacy embedded worker_logs array
+        delete_payload = doc_ref.update.call_args_list[1][0][0]
+        assert "worker_logs" in delete_payload
+        # Third write re-applies the caller's original field
+        retry_payload = doc_ref.update.call_args_list[2][0][0]
+        assert "state_data.corrected_lyrics" in retry_payload
+
+    def test_update_job_reraises_non_size_errors(self, firestore_service, mock_db):
+        doc_ref = MagicMock()
+        mock_db.collection.return_value.document.return_value = doc_ref
+        doc_ref.update.side_effect = Exception("PERMISSION_DENIED")
+
+        with pytest.raises(Exception, match="PERMISSION_DENIED"):
+            firestore_service.update_job("j", {"foo": "bar"})
+        # No recovery attempt for unrelated errors
+        assert doc_ref.update.call_count == 1
+
+    def test_worker_logs_write_does_not_recurse(self, firestore_service, mock_db):
+        """A write that is itself setting worker_logs must not self-clear+retry."""
+        doc_ref = MagicMock()
+        mock_db.collection.return_value.document.return_value = doc_ref
+        doc_ref.update.side_effect = self._size_error()
+
+        with pytest.raises(Exception, match="maximum allowed size"):
+            firestore_service.update_job("j", {"worker_logs": ["x"]})
+        assert doc_ref.update.call_count == 1
+
+    def test_update_job_status_recovers_by_clearing_worker_logs(self, firestore_service, mock_db):
+        doc_ref = MagicMock()
+        mock_db.collection.return_value.document.return_value = doc_ref
+        doc_ref.update.side_effect = [self._size_error(), None, None]
+
+        from backend.models.job import JobStatus
+        firestore_service.update_job_status("d93747cd", JobStatus.IN_REVIEW)
+
+        assert doc_ref.update.call_count == 3
+        delete_payload = doc_ref.update.call_args_list[1][0][0]
+        assert "worker_logs" in delete_payload
+
+
+class TestAppendWorkerLogRouting:
+    """Legacy dict-based append_worker_log must respect the subcollection flag
+    so it stops bloating the embedded worker_logs array."""
+
+    @pytest.fixture
+    def mock_db(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def firestore_service(self, mock_db):
+        with patch('backend.services.firestore_service.firestore') as mock_firestore:
+            mock_firestore.Client.return_value = mock_db
+            from backend.services.firestore_service import FirestoreService
+            service = FirestoreService()
+            service.db = mock_db
+            return service
+
+    def test_routes_to_subcollection_when_flag_on(self, firestore_service):
+        with patch('backend.services.firestore_service.settings') as mock_settings:
+            mock_settings.use_log_subcollection = True
+            with patch.object(firestore_service, 'append_log_to_subcollection') as mock_sub:
+                firestore_service.append_worker_log(
+                    "job123",
+                    {"timestamp": "t", "worker": "review", "level": "INFO", "message": "hi"},
+                )
+                mock_sub.assert_called_once()
+                entry = mock_sub.call_args[0][1]
+                assert entry.worker == "review"
+                assert entry.level == "INFO"
+                assert entry.message == "hi"
+
+    def test_uses_embedded_array_when_flag_off(self, firestore_service, mock_db):
+        doc_ref = MagicMock()
+        mock_db.collection.return_value.document.return_value = doc_ref
+        with patch('backend.services.firestore_service.settings') as mock_settings:
+            mock_settings.use_log_subcollection = False
+            with patch.object(firestore_service, 'append_log_to_subcollection') as mock_sub:
+                firestore_service.append_worker_log(
+                    "job123",
+                    {"timestamp": "t", "worker": "review", "level": "INFO", "message": "hi"},
+                )
+                mock_sub.assert_not_called()
+                doc_ref.update.assert_called_once()

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { Word } from '@/lib/lyrics-review/types'
+import { WordDecoration } from '@/lib/lyrics-review/utils/wordDecorations'
 import { cn } from '@/lib/utils'
 import { WaveformVisualizer } from './WaveformVisualizer'
 import { VocalsAudioDataLoaderContext } from './VocalsAudioDataLoader'
@@ -21,7 +22,24 @@ interface TimelineEditorProps {
   currentTime?: number
   onPlaySegment?: (time: number) => void
   showPlaybackIndicator?: boolean
+  /** Show the second-marker ruler band. Hidden in the compact Waveforms review rows. */
+  showRuler?: boolean
+  /** Fires once on drag release (mouse up after a move/resize). Lets inline callers
+      persist the final timing to history without committing on every mousemove. */
+  onCommit?: () => void
+  /** Per-word bar colour + AI-correction ghost text, keyed by word id (Waveforms mode).
+      When present, bars colour-code like the Advanced pills (anchor/gap/correction). */
+  wordDecorations?: Map<string, WordDecoration>
+  /** Compact layout for the inline Waveforms rows: no card chrome, tight heights, the
+      waveform doubles as the click-to-play target (no separate strip). */
+  compact?: boolean
+  /** Fires when a word bar is clicked (pressed and released without dragging). Used by the
+      Waveforms rows to open the Edit Segment modal, distinct from a drag which moves/resizes. */
+  onWordClick?: (index: number) => void
 }
+
+// Pointer travel (px) beyond which a press counts as a drag rather than a click.
+const DRAG_THRESHOLD_PX = 4
 
 export default function TimelineEditor({
   words,
@@ -33,8 +51,16 @@ export default function TimelineEditor({
   currentTime = 0,
   onPlaySegment,
   showPlaybackIndicator = true,
+  showRuler = true,
+  onCommit,
+  wordDecorations,
+  compact = false,
+  onWordClick,
 }: TimelineEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  // Whether the current press has moved past the drag threshold. Distinguishes a click
+  // (open the modal) from a drag (move/resize the word timing).
+  const hasDraggedRef = useRef(false)
   const [dragState, setDragState] = useState<{
     wordIndex: number
     type: 'move' | 'resize-left' | 'resize-right'
@@ -139,6 +165,7 @@ export default function TimelineEditor({
     const initialX = e.clientX - rect.left
     const initialTime = (initialX / rect.width) * viewDuration
 
+    hasDraggedRef.current = false
     setDragState({
       wordIndex,
       type,
@@ -154,6 +181,13 @@ export default function TimelineEditor({
     const rect = containerRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
     const width = rect.width
+
+    // Ignore sub-threshold jitter so a click (which opens the modal) doesn't nudge the
+    // timing; once the threshold is crossed the press is a drag for the rest of its life.
+    if (!hasDraggedRef.current) {
+      if (Math.abs(x - dragState.initialX) <= DRAG_THRESHOLD_PX) return
+      hasDraggedRef.current = true
+    }
 
     const currentWord = words[dragState.wordIndex]
     if (
@@ -221,7 +255,18 @@ export default function TimelineEditor({
     }
   }
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (fromLeave = false) => {
+    if (dragState) {
+      if (hasDraggedRef.current) {
+        // A real drag: persist the new timing.
+        onCommit?.()
+      } else if (!fromLeave) {
+        // A click (no drag): open the Edit Segment modal. Skipped when the pointer merely
+        // left the row, so leaving without releasing doesn't spuriously open the modal.
+        onWordClick?.(dragState.wordIndex)
+      }
+    }
+    hasDraggedRef.current = false
     setDragState(null)
   }
 
@@ -256,13 +301,24 @@ export default function TimelineEditor({
     onPlaySegment(clickedPosition)
   }
 
+  // Only reserve headroom for the ghost text on rows that actually have an AI correction,
+  // so uncorrected rows stay as tight as the Advanced view.
+  const hasGhostText = Boolean(
+    wordDecorations && Array.from(wordDecorations.values()).some((d) => d.originalText)
+  )
+  // Compact rows tuck the waveform directly under the word bars and use it as the click
+  // target; the modal keeps the roomier card + ruler layout.
+  const wordBandHeight = compact ? 'h-[20px]' : 'h-[30px]'
+  const barPadding = compact ? 'px-1.5 py-0' : 'px-2 py-1'
+  const barFont = 'text-[0.85rem] leading-[1.2]'
+
   return (
     <div
       ref={containerRef}
-      className="relative bg-card rounded border border-border"
+      className={cn(compact ? 'relative' : 'relative bg-card rounded border border-border')}
       onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseUp={() => handleMouseUp(false)}
+      onMouseLeave={() => handleMouseUp(true)}
     >
       {/* Out-of-segment padding: greyed bands on each side of the real segment. These sit above
           the waveform but below the word bars and are click-through so playback scrubbing still
@@ -276,13 +332,22 @@ export default function TimelineEditor({
         style={{ width: `${100 - timeToPosition(endTime)}%` }}
       />
 
-      {/* Timeline ruler */}
-      <div
-        className="h-10 border-b border-border cursor-pointer"
-        onClick={handleTimelineClick}
-      >
-        {generateTimelineMarks()}
-      </div>
+      {/* Timeline ruler. Compact rows drop it entirely (the waveform below is the click
+          target); non-compact rows without a ruler keep a thin click-to-play strip. */}
+      {showRuler ? (
+        <div
+          className="h-10 border-b border-border cursor-pointer"
+          onClick={handleTimelineClick}
+        >
+          {generateTimelineMarks()}
+        </div>
+      ) : compact ? null : (
+        <div
+          className="h-2 cursor-pointer"
+          onClick={handleTimelineClick}
+          title="Click to play from here"
+        />
+      )}
 
       {/* Playback cursor — visible across the padded view (incl. lead-in/out) */}
       {showPlaybackIndicator && currentTime >= viewStart && currentTime <= viewEnd && (
@@ -292,8 +357,9 @@ export default function TimelineEditor({
         />
       )}
 
-      {/* Word blocks */}
-      <div className="relative h-[30px]">
+      {/* Word blocks. Reserve headroom only on rows that carry an AI-correction ghost above
+          a bar, so uncorrected rows stay tight. */}
+      <div className={cn('relative', wordBandHeight, hasGhostText && 'mt-4')}>
         {/* Neighbouring segments' words that fall in the padded view — greyed, read-only context. */}
         {(contextWords ?? []).map((word, index) => {
           if (word.start_time === null || word.end_time === null) return null
@@ -307,8 +373,10 @@ export default function TimelineEditor({
             <div
               key={`ctx-${word.id ?? index}`}
               className={cn(
-                'absolute bg-muted-foreground/25 text-muted-foreground rounded px-2 py-1',
-                'select-none flex items-center text-sm font-sans pointer-events-none',
+                'absolute bg-muted-foreground/25 text-muted-foreground rounded',
+                barPadding,
+                barFont,
+                'select-none flex items-center pointer-events-none',
                 'border border-dashed border-muted-foreground/40 overflow-hidden whitespace-nowrap'
               )}
               style={{
@@ -328,26 +396,44 @@ export default function TimelineEditor({
           const leftPosition = timeToPosition(word.start_time)
           const rightPosition = timeToPosition(word.end_time)
           const width = rightPosition - leftPosition
+          const decoration = word.id ? wordDecorations?.get(word.id) : undefined
+          const playing = isWordHighlighted(word)
 
           return (
             <div
               key={index}
               className={cn(
-                'absolute bg-primary rounded text-primary-foreground px-2 py-1',
-                'cursor-move select-none flex items-center text-sm font-sans transition-colors',
-                isWordHighlighted(word) && 'bg-purple-500 dark:bg-purple-600'
+                'absolute rounded',
+                barPadding,
+                barFont,
+                compact && 'top-0 h-full',
+                'cursor-move select-none flex items-center transition-colors',
+                // Semantic colour (anchor/gap/correction) when decorated, else the plain bar.
+                decoration?.barClassName ?? 'bg-primary text-primary-foreground',
+                // Currently-playing: a bright ring over the semantic colour (decorated), or the
+                // original purple fill (undecorated, e.g. the Edit Segment modal).
+                playing && (decoration ? 'ring-2 ring-inset ring-white' : 'bg-purple-500 dark:bg-purple-600')
               )}
               style={{
                 left: `${leftPosition}%`,
                 width: `${width}%`,
                 maxWidth: `calc(${100 - leftPosition}%)`,
               }}
+              // Timing-accurate bars mean short words get narrow bars whose text truncates;
+              // a tooltip keeps the full word readable without distorting the width.
+              title={compact ? word.text : undefined}
               onMouseDown={(e) => {
                 e.stopPropagation()
                 handleMouseDown(e, index, 'move')
               }}
               onContextMenu={(e) => handleContextMenu(e, index)}
             >
+              {/* AI-correction ghost: the original transcription, struck through, above the bar. */}
+              {decoration?.originalText && (
+                <span className="absolute left-0 bottom-full mb-[1px] z-10 whitespace-nowrap rounded border border-dashed border-muted-foreground/50 bg-background/90 px-1 text-[0.6rem] leading-tight text-muted-foreground line-through pointer-events-none">
+                  {decoration.originalText}
+                </span>
+              )}
               {/* Left resize handle */}
               <div
                 className="absolute top-0 left-0 w-2.5 h-full cursor-col-resize hover:bg-primary-foreground/20 rounded-l"
@@ -356,7 +442,7 @@ export default function TimelineEditor({
                   handleMouseDown(e, index, 'resize-left')
                 }}
               />
-              {word.text}
+              <span className="truncate min-w-0">{word.text}</span>
               {/* Right resize handle */}
               <div
                 className="absolute top-0 right-0 w-2.5 h-full cursor-col-resize hover:bg-primary-foreground/20 rounded-r"
@@ -370,18 +456,25 @@ export default function TimelineEditor({
         })}
       </div>
 
-      <VocalsAudioDataLoaderContext.Consumer>
-        {({ audioData: vocalsAudioData }) => (
-          vocalsAudioData && <WaveformVisualizer
-            startTime={viewStart}
-            endTime={viewEnd}
-            fadeBeforeTime={startTime}
-            fadeAfterTime={endTime}
-            audioData={vocalsAudioData}
-            className="w-[100%] h-[35px]"
-          />
-        )}
-      </VocalsAudioDataLoaderContext.Consumer>
+      {/* In compact rows the waveform sits directly under the bars and doubles as the
+          click-to-play target (there's no ruler strip). */}
+      <div
+        className={cn(compact && 'cursor-pointer')}
+        onClick={compact ? handleTimelineClick : undefined}
+      >
+        <VocalsAudioDataLoaderContext.Consumer>
+          {({ audioData: vocalsAudioData }) => (
+            vocalsAudioData && <WaveformVisualizer
+              startTime={viewStart}
+              endTime={viewEnd}
+              fadeBeforeTime={startTime}
+              fadeAfterTime={endTime}
+              audioData={vocalsAudioData}
+              className={compact ? 'w-full h-[14px] block' : 'w-[100%] h-[35px]'}
+            />
+          )}
+        </VocalsAudioDataLoaderContext.Consumer>
+      </div>
     </div>
   )
 }

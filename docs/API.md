@@ -1448,6 +1448,24 @@ X-Admin-Token: ADMIN_TOKEN
 
 Internal (admin/OIDC). Called hourly by Cloud Scheduler. For each in-progress community pick whose owner hasn't completed their review within 24h (and whose job is blocked waiting on the owner), reassigns the job to the next up-voter (oldest-first, skipping those already tried) and emails them — up to 5 voters, then parks the track (`stalled`). Returns `{status, checked, handed_off, parked, errors}`.
 
+### Community Publish Reconcile (internal)
+
+```http
+POST /api/internal/community-requests/reconcile
+X-Admin-Token: ADMIN_TOKEN
+```
+
+Internal (admin/OIDC). Idempotent safety net / backfill. A community pick advances to `published` (and fans out "your track is live" emails to up-voters) when its job goes live on YouTube — this now fires from both publish paths (the `youtube_upload_queue` processor and the direct video-worker distribution). This endpoint reconciles any pick still stuck at `in_progress` whose job actually has a YouTube URL, running the publish transition for each. Returns `{scanned, published: [{request_id, job_id, youtube_url}]}`.
+
+### Community Requests History (admin)
+
+```http
+GET /api/admin/community-requests
+X-Admin-Token: ADMIN_TOKEN
+```
+
+Admin. Full history of requests-board submissions across every status (newest first), surfaced at `/admin/community-requests`. Each item: `{id, artist, title, status, submitted_by, owner_email, vote_count, job_id, youtube_url, review_state, created_at, picked_at}` — who asked, how it was voted, which job made it, and where it landed on YouTube.
+
 ### Community Review Queue (existing-version, admin)
 
 ```http

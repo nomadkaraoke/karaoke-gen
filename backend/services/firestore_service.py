@@ -57,15 +57,51 @@ class FirestoreService:
             logger.error(f"Error getting job {job_id}: {e}")
             raise
     
+    @staticmethod
+    def _is_doc_size_error(exc: Exception) -> bool:
+        """True when a Firestore write failed the 1MB per-document size limit."""
+        return "maximum allowed size" in str(exc).lower()
+
+    def _update_with_size_recovery(
+        self, doc_ref, updates: Dict[str, Any], job_id: str
+    ) -> None:
+        """
+        Apply ``doc_ref.update(updates)``, self-healing past the 1MB doc limit.
+
+        Old job documents can accumulate a large embedded ``worker_logs`` array
+        (the legacy logging path, superseded by the ``jobs/{id}/logs``
+        subcollection). Once that array pushes a document to ~1MB, EVERY
+        subsequent write — including a customer submitting lyrics corrections —
+        fails with Firestore's "exceeds the maximum allowed size" 400. The
+        embedded array is deprecated dead weight, so drop it and retry once.
+        """
+        try:
+            doc_ref.update(updates)
+        except Exception as e:
+            # Don't recurse if the caller is itself writing worker_logs, and
+            # only recover from the specific size-limit failure.
+            if 'worker_logs' in updates or not self._is_doc_size_error(e):
+                raise
+            logger.warning(
+                f"Job {job_id}: Firestore write hit the 1MB document limit; "
+                f"clearing the legacy embedded worker_logs array and retrying ({e})"
+            )
+            # Deleting a field only shrinks the document, so this write is safe.
+            doc_ref.update({'worker_logs': firestore.DELETE_FIELD})
+            doc_ref.update(updates)
+            logger.info(
+                f"Job {job_id}: cleared legacy worker_logs; write succeeded on retry"
+            )
+
     def update_job(self, job_id: str, updates: Dict[str, Any]) -> None:
         """Update a job with partial data."""
         try:
             doc_ref = self.db.collection(self.collection).document(job_id)
-            
+
             # Add updated_at timestamp
             updates['updated_at'] = datetime.utcnow()
-            
-            doc_ref.update(updates)
+
+            self._update_with_size_recovery(doc_ref, updates, job_id)
             logger.info(f"Updated job {job_id} in Firestore")
         except Exception as e:
             logger.error(f"Error updating job {job_id}: {e}")
@@ -107,8 +143,8 @@ class FirestoreService:
             
             # Add any additional fields
             updates.update(additional_fields)
-            
-            doc_ref.update(updates)
+
+            self._update_with_size_recovery(doc_ref, updates, job_id)
             logger.info(f"Updated job {job_id} status to {status.value}")
         except Exception as e:
             logger.error(f"Error updating job status {job_id}: {e}")
@@ -383,18 +419,31 @@ class FirestoreService:
     
     def append_worker_log(self, job_id: str, log_entry: Dict[str, Any]) -> None:
         """
-        Atomically append a log entry to worker_logs using ArrayUnion.
+        Append a log entry to the job's log stream.
 
-        This avoids the race condition of read-modify-write when multiple
-        workers are logging concurrently.
-
-        DEPRECATED: Use append_log_to_subcollection() instead to avoid
-        the 1MB document size limit.
+        DEPRECATED embedded-array behaviour: with USE_LOG_SUBCOLLECTION=false
+        this appends to the ``worker_logs`` array via ArrayUnion (atomic, but
+        subject to the 1MB per-document limit). With the flag on (default) the
+        entry is routed to the ``jobs/{id}/logs`` subcollection instead, so the
+        legacy dict-based callers (job_logging.JobLogger, FirestoreJobLogHandler)
+        stop bloating the embedded array toward that limit.
 
         Args:
             job_id: Job ID
             log_entry: Log entry dict with timestamp, level, worker, message
         """
+        # Route legacy dict-based callers to the subcollection when enabled so
+        # they no longer grow the embedded worker_logs array (which, once near
+        # 1MB, blocks all writes to the job document — including review submits).
+        if settings.use_log_subcollection:
+            entry = WorkerLogEntry.create(
+                job_id=job_id,
+                worker=log_entry.get('worker', 'unknown'),
+                level=log_entry.get('level', 'INFO'),
+                message=log_entry.get('message', ''),
+            )
+            self.append_log_to_subcollection(job_id, entry)
+            return
         try:
             doc_ref = self.db.collection(self.collection).document(job_id)
             doc_ref.update({

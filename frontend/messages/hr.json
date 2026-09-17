@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Naš sustav je ovo automatski ispravio iz \"{original}\". Tajming je procijenjen, stoga reproduciraj ovaj redak i po potrebi prilagodi tajming riječi.",
       "longGapWarning": "Pauza od {seconds} s prije sljedeće riječi — često zalutala rana riječ (npr. fantomsko \"i\"). Klikni za reprodukciju odavde.",
       "longWordWarning": "Ova riječ traje {seconds} s — neobično dugo. Reproduciraj redak i provjeri da njezino vrijeme završetka ne ulazi u instrumental.",
-      "playFromGap": "Reproduciraj od kraja ove pauze"
+      "playFromGap": "Reproduciraj od kraja ove pauze",
+      "editSegment": "Uredi segment {index}",
+      "untimedSegment": "Nema vremenskih oznaka riječi — klikni za uređivanje",
+      "waveforms": "Valni oblici"
     },
     "editActionBar": {
       "reset": "Poništi",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Pokrećemo poslužitelj za kodiranje — to može potrajati nekoliko minuta. Malo se strpi!",
       "audioLabel": "Audio:",
       "audioOriginal": "Original (s vokalima)",
-      "backingVocalsWaveformHint": "Prateći vokali zadržani u instrumentalu — klikni da čuješ ovaj dio.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + prateći vokali",
       "audioInstrumentalClean": "Čisti instrumental",
       "audioInstrumentalPillBacking": "Instrumental (s pratećim vokalima)",
-      "audioInstrumentalPillClean": "Instrumental (čisti)"
+      "audioInstrumentalPillClean": "Instrumental (čisti)",
+      "backingVocalsWaveformKept": "Prateći vokali zadržani u instrumentalu — klikni da ih čuješ.",
+      "backingVocalsWaveformRemoved": "Prateći vokali koje čisti instrumental uklanja — klikni da čuješ što izostavljaš."
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Nastavi na pregled instrumentala",
         "saving": "Spremanje...",
         "completeTrack": "Dovrši pjesmu",
-        "autoInstrumentalClean": "Koristit ćemo čisti instrumental (bez pratećih vokala) za ovu pjesmu.",
+        "autoInstrumentalClean": "Čisti instrumental uklanja prateće vokale prikazane u nastavku. Prvo poslušaj — ako zvuče dobro, prebaci se na „Instrumental + prateći vokali” iznad da ih zadržiš.",
         "previewTitle": "Pregled videa",
-        "autoInstrumentalCleanChosen": "Odabrao/la si čisti instrumental (bez pratećih vokala) za ovu pjesmu.",
+        "autoInstrumentalCleanChosen": "Odabrao/la si čisti instrumental, koji uklanja prateće vokale prikazane u nastavku. Prvo poslušaj — ako zvuče dobro, prebaci se na „Instrumental + prateći vokali” iznad da ih zadržiš.",
         "advancedModeClean": "Napredni način (pregledaj ili prenesi vlastiti instrumental)",
         "finalChoiceLabel": "Tvoj karaoke video koristit će:",
         "recommended": "preporučeno",

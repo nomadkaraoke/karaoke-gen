@@ -4,6 +4,55 @@ Operational runbooks for known production issues.
 
 ---
 
+## Review pages hang on "Loading lyrics data…" / uptime alert "Service Unavailable"
+
+**Symptom:** `/app/jobs/#/{id}/review` spins forever; the browser is stuck fetching
+`GET /api/review/{id}/correction-data`, which eventually returns "server temporarily
+unavailable". A GCP uptime alert ("Karaoke Backend - Service Unavailable") may fire.
+`/api/health` and `/api/jobs` still respond fast.
+
+**Root cause (incident 2026-09-17):** GCS **signed-URL generation** stalls. On Cloud
+Run we have no private key, so signing goes through the IAM `signBlob` API over the
+network. `correction-data` signs 2-3 audio/waveform URLs per load; when signBlob
+stalls (transient IAM/metadata networking; **no GCP incident is necessarily declared**),
+those calls hang and pile up worker threads until the service looks down. Tell-tale
+in logs: `"Generated signed … URL"` lines **stop appearing** while everything else
+keeps logging, and there are **no** `"Error generating signed"` lines (a hang, not a
+failure). Confirm it's not job-specific: `correction-data` hangs for *every* in-review
+job, not just one.
+
+**Immediate fix — restart to get fresh instances / connection pools:**
+```bash
+gcloud run services update karaoke-backend --region=us-central1 --project=nomadkaraoke \
+  --update-labels=forcerestart=$(date +%s)
+```
+Non-destructive (config unchanged, new revision). Then verify signing resumed
+(replace `JOB_ID` with any in-review job id — the URL is quoted so no placeholder
+angle-brackets reach the shell):
+```bash
+# should return 200 fast, not hang
+JOB_ID="d93747cd"   # any in-review job
+curl -s -m 30 -o /dev/null -w "%{http_code} %{time_total}s\n" \
+  -H "Authorization: Bearer $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d, -f1)" \
+  "https://api.nomadkaraoke.com/api/review/${JOB_ID}/correction-data"
+# and check signing is logging again
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="karaoke-backend" AND jsonPayload.message:"Generated signed"' \
+  --project=nomadkaraoke --freshness=3m --limit=3 --format="value(timestamp,jsonPayload.message)"
+```
+If a restart doesn't clear it, the IAM Credentials API is genuinely degraded in the
+region — wait it out / open a GCP ticket.
+
+**Durable mitigation (shipped v0.228.1):** every sign now runs on a dedicated bounded
+thread pool with a wall-clock budget (`SIGNED_URL_TIMEOUT_S`, default 12s) and bounded
+admission (`SIGNED_URL_MAX_INFLIGHT`) in `storage_service._generate_signed_url_internal`
+— a stall raises `SignedUrlTimeout` fast instead of hanging, saturation is refused
+immediately rather than queued, and neither can starve GCS data-plane reads or the request pool.
+The review endpoints treat audio-URL signing as best-effort (return the option with a
+null `audio_url`; the frontend re-fetches via `GET /{job_id}/instrumental-urls`), so
+the lyrics page loads even during a signing stall.
+
+---
+
 ## Fast rollback (bad backend deploy)
 
 **When to use:** a merge-to-main deploy shipped a bad backend revision — the

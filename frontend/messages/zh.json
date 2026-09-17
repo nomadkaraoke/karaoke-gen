@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "由系统将“{original}”自动更正而来。时间为估算值，请播放此行，并在需要时调整字词的对齐时间。",
       "longGapWarning": "距离下一个词有 {seconds} 秒的间隙——通常是多余的提前词（例如凭空多出的“and”）。点击从此处开始播放。",
       "longWordWarning": "这个词持续了 {seconds} 秒——时间异常长。请播放此行，检查其结束时间是否延伸到了伴奏中。",
-      "playFromGap": "从该间隙的末尾开始播放"
+      "playFromGap": "从该间隙的末尾开始播放",
+      "editSegment": "编辑片段 {index}",
+      "untimedSegment": "无单词时间轴 — 点击编辑",
+      "waveforms": "波形图"
     },
     "editActionBar": {
       "reset": "重置",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "正在启动编码服务器，这可能需要几分钟时间。请耐心等待！",
       "audioLabel": "音频：",
       "audioOriginal": "原声（带人声）",
-      "backingVocalsWaveformHint": "伴奏中保留了伴唱——点击试听此部分。",
       "audioInstrumental": "伴奏",
       "audioInstrumentalBacking": "伴奏 + 伴唱",
       "audioInstrumentalClean": "纯伴奏",
       "audioInstrumentalPillBacking": "伴奏（含伴唱）",
-      "audioInstrumentalPillClean": "伴奏（纯净）"
+      "audioInstrumentalPillClean": "伴奏（纯净）",
+      "backingVocalsWaveformKept": "伴奏中保留的背景和声——点击试听。",
+      "backingVocalsWaveformRemoved": "纯净版伴奏会移除的背景和声——点击试听会被移除的部分。"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "继续进行伴奏审核",
         "saving": "保存中...",
         "completeTrack": "完成曲目",
-        "autoInstrumentalClean": "我们会为此曲目使用纯净版伴奏（无和声）。",
+        "autoInstrumentalClean": "纯净版伴奏会移除下方显示的背景和声。建议您先试听一下——如果觉得效果不错，可以切换到上方的“伴奏 + 背景和声”来保留它们。",
         "previewTitle": "预览视频",
-        "autoInstrumentalCleanChosen": "您已为此曲目选择了纯净版伴奏（无和声）。",
+        "autoInstrumentalCleanChosen": "您选择了纯净版伴奏，这会移除下方显示的背景和声。建议您先试听一下——如果觉得效果不错，可以切换到上方的“伴奏 + 背景和声”来保留它们。",
         "advancedModeClean": "高级模式（检查或上传自定义伴奏）",
         "finalChoiceLabel": "您的卡拉OK视频将使用：",
         "recommended": "推荐",

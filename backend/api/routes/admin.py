@@ -635,7 +635,7 @@ async def clear_audio_search_cache(
         logger.debug(f"Skipping flacfetch cache clear - missing artist ({artist}) or title ({title})")
 
     logger.info(
-        f"Admin {auth_data[0]} cleared audio search cache for job {job_id}. "
+        f"Admin {auth_data.user_email} cleared audio search cache for job {job_id}. "
         f"Cleared {results_count} results. Status changed from {previous_status} to pending. "
         f"Flacfetch cache cleared: {flacfetch_cache_cleared}"
     )
@@ -685,7 +685,7 @@ async def reset_worker_state(
     job_manager.update_state_data(job_id, 'render_progress', {'stage': 'pending'})
     job_manager.update_state_data(job_id, 'screens_progress', {'stage': 'pending'})
 
-    logger.info(f"Admin {auth_data[0]} reset worker state for job {job_id}")
+    logger.info(f"Admin {auth_data.user_email} reset worker state for job {job_id}")
 
     return {
         "status": "success",
@@ -718,7 +718,7 @@ async def clear_all_flacfetch_cache(
     try:
         deleted_count = await flacfetch_client.clear_all_cache()
         logger.info(
-            f"Admin {auth_data[0]} cleared all flacfetch cache. "
+            f"Admin {auth_data.user_email} cleared all flacfetch cache. "
             f"Deleted {deleted_count} entries."
         )
         return ClearAllCacheResponse(
@@ -4200,6 +4200,52 @@ def list_user_feedback(
         avg_lyrics_accuracy_rating=round(avg_lyrics, 2) if avg_lyrics is not None else None,
         avg_correction_experience_rating=round(avg_correction, 2) if avg_correction is not None else None,
     )
+
+
+# =============================================================================
+# Requests board — full request history (admin view)
+# =============================================================================
+
+class CommunityRequestItem(BaseModel):
+    """A requests-board song request, any status, for the admin history view."""
+    id: str
+    artist: str
+    title: str
+    status: str
+    submitted_by: str
+    owner_email: Optional[str] = None
+    vote_count: int
+    job_id: Optional[str] = None
+    youtube_url: Optional[str] = None
+    review_state: Optional[str] = None
+    created_at: Optional[str] = None
+    picked_at: Optional[str] = None
+
+
+class CommunityRequestListResponse(BaseModel):
+    requests: List[CommunityRequestItem]
+
+
+@router.get("/community-requests", response_model=CommunityRequestListResponse)
+async def list_community_requests(
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """Full history of requests-board submissions across every status — who asked,
+    how it was voted, which job made it, and where it landed on YouTube."""
+    from backend.services.song_request_service import get_song_request_service
+    service = get_song_request_service()
+    items = [
+        CommunityRequestItem(
+            id=r.id, artist=r.artist, title=r.title, status=r.status,
+            submitted_by=r.submitted_by, owner_email=r.owner_email,
+            vote_count=r.vote_count, job_id=r.job_id, youtube_url=r.youtube_url,
+            review_state=r.review_state,
+            created_at=r.created_at.isoformat() if r.created_at else None,
+            picked_at=r.picked_at.isoformat() if r.picked_at else None,
+        )
+        for r in service.list_all()
+    ]
+    return CommunityRequestListResponse(requests=items)
 
 
 # =============================================================================

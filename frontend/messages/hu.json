@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "A rendszerünk automatikusan javította erről: \"{original}\". Az időzítés csak becsült, ezért játszd le ezt a sort, és szükség esetén állítsd be a szavak időzítését.",
       "longGapWarning": "{seconds} mp szünet a következő szó előtt — gyakran egy véletlen korai szó (pl. egy fantom \"és\"). Kattints ide a lejátszáshoz innen.",
       "longWordWarning": "Ez a szó {seconds} mp-ig tart — szokatlanul hosszú. Játszd le a sort, és ellenőrizd, hogy a befejezési ideje nem lóg-e bele az instrumentális részbe.",
-      "playFromGap": "Lejátszás a szünet végétől"
+      "playFromGap": "Lejátszás a szünet végétől",
+      "editSegment": "{index}. szegmens szerkesztése",
+      "untimedSegment": "Nincs szóidőzítés — kattints a szerkesztéshez",
+      "waveforms": "Hullámformák"
     },
     "editActionBar": {
       "reset": "Visszaállítás",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Kódolószerver indítása — ez eltarthat néhány percig. Kis türelmet!",
       "audioLabel": "Audió:",
       "audioOriginal": "Eredeti (énekkel)",
-      "backingVocalsWaveformHint": "A háttérvokálok megmaradtak az instrumentális sávban — kattints ide, hogy meghallgasd ezt a részt.",
       "audioInstrumental": "Instrumentális",
       "audioInstrumentalBacking": "Zenei alap + háttérvokál",
       "audioInstrumentalClean": "Tiszta zenei alap",
       "audioInstrumentalPillBacking": "Instrumentális (plusz háttérvokál)",
-      "audioInstrumentalPillClean": "Instrumentális (tiszta)"
+      "audioInstrumentalPillClean": "Instrumentális (tiszta)",
+      "backingVocalsWaveformKept": "Az instrumentális verzióban megtartott háttérvokálok — kattints, hogy meghallgasd őket.",
+      "backingVocalsWaveformRemoved": "A tiszta instrumentális verzió által eltávolított háttérvokálok — kattints, hogy meghallgasd, mit hagynál ki."
     },
     "gapNavigator": {
       "previousGap": "Előző hézag (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Tovább a zenei alap áttekintéséhez",
         "saving": "Mentés...",
         "completeTrack": "Szám befejezése",
-        "autoInstrumentalClean": "A tiszta zenei alapot (háttérvokál nélkül) fogjuk használni ehhez a számhoz.",
+        "autoInstrumentalClean": "A tiszta instrumentális verzió eltávolítja az alább látható háttérvokálokat. Hallgasd meg először — ha jól hangzanak, fent válts az „Instrumentális + háttérvokálok” lehetőségre, hogy megtartsd őket.",
         "previewTitle": "Videó előnézete",
-        "autoInstrumentalCleanChosen": "A tiszta zenei alapot (háttérvokál nélkül) választottad ehhez a számhoz.",
+        "autoInstrumentalCleanChosen": "A tiszta instrumentális verziót választottad, amely eltávolítja az alább látható háttérvokálokat. Hallgasd meg először — ha jól hangzanak, fent válts az „Instrumentális + háttérvokálok” lehetőségre, hogy megtartsd őket.",
         "advancedModeClean": "Haladó mód (ellenőrzés vagy saját instrumentális alap feltöltése)",
         "finalChoiceLabel": "A karaoke videódhoz ezt fogjuk használni:",
         "recommended": "ajánlott",

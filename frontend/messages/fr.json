@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Corrigé automatiquement par notre système à partir de \"{original}\". Le timing a été estimé, alors joue cette ligne et ajuste le timing des mots si nécessaire.",
       "longGapWarning": "Blanc de {seconds}s avant le mot suivant — souvent un mot isolé apparu trop tôt (par ex. un \"et\" fantôme). Clique pour jouer à partir d'ici.",
       "longWordWarning": "Ce mot dure {seconds}s — c'est inhabituellement long. Joue la ligne et vérifie que sa fin ne déborde pas sur l'instrumental.",
-      "playFromGap": "Jouer à partir de la fin de ce blanc"
+      "playFromGap": "Jouer à partir de la fin de ce blanc",
+      "editSegment": "Modifier le segment {index}",
+      "untimedSegment": "Aucune synchronisation des mots — clique pour modifier",
+      "waveforms": "Formes d'onde"
     },
     "editActionBar": {
       "reset": "Réinitialiser",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Démarrage d'un serveur d'encodage — cela peut prendre quelques minutes. Patiente un peu !",
       "audioLabel": "Audio :",
       "audioOriginal": "Original (avec voix)",
-      "backingVocalsWaveformHint": "Chœurs conservés dans l'instrumental — clique pour écouter cette partie.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + chœurs",
       "audioInstrumentalClean": "Instrumental pur",
       "audioInstrumentalPillBacking": "Instrumental (avec chœurs)",
-      "audioInstrumentalPillClean": "Instrumental (pur)"
+      "audioInstrumentalPillClean": "Instrumental (pur)",
+      "backingVocalsWaveformKept": "Chœurs conservés dans l'instrumental — clique pour les écouter.",
+      "backingVocalsWaveformRemoved": "Chœurs que l'instrumental pur supprime — clique pour écouter ce qui sera retiré."
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Passer à la révision instrumentale",
         "saving": "Enregistrement...",
         "completeTrack": "Terminer la piste",
-        "autoInstrumentalClean": "Nous utiliserons la version instrumentale propre (sans chœurs) pour ce morceau.",
+        "autoInstrumentalClean": "L'instrumental pur supprime les chœurs affichés ci-dessous. Écoute-les d'abord — s'ils rendent bien, passe à « Instrumental + chœurs » ci-dessus pour les garder.",
         "previewTitle": "Aperçu de la vidéo",
-        "autoInstrumentalCleanChosen": "Tu as choisi la version instrumentale propre (sans chœurs) pour ce morceau.",
+        "autoInstrumentalCleanChosen": "Tu as choisi l'instrumental pur, qui supprime les chœurs affichés ci-dessous. Écoute-les d'abord — s'ils rendent bien, passe à « Instrumental + chœurs » ci-dessus pour les garder.",
         "advancedModeClean": "Mode avancé (vérifie ou importe un instrumental personnalisé)",
         "finalChoiceLabel": "Ta vidéo karaoké utilisera :",
         "recommended": "recommandé",

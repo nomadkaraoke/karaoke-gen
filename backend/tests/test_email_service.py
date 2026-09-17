@@ -155,6 +155,92 @@ class TestPostmarkEmailProvider:
 
         assert result is False
 
+    def test_suppressed_recipient_flagged_and_not_error(self):
+        """422 ErrorCode 406 (InactiveRecipient) is benign: SendResult.suppressed
+        is True, provider.last_suppressed is True, and it's logged at INFO not ERROR."""
+        import logging
+        provider = PostmarkEmailProvider(server_token="t", from_email="f@e.com")
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._mock_response(
+                422, body={"ErrorCode": 406, "Message": "Inactive recipient"}
+            )
+            with self._capture_logs(logging.ERROR) as errors:
+                result = provider.send_email_detailed(
+                    to_email="whatever@example.com",
+                    subject="Test",
+                    html_content="<p>x</p>",
+                )
+
+        assert result.success is False
+        assert result.suppressed is True
+        assert provider.last_suppressed is True
+        # No ERROR-level log for a suppressed recipient (it must not page).
+        assert not errors
+
+    def test_non_suppression_422_is_not_flagged_suppressed(self):
+        """A 422 with a different ErrorCode (e.g. bad signature) is a real error:
+        suppressed stays False and last_suppressed stays False."""
+        provider = PostmarkEmailProvider(server_token="t", from_email="f@e.com")
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._mock_response(
+                422, body={"ErrorCode": 10, "Message": "Invalid API token"}
+            )
+            result = provider.send_email_detailed(
+                to_email="user@example.com",
+                subject="Test",
+                html_content="<p>x</p>",
+            )
+
+        assert result.success is False
+        assert result.suppressed is False
+        assert provider.last_suppressed is False
+
+    def test_last_suppressed_reset_on_success(self):
+        """last_suppressed is cleared on a subsequent successful send."""
+        provider = PostmarkEmailProvider(server_token="t", from_email="f@e.com")
+
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._mock_response(
+                422, body={"ErrorCode": 406, "Message": "Inactive recipient"}
+            )
+            provider.send_email_detailed(
+                to_email="whatever@example.com", subject="s", html_content="<p>x</p>"
+            )
+            assert provider.last_suppressed is True
+
+            mock_post.return_value = self._mock_response(200)
+            provider.send_email_detailed(
+                to_email="ok@example.com", subject="s", html_content="<p>x</p>"
+            )
+            assert provider.last_suppressed is False
+
+    @staticmethod
+    def _capture_logs(level):
+        """Context manager capturing records at >= level from the email_service logger."""
+        import contextlib
+        import logging
+
+        @contextlib.contextmanager
+        def _cm():
+            logger = logging.getLogger("backend.services.email_service")
+            records: list = []
+
+            class _H(logging.Handler):
+                def emit(self, record):
+                    if record.levelno >= level:
+                        records.append(record)
+
+            h = _H()
+            logger.addHandler(h)
+            try:
+                yield records
+            finally:
+                logger.removeHandler(h)
+
+        return _cm()
+
     def test_send_email_request_exception(self):
         import requests as _requests
         provider = PostmarkEmailProvider(server_token="t", from_email="f@e.com")
@@ -188,6 +274,25 @@ class TestEmailServiceProviderSelection:
         svc = EmailService()
         assert isinstance(svc.provider, ConsoleEmailProvider)
         assert svc.is_configured() is False
+
+    def test_last_send_suppressed_wired_through_send_magic_link(self, monkeypatch):
+        """A suppressed recipient surfaces on EmailService.last_send_suppressed so
+        route handlers can log it at INFO instead of a scary ERROR."""
+        monkeypatch.setenv("POSTMARK_SERVER_TOKEN", "pm-token")
+        svc = EmailService()
+
+        def _suppressed_response(*args, **kwargs):
+            resp = Mock()
+            resp.status_code = 422
+            resp.json.return_value = {"ErrorCode": 406, "Message": "Inactive recipient"}
+            resp.text = ""
+            return resp
+
+        with patch("backend.services.email_service.requests.post", side_effect=_suppressed_response):
+            sent = svc.send_magic_link("whatever@example.com", "tok123")
+
+        assert sent is False
+        assert svc.last_send_suppressed is True
 
 
 class TestEmailServiceJobCompletion:

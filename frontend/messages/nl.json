@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Automatisch door ons systeem gecorrigeerd van \"{original}\". De timing is geschat, dus speel deze regel af en pas indien nodig de timing van de woorden aan.",
       "longGapWarning": "{seconds}s pauze voor het volgende woord — vaak een verdwaald woord dat te vroeg komt (bijv. een spook-\"en\"). Klik om vanaf hier af te spelen.",
       "longWordWarning": "Dit woord duurt {seconds}s — ongewoon lang. Speel de regel af en controleer of de eindtijd niet doorloopt in het instrumentale gedeelte.",
-      "playFromGap": "Afspelen vanaf het einde van deze pauze"
+      "playFromGap": "Afspelen vanaf het einde van deze pauze",
+      "editSegment": "Bewerk segment {index}",
+      "untimedSegment": "Geen woordtimings — klik om te bewerken",
+      "waveforms": "Golfvormen"
     },
     "editActionBar": {
       "reset": "Resetten",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Bezig met het opstarten van een encodingserver — dit kan een paar minuten duren. Even geduld!",
       "audioLabel": "Audio:",
       "audioOriginal": "Origineel (met zang)",
-      "backingVocalsWaveformHint": "Achtergrondzang behouden in de instrumentale versie — klik om dit deel te horen.",
       "audioInstrumental": "Instrumentaal",
       "audioInstrumentalBacking": "Instrumentaal + achtergrondzang",
       "audioInstrumentalClean": "Puur instrumentaal",
       "audioInstrumentalPillBacking": "Instrumentaal (plus achtergrondzang)",
-      "audioInstrumentalPillClean": "Instrumentaal (clean)"
+      "audioInstrumentalPillClean": "Instrumentaal (clean)",
+      "backingVocalsWaveformKept": "Achtergrondzang behouden in de instrumentale versie — klik om deze te horen.",
+      "backingVocalsWaveformRemoved": "Achtergrondzang die de cleane instrumentale versie verwijdert — klik om te horen wat je weglaat."
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Doorgaan naar instrumental-beoordeling",
         "saving": "Opslaan...",
         "completeTrack": "Track voltooien",
-        "autoInstrumentalClean": "We gebruiken de zuivere instrumentale versie (zonder achtergrondzang) voor dit nummer.",
+        "autoInstrumentalClean": "De cleane instrumentale versie verwijdert de onderstaande achtergrondzang. Luister eerst even — als deze goed klinkt, schakel dan hierboven over naar “Instrumentaal + achtergrondzang” om deze te behouden.",
         "previewTitle": "Voorbeeldvideo",
-        "autoInstrumentalCleanChosen": "Je hebt gekozen voor de zuivere instrumentale versie (zonder achtergrondzang) voor dit nummer.",
+        "autoInstrumentalCleanChosen": "Je hebt gekozen voor de cleane instrumentale versie, die de onderstaande achtergrondzang verwijdert. Luister eerst even — als deze goed klinkt, schakel dan hierboven over naar “Instrumentaal + achtergrondzang” om deze te behouden.",
         "advancedModeClean": "Geavanceerde modus (een eigen instrumentale versie beoordelen of uploaden)",
         "finalChoiceLabel": "Je karaokevideo gebruikt:",
         "recommended": "aanbevolen",

@@ -12,6 +12,7 @@ import {
   GapSequence,
   HighlightInfo,
   InteractionMode,
+  TranscriptionViewMode,
   LyricsSegment,
   ReferenceSource,
   WordCorrection,
@@ -65,6 +66,7 @@ import type { AiSuggestion } from '@/lib/api/autoCorrect'
 import type { ServerSuggestionUndoInfo } from '@/lib/lyrics-review/utils/autoCorrectApply'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
 import { applyOffsetToCorrectionData, applyOffsetToSegment, applyOffsetToWord } from '@/lib/lyrics-review/utils/timingUtils'
+import { resolveInitialViewMode } from '@/lib/lyrics-review/utils/segmentTiming'
 import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
 
 // Add type for window augmentation
@@ -207,10 +209,11 @@ export default function LyricsAnalyzer({
 
   const [focusedSegmentIndex, setFocusedSegmentIndex] = useState<number | null>(null)
 
-  const [advancedMode, setAdvancedMode] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem('lyricsReviewAdvancedMode') === 'true'
-  })
+  // Synced Lyrics view mode: Simple text / Advanced flex-pills / Waveforms inline timelines.
+  // Migrates the old boolean `lyricsReviewAdvancedMode` localStorage key to the new enum.
+  const [transcriptionViewMode, setTranscriptionViewMode] = useState<TranscriptionViewMode>(() =>
+    resolveInitialViewMode(typeof window === 'undefined' ? null : window.localStorage)
+  )
 
   // Gap navigation state
   const [currentGapIndex, setCurrentGapIndex] = useState<number | null>(null)
@@ -691,10 +694,10 @@ export default function LyricsAnalyzer({
     [editLog]
   )
 
-  const handleAdvancedModeToggle = useCallback((enabled: boolean) => {
-    setAdvancedMode(enabled)
+  const handleViewModeChange = useCallback((mode: TranscriptionViewMode) => {
+    setTranscriptionViewMode(mode)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('lyricsReviewAdvancedMode', String(enabled))
+      localStorage.setItem('lyricsReviewViewMode', mode)
     }
   }, [])
 
@@ -904,6 +907,36 @@ export default function LyricsAnalyzer({
       setEditModalSegment(null)
     },
     [history, historyIndex, editModalSegment, updateDataWithHistory, editLog, showFeedbackForEntry]
+  )
+
+  // Waveforms mode: persist a segment's inline timing edit (fires on drag release). The
+  // incoming segment is in display coordinates (offset-applied, like the modal); un-apply
+  // the offset before storing so the manual nudge never gets baked into the saved timings.
+  const handleCommitSegmentTiming = useCallback(
+    (index: number, updatedSegment: LyricsSegment) => {
+      const currentData = history[historyIndex]
+      const segmentToStore =
+        timingOffsetMs !== 0 ? applyOffsetToSegment(updatedSegment, -timingOffsetMs) : updatedSegment
+      const newSegments = currentData.corrected_segments.map((segment, i) =>
+        i === index ? segmentToStore : segment
+      )
+      updateDataWithHistory(
+        { ...currentData, corrected_segments: newSegments },
+        'adjust word timing'
+      )
+    },
+    [history, historyIndex, timingOffsetMs, updateDataWithHistory]
+  )
+
+  // Waveforms mode: open the full Edit modal for structural edits (text / split / merge /
+  // add / delete). Uses the raw (non-offset) segment; the modal applies the offset itself.
+  const handleEditSegmentFromWaveforms = useCallback(
+    (segmentIndex: number) => {
+      const segment = data.corrected_segments[segmentIndex]
+      if (!segment) return
+      setEditModalSegment({ segment, index: segmentIndex, originalSegment: segment })
+    },
+    [data.corrected_segments]
   )
 
   // Delete segment handler
@@ -1554,7 +1587,11 @@ export default function LyricsAnalyzer({
           }}
         />
 
-        <div className={cn('grid gap-2', isMobile ? 'grid-cols-1' : 'grid-cols-2')}>
+        {/* In Advanced/Waveforms the Synced side benefits from extra width, so the Reference
+            column shrinks to its longest line (capped) and Synced takes the rest — no wasted
+            space. Simple mode keeps the even 50/50 split. */}
+        <div className={cn('gap-2', isMobile ? 'flex flex-col' : 'flex flex-row items-start')}>
+          <div className={cn(isMobile ? 'w-full' : 'flex-1 min-w-0')}>
           <TranscriptionView
             data={displayData}
             mode={effectiveMode}
@@ -1575,8 +1612,10 @@ export default function LyricsAnalyzer({
             onAcceptCorrection={handleAcceptCorrection}
             onShowCorrectionDetail={handleShowCorrectionDetail}
             activeGapWordIds={activeGapWordIds}
-            advancedMode={advancedMode}
-            onAdvancedModeToggle={handleAdvancedModeToggle}
+            viewMode={transcriptionViewMode}
+            onViewModeChange={handleViewModeChange}
+            onCommitSegment={handleCommitSegmentTiming}
+            onEditSegment={handleEditSegmentFromWaveforms}
             editedWordIds={editedWordIds}
             aiCorrectedWordIds={aiCorrectedWordIds}
             aiOriginalTextByWordId={aiOriginalTextByWordId}
@@ -1589,6 +1628,16 @@ export default function LyricsAnalyzer({
             }}
             onSegmentFocus={setFocusedSegmentIndex}
           />
+          </div>
+          <div
+            className={cn(
+              isMobile
+                ? 'w-full'
+                : transcriptionViewMode === 'simple'
+                  ? 'flex-1 min-w-0'
+                  : 'flex-none w-max max-w-[46%]'
+            )}
+          >
           <ReferenceView
             referenceSources={data.reference_lyrics}
             anchors={data.anchor_sequences}
@@ -1608,6 +1657,7 @@ export default function LyricsAnalyzer({
             defaultArtist={data.metadata?.artist || ''}
             defaultTitle={data.metadata?.title || ''}
           />
+          </div>
         </div>
 
         {/* Spacer for sticky footer */}

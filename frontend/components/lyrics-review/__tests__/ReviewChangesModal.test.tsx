@@ -153,7 +153,7 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
-    expect(screen.getByText(/click to hear this part/i)).toBeInTheDocument()
+    expect(screen.getByText(/kept in the instrumental — click to hear them/i)).toBeInTheDocument()
     expect(apiClient.getWaveformData).toHaveBeenCalled()
   })
 
@@ -174,11 +174,11 @@ describe('ReviewChangesModal', () => {
         })}
       />
     )
-    expect(screen.queryByText(/click to hear this part/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/click to hear/i)).not.toBeInTheDocument()
     expect(apiClient.getWaveformData).not.toHaveBeenCalled()
   })
 
-  it('does not render the backing-vocals waveform when clean is the current selection', () => {
+  it('still renders the backing-vocals waveform when clean is selected (so it is not discarded unseen)', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
     const apiClient = waveformApiClient()
     render(
@@ -192,7 +192,9 @@ describe('ReviewChangesModal', () => {
         data={makeData({ corrected_segments: segments as any, instrumental_options: bothStems as any })}
       />
     )
-    expect(screen.queryByText(/click to hear this part/i)).not.toBeInTheDocument()
+    // With clean selected the waveform shows the backing vocals the clean stem removes.
+    expect(screen.getByText(/removes — click to hear what you'd be leaving out/i)).toBeInTheDocument()
+    expect(apiClient.getWaveformData).toHaveBeenCalled()
   })
 
   it('calls onSubmit when button clicked with valid segments', async () => {
@@ -342,7 +344,7 @@ describe('ReviewChangesModal', () => {
     expect(
       screen.getByRole('radio', { name: /advanced mode \(review or upload a custom instrumental\)/i })
     ).toBeInTheDocument()
-    expect(screen.getByText(/we'll use the clean instrumental/i)).toBeInTheDocument()
+    expect(screen.getByText(/the clean instrumental removes the backing vocals shown below/i)).toBeInTheDocument()
   })
 
   it('selecting Advanced mode calls onToggleReviewInstrumental', async () => {

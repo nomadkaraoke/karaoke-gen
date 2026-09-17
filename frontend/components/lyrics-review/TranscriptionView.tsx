@@ -5,10 +5,14 @@ import { useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Play, Trash2, Type, Clock } from 'lucide-react'
+import { Play, Trash2, Type, Clock, AudioWaveform } from 'lucide-react'
 import { HighlightedText } from './shared/HighlightedText'
 import { TranscriptionViewProps, TranscriptionWordPosition } from '@/lib/lyrics-review/types'
 import { deleteSegment } from '@/lib/lyrics-review/utils/segmentOperations'
+import { computeContextWordsBySegment } from '@/lib/lyrics-review/utils/contextWords'
+import { buildSegmentDecorations } from '@/lib/lyrics-review/utils/wordDecorations'
+import { TIMELINE_PAD_SECONDS } from './TimelineEditor'
+import WaveformSegmentRow from './WaveformSegmentRow'
 import SegmentDetailsModal from './modals/SegmentDetailsModal'
 import SingerChip from './SingerChip'
 import { resolveSegmentSinger, hasWordOverrides } from '@/lib/lyrics-review/duet'
@@ -34,8 +38,10 @@ export default function TranscriptionView({
   onAcceptCorrection,
   onShowCorrectionDetail,
   activeGapWordIds,
-  advancedMode = false,
-  onAdvancedModeToggle,
+  viewMode = 'simple',
+  onViewModeChange,
+  onCommitSegment,
+  onEditSegment,
   editedWordIds,
   aiCorrectedWordIds,
   aiOriginalTextByWordId,
@@ -48,6 +54,41 @@ export default function TranscriptionView({
   const tHeader = useTranslations('lyricsReview.header')
   const { ready: audioReady } = useAudioReady()
   const [selectedSegmentIndex, setSelectedSegmentIndex] = useState<number | null>(null)
+
+  // Advanced (flex-pill) layout is used by both the Advanced and Waveforms modes for the
+  // left-hand controls / spacing; Waveforms additionally swaps the row body for an inline
+  // timeline. Keeping `advancedMode` derived avoids churning the HighlightedText wiring.
+  const advancedMode = viewMode === 'advanced'
+  const waveformsMode = viewMode === 'waveforms'
+
+  // Greyed read-only neighbour words per segment, for the Waveforms inline timeline padding.
+  // Only computed in Waveforms mode. `data.corrected_segments` here is already offset-applied
+  // (the parent passes displayData), so the context words align with the drawn bars.
+  const contextWordsBySegment = useMemo(
+    () =>
+      waveformsMode
+        ? computeContextWordsBySegment(data.corrected_segments, TIMELINE_PAD_SECONDS)
+        : null,
+    [waveformsMode, data.corrected_segments]
+  )
+
+  // Per-segment bar colours + AI ghost text for Waveforms mode. Memoised so a playback tick
+  // (currentTime changing every ~100ms) doesn't reclassify every word each frame.
+  const decorationsBySegment = useMemo(() => {
+    if (!waveformsMode) return null
+    const map = new Map<string, ReturnType<typeof buildSegmentDecorations>>()
+    for (const segment of data.corrected_segments) {
+      map.set(
+        segment.id,
+        buildSegmentDecorations(data, segment, {
+          editedWordIds,
+          aiCorrectedWordIds,
+          aiOriginalTextByWordId,
+        })
+      )
+    }
+    return map
+  }, [waveformsMode, data, editedWordIds, aiCorrectedWordIds, aiOriginalTextByWordId])
 
   // With no reference lyrics, nothing classifies words as anchor/gap/corrected,
   // so every pill would render uncoloured and the line loses the colour-scanning
@@ -111,8 +152,8 @@ export default function TranscriptionView({
           <h3 className="text-sm font-semibold">{t('syncedLyrics')}</h3>
           <ToggleGroup
             type="single"
-            value={advancedMode ? 'advanced' : 'simple'}
-            onValueChange={(value) => value && onAdvancedModeToggle?.(value === 'advanced')}
+            value={viewMode}
+            onValueChange={(value) => value && onViewModeChange?.(value as typeof viewMode)}
             className="h-7"
           >
             <ToggleGroupItem value="simple" aria-label="simple view" className="h-7 px-2.5 text-[0.75rem]">
@@ -123,10 +164,35 @@ export default function TranscriptionView({
               <Clock className="h-3.5 w-3.5 mr-1.5" />
               {t('advanced')}
             </ToggleGroupItem>
+            <ToggleGroupItem value="waveforms" aria-label="waveforms view" className="h-7 px-2.5 text-[0.75rem]">
+              <AudioWaveform className="h-3.5 w-3.5 mr-1.5" />
+              {t('waveforms')}
+            </ToggleGroupItem>
           </ToggleGroup>
         </div>
 
-        {(
+        {waveformsMode ? (
+          // Waveforms mode: an inline, compact copy of the Edit Segment timeline for every
+          // segment — resizable word bars over the vocal waveform, with buffer padding +
+          // boundary lines + greyed neighbour words. Lets the reviewer spot mis-timed words
+          // (e.g. an over-long trailing word) at a glance without opening a modal per line.
+          <div className="flex flex-col gap-[5px]">
+            {data.corrected_segments.map((segment, segmentIndex) => (
+              <WaveformSegmentRow
+                key={segment.id}
+                segment={segment}
+                segmentIndex={segmentIndex}
+                contextWords={contextWordsBySegment?.get(segmentIndex) ?? []}
+                currentTime={currentTime}
+                wordDecorations={decorationsBySegment?.get(segment.id) ?? new Map()}
+                onCommit={(idx, updated) => onCommitSegment?.(idx, updated)}
+                onPlaySegment={onPlaySegment}
+                onEditSegment={(idx) => onEditSegment?.(idx)}
+                onDeleteSegment={handleDeleteSegment}
+              />
+            ))}
+          </div>
+        ) : (
           // Advanced rows are full-width pill timelines, so give them a bit
           // more breathing room between lines to match Simple's rhythm.
           <div className={cn('flex flex-col', advancedMode ? 'gap-2' : 'gap-0.5')}>

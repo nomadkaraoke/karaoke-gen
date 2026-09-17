@@ -19,7 +19,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from backend.services.storage_service import StorageService
+from backend.services.storage_service import SignedUrlTimeout, StorageService
 
 
 logger = logging.getLogger(__name__)
@@ -115,6 +115,11 @@ class AudioTranscodingService:
         try:
             cache_path = self.transcode_if_needed(source_gcs_path)
             return self.storage.generate_signed_url(cache_path, expiration_minutes)
+        except SignedUrlTimeout:
+            # The signing backend (IAM signBlob) is stalling — every fallback below
+            # would sign too and stall identically. Bail immediately so the caller
+            # degrades fast (null audio_url) instead of burning 2-3× the timeout.
+            raise
         except Exception as e:
             # Source may be deleted but cache from earlier transcode persists
             try:

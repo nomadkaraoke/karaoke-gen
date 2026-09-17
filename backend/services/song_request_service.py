@@ -170,6 +170,15 @@ class SongRequestService:
             return SongRequest(**doc.to_dict())
         return None
 
+    def list_all(self) -> list[SongRequest]:
+        """Every request across all statuses, newest first — the admin history view."""
+        items = [
+            SongRequest(**doc.to_dict())
+            for doc in self.db.collection(REQUESTS_COLLECTION).stream()
+        ]
+        items.sort(key=lambda r: r.created_at, reverse=True)
+        return items
+
     def list_active(self) -> list[SongRequest]:
         """Open requests, ranked by net votes desc then oldest-first."""
         query = self.db.collection(REQUESTS_COLLECTION).where(
@@ -385,6 +394,19 @@ class SongRequestService:
         """Community picks currently owned by someone reviewing (status in_progress)."""
         query = self.db.collection(REQUESTS_COLLECTION).where(
             filter=FieldFilter("status", "==", "in_progress")
+        ).limit(ACTIVE_FETCH_LIMIT)
+        return [SongRequest(**doc.to_dict()) for doc in query.stream()]
+
+    def list_published_unnotified(self) -> list[SongRequest]:
+        """Published picks whose voter fan-out never fully completed
+        (``voters_notified == False``) — e.g. a send failed after the request was
+        already marked published. The reconcile job retries these; the per-voter
+        ``notified_voters`` guard keeps it from re-emailing anyone already reached.
+        """
+        query = self.db.collection(REQUESTS_COLLECTION).where(
+            filter=FieldFilter("status", "==", "published")
+        ).where(
+            filter=FieldFilter("voters_notified", "==", False)
         ).limit(ACTIVE_FETCH_LIMIT)
         return [SongRequest(**doc.to_dict()) for doc in query.stream()]
 

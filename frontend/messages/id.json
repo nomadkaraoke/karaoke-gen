@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Dikoreksi otomatis oleh sistem kami dari \"{original}\". Penempatan waktunya hanya perkiraan, jadi putar baris ini dan sesuaikan waktu kata jika diperlukan.",
       "longGapWarning": "Jeda {seconds} dtk sebelum kata berikutnya — sering kali berupa kata yang muncul terlalu awal (misalnya kata \"dan\" yang tidak seharusnya ada). Klik untuk memutar dari sini.",
       "longWordWarning": "Kata ini berlangsung selama {seconds} dtk — durasi yang tidak wajar. Putar baris ini dan periksa apakah waktu akhirnya tidak menabrak bagian instrumental.",
-      "playFromGap": "Putar dari akhir jeda ini"
+      "playFromGap": "Putar dari akhir jeda ini",
+      "editSegment": "Edit segmen {index}",
+      "untimedSegment": "Tidak ada timing kata — klik untuk mengedit",
+      "waveforms": "Bentuk gelombang"
     },
     "editActionBar": {
       "reset": "Atur Ulang",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Memulai server encoding — ini mungkin memakan waktu beberapa menit. Tunggu sebentar ya!",
       "audioLabel": "Audio:",
       "audioOriginal": "Asli (dengan vokal)",
-      "backingVocalsWaveformHint": "Vokal latar dipertahankan dalam instrumental — klik untuk mendengarkan bagian ini.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + vokal latar",
       "audioInstrumentalClean": "Instrumental bersih",
       "audioInstrumentalPillBacking": "Instrumental (dengan vokal latar)",
-      "audioInstrumentalPillClean": "Instrumental (bersih)"
+      "audioInstrumentalPillClean": "Instrumental (bersih)",
+      "backingVocalsWaveformKept": "Vokal latar dipertahankan dalam instrumental — klik untuk mendengarkannya.",
+      "backingVocalsWaveformRemoved": "Vokal latar yang dihapus oleh instrumental bersih — klik untuk mendengarkan bagian yang akan dihilangkan."
     },
     "gapNavigator": {
       "previousGap": "Celah sebelumnya (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Lanjutkan ke Tinjauan Instrumental",
         "saving": "Menyimpan...",
         "completeTrack": "Trek Lengkap",
-        "autoInstrumentalClean": "Kami akan menggunakan instrumental bersih (tanpa vokal latar) untuk trek ini.",
+        "autoInstrumentalClean": "Instrumental bersih akan menghapus vokal latar yang ditampilkan di bawah. Coba dengarkan dulu — jika terdengar bagus, ubah ke “Instrumental + vokal latar” di atas untuk mempertahankannya.",
         "previewTitle": "Pratinjau Video",
-        "autoInstrumentalCleanChosen": "Anda telah memilih instrumental bersih (tanpa vokal latar) untuk trek ini.",
+        "autoInstrumentalCleanChosen": "Anda telah memilih instrumental bersih, yang akan menghapus vokal latar yang ditampilkan di bawah. Coba dengarkan dulu — jika terdengar bagus, ubah ke “Instrumental + vokal latar” di atas untuk mempertahankannya.",
         "advancedModeClean": "Mode lanjutan (tinjau atau unggah instrumental kustom)",
         "finalChoiceLabel": "Video karaoke Anda akan menggunakan:",
         "recommended": "direkomendasikan",

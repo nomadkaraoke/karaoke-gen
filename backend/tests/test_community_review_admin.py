@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from backend.api.routes.admin import (
     CommunityReviewActionBody,
     action_community_review,
+    list_community_requests,
 )
 from backend.models.song_request import SongRequest
 
@@ -105,3 +106,26 @@ async def test_make_failure_raises_500():
     with pytest.raises(HTTPException) as exc:
         await _call(_patches(svc, provision=provision), "req1", "make")
     assert exc.value.status_code == 500
+
+
+@pytest.mark.asyncio
+async def test_list_community_requests_maps_all_statuses():
+    svc = MagicMock()
+    published = _req(
+        id="pub", status="published", review_state=None,
+        job_id="j-abc12345", youtube_url="https://youtu.be/pub",
+        owner_email="voter@x.com",
+    )
+    open_req = _req(id="op", status="open", review_state=None, job_id=None, youtube_url=None)
+    svc.list_all.return_value = [published, open_req]
+    with patch("backend.services.song_request_service.get_song_request_service",
+               MagicMock(return_value=svc)):
+        res = await list_community_requests(auth_data=("admin", None, 0))
+    assert [r.id for r in res.requests] == ["pub", "op"]
+    pub = res.requests[0]
+    assert pub.status == "published"
+    assert pub.youtube_url == "https://youtu.be/pub"
+    assert pub.owner_email == "voter@x.com"
+    assert pub.created_at is not None  # datetime serialized to iso string
+    # Open request carries no job/video links.
+    assert res.requests[1].job_id is None and res.requests[1].youtube_url is None

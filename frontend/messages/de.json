@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Von unserem System automatisch korrigiert (vorher: \"{original}\"). Das Timing wurde geschätzt. Spiele diese Zeile ab und passe das Timing der Wörter an, falls nötig.",
       "longGapWarning": "{seconds}s Lücke vor dem nächsten Wort – oft ein fälschlicherweise zu früh erkanntes Wort (z. B. ein Phantomwort wie \"und\"). Klicke, um von hier abzuspielen.",
       "longWordWarning": "Dieses Wort dauert {seconds}s – ungewöhnlich lang. Spiele die Zeile ab und prüfe, ob die Endzeit nicht ins Instrumental hineinreicht.",
-      "playFromGap": "Vom Ende dieser Lücke abspielen"
+      "playFromGap": "Vom Ende dieser Lücke abspielen",
+      "editSegment": "Bearbeite Segment {index}",
+      "untimedSegment": "Keine Wort-Timings — klicke zum Bearbeiten",
+      "waveforms": "Wellenformen"
     },
     "editActionBar": {
       "reset": "Zurücksetzen",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Ein Kodierungsserver wird gestartet — das kann ein paar Minuten dauern. Bitte hab etwas Geduld!",
       "audioLabel": "Audio:",
       "audioOriginal": "Original (mit Gesang)",
-      "backingVocalsWaveformHint": "Hintergrundgesang im Instrumental beibehalten — klicke, um diesen Teil zu hören.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + Hintergrundgesang",
       "audioInstrumentalClean": "Reines Instrumental",
       "audioInstrumentalPillBacking": "Instrumental (plus Hintergrundgesang)",
-      "audioInstrumentalPillClean": "Instrumental (rein)"
+      "audioInstrumentalPillClean": "Instrumental (rein)",
+      "backingVocalsWaveformKept": "Hintergrundgesang im Instrumental beibehalten — klicke, um ihn zu hören.",
+      "backingVocalsWaveformRemoved": "Hintergrundgesang, den das reine Instrumental entfernt — klicke, um zu hören, was du weglassen würdest."
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Weiter zur Instrumental-Überprüfung",
         "saving": "Speichere...",
         "completeTrack": "Kompletter Track",
-        "autoInstrumentalClean": "Wir verwenden das reine Instrumental (ohne Hintergrundgesang) für diesen Track.",
+        "autoInstrumentalClean": "Das reine Instrumental entfernt den unten angezeigten Hintergrundgesang. Hör ihn dir zuerst an — wenn er gut klingt, wechsle oben zu „Instrumental + Hintergrundgesang“, um ihn zu behalten.",
         "previewTitle": "Video-Vorschau",
-        "autoInstrumentalCleanChosen": "Du hast das reine Instrumental (ohne Hintergrundgesang) für diesen Track ausgewählt.",
+        "autoInstrumentalCleanChosen": "Du hast das reine Instrumental gewählt, das den unten angezeigten Hintergrundgesang entfernt. Hör ihn dir zuerst an — wenn er gut klingt, wechsle oben zu „Instrumental + Hintergrundgesang“, um ihn zu behalten.",
         "advancedModeClean": "Erweiterter Modus (Instrumental überprüfen oder eigenes hochladen)",
         "finalChoiceLabel": "Dein Karaoke-Video verwendet:",
         "recommended": "empfohlen",

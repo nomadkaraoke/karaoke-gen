@@ -440,8 +440,17 @@ async def _build_instrumental_options(job, storage, request) -> List[Dict[str, A
         if backing_url:
             url_tasks["with_backing"] = transcoding.get_review_audio_url_async(backing_url, expiration_minutes=120)
         if url_tasks:
-            results = await asyncio.gather(*url_tasks.values())
-            signed_urls = dict(zip(url_tasks.keys(), results))
+            # Best-effort: signing goes through IAM signBlob over the network and is
+            # now bounded to SIGNED_URL_TIMEOUT_S (see storage_service). A stall must
+            # NOT blow up the whole review load — on failure we return the option with
+            # a null audio_url; the frontend re-fetches via GET /{job_id}/instrumental-urls.
+            results = await asyncio.gather(*url_tasks.values(), return_exceptions=True)
+            for key, res in zip(url_tasks.keys(), results):
+                if isinstance(res, Exception):
+                    logger.warning(f"Signing review audio URL failed ({key}): {res}")
+                    signed_urls[key] = None
+                else:
+                    signed_urls[key] = res
 
     instrumental_options: List[Dict[str, Any]] = []
     if clean_url:
@@ -702,14 +711,24 @@ async def get_correction_data(
         from backend.services.auto_approval.instrumental import auto_approval_summary
         corrections_data['auto_approval'] = auto_approval_summary(job, _get_settings())
 
-        # Get waveform URL if available
+        # Get waveform URL if available. Best-effort + off the event loop: signing is
+        # a network round-trip (IAM signBlob, bounded to SIGNED_URL_TIMEOUT_S), so run
+        # it in a thread and never let a stall/timeout fail the review load — the
+        # waveform is a nice-to-have, the lyrics are not.
         analysis_files = job.file_urls.get('analysis', {})
         waveform_url = analysis_files.get('backing_vocals_waveform')
         if waveform_url:
-            corrections_data['backing_vocals_waveform_url'] = (
-                _dev_audio_url(job_id, waveform_url, str(request.base_url)) if _dev_audio_proxy_enabled()
-                else storage.generate_signed_url(waveform_url, expiration_minutes=120)
-            )
+            try:
+                if _dev_audio_proxy_enabled():
+                    corrections_data['backing_vocals_waveform_url'] = _dev_audio_url(
+                        job_id, waveform_url, str(request.base_url)
+                    )
+                else:
+                    corrections_data['backing_vocals_waveform_url'] = await asyncio.to_thread(
+                        storage.generate_signed_url, waveform_url, expiration_minutes=120
+                    )
+            except Exception as e:
+                logger.warning(f"Job {job_id}: waveform URL signing failed, omitting: {e}")
 
         # Transition to IN_REVIEW if not already (never in replay — read-only)
         if not replay and job.status == JobStatus.AWAITING_REVIEW:
@@ -1953,8 +1972,15 @@ async def get_instrumental_analysis(
             for key, src in audio_url_sources.items() if src
         }
         if url_tasks:
-            results = await asyncio.gather(*url_tasks.values())
-            audio_urls = dict(zip(url_tasks.keys(), results))
+            # Best-effort per URL (signing is a bounded IAM round-trip): a stall on one
+            # stem yields a null URL the client can retry, not a failed refresh call.
+            results = await asyncio.gather(*url_tasks.values(), return_exceptions=True)
+            for key, res in zip(url_tasks.keys(), results):
+                if isinstance(res, Exception):
+                    logger.warning(f"Signing review audio URL failed ({key}): {res}")
+                    audio_urls[key] = None
+                else:
+                    audio_urls[key] = res
 
     # Format response to match InstrumentalAnalysis type
     return {

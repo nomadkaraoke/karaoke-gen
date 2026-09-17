@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Corretto automaticamente dal nostro sistema da \"{original}\". La sincronizzazione è stata stimata, quindi riproduci questa riga e regola i tempi delle parole se necessario.",
       "longGapWarning": "Pausa di {seconds}s prima della parola successiva — spesso una parola isolata in anticipo (es. una \"e\" fantasma). Clicca per riprodurre da qui.",
       "longWordWarning": "Questa parola dura {seconds}s — è insolitamente lunga. Riproduci la riga e controlla che il suo tempo di fine non si sovrapponga alla parte strumentale.",
-      "playFromGap": "Riproduci dalla fine di questa pausa"
+      "playFromGap": "Riproduci dalla fine di questa pausa",
+      "editSegment": "Modifica segmento {index}",
+      "untimedSegment": "Nessuna sincronizzazione delle parole — clicca per modificare",
+      "waveforms": "Forme d'onda"
     },
     "editActionBar": {
       "reset": "Reimposta",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Stiamo avviando un server di codifica — potrebbe volerci un paio di minuti. Un attimo di pazienza!",
       "audioLabel": "Audio:",
       "audioOriginal": "Originale (con voce)",
-      "backingVocalsWaveformHint": "Cori mantenuti nella base strumentale — clicca per ascoltare questa parte.",
       "audioInstrumental": "Strumentale",
       "audioInstrumentalBacking": "Strumentale + cori",
       "audioInstrumentalClean": "Strumentale pulita",
       "audioInstrumentalPillBacking": "Strumentale (con cori)",
-      "audioInstrumentalPillClean": "Strumentale (pulita)"
+      "audioInstrumentalPillClean": "Strumentale (pulita)",
+      "backingVocalsWaveformKept": "Cori mantenuti nella strumentale — clicca per ascoltarli.",
+      "backingVocalsWaveformRemoved": "Cori che la strumentale pulita rimuove — clicca per ascoltare cosa stai escludendo."
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Procedi alla revisione strumentale",
         "saving": "Salvataggio...",
         "completeTrack": "Traccia completa",
-        "autoInstrumentalClean": "Useremo la base musicale pulita (senza cori) per questa traccia.",
+        "autoInstrumentalClean": "La strumentale pulita rimuove i cori mostrati di seguito. Ascoltali prima: se suonano bene, passa a “Strumentale + cori” qui sopra per mantenerli.",
         "previewTitle": "Anteprima video",
-        "autoInstrumentalCleanChosen": "Hai scelto la base musicale pulita (senza cori) per questa traccia.",
+        "autoInstrumentalCleanChosen": "Hai scelto la strumentale pulita, che rimuove i cori mostrati di seguito. Ascoltali prima: se suonano bene, passa a “Strumentale + cori” qui sopra per mantenerli.",
         "advancedModeClean": "Modalità avanzata (rivedi o carica una base strumentale personalizzata)",
         "finalChoiceLabel": "Il tuo video karaoke utilizzerà:",
         "recommended": "consigliato",

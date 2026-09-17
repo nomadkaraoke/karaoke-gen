@@ -931,7 +931,10 @@
       "aiTooltipReplacedEstimated": "Corregido automáticamente por nuestro sistema (reemplazando \"{original}\"). El tiempo se estimó, así que reproduce esta línea y ajusta los tiempos de las palabras si es necesario.",
       "longGapWarning": "Hueco de {seconds}s antes de la siguiente palabra — a menudo una palabra suelta anticipada (por ejemplo, una palabra fantasma \"and\"). Haz clic para reproducir desde aquí.",
       "longWordWarning": "Esta palabra dura {seconds}s — inusualmente larga. Reproduce la línea y comprueba que su tiempo de finalización no se solape con el instrumental.",
-      "playFromGap": "Reproducir desde el final de este hueco"
+      "playFromGap": "Reproducir desde el final de este hueco",
+      "editSegment": "Editar segmento {index}",
+      "untimedSegment": "Sin tiempos por palabra — haz clic para editar",
+      "waveforms": "Formas de onda"
     },
     "editActionBar": {
       "reset": "Restablecer",
@@ -1014,12 +1017,13 @@
       "startingEncoder": "Iniciando un servidor de codificación — esto puede tardar un par de minutos. ¡Espera un momento!",
       "audioLabel": "Audio:",
       "audioOriginal": "Original (con voces)",
-      "backingVocalsWaveformHint": "Coros mantenidos en el instrumental — haz clic para escuchar esta parte.",
       "audioInstrumental": "Instrumental",
       "audioInstrumentalBacking": "Instrumental + coros",
       "audioInstrumentalClean": "Instrumental limpio",
       "audioInstrumentalPillBacking": "Instrumental (con coros)",
-      "audioInstrumentalPillClean": "Instrumental (limpio)"
+      "audioInstrumentalPillClean": "Instrumental (limpio)",
+      "backingVocalsWaveformKept": "Coros que se mantienen en el instrumental — haz clic para escucharlos.",
+      "backingVocalsWaveformRemoved": "Coros que elimina el instrumental limpio — haz clic para escuchar lo que estarías dejando fuera."
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",
@@ -1155,9 +1159,9 @@
         "proceedToInstrumental": "Proceder a la revisión instrumental",
         "saving": "Guardando...",
         "completeTrack": "Completar pista",
-        "autoInstrumentalClean": "Usaremos el instrumental limpio (sin coros) para esta pista.",
+        "autoInstrumentalClean": "El instrumental limpio elimina los coros que se muestran a continuación. Escúchalos primero — si suenan bien, cambia a “Instrumental + coros” arriba para mantenerlos.",
         "previewTitle": "Vista previa del video",
-        "autoInstrumentalCleanChosen": "Has elegido el instrumental limpio (sin coros) para esta pista.",
+        "autoInstrumentalCleanChosen": "Has elegido el instrumental limpio, que elimina los coros que se muestran a continuación. Escúchalos primero — si suenan bien, cambia a “Instrumental + coros” arriba para mantenerlos.",
         "advancedModeClean": "Modo avanzado (revisar o subir un instrumental personalizado)",
         "finalChoiceLabel": "Tu video de karaoke usará:",
         "recommended": "recomendado",
