@@ -1,5 +1,20 @@
 # KaraokeHunt decommission + user outreach — session handoff (2026-09-13)
 
+> **SESSION 5 — PHASE C STARTED (2026-09-17)**
+> - Review triage (`outreach_out/review_triage.json`): 15 EASY (Andrew DONE) · 26 MEDIUM
+>   (10 opened in tabs for him) · 34 SKIP (non-English/no-reference → users review).
+> - **One-click authed review links SHIPPED + verified in prod** (PR #1015 + #1016):
+>   `POST /api/admin/users/{email}/login-link {expiry_hours≤168, purpose:"job_review:<id>"}`
+>   → URL logs the user in (scanner-safe interstitial) and lands directly on that job's
+>   review page. Mint at email-drafting time (7-day expiry).
+> - **Reassignment DONE**: 62 jobs (28 complete + 34 skip) reassigned to their requesters;
+>   49 accounts (48 created silently with 3 credits; mudrocksebastian6@ pre-existed, NO
+>   credits granted — /admin/credits would email them). `outreach_out/phasec_state.json`.
+> - **Email batch 1 DRAFTED in Andrew's Gmail (10 drafts, NOT sent)** — completed-video
+>   variant for fully-resolved English requesters. 9 more fully-resolved await batching
+>   (incl. he/it/es speakers — bilingual after wording approved). Skip-pile emails next:
+>   mint per-user job_review links at draft time.
+
 > **SESSION 4 — BATCH GENERATION EXECUTED (2026-09-15, autonomous overnight)**
 > All 90 unique songs SUBMITTED as public jobs owned by holding account
 > **karaokehunt@nomadkaraoke.com** (created, 120 credits; @nomadkaraoke.com catchall →
