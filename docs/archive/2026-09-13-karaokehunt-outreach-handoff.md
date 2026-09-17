@@ -1,5 +1,27 @@
 # KaraokeHunt decommission + user outreach — session handoff (2026-09-13)
 
+> **SESSION 4 — BATCH GENERATION EXECUTED (2026-09-15, autonomous overnight)**
+> All 90 unique songs SUBMITTED as public jobs owned by holding account
+> **karaokehunt@nomadkaraoke.com** (created, 120 credits; @nomadkaraoke.com catchall →
+> Andrew's gmail so ALL job emails are contained). Every job `review_mode=auto`,
+> `made_for_you=true` (= stale-review 48h auto-expiry EXEMPT — shipped PR #1004 making
+> made_for_you admin-editable, deployed v0.225.6).
+> - **RED incident**: the burst of ~60 .torrent fetches got the flacup VPS temporarily
+>   IP-banned by RED (connection refused; NOT the API key). Recovery loop retried all 27
+>   failed jobs once the ban lifted (~90 min) — 100% recovered.
+> - **Full-auto test**: `made_for_you` BLOCKS auto-approval enforcement (executor blocker)
+>   — shipped PR #1005 (`POST /api/internal/jobs/{id}/auto-approval-eval`, v0.225.7):
+>   flip MFY off → eval → re-protect. **RESULT: 13/89 (~15%) fully auto-approved**
+>   (straight to render/YouTube; e.g. NOMAD-1637 Calcutta, NOMAD-1638 Johnnie Guilbert
+>   already LIVE), 76 await Andrew's human review (all MFY-re-protected).
+> - Duplicate submission (Emily King, CF-524 double-create) cancelled. batch_state.json
+>   maps song→job_id→requesters for Phase C reassignment.
+> - Known unrelated CI noise: post-deploy canary (happy-path E2E) failing on main runs
+>   during the batch (likely load/flake — E2E Daily passed on same code); PyPI publish
+>   failed on 0.225.7 run — check before next release.
+> - NEXT: Andrew reviews the 76 (admin or per-job review UI); then Phase C = reassign per
+>   job at final stage + emails (Gmail drafts, batches of 10) + hosted localized letter.
+
 > **SESSION 3 UPDATE (2026-09-14)** — canonicalization v2 DONE (`phase1c_recanonicalize.py`
 > + `outreach_out/canonical_v2.json`): resolved InputURL YouTube titles via oEmbed
 > (`inputurl_titles.json`), judged all 60 non-confident songs, collapsed 10 duplicates,

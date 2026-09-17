@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Tuple, List, Literal, Optional, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.api.dependencies import require_admin
 from backend.i18n import t, get_locale_from_request
@@ -2171,6 +2171,41 @@ async def send_job_completion_email(
             status_code=500,
             detail="Failed to send email. Check email service configuration."
         )
+
+
+class MintLoginLinkRequest(BaseModel):
+    """Request to mint a one-click login link for a user."""
+    expiry_hours: int = Field(168, ge=1, le=168)
+    # e.g. "job_review:<job_id>" — verify maps known purposes to a redirect
+    purpose: Optional[str] = None
+
+
+@router.post("/users/{email}/login-link")
+async def mint_user_login_link(
+    email: str,
+    request: MintLoginLinkRequest,
+    auth_data: AuthResult = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """
+    Mint a one-click login link for a user (admin only). Sends NOTHING — returns
+    the URL for embedding in manually-reviewed outreach emails. The link logs the
+    user in and, when purpose is "job_review:<job_id>", lands them directly on
+    that job's lyrics review page. Expiry up to 168h (7 days).
+    """
+    import os as _os
+    token = user_service.create_admin_login_token(
+        email=email.strip().lower(),
+        expiry_hours=request.expiry_hours,
+        purpose=request.purpose,
+    )
+    frontend_url = _os.getenv("FRONTEND_URL", "https://gen.nomadkaraoke.com")
+    return {
+        "email": token.email,
+        "url": f"{frontend_url}/auth/verify?token={token.token}",
+        "expires_at": token.expires_at.isoformat(),
+        "purpose": request.purpose,
+    }
 
 
 # =============================================================================
