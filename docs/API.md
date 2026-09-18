@@ -383,6 +383,23 @@ the query string (`?token=` for a full/owner token, `?review_token=` for a revie
 the same mechanism as `/audio/vocals`. The stem GCS path is resolved server-side from
 `option_id`. Added in v0.229.0 to remove IAM signBlob from the review load path (Option B).
 
+#### Waveform Data (review page)
+
+```http
+GET /api/review/{job_id}/waveform-data?num_points=1000
+```
+
+Returns `{amplitudes, duration_seconds, duration, sample_rate}` for canvas rendering of the
+backing-vocals waveform. Served from a **persistent GCS cache**
+(`jobs/{job_id}/review-audio/waveform_review_{num_points}.json`, validated against the source
+stem path + `num_points`), pre-computed by `screens_worker` before the job reaches review. A
+cache miss decodes the transcoded review OGG off the event loop, bounded by
+`REVIEW_WAVEFORM_MAX_CONCURRENCY` (default 4) — added in v0.230.0 after uncached in-request
+decoding wedged the service under concurrent review-page loads.
+
+Note: `/audio/vocals` (and the instrumental proxy above) serve from a bounded in-memory LRU,
+honor HTTP Range (`206`), and set `Cache-Control: private, max-age=600`.
+
 #### Create Custom Instrumental
 
 ```http
