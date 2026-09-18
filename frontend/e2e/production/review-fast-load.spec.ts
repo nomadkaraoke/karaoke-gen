@@ -88,4 +88,43 @@ test.describe('Review fast-full-load contract', () => {
     expect(ranged.status()).toBe(206);
     expect(ranged.headers()['content-range']).toMatch(/^bytes 0-\d+\/\d+$/);
   });
+
+  // Concurrent-load hardening (v0.230.0): vocals byte proxy + cached waveform-data.
+  test('vocals audio serves with Range support and cache headers', async ({ request }) => {
+    const url = proxyUrl(`/api/review/${JOB_ID}/audio/vocals`);
+
+    const full = await request.get(url);
+    console.log(`audio/vocals status=${full.status()} type=${full.headers()['content-type']}`);
+    expect(full.ok()).toBeTruthy();
+    expect(full.headers()['content-type']).toMatch(/audio\//);
+    expect(full.headers()['accept-ranges']).toBe('bytes');
+    expect(full.headers()['cache-control']).toContain('max-age');
+
+    const ranged = await request.get(url, { headers: { Range: 'bytes=0-1023' } });
+    expect(ranged.status()).toBe(206);
+    expect(ranged.headers()['content-range']).toMatch(/^bytes 0-\d+\/\d+$/);
+    expect((await ranged.body()).length).toBe(1024);
+  });
+
+  test('waveform-data returns quickly from the persistent cache', async ({ request }) => {
+    const base = `${API_URL}/api/review/${JOB_ID}/waveform-data`;
+    const url = REVIEW_TOKEN ? `${base}?review_token=${encodeURIComponent(REVIEW_TOKEN)}` : base;
+
+    // First call may compute+cache (bounded, off the event loop); the second
+    // must be a pure GCS-cache read and come back fast.
+    const warm = await request.get(url, { headers: authHeaders() });
+    expect(warm.ok()).toBeTruthy();
+
+    const started = Date.now();
+    const res = await request.get(url, { headers: authHeaders() });
+    const elapsedMs = Date.now() - started;
+    console.log(`waveform-data (cached) status=${res.status()} elapsed=${elapsedMs}ms`);
+    expect(res.ok()).toBeTruthy();
+    expect(elapsedMs).toBeLessThan(10_000);
+
+    const data = await res.json();
+    expect(Array.isArray(data.amplitudes)).toBeTruthy();
+    expect(data.amplitudes.length).toBeGreaterThan(0);
+    expect(data.duration_seconds).toBeGreaterThan(0);
+  });
 });

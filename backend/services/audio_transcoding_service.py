@@ -56,6 +56,10 @@ class AudioTranscodingService:
         filename = Path(source_gcs_path).stem + ".ogg"
         return f"jobs/{job_id}/review-audio/{filename}"
 
+    def get_transcoded_cache_path(self, source_gcs_path: str) -> str:
+        """Public accessor for the transcoded-OGG cache path of a source file."""
+        return self._get_cache_path(source_gcs_path)
+
     def _transcode_and_upload(self, source_gcs_path: str, cache_path: str) -> str:
         """
         Download FLAC from GCS, transcode to OGG Opus, upload to cache path.

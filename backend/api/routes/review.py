@@ -632,7 +632,11 @@ async def get_correction_data(
     job_manager = JobManager()
     storage = StorageService()
 
-    job = job_manager.get_job(job_id)
+    # All Firestore/GCS round-trips in this handler run via to_thread: they're
+    # blocking client-library calls, and on the single-process/single-loop
+    # server anything left on the event loop serializes EVERY in-flight request
+    # behind it under concurrent load (see 2026-09-18 investigation doc).
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -666,7 +670,7 @@ async def get_correction_data(
         # Try direct path for updated corrections
         corrections_updated_gcs = f"jobs/{job_id}/lyrics/corrections_updated.json"
 
-    if corrections_updated_gcs and storage.file_exists(corrections_updated_gcs):
+    if corrections_updated_gcs and await asyncio.to_thread(storage.file_exists, corrections_updated_gcs):
         corrections_gcs = corrections_updated_gcs
         logger.info(f"Job {job_id}: Using updated corrections from previous review")
     else:
@@ -674,7 +678,7 @@ async def get_correction_data(
         corrections_gcs = job.file_urls.get('lyrics', {}).get('corrections')
         if not corrections_gcs:
             corrections_gcs = f"jobs/{job_id}/lyrics/corrections.json"
-            if not storage.file_exists(corrections_gcs):
+            if not await asyncio.to_thread(storage.file_exists, corrections_gcs):
                 raise HTTPException(
                     status_code=404,
                     detail=t("en", "review.correctionsNotFound")
@@ -682,7 +686,7 @@ async def get_correction_data(
 
     # Download and return corrections data
     try:
-        corrections_data = storage.download_json(corrections_gcs)
+        corrections_data = await asyncio.to_thread(storage.download_json, corrections_gcs)
 
         # Add audio hash for the frontend
         audio_hash = _get_audio_hash(job_id)
@@ -725,19 +729,22 @@ async def get_correction_data(
 
         # Transition to IN_REVIEW if not already (never in replay — read-only)
         if not replay and job.status == JobStatus.AWAITING_REVIEW:
-            job_manager.transition_to_state(
+            await asyncio.to_thread(
+                job_manager.transition_to_state,
                 job_id=job_id,
                 new_status=JobStatus.IN_REVIEW,
-                message="User opened combined review interface"
+                message="User opened combined review interface",
             )
 
         # Replay: attach the reviewer's ordered edit_log so the UI can show the
         # sequence of actions (AI-accept/reject/manual/timing) beside the final state.
         if replay:
-            edit_log = _load_edit_log(job, storage)
+            edit_log = await asyncio.to_thread(_load_edit_log, job, storage)
             post_ai_segments = None
             try:
-                raw_data = storage.download_json(f"jobs/{job_id}/lyrics/corrections.json")
+                raw_data = await asyncio.to_thread(
+                    storage.download_json, f"jobs/{job_id}/lyrics/corrections.json"
+                )
                 post_ai_segments = _reconstruct_post_ai_segments(
                     raw_data.get('corrected_segments', []), edit_log
                 )
@@ -765,33 +772,36 @@ async def get_correction_data(
 @router.get("/{job_id}/audio/vocals")
 async def get_vocals_audio(
     job_id: str,
+    request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """Stream the vocals audio file for playback."""
-    return await _stream_audio(job_id, stem="vocals")
+    return await _stream_audio(job_id, request, stem="vocals")
 
 
 @router.get("/{job_id}/audio/{audio_hash}")
 async def get_audio_with_hash(
     job_id: str,
     audio_hash: str,
+    request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """Stream the audio file for playback (with hash parameter)."""
-    return await _stream_audio(job_id)
+    return await _stream_audio(job_id, request)
 
 
 @router.get("/{job_id}/audio/")
 @router.get("/{job_id}/audio")
 async def get_audio_no_hash(
     job_id: str,
+    request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """Stream the audio file for playback (without hash parameter)."""
-    return await _stream_audio(job_id)
+    return await _stream_audio(job_id, request)
 
 
-async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] = "input"):
+async def _stream_audio(job_id: str, request: Optional[Request] = None, stem: Literal["input"] | Literal["vocals"] = "input"):
     """
     Redirect to a signed GCS URL for audio playback in the review interface.
 
@@ -802,7 +812,7 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
 
     job_manager = JobManager()
 
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -846,8 +856,13 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
             # the (~3 MB) bytes from the API keeps it same-origin to api.* whose
             # CORS already allows the frontend. <audio> playback (stem="input")
             # doesn't need CORS, so it keeps the lighter redirect below.
-            audio_bytes, content_type = await transcoding.get_review_audio_bytes_async(audio_gcs_path)
+            # Cached in the bounded LRU (same as /instrumental-audio) with
+            # single-flight misses, so ten tabs of the same job — or a play after
+            # the waveform decode — share one GCS fetch instead of N.
+            audio_bytes, content_type = await _get_review_audio(audio_gcs_path, transcoding)
             logger.info(f"Job {job_id}: Proxying {len(audio_bytes)}B vocals audio for waveform")
+            if request is not None:
+                return _ranged_response(request, audio_bytes, content_type)
             return Response(content=audio_bytes, media_type=content_type)
 
         if _dev_audio_proxy_enabled():
@@ -874,12 +889,20 @@ _DEV_AUDIO_CACHE: Dict[str, Tuple[bytes, str]] = {}
 # BOUNDED cache of transcoded review-audio bytes for the PROD byte proxy (Option B).
 # Serving the ~3 MB OGG through the API means each play/seek would otherwise re-download
 # the object from GCS; cache a small number of recently-served objects so Range seeks and
-# repeat plays are cheap. Unlike _DEV_AUDIO_CACHE this is size-capped (LRU) so a busy prod
-# instance can't grow memory without limit — worst case ~_REVIEW_AUDIO_CACHE_MAX × object
-# size. Keyed by GCS path (the transcoded-OGG source), guarded by a lock for thread safety.
+# repeat plays are cheap. Unlike _DEV_AUDIO_CACHE this is capped by BOTH entry count and
+# total retained bytes (the transcode-failure fallback can serve a 35+ MB raw FLAC — a
+# count-only LRU of those would OOM a 2 GiB instance). Keyed by GCS path, guarded by a
+# lock for thread safety.
 _REVIEW_AUDIO_CACHE_MAX = int(os.getenv("REVIEW_AUDIO_CACHE_MAX", "16"))
+_REVIEW_AUDIO_CACHE_MAX_BYTES = int(os.getenv("REVIEW_AUDIO_CACHE_MAX_BYTES", str(192 * 1024 * 1024)))
 _review_audio_cache: "OrderedDict[str, Tuple[bytes, str]]" = OrderedDict()
+_review_audio_cache_bytes = 0
 _review_audio_cache_lock = threading.Lock()
+
+# Single-flight coordination for cache misses: N tabs of the same job must share ONE
+# transcode/GCS-download instead of duplicating it N times. Keyed by GCS path; only
+# ever touched from the event loop (async handlers), so no extra lock is needed.
+_review_audio_inflight: Dict[str, "asyncio.Future[Tuple[bytes, str]]"] = {}
 
 
 def _review_audio_cache_get(path: str) -> Optional[Tuple[bytes, str]]:
@@ -891,18 +914,66 @@ def _review_audio_cache_get(path: str) -> Optional[Tuple[bytes, str]]:
 
 
 def _review_audio_cache_put(path: str, value: Tuple[bytes, str]) -> None:
+    global _review_audio_cache_bytes
+    size = len(value[0])
+    if size > _REVIEW_AUDIO_CACHE_MAX_BYTES // 4:
+        # One oversized fallback (raw FLAC) must not evict the whole working set.
+        return
     with _review_audio_cache_lock:
+        old = _review_audio_cache.pop(path, None)
+        if old is not None:
+            _review_audio_cache_bytes -= len(old[0])
         _review_audio_cache[path] = value
-        _review_audio_cache.move_to_end(path)
-        while len(_review_audio_cache) > _REVIEW_AUDIO_CACHE_MAX:
-            _review_audio_cache.popitem(last=False)  # evict least-recently-used
+        _review_audio_cache_bytes += size
+        while _review_audio_cache and (
+            len(_review_audio_cache) > _REVIEW_AUDIO_CACHE_MAX
+            or _review_audio_cache_bytes > _REVIEW_AUDIO_CACHE_MAX_BYTES
+        ):
+            _, evicted = _review_audio_cache.popitem(last=False)  # least-recently-used
+            _review_audio_cache_bytes -= len(evicted[0])
+
+
+async def _get_review_audio(source_gcs_path: str, transcoding) -> Tuple[bytes, str]:
+    """Cached, single-flight fetch of transcoded review-audio bytes.
+
+    Cache hit → served from memory. Miss → exactly one caller runs the
+    transcode/download; concurrent callers for the same path await its result
+    (success and failure are both shared). Used by /audio/vocals and
+    /instrumental-audio.
+    """
+    cached = _review_audio_cache_get(source_gcs_path)
+    if cached is not None:
+        return cached
+
+    inflight = _review_audio_inflight.get(source_gcs_path)
+    if inflight is not None:
+        return await asyncio.shield(inflight)
+
+    future: "asyncio.Future[Tuple[bytes, str]]" = asyncio.get_running_loop().create_future()
+    _review_audio_inflight[source_gcs_path] = future
+    try:
+        value = await transcoding.get_review_audio_bytes_async(source_gcs_path)
+        _review_audio_cache_put(source_gcs_path, value)
+        future.set_result(value)
+        return value
+    except Exception as e:
+        future.set_exception(e)
+        # The originator re-raises; mark the future's exception as observed so
+        # an awaiter-less failure doesn't log "exception was never retrieved".
+        future.exception()
+        raise
+    finally:
+        _review_audio_inflight.pop(source_gcs_path, None)
 
 
 def _ranged_response(request: Request, data: bytes, content_type: str) -> Response:
     """Serve ``data`` honoring an HTTP Range header (206) so <audio> can seek."""
     total = len(data)
     range_header = request.headers.get("range")
-    headers = {"Accept-Ranges": "bytes"}
+    # Let the browser reuse review audio across reloads/tabs for a few minutes
+    # instead of re-pulling multi-MB bodies through the API. Short-lived because
+    # audio-edit can replace a stem's bytes at the same URL.
+    headers = {"Accept-Ranges": "bytes", "Cache-Control": "private, max-age=600"}
     if range_header and range_header.startswith("bytes="):
         try:
             spec = range_header.split("=", 1)[1].split(",")[0].strip()
@@ -978,7 +1049,7 @@ async def get_instrumental_audio(
     if not stem_key:
         raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
 
-    job = JobManager().get_job(job_id)
+    job = await asyncio.to_thread(JobManager().get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -988,13 +1059,9 @@ async def get_instrumental_audio(
         raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
 
     try:
-        cached = _review_audio_cache_get(source_gcs_path)
-        if cached is None:
-            from backend.services.audio_transcoding_service import AudioTranscodingService
-            transcoding = AudioTranscodingService(storage_service=StorageService())
-            cached = await transcoding.get_review_audio_bytes_async(source_gcs_path)
-            _review_audio_cache_put(source_gcs_path, cached)
-        data, content_type = cached
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+        transcoding = AudioTranscodingService(storage_service=StorageService())
+        data, content_type = await _get_review_audio(source_gcs_path, transcoding)
         logger.info(f"Job {job_id}: Proxying {len(data)}B instrumental audio ({option_id})")
         return _ranged_response(request, data, content_type)
     except NotFound:
@@ -1980,7 +2047,7 @@ async def get_instrumental_urls(
     cheap, backwards-compatible way to do so. Returns the same shape as correction-data's
     ``instrumental_options``.
     """
-    job = JobManager().get_job(job_id)
+    job = await asyncio.to_thread(JobManager().get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -2005,7 +2072,7 @@ async def get_instrumental_analysis(
     job_manager = JobManager()
     storage = StorageService()
 
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -2072,6 +2139,16 @@ async def get_instrumental_analysis(
     }
 
 
+# Bound how many waveform computations/loads can run at once on an instance.
+# A cache miss decodes a whole audio file (seconds of CPU); before this bound —
+# and before the compute moved off the event loop — ~10 concurrent review-page
+# loads could wedge the single uvicorn event loop and take the whole service
+# down ("no available instance" aborts; see 2026-09-18 investigation doc).
+# max(1, …): a zero/negative override would otherwise deadlock every request.
+_WAVEFORM_MAX_CONCURRENCY = max(1, int(os.getenv("REVIEW_WAVEFORM_MAX_CONCURRENCY", "4")))
+_waveform_semaphore = asyncio.Semaphore(_WAVEFORM_MAX_CONCURRENCY)
+
+
 @router.get("/{job_id}/waveform-data")
 async def get_waveform_data(
     job_id: str,
@@ -2082,12 +2159,16 @@ async def get_waveform_data(
     Get waveform amplitude data for client-side rendering.
 
     Returns amplitude values for drawing the waveform in the frontend.
+    Served from a persistent GCS cache (precomputed by screens_worker before
+    the job reaches review); a miss decodes off the event loop, bounded by
+    ``_waveform_semaphore``.
     """
     from backend.services.audio_analysis_service import AudioAnalysisService
+    from backend.services.audio_transcoding_service import AudioTranscodingService
 
     job_manager = JobManager()
 
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -2104,11 +2185,14 @@ async def get_waveform_data(
 
     try:
         analysis_service = AudioAnalysisService()
-        amplitudes, duration = analysis_service.get_waveform_data(
-            gcs_audio_path=backing_vocals_path,
-            job_id=job_id,
-            num_points=num_points,
-        )
+        async with _waveform_semaphore:
+            amplitudes, duration = await asyncio.to_thread(
+                analysis_service.get_review_waveform,
+                backing_vocals_path,
+                job_id,
+                num_points,
+                AudioTranscodingService(),
+            )
 
         return {
             "amplitudes": amplitudes,

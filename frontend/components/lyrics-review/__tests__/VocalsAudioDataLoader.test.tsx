@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { useContext } from 'react'
-import { AudioData, AudioNotReadyError, fetchAudioData as fetchAudioDataImport } from '@/lib/audio-data'
+import { AudioData, AudioFetchError, AudioNotReadyError, fetchAudioData as fetchAudioDataImport } from '@/lib/audio-data'
 import { VocalsAudioDataLoader, VocalsAudioDataLoaderContext } from '../VocalsAudioDataLoader'
 
 jest.mock('@/lib/audio-data', () => {
@@ -93,6 +93,77 @@ describe('VocalsAudioDataLoader', () => {
     expect(fetchAudioData).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('probe')).toHaveTextContent('empty')
     expect(consoleError).toHaveBeenCalled()
+
+    consoleError.mockRestore()
+  })
+
+  it('retries a transient failure (500 under load) with backoff, then loads', async () => {
+    // Ten review tabs at once can briefly 500 this endpoint; giving up silently
+    // left the Waveforms view stripless until a manual reload.
+    fetchAudioData
+      .mockRejectedValueOnce(new AudioFetchError(500))
+      .mockResolvedValue(AUDIO_DATA)
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+    expect(screen.getByTestId('probe')).toHaveTextContent('empty')
+
+    await act(async () => {
+      jest.advanceTimersByTime(5_000)
+    })
+    expect(fetchAudioData).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('probe')).toHaveTextContent('loaded')
+
+    consoleWarn.mockRestore()
+  })
+
+  it('gives up after exhausting transient retries', async () => {
+    fetchAudioData.mockRejectedValue(new AudioFetchError(503))
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+
+    // 5s + 15s + 30s + 60s of backoff = 4 retries after the initial attempt.
+    for (const delay of [5_000, 15_000, 30_000, 60_000, 120_000]) {
+      await act(async () => {
+        jest.advanceTimersByTime(delay)
+      })
+    }
+    expect(fetchAudioData).toHaveBeenCalledTimes(5)
+    expect(screen.getByTestId('probe')).toHaveTextContent('empty')
+    expect(consoleError).toHaveBeenCalled()
+
+    consoleWarn.mockRestore()
+    consoleError.mockRestore()
+  })
+
+  it('does not retry a 404 (AudioFetchError, terminal)', async () => {
+    fetchAudioData.mockRejectedValue(new AudioFetchError(404))
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+
+    await act(async () => {
+      jest.advanceTimersByTime(120_000)
+    })
+    expect(fetchAudioData).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('probe')).toHaveTextContent('empty')
 
     consoleError.mockRestore()
   })

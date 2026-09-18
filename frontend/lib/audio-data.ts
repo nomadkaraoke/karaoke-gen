@@ -23,6 +23,25 @@ export class AudioNotReadyError extends Error {
 	}
 }
 
+// Non-2xx response from the vocals endpoint. Carries the status so callers can
+// tell transient overload (5xx/429 — worth retrying) from terminal answers
+// (404: this job has no vocal stem; retrying would never succeed).
+export class AudioFetchError extends Error {
+	constructor(public readonly status: number) {
+		super(`Failed to fetch vocals audio: ${status}`)
+		this.name = 'AudioFetchError'
+	}
+}
+
+export function isTransientAudioError(error: unknown): boolean {
+	if (error instanceof AudioFetchError) {
+		return error.status >= 500 || error.status === 429
+	}
+	// fetch() rejects with a TypeError on network-level failures (offline,
+	// connection reset, CORS blip) — all worth retrying.
+	return error instanceof TypeError
+}
+
 // Minimal structural subset of AudioBuffer, so the peak math is testable
 // without constructing a real (browser-only) AudioContext.
 export interface DecodedAudioLike {
@@ -83,7 +102,7 @@ export async function fetchAudioData(url: string): Promise<AudioData> {
 		throw new AudioNotReadyError()
 	}
 	if (!response.ok) {
-		throw new Error(`Failed to fetch vocals audio: ${response.status}`)
+		throw new AudioFetchError(response.status)
 	}
 	const arrayBuffer = await response.arrayBuffer()
 

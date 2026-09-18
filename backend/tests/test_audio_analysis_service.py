@@ -411,3 +411,148 @@ class TestLoadCachedWaveform:
 
         assert result is None
 
+
+
+class TestGetReviewWaveform:
+    """Persistent GCS cache for the review-page waveform (concurrent-load fix)."""
+
+    def _service(self, mock_storage_class, mock_waveform_class):
+        from backend.services.audio_analysis_service import AudioAnalysisService
+
+        mock_storage = Mock()
+        mock_storage_class.return_value = mock_storage
+        mock_waveform = Mock()
+        mock_waveform.generate_data_only.return_value = ([0.1, 0.9], 200.0)
+        mock_waveform_class.return_value = mock_waveform
+        return AudioAnalysisService(), mock_storage, mock_waveform
+
+    @patch("backend.services.audio_analysis_service.StorageService")
+    @patch("backend.services.audio_analysis_service.AudioAnalyzer")
+    @patch("backend.services.audio_analysis_service.WaveformGenerator")
+    def test_cache_hit_skips_decode(
+        self, mock_waveform_class, mock_analyzer_class, mock_storage_class
+    ):
+        service, storage, waveform = self._service(mock_storage_class, mock_waveform_class)
+        storage.file_exists.return_value = True
+        storage.download_json.return_value = {
+            "amplitudes": [0.3, 0.7],
+            "duration_seconds": 123.0,
+            "num_points": 1000,
+            "source_gcs_path": "jobs/j1/stems/backing_vocals.flac",
+        }
+
+        amps, duration = service.get_review_waveform(
+            "jobs/j1/stems/backing_vocals.flac", "j1", 1000
+        )
+
+        assert amps == [0.3, 0.7]
+        assert duration == 123.0
+        waveform.generate_data_only.assert_not_called()
+        storage.upload_json.assert_not_called()
+
+    @patch("backend.services.audio_analysis_service.StorageService")
+    @patch("backend.services.audio_analysis_service.AudioAnalyzer")
+    @patch("backend.services.audio_analysis_service.WaveformGenerator")
+    def test_cache_miss_computes_and_uploads(
+        self, mock_waveform_class, mock_analyzer_class, mock_storage_class
+    ):
+        service, storage, waveform = self._service(mock_storage_class, mock_waveform_class)
+        storage.file_exists.return_value = False
+
+        amps, duration = service.get_review_waveform(
+            "jobs/j1/stems/backing_vocals.flac", "j1", 1000
+        )
+
+        assert amps == [0.1, 0.9]
+        assert duration == 200.0
+        waveform.generate_data_only.assert_called_once()
+        storage.upload_json.assert_called_once()
+        cache_path, payload = storage.upload_json.call_args[0]
+        assert cache_path == "jobs/j1/review-audio/waveform_review_1000.json"
+        assert payload["source_gcs_path"] == "jobs/j1/stems/backing_vocals.flac"
+        assert payload["num_points"] == 1000
+
+    @patch("backend.services.audio_analysis_service.StorageService")
+    @patch("backend.services.audio_analysis_service.AudioAnalyzer")
+    @patch("backend.services.audio_analysis_service.WaveformGenerator")
+    def test_stale_source_recomputes(
+        self, mock_waveform_class, mock_analyzer_class, mock_storage_class
+    ):
+        """A cache written for an old/replaced stem path must not be served."""
+        service, storage, waveform = self._service(mock_storage_class, mock_waveform_class)
+        storage.file_exists.return_value = True
+        storage.download_json.return_value = {
+            "amplitudes": [0.3, 0.7],
+            "duration_seconds": 123.0,
+            "num_points": 1000,
+            "source_gcs_path": "jobs/j1/stems/OLD_backing_vocals.flac",
+        }
+
+        amps, _ = service.get_review_waveform(
+            "jobs/j1/stems/backing_vocals.flac", "j1", 1000
+        )
+
+        assert amps == [0.1, 0.9]  # freshly computed, not the stale cache
+        waveform.generate_data_only.assert_called_once()
+
+    @patch("backend.services.audio_analysis_service.StorageService")
+    @patch("backend.services.audio_analysis_service.AudioAnalyzer")
+    @patch("backend.services.audio_analysis_service.WaveformGenerator")
+    def test_num_points_mismatch_recomputes(
+        self, mock_waveform_class, mock_analyzer_class, mock_storage_class
+    ):
+        service, storage, waveform = self._service(mock_storage_class, mock_waveform_class)
+        storage.file_exists.return_value = True
+        storage.download_json.return_value = {
+            "amplitudes": [0.3, 0.7],
+            "duration_seconds": 123.0,
+            "num_points": 500,
+            "source_gcs_path": "jobs/j1/stems/backing_vocals.flac",
+        }
+
+        _, _ = service.get_review_waveform(
+            "jobs/j1/stems/backing_vocals.flac", "j1", 1000
+        )
+        waveform.generate_data_only.assert_called_once()
+
+    @patch("backend.services.audio_analysis_service.StorageService")
+    @patch("backend.services.audio_analysis_service.AudioAnalyzer")
+    @patch("backend.services.audio_analysis_service.WaveformGenerator")
+    def test_prefers_transcoded_ogg_on_miss(
+        self, mock_waveform_class, mock_analyzer_class, mock_storage_class
+    ):
+        """On a cache miss, decode the small review OGG when it exists."""
+        service, storage, waveform = self._service(mock_storage_class, mock_waveform_class)
+        # Cache JSON absent, transcoded OGG present.
+        storage.file_exists.side_effect = lambda p: p.endswith(".ogg")
+
+        transcoding = Mock()
+        transcoding.get_transcoded_cache_path.return_value = (
+            "jobs/j1/review-audio/backing_vocals.ogg"
+        )
+
+        with patch.object(service, "get_waveform_data", wraps=None) as mock_get:
+            mock_get.return_value = ([0.5], 90.0)
+            service.get_review_waveform(
+                "jobs/j1/stems/backing_vocals.flac", "j1", 1000, transcoding
+            )
+            assert (
+                mock_get.call_args.kwargs["gcs_audio_path"]
+                == "jobs/j1/review-audio/backing_vocals.ogg"
+            )
+
+    @patch("backend.services.audio_analysis_service.StorageService")
+    @patch("backend.services.audio_analysis_service.AudioAnalyzer")
+    @patch("backend.services.audio_analysis_service.WaveformGenerator")
+    def test_cache_upload_failure_still_returns_data(
+        self, mock_waveform_class, mock_analyzer_class, mock_storage_class
+    ):
+        service, storage, waveform = self._service(mock_storage_class, mock_waveform_class)
+        storage.file_exists.return_value = False
+        storage.upload_json.side_effect = Exception("GCS write denied")
+
+        amps, duration = service.get_review_waveform(
+            "jobs/j1/stems/backing_vocals.flac", "j1", 1000
+        )
+        assert amps == [0.1, 0.9]
+        assert duration == 200.0
