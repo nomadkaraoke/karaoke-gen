@@ -75,14 +75,30 @@ def _json_response(data: dict, status: int = 200):
 
 
 def _search_divebar(query: str, limit: int = 50) -> list[dict]:
-    """Search the Divebar catalog in BigQuery by artist/title."""
+    """Search the Divebar catalog in BigQuery by artist/title.
+
+    Matching is accent-insensitive: the query and the artist/title haystack are
+    both diacritic-folded (NFD + drop combining marks, then lowered), mirroring
+    ``_search_kn_community``. Without this, a caller searching with normalized
+    text ("Jose Feliciano Feliz Navidad") could never match an accented catalog
+    row ("José Feliciano") — which broke the KJ Controller's loose-CDG sibling
+    pairing on approval, since sing requests store KN-normalized, accent-free
+    artist text.
+    """
     client = bigquery.Client(project=GCP_PROJECT_ID)
 
-    # Normalize query for matching
-    normalized = query.lower().strip()
+    # Diacritic-fold + lowercase the query, mirroring the SQL haystack below.
+    normalized = "".join(
+        c for c in unicodedata.normalize("NFD", query) if not unicodedata.combining(c)
+    ).lower().strip()
 
     # Use LIKE for simple substring matching (BigQuery doesn't have FTS5)
     # For better search, consider using CONTAINS or SEARCH functions
+    fold_sql = (
+        "LOWER(REGEXP_REPLACE("
+        "NORMALIZE(CONCAT(COALESCE(artist, ''), ' ', COALESCE(title, '')), NFD),"
+        r" r'\p{Mn}', ''))"
+    )
     sql = f"""
         SELECT
             file_id,
@@ -97,7 +113,7 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
             gcs_path
         FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
         WHERE
-            LOWER(CONCAT(COALESCE(artist, ''), ' ', COALESCE(title, '')))
+            {fold_sql}
             LIKE @query_pattern
         ORDER BY
             CASE WHEN artist IS NOT NULL AND title IS NOT NULL THEN 0 ELSE 1 END,
