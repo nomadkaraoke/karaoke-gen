@@ -244,6 +244,49 @@ def _kn_row(artist, title, brand, watch):
     return row
 
 
+class TestDivebarSearch:
+    """`search` matches accent-insensitively on both the query and the haystack."""
+
+    def _patch_query(self, monkeypatch, rows):
+        captured = {}
+        client = MagicMock()
+
+        def _query(sql, job_config=None):
+            captured["sql"] = sql
+            captured["params"] = job_config.query_parameters if job_config else []
+            result = MagicMock()
+            result.result.return_value = rows
+            return result
+
+        client.query.side_effect = _query
+        monkeypatch.setattr(main.bigquery, "Client", lambda project=None: client)
+        return captured
+
+    def test_haystack_is_diacritic_folded(self, monkeypatch):
+        captured = self._patch_query(monkeypatch, [])
+        main._search_divebar("feliz navidad")
+        sql = captured["sql"]
+        # The artist/title haystack diacritic-folds (NORMALIZE NFD + drop
+        # combining marks) so an ASCII query matches "José Feliciano".
+        assert "NORMALIZE" in sql and r"\p{Mn}" in sql
+        assert "divebar_catalog" in sql
+
+    def test_accented_query_is_folded_before_matching(self, monkeypatch):
+        # Symmetric: an accented query must also match unaccented catalog rows.
+        # bigquery is a stub module here, so capture the param factory's args.
+        from types import SimpleNamespace
+        captured = self._patch_query(monkeypatch, [])
+        monkeypatch.setattr(
+            main.bigquery, "ScalarQueryParameter",
+            lambda name, typ, value: (name, typ, value))
+        monkeypatch.setattr(
+            main.bigquery, "QueryJobConfig",
+            lambda **kw: SimpleNamespace(query_parameters=kw.get("query_parameters", [])))
+        main._search_divebar("José Feliciano Feliz Navidad")
+        pattern = next(p for p in captured["params"] if p[0] == "query_pattern")
+        assert pattern[2] == "%jose feliciano feliz navidad%"
+
+
 class TestKnCommunitySearch:
     """`kn_community_search` reads our own karaokenerds_community — no scraping."""
 
