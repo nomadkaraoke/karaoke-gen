@@ -34,6 +34,7 @@ from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import DownloadError
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.lyrics_cache_service import LyricsCacheService
+from backend.utils.audio_filenames import local_audio_filename
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.workers.style_helper import load_style_config
 from backend.workers.registry import worker_registry
@@ -632,7 +633,7 @@ async def download_audio(
     try:
         # If input_media_gcs_path is already set, download directly
         if job.input_media_gcs_path:
-            local_path = os.path.join(temp_dir, job.filename or "input.flac")
+            local_path = os.path.join(temp_dir, job.filename or local_audio_filename(job.input_media_gcs_path, "input"))
             storage.download_file(job.input_media_gcs_path, local_path)
             logger.info(f"Job {job_id}: Downloaded audio from {job.input_media_gcs_path} to {local_path}")
             return local_path
@@ -650,7 +651,7 @@ async def download_audio(
                 
                 if updated_job and updated_job.input_media_gcs_path:
                     # Audio worker has uploaded the file
-                    local_path = os.path.join(temp_dir, "input.flac")
+                    local_path = os.path.join(temp_dir, local_audio_filename(updated_job.input_media_gcs_path, "input"))
                     storage.download_file(updated_job.input_media_gcs_path, local_path)
                     logger.info(f"Job {job_id}: Downloaded audio from {updated_job.input_media_gcs_path}")
                     return local_path

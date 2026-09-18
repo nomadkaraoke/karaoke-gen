@@ -12,6 +12,7 @@ import tempfile
 from typing import Optional
 
 from backend.services.storage_service import StorageService
+from backend.utils.audio_filenames import local_audio_filename
 from karaoke_gen.instrumental_review import (
     AudioAnalyzer,
     AnalysisResult,
@@ -81,7 +82,7 @@ class AudioAnalysisService:
         
         with tempfile.TemporaryDirectory() as temp_dir:
             # Download audio file
-            local_audio_path = os.path.join(temp_dir, "backing_vocals.flac")
+            local_audio_path = os.path.join(temp_dir, local_audio_filename(gcs_audio_path, "backing_vocals"))
             self.storage_service.download_file(gcs_audio_path, local_audio_path)
             
             # Run analysis
@@ -132,7 +133,7 @@ class AudioAnalysisService:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # Download audio file
-            local_audio_path = os.path.join(temp_dir, "backing_vocals.flac")
+            local_audio_path = os.path.join(temp_dir, local_audio_filename(gcs_audio_path, "backing_vocals"))
             self.storage_service.download_file(gcs_audio_path, local_audio_path)
 
             # Run analysis
@@ -185,8 +186,8 @@ class AudioAnalysisService:
         from karaoke_gen.instrumental_review.stem_comparison import compare_stems
 
         try:
-            local_lead = os.path.join(temp_dir, "lead_vocals.flac")
-            local_vocals = os.path.join(temp_dir, "vocals.flac")
+            local_lead = os.path.join(temp_dir, local_audio_filename(gcs_lead_vocals_path, "lead_vocals"))
+            local_vocals = os.path.join(temp_dir, local_audio_filename(gcs_vocals_path, "vocals"))
             self.storage_service.download_file(gcs_lead_vocals_path, local_lead)
             self.storage_service.download_file(gcs_vocals_path, local_vocals)
         except Exception as e:
@@ -231,7 +232,7 @@ class AudioAnalysisService:
         
         with tempfile.TemporaryDirectory() as temp_dir:
             # Download audio file
-            local_audio_path = os.path.join(temp_dir, "backing_vocals.flac")
+            local_audio_path = os.path.join(temp_dir, local_audio_filename(gcs_audio_path, "backing_vocals"))
             self.storage_service.download_file(gcs_audio_path, local_audio_path)
             
             # Generate waveform data
@@ -343,7 +344,7 @@ class AudioAnalysisService:
         
         with tempfile.TemporaryDirectory() as temp_dir:
             # Download audio file
-            local_audio_path = os.path.join(temp_dir, "backing_vocals.flac")
+            local_audio_path = os.path.join(temp_dir, local_audio_filename(gcs_audio_path, "backing_vocals"))
             self.storage_service.download_file(gcs_audio_path, local_audio_path)
             
             # First run analysis to get segments

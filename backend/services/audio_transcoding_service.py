@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 from backend.services.storage_service import SignedUrlTimeout, StorageService
+from backend.utils.audio_filenames import local_audio_filename
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class AudioTranscodingService:
         Raises on failure.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            local_input = os.path.join(temp_dir, "input.flac")
+            local_input = os.path.join(temp_dir, local_audio_filename(source_gcs_path, "input"))
             local_output = os.path.join(temp_dir, "output.ogg")
 
             # Download source

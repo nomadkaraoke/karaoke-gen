@@ -41,6 +41,7 @@ from backend.services.auth_service import UserType
 from backend.config import get_settings
 from backend.i18n import t, get_locale_from_request
 from backend.services.duration_reconciliation import reconcile_and_maybe_pause
+from backend.utils.audio_filenames import local_audio_filename
 
 from pydantic import BaseModel as _PydBaseModel
 from backend.services.custom_lyrics_service import (
@@ -245,7 +246,7 @@ def _prepare_preview_inputs(job, temp_dir: str, storage, is_duet: bool):
         with open(corrections_path, 'r', encoding='utf-8') as f:
             original_data = json.load(f)
 
-        audio_path = os.path.join(temp_dir, "audio.flac")
+        audio_path = os.path.join(temp_dir, local_audio_filename(job.input_media_gcs_path, "audio"))
         storage.download_file(job.input_media_gcs_path, audio_path)
         download_span.set_attribute("audio_gcs_path", job.input_media_gcs_path)
 
