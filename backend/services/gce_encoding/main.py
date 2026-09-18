@@ -21,6 +21,7 @@ from packaging.version import Version
 from pydantic import BaseModel
 
 from .persistence import JobStatePersister
+from backend.utils.audio_filenames import local_audio_filename
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -305,7 +306,7 @@ def run_preview_encoding(job_id: str, work_dir: Path, request: "EncodePreviewReq
     try:
         # Download input files
         ass_path = work_dir / "subtitles.ass"
-        audio_path = work_dir / "audio.flac"
+        audio_path = work_dir / local_audio_filename(request.audio_gcs_path, "audio")
 
         download_single_file_from_gcs(request.ass_gcs_path, ass_path)
         jobs[job_id]["progress"] = 20
@@ -454,7 +455,7 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
         jobs[job_id]["progress"] = 25
 
         # 3. Download audio
-        audio_path = work_dir / "audio.flac"
+        audio_path = work_dir / local_audio_filename(request.audio_gcs_path, "audio")
         download_single_file_from_gcs(request.audio_gcs_path, audio_path)
         jobs[job_id]["progress"] = 35
 

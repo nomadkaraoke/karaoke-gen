@@ -26,6 +26,7 @@ from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import DownloadError
 from backend.services.job_health_service import validate_worker_can_run
+from backend.utils.audio_filenames import local_audio_filename
 from backend.config import get_settings
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.workers.registry import worker_registry
@@ -483,7 +484,7 @@ async def download_audio(
         if job.file_urls and job.file_urls.get('input'):
             # Already downloaded and stored in GCS
             input_url = job.file_urls.get('input')
-            local_path = os.path.join(temp_dir, "input.flac")
+            local_path = os.path.join(temp_dir, local_audio_filename(str(input_url), "input"))
             storage.download_file(input_url, local_path)
             logger.info(f"Job {job_id}: Downloaded audio from GCS: {input_url}")
             return local_path

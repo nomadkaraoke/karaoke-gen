@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Optional
 
 from backend.services.storage_service import SignedUrlTimeout, StorageService
+from backend.utils.audio_filenames import audio_content_type, local_audio_filename
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class AudioTranscodingService:
         Raises on failure.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            local_input = os.path.join(temp_dir, "input.flac")
+            local_input = os.path.join(temp_dir, local_audio_filename(source_gcs_path, "input"))
             local_output = os.path.join(temp_dir, "output.ogg")
 
             # Download source
@@ -164,7 +165,7 @@ class AudioTranscodingService:
             return self.storage.download_bytes(cache_path), "audio/ogg"
         except Exception as e:
             logger.warning(f"Transcoding failed for {source_gcs_path}, serving source audio: {e}")
-            return self.storage.download_bytes(source_gcs_path), "audio/flac"
+            return self.storage.download_bytes(source_gcs_path), audio_content_type(source_gcs_path)
 
     async def get_review_audio_bytes_async(self, source_gcs_path: str) -> tuple[bytes, str]:
         """Async wrapper around get_review_audio_bytes via asyncio.to_thread."""

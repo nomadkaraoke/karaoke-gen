@@ -329,6 +329,18 @@ python scripts/backfill_gdrive_uploads.py --job-ids JOB1,JOB2
 
 ---
 
+## Review waveform 500 / preview encode fails: "Could not find codec parameters for stream 0 (Audio: flac, 0 channels)"
+
+**Symptoms (all at once, for one job):** `waveform-data` returns 500 ("Decoding failed. ffmpeg returned error code: 8"), review OGG transcode falls back to FLAC ("Cannot determine format of input 0:0 after EOF"), preview video fails on both GCE and local fallback ("Invalid data found when processing input"), and "Failed to get audio duration: 'duration'" appears in logs. The pipeline itself completed fine (stems/lyrics exist).
+
+**Cause:** The uploaded input audio is a valid MP3 with a very large ID3 tag (megabytes of embedded cover art — common in ytmp3-site rips; a `majorbrand: dash` ID3 tag is a telltale, but it's just copied metadata, not a mislabeled MP4). The backend downloaded job audio to temp files hardcoded as `*.flac`; ffmpeg's content probe is inconclusive inside the huge tag, so it falls back to the file extension, commits to the flac demuxer, and fails. The file itself is fine — `ffprobe` succeeds when the local copy keeps its real extension.
+
+**Fix (v0.229.4+):** All temp downloads of job audio now preserve the source object's extension (`backend/utils/audio_filenames.local_audio_filename`). No job data repair is needed — once deployed, the same job's review page works as-is.
+
+**Diagnosis tip:** Download the input object and run `ffprobe` on it twice — once named `.mp3`/no extension, once named `.flac`. If only the `.flac`-named copy fails, it's this extension-fallback class, not a corrupt upload.
+
+---
+
 ## Job failed: "Audio separation failed: expected str, bytes or os.PathLike object, not NoneType"
 
 **Cause (historical):** Modal API intermittently returned fewer stems than expected from stage 2 (backing vocals) separation. Missing stems caused NoneType crashes in downstream processing. This was resolved by migrating to Cloud Run GPU (see `docs/archive/2026-03-22-modal-to-gcp-migration-plan.md`).

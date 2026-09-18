@@ -36,6 +36,7 @@ from dataclasses import dataclass
 
 from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
+from backend.utils.audio_filenames import local_audio_filename
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
@@ -486,8 +487,8 @@ async def process_render_video(job_id: str) -> bool:
                             raise ValueError(str(timing_err)) from timing_err
 
                         # 5. Download audio file
-                        audio_path = os.path.join(temp_dir, "audio.flac")
                         audio_gcs_path = job.input_media_gcs_path
+                        audio_path = os.path.join(temp_dir, local_audio_filename(audio_gcs_path or "", "audio"))
 
                         if not audio_gcs_path:
                             raise FileNotFoundError(f"No input audio path for job {job_id}")
