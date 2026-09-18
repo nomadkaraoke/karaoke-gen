@@ -22,6 +22,7 @@ Observability:
 - Logs include [job:ID] prefix for easy filtering in Cloud Logging
 - Worker start/end timing logged with WORKER_START/WORKER_END markers
 """
+import asyncio
 import logging
 import os
 import shutil
@@ -776,8 +777,9 @@ async def _transcode_review_audio(
         waveform_source = stems.get("backing_vocals") or job.input_media_gcs_path
         if waveform_source:
             try:
-                AudioAnalysisService().get_review_waveform(
-                    waveform_source, job_id, 1000, transcoding
+                await asyncio.to_thread(
+                    AudioAnalysisService().get_review_waveform,
+                    waveform_source, job_id, 1000, transcoding,
                 )
                 job_log.info("Review waveform data pre-computed")
             except Exception as e:

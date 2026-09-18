@@ -1957,3 +1957,87 @@ class TestWaveformDataEndpointCache:
     def test_falls_back_to_input_audio_without_backing_stem(self):
         _, analysis = self._run(stems={})
         assert analysis.get_review_waveform.call_args[0][0] == "jobs/j/input.flac"
+
+
+class TestReviewAudioSingleFlightAndByteCap:
+    """CodeRabbit follow-ups on #1024: coalesce concurrent misses; bound cache bytes."""
+
+    def test_concurrent_misses_share_one_fetch(self):
+        import asyncio
+        from backend.api.routes import review as review_module
+
+        review_module._review_audio_cache.clear()
+
+        calls = {"n": 0}
+
+        class SlowTranscoding:
+            async def get_review_audio_bytes_async(self, path):
+                calls["n"] += 1
+                await asyncio.sleep(0.05)
+                return (b"shared-bytes", "audio/ogg")
+
+        async def scenario():
+            t = SlowTranscoding()
+            results = await asyncio.gather(
+                *[review_module._get_review_audio("jobs/j/stems/v.flac", t) for _ in range(5)]
+            )
+            return results
+
+        results = asyncio.run(scenario())
+        assert calls["n"] == 1  # five concurrent callers, one fetch
+        assert all(r == (b"shared-bytes", "audio/ogg") for r in results)
+
+    def test_failure_is_shared_and_next_call_retries(self):
+        import asyncio
+        from backend.api.routes import review as review_module
+
+        review_module._review_audio_cache.clear()
+
+        calls = {"n": 0}
+
+        class FlakyTranscoding:
+            async def get_review_audio_bytes_async(self, path):
+                calls["n"] += 1
+                await asyncio.sleep(0.02)
+                if calls["n"] == 1:
+                    raise RuntimeError("GCS blip")
+                return (b"ok", "audio/ogg")
+
+        async def scenario():
+            t = FlakyTranscoding()
+            first = await asyncio.gather(
+                *[review_module._get_review_audio("jobs/j/stems/v.flac", t) for _ in range(3)],
+                return_exceptions=True,
+            )
+            assert all(isinstance(r, RuntimeError) for r in first)
+            # In-flight entry must be gone — a fresh call retries and succeeds.
+            return await review_module._get_review_audio("jobs/j/stems/v.flac", t)
+
+        result = asyncio.run(scenario())
+        assert result == (b"ok", "audio/ogg")
+        assert calls["n"] == 2
+
+    def test_oversized_entry_not_cached(self, monkeypatch):
+        from backend.api.routes import review as review_module
+
+        review_module._review_audio_cache.clear()
+        monkeypatch.setattr(review_module, "_REVIEW_AUDIO_CACHE_MAX_BYTES", 100)
+
+        # > max_bytes // 4 → skipped (one giant fallback FLAC must not evict all)
+        review_module._review_audio_cache_put("big", (b"x" * 50, "audio/flac"))
+        assert "big" not in review_module._review_audio_cache
+
+    def test_byte_cap_evicts_lru(self, monkeypatch):
+        from backend.api.routes import review as review_module
+
+        review_module._review_audio_cache.clear()
+        review_module._review_audio_cache_bytes = 0
+        monkeypatch.setattr(review_module, "_REVIEW_AUDIO_CACHE_MAX_BYTES", 100)
+
+        for key in ("a", "b", "c", "d", "e"):
+            review_module._review_audio_cache_put(key, (b"x" * 25, "audio/ogg"))
+
+        # 5 × 25B = 125B > 100B cap → oldest evicted, total back under the cap.
+        assert "a" not in review_module._review_audio_cache
+        assert review_module._review_audio_cache_bytes <= 100
+        assert set(review_module._review_audio_cache) == {"b", "c", "d", "e"}

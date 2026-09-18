@@ -14,7 +14,7 @@ instrumental-urls 0.47s · instrumental-analysis **13.7s** · audio/vocals **27.
 body; Range header ignored — 200 not 206).
 
 **Burst (10 tabs in parallel):**
-- 8 of 30 requests → **HTTP 500** (7× audio/vocals, 2× correction-data — one job had both)
+- 9 of 30 requests → **HTTP 500** (7× audio/vocals + 2× correction-data), hitting 8 of the 10 tabs
 - surviving requests took **44–72s** (correction-data up to 70.6s vs 0.83s baseline)
 - Cloud Run logged **9× "The request was aborted because there was no available instance"**
   at 03:35:32Z — the instance was so wedged that Cloud Run couldn't dispatch to it, despite
@@ -122,5 +122,5 @@ invoked for caught errors) — Andrew has no visibility into user-experienced fr
 - Telemetry sink: structured Cloud Logging (proposed, free-ish) vs Firestore collection?
 
 ## Verification numbers to beat (from this session's repro)
-- Burst 10-tab: 0 failed requests (was 8/30); worst correction-data < 5s (was 70.6s);
+- Burst 10-tab: 0 failed requests (was 9/30); worst correction-data < 5s (was 70.6s);
   no "no available instance" aborts; waveform strips present on first paint for a warm job.
