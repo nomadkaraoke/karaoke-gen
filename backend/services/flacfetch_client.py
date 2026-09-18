@@ -92,17 +92,21 @@ def should_retry_flacfetch_error(exception: Exception) -> bool:
     return False
 
 
-async def with_retry(func, *args, **kwargs):
+async def with_retry(func, *args, retry_max_attempts=None, retry_min_wait=None, retry_max_wait=None, **kwargs):
     """
     Execute an async function with retry logic using exponential backoff.
 
     This implementation uses manual retry logic instead of tenacity decorators
     for better testability and runtime configuration.
+
+    The retry_* keyword-only arguments override the FLACFETCH_RETRY_* settings
+    for callers that need a different retry profile (e.g. search, which sits on
+    a latency-sensitive user-facing path).
     """
     settings = get_settings()
-    max_attempts = settings.flacfetch_retry_max_attempts
-    min_wait = settings.flacfetch_retry_min_wait
-    max_wait = settings.flacfetch_retry_max_wait
+    max_attempts = retry_max_attempts if retry_max_attempts is not None else settings.flacfetch_retry_max_attempts
+    min_wait = retry_min_wait if retry_min_wait is not None else settings.flacfetch_retry_min_wait
+    max_wait = retry_max_wait if retry_max_wait is not None else settings.flacfetch_retry_max_wait
 
     last_exception = None
 
@@ -218,36 +222,64 @@ class FlacfetchClient:
             
         Returns:
             Search response dict with search_id and results list
-            
+
         Raises:
-            FlacfetchServiceError: On search failure
+            FlacfetchServiceError: On search failure (after all retries exhausted)
+
+        Search is idempotent, so transient network errors (e.g. a ReadTimeout
+        while the flacfetch server is busy with an uncached provider sweep) are
+        retried once with a short wait. The retry usually hits the server-side
+        search cache warmed by the first attempt and returns in seconds.
+
+        All attempts share a total time budget kept below Cloudflare's ~100s
+        edge deadline, so a slow retry surfaces as FlacfetchServiceError rather
+        than an opaque edge 524.
         """
+        settings = get_settings()
+        total_timeout = settings.flacfetch_search_total_timeout
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{self.base_url}/search",
-                    headers=self._headers(),
-                    json={"artist": artist, "title": title},
-                    timeout=self.timeout,
-                )
-                
-                if resp.status_code == 404:
-                    # No results found - return empty results
-                    return {
-                        "search_id": None,
-                        "artist": artist,
-                        "title": title,
-                        "results": [],
-                        "results_count": 0,
-                    }
-                
-                resp.raise_for_status()
-                return resp.json()
-                
+            return await asyncio.wait_for(
+                with_retry(
+                    self._search_impl,
+                    artist,
+                    title,
+                    retry_max_attempts=settings.flacfetch_search_retry_max_attempts,
+                    retry_min_wait=settings.flacfetch_search_retry_wait,
+                    retry_max_wait=settings.flacfetch_search_retry_wait,
+                ),
+                timeout=total_timeout,
+            )
+        except asyncio.TimeoutError:
+            raise FlacfetchServiceError(
+                f"Search timed out after {total_timeout:.0f}s total (including retries)"
+            )
         except httpx.RequestError as e:
             raise FlacfetchServiceError(f"Search request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
             raise FlacfetchServiceError(f"Search failed: {e.response.status_code} - {e.response.text}")
+
+    async def _search_impl(self, artist: str, title: str) -> Dict[str, Any]:
+        """Implementation of search without error wrapping - lets httpx exceptions bubble up."""
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.base_url}/search",
+                headers=self._headers(),
+                json={"artist": artist, "title": title},
+                timeout=self.timeout,
+            )
+
+            if resp.status_code == 404:
+                # No results found - return empty results
+                return {
+                    "search_id": None,
+                    "artist": artist,
+                    "title": title,
+                    "results": [],
+                    "results_count": 0,
+                }
+
+            resp.raise_for_status()
+            return resp.json()
 
     async def download(
         self,
