@@ -842,6 +842,7 @@ class TestFlacfetchSearchRetryLogic:
         # Light search retry settings
         mock_settings.flacfetch_search_retry_max_attempts = 2
         mock_settings.flacfetch_search_retry_wait = 0.01  # Fast for testing
+        mock_settings.flacfetch_search_total_timeout = 5.0
         return mock_settings
 
     @pytest.mark.asyncio
@@ -923,6 +924,30 @@ class TestFlacfetchSearchRetryLogic:
                     await client.search("ABBA", "Waterloo")
 
                 assert mock_client.post.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_search_total_timeout_enforced(self):
+        """Test the total search budget caps retries below the Cloudflare edge
+        deadline, surfacing a clean FlacfetchServiceError instead of hanging."""
+        mock_settings = self._mock_settings()
+        mock_settings.flacfetch_search_total_timeout = 0.05
+
+        with patch("backend.services.flacfetch_client.get_settings", return_value=mock_settings):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
+
+            async def hang(*args, **kwargs):
+                await asyncio.sleep(10)
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+                mock_client.post.side_effect = hang
+
+                with pytest.raises(FlacfetchServiceError, match="timed out.*total"):
+                    await asyncio.wait_for(client.search("ABBA", "Waterloo"), timeout=2)
 
     @pytest.mark.asyncio
     async def test_search_404_returns_empty_without_retry(self):

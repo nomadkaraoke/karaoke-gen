@@ -269,6 +269,9 @@ class Settings(BaseSettings):
     # (worst case: 60s timeout + 1s wait + fast cache-hit retry).
     flacfetch_search_retry_max_attempts: int = int(os.getenv("FLACFETCH_SEARCH_RETRY_MAX_ATTEMPTS", "2"))
     flacfetch_search_retry_wait: float = float(os.getenv("FLACFETCH_SEARCH_RETRY_WAIT", "1.0"))  # seconds
+    # Total budget across all search attempts, kept under Cloudflare's ~100s edge
+    # deadline so callers get a clean FlacfetchServiceError instead of an edge 524.
+    flacfetch_search_total_timeout: float = float(os.getenv("FLACFETCH_SEARCH_TOTAL_TIMEOUT", "95.0"))  # seconds
 
     # Default distribution settings (can be overridden per-request)
     default_dropbox_path: Optional[str] = os.getenv("DEFAULT_DROPBOX_PATH")

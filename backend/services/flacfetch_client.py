@@ -230,16 +230,28 @@ class FlacfetchClient:
         while the flacfetch server is busy with an uncached provider sweep) are
         retried once with a short wait. The retry usually hits the server-side
         search cache warmed by the first attempt and returns in seconds.
+
+        All attempts share a total time budget kept below Cloudflare's ~100s
+        edge deadline, so a slow retry surfaces as FlacfetchServiceError rather
+        than an opaque edge 524.
         """
         settings = get_settings()
+        total_timeout = settings.flacfetch_search_total_timeout
         try:
-            return await with_retry(
-                self._search_impl,
-                artist,
-                title,
-                retry_max_attempts=settings.flacfetch_search_retry_max_attempts,
-                retry_min_wait=settings.flacfetch_search_retry_wait,
-                retry_max_wait=settings.flacfetch_search_retry_wait,
+            return await asyncio.wait_for(
+                with_retry(
+                    self._search_impl,
+                    artist,
+                    title,
+                    retry_max_attempts=settings.flacfetch_search_retry_max_attempts,
+                    retry_min_wait=settings.flacfetch_search_retry_wait,
+                    retry_max_wait=settings.flacfetch_search_retry_wait,
+                ),
+                timeout=total_timeout,
+            )
+        except asyncio.TimeoutError:
+            raise FlacfetchServiceError(
+                f"Search timed out after {total_timeout:.0f}s total (including retries)"
             )
         except httpx.RequestError as e:
             raise FlacfetchServiceError(f"Search request failed: {_format_httpx_error(e)}")
