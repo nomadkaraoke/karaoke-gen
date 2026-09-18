@@ -263,6 +263,13 @@ class Settings(BaseSettings):
     flacfetch_retry_min_wait: float = float(os.getenv("FLACFETCH_RETRY_MIN_WAIT", "10.0"))  # seconds
     flacfetch_retry_max_wait: float = float(os.getenv("FLACFETCH_RETRY_MAX_WAIT", "60.0"))  # seconds
 
+    # Search retry settings are much lighter than the download defaults above:
+    # search is called synchronously from user-facing requests that sit behind
+    # Cloudflare's ~100s edge timeout, so there's only room for one quick retry
+    # (worst case: 60s timeout + 1s wait + fast cache-hit retry).
+    flacfetch_search_retry_max_attempts: int = int(os.getenv("FLACFETCH_SEARCH_RETRY_MAX_ATTEMPTS", "2"))
+    flacfetch_search_retry_wait: float = float(os.getenv("FLACFETCH_SEARCH_RETRY_WAIT", "1.0"))  # seconds
+
     # Default distribution settings (can be overridden per-request)
     default_dropbox_path: Optional[str] = os.getenv("DEFAULT_DROPBOX_PATH")
     default_gdrive_folder_id: Optional[str] = os.getenv("DEFAULT_GDRIVE_FOLDER_ID")

@@ -829,6 +829,125 @@ class TestFlacfetchRetryLogic:
                 assert mock_client.post.call_count == 3
 
 
+class TestFlacfetchSearchRetryLogic:
+    """Test retry logic for flacfetch search (lighter profile than downloads)."""
+
+    @staticmethod
+    def _mock_settings():
+        mock_settings = Mock()
+        # Heavy download retry settings - search must NOT use these
+        mock_settings.flacfetch_retry_max_attempts = 9
+        mock_settings.flacfetch_retry_min_wait = 10.0
+        mock_settings.flacfetch_retry_max_wait = 60.0
+        # Light search retry settings
+        mock_settings.flacfetch_search_retry_max_attempts = 2
+        mock_settings.flacfetch_search_retry_wait = 0.01  # Fast for testing
+        return mock_settings
+
+    @pytest.mark.asyncio
+    async def test_search_retries_on_read_timeout(self):
+        """Test search retries on ReadTimeout and succeeds on second attempt."""
+        with patch("backend.services.flacfetch_client.get_settings", return_value=self._mock_settings()):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                mock_response = Mock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = {"search_id": "s1", "results": [{"index": 0}]}
+                mock_response.raise_for_status = Mock()
+
+                mock_client.post.side_effect = [
+                    httpx.ReadTimeout("timed out"),
+                    mock_response,
+                ]
+
+                result = await client.search("ABBA", "Waterloo")
+
+                assert result["search_id"] == "s1"
+                assert mock_client.post.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_search_fails_after_max_attempts(self):
+        """Test search raises FlacfetchServiceError after exhausting its 2 attempts.
+
+        Also verifies search uses the light search retry settings (2 attempts),
+        not the heavy download settings (9 attempts).
+        """
+        with patch("backend.services.flacfetch_client.get_settings", return_value=self._mock_settings()):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                mock_client.post.side_effect = httpx.ReadTimeout("timed out")
+
+                with pytest.raises(FlacfetchServiceError, match="Search request failed"):
+                    await client.search("ABBA", "Waterloo")
+
+                assert mock_client.post.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_search_no_retry_on_4xx(self):
+        """Test search does NOT retry on 4xx client errors (other than 404)."""
+        with patch("backend.services.flacfetch_client.get_settings", return_value=self._mock_settings()):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                mock_response = Mock()
+                mock_response.status_code = 400
+                mock_response.text = "Bad request"
+                mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                    "Bad request",
+                    request=Mock(),
+                    response=mock_response,
+                )
+                mock_client.post.return_value = mock_response
+
+                with pytest.raises(FlacfetchServiceError, match="400"):
+                    await client.search("ABBA", "Waterloo")
+
+                assert mock_client.post.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_search_404_returns_empty_without_retry(self):
+        """Test 404 (no results) still returns empty results, without retrying."""
+        with patch("backend.services.flacfetch_client.get_settings", return_value=self._mock_settings()):
+            client = FlacfetchClient(
+                base_url="http://test:8080",
+                api_key="test-key",
+            )
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client = AsyncMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+
+                mock_response = Mock()
+                mock_response.status_code = 404
+                mock_client.post.return_value = mock_response
+
+                result = await client.search("Unknown", "Nothing")
+
+                assert result["results"] == []
+                assert result["search_id"] is None
+                assert mock_client.post.call_count == 1
+
+
 class TestFormatHttpxError:
     """Test _format_httpx_error helper for descriptive error messages."""
 
