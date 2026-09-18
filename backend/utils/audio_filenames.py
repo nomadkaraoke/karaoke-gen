@@ -18,6 +18,34 @@ _AUDIO_SUFFIXES = {
 }
 
 
+_AUDIO_CONTENT_TYPES = {
+    ".flac": "audio/flac",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".opus": "audio/opus",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".mp4": "audio/mp4",
+    ".wma": "audio/x-ms-wma",
+    ".aiff": "audio/aiff",
+    ".aif": "audio/aiff",
+    ".webm": "audio/webm",
+    ".mka": "audio/x-matroska",
+    ".mkv": "audio/x-matroska",
+}
+
+
+def audio_content_type(gcs_path: str) -> str:
+    """Return the MIME type for an audio object based on its extension.
+
+    Unknown extensions get application/octet-stream rather than a wrong
+    audio/* type.
+    """
+    suffix = PurePosixPath(gcs_path).suffix.lower()
+    return _AUDIO_CONTENT_TYPES.get(suffix, "application/octet-stream")
+
+
 def local_audio_filename(gcs_path: str, stem: str = "audio") -> str:
     """Return a local filename for a downloaded audio object.
 

@@ -9,7 +9,7 @@ the input audio (waveform, review transcode, preview encode, duration probe).
 import os
 from unittest.mock import MagicMock
 
-from backend.utils.audio_filenames import local_audio_filename
+from backend.utils.audio_filenames import audio_content_type, local_audio_filename
 
 
 class TestLocalAudioFilename:
@@ -40,6 +40,33 @@ class TestLocalAudioFilename:
 
     def test_dots_in_filename_only_last_suffix_used(self):
         assert local_audio_filename("a/b/artist - title (feat. x).mp3", "audio") == "audio.mp3"
+
+
+class TestAudioContentType:
+    def test_common_types(self):
+        assert audio_content_type("a/b/song.flac") == "audio/flac"
+        assert audio_content_type("a/b/song.mp3") == "audio/mpeg"
+        assert audio_content_type("a/b/song.M4A") == "audio/mp4"
+        assert audio_content_type("a/b/song.ogg") == "audio/ogg"
+
+    def test_unknown_extension_is_octet_stream(self):
+        assert audio_content_type("a/b/file.xyz") == "application/octet-stream"
+        assert audio_content_type("a/b/file") == "application/octet-stream"
+
+    def test_transcode_fallback_uses_source_content_type(self):
+        """Regression: the transcode-failure fallback must not serve an MP3
+        source as audio/flac."""
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+        from unittest.mock import MagicMock
+
+        storage = MagicMock()
+        storage.download_bytes.return_value = b"mp3bytes"
+        service = AudioTranscodingService(storage_service=storage)
+        service.transcode_if_needed = MagicMock(side_effect=RuntimeError("ffmpeg failed"))
+
+        data, content_type = service.get_review_audio_bytes("jobs/j1/input/song.mp3")
+        assert data == b"mp3bytes"
+        assert content_type == "audio/mpeg"
 
 
 class TestServicesUseSourceExtension:
