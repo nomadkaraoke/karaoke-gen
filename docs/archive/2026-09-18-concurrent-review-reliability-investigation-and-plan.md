@@ -79,7 +79,7 @@ invoked for caught errors) — Andrew has no visibility into user-experienced fr
 
 ## Plan (phased; each phase independently shippable)
 
-### Phase 1 — stop the bleeding server-side (highest leverage, code-only)
+### Phase 1 — stop the bleeding server-side (highest leverage, code-only) — ✅ IMPLEMENTED (this branch, v0.230.0), plus the Phase-4 waveform silent-give-up retry fix
 1. `/waveform-data`: wire the EXISTING GCS waveform cache; compute via `asyncio.to_thread`;
    precompute in `screens_worker` alongside `prepare_review_audio_for_job` (OGG pre-warm
    already happens there); decode from the small transcoded OGG, not the raw FLAC.

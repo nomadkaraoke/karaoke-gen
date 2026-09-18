@@ -243,6 +243,91 @@ class AudioAnalysisService:
             
             return amplitudes, duration
 
+    @staticmethod
+    def review_waveform_cache_path(job_id: str, num_points: int) -> str:
+        """GCS path of the cached review-page waveform JSON for a job."""
+        return f"jobs/{job_id}/review-audio/waveform_review_{num_points}.json"
+
+    def get_review_waveform(
+        self,
+        gcs_audio_path: str,
+        job_id: str,
+        num_points: int = 1000,
+        transcoding_service=None,
+    ) -> tuple[list[float], float]:
+        """
+        Waveform data for the review page, cached persistently in GCS.
+
+        Decoding a full stem (pydub -> ffmpeg + a pure-Python RMS loop) takes
+        seconds of CPU, so it must only ever happen once per job: results are
+        cached at ``review_waveform_cache_path`` and validated against the
+        source path + num_points (a replaced stem or different resolution
+        recomputes). On a miss, decode the small transcoded review OGG when it
+        exists (~3 MB) instead of the raw stem (~35 MB FLAC).
+
+        The cache upload is best-effort — a failed write still returns the
+        computed data.
+        """
+        cache_path = self.review_waveform_cache_path(job_id, num_points)
+        cached = self._load_review_waveform_cache(cache_path, gcs_audio_path, num_points)
+        if cached is not None:
+            logger.info(f"[{job_id}] Review waveform cache hit: {cache_path}")
+            return cached
+
+        decode_path = gcs_audio_path
+        if transcoding_service is not None:
+            try:
+                ogg_path = transcoding_service.get_transcoded_cache_path(gcs_audio_path)
+                if self.storage_service.file_exists(ogg_path):
+                    decode_path = ogg_path
+            except Exception as e:
+                logger.warning(f"[{job_id}] Could not resolve transcoded OGG for waveform: {e}")
+
+        amplitudes, duration = self.get_waveform_data(
+            gcs_audio_path=decode_path,
+            job_id=job_id,
+            num_points=num_points,
+        )
+
+        try:
+            self.storage_service.upload_json(cache_path, {
+                "amplitudes": list(amplitudes),
+                "duration_seconds": duration,
+                "num_points": num_points,
+                # Keyed to the LOGICAL source (the stem path), not decode_path,
+                # so swapping in/out the OGG shortcut never invalidates the cache
+                # but a regenerated stem at a new path does.
+                "source_gcs_path": gcs_audio_path,
+            })
+            logger.info(f"[{job_id}] Review waveform cached at {cache_path}")
+        except Exception as e:
+            logger.warning(f"[{job_id}] Failed to cache review waveform (non-fatal): {e}")
+
+        return amplitudes, duration
+
+    def _load_review_waveform_cache(
+        self,
+        cache_gcs_path: str,
+        source_gcs_path: str,
+        num_points: int,
+    ) -> Optional[tuple[list[float], float]]:
+        """Load + validate the review waveform cache; None on any mismatch/error."""
+        try:
+            if not self.storage_service.file_exists(cache_gcs_path):
+                return None
+            data = self.storage_service.download_json(cache_gcs_path)
+            if data.get("source_gcs_path") != source_gcs_path:
+                return None
+            if data.get("num_points") != num_points:
+                return None
+            amplitudes = data.get("amplitudes") or []
+            if not amplitudes:
+                return None
+            return amplitudes, float(data.get("duration_seconds", 0.0))
+        except Exception as e:
+            logger.warning(f"Failed to load review waveform cache {cache_gcs_path}: {e}")
+            return None
+
     def cache_waveform_data(
         self,
         gcs_audio_path: str,

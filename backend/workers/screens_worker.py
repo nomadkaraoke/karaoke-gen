@@ -766,6 +766,24 @@ async def _transcode_review_audio(
 
         job_log.info(f"Review audio transcoding complete: {len(transcoded)} files")
 
+        # Pre-compute the review-page waveform JSON while we're here, so the
+        # /waveform-data endpoint is a pure GCS-cache read when the user opens
+        # review (a miss there decodes a whole stem — seconds of CPU on the
+        # API instance, which is what wedged it under concurrent load).
+        from backend.services.audio_analysis_service import AudioAnalysisService
+
+        stems = job.file_urls.get("stems", {}) if job.file_urls else {}
+        waveform_source = stems.get("backing_vocals") or job.input_media_gcs_path
+        if waveform_source:
+            try:
+                AudioAnalysisService().get_review_waveform(
+                    waveform_source, job_id, 1000, transcoding
+                )
+                job_log.info("Review waveform data pre-computed")
+            except Exception as e:
+                # Non-fatal: /waveform-data computes + caches lazily on first open
+                job_log.warning(f"Review waveform pre-compute failed (non-fatal): {e}")
+
     except Exception as e:
         # Non-fatal: review UI will fall back to FLAC signed URLs
         job_log.warning(f"Review audio transcoding failed (non-fatal): {e}")

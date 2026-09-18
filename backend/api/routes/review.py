@@ -632,7 +632,11 @@ async def get_correction_data(
     job_manager = JobManager()
     storage = StorageService()
 
-    job = job_manager.get_job(job_id)
+    # All Firestore/GCS round-trips in this handler run via to_thread: they're
+    # blocking client-library calls, and on the single-process/single-loop
+    # server anything left on the event loop serializes EVERY in-flight request
+    # behind it under concurrent load (see 2026-09-18 investigation doc).
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -666,7 +670,7 @@ async def get_correction_data(
         # Try direct path for updated corrections
         corrections_updated_gcs = f"jobs/{job_id}/lyrics/corrections_updated.json"
 
-    if corrections_updated_gcs and storage.file_exists(corrections_updated_gcs):
+    if corrections_updated_gcs and await asyncio.to_thread(storage.file_exists, corrections_updated_gcs):
         corrections_gcs = corrections_updated_gcs
         logger.info(f"Job {job_id}: Using updated corrections from previous review")
     else:
@@ -674,7 +678,7 @@ async def get_correction_data(
         corrections_gcs = job.file_urls.get('lyrics', {}).get('corrections')
         if not corrections_gcs:
             corrections_gcs = f"jobs/{job_id}/lyrics/corrections.json"
-            if not storage.file_exists(corrections_gcs):
+            if not await asyncio.to_thread(storage.file_exists, corrections_gcs):
                 raise HTTPException(
                     status_code=404,
                     detail=t("en", "review.correctionsNotFound")
@@ -682,7 +686,7 @@ async def get_correction_data(
 
     # Download and return corrections data
     try:
-        corrections_data = storage.download_json(corrections_gcs)
+        corrections_data = await asyncio.to_thread(storage.download_json, corrections_gcs)
 
         # Add audio hash for the frontend
         audio_hash = _get_audio_hash(job_id)
@@ -725,19 +729,22 @@ async def get_correction_data(
 
         # Transition to IN_REVIEW if not already (never in replay — read-only)
         if not replay and job.status == JobStatus.AWAITING_REVIEW:
-            job_manager.transition_to_state(
+            await asyncio.to_thread(
+                job_manager.transition_to_state,
                 job_id=job_id,
                 new_status=JobStatus.IN_REVIEW,
-                message="User opened combined review interface"
+                message="User opened combined review interface",
             )
 
         # Replay: attach the reviewer's ordered edit_log so the UI can show the
         # sequence of actions (AI-accept/reject/manual/timing) beside the final state.
         if replay:
-            edit_log = _load_edit_log(job, storage)
+            edit_log = await asyncio.to_thread(_load_edit_log, job, storage)
             post_ai_segments = None
             try:
-                raw_data = storage.download_json(f"jobs/{job_id}/lyrics/corrections.json")
+                raw_data = await asyncio.to_thread(
+                    storage.download_json, f"jobs/{job_id}/lyrics/corrections.json"
+                )
                 post_ai_segments = _reconstruct_post_ai_segments(
                     raw_data.get('corrected_segments', []), edit_log
                 )
@@ -765,33 +772,36 @@ async def get_correction_data(
 @router.get("/{job_id}/audio/vocals")
 async def get_vocals_audio(
     job_id: str,
+    request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """Stream the vocals audio file for playback."""
-    return await _stream_audio(job_id, stem="vocals")
+    return await _stream_audio(job_id, request, stem="vocals")
 
 
 @router.get("/{job_id}/audio/{audio_hash}")
 async def get_audio_with_hash(
     job_id: str,
     audio_hash: str,
+    request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """Stream the audio file for playback (with hash parameter)."""
-    return await _stream_audio(job_id)
+    return await _stream_audio(job_id, request)
 
 
 @router.get("/{job_id}/audio/")
 @router.get("/{job_id}/audio")
 async def get_audio_no_hash(
     job_id: str,
+    request: Request,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
     """Stream the audio file for playback (without hash parameter)."""
-    return await _stream_audio(job_id)
+    return await _stream_audio(job_id, request)
 
 
-async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] = "input"):
+async def _stream_audio(job_id: str, request: Optional[Request] = None, stem: Literal["input"] | Literal["vocals"] = "input"):
     """
     Redirect to a signed GCS URL for audio playback in the review interface.
 
@@ -802,7 +812,7 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
 
     job_manager = JobManager()
 
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -846,8 +856,17 @@ async def _stream_audio(job_id: str, stem: Literal["input"] | Literal["vocals"] 
             # the (~3 MB) bytes from the API keeps it same-origin to api.* whose
             # CORS already allows the frontend. <audio> playback (stem="input")
             # doesn't need CORS, so it keeps the lighter redirect below.
-            audio_bytes, content_type = await transcoding.get_review_audio_bytes_async(audio_gcs_path)
+            # Cached in the bounded LRU (same as /instrumental-audio) so ten tabs
+            # of the same job — or a play after the waveform decode — don't each
+            # re-download multi-MB objects from GCS through this instance.
+            cached = _review_audio_cache_get(audio_gcs_path)
+            if cached is None:
+                cached = await transcoding.get_review_audio_bytes_async(audio_gcs_path)
+                _review_audio_cache_put(audio_gcs_path, cached)
+            audio_bytes, content_type = cached
             logger.info(f"Job {job_id}: Proxying {len(audio_bytes)}B vocals audio for waveform")
+            if request is not None:
+                return _ranged_response(request, audio_bytes, content_type)
             return Response(content=audio_bytes, media_type=content_type)
 
         if _dev_audio_proxy_enabled():
@@ -902,7 +921,10 @@ def _ranged_response(request: Request, data: bytes, content_type: str) -> Respon
     """Serve ``data`` honoring an HTTP Range header (206) so <audio> can seek."""
     total = len(data)
     range_header = request.headers.get("range")
-    headers = {"Accept-Ranges": "bytes"}
+    # Let the browser reuse review audio across reloads/tabs for a few minutes
+    # instead of re-pulling multi-MB bodies through the API. Short-lived because
+    # audio-edit can replace a stem's bytes at the same URL.
+    headers = {"Accept-Ranges": "bytes", "Cache-Control": "private, max-age=600"}
     if range_header and range_header.startswith("bytes="):
         try:
             spec = range_header.split("=", 1)[1].split(",")[0].strip()
@@ -978,7 +1000,7 @@ async def get_instrumental_audio(
     if not stem_key:
         raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
 
-    job = JobManager().get_job(job_id)
+    job = await asyncio.to_thread(JobManager().get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -1980,7 +2002,7 @@ async def get_instrumental_urls(
     cheap, backwards-compatible way to do so. Returns the same shape as correction-data's
     ``instrumental_options``.
     """
-    job = JobManager().get_job(job_id)
+    job = await asyncio.to_thread(JobManager().get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -2005,7 +2027,7 @@ async def get_instrumental_analysis(
     job_manager = JobManager()
     storage = StorageService()
 
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -2072,6 +2094,15 @@ async def get_instrumental_analysis(
     }
 
 
+# Bound how many waveform computations/loads can run at once on an instance.
+# A cache miss decodes a whole audio file (seconds of CPU); before this bound —
+# and before the compute moved off the event loop — ~10 concurrent review-page
+# loads could wedge the single uvicorn event loop and take the whole service
+# down ("no available instance" aborts; see 2026-09-18 investigation doc).
+_WAVEFORM_MAX_CONCURRENCY = int(os.getenv("REVIEW_WAVEFORM_MAX_CONCURRENCY", "4"))
+_waveform_semaphore = asyncio.Semaphore(_WAVEFORM_MAX_CONCURRENCY)
+
+
 @router.get("/{job_id}/waveform-data")
 async def get_waveform_data(
     job_id: str,
@@ -2082,12 +2113,16 @@ async def get_waveform_data(
     Get waveform amplitude data for client-side rendering.
 
     Returns amplitude values for drawing the waveform in the frontend.
+    Served from a persistent GCS cache (precomputed by screens_worker before
+    the job reaches review); a miss decodes off the event loop, bounded by
+    ``_waveform_semaphore``.
     """
     from backend.services.audio_analysis_service import AudioAnalysisService
+    from backend.services.audio_transcoding_service import AudioTranscodingService
 
     job_manager = JobManager()
 
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
@@ -2104,11 +2139,14 @@ async def get_waveform_data(
 
     try:
         analysis_service = AudioAnalysisService()
-        amplitudes, duration = analysis_service.get_waveform_data(
-            gcs_audio_path=backing_vocals_path,
-            job_id=job_id,
-            num_points=num_points,
-        )
+        async with _waveform_semaphore:
+            amplitudes, duration = await asyncio.to_thread(
+                analysis_service.get_review_waveform,
+                backing_vocals_path,
+                job_id,
+                num_points,
+                AudioTranscodingService(),
+            )
 
         return {
             "amplitudes": amplitudes,
