@@ -6,6 +6,13 @@ Provides search and cross-reference endpoints for the KJ Controller:
   POST /  {"action": "search", "query": "bohemian rhapsody", "limit": 50}
     → Search Divebar catalog by artist/title
 
+  POST /  {"action": "kn_community_search", "query": "...", "limit": 50}
+    → Search our KaraokeNerds community catalog (web-playable tracks only)
+
+  POST /  {"action": "kn_search", "query": "...", "limit": 50}
+    → Search BOTH KaraokeNerds catalogs at once: community (playable, with
+      YouTube URLs) + full (every release incl. commercial disc brands)
+
   POST /  {"action": "lookup", "kn_ids": [123, 456]}
     → Bulk lookup which KN songs have Divebar versions
 
@@ -147,25 +154,35 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
     return results
 
 
-def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
-    """Search our OWN KaraokeNerds community catalog (never scrapes karaokenerds.com).
+# Diacritic-fold the Artist/Title haystack in SQL (NFD + drop combining marks,
+# then lower) so matching is accent-insensitive on both sides — mirrors the
+# Python-side fold in _kn_match_parts.
+_KN_FOLD_SQL = (
+    "LOWER(REGEXP_REPLACE("
+    "NORMALIZE(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')), NFD),"
+    r" r'\p{Mn}', ''))"
+)
 
-    Reads `karaokenerds_community` — the free, directly-playable (web/YouTube)
-    tracks populated daily by the authorized `kn-data-sync` export. Matching is
-    token-AND (every whitespace token must match "artist title"), which mirrors
-    the KaraokeNerds search box while tolerating "artist title" / "title artist"
-    / partial queries. Two forms of tolerance per token:
-      • accent-insensitive — both sides are diacritic-folded (so "maximo" matches
-        "Maxïmo");
+
+def _kn_match_parts(query: str) -> tuple[list[str], list]:
+    """Build the shared token-AND match clause for the KaraokeNerds tables.
+
+    Matching is token-AND (every whitespace token must match the folded
+    "artist title" haystack ``hay``), which mirrors the KaraokeNerds search box
+    while tolerating "artist title" / "title artist" / partial queries. Two
+    forms of tolerance per token:
+      • accent-insensitive — both sides are diacritic-folded (so "maximo"
+        matches "Maxïmo");
       • typo-tolerant — a token matches a catalog word within a small Levenshtein
         `EDIT_DISTANCE` (so "boxs" matches "Boxes"), scaled by token length to
         avoid noise on short words. Exact substring still matches (partials).
 
-    Returns flat rows ``{artist, title, brand, watch}``; the caller groups them.
+    Returns ``(conditions, params)``; empty conditions means "no usable tokens,
+    skip BigQuery entirely".
     """
     def _fold(s: str) -> str:
-        # Diacritic-fold + lowercase, mirroring the SQL haystack below, so an
-        # ASCII query ("maximo") matches an accented catalog value ("Maxïmo").
+        # Diacritic-fold + lowercase, mirroring _KN_FOLD_SQL, so an ASCII query
+        # ("maximo") matches an accented catalog value ("Maxïmo").
         return "".join(
             c for c in unicodedata.normalize("NFD", s or "") if not unicodedata.combining(c)
         ).lower()
@@ -179,17 +196,6 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
         return 1 if n <= 6 else 2
 
     tokens = [t for t in (_fold(w) for w in query.split()) if t][:12]
-    if not tokens:
-        return []
-
-    client = bigquery.Client(project=GCP_PROJECT_ID)
-    # Diacritic-fold the columns too (NFD + drop combining marks, then lower) so
-    # matching is accent-insensitive on both sides — mirrors _fold() above.
-    fold_sql = (
-        "LOWER(REGEXP_REPLACE("
-        "NORMALIZE(CONCAT(COALESCE(Artist, ''), ' ', COALESCE(Title, '')), NFD),"
-        r" r'\p{Mn}', ''))"
-    )
     conditions = []
     params = []
     for i, tok in enumerate(tokens):
@@ -210,11 +216,29 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
                 f"WHERE EDIT_DISTANCE(w, @tok{i}) <= {thr}))"
             )
         params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", tok))
+    return conditions, params
+
+
+def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
+    """Search our OWN KaraokeNerds community catalog (never scrapes karaokenerds.com).
+
+    Reads `karaokenerds_community` — the free, directly-playable (web/YouTube)
+    tracks populated daily by the authorized `kn-data-sync` export. Matching
+    semantics live in `_kn_match_parts` (token-AND, accent-insensitive,
+    typo-tolerant).
+
+    Returns flat rows ``{artist, title, brand, watch}``; the caller groups them.
+    """
+    conditions, params = _kn_match_parts(query)
+    if not conditions:
+        return []
+
+    client = bigquery.Client(project=GCP_PROJECT_ID)
     params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
 
     sql = f"""
         WITH c AS (
-            SELECT Artist, Title, Brand, Watch, {fold_sql} AS hay
+            SELECT Artist, Title, Brand, Watch, {_KN_FOLD_SQL} AS hay
             FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community`
         )
         SELECT Artist, Title, Brand, Watch
@@ -241,6 +265,70 @@ def _search_kn_community(query: str, limit: int = 50) -> list[dict]:
             "watch": row.Watch,
         })
     return results
+
+
+def _search_kn_all(query: str, limit: int = 50) -> dict:
+    """Search BOTH KaraokeNerds catalogs in one BigQuery job.
+
+    Community rows (`karaokenerds_community`) carry a single brand code plus a
+    playable YouTube URL; full-catalog rows (`karaokenerds_raw`) carry the
+    comma-separated brand-code list for EVERY karaoke release KN knows about —
+    including commercial disc brands that have no web version (so no URL).
+    Sharing one UNION query keeps latency identical to the community-only
+    search, and the per-source `QUALIFY` limit stops a broad query on the
+    ~300k-row full catalog from starving the community rows.
+
+    Returns ``{"community": [{artist, title, brand, watch}],
+               "full": [{artist, title, brands}]}``.
+    """
+    conditions, params = _kn_match_parts(query)
+    if not conditions:
+        return {"community": [], "full": []}
+
+    client = bigquery.Client(project=GCP_PROJECT_ID)
+    params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
+
+    sql = f"""
+        WITH c AS (
+            SELECT 'community' AS src, Artist, Title, Brand AS brand_info, Watch,
+                   {_KN_FOLD_SQL} AS hay
+            FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_community`
+            UNION ALL
+            SELECT 'full', Artist, Title, Brands, CAST(NULL AS STRING),
+                   {_KN_FOLD_SQL}
+            FROM `{GCP_PROJECT_ID}.{DATASET}.karaokenerds_raw`
+        )
+        SELECT src, Artist, Title, brand_info, Watch
+        FROM c
+        WHERE {" AND ".join(conditions)}
+        QUALIFY ROW_NUMBER() OVER (
+            PARTITION BY src ORDER BY Artist, Title, brand_info) <= @limit
+        ORDER BY Artist, Title, brand_info
+    """
+
+    # Same public-endpoint cost cap as _search_kn_community; the raw table is
+    # still only tens of MB, so 1 GB is a generous ceiling.
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=params,
+        maximum_bytes_billed=1_000_000_000,  # 1 GB ceiling
+    )
+
+    out = {"community": [], "full": []}
+    for row in client.query(sql, job_config=job_config).result():
+        if row.src == "community":
+            out["community"].append({
+                "artist": row.Artist,
+                "title": row.Title,
+                "brand": row.brand_info,
+                "watch": row.Watch,
+            })
+        else:
+            out["full"].append({
+                "artist": row.Artist,
+                "title": row.Title,
+                "brands": row.brand_info,
+            })
+    return out
 
 
 def _lookup_kn_ids(kn_ids: list[int]) -> dict[int, list[dict]]:
@@ -634,6 +722,22 @@ def divebar_lookup(request):
             limit = max(0, min(raw_limit, 200))
             results = _search_kn_community(query, limit)
             return _json_response({"status": "ok", "results": results, "count": len(results)})
+
+        elif action == "kn_search":
+            raw_query = body.get("query")
+            if not isinstance(raw_query, str) or not (query := raw_query.strip()):
+                return _json_response({"status": "error", "message": "query required"}, 400)
+            raw_limit = body.get("limit", 50)
+            if isinstance(raw_limit, bool) or not isinstance(raw_limit, int):
+                return _json_response({"status": "error", "message": "limit must be an integer"}, 400)
+            limit = max(0, min(raw_limit, 200))
+            both = _search_kn_all(query, limit)
+            return _json_response({
+                "status": "ok",
+                "community": both["community"],
+                "full": both["full"],
+                "count": len(both["community"]) + len(both["full"]),
+            })
 
         elif action == "lookup":
             kn_ids = body.get("kn_ids", [])
