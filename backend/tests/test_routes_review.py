@@ -1825,7 +1825,7 @@ class TestEncodePreviewInBackground:
         encoding_service = MagicMock()
         encoding_service.encode_preview_video = AsyncMock(side_effect=RuntimeError("stockout"))
         storage = MagicMock()
-        local_render = MagicMock(return_value="h1")
+        local_render = AsyncMock(return_value="h1")
         self._run(mock_job, encoding_service, storage, local_render)
         local_render.assert_called_once()
         storage.upload_json.assert_not_called()
@@ -1836,7 +1836,7 @@ class TestEncodePreviewInBackground:
         encoding_service = MagicMock()
         encoding_service.encode_preview_video = AsyncMock(side_effect=RuntimeError("stockout"))
         storage = MagicMock()
-        local_render = MagicMock(side_effect=RuntimeError("ffmpeg died"))
+        local_render = AsyncMock(side_effect=RuntimeError("ffmpeg died"))
         self._run(mock_job, encoding_service, storage, local_render)
         storage.upload_json.assert_called_once_with(
             "jobs/job-bg/previews/h1.error.json",
@@ -2041,3 +2041,101 @@ class TestReviewAudioSingleFlightAndByteCap:
         assert "a" not in review_module._review_audio_cache
         assert review_module._review_audio_cache_bytes <= 100
         assert set(review_module._review_audio_cache) == {"b", "c", "d", "e"}
+
+
+class TestLocalPreviewRenderBound:
+    """The local preview ffmpeg fallback must be bounded so a GCE outage plus a
+    few concurrent Preview clicks can't saturate the API instance's CPU.
+    Admission is an async semaphore on the event loop (waiters are cheap
+    coroutines, not parked executor threads)."""
+
+    def test_serializes_and_times_out_admission(self, monkeypatch):
+        import asyncio
+        import threading
+        from backend.api.routes import review as review_module
+
+        monkeypatch.setattr(review_module, "_LOCAL_PREVIEW_QUEUE_TIMEOUT_S", 0.2)
+        monkeypatch.setattr(review_module, "_local_preview_slots", asyncio.Semaphore(1))
+
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_render(job, updated_data, is_duet):
+            started.set()
+            release.wait(timeout=5)
+            return "hash"
+
+        monkeypatch.setattr(review_module, "_render_preview_locally_unbounded", slow_render)
+
+        async def scenario():
+            first = asyncio.create_task(
+                review_module._render_preview_locally(MagicMock(), {}, False)
+            )
+            await asyncio.to_thread(started.wait, 5)
+
+            # Slot held by the first render — the second caller's admission wait
+            # times out fast instead of piling more ffmpeg onto the instance.
+            with pytest.raises(RuntimeError, match="busy"):
+                await review_module._render_preview_locally(MagicMock(), {}, False)
+
+            release.set()
+            assert await first == "hash"
+
+            # Slot released — a fresh render is admitted immediately.
+            monkeypatch.setattr(
+                review_module, "_render_preview_locally_unbounded",
+                lambda job, updated_data, is_duet: "hash2",
+            )
+            assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
+
+        asyncio.run(scenario())
+
+    def test_cancelled_caller_does_not_free_slot_while_render_runs(self, monkeypatch):
+        """Cancelling the awaiting request must NOT release the slot while the
+        ffmpeg worker thread is still running — otherwise a second render can
+        start and defeat the concurrency bound."""
+        import asyncio
+        import threading
+        from backend.api.routes import review as review_module
+
+        monkeypatch.setattr(review_module, "_LOCAL_PREVIEW_QUEUE_TIMEOUT_S", 0.2)
+        monkeypatch.setattr(review_module, "_local_preview_slots", asyncio.Semaphore(1))
+
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_render(job, updated_data, is_duet):
+            started.set()
+            release.wait(timeout=5)
+            return "hash"
+
+        monkeypatch.setattr(review_module, "_render_preview_locally_unbounded", slow_render)
+
+        async def scenario():
+            first = asyncio.create_task(
+                review_module._render_preview_locally(MagicMock(), {}, False)
+            )
+            await asyncio.to_thread(started.wait, 5)
+
+            first.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await first
+
+            # Worker thread is still rendering — the slot must still be held.
+            with pytest.raises(RuntimeError, match="busy"):
+                await review_module._render_preview_locally(MagicMock(), {}, False)
+
+            # Worker finishes → done-callback releases the slot.
+            release.set()
+            for _ in range(50):
+                if not review_module._local_preview_slots.locked():
+                    break
+                await asyncio.sleep(0.05)
+
+            monkeypatch.setattr(
+                review_module, "_render_preview_locally_unbounded",
+                lambda job, updated_data, is_duet: "hash2",
+            )
+            assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
+
+        asyncio.run(scenario())

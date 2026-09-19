@@ -5,8 +5,10 @@ import { useTranslations } from "next-intl"
 import { Loader2, CloudOff, X } from "lucide-react"
 import {
   useBackendStatus,
+  getBackendStatusDebug,
   __installBackendStatusDevHook,
 } from "@/lib/backend-status"
+import { reportDegradationEvent } from "@/lib/degradation-events"
 
 /**
  * App-wide, non-blocking banner that reacts to backend connectivity (see
@@ -36,6 +38,26 @@ export function BackendStatusBanner() {
   useEffect(() => {
     if (status === "online") setDismissed(false)
   }, [status])
+
+  // Persist every banner display server-side (Andrew's telemetry ask): this is
+  // the single global banner instance, so reporting here == "shown to a user".
+  // The reporter throttles per type, so a flapping status can't spam.
+  useEffect(() => {
+    if (status === "online") return
+    // A dismissed unavailable card renders nothing — reporting it would count a
+    // banner the user never saw. (dismiss only re-arms after passing online.)
+    if (status === "unavailable" && dismissed) return
+    const debug = getBackendStatusDebug()
+    reportDegradationEvent(
+      status === "unavailable" ? "banner_unavailable" : "banner_reconnecting",
+      {
+        stall_ms: debug.oldestStallMs,
+        in_flight: debug.inFlightCount,
+        probe_ok: debug.lastProbeOk,
+        probe_failures: debug.consecutiveProbeFailures,
+      },
+    )
+  }, [status, dismissed])
 
   if (status === "online") return null
 

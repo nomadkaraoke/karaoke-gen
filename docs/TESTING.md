@@ -456,6 +456,25 @@ The production tests cover:
 - Final encoding and download
 - Admin dashboard functionality
 
+## Concurrent-Load Regression Test (review pages)
+
+`scripts/load-test-review.py` replays the 2026-09-18 "10 tabs melt the backend"
+incident: N simultaneous review-tab loads, each firing the page's real GET trio
+(correction-data, waveform-data, ranged audio/vocals), authenticated with per-job
+review tokens read from Firestore via ADC (no admin secret needed).
+
+```bash
+python scripts/load-test-review.py                   # 10 tabs vs prod, warm thresholds
+python scripts/load-test-review.py --tabs 20
+python scripts/load-test-review.py --max-tab-seconds 45   # cold caches (first-ever waveforms)
+```
+
+Pass = every request 2xx and every tab under the threshold; exit 1 otherwise.
+Run it after changes to the review hot path (`backend/api/routes/review.py`,
+`audio_transcoding_service`, `audio_analysis_service`) or Cloud Run deploy flags.
+Background + before/after numbers:
+`docs/archive/2026-09-18-concurrent-review-reliability-investigation-and-plan.md`.
+
 ## Ad-Hoc Production Debugging (for Agents)
 
 When asked to "test it yourself in prod" or debug a specific production issue, use the debug script template:

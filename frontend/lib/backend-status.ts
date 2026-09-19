@@ -47,6 +47,11 @@ export const STALL_RECONNECTING_MS = 10_000
 export const STALL_UNAVAILABLE_MS = 20_000
 /** A health-probe verdict is trusted this long before we re-probe during a stall. */
 export const PROBE_FRESH_MS = 10_000
+/** Escalating to the full "unavailable" card needs this many CONSECUTIVE failed
+ *  probes — one failed 4s probe against a briefly-busy instance (e.g. a heavy
+ *  transcode pinning the CPU) is not an outage. The reconnecting pill still
+ *  shows after a single failure; the assertive message waits for confirmation. */
+export const UNAVAILABLE_PROBE_FAILURES = 2
 
 let nextId = 1
 /** id -> startedAt (ms) for every tracked backend GET currently in flight. */
@@ -65,6 +70,8 @@ let probeInFlight = false
 /** Last probe verdict (null = no verdict yet) and when it settled. */
 let lastProbeOk: boolean | null = null
 let lastProbeAt = 0
+/** Failed probes in a row (reset by any success or reconfiguration). */
+let consecutiveProbeFailures = 0
 /** Bumped on configureHealthProbe so a probe from a previous config can't land. */
 let probeEpoch = 0
 
@@ -98,10 +105,15 @@ function maybeStartProbe() {
   if (lastProbeOk !== null && Date.now() - lastProbeAt < PROBE_FRESH_MS) return
   probeInFlight = true
   const epoch = probeEpoch
+  const record = (ok: boolean) => {
+    if (epoch !== probeEpoch) return
+    lastProbeOk = ok
+    consecutiveProbeFailures = ok ? 0 : consecutiveProbeFailures + 1
+  }
   healthProbe()
     .then(
-      (ok) => (epoch === probeEpoch ? (lastProbeOk = ok) : undefined),
-      () => (epoch === probeEpoch ? (lastProbeOk = false) : undefined),
+      (ok) => record(ok),
+      () => record(false),
     )
     .finally(() => {
       if (epoch !== probeEpoch) return
@@ -118,7 +130,13 @@ function recompute() {
   // read is treated as a legitimately slow endpoint and the banner stays hidden.
   if (devOverride === null && next !== 'online' && healthProbe) {
     maybeStartProbe()
-    if (lastProbeOk !== false) next = 'online'
+    if (lastProbeOk !== false) {
+      next = 'online'
+    } else if (next === 'unavailable' && consecutiveProbeFailures < UNAVAILABLE_PROBE_FAILURES) {
+      // One failed probe can just be a briefly-pegged instance; keep the calm
+      // pill until a second consecutive failure confirms real unreachability.
+      next = 'reconnecting'
+    }
   }
   setStatus(next)
   // Stop the clock once nothing is outstanding (and no dev override needs it).
@@ -163,6 +181,26 @@ export function configureHealthProbe(probe: HealthProbe | null): void {
   probeInFlight = false
   lastProbeOk = null
   lastProbeAt = 0
+  consecutiveProbeFailures = 0
+}
+
+/** Diagnostic snapshot for degradation telemetry (see lib/degradation-events). */
+export function getBackendStatusDebug(): {
+  oldestStallMs: number
+  inFlightCount: number
+  lastProbeOk: boolean | null
+  consecutiveProbeFailures: number
+} {
+  let oldest = Infinity
+  for (const startedAt of inFlight.values()) {
+    if (startedAt < oldest) oldest = startedAt
+  }
+  return {
+    oldestStallMs: inFlight.size === 0 ? 0 : Date.now() - oldest,
+    inFlightCount: inFlight.size,
+    lastProbeOk,
+    consecutiveProbeFailures,
+  }
 }
 
 export function getBackendStatus(): BackendStatus {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
+import { reportDegradationEvent } from "@/lib/degradation-events"
 import { useAuth } from "@/lib/auth"
 import { api, Job, createLyricsReviewApiClient, lyricsReviewApi } from "@/lib/api"
 import { Spinner } from "@/components/ui/spinner"
@@ -334,6 +335,10 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
         setCorrectionData(data)
       } catch (err) {
         console.error("Failed to load correction data:", err)
+        reportDegradationEvent("lyrics_load_failed", {
+          message: err instanceof Error ? err.message : String(err),
+          status: (err as { status?: number })?.status ?? null,
+        })
         setError(err instanceof Error ? err.message : "Failed to load lyrics data")
       } finally {
         setIsLoading(false)

@@ -2669,3 +2669,30 @@ search returned nothing usable.
 
 Stripe webhooks implemented at `/api/users/webhooks/stripe`.
 Job status webhooks not yet implemented.
+
+## Client Telemetry
+
+### Degradation Events
+
+```http
+POST /api/client-events
+```
+
+Unauthenticated, rate-limited (120/min/IP — sized so a many-tab burst from one IP is fully recorded), bot-filtered. The frontend reports every
+user-visible degraded-service surface: `banner_reconnecting`, `banner_unavailable`
+(the connectivity banner — reported by `BackendStatusBanner`), `lyrics_load_failed`
+(review page "temporarily unavailable"), `waveform_slow` / `waveform_failed`
+(Waveforms-mode strips late or missing). Body: `{type, url, job_id?, user_email?,
+locale, release, detail?}` — `detail` is size-capped server-side (≤12 keys, ≤200
+chars per value); URLs are stored query-stripped.
+
+Each event emits a structured `client_event type=…` INFO log line and is
+best-effort persisted to the Firestore `client_events` collection (a Firestore
+write failure is logged but still returns `202` — telemetry never errors back to
+the client), so frequency can be reviewed later
+(Firestore aggregation, or Cloud Logging correlated with backend symptoms from the
+same window). Reporter: `frontend/lib/degradation-events.ts` (60s per-type throttle,
+localhost no-op). Added in v0.231.0 — see
+`docs/archive/2026-09-18-concurrent-review-reliability-investigation-and-plan.md`.
+
+Crash reports are the separate `POST /api/client-errors` (error-monitor pipeline).

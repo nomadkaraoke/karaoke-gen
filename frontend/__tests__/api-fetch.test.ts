@@ -131,10 +131,16 @@ describe('apiFetch', () => {
     // stays hidden (a slow endpoint must not alarm the user without evidence).
     await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS)
     expect(getBackendStatus()).toBe('online')
-    // Probe times out (~4s) → outage confirmed → the hint appears.
+    // Probe times out (~4s) → outage suspected → the hint appears.
     await jest.advanceTimersByTimeAsync(5_000)
     expect(getBackendStatus()).toBe('reconnecting')
+    // The stall alone now qualifies for "unavailable", but escalation needs a
+    // SECOND consecutive probe failure (one failed probe can just be a briefly
+    // pegged instance) — until then the calm pill is all the user sees.
     await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS - STALL_RECONNECTING_MS - 5_000)
+    expect(getBackendStatus()).toBe('reconnecting')
+    // Verdict goes stale (~24s) → probe #2 fires → times out (~28s) → confirmed.
+    await jest.advanceTimersByTimeAsync(9_000)
     expect(getBackendStatus()).toBe('unavailable')
 
     settleGet(mockResponse(200, { ok: true }))
