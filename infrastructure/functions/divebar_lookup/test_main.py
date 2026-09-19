@@ -404,3 +404,96 @@ class TestKnCommunitySearch:
             MockRequest({"action": "kn_community_search", "query": "abba", "limit": -5})
         )
         assert status == 200
+
+
+def _kn_union_row(src, artist, title, brand_info, watch=None):
+    row = MagicMock()
+    row.src, row.Artist, row.Title, row.brand_info, row.Watch = (
+        src, artist, title, brand_info, watch)
+    return row
+
+
+class TestKnSearch:
+    """`kn_search` returns community + full-catalog rows from ONE BigQuery job."""
+
+    def _patch_query(self, monkeypatch, rows):
+        captured = {}
+        client = MagicMock()
+
+        def _query(sql, job_config=None):
+            captured["sql"] = sql
+            captured["params"] = job_config.query_parameters if job_config else []
+            result = MagicMock()
+            result.result.return_value = rows
+            return result
+
+        client.query.side_effect = _query
+        monkeypatch.setattr(main.bigquery, "Client", lambda project=None: client)
+        return captured
+
+    def test_splits_rows_by_source(self, monkeypatch):
+        rows = [
+            _kn_union_row("community", "Tenacious D", "Tribute", "BELLY", "https://youtu.be/j"),
+            _kn_union_row("full", "Tenacious D", "Tribute", "BELLY,CK,KV,SF"),
+        ]
+        self._patch_query(monkeypatch, rows)
+        out = main._search_kn_all("tenacious d tribute")
+        assert out["community"] == [
+            {"artist": "Tenacious D", "title": "Tribute", "brand": "BELLY", "watch": "https://youtu.be/j"},
+        ]
+        assert out["full"] == [
+            {"artist": "Tenacious D", "title": "Tribute", "brands": "BELLY,CK,KV,SF"},
+        ]
+
+    def test_queries_both_tables_in_one_job_with_per_source_limit(self, monkeypatch):
+        # The whole point: a song with only commercial disc brands (in the raw
+        # table, not the community table) must be findable — in a single BQ job,
+        # with the limit applied per source so the 300k-row raw table can't
+        # starve community rows.
+        captured = self._patch_query(monkeypatch, [])
+        main._search_kn_all("big green tractor")
+        sql = captured["sql"]
+        assert "karaokenerds_community" in sql
+        assert "karaokenerds_raw" in sql
+        assert "UNION ALL" in sql
+        assert "QUALIFY" in sql and "PARTITION BY src" in sql
+
+    def test_same_matching_semantics_as_community_search(self, monkeypatch):
+        # Both searches share _kn_match_parts — token-AND STRPOS + fuzzy fallback.
+        captured = self._patch_query(monkeypatch, [])
+        main._search_kn_all("daft punk one more time")
+        sql = captured["sql"]
+        assert sql.count("STRPOS(hay, @tok") == 5
+        assert "LIKE" not in sql and "ESCAPE" not in sql
+        assert "NORMALIZE" in sql and r"\p{Mn}" in sql
+
+    def test_blank_query_returns_empty_without_bq(self, monkeypatch):
+        monkeypatch.setattr(main.bigquery, "Client",
+                            MagicMock(side_effect=AssertionError("BQ should not be called")))
+        assert main._search_kn_all("   ") == {"community": [], "full": []}
+
+    def test_dispatch_returns_both_sets_and_count(self, monkeypatch):
+        self._patch_query(monkeypatch, [
+            _kn_union_row("community", "ABBA", "SOS", "NOMAD", "https://youtu.be/s"),
+            _kn_union_row("full", "ABBA", "SOS", "NOMAD,SF,KV"),
+        ])
+        body, status, _ = main.divebar_lookup(
+            MockRequest({"action": "kn_search", "query": "abba sos"})
+        )
+        assert status == 200
+        payload = json.loads(body)
+        assert payload["status"] == "ok"
+        assert payload["count"] == 2
+        assert payload["community"][0]["watch"] == "https://youtu.be/s"
+        assert payload["full"][0]["brands"] == "NOMAD,SF,KV"
+
+    def test_dispatch_missing_query_returns_400(self, monkeypatch):
+        _body, status, _ = main.divebar_lookup(MockRequest({"action": "kn_search"}))
+        assert status == 400
+
+    def test_dispatch_non_integer_limit_returns_400(self, monkeypatch):
+        for bad in ("50", True, 1.5):
+            _body, status, _ = main.divebar_lookup(
+                MockRequest({"action": "kn_search", "query": "abba", "limit": bad})
+            )
+            assert status == 400, f"limit={bad!r} should be rejected"
