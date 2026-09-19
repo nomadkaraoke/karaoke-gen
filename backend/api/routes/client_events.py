@@ -11,8 +11,11 @@ metadata to review frequency and context later. Two sinks per event:
      aggregate for "how often are users seeing this?" reviews.
 
 Unauthenticated (review-token users must be able to report) and rate-limited
-per IP, mirroring /api/client-errors. Events are dropped, never queued, when
-the limiter trips — this is telemetry, not a delivery guarantee.
+per IP, mirroring /api/client-errors. The limiter is process-local, so the
+effective ceiling is 30/min/IP × live instances — acceptable for this threat
+model (non-malicious browsers, 60s client-side per-type throttle); Cloudflare's
+zone-wide rate limit sits in front as a flood backstop. Events are dropped,
+never queued, when the limiter trips — telemetry, not a delivery guarantee.
 """
 from __future__ import annotations
 

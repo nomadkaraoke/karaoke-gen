@@ -286,23 +286,30 @@ def _prepare_preview_inputs(job, temp_dir: str, storage, is_duet: bool):
 # responsive — previews just queue a little longer during an encoder outage.
 _LOCAL_PREVIEW_MAX_CONCURRENCY = max(1, int(os.getenv("LOCAL_PREVIEW_MAX_CONCURRENCY", "1")))
 _LOCAL_PREVIEW_QUEUE_TIMEOUT_S = int(os.getenv("LOCAL_PREVIEW_QUEUE_TIMEOUT_S", "900"))
-_local_preview_slots = threading.BoundedSemaphore(_LOCAL_PREVIEW_MAX_CONCURRENCY)
+_local_preview_slots = asyncio.Semaphore(_LOCAL_PREVIEW_MAX_CONCURRENCY)
 
 
-def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
-    """Render the full 360p preview locally and upload it to GCS.
+async def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
+    """Render the full 360p preview locally (bounded) and upload it to GCS.
 
-    Blocking (downloads + ffmpeg) — call via asyncio.to_thread. Used when GCE
-    preview encoding is disabled and as the fallback when it fails. Bounded by
-    ``_local_preview_slots`` so concurrent fallbacks can't cook the instance.
+    Used when GCE preview encoding is disabled and as the fallback when it
+    fails. Admission happens HERE on the event loop (async semaphore +
+    wait_for) so queued renders wait as cheap coroutines — only an ADMITTED
+    render occupies a thread-pool worker for its blocking downloads + ffmpeg.
     """
-    if not _local_preview_slots.acquire(timeout=_LOCAL_PREVIEW_QUEUE_TIMEOUT_S):
+    try:
+        await asyncio.wait_for(
+            _local_preview_slots.acquire(), timeout=_LOCAL_PREVIEW_QUEUE_TIMEOUT_S
+        )
+    except asyncio.TimeoutError:
         raise RuntimeError(
             "Local preview encoder is busy (waited "
             f"{_LOCAL_PREVIEW_QUEUE_TIMEOUT_S}s for a slot) — try again shortly"
         )
     try:
-        return _render_preview_locally_unbounded(job, updated_data, is_duet)
+        return await asyncio.to_thread(
+            _render_preview_locally_unbounded, job, updated_data, is_duet
+        )
     finally:
         _local_preview_slots.release()
 
@@ -373,7 +380,7 @@ async def _encode_preview_in_background(
             logger.warning(f"Job {job_id}: GCE preview encoding failed, falling back to local: {gce_error}")
 
         try:
-            await asyncio.to_thread(_render_preview_locally, job, updated_data, is_duet)
+            await _render_preview_locally(job, updated_data, is_duet)
             logger.info(f"Job {job_id}: Preview generated locally after GCE failure: {preview_hash}")
         except Exception as local_error:
             logger.error(
@@ -1897,9 +1904,7 @@ async def generate_preview_video(
 
                 # Local path (GCE preview disabled, or GCE setup failed): render
                 # the full preview synchronously — no cold-start problem, but slow.
-                preview_hash = await asyncio.to_thread(
-                    _render_preview_locally, job, updated_data, is_duet
-                )
+                preview_hash = await _render_preview_locally(job, updated_data, is_duet)
 
                 logger.info(f"Job {job_id}: Preview video generated: {preview_hash}")
                 span.set_attribute("preview_hash", preview_hash)

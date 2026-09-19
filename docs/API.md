@@ -2686,8 +2686,10 @@ user-visible degraded-service surface: `banner_reconnecting`, `banner_unavailabl
 locale, release, detail?}` — `detail` is size-capped server-side (≤12 keys, ≤200
 chars per value); URLs are stored query-stripped.
 
-Each event is written to the Firestore `client_events` collection AND emitted as a
-structured `client_event type=…` INFO log line, so frequency can be reviewed later
+Each event emits a structured `client_event type=…` INFO log line and is
+best-effort persisted to the Firestore `client_events` collection (a Firestore
+write failure is logged but still returns `202` — telemetry never errors back to
+the client), so frequency can be reviewed later
 (Firestore aggregation, or Cloud Logging correlated with backend symptoms from the
 same window). Reporter: `frontend/lib/degradation-events.ts` (60s per-type throttle,
 localhost no-op). Added in v0.231.0 — see

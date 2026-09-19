@@ -44,6 +44,9 @@ export function BackendStatusBanner() {
   // The reporter throttles per type, so a flapping status can't spam.
   useEffect(() => {
     if (status === "online") return
+    // A dismissed unavailable card renders nothing — reporting it would count a
+    // banner the user never saw. (dismiss only re-arms after passing online.)
+    if (status === "unavailable" && dismissed) return
     const debug = getBackendStatusDebug()
     reportDegradationEvent(
       status === "unavailable" ? "banner_unavailable" : "banner_reconnecting",
@@ -54,7 +57,7 @@ export function BackendStatusBanner() {
         probe_failures: debug.consecutiveProbeFailures,
       },
     )
-  }, [status])
+  }, [status, dismissed])
 
   if (status === "online") return null
 

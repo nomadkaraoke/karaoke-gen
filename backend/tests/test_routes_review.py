@@ -1825,7 +1825,7 @@ class TestEncodePreviewInBackground:
         encoding_service = MagicMock()
         encoding_service.encode_preview_video = AsyncMock(side_effect=RuntimeError("stockout"))
         storage = MagicMock()
-        local_render = MagicMock(return_value="h1")
+        local_render = AsyncMock(return_value="h1")
         self._run(mock_job, encoding_service, storage, local_render)
         local_render.assert_called_once()
         storage.upload_json.assert_not_called()
@@ -1836,7 +1836,7 @@ class TestEncodePreviewInBackground:
         encoding_service = MagicMock()
         encoding_service.encode_preview_video = AsyncMock(side_effect=RuntimeError("stockout"))
         storage = MagicMock()
-        local_render = MagicMock(side_effect=RuntimeError("ffmpeg died"))
+        local_render = AsyncMock(side_effect=RuntimeError("ffmpeg died"))
         self._run(mock_job, encoding_service, storage, local_render)
         storage.upload_json.assert_called_once_with(
             "jobs/job-bg/previews/h1.error.json",
@@ -2045,38 +2045,47 @@ class TestReviewAudioSingleFlightAndByteCap:
 
 class TestLocalPreviewRenderBound:
     """The local preview ffmpeg fallback must be bounded so a GCE outage plus a
-    few concurrent Preview clicks can't saturate the API instance's CPU."""
+    few concurrent Preview clicks can't saturate the API instance's CPU.
+    Admission is an async semaphore on the event loop (waiters are cheap
+    coroutines, not parked executor threads)."""
 
-    def test_serializes_and_raises_when_slot_wait_times_out(self, monkeypatch):
+    def test_serializes_and_times_out_admission(self, monkeypatch):
+        import asyncio
         import threading
         from backend.api.routes import review as review_module
 
-        monkeypatch.setattr(review_module, "_LOCAL_PREVIEW_QUEUE_TIMEOUT_S", 0)
-        monkeypatch.setattr(review_module, "_local_preview_slots", threading.BoundedSemaphore(1))
+        monkeypatch.setattr(review_module, "_LOCAL_PREVIEW_QUEUE_TIMEOUT_S", 0.2)
+        monkeypatch.setattr(review_module, "_local_preview_slots", asyncio.Semaphore(1))
 
-        release_render = threading.Event()
         started = threading.Event()
+        release = threading.Event()
 
         def slow_render(job, updated_data, is_duet):
             started.set()
-            release_render.wait(timeout=5)
+            release.wait(timeout=5)
             return "hash"
 
         monkeypatch.setattr(review_module, "_render_preview_locally_unbounded", slow_render)
 
-        first = threading.Thread(
-            target=review_module._render_preview_locally, args=(MagicMock(), {}, False)
-        )
-        first.start()
-        assert started.wait(timeout=5)
+        async def scenario():
+            first = asyncio.create_task(
+                review_module._render_preview_locally(MagicMock(), {}, False)
+            )
+            await asyncio.to_thread(started.wait, 5)
 
-        # Slot is held by the first render; with a 0s queue timeout the second
-        # caller fails fast instead of piling more ffmpeg onto the instance.
-        with pytest.raises(RuntimeError, match="busy"):
-            review_module._render_preview_locally(MagicMock(), {}, False)
+            # Slot held by the first render — the second caller's admission wait
+            # times out fast instead of piling more ffmpeg onto the instance.
+            with pytest.raises(RuntimeError, match="busy"):
+                await review_module._render_preview_locally(MagicMock(), {}, False)
 
-        release_render.set()
-        first.join(timeout=5)
+            release.set()
+            assert await first == "hash"
 
-        # Slot released — a fresh render acquires immediately.
-        assert review_module._render_preview_locally(MagicMock(), {}, False) == "hash"
+            # Slot released — a fresh render is admitted immediately.
+            monkeypatch.setattr(
+                review_module, "_render_preview_locally_unbounded",
+                lambda job, updated_data, is_duet: "hash2",
+            )
+            assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
+
+        asyncio.run(scenario())

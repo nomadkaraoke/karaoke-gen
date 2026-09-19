@@ -115,8 +115,12 @@ def main() -> int:
     else:
         print(f"Fetching up to {args.tabs} in-review jobs from Firestore…")
         jobs = fetch_review_jobs(args.tabs)
-    if len(jobs) < 2:
-        print(f"Only {len(jobs)} in-review jobs available — need at least 2. Aborting.")
+    if len(jobs) < args.tabs:
+        # A partial run would "PASS" without reproducing the requested burst.
+        print(
+            f"Only {len(jobs)} in-review jobs available but --tabs {args.tabs} requested. "
+            "Aborting — re-run with a smaller --tabs to test at reduced scale."
+        )
         return 1
     print(f"Simulating {len(jobs)} concurrent review tabs against {args.api}\n")
 
