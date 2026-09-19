@@ -2089,3 +2089,53 @@ class TestLocalPreviewRenderBound:
             assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
 
         asyncio.run(scenario())
+
+    def test_cancelled_caller_does_not_free_slot_while_render_runs(self, monkeypatch):
+        """Cancelling the awaiting request must NOT release the slot while the
+        ffmpeg worker thread is still running — otherwise a second render can
+        start and defeat the concurrency bound."""
+        import asyncio
+        import threading
+        from backend.api.routes import review as review_module
+
+        monkeypatch.setattr(review_module, "_LOCAL_PREVIEW_QUEUE_TIMEOUT_S", 0.2)
+        monkeypatch.setattr(review_module, "_local_preview_slots", asyncio.Semaphore(1))
+
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow_render(job, updated_data, is_duet):
+            started.set()
+            release.wait(timeout=5)
+            return "hash"
+
+        monkeypatch.setattr(review_module, "_render_preview_locally_unbounded", slow_render)
+
+        async def scenario():
+            first = asyncio.create_task(
+                review_module._render_preview_locally(MagicMock(), {}, False)
+            )
+            await asyncio.to_thread(started.wait, 5)
+
+            first.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await first
+
+            # Worker thread is still rendering — the slot must still be held.
+            with pytest.raises(RuntimeError, match="busy"):
+                await review_module._render_preview_locally(MagicMock(), {}, False)
+
+            # Worker finishes → done-callback releases the slot.
+            release.set()
+            for _ in range(50):
+                if not review_module._local_preview_slots.locked():
+                    break
+                await asyncio.sleep(0.05)
+
+            monkeypatch.setattr(
+                review_module, "_render_preview_locally_unbounded",
+                lambda job, updated_data, is_duet: "hash2",
+            )
+            assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
+
+        asyncio.run(scenario())

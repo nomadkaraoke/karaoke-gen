@@ -109,6 +109,8 @@ def main() -> int:
         help="JSON file of [{job_id, token}] to skip the Firestore lookup",
     )
     args = parser.parse_args()
+    if args.tabs < 1:
+        parser.error("--tabs must be >= 1")
 
     if args.jobs_file:
         jobs = json.load(open(args.jobs_file))[: args.tabs]

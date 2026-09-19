@@ -13,6 +13,7 @@ Usage:
 The baseApiUrl includes the job_id, and all endpoints are relative to that.
 """
 import asyncio
+import concurrent.futures
 import logging
 import hashlib
 import json
@@ -287,6 +288,13 @@ def _prepare_preview_inputs(job, temp_dir: str, storage, is_duet: bool):
 _LOCAL_PREVIEW_MAX_CONCURRENCY = max(1, int(os.getenv("LOCAL_PREVIEW_MAX_CONCURRENCY", "1")))
 _LOCAL_PREVIEW_QUEUE_TIMEOUT_S = int(os.getenv("LOCAL_PREVIEW_QUEUE_TIMEOUT_S", "900"))
 _local_preview_slots = asyncio.Semaphore(_LOCAL_PREVIEW_MAX_CONCURRENCY)
+# Dedicated executor: admitted renders never compete with the shared to_thread
+# pool, and its concurrent.futures-level done callbacks fire when the WORKER
+# THREAD finishes — the asyncio wrapper future can be "cancelled" while the
+# thread is still running, so it must not drive the slot release.
+_local_preview_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=_LOCAL_PREVIEW_MAX_CONCURRENCY, thread_name_prefix="local-preview"
+)
 
 
 async def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
@@ -306,12 +314,27 @@ async def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bo
             "Local preview encoder is busy (waited "
             f"{_LOCAL_PREVIEW_QUEUE_TIMEOUT_S}s for a slot) — try again shortly"
         )
-    try:
-        return await asyncio.to_thread(
-            _render_preview_locally_unbounded, job, updated_data, is_duet
-        )
-    finally:
-        _local_preview_slots.release()
+    def _run_render():
+        return _render_preview_locally_unbounded(job, updated_data, is_duet)
+
+    loop = asyncio.get_running_loop()
+    worker_future = _local_preview_executor.submit(_run_render)
+
+    def _release_slot(fut: "concurrent.futures.Future") -> None:
+        # Runs when the WORKER THREAD actually finishes. Releasing from an
+        # async finally (or the asyncio wrapper's callback) would free the slot
+        # the moment the awaiting request is cancelled — while the ffmpeg
+        # render thread is still consuming CPU — letting a second render start
+        # and defeating the concurrency bound.
+        if not fut.cancelled():
+            fut.exception()  # mark retrieved when the caller was cancelled/abandoned
+        try:
+            loop.call_soon_threadsafe(_local_preview_slots.release)
+        except RuntimeError:
+            pass  # loop already closed (shutdown) — nothing left to bound
+
+    worker_future.add_done_callback(_release_slot)
+    return await asyncio.wrap_future(worker_future)
 
 
 def _render_preview_locally_unbounded(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
