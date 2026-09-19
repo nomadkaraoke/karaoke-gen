@@ -12,7 +12,7 @@ metadata to review frequency and context later. Two sinks per event:
 
 Unauthenticated (review-token users must be able to report) and rate-limited
 per IP, mirroring /api/client-errors. The limiter is process-local, so the
-effective ceiling is 30/min/IP × live instances — acceptable for this threat
+effective ceiling is 120/min/IP × live instances — acceptable for this threat
 model (non-malicious browsers, 60s client-side per-type throttle); Cloudflare's
 zone-wide rate limit sits in front as a flood backstop. Events are dropped,
 never queued, when the limiter trips — telemetry, not a delivery guarantee.
@@ -36,7 +36,10 @@ from backend.services.error_monitor.frontend_ingestion import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/client-events", tags=["client-events"])
 
-_limiter = RateLimiter(max_per_minute=30)
+# Sized for a legitimate worst case from ONE IP: a many-tab burst (e.g. 16 review
+# tabs at once) where every tab reports a banner + a waveform event — that must be
+# fully recorded, not self-suppressed. Each tab throttles per-type client-side.
+_limiter = RateLimiter(max_per_minute=120)
 _db_singleton = None
 
 # The full closed set of reportable events. Reject anything else so the

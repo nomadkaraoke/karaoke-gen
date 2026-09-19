@@ -2678,7 +2678,7 @@ Job status webhooks not yet implemented.
 POST /api/client-events
 ```
 
-Unauthenticated, rate-limited (30/min/IP), bot-filtered. The frontend reports every
+Unauthenticated, rate-limited (120/min/IP — sized so a many-tab burst from one IP is fully recorded), bot-filtered. The frontend reports every
 user-visible degraded-service surface: `banner_reconnecting`, `banner_unavailable`
 (the connectivity banner — reported by `BackendStatusBanner`), `lyrics_load_failed`
 (review page "temporarily unavailable"), `waveform_slow` / `waveform_failed`
