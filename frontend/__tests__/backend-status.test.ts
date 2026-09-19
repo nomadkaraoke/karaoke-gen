@@ -8,6 +8,7 @@
 
 import {
   getBackendStatus,
+  getBackendStatusDebug,
   beginRequest,
   endRequest,
   configureHealthProbe,
@@ -157,5 +158,54 @@ describe('backend-status store (health-probe confirmation)', () => {
 
     await jest.advanceTimersByTimeAsync(3000) // verdict lands
     expect(getBackendStatus()).toBe('reconnecting')
+  })
+
+  it('needs TWO consecutive failed probes before escalating to unavailable', async () => {
+    // Each probe takes 3s to fail — realistic for a probe racing its own
+    // timeout against a briefly-pegged (not down) instance.
+    const probe = jest.fn(
+      () => new Promise<boolean>((res) => setTimeout(() => res(false), 3000)),
+    )
+    configureHealthProbe(probe)
+
+    open.push(beginRequest())
+    // t=10s: probe #1 starts. t=13s: failure #1 recorded.
+    // t=20s: the stall alone now qualifies for "unavailable", but only one
+    //        probe failure has been recorded (verdict fresh until t=23s) —
+    //        the calm reconnecting pill must be all the user sees.
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS + 1000) // t=21s
+    expect(getBackendStatus()).toBe('reconnecting')
+    expect(getBackendStatusDebug().consecutiveProbeFailures).toBe(1)
+
+    // t=23s: verdict stale → probe #2 starts. t=26s: failure #2 → escalate.
+    await jest.advanceTimersByTimeAsync(6000) // t=27s
+    expect(getBackendStatus()).toBe('unavailable')
+    expect(getBackendStatusDebug().consecutiveProbeFailures).toBe(2)
+  })
+
+  it('a probe success resets the consecutive-failure count', async () => {
+    let reachable = false
+    const probe = jest.fn(() => Promise.resolve(reachable))
+    configureHealthProbe(probe)
+
+    open.push(beginRequest())
+    await jest.advanceTimersByTimeAsync(STALL_UNAVAILABLE_MS + PROBE_FRESH_MS)
+    expect(getBackendStatusDebug().consecutiveProbeFailures).toBeGreaterThanOrEqual(2)
+
+    reachable = true
+    await jest.advanceTimersByTimeAsync(PROBE_FRESH_MS + 2000)
+    expect(getBackendStatus()).toBe('online')
+    expect(getBackendStatusDebug().consecutiveProbeFailures).toBe(0)
+  })
+
+  it('exposes a diagnostic snapshot for telemetry', async () => {
+    configureHealthProbe(() => Promise.resolve(false))
+    open.push(beginRequest())
+    await jest.advanceTimersByTimeAsync(STALL_RECONNECTING_MS + 1000)
+
+    const debug = getBackendStatusDebug()
+    expect(debug.inFlightCount).toBe(1)
+    expect(debug.oldestStallMs).toBeGreaterThanOrEqual(STALL_RECONNECTING_MS)
+    expect(debug.lastProbeOk).toBe(false)
   })
 })

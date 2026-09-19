@@ -278,12 +278,36 @@ def _prepare_preview_inputs(job, temp_dir: str, storage, is_duet: bool):
     return correction_result, audio_path, output_config
 
 
+# At most this many local preview renders at once. The local path runs ffmpeg
+# ON the 2-vCPU API instance (it's the fallback when GCE preview encoding is
+# down); unbounded, a GCE outage plus a few users clicking Preview saturates
+# the instance's CPU, stalls the health probe, and shows everyone the orange
+# "trouble reaching our servers" banner. Serializing renders keeps the API
+# responsive — previews just queue a little longer during an encoder outage.
+_LOCAL_PREVIEW_MAX_CONCURRENCY = max(1, int(os.getenv("LOCAL_PREVIEW_MAX_CONCURRENCY", "1")))
+_LOCAL_PREVIEW_QUEUE_TIMEOUT_S = int(os.getenv("LOCAL_PREVIEW_QUEUE_TIMEOUT_S", "900"))
+_local_preview_slots = threading.BoundedSemaphore(_LOCAL_PREVIEW_MAX_CONCURRENCY)
+
+
 def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
     """Render the full 360p preview locally and upload it to GCS.
 
     Blocking (downloads + ffmpeg) — call via asyncio.to_thread. Used when GCE
-    preview encoding is disabled and as the fallback when it fails.
+    preview encoding is disabled and as the fallback when it fails. Bounded by
+    ``_local_preview_slots`` so concurrent fallbacks can't cook the instance.
     """
+    if not _local_preview_slots.acquire(timeout=_LOCAL_PREVIEW_QUEUE_TIMEOUT_S):
+        raise RuntimeError(
+            "Local preview encoder is busy (waited "
+            f"{_LOCAL_PREVIEW_QUEUE_TIMEOUT_S}s for a slot) — try again shortly"
+        )
+    try:
+        return _render_preview_locally_unbounded(job, updated_data, is_duet)
+    finally:
+        _local_preview_slots.release()
+
+
+def _render_preview_locally_unbounded(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
     job_id = job.job_id
     storage = StorageService()
     with tempfile.TemporaryDirectory() as temp_dir:

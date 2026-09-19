@@ -2041,3 +2041,42 @@ class TestReviewAudioSingleFlightAndByteCap:
         assert "a" not in review_module._review_audio_cache
         assert review_module._review_audio_cache_bytes <= 100
         assert set(review_module._review_audio_cache) == {"b", "c", "d", "e"}
+
+
+class TestLocalPreviewRenderBound:
+    """The local preview ffmpeg fallback must be bounded so a GCE outage plus a
+    few concurrent Preview clicks can't saturate the API instance's CPU."""
+
+    def test_serializes_and_raises_when_slot_wait_times_out(self, monkeypatch):
+        import threading
+        from backend.api.routes import review as review_module
+
+        monkeypatch.setattr(review_module, "_LOCAL_PREVIEW_QUEUE_TIMEOUT_S", 0)
+        monkeypatch.setattr(review_module, "_local_preview_slots", threading.BoundedSemaphore(1))
+
+        release_render = threading.Event()
+        started = threading.Event()
+
+        def slow_render(job, updated_data, is_duet):
+            started.set()
+            release_render.wait(timeout=5)
+            return "hash"
+
+        monkeypatch.setattr(review_module, "_render_preview_locally_unbounded", slow_render)
+
+        first = threading.Thread(
+            target=review_module._render_preview_locally, args=(MagicMock(), {}, False)
+        )
+        first.start()
+        assert started.wait(timeout=5)
+
+        # Slot is held by the first render; with a 0s queue timeout the second
+        # caller fails fast instead of piling more ffmpeg onto the instance.
+        with pytest.raises(RuntimeError, match="busy"):
+            review_module._render_preview_locally(MagicMock(), {}, False)
+
+        release_render.set()
+        first.join(timeout=5)
+
+        # Slot released — a fresh render acquires immediately.
+        assert review_module._render_preview_locally(MagicMock(), {}, False) == "hash"

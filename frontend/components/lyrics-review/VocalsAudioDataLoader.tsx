@@ -1,5 +1,11 @@
 import { AudioData, AudioNotReadyError, fetchAudioData, isTransientAudioError } from '@/lib/audio-data'
+import { reportDegradationEvent } from '@/lib/degradation-events'
 import { createContext, PropsWithChildren, useEffect, useState } from 'react'
+
+// A first paint whose waveform strips took longer than this to appear counts as
+// a degraded experience worth recording (Andrew's "wait 1+ minutes" complaint).
+// Excludes legitimate separation-in-progress waits shorter than one 202 poll.
+const SLOW_LOAD_REPORT_MS = 20_000
 
 export const VocalsAudioDataLoaderContext = createContext<{ audioData: AudioData | null }>({ audioData: null })
 
@@ -30,11 +36,21 @@ export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderPro
 		// audioUrl has already been set.
 		let cancelled = false
 		let retryTimer: ReturnType<typeof setTimeout> | undefined
+		const startedAt = Date.now()
 
 		const load = (attempt: number, transientAttempt: number) => {
 			fetchAudioData(audioUrl)
 				.then((audioData) => {
-					if (!cancelled) setAudioData(audioData)
+					if (cancelled) return
+					const elapsedMs = Date.now() - startedAt
+					if (elapsedMs >= SLOW_LOAD_REPORT_MS) {
+						reportDegradationEvent('waveform_slow', {
+							elapsed_ms: elapsedMs,
+							not_ready_polls: attempt,
+							transient_retries: transientAttempt,
+						})
+					}
+					setAudioData(audioData)
 				})
 				.catch((error) => {
 					if (cancelled) return
@@ -49,6 +65,12 @@ export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderPro
 						return
 					}
 					console.error('Failed to load vocals audio data', error)
+					reportDegradationEvent('waveform_failed', {
+						message: error instanceof Error ? error.message : String(error),
+						elapsed_ms: Date.now() - startedAt,
+						not_ready_polls: attempt,
+						transient_retries: transientAttempt,
+					})
 					setAudioData(null)
 				})
 		}

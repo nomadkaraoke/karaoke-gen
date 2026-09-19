@@ -1976,6 +1976,12 @@ jobs:
           echo "Version: $VERSION"
           echo "Previously-serving revision: ${PREV_REVISION:-<unknown>}"
 
+          # --concurrency 16 (was 80): the backend is one uvicorn process per
+          # 2-vCPU instance; review-page loads are heavy (audio byte-serving,
+          # waveform work). At 80 a 10-tab burst all landed on the single
+          # min-instance and wedged it ("no available instance" aborts,
+          # 2026-09-18 investigation). 16 makes bursts trigger scale-out while
+          # staying comfortably above normal per-instance load.
           gcloud run deploy karaoke-backend \
             --image $IMAGE \
             --no-traffic \
@@ -1989,7 +1995,7 @@ jobs:
             --cpu-throttling \
             --execution-environment gen2 \
             --timeout 1800 \
-            --concurrency 80 \
+            --concurrency 16 \
             --max-instances 20 \
             --min-instances 1 \
             --vpc-connector projects/nomadkaraoke/locations/us-central1/connectors/cloud-run-connector \
