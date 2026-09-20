@@ -13,6 +13,7 @@ abuse posture identical to the rest of the review surface: you can only warm
 the shared encoding VM if you already have review access to a real job.
 """
 
+import asyncio
 import logging
 from typing import Tuple
 from fastapi import APIRouter, Depends
@@ -56,7 +57,13 @@ async def warmup_encoding_worker(
     reviewer previews a render. ``job_id`` scopes auth to the job under review.
     """
     try:
-        result = manager.ensure_primary_running()
+        # ensure_primary_running does Firestore reads + GCE compute-API calls
+        # (instances.get / instances.start) that can take 10s+. Run it off the
+        # event loop: on the single-process server a sync call here froze the
+        # WHOLE instance for ~11s on every review-page open with a cold VM,
+        # stalling that same page's audio/lyrics requests behind it
+        # (2026-09-19, follow-up to the concurrent-load investigation).
+        result = await asyncio.to_thread(manager.ensure_primary_running)
         if result["started"]:
             logger.info(f"Started encoding worker VM: {result['vm_name']}")
         return result
@@ -89,7 +96,8 @@ async def heartbeat_encoding_worker(
     job under review.
     """
     try:
-        manager.update_activity()
+        # Sync Firestore write — keep it off the event loop (see warmup above).
+        await asyncio.to_thread(manager.update_activity)
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Failed to update encoding worker heartbeat: {e}")
