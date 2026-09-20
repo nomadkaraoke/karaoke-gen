@@ -2139,3 +2139,75 @@ class TestLocalPreviewRenderBound:
             assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
 
         asyncio.run(scenario())
+
+
+class TestVocalsPeaksEndpoint:
+    """/vocals-peaks serves the precomputed envelope (sub-second strips)."""
+
+    def _run(self, stems=None, audio_complete=True, pps=400):
+        import asyncio
+        from backend.api.routes.review import get_vocals_peaks
+
+        job = MagicMock()
+        job.input_media_gcs_path = "jobs/j/input.flac"
+        if stems is None:
+            stems = {"vocals_clean": "jobs/j/stems/vocals_clean.flac"}
+        job.file_urls = {"stems": stems}
+        job.state_data = {"audio_complete": audio_complete}
+
+        job_manager = MagicMock()
+        job_manager.get_job.return_value = job
+
+        analysis = MagicMock()
+        analysis.get_vocals_peaks.return_value = {
+            "peaks_b64": "AAECAw==",
+            "encoding": "u8",
+            "peaks_per_second": 400,
+            "duration_seconds": 12.5,
+            "source_gcs_path": "jobs/j/stems/vocals_clean.flac",
+        }
+
+        with patch("backend.api.routes.review.JobManager", return_value=job_manager), patch(
+            "backend.services.audio_analysis_service.AudioAnalysisService",
+            return_value=analysis,
+        ), patch(
+            "backend.services.audio_transcoding_service.AudioTranscodingService",
+            return_value=MagicMock(),
+        ):
+            resp = asyncio.run(
+                get_vocals_peaks("j", peaks_per_second=pps, auth_info=("admin", "full"))
+            )
+        return resp, analysis
+
+    def test_serves_payload_with_cache_headers(self):
+        import json as jsonlib
+
+        resp, analysis = self._run()
+
+        assert resp.status_code == 200
+        body = jsonlib.loads(resp.body)
+        assert body["peaks_b64"] == "AAECAw=="
+        assert body["encoding"] == "u8"
+        assert body["duration_seconds"] == 12.5
+        assert "max-age" in resp.headers.get("Cache-Control", "")
+        args = analysis.get_vocals_peaks.call_args[0]
+        assert args[0] == "jobs/j/stems/vocals_clean.flac"
+        assert args[1] == "j"
+        assert args[2] == 400
+
+    def test_clamps_peaks_per_second(self):
+        _, analysis = self._run(pps=999999)
+        assert analysis.get_vocals_peaks.call_args[0][2] == 1000
+
+    def test_202_while_separation_running(self):
+        resp, analysis = self._run(stems={}, audio_complete=False)
+        assert resp.status_code == 202
+        assert resp.headers.get("Retry-After") == "15"
+        analysis.get_vocals_peaks.assert_not_called()
+
+    def test_404_when_stem_will_never_exist(self):
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._run(stems={}, audio_complete=True)
+        assert exc_info.value.status_code == 404

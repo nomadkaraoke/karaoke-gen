@@ -786,6 +786,23 @@ async def _transcode_review_audio(
                 # Non-fatal: /waveform-data computes + caches lazily on first open
                 job_log.warning(f"Review waveform pre-compute failed (non-fatal): {e}")
 
+        # Pre-compute the vocals peak envelope too (Waveforms review mode) so
+        # /vocals-peaks is a pure cache read and the per-segment strips paint
+        # sub-second on first open.
+        from backend.utils.stems import vocals_stem_path
+
+        vocals_source = vocals_stem_path(job)
+        if vocals_source:
+            try:
+                await asyncio.to_thread(
+                    AudioAnalysisService().get_vocals_peaks,
+                    vocals_source, job_id, 400, transcoding,
+                )
+                job_log.info("Vocals peak envelope pre-computed")
+            except Exception as e:
+                # Non-fatal: /vocals-peaks computes + caches lazily on first open
+                job_log.warning(f"Vocals peaks pre-compute failed (non-fatal): {e}")
+
     except Exception as e:
         # Non-fatal: review UI will fall back to FLAC signed URLs
         job_log.warning(f"Review audio transcoding failed (non-fatal): {e}")

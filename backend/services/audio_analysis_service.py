@@ -328,6 +328,86 @@ class AudioAnalysisService:
             logger.warning(f"Failed to load review waveform cache {cache_gcs_path}: {e}")
             return None
 
+    @staticmethod
+    def vocals_peaks_cache_path(job_id: str, peaks_per_second: int) -> str:
+        """GCS path of the cached vocals peak-envelope JSON for a job."""
+        return f"jobs/{job_id}/review-audio/vocals_peaks_{peaks_per_second}.json"
+
+    def get_vocals_peaks(
+        self,
+        gcs_audio_path: str,
+        job_id: str,
+        peaks_per_second: int = 400,
+        transcoding_service=None,
+    ) -> dict:
+        """
+        Pre-computed peak envelope of the vocal stem for the review page's
+        Waveforms mode, cached persistently in GCS.
+
+        Returns the serve-ready payload::
+
+            {peaks_b64, encoding: "u8", peaks_per_second, duration_seconds,
+             source_gcs_path}
+
+        ``peaks_b64`` is base64 of one uint8 per bucket (max-abs amplitude
+        quantized to 0-255) — ~150 KB for a 5-minute track vs the ~7 MB OGG
+        the frontend previously downloaded and decoded client-side. On a cache
+        miss, decode the small transcoded review OGG when it exists.
+        The cache upload is best-effort.
+        """
+        import base64
+
+        cache_path = self.vocals_peaks_cache_path(job_id, peaks_per_second)
+        try:
+            if self.storage_service.file_exists(cache_path):
+                data = self.storage_service.download_json(cache_path)
+                if (
+                    data.get("source_gcs_path") == gcs_audio_path
+                    and data.get("peaks_per_second") == peaks_per_second
+                    and data.get("peaks_b64")
+                ):
+                    logger.info(f"[{job_id}] Vocals peaks cache hit: {cache_path}")
+                    return data
+        except Exception as e:
+            logger.warning(f"[{job_id}] Failed to load vocals peaks cache: {e}")
+
+        decode_path = gcs_audio_path
+        if transcoding_service is not None:
+            try:
+                ogg_path = transcoding_service.get_transcoded_cache_path(gcs_audio_path)
+                if self.storage_service.file_exists(ogg_path):
+                    decode_path = ogg_path
+            except Exception as e:
+                logger.warning(f"[{job_id}] Could not resolve transcoded OGG for peaks: {e}")
+
+        import numpy as np
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local_audio_path = os.path.join(temp_dir, local_audio_filename(decode_path, "vocals"))
+            self.storage_service.download_file(decode_path, local_audio_path)
+            peaks, duration = self.waveform_generator.generate_peaks(
+                local_audio_path, peaks_per_second=peaks_per_second
+            )
+
+        quantized = np.clip(np.round(peaks * 255.0), 0, 255).astype(np.uint8)
+        payload = {
+            "peaks_b64": base64.b64encode(quantized.tobytes()).decode("ascii"),
+            "encoding": "u8",
+            "peaks_per_second": peaks_per_second,
+            "duration_seconds": duration,
+            # Keyed to the LOGICAL source (the stem path) so a regenerated stem
+            # at a new path invalidates, while the OGG decode shortcut doesn't.
+            "source_gcs_path": gcs_audio_path,
+        }
+
+        try:
+            self.storage_service.upload_json(cache_path, payload)
+            logger.info(f"[{job_id}] Vocals peaks cached at {cache_path}")
+        except Exception as e:
+            logger.warning(f"[{job_id}] Failed to cache vocals peaks (non-fatal): {e}")
+
+        return payload
+
     def cache_waveform_data(
         self,
         gcs_audio_path: str,

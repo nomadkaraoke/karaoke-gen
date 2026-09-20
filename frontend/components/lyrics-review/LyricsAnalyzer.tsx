@@ -88,6 +88,9 @@ interface ApiClient {
   searchLyrics?: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
   getVocalsAudioUrl: () => string
+  // Optional: pre-computed peaks endpoint (cloud mode); absent → loader falls
+  // back to downloading + decoding the full stem.
+  getVocalsPeaksUrl?: () => string
   generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
@@ -177,6 +180,7 @@ export default function LyricsAnalyzer({
   const [instrumentalChoice, setInstrumentalChoice] = useState<'clean' | 'with_backing' | null>(null)
 
   const [vocalsAudioUrl, setVocalsAudioUrl] = useState<string | null>(null)
+  const [vocalsPeaksUrl, setVocalsPeaksUrl] = useState<string | null>(null)
 
   // Success screen state (for auto-close after submission)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -657,6 +661,7 @@ export default function LyricsAnalyzer({
     if (!apiClient) return
 
     setVocalsAudioUrl(apiClient.getVocalsAudioUrl())
+    setVocalsPeaksUrl(apiClient.getVocalsPeaksUrl ? apiClient.getVocalsPeaksUrl() : null)
   }, [apiClient])
 
   // Countdown effect for success screen (auto-close/redirect after submission)
@@ -1532,7 +1537,7 @@ export default function LyricsAnalyzer({
   }
 
   return (
-    <VocalsAudioDataLoader audioUrl={vocalsAudioUrl}>
+    <VocalsAudioDataLoader audioUrl={vocalsAudioUrl} peaksUrl={vocalsPeaksUrl}>
       <div className="max-w-full overflow-x-hidden">
         <Header
           isReadOnly={isReadOnly}
