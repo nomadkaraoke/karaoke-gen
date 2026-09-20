@@ -291,6 +291,31 @@ class TestDivebarSearch:
         main._search_divebar("maximo park boks")
         assert captured["sql"].count("EDIT_DISTANCE") == 3
 
+    def test_edit_distance_is_bounded_with_correct_cap(self, monkeypatch):
+        # max_distance must be thr + 1 (BigQuery returns a CAPPED value when
+        # the true distance exceeds max_distance; with max_distance=thr the
+        # `<= thr` comparison would match every word). thr for a 4-6 char
+        # token is 1 -> max_distance 2.
+        captured = self._patch_query(monkeypatch, [])
+        main._search_divebar("boks")
+        assert "max_distance => 2" in captured["sql"]
+        assert "<= 1" in captured["sql"]
+
+    def test_oversized_tokens_are_truncated(self, monkeypatch):
+        # Public endpoint: a huge token must not become a huge per-word
+        # Levenshtein computation. Tokens are capped at 64 chars.
+        from types import SimpleNamespace
+        captured = self._patch_query(monkeypatch, [])
+        monkeypatch.setattr(
+            main.bigquery, "ScalarQueryParameter",
+            lambda name, typ, value: (name, typ, value))
+        monkeypatch.setattr(
+            main.bigquery, "QueryJobConfig",
+            lambda **kw: SimpleNamespace(query_parameters=kw.get("query_parameters", [])))
+        main._search_divebar("a" * 5000)
+        token_values = [p[2] for p in captured["params"] if p[0].startswith("tok")]
+        assert token_values == ["a" * 64]
+
     def test_accented_query_token_is_folded(self, monkeypatch):
         # Symmetric: an accented query must also match unaccented catalog rows.
         # bigquery is a stub module here, so capture the param factory's args.

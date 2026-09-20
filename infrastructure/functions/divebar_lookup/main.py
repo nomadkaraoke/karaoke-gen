@@ -213,7 +213,11 @@ def _kn_match_parts(query: str) -> tuple[list[str], list]:
             return 0
         return 1 if n <= 6 else 2
 
-    tokens = [t for t in (_fold(w) for w in query.split()) if t][:12]
+    # Cap token count AND length: the endpoint is public, and per-word
+    # EDIT_DISTANCE cost scales with token length — an attacker-sized token
+    # must not turn each catalog word into a huge Levenshtein computation
+    # (CWE-400). 64 chars comfortably covers real artist/title words.
+    tokens = [t[:64] for t in (_fold(w) for w in query.split()) if t][:12]
     conditions = []
     params = []
     for i, tok in enumerate(tokens):
@@ -223,15 +227,18 @@ def _kn_match_parts(query: str) -> tuple[list[str], list]:
         if thr == 0:
             conditions.append(f"STRPOS(hay, @tok{i}) > 0")
         else:
-            # NB: do NOT pass EDIT_DISTANCE's `max_distance` — when the true
-            # distance exceeds it BigQuery returns a *capped* value (<= max_distance),
-            # so `<= thr` would be true for every word (matches the whole table).
-            # Compare the true distance instead; the table is small so full
-            # Levenshtein per word is cheap.
+            # NB: `max_distance` must be thr + 1, never thr — when the true
+            # distance exceeds max_distance BigQuery returns a *capped* value
+            # (== max_distance), so with max_distance=thr the comparison
+            # `<= thr` would be true for every word (matches the whole table).
+            # With thr + 1 the capped value fails `<= thr`, keeping semantics
+            # identical to the unbounded form while letting BigQuery abandon
+            # each word's Levenshtein early instead of computing the full
+            # distance (bounds per-request CPU on this public endpoint).
             conditions.append(
                 f"(STRPOS(hay, @tok{i}) > 0 OR EXISTS("
                 f"SELECT 1 FROM UNNEST(SPLIT(hay, ' ')) AS w "
-                f"WHERE EDIT_DISTANCE(w, @tok{i}) <= {thr}))"
+                f"WHERE EDIT_DISTANCE(w, @tok{i}, max_distance => {thr + 1}) <= {thr}))"
             )
         params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", tok))
     return conditions, params
