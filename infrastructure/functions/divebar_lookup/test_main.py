@@ -245,7 +245,7 @@ def _kn_row(artist, title, brand, watch):
 
 
 class TestDivebarSearch:
-    """`search` matches accent-insensitively on both the query and the haystack."""
+    """`search` shares _kn_match_parts: token-AND, accent-insensitive, typo-tolerant."""
 
     def _patch_query(self, monkeypatch, rows):
         captured = {}
@@ -271,7 +271,27 @@ class TestDivebarSearch:
         assert "NORMALIZE" in sql and r"\p{Mn}" in sql
         assert "divebar_catalog" in sql
 
-    def test_accented_query_is_folded_before_matching(self, monkeypatch):
+    def test_token_and_matching_one_condition_per_token(self, monkeypatch):
+        # Word-order independence: each token gets its own ANDed condition
+        # against the folded haystack, so "books maximo park" matches a
+        # "Maxïmo Park — Books From Boxes" row (the old whole-string LIKE
+        # returned 0 for a word-order swap).
+        captured = self._patch_query(monkeypatch, [])
+        main._search_divebar("books maximo park")
+        sql = captured["sql"]
+        assert sql.count("STRPOS(hay, @tok") == 3
+        assert " AND " in sql
+        # STRPOS is literal — no LIKE wildcards, nothing to escape.
+        assert "LIKE" not in sql and "ESCAPE" not in sql
+
+    def test_long_tokens_get_fuzzy_edit_distance(self, monkeypatch):
+        # Same typo tolerance as kn_search: tokens >= 4 chars add a per-word
+        # EDIT_DISTANCE fallback ("boks" matches "Books").
+        captured = self._patch_query(monkeypatch, [])
+        main._search_divebar("maximo park boks")
+        assert captured["sql"].count("EDIT_DISTANCE") == 3
+
+    def test_accented_query_token_is_folded(self, monkeypatch):
         # Symmetric: an accented query must also match unaccented catalog rows.
         # bigquery is a stub module here, so capture the param factory's args.
         from types import SimpleNamespace
@@ -282,9 +302,27 @@ class TestDivebarSearch:
         monkeypatch.setattr(
             main.bigquery, "QueryJobConfig",
             lambda **kw: SimpleNamespace(query_parameters=kw.get("query_parameters", [])))
-        main._search_divebar("José Feliciano Feliz Navidad")
-        pattern = next(p for p in captured["params"] if p[0] == "query_pattern")
-        assert pattern[2] == "%jose feliciano feliz navidad%"
+        main._search_divebar("José Feliciano")
+        token_values = [p[2] for p in captured["params"] if p[0].startswith("tok")]
+        assert token_values == ["jose", "feliciano"]
+
+    def test_blank_query_returns_empty_without_bq(self, monkeypatch):
+        monkeypatch.setattr(main.bigquery, "Client",
+                            MagicMock(side_effect=AssertionError("BQ should not be called")))
+        assert main._search_divebar("   ") == []
+
+    def test_bytes_billed_is_capped(self, monkeypatch):
+        from types import SimpleNamespace
+        captured = self._patch_query(monkeypatch, [])
+        configs = {}
+
+        def _job_config(**kw):
+            configs.update(kw)
+            return SimpleNamespace(query_parameters=kw.get("query_parameters", []))
+
+        monkeypatch.setattr(main.bigquery, "QueryJobConfig", _job_config)
+        main._search_divebar("feliz navidad")
+        assert configs.get("maximum_bytes_billed") == 1_000_000_000
 
 
 class TestKnCommunitySearch:
