@@ -116,3 +116,47 @@ describe('computePeaks', () => {
 		expect(peaks[0]).toBeCloseTo(0.5)
 	})
 })
+
+describe('fetchVocalsPeaks', () => {
+  const { fetchVocalsPeaks, AudioNotReadyError, AudioFetchError } = jest.requireActual('@/lib/audio-data')
+
+  const mockJsonResponse = (status: number, body?: unknown) =>
+    ({ ok: status >= 200 && status < 300, status, json: async () => body }) as Response
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  it('decodes the u8/base64 payload into AudioData', async () => {
+    // peaks [0, 128, 255] -> [0, ~0.5, 1]
+    const b64 = btoa(String.fromCharCode(0, 128, 255))
+    global.fetch = jest.fn(async () =>
+      mockJsonResponse(200, {
+        peaks_b64: b64,
+        encoding: 'u8',
+        peaks_per_second: 400,
+        duration_seconds: 0.0075,
+      })
+    ) as unknown as typeof fetch
+
+    const data = await fetchVocalsPeaks('https://api/vocals-peaks')
+    expect(data.peaksPerSecond).toBe(400)
+    expect(data.duration).toBeCloseTo(0.0075)
+    expect(Array.from(data.peaks)).toEqual([0, Math.fround(128 / 255), 1])
+  })
+
+  it('throws AudioNotReadyError on 202', async () => {
+    global.fetch = jest.fn(async () => mockJsonResponse(202)) as unknown as typeof fetch
+    await expect(fetchVocalsPeaks('u')).rejects.toBeInstanceOf(AudioNotReadyError)
+  })
+
+  it('throws AudioFetchError with status on non-2xx', async () => {
+    global.fetch = jest.fn(async () => mockJsonResponse(404)) as unknown as typeof fetch
+    await expect(fetchVocalsPeaks('u')).rejects.toMatchObject({ status: 404 })
+  })
+
+  it('treats a malformed payload as a transient server error', async () => {
+    global.fetch = jest.fn(async () => mockJsonResponse(200, { nope: true })) as unknown as typeof fetch
+    await expect(fetchVocalsPeaks('u')).rejects.toBeInstanceOf(AudioFetchError)
+  })
+})

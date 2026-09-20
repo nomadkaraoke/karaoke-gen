@@ -1,4 +1,4 @@
-import { AudioData, AudioNotReadyError, fetchAudioData, isTransientAudioError } from '@/lib/audio-data'
+import { AudioData, AudioNotReadyError, fetchAudioData, fetchVocalsPeaks, isTransientAudioError } from '@/lib/audio-data'
 import { reportDegradationEvent } from '@/lib/degradation-events'
 import { createContext, PropsWithChildren, useEffect, useState } from 'react'
 
@@ -11,6 +11,10 @@ export const VocalsAudioDataLoaderContext = createContext<{ audioData: AudioData
 
 export interface AudioDataLoaderProps extends PropsWithChildren {
 	audioUrl: string | null
+	/** Pre-computed peak-envelope endpoint (~150 KB JSON). Preferred over
+	 *  downloading + decoding the whole stem from audioUrl; when it fails
+	 *  terminally the loader falls back to the full audio decode. */
+	peaksUrl?: string | null
 }
 
 // Audio separation runs in the background while the user reviews lyrics, so the
@@ -25,11 +29,11 @@ const NOT_READY_MAX_RETRIES = 40 // 40 × 15s = 10 minutes
 // Waveforms view stripless until a manual reload. Retry a few times with backoff.
 const TRANSIENT_RETRY_DELAYS_MS = [5_000, 15_000, 30_000, 60_000]
 
-export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderProps) => {
+export const VocalsAudioDataLoader = ({ audioUrl, peaksUrl, children }: AudioDataLoaderProps) => {
 	const [audioData, setAudioData] = useState<AudioData | null>(null)
 
 	useEffect(() => {
-		if (!audioUrl) return
+		if (!audioUrl && !peaksUrl) return
 
 		// Guard against (a) an unhandled rejection when the endpoint 404s (no vocal
 		// stem for this job) and (b) a stale in-flight fetch resolving after a newer
@@ -38,8 +42,10 @@ export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderPro
 		let retryTimer: ReturnType<typeof setTimeout> | undefined
 		const startedAt = Date.now()
 
-		const load = (attempt: number, transientAttempt: number) => {
-			fetchAudioData(audioUrl)
+		const load = (attempt: number, transientAttempt: number, usePeaks: boolean) => {
+			const source =
+				usePeaks && peaksUrl ? fetchVocalsPeaks(peaksUrl) : fetchAudioData(audioUrl!)
+			source
 				.then((audioData) => {
 					if (cancelled) return
 					const elapsedMs = Date.now() - startedAt
@@ -48,6 +54,7 @@ export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderPro
 							elapsed_ms: elapsedMs,
 							not_ready_polls: attempt,
 							transient_retries: transientAttempt,
+							used_peaks: usePeaks,
 						})
 					}
 					setAudioData(audioData)
@@ -55,13 +62,25 @@ export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderPro
 				.catch((error) => {
 					if (cancelled) return
 					if (error instanceof AudioNotReadyError && attempt < NOT_READY_MAX_RETRIES) {
-						retryTimer = setTimeout(() => load(attempt + 1, transientAttempt), NOT_READY_RETRY_MS)
+						retryTimer = setTimeout(() => load(attempt + 1, transientAttempt, usePeaks), NOT_READY_RETRY_MS)
 						return
 					}
-					if (isTransientAudioError(error) && transientAttempt < TRANSIENT_RETRY_DELAYS_MS.length) {
+					// Peaks get ONE quick retry, then we fall back to the audio path
+					// (which has the full backoff ladder) — a flaky peaks endpoint
+					// must not delay strips by the whole retry ladder first.
+					const maxTransientRetries = usePeaks ? 1 : TRANSIENT_RETRY_DELAYS_MS.length
+					if (isTransientAudioError(error) && transientAttempt < maxTransientRetries) {
 						const delay = TRANSIENT_RETRY_DELAYS_MS[transientAttempt]
-						console.warn(`Vocals audio load failed, retrying in ${delay / 1000}s`, error)
-						retryTimer = setTimeout(() => load(attempt, transientAttempt + 1), delay)
+						console.warn(`Vocals ${usePeaks ? 'peaks' : 'audio'} load failed, retrying in ${delay / 1000}s`, error)
+						retryTimer = setTimeout(() => load(attempt, transientAttempt + 1, usePeaks), delay)
+						return
+					}
+					if (usePeaks && audioUrl) {
+						// Peaks endpoint terminally failed (or exhausted retries) —
+						// fall back to the original full-download-and-decode path so a
+						// peaks-side problem never costs the user their waveforms.
+						console.warn('Vocals peaks unavailable, falling back to full audio decode', error)
+						load(attempt, 0, false)
 						return
 					}
 					console.error('Failed to load vocals audio data', error)
@@ -75,14 +94,14 @@ export const VocalsAudioDataLoader = ({ audioUrl, children }: AudioDataLoaderPro
 				})
 		}
 
-		load(0, 0)
+		load(0, 0, Boolean(peaksUrl))
 
 		return () => {
 			cancelled = true
 			if (retryTimer) clearTimeout(retryTimer)
 			setAudioData(null)
 		}
-	}, [audioUrl])
+	}, [audioUrl, peaksUrl])
 
 	return (
 		<VocalsAudioDataLoaderContext.Provider value={{ audioData }}>

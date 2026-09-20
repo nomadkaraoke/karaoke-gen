@@ -3921,6 +3921,7 @@ export interface LyricsReviewApiClient {
   searchLyrics: (artist: string, title: string, forceSources?: string[]) => Promise<SearchLyricsResponse>
   getAudioUrl: (hash: string) => string
   getVocalsAudioUrl: () => string
+  getVocalsPeaksUrl: () => string
   generatePreviewVideo: (data: CorrectionData, isDuet?: boolean) => Promise<{
     status: string
     message?: string
@@ -4072,6 +4073,16 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
     getVocalsAudioUrl(): string {
       const token = getAccessToken()
       const base = `${API_BASE_URL}/api/review/${jobId}/audio/vocals`
+      return token ? `${base}?token=${encodeURIComponent(token)}` : base
+    },
+
+    /**
+     * Pre-computed vocals peak-envelope URL (Waveforms review mode).
+     * ~150 KB JSON instead of downloading + decoding the whole vocal stem.
+     */
+    getVocalsPeaksUrl(): string {
+      const token = getAccessToken()
+      const base = `${API_BASE_URL}/api/review/${jobId}/vocals-peaks`
       return token ? `${base}?token=${encodeURIComponent(token)}` : base
     },
 

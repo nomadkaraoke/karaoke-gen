@@ -208,7 +208,60 @@ class WaveformGenerator:
             amplitudes.append(normalized)
         
         return amplitudes, duration_seconds
-    
+
+    def generate_peaks(
+        self,
+        audio_path: str,
+        peaks_per_second: int = 400,
+    ) -> Tuple[np.ndarray, float]:
+        """
+        Generate a max-abs peak envelope at a fixed time resolution.
+
+        Mirrors the review frontend's ``computePeaks`` (lib/audio-data.ts):
+        one peak per 1/peaks_per_second bucket, each the maximum absolute
+        sample value across all channels, normalized to 0.0–1.0. Serving this
+        pre-computed lets the review page draw per-segment waveform strips
+        without downloading + decoding the whole vocal stem client-side.
+
+        Vectorized (numpy) — a 4-minute stereo track computes in well under a
+        second, vs the pure-Python RMS loop in generate_data_only.
+
+        Returns:
+            Tuple of (peaks float32 ndarray in 0..1, duration_seconds)
+        """
+        path = Path(audio_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
+        audio = AudioSegment.from_file(audio_path)
+        duration_seconds = len(audio) / 1000.0
+
+        samples = np.abs(
+            np.asarray(audio.get_array_of_samples(), dtype=np.float32)
+        ) / float(audio.max_possible_amplitude)
+        if audio.channels > 1:
+            # Interleaved -> (frames, channels) -> per-frame max across channels
+            frames = len(samples) // audio.channels
+            samples = samples[: frames * audio.channels]
+            samples = samples.reshape(frames, audio.channels).max(axis=1)
+
+        bucket_count = max(1, math.ceil(duration_seconds * peaks_per_second))
+        # Fractional stride with floored boundaries, matching the frontend's
+        # drift-free bucketing (see the 44.1kHz drift fix notes there).
+        samples_per_bucket = len(samples) / bucket_count
+        boundaries = np.floor(np.arange(bucket_count + 1) * samples_per_bucket).astype(np.int64)
+        boundaries[-1] = len(samples)
+
+        peaks = np.zeros(bucket_count, dtype=np.float32)
+        # maximum.reduceat needs strictly valid starts; guard empty buckets.
+        starts = boundaries[:-1]
+        if len(samples):
+            reduced = np.maximum.reduceat(samples, np.minimum(starts, len(samples) - 1))
+            widths = boundaries[1:] - starts
+            peaks = np.where(widths > 0, reduced, 0.0).astype(np.float32)
+
+        return peaks, duration_seconds
+
     def _get_envelope(
         self,
         audio: AudioSegment,

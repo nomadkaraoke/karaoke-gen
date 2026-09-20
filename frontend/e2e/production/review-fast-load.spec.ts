@@ -127,4 +127,32 @@ test.describe('Review fast-full-load contract', () => {
     expect(data.amplitudes.length).toBeGreaterThan(0);
     expect(data.duration_seconds).toBeGreaterThan(0);
   });
+
+  // Sub-second strips (v0.232.0): precomputed vocals peak envelope.
+  test('vocals-peaks returns a compact cached envelope quickly', async ({ request }) => {
+    const base = `${API_URL}/api/review/${JOB_ID}/vocals-peaks`;
+    const url = REVIEW_TOKEN ? `${base}?review_token=${encodeURIComponent(REVIEW_TOKEN)}` : base;
+
+    // First call may compute+cache; the second must be a pure cache read.
+    const warm = await request.get(url, { headers: authHeaders() });
+    expect([200, 202]).toContain(warm.status());
+    if (warm.status() === 202) return; // separation still running for this job
+
+    const started = Date.now();
+    const res = await request.get(url, { headers: authHeaders() });
+    const elapsedMs = Date.now() - started;
+    console.log(`vocals-peaks (cached) status=${res.status()} elapsed=${elapsedMs}ms`);
+    expect(res.ok()).toBeTruthy();
+    expect(elapsedMs).toBeLessThan(5_000);
+    expect(res.headers()['cache-control']).toContain('max-age');
+
+    const data = await res.json();
+    expect(data.encoding).toBe('u8');
+    expect(typeof data.peaks_b64).toBe('string');
+    expect(data.peaks_b64.length).toBeGreaterThan(0);
+    expect(data.peaks_per_second).toBe(400);
+    expect(data.duration_seconds).toBeGreaterThan(0);
+    // Envelope should be dramatically smaller than the audio it replaces.
+    expect(data.peaks_b64.length).toBeLessThan(1_000_000);
+  });
 });

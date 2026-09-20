@@ -2696,3 +2696,20 @@ localhost no-op). Added in v0.231.0 — see
 `docs/archive/2026-09-18-concurrent-review-reliability-investigation-and-plan.md`.
 
 Crash reports are the separate `POST /api/client-errors` (error-monitor pipeline).
+
+### Vocals Peaks (Waveforms review mode)
+
+```http
+GET /api/review/{job_id}/vocals-peaks?peaks_per_second=400
+```
+
+Pre-computed max-abs peak envelope of the vocal stem:
+`{peaks_b64, encoding: "u8", peaks_per_second, duration_seconds}` — base64 of one
+uint8 per 1/400s bucket (~150 KB for a 5-minute track). Replaces the frontend's
+download+decode of the whole vocals OGG so Waveforms-mode strips paint sub-second.
+Served from a persistent GCS cache (`review-audio/vocals_peaks_{pps}.json`,
+validated against the stem path), pre-computed by `screens_worker`; a miss computes
+off the event loop under the shared waveform semaphore. Returns `202 Retry-After: 15`
+while audio separation is still producing the stem. Auth like `/audio/vocals`
+(`?token=` / `?review_token=`). The frontend falls back to the full audio decode if
+this endpoint fails (`VocalsAudioDataLoader`). Added in v0.232.0.

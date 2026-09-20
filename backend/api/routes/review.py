@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Literal, Optional, Set, Tuple
 
 from fastapi import APIRouter, HTTPException, Request, Depends, Form, File, UploadFile
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from google.cloud.exceptions import NotFound
 from google.cloud.firestore_v1.field_path import FieldPath
 
@@ -38,6 +38,7 @@ from backend.services.job_logging import job_log_context, JobLogger
 from backend.services.tracing import create_span, add_span_attribute, add_span_event
 from backend.services.encoding_service import get_encoding_service
 from backend.api.dependencies import require_auth, require_review_auth
+from backend.utils.stems import vocals_stem_path as _vocals_stem_path
 from backend.services.auth_service import UserType
 from backend.config import get_settings
 from backend.i18n import t, get_locale_from_request
@@ -874,18 +875,7 @@ async def _stream_audio(job_id: str, request: Optional[Request] = None, stem: Li
     if stem == "input":
         audio_gcs_path = job.input_media_gcs_path
     elif stem == "vocals":
-        stems = job.file_urls.get("stems", {}) if job.file_urls else {}
-        # Stem keys vary by separation model. We want the full vocal mix
-        # (lead + backing) so every word can be lined up against the waveform:
-        #   - "vocals"       : full vocal from a 2-stem split (rare)
-        #   - "vocals_clean" : full vocal from the primary vocal/instrumental
-        #                      split (present on essentially all cloud jobs)
-        #   - "lead_vocals"  : last-resort fallback (misses backing lines)
-        # Use .get() so a missing key yields a clean 404 below, not a KeyError/500.
-        for key in ("vocals", "vocals_clean", "lead_vocals"):
-            if stems.get(key):
-                audio_gcs_path = stems[key]
-                break
+        audio_gcs_path = _vocals_stem_path(job)
     if not audio_gcs_path:
         # Audio separation is decoupled from the lyrics-review critical path, so a
         # user can open review before the vocal stems have been uploaded (the stem
@@ -2199,6 +2189,66 @@ async def get_instrumental_analysis(
 # max(1, …): a zero/negative override would otherwise deadlock every request.
 _WAVEFORM_MAX_CONCURRENCY = max(1, int(os.getenv("REVIEW_WAVEFORM_MAX_CONCURRENCY", "4")))
 _waveform_semaphore = asyncio.Semaphore(_WAVEFORM_MAX_CONCURRENCY)
+
+
+@router.get("/{job_id}/vocals-peaks")
+async def get_vocals_peaks(
+    job_id: str,
+    peaks_per_second: int = 400,
+    auth_info: Tuple[str, str] = Depends(require_review_auth)
+):
+    """
+    Pre-computed peak envelope of the vocal stem (Waveforms review mode).
+
+    Replaces the frontend's download-and-decode of the whole vocals OGG
+    (~7 MB + WebAudio decode) with a ~150 KB JSON, so the per-segment
+    waveform strips paint sub-second on page load. Served from a persistent
+    GCS cache, pre-computed by screens_worker; a miss computes off the event
+    loop, bounded by the shared waveform semaphore. Returns 202 while audio
+    separation is still producing the stem (frontend polls, mirroring
+    /audio/vocals).
+
+    Response: {peaks_b64 (base64 uint8 per bucket), encoding: "u8",
+    peaks_per_second, duration_seconds}.
+    """
+    from backend.services.audio_analysis_service import AudioAnalysisService
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
+    peaks_per_second = max(50, min(peaks_per_second, 1000))
+
+    job = await asyncio.to_thread(JobManager().get_job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
+
+    vocals_path = _vocals_stem_path(job)
+    if not vocals_path:
+        if not job.state_data.get("audio_complete", False):
+            return Response(status_code=202, headers={"Retry-After": "15"})
+        raise HTTPException(status_code=404, detail=t("en", "review.audioNotFound"))
+
+    try:
+        analysis_service = AudioAnalysisService()
+        async with _waveform_semaphore:
+            payload = await asyncio.to_thread(
+                analysis_service.get_vocals_peaks,
+                vocals_path,
+                job_id,
+                peaks_per_second,
+                AudioTranscodingService(),
+            )
+        return JSONResponse(
+            content={
+                "peaks_b64": payload["peaks_b64"],
+                "encoding": payload.get("encoding", "u8"),
+                "peaks_per_second": payload["peaks_per_second"],
+                "duration_seconds": payload["duration_seconds"],
+            },
+            # Immutable per stem path; short-lived like the audio responses.
+            headers={"Cache-Control": "private, max-age=600"},
+        )
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error generating vocals peaks: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=t("en", "review.waveformGenerationError", error=str(e)))
 
 
 @router.get("/{job_id}/waveform-data")

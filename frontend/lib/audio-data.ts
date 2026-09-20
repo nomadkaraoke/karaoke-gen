@@ -93,6 +93,37 @@ export function computePeaks(decoded: DecodedAudioLike): AudioData {
 	}
 }
 
+/**
+ * Fetch the server-side pre-computed vocals peak envelope (~150 KB JSON) and
+ * adapt it to the same AudioData shape computePeaks produces — so waveform
+ * strips paint sub-second instead of after a multi-MB download + decode.
+ * Throws AudioNotReadyError on 202 (separation still running) and
+ * AudioFetchError on other non-2xx, mirroring fetchAudioData.
+ */
+export async function fetchVocalsPeaks(url: string): Promise<AudioData> {
+	const response = await fetch(url)
+	if (response.status === 202) {
+		throw new AudioNotReadyError()
+	}
+	if (!response.ok) {
+		throw new AudioFetchError(response.status)
+	}
+	const data = await response.json()
+	if (data?.encoding !== 'u8' || typeof data.peaks_b64 !== 'string' || !data.peaks_b64) {
+		throw new AudioFetchError(500) // unexpected payload — treat as transient server trouble
+	}
+	const raw = atob(data.peaks_b64)
+	const peaks = new Float32Array(raw.length)
+	for (let i = 0; i < raw.length; i++) {
+		peaks[i] = raw.charCodeAt(i) / 255
+	}
+	return {
+		duration: Number(data.duration_seconds) || 0,
+		peaks,
+		peaksPerSecond: Number(data.peaks_per_second) || PEAKS_PER_SECOND,
+	}
+}
+
 export async function fetchAudioData(url: string): Promise<AudioData> {
 	// fetch() resolves even for 4xx/5xx; the vocals endpoint 404s when a job has
 	// no vocal stem. Fail explicitly so the caller sees "no vocals" rather than an

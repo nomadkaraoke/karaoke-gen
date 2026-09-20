@@ -5,7 +5,7 @@ import { VocalsAudioDataLoader, VocalsAudioDataLoaderContext } from '../VocalsAu
 
 jest.mock('@/lib/audio-data', () => {
   const actual = jest.requireActual('@/lib/audio-data')
-  return { ...actual, fetchAudioData: jest.fn() }
+  return { ...actual, fetchAudioData: jest.fn(), fetchVocalsPeaks: jest.fn() }
 })
 
 const fetchAudioData = fetchAudioDataImport as jest.Mock
@@ -183,5 +183,110 @@ describe('VocalsAudioDataLoader', () => {
       jest.advanceTimersByTime(120_000)
     })
     expect(fetchAudioData).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('VocalsAudioDataLoader peaks-first behavior', () => {
+  const audioDataLib = jest.requireMock('@/lib/audio-data')
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.useFakeTimers()
+    audioDataLib.fetchVocalsPeaks = jest.fn()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it('prefers the peaks endpoint and never downloads the full audio', async () => {
+    audioDataLib.fetchVocalsPeaks.mockResolvedValue(AUDIO_DATA)
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals" peaksUrl="https://api/vocals-peaks">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+
+    expect(screen.getByTestId('probe')).toHaveTextContent('loaded')
+    expect(audioDataLib.fetchVocalsPeaks).toHaveBeenCalledTimes(1)
+    expect(fetchAudioData).not.toHaveBeenCalled()
+  })
+
+  it('falls back to full audio decode when peaks fail terminally', async () => {
+    audioDataLib.fetchVocalsPeaks.mockRejectedValue(new AudioFetchError(404))
+    fetchAudioData.mockResolvedValue(AUDIO_DATA)
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals" peaksUrl="https://api/vocals-peaks">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+
+    expect(fetchAudioData).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('probe')).toHaveTextContent('loaded')
+    consoleWarn.mockRestore()
+  })
+
+  it('retries peaks once on a transient error, then falls back to audio', async () => {
+    audioDataLib.fetchVocalsPeaks.mockRejectedValue(new AudioFetchError(503))
+    fetchAudioData.mockResolvedValue(AUDIO_DATA)
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals" peaksUrl="https://api/vocals-peaks">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+    expect(audioDataLib.fetchVocalsPeaks).toHaveBeenCalledTimes(1)
+
+    // One quick retry of peaks...
+    await act(async () => {
+      jest.advanceTimersByTime(5_000)
+    })
+    expect(audioDataLib.fetchVocalsPeaks).toHaveBeenCalledTimes(2)
+    // ...then immediate fallback to the audio path (no more peaks calls).
+    expect(fetchAudioData).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('probe')).toHaveTextContent('loaded')
+
+    consoleWarn.mockRestore()
+  })
+
+  it('polls peaks on 202 while separation is running', async () => {
+    audioDataLib.fetchVocalsPeaks
+      .mockRejectedValueOnce(new AudioNotReadyError())
+      .mockResolvedValue(AUDIO_DATA)
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals" peaksUrl="https://api/vocals-peaks">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+    expect(screen.getByTestId('probe')).toHaveTextContent('empty')
+
+    await act(async () => {
+      jest.advanceTimersByTime(15_000)
+    })
+    expect(screen.getByTestId('probe')).toHaveTextContent('loaded')
+    expect(fetchAudioData).not.toHaveBeenCalled()
+  })
+
+  it('works with only audioUrl (local mode without a peaks endpoint)', async () => {
+    fetchAudioData.mockResolvedValue(AUDIO_DATA)
+
+    render(
+      <VocalsAudioDataLoader audioUrl="https://api/audio/vocals">
+        <Probe />
+      </VocalsAudioDataLoader>
+    )
+    await flushPromises()
+
+    expect(screen.getByTestId('probe')).toHaveTextContent('loaded')
+    expect(audioDataLib.fetchVocalsPeaks).not.toHaveBeenCalled()
   })
 })
