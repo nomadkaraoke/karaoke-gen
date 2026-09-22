@@ -182,9 +182,17 @@ class CloudflareConfig:
     # Free plan constraints (enforced by the Cloudflare API): period must be 10s,
     # and mitigation_timeout must equal the period (10s). A single flood control
     # rule — the WAF path block (below) is the primary defense against the
-    # scanner class; this catches volumetric abuse. ~50 req / 10s = 5 req/s per
-    # IP, comfortably above legit page-load bursts to a control-plane API.
-    RATE_LIMIT_REQUESTS = 50
+    # scanner class; this catches volumetric abuse.
+    #
+    # Sized for the legitimate worst case from ONE IP (2026-09-22 incident): an
+    # admin reloading 16 review tabs at once fires ~10 API calls per tab within
+    # seconds. At the old 50/10s the edge blocked a chunk of them — and because
+    # CF block pages carry no CORS headers, the browser saw opaque network
+    # failures ("Access denied" / "temporarily unavailable" screens) while the
+    # origin was fully healthy. 200/10s (20 req/s/IP) still stops volumetric
+    # abuse; OPTIONS preflights and /api/health are excluded from counting (see
+    # create_rate_limit_ruleset).
+    RATE_LIMIT_REQUESTS = 200
     RATE_LIMIT_PERIOD_SECONDS = 10
     RATE_LIMIT_MITIGATION_SECONDS = 10
 

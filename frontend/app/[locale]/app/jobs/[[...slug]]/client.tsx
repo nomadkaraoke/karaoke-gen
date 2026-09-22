@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { reportDegradationEvent } from "@/lib/degradation-events"
 import { useAuth } from "@/lib/auth"
-import { api, Job, createLyricsReviewApiClient, lyricsReviewApi } from "@/lib/api"
+import { api, BackendUnavailableError, Job, createLyricsReviewApiClient, lyricsReviewApi } from "@/lib/api"
 import { Spinner } from "@/components/ui/spinner"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, AlertCircle } from "lucide-react"
@@ -25,6 +25,7 @@ type AccessState =
   | { status: "loading" }
   | { status: "not_authenticated" }
   | { status: "not_authorized"; reason: string }
+  | { status: "backend_unavailable" }
   | { status: "job_not_found" }
   | { status: "wrong_state"; currentState: string; expectedStates: string[] }
   | { status: "invalid_route" }
@@ -87,6 +88,7 @@ export function JobRouterClient() {
 
   const { user, isLoading: authLoading, hasHydrated } = useAuth()
   const [accessState, setAccessState] = useState<AccessState>({ status: "loading" })
+  const [accessRetryNonce, setAccessRetryNonce] = useState(0)
 
   useEffect(() => {
     async function checkAccess() {
@@ -152,6 +154,13 @@ export function JobRouterClient() {
         // Job not found or API error
         if (error && typeof error === "object" && "status" in error && error.status === 404) {
           setAccessState({ status: "job_not_found" })
+        } else if (error instanceof BackendUnavailableError) {
+          // The job fetch never got a real answer (origin blip, or the request
+          // was blocked at the edge — e.g. a many-tab burst tripping the rate
+          // limit). This is NOT an authorization verdict; showing "Access
+          // denied" here (as we used to) told users they lacked permission for
+          // their own jobs. Offer a retry instead.
+          setAccessState({ status: "backend_unavailable" })
         } else {
           setAccessState({
             status: "not_authorized",
@@ -162,7 +171,7 @@ export function JobRouterClient() {
     }
 
     checkAccess()
-  }, [inLocalMode, jobId, routeType, user, authLoading, hasHydrated, isReplay])
+  }, [inLocalMode, jobId, routeType, user, authLoading, hasHydrated, isReplay, accessRetryNonce])
 
   // Loading state
   if (accessState.status === "loading") {
@@ -210,6 +219,32 @@ export function JobRouterClient() {
           <Button asChild>
             <Link href="/app">Sign in</Link>
           </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Backend unreachable while checking access — a retryable condition, not a verdict
+  if (accessState.status === "backend_unavailable") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
+          <h1 className="text-xl font-semibold mb-2">Trouble reaching our servers</h1>
+          <p className="text-muted-foreground mb-4">
+            This is usually temporary — your job is safe. Please try again in a moment.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={() => { setAccessState({ status: "loading" }); setAccessRetryNonce((n) => n + 1) }}>
+              Try again
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/app">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to dashboard
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     )

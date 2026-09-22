@@ -14,11 +14,12 @@ import {
   STALL_UNAVAILABLE_MS,
 } from '@/lib/backend-status'
 
-function mockResponse(status: number, body: unknown = {}): Response {
+function mockResponse(status: number, body: unknown = {}, headers: Record<string, string> = {}): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
     json: async () => body,
+    headers: { get: (name: string) => headers[name.toLowerCase()] ?? null },
   } as unknown as Response
 }
 
@@ -67,18 +68,23 @@ describe('apiFetch', () => {
     expect(getBackendStatus()).toBe('online')
   })
 
-  it('retries a GET on repeated network failure, then throws BackendUnavailableError', async () => {
+  it('retries a GET on repeated network failure with spaced backoff, then throws BackendUnavailableError', async () => {
     jest.useFakeTimers()
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
 
+    // Network failures back off 2s then 9s: an edge rate-limit block surfaces
+    // as an opaque network error (no CORS on the block page) and lasts 10s —
+    // the final attempt must be able to land after the block expires.
     const p = apiFetch('/api/jobs/abc')
     const assertion = expect(p).rejects.toBeInstanceOf(BackendUnavailableError)
-    await jest.advanceTimersByTimeAsync(600)
-    await jest.advanceTimersByTimeAsync(1500)
+    await jest.advanceTimersByTimeAsync(2_000)
+    await jest.advanceTimersByTimeAsync(9_000)
     await assertion
 
-    expect(fetchMock).toHaveBeenCalledTimes(3)
-    // A fast total failure (~2s) is NOT a stall, so the banner never appears.
+    // The 11s in-flight span crosses the stall threshold, so a health probe
+    // fires through the same fetch mock — count only the real API attempts.
+    const apiCalls = fetchMock.mock.calls.filter((c) => !String(c[0]).includes('/api/health'))
+    expect(apiCalls).toHaveLength(3)
     expect(getBackendStatus()).toBe('online')
   })
 
@@ -96,6 +102,42 @@ describe('apiFetch', () => {
     expect(getBackendStatus()).toBe('online')
   })
 
+  it('waits out the edge rate-limit window on 429, then retries and succeeds', async () => {
+    jest.useFakeTimers()
+    // Route by URL: the >10s in-flight span triggers a health probe through the
+    // same fetch mock, which must not consume the queued API responses.
+    const apiResponses = [mockResponse(429), mockResponse(200, { ok: true })]
+    fetchMock.mockImplementation((url: unknown) => {
+      if (String(url).includes('/api/health')) return Promise.resolve(mockResponse(200))
+      return Promise.resolve(apiResponses.shift() ?? mockResponse(200, { ok: true }))
+    })
+    const apiCalls = () => fetchMock.mock.calls.filter((c) => !String(c[0]).includes('/api/health')).length
+
+    const p = apiFetch('/api/jobs/abc')
+    // Must NOT retry inside the 10s mitigation window (that both fails and
+    // prolongs the block) — no second API attempt for the first 10s...
+    await jest.advanceTimersByTimeAsync(10_000)
+    expect(apiCalls()).toBe(1)
+    // ...then the retry fires just past the window.
+    await jest.advanceTimersByTimeAsync(1_000)
+    const res = await p
+    expect(res.status).toBe(200)
+    expect(apiCalls()).toBe(2)
+  })
+
+  it('honors Retry-After on 429 when the edge provides it', async () => {
+    jest.useFakeTimers()
+    fetchMock
+      .mockResolvedValueOnce(mockResponse(429, undefined, { 'retry-after': '3' }))
+      .mockResolvedValueOnce(mockResponse(200, { ok: true }))
+
+    const p = apiFetch('/api/jobs/abc')
+    await jest.advanceTimersByTimeAsync(3_600)
+    const res = await p
+    expect(res.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('recovers transparently when a retried GET succeeds on a later attempt', async () => {
     jest.useFakeTimers()
     fetchMock
@@ -103,7 +145,7 @@ describe('apiFetch', () => {
       .mockResolvedValueOnce(mockResponse(200, { ok: true }))
 
     const p = apiFetch('/api/jobs/abc')
-    await jest.advanceTimersByTimeAsync(600)
+    await jest.advanceTimersByTimeAsync(2_000)
     const res = await p
 
     expect(res.status).toBe(200)
