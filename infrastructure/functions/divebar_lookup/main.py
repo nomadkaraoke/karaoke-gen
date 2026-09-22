@@ -84,29 +84,49 @@ def _json_response(data: dict, status: int = 200):
 def _search_divebar(query: str, limit: int = 50) -> list[dict]:
     """Search the Divebar catalog in BigQuery by artist/title.
 
-    Matching is accent-insensitive: the query and the artist/title haystack are
-    both diacritic-folded (NFD + drop combining marks, then lowered), mirroring
-    ``_search_kn_community``. Without this, a caller searching with normalized
-    text ("Jose Feliciano Feliz Navidad") could never match an accented catalog
-    row ("José Feliciano") — which broke the KJ Controller's loose-CDG sibling
-    pairing on approval, since sing requests store KN-normalized, accent-free
-    artist text.
+    Matching semantics live in ``_kn_match_parts``, shared with the
+    KaraokeNerds searches: token-AND (every query token must match the folded
+    "artist title" haystack), accent-insensitive, and typo-tolerant via
+    per-word ``EDIT_DISTANCE``. Sharing one engine keeps this action's
+    behavior aligned with ``kn_search`` — previously this was a whole-string
+    folded LIKE, so a word-order swap ("books maximo park") or a typo
+    returned KN rows but silently dropped their GCS-mirror rows in the same
+    unified search. Token-AND is strictly more permissive than the old
+    whole-string substring, so no previously-matching query regresses (this
+    also matters for the KJ Controller's loose-CDG sibling pairing, which
+    re-runs this search on approval).
     """
+    conditions, params = _kn_match_parts(query)
+    if not conditions:
+        return []
+
     client = bigquery.Client(project=GCP_PROJECT_ID)
+    params.append(bigquery.ScalarQueryParameter("limit", "INT64", limit))
 
-    # Diacritic-fold + lowercase the query, mirroring the SQL haystack below.
-    normalized = "".join(
-        c for c in unicodedata.normalize("NFD", query) if not unicodedata.combining(c)
-    ).lower().strip()
-
-    # Use LIKE for simple substring matching (BigQuery doesn't have FTS5)
-    # For better search, consider using CONTAINS or SEARCH functions
+    # Diacritic-fold the artist/title haystack (NFD + drop combining marks,
+    # then lower) — same fold as _KN_FOLD_SQL, adapted to this table's
+    # lowercase column names.
     fold_sql = (
         "LOWER(REGEXP_REPLACE("
         "NORMALIZE(CONCAT(COALESCE(artist, ''), ' ', COALESCE(title, '')), NFD),"
         r" r'\p{Mn}', ''))"
     )
     sql = f"""
+        WITH c AS (
+            SELECT
+                file_id,
+                brand,
+                brand_code,
+                artist,
+                title,
+                filename,
+                format,
+                file_size,
+                drive_path,
+                gcs_path,
+                {fold_sql} AS hay
+            FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
+        )
         SELECT
             file_id,
             brand,
@@ -118,10 +138,8 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
             file_size,
             drive_path,
             gcs_path
-        FROM `{GCP_PROJECT_ID}.{DATASET}.divebar_catalog`
-        WHERE
-            {fold_sql}
-            LIKE @query_pattern
+        FROM c
+        WHERE {" AND ".join(conditions)}
         ORDER BY
             CASE WHEN artist IS NOT NULL AND title IS NOT NULL THEN 0 ELSE 1 END,
             brand,
@@ -129,11 +147,11 @@ def _search_divebar(query: str, limit: int = 50) -> list[dict]:
         LIMIT @limit
     """
 
+    # Public endpoint, one BigQuery job per request — cap bytes billed like the
+    # KN searches so a query flood can't run up cost (CWE-400).
     job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ScalarQueryParameter("query_pattern", "STRING", f"%{normalized}%"),
-            bigquery.ScalarQueryParameter("limit", "INT64", limit),
-        ]
+        query_parameters=params,
+        maximum_bytes_billed=1_000_000_000,  # 1 GB ceiling
     )
 
     results = []
@@ -195,7 +213,11 @@ def _kn_match_parts(query: str) -> tuple[list[str], list]:
             return 0
         return 1 if n <= 6 else 2
 
-    tokens = [t for t in (_fold(w) for w in query.split()) if t][:12]
+    # Cap token count AND length: the endpoint is public, and per-word
+    # EDIT_DISTANCE cost scales with token length — an attacker-sized token
+    # must not turn each catalog word into a huge Levenshtein computation
+    # (CWE-400). 64 chars comfortably covers real artist/title words.
+    tokens = [t[:64] for t in (_fold(w) for w in query.split()) if t][:12]
     conditions = []
     params = []
     for i, tok in enumerate(tokens):
@@ -205,15 +227,18 @@ def _kn_match_parts(query: str) -> tuple[list[str], list]:
         if thr == 0:
             conditions.append(f"STRPOS(hay, @tok{i}) > 0")
         else:
-            # NB: do NOT pass EDIT_DISTANCE's `max_distance` — when the true
-            # distance exceeds it BigQuery returns a *capped* value (<= max_distance),
-            # so `<= thr` would be true for every word (matches the whole table).
-            # Compare the true distance instead; the table is small so full
-            # Levenshtein per word is cheap.
+            # NB: `max_distance` must be thr + 1, never thr — when the true
+            # distance exceeds max_distance BigQuery returns a *capped* value
+            # (== max_distance), so with max_distance=thr the comparison
+            # `<= thr` would be true for every word (matches the whole table).
+            # With thr + 1 the capped value fails `<= thr`, keeping semantics
+            # identical to the unbounded form while letting BigQuery abandon
+            # each word's Levenshtein early instead of computing the full
+            # distance (bounds per-request CPU on this public endpoint).
             conditions.append(
                 f"(STRPOS(hay, @tok{i}) > 0 OR EXISTS("
                 f"SELECT 1 FROM UNNEST(SPLIT(hay, ' ')) AS w "
-                f"WHERE EDIT_DISTANCE(w, @tok{i}) <= {thr}))"
+                f"WHERE EDIT_DISTANCE(w, @tok{i}, max_distance => {thr + 1}) <= {thr}))"
             )
         params.append(bigquery.ScalarQueryParameter(f"tok{i}", "STRING", tok))
     return conditions, params
