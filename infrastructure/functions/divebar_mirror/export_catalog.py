@@ -40,7 +40,11 @@ _EXPORT_SQL = """
         drive_path,
         (gcs_path IS NOT NULL) AS in_gcs
     FROM `{project}.karaoke_decide.divebar_catalog`
+    ORDER BY file_id
 """
+# ORDER BY file_id: without it BigQuery may return identical rows in a
+# different order run-to-run, changing the gzip bytes and defeating the
+# kjbox sync's content-hash skip (it would rebuild an unchanged catalog).
 
 
 def export_catalog_to_gcs(project_id: str) -> dict:

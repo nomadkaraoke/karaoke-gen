@@ -130,12 +130,18 @@ def sync_divebar_index(request):
         # Step 4: Snapshot the merged catalog to GCS for the kjbox local
         # mirror (must run AFTER the MERGE so gcs_path/in_gcs is accurate).
         # Best-effort: an export failure must never fail the index build.
-        export_result = None
-        try:
-            export_result = export_catalog_to_gcs(GCP_PROJECT_ID)
-        except Exception as e:  # noqa: BLE001 - best-effort
-            logger.warning("Catalog GCS export failed (index build unaffected): %s", e)
-            export_result = {"error": str(e)}
+        # With zero rows, load_to_bigquery returns early WITHOUT merging —
+        # skip the export too rather than re-snapshotting a table this run
+        # didn't touch (an empty Drive listing is a failure signal, not data).
+        if rows:
+            try:
+                export_result = export_catalog_to_gcs(GCP_PROJECT_ID)
+            except Exception as e:  # noqa: BLE001 - best-effort
+                logger.warning(
+                    "Catalog GCS export failed (index build unaffected): %s", e)
+                export_result = {"error": str(e)}
+        else:
+            export_result = {"skipped": "no rows indexed; MERGE did not run"}
         total_duration = time.time() - start
 
         # Compute stats

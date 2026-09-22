@@ -102,6 +102,12 @@ class TestExportCatalog:
         _clients["storage_client"].bucket.assert_called_once_with(
             "nomadkaraoke-divebar-files")
 
+    def test_export_sql_orders_by_file_id(self):
+        # Deterministic row order is required for the gzip determinism to
+        # mean anything — without ORDER BY, BigQuery may reorder identical
+        # rows and defeat the kjbox content-hash skip.
+        assert "ORDER BY file_id" in export_catalog._EXPORT_SQL
+
     def test_deterministic_gzip_for_identical_content(self, _clients):
         export_catalog.export_catalog_to_gcs("nomadkaraoke")
         first = _clients["bytes"]
@@ -135,6 +141,31 @@ class TestMainWiring:
         payload = json.loads(body)
         assert payload["status"] == "ok"
         assert payload["catalog_export"] == {"error": "gcs down"}
+
+    def test_no_rows_skips_export_entirely(self, monkeypatch):
+        # Empty Drive listing -> load_to_bigquery returns without MERGING;
+        # exporting would re-snapshot a table this run didn't touch.
+        import main
+        monkeypatch.setattr(main, "get_drive_service", MagicMock())
+        monkeypatch.setattr(main, "list_divebar_recursive",
+                            MagicMock(return_value=[]))
+        monkeypatch.setattr(main, "should_index_file", MagicMock(return_value=True))
+        monkeypatch.setattr(main, "build_rows", MagicMock(return_value=[]))
+        monkeypatch.setattr(main, "load_to_bigquery", MagicMock(return_value=0))
+        export_mock = MagicMock()
+        monkeypatch.setattr(main, "export_catalog_to_gcs", export_mock)
+
+        class Req:
+            method = "POST"
+            args = {}
+
+            def get_json(self, silent=False):
+                return {}
+
+        body, status, _ = main.sync_divebar_index(Req())
+        assert status == 200
+        export_mock.assert_not_called()
+        assert "skipped" in json.loads(body)["catalog_export"]
 
     def test_export_result_included_on_success(self, monkeypatch):
         import main
