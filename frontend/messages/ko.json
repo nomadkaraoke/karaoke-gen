@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "반주 (백보컬 포함)",
       "audioInstrumentalPillClean": "반주 (보컬 없음)",
       "backingVocalsWaveformKept": "반주에 포함된 백보컬 — 클릭해서 들어보세요.",
-      "backingVocalsWaveformRemoved": "깔끔한 반주에서 제거되는 백보컬 — 클릭해서 어떤 소리가 빠지는지 들어보세요."
+      "backingVocalsWaveformRemoved": "깔끔한 반주에서 제거되는 백보컬 — 클릭해서 어떤 소리가 빠지는지 들어보세요.",
+      "playingWhileEncoding": "재생 중: {stem}",
+      "stopAudio": "오디오 중지"
     },
     "gapNavigator": {
       "previousGap": "이전 공백 (P)",

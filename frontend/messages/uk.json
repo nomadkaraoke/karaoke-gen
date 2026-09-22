@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Інструментал (з бек-вокалом)",
       "audioInstrumentalPillClean": "Інструментал (чистий)",
       "backingVocalsWaveformKept": "Бек-вокал залишено в інструменталі — натисни, щоб послухати.",
-      "backingVocalsWaveformRemoved": "Бек-вокал, який прибирає чистий інструментал — натисни, щоб послухати, що саме зникне."
+      "backingVocalsWaveformRemoved": "Бек-вокал, який прибирає чистий інструментал — натисни, щоб послухати, що саме зникне.",
+      "playingWhileEncoding": "Відтворюється: {stem}",
+      "stopAudio": "Зупинити аудіо"
     },
     "gapNavigator": {
       "previousGap": "Попередня прогалина (P)",

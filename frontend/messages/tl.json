@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (may kasamang backing vocals)",
       "audioInstrumentalPillClean": "Instrumental (malinis)",
       "backingVocalsWaveformKept": "Mga backing vocals na pinanatili sa instrumental — i-click para mapakinggan.",
-      "backingVocalsWaveformRemoved": "Mga backing vocals na tinatanggal ng clean instrumental — i-click para mapakinggan kung ano ang mawawala."
+      "backingVocalsWaveformRemoved": "Mga backing vocals na tinatanggal ng clean instrumental — i-click para mapakinggan kung ano ang mawawala.",
+      "playingWhileEncoding": "Pinapatugtog: {stem}",
+      "stopAudio": "Itigil ang audio"
     },
     "gapNavigator": {
       "previousGap": "Nakaraang gap (P)",

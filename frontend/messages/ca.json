@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (amb cors)",
       "audioInstrumentalPillClean": "Instrumental (net)",
       "backingVocalsWaveformKept": "Cors mantinguts a l'instrumental — fes clic per escoltar-los.",
-      "backingVocalsWaveformRemoved": "Cors que l'instrumental net elimina — fes clic per escoltar què deixaries fora."
+      "backingVocalsWaveformRemoved": "Cors que l'instrumental net elimina — fes clic per escoltar què deixaries fora.",
+      "playingWhileEncoding": "Reproduint: {stem}",
+      "stopAudio": "Atura l'àudio"
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",

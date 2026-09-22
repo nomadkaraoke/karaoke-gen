@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "インストゥルメンタル（バックボーカル入り）",
       "audioInstrumentalPillClean": "インストゥルメンタル（バックボーカルなし）",
       "backingVocalsWaveformKept": "インストゥルメンタルに残されたバックコーラス — クリックして聴いてみてください。",
-      "backingVocalsWaveformRemoved": "クリーン・インストゥルメンタルで削除されるバックコーラス — クリックして、省かれる音声を聴いてみてください。"
+      "backingVocalsWaveformRemoved": "クリーン・インストゥルメンタルで削除されるバックコーラス — クリックして、省かれる音声を聴いてみてください。",
+      "playingWhileEncoding": "再生中: {stem}",
+      "stopAudio": "音声を停止"
     },
     "gapNavigator": {
       "previousGap": "前のギャップ (P)",

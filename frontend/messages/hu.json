@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumentális (plusz háttérvokál)",
       "audioInstrumentalPillClean": "Instrumentális (tiszta)",
       "backingVocalsWaveformKept": "Az instrumentális verzióban megtartott háttérvokálok — kattints, hogy meghallgasd őket.",
-      "backingVocalsWaveformRemoved": "A tiszta instrumentális verzió által eltávolított háttérvokálok — kattints, hogy meghallgasd, mit hagynál ki."
+      "backingVocalsWaveformRemoved": "A tiszta instrumentális verzió által eltávolított háttérvokálok — kattints, hogy meghallgasd, mit hagynál ki.",
+      "playingWhileEncoding": "Lejátszás: {stem}",
+      "stopAudio": "Hang leállítása"
     },
     "gapNavigator": {
       "previousGap": "Előző hézag (P)",

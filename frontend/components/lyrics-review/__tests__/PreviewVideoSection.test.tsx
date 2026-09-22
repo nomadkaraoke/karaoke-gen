@@ -351,6 +351,194 @@ describe('PreviewVideoSection', () => {
     expect(refreshInstrumentalUrls).toHaveBeenCalledTimes(3)
   })
 
+  describe('standalone stem playback while encoding', () => {
+    // jsdom media elements can't actually play; emulate enough of play()/pause()
+    // for the standalone (no-video-yet) audition flow: toggle `paused` and fire
+    // the corresponding events like a real element would.
+    let playSpy: jest.SpyInstance
+    let pauseSpy: jest.SpyInstance
+
+    const setPaused = (el: HTMLMediaElement, paused: boolean) =>
+      Object.defineProperty(el, 'paused', { configurable: true, get: () => paused })
+
+    beforeEach(() => {
+      playSpy = jest
+        .spyOn(HTMLMediaElement.prototype, 'play')
+        .mockImplementation(function (this: HTMLMediaElement) {
+          setPaused(this, false)
+          this.dispatchEvent(new Event('play'))
+          return Promise.resolve()
+        })
+      pauseSpy = jest
+        .spyOn(HTMLMediaElement.prototype, 'pause')
+        .mockImplementation(function (this: HTMLMediaElement) {
+          setPaused(this, true)
+          this.dispatchEvent(new Event('pause'))
+        })
+    })
+
+    afterEach(() => {
+      playSpy.mockRestore()
+      pauseSpy.mockRestore()
+    })
+
+    function makeEncodingClient() {
+      // POST returns "generating" and status polling never resolves — the
+      // component sits in the 'encoding' state for the whole test.
+      return makeApiClient({
+        generatePreviewVideo: jest.fn().mockResolvedValue({
+          status: 'generating',
+          preview_hash: 'hash-encoding',
+        }),
+        getPreviewVideoStatus: jest.fn().mockResolvedValue({ status: 'generating' }),
+      })
+    }
+
+    function renderEncoding(extraProps: Record<string, unknown> = {}) {
+      const ref = createRef<PreviewVideoHandle>()
+      const onTimeUpdate = jest.fn()
+      const utils = render(
+        <PreviewVideoSection
+          ref={ref}
+          apiClient={makeEncodingClient()}
+          isModalOpen={true}
+          updatedData={data}
+          instrumentalOptions={instrumentalOptions as any}
+          autoSelection="with_backing"
+          onTimeUpdate={onTimeUpdate}
+          {...extraProps}
+        />
+      )
+      return { ref, onTimeUpdate, ...utils }
+    }
+
+    it('mounts the stem player before the video is ready', async () => {
+      renderEncoding()
+      await flush()
+
+      expect(screen.getByText('Encoding preview video...')).toBeInTheDocument()
+      expect(document.querySelector('video')).toBeNull()
+      const audio = document.querySelector('audio')
+      expect(audio).not.toBeNull()
+      expect(audio!.src).toBe('http://test/backing.ogg')
+    })
+
+    it('auditionInstrumental seeks and plays the stem directly while encoding', async () => {
+      const { ref, onTimeUpdate } = renderEncoding()
+      await flush()
+
+      const audio = document.querySelector('audio') as HTMLAudioElement
+      act(() => {
+        ref.current!.auditionInstrumental('with_backing', 12)
+      })
+      await flush()
+
+      expect(audio.currentTime).toBe(12)
+      expect(playSpy).toHaveBeenCalled()
+      expect(audio.muted).toBe(false)
+
+      // The stem's clock drives the waveform playhead while there's no video.
+      audio.currentTime = 13.5
+      fireEvent.timeUpdate(audio)
+      expect(onTimeUpdate).toHaveBeenCalledWith(13.5)
+    })
+
+    it('shows a stop control while the stem plays and stops on click', async () => {
+      const { ref } = renderEncoding()
+      await flush()
+
+      expect(screen.queryByRole('button', { name: 'Stop audio' })).not.toBeInTheDocument()
+
+      act(() => {
+        ref.current!.auditionInstrumental('with_backing', 5)
+      })
+      await flush()
+
+      const stop = screen.getByRole('button', { name: 'Stop audio' })
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+      await user.click(stop)
+      await flush()
+
+      expect(pauseSpy).toHaveBeenCalled()
+      expect((document.querySelector('audio') as HTMLAudioElement).muted).toBe(true)
+      expect(screen.queryByRole('button', { name: 'Stop audio' })).not.toBeInTheDocument()
+    })
+
+    it('swaps the stem and keeps playing from the clicked position while encoding', async () => {
+      // Start on the clean stem; a waveform click auditions with_backing at 5s.
+      const { ref } = renderEncoding({ autoSelection: 'clean' })
+      await flush()
+
+      expect((document.querySelector('audio') as HTMLAudioElement).src).toBe(
+        'http://test/clean.ogg'
+      )
+
+      act(() => {
+        ref.current!.auditionInstrumental('with_backing', 5)
+      })
+      await flush()
+
+      const audio = document.querySelector('audio') as HTMLAudioElement
+      expect(audio.src).toBe('http://test/backing.ogg')
+      expect(audio.currentTime).toBe(5)
+      expect(playSpy).toHaveBeenCalled()
+    })
+
+    it('does not start playback when auditioning without a seek (radio click) while encoding', async () => {
+      const { ref } = renderEncoding({ autoSelection: 'with_backing' })
+      await flush()
+
+      act(() => {
+        ref.current!.auditionInstrumental('with_backing')
+      })
+      await flush()
+
+      expect(playSpy).not.toHaveBeenCalled()
+      expect(screen.queryByRole('button', { name: 'Stop audio' })).not.toBeInTheDocument()
+    })
+
+    it('hands playback position off to the video when encoding completes', async () => {
+      const apiClient = makeApiClient({
+        generatePreviewVideo: jest.fn().mockResolvedValue({
+          status: 'generating',
+          preview_hash: 'hash-handoff',
+        }),
+        getPreviewVideoStatus: jest
+          .fn()
+          .mockResolvedValueOnce({ status: 'generating' })
+          .mockResolvedValueOnce({ status: 'ready' }),
+      })
+      const ref = createRef<PreviewVideoHandle>()
+      render(
+        <PreviewVideoSection
+          ref={ref}
+          apiClient={apiClient}
+          isModalOpen={true}
+          updatedData={data}
+          instrumentalOptions={instrumentalOptions as any}
+          autoSelection="with_backing"
+        />
+      )
+      await flush()
+
+      act(() => {
+        ref.current!.auditionInstrumental('with_backing', 30)
+      })
+      const audio = document.querySelector('audio') as HTMLAudioElement
+      expect(audio.currentTime).toBe(30)
+
+      // Encoding completes on the second poll.
+      await act(async () => { await jest.advanceTimersByTimeAsync(3000) })
+      await act(async () => { await jest.advanceTimersByTimeAsync(3000) })
+
+      const video = document.querySelector('video') as HTMLVideoElement
+      expect(video).not.toBeNull()
+      // Video picks up where the standalone stem audition was, still instrumental.
+      expect(video.currentTime).toBe(30)
+      expect(video.muted).toBe(true)
+    })
+  })
+
   it('does nothing on a stem error when no refresh function is provided', async () => {
     const apiClient = makeApiClient()
     render(

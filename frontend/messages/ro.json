@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (plus voci de fundal)",
       "audioInstrumentalPillClean": "Instrumental (curat)",
       "backingVocalsWaveformKept": "Vocile de fundal păstrate în instrumental — dă click pentru a le asculta.",
-      "backingVocalsWaveformRemoved": "Vocile de fundal pe care instrumentalul curat le elimină — dă click pentru a auzi ce ai pierde."
+      "backingVocalsWaveformRemoved": "Vocile de fundal pe care instrumentalul curat le elimină — dă click pentru a auzi ce ai pierde.",
+      "playingWhileEncoding": "Se redă: {stem}",
+      "stopAudio": "Oprește audio"
     },
     "gapNavigator": {
       "previousGap": "Golul anterior (P)",

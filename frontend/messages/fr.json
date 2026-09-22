@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (avec chœurs)",
       "audioInstrumentalPillClean": "Instrumental (pur)",
       "backingVocalsWaveformKept": "Chœurs conservés dans l'instrumental — clique pour les écouter.",
-      "backingVocalsWaveformRemoved": "Chœurs que l'instrumental pur supprime — clique pour écouter ce qui sera retiré."
+      "backingVocalsWaveformRemoved": "Chœurs que l'instrumental pur supprime — clique pour écouter ce qui sera retiré.",
+      "playingWhileEncoding": "Lecture : {stem}",
+      "stopAudio": "Arrêter l'audio"
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",

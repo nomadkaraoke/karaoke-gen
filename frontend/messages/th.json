@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "ดนตรีบรรเลง (พร้อมเสียงร้องประสาน)",
       "audioInstrumentalPillClean": "ดนตรีบรรเลง (ไม่มีเสียงร้อง)",
       "backingVocalsWaveformKept": "เสียงร้องประสานที่เก็บไว้ในดนตรีบรรเลง — คลิกเพื่อฟัง",
-      "backingVocalsWaveformRemoved": "เสียงร้องประสานที่ดนตรีบรรเลงแบบคลีนตัดออก — คลิกเพื่อฟังเสียงที่จะถูกตัดออกไป"
+      "backingVocalsWaveformRemoved": "เสียงร้องประสานที่ดนตรีบรรเลงแบบคลีนตัดออก — คลิกเพื่อฟังเสียงที่จะถูกตัดออกไป",
+      "playingWhileEncoding": "กำลังเล่น: {stem}",
+      "stopAudio": "หยุดเสียง"
     },
     "gapNavigator": {
       "previousGap": "ช่องว่างก่อนหน้า (P)",

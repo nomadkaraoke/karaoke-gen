@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumentalny (z chórkami)",
       "audioInstrumentalPillClean": "Instrumentalny (czysty)",
       "backingVocalsWaveformKept": "Chórki zachowane w podkładzie instrumentalnym — kliknij, aby ich posłuchać.",
-      "backingVocalsWaveformRemoved": "Chórki, które usuwa czysty podkład instrumentalny — kliknij, aby posłuchać, co usuwasz."
+      "backingVocalsWaveformRemoved": "Chórki, które usuwa czysty podkład instrumentalny — kliknij, aby posłuchać, co usuwasz.",
+      "playingWhileEncoding": "Odtwarzanie: {stem}",
+      "stopAudio": "Zatrzymaj audio"
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",

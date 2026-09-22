@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (pluss bakgrunnsvokal)",
       "audioInstrumentalPillClean": "Instrumental (ren)",
       "backingVocalsWaveformKept": "Bakgrunnsvokal som er beholdt i instrumentalen — klikk for å høre den.",
-      "backingVocalsWaveformRemoved": "Bakgrunnsvokal som den rene instrumentalen fjerner — klikk for å høre hva du velger bort."
+      "backingVocalsWaveformRemoved": "Bakgrunnsvokal som den rene instrumentalen fjerner — klikk for å høre hva du velger bort.",
+      "playingWhileEncoding": "Spiller av: {stem}",
+      "stopAudio": "Stopp lyd"
     },
     "gapNavigator": {
       "previousGap": "Forrige hull (P)",
