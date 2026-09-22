@@ -20,6 +20,7 @@ import time
 import functions_framework
 
 from drive_client import get_drive_service, list_divebar_recursive
+from export_catalog import export_catalog_to_gcs
 from filename_parser import should_index_file
 from index_builder import build_rows, load_to_bigquery
 
@@ -125,6 +126,16 @@ def sync_divebar_index(request):
         # Step 3: Load to BigQuery
         logger.info("Step 3: Loading %d rows to BigQuery", len(rows))
         rows_loaded = load_to_bigquery(GCP_PROJECT_ID, rows)
+
+        # Step 4: Snapshot the merged catalog to GCS for the kjbox local
+        # mirror (must run AFTER the MERGE so gcs_path/in_gcs is accurate).
+        # Best-effort: an export failure must never fail the index build.
+        export_result = None
+        try:
+            export_result = export_catalog_to_gcs(GCP_PROJECT_ID)
+        except Exception as e:  # noqa: BLE001 - best-effort
+            logger.warning("Catalog GCS export failed (index build unaffected): %s", e)
+            export_result = {"error": str(e)}
         total_duration = time.time() - start
 
         # Compute stats
@@ -144,6 +155,7 @@ def sync_divebar_index(request):
             "formats": formats,
             "list_duration_s": round(list_duration, 1),
             "total_duration_s": round(total_duration, 1),
+            "catalog_export": export_result,
         }
 
         # Chain the index-dependent jobs (file-sync VM + xref) ONLY when the caller

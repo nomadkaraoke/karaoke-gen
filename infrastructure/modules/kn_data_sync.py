@@ -98,6 +98,18 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
         member=sa.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
+    # The KJ box (NomadPC) mirrors the KN exports into a local SQLite catalog
+    # so live-show searches don't depend on venue Wi-Fi / BigQuery. Its
+    # existing read-only sync identity (nomad-master-sync, the same SA that
+    # rsyncs NOMAD-720p masters from the divebar files bucket) gets read
+    # access here; the bucket itself stays private.
+    resources["kjbox_read_access"] = storage.BucketIAMMember(
+        "kn-data-kjbox-read-access",
+        bucket=data_bucket.name,
+        role="roles/storage.objectViewer",
+        member="serviceAccount:nomad-master-sync@nomadkaraoke.iam.gserviceaccount.com",
+    )
+
     # ==================== Function Source Bucket ====================
 
     source_bucket = storage.Bucket(
