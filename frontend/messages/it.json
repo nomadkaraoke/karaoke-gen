@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Strumentale (con cori)",
       "audioInstrumentalPillClean": "Strumentale (pulita)",
       "backingVocalsWaveformKept": "Cori mantenuti nella strumentale — clicca per ascoltarli.",
-      "backingVocalsWaveformRemoved": "Cori che la strumentale pulita rimuove — clicca per ascoltare cosa stai escludendo."
+      "backingVocalsWaveformRemoved": "Cori che la strumentale pulita rimuove — clicca per ascoltare cosa stai escludendo.",
+      "playingWhileEncoding": "In riproduzione: {stem}",
+      "stopAudio": "Ferma audio"
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",

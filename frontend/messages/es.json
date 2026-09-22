@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (con coros)",
       "audioInstrumentalPillClean": "Instrumental (limpio)",
       "backingVocalsWaveformKept": "Coros que se mantienen en el instrumental — haz clic para escucharlos.",
-      "backingVocalsWaveformRemoved": "Coros que elimina el instrumental limpio — haz clic para escuchar lo que estarías dejando fuera."
+      "backingVocalsWaveformRemoved": "Coros que elimina el instrumental limpio — haz clic para escuchar lo que estarías dejando fuera.",
+      "playingWhileEncoding": "Reproduciendo: {stem}",
+      "stopAudio": "Detener audio"
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",

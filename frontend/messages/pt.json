@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (com vocais de apoio)",
       "audioInstrumentalPillClean": "Instrumental (limpo)",
       "backingVocalsWaveformKept": "Vocais de apoio mantidos no instrumental — clique para ouvi-los.",
-      "backingVocalsWaveformRemoved": "Vocais de apoio que o instrumental limpo remove — clique para ouvir o que vai ficar de fora."
+      "backingVocalsWaveformRemoved": "Vocais de apoio que o instrumental limpo remove — clique para ouvir o que vai ficar de fora.",
+      "playingWhileEncoding": "Tocando: {stem}",
+      "stopAudio": "Parar áudio"
     },
     "gapNavigator": {
       "previousGap": "Lacuna anterior (P)",

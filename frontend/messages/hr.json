@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (s pratećim vokalima)",
       "audioInstrumentalPillClean": "Instrumental (čisti)",
       "backingVocalsWaveformKept": "Prateći vokali zadržani u instrumentalu — klikni da ih čuješ.",
-      "backingVocalsWaveformRemoved": "Prateći vokali koje čisti instrumental uklanja — klikni da čuješ što izostavljaš."
+      "backingVocalsWaveformRemoved": "Prateći vokali koje čisti instrumental uklanja — klikni da čuješ što izostavljaš.",
+      "playingWhileEncoding": "Svira: {stem}",
+      "stopAudio": "Zaustavi zvuk"
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",

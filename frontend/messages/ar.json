@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "موسيقى (مع غناء مساند)",
       "audioInstrumentalPillClean": "موسيقى (صافية)",
       "backingVocalsWaveformKept": "تم الاحتفاظ بالأصوات الخلفية في النسخة الموسيقية — انقر للاستماع إليها.",
-      "backingVocalsWaveformRemoved": "الأصوات الخلفية التي تزيلها النسخة الموسيقية الصافية — انقر لسماع ما ستستغني عنه."
+      "backingVocalsWaveformRemoved": "الأصوات الخلفية التي تزيلها النسخة الموسيقية الصافية — انقر لسماع ما ستستغني عنه.",
+      "playingWhileEncoding": "جاري التشغيل: {stem}",
+      "stopAudio": "إيقاف الصوت"
     },
     "gapNavigator": {
       "previousGap": "الفجوة السابقة (P)",

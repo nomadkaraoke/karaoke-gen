@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Enstrümantal (+ geri vokal)",
       "audioInstrumentalPillClean": "Enstrümantal (temiz)",
       "backingVocalsWaveformKept": "Enstrümantalde korunan geri vokaller — dinlemek için tıkla.",
-      "backingVocalsWaveformRemoved": "Temiz enstrümantalin kaldırdığı geri vokaller — neleri çıkardığını dinlemek için tıkla."
+      "backingVocalsWaveformRemoved": "Temiz enstrümantalin kaldırdığı geri vokaller — neleri çıkardığını dinlemek için tıkla.",
+      "playingWhileEncoding": "Çalıyor: {stem}",
+      "stopAudio": "Sesi durdur"
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",

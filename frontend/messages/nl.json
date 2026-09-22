@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumentaal (plus achtergrondzang)",
       "audioInstrumentalPillClean": "Instrumentaal (clean)",
       "backingVocalsWaveformKept": "Achtergrondzang behouden in de instrumentale versie — klik om deze te horen.",
-      "backingVocalsWaveformRemoved": "Achtergrondzang die de cleane instrumentale versie verwijdert — klik om te horen wat je weglaat."
+      "backingVocalsWaveformRemoved": "Achtergrondzang die de cleane instrumentale versie verwijdert — klik om te horen wat je weglaat.",
+      "playingWhileEncoding": "Speelt af: {stem}",
+      "stopAudio": "Audio stoppen"
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",

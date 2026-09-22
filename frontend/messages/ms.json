@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (dengan vokal latar)",
       "audioInstrumentalPillClean": "Instrumental (bersih)",
       "backingVocalsWaveformKept": "Vokal latar dikekalkan dalam instrumental — klik untuk mendengarnya.",
-      "backingVocalsWaveformRemoved": "Vokal latar yang dibuang oleh instrumental bersih — klik untuk mendengar bahagian yang akan dibuang."
+      "backingVocalsWaveformRemoved": "Vokal latar yang dibuang oleh instrumental bersih — klik untuk mendengar bahagian yang akan dibuang.",
+      "playingWhileEncoding": "Sedang dimainkan: {stem}",
+      "stopAudio": "Hentikan audio"
     },
     "gapNavigator": {
       "previousGap": "Jurang sebelumnya (P)",

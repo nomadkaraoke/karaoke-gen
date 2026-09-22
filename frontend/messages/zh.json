@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "伴奏（含伴唱）",
       "audioInstrumentalPillClean": "伴奏（纯净）",
       "backingVocalsWaveformKept": "伴奏中保留的背景和声——点击试听。",
-      "backingVocalsWaveformRemoved": "纯净版伴奏会移除的背景和声——点击试听会被移除的部分。"
+      "backingVocalsWaveformRemoved": "纯净版伴奏会移除的背景和声——点击试听会被移除的部分。",
+      "playingWhileEncoding": "正在播放：{stem}",
+      "stopAudio": "停止音频"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",

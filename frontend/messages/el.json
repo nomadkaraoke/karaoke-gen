@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Ορχηστρικό (με δεύτερες φωνές)",
       "audioInstrumentalPillClean": "Ορχηστρικό (καθαρό)",
       "backingVocalsWaveformKept": "Δεύτερα φωνητικά που διατηρήθηκαν στο ορχηστρικό — κάνε κλικ για να τα ακούσεις.",
-      "backingVocalsWaveformRemoved": "Δεύτερα φωνητικά που αφαιρεί το καθαρό ορχηστρικό — κάνε κλικ για να ακούσεις τι αφήνεις απ' έξω."
+      "backingVocalsWaveformRemoved": "Δεύτερα φωνητικά που αφαιρεί το καθαρό ορχηστρικό — κάνε κλικ για να ακούσεις τι αφήνεις απ' έξω.",
+      "playingWhileEncoding": "Αναπαραγωγή: {stem}",
+      "stopAudio": "Διακοπή ήχου"
     },
     "gapNavigator": {
       "previousGap": "Προηγούμενο κενό (P)",

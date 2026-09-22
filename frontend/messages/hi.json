@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "इंस्ट्रुमेंटल (बैकिंग वोकल्स के साथ)",
       "audioInstrumentalPillClean": "इंस्ट्रुमेंटल (क्लीन)",
       "backingVocalsWaveformKept": "इंस्ट्रुमेंटल में रखे गए बैकिंग वोकल्स — इन्हें सुनने के लिए क्लिक करो।",
-      "backingVocalsWaveformRemoved": "बैकिंग वोकल्स जिन्हें क्लीन इंस्ट्रुमेंटल हटा देता है — यह सुनने के लिए क्लिक करो कि तुम क्या छोड़ रहे हो।"
+      "backingVocalsWaveformRemoved": "बैकिंग वोकल्स जिन्हें क्लीन इंस्ट्रुमेंटल हटा देता है — यह सुनने के लिए क्लिक करो कि तुम क्या छोड़ रहे हो।",
+      "playingWhileEncoding": "प्ले हो रहा है: {stem}",
+      "stopAudio": "ऑडियो रोको"
     },
     "gapNavigator": {
       "previousGap": "पिछला गैप (P)",

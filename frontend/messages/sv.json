@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (plus bakgrundssång)",
       "audioInstrumentalPillClean": "Instrumental (ren)",
       "backingVocalsWaveformKept": "Bakgrundssång som behålls i instrumentalversionen — klicka för att höra den.",
-      "backingVocalsWaveformRemoved": "Bakgrundssång som den rena instrumentalversionen tar bort — klicka för att höra vad du väljer bort."
+      "backingVocalsWaveformRemoved": "Bakgrundssång som den rena instrumentalversionen tar bort — klicka för att höra vad du väljer bort.",
+      "playingWhileEncoding": "Spelar: {stem}",
+      "stopAudio": "Stoppa ljud"
     },
     "gapNavigator": {
       "previousGap": "Föregående lucka (P)",

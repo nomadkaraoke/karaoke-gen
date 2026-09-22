@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import {
   useState,
   useEffect,
+  useMemo,
   useRef,
   useCallback,
   useImperativeHandle,
@@ -95,11 +96,19 @@ function PreviewVideoSection(
   const [retryNonce, setRetryNonce] = useState(0)
   // Whether the instrumental stem (vs the original with-vocals audio) is playing.
   const [isInstrumental, setIsInstrumental] = useState(false)
+  // Whether the stem is audibly playing standalone (no video yet) — drives the
+  // stop control shown during encoding.
+  const [standalonePlaying, setStandalonePlaying] = useState(false)
 
   const internalVideoRef = useRef<HTMLVideoElement | null>(null)
   const instrumentalAudioRef = useRef<HTMLAudioElement | null>(null)
   const isInstrumentalRef = useRef(false)
   isInstrumentalRef.current = isInstrumental
+
+  // Pending seek/play for the standalone stem player (used while the preview is
+  // still encoding and there's no <video> to slave to). Set when an audition
+  // swaps the stem src mid-flight; applied once the swapped src is committed.
+  const standaloneCueRef = useRef<{ time: number | null; play: boolean } | null>(null)
 
   // Signed stem URLs expire (120 min) and can outlive a long review session — the
   // overlaid <audio> then fails to load. On that error we re-fetch fresh URLs and
@@ -108,7 +117,10 @@ function PreviewVideoSection(
   const refreshingRef = useRef(false)
   const refreshCountRef = useRef(0)
 
-  const options = (refreshedOptions ?? instrumentalOptions)?.filter((o) => o.audio_url) ?? []
+  const options = useMemo(
+    () => (refreshedOptions ?? instrumentalOptions)?.filter((o) => o.audio_url) ?? [],
+    [refreshedOptions, instrumentalOptions]
+  )
   const cleanOption = options.find((o) => o.id === 'clean')
 
   // Which instrumental stem the "Instrumental" preview pill plays. Defaults to the
@@ -135,6 +147,15 @@ function PreviewVideoSection(
       internalVideoRef.current = el
       if (videoRef) {
         ;(videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el
+      }
+      // The preview just became ready. If the reviewer was mid-audition on a stem
+      // standalone (while encoding), start the video from the stem's position so
+      // playback continues seamlessly instead of jumping back to 0.
+      if (el && isInstrumentalRef.current) {
+        const audio = instrumentalAudioRef.current
+        if (audio && !audio.paused && audio.currentTime > 0) {
+          el.currentTime = audio.currentTime
+        }
       }
     },
     [videoRef]
@@ -235,11 +256,57 @@ function PreviewVideoSection(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `t` is not referentially stable across renders
   }, [isModalOpen, apiClient, updatedData, timingOffsetMs, isDuet, retryNonce])
 
-  // Reset to the original audio each time a fresh preview starts encoding. The
-  // selected instrumental variant persists (it's the reviewer's choice).
+  // Reset to the original audio each time a fresh preview generation starts, and
+  // silence any standalone stem when the encode fails (the stop control lives in
+  // the encoding block). The selected instrumental variant persists (it's the
+  // reviewer's choice). While 'encoding', the stem can play standalone (below).
   useEffect(() => {
-    if (previewState.status !== 'ready') setIsInstrumental(false)
+    if (previewState.status === 'generating' || previewState.status === 'error') {
+      setIsInstrumental(false)
+    }
   }, [previewState.status])
+
+  // While the preview is still encoding there is no <video> to slave to — drive
+  // the stem <audio> directly so the reviewer can audition backing vocals while
+  // waiting. Forwards the stem's clock to the waveform playhead and applies any
+  // cue (seek/resume) left by auditionInstrumental across a stem-src swap.
+  const videoMounted = previewState.status === 'ready'
+  useEffect(() => {
+    if (videoMounted) {
+      setStandalonePlaying(false)
+      return
+    }
+    const audio = instrumentalAudioRef.current
+    if (!audio) return
+    audio.muted = !isInstrumental
+    if (!isInstrumental) {
+      audio.pause()
+      setStandalonePlaying(false)
+      return
+    }
+    const cue = standaloneCueRef.current
+    if (cue) {
+      standaloneCueRef.current = null
+      if (cue.time != null) audio.currentTime = cue.time
+      if (cue.play) {
+        audio.play()?.catch(() => setStandalonePlaying(false))
+        setStandalonePlaying(true)
+      }
+    }
+    const onTime = () => onTimeUpdate?.(audio.currentTime)
+    const onPlay = () => setStandalonePlaying(true)
+    const onStop = () => setStandalonePlaying(false)
+    audio.addEventListener('timeupdate', onTime)
+    audio.addEventListener('play', onPlay)
+    audio.addEventListener('pause', onStop)
+    audio.addEventListener('ended', onStop)
+    return () => {
+      audio.removeEventListener('timeupdate', onTime)
+      audio.removeEventListener('play', onPlay)
+      audio.removeEventListener('pause', onStop)
+      audio.removeEventListener('ended', onStop)
+    }
+  }, [videoMounted, isInstrumental, instrumentalUrl, onTimeUpdate])
 
   // Keep the overlaid instrumental audio in lock-step with the video element.
   // The video always carries the original (with-vocals) audio; when the user
@@ -337,22 +404,60 @@ function PreviewVideoSection(
           setSelectedId(id)
         }
         if (instrumentalUrl) setIsInstrumental(true)
+        const seekTo =
+          seekTime != null && Number.isFinite(seekTime) ? Math.max(0, seekTime) : null
         const video = internalVideoRef.current
-        if (video && seekTime != null && Number.isFinite(seekTime)) {
-          video.currentTime = Math.max(0, seekTime)
-          video.play()?.catch(() => {})
+        if (video) {
+          if (seekTo != null) {
+            video.currentTime = seekTo
+            video.play()?.catch(() => {})
+          }
+          return
+        }
+        // Preview still encoding — no video yet, so drive the stem audio itself.
+        const audio = instrumentalAudioRef.current
+        if (!audio) return
+        const wasPlaying = !audio.paused
+        const nextUrl =
+          options.find((o) => o.id === id && o.audio_url)?.audio_url ?? instrumentalUrl
+        if (nextUrl === instrumentalUrl) {
+          if (seekTo != null) audio.currentTime = seekTo
+          if (seekTo != null || wasPlaying) {
+            audio.play()?.catch(() => setStandalonePlaying(false))
+            setStandalonePlaying(true)
+          }
+        } else {
+          // The stem src is about to swap; cue the seek/resume for after commit.
+          standaloneCueRef.current = {
+            time: seekTo ?? (wasPlaying ? audio.currentTime : null),
+            play: seekTo != null || wasPlaying,
+          }
         }
       },
     }),
-    [instrumentalOptions, instrumentalUrl]
+    [instrumentalOptions, instrumentalUrl, options]
   )
 
   if (!apiClient) return null
 
   const showToggle = previewState.status === 'ready' && !!instrumentalUrl
+  // While encoding, the stem can play standalone (waveform clicks) — offer a way
+  // to stop it, since the video controls don't exist yet.
+  const showStandaloneStop = !videoMounted && standalonePlaying && !!instrumentalUrl
 
   return (
     <div className="mb-4">
+      {/* Hidden stem player. Mounted in every preview state (not just 'ready') so
+          the instrumental can be auditioned standalone while the video encodes. */}
+      {instrumentalUrl && (
+        <audio
+          ref={instrumentalAudioRef}
+          src={instrumentalUrl}
+          preload="auto"
+          onError={handleInstrumentalAudioError}
+        />
+      )}
+
       {(previewState.status === 'generating' || previewState.status === 'encoding') && (
         <div className="flex flex-col items-center justify-center p-8 text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500 mb-4" />
@@ -361,6 +466,16 @@ function PreviewVideoSection(
           </p>
           {previewState.status === 'encoding' && previewState.slow && (
             <p className="mt-2 text-sm text-gray-600">{t('startingEncoder')}</p>
+          )}
+          {showStandaloneStop && (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {t('playingWhileEncoding', { stem: instrumentalPillLabel })}
+              </span>
+              <Button variant="outline" size="sm" onClick={() => setIsInstrumental(false)}>
+                {t('stopAudio')}
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -393,15 +508,6 @@ function PreviewVideoSection(
           >
             {t('unsupportedBrowser')}
           </video>
-          {instrumentalUrl && (
-            // Hidden stem player kept in sync with the video for the audio toggle.
-            <audio
-              ref={instrumentalAudioRef}
-              src={instrumentalUrl}
-              preload="auto"
-              onError={handleInstrumentalAudioError}
-            />
-          )}
         </div>
       )}
 

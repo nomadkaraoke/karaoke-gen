@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Inštrumentál (so sprievodnými vokálmi)",
       "audioInstrumentalPillClean": "Inštrumentál (čistý)",
       "backingVocalsWaveformKept": "Sprievodné vokály ponechané v inštrumentáli — klikni a vypočuj si ich.",
-      "backingVocalsWaveformRemoved": "Sprievodné vokály, ktoré čistý inštrumentál odstraňuje — klikni a vypočuj si, čo by sa vynechalo."
+      "backingVocalsWaveformRemoved": "Sprievodné vokály, ktoré čistý inštrumentál odstraňuje — klikni a vypočuj si, čo by sa vynechalo.",
+      "playingWhileEncoding": "Prehráva sa: {stem}",
+      "stopAudio": "Zastaviť zvuk"
     },
     "gapNavigator": {
       "previousGap": "Predchádzajúca medzera (P)",

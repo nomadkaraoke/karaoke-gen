@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumental (plus Hintergrundgesang)",
       "audioInstrumentalPillClean": "Instrumental (rein)",
       "backingVocalsWaveformKept": "Hintergrundgesang im Instrumental beibehalten — klicke, um ihn zu hören.",
-      "backingVocalsWaveformRemoved": "Hintergrundgesang, den das reine Instrumental entfernt — klicke, um zu hören, was du weglassen würdest."
+      "backingVocalsWaveformRemoved": "Hintergrundgesang, den das reine Instrumental entfernt — klicke, um zu hören, was du weglassen würdest.",
+      "playingWhileEncoding": "Wiedergabe: {stem}",
+      "stopAudio": "Audio stoppen"
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",

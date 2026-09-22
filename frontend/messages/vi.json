@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Nhạc nền (kèm hát bè)",
       "audioInstrumentalPillClean": "Nhạc nền (không bè)",
       "backingVocalsWaveformKept": "Phần hát bè được giữ lại trong nhạc nền — nhấp để nghe thử.",
-      "backingVocalsWaveformRemoved": "Phần hát bè mà bản nhạc nền thuần sẽ loại bỏ — nhấp để nghe thử phần bạn sắp bỏ đi."
+      "backingVocalsWaveformRemoved": "Phần hát bè mà bản nhạc nền thuần sẽ loại bỏ — nhấp để nghe thử phần bạn sắp bỏ đi.",
+      "playingWhileEncoding": "Đang phát: {stem}",
+      "stopAudio": "Dừng âm thanh"
     },
     "gapNavigator": {
       "previousGap": "Đoạn trống trước (P)",

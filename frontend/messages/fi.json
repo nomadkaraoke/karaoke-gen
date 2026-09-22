@@ -1023,7 +1023,9 @@
       "audioInstrumentalPillBacking": "Instrumentaali (mukana taustalaulut)",
       "audioInstrumentalPillClean": "Instrumentaali (puhdas)",
       "backingVocalsWaveformKept": "Instrumentaalissa säilytetyt taustalaulut — klikkaa kuullaksesi ne.",
-      "backingVocalsWaveformRemoved": "Taustalaulut, jotka puhdas instrumentaaliversio poistaa — klikkaa kuullaksesi, mitä jäisi pois."
+      "backingVocalsWaveformRemoved": "Taustalaulut, jotka puhdas instrumentaaliversio poistaa — klikkaa kuullaksesi, mitä jäisi pois.",
+      "playingWhileEncoding": "Toistetaan: {stem}",
+      "stopAudio": "Pysäytä ääni"
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",
