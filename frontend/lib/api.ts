@@ -516,9 +516,18 @@ const HARD_TIMEOUT_MS = 45_000;
 const GET_MAX_ATTEMPTS = 3;
 /** Backoff between GET retries (ms), indexed by prior-attempt number. */
 const RETRY_BACKOFF_MS = [600, 1500];
+/** Backoff for network-level failures (fetch rejected). A cross-origin request
+ *  blocked by Cloudflare's rate limit surfaces as an opaque network error (its
+ *  block page has no CORS headers), and the mitigation window is 10s — quick
+ *  0.6/1.5s retries all land inside the block AND add fuel to the count. Space
+ *  the retries so the last attempt can land after a block window has expired. */
+const NETWORK_RETRY_BACKOFF_MS = [2_000, 9_000];
 /** Edge/origin status codes that mean "backend briefly unreachable", not a real
- *  application error: standard 502/503/504 plus Cloudflare's origin-reachability 52x. */
-const TRANSIENT_STATUS = new Set([502, 503, 504, 520, 521, 522, 523, 524]);
+ *  application error: standard 502/503/504 plus Cloudflare's origin-reachability
+ *  52x, and 429 (edge rate-limit block, when the response is readable). */
+const TRANSIENT_STATUS = new Set([429, 502, 503, 504, 520, 521, 522, 523, 524]);
+/** Wait before retrying a 429: at least the edge mitigation window. */
+const RATE_LIMITED_RETRY_MS = 10_500;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -658,7 +667,7 @@ export async function apiFetch(
         if (callerSignal?.aborted) throw err;
         lastError = err;
         if (attempt < maxAttempts) {
-          await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
+          await sleep(NETWORK_RETRY_BACKOFF_MS[Math.min(attempt - 1, NETWORK_RETRY_BACKOFF_MS.length - 1)]);
           continue;
         }
         throw new BackendUnavailableError(err);
@@ -667,7 +676,19 @@ export async function apiFetch(
 
       if (TRANSIENT_STATUS.has(response.status)) {
         if (allowRetry && attempt < maxAttempts) {
-          await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
+          if (response.status === 429) {
+            // Rate-limited at the edge: honor Retry-After when present, else
+            // wait out the full mitigation window — retrying sooner both fails
+            // and prolongs the block.
+            const retryAfterS = Number(response.headers.get('retry-after'));
+            await sleep(
+              Number.isFinite(retryAfterS) && retryAfterS > 0
+                ? retryAfterS * 1000 + 500
+                : RATE_LIMITED_RETRY_MS,
+            );
+          } else {
+            await sleep(RETRY_BACKOFF_MS[Math.min(attempt - 1, RETRY_BACKOFF_MS.length - 1)]);
+          }
           continue;
         }
         if (isGet) {

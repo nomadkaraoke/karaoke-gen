@@ -250,10 +250,20 @@ def create_waf_rulesets(zone_id: str, hosts: list[str]) -> dict[str, cloudflare.
 # --------------------------------------------------------------------------- #
 def create_rate_limit_ruleset(zone_id: str, hosts: list[str]) -> cloudflare.Ruleset:
     host_expr = _host_match_expression(hosts)
-    # Don't rate-limit OIDC-authed scheduler hits to /api/internal/*.
+    # Exclusions from rate-limit counting:
+    # - /api/internal/*: OIDC-authed scheduler hits.
+    # - OPTIONS: CORS preflights double every browser API call's edge count, and
+    #   a blocked preflight kills the real request even when it would have
+    #   passed. Preflights are cheap and carry no abuse value.
+    # - /api/health: the frontend's connectivity probe must reflect ORIGIN
+    #   health. If probes get rate-limited alongside a burst, every open tab
+    #   shows the outage banner for an origin that is perfectly healthy
+    #   (2026-09-22 16-tab incident).
     expression = (
         f'{host_expr} and '
-        f'(not starts_with(http.request.uri.path, "{CloudflareConfig.INTERNAL_PATH_PREFIX}"))'
+        f'(not starts_with(http.request.uri.path, "{CloudflareConfig.INTERNAL_PATH_PREFIX}")) and '
+        f'(http.request.method ne "OPTIONS") and '
+        f'(http.request.uri.path ne "/api/health")'
     )
     return cloudflare.Ruleset(
         "edge-ratelimit",
