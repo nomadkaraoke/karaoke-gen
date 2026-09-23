@@ -365,7 +365,7 @@
     },
     "karaokehuntConversion": {
       "subject": "Your karaoke request: {artist} - {title}",
-      "intro": "You just requested a karaoke track in the KaraokeHunt app. KaraokeHunt has grown up - it's now Nomad Karaoke - and the old app is retired, but your request landed safely with us.",
+      "intro": "You just requested a karaoke track through the KaraokeHunt app. That app is retired and no longer supported - it has grown up into Nomad Karaoke (gen.nomadkaraoke.com) - but your request still reached us, and we've taken care of it one last time.",
       "jobStarted": "Good news: we're making your track right now.",
       "jobDetail": "We've started generating a full karaoke video for {artist} - {title}. We'll email you when it's ready - usually within a few hours.",
       "newAccountNote": "We set up a free Nomad Karaoke account for this email address, and this first video is on us.",
@@ -374,12 +374,21 @@
       "parkedDetail": "We couldn't confidently pick the right audio recording for {artist} - {title} automatically. Sign in below, choose the recording (it takes about 10 seconds), and we'll generate your karaoke video from there.",
       "boardIntro": "Your song is on the free community requests board.",
       "boardDetail": "Your Nomad Karaoke account is out of credits, so we've added {artist} - {title} to our free community requests board - every day the top-voted request gets made for free. Vote for your song to move it up the queue, or grab credits to make it instantly.",
+      "communityIntro": "Good news: this song already has a karaoke version you can sing right now.",
+      "communityDetail": "A community karaoke version of {artist} - {title} already exists on YouTube - free and ready now, no need to wait for us to generate one.",
+      "communityCreditNoteNew": "We've also set up a free Nomad Karaoke account for this email address, with 1 free credit you can use any time to generate your own studio-quality custom version of any song.",
+      "communityCreditNoteExisting": "Your Nomad Karaoke credits weren't touched - sign in any time if you'd like to generate your own studio-quality custom version instead.",
+      "signInLink": "Sign in to Nomad Karaoke",
       "trackButton": "Sign in & track your song",
       "pickButton": "Sign in & choose the recording",
       "boardButton": "View the requests board",
       "communityBonus": "Bonus: a community karaoke version of this song already exists on YouTube - you can sing it right now:",
       "communityLinkText": "Sing it now on YouTube",
-      "whyEmail": "Why this email? A song request was submitted in the retired KaraokeHunt app using this address. This is a one-time message about that request - there's no mailing list behind it. Questions? Just reply: a real human (Andrew, the founder) reads everything."
+      "whyEmail": "Why this email? A song request was submitted in the retired KaraokeHunt app using this address. This is a one-time message about that request - there's no mailing list behind it. Questions? Just reply: a real human (Andrew, the founder) reads everything.",
+      "uninstallNote": "One important thing: this was a one-time conversion. Future requests made through the old KaraokeHunt app won't be processed, so please uninstall it and make your karaoke tracks directly at gen.nomadkaraoke.com from now on - your account is ready there.",
+      "uninstallIntro": "You just made a song request through the KaraokeHunt app - but that app is retired and no longer supported, and this request was not processed.",
+      "uninstallHeadline": "Please uninstall the KaraokeHunt app.",
+      "uninstallDetail": "You've already received your one-time free conversion from us, so requests through the old app (like this one for {artist} - {title}) no longer do anything. To make karaoke tracks, sign in at gen.nomadkaraoke.com instead - same account, and it does far more than the old app ever did."
     }
   }
 }

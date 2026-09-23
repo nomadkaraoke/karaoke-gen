@@ -689,21 +689,49 @@ class EmailService:
         community_url: Optional[str] = None,
         used_existing_credit: bool = False,
         locale: str = "en",
+        is_new_user: bool = False,
     ) -> bool:
         """The email the retired KaraokeHunt app has promised its users for years
-        ("you should receive an email in 5-10 minutes"). One template, three
+        ("you should receive an email in 5-10 minutes"). One template, four
         variants matching the conversion outcome:
 
         - "job": their track is being generated right now
         - "job_parked": we need them to pick the audio recording first
         - "board": no credits, so the song went to the community requests board
+        - "community": a community karaoke version already exists — no job was
+          made; the main button IS the YouTube link
+        - "uninstall": they already used their one-time freebie — nothing was
+          processed; tell them to uninstall the app and use Gen directly
+
+        All first-time variants also carry the "uninstall the app, use
+        gen.nomadkaraoke.com from now on" note — the conversion is one-per-email.
         """
         esc_artist = html.escape(artist)
         esc_title = html.escape(title)
         subject = t(locale, "emails.karaokehuntConversion.subject",
                     artist=artist, title=title)
 
-        if variant == "job_parked":
+        intro = t(
+            locale,
+            "emails.karaokehuntConversion.uninstallIntro" if variant == "uninstall"
+            else "emails.karaokehuntConversion.intro",
+        )
+
+        if variant == "uninstall":
+            headline = t(locale, "emails.karaokehuntConversion.uninstallHeadline")
+            detail = t(locale, "emails.karaokehuntConversion.uninstallDetail",
+                       artist=esc_artist, title=esc_title)
+            detail_key = "uninstallDetail"
+            button_label = t(locale, "emails.karaokehuntConversion.signInLink")
+            button_url = login_url
+        elif variant == "community":
+            headline = t(locale, "emails.karaokehuntConversion.communityIntro")
+            detail = t(locale, "emails.karaokehuntConversion.communityDetail",
+                       artist=esc_artist, title=esc_title)
+            detail_key = "communityDetail"
+            button_label = t(locale, "emails.karaokehuntConversion.communityLinkText")
+            button_url = community_url or "https://gen.nomadkaraoke.com"
+        elif variant == "job_parked":
             headline = t(locale, "emails.karaokehuntConversion.parkedIntro")
             detail = t(locale, "emails.karaokehuntConversion.parkedDetail",
                        artist=esc_artist, title=esc_title)
@@ -731,10 +759,16 @@ class EmailService:
                 account_note = t(locale, "emails.karaokehuntConversion.usedCreditNote")
             else:
                 account_note = t(locale, "emails.karaokehuntConversion.newAccountNote")
+        elif variant == "community":
+            account_note = t(
+                locale,
+                "emails.karaokehuntConversion.communityCreditNoteNew" if is_new_user
+                else "emails.karaokehuntConversion.communityCreditNoteExisting",
+            )
 
         community_block = ""
         community_text = ""
-        if community_url:
+        if community_url and variant != "community":
             community_block = f"""
     <p>{t(locale, "emails.karaokehuntConversion.communityBonus")}<br>
     <a href="{html.escape(community_url)}">{t(locale, "emails.karaokehuntConversion.communityLinkText")}</a></p>
@@ -745,16 +779,29 @@ class EmailService:
             )
 
         sign_in_line = ""
-        if variant == "board":
-            # The board is public, but voting needs them signed in.
+        sign_in_text = ""
+        if variant in ("board", "community"):
+            # Board voting / using their credit both need them signed in.
+            sign_in_label = t(
+                locale,
+                "emails.karaokehuntConversion.trackButton" if variant == "board"
+                else "emails.karaokehuntConversion.signInLink",
+            )
             sign_in_line = f"""
     <p style="text-align: center;">
-        <a href="{login_url}">{t(locale, "emails.karaokehuntConversion.trackButton")}</a>
+        <a href="{login_url}">{sign_in_label}</a>
     </p>
 """
+            sign_in_text = f"\n{sign_in_label}: {login_url}\n"
+
+        # First-time variants carry the uninstall instruction; the "uninstall"
+        # variant IS that instruction, so it doesn't repeat it.
+        uninstall_note = ""
+        if variant != "uninstall":
+            uninstall_note = t(locale, "emails.karaokehuntConversion.uninstallNote")
 
         content = f"""
-    <p>{t(locale, "emails.karaokehuntConversion.intro")}</p>
+    <p>{intro}</p>
 
     <p><strong>{headline}</strong></p>
 
@@ -766,13 +813,15 @@ class EmailService:
         <a href="{button_url}" class="button">{button_label}</a>
     </p>
 {sign_in_line}{community_block}
+    {f'<p><strong>{uninstall_note}</strong></p>' if uninstall_note else ''}
+
     <p style="font-size: 13px; color: #6b7280;">{t(locale, "emails.karaokehuntConversion.whyEmail")}</p>
 """
 
         html_content = self._build_email_html(content, locale=locale)
 
         text_content = f"""
-{t(locale, "emails.karaokehuntConversion.intro")}
+{intro}
 
 {headline}
 
@@ -781,7 +830,9 @@ class EmailService:
 {account_note}
 
 {button_label}: {button_url}
-{community_text}
+{sign_in_text}{community_text}
+{uninstall_note}
+
 ---
 {t(locale, "emails.karaokehuntConversion.whyEmail")}
 

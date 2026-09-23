@@ -17,10 +17,15 @@ app POST create.karaokehunt.com/create_karaoke_video
        POST https://api.nomadkaraoke.com/api/karaokehunt/request
        with X-KH-Forwarder-Secret (Secret Manager: karaokehunt-forwarder-secret)
          └─ backend/workers/karaokehunt_conversion.py decides:
+            ONE freebie EVER per email — repeats get only the throttled
+              "please uninstall, use gen directly" email (repeat_request)
+            community karaoke version already exists → no job; email links
+              to it (community_existing; new users keep their credit)
             new email → create account +1 credit → job as them
             existing w/ credits → job (their credit)
             no credits / over daily cap → free community requests board
-            …and sends the long-promised email (one-click sign-in link).
+            …and sends the long-promised email (one-click sign-in link;
+            every variant says: uninstall the app, use gen directly).
 ```
 
 ## Deploy / update
@@ -53,8 +58,8 @@ from ci.yml `--set-secrets` (endpoint 503s when unset), or set
 ## Observability
 
 - Firestore `karaokehunt_requests` — one doc per intake with `outcome`
-  (`job_created` / `job_parked` / `board_submitted` / `duplicate` / `invalid` /
-  `error`), `job_id`, `email_sent`, raw payload.
+  (`job_created` / `job_parked` / `board_submitted` / `community_existing` /
+  `repeat_request` / `duplicate` / `invalid` / `error`), `job_id`, `email_sent`, raw payload.
 - Cloud Logging: `karaokehunt:` log lines on karaoke-backend.
 - Failed docs: retry via `POST /api/karaokehunt/internal/reprocess/{doc_id}`
   (admin token).

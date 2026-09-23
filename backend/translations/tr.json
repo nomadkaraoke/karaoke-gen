@@ -369,7 +369,7 @@
       "boardIntro": "Şarkın ücretsiz topluluk istek panosunda.",
       "communityBonus": "Bonus: bu şarkının topluluk tarafından hazırlanmış bir karaoke versiyonu YouTube'da zaten var - hemen şimdi söyleyebilirsin:",
       "communityLinkText": "Şimdi YouTube'da söyle",
-      "intro": "Az önce KaraokeHunt uygulamasında bir karaoke parçası istedin. KaraokeHunt büyüdü - artık Nomad Karaoke oldu - ve eski uygulama kullanımdan kaldırıldı, ancak isteğin bize güvenle ulaştı.",
+      "intro": "Az önce KaraokeHunt uygulaması üzerinden bir karaoke parçası talep ettin. Bu uygulama kullanımdan kaldırıldı ve artık desteklenmiyor - büyüyüp Nomad Karaoke'ye (gen.nomadkaraoke.com) dönüştü - ancak talebin yine de bize ulaştı ve bunu son bir kez hallettik.",
       "jobDetail": "{artist} - {title} için tam bir karaoke videosu oluşturmaya başladık. Hazır olduğunda sana e-posta göndereceğiz - genellikle birkaç saat içinde tamamlanır.",
       "jobStarted": "İyi haber: parçanı şu anda hazırlıyoruz.",
       "newAccountNote": "Bu e-posta adresi için ücretsiz bir Nomad Karaoke hesabı oluşturduk ve bu ilk video bizden.",
@@ -379,7 +379,16 @@
       "subject": "Karaoke isteğin: {artist} - {title}",
       "trackButton": "Giriş yap ve şarkını takip et",
       "usedCreditNote": "Bu işlem mevcut Nomad Karaoke hesabından 1 kredi kullandı. İstediğin bu değil miydi? Sadece bu e-postayı yanıtla ve kredini geri yükleyelim.",
-      "whyEmail": "Neden bu e-posta? Bu adres kullanılarak kullanımdan kaldırılan KaraokeHunt uygulamasında bir şarkı isteği gönderildi. Bu, o istekle ilgili tek seferlik bir mesajdır - arkasında bir e-posta listesi yoktur. Soruların mı var? Sadece yanıtla: her şeyi gerçek bir insan (kurucu Andrew) okuyor."
+      "whyEmail": "Neden bu e-posta? Bu adres kullanılarak kullanımdan kaldırılan KaraokeHunt uygulamasında bir şarkı isteği gönderildi. Bu, o istekle ilgili tek seferlik bir mesajdır - arkasında bir e-posta listesi yoktur. Soruların mı var? Sadece yanıtla: her şeyi gerçek bir insan (kurucu Andrew) okuyor.",
+      "communityCreditNoteExisting": "Nomad Karaoke kredilerine dokunulmadı - bunun yerine kendi stüdyo kalitesinde özel versiyonunu oluşturmak istersen istediğin zaman giriş yapabilirsin.",
+      "communityCreditNoteNew": "Ayrıca bu e-posta adresi için, herhangi bir şarkının kendi stüdyo kalitesinde özel versiyonunu oluşturmak üzere istediğin zaman kullanabileceğin 1 ücretsiz kredi içeren ücretsiz bir Nomad Karaoke hesabı oluşturduk.",
+      "communityDetail": "{artist} - {title} şarkısının bir topluluk karaoke versiyonu YouTube'da zaten mevcut - ücretsiz ve şu an hazır, bizim bir tane oluşturmamızı beklemene gerek yok.",
+      "communityIntro": "İyi haber: bu şarkının şu anda söyleyebileceğin bir karaoke versiyonu zaten var.",
+      "signInLink": "Nomad Karaoke'ye giriş yap",
+      "uninstallDetail": "Bizden tek seferlik ücretsiz dönüştürme işlemini zaten aldın, bu nedenle eski uygulama üzerinden yapılan istekler (örneğin bu {artist} - {title} isteği) artık hiçbir işe yaramıyor. Karaoke parçaları yapmak için bunun yerine gen.nomadkaraoke.com adresinden giriş yap - aynı hesap ve eski uygulamanın yaptığından çok daha fazlasını yapıyor.",
+      "uninstallHeadline": "Lütfen KaraokeHunt uygulamasını kaldır.",
+      "uninstallIntro": "Az önce KaraokeHunt uygulaması üzerinden bir şarkı isteğinde bulundun - ancak bu uygulama emekliye ayrıldı ve artık desteklenmiyor, ve bu istek işleme alınmadı.",
+      "uninstallNote": "Önemli bir şey: bu tek seferlik bir dönüştürmeydi. Eski KaraokeHunt uygulaması üzerinden yapılan gelecekteki istekler işleme alınmayacak, bu yüzden lütfen onu kaldır ve bundan sonra karaoke parçalarını doğrudan gen.nomadkaraoke.com adresinde yap - hesabın orada hazır."
     }
   }
 }

@@ -369,7 +369,7 @@
       "boardIntro": "Bài hát của bạn đã có trên bảng yêu cầu cộng đồng miễn phí.",
       "communityBonus": "Điểm thưởng: một phiên bản karaoke cộng đồng của bài hát này đã có sẵn trên YouTube - bạn có thể hát ngay bây giờ:",
       "communityLinkText": "Hát ngay trên YouTube",
-      "intro": "Bạn vừa yêu cầu một bài hát karaoke trong ứng dụng KaraokeHunt. KaraokeHunt đã phát triển - giờ đây là Nomad Karaoke - và ứng dụng cũ đã ngừng hoạt động, nhưng yêu cầu của bạn đã được gửi đến chúng tôi an toàn.",
+      "intro": "Bạn vừa yêu cầu một bài hát karaoke thông qua ứng dụng KaraokeHunt. Ứng dụng đó đã ngừng hoạt động và không còn được hỗ trợ nữa - nó đã phát triển thành Nomad Karaoke (gen.nomadkaraoke.com) - nhưng yêu cầu của bạn vẫn đến được với chúng tôi, và chúng tôi đã xử lý nó cho bạn lần cuối cùng này.",
       "jobDetail": "Chúng tôi đã bắt đầu tạo một video karaoke hoàn chỉnh cho {artist} - {title}. Chúng tôi sẽ gửi email cho bạn khi hoàn tất - thường trong vòng vài giờ.",
       "jobStarted": "Tin tốt: chúng tôi đang tạo bài hát của bạn ngay bây giờ.",
       "newAccountNote": "Chúng tôi đã tạo một tài khoản Nomad Karaoke miễn phí cho địa chỉ email này, và video đầu tiên này hoàn toàn miễn phí cho bạn.",
@@ -379,7 +379,16 @@
       "subject": "Yêu cầu karaoke của bạn: {artist} - {title}",
       "trackButton": "Đăng nhập & theo dõi bài hát của bạn",
       "usedCreditNote": "Việc này đã sử dụng 1 tín dụng từ tài khoản Nomad Karaoke hiện tại của bạn. Không đúng như bạn muốn? Chỉ cần trả lời email này và chúng tôi sẽ hoàn lại nó.",
-      "whyEmail": "Tại sao lại có email này? Một yêu cầu bài hát đã được gửi trong ứng dụng KaraokeHunt đã ngừng hoạt động bằng địa chỉ này. Đây là tin nhắn một lần về yêu cầu đó - không có danh sách gửi thư nào đằng sau nó. Bạn có câu hỏi? Chỉ cần trả lời: một người thật (Andrew, người sáng lập) sẽ đọc mọi thứ."
+      "whyEmail": "Tại sao lại có email này? Một yêu cầu bài hát đã được gửi trong ứng dụng KaraokeHunt đã ngừng hoạt động bằng địa chỉ này. Đây là tin nhắn một lần về yêu cầu đó - không có danh sách gửi thư nào đằng sau nó. Bạn có câu hỏi? Chỉ cần trả lời: một người thật (Andrew, người sáng lập) sẽ đọc mọi thứ.",
+      "communityCreditNoteExisting": "Số credit Nomad Karaoke của bạn vẫn được giữ nguyên - hãy đăng nhập bất cứ lúc nào nếu bạn muốn tự tạo một phiên bản tùy chỉnh chất lượng phòng thu cho riêng mình.",
+      "communityCreditNoteNew": "Chúng tôi cũng đã thiết lập một tài khoản Nomad Karaoke miễn phí cho địa chỉ email này, với 1 credit miễn phí mà bạn có thể sử dụng bất cứ lúc nào để tạo phiên bản tùy chỉnh chất lượng phòng thu cho bất kỳ bài hát nào.",
+      "communityDetail": "Một phiên bản karaoke cộng đồng của {artist} - {title} đã có sẵn trên YouTube - miễn phí và sẵn sàng ngay bây giờ, không cần phải đợi chúng tôi tạo.",
+      "communityIntro": "Tin vui: bài hát này đã có sẵn phiên bản karaoke để bạn có thể hát ngay bây giờ.",
+      "signInLink": "Đăng nhập vào Nomad Karaoke",
+      "uninstallDetail": "Bạn đã nhận được bản chuyển đổi miễn phí một lần từ chúng tôi, vì vậy các yêu cầu thông qua ứng dụng cũ (như yêu cầu này cho {artist} - {title}) sẽ không còn tác dụng nữa. Để tạo các bản karaoke, thay vào đó hãy đăng nhập tại gen.nomadkaraoke.com - cùng một tài khoản, và nó làm được nhiều việc hơn hẳn so với ứng dụng cũ.",
+      "uninstallHeadline": "Vui lòng gỡ cài đặt ứng dụng KaraokeHunt.",
+      "uninstallIntro": "Bạn vừa tạo một yêu cầu bài hát thông qua ứng dụng KaraokeHunt - nhưng ứng dụng đó đã ngừng hoạt động và không còn được hỗ trợ nữa, và yêu cầu này đã không được xử lý.",
+      "uninstallNote": "Một điều quan trọng: đây là lần chuyển đổi duy nhất. Các yêu cầu trong tương lai được thực hiện thông qua ứng dụng KaraokeHunt cũ sẽ không được xử lý, vì vậy vui lòng gỡ cài đặt nó và từ nay hãy tạo các bản karaoke của bạn trực tiếp tại gen.nomadkaraoke.com - tài khoản của bạn đã sẵn sàng ở đó."
     }
   }
 }

@@ -369,7 +369,7 @@
       "boardIntro": "Ta chanson est sur le tableau des demandes communautaires gratuit.",
       "communityBonus": "Bonus : une version karaoké communautaire de cette chanson existe déjà sur YouTube - tu peux la chanter dès maintenant :",
       "communityLinkText": "Chante-la maintenant sur YouTube",
-      "intro": "Tu viens de demander une piste de karaoké dans l'application KaraokeHunt. KaraokeHunt a grandi - c'est maintenant Nomad Karaoke - et l'ancienne application est retirée, mais ta demande est bien arrivée chez nous.",
+      "intro": "Tu viens de demander une piste de karaoké via l'application KaraokeHunt. Cette application a été retirée et n'est plus prise en charge - elle a évolué pour devenir Nomad Karaoke (gen.nomadkaraoke.com) - mais ta demande nous est quand même parvenue, et nous nous en sommes occupés une dernière fois.",
       "jobDetail": "Nous avons commencé à générer une vidéo karaoké complète pour {artist} - {title}. Nous t'enverrons un e-mail quand elle sera prête - généralement en quelques heures.",
       "jobStarted": "Bonne nouvelle : nous créons ta piste en ce moment même.",
       "newAccountNote": "Nous avons configuré un compte Nomad Karaoke gratuit pour cette adresse e-mail, et cette première vidéo est offerte.",
@@ -379,7 +379,16 @@
       "subject": "Ta demande de karaoké : {artist} - {title}",
       "trackButton": "Connecte-toi et suis ta chanson",
       "usedCreditNote": "Cela a utilisé 1 crédit de ton compte Nomad Karaoke existant. Ce n'est pas ce que tu voulais ? Réponds simplement à cet e-mail et nous le restaurerons.",
-      "whyEmail": "Pourquoi cet e-mail ? Une demande de chanson a été soumise dans l'ancienne application KaraokeHunt en utilisant cette adresse. Il s'agit d'un message unique concernant cette demande - il n'y a pas de liste de diffusion derrière. Des questions ? Réponds simplement : un vrai humain (Andrew, le fondateur) lit tout."
+      "whyEmail": "Pourquoi cet e-mail ? Une demande de chanson a été soumise dans l'ancienne application KaraokeHunt en utilisant cette adresse. Il s'agit d'un message unique concernant cette demande - il n'y a pas de liste de diffusion derrière. Des questions ? Réponds simplement : un vrai humain (Andrew, le fondateur) lit tout.",
+      "communityCreditNoteExisting": "Tes crédits Nomad Karaoke n'ont pas été touchés - connecte-toi à tout moment si tu souhaites plutôt générer ta propre version personnalisée de qualité studio.",
+      "communityCreditNoteNew": "Nous avons également créé un compte Nomad Karaoke gratuit pour cette adresse e-mail, avec 1 crédit gratuit que tu peux utiliser à tout moment pour générer ta propre version personnalisée de qualité studio de n'importe quelle chanson.",
+      "communityDetail": "Une version karaoké communautaire de {artist} - {title} existe déjà sur YouTube - gratuite et prête dès maintenant, pas besoin d'attendre que nous en générions une.",
+      "communityIntro": "Bonne nouvelle : cette chanson a déjà une version karaoké que tu peux chanter dès maintenant.",
+      "signInLink": "Connecte-toi à Nomad Karaoke",
+      "uninstallDetail": "Tu as déjà reçu ta conversion gratuite unique de notre part, donc les demandes via l'ancienne application (comme celle-ci pour {artist} - {title}) ne font plus rien. Pour créer des pistes karaoké, connecte-toi plutôt sur gen.nomadkaraoke.com - c'est le même compte, et il fait bien plus que ce que l'ancienne application n'a jamais fait.",
+      "uninstallHeadline": "Merci de désinstaller l'application KaraokeHunt.",
+      "uninstallIntro": "Tu viens de faire une demande de chanson via l'application KaraokeHunt - mais cette application est retirée et n'est plus prise en charge, et cette demande n'a pas été traitée.",
+      "uninstallNote": "Une chose importante : il s'agissait d'une conversion unique. Les futures demandes effectuées via l'ancienne application KaraokeHunt ne seront pas traitées, alors merci de la désinstaller et de créer tes pistes karaoké directement sur gen.nomadkaraoke.com à partir de maintenant - ton compte y est prêt."
     }
   }
 }

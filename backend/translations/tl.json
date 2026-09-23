@@ -369,7 +369,7 @@
       "boardIntro": "Nasa libreng community requests board na ang iyong kanta.",
       "communityBonus": "Bonus: mayroon nang community karaoke version ang kantang ito sa YouTube - maaari mo na itong kantahin ngayon:",
       "communityLinkText": "Kantahin na ito sa YouTube",
-      "intro": "Nag-request ka ng karaoke track sa KaraokeHunt app. Lumaki na ang KaraokeHunt - ngayon ay Nomad Karaoke na ito - at retirado na ang lumang app, pero ligtas na nakarating sa amin ang iyong request.",
+      "intro": "Kaka-request mo lang ng karaoke track gamit ang KaraokeHunt app. Ang app na iyon ay hindi na ginagamit at hindi na sinusuportahan - lumaki na ito at naging Nomad Karaoke (gen.nomadkaraoke.com) - ngunit nakarating pa rin sa amin ang iyong request, at inasikaso namin ito sa huling pagkakataon.",
       "jobDetail": "Sinimulan na naming gumawa ng buong karaoke video para sa {artist} - {title}. I-e-email ka namin kapag handa na ito - kadalasan sa loob ng ilang oras.",
       "jobStarted": "Magandang balita: ginagawa na namin ang iyong track ngayon.",
       "newAccountNote": "Gumawa kami ng libreng Nomad Karaoke account para sa email address na ito, at libre na ang unang video na ito mula sa amin.",
@@ -379,7 +379,16 @@
       "subject": "Ang iyong karaoke request: {artist} - {title}",
       "trackButton": "Mag-sign in at i-track ang iyong kanta",
       "usedCreditNote": "Gumamit ito ng 1 credit mula sa iyong kasalukuyang Nomad Karaoke account. Hindi ito ang gusto mo? Mag-reply lang sa email na ito at ibabalik namin ito.",
-      "whyEmail": "Bakit may email na ito? May ipinadalang song request sa retiradong KaraokeHunt app gamit ang address na ito. Isa itong one-time na mensahe tungkol sa request na iyon - walang mailing list sa likod nito. May mga tanong? Mag-reply lang: isang totoong tao (si Andrew, ang founder) ang nagbabasa ng lahat."
+      "whyEmail": "Bakit may email na ito? May ipinadalang song request sa retiradong KaraokeHunt app gamit ang address na ito. Isa itong one-time na mensahe tungkol sa request na iyon - walang mailing list sa likod nito. May mga tanong? Mag-reply lang: isang totoong tao (si Andrew, ang founder) ang nagbabasa ng lahat.",
+      "communityCreditNoteExisting": "Hindi nabawasan ang iyong Nomad Karaoke credits - mag-sign in anumang oras kung gusto mong gumawa ng sarili mong studio-quality custom version sa halip.",
+      "communityCreditNoteNew": "Gumawa rin kami ng libreng Nomad Karaoke account para sa email address na ito, na may 1 libreng credit na magagamit mo anumang oras para gumawa ng sarili mong studio-quality custom version ng anumang kanta.",
+      "communityDetail": "Mayroon nang community karaoke version ng {artist} - {title} sa YouTube - libre at handa na ngayon, hindi na kailangang maghintay na gumawa pa kami.",
+      "communityIntro": "Magandang balita: ang kantang ito ay mayroon nang karaoke version na maaari mong kantahin ngayon din.",
+      "signInLink": "Mag-sign in sa Nomad Karaoke",
+      "uninstallDetail": "Natanggap mo na ang iyong one-time free conversion mula sa amin, kaya ang mga request gamit ang lumang app (tulad nito para sa {artist} - {title}) ay hindi na gagana. Para gumawa ng mga karaoke track, mag-sign in sa gen.nomadkaraoke.com sa halip - parehong account, at mas marami itong nagagawa kaysa sa lumang app.",
+      "uninstallHeadline": "Mangyaring i-uninstall ang KaraokeHunt app.",
+      "uninstallIntro": "Kaka-request mo lang ng kanta gamit ang KaraokeHunt app - ngunit ang app na iyon ay retired na at hindi na suportado, at hindi naproseso ang request na ito.",
+      "uninstallNote": "Isang mahalagang bagay: ito ay isang one-time conversion. Ang mga susunod na request gamit ang lumang KaraokeHunt app ay hindi na ipoproseso, kaya mangyaring i-uninstall ito at gumawa ng iyong mga karaoke track nang direkta sa gen.nomadkaraoke.com mula ngayon - handa na ang iyong account doon."
     }
   }
 }

@@ -2714,14 +2714,20 @@ app's real IP, forwarded by the Worker). Body is parsed leniently (the live
 binary's exact schema is unverifiable): `{email, artist, title, input_url?, …}`.
 
 Each request is logged to Firestore `karaokehunt_requests` and converted
-synchronously (`backend/workers/karaokehunt_conversion.py`): new emails get an
-account + 1 credit (`karaokehunt_app_conversion`) and a job created as them
-(conservative `pick_auto_selection`; unconfident matches park in
-`AWAITING_AUDIO_SELECTION`); existing users with credits get the job on their
-own credit; existing users without credits (or requests over the
+synchronously (`backend/workers/karaokehunt_conversion.py`). The conversion is
+a **one-time freebie per email address**: a later request through the app gets
+no job/board/credit — just a "please uninstall, use gen.nomadkaraoke.com
+directly" email (throttled to one per 7 days per address; outcome
+`repeat_request`). First-time routing: if a **community karaoke version already
+exists** (KaraokeNerds mirror) no job is made — the email links straight to it
+(outcome `community_existing`; new users keep their credit); otherwise new
+emails get an account + 1 credit (`karaokehunt_app_conversion`) and — while
+under the daily cap — a job created as them (conservative `pick_auto_selection`; unconfident matches park
+in `AWAITING_AUDIO_SELECTION`); existing users with credits get the job on
+their own credit; existing users without credits (or requests over the
 `KARAOKEHUNT_DAILY_JOB_CAP`, default 3/day) go to the community requests board.
-Every converted requester gets `send_karaokehunt_conversion` with a 7-day
-one-click sign-in link. Always returns `200 {"status": "success"}` — the app
+Every email (all variants tell them to uninstall the retired app) is
+`send_karaokehunt_conversion` with a 7-day one-click sign-in link. Always returns `200 {"status": "success"}` — the app
 ignores the response, and failures are retried via the endpoint below.
 
 ### Reprocess (Admin)

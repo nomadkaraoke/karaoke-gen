@@ -47,6 +47,9 @@ class FakeRef:
 
 
 class FakeCollection:
+    """Filters are ignored — stream() yields every stored doc, mirroring the
+    worst case the helpers' in-Python filtering must handle anyway."""
+
     def __init__(self, store):
         self.store = store
 
@@ -57,7 +60,7 @@ class FakeCollection:
         return self
 
     def stream(self):
-        return iter([])
+        return iter(FakeSnap(dict(d)) for d in self.store.values())
 
 
 class FakeDb:
@@ -194,6 +197,107 @@ class TestProcessIntake:
         assert result["status"] == "job_created"
         svc.add_credits.assert_not_called()
         assert send.call_args.kwargs["used_existing_credit"] is True
+
+    @pytest.mark.asyncio
+    async def test_existing_community_version_short_circuits_job(
+            self, fake_db, monkeypatch):
+        """A song with an existing community karaoke version must never spend
+        generation resources — no job, no board; the email links to YouTube."""
+        fake_db.store["doc1"] = _intake_doc()
+        monkeypatch.setattr(khc, "_jobs_today", lambda db: 0)
+        monkeypatch.setattr(khc, "_community_version_url",
+                            AsyncMock(return_value="https://youtube.com/watch?v=abc"))
+        svc = _user_service(existing=False, credits=1)
+        monkeypatch.setattr(khc, "get_user_service", lambda: svc)
+        monkeypatch.setattr(khc, "get_settings", _settings)
+        make_job = AsyncMock()
+        board = AsyncMock()
+        monkeypatch.setattr(khc, "_make_job", make_job)
+        monkeypatch.setattr(khc, "_submit_to_board", board)
+        send = MagicMock(return_value=True)
+        monkeypatch.setattr(khc, "_send_conversion_email", send)
+
+        result = await khc.process_intake("doc1")
+
+        assert result["status"] == "community_existing"
+        make_job.assert_not_awaited()
+        board.assert_not_awaited()
+        # New users still get their account + conversion credit to keep.
+        svc.add_credits.assert_called_once()
+        assert send.call_args.kwargs["variant"] == "community"
+        assert send.call_args.kwargs["community_url"] == "https://youtube.com/watch?v=abc"
+        assert send.call_args.kwargs["is_new_user"] is True
+        assert fake_db.store["doc1"]["outcome"] == "community_existing"
+        # community_existing must be terminal AND count as the one-time freebie.
+        assert "community_existing" in khc.TERMINAL_OUTCOMES
+        assert "community_existing" in khc.CONVERTED_OUTCOMES
+
+    @pytest.mark.asyncio
+    async def test_community_short_circuit_existing_user_credits_untouched(
+            self, fake_db, monkeypatch):
+        fake_db.store["doc1"] = _intake_doc()
+        monkeypatch.setattr(khc, "_jobs_today", lambda db: 0)
+        monkeypatch.setattr(khc, "_community_version_url",
+                            AsyncMock(return_value="https://youtube.com/watch?v=abc"))
+        svc = _user_service(existing=True, credits=3)
+        monkeypatch.setattr(khc, "get_user_service", lambda: svc)
+        monkeypatch.setattr(khc, "get_settings", _settings)
+        monkeypatch.setattr(khc, "_make_job", AsyncMock())
+        send = MagicMock(return_value=True)
+        monkeypatch.setattr(khc, "_send_conversion_email", send)
+
+        result = await khc.process_intake("doc1")
+
+        assert result["status"] == "community_existing"
+        svc.add_credits.assert_not_called()
+        assert send.call_args.kwargs["is_new_user"] is False
+
+    @pytest.mark.asyncio
+    async def test_second_request_ever_gets_uninstall_email_only(
+            self, fake_db, monkeypatch):
+        """One freebie EVER per email: a later request for a DIFFERENT song gets
+        the uninstall email — no account changes, no job, no board."""
+        fake_db.store["doc0"] = _intake_doc(id="doc0", outcome="job_created",
+                                            job_id="j0")
+        fake_db.store["doc1"] = _intake_doc(
+            id="doc1", artist="Toto", title="Africa", dedupe_key="toto|africa")
+        svc = _user_service()
+        monkeypatch.setattr(khc, "get_user_service", lambda: svc)
+        make_job = AsyncMock()
+        board = AsyncMock()
+        monkeypatch.setattr(khc, "_make_job", make_job)
+        monkeypatch.setattr(khc, "_submit_to_board", board)
+        send = MagicMock(return_value=True)
+        monkeypatch.setattr(khc, "_send_conversion_email", send)
+
+        result = await khc.process_intake("doc1")
+
+        assert result["status"] == "repeat_request"
+        assert result["email_sent"] is True
+        make_job.assert_not_awaited()
+        board.assert_not_awaited()
+        svc.get_or_create_user.assert_not_called()
+        svc.add_credits.assert_not_called()
+        assert send.call_args.kwargs["variant"] == "uninstall"
+        assert fake_db.store["doc1"]["outcome"] == "repeat_request"
+
+    @pytest.mark.asyncio
+    async def test_repeat_uninstall_email_is_throttled(self, fake_db, monkeypatch):
+        """A hammering client can't make us spam: one uninstall email per window."""
+        fake_db.store["doc0"] = _intake_doc(id="doc0", outcome="job_created")
+        fake_db.store["docR"] = _intake_doc(
+            id="docR", artist="Toto", title="Africa", dedupe_key="toto|africa",
+            outcome="repeat_request", email_sent=True)
+        fake_db.store["doc1"] = _intake_doc(
+            id="doc1", artist="A-ha", title="Take On Me", dedupe_key="a-ha|take on me")
+        send = MagicMock()
+        monkeypatch.setattr(khc, "_send_conversion_email", send)
+
+        result = await khc.process_intake("doc1")
+
+        assert result["status"] == "repeat_request"
+        assert result["email_sent"] is False
+        send.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_no_credits_goes_to_requests_board(self, fake_db, quiet_side_paths, monkeypatch):
@@ -399,6 +503,8 @@ class TestConversionEmail:
         ("job", "Sign in & track your song"),
         ("job_parked", "Sign in & choose the recording"),
         ("board", "requests.nomadkaraoke.com"),
+        ("community", "https://youtube.com/watch?v=x"),
+        ("uninstall", "Please uninstall the KaraokeHunt app."),
     ])
     def test_variants_render_and_send(self, variant, expect):
         from backend.services.email_service import EmailService
@@ -416,16 +522,25 @@ class TestConversionEmail:
         ok = service.send_karaokehunt_conversion(
             email="fan@example.com", artist="Olivia <R>", title="good 4 u",
             variant=variant, login_url="https://gen.nomadkaraoke.com/auth/verify?token=tok",
-            community_url="https://youtube.com/watch?v=x" if variant == "job" else None,
+            community_url="https://youtube.com/watch?v=x" if variant == "community" else None,
+            is_new_user=(variant == "community"),
         )
 
         assert ok is True
         assert "good 4 u" in sent["subject"]
         assert expect in sent["html"]
+        # Every variant carries a sign-in path (button or secondary link).
         assert "token=tok" in sent["html"]
         # User content must be HTML-escaped.
         assert "Olivia <R>" not in sent["html"]
         assert "Olivia &lt;R&gt;" in sent["html"]
-        if variant == "job":
-            assert "youtube.com/watch?v=x" in sent["html"]
+        # First-time variants tell them to uninstall; the uninstall variant IS
+        # that message and must not duplicate the one-time-conversion note.
+        if variant == "uninstall":
+            assert "one-time conversion" not in sent["html"]
+        else:
+            assert "one-time conversion" in sent["html"]
+        if variant == "community":
+            # The main button must be the YouTube link, plus a credit note.
+            assert "free credit" in sent["html"]
         assert sent["email_type"] == "karaokehunt_conversion"

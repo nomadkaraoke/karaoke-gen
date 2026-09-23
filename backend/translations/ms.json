@@ -369,7 +369,7 @@
       "boardIntro": "Lagu anda berada di papan permintaan komuniti percuma.",
       "communityBonus": "Bonus: versi karaoke komuniti untuk lagu ini sudah ada di YouTube - anda boleh menyanyikannya sekarang:",
       "communityLinkText": "Nyanyi sekarang di YouTube",
-      "intro": "Anda baru sahaja meminta trek karaoke di aplikasi KaraokeHunt. KaraokeHunt telah berkembang - kini ia adalah Nomad Karaoke - dan aplikasi lama telah ditamatkan, tetapi permintaan anda telah selamat sampai kepada kami.",
+      "intro": "Anda baru sahaja meminta trek karaoke melalui aplikasi KaraokeHunt. Aplikasi tersebut telah ditamatkan dan tidak lagi disokong - ia telah berkembang menjadi Nomad Karaoke (gen.nomadkaraoke.com) - tetapi permintaan anda masih sampai kepada kami, dan kami telah menguruskannya buat kali terakhir.",
       "jobDetail": "Kami telah mula menjana video karaoke penuh untuk {artist} - {title}. Kami akan e-mel anda apabila ia sedia - biasanya dalam masa beberapa jam.",
       "jobStarted": "Berita baik: kami sedang menghasilkan trek anda sekarang.",
       "newAccountNote": "Kami telah menyediakan akaun Nomad Karaoke percuma untuk alamat e-mel ini, dan video pertama ini adalah percuma daripada kami.",
@@ -379,7 +379,16 @@
       "subject": "Permintaan karaoke anda: {artist} - {title}",
       "trackButton": "Log masuk & jejak lagu anda",
       "usedCreditNote": "Ini menggunakan 1 kredit daripada akaun Nomad Karaoke sedia ada anda. Bukan apa yang anda mahukan? Hanya balas e-mel ini dan kami akan memulihkannya.",
-      "whyEmail": "Mengapa e-mel ini? Permintaan lagu telah dihantar dalam aplikasi KaraokeHunt yang telah ditamatkan menggunakan alamat ini. Ini adalah mesej sekali sahaja mengenai permintaan tersebut - tiada senarai mel di sebaliknya. Ada soalan? Hanya balas: manusia sebenar (Andrew, pengasas) membaca semuanya."
+      "whyEmail": "Mengapa e-mel ini? Permintaan lagu telah dihantar dalam aplikasi KaraokeHunt yang telah ditamatkan menggunakan alamat ini. Ini adalah mesej sekali sahaja mengenai permintaan tersebut - tiada senarai mel di sebaliknya. Ada soalan? Hanya balas: manusia sebenar (Andrew, pengasas) membaca semuanya.",
+      "communityCreditNoteExisting": "Kredit Nomad Karaoke anda tidak disentuh - log masuk pada bila-bila masa jika anda ingin menjana versi tersuai berkualiti studio anda sendiri sebagai ganti.",
+      "communityCreditNoteNew": "Kami juga telah menyediakan akaun Nomad Karaoke percuma untuk alamat e-mel ini, dengan 1 kredit percuma yang boleh anda gunakan pada bila-bila masa untuk menjana versi tersuai berkualiti studio anda sendiri untuk mana-mana lagu.",
+      "communityDetail": "Versi karaoke komuniti untuk {artist} - {title} sudah wujud di YouTube - percuma dan sedia sekarang, tidak perlu tunggu kami menjananya.",
+      "communityIntro": "Berita baik: lagu ini sudah mempunyai versi karaoke yang anda boleh nyanyikan sekarang.",
+      "signInLink": "Log masuk ke Nomad Karaoke",
+      "uninstallDetail": "Anda telah pun menerima penukaran percuma sekali sahaja daripada kami, jadi permintaan melalui aplikasi lama (seperti yang ini untuk {artist} - {title}) tidak lagi berfungsi. Untuk membuat trek karaoke, log masuk di gen.nomadkaraoke.com sebagai ganti - akaun yang sama, dan ia melakukan lebih banyak perkara daripada aplikasi lama.",
+      "uninstallHeadline": "Sila nyahpasang aplikasi KaraokeHunt.",
+      "uninstallIntro": "Anda baru sahaja membuat permintaan lagu melalui aplikasi KaraokeHunt - tetapi aplikasi tersebut telah ditamatkan dan tidak lagi disokong, dan permintaan ini tidak diproses.",
+      "uninstallNote": "Satu perkara penting: ini adalah penukaran sekali sahaja. Permintaan masa hadapan yang dibuat melalui aplikasi KaraokeHunt lama tidak akan diproses, jadi sila nyahpasangnya dan buat trek karaoke anda terus di gen.nomadkaraoke.com mulai sekarang - akaun anda sudah sedia di sana."
     }
   }
 }

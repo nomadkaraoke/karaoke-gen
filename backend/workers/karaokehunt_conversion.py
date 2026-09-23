@@ -13,8 +13,16 @@ Per request we:
      the same search → conservative auto-select → download primitives as the web
      flow; existing users with credits get the job on their own credit; existing
      users without credits get the song submitted to the free community requests
-     board instead.
-  3. Send them the promised email (one-click sign-in link included).
+     board instead. If a community karaoke version of the song ALREADY exists
+     (KaraokeNerds mirror), no job or board entry is made at all — the email
+     links straight to it and new users keep their credit for a custom song.
+  3. Send them the promised email (one-click sign-in link included), which also
+     tells them to UNINSTALL the retired app and use gen.nomadkaraoke.com.
+
+The conversion is a ONE-TIME freebie per email address: any further request
+through the app after it gets no job/board/credit — just a throttled "please
+uninstall" email. The goal is converting these installs into direct Gen users,
+not keeping the dead app alive as a request channel.
 
 Mirrors ``community_daily_pick`` (the established grant-credit + create-job-as-user
 precedent) but uses the conservative ``pick_auto_selection`` instead of
@@ -59,7 +67,22 @@ DEDUP_WINDOW_DAYS = 14
 LOGIN_LINK_EXPIRY_HOURS = 168  # 7 days, the maximum
 
 # Outcomes that count as "this request was handled" for dedup purposes.
-TERMINAL_OUTCOMES = {"job_created", "job_parked", "board_submitted", "duplicate"}
+TERMINAL_OUTCOMES = {
+    "job_created", "job_parked", "board_submitted", "community_existing",
+    "duplicate", "repeat_request",
+}
+
+# Outcomes that consumed the email's ONE-TIME freebie. Any later request from
+# the same address gets the "please uninstall" email instead of a conversion —
+# the goal is moving these users to gen.nomadkaraoke.com, not keeping the
+# retired app alive as a request channel.
+CONVERTED_OUTCOMES = {
+    "job_created", "job_parked", "board_submitted", "community_existing",
+}
+
+# A hammering client must not make us spam its owner: at most one "please
+# uninstall" email per address per this many days.
+UNINSTALL_EMAIL_THROTTLE_DAYS = 7
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -161,9 +184,23 @@ async def process_intake(doc_id: str, force: bool = False) -> Dict[str, Any]:
         logger.info("karaokehunt: %s -> %s %s", doc_id, outcome, fields or "")
         return {"status": outcome, "doc_id": doc_id, **fields}
 
-    # ---- Dedup: same email + song already handled recently → do nothing. ----
+    # ---- Dedup: same email + song already handled recently → do nothing.
+    # (Kept ahead of the freebie gate so an accidental double-tap of the same
+    # song stays silent instead of triggering the uninstall email.)
     if _recent_duplicate_exists(db, doc):
         return finish("duplicate")
+
+    # ---- ONE freebie EVER per email address. A second request through the
+    # retired app gets no job/board/credit — just the "please uninstall, use
+    # gen.nomadkaraoke.com directly" email, throttled per address.
+    if _freebie_already_used(db, doc):
+        if _uninstall_email_recently_sent(db, doc):
+            return finish("repeat_request", email_sent=False)
+        email_sent = _send_conversion_email(
+            email=email, artist=artist, title=title, variant="uninstall",
+            job_id=None, community_url=None, used_existing_credit=False,
+        )
+        return finish("repeat_request", email_sent=email_sent)
 
     user_service = get_user_service()
     settings = get_settings()
@@ -189,8 +226,19 @@ async def process_intake(doc_id: str, force: bool = False) -> Dict[str, Any]:
         # NOTE: welcome_credits_granted is deliberately left unset — their first
         # sign-in still awards the normal welcome credit, covering a second song.
 
-    # ---- Bonus: does a community karaoke version already exist? ----
+    # ---- Community short-circuit: a karaoke version already exists. ----
+    # Don't spend generation resources (or the user's credit) remaking a song
+    # the community has already covered — send them straight to it. New users
+    # keep their conversion credit for a custom version of any song they like.
     community_url = await _community_version_url(artist, title)
+    if community_url:
+        email_sent = _send_conversion_email(
+            email=email, artist=artist, title=title,
+            variant="community", job_id=None,
+            community_url=community_url, used_existing_credit=False,
+            is_new_user=new_user,
+        )
+        return finish("community_existing", email_sent=email_sent)
 
     # ---- Route: job (has credits + under the daily cap) or requests board. ----
     credits = user_service.check_credits(email)
@@ -208,8 +256,9 @@ async def process_intake(doc_id: str, force: bool = False) -> Dict[str, Any]:
     email_sent = _send_conversion_email(
         email=email, artist=artist, title=title,
         variant=result["variant"], job_id=result.get("job_id"),
-        community_url=community_url,
+        community_url=None,
         used_existing_credit=(not new_user and result["variant"] in ("job", "job_parked")),
+        is_new_user=new_user,
     )
 
     return finish(
@@ -240,6 +289,10 @@ def _recent_duplicate_exists(db, doc: Dict[str, Any]) -> bool:
             other = snap.to_dict()
             if other.get("id") == doc.get("id"):
                 continue
+            # Re-verify the queried fields in Python (defense in depth).
+            if (other.get("email") != doc.get("email")
+                    or other.get("dedupe_key") != doc.get("dedupe_key")):
+                continue
             created = other.get("created_at")
             if (other.get("outcome") in TERMINAL_OUTCOMES
                     and created is not None and created >= cutoff):
@@ -247,6 +300,52 @@ def _recent_duplicate_exists(db, doc: Dict[str, Any]) -> bool:
     except Exception:  # noqa: BLE001 — dedup is best-effort, never block conversion
         logger.exception("karaokehunt: dedup query failed (continuing)")
     return False
+
+
+def _freebie_already_used(db, doc: Dict[str, Any]) -> bool:
+    """True if this email has ALREADY consumed its one-time conversion (any
+    prior intake that reached a converted outcome). Fails open — better to risk
+    a rare second freebie than to deny a legitimate first one."""
+    try:
+        from google.cloud.firestore_v1 import FieldFilter
+
+        for snap in (db.collection(COLLECTION)
+                     .where(filter=FieldFilter("email", "==", doc["email"]))
+                     .stream()):
+            other = snap.to_dict()
+            if other.get("id") == doc.get("id") or other.get("email") != doc.get("email"):
+                continue
+            if other.get("outcome") in CONVERTED_OUTCOMES:
+                return True
+    except Exception:  # noqa: BLE001
+        logger.exception("karaokehunt: freebie-history query failed (failing open)")
+    return False
+
+
+def _uninstall_email_recently_sent(db, doc: Dict[str, Any]) -> bool:
+    """True if this address already got an uninstall email inside the throttle
+    window. Fails CLOSED (claims one was sent) — on a broken query, not
+    emailing is the safe side of an anti-spam throttle."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=UNINSTALL_EMAIL_THROTTLE_DAYS)
+    try:
+        from google.cloud.firestore_v1 import FieldFilter
+
+        for snap in (db.collection(COLLECTION)
+                     .where(filter=FieldFilter("email", "==", doc["email"]))
+                     .stream()):
+            other = snap.to_dict()
+            if other.get("id") == doc.get("id") or other.get("email") != doc.get("email"):
+                continue
+            # Throttle from when the email was actually sent (processed_at),
+            # not intake time — a manual reprocess can lag creation by days.
+            sent_at = other.get("processed_at") or other.get("created_at")
+            if (other.get("outcome") == "repeat_request" and other.get("email_sent")
+                    and sent_at is not None and sent_at >= cutoff):
+                return True
+        return False
+    except Exception:  # noqa: BLE001
+        logger.exception("karaokehunt: uninstall-throttle query failed (failing closed)")
+        return True
 
 
 def _jobs_today(db) -> int:
@@ -415,6 +514,7 @@ def _send_conversion_email(
     job_id: Optional[str],
     community_url: Optional[str],
     used_existing_credit: bool,
+    is_new_user: bool = False,
 ) -> bool:
     """Mint a one-click sign-in link and send the conversion email. Best-effort:
     a send failure downgrades to a log line (outcome still records email_sent)."""
@@ -432,6 +532,7 @@ def _send_conversion_email(
             email=email, artist=artist, title=title, variant=variant,
             login_url=login_url, community_url=community_url,
             used_existing_credit=used_existing_credit,
+            is_new_user=is_new_user,
         )
     except Exception:  # noqa: BLE001
         logger.exception("karaokehunt: conversion email failed for %s", email)

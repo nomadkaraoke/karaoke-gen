@@ -369,7 +369,7 @@
       "boardIntro": "Twoja piosenka znajduje się na darmowej społecznościowej tablicy życzeń.",
       "communityBonus": "Bonus: społecznościowa wersja karaoke tej piosenki już istnieje na YouTube - możesz ją zaśpiewać już teraz:",
       "communityLinkText": "Zaśpiewaj to teraz na YouTube",
-      "intro": "Właśnie zgłosiłeś prośbę o utwór karaoke w aplikacji KaraokeHunt. KaraokeHunt dorosło - teraz to Nomad Karaoke - a stara aplikacja została wycofana, ale twoje zgłoszenie bezpiecznie do nas dotarło.",
+      "intro": "Właśnie poprosiłeś o utwór karaoke przez aplikację KaraokeHunt. Ta aplikacja została wycofana i nie jest już wspierana - przekształciła się w Nomad Karaoke (gen.nomadkaraoke.com) - ale twoja prośba i tak do nas dotarła, więc zrealizowaliśmy ją ten ostatni raz.",
       "jobDetail": "Rozpoczęliśmy generowanie pełnego wideo karaoke dla {artist} - {title}. Wyślemy ci e-mail, gdy będzie gotowe - zazwyczaj w ciągu kilku godzin.",
       "jobStarted": "Dobre wieści: właśnie tworzymy twój utwór.",
       "newAccountNote": "Założyliśmy darmowe konto Nomad Karaoke dla tego adresu e-mail, a to pierwsze wideo jest na nasz koszt.",
@@ -379,7 +379,16 @@
       "subject": "Twoja prośba o karaoke: {artist} - {title}",
       "trackButton": "Zaloguj się i śledź swoją piosenkę",
       "usedCreditNote": "Wykorzystano 1 kredyt z twojego istniejącego konta Nomad Karaoke. Nie o to ci chodziło? Po prostu odpowiedz na ten e-mail, a my go przywrócimy.",
-      "whyEmail": "Dlaczego ten e-mail? Zgłoszenie piosenki zostało wysłane w wycofanej aplikacji KaraokeHunt przy użyciu tego adresu. To jednorazowa wiadomość dotycząca tego zgłoszenia - nie ma za tym żadnej listy mailingowej. Masz pytania? Po prostu odpowiedz: prawdziwy człowiek (Andrew, założyciel) czyta wszystko."
+      "whyEmail": "Dlaczego ten e-mail? Zgłoszenie piosenki zostało wysłane w wycofanej aplikacji KaraokeHunt przy użyciu tego adresu. To jednorazowa wiadomość dotycząca tego zgłoszenia - nie ma za tym żadnej listy mailingowej. Masz pytania? Po prostu odpowiedz: prawdziwy człowiek (Andrew, założyciel) czyta wszystko.",
+      "communityCreditNoteExisting": "Twoje kredyty Nomad Karaoke pozostały nienaruszone - zaloguj się w dowolnej chwili, jeśli wolisz wygenerować własną, niestandardową wersję w jakości studyjnej.",
+      "communityCreditNoteNew": "Założyliśmy również darmowe konto Nomad Karaoke dla tego adresu e-mail, z 1 darmowym kredytem, który możesz wykorzystać w dowolnym momencie, aby wygenerować własną, niestandardową wersję dowolnej piosenki w jakości studyjnej.",
+      "communityDetail": "Społecznościowa wersja karaoke {artist} - {title} już istnieje na YouTube - jest darmowa i gotowa do użycia, nie musisz czekać, aż ją wygenerujemy.",
+      "communityIntro": "Dobre wieści: ta piosenka ma już wersję karaoke, którą możesz zaśpiewać od razu.",
+      "signInLink": "Zaloguj się do Nomad Karaoke",
+      "uninstallDetail": "Otrzymałeś już od nas jednorazową darmową konwersję, więc prośby przez starą aplikację (jak ta dla {artist} - {title}) nie przynoszą już żadnego efektu. Aby tworzyć utwory karaoke, zaloguj się na gen.nomadkaraoke.com - to samo konto, a potrafi znacznie więcej niż stara aplikacja.",
+      "uninstallHeadline": "Odinstaluj aplikację KaraokeHunt.",
+      "uninstallIntro": "Właśnie złożyłeś prośbę o piosenkę przez aplikację KaraokeHunt - ale ta aplikacja została wycofana i nie jest już wspierana, a ta prośba nie została przetworzona.",
+      "uninstallNote": "Jedna ważna rzecz: to była jednorazowa konwersja. Przyszłe prośby składane przez starą aplikację KaraokeHunt nie będą przetwarzane, więc odinstaluj ją i od teraz twórz swoje utwory karaoke bezpośrednio na gen.nomadkaraoke.com - twoje konto jest tam gotowe."
     }
   }
 }
