@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "En karaokeversion av {artist} - {title} finns redan",
       "subjectFallback": "En karaokeversion av låten du önskade finns redan"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Visa anslagstavlan för önskemål",
+      "boardDetail": "Ditt Nomad Karaoke-konto har slut på krediter, så vi har lagt till {artist} - {title} på vår kostnadsfria anslagstavla för community-önskemål - varje dag skapas det önskemål som fått flest röster helt gratis. Rösta på din låt för att flytta upp den i kön, eller skaffa krediter för att skapa den direkt.",
+      "boardIntro": "Din låt finns på den kostnadsfria anslagstavlan för community-önskemål.",
+      "communityBonus": "Bonus: en community-karaokeversion av den här låten finns redan på YouTube - du kan sjunga den direkt:",
+      "communityLinkText": "Sjung den nu på YouTube",
+      "intro": "Du har precis önskat en karaokelåt i KaraokeHunt-appen. KaraokeHunt har vuxit upp - det är nu Nomad Karaoke - och den gamla appen har pensionerats, men ditt önskemål har landat säkert hos oss.",
+      "jobDetail": "Vi har börjat generera en fullständig karaokevideo för {artist} - {title}. Vi mejlar dig när den är klar - vanligtvis inom några timmar.",
+      "jobStarted": "Goda nyheter: vi skapar din låt just nu.",
+      "newAccountNote": "Vi har skapat ett gratis Nomad Karaoke-konto för den här e-postadressen, och vi bjuder på den här första videon.",
+      "parkedDetail": "Vi kunde inte med säkerhet välja rätt ljudinspelning för {artist} - {title} automatiskt. Logga in nedan, välj inspelningen (det tar ungefär 10 sekunder), så genererar vi din karaokevideo utifrån den.",
+      "parkedIntro": "Ditt önskemål kräver ett snabbt klick från dig.",
+      "pickButton": "Logga in & välj inspelningen",
+      "subject": "Ditt karaoke-önskemål: {artist} - {title}",
+      "trackButton": "Logga in & spåra din låt",
+      "usedCreditNote": "Detta använde 1 kredit från ditt befintliga Nomad Karaoke-konto. Var det inte det du ville? Svara bara på det här mejlet så återställer vi den.",
+      "whyEmail": "Varför det här mejlet? Ett låtönskemål skickades in i den numera nedlagda KaraokeHunt-appen med den här adressen. Detta är ett engångsmeddelande om det önskemålet - det finns ingen e-postlista bakom det. Frågor? Svara bara: en riktig människa (Andrew, grundaren) läser allt."
     }
   }
 }

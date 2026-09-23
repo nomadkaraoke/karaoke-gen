@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "En karaoke-version af {artist} - {title} findes allerede",
       "subjectFallback": "En karaoke-version af den sang, du efterspurgte, findes allerede"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Se ønsketavlen",
+      "boardDetail": "Din Nomad Karaoke-konto er løbet tør for credits, så vi har tilføjet {artist} - {title} til vores gratis fællesskabs-ønsketavle - hver dag bliver det ønske med flest stemmer lavet gratis. Stem på din sang for at rykke den frem i køen, eller køb credits for at lave den med det samme.",
+      "boardIntro": "Din sang er på den gratis fællesskabs-ønsketavle.",
+      "communityBonus": "Bonus: Der findes allerede en fællesskabs-karaokeversion af denne sang på YouTube - du kan synge den lige nu:",
+      "communityLinkText": "Syng den nu på YouTube",
+      "intro": "Du har lige anmodet om et karaokenummer i KaraokeHunt-appen. KaraokeHunt er blevet voksen - det er nu Nomad Karaoke - og den gamle app er pensioneret, men din anmodning er landet sikkert hos os.",
+      "jobDetail": "Vi er begyndt at generere en fuld karaokevideo til {artist} - {title}. Vi sender dig en e-mail, når den er klar - normalt inden for et par timer.",
+      "jobStarted": "Gode nyheder: Vi laver dit nummer lige nu.",
+      "newAccountNote": "Vi har oprettet en gratis Nomad Karaoke-konto til denne e-mailadresse, og denne første video giver vi.",
+      "parkedDetail": "Vi kunne ikke med sikkerhed vælge den rigtige lydoptagelse til {artist} - {title} automatisk. Log ind nedenfor, vælg optagelsen (det tager cirka 10 sekunder), og så genererer vi din karaokevideo derfra.",
+      "parkedIntro": "Din anmodning kræver et hurtigt tryk fra dig.",
+      "pickButton": "Log ind og vælg optagelsen",
+      "subject": "Din karaoke-anmodning: {artist} - {title}",
+      "trackButton": "Log ind og følg din sang",
+      "usedCreditNote": "Dette brugte 1 credit fra din eksisterende Nomad Karaoke-konto. Var det ikke det, du ville? Bare svar på denne e-mail, så gendanner vi den.",
+      "whyEmail": "Hvorfor denne e-mail? En sanganmodning blev indsendt i den pensionerede KaraokeHunt-app med denne adresse. Dette er en engangsbesked om den anmodning - der er ingen mailingliste bag den. Spørgsmål? Bare svar: et rigtigt menneske (Andrew, grundlæggeren) læser alt."
     }
   }
 }

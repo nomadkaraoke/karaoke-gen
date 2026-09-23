@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Versi karaoke untuk {artist} - {title} sudah ada",
       "subjectFallback": "Versi karaoke untuk lagu yang anda minta sudah ada"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Lihat papan permintaan",
+      "boardDetail": "Akaun Nomad Karaoke anda telah kehabisan kredit, jadi kami telah menambah {artist} - {title} ke papan permintaan komuniti percuma kami - setiap hari permintaan dengan undian tertinggi akan dihasilkan secara percuma. Undi lagu anda untuk menaikkannya dalam barisan, atau dapatkan kredit untuk menghasilkannya serta-merta.",
+      "boardIntro": "Lagu anda berada di papan permintaan komuniti percuma.",
+      "communityBonus": "Bonus: versi karaoke komuniti untuk lagu ini sudah ada di YouTube - anda boleh menyanyikannya sekarang:",
+      "communityLinkText": "Nyanyi sekarang di YouTube",
+      "intro": "Anda baru sahaja meminta trek karaoke di aplikasi KaraokeHunt. KaraokeHunt telah berkembang - kini ia adalah Nomad Karaoke - dan aplikasi lama telah ditamatkan, tetapi permintaan anda telah selamat sampai kepada kami.",
+      "jobDetail": "Kami telah mula menjana video karaoke penuh untuk {artist} - {title}. Kami akan e-mel anda apabila ia sedia - biasanya dalam masa beberapa jam.",
+      "jobStarted": "Berita baik: kami sedang menghasilkan trek anda sekarang.",
+      "newAccountNote": "Kami telah menyediakan akaun Nomad Karaoke percuma untuk alamat e-mel ini, dan video pertama ini adalah percuma daripada kami.",
+      "parkedDetail": "Kami tidak dapat memilih rakaman audio yang tepat untuk {artist} - {title} secara automatik dengan yakin. Log masuk di bawah, pilih rakaman (ia mengambil masa kira-kira 10 saat), dan kami akan menjana video karaoke anda dari situ.",
+      "parkedIntro": "Permintaan anda memerlukan satu ketikan pantas daripada anda.",
+      "pickButton": "Log masuk & pilih rakaman",
+      "subject": "Permintaan karaoke anda: {artist} - {title}",
+      "trackButton": "Log masuk & jejak lagu anda",
+      "usedCreditNote": "Ini menggunakan 1 kredit daripada akaun Nomad Karaoke sedia ada anda. Bukan apa yang anda mahukan? Hanya balas e-mel ini dan kami akan memulihkannya.",
+      "whyEmail": "Mengapa e-mel ini? Permintaan lagu telah dihantar dalam aplikasi KaraokeHunt yang telah ditamatkan menggunakan alamat ini. Ini adalah mesej sekali sahaja mengenai permintaan tersebut - tiada senarai mel di sebaliknya. Ada soalan? Hanya balas: manusia sebenar (Andrew, pengasas) membaca semuanya."
     }
   }
 }

@@ -298,6 +298,15 @@ class Settings(BaseSettings):
     # When a flagged pick is "kept on board", how long before it can be re-flagged.
     community_review_snooze_days: int = int(os.getenv("COMMUNITY_REVIEW_SNOOZE_DAYS", "30"))
 
+    # KaraokeHunt retired-app request interceptor (POST /api/karaokehunt/request).
+    # Shared secret set by the Cloudflare Worker on create.karaokehunt.com; the
+    # endpoint 503s while this is empty, so deploys are dark until the secret is
+    # wired (Secret Manager: karaokehunt-forwarder-secret).
+    karaokehunt_forwarder_secret: str = os.getenv("KARAOKEHUNT_FORWARDER_SECRET", "")
+    # Max conversion jobs per UTC day (bounds unattended generation spend);
+    # over-cap requests fall through to the free community requests board.
+    karaokehunt_daily_job_cap: int = int(os.getenv("KARAOKEHUNT_DAILY_JOB_CAP", "3"))
+
     # Private (non-published) track distribution settings
     default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")
     default_private_brand_prefix: Optional[str] = os.getenv("DEFAULT_PRIVATE_BRAND_PREFIX", "NOMADNP")

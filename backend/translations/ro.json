@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "O versiune de karaoke pentru {artist} - {title} există deja",
       "subjectFallback": "O versiune de karaoke a melodiei pe care ai cerut-o există deja"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Vezi panoul de cereri",
+      "boardDetail": "Contul tău Nomad Karaoke nu mai are credite, așa că am adăugat {artist} - {title} pe panoul gratuit de cereri al comunității - în fiecare zi, cererea cu cele mai multe voturi este realizată gratuit. Votează-ți piesa pentru a o muta mai sus în coadă sau ia credite pentru a o face instantaneu.",
+      "boardIntro": "Piesa ta este pe panoul gratuit de cereri al comunității.",
+      "communityBonus": "Bonus: o versiune karaoke a comunității pentru această piesă există deja pe YouTube - o poți cânta chiar acum:",
+      "communityLinkText": "Cânt-o acum pe YouTube",
+      "intro": "Tocmai ai cerut o piesă karaoke în aplicația KaraokeHunt. KaraokeHunt a crescut - acum este Nomad Karaoke - și vechea aplicație a fost retrasă, dar cererea ta a ajuns în siguranță la noi.",
+      "jobDetail": "Am început să generăm un videoclip karaoke complet pentru {artist} - {title}. Îți vom trimite un e-mail când este gata - de obicei în câteva ore.",
+      "jobStarted": "Vești bune: îți facem piesa chiar acum.",
+      "newAccountNote": "Am creat un cont gratuit Nomad Karaoke pentru această adresă de e-mail, iar acest prim videoclip este din partea noastră.",
+      "parkedDetail": "Nu am putut alege automat cu încredere înregistrarea audio potrivită pentru {artist} - {title}. Conectează-te mai jos, alege înregistrarea (durează cam 10 secunde) și vom genera videoclipul tău karaoke de acolo.",
+      "parkedIntro": "Cererea ta are nevoie de o apăsare rapidă din partea ta.",
+      "pickButton": "Conectează-te și alege înregistrarea",
+      "subject": "Cererea ta karaoke: {artist} - {title}",
+      "trackButton": "Conectează-te și urmărește-ți piesa",
+      "usedCreditNote": "Acest lucru a folosit 1 credit din contul tău existent Nomad Karaoke. Nu e ceea ce voiai? Doar răspunde la acest e-mail și îl vom restaura.",
+      "whyEmail": "De ce acest e-mail? O cerere de piesă a fost trimisă în aplicația retrasă KaraokeHunt folosind această adresă. Acesta este un mesaj unic despre acea cerere - nu există nicio listă de corespondență în spate. Întrebări? Doar răspunde: un om real (Andrew, fondatorul) citește totul."
     }
   }
 }

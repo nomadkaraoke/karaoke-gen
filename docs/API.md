@@ -2697,6 +2697,43 @@ localhost no-op). Added in v0.231.0 — see
 
 Crash reports are the separate `POST /api/client-errors` (error-monitor pipeline).
 
+## KaraokeHunt App Interceptor
+
+### Intake
+
+```http
+POST /api/karaokehunt/request
+```
+
+Unauthenticated intake for song requests from the **retired KaraokeHunt mobile
+app**, forwarded by the Cloudflare Worker on `create.karaokehunt.com` (see
+`infrastructure/cloudflare/karaokehunt-interceptor/`). Gated by the
+`X-KH-Forwarder-Secret` header (Secret Manager `karaokehunt-forwarder-secret`;
+503 while unconfigured) plus a 10/min/IP rate limit (`X-KH-Client-IP` = the
+app's real IP, forwarded by the Worker). Body is parsed leniently (the live
+binary's exact schema is unverifiable): `{email, artist, title, input_url?, …}`.
+
+Each request is logged to Firestore `karaokehunt_requests` and converted
+synchronously (`backend/workers/karaokehunt_conversion.py`): new emails get an
+account + 1 credit (`karaokehunt_app_conversion`) and a job created as them
+(conservative `pick_auto_selection`; unconfident matches park in
+`AWAITING_AUDIO_SELECTION`); existing users with credits get the job on their
+own credit; existing users without credits (or requests over the
+`KARAOKEHUNT_DAILY_JOB_CAP`, default 3/day) go to the community requests board.
+Every converted requester gets `send_karaokehunt_conversion` with a 7-day
+one-click sign-in link. Always returns `200 {"status": "success"}` — the app
+ignores the response, and failures are retried via the endpoint below.
+
+### Reprocess (Admin)
+
+```http
+POST /api/karaokehunt/internal/reprocess/{doc_id}
+```
+
+Admin-token retry for an intake doc whose `outcome` is `error` (or forcing a
+terminal one). Idempotent: durable markers on the doc (`credit_granted`,
+`job_id`) prevent double credits/jobs.
+
 ### Vocals Peaks (Waveforms review mode)
 
 ```http

@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Karaokeversio kappaleesta {artist} - {title} on jo olemassa",
       "subjectFallback": "Karaokeversio pyytämästäsi kappaleesta on jo olemassa"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Katso toivepyyntötaulua",
+      "boardDetail": "Nomad Karaoke -tililtäsi ovat krediitit lopussa, joten lisäsimme kappaleen {artist} - {title} ilmaiseen yhteisön toivepyyntötauluun - joka päivä eniten ääniä saanut toive tehdään ilmaiseksi. Äänestä kappalettasi siirtääksesi sitä jonossa ylöspäin, tai hanki krediittejä tehdäksesi sen välittömästi.",
+      "boardIntro": "Kappaleesi on ilmaisella yhteisön toivepyyntötaululla.",
+      "communityBonus": "Bonus: tästä kappaleesta on jo olemassa yhteisön tekemä karaokeversio YouTubessa - voit laulaa sen heti:",
+      "communityLinkText": "Laula se nyt YouTubessa",
+      "intro": "Pyysit juuri karaokekappaletta KaraokeHunt-sovelluksessa. KaraokeHunt on kasvanut - se on nyt Nomad Karaoke - ja vanha sovellus on poistettu käytöstä, mutta pyyntösi saapui meille turvallisesti.",
+      "jobDetail": "Olemme aloittaneet täyden karaoke-videon luomisen kappaleelle {artist} - {title}. Lähetämme sinulle sähköpostia, kun se on valmis - yleensä muutaman tunnin kuluessa.",
+      "jobStarted": "Hyviä uutisia: teemme kappalettasi juuri nyt.",
+      "newAccountNote": "Luoimme ilmaisen Nomad Karaoke -tilin tälle sähköpostiosoitteelle, ja tämä ensimmäinen video on meidän tarjoamamme.",
+      "parkedDetail": "Emme voineet varmuudella valita oikeaa äänitettä kappaleelle {artist} - {title} automaattisesti. Kirjaudu sisään alla, valitse äänite (se vie noin 10 sekuntia), ja luomme karaoke-videosi sen pohjalta.",
+      "parkedIntro": "Pyyntösi vaatii sinulta yhden nopean napautuksen.",
+      "pickButton": "Kirjaudu sisään ja valitse äänite",
+      "subject": "Karaokepyyntösi: {artist} - {title}",
+      "trackButton": "Kirjaudu sisään ja seuraa kappalettasi",
+      "usedCreditNote": "Tämä kulutti 1 krediitin olemassa olevalta Nomad Karaoke -tililtäsi. Eikö tämä ollut sitä mitä halusit? Vastaa vain tähän sähköpostiin, niin palautamme sen.",
+      "whyEmail": "Miksi tämä sähköposti? Kappalepyyntö lähetettiin käytöstä poistetussa KaraokeHunt-sovelluksessa käyttäen tätä osoitetta. Tämä on kertaluonteinen viesti kyseisestä pyynnöstä - sen takana ei ole postituslistaa. Kysyttävää? Vastaa vain: oikea ihminen (Andrew, perustaja) lukee kaiken."
     }
   }
 }

@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Ja existeix una versió de karaoke de {artist} - {title}",
       "subjectFallback": "Ja existeix una versió de karaoke de la cançó que has demanat"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Veure el tauler de peticions",
+      "boardDetail": "El teu compte de Nomad Karaoke s'ha quedat sense crèdits, així que hem afegit {artist} - {title} al nostre tauler de peticions gratuït de la comunitat - cada dia la petició més votada es crea de franc. Vota la teva cançó per fer-la pujar a la cua, o aconsegueix crèdits per fer-la a l'instant.",
+      "boardIntro": "La teva cançó és al tauler de peticions gratuït de la comunitat.",
+      "communityBonus": "Extra: ja existeix una versió de karaoke de la comunitat d'aquesta cançó a YouTube - pots cantar-la ara mateix:",
+      "communityLinkText": "Canta-la ara a YouTube",
+      "intro": "Acabes de demanar una pista de karaoke a l'aplicació KaraokeHunt. KaraokeHunt s'ha fet gran - ara és Nomad Karaoke - i l'antiga aplicació s'ha retirat, però la teva petició ens ha arribat de manera segura.",
+      "jobDetail": "Hem començat a generar un vídeo de karaoke complet per a {artist} - {title}. T'enviarem un correu electrònic quan estigui llest - normalment en unes poques hores.",
+      "jobStarted": "Bones notícies: estem creant la teva pista ara mateix.",
+      "newAccountNote": "Hem configurat un compte gratuït de Nomad Karaoke per a aquesta adreça de correu electrònic, i aquest primer vídeo va a càrrec nostre.",
+      "parkedDetail": "No hem pogut triar amb seguretat l'enregistrament d'àudio correcte per a {artist} - {title} automàticament. Inicia sessió a continuació, tria l'enregistrament (triga uns 10 segons) i generarem el teu vídeo de karaoke a partir d'aquí.",
+      "parkedIntro": "La teva petició necessita un toc ràpid per part teva.",
+      "pickButton": "Inicia sessió i tria l'enregistrament",
+      "subject": "La teva petició de karaoke: {artist} - {title}",
+      "trackButton": "Inicia sessió i fes el seguiment de la teva cançó",
+      "usedCreditNote": "Això ha utilitzat 1 crèdit del teu compte de Nomad Karaoke existent. No és el que volies? Només has de respondre a aquest correu i te'l restaurarem.",
+      "whyEmail": "Per què aquest correu? Es va enviar una petició de cançó a l'aplicació retirada KaraokeHunt utilitzant aquesta adreça. Aquest és un missatge únic sobre aquesta petició - no hi ha cap llista de correu al darrere. Tens preguntes? Només has de respondre: un humà real (l'Andrew, el fundador) ho llegeix tot."
     }
   }
 }

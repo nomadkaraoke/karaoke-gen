@@ -679,6 +679,120 @@ class EmailService:
 
         return self._log_and_send(email, subject, html_content, text_content)
 
+    def send_karaokehunt_conversion(
+        self,
+        email: str,
+        artist: str,
+        title: str,
+        variant: str,
+        login_url: str,
+        community_url: Optional[str] = None,
+        used_existing_credit: bool = False,
+        locale: str = "en",
+    ) -> bool:
+        """The email the retired KaraokeHunt app has promised its users for years
+        ("you should receive an email in 5-10 minutes"). One template, three
+        variants matching the conversion outcome:
+
+        - "job": their track is being generated right now
+        - "job_parked": we need them to pick the audio recording first
+        - "board": no credits, so the song went to the community requests board
+        """
+        esc_artist = html.escape(artist)
+        esc_title = html.escape(title)
+        subject = t(locale, "emails.karaokehuntConversion.subject",
+                    artist=artist, title=title)
+
+        if variant == "job_parked":
+            headline = t(locale, "emails.karaokehuntConversion.parkedIntro")
+            detail = t(locale, "emails.karaokehuntConversion.parkedDetail",
+                       artist=esc_artist, title=esc_title)
+            detail_key = "parkedDetail"
+            button_label = t(locale, "emails.karaokehuntConversion.pickButton")
+            button_url = login_url
+        elif variant == "board":
+            headline = t(locale, "emails.karaokehuntConversion.boardIntro")
+            detail = t(locale, "emails.karaokehuntConversion.boardDetail",
+                       artist=esc_artist, title=esc_title)
+            detail_key = "boardDetail"
+            button_label = t(locale, "emails.karaokehuntConversion.boardButton")
+            button_url = "https://requests.nomadkaraoke.com"
+        else:  # "job"
+            headline = t(locale, "emails.karaokehuntConversion.jobStarted")
+            detail = t(locale, "emails.karaokehuntConversion.jobDetail",
+                       artist=esc_artist, title=esc_title)
+            detail_key = "jobDetail"
+            button_label = t(locale, "emails.karaokehuntConversion.trackButton")
+            button_url = login_url
+
+        account_note = ""
+        if variant in ("job", "job_parked"):
+            if used_existing_credit:
+                account_note = t(locale, "emails.karaokehuntConversion.usedCreditNote")
+            else:
+                account_note = t(locale, "emails.karaokehuntConversion.newAccountNote")
+
+        community_block = ""
+        community_text = ""
+        if community_url:
+            community_block = f"""
+    <p>{t(locale, "emails.karaokehuntConversion.communityBonus")}<br>
+    <a href="{html.escape(community_url)}">{t(locale, "emails.karaokehuntConversion.communityLinkText")}</a></p>
+"""
+            community_text = (
+                f"\n{t(locale, 'emails.karaokehuntConversion.communityBonus')}\n"
+                f"{community_url}\n"
+            )
+
+        sign_in_line = ""
+        if variant == "board":
+            # The board is public, but voting needs them signed in.
+            sign_in_line = f"""
+    <p style="text-align: center;">
+        <a href="{login_url}">{t(locale, "emails.karaokehuntConversion.trackButton")}</a>
+    </p>
+"""
+
+        content = f"""
+    <p>{t(locale, "emails.karaokehuntConversion.intro")}</p>
+
+    <p><strong>{headline}</strong></p>
+
+    <p>{detail}</p>
+
+    {f'<p>{account_note}</p>' if account_note else ''}
+
+    <p style="text-align: center;">
+        <a href="{button_url}" class="button">{button_label}</a>
+    </p>
+{sign_in_line}{community_block}
+    <p style="font-size: 13px; color: #6b7280;">{t(locale, "emails.karaokehuntConversion.whyEmail")}</p>
+"""
+
+        html_content = self._build_email_html(content, locale=locale)
+
+        text_content = f"""
+{t(locale, "emails.karaokehuntConversion.intro")}
+
+{headline}
+
+{t(locale, f"emails.karaokehuntConversion.{detail_key}", artist=artist, title=title)}
+
+{account_note}
+
+{button_label}: {button_url}
+{community_text}
+---
+{t(locale, "emails.karaokehuntConversion.whyEmail")}
+
+© {self._get_year()} Nomad Karaoke
+"""
+
+        return self._log_and_send(
+            email, subject, html_content, text_content,
+            email_type="karaokehunt_conversion",
+        )
+
     def send_welcome_email(self, email: str, credits: int = 0, locale: str = "en") -> bool:
         """
         Send welcome email to new users.

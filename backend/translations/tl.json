@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Mayroon nang karaoke version ng {artist} - {title}",
       "subjectFallback": "Mayroon nang karaoke version ang kantang ni-request mo"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Tingnan ang requests board",
+      "boardDetail": "Wala nang credits ang iyong Nomad Karaoke account, kaya idinagdag namin ang {artist} - {title} sa aming libreng community requests board - araw-araw, ang request na may pinakamaraming boto ay ginagawa nang libre. I-vote ang iyong kanta para umakyat ito sa pila, o kumuha ng credits para magawa ito agad.",
+      "boardIntro": "Nasa libreng community requests board na ang iyong kanta.",
+      "communityBonus": "Bonus: mayroon nang community karaoke version ang kantang ito sa YouTube - maaari mo na itong kantahin ngayon:",
+      "communityLinkText": "Kantahin na ito sa YouTube",
+      "intro": "Nag-request ka ng karaoke track sa KaraokeHunt app. Lumaki na ang KaraokeHunt - ngayon ay Nomad Karaoke na ito - at retirado na ang lumang app, pero ligtas na nakarating sa amin ang iyong request.",
+      "jobDetail": "Sinimulan na naming gumawa ng buong karaoke video para sa {artist} - {title}. I-e-email ka namin kapag handa na ito - kadalasan sa loob ng ilang oras.",
+      "jobStarted": "Magandang balita: ginagawa na namin ang iyong track ngayon.",
+      "newAccountNote": "Gumawa kami ng libreng Nomad Karaoke account para sa email address na ito, at libre na ang unang video na ito mula sa amin.",
+      "parkedDetail": "Hindi namin awtomatikong mapili nang may kumpiyansa ang tamang audio recording para sa {artist} - {title}. Mag-sign in sa ibaba, piliin ang recording (aabutin ito ng mga 10 segundo), at gagawin namin ang iyong karaoke video mula roon.",
+      "parkedIntro": "Kailangan ng iyong request ng isang mabilis na tap mula sa iyo.",
+      "pickButton": "Mag-sign in at piliin ang recording",
+      "subject": "Ang iyong karaoke request: {artist} - {title}",
+      "trackButton": "Mag-sign in at i-track ang iyong kanta",
+      "usedCreditNote": "Gumamit ito ng 1 credit mula sa iyong kasalukuyang Nomad Karaoke account. Hindi ito ang gusto mo? Mag-reply lang sa email na ito at ibabalik namin ito.",
+      "whyEmail": "Bakit may email na ito? May ipinadalang song request sa retiradong KaraokeHunt app gamit ang address na ito. Isa itong one-time na mensahe tungkol sa request na iyon - walang mailing list sa likod nito. May mga tanong? Mag-reply lang: isang totoong tao (si Andrew, ang founder) ang nagbabasa ng lahat."
     }
   }
 }

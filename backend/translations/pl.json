@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Wersja karaoke {artist} - {title} już istnieje",
       "subjectFallback": "Wersja karaoke wybranej przez Ciebie piosenki już istnieje"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Zobacz tablicę życzeń",
+      "boardDetail": "Na twoim koncie Nomad Karaoke skończyły się kredyty, więc dodaliśmy {artist} - {title} do naszej darmowej społecznościowej tablicy życzeń - każdego dnia najwyżej oceniana prośba jest realizowana za darmo. Zagłosuj na swoją piosenkę, aby przesunąć ją w górę kolejki, lub zdobądź kredyty, aby stworzyć ją natychmiast.",
+      "boardIntro": "Twoja piosenka znajduje się na darmowej społecznościowej tablicy życzeń.",
+      "communityBonus": "Bonus: społecznościowa wersja karaoke tej piosenki już istnieje na YouTube - możesz ją zaśpiewać już teraz:",
+      "communityLinkText": "Zaśpiewaj to teraz na YouTube",
+      "intro": "Właśnie zgłosiłeś prośbę o utwór karaoke w aplikacji KaraokeHunt. KaraokeHunt dorosło - teraz to Nomad Karaoke - a stara aplikacja została wycofana, ale twoje zgłoszenie bezpiecznie do nas dotarło.",
+      "jobDetail": "Rozpoczęliśmy generowanie pełnego wideo karaoke dla {artist} - {title}. Wyślemy ci e-mail, gdy będzie gotowe - zazwyczaj w ciągu kilku godzin.",
+      "jobStarted": "Dobre wieści: właśnie tworzymy twój utwór.",
+      "newAccountNote": "Założyliśmy darmowe konto Nomad Karaoke dla tego adresu e-mail, a to pierwsze wideo jest na nasz koszt.",
+      "parkedDetail": "Nie mogliśmy z pewnością automatycznie wybrać odpowiedniego nagrania audio dla {artist} - {title}. Zaloguj się poniżej, wybierz nagranie (zajmie to około 10 sekund), a my wygenerujemy twoje wideo karaoke na tej podstawie.",
+      "parkedIntro": "Twoje zgłoszenie wymaga od ciebie jednego szybkiego kliknięcia.",
+      "pickButton": "Zaloguj się i wybierz nagranie",
+      "subject": "Twoja prośba o karaoke: {artist} - {title}",
+      "trackButton": "Zaloguj się i śledź swoją piosenkę",
+      "usedCreditNote": "Wykorzystano 1 kredyt z twojego istniejącego konta Nomad Karaoke. Nie o to ci chodziło? Po prostu odpowiedz na ten e-mail, a my go przywrócimy.",
+      "whyEmail": "Dlaczego ten e-mail? Zgłoszenie piosenki zostało wysłane w wycofanej aplikacji KaraokeHunt przy użyciu tego adresu. To jednorazowa wiadomość dotycząca tego zgłoszenia - nie ma za tym żadnej listy mailingowej. Masz pytania? Po prostu odpowiedz: prawdziwy człowiek (Andrew, założyciel) czyta wszystko."
     }
   }
 }

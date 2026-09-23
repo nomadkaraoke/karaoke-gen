@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Er bestaat al een karaokeversie van {artist} - {title}",
       "subjectFallback": "Er bestaat al een karaokeversie van het nummer dat je hebt aangevraagd"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Bekijk het verzoekenbord",
+      "boardDetail": "Je Nomad Karaoke-account heeft geen credits meer, dus we hebben {artist} - {title} toegevoegd aan ons gratis community-verzoekenbord - elke dag wordt het verzoek met de meeste stemmen gratis gemaakt. Stem op je nummer om het hoger in de wachtrij te plaatsen, of koop credits om het direct te maken.",
+      "boardIntro": "Je nummer staat op het gratis community-verzoekenbord.",
+      "communityBonus": "Bonus: er bestaat al een community-karaokeversie van dit nummer op YouTube - je kunt het nu meteen zingen:",
+      "communityLinkText": "Zing het nu op YouTube",
+      "intro": "Je hebt zojuist een karaokenummer aangevraagd in de KaraokeHunt-app. KaraokeHunt is volwassen geworden - het is nu Nomad Karaoke - en de oude app is met pensioen, maar je verzoek is veilig bij ons binnengekomen.",
+      "jobDetail": "We zijn begonnen met het genereren van een volledige karaoke-video voor {artist} - {title}. We e-mailen je wanneer deze klaar is - meestal binnen een paar uur.",
+      "jobStarted": "Goed nieuws: we maken je nummer op dit moment.",
+      "newAccountNote": "We hebben een gratis Nomad Karaoke-account ingesteld voor dit e-mailadres, en deze eerste video krijg je van ons.",
+      "parkedDetail": "We konden niet met zekerheid automatisch de juiste audio-opname voor {artist} - {title} kiezen. Log hieronder in, kies de opname (het duurt ongeveer 10 seconden), en we genereren je karaoke-video vanaf daar.",
+      "parkedIntro": "Je verzoek heeft één snelle tik van je nodig.",
+      "pickButton": "Log in & kies de opname",
+      "subject": "Je karaokeverzoek: {artist} - {title}",
+      "trackButton": "Log in & volg je nummer",
+      "usedCreditNote": "Dit heeft 1 credit van je bestaande Nomad Karaoke-account gebruikt. Niet wat je wilde? Beantwoord gewoon deze e-mail en we zullen het herstellen.",
+      "whyEmail": "Waarom deze e-mail? Er is een nummerverzoek ingediend in de gepensioneerde KaraokeHunt-app met dit adres. Dit is een eenmalig bericht over dat verzoek - er zit geen mailinglijst achter. Vragen? Beantwoord gewoon dit bericht: een echt mens (Andrew, de oprichter) leest alles."
     }
   }
 }

@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Já existe uma versão de karaokê de {artist} - {title}",
       "subjectFallback": "Já existe uma versão de karaokê da música que você pediu"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Ver o quadro de pedidos",
+      "boardDetail": "Sua conta do Nomad Karaoke está sem créditos, então adicionamos {artist} - {title} ao nosso quadro de pedidos gratuitos da comunidade - todos os dias o pedido mais votado é feito de graça. Vote na sua música para movê-la para o topo da fila ou adquira créditos para fazê-la instantaneamente.",
+      "boardIntro": "Sua música está no quadro de pedidos gratuitos da comunidade.",
+      "communityBonus": "Bônus: uma versão de karaokê da comunidade desta música já existe no YouTube - você pode cantá-la agora mesmo:",
+      "communityLinkText": "Cante agora no YouTube",
+      "intro": "Você acabou de pedir uma faixa de karaokê no aplicativo KaraokeHunt. O KaraokeHunt cresceu - agora é Nomad Karaoke - e o aplicativo antigo foi desativado, mas seu pedido chegou em segurança até nós.",
+      "jobDetail": "Começamos a gerar um vídeo completo de karaokê para {artist} - {title}. Enviaremos um e-mail para você quando estiver pronto - geralmente em algumas horas.",
+      "jobStarted": "Boas notícias: estamos fazendo sua faixa agora mesmo.",
+      "newAccountNote": "Criamos uma conta gratuita do Nomad Karaoke para este endereço de e-mail, e este primeiro vídeo é por nossa conta.",
+      "parkedDetail": "Não conseguimos escolher com confiança a gravação de áudio certa para {artist} - {title} automaticamente. Faça login abaixo, escolha a gravação (leva cerca de 10 segundos) e geraremos seu vídeo de karaokê a partir daí.",
+      "parkedIntro": "Seu pedido precisa de um toque rápido seu.",
+      "pickButton": "Faça login e escolha a gravação",
+      "subject": "Seu pedido de karaokê: {artist} - {title}",
+      "trackButton": "Faça login e acompanhe sua música",
+      "usedCreditNote": "Isso usou 1 crédito da sua conta existente do Nomad Karaoke. Não era o que você queria? Basta responder a este e-mail e nós o restauraremos.",
+      "whyEmail": "Por que este e-mail? Um pedido de música foi enviado no aplicativo desativado KaraokeHunt usando este endereço. Esta é uma mensagem única sobre esse pedido - não há nenhuma lista de e-mails por trás disso. Dúvidas? Basta responder: um humano real (Andrew, o fundador) lê tudo."
     }
   }
 }

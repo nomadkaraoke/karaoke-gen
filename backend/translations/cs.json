@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Karaoke verze {artist} - {title} už existuje",
       "subjectFallback": "Karaoke verze požadované písničky už existuje"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Zobrazit nástěnku požadavků",
+      "boardDetail": "Na tvém účtu Nomad Karaoke došly kredity, takže jsme přidali {artist} - {title} na naši bezplatnou komunitní nástěnku požadavků – každý den je nejlépe hodnocený požadavek vytvořen zdarma. Hlasuj pro svou píseň, ať se posune ve frontě nahoru, nebo si pořiď kredity a vytvoř ji okamžitě.",
+      "boardIntro": "Tvoje píseň je na bezplatné komunitní nástěnce požadavků.",
+      "communityBonus": "Bonus: komunitní karaoke verze této písně už na YouTube existuje – můžeš si ji zazpívat hned teď:",
+      "communityLinkText": "Zazpívej si ji hned teď na YouTube",
+      "intro": "Právě jsi zadal požadavek na karaoke skladbu v aplikaci KaraokeHunt. KaraokeHunt dospěl – teď je to Nomad Karaoke – a stará aplikace je ukončena, ale tvůj požadavek k nám bezpečně dorazil.",
+      "jobDetail": "Začali jsme generovat kompletní karaoke video pro {artist} - {title}. Až bude hotové, pošleme ti e-mail – obvykle to trvá několik hodin.",
+      "jobStarted": "Dobrá zpráva: právě teď tvou skladbu vytváříme.",
+      "newAccountNote": "Pro tuto e-mailovou adresu jsme vytvořili bezplatný účet Nomad Karaoke a toto první video jde na náš účet.",
+      "parkedDetail": "Nepodařilo se nám s jistotou automaticky vybrat správnou zvukovou nahrávku pro {artist} - {title}. Přihlas se níže, vyber nahrávku (zabere to asi 10 sekund) a my z ní vygenerujeme tvé karaoke video.",
+      "parkedIntro": "Tvůj požadavek potřebuje jedno rychlé kliknutí z tvé strany.",
+      "pickButton": "Přihlásit se a vybrat nahrávku",
+      "subject": "Tvůj karaoke požadavek: {artist} - {title}",
+      "trackButton": "Přihlásit se a sledovat svou píseň",
+      "usedCreditNote": "Tímto se odečetl 1 kredit z tvého stávajícího účtu Nomad Karaoke. Nebylo to v plánu? Stačí odpovědět na tento e-mail a my ti ho vrátíme.",
+      "whyEmail": "Proč tento e-mail? Pomocí této adresy byl odeslán požadavek na píseň v ukončené aplikaci KaraokeHunt. Toto je jednorázová zpráva o tomto požadavku – není za tím žádný mailing list. Máš otázky? Stačí odpovědět: všechno čte skutečný člověk (Andrew, zakladatel)."
     }
   }
 }

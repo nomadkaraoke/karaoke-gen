@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Đã có sẵn phiên bản karaoke của {artist} - {title}",
       "subjectFallback": "Đã có sẵn phiên bản karaoke của bài hát bạn yêu cầu"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Xem bảng yêu cầu",
+      "boardDetail": "Tài khoản Nomad Karaoke của bạn đã hết tín dụng, vì vậy chúng tôi đã thêm {artist} - {title} vào bảng yêu cầu cộng đồng miễn phí của chúng tôi - mỗi ngày yêu cầu được bình chọn nhiều nhất sẽ được tạo miễn phí. Hãy bình chọn cho bài hát của bạn để đẩy nó lên đầu hàng đợi, hoặc mua thêm tín dụng để tạo ngay lập tức.",
+      "boardIntro": "Bài hát của bạn đã có trên bảng yêu cầu cộng đồng miễn phí.",
+      "communityBonus": "Điểm thưởng: một phiên bản karaoke cộng đồng của bài hát này đã có sẵn trên YouTube - bạn có thể hát ngay bây giờ:",
+      "communityLinkText": "Hát ngay trên YouTube",
+      "intro": "Bạn vừa yêu cầu một bài hát karaoke trong ứng dụng KaraokeHunt. KaraokeHunt đã phát triển - giờ đây là Nomad Karaoke - và ứng dụng cũ đã ngừng hoạt động, nhưng yêu cầu của bạn đã được gửi đến chúng tôi an toàn.",
+      "jobDetail": "Chúng tôi đã bắt đầu tạo một video karaoke hoàn chỉnh cho {artist} - {title}. Chúng tôi sẽ gửi email cho bạn khi hoàn tất - thường trong vòng vài giờ.",
+      "jobStarted": "Tin tốt: chúng tôi đang tạo bài hát của bạn ngay bây giờ.",
+      "newAccountNote": "Chúng tôi đã tạo một tài khoản Nomad Karaoke miễn phí cho địa chỉ email này, và video đầu tiên này hoàn toàn miễn phí cho bạn.",
+      "parkedDetail": "Chúng tôi không thể tự động chọn đúng bản thu âm cho {artist} - {title} một cách chắc chắn. Hãy đăng nhập bên dưới, chọn bản thu âm (chỉ mất khoảng 10 giây), và chúng tôi sẽ tạo video karaoke của bạn từ đó.",
+      "parkedIntro": "Yêu cầu của bạn cần một thao tác chạm nhanh từ bạn.",
+      "pickButton": "Đăng nhập & chọn bản thu âm",
+      "subject": "Yêu cầu karaoke của bạn: {artist} - {title}",
+      "trackButton": "Đăng nhập & theo dõi bài hát của bạn",
+      "usedCreditNote": "Việc này đã sử dụng 1 tín dụng từ tài khoản Nomad Karaoke hiện tại của bạn. Không đúng như bạn muốn? Chỉ cần trả lời email này và chúng tôi sẽ hoàn lại nó.",
+      "whyEmail": "Tại sao lại có email này? Một yêu cầu bài hát đã được gửi trong ứng dụng KaraokeHunt đã ngừng hoạt động bằng địa chỉ này. Đây là tin nhắn một lần về yêu cầu đó - không có danh sách gửi thư nào đằng sau nó. Bạn có câu hỏi? Chỉ cần trả lời: một người thật (Andrew, người sáng lập) sẽ đọc mọi thứ."
     }
   }
 }
