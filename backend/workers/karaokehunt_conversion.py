@@ -93,9 +93,9 @@ def create_intake(
     Always succeeds in classifying: docs with unusable email/artist/title get
     ``outcome="invalid"`` immediately (audit trail without side effects).
     """
-    email = str(payload.get("email") or "").strip().lower()
-    artist = str(payload.get("artist") or "").strip()
-    title = str(payload.get("title") or "").strip()
+    email = str(payload.get("email") or "").strip().lower()[:320]
+    artist = str(payload.get("artist") or "").strip()[:200]
+    title = str(payload.get("title") or "").strip()[:200]
     input_url = str(payload.get("input_url") or "").strip()
 
     # Cap the raw payload so a malicious body can't bloat the doc.

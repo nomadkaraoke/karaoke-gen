@@ -39,7 +39,13 @@ export default {
         "user-agent": request.headers.get("user-agent") || "karaokehunt-app",
       },
       body,
-    }).catch((err) => console.log("forward failed:", err && err.message));
+    })
+      .then((res) => {
+        if (!res.ok) {
+          console.log("forward returned non-2xx:", res.status);
+        }
+      })
+      .catch((err) => console.log("forward failed:", err && err.message));
     ctx.waitUntil(forward);
 
     // The app ignores the body; succeed instantly so nothing user-visible hangs.
