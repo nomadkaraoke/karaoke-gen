@@ -1949,6 +1949,53 @@ class TestPreviewAbandonedWhenJobLeavesReview:
         assert job_manager.get_job.call_count >= 1
         assert _preview_videos.get("job-ab", {}).get("h1") == "jobs/job-ab/previews/h1.mp4"
 
+    def _run_local_unbounded(self, abandoned, set_during_render):
+        """Drive _render_preview_locally_unbounded with the render mocked out."""
+        from backend.api.routes.review import _render_preview_locally_unbounded, _preview_videos
+        _preview_videos.pop("job-ab", None)
+        job = MagicMock()
+        job.job_id = "job-ab"
+        storage = MagicMock()
+
+        def fake_render(**kwargs):
+            if set_during_render:
+                abandoned.set()  # the watcher fired while ffmpeg was running
+            return {"preview_hash": "h1", "video_path": "/tmp/x.mp4"}
+
+        with patch("backend.api.routes.review.StorageService", return_value=storage), \
+             patch("backend.api.routes.review._prepare_preview_inputs", return_value=(MagicMock(), "/tmp/a.flac", MagicMock())), \
+             patch("backend.api.routes.review.CorrectionOperations.generate_preview_video", side_effect=fake_render) as render:
+            result = _render_preview_locally_unbounded(job, {}, False, abandoned)
+        return result, render, storage
+
+    def test_local_render_thread_skips_upload_when_abandoned_mid_render(self):
+        """Cancelling the awaiting task can't stop a thread already in ffmpeg —
+        the thread itself must drop the result instead of publishing it."""
+        import threading
+        from backend.api.routes.review import _preview_videos
+        abandoned = threading.Event()
+        result, render, storage = self._run_local_unbounded(abandoned, set_during_render=True)
+        render.assert_called_once()
+        storage.upload_file.assert_not_called()
+        assert "job-ab" not in _preview_videos
+        assert result == "h1"
+
+    def test_local_render_thread_skips_render_when_already_abandoned(self):
+        import threading
+        abandoned = threading.Event()
+        abandoned.set()
+        result, render, storage = self._run_local_unbounded(abandoned, set_during_render=False)
+        render.assert_not_called()
+        storage.upload_file.assert_not_called()
+        assert result == ""
+
+    def test_local_render_thread_publishes_when_not_abandoned(self):
+        import threading
+        from backend.api.routes.review import _preview_videos
+        result, render, storage = self._run_local_unbounded(threading.Event(), set_during_render=False)
+        storage.upload_file.assert_called_once_with("/tmp/x.mp4", "jobs/job-ab/previews/h1.mp4")
+        assert _preview_videos["job-ab"]["h1"] == "jobs/job-ab/previews/h1.mp4"
+
 
 class TestVocalsCacheRangeAndHeaders:
     """Concurrent-load fixes on the vocals byte proxy: LRU cache, Range, Cache-Control."""
@@ -2166,7 +2213,7 @@ class TestLocalPreviewRenderBound:
         started = threading.Event()
         release = threading.Event()
 
-        def slow_render(job, updated_data, is_duet):
+        def slow_render(job, updated_data, is_duet, abandoned=None):
             started.set()
             release.wait(timeout=5)
             return "hash"
@@ -2190,7 +2237,7 @@ class TestLocalPreviewRenderBound:
             # Slot released — a fresh render is admitted immediately.
             monkeypatch.setattr(
                 review_module, "_render_preview_locally_unbounded",
-                lambda job, updated_data, is_duet: "hash2",
+                lambda job, updated_data, is_duet, abandoned=None: "hash2",
             )
             assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
 
@@ -2210,7 +2257,7 @@ class TestLocalPreviewRenderBound:
         started = threading.Event()
         release = threading.Event()
 
-        def slow_render(job, updated_data, is_duet):
+        def slow_render(job, updated_data, is_duet, abandoned=None):
             started.set()
             release.wait(timeout=5)
             return "hash"
@@ -2240,7 +2287,7 @@ class TestLocalPreviewRenderBound:
 
             monkeypatch.setattr(
                 review_module, "_render_preview_locally_unbounded",
-                lambda job, updated_data, is_duet: "hash2",
+                lambda job, updated_data, is_duet, abandoned=None: "hash2",
             )
             assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
 

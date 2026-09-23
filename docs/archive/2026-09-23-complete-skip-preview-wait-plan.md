@@ -55,6 +55,11 @@ is a preview cold start freezing an API instance for ~10–15 s for *every* user
    every few seconds and cancels the encode (no warmup, no submission, no polling, no local
    fallback, no error marker) once the job is no longer `awaiting_review`/`in_review`.
 
+Cancellation is best-effort for work already inside a thread (CodeRabbit review on PR #1040):
+the local-fallback render thread checks an `abandoned` flag and skips its upload/record if
+the watcher fired mid-render; an in-flight VM start (`_warmup_encoding_worker_fallback` →
+to_thread) cannot be stopped and runs to completion — the idle-shutdown reclaims the VM.
+
 Not done (and why): killing an already-running ffmpeg on the GCE worker. Preview encodes run
 ~10 s in the worker's light lane; a worker-side cancel endpoint would need a Popen registry
 plus a worker restart to deploy, for negligible savings. The expensive waste — cold-starting
