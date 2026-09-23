@@ -369,7 +369,7 @@
       "boardIntro": "Tvoje píseň je na bezplatné komunitní nástěnce požadavků.",
       "communityBonus": "Bonus: komunitní karaoke verze této písně už na YouTube existuje – můžeš si ji zazpívat hned teď:",
       "communityLinkText": "Zazpívej si ji hned teď na YouTube",
-      "intro": "Právě jsi zadal požadavek na karaoke skladbu v aplikaci KaraokeHunt. KaraokeHunt dospěl – teď je to Nomad Karaoke – a stará aplikace je ukončena, ale tvůj požadavek k nám bezpečně dorazil.",
+      "intro": "Právě jsi požádal o karaoke skladbu přes aplikaci KaraokeHunt. Tato aplikace byla ukončena a už není podporována - vyvinula se v Nomad Karaoke (gen.nomadkaraoke.com) - ale tvůj požadavek se k nám přesto dostal a tento jsme vyřídili jako jednorázový bonus zdarma.",
       "jobDetail": "Začali jsme generovat kompletní karaoke video pro {artist} - {title}. Až bude hotové, pošleme ti e-mail – obvykle to trvá několik hodin.",
       "jobStarted": "Dobrá zpráva: právě teď tvou skladbu vytváříme.",
       "newAccountNote": "Pro tuto e-mailovou adresu jsme vytvořili bezplatný účet Nomad Karaoke a toto první video jde na náš účet.",
@@ -379,7 +379,16 @@
       "subject": "Tvůj karaoke požadavek: {artist} - {title}",
       "trackButton": "Přihlásit se a sledovat svou píseň",
       "usedCreditNote": "Tímto se odečetl 1 kredit z tvého stávajícího účtu Nomad Karaoke. Nebylo to v plánu? Stačí odpovědět na tento e-mail a my ti ho vrátíme.",
-      "whyEmail": "Proč tento e-mail? Pomocí této adresy byl odeslán požadavek na píseň v ukončené aplikaci KaraokeHunt. Toto je jednorázová zpráva o tomto požadavku – není za tím žádný mailing list. Máš otázky? Stačí odpovědět: všechno čte skutečný člověk (Andrew, zakladatel)."
+      "whyEmail": "Proč tento e-mail? Pomocí této adresy byl odeslán požadavek na píseň v ukončené aplikaci KaraokeHunt. Toto je jednorázová zpráva o tomto požadavku – není za tím žádný mailing list. Máš otázky? Stačí odpovědět: všechno čte skutečný člověk (Andrew, zakladatel).",
+      "communityCreditNoteExisting": "Tvé kredity na Nomad Karaoke zůstaly nedotčeny - kdykoliv se přihlas, pokud bys místo toho chtěl vygenerovat svou vlastní verzi na míru ve studiové kvalitě.",
+      "communityCreditNoteNew": "Pro tuto e-mailovou adresu jsme také vytvořili bezplatný účet Nomad Karaoke s 1 kreditem zdarma, který můžeš kdykoliv použít k vygenerování vlastní verze jakékoliv písně ve studiové kvalitě.",
+      "communityDetail": "Komunitní karaoke verze {artist} - {title} už na YouTube existuje - je zdarma a hned připravená, nemusíš čekat, až ji vygenerujeme.",
+      "communityIntro": "Dobrá zpráva: tato píseň už má karaoke verzi, kterou můžeš hned teď zpívat.",
+      "signInLink": "Přihlas se do Nomad Karaoke",
+      "uninstallDetail": "Svůj jednorázový převod zdarma jsi od nás už dostal, takže požadavky přes starou aplikaci (jako tento na {artist} - {title}) už nic nedělají. Pokud chceš vytvářet karaoke skladby, přihlas se raději na gen.nomadkaraoke.com - je to stejný účet a umí toho mnohem víc, než kdy uměla stará aplikace.",
+      "uninstallHeadline": "Prosím, odinstaluj si aplikaci KaraokeHunt.",
+      "uninstallIntro": "Právě jsi požádal o píseň přes aplikaci KaraokeHunt - ale tato aplikace byla ukončena a už není podporována, takže tento požadavek nebyl zpracován.",
+      "uninstallNote": "Jedna důležitá věc: toto byl jednorázový převod. Budoucí požadavky podané přes starou aplikaci KaraokeHunt nebudou zpracovány, takže si ji prosím odinstaluj a odteď vytvářej své karaoke skladby přímo na gen.nomadkaraoke.com - tvůj účet je tam připraven."
     }
   }
 }

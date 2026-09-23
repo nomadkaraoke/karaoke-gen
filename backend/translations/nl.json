@@ -369,7 +369,7 @@
       "boardIntro": "Je nummer staat op het gratis community-verzoekenbord.",
       "communityBonus": "Bonus: er bestaat al een community-karaokeversie van dit nummer op YouTube - je kunt het nu meteen zingen:",
       "communityLinkText": "Zing het nu op YouTube",
-      "intro": "Je hebt zojuist een karaokenummer aangevraagd in de KaraokeHunt-app. KaraokeHunt is volwassen geworden - het is nu Nomad Karaoke - en de oude app is met pensioen, maar je verzoek is veilig bij ons binnengekomen.",
+      "intro": "Je hebt zojuist een karaoke-track aangevraagd via de KaraokeHunt app. Die app is met pensioen en wordt niet meer ondersteund - het is uitgegroeid tot Nomad Karaoke (gen.nomadkaraoke.com) - maar je aanvraag heeft ons toch bereikt, en we hebben deze als een eenmalige gratis actie afgehandeld.",
       "jobDetail": "We zijn begonnen met het genereren van een volledige karaoke-video voor {artist} - {title}. We e-mailen je wanneer deze klaar is - meestal binnen een paar uur.",
       "jobStarted": "Goed nieuws: we maken je nummer op dit moment.",
       "newAccountNote": "We hebben een gratis Nomad Karaoke-account ingesteld voor dit e-mailadres, en deze eerste video krijg je van ons.",
@@ -379,7 +379,16 @@
       "subject": "Je karaokeverzoek: {artist} - {title}",
       "trackButton": "Log in & volg je nummer",
       "usedCreditNote": "Dit heeft 1 credit van je bestaande Nomad Karaoke-account gebruikt. Niet wat je wilde? Beantwoord gewoon deze e-mail en we zullen het herstellen.",
-      "whyEmail": "Waarom deze e-mail? Er is een nummerverzoek ingediend in de gepensioneerde KaraokeHunt-app met dit adres. Dit is een eenmalig bericht over dat verzoek - er zit geen mailinglijst achter. Vragen? Beantwoord gewoon dit bericht: een echt mens (Andrew, de oprichter) leest alles."
+      "whyEmail": "Waarom deze e-mail? Er is een nummerverzoek ingediend in de gepensioneerde KaraokeHunt-app met dit adres. Dit is een eenmalig bericht over dat verzoek - er zit geen mailinglijst achter. Vragen? Beantwoord gewoon dit bericht: een echt mens (Andrew, de oprichter) leest alles.",
+      "communityCreditNoteExisting": "Je Nomad Karaoke credits zijn niet aangeraakt - log op elk moment in als je in plaats daarvan je eigen op maat gemaakte versie van studiokwaliteit wilt genereren.",
+      "communityCreditNoteNew": "We hebben ook een gratis Nomad Karaoke account aangemaakt voor dit e-mailadres, met 1 gratis credit die je op elk moment kunt gebruiken om je eigen op maat gemaakte versie van studiokwaliteit van elk nummer te genereren.",
+      "communityDetail": "Er bestaat al een community karaoke-versie van {artist} - {title} op YouTube - gratis en direct beschikbaar, je hoeft niet te wachten tot wij er een genereren.",
+      "communityIntro": "Goed nieuws: dit nummer heeft al een karaoke-versie die je nu meteen kunt zingen.",
+      "signInLink": "Log in bij Nomad Karaoke",
+      "uninstallDetail": "Je hebt je eenmalige gratis conversie al van ons ontvangen, dus aanvragen via de oude app (zoals deze voor {artist} - {title}) doen niets meer. Om karaoke-tracks te maken, log je in plaats daarvan in op gen.nomadkaraoke.com - hetzelfde account, en het kan veel meer dan de oude app ooit kon.",
+      "uninstallHeadline": "Verwijder alsjeblieft de KaraokeHunt app.",
+      "uninstallIntro": "Je hebt zojuist een nummer aangevraagd via de KaraokeHunt app - maar die app is met pensioen en wordt niet meer ondersteund, en deze aanvraag is niet verwerkt.",
+      "uninstallNote": "Eén belangrijk ding: dit was een eenmalige conversie. Toekomstige aanvragen via de oude KaraokeHunt app worden niet verwerkt, dus verwijder deze alsjeblieft en maak je karaoke-tracks vanaf nu direct op gen.nomadkaraoke.com - je account staat daar klaar."
     }
   }
 }

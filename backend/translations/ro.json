@@ -369,7 +369,7 @@
       "boardIntro": "Piesa ta este pe panoul gratuit de cereri al comunității.",
       "communityBonus": "Bonus: o versiune karaoke a comunității pentru această piesă există deja pe YouTube - o poți cânta chiar acum:",
       "communityLinkText": "Cânt-o acum pe YouTube",
-      "intro": "Tocmai ai cerut o piesă karaoke în aplicația KaraokeHunt. KaraokeHunt a crescut - acum este Nomad Karaoke - și vechea aplicație a fost retrasă, dar cererea ta a ajuns în siguranță la noi.",
+      "intro": "Tocmai ai solicitat o piesă de karaoke prin aplicația KaraokeHunt. Acea aplicație a fost retrasă și nu mai este suportată - a evoluat în Nomad Karaoke (gen.nomadkaraoke.com) - dar solicitarea ta a ajuns totuși la noi, iar pe aceasta am tratat-o ca pe o gratuitate unică.",
       "jobDetail": "Am început să generăm un videoclip karaoke complet pentru {artist} - {title}. Îți vom trimite un e-mail când este gata - de obicei în câteva ore.",
       "jobStarted": "Vești bune: îți facem piesa chiar acum.",
       "newAccountNote": "Am creat un cont gratuit Nomad Karaoke pentru această adresă de e-mail, iar acest prim videoclip este din partea noastră.",
@@ -379,7 +379,16 @@
       "subject": "Cererea ta karaoke: {artist} - {title}",
       "trackButton": "Conectează-te și urmărește-ți piesa",
       "usedCreditNote": "Acest lucru a folosit 1 credit din contul tău existent Nomad Karaoke. Nu e ceea ce voiai? Doar răspunde la acest e-mail și îl vom restaura.",
-      "whyEmail": "De ce acest e-mail? O cerere de piesă a fost trimisă în aplicația retrasă KaraokeHunt folosind această adresă. Acesta este un mesaj unic despre acea cerere - nu există nicio listă de corespondență în spate. Întrebări? Doar răspunde: un om real (Andrew, fondatorul) citește totul."
+      "whyEmail": "De ce acest e-mail? O cerere de piesă a fost trimisă în aplicația retrasă KaraokeHunt folosind această adresă. Acesta este un mesaj unic despre acea cerere - nu există nicio listă de corespondență în spate. Întrebări? Doar răspunde: un om real (Andrew, fondatorul) citește totul.",
+      "communityCreditNoteExisting": "Creditele tale Nomad Karaoke nu au fost atinse - conectează-te oricând dacă vrei să generezi în schimb propria ta versiune personalizată la calitate de studio.",
+      "communityCreditNoteNew": "De asemenea, am creat un cont gratuit Nomad Karaoke pentru această adresă de e-mail, cu 1 credit gratuit pe care îl poți folosi oricând pentru a genera propria ta versiune personalizată la calitate de studio a oricărei piese.",
+      "communityDetail": "O versiune de karaoke a comunității pentru {artist} - {title} există deja pe YouTube - gratuită și gata acum, nu este nevoie să aștepți să generăm noi una.",
+      "communityIntro": "Vești bune: această piesă are deja o versiune de karaoke pe care o poți cânta chiar acum.",
+      "signInLink": "Conectează-te la Nomad Karaoke",
+      "uninstallDetail": "Ai primit deja conversia gratuită unică de la noi, așa că solicitările prin vechea aplicație (cum ar fi aceasta pentru {artist} - {title}) nu mai fac nimic. Pentru a crea piese de karaoke, conectează-te în schimb la gen.nomadkaraoke.com - același cont, și face mult mai multe decât a făcut vreodată vechea aplicație.",
+      "uninstallHeadline": "Te rugăm să dezinstalezi aplicația KaraokeHunt.",
+      "uninstallIntro": "Tocmai ai făcut o solicitare de piesă prin aplicația KaraokeHunt - dar acea aplicație a fost retrasă și nu mai este suportată, iar această solicitare nu a fost procesată.",
+      "uninstallNote": "Un lucru important: aceasta a fost o conversie unică. Solicitările viitoare făcute prin vechea aplicație KaraokeHunt nu vor fi procesate, așa că te rugăm să o dezinstalezi și să îți creezi piesele de karaoke direct pe gen.nomadkaraoke.com de acum înainte - contul tău este pregătit acolo."
     }
   }
 }

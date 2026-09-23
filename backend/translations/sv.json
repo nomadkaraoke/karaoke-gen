@@ -369,7 +369,7 @@
       "boardIntro": "Din låt finns på den kostnadsfria anslagstavlan för community-önskemål.",
       "communityBonus": "Bonus: en community-karaokeversion av den här låten finns redan på YouTube - du kan sjunga den direkt:",
       "communityLinkText": "Sjung den nu på YouTube",
-      "intro": "Du har precis önskat en karaokelåt i KaraokeHunt-appen. KaraokeHunt har vuxit upp - det är nu Nomad Karaoke - och den gamla appen har pensionerats, men ditt önskemål har landat säkert hos oss.",
+      "intro": "Du begärde precis ett karaokespår via KaraokeHunt-appen. Den appen är nedlagd och stöds inte längre - den har vuxit upp till Nomad Karaoke (gen.nomadkaraoke.com) - men din begäran nådde oss ändå, och vi har hanterat den här som en engångsgåva.",
       "jobDetail": "Vi har börjat generera en fullständig karaokevideo för {artist} - {title}. Vi mejlar dig när den är klar - vanligtvis inom några timmar.",
       "jobStarted": "Goda nyheter: vi skapar din låt just nu.",
       "newAccountNote": "Vi har skapat ett gratis Nomad Karaoke-konto för den här e-postadressen, och vi bjuder på den här första videon.",
@@ -379,7 +379,16 @@
       "subject": "Ditt karaoke-önskemål: {artist} - {title}",
       "trackButton": "Logga in & spåra din låt",
       "usedCreditNote": "Detta använde 1 kredit från ditt befintliga Nomad Karaoke-konto. Var det inte det du ville? Svara bara på det här mejlet så återställer vi den.",
-      "whyEmail": "Varför det här mejlet? Ett låtönskemål skickades in i den numera nedlagda KaraokeHunt-appen med den här adressen. Detta är ett engångsmeddelande om det önskemålet - det finns ingen e-postlista bakom det. Frågor? Svara bara: en riktig människa (Andrew, grundaren) läser allt."
+      "whyEmail": "Varför det här mejlet? Ett låtönskemål skickades in i den numera nedlagda KaraokeHunt-appen med den här adressen. Detta är ett engångsmeddelande om det önskemålet - det finns ingen e-postlista bakom det. Frågor? Svara bara: en riktig människa (Andrew, grundaren) läser allt.",
+      "communityCreditNoteExisting": "Dina Nomad Karaoke-krediter rördes inte - logga in när som helst om du hellre vill generera din egen anpassade version i studiokvalitet istället.",
+      "communityCreditNoteNew": "Vi har också skapat ett gratis Nomad Karaoke-konto för den här e-postadressen, med 1 gratis kredit som du kan använda när som helst för att generera din egen anpassade version i studiokvalitet av valfri låt.",
+      "communityDetail": "En community-karaokeversion av {artist} - {title} finns redan på YouTube - gratis och redo nu, ingen anledning att vänta på att vi ska generera en.",
+      "communityIntro": "Goda nyheter: den här låten har redan en karaokeversion som du kan sjunga just nu.",
+      "signInLink": "Logga in på Nomad Karaoke",
+      "uninstallDetail": "Du har redan fått din kostnadsfria engångskonvertering från oss, så förfrågningar via den gamla appen (som den här för {artist} - {title}) gör inte längre någonting. För att göra karaokespår, logga in på gen.nomadkaraoke.com istället - samma konto, och det gör mycket mer än vad den gamla appen någonsin gjorde.",
+      "uninstallHeadline": "Vänligen avinstallera KaraokeHunt-appen.",
+      "uninstallIntro": "Du gjorde precis en låtförfrågan via KaraokeHunt-appen - men den appen är nedlagd och stöds inte längre, och den här förfrågan behandlades inte.",
+      "uninstallNote": "En viktig sak: detta var en engångskonvertering. Framtida förfrågningar som görs via den gamla KaraokeHunt-appen kommer inte att behandlas, så vänligen avinstallera den och gör dina karaokespår direkt på gen.nomadkaraoke.com från och med nu - ditt konto är redo där."
     }
   }
 }

@@ -369,7 +369,7 @@
       "boardIntro": "Kappaleesi on ilmaisella yhteisön toivepyyntötaululla.",
       "communityBonus": "Bonus: tästä kappaleesta on jo olemassa yhteisön tekemä karaokeversio YouTubessa - voit laulaa sen heti:",
       "communityLinkText": "Laula se nyt YouTubessa",
-      "intro": "Pyysit juuri karaokekappaletta KaraokeHunt-sovelluksessa. KaraokeHunt on kasvanut - se on nyt Nomad Karaoke - ja vanha sovellus on poistettu käytöstä, mutta pyyntösi saapui meille turvallisesti.",
+      "intro": "Pyysit juuri karaokekappaletta KaraokeHunt-sovelluksen kautta. Kyseinen sovellus on poistettu käytöstä eikä sitä enää tueta – se on kasvanut Nomad Karaoke -palveluksi (gen.nomadkaraoke.com) – mutta pyyntösi saavutti meidät silti, ja olemme käsitelleet tämän kertaluonteisena ilmaisena etuna.",
       "jobDetail": "Olemme aloittaneet täyden karaoke-videon luomisen kappaleelle {artist} - {title}. Lähetämme sinulle sähköpostia, kun se on valmis - yleensä muutaman tunnin kuluessa.",
       "jobStarted": "Hyviä uutisia: teemme kappalettasi juuri nyt.",
       "newAccountNote": "Luoimme ilmaisen Nomad Karaoke -tilin tälle sähköpostiosoitteelle, ja tämä ensimmäinen video on meidän tarjoamamme.",
@@ -379,7 +379,16 @@
       "subject": "Karaokepyyntösi: {artist} - {title}",
       "trackButton": "Kirjaudu sisään ja seuraa kappalettasi",
       "usedCreditNote": "Tämä kulutti 1 krediitin olemassa olevalta Nomad Karaoke -tililtäsi. Eikö tämä ollut sitä mitä halusit? Vastaa vain tähän sähköpostiin, niin palautamme sen.",
-      "whyEmail": "Miksi tämä sähköposti? Kappalepyyntö lähetettiin käytöstä poistetussa KaraokeHunt-sovelluksessa käyttäen tätä osoitetta. Tämä on kertaluonteinen viesti kyseisestä pyynnöstä - sen takana ei ole postituslistaa. Kysyttävää? Vastaa vain: oikea ihminen (Andrew, perustaja) lukee kaiken."
+      "whyEmail": "Miksi tämä sähköposti? Kappalepyyntö lähetettiin käytöstä poistetussa KaraokeHunt-sovelluksessa käyttäen tätä osoitetta. Tämä on kertaluonteinen viesti kyseisestä pyynnöstä - sen takana ei ole postituslistaa. Kysyttävää? Vastaa vain: oikea ihminen (Andrew, perustaja) lukee kaiken.",
+      "communityCreditNoteExisting": "Nomad Karaoke -krediittejäsi ei käytetty – kirjaudu sisään milloin tahansa, jos haluat mieluummin luoda oman studiotasoisen mukautetun versiosi.",
+      "communityCreditNoteNew": "Olemme myös luoneet tälle sähköpostiosoitteelle ilmaisen Nomad Karaoke -tilin, jolla on 1 ilmainen krediitti. Voit käyttää sen milloin tahansa luodaksesi oman studiotasoisen mukautetun versiosi mistä tahansa kappaleesta.",
+      "communityDetail": "Yhteisön tekemä karaokeversio kappaleesta {artist} - {title} on jo olemassa YouTubessa – se on ilmainen ja heti valmis, joten sinun ei tarvitse odottaa, että luomme sen.",
+      "communityIntro": "Hyviä uutisia: tästä kappaleesta on jo olemassa karaokeversio, jota voit laulaa heti.",
+      "signInLink": "Kirjaudu sisään Nomad Karaokeen",
+      "uninstallDetail": "Olet jo saanut meiltä kertaluonteisen ilmaisen muunnoksen, joten vanhan sovelluksen kautta tehdyt pyynnöt (kuten tämä kappaleelle {artist} - {title}) eivät enää tee mitään. Jos haluat tehdä karaokekappaleita, kirjaudu sen sijaan sisään osoitteessa gen.nomadkaraoke.com – tili on sama, ja se tekee paljon enemmän kuin vanha sovellus koskaan teki.",
+      "uninstallHeadline": "Poista KaraokeHunt-sovellus.",
+      "uninstallIntro": "Teit juuri kappalepyynnön KaraokeHunt-sovelluksen kautta – mutta kyseinen sovellus on poistettu käytöstä eikä sitä enää tueta, joten tätä pyyntöä ei käsitelty.",
+      "uninstallNote": "Yksi tärkeä asia: tämä oli kertaluonteinen muunnos. Vanhan KaraokeHunt-sovelluksen kautta tehtyjä tulevia pyyntöjä ei käsitellä, joten poista se ja tee karaokekappaleesi tästä lähtien suoraan osoitteessa gen.nomadkaraoke.com – tilisi on siellä valmiina."
     }
   }
 }

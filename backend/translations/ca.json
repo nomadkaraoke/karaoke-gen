@@ -369,7 +369,7 @@
       "boardIntro": "La teva cançó és al tauler de peticions gratuït de la comunitat.",
       "communityBonus": "Extra: ja existeix una versió de karaoke de la comunitat d'aquesta cançó a YouTube - pots cantar-la ara mateix:",
       "communityLinkText": "Canta-la ara a YouTube",
-      "intro": "Acabes de demanar una pista de karaoke a l'aplicació KaraokeHunt. KaraokeHunt s'ha fet gran - ara és Nomad Karaoke - i l'antiga aplicació s'ha retirat, però la teva petició ens ha arribat de manera segura.",
+      "intro": "Acabes de sol·licitar una pista de karaoke a través de l'aplicació KaraokeHunt. Aquesta aplicació s'ha retirat i ja no té suport (ha evolucionat a Nomad Karaoke, gen.nomadkaraoke.com), però la teva sol·licitud ens ha arribat igualment i l'hem gestionat com un obsequi puntual.",
       "jobDetail": "Hem començat a generar un vídeo de karaoke complet per a {artist} - {title}. T'enviarem un correu electrònic quan estigui llest - normalment en unes poques hores.",
       "jobStarted": "Bones notícies: estem creant la teva pista ara mateix.",
       "newAccountNote": "Hem configurat un compte gratuït de Nomad Karaoke per a aquesta adreça de correu electrònic, i aquest primer vídeo va a càrrec nostre.",
@@ -379,7 +379,16 @@
       "subject": "La teva petició de karaoke: {artist} - {title}",
       "trackButton": "Inicia sessió i fes el seguiment de la teva cançó",
       "usedCreditNote": "Això ha utilitzat 1 crèdit del teu compte de Nomad Karaoke existent. No és el que volies? Només has de respondre a aquest correu i te'l restaurarem.",
-      "whyEmail": "Per què aquest correu? Es va enviar una petició de cançó a l'aplicació retirada KaraokeHunt utilitzant aquesta adreça. Aquest és un missatge únic sobre aquesta petició - no hi ha cap llista de correu al darrere. Tens preguntes? Només has de respondre: un humà real (l'Andrew, el fundador) ho llegeix tot."
+      "whyEmail": "Per què aquest correu? Es va enviar una petició de cançó a l'aplicació retirada KaraokeHunt utilitzant aquesta adreça. Aquest és un missatge únic sobre aquesta petició - no hi ha cap llista de correu al darrere. Tens preguntes? Només has de respondre: un humà real (l'Andrew, el fundador) ho llegeix tot.",
+      "communityCreditNoteExisting": "Els teus crèdits de Nomad Karaoke no s'han tocat; inicia sessió en qualsevol moment si prefereixes generar la teva pròpia versió personalitzada amb qualitat d'estudi.",
+      "communityCreditNoteNew": "També hem creat un compte gratuït de Nomad Karaoke per a aquesta adreça de correu electrònic, amb 1 crèdit gratuït que pots utilitzar en qualsevol moment per generar la teva pròpia versió personalitzada amb qualitat d'estudi de qualsevol cançó.",
+      "communityDetail": "Ja existeix una versió de karaoke de la comunitat de {artist} - {title} a YouTube: és gratuïta i ja està a punt, no cal que esperis que en generem una.",
+      "communityIntro": "Bones notícies: aquesta cançó ja té una versió de karaoke que pots cantar ara mateix.",
+      "signInLink": "Inicia sessió a Nomad Karaoke",
+      "uninstallDetail": "Ja has rebut la teva conversió gratuïta puntual per part nostra, així que les sol·licituds a través de l'aplicació antiga (com aquesta per a {artist} - {title}) ja no fan res. Per crear pistes de karaoke, inicia sessió a gen.nomadkaraoke.com; és el mateix compte i fa molt més del que feia l'aplicació antiga.",
+      "uninstallHeadline": "Si us plau, desinstal·la l'aplicació KaraokeHunt.",
+      "uninstallIntro": "Acabes de fer una sol·licitud de cançó a través de l'aplicació KaraokeHunt, però aquesta aplicació s'ha retirat i ja no té suport, i aquesta sol·licitud no s'ha processat.",
+      "uninstallNote": "Una cosa important: aquesta ha estat una conversió puntual. Les futures sol·licituds fetes a través de l'antiga aplicació KaraokeHunt no es processaran, així que si us plau, desinstal·la-la i crea les teves pistes de karaoke directament a gen.nomadkaraoke.com a partir d'ara; el teu compte ja hi està preparat."
     }
   }
 }

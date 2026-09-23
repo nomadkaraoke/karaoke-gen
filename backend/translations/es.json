@@ -369,7 +369,7 @@
       "boardIntro": "Tu canción está en el tablero gratuito de solicitudes de la comunidad.",
       "communityBonus": "Bonus: ya existe una versión de karaoke de la comunidad de esta canción en YouTube - puedes cantarla ahora mismo:",
       "communityLinkText": "Cántala ahora en YouTube",
-      "intro": "Acabas de solicitar una pista de karaoke en la aplicación KaraokeHunt. KaraokeHunt ha crecido - ahora es Nomad Karaoke - y la antigua aplicación ha sido retirada, pero tu solicitud llegó a salvo con nosotros.",
+      "intro": "Acabas de solicitar una pista de karaoke a través de la aplicación KaraokeHunt. Esa aplicación está retirada y ya no tiene soporte - ha evolucionado a Nomad Karaoke (gen.nomadkaraoke.com) - pero tu solicitud aún nos llegó, y hemos procesado esta como un obsequio por única vez.",
       "jobDetail": "Hemos empezado a generar un video de karaoke completo para {artist} - {title}. Te enviaremos un correo electrónico cuando esté listo - normalmente en unas pocas horas.",
       "jobStarted": "Buenas noticias: estamos haciendo tu pista ahora mismo.",
       "newAccountNote": "Hemos configurado una cuenta gratuita de Nomad Karaoke para esta dirección de correo electrónico, y este primer video corre por nuestra cuenta.",
@@ -379,7 +379,16 @@
       "subject": "Tu solicitud de karaoke: {artist} - {title}",
       "trackButton": "Inicia sesión y sigue tu canción",
       "usedCreditNote": "Esto usó 1 crédito de tu cuenta existente de Nomad Karaoke. ¿No es lo que querías? Solo responde a este correo electrónico y lo restauraremos.",
-      "whyEmail": "¿Por qué este correo electrónico? Se envió una solicitud de canción en la aplicación retirada KaraokeHunt usando esta dirección. Este es un mensaje único sobre esa solicitud - no hay una lista de correo detrás de esto. ¿Preguntas? Solo responde: un humano real (Andrew, el fundador) lee todo."
+      "whyEmail": "¿Por qué este correo electrónico? Se envió una solicitud de canción en la aplicación retirada KaraokeHunt usando esta dirección. Este es un mensaje único sobre esa solicitud - no hay una lista de correo detrás de esto. ¿Preguntas? Solo responde: un humano real (Andrew, el fundador) lee todo.",
+      "communityCreditNoteExisting": "Tus créditos de Nomad Karaoke no fueron tocados - inicia sesión en cualquier momento si prefieres generar tu propia versión personalizada con calidad de estudio.",
+      "communityCreditNoteNew": "También hemos configurado una cuenta gratuita de Nomad Karaoke para esta dirección de correo electrónico, con 1 crédito gratuito que puedes usar en cualquier momento para generar tu propia versión personalizada con calidad de estudio de cualquier canción.",
+      "communityDetail": "Ya existe una versión de karaoke comunitaria de {artist} - {title} en YouTube - gratis y lista ahora, no hay necesidad de esperar a que generemos una.",
+      "communityIntro": "Buenas noticias: esta canción ya tiene una versión de karaoke que puedes cantar ahora mismo.",
+      "signInLink": "Iniciar sesión en Nomad Karaoke",
+      "uninstallDetail": "Ya has recibido tu conversión gratuita por única vez de nuestra parte, por lo que las solicitudes a través de la aplicación antigua (como esta para {artist} - {title}) ya no hacen nada. Para hacer pistas de karaoke, inicia sesión en gen.nomadkaraoke.com en su lugar - es la misma cuenta, y hace mucho más de lo que la aplicación antigua hizo alguna vez.",
+      "uninstallHeadline": "Por favor, desinstala la aplicación KaraokeHunt.",
+      "uninstallIntro": "Acabas de hacer una solicitud de canción a través de la aplicación KaraokeHunt - pero esa aplicación está retirada y ya no tiene soporte, y esta solicitud no fue procesada.",
+      "uninstallNote": "Una cosa importante: esta fue una conversión por única vez. Las futuras solicitudes realizadas a través de la antigua aplicación KaraokeHunt no serán procesadas, así que por favor desinstálala y haz tus pistas de karaoke directamente en gen.nomadkaraoke.com de ahora en adelante - tu cuenta está lista allí."
     }
   }
 }

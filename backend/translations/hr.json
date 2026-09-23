@@ -369,7 +369,7 @@
       "boardIntro": "Tvoja pjesma je na besplatnoj ploči sa zahtjevima zajednice.",
       "communityBonus": "Bonus: karaoke verzija ove pjesme od strane zajednice već postoji na YouTubeu - možeš je pjevati odmah:",
       "communityLinkText": "Pjevaj je sada na YouTubeu",
-      "intro": "Upravo si zatražio karaoke pjesmu u aplikaciji KaraokeHunt. KaraokeHunt je odrastao - sada je to Nomad Karaoke - i stara aplikacija je umirovljena, ali tvoj zahtjev je sigurno stigao do nas.",
+      "intro": "Upravo si zatražio/la karaoke pjesmu putem aplikacije KaraokeHunt. Ta aplikacija je umirovljena i više nije podržana - prerasla je u Nomad Karaoke (gen.nomadkaraoke.com) - ali tvoj zahtjev je ipak stigao do nas, pa smo ga odradili kao jednokratni besplatni poklon.",
       "jobDetail": "Započeli smo s generiranjem punog karaoke videa za {artist} - {title}. Poslat ćemo ti e-mail kada bude spreman - obično u roku od nekoliko sati.",
       "jobStarted": "Dobre vijesti: upravo izrađujemo tvoju pjesmu.",
       "newAccountNote": "Postavili smo besplatan Nomad Karaoke račun za ovu e-mail adresu, a ovaj prvi video je na naš račun.",
@@ -379,7 +379,16 @@
       "subject": "Tvoj karaoke zahtjev: {artist} - {title}",
       "trackButton": "Prijavi se i prati svoju pjesmu",
       "usedCreditNote": "Ovo je iskoristilo 1 kredit s tvog postojećeg Nomad Karaoke računa. Nije ono što si htio? Samo odgovori na ovaj e-mail i vratit ćemo ga.",
-      "whyEmail": "Zašto ovaj e-mail? Zahtjev za pjesmu poslan je u umirovljenoj aplikaciji KaraokeHunt koristeći ovu adresu. Ovo je jednokratna poruka o tom zahtjevu - iza nje ne stoji nikakva mailing lista. Pitanja? Samo odgovori: stvarna osoba (Andrew, osnivač) čita sve."
+      "whyEmail": "Zašto ovaj e-mail? Zahtjev za pjesmu poslan je u umirovljenoj aplikaciji KaraokeHunt koristeći ovu adresu. Ovo je jednokratna poruka o tom zahtjevu - iza nje ne stoji nikakva mailing lista. Pitanja? Samo odgovori: stvarna osoba (Andrew, osnivač) čita sve.",
+      "communityCreditNoteExisting": "Tvoji Nomad Karaoke krediti nisu dirani - prijavi se u bilo kojem trenutku ako umjesto toga želiš generirati vlastitu prilagođenu verziju studijske kvalitete.",
+      "communityCreditNoteNew": "Također smo postavili besplatan Nomad Karaoke račun za ovu e-mail adresu, s 1 besplatnim kreditom koji možeš iskoristiti u bilo kojem trenutku za generiranje vlastite prilagođene verzije bilo koje pjesme studijske kvalitete.",
+      "communityDetail": "Karaoke verzija zajednice za pjesmu {artist} - {title} već postoji na YouTubeu - besplatna je i spremna odmah, nema potrebe čekati da je mi generiramo.",
+      "communityIntro": "Dobre vijesti: ova pjesma već ima karaoke verziju koju možeš pjevati odmah.",
+      "signInLink": "Prijavi se u Nomad Karaoke",
+      "uninstallDetail": "Već si dobio/la svoju jednokratnu besplatnu konverziju od nas, tako da zahtjevi putem stare aplikacije (poput ovog za {artist} - {title}) više ne rade ništa. Za izradu karaoke pjesama, prijavi se na gen.nomadkaraoke.com - isti je račun, a nudi puno više nego što je stara aplikacija ikada nudila.",
+      "uninstallHeadline": "Molimo te, deinstaliraj aplikaciju KaraokeHunt.",
+      "uninstallIntro": "Upravo si poslao/la zahtjev za pjesmu putem aplikacije KaraokeHunt - ali ta aplikacija je umirovljena i više nije podržana, te ovaj zahtjev nije obrađen.",
+      "uninstallNote": "Jedna važna stvar: ovo je bila jednokratna konverzija. Budući zahtjevi poslani putem stare aplikacije KaraokeHunt neće biti obrađeni, stoga te molimo da je deinstaliraš i od sada izrađuješ svoje karaoke pjesme izravno na gen.nomadkaraoke.com - tvoj račun je tamo spreman."
     }
   }
 }
