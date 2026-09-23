@@ -6,6 +6,31 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Sync GCE calls on the API event loop froze every request — "Complete waits for the preview" (Sep 2026, v0.237.0)
+
+Andrew reported that clicking **Complete** in the lyrics review before the preview video
+loaded "waits until the preview loads before it submits". The frontend never gated on the
+preview; prod logs (job e80caa57) showed the API instance's **event loop frozen** twice:
+`POST /corrections` finished its handler work in 0.5 s but its response wasn't written for
+13 s, and a trivial `GET /jobs` took 5 s in the same window. Investigation + numbers:
+`docs/archive/2026-09-23-complete-skip-preview-wait-plan.md`.
+
+- **A synchronous Compute API call inside an `async def` blocks the whole instance.**
+  `EncodingWorkerManager.ensure_any_running/ensure_primary_running` do
+  get + start + wait-for-operation (10–20 s for a stopped VM). Two async callers ran them
+  inline: the preview encode's `_warmup_encoding_worker_fallback` (fires 2–6×/day from the
+  API service) and `WorkerService._warmup_encoding_worker` (docstring said "fire-and-forget";
+  it was neither). Fix: `await asyncio.to_thread(...)`, and for the trigger path a tracked
+  background task so `/complete` returns without waiting. 62/142 completes over 14 days had
+  taken > 3 s (max 35 s).
+- **Cheap detector for a frozen loop in Cloud Run logs:** a handler's last log line lands
+  many seconds before uvicorn's access-log line for the same request, and unrelated
+  cheap endpoints on the same instance spike at the same moment.
+- **Abandon work nobody can consume.** The background preview encode now watches the job's
+  Firestore status (not an in-memory flag — the `/complete` request may hit another
+  instance) and cancels itself once the job leaves review, so a discarded preview can no
+  longer cold-start a fallback VM or keep polling the encoder.
+
 ## Cold start = imports + lifespan; fix heavy imports at the SOURCE module (Sep 2026, v0.235.0)
 
 A fresh Cloud Run instance took ~16s to serve its first request: ~8–9s of Python

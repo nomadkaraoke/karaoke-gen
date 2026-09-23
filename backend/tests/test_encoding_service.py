@@ -388,6 +388,40 @@ class TestWarmupFallback:
         mock_manager.ensure_primary_running.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_warmup_fallback_does_not_block_event_loop(self, encoding_service):
+        """The blocking VM start runs in a thread, not on the loop.
+
+        Regression for 2026-09-23: the preview encode's warmup fallback called
+        ensure_*_running inline from async code, freezing every request on
+        the API instance for the 10-20 s VM start.
+        """
+        import time
+
+        def slow_start():
+            time.sleep(0.3)
+            return {"started": False, "vm_name": "encoding-worker-a", "primary_url": "http://1.2.3.4:8080"}
+
+        mock_manager = MagicMock()
+        mock_manager.ensure_primary_running.side_effect = slow_start
+        encoding_service._worker_manager = mock_manager
+
+        ticks = 0
+
+        async def ticker():
+            nonlocal ticks
+            while True:
+                await asyncio.sleep(0.01)
+                ticks += 1
+
+        t = asyncio.ensure_future(ticker())
+        try:
+            await encoding_service._warmup_encoding_worker_fallback("test-job")
+        finally:
+            t.cancel()
+        mock_manager.ensure_primary_running.assert_called_once()
+        assert ticks > 5, f"event loop was blocked during warmup (ticks={ticks})"
+
+    @pytest.mark.asyncio
     async def test_warmup_fallback_noop_without_worker_manager(self, encoding_service):
         """Warmup fallback is a no-op when worker_manager is not set (dev mode)."""
         encoding_service._worker_manager = None

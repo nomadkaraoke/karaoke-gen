@@ -413,17 +413,24 @@ class EncodingService:
             return
 
         candidates = self._build_worker_candidates()
+        # ensure_*_running are BLOCKING (Compute API get/start + wait for the
+        # start operation — 10-20 s for a stopped VM). This coroutine runs on the
+        # API service's event loop (preview encodes), so they MUST go through
+        # to_thread: inline they froze every in-flight request on the instance
+        # for the whole VM start (incident 2026-09-23).
         try:
             if candidates and len(candidates) > 1:
                 # Multi-zone path: try primary, then fallbacks in alt zones.
-                result = self._worker_manager.ensure_any_running(candidates)
+                result = await asyncio.to_thread(
+                    self._worker_manager.ensure_any_running, candidates
+                )
                 # If we fell back, the worker manager just persisted the
                 # active_override URL — invalidate our cache so the next
                 # request hits the right VM.
                 if result.get("fell_back"):
                     self._invalidate_cached_url()
             else:
-                result = self._worker_manager.ensure_primary_running()
+                result = await asyncio.to_thread(self._worker_manager.ensure_primary_running)
         except EncodingWorkerStartError:
             # Every candidate exhausted (or single-zone primary failed) — both
             # capacity errors and other start failures (e.g. 503

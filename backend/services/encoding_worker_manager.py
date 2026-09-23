@@ -728,7 +728,9 @@ class EncodingWorkerManager:
         last_status = None
         last_log = 0.0
         while loop.time() < deadline:
-            last_status = self.get_vm_status(vm_name, zone=zone)
+            # Compute API call — keep it off the event loop (this runs inside
+            # the API service for preview cold starts).
+            last_status = await asyncio.to_thread(self.get_vm_status, vm_name, zone=zone)
             if last_status == "RUNNING":
                 logger.info("VM %s reached RUNNING", vm_name)
                 break

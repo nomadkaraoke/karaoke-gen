@@ -371,6 +371,51 @@ def _render_preview_locally_unbounded(job, updated_data: Dict[str, Any], is_duet
     return preview_hash
 
 
+# How often an in-flight background preview encode re-checks that its job is
+# still in review. A reviewer who is confident can click Complete without
+# waiting for the preview; once the job leaves awaiting_review/in_review the
+# preview is unwatchable, so the encode is abandoned — no encoder VM cold
+# start, no submission, no status polling, no local fallback — instead of
+# burning encoder time on a video nobody can see.
+PREVIEW_ABANDON_POLL_S = float(os.getenv("PREVIEW_ABANDON_POLL_S", "3"))
+_REVIEW_STATUSES = (JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW)
+
+
+async def _job_left_review(job_id: str) -> bool:
+    """True once the job is no longer in a review state (or no longer exists)."""
+    job = await asyncio.to_thread(JobManager().get_job, job_id)
+    return job is None or job.status not in _REVIEW_STATUSES
+
+
+async def _cancel_preview_when_job_leaves_review(
+    job_id: str, preview_hash: str, encode_task: "asyncio.Task[None]"
+) -> bool:
+    """Watch the job's status while ``encode_task`` runs; cancel it once the
+    job leaves review. Returns True iff this watcher cancelled the encode.
+
+    Status is read from Firestore (not an in-memory flag) because the
+    /complete request that ends the review may land on a different Cloud Run
+    instance than the one running the encode.
+    """
+    while not encode_task.done():
+        await asyncio.sleep(PREVIEW_ABANDON_POLL_S)
+        if encode_task.done():
+            return False
+        try:
+            left = await _job_left_review(job_id)
+        except Exception as e:  # transient Firestore blip — keep watching
+            logger.debug(f"Job {job_id}: preview abandon check failed (will retry): {e}")
+            continue
+        if left:
+            logger.info(
+                f"Job {job_id}: Abandoning preview {preview_hash} — job left review "
+                f"(reviewer completed without waiting for the preview)"
+            )
+            encode_task.cancel()
+            return True
+    return False
+
+
 async def _encode_preview_in_background(
     job,
     preview_hash: str,
@@ -386,7 +431,36 @@ async def _encode_preview_in_background(
     reports ready once the mp4 exists in GCS. On GCE failure this falls back
     to a local render; if that also fails an error marker is written so the
     poll can surface the failure instead of spinning until its timeout.
+
+    The encode is abandoned (cancelled, nothing written) as soon as the job
+    leaves review — see ``_cancel_preview_when_job_leaves_review``.
     """
+    job_id = job.job_id
+    with job_log_context(job_id, worker="preview"):
+        encode_task = asyncio.create_task(
+            _run_preview_encode(job, preview_hash, encode_kwargs, updated_data, is_duet)
+        )
+        watcher = asyncio.create_task(
+            _cancel_preview_when_job_leaves_review(job_id, preview_hash, encode_task)
+        )
+        try:
+            await encode_task
+        except asyncio.CancelledError:
+            if watcher.done() and not watcher.cancelled() and watcher.result():
+                return  # abandoned on purpose — already logged by the watcher
+            raise  # genuine outer cancellation (e.g. shutdown)
+        finally:
+            watcher.cancel()
+
+
+async def _run_preview_encode(
+    job,
+    preview_hash: str,
+    encode_kwargs: Dict[str, Any],
+    updated_data: Dict[str, Any],
+    is_duet: bool,
+) -> None:
+    """GCE encode → local fallback → error marker (the cancellable inner body)."""
     job_id = job.job_id
     storage = StorageService()
     encoding_service = get_encoding_service()
