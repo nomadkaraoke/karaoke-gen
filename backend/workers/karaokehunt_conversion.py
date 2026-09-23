@@ -336,9 +336,11 @@ def _uninstall_email_recently_sent(db, doc: Dict[str, Any]) -> bool:
             other = snap.to_dict()
             if other.get("id") == doc.get("id") or other.get("email") != doc.get("email"):
                 continue
-            created = other.get("created_at")
+            # Throttle from when the email was actually sent (processed_at),
+            # not intake time — a manual reprocess can lag creation by days.
+            sent_at = other.get("processed_at") or other.get("created_at")
             if (other.get("outcome") == "repeat_request" and other.get("email_sent")
-                    and created is not None and created >= cutoff):
+                    and sent_at is not None and sent_at >= cutoff):
                 return True
         return False
     except Exception:  # noqa: BLE001

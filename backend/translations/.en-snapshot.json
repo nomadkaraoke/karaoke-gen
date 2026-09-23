@@ -365,7 +365,7 @@
     },
     "karaokehuntConversion": {
       "subject": "Your karaoke request: {artist} - {title}",
-      "intro": "You just requested a karaoke track through the KaraokeHunt app. That app is retired and no longer supported - it has grown up into Nomad Karaoke (gen.nomadkaraoke.com) - but your request still reached us, and we've handled this one as a one-time freebie.",
+      "intro": "You just requested a karaoke track through the KaraokeHunt app. That app is retired and no longer supported - it has grown up into Nomad Karaoke (gen.nomadkaraoke.com) - but your request still reached us, and we've taken care of it one last time.",
       "jobStarted": "Good news: we're making your track right now.",
       "jobDetail": "We've started generating a full karaoke video for {artist} - {title}. We'll email you when it's ready - usually within a few hours.",
       "newAccountNote": "We set up a free Nomad Karaoke account for this email address, and this first video is on us.",

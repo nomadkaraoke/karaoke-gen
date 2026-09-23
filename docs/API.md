@@ -2721,8 +2721,8 @@ directly" email (throttled to one per 7 days per address; outcome
 `repeat_request`). First-time routing: if a **community karaoke version already
 exists** (KaraokeNerds mirror) no job is made — the email links straight to it
 (outcome `community_existing`; new users keep their credit); otherwise new
-emails get an account + 1 credit (`karaokehunt_app_conversion`) and a job
-created as them (conservative `pick_auto_selection`; unconfident matches park
+emails get an account + 1 credit (`karaokehunt_app_conversion`) and — while
+under the daily cap — a job created as them (conservative `pick_auto_selection`; unconfident matches park
 in `AWAITING_AUDIO_SELECTION`); existing users with credits get the job on
 their own credit; existing users without credits (or requests over the
 `KARAOKEHUNT_DAILY_JOB_CAP`, default 3/day) go to the community requests board.

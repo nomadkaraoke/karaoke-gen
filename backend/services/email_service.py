@@ -688,8 +688,8 @@ class EmailService:
         login_url: str,
         community_url: Optional[str] = None,
         used_existing_credit: bool = False,
-        is_new_user: bool = False,
         locale: str = "en",
+        is_new_user: bool = False,
     ) -> bool:
         """The email the retired KaraokeHunt app has promised its users for years
         ("you should receive an email in 5-10 minutes"). One template, four
@@ -779,6 +779,7 @@ class EmailService:
             )
 
         sign_in_line = ""
+        sign_in_text = ""
         if variant in ("board", "community"):
             # Board voting / using their credit both need them signed in.
             sign_in_label = t(
@@ -791,6 +792,7 @@ class EmailService:
         <a href="{login_url}">{sign_in_label}</a>
     </p>
 """
+            sign_in_text = f"\n{sign_in_label}: {login_url}\n"
 
         # First-time variants carry the uninstall instruction; the "uninstall"
         # variant IS that instruction, so it doesn't repeat it.
@@ -828,7 +830,7 @@ class EmailService:
 {account_note}
 
 {button_label}: {button_url}
-{community_text}
+{sign_in_text}{community_text}
 {uninstall_note}
 
 ---
