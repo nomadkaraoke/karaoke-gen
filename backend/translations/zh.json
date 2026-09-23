@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "{artist} - {title} 的卡拉OK版本已存在",
       "subjectFallback": "您请求的歌曲的卡拉OK版本已存在"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "查看点歌板",
+      "boardDetail": "您的 Nomad Karaoke 账户积分已用完，因此我们已将 {artist} - {title} 添加到我们的免费社区点歌板上——每天得票最高的请求将免费制作。为您的歌曲投票以提升其排队名次，或者获取积分立即制作。",
+      "boardIntro": "您的歌曲已在免费社区点歌板上。",
+      "communityBonus": "福利：YouTube 上已经有这首歌的社区卡拉OK版本——您现在就可以唱：",
+      "communityLinkText": "立即在 YouTube 上演唱",
+      "intro": "您刚刚在 KaraokeHunt 应用中请求了一首卡拉OK伴奏。KaraokeHunt 已经升级——现在是 Nomad Karaoke——旧应用已退役，但您的请求已安全送达我们这里。",
+      "jobDetail": "我们已经开始为 {artist} - {title} 生成完整的卡拉OK视频。准备好后我们会给您发邮件——通常在几个小时内。",
+      "jobStarted": "好消息：我们正在为您制作伴奏。",
+      "newAccountNote": "我们为这个邮箱地址设置了一个免费的 Nomad Karaoke 账户，这第一个视频由我们免费提供。",
+      "parkedDetail": "我们无法自动且准确地为 {artist} - {title} 挑选正确的音频录音。请在下方登录，选择录音（大约需要10秒钟），然后我们将据此生成您的卡拉OK视频。",
+      "parkedIntro": "您的请求需要您快速点击一下。",
+      "pickButton": "登录并选择录音",
+      "subject": "您的卡拉OK请求：{artist} - {title}",
+      "trackButton": "登录并追踪您的歌曲",
+      "usedCreditNote": "这消耗了您现有 Nomad Karaoke 账户中的 1 个积分。这不是您想要的？只需回复此邮件，我们将为您恢复积分。",
+      "whyEmail": "为什么会收到这封邮件？有人使用此邮箱在已退役的 KaraokeHunt 应用中提交了点歌请求。这是一条关于该请求的一次性消息——背后没有任何邮件订阅列表。有疑问？只需回复：会有真人（创始人 Andrew）阅读所有内容。"
     }
   }
 }

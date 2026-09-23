@@ -214,6 +214,8 @@ from backend.api.routes import requests_board
 app.include_router(requests_board.router, prefix="/api")  # Public song-request voting board
 app.include_router(client_errors.router, prefix="/api")  # Frontend crash reports
 app.include_router(client_events.router, prefix="/api")  # Frontend degradation telemetry (banner/unavailable/waveform events)
+from backend.api.routes import karaokehunt
+app.include_router(karaokehunt.router, prefix="/api")  # Retired KaraokeHunt app request interceptor
 app.include_router(tenant.router)  # Tenant/white-label configuration (no /api prefix, router has it)
 app.include_router(tenant_admin.router)  # Admin tenant provisioning (router has /api prefix)
 app.include_router(tenant_bulk.router)  # Tenant bulk-upload filename analysis (router has /api prefix)

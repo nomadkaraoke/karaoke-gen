@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Une version karaoké de {artist} - {title} existe déjà",
       "subjectFallback": "Une version karaoké de la chanson que tu as demandée existe déjà"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Voir le tableau des demandes",
+      "boardDetail": "Ton compte Nomad Karaoke n'a plus de crédits, nous avons donc ajouté {artist} - {title} à notre tableau de demandes communautaires gratuit - chaque jour, la demande la plus votée est réalisée gratuitement. Vote pour ta chanson pour la faire remonter dans la file d'attente, ou obtiens des crédits pour la créer instantanément.",
+      "boardIntro": "Ta chanson est sur le tableau des demandes communautaires gratuit.",
+      "communityBonus": "Bonus : une version karaoké communautaire de cette chanson existe déjà sur YouTube - tu peux la chanter dès maintenant :",
+      "communityLinkText": "Chante-la maintenant sur YouTube",
+      "intro": "Tu viens de demander une piste de karaoké dans l'application KaraokeHunt. KaraokeHunt a grandi - c'est maintenant Nomad Karaoke - et l'ancienne application est retirée, mais ta demande est bien arrivée chez nous.",
+      "jobDetail": "Nous avons commencé à générer une vidéo karaoké complète pour {artist} - {title}. Nous t'enverrons un e-mail quand elle sera prête - généralement en quelques heures.",
+      "jobStarted": "Bonne nouvelle : nous créons ta piste en ce moment même.",
+      "newAccountNote": "Nous avons configuré un compte Nomad Karaoke gratuit pour cette adresse e-mail, et cette première vidéo est offerte.",
+      "parkedDetail": "Nous n'avons pas pu choisir automatiquement avec certitude le bon enregistrement audio pour {artist} - {title}. Connecte-toi ci-dessous, choisis l'enregistrement (ça prend environ 10 secondes), et nous générerons ta vidéo karaoké à partir de là.",
+      "parkedIntro": "Ta demande nécessite un petit clic de ta part.",
+      "pickButton": "Connecte-toi et choisis l'enregistrement",
+      "subject": "Ta demande de karaoké : {artist} - {title}",
+      "trackButton": "Connecte-toi et suis ta chanson",
+      "usedCreditNote": "Cela a utilisé 1 crédit de ton compte Nomad Karaoke existant. Ce n'est pas ce que tu voulais ? Réponds simplement à cet e-mail et nous le restaurerons.",
+      "whyEmail": "Pourquoi cet e-mail ? Une demande de chanson a été soumise dans l'ancienne application KaraokeHunt en utilisant cette adresse. Il s'agit d'un message unique concernant cette demande - il n'y a pas de liste de diffusion derrière. Des questions ? Réponds simplement : un vrai humain (Andrew, le fondateur) lit tout."
     }
   }
 }

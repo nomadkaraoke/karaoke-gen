@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Ya existe una versión de karaoke de {artist} - {title}",
       "subjectFallback": "Ya existe una versión de karaoke de la canción que solicitaste"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Ver el tablero de solicitudes",
+      "boardDetail": "Tu cuenta de Nomad Karaoke se ha quedado sin créditos, así que hemos añadido {artist} - {title} a nuestro tablero gratuito de solicitudes de la comunidad - cada día la solicitud más votada se hace gratis. Vota por tu canción para subirla en la cola, o consigue créditos para hacerla al instante.",
+      "boardIntro": "Tu canción está en el tablero gratuito de solicitudes de la comunidad.",
+      "communityBonus": "Bonus: ya existe una versión de karaoke de la comunidad de esta canción en YouTube - puedes cantarla ahora mismo:",
+      "communityLinkText": "Cántala ahora en YouTube",
+      "intro": "Acabas de solicitar una pista de karaoke en la aplicación KaraokeHunt. KaraokeHunt ha crecido - ahora es Nomad Karaoke - y la antigua aplicación ha sido retirada, pero tu solicitud llegó a salvo con nosotros.",
+      "jobDetail": "Hemos empezado a generar un video de karaoke completo para {artist} - {title}. Te enviaremos un correo electrónico cuando esté listo - normalmente en unas pocas horas.",
+      "jobStarted": "Buenas noticias: estamos haciendo tu pista ahora mismo.",
+      "newAccountNote": "Hemos configurado una cuenta gratuita de Nomad Karaoke para esta dirección de correo electrónico, y este primer video corre por nuestra cuenta.",
+      "parkedDetail": "No pudimos elegir con seguridad la grabación de audio correcta para {artist} - {title} automáticamente. Inicia sesión a continuación, elige la grabación (toma unos 10 segundos), y generaremos tu video de karaoke a partir de ahí.",
+      "parkedIntro": "Tu solicitud necesita un toque rápido de tu parte.",
+      "pickButton": "Inicia sesión y elige la grabación",
+      "subject": "Tu solicitud de karaoke: {artist} - {title}",
+      "trackButton": "Inicia sesión y sigue tu canción",
+      "usedCreditNote": "Esto usó 1 crédito de tu cuenta existente de Nomad Karaoke. ¿No es lo que querías? Solo responde a este correo electrónico y lo restauraremos.",
+      "whyEmail": "¿Por qué este correo electrónico? Se envió una solicitud de canción en la aplicación retirada KaraokeHunt usando esta dirección. Este es un mensaje único sobre esa solicitud - no hay una lista de correo detrás de esto. ¿Preguntas? Solo responde: un humano real (Andrew, el fundador) lee todo."
     }
   }
 }

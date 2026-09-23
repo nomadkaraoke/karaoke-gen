@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "{artist} - {title} şarkısının bir karaoke versiyonu zaten mevcut",
       "subjectFallback": "İstediğin şarkının bir karaoke versiyonu zaten mevcut"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "İstek panosunu görüntüle",
+      "boardDetail": "Nomad Karaoke hesabında kredin kalmadı, bu yüzden {artist} - {title} şarkısını ücretsiz topluluk istek panomuza ekledik - her gün en çok oy alan istek ücretsiz olarak hazırlanır. Şarkını sırada yukarı taşımak için oy ver veya anında hazırlamak için kredi al.",
+      "boardIntro": "Şarkın ücretsiz topluluk istek panosunda.",
+      "communityBonus": "Bonus: bu şarkının topluluk tarafından hazırlanmış bir karaoke versiyonu YouTube'da zaten var - hemen şimdi söyleyebilirsin:",
+      "communityLinkText": "Şimdi YouTube'da söyle",
+      "intro": "Az önce KaraokeHunt uygulamasında bir karaoke parçası istedin. KaraokeHunt büyüdü - artık Nomad Karaoke oldu - ve eski uygulama kullanımdan kaldırıldı, ancak isteğin bize güvenle ulaştı.",
+      "jobDetail": "{artist} - {title} için tam bir karaoke videosu oluşturmaya başladık. Hazır olduğunda sana e-posta göndereceğiz - genellikle birkaç saat içinde tamamlanır.",
+      "jobStarted": "İyi haber: parçanı şu anda hazırlıyoruz.",
+      "newAccountNote": "Bu e-posta adresi için ücretsiz bir Nomad Karaoke hesabı oluşturduk ve bu ilk video bizden.",
+      "parkedDetail": "{artist} - {title} için doğru ses kaydını otomatik olarak güvenle seçemedik. Aşağıdan giriş yap, kaydı seç (yaklaşık 10 saniye sürer) ve karaoke videonu oradan oluşturalım.",
+      "parkedIntro": "İsteğin için senden hızlı bir dokunuş gerekiyor.",
+      "pickButton": "Giriş yap ve kaydı seç",
+      "subject": "Karaoke isteğin: {artist} - {title}",
+      "trackButton": "Giriş yap ve şarkını takip et",
+      "usedCreditNote": "Bu işlem mevcut Nomad Karaoke hesabından 1 kredi kullandı. İstediğin bu değil miydi? Sadece bu e-postayı yanıtla ve kredini geri yükleyelim.",
+      "whyEmail": "Neden bu e-posta? Bu adres kullanılarak kullanımdan kaldırılan KaraokeHunt uygulamasında bir şarkı isteği gönderildi. Bu, o istekle ilgili tek seferlik bir mesajdır - arkasında bir e-posta listesi yoktur. Soruların mı var? Sadece yanıtla: her şeyi gerçek bir insan (kurucu Andrew) okuyor."
     }
   }
 }

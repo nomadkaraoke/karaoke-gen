@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "En karaokeversjon av {artist} - {title} finnes allerede",
       "subjectFallback": "En karaokeversjon av sangen du etterspurte, finnes allerede"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Se forespørselstavlen",
+      "boardDetail": "Din Nomad Karaoke-konto er tom for kreditter, så vi har lagt til {artist} - {title} på vår gratis fellesskapstavle for forespørsler - hver dag lages den forespørselen med flest stemmer gratis. Stem på sangen din for å flytte den opp i køen, eller skaff deg kreditter for å lage den umiddelbart.",
+      "boardIntro": "Sangen din er på den gratis fellesskapstavlen for forespørsler.",
+      "communityBonus": "Bonus: en fellesskapsversjon av denne karaokesangen finnes allerede på YouTube - du kan synge den akkurat nå:",
+      "communityLinkText": "Syng den nå på YouTube",
+      "intro": "Du ba nettopp om et karaokespor i KaraokeHunt-appen. KaraokeHunt har vokst opp - det er nå Nomad Karaoke - og den gamle appen er pensjonert, men forespørselen din landet trygt hos oss.",
+      "jobDetail": "Vi har begynt å generere en fullstendig karaokevideo for {artist} - {title}. Vi sender deg en e-post når den er klar - vanligvis innen noen få timer.",
+      "jobStarted": "Gode nyheter: vi lager sporet ditt akkurat nå.",
+      "newAccountNote": "Vi har opprettet en gratis Nomad Karaoke-konto for denne e-postadressen, og denne første videoen spanderer vi.",
+      "parkedDetail": "Vi kunne ikke med sikkerhet velge riktig lydopptak for {artist} - {title} automatisk. Logg inn nedenfor, velg opptaket (det tar omtrent 10 sekunder), og vi vil generere karaokevideoen din derfra.",
+      "parkedIntro": "Forespørselen din trenger et raskt trykk fra deg.",
+      "pickButton": "Logg inn og velg opptaket",
+      "subject": "Din karaokeforespørsel: {artist} - {title}",
+      "trackButton": "Logg inn og spor sangen din",
+      "usedCreditNote": "Dette brukte 1 kreditt fra din eksisterende Nomad Karaoke-konto. Var det ikke dette du ville? Bare svar på denne e-posten, så gjenoppretter vi den.",
+      "whyEmail": "Hvorfor denne e-posten? En sangforespørsel ble sendt inn i den pensjonerte KaraokeHunt-appen med denne adressen. Dette er en engangsmelding om den forespørselen - det er ingen e-postliste bak den. Spørsmål? Bare svar: et ekte menneske (Andrew, grunnleggeren) leser alt."
     }
   }
 }

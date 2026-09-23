@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Karaoke verzija pjesme {artist} - {title} već postoji",
       "subjectFallback": "Karaoke verzija pjesme koju si zatražio već postoji"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Pogledaj ploču sa zahtjevima",
+      "boardDetail": "Tvoj Nomad Karaoke račun je ostao bez kredita, pa smo dodali {artist} - {title} na našu besplatnu ploču sa zahtjevima zajednice - svaki dan se zahtjev s najviše glasova izrađuje besplatno. Glasaj za svoju pjesmu kako bi se pomaknula prema gore u redu čekanja ili uzmi kredite da je napraviš odmah.",
+      "boardIntro": "Tvoja pjesma je na besplatnoj ploči sa zahtjevima zajednice.",
+      "communityBonus": "Bonus: karaoke verzija ove pjesme od strane zajednice već postoji na YouTubeu - možeš je pjevati odmah:",
+      "communityLinkText": "Pjevaj je sada na YouTubeu",
+      "intro": "Upravo si zatražio karaoke pjesmu u aplikaciji KaraokeHunt. KaraokeHunt je odrastao - sada je to Nomad Karaoke - i stara aplikacija je umirovljena, ali tvoj zahtjev je sigurno stigao do nas.",
+      "jobDetail": "Započeli smo s generiranjem punog karaoke videa za {artist} - {title}. Poslat ćemo ti e-mail kada bude spreman - obično u roku od nekoliko sati.",
+      "jobStarted": "Dobre vijesti: upravo izrađujemo tvoju pjesmu.",
+      "newAccountNote": "Postavili smo besplatan Nomad Karaoke račun za ovu e-mail adresu, a ovaj prvi video je na naš račun.",
+      "parkedDetail": "Nismo mogli sa sigurnošću automatski odabrati pravu audio snimku za {artist} - {title}. Prijavi se u nastavku, odaberi snimku (traje oko 10 sekundi) i od tamo ćemo generirati tvoj karaoke video.",
+      "parkedIntro": "Tvoj zahtjev traži jedan brzi klik od tebe.",
+      "pickButton": "Prijavi se i odaberi snimku",
+      "subject": "Tvoj karaoke zahtjev: {artist} - {title}",
+      "trackButton": "Prijavi se i prati svoju pjesmu",
+      "usedCreditNote": "Ovo je iskoristilo 1 kredit s tvog postojećeg Nomad Karaoke računa. Nije ono što si htio? Samo odgovori na ovaj e-mail i vratit ćemo ga.",
+      "whyEmail": "Zašto ovaj e-mail? Zahtjev za pjesmu poslan je u umirovljenoj aplikaciji KaraokeHunt koristeći ovu adresu. Ovo je jednokratna poruka o tom zahtjevu - iza nje ne stoji nikakva mailing lista. Pitanja? Samo odgovori: stvarna osoba (Andrew, osnivač) čita sve."
     }
   }
 }

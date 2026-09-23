@@ -362,6 +362,24 @@
     "communityExistingVersion": {
       "subject": "Már létezik a(z) {artist} - {title} karaoke verziója",
       "subjectFallback": "Az általad kért dalból már létezik karaoke verzió"
+    },
+    "karaokehuntConversion": {
+      "boardButton": "Nézd meg a kérések tábláját",
+      "boardDetail": "A Nomad Karaoke fiókodban elfogytak a kreditek, ezért hozzáadtuk a(z) {artist} - {title} dalt az ingyenes közösségi kérések táblájához - minden nap a legtöbb szavazatot kapott kérést ingyen elkészítjük. Szavazz a dalodra, hogy előrébb kerüljön a sorban, vagy szerezz krediteket, hogy azonnal elkészüljön.",
+      "boardIntro": "A dalod felkerült az ingyenes közösségi kérések táblájára.",
+      "communityBonus": "Bónusz: ennek a dalnak már létezik egy közösségi karaoke verziója a YouTube-on - akár most rögtön el is énekelheted:",
+      "communityLinkText": "Énekeld most a YouTube-on",
+      "intro": "Épp most kértél egy karaoke számot a KaraokeHunt alkalmazásban. A KaraokeHunt felnőtt - most már Nomad Karaoke a neve -, és a régi alkalmazás megszűnt, de a kérésed biztonságban megérkezett hozzánk.",
+      "jobDetail": "Elkezdtük generálni a teljes karaoke videót a(z) {artist} - {title} dalhoz. Küldünk egy e-mailt, amint elkészült - általában néhány órán belül.",
+      "jobStarted": "Jó hír: épp most készítjük a számodat.",
+      "newAccountNote": "Létrehoztunk egy ingyenes Nomad Karaoke fiókot ehhez az e-mail címhez, és ezt az első videót mi álljuk.",
+      "parkedDetail": "Nem tudtuk magabiztosan, automatikusan kiválasztani a megfelelő hangfelvételt a(z) {artist} - {title} dalhoz. Jelentkezz be alább, válaszd ki a felvételt (körülbelül 10 másodpercet vesz igénybe), és onnantól legeneráljuk a karaoke videódat.",
+      "parkedIntro": "A kérésedhez egy gyors kattintásra van szükség tőled.",
+      "pickButton": "Jelentkezz be és válaszd ki a felvételt",
+      "subject": "A karaoke kérésed: {artist} - {title}",
+      "trackButton": "Jelentkezz be és kövesd nyomon a dalod",
+      "usedCreditNote": "Ez 1 kreditet használt fel a meglévő Nomad Karaoke fiókodból. Nem ezt akartad? Csak válaszolj erre az e-mailre, és visszaállítjuk.",
+      "whyEmail": "Miért kaptad ezt az e-mailt? Egy dalkérést küldtek be a megszűnt KaraokeHunt alkalmazásban erről a címről. Ez egy egyszeri üzenet erről a kérésről - nincs mögötte levelezőlista. Kérdésed van? Csak válaszolj: egy igazi ember (Andrew, az alapító) olvas el mindent."
     }
   }
 }
