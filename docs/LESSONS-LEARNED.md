@@ -6,6 +6,32 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Cold start = imports + lifespan; fix heavy imports at the SOURCE module (Sep 2026, v0.235.0)
+
+A fresh Cloud Run instance took ~16s to serve its first request: ~8–9s of Python
+imports plus ~7.5s of lifespan preloads (spaCy/NLTK/Langfuse/credential checks)
+that gated readiness — Cloud Run holds routed requests until lifespan startup
+returns. Diagnose with `python -X importtime -c "import backend.main"` (rank
+cumulative times, walk the tree) and prod-log gaps ("Starting …" → "Application
+startup complete").
+
+**Rules that came out of it:**
+- Make heavy libraries lazy in the module that imports them (syllable_counter,
+  phrase_analyzer, audio_processor…), not in each downstream importer — main.py
+  imports ~20 route modules and ANY path to the heavy lib reinstates the cost.
+  `backend/tests/test_cold_start_imports.py` guards the graph in a subprocess.
+- Watch indirect drags: spacy pulls **torch** via thinc; secretmanager pulls the
+  whole google.api_core/grpc graph (~1.7s); google-genai is ~0.6s per importer.
+- PEP 562 module `__getattr__` preserves patchable module attributes
+  (`audio_processor.Separator` etc.) for tests — but intra-module code can't use
+  those names: LOAD_GLOBAL does NOT consult module `__getattr__`, so internal
+  call sites must use helper functions (which check `globals()` first so test
+  patches still win).
+- Startup warmup that exists for *worker* code paths (NLP model preloads) goes in
+  a daemon thread from lifespan, never inline before `yield` — and heavy first
+  imports belong in that thread or in to_thread'd sync fns, never in an async
+  handler (event-loop-blocking lesson from v0.230.0/v0.231.1).
+
 ## Server-Applied State Needs Its Own Undo Data, Not Just Client Undo State (Sep 2026)
 
 The pre-apply feature (C2, PR #957) started baking AI lyric corrections into
