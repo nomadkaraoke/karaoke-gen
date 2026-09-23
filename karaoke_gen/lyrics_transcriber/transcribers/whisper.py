@@ -8,7 +8,9 @@ import tempfile
 import time
 from typing import Optional, Dict, Any, Protocol, Union
 from pathlib import Path
-from pydub import AudioSegment
+# pydub is imported lazily in convert_to_flac — this module sits on the
+# backend's startup path via the transcription controller (cold-start work,
+# 2026-09-22).
 from karaoke_gen.lyrics_transcriber.types import TranscriptionData, LyricsSegment, Word
 from karaoke_gen.lyrics_transcriber.transcribers.base_transcriber import BaseTranscriber, TranscriptionError
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
@@ -156,6 +158,8 @@ class AudioProcessor:
             return filepath
 
         self.logger.info("Converting WAV to FLAC for faster upload...")
+        from pydub import AudioSegment
+
         audio = AudioSegment.from_wav(filepath)
 
         with tempfile.NamedTemporaryFile(suffix=".flac", delete=False) as temp_flac:

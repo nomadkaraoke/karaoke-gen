@@ -1,9 +1,15 @@
-from typing import List
-import spacy
-from spacy.tokens import Doc
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List
 import logging
 from karaoke_gen.lyrics_transcriber.correction.text_utils import clean_text
 from karaoke_gen.lyrics_transcriber.types import PhraseType, PhraseScore
+
+# spacy is imported lazily in __init__ — a module-level import costs ~1.7s
+# (spacy pulls thinc which pulls torch) and this module sits on the backend's
+# startup path via the corrector (cold-start work, 2026-09-22).
+if TYPE_CHECKING:
+    from spacy.tokens import Doc
 
 # Try to import preloader (may not exist in standalone library usage)
 try:
@@ -25,6 +31,8 @@ class PhraseAnalyzer:
             language_code: spaCy language model to use
         """
         self.logger = logger
+
+        import spacy
 
         # Try to use preloaded model first (avoids 60+ second load on Cloud Run)
         if _HAS_PRELOADER:

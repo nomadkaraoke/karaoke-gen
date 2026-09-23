@@ -15,7 +15,9 @@ from tenacity import (
     retry_if_exception,
     before_sleep_log,
 )
-from pydub import AudioSegment
+# pydub is imported lazily in _convert_to_flac — this module sits on the
+# backend's startup path via the transcription controller (cold-start work,
+# 2026-09-22).
 from karaoke_gen.lyrics_transcriber.types import TranscriptionData, LyricsSegment, Word
 from karaoke_gen.lyrics_transcriber.transcribers.base_transcriber import BaseTranscriber, TranscriptionError
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
@@ -144,6 +146,8 @@ class AudioUploadOptimizer:
 
     def _convert_to_flac(self, filepath: str) -> Tuple[str, str]:
         """Convert audio file to FLAC format."""
+        from pydub import AudioSegment
+
         ext = os.path.splitext(filepath)[1].lower()
 
         # Load audio based on format (pydub uses ffmpeg under the hood)

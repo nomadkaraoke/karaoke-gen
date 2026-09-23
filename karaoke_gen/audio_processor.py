@@ -10,23 +10,77 @@ import fcntl
 import errno
 import psutil
 from datetime import datetime
-from pydub import AudioSegment
 
-# Try to import the remote API client if available
-try:
-    from audio_separator.remote import AudioSeparatorAPIClient
-    REMOTE_API_AVAILABLE = True
-except ImportError:
-    REMOTE_API_AVAILABLE = False
-    AudioSeparatorAPIClient = None
+# audio_separator (and its torch/onnxruntime/librosa graph, ~3s) and pydub are
+# imported lazily so that merely importing this module stays cheap — the backend
+# imports it at startup via backend.workers.audio_worker (cold-start work,
+# 2026-09-22). Module attributes `AudioSeparatorAPIClient`, `Separator`,
+# `REMOTE_API_AVAILABLE` and `SEPARATOR_AVAILABLE` keep working (tests patch
+# them) via PEP 562 __getattr__; intra-module code MUST use the _separator_cls /
+# _remote_client_cls / _*_available helpers because LOAD_GLOBAL inside this
+# module bypasses module __getattr__.
 
-# Try to import the Separator for local GPU processing
-try:
-    from audio_separator.separator import Separator
-    SEPARATOR_AVAILABLE = True
-except ImportError:
-    SEPARATOR_AVAILABLE = False
-    Separator = None
+_UNSET = object()
+
+
+def _import_remote_client_cls():
+    try:
+        from audio_separator.remote import AudioSeparatorAPIClient as cls
+        return cls
+    except ImportError:
+        return None
+
+
+def _import_separator_cls():
+    try:
+        from audio_separator.separator import Separator as cls
+        return cls
+    except ImportError:
+        return None
+
+
+def _remote_client_cls():
+    cls = globals().get("AudioSeparatorAPIClient", _UNSET)
+    if cls is _UNSET:
+        cls = _import_remote_client_cls()
+        globals()["AudioSeparatorAPIClient"] = cls
+    return cls
+
+
+def _separator_cls():
+    cls = globals().get("Separator", _UNSET)
+    if cls is _UNSET:
+        cls = _import_separator_cls()
+        globals()["Separator"] = cls
+    return cls
+
+
+def _remote_api_available():
+    available = globals().get("REMOTE_API_AVAILABLE", _UNSET)
+    if available is _UNSET:
+        available = _remote_client_cls() is not None
+        globals()["REMOTE_API_AVAILABLE"] = available
+    return available
+
+
+def _separator_available():
+    available = globals().get("SEPARATOR_AVAILABLE", _UNSET)
+    if available is _UNSET:
+        available = _separator_cls() is not None
+        globals()["SEPARATOR_AVAILABLE"] = available
+    return available
+
+
+def __getattr__(name):
+    if name == "AudioSeparatorAPIClient":
+        return _remote_client_cls()
+    if name == "Separator":
+        return _separator_cls()
+    if name == "REMOTE_API_AVAILABLE":
+        return _remote_api_available()
+    if name == "SEPARATOR_AVAILABLE":
+        return _separator_available()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # Placeholder class or functions for audio processing
@@ -124,7 +178,7 @@ class AudioProcessor:
             f"instantiating Separator with model_file_dir: {self.model_file_dir}, model_filename: {model_name} output_format: {self.lossless_output_format}"
         )
 
-        separator = Separator(
+        separator = _separator_cls()(
             log_level=self.log_level,
             log_formatter=self.log_formatter,
             model_file_dir=self.model_file_dir,
@@ -175,7 +229,7 @@ class AudioProcessor:
         # Check if we should use remote API
         remote_api_url = os.environ.get("AUDIO_SEPARATOR_API_URL")
         if remote_api_url:
-            if not REMOTE_API_AVAILABLE:
+            if not _remote_api_available():
                 self.logger.warning("AUDIO_SEPARATOR_API_URL is set but remote API client is not available. "
                                   "Please ensure audio-separator is updated to a version that includes remote API support. "
                                   "Falling back to local processing.")
@@ -204,7 +258,7 @@ class AudioProcessor:
             self.logger.info("AUDIO_SEPARATOR_API_URL not set, using local audio separation. "
                            "Set this environment variable to use remote GPU processing.")
         
-        if not SEPARATOR_AVAILABLE:
+        if not _separator_available():
             raise ImportError(
                 "audio-separator package not installed. Install with: pip install audio-separator[gpu]"
             )
@@ -293,7 +347,7 @@ class AudioProcessor:
             if instrumental_preset:
                 # Stage 1: Ensemble preset mode — higher quality, uses multiple models
                 self.logger.info(f"Stage 1: Using ensemble preset '{instrumental_preset}'")
-                separator = Separator(
+                separator = _separator_cls()(
                     log_level=self.log_level,
                     log_formatter=self.log_formatter,
                     model_file_dir=self.model_file_dir,
@@ -331,7 +385,7 @@ class AudioProcessor:
                         self.logger.warning(f"Stage 1: Unrecognized stem tag '{stem_tag}' in {basename}")
             else:
                 # Legacy mode — individual model calls (existing code)
-                separator = Separator(
+                separator = _separator_cls()(
                     log_level=self.log_level,
                     log_formatter=self.log_formatter,
                     model_file_dir=self.model_file_dir,
@@ -361,7 +415,7 @@ class AudioProcessor:
                     shutil.copy2(vocals_path, clean_vocals_path)
                     self.logger.info(f"Stage 2: Renamed vocals input to avoid stem tag collision: {os.path.basename(clean_vocals_path)}")
 
-                    bv_separator = Separator(
+                    bv_separator = _separator_cls()(
                         log_level=self.log_level,
                         log_formatter=self.log_formatter,
                         model_file_dir=self.model_file_dir,
@@ -419,7 +473,7 @@ class AudioProcessor:
         self.logger.info(f"Starting remote audio separation process for {artist_title}")
         
         # Initialize the API client
-        api_client = AudioSeparatorAPIClient(remote_api_url, self.logger)
+        api_client = _remote_client_cls()(remote_api_url, self.logger)
         
         stems_dir = self._create_stems_directory(track_output_dir)
         result = {"clean_instrumental": {}, "other_stems": {}, "backing_vocals": {}, "combined_instrumentals": {}}
@@ -862,6 +916,8 @@ class AudioProcessor:
         self.logger.info(f"Normalizing audio file: {input_path}")
 
         # Load audio file
+        from pydub import AudioSegment
+
         audio = AudioSegment.from_file(input_path, format=self.lossless_output_format.lower())
 
         # Calculate the peak amplitude

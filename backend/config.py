@@ -6,7 +6,10 @@ import logging
 from typing import Optional, Dict
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
-from google.cloud import secretmanager
+
+# google.cloud.secretmanager is imported lazily in get_secret() — importing it
+# (and the google.api_core/grpc graph behind it) costs ~1.7s and config is
+# imported by every backend entrypoint (cold-start work, 2026-09-22).
 
 # Load .env for local development (no-op when absent, e.g. in Cloud Run).
 # Must run before the Settings class body below, which reads os.getenv at
@@ -410,6 +413,8 @@ class Settings(BaseSettings):
             return None
         
         try:
+            from google.cloud import secretmanager
+
             client = secretmanager.SecretManagerServiceClient()
             name = f"projects/{self.google_cloud_project}/secrets/{secret_id}/versions/latest"
             response = client.access_secret_version(request={"name": name})

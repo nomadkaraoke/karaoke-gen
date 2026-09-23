@@ -10,12 +10,10 @@ import re
 import time
 from typing import Optional
 
-import nltk
-import pyphen
-import spacy
-import syllables
-from nltk.corpus import cmudict
-from spacy_syllables import SpacySyllables
+# NOTE: spacy / nltk / pyphen / syllables are imported lazily inside
+# SyllableCounter methods. Importing them at module level costs ~2.5s and
+# drags the whole chain (corrector -> handlers -> this module) into the
+# backend's cold-start path. See docs/archive/2026-09-22 cold-start work.
 
 try:
     from backend.services.spacy_preloader import get_preloaded_model
@@ -36,7 +34,8 @@ class SyllableCounter:
         self.logger = logger or logging.getLogger(__name__)
         init_start = time.time()
 
-        _ = SpacySyllables  # silence unused-import warning
+        import spacy
+        from spacy_syllables import SpacySyllables  # noqa: F401  (registers the "syllables" pipe)
 
         if _HAS_PRELOADER:
             preloaded = get_preloaded_model("en_core_web_sm")
@@ -69,6 +68,8 @@ class SyllableCounter:
         )
 
     def _init_nltk_resources(self) -> None:
+        import pyphen
+
         self.dic = pyphen.Pyphen(lang="en_US")
 
         if _HAS_PRELOADER:
@@ -76,6 +77,9 @@ class SyllableCounter:
             if preloaded is not None:
                 self.cmudict = preloaded
                 return
+
+        import nltk
+        from nltk.corpus import cmudict
 
         try:
             self.cmudict = cmudict.dict()
@@ -112,6 +116,8 @@ class SyllableCounter:
         return total
 
     def _count_lib(self, words: list[str]) -> int:
+        import syllables
+
         return sum(syllables.estimate(word) for word in words)
 
     def count_per_word(self, words: list[str]) -> list[int]:
