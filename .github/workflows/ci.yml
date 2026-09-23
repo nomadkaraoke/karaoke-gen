@@ -383,8 +383,19 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          # Google's cloud-sdk apt mirror intermittently serves a Packages index
+          # whose checksum doesn't match its Release file ("Hash Sum mismatch").
+          # Clear the lists cache and retry to ride out mirror desyncs (same
+          # hardening as the emulator job's Firestore-emulator install).
+          for attempt in 1 2 3 4 5; do
+            sudo rm -rf /var/lib/apt/lists/*
+            if sudo apt-get update -y && sudo apt-get install -y ffmpeg; then
+              break
+            fi
+            echo "apt install attempt ${attempt} failed (likely a transient Hash Sum mismatch); retrying in 15s..."
+            sleep 15
+          done
+          dpkg -s ffmpeg >/dev/null 2>&1
 
       - name: Cache spaCy model
         uses: actions/cache@v4
@@ -458,8 +469,19 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          # Google's cloud-sdk apt mirror intermittently serves a Packages index
+          # whose checksum doesn't match its Release file ("Hash Sum mismatch").
+          # Clear the lists cache and retry to ride out mirror desyncs (same
+          # hardening as the emulator job's Firestore-emulator install).
+          for attempt in 1 2 3 4 5; do
+            sudo rm -rf /var/lib/apt/lists/*
+            if sudo apt-get update -y && sudo apt-get install -y ffmpeg; then
+              break
+            fi
+            echo "apt install attempt ${attempt} failed (likely a transient Hash Sum mismatch); retrying in 15s..."
+            sleep 15
+          done
+          dpkg -s ffmpeg >/dev/null 2>&1
 
       - name: Cache spaCy model
         uses: actions/cache@v4
