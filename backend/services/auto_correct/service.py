@@ -11,8 +11,9 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
-from google import genai
-from google.genai import types
+# google.genai is imported lazily in _call_gemini() — it costs ~0.6s at import
+# time and this service sits on the backend's startup path via the review routes
+# (cold-start work, 2026-09-22).
 
 from backend.config import get_settings
 from backend.services.auto_correct.deterministic import deterministic_suggestions
@@ -705,6 +706,9 @@ class AutoCorrectService:
     def _call_gemini(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
     ) -> tuple[Any, Optional[TokenUsage]]:
+        from google import genai
+        from google.genai import types
+
         client = genai.Client(
             vertexai=True,
             project=self.settings.google_cloud_project,

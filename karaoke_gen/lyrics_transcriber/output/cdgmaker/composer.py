@@ -17,7 +17,9 @@ if TYPE_CHECKING:
 from attrs import define
 from cattrs import Converter
 from PIL import Image, ImageFont
-from pydub import AudioSegment
+
+# pydub is imported lazily in compose() — this module sits on the backend's
+# startup path via the output generator (cold-start work, 2026-09-22).
 
 from .cdg import *
 from .config import *
@@ -769,6 +771,8 @@ class KaraokeComposer:
     # region Compose words
     # SECTION Compose words
     def compose(self):
+        from pydub import AudioSegment
+
         try:
             # NOTE Logistically, multiple simultaneous lyric sets doesn't
             # make sense if the lyrics are being cleared by page.

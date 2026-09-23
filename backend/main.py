@@ -5,6 +5,8 @@ FastAPI application entry point for karaoke generation backend.
  the 2026-05-17 dispatcher e2 fix; safe to remove on next backend edit.)
 """
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +40,7 @@ tracing_enabled = setup_tracing(
 )
 
 
-async def validate_credentials_on_startup():
+def validate_credentials_on_startup():
     """Validate OAuth credentials on startup and send alerts if needed."""
     try:
         from backend.services.credential_manager import get_credential_manager, CredentialStatus
@@ -68,22 +70,20 @@ async def validate_credentials_on_startup():
         logger.error(f"Failed to validate credentials on startup: {e}")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Lifespan event handler for startup and shutdown."""
-    # Startup
-    logger.info("Starting karaoke generation backend")
-    logger.info(f"Environment: {settings.environment}")
-    logger.info(f"GCS Bucket: {settings.gcs_bucket_name}")
-    logger.info(f"Tracing enabled: {tracing_enabled}")
+def _run_background_warmup():
+    """Warm caches that used to block startup (runs in a daemon thread).
 
-    # Fail fast if required production config is missing, rather than silently
-    # running on dev defaults (wrong GCP project / GCS bucket / localhost worker
-    # URL). No-op outside production. (Fallback audit 2026-06-09, Theme 7.)
-    validate_production_config()
-
-    # Preload NLP models and resources to avoid cold start delays
-    # See docs/archive/2026-01-08-performance-investigation.md for background
+    Historically these preloads ran inline in lifespan startup, which meant
+    Cloud Run held every routed request for the full ~7.5s they take (spaCy
+    ~1s, NLTK ~2.5s, Langfuse ~3s, credential checks ~1.5s) on top of import
+    time. None of them are needed to serve HTTP: they exist to make the FIRST
+    lyrics-processing job fast (see docs/archive/2026-01-08-performance-
+    investigation.md). Running them in a background thread right after boot
+    keeps that warm-cache property (they finish within seconds, long before
+    any real job runs) without gating readiness. Workers that race the warmup
+    simply fall back to the preloaders' lazy paths.
+    """
+    warmup_start = time.time()
 
     # 1. SpaCy model (60+ second delay without preload)
     try:
@@ -103,12 +103,36 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Langfuse preload failed (will initialize lazily): {e}")
 
-    # Validate OAuth credentials (non-blocking)
+    # Validate OAuth credentials (alerting only, nothing depends on it)
     try:
-        await validate_credentials_on_startup()
+        validate_credentials_on_startup()
     except Exception as e:
         logger.error(f"Credential validation failed: {e}")
-    
+
+    logger.info(f"Background warmup complete in {time.time() - warmup_start:.2f}s")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown."""
+    # Startup
+    logger.info("Starting karaoke generation backend")
+    logger.info(f"Environment: {settings.environment}")
+    logger.info(f"GCS Bucket: {settings.gcs_bucket_name}")
+    logger.info(f"Tracing enabled: {tracing_enabled}")
+
+    # Fail fast if required production config is missing, rather than silently
+    # running on dev defaults (wrong GCP project / GCS bucket / localhost worker
+    # URL). No-op outside production. (Fallback audit 2026-06-09, Theme 7.)
+    validate_production_config()
+
+    # NLP model / credential warmup runs in the background so it doesn't gate
+    # readiness — Cloud Run holds all routed requests until lifespan startup
+    # returns, and these preloads were ~7.5s of the ~16s cold start.
+    threading.Thread(
+        target=_run_background_warmup, name="startup-warmup", daemon=True
+    ).start()
+
     yield
 
     # Shutdown - best-effort parking of any still-registered workers.

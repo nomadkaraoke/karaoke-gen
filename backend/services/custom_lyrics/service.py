@@ -7,8 +7,11 @@ import logging
 import time
 from typing import Any, Optional
 
-from google import genai
-from google.genai import types
+# google.genai is imported lazily in _call_gemini() — it costs ~0.6s at import
+# time and this service sits on the backend's startup path via the review routes
+# (cold-start work, 2026-09-22). Module attributes `genai`/`types` still resolve
+# via __getattr__ below so tests can keep patching
+# "backend.services.custom_lyrics.service.genai.Client".
 
 from backend.config import get_settings
 from backend.services.custom_lyrics.prompts import (
@@ -32,6 +35,19 @@ from karaoke_gen.lyrics_transcriber.utils.syllable_counter import SyllableCounte
 
 
 logger = logging.getLogger(__name__)
+
+
+def __getattr__(name):
+    """Lazy module attributes so `service.genai` / `service.types` stay patchable."""
+    if name == "genai":
+        from google import genai
+
+        return genai
+    if name == "types":
+        from google.genai import types
+
+        return types
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 SUPPORTED_MIMES = {
@@ -546,6 +562,9 @@ class CustomLyricsService:
         pdf_bytes: Optional[bytes],
         settings: GenerationSettings,
     ) -> list[str]:
+        from google import genai
+        from google.genai import types
+
         client = genai.Client(
             vertexai=True,
             project=self.settings.google_cloud_project,
