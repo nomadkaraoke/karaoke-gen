@@ -60,3 +60,21 @@ from ci.yml `--set-secrets` (endpoint 503s when unset), or set
   (admin token).
 - Andrew's Pushbullet still gets the app's own client-side push per request —
   an independent human backstop that this pipeline never touches.
+
+## Zone changes made 2026-09-22 (via CF API, recorded here per the infra rule)
+
+Getting the Worker reachable required two `karaokehunt.com` zone changes beyond
+`deploy.sh`'s worker/route/DNS:
+
+1. **Catch-all redirect scoped.** Dynamic-redirect ruleset
+   `41dc51daea2b4cb298ba73a19eb3dd9d`, rule "Redirect all to nomadkaraoke.com":
+   expression changed `true` → `(http.host ne "create.karaokehunt.com")`.
+   Redirect rules run BEFORE Worker routes, so the catch-all was 301ing the
+   app's POSTs to nomadkaraoke.com. Apex/`www` redirects unchanged.
+2. **Bot Fight Mode disabled** (`bot_management.fight_mode: true → false`).
+   BFM served a managed JS challenge to non-browser clients (the app's Dart
+   HTTP client, curl) ahead of the Worker and cannot be scoped by skip rules.
+   The zone only serves redirects + this interceptor, so it was safe to drop.
+
+To revert either, reverse the API calls (see git history of this file's session
+record: `nomadkaraoke/docs/sessions/2026-Q3/2026-09-22-karaokehunt-app-interceptor.md`).
