@@ -4,6 +4,7 @@ Unit tests for service layer.
 Tests AuthService, StorageService, WorkerService, and FirestoreService
 without requiring actual cloud resources.
 """
+import asyncio
 import pytest
 from unittest.mock import Mock, MagicMock, AsyncMock, patch, call
 from datetime import datetime, UTC
@@ -606,6 +607,7 @@ class TestWorkerServiceWarmup:
 
             with patch.object(worker_service, '_warmup_encoding_worker') as mock_warmup:
                 await worker_service.trigger_video_worker("test-job")
+                await asyncio.gather(*worker_service._warmup_tasks)
                 mock_warmup.assert_called_once_with("test-job")
 
     @pytest.mark.asyncio
@@ -622,7 +624,56 @@ class TestWorkerServiceWarmup:
 
             with patch.object(worker_service, '_warmup_encoding_worker') as mock_warmup:
                 await worker_service.trigger_render_video_worker("test-job")
+                await asyncio.gather(*worker_service._warmup_tasks)
                 mock_warmup.assert_called_once_with("test-job")
+
+    @pytest.mark.asyncio
+    async def test_trigger_does_not_wait_for_slow_warmup(self):
+        """A slow (cold-start) warmup must not delay dispatch nor block the loop.
+
+        Regression for 2026-09-23: the warmup ran inline and synchronously, so
+        the /complete request — and every other request on the instance — hung
+        for the 10-20 s VM start.
+        """
+        import time
+
+        with patch('backend.services.worker_service.httpx.AsyncClient') as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client_cls.return_value.__aenter__.return_value = mock_client
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_client.post.return_value = mock_response
+
+            worker_service = get_worker_service()
+
+            def slow_warmup(job_id):
+                time.sleep(0.5)
+
+            with patch.object(worker_service, '_warmup_encoding_worker', side_effect=slow_warmup) as mock_warmup:
+                started = time.monotonic()
+                await worker_service.trigger_render_video_worker("test-job")
+                elapsed = time.monotonic() - started
+                assert elapsed < 0.4, f"trigger waited on warmup ({elapsed:.2f}s)"
+
+                # The loop stays responsive while the warmup runs in a thread…
+                ticks = 0
+                deadline = time.monotonic() + 0.3
+                while time.monotonic() < deadline:
+                    await asyncio.sleep(0.01)
+                    ticks += 1
+                assert ticks > 5
+
+                # …and the warmup still completes.
+                await asyncio.gather(*worker_service._warmup_tasks)
+                mock_warmup.assert_called_once_with("test-job")
+                assert not worker_service._warmup_tasks
+
+    def test_start_warmup_without_event_loop_runs_inline(self):
+        """Sync callers (no running loop) get the original inline behaviour."""
+        worker_service = get_worker_service()
+        with patch.object(worker_service, '_warmup_encoding_worker') as mock_warmup:
+            worker_service._start_encoding_worker_warmup("test-job")
+            mock_warmup.assert_called_once_with("test-job")
 
     def test_warmup_swallows_exceptions(self):
         """Warmup failures are logged but never block worker dispatch."""

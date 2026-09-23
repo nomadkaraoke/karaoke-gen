@@ -1844,6 +1844,159 @@ class TestEncodePreviewInBackground:
         )
 
 
+class TestPreviewAbandonedWhenJobLeavesReview:
+    """A reviewer who clicks Complete before the preview loads must not leave the
+    encode running: once the job leaves review the background task is cancelled
+    (no submission/polling/fallback/error marker) — 2026-09-23."""
+
+    @pytest.fixture
+    def mock_job(self):
+        from backend.models.job import Job
+        job = MagicMock(spec=Job)
+        job.job_id = "job-ab"
+        return job
+
+    def _run(self, mock_job, encoding_service, storage, local_render, status):
+        import asyncio
+        import backend.api.routes.review as review_mod
+        from backend.api.routes.review import _encode_preview_in_background, _preview_videos
+        _preview_videos.pop("job-ab", None)
+        firestore_job = MagicMock()
+        firestore_job.status = status
+        job_manager = MagicMock()
+        job_manager.get_job.return_value = firestore_job
+        with patch("backend.api.routes.review.get_encoding_service", return_value=encoding_service), \
+             patch("backend.api.routes.review.StorageService", return_value=storage), \
+             patch("backend.api.routes.review._render_preview_locally", local_render), \
+             patch("backend.api.routes.review.JobManager", return_value=job_manager), \
+             patch.object(review_mod, "PREVIEW_ABANDON_POLL_S", 0.02):
+            asyncio.run(_encode_preview_in_background(
+                job=mock_job,
+                preview_hash="h1",
+                encode_kwargs={"job_id": "preview_job-ab_h1"},
+                updated_data={},
+                is_duet=False,
+            ))
+        return job_manager
+
+    def test_encode_cancelled_once_job_leaves_review(self, mock_job):
+        import asyncio
+        import time
+        from backend.models.job import JobStatus
+        from backend.api.routes.review import _preview_videos
+
+        async def slow_encode(**kwargs):
+            await asyncio.sleep(10)  # would be a long GCE wait; must be cut short
+            return {"status": "complete"}
+
+        encoding_service = MagicMock()
+        encoding_service.encode_preview_video = AsyncMock(side_effect=slow_encode)
+        storage = MagicMock()
+        local_render = AsyncMock(return_value="h1")
+
+        started = time.monotonic()
+        job_manager = self._run(mock_job, encoding_service, storage, local_render, JobStatus.REVIEW_COMPLETE)
+        assert time.monotonic() - started < 3, "encode was not abandoned"
+
+        job_manager.get_job.assert_called()
+        local_render.assert_not_called()          # cancellation is not a GCE "failure"
+        storage.upload_json.assert_not_called()   # no error marker
+        assert "job-ab" not in _preview_videos    # nothing recorded as ready
+
+    def test_encode_continues_while_job_in_review(self, mock_job):
+        import asyncio
+        from backend.models.job import JobStatus
+        from backend.api.routes.review import _preview_videos
+
+        async def encode(**kwargs):
+            await asyncio.sleep(0.1)  # spans a few watcher polls
+            return {"status": "complete"}
+
+        encoding_service = MagicMock()
+        encoding_service.encode_preview_video = AsyncMock(side_effect=encode)
+        storage = MagicMock()
+        local_render = AsyncMock(return_value="h1")
+
+        job_manager = self._run(mock_job, encoding_service, storage, local_render, JobStatus.IN_REVIEW)
+
+        job_manager.get_job.assert_called()       # the watcher did poll…
+        local_render.assert_not_called()
+        assert _preview_videos.get("job-ab", {}).get("h1") == "jobs/job-ab/previews/h1.mp4"  # …and the encode finished
+
+    def test_watcher_read_failure_does_not_abandon(self, mock_job):
+        """A transient Firestore error while checking status must not cancel the encode."""
+        import asyncio
+        import backend.api.routes.review as review_mod
+        from backend.api.routes.review import _encode_preview_in_background, _preview_videos
+        _preview_videos.pop("job-ab", None)
+
+        async def encode(**kwargs):
+            await asyncio.sleep(0.1)
+            return {"status": "complete"}
+
+        encoding_service = MagicMock()
+        encoding_service.encode_preview_video = AsyncMock(side_effect=encode)
+        job_manager = MagicMock()
+        job_manager.get_job.side_effect = RuntimeError("firestore blip")
+        with patch("backend.api.routes.review.get_encoding_service", return_value=encoding_service), \
+             patch("backend.api.routes.review.StorageService", return_value=MagicMock()), \
+             patch("backend.api.routes.review.JobManager", return_value=job_manager), \
+             patch.object(review_mod, "PREVIEW_ABANDON_POLL_S", 0.02):
+            asyncio.run(_encode_preview_in_background(
+                job=mock_job, preview_hash="h1",
+                encode_kwargs={"job_id": "preview_job-ab_h1"}, updated_data={}, is_duet=False,
+            ))
+        assert job_manager.get_job.call_count >= 1
+        assert _preview_videos.get("job-ab", {}).get("h1") == "jobs/job-ab/previews/h1.mp4"
+
+    def _run_local_unbounded(self, abandoned, set_during_render):
+        """Drive _render_preview_locally_unbounded with the render mocked out."""
+        from backend.api.routes.review import _render_preview_locally_unbounded, _preview_videos
+        _preview_videos.pop("job-ab", None)
+        job = MagicMock()
+        job.job_id = "job-ab"
+        storage = MagicMock()
+
+        def fake_render(**kwargs):
+            if set_during_render:
+                abandoned.set()  # the watcher fired while ffmpeg was running
+            return {"preview_hash": "h1", "video_path": "/tmp/x.mp4"}
+
+        with patch("backend.api.routes.review.StorageService", return_value=storage), \
+             patch("backend.api.routes.review._prepare_preview_inputs", return_value=(MagicMock(), "/tmp/a.flac", MagicMock())), \
+             patch("backend.api.routes.review.CorrectionOperations.generate_preview_video", side_effect=fake_render) as render:
+            result = _render_preview_locally_unbounded(job, {}, False, abandoned)
+        return result, render, storage
+
+    def test_local_render_thread_skips_upload_when_abandoned_mid_render(self):
+        """Cancelling the awaiting task can't stop a thread already in ffmpeg —
+        the thread itself must drop the result instead of publishing it."""
+        import threading
+        from backend.api.routes.review import _preview_videos
+        abandoned = threading.Event()
+        result, render, storage = self._run_local_unbounded(abandoned, set_during_render=True)
+        render.assert_called_once()
+        storage.upload_file.assert_not_called()
+        assert "job-ab" not in _preview_videos
+        assert result == "h1"
+
+    def test_local_render_thread_skips_render_when_already_abandoned(self):
+        import threading
+        abandoned = threading.Event()
+        abandoned.set()
+        result, render, storage = self._run_local_unbounded(abandoned, set_during_render=False)
+        render.assert_not_called()
+        storage.upload_file.assert_not_called()
+        assert result == ""
+
+    def test_local_render_thread_publishes_when_not_abandoned(self):
+        import threading
+        from backend.api.routes.review import _preview_videos
+        result, render, storage = self._run_local_unbounded(threading.Event(), set_during_render=False)
+        storage.upload_file.assert_called_once_with("/tmp/x.mp4", "jobs/job-ab/previews/h1.mp4")
+        assert _preview_videos["job-ab"]["h1"] == "jobs/job-ab/previews/h1.mp4"
+
+
 class TestVocalsCacheRangeAndHeaders:
     """Concurrent-load fixes on the vocals byte proxy: LRU cache, Range, Cache-Control."""
 
@@ -2060,7 +2213,7 @@ class TestLocalPreviewRenderBound:
         started = threading.Event()
         release = threading.Event()
 
-        def slow_render(job, updated_data, is_duet):
+        def slow_render(job, updated_data, is_duet, abandoned=None):
             started.set()
             release.wait(timeout=5)
             return "hash"
@@ -2084,7 +2237,7 @@ class TestLocalPreviewRenderBound:
             # Slot released — a fresh render is admitted immediately.
             monkeypatch.setattr(
                 review_module, "_render_preview_locally_unbounded",
-                lambda job, updated_data, is_duet: "hash2",
+                lambda job, updated_data, is_duet, abandoned=None: "hash2",
             )
             assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
 
@@ -2104,7 +2257,7 @@ class TestLocalPreviewRenderBound:
         started = threading.Event()
         release = threading.Event()
 
-        def slow_render(job, updated_data, is_duet):
+        def slow_render(job, updated_data, is_duet, abandoned=None):
             started.set()
             release.wait(timeout=5)
             return "hash"
@@ -2134,7 +2287,7 @@ class TestLocalPreviewRenderBound:
 
             monkeypatch.setattr(
                 review_module, "_render_preview_locally_unbounded",
-                lambda job, updated_data, is_duet: "hash2",
+                lambda job, updated_data, is_duet, abandoned=None: "hash2",
             )
             assert await review_module._render_preview_locally(MagicMock(), {}, False) == "hash2"
 

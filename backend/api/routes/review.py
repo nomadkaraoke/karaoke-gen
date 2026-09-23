@@ -298,13 +298,24 @@ _local_preview_executor = concurrent.futures.ThreadPoolExecutor(
 )
 
 
-async def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
+async def _render_preview_locally(
+    job,
+    updated_data: Dict[str, Any],
+    is_duet: bool,
+    abandoned: Optional[threading.Event] = None,
+) -> str:
     """Render the full 360p preview locally (bounded) and upload it to GCS.
 
     Used when GCE preview encoding is disabled and as the fallback when it
     fails. Admission happens HERE on the event loop (async semaphore +
     wait_for) so queued renders wait as cheap coroutines — only an ADMITTED
     render occupies a thread-pool worker for its blocking downloads + ffmpeg.
+
+    ``abandoned`` (set by the preview watcher when the job leaves review) is
+    checked by the render thread: cancelling the awaiting task cannot stop a
+    thread already running ffmpeg, so the thread itself skips the render if
+    the flag is already set, and skips the upload/record if it was set
+    mid-render — a discarded preview never lands in GCS.
     """
     try:
         await asyncio.wait_for(
@@ -316,7 +327,7 @@ async def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bo
             f"{_LOCAL_PREVIEW_QUEUE_TIMEOUT_S}s for a slot) — try again shortly"
         )
     def _run_render():
-        return _render_preview_locally_unbounded(job, updated_data, is_duet)
+        return _render_preview_locally_unbounded(job, updated_data, is_duet, abandoned)
 
     loop = asyncio.get_running_loop()
     worker_future = _local_preview_executor.submit(_run_render)
@@ -338,9 +349,22 @@ async def _render_preview_locally(job, updated_data: Dict[str, Any], is_duet: bo
     return await asyncio.wrap_future(worker_future)
 
 
-def _render_preview_locally_unbounded(job, updated_data: Dict[str, Any], is_duet: bool) -> str:
+def _render_preview_locally_unbounded(
+    job,
+    updated_data: Dict[str, Any],
+    is_duet: bool,
+    abandoned: Optional[threading.Event] = None,
+) -> str:
     job_id = job.job_id
     storage = StorageService()
+
+    def _is_abandoned() -> bool:
+        return abandoned is not None and abandoned.is_set()
+
+    if _is_abandoned():
+        logger.info(f"Job {job_id}: Skipping local preview render — job left review")
+        return ""
+
     with tempfile.TemporaryDirectory() as temp_dir:
         correction_result, audio_path, output_config = _prepare_preview_inputs(
             job=job, temp_dir=temp_dir, storage=storage, is_duet=is_duet
@@ -362,6 +386,12 @@ def _render_preview_locally_unbounded(job, updated_data: Dict[str, Any], is_duet
             video_path = result["video_path"]
             add_span_event("render_complete")
 
+        if _is_abandoned():
+            # The watcher cancelled the awaiting task mid-render; this thread
+            # couldn't be stopped, but don't publish the unwatchable result.
+            logger.info(f"Job {job_id}: Discarding local preview {preview_hash} — job left review")
+            return preview_hash
+
         with create_span("upload-preview-video") as upload_span:
             preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
             storage.upload_file(video_path, preview_gcs_path)
@@ -369,6 +399,62 @@ def _render_preview_locally_unbounded(job, updated_data: Dict[str, Any], is_duet
 
     _record_preview_video(job_id, preview_hash, preview_gcs_path)
     return preview_hash
+
+
+# How often an in-flight background preview encode re-checks that its job is
+# still in review. A reviewer who is confident can click Complete without
+# waiting for the preview; once the job leaves awaiting_review/in_review the
+# preview is unwatchable, so the encode is abandoned — no encoder VM cold
+# start, no submission, no status polling, no local fallback — instead of
+# burning encoder time on a video nobody can see.
+PREVIEW_ABANDON_POLL_S = float(os.getenv("PREVIEW_ABANDON_POLL_S", "3"))
+_REVIEW_STATUSES = (JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW)
+
+
+async def _job_left_review(job_id: str) -> bool:
+    """True once the job is no longer in a review state (or no longer exists)."""
+    # Construct the manager inside the worker thread too — client setup can
+    # block (credentials/transport), and this polls from the API event loop.
+    job = await asyncio.to_thread(lambda: JobManager().get_job(job_id))
+    return job is None or job.status not in _REVIEW_STATUSES
+
+
+async def _cancel_preview_when_job_leaves_review(
+    job_id: str,
+    preview_hash: str,
+    encode_task: "asyncio.Task[None]",
+    abandoned: threading.Event,
+) -> bool:
+    """Watch the job's status while ``encode_task`` runs; cancel it once the
+    job leaves review. Returns True iff this watcher cancelled the encode.
+
+    Status is read from Firestore (not an in-memory flag) because the
+    /complete request that ends the review may land on a different Cloud Run
+    instance than the one running the encode.
+
+    Cancellation is best-effort for work already inside a thread: a local
+    ffmpeg render checks ``abandoned`` and skips its upload; an in-flight VM
+    start (``_warmup_encoding_worker_fallback`` → to_thread) cannot be
+    stopped and runs to completion — the idle-shutdown reclaims the VM.
+    """
+    while not encode_task.done():
+        await asyncio.sleep(PREVIEW_ABANDON_POLL_S)
+        if encode_task.done():
+            return False
+        try:
+            left = await _job_left_review(job_id)
+        except Exception as e:  # transient Firestore blip — keep watching
+            logger.debug(f"Job {job_id}: preview abandon check failed (will retry): {e}")
+            continue
+        if left:
+            logger.info(
+                f"Job {job_id}: Abandoning preview {preview_hash} — job left review "
+                f"(reviewer completed without waiting for the preview)"
+            )
+            abandoned.set()
+            encode_task.cancel()
+            return True
+    return False
 
 
 async def _encode_preview_in_background(
@@ -386,7 +472,38 @@ async def _encode_preview_in_background(
     reports ready once the mp4 exists in GCS. On GCE failure this falls back
     to a local render; if that also fails an error marker is written so the
     poll can surface the failure instead of spinning until its timeout.
+
+    The encode is abandoned (cancelled, nothing written) as soon as the job
+    leaves review — see ``_cancel_preview_when_job_leaves_review``.
     """
+    job_id = job.job_id
+    abandoned = threading.Event()
+    with job_log_context(job_id, worker="preview"):
+        encode_task = asyncio.create_task(
+            _run_preview_encode(job, preview_hash, encode_kwargs, updated_data, is_duet, abandoned)
+        )
+        watcher = asyncio.create_task(
+            _cancel_preview_when_job_leaves_review(job_id, preview_hash, encode_task, abandoned)
+        )
+        try:
+            await encode_task
+        except asyncio.CancelledError:
+            if watcher.done() and not watcher.cancelled() and watcher.result():
+                return  # abandoned on purpose — already logged by the watcher
+            raise  # genuine outer cancellation (e.g. shutdown)
+        finally:
+            watcher.cancel()
+
+
+async def _run_preview_encode(
+    job,
+    preview_hash: str,
+    encode_kwargs: Dict[str, Any],
+    updated_data: Dict[str, Any],
+    is_duet: bool,
+    abandoned: Optional[threading.Event] = None,
+) -> None:
+    """GCE encode → local fallback → error marker (the cancellable inner body)."""
     job_id = job.job_id
     storage = StorageService()
     encoding_service = get_encoding_service()
@@ -404,7 +521,7 @@ async def _encode_preview_in_background(
             logger.warning(f"Job {job_id}: GCE preview encoding failed, falling back to local: {gce_error}")
 
         try:
-            await _render_preview_locally(job, updated_data, is_duet)
+            await _render_preview_locally(job, updated_data, is_duet, abandoned=abandoned)
             logger.info(f"Job {job_id}: Preview generated locally after GCE failure: {preview_hash}")
         except Exception as local_error:
             logger.error(

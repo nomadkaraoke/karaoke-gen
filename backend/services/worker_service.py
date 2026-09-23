@@ -106,6 +106,9 @@ class WorkerService:
         self._admin_token = self._get_admin_token()
         self._use_cloud_tasks = self._should_use_cloud_tasks()
         self._tasks_client = None
+        # Strong refs to in-flight encoding-worker warmups (see
+        # _start_encoding_worker_warmup) so the event loop can't GC them mid-run.
+        self._warmup_tasks: set = set()
         
         if self._use_cloud_tasks:
             logger.info("WorkerService initialized with Cloud Tasks mode")
@@ -503,8 +506,34 @@ class WorkerService:
             logger.warning(f"[job:{job_id}] auto-correct trigger failed (non-fatal): {e}")
             return False
     
+    def _start_encoding_worker_warmup(self, job_id: str) -> None:
+        """Kick off the encoding-worker warmup WITHOUT blocking the caller.
+
+        ``_warmup_encoding_worker`` is blocking (Compute API get + start +
+        wait-for-operation — 10-20 s when the VM is stopped). Calling it inline
+        from the async trigger methods did two bad things: the user-facing
+        ``/complete`` request took that long to respond, and — because the
+        calls are synchronous — the whole event loop froze, so EVERY request on
+        that API instance stalled with it (incident 2026-09-23: 62/142 review
+        completes over 14 days took >3 s, max 35 s). The warmup is purely an
+        optimisation — the render/video worker self-heals with its own warmup
+        fallback if the VM isn't up yet — so run it in a worker thread as a
+        tracked background task and return immediately.
+
+        Outside an event loop (sync callers / tests) it degrades to the
+        original inline call.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._warmup_encoding_worker(job_id)
+            return
+        task = loop.create_task(asyncio.to_thread(self._warmup_encoding_worker, job_id))
+        self._warmup_tasks.add(task)
+        task.add_done_callback(self._warmup_tasks.discard)
+
     def _warmup_encoding_worker(self, job_id: str) -> None:
-        """Fire-and-forget warmup of the encoding worker VM.
+        """Warm up the encoding worker VM (BLOCKING — see _start_encoding_worker_warmup).
 
         Called before dispatching video/render workers so the GCE encoding
         VM starts booting while the worker downloads files and prepares.
@@ -537,7 +566,7 @@ class WorkerService:
         Otherwise, uses Cloud Tasks or direct HTTP.
         """
         self._bump_worker_generation(job_id)
-        self._warmup_encoding_worker(job_id)
+        self._start_encoding_worker_warmup(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_video:
             return await self._trigger_cloud_run_job(job_id)
         return await self.trigger_worker("video", job_id)
@@ -702,7 +731,7 @@ class WorkerService:
         incident 2026-03-08 which migrated the video worker to Cloud Run Jobs).
         """
         self._bump_worker_generation(job_id)
-        self._warmup_encoding_worker(job_id)
+        self._start_encoding_worker_warmup(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_render:
             return await self._trigger_worker_cloud_run_job(
                 job_id=job_id,
