@@ -82,4 +82,21 @@ describe('useReferencePanelLayout', () => {
     expect(again.current.widthPx).toBeNull()
     expect(window.localStorage.getItem('lyricsReviewReferenceWidthPx')).toBeNull()
   })
+
+  it('ends the drag if the window loses focus mid-drag (no stuck resize)', () => {
+    const { result } = renderHook(() => useReferencePanelLayout())
+    act(() => {
+      result.current.startResize({ clientX: 800, preventDefault() {} } as any, el(300), el(1200))
+    })
+    expect(document.body.style.userSelect).toBe('none')
+    act(() => {
+      window.dispatchEvent(new Event('blur'))
+    })
+    expect(result.current.dragging).toBe(false)
+    expect(document.body.style.userSelect).toBe('')
+    act(() => {
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: 0 }) as PointerEvent)
+    })
+    expect(result.current.widthPx).toBeNull()
+  })
 })

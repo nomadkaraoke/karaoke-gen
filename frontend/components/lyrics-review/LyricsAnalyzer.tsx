@@ -6,7 +6,7 @@ import { useRouter } from '@/i18n/routing'
 import { Button } from '@/components/ui/button'
 import { Video, Check, CheckCircle2, PanelRightOpen } from 'lucide-react'
 import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
-import { useReferencePanelLayout, clampReferenceWidth } from '@/lib/lyrics-review/hooks/useReferencePanelLayout'
+import { useReferencePanelLayout, clampReferenceWidth, MAX_REFERENCE_WIDTH_FRACTION } from '@/lib/lyrics-review/hooks/useReferencePanelLayout'
 import { toast } from 'sonner'
 import {
   AnchorSequence,
@@ -1720,7 +1720,9 @@ export default function LyricsAnalyzer({
             )}
             style={
               waveformsLayout && referenceLayout.widthPx !== null
-                ? { width: referenceLayout.widthPx }
+                ? // Cap at the drag maximum so a width saved on a wider screen can't squeeze
+                  // the Synced column on a narrower one.
+                  { width: referenceLayout.widthPx, maxWidth: `${MAX_REFERENCE_WIDTH_FRACTION * 100}%` }
                 : undefined
             }
           >

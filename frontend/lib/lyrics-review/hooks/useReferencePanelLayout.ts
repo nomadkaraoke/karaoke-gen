@@ -88,12 +88,16 @@ export function useReferencePanelLayout() {
         window.removeEventListener('pointermove', onMove)
         window.removeEventListener('pointerup', onUp)
         window.removeEventListener('pointercancel', onUp)
+        window.removeEventListener('blur', onUp)
       }
       document.body.style.userSelect = 'none'
       document.body.style.cursor = 'col-resize'
       window.addEventListener('pointermove', onMove)
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onUp)
+      // A lost pointerup (e.g. released outside the window / tab switch) must not leave
+      // the page stuck in a resize with text selection disabled.
+      window.addEventListener('blur', onUp)
       endDragRef.current = onUp
     },
     []
