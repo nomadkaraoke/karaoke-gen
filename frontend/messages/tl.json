@@ -242,7 +242,15 @@
     "referrals": "Mga Referral",
     "bulkMode": "Maramihan",
     "singleMode": "Isahan",
-    "submitModeToggle": "Isahan o maramihang pagsusumite"
+    "submitModeToggle": "Isahan o maramihang pagsusumite",
+    "sortAscending": "I-sort pataas",
+    "sortBy": "I-sort ayon sa",
+    "sortCompletedAt": "Petsa ng pagkakumpleto",
+    "sortDescending": "I-sort pababa",
+    "sortRecentlyActive": "Kamakailang aktibo",
+    "sortSubmittedAt": "Petsa ng pagsusumite",
+    "sortArtist": "Artist",
+    "sortTitle": "Pamagat"
   },
   "auth": {
     "noVerificationToken": "Walang ibinigay na verification token",

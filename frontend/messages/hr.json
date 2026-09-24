@@ -242,7 +242,15 @@
     "referrals": "Preporuke",
     "bulkMode": "Grupno",
     "singleMode": "Pojedinačno",
-    "submitModeToggle": "Pojedinačno ili grupno slanje"
+    "submitModeToggle": "Pojedinačno ili grupno slanje",
+    "sortAscending": "Sortiraj uzlazno",
+    "sortBy": "Sortiraj po",
+    "sortCompletedAt": "Datum završetka",
+    "sortDescending": "Sortiraj silazno",
+    "sortRecentlyActive": "Nedavno aktivno",
+    "sortSubmittedAt": "Datum slanja",
+    "sortArtist": "Izvođač",
+    "sortTitle": "Naslov"
   },
   "auth": {
     "noVerificationToken": "Nije naveden token za provjeru",

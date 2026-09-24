@@ -242,7 +242,15 @@
     "referrals": "Recomandări",
     "bulkMode": "În masă",
     "singleMode": "Individual",
-    "submitModeToggle": "Trimitere individuală sau în masă"
+    "submitModeToggle": "Trimitere individuală sau în masă",
+    "sortAscending": "Sortează crescător",
+    "sortBy": "Sortează după",
+    "sortCompletedAt": "Data finalizării",
+    "sortDescending": "Sortează descrescător",
+    "sortRecentlyActive": "Activitate recentă",
+    "sortSubmittedAt": "Data trimiterii",
+    "sortArtist": "Artist",
+    "sortTitle": "Titlu"
   },
   "auth": {
     "noVerificationToken": "Niciun token de verificare furnizat",

@@ -242,7 +242,15 @@
     "referrals": "Henvisninger",
     "bulkMode": "Bulk",
     "singleMode": "Enkelt",
-    "submitModeToggle": "Enkelt- eller masseindsendelse"
+    "submitModeToggle": "Enkelt- eller masseindsendelse",
+    "sortAscending": "Sortér stigende",
+    "sortBy": "Sortér efter",
+    "sortCompletedAt": "Afslutningsdato",
+    "sortDescending": "Sortér faldende",
+    "sortRecentlyActive": "Senest aktive",
+    "sortSubmittedAt": "Indsendelsesdato",
+    "sortArtist": "Kunstner",
+    "sortTitle": "Titel"
   },
   "auth": {
     "noVerificationToken": "Ingen bekræftelsestoken angivet",

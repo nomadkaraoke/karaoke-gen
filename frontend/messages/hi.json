@@ -242,7 +242,15 @@
     "referrals": "रेफरल्स",
     "bulkMode": "बल्क",
     "singleMode": "सिंगल",
-    "submitModeToggle": "सिंगल या बल्क सबमिशन"
+    "submitModeToggle": "सिंगल या बल्क सबमिशन",
+    "sortAscending": "आरोही क्रम में छाँटें",
+    "sortBy": "इसके अनुसार छाँटें",
+    "sortCompletedAt": "पूरा होने की तारीख",
+    "sortDescending": "अवरोही क्रम में छाँटें",
+    "sortRecentlyActive": "हाल ही में सक्रिय",
+    "sortSubmittedAt": "जमा करने की तारीख",
+    "sortArtist": "कलाकार",
+    "sortTitle": "टाइटल"
   },
   "auth": {
     "noVerificationToken": "कोई वेरिफिकेशन टोकन नहीं दिया गया",

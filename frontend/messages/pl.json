@@ -242,7 +242,15 @@
     "referrals": "Polecenia",
     "bulkMode": "Masowo",
     "singleMode": "Pojedynczo",
-    "submitModeToggle": "Pojedyncze lub masowe przesyłanie"
+    "submitModeToggle": "Pojedyncze lub masowe przesyłanie",
+    "sortAscending": "Sortuj rosnąco",
+    "sortBy": "Sortuj według",
+    "sortCompletedAt": "Data ukończenia",
+    "sortDescending": "Sortuj malejąco",
+    "sortRecentlyActive": "Ostatnio aktywne",
+    "sortSubmittedAt": "Data przesłania",
+    "sortArtist": "Wykonawca",
+    "sortTitle": "Tytuł"
   },
   "auth": {
     "noVerificationToken": "Brak tokena weryfikacyjnego",

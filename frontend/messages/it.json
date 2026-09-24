@@ -242,7 +242,15 @@
     "referrals": "Inviti",
     "bulkMode": "In blocco",
     "singleMode": "Singolo",
-    "submitModeToggle": "Invio singolo o in blocco"
+    "submitModeToggle": "Invio singolo o in blocco",
+    "sortAscending": "Ordine crescente",
+    "sortBy": "Ordina per",
+    "sortCompletedAt": "Data di completamento",
+    "sortDescending": "Ordine decrescente",
+    "sortRecentlyActive": "Attivi di recente",
+    "sortSubmittedAt": "Data di invio",
+    "sortArtist": "Artista",
+    "sortTitle": "Titolo"
   },
   "auth": {
     "noVerificationToken": "Nessun token di verifica fornito",

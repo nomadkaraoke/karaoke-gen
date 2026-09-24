@@ -242,7 +242,15 @@
     "referrals": "Giới thiệu",
     "bulkMode": "Hàng loạt",
     "singleMode": "Đơn lẻ",
-    "submitModeToggle": "Gửi đơn lẻ hoặc hàng loạt"
+    "submitModeToggle": "Gửi đơn lẻ hoặc hàng loạt",
+    "sortAscending": "Sắp xếp tăng dần",
+    "sortBy": "Sắp xếp theo",
+    "sortCompletedAt": "Ngày hoàn thành",
+    "sortDescending": "Sắp xếp giảm dần",
+    "sortRecentlyActive": "Hoạt động gần đây",
+    "sortSubmittedAt": "Ngày gửi",
+    "sortArtist": "Nghệ sĩ",
+    "sortTitle": "Tiêu đề"
   },
   "auth": {
     "noVerificationToken": "Không có mã xác minh được cung cấp",

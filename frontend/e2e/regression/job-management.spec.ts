@@ -166,6 +166,39 @@ test.describe('Job Management - Job List', () => {
       await page.waitForTimeout(1000);
     }
   });
+
+  test('sort control reorders jobs by artist name', async ({ page }) => {
+    await setupApiFixtures(page, {
+      mocks: [
+        ...APP_PAGE_BASE_MOCKS,
+        {
+          method: 'GET',
+          path: '/api/jobs',
+          response: { body: MOCK_JOBS },
+        },
+      ],
+    });
+
+    await page.goto('/app');
+    await page.waitForLoadState('networkidle');
+
+    // job-awaiting-audio-3 ("Third Artist") is hidden on the dashboard (still
+    // in the guided-flow wizard), leaving Another/Test/Failed Artist visible.
+    // Default sort (submission date, newest first): "Another Artist" (11:00)
+    // was created most recently, so it appears first.
+    const jobCards = page.locator('[data-testid="jobs-list"] > *');
+    await expect(jobCards.first()).toContainText('Another Artist');
+
+    // Switch to sorting by artist name (still descending) — "Test Artist"
+    // sorts first alphabetically-descending among the visible jobs.
+    await page.getByLabel('Sort by').click();
+    await page.getByRole('option', { name: 'Artist' }).click();
+    await expect(jobCards.first()).toContainText('Test Artist');
+
+    // Toggle to ascending — "Another Artist" sorts first again.
+    await page.getByLabel(/sort ascending|sort descending/i).click();
+    await expect(jobCards.first()).toContainText('Another Artist');
+  });
 });
 
 test.describe('Job Management - Job Details', () => {

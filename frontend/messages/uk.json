@@ -242,7 +242,15 @@
     "referrals": "Реферали",
     "bulkMode": "Пакетно",
     "singleMode": "Одинично",
-    "submitModeToggle": "Одиночне або масове завантаження"
+    "submitModeToggle": "Одиночне або масове завантаження",
+    "sortAscending": "Сортувати за зростанням",
+    "sortBy": "Сортувати за",
+    "sortCompletedAt": "Дата завершення",
+    "sortDescending": "Сортувати за спаданням",
+    "sortRecentlyActive": "Нещодавно активні",
+    "sortSubmittedAt": "Дата відправлення",
+    "sortArtist": "Виконавець",
+    "sortTitle": "Назва"
   },
   "auth": {
     "noVerificationToken": "Не надано токен перевірки",

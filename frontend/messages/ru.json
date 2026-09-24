@@ -242,7 +242,15 @@
     "referrals": "Рефералы",
     "bulkMode": "Пакетный",
     "singleMode": "Одиночный",
-    "submitModeToggle": "Одиночная или пакетная отправка"
+    "submitModeToggle": "Одиночная или пакетная отправка",
+    "sortAscending": "По возрастанию",
+    "sortBy": "Сортировать по",
+    "sortCompletedAt": "Дата завершения",
+    "sortDescending": "По убыванию",
+    "sortRecentlyActive": "Последняя активность",
+    "sortSubmittedAt": "Дата отправки",
+    "sortArtist": "Исполнитель",
+    "sortTitle": "Название"
   },
   "auth": {
     "noVerificationToken": "Не предоставлен токен верификации",

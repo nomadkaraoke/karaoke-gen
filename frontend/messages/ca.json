@@ -242,7 +242,15 @@
     "referrals": "Referències",
     "bulkMode": "En lot",
     "singleMode": "Individual",
-    "submitModeToggle": "Enviament únic o massiu"
+    "submitModeToggle": "Enviament únic o massiu",
+    "sortAscending": "Ordena de forma ascendent",
+    "sortBy": "Ordena per",
+    "sortCompletedAt": "Data de finalització",
+    "sortDescending": "Ordena de forma descendent",
+    "sortRecentlyActive": "Actiu recentment",
+    "sortSubmittedAt": "Data d'enviament",
+    "sortArtist": "Artista",
+    "sortTitle": "Títol"
   },
   "auth": {
     "noVerificationToken": "No s'ha proporcionat cap testimoni de verificació",

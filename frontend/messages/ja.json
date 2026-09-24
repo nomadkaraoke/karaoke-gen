@@ -242,7 +242,15 @@
     "referrals": "紹介",
     "bulkMode": "一括",
     "singleMode": "シングル",
-    "submitModeToggle": "単一または一括送信"
+    "submitModeToggle": "単一または一括送信",
+    "sortAscending": "昇順",
+    "sortBy": "並べ替え",
+    "sortCompletedAt": "完了日",
+    "sortDescending": "降順",
+    "sortRecentlyActive": "最近のアクティビティ",
+    "sortSubmittedAt": "送信日",
+    "sortArtist": "アーティスト",
+    "sortTitle": "タイトル"
   },
   "auth": {
     "noVerificationToken": "認証トークンが提供されていません",

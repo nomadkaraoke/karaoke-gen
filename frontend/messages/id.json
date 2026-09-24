@@ -242,7 +242,15 @@
     "referrals": "Referensi",
     "bulkMode": "Massal",
     "singleMode": "Tunggal",
-    "submitModeToggle": "Pengiriman tunggal atau massal"
+    "submitModeToggle": "Pengiriman tunggal atau massal",
+    "sortAscending": "Urutkan menaik",
+    "sortBy": "Urutkan berdasarkan",
+    "sortCompletedAt": "Tanggal selesai",
+    "sortDescending": "Urutkan menurun",
+    "sortRecentlyActive": "Terakhir aktif",
+    "sortSubmittedAt": "Tanggal pengajuan",
+    "sortArtist": "Artis",
+    "sortTitle": "Judul"
   },
   "auth": {
     "noVerificationToken": "Tidak ada token verifikasi yang diberikan",

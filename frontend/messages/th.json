@@ -242,7 +242,15 @@
     "referrals": "การแนะนำเพื่อน",
     "bulkMode": "แบบชุด",
     "singleMode": "แบบเดี่ยว",
-    "submitModeToggle": "ส่งแบบเดี่ยวหรือแบบกลุ่ม"
+    "submitModeToggle": "ส่งแบบเดี่ยวหรือแบบกลุ่ม",
+    "sortAscending": "เรียงลำดับจากน้อยไปมาก",
+    "sortBy": "เรียงลำดับตาม",
+    "sortCompletedAt": "วันที่เสร็จสิ้น",
+    "sortDescending": "เรียงลำดับจากมากไปน้อย",
+    "sortRecentlyActive": "ใช้งานล่าสุด",
+    "sortSubmittedAt": "วันที่ส่ง",
+    "sortArtist": "ศิลปิน",
+    "sortTitle": "ชื่อเพลง"
   },
   "auth": {
     "noVerificationToken": "ไม่ได้ระบุโทเค็นการยืนยัน",

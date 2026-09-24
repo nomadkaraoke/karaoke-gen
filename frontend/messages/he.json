@@ -242,7 +242,15 @@
     "referrals": "הפניות",
     "bulkMode": "מקבץ",
     "singleMode": "בודד",
-    "submitModeToggle": "שליחה בודדת או מרוכזת"
+    "submitModeToggle": "שליחה בודדת או מרוכזת",
+    "sortAscending": "מיין בסדר עולה",
+    "sortBy": "מיין לפי",
+    "sortCompletedAt": "תאריך סיום",
+    "sortDescending": "מיין בסדר יורד",
+    "sortRecentlyActive": "פעיל לאחרונה",
+    "sortSubmittedAt": "תאריך הגשה",
+    "sortArtist": "אומן",
+    "sortTitle": "כותרת"
   },
   "auth": {
     "noVerificationToken": "לא סופק אסימון אימות",

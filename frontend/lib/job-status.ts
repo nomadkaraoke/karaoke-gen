@@ -380,6 +380,65 @@ export function sortJobsByDate(jobs: Job[]): Job[] {
   });
 }
 
+/** Fields the Recent Jobs list can be sorted by (dashboard "Sort by" control). */
+export type JobSortField = 'created_at' | 'updated_at' | 'completed_at' | 'artist' | 'title';
+
+export type SortDirection = 'asc' | 'desc';
+
+/**
+ * Statuses that represent a successful finish. Used as the "completed_at" sort
+ * key — there's no dedicated completion timestamp, so `updated_at` is used as a
+ * proxy for these statuses (jobs don't typically mutate again once finished).
+ */
+const COMPLETED_STATUSES = new Set(['complete', 'prep_complete']);
+
+function jobSortDateValue(job: Job, field: JobSortField): number | null {
+  if (field === 'completed_at') {
+    if (!COMPLETED_STATUSES.has(job.status)) return null;
+    const time = new Date(job.updated_at).getTime();
+    return Number.isNaN(time) ? null : time;
+  }
+  const raw = field === 'created_at' ? job.created_at : job.updated_at;
+  if (!raw) return null;
+  const time = new Date(raw).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+/**
+ * Sort jobs for display by the user-selected field/direction.
+ *
+ * Jobs missing a value for the chosen field (e.g. an in-progress job sorted by
+ * "Completed date", or a job with no artist/title yet) are always pushed to
+ * the end of the list, regardless of sort direction.
+ *
+ * @param locale - Locale to use for artist/title collation (defaults to the
+ * runtime locale if omitted). Pass the dashboard's active `next-intl` locale
+ * so sort order matches the displayed language rather than the browser's.
+ */
+export function sortJobs(jobs: Job[], field: JobSortField, direction: SortDirection, locale?: string): Job[] {
+  const sign = direction === 'asc' ? 1 : -1;
+
+  if (field === 'artist' || field === 'title') {
+    return [...jobs].sort((a, b) => {
+      const aValue = (a[field] || '').trim();
+      const bValue = (b[field] || '').trim();
+      if (!aValue && !bValue) return 0;
+      if (!aValue) return 1;
+      if (!bValue) return -1;
+      return sign * aValue.localeCompare(bValue, locale, { sensitivity: 'base' });
+    });
+  }
+
+  return [...jobs].sort((a, b) => {
+    const aValue = jobSortDateValue(a, field);
+    const bValue = jobSortDateValue(b, field);
+    if (aValue === null && bValue === null) return 0;
+    if (aValue === null) return 1;
+    if (bValue === null) return -1;
+    return sign * (aValue - bValue);
+  });
+}
+
 /**
  * Whether a job should render as a standalone card on the main dashboard.
  *

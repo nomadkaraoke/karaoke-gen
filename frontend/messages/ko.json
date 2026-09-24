@@ -242,7 +242,15 @@
     "referrals": "추천 프로그램",
     "bulkMode": "일괄",
     "singleMode": "단일",
-    "submitModeToggle": "단일 또는 일괄 제출"
+    "submitModeToggle": "단일 또는 일괄 제출",
+    "sortAscending": "오름차순 정렬",
+    "sortBy": "정렬 기준",
+    "sortCompletedAt": "완료일",
+    "sortDescending": "내림차순 정렬",
+    "sortRecentlyActive": "최근 활동순",
+    "sortSubmittedAt": "제출일",
+    "sortArtist": "아티스트",
+    "sortTitle": "제목"
   },
   "auth": {
     "noVerificationToken": "인증 토큰이 제공되지 않았습니다",

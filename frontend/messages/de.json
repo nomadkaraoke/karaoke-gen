@@ -242,7 +242,15 @@
     "referrals": "Empfehlungen",
     "bulkMode": "Bulk",
     "singleMode": "Einzeln",
-    "submitModeToggle": "Einzel- oder Masseneinreichung"
+    "submitModeToggle": "Einzel- oder Masseneinreichung",
+    "sortAscending": "Aufsteigend sortieren",
+    "sortBy": "Sortieren nach",
+    "sortCompletedAt": "Fertigstellungsdatum",
+    "sortDescending": "Absteigend sortieren",
+    "sortRecentlyActive": "Zuletzt aktiv",
+    "sortSubmittedAt": "Einreichungsdatum",
+    "sortArtist": "Künstler",
+    "sortTitle": "Titel"
   },
   "auth": {
     "noVerificationToken": "Kein Verifizierungstoken angegeben",
