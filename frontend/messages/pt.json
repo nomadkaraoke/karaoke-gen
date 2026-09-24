@@ -242,7 +242,15 @@
     "referrals": "Indicações",
     "bulkMode": "Em lote",
     "singleMode": "Único",
-    "submitModeToggle": "Envio único ou em lote"
+    "submitModeToggle": "Envio único ou em lote",
+    "sortAscending": "Ordem crescente",
+    "sortBy": "Ordenar por",
+    "sortCompletedAt": "Data de conclusão",
+    "sortDescending": "Ordem decrescente",
+    "sortRecentlyActive": "Recentemente ativo",
+    "sortSubmittedAt": "Data de envio",
+    "sortArtist": "Artista",
+    "sortTitle": "Título"
   },
   "auth": {
     "noVerificationToken": "Nenhum token de verificação fornecido",

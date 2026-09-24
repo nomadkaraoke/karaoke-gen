@@ -242,7 +242,15 @@
     "referrals": "Referanslar",
     "bulkMode": "Toplu",
     "singleMode": "Tekli",
-    "submitModeToggle": "Tekli veya toplu gönderim"
+    "submitModeToggle": "Tekli veya toplu gönderim",
+    "sortAscending": "Artan sıralama",
+    "sortBy": "Şuna göre sırala",
+    "sortCompletedAt": "Tamamlanma tarihi",
+    "sortDescending": "Azalan sıralama",
+    "sortRecentlyActive": "En son aktif",
+    "sortSubmittedAt": "Gönderim tarihi",
+    "sortArtist": "Sanatçı",
+    "sortTitle": "Başlık"
   },
   "auth": {
     "noVerificationToken": "Doğrulama belirteci sağlanmadı",

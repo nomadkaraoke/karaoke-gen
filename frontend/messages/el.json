@@ -242,7 +242,15 @@
     "referrals": "Συστάσεις",
     "bulkMode": "Μαζικά",
     "singleMode": "Μεμονωμένα",
-    "submitModeToggle": "Μεμονωμένη ή μαζική υποβολή"
+    "submitModeToggle": "Μεμονωμένη ή μαζική υποβολή",
+    "sortAscending": "Αύξουσα ταξινόμηση",
+    "sortBy": "Ταξινόμηση ανά",
+    "sortCompletedAt": "Ημερομηνία ολοκλήρωσης",
+    "sortDescending": "Φθίνουσα ταξινόμηση",
+    "sortRecentlyActive": "Πρόσφατα ενεργά",
+    "sortSubmittedAt": "Ημερομηνία υποβολής",
+    "sortArtist": "Καλλιτέχνης",
+    "sortTitle": "Τίτλος"
   },
   "auth": {
     "noVerificationToken": "Δεν δόθηκε token επαλήθευσης",

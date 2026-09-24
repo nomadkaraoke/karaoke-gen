@@ -242,7 +242,15 @@
     "referrals": "Suosittelut",
     "bulkMode": "Erä",
     "singleMode": "Yksittäinen",
-    "submitModeToggle": "Yksittäis- tai joukkolähetys"
+    "submitModeToggle": "Yksittäis- tai joukkolähetys",
+    "sortAscending": "Lajittele nousevasti",
+    "sortBy": "Lajitteluperuste",
+    "sortCompletedAt": "Valmistumispäivä",
+    "sortDescending": "Lajittele laskevasti",
+    "sortRecentlyActive": "Viimeksi aktiivinen",
+    "sortSubmittedAt": "Lähetyspäivä",
+    "sortArtist": "Artisti",
+    "sortTitle": "Nimi"
   },
   "auth": {
     "noVerificationToken": "Vahvistustunnusta ei annettu",

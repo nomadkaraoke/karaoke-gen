@@ -242,7 +242,15 @@
     "referrals": "Rujukan",
     "bulkMode": "Pukal",
     "singleMode": "Tunggal",
-    "submitModeToggle": "Penyerahan tunggal atau pukal"
+    "submitModeToggle": "Penyerahan tunggal atau pukal",
+    "sortAscending": "Susun menaik",
+    "sortBy": "Susun mengikut",
+    "sortCompletedAt": "Tarikh selesai",
+    "sortDescending": "Susun menurun",
+    "sortRecentlyActive": "Aktif baru-baru ini",
+    "sortSubmittedAt": "Tarikh penyerahan",
+    "sortArtist": "Artis",
+    "sortTitle": "Tajuk"
   },
   "auth": {
     "noVerificationToken": "Tiada token pengesahan diberikan",

@@ -2,7 +2,7 @@
  * Unit tests for job-status.ts utility functions
  */
 
-import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, isAutoRetryPending, isWaitingForEncodingCapacity, isVisibilityChangeInProgress, shouldShowJobOnDashboard, JobStep, STATUS_CONFIG } from '../lib/job-status';
+import { getJobStep, formatStepIndicator, isBlockingStatus, isNotifiableBlockingStatus, getJobProgressPercent, sortJobsByDate, sortJobs, isAutoRetryPending, isWaitingForEncodingCapacity, isVisibilityChangeInProgress, shouldShowJobOnDashboard, JobStep, STATUS_CONFIG } from '../lib/job-status';
 import type { Job } from '../lib/api';
 
 // Helper to create a minimal Job object for testing
@@ -621,6 +621,90 @@ describe('sortJobsByDate', () => {
     const sorted = sortJobsByDate(jobs);
     expect(sorted.length).toBe(1);
     expect(sorted[0].status).toBe('complete');
+  });
+});
+
+describe('sortJobs', () => {
+  function createSortableJob(overrides: Partial<Job> = {}): Job {
+    return {
+      job_id: overrides.job_id || `job-${Math.random()}`,
+      status: 'complete',
+      progress: 0,
+      created_at: '2024-01-01T10:00:00Z',
+      updated_at: '2024-01-01T10:00:00Z',
+      ...overrides,
+    };
+  }
+
+  it('sorts by created_at ascending and descending', () => {
+    const jobs = [
+      createSortableJob({ job_id: 'a', created_at: '2024-01-01T10:00:00Z' }),
+      createSortableJob({ job_id: 'b', created_at: '2024-01-03T10:00:00Z' }),
+      createSortableJob({ job_id: 'c', created_at: '2024-01-02T10:00:00Z' }),
+    ];
+
+    const desc = sortJobs(jobs, 'created_at', 'desc');
+    expect(desc.map(j => j.job_id)).toEqual(['b', 'c', 'a']);
+
+    const asc = sortJobs(jobs, 'created_at', 'asc');
+    expect(asc.map(j => j.job_id)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('sorts by updated_at (recently active)', () => {
+    const jobs = [
+      createSortableJob({ job_id: 'a', updated_at: '2024-01-01T10:00:00Z' }),
+      createSortableJob({ job_id: 'b', updated_at: '2024-01-03T10:00:00Z' }),
+    ];
+    const sorted = sortJobs(jobs, 'updated_at', 'desc');
+    expect(sorted.map(j => j.job_id)).toEqual(['b', 'a']);
+  });
+
+  it('sorts by completed_at using updated_at only for completed statuses, others last', () => {
+    const jobs = [
+      createSortableJob({ job_id: 'in-progress', status: 'rendering_video', updated_at: '2024-01-05T10:00:00Z' }),
+      createSortableJob({ job_id: 'completed-early', status: 'complete', updated_at: '2024-01-01T10:00:00Z' }),
+      createSortableJob({ job_id: 'completed-late', status: 'prep_complete', updated_at: '2024-01-03T10:00:00Z' }),
+    ];
+    const sorted = sortJobs(jobs, 'completed_at', 'desc');
+    // Completed jobs ordered by their updated_at; the in-progress job (no
+    // completion timestamp) is always pushed to the end.
+    expect(sorted.map(j => j.job_id)).toEqual(['completed-late', 'completed-early', 'in-progress']);
+  });
+
+  it('sorts by artist and title alphabetically, case-insensitively', () => {
+    const jobs = [
+      createSortableJob({ job_id: 'a', artist: 'zebra' }),
+      createSortableJob({ job_id: 'b', artist: 'Apple' }),
+      createSortableJob({ job_id: 'c', artist: 'mango' }),
+    ];
+    const asc = sortJobs(jobs, 'artist', 'asc');
+    expect(asc.map(j => j.job_id)).toEqual(['b', 'c', 'a']);
+
+    const desc = sortJobs(jobs, 'artist', 'desc');
+    expect(desc.map(j => j.job_id)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('pushes jobs with missing artist/title to the end regardless of direction', () => {
+    const jobs = [
+      createSortableJob({ job_id: 'no-title', title: undefined }),
+      createSortableJob({ job_id: 'has-title', title: 'Some Song' }),
+    ];
+    expect(sortJobs(jobs, 'title', 'asc').map(j => j.job_id)).toEqual(['has-title', 'no-title']);
+    expect(sortJobs(jobs, 'title', 'desc').map(j => j.job_id)).toEqual(['has-title', 'no-title']);
+  });
+
+  it('does not mutate the original array', () => {
+    const jobs = [
+      createSortableJob({ job_id: 'a', created_at: '2024-01-01T10:00:00Z' }),
+      createSortableJob({ job_id: 'b', created_at: '2024-01-03T10:00:00Z' }),
+    ];
+    const originalOrder = jobs.map(j => j.job_id);
+    sortJobs(jobs, 'created_at', 'asc');
+    expect(jobs.map(j => j.job_id)).toEqual(originalOrder);
+  });
+
+  it('handles empty array', () => {
+    expect(sortJobs([], 'created_at', 'desc')).toEqual([]);
   });
 });
 

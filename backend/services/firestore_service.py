@@ -253,7 +253,7 @@ class FirestoreService:
 
     # Fields needed by the dashboard summary view
     SUMMARY_FIELD_PATHS = [
-        'job_id', 'status', 'progress', 'created_at', 'artist', 'title',
+        'job_id', 'status', 'progress', 'created_at', 'updated_at', 'artist', 'title',
         'error_message', 'non_interactive', 'outputs_deleted_at', 'user_email', 'is_private',
         'made_for_you', 'customer_email', 'locale',
         'url', 'filename', 'existing_instrumental_gcs_path',

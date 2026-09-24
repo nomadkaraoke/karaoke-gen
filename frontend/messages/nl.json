@@ -242,7 +242,15 @@
     "referrals": "Verwijzingen",
     "bulkMode": "Bulk",
     "singleMode": "Enkel",
-    "submitModeToggle": "Enkele of bulk inzending"
+    "submitModeToggle": "Enkele of bulk inzending",
+    "sortAscending": "Oplopend sorteren",
+    "sortBy": "Sorteren op",
+    "sortCompletedAt": "Datum voltooid",
+    "sortDescending": "Aflopend sorteren",
+    "sortRecentlyActive": "Recent actief",
+    "sortSubmittedAt": "Datum ingediend",
+    "sortArtist": "Artiest",
+    "sortTitle": "Titel"
   },
   "auth": {
     "noVerificationToken": "Geen verificatietoken opgegeven",

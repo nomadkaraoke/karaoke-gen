@@ -83,6 +83,12 @@ class TestSummaryFieldPathsIncludesRetryPending:
         from backend.services.firestore_service import FirestoreService
         assert 'existing_instrumental_gcs_path' in FirestoreService.SUMMARY_FIELD_PATHS
 
+    def test_firestore_projection_includes_updated_at(self):
+        # Top-level field, needed by the dashboard's "Recently active" /
+        # "Completion date" sort options on the Recent Jobs list.
+        from backend.services.firestore_service import FirestoreService
+        assert 'updated_at' in FirestoreService.SUMMARY_FIELD_PATHS
+
 
 class TestSummaryFieldPathsIncludesDurationPricing:
     """Regression: duration-pricing fields must be in both SUMMARY_FIELD_PATHS

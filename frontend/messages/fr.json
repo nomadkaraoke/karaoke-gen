@@ -242,7 +242,15 @@
     "referrals": "Parrainages",
     "bulkMode": "En lot",
     "singleMode": "Individuel",
-    "submitModeToggle": "Soumission unique ou groupée"
+    "submitModeToggle": "Soumission unique ou groupée",
+    "sortAscending": "Trier par ordre croissant",
+    "sortBy": "Trier par",
+    "sortCompletedAt": "Date de fin",
+    "sortDescending": "Trier par ordre décroissant",
+    "sortRecentlyActive": "Activité récente",
+    "sortSubmittedAt": "Date de soumission",
+    "sortArtist": "Artiste",
+    "sortTitle": "Titre"
   },
   "auth": {
     "noVerificationToken": "Aucun jeton de vérification fourni",

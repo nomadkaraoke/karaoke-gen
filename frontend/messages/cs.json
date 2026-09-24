@@ -242,7 +242,15 @@
     "referrals": "Doporučení",
     "bulkMode": "Hromadně",
     "singleMode": "Jednotlivě",
-    "submitModeToggle": "Jednotlivé nebo hromadné odeslání"
+    "submitModeToggle": "Jednotlivé nebo hromadné odeslání",
+    "sortAscending": "Řadit vzestupně",
+    "sortBy": "Řadit podle",
+    "sortCompletedAt": "Datum dokončení",
+    "sortDescending": "Řadit sestupně",
+    "sortRecentlyActive": "Nedávno aktivní",
+    "sortSubmittedAt": "Datum odeslání",
+    "sortArtist": "Umělec",
+    "sortTitle": "Název"
   },
   "auth": {
     "noVerificationToken": "Nebyl poskytnut žádný ověřovací token",

@@ -242,7 +242,15 @@
     "referrals": "Värvningar",
     "bulkMode": "Bulk",
     "singleMode": "Enskild",
-    "submitModeToggle": "Enskild eller massinlämning"
+    "submitModeToggle": "Enskild eller massinlämning",
+    "sortAscending": "Sortera stigande",
+    "sortBy": "Sortera efter",
+    "sortCompletedAt": "Slutfört datum",
+    "sortDescending": "Sortera fallande",
+    "sortRecentlyActive": "Senast aktiv",
+    "sortSubmittedAt": "Inskickat datum",
+    "sortArtist": "Artist",
+    "sortTitle": "Titel"
   },
   "auth": {
     "noVerificationToken": "Ingen verifieringstoken angavs",

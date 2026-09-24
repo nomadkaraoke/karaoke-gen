@@ -242,7 +242,15 @@
     "referrals": "Odporúčania",
     "bulkMode": "Hromadne",
     "singleMode": "Jednotlivo",
-    "submitModeToggle": "Jednotlivé alebo hromadné odoslanie"
+    "submitModeToggle": "Jednotlivé alebo hromadné odoslanie",
+    "sortAscending": "Zoradiť vzostupne",
+    "sortBy": "Zoradiť podľa",
+    "sortCompletedAt": "Dátum dokončenia",
+    "sortDescending": "Zoradiť zostupne",
+    "sortRecentlyActive": "Nedávno aktívne",
+    "sortSubmittedAt": "Dátum odoslania",
+    "sortArtist": "Interpret",
+    "sortTitle": "Názov"
   },
   "auth": {
     "noVerificationToken": "Nebol poskytnutý žiadny overovací token",

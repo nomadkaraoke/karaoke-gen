@@ -17,9 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Music2, RefreshCw, Loader2, Search, Gift, X, Shield, ShieldOff } from "lucide-react"
+import { Music2, RefreshCw, Loader2, Search, Gift, X, Shield, ShieldOff, ArrowUp, ArrowDown } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { sortJobsByDate, shouldShowJobOnDashboard } from "@/lib/job-status"
+import { sortJobsByDate, sortJobs, shouldShowJobOnDashboard, JobSortField, SortDirection } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
 import { GuidedJobFlow } from "@/components/job/GuidedJobFlow"
@@ -76,6 +76,14 @@ function AppPageContent() {
   })
   const [searchInput, setSearchInput] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortField, setSortField] = useState<JobSortField>(() => {
+    if (typeof window === "undefined") return "created_at"
+    return (localStorage.getItem("nomad-karaoke-sort-field") as JobSortField) || "created_at"
+  })
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
+    if (typeof window === "undefined") return "desc"
+    return (localStorage.getItem("nomad-karaoke-sort-direction") as SortDirection) || "desc"
+  })
   const [showAdminControls, setShowAdminControls] = useState<boolean>(() => {
     if (typeof window === "undefined") return false
     return localStorage.getItem("nomad-karaoke-admin-controls") === "true"
@@ -96,8 +104,8 @@ function AppPageContent() {
   // Hide self-service jobs still in the guided-flow wizard, but keep made-for-you orders
   // visible even at awaiting_audio_selection (see shouldShowJobOnDashboard).
   const jobs = useMemo(
-    () => allJobs.filter(shouldShowJobOnDashboard),
-    [allJobs]
+    () => sortJobs(allJobs.filter(shouldShowJobOnDashboard), sortField, sortDirection),
+    [allJobs, sortField, sortDirection]
   )
 
   // Debounce search input — only update the query (which triggers API calls) after 300ms
@@ -454,6 +462,35 @@ function AppPageContent() {
                       <SelectItem value="processing">{t('processing')}</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={sortField} onValueChange={(v) => {
+                    setSortField(v as JobSortField)
+                    localStorage.setItem("nomad-karaoke-sort-field", v)
+                  }}>
+                    <SelectTrigger className="h-7 w-[130px] text-xs" aria-label={t('sortBy')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="created_at">{t('sortSubmittedAt')}</SelectItem>
+                      <SelectItem value="updated_at">{t('sortRecentlyActive')}</SelectItem>
+                      <SelectItem value="completed_at">{t('sortCompletedAt')}</SelectItem>
+                      <SelectItem value="artist">{t('sortArtist')}</SelectItem>
+                      <SelectItem value="title">{t('sortTitle')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const next = sortDirection === 'asc' ? 'desc' : 'asc'
+                      setSortDirection(next)
+                      localStorage.setItem("nomad-karaoke-sort-direction", next)
+                    }}
+                    className="h-7 w-7 p-0"
+                    aria-label={sortDirection === 'asc' ? t('sortAscending') : t('sortDescending')}
+                    title={sortDirection === 'asc' ? t('sortAscending') : t('sortDescending')}
+                  >
+                    {sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                  </Button>
                   <Select value={String(jobLimit)} onValueChange={(v) => {
                     const val = Number(v)
                     setJobLimit(val)
@@ -502,7 +539,7 @@ function AppPageContent() {
                   )}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3" data-testid="jobs-list">
                   {jobs.map((job) => (
                     <JobCard key={job.job_id} job={job} onRefresh={loadJobs} showAdminControls={isAdmin && showAdminControls} />
                   ))}

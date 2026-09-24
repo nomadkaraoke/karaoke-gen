@@ -242,7 +242,15 @@
     "referrals": "الإحالات",
     "bulkMode": "مجمّع",
     "singleMode": "مفرد",
-    "submitModeToggle": "إرسال فردي أو جماعي"
+    "submitModeToggle": "إرسال فردي أو جماعي",
+    "sortAscending": "فرز تصاعدي",
+    "sortBy": "فرز حسب",
+    "sortCompletedAt": "تاريخ الانتهاء",
+    "sortDescending": "فرز تنازلي",
+    "sortRecentlyActive": "الأحدث نشاطاً",
+    "sortSubmittedAt": "تاريخ التقديم",
+    "sortArtist": "فنان",
+    "sortTitle": "العنوان"
   },
   "auth": {
     "noVerificationToken": "لم يتم توفير رمز تحقق",

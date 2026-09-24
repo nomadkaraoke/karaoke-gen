@@ -242,7 +242,15 @@
     "referrals": "Ajánlások",
     "bulkMode": "Tömeges",
     "singleMode": "Egyes",
-    "submitModeToggle": "Egyedi vagy tömeges beküldés"
+    "submitModeToggle": "Egyedi vagy tömeges beküldés",
+    "sortAscending": "Növekvő sorrend",
+    "sortBy": "Rendezés alapja",
+    "sortCompletedAt": "Befejezés dátuma",
+    "sortDescending": "Csökkenő sorrend",
+    "sortRecentlyActive": "Legutóbb aktív",
+    "sortSubmittedAt": "Beküldés dátuma",
+    "sortArtist": "Előadó",
+    "sortTitle": "Cím"
   },
   "auth": {
     "noVerificationToken": "Nincs megadva ellenőrző token",

@@ -242,7 +242,15 @@
     "referrals": "推荐",
     "bulkMode": "批量",
     "singleMode": "单曲",
-    "submitModeToggle": "单曲或批量提交"
+    "submitModeToggle": "单曲或批量提交",
+    "sortAscending": "升序排列",
+    "sortBy": "排序方式",
+    "sortCompletedAt": "完成日期",
+    "sortDescending": "降序排列",
+    "sortRecentlyActive": "最近活跃",
+    "sortSubmittedAt": "提交日期",
+    "sortArtist": "歌手",
+    "sortTitle": "标题"
   },
   "auth": {
     "noVerificationToken": "未提供验证令牌",

@@ -242,7 +242,15 @@
     "referrals": "Henvisninger",
     "bulkMode": "Bulk",
     "singleMode": "Enkel",
-    "submitModeToggle": "Enkeltvis eller samlet innsending"
+    "submitModeToggle": "Enkeltvis eller samlet innsending",
+    "sortAscending": "Sorter stigende",
+    "sortBy": "Sorter etter",
+    "sortCompletedAt": "Fullføringsdato",
+    "sortDescending": "Sorter synkende",
+    "sortRecentlyActive": "Nylig aktiv",
+    "sortSubmittedAt": "Innsendingsdato",
+    "sortArtist": "Artist",
+    "sortTitle": "Tittel"
   },
   "auth": {
     "noVerificationToken": "Ingen bekreftelseskode oppgitt",
