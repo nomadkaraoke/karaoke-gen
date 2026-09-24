@@ -43,7 +43,10 @@
     "comingSoon": "Binnenkort beschikbaar",
     "apply": "Toepassen",
     "reset": "Resetten",
-    "preview": "Voorbeeld"
+    "preview": "Voorbeeld",
+    "switchToDarkMode": "Overschakelen naar donkere modus",
+    "switchToLightMode": "Overschakelen naar lichte modus",
+    "toggleTheme": "Thema wisselen"
   },
   "landing": {
     "navigation": {

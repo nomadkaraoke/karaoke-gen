@@ -43,7 +43,10 @@
     "comingSoon": "Akan datang",
     "apply": "Gunakan",
     "reset": "Tetapkan semula",
-    "preview": "Pratonton"
+    "preview": "Pratonton",
+    "switchToDarkMode": "Tukar ke mod gelap",
+    "switchToLightMode": "Tukar ke mod terang",
+    "toggleTheme": "Togol tema"
   },
   "landing": {
     "navigation": {

@@ -43,7 +43,10 @@
     "comingSoon": "Sắp ra mắt",
     "apply": "Áp dụng",
     "reset": "Đặt lại",
-    "preview": "Xem trước"
+    "preview": "Xem trước",
+    "switchToDarkMode": "Chuyển sang chế độ tối",
+    "switchToLightMode": "Chuyển sang chế độ sáng",
+    "toggleTheme": "Chuyển đổi giao diện"
   },
   "landing": {
     "navigation": {

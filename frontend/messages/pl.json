@@ -43,7 +43,10 @@
     "comingSoon": "Wkrótce",
     "apply": "Zastosuj",
     "reset": "Resetuj",
-    "preview": "Podgląd"
+    "preview": "Podgląd",
+    "switchToDarkMode": "Przełącz na tryb ciemny",
+    "switchToLightMode": "Przełącz na tryb jasny",
+    "toggleTheme": "Zmień motyw"
   },
   "landing": {
     "navigation": {

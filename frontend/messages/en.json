@@ -43,7 +43,10 @@
     "comingSoon": "Coming soon",
     "apply": "Apply",
     "reset": "Reset",
-    "preview": "Preview"
+    "preview": "Preview",
+    "toggleTheme": "Toggle theme",
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode"
   },
   "landing": {
     "navigation": {

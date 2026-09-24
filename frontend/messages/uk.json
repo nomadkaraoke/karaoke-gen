@@ -43,7 +43,10 @@
     "comingSoon": "Незабаром",
     "apply": "Застосувати",
     "reset": "Скинути",
-    "preview": "Попередній перегляд"
+    "preview": "Попередній перегляд",
+    "switchToDarkMode": "Перемкнути на темну тему",
+    "switchToLightMode": "Перемкнути на світлу тему",
+    "toggleTheme": "Перемкнути тему"
   },
   "landing": {
     "navigation": {

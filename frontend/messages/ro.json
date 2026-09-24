@@ -43,7 +43,10 @@
     "comingSoon": "În curând",
     "apply": "Aplică",
     "reset": "Resetează",
-    "preview": "Previzualizare"
+    "preview": "Previzualizare",
+    "switchToDarkMode": "Treci la modul întunecat",
+    "switchToLightMode": "Treci la modul luminos",
+    "toggleTheme": "Comută tema"
   },
   "landing": {
     "navigation": {

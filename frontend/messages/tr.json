@@ -43,7 +43,10 @@
     "comingSoon": "Yakında",
     "apply": "Uygula",
     "reset": "Sıfırla",
-    "preview": "Önizleme"
+    "preview": "Önizleme",
+    "switchToDarkMode": "Karanlık moda geç",
+    "switchToLightMode": "Aydınlık moda geç",
+    "toggleTheme": "Temayı değiştir"
   },
   "landing": {
     "navigation": {

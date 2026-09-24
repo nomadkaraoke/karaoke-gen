@@ -43,7 +43,10 @@
     "comingSoon": "Kommer snart",
     "apply": "Anvend",
     "reset": "Nulstil",
-    "preview": "Forhåndsvisning"
+    "preview": "Forhåndsvisning",
+    "switchToDarkMode": "Skift til mørk tilstand",
+    "switchToLightMode": "Skift til lys tilstand",
+    "toggleTheme": "Skift tema"
   },
   "landing": {
     "navigation": {

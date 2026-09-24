@@ -43,7 +43,10 @@
     "comingSoon": "Hamarosan",
     "apply": "Alkalmaz",
     "reset": "Visszaállítás",
-    "preview": "Előnézet"
+    "preview": "Előnézet",
+    "switchToDarkMode": "Váltás sötét módra",
+    "switchToLightMode": "Váltás világos módra",
+    "toggleTheme": "Téma váltása"
   },
   "landing": {
     "navigation": {

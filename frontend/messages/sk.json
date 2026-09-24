@@ -43,7 +43,10 @@
     "comingSoon": "Už čoskoro",
     "apply": "Použiť",
     "reset": "Obnoviť",
-    "preview": "Náhľad"
+    "preview": "Náhľad",
+    "switchToDarkMode": "Prepnúť na tmavý režim",
+    "switchToLightMode": "Prepnúť na svetlý režim",
+    "toggleTheme": "Prepnúť tému"
   },
   "landing": {
     "navigation": {

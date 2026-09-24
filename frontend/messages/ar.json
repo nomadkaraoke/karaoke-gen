@@ -43,7 +43,10 @@
     "comingSoon": "قريباً",
     "apply": "تطبيق",
     "reset": "إعادة ضبط",
-    "preview": "معاينة"
+    "preview": "معاينة",
+    "switchToDarkMode": "التبديل إلى الوضع الداكن",
+    "switchToLightMode": "التبديل إلى الوضع الفاتح",
+    "toggleTheme": "تبديل المظهر"
   },
   "landing": {
     "navigation": {

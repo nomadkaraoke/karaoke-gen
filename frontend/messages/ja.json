@@ -43,7 +43,10 @@
     "comingSoon": "近日公開",
     "apply": "適用",
     "reset": "リセット",
-    "preview": "プレビュー"
+    "preview": "プレビュー",
+    "switchToDarkMode": "ダークモードに切り替え",
+    "switchToLightMode": "ライトモードに切り替え",
+    "toggleTheme": "テーマを切り替え"
   },
   "landing": {
     "navigation": {

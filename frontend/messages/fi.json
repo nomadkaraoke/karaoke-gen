@@ -43,7 +43,10 @@
     "comingSoon": "Tulossa pian",
     "apply": "Käytä",
     "reset": "Nollaa",
-    "preview": "Esikatselu"
+    "preview": "Esikatselu",
+    "switchToDarkMode": "Vaihda tummaan teemaan",
+    "switchToLightMode": "Vaihda vaaleaan teemaan",
+    "toggleTheme": "Vaihda teemaa"
   },
   "landing": {
     "navigation": {

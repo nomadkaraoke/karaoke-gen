@@ -43,7 +43,10 @@
     "comingSoon": "Malapit na",
     "apply": "I-apply",
     "reset": "I-reset",
-    "preview": "I-preview"
+    "preview": "I-preview",
+    "switchToDarkMode": "Lumipat sa dark mode",
+    "switchToLightMode": "Lumipat sa light mode",
+    "toggleTheme": "I-toggle ang tema"
   },
   "landing": {
     "navigation": {

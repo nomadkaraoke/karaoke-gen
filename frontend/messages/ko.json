@@ -43,7 +43,10 @@
     "comingSoon": "출시 예정",
     "apply": "적용",
     "reset": "초기화",
-    "preview": "미리보기"
+    "preview": "미리보기",
+    "switchToDarkMode": "다크 모드로 전환",
+    "switchToLightMode": "라이트 모드로 전환",
+    "toggleTheme": "테마 전환"
   },
   "landing": {
     "navigation": {

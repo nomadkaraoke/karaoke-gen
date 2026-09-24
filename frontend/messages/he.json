@@ -43,7 +43,10 @@
     "comingSoon": "בקרוב",
     "apply": "החל",
     "reset": "אפס",
-    "preview": "תצוגה מקדימה"
+    "preview": "תצוגה מקדימה",
+    "switchToDarkMode": "מעבר למצב כהה",
+    "switchToLightMode": "מעבר למצב בהיר",
+    "toggleTheme": "החלפת ערכת נושא"
   },
   "landing": {
     "navigation": {

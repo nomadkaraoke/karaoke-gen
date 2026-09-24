@@ -43,7 +43,10 @@
     "comingSoon": "เร็วๆ นี้",
     "apply": "นำไปใช้",
     "reset": "รีเซ็ต",
-    "preview": "ดูตัวอย่าง"
+    "preview": "ดูตัวอย่าง",
+    "switchToDarkMode": "เปลี่ยนเป็นโหมดมืด",
+    "switchToLightMode": "เปลี่ยนเป็นโหมดสว่าง",
+    "toggleTheme": "สลับธีม"
   },
   "landing": {
     "navigation": {

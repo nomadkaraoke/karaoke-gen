@@ -43,7 +43,10 @@
     "comingSoon": "Aviat",
     "apply": "Aplica",
     "reset": "Restableix",
-    "preview": "Previsualitza"
+    "preview": "Previsualitza",
+    "switchToDarkMode": "Canvia al mode fosc",
+    "switchToLightMode": "Canvia al mode clar",
+    "toggleTheme": "Canvia el tema"
   },
   "landing": {
     "navigation": {

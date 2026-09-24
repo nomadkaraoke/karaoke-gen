@@ -43,7 +43,10 @@
     "comingSoon": "Скоро",
     "apply": "Применить",
     "reset": "Сбросить",
-    "preview": "Предпросмотр"
+    "preview": "Предпросмотр",
+    "switchToDarkMode": "Переключить на темную тему",
+    "switchToLightMode": "Переключить на светлую тему",
+    "toggleTheme": "Переключить тему"
   },
   "landing": {
     "navigation": {

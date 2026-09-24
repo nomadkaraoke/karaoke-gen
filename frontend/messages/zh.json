@@ -43,7 +43,10 @@
     "comingSoon": "敬请期待",
     "apply": "应用",
     "reset": "重置",
-    "preview": "预览"
+    "preview": "预览",
+    "switchToDarkMode": "切换到深色模式",
+    "switchToLightMode": "切换到浅色模式",
+    "toggleTheme": "切换主题"
   },
   "landing": {
     "navigation": {

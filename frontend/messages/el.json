@@ -43,7 +43,10 @@
     "comingSoon": "Σύντομα κοντά σου",
     "apply": "Εφαρμογή",
     "reset": "Επαναφορά",
-    "preview": "Προεπισκόπηση"
+    "preview": "Προεπισκόπηση",
+    "switchToDarkMode": "Αλλαγή σε σκοτεινή λειτουργία",
+    "switchToLightMode": "Αλλαγή σε φωτεινή λειτουργία",
+    "toggleTheme": "Εναλλαγή θέματος"
   },
   "landing": {
     "navigation": {

@@ -43,7 +43,10 @@
     "comingSoon": "Segera hadir",
     "apply": "Terapkan",
     "reset": "Atur ulang",
-    "preview": "Pratinjau"
+    "preview": "Pratinjau",
+    "switchToDarkMode": "Beralih ke mode gelap",
+    "switchToLightMode": "Beralih ke mode terang",
+    "toggleTheme": "Ganti tema"
   },
   "landing": {
     "navigation": {

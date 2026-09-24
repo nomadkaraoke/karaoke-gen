@@ -43,7 +43,10 @@
     "comingSoon": "Kommer snart",
     "apply": "Tillämpa",
     "reset": "Återställ",
-    "preview": "Förhandsgranska"
+    "preview": "Förhandsgranska",
+    "switchToDarkMode": "Byt till mörkt läge",
+    "switchToLightMode": "Byt till ljust läge",
+    "toggleTheme": "Växla tema"
   },
   "landing": {
     "navigation": {

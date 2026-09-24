@@ -43,7 +43,10 @@
     "comingSoon": "In arrivo",
     "apply": "Applica",
     "reset": "Reimposta",
-    "preview": "Anteprima"
+    "preview": "Anteprima",
+    "switchToDarkMode": "Passa alla modalità scura",
+    "switchToLightMode": "Passa alla modalità chiara",
+    "toggleTheme": "Cambia tema"
   },
   "landing": {
     "navigation": {

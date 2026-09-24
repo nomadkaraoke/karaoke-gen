@@ -43,7 +43,10 @@
     "comingSoon": "जल्द आ रहा है",
     "apply": "लागू करो",
     "reset": "रीसेट करो",
-    "preview": "प्रीव्यू"
+    "preview": "प्रीव्यू",
+    "switchToDarkMode": "डार्क मोड में स्विच करो",
+    "switchToLightMode": "लाइट मोड में स्विच करो",
+    "toggleTheme": "थीम बदलो"
   },
   "landing": {
     "navigation": {

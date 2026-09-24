@@ -43,7 +43,10 @@
     "comingSoon": "Uskoro",
     "apply": "Primijeni",
     "reset": "Poništi",
-    "preview": "Pregled"
+    "preview": "Pregled",
+    "switchToDarkMode": "Prebaci na tamni način",
+    "switchToLightMode": "Prebaci na svijetli način",
+    "toggleTheme": "Promijeni temu"
   },
   "landing": {
     "navigation": {
