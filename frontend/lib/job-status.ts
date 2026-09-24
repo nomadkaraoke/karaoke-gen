@@ -410,8 +410,12 @@ function jobSortDateValue(job: Job, field: JobSortField): number | null {
  * Jobs missing a value for the chosen field (e.g. an in-progress job sorted by
  * "Completed date", or a job with no artist/title yet) are always pushed to
  * the end of the list, regardless of sort direction.
+ *
+ * @param locale - Locale to use for artist/title collation (defaults to the
+ * runtime locale if omitted). Pass the dashboard's active `next-intl` locale
+ * so sort order matches the displayed language rather than the browser's.
  */
-export function sortJobs(jobs: Job[], field: JobSortField, direction: SortDirection): Job[] {
+export function sortJobs(jobs: Job[], field: JobSortField, direction: SortDirection, locale?: string): Job[] {
   const sign = direction === 'asc' ? 1 : -1;
 
   if (field === 'artist' || field === 'title') {
@@ -421,7 +425,7 @@ export function sortJobs(jobs: Job[], field: JobSortField, direction: SortDirect
       if (!aValue && !bValue) return 0;
       if (!aValue) return 1;
       if (!bValue) return -1;
-      return sign * aValue.localeCompare(bValue, undefined, { sensitivity: 'base' });
+      return sign * aValue.localeCompare(bValue, locale, { sensitivity: 'base' });
     });
   }
 

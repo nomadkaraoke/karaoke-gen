@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Music2, RefreshCw, Loader2, Search, Gift, X, Shield, ShieldOff, ArrowUp, ArrowDown } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { sortJobsByDate, sortJobs, shouldShowJobOnDashboard, JobSortField, SortDirection } from "@/lib/job-status"
 import { WarmingUpLoader } from "@/components/WarmingUpLoader"
 import { JobCard } from "@/components/job"
@@ -49,6 +49,7 @@ import {
 
 function AppPageContent() {
   const t = useTranslations('dashboard')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [allJobs, setAllJobs] = useState<Job[]>([])
@@ -104,8 +105,8 @@ function AppPageContent() {
   // Hide self-service jobs still in the guided-flow wizard, but keep made-for-you orders
   // visible even at awaiting_audio_selection (see shouldShowJobOnDashboard).
   const jobs = useMemo(
-    () => sortJobs(allJobs.filter(shouldShowJobOnDashboard), sortField, sortDirection),
-    [allJobs, sortField, sortDirection]
+    () => sortJobs(allJobs.filter(shouldShowJobOnDashboard), sortField, sortDirection, locale),
+    [allJobs, sortField, sortDirection, locale]
   )
 
   // Debounce search input — only update the query (which triggers API calls) after 300ms

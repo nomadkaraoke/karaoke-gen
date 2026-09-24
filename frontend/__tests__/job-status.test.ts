@@ -706,6 +706,16 @@ describe('sortJobs', () => {
   it('handles empty array', () => {
     expect(sortJobs([], 'created_at', 'desc')).toEqual([]);
   });
+
+  it('honors the provided locale for artist/title collation', () => {
+    // Swedish collation sorts "ö" after "z"; default (undefined) locale does not.
+    const jobs = [
+      createSortableJob({ job_id: 'o-umlaut', artist: 'Örjan' }),
+      createSortableJob({ job_id: 'z', artist: 'Zorro' }),
+    ];
+    const swedish = sortJobs(jobs, 'artist', 'asc', 'sv');
+    expect(swedish.map(j => j.job_id)).toEqual(['z', 'o-umlaut']);
+  });
 });
 
 // Note: getDisplayJobs was removed — filtering is now handled server-side
