@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Lletres de referència",
-      "copyAll": "Copia totes les lletres de referència"
+      "copyAll": "Copia totes les lletres de referència",
+      "collapse": "Amaga la lletra de referència",
+      "expand": "Mostra la lletra de referència",
+      "resize": "Arrossega per redimensionar el panell de la lletra de referència (fes doble clic per restablir)"
     },
     "referenceEmpty": {
       "noReferenceFound": "No s'han trobat lletres de referència per a aquesta cançó. Cerca a tots els proveïdors de lletres configurats o enganxa les lletres manualment per activar la correcció de buits.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Cors mantinguts a l'instrumental — fes clic per escoltar-los.",
       "backingVocalsWaveformRemoved": "Cors que l'instrumental net elimina — fes clic per escoltar què deixaries fora.",
       "playingWhileEncoding": "Reproduint: {stem}",
-      "stopAudio": "Atura l'àudio"
+      "stopAudio": "Atura l'àudio",
+      "loadingAudio": "S'està carregant: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",

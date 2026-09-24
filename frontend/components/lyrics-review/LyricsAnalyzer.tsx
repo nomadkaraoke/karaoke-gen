@@ -4,7 +4,9 @@ import { useTranslations } from 'next-intl'
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useRouter } from '@/i18n/routing'
 import { Button } from '@/components/ui/button'
-import { Video, Check, CheckCircle2 } from 'lucide-react'
+import { Video, Check, CheckCircle2, PanelRightOpen } from 'lucide-react'
+import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
+import { useReferencePanelLayout, clampReferenceWidth, MAX_REFERENCE_WIDTH_FRACTION } from '@/lib/lyrics-review/hooks/useReferencePanelLayout'
 import { toast } from 'sonner'
 import {
   AnchorSequence,
@@ -219,6 +221,13 @@ export default function LyricsAnalyzer({
     resolveInitialViewMode(typeof window === 'undefined' ? null : window.localStorage)
   )
 
+  // Waveforms view: reviewer-adjustable Synced/Reference split + collapsible Reference column.
+  const referenceLayout = useReferencePanelLayout()
+  const tReference = useTranslations('lyricsReview.reference')
+  const waveformsLayout = !isMobile && transcriptionViewMode === 'waveforms'
+  const splitRowRef = useRef<HTMLDivElement>(null)
+  const referenceColumnRef = useRef<HTMLDivElement>(null)
+
   // Gap navigation state
   const [currentGapIndex, setCurrentGapIndex] = useState<number | null>(null)
 
@@ -312,6 +321,15 @@ export default function LyricsAnalyzer({
   // the reviewer never has to visit the heavy /instrumental screen just to make the
   // basic choice. That screen becomes the "Advanced mode" opt-in.
   const instrumentalStemOptions = data.instrumental_options ?? []
+  // Warm the browser cache with the instrumental stems once the main review audio has
+  // loaded, so the finish modal's "click the waveform to hear backing vocals" plays
+  // instantly instead of waiting on a multi-MB fetch (and, for older jobs, on the API's
+  // on-demand OGG transcode) after the modal opens.
+  const { ready: reviewAudioReady } = useAudioReady()
+  const prefetchStemUrls =
+    reviewAudioReady && !isReadOnly
+      ? instrumentalStemOptions.map((o) => o.audio_url).filter((u): u is string => !!u)
+      : []
   const hasCleanStem = instrumentalStemOptions.some((o) => o.id === 'clean' && o.audio_url)
   const hasBackingStem = instrumentalStemOptions.some((o) => o.id === 'with_backing' && o.audio_url)
   const offerInlineInstrumentalChoice =
@@ -1594,8 +1612,16 @@ export default function LyricsAnalyzer({
 
         {/* In Advanced/Waveforms the Synced side benefits from extra width, so the Reference
             column shrinks to its longest line (capped) and Synced takes the rest — no wasted
-            space. Simple mode keeps the even 50/50 split. */}
-        <div className={cn('gap-2', isMobile ? 'flex flex-col' : 'flex flex-row items-start')}>
+            space. Simple mode keeps the even 50/50 split. In Waveforms the reviewer can also
+            drag the divider to set the split (long reference lines then wrap) or collapse
+            the Reference column entirely to give the waveforms the full width. */}
+        <div
+          ref={splitRowRef}
+          className={cn(
+            isMobile ? 'flex flex-col gap-2' : 'flex flex-row items-start',
+            !isMobile && !waveformsLayout && 'gap-2'
+          )}
+        >
           <div className={cn(isMobile ? 'w-full' : 'flex-1 min-w-0')}>
           <TranscriptionView
             data={displayData}
@@ -1634,16 +1660,74 @@ export default function LyricsAnalyzer({
             onSegmentFocus={setFocusedSegmentIndex}
           />
           </div>
+          {waveformsLayout && referenceLayout.collapsed ? (
+            <button
+              type="button"
+              onClick={referenceLayout.toggleCollapsed}
+              title={tReference('expand')}
+              aria-label={tReference('expand')}
+              data-testid="reference-expand"
+              className="ml-2 flex-none self-stretch flex flex-col items-center gap-2 rounded-md border bg-card px-1 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            >
+              <PanelRightOpen className="h-4 w-4" />
+              <span className="[writing-mode:vertical-rl] font-semibold">{tReference('title')}</span>
+            </button>
+          ) : (
+          <>
+          {waveformsLayout && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={tReference('resize')}
+              title={tReference('resize')}
+              tabIndex={0}
+              data-testid="reference-resize-handle"
+              onPointerDown={(e) =>
+                referenceLayout.startResize(e, referenceColumnRef.current, splitRowRef.current)
+              }
+              onDoubleClick={referenceLayout.resetWidth}
+              onKeyDown={(e) => {
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                e.preventDefault()
+                const current = referenceColumnRef.current?.getBoundingClientRect().width ?? 0
+                const rowWidth = splitRowRef.current?.getBoundingClientRect().width ?? 0
+                referenceLayout.setWidthPx(
+                  clampReferenceWidth(current + (e.key === 'ArrowLeft' ? 24 : -24), rowWidth)
+                )
+              }}
+              className="group flex-none self-stretch w-2 cursor-col-resize flex justify-center focus-visible:outline-none"
+            >
+              <div
+                className={cn(
+                  'w-[3px] h-full rounded-full transition-colors',
+                  referenceLayout.dragging
+                    ? 'bg-primary'
+                    : 'bg-transparent group-hover:bg-primary/50 group-focus-visible:bg-primary/50'
+                )}
+              />
+            </div>
+          )}
           <div
+            ref={referenceColumnRef}
             className={cn(
               isMobile
                 ? 'w-full'
                 : transcriptionViewMode === 'simple'
                   ? 'flex-1 min-w-0'
-                  : 'flex-none w-max max-w-[46%]'
+                  : waveformsLayout && referenceLayout.widthPx !== null
+                    ? 'flex-none min-w-0'
+                    : 'flex-none w-max max-w-[46%]'
             )}
+            style={
+              waveformsLayout && referenceLayout.widthPx !== null
+                ? // Cap at the drag maximum so a width saved on a wider screen can't squeeze
+                  // the Synced column on a narrower one.
+                  { width: referenceLayout.widthPx, maxWidth: `${MAX_REFERENCE_WIDTH_FRACTION * 100}%` }
+                : undefined
+            }
           >
           <ReferenceView
+            onCollapse={waveformsLayout ? referenceLayout.toggleCollapsed : undefined}
             referenceSources={data.reference_lyrics}
             anchors={data.anchor_sequences}
             gaps={data.gap_sequences}
@@ -1663,6 +1747,8 @@ export default function LyricsAnalyzer({
             defaultTitle={data.metadata?.title || ''}
           />
           </div>
+          </>
+          )}
         </div>
 
         {/* Spacer for sticky footer */}
@@ -1772,6 +1858,12 @@ export default function LyricsAnalyzer({
               : null
           }
         />
+
+        {/* Hidden stem preloaders — same URL + request mode as the modal's stem <audio>,
+            so its playback is served from the browser cache. */}
+        {prefetchStemUrls.map((url) => (
+          <audio key={url} src={url} preload="auto" muted hidden aria-hidden data-testid="stem-prefetch" />
+        ))}
 
         <ReviewChangesModal
           open={isReviewModalOpen}

@@ -25,6 +25,8 @@ interface WaveformSegmentRowProps {
   onEditSegment: (segmentIndex: number) => void
   /** Delete the whole segment (matches the Advanced view's trash control). */
   onDeleteSegment: (segmentIndex: number) => void
+  /** Set while Ctrl/Cmd is held (delete-word mode): pressing a word deletes it. */
+  onDeleteWord?: (wordId: string) => void
 }
 
 /**
@@ -47,6 +49,7 @@ export default function WaveformSegmentRow({
   onPlaySegment,
   onEditSegment,
   onDeleteSegment,
+  onDeleteWord,
 }: WaveformSegmentRowProps) {
   const t = useTranslations('lyricsReview.transcription')
   const tHeader = useTranslations('lyricsReview.header')
@@ -127,6 +130,7 @@ export default function WaveformSegmentRow({
             onWordUpdate={handleWordUpdate}
             onCommit={handleCommit}
             onWordClick={() => onEditSegment(segmentIndex)}
+            onWordDelete={onDeleteWord ? (i) => onDeleteWord(words[i].id) : undefined}
             currentTime={currentTime}
             onPlaySegment={onPlaySegment}
             showRuler={false}

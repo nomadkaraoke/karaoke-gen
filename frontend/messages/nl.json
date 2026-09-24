@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referentie Songteksten",
-      "copyAll": "Kopieer alle referentiesongteksten"
+      "copyAll": "Kopieer alle referentiesongteksten",
+      "collapse": "Verberg referentiesongtekst",
+      "expand": "Toon referentiesongtekst",
+      "resize": "Sleep om de grootte van het paneel met de referentiesongtekst te wijzigen (dubbelklik om te herstellen)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Er zijn geen referentiesongteksten gevonden voor dit nummer. Zoek in alle geconfigureerde songtekst providers of plak songteksten handmatig om gatcorrectie in te schakelen.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Achtergrondzang behouden in de instrumentale versie — klik om deze te horen.",
       "backingVocalsWaveformRemoved": "Achtergrondzang die de cleane instrumentale versie verwijdert — klik om te horen wat je weglaat.",
       "playingWhileEncoding": "Speelt af: {stem}",
-      "stopAudio": "Audio stoppen"
+      "stopAudio": "Audio stoppen",
+      "loadingAudio": "Laden: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",

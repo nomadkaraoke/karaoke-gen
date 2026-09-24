@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "参照歌詞",
-      "copyAll": "すべての参照歌詞をコピー"
+      "copyAll": "すべての参照歌詞をコピー",
+      "collapse": "参考歌詞を非表示",
+      "expand": "参考歌詞を表示",
+      "resize": "ドラッグして参考歌詞パネルのサイズを変更（ダブルクリックでリセット）"
     },
     "referenceEmpty": {
       "noReferenceFound": "この曲の参照歌詞が見つかりませんでした。設定されているすべての歌詞プロバイダーを検索するか、手動で歌詞を貼り付けてギャップ修正を有効にしてください。",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "インストゥルメンタルに残されたバックコーラス — クリックして聴いてみてください。",
       "backingVocalsWaveformRemoved": "クリーン・インストゥルメンタルで削除されるバックコーラス — クリックして、省かれる音声を聴いてみてください。",
       "playingWhileEncoding": "再生中: {stem}",
-      "stopAudio": "音声を停止"
+      "stopAudio": "音声を停止",
+      "loadingAudio": "読み込み中: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "前のギャップ (P)",

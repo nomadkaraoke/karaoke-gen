@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Viitesanoitukset",
-      "copyAll": "Kopioi kaikki viitesanoitukset"
+      "copyAll": "Kopioi kaikki viitesanoitukset",
+      "collapse": "Piilota viitesanoitukset",
+      "expand": "Näytä viitesanoitukset",
+      "resize": "Muuta viitesanoituspaneelin kokoa vetämällä (palauta kaksoisklikkaamalla)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Tälle kappaleelle ei löytynyt viitesanoituksia. Hae kaikista määritetyistä sanoitusten tarjoajista tai liitä sanoitukset manuaalisesti ottaaksesi aukkojen korjauksen käyttöön.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Instrumentaalissa säilytetyt taustalaulut — klikkaa kuullaksesi ne.",
       "backingVocalsWaveformRemoved": "Taustalaulut, jotka puhdas instrumentaaliversio poistaa — klikkaa kuullaksesi, mitä jäisi pois.",
       "playingWhileEncoding": "Toistetaan: {stem}",
-      "stopAudio": "Pysäytä ääni"
+      "stopAudio": "Pysäytä ääni",
+      "loadingAudio": "Ladataan: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",

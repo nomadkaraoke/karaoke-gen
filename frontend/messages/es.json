@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Letras de referencia",
-      "copyAll": "Copiar todas las letras de referencia"
+      "copyAll": "Copiar todas las letras de referencia",
+      "collapse": "Ocultar letras de referencia",
+      "expand": "Mostrar letras de referencia",
+      "resize": "Arrastra para cambiar el tamaño del panel de letras de referencia (haz doble clic para restablecer)"
     },
     "referenceEmpty": {
       "noReferenceFound": "No se encontraron letras de referencia para esta canción. Busca en todos los proveedores de letras configurados o pega las letras manualmente para habilitar la corrección de huecos.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Coros que se mantienen en el instrumental — haz clic para escucharlos.",
       "backingVocalsWaveformRemoved": "Coros que elimina el instrumental limpio — haz clic para escuchar lo que estarías dejando fuera.",
       "playingWhileEncoding": "Reproduciendo: {stem}",
-      "stopAudio": "Detener audio"
+      "stopAudio": "Detener audio",
+      "loadingAudio": "Cargando: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",

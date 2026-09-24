@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referentni tekst",
-      "copyAll": "Kopiraj sav referentni tekst"
+      "copyAll": "Kopiraj sav referentni tekst",
+      "collapse": "Sakrij referentni tekst",
+      "expand": "Prikaži referentni tekst",
+      "resize": "Povuci za promjenu veličine panela s referentnim tekstom (dvostruki klik za resetiranje)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Nije pronađen referentni tekst za ovu pjesmu. Pretraži sve konfigurirane pružatelje teksta ili ručno zalijepi tekst za omogućavanje ispravljanja praznina.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Prateći vokali zadržani u instrumentalu — klikni da ih čuješ.",
       "backingVocalsWaveformRemoved": "Prateći vokali koje čisti instrumental uklanja — klikni da čuješ što izostavljaš.",
       "playingWhileEncoding": "Svira: {stem}",
-      "stopAudio": "Zaustavi zvuk"
+      "stopAudio": "Zaustavi zvuk",
+      "loadingAudio": "Učitavanje: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",

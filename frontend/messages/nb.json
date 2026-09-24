@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referansetekst",
-      "copyAll": "Kopier all referansetekst"
+      "copyAll": "Kopier all referansetekst",
+      "collapse": "Skjul referansetekst",
+      "expand": "Vis referansetekst",
+      "resize": "Dra for å endre størrelse på referansetekstpanelet (dobbeltklikk for å tilbakestille)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Ingen referansetekst ble funnet for denne sangen. Søk i alle konfigurerte tekstleverandører eller lim inn tekst manuelt for å aktivere hullkorrigering.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Bakgrunnsvokal som er beholdt i instrumentalen — klikk for å høre den.",
       "backingVocalsWaveformRemoved": "Bakgrunnsvokal som den rene instrumentalen fjerner — klikk for å høre hva du velger bort.",
       "playingWhileEncoding": "Spiller av: {stem}",
-      "stopAudio": "Stopp lyd"
+      "stopAudio": "Stopp lyd",
+      "loadingAudio": "Laster inn: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Forrige hull (P)",

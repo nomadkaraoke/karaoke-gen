@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Paroles de référence",
-      "copyAll": "Copier toutes les paroles de référence"
+      "copyAll": "Copier toutes les paroles de référence",
+      "collapse": "Masquer les paroles de référence",
+      "expand": "Afficher les paroles de référence",
+      "resize": "Fais glisser pour redimensionner le panneau des paroles de référence (double-clique pour réinitialiser)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Aucune parole de référence n'a été trouvée pour cette chanson. Recherche dans tous les fournisseurs de paroles configurés ou colle les paroles manuellement pour activer la correction des écarts.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Chœurs conservés dans l'instrumental — clique pour les écouter.",
       "backingVocalsWaveformRemoved": "Chœurs que l'instrumental pur supprime — clique pour écouter ce qui sera retiré.",
       "playingWhileEncoding": "Lecture : {stem}",
-      "stopAudio": "Arrêter l'audio"
+      "stopAudio": "Arrêter l'audio",
+      "loadingAudio": "Chargement : {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",

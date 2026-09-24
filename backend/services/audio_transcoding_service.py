@@ -175,6 +175,44 @@ class AudioTranscodingService:
         """Async wrapper around get_review_audio_bytes via asyncio.to_thread."""
         return await asyncio.to_thread(self.get_review_audio_bytes, source_gcs_path)
 
+    # Stems the review UI plays (instrumental options + the backing-vocals waveform).
+    REVIEW_STEM_KEYS = ("instrumental_clean", "instrumental_with_backing", "backing_vocals")
+
+    def transcode_review_stems(self, job, force: bool = True) -> list[str]:
+        """
+        Transcode the review-playable stems right after audio separation uploads them.
+
+        screens_worker's eager pass runs on LYRICS completion, which often precedes
+        separation — so without this the stems' OGGs were only made on demand when the
+        reviewer first played them (a 7-15 s ffmpeg run blocking the preview modal's
+        instrumental audio). ``force`` (default) re-transcodes even if a cached OGG
+        exists, since freshly uploaded stems supersede any OGG from an earlier run.
+        Stems are transcoded in parallel; failures are logged, not raised.
+
+        Returns list of cache paths that were written.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        stems = (job.file_urls or {}).get("stems", {})
+        sources = [(k, stems[k]) for k in self.REVIEW_STEM_KEYS if stems.get(k)]
+        if not sources:
+            return []
+
+        def _one(item):
+            label, source_path = item
+            try:
+                if force:
+                    return self._transcode_and_upload(source_path, self._get_cache_path(source_path))
+                return self.transcode_if_needed(source_path)
+            except Exception as e:
+                logger.warning(f"[{job.job_id}] Failed to transcode review stem {label}: {e}")
+                return None
+
+        with ThreadPoolExecutor(max_workers=len(sources)) as pool:
+            results = [r for r in pool.map(_one, sources) if r]
+        logger.info(f"[{job.job_id}] Review stems transcoded: {len(results)}/{len(sources)}")
+        return results
+
     def prepare_review_audio_for_job(self, job) -> list[str]:
         """
         Transcode all review audio files for a job (eager transcoding).

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import WaveformSegmentRow from '../WaveformSegmentRow'
 import { LyricsSegment } from '@/lib/lyrics-review/types'
@@ -67,5 +67,25 @@ describe('WaveformSegmentRow', () => {
     const fallback = screen.getByText('untimed line')
     await user.click(fallback)
     expect(props.onEditSegment).toHaveBeenCalledWith(4)
+  })
+})
+
+describe('WaveformSegmentRow Ctrl-click delete', () => {
+  it('deletes the pressed word (no edit modal) when onDeleteWord is set', () => {
+    const onDeleteWord = jest.fn()
+    const props = renderRow({ onDeleteWord })
+    const bar = screen.getByText('looking').closest('[title="looking"]') ?? screen.getByText('looking')
+    fireEvent.mouseDown(bar)
+    fireEvent.mouseUp(bar)
+    expect(onDeleteWord).toHaveBeenCalledWith('w2')
+    expect(props.onEditSegment).not.toHaveBeenCalled()
+  })
+
+  it('opens the edit modal on a plain word click when not in delete mode', () => {
+    const props = renderRow()
+    const bar = screen.getByText('looking')
+    fireEvent.mouseDown(bar)
+    fireEvent.mouseUp(bar)
+    expect(props.onEditSegment).toHaveBeenCalledWith(0)
   })
 })

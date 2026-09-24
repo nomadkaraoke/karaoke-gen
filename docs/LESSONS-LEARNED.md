@@ -6,6 +6,20 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## "Eager" prep keyed to the wrong pipeline stage silently became lazy (Sep 2026, v0.238.0)
+
+**Symptom:** clicking the backing-vocals waveform in the preview modal played nothing for 7-15 s.
+**Cause:** review OGGs are "eagerly" transcoded in `screens_worker` — but screens triggers on
+*lyrics* completion, and audio separation usually finishes later. The stems didn't exist yet, so
+their OGGs were only made on demand by the API (`Cache miss, transcoding …`) on the modal's first
+fetch. A Firestore/GCS sweep found 29/38 in-review jobs affected — the "fallback" was the norm.
+**Fix:** `audio_worker` transcodes the review stems (in parallel, forced — fresh stems supersede old
+OGGs) right after uploading them; the review page also pre-warms the browser cache with the stem
+URLs once the main review audio is ready.
+**Lesson:** when prep work depends on artifacts from parallel stages, run it where the artifact is
+*produced*, not at a milestone that merely usually comes after. To spot it: compare GCS object
+timestamps (derived file created at user-open time vs. its source's creation time).
+
 ## Sync GCE calls on the API event loop froze every request — "Complete waits for the preview" (Sep 2026, v0.237.0)
 
 Andrew reported that clicking **Complete** in the lyrics review before the preview video
