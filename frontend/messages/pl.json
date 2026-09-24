@@ -1857,5 +1857,17 @@
     "languageHint": "Możesz przeczytać tę stronę w jednym z 33 języków - skorzystaj z menu wyboru języka na górze strony.",
     "signoff": "Pozdrawiam,",
     "title": "Wiadomość dla użytkowników KaraokeHunt"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "To pewnie trochę niespodziewane. Dawno temu zapisałeś/aś się, żeby dowiedzieć się, co buduję dla miłośników karaoke, a potem... zapadła cisza. Przepraszam za to. Jeśli wolisz nie otrzymywać ode mnie żadnych wiadomości, nie obrażę się - po prostu odpowiedz na mojego maila, a więcej do Ciebie nie napiszę.",
+    "creditsBefore": "Ponieważ byłeś/aś na tej liście, gdy był to tylko pomysł, bardzo bym chciał, abyś był/a jedną z pierwszych osób, które to wypróbują. Pierwsze wideo masz ode mnie w prezencie (darmowy kredyt przy rejestracji), a rejestracja przez ten link daje Ci również 50% zniżki na wszystkie kolejne, które stworzysz przez najbliższe 3 miesiące:",
+    "greeting": "Cześć - z tej strony Andrew z KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Idź zaśpiewaj coś szalonego,",
+    "stillHere": "Nadal tu jesteś? W takim razie mogę przejść do najfajniejszej części: to, co budowałem, jest gotowe i szczerze mówiąc, jest lepsze, niż początkowo obiecywałem.",
+    "thatsIt": "To wszystko - żadnego lejka sprzedażowego, żadnej sekwencji kolejnych wiadomości. Jeśli coś stworzysz, naprawdę chętnie się dowiem, jak wyszło - po prostu odpowiedz na mojego maila, to naprawdę ja.",
+    "title": "Projekt karaoke, który Ci obiecałem, w końcu stał się rzeczywistością",
+    "whatItIs": "Nazywa się Nomad Karaoke Generator: wybierasz dowolną piosenkę - cokolwiek, nieważne jak bardzo niszową - a on tworzy z niej prawdziwe wideo karaoke. Prawdziwa separacja instrumentów (wokale naprawdę znikają, a nie są tylko cichsze), tekst zsynchronizowany słowo po słowie, a wszystko jest zazwyczaj gotowe w około pół godziny. Działa również w 33 językach.",
+    "founderRole": "Założyciel, Nomad Karaoke",
+    "languageHint": "Możesz przeczytać tę stronę w jednym z 33 języków - skorzystaj z menu wyboru języka na górze strony."
   }
 }

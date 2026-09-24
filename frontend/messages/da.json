@@ -1857,5 +1857,17 @@
     "languageHint": "Du kan læse denne side på 33 forskellige sprog - brug sprogvælgeren øverst.",
     "signoff": "Mange hilsner,",
     "title": "En besked til KaraokeHunt-brugere"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Det kommer nok lidt ud af det blå. Du tilmeldte dig for evigheder siden for at høre om det, jeg var ved at bygge til karaoke-elskere, og så... blev der stille fra min side. Det må du undskylde. Hvis du slet ikke har lyst til at høre fra mig, er der ingen sure miner - bare svar på min e-mail, så skriver jeg ikke til dig igen.",
+    "creditsBefore": "Fordi du var på denne liste dengang, det bare var en idé, vil jeg meget gerne have, at du er en af de første til at prøve det. Din første video er på min regning (gratis kredit, når du opretter dig), og hvis du tilmelder dig via dette link, får du også 50 % rabat på alle andre videoer, du laver de næste 3 måneder:",
+    "greeting": "Hej - Andrew her, fra KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Gå ud og syng noget skørt,",
+    "stillHere": "Er du her stadig? Så får jeg lov til at fortælle dig den sjove del: det, jeg var ved at bygge, er færdigt, og det er helt ærligt bedre end det, jeg oprindeligt lovede.",
+    "thatsIt": "Det var det - ingen salgstragt, ingen opfølgningssekvens. Hvis du laver noget, vil jeg oprigtigt gerne høre, hvordan resultatet bliver - bare svar på min e-mail, det er virkelig mig.",
+    "title": "Den karaoke-ting, jeg lovede dig, er endelig en realitet",
+    "whatItIs": "Det hedder Nomad Karaoke Generator: du vælger en hvilken som helst sang - hvad som helst, uanset hvor nichepræget den er - og så skaber den en rigtig karaoke-video til den. Ægte instrumental separation (vokalen er virkelig væk, ikke bare lavere), tekster, der er synkroniseret ord for ord, og den er som regel klar på en halv times tid. Den fungerer desuden på 33 sprog.",
+    "founderRole": "Grundlægger, Nomad Karaoke",
+    "languageHint": "Du kan læse denne side på 33 forskellige sprog - brug sprogvælgeren øverst."
   }
 }

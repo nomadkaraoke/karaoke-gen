@@ -1857,5 +1857,17 @@
     "languageHint": "Puoi leggere questa pagina in una delle 33 lingue disponibili: usa il selettore della lingua in alto.",
     "signoff": "Un saluto,",
     "title": "Un messaggio per gli utenti di KaraokeHunt"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Probabilmente ti sembrerà un po' inaspettato. Ti sei iscritto tanto tempo fa per scoprire cosa stavo creando per gli amanti del karaoke, e poi... sono sparito. Scusami per il silenzio. Se preferisci non avere più mie notizie, senza rancore: rispondi semplicemente a questa email e non ti scriverò più.",
+    "creditsBefore": "Dato che eri in questa lista quando era solo un'idea, mi piacerebbe che tu fossi uno dei primi a provarlo. Il tuo primo video lo offro io (credito gratuito quando ti iscrivi), e iscrivendoti tramite questo link avrai anche il 50% di sconto su tutti gli altri che creerai nei prossimi 3 mesi:",
+    "greeting": "Ciao, sono Andrew di KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Vai a cantare qualcosa di assurdo,",
+    "stillHere": "Sei ancora qui? Allora posso dirti la parte divertente: quello che stavo creando è pronto, ed è onestamente meglio di ciò che avevo promesso all'inizio.",
+    "thatsIt": "Questo è quanto: nessun funnel, nessuna sequenza di follow-up. Se crei qualcosa, mi piacerebbe davvero sapere il risultato: rispondi semplicemente a questa email, sono davvero io.",
+    "title": "Il progetto sul karaoke che ti avevo promesso è finalmente realtà",
+    "whatItIs": "Si chiama Nomad Karaoke Generator: scegli qualsiasi canzone (qualsiasi brano, anche il più di nicchia) e ti crea un vero e proprio video karaoke. Separazione strumentale reale (la voce sparisce per davvero, non viene solo abbassata), testi sincronizzati parola per parola, e di solito è pronto in circa mezz'ora. Funziona anche in 33 lingue.",
+    "founderRole": "Fondatore, Nomad Karaoke",
+    "languageHint": "Puoi leggere questa pagina in una delle 33 lingue disponibili: usa il selettore della lingua in alto."
   }
 }

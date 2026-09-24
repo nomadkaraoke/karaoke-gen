@@ -1857,5 +1857,17 @@
     "languageHint": "Du kan läsa den här sidan på något av 33 språk - använd språkväljaren högst upp.",
     "signoff": "Vänliga hälsningar,",
     "title": "Ett meddelande till KaraokeHunt-användare"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Det här kommer förmodligen lite från ingenstans. Du registrerade dig för evigheter sedan för att få veta vad jag byggde för karaokeälskare, och sedan... blev det tyst från mig. Ledsen för det. Om du hellre slipper höra från mig alls, inga sura miner – svara bara på mitt mejl så mejlar jag dig inte igen.",
+    "creditsBefore": "Eftersom du fanns med på den här listan redan när det bara var en idé, vill jag jättegärna att du blir en av de första som testar. Din första video bjuder jag på (en gratis kredit när du registrerar dig), och om du registrerar dig via den här länken får du dessutom 50 % rabatt på alla andra videor du skapar under de kommande 3 månaderna:",
+    "greeting": "Hej – Andrew här, från KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Gå och sjung något galet,",
+    "stillHere": "Är du kvar? Då får jag berätta det roligaste: det jag har byggt är färdigt, och det är ärligt talat bättre än vad jag ursprungligen lovade.",
+    "thatsIt": "Det var allt – ingen säljtunnel, ingen uppföljningssekvens. Om du skapar något vill jag jättegärna höra hur det blev – svara bara på mitt mejl, det är faktiskt jag.",
+    "title": "Karaokegrejen jag lovade dig är äntligen verklighet",
+    "whatItIs": "Den heter Nomad Karaoke Generator: du väljer vilken låt som helst – vad som helst, hur nischad den än är – så skapar den en riktig karaokevideo av den. Äkta instrumental separation (sången är helt borta, inte bara tystare), text som är synkad ord för ord, och den är oftast klar på ungefär en halvtimme. Den fungerar dessutom på 33 språk.",
+    "founderRole": "Grundare, Nomad Karaoke",
+    "languageHint": "Du kan läsa den här sidan på något av 33 språk - använd språkväljaren högst upp."
   }
 }

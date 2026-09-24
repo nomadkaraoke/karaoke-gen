@@ -1857,5 +1857,17 @@
     "languageHint": "Ovu stranicu možeš čitati na bilo kojem od 33 jezika - koristi birač jezika na vrhu.",
     "signoff": "Pozdrav,",
     "title": "Poruka za korisnike aplikacije KaraokeHunt"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Ovo ti vjerojatno dolazi malo iz vedra neba. Prijavio si se davno kako bi saznao što radim za ljubitelje karaoka, a onda... sam utihnuo. Oprosti na tome. Ako više uopće ne želiš primati moje poruke, nema ljutnje - samo odgovori na moj e-mail i neću ti se više javljati.",
+    "creditsBefore": "Budući da si bio na ovoj listi još dok je ovo bila samo ideja, volio bih da budeš jedan od prvih koji će to isprobati. Prvi video je na moj račun (besplatan kredit prilikom prijave), a prijava putem ovog linka donosi ti i 50% popusta na sve ostale koje napraviš u sljedeća 3 mjeseca:",
+    "greeting": "Bok - Andrew ovdje, iz KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Odi otpjevati nešto urnebesno,",
+    "stillHere": "Još si tu? Onda ti mogu reći onaj zabavni dio: ono što sam razvijao je završeno, i iskreno je bolje od onoga što sam prvotno obećao.",
+    "thatsIt": "To je to - nema prodajnih lijevaka, nema niza pratećih poruka. Ako nešto napraviš, zaista bih volio čuti kako je ispalo - samo odgovori na moj e-mail, to sam stvarno ja.",
+    "title": "Ona karaoke stvar koju sam ti obećao napokon je stvarna",
+    "whatItIs": "Zove se Nomad Karaoke Generator: odabereš bilo koju pjesmu - bilo što, koliko god bila specifična - i on za nju stvori pravi karaoke video. Pravo odvajanje instrumentala (vokali su zaista uklonjeni, a ne samo tiši), tekst sinkroniziran riječ po riječ, i obično je gotov za otprilike pola sata. Radi i na 33 jezika.",
+    "founderRole": "Osnivač, Nomad Karaoke",
+    "languageHint": "Ovu stranicu možeš čitati na bilo kojem od 33 jezika - koristi birač jezika na vrhu."
   }
 }

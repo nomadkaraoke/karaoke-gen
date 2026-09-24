@@ -8,13 +8,24 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 // Paragraph keys rendered in order; 'credits' renders creditsBefore + link + creditsAfter.
 export type LetterParagraph = string;
 
+interface LetterLink {
+  href: string;
+  label: string;
+}
+
+const GEN_LINK: LetterLink = { href: 'https://gen.nomadkaraoke.com', label: 'gen.nomadkaraoke.com' };
+
 interface KaraokeHuntLetterProps {
-  namespace: 'karaokehuntLetter' | 'karaokehuntListLetter';
+  namespace: 'karaokehuntLetter' | 'karaokehuntListLetter' | 'karaokehuntNewsLetter';
   paragraphs: LetterParagraph[];
+  // Link rendered inside the 'credits' paragraph (defaults to the Gen app).
+  link?: LetterLink;
+  // Whether the namespace has a 'creditsAfter' sentence following the link.
+  hasCreditsAfter?: boolean;
 }
 
 // Shared layout for the letters to former KaraokeHunt users, linked from outreach emails.
-export default function KaraokeHuntLetter({ namespace, paragraphs }: KaraokeHuntLetterProps) {
+export default function KaraokeHuntLetter({ namespace, paragraphs, link = GEN_LINK, hasCreditsAfter = true }: KaraokeHuntLetterProps) {
   const t = useTranslations(namespace);
 
   return (
@@ -44,13 +55,13 @@ export default function KaraokeHuntLetter({ namespace, paragraphs }: KaraokeHunt
                 <p key={key}>
                   {t('creditsBefore')}{' '}
                   <a
-                    href="https://gen.nomadkaraoke.com"
+                    href={link.href}
                     className="underline font-medium"
                     style={{ color: 'var(--accent)' }}
                   >
-                    gen.nomadkaraoke.com
-                  </a>{' '}
-                  {t('creditsAfter')}
+                    {link.label}
+                  </a>
+                  {hasCreditsAfter && <> {t('creditsAfter')}</>}
                 </p>
               ) : (
                 <p key={key}>{t(key)}</p>

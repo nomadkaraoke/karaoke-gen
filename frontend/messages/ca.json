@@ -1857,5 +1857,17 @@
     "languageHint": "Pots llegir aquesta pàgina en qualsevol dels 33 idiomes disponibles; utilitza el selector d'idioma de la part superior.",
     "signoff": "Salut,",
     "title": "Una nota per als usuaris de KaraokeHunt"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Probablement això t'arriba una mica per sorpresa. Et vas apuntar fa molt de temps per saber què estava construint per als amants del karaoke, i després... vaig desaparèixer. Ho sento. Si prefereixes no rebre més notícies meves, no passa res - només has de respondre al meu correu i no et tornaré a escriure.",
+    "creditsBefore": "Com que estaves en aquesta llista quan només era una idea, m'encantaria que fossis un dels primers a provar-ho. Et convido al teu primer vídeo (crèdit gratuït quan et registris), i si et registres a través d'aquest enllaç també obtindràs un 50% de descompte en qualsevol altre que facis durant els propers 3 mesos:",
+    "greeting": "Hola - soc l'Andrew, de KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Ves a cantar alguna cosa ridícula,",
+    "stillHere": "Encara ets aquí? Llavors et puc explicar la part divertida: el que estava construint ja està acabat, i sincerament és millor del que vaig prometre originalment.",
+    "thatsIt": "Això és tot - sense embuts de vendes, sense seqüències de seguiment. Si crees alguna cosa, m'encantaria saber com ha quedat - només has de respondre al meu correu, soc jo de debò.",
+    "title": "Allò del karaoke que et vaig prometre per fi és real",
+    "whatItIs": "Es diu Nomad Karaoke Generator: tries qualsevol cançó - qualsevol cosa, per molt de nínxol que sigui - i crea un vídeo de karaoke en condicions. Separació instrumental real (les veus desapareixen de debò, no només se senten més fluix), lletres sincronitzades paraula per paraula, i normalment està llest en mitja hora. A més, funciona en 33 idiomes.",
+    "founderRole": "Fundador, Nomad Karaoke",
+    "languageHint": "Pots llegir aquesta pàgina en qualsevol dels 33 idiomes disponibles; utilitza el selector d'idioma de la part superior."
   }
 }
