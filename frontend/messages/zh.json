@@ -1845,5 +1845,17 @@
     "signoff": "祝好，",
     "thanks": "感谢您的耐心等待，祝您唱歌愉快！",
     "title": "致 KaraokeHunt 用户的一封信"
+  },
+  "karaokehuntListLetter": {
+    "apology": "之前您注册了我开发的卡拉OK应用 KaraokeHunt，但之后它沉寂了太久，对此我感到非常抱歉。该应用现已下线，如果您还安装着它，现在可以放心卸载了。",
+    "creditsBefore": "为了感谢您成为 KaraokeHunt 的早期用户（同时也为这段漫长的沉寂致歉），我为您创建了一个账户，并赠送了 3 个免费积分。只需使用您在 KaraokeHunt 注册时的电子邮箱登录：",
+    "goodNews": "好消息是：我开发了一款更棒的产品——Nomad Karaoke。它不再仅仅是帮您寻找卡拉OK伴奏，而是能为您想要的几乎任何歌曲制作出真正的卡拉OK视频——消除原唱、精准同步歌词，让您随时准备开唱。",
+    "thanks": "希望您能试一试——祝您唱得开心！",
+    "creditsAfter": "（无需密码——系统会向您的邮箱发送一条登录链接）。",
+    "founderRole": "Nomad Karaoke 创始人",
+    "greeting": "嗨，",
+    "languageHint": "本页面支持 33 种语言——请使用顶部的语言选择器进行切换。",
+    "signoff": "祝好，",
+    "title": "致 KaraokeHunt 用户的一封信"
   }
 }

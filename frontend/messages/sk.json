@@ -1845,5 +1845,17 @@
     "signoff": "S pozdravom,",
     "thanks": "Ďakujem za trpezlivosť a prajem príjemné spievanie!",
     "title": "Odkaz pre používateľov KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Pred časom si sa zaregistroval do KaraokeHunt, karaoke aplikácie, ktorú som vytvoril, a potom zostalo príliš dlho ticho. Ospravedlňujem sa za to. Aplikácia bola medzičasom ukončená, takže ak ju máš stále nainštalovanú, môžeš ju pokojne odinštalovať.",
+    "creditsBefore": "Ako poďakovanie za to, že si bol jedným z prvých používateľov KaraokeHunt (a ako ospravedlnenie za dlhé ticho), som ti vytvoril účet s 3 kreditmi zadarmo. Stačí sa prihlásiť pomocou e-mailovej adresy, ktorú si použil pre KaraokeHunt, na",
+    "goodNews": "Dobrá správa: vytvoril som niečo oveľa lepšie - Nomad Karaoke. Namiesto toho, aby ti len pomáhalo hľadať karaoke skladby, vytvorí poriadne karaoke video z takmer akejkoľvek piesne, ktorú chceš - s odstránenými pôvodnými vokálmi, skutočným synchronizovaným textom, pripravené na spievanie.",
+    "thanks": "Dúfam, že to vyskúšaš - príjemné spievanie!",
+    "creditsAfter": "(bez hesla - pošle ti e-mail s odkazom na prihlásenie).",
+    "founderRole": "Zakladateľ, Nomad Karaoke",
+    "greeting": "Ahoj,",
+    "languageHint": "Túto stránku si môžeš prečítať v ktoromkoľvek z 33 jazykov - použi prepínač jazykov v hornej časti.",
+    "signoff": "S pozdravom,",
+    "title": "Odkaz pre používateľov KaraokeHunt"
   }
 }

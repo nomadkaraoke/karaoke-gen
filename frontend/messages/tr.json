@@ -1845,5 +1845,17 @@
     "signoff": "Sevgiler,",
     "thanks": "Sabrın için teşekkürler ve keyifli şarkı söylemeler!",
     "title": "KaraokeHunt kullanıcıları için bir not"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Bir süre önce geliştirdiğim karaoke uygulaması KaraokeHunt'a kaydolmuştun, ancak sonrasında benden uzun bir süre ses çıkmadı. Bunun için özür dilerim. Uygulama artık kullanımdan kaldırıldı, bu yüzden cihazında hala yüklüyse güvenle silebilirsin.",
+    "creditsBefore": "İlk KaraokeHunt kullanıcılarından biri olduğun için bir teşekkür (ve uzun süren sessizlik için bir özür) olarak, senin için 3 ücretsiz kredi içeren bir hesap oluşturdum. KaraokeHunt'ta kullandığın e-posta adresiyle şuradan giriş yapman yeterli:",
+    "goodNews": "İyi haber şu ki: Çok daha iyi bir şey geliştirdim - Nomad Karaoke. Sadece karaoke şarkıları bulmana yardımcı olmakla kalmıyor, istediğin hemen hemen her şarkıdan düzgün bir karaoke videosu oluşturuyor; üstelik orijinal vokaller çıkarılmış, sözler senkronize edilmiş ve söylemeye hazır bir şekilde.",
+    "thanks": "Umarım denersin - iyi eğlenceler!",
+    "creditsAfter": "(şifre yok - e-posta adresine bir giriş bağlantısı gönderilecek).",
+    "founderRole": "Kurucu, Nomad Karaoke",
+    "greeting": "Merhaba,",
+    "languageHint": "Bu sayfayı 33 dilden herhangi birinde okuyabilirsin - üstteki dil seçiciyi kullan.",
+    "signoff": "Sevgiler,",
+    "title": "KaraokeHunt kullanıcıları için bir not"
   }
 }

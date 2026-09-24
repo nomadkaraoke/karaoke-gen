@@ -1845,5 +1845,17 @@
     "signoff": "Salam,",
     "thanks": "Terima kasih atas kesabaran Anda, dan selamat bernyanyi!",
     "title": "Catatan untuk pengguna KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Beberapa waktu lalu Anda mendaftar ke KaraokeHunt, aplikasi karaoke yang saya buat, namun setelah itu lama tidak ada kabar. Saya memohon maaf atas hal tersebut. Aplikasi tersebut kini telah dihentikan, jadi jika Anda masih menginstalnya, Anda dapat menghapusnya dengan aman.",
+    "creditsBefore": "Sebagai ucapan terima kasih karena telah menjadi pengguna awal KaraokeHunt (dan permohonan maaf karena lama tidak ada kabar), saya telah menyiapkan akun untuk Anda dengan 3 kredit gratis. Silakan masuk menggunakan alamat email yang Anda gunakan untuk KaraokeHunt di",
+    "goodNews": "Kabar baiknya: Saya telah membuat sesuatu yang jauh lebih baik - Nomad Karaoke. Alih-alih hanya membantu Anda mencari trek karaoke, aplikasi ini dapat membuat video karaoke berkualitas dari hampir semua lagu yang Anda inginkan - dengan vokal asli yang dihilangkan, lirik yang sinkron, dan siap untuk dinyanyikan.",
+    "thanks": "Semoga Anda mau mencobanya - selamat bernyanyi!",
+    "creditsAfter": "(tanpa kata sandi - sistem akan mengirimkan tautan masuk ke email Anda).",
+    "founderRole": "Pendiri, Nomad Karaoke",
+    "greeting": "Halo,",
+    "languageHint": "Anda bisa membaca halaman ini dalam salah satu dari 33 bahasa - gunakan pilihan bahasa di bagian atas.",
+    "signoff": "Salam,",
+    "title": "Catatan untuk pengguna KaraokeHunt"
   }
 }

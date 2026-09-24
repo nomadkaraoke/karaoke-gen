@@ -1845,5 +1845,17 @@
     "signoff": "Terveisin,",
     "thanks": "Kiitos kärsivällisyydestäsi ja mukavia lauluhetkiä!",
     "title": "Viesti KaraokeHunt-käyttäjille"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Jokin aika sitten rekisteröidyit kehittämääni KaraokeHunt-sovellukseen, minkä jälkeen oli aivan liian pitkään hiljaista. Olen pahoillani siitä. Sovellus on sittemmin lakkautettu, joten jos se on sinulla vielä asennettuna, voit huoletta poistaa sen.",
+    "creditsBefore": "Kiitoksena siitä, että olit yksi KaraokeHuntin ensimmäisistä käyttäjistä (ja anteeksipyyntönä pitkästä hiljaisuudesta), olen luonut sinulle tilin, jolla on 3 ilmaista krediittiä. Kirjaudu vain sisään KaraokeHuntissa käyttämälläsi sähköpostiosoitteella osoitteessa",
+    "goodNews": "Hyviä uutisia: olen rakentanut jotain paljon parempaa - Nomad Karaoke. Pelkän karaokekappaleiden etsimisen sijaan se luo kunnollisen karaokevideon melkein mistä tahansa haluamastasi kappaleesta - alkuperäiset lauluosuudet poistettuina ja sanat synkronoituina, valmiina laulettavaksi.",
+    "thanks": "Toivottavasti kokeilet sitä - mukavia lauluhetkiä!",
+    "creditsAfter": "(ei salasanaa - saat kirjautumislinkin sähköpostiisi).",
+    "founderRole": "Perustaja, Nomad Karaoke",
+    "greeting": "Hei,",
+    "languageHint": "Voit lukea tämän sivun 33 eri kielellä - käytä yläreunassa olevaa kielivalitsinta.",
+    "signoff": "Terveisin,",
+    "title": "Viesti KaraokeHunt-käyttäjille"
   }
 }

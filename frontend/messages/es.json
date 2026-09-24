@@ -1845,5 +1845,17 @@
     "signoff": "Saludos,",
     "thanks": "¡Gracias por tu paciencia, y que disfrutes cantando!",
     "title": "Una nota para los usuarios de KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Hace un tiempo te registraste en KaraokeHunt, la aplicación de karaoke que creé, y luego todo quedó en silencio durante demasiado tiempo. Lo siento mucho. La aplicación ha sido descontinuada, así que si todavía la tienes instalada, puedes desinstalarla sin problema.",
+    "creditsBefore": "Como agradecimiento por ser uno de los primeros usuarios de KaraokeHunt (y como disculpa por el largo silencio), he creado una cuenta para ti con 3 créditos gratis. Solo inicia sesión con el correo electrónico que usaste para KaraokeHunt en",
+    "goodNews": "La buena noticia: he creado algo mucho mejor - Nomad Karaoke. En lugar de solo ayudarte a encontrar pistas de karaoke, crea un verdadero video de karaoke de casi cualquier canción que quieras - sin las voces originales, con letras sincronizadas reales, listo para cantar.",
+    "thanks": "Espero que lo pruebes - ¡que disfrutes cantando!",
+    "creditsAfter": "(no necesitas contraseña, te enviará un enlace de inicio de sesión por correo electrónico).",
+    "founderRole": "Fundador, Nomad Karaoke",
+    "greeting": "Hola,",
+    "languageHint": "Puedes leer esta página en cualquiera de los 33 idiomas disponibles; solo usa el selector de idioma en la parte superior.",
+    "signoff": "Saludos,",
+    "title": "Una nota para los usuarios de KaraokeHunt"
   }
 }
