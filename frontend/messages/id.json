@@ -1829,5 +1829,18 @@
     "errorGeneric": "Terjadi kesalahan. Silakan coba lagi.",
     "submitting": "Mengirim…",
     "communityExistsNote": "Anda masih bisa memintanya, atau tonton saja versi yang sudah ada di bawah ini:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Beberapa waktu lalu Anda meminta sebuah lagu melalui aplikasi KaraokeHunt yang lama, dan sudah terlalu lama permintaan tersebut tidak ada kelanjutannya. Saya mohon maaf atas hal tersebut.",
+    "appRetired": "Aplikasi KaraokeHunt sendiri telah ditutup, jadi jika Anda masih menginstalnya, Anda bisa menghapusnya - sekarang semuanya pindah ke gen.nomadkaraoke.com.",
+    "creditsAfter": "(tanpa kata sandi - sistem akan mengirimkan tautan masuk ke email Anda).",
+    "creditsBefore": "Saya juga telah menyiapkan akun untuk Anda dengan kredit gratis sebagai permintaan maaf atas keterlambatan ini - Anda bisa menggunakannya untuk membuat video karaoke dari lagu apa pun yang Anda suka, hanya dalam hitungan menit. Cukup masuk menggunakan alamat email yang sama saat Anda membuat permintaan di",
+    "founderRole": "Pendiri, Nomad Karaoke",
+    "goodNews": "Kabar baiknya: Saya telah membuat sesuatu yang jauh lebih baik - Nomad Karaoke - dan sekarang saya sudah menyelesaikan permintaan-permintaan lama tersebut. Jika Anda menerima email dari saya, video karaoke Anda (atau tautan sekali klik untuk memeriksa sendiri liriknya) ada di dalam email tersebut.",
+    "greeting": "Halo,",
+    "languageHint": "Anda bisa membaca halaman ini dalam salah satu dari 33 bahasa - gunakan pilihan bahasa di bagian atas.",
+    "signoff": "Salam,",
+    "thanks": "Terima kasih atas kesabaran Anda, dan selamat bernyanyi!",
+    "title": "Catatan untuk pengguna KaraokeHunt"
   }
 }

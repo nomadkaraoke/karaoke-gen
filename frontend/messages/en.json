@@ -1829,5 +1829,18 @@
     "convertBody": "Use the generator yourself and make your karaoke video right now — your first one is on us.",
     "convertButton": "Make it yourself now",
     "errorGeneric": "Something went wrong. Please try again."
+  },
+  "karaokehuntLetter": {
+    "title": "A note for KaraokeHunt users",
+    "greeting": "Hey there,",
+    "apology": "A while back you requested a song through the old KaraokeHunt app, and for far too long that request didn't go anywhere. I'm sorry about that.",
+    "goodNews": "The good news: I've since built something much better - Nomad Karaoke - and I've now made good on those old requests. If you received an email from me, your karaoke video (or a one-click link to review the lyrics yourself) is in that email.",
+    "creditsBefore": "I've also set up an account for you with free credits as an apology for the delay - you can use them to make karaoke videos of any song you like, in minutes. Just sign in with the same email address your request came from at",
+    "creditsAfter": "(no password - it emails you a sign-in link).",
+    "appRetired": "The KaraokeHunt app itself has been retired, so if you still have it installed you can safely uninstall it - everything now lives at gen.nomadkaraoke.com.",
+    "thanks": "Thanks for your patience, and happy singing!",
+    "signoff": "Cheers,",
+    "founderRole": "Founder, Nomad Karaoke",
+    "languageHint": "You can read this page in any of 33 languages - use the language selector at the top."
   }
 }

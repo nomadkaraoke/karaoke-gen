@@ -1829,5 +1829,18 @@
     "errorGeneric": "Algo salió mal. Por favor, inténtalo de nuevo.",
     "submitting": "Enviando…",
     "communityExistsNote": "Aún puedes solicitarlo, o simplemente ver una versión existente a continuación:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Hace un tiempo pediste una canción a través de la antigua aplicación KaraokeHunt, y durante demasiado tiempo esa solicitud quedó en el aire. Te pido disculpas por ello.",
+    "appRetired": "La aplicación KaraokeHunt ya no está disponible, así que si todavía la tienes instalada puedes desinstalarla sin problema; ahora todo se encuentra en gen.nomadkaraoke.com.",
+    "creditsAfter": "(no necesitas contraseña, te enviará un enlace de inicio de sesión por correo electrónico).",
+    "creditsBefore": "También he creado una cuenta para ti con créditos gratis como disculpa por la demora; puedes usarlos para crear videos de karaoke de cualquier canción que te guste, en cuestión de minutos. Solo inicia sesión con la misma dirección de correo electrónico desde la que hiciste tu solicitud en",
+    "founderRole": "Fundador, Nomad Karaoke",
+    "goodNews": "La buena noticia: desde entonces he creado algo mucho mejor, Nomad Karaoke, y por fin he atendido esas antiguas solicitudes. Si recibiste un correo electrónico mío, tu video de karaoke (o un enlace de un solo clic para que revises las letras tú mismo) está en ese correo.",
+    "greeting": "Hola,",
+    "languageHint": "Puedes leer esta página en cualquiera de los 33 idiomas disponibles; solo usa el selector de idioma en la parte superior.",
+    "signoff": "Saludos,",
+    "thanks": "¡Gracias por tu paciencia, y que disfrutes cantando!",
+    "title": "Una nota para los usuarios de KaraokeHunt"
   }
 }

@@ -1829,5 +1829,18 @@
     "errorGeneric": "Algo deu errado. Tente novamente.",
     "submitting": "Enviando…",
     "communityExistsNote": "Você ainda pode solicitar, ou simplesmente assistir a uma versão existente abaixo:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Há algum tempo, você pediu uma música pelo antigo aplicativo KaraokeHunt, e por muito tempo esse pedido não deu em nada. Peço desculpas por isso.",
+    "appRetired": "O aplicativo KaraokeHunt em si foi desativado, então se você ainda o tem instalado, pode desinstalá-lo com segurança - agora tudo funciona em gen.nomadkaraoke.com.",
+    "creditsAfter": "(não precisa de senha - um link de acesso será enviado para o seu e-mail).",
+    "creditsBefore": "Também criei uma conta para você com créditos gratuitos como pedido de desculpas pelo atraso - você pode usá-los para criar vídeos de karaokê de qualquer música que quiser, em minutos. Basta fazer login com o mesmo endereço de e-mail que você usou para fazer o pedido em",
+    "founderRole": "Fundador, Nomad Karaoke",
+    "goodNews": "A boa notícia: desde então, criei algo muito melhor - o Nomad Karaoke - e agora atendi àqueles antigos pedidos. Se você recebeu um e-mail meu, seu vídeo de karaokê (ou um link direto para você mesmo revisar a letra) está nesse e-mail.",
+    "greeting": "Olá,",
+    "languageHint": "Você pode ler esta página em qualquer um dos 33 idiomas - use o seletor de idioma no topo.",
+    "signoff": "Abraços,",
+    "thanks": "Obrigado pela paciência e divirta-se cantando!",
+    "title": "Uma mensagem para os usuários do KaraokeHunt"
   }
 }

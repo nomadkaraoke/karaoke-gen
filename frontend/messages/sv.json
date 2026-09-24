@@ -1829,5 +1829,18 @@
     "errorGeneric": "Något gick fel. Försök igen.",
     "submitting": "Skickar in…",
     "communityExistsNote": "Du kan fortfarande önska den, eller bara se en befintlig version nedan:"
+  },
+  "karaokehuntLetter": {
+    "apology": "För ett tag sedan önskade du en låt via den gamla KaraokeHunt-appen, och under alldeles för lång tid hände det ingenting med den önskningen. Det ber jag om ursäkt för.",
+    "appRetired": "Själva KaraokeHunt-appen har lagts ner, så om du fortfarande har den installerad kan du lugnt avinstallera den - allt finns nu på gen.nomadkaraoke.com.",
+    "creditsAfter": "(inget lösenord behövs - en inloggningslänk skickas till din e-post).",
+    "creditsBefore": "Jag har också skapat ett konto åt dig med gratiskrediter som plåster på såren för dröjsmålet - du kan använda dem för att göra karaokevideor av vilken låt du vill, på bara några minuter. Logga bara in med samma e-postadress som du använde för din önskning på",
+    "founderRole": "Grundare, Nomad Karaoke",
+    "goodNews": "Goda nyheter: Jag har sedan dess byggt något mycket bättre - Nomad Karaoke - och har nu äntligen uppfyllt de där gamla önskningarna. Om du fick ett e-postmeddelande från mig finns din karaokevideo (eller en länk för att själv granska texten med ett klick) i det meddelandet.",
+    "greeting": "Hej,",
+    "languageHint": "Du kan läsa den här sidan på något av 33 språk - använd språkväljaren högst upp.",
+    "signoff": "Vänliga hälsningar,",
+    "thanks": "Tack för ditt tålamod, och ha det så kul med sjungandet!",
+    "title": "Ett meddelande till KaraokeHunt-användare"
   }
 }

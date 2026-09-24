@@ -1829,5 +1829,18 @@
     "errorGeneric": "Ceva nu a mers bine. Te rog să încerci din nou.",
     "submitting": "Se trimite…",
     "communityExistsNote": "Poți în continuare să o soliciți sau pur și simplu să vizionezi o versiune existentă mai jos:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Cu ceva timp în urmă ai solicitat o melodie prin vechea aplicație KaraokeHunt, iar pentru prea mult timp acea solicitare a rămas nerezolvată. Îmi pare rău pentru asta.",
+    "appRetired": "Aplicația KaraokeHunt a fost retrasă, așa că dacă încă o ai instalată, o poți dezinstala liniștit - totul este acum pe gen.nomadkaraoke.com.",
+    "creditsAfter": "(fără parolă - vei primi pe e-mail un link de conectare).",
+    "creditsBefore": "De asemenea, ți-am creat un cont cu credite gratuite drept scuză pentru întârziere - le poți folosi pentru a crea videoclipuri de karaoke cu orice melodie dorești, în doar câteva minute. Trebuie doar să te conectezi cu aceeași adresă de e-mail de pe care ai trimis solicitarea, la",
+    "founderRole": "Fondator, Nomad Karaoke",
+    "goodNews": "Vestea bună: între timp am construit ceva mult mai bun - Nomad Karaoke - și acum am onorat acele vechi solicitări. Dacă ai primit un e-mail de la mine, videoclipul tău de karaoke (sau un link rapid pentru a verifica tu însuți versurile) se află în acel e-mail.",
+    "greeting": "Salut,",
+    "languageHint": "Poți citi această pagină în oricare dintre cele 33 de limbi - folosește selectorul de limbă din partea de sus.",
+    "signoff": "Toate cele bune,",
+    "thanks": "Mulțumesc pentru răbdare și spor la cântat!",
+    "title": "Un mesaj pentru utilizatorii KaraokeHunt"
   }
 }

@@ -1829,5 +1829,18 @@
     "errorGeneric": "Noget gik galt. Prøv venligst igen.",
     "submitting": "Indsender…",
     "communityExistsNote": "Du kan stadig anmode om den, eller bare se en eksisterende version nedenfor:"
+  },
+  "karaokehuntLetter": {
+    "apology": "For et stykke tid siden efterspurgte du en sang via den gamle KaraokeHunt-app, og i alt for lang tid skete der ikke noget med den anmodning. Det beklager jeg.",
+    "appRetired": "Selve KaraokeHunt-appen er blevet udfaset, så hvis du stadig har den installeret, kan du roligt afinstallere den - alt ligger nu på gen.nomadkaraoke.com.",
+    "creditsAfter": "(ingen adgangskode - du får tilsendt et login-link på e-mail).",
+    "creditsBefore": "Jeg har også oprettet en konto til dig med gratis kreditter som en undskyldning for forsinkelsen - du kan bruge dem til at lave karaokevideoer af en hvilken som helst sang, du har lyst til, på få minutter. Bare log ind med den samme e-mailadresse, som du brugte til din anmodning, på",
+    "founderRole": "Grundlægger, Nomad Karaoke",
+    "goodNews": "Den gode nyhed: Jeg har siden bygget noget meget bedre - Nomad Karaoke - og jeg har nu opfyldt de gamle anmodninger. Hvis du har modtaget en e-mail fra mig, finder du din karaokevideo (eller et link, hvor du med ét klik selv kan gennemgå teksten) i den e-mail.",
+    "greeting": "Hej,",
+    "languageHint": "Du kan læse denne side på 33 forskellige sprog - brug sprogvælgeren øverst.",
+    "signoff": "Mange hilsner,",
+    "thanks": "Tak for din tålmodighed, og god fornøjelse med sangen!",
+    "title": "En besked til KaraokeHunt-brugere"
   }
 }

@@ -1829,5 +1829,18 @@
     "errorGeneric": "Nešto je pošlo po zlu. Pokušaj ponovno.",
     "submitting": "Šaljem…",
     "communityExistsNote": "Svejedno ga možeš zatražiti ili jednostavno pogledati postojeću verziju u nastavku:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Prije nekog vremena zatražio/la si pjesmu putem stare aplikacije KaraokeHunt, i predugo se ništa nije dogodilo s tim zahtjevom. Žao mi je zbog toga.",
+    "appRetired": "Sama aplikacija KaraokeHunt više nije u upotrebi, pa ako je još uvijek imaš instaliranu, možeš je slobodno deinstalirati - sada se sve nalazi na gen.nomadkaraoke.com.",
+    "creditsAfter": "(bez lozinke - na e-mail ti šalje poveznicu za prijavu).",
+    "creditsBefore": "Također sam ti otvorio račun s besplatnim kreditima kao ispriku za kašnjenje - možeš ih iskoristiti za izradu karaoke videa za bilo koju pjesmu, u samo nekoliko minuta. Samo se prijavi pomoću iste e-mail adrese s koje je stigao tvoj zahtjev na",
+    "founderRole": "Osnivač, Nomad Karaoke",
+    "goodNews": "Dobra vijest: u međuvremenu sam napravio nešto puno bolje - Nomad Karaoke - i sada sam ispunio te stare zahtjeve. Ako si primio/la moj e-mail, tvoj karaoke video (ili poveznica za pregled teksta jednim klikom) nalazi se u njemu.",
+    "greeting": "Bok,",
+    "languageHint": "Ovu stranicu možeš čitati na bilo kojem od 33 jezika - koristi birač jezika na vrhu.",
+    "signoff": "Pozdrav,",
+    "thanks": "Hvala na strpljenju i uživaj u pjevanju!",
+    "title": "Poruka za korisnike aplikacije KaraokeHunt"
   }
 }

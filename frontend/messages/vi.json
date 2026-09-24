@@ -1829,5 +1829,18 @@
     "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại.",
     "submitting": "Đang gửi…",
     "communityExistsNote": "Bạn vẫn có thể gửi yêu cầu, hoặc xem phiên bản có sẵn dưới đây:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Trước đây bạn đã yêu cầu một bài hát qua ứng dụng KaraokeHunt cũ, và yêu cầu đó đã bị bỏ ngỏ trong một thời gian quá dài. Tôi rất xin lỗi về điều này.",
+    "appRetired": "Ứng dụng KaraokeHunt hiện đã ngừng hoạt động, vì vậy nếu vẫn còn cài đặt, bạn hoàn toàn có thể gỡ bỏ nó - mọi thứ hiện đã có trên gen.nomadkaraoke.com.",
+    "creditsAfter": "(không cần mật khẩu - hệ thống sẽ gửi cho bạn một liên kết đăng nhập qua email).",
+    "creditsBefore": "Tôi cũng đã tạo sẵn một tài khoản cho bạn với một số credit miễn phí để thay lời xin lỗi vì sự chậm trễ này - bạn có thể dùng chúng để tạo video karaoke cho bất kỳ bài hát nào bạn thích chỉ trong vài phút. Bạn chỉ cần đăng nhập bằng chính địa chỉ email đã dùng để gửi yêu cầu tại",
+    "founderRole": "Nhà sáng lập, Nomad Karaoke",
+    "goodNews": "Tin tốt là: Kể từ đó tôi đã tạo ra một nền tảng tuyệt vời hơn rất nhiều - Nomad Karaoke - và giờ tôi đã giải quyết xong những yêu cầu cũ đó. Nếu bạn nhận được email từ tôi, video karaoke của bạn (hoặc liên kết để tự xem lại lời bài hát chỉ với một cú nhấp chuột) đã có sẵn trong email đó.",
+    "greeting": "Chào bạn,",
+    "languageHint": "Bạn có thể đọc trang này bằng 33 ngôn ngữ khác nhau - hãy sử dụng nút chọn ngôn ngữ ở trên cùng.",
+    "signoff": "Thân mến,",
+    "thanks": "Cảm ơn bạn đã kiên nhẫn và chúc bạn hát vui vẻ!",
+    "title": "Lời nhắn dành cho người dùng KaraokeHunt"
   }
 }

@@ -1829,5 +1829,18 @@
     "errorGeneric": "Jotain meni pieleen. Yritä uudelleen.",
     "submitting": "Lähetetään…",
     "communityExistsNote": "Voit silti pyytää sitä tai vain katsoa olemassa olevan version alta:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Jokin aika sitten pyysit kappaletta vanhan KaraokeHunt-sovelluksen kautta, ja tuo pyyntö jäi toteuttamatta aivan liian pitkäksi aikaa. Olen pahoillani siitä.",
+    "appRetired": "Itse KaraokeHunt-sovellus on poistettu käytöstä, joten jos sinulla on se vielä asennettuna, voit huoletta poistaa sen - kaikki löytyy nyt osoitteesta gen.nomadkaraoke.com.",
+    "creditsAfter": "(ei salasanaa - saat kirjautumislinkin sähköpostiisi).",
+    "creditsBefore": "Olen myös luonut sinulle tilin, jolla on ilmaisia krediittejä anteeksipyynnöksi viivästyksestä - voit käyttää niitä luodaksesi karaokevideoita mistä tahansa haluamastasi kappaleesta muutamassa minuutissa. Kirjaudu vain sisään samalla sähköpostiosoitteella, jolla teit pyyntösi, osoitteessa",
+    "founderRole": "Perustaja, Nomad Karaoke",
+    "goodNews": "Hyviä uutisia: olen sittemmin rakentanut jotain paljon parempaa - Nomad Karaoken - ja olen nyt toteuttanut nuo vanhat pyynnöt. Jos sait minulta sähköpostia, karaokevideosi (tai yhden klikkauksen linkki, jolla voit itse tarkistaa sanoitukset) löytyy kyseisestä sähköpostista.",
+    "greeting": "Hei,",
+    "languageHint": "Voit lukea tämän sivun 33 eri kielellä - käytä yläreunassa olevaa kielivalitsinta.",
+    "signoff": "Terveisin,",
+    "thanks": "Kiitos kärsivällisyydestäsi ja mukavia lauluhetkiä!",
+    "title": "Viesti KaraokeHunt-käyttäjille"
   }
 }
