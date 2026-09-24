@@ -43,7 +43,10 @@
     "comingSoon": "Hamarosan",
     "apply": "Alkalmaz",
     "reset": "Visszaállítás",
-    "preview": "Előnézet"
+    "preview": "Előnézet",
+    "switchToDarkMode": "Váltás sötét módra",
+    "switchToLightMode": "Váltás világos módra",
+    "toggleTheme": "Téma váltása"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Valami hiba történt. Kérlek, próbáld újra.",
     "submitting": "Beküldés…",
     "communityExistsNote": "Továbbra is kérheted, vagy csak nézz meg egy meglévő verziót lent:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Korábban kértél egy dalt a régi KaraokeHunt alkalmazáson keresztül, és ez a kérés túl sokáig válasz nélkül maradt. Ezt nagyon sajnálom.",
+    "appRetired": "Maga a KaraokeHunt alkalmazás megszűnt, így ha még mindig telepítve van, nyugodtan eltávolíthatod - most már minden a gen.nomadkaraoke.com oldalon található.",
+    "creditsAfter": "(nincs jelszó - egy bejelentkezési linket kapsz e-mailben).",
+    "creditsBefore": "A késedelem miatti bocsánatkérésként létrehoztam neked egy fiókot ingyenes kreditekkel - ezeket felhasználhatod arra, hogy percek alatt karaoke videókat készíts bármilyen dalból, amit csak szeretnél. Csak jelentkezz be ugyanazzal az e-mail címmel, amellyel a kérésedet küldted, itt:",
+    "founderRole": "Alapító, Nomad Karaoke",
+    "goodNews": "A jó hír: azóta készítettem valami sokkal jobbat - a Nomad Karaoke-t -, és most teljesítettem ezeket a régi kéréseket. Ha kaptál tőlem egy e-mailt, a karaoke videód (vagy egy egykattintásos link, amivel magad is átnézheted a dalszöveget) abban az e-mailben található.",
+    "greeting": "Szia,",
+    "languageHint": "Ezt az oldalt 33 nyelven olvashatod - használd a fenti nyelvválasztót.",
+    "signoff": "Üdv,",
+    "thanks": "Köszönöm a türelmedet, és jó éneklést!",
+    "title": "Üzenet a KaraokeHunt felhasználóinak"
   }
 }

@@ -43,7 +43,10 @@
     "comingSoon": "Už čoskoro",
     "apply": "Použiť",
     "reset": "Obnoviť",
-    "preview": "Náhľad"
+    "preview": "Náhľad",
+    "switchToDarkMode": "Prepnúť na tmavý režim",
+    "switchToLightMode": "Prepnúť na svetlý režim",
+    "toggleTheme": "Prepnúť tému"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Niečo sa pokazilo. Skús to znova.",
     "submitting": "Odosiela sa…",
     "communityExistsNote": "Stále o to môžeš požiadať, alebo si jednoducho pozrieť existujúcu verziu nižšie:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Pred časom si požiadal o pieseň cez starú aplikáciu KaraokeHunt a táto žiadosť zostala príliš dlho nevybavená. Ospravedlňujem sa za to.",
+    "appRetired": "Samotná aplikácia KaraokeHunt už nefunguje, takže ak ju máš stále nainštalovanú, môžeš ju pokojne odinštalovať - všetko teraz nájdeš na gen.nomadkaraoke.com.",
+    "creditsAfter": "(bez hesla - pošle ti e-mail s odkazom na prihlásenie).",
+    "creditsBefore": "Ako ospravedlnenie za zdržanie som ti tiež vytvoril účet s bezplatnými kreditmi - môžeš ich použiť na vytvorenie karaoke videí z akejkoľvek piesne za pár minút. Stačí sa prihlásiť s rovnakou e-mailovou adresou, z ktorej prišla tvoja žiadosť, na",
+    "founderRole": "Zakladateľ, Nomad Karaoke",
+    "goodNews": "Dobrá správa: medzitým som vytvoril niečo oveľa lepšie - Nomad Karaoke - a konečne som tieto staré žiadosti vybavil. Ak si odo mňa dostal e-mail, tvoje karaoke video (alebo odkaz na kontrolu textu na jedno kliknutie) je priamo v ňom.",
+    "greeting": "Ahoj,",
+    "languageHint": "Túto stránku si môžeš prečítať v ktoromkoľvek z 33 jazykov - použi prepínač jazykov v hornej časti.",
+    "signoff": "S pozdravom,",
+    "thanks": "Ďakujem za trpezlivosť a prajem príjemné spievanie!",
+    "title": "Odkaz pre používateľov KaraokeHunt"
   }
 }

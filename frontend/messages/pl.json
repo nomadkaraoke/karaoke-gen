@@ -43,7 +43,10 @@
     "comingSoon": "Wkrótce",
     "apply": "Zastosuj",
     "reset": "Resetuj",
-    "preview": "Podgląd"
+    "preview": "Podgląd",
+    "switchToDarkMode": "Przełącz na tryb ciemny",
+    "switchToLightMode": "Przełącz na tryb jasny",
+    "toggleTheme": "Zmień motyw"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie.",
     "submitting": "Przesyłanie…",
     "communityExistsNote": "Nadal możesz o to poprosić lub po prostu obejrzeć dostępną wersję poniżej:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Jakiś czas temu poprosiłeś/aś o piosenkę przez starą aplikację KaraokeHunt i przez zbyt długi czas nic się z tym nie działo. Przepraszam za to.",
+    "appRetired": "Sama aplikacja KaraokeHunt została wycofana, więc jeśli nadal masz ją zainstalowaną, możesz ją bezpiecznie odinstalować - wszystko znajduje się teraz na stronie gen.nomadkaraoke.com.",
+    "creditsAfter": "(bez hasła - link do logowania otrzymasz na e-mail).",
+    "creditsBefore": "W ramach przeprosin za opóźnienie utworzyłem dla Ciebie konto z darmowymi kredytami - możesz ich użyć, aby w kilka minut stworzyć wideo karaoke do dowolnej piosenki. Po prostu zaloguj się podając ten sam adres e-mail, z którego wysłano prośbę, na stronie",
+    "founderRole": "Założyciel, Nomad Karaoke",
+    "goodNews": "Dobra wiadomość: od tego czasu stworzyłem coś znacznie lepszego - Nomad Karaoke - i w końcu zrealizowałem tamte zaległe prośby. Jeśli otrzymałeś/aś ode mnie e-mail, Twoje wideo karaoke (lub link do samodzielnego przejrzenia tekstu jednym kliknięciem) znajduje się w tej wiadomości.",
+    "greeting": "Cześć,",
+    "languageHint": "Możesz przeczytać tę stronę w jednym z 33 języków - skorzystaj z menu wyboru języka na górze strony.",
+    "signoff": "Pozdrawiam,",
+    "thanks": "Dzięki za cierpliwość i miłego śpiewania!",
+    "title": "Wiadomość dla użytkowników KaraokeHunt"
   }
 }

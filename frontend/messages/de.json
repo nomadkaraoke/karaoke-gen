@@ -43,7 +43,10 @@
     "comingSoon": "Demnächst",
     "apply": "Anwenden",
     "reset": "Zurücksetzen",
-    "preview": "Vorschau"
+    "preview": "Vorschau",
+    "switchToDarkMode": "Zum Dark Mode wechseln",
+    "switchToLightMode": "Zum Light Mode wechseln",
+    "toggleTheme": "Theme umschalten"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "submitting": "Wird eingereicht…",
     "communityExistsNote": "Du kannst es trotzdem anfragen oder dir einfach unten eine bereits vorhandene Version ansehen:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Vor einiger Zeit hast du über die alte KaraokeHunt-App ein Lied angefragt, und mit dieser Anfrage ist viel zu lange nichts passiert. Das tut mir leid.",
+    "appRetired": "Die KaraokeHunt-App selbst wurde eingestellt. Wenn du sie also noch installiert hast, kannst du sie getrost deinstallieren – alles läuft jetzt über gen.nomadkaraoke.com.",
+    "creditsAfter": "(kein Passwort – du erhältst einen Anmeldelink per E-Mail).",
+    "creditsBefore": "Ich habe dir als Entschuldigung für die Verzögerung auch ein Konto mit kostenlosem Guthaben eingerichtet – du kannst es nutzen, um in wenigen Minuten Karaoke-Videos von jedem beliebigen Lied zu erstellen. Melde dich einfach mit derselben E-Mail-Adresse, über die deine Anfrage kam, an unter",
+    "founderRole": "Gründer, Nomad Karaoke",
+    "goodNews": "Die gute Nachricht: Ich habe in der Zwischenzeit etwas viel Besseres entwickelt – Nomad Karaoke – und diese alten Anfragen nun erfüllt. Wenn du eine E-Mail von mir erhalten hast, findest du dein Karaoke-Video (oder einen Ein-Klick-Link, um den Text selbst zu überprüfen) in dieser E-Mail.",
+    "greeting": "Hallo,",
+    "languageHint": "Du kannst diese Seite in einer von 33 Sprachen lesen – nutze dafür einfach die Sprachauswahl oben.",
+    "signoff": "Viele Grüße,",
+    "thanks": "Danke für deine Geduld und viel Spaß beim Singen!",
+    "title": "Eine Nachricht für KaraokeHunt-Nutzer"
   }
 }

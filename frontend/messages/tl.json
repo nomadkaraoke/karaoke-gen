@@ -43,7 +43,10 @@
     "comingSoon": "Malapit na",
     "apply": "I-apply",
     "reset": "I-reset",
-    "preview": "I-preview"
+    "preview": "I-preview",
+    "switchToDarkMode": "Lumipat sa dark mode",
+    "switchToLightMode": "Lumipat sa light mode",
+    "toggleTheme": "I-toggle ang tema"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "May nangyaring mali. Pakisubukan muli.",
     "submitting": "Isinusumite…",
     "communityExistsNote": "Puwede mo pa rin itong i-request, o panoorin na lang ang nagawa nang bersyon sa ibaba:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Noong nakaraan, nag-request ka ng kanta gamit ang lumang KaraokeHunt app, at sa napakatagal na panahon ay hindi naasikaso ang hiling na iyon. Pasensya na talaga tungkol doon.",
+    "appRetired": "Ang KaraokeHunt app mismo ay hindi na ginagamit, kaya kung naka-install pa ito sa iyo, pwede mo na itong i-uninstall - lahat ay nasa gen.nomadkaraoke.com na ngayon.",
+    "creditsAfter": "(walang password - magpapadala ito sa iyo ng sign-in link sa email).",
+    "creditsBefore": "Iginawa rin kita ng account na may libreng credits bilang paumanhin sa delay - pwede mo itong gamitin para gumawa ng karaoke video ng kahit anong kanta na gusto mo, sa loob lang ng ilang minuto. Mag-sign in lang gamit ang email address na ginamit mo sa pag-request sa",
+    "founderRole": "Founder, Nomad Karaoke",
+    "goodNews": "Ang magandang balita: Nakabuo ako ng mas maganda - ang Nomad Karaoke - at ngayon ay tinupad ko na ang mga lumang request na iyon. Kung nakatanggap ka ng email mula sa akin, ang iyong karaoke video (o isang one-click link para i-review mo mismo ang lyrics) ay nasa email na iyon.",
+    "greeting": "Kumusta,",
+    "languageHint": "Pwede mong basahin ang pahinang ito sa alinman sa 33 wika - gamitin ang language selector sa itaas.",
+    "signoff": "Salamat,",
+    "thanks": "Salamat sa iyong pasensya, at enjoy sa pagkanta!",
+    "title": "Isang mensahe para sa mga KaraokeHunt users"
   }
 }

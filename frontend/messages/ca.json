@@ -43,7 +43,10 @@
     "comingSoon": "Aviat",
     "apply": "Aplica",
     "reset": "Restableix",
-    "preview": "Previsualitza"
+    "preview": "Previsualitza",
+    "switchToDarkMode": "Canvia al mode fosc",
+    "switchToLightMode": "Canvia al mode clar",
+    "toggleTheme": "Canvia el tema"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Alguna cosa ha anat malament. Torna-ho a provar.",
     "submitting": "S'està enviant…",
     "communityExistsNote": "Encara pots demanar-la, o simplement veure una versió existent a continuació:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Fa un temps vas demanar una cançó a través de l'antiga aplicació KaraokeHunt, i durant massa temps aquesta petició no va arribar enlloc. Em sap greu.",
+    "appRetired": "L'aplicació KaraokeHunt s'ha retirat, així que si encara la tens instal·lada pots desinstal·lar-la tranquil·lament: ara tot es troba a gen.nomadkaraoke.com.",
+    "creditsAfter": "(sense contrasenya: t'envia un enllaç d'inici de sessió per correu electrònic).",
+    "creditsBefore": "També t'he creat un compte amb crèdits gratuïts com a disculpa pel retard; pots utilitzar-los per fer vídeos de karaoke de qualsevol cançó que vulguis, en qüestió de minuts. Només has d'iniciar sessió amb la mateixa adreça de correu electrònic des d'on vas fer la petició a",
+    "founderRole": "Fundador, Nomad Karaoke",
+    "goodNews": "La bona notícia: des de llavors he creat una cosa molt millor, Nomad Karaoke, i ara he donat resposta a aquelles antigues peticions. Si has rebut un correu meu, el teu vídeo de karaoke (o un enllaç directe per revisar la lletra tu mateix) el trobaràs en aquest correu.",
+    "greeting": "Hola,",
+    "languageHint": "Pots llegir aquesta pàgina en qualsevol dels 33 idiomes disponibles; utilitza el selector d'idioma de la part superior.",
+    "signoff": "Salut,",
+    "thanks": "Gràcies per la teva paciència, i que gaudeixis cantant!",
+    "title": "Una nota per als usuaris de KaraokeHunt"
   }
 }

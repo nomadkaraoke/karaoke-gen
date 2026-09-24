@@ -43,7 +43,10 @@
     "comingSoon": "Binnenkort beschikbaar",
     "apply": "Toepassen",
     "reset": "Resetten",
-    "preview": "Voorbeeld"
+    "preview": "Voorbeeld",
+    "switchToDarkMode": "Overschakelen naar donkere modus",
+    "switchToLightMode": "Overschakelen naar lichte modus",
+    "toggleTheme": "Thema wisselen"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Er is iets misgegaan. Probeer het opnieuw.",
     "submitting": "Indienen…",
     "communityExistsNote": "Je kunt het nog steeds aanvragen, of hieronder gewoon een bestaande versie bekijken:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Een tijdje geleden heb je een nummer aangevraagd via de oude KaraokeHunt-app, en die aanvraag heeft veel te lang stilgelegen. Mijn excuses daarvoor.",
+    "appRetired": "De KaraokeHunt-app zelf is stopgezet, dus als je hem nog hebt geïnstalleerd, kun je hem veilig verwijderen - alles staat nu op gen.nomadkaraoke.com.",
+    "creditsAfter": "(geen wachtwoord - je krijgt een inloglink gemaild).",
+    "creditsBefore": "Ik heb ook een account voor je aangemaakt met gratis credits als excuus voor de vertraging - je kunt ze gebruiken om binnen enkele minuten karaokevideo's te maken van elk gewenst nummer. Log gewoon in met hetzelfde e-mailadres waarmee je je aanvraag hebt gedaan op",
+    "founderRole": "Oprichter, Nomad Karaoke",
+    "goodNews": "Het goede nieuws: ik heb inmiddels iets veel beters gebouwd - Nomad Karaoke - en ik heb die oude aanvragen nu ingelost. Als je een e-mail van mij hebt ontvangen, staat je karaokevideo (of een directe link om de songtekst zelf te bekijken) in die e-mail.",
+    "greeting": "Hallo,",
+    "languageHint": "Je kunt deze pagina in een van de 33 talen lezen - gebruik de taalkiezer bovenaan.",
+    "signoff": "Groeten,",
+    "thanks": "Bedankt voor je geduld en veel zingplezier!",
+    "title": "Een bericht voor KaraokeHunt-gebruikers"
   }
 }

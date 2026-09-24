@@ -43,7 +43,10 @@
     "comingSoon": "敬请期待",
     "apply": "应用",
     "reset": "重置",
-    "preview": "预览"
+    "preview": "预览",
+    "switchToDarkMode": "切换到深色模式",
+    "switchToLightMode": "切换到浅色模式",
+    "toggleTheme": "切换主题"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "出了点问题，请重试。",
     "submitting": "正在提交…",
     "communityExistsNote": "您仍然可以提交请求，或者直接观看下方已有的版本："
+  },
+  "karaokehuntLetter": {
+    "apology": "之前您通过旧版 KaraokeHunt 应用点了一首歌，但很长一段时间以来，这个请求一直没有进展。对此我感到非常抱歉。",
+    "appRetired": "KaraokeHunt 应用本身已经下线，如果您还安装着它，现在可以放心卸载了——所有的服务都已迁移至 gen.nomadkaraoke.com。",
+    "creditsAfter": "（无需密码——系统会向您的邮箱发送一条登录链接）。",
+    "creditsBefore": "作为对延误的歉意，我还为您创建了一个包含免费额度的账号——您可以在几分钟内用这些额度制作任何您喜欢的歌曲的卡拉OK视频。只需使用您当时提交请求的邮箱地址登录",
+    "founderRole": "Nomad Karaoke 创始人",
+    "goodNews": "好消息是：后来我开发了一款更棒的产品——Nomad Karaoke——并且现在我已经兑现了那些早期的点歌请求。如果您收到了我的邮件，您的卡拉OK视频（或供您自行核对歌词的一键链接）就在那封邮件里。",
+    "greeting": "嗨，",
+    "languageHint": "本页面支持 33 种语言——请使用顶部的语言选择器进行切换。",
+    "signoff": "祝好，",
+    "thanks": "感谢您的耐心等待，祝您唱歌愉快！",
+    "title": "致 KaraokeHunt 用户的一封信"
   }
 }

@@ -43,7 +43,10 @@
     "comingSoon": "Yakında",
     "apply": "Uygula",
     "reset": "Sıfırla",
-    "preview": "Önizleme"
+    "preview": "Önizleme",
+    "switchToDarkMode": "Karanlık moda geç",
+    "switchToLightMode": "Aydınlık moda geç",
+    "toggleTheme": "Temayı değiştir"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene.",
     "submitting": "Gönderiliyor…",
     "communityExistsNote": "Yine de istekte bulunabilirsin veya aşağıdan mevcut bir versiyonu izleyebilirsin:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Bir süre önce eski KaraokeHunt uygulaması üzerinden bir şarkı istedin ve bu istek çok uzun süre sonuçsuz kaldı. Bunun için özür dilerim.",
+    "appRetired": "KaraokeHunt uygulamasının kendisi kullanımdan kaldırıldı, bu yüzden eğer hala yüklüyse güvenle kaldırabilirsin - artık her şey gen.nomadkaraoke.com adresinde.",
+    "creditsAfter": "(şifre yok - e-posta adresine bir giriş bağlantısı gönderilecek).",
+    "creditsBefore": "Gecikme için özür dilemek adına sana içinde ücretsiz krediler bulunan bir hesap da oluşturdum - bu kredileri kullanarak dakikalar içinde dilediğin şarkının karaoke videosunu yapabilirsin. Sadece şarkı isteğini gönderdiğin e-posta adresiyle şuradan giriş yap:",
+    "founderRole": "Kurucu, Nomad Karaoke",
+    "goodNews": "İyi haber: O zamandan beri çok daha iyi bir şey geliştirdim - Nomad Karaoke - ve şimdi o eski istekleri yerine getirdim. Eğer benden bir e-posta aldıysan, karaoke videon (veya şarkı sözlerini kendin gözden geçirmen için tek tıklamalık bir bağlantı) o e-postanın içinde.",
+    "greeting": "Merhaba,",
+    "languageHint": "Bu sayfayı 33 dilden herhangi birinde okuyabilirsin - üstteki dil seçiciyi kullan.",
+    "signoff": "Sevgiler,",
+    "thanks": "Sabrın için teşekkürler ve keyifli şarkı söylemeler!",
+    "title": "KaraokeHunt kullanıcıları için bir not"
   }
 }

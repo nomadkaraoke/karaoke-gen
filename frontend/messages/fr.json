@@ -43,7 +43,10 @@
     "comingSoon": "Bientôt disponible",
     "apply": "Appliquer",
     "reset": "Réinitialiser",
-    "preview": "Aperçu"
+    "preview": "Aperçu",
+    "switchToDarkMode": "Passer au mode sombre",
+    "switchToLightMode": "Passer au mode clair",
+    "toggleTheme": "Changer de thème"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Quelque chose s'est mal passé. Réessaie.",
     "submitting": "Soumission en cours…",
     "communityExistsNote": "Tu peux quand même le demander, ou simplement regarder une version existante ci-dessous :"
+  },
+  "karaokehuntLetter": {
+    "apology": "Il y a quelque temps, tu as demandé une chanson via l'ancienne application KaraokeHunt, et cette demande est restée sans suite pendant beaucoup trop longtemps. J'en suis désolé.",
+    "appRetired": "L'application KaraokeHunt n'existe plus, donc si elle est toujours installée sur ton appareil, tu peux la supprimer sans problème - tout se passe désormais sur gen.nomadkaraoke.com.",
+    "creditsAfter": "(pas besoin de mot de passe - tu recevras un lien de connexion par e-mail).",
+    "creditsBefore": "J'ai également créé un compte pour toi avec des crédits gratuits pour m'excuser du retard - tu peux les utiliser pour créer des vidéos de karaoké avec n'importe quelle chanson de ton choix, en quelques minutes. Connecte-toi simplement avec l'adresse e-mail que tu as utilisée pour ta demande sur",
+    "founderRole": "Fondateur, Nomad Karaoke",
+    "goodNews": "La bonne nouvelle : j'ai depuis créé quelque chose de bien meilleur - Nomad Karaoke - et j'ai enfin pu traiter ces anciennes demandes. Si tu as reçu un e-mail de ma part, ta vidéo de karaoké (ou un lien en un clic pour réviser les paroles toi-même) s'y trouve.",
+    "greeting": "Bonjour,",
+    "languageHint": "Tu peux lire cette page dans 33 langues différentes - utilise le sélecteur de langue en haut de la page.",
+    "signoff": "Amicalement,",
+    "thanks": "Merci pour ta patience, et bon karaoké !",
+    "title": "Un mot pour les utilisateurs de KaraokeHunt"
   }
 }

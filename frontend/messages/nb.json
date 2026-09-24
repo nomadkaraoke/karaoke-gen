@@ -43,7 +43,10 @@
     "comingSoon": "Kommer snart",
     "apply": "Bruk",
     "reset": "Tilbakestill",
-    "preview": "Forhåndsvisning"
+    "preview": "Forhåndsvisning",
+    "switchToDarkMode": "Bytt til mørk modus",
+    "switchToLightMode": "Bytt til lys modus",
+    "toggleTheme": "Bytt tema"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Noe gikk galt. Vennligst prøv igjen.",
     "submitting": "Sender inn…",
     "communityExistsNote": "Du kan fortsatt be om den, eller bare se en eksisterende versjon nedenfor:"
+  },
+  "karaokehuntLetter": {
+    "apology": "For en stund siden ba du om en sang gjennom den gamle KaraokeHunt-appen, og altfor lenge skjedde det ingenting med den forespørselen. Det beklager jeg.",
+    "appRetired": "Selve KaraokeHunt-appen har blitt lagt ned, så hvis du fortsatt har den installert, kan du trygt avinstallere den - alt skjer nå på gen.nomadkaraoke.com.",
+    "creditsAfter": "(krever ikke passord - du får en påloggingslenke på e-post).",
+    "creditsBefore": "Jeg har også opprettet en konto til deg med gratis kreditter som et plaster på såret for forsinkelsen - du kan bruke dem til å lage karaokevideoer av hvilken som helst sang du vil, på få minutter. Bare logg inn med samme e-postadresse som du brukte til forespørselen, på",
+    "founderRole": "Grunnlegger, Nomad Karaoke",
+    "goodNews": "Den gode nyheten: I mellomtiden har jeg bygget noe mye bedre - Nomad Karaoke - og jeg har nå innfridd de gamle forespørslene. Hvis du mottok en e-post fra meg, finner du karaokevideoen din (eller en ett-klikks lenke for å se over teksten selv) i den e-posten.",
+    "greeting": "Hei,",
+    "languageHint": "Du kan lese denne siden på 33 forskjellige språk - bruk språkvelgeren øverst.",
+    "signoff": "Hilsen,",
+    "thanks": "Takk for tålmodigheten, og kos deg med syngingen!",
+    "title": "En beskjed til KaraokeHunt-brukere"
   }
 }

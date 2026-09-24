@@ -43,7 +43,10 @@
     "comingSoon": "Akan datang",
     "apply": "Gunakan",
     "reset": "Tetapkan semula",
-    "preview": "Pratonton"
+    "preview": "Pratonton",
+    "switchToDarkMode": "Tukar ke mod gelap",
+    "switchToLightMode": "Tukar ke mod terang",
+    "toggleTheme": "Togol tema"
   },
   "landing": {
     "navigation": {
@@ -1829,5 +1832,18 @@
     "errorGeneric": "Sesuatu yang tidak kena berlaku. Sila cuba lagi.",
     "submitting": "Menghantar…",
     "communityExistsNote": "Anda masih boleh memintanya, atau tonton sahaja versi sedia ada di bawah:"
+  },
+  "karaokehuntLetter": {
+    "apology": "Beberapa ketika dahulu anda ada membuat permintaan lagu melalui aplikasi KaraokeHunt yang lama, dan permintaan tersebut terbiar untuk masa yang agak lama. Saya memohon maaf atas perkara ini.",
+    "appRetired": "Aplikasi KaraokeHunt kini tidak lagi beroperasi, jadi jika anda masih memasangnya, anda boleh menyahpasangnya - semuanya kini berada di gen.nomadkaraoke.com.",
+    "creditsAfter": "(tiada kata laluan - ia akan menghantar pautan log masuk ke e-mel anda).",
+    "creditsBefore": "Saya juga telah menyediakan akaun untuk anda berserta kredit percuma sebagai tanda permohonan maaf atas kelewatan ini - anda boleh menggunakannya untuk membuat video karaoke bagi mana-mana lagu yang anda suka, dalam hanya beberapa minit. Hanya log masuk menggunakan alamat e-mel yang sama semasa anda membuat permintaan tersebut di",
+    "founderRole": "Pengasas, Nomad Karaoke",
+    "goodNews": "Berita baik: Saya kini telah membina sesuatu yang jauh lebih baik - Nomad Karaoke - dan saya telah pun memenuhi permintaan lama tersebut. Jika anda menerima e-mel daripada saya, video karaoke anda (atau pautan satu klik untuk menyemak lirik itu sendiri) ada di dalam e-mel tersebut.",
+    "greeting": "Hai,",
+    "languageHint": "Anda boleh membaca halaman ini dalam salah satu daripada 33 bahasa - gunakan pemilih bahasa di bahagian atas.",
+    "signoff": "Salam mesra,",
+    "thanks": "Terima kasih atas kesabaran anda, dan selamat menyanyi!",
+    "title": "Nota untuk pengguna KaraokeHunt"
   }
 }
