@@ -1845,5 +1845,17 @@
     "signoff": "Groeten,",
     "thanks": "Bedankt voor je geduld en veel zingplezier!",
     "title": "Een bericht voor KaraokeHunt-gebruikers"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Een tijdje geleden heb je je aangemeld voor KaraokeHunt, de karaoke-app die ik heb gebouwd, en daarna bleef het veel te lang stil. Mijn excuses daarvoor. De app is inmiddels gestopt, dus als je hem nog hebt geïnstalleerd, kun je hem gerust verwijderen.",
+    "creditsBefore": "Als bedankje omdat je een van de eerste gebruikers van KaraokeHunt was (en als verontschuldiging voor de lange stilte), heb ik een account voor je klaargezet met 3 gratis credits. Log simpelweg in met het e-mailadres dat je voor KaraokeHunt hebt gebruikt op",
+    "goodNews": "Het goede nieuws: ik heb iets veel beters gebouwd - Nomad Karaoke. In plaats van je alleen te helpen bij het vinden van karaokenummers, maakt het een echte karaokevideo van bijna elk nummer dat je maar wilt - zonder de originele zang, met perfect gesynchroniseerde songteksten, helemaal klaar om mee te zingen.",
+    "thanks": "Ik hoop dat je het eens probeert - veel zingplezier!",
+    "creditsAfter": "(geen wachtwoord - je krijgt een inloglink gemaild).",
+    "founderRole": "Oprichter, Nomad Karaoke",
+    "greeting": "Hallo,",
+    "languageHint": "Je kunt deze pagina in een van de 33 talen lezen - gebruik de taalkiezer bovenaan.",
+    "signoff": "Groeten,",
+    "title": "Een bericht voor KaraokeHunt-gebruikers"
   }
 }

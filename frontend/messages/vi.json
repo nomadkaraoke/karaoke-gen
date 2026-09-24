@@ -1845,5 +1845,17 @@
     "signoff": "Thân mến,",
     "thanks": "Cảm ơn bạn đã kiên nhẫn và chúc bạn hát vui vẻ!",
     "title": "Lời nhắn dành cho người dùng KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Cách đây một thời gian, bạn đã đăng ký KaraokeHunt, ứng dụng karaoke do tôi phát triển, và sau đó dự án đã im ắng quá lâu. Tôi rất xin lỗi về điều này. Ứng dụng hiện đã ngừng hoạt động, nên nếu vẫn còn giữ trên máy, bạn có thể yên tâm gỡ cài đặt.",
+    "creditsBefore": "Để cảm ơn bạn đã ủng hộ KaraokeHunt từ những ngày đầu (và cũng là lời xin lỗi vì sự im lặng bấy lâu nay), tôi đã tạo sẵn cho bạn một tài khoản với 3 credit miễn phí. Bạn chỉ cần đăng nhập bằng địa chỉ email đã dùng cho KaraokeHunt tại",
+    "goodNews": "Tin vui là: Tôi đã phát triển một sản phẩm tốt hơn nhiều - Nomad Karaoke. Thay vì chỉ giúp bạn tìm các bản nhạc karaoke, ứng dụng này sẽ tạo ra một video karaoke chuẩn chỉnh cho gần như mọi bài hát bạn muốn - với giọng hát gốc được loại bỏ, lời bài hát đồng bộ chuẩn xác và sẵn sàng để bạn thể hiện.",
+    "thanks": "Hy vọng bạn sẽ dùng thử - chúc bạn hát vui vẻ!",
+    "creditsAfter": "(không cần mật khẩu - hệ thống sẽ gửi cho bạn một liên kết đăng nhập qua email).",
+    "founderRole": "Nhà sáng lập, Nomad Karaoke",
+    "greeting": "Chào bạn,",
+    "languageHint": "Bạn có thể đọc trang này bằng 33 ngôn ngữ khác nhau - hãy sử dụng nút chọn ngôn ngữ ở trên cùng.",
+    "signoff": "Thân mến,",
+    "title": "Lời nhắn dành cho người dùng KaraokeHunt"
   }
 }

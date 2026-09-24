@@ -1845,5 +1845,17 @@
     "signoff": "Salut,",
     "thanks": "Gràcies per la teva paciència, i que gaudeixis cantant!",
     "title": "Una nota per als usuaris de KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Fa un temps et vas registrar a KaraokeHunt, l'aplicació de karaoke que vaig crear, i després no hi va haver novetats durant massa temps. Em sap greu. L'aplicació ja s'ha retirat, així que si encara la tens instal·lada, pots desinstal·lar-la sense cap problema.",
+    "creditsBefore": "Com a agraïment per ser un dels primers usuaris de KaraokeHunt (i com a disculpa pel llarg silenci), t'he creat un compte amb 3 crèdits gratuïts. Només has d'iniciar sessió amb l'adreça de correu electrònic que vas utilitzar per a KaraokeHunt a",
+    "goodNews": "La bona notícia: he creat una cosa molt millor, Nomad Karaoke. En lloc de només ajudar-te a trobar pistes de karaoke, crea un vídeo de karaoke en condicions de gairebé qualsevol cançó que vulguis: amb la veu original eliminada, la lletra sincronitzada i a punt per cantar.",
+    "thanks": "Espero que t'animis a provar-ho. Que gaudeixis cantant!",
+    "creditsAfter": "(sense contrasenya: t'envia un enllaç d'inici de sessió per correu electrònic).",
+    "founderRole": "Fundador, Nomad Karaoke",
+    "greeting": "Hola,",
+    "languageHint": "Pots llegir aquesta pàgina en qualsevol dels 33 idiomes disponibles; utilitza el selector d'idioma de la part superior.",
+    "signoff": "Salut,",
+    "title": "Una nota per als usuaris de KaraokeHunt"
   }
 }

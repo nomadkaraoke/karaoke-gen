@@ -1845,5 +1845,17 @@
     "signoff": "Un saluto,",
     "thanks": "Grazie per la pazienza e buon karaoke!",
     "title": "Un messaggio per gli utenti di KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Qualche tempo fa ti sei iscritto a KaraokeHunt, l'app di karaoke che ho creato, e poi c'è stato un lungo silenzio. Mi dispiace. Nel frattempo l'app è stata dismessa, quindi se l'hai ancora installata puoi rimuoverla tranquillamente.",
+    "creditsBefore": "Per ringraziarti di essere stato uno dei primi utenti di KaraokeHunt (e per scusarmi del lungo silenzio), ho creato un account per te con 3 crediti gratuiti. Ti basta accedere con l'indirizzo email che hai usato per KaraokeHunt su",
+    "goodNews": "La buona notizia è che ho creato qualcosa di molto meglio: Nomad Karaoke. Invece di aiutarti solo a trovare basi karaoke, crea un vero e proprio video karaoke di quasi tutte le canzoni che vuoi: voce originale rimossa, testo sincronizzato e pronto da cantare.",
+    "thanks": "Spero che vorrai provarlo. Buon divertimento!",
+    "creditsAfter": "(non serve la password: ti verrà inviato un link di accesso via email).",
+    "founderRole": "Fondatore, Nomad Karaoke",
+    "greeting": "Ciao,",
+    "languageHint": "Puoi leggere questa pagina in una delle 33 lingue disponibili: usa il selettore della lingua in alto.",
+    "signoff": "Un saluto,",
+    "title": "Un messaggio per gli utenti di KaraokeHunt"
   }
 }

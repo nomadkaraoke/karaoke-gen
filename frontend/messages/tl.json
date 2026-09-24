@@ -1845,5 +1845,17 @@
     "signoff": "Salamat,",
     "thanks": "Salamat sa iyong pasensya, at enjoy sa pagkanta!",
     "title": "Isang mensahe para sa mga KaraokeHunt users"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Dati, nag-sign up ka para sa KaraokeHunt, ang karaoke app na ginawa ko, at pagkatapos ay matagal itong naging tahimik. Pasensya na rito. Inihinto na ang app, kaya kung naka-install pa ito sa device mo, pwede mo na itong i-uninstall.",
+    "creditsBefore": "Bilang pasasalamat sa pagiging isa sa mga unang gumamit ng KaraokeHunt (at bilang paghingi ng paumanhin sa mahabang pananahimik), iginawa kita ng account na may 3 libreng credits. Mag-sign in lang gamit ang email address na ginamit mo sa KaraokeHunt sa",
+    "goodNews": "Ang magandang balita: Nakagawa ako ng mas maganda - Nomad Karaoke. Sa halip na tulungan ka lang maghanap ng mga karaoke track, gumagawa ito ng maayos na karaoke video ng halos anumang kantang gusto mo - tanggal ang orihinal na boses, may naka-sync na lyrics, at handa nang kantahin.",
+    "thanks": "Sana subukan mo ito - happy singing!",
+    "creditsAfter": "(walang password - magpapadala ito sa iyo ng sign-in link sa email).",
+    "founderRole": "Founder, Nomad Karaoke",
+    "greeting": "Kumusta,",
+    "languageHint": "Pwede mong basahin ang pahinang ito sa alinman sa 33 wika - gamitin ang language selector sa itaas.",
+    "signoff": "Salamat,",
+    "title": "Isang mensahe para sa mga KaraokeHunt users"
   }
 }

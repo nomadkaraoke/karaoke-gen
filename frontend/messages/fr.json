@@ -1845,5 +1845,17 @@
     "signoff": "Amicalement,",
     "thanks": "Merci pour ta patience, et bon karaoké !",
     "title": "Un mot pour les utilisateurs de KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Il y a quelque temps, tu t'es inscrit à KaraokeHunt, l'application de karaoké que j'ai créée, et puis je n'ai plus donné de nouvelles pendant bien trop longtemps. J'en suis désolé. L'application a été retirée depuis, donc si elle est toujours installée, tu peux la désinstaller sans problème.",
+    "creditsBefore": "Pour te remercier d'avoir été l'un des premiers utilisateurs de KaraokeHunt (et pour m'excuser de ce long silence), je t'ai créé un compte avec 3 crédits gratuits. Connecte-toi simplement avec l'adresse e-mail que tu as utilisée pour KaraokeHunt sur",
+    "goodNews": "La bonne nouvelle : j'ai créé quelque chose de bien meilleur - Nomad Karaoke. Au lieu de simplement t'aider à trouver des pistes de karaoké, il crée une vraie vidéo de karaoké à partir de presque n'importe quelle chanson de ton choix - avec les voix originales supprimées et de vraies paroles synchronisées, prête à être chantée.",
+    "thanks": "J'espère que tu l'essaieras - bon karaoké !",
+    "creditsAfter": "(pas besoin de mot de passe - tu recevras un lien de connexion par e-mail).",
+    "founderRole": "Fondateur, Nomad Karaoke",
+    "greeting": "Bonjour,",
+    "languageHint": "Tu peux lire cette page dans 33 langues différentes - utilise le sélecteur de langue en haut de la page.",
+    "signoff": "Amicalement,",
+    "title": "Un mot pour les utilisateurs de KaraokeHunt"
   }
 }

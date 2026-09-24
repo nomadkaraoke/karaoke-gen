@@ -1845,5 +1845,17 @@
     "signoff": "Cheers,",
     "founderRole": "Founder, Nomad Karaoke",
     "languageHint": "You can read this page in any of 33 languages - use the language selector at the top."
+  },
+  "karaokehuntListLetter": {
+    "title": "A note for KaraokeHunt users",
+    "greeting": "Hey there,",
+    "apology": "A while back you signed up for KaraokeHunt, the karaoke app I built, and then it went quiet for far too long. I'm sorry about that. The app has since been retired, so if you still have it installed you can safely uninstall it.",
+    "goodNews": "The good news: I've built something much better - Nomad Karaoke. Instead of just helping you find karaoke tracks, it makes a proper karaoke video of almost any song you want - the original vocals removed, real synced lyrics, ready to sing.",
+    "creditsBefore": "As a thank-you for being an early KaraokeHunt user (and an apology for the long silence), I've set up an account for you with 3 free credits. Just sign in with the email address you used for KaraokeHunt at",
+    "creditsAfter": "(no password - it emails you a sign-in link).",
+    "thanks": "Hope you'll give it a try - happy singing!",
+    "signoff": "Cheers,",
+    "founderRole": "Founder, Nomad Karaoke",
+    "languageHint": "You can read this page in any of 33 languages - use the language selector at the top."
   }
 }

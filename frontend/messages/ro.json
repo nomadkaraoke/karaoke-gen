@@ -1845,5 +1845,17 @@
     "signoff": "Toate cele bune,",
     "thanks": "Mulțumesc pentru răbdare și spor la cântat!",
     "title": "Un mesaj pentru utilizatorii KaraokeHunt"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Cu ceva timp în urmă te-ai înscris pe KaraokeHunt, aplicația de karaoke pe care am creat-o, iar apoi a urmat o tăcere mult prea lungă. Îmi pare rău pentru asta. Între timp, aplicația a fost retrasă, așa că, dacă o mai ai instalată, o poți dezinstala în siguranță.",
+    "creditsBefore": "Ca mulțumire pentru că ai fost unul dintre primii utilizatori KaraokeHunt (și ca scuză pentru tăcerea lungă), ți-am creat un cont cu 3 credite gratuite. Trebuie doar să te conectezi cu adresa de e-mail pe care ai folosit-o pentru KaraokeHunt la",
+    "goodNews": "Vestea bună: am creat ceva mult mai bun - Nomad Karaoke. În loc să te ajute doar să găsești piese de karaoke, acesta creează un videoclip de karaoke propriu-zis pentru aproape orice melodie dorești - cu vocea originală eliminată, versuri sincronizate perfect, gata de cântat.",
+    "thanks": "Sper să-l încerci - spor la cântat!",
+    "creditsAfter": "(fără parolă - vei primi pe e-mail un link de conectare).",
+    "founderRole": "Fondator, Nomad Karaoke",
+    "greeting": "Salut,",
+    "languageHint": "Poți citi această pagină în oricare dintre cele 33 de limbi - folosește selectorul de limbă din partea de sus.",
+    "signoff": "Toate cele bune,",
+    "title": "Un mesaj pentru utilizatorii KaraokeHunt"
   }
 }

@@ -1845,5 +1845,17 @@
     "signoff": "Vänliga hälsningar,",
     "thanks": "Tack för ditt tålamod, och ha det så kul med sjungandet!",
     "title": "Ett meddelande till KaraokeHunt-användare"
+  },
+  "karaokehuntListLetter": {
+    "apology": "För ett tag sedan registrerade du dig på KaraokeHunt, karaokeappen jag byggde, och sedan blev det tyst alldeles för länge. Jag ber om ursäkt för det. Appen har sedan dess lagts ner, så om du fortfarande har den installerad kan du lugnt avinstallera den.",
+    "creditsBefore": "Som tack för att du var en tidig användare av KaraokeHunt (och som ursäkt för den långa tystnaden) har jag skapat ett konto åt dig med 3 gratiskrediter. Logga bara in med den e-postadress du använde till KaraokeHunt på",
+    "goodNews": "Goda nyheter: Jag har byggt något mycket bättre - Nomad Karaoke. Istället för att bara hjälpa dig att hitta karaokespår, skapar den en riktig karaokevideo av nästan vilken låt du vill - med originalsången borttagen, riktig synkad text, redo att sjunga till.",
+    "thanks": "Hoppas du vill testa - ha så kul med sjungandet!",
+    "creditsAfter": "(inget lösenord behövs - en inloggningslänk skickas till din e-post).",
+    "founderRole": "Grundare, Nomad Karaoke",
+    "greeting": "Hej,",
+    "languageHint": "Du kan läsa den här sidan på något av 33 språk - använd språkväljaren högst upp.",
+    "signoff": "Vänliga hälsningar,",
+    "title": "Ett meddelande till KaraokeHunt-användare"
   }
 }

@@ -1845,5 +1845,17 @@
     "signoff": "Üdv,",
     "thanks": "Köszönöm a türelmedet, és jó éneklést!",
     "title": "Üzenet a KaraokeHunt felhasználóinak"
+  },
+  "karaokehuntListLetter": {
+    "apology": "Régebben regisztráltál a KaraokeHuntra, az általam készített karaoke alkalmazásra, ami után túl sokáig nagy volt a csend. Ezt nagyon sajnálom. Az alkalmazás azóta megszűnt, így ha még mindig telepítve van, nyugodtan letörölheted.",
+    "creditsBefore": "Köszönetképpen, amiért a KaraokeHunt egyik első felhasználója voltál (és bocsánatkérésként a hosszú csendért), létrehoztam neked egy fiókot 3 ingyenes kredittel. Csak jelentkezz be a KaraokeHunthoz használt e-mail címeddel itt:",
+    "goodNews": "A jó hír: készítettem valami sokkal jobbat – ez a Nomad Karaoke. Ahelyett, hogy csak segítene karaoke számokat találni, igazi karaoke videót készít szinte bármilyen dalból, amit csak szeretnél – eredeti énekhang nélkül, pontosan szinkronizált dalszöveggel, készen az éneklésre.",
+    "thanks": "Remélem, kipróbálod – jó éneklést!",
+    "creditsAfter": "(nincs jelszó - egy bejelentkezési linket kapsz e-mailben).",
+    "founderRole": "Alapító, Nomad Karaoke",
+    "greeting": "Szia,",
+    "languageHint": "Ezt az oldalt 33 nyelven olvashatod - használd a fenti nyelvválasztót.",
+    "signoff": "Üdv,",
+    "title": "Üzenet a KaraokeHunt felhasználóinak"
   }
 }
