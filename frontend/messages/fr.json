@@ -1857,5 +1857,17 @@
     "languageHint": "Tu peux lire cette page dans 33 langues différentes - utilise le sélecteur de langue en haut de la page.",
     "signoff": "Amicalement,",
     "title": "Un mot pour les utilisateurs de KaraokeHunt"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "C'est probablement un peu inattendu. Tu t'es inscrit il y a une éternité pour savoir ce que je préparais pour les amateurs de karaoké, et puis... silence radio. Désolé pour ça. Si tu préfères ne plus avoir de mes nouvelles, sans rancune - réponds simplement à cet e-mail et je ne t'écrirai plus.",
+    "creditsBefore": "Comme tu étais sur cette liste à l'époque où ce n'était qu'une idée, j'aimerais que tu sois l'un des premiers à l'essayer. Ta première vidéo est offerte (crédit gratuit à l'inscription), et en t'inscrivant via ce lien, tu profites aussi de 50 % de réduction sur toutes celles que tu créeras au cours des 3 prochains mois :",
+    "greeting": "Salut - c'est Andrew, de KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Va chanter un truc ridicule,",
+    "stillHere": "Toujours là ? Alors je passe à la meilleure partie : ce que je préparais est terminé, et c'est franchement mieux que ce que j'avais promis au départ.",
+    "thatsIt": "C'est tout - pas de tunnel de vente, pas de séquence de relance. Si tu crées quelque chose, j'aimerais vraiment savoir ce que ça donne - réponds juste à cet e-mail, c'est vraiment moi.",
+    "title": "Le truc de karaoké que je t'avais promis est enfin là",
+    "whatItIs": "Ça s'appelle Nomad Karaoke Generator : tu choisis n'importe quelle chanson - vraiment n'importe laquelle, même la plus obscure - et il en fait une vraie vidéo de karaoké. Une véritable séparation instrumentale (les voix sont vraiment supprimées, pas juste baissées), des paroles synchronisées mot à mot, et c'est généralement prêt en une demi-heure environ. Et ça fonctionne dans 33 langues.",
+    "founderRole": "Fondateur, Nomad Karaoke",
+    "languageHint": "Tu peux lire cette page dans 33 langues différentes - utilise le sélecteur de langue en haut de la page."
   }
 }

@@ -1857,5 +1857,17 @@
     "languageHint": "Puedes leer esta página en cualquiera de los 33 idiomas disponibles; solo usa el selector de idioma en la parte superior.",
     "signoff": "Saludos,",
     "title": "Una nota para los usuarios de KaraokeHunt"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Probablemente esto sea un poco inesperado. Te registraste hace muchísimo tiempo para enterarte de lo que estaba creando para los amantes del karaoke, y luego... desaparecí. Perdón por eso. Si prefieres no saber nada de mí, no pasa nada: solo responde a mi correo y no te volveré a escribir.",
+    "creditsBefore": "Como ya estabas en esta lista cuando esto era solo una idea, me encantaría que fueras de los primeros en probarlo. Tu primer video corre por mi cuenta (crédito gratis al registrarte), y si te registras a través de este enlace también tendrás un 50% de descuento en todos los que hagas durante los próximos 3 meses:",
+    "greeting": "Hola, soy Andrew, de KaraokeHunt / Nomad Karaoke.",
+    "signoff": "Ve a cantar algo ridículo,",
+    "stillHere": "¿Sigues ahí? Entonces me toca contarte la parte divertida: lo que estaba creando ya está terminado, y sinceramente es mejor de lo que prometí al principio.",
+    "thatsIt": "Eso es todo: sin embudos de venta, sin secuencias de correos. Si creas algo, de verdad me encantaría saber qué tal te queda; solo responde a mi correo, soy yo de verdad.",
+    "title": "Lo del karaoke que te prometí por fin es real",
+    "whatItIs": "Se llama Nomad Karaoke Generator: eliges cualquier canción (la que sea, por muy específica que sea) y crea un video de karaoke de verdad para ella. Separación instrumental real (las voces desaparecen de verdad, no solo suenan más bajo), letras sincronizadas palabra por palabra, y suele estar listo en una media hora. Además, funciona en 33 idiomas.",
+    "founderRole": "Fundador, Nomad Karaoke",
+    "languageHint": "Puedes leer esta página en cualquiera de los 33 idiomas disponibles; solo usa el selector de idioma en la parte superior."
   }
 }

@@ -1857,5 +1857,17 @@
     "languageHint": "Ezt az oldalt 33 nyelven olvashatod - használd a fenti nyelvválasztót.",
     "signoff": "Üdv,",
     "title": "Üzenet a KaraokeHunt felhasználóinak"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Ez valószínűleg egy kicsit váratlanul ér. Ezer éve iratkoztál fel, hogy hallj arról, mit készítek a karaoke szerelmeseinek, aztán... nagy lett a csend. Sajnálom. Ha inkább nem szeretnél több levelet kapni tőlem, nincs harag - csak válaszolj erre az e-mailre, és nem írok többé.",
+    "creditsBefore": "Mivel már akkor is ezen a listán voltál, amikor ez még csak egy ötlet volt, szeretném, ha az elsők között próbálnád ki. Az első videódat én állom (ingyenes kredit a regisztrációkor), és ha ezen a linken keresztül regisztrálsz, 50% kedvezményt kapsz minden további videó árából, amit a következő 3 hónapban készítesz:",
+    "greeting": "Szia! Itt Andrew a KaraokeHunt / Nomad Karaoke csapatából.",
+    "signoff": "Menj és énekelj valami őrültséget,",
+    "stillHere": "Még mindig itt vagy? Akkor jöjjön a legjobb rész: az újdonság, amin dolgoztam, elkészült, és őszintén szólva jobb lett, mint amit eredetileg ígértem.",
+    "thatsIt": "Ennyi az egész - nincs értékesítési tölcsér, nincs utókövető e-mail sorozat. Ha készítesz valamit, őszintén érdekelne, hogyan sikerült - csak válaszolj erre az e-mailre, tényleg én olvasom.",
+    "title": "A karaoke projekt, amit ígértem neked, végre valósággá vált",
+    "whatItIs": "A neve Nomad Karaoke Generator: kiválasztasz bármilyen dalt - tényleg bármit, legyen az akármilyen rétegzene -, és egy igazi karaoke videót készít belőle. Valódi hangsáv-szétválasztás (az ének tényleg eltűnik, nem csak halkabb lesz), szavanként szinkronizált dalszöveg, és általában körülbelül fél óra alatt elkészül. Ráadásul 33 nyelven működik.",
+    "founderRole": "Alapító, Nomad Karaoke",
+    "languageHint": "Ezt az oldalt 33 nyelven olvashatod - használd a fenti nyelvválasztót."
   }
 }

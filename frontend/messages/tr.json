@@ -1857,5 +1857,17 @@
     "languageHint": "Bu sayfayı 33 dilden herhangi birinde okuyabilirsin - üstteki dil seçiciyi kullan.",
     "signoff": "Sevgiler,",
     "title": "KaraokeHunt kullanıcıları için bir not"
+  },
+  "karaokehuntNewsLetter": {
+    "apology": "Bu mesaj muhtemelen biraz beklenmedik oldu. Karaoke severler için neler geliştirdiğimi duymak üzere uzun zaman önce kaydolmuştun ve sonra... sessizliğe büründüm. Bunun için kusura bakma. Eğer benden bir daha hiç haber almak istemiyorsan hiç darılmam; sadece e-postama cevap ver, sana bir daha e-posta göndermem.",
+    "creditsBefore": "Henüz sadece bir fikirken bu listede yer aldığın için, bunu ilk deneyenlerden biri olmanı çok isterim. İlk videon benden (kaydolduğunda ücretsiz kredi hesabına yüklenir) ve bu bağlantı üzerinden kaydolmak, önümüzdeki 3 ay boyunca yapacağın diğer tüm videolarda sana %50 indirim sağlar:",
+    "greeting": "Selam, ben KaraokeHunt / Nomad Karaoke'den Andrew.",
+    "signoff": "Hadi git ve saçma sapan bir şarkı söyle,",
+    "stillHere": "Hâlâ burada mısın? O zaman sana işin eğlenceli kısmını anlatayım: Üzerinde çalıştığım şey bitti ve dürüst olmak gerekirse ilk başta söz verdiğimden çok daha iyi oldu.",
+    "thatsIt": "İşte bu kadar; satış hunisi yok, ardı arkası kesilmeyen takip e-postaları yok. Eğer bir video yaparsan, nasıl sonuçlandığını duymayı gerçekten çok isterim. Sadece bu e-postaya cevap vermen yeterli, karşında gerçekten ben varım.",
+    "title": "Sana söz verdiğim o karaoke şeyi sonunda gerçek oldu",
+    "whatItIs": "Adı Nomad Karaoke Generator: İstediğin herhangi bir şarkıyı seçiyorsun (ne kadar kıyıda köşede kalmış olursa olsun, hiç fark etmez) ve sana özel, dört dörtlük bir karaoke videosu oluşturuyor. Gerçek enstrüman ayrımı (vokallerin sesi sadece kısılmıyor, gerçekten yok oluyor), kelime kelime senkronize edilmiş şarkı sözleri sunuyor ve genellikle yaklaşık yarım saat içinde hazır oluyor. Üstelik 33 dilde çalışıyor.",
+    "founderRole": "Kurucu, Nomad Karaoke",
+    "languageHint": "Bu sayfayı 33 dilden herhangi birinde okuyabilirsin - üstteki dil seçiciyi kullan."
   }
 }
