@@ -464,6 +464,34 @@ describe('PreviewVideoSection', () => {
       expect(screen.queryByRole('button', { name: 'Stop audio' })).not.toBeInTheDocument()
     })
 
+    it('shows a loading indicator until the stem actually starts playing', async () => {
+      const { ref } = renderEncoding()
+      await flush()
+      const audio = document.querySelector('audio') as HTMLAudioElement
+
+      act(() => {
+        ref.current!.auditionInstrumental('with_backing', 5)
+      })
+      await flush()
+
+      // play() was called but no sound yet — don't claim "Playing" over silence.
+      expect(screen.getByTestId('standalone-audio-loading')).toBeInTheDocument()
+      expect(screen.queryByText(/^Playing:/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Stop audio' })).toBeInTheDocument()
+
+      act(() => {
+        fireEvent.playing(audio)
+      })
+      expect(screen.queryByTestId('standalone-audio-loading')).not.toBeInTheDocument()
+      expect(screen.getByText(/^Playing:/)).toBeInTheDocument()
+
+      // A mid-play stall (seek into unbuffered audio) shows loading again.
+      act(() => {
+        fireEvent.waiting(audio)
+      })
+      expect(screen.getByTestId('standalone-audio-loading')).toBeInTheDocument()
+    })
+
     it('swaps the stem and keeps playing from the clicked position while encoding', async () => {
       // Start on the clean stem; a waveform click auditions with_backing at 5s.
       const { ref } = renderEncoding({ autoSelection: 'clean' })

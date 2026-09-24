@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Lirik Rujukan",
-      "copyAll": "Salin semua lirik rujukan"
+      "copyAll": "Salin semua lirik rujukan",
+      "collapse": "Sembunyikan lirik rujukan",
+      "expand": "Paparkan lirik rujukan",
+      "resize": "Seret untuk mengubah saiz panel lirik rujukan (dwiklik untuk tetapkan semula)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Tiada lirik rujukan ditemui untuk lagu ini. Cari semua penyedia lirik yang dikonfigurasikan atau tampal lirik secara manual untuk mendayakan pembetulan jurang.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Vokal latar dikekalkan dalam instrumental — klik untuk mendengarnya.",
       "backingVocalsWaveformRemoved": "Vokal latar yang dibuang oleh instrumental bersih — klik untuk mendengar bahagian yang akan dibuang.",
       "playingWhileEncoding": "Sedang dimainkan: {stem}",
-      "stopAudio": "Hentikan audio"
+      "stopAudio": "Hentikan audio",
+      "loadingAudio": "Memuatkan: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Jurang sebelumnya (P)",

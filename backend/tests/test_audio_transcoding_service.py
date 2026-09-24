@@ -463,3 +463,85 @@ class TestGetReviewAudioBytes:
 
         assert data == b"OggS"
         assert content_type == "audio/ogg"
+
+
+class TestTranscodeReviewStems:
+    """transcode_review_stems(): post-separation pre-transcode of review-playable stems."""
+
+    def _job(self, stems):
+        job = Mock()
+        job.job_id = "abc123"
+        job.file_urls = {"stems": stems}
+        return job
+
+    @patch("backend.services.audio_transcoding_service.subprocess")
+    def test_force_retranscodes_even_when_cached(self, mock_subprocess):
+        """Fresh stems supersede any earlier OGG: force skips the cache check."""
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_subprocess.run.return_value = Mock(returncode=0, stderr="")
+        mock_storage = Mock()
+        mock_storage.file_exists.return_value = True
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        result = service.transcode_review_stems(self._job({
+            "instrumental_clean": "jobs/abc123/stems/instrumental_clean.flac",
+            "instrumental_with_backing": "jobs/abc123/stems/instrumental_with_backing.flac",
+            "backing_vocals": "jobs/abc123/stems/backing_vocals.flac",
+            "lead_vocals": "jobs/abc123/stems/lead_vocals.flac",  # not review-playable
+        }))
+
+        assert sorted(result) == [
+            "jobs/abc123/review-audio/backing_vocals.ogg",
+            "jobs/abc123/review-audio/instrumental_clean.ogg",
+            "jobs/abc123/review-audio/instrumental_with_backing.ogg",
+        ]
+        assert mock_subprocess.run.call_count == 3
+        mock_storage.file_exists.assert_not_called()
+        uploaded = sorted(c.args[1] for c in mock_storage.upload_file.call_args_list)
+        assert uploaded == sorted(result) and "lead_vocals" not in " ".join(uploaded)
+
+    @patch("backend.services.audio_transcoding_service.subprocess")
+    def test_not_forced_uses_cache(self, mock_subprocess):
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_storage = Mock()
+        mock_storage.file_exists.return_value = True
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        result = service.transcode_review_stems(
+            self._job({"instrumental_clean": "jobs/abc123/stems/instrumental_clean.flac"}),
+            force=False,
+        )
+        assert result == ["jobs/abc123/review-audio/instrumental_clean.ogg"]
+        mock_subprocess.run.assert_not_called()
+
+    @patch("backend.services.audio_transcoding_service.subprocess")
+    def test_one_failure_does_not_block_others(self, mock_subprocess):
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_subprocess.run.return_value = Mock(returncode=0, stderr="")
+        mock_storage = Mock()
+
+        def _download(src, dest):
+            if "with_backing" in src:
+                raise Exception("download failed")
+        mock_storage.download_file.side_effect = _download
+        service = AudioTranscodingService(storage_service=mock_storage)
+
+        result = service.transcode_review_stems(self._job({
+            "instrumental_clean": "jobs/abc123/stems/instrumental_clean.flac",
+            "instrumental_with_backing": "jobs/abc123/stems/instrumental_with_backing.flac",
+        }))
+        assert result == ["jobs/abc123/review-audio/instrumental_clean.ogg"]
+
+    def test_no_stems_is_noop(self):
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        mock_storage = Mock()
+        service = AudioTranscodingService(storage_service=mock_storage)
+        job = Mock()
+        job.job_id = "abc123"
+        job.file_urls = {}
+        assert service.transcode_review_stems(job) == []
+        mock_storage.download_file.assert_not_called()

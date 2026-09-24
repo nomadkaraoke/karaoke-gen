@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Versuri de referință",
-      "copyAll": "Copiază toate versurile de referință"
+      "copyAll": "Copiază toate versurile de referință",
+      "collapse": "Ascunde versurile de referință",
+      "expand": "Afișează versurile de referință",
+      "resize": "Trage pentru a redimensiona panoul cu versuri de referință (dublu clic pentru a reseta)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Nu au fost găsite versuri de referință pentru această melodie. Caută în toți furnizorii de versuri configurați sau lipește versurile manual pentru a activa corectarea golurilor.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Vocile de fundal păstrate în instrumental — dă click pentru a le asculta.",
       "backingVocalsWaveformRemoved": "Vocile de fundal pe care instrumentalul curat le elimină — dă click pentru a auzi ce ai pierde.",
       "playingWhileEncoding": "Se redă: {stem}",
-      "stopAudio": "Oprește audio"
+      "stopAudio": "Oprește audio",
+      "loadingAudio": "Se încarcă: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Golul anterior (P)",

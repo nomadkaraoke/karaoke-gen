@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referenztext",
-      "copyAll": "Gesamten Referenztext kopieren"
+      "copyAll": "Gesamten Referenztext kopieren",
+      "collapse": "Referenztext ausblenden",
+      "expand": "Referenztext anzeigen",
+      "resize": "Ziehe, um die Größe des Referenztext-Bereichs zu ändern (Doppelklick zum Zurücksetzen)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Für diesen Song wurde kein Referenztext gefunden. Durchsuche alle konfigurierten Textanbieter oder füge den Text manuell ein, um die Lückenkorrektur zu aktivieren.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Hintergrundgesang im Instrumental beibehalten — klicke, um ihn zu hören.",
       "backingVocalsWaveformRemoved": "Hintergrundgesang, den das reine Instrumental entfernt — klicke, um zu hören, was du weglassen würdest.",
       "playingWhileEncoding": "Wiedergabe: {stem}",
-      "stopAudio": "Audio stoppen"
+      "stopAudio": "Audio stoppen",
+      "loadingAudio": "Lade: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",

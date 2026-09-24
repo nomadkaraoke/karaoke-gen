@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Testo di riferimento",
-      "copyAll": "Copia tutto il testo di riferimento"
+      "copyAll": "Copia tutto il testo di riferimento",
+      "collapse": "Nascondi il testo di riferimento",
+      "expand": "Mostra il testo di riferimento",
+      "resize": "Trascina per ridimensionare il pannello del testo di riferimento (fai doppio clic per ripristinare)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Nessun testo di riferimento è stato trovato per questa canzone. Cerca in tutti i provider di testi configurati o incolla il testo manualmente per abilitare la correzione delle lacune.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Cori mantenuti nella strumentale — clicca per ascoltarli.",
       "backingVocalsWaveformRemoved": "Cori che la strumentale pulita rimuove — clicca per ascoltare cosa stai escludendo.",
       "playingWhileEncoding": "In riproduzione: {stem}",
-      "stopAudio": "Ferma audio"
+      "stopAudio": "Ferma audio",
+      "loadingAudio": "Caricamento: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",

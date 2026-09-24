@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl'
 import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Copy } from 'lucide-react'
+import { Copy, PanelRightClose } from 'lucide-react'
 import { ReferenceViewProps, TranscriptionWordPosition } from '@/lib/lyrics-review/types'
 import { calculateReferenceLinePositions } from '@/lib/lyrics-review/utils/referenceLineCalculator'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
@@ -30,6 +30,7 @@ export default function ReferenceView({
   onSearchLyrics,
   defaultArtist = '',
   defaultTitle = '',
+  onCollapse,
 }: ReferenceViewProps) {
   const t = useTranslations('lyricsReview.reference')
   const availableSources = useMemo(() => Object.keys(referenceSources), [referenceSources])
@@ -179,12 +180,27 @@ export default function ReferenceView({
               <Copy className="h-4 w-4" />
             </Button>
           </div>
-          <SourceSelector
-            availableSources={availableSources}
-            currentSource={effectiveCurrentSource}
-            onSourceChange={onSourceChange}
-            onAddLyrics={onAddLyrics}
-          />
+          <div className="flex items-center gap-1">
+            <SourceSelector
+              availableSources={availableSources}
+              currentSource={effectiveCurrentSource}
+              onSourceChange={onSourceChange}
+              onAddLyrics={onAddLyrics}
+            />
+            {onCollapse && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 min-h-0 min-w-0 p-0.5"
+                onClick={onCollapse}
+                title={t('collapse')}
+                aria-label={t('collapse')}
+                data-testid="reference-collapse"
+              >
+                <PanelRightClose className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {availableSources.length === 0 && onAddLyricsInline && onSearchLyrics && (

@@ -496,6 +496,8 @@ export interface ReferenceViewProps extends BaseViewProps {
   onSearchLyrics?: (artist: string, title: string, forceSources: string[]) => Promise<SearchLyricsResponse>
   defaultArtist?: string
   defaultTitle?: string
+  /** When set, the header shows a button that hides the Reference column (Waveforms view). */
+  onCollapse?: () => void
 }
 
 export interface RejectedSource {

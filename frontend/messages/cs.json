@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referenční text",
-      "copyAll": "Kopírovat veškerý referenční text"
+      "copyAll": "Kopírovat veškerý referenční text",
+      "collapse": "Skrýt referenční text",
+      "expand": "Zobrazit referenční text",
+      "resize": "Tažením uprav velikost panelu s referenčním textem (dvojitým kliknutím obnovíš výchozí)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Pro tuto písničku nebyl nalezen žádný referenční text. Vyhledej ve všech nakonfigurovaných poskytovatelích textů nebo vlož text manuálně pro povolení oprav mezer.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Doprovodné vokály zachované v instrumentálce — klikni a poslechni si je.",
       "backingVocalsWaveformRemoved": "Doprovodné vokály, které čistá instrumentálka odstraní — klikni a poslechni si, o co přijdeš.",
       "playingWhileEncoding": "Přehrává se: {stem}",
-      "stopAudio": "Zastavit zvuk"
+      "stopAudio": "Zastavit zvuk",
+      "loadingAudio": "Načítání: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Předchozí mezera (P)",

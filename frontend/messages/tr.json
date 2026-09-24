@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referans Sözler",
-      "copyAll": "Tüm referans sözleri kopyala"
+      "copyAll": "Tüm referans sözleri kopyala",
+      "collapse": "Referans şarkı sözlerini gizle",
+      "expand": "Referans şarkı sözlerini göster",
+      "resize": "Referans şarkı sözleri panelini yeniden boyutlandırmak için sürükle (sıfırlamak için çift tıkla)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Bu şarkı için referans söz bulunamadı. Boşluk düzeltmeyi etkinleştirmek için yapılandırılmış tüm söz sağlayıcılarını ara veya sözleri manuel olarak yapıştır.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Enstrümantalde korunan geri vokaller — dinlemek için tıkla.",
       "backingVocalsWaveformRemoved": "Temiz enstrümantalin kaldırdığı geri vokaller — neleri çıkardığını dinlemek için tıkla.",
       "playingWhileEncoding": "Çalıyor: {stem}",
-      "stopAudio": "Sesi durdur"
+      "stopAudio": "Sesi durdur",
+      "loadingAudio": "Yükleniyor: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",

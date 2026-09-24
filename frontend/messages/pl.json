@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Teksty referencyjne",
-      "copyAll": "Skopiuj wszystkie teksty referencyjne"
+      "copyAll": "Skopiuj wszystkie teksty referencyjne",
+      "collapse": "Ukryj tekst referencyjny",
+      "expand": "Pokaż tekst referencyjny",
+      "resize": "Przeciągnij, aby zmienić rozmiar panelu z tekstem referencyjnym (kliknij dwukrotnie, aby zresetować)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Nie znaleziono tekstów referencyjnych dla tej piosenki. Przeszukaj wszystkich skonfigurowanych dostawców tekstów lub wklej teksty ręcznie, aby włączyć korektę luk.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Chórki zachowane w podkładzie instrumentalnym — kliknij, aby ich posłuchać.",
       "backingVocalsWaveformRemoved": "Chórki, które usuwa czysty podkład instrumentalny — kliknij, aby posłuchać, co usuwasz.",
       "playingWhileEncoding": "Odtwarzanie: {stem}",
-      "stopAudio": "Zatrzymaj audio"
+      "stopAudio": "Zatrzymaj audio",
+      "loadingAudio": "Ładowanie: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",

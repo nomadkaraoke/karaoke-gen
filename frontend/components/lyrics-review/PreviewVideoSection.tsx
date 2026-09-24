@@ -99,6 +99,13 @@ function PreviewVideoSection(
   // Whether the stem is audibly playing standalone (no video yet) — drives the
   // stop control shown during encoding.
   const [standalonePlaying, setStandalonePlaying] = useState(false)
+  // Play was requested but no sound yet (stem still downloading/buffering) — shows a
+  // loading indicator instead of claiming "Playing" over silence.
+  const [standaloneBuffering, setStandaloneBuffering] = useState(false)
+  const onPlayRejected = useCallback(() => {
+    setStandalonePlaying(false)
+    setStandaloneBuffering(false)
+  }, [])
 
   const internalVideoRef = useRef<HTMLVideoElement | null>(null)
   const instrumentalAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -274,6 +281,7 @@ function PreviewVideoSection(
   useEffect(() => {
     if (videoMounted) {
       setStandalonePlaying(false)
+      setStandaloneBuffering(false)
       return
     }
     const audio = instrumentalAudioRef.current
@@ -282,6 +290,7 @@ function PreviewVideoSection(
     if (!isInstrumental) {
       audio.pause()
       setStandalonePlaying(false)
+      setStandaloneBuffering(false)
       return
     }
     const cue = standaloneCueRef.current
@@ -289,24 +298,46 @@ function PreviewVideoSection(
       standaloneCueRef.current = null
       if (cue.time != null) audio.currentTime = cue.time
       if (cue.play) {
-        audio.play()?.catch(() => setStandalonePlaying(false))
+        audio.play()?.catch(onPlayRejected)
         setStandalonePlaying(true)
+        setStandaloneBuffering(true)
       }
     }
     const onTime = () => onTimeUpdate?.(audio.currentTime)
     const onPlay = () => setStandalonePlaying(true)
-    const onStop = () => setStandalonePlaying(false)
+    const onStop = () => {
+      setStandalonePlaying(false)
+      setStandaloneBuffering(false)
+    }
+    // 'playing' = sound has actually started; 'waiting' = stalled for data mid-play.
+    const onPlaying = () => setStandaloneBuffering(false)
+    const onWaiting = () => {
+      if (!audio.paused) setStandaloneBuffering(true)
+    }
+    const onSeeked = () => {
+      if (!audio.paused && audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+        setStandaloneBuffering(false)
+      }
+    }
     audio.addEventListener('timeupdate', onTime)
     audio.addEventListener('play', onPlay)
     audio.addEventListener('pause', onStop)
     audio.addEventListener('ended', onStop)
+    audio.addEventListener('error', onStop)
+    audio.addEventListener('playing', onPlaying)
+    audio.addEventListener('waiting', onWaiting)
+    audio.addEventListener('seeked', onSeeked)
     return () => {
       audio.removeEventListener('timeupdate', onTime)
       audio.removeEventListener('play', onPlay)
       audio.removeEventListener('pause', onStop)
       audio.removeEventListener('ended', onStop)
+      audio.removeEventListener('error', onStop)
+      audio.removeEventListener('playing', onPlaying)
+      audio.removeEventListener('waiting', onWaiting)
+      audio.removeEventListener('seeked', onSeeked)
     }
-  }, [videoMounted, isInstrumental, instrumentalUrl, onTimeUpdate])
+  }, [videoMounted, isInstrumental, instrumentalUrl, onTimeUpdate, onPlayRejected])
 
   // Keep the overlaid instrumental audio in lock-step with the video element.
   // The video always carries the original (with-vocals) audio; when the user
@@ -423,7 +454,12 @@ function PreviewVideoSection(
         if (nextUrl === instrumentalUrl) {
           if (seekTo != null) audio.currentTime = seekTo
           if (seekTo != null || wasPlaying) {
-            audio.play()?.catch(() => setStandalonePlaying(false))
+            // Buffering until 'playing' fires; if enough is already buffered that's
+            // near-instant so the loading state never visibly flashes.
+            if (audio.paused || audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+              setStandaloneBuffering(true)
+            }
+            audio.play()?.catch(onPlayRejected)
             setStandalonePlaying(true)
           }
         } else {
@@ -435,7 +471,7 @@ function PreviewVideoSection(
         }
       },
     }),
-    [instrumentalOptions, instrumentalUrl, options]
+    [instrumentalOptions, instrumentalUrl, options, onPlayRejected]
   )
 
   if (!apiClient) return null
@@ -469,9 +505,19 @@ function PreviewVideoSection(
           )}
           {showStandaloneStop && (
             <div className="mt-4 flex items-center justify-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {t('playingWhileEncoding', { stem: instrumentalPillLabel })}
-              </span>
+              {standaloneBuffering ? (
+                <span
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                  data-testid="standalone-audio-loading"
+                >
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+                  {t('loadingAudio', { stem: instrumentalPillLabel })}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {t('playingWhileEncoding', { stem: instrumentalPillLabel })}
+                </span>
+              )}
               <Button variant="outline" size="sm" onClick={() => setIsInstrumental(false)}>
                 {t('stopAudio')}
               </Button>

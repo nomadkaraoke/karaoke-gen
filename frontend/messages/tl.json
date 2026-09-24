@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Reference Lyrics",
-      "copyAll": "Kopyahin ang lahat ng reference lyrics"
+      "copyAll": "Kopyahin ang lahat ng reference lyrics",
+      "collapse": "Itago ang reference lyrics",
+      "expand": "Ipakita ang reference lyrics",
+      "resize": "I-drag para baguhin ang sukat ng reference lyrics panel (i-double click para i-reset)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Walang nahanap na reference lyrics para sa kantang ito. Maghanap sa lahat ng naka-configure na lyrics provider o i-paste ang lyrics nang manual para i-enable ang gap correction.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Mga backing vocals na pinanatili sa instrumental — i-click para mapakinggan.",
       "backingVocalsWaveformRemoved": "Mga backing vocals na tinatanggal ng clean instrumental — i-click para mapakinggan kung ano ang mawawala.",
       "playingWhileEncoding": "Pinapatugtog: {stem}",
-      "stopAudio": "Itigil ang audio"
+      "stopAudio": "Itigil ang audio",
+      "loadingAudio": "Naglo-load: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Nakaraang gap (P)",

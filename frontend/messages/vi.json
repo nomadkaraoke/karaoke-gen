@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Lời bài hát tham khảo",
-      "copyAll": "Sao chép tất cả lời bài hát tham khảo"
+      "copyAll": "Sao chép tất cả lời bài hát tham khảo",
+      "collapse": "Ẩn lời bài hát tham khảo",
+      "expand": "Hiện lời bài hát tham khảo",
+      "resize": "Kéo để thay đổi kích thước khung lời bài hát tham khảo (nhấp đúp để đặt lại)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Không tìm thấy lời bài hát tham khảo nào cho bài hát này. Tìm kiếm tất cả các nhà cung cấp lời bài hát đã định cấu hình hoặc dán lời bài hát theo cách thủ công để bật tính năng sửa đoạn trống.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Phần hát bè được giữ lại trong nhạc nền — nhấp để nghe thử.",
       "backingVocalsWaveformRemoved": "Phần hát bè mà bản nhạc nền thuần sẽ loại bỏ — nhấp để nghe thử phần bạn sắp bỏ đi.",
       "playingWhileEncoding": "Đang phát: {stem}",
-      "stopAudio": "Dừng âm thanh"
+      "stopAudio": "Dừng âm thanh",
+      "loadingAudio": "Đang tải: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Đoạn trống trước (P)",

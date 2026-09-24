@@ -36,6 +36,9 @@ interface TimelineEditorProps {
   /** Fires when a word bar is clicked (pressed and released without dragging). Used by the
       Waveforms rows to open the Edit Segment modal, distinct from a drag which moves/resizes. */
   onWordClick?: (index: number) => void
+  /** When set, pressing a word bar deletes it instead of starting a drag — the Waveforms
+      rows pass this while Ctrl/Cmd is held, matching Ctrl-click-to-delete in Simple/Advanced. */
+  onWordDelete?: (index: number) => void
 }
 
 // Pointer travel (px) beyond which a press counts as a drag rather than a click.
@@ -56,6 +59,7 @@ export default function TimelineEditor({
   wordDecorations,
   compact = false,
   onWordClick,
+  onWordDelete,
 }: TimelineEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // Whether the current press has moved past the drag threshold. Distinguishes a click
@@ -161,6 +165,12 @@ export default function TimelineEditor({
 
     const word = words[wordIndex]
     if (word.start_time === null || word.end_time === null) return
+
+    if (onWordDelete) {
+      e.preventDefault()
+      onWordDelete(wordIndex)
+      return
+    }
 
     const initialX = e.clientX - rect.left
     const initialTime = (initialX / rect.width) * viewDuration

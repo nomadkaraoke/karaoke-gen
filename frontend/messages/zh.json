@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "参考歌词",
-      "copyAll": "复制所有参考歌词"
+      "copyAll": "复制所有参考歌词",
+      "collapse": "隐藏参考歌词",
+      "expand": "显示参考歌词",
+      "resize": "拖动以调整参考歌词面板大小（双击重置）"
     },
     "referenceEmpty": {
       "noReferenceFound": "未找到此歌曲的参考歌词。搜索所有配置的歌词提供商或手动粘贴歌词以启用未匹配片段校对。",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "伴奏中保留的背景和声——点击试听。",
       "backingVocalsWaveformRemoved": "纯净版伴奏会移除的背景和声——点击试听会被移除的部分。",
       "playingWhileEncoding": "正在播放：{stem}",
-      "stopAudio": "停止音频"
+      "stopAudio": "停止音频",
+      "loadingAudio": "正在加载：{stem}…"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",

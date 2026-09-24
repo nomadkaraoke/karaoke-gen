@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referencetekster",
-      "copyAll": "Kopier alle referencetekster"
+      "copyAll": "Kopier alle referencetekster",
+      "collapse": "Skjul referencetekst",
+      "expand": "Vis referencetekst",
+      "resize": "Træk for at ændre størrelsen på referencetekstpanelet (dobbeltklik for at nulstille)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Der blev ikke fundet nogen referencetekster til denne sang. Søg i alle konfigurerede sangtekstudbydere eller indsæt sangtekster manuelt for at aktivere hulrettelse.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Baggrundsvokaler bevaret i instrumentalen — klik for at høre dem.",
       "backingVocalsWaveformRemoved": "Baggrundsvokaler, som den rene instrumental fjerner — klik for at høre, hvad du udelader.",
       "playingWhileEncoding": "Afspiller: {stem}",
-      "stopAudio": "Stop lyd"
+      "stopAudio": "Stop lyd",
+      "loadingAudio": "Indlæser: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Forrige hul (P)",

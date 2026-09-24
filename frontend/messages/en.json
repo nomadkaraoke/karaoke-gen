@@ -993,7 +993,10 @@
     },
     "reference": {
       "title": "Reference Lyrics",
-      "copyAll": "Copy all reference lyrics"
+      "copyAll": "Copy all reference lyrics",
+      "collapse": "Hide reference lyrics",
+      "expand": "Show reference lyrics",
+      "resize": "Drag to resize the reference lyrics panel (double-click to reset)"
     },
     "referenceEmpty": {
       "noReferenceFound": "No reference lyrics were found for this song. Search all configured lyrics providers or paste lyrics manually to enable gap correction.",
@@ -1035,6 +1038,7 @@
       "audioInstrumentalBacking": "Instrumental + backing vocals",
       "audioInstrumentalClean": "Clean instrumental",
       "playingWhileEncoding": "Playing: {stem}",
+      "loadingAudio": "Loading: {stem}…",
       "stopAudio": "Stop audio",
       "backingVocalsWaveformKept": "Backing vocals kept in the instrumental — click to hear them.",
       "backingVocalsWaveformRemoved": "Backing vocals that the clean instrumental removes — click to hear what you'd be leaving out."

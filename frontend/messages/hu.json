@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referencia dalszöveg",
-      "copyAll": "Összes referencia dalszöveg másolása"
+      "copyAll": "Összes referencia dalszöveg másolása",
+      "collapse": "Referencia dalszöveg elrejtése",
+      "expand": "Referencia dalszöveg megjelenítése",
+      "resize": "Húzd a referencia dalszöveg paneljének átméretezéséhez (dupla kattintás a visszaállításhoz)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Nem találtunk referencia dalszöveget ehhez a dalhoz. Keress az összes beállított dalszöveg szolgáltatónál, vagy illeszd be a dalszöveget manuálisan a hézagjavítás engedélyezéséhez.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Az instrumentális verzióban megtartott háttérvokálok — kattints, hogy meghallgasd őket.",
       "backingVocalsWaveformRemoved": "A tiszta instrumentális verzió által eltávolított háttérvokálok — kattints, hogy meghallgasd, mit hagynál ki.",
       "playingWhileEncoding": "Lejátszás: {stem}",
-      "stopAudio": "Hang leállítása"
+      "stopAudio": "Hang leállítása",
+      "loadingAudio": "Betöltés: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Előző hézag (P)",

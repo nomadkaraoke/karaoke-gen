@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "참조 가사",
-      "copyAll": "모든 참조 가사 복사"
+      "copyAll": "모든 참조 가사 복사",
+      "collapse": "참고 가사 숨기기",
+      "expand": "참고 가사 보기",
+      "resize": "드래그하여 참고 가사 패널 크기를 조절해 보세요 (초기화하려면 더블클릭)"
     },
     "referenceEmpty": {
       "noReferenceFound": "이 노래에 대한 참조 가사를 찾을 수 없습니다. 구성된 모든 가사 제공자를 검색하거나 가사를 수동으로 붙여넣어 공백 수정을 활성화하세요.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "반주에 포함된 백보컬 — 클릭해서 들어보세요.",
       "backingVocalsWaveformRemoved": "깔끔한 반주에서 제거되는 백보컬 — 클릭해서 어떤 소리가 빠지는지 들어보세요.",
       "playingWhileEncoding": "재생 중: {stem}",
-      "stopAudio": "오디오 중지"
+      "stopAudio": "오디오 중지",
+      "loadingAudio": "불러오는 중: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "이전 공백 (P)",

@@ -15,6 +15,7 @@ Observability:
 - Logs include [job:ID] prefix for easy filtering in Cloud Logging
 - Worker start/end timing logged with WORKER_START/WORKER_END markers
 """
+import asyncio
 import logging
 import os
 import shutil
@@ -335,7 +336,13 @@ async def process_audio_separation(job_id: str) -> bool:
                     upload_span.set_attribute("stem_count", len(separation_result))
                 
                 logger.info(f"[job:{job_id}] All stems uploaded successfully")
-                
+
+                # Transcode the review-playable stems to OGG now. screens_worker's
+                # eager pass runs on lyrics completion — usually before separation —
+                # so otherwise the first preview-modal play waits on an on-demand
+                # ffmpeg run in the API (7-15 s of silence).
+                await _transcode_review_stems(job_id, job_manager, storage, job_log)
+
                 # Store processing metadata for separation provenance
                 duration = time.time() - start_time
                 job_manager.update_processing_metadata(job_id, "separation", {
@@ -619,6 +626,22 @@ async def upload_separation_results(
     if instrumental_options:
         job_manager.update_state_data(job_id, 'instrumental_options', instrumental_options)
         logger.info(f"Job {job_id}: Stored instrumental options: {list(instrumental_options.keys())}")
+
+
+async def _transcode_review_stems(job_id: str, job_manager: JobManager, storage: StorageService, job_log) -> None:
+    """Pre-transcode review stems to OGG (non-fatal: the API transcodes lazily on miss)."""
+    from backend.services.audio_transcoding_service import AudioTranscodingService
+
+    try:
+        job = job_manager.get_job(job_id)
+        if not job:
+            return
+        written = await asyncio.to_thread(
+            AudioTranscodingService(storage_service=storage).transcode_review_stems, job
+        )
+        job_log.info(f"Review stem audio transcoded: {len(written)} files")
+    except Exception as e:
+        job_log.warning(f"Review stem transcoding failed (non-fatal): {e}")
 
 
 def _store_audio_source_metadata(

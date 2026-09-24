@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "מילות ייחוס",
-      "copyAll": "העתק את כל מילות הייחוס"
+      "copyAll": "העתק את כל מילות הייחוס",
+      "collapse": "הסתר מילות מקור",
+      "expand": "הצג מילות מקור",
+      "resize": "גרור כדי לשנות את גודל חלונית מילות המקור (לחיצה כפולה לאיפוס)"
     },
     "referenceEmpty": {
       "noReferenceFound": "לא נמצאו מילות ייחוס לשיר זה. חפש בכל ספקי המילים המוגדרים או הדבק מילים ידנית כדי לאפשר תיקון פערים.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "קולות רקע שנשמרו בפלייבק — לחצו כדי לשמוע אותם.",
       "backingVocalsWaveformRemoved": "קולות רקע שהפלייבק הנקי מסיר — לחצו כדי לשמוע על מה אתם מוותרים.",
       "playingWhileEncoding": "מתנגן: {stem}",
-      "stopAudio": "עצירת שמע"
+      "stopAudio": "עצירת שמע",
+      "loadingAudio": "טוען: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "פער קודם (P)",

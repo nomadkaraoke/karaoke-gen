@@ -981,7 +981,10 @@
     },
     "reference": {
       "title": "Referenstext",
-      "copyAll": "Kopiera all referenstext"
+      "copyAll": "Kopiera all referenstext",
+      "collapse": "Dölj referenstext",
+      "expand": "Visa referenstext",
+      "resize": "Dra för att ändra storlek på referenstextpanelen (dubbelklicka för att återställa)"
     },
     "referenceEmpty": {
       "noReferenceFound": "Ingen referenstext hittades för den här låten. Sök i alla konfigurerade textleverantörer eller klistra in text manuellt för att aktivera korrigering av luckor.",
@@ -1025,7 +1028,8 @@
       "backingVocalsWaveformKept": "Bakgrundssång som behålls i instrumentalversionen — klicka för att höra den.",
       "backingVocalsWaveformRemoved": "Bakgrundssång som den rena instrumentalversionen tar bort — klicka för att höra vad du väljer bort.",
       "playingWhileEncoding": "Spelar: {stem}",
-      "stopAudio": "Stoppa ljud"
+      "stopAudio": "Stoppa ljud",
+      "loadingAudio": "Laddar: {stem}…"
     },
     "gapNavigator": {
       "previousGap": "Föregående lucka (P)",

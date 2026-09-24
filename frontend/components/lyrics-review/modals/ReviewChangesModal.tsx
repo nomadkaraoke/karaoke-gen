@@ -253,7 +253,12 @@ export default function ReviewChangesModal({
                     getWaveformData={getWaveformData}
                     currentTime={previewTime}
                     kept={selected === 'with_backing'}
-                    onSeek={(time) => previewRef.current?.auditionInstrumental('with_backing', time)}
+                    onSeek={(time) => {
+                      // Clicking the backing-vocals waveform to hear them also picks them
+                      // for the final video — it's almost always the reviewer's choice.
+                      onSelectInstrumental?.('with_backing')
+                      previewRef.current?.auditionInstrumental('with_backing', time)
+                    }}
                   />
                 )}
               </>

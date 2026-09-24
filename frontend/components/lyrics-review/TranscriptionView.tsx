@@ -189,6 +189,11 @@ export default function TranscriptionView({
                 onPlaySegment={onPlaySegment}
                 onEditSegment={(idx) => onEditSegment?.(idx)}
                 onDeleteSegment={handleDeleteSegment}
+                onDeleteWord={
+                  mode === 'delete_word' && onWordClick
+                    ? (wordId) => onWordClick({ word_id: wordId, type: 'other' })
+                    : undefined
+                }
               />
             ))}
           </div>
