@@ -144,15 +144,33 @@ def test_rate_limiter_tracks_ips_independently():
     assert rl.allow("2.2.2.2", 1000.0) is True
 
 
+_OPAQUE_EXTRA = {"filename": "", "lineno": 0, "colno": 0}
+
+
 @pytest.mark.parametrize(
     "message", ["Script error.", "Script error", "Error: Script error.", "  SCRIPT ERROR.  "]
 )
 def test_is_opaque_script_error_true(message):
-    assert is_opaque_script_error(message) is True
+    assert is_opaque_script_error(message, "window.onerror", _OPAQUE_EXTRA) is True
 
 
 @pytest.mark.parametrize(
     "message", [None, "", "TypeError: Script error.", "Script error in foo", "Load failed"]
 )
-def test_is_opaque_script_error_false(message):
-    assert is_opaque_script_error(message) is False
+def test_is_opaque_script_error_false_for_other_messages(message):
+    assert is_opaque_script_error(message, "window.onerror", _OPAQUE_EXTRA) is False
+
+
+@pytest.mark.parametrize(
+    "source,extra",
+    [
+        # A real `throw new Error("Script error.")` from our code keeps its file/line.
+        ("window.onerror", {"filename": "https://gen.nomadkaraoke.com/_next/static/chunks/x.js", "lineno": 6}),
+        ("window.onerror", {"filename": "", "lineno": 12}),
+        ("window.onerror", None),
+        ("unhandledrejection", _OPAQUE_EXTRA),
+        ("error-boundary", None),
+    ],
+)
+def test_is_opaque_script_error_false_when_error_is_located(source, extra):
+    assert is_opaque_script_error("Error: Script error.", source, extra) is False

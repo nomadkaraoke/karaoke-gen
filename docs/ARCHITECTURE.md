@@ -75,7 +75,8 @@ hard reload; the `CrashReport` card also checks `/version.json` and shows an
 Noise is dropped before alerting: benign messages (media `AbortError`, ResizeObserver
 loop) and opaque cross-origin `Script error.` events (no error object — thrown by
 third-party/extension scripts) are skipped client-side, and `/api/client-errors`
-accepts-but-ignores reports from bot user agents and bare `Script error.` messages
+accepts-but-ignores reports from bot user agents and `Script error.` window errors
+with a blank filename/lineno
 (covers older cached bundles).
 
 ## Edge Security (Cloudflare)

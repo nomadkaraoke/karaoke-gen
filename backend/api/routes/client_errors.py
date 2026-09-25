@@ -81,8 +81,8 @@ def report_client_error(payload: ClientErrorPayload, request: Request) -> Client
         )
         return ClientErrorResponse(pattern_id="bot-ignored", is_new=False)
 
-    # Opaque cross-origin "Script error." — no stack/file/line, not our code.
-    if is_opaque_script_error(payload.message):
+    # Opaque cross-origin "Script error." — no file/line, not our code.
+    if is_opaque_script_error(payload.message, payload.source, payload.extra):
         logger.info(
             "frontend_crash_ignored_opaque_script_error url=%s source=%s",
             sanitize_url(payload.url),
