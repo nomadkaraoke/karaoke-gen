@@ -368,12 +368,28 @@ def _enter_audio_edit(job_manager: JobManager, job_id: str, audio_gcs_path: str)
     except Exception as e:
         logger.warning(f"[job:{job_id}] Failed to pre-generate editor assets (non-fatal): {e}")
 
-    job_manager.transition_to_state(
+    # raise_on_invalid=False: a concurrent run (e.g. manual retry racing a Cloud
+    # Run auto-retry) may already have moved the job on — that's success, and
+    # raising would reach the caller's fail_job and clobber the advanced job.
+    transitioned = job_manager.transition_to_state(
         job_id=job_id,
         new_status=JobStatus.AWAITING_AUDIO_EDIT,
         progress=15,
-        message="Audio downloaded. Please review and edit the audio before processing."
+        message="Audio downloaded. Please review and edit the audio before processing.",
+        raise_on_invalid=False,
     )
+    if not transitioned:
+        latest = job_manager.get_job(job_id)
+        if latest and latest.status in DOWNLOAD_ALREADY_DONE_STATUSES and latest.status != JobStatus.DOWNLOADING:
+            logger.info(
+                f"[job:{job_id}] Concurrent run already advanced the job "
+                f"(status={latest.status}); treating as idempotent success"
+            )
+            return
+        raise DownloadError(
+            f"Could not transition to AWAITING_AUDIO_EDIT "
+            f"(status={latest.status if latest else 'missing'})"
+        )
     logger.info(f"[job:{job_id}] Audio download complete, awaiting audio edit")
 
 

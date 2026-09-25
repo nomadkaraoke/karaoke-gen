@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 # Sample rate used to decode audio for the RMS envelope in generate_data_only.
 _ENVELOPE_SAMPLE_RATE = 16000
 _PCM16_MAX_AMPLITUDE = 32768.0
+# Decoding a full track at 16 kHz mono takes seconds; bound pathological inputs.
+_DECODE_TIMEOUT_SECONDS = 300
 
 
 class WaveformGenerator:
@@ -228,7 +230,14 @@ class WaveformGenerator:
             "-ac", "1", "-ar", str(sample_rate),
             "-f", "s16le", "-acodec", "pcm_s16le", "-",
         ]
-        result = subprocess.run(cmd, capture_output=True, check=False)
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, check=False, timeout=_DECODE_TIMEOUT_SECONDS
+            )
+        except subprocess.TimeoutExpired as e:
+            raise RuntimeError(
+                f"ffmpeg failed to decode {audio_path}: timed out after {e.timeout}s"
+            ) from e
         if result.returncode != 0:
             raise RuntimeError(
                 f"ffmpeg failed to decode {audio_path}: "

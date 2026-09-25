@@ -480,3 +480,12 @@ class TestDataOnlyHiResDecode:
             f.write(b"not audio at all")
         with pytest.raises(RuntimeError, match="ffmpeg failed"):
             WaveformGenerator().generate_data_only(path)
+
+    def test_decode_timeout_raises_runtime_error(self, loud_audio_path):
+        import subprocess
+        from unittest.mock import patch
+
+        with patch("karaoke_gen.instrumental_review.waveform.subprocess.run",
+                   side_effect=subprocess.TimeoutExpired(cmd="ffmpeg", timeout=300)):
+            with pytest.raises(RuntimeError, match="timed out after 300"):
+                WaveformGenerator().generate_data_only(loud_audio_path)

@@ -589,6 +589,33 @@ class TestAudioEditPrepResume:
             mock_jm.fail_job.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_concurrent_run_already_in_editor_is_success(self):
+        """If another run moved the job to AWAITING_AUDIO_EDIT first, the losing
+        transition must not fail the job."""
+        stuck = _make_job(
+            status=JobStatus.DOWNLOADING,
+            state_data={'requires_audio_edit': True},
+            input_media_gcs_path="uploads/test-job-123/audio/song.flac",
+        )
+        advanced = _make_job(status=JobStatus.AWAITING_AUDIO_EDIT)
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.services.audio_transcoding_service.AudioTranscodingService"), \
+             patch("backend.services.audio_analysis_service.AudioAnalysisService"):
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.side_effect = [stuck, advanced]
+            mock_jm.transition_to_state.return_value = False
+            mock_jm_cls.return_value = mock_jm
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            assert mock_jm.transition_to_state.call_args.kwargs["raise_on_invalid"] is False
+            mock_jm.fail_job.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_retry_without_audio_edit_still_skips(self):
         """Non-edit jobs at DOWNLOADING may already have downstream workers
         triggered — keep skipping to avoid double-triggering."""
