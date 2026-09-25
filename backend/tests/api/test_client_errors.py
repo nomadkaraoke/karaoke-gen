@@ -67,6 +67,28 @@ def test_bot_report_is_accepted_but_not_persisted(client):
     client.fake_adapter.upsert_pattern.assert_not_called()
 
 
+@pytest.mark.parametrize("message", ["Script error.", "Error: Script error.", "script error"])
+def test_opaque_script_error_is_accepted_but_not_persisted(client, message):
+    # Opaque cross-origin error (older cached bundles still report it) — the
+    # "stack" is only our own handler's frame, so it's pure alert noise.
+    resp = client.post(
+        "/api/client-errors",
+        json=_payload(
+            message=message,
+            stack=f"Error: {message}\n@https://gen.nomadkaraoke.com/_next/static/chunks/x.js:6:874",
+        ),
+    )
+    assert resp.status_code == 202
+    assert resp.json()["is_new"] is False
+    client.fake_adapter.upsert_pattern.assert_not_called()
+
+
+def test_message_merely_mentioning_script_error_is_persisted(client):
+    resp = client.post("/api/client-errors", json=_payload(message="Script error in chunk loader"))
+    assert resp.status_code == 202
+    client.fake_adapter.upsert_pattern.assert_called_once()
+
+
 def test_rejects_missing_message(client):
     resp = client.post("/api/client-errors", json=_payload(message=""))
     assert resp.status_code == 422

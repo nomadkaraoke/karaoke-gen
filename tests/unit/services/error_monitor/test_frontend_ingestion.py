@@ -10,6 +10,7 @@ from backend.services.error_monitor.frontend_ingestion import (
     RateLimiter,
     build_pattern_data,
     is_bot_user_agent,
+    is_opaque_script_error,
     sanitize_url,
 )
 
@@ -141,3 +142,17 @@ def test_rate_limiter_tracks_ips_independently():
     assert rl.allow("1.1.1.1", 1000.0) is False
     # Different IP should not be affected
     assert rl.allow("2.2.2.2", 1000.0) is True
+
+
+@pytest.mark.parametrize(
+    "message", ["Script error.", "Script error", "Error: Script error.", "  SCRIPT ERROR.  "]
+)
+def test_is_opaque_script_error_true(message):
+    assert is_opaque_script_error(message) is True
+
+
+@pytest.mark.parametrize(
+    "message", [None, "", "TypeError: Script error.", "Script error in foo", "Load failed"]
+)
+def test_is_opaque_script_error_false(message):
+    assert is_opaque_script_error(message) is False
