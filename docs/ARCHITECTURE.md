@@ -72,6 +72,12 @@ Discord-alerting pipeline. `ChunkLoadError` after deploy triggers an automatic
 hard reload; the `CrashReport` card also checks `/version.json` and shows an
 "Update now" CTA when the running bundle is stale.
 
+Noise is dropped before alerting: benign messages (media `AbortError`, ResizeObserver
+loop) and opaque cross-origin `Script error.` events (no error object — thrown by
+third-party/extension scripts) are skipped client-side, and `/api/client-errors`
+accepts-but-ignores reports from bot user agents and bare `Script error.` messages
+(covers older cached bundles).
+
 ## Edge Security (Cloudflare)
 
 `api.nomadkaraoke.com` is proxied through Cloudflare (orange-cloud) — the same
