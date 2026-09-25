@@ -196,6 +196,37 @@ def test_stuck_downloading_with_lyrics_done_retriggers_screens(client):
     mock_jm.advance_to_screens_if_ready.assert_awaited_once_with("s1")
 
 
+def test_stuck_audio_edit_complete_with_lyrics_done_retriggers_screens(client):
+    """Audio-edited jobs prep at AUDIO_EDIT_COMPLETE, not DOWNLOADING. A lost
+    screens trigger there must be recovered too (job 2c1b922e sat stuck)."""
+    job = _job("ae1", JobStatus.AUDIO_EDIT_COMPLETE, minutes_stale=15)
+    job.state_data["lyrics_complete"] = True
+    mock_jm = _mock_jm(downloading_prep=[_doc("ae1", JobStatus.AUDIO_EDIT_COMPLETE)], jobs={"ae1": job})
+    mock_jm.advance_to_screens_if_ready = AsyncMock(return_value=True)
+    resp, _ = _run(client, mock_jm)
+    assert resp.json()["screens_retriggered_jobs"] == ["ae1"]
+    mock_jm.advance_to_screens_if_ready.assert_awaited_once_with("ae1")
+
+
+def test_lost_screens_sweep_queries_all_prep_statuses(client):
+    """The lost-screens sweep must query both prep statuses, not just DOWNLOADING."""
+    mock_jm = _mock_jm()
+    # Record FieldFilter args directly — other test modules may stub the
+    # firestore package, so the real FieldFilter's attributes aren't reliable.
+    with patch("google.cloud.firestore_v1.FieldFilter",
+               side_effect=lambda field, op, value: (field, op, value)):
+        _run(client, mock_jm)
+    filters = [
+        c.kwargs["filter"]
+        for c in mock_jm.firestore.db.collection.return_value.where.call_args_list
+    ]
+    in_filters = [f for f in filters if f[1] == "in"]
+    assert len(in_filters) == 1
+    assert set(in_filters[0][2]) == {
+        JobStatus.DOWNLOADING.value, JobStatus.AUDIO_EDIT_COMPLETE.value,
+    }
+
+
 def test_fresh_downloading_not_retriggered(client):
     """A DOWNLOADING job updated 2 min ago (audio still separating) is NOT re-triggered."""
     job = _job("s2", JobStatus.DOWNLOADING, minutes_stale=2)

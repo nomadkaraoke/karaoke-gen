@@ -152,6 +152,19 @@ curl -X POST "https://api.nomadkaraoke.com/api/jobs/YOUR_JOB_ID/retry" \
 
 ---
 
+## Job stuck at `downloading` or `audio_edit_complete` (no error)
+
+Two known signatures (both fixed in v0.238.5, job 2c1b922e):
+
+- **Audio-edit job stuck at `downloading`, `requires_audio_edit=true`, never reached `awaiting_audio_edit`.** The download worker was OOM-killed while pre-generating the editor waveform (a 24-bit/96kHz FLAC decoded at native resolution peaked at ~1 GB in the 1 GiB `audio-download-job`), and the Cloud Run auto-retry saw `downloading` and skipped. Since v0.238.5 the waveform decodes at 16 kHz mono and a retry resumes the unfinished editor prep. Manual fix: `POST /api/admin/jobs/{id}/reset` with `{"target_state": "awaiting_audio_edit"}`.
+- **Audio-edited job stuck at `audio_edit_complete` with `lyrics_complete=true`.** Logs show `screens not (re)triggered — status=audio_edit_complete (expected downloading)`. The lyrics→screens handoff only accepted `downloading`; since v0.238.5 it (and the `recover-stuck-jobs` lost-screens sweep) also accepts `audio_edit_complete`. Manual fix — dispatch the screens worker directly (don't use `regenerate-screens`: it restores the original status afterwards, so the job never reaches review):
+
+```bash
+curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/screens" \
+  -H "Authorization: Bearer $KARAOKE_ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"job_id": "<job_id>"}'
+```
+
 ## Job stuck at `encoding` status
 
 **Cause:** A Cloud Run deployment killed the poller mid-encoding. The GCE worker finished but nobody received the result. The health service will flag this as `encoding_stuck` after 50 minutes.

@@ -547,6 +547,100 @@ class TestAudioEditPreGeneration:
             assert any(c.kwargs.get('new_status') == JobStatus.AWAITING_AUDIO_EDIT for c in calls)
 
 
+class TestAudioEditPrepResume:
+    """A retry that finds an audio-edit job stuck at DOWNLOADING must finish the
+    editor prep instead of skipping (job 2c1b922e: first run OOM-killed while
+    generating the waveform, retry skipped, job orphaned at `downloading`)."""
+
+    @pytest.mark.asyncio
+    async def test_retry_resumes_unfinished_audio_edit_prep(self):
+        job = _make_job(
+            status=JobStatus.DOWNLOADING,
+            state_data={'requires_audio_edit': True},
+            input_media_gcs_path="uploads/test-job-123/audio/song.flac",
+        )
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.services.audio_transcoding_service.AudioTranscodingService") as MockTS, \
+             patch("backend.services.audio_analysis_service.AudioAnalysisService") as MockAS:
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+            mock_ws = AsyncMock()
+            mock_ws_factory.return_value = mock_ws
+            MockAS.return_value.cache_waveform_data.return_value = ([0.1], 1.0)
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            mock_dl.assert_not_awaited()
+            MockTS.return_value.transcode_if_needed.assert_called_once_with(
+                "uploads/test-job-123/audio/song.flac"
+            )
+            mock_jm.transition_to_state.assert_called_once()
+            assert mock_jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.AWAITING_AUDIO_EDIT
+            mock_ws.trigger_audio_worker.assert_not_awaited()
+            mock_ws.trigger_lyrics_worker.assert_not_awaited()
+            mock_jm.fail_job.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_concurrent_run_already_in_editor_is_success(self):
+        """If another run moved the job to AWAITING_AUDIO_EDIT first, the losing
+        transition must not fail the job."""
+        stuck = _make_job(
+            status=JobStatus.DOWNLOADING,
+            state_data={'requires_audio_edit': True},
+            input_media_gcs_path="uploads/test-job-123/audio/song.flac",
+        )
+        advanced = _make_job(status=JobStatus.AWAITING_AUDIO_EDIT)
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.services.audio_transcoding_service.AudioTranscodingService"), \
+             patch("backend.services.audio_analysis_service.AudioAnalysisService"):
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.side_effect = [stuck, advanced]
+            mock_jm.transition_to_state.return_value = False
+            mock_jm_cls.return_value = mock_jm
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            assert mock_jm.transition_to_state.call_args.kwargs["raise_on_invalid"] is False
+            mock_jm.fail_job.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_retry_without_audio_edit_still_skips(self):
+        """Non-edit jobs at DOWNLOADING may already have downstream workers
+        triggered — keep skipping to avoid double-triggering."""
+        job = _make_job(
+            status=JobStatus.DOWNLOADING,
+            input_media_gcs_path="uploads/test-job-123/audio/song.flac",
+        )
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker._enter_audio_edit") as mock_enter:
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm_cls.return_value = mock_jm
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            mock_dl.assert_not_awaited()
+            mock_enter.assert_not_called()
+            mock_jm.transition_to_state.assert_not_called()
+
+
 class TestFfprobeSeconds:
     """Tests for the _ffprobe_seconds helper in duration_reconciliation."""
 

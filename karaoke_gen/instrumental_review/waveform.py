@@ -7,6 +7,7 @@ images suitable for display in the instrumental review UI.
 
 import logging
 import math
+import subprocess
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -20,6 +21,13 @@ from .models import AudibleSegment, MuteRegion
 
 
 logger = logging.getLogger(__name__)
+
+
+# Sample rate used to decode audio for the RMS envelope in generate_data_only.
+_ENVELOPE_SAMPLE_RATE = 16000
+_PCM16_MAX_AMPLITUDE = 32768.0
+# Decoding a full track at 16 kHz mono takes seconds; bound pathological inputs.
+_DECODE_TIMEOUT_SECONDS = 300
 
 
 class WaveformGenerator:
@@ -182,32 +190,60 @@ class WaveformGenerator:
         path = Path(audio_path)
         if not path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
-        
-        audio = AudioSegment.from_file(audio_path)
-        duration_seconds = len(audio) / 1000.0
-        
-        if audio.channels > 1:
-            audio = audio.set_channels(1)
-        
+
+        # Decode straight to low-rate mono 16-bit PCM rather than loading the
+        # source at native resolution: a 6-minute 24-bit/96kHz stereo FLAC
+        # peaked at ~1 GB RSS through pydub and OOM-killed the 1 GiB
+        # audio-download Cloud Run Job (job 2c1b922e). A 1000-point RMS
+        # envelope doesn't need more than a few kHz of bandwidth.
+        samples = self._decode_mono_pcm16(audio_path, _ENVELOPE_SAMPLE_RATE)
+        samples_per_ms = _ENVELOPE_SAMPLE_RATE // 1000
+        duration_ms = int(round(len(samples) * 1000 / _ENVELOPE_SAMPLE_RATE))
+        duration_seconds = duration_ms / 1000.0
+
         # Calculate window size to get desired number of points
-        duration_ms = len(audio)
         window_ms = max(1, duration_ms // num_points)
-        
-        amplitudes = []
-        for start_ms in range(0, duration_ms, window_ms):
-            end_ms = min(start_ms + window_ms, duration_ms)
-            window = audio[start_ms:end_ms]
-            
-            if window.rms > 0:
-                db = 20 * math.log10(window.rms / window.max_possible_amplitude)
-            else:
-                db = -100.0
-            
-            # Normalize to 0-1 range (mapping -60dB to 0dB -> 0 to 1)
-            normalized = max(0.0, min(1.0, (db + 60) / 60))
-            amplitudes.append(normalized)
-        
-        return amplitudes, duration_seconds
+
+        starts = np.arange(0, duration_ms, window_ms, dtype=np.int64) * samples_per_ms
+        starts = starts[starts < len(samples)]
+        if not len(starts):
+            return [], duration_seconds
+
+        squared = samples.astype(np.float64) ** 2
+        sums = np.add.reduceat(squared, starts)
+        widths = np.diff(np.append(starts, len(samples)))
+        rms = np.sqrt(sums / widths)
+
+        with np.errstate(divide="ignore"):
+            db = np.where(rms > 0, 20 * np.log10(rms / _PCM16_MAX_AMPLITUDE), -100.0)
+
+        # Normalize to 0-1 range (mapping -60dB to 0dB -> 0 to 1)
+        amplitudes = np.clip((db + 60) / 60, 0.0, 1.0)
+        return [float(a) for a in amplitudes], duration_seconds
+
+    @staticmethod
+    def _decode_mono_pcm16(audio_path: str, sample_rate: int) -> np.ndarray:
+        """Decode any ffmpeg-readable file to mono int16 samples at ``sample_rate``."""
+        cmd = [
+            AudioSegment.converter, "-nostdin", "-v", "error",
+            "-i", audio_path, "-vn",
+            "-ac", "1", "-ar", str(sample_rate),
+            "-f", "s16le", "-acodec", "pcm_s16le", "-",
+        ]
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, check=False, timeout=_DECODE_TIMEOUT_SECONDS
+            )
+        except subprocess.TimeoutExpired as e:
+            raise RuntimeError(
+                f"ffmpeg failed to decode {audio_path}: timed out after {e.timeout}s"
+            ) from e
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"ffmpeg failed to decode {audio_path}: "
+                f"{result.stderr.decode(errors='replace').strip()}"
+            )
+        return np.frombuffer(result.stdout, dtype=np.int16)
 
     def generate_peaks(
         self,

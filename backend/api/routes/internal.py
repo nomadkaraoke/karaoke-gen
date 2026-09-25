@@ -27,7 +27,7 @@ from backend.workers.video_worker import generate_video
 from backend.workers.render_video_worker import process_render_video
 from backend.api.dependencies import require_admin
 from backend.services.auth_service import AuthResult, UserType
-from backend.services.job_manager import JobManager
+from backend.services.job_manager import JobManager, PREP_PHASE_STATUSES
 from backend.services.tracing import (
     extract_trace_context,
     start_span_with_context,
@@ -1078,11 +1078,12 @@ async def recover_stuck_jobs(
         except Exception as e:
             logger.warning(f"[job:{job_id}] render re-trigger failed: {e}")
 
-    # --- DOWNLOADING with lyrics done but screens never triggered: lost screens trigger ---
+    # --- Prep phase with lyrics done but screens never triggered: lost screens trigger ---
     # The lyrics worker triggers screen generation once transcription completes
     # (audio separation is decoupled). If that dispatch is lost — historically a
     # fire-and-forget task cancelled on Cloud Run Job loop teardown, now awaited,
-    # but a Cloud Tasks enqueue can still fail — the job sits at `downloading` with
+    # but a Cloud Tasks enqueue can still fail — the job sits in its prep status
+    # (`downloading`, or `audio_edit_complete` for audio-edited jobs) with
     # lyrics_complete=True and never advances, with no error. Re-trigger is
     # idempotent (advance_to_screens_if_ready status-guards + the screens worker
     # no-ops a duplicate). Mirrors the REVIEW_COMPLETE lost-render recovery above.
@@ -1092,7 +1093,7 @@ async def recover_stuck_jobs(
     # in. DOWNLOADING is a transient processing state (jobs move through in
     # minutes), so this ceiling is far above any realistic concurrent population.
     dl_query = jobs_ref.where(
-        filter=FieldFilter("status", "==", JobStatus.DOWNLOADING.value)
+        filter=FieldFilter("status", "in", sorted(s.value for s in PREP_PHASE_STATUSES))
     ).limit(SCREENS_RECOVERY_SCAN_LIMIT).stream()
     for doc in dl_query:
         if len(screens_retriggered) >= SCREENS_RETRIGGERS_PER_TICK:
@@ -1104,7 +1105,7 @@ async def recover_stuck_jobs(
         if not _prep_screens_stalled(job):
             continue
         logger.warning(
-            f"[job:{job_id}] DOWNLOADING stalled >10 min with lyrics complete but "
+            f"[job:{job_id}] {job.status} stalled >10 min with lyrics complete but "
             "no screens — re-triggering"
         )
         try:
@@ -1167,7 +1168,7 @@ def _job_updated_age_seconds(job):
 
 
 def _prep_screens_stalled(job) -> bool:
-    """True when a DOWNLOADING job has lyrics complete but has sat >10 min without
+    """True when a prep-phase job has lyrics complete but has sat >10 min without
     advancing to screen generation — i.e. the screens trigger was lost.
 
     While audio separation is still running it keeps ``updated_at`` fresh, so this
