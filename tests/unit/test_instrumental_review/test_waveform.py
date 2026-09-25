@@ -12,6 +12,7 @@ Tests cover:
 import os
 import pytest
 from pathlib import Path
+from pydub import AudioSegment
 
 from karaoke_gen.instrumental_review import (
     WaveformGenerator,
@@ -413,3 +414,69 @@ class TestCustomDimensions:
             )
             
             assert os.path.exists(output_path)
+
+
+class TestDataOnlyHiResDecode:
+    """generate_data_only must not decode the source at native resolution.
+
+    A 6-minute 24-bit/96kHz stereo FLAC peaked at ~1 GB through pydub and
+    OOM-killed the 1 GiB audio-download Cloud Run Job (job 2c1b922e).
+    """
+
+    @pytest.fixture
+    def hires_audio_path(self, temp_dir):
+        import subprocess
+
+        path = os.path.join(temp_dir, "hires.flac")
+        subprocess.run(
+            [AudioSegment.converter, "-nostdin", "-v", "error", "-y",
+             "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=96000:duration=5",
+             "-af", "volume=-10dB", "-ac", "2",
+             "-sample_fmt", "s32", "-bits_per_raw_sample", "24", path],
+            check=True,
+        )
+        return path
+
+    def test_decodes_at_low_rate_mono(self, hires_audio_path):
+        import subprocess
+        from unittest.mock import patch
+
+        real_run = subprocess.run
+        with patch("karaoke_gen.instrumental_review.waveform.subprocess.run",
+                   side_effect=real_run) as mock_run:
+            WaveformGenerator().generate_data_only(hires_audio_path, num_points=100)
+
+        cmd = mock_run.call_args.args[0]
+        assert cmd[cmd.index("-ac") + 1] == "1"
+        assert cmd[cmd.index("-ar") + 1] == "16000"
+
+    def test_matches_native_resolution_envelope(self, hires_audio_path):
+        """Low-rate envelope ≈ the pydub native-resolution RMS envelope."""
+        import math
+
+        amplitudes, duration = WaveformGenerator().generate_data_only(
+            hires_audio_path, num_points=100
+        )
+
+        audio = AudioSegment.from_file(hires_audio_path).set_channels(1)
+        window_ms = len(audio) // 100
+        expected = []
+        for start in range(0, len(audio), window_ms):
+            w = audio[start:start + window_ms]
+            db = 20 * math.log10(w.rms / w.max_possible_amplitude) if w.rms else -100.0
+            expected.append(max(0.0, min(1.0, (db + 60) / 60)))
+
+        assert abs(duration - 5.0) < 0.01
+        assert len(amplitudes) == len(expected)
+        assert max(abs(a - e) for a, e in zip(amplitudes, expected)) < 0.01
+
+    def test_silent_audio_is_zero(self, silent_audio_path):
+        amplitudes, _ = WaveformGenerator().generate_data_only(silent_audio_path, num_points=50)
+        assert amplitudes and all(a == 0.0 for a in amplitudes)
+
+    def test_undecodable_file_raises(self, temp_dir):
+        path = os.path.join(temp_dir, "garbage.flac")
+        with open(path, "wb") as f:
+            f.write(b"not audio at all")
+        with pytest.raises(RuntimeError, match="ffmpeg failed"):
+            WaveformGenerator().generate_data_only(path)

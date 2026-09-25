@@ -25,6 +25,17 @@ from backend.services.storage_service import StorageService
 logger = logging.getLogger(__name__)
 
 
+# Statuses a job sits in while its prep workers (audio separation + lyrics) run,
+# i.e. the states from which the lyrics→screens handoff may fire. Normal jobs
+# prep at DOWNLOADING; jobs that went through the audio editor prep at
+# AUDIO_EDIT_COMPLETE (the edit-submit endpoint triggers the workers without
+# passing back through DOWNLOADING).
+PREP_PHASE_STATUSES = frozenset({
+    JobStatus.DOWNLOADING,
+    JobStatus.AUDIO_EDIT_COMPLETE,
+})
+
+
 def _mask_email(email: str) -> str:
     """Mask email for logging to protect PII. Shows first char + domain."""
     if not email or "@" not in email:
@@ -1160,7 +1171,8 @@ class JobManager:
 
         Screen generation is gated on LYRICS only (audio separation is decoupled
         so reviewers can start while it finishes), so this no-ops until lyrics are
-        done, and only fires while the job is still at ``downloading``.
+        done, and only fires while the job is still in its prep phase
+        (``downloading``, or ``audio_edit_complete`` for audio-edited jobs).
 
         Returns:
             True iff a screens dispatch was issued.
@@ -1171,13 +1183,13 @@ class JobManager:
         if not job.state_data.get('lyrics_complete', False):
             # Lyrics not finished yet — whichever worker finishes lyrics triggers.
             return False
-        if job.status != JobStatus.DOWNLOADING:
+        if job.status not in PREP_PHASE_STATUSES:
             # Already advanced past prep (or parked in a special state). Keeps the
             # audio-worker fallback from re-triggering a job that already reached
             # screens/review.
             logger.info(
                 f"Job {job_id}: screens not (re)triggered — status={job.status} "
-                "(expected downloading)"
+                "(expected downloading or audio_edit_complete)"
             )
             return False
         from backend.services.worker_service import get_worker_service

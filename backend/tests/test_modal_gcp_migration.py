@@ -121,6 +121,22 @@ class TestPipelineDecoupling:
         mock_ws.trigger_screens_worker.assert_awaited_once_with("test-001")
 
     @pytest.mark.asyncio
+    async def test_advance_triggers_screens_for_audio_edited_job(self, job_manager, mock_firestore_service):
+        """Audio-edited jobs prep at AUDIO_EDIT_COMPLETE (the edit-submit endpoint
+        triggers the workers without passing back through DOWNLOADING). The
+        handoff must still fire — job 2c1b922e stalled here."""
+        job = _make_job(state_data={"lyrics_complete": True}, status=JobStatus.AUDIO_EDIT_COMPLETE)
+        mock_firestore_service.get_job.return_value = job
+        mock_ws = MagicMock()
+        mock_ws.trigger_screens_worker = AsyncMock(return_value=True)
+
+        with patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+            result = await job_manager.advance_to_screens_if_ready("test-001")
+
+        assert result is True
+        mock_ws.trigger_screens_worker.assert_awaited_once_with("test-001")
+
+    @pytest.mark.asyncio
     async def test_advance_noop_when_lyrics_not_done(self, job_manager, mock_firestore_service):
         """No screens trigger until lyrics complete, even if audio is done."""
         job = _make_job(state_data={"lyrics_complete": False, "audio_complete": True})
