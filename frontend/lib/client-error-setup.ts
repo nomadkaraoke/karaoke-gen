@@ -31,6 +31,18 @@ function buildContext(userEmail: string | null) {
   }
 }
 
+/**
+ * Browsers hide errors thrown by cross-origin scripts (third-party tags, in-app
+ * browser/extension injections) behind a bare "Script error." with no error
+ * object, filename or line. There's nothing actionable in them — the only stack
+ * we'd get is our own handler's — so they're alert noise.
+ */
+export function isOpaqueCrossOriginError(
+  event: Pick<ErrorEvent, 'error' | 'message'>
+): boolean {
+  return event.error == null && /^Script error\.?$/i.test((event.message ?? '').trim())
+}
+
 export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
   if (installed) return
   if (typeof window === 'undefined') return
@@ -46,6 +58,7 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
   }
 
   window.addEventListener('error', (event) => {
+    if (isOpaqueCrossOriginError(event)) return
     const err = event.error ?? new Error(event.message || 'Unknown window error')
     void (async () => {
       const reloaded = await maybeReloadForChunkError(err)

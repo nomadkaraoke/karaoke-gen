@@ -19,6 +19,7 @@ from backend.services.error_monitor.frontend_ingestion import (
     RateLimiter,
     build_pattern_data,
     is_bot_user_agent,
+    is_opaque_script_error,
     sanitize_url,
 )
 
@@ -79,6 +80,15 @@ def report_client_error(payload: ClientErrorPayload, request: Request) -> Client
             payload.source,
         )
         return ClientErrorResponse(pattern_id="bot-ignored", is_new=False)
+
+    # Opaque cross-origin "Script error." — no file/line, not our code.
+    if is_opaque_script_error(payload.message, payload.source, payload.extra):
+        logger.info(
+            "frontend_crash_ignored_opaque_script_error url=%s source=%s",
+            sanitize_url(payload.url),
+            payload.source,
+        )
+        return ClientErrorResponse(pattern_id="opaque-script-error-ignored", is_new=False)
 
     report = FrontendErrorReport(
         message=payload.message,

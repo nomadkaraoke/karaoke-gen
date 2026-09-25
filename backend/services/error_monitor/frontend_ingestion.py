@@ -50,6 +50,26 @@ def is_bot_user_agent(user_agent: str | None) -> bool:
     return bool(_BOT_UA_RE.search(user_agent))
 
 
+# Browsers mask errors from cross-origin scripts (third-party tags, in-app
+# browser/extension injections) as a bare "Script error." with no error object,
+# file or line — nothing actionable. The frontend drops these at the source; this
+# also covers older cached bundles that still report them (as "Error: Script
+# error." whose stack is only our own window.onerror handler's frame, so the stack
+# can't be used to tell them apart). The discriminator is the ErrorEvent's own
+# filename/lineno, which browsers blank for opaque errors — a genuine
+# `throw new Error("Script error.")` from our code keeps its file/line and is kept.
+_OPAQUE_SCRIPT_ERROR_RE = re.compile(r"^(?:Error:\s*)?Script error\.?$", re.IGNORECASE)
+
+
+def is_opaque_script_error(message: str | None, source: str | None = None, extra: dict | None = None) -> bool:
+    """Return True for the browser's opaque cross-origin "Script error." report."""
+    if not message or not _OPAQUE_SCRIPT_ERROR_RE.match(message.strip()):
+        return False
+    if source != "window.onerror" or not isinstance(extra, dict):
+        return False
+    return not extra.get("filename") and not extra.get("lineno")
+
+
 @dataclass
 class FrontendErrorReport:
     """In-memory representation of an inbound crash report."""
