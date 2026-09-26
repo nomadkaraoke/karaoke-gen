@@ -122,7 +122,7 @@ def create_encoding_worker_fallback_vms(
     every lane at once (incident 2026-08-12). Each entry's machine_type and
     disk_type come from EncodingWorkerConfig.FALLBACKS — n2 uses pd-balanced
     because it does not support hyperdisk-balanced. Cost when stopped is just
-    the boot disk (~$10/mo each).
+    the 50 GB boot disk (~$4-5/mo each).
     """
     startup_script = read_script("encoding_worker.sh")
     custom_image = f"projects/{PROJECT_ID}/global/images/family/encoding-worker"

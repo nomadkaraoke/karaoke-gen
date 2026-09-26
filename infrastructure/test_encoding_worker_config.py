@@ -112,3 +112,24 @@ def test_original_c4d_fallbacks_unchanged():
                  "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"}
     assert b == {"suffix": "b", "zone_suffix": "b",
                  "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"}
+
+
+def test_worker_boot_disk_fits_packer_image_size():
+    """GCE cannot create a boot disk smaller than its source image's disk size.
+    The Packer image's `disk_size` must stay <= DiskSizes.ENCODING_WORKER, or
+    every worker (re)creation from the new image fails. Also keeps the
+    ENCODING_WORKER_IMAGE mirror constant honest."""
+    import re
+    from pathlib import Path
+
+    from config import DiskSizes
+
+    hcl = (Path(__file__).parent / "packer" / "encoding-worker.pkr.hcl").read_text()
+    match = re.search(r"^\s*disk_size\s*=\s*(\d+)", hcl, re.MULTILINE)
+    assert match, "disk_size not found in encoding-worker.pkr.hcl"
+    image_size = int(match.group(1))
+    assert image_size == DiskSizes.ENCODING_WORKER_IMAGE
+    assert image_size <= DiskSizes.ENCODING_WORKER
+    # Headroom floor: OS + baked venv is ~12-15 GB and per-job scratch lives in
+    # /tmp on the boot disk. Don't let a future "cost cut" starve encodes.
+    assert DiskSizes.ENCODING_WORKER >= 40

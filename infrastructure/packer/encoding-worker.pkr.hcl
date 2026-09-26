@@ -44,7 +44,12 @@ source "googlecompute" "encoding-worker" {
   # Use n2 machine type for building (c4 requires hyperdisk which isn't supported by Packer)
   # The resulting image will work on c4-standard-8 in production
   machine_type = "n2-standard-8"
-  disk_size    = 100
+  # Image disk size = the MINIMUM boot-disk size any VM created from this image
+  # can have (GCE cannot create a disk smaller than its source image). Keep it
+  # small (the provisioned OS + venv is ~12 GB) so the worker boot disk size is
+  # decided by infrastructure/config.py::DiskSizes.ENCODING_WORKER (50 GB), not
+  # pinned here. Was 100, which forced every worker onto a 100 GB disk.
+  disk_size    = 30
   disk_type    = "pd-ssd" # Use SSD for faster builds
 
   # Image naming - uses timestamp for versioning, family for latest
