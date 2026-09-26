@@ -111,6 +111,8 @@ export interface Job {
   url?: string;
   artist?: string;
   title?: string;
+  /** Audio-editor tempo change (0.9 = 90% speed); when set, title carries a "(90% Tempo)" label. */
+  tempo_factor?: number | null;
   filename?: string;
   error_message?: string;
   error_details?: Record<string, any>;

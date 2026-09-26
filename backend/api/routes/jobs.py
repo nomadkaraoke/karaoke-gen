@@ -31,6 +31,7 @@ from backend.models.requests import (
     CreateCustomInstrumentalRequest,
 )
 from backend.services.job_manager import JobManager
+from backend.services.tempo_label import apply_tempo_to_title
 from backend.services.worker_service import get_worker_service
 from backend.services.storage_service import StorageService
 from backend.services.theme_service import get_theme_service
@@ -478,8 +479,16 @@ async def edit_completed_track(
     if request.artist and request.artist != job.artist:
         update_payload["artist"] = request.artist
         metadata_updated = True
-    if request.title and request.title != job.title:
-        update_payload["title"] = request.title
+    # A tempo-changed track keeps its "(90% Tempo)" label whatever the user
+    # renames it to — the audio is still at that tempo.
+    job_tempo_factor = getattr(job, "tempo_factor", None)
+    requested_title = (
+        apply_tempo_to_title(request.title, job_tempo_factor)
+        if request.title and job_tempo_factor is not None
+        else request.title
+    )
+    if requested_title and requested_title != job.title:
+        update_payload["title"] = requested_title
         metadata_updated = True
 
     # If metadata changed, delete screens so they get regenerated

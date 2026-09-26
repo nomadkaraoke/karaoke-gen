@@ -1118,6 +1118,71 @@ class TestResetJobToAwaitingAudioEdit:
             assert update_args["status"] == "awaiting_audio_edit"
 
 
+class TestResetClearsTempoLabel:
+    """Resetting to audio edit restores the original (normal-speed) audio, so a
+    "(90% Tempo)" label from a previous audio-edit submit must be removed."""
+
+    def _reset(self, client, job, target_state):
+        from datetime import UTC  # noqa: F401
+        from backend.services.user_service import get_user_service
+
+        mock_user_service = Mock()
+        mock_job_ref = Mock()
+        mock_user_service.db.collection.return_value.document.return_value = mock_job_ref
+        app.dependency_overrides[get_user_service] = lambda: mock_user_service
+        try:
+            with patch('backend.api.routes.admin.JobManager') as mock_jm_class:
+                mock_jm = Mock()
+                mock_jm.get_job.return_value = job
+                mock_jm.update_job.return_value = None
+                mock_jm_class.return_value = mock_jm
+                response = client.post(
+                    "/api/admin/jobs/test-job-123/reset",
+                    json={"target_state": target_state},
+                )
+        finally:
+            del app.dependency_overrides[get_user_service]
+        assert response.status_code == 200
+        merged = {}
+        for c in mock_job_ref.update.call_args_list:
+            if c.args and isinstance(c.args[0], dict):
+                merged.update(c.args[0])
+        return merged
+
+    def _job(self, tempo_factor, title):
+        from datetime import UTC
+        return Job(
+            job_id="test-job-123",
+            status=JobStatus.COMPLETE,
+            artist="Test",
+            title=title,
+            tempo_factor=tempo_factor,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            input_media_gcs_path="jobs/test-job-123/input/edited.flac",
+            state_data={
+                "original_input_media_gcs_path": "jobs/test-job-123/input/original.flac",
+                "audio_edit_stack": [{"edit_id": "e1", "operation": "tempo", "params": {"factor": 0.9}}],
+            },
+        )
+
+    def test_reset_to_audio_edit_strips_tempo_label(self, client):
+        updates = self._reset(client, self._job(0.9, "Song (90% Tempo)"), "awaiting_audio_edit")
+        assert updates["title"] == "Song"
+        assert updates["tempo_factor"] is None
+
+    def test_reset_to_audio_edit_without_tempo_leaves_title(self, client):
+        updates = self._reset(client, self._job(None, "Song"), "awaiting_audio_edit")
+        assert "title" not in updates
+        assert "tempo_factor" not in updates
+
+    def test_reset_to_review_keeps_tempo_label(self, client):
+        # Audio is unchanged by a review reset — still tempo-adjusted.
+        updates = self._reset(client, self._job(0.9, "Song (90% Tempo)"), "awaiting_review")
+        assert "title" not in updates
+        assert "tempo_factor" not in updates
+
+
 class TestResetBumpsWorkerGenerationFence:
     """A reset is a 'stop what you're doing' event for in-flight workers.
 

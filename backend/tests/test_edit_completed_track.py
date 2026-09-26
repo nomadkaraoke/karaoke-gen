@@ -300,3 +300,35 @@ class TestEditCleanup:
         data = response.json()
         assert "cleanup_results" in data
         assert "gcs_finals" in data["cleanup_results"]
+
+
+class TestEditPreservesTempoLabel:
+    """A tempo-changed track keeps its "(NN% Tempo)" label through title edits."""
+
+    def _edit(self, client, mock_job_manager, complete_job, auth_headers, body, tempo_factor, title):
+        complete_job.tempo_factor = tempo_factor
+        complete_job.title = title
+        mock_job_manager.get_job.return_value = complete_job
+        with patch('backend.api.routes.jobs.FirestoreService') as mock_fs_cls:
+            job_ref = mock_fs_cls.return_value.db.collection.return_value.document.return_value
+            response = client.post("/api/jobs/test-edit-123/edit", headers=auth_headers, json=body)
+        assert response.status_code == 200
+        return response.json(), job_ref.update.call_args[0][0]
+
+    def test_renamed_title_keeps_tempo_label(self, client, mock_job_manager, complete_job, auth_headers):
+        data, payload = self._edit(client, mock_job_manager, complete_job, auth_headers,
+                                   {"title": "Better Name"}, 0.9, "Test Song (90% Tempo)")
+        assert data["metadata_updated"] is True
+        assert payload["title"] == "Better Name (90% Tempo)"
+
+    def test_removing_label_is_not_allowed(self, client, mock_job_manager, complete_job, auth_headers):
+        data, payload = self._edit(client, mock_job_manager, complete_job, auth_headers,
+                                   {"title": "Test Song"}, 0.9, "Test Song (90% Tempo)")
+        # Re-labeled back to the existing title -> no metadata change at all
+        assert data["metadata_updated"] is False
+        assert "title" not in payload
+
+    def test_normal_tempo_title_edit_unchanged(self, client, mock_job_manager, complete_job, auth_headers):
+        _, payload = self._edit(client, mock_job_manager, complete_job, auth_headers,
+                                {"title": "Better Name"}, None, "Test Song")
+        assert payload["title"] == "Better Name"

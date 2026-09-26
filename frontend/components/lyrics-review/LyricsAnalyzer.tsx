@@ -1743,8 +1743,8 @@ export default function LyricsAnalyzer({
             onAddLyrics={() => setIsAddLyricsModalOpen(true)}
             onAddLyricsInline={handleAddLyrics}
             onSearchLyrics={handleSearchLyrics}
-            defaultArtist={data.metadata?.artist || ''}
-            defaultTitle={data.metadata?.title || ''}
+            defaultArtist={data.metadata?.lyrics_artist || data.metadata?.artist || ''}
+            defaultTitle={data.metadata?.lyrics_title || data.metadata?.title || ''}
           />
           </div>
           </>
@@ -1889,8 +1889,8 @@ export default function LyricsAnalyzer({
           onClose={() => setIsAddLyricsModalOpen(false)}
           onAdd={handleAddLyrics}
           onSearch={handleSearchLyrics}
-          defaultArtist={data.metadata?.artist || ''}
-          defaultTitle={data.metadata?.title || ''}
+          defaultArtist={data.metadata?.lyrics_artist || data.metadata?.artist || ''}
+          defaultTitle={data.metadata?.lyrics_title || data.metadata?.title || ''}
         />
 
         <FindReplaceModal
