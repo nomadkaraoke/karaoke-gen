@@ -361,6 +361,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
   const [showHistory, setShowHistory] = useState(false)
   const [showTempoDialog, setShowTempoDialog] = useState(false)
   const [tempoDraft, setTempoDraft] = useState(100) // percent
+  const tempoButtonRef = useRef<HTMLButtonElement>(null)
   const [showGuidance, setShowGuidance] = useState(() => {
     if (typeof window === "undefined") return true
     return localStorage.getItem("audio-editor-guidance-dismissed") !== "true"
@@ -692,6 +693,8 @@ export function AudioEditor({ job }: AudioEditorProps) {
   function closeTempoDialog() {
     setShowTempoDialog(false)
     setTempoDraft(100)
+    // Return keyboard focus to the trigger (focus was moved into the dialog)
+    requestAnimationFrame(() => tempoButtonRef.current?.focus())
   }
 
   async function handleApplyTempo() {
@@ -1043,6 +1046,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
           <Button
             variant="outline"
             size="sm"
+            ref={tempoButtonRef}
             onClick={openTempoDialog}
             disabled={isOperating}
             className="text-xs h-7"
@@ -1301,11 +1305,15 @@ export function AudioEditor({ job }: AudioEditorProps) {
             className="rounded-lg border p-6 max-w-md w-full space-y-4"
             style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
             data-testid="tempo-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tempo-dialog-title"
+            aria-describedby="tempo-dialog-description"
           >
-            <h2 className="text-lg font-semibold" style={{ color: "var(--text)" }}>
+            <h2 id="tempo-dialog-title" className="text-lg font-semibold" style={{ color: "var(--text)" }}>
               {t('tempoTitle')}
             </h2>
-            <p className="text-sm text-muted-foreground">{t('tempoDescription')}</p>
+            <p id="tempo-dialog-description" className="text-sm text-muted-foreground">{t('tempoDescription')}</p>
 
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
@@ -1326,6 +1334,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 onChange={(e) => setTempoDraft(Number(e.target.value))}
                 className="w-full"
                 data-testid="tempo-slider"
+                autoFocus
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{t('tempoSlower')}</span>

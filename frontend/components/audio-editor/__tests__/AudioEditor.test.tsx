@@ -541,8 +541,9 @@ describe("AudioEditor", () => {
       render(<AudioEditor job={mockJob} />)
       fireEvent.click(await screen.findByTestId("tempo-button"))
 
-      const dialog = screen.getByTestId("tempo-dialog")
-      expect(dialog).toHaveTextContent("Change Tempo")
+      const dialog = screen.getByRole("dialog", { name: "Change Tempo" })
+      expect(dialog).toHaveAttribute("aria-modal", "true")
+      expect(screen.getByTestId("tempo-slider")).toHaveFocus()
       // Apply is disabled at 100% (no-op)
       expect(screen.getByTestId("tempo-apply")).toBeDisabled()
 
@@ -596,6 +597,7 @@ describe("AudioEditor", () => {
       slider.focus()
       fireEvent.keyDown(slider, { key: "Escape" })
       expect(screen.queryByTestId("tempo-dialog")).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId("tempo-button")).toHaveFocus())
     })
 
     it("cancel closes the dialog without applying", async () => {
