@@ -410,3 +410,58 @@ def _mint_review_link(user_service: UserService, token: str, job_id: str, locale
         raise HTTPException(status_code=502, detail="link_unavailable")
     started_by = (job.state_data or {}).get("review_started_by") if status == "in_review" else None
     return url, status, started_by
+
+
+# ---------------------------------------------------------- search resolve
+
+class ResolveRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=200)
+
+
+_RESOLVE_CACHE_MAX = 2000
+_RESOLVE_PER_MINUTE = 120
+_resolve_cache: "dict[str, dict]" = {}
+_resolve_calls: "list[float]" = []
+_resolve_lock = threading.Lock()
+
+
+def _resolve_budget_ok() -> bool:
+    """Partner-wide in-process cap on AI calls (cache hits are free)."""
+    import time
+    now = time.monotonic()
+    with _resolve_lock:
+        while _resolve_calls and _resolve_calls[0] < now - 60:
+            _resolve_calls.pop(0)
+        if len(_resolve_calls) >= _RESOLVE_PER_MINUTE:
+            return False
+        _resolve_calls.append(now)
+        return True
+
+
+@router.post("/catalog/resolve")
+async def catalog_resolve(body: ResolveRequest, _secret: str = Depends(require_kjbox_partner)):
+    """Split + auto-correct a singer's free-text song search.
+
+    kjbox calls this only when its own catalogue search found nothing, then
+    re-searches with the canonical artist/title and shows "Corrected to … —
+    you typed … Undo" (gen's AudioSourceStep correction, for the singer
+    search box). Response = the match judge verdict shape + typed_artist /
+    typed_title. Never 5xx on model trouble: kind "none".
+    """
+    from backend.services.match_judge.free_text import _none, resolve_free_text
+
+    query = " ".join(body.query.split())
+    key = query.casefold()
+    with _resolve_lock:
+        hit = _resolve_cache.get(key)
+    if hit is not None:
+        return hit
+    if not _resolve_budget_ok():
+        raise HTTPException(status_code=429, detail="rate_limited")
+    verdict = await resolve_free_text(query)
+    if verdict.get("reason") != "unavailable":   # don't cache transient failures
+        with _resolve_lock:
+            if len(_resolve_cache) >= _RESOLVE_CACHE_MAX:
+                _resolve_cache.pop(next(iter(_resolve_cache)))
+            _resolve_cache[key] = verdict
+    return verdict or _none(query)

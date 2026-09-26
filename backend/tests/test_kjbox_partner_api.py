@@ -726,3 +726,50 @@ class TestReviewLink:
         assert client.post("/api/kjbox/jobs/job1/review-link", json={}, headers=H).status_code == 401
         assert client.post("/api/kjbox/jobs/job1/review-link", json={},
                            headers={"Authorization": "Bearer x"}).status_code == 403
+
+
+# ---------------------------------------------------------- search resolve
+
+class TestCatalogResolve:
+    @pytest.fixture(autouse=True)
+    def fresh(self, monkeypatch):
+        monkeypatch.setattr(kjbox, "_resolve_cache", {})
+        monkeypatch.setattr(kjbox, "_resolve_calls", [])
+        calls = []
+
+        async def fake_resolve(query):
+            calls.append(query)
+            if query == "flaky":
+                return {"kind": "none", "reason": "unavailable"}
+            return {"kind": "content", "confident": True, "canonical_artist": "The Strokes",
+                    "canonical_title": "Machu Picchu", "typed_artist": "the strokes",
+                    "typed_title": "max picu", "alternatives": [], "engine": "ai", "reason": ""}
+
+        from backend.services.match_judge import free_text
+        monkeypatch.setattr(free_text, "resolve_free_text", fake_resolve)
+        return calls
+
+    def _post(self, client, q):
+        return client.post("/api/kjbox/catalog/resolve", json={"query": q}, headers=H)
+
+    def test_resolves_and_caches(self, client, fresh):
+        r = self._post(client, "the strokes  max picu")
+        assert r.status_code == 200 and r.json()["canonical_title"] == "Machu Picchu"
+        self._post(client, "THE STROKES max picu")      # same query, folded
+        assert fresh == ["the strokes max picu"]
+
+    def test_transient_failures_are_not_cached(self, client, fresh):
+        self._post(client, "flaky")
+        self._post(client, "flaky")
+        assert fresh == ["flaky", "flaky"]
+
+    def test_rate_limited(self, client, fresh, monkeypatch):
+        monkeypatch.setattr(kjbox, "_RESOLVE_PER_MINUTE", 2)
+        assert self._post(client, "a1").status_code == 200
+        assert self._post(client, "a2").status_code == 200
+        assert self._post(client, "a3").status_code == 429
+        assert self._post(client, "a1").status_code == 200   # cache hit is free
+
+    def test_requires_partner_secret_and_valid_query(self, client):
+        assert client.post("/api/kjbox/catalog/resolve", json={"query": "x"}).status_code == 403
+        assert self._post(client, "").status_code == 422
