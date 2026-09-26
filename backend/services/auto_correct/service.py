@@ -674,7 +674,11 @@ class AutoCorrectService:
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
                 thinking={"type": "adaptive"},
-                output_config={"format": {"type": "json_schema", "schema": strict_schema}},
+                # Pin effort: Opus 5.5 defaults to "medium" (4.8 defaulted to "high").
+                output_config={
+                    "effort": "high",
+                    "format": {"type": "json_schema", "schema": strict_schema},
+                },
             )
         except Exception as exc:
             if _is_transient_model_error(exc):

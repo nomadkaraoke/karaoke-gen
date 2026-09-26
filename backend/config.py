@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     # Only used when skip_correction=false
     # When enabled, uses Gemini via Vertex AI for intelligent lyrics correction
     use_agentic_ai: bool = os.getenv("USE_AGENTIC_AI", "true").lower() in ("true", "1", "yes")
-    agentic_ai_model: str = os.getenv("AGENTIC_AI_MODEL", "vertexai/gemini-3-flash-preview")
+    agentic_ai_model: str = os.getenv("AGENTIC_AI_MODEL", "vertexai/gemini-3.8-flash")
     # Timeout for agentic correction in seconds. If correction takes longer, abort and
     # use uncorrected transcription - human review will fix any issues.
     agentic_correction_timeout_seconds: int = int(os.getenv("AGENTIC_CORRECTION_TIMEOUT_SECONDS", "180"))
@@ -105,12 +105,12 @@ class Settings(BaseSettings):
     # before granting. Fail-CLOSED: if evaluation fails, the decision becomes
     # "pending_review" (no auto-grant; an admin is notified to decide).
     credit_eval_enabled: bool = os.getenv("CREDIT_EVAL_ENABLED", "true").lower() in ("true", "1", "yes")
-    credit_eval_model: str = os.getenv("CREDIT_EVAL_MODEL", "gemini-3.1-pro-preview")
+    credit_eval_model: str = os.getenv("CREDIT_EVAL_MODEL", "gemini-3.8-flash")
 
     # Custom Lyrics (LLM-powered) — used by the Custom Lyrics mode in the
     # Edit All Lyrics modal. Stateless service: takes operator-provided
     # custom-lyrics text/file and returns transformed lyric lines.
-    custom_lyrics_model: str = os.getenv("CUSTOM_LYRICS_MODEL", "gemini-3.1-pro-preview")
+    custom_lyrics_model: str = os.getenv("CUSTOM_LYRICS_MODEL", "gemini-3.8-flash")
     custom_lyrics_max_file_mb: int = int(os.getenv("CUSTOM_LYRICS_MAX_FILE_MB", "5"))
     custom_lyrics_max_input_lines: int = int(os.getenv("CUSTOM_LYRICS_MAX_INPUT_LINES", "500"))
     custom_lyrics_max_iterations: int = int(os.getenv("CUSTOM_LYRICS_MAX_ITERATIONS", "4"))
@@ -120,7 +120,7 @@ class Settings(BaseSettings):
     # AI auto-correct suggestions — opt-in, user-triggered from the lyrics
     # review UI. Stateless: one whole-song LLM call returning word-level
     # suggestions the reviewer accepts/rejects individually.
-    auto_correct_model: str = os.getenv("AUTO_CORRECT_MODEL", "gemini-3.1-pro-preview")
+    auto_correct_model: str = os.getenv("AUTO_CORRECT_MODEL", "gemini-3.8-flash")
     # Models used by the multi-model "compare" mode (semicolon-separated —
     # Cloud Run --set-env-vars is comma-delimited). Empty = single-model only.
     auto_correct_compare_models: str = os.getenv("AUTO_CORRECT_COMPARE_MODELS", "")
@@ -175,7 +175,7 @@ class Settings(BaseSettings):
     match_judge_enabled: bool = os.getenv("MATCH_JUDGE_ENABLED", "true").lower() in (
         "true", "1", "yes",
     )
-    match_judge_model: str = os.getenv("MATCH_JUDGE_MODEL", "gemini-3.5-flash")
+    match_judge_model: str = os.getenv("MATCH_JUDGE_MODEL", "gemini-3.8-flash")
     # Bounds the AI call so a hung model never strands the submission UI. Kept
     # generous because Vertex returns 504 DEADLINE_EXCEEDED if generation can't
     # finish within this deadline (3s was too tight for gemini-3.5-flash); the
@@ -187,7 +187,7 @@ class Settings(BaseSettings):
     parse_titles_enabled: bool = os.getenv("PARSE_TITLES_ENABLED", "true").lower() in (
         "1", "true", "yes",
     )
-    parse_titles_model: str = os.getenv("PARSE_TITLES_MODEL", "gemini-3.5-flash")
+    parse_titles_model: str = os.getenv("PARSE_TITLES_MODEL", "gemini-3.8-flash")
     parse_titles_timeout_ms: int = int(os.getenv("PARSE_TITLES_TIMEOUT_MS", "20000"))
     parse_titles_max_items: int = int(os.getenv("PARSE_TITLES_MAX_ITEMS", "200"))
     # Items per Gemini call: large client batches are split into concurrent

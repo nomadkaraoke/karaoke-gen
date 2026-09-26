@@ -8,7 +8,7 @@ def test_settings_parse_titles_defaults():
     from backend.config import Settings
     s = Settings()
     assert s.parse_titles_enabled is True
-    assert s.parse_titles_model == "gemini-3.5-flash"
+    assert s.parse_titles_model == "gemini-3.8-flash"
     assert s.parse_titles_timeout_ms == 20000
     assert s.parse_titles_max_items == 200
 

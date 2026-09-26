@@ -49,12 +49,15 @@ class _Rate(TypedDict):
 MODEL_PRICING: dict[str, _Rate] = {
     # --- Anthropic (authoritative) ---
     "claude-fable-5": {"input": 10.0, "output": 50.0, "cache_read": 1.0},
+    "claude-opus-5-5": {"input": 4.0, "output": 20.0, "cache_read": 0.2},
     "claude-opus-4-8": {"input": 5.0, "output": 25.0, "cache_read": 0.5},
     "claude-sonnet-4-6": {"input": 3.0, "output": 15.0, "cache_read": 0.3},
     "claude-haiku-4-5": {"input": 1.0, "output": 5.0, "cache_read": 0.1},
     # --- Gemini (ESTIMATE — Vertex 3.x Pro preview, <=200K-token context
     #     tier; confirm against current Google pricing before trusting USD) ---
     "gemini-3.1-pro-preview": {"input": 2.0, "output": 12.0, "cache_read": 0.2},
+    # Promo rate through 2026-12-31; rises to 1.50 / 7.50 / 0.15 on 2027-01-01.
+    "gemini-3.8-flash": {"input": 0.75, "output": 3.75, "cache_read": 0.075},
 }
 
 

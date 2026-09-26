@@ -251,7 +251,7 @@ LyricsTranscriber                 LyricsTranscriber
 |---------|---------|----------|
 | Cloud Run GPU Job (L4, us-east4) | Audio stem separation — `Separator` runs directly in the audio worker Job (no HTTP hop) | Yes |
 | AudioShake | Lyrics transcription | Yes |
-| Vertex AI | Agentic AI correction (Gemini 3 Flash) | Default off (SKIP_CORRECTION=false to enable) |
+| Vertex AI | Agentic AI correction (Gemini 3.8 Flash) | Default off (SKIP_CORRECTION=false to enable) |
 | Genius | Reference lyrics | Yes |
 | Flacfetch | Audio downloads (YouTube, torrents) | Recommended* |
 | YouTube API | Video upload | Optional |

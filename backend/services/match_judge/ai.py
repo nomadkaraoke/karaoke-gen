@@ -70,9 +70,9 @@ RESPONSE_SCHEMA = {
 def _model() -> str:
     try:
         from backend.config import settings
-        return getattr(settings, "match_judge_model", "gemini-3.5-flash")
+        return getattr(settings, "match_judge_model", "gemini-3.8-flash")
     except Exception:  # pragma: no cover - config import guard
-        return "gemini-3.5-flash"
+        return "gemini-3.8-flash"
 
 
 def build_prompts(

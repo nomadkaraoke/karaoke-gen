@@ -59,9 +59,9 @@ RESPONSE_SCHEMA = {
 def _model() -> str:
     try:
         from backend.config import settings
-        return getattr(settings, "parse_titles_model", "gemini-3.5-flash")
+        return getattr(settings, "parse_titles_model", "gemini-3.8-flash")
     except Exception:  # pragma: no cover - config guard
-        return "gemini-3.5-flash"
+        return "gemini-3.8-flash"
 
 
 def build_prompts(items: list[dict]) -> tuple[str, str]:

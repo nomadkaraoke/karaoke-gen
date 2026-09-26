@@ -77,7 +77,7 @@ The verify page (`/auth/verify`) shows these states in sequence:
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
 | `CREDIT_EVAL_ENABLED` | `true` | Set to `false` to disable AI evaluation and auto-grant all credits |
-| `CREDIT_EVAL_MODEL` | `gemini-3.1-pro-preview` | Gemini model to use for evaluation |
+| `CREDIT_EVAL_MODEL` | `gemini-3.8-flash` | Gemini model to use for evaluation |
 
 ### Emergency Rollback
 
@@ -96,7 +96,7 @@ Every evaluation is logged to the `credit_evaluations` Firestore collection:
   "reasoning": "No suspicious correlations found — clean user",
   "confidence": 1.0,
   "error": null,
-  "model": "gemini-3.1-pro-preview",
+  "model": "gemini-3.8-flash",
   "signals_snapshot": {
     "fingerprint_match_count": 0,
     "ip_match_count": 0,
