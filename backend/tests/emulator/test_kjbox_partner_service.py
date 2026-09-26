@@ -8,6 +8,7 @@ set(merge=True) preserving the precomputed eval, and the FieldFilter queries
 behind the signup / show-credit caps. Run with: scripts/run-emulator-tests.sh
 """
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -33,8 +34,8 @@ def _email():
 
 
 def _issue(svc, email, **over):
-    kwargs = dict(needs_credit_eval=True, locale="en", ui_locale="en", venue="Dive",
-                  ip_address=None, user_agent=None)
+    kwargs = dict(max_per_hour=5, needs_credit_eval=True, locale="en", ui_locale="en",
+                  venue="Dive", ip_address=None, user_agent=None)
     kwargs.update(over)
     return svc.issue_code(email, **kwargs)
 
@@ -70,8 +71,31 @@ class TestCodes:
         assert record["credit_eval_decision"] == "grant"
         assert second.needs_credit_eval is False  # eval already stored
         assert len(record["send_times"]) == 2
-        assert svc.is_email_throttled(email, 2) and not svc.is_email_throttled(email, 3)
+        with pytest.raises(kps.CodeThrottled):
+            _issue(svc, email, max_per_hour=2)
         assert svc.verify_code(email, second.code)[0] == kps.VerifyOutcome.OK
+
+    def test_throttle_holds_under_concurrency(self, svc):
+        """Throttle check + send_times append + code write are one transaction."""
+        email = _email()
+
+        def attempt(_):
+            try:
+                _issue(svc, email, max_per_hour=5)
+                return True
+            except (kps.CodeThrottled, kps.TransactionContention):
+                return False
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(attempt, range(12)))
+        # Never more than the cap, and every success is recorded exactly once
+        assert 1 <= sum(results) <= 5
+        assert len(svc.get_code_record(email)["send_times"]) == sum(results)
+        # Sequential top-up reaches exactly the cap, then throttles
+        while len(svc.get_code_record(email)["send_times"]) < 5:
+            _issue(svc, email, max_per_hour=5)
+        with pytest.raises(kps.CodeThrottled):
+            _issue(svc, email, max_per_hour=5)
 
     def test_expired(self, svc):
         email = _email()
@@ -91,13 +115,67 @@ class TestCaps:
         )
         assert svc.count_recent_signups() == before + 1
 
-    def test_show_credit_idempotency_and_count(self, svc):
-        email = _email()
-        key = f"job-{uuid.uuid4().hex}"
-        assert svc.claim_show_credit(key, email, "Dive") is True
-        assert svc.claim_show_credit(key, email, "Dive") is False
-        assert svc.show_credit_already_processed(key)
-        assert svc.count_recent_show_credits(email) == 1
-        svc.release_show_credit(key)
-        assert not svc.show_credit_already_processed(key)
-        assert svc.count_recent_show_credits(email) == 0
+
+
+def _seed_user(svc, credits=0):
+    email = _email()
+    ref = svc.db.collection("gen_users").document(email)
+    ref.set({"email": email, "credits": credits, "credit_transactions": []})
+    return email, ref
+
+
+def _grant(svc, ref, email, key, **over):
+    kwargs = dict(venue="Dive", only_if_empty=False, max_per_24h=5)
+    kwargs.update(over)
+    return svc.grant_show_credit(ref, email, key, **kwargs)
+
+
+class TestShowCredit:
+    def test_grant_idempotent_and_recorded(self, svc):
+        email, ref = _seed_user(svc, credits=0)
+        key = uuid.uuid4().hex
+        assert _grant(svc, ref, email, key) == kps.ShowCreditResult(granted=True, credits=1)
+        assert _grant(svc, ref, email, key) == kps.ShowCreditResult(granted=False, credits=1)
+        data = ref.get().to_dict()
+        assert data["credits"] == 1
+        assert data["credit_transactions"][-1]["reason"] == "kjbox show credit"
+
+    def test_only_if_empty_does_not_claim_key(self, svc):
+        email, ref = _seed_user(svc, credits=1)
+        key = uuid.uuid4().hex
+        assert _grant(svc, ref, email, key, only_if_empty=True).granted is False
+        assert _grant(svc, ref, email, key).granted is True
+        assert ref.get().to_dict()["credits"] == 2
+
+    def test_cap_and_credits_hold_under_concurrency(self, svc):
+        email, ref = _seed_user(svc, credits=0)
+
+        prefix = uuid.uuid4().hex
+
+        def attempt(i):
+            try:
+                return _grant(svc, ref, email, f"{prefix}-{i}", max_per_24h=3).granted
+            except (kps.ShowCreditCapReached, kps.TransactionContention):
+                return False
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(attempt, range(8)))
+        granted = sum(results)
+        assert 1 <= granted <= 3
+        # Credits exactly match grants (no lost updates, no over-grant)
+        assert ref.get().to_dict()["credits"] == granted
+
+    def test_same_key_concurrently_grants_once(self, svc):
+        email, ref = _seed_user(svc, credits=0)
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            key = uuid.uuid4().hex
+
+            def attempt(_):
+                try:
+                    return _grant(svc, ref, email, key).granted
+                except kps.TransactionContention:
+                    return False
+
+            results = list(pool.map(attempt, range(6)))
+        assert sum(results) == 1
+        assert ref.get().to_dict()["credits"] == 1

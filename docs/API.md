@@ -2764,17 +2764,18 @@ POST /api/kjbox/auth/send-code
 → `200 {"status": "sent"}`. Emails a 6-digit code (10-minute expiry; a new code
 invalidates the previous one). Only an HMAC of the code (peppered with the
 partner secret) is stored, in Firestore `kjbox_login_codes` (doc id =
-sha256(email)). Creates the gen user if needed with `signup_source="kjbox"` +
-`signup_venue` (no `signup_ip` — the caller's IP is the whole venue's) and
-precomputes the welcome-credit AI evaluation so verify is instant.
+sha256(email)). **No gen account is created here** — the venue/locale ride on
+the code record and the account is created at verify-code, so unverified
+addresses can't burn the signup cap or get accounts made for them. The
+welcome-credit AI evaluation is precomputed onto the code record so verify is
+instant.
 
 - Disposable domain → `422` (same detail as magic links); blocked email/IP →
   silently `200 {"status": "sent"}`; malformed email → `422 {"detail": "invalid_email"}`.
-- gen's per-IP signup cap does **not** apply. Instead: max
-  `KJBOX_SIGNUP_CAP_PER_24H` (default 100) **new** accounts per rolling 24h
-  partner-wide → `429 {"detail": "signup_cap"}` (existing users unaffected;
-  counted in `kjbox_signups`); max `KJBOX_CODES_PER_EMAIL_PER_HOUR` (default 5)
-  codes per email per rolling hour → `429 {"detail": "too_many_codes"}`.
+- Max `KJBOX_CODES_PER_EMAIL_PER_HOUR` (default 5) codes per email per rolling
+  hour → `429 {"detail": "too_many_codes"}`. The check, the send-time append and
+  the code write are one Firestore transaction (parallel requests can't exceed
+  it; a transaction giving up under contention also returns this 429).
 
 ### Verify code
 
@@ -2784,7 +2785,13 @@ POST /api/kjbox/auth/verify-code
 ```
 
 → `200 {"session_token", "user": <UserPublic, same shape as magic-link verify>,
-"credits_granted": int, "credit_status": str}`. Runs the same post-verification
+"credits_granted": int, "credit_status": str}`. If the email has no gen account
+yet, this is where it is created, with `signup_source="kjbox"` + `signup_venue`
+(no `signup_ip` — the caller's IP is the whole venue's). gen's per-IP signup cap
+does **not** apply; instead max `KJBOX_SIGNUP_CAP_PER_24H` (default 100) new
+**verified** accounts per rolling 24h partner-wide (counted in `kjbox_signups`)
+→ `429 {"detail": "signup_cap"}`, checked before the code is consumed (existing
+users are never capped). Then runs the same post-verification
 steps as `GET /api/users/auth/verify` (shared helper `complete_verified_login`):
 email verified + last login, welcome credit (with the precomputed eval), locale
 persistence (from the send-code `locale`), a normal gen session, and the welcome
@@ -2801,16 +2808,26 @@ create()-only marker in `kjbox_login_code_uses`.
 ```http
 POST /api/kjbox/credits/show-credit
 Authorization: Bearer <singer session_token>
-{"idempotency_key": "kjbox-req-1234", "venue": "The Dive Bar"}
+{"idempotency_key": "<sha256 hex>", "venue": "The Dive Bar", "only_if_empty": false}
 ```
 
 → `200 {"granted": bool, "credits": int}`. Quietly adds 1 credit (reason
 `kjbox show credit`, **no** credits-added email) so the make-it job is paid for
-by Nomad. Idempotent per `idempotency_key` (≤128 chars; processed keys in
-`kjbox_show_credits`) — a repeat returns `granted: false` with the current
-balance. Max `KJBOX_SHOW_CREDITS_PER_USER_PER_24H` (default 5) per user per
-rolling 24h → `429 {"detail": "show_credit_cap"}`. Missing/invalid session →
-`401 {"detail": "invalid_session"}`.
+by Nomad.
+
+- `only_if_empty` (default `false`): grant only if the user's balance is < 1.
+- `idempotency_key` (≤128 chars) is claimed **only when a credit is actually
+  granted** (stored in `kjbox_show_credits`), so kjbox can call with
+  `only_if_empty=true` at search time and again with the SAME key and
+  `only_if_empty=false` at job creation: the second call grants only if the
+  first didn't. A repeat of an already-granting key returns `granted: false`
+  with the current balance.
+- Max `KJBOX_SHOW_CREDITS_PER_USER_PER_24H` (default 5) grants per user per
+  rolling 24h → `429 {"detail": "show_credit_cap"}` (non-grants don't count).
+- Idempotency check, only-if-empty check, cap check, key claim and the credit
+  increment are one Firestore transaction; if it gives up under contention →
+  `409 {"detail": "busy_retry"}` (nothing written — retry with the same key).
+- Missing/invalid session → `401 {"detail": "invalid_session"}`.
 
 ### Review emails for kjbox jobs
 
@@ -2819,6 +2836,10 @@ sign-in link** (magic-link token, purpose `job_review:<job_id>`, 72h, single use
 in the review-needed email and the 24h review reminder instead of the bare
 review URL — these singers have never signed in on the gen website. Other jobs
 are unchanged.
+
+Note: `request_metadata.custom_headers` (all `X-*` request headers, returned to
+the job owner by `GET /api/jobs/{id}`) stores credential-looking headers
+(names containing secret/token/key/auth/password/…) as `"[redacted]"`.
 
 ### Vocals Peaks (Waveforms review mode)
 

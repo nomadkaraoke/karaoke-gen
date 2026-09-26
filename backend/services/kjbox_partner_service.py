@@ -12,11 +12,17 @@ Collections:
                              precomputed welcome-credit evaluation.
 - ``kjbox_login_code_uses``  create()-only markers keyed by code_id — makes a code
                              strictly single-use even under concurrent verifies.
-- ``kjbox_signups``          one doc per NEW gen account created via kjbox (the
-                             partner-wide rolling-24h signup cap counts these).
-- ``kjbox_show_credits``     one doc per processed idempotency key (id =
-                             sha256(key)); create() makes grants idempotent and the
-                             per-user rolling-24h cap counts these.
+- ``kjbox_signups``          one doc per NEW gen account created via kjbox — written
+                             only once the email is VERIFIED (the partner-wide
+                             rolling-24h signup cap counts these).
+- ``kjbox_show_credits``     one doc per idempotency key that actually GRANTED a
+                             credit (id = sha256(key)).
+- ``kjbox_show_credit_users`` per-user doc (id = sha256(email)) with recent grant
+                             timestamps; read+written in the grant transaction so
+                             the per-user rolling-24h cap can't be raced.
+
+Throttle/cap/idempotency decisions run inside Firestore transactions so
+concurrent requests can't slip past them.
 """
 from __future__ import annotations
 
@@ -24,12 +30,16 @@ import hashlib
 import hmac
 import logging
 import secrets
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from google.api_core import exceptions as google_exceptions
+from google.cloud import firestore
 from google.cloud.firestore_v1 import FieldFilter, Increment
+
+from backend.models.user import CreditTransaction
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +47,14 @@ LOGIN_CODES_COLLECTION = "kjbox_login_codes"
 LOGIN_CODE_USES_COLLECTION = "kjbox_login_code_uses"
 SIGNUPS_COLLECTION = "kjbox_signups"
 SHOW_CREDITS_COLLECTION = "kjbox_show_credits"
+SHOW_CREDIT_USERS_COLLECTION = "kjbox_show_credit_users"
 
 CODE_LENGTH = 6
 CODE_EXPIRY_MINUTES = 10
 MAX_VERIFY_ATTEMPTS = 5
 SHOW_CREDIT_REASON = "kjbox show credit"
+
+TRANSACTION_MAX_ATTEMPTS = 10
 
 _THROTTLE_WINDOW = timedelta(hours=1)
 _DAY = timedelta(hours=24)
@@ -80,6 +93,24 @@ class IssuedCode:
     needs_credit_eval: bool
 
 
+class TransactionContention(Exception):
+    """A Firestore transaction gave up after repeated contention (nothing written)."""
+
+
+class CodeThrottled(Exception):
+    """Per-email code throttle hit (raised out of the issue transaction)."""
+
+
+class ShowCreditCapReached(Exception):
+    """Per-user rolling-24h show-credit cap hit."""
+
+
+@dataclass
+class ShowCreditResult:
+    granted: bool
+    credits: int
+
+
 class VerifyOutcome:
     OK = "ok"
     EXPIRED = "expired"
@@ -90,11 +121,27 @@ class VerifyOutcome:
 class KjboxPartnerService:
     """Code issuance/verification, signup cap, and show-credit bookkeeping."""
 
-    def __init__(self, db, pepper: str):
+    def __init__(self, db, pepper: str, transaction_runner=None):
         self.db = db
         # The partner secret doubles as the HMAC pepper: a Firestore read alone
         # (backups, exports) can't brute-force the 10^6 code space offline.
         self._pepper = pepper.encode("utf-8")
+        # Injectable for unit tests (in-memory Firestore fake); production runs
+        # ``fn(transaction)`` under @firestore.transactional (retried on contention).
+        self._transaction_runner = transaction_runner
+
+    def _run_transaction(self, fn):
+        if self._transaction_runner is not None:
+            return self._transaction_runner(fn)
+        try:
+            return firestore.transactional(fn)(self.db.transaction(max_attempts=TRANSACTION_MAX_ATTEMPTS))
+        except ValueError as exc:
+            # google-cloud-firestore gives up with ValueError("Failed to commit
+            # transaction in N attempts.") under heavy contention. Nothing was
+            # written, so callers can safely treat it as "busy, retry".
+            if "Failed to commit transaction" in str(exc):
+                raise TransactionContention() from exc
+            raise
 
     # ------------------------------------------------------------------ codes
 
@@ -113,13 +160,11 @@ class KjboxPartnerService:
         times = [_aware(t) for t in (record or {}).get("send_times") or []]
         return [t for t in times if t and now - t < _THROTTLE_WINDOW]
 
-    def is_email_throttled(self, email: str, max_per_hour: int) -> bool:
-        return len(self.recent_send_times(self.get_code_record(email))) >= max_per_hour
-
     def issue_code(
         self,
         email: str,
         *,
+        max_per_hour: int,
         needs_credit_eval: bool,
         locale: Optional[str],
         ui_locale: Optional[str],
@@ -129,39 +174,50 @@ class KjboxPartnerService:
     ) -> IssuedCode:
         """Mint a fresh code for ``email``, replacing (invalidating) any prior one.
 
-        Only an HMAC of the code is stored. ``merge=True`` keeps the throttle
-        history and any precomputed welcome-credit evaluation across re-sends.
+        The throttle check, the send_times append and the code write happen in ONE
+        transaction, so parallel requests can't exceed ``max_per_hour`` sends
+        (raises :class:`CodeThrottled`). Only an HMAC of the code is stored.
+        ``merge=True`` keeps any precomputed welcome-credit evaluation across
+        re-sends. Venue/locale are kept for attribution when the email verifies.
         """
         email = email.strip().lower()
-        now = _now()
-        record = self.get_code_record(email)
-        code = f"{secrets.randbelow(10 ** CODE_LENGTH):0{CODE_LENGTH}d}"
-        code_id = secrets.token_urlsafe(16)
-        send_times = self.recent_send_times(record, now) + [now]
+        ref = self._code_ref(email)
 
-        self._code_ref(email).set(
-            {
-                "email": email,
-                "code_id": code_id,
-                "code_hash": self._hash_code(code_id, code),
-                "created_at": now,
-                "expires_at": now + timedelta(minutes=CODE_EXPIRY_MINUTES),
-                "attempts": 0,
-                "send_times": send_times,
-                "locale": locale,
-                "ui_locale": ui_locale,
-                "venue": venue,
-                "ip_address": ip_address,
-                "user_agent": user_agent,
-            },
-            merge=True,
-        )
-        has_eval = bool((record or {}).get("credit_eval_decision"))
-        return IssuedCode(
-            code=code,
-            doc_id=code_doc_id(email),
-            needs_credit_eval=needs_credit_eval and not has_eval,
-        )
+        def _txn(transaction):
+            now = _now()
+            snap = ref.get(transaction=transaction)
+            record = snap.to_dict() if snap.exists else None
+            recent = self.recent_send_times(record, now)
+            if len(recent) >= max_per_hour:
+                raise CodeThrottled()
+            code = f"{secrets.randbelow(10 ** CODE_LENGTH):0{CODE_LENGTH}d}"
+            code_id = secrets.token_urlsafe(16)
+            transaction.set(
+                ref,
+                {
+                    "email": email,
+                    "code_id": code_id,
+                    "code_hash": self._hash_code(code_id, code),
+                    "created_at": now,
+                    "expires_at": now + timedelta(minutes=CODE_EXPIRY_MINUTES),
+                    "attempts": 0,
+                    "send_times": recent + [now],
+                    "locale": locale,
+                    "ui_locale": ui_locale,
+                    "venue": venue,
+                    "ip_address": ip_address,
+                    "user_agent": user_agent,
+                },
+                merge=True,
+            )
+            has_eval = bool((record or {}).get("credit_eval_decision"))
+            return IssuedCode(
+                code=code,
+                doc_id=code_doc_id(email),
+                needs_credit_eval=needs_credit_eval and not has_eval,
+            )
+
+        return self._run_transaction(_txn)
 
     def verify_code(self, email: str, code: str) -> tuple[str, Optional[dict]]:
         """Check ``code`` for ``email``. Returns (outcome, code_record).
@@ -227,41 +283,72 @@ class KjboxPartnerService:
     def _show_credit_ref(self, idempotency_key: str):
         return self.db.collection(SHOW_CREDITS_COLLECTION).document(_sha256(idempotency_key))
 
-    def show_credit_already_processed(self, idempotency_key: str) -> bool:
-        return self._show_credit_ref(idempotency_key).get().exists
+    def _show_credit_user_ref(self, email: str):
+        return self.db.collection(SHOW_CREDIT_USERS_COLLECTION).document(_sha256(email.strip().lower()))
 
-    def count_recent_show_credits(self, email: str) -> int:
-        # Equality-only query (no composite index needed); a user has few docs,
-        # so the rolling-window filter happens here.
-        cutoff = _now() - _DAY
-        query = self.db.collection(SHOW_CREDITS_COLLECTION).where(
-            filter=FieldFilter("email", "==", email.strip().lower())
-        )
-        count = 0
-        for snap in query.stream():
-            created = _aware((snap.to_dict() or {}).get("created_at"))
-            if created and created >= cutoff:
-                count += 1
-        return count
+    def grant_show_credit(
+        self,
+        user_ref,
+        email: str,
+        idempotency_key: str,
+        *,
+        venue: Optional[str],
+        only_if_empty: bool,
+        max_per_24h: int,
+        reason: str = SHOW_CREDIT_REASON,
+        max_transactions: int = 100,
+    ) -> ShowCreditResult:
+        """Atomically: idempotency check, only-if-empty check, per-user cap, key
+        claim, and the +1 credit (with its transaction-history entry).
 
-    def claim_show_credit(self, idempotency_key: str, email: str, venue: Optional[str]) -> bool:
-        """Atomically claim ``idempotency_key``. False if it was already processed."""
-        try:
-            self._show_credit_ref(idempotency_key).create(
-                {
-                    "idempotency_key": idempotency_key,
-                    "email": email.strip().lower(),
-                    "venue": venue,
-                    "created_at": _now(),
-                }
-            )
-            return True
-        except google_exceptions.AlreadyExists:
-            return False
+        The key is claimed ONLY when a credit is actually granted, so kjbox can
+        call with ``only_if_empty=True`` early and again with the same key and
+        ``only_if_empty=False`` later — the second call grants only if the first
+        didn't. Raises :class:`ShowCreditCapReached` at the cap.
+        """
+        email = email.strip().lower()
+        key_ref = self._show_credit_ref(idempotency_key)
+        counter_ref = self._show_credit_user_ref(email)
 
-    def release_show_credit(self, idempotency_key: str) -> None:
-        """Undo a claim whose credit grant failed, so kjbox can retry the key."""
-        try:
-            self._show_credit_ref(idempotency_key).delete()
-        except Exception:  # noqa: BLE001
-            logger.exception("kjbox: failed to release show-credit claim")
+        def _txn(transaction):
+            now = _now()
+            key_snap = key_ref.get(transaction=transaction)
+            user_snap = user_ref.get(transaction=transaction)
+            counter_snap = counter_ref.get(transaction=transaction)
+            user_data = user_snap.to_dict() if user_snap.exists else None
+            if user_data is None:
+                raise LookupError("user not found")
+            credits = int(user_data.get("credits") or 0)
+
+            if key_snap.exists:
+                return ShowCreditResult(granted=False, credits=credits)
+            if only_if_empty and credits >= 1:
+                return ShowCreditResult(granted=False, credits=credits)
+
+            counter = counter_snap.to_dict() if counter_snap.exists else {}
+            recent = [t for t in (_aware(x) for x in counter.get("grant_times") or [])
+                      if t and now - t < _DAY]
+            if len(recent) >= max_per_24h:
+                raise ShowCreditCapReached()
+
+            entry = CreditTransaction(
+                id=str(uuid.uuid4()), amount=1, reason=reason,
+            ).model_dump(mode="json")
+            history = list(user_data.get("credit_transactions") or [])
+            history = history[-(max_transactions - 1):] + [entry]
+
+            transaction.create(key_ref, {
+                "idempotency_key": idempotency_key,
+                "email": email,
+                "venue": venue,
+                "created_at": now,
+            })
+            transaction.set(counter_ref, {"email": email, "grant_times": recent + [now]})
+            transaction.update(user_ref, {
+                "credits": credits + 1,
+                "credit_transactions": history,
+                "updated_at": datetime.utcnow(),
+            })
+            return ShowCreditResult(granted=True, credits=credits + 1)
+
+        return self._run_transaction(_txn)

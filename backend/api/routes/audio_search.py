@@ -310,10 +310,9 @@ def extract_request_metadata(request: Request, created_from: str = "audio_search
     environment = headers.get('x-environment', '')
     client_id = headers.get('x-client-id', '')
 
-    custom_headers = {}
-    for key, value in headers.items():
-        if key.lower().startswith('x-') and key.lower() not in ('x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host'):
-            custom_headers[key] = value
+    # Secret-bearing headers are redacted: custom_headers is visible to the job owner.
+    from backend.utils.request_helpers import collect_custom_headers
+    custom_headers = collect_custom_headers(headers)
 
     metadata = {
         'client_ip': client_ip,

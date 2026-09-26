@@ -122,9 +122,33 @@ class FakeCollection:
         return FakeQuery(self, [filter])
 
 
+class FakeTransaction:
+    """Applies writes immediately (the service only writes after all reads)."""
+
+    def __init__(self, log):
+        self.log = log
+
+    def set(self, ref, data, merge=False):
+        self.log.append(("set", ref.coll, ref.id))
+        ref.set(data, merge=merge)
+
+    def update(self, ref, data):
+        self.log.append(("update", ref.coll, ref.id))
+        ref.update(data)
+
+    def create(self, ref, data):
+        self.log.append(("create", ref.coll, ref.id))
+        ref.create(data)
+
+    def delete(self, ref):
+        ref.delete()
+
+
 class FakeDb:
     def __init__(self):
         self.collections = {}
+        self.txn_writes = []
+        self.txn_count = 0
 
     def collection(self, name):
         return self.collections.setdefault(name, FakeCollection())
@@ -204,7 +228,12 @@ def precompute(monkeypatch):
 
 
 @pytest.fixture
-def client(monkeypatch, user_service, email_service, validation, settings, precompute):
+def client(monkeypatch, db, user_service, email_service, validation, settings, precompute):
+    def fake_run_transaction(self, fn):
+        db.txn_count += 1
+        return fn(FakeTransaction(db.txn_writes))
+
+    monkeypatch.setattr(kps.KjboxPartnerService, "_run_transaction", fake_run_transaction)
     app = FastAPI()
     app.include_router(kjbox.router, prefix="/api")
     app.dependency_overrides[get_user_service] = lambda: user_service
@@ -266,25 +295,28 @@ class TestSecretGate:
 # ------------------------------------------------------------------ send-code
 
 class TestSendCode:
-    def test_new_user_created_with_kjbox_attribution(self, client, user_service, db, email_service, precompute):
+    def test_new_email_gets_code_but_no_account_until_verified(self, client, user_service, db, email_service, precompute):
         resp = _send(client, locale="es-MX", venue="The Dive Bar")
         assert resp.status_code == 200
         assert resp.json() == {"status": "sent"}
 
-        user = user_service.get_user(EMAIL)
-        assert user.signup_source == "kjbox"
-        assert user.signup_venue == "The Dive Bar"
-        assert user.signup_ip is None  # venue IP must not feed gen's per-IP cap
-        assert user.credits == 0
-
-        signups = db.collection(kps.SIGNUPS_COLLECTION).docs
-        assert [d["email"] for d in signups.values()] == [EMAIL]
+        # No account and no signup-cap consumption for an unverified address
+        assert user_service.get_user(EMAIL) is None
+        assert db.collection(kps.SIGNUPS_COLLECTION).docs == {}
+        # Attribution rides on the code record until verify
+        doc = _code_doc(db)
+        assert doc["venue"] == "The Dive Bar" and doc["locale"] == "es" and doc["ui_locale"] == "es"
 
         # Code email localised + welcome-credit eval precomputed onto the code doc
         args, kwargs = email_service.send_kjbox_login_code.call_args
         assert args[0] == EMAIL and len(args[1]) == 6 and args[1].isdigit()
         assert kwargs == {"expiry_minutes": 10, "locale": "es"}
         assert precompute == [(kps.code_doc_id(EMAIL), EMAIL, kps.LOGIN_CODES_COLLECTION)]
+
+    def test_throttle_and_code_write_happen_in_one_transaction(self, client, db):
+        _send(client)
+        assert db.txn_count == 1
+        assert db.txn_writes == [("set", db.collection(kps.LOGIN_CODES_COLLECTION), kps.code_doc_id(EMAIL))]
 
     def test_code_stored_only_as_hash(self, client, db, email_service):
         _send(client)
@@ -304,9 +336,10 @@ class TestSendCode:
         assert user_service.get_user(EMAIL).signup_source is None
         assert precompute == []  # already had a welcome credit → nothing to evaluate
 
-    def test_email_normalised(self, client, user_service):
+    def test_email_normalised(self, client, db, email_service):
         assert _send(client, email="  Singer@Example.COM ").status_code == 200
-        assert user_service.get_user(EMAIL) is not None
+        assert _code_doc(db)["email"] == EMAIL
+        assert _verify(client, _sent_code(email_service), email="SINGER@example.com ").status_code == 200
 
     def test_invalid_email_422(self, client):
         assert _send(client, email="not-an-email").status_code == 422
@@ -339,35 +372,28 @@ class TestSendCode:
         doc["send_times"] = [datetime.now(timezone.utc) - timedelta(minutes=61)] * 10
         assert _send(client).status_code == 200
 
-    def test_partner_signup_cap(self, client, settings, db, user_service):
-        settings.kjbox_signup_cap_per_24h = 2
-        assert _send(client, email="a@example.com").status_code == 200
-        assert _send(client, email="b@example.com").status_code == 200
-        resp = _send(client, email="c@example.com")
-        assert resp.status_code == 429 and resp.json() == {"detail": "signup_cap"}
-        assert user_service.get_user("c@example.com") is None
-        # Existing accounts are never blocked by the new-account cap
-        assert _send(client, email="a@example.com").status_code == 200
-
-    def test_signup_cap_counts_only_last_24h(self, client, settings, db):
-        settings.kjbox_signup_cap_per_24h = 1
-        db.collection(kps.SIGNUPS_COLLECTION).document("old").set(
-            {"email": "old@example.com", "created_at": datetime.now(timezone.utc) - timedelta(hours=25)}
-        )
-        assert _send(client).status_code == 200
-
-    def test_no_per_ip_signup_cap(self, client, user_service):
+    def test_no_per_ip_signup_cap(self, client, user_service, email_service):
         # gen's magic-link path allows 2 signups/IP/24h; a venue shares one IP.
         user_service.is_signup_rate_limited = MagicMock(return_value=True)
         for i in range(5):
-            assert _send(client, email=f"s{i}@example.com").status_code == 200
+            email = f"s{i}@example.com"
+            assert _send(client, email=email).status_code == 200
+            assert _verify(client, _sent_code(email_service), email=email).status_code == 200
+
+    def test_signup_cap_not_consumed_by_unverified_sends(self, client, settings, db, email_service):
+        settings.kjbox_signup_cap_per_24h = 1
+        for i in range(5):
+            assert _send(client, email=f"fake{i}@example.com").status_code == 200
+        assert db.collection(kps.SIGNUPS_COLLECTION).docs == {}
+        _send(client)
+        assert _verify(client, _sent_code(email_service)).status_code == 200
 
 
 # ---------------------------------------------------------------- verify-code
 
 class TestVerifyCode:
     def test_success_returns_session_and_grants_welcome_credit(self, client, db, user_service, email_service):
-        _send(client, locale="de")
+        _send(client, locale="de", venue="The Dive Bar")
         # Simulate the background eval having finished
         _code_doc(db).update({"credit_eval_decision": "grant", "credit_eval_reasoning": "clean"})
 
@@ -382,6 +408,12 @@ class TestVerifyCode:
         assert user_service.grant_calls[-1]["precomputed_eval"] == {
             "credit_eval_decision": "grant", "credit_eval_reasoning": "clean"}
 
+        # Account created on verify with kjbox attribution + counted as a signup
+        created = user_service.get_user(EMAIL)
+        assert created.signup_source == "kjbox" and created.signup_venue == "The Dive Bar"
+        assert created.signup_ip is None
+        assert [d["email"] for d in db.collection(kps.SIGNUPS_COLLECTION).docs.values()] == [EMAIL]
+
         # Session is a real, valid gen session for the user
         valid, user, _ = user_service.validate_session(body["session_token"])
         assert valid and user.email == EMAIL
@@ -389,6 +421,32 @@ class TestVerifyCode:
         assert user.locale == "de" and user.ui_locale == "de"
 
         email_service.send_welcome_email.assert_called_once_with(EMAIL, 1, locale="de")
+
+    def test_verified_signup_cap(self, client, settings, db, user_service, email_service):
+        settings.kjbox_signup_cap_per_24h = 2
+        for email in ("a@example.com", "b@example.com"):
+            _send(client, email=email)
+            assert _verify(client, _sent_code(email_service), email=email).status_code == 200
+        _send(client, email="c@example.com")
+        code_c = _sent_code(email_service)
+        resp = _verify(client, code_c, email="c@example.com")
+        assert resp.status_code == 429 and resp.json() == {"detail": "signup_cap"}
+        assert user_service.get_user("c@example.com") is None
+        # Cap checked before consuming the code: once it lifts, the same code works
+        settings.kjbox_signup_cap_per_24h = 3
+        assert _verify(client, code_c, email="c@example.com").status_code == 200
+        # Existing accounts are never blocked by the new-account cap
+        settings.kjbox_signup_cap_per_24h = 0
+        _send(client, email="a@example.com")
+        assert _verify(client, _sent_code(email_service), email="a@example.com").status_code == 200
+
+    def test_signup_cap_counts_only_last_24h(self, client, settings, db, email_service):
+        settings.kjbox_signup_cap_per_24h = 1
+        db.collection(kps.SIGNUPS_COLLECTION).document("old").set(
+            {"email": "old@example.com", "created_at": datetime.now(timezone.utc) - timedelta(hours=25)}
+        )
+        _send(client)
+        assert _verify(client, _sent_code(email_service)).status_code == 200
 
     def test_returning_user_gets_no_second_welcome(self, client, user_service, email_service):
         _send(client)
@@ -501,10 +559,10 @@ class TestShowCredit:
     def test_cap_is_rolling_24h(self, client, email_service, settings, db):
         settings.kjbox_show_credits_per_user_per_24h = 1
         token = _session(client, email_service)
-        db.collection(kps.SHOW_CREDITS_COLLECTION).document("old").set(
-            {"email": EMAIL, "created_at": datetime.now(timezone.utc) - timedelta(hours=25)}
-        )
+        counter = db.collection(kps.SHOW_CREDIT_USERS_COLLECTION).document(hashlib.sha256(EMAIL.encode()).hexdigest())
+        counter.set({"email": EMAIL, "grant_times": [datetime.now(timezone.utc) - timedelta(hours=25)]})
         assert _show(client, token, "k1").json()["granted"] is True
+        assert _show(client, token, "k2").status_code == 429  # the fresh grant counts
 
     @pytest.mark.parametrize("auth", [None, "Bearer ", "Bearer nope", "Basic abc"])
     def test_bad_session_401(self, client, auth):
@@ -519,11 +577,77 @@ class TestShowCredit:
         assert _show(client, token, "x" * 129).status_code == 422
         assert _show(client, token, "").status_code == 422
 
-    def test_failed_grant_releases_key(self, client, email_service, user_service, db):
-        token = _session(client, email_service)
-        real_add = user_service.add_credits
-        user_service.add_credits = MagicMock(return_value=(False, 0, "boom"))
-        assert _show(client, token, "k1").status_code == 500
+    def test_only_if_empty_skips_when_user_has_credit(self, client, email_service, db, user_service):
+        token = _session(client, email_service)  # welcome credit → 1
+        resp = _show(client, token, "k1", only_if_empty=True)
+        assert resp.json() == {"granted": False, "credits": 1}
+        # Key NOT claimed on a non-grant: the later job-time call can still use it
         assert db.collection(kps.SHOW_CREDITS_COLLECTION).docs == {}
-        user_service.add_credits = real_add
-        assert _show(client, token, "k1").json()["granted"] is True
+        user_service.update_user(EMAIL, credits=0)  # e.g. welcome credit spent elsewhere
+        assert _show(client, token, "k1").json() == {"granted": True, "credits": 1}
+
+    def test_only_if_empty_then_same_key_grants_once(self, client, email_service, user_service):
+        token = _session(client, email_service)
+        user_service.update_user(EMAIL, credits=0)  # e.g. welcome credit denied
+        assert _show(client, token, "k1", only_if_empty=True).json() == {"granted": True, "credits": 1}
+        # Job-time call with the same key must not stack a second credit
+        assert _show(client, token, "k1").json() == {"granted": False, "credits": 1}
+        assert user_service.get_user(EMAIL).credits == 1
+
+    def test_non_grant_does_not_count_toward_cap(self, client, email_service, settings):
+        settings.kjbox_show_credits_per_user_per_24h = 1
+        token = _session(client, email_service)
+        for i in range(3):
+            assert _show(client, token, f"k{i}", only_if_empty=True).json()["granted"] is False
+        assert _show(client, token, "k9").json()["granted"] is True
+
+    def test_grant_is_one_transaction(self, client, email_service, db):
+        token = _session(client, email_service)
+        before_count, before_writes = db.txn_count, len(db.txn_writes)
+        _show(client, token, "k1")
+        assert db.txn_count == before_count + 1
+        kinds = sorted(w[0] for w in db.txn_writes[before_writes:])
+        assert kinds == ["create", "set", "update"]  # key claim, cap counter, credits
+
+
+class TestTransactionContention:
+    def _contend(self, monkeypatch, db):
+        calls = {"n": 0}
+        real = kps.KjboxPartnerService._run_transaction
+
+        def flaky(self, fn):
+            calls["n"] += 1
+            if calls["n"] == calls.get("fail_on", -1):
+                raise kps.TransactionContention()
+            return real(self, fn)
+
+        monkeypatch.setattr(kps.KjboxPartnerService, "_run_transaction", flaky)
+        return calls
+
+    def test_send_code_contention_is_throttled(self, client, monkeypatch, db, email_service):
+        calls = self._contend(monkeypatch, db)
+        calls["fail_on"] = 1
+        resp = _send(client)
+        assert resp.status_code == 429 and resp.json() == {"detail": "too_many_codes"}
+        email_service.send_kjbox_login_code.assert_not_called()
+
+    def test_show_credit_contention_is_retryable(self, client, monkeypatch, db, email_service, user_service):
+        token = _session(client, email_service)
+        calls = self._contend(monkeypatch, db)
+        calls["fail_on"] = 1
+        resp = _show(client, token, "k1")
+        assert resp.status_code == 409 and resp.json() == {"detail": "busy_retry"}
+        assert user_service.get_user(EMAIL).credits == 1  # nothing granted
+        assert _show(client, token, "k1").json() == {"granted": True, "credits": 2}
+
+    def test_real_runner_maps_firestore_giveup(self, monkeypatch):
+        svc = kps.KjboxPartnerService(MagicMock(), pepper="p")
+
+        def give_up(fn):
+            def wrapped(transaction):
+                raise ValueError("Failed to commit transaction in 10 attempts.")
+            return wrapped
+
+        monkeypatch.setattr(kps.firestore, "transactional", give_up)
+        with pytest.raises(kps.TransactionContention):
+            svc._run_transaction(lambda t: None)

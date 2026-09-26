@@ -11,11 +11,13 @@ is configured — deploys dark; 403 if wrong). Contract:
 - POST /api/kjbox/auth/verify-code  {email, code} → {session_token, user,
                                      credits_granted, credit_status}
 - POST /api/kjbox/credits/show-credit (+ Authorization: Bearer <session>)
-                                     {idempotency_key, venue?} → {granted, credits}
+                                     {idempotency_key, venue?, only_if_empty?}
+                                     → {granted, credits}
 
 A venue is many singers behind one IP, so gen's 2-signups-per-IP cap does NOT
-apply here; instead a partner-wide rolling-24h cap on new accounts, a per-email
-code throttle, and a per-user daily show-credit cap bound abuse.
+apply here; instead a partner-wide rolling-24h cap on new VERIFIED accounts
+(accounts are only created at verify-code), a per-email code throttle, and a
+per-user daily show-credit cap bound abuse.
 """
 from __future__ import annotations
 
@@ -41,8 +43,10 @@ from backend.services.email_validation_service import get_email_validation_servi
 from backend.services.kjbox_partner_service import (
     CODE_EXPIRY_MINUTES,
     LOGIN_CODES_COLLECTION,
-    SHOW_CREDIT_REASON,
     KjboxPartnerService,
+    CodeThrottled,
+    ShowCreditCapReached,
+    TransactionContention,
     VerifyOutcome,
 )
 from backend.services.user_service import UserService, get_user_service
@@ -103,6 +107,10 @@ class VerifyCodeResponse(BaseModel):
 class ShowCreditRequest(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=128)
     venue: Optional[str] = Field(default=None, max_length=_MAX_VENUE_LEN)
+    # Grant only if the singer currently has no credits (< 1). The key is claimed
+    # only when a credit is actually granted, so a later call with the same key
+    # and only_if_empty=false grants iff this one didn't.
+    only_if_empty: bool = False
 
 
 class ShowCreditResponse(BaseModel):
@@ -163,35 +171,32 @@ async def send_code(
         logger.warning(f"kjbox: blocked IP {ip_address} — pretending success")
         return _pretend_sent()
 
-    if svc.is_email_throttled(email, settings.kjbox_codes_per_email_per_hour):
-        raise HTTPException(status_code=429, detail="too_many_codes")
-
     if not email_service.is_configured() and is_production():
         logger.error("kjbox: email service not configured - cannot send codes")
         raise HTTPException(status_code=503, detail="email not configured")
 
+    # No account is created here — only once the email is verified (verify-code),
+    # so unverified addresses can neither burn the signup cap nor create accounts
+    # for other people's emails. Venue/locale ride on the code record until then.
     user = user_service.get_user(email)
-    if user is None:
-        if svc.count_recent_signups() >= settings.kjbox_signup_cap_per_24h:
-            logger.warning("kjbox: partner-wide signup cap reached")
-            raise HTTPException(status_code=429, detail="signup_cap")
-        # No signup_ip: the caller is the kjbox box, whose IP is the whole
-        # venue's — recording it would trip gen's per-IP cap for everyone there.
-        user = user_service.get_or_create_user(
-            email, signup_source=SIGNUP_SOURCE, signup_venue=venue,
+    try:
+        issued = svc.issue_code(
+            email,
+            max_per_hour=settings.kjbox_codes_per_email_per_hour,
+            needs_credit_eval=(
+                not (user and getattr(user, "welcome_credits_granted", False))
+                and not is_test_email(email)
+            ),
+            locale=email_locale,
+            ui_locale=ui_locale,
+            venue=venue,
+            ip_address=ip_address,
+            user_agent=http_request.headers.get("user-agent"),
         )
-        svc.record_signup(email, venue)
-        logger.info(f"kjbox: created gen user {_mask_email(email)} (venue={venue!r})")
-
-    issued = svc.issue_code(
-        email,
-        needs_credit_eval=not getattr(user, "welcome_credits_granted", False) and not is_test_email(email),
-        locale=email_locale,
-        ui_locale=ui_locale,
-        venue=venue,
-        ip_address=ip_address,
-        user_agent=http_request.headers.get("user-agent"),
-    )
+    except (CodeThrottled, TransactionContention):
+        # Contention on one email's code doc = a burst of parallel sends to the
+        # same address, which is exactly what the throttle exists to stop.
+        raise HTTPException(status_code=429, detail="too_many_codes")
 
     sent = email_service.send_kjbox_login_code(
         email, issued.code, expiry_minutes=CODE_EXPIRY_MINUTES, locale=locale,
@@ -222,7 +227,16 @@ async def verify_code(
     user_service: UserService = Depends(get_user_service),
     email_service: EmailService = Depends(get_email_service),
 ):
+    settings = get_settings()
     email = _normalize_email(body.email)
+
+    # New accounts are created (and counted against the partner-wide cap) only
+    # here, after the email is proven. Check the cap BEFORE consuming the code so
+    # a capped singer can retry the same code later.
+    existing = user_service.get_user(email)
+    if existing is None and svc.count_recent_signups() >= settings.kjbox_signup_cap_per_24h:
+        logger.warning("kjbox: partner-wide verified-signup cap reached")
+        raise HTTPException(status_code=429, detail="signup_cap")
 
     outcome, record = svc.verify_code(email, body.code)
     if outcome == VerifyOutcome.TOO_MANY_ATTEMPTS:
@@ -232,9 +246,15 @@ async def verify_code(
     if outcome != VerifyOutcome.OK or record is None:
         raise HTTPException(status_code=401, detail="expired")
 
-    user = user_service.get_user(email) or user_service.get_or_create_user(
-        email, signup_source=SIGNUP_SOURCE, signup_venue=record.get("venue"),
-    )
+    user = user_service.get_user(email)
+    if user is None:
+        # No signup_ip: the caller is the kjbox box, whose IP is the whole
+        # venue's — recording it would trip gen's per-IP cap for everyone there.
+        user = user_service.get_or_create_user(
+            email, signup_source=SIGNUP_SOURCE, signup_venue=record.get("venue"),
+        )
+        svc.record_signup(email, record.get("venue"))
+        logger.info(f"kjbox: created verified gen user {_mask_email(email)} (venue={record.get('venue')!r})")
     # Same first-login definition as magic-link verify (checked before last_login_at is set).
     is_first_login = user.total_jobs_created == 0 and not user.last_login_at
     user = user_service.update_user(
@@ -283,8 +303,10 @@ async def show_credit(
 ):
     """Quietly grant +1 credit so a singer's make-it job is free at the show.
 
-    No "credits added" email. Idempotent per ``idempotency_key``; capped per user
-    per rolling 24h.
+    No "credits added" email. Idempotent per ``idempotency_key`` (claimed only
+    when a credit is granted); ``only_if_empty`` grants only at a 0 balance;
+    capped per user per rolling 24h. All decisions + the increment are one
+    Firestore transaction.
     """
     settings = get_settings()
     scheme, _, token = (authorization or "").partition(" ")
@@ -297,22 +319,27 @@ async def show_credit(
 
     email = user.email.lower()
     venue = (body.venue or "").strip() or None
+    user_ref = user_service.get_user_doc_ref(email)
+    if user_ref is None:
+        raise HTTPException(status_code=401, detail="invalid_session")
 
-    if svc.show_credit_already_processed(body.idempotency_key):
-        return ShowCreditResponse(granted=False, credits=user.credits)
-
-    if svc.count_recent_show_credits(email) >= settings.kjbox_show_credits_per_user_per_24h:
+    try:
+        result = svc.grant_show_credit(
+            user_ref,
+            email,
+            body.idempotency_key,
+            venue=venue,
+            only_if_empty=body.only_if_empty,
+            max_per_24h=settings.kjbox_show_credits_per_user_per_24h,
+        )
+    except ShowCreditCapReached:
         raise HTTPException(status_code=429, detail="show_credit_cap")
+    except LookupError:
+        raise HTTPException(status_code=401, detail="invalid_session")
+    except TransactionContention:
+        # Nothing was written; kjbox retries with the same idempotency key.
+        raise HTTPException(status_code=409, detail="busy_retry")
 
-    if not svc.claim_show_credit(body.idempotency_key, email, venue):
-        current = user_service.get_user(email)
-        return ShowCreditResponse(granted=False, credits=current.credits if current else user.credits)
-
-    ok, new_balance, message = user_service.add_credits(email, 1, SHOW_CREDIT_REASON)
-    if not ok:
-        svc.release_show_credit(body.idempotency_key)
-        logger.error(f"kjbox: show credit grant failed for {_mask_email(email)}: {message}")
-        raise HTTPException(status_code=500, detail="grant_failed")
-
-    logger.info(f"kjbox: show credit granted to {_mask_email(email)} (venue={venue!r}) → {new_balance}")
-    return ShowCreditResponse(granted=True, credits=new_balance)
+    if result.granted:
+        logger.info(f"kjbox: show credit granted to {_mask_email(email)} (venue={venue!r}) → {result.credits}")
+    return ShowCreditResponse(granted=result.granted, credits=result.credits)

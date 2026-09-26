@@ -343,11 +343,9 @@ def extract_request_metadata(request: Request, created_from: str = "upload", aut
     client_id = headers.get('x-client-id', '')  # Customer/user identifier
 
     # Collect all X-* custom headers (excluding standard ones we already captured)
-    custom_headers = {}
-    for key, value in headers.items():
-        if key.lower().startswith('x-') and key.lower() not in ('x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host'):
-            # Normalize header name to original casing if possible
-            custom_headers[key] = value
+    # Secret-bearing headers are redacted: custom_headers is visible to the job owner.
+    from backend.utils.request_helpers import collect_custom_headers
+    custom_headers = collect_custom_headers(headers)
 
     metadata = {
         'client_ip': client_ip,
