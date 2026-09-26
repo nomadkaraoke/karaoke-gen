@@ -1145,7 +1145,14 @@ class JobManager:
 
             # Editor asset pre-generation (transcode + waveform) is blocking I/O —
             # keep it off the API event loop.
-            await asyncio.to_thread(enter_audio_edit, self, job_id, job.input_media_gcs_path)
+            try:
+                await asyncio.to_thread(enter_audio_edit, self, job_id, job.input_media_gcs_path)
+            except Exception as e:
+                # Callers often run this as a background task — don't strand the
+                # job at DOWNLOADING with nothing to retry it.
+                logger.error(f"Job {job_id}: Audio edit preparation failed: {e}", exc_info=True)
+                self.fail_job(job_id, f"Audio edit preparation failed: {e}")
+                raise
             logger.info(f"Job {job_id}: Awaiting audio edit before processing")
             return
 

@@ -877,6 +877,25 @@ class TestStartJobProcessing:
         reconcile.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_audio_edit_park_failure_fails_job(self, job_manager, mock_firestore_service):
+        """A failure while parking at the editor must fail the job, not strand it at DOWNLOADING."""
+        mock_firestore_service.get_job.return_value = Job(
+            job_id="test123",
+            status=JobStatus.PENDING,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            input_media_gcs_path="uploads/test123/audio/song.flac",
+            state_data={"requires_audio_edit": True},
+        )
+        with patch('backend.workers.audio_download_worker.enter_audio_edit',
+                   side_effect=RuntimeError("transition failed")), \
+             patch.object(job_manager, 'fail_job') as mock_fail:
+            with pytest.raises(RuntimeError, match="transition failed"):
+                await job_manager.start_job_processing("test123")
+        mock_fail.assert_called_once()
+        assert "Audio edit preparation failed" in mock_fail.call_args[0][1]
+
+    @pytest.mark.asyncio
     async def test_workers_triggered_in_parallel(self, job_manager, mock_firestore_service):
         """Test that audio and lyrics workers are triggered concurrently."""
         mock_firestore_service.get_job.return_value = Job(
