@@ -2829,6 +2829,24 @@ by Nomad.
   `409 {"detail": "busy_retry"}` (nothing written — retry with the same key).
 - Missing/invalid session → `401 {"detail": "invalid_session"}`.
 
+### Singer search auto-correct
+
+```http
+POST /api/kjbox/catalog/resolve
+X-Kjbox-Secret: <partner secret>
+{"query": "the strokes max picu"}
+→ {"kind": "content", "confident": true, "typed_artist": "the strokes", "typed_title": "max picu",
+   "canonical_artist": "The Strokes", "canonical_title": "Machu Picchu", "alternatives": [],
+   "engine": "ai", "reason": "…"}
+```
+
+Splits a singer's one-line search into artist/title and corrects typos in one
+small Gemini call (`backend/services/match_judge/free_text.py`, the match
+judge's model + kinds). kjbox calls it only when its own catalogue search is
+empty. Model trouble → `kind: "none"` (never 5xx). Results are cached per
+case-folded query (in-process, 2000 entries); AI calls are capped partner-wide
+at 120/min per instance (`429 rate_limited`; cache hits are free).
+
 ### Review emails for kjbox jobs
 
 Jobs whose `request_metadata.client_id` starts with `kjbox` get a **one-click
