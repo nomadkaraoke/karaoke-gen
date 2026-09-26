@@ -14,7 +14,7 @@ name: Build GHA Runner Images
 #   3. Stop the VM, snapshot its boot disk to a new image in the `gha-runner-<variant>`
 #      image family with name gha-runner-<variant>-<timestamp>.
 #   4. Delete the build VM (boot disk auto-deletes).
-#   5. Deprecate older images in the family, keeping the newest 3 ACTIVE.
+#   5. Delete older images in the family, keeping the newest 2 (rollback = previous month).
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ on:
         required: false
         default: 'all'
       skip_prune:
-        description: 'Skip deprecation of old images (debugging)'
+        description: 'Skip pruning (deletion) of old images (debugging)'
         type: boolean
         required: false
         default: false
@@ -41,7 +41,7 @@ env:
   BUILD_REGION: us-central1
   BUILD_ZONE: us-central1-a
   BASE_IMAGE: projects/debian-cloud/global/images/family/debian-12
-  KEEP_IMAGES_PER_FAMILY: 3
+  KEEP_IMAGES_PER_FAMILY: 2
 
 jobs:
   resolve-matrix:
@@ -271,7 +271,7 @@ jobs:
         run: |
           gcloud compute instances delete "$VM" --zone="$ZONE" --project="$PROJECT" --quiet || true
 
-      - name: Deprecate old images (keep newest ${{ env.KEEP_IMAGES_PER_FAMILY }})
+      - name: Prune old images (keep newest ${{ env.KEEP_IMAGES_PER_FAMILY }})
         if: ${{ github.event.inputs.skip_prune != 'true' }}
         env:
           PROJECT: ${{ env.GCP_PROJECT }}
@@ -279,20 +279,40 @@ jobs:
           KEEP: ${{ env.KEEP_IMAGES_PER_FAMILY }}
         run: |
           set -euo pipefail
-          # List ACTIVE images in this family, newest first, skip the top $KEEP.
-          to_deprecate=$(gcloud compute images list \
+          # DELETE (not deprecate — deprecated images still bill for storage)
+          # every image in this family beyond the newest $KEEP. The dispatcher
+          # boots from the family URL, which always resolves to the newest image,
+          # so older ones are only rollback insurance (~$0.05/GB-mo; gpu images
+          # are ~21 GB each). Previously this step used an invalid
+          # `-deprecated.state:*` filter: gcloud errored to stderr, stdout was
+          # empty, and it silently reported "Nothing to deprecate" every month
+          # while images piled up (31 runner images, ~$18/mo, by 2026-09).
+          # Match the family EXACTLY client-side: a gcloud `family=gha-runner-gpu`
+          # filter is a word-boundary regex that ALSO matches gha-runner-gpu-windows.
+          images=$(gcloud compute images list \
             --project="$PROJECT" \
-            --filter="family=$FAMILY AND status=READY AND -deprecated.state:*" \
+            --no-standard-images \
+            --show-deprecated \
             --sort-by='~creationTimestamp' \
-            --format='value(name)' | tail -n +$((KEEP+1)))
-          if [[ -z "$to_deprecate" ]]; then
-            echo "Nothing to deprecate."
+            --format='value(name,family)' | awk -v f="$FAMILY" '$2==f {print $1}')
+          if [[ -z "$images" ]]; then
+            echo "::error::No images found in family $FAMILY (list failed?) — refusing to prune."
+            exit 1
+          fi
+          to_delete=$(echo "$images" | tail -n +$((KEEP+1)))
+          if [[ -z "$to_delete" ]]; then
+            echo "Nothing to prune (<= $KEEP images in $FAMILY)."
             exit 0
           fi
-          for img in $to_deprecate; do
-            echo "Deprecating $img"
-            gcloud compute images deprecate "$img" \
-              --project="$PROJECT" \
-              --state=DEPRECATED \
-              --replacement="projects/$PROJECT/global/images/family/$FAMILY"
+          # Never delete an image some existing disk was created from (e.g. a
+          # long-lived VM still on an older image).
+          in_use=$(gcloud compute disks list --project="$PROJECT" \
+            --format='value(sourceImage.basename())' | sort -u)
+          for img in $to_delete; do
+            if grep -qx "$img" <<<"$in_use"; then
+              echo "Keeping $img (source image of an existing disk)"
+              continue
+            fi
+            echo "Deleting $img"
+            gcloud compute images delete "$img" --project="$PROJECT" --quiet
           done

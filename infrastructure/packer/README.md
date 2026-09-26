@@ -94,6 +94,16 @@ Rebuild the image when:
 - Font packages change
 - bootstrap.sh changes (extremely rare)
 
+**Image disk size:** `disk_size` in the template (30 GB) is the *minimum* boot-disk
+size of any VM created from the image — GCE cannot create a disk smaller than its
+source image. Keep it ≤ `DiskSizes.ENCODING_WORKER` in `infrastructure/config.py`
+(50 GB); `infrastructure/test_encoding_worker_config.py` enforces this.
+
+**After a rebuild, existing VMs keep their old disks** (Pulumi only uses the new
+image when a VM/disk is recreated). To roll a new image onto the stopped workers
+without re-allocating VMs (stockout-safe), use the in-place boot-disk swap in
+`docs/archive/2026-09-26-encoding-worker-disk-cost.md`.
+
 **No rebuild needed** for:
 - Application code changes (wheel downloaded at runtime)
 - Startup logic changes (startup.sh downloaded from GCS)

@@ -242,7 +242,13 @@ GitHub schedules onto any runner whose labels are a superset of the job's.
 Each image is tagged `gha-runner-<variant>-<YYYYMMDD-HHMMSS>` and joined to the
 matching image family. The dispatcher always selects from the family, so the
 newest non-deprecated image wins automatically. The build workflow keeps the
-newest 3 images per family and deprecates the rest.
+newest 2 images per family and **deletes** the rest (deprecated images still bill
+for storage; images that an existing disk was created from are never deleted).
+Until 2026-09-26 this step used an invalid gcloud filter and silently pruned
+nothing — 31 runner images (~360 GB archived, ~$18/mo) had accumulated; they were pruned by hand to
+2 per family when the step was fixed. Note a gcloud `family=gha-runner-gpu`
+filter also matches `gha-runner-gpu-windows` (word-boundary regex), so the step
+matches the family exactly client-side.
 
 Build cadence: monthly cron (`0 2 1 * *` UTC) + `workflow_dispatch`. Manual:
 
