@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Pro oříznutí konce vyber úsek, který končí na úplném konci stopy",
     "trimEndSelection": "Odstranit vše za výběrem",
     "trimStartDisabledHint": "Pro oříznutí začátku vyber úsek, který začíná na úplném začátku stopy",
-    "trimStartSelection": "Odstranit vše před výběrem"
+    "trimStartSelection": "Odstranit vše před výběrem",
+    "tempo": "Tempo",
+    "tempoApply": "Použít {percent} %",
+    "tempoBadge": "Tempo: {percent} % originálu",
+    "tempoButtonHint": "Zrychli nebo zpomal celou píseň bez změny její tóniny",
+    "tempoCumulative": "V kombinaci s tvou předchozí změnou tempa: {percent} % původní rychlosti",
+    "tempoDescription": "Zrychli nebo zpomal celou píseň. Tónina (výška tónu) zůstane stejná a text bude synchronizován s novou rychlostí.",
+    "tempoDurationChange": "Délka: {before} → {after}",
+    "tempoFaster": "Rychleji",
+    "tempoLabelNotice": "Aby nikoho při zpěvu nečekalo překvapení, jsou skladby se změněným tempem jasně označené na úvodní obrazovce hotového videa, v názvech souborů a v názvu na YouTube, např. {example}.",
+    "tempoNewSpeed": "Nová rychlost",
+    "tempoPreviewHint": "Přehrává se novou rychlostí (přibližný náhled)",
+    "tempoSlower": "Pomaleji",
+    "tempoSubmitWarning": "Tempo bylo změněno na {percent} % původního. Tvé hotové video, soubory a název na YouTube budou označeny jako {label}.",
+    "tempoTitle": "Změnit tempo",
+    "tempoPreview": "Náhled"
   },
   "audioEditRestore": {
     "title": "Uložené relace úprav zvuku",

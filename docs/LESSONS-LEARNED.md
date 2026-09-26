@@ -2050,3 +2050,23 @@ view mode under a new `lyricsReviewViewMode` enum that migrates the old
   `gha-runner-gpu-windows`), and an invalid filter errors to stderr with empty stdout
   — pipelines that treat empty output as "nothing to do" silently no-op. The runner
   image prune step did this for months (31 images, ~$18/mo).
+
+
+## Labeling a variant track = change `job.title`, not the output config (Sep 2026, v0.242.0)
+
+When the audio editor's tempo change shipped, the question was where to put the
+"(90% Tempo)" label. `job.title` is the right place, for two reasons:
+
+- **It's the display title and every output reads it**: screens, CDG title, filenames,
+  Dropbox/GDrive/kjbox mirror, YouTube, downloads and emails. Folding a suffix into only
+  `OrchestratorConfig.title` would miss screens, emails, downloads and the
+  Dropbox-cleanup code that rebuilds the folder name from `job.title`. Search terms
+  belong in `lyrics_title` / `audio_search_title`, so pin the original there.
+- **YouTube server uploads replace same-titled videos** (`replace_existing=True` deletes
+  any channel video whose title matches case-insensitively). An unlabeled variant of a
+  song already on the channel would *delete the original video*. Any future variant
+  (key change, clean edit, …) must change the title for this reason alone.
+
+Also: any user-facing text that quotes the label must inject it as a placeholder.
+Translators "helpfully" localized `(90% Tempo)` → `(90% Темп)` / `(90 % Tempo)`,
+which doesn't match what's actually published.

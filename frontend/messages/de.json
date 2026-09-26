@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Um das Ende abzuschneiden, wähle einen Bereich, der ganz am Ende des Tracks endet",
     "trimEndSelection": "Alles nach der Auswahl entfernen",
     "trimStartDisabledHint": "Um den Anfang abzuschneiden, wähle einen Bereich, der ganz am Anfang des Tracks beginnt",
-    "trimStartSelection": "Alles vor der Auswahl entfernen"
+    "trimStartSelection": "Alles vor der Auswahl entfernen",
+    "tempo": "Tempo",
+    "tempoApply": "{percent}% anwenden",
+    "tempoBadge": "Tempo: {percent}% des Originals",
+    "tempoButtonHint": "Beschleunige oder verlangsame das gesamte Lied, ohne die Tonart zu ändern",
+    "tempoCumulative": "Kombiniert mit deiner vorherigen Tempoänderung: {percent}% der Originalgeschwindigkeit",
+    "tempoDescription": "Beschleunige oder verlangsame das gesamte Lied. Die Tonart (Tonhöhe) bleibt gleich, und der Text wird mit der neuen Geschwindigkeit synchronisiert.",
+    "tempoDurationChange": "Länge: {before} → {after}",
+    "tempoFaster": "Schneller",
+    "tempoLabelNotice": "Damit niemand beim Singen überrascht wird, werden Tracks mit geändertem Tempo auf dem Titelbildschirm des fertigen Videos, in den Dateinamen und im YouTube-Titel deutlich gekennzeichnet, z. B. {example}.",
+    "tempoNewSpeed": "Neue Geschwindigkeit",
+    "tempoPreviewHint": "Wiedergabe in der neuen Geschwindigkeit (ungefähre Vorschau)",
+    "tempoSlower": "Langsamer",
+    "tempoSubmitWarning": "Tempo auf {percent}% des Originals geändert. Dein fertiges Video, die Dateien und der YouTube-Titel werden mit {label} gekennzeichnet.",
+    "tempoTitle": "Tempo ändern",
+    "tempoPreview": "Vorschau"
   },
   "audioEditRestore": {
     "title": "Gespeicherte Audiobearbeitungs-Sitzungen",

@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "如需裁剪结尾，请选择在音轨最末尾结束的区域",
     "trimEndSelection": "移除所选区域之后的所有内容",
     "trimStartDisabledHint": "如需裁剪开头，请选择从音轨最开头开始的区域",
-    "trimStartSelection": "移除所选区域之前的所有内容"
+    "trimStartSelection": "移除所选区域之前的所有内容",
+    "tempo": "速度",
+    "tempoApply": "应用 {percent}%",
+    "tempoBadge": "速度：原速的 {percent}%",
+    "tempoButtonHint": "在不改变音调的情况下加快或放慢整首歌曲",
+    "tempoCumulative": "结合您之前的速度调整：原速的 {percent}%",
+    "tempoDescription": "加快或放慢整首歌曲。音调（音高）保持不变，歌词将与新速度同步。",
+    "tempoDurationChange": "时长：{before} → {after}",
+    "tempoFaster": "更快",
+    "tempoLabelNotice": "为了避免大家在演唱时感到意外，调整过速度的曲目会在成品视频的标题画面、文件名和 YouTube 标题中清楚标明，例如 {example}。",
+    "tempoNewSpeed": "新速度",
+    "tempoPreviewHint": "以新速度播放（近似预览）",
+    "tempoSlower": "更慢",
+    "tempoSubmitWarning": "速度已更改为原曲的 {percent}%。您的成品视频、文件和 YouTube 标题将被标记为 {label}。",
+    "tempoTitle": "调整速度",
+    "tempoPreview": "预览"
   },
   "audioEditRestore": {
     "title": "已保存的音频编辑会话",

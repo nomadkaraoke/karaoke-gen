@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Para cortar o final, selecione uma região que termine bem no final da faixa",
     "trimEndSelection": "Remover tudo após a seleção",
     "trimStartDisabledHint": "Para cortar o início, selecione uma região que comece bem no início da faixa",
-    "trimStartSelection": "Remover tudo antes da seleção"
+    "trimStartSelection": "Remover tudo antes da seleção",
+    "tempo": "Tempo",
+    "tempoApply": "Aplicar {percent}%",
+    "tempoBadge": "Tempo: {percent}% do original",
+    "tempoButtonHint": "Acelere ou desacelere a música inteira sem alterar o tom",
+    "tempoCumulative": "Combinado com sua alteração de tempo anterior: {percent}% da velocidade original",
+    "tempoDescription": "Acelere ou desacelere a música inteira. O tom (pitch) permanece o mesmo, e as letras serão sincronizadas com a nova velocidade.",
+    "tempoDurationChange": "Duração: {before} → {after}",
+    "tempoFaster": "Mais rápido",
+    "tempoLabelNotice": "Para que ninguém tenha uma surpresa na hora de cantar, as faixas com andamento alterado são claramente identificadas na tela de título do vídeo final, nos nomes dos arquivos e no título do YouTube, ex.: {example}.",
+    "tempoNewSpeed": "Nova velocidade",
+    "tempoPreviewHint": "Toca na nova velocidade (prévia aproximada)",
+    "tempoSlower": "Mais devagar",
+    "tempoSubmitWarning": "Andamento alterado para {percent}% do original. Seu vídeo final, arquivos e título do YouTube serão marcados com {label}.",
+    "tempoTitle": "Alterar Tempo",
+    "tempoPreview": "Pré-visualização"
   },
   "audioEditRestore": {
     "title": "Sessões de Edição de Áudio Salvas",

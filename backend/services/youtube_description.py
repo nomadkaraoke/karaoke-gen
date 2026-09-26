@@ -97,6 +97,14 @@ def render_youtube_description(
         # Legacy template without a placeholder: preserve historical append.
         result = f"{result}\n\nBrand Code: {brand_code}"
 
+    # Tempo-adjusted tracks get an up-front notice so nobody is surprised when
+    # the backing track doesn't play at the speed they know.
+    from backend.services.tempo_label import tempo_description_notice
+
+    notice = tempo_description_notice(title)
+    if notice:
+        result = f"{notice}\n\n{result}"
+
     return _collapse_blank_lines(result).strip()
 
 

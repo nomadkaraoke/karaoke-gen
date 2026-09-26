@@ -21,6 +21,7 @@ from backend.i18n import t, get_locale_from_request
 from backend.services.auth_service import UserType, AuthResult
 from backend.services.user_service import get_user_service, UserService, USERS_COLLECTION
 from backend.services.job_manager import JobManager
+from backend.services.tempo_label import strip_tempo_suffix
 from backend.services.flacfetch_client import get_flacfetch_client, FlacfetchServiceError
 from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import get_audio_search_service, NoResultsError, AudioSearchError
@@ -140,6 +141,13 @@ EDITABLE_JOB_FIELDS = {
     # batches (e.g. KaraokeHunt outreach) that must wait at review indefinitely.
     "made_for_you",
 }
+
+
+def _tempo_label_reset_updates(job) -> dict:
+    """Updates that undo an audio-editor tempo label (for resets that restore normal-speed audio)."""
+    if getattr(job, "tempo_factor", None) is None:
+        return {}
+    return {"title": strip_tempo_suffix(job.title), "tempo_factor": None}
 
 
 # =============================================================================
@@ -1317,6 +1325,8 @@ async def reset_job(
                 f"Admin reset job {job_id}: Restoring input_media_gcs_path "
                 f"to original: {original_path}"
             )
+        # The original audio is back at its normal speed, so drop any tempo label.
+        clear_updates.update(_tempo_label_reset_updates(job))
 
     # Execute the update
     job_ref.update(clear_updates)
@@ -2905,9 +2915,12 @@ async def override_audio_source(
     update_payload["error_message"] = DELETE_FIELD
     update_payload["error_details"] = DELETE_FIELD
 
+    # Fresh audio will be at normal speed: drop any tempo label from the title
+    update_payload.update(_tempo_label_reset_updates(job))
+
     # Set audio search fields based on current artist/title
     search_artist = job.artist
-    search_title = job.title
+    search_title = strip_tempo_suffix(job.title) if getattr(job, "tempo_factor", None) is not None else job.title
     update_payload["audio_search_artist"] = search_artist
     update_payload["audio_search_title"] = search_title
 

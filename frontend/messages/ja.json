@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "末尾をトリミングするには、トラックの末尾で終わる範囲を選択してください",
     "trimEndSelection": "選択範囲より後の部分をすべて削除します",
     "trimStartDisabledHint": "先頭をトリミングするには、トラックの先頭から始まる範囲を選択してください",
-    "trimStartSelection": "選択範囲より前の部分をすべて削除します"
+    "trimStartSelection": "選択範囲より前の部分をすべて削除します",
+    "tempo": "テンポ",
+    "tempoApply": "{percent}%を適用",
+    "tempoBadge": "テンポ: オリジナルの{percent}%",
+    "tempoButtonHint": "キーを変えずに曲全体の速度を上げたり下げたりします",
+    "tempoCumulative": "以前のテンポ変更と合わせて: オリジナルの速度の{percent}%",
+    "tempoDescription": "曲全体の速度を上げたり下げたりします。キー（ピッチ）はそのまま維持され、歌詞は新しい速度に同期されます。",
+    "tempoDurationChange": "長さ: {before} → {after}",
+    "tempoFaster": "速く",
+    "tempoLabelNotice": "歌う人が驚かないように、テンポを変更したトラックは、完成した動画のタイトル画面、ファイル名、YouTubeのタイトルにわかりやすく表示されます（例：{example}）。",
+    "tempoNewSpeed": "新しい速度",
+    "tempoPreviewHint": "新しい速度で再生します（おおよそのプレビュー）",
+    "tempoSlower": "遅く",
+    "tempoSubmitWarning": "テンポがオリジナルの{percent}%に変更されました。完成した動画、ファイル、YouTubeのタイトルには{label}と表示されます。",
+    "tempoTitle": "テンポを変更",
+    "tempoPreview": "プレビュー"
   },
   "audioEditRestore": {
     "title": "保存されたオーディオ編集セッション",

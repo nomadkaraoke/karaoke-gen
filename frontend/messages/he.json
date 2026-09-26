@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "כדי לחתוך את הסוף, בחרו אזור שמסתיים בדיוק בסוף הרצועה",
     "trimEndSelection": "הסירו הכל אחרי האזור הנבחר",
     "trimStartDisabledHint": "כדי לחתוך את ההתחלה, בחרו אזור שמתחיל בדיוק בתחילת הרצועה",
-    "trimStartSelection": "הסירו הכל לפני האזור הנבחר"
+    "trimStartSelection": "הסירו הכל לפני האזור הנבחר",
+    "tempo": "קצב",
+    "tempoApply": "החל {percent}%",
+    "tempoBadge": "קצב: {percent}% מהמקור",
+    "tempoButtonHint": "להאיץ או להאט את השיר כולו מבלי לשנות את הסולם שלו",
+    "tempoCumulative": "בשילוב עם שינוי הקצב הקודם שלך: {percent}% מהמהירות המקורית",
+    "tempoDescription": "אפשר להאיץ או להאט את השיר כולו. הסולם (גובה הצליל) נשאר זהה, והמילים יסונכרנו למהירות החדשה.",
+    "tempoDurationChange": "אורך: {before} → {after}",
+    "tempoFaster": "מהר יותר",
+    "tempoLabelNotice": "כדי שאף אחד לא יופתע כשהוא שר, רצועות שהקצב שלהן שונה מסומנות בבירור במסך הפתיחה של הווידאו הסופי, בשמות הקבצים ובכותרת ב-YouTube, למשל {example}.",
+    "tempoNewSpeed": "מהירות חדשה",
+    "tempoPreviewHint": "מתנגן במהירות החדשה (תצוגה מקדימה משוערת)",
+    "tempoSlower": "לאט יותר",
+    "tempoSubmitWarning": "הקצב שונה ל-{percent}% מהמקור. הווידאו הסופי, הקבצים והכותרת ב-YouTube יסומנו כ-{label}.",
+    "tempoTitle": "שינוי קצב",
+    "tempoPreview": "תצוגה מקדימה"
   },
   "audioEditRestore": {
     "title": "הפעלות עריכת אודיו שמורות",

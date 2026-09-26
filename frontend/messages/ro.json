@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Pentru a tăia sfârșitul, selectează o regiune care se termină chiar la sfârșitul piesei",
     "trimEndSelection": "Elimină totul de după selecție",
     "trimStartDisabledHint": "Pentru a tăia începutul, selectează o regiune care începe chiar de la începutul piesei",
-    "trimStartSelection": "Elimină totul dinaintea selecției"
+    "trimStartSelection": "Elimină totul dinaintea selecției",
+    "tempo": "Tempo",
+    "tempoApply": "Aplică {percent}%",
+    "tempoBadge": "Tempo: {percent}% din original",
+    "tempoButtonHint": "Accelerează sau încetinește întreaga melodie fără a-i schimba tonalitatea",
+    "tempoCumulative": "Combinat cu modificarea anterioară de tempo: {percent}% din viteza originală",
+    "tempoDescription": "Accelerează sau încetinește întreaga melodie. Tonalitatea (pitch-ul) rămâne aceeași, iar versurile vor fi sincronizate la noua viteză.",
+    "tempoDurationChange": "Durată: {before} → {after}",
+    "tempoFaster": "Mai rapid",
+    "tempoLabelNotice": "Pentru ca nimeni să nu aibă o surpriză când cântă, piesele cu tempo modificat sunt etichetate clar pe ecranul de titlu al videoclipului final, în numele fișierelor și în titlul de pe YouTube, de ex. {example}.",
+    "tempoNewSpeed": "Viteză nouă",
+    "tempoPreviewHint": "Redă la noua viteză (previzualizare aproximativă)",
+    "tempoSlower": "Mai lent",
+    "tempoSubmitWarning": "Tempoul a fost modificat la {percent}% din original. Videoclipul tău final, fișierele și titlul de pe YouTube vor fi etichetate {label}.",
+    "tempoTitle": "Modifică Tempo",
+    "tempoPreview": "Previzualizare"
   },
   "audioEditRestore": {
     "title": "Sesiuni de editare audio salvate",

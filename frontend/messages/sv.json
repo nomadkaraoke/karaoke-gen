@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "För att trimma slutet, markera ett område som slutar precis i slutet av spåret",
     "trimEndSelection": "Ta bort allt efter markeringen",
     "trimStartDisabledHint": "För att trimma början, markera ett område som börjar precis i början av spåret",
-    "trimStartSelection": "Ta bort allt före markeringen"
+    "trimStartSelection": "Ta bort allt före markeringen",
+    "tempo": "Tempo",
+    "tempoApply": "Tillämpa {percent} %",
+    "tempoBadge": "Tempo: {percent} % av originalet",
+    "tempoButtonHint": "Snabba upp eller sakta ner hela låten utan att ändra tonarten",
+    "tempoCumulative": "Kombinerat med din tidigare tempoändring: {percent} % av originalhastigheten",
+    "tempoDescription": "Snabba upp eller sakta ner hela låten. Tonarten (tonhöjden) förblir densamma, och texten synkroniseras till den nya hastigheten.",
+    "tempoDurationChange": "Längd: {before} → {after}",
+    "tempoFaster": "Snabbare",
+    "tempoLabelNotice": "För att ingen ska bli överraskad när de sjunger är spår med ändrat tempo tydligt märkta i den färdiga videons titelskärm, i filnamnen och i YouTube-titeln, t.ex. {example}.",
+    "tempoNewSpeed": "Ny hastighet",
+    "tempoPreviewHint": "Spelas upp i den nya hastigheten (ungefärlig förhandsgranskning)",
+    "tempoSlower": "Långsammare",
+    "tempoSubmitWarning": "Tempot har ändrats till {percent}% av originalet. Din färdiga video, dina filer och din YouTube-titel kommer att märkas med {label}.",
+    "tempoTitle": "Ändra tempo",
+    "tempoPreview": "Förhandsgranska"
   },
   "audioEditRestore": {
     "title": "Sparade ljudredigeringssessioner",

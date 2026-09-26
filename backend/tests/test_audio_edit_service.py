@@ -276,6 +276,106 @@ class TestFFmpegOperations:
             service.trim_start("/tmp/input.flac", 30.0, "/tmp/output.flac")
 
 
+class TestChangeTempo:
+    """Whole-track, pitch-preserving tempo change."""
+
+    @pytest.fixture(autouse=True)
+    def _reset_rubberband_cache(self):
+        AudioEditService._rubberband_available = None
+        yield
+        AudioEditService._rubberband_available = None
+
+    @staticmethod
+    def _meta(duration):
+        return AudioMetadata(
+            duration_seconds=duration, sample_rate=44100, channels=2,
+            format="flac", file_size_bytes=30000000,
+        )
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    def test_slow_down_uses_rubberband_when_available(self, mock_run, mock_meta):
+        AudioEditService._rubberband_available = True
+        mock_run.return_value = MagicMock(returncode=0)
+        mock_meta.return_value = self._meta(250.0)
+
+        service = AudioEditService(storage_service=Mock())
+        result = service.change_tempo("/tmp/input.flac", 0.8, "/tmp/output.flac")
+
+        cmd = mock_run.call_args[0][0]
+        af_str = cmd[cmd.index("-af") + 1]
+        assert af_str.startswith("rubberband=tempo=0.8")
+        assert "pitchq=quality" in af_str
+        assert cmd[-1] == "/tmp/output.flac"
+        assert result.duration_seconds == 250.0
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    def test_falls_back_to_atempo_without_rubberband(self, mock_run, mock_meta):
+        AudioEditService._rubberband_available = False
+        mock_run.return_value = MagicMock(returncode=0)
+        mock_meta.return_value = self._meta(160.0)
+
+        service = AudioEditService(storage_service=Mock())
+        service.change_tempo("/tmp/input.flac", 1.25, "/tmp/output.flac")
+
+        cmd = mock_run.call_args[0][0]
+        assert cmd[cmd.index("-af") + 1] == "atempo=1.25"
+
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    def test_rubberband_detection_parses_filter_list(self, mock_run):
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout=" .. atempo            A->A       Adjust audio tempo.\n"
+                                 " .. rubberband        A->A       Apply time-stretching.\n",
+        )
+        assert AudioEditService._has_rubberband() is True
+        # Cached — no second probe
+        assert AudioEditService._has_rubberband() is True
+        assert mock_run.call_count == 1
+
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    def test_rubberband_detection_missing_filter(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0, stdout=" .. atempo  A->A  Adjust audio tempo.\n")
+        assert AudioEditService._has_rubberband() is False
+
+    @pytest.mark.parametrize("factor", [0.49, 1.51, 0, -1, 3.0])
+    def test_rejects_out_of_range_factor(self, factor):
+        service = AudioEditService(storage_service=Mock())
+        with pytest.raises(ValueError, match="between"):
+            service.change_tempo("/tmp/input.flac", factor, "/tmp/output.flac")
+
+    def test_rejects_noop_factor(self):
+        service = AudioEditService(storage_service=Mock())
+        with pytest.raises(ValueError, match="1.0"):
+            service.change_tempo("/tmp/input.flac", 1.0, "/tmp/output.flac")
+
+    @patch("backend.services.audio_edit_service.AudioEditService.get_metadata")
+    @patch("backend.services.audio_edit_service.subprocess.run")
+    @patch("backend.services.audio_edit_service.tempfile.TemporaryDirectory")
+    def test_apply_edit_dispatches_tempo(self, mock_tmpdir, mock_run, mock_meta):
+        AudioEditService._rubberband_available = True
+        mock_tmpdir.return_value.__enter__ = Mock(return_value="/tmp/edit")
+        mock_tmpdir.return_value.__exit__ = Mock(return_value=False)
+        mock_run.return_value = MagicMock(returncode=0)
+        mock_meta.return_value = self._meta(222.2)
+
+        mock_storage = Mock()
+        service = AudioEditService(storage_service=mock_storage)
+        metadata, result_path = service.apply_edit(
+            input_gcs_path="jobs/123/input/song.flac",
+            operation="tempo",
+            params={"factor": 0.9},
+            output_gcs_path="jobs/123/audio_edit/edit_t.flac",
+            job_id="123",
+        )
+
+        cmd = mock_run.call_args[0][0]
+        assert "rubberband=tempo=0.9" in cmd[cmd.index("-af") + 1]
+        mock_storage.upload_file.assert_called_once()
+        assert result_path == "jobs/123/audio_edit/edit_t.flac"
+        assert metadata.duration_seconds == 222.2
+
+
 class TestApplyEdit:
     """Test the apply_edit method that orchestrates download/edit/upload."""
 

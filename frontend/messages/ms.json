@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Untuk memotong bahagian akhir, pilih bahagian yang berakhir tepat pada penghujung trek",
     "trimEndSelection": "Buang semua bahagian selepas pilihan",
     "trimStartDisabledHint": "Untuk memotong bahagian awal, pilih bahagian yang bermula tepat pada permulaan trek",
-    "trimStartSelection": "Buang semua bahagian sebelum pilihan"
+    "trimStartSelection": "Buang semua bahagian sebelum pilihan",
+    "tempo": "Tempo",
+    "tempoApply": "Gunakan {percent}%",
+    "tempoBadge": "Tempo: {percent}% daripada asal",
+    "tempoButtonHint": "Percepatkan atau perlahankan keseluruhan lagu tanpa menukar nadanya",
+    "tempoCumulative": "Digabungkan dengan perubahan tempo anda sebelum ini: {percent}% daripada kelajuan asal",
+    "tempoDescription": "Percepatkan atau perlahankan keseluruhan lagu. Nada (pic) kekal sama, dan lirik akan disegerakkan dengan kelajuan baharu.",
+    "tempoDurationChange": "Durasi: {before} → {after}",
+    "tempoFaster": "Lebih pantas",
+    "tempoLabelNotice": "Supaya tiada siapa terkejut semasa menyanyi, trek yang diubah tempo dilabelkan dengan jelas pada skrin tajuk video yang telah siap, nama fail dan tajuk YouTube, cth. {example}.",
+    "tempoNewSpeed": "Kelajuan baharu",
+    "tempoPreviewHint": "Dimainkan pada kelajuan baharu (pratonton anggaran)",
+    "tempoSlower": "Lebih perlahan",
+    "tempoSubmitWarning": "Tempo diubah kepada {percent}% daripada yang asal. Video anda yang telah siap, fail dan tajuk YouTube akan dilabelkan {label}.",
+    "tempoTitle": "Tukar Tempo",
+    "tempoPreview": "Pratonton"
   },
   "audioEditRestore": {
     "title": "Sesi Suntingan Audio Disimpan",

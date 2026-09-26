@@ -509,4 +509,115 @@ describe("AudioEditor", () => {
     })
     expect(screen.queryByText("Save")).not.toBeInTheDocument()
   })
+
+  describe("tempo", () => {
+    const tempoEntry = {
+      edit_id: "tempo-1",
+      operation: "tempo",
+      params: { factor: 0.9 },
+      duration_before: 200,
+      duration_after: 222.2,
+      timestamp: new Date().toISOString(),
+    }
+
+    it("applies a whole-track tempo change from the Tempo dialog", async () => {
+      mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+      mockApi.applyAudioEdit.mockResolvedValue({
+        ...mockEditResponse,
+        operation: "tempo",
+        duration_after: 222.2,
+        edit_stack: [tempoEntry],
+      })
+
+      render(<AudioEditor job={mockJob} />)
+      fireEvent.click(await screen.findByTestId("tempo-button"))
+
+      const dialog = screen.getByTestId("tempo-dialog")
+      expect(dialog).toHaveTextContent("Change Tempo")
+      // Apply is disabled at 100% (no-op)
+      expect(screen.getByTestId("tempo-apply")).toBeDisabled()
+
+      fireEvent.click(screen.getByRole("button", { name: "90%" }))
+      expect(dialog).toHaveTextContent("Length: 3:20 → 3:42")
+      fireEvent.click(screen.getByTestId("tempo-apply"))
+
+      await waitFor(() => {
+        expect(mockApi.applyAudioEdit).toHaveBeenCalledWith("test-job-123", "tempo", { factor: 0.9 })
+      })
+      await waitFor(() => {
+        expect(screen.getByTestId("tempo-badge")).toHaveTextContent("Tempo: 90% of original")
+      })
+      expect(screen.queryByTestId("tempo-dialog")).not.toBeInTheDocument()
+    })
+
+    it("slider sets an arbitrary percentage", async () => {
+      mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+      mockApi.applyAudioEdit.mockResolvedValue({ ...mockEditResponse, edit_stack: [] })
+
+      render(<AudioEditor job={mockJob} />)
+      fireEvent.click(await screen.findByTestId("tempo-button"))
+      fireEvent.change(screen.getByTestId("tempo-slider"), { target: { value: "107" } })
+      fireEvent.click(screen.getByTestId("tempo-apply"))
+
+      await waitFor(() => {
+        expect(mockApi.applyAudioEdit).toHaveBeenCalledWith("test-job-123", "tempo", { factor: 1.07 })
+      })
+    })
+
+    it("Escape closes the dialog and edit shortcuts don't fire behind it", async () => {
+      mockApi.getInputAudioInfo.mockResolvedValue({
+        ...mockAudioInfo,
+        current_duration_seconds: 180,
+        edit_stack: mockEditResponse.edit_stack,
+        can_undo: true,
+      })
+      render(<AudioEditor job={mockJob} />)
+      fireEvent.click(await screen.findByTestId("tempo-button"))
+      fireEvent.keyDown(window, { key: "z", ctrlKey: true })
+      expect(mockApi.undoAudioEdit).not.toHaveBeenCalled()
+      fireEvent.keyDown(window, { key: "Escape" })
+      expect(screen.queryByTestId("tempo-dialog")).not.toBeInTheDocument()
+    })
+
+    it("cancel closes the dialog without applying", async () => {
+      mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+      render(<AudioEditor job={mockJob} />)
+      fireEvent.click(await screen.findByTestId("tempo-button"))
+      fireEvent.click(screen.getByRole("button", { name: "110%" }))
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+      expect(screen.queryByTestId("tempo-dialog")).not.toBeInTheDocument()
+      expect(mockApi.applyAudioEdit).not.toHaveBeenCalled()
+    })
+
+    it("shows cumulative tempo badge and warns about output labeling on submit", async () => {
+      mockApi.getInputAudioInfo.mockResolvedValue({
+        ...mockAudioInfo,
+        current_duration_seconds: 246.9,
+        edit_stack: [tempoEntry, { ...tempoEntry, edit_id: "tempo-2" }],
+        can_undo: true,
+      })
+
+      render(<AudioEditor job={mockJob} />)
+      await waitFor(() => {
+        expect(screen.getByTestId("tempo-badge")).toHaveTextContent("Tempo: 81% of original")
+      })
+
+      fireEvent.click(screen.getByText("Submit for Review"))
+      expect(await screen.findByTestId("tempo-submit-warning")).toHaveTextContent('"(81% Tempo)"')
+    })
+
+    it("shows no tempo badge or warning without a tempo edit", async () => {
+      mockApi.getInputAudioInfo.mockResolvedValue({
+        ...mockAudioInfo,
+        current_duration_seconds: 180,
+        edit_stack: mockEditResponse.edit_stack,
+        can_undo: true,
+      })
+      render(<AudioEditor job={mockJob} />)
+      fireEvent.click(await screen.findByText("Submit for Review"))
+      await screen.findByText("Submit your audio edits for review?")
+      expect(screen.queryByTestId("tempo-badge")).not.toBeInTheDocument()
+      expect(screen.queryByTestId("tempo-submit-warning")).not.toBeInTheDocument()
+    })
+  })
 })

@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Aby przyciąć koniec, zaznacz fragment, który kończy się na samym końcu utworu",
     "trimEndSelection": "Usuń wszystko po zaznaczeniu",
     "trimStartDisabledHint": "Aby przyciąć początek, zaznacz fragment, który zaczyna się na samym początku utworu",
-    "trimStartSelection": "Usuń wszystko przed zaznaczeniem"
+    "trimStartSelection": "Usuń wszystko przed zaznaczeniem",
+    "tempo": "Tempo",
+    "tempoApply": "Zastosuj {percent}%",
+    "tempoBadge": "Tempo: {percent}% oryginału",
+    "tempoButtonHint": "Przyspiesz lub zwolnij całą piosenkę bez zmiany jej tonacji",
+    "tempoCumulative": "W połączeniu z Twoją wcześniejszą zmianą tempa: {percent}% oryginalnej prędkości",
+    "tempoDescription": "Przyspiesz lub zwolnij całą piosenkę. Tonacja (wysokość dźwięku) pozostaje taka sama, a tekst zostanie zsynchronizowany z nową prędkością.",
+    "tempoDurationChange": "Czas trwania: {before} → {after}",
+    "tempoFaster": "Szybciej",
+    "tempoLabelNotice": "Aby nikt nie był zaskoczony podczas śpiewania, utwory ze zmienionym tempem są wyraźnie oznaczone na ekranie tytułowym gotowego wideo, w nazwach plików i tytule na YouTube, np. {example}.",
+    "tempoNewSpeed": "Nowa prędkość",
+    "tempoPreviewHint": "Odtwarza z nową prędkością (przybliżony podgląd)",
+    "tempoSlower": "Wolniej",
+    "tempoSubmitWarning": "Tempo zmieniono na {percent}% oryginału. Twoje gotowe wideo, pliki i tytuł na YouTube zostaną oznaczone jako {label}.",
+    "tempoTitle": "Zmień tempo",
+    "tempoPreview": "Podgląd"
   },
   "audioEditRestore": {
     "title": "Zapisane sesje edycji dźwięku",

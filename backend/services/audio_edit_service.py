@@ -154,6 +154,59 @@ class AudioEditService:
         ])
         return self.get_metadata(output_path)
 
+    # Tempo factors outside this range sound badly artefacted and are almost
+    # certainly a mistake for a sing-along track. The editor UI uses the same bounds.
+    MIN_TEMPO_FACTOR = 0.5
+    MAX_TEMPO_FACTOR = 1.5
+
+    _rubberband_available: bool | None = None
+
+    @classmethod
+    def _has_rubberband(cls) -> bool:
+        """Whether this ffmpeg build includes the librubberband filter (cached)."""
+        if cls._rubberband_available is None:
+            try:
+                result = subprocess.run(
+                    ["ffmpeg", "-hide_banner", "-filters"],
+                    capture_output=True, text=True, timeout=30,
+                )
+                cls._rubberband_available = result.returncode == 0 and " rubberband " in result.stdout
+            except (OSError, subprocess.TimeoutExpired):
+                cls._rubberband_available = False
+            if not cls._rubberband_available:
+                logger.warning(
+                    "ffmpeg has no rubberband filter; tempo changes will use the "
+                    "lower-quality atempo filter"
+                )
+        return cls._rubberband_available
+
+    def change_tempo(self, input_path: str, factor: float, output_path: str) -> AudioMetadata:
+        """Speed up (factor > 1) or slow down (factor < 1) the whole track, preserving pitch.
+
+        Uses Rubber Band (high-quality, pitch-preserving time-stretch) when the
+        ffmpeg build has it — the production static build does — else atempo.
+        """
+        if not (self.MIN_TEMPO_FACTOR <= factor <= self.MAX_TEMPO_FACTOR):
+            raise ValueError(
+                f"Tempo factor must be between {self.MIN_TEMPO_FACTOR} and "
+                f"{self.MAX_TEMPO_FACTOR} (got {factor})"
+            )
+        if abs(factor - 1.0) < 1e-6:
+            raise ValueError("Tempo factor of 1.0 would not change the audio")
+
+        if self._has_rubberband():
+            audio_filter = f"rubberband=tempo={factor}:pitchq=quality:channels=together"
+        else:
+            audio_filter = f"atempo={factor}"
+
+        self._run_ffmpeg([
+            "-i", input_path,
+            "-af", audio_filter,
+            "-c:a", "flac",
+            output_path,
+        ])
+        return self.get_metadata(output_path)
+
     def join_audio(self, input_path: str, other_path: str, position: str, output_path: str) -> AudioMetadata:
         """Join two audio files. position: 'start' (prepend other) or 'end' (append other)."""
         if position == "start":
@@ -209,6 +262,8 @@ class AudioEditService:
                 metadata = self.fade_region(
                     local_input, params["start_seconds"], params["end_seconds"], direction, local_output
                 )
+            elif operation == "tempo":
+                metadata = self.change_tempo(local_input, float(params["factor"]), local_output)
             elif operation in ("join_start", "join_end"):
                 # Download the upload file
                 upload_gcs_path = params["upload_gcs_path"]

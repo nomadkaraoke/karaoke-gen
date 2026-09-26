@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Per retallar el final, selecciona una regió que acabi just al final de la pista",
     "trimEndSelection": "Elimina tot el que hi ha després de la selecció",
     "trimStartDisabledHint": "Per retallar el principi, selecciona una regió que comenci just al principi de la pista",
-    "trimStartSelection": "Elimina tot el que hi ha abans de la selecció"
+    "trimStartSelection": "Elimina tot el que hi ha abans de la selecció",
+    "tempo": "Tempo",
+    "tempoApply": "Aplica un {percent}%",
+    "tempoBadge": "Tempo: {percent}% de l'original",
+    "tempoButtonHint": "Accelera o alenteix tota la cançó sense canviar-ne el to",
+    "tempoCumulative": "Combinat amb el teu canvi de tempo anterior: {percent}% de la velocitat original",
+    "tempoDescription": "Accelera o alenteix tota la cançó. El to es manté igual i la lletra se sincronitzarà amb la nova velocitat.",
+    "tempoDurationChange": "Durada: {before} → {after}",
+    "tempoFaster": "Més ràpid",
+    "tempoLabelNotice": "Perquè ningú se sorprengui quan la canti, les pistes amb el tempo modificat s'etiqueten clarament a la pantalla de títol del vídeo final, als noms dels fitxers i al títol de YouTube, p. ex. {example}.",
+    "tempoNewSpeed": "Nova velocitat",
+    "tempoPreviewHint": "Es reprodueix a la nova velocitat (previsualització aproximada)",
+    "tempoSlower": "Més lent",
+    "tempoSubmitWarning": "El tempo s'ha canviat al {percent}% de l'original. El teu vídeo final, els fitxers i el títol de YouTube s'etiquetaran com a {label}.",
+    "tempoTitle": "Canvia el tempo",
+    "tempoPreview": "Previsualització"
   },
   "audioEditRestore": {
     "title": "Sessions d'edició d'àudio desades",

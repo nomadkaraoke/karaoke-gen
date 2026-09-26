@@ -391,6 +391,11 @@ class Job(BaseModel):
     # Edit tracking (how many times a completed track has been re-edited)
     edit_count: int = 0
 
+    # Whole-track tempo change applied in the audio editor (1.0 / None = original
+    # speed). When set, job.title carries a "(90% Tempo)" label so every published
+    # output says so; see backend/services/tempo_label.py.
+    tempo_factor: Optional[float] = None
+
     # Processing state
     track_output_dir: Optional[str] = None       # Local output directory (temp)
     audio_hash: Optional[str] = None             # Hash for deduplication

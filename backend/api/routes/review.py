@@ -34,6 +34,12 @@ from backend.models.review_session import ReviewSession, ReviewSessionSummary
 from backend.services.job_manager import JobManager
 from backend.services.firestore_service import FirestoreService
 from backend.services.storage_service import StorageService
+from backend.services.tempo_label import (
+    apply_tempo_to_title,
+    cumulative_tempo_factor,
+    is_tempo_adjusted,
+    strip_tempo_suffix,
+)
 from backend.services.job_logging import job_log_context, JobLogger
 from backend.services.tracing import create_span, add_span_attribute, add_span_event
 from backend.services.encoding_service import get_encoding_service
@@ -2915,7 +2921,7 @@ async def apply_audio_edit(
     """
     Apply an edit operation to the input audio.
 
-    Supported operations: trim_start, trim_end, cut, mute, fade_in, fade_out,
+    Supported operations: trim_start, trim_end, cut, mute, fade_in, fade_out, tempo,
     join_start, join_end.
     Returns updated waveform data and playback URL.
     """
@@ -2930,9 +2936,14 @@ async def apply_audio_edit(
     if not operation:
         raise HTTPException(status_code=400, detail="Missing 'operation' field")
 
-    valid_operations = {"trim_start", "trim_end", "cut", "mute", "fade_in", "fade_out", "join_start", "join_end"}
+    valid_operations = {"trim_start", "trim_end", "cut", "mute", "fade_in", "fade_out", "tempo", "join_start", "join_end"}
     if operation not in valid_operations:
         raise HTTPException(status_code=400, detail=f"Invalid operation: {operation}. Valid: {valid_operations}")
+
+    if operation == "tempo":
+        factor = params.get("factor")
+        if isinstance(factor, bool) or not isinstance(factor, (int, float)):
+            raise HTTPException(status_code=400, detail="Missing or non-numeric 'factor' for tempo operation")
 
     job_manager = JobManager()
     job = job_manager.get_job(job_id)
@@ -3231,6 +3242,27 @@ async def upload_audio_for_join(
         raise HTTPException(status_code=500, detail=f"Error uploading audio: {str(e)}")
 
 
+def _tempo_label_updates(job, factor: float) -> dict:
+    """Job field updates that (re)label job.title for a tempo change, or {} if none needed.
+
+    The suffix goes into job.title because every published output (screens,
+    filenames, Dropbox/GDrive/kjbox, YouTube, emails) reads it. The original
+    title is pinned into lyrics_title so lyrics search still finds the song.
+    """
+    if is_tempo_adjusted(factor):
+        updates = {
+            "title": apply_tempo_to_title(job.title, factor),
+            "tempo_factor": round(factor, 4),
+        }
+        if not getattr(job, "lyrics_title", None):
+            updates["lyrics_title"] = strip_tempo_suffix(job.title)
+        return updates
+    if getattr(job, "tempo_factor", None) is not None:
+        # A previous submit labeled this job but the tempo is now back to normal.
+        return {"title": strip_tempo_suffix(job.title), "tempo_factor": None}
+    return {}
+
+
 @router.post("/{job_id}/audio-edit/submit")
 async def submit_audio_edit(
     job_id: str,
@@ -3284,6 +3316,13 @@ async def submit_audio_edit(
         logger.info(f"Job {job_id}: Audio edit submitted, using edited audio: {edited_input_path}")
     else:
         logger.info(f"Job {job_id}: Audio edit submitted with no edits, using original audio")
+
+    # Label tempo-changed tracks. Must happen before the workers are triggered:
+    # lyrics/screens/render/distribution all read job.title from here on.
+    tempo_updates = _tempo_label_updates(job, cumulative_tempo_factor(edit_stack))
+    if tempo_updates:
+        job_manager.update_job(job_id, tempo_updates)
+        logger.info(f"Job {job_id}: Tempo label updates applied: {tempo_updates}")
 
     # Transition state
     job_manager.transition_to_state(

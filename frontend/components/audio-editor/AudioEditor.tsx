@@ -27,8 +27,19 @@ import {
   ChevronDown,
   ChevronRight,
   X,
+  Gauge,
 } from "lucide-react"
 import { Link } from "@/i18n/routing"
+import {
+  cumulativeTempoFactor,
+  tempoPercent,
+  isTempoAdjusted,
+  tempoLabel,
+  MIN_TEMPO_PERCENT,
+  MAX_TEMPO_PERCENT,
+} from "@/lib/tempo"
+
+const TEMPO_PRESETS = [80, 85, 90, 95, 105, 110, 115, 120]
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -348,6 +359,8 @@ export function AudioEditor({ job }: AudioEditorProps) {
   const [isOperating, setIsOperating] = useState(false)
   const [operationError, setOperationError] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [showTempoDialog, setShowTempoDialog] = useState(false)
+  const [tempoDraft, setTempoDraft] = useState(100) // percent
   const [showGuidance, setShowGuidance] = useState(() => {
     if (typeof window === "undefined") return true
     return localStorage.getItem("audio-editor-guidance-dismissed") !== "true"
@@ -389,6 +402,11 @@ export function AudioEditor({ job }: AudioEditorProps) {
   // server-side anchoring in audio_edit_service.fade_region).
   const atStartEdge = !!selection && selection.startSeconds < 1
   const atEndEdge = !!selection && selection.endSeconds > currentDuration - 1
+
+  // Cumulative tempo across all tempo edits (0.9 then 0.9 = 81%). This is what
+  // the published outputs get labeled with, so surface it prominently.
+  const tempoFactor = cumulativeTempoFactor(editStack)
+  const tempoChanged = isTempoAdjusted(tempoFactor)
 
   // ─── Auto-save ─────────────────────────────────────────────────
 
@@ -512,6 +530,18 @@ export function AudioEditor({ job }: AudioEditorProps) {
       // Don't capture if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
+      // While the tempo dialog is open, only preview playback and Escape apply —
+      // edit shortcuts must not act on the waveform behind the modal.
+      if (showTempoDialog) {
+        if (e.key === "Escape") {
+          closeTempoDialog()
+        } else if (e.key === " ") {
+          e.preventDefault()
+          togglePlay()
+        }
+        return
+      }
+
       if (e.key === " ") {
         e.preventDefault()
         togglePlay()
@@ -537,7 +567,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection, canUndo, canRedo])
+  }, [selection, canUndo, canRedo, showTempoDialog])
 
   // ─── Edit operations ──────────────────────────────────────────
 
@@ -639,6 +669,35 @@ export function AudioEditor({ job }: AudioEditorProps) {
       start_seconds: selection.startSeconds,
       end_seconds: selection.endSeconds,
     })
+  }
+
+  // ─── Tempo ─────────────────────────────────────────────────────
+
+  // Live preview: the browser can time-stretch playback without changing pitch,
+  // so the user hears (roughly) the result before the server renders it.
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    audio.preservesPitch = true
+    audio.playbackRate = showTempoDialog ? tempoDraft / 100 : 1
+  }, [showTempoDialog, tempoDraft, currentAudioUrl])
+
+  function openTempoDialog() {
+    setTempoDraft(100)
+    setActiveTab("edited")
+    setShowTempoDialog(true)
+  }
+
+  function closeTempoDialog() {
+    setShowTempoDialog(false)
+    setTempoDraft(100)
+  }
+
+  async function handleApplyTempo() {
+    if (tempoDraft === 100) return
+    const factor = tempoDraft / 100
+    closeTempoDialog()
+    await handleApply("tempo", { factor })
   }
 
   // ─── Join (upload) ─────────────────────────────────────────────
@@ -978,6 +1037,23 @@ export function AudioEditor({ job }: AudioEditorProps) {
 
           <div className="flex-1" />
 
+          {/* Tempo (whole track) */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openTempoDialog}
+            disabled={isOperating}
+            className="text-xs h-7"
+            title={t('tempoButtonHint')}
+            data-testid="tempo-button"
+          >
+            <Gauge className="w-3 h-3 mr-1" />
+            {t('tempo')}
+            {tempoChanged && (
+              <span className="ml-1 text-amber-600 dark:text-amber-400">{tempoPercent(tempoFactor)}%</span>
+            )}
+          </Button>
+
           {/* Join upload */}
           <Button
             variant="outline"
@@ -1052,6 +1128,14 @@ export function AudioEditor({ job }: AudioEditorProps) {
             )}
           </button>
           {isAudioLoading && <Spinner className="w-4 h-4 ml-2" />}
+          {tempoChanged && (
+            <span
+              className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-700 dark:text-amber-400"
+              data-testid="tempo-badge"
+            >
+              {t('tempoBadge', { percent: tempoPercent(tempoFactor) })}
+            </span>
+          )}
         </div>
 
         {/* Waveform */}
@@ -1114,6 +1198,7 @@ export function AudioEditor({ job }: AudioEditorProps) {
                     <span className="text-muted-foreground w-4 text-right">{i + 1}.</span>
                     <span className="font-medium capitalize" style={{ color: "var(--text)" }}>
                       {edit.operation.replace(/_/g, " ")}
+                      {edit.operation === "tempo" && ` ${tempoPercent(Number(edit.params?.factor))}%`}
                     </span>
                     <span className="text-muted-foreground">
                       {formatTime(edit.duration_before)} → {formatTime(edit.duration_after)}
@@ -1149,6 +1234,14 @@ export function AudioEditor({ job }: AudioEditorProps) {
               <p>Edited duration: {formatTime(audioInfo.current_duration_seconds)}</p>
               <p>Edits applied: {editStack.length}</p>
             </div>
+            {tempoChanged && (
+              <p
+                className="text-sm rounded border p-2 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                data-testid="tempo-submit-warning"
+              >
+                {t('tempoSubmitWarning', { percent: tempoPercent(tempoFactor), label: `"${tempoLabel(tempoFactor)}"` })}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               The edited audio will be used for separation and lyrics transcription. The original is preserved.
             </p>
@@ -1195,6 +1288,106 @@ export function AudioEditor({ job }: AudioEditorProps) {
             <p className="text-sm text-muted-foreground mt-1">
               Replaying {editStack.length} edit{editStack.length !== 1 ? "s" : ""}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tempo dialog */}
+      {showTempoDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div
+            className="rounded-lg border p-6 max-w-md w-full space-y-4"
+            style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
+            data-testid="tempo-dialog"
+          >
+            <h2 className="text-lg font-semibold" style={{ color: "var(--text)" }}>
+              {t('tempoTitle')}
+            </h2>
+            <p className="text-sm text-muted-foreground">{t('tempoDescription')}</p>
+
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <label htmlFor="tempo-slider" className="text-sm font-medium" style={{ color: "var(--text)" }}>
+                  {t('tempoNewSpeed')}
+                </label>
+                <span className="text-2xl font-semibold tabular-nums" style={{ color: "var(--text)" }}>
+                  {tempoDraft}%
+                </span>
+              </div>
+              <input
+                id="tempo-slider"
+                type="range"
+                min={MIN_TEMPO_PERCENT}
+                max={MAX_TEMPO_PERCENT}
+                step={1}
+                value={tempoDraft}
+                onChange={(e) => setTempoDraft(Number(e.target.value))}
+                className="w-full"
+                data-testid="tempo-slider"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{t('tempoSlower')}</span>
+                <button type="button" className="underline" onClick={() => setTempoDraft(100)}>
+                  100%
+                </button>
+                <span>{t('tempoFaster')}</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {TEMPO_PRESETS.map((p) => (
+                  <Button
+                    key={p}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={`text-xs h-7 px-2 ${tempoDraft === p ? "bg-primary dark:bg-primary text-primary-foreground border-primary hover:bg-primary/90 dark:hover:bg-primary/90" : ""}`}
+                    aria-pressed={tempoDraft === p}
+                    onClick={() => setTempoDraft(p)}
+                  >
+                    {p}%
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {tempoDraft !== 100 && (
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p>
+                  {t('tempoDurationChange', {
+                    before: formatTime(audioInfo.current_duration_seconds),
+                    after: formatTime(audioInfo.current_duration_seconds / (tempoDraft / 100)),
+                  })}
+                </p>
+                {editStack.some((e) => e.operation === "tempo") && (
+                  <p>{t('tempoCumulative', { percent: tempoPercent(tempoFactor * (tempoDraft / 100)) })}</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={togglePlay} disabled={isAudioLoading} className="text-xs h-7">
+                {isPlaying ? <Pause className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
+                {t('tempoPreview')}
+              </Button>
+              <span className="text-xs text-muted-foreground">{t('tempoPreviewHint')}</span>
+            </div>
+
+            <p className="text-xs rounded border p-2 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+              {t('tempoLabelNotice', { example: `"${audioInfo.title || job.title || "Song"} ${tempoLabel(tempoDraft === 100 ? 0.9 : tempoDraft / 100)}"` })}
+            </p>
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={closeTempoDialog}>
+                {tc('cancel')}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleApplyTempo}
+                disabled={tempoDraft === 100 || isOperating}
+                data-testid="tempo-apply"
+              >
+                {t('tempoApply', { percent: tempoDraft })}
+              </Button>
+            </div>
           </div>
         </div>
       )}

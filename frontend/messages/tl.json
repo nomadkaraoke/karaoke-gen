@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Para i-trim ang dulo, pumili ng bahagi na nagtatapos sa mismong dulo ng track",
     "trimEndSelection": "Alisin ang lahat pagkatapos ng napiling bahagi",
     "trimStartDisabledHint": "Para i-trim ang simula, pumili ng bahagi na nagsisimula sa mismong simula ng track",
-    "trimStartSelection": "Alisin ang lahat bago ang napiling bahagi"
+    "trimStartSelection": "Alisin ang lahat bago ang napiling bahagi",
+    "tempo": "Tempo",
+    "tempoApply": "I-apply ang {percent}%",
+    "tempoBadge": "Tempo: {percent}% ng orihinal",
+    "tempoButtonHint": "Pabilisin o pabagalin ang buong kanta nang hindi binabago ang key nito",
+    "tempoCumulative": "Kasama ng nauna mong pagbabago sa tempo: {percent}% ng orihinal na bilis",
+    "tempoDescription": "Pabilisin o pabagalin ang buong kanta. Mananatili ang key (pitch), at isasabay ang lyrics sa bagong bilis.",
+    "tempoDurationChange": "Haba: {before} → {after}",
+    "tempoFaster": "Mas mabilis",
+    "tempoLabelNotice": "Para walang magulat kapag kinanta nila ito, ang mga track na binago ang tempo ay malinaw na nilalagyan ng label sa title screen ng nabuong video, mga file name, at pamagat sa YouTube, hal. {example}.",
+    "tempoNewSpeed": "Bagong bilis",
+    "tempoPreviewHint": "Tutugtog sa bagong bilis (tinatayang preview)",
+    "tempoSlower": "Mas mabagal",
+    "tempoSubmitWarning": "Binago ang tempo sa {percent}% ng orihinal. Ang iyong nabuong video, mga file, at pamagat sa YouTube ay lalagyan ng label na {label}.",
+    "tempoTitle": "Baguhin ang Tempo",
+    "tempoPreview": "Preview"
   },
   "audioEditRestore": {
     "title": "Mga Naka-save na Audio Edit Session",

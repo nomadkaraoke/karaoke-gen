@@ -851,7 +851,22 @@
     "trimEndDisabledHint": "Para recortar el final, selecciona una región que termine justo al final de la pista",
     "trimEndSelection": "Eliminar todo después de la selección",
     "trimStartDisabledHint": "Para recortar el principio, selecciona una región que comience justo al principio de la pista",
-    "trimStartSelection": "Eliminar todo antes de la selección"
+    "trimStartSelection": "Eliminar todo antes de la selección",
+    "tempo": "Tempo",
+    "tempoApply": "Aplicar {percent}%",
+    "tempoBadge": "Tempo: {percent}% del original",
+    "tempoButtonHint": "Acelera o ralentiza toda la canción sin cambiar su tono",
+    "tempoCumulative": "Combinado con tu cambio de tempo anterior: {percent}% de la velocidad original",
+    "tempoDescription": "Acelera o ralentiza toda la canción. El tono se mantiene igual y las letras se sincronizarán con la nueva velocidad.",
+    "tempoDurationChange": "Duración: {before} → {after}",
+    "tempoFaster": "Más rápido",
+    "tempoLabelNotice": "Para que nadie se lleve una sorpresa al cantarla, las pistas con cambio de tempo se etiquetan claramente en la pantalla de título del video terminado, los nombres de archivo y el título de YouTube, p. ej., {example}.",
+    "tempoNewSpeed": "Nueva velocidad",
+    "tempoPreviewHint": "Se reproduce a la nueva velocidad (vista previa aproximada)",
+    "tempoSlower": "Más lento",
+    "tempoSubmitWarning": "Tempo cambiado al {percent}% del original. Tu video terminado, los archivos y el título de YouTube estarán etiquetados como {label}.",
+    "tempoTitle": "Cambiar tempo",
+    "tempoPreview": "Vista previa"
   },
   "audioEditRestore": {
     "title": "Sesiones de edición de audio guardadas",

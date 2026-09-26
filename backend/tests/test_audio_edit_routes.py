@@ -332,6 +332,48 @@ class TestApplyAudioEdit:
         called_op = mock_services["edit"].apply_edit.call_args.kwargs["operation"]
         assert called_op == operation
 
+    def test_apply_tempo_accepted(self, test_client, mock_job_manager, mock_services, audio_edit_job):
+        mock_job_manager.get_job.return_value = audio_edit_job
+        mock_services["edit"].apply_edit.return_value = (
+            AudioMetadata(duration_seconds=200.0, sample_rate=44100, channels=2,
+                          format="flac", file_size_bytes=25000000),
+            "jobs/edit-job-1/audio_edit/edit_tempo.flac",
+        )
+
+        resp = test_client.post("/api/review/edit-job-1/audio-edit/apply", json={
+            "operation": "tempo",
+            "params": {"factor": 0.9},
+        })
+
+        assert resp.status_code == 200
+        kwargs = mock_services["edit"].apply_edit.call_args.kwargs
+        assert kwargs["operation"] == "tempo"
+        assert kwargs["params"] == {"factor": 0.9}
+        stack = resp.json()["edit_stack"]
+        assert stack[-1]["operation"] == "tempo"
+        assert stack[-1]["params"] == {"factor": 0.9}
+
+    @pytest.mark.parametrize("params", [{}, {"factor": "fast"}, {"factor": None}, {"factor": True}])
+    def test_apply_tempo_requires_numeric_factor(self, params, test_client, mock_job_manager, mock_services, audio_edit_job):
+        mock_job_manager.get_job.return_value = audio_edit_job
+        resp = test_client.post("/api/review/edit-job-1/audio-edit/apply", json={
+            "operation": "tempo",
+            "params": params,
+        })
+        assert resp.status_code == 400
+        assert "factor" in resp.json()["detail"]
+        mock_services["edit"].apply_edit.assert_not_called()
+
+    def test_apply_tempo_out_of_range_is_400(self, test_client, mock_job_manager, mock_services, audio_edit_job):
+        mock_job_manager.get_job.return_value = audio_edit_job
+        mock_services["edit"].apply_edit.side_effect = ValueError("Tempo factor must be between 0.5 and 1.5 (got 3.0)")
+        resp = test_client.post("/api/review/edit-job-1/audio-edit/apply", json={
+            "operation": "tempo",
+            "params": {"factor": 3.0},
+        })
+        assert resp.status_code == 400
+        assert "between" in resp.json()["detail"]
+
     def test_apply_wrong_status(self, test_client, mock_job_manager):
         job = _job(job_id="wrong-status", status=JobStatus.COMPLETE,
                    input_media_gcs_path="jobs/x/input/song.flac", state_data={})
@@ -632,6 +674,105 @@ class TestSubmitAudioEdit:
 
 
 # --- Helper function tests ---
+
+class TestSubmitTempoLabeling:
+    """Tempo-changed tracks must be labeled in job.title (which every published output reads)."""
+
+    @staticmethod
+    def _tempo_job(title="Bohemian Rhapsody", lyrics_title=None, tempo_factor=None, factors=(0.9,)):
+        stack = [{
+            "edit_id": "trim",
+            "operation": "trim_start",
+            "params": {"end_seconds": 5.0},
+            "gcs_path": "jobs/tempo-job/audio_edit/edit_trim.flac",
+            "duration_seconds": 195.0,
+            "timestamp": "2026-09-26T12:00:00",
+        }]
+        for i, f in enumerate(factors):
+            stack.append({
+                "edit_id": f"t{i}",
+                "operation": "tempo",
+                "params": {"factor": f},
+                "gcs_path": f"jobs/tempo-job/audio_edit/edit_t{i}.flac",
+                "duration_seconds": 216.7,
+                "timestamp": "2026-09-26T12:01:00",
+            })
+        return _job(
+            job_id="tempo-job",
+            status=JobStatus.IN_AUDIO_EDIT,
+            artist="Queen",
+            title=title,
+            lyrics_title=lyrics_title,
+            tempo_factor=tempo_factor,
+            input_media_gcs_path="jobs/tempo-job/input/song.flac",
+            state_data={"audio_edit_stack": stack, "audio_edit_redo_stack": []},
+        )
+
+    def _submit(self, test_client, mock_job_manager, job):
+        mock_job_manager.get_job.return_value = job
+        with patch(PATCH_STORAGE_SVC), \
+             patch(PATCH_WORKER_SVC) as mock_get_ws, \
+             patch("backend.api.routes.review.reconcile_and_maybe_pause", new_callable=AsyncMock) as mock_reconcile:
+            mock_reconcile.return_value = False
+            mock_get_ws.return_value = AsyncMock()
+            resp = test_client.post("/api/review/tempo-job/audio-edit/submit", json={})
+        assert resp.status_code == 200
+        return [c[0][1] for c in mock_job_manager.update_job.call_args_list]
+
+    def _tempo_update(self, updates):
+        matching = [u for u in updates if "title" in u or "tempo_factor" in u]
+        assert len(matching) <= 1
+        return matching[0] if matching else None
+
+    def test_labels_title_and_pins_original_for_lyrics_search(self, test_client, mock_job_manager):
+        updates = self._submit(test_client, mock_job_manager, self._tempo_job())
+        tempo_update = self._tempo_update(updates)
+        assert tempo_update == {
+            "title": "Bohemian Rhapsody (90% Tempo)",
+            "tempo_factor": 0.9,
+            "lyrics_title": "Bohemian Rhapsody",
+        }
+
+    def test_label_is_applied_before_transition_and_workers(self, test_client, mock_job_manager):
+        order = []
+        mock_job_manager.update_job.side_effect = lambda _id, u: order.append(("update", tuple(sorted(u))))
+        mock_job_manager.transition_to_state.side_effect = lambda **kw: order.append(("transition", kw["new_status"]))
+        self._submit(test_client, mock_job_manager, self._tempo_job())
+        title_idx = next(i for i, o in enumerate(order) if o[0] == "update" and "title" in o[1])
+        transition_idx = next(i for i, o in enumerate(order) if o[0] == "transition")
+        assert title_idx < transition_idx
+
+    def test_compounds_multiple_tempo_edits(self, test_client, mock_job_manager):
+        updates = self._submit(test_client, mock_job_manager, self._tempo_job(factors=(0.9, 0.9)))
+        tempo_update = self._tempo_update(updates)
+        assert tempo_update["title"] == "Bohemian Rhapsody (81% Tempo)"
+        assert tempo_update["tempo_factor"] == pytest.approx(0.81)
+
+    def test_keeps_existing_lyrics_title_override(self, test_client, mock_job_manager):
+        job = self._tempo_job(lyrics_title="Bohemian Rhapsody (Remastered 2011)")
+        tempo_update = self._tempo_update(self._submit(test_client, mock_job_manager, job))
+        assert "lyrics_title" not in tempo_update
+        assert tempo_update["title"] == "Bohemian Rhapsody (90% Tempo)"
+
+    def test_resubmit_relabels_without_double_suffix(self, test_client, mock_job_manager):
+        job = self._tempo_job(title="Bohemian Rhapsody (90% Tempo)", lyrics_title="Bohemian Rhapsody",
+                              tempo_factor=0.9, factors=(1.1,))
+        tempo_update = self._tempo_update(self._submit(test_client, mock_job_manager, job))
+        assert tempo_update == {"title": "Bohemian Rhapsody (110% Tempo)", "tempo_factor": 1.1}
+
+    def test_tempo_back_to_normal_removes_label(self, test_client, mock_job_manager):
+        job = self._tempo_job(title="Bohemian Rhapsody (90% Tempo)", tempo_factor=0.9, factors=())
+        tempo_update = self._tempo_update(self._submit(test_client, mock_job_manager, job))
+        assert tempo_update == {"title": "Bohemian Rhapsody", "tempo_factor": None}
+
+    def test_no_tempo_edit_leaves_title_alone(self, test_client, mock_job_manager):
+        updates = self._submit(test_client, mock_job_manager, self._tempo_job(factors=()))
+        assert self._tempo_update(updates) is None
+
+    def test_tempo_that_rounds_to_100_percent_is_not_labeled(self, test_client, mock_job_manager):
+        updates = self._submit(test_client, mock_job_manager, self._tempo_job(factors=(0.9, 1.111)))
+        assert self._tempo_update(updates) is None
+
 
 class TestHelperFunctions:
 
