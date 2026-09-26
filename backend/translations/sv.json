@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Fel vid val av instrumental för jobb {job_id}: {error}",
     "downloadUrlsError": "Fel vid hämtning av nedladdningslänkar: {error}",
     "fileNoLongerAvailable": "Filen är inte längre tillgänglig",
-    "deletePublishedRequiresFiles": "Det här spårets publicerade filer måste tas bort när jobbet raderas. Försök att radera igen utan delete_files=false."
+    "deletePublishedRequiresFiles": "Det här spårets publicerade filer måste tas bort när jobbet raderas. Försök att radera igen utan delete_files=false.",
+    "instrumentalUploadBadPath": "Ogiltig referens för den instrumentala uppladdningen. Försök att ladda upp igen.",
+    "instrumentalUploadBadType": "Ljudfilstypen stöds inte. Ladda upp någon av följande: {allowed}.",
+    "instrumentalUploadMissing": "Vi kunde inte hitta ditt uppladdade instrumentala spår. Uppladdningen slutfördes eventuellt inte. Försök igen.",
+    "uploadDurationMismatchCancelled": "Tidslängden matchar inte: det instrumentala spåret är {instrumental_duration}s men låtljudet är {audio_duration}s (de måste matcha inom 0,5s). Det här jobbet har avbrutits och din kredit har återbetalats. Skicka in igen med matchande filer."
   },
   "review": {
     "jobNotFound": "Jobbet hittades inte",

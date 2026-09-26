@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "작업 {job_id}의 반주 선택 중 오류 발생: {error}",
     "downloadUrlsError": "다운로드 URL을 가져오는 중 오류 발생: {error}",
     "fileNoLongerAvailable": "파일을 더 이상 사용할 수 없습니다",
-    "deletePublishedRequiresFiles": "작업을 삭제할 때 이 트랙에 게시된 파일도 함께 삭제해야 합니다. delete_files=false 없이 삭제를 다시 시도해 주세요."
+    "deletePublishedRequiresFiles": "작업을 삭제할 때 이 트랙에 게시된 파일도 함께 삭제해야 합니다. delete_files=false 없이 삭제를 다시 시도해 주세요.",
+    "instrumentalUploadBadPath": "반주 업로드 정보가 올바르지 않습니다. 다시 업로드해 주세요.",
+    "instrumentalUploadBadType": "지원하지 않는 오디오 파일 형식입니다. 다음 형식 중 하나를 업로드해 주세요: {allowed}.",
+    "instrumentalUploadMissing": "업로드한 반주 파일을 찾을 수 없습니다. 업로드가 완료되지 않았을 수 있습니다. 다시 시도해 주세요.",
+    "uploadDurationMismatchCancelled": "재생 시간 불일치: 반주는 {instrumental_duration}초이지만 노래 오디오는 {audio_duration}초입니다(0.5초 이내로 일치해야 합니다). 해당 작업이 취소되었으며 크레딧이 환불되었습니다. 길이가 일치하는 파일로 다시 제출해 주세요."
   },
   "review": {
     "jobNotFound": "작업을 찾을 수 없습니다",

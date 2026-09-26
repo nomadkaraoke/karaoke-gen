@@ -576,16 +576,14 @@
     "reviewModeAuto": "Completamente automatico",
     "reviewModeAutoHint": "Ti chiederemo di controllare il testo o la base strumentale solo se c'è davvero bisogno di un intervento umano. Le tracce con un alto livello di sicurezza vengono completate automaticamente.",
     "reviewModeLabel": "Revisione",
-    "uploadCreatingJob": "Creazione della tua richiesta...",
-    "uploadEtaEstimating": "Calcolo del tempo rimanente...",
-    "uploadEtaMinutes": "Circa {minutes}m {seconds}s rimanenti",
-    "uploadEtaSeconds": "Circa {seconds}s rimanenti",
-    "uploadFinalizing": "Caricamento completato, avvio dell'elaborazione...",
-    "uploadKeepTabOpen": "Tieni aperta questa scheda fino al termine del caricamento. Se esci o chiudi questa pagina, il caricamento si interromperà e la tua canzone non verrà elaborata.",
-    "uploadModalTitle": "Caricamento del tuo audio",
-    "uploadSizeProgress": "{loaded} MB su {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Caricamento audio... {percent}%"
+    "ownInstrumentalChecking": "Verifica della durata in corso...",
+    "ownInstrumentalChoose": "Scegli il file strumentale",
+    "ownInstrumentalDesc": "Hai la base strumentale ufficiale o la backing track per questo brano? Caricala e la useremo nel tuo video invece di rimuovere la voce con l'IA, così non ci sarà alcuna base da revisionare.",
+    "ownInstrumentalMismatch": "Questa base strumentale dura {instrumental}, ma il tuo brano dura {song}. Devono avere la stessa durata (entro mezzo secondo).",
+    "ownInstrumentalSelected": "{name} ({size} MB) in uso come base strumentale",
+    "ownInstrumentalTitle": "La tua base strumentale (opzionale)",
+    "submitTrack": "Invia traccia",
+    "ownInstrumentalRemove": "Rimuovi"
   },
   "jobStatus": {
     "settingUp": "Configurazione",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Clicca su un segmento qui sotto per silenziarlo, o Shift+trascina sulla forma d'onda per contrassegnare una regione personalizzata.",
       "noBackingDetected": "Nessun coro rilevato — consigliata strumentale pulita.",
       "addToMuteRegions": "Aggiungi alle regioni da silenziare"
-    }
+    },
+    "uploadDurationMismatch": "Questo file dura {uploaded}, ma il brano dura {expected}. La tua base strumentale deve avere la stessa durata (entro mezzo secondo) affinché il testo rimanga sincronizzato.",
+    "uploadFinalizing": "Controllo e conversione della base strumentale in corso...",
+    "uploadSucceeded": "{filename} caricato. Ora è selezionato come base strumentale."
   },
   "referrals": {
     "title": "Inviti",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Si chiama Nomad Karaoke Generator: scegli una canzone qualsiasi - qualsiasi cosa, per quanto di nicchia - e crea un vero video karaoke. Vera separazione strumentale (canzone originale, non una cover band), testo sincronizzato parola per parola, e di solito è pronto in circa mezz'ora. Funziona anche in 33 lingue.",
     "founderRole": "Fondatore, Nomad Karaoke",
     "languageHint": "Puoi leggere questa pagina in una delle 33 lingue disponibili: usa il selettore della lingua in alto."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB su {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Circa {seconds}s rimanenti",
+    "etaMinutes": "Circa {minutes}m {seconds}s rimanenti",
+    "etaEstimating": "Calcolo del tempo rimanente...",
+    "failed": "Caricamento non riuscito. Riprova.",
+    "fileOfCount": "File {index} di {count}: {name}",
+    "finalizing": "Caricamento completato, finalizzazione in corso...",
+    "keepTabOpen": "Tieni aperta questa scheda fino al termine del caricamento. Se esci da questa pagina o la chiudi, il caricamento verrà interrotto.",
+    "modalTitle": "Caricamento del tuo file",
+    "networkError": "Il caricamento è stato interrotto. Controlla la tua connessione e riprova.",
+    "preparing": "Preparazione del caricamento...",
+    "uploadingPercent": "Caricamento in corso... {percent}%"
   }
 }

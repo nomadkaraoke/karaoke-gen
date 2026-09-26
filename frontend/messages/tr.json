@@ -576,16 +576,14 @@
     "reviewModeAuto": "Tam otomatik",
     "reviewModeAutoHint": "Sadece gerçekten insan müdahalesi gereken bir durum olursa şarkı sözlerini veya enstrümantali incelemeni isteyeceğiz. Emin olduğumuz parçalar otomatik olarak tamamlanır.",
     "reviewModeLabel": "İnceleme",
-    "uploadCreatingJob": "İşlemin oluşturuluyor...",
-    "uploadEtaEstimating": "Kalan süre hesaplanıyor...",
-    "uploadEtaMinutes": "Yaklaşık {minutes} dk {seconds} sn kaldı",
-    "uploadEtaSeconds": "Yaklaşık {seconds} sn kaldı",
-    "uploadFinalizing": "Yükleme tamamlandı, işleme başlanıyor...",
-    "uploadKeepTabOpen": "Yükleme tamamlanana kadar bu sekmeyi açık tut. Bu sayfadan ayrılmak veya sayfayı kapatmak yüklemeyi durdurur ve şarkın işlenmez.",
-    "uploadModalTitle": "Ses dosyan yükleniyor",
-    "uploadSizeProgress": "{loaded} MB / {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Ses yükleniyor... %{percent}"
+    "ownInstrumentalChecking": "Uzunluk kontrol ediliyor...",
+    "ownInstrumentalChoose": "Enstrümantal dosyası seç",
+    "ownInstrumentalDesc": "Bu şarkının resmi enstrümantal veya altyapı parçası var mı? Yükle, vokalleri yapay zekayla ayırmak yerine videonda bunu kullanalım; böylece enstrümantali gözden geçirmen gerekmez.",
+    "ownInstrumentalMismatch": "Bu enstrümantal {instrumental} uzunluğunda ama şarkın {song}. İkisinin de (en fazla yarım saniye farkla) aynı uzunlukta olması gerekir.",
+    "ownInstrumentalSelected": "Enstrümantal olarak {name} ({size} MB) kullanılıyor",
+    "ownInstrumentalTitle": "Kendi enstrümantalin (isteğe bağlı)",
+    "submitTrack": "Parçayı Gönder",
+    "ownInstrumentalRemove": "Kaldır"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Sessize almak için aşağıdaki bir segmente tıkla veya özel bir bölge işaretlemek için dalga formunda Shift+sürükle yap.",
       "noBackingDetected": "Arka plan vokali algılanmadı — temiz enstrümantal önerilir.",
       "addToMuteRegions": "Sessize alınan bölgelere ekle"
-    }
+    },
+    "uploadDurationMismatch": "Bu dosya {uploaded} uzunluğunda ama şarkı {expected}. Şarkı sözlerinin senkronize kalması için enstrümantal dosyanın (en fazla yarım saniye farkla) aynı uzunlukta olması gerekir.",
+    "uploadFinalizing": "Enstrümantal dosyan kontrol ediliyor ve dönüştürülüyor...",
+    "uploadSucceeded": "{filename} yüklendi. Artık enstrümantal parçan olarak seçildi."
   },
   "referrals": {
     "title": "Referanslar",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Adı Nomad Karaoke Generator: herhangi bir şarkıyı seçiyorsun - ne kadar niş olursa olsun, hiç fark etmez - ve onun için düzgün bir karaoke videosu oluşturuyor. Gerçek enstrümantal ayrım (cover grubu değil, orijinal şarkı), kelime kelime senkronize edilmiş şarkı sözleri sunuyor ve genellikle yaklaşık yarım saat içinde hazır oluyor. Ayrıca 33 dilde de çalışıyor.",
     "founderRole": "Kurucu, Nomad Karaoke",
     "languageHint": "Bu sayfayı 33 dilden herhangi birinde okuyabilirsin - üstteki dil seçiciyi kullan."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB / {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Yaklaşık {seconds} sn kaldı",
+    "etaMinutes": "Yaklaşık {minutes} dk {seconds} sn kaldı",
+    "etaEstimating": "Kalan süre hesaplanıyor...",
+    "failed": "Yükleme başarısız oldu. Lütfen tekrar dene.",
+    "fileOfCount": "Dosya {index} / {count}: {name}",
+    "finalizing": "Yükleme tamamlandı, son işlemler yapılıyor...",
+    "keepTabOpen": "Yükleme bitene kadar bu sekmeyi açık tut. Bu sayfadan ayrılmak veya sayfayı kapatmak yüklemeyi durdurur.",
+    "modalTitle": "Dosyan yükleniyor",
+    "networkError": "Yükleme kesintiye uğradı. Bağlantını kontrol et ve tekrar dene.",
+    "preparing": "Yükleme hazırlanıyor...",
+    "uploadingPercent": "Yükleniyor... %{percent}"
   }
 }

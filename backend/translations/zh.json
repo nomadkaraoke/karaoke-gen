@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "为任务 {job_id} 选择伴奏时出错：{error}",
     "downloadUrlsError": "获取下载 URL 时出错：{error}",
     "fileNoLongerAvailable": "文件已不可用",
-    "deletePublishedRequiresFiles": "删除任务时，必须移除此曲目已发布的文件。请去掉 delete_files=false 后重试删除。"
+    "deletePublishedRequiresFiles": "删除任务时，必须移除此曲目已发布的文件。请去掉 delete_files=false 后重试删除。",
+    "instrumentalUploadBadPath": "伴奏上传引用无效。请尝试重新上传。",
+    "instrumentalUploadBadType": "不支持的音频文件类型。请上传以下格式之一：{allowed}。",
+    "instrumentalUploadMissing": "未找到您上传的伴奏。上传可能尚未完成，请重试。",
+    "uploadDurationMismatchCancelled": "时长不匹配：伴奏时长为 {instrumental_duration} 秒，但歌曲音频时长为 {audio_duration} 秒（两者相差须在 0.5 秒以内）。该任务已取消，您的点数已退还。请使用时长匹配的文件重新提交。"
   },
   "review": {
     "jobNotFound": "未找到任务",

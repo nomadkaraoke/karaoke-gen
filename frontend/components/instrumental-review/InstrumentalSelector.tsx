@@ -22,6 +22,9 @@ import { WaveformViewer } from "./WaveformViewer"
 import { MuteRegionEditor } from "./MuteRegionEditor"
 import { SelectionOptions } from "./SelectionOptions"
 import { CustomUpload } from "./CustomUpload"
+import { UploadProgressModal } from "@/components/upload/UploadProgressModal"
+import { useUploadTask } from "@/hooks/useUploadTask"
+import { durationsMismatch, getAudioFileDuration, isNetworkUploadError } from "@/lib/upload"
 import { InstrumentalGuidancePanel } from "./InstrumentalGuidancePanel"
 
 interface InstrumentalSelectorProps {
@@ -53,6 +56,7 @@ function formatTime(seconds: number): string {
 export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = false }: InstrumentalSelectorProps) {
   const router = useRouter()
   const t = useTranslations('instrumentalReview')
+  const tUpload = useTranslations('upload')
   const audioRef = useRef<HTMLAudioElement>(null)
 
   // Data state
@@ -78,7 +82,11 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>(1)
   const [customAudioUrl, setCustomAudioUrl] = useState<string | null>(null)
   const [isCreatingCustom, setIsCreatingCustom] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
+  const upload = useUploadTask()
+  const isUploading = upload.isUploading
+  const [uploadError, setUploadError] = useState("")
+  // Signed GCS URL for the uploaded instrumental (from the upload-complete response)
+  const [uploadedAudioUrl, setUploadedAudioUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isShiftHeld, setIsShiftHeld] = useState(false)
   const [isAudioLoading, setIsAudioLoading] = useState(false)
@@ -276,6 +284,9 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
     if (activeAudio === "custom" && customAudioUrl) {
       return customAudioUrl
     }
+    if (activeAudio === "uploaded" && uploadedAudioUrl) {
+      return uploadedAudioUrl
+    }
     // For cloud mode, use signed URLs from analysis data
     // For local mode, use the API stream endpoint
     if (!isLocalMode && analysisData?.audio_urls) {
@@ -291,7 +302,7 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
     // Local mode: use API stream endpoint
     const stemType = STEM_TYPE_MAP[activeAudio]
     return api.getAudioStreamUrl(job.job_id, stemType)
-  }, [job.job_id, activeAudio, isLocalMode, analysisData, customAudioUrl])
+  }, [job.job_id, activeAudio, isLocalMode, analysisData, customAudioUrl, uploadedAudioUrl])
 
   // Handle audio type change
   const handleAudioChange = useCallback(
@@ -311,6 +322,8 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
       // Custom instrumental uses the signed URL from creation response
       if (type === "custom" && customAudioUrl) {
         audioUrl = customAudioUrl
+      } else if (type === "uploaded" && uploadedAudioUrl) {
+        audioUrl = uploadedAudioUrl
       } else if (!isLocalMode && analysisData?.audio_urls) {
         // Cloud mode: use signed URLs from analysis data
         const urls = analysisData.audio_urls
@@ -347,7 +360,7 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
       audio.addEventListener("loadeddata", handleLoaded, { once: true })
       audio.addEventListener("error", handleError, { once: true })
     },
-    [job.job_id, isLocalMode, analysisData, customAudioUrl]
+    [job.job_id, isLocalMode, analysisData, customAudioUrl, uploadedAudioUrl]
   )
 
   // Seek to time
@@ -442,12 +455,28 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
     }
   }, [job.job_id, muteRegions, isPlaying, currentTime])
 
-  // Upload custom instrumental
+  // Upload custom instrumental (direct to GCS via signed URL, with progress modal)
   const handleUpload = useCallback(
     async (file: File) => {
-      setIsUploading(true)
+      setUploadError("")
+      // The backend rejects instrumentals >0.5s off the original — check before
+      // making the user wait for a long upload.
+      const fileSeconds = await getAudioFileDuration(file)
+      if (durationsMismatch(fileSeconds, duration > 0 ? duration : null)) {
+        const message = t('uploadDurationMismatch', {
+          uploaded: formatTime(fileSeconds as number),
+          expected: formatTime(duration),
+        })
+        setUploadError(message)
+        toast.error(message)
+        return
+      }
       try {
-        const result = await api.uploadCustomInstrumental(job.job_id, file)
+        const result = await upload.run((report) =>
+          api.uploadInstrumentalForReview(job.job_id, file, report)
+        )
+        const audioUrl = result.audio_url || api.getAudioStreamUrl(job.job_id, "uploaded_instrumental")
+        setUploadedAudioUrl(audioUrl)
         setHasUploaded(true)
         setUploadedFilename(file.name)
         setActiveAudio("uploaded")
@@ -457,7 +486,7 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
         const audio = audioRef.current
         if (audio) {
           const time = audio.currentTime
-          audio.src = api.getAudioStreamUrl(job.job_id, "uploaded_instrumental")
+          audio.src = audioUrl
           audio.addEventListener(
             "loadeddata",
             () => {
@@ -467,14 +496,18 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
           )
         }
 
-        toast.success(`Uploaded ${file.name} (${result.duration_seconds.toFixed(1)}s)`)
+        toast.success(t('uploadSucceeded', { filename: file.name }))
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Upload failed")
-      } finally {
-        setIsUploading(false)
+        const message = isNetworkUploadError(err)
+          ? tUpload('networkError')
+          : err instanceof Error && err.message
+            ? err.message
+            : tUpload('failed')
+        setUploadError(message)
+        toast.error(message)
       }
     },
-    [job.job_id]
+    [job.job_id, duration, upload, t, tUpload]
   )
 
   // Success screen state
@@ -613,6 +646,9 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
 
   return (
     <div className="flex flex-col min-h-screen bg-background p-2 md:p-4 gap-2 md:gap-3">
+      {upload.progress && (
+        <UploadProgressModal progress={upload.progress} finalizingLabel={t('uploadFinalizing')} />
+      )}
       {/* Header */}
       <header className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -779,6 +815,11 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
             {hasUploaded && uploadedFilename && (
               <p className="text-xs text-green-500 mt-1">
                 ✓ {t('usingFile', { filename: uploadedFilename })}
+              </p>
+            )}
+            {uploadError && (
+              <p className="text-xs text-red-400 mt-1" role="alert" data-testid="instrumental-upload-error">
+                {uploadError}
               </p>
             )}
           </div>

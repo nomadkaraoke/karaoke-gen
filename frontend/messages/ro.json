@@ -576,16 +576,14 @@
     "reviewModeAuto": "Complet automat",
     "reviewModeAutoHint": "Te vom ruga să revizuiești versurile sau instrumentalul doar dacă este cu adevărat nevoie de intervenție umană. Piesele fără probleme se finalizează automat.",
     "reviewModeLabel": "Revizuire",
-    "uploadCreatingJob": "Se creează proiectul tău...",
-    "uploadEtaEstimating": "Se estimează timpul rămas...",
-    "uploadEtaMinutes": "Aproximativ {minutes}m {seconds}s rămase",
-    "uploadEtaSeconds": "Aproximativ {seconds}s rămase",
-    "uploadFinalizing": "Încărcare finalizată, începe procesarea...",
-    "uploadKeepTabOpen": "Păstrează această filă deschisă până la finalizarea încărcării. Dacă părăsești sau închizi această pagină, încărcarea se va opri, iar melodia ta nu va fi procesată.",
-    "uploadModalTitle": "Se încarcă fișierul tău audio",
-    "uploadSizeProgress": "{loaded} MB din {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Se încarcă fișierul audio... {percent}%"
+    "ownInstrumentalChecking": "Se verifică durata...",
+    "ownInstrumentalChoose": "Alege fișierul cu negativul",
+    "ownInstrumentalDesc": "Ai negativul oficial sau pista de acompaniament pentru această melodie? Încarcă-l și îl vom folosi în videoclipul tău în loc să eliminăm vocea cu AI, astfel că nu va mai fi niciun negativ de revizuit.",
+    "ownInstrumentalMismatch": "Acest negativ are o durată de {instrumental}, dar melodia ta are {song}. Trebuie să aibă aceeași durată (cu o diferență de cel mult o jumătate de secundă).",
+    "ownInstrumentalSelected": "Se folosește {name} ({size} MB) ca negativ",
+    "ownInstrumentalTitle": "Propriul tău negativ (opțional)",
+    "submitTrack": "Trimite piesa",
+    "ownInstrumentalRemove": "Elimină"
   },
   "jobStatus": {
     "settingUp": "Se configurează",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Fă clic pe un segment de mai jos pentru a-l pune pe mut, sau Shift+drag pe forma de undă pentru a marca o regiune personalizată.",
       "noBackingDetected": "Nu au fost detectate voci de fundal — se recomandă instrumentalul curat.",
       "addToMuteRegions": "Adaugă la regiunile pe mut"
-    }
+    },
+    "uploadDurationMismatch": "Acest fișier are o durată de {uploaded}, dar melodia are {expected}. Negativul tău trebuie să aibă aceeași durată (cu o diferență de cel mult o jumătate de secundă) pentru ca versurile să rămână sincronizate.",
+    "uploadFinalizing": "Se verifică și se convertește negativul tău...",
+    "uploadSucceeded": "S-a încărcat {filename}. Acum este selectat drept negativul tău."
   },
   "referrals": {
     "title": "Recomandări",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Se numește Nomad Karaoke Generator: alegi orice piesă - absolut orice, oricât de nișată ar fi - și creează un videoclip de karaoke propriu-zis pentru ea. Separare instrumentală reală (piesa originală, nu o trupă de coveruri), versuri sincronizate cuvânt cu cuvânt, și este de obicei gata în aproximativ o jumătate de oră. Funcționează și în 33 de limbi.",
     "founderRole": "Fondator, Nomad Karaoke",
     "languageHint": "Poți citi această pagină în oricare dintre cele 33 de limbi - folosește selectorul de limbă din partea de sus."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB din {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Aproximativ {seconds}s rămase",
+    "etaMinutes": "Aproximativ {minutes}m {seconds}s rămase",
+    "etaEstimating": "Se estimează timpul rămas...",
+    "failed": "Încărcarea a eșuat. Încearcă din nou.",
+    "fileOfCount": "Fișierul {index} din {count}: {name}",
+    "finalizing": "Încărcare finalizată, se procesează ultimele detalii...",
+    "keepTabOpen": "Păstrează această filă deschisă până la finalizarea încărcării. Dacă părăsești sau închizi pagina, încărcarea se va opri.",
+    "modalTitle": "Se încarcă fișierul tău",
+    "networkError": "Încărcarea a fost întreruptă. Verifică-ți conexiunea și încearcă din nou.",
+    "preparing": "Se pregătește încărcarea...",
+    "uploadingPercent": "Se încarcă... {percent}%"
   }
 }

@@ -576,16 +576,14 @@
     "reviewModeAuto": "Plně automatické",
     "reviewModeAutoHint": "O kontrolu textu nebo instrumentálky tě požádáme jen tehdy, když je opravdu potřeba lidský zásah. Skladby, u kterých jsme si jistí, se dokončí automaticky.",
     "reviewModeLabel": "Kontrola",
-    "uploadCreatingJob": "Vytváříme tvou úlohu...",
-    "uploadEtaEstimating": "Odhadujeme zbývající čas...",
-    "uploadEtaMinutes": "Zbývá asi {minutes}m {seconds}s",
-    "uploadEtaSeconds": "Zbývá asi {seconds}s",
-    "uploadFinalizing": "Nahrávání je dokončeno, začíná zpracování...",
-    "uploadKeepTabOpen": "Nech tuto kartu otevřenou, dokud se nahrávání nedokončí. Pokud tuto stránku opustíš nebo zavřeš, nahrávání se zastaví a tvá skladba se nezpracuje.",
-    "uploadModalTitle": "Nahrávání tvého audia",
-    "uploadSizeProgress": "{loaded} MB z {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Nahrávání audia... {percent}%"
+    "ownInstrumentalChecking": "Kontrola délky...",
+    "ownInstrumentalChoose": "Vyber instrumentální soubor",
+    "ownInstrumentalDesc": "Máš k této skladbě oficiální instrumentální verzi nebo doprovodnou stopu? Nahraj ji a my ji použijeme ve tvém videu místo odstraňování vokálů pomocí AI, takže nebude potřeba kontrolovat žádnou instrumentální stopu.",
+    "ownInstrumentalMismatch": "Tato instrumentální stopa má délku {instrumental}, ale tvoje skladba má {song}. Musí mít stejnou délku (s odchylkou do půl sekundy).",
+    "ownInstrumentalSelected": "Jako instrumentální stopa se použije {name} ({size} MB)",
+    "ownInstrumentalTitle": "Vlastní instrumentální stopa (volitelné)",
+    "submitTrack": "Odeslat stopu",
+    "ownInstrumentalRemove": "Odstranit"
   },
   "jobStatus": {
     "settingUp": "Nastavování",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Klikni na segment níže pro jeho ztlumení, nebo pomocí Shift+tažení na zvukové vlně označ vlastní oblast.",
       "noBackingDetected": "Nebyly detekovány žádné doprovodné vokály — doporučena čistá instrumentálka.",
       "addToMuteRegions": "Přidat do ztlumených oblastí"
-    }
+    },
+    "uploadDurationMismatch": "Tento soubor má délku {uploaded}, ale skladba má {expected}. Tvoje instrumentální stopa musí mít stejnou délku (s odchylkou do půl sekundy), aby text zůstal synchronizovaný.",
+    "uploadFinalizing": "Kontrolujeme a převádíme tvou instrumentální stopu...",
+    "uploadSucceeded": "Soubor {filename} byl nahrán a je vybrán jako tvoje instrumentální stopa."
   },
   "referrals": {
     "title": "Doporučení",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Jmenuje se to Nomad Karaoke Generator: vybereš si jakoukoli písničku – cokoliv, i tu nejvíc okrajovou – a vytvoří ti to pro ni pořádné karaoke video. Skutečné oddělení nástrojů (originální píseň, žádná cover kapela), text synchronizovaný slovo od slova a většinou je to hotové asi za půl hodiny. Navíc to funguje ve 33 jazycích.",
     "founderRole": "Zakladatel, Nomad Karaoke",
     "languageHint": "Tuto stránku si můžeš přečíst v jednom z 33 jazyků – použij přepínač jazyků nahoře."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB z {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Zbývá asi {seconds}s",
+    "etaMinutes": "Zbývá asi {minutes}m {seconds}s",
+    "etaEstimating": "Odhadujeme zbývající čas...",
+    "failed": "Nahrávání se nezdařilo. Zkus to prosím znovu.",
+    "fileOfCount": "Soubor {index} z {count}: {name}",
+    "finalizing": "Nahrávání je hotové, dokončujeme...",
+    "keepTabOpen": "Nech tuto záložku otevřenou, dokud se nahrávání nedokončí. Pokud stránku opustíš nebo zavřeš, nahrávání se přeruší.",
+    "modalTitle": "Nahrávání souboru",
+    "networkError": "Nahrávání bylo přerušeno. Zkontroluj připojení a zkus to znovu.",
+    "preparing": "Příprava nahrávání...",
+    "uploadingPercent": "Nahrávání... {percent}%"
   }
 }

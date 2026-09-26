@@ -110,3 +110,18 @@ async def test_job_flagged_awaiting_upload_until_uploads_complete(endpoint_mocks
     """Dashboard shows "Waiting for upload" and the stale-upload sweep keys off this flag."""
     await create_job_with_upload_urls(_request(), _body(), auth)
     endpoint_mocks["job_manager"].update_state_data.assert_any_call("job-123", "awaiting_upload", True)
+
+
+@pytest.mark.asyncio
+async def test_requires_audio_edit_is_persisted(endpoint_mocks, auth):
+    """Regression: the signed-URL request model dropped requires_audio_edit, so large
+    uploads with "edit audio first" never parked at the audio editor."""
+    await create_job_with_upload_urls(_request(), _body(requires_audio_edit=True), auth)
+    endpoint_mocks["job_manager"].update_state_data.assert_any_call("job-123", "requires_audio_edit", True)
+
+
+@pytest.mark.asyncio
+async def test_requires_audio_edit_not_set_by_default(endpoint_mocks, auth):
+    await create_job_with_upload_urls(_request(), _body(), auth)
+    keys = [c.args[1] for c in endpoint_mocks["job_manager"].update_state_data.call_args_list]
+    assert "requires_audio_edit" not in keys

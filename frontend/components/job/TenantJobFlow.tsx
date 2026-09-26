@@ -3,6 +3,10 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { api, ApiError } from "@/lib/api"
+import { durationsMismatch, getAudioFileDuration, isNetworkUploadError } from "@/lib/upload"
+import { useUploadTask } from "@/hooks/useUploadTask"
+import { UploadProgressModal } from "@/components/upload/UploadProgressModal"
+import { formatDuration } from "./OwnInstrumentalField"
 import { useTenant } from "@/lib/tenant"
 import { CheckCircle2, Upload, Music, Loader2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,7 +24,7 @@ interface TenantJobFlowProps {
   onJobCreated: () => void
 }
 
-type SubmitPhase = "idle" | "creating" | "uploading-mixed" | "uploading-instrumental" | "completing" | "done"
+type SubmitPhase = "idle" | "submitting" | "done"
 
 export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
   const t = useTranslations('jobFlow')
@@ -34,7 +38,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
 
   // Submission state
   const [phase, setPhase] = useState<SubmitPhase>("idle")
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const upload = useUploadTask()
   const [error, setError] = useState("")
   const [jobId, setJobId] = useState<string | null>(null)
 
@@ -50,7 +54,6 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
     setMixedFile(null)
     setInstrumentalFile(null)
     setPhase("idle")
-    setUploadProgress(0)
     setError("")
     setJobId(null)
     // Clear file inputs
@@ -71,60 +74,30 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
     if (!canSubmit || !mixedFile || !instrumentalFile) return
 
     setError("")
-    setPhase("creating")
+    setPhase("submitting")
 
     try {
-      // Step 1: Create job with upload URLs
-      const files = [
-        {
-          filename: mixedFile.name,
-          content_type: mixedFile.type || "application/octet-stream",
-          file_type: "audio",
-        },
-        {
-          filename: instrumentalFile.name,
-          content_type: instrumentalFile.type || "application/octet-stream",
-          file_type: "existing_instrumental",
-        },
-      ]
+      // Catch a mismatched instrumental before uploading both files — the backend
+      // rejects anything more than 0.5s off, but only after the full upload.
+      const [mixSeconds, instSeconds] = await Promise.all([
+        getAudioFileDuration(mixedFile),
+        getAudioFileDuration(instrumentalFile),
+      ])
+      if (durationsMismatch(mixSeconds, instSeconds)) {
+        setError(t('ownInstrumentalMismatch', {
+          instrumental: formatDuration(instSeconds as number),
+          song: formatDuration(mixSeconds as number),
+        }))
+        setPhase("idle")
+        return
+      }
 
-      const createResponse = await api.createJobWithUploadUrls(
-        artist.trim(),
-        title.trim(),
-        files,
-        { is_private: true, existing_instrumental: true },
-      )
-
-      setJobId(createResponse.job_id)
-
-      // Step 2: Upload mixed audio
-      setPhase("uploading-mixed")
-      const audioUrl = createResponse.upload_urls.find(u => u.file_type === "audio")
-      if (!audioUrl) throw new ApiError("No upload URL for audio file", 500)
-
-      await api.uploadToSignedUrl(
-        audioUrl.upload_url,
-        mixedFile,
-        audioUrl.content_type,
-        (loaded, total) => setUploadProgress(Math.round((loaded / total) * 50)),
-      )
-
-      // Step 3: Upload instrumental
-      setPhase("uploading-instrumental")
-      const instrumentalUrl = createResponse.upload_urls.find(u => u.file_type === "existing_instrumental")
-      if (!instrumentalUrl) throw new ApiError("No upload URL for instrumental file", 500)
-
-      await api.uploadToSignedUrl(
-        instrumentalUrl.upload_url,
-        instrumentalFile,
-        instrumentalUrl.content_type,
-        (loaded, total) => setUploadProgress(50 + Math.round((loaded / total) * 50)),
-      )
-
-      // Step 4: Complete upload
-      setPhase("completing")
-      await api.completeJobUpload(createResponse.job_id, ["audio", "existing_instrumental"])
-
+      const response = await upload.run((report) => api.createJobFromUploadedAudio(
+        mixedFile, artist.trim(), title.trim(),
+        { is_private: true, instrumentalFile },
+        report,
+      ))
+      setJobId(response.job_id)
       setPhase("done")
       onJobCreated()
     } catch (err: any) {
@@ -132,20 +105,15 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
       // below hides which step failed (create / upload / complete).
       console.error("[TenantJobFlow] submit failed:", err)
       let message: string
-      if (err instanceof ApiError) {
-        message = err.message
-      } else if (
-        err instanceof TypeError ||
-        /network|failed to fetch|load failed/i.test(String(err?.message ?? ""))
-      ) {
-        // fetch()/XHR network-level failure (offline, connection reset, CORS).
+      if (isNetworkUploadError(err)) {
         message = t('submitNetworkError')
+      } else if (err instanceof ApiError) {
+        message = err.message
       } else {
         message = t('submitError')
       }
       setError(message)
       setPhase("idle")
-      setUploadProgress(0)
     }
   }
 
@@ -335,31 +303,8 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
         </div>
       )}
 
-      {/* Progress */}
-      {isSubmitting && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>
-              {phase === "creating" && t('creating')}
-              {phase === "uploading-mixed" && t('creating')}
-              {phase === "uploading-instrumental" && t('creating')}
-              {phase === "completing" && t('creating')}
-            </span>
-          </div>
-          {(phase === "uploading-mixed" || phase === "uploading-instrumental") && (
-            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--card-border)" }}>
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${uploadProgress}%`,
-                  backgroundColor: "var(--tenant-primary, var(--brand-pink))",
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
+      {/* Progress: blocking modal + leave-page guard (shared with every upload flow) */}
+      {upload.progress && <UploadProgressModal progress={upload.progress} />}
 
       {/* Submit */}
       <Button
@@ -371,8 +316,8 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
           color: canSubmit ? "var(--primary-foreground)" : undefined,
         }}
       >
-        <Upload className="w-4 h-4 mr-2" />
-        Submit Track
+        {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+        {isSubmitting ? t('creating') : t('submitTrack')}
       </Button>
     </div>
   )

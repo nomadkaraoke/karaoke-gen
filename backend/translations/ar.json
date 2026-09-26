@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "خطأ في تحديد المسار الموسيقي للمهمة {job_id}: {error}",
     "downloadUrlsError": "خطأ في الحصول على روابط التنزيل: {error}",
     "fileNoLongerAvailable": "الملف لم يعد متاحاً",
-    "deletePublishedRequiresFiles": "يجب إزالة الملفات المنشورة لهذا المسار عند حذف المهمة. يُرجى إعادة محاولة الحذف بدون delete_files=false."
+    "deletePublishedRequiresFiles": "يجب إزالة الملفات المنشورة لهذا المسار عند حذف المهمة. يُرجى إعادة محاولة الحذف بدون delete_files=false.",
+    "instrumentalUploadBadPath": "مرجع رفع الموسيقى الآلية غير صالح. يُرجى محاولة الرفع مرة أخرى.",
+    "instrumentalUploadBadType": "نوع ملف الصوت غير مدعوم. يُرجى رفع أحد الأنواع التالية: {allowed}.",
+    "instrumentalUploadMissing": "تعذر العثور على ملف الموسيقى الآلية الذي قمت برفعه. قد لا يكون الرفع قد اكتمل بعد. يُرجى المحاولة مرة أخرى.",
+    "uploadDurationMismatchCancelled": "عدم تطابق في المدة: مدة الموسيقى الآلية هي {instrumental_duration} ثانية ولكن مدة صوت الأغنية هي {audio_duration} ثانية (يجب أن يتطابقا في غضون 0.5 ثانية). تم إلغاء هذه المهمة وإعادة رصيدك. يُرجى إعادة الإرسال باستخدام ملفات متطابقة."
   },
   "review": {
     "jobNotFound": "المهمة غير موجودة",

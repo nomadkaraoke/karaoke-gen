@@ -576,16 +576,14 @@
     "reviewModeAuto": "全自动",
     "reviewModeAutoHint": "只有在确实需要人工处理时，我们才会请您审核歌词或伴奏。系统有把握的曲目会自动完成。",
     "reviewModeLabel": "审核",
-    "uploadCreatingJob": "正在创建您的任务...",
-    "uploadEtaEstimating": "正在预估剩余时间...",
-    "uploadEtaMinutes": "大约还剩 {minutes} 分 {seconds} 秒",
-    "uploadEtaSeconds": "大约还剩 {seconds} 秒",
-    "uploadFinalizing": "上传完成，即将开始处理...",
-    "uploadKeepTabOpen": "上传完成前请保持此标签页打开。离开或关闭此页面将中断上传，您的歌曲将无法处理。",
-    "uploadModalTitle": "正在上传您的音频",
-    "uploadSizeProgress": "{loaded} MB / {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "正在上传音频... {percent}%"
+    "ownInstrumentalChecking": "正在检查时长...",
+    "ownInstrumentalChoose": "选择伴奏文件",
+    "ownInstrumentalDesc": "有这首歌的官方伴奏或配乐吗？上传后我们将直接在视频中使用，无需再用 AI 消除人声，也无需后续审核伴奏。",
+    "ownInstrumentalMismatch": "该伴奏时长为 {instrumental}，但歌曲时长为 {song}。两者的时长需要保持一致（误差在半秒以内）。",
+    "ownInstrumentalSelected": "使用 {name}（{size} MB）作为伴奏",
+    "ownInstrumentalTitle": "自带伴奏（可选）",
+    "submitTrack": "提交曲目",
+    "ownInstrumentalRemove": "移除"
   },
   "jobStatus": {
     "settingUp": "设置中",
@@ -1559,7 +1557,10 @@
       "clickSegment": "点击下方的一个片段将其静音，或在波形上按住 Shift+拖动以标记自定义区域。",
       "noBackingDetected": "未检测到背景和声——推荐使用纯净伴奏。",
       "addToMuteRegions": "添加到静音区域"
-    }
+    },
+    "uploadDurationMismatch": "该文件时长为 {uploaded}，但歌曲时长为 {expected}。伴奏时长需要与歌曲一致（误差在半秒以内），以确保歌词同步。",
+    "uploadFinalizing": "正在检查并转换您的伴奏...",
+    "uploadSucceeded": "已上传 {filename}，现已设为您的伴奏。"
   },
   "referrals": {
     "title": "推荐",
@@ -1893,5 +1894,20 @@
     "whatItIs": "它叫 Nomad Karaoke Generator：你可以挑选任何歌曲——无论多小众都可以——它能为你生成专业的卡拉OK视频。真正的伴奏分离（使用原曲，而非翻唱乐队），逐字同步的歌词，通常只需半小时左右即可完成。它还支持33种语言。",
     "founderRole": "Nomad Karaoke 创始人",
     "languageHint": "本页面支持 33 种语言——请使用顶部的语言选择器进行切换。"
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB / {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "大约还剩 {seconds} 秒",
+    "etaMinutes": "大约还剩 {minutes} 分 {seconds} 秒",
+    "etaEstimating": "正在预估剩余时间...",
+    "failed": "上传失败，请重试。",
+    "fileOfCount": "文件 {index} / {count}：{name}",
+    "finalizing": "上传完成，正在进行最后处理...",
+    "keepTabOpen": "在上传完成前请保持此标签页打开。离开或关闭此页面将中断上传。",
+    "modalTitle": "正在上传文件",
+    "networkError": "上传已中断。请检查网络连接并重试。",
+    "preparing": "正在准备上传...",
+    "uploadingPercent": "正在上传... {percent}%"
   }
 }

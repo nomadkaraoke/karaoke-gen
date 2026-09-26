@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "שגיאה בבחירת פלייבק עבור המשימה {job_id}: {error}",
     "downloadUrlsError": "שגיאה בקבלת כתובות ההורדה: {error}",
     "fileNoLongerAvailable": "הקובץ אינו זמין יותר",
-    "deletePublishedRequiresFiles": "יש להסיר את הקבצים שפורסמו עבור רצועה זו בעת מחיקת המשימה. נסה שוב את המחיקה ללא delete_files=false."
+    "deletePublishedRequiresFiles": "יש להסיר את הקבצים שפורסמו עבור רצועה זו בעת מחיקת המשימה. נסה שוב את המחיקה ללא delete_files=false.",
+    "instrumentalUploadBadPath": "הפניה לא תקינה להעלאת הפלייבק. אנא נסו להעלות שוב.",
+    "instrumentalUploadBadType": "סוג קובץ השמע אינו נתמך. אנא העלו קובץ מאחד הסוגים הבאים: {allowed}.",
+    "instrumentalUploadMissing": "לא הצלחנו למצוא את הפלייבק שהעליתם. ייתכן שההעלאה לא הושלמה. אנא נסו שוב.",
+    "uploadDurationMismatchCancelled": "אי-התאמה במשך הזמן: אורך הפלייבק הוא {instrumental_duration} שניות, אך אורך השמע של השיר הוא {audio_duration} שניות (הם חייבים להתאים בהפרש של עד 0.5 שניות). משימה זו בוטלה והקרדיט שלכם הוחזר. אנא שלחו שוב עם קבצים תואמים."
   },
   "review": {
     "jobNotFound": "המשימה לא נמצאה",

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { AlertTriangle, Loader2, UploadCloud } from "lucide-react"
 import { Description as DialogPrimitiveDescription } from "@radix-ui/react-dialog"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import type { UploadProgress } from "@/lib/api"
+import type { UploadProgress } from "@/lib/upload"
 
 const MB = 1024 * 1024
 /** Rolling window used for the speed estimate — long enough to smooth XHR progress jitter. */
@@ -36,14 +36,20 @@ export function estimateTransfer(
   return { bytesPerSec, secondsLeft: Math.max(0, (total - last.loaded) / bytesPerSec) }
 }
 
+interface UploadProgressModalProps {
+  progress: UploadProgress
+  /** Override the post-upload label (e.g. "Checking your instrumental..."). */
+  finalizingLabel?: string
+}
+
 /**
- * Blocking modal shown while a submitted audio file uploads from the browser.
- * The job already exists server-side but can't start until these bytes land,
- * so this can't be dismissed — leaving the page kills the upload (the parent
- * also installs a beforeunload guard).
+ * Blocking modal shown while a user's file uploads from the browser. Whatever
+ * the upload is for can't proceed until these bytes land, so this can't be
+ * dismissed — leaving the page kills the upload (useUploadTask also installs a
+ * beforeunload guard). Shared by every upload flow.
  */
-export function UploadProgressModal({ progress }: { progress: UploadProgress }) {
-  const t = useTranslations('jobFlow')
+export function UploadProgressModal({ progress, finalizingLabel }: UploadProgressModalProps) {
+  const t = useTranslations('upload')
   const samplesRef = useRef<ProgressSample[]>([])
   const [estimate, setEstimate] = useState<ReturnType<typeof estimateTransfer>>(null)
 
@@ -61,24 +67,26 @@ export function UploadProgressModal({ progress }: { progress: UploadProgress }) 
 
   let label: string
   if (progress.phase === 'uploading') {
-    label = t('uploadingAudioPercent', { percent })
+    label = t('uploadingPercent', { percent })
   } else if (progress.phase === 'finalizing') {
-    label = t('uploadFinalizing')
+    label = finalizingLabel ?? t('finalizing')
   } else {
-    label = t('uploadCreatingJob')
+    label = t('preparing')
   }
 
   let etaText: string | null = null
   if (progress.phase === 'uploading') {
     if (!estimate) {
-      etaText = t('uploadEtaEstimating')
+      etaText = t('etaEstimating')
     } else {
       const secs = Math.ceil(estimate.secondsLeft)
       etaText = secs >= 60
-        ? t('uploadEtaMinutes', { minutes: Math.floor(secs / 60), seconds: secs % 60 })
-        : t('uploadEtaSeconds', { seconds: secs })
+        ? t('etaMinutes', { minutes: Math.floor(secs / 60), seconds: secs % 60 })
+        : t('etaSeconds', { seconds: secs })
     }
   }
+
+  const showFileLine = progress.phase === 'uploading' && (progress.fileCount ?? 1) > 1 && progress.fileName
 
   const block = (e: Event) => e.preventDefault()
 
@@ -94,7 +102,7 @@ export function UploadProgressModal({ progress }: { progress: UploadProgress }) 
       >
         <DialogTitle className="flex items-center gap-2 text-foreground">
           <UploadCloud className="w-5 h-5 text-[var(--brand-pink)]" />
-          {t('uploadModalTitle')}
+          {t('modalTitle')}
         </DialogTitle>
 
         <div className="space-y-2" role="status" aria-live="polite">
@@ -102,6 +110,11 @@ export function UploadProgressModal({ progress }: { progress: UploadProgress }) 
             <Loader2 className="w-4 h-4 animate-spin shrink-0" />
             {label}
           </div>
+          {showFileLine && (
+            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+              {t('fileOfCount', { index: progress.fileIndex ?? 1, count: progress.fileCount ?? 1, name: progress.fileName ?? '' })}
+            </p>
+          )}
           <div
             className="h-3 w-full rounded-full overflow-hidden"
             style={{ backgroundColor: 'var(--secondary)' }}
@@ -118,8 +131,8 @@ export function UploadProgressModal({ progress }: { progress: UploadProgress }) 
           {progress.phase === 'uploading' && (
             <div className="flex items-center justify-between gap-3 text-xs tabular-nums" style={{ color: 'var(--text-muted)' }}>
               <span>
-                {t('uploadSizeProgress', { loaded: (progress.loaded / MB).toFixed(1), total: (progress.total / MB).toFixed(1) })}
-                {estimate && <> · {t('uploadSpeed', { speed: (estimate.bytesPerSec / MB).toFixed(1) })}</>}
+                {t('sizeProgress', { loaded: (progress.loaded / MB).toFixed(1), total: (progress.total / MB).toFixed(1) })}
+                {estimate && <> · {t('speed', { speed: (estimate.bytesPerSec / MB).toFixed(1) })}</>}
               </span>
               <span>{etaText}</span>
             </div>
@@ -130,7 +143,7 @@ export function UploadProgressModal({ progress }: { progress: UploadProgress }) 
         <DialogPrimitiveDescription asChild>
           <p className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-            {t('uploadKeepTabOpen')}
+            {t('keepTabOpen')}
           </p>
         </DialogPrimitiveDescription>
       </DialogContent>

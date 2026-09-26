@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Error al seleccionar el instrumental para el trabajo {job_id}: {error}",
     "downloadUrlsError": "Error al obtener las URLs de descarga: {error}",
     "fileNoLongerAvailable": "El archivo ya no está disponible",
-    "deletePublishedRequiresFiles": "Los archivos publicados de esta pista deben eliminarse cuando se elimine el trabajo. Vuelve a intentar la eliminación sin delete_files=false."
+    "deletePublishedRequiresFiles": "Los archivos publicados de esta pista deben eliminarse cuando se elimine el trabajo. Vuelve a intentar la eliminación sin delete_files=false.",
+    "instrumentalUploadBadPath": "Referencia de subida de instrumental inválida. Por favor, intenta subirlo de nuevo.",
+    "instrumentalUploadBadType": "Tipo de archivo de audio no compatible. Por favor, sube uno de los siguientes: {allowed}.",
+    "instrumentalUploadMissing": "No pudimos encontrar el instrumental que subiste. Es posible que la subida no haya finalizado. Por favor, inténtalo de nuevo.",
+    "uploadDurationMismatchCancelled": "Discrepancia en la duración: el instrumental dura {instrumental_duration}s pero el audio de la canción dura {audio_duration}s (deben coincidir con una diferencia máxima de 0.5s). Este trabajo ha sido cancelado y se ha reembolsado tu crédito. Por favor, vuelve a enviarlo con archivos que coincidan."
   },
   "review": {
     "jobNotFound": "Trabajo no encontrado",

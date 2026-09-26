@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Errore durante la selezione della strumentale per il lavoro {job_id}: {error}",
     "downloadUrlsError": "Errore durante il recupero degli URL di download: {error}",
     "fileNoLongerAvailable": "File non più disponibile",
-    "deletePublishedRequiresFiles": "I file pubblicati di questa traccia devono essere rimossi quando il lavoro viene eliminato. Riprova l'eliminazione senza delete_files=false."
+    "deletePublishedRequiresFiles": "I file pubblicati di questa traccia devono essere rimossi quando il lavoro viene eliminato. Riprova l'eliminazione senza delete_files=false.",
+    "instrumentalUploadBadPath": "Riferimento al caricamento della base strumentale non valido. Prova a caricarla di nuovo.",
+    "instrumentalUploadBadType": "Tipo di file audio non supportato. Carica uno dei seguenti formati: {allowed}.",
+    "instrumentalUploadMissing": "Non siamo riusciti a trovare la base strumentale caricata. Il caricamento potrebbe non essere stato completato. Riprova.",
+    "uploadDurationMismatchCancelled": "Discrepanza di durata: la base strumentale dura {instrumental_duration}s ma l'audio del brano dura {audio_duration}s (devono corrispondere entro 0.5s). Questa operazione è stata annullata e il tuo credito è stato rimborsato. Invia di nuovo la richiesta con file corrispondenti."
   },
   "review": {
     "jobNotFound": "Lavoro non trovato",

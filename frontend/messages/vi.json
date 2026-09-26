@@ -576,16 +576,14 @@
     "reviewModeAuto": "Hoàn toàn tự động",
     "reviewModeAutoHint": "Chúng tôi sẽ chỉ yêu cầu bạn xem lại lời bài hát hoặc nhạc nền nếu thực sự cần bạn kiểm tra. Các bài hát có độ chính xác cao sẽ tự động hoàn thành.",
     "reviewModeLabel": "Xem lại",
-    "uploadCreatingJob": "Đang tạo tác vụ của bạn...",
-    "uploadEtaEstimating": "Đang ước tính thời gian còn lại...",
-    "uploadEtaMinutes": "Còn khoảng {minutes} phút {seconds} giây",
-    "uploadEtaSeconds": "Còn khoảng {seconds} giây",
-    "uploadFinalizing": "Tải lên hoàn tất, đang bắt đầu xử lý...",
-    "uploadKeepTabOpen": "Vui lòng giữ tab này mở cho đến khi quá trình tải lên hoàn tất. Việc rời khỏi hoặc đóng trang này sẽ làm dừng tải lên và bài hát của bạn sẽ không được xử lý.",
-    "uploadModalTitle": "Đang tải lên tệp âm thanh của bạn",
-    "uploadSizeProgress": "{loaded} MB trên {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Đang tải lên tệp âm thanh... {percent}%"
+    "ownInstrumentalChecking": "Đang kiểm tra độ dài...",
+    "ownInstrumentalChoose": "Chọn tệp nhạc beat",
+    "ownInstrumentalDesc": "Bạn có sẵn bản beat chính thức hoặc nhạc nền cho bài hát này? Hãy tải lên và chúng tôi sẽ sử dụng nó trong video của bạn thay vì dùng AI để tách giọng hát, như vậy bạn sẽ không cần phải duyệt lại nhạc beat nữa.",
+    "ownInstrumentalMismatch": "Nhạc beat này dài {instrumental} nhưng bài hát của bạn dài {song}. Cả hai cần có cùng độ dài (chênh lệch không quá nửa giây).",
+    "ownInstrumentalSelected": "Sử dụng {name} ({size} MB) làm nhạc beat",
+    "ownInstrumentalTitle": "Nhạc beat của riêng bạn (không bắt buộc)",
+    "submitTrack": "Gửi bản nhạc",
+    "ownInstrumentalRemove": "Xóa"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Nhấp vào một phân đoạn bên dưới để tắt tiếng nó, hoặc Shift+kéo trên dạng sóng để đánh dấu một vùng tùy chỉnh.",
       "noBackingDetected": "Không phát hiện thấy giọng hát bè — đề xuất nhạc nền thuần.",
       "addToMuteRegions": "Thêm vào các vùng tắt tiếng"
-    }
+    },
+    "uploadDurationMismatch": "Tệp này dài {uploaded} nhưng bài hát dài {expected}. Nhạc beat của bạn cần có cùng độ dài (chênh lệch không quá nửa giây) để lời bài hát luôn khớp.",
+    "uploadFinalizing": "Đang kiểm tra và chuyển đổi nhạc beat của bạn...",
+    "uploadSucceeded": "Đã tải lên {filename}. Tệp này hiện đã được chọn làm nhạc beat của bạn."
   },
   "referrals": {
     "title": "Giới thiệu",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Nó có tên là Nomad Karaoke Generator: bạn chọn bất kỳ bài hát nào - bất cứ bài gì, dù hiếm đến đâu - và nó sẽ tạo ra một video karaoke chuẩn cho bài hát đó. Tách nhạc nền thực sự (bài hát gốc, không phải ban nhạc cover), lời bài hát được đồng bộ hóa từng từ, và thường sẽ hoàn thành trong khoảng nửa giờ. Nó cũng hỗ trợ tới 33 ngôn ngữ.",
     "founderRole": "Nhà sáng lập, Nomad Karaoke",
     "languageHint": "Bạn có thể đọc trang này bằng 33 ngôn ngữ khác nhau - hãy sử dụng nút chọn ngôn ngữ ở trên cùng."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB trên {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Còn khoảng {seconds} giây",
+    "etaMinutes": "Còn khoảng {minutes} phút {seconds} giây",
+    "etaEstimating": "Đang ước tính thời gian còn lại...",
+    "failed": "Tải lên không thành công. Vui lòng thử lại.",
+    "fileOfCount": "Tệp {index} trên {count}: {name}",
+    "finalizing": "Đã tải lên xong, đang hoàn tất...",
+    "keepTabOpen": "Hãy giữ tab này mở cho đến khi quá trình tải lên hoàn tất. Nếu rời khỏi hoặc đóng trang này, quá trình tải lên sẽ bị dừng.",
+    "modalTitle": "Đang tải tệp của bạn lên",
+    "networkError": "Quá trình tải lên bị gián đoạn. Hãy kiểm tra kết nối mạng và thử lại.",
+    "preparing": "Đang chuẩn bị tải lên...",
+    "uploadingPercent": "Đang tải lên... {percent}%"
   }
 }

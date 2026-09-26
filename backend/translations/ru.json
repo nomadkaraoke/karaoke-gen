@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Ошибка при выборе инструментала для задачи {job_id}: {error}",
     "downloadUrlsError": "Ошибка при получении URL-адресов для скачивания: {error}",
     "fileNoLongerAvailable": "Файл больше недоступен",
-    "deletePublishedRequiresFiles": "Опубликованные файлы этого трека нужно удалить вместе с задачей. Повтори удаление без delete_files=false."
+    "deletePublishedRequiresFiles": "Опубликованные файлы этого трека нужно удалить вместе с задачей. Повтори удаление без delete_files=false.",
+    "instrumentalUploadBadPath": "Неверная ссылка на загрузку инструментала. Попробуй загрузить файл ещё раз.",
+    "instrumentalUploadBadType": "Неподдерживаемый тип аудиофайла. Пожалуйста, загрузи один из следующих: {allowed}.",
+    "instrumentalUploadMissing": "Мы не смогли найти твой загруженный инструментал. Возможно, загрузка не завершилась. Попробуй ещё раз.",
+    "uploadDurationMismatchCancelled": "Несовпадение длительности: инструментал длится {instrumental_duration} с, а аудио песни — {audio_duration} с (они должны совпадать с точностью до 0.5 с). Эта задача отменена, а твой кредит возвращён. Пожалуйста, отправь запрос ещё раз с совпадающими файлами."
   },
   "review": {
     "jobNotFound": "Задача не найдена",

@@ -576,16 +576,14 @@
     "reviewModeAuto": "Täysin automaattinen",
     "reviewModeAutoHint": "Pyydämme sinua tarkistamaan sanoitukset tai instrumentaaliversion vain, jos jokin todella vaatii ihmisen arviota. Ongelmattomat kappaleet valmistuvat automaattisesti.",
     "reviewModeLabel": "Tarkistus",
-    "uploadCreatingJob": "Luodaan tehtävääsi...",
-    "uploadEtaEstimating": "Arvioidaan jäljellä olevaa aikaa...",
-    "uploadEtaMinutes": "Noin {minutes} min {seconds} s jäljellä",
-    "uploadEtaSeconds": "Noin {seconds} s jäljellä",
-    "uploadFinalizing": "Lataus valmis, aloitetaan käsittely...",
-    "uploadKeepTabOpen": "Pidä tämä välilehti auki, kunnes lataus on valmis. Sivulta poistuminen tai sen sulkeminen keskeyttää latauksen, eikä kappalettasi käsitellä.",
-    "uploadModalTitle": "Ladataan äänitiedostoasi",
-    "uploadSizeProgress": "{loaded} MB / {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Ladataan äänitiedostoa... {percent} %"
+    "ownInstrumentalChecking": "Tarkistetaan kestoa...",
+    "ownInstrumentalChoose": "Valitse taustaraitatiedosto",
+    "ownInstrumentalDesc": "Onko sinulla tämän kappaleen virallinen tausta- tai instrumentaaliraita? Lataa se, niin käytämme sitä videossasi sen sijaan, että poistaisimme laulun tekoälyllä, jolloin taustaraitaa ei tarvitse erikseen tarkistaa.",
+    "ownInstrumentalMismatch": "Tämän taustaraidan kesto on {instrumental}, mutta kappaleesi kesto on {song}. Niiden on oltava samanpituisia (puolen sekunnin tarkkuudella).",
+    "ownInstrumentalSelected": "Käytetään tiedostoa {name} ({size} MB) taustaraitana",
+    "ownInstrumentalTitle": "Oma taustaraita (valinnainen)",
+    "submitTrack": "Lähetä raita",
+    "ownInstrumentalRemove": "Poista"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Napsauta segmenttiä alla mykistääksesi sen, tai Shift + vedä aaltomuodossa merkitäksesi mukautetun alueen.",
       "noBackingDetected": "Ei taustalaulua havaittu — puhdasta instrumentaalia suositellaan.",
       "addToMuteRegions": "Lisää mykistysalueisiin"
-    }
+    },
+    "uploadDurationMismatch": "Tämän tiedoston kesto on {uploaded}, mutta kappaleen kesto on {expected}. Taustaraidan on oltava samanpituinen (puolen sekunnin tarkkuudella), jotta sanoitukset pysyvät tahdissa.",
+    "uploadFinalizing": "Tarkistetaan ja muunnetaan taustaraitaa...",
+    "uploadSucceeded": "{filename} ladattu. Se on nyt valittu taustaraidaksi."
   },
   "referrals": {
     "title": "Suosittelut",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Sen nimi on Nomad Karaoke Generator: valitset minkä tahansa kappaleen - aivan minkä tahansa, vaikka kuinka harvinaisen - ja se luo siitä kunnollisen karaokevideon. Aito soitinraitojen erottelu (alkuperäinen kappale, ei cover-bändi), sanasta sanaan synkronoidut sanoitukset, ja se on yleensä valmis noin puolessa tunnissa. Se toimii myös 33 kielellä.",
     "founderRole": "Perustaja, Nomad Karaoke",
     "languageHint": "Voit lukea tämän sivun 33 eri kielellä - käytä yläreunassa olevaa kielivalitsinta."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB / {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Noin {seconds} s jäljellä",
+    "etaMinutes": "Noin {minutes} min {seconds} s jäljellä",
+    "etaEstimating": "Arvioidaan jäljellä olevaa aikaa...",
+    "failed": "Lataus epäonnistui. Yritä uudelleen.",
+    "fileOfCount": "Tiedosto {index} / {count}: {name}",
+    "finalizing": "Lataus valmis, viimeistellään...",
+    "keepTabOpen": "Pidä tämä välilehti auki, kunnes lataus on valmis. Sivulta poistuminen tai sen sulkeminen keskeyttää latauksen.",
+    "modalTitle": "Ladataan tiedostoasi",
+    "networkError": "Lataus keskeytyi. Tarkista verkkoyhteytesi ja yritä uudelleen.",
+    "preparing": "Valmistellaan latausta...",
+    "uploadingPercent": "Ladataan... {percent}%"
   }
 }

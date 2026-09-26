@@ -576,16 +576,14 @@
     "reviewModeAuto": "完全自動",
     "reviewModeAutoHint": "本当に人の手が必要な場合のみ、歌詞やインストゥルメンタルの確認をお願いします。問題のないトラックは自動的に完了します。",
     "reviewModeLabel": "確認",
-    "uploadCreatingJob": "ジョブを作成しています...",
-    "uploadEtaEstimating": "残り時間を計算中...",
-    "uploadEtaMinutes": "残り約{minutes}分{seconds}秒",
-    "uploadEtaSeconds": "残り約{seconds}秒",
-    "uploadFinalizing": "アップロードが完了しました。処理を開始しています...",
-    "uploadKeepTabOpen": "アップロードが完了するまでこのタブを開いたままにしてください。このページを離れたり閉じたりするとアップロードが停止し、曲が処理されません。",
-    "uploadModalTitle": "音声をアップロード中",
-    "uploadSizeProgress": "{loaded} MB / {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "音声をアップロード中... {percent}%"
+    "ownInstrumentalChecking": "長さを確認中...",
+    "ownInstrumentalChoose": "インスト音源ファイルを選択",
+    "ownInstrumentalDesc": "この曲の公式インストやバッキングトラックをお持ちですか？アップロードしていただければ、AIによるボーカル除去の代わりにそちらを使用して動画を作成するため、インストの確認作業が不要になります。",
+    "ownInstrumentalMismatch": "このインスト音源の長さは{instrumental}ですが、曲の長さは{song}です。同じ長さ（誤差0.5秒以内）である必要があります。",
+    "ownInstrumentalSelected": "{name}（{size} MB）をインスト音源として使用",
+    "ownInstrumentalTitle": "お手持ちのインスト音源（任意）",
+    "submitTrack": "トラックを送信",
+    "ownInstrumentalRemove": "削除"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",
@@ -1559,7 +1557,10 @@
       "clickSegment": "下のセグメントをクリックしてミュートするか、波形上で Shift+ドラッグ してカスタム領域をマークします。",
       "noBackingDetected": "バックボーカルは検出されませんでした — クリーンインストゥルメンタルを推奨します。",
       "addToMuteRegions": "ミュート領域に追加"
-    }
+    },
+    "uploadDurationMismatch": "このファイルの長さは{uploaded}ですが、曲の長さは{expected}です。歌詞の同期を保つため、インスト音源は曲と同じ長さ（誤差0.5秒以内）である必要があります。",
+    "uploadFinalizing": "インスト音源を確認・変換しています...",
+    "uploadSucceeded": "{filename}をアップロードしました。インスト音源として設定されました。"
   },
   "referrals": {
     "title": "紹介",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Nomad Karaoke Generatorというサービスです。どんな曲でも、どんなにマイナーな曲でも選ぶだけで、本格的なカラオケ動画を作成してくれます。カバー音源ではなく原曲からの本格的な伴奏分離や、単語ごとに同期するテロップに対応しており、通常30分ほどで完成します。さらに、33ヶ国語に対応しています。",
     "founderRole": "Nomad Karaoke 創設者",
     "languageHint": "このページは33の言語でお読みいただけます。上部の言語セレクターをご利用ください。"
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB / {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "残り約{seconds}秒",
+    "etaMinutes": "残り約{minutes}分{seconds}秒",
+    "etaEstimating": "残り時間を計算中...",
+    "failed": "アップロードに失敗しました。もう一度お試しください。",
+    "fileOfCount": "ファイル {index} / {count}: {name}",
+    "finalizing": "アップロード完了、仕上げの処理を行っています...",
+    "keepTabOpen": "アップロードが完了するまで、このタブを開いたままにしてください。このページを離れたり閉じたりすると、アップロードが中断されます。",
+    "modalTitle": "ファイルをアップロード中",
+    "networkError": "アップロードが中断されました。接続を確認して、もう一度お試しください。",
+    "preparing": "アップロードの準備中...",
+    "uploadingPercent": "アップロード中... {percent}%"
   }
 }

@@ -26,8 +26,8 @@ describe("UploadProgressModal", () => {
   it("shows title, percent, sizes and the keep-tab-open warning while uploading", () => {
     render(<UploadProgressModal progress={{ phase: "uploading", loaded: 25 * MB, total: 100 * MB }} />)
 
-    expect(screen.getByText("Uploading your audio")).toBeInTheDocument()
-    expect(screen.getByText("Uploading audio... 25%")).toBeInTheDocument()
+    expect(screen.getByText("Uploading your file")).toBeInTheDocument()
+    expect(screen.getByText("Uploading... 25%")).toBeInTheDocument()
     expect(screen.getByText(/25\.0 MB of 100\.0 MB/)).toBeInTheDocument()
     expect(screen.getByText("Estimating time left...")).toBeInTheDocument()
     expect(screen.getByText(/Keep this tab open until the upload finishes/)).toBeInTheDocument()
@@ -53,6 +53,18 @@ describe("UploadProgressModal", () => {
     expect(screen.getByText("About 4m 30s left")).toBeInTheDocument()
   })
 
+  it("shows which file is uploading when there are several", () => {
+    render(<UploadProgressModal progress={{ phase: "uploading", loaded: 1, total: 10, fileName: "inst.wav", fileIndex: 2, fileCount: 2 }} />)
+    expect(screen.getByText("File 2 of 2: inst.wav")).toBeInTheDocument()
+  })
+
+  it("hides the file line for a single file and honours a custom finalizing label", () => {
+    const { rerender } = render(<UploadProgressModal progress={{ phase: "uploading", loaded: 1, total: 10, fileName: "a.wav", fileIndex: 1, fileCount: 1 }} />)
+    expect(screen.queryByText(/File 1 of 1/)).not.toBeInTheDocument()
+    rerender(<UploadProgressModal progress={{ phase: "finalizing", loaded: 10, total: 10 }} finalizingLabel="Checking your instrumental..." />)
+    expect(screen.getByText("Checking your instrumental...")).toBeInTheDocument()
+  })
+
   it("cannot be dismissed with Escape", () => {
     render(<UploadProgressModal progress={{ phase: "uploading", loaded: 1, total: 100 }} />)
     fireEvent.keyDown(document.activeElement || document.body, { key: "Escape" })
@@ -62,10 +74,10 @@ describe("UploadProgressModal", () => {
 
   it("shows the creating and finalizing phases", () => {
     const { rerender } = render(<UploadProgressModal progress={{ phase: "creating", loaded: 0, total: 100 * MB }} />)
-    expect(screen.getByText("Creating your job...")).toBeInTheDocument()
+    expect(screen.getByText("Preparing upload...")).toBeInTheDocument()
     expect(screen.queryByText(/MB of/)).not.toBeInTheDocument()
 
     rerender(<UploadProgressModal progress={{ phase: "finalizing", loaded: 100 * MB, total: 100 * MB }} />)
-    expect(screen.getByText("Upload complete, starting processing...")).toBeInTheDocument()
+    expect(screen.getByText("Upload complete, finishing up...")).toBeInTheDocument()
   })
 })

@@ -260,6 +260,7 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # Bulk-upload grouping: jobs created from the same tenant bulk batch share a
     # batch_id (stamped into state_data) so they can be grouped/filtered later.
     batch_id: Optional[str] = Field(None, description="Groups jobs created together in one tenant bulk batch")
+    requires_audio_edit: bool = Field(False, description="Pause after upload for user to edit input audio")
 
     # Upload mechanism. "signed_put" (default) returns single-shot signed PUT
     # URLs; "resumable" returns GCS resumable session URIs that support chunked
@@ -1320,6 +1321,11 @@ async def create_job_with_upload_urls(
         # + refund jobs whose browser upload never finished.
         job_manager.update_state_data(job_id, 'awaiting_upload', True)
 
+        # Store requires_audio_edit flag in state_data (start_job_processing parks
+        # at the audio editor when set)
+        if body.requires_audio_edit:
+            job_manager.update_state_data(job_id, 'requires_audio_edit', True)
+
         # Stamp bulk-batch grouping so jobs created together can be grouped/filtered later.
         if body.batch_id:
             job_manager.update_state_data(job_id, 'batch_id', body.batch_id)
@@ -1432,6 +1438,11 @@ async def mark_uploads_complete(
         if not job:
             raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
+        # Only the job's owner (or an admin) may finalize its uploads.
+        from backend.api.routes.jobs import _check_job_ownership
+        if not _check_job_ownership(job, auth_result):
+            raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
+
         # Verify job is in pending state
         if job.status != JobStatus.PENDING:
             raise HTTPException(
@@ -1505,12 +1516,22 @@ async def mark_uploads_complete(
                     storage_service, audio_gcs_path, instrumental_gcs_path
                 )
                 if not duration_valid:
+                    # Cancel (refunds the credit) so the job isn't stranded PENDING
+                    # with uploaded files — the stale-upload sweep skips those.
+                    job_manager.cancel_job(
+                        job_id,
+                        reason=(
+                            f"Instrumental duration ({instrumental_duration:.2f}s) does not match "
+                            f"audio duration ({audio_duration:.2f}s)"
+                        ),
+                    )
                     raise HTTPException(
                         status_code=400,
                         detail={
                             "error": "duration_mismatch",
-                            "message": f"Instrumental duration ({instrumental_duration:.2f}s) does not match audio duration ({audio_duration:.2f}s). "
-                                      f"Difference must be within 0.5 seconds.",
+                            "message": t(locale, "jobs.uploadDurationMismatchCancelled",
+                                         instrumental_duration=f"{instrumental_duration:.1f}",
+                                         audio_duration=f"{audio_duration:.1f}"),
                             "audio_duration": audio_duration,
                             "instrumental_duration": instrumental_duration,
                             "difference": abs(audio_duration - instrumental_duration),

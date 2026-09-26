@@ -576,16 +576,14 @@
     "reviewModeAuto": "Totalment automàtic",
     "reviewModeAutoHint": "Només et demanarem que revisis la lletra o l'instrumental si alguna cosa realment requereix intervenció humana. Les pistes sense dubtes es completen automàticament.",
     "reviewModeLabel": "Revisió",
-    "uploadCreatingJob": "Creant la teva tasca...",
-    "uploadEtaEstimating": "Calculant el temps restant...",
-    "uploadEtaMinutes": "Queden aproximadament {minutes}m {seconds}s",
-    "uploadEtaSeconds": "Queden aproximadament {seconds}s",
-    "uploadFinalizing": "Pujada completada, iniciant el processament...",
-    "uploadKeepTabOpen": "Mantingues aquesta pestanya oberta fins que finalitzi la pujada. Si surts d'aquesta pàgina o la tanques, s'aturarà la pujada i la teva cançó no es processarà.",
-    "uploadModalTitle": "Pujant el teu àudio",
-    "uploadSizeProgress": "{loaded} MB de {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Pujant l'àudio... {percent}%"
+    "ownInstrumentalChecking": "Comprovant la durada...",
+    "ownInstrumentalChoose": "Tria el fitxer instrumental",
+    "ownInstrumentalDesc": "Tens la pista instrumental oficial o una base per a aquesta cançó? Puja-la i la farem servir al teu vídeo en comptes d'eliminar les veus amb IA; així no hauràs de revisar cap instrumental.",
+    "ownInstrumentalMismatch": "Aquest instrumental dura {instrumental}, però la teva cançó dura {song}. Han de tenir la mateixa durada (amb una diferència màxima de mig segon).",
+    "ownInstrumentalSelected": "Fent servir {name} ({size} MB) com a instrumental",
+    "ownInstrumentalTitle": "El teu propi instrumental (opcional)",
+    "submitTrack": "Envia la pista",
+    "ownInstrumentalRemove": "Elimina"
   },
   "jobStatus": {
     "settingUp": "Configurant",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Fes clic a un segment a continuació per silenciar-lo, o fes Shift+arrossega a la forma d'ona per marcar una regió personalitzada.",
       "noBackingDetected": "No s'han detectat veus de fons — es recomana l'instrumental net.",
       "addToMuteRegions": "Afegeix a les regions silenciades"
-    }
+    },
+    "uploadDurationMismatch": "Aquest fitxer dura {uploaded}, però la cançó dura {expected}. El teu instrumental ha de tenir la mateixa durada (amb una diferència màxima de mig segon) perquè la lletra es mantingui sincronitzada.",
+    "uploadFinalizing": "Comprovant i convertint el teu instrumental...",
+    "uploadSucceeded": "S'ha pujat {filename}. Ara està seleccionat com el teu instrumental."
   },
   "referrals": {
     "title": "Referències",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Es diu Nomad Karaoke Generator: tries qualsevol cançó —qualsevol, per molt de nínxol que sigui— i en crea un vídeo de karaoke en condicions. Separació instrumental real (cançó original, no un grup de versions), lletra sincronitzada paraula per paraula, i normalment està llest en aproximadament mitja hora. També funciona en 33 idiomes.",
     "founderRole": "Fundador, Nomad Karaoke",
     "languageHint": "Pots llegir aquesta pàgina en qualsevol dels 33 idiomes disponibles; utilitza el selector d'idioma de la part superior."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB de {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Queden aproximadament {seconds}s",
+    "etaMinutes": "Queden aproximadament {minutes}m {seconds}s",
+    "etaEstimating": "Calculant el temps restant...",
+    "failed": "La càrrega ha fallat. Torna-ho a provar.",
+    "fileOfCount": "Fitxer {index} de {count}: {name}",
+    "finalizing": "Càrrega completada, enllestint...",
+    "keepTabOpen": "Mantingues aquesta pestanya oberta fins que s'acabi la càrrega. Si surts o tanques aquesta pàgina, la càrrega s'aturarà.",
+    "modalTitle": "Pujant el teu fitxer",
+    "networkError": "La càrrega s'ha interromput. Comprova la connexió i torna-ho a provar.",
+    "preparing": "Preparant la càrrega...",
+    "uploadingPercent": "Pujant... {percent}%"
   }
 }

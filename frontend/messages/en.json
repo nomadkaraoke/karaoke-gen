@@ -561,16 +561,13 @@
     "leaveColorsBlank": "Leave colors blank to use default Nomad theme. Previews are approximate — final rendering may differ slightly.",
     "createKaraokeVideo": "Create Karaoke Video",
     "creating": "Creating...",
-    "uploadCreatingJob": "Creating your job...",
-    "uploadingAudioPercent": "Uploading audio... {percent}%",
-    "uploadModalTitle": "Uploading your audio",
-    "uploadSizeProgress": "{loaded} MB of {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadEtaSeconds": "About {seconds}s left",
-    "uploadEtaMinutes": "About {minutes}m {seconds}s left",
-    "uploadEtaEstimating": "Estimating time left...",
-    "uploadFinalizing": "Upload complete, starting processing...",
-    "uploadKeepTabOpen": "Keep this tab open until the upload finishes. Leaving or closing this page will stop the upload and your song won't be processed.",
+    "ownInstrumentalTitle": "Your own instrumental (optional)",
+    "ownInstrumentalDesc": "Have the official instrumental or backing track for this song? Upload it and we'll use it in your video instead of removing the vocals with AI, so there's no instrumental to review.",
+    "ownInstrumentalChoose": "Choose instrumental file",
+    "ownInstrumentalChecking": "Checking length...",
+    "ownInstrumentalRemove": "Remove",
+    "ownInstrumentalSelected": "Using {name} ({size} MB) as the instrumental",
+    "ownInstrumentalMismatch": "This instrumental is {instrumental} long but your song is {song}. They need to be the same length (within half a second).",
     "processingOptions": "Processing options",
     "reviewModeLabel": "Review",
     "reviewModeAuto": "Fully automatic",
@@ -594,7 +591,8 @@
     "emailWhenReady": "Email when ready",
     "afterApproval": "After approval, your karaoke video is rendered and delivered. ~10 minutes",
     "trackProgressTenant": "Track progress in the Recent Jobs list.",
-    "submitAnother": "Submit Another Track"
+    "submitAnother": "Submit Another Track",
+    "submitTrack": "Submit Track"
   },
   "jobStatus": {
     "settingUp": "Setting up",
@@ -1571,7 +1569,10 @@
       "clickSegment": "Click a segment below to mute it, or Shift+drag on the waveform to mark a custom region.",
       "noBackingDetected": "No backing vocals detected — clean instrumental recommended.",
       "addToMuteRegions": "Add to mute regions"
-    }
+    },
+    "uploadFinalizing": "Checking and converting your instrumental...",
+    "uploadSucceeded": "Uploaded {filename}. It is now selected as your instrumental.",
+    "uploadDurationMismatch": "This file is {uploaded} long but the song is {expected}. Your instrumental needs to be the same length (within half a second) so the lyrics stay in sync."
   },
   "referrals": {
     "title": "Referrals",
@@ -1893,5 +1894,20 @@
     "signoff": "Go sing something ridiculous,",
     "founderRole": "Founder, Nomad Karaoke",
     "languageHint": "You can read this page in any of 33 languages - use the language selector at the top."
+  },
+  "upload": {
+    "modalTitle": "Uploading your file",
+    "preparing": "Preparing upload...",
+    "uploadingPercent": "Uploading... {percent}%",
+    "sizeProgress": "{loaded} MB of {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "About {seconds}s left",
+    "etaMinutes": "About {minutes}m {seconds}s left",
+    "etaEstimating": "Estimating time left...",
+    "finalizing": "Upload complete, finishing up...",
+    "keepTabOpen": "Keep this tab open until the upload finishes. Leaving or closing this page will stop the upload.",
+    "fileOfCount": "File {index} of {count}: {name}",
+    "networkError": "The upload was interrupted. Check your connection and try again.",
+    "failed": "The upload failed. Please try again."
   }
 }

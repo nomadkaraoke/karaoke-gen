@@ -576,16 +576,14 @@
     "reviewModeAuto": "Helt automatisk",
     "reviewModeAutoHint": "Vi ber deg bare om å se over teksten eller instrumentalen hvis noe faktisk krever et menneske. Spor vi er sikre på, fullføres automatisk.",
     "reviewModeLabel": "Gjennomgang",
-    "uploadCreatingJob": "Oppretter jobben din...",
-    "uploadEtaEstimating": "Beregner gjenstående tid...",
-    "uploadEtaMinutes": "Omtrent {minutes}m {seconds}s igjen",
-    "uploadEtaSeconds": "Omtrent {seconds}s igjen",
-    "uploadFinalizing": "Opplasting fullført, starter behandling...",
-    "uploadKeepTabOpen": "Hold denne fanen åpen til opplastingen er fullført. Hvis du forlater eller lukker denne siden, avbrytes opplastingen, og sangen din blir ikke behandlet.",
-    "uploadModalTitle": "Laster opp lyden din",
-    "uploadSizeProgress": "{loaded} MB av {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Laster opp lyd... {percent}%"
+    "ownInstrumentalChecking": "Sjekker lengden...",
+    "ownInstrumentalChoose": "Velg instrumentalfil",
+    "ownInstrumentalDesc": "Har du den offisielle instrumentalen eller kompet til denne sangen? Last den opp, så bruker vi den i videoen din i stedet for å fjerne vokalen med AI, så slipper du å gå gjennom instrumentalen.",
+    "ownInstrumentalMismatch": "Denne instrumentalen er {instrumental} lang, men sangen din er {song}. De må ha samme lengde (innenfor et halvt sekund).",
+    "ownInstrumentalSelected": "Bruker {name} ({size} MB) som instrumental",
+    "ownInstrumentalTitle": "Egen instrumental (valgfritt)",
+    "submitTrack": "Send inn spor",
+    "ownInstrumentalRemove": "Fjern"
   },
   "jobStatus": {
     "settingUp": "Setter opp",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Klikk på et segment nedenfor for å dempe det, eller Shift+dra på bølgeformen for å markere en egendefinert region.",
       "noBackingDetected": "Ingen bakgrunnsvokal oppdaget — ren instrumental anbefales.",
       "addToMuteRegions": "Legg til i dempede regioner"
-    }
+    },
+    "uploadDurationMismatch": "Denne filen er {uploaded} lang, men sangen er {expected}. Instrumentalsporet ditt må ha samme lengde (innenfor et halvt sekund) slik at teksten holder seg synkronisert.",
+    "uploadFinalizing": "Sjekker og konverterer instrumentalsporet ditt...",
+    "uploadSucceeded": "Lastet opp {filename}. Den er nå valgt som instrumentalsporet ditt."
   },
   "referrals": {
     "title": "Henvisninger",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Det heter Nomad Karaoke Generator: du velger en hvilken som helst sang - hva som helst, uansett hvor nisje - og den lager en skikkelig karaokevideo av den. Ekte separering av instrumenter (original sang, ikke et coverband), tekst synkronisert ord for ord, og den er som regel klar på omtrent en halvtime. Den fungerer også på 33 språk.",
     "founderRole": "Grunnlegger, Nomad Karaoke",
     "languageHint": "Du kan lese denne siden på 33 forskjellige språk - bruk språkvelgeren øverst."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB av {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Omtrent {seconds}s igjen",
+    "etaMinutes": "Omtrent {minutes}m {seconds}s igjen",
+    "etaEstimating": "Beregner gjenstående tid...",
+    "failed": "Opplastingen mislyktes. Prøv igjen.",
+    "fileOfCount": "Fil {index} av {count}: {name}",
+    "finalizing": "Opplasting fullført, ferdigstiller...",
+    "keepTabOpen": "Hold denne fanen åpen til opplastingen er fullført. Hvis du forlater eller lukker denne siden, avbrytes opplastingen.",
+    "modalTitle": "Laster opp filen din",
+    "networkError": "Opplastingen ble avbrutt. Sjekk tilkoblingen din og prøv igjen.",
+    "preparing": "Forbereder opplasting...",
+    "uploadingPercent": "Laster opp... {percent}%"
   }
 }

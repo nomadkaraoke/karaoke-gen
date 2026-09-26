@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Error en seleccionar la pista instrumental per a la tasca {job_id}: {error}",
     "downloadUrlsError": "Error en obtenir els URL de descàrrega: {error}",
     "fileNoLongerAvailable": "El fitxer ja no està disponible",
-    "deletePublishedRequiresFiles": "Els fitxers publicats d'aquesta pista s'han d'eliminar quan s'elimini la tasca. Torna a intentar l'eliminació sense delete_files=false."
+    "deletePublishedRequiresFiles": "Els fitxers publicats d'aquesta pista s'han d'eliminar quan s'elimini la tasca. Torna a intentar l'eliminació sense delete_files=false.",
+    "instrumentalUploadBadPath": "Referència de pujada de l'instrumental no vàlida. Si us plau, torna a intentar pujar-lo.",
+    "instrumentalUploadBadType": "Tipus de fitxer d'àudio no admès. Si us plau, puja'n un d'aquests: {allowed}.",
+    "instrumentalUploadMissing": "No hem pogut trobar l'instrumental que has pujat. És possible que la pujada no s'hagi completat. Si us plau, torna-ho a intentar.",
+    "uploadDurationMismatchCancelled": "Diferència de durada: l'instrumental dura {instrumental_duration}s però l'àudio de la cançó dura {audio_duration}s (han de coincidir amb un marge de 0.5s). Aquesta tasca s'ha cancel·lat i se t'ha reemborsat el crèdit. Si us plau, torna-ho a enviar amb fitxers que coincideixin."
   },
   "review": {
     "jobNotFound": "Tasca no trobada",

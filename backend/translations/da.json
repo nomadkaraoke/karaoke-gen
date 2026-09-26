@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Fejl ved valg af instrumental for job {job_id}: {error}",
     "downloadUrlsError": "Fejl ved hentning af download-URL'er: {error}",
     "fileNoLongerAvailable": "Filen er ikke længere tilgængelig",
-    "deletePublishedRequiresFiles": "Dette spors udgivne filer skal fjernes, når jobbet slettes. Prøv at slette igen uden delete_files=false."
+    "deletePublishedRequiresFiles": "Dette spors udgivne filer skal fjernes, når jobbet slettes. Prøv at slette igen uden delete_files=false.",
+    "instrumentalUploadBadPath": "Ugyldig reference til instrumental-upload. Prøv venligst at uploade igen.",
+    "instrumentalUploadBadType": "Ikke-understøttet lydfiltype. Upload venligst en af følgende: {allowed}.",
+    "instrumentalUploadMissing": "Vi kunne ikke finde din uploadede instrumental. Uploaden blev muligvis ikke fuldført. Prøv venligst igen.",
+    "uploadDurationMismatchCancelled": "Uoverensstemmelse i varighed: instrumentalen er {instrumental_duration}s, men sangens lyd er {audio_duration}s (de skal matche inden for 0,5s). Dette job er blevet annulleret, og din kredit er refunderet. Indsend venligst igen med matchende filer."
   },
   "review": {
     "jobNotFound": "Jobbet blev ikke fundet",

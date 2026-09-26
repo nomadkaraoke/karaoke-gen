@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Error sa pagpili ng instrumental para sa job {job_id}: {error}",
     "downloadUrlsError": "Error sa pagkuha ng mga download URL: {error}",
     "fileNoLongerAvailable": "Hindi na available ang file",
-    "deletePublishedRequiresFiles": "Kailangang tanggalin ang mga na-publish na file ng track na ito kapag na-delete ang job. Subukang i-delete muli nang walang delete_files=false."
+    "deletePublishedRequiresFiles": "Kailangang tanggalin ang mga na-publish na file ng track na ito kapag na-delete ang job. Subukang i-delete muli nang walang delete_files=false.",
+    "instrumentalUploadBadPath": "Hindi wasto ang reference sa pag-upload ng instrumental. Pakisubukang mag-upload muli.",
+    "instrumentalUploadBadType": "Hindi suportado ang uri ng audio file. Mangyaring mag-upload ng isa sa: {allowed}.",
+    "instrumentalUploadMissing": "Hindi namin mahanap ang na-upload mong instrumental. Maaaring hindi natapos ang pag-upload. Pakisubukan muli.",
+    "uploadDurationMismatchCancelled": "Hindi tugma ang haba: ang instrumental ay {instrumental_duration}s ngunit ang audio ng kanta ay {audio_duration}s (dapat magkatugma ang mga ito sa loob ng 0.5s). Kinansela ang job na ito at naibalik na ang iyong credit. Mangyaring magsumite muli na may magkatugmang mga file."
   },
   "review": {
     "jobNotFound": "Hindi nahanap ang job",

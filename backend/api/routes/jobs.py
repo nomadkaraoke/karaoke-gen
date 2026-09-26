@@ -1346,21 +1346,19 @@ async def create_custom_instrumental(
         raise HTTPException(status_code=500, detail=t(locale, "jobs.customInstrumentalFailed", job_id=job_id, error=str(e)))
 
 
-@router.post("/{job_id}/upload-instrumental")
-async def upload_custom_instrumental(
-    job_id: str,
-    request: Request,
-    file: UploadFile = File(...),
-    auth_result: AuthResult = Depends(require_auth)
-) -> dict:
-    """
-    Upload a custom instrumental audio file for use during review.
+# Audio extensions accepted for a user-supplied instrumental (signed-URL upload).
+_INSTRUMENTAL_UPLOAD_EXTENSIONS = {
+    ".flac", ".mp3", ".wav", ".m4a", ".ogg", ".aac", ".aif", ".aiff", ".opus",
+}
+_CUSTOM_INSTRUMENTAL_OUTPUT = "jobs/{job_id}/stems/custom_instrumental.flac"
 
-    Accepts any audio format supported by pydub/ffmpeg (mp3, wav, flac, ogg, etc.).
-    The file is stored to GCS and its path recorded in the job's stems metadata.
-    The user can then select 'custom' as their instrumental_selection when completing review.
-    """
-    locale = get_locale_from_request(request)
+
+def _instrumental_source_prefix(job_id: str) -> str:
+    return f"jobs/{job_id}/uploads/custom_instrumental_source"
+
+
+def _get_review_job(job_id: str, auth_result: AuthResult, locale: str):
+    """Load a job the caller owns that is in review — shared by the instrumental upload routes."""
     job = job_manager.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
@@ -1373,6 +1371,97 @@ async def upload_custom_instrumental(
             status_code=400,
             detail=t(locale, "jobs.reviewNotInState", status=job.status)
         )
+    return job
+
+
+async def _store_custom_instrumental(
+    job_id: str, job, local_path: str, suffix: str, storage: StorageService, locale: str
+) -> dict:
+    """
+    Validate + store a user-supplied instrumental already on local disk.
+
+    Shared by the multipart upload and the signed-URL upload-complete routes:
+    duration check against the job's original audio (±0.5s), FLAC conversion
+    (the GCE encoder globs *.flac), upload to stems/custom_instrumental.flac,
+    file_urls update. Returns the API response including a playback audio_url.
+    The caller owns local_path cleanup.
+    """
+    from pydub import AudioSegment
+
+    flac_path = None
+    output_path = _CUSTOM_INSTRUMENTAL_OUTPUT.format(job_id=job_id)
+    try:
+        audio_segment = await asyncio.to_thread(AudioSegment.from_file, local_path)
+        upload_duration = len(audio_segment) / 1000.0
+
+        original_duration = await _get_audio_duration_ffprobe_signed(job_id, job, storage)
+        if original_duration is not None:
+            diff = abs(upload_duration - original_duration)
+            if diff > 0.5:
+                raise HTTPException(
+                    status_code=400,
+                    detail=t(locale, "jobs.durationMismatch",
+                             upload_duration=f"{upload_duration:.1f}",
+                             original_duration=f"{original_duration:.1f}"),
+                )
+
+        if suffix != '.flac':
+            flac_path = local_path.rsplit('.', 1)[0] + '.flac' if '.' in local_path else local_path + '.flac'
+            await asyncio.to_thread(audio_segment.export, flac_path, format='flac')
+            upload_source = flac_path
+        else:
+            upload_source = local_path  # Already FLAC, no conversion needed
+
+        await asyncio.to_thread(storage.upload_file, upload_source, output_path)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Job {job_id}: Error processing uploaded instrumental: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=t(locale, "jobs.audioProcessingFailed", error=str(e)))
+    finally:
+        if flac_path and flac_path != local_path and os.path.exists(flac_path):
+            os.unlink(flac_path)
+
+    job_manager.update_file_url(job_id, 'stems', 'custom_instrumental', output_path)
+    logger.info(f"Job {job_id}: Custom instrumental uploaded ({upload_duration:.1f}s) to {output_path}")
+
+    # Playback URL for the review UI (non-fatal: the selection still works without it)
+    audio_url = None
+    try:
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+        transcoding = AudioTranscodingService(storage_service=storage)
+        audio_url = await transcoding.get_review_audio_url_async(output_path, expiration_minutes=120)
+    except Exception as e:
+        logger.warning(f"Job {job_id}: Could not create playback URL for custom instrumental: {e}")
+
+    return {
+        "status": "success",
+        "duration_seconds": upload_duration,
+        "message": f"Custom instrumental uploaded ({upload_duration:.1f}s)",
+        "audio_url": audio_url,
+    }
+
+
+@router.post("/{job_id}/upload-instrumental")
+async def upload_custom_instrumental(
+    job_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    auth_result: AuthResult = Depends(require_auth)
+) -> dict:
+    """
+    Upload a custom instrumental audio file for use during review (multipart).
+
+    Kept for CLI/back-compat; the web UI uses the signed-URL flow
+    (instrumental-upload-url → PUT → instrumental-upload-complete) because
+    Cloud Run caps request bodies at 32 MiB.
+
+    Accepts any audio format supported by pydub/ffmpeg (mp3, wav, flac, ogg, etc.).
+    The user can then select 'custom' as their instrumental_selection when completing review.
+    """
+    locale = get_locale_from_request(request)
+    job = _get_review_job(job_id, auth_result, locale)
 
     # Determine extension from filename or content type
     original_filename = file.filename or "instrumental"
@@ -1394,64 +1483,93 @@ async def upload_custom_instrumental(
 
     storage = StorageService()
     tmp_path = None
-    flac_path = None
-
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             tmp_path = tmp.name
             content = await file.read()
             tmp.write(content)
-
-        # Get duration of uploaded file using pydub
-        from pydub import AudioSegment
-        audio_segment = AudioSegment.from_file(tmp_path)
-        upload_duration = len(audio_segment) / 1000.0
-
-        # Get duration of original job audio to validate match
-        original_duration = await _get_audio_duration_ffprobe_signed(job_id, job, storage)
-        if original_duration is not None:
-            diff = abs(upload_duration - original_duration)
-            if diff > 0.5:
-                raise HTTPException(
-                    status_code=400,
-                    detail=t(locale, "jobs.durationMismatch",
-                             upload_duration=f"{upload_duration:.1f}",
-                             original_duration=f"{original_duration:.1f}"),
-                )
-
-        # Convert to FLAC for consistency with the rest of the pipeline
-        # (GCE encoding worker searches for *.flac patterns)
-        flac_path = tmp_path.rsplit('.', 1)[0] + '.flac' if '.' in tmp_path else tmp_path + '.flac'
-        if suffix != '.flac':
-            audio_segment.export(flac_path, format='flac')
-        else:
-            flac_path = tmp_path  # Already FLAC, no conversion needed
-
-        # Upload to GCS (always as .flac)
-        output_path = f"jobs/{job_id}/stems/custom_instrumental.flac"
-        storage.upload_file(flac_path, output_path)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Job {job_id}: Error processing uploaded instrumental: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=t(locale, "jobs.audioProcessingFailed", error=str(e)))
+        return await _store_custom_instrumental(job_id, job, tmp_path, suffix, storage, locale)
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
-        if flac_path and flac_path != tmp_path and os.path.exists(flac_path):
-            os.unlink(flac_path)
 
-    # Record in job file_urls
-    job_manager.update_file_url(job_id, 'stems', 'custom_instrumental', output_path)
 
-    logger.info(f"Job {job_id}: Custom instrumental uploaded ({upload_duration:.1f}s) to {output_path}")
+class InstrumentalUploadUrlRequest(BaseModel):
+    filename: str
+    content_type: str = "application/octet-stream"
 
-    return {
-        "status": "success",
-        "duration_seconds": upload_duration,
-        "message": f"Custom instrumental uploaded ({upload_duration:.1f}s)",
-    }
+
+class InstrumentalUploadCompleteRequest(BaseModel):
+    gcs_path: str
+
+
+@router.post("/{job_id}/instrumental-upload-url")
+async def get_instrumental_upload_url(
+    job_id: str,
+    request: Request,
+    body: InstrumentalUploadUrlRequest,
+    auth_result: AuthResult = Depends(require_auth)
+) -> dict:
+    """
+    Step 1 of the signed-URL instrumental upload: returns a signed PUT URL so the
+    browser uploads straight to GCS (no Cloud Run 32 MiB body cap), then calls
+    instrumental-upload-complete with the returned gcs_path.
+    """
+    locale = get_locale_from_request(request)
+    _get_review_job(job_id, auth_result, locale)
+
+    suffix = Path(body.filename).suffix.lower()
+    if suffix not in _INSTRUMENTAL_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=t(locale, "jobs.instrumentalUploadBadType",
+                     allowed=", ".join(sorted(_INSTRUMENTAL_UPLOAD_EXTENSIONS))),
+        )
+
+    gcs_path = f"{_instrumental_source_prefix(job_id)}{suffix}"
+    storage = StorageService()
+    upload_url = await asyncio.to_thread(
+        storage.generate_signed_upload_url, gcs_path, body.content_type, 60
+    )
+    return {"upload_url": upload_url, "gcs_path": gcs_path, "content_type": body.content_type}
+
+
+@router.post("/{job_id}/instrumental-upload-complete")
+async def complete_instrumental_upload(
+    job_id: str,
+    request: Request,
+    body: InstrumentalUploadCompleteRequest,
+    auth_result: AuthResult = Depends(require_auth)
+) -> dict:
+    """
+    Step 2 of the signed-URL instrumental upload: validates + stores the uploaded
+    object exactly like the multipart upload-instrumental route.
+    """
+    locale = get_locale_from_request(request)
+    job = _get_review_job(job_id, auth_result, locale)
+
+    prefix = _instrumental_source_prefix(job_id)
+    suffix = Path(body.gcs_path).suffix.lower()
+    if (
+        not body.gcs_path.startswith(prefix)
+        or body.gcs_path != f"{prefix}{suffix}"
+        or suffix not in _INSTRUMENTAL_UPLOAD_EXTENSIONS
+    ):
+        raise HTTPException(status_code=400, detail=t(locale, "jobs.instrumentalUploadBadPath"))
+
+    storage = StorageService()
+    if not await asyncio.to_thread(storage.file_exists, body.gcs_path):
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.instrumentalUploadMissing"))
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp_path = tmp.name
+        await asyncio.to_thread(storage.download_file, body.gcs_path, tmp_path)
+        return await _store_custom_instrumental(job_id, job, tmp_path, suffix, storage, locale)
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 async def _get_audio_duration_ffprobe_signed(job_id: str, job, storage: StorageService) -> Optional[float]:

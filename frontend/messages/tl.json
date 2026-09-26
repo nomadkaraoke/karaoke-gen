@@ -576,16 +576,14 @@
     "reviewModeAuto": "Ganap na awtomatiko",
     "reviewModeAutoHint": "Hihilingin lang namin sa iyo na suriin ang lyrics o instrumental kung kailangan talaga ng tao. Awtomatikong natatapos ang mga siguradong track.",
     "reviewModeLabel": "Pagsusuri",
-    "uploadCreatingJob": "Ginagawa ang iyong job...",
-    "uploadEtaEstimating": "Tinatantiya ang natitirang oras...",
-    "uploadEtaMinutes": "Humigit-kumulang {minutes}m {seconds}s ang natitira",
-    "uploadEtaSeconds": "Humigit-kumulang {seconds}s ang natitira",
-    "uploadFinalizing": "Tapos na ang pag-upload, sinisimulan na ang pagproseso...",
-    "uploadKeepTabOpen": "Panatilihing bukas ang tab na ito hanggang sa matapos ang pag-upload. Ang pag-alis o pagsasara ng pahinang ito ay magpapatigil sa pag-upload at hindi mapoproseso ang iyong kanta.",
-    "uploadModalTitle": "Ina-upload ang iyong audio",
-    "uploadSizeProgress": "{loaded} MB ng {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Ina-upload ang audio... {percent}%"
+    "ownInstrumentalChecking": "Sinusuri ang haba...",
+    "ownInstrumentalChoose": "Pumili ng instrumental file",
+    "ownInstrumentalDesc": "May opisyal na instrumental o backing track ka ba para sa kantang ito? I-upload ito at gagamitin namin ito sa iyong video sa halip na alisin ang boses gamit ang AI, kaya wala nang instrumental na kailangang suriin.",
+    "ownInstrumentalMismatch": "May habang {instrumental} ang instrumental na ito pero {song} ang iyong kanta. Kailangang magkapareho ang haba ng mga ito (sa loob ng kalahating segundo).",
+    "ownInstrumentalSelected": "Ginagamit ang {name} ({size} MB) bilang instrumental",
+    "ownInstrumentalTitle": "Sarili mong instrumental (opsyonal)",
+    "submitTrack": "Isumite ang Track",
+    "ownInstrumentalRemove": "Alisin"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",
@@ -1559,7 +1557,10 @@
       "clickSegment": "I-click ang isang segment sa ibaba para i-mute ito, o mag-Shift+drag sa waveform para markahan ang isang custom na rehiyon.",
       "noBackingDetected": "Walang na-detect na backing vocals — inirerekomenda ang malinis na instrumental.",
       "addToMuteRegions": "Idagdag sa mga mute region"
-    }
+    },
+    "uploadDurationMismatch": "May habang {uploaded} ang file na ito pero {expected} ang kanta. Kailangang magkapareho ang haba ng iyong instrumental (sa loob ng kalahating segundo) para manatiling naka-sync ang lyrics.",
+    "uploadFinalizing": "Sinusuri at kino-convert ang iyong instrumental...",
+    "uploadSucceeded": "Na-upload na ang {filename}. Napili na ito bilang iyong instrumental."
   },
   "referrals": {
     "title": "Mga Referral",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Tinatawag itong Nomad Karaoke Generator: pwede kang pumili ng kahit anong kanta - kahit ano pa 'yan, gaano man ka-niche - at gagawan nito ng maayos na karaoke video. May totoong instrumental separation (orihinal na kanta, hindi cover band), naka-sync ang lyrics bawat salita, at madalas ay handa na ito sa loob ng halos kalahating oras. Gumagana rin ito sa 33 na wika.",
     "founderRole": "Founder, Nomad Karaoke",
     "languageHint": "Pwede mong basahin ang pahinang ito sa alinman sa 33 wika - gamitin ang language selector sa itaas."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB ng {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Humigit-kumulang {seconds}s ang natitira",
+    "etaMinutes": "Humigit-kumulang {minutes}m {seconds}s ang natitira",
+    "etaEstimating": "Tinatantiya ang natitirang oras...",
+    "failed": "Hindi nagtagumpay ang pag-upload. Pakisubukang muli.",
+    "fileOfCount": "File {index} ng {count}: {name}",
+    "finalizing": "Tapos na ang pag-upload, kinukumpleto na...",
+    "keepTabOpen": "Panatilihing bukas ang tab na ito hanggang sa matapos ang pag-upload. Mahihinto ang pag-upload kung aalis ka o isasara mo ang page na ito.",
+    "modalTitle": "Ina-upload ang iyong file",
+    "networkError": "Naantala ang pag-upload. Suriin ang iyong koneksyon at subukang muli.",
+    "preparing": "Inihahanda ang pag-upload...",
+    "uploadingPercent": "Ina-upload... {percent}%"
   }
 }

@@ -576,16 +576,14 @@
     "reviewModeAuto": "Entièrement automatique",
     "reviewModeAutoHint": "Nous te demanderons de vérifier les paroles ou l'instrumental uniquement si une intervention humaine est vraiment nécessaire. Les pistes fiables sont finalisées automatiquement.",
     "reviewModeLabel": "Vérification",
-    "uploadCreatingJob": "Création de ta tâche...",
-    "uploadEtaEstimating": "Estimation du temps restant...",
-    "uploadEtaMinutes": "Environ {minutes}m {seconds}s restantes",
-    "uploadEtaSeconds": "Environ {seconds}s restantes",
-    "uploadFinalizing": "Téléversement terminé, lancement du traitement...",
-    "uploadKeepTabOpen": "Garde cet onglet ouvert jusqu'à la fin du téléversement. Si tu quittes ou fermes cette page, le téléversement sera interrompu et ta chanson ne sera pas traitée.",
-    "uploadModalTitle": "Téléversement de ton audio",
-    "uploadSizeProgress": "{loaded} Mo sur {total} Mo",
-    "uploadSpeed": "{speed} Mo/s",
-    "uploadingAudioPercent": "Téléversement de l'audio... {percent}%"
+    "ownInstrumentalChecking": "Vérification de la durée...",
+    "ownInstrumentalChoose": "Choisir un fichier instrumental",
+    "ownInstrumentalDesc": "Tu as l'instrumental officiel ou la piste d'accompagnement de cette chanson ? Téléverse-le et nous l'utiliserons dans ta vidéo au lieu de supprimer la voix avec l'IA. Ainsi, tu n'auras aucun instrumental à vérifier.",
+    "ownInstrumentalMismatch": "Cet instrumental dure {instrumental}, mais ta chanson dure {song}. Ils doivent avoir la même durée (à une demi-seconde près).",
+    "ownInstrumentalSelected": "Utilisation de {name} ({size} Mo) comme instrumental",
+    "ownInstrumentalTitle": "Ton propre instrumental (facultatif)",
+    "submitTrack": "Soumettre le morceau",
+    "ownInstrumentalRemove": "Retirer"
   },
   "jobStatus": {
     "settingUp": "Configuration",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Clique sur un segment ci-dessous pour le rendre muet, ou Shift+glisse sur la forme d'onde pour marquer une région personnalisée.",
       "noBackingDetected": "Aucun chœur détecté — instrumental propre recommandé.",
       "addToMuteRegions": "Ajouter aux régions muettes"
-    }
+    },
+    "uploadDurationMismatch": "Ce fichier dure {uploaded}, mais la chanson dure {expected}. Ton instrumental doit avoir la même durée (à une demi-seconde près) pour que les paroles restent synchronisées.",
+    "uploadFinalizing": "Vérification et conversion de ton instrumental...",
+    "uploadSucceeded": "{filename} a bien été téléversé. Il est désormais sélectionné comme instrumental."
   },
   "referrals": {
     "title": "Parrainages",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Ça s'appelle Nomad Karaoke Generator : tu choisis n'importe quelle chanson - n'importe laquelle, même très spécifique - et ça crée une vraie vidéo karaoké pour celle-ci. Vraie séparation instrumentale (la chanson originale, pas un groupe de reprises), paroles synchronisées mot à mot, et c'est généralement prêt en environ une demi-heure. Ça fonctionne aussi dans 33 langues.",
     "founderRole": "Fondateur, Nomad Karaoke",
     "languageHint": "Tu peux lire cette page dans 33 langues différentes - utilise le sélecteur de langue en haut de la page."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} Mo sur {total} Mo",
+    "speed": "{speed} Mo/s",
+    "etaSeconds": "Environ {seconds}s restantes",
+    "etaMinutes": "Environ {minutes}m {seconds}s restantes",
+    "etaEstimating": "Estimation du temps restant...",
+    "failed": "Le téléversement a échoué. Merci de réessayer.",
+    "fileOfCount": "Fichier {index} sur {count} : {name}",
+    "finalizing": "Téléversement terminé, finalisation en cours...",
+    "keepTabOpen": "Garde cet onglet ouvert jusqu'à la fin du téléversement. Quitter ou fermer cette page interrompra le téléversement.",
+    "modalTitle": "Téléversement de ton fichier",
+    "networkError": "Le téléversement a été interrompu. Vérifie ta connexion et réessaie.",
+    "preparing": "Préparation du téléversement...",
+    "uploadingPercent": "Téléversement... {percent} %"
   }
 }

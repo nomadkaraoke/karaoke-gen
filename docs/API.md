@@ -219,7 +219,12 @@ awaiting upload 2h after creation (signed URLs expire at 60 min) with nothing un
 `uploads/{job_id}/` are auto-cancelled with credit refund by the hourly
 `process-stale-reviews` run (`backend/workers/stale_upload_processor.py`).
 
+The caller must own the job (or be admin). With an `existing_instrumental` file, a >0.5s
+duration mismatch cancels the job (credit refunded) and returns 400
+`{detail: {error: "duration_mismatch", message, audio_duration, instrumental_duration, difference}}`.
+
 **Optional fields:**
+- `requires_audio_edit`: pause at the audio editor after upload (stored in `state_data`).
 - `upload_mode`: `"signed_put"` (default) or `"resumable"`. With `"resumable"`, each
   `upload_urls` entry has `resumable: true` and `upload_url` is a **GCS resumable session
   URI** — upload in 256KiB-aligned chunks with `Content-Range` headers, query the persisted
@@ -441,16 +446,36 @@ Content-Type: multipart/form-data
 file: <audio file (mp3, wav, flac, ogg, aac, m4a)>
 ```
 
-Uploads an external instrumental audio file for use during review. The uploaded file's duration is validated against the original audio — must match within ±0.5 seconds. Requires job to be in `awaiting_review` or `in_review` state.
+Uploads an external instrumental audio file for use during review. The uploaded file's duration is validated against the original audio — must match within ±0.5 seconds. Requires job to be in `awaiting_review` or `in_review` state. Kept for CLI/back-compat; files over ~32 MiB exceed Cloud Run's request cap, so the web UI uses the signed-URL flow below.
 
 Response:
 ```json
 {
   "status": "success",
   "duration_seconds": 240.0,
-  "message": "Custom instrumental uploaded (240.0s)"
+  "message": "Custom instrumental uploaded (240.0s)",
+  "audio_url": "https://storage.googleapis.com/...signed FLAC URL for playback (null if signing failed)"
 }
 ```
+
+**Signed-URL variant (web UI, any size):**
+
+```http
+POST /api/jobs/{job_id}/instrumental-upload-url
+{"filename": "inst.wav", "content_type": "audio/wav"}
+→ {"upload_url": "<signed PUT>", "gcs_path": "jobs/{job_id}/uploads/custom_instrumental_source.wav", "content_type": "audio/wav"}
+
+PUT <upload_url>            (browser → GCS directly)
+
+POST /api/jobs/{job_id}/instrumental-upload-complete
+{"gcs_path": "jobs/{job_id}/uploads/custom_instrumental_source.wav"}
+→ same response as upload-instrumental
+```
+
+Same ownership/status checks as `upload-instrumental`. Extensions: flac, mp3, wav, m4a, ogg, aac, aif, aiff, opus
+(400 otherwise). `gcs_path` must be this job's `custom_instrumental_source` object (400 otherwise); 404 if the
+upload never landed. Both routes share one processing helper (duration check, FLAC conversion,
+`stems.custom_instrumental`).
 
 Error (duration mismatch):
 ```json

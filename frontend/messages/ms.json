@@ -576,16 +576,14 @@
     "reviewModeAuto": "Sepenuhnya automatik",
     "reviewModeAutoHint": "Kami hanya akan meminta anda menyemak lirik atau instrumental jika ia benar-benar memerlukan semakan manusia. Trek yang diyakini tepat akan disiapkan secara automatik.",
     "reviewModeLabel": "Semakan",
-    "uploadCreatingJob": "Mencipta tugasan anda...",
-    "uploadEtaEstimating": "Menganggarkan masa yang tinggal...",
-    "uploadEtaMinutes": "Kira-kira {minutes}m {seconds}s lagi",
-    "uploadEtaSeconds": "Kira-kira {seconds}s lagi",
-    "uploadFinalizing": "Muat naik selesai, memulakan pemprosesan...",
-    "uploadKeepTabOpen": "Biarkan tab ini terbuka sehingga muat naik selesai. Meninggalkan atau menutup halaman ini akan menghentikan muat naik dan lagu anda tidak akan diproses.",
-    "uploadModalTitle": "Memuat naik audio anda",
-    "uploadSizeProgress": "{loaded} MB daripada {total} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "Memuat naik audio... {percent}%"
+    "ownInstrumentalChecking": "Menyemak durasi...",
+    "ownInstrumentalChoose": "Pilih fail instrumental",
+    "ownInstrumentalDesc": "Ada instrumental atau trek latar rasmi untuk lagu ini? Muat naik dan kami akan menggunakannya dalam video anda dan bukannya mengalih keluar vokal dengan AI, jadi tiada instrumental yang perlu disemak.",
+    "ownInstrumentalMismatch": "Instrumental ini berdurasi {instrumental} tetapi lagu anda berdurasi {song}. Kedua-duanya perlu sama panjang (dalam lingkungan setengah saat).",
+    "ownInstrumentalSelected": "Menggunakan {name} ({size} MB) sebagai instrumental",
+    "ownInstrumentalTitle": "Instrumental anda sendiri (pilihan)",
+    "submitTrack": "Hantar Trek",
+    "ownInstrumentalRemove": "Alih keluar"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",
@@ -1559,7 +1557,10 @@
       "clickSegment": "Klik segmen di bawah untuk meredamkannya, atau Shift+seret pada bentuk gelombang untuk menandakan kawasan tersuai.",
       "noBackingDetected": "Tiada vokal latar dikesan — instrumental bersih disyorkan.",
       "addToMuteRegions": "Tambah ke kawasan redam"
-    }
+    },
+    "uploadDurationMismatch": "Fail ini berdurasi {uploaded} tetapi lagu ini berdurasi {expected}. Instrumental anda perlu sama panjang (dalam lingkungan setengah saat) supaya lirik kekal segerak.",
+    "uploadFinalizing": "Menyemak dan menukar instrumental anda...",
+    "uploadSucceeded": "{filename} berjaya dimuat naik. Ia kini dipilih sebagai instrumental anda."
   },
   "referrals": {
     "title": "Rujukan",
@@ -1893,5 +1894,20 @@
     "whatItIs": "Ia dipanggil Nomad Karaoke Generator: anda boleh memilih mana-mana lagu - apa sahaja, tidak kira betapa unik sekalipun - dan ia akan menghasilkan video karaoke yang sebenar untuknya. Pemisahan instrumental sebenar (lagu asal, bukan kumpulan cover), lirik yang disegerakkan perkataan demi perkataan, dan ia biasanya siap dalam masa kira-kira setengah jam. Ia juga berfungsi dalam 33 bahasa.",
     "founderRole": "Pengasas, Nomad Karaoke",
     "languageHint": "Anda boleh membaca halaman ini dalam salah satu daripada 33 bahasa - gunakan pemilih bahasa di bahagian atas."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB daripada {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Kira-kira {seconds}s lagi",
+    "etaMinutes": "Kira-kira {minutes}m {seconds}s lagi",
+    "etaEstimating": "Menganggarkan masa yang tinggal...",
+    "failed": "Muat naik gagal. Sila cuba lagi.",
+    "fileOfCount": "Fail {index} daripada {count}: {name}",
+    "finalizing": "Muat naik selesai, sedang menyiapkan...",
+    "keepTabOpen": "Biarkan tab ini terbuka sehingga muat naik selesai. Meninggalkan atau menutup halaman ini akan menghentikan muat naik.",
+    "modalTitle": "Memuat naik fail anda",
+    "networkError": "Muat naik terganggu. Semak sambungan anda dan cuba lagi.",
+    "preparing": "Menyediakan muat naik...",
+    "uploadingPercent": "Memuat naik... {percent}%"
   }
 }

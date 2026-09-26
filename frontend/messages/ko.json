@@ -576,16 +576,14 @@
     "reviewModeAuto": "완전 자동",
     "reviewModeAutoHint": "사람의 확인이 꼭 필요한 경우에만 가사나 반주 검토를 요청드립니다. 정확도가 높은 트랙은 자동으로 완성됩니다.",
     "reviewModeLabel": "검토",
-    "uploadCreatingJob": "작업 생성 중...",
-    "uploadEtaEstimating": "남은 시간 계산 중...",
-    "uploadEtaMinutes": "약 {minutes}분 {seconds}초 남음",
-    "uploadEtaSeconds": "약 {seconds}초 남음",
-    "uploadFinalizing": "업로드 완료, 처리를 시작합니다...",
-    "uploadKeepTabOpen": "업로드가 완료될 때까지 이 탭을 열어 두세요. 이 페이지를 벗어나거나 닫으면 업로드가 중단되어 곡이 처리되지 않습니다.",
-    "uploadModalTitle": "오디오 업로드 중",
-    "uploadSizeProgress": "{total} MB 중 {loaded} MB",
-    "uploadSpeed": "{speed} MB/s",
-    "uploadingAudioPercent": "오디오 업로드 중... {percent}%"
+    "ownInstrumentalChecking": "길이 확인 중...",
+    "ownInstrumentalChoose": "반주 파일 선택",
+    "ownInstrumentalDesc": "이 곡의 공식 반주나 배킹 트랙을 가지고 계신가요? 파일을 업로드하시면 AI로 보컬을 제거하는 대신 해당 음원을 영상에 사용하므로, 반주를 따로 검토하실 필요가 없습니다.",
+    "ownInstrumentalMismatch": "이 반주의 길이는 {instrumental}이지만 곡의 길이는 {song}입니다. 두 파일의 길이가 같아야 합니다(오차 범위 0.5초 이내).",
+    "ownInstrumentalSelected": "{name}({size} MB) 파일을 반주로 사용합니다",
+    "ownInstrumentalTitle": "직접 준비한 반주 (선택 사항)",
+    "submitTrack": "트랙 제출하기",
+    "ownInstrumentalRemove": "제거"
   },
   "jobStatus": {
     "settingUp": "설정 중",
@@ -1559,7 +1557,10 @@
       "clickSegment": "아래 세그먼트를 클릭하여 음소거하거나, 파형에서 Shift+드래그하여 맞춤 구간을 표시하세요.",
       "noBackingDetected": "백보컬이 감지되지 않았습니다 — 깔끔한 반주를 권장합니다.",
       "addToMuteRegions": "음소거 구간에 추가"
-    }
+    },
+    "uploadDurationMismatch": "이 파일의 길이는 {uploaded}이지만 곡의 길이는 {expected}입니다. 가사 싱크가 어긋나지 않도록 반주 파일의 길이가 원곡과 같아야 합니다(오차 범위 0.5초 이내).",
+    "uploadFinalizing": "반주 파일을 확인하고 변환하는 중...",
+    "uploadSucceeded": "{filename} 파일을 업로드했습니다. 이제 이 파일이 반주로 선택되었습니다."
   },
   "referrals": {
     "title": "추천 프로그램",
@@ -1893,5 +1894,20 @@
     "whatItIs": "이름은 Nomad Karaoke Generator입니다. 아무리 마이너한 곡이라도 원하는 노래를 선택하기만 하면 제대로 된 노래방 영상을 만들어 줍니다. 커버 밴드가 아닌 원곡을 사용한 실제 반주 분리, 단어 단위로 동기화된 가사를 제공하며, 보통 30분 정도면 완성됩니다. 33개 언어도 지원합니다.",
     "founderRole": "Nomad Karaoke 창립자",
     "languageHint": "이 페이지는 33개 언어로 보실 수 있습니다. 상단의 언어 선택기를 사용해 주세요."
+  },
+  "upload": {
+    "sizeProgress": "{total} MB 중 {loaded} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "약 {seconds}초 남음",
+    "etaMinutes": "약 {minutes}분 {seconds}초 남음",
+    "etaEstimating": "남은 시간 계산 중...",
+    "failed": "업로드에 실패했습니다. 다시 시도해 주세요.",
+    "fileOfCount": "{count}개 중 {index}번째 파일: {name}",
+    "finalizing": "업로드 완료, 마무리 작업 중...",
+    "keepTabOpen": "업로드가 완료될 때까지 이 탭을 열어 두세요. 페이지를 벗어나거나 닫으면 업로드가 중단됩니다.",
+    "modalTitle": "파일 업로드 중",
+    "networkError": "업로드가 중단되었습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.",
+    "preparing": "업로드 준비 중...",
+    "uploadingPercent": "업로드 중... {percent}%"
   }
 }

@@ -49,7 +49,11 @@
     "instrumentalSelectionError": "Ralat memilih instrumental untuk tugasan {job_id}: {error}",
     "downloadUrlsError": "Ralat mendapatkan URL muat turun: {error}",
     "fileNoLongerAvailable": "Fail tidak lagi tersedia",
-    "deletePublishedRequiresFiles": "Fail terbitan trek ini mesti dipadamkan apabila tugas dipadamkan. Sila cuba padam semula tanpa delete_files=false."
+    "deletePublishedRequiresFiles": "Fail terbitan trek ini mesti dipadamkan apabila tugas dipadamkan. Sila cuba padam semula tanpa delete_files=false.",
+    "instrumentalUploadBadPath": "Rujukan muat naik instrumental tidak sah. Sila cuba muat naik semula.",
+    "instrumentalUploadBadType": "Jenis fail audio tidak disokong. Sila muat naik salah satu daripada: {allowed}.",
+    "instrumentalUploadMissing": "Kami tidak dapat mencari instrumental yang anda muat naik. Proses muat naik mungkin belum selesai. Sila cuba lagi.",
+    "uploadDurationMismatchCancelled": "Durasi tidak sepadan: instrumental adalah {instrumental_duration}s tetapi audio lagu adalah {audio_duration}s (kedua-duanya mesti sepadan dalam lingkungan 0.5s). Tugasan ini telah dibatalkan dan kredit anda telah dikembalikan. Sila hantar semula dengan fail yang sepadan."
   },
   "review": {
     "jobNotFound": "Tugasan tidak dijumpai",
