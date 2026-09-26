@@ -689,13 +689,13 @@ Returns:
       "reason": "All references read 'chlorine' here",
       "category": "mishearing",
       "confidence": 0.95,
-      "models": ["claude-opus-4-8", "gemini-3.1-pro-preview"],
+      "models": ["claude-opus-5-5", "gemini-3.8-flash"],
       "consensus": 2,
       "total_models": 2,
       "conflict_group": null
     }
   ],
-  "model": "claude-opus-4-8, gemini-3.1-pro-preview",
+  "model": "claude-opus-5-5, gemini-3.8-flash",
   "elapsed_seconds": 27.4,
   "settings_applied": { "suggest_adlib_removal": true, "allow_insertions": true, "min_confidence": 0.0 },
   "warnings": [],
@@ -932,7 +932,7 @@ Content-Type: application/json
 
 Decides the official formatting for a typed artist/title and whether it matches a
 real song. A deterministic normalizer + the catalog run first; a light Vertex
-Gemini model (`MATCH_JUDGE_MODEL`, default `gemini-3.5-flash`) is consulted
+Gemini model (`MATCH_JUDGE_MODEL`, default `gemini-3.8-flash`) is consulted
 **only** when those aren't confident. `audio_confidence_tier` (1=strong..3=weak,
 optional) lets the judge tell whether weak audio results hint at a typo. The call
 never blocks job creation — on timeout/error it returns a `none` verdict. Disable

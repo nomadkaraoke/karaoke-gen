@@ -98,8 +98,8 @@ Shared infrastructure:
 # LLM analysis settings
 # ---------------------------------------------------------------------------
 
-LLM_ANALYSIS_MODEL: str = os.environ.get("LLM_ANALYSIS_MODEL", "gemini-2.0-flash-001")
-LLM_VERTEX_LOCATION: str = os.environ.get("LLM_VERTEX_LOCATION", "us-central1")
+LLM_ANALYSIS_MODEL: str = os.environ.get("LLM_ANALYSIS_MODEL", "gemini-3.8-flash")
+LLM_VERTEX_LOCATION: str = os.environ.get("LLM_VERTEX_LOCATION", "global")
 
 #: Minimum number of active error patterns required before triggering LLM analysis.
 MIN_PATTERNS_FOR_ANALYSIS: int = 3

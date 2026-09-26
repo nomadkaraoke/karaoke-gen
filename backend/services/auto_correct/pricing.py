@@ -22,6 +22,7 @@ logged tokens rather than trusting the historical USD value.
 """
 from __future__ import annotations
 
+from datetime import date, datetime, timezone
 from typing import Optional, TypedDict
 
 
@@ -49,27 +50,47 @@ class _Rate(TypedDict):
 MODEL_PRICING: dict[str, _Rate] = {
     # --- Anthropic (authoritative) ---
     "claude-fable-5": {"input": 10.0, "output": 50.0, "cache_read": 1.0},
+    "claude-opus-5-5": {"input": 4.0, "output": 20.0, "cache_read": 0.2},
     "claude-opus-4-8": {"input": 5.0, "output": 25.0, "cache_read": 0.5},
     "claude-sonnet-4-6": {"input": 3.0, "output": 15.0, "cache_read": 0.3},
     "claude-haiku-4-5": {"input": 1.0, "output": 5.0, "cache_read": 0.1},
     # --- Gemini (ESTIMATE — Vertex 3.x Pro preview, <=200K-token context
     #     tier; confirm against current Google pricing before trusting USD) ---
     "gemini-3.1-pro-preview": {"input": 2.0, "output": 12.0, "cache_read": 0.2},
+    # Promo rate through 2026-12-31; see _RATE_CHANGES for the standard rate.
+    "gemini-3.8-flash": {"input": 0.75, "output": 3.75, "cache_read": 0.075},
+}
+
+# Scheduled price changes: model -> [(effective_date, rate)], oldest first.
+# The latest entry whose date has arrived overrides MODEL_PRICING.
+_RATE_CHANGES: dict[str, list[tuple[date, _Rate]]] = {
+    "gemini-3.8-flash": [
+        (date(2027, 1, 1), {"input": 1.5, "output": 7.5, "cache_read": 0.15}),
+    ],
 }
 
 
-def get_rate(model: str) -> Optional[_Rate]:
+def _effective(model: str, rate: _Rate, on: Optional[date]) -> _Rate:
+    on = on or datetime.now(timezone.utc).date()
+    for effective, changed in _RATE_CHANGES.get(model, []):
+        if on >= effective:
+            rate = changed
+    return rate
+
+
+def get_rate(model: str, on: Optional[date] = None) -> Optional[_Rate]:
     """Return the rate card for ``model``, or None if we have no pricing.
 
     Falls back to a prefix match on the model family (e.g. a dated
     ``claude-fable-5-2026...`` snapshot still resolves to ``claude-fable-5``)
-    so a minor model-id change doesn't silently drop cost tracking.
+    so a minor model-id change doesn't silently drop cost tracking. ``on``
+    (default: today, UTC) selects any scheduled price change.
     """
     if model in MODEL_PRICING:
-        return MODEL_PRICING[model]
+        return _effective(model, MODEL_PRICING[model], on)
     for known, rate in MODEL_PRICING.items():
         if model.startswith(known):
-            return rate
+            return _effective(known, rate, on)
     return None
 
 

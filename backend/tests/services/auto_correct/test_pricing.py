@@ -171,3 +171,15 @@ def test_suggest_logs_unavailable_usage_without_crashing(caplog) -> None:
             )
     assert "auto-correct usage job=job-2 model=claude-fable-5 tokens=unavailable" in caplog.text
     assert "total_est_cost_usd=unknown" in caplog.text
+
+
+def test_gemini_38_flash_rate_switches_to_standard_on_2027_01_01() -> None:
+    from datetime import date
+
+    from backend.services.auto_correct.pricing import get_rate
+
+    assert get_rate("gemini-3.8-flash", on=date(2026, 12, 31))["output"] == 3.75
+    assert get_rate("gemini-3.8-flash", on=date(2027, 1, 1))["output"] == 7.5
+    assert get_rate("gemini-3.8-flash", on=date(2027, 1, 1))["input"] == 1.5
+    # Models without scheduled changes are unaffected.
+    assert get_rate("claude-opus-5-5", on=date(2027, 6, 1))["output"] == 20.0
