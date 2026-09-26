@@ -387,9 +387,9 @@ class VideoGenerator:
 
         When using subprocess with a command list (no shell), FFmpeg receives the
         filter string directly. FFmpeg's filter parser requires escaping:
-        - Backslashes: double them (\ -> \\)
+        - Backslashes: double them (\\ -> \\)
         - Single quotes/apostrophes: escape with three backslashes (' -> \\')
-        - Spaces: escape with backslash ( -> \ )
+        - Spaces: escape with backslash ( -> \\ )
 
         Note: This is different from shell escaping. The '\\'\\''' pattern used for
         shell escaping does NOT work when subprocess passes args directly to FFmpeg.
