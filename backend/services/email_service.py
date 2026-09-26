@@ -608,6 +608,76 @@ class EmailService:
             email, subject, html_content, text_content, from_email_override=sender_email
         )
 
+    def send_kjbox_login_code(
+        self,
+        email: str,
+        code: str,
+        expiry_minutes: int,
+        locale: str = "en",
+    ) -> bool:
+        """
+        Send a 6-digit sign-in code for the kjbox karaoke-night singer page.
+
+        The singer types the code into the venue's singer page (they never visit
+        the gen website), so the email carries no link — just the code.
+
+        Returns:
+            True if email was sent successfully
+        """
+        subject = t(locale, "emails.kjboxLoginCode.subject", code=code)
+        safe_code = html.escape(code)
+
+        extra_styles = f"""
+        .code-box {{
+            background-color: #fdf2f8;
+            border: 2px solid {self.BRAND_PRIMARY};
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin: 24px 0;
+        }}
+        .code {{
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: 10px;
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            color: #111827;
+        }}
+"""
+
+        content = f"""
+    <p>{t(locale, "emails.kjboxLoginCode.greeting")}</p>
+
+    <p>{t(locale, "emails.kjboxLoginCode.intro")}</p>
+
+    <div class="code-box">
+        <div class="code">{safe_code}</div>
+    </div>
+
+    <p>{t(locale, "emails.kjboxLoginCode.expiry", minutes=expiry_minutes)}</p>
+
+    <p>{t(locale, "emails.kjboxLoginCode.ignoreNote")}</p>
+"""
+
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
+
+        text_content = f"""
+{t(locale, "emails.kjboxLoginCode.greeting")}
+
+{t(locale, "emails.kjboxLoginCode.intro")}
+
+    {code}
+
+{t(locale, "emails.kjboxLoginCode.expiry", minutes=expiry_minutes)}
+
+{t(locale, "emails.kjboxLoginCode.ignoreNote")}
+
+---
+© {self._get_year()} Nomad Karaoke
+"""
+
+        return self._log_and_send(email, subject, html_content, text_content)
+
     def send_credits_added(self, email: str, credits: int, total_credits: int, locale: str = "en") -> bool:
         """
         Send notification when credits are added to account.
@@ -1455,6 +1525,7 @@ class EmailService:
         title: Optional[str] = None,
         job_id: Optional[str] = None,
         locale: str = "en",
+        review_url: Optional[str] = None,
     ) -> bool:
         """
         Send 24h review reminder email with expiry warning.
@@ -1467,6 +1538,8 @@ class EmailService:
             artist: Artist name for subject line
             title: Song title for subject line
             job_id: Job ID for constructing the review link
+            review_url: Override link (e.g. a one-click sign-in link to the review
+                for kjbox jobs); defaults to the bare review URL
 
         Returns:
             True if email was sent successfully
@@ -1477,7 +1550,8 @@ class EmailService:
             subject = t(locale, "emails.reviewReminder.subjectFallback")
 
         locale_prefix = get_locale_prefix(locale)
-        review_url = f"{self.frontend_url}{locale_prefix}/app/jobs#/{job_id}/review" if job_id else f"{self.frontend_url}{locale_prefix}/app"
+        if not review_url:
+            review_url = f"{self.frontend_url}{locale_prefix}/app/jobs#/{job_id}/review" if job_id else f"{self.frontend_url}{locale_prefix}/app"
 
         extra_styles = """
         .alert {

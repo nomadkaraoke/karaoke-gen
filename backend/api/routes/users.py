@@ -12,6 +12,7 @@ import hashlib
 import html
 import logging
 import threading
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Tuple
 
@@ -187,12 +188,13 @@ class LogoutResponse(BaseModel):
 # =============================================================================
 
 
-def _precompute_credit_eval(token: str, email: str) -> None:
-    """Run credit evaluation in background and store result on magic link doc.
+def _precompute_credit_eval(token: str, email: str, collection: Optional[str] = None) -> None:
+    """Run credit evaluation in background and store result on the sign-in doc.
 
-    Called in a background thread after sending a magic link for new users.
-    If the user clicks the link before this finishes, verify_magic_link falls
-    back to inline evaluation (same as before this optimization).
+    Called in a background thread after sending a magic link (or a kjbox emailed
+    code — pass ``collection`` + that doc's id as ``token``) for new users. If the
+    user verifies before this finishes, verification falls back to inline
+    evaluation (same as before this optimization).
     """
     try:
         from backend.services.credit_evaluation_service import get_credit_evaluation_service
@@ -202,7 +204,7 @@ def _precompute_credit_eval(token: str, email: str) -> None:
         evaluation = eval_service.evaluate(email, "welcome")
 
         user_service = get_user_service()
-        user_service.db.collection(MAGIC_LINKS_COLLECTION).document(token).update({
+        user_service.db.collection(collection or MAGIC_LINKS_COLLECTION).document(token).update({
             "credit_eval_decision": evaluation.decision,
             "credit_eval_reasoning": evaluation.reasoning,
             "credit_eval_error": evaluation.error,
@@ -386,6 +388,111 @@ def _magic_link_redirect_path(purpose) -> "Optional[str]":
     return None
 
 
+@dataclass
+class VerifiedLogin:
+    """Outcome of the shared post-verification login steps."""
+    user: object
+    session: object
+    credits_granted: int = 0
+    credit_status: str = "not_applicable"
+
+
+def complete_verified_login(
+    user,
+    *,
+    user_service: UserService,
+    email_service: EmailService,
+    is_first_login: bool,
+    precomputed_eval: Optional[dict],
+    grant_welcome_credit: bool,
+    referral_code: Optional[str],
+    locale: Optional[str],
+    ui_locale: Optional[str],
+    ip_address: Optional[str],
+    user_agent: Optional[str],
+    tenant_id: Optional[str],
+    device_fingerprint: Optional[str],
+    email_locale: str = "en",
+) -> VerifiedLogin:
+    """Everything that happens after an identity proof (magic link click or kjbox
+    emailed code) succeeds: welcome-credit grant (with the precomputed AI eval),
+    referral attribution, locale persistence, session creation and the first-login
+    welcome email.
+
+    ``user`` must already be marked verified (email_verified / last_login_at) by
+    the caller's verification step.
+
+    Args:
+        locale: Narrowed email locale (en/es/de) to persist on the user, or None
+            to leave the stored value untouched (e.g. no Accept-Language header).
+        ui_locale: Full UI language subtag to persist, or None.
+        email_locale: Locale used to render the welcome email.
+    """
+    credits_granted = 0
+    credit_status = "not_applicable"  # returning user, not first login
+    granted = False
+    if grant_welcome_credit:
+        granted, credit_status = user_service.grant_welcome_credits_if_eligible(
+            user.email, precomputed_eval=precomputed_eval,
+        )
+    if granted:
+        credits_granted = user_service.NEW_USER_FREE_CREDITS
+        logger.info(f"Granted {credits_granted} welcome credits to {_mask_email(user.email)}")
+        # Refresh user to get updated credit balance
+        user = user_service.get_user(user.email)
+    elif credit_status == "denied":
+        logger.info(f"Welcome credits denied for {_mask_email(user.email)}")
+
+    if referral_code and not user.referred_by_code:
+        try:
+            from backend.services.referral_service import get_referral_service
+            referral_svc = get_referral_service()
+            attr_success, attr_msg = referral_svc.attribute_referral(
+                referred_email=user.email,
+                referral_code=referral_code,
+            )
+            if attr_success:
+                attr_data = referral_svc.get_attribution_data(referral_code)
+                if attr_data:
+                    user_service.update_user(user.email, **attr_data)
+                    user = user_service.get_user(user.email)  # Refresh to include referral data
+                    logger.info(f"Referral attributed for {_mask_email(user.email)} via code '{referral_code}'")
+        except Exception as ref_err:
+            logger.warning(f"Referral attribution failed for {_mask_email(user.email)}: {ref_err}")
+
+    # `locale` is narrowed to en/es/de for email rendering; `ui_locale` is the
+    # full UI language (any of 33) so admins know what language to communicate in.
+    locale_updates = {}
+    if locale and locale != (user.locale or "en"):
+        locale_updates["locale"] = locale
+    if ui_locale and ui_locale != user.ui_locale:
+        locale_updates["ui_locale"] = ui_locale
+    if locale_updates:
+        try:
+            user_service.update_user(user.email, **locale_updates)
+        except Exception:
+            pass  # Non-critical — don't block login
+
+    session = user_service.create_session(
+        user.email,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        tenant_id=tenant_id,
+        device_fingerprint=device_fingerprint,
+    )
+
+    # Send welcome email to first-time users (not when the welcome credit is
+    # skipped, e.g. board sign-in — the credit-centric copy would be confusing
+    # with a 0 balance).
+    if is_first_login and grant_welcome_credit:
+        email_service.send_welcome_email(user.email, user.credits, locale=email_locale)
+
+    return VerifiedLogin(
+        user=user, session=session,
+        credits_granted=credits_granted, credit_status=credit_status,
+    )
+
+
 @router.get("/auth/verify", response_model=VerifyMagicLinkResponse)
 async def verify_magic_link(
     token: str,
@@ -431,7 +538,6 @@ async def verify_magic_link(
     if not success or not user:
         raise HTTPException(status_code=401, detail=t(locale, "users.verifyError", message=message))
 
-    # Grant welcome credits on first verification (with AI abuse evaluation)
     # Use pre-computed evaluation from magic link if available (computed at send time)
     precomputed_eval = None
     if magic_link_doc.exists:
@@ -441,80 +547,42 @@ async def verify_magic_link(
             if magic_link_data.get(k) is not None
         } or None
 
-    credits_granted = 0
-    credit_status = "not_applicable"  # returning user, not first login
-    # Board sign-in grants NO welcome credit — it's identity only. The credit is granted
-    # later, when the user converts via the "make it yourself now" flow (claim endpoint),
-    # or when their requested track gets picked (Phase 2).
-    is_board_signin = magic_link_purpose == "requests_board"
-    granted = False
-    if not is_board_signin:
-        granted, credit_status = user_service.grant_welcome_credits_if_eligible(
-            user.email, precomputed_eval=precomputed_eval,
-        )
-    if granted:
-        credits_granted = user_service.NEW_USER_FREE_CREDITS
-        logger.info(f"Granted {credits_granted} welcome credits to {_mask_email(user.email)}")
-        # Refresh user to get updated credit balance
-        user = user_service.get_user(user.email)
-    elif credit_status == "denied":
-        logger.info(f"Welcome credits denied for {_mask_email(user.email)}")
-
-    # Referral attribution: try header first (cookie path), then magic link token (email path), then URL param
+    # Referral attribution: try header first (cookie path), then magic link token (email path)
     referral_code = (
         http_request.headers.get("x-referral-code")
         or (magic_link_data.get("referral_code") if magic_link_doc.exists else None)
     )
-    if referral_code and not user.referred_by_code:
-        try:
-            from backend.services.referral_service import get_referral_service
-            referral_svc = get_referral_service()
-            attr_success, attr_msg = referral_svc.attribute_referral(
-                referred_email=user.email,
-                referral_code=referral_code,
-            )
-            if attr_success:
-                attr_data = referral_svc.get_attribution_data(referral_code)
-                if attr_data:
-                    user_service.update_user(user.email, **attr_data)
-                    user = user_service.get_user(user.email)  # Refresh to include referral data
-                    logger.info(f"Referral attributed for {_mask_email(user.email)} via code '{referral_code}'")
-        except Exception as ref_err:
-            logger.warning(f"Referral attribution failed for {_mask_email(user.email)}: {ref_err}")
 
     # Persist user's locale preference (from Accept-Language header).
-    # `locale` is narrowed to en/es/de for email rendering; `ui_locale` is the
-    # full UI language (any of 33) so admins know what language to communicate in.
-    ui_locale = get_full_locale_from_request(http_request)
-    has_accept_language = bool(http_request.headers.get("accept-language"))
-    locale_updates = {}
     # Only touch locale when the client actually sent an Accept-Language header —
     # otherwise get_locale_from_request()'s "en" default would clobber a user's
     # real stored locale on token-only logins (e.g. magic-link scanners).
-    if has_accept_language and locale and locale != (user.locale or "en"):
-        locale_updates["locale"] = locale
-    if ui_locale and ui_locale != user.ui_locale:
-        locale_updates["ui_locale"] = ui_locale
-    if locale_updates:
-        try:
-            user_service.update_user(user.email, **locale_updates)
-        except Exception:
-            pass  # Non-critical — don't block login
+    has_accept_language = bool(http_request.headers.get("accept-language"))
 
-    # Create session with tenant context and device fingerprint from the magic link
     magic_link_fingerprint = magic_link_data.get('device_fingerprint') if magic_link_doc.exists else None
-    session = user_service.create_session(
-        user.email,
+    # Board sign-in grants NO welcome credit — it's identity only. The credit is granted
+    # later, when the user converts via the "make it yourself now" flow (claim endpoint),
+    # or when their requested track gets picked (Phase 2).
+    result = complete_verified_login(
+        user,
+        user_service=user_service,
+        email_service=email_service,
+        is_first_login=is_first_login,
+        precomputed_eval=precomputed_eval,
+        grant_welcome_credit=magic_link_purpose != "requests_board",
+        referral_code=referral_code,
+        locale=locale if has_accept_language else None,
+        ui_locale=get_full_locale_from_request(http_request),
         ip_address=ip_address,
         user_agent=user_agent,
         tenant_id=magic_link_tenant_id,
         device_fingerprint=magic_link_fingerprint,
+        email_locale=locale,
     )
-
-    # Send welcome email to first-time users (not for board sign-in — no credit granted,
-    # and the credit-centric welcome copy would be confusing with a 0 balance).
-    if is_first_login and not is_board_signin:
-        email_service.send_welcome_email(user.email, user.credits, locale=locale)
+    user = result.user
+    session = result.session
+    credits_granted = result.credits_granted
+    credit_status = result.credit_status
 
     # Return user info with tenant_id
     user_public = _build_user_public(user)

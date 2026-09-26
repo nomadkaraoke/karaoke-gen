@@ -314,6 +314,76 @@ class TestActionReminderEmail:
         review_url = call_kwargs.get('review_url')
         assert review_url == "https://gen.nomadkaraoke.com/en/app/jobs#/job-123/review"
 
+    def _lyrics_service(self):
+        service = JobNotificationService()
+        service.frontend_url = "https://gen.nomadkaraoke.com"
+        service.email_service = Mock()
+        service.email_service.send_action_reminder.return_value = True
+        service.template_service = Mock()
+        service.template_service.render_action_needed_lyrics.return_value = "Review"
+        return service
+
+    @pytest.mark.asyncio
+    async def test_kjbox_job_review_email_uses_one_click_login_link(self):
+        """kjbox jobs: the review link signs the singer in and lands on the review."""
+        service = self._lyrics_service()
+        login_svc = Mock()
+        login_svc.create_admin_login_token.return_value = Mock(token="tok-abc")
+
+        with patch('backend.services.job_notification_service.ENABLE_AUTO_EMAILS', True), \
+             patch('backend.services.job_notification_service.get_user_service', return_value=login_svc):
+            await service.send_action_reminder_email(
+                job_id="job-123",
+                user_email="singer@example.com",
+                action_type="lyrics",
+                request_metadata={"client_id": "kjbox"},
+            )
+
+        review_url = service.template_service.render_action_needed_lyrics.call_args.kwargs["review_url"]
+        assert review_url == "https://gen.nomadkaraoke.com/en/auth/verify?token=tok-abc"
+        kwargs = login_svc.create_admin_login_token.call_args.kwargs
+        assert kwargs["email"] == "singer@example.com"
+        assert kwargs["purpose"] == "job_review:job-123"
+        assert 1 <= kwargs["expiry_hours"] <= 168
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("metadata", [None, {}, {"client_id": ""}, {"client_id": "test-runner"}])
+    async def test_non_kjbox_job_review_email_uses_bare_url(self, metadata):
+        service = self._lyrics_service()
+        login_svc = Mock()
+
+        with patch('backend.services.job_notification_service.ENABLE_AUTO_EMAILS', True), \
+             patch('backend.services.job_notification_service.get_user_service', return_value=login_svc):
+            await service.send_action_reminder_email(
+                job_id="job-123",
+                user_email="user@example.com",
+                action_type="lyrics",
+                request_metadata=metadata,
+            )
+
+        review_url = service.template_service.render_action_needed_lyrics.call_args.kwargs["review_url"]
+        assert review_url == "https://gen.nomadkaraoke.com/en/app/jobs#/job-123/review"
+        login_svc.create_admin_login_token.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_kjbox_login_link_failure_falls_back_to_bare_url(self):
+        service = self._lyrics_service()
+        login_svc = Mock()
+        login_svc.create_admin_login_token.side_effect = RuntimeError("firestore down")
+
+        with patch('backend.services.job_notification_service.ENABLE_AUTO_EMAILS', True), \
+             patch('backend.services.job_notification_service.get_user_service', return_value=login_svc):
+            sent = await service.send_action_reminder_email(
+                job_id="job-123",
+                user_email="singer@example.com",
+                action_type="lyrics",
+                request_metadata={"client_id": "kjbox"},
+            )
+
+        assert sent is True
+        review_url = service.template_service.render_action_needed_lyrics.call_args.kwargs["review_url"]
+        assert review_url == "https://gen.nomadkaraoke.com/en/app/jobs#/job-123/review"
+
     @pytest.mark.asyncio
     async def test_send_instrumental_reminder_includes_url(self):
         """Test that instrumental reminder includes correct URL."""

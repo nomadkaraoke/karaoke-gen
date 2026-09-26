@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from backend.models.job import Job, JobStatus
+from backend.api.routes.audio_search import extract_request_metadata as _REAL_EXTRACT_REQUEST_METADATA
 
 
 # ---------------------------------------------------------------------------
@@ -494,6 +495,27 @@ class TestCreateJobFromSearch:
         data = response.json()
         assert "job_id" in data
         assert data["job_id"] == "test-job-123"
+
+    def test_records_x_client_id_in_request_metadata(self, create_from_search_client, auth_headers):
+        """X-Client-Id (e.g. kjbox) lands in request_metadata.client_id — kjbox jobs'
+        review emails key off it to send a one-click sign-in link."""
+        # The fixture stubs extract_request_metadata; use the real one here.
+        with patch("backend.api.routes.audio_search.extract_request_metadata",
+                   _REAL_EXTRACT_REQUEST_METADATA):
+            response = create_from_search_client.post(
+                "/api/jobs/create-from-search",
+                json={
+                    "search_session_id": "sess-abc-123",
+                    "selection_index": 0,
+                    "artist": "ABBA",
+                    "title": "Waterloo",
+                },
+                headers={**auth_headers, "X-Client-Id": "kjbox"},
+            )
+        assert response.status_code == 200
+        job_create = create_from_search_client._mock_jm.create_job.call_args[0][0]
+        assert job_create.request_metadata["client_id"] == "kjbox"
+        assert job_create.request_metadata["created_from"] == "guided_flow"
 
     def test_job_is_created_via_job_manager(self, create_from_search_client, auth_headers):
         """Job must be created through job_manager.create_job."""

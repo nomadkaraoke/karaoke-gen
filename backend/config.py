@@ -310,6 +310,18 @@ class Settings(BaseSettings):
     # over-cap requests fall through to the free community requests board.
     karaokehunt_daily_job_cap: int = int(os.getenv("KARAOKEHUNT_DAILY_JOB_CAP", "3"))
 
+    # kjbox partner API (/api/kjbox/*): singer email-code sign-in + show credits
+    # for the karaoke-night "make it" flow. Every endpoint 503s while the secret is
+    # empty, so deploys are dark until it's wired (Secret Manager: kjbox-partner-secret).
+    kjbox_partner_secret: str = os.getenv("KJBOX_PARTNER_SECRET", "")
+    # Partner-wide cap on NEW gen accounts created via kjbox per rolling 24h (a venue
+    # shares one IP, so gen's per-IP signup cap is bypassed for kjbox; this bounds it).
+    kjbox_signup_cap_per_24h: int = int(os.getenv("KJBOX_SIGNUP_CAP_PER_24H", "100"))
+    # Max emailed sign-in codes per address per rolling hour.
+    kjbox_codes_per_email_per_hour: int = int(os.getenv("KJBOX_CODES_PER_EMAIL_PER_HOUR", "5"))
+    # Max "free at the show" credits kjbox may grant one user per rolling 24h.
+    kjbox_show_credits_per_user_per_24h: int = int(os.getenv("KJBOX_SHOW_CREDITS_PER_USER_PER_24H", "5"))
+
     # Private (non-published) track distribution settings
     default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")
     default_private_brand_prefix: Optional[str] = os.getenv("DEFAULT_PRIVATE_BRAND_PREFIX", "NOMADNP")

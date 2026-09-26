@@ -389,6 +389,13 @@
       "uninstallHeadline": "Mangyaring i-uninstall ang KaraokeHunt app.",
       "uninstallIntro": "Kaka-request mo lang ng kanta gamit ang KaraokeHunt app - ngunit ang app na iyon ay retired na at hindi na suportado, at hindi naproseso ang request na ito.",
       "uninstallNote": "Isang mahalagang bagay: ito ay isang one-time conversion. Ang mga susunod na request gamit ang lumang KaraokeHunt app ay hindi na ipoproseso, kaya mangyaring i-uninstall ito at gumawa ng iyong mga karaoke track nang direkta sa gen.nomadkaraoke.com mula ngayon - handa na ang iyong account doon."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Mage-expire ang code na ito sa loob ng {minutes} minuto at isang beses lang pwedeng gamitin.",
+      "greeting": "Kumusta,",
+      "ignoreNote": "Kung hindi mo ni-request ang code na ito, maaari mong balewalain ang email na ito.",
+      "intro": "Narito ang iyong code para mag-sign in sa karaoke night singer page. I-type ito sa page na ginagamit mo:",
+      "subject": "Ang iyong Nomad Karaoke code: {code}"
     }
   }
 }

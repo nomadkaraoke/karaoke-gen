@@ -115,6 +115,12 @@ class User(BaseModel):
     # Flag to prevent duplicate welcome credit grants (idempotency)
     welcome_credits_granted: bool = False
 
+    # Acquisition channel for accounts created outside the gen website, e.g.
+    # "kjbox" (signed up via an emailed code on a karaoke-night singer page).
+    # None = normal gen website signup (all pre-existing docs).
+    signup_source: Optional[str] = None
+    signup_venue: Optional[str] = None  # Venue name reported by the partner (kjbox)
+
     # Referral system
     referral_code: Optional[str] = None  # User's own referral code
     referred_by_code: Optional[str] = None  # Code used when this user signed up

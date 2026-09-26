@@ -295,6 +295,35 @@ class TestEmailServiceProviderSelection:
         assert svc.last_send_suppressed is True
 
 
+class TestEmailServiceKjboxLoginCode:
+    """The kjbox karaoke-night sign-in code email."""
+
+    def _send(self, locale="en"):
+        service = EmailService()
+        service.provider = Mock()
+        service.provider.send_email.return_value = True
+        result = service.send_kjbox_login_code("singer@example.com", "042917", expiry_minutes=10, locale=locale)
+        return result, service.provider.send_email.call_args.kwargs
+
+    def test_subject_and_body_show_code_and_expiry(self):
+        result, kwargs = self._send()
+        assert result is True
+        assert kwargs["to_email"] == "singer@example.com"
+        assert kwargs["subject"] == "Your Nomad Karaoke code: 042917"
+        for body in (kwargs["html_content"], kwargs["text_content"]):
+            assert "042917" in body
+            assert "10 minutes" in body
+            assert "ignore" in body.lower()
+        # Code-only email: nothing to click
+        assert "/auth/verify" not in kwargs["html_content"]
+
+    def test_localised(self):
+        _, kwargs = self._send(locale="es")
+        from backend.i18n import t
+        assert kwargs["subject"] == t("es", "emails.kjboxLoginCode.subject", code="042917")
+        assert "042917" in kwargs["subject"]
+
+
 class TestEmailServiceJobCompletion:
     """Tests for job completion email method."""
 

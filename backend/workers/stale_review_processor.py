@@ -271,12 +271,17 @@ async def process_stale_reviews() -> Dict[str, Any]:
                                 locale=user_locale,
                             )
                         else:
+                            from backend.services.job_notification_service import (
+                                review_login_url_for_job,
+                            )
                             email_service.send_review_reminder(
                                 to_email=job.user_email,
                                 artist=job.artist,
                                 title=job.title,
                                 job_id=job.job_id,
                                 locale=user_locale,
+                                # kjbox singers never signed in on gen → one-click sign-in link
+                                review_url=review_login_url_for_job(job, locale=user_locale),
                             )
                     except Exception as email_err:
                         logger.error(

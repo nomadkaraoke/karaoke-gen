@@ -389,6 +389,13 @@
       "uninstallHeadline": "Vui lòng gỡ cài đặt ứng dụng KaraokeHunt.",
       "uninstallIntro": "Bạn vừa tạo một yêu cầu bài hát thông qua ứng dụng KaraokeHunt - nhưng ứng dụng đó đã ngừng hoạt động và không còn được hỗ trợ nữa, và yêu cầu này đã không được xử lý.",
       "uninstallNote": "Một điều quan trọng: đây là lần chuyển đổi duy nhất. Các yêu cầu trong tương lai được thực hiện thông qua ứng dụng KaraokeHunt cũ sẽ không được xử lý, vì vậy vui lòng gỡ cài đặt nó và từ nay hãy tạo các bản karaoke của bạn trực tiếp tại gen.nomadkaraoke.com - tài khoản của bạn đã sẵn sàng ở đó."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Mã này sẽ hết hạn trong {minutes} phút và chỉ có thể sử dụng một lần.",
+      "greeting": "Chào bạn,",
+      "ignoreNote": "Nếu bạn không yêu cầu mã này, bạn có thể an tâm bỏ qua email này.",
+      "intro": "Đây là mã của bạn để đăng nhập vào trang ca sĩ đêm karaoke. Hãy nhập mã này vào trang bạn đang sử dụng:",
+      "subject": "Mã Nomad Karaoke của bạn: {code}"
     }
   }
 }

@@ -389,6 +389,13 @@
       "uninstallHeadline": "Sila nyahpasang aplikasi KaraokeHunt.",
       "uninstallIntro": "Anda baru sahaja membuat permintaan lagu melalui aplikasi KaraokeHunt - tetapi aplikasi tersebut telah ditamatkan dan tidak lagi disokong, dan permintaan ini tidak diproses.",
       "uninstallNote": "Satu perkara penting: ini adalah penukaran sekali sahaja. Permintaan masa hadapan yang dibuat melalui aplikasi KaraokeHunt lama tidak akan diproses, jadi sila nyahpasangnya dan buat trek karaoke anda terus di gen.nomadkaraoke.com mulai sekarang - akaun anda sudah sedia di sana."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Kod ini akan tamat tempoh dalam masa {minutes} minit dan hanya boleh digunakan sekali.",
+      "greeting": "Hai,",
+      "ignoreNote": "Jika anda tidak meminta kod ini, anda boleh mengabaikan e-mel ini.",
+      "intro": "Berikut ialah kod anda untuk log masuk ke halaman penyanyi malam karaoke. Taipkan kod ini ke dalam halaman yang anda sedang gunakan:",
+      "subject": "Kod Nomad Karaoke anda: {code}"
     }
   }
 }

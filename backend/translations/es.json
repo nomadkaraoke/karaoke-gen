@@ -389,6 +389,13 @@
       "uninstallHeadline": "Por favor, desinstala la aplicación KaraokeHunt.",
       "uninstallIntro": "Acabas de hacer una solicitud de canción a través de la aplicación KaraokeHunt - pero esa aplicación está retirada y ya no tiene soporte, y esta solicitud no fue procesada.",
       "uninstallNote": "Una cosa importante: esta fue una conversión por única vez. Las futuras solicitudes realizadas a través de la antigua aplicación KaraokeHunt no serán procesadas, así que por favor desinstálala y haz tus pistas de karaoke directamente en gen.nomadkaraoke.com de ahora en adelante - tu cuenta está lista allí."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Este código caduca en {minutes} minutos y solo se puede usar una vez.",
+      "greeting": "Hola,",
+      "ignoreNote": "Si no solicitaste este código, puedes ignorar este correo electrónico de forma segura.",
+      "intro": "Aquí tienes tu código para iniciar sesión en la página de cantantes de la noche de karaoke. Escríbelo en la página que estás usando:",
+      "subject": "Tu código de Nomad Karaoke: {code}"
     }
   }
 }

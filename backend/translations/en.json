@@ -211,6 +211,13 @@
       "fallbackLink": "If the button doesn't work, copy and paste this link into your browser:",
       "ignoreNote": "If you didn't request this email, you can safely ignore it."
     },
+    "kjboxLoginCode": {
+      "subject": "Your Nomad Karaoke code: {code}",
+      "greeting": "Hi there,",
+      "intro": "Here's your code to sign in on the karaoke night singer page. Type it into the page you're using:",
+      "expiry": "This code expires in {minutes} minutes and can only be used once.",
+      "ignoreNote": "If you didn't request this code, you can safely ignore this email."
+    },
     "welcome": {
       "subject": "Welcome to Nomad Karaoke!",
       "welcomeGreeting": "Welcome to Nomad Karaoke!",

@@ -389,6 +389,13 @@
       "uninstallHeadline": "Lütfen KaraokeHunt uygulamasını kaldır.",
       "uninstallIntro": "Az önce KaraokeHunt uygulaması üzerinden bir şarkı isteğinde bulundun - ancak bu uygulama emekliye ayrıldı ve artık desteklenmiyor, ve bu istek işleme alınmadı.",
       "uninstallNote": "Önemli bir şey: bu tek seferlik bir dönüştürmeydi. Eski KaraokeHunt uygulaması üzerinden yapılan gelecekteki istekler işleme alınmayacak, bu yüzden lütfen onu kaldır ve bundan sonra karaoke parçalarını doğrudan gen.nomadkaraoke.com adresinde yap - hesabın orada hazır."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Bu kod {minutes} dakika içinde sona erer ve sadece bir kez kullanılabilir.",
+      "greeting": "Merhaba,",
+      "ignoreNote": "Eğer bu kodu sen istemediysen, bu e-postayı güvenle görmezden gelebilirsin.",
+      "intro": "İşte karaoke gecesi şarkıcı sayfasına giriş yapmak için kodun. Bunu kullandığın sayfaya yaz:",
+      "subject": "Nomad Karaoke kodun: {code}"
     }
   }
 }

@@ -2740,6 +2740,86 @@ Admin-token retry for an intake doc whose `outcome` is `error` (or forcing a
 terminal one). Idempotent: durable markers on the doc (`credit_granted`,
 `job_id`) prevent double credits/jobs.
 
+## kjbox Partner API
+
+Server-to-server API for **kjbox** (the KJ device app at live karaoke nights).
+A singer verifies their email inside the kjbox singer page (never visiting the
+gen website) with a 6-digit emailed code; kjbox then searches audio / creates
+gen jobs **as that real gen user** with the returned session token (sending
+`X-Client-Id: kjbox` on `/api/audio-search/search-standalone` and
+`/api/jobs/create-from-search`), so the singer gets normal gen emails.
+
+Every endpoint requires header `X-Kjbox-Secret` (setting `kjbox_partner_secret`,
+env `KJBOX_PARTNER_SECRET`, Secret Manager `kjbox-partner-secret`):
+`503 {"detail": "not configured"}` while unset (deploys dark), `403` if wrong.
+Code: `backend/api/routes/kjbox.py` + `backend/services/kjbox_partner_service.py`.
+
+### Send code
+
+```http
+POST /api/kjbox/auth/send-code
+{"email": "singer@example.com", "locale": "es", "venue": "The Dive Bar"}
+```
+
+→ `200 {"status": "sent"}`. Emails a 6-digit code (10-minute expiry; a new code
+invalidates the previous one). Only an HMAC of the code (peppered with the
+partner secret) is stored, in Firestore `kjbox_login_codes` (doc id =
+sha256(email)). Creates the gen user if needed with `signup_source="kjbox"` +
+`signup_venue` (no `signup_ip` — the caller's IP is the whole venue's) and
+precomputes the welcome-credit AI evaluation so verify is instant.
+
+- Disposable domain → `422` (same detail as magic links); blocked email/IP →
+  silently `200 {"status": "sent"}`; malformed email → `422 {"detail": "invalid_email"}`.
+- gen's per-IP signup cap does **not** apply. Instead: max
+  `KJBOX_SIGNUP_CAP_PER_24H` (default 100) **new** accounts per rolling 24h
+  partner-wide → `429 {"detail": "signup_cap"}` (existing users unaffected;
+  counted in `kjbox_signups`); max `KJBOX_CODES_PER_EMAIL_PER_HOUR` (default 5)
+  codes per email per rolling hour → `429 {"detail": "too_many_codes"}`.
+
+### Verify code
+
+```http
+POST /api/kjbox/auth/verify-code
+{"email": "singer@example.com", "code": "042917"}
+```
+
+→ `200 {"session_token", "user": <UserPublic, same shape as magic-link verify>,
+"credits_granted": int, "credit_status": str}`. Runs the same post-verification
+steps as `GET /api/users/auth/verify` (shared helper `complete_verified_login`):
+email verified + last login, welcome credit (with the precomputed eval), locale
+persistence (from the send-code `locale`), a normal gen session, and the welcome
+email on first login.
+
+Errors: wrong code → `401 {"detail": "invalid_code"}` (counts an attempt);
+missing/expired/already-used → `401 {"detail": "expired"}`; more than 5 attempts
+→ `429 {"detail": "too_many_attempts"}` and the code is burned. Attempts are an
+atomic increment before a constant-time compare; single use is enforced by a
+create()-only marker in `kjbox_login_code_uses`.
+
+### Show credit ("free at the show")
+
+```http
+POST /api/kjbox/credits/show-credit
+Authorization: Bearer <singer session_token>
+{"idempotency_key": "kjbox-req-1234", "venue": "The Dive Bar"}
+```
+
+→ `200 {"granted": bool, "credits": int}`. Quietly adds 1 credit (reason
+`kjbox show credit`, **no** credits-added email) so the make-it job is paid for
+by Nomad. Idempotent per `idempotency_key` (≤128 chars; processed keys in
+`kjbox_show_credits`) — a repeat returns `granted: false` with the current
+balance. Max `KJBOX_SHOW_CREDITS_PER_USER_PER_24H` (default 5) per user per
+rolling 24h → `429 {"detail": "show_credit_cap"}`. Missing/invalid session →
+`401 {"detail": "invalid_session"}`.
+
+### Review emails for kjbox jobs
+
+Jobs whose `request_metadata.client_id` starts with `kjbox` get a **one-click
+sign-in link** (magic-link token, purpose `job_review:<job_id>`, 72h, single use)
+in the review-needed email and the 24h review reminder instead of the bare
+review URL — these singers have never signed in on the gen website. Other jobs
+are unchanged.
+
 ### Vocals Peaks (Waveforms review mode)
 
 ```http
