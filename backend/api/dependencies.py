@@ -311,6 +311,10 @@ def require_review_auth_factory(job_id_param: str = "job_id"):
                         )
 
                 logger.info(f"Review access granted via full auth ({auth_result.user_type}) for job {job_id}")
+                # Who is reviewing — handlers record it on first open
+                # (state_data.review_started_by, see JobManager.record_review_started).
+                request.state.review_auth_email = auth_result.user_email
+                request.state.review_auth_is_admin = bool(auth_result.is_admin)
                 return job_id, "full"
 
         # Try review token

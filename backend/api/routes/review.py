@@ -901,12 +901,22 @@ async def get_correction_data(
 
         # Transition to IN_REVIEW if not already (never in replay — read-only)
         if not replay and job.status == JobStatus.AWAITING_REVIEW:
-            await asyncio.to_thread(
+            started = await asyncio.to_thread(
                 job_manager.transition_to_state,
                 job_id=job_id,
                 new_status=JobStatus.IN_REVIEW,
                 message="User opened combined review interface",
             )
+            if started:
+                # Set by require_review_auth (absent for review-token links).
+                auth_state = getattr(request, "state", None)
+                await asyncio.to_thread(
+                    job_manager.record_review_started,
+                    job_id,
+                    getattr(job, "user_email", None),
+                    getattr(auth_state, "review_auth_email", None),
+                    getattr(auth_state, "review_auth_is_admin", False),
+                )
 
         # Replay: attach the reviewer's ordered edit_log so the UI can show the
         # sequence of actions (AI-accept/reject/manual/timing) beside the final state.

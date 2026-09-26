@@ -343,3 +343,62 @@ async def show_credit(
     if result.granted:
         logger.info(f"kjbox: show credit granted to {_mask_email(email)} (venue={venue!r}) → {result.credits}")
     return ShowCreditResponse(granted=result.granted, credits=result.credits)
+
+
+# ------------------------------------------------------------- review link
+
+class ReviewLinkRequest(BaseModel):
+    locale: Optional[str] = None
+
+
+class ReviewLinkResponse(BaseModel):
+    url: str
+    status: str
+    # "admin" = the KJ / support already opened the review; "owner" = the
+    # singer did; None = nobody has opened it yet.
+    review_started_by: Optional[str] = None
+
+
+_REVIEW_LINK_STATUSES = ("awaiting_review", "in_review")
+
+
+@router.post("/jobs/{job_id}/review-link", response_model=ReviewLinkResponse)
+async def review_link(
+    job_id: str,
+    body: ReviewLinkRequest,
+    _secret: str = Depends(require_kjbox_partner),
+    user_service: UserService = Depends(get_user_service),
+    authorization: Optional[str] = Header(default=None),
+):
+    """One-click sign-in link straight to the singer's own job's lyrics review.
+
+    Backs the "Tap here to review it yourself" link on the kjbox singer page:
+    the same single-use ``job_review:<id>`` magic link the kjbox review email
+    carries, minted on demand. Only the job's owner (the Bearer session) may
+    get one, and only while the job is in review (409 ``not_in_review``).
+    """
+    from backend.services.job_manager import JobManager
+    from backend.services.job_notification_service import build_review_login_url
+
+    scheme, _, token = (authorization or "").partition(" ")
+    token = token.strip()
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="invalid_session")
+    valid, user, _msg = user_service.validate_session(token)
+    if not valid or not user:
+        raise HTTPException(status_code=401, detail="invalid_session")
+
+    job = JobManager().get_job(job_id)
+    # Same 404 for "missing" and "not yours" — don't confirm other users' job ids.
+    if not job or (job.user_email or "").lower() != user.email.lower():
+        raise HTTPException(status_code=404, detail="not_found")
+    status = str(getattr(job.status, "value", job.status))
+    if status not in _REVIEW_LINK_STATUSES:
+        raise HTTPException(status_code=409, detail="not_in_review")
+
+    locale = body.locale if body.locale in SUPPORTED_LOCALES else "en"
+    url = build_review_login_url(job.job_id, job.user_email, locale=locale)
+    if not url:
+        raise HTTPException(status_code=502, detail="link_unavailable")
+    started_by = (job.state_data or {}).get("review_started_by") if status == "in_review" else None
+    return ReviewLinkResponse(url=url, status=status, review_started_by=started_by)

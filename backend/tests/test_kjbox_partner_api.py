@@ -651,3 +651,76 @@ class TestTransactionContention:
         monkeypatch.setattr(kps.firestore, "transactional", give_up)
         with pytest.raises(kps.TransactionContention):
             svc._run_transaction(lambda t: None)
+
+
+# ------------------------------------------------------------- review link
+
+class TestReviewLink:
+    @pytest.fixture
+    def jobs(self, monkeypatch):
+        from backend.services import job_manager as jm
+        from backend.services import job_notification_service as jns
+        store = {}
+
+        class FakeJobManager:
+            def get_job(self, job_id):
+                return store.get(job_id)
+
+        monkeypatch.setattr(jm, "JobManager", FakeJobManager)
+        minted = []
+
+        def fake_url(job_id, email, locale="en", frontend_url=None):
+            minted.append((job_id, email, locale))
+            return f"https://gen.example/{locale}/auth/verify?token=t-{job_id}"
+
+        monkeypatch.setattr(jns, "build_review_login_url", fake_url)
+        store["minted"] = minted
+        return store
+
+    def _job(self, status, email=EMAIL, state_data=None):
+        return SimpleNamespace(job_id="job1", user_email=email, status=status,
+                               state_data=state_data or {})
+
+    def _link(self, client, token, job_id="job1", **body):
+        return client.post(f"/api/kjbox/jobs/{job_id}/review-link", json=body,
+                           headers={**H, "Authorization": f"Bearer {token}"})
+
+    def test_owner_gets_sign_in_link_while_awaiting_review(self, client, email_service, jobs):
+        token = _session(client, email_service)
+        jobs["job1"] = self._job("awaiting_review")
+        resp = self._link(client, token, locale="es")
+        assert resp.status_code == 200
+        assert resp.json() == {"url": "https://gen.example/es/auth/verify?token=t-job1",
+                               "status": "awaiting_review", "review_started_by": None}
+        assert jobs["minted"] == [("job1", EMAIL, "es")]
+
+    def test_in_review_reports_who_started(self, client, email_service, jobs):
+        token = _session(client, email_service)
+        jobs["job1"] = self._job("in_review", state_data={"review_started_by": "admin"})
+        body = self._link(client, token).json()
+        assert body["status"] == "in_review" and body["review_started_by"] == "admin"
+
+    def test_unknown_locale_falls_back_to_en(self, client, email_service, jobs):
+        token = _session(client, email_service)
+        jobs["job1"] = self._job("awaiting_review")
+        self._link(client, token, locale="xx")
+        assert jobs["minted"][-1][2] == "en"
+
+    def test_other_users_job_is_404(self, client, email_service, jobs):
+        token = _session(client, email_service)
+        jobs["job1"] = self._job("awaiting_review", email="someone@else.com")
+        assert self._link(client, token).status_code == 404
+        assert self._link(client, token, job_id="nope").status_code == 404
+        assert jobs["minted"] == []
+
+    def test_not_in_review_is_409(self, client, email_service, jobs):
+        token = _session(client, email_service)
+        jobs["job1"] = self._job("rendering_video")
+        resp = self._link(client, token)
+        assert resp.status_code == 409 and resp.json()["detail"] == "not_in_review"
+
+    def test_requires_session_and_secret(self, client, jobs):
+        jobs["job1"] = self._job("awaiting_review")
+        assert client.post("/api/kjbox/jobs/job1/review-link", json={}, headers=H).status_code == 401
+        assert client.post("/api/kjbox/jobs/job1/review-link", json={},
+                           headers={"Authorization": "Bearer x"}).status_code == 403

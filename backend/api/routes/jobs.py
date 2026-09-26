@@ -1080,6 +1080,7 @@ async def start_review(
     if not _check_job_ownership(job, auth_result):
         raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
+    was_awaiting = job.status == JobStatus.AWAITING_REVIEW
     success = job_manager.transition_to_state(
         job_id=job_id,
         new_status=JobStatus.IN_REVIEW,
@@ -1088,6 +1089,10 @@ async def start_review(
 
     if not success:
         raise HTTPException(status_code=400, detail=t(locale, "jobs.reviewCannotStart"))
+    if was_awaiting:
+        job_manager.record_review_started(
+            job_id, getattr(job, "user_email", None), auth_result.user_email, auth_result.is_admin
+        )
     
     return {"status": "success", "job_status": "in_review"}
 
@@ -1152,11 +1157,14 @@ async def submit_corrections(
 
         # Transition to IN_REVIEW if not already
         if job.status == JobStatus.AWAITING_REVIEW:
-            job_manager.transition_to_state(
+            if job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.IN_REVIEW,
                 message="User is reviewing lyrics"
-            )
+            ):
+                job_manager.record_review_started(
+                    job_id, getattr(job, "user_email", None), auth_result.user_email, auth_result.is_admin
+                )
 
         # Save updated corrections to GCS for the render worker
         from backend.services.storage_service import StorageService

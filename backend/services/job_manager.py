@@ -789,6 +789,34 @@ class JobManager:
         except Exception as e:
             logger.error(f"Failed to send push notification for job {job.job_id}: {e}")
 
+    def record_review_started(
+        self,
+        job_id: str,
+        job_user_email: Optional[str],
+        reviewer_email: Optional[str],
+        is_admin: bool,
+    ) -> str:
+        """Record who opened the lyrics review first (AWAITING_REVIEW → IN_REVIEW).
+
+        ``state_data.review_started_by`` is "admin" when someone other than the
+        owner (the KJ / support) opened it, else "owner" (incl. review-token
+        links, which only the owner is sent). kjbox shows singers "the host has
+        already started reviewing" from it. Best-effort; returns the value.
+        """
+        is_owner = bool(
+            reviewer_email and job_user_email
+            and reviewer_email.lower() == job_user_email.lower()
+        )
+        by = "admin" if (is_admin and not is_owner) else "owner"
+        try:
+            self.update_job(job_id, {
+                "state_data.review_started_by": by,
+                "state_data.review_started_at": datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception as e:
+            logger.warning(f"Job {job_id}: could not record review_started_by: {e}")
+        return by
+
     def update_state_data(self, job_id: str, key: str, value: Any) -> None:
         """
         Update a specific key in the job's state_data field.

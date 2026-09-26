@@ -2837,6 +2837,22 @@ in the review-needed email and the 24h review reminder instead of the bare
 review URL — these singers have never signed in on the gen website. Other jobs
 are unchanged.
 
+```http
+POST /api/kjbox/jobs/{job_id}/review-link
+Authorization: Bearer <singer session_token>
+{"locale": "es"}   → {"url": "...", "status": "in_review", "review_started_by": "admin"}
+```
+
+The same one-click review sign-in link, minted on demand for the kjbox singer
+page's "Tap here to review it yourself". Only the job's owner gets one (`404
+not_found` otherwise, also for unknown ids) and only while the job is
+`awaiting_review` / `in_review` (`409 not_in_review`).
+
+`review_started_by` (also `job.state_data.review_started_by`, with
+`review_started_at`) records who opened the review first — set on the
+`awaiting_review → in_review` transition: `"admin"` if an admin other than the
+owner (the KJ) opened it, else `"owner"` (incl. review-token links).
+
 Note: `request_metadata.custom_headers` (all `X-*` request headers, returned to
 the job owner by `GET /api/jobs/{id}`) stores credential-looking headers
 (names containing secret/token/key/auth/password/…) as `"[redacted]"`.
