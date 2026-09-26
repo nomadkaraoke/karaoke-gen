@@ -289,17 +289,22 @@ jobs:
           # while images piled up (31 runner images, ~$18/mo, by 2026-09).
           # Match the family EXACTLY client-side: a gcloud `family=gha-runner-gpu`
           # filter is a word-boundary regex that ALSO matches gha-runner-gpu-windows.
-          images=$(gcloud compute images list \
+          # Rank by ACTIVE (non-deprecated) images: the family URL skips deprecated
+          # images, so the newest $KEEP active ones are the real rollback path.
+          # Deprecated images never count toward $KEEP.
+          rows=$(gcloud compute images list \
             --project="$PROJECT" \
             --no-standard-images \
             --show-deprecated \
             --sort-by='~creationTimestamp' \
-            --format='value(name,family)' | awk -v f="$FAMILY" '$2==f {print $1}')
-          if [[ -z "$images" ]]; then
-            echo "::error::No images found in family $FAMILY (list failed?) — refusing to prune."
+            --format='value(name,family,deprecated.state)' | awk -v f="$FAMILY" '$2==f')
+          active=$(echo "$rows" | awk 'NF==2 {print $1}')
+          if [[ -z "$active" ]]; then
+            echo "::error::No active images found in family $FAMILY (list failed?) — refusing to prune."
             exit 1
           fi
-          to_delete=$(echo "$images" | tail -n +$((KEEP+1)))
+          keep=$(echo "$active" | head -n "$KEEP")
+          to_delete=$(echo "$rows" | awk '{print $1}' | grep -vxF "$keep" || true)
           if [[ -z "$to_delete" ]]; then
             echo "Nothing to prune (<= $KEEP images in $FAMILY)."
             exit 0

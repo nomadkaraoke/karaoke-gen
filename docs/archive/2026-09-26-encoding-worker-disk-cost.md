@@ -57,10 +57,19 @@ song; formats 4k lossless + 4k lossy + 720p), wall time in seconds:
 | VM | CPU platform | Before (100 GB, old image) | After (50 GB, new image) | start to healthy |
 |---|---|---|---|---|
 | fallback-c2df (pd-balanced) | AMD Milan | 142.6, 138.9 | 142.2, 136.9 | 34.9 s to 33.5 s |
-| fallback-c4a (hyperdisk) | Intel Emerald Rapids | 132.1, 121.4 | 147.4, 144.5 (first boot of a fresh disk) | 39.1 s to 53.3 s |
+| fallback-c4a (hyperdisk) | Intel Emerald Rapids | 132.1, 121.4 | 147.4, 144.5, then a re-run of 143.9, 138.7, 138.6 | 39.1 s to 50-53 s |
 | fallback-n2da (pd-balanced) | AMD Milan | failed: transient metadata-server SSL error (pre-existing, see v0.217.0) | 155.7 | to 41.7 s |
 | fallback-n2f (pd-balanced) | Intel Cascade Lake | 247.2 (Aug benchmark) | 246.8 | to 39.7 s |
 | fallback-a (hyperdisk) | AMD Turin (c4d) | n/a | 99.0 | to 42.3 s |
+| fallback-b (hyperdisk) | AMD Turin (c4d) | n/a | 105.4 | to 52.5 s |
+| encoding-worker-b (hyperdisk) | AMD Turin (c4d) | n/a | 100.8 | to 35.9 s |
+| encoding-worker-a (hyperdisk, primary) | AMD Turin (c4d) | n/a | 98.9 | to 36.9 s |
+
+On c4a the after-median of 139 s is exactly the 138.6 s August median, which was
+measured on the old 100 GB disk. The two "before" samples today were at the fast
+end of the ~35% run-to-run noise the August benchmark documented. Hyperdisk
+performance at 3000/140 doesn't depend on disk size, so the disk change can't
+explain the difference.
 
 ## Rollout procedure: in-place boot-disk swap
 
@@ -74,13 +83,21 @@ VM was `TERMINATED`. No compute capacity is needed for this.
 # Per VM, only if status == TERMINATED and config/encoding-worker.deploy_in_progress is false
 gcloud compute instances detach-disk $VM --zone=$Z --disk=$VM
 gcloud compute disks delete $VM --zone=$Z --quiet
-gcloud compute disks create $VM --zone=$Z --image=$NEW_IMAGE --size=50GB --type=$TYPE \
-  [--provisioned-iops=3000 --provisioned-throughput=140]   # hyperdisk-balanced only
+# hyperdisk-balanced (c4d/c4/n4d):
+gcloud compute disks create $VM --zone=$Z --image=$NEW_IMAGE --image-project=nomadkaraoke \
+  --size=50GB --type=hyperdisk-balanced --provisioned-iops=3000 --provisioned-throughput=140
+# pd-balanced (n2/n2d/c2d):
+gcloud compute disks create $VM --zone=$Z --image=$NEW_IMAGE --image-project=nomadkaraoke \
+  --size=50GB --type=pd-balanced
 gcloud compute instances attach-disk $VM --zone=$Z --disk=$VM --boot --device-name=persistent-disk-0
 gcloud compute instances set-disk-auto-delete $VM --zone=$Z --disk=$VM --auto-delete
 # then: pulumi refresh --target <instance urn>  → state picks up size 50 / new image;
 #       pulumi preview shows no diff for that VM (the family-image URL diff-suppresses).
 ```
+
+The old disk is deleted without a snapshot on purpose. Worker boot disks hold no
+state that can't be rebuilt: the image, the wheel downloaded at boot, and caches.
+Jobs live in GCS and Firestore.
 
 Rollback: repeat the swap using the previous image. `encoding-worker-1786843294`
 is kept for this.
@@ -89,6 +106,11 @@ Verification per VM: start it, check `/health` (wheel version), run a real `/enc
 check `df`, then stop it. VMs that hit a stockout at start were swapped but could
 only be verified later.
 
-## Status at time of writing
+## Status
 
-See the PR description for which VMs are swapped and verified.
+All 10 workers were swapped to 50 GB on `encoding-worker-1790444464` and their
+Pulumi state was refreshed, and `pulumi preview` shows no encoding-VM diff. The old
+encoding-worker images were deleted, keeping `encoding-worker-1786843294` for
+rollback. Custom images went from 39 to 10. `-n4db` (n4d, us-central1-b) and `-n2c`
+(n2, us-central1-c) couldn't be boot-verified because both zones were stocked out
+during the rollout. They got the same swap as the 8 verified VMs.
