@@ -223,7 +223,9 @@ def precompute(monkeypatch):
         def start(self):
             self.target(*self.args)
 
-    monkeypatch.setattr(kjbox.threading, "Thread", SyncThread)
+    # Only the kjbox module's view of threading — patching threading.Thread
+    # globally would also break asyncio.to_thread's executor.
+    monkeypatch.setattr(kjbox, "threading", SimpleNamespace(Thread=SyncThread))
     return calls
 
 

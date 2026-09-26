@@ -2839,6 +2839,7 @@ are unchanged.
 
 ```http
 POST /api/kjbox/jobs/{job_id}/review-link
+X-Kjbox-Secret: <partner secret>
 Authorization: Bearer <singer session_token>
 {"locale": "es"}   → {"url": "...", "status": "in_review", "review_started_by": "admin"}
 ```
