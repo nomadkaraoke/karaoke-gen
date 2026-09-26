@@ -2070,3 +2070,10 @@ When the audio editor's tempo change shipped, the question was where to put the
 Also: any user-facing text that quotes the label must inject it as a placeholder.
 Translators "helpfully" localized `(90% Tempo)` → `(90% Темп)` / `(90 % Tempo)`,
 which doesn't match what's actually published.
+
+**Follow-up (v0.242.1):** the "edit audio first" option (`state_data.requires_audio_edit`)
+was only honored by the audio-download worker. File uploads — and the URL/search
+fallbacks — go through `JobManager.start_job_processing`, which ignored it, so those
+users never saw the audio editor. `start_job_processing` now parks such jobs via the
+shared `enter_audio_edit` helper. Any new "audio just arrived" path must go through one
+of these two gates.

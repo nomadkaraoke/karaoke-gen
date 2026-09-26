@@ -195,7 +195,7 @@ async def process_audio_download(job_id: str) -> bool:
                     f"[job:{job_id}] Download complete but audio-edit prep unfinished; "
                     f"resuming"
                 )
-                _enter_audio_edit(job_manager, job_id, job.input_media_gcs_path)
+                enter_audio_edit(job_manager, job_id, job.input_media_gcs_path)
                 return True
             logger.info(
                 f"[job:{job_id}] Download already complete (status={job.status}), "
@@ -312,7 +312,7 @@ async def process_audio_download(job_id: str) -> bool:
         # Check if audio editing was requested — enter blocking state instead of processing
         job = job_manager.get_job(job_id)
         if job and job.state_data.get('requires_audio_edit'):
-            _enter_audio_edit(job_manager, job_id, audio_gcs_path)
+            enter_audio_edit(job_manager, job_id, audio_gcs_path)
             return True
 
         # Reconcile credit charge against actual audio duration before processing.
@@ -344,8 +344,11 @@ async def process_audio_download(job_id: str) -> bool:
         return False
 
 
-def _enter_audio_edit(job_manager: JobManager, job_id: str, audio_gcs_path: str) -> None:
-    """Prepare editor assets and park the job at AWAITING_AUDIO_EDIT."""
+def enter_audio_edit(job_manager: JobManager, job_id: str, audio_gcs_path: str) -> None:
+    """Prepare editor assets and park the job at AWAITING_AUDIO_EDIT.
+
+    Shared by the download flow (here) and uploads (JobManager.start_job_processing).
+    """
     # Preserve the original input path before any edits
     job_manager.update_state_data(job_id, 'original_input_media_gcs_path', audio_gcs_path)
 

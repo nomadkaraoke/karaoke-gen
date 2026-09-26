@@ -1136,6 +1136,19 @@ class JobManager:
             message=message
         )
 
+        # "Edit audio first" was requested (e.g. a file upload with the audio-edit
+        # option ticked): park at the audio editor instead of starting workers.
+        # The editor's submit endpoint reconciles duration and triggers them —
+        # same as the audio-download flow, which parks before reconciling too.
+        if (job.state_data or {}).get('requires_audio_edit'):
+            from backend.workers.audio_download_worker import enter_audio_edit
+
+            # Editor asset pre-generation (transcode + waveform) is blocking I/O —
+            # keep it off the API event loop.
+            await asyncio.to_thread(enter_audio_edit, self, job_id, job.input_media_gcs_path)
+            logger.info(f"Job {job_id}: Awaiting audio edit before processing")
+            return
+
         # Reconcile credit charge against actual audio duration before triggering workers.
         # Probes input_media_gcs_path (already set by the upload handler) via ffprobe.
         # Returns True when the job is paused (AWAITING_DURATION_CONFIRM) or cancelled,
