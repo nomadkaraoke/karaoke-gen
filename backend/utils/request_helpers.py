@@ -30,7 +30,7 @@ _SKIPPED_CUSTOM_HEADERS = frozenset({"x-forwarded-for", "x-forwarded-proto", "x-
 # (x-kjbox-secret, x-admin-token, x-kh-forwarder-secret, x-e2e-bypass-key,
 # x-api-key, x-authorization, ...). request_metadata.custom_headers is returned
 # to the job owner by GET /api/jobs/{id}, so these must never be stored raw.
-_SECRET_HEADER_MARKERS = ("secret", "token", "key", "auth", "password", "passwd", "cookie", "signature", "credential", "bypass")
+_SECRET_HEADER_MARKERS = ("secret", "token", "key", "auth", "password", "passwd", "cookie", "signature", "credential", "bypass", "jwt", "session")
 REDACTED = "[redacted]"
 
 

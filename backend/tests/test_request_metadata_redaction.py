@@ -44,3 +44,11 @@ def test_extract_request_metadata_never_stores_secret_values(extract):
     assert meta["client_id"] == "kjbox"
     assert meta["custom_headers"]["x-kjbox-secret"] == REDACTED
     assert meta["custom_headers"]["x-client-id"] == "kjbox"
+
+
+def test_session_and_jwt_headers_are_redacted():
+    from backend.utils.request_helpers import REDACTED, collect_custom_headers
+    out = collect_custom_headers({"X-JWT": "eyJ...", "X-Session-Id": "sess-abc", "X-Client-Id": "kjbox"})
+    assert out["X-JWT"] == REDACTED
+    assert out["X-Session-Id"] == REDACTED
+    assert out["X-Client-Id"] == "kjbox"
