@@ -425,3 +425,48 @@ class TestCompleteReviewSkipsEmptyCorrections:
         bad_updated_data = {"some_key": "value"}
         has_valid_corrections = bad_updated_data and "corrections" in bad_updated_data
         assert not has_valid_corrections, "Dict without corrections key should not be valid"
+
+
+class TestCorrectionDataRecordsReviewStarter:
+    """First open of the review (AWAITING_REVIEW → IN_REVIEW) records who opened
+    it — kjbox tells a singer "the host has already started reviewing"."""
+
+    def _open(self, request_state, user_email="singer@example.com"):
+        from types import SimpleNamespace
+        from backend.api.routes.review import get_correction_data
+        import asyncio
+
+        job = Mock(spec=Job)
+        job.job_id = "job-1"
+        job.status = JobStatus.AWAITING_REVIEW
+        job.user_email = user_email
+        job.artist, job.title = "A", "T"
+        job.input_media_gcs_path = "jobs/job-1/input/audio.flac"
+        job.file_urls = {"lyrics": {"corrections": "jobs/job-1/lyrics/corrections.json"},
+                         "stems": {}, "analysis": {}}
+        job.state_data = {}
+        job.style_params_gcs_path = None
+        job.style_assets = {}
+        with patch("backend.api.routes.review.JobManager") as MockJobManager, \
+             patch("backend.api.routes.review.StorageService") as MockStorage:
+            jm = MockJobManager.return_value
+            jm.get_job.return_value = job
+            jm.transition_to_state.return_value = True
+            storage = MockStorage.return_value
+            storage.file_exists.return_value = False
+            storage.download_json.return_value = {"corrected_segments": [], "corrections": []}
+            request = SimpleNamespace(state=SimpleNamespace(**request_state))
+            try:
+                asyncio.run(get_correction_data("job-1", request=request, auth_info=("job-1", "full")))
+            except Exception:
+                pass  # payload assembly isn't under test; the transition runs first
+            return jm
+
+    def test_admin_opening_records_admin(self):
+        jm = self._open({"review_auth_email": "andrew@nomadkaraoke.com", "review_auth_is_admin": True})
+        jm.record_review_started.assert_called_once_with(
+            "job-1", "singer@example.com", "andrew@nomadkaraoke.com", True)
+
+    def test_review_token_link_has_no_auth_state(self):
+        jm = self._open({})
+        jm.record_review_started.assert_called_once_with("job-1", "singer@example.com", None, False)
