@@ -73,14 +73,28 @@ def _none(query: str, reason: str = "no suggestion") -> dict:
 
 
 def verdict_from_response(data: object, query: str) -> dict:
-    """Validate/normalise the model's JSON into the resolve response shape."""
+    """Validate/normalise the model's JSON into the resolve response shape.
+    Anything malformed (wrong kinds or field types) → kind 'none'."""
+    try:
+        return _verdict_from_response(data, query)
+    except (TypeError, ValueError, AttributeError):
+        return _none(query, "malformed response")
+
+
+def _verdict_from_response(data: object, query: str) -> dict:
     if not isinstance(data, dict) or data.get("kind") not in _VALID_KINDS:
         return _none(query)
+    for key in ("typed_artist", "typed_title", "canonical_artist", "canonical_title", "reason"):
+        if data.get(key) is not None and not isinstance(data[key], str):
+            return _none(query, "malformed response")
+    if data.get("alternatives") is not None and not isinstance(data["alternatives"], list):
+        return _none(query, "malformed response")
     s = lambda k: str(data.get(k) or "").strip()  # noqa: E731
     alternatives = [
         {"artist": str(a["artist"]).strip(), "title": str(a["title"]).strip()}
         for a in (data.get("alternatives") or [])
-        if isinstance(a, dict) and a.get("artist") and a.get("title")
+        if isinstance(a, dict) and isinstance(a.get("artist"), str) and isinstance(a.get("title"), str)
+        and a["artist"].strip() and a["title"].strip()
     ][:4]
     canonical_artist, canonical_title = s("canonical_artist"), s("canonical_title")
     kind = data["kind"]

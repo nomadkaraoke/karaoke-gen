@@ -773,3 +773,4 @@ class TestCatalogResolve:
     def test_requires_partner_secret_and_valid_query(self, client):
         assert client.post("/api/kjbox/catalog/resolve", json={"query": "x"}).status_code == 403
         assert self._post(client, "").status_code == 422
+        assert self._post(client, "   ").status_code == 422

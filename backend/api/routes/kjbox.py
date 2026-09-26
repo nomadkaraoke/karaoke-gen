@@ -451,10 +451,16 @@ async def catalog_resolve(body: ResolveRequest, _secret: str = Depends(require_k
     from backend.services.match_judge.free_text import _none, resolve_free_text
 
     query = " ".join(body.query.split())
+    if not query:
+        raise HTTPException(status_code=422, detail="empty_query")
     key = query.casefold()
     with _resolve_lock:
         hit = _resolve_cache.get(key)
     if hit is not None:
+        # Same query modulo case/spacing: the verdict applies, but echo THIS
+        # request's text where the verdict fell back to the typed query.
+        if not hit.get("typed_artist"):
+            hit = {**hit, "typed_title": query}
         return hit
     if not _resolve_budget_ok():
         raise HTTPException(status_code=429, detail="rate_limited")

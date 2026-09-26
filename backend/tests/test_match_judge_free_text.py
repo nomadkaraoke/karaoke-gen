@@ -34,6 +34,9 @@ def test_model_failure_is_none_not_an_error():
     None, "nope", {"kind": "bogus", "confident": True},
     {"kind": "content", "confident": True, "canonical_artist": "The Strokes"},   # no title
     {"kind": "ambiguous", "confident": False},                                   # no alternatives
+    {"kind": "content", "confident": True, "canonical_artist": ["x"], "canonical_title": "T"},
+    {"kind": "ambiguous", "confident": False, "alternatives": "Radiohead - Creep"},
+    {"kind": "ambiguous", "confident": False, "alternatives": [{"artist": {"a": 1}, "title": "T"}]},
 ])
 def test_bad_model_output_degrades_to_none(data):
     assert verdict_from_response(data, "q")["kind"] == "none"
