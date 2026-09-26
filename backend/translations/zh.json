@@ -389,6 +389,13 @@
       "uninstallHeadline": "请卸载 KaraokeHunt 应用程序。",
       "uninstallIntro": "您刚刚通过 KaraokeHunt 应用程序发出了歌曲请求 - 但该应用程序已退役并不再受支持，因此未处理此请求。",
       "uninstallNote": "重要提示：这是一次性转换。未来通过旧版 KaraokeHunt 应用程序发出的请求将不会被处理，因此请卸载它，从现在起直接在 gen.nomadkaraoke.com 制作您的卡拉OK伴奏 - 您的帐户已在那里准备就绪。"
+    },
+    "kjboxLoginCode": {
+      "expiry": "此验证码将在 {minutes} 分钟后过期，且只能使用一次。",
+      "greeting": "你好，",
+      "ignoreNote": "如果您没有请求此验证码，请放心忽略此邮件。",
+      "intro": "这是您登录卡拉OK之夜歌手页面的验证码。请在您正在使用的页面中输入它：",
+      "subject": "您的 Nomad Karaoke 验证码：{code}"
     }
   }
 }

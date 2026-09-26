@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 # Environment variable to enable/disable auto emails
 ENABLE_AUTO_EMAILS = os.getenv("ENABLE_AUTO_EMAILS", "true").lower() == "true"
 
+# One-click review sign-in links in kjbox jobs' review emails stay valid this long
+# (single-use; an expired/used link offers a fresh one on the verify page).
+KJBOX_REVIEW_LOGIN_LINK_EXPIRY_HOURS = 72
+
 # Feedback form URL (configured per environment, empty by default to avoid placeholder in emails)
 FEEDBACK_FORM_URL = os.getenv("FEEDBACK_FORM_URL", "")
 
@@ -36,6 +40,48 @@ def _mask_email(email: str) -> str:
     if len(local) <= 1:
         return f"*@{domain}"
     return f"{local[0]}***@{domain}"
+
+
+def is_kjbox_job(request_metadata: Optional[Dict[str, Any]]) -> bool:
+    """Jobs created by kjbox (``X-Client-Id: kjbox…``) on behalf of a singer."""
+    client_id = str((request_metadata or {}).get("client_id") or "")
+    return client_id.lower().startswith("kjbox")
+
+
+def build_review_login_url(
+    job_id: str,
+    user_email: str,
+    locale: str = "en",
+    frontend_url: Optional[str] = None,
+) -> Optional[str]:
+    """One-click sign-in link that lands on the job's lyrics review.
+
+    kjbox singers verified their email on the karaoke-night page and have never
+    signed in on the gen website, so a bare review URL would dead-end at a login
+    wall. The magic-link token's ``job_review:<id>`` purpose makes /auth/verify
+    redirect straight to the review. Returns None on failure (callers fall back
+    to the bare review URL).
+    """
+    base = frontend_url or os.getenv("FRONTEND_URL", "https://gen.nomadkaraoke.com")
+    try:
+        token = get_user_service().create_admin_login_token(
+            email=user_email,
+            expiry_hours=KJBOX_REVIEW_LOGIN_LINK_EXPIRY_HOURS,
+            purpose=f"job_review:{job_id}",
+        )
+        return f"{base}{get_locale_prefix(locale)}/auth/verify?token={token.token}"
+    except Exception:
+        logger.exception(f"Failed to mint review login link for job {job_id}; using bare review URL")
+        return None
+
+
+def review_login_url_for_job(job, locale: str = "en") -> Optional[str]:
+    """Sign-in review link for kjbox jobs; None for every other job."""
+    if not job or not getattr(job, "user_email", None):
+        return None
+    if not is_kjbox_job(getattr(job, "request_metadata", None)):
+        return None
+    return build_review_login_url(job.job_id, job.user_email, locale=locale)
 
 
 class JobNotificationService:
@@ -68,6 +114,13 @@ class JobNotificationService:
         """Build the lyrics review URL for a job."""
         # Use hash-based routing for static hosting compatibility
         return f"{self.frontend_url}{get_locale_prefix(locale)}/app/jobs#/{job_id}/review"
+
+    @staticmethod
+    def _is_kjbox_job(request_metadata: Optional[Dict[str, Any]]) -> bool:
+        return is_kjbox_job(request_metadata)
+
+    def _build_review_login_url(self, job_id: str, user_email: str, locale: str = "en") -> Optional[str]:
+        return build_review_login_url(job_id, user_email, locale=locale, frontend_url=self.frontend_url)
 
     def _build_instrumental_url(self, job_id: str, instrumental_token: Optional[str] = None, locale: str = "en") -> str:
         """Build the instrumental selection URL for a job."""
@@ -287,6 +340,7 @@ class JobNotificationService:
         audio_hash: Optional[str] = None,
         review_token: Optional[str] = None,
         instrumental_token: Optional[str] = None,
+        request_metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Send action-needed reminder email to user.
@@ -304,6 +358,8 @@ class JobNotificationService:
             audio_hash: Audio hash for review URL (unused, kept for compatibility)
             review_token: Review token for URL (unused, kept for compatibility)
             instrumental_token: Instrumental token for URL (unused, kept for compatibility)
+            request_metadata: Job request metadata; kjbox jobs (client_id "kjbox…")
+                get a one-click sign-in link to the review instead of the bare URL
 
         Returns:
             True if email was sent successfully
@@ -322,7 +378,11 @@ class JobNotificationService:
 
             # Render the appropriate template
             if action_type == "lyrics":
-                review_url = self._build_review_url(job_id, audio_hash, review_token, locale=user_locale)
+                review_url = None
+                if self._is_kjbox_job(request_metadata):
+                    review_url = self._build_review_login_url(job_id, user_email, locale=user_locale)
+                if not review_url:
+                    review_url = self._build_review_url(job_id, audio_hash, review_token, locale=user_locale)
                 message_content = self.template_service.render_action_needed_lyrics(
                     name=user_name,
                     artist=artist,

@@ -128,6 +128,8 @@ class UserService:
         tenant_id: Optional[str] = None,
         signup_ip: Optional[str] = None,
         device_fingerprint: Optional[str] = None,
+        signup_source: Optional[str] = None,
+        signup_venue: Optional[str] = None,
     ) -> User:
         """
         Get existing user or create a new one.
@@ -139,6 +141,9 @@ class UserService:
             tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
             signup_ip: Client IP address at signup (for rate limiting)
             device_fingerprint: Browser fingerprint at signup (for rate limiting)
+            signup_source: Acquisition channel for partner signups (e.g. "kjbox");
+                only recorded when the user is created here
+            signup_venue: Partner-reported venue for the signup (kjbox)
 
         Note: If user exists but has a different tenant_id, the existing user is returned.
         Users are uniquely identified by email, not email+tenant.
@@ -160,6 +165,8 @@ class UserService:
             tenant_id=tenant_id,  # Associate with tenant on creation
             signup_ip=signup_ip,
             device_fingerprint=device_fingerprint,
+            signup_source=signup_source,
+            signup_venue=signup_venue,
         )
         self._save_user(user)
         logger.info(f"Created new user: {email} (tenant: {tenant_id or 'default'}) — credits pending verification")

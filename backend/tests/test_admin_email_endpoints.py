@@ -375,6 +375,43 @@ class TestIdleReminderEndpoint:
             assert data["status"] == "sent"
             assert data["job_id"] == "test-job-123"
 
+    def test_forwards_request_metadata_for_kjbox_login_links(self, mock_job):
+        """The idle review email needs the job's request_metadata so kjbox jobs
+        (client_id "kjbox") get a one-click sign-in link instead of a bare URL."""
+        from backend.api.routes.internal import router as internal_router
+        from backend.api.dependencies import require_admin
+
+        test_app = FastAPI()
+        test_app.include_router(internal_router, prefix="/api")
+        test_app.dependency_overrides[require_admin] = get_mock_admin
+
+        mock_job.status = JobStatus.AWAITING_REVIEW.value
+        mock_job.request_metadata = {"client_id": "kjbox"}
+        mock_job.state_data = {
+            "blocking_state_entered_at": "2024-01-01T00:00:00",
+            "blocking_action_type": "lyrics",
+            "reminder_sent": False,
+        }
+
+        with patch('backend.api.routes.internal.JobManager') as mock_jm_class, \
+             patch('backend.services.job_notification_service.get_job_notification_service') as mock_get_ns:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_job
+            mock_jm.firestore = Mock()
+            mock_jm_class.return_value = mock_jm
+            mock_ns = Mock()
+            mock_ns.send_action_reminder_email = AsyncMock(return_value=True)
+            mock_get_ns.return_value = mock_ns
+
+            response = TestClient(test_app).post(
+                "/api/internal/jobs/test-job-123/check-idle-reminder",
+                headers={"Authorization": "Bearer admin-token"}
+            )
+
+        assert response.status_code == 200
+        kwargs = mock_ns.send_action_reminder_email.call_args.kwargs
+        assert kwargs["request_metadata"] == {"client_id": "kjbox"}
+
     def test_skips_reminder_when_already_sent(self, mock_job):
         """Test that reminder is skipped if already sent."""
         from backend.api.routes.internal import router as internal_router

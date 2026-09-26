@@ -389,6 +389,13 @@
       "uninstallHeadline": "Kérjük, távolítsd el a KaraokeHunt alkalmazást.",
       "uninstallIntro": "Épp most küldtél be egy dalkérést a KaraokeHunt alkalmazáson keresztül - de ez az alkalmazás már megszűnt és nem támogatott, így ezt a kérést nem dolgoztuk fel.",
       "uninstallNote": "Egy fontos dolog: ez egy egyszeri konverzió volt. A régi KaraokeHunt alkalmazáson keresztül leadott jövőbeli kéréseket nem dolgozzuk fel, ezért kérjük, távolítsd el, és mostantól készítsd a karaoke számaidat közvetlenül a gen.nomadkaraoke.com oldalon - a fiókod már készen áll ott."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Ez a kód {minutes} perc múlva lejár, és csak egyszer használható fel.",
+      "greeting": "Szia,",
+      "ignoreNote": "Ha nem te kérted ezt a kódot, nyugodtan hagyd figyelmen kívül ezt az e-mailt.",
+      "intro": "Itt a kódod, amivel bejelentkezhetsz a karaoke est énekesi oldalán. Írd be arra az oldalra, amit éppen használsz:",
+      "subject": "A Nomad Karaoke kódod: {code}"
     }
   }
 }

@@ -389,6 +389,13 @@
       "uninstallHeadline": "Prosím, odinštaluj si aplikáciu KaraokeHunt.",
       "uninstallIntro": "Práve si požiadal o pieseň cez aplikáciu KaraokeHunt - táto aplikácia je však ukončená a už nie je podporovaná, a táto požiadavka nebola spracovaná.",
       "uninstallNote": "Jedna dôležitá vec: toto bola jednorazová konverzia. Budúce požiadavky zadané cez starú aplikáciu KaraokeHunt nebudú spracované, preto si ju prosím odinštaluj a odteraz si vytváraj karaoke skladby priamo na gen.nomadkaraoke.com - tvoj účet je tam pripravený."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Tento kód vyprší o {minutes} minút a dá sa použiť len raz.",
+      "greeting": "Ahoj,",
+      "ignoreNote": "Ak si o tento kód nežiadal, môžeš tento e-mail pokojne ignorovať.",
+      "intro": "Tu je tvoj kód na prihlásenie na stránke speváka pre karaoke večer. Zadaj ho na stránke, ktorú používaš:",
+      "subject": "Tvoj kód pre Nomad Karaoke: {code}"
     }
   }
 }

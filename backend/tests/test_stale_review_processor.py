@@ -166,6 +166,38 @@ class TestProcessStaleReviews:
         assert call_args[0][1]['state_data.expiry_reminder_sent'] is True
         assert 'state_data.expiry_reminder_sent_at' in call_args[0][1]
 
+    async def test_kjbox_job_reminder_uses_one_click_login_link(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        """kjbox singers never signed in on gen → the 24h reminder links via a sign-in token."""
+        job = _make_job(hours_ago=30)
+        job.request_metadata = {"client_id": "kjbox"}
+        mock_firestore.list_jobs.side_effect = [[job], [], []]
+        login_svc = Mock()
+        login_svc.create_admin_login_token.return_value = Mock(token="tok-123")
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service), \
+             patch('backend.services.job_notification_service.get_user_service', return_value=login_svc):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            await process_stale_reviews()
+
+        call_kwargs = mock_email_service.send_review_reminder.call_args.kwargs
+        assert call_kwargs["review_url"].endswith("/auth/verify?token=tok-123")
+        login_svc.create_admin_login_token.assert_called_once()
+        assert login_svc.create_admin_login_token.call_args.kwargs["purpose"] == "job_review:job-123"
+
+    async def test_non_kjbox_job_reminder_keeps_bare_review_url(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        job = _make_job(hours_ago=30)
+        job.request_metadata = {"client_id": "test-runner"}
+        mock_firestore.list_jobs.side_effect = [[job], [], []]
+        login_svc = Mock()
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service), \
+             patch('backend.services.job_notification_service.get_user_service', return_value=login_svc):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            await process_stale_reviews()
+
+        assert mock_email_service.send_review_reminder.call_args.kwargs["review_url"] is None
+        login_svc.create_admin_login_token.assert_not_called()
+
     async def test_skips_if_expiry_reminder_already_sent(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """Should skip reminder if expiry_reminder_sent is already True."""
         job = _make_job(hours_ago=30, expiry_reminder_sent=True)

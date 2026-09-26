@@ -516,6 +516,7 @@ async def check_idle_reminder(
                 audio_hash=job.audio_hash,
                 review_token=job.review_token,
                 instrumental_token=job.instrumental_token,
+                request_metadata=getattr(job, 'request_metadata', None),
             )
 
         if success:

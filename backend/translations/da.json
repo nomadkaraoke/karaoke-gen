@@ -389,6 +389,13 @@
       "uninstallHeadline": "Afinstaller venligst KaraokeHunt-appen.",
       "uninstallIntro": "Du har netop lavet en sanganmodning via KaraokeHunt-appen - men den app er udgået og understøttes ikke længere, og denne anmodning blev ikke behandlet.",
       "uninstallNote": "En vigtig ting: Dette var en engangskonvertering. Fremtidige anmodninger via den gamle KaraokeHunt-app vil ikke blive behandlet, så afinstaller den venligst, og lav dine karaokenumre direkte på gen.nomadkaraoke.com fra nu af - din konto er klar der."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Denne kode udløber om {minutes} minutter og kan kun bruges én gang.",
+      "greeting": "Hej,",
+      "ignoreNote": "Hvis du ikke har anmodet om denne kode, kan du trygt ignorere denne e-mail.",
+      "intro": "Her er din kode til at logge ind på sangersiden til karaokenatten. Indtast den på den side, du bruger:",
+      "subject": "Din Nomad Karaoke-kode: {code}"
     }
   }
 }

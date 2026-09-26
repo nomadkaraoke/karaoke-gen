@@ -389,6 +389,13 @@
       "uninstallHeadline": "Poista KaraokeHunt-sovellus.",
       "uninstallIntro": "Teit juuri kappalepyynnön KaraokeHunt-sovelluksen kautta – mutta kyseinen sovellus on poistettu käytöstä eikä sitä enää tueta, joten tätä pyyntöä ei käsitelty.",
       "uninstallNote": "Yksi tärkeä asia: tämä oli kertaluonteinen muunnos. Vanhan KaraokeHunt-sovelluksen kautta tehtyjä tulevia pyyntöjä ei käsitellä, joten poista se ja tee karaokekappaleesi tästä lähtien suoraan osoitteessa gen.nomadkaraoke.com – tilisi on siellä valmiina."
+    },
+    "kjboxLoginCode": {
+      "expiry": "Tämä koodi vanhenee {minutes} minuutin kuluttua ja sen voi käyttää vain kerran.",
+      "greeting": "Hei,",
+      "ignoreNote": "Jos et pyytänyt tätä koodia, voit turvallisesti jättää tämän sähköpostin huomiotta.",
+      "intro": "Tässä on koodisi karaokeillan laulajasivulle kirjautumista varten. Kirjoita se käyttämällesi sivulle:",
+      "subject": "Nomad Karaoke -koodisi: {code}"
     }
   }
 }
