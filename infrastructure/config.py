@@ -71,7 +71,18 @@ class DiskSizes:
     """Disk size configurations in GB."""
 
     GITHUB_RUNNER = 200  # Large for Docker builds/caches
-    ENCODING_WORKER = 100  # For temp video files during encoding
+    # Encoding-worker boot disk (OS + baked venv ~12-15 GB, plus per-job scratch in
+    # /tmp: each queued /encode downloads its whole jobs/<id>/ folder — p99 ~1.3 GB,
+    # max seen ~4 GB — and up to ~9 jobs have been queued on one worker at once).
+    # Was 100 GB, but a worker 8 months into service used only 15 GB of it; 50 GB
+    # keeps >3x headroom over realistic peak while halving the 10-VM disk bill.
+    # Must be >= the Packer image's disk_size (infrastructure/packer/
+    # encoding-worker.pkr.hcl), since GCE cannot create a disk smaller than its
+    # source image. Changing this forces VM *replacement* in Pulumi — see
+    # docs/archive/2026-09-26-encoding-worker-disk-cost.md for the in-place
+    # boot-disk swap procedure that avoids re-allocating (possibly stocked-out) VMs.
+    ENCODING_WORKER = 50
+    ENCODING_WORKER_IMAGE = 30  # Packer image disk_size (keep in sync with .pkr.hcl)
     FLACFETCH = 30  # For torrent storage
 
 
@@ -306,7 +317,7 @@ class EncodingWorkerConfig:
     # Capacity-resilience fallback fleet. Each VM is provisioned STOPPED in an
     # alternate zone / machine family and is started on demand only when the
     # primary zone rejects a start with ZONE_RESOURCE_POOL_EXHAUSTED. Cost when
-    # stopped is just the boot disk (~$10/mo each).
+    # stopped is just the 50 GB boot disk (~$4-5/mo each).
     #
     # Machine-family diversity is DELIBERATE. The primary pair and the two c4d
     # fallbacks are all c4d-highcpu-32, so a region-wide c4d stockout (observed

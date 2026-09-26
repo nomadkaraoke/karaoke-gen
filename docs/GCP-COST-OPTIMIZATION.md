@@ -85,7 +85,8 @@ The `concurrency=1` setting may have been added deliberately for performance rea
   (c4d/c4/n4d/c2d/n2d/n2) for stockout resilience.
 - **Idle auto-shutdown is live** (JIT start on the lyrics-review page; a Cloud
   Function stops idle VMs after 15 min). When idle, cost is just boot disks
-  (~$10/VM/mo); compute is billed only while encoding — so the historical
+  (50 GB since 2026-09-26, ~$4-5/VM/mo; was 100 GB / ~$10 — see
+  docs/archive/2026-09-26-encoding-worker-disk-cost.md); compute is billed only while encoding — so the historical
   "~$700/mo running 24/7" no longer applies.
 
 **Opportunities (status):**

@@ -2033,3 +2033,20 @@ Also: colour-code the bars with the **exact** `HIGHLIGHT_CLASSES` tints the Adva
 pills use (not hand-picked solids) so the two views read identically, and persist the
 view mode under a new `lyricsReviewViewMode` enum that migrates the old
 `lyricsReviewAdvancedMode` boolean.
+
+### Encoding-worker disks: shrink via in-place boot-disk swap, not Pulumi replace (2026-09-26)
+
+- Workers used ~8-15 GB of their 100 GB boot disks. Shrunk to 50 GB (Packer image
+  `disk_size` 100→30 — a disk can't be smaller than its source image).
+- Changing `boot_disk.initialize_params.size` in Pulumi means replace (or an
+  impossible in-place shrink); replacing a c4d/n4d/c2d VM needs capacity that may be
+  stocked out for hours. Instead: while TERMINATED, detach + delete the old boot disk,
+  create a new one from the new image, attach `--boot --device-name=persistent-disk-0`,
+  then `pulumi refresh --target` the instance → no diff. No compute allocation needed.
+- New hyperdisks default to paid IOPS/throughput above the free 3000/140 baseline —
+  always pass `--provisioned-iops=3000 --provisioned-throughput=140` (Pulumi doesn't
+  set them because boot-disk init params force replacement).
+- A gcloud `family=X` filter is a word-boundary regex (`gha-runner-gpu` also matches
+  `gha-runner-gpu-windows`), and an invalid filter errors to stderr with empty stdout
+  — pipelines that treat empty output as "nothing to do" silently no-op. The runner
+  image prune step did this for months (31 images, ~$18/mo).

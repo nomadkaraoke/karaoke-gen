@@ -173,7 +173,7 @@ gcloud compute ssh github-runner-1 --zone=us-central1-a -- \
 
 High-performance VM for video encoding:
 - Machine: c4-standard-8 (8 vCPU, 32GB RAM)
-- Disk: 100GB hyperdisk-balanced
+- Disk: 50GB boot disk (hyperdisk-balanced at the free 3000 IOPS / 140 MB/s baseline; pd-balanced on c2d/n2/n2d fallbacks). See docs/archive/2026-09-26-encoding-worker-disk-cost.md
 - Pre-installed: FFmpeg (static build), Python 3.13, Noto fonts
 
 **API Endpoints:**
