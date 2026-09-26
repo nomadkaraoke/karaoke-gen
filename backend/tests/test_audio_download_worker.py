@@ -627,7 +627,7 @@ class TestAudioEditPrepResume:
         with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
              patch("backend.workers.audio_download_worker.StorageService"), \
              patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
-             patch("backend.workers.audio_download_worker._enter_audio_edit") as mock_enter:
+             patch("backend.workers.audio_download_worker.enter_audio_edit") as mock_enter:
 
             mock_jm = MagicMock()
             mock_jm.get_job.return_value = job
