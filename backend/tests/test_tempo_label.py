@@ -117,3 +117,20 @@ class TestDescriptionNotice:
             artist="Queen", title="Bohemian Rhapsody", brand_code=None, template="Karaoke of {artist} - {title}",
         )
         assert desc == "Karaoke of Queen - Bohemian Rhapsody"
+
+
+class TestRoundingParityWithFrontend:
+    """tempo_percent must round exactly like frontend Math.round, or the editor's
+    promised label differs from the published one (e.g. 90% x 105% = 94.5%)."""
+
+    @pytest.mark.parametrize("factors,expected", [
+        ((0.9, 1.05), 95),
+        ((0.85, 0.9), 77),
+        ((0.95, 1.1), 105),
+        ((0.9, 0.9), 81),
+    ])
+    def test_compound_presets_round_half_up(self, factors, expected):
+        stack = [{"operation": "tempo", "params": {"factor": f}} for f in factors]
+        factor = cumulative_tempo_factor(stack)
+        assert tempo_percent(factor) == expected
+        assert apply_tempo_to_title("Song", factor) == f"Song ({expected}% Tempo)"

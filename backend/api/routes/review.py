@@ -760,6 +760,11 @@ def _reconstruct_post_ai_segments(
     return segments
 
 
+def _lyrics_search_title(job) -> Optional[str]:
+    """Title to search lyrics providers with (never the tempo-labeled display title)."""
+    return getattr(job, 'lyrics_title', None) or strip_tempo_suffix(job.title)
+
+
 def _load_edit_log(job, storage) -> Optional[Dict[str, Any]]:
     """Load the reviewer's persisted edit log for replay, or None if absent.
 
@@ -873,6 +878,10 @@ async def get_correction_data(
         corrections_data['metadata']['audio_hash'] = audio_hash
         corrections_data['metadata']['artist'] = job.artist
         corrections_data['metadata']['title'] = job.title
+        # What the lyrics search should use: the display title may carry a
+        # "(90% Tempo)" label that lyrics providers won't match.
+        corrections_data['metadata']['lyrics_artist'] = getattr(job, 'lyrics_artist', None) or job.artist
+        corrections_data['metadata']['lyrics_title'] = _lyrics_search_title(job)
 
         # Store context for audio serving
         _job_contexts[job_id] = {
@@ -1850,6 +1859,8 @@ async def search_lyrics(
                     updated_result.metadata["audio_hash"] = audio_hash
                     updated_result.metadata["artist"] = job.artist
                     updated_result.metadata["title"] = job.title
+                    updated_result.metadata["lyrics_artist"] = getattr(job, 'lyrics_artist', None) or job.artist
+                    updated_result.metadata["lyrics_title"] = _lyrics_search_title(job)
 
                     # Upload updated corrections back to GCS
                     with create_span("upload-corrections") as upload_span:

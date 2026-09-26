@@ -527,20 +527,21 @@ export function AudioEditor({ job }: AudioEditorProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-
       // While the tempo dialog is open, only preview playback and Escape apply —
-      // edit shortcuts must not act on the waveform behind the modal.
+      // edit shortcuts must not act on the waveform behind the modal. (Checked
+      // before the input guard so they also work with the tempo slider focused.)
       if (showTempoDialog) {
         if (e.key === "Escape") {
           closeTempoDialog()
-        } else if (e.key === " ") {
+        } else if (e.key === " " && !(e.target instanceof HTMLButtonElement)) {
           e.preventDefault()
           togglePlay()
         }
         return
       }
+
+      // Don't capture if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
       if (e.key === " ") {
         e.preventDefault()

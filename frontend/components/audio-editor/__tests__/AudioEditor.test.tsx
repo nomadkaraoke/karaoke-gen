@@ -588,6 +588,16 @@ describe("AudioEditor", () => {
       expect(screen.queryByTestId("tempo-dialog")).not.toBeInTheDocument()
     })
 
+    it("Escape closes the dialog even while the slider has focus", async () => {
+      mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+      render(<AudioEditor job={mockJob} />)
+      fireEvent.click(await screen.findByTestId("tempo-button"))
+      const slider = screen.getByTestId("tempo-slider")
+      slider.focus()
+      fireEvent.keyDown(slider, { key: "Escape" })
+      expect(screen.queryByTestId("tempo-dialog")).not.toBeInTheDocument()
+    })
+
     it("cancel closes the dialog without applying", async () => {
       mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
       render(<AudioEditor job={mockJob} />)

@@ -1,4 +1,4 @@
-import { cumulativeTempoFactor, tempoPercent, isTempoAdjusted } from "../tempo"
+import { cumulativeTempoFactor, tempoPercent, isTempoAdjusted, tempoLabel } from "../tempo"
 
 describe("tempo helpers", () => {
   it("multiplies tempo edits and ignores other operations", () => {
@@ -30,5 +30,17 @@ describe("tempo helpers", () => {
     expect(isTempoAdjusted(1)).toBe(false)
     expect(isTempoAdjusted(null)).toBe(false)
     expect(isTempoAdjusted(undefined)).toBe(false)
+  })
+
+  // Must match backend tempo_label.tempo_percent (half-up) — see TestRoundingParityWithFrontend
+  it.each([
+    [[0.9, 1.05], 95],
+    [[0.85, 0.9], 77],
+    [[0.95, 1.1], 105],
+  ])("labels compound presets %p as %p%%", (factors, expected) => {
+    const factor = cumulativeTempoFactor(
+      (factors as number[]).map((f) => ({ operation: "tempo", params: { factor: f } })),
+    )
+    expect(tempoLabel(factor)).toBe(`(${expected}% Tempo)`)
   })
 })

@@ -13,6 +13,7 @@ search keeps matching the real song.
 Mirrors frontend/lib/tempo.ts — keep the label format in sync.
 """
 
+import math
 import re
 from typing import Iterable, Mapping, Optional
 
@@ -36,8 +37,12 @@ def cumulative_tempo_factor(edit_stack: Iterable[Mapping]) -> float:
 
 
 def tempo_percent(factor: float) -> int:
-    """Tempo as a whole percentage of the original (0.9 -> 90)."""
-    return int(round(factor * 100))
+    """Tempo as a whole percentage of the original (0.9 -> 90).
+
+    Rounds half up, like the editor's ``Math.round`` (frontend/lib/tempo.ts) —
+    Python's banker's ``round`` would label 94.5% as 94 while the UI promised 95.
+    """
+    return int(math.floor(factor * 100 + 0.5))
 
 
 def is_tempo_adjusted(factor: Optional[float]) -> bool:

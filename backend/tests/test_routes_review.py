@@ -1601,6 +1601,34 @@ class TestReplayCorrectionData:
         finally:
             self._teardown()
 
+    @pytest.mark.parametrize("lyrics_title,expected", [(None, "Waterloo"), ("Waterloo (Remaster)", "Waterloo (Remaster)")])
+    def test_metadata_exposes_unlabeled_lyrics_search_title(self, lyrics_title, expected):
+        """Tempo-labeled jobs: lyrics search boxes must default to the real song title."""
+        client = self._client_with_auth("full")
+        try:
+            with patch("backend.api.routes.review.JobManager") as jm, \
+                 patch("backend.api.routes.review.StorageService") as storage_cls, \
+                 patch("backend.api.routes.review._get_audio_hash", return_value="h1"):
+                job = self._completed_job()
+                job.title = "Waterloo (90% Tempo)"
+                job.lyrics_title = lyrics_title
+                job.lyrics_artist = None
+                jm.return_value.get_job.return_value = job
+                storage = storage_cls.return_value
+                storage.file_exists.return_value = True
+                storage.download_json.side_effect = lambda p: (
+                    {"entries": []} if p.endswith("edit_log_x.json")
+                    else {"corrected_segments": [], "metadata": {}}
+                )
+                resp = client.get("/api/review/job1/correction-data?replay=true")
+                assert resp.status_code == 200
+                meta = resp.json()["metadata"]
+                assert meta["title"] == "Waterloo (90% Tempo)"  # display keeps the label
+                assert meta["lyrics_title"] == expected
+                assert meta["lyrics_artist"] == "A"
+        finally:
+            self._teardown()
+
     def test_non_replay_completed_job_is_rejected(self):
         client = self._client_with_auth("full")
         try:

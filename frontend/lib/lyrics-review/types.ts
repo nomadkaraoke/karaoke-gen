@@ -143,6 +143,9 @@ export interface CorrectionData {
     enabled_handlers?: string[]
     artist?: string
     title?: string
+    // Search terms for lyrics providers (title without any "(90% Tempo)" label)
+    lyrics_artist?: string
+    lyrics_title?: string
     // Server-side pre-apply marker (C2): when present, the backend already
     // applied the AI corrections before the review-ready notification, so the
     // review UI must NOT auto-run/auto-apply again. `suggestions` carries the
