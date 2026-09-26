@@ -1151,7 +1151,9 @@ class JobManager:
                 # Callers often run this as a background task — don't strand the
                 # job at DOWNLOADING with nothing to retry it.
                 logger.error(f"Job {job_id}: Audio edit preparation failed: {e}", exc_info=True)
-                self.fail_job(job_id, f"Audio edit preparation failed: {e}")
+                await asyncio.to_thread(
+                    self.fail_job, job_id, f"Audio edit preparation failed: {e}"
+                )
                 raise
             logger.info(f"Job {job_id}: Awaiting audio edit before processing")
             return
