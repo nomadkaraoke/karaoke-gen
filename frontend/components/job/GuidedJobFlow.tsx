@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from 'next-intl'
 import { useAuth } from "@/lib/auth"
 import { useTenant } from "@/lib/tenant"
-import { api, ApiError } from "@/lib/api"
+import { api, ApiError, type UploadProgress } from "@/lib/api"
 import { AlertTriangle, CheckCircle2, Music } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LinkifiedText } from "@/components/ui/linkified-text"
@@ -13,6 +13,7 @@ import { SongInfoStep } from "./steps/SongInfoStep"
 import { AudioSourceStep } from "./steps/AudioSourceStep"
 import { VisibilityStep } from "./steps/VisibilityStep"
 import { CustomizeStep } from "./steps/CustomizeStep"
+import { UploadProgressModal } from "./UploadProgressModal"
 import type { ColorOverrides, ReviewMode, BackingPreference } from "./steps/CustomizeStep"
 
 interface GuidedJobFlowProps {
@@ -131,6 +132,21 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
+  // Browser → GCS upload progress for the "upload" audio source. The job is
+  // created before the bytes are sent and can't start until they land, so the
+  // user must see this and keep the tab open.
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
+
+  // Leaving the page mid-upload silently kills the upload and strands the job.
+  useEffect(() => {
+    if (!uploadProgress) return
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [uploadProgress])
 
   function handleSearchCompleted(sessionId: string) {
     setSearchSessionId(sessionId)
@@ -180,6 +196,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
         createdJobId = response.job_id
       } else if (audioSource === "upload" && pendingFile) {
         // Upload fallback path — upload and create job now with visibility from Step 3
+        setUploadProgress({ phase: 'creating', loaded: 0, total: pendingFile.size })
         const response = await api.uploadJobSmart(
           pendingFile, effectiveArtist, effectiveTitle,
           {
@@ -188,6 +205,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
             review_mode: reviewMode,
             backing_preference: backingPreference,
           },
+          setUploadProgress,
         )
         createdJobId = response.job_id
       } else if (searchSessionId && selectedResultIndex !== null) {
@@ -237,6 +255,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
       }
     } finally {
       setIsSubmitting(false)
+      setUploadProgress(null)
     }
   }
 
@@ -569,6 +588,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           isSubmitting={isSubmitting}
         />
       )}
+
+      {uploadProgress && <UploadProgressModal progress={uploadProgress} />}
 
       <BuyCreditsDialog open={showBuyCreditsDialog} onClose={() => setShowBuyCreditsDialog(false)} />
     </div>

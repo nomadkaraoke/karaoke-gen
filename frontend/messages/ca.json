@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Sempre ens aturarem perquè puguis revisar la lletra i triar l'instrumental abans de renderitzar.",
     "reviewModeAuto": "Totalment automàtic",
     "reviewModeAutoHint": "Només et demanarem que revisis la lletra o l'instrumental si alguna cosa realment requereix intervenció humana. Les pistes sense dubtes es completen automàticament.",
-    "reviewModeLabel": "Revisió"
+    "reviewModeLabel": "Revisió",
+    "uploadCreatingJob": "Creant la teva tasca...",
+    "uploadEtaEstimating": "Calculant el temps restant...",
+    "uploadEtaMinutes": "Queden aproximadament {minutes}m {seconds}s",
+    "uploadEtaSeconds": "Queden aproximadament {seconds}s",
+    "uploadFinalizing": "Pujada completada, iniciant el processament...",
+    "uploadKeepTabOpen": "Mantingues aquesta pestanya oberta fins que finalitzi la pujada. Si surts d'aquesta pàgina o la tanques, s'aturarà la pujada i la teva cançó no es processarà.",
+    "uploadModalTitle": "Pujant el teu àudio",
+    "uploadSizeProgress": "{loaded} MB de {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Pujant l'àudio... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Configurant",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Cercant fonts d'àudio (reintentant)",
     "waitingForCapacity": "Esperant el servidor de codificació (reintentant)",
     "preparingAudio": "Preparant el teu àudio",
-    "processing": "Processant"
+    "processing": "Processant",
+    "waitingForUpload": "Esperant la pujada"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",

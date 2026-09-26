@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "हम हमेशा रुकेंगे और रेंडर करने से पहले तुम्हें लिरिक्स रिव्यू करने और इंस्ट्रूमेंटल चुनने देंगे।",
     "reviewModeAuto": "पूरी तरह से ऑटोमैटिक",
     "reviewModeAutoHint": "हम तुमसे लिरिक्स या इंस्ट्रूमेंटल को रिव्यू करने के लिए तभी कहेंगे जब सच में किसी इंसान की ज़रूरत हो। जिन ट्रैक्स पर हमें पूरा भरोसा है, वे अपने आप पूरे हो जाते हैं।",
-    "reviewModeLabel": "रिव्यू"
+    "reviewModeLabel": "रिव्यू",
+    "uploadCreatingJob": "तुम्हारा जॉब बनाया जा रहा है...",
+    "uploadEtaEstimating": "बचे हुए समय का अनुमान लगाया जा रहा है...",
+    "uploadEtaMinutes": "लगभग {minutes}m {seconds}s बचे हैं",
+    "uploadEtaSeconds": "लगभग {seconds}s बचे हैं",
+    "uploadFinalizing": "अपलोड पूरा हुआ, प्रोसेसिंग शुरू हो रही है...",
+    "uploadKeepTabOpen": "अपलोड पूरा होने तक इस टैब को खुला रखो। इस पेज को छोड़ने या बंद करने से अपलोड रुक जाएगा और तुम्हारा गाना प्रोसेस नहीं होगा।",
+    "uploadModalTitle": "तुम्हारा ऑडियो अपलोड हो रहा है",
+    "uploadSizeProgress": "{total} MB में से {loaded} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "ऑडियो अपलोड हो रहा है... {percent}%"
   },
   "jobStatus": {
     "settingUp": "सेटअप हो रहा है",
@@ -622,7 +632,8 @@
     "findingAudioSources": "ऑडियो स्रोत खोज रहे हैं (फिर से कोशिश कर रहे हैं)",
     "waitingForCapacity": "एनकोडिंग सर्वर का इंतज़ार किया जा रहा है (फिर से कोशिश की जा रही है)",
     "preparingAudio": "तुम्हारा ऑडियो तैयार किया जा रहा है",
-    "processing": "प्रोसेस हो रहा है"
+    "processing": "प्रोसेस हो रहा है",
+    "waitingForUpload": "अपलोड का इंतज़ार है"
   },
   "jobCard": {
     "actionNeeded": "एक्शन की ज़रूरत है",

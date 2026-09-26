@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Vždy sa zastavíme a necháme ťa skontrolovať text a vybrať inštrumentálnu verziu pred renderovaním.",
     "reviewModeAuto": "Plne automatické",
     "reviewModeAutoHint": "Požiadame ťa o kontrolu textu alebo inštrumentálnej verzie len vtedy, ak to skutočne vyžaduje ľudský zásah. Skladby s vysokou istotou sa dokončia automaticky.",
-    "reviewModeLabel": "Kontrola"
+    "reviewModeLabel": "Kontrola",
+    "uploadCreatingJob": "Vytvára sa tvoja úloha...",
+    "uploadEtaEstimating": "Odhaduje sa zostávajúci čas...",
+    "uploadEtaMinutes": "Zostáva približne {minutes} min {seconds} s",
+    "uploadEtaSeconds": "Zostáva približne {seconds} s",
+    "uploadFinalizing": "Nahrávanie dokončené, spúšťa sa spracovanie...",
+    "uploadKeepTabOpen": "Nechaj túto kartu otvorenú, kým sa nahrávanie nedokončí. Ak túto stránku opustíš alebo zatvoríš, nahrávanie sa zastaví a tvoja skladba sa nespracuje.",
+    "uploadModalTitle": "Nahrávanie tvojho audia",
+    "uploadSizeProgress": "{loaded} MB z {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Nahrávanie audia... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Hľadanie zdrojov zvuku (opakovaný pokus)",
     "waitingForCapacity": "Čaká sa na kódovací server (opakovaný pokus)",
     "preparingAudio": "Pripravuje sa tvoje audio",
-    "processing": "Spracováva sa"
+    "processing": "Spracováva sa",
+    "waitingForUpload": "Čaká sa na nahranie"
   },
   "jobCard": {
     "actionNeeded": "Vyžaduje sa akcia",

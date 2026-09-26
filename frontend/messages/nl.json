@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "We stoppen altijd zodat je de songtekst kunt controleren en de instrumentale versie kunt kiezen voordat we renderen.",
     "reviewModeAuto": "Volledig automatisch",
     "reviewModeAutoHint": "We vragen je alleen de songtekst of instrumentale versie te controleren als er echt een menselijke blik nodig is. Nummers waarvan we zeker zijn, worden automatisch afgerond.",
-    "reviewModeLabel": "Controleren"
+    "reviewModeLabel": "Controleren",
+    "uploadCreatingJob": "Je taak wordt aangemaakt...",
+    "uploadEtaEstimating": "Resterende tijd berekenen...",
+    "uploadEtaMinutes": "Nog ongeveer {minutes}m {seconds}s",
+    "uploadEtaSeconds": "Nog ongeveer {seconds}s",
+    "uploadFinalizing": "Upload voltooid, verwerking wordt gestart...",
+    "uploadKeepTabOpen": "Houd dit tabblad open totdat de upload is voltooid. Als je deze pagina verlaat of sluit, stopt de upload en wordt je nummer niet verwerkt.",
+    "uploadModalTitle": "Je audio uploaden",
+    "uploadSizeProgress": "{loaded} MB van {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Audio uploaden... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Instellen",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Audiobronnen zoeken (opnieuw proberen)",
     "waitingForCapacity": "Wachten op encodingserver (opnieuw proberen)",
     "preparingAudio": "Je audio voorbereiden",
-    "processing": "Verwerken"
+    "processing": "Verwerken",
+    "waitingForUpload": "Wachten op upload"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",

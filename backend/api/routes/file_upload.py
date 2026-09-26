@@ -1314,6 +1314,12 @@ async def create_job_with_upload_urls(
         # Record job creation metric
         metrics.record_job_created(job_id, source="upload")
 
+        # The job stays PENDING until the client PUTs the files and calls
+        # uploads-complete. Flag it so the dashboard can say "Waiting for upload"
+        # (not the misleading "Setting up") and the stale-upload sweep can cancel
+        # + refund jobs whose browser upload never finished.
+        job_manager.update_state_data(job_id, 'awaiting_upload', True)
+
         # Stamp bulk-batch grouping so jobs created together can be grouped/filtered later.
         if body.batch_id:
             job_manager.update_state_data(job_id, 'batch_id', body.batch_id)
@@ -1523,6 +1529,7 @@ async def mark_uploads_complete(
         
         # Update job with GCS paths
         job_manager.update_job(job_id, update_data)
+        job_manager.delete_state_data_keys(job_id, ['awaiting_upload'])
         
         logger.info(f"Validated uploads for job {job_id}: {body.uploaded_files}")
         

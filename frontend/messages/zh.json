@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "我们始终会在渲染前暂停，让您审核歌词并选择伴奏。",
     "reviewModeAuto": "全自动",
     "reviewModeAutoHint": "只有在确实需要人工处理时，我们才会请您审核歌词或伴奏。系统有把握的曲目会自动完成。",
-    "reviewModeLabel": "审核"
+    "reviewModeLabel": "审核",
+    "uploadCreatingJob": "正在创建您的任务...",
+    "uploadEtaEstimating": "正在预估剩余时间...",
+    "uploadEtaMinutes": "大约还剩 {minutes} 分 {seconds} 秒",
+    "uploadEtaSeconds": "大约还剩 {seconds} 秒",
+    "uploadFinalizing": "上传完成，即将开始处理...",
+    "uploadKeepTabOpen": "上传完成前请保持此标签页打开。离开或关闭此页面将中断上传，您的歌曲将无法处理。",
+    "uploadModalTitle": "正在上传您的音频",
+    "uploadSizeProgress": "{loaded} MB / {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "正在上传音频... {percent}%"
   },
   "jobStatus": {
     "settingUp": "设置中",
@@ -622,7 +632,8 @@
     "findingAudioSources": "正在查找音频源（重试中）",
     "waitingForCapacity": "等待编码服务器 (正在重试)",
     "preparingAudio": "正在准备您的音频",
-    "processing": "处理中"
+    "processing": "处理中",
+    "waitingForUpload": "等待上传"
   },
   "jobCard": {
     "actionNeeded": "需要操作",

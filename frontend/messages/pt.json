@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Sempre vamos parar e deixar você revisar a letra e escolher o instrumental antes de renderizar.",
     "reviewModeAuto": "Totalmente automático",
     "reviewModeAutoHint": "Só pediremos que você revise a letra ou o instrumental se algo realmente precisar de um toque humano. Faixas com alta precisão são finalizadas automaticamente.",
-    "reviewModeLabel": "Revisão"
+    "reviewModeLabel": "Revisão",
+    "uploadCreatingJob": "Criando sua tarefa...",
+    "uploadEtaEstimating": "Calculando o tempo restante...",
+    "uploadEtaMinutes": "Cerca de {minutes}m {seconds}s restantes",
+    "uploadEtaSeconds": "Cerca de {seconds}s restantes",
+    "uploadFinalizing": "Upload concluído, iniciando o processamento...",
+    "uploadKeepTabOpen": "Mantenha esta aba aberta até o upload terminar. Sair ou fechar esta página interromperá o upload e sua música não será processada.",
+    "uploadModalTitle": "Fazendo upload do seu áudio",
+    "uploadSizeProgress": "{loaded} MB de {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Fazendo upload do áudio... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Configurando",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Buscando fontes de áudio (tentando novamente)",
     "waitingForCapacity": "Aguardando servidor de codificação (tentando novamente)",
     "preparingAudio": "Preparando seu áudio",
-    "processing": "Processando"
+    "processing": "Processando",
+    "waitingForUpload": "Aguardando upload"
   },
   "jobCard": {
     "actionNeeded": "Ação necessária",

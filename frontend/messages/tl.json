@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Palagi kaming hihinto at hahayaan kang suriin ang lyrics at pumili ng instrumental bago mag-render.",
     "reviewModeAuto": "Ganap na awtomatiko",
     "reviewModeAutoHint": "Hihilingin lang namin sa iyo na suriin ang lyrics o instrumental kung kailangan talaga ng tao. Awtomatikong natatapos ang mga siguradong track.",
-    "reviewModeLabel": "Pagsusuri"
+    "reviewModeLabel": "Pagsusuri",
+    "uploadCreatingJob": "Ginagawa ang iyong job...",
+    "uploadEtaEstimating": "Tinatantiya ang natitirang oras...",
+    "uploadEtaMinutes": "Humigit-kumulang {minutes}m {seconds}s ang natitira",
+    "uploadEtaSeconds": "Humigit-kumulang {seconds}s ang natitira",
+    "uploadFinalizing": "Tapos na ang pag-upload, sinisimulan na ang pagproseso...",
+    "uploadKeepTabOpen": "Panatilihing bukas ang tab na ito hanggang sa matapos ang pag-upload. Ang pag-alis o pagsasara ng pahinang ito ay magpapatigil sa pag-upload at hindi mapoproseso ang iyong kanta.",
+    "uploadModalTitle": "Ina-upload ang iyong audio",
+    "uploadSizeProgress": "{loaded} MB ng {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Ina-upload ang audio... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Naghahanap ng mga audio source (sinusubukang muli)",
     "waitingForCapacity": "Naghihintay sa encoding server (sinusubukan muli)",
     "preparingAudio": "Inihahanda ang iyong audio",
-    "processing": "Pinoproseso"
+    "processing": "Pinoproseso",
+    "waitingForUpload": "Naghihintay ng pag-upload"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",

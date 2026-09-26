@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Uvijek ćemo stati i dopustiti ti da pregledaš tekst i odabereš instrumental prije renderiranja.",
     "reviewModeAuto": "Potpuno automatski",
     "reviewModeAutoHint": "Tražit ćemo od tebe pregled teksta ili instrumentala samo ako je zaista potrebna ljudska provjera. Ako smo sigurni u rezultat, obrada se završava automatski.",
-    "reviewModeLabel": "Pregled"
+    "reviewModeLabel": "Pregled",
+    "uploadCreatingJob": "Kreiranje tvog zadatka...",
+    "uploadEtaEstimating": "Procjena preostalog vremena...",
+    "uploadEtaMinutes": "Preostalo je oko {minutes}m {seconds}s",
+    "uploadEtaSeconds": "Preostalo je oko {seconds}s",
+    "uploadFinalizing": "Prijenos je dovršen, započinje obrada...",
+    "uploadKeepTabOpen": "Ostavi ovu karticu otvorenom dok prijenos ne završi. Ako napustiš ili zatvoriš ovu stranicu, prijenos će se prekinuti i tvoja pjesma neće biti obrađena.",
+    "uploadModalTitle": "Prijenos tvog audiozapisa",
+    "uploadSizeProgress": "{loaded} MB od {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Prijenos audiozapisa... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Traženje izvora zvuka (ponovni pokušaj)",
     "waitingForCapacity": "Čeka se server za kodiranje (ponovni pokušaj)",
     "preparingAudio": "Priprema tvog audiozapisa",
-    "processing": "Obrada"
+    "processing": "Obrada",
+    "waitingForUpload": "Čeka se prijenos"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",

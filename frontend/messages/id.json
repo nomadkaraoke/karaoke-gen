@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Kami akan selalu berhenti sejenak agar Anda dapat meninjau lirik dan memilih instrumental sebelum proses rendering.",
     "reviewModeAuto": "Sepenuhnya otomatis",
     "reviewModeAutoHint": "Kami hanya akan meminta Anda meninjau lirik atau instrumental jika benar-benar membutuhkan campur tangan manusia. Trek dengan tingkat akurasi tinggi akan selesai secara otomatis.",
-    "reviewModeLabel": "Tinjau"
+    "reviewModeLabel": "Tinjau",
+    "uploadCreatingJob": "Membuat tugas Anda...",
+    "uploadEtaEstimating": "Memperkirakan sisa waktu...",
+    "uploadEtaMinutes": "Sekitar {minutes}m {seconds}d lagi",
+    "uploadEtaSeconds": "Sekitar {seconds}d lagi",
+    "uploadFinalizing": "Unggahan selesai, memulai pemrosesan...",
+    "uploadKeepTabOpen": "Biarkan tab ini tetap terbuka sampai pengunggahan selesai. Meninggalkan atau menutup halaman ini akan menghentikan pengunggahan dan lagu Anda tidak akan diproses.",
+    "uploadModalTitle": "Mengunggah audio Anda",
+    "uploadSizeProgress": "{loaded} MB dari {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Mengunggah audio... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Mencari sumber audio (mencoba lagi)",
     "waitingForCapacity": "Menunggu server encoding (mencoba lagi)",
     "preparingAudio": "Menyiapkan audio Anda",
-    "processing": "Memproses"
+    "processing": "Memproses",
+    "waitingForUpload": "Menunggu pengunggahan"
   },
   "jobCard": {
     "actionNeeded": "Perlu tindakan",

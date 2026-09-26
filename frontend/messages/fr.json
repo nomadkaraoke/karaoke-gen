@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Nous ferons toujours une pause pour te laisser vérifier les paroles et choisir l'instrumental avant le rendu.",
     "reviewModeAuto": "Entièrement automatique",
     "reviewModeAutoHint": "Nous te demanderons de vérifier les paroles ou l'instrumental uniquement si une intervention humaine est vraiment nécessaire. Les pistes fiables sont finalisées automatiquement.",
-    "reviewModeLabel": "Vérification"
+    "reviewModeLabel": "Vérification",
+    "uploadCreatingJob": "Création de ta tâche...",
+    "uploadEtaEstimating": "Estimation du temps restant...",
+    "uploadEtaMinutes": "Environ {minutes}m {seconds}s restantes",
+    "uploadEtaSeconds": "Environ {seconds}s restantes",
+    "uploadFinalizing": "Téléversement terminé, lancement du traitement...",
+    "uploadKeepTabOpen": "Garde cet onglet ouvert jusqu'à la fin du téléversement. Si tu quittes ou fermes cette page, le téléversement sera interrompu et ta chanson ne sera pas traitée.",
+    "uploadModalTitle": "Téléversement de ton audio",
+    "uploadSizeProgress": "{loaded} Mo sur {total} Mo",
+    "uploadSpeed": "{speed} Mo/s",
+    "uploadingAudioPercent": "Téléversement de l'audio... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Configuration",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Recherche de sources audio (nouvelle tentative)",
     "waitingForCapacity": "En attente du serveur d'encodage (nouvelle tentative)",
     "preparingAudio": "Préparation de ton audio",
-    "processing": "Traitement en cours"
+    "processing": "Traitement en cours",
+    "waitingForUpload": "En attente de téléversement"
   },
   "jobCard": {
     "actionNeeded": "Action requise",

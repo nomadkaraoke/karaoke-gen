@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Ci fermeremo sempre per farti controllare il testo e scegliere la base strumentale prima del rendering.",
     "reviewModeAuto": "Completamente automatico",
     "reviewModeAutoHint": "Ti chiederemo di controllare il testo o la base strumentale solo se c'è davvero bisogno di un intervento umano. Le tracce con un alto livello di sicurezza vengono completate automaticamente.",
-    "reviewModeLabel": "Revisione"
+    "reviewModeLabel": "Revisione",
+    "uploadCreatingJob": "Creazione della tua richiesta...",
+    "uploadEtaEstimating": "Calcolo del tempo rimanente...",
+    "uploadEtaMinutes": "Circa {minutes}m {seconds}s rimanenti",
+    "uploadEtaSeconds": "Circa {seconds}s rimanenti",
+    "uploadFinalizing": "Caricamento completato, avvio dell'elaborazione...",
+    "uploadKeepTabOpen": "Tieni aperta questa scheda fino al termine del caricamento. Se esci o chiudi questa pagina, il caricamento si interromperà e la tua canzone non verrà elaborata.",
+    "uploadModalTitle": "Caricamento del tuo audio",
+    "uploadSizeProgress": "{loaded} MB su {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Caricamento audio... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Configurazione",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Ricerca delle fonti audio (nuovo tentativo)",
     "waitingForCapacity": "In attesa del server di codifica (nuovo tentativo)",
     "preparingAudio": "Preparazione del tuo audio",
-    "processing": "Elaborazione"
+    "processing": "Elaborazione",
+    "waitingForUpload": "In attesa del caricamento"
   },
   "jobCard": {
     "actionNeeded": "Azione richiesta",

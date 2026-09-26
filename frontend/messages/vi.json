@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Chúng tôi sẽ luôn tạm dừng và để bạn xem lại lời bài hát cũng như chọn nhạc nền trước khi xuất video.",
     "reviewModeAuto": "Hoàn toàn tự động",
     "reviewModeAutoHint": "Chúng tôi sẽ chỉ yêu cầu bạn xem lại lời bài hát hoặc nhạc nền nếu thực sự cần bạn kiểm tra. Các bài hát có độ chính xác cao sẽ tự động hoàn thành.",
-    "reviewModeLabel": "Xem lại"
+    "reviewModeLabel": "Xem lại",
+    "uploadCreatingJob": "Đang tạo tác vụ của bạn...",
+    "uploadEtaEstimating": "Đang ước tính thời gian còn lại...",
+    "uploadEtaMinutes": "Còn khoảng {minutes} phút {seconds} giây",
+    "uploadEtaSeconds": "Còn khoảng {seconds} giây",
+    "uploadFinalizing": "Tải lên hoàn tất, đang bắt đầu xử lý...",
+    "uploadKeepTabOpen": "Vui lòng giữ tab này mở cho đến khi quá trình tải lên hoàn tất. Việc rời khỏi hoặc đóng trang này sẽ làm dừng tải lên và bài hát của bạn sẽ không được xử lý.",
+    "uploadModalTitle": "Đang tải lên tệp âm thanh của bạn",
+    "uploadSizeProgress": "{loaded} MB trên {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Đang tải lên tệp âm thanh... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Đang tìm nguồn âm thanh (đang thử lại)",
     "waitingForCapacity": "Đang chờ máy chủ mã hóa (đang thử lại)",
     "preparingAudio": "Đang chuẩn bị âm thanh của bạn",
-    "processing": "Đang xử lý"
+    "processing": "Đang xử lý",
+    "waitingForUpload": "Đang chờ tải lên"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",

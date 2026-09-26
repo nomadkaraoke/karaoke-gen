@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Vi stopper alltid og lar deg se over teksten og velge instrumentalen før rendring.",
     "reviewModeAuto": "Helt automatisk",
     "reviewModeAutoHint": "Vi ber deg bare om å se over teksten eller instrumentalen hvis noe faktisk krever et menneske. Spor vi er sikre på, fullføres automatisk.",
-    "reviewModeLabel": "Gjennomgang"
+    "reviewModeLabel": "Gjennomgang",
+    "uploadCreatingJob": "Oppretter jobben din...",
+    "uploadEtaEstimating": "Beregner gjenstående tid...",
+    "uploadEtaMinutes": "Omtrent {minutes}m {seconds}s igjen",
+    "uploadEtaSeconds": "Omtrent {seconds}s igjen",
+    "uploadFinalizing": "Opplasting fullført, starter behandling...",
+    "uploadKeepTabOpen": "Hold denne fanen åpen til opplastingen er fullført. Hvis du forlater eller lukker denne siden, avbrytes opplastingen, og sangen din blir ikke behandlet.",
+    "uploadModalTitle": "Laster opp lyden din",
+    "uploadSizeProgress": "{loaded} MB av {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Laster opp lyd... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Setter opp",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Finner lydkilder (prøver på nytt)",
     "waitingForCapacity": "Venter på kodingsserver (prøver på nytt)",
     "preparingAudio": "Forbereder lyden din",
-    "processing": "Behandler"
+    "processing": "Behandler",
+    "waitingForUpload": "Venter på opplasting"
   },
   "jobCard": {
     "actionNeeded": "Handling kreves",

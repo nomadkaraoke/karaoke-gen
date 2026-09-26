@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Vi stopper altid og lader dig gennemgå sangteksten og vælge instrumentalnummeret før rendering.",
     "reviewModeAuto": "Fuldautomatisk",
     "reviewModeAutoHint": "Vi beder dig kun om at gennemgå sangteksten eller instrumentalnummeret, hvis der virkelig er brug for et menneske. Numre, vi er sikre på, færdiggøres automatisk.",
-    "reviewModeLabel": "Gennemgang"
+    "reviewModeLabel": "Gennemgang",
+    "uploadCreatingJob": "Opretter dit job...",
+    "uploadEtaEstimating": "Beregner resterende tid...",
+    "uploadEtaMinutes": "Cirka {minutes}m {seconds}s tilbage",
+    "uploadEtaSeconds": "Cirka {seconds}s tilbage",
+    "uploadFinalizing": "Upload fuldført, starter behandlingen...",
+    "uploadKeepTabOpen": "Hold denne fane åben, indtil uploaden er færdig. Hvis du forlader eller lukker denne side, afbrydes uploaden, og din sang bliver ikke behandlet.",
+    "uploadModalTitle": "Uploader din lyd",
+    "uploadSizeProgress": "{loaded} MB af {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Uploader lyd... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Sætter op",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Finder lydkilder (prøver igen)",
     "waitingForCapacity": "Venter på kodningsserver (prøver igen)",
     "preparingAudio": "Forbereder din lyd",
-    "processing": "Behandler"
+    "processing": "Behandler",
+    "waitingForUpload": "Venter på upload"
   },
   "jobCard": {
     "actionNeeded": "Handling påkrævet",

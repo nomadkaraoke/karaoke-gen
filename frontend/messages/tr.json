@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Oluşturmadan önce her zaman durup şarkı sözlerini incelemene ve enstrümantali seçmene izin vereceğiz.",
     "reviewModeAuto": "Tam otomatik",
     "reviewModeAutoHint": "Sadece gerçekten insan müdahalesi gereken bir durum olursa şarkı sözlerini veya enstrümantali incelemeni isteyeceğiz. Emin olduğumuz parçalar otomatik olarak tamamlanır.",
-    "reviewModeLabel": "İnceleme"
+    "reviewModeLabel": "İnceleme",
+    "uploadCreatingJob": "İşlemin oluşturuluyor...",
+    "uploadEtaEstimating": "Kalan süre hesaplanıyor...",
+    "uploadEtaMinutes": "Yaklaşık {minutes} dk {seconds} sn kaldı",
+    "uploadEtaSeconds": "Yaklaşık {seconds} sn kaldı",
+    "uploadFinalizing": "Yükleme tamamlandı, işleme başlanıyor...",
+    "uploadKeepTabOpen": "Yükleme tamamlanana kadar bu sekmeyi açık tut. Bu sayfadan ayrılmak veya sayfayı kapatmak yüklemeyi durdurur ve şarkın işlenmez.",
+    "uploadModalTitle": "Ses dosyan yükleniyor",
+    "uploadSizeProgress": "{loaded} MB / {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Ses yükleniyor... %{percent}"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Ses kaynakları aranıyor (yeniden deneniyor)",
     "waitingForCapacity": "Kodlama sunucusu bekleniyor (yeniden deneniyor)",
     "preparingAudio": "Ses dosyan hazırlanıyor",
-    "processing": "İşleniyor"
+    "processing": "İşleniyor",
+    "waitingForUpload": "Yükleme bekleniyor"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",

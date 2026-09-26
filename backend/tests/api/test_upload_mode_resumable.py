@@ -103,3 +103,10 @@ async def test_resumable_mode_returns_session_uris_with_origin(endpoint_mocks, a
 def test_upload_mode_rejects_unknown_values():
     with pytest.raises(Exception):
         _body(upload_mode="carrier-pigeon")
+
+
+@pytest.mark.asyncio
+async def test_job_flagged_awaiting_upload_until_uploads_complete(endpoint_mocks, auth):
+    """Dashboard shows "Waiting for upload" and the stale-upload sweep keys off this flag."""
+    await create_job_with_upload_urls(_request(), _body(), auth)
+    endpoint_mocks["job_manager"].update_state_data.assert_any_call("job-123", "awaiting_upload", True)

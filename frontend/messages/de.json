@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Wir pausieren immer, damit du vor dem Rendern den Text überprüfen und das Instrumental auswählen kannst.",
     "reviewModeAuto": "Vollautomatisch",
     "reviewModeAutoHint": "Wir bitten dich nur dann, den Text oder das Instrumental zu überprüfen, wenn wirklich menschliches Eingreifen nötig ist. Titel mit hoher Erkennungsrate werden automatisch fertiggestellt.",
-    "reviewModeLabel": "Überprüfung"
+    "reviewModeLabel": "Überprüfung",
+    "uploadCreatingJob": "Dein Auftrag wird erstellt...",
+    "uploadEtaEstimating": "Verbleibende Zeit wird geschätzt...",
+    "uploadEtaMinutes": "Noch etwa {minutes}m {seconds}s",
+    "uploadEtaSeconds": "Noch etwa {seconds}s",
+    "uploadFinalizing": "Upload abgeschlossen, Verarbeitung beginnt...",
+    "uploadKeepTabOpen": "Lass diesen Tab geöffnet, bis der Upload abgeschlossen ist. Wenn du diese Seite verlässt oder schließt, wird der Upload abgebrochen und dein Song wird nicht verarbeitet.",
+    "uploadModalTitle": "Dein Audio wird hochgeladen",
+    "uploadSizeProgress": "{loaded} MB von {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Audio wird hochgeladen... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Richte ein",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Suche nach Audioquellen (erneuter Versuch)",
     "waitingForCapacity": "Warten auf Kodierungsserver (erneuter Versuch)",
     "preparingAudio": "Dein Audio wird vorbereitet",
-    "processing": "Wird verarbeitet"
+    "processing": "Wird verarbeitet",
+    "waitingForUpload": "Wartet auf Upload"
   },
   "jobCard": {
     "actionNeeded": "Aktion erforderlich",

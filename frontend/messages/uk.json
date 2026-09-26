@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Ми завжди робитимемо паузу, щоб ти міг перевірити текст і вибрати інструментал перед рендерингом.",
     "reviewModeAuto": "Повністю автоматично",
     "reviewModeAutoHint": "Ми попросимо тебе перевірити текст або інструментал лише тоді, коли дійсно потрібна участь людини. Треки, в яких ми впевнені, обробляються автоматично.",
-    "reviewModeLabel": "Перевірка"
+    "reviewModeLabel": "Перевірка",
+    "uploadCreatingJob": "Створюємо твоє завдання...",
+    "uploadEtaEstimating": "Розраховуємо час, що залишився...",
+    "uploadEtaMinutes": "Залишилося близько {minutes} хв {seconds} с",
+    "uploadEtaSeconds": "Залишилося близько {seconds} с",
+    "uploadFinalizing": "Завантаження завершено, починаємо обробку...",
+    "uploadKeepTabOpen": "Тримай цю вкладку відкритою, доки завантаження не завершиться. Якщо ти залишиш або закриєш цю сторінку, завантаження зупиниться, і твою пісню не буде оброблено.",
+    "uploadModalTitle": "Завантаження твого аудіо",
+    "uploadSizeProgress": "{loaded} МБ з {total} МБ",
+    "uploadSpeed": "{speed} МБ/с",
+    "uploadingAudioPercent": "Завантаження аудіо... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Налаштування",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Пошук джерел аудіо (повторна спроба)",
     "waitingForCapacity": "Очікуємо на сервер кодування (повторна спроба)",
     "preparingAudio": "Готуємо твоє аудіо",
-    "processing": "Обробка"
+    "processing": "Обробка",
+    "waitingForUpload": "Очікування завантаження"
   },
   "jobCard": {
     "actionNeeded": "Потрібна дія",

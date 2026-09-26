@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Renderelés előtt mindig megállunk, hogy átnézhesd a dalszöveget és kiválaszthasd az instrumentális alapot.",
     "reviewModeAuto": "Teljesen automatikus",
     "reviewModeAutoHint": "Csak akkor kérünk meg a dalszöveg vagy az instrumentális alap ellenőrzésére, ha tényleg emberi beavatkozásra van szükség. A problémamentes számok automatikusan elkészülnek.",
-    "reviewModeLabel": "Ellenőrzés"
+    "reviewModeLabel": "Ellenőrzés",
+    "uploadCreatingJob": "Feladatod létrehozása...",
+    "uploadEtaEstimating": "Hátralévő idő becslése...",
+    "uploadEtaMinutes": "Kb. {minutes}p {seconds}mp van hátra",
+    "uploadEtaSeconds": "Kb. {seconds}mp van hátra",
+    "uploadFinalizing": "A feltöltés befejeződött, a feldolgozás indítása...",
+    "uploadKeepTabOpen": "Tartsd nyitva ezt a lapot a feltöltés befejezéséig. Ha elhagyod vagy bezárod ezt az oldalt, a feltöltés megszakad, és a dalodat nem tudjuk feldolgozni.",
+    "uploadModalTitle": "Hangfájlod feltöltése",
+    "uploadSizeProgress": "{loaded} MB / {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Hangfájl feltöltése... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Beállítás",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Hangforrások keresése (újrapróbálkozás)",
     "waitingForCapacity": "Várakozás a kódoló szerverre (újrapróbálkozás)",
     "preparingAudio": "Hanganyagod előkészítése",
-    "processing": "Feldolgozás"
+    "processing": "Feldolgozás",
+    "waitingForUpload": "Várakozás a feltöltésre"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",

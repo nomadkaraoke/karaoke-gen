@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "سنتوقف دائمًا ونسمح لك بمراجعة الكلمات واختيار المسار الموسيقي قبل المعالجة النهائية.",
     "reviewModeAuto": "تلقائي بالكامل",
     "reviewModeAutoHint": "سنطلب منك مراجعة الكلمات أو المسار الموسيقي فقط إذا كان هناك شيء يحتاج حقًا إلى تدخل بشري. المسارات الموثوقة تكتمل تلقائيًا.",
-    "reviewModeLabel": "المراجعة"
+    "reviewModeLabel": "المراجعة",
+    "uploadCreatingJob": "جارٍ إنشاء مهمتك...",
+    "uploadEtaEstimating": "جارٍ تقدير الوقت المتبقي...",
+    "uploadEtaMinutes": "بقي حوالي {minutes} د و{seconds} ث",
+    "uploadEtaSeconds": "بقي حوالي {seconds} ث",
+    "uploadFinalizing": "اكتمل الرفع، جارٍ بدء المعالجة...",
+    "uploadKeepTabOpen": "يُرجى إبقاء علامة التبويب هذه مفتوحة حتى يكتمل الرفع. ستؤدي مغادرة هذه الصفحة أو إغلاقها إلى إيقاف الرفع ولن تتم معالجة أغنيتك.",
+    "uploadModalTitle": "جارٍ رفع ملفك الصوتي",
+    "uploadSizeProgress": "{loaded} ميغابايت من أصل {total} ميغابايت",
+    "uploadSpeed": "{speed} ميغابايت/ثانية",
+    "uploadingAudioPercent": "جارٍ رفع الملف الصوتي... {percent}%"
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",
@@ -622,7 +632,8 @@
     "findingAudioSources": "جارٍ البحث عن مصادر الصوت (إعادة المحاولة)",
     "waitingForCapacity": "في انتظار خادم الترميز (جاري إعادة المحاولة)",
     "preparingAudio": "جارٍ تجهيز الصوت",
-    "processing": "قيد المعالجة"
+    "processing": "قيد المعالجة",
+    "waitingForUpload": "بانتظار الرفع"
   },
   "jobCard": {
     "actionNeeded": "إجراء مطلوب",

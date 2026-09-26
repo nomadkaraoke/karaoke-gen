@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "Kami akan sentiasa berhenti dan membenarkan anda menyemak lirik dan memilih instrumental sebelum proses render.",
     "reviewModeAuto": "Sepenuhnya automatik",
     "reviewModeAutoHint": "Kami hanya akan meminta anda menyemak lirik atau instrumental jika ia benar-benar memerlukan semakan manusia. Trek yang diyakini tepat akan disiapkan secara automatik.",
-    "reviewModeLabel": "Semakan"
+    "reviewModeLabel": "Semakan",
+    "uploadCreatingJob": "Mencipta tugasan anda...",
+    "uploadEtaEstimating": "Menganggarkan masa yang tinggal...",
+    "uploadEtaMinutes": "Kira-kira {minutes}m {seconds}s lagi",
+    "uploadEtaSeconds": "Kira-kira {seconds}s lagi",
+    "uploadFinalizing": "Muat naik selesai, memulakan pemprosesan...",
+    "uploadKeepTabOpen": "Biarkan tab ini terbuka sehingga muat naik selesai. Meninggalkan atau menutup halaman ini akan menghentikan muat naik dan lagu anda tidak akan diproses.",
+    "uploadModalTitle": "Memuat naik audio anda",
+    "uploadSizeProgress": "{loaded} MB daripada {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "Memuat naik audio... {percent}%"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",
@@ -622,7 +632,8 @@
     "findingAudioSources": "Mencari sumber audio (mencuba semula)",
     "waitingForCapacity": "Menunggu pelayan pengekodan (mencuba semula)",
     "preparingAudio": "Menyediakan audio anda",
-    "processing": "Memproses"
+    "processing": "Memproses",
+    "waitingForUpload": "Menunggu muat naik"
   },
   "jobCard": {
     "actionNeeded": "Tindakan diperlukan",

@@ -752,10 +752,10 @@ export function CustomizeStep({
         {isSubmitting ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating...
+            {t('creating')}
           </>
         ) : (
-          "Create Karaoke Video"
+          t('createKaraokeVideo')
         )}
       </Button>
     </div>

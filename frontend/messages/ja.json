@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "レンダリング前に必ず一時停止し、歌詞の確認とインストゥルメンタルの選択ができるようにします。",
     "reviewModeAuto": "完全自動",
     "reviewModeAutoHint": "本当に人の手が必要な場合のみ、歌詞やインストゥルメンタルの確認をお願いします。問題のないトラックは自動的に完了します。",
-    "reviewModeLabel": "確認"
+    "reviewModeLabel": "確認",
+    "uploadCreatingJob": "ジョブを作成しています...",
+    "uploadEtaEstimating": "残り時間を計算中...",
+    "uploadEtaMinutes": "残り約{minutes}分{seconds}秒",
+    "uploadEtaSeconds": "残り約{seconds}秒",
+    "uploadFinalizing": "アップロードが完了しました。処理を開始しています...",
+    "uploadKeepTabOpen": "アップロードが完了するまでこのタブを開いたままにしてください。このページを離れたり閉じたりするとアップロードが停止し、曲が処理されません。",
+    "uploadModalTitle": "音声をアップロード中",
+    "uploadSizeProgress": "{loaded} MB / {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "音声をアップロード中... {percent}%"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",
@@ -622,7 +632,8 @@
     "findingAudioSources": "音源を検索中（再試行中）",
     "waitingForCapacity": "エンコーディングサーバーの空きを待機中（再試行中）",
     "preparingAudio": "音源を準備中",
-    "processing": "処理中"
+    "processing": "処理中",
+    "waitingForUpload": "アップロード待機中"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",

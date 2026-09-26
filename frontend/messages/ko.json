@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "렌더링 전에 항상 가사를 검토하고 반주를 선택하실 수 있도록 합니다.",
     "reviewModeAuto": "완전 자동",
     "reviewModeAutoHint": "사람의 확인이 꼭 필요한 경우에만 가사나 반주 검토를 요청드립니다. 정확도가 높은 트랙은 자동으로 완성됩니다.",
-    "reviewModeLabel": "검토"
+    "reviewModeLabel": "검토",
+    "uploadCreatingJob": "작업 생성 중...",
+    "uploadEtaEstimating": "남은 시간 계산 중...",
+    "uploadEtaMinutes": "약 {minutes}분 {seconds}초 남음",
+    "uploadEtaSeconds": "약 {seconds}초 남음",
+    "uploadFinalizing": "업로드 완료, 처리를 시작합니다...",
+    "uploadKeepTabOpen": "업로드가 완료될 때까지 이 탭을 열어 두세요. 이 페이지를 벗어나거나 닫으면 업로드가 중단되어 곡이 처리되지 않습니다.",
+    "uploadModalTitle": "오디오 업로드 중",
+    "uploadSizeProgress": "{total} MB 중 {loaded} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "오디오 업로드 중... {percent}%"
   },
   "jobStatus": {
     "settingUp": "설정 중",
@@ -622,7 +632,8 @@
     "findingAudioSources": "오디오 소스 찾는 중 (재시도 중)",
     "waitingForCapacity": "인코딩 서버 대기 중 (재시도 중)",
     "preparingAudio": "오디오 준비 중",
-    "processing": "처리 중"
+    "processing": "처리 중",
+    "waitingForUpload": "업로드 대기 중"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",

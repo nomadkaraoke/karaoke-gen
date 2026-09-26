@@ -596,8 +596,11 @@ async def process_stale_reviews_endpoint(
 
     - Jobs in review for >= 24h get a reminder email
     - Jobs in review for >= 48h are auto-cancelled with credit refund
+    - Signed-URL upload jobs whose browser upload never finished (>= 2h) are
+      auto-cancelled with credit refund
     """
     from backend.workers.stale_review_processor import process_stale_reviews
+    from backend.workers.stale_upload_processor import process_stale_uploads
 
     trace_context = extract_trace_context(dict(http_request.headers))
 
@@ -610,6 +613,11 @@ async def process_stale_reviews_endpoint(
             logger.info(f"STALE_REVIEW_PROCESS complete: {result}")
         except Exception as e:
             logger.exception(f"STALE_REVIEW_PROCESS failed: {e}")
+        try:
+            upload_result = await asyncio.to_thread(process_stale_uploads)
+            logger.info(f"STALE_UPLOAD_PROCESS complete: {upload_result}")
+        except Exception as e:
+            logger.exception(f"STALE_UPLOAD_PROCESS failed: {e}")
 
     background_tasks.add_task(_process)
 

@@ -575,7 +575,17 @@
     "reviewModeAlwaysHint": "תמיד נעצור ונאפשר לך לבדוק את המילים ולבחור את הפלייבק לפני ההפקה.",
     "reviewModeAuto": "אוטומטי לחלוטין",
     "reviewModeAutoHint": "נבקש ממך לבדוק את המילים או הפלייבק רק אם משהו באמת דורש התערבות אנושית. שירים עם רמת ודאות גבוהה יעובדו באופן אוטומטי.",
-    "reviewModeLabel": "בדיקה"
+    "reviewModeLabel": "בדיקה",
+    "uploadCreatingJob": "יוצר את המשימה שלך...",
+    "uploadEtaEstimating": "מעריך את הזמן שנותר...",
+    "uploadEtaMinutes": "נותרו כ-{minutes} דק' ו-{seconds} שנ'",
+    "uploadEtaSeconds": "נותרו כ-{seconds} שנ'",
+    "uploadFinalizing": "ההעלאה הושלמה, מתחיל בעיבוד...",
+    "uploadKeepTabOpen": "השאירו את הלשונית הזו פתוחה עד לסיום ההעלאה. עזיבה או סגירה של העמוד תעצור את ההעלאה והשיר שלך לא יעובד.",
+    "uploadModalTitle": "מעלה את קובץ השמע שלך",
+    "uploadSizeProgress": "{loaded} MB מתוך {total} MB",
+    "uploadSpeed": "{speed} MB/s",
+    "uploadingAudioPercent": "מעלה שמע... {percent}%"
   },
   "jobStatus": {
     "settingUp": "מגדיר",
@@ -622,7 +632,8 @@
     "findingAudioSources": "מחפש מקורות שמע (מנסה שוב)",
     "waitingForCapacity": "ממתין לשרת הקידוד (מנסה שוב)",
     "preparingAudio": "מכינים את האודיו שלך",
-    "processing": "בעיבוד"
+    "processing": "בעיבוד",
+    "waitingForUpload": "ממתין להעלאה"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",
