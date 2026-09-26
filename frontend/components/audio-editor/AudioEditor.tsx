@@ -397,9 +397,9 @@ export function AudioEditor({ job }: AudioEditorProps) {
     ? (audioInfo?.original_duration_seconds ?? 0)
     : (audioInfo?.current_duration_seconds ?? 0)
 
-  // Trim/Fade are edge actions — only valid when the selection touches the
-  // very start or very end of the track (1s tolerance, matching the
-  // server-side anchoring in audio_edit_service.fade_region).
+  // Trim Start/End are edge actions — only valid when the selection touches the
+  // very start or very end of the track (1s tolerance; fades snap to the edge
+  // with the same tolerance server-side in audio_edit_service.fade_region).
   const atStartEdge = !!selection && selection.startSeconds < 1
   const atEndEdge = !!selection && selection.endSeconds > currentDuration - 1
 
@@ -952,10 +952,11 @@ export function AudioEditor({ job }: AudioEditorProps) {
                 {formatTimePrecise(selection.startSeconds)} - {formatTimePrecise(selection.endSeconds)}
                 ({formatTimePrecise(selection.endSeconds - selection.startSeconds)})
               </span>
-              {/* Trim/Fade are edge actions: enabled only when the selection
+              {/* Trim Start/End are edge actions: enabled only when the selection
                   touches the very start (start) or very end (end) of the track.
                   Always rendered (disabled off-edge) so the actions stay
-                  discoverable, with a tooltip explaining how to enable them. */}
+                  discoverable, with a tooltip explaining how to enable them.
+                  Fades work on any selection (audio outside it is unchanged). */}
               <Button
                 variant="outline"
                 size="sm"
@@ -969,10 +970,10 @@ export function AudioEditor({ job }: AudioEditorProps) {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={isOperating || !atStartEdge}
+                disabled={isOperating}
                 onClick={handleFadeIn}
                 className="text-xs h-7"
-                title={atStartEdge ? t('fadeInSelection') : t('fadeInDisabledHint')}
+                title={t('fadeInSelection')}
               >
                 <TrendingUp className="w-3 h-3 mr-1" />
                 {t('fadeIn')}
@@ -990,10 +991,10 @@ export function AudioEditor({ job }: AudioEditorProps) {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={isOperating || !atEndEdge}
+                disabled={isOperating}
                 onClick={handleFadeOut}
                 className="text-xs h-7"
-                title={atEndEdge ? t('fadeOutSelection') : t('fadeOutDisabledHint')}
+                title={t('fadeOutSelection')}
               >
                 <TrendingDown className="w-3 h-3 mr-1" />
                 {t('fadeOut')}

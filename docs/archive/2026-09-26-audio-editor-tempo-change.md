@@ -1,4 +1,4 @@
-# Audio Editor: Tempo Change + Published-Output Labeling
+# Audio Editor: Tempo Change + Published-Output Labeling + Mid-Track Fades
 
 **Date:** 2026-09-26
 **Branch:** `feat/sess-20260926-1410-audio-editor-tempo`
@@ -57,6 +57,26 @@ YouTube server-mode upload deletes any existing channel video with the same titl
 (`youtube_upload_service.py` `replace_existing`). An unlabeled 90%-tempo upload of a song we'd
 already published would have *replaced the normal-tempo video*.
 
+## Mid-track fades (folded in from user feedback)
+
+From the `user_feedback` collection (2026-09-12):
+
+> i would like the ability to fade-in and fade-out mid track rather than just at the beginning and end.
+
+Fades used to be edge-only (the whole-stream `afade` silences everything before a fade-in /
+after a fade-out, so the backend rejected unanchored fades and the UI disabled them off-edge).
+`fade_region` now follows Audacity's selection-fade semantics: the ramp applies across the
+selection only and audio outside it is untouched — implemented as `atrim` pre / `atrim`+`afade`
+selection / `atrim` post → `concat` (sample-accurate, duration preserved). To drop out a
+section: Fade Out → Mute → Fade In. Selections within 1s of a clip edge still snap to it, so
+edge fades behave exactly as before. Fade In/Out buttons are enabled for any selection; Trim
+Start/End stay edge-gated. Covered by a real-ffmpeg test (`TestRealFFmpeg`) in addition to
+the mocked graph assertions.
+
+The same feedback also asked to be able to go back to the audio editor from later steps
+(lyrics review / final edit) — deliberately NOT included: it invalidates separation,
+transcription and any lyrics edits, so it needs its own design (see backlog).
+
 ## Label format
 `"(NN% Tempo)"`, whole percent, rounded; a cumulative factor that rounds to 100% is unlabeled.
 Backend `backend/services/tempo_label.py` and frontend `frontend/lib/tempo.ts` must stay in sync.
@@ -76,4 +96,4 @@ Backend `backend/services/tempo_label.py` and frontend `frontend/lib/tempo.ts` m
   (tempo apply validation + `TestSubmitTempoLabeling`), `test_tempo_label.py`,
   `test_admin_job_reset.py::TestResetClearsTempoLabel`, `test_edit_completed_track.py::TestEditPreservesTempoLabel`.
 - Frontend: `AudioEditor.test.tsx` (tempo describe block), `lib/__tests__/tempo.test.ts`,
-  E2E `e2e/regression/audio-editor-tempo.spec.ts`.
+  E2E `e2e/regression/audio-editor.spec.ts`.

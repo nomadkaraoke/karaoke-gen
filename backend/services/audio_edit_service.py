@@ -106,23 +106,23 @@ class AudioEditService:
         ])
         return self.get_metadata(output_path)
 
-    # Fades must be anchored to a clip edge — FFmpeg's afade silences audio outside
-    # the ramp, so a mid-clip fade would unexpectedly mute the rest of the track.
-    # The tolerance matches the editor UI's edge gating (start < 1s / end within 1s).
-    FADE_ANCHOR_TOLERANCE_SECONDS = 1.0
+    # Fade selections within this distance of a clip edge snap to it, matching the
+    # editor UI's edge tolerance ("fade in from ~the start" means from 0).
+    FADE_EDGE_SNAP_SECONDS = 1.0
 
     def fade_region(
         self, input_path: str, start: float, end: float, direction: str, output_path: str
     ) -> AudioMetadata:
-        """Apply a fade in or out anchored to a clip edge (preserves duration).
+        """Fade in or out across [start, end] only (preserves duration).
 
-        direction='in' ramps the volume from silence to full over [0, end];
-        direction='out' ramps from full to silence over [start, clip_end].
+        Like Audacity's selection fades: direction='in' ramps silence -> full across
+        the selection, direction='out' ramps full -> silence. Audio outside the
+        selection is untouched, so fades work mid-track (e.g. fade out + mute +
+        fade in to drop out a section). A selection starting within 1s of the clip
+        start snaps to 0, and one ending within 1s of the end snaps to the end.
 
-        Anchoring is enforced server-side (not just in the UI) because FFmpeg's
-        afade filter silences audio outside the ramp window: a fade-in is forced
-        to begin at the clip start, and a fade-out to finish at the clip end, so a
-        non-anchored request can never silently mute the rest of the track.
+        Implemented as trim -> afade -> concat, because afade applied to the whole
+        stream silences everything before a fade-in / after a fade-out.
         """
         if direction not in ("in", "out"):
             raise ValueError(f"Invalid fade direction: {direction}")
@@ -130,25 +130,32 @@ class AudioEditService:
             raise ValueError(f"Invalid fade region: start={start}, end={end}")
 
         total = self.get_metadata(input_path).duration_seconds
-        tol = self.FADE_ANCHOR_TOLERANCE_SECONDS
-        if end > total + tol:
+        snap = self.FADE_EDGE_SNAP_SECONDS
+        if end > total + snap:
             raise ValueError(f"Fade region exceeds clip duration ({end} > {total})")
+        if start <= snap:
+            start = 0.0
+        reaches_end = end >= total - snap
+        if reaches_end:
+            end = total
+        if end - start <= 0:
+            raise ValueError(f"Fade region must have positive duration (got {end - start})")
 
-        if direction == "in":
-            if start > tol:
-                raise ValueError(f"fade_in must be anchored to the clip start (got start={start})")
-            fade_start, fade_duration = 0.0, end
-        else:
-            if end < total - tol:
-                raise ValueError(f"fade_out must be anchored to the clip end (got end={end}, duration={total})")
-            fade_start, fade_duration = start, total - start
-
-        if fade_duration <= 0:
-            raise ValueError(f"Fade region must have positive duration (got {fade_duration})")
+        fade = f"afade=t={direction}:st=0:d={end - start}"
+        chains = []
+        if start > 0:
+            chains.append(f"[0]atrim=start=0:end={start},asetpts=PTS-STARTPTS[pre]")
+        fade_trim = f"atrim=start={start}" if reaches_end else f"atrim=start={start}:end={end}"
+        chains.append(f"[0]{fade_trim},asetpts=PTS-STARTPTS,{fade}[fade]")
+        if not reaches_end:
+            chains.append(f"[0]atrim=start={end},asetpts=PTS-STARTPTS[post]")
+        labels = "".join(c[c.rindex("["):] for c in chains)
 
         self._run_ffmpeg([
             "-i", input_path,
-            "-af", f"afade=t={direction}:st={fade_start}:d={fade_duration}",
+            "-filter_complex",
+            ";".join(chains) + f";{labels}concat=n={len(chains)}:v=0:a=1[out]",
+            "-map", "[out]",
             "-c:a", "flac",
             output_path,
         ])

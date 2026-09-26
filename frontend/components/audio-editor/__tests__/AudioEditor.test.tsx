@@ -391,8 +391,9 @@ describe("AudioEditor", () => {
     })
   })
 
-  it("renders Trim/Fade buttons disabled for a mid-track selection", async () => {
+  it("disables Trim for a mid-track selection but allows mid-track fades", async () => {
     mockApi.getInputAudioInfo.mockResolvedValue(mockAudioInfo)
+    mockApi.applyAudioEdit.mockResolvedValue({ ...mockEditResponse, operation: "fade_out" })
 
     render(<AudioEditor job={mockJob} />)
     await waitFor(() => {
@@ -410,15 +411,23 @@ describe("AudioEditor", () => {
     fireEvent.mouseMove(canvas, { clientX: 300 })
     fireEvent.mouseUp(canvas, { clientX: 300 })
 
-    // Buttons stay visible (discoverable) but disabled off-edge
+    // Trim buttons stay visible (discoverable) but disabled off-edge
     const fadeIn = (await screen.findByText("Fade In")).closest("button")
     const fadeOut = screen.getByText("Fade Out").closest("button")
-    const trimStart = screen.getByText("Trim Start").closest("button")
-    const trimEnd = screen.getByText("Trim End").closest("button")
-    expect(fadeIn).toBeDisabled()
-    expect(fadeOut).toBeDisabled()
-    expect(trimStart).toBeDisabled()
-    expect(trimEnd).toBeDisabled()
+    expect(screen.getByText("Trim Start").closest("button")).toBeDisabled()
+    expect(screen.getByText("Trim End").closest("button")).toBeDisabled()
+    // Fades apply to just the selection, so they work mid-track
+    expect(fadeIn).toBeEnabled()
+    expect(fadeOut).toBeEnabled()
+
+    fireEvent.click(fadeOut!)
+    await waitFor(() => {
+      expect(mockApi.applyAudioEdit).toHaveBeenCalledWith(
+        "test-job-123",
+        "fade_out",
+        { start_seconds: 20, end_seconds: 60 },
+      )
+    })
   })
 
   it("shows playback controls", async () => {
