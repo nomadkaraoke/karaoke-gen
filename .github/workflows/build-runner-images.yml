@@ -14,7 +14,8 @@ name: Build GHA Runner Images
 #   3. Stop the VM, snapshot its boot disk to a new image in the `gha-runner-<variant>`
 #      image family with name gha-runner-<variant>-<timestamp>.
 #   4. Delete the build VM (boot disk auto-deletes).
-#   5. Delete older images in the family, keeping the newest 2 (rollback = previous month).
+#   5. Delete older images in the family, keeping only the newest (GPU/windows images
+#      are 15-21 GiB each; roll back by re-running this workflow at an older ref).
 
 on:
   workflow_dispatch:
@@ -41,7 +42,7 @@ env:
   BUILD_REGION: us-central1
   BUILD_ZONE: us-central1-a
   BASE_IMAGE: projects/debian-cloud/global/images/family/debian-12
-  KEEP_IMAGES_PER_FAMILY: 2
+  KEEP_IMAGES_PER_FAMILY: 1
 
 jobs:
   resolve-matrix:

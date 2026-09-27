@@ -51,6 +51,9 @@ jobs:
               - 'infrastructure/**'
             deps:
               - 'poetry.lock'
+              # CI config changes (runners, setup steps) must exercise the
+              # package/backend test jobs they affect.
+              - '.github/workflows/ci.yml'
 
       - name: Summary
         run: |
@@ -179,7 +182,7 @@ jobs:
 
   frontend-e2e-full:
     name: "Frontend - E2E Full"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: changes
     # Full E2E suite only runs when PR has 'e2e' label (on-demand)
     if: >-
@@ -187,23 +190,6 @@ jobs:
       needs.changes.outputs.frontend == 'true' &&
       contains(github.event.pull_request.labels.*.name, 'e2e')
     steps:
-      - name: Check disk space
-        run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
-          fi
-
       - uses: actions/checkout@v4
 
       - name: Setup Node.js with caching
@@ -334,25 +320,23 @@ jobs:
 
   package-unit-tests:
     name: "Package - Unit Tests (70% coverage)"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Check disk space
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
+          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
           fi
 
       - uses: actions/checkout@v4
@@ -374,9 +358,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-package-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          key: venv-package-hosted-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
           restore-keys: |
-            venv-package-${{ runner.os }}-py3.13-
+            venv-package-hosted-${{ runner.os }}-py3.13-
 
       - name: Install dependencies
         run: poetry install --with dev
@@ -420,25 +404,23 @@ jobs:
 
   package-integration-tests:
     name: "Package - Integration Tests"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Check disk space
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
+          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
           fi
 
       - uses: actions/checkout@v4
@@ -460,9 +442,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-package-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          key: venv-package-hosted-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
           restore-keys: |
-            venv-package-${{ runner.os }}-py3.13-
+            venv-package-hosted-${{ runner.os }}-py3.13-
 
       - name: Install dependencies
         run: poetry install --with dev
@@ -497,7 +479,7 @@ jobs:
 
   package-build-test:
     name: "Package - Build & Install (Test)"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: [changes, package-unit-tests, package-integration-tests]
     if: >-
       github.ref != 'refs/heads/main' && always() &&
@@ -505,21 +487,19 @@ jobs:
       (needs.package-integration-tests.result == 'success' || needs.package-integration-tests.result == 'skipped') &&
       (needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Check disk space
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
+          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
           fi
 
       - uses: actions/checkout@v4
@@ -577,25 +557,23 @@ jobs:
 
   backend-unit-tests:
     name: "Backend - Unit Tests"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Check disk space
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
+          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
           fi
 
       - name: Checkout code
@@ -618,9 +596,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-backend-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          key: venv-backend-hosted-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
           restore-keys: |
-            venv-backend-${{ runner.os }}-py3.13-
+            venv-backend-hosted-${{ runner.os }}-py3.13-
 
       - name: Install dependencies
         run: poetry install
@@ -648,25 +626,23 @@ jobs:
 
   backend-emulator-tests:
     name: "Backend - Emulator Integration Tests"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Check disk space
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
+          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
           fi
 
       - name: Checkout code
@@ -689,9 +665,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-backend-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          key: venv-backend-hosted-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
           restore-keys: |
-            venv-backend-${{ runner.os }}-py3.13-
+            venv-backend-hosted-${{ runner.os }}-py3.13-
 
       - name: Set up Java 21 (required by Firestore emulator)
         uses: actions/setup-java@v4
@@ -847,24 +823,22 @@ jobs:
 
   package-build:
     name: "Package - Build"
-    runs-on: [self-hosted, linux, gcp]
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Check disk space
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Disk usage high, running cleanup..."
-            docker system prune -af || true
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
+          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
           fi
 
       - uses: actions/checkout@v4
@@ -886,9 +860,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-package-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
+          key: venv-package-hosted-${{ runner.os }}-py3.13-${{ hashFiles('poetry.lock') }}
           restore-keys: |
-            venv-package-${{ runner.os }}-py3.13-
+            venv-package-hosted-${{ runner.os }}-py3.13-
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -1881,8 +1855,16 @@ jobs:
 
       # ============================================
       # GPU Image Build (for audio worker with L4 GPU)
-      # Same pattern as base image: hash check → rebuild if needed
-      # GPU image lives in us-east4 (co-located with GPU instances)
+      # Same pattern as base image: hash check → rebuild if needed.
+      #
+      # Region layout (cost): the ~13 GB GPU base image and all BuildKit
+      # caches live in us-central1 (karaoke-repo), next to this runner, so
+      # building the app layer on top of the base is same-region (free). Only
+      # the FINAL app image is pushed to us-east4 (karaoke-backend-gpu), where
+      # the audio-separation Cloud Run job pulls it same-region. That push only
+      # uploads the small changed app layers — the base layers already exist
+      # there. Previously the base lived in us-east4 and every deploy pulled
+      # ~13 GB across regions (~$12-16/mo AR inter-region egress).
       # ============================================
 
       - name: Calculate GPU base image hash
@@ -1898,32 +1880,73 @@ jobs:
       - name: Check if GPU base image exists and is current
         id: check-gpu-base
         run: |
-          GPU_BASE_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest"
-          EXISTING_HASH=""
+          WANT_HASH="${{ steps.gpu-base-hash.outputs.hash }}"
+          GPU_BASE_IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest"
+          # Legacy location (pre cost-fix). Only used to seed us-central1 once.
+          LEGACY_GPU_BASE_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest"
 
-          MANIFEST=$(docker manifest inspect $GPU_BASE_IMAGE 2>/dev/null || echo "")
-          CONFIG_DIGEST=$(echo "$MANIFEST" | jq -r '.config.digest // ""' 2>/dev/null || echo "")
+          # Read the base.content.hash label of an image without pulling it
+          # (manifest ~1KB + config blob ~10KB).
+          image_hash() {
+            local image="$1" host path manifest digest
+            host="${image%%/*}"
+            path="${image#*/}"
+            path="${path%:*}"
+            manifest=$(docker manifest inspect "$image" 2>/dev/null || echo "")
+            # `buildx imagetools create` (the one-time copy below) wraps the
+            # image in a single-entry index — follow it to the image manifest.
+            local child
+            child=$(echo "$manifest" | jq -r '.manifests[0].digest // ""' 2>/dev/null || echo "")
+            if [ -n "$child" ] && [ "$child" != "null" ]; then
+              manifest=$(docker manifest inspect "${image%:*}@${child}" 2>/dev/null || echo "")
+            fi
+            digest=$(echo "$manifest" | jq -r '.config.digest // ""' 2>/dev/null || echo "")
+            if [ -z "$digest" ] || [ "$digest" = "null" ]; then
+              echo ""
+              return
+            fi
+            curl -sL -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+              "https://${host}/v2/${path}/blobs/${digest}" 2>/dev/null \
+              | jq -r '.config.Labels["base.content.hash"] // ""' 2>/dev/null || echo ""
+          }
 
-          if [ -n "$CONFIG_DIGEST" ] && [ "$CONFIG_DIGEST" != "null" ] && [ "$CONFIG_DIGEST" != "" ]; then
-            echo "📋 Found GPU manifest, config digest: $CONFIG_DIGEST"
-            TOKEN=$(gcloud auth print-access-token)
-            CONFIG_JSON=$(curl -sL -H "Authorization: Bearer $TOKEN" \
-              "https://${{ env.GPU_REGISTRY }}/v2/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}/blobs/$CONFIG_DIGEST" 2>/dev/null)
-            EXISTING_HASH=$(echo "$CONFIG_JSON" | jq -r '.config.Labels["base.content.hash"] // ""' 2>/dev/null || echo "")
-            echo "📋 Registry GPU base image hash: $EXISTING_HASH"
-          else
-            echo "⚠️ No existing GPU base image found in registry - will build"
-          fi
+          EXISTING_HASH=$(image_hash "$GPU_BASE_IMAGE")
+          echo "📋 Registry GPU base image hash (us-central1): ${EXISTING_HASH:-<none>}"
 
-          if [ "${{ steps.gpu-base-hash.outputs.hash }}" != "$EXISTING_HASH" ]; then
-            echo "🔄 GPU base image needs rebuild (Dockerfile.gpu-base or pyproject.toml changed)"
-            echo "   Current: ${{ steps.gpu-base-hash.outputs.hash }}"
-            echo "   Registry: $EXISTING_HASH"
-            echo "needs_rebuild=true" >> $GITHUB_OUTPUT
-          else
+          if [ -n "$EXISTING_HASH" ] && [ "$EXISTING_HASH" = "$WANT_HASH" ]; then
             echo "✅ GPU base image is up to date"
-            echo "needs_rebuild=false" >> $GITHUB_OUTPUT
+            echo "needs_rebuild=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          # One-time migration: if the legacy us-east4 base is already current,
+          # copy it byte-for-byte (same digests) instead of rebuilding from
+          # scratch, so the image content is unchanged by the move.
+          LEGACY_HASH=$(image_hash "$LEGACY_GPU_BASE_IMAGE")
+          echo "📋 Legacy GPU base image hash (us-east4): ${LEGACY_HASH:-<none>}"
+          if [ -n "$LEGACY_HASH" ] && [ "$LEGACY_HASH" = "$WANT_HASH" ]; then
+            echo "📦 Copying current GPU base from us-east4 to us-central1 (one-time)..."
+            if timeout 30m docker buildx imagetools create --tag "$GPU_BASE_IMAGE" "$LEGACY_GPU_BASE_IMAGE"; then
+              echo "✅ GPU base copied to us-central1"
+              # imagetools wraps the image in a single-entry index; tag the
+              # child manifest too so AR's delete-untagged cleanup policy can
+              # never treat it as an orphan.
+              CHILD=$(docker manifest inspect "$GPU_BASE_IMAGE" | jq -r '.manifests[0].digest // ""' || echo "")
+              if [ -n "$CHILD" ]; then
+                gcloud artifacts docker tags add "${GPU_BASE_IMAGE%:*}@${CHILD}" \
+                  "${GPU_BASE_IMAGE%:*}:content-${WANT_HASH:0:12}" --quiet \
+                  || echo "⚠️ Could not tag child manifest (non-fatal)"
+              fi
+              echo "needs_rebuild=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "⚠️ Copy failed — falling back to a rebuild"
+          fi
+
+          echo "🔄 GPU base image needs rebuild (Dockerfile.gpu-base or poetry.lock changed)"
+          echo "   Current: $WANT_HASH"
+          echo "   Registry: $EXISTING_HASH"
+          echo "needs_rebuild=true" >> "$GITHUB_OUTPUT"
 
       - name: Build and push GPU base image (if needed)
         if: steps.check-gpu-base.outputs.needs_rebuild == 'true'
@@ -1934,10 +1957,10 @@ jobs:
           file: backend/Dockerfile.gpu-base
           push: true
           tags: |
-            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
-            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,ignore-error=true
-          cache-to: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,mode=max,ignore-error=true
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,ignore-error=true
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,mode=max,ignore-error=true
           build-args: |
             BUILD_DATE=${{ github.run_id }}
             BUILD_ID=${{ github.sha }}
@@ -1945,20 +1968,25 @@ jobs:
           provenance: false
 
       - name: Build and push GPU app image
-        timeout-minutes: 10
+        # Normally ~2 min (only app layers are new). After a GPU base rebuild
+        # this push also uploads the ~13 GB base layers to us-east4 (they can't
+        # be cross-mounted from the us-central1 registry), hence the headroom.
+        timeout-minutes: 40
         uses: docker/build-push-action@v6
         with:
           context: .
           file: backend/Dockerfile
           push: true
+          # Final image → us-east4 (same region as the audio-separation job).
           tags: |
             ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:latest
             ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:v${{ steps.version_check.outputs.version }}
+          # Base + cache → us-central1 (same region as this runner).
           build-args: |
-            BASE_IMAGE=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
-          cache-from: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:cache,ignore-error=true
-          cache-to: type=registry,ref=${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:cache,mode=max,ignore-error=true
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/karaoke-backend-gpu:cache,ignore-error=true
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/karaoke-backend-gpu:cache,mode=max,ignore-error=true
           provenance: false
 
       # ============================================
@@ -2299,61 +2327,6 @@ jobs:
           echo "  scripts/rollback.sh --list   # find the previous good revision + version"
           echo "  scripts/rollback.sh --to-revision <PREV_REV> --image-version <PREV_VERSION>"
           exit 1
-
-  # ============================================
-  # PROPAGATE BASE IMAGE TO ALL RUNNERS
-  # When base image is rebuilt, pull it to all 3 runners
-  # so subsequent app builds don't wait 8 min for the pull
-  #
-  # NOTE: This is best-effort distribution. GitHub Actions doesn't
-  # support targeting specific runners by name, so we spawn 3 jobs
-  # and rely on the scheduler to distribute them across idle runners.
-  # In practice, with all runners idle after deploy-backend, distribution
-  # is good. Runners that miss this pull will get the image on their
-  # next app build (with the 8 min delay).
-  # ============================================
-
-  propagate-base-image:
-    name: "Propagate Base Image (${{ matrix.runner_index }})"
-    needs: deploy-backend
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.deploy-backend.outputs.base_rebuilt == 'true'
-    runs-on: [self-hosted, linux, gcp]
-    permissions:
-      contents: read
-      id-token: write
-    strategy:
-      matrix:
-        # 3 parallel jobs - one per self-hosted runner
-        runner_index: [1, 2, 3]
-      max-parallel: 3
-      fail-fast: false  # Don't cancel other runners if one fails
-    env:
-      REGISTRY: us-central1-docker.pkg.dev
-      PROJECT_ID: nomadkaraoke
-      REPOSITORY: karaoke-repo
-      BASE_IMAGE_NAME: karaoke-backend-base
-    steps:
-      - name: Authenticate to Google Cloud (Workload Identity)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: "latest"
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
-
-      - name: Pull latest base image
-        run: |
-          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:latest"
-          RUNNER_NAME=$(hostname)
-          echo "📥 Pulling latest base image on runner $RUNNER_NAME..."
-          docker pull $BASE_IMAGE
-          echo "✅ Base image cached on $RUNNER_NAME"
 
   # NOTE: Pulumi infrastructure deploys are done locally, not in CI.
   # CI runners run on the infrastructure Pulumi manages, creating a circular
