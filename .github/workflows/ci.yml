@@ -324,15 +324,20 @@ jobs:
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Free disk space
-        # GitHub-hosted runners (free for this public repo) ship with ~14 GB
-        # free. The poetry venv (CUDA torch wheels) plus poetry's download cache
-        # need more, so drop preinstalled SDKs we never use (~20 GB).
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
           df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
+          fi
 
       - uses: actions/checkout@v4
         with:
@@ -403,15 +408,20 @@ jobs:
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Free disk space
-        # GitHub-hosted runners (free for this public repo) ship with ~14 GB
-        # free. The poetry venv (CUDA torch wheels) plus poetry's download cache
-        # need more, so drop preinstalled SDKs we never use (~20 GB).
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
           df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
+          fi
 
       - uses: actions/checkout@v4
         with:
@@ -477,15 +487,20 @@ jobs:
       (needs.package-integration-tests.result == 'success' || needs.package-integration-tests.result == 'skipped') &&
       (needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Free disk space
-        # GitHub-hosted runners (free for this public repo) ship with ~14 GB
-        # free. The poetry venv (CUDA torch wheels) plus poetry's download cache
-        # need more, so drop preinstalled SDKs we never use (~20 GB).
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
           df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
+          fi
 
       - uses: actions/checkout@v4
         with:
@@ -546,15 +561,20 @@ jobs:
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Free disk space
-        # GitHub-hosted runners (free for this public repo) ship with ~14 GB
-        # free. The poetry venv (CUDA torch wheels) plus poetry's download cache
-        # need more, so drop preinstalled SDKs we never use (~20 GB).
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
           df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
+          fi
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -610,15 +630,20 @@ jobs:
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.package == 'true' || needs.changes.outputs.deps == 'true')
     steps:
-      - name: Free disk space
-        # GitHub-hosted runners (free for this public repo) ship with ~14 GB
-        # free. The poetry venv (CUDA torch wheels) plus poetry's download cache
-        # need more, so drop preinstalled SDKs we never use (~20 GB).
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
           df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
+          fi
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -801,15 +826,20 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Free disk space
-        # GitHub-hosted runners (free for this public repo) ship with ~14 GB
-        # free. The poetry venv (CUDA torch wheels) plus poetry's download cache
-        # need more, so drop preinstalled SDKs we never use (~20 GB).
+      - name: Free disk space (only if low)
+        # GitHub-hosted runners (free for this public repo) currently have ~86 GB
+        # free, but only ~14 GB is documented. The poetry venv (CUDA torch wheels)
+        # plus poetry's download cache need ~20 GB, so if the image ever shrinks,
+        # drop preinstalled SDKs we never use. Skipped (0s) when space is ample;
+        # the rm takes ~1 min.
         run: |
           df -h /
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
-          df -h /
+          AVAIL_GB=$(df -BG --output=avail / | tail -1 | tr -dc '0-9')
+          if [ "$AVAIL_GB" -lt 30 ]; then
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+              /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+            df -h /
+          fi
 
       - uses: actions/checkout@v4
         with:
