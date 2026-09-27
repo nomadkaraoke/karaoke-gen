@@ -1,5 +1,6 @@
 """Approximate vocals (mix − aligned user instrumental) for the review waveform."""
 import os
+import shutil
 import subprocess
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -15,6 +16,10 @@ from backend.services.derived_vocals import (
     subtract_instrumental,
 )
 from backend.utils.stems import vocals_stem_path
+
+requires_ffmpeg = pytest.mark.skipif(
+    shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None, reason="ffmpeg not installed"
+)
 
 
 def _signals(lag, gain=0.8, seconds=6):
@@ -79,6 +84,7 @@ def _write_wav(path, samples, sr=44100):
                     "-ac", "2", "-c:a", "pcm_s24le", path], input=up.tobytes(), check=True)
 
 
+@requires_ffmpeg
 def test_derive_vocals_file_end_to_end(tmp_path):
     mix, inst, vocals = _signals(lag=150)
     mix_path, inst_path, out_path = (str(tmp_path / n) for n in ("mix.wav", "inst.wav", "out.flac"))
@@ -143,6 +149,7 @@ class TestStoreDerivedVocals:
         assert "non-fatal" in job_log.warning.call_args[0][0]
 
 
+@requires_ffmpeg
 def test_unrelated_instrumental_is_not_written(tmp_path):
     """A subtraction that removed nothing would just show the full-mix envelope."""
     mix, _, _ = _signals(lag=0)
@@ -157,6 +164,7 @@ def test_unrelated_instrumental_is_not_written(tmp_path):
     assert not os.path.exists(out_path)
 
 
+@requires_ffmpeg
 def test_empty_or_undecodable_input_raises_with_ffmpeg_detail(tmp_path):
     bad = tmp_path / "bad.wav"
     bad.write_bytes(b"not audio at all")
