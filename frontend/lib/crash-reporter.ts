@@ -7,6 +7,7 @@
  */
 
 import { API_BASE_URL } from '@/lib/api'
+import { collectDiagnostics, getBreadcrumbs } from '@/lib/diagnostics'
 
 export interface ClientErrorContext {
   href: string
@@ -33,13 +34,25 @@ export interface ReportArgs {
   source: string
   context: ClientErrorContext
   extra?: Record<string, unknown>
+  /**
+   * The browser gave us no Error object (e.g. Firefox "out of memory"), so the
+   * caller synthesized one. Its stack is the reporter's own and is dropped so it
+   * doesn't masquerade as the crash site; filename/lineno/colno in `extra` say
+   * where it actually happened.
+   */
+  synthetic?: boolean
 }
 
 const DEDUP_WINDOW_MS = 5_000
 const recentSignatures = new Map<string, number>()
+// A wedged tab (e.g. out of memory) can throw on every render; cap what one page
+// load may send so it can't flood the endpoint or the alert channel.
+const MAX_REPORTS_PER_PAGE = 20
+let reportsThisPage = 0
 
 export function __resetForTest() {
   recentSignatures.clear()
+  reportsThisPage = 0
 }
 
 function sanitizeUrl(href: string): string {
@@ -137,7 +150,9 @@ export async function reportClientError(args: ReportArgs): Promise<void> {
   try {
     if (isBenignError(args.error)) return
 
-    const { message, stack } = normalizeError(args.error)
+    const normalized = normalizeError(args.error)
+    const message = normalized.message
+    const stack = args.synthetic ? null : normalized.stack
     const sig = signatureFor(message, stack, args.source)
     const now = Date.now()
     const last = recentSignatures.get(sig)
@@ -153,6 +168,8 @@ export async function reportClientError(args: ReportArgs): Promise<void> {
     const ctx = collectContext(args.context)
     // Never report from local dev — would hit the prod error monitor.
     if (isLocalhostUrl(ctx.url)) return
+    if (reportsThisPage >= MAX_REPORTS_PER_PAGE) return
+    reportsThisPage++
     const body = {
       message,
       stack,
@@ -163,7 +180,12 @@ export async function reportClientError(args: ReportArgs): Promise<void> {
       viewport: ctx.viewport ?? null,
       locale: ctx.locale,
       source: args.source,
-      extra: args.extra ?? null,
+      extra: {
+        ...(args.extra ?? {}),
+        ...(args.synthetic ? { synthetic_error: true } : {}),
+        diagnostics: { ...collectDiagnostics(), reports_this_page: reportsThisPage },
+        breadcrumbs: getBreadcrumbs(),
+      },
     }
 
     await fetch(`${API_BASE_URL}/api/client-errors`, {

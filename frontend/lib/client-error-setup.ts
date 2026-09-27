@@ -1,6 +1,7 @@
 'use client'
 
-import { reportClientError } from '@/lib/crash-reporter'
+import { isBenignError, reportClientError } from '@/lib/crash-reporter'
+import { addBreadcrumb, installDiagnostics } from '@/lib/diagnostics'
 import { hardReload, isChunkLoadError, isStale, startAmbientVersionPoll } from '@/lib/version-check'
 
 let installed = false
@@ -47,6 +48,7 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
   if (installed) return
   if (typeof window === 'undefined') return
   installed = true
+  installDiagnostics()
 
   const maybeReloadForChunkError = async (err: unknown): Promise<boolean> => {
     if (!isChunkLoadError(err)) return false
@@ -59,7 +61,13 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
 
   window.addEventListener('error', (event) => {
     if (isOpaqueCrossOriginError(event)) return
-    const err = event.error ?? new Error(event.message || 'Unknown window error')
+    // Some engine-level failures (Firefox "out of memory") arrive with no Error
+    // object — or a non-Error value — so there is no real stack to send.
+    const synthetic = !(event.error instanceof Error)
+    const err = synthetic
+      ? new Error(event.message || String(event.error ?? 'Unknown window error'))
+      : event.error
+    addBreadcrumb('error', (err as Error).message)
     void (async () => {
       const reloaded = await maybeReloadForChunkError(err)
       if (reloaded) return
@@ -67,6 +75,7 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
         error: err,
         source: 'window.onerror',
         context: buildContext(getUserEmail()),
+        synthetic,
         extra: {
           filename: event.filename,
           lineno: event.lineno,
@@ -77,7 +86,12 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
   })
 
   window.addEventListener('unhandledrejection', (event) => {
-    const err = event.reason instanceof Error ? event.reason : new Error(String(event.reason))
+    // Check the raw reason before wrapping so e.g. a media AbortError DOMException
+    // is still recognised as benign.
+    if (isBenignError(event.reason)) return
+    const synthetic = !(event.reason instanceof Error)
+    const err = synthetic ? new Error(String(event.reason)) : event.reason
+    addBreadcrumb('error', `unhandledrejection: ${(err as Error).message}`)
     void (async () => {
       const reloaded = await maybeReloadForChunkError(err)
       if (reloaded) return
@@ -85,6 +99,7 @@ export function installGlobalErrorHandlers(getUserEmail: () => string | null) {
         error: err,
         source: 'unhandledrejection',
         context: buildContext(getUserEmail()),
+        synthetic,
       })
     })()
   })
