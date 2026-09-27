@@ -101,15 +101,16 @@ jobs:
               line = f"{label}: {age_h}h old (limit {max_hours}h) — last {latest.isoformat()}"
               (stale if age > max_hours * 3600 else ok).append(line)
 
-          # Git manifest contents: a systemic failure (every repo that needed
-          # bundling errored) must alert even though the manifest itself is
-          # fresh. "unchanged" repos don't count — in incremental mode nearly
-          # all repos are unchanged, which would mask a broken week.
+          # Git manifest contents: ANY bundle error alerts, even though the
+          # manifest itself is fresh. The git step is weekly + incremental, so
+          # a repo that failed keeps an ever-older S3 bundle until the next
+          # Sunday — silence here would let it drift past the 7-day RPO.
           try:
               import json as _json
               m = _json.loads(s3.get_object(Bucket=BUCKET, Key="git-repos/manifest.json")["Body"].read())
-              if int(m.get("bundled", 0)) == 0 and int(m.get("errors", 0)) > 0:
-                  stale.append(f"Git repos: last run bundled 0 repos with {m.get('errors')} errors")
+              if int(m.get("errors", 0)) > 0:
+                  failed = [r.get("full_name") for r in m.get("repos", []) if r.get("status") == "error"]
+                  stale.append(f"Git repos: last run had {m.get('errors')} bundle errors: {', '.join(failed[:10])}")
           except Exception as e:  # noqa: BLE001
               stale.append(f"Git repos: could not read manifest.json ({e})")
 

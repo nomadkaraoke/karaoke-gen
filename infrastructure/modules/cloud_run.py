@@ -341,7 +341,7 @@ def create_audio_download_job(
                                     ),
                                 ),
                             ),
-                            # Flacfetch API URL (internal VPC address)
+                            # Flacfetch API URL (public HTTPS endpoint; no VPC egress)
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="FLACFETCH_API_URL",
                                 value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(

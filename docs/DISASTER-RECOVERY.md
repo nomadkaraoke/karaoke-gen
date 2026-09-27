@@ -470,7 +470,7 @@ Per-prefix limits reflect each prefix's **S3 (off-site)** cadence, which is not 
 |--------|-------------------|---------------|
 | `gcs/job-files/`, `secrets/` | nightly | 36h |
 | `firestore/`, `bigquery/daily-refresh/` | weekly (Sundays) | 192h (≈8 days) |
-| `git-repos/manifest.json` | weekly (Sundays), incremental | 192h (≈8 days) + manifest must not show 0 bundled with errors |
+| `git-repos/manifest.json` | weekly (Sundays), incremental | 192h (≈8 days) + manifest must show 0 bundle errors |
 
 Firestore exports to GCS staging nightly (24h local restore point) but only ships to S3 weekly to cut cross-cloud egress (see `backup_to_aws/main.py` → `firestore_to_s3_today`). The monitor only sees the S3 copy, so its Firestore limit must allow a full week — using the 36h nightly figure caused a false "DR backup is stale" alert every Tue–Sat (fixed 2026-06-18).
 
