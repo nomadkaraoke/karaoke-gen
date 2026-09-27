@@ -33,6 +33,15 @@ from backend.workers.worker_logging import create_job_logger, setup_job_logging,
 from backend.workers.registry import worker_registry
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 from backend.services.metrics import metrics
+from backend.services.quick_version.service import (
+    STATUS_FAILED as QUICK_STATUS_FAILED,
+    set_quick_state,
+    start_quick_version,
+)
+
+# Upper bound on how long the audio worker waits (at exit) for the quick-version
+# render thread. The render normally finishes long before the ensemble does.
+QUICK_VERSION_JOIN_TIMEOUT_SECONDS = 300
 
 # Import from karaoke_gen package
 from karaoke_gen.audio_processor import AudioProcessor
@@ -182,6 +191,8 @@ async def process_audio_separation(job_id: str) -> bool:
         job_log.warning(status_error)
         # Continue anyway - this is a safety net warning, not a hard failure
 
+    quick_render = None
+
     # Create temporary working directory
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_{job_id}_")
     job_log.info(f"Created temp directory: {temp_dir}")
@@ -225,6 +236,14 @@ async def process_audio_separation(job_id: str) -> bool:
                 
                 # Capture input audio properties via ffprobe (before any processing)
                 _store_audio_source_metadata(job_manager, job_id, audio_path, job_log)
+
+                # kjbox make-it jobs: a quick single-model separation on the warm
+                # GPU, then a background render of a scrolling-lyrics draft video
+                # while the ensemble below runs. Never raises; joined in `finally`.
+                if model_dir:
+                    quick_render = start_quick_version(
+                        job, audio_path, temp_dir, model_dir, job_manager, storage, job_log
+                    )
 
                 # Update progress using state_data (don't change status during parallel processing)
                 # The status is managed at a higher level - workers just track their progress
@@ -412,6 +431,14 @@ async def process_audio_separation(job_id: str) -> bool:
         return False
         
     finally:
+        # Let the quick-version render (reads files in temp_dir) finish before
+        # cleanup — even when the full separation failed.
+        if quick_render is not None:
+            finished = await asyncio.to_thread(quick_render.join, QUICK_VERSION_JOIN_TIMEOUT_SECONDS)
+            if not finished:
+                logger.warning(f"[job:{job_id}] Quick version render still running at worker exit; abandoning")
+                set_quick_state(job_manager, job_id, QUICK_STATUS_FAILED, error="render timed out")
+
         # Unregister from worker registry to signal completion
         await worker_registry.unregister(job_id, "audio")
 
