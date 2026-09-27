@@ -2,7 +2,7 @@
 Error Monitor Cloud Run Job and Cloud Scheduler resources.
 
 Deploys the error monitor as a Cloud Run Job triggered by Cloud Scheduler
-every 15 minutes (error checks) and daily at 08:00 UTC (digest report).
+hourly (error checks) and daily at 08:00 UTC (digest report).
 """
 
 import base64
@@ -134,11 +134,11 @@ def create_error_monitor(
     # Shared opts: schedulers depend on IAM binding being in place first
     scheduler_opts = pulumi.ResourceOptions(depends_on=[error_monitor_job_invoker])
 
-    # ---- Cloud Scheduler: every-15-min monitor ----
+    # ---- Cloud Scheduler: hourly monitor ----
     monitor_scheduler = cloudscheduler.Job(
         "error-monitor-scheduler",
         name="error-monitor-trigger",
-        description="Trigger error monitor Cloud Run Job every 15 minutes",
+        description="Trigger error monitor Cloud Run Job hourly",
         region=REGION,
         schedule=ErrorMonitorConfig.MONITOR_SCHEDULE,
         time_zone="UTC",

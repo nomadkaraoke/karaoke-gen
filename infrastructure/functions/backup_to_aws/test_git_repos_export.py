@@ -1,5 +1,6 @@
 """Tests for git_repos_export module."""
 
+import datetime
 import json
 import subprocess
 from unittest.mock import MagicMock, patch
@@ -59,7 +60,13 @@ def _fake_gcs():
     return client, uploads
 
 
-def _run(pages, subprocess_side_effect=None, max_repo_size_kb=git_repos_export.DEFAULT_MAX_REPO_SIZE_KB):
+def _run(
+    pages,
+    subprocess_side_effect=None,
+    max_repo_size_kb=git_repos_export.DEFAULT_MAX_REPO_SIZE_KB,
+    existing_backups=None,
+    full_refresh=False,
+):
     client, uploads = _fake_gcs()
     run_mock = MagicMock()
     if subprocess_side_effect is not None:
@@ -76,6 +83,8 @@ def _run(pages, subprocess_side_effect=None, max_repo_size_kb=git_repos_export.D
             github_token="ghp_test",
             owners=["nomadkaraoke", "beveradb"],
             max_repo_size_kb=max_repo_size_kb,
+            existing_backups=existing_backups,
+            full_refresh=full_refresh,
         )
     return summary, uploads, run_mock
 
@@ -280,3 +289,81 @@ def test_get_github_token_missing_returns_empty_string():
     client.access_secret_version.side_effect = Exception("NOT_FOUND: no versions")
     with patch("git_repos_export.secretmanager.SecretManagerServiceClient", return_value=client):
         assert get_github_token("nomadkaraoke") == ""
+
+
+# ---------------------------------------------------------------------------
+# Incremental (only re-bundle repos pushed since their bundle reached S3)
+# ---------------------------------------------------------------------------
+
+def _utc(s):
+    return datetime.datetime.fromisoformat(s).replace(tzinfo=datetime.timezone.utc)
+
+
+def _cloned(run_mock):
+    return [c.args[0][-2] for c in run_mock.call_args_list if c.args[0][:2] == ["git", "clone"]]
+
+
+def test_unchanged_repo_is_not_recloned_or_restaged():
+    pages = [[
+        _make_repo("nomadkaraoke", "quiet", pushed_at="2026-09-01T00:00:00Z"),
+        _make_repo("nomadkaraoke", "busy", pushed_at="2026-09-20T00:00:00Z"),
+    ]]
+    existing = {
+        "git-repos/nomadkaraoke/quiet.bundle": _utc("2026-09-13T05:00:00"),
+        "git-repos/nomadkaraoke/busy.bundle": _utc("2026-09-13T05:00:00"),
+    }
+    summary, uploads, run_mock = _run(pages, existing_backups=existing)
+
+    assert _cloned(run_mock) == ["https://github.com/nomadkaraoke/busy.git"]
+    assert "git-repos/nomadkaraoke/quiet.bundle" not in uploads
+    assert "git-repos/nomadkaraoke/busy.bundle" in uploads
+    manifest = _manifest(uploads)
+    statuses = {r["full_name"]: r["status"] for r in manifest["repos"]}
+    assert statuses == {"nomadkaraoke/quiet": "unchanged", "nomadkaraoke/busy": "bundled"}
+    assert manifest["unchanged"] == 1 and manifest["bundled"] == 1
+    assert "1 unchanged" in summary
+
+
+def test_repo_missing_from_s3_is_bundled():
+    pages = [[_make_repo("nomadkaraoke", "new", pushed_at="2026-01-01T00:00:00Z")]]
+    _, uploads, _ = _run(pages, existing_backups={})
+    assert "git-repos/nomadkaraoke/new.bundle" in uploads
+
+
+def test_push_just_before_upload_is_rebundled():
+    # Push landed 10 min before the bundle hit S3 — it may have been after the
+    # clone, so it must NOT be treated as backed up.
+    pages = [[_make_repo("nomadkaraoke", "racy", pushed_at="2026-09-13T04:50:00Z")]]
+    existing = {"git-repos/nomadkaraoke/racy.bundle": _utc("2026-09-13T05:00:00")}
+    _, uploads, _ = _run(pages, existing_backups=existing)
+    assert "git-repos/nomadkaraoke/racy.bundle" in uploads
+
+
+def test_missing_pushed_at_is_bundled():
+    pages = [[_make_repo("nomadkaraoke", "odd", pushed_at=None)]]
+    existing = {"git-repos/nomadkaraoke/odd.bundle": _utc("2026-09-13T05:00:00")}
+    _, uploads, _ = _run(pages, existing_backups=existing)
+    assert "git-repos/nomadkaraoke/odd.bundle" in uploads
+
+
+def test_full_refresh_ignores_existing_backups():
+    pages = [[_make_repo("nomadkaraoke", "quiet", pushed_at="2026-09-01T00:00:00Z")]]
+    existing = {"git-repos/nomadkaraoke/quiet.bundle": _utc("2026-09-13T05:00:00")}
+    _, uploads, _ = _run(pages, existing_backups=existing, full_refresh=True)
+    assert "git-repos/nomadkaraoke/quiet.bundle" in uploads
+    assert _manifest(uploads)["full_refresh"] is True
+
+
+def test_all_unchanged_plus_an_error_is_not_systemic():
+    def side_effect(cmd, **kw):
+        raise subprocess.CalledProcessError(128, cmd, output=b"", stderr=b"fatal: not found")
+
+    pages = [[
+        _make_repo("nomadkaraoke", "quiet", pushed_at="2026-09-01T00:00:00Z"),
+        _make_repo("nomadkaraoke", "broken", pushed_at="2026-09-20T00:00:00Z"),
+    ]]
+    existing = {"git-repos/nomadkaraoke/quiet.bundle": _utc("2026-09-13T05:00:00")}
+    summary, uploads, _ = _run(pages, subprocess_side_effect=side_effect, existing_backups=existing)
+    manifest = _manifest(uploads)
+    assert manifest["errors"] == 1 and manifest["unchanged"] == 1
+    assert "Bundled 0/2" in summary

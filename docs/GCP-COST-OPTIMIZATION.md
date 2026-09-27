@@ -171,3 +171,19 @@ If all optimizations implemented:
 - **2026-02-10:** Initial analysis and GitHub runner optimization implemented
 - **2026-02-10:** Runners reduced from 20 → 3 with auto-scaling, saving $1,390/month
 - **2026-03-03:** Added dedicated on-demand build runner (`e2-standard-8`) for Docker deploys to prevent spot preemption during builds (~$0.27/hr only when deploying)
+
+## 2026-09-26 cuts (post-credit-expiry, target: whole project < $300/mo)
+
+| Change | Where | Est. saving |
+|--------|-------|-------------|
+| Deleted serverless VPC connector `cloud-run-connector` (flacfetch is off-GCP on a public URL) | `__main__.py`, `cloud_run.py`, `ci.yml` (`--clear-vpc-connector`) | ~$12/mo + Network Intelligence resource-hours |
+| `karaoke-backend` min-instances 2 → 1 (accepted: big bursts may hit a ~15s cold start) | `ci.yml` | ~$25/mo |
+| Autoclass on `karaoke-gen-storage-nomadkaraoke` (terminal NEARLINE) and `nomadkaraoke-divebar-files` (terminal ARCHIVE) | `storage.py`, `divebar_mirror.py` | ~$9–17/mo once objects cool (30d+) |
+| `nomadkaraoke-data` (raw Spotify ETL, 158 GiB) → ARCHIVE after 30d | karaoke-decide `infrastructure/__main__.py` | ~$3/mo |
+| DR git bundles weekly + incremental (only repos pushed since last S3 upload) | `functions/backup_to_aws/` | cross-cloud egress |
+| Error monitor every 15 min → hourly (lookback 60 min) | `config.py`, `backend/services/error_monitor/config.py` | Cloud Run Job + Logging API |
+| Firestore PITR disabled (nightly export remains) | `database.py` | PITR storage |
+| `recover-stuck-downloads` / `retry-pending-render-jobs` every 5 → 10 min | `__main__.py` | ~half their Firestore reads |
+
+Kept: the `audio-separator` Cloud Run GPU service (still used by external remote-CLI
+clients; already scale-to-zero).

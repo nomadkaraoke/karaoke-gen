@@ -43,6 +43,16 @@ def create_bucket() -> storage.Bucket:
             ),
         ],
         versioning=storage.BucketVersioningArgs(enabled=True),
+        # Autoclass (2026-09-26 GCP cost cut): objects not read for 30 days move
+        # to Nearline automatically and back to Standard on the next read, with
+        # no retrieval or early-deletion fees (operations bill at Standard
+        # rates). Terminal class NEARLINE (not ARCHIVE) because customers
+        # re-download old job outputs. Incompatible with lifecycle
+        # SetStorageClass rules — only Delete rules may live below.
+        autoclass=storage.BucketAutoclassArgs(
+            enabled=True,
+            terminal_storage_class="NEARLINE",
+        ),
         soft_delete_policy=storage.BucketSoftDeletePolicyArgs(retention_duration_seconds=604800),
         lifecycle_rules=[
             storage.BucketLifecycleRuleArgs(

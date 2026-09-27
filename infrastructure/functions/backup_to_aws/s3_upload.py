@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import boto3
 from boto3.s3.transfer import TransferConfig
-from botocore.exceptions import ClientError
 from google.cloud import storage, secretmanager
 
 logger = logging.getLogger(__name__)
@@ -92,27 +91,65 @@ def _dedupe_final_duplicates(blobs: list) -> tuple[list, int]:
     return kept, dup_count
 
 
-def _s3_object_matches(s3_client, s3_bucket: str, key: str, size) -> bool:
+# Prefixes that are always overwritten in S3 (no "already present" skip). The
+# git-repo step only stages bundles whose repo actually changed, plus the
+# manifest, so everything staged under git-repos/ is new content — and a
+# changed bundle can coincidentally keep the same byte size, which the
+# size-based skip would wrongly treat as "already backed up".
+_ALWAYS_OVERWRITE_PREFIXES = ("git-repos/",)
+
+
+def _dir_prefix(key: str) -> str:
+    return key.rsplit("/", 1)[0] + "/" if "/" in key else ""
+
+
+def _list_s3_sizes(s3_client, s3_bucket: str, keys) -> dict:
+    """Map ``key -> size`` for the S3 objects that share a directory with any of
+    ``keys``.
+
+    Uses ListObjectsV2 (one delimited listing per distinct directory) rather than
+    a HEAD per object: the ``backup-writer`` IAM user has ``s3:ListBucket`` +
+    ``s3:PutObject`` but NOT ``s3:GetObject``, so S3 answers HEAD on an
+    *existing* key with 403 — which made every overwrite (git bundles, manifest,
+    re-written job files) fail from 2026-09-14 (#997) until 2026-09-26. Listing
+    is also far fewer requests than one HEAD per file.
+    """
+    sizes: dict = {}
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for prefix in sorted({_dir_prefix(k) for k in keys}):
+        for page in paginator.paginate(Bucket=s3_bucket, Prefix=prefix, Delimiter="/"):
+            for obj in page.get("Contents", []):
+                sizes[obj["Key"]] = obj["Size"]
+    return sizes
+
+
+def list_s3_objects(s3_client, s3_bucket: str, prefix: str) -> dict:
+    """Map ``key -> LastModified`` (tz-aware datetime) for every S3 object under
+    ``prefix`` (recursive). Used by the git-repo step to find which bundles are
+    already off-site and when they were uploaded."""
+    found: dict = {}
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=s3_bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            found[obj["Key"]] = obj["LastModified"]
+    return found
+
+
+def _already_in_s3(existing_sizes: dict, key: str, size) -> bool:
     """True if S3 already holds ``key`` with the same byte size. Lets the nightly
     skip anything already backed up — making it genuinely incremental and
     self-healing (a file left in staging by a prior timeout/error is not
     re-transferred once it lands in S3)."""
-    if size is None:
+    if size is None or key.startswith(_ALWAYS_OVERWRITE_PREFIXES):
         return False
-    try:
-        head = s3_client.head_object(Bucket=s3_bucket, Key=key)
-    except ClientError as e:
-        if e.response.get("Error", {}).get("Code") in ("404", "NoSuchKey", "NotFound"):
-            return False
-        raise
-    return head.get("ContentLength") == size
+    return existing_sizes.get(key) == size
 
 
-def _transfer_blob(blob, s3_client, s3_bucket: str) -> str:
+def _transfer_blob(blob, s3_client, s3_bucket: str, existing_sizes: dict) -> str:
     """Idempotently move one staging blob to S3, deleting it from staging on
     success. Returns 'uploaded', 'skipped_exists', or 'error'."""
     try:
-        if _s3_object_matches(s3_client, s3_bucket, blob.name, blob.size):
+        if _already_in_s3(existing_sizes, blob.name, blob.size):
             blob.delete()
             return "skipped_exists"
         with blob.open("rb") as gcs_file:
@@ -129,6 +166,17 @@ def _transfer_blob(blob, s3_client, s3_bucket: str) -> str:
         return "error"
 
 
+def get_s3_client(project: str = "nomadkaraoke"):
+    """boto3 S3 client authenticated as the backup-writer IAM user."""
+    aws_creds = get_aws_credentials(project)
+    return boto3.client(
+        "s3",
+        aws_access_key_id=aws_creds["access_key_id"],
+        aws_secret_access_key=aws_creds["secret_access_key"],
+        region_name=aws_creds.get("region", "us-east-1"),
+    )
+
+
 def get_aws_credentials(project: str) -> dict:
     """Retrieve AWS credentials from GCP Secret Manager."""
     client = secretmanager.SecretManagerServiceClient()
@@ -142,6 +190,7 @@ def upload_staging_to_s3(
     s3_bucket: str,
     project: str = "nomadkaraoke",
     exclude_prefixes: list | None = None,
+    include_prefixes: list | None = None,
 ) -> str:
     """Upload staging-bucket objects to S3, incrementally and in parallel.
 
@@ -150,14 +199,16 @@ def upload_staging_to_s3(
     on non-weekly days — it stays in GCS staging as a daily local restore point
     and is uploaded only on the weekly run). Excluded objects are left in staging
     (not deleted), so they remain a local backup until the GCS lifecycle policy
-    or the next weekly upload removes them.
+    or the next weekly upload removes them. ``include_prefixes`` (optional)
+    restricts the run to objects under those prefixes (used by the manual
+    ``?mode=git_repos`` trigger).
 
     Efficiency:
       * **Deduped** — byte-identical duplicate finals are dropped so the largest
         data is stored/transferred once (see ``_dedupe_final_duplicates``).
-      * **Incremental** — objects already in S3 (same key + size) are skipped, so
-        only genuinely new/changed bytes cross the wire and a prior partial run
-        self-heals (see ``_s3_object_matches``).
+      * **Incremental** — objects already in S3 (same key + size, found via
+        ListObjectsV2) are skipped, so only genuinely new/changed bytes cross
+        the wire and a prior partial run self-heals (see ``_already_in_s3``).
       * **Parallel** — transfers fan out across a thread pool instead of a single
         serialized stream.
 
@@ -166,13 +217,7 @@ def upload_staging_to_s3(
     timeout can only cost the replaceable finals.
     """
     exclude_prefixes = exclude_prefixes or []
-    aws_creds = get_aws_credentials(project)
-    s3_client = boto3.client(
-        "s3",
-        aws_access_key_id=aws_creds["access_key_id"],
-        aws_secret_access_key=aws_creds["secret_access_key"],
-        region_name=aws_creds.get("region", "us-east-1"),
-    )
+    s3_client = get_s3_client(project)
 
     gcs_client = storage.Client()
     bucket = gcs_client.bucket(staging_bucket)
@@ -182,6 +227,7 @@ def upload_staging_to_s3(
         for blob in bucket.list_blobs()
         if not (blob.name.startswith(".") or "/.last_sync" in blob.name)
         and not any(blob.name.startswith(p) for p in exclude_prefixes)
+        and (include_prefixes is None or any(blob.name.startswith(p) for p in include_prefixes))
     ]
 
     candidates, dup_count = _dedupe_final_duplicates(candidates)
@@ -192,6 +238,8 @@ def upload_staging_to_s3(
     critical = [b for b in candidates if not _is_large_last(b.name)]
     bulk = [b for b in candidates if _is_large_last(b.name)]
 
+    existing_sizes = _list_s3_sizes(s3_client, s3_bucket, [b.name for b in candidates])
+
     counts = {"uploaded": 0, "skipped_exists": 0, "error": 0}
 
     def run_phase(phase_blobs):
@@ -199,7 +247,7 @@ def upload_staging_to_s3(
             return
         with ThreadPoolExecutor(max_workers=_MAX_UPLOAD_WORKERS) as pool:
             for result in pool.map(
-                lambda b: _transfer_blob(b, s3_client, s3_bucket), phase_blobs
+                lambda b: _transfer_blob(b, s3_client, s3_bucket, existing_sizes), phase_blobs
             ):
                 counts[result] += 1
 

@@ -380,6 +380,8 @@ class ErrorMonitorConfig:
     CPU = "1"
     TIMEOUT = "300s"
     MAX_RETRIES = 0
-    MONITOR_SCHEDULE = "*/15 * * * *"  # Every 15 minutes UTC
+    # Hourly (was every 15 min; 2026-09-26 cost cut). Must match
+    # backend/services/error_monitor/config.py LOOKBACK_MINUTES (60).
+    MONITOR_SCHEDULE = "0 * * * *"
     DIGEST_SCHEDULE = "0 8 * * *"  # 08:00 UTC daily
     SCHEDULER_SA_NAME = "error-monitor-scheduler"

@@ -790,7 +790,7 @@ def _park_job_for_capacity_retry(
 
     The user-facing message tells the user this is temporary and will retry
     automatically — no action needed. Auto-retry is driven by the
-    /api/internal/retry-pending-render-jobs endpoint, fired every 5 min by
+    /api/internal/retry-pending-render-jobs endpoint, fired every 10 min by
     Cloud Scheduler.
     """
     now = datetime.now(UTC).isoformat()
@@ -850,7 +850,7 @@ def park_active_render_jobs_for_shutdown() -> int:
 
     Parking transitions the job to RENDER_PENDING_CAPACITY, which the
     `/api/internal/retry-pending-render-jobs` Cloud Scheduler job picks up
-    every 5 minutes.
+    every 10 minutes.
 
     Only jobs currently in the RENDERING_VIDEO state are parked — if the
     worker completed concurrently (or the job was already moved past this

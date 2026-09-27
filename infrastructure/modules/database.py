@@ -29,7 +29,9 @@ def create_database() -> dict:
         type="FIRESTORE_NATIVE",
         concurrency_mode="PESSIMISTIC",
         app_engine_integration_mode="DISABLED",
-        point_in_time_recovery_enablement="POINT_IN_TIME_RECOVERY_ENABLED",
+        # PITR disabled 2026-09-26 (cost cut): the backup-to-aws function exports
+        # Firestore nightly to GCS staging (1-day local RPO) and weekly to S3.
+        point_in_time_recovery_enablement="POINT_IN_TIME_RECOVERY_DISABLED",
     )
     resources["firestore_db"] = firestore_db
 

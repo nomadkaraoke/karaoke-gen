@@ -271,33 +271,23 @@ def create_audio_separation_job(
 def create_audio_download_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,
-    vpc_connector: object = None,
 ) -> cloudrunv2.Job:
     """
     Create the Cloud Run Job for audio downloading.
 
-    Downloads audio from Spotify/YouTube/RED/OPS via the flacfetch VM,
-    then triggers audio separation and lyrics workers.
-
-    Requires VPC access to reach the flacfetch VM on its internal IP.
+    Downloads audio from Spotify/YouTube/RED/OPS via the flacfetch service
+    (public HTTPS URL from the flacfetch-api-url secret), then triggers audio
+    separation and lyrics workers.
 
     Typical duration: 30s-5 minutes (depending on source)
 
     Args:
         bucket: The GCS bucket for job artifacts.
         service_account: The service account to run the job.
-        vpc_connector: VPC connector for accessing flacfetch VM (optional).
 
     Returns:
         cloudrunv2.Job: The Cloud Run Job resource.
     """
-    # Build VPC access config if connector provided
-    vpc_access = None
-    if vpc_connector:
-        vpc_access = cloudrunv2.JobTemplateTemplateVpcAccessArgs(
-            connector=vpc_connector.id,
-            egress="PRIVATE_RANGES_ONLY",
-        )
 
     audio_download_job = cloudrunv2.Job(
         "audio-download-job",
@@ -398,7 +388,6 @@ def create_audio_download_job(
                 # strictly below this so it fails cleanly before Cloud Run kills it.
                 timeout="1200s",
                 max_retries=2,
-                vpc_access=vpc_access,
             ),
         ),
     )
@@ -409,25 +398,18 @@ def create_audio_download_job(
 def create_bulk_search_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,
-    vpc_connector: object = None,
 ) -> cloudrunv2.Job:
     """
     Create the Cloud Run Job for Bulk Mode batch audio search.
 
     Processes every job in a batch (state_data.batch_id): runs each audio search
-    via the flacfetch VM, auto-selects confident lossless matches (triggering the
+    via flacfetch, auto-selects confident lossless matches (triggering the
     audio-download-job), and parks the rest in AWAITING_AUDIO_SELECTION.
 
-    Requires VPC access to reach the flacfetch VM. Longer timeout than the download
+    Longer timeout than the download
     job because a batch can contain up to 100 songs. Idempotent across retries
     (only re-processes jobs still flagged bulk_pending_search), so retries=1.
     """
-    vpc_access = None
-    if vpc_connector:
-        vpc_access = cloudrunv2.JobTemplateTemplateVpcAccessArgs(
-            connector=vpc_connector.id,
-            egress="PRIVATE_RANGES_ONLY",
-        )
 
     bulk_search_job = cloudrunv2.Job(
         "bulk-search-job",
@@ -503,7 +485,6 @@ def create_bulk_search_job(
                 service_account=service_account.email,
                 timeout="3600s",  # up to 100 songs per batch
                 max_retries=1,
-                vpc_access=vpc_access,
             ),
         ),
     )

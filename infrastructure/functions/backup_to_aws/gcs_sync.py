@@ -18,8 +18,16 @@ def sync_gcs_to_staging(
 ) -> str:
     """Copy new/changed objects from source to staging bucket.
 
-    Uses object metadata (updated time) to detect changes since last sync.
-    The staging bucket stores a marker file with the last sync timestamp.
+    Uses each object's ``time_created`` (the creation time of its current
+    generation — an overwrite creates a new generation) to detect new/changed
+    content since the last sync. The staging bucket stores a marker file with
+    the last sync timestamp.
+
+    Deliberately NOT ``updated``: that is bumped by any *metadata* change,
+    including Autoclass storage-class transitions (enabled on the job-files
+    bucket 2026-09-26). Keying on it would re-copy every object each time it
+    cooled to Nearline — and the copy's read would pull it straight back to
+    Standard, defeating Autoclass.
 
     Args:
         source_bucket: Source GCS bucket name.
@@ -48,18 +56,19 @@ def sync_gcs_to_staging(
     for prefix in prefixes:
         blobs = src.list_blobs(prefix=prefix)
         for blob in blobs:
-            if not blob.updated:
+            created = blob.time_created
+            if not created:
                 continue
 
-            if last_sync_dt and blob.updated <= last_sync_dt:
+            if last_sync_dt and created <= last_sync_dt:
                 continue
 
             dst_path = f"{staging_prefix}{blob.name}"
             src.copy_blob(blob, dst, dst_path)
             copied += 1
 
-            if latest_updated_dt is None or blob.updated > latest_updated_dt:
-                latest_updated_dt = blob.updated
+            if latest_updated_dt is None or created > latest_updated_dt:
+                latest_updated_dt = created
 
             if copied >= max_objects:
                 logger.warning(f"Hit max_objects limit ({max_objects})")

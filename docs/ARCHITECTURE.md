@@ -50,7 +50,7 @@
 ### Error Monitor
 
 ```text
-Cloud Logging (all services) ──→ Error Monitor (Cloud Run Job, */15 min)
+Cloud Logging (all services) ──→ Error Monitor (Cloud Run Job, hourly)
 Frontend clients ───────────────→ POST /api/client-errors ──→ Firestore
                                     │
                                     ├─ Normalize & deduplicate
@@ -262,7 +262,7 @@ LyricsTranscriber                 LyricsTranscriber
 | karaoke-decide | Song catalog (MusicBrainz + Spotify) for autocomplete | Optional |
 | KaraokeNerds | Community karaoke version detection | Optional |
 
-*Flacfetch runs on a dedicated GCE VM with YouTube cookies and tracker access. Without it, YouTube downloads will fail due to bot detection on Cloud Run IPs.
+*Flacfetch runs on a dedicated server (Netcup VPS, reached over public HTTPS) with YouTube cookies and tracker access. Without it, YouTube downloads will fail due to bot detection on Cloud Run IPs.
 
 ### Data Pipeline Cloud Functions
 
@@ -494,7 +494,7 @@ Audio can come from file upload or remote search (YouTube, torrents). All YouTub
                               │
                               ▼
 ┌──────────────────────────────────────────────────────────────────────┐
-│                      Flacfetch VM (GCE)                               │
+│              Flacfetch server (Netcup VPS, off-GCP)                   │
 │                                                                      │
 │  • Has YouTube cookies (avoids bot detection)                        │
 │  • Has tracker credentials (RED, OPS private trackers)               │
@@ -504,7 +504,10 @@ Audio can come from file upload or remote search (YouTube, torrents). All YouTub
 ```
 
 **Key environment variables**:
-- `FLACFETCH_API_URL` - URL of flacfetch VM (e.g., `http://10.x.x.x:8080`)
+- `FLACFETCH_API_URL` - public HTTPS URL of the flacfetch server (secret `flacfetch-api-url`). The
+  serverless VPC connector that once let Cloud Run reach the old GCE VM's private IP was deleted
+  2026-09-26; the backend and `audio-download-job` / `bulk-search-job` have no VPC egress, so every
+  dependency they call must be reachable on a public address.
 - `FLACFETCH_API_KEY` - API key for authentication
 
 ## Worker Execution
@@ -582,7 +585,10 @@ Audio stem separation runs **directly inside the audio worker Cloud Run Job** �
 - **Two-stage ensemble preset** — `instrumental_clean` (stage 1) + `karaoke` (stage 2).
 - **Model cache** — Models are downloaded to `model_file_dir` (GCS-backed or local) and reused across executions.
 
-**Rollback**: The old audio-separator Cloud Run Service (HTTP endpoint) is kept for rollback but no longer receives traffic. It will be removed in a future phase.
+**The `audio-separator` Cloud Run GPU service** (us-east4, scale-to-zero) is no longer used by
+prod gen jobs, but it still serves external remote-separation clients (`audio-separator-remote` /
+local `karaoke-gen` CLI with `AUDIO_SEPARATOR_API_URL`; ~40 `/separate` calls/month as of
+2026-09). Keep it at min-instances 0; don't remove it without checking its request logs first.
 
 ### Quick version (kjbox make-it jobs)
 

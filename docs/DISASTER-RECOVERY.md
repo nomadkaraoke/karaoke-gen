@@ -14,7 +14,7 @@
 | BigQuery (monthly) | S3 `bigquery/musicbrainz/` | Load Parquet files | 30 days |
 | BigQuery (Spotify) | S3 `bigquery/spotify/` | Load from Glacier Deep Archive | N/A (static) |
 | GCS job files | S3 `gcs/job-files/` | Sync to new bucket | 24h |
-| Git repos (code) | S3 `git-repos/{owner}/{repo}.bundle` (+ `manifest.json`) | `git clone <bundle>` then push to a new remote | 24h |
+| Git repos (code) | S3 `git-repos/{owner}/{repo}.bundle` (+ `manifest.json`) | `git clone <bundle>` then push to a new remote | 7 days (weekly, Sundays; incremental) |
 | Secret Manager | S3 `secrets/YYYY-MM-DD.bin` (sealed-box encrypted) | Decrypt with private key from KeepassXC | 24h |
 | AWS credentials (function) | GCP Secret Manager `aws-backup-credentials` | Read directly | On-change |
 | AWS credentials (offline) | KeepassXC — "Nomad Karaoke — DR backup AWS access" | Manual lookup | On-change |
@@ -25,7 +25,7 @@
 - [ ] KeepassXC contains "Nomad Karaoke — DR backup AWS access" (access key, secret key, region, S3 bucket name)
 - [ ] KeepassXC contains "Nomad Karaoke — DR backup decryption key" (Curve25519 private key, 64 hex chars)
 - [ ] GitHub repo `nomadkaraoke/karaoke-gen` has the secrets `AWS_BACKUP_READONLY_ACCESS_KEY_ID`, `AWS_BACKUP_READONLY_SECRET_ACCESS_KEY`, `DR_MONITOR_DISCORD_WEBHOOK` configured (powers the freshness monitor)
-- [ ] GCP Secret Manager `github-backup-token` holds a valid GitHub PAT (`repo` + `read:org`) so the nightly job can bundle every repo — without it the git-repo backup silently skips (see § "Git repo backup setup")
+- [ ] GCP Secret Manager `github-backup-token` holds a valid GitHub PAT (`repo` + `read:org`) so the weekly git step can bundle every repo — without it the git-repo backup silently skips (see § "Git repo backup setup")
 - [ ] You can decrypt yesterday's secrets backup locally (run the drill in § "Quarterly restore drill")
 - [ ] Your KeepassXC database itself is backed up off-machine (cloud sync, second device, or printed paper recovery)
 
@@ -35,13 +35,15 @@ If any of these fail, fix them now — not during an incident.
 
 ### Firestore Recovery
 
-**Option A — PITR (fastest, within 7 days):**
+**Option A — last night's local export (fastest, within 24h):**
+
+Point-in-time recovery was **disabled on 2026-09-26** (GCP cost cut), so there
+is no PITR restore any more. The backup function exports Firestore nightly to
+`gs://nomadkaraoke-backup-staging/firestore/<YYYY-MM-DD>/` (only the latest
+night is kept):
 ```bash
-gcloud firestore databases restore \
-  --source-database="(default)" \
-  --destination-database="(default)-restored" \
-  --snapshot-time="2026-03-28T12:00:00Z" \
-  --project=nomadkaraoke
+LATEST=$(gcloud storage ls gs://nomadkaraoke-backup-staging/firestore/ | sort | tail -1)
+gcloud firestore import "$LATEST" --project=nomadkaraoke
 ```
 
 **Option B — Import from S3 backup:**
@@ -307,7 +309,7 @@ Some external services lock to redirect URIs or treat the old GCP project ID as 
 
 If the GitHub account is suspended (e.g. an automated copyright false-positive)
 or repos are taken down, **the code and its full history are still in S3**. The
-nightly backup bundles every repo under `github.com/nomadkaraoke` and
+weekly backup bundles every repo under `github.com/nomadkaraoke` and
 `github.com/beveradb` into a single `git bundle` per repo — a self-contained
 file you can clone from directly, no GitHub required. GCP is unaffected, so
 production keeps running; this is purely about recovering the source of truth to
@@ -322,8 +324,15 @@ a new home.
   flags, and per-repo backup status. Use it to know exactly what existed and to
   recreate repo settings on the new host.
 
-Forks are excluded by default (recoverable from upstream). Repos are only as
-fresh as the last nightly run (24h RPO).
+Forks are excluded by default (recoverable from upstream). The git step runs
+**weekly (Sundays)** and is **incremental** (since 2026-09-26, to cut
+cross-cloud egress): a repo is only re-cloned and re-uploaded when its GitHub
+`pushed_at` is newer than its bundle's S3 upload time (minus a 1h safety lag);
+unchanged repos show `"status": "unchanged"` in the manifest and keep their
+existing S3 bundle. The first Sunday of each month re-bundles everything. So a
+bundle is at most ~7 days behind (7-day RPO). To force a run now:
+`?mode=git_repos` (incremental) or `?mode=git_repos&full=1` (all repos) — see
+§ "Git repo backup setup".
 
 ### Restore
 
@@ -399,15 +408,16 @@ One-time setup so the nightly job can bundle private repos:
 3. The owners backed up are set by the `GIT_BACKUP_OWNERS` env var on the
    `backup-to-aws` function (default `nomadkaraoke,beveradb`), wired in
    `infrastructure/modules/backup.py`.
-4. Trigger a run and confirm bundles appear:
+4. Trigger a git-only run (skips Firestore/BigQuery/GCS/secrets, so it is
+   safe to run any time) and confirm bundles appear:
    ```bash
    curl -X POST -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-     https://us-central1-nomadkaraoke.cloudfunctions.net/backup-to-aws
+     "https://us-central1-nomadkaraoke.cloudfunctions.net/backup-to-aws?mode=git_repos"
    aws s3 ls s3://nomadkaraoke-backup/git-repos/ --recursive | head
    ```
 
 If the PAT is missing/expired the git-repo step logs a warning and skips; the
-freshness monitor then flags `git-repos/` as stale within ~36h.
+freshness monitor then flags `git-repos/manifest.json` as stale within ~8 days.
 
 ## Decrypting the secrets backup
 
@@ -449,14 +459,15 @@ export AWS_DEFAULT_REGION=us-east-1
 
 ## Backup freshness monitor
 
-A GitHub Actions cron (`.github/workflows/dr-backup-freshness.yml`) runs daily at 14:00 UTC and checks that the most recent objects in `s3://nomadkaraoke-backup/firestore/`, `gcs/job-files/`, `secrets/`, `bigquery/daily-refresh/`, and `git-repos/` are no older than their per-prefix limit. Stale or missing backups → Discord alert + workflow failure.
+A GitHub Actions cron (`.github/workflows/dr-backup-freshness.yml`) runs daily at 14:00 UTC and checks that the most recent objects in `s3://nomadkaraoke-backup/firestore/`, `gcs/job-files/`, `secrets/`, `bigquery/daily-refresh/`, and `git-repos/manifest.json` are no older than their per-prefix limit. Stale or missing backups → Discord alert + workflow failure.
 
 Per-prefix limits reflect each prefix's **S3 (off-site)** cadence, which is not the same as its GCS-staging cadence:
 
 | Prefix | S3 upload cadence | Monitor limit |
 |--------|-------------------|---------------|
-| `gcs/job-files/`, `secrets/`, `git-repos/` | nightly | 36h |
+| `gcs/job-files/`, `secrets/` | nightly | 36h |
 | `firestore/`, `bigquery/daily-refresh/` | weekly (Sundays) | 192h (≈8 days) |
+| `git-repos/manifest.json` | weekly (Sundays), incremental | 192h (≈8 days) + manifest must not show 0 bundled/unchanged with errors |
 
 Firestore exports to GCS staging nightly (24h local restore point) but only ships to S3 weekly to cut cross-cloud egress (see `backup_to_aws/main.py` → `firestore_to_s3_today`). The monitor only sees the S3 copy, so its Firestore limit must allow a full week — using the 36h nightly figure caused a false "DR backup is stale" alert every Tue–Sat (fixed 2026-06-18).
 
@@ -534,3 +545,21 @@ re-import). The raw source files are not.
 | S3 data transfer out to GCP | ~$0.09/GB |
 | Full Spotify dataset retrieval + transfer (~100 GB) | ~$25 total |
 | Full GCS job-files egress (~150 GB) | ~$14 |
+
+## Incident: S3 overwrites silently failing 2026-09-14 → 2026-09-26
+
+The incremental S3 upload (#997) checked "already in S3?" with `HeadObject`,
+but the `backup-writer` IAM user only has `s3:ListBucket` + `s3:PutObject`
+(no `s3:GetObject`). S3 answers HEAD on a *missing* key with 404 (fine — the
+file uploaded) but on an *existing* key with **403**, so every **overwrite**
+errored: git bundles + `manifest.json` stopped updating after 09-15 (the
+freshness monitor failed daily on `git-repos/`), and re-written job files
+(e.g. `lyrics/corrections_updated.json`, `karaoke.lrc`, re-rendered screens)
+kept their older S3 copy. New keys (dated secrets/Firestore exports, new job
+files) were unaffected. Fixed 2026-09-26 by switching the existence check to
+`ListObjectsV2` (`s3_upload._list_s3_sizes`); a manual `?mode=git_repos` run
+refreshed all changed bundles the same day. Re-written job files from
+09-14..09-19 aged out of the 7-day staging lifecycle before the fix, so S3
+holds their previous version (primary copies in GCS are intact; not
+backfilled). Lesson: the IAM user is intentionally write+list only — test new
+S3 calls against it, not an admin credential.

@@ -797,7 +797,7 @@ async def retry_pending_render_jobs(
     """
     Auto-retry jobs parked in RENDER_PENDING_CAPACITY.
 
-    Called every 5 minutes by Cloud Scheduler. When the GCE encoding worker
+    Called every 10 minutes by Cloud Scheduler. When the GCE encoding worker
     can't be started because the zone is exhausted, the render worker parks
     the job in this state instead of failing it. This endpoint re-attempts
     the render — when GCE has capacity, the start succeeds and the job
@@ -954,7 +954,7 @@ async def recover_stuck_jobs(
     """
     Detect and recover jobs stuck in a processing status.
 
-    Called by Cloud Scheduler (every 5 minutes) or manually from admin.
+    Called by Cloud Scheduler (every 10 minutes) or manually from admin.
     - DOWNLOADING_AUDIO stuck >10 min:
         * torrent sources (RED/OPS) → park into DOWNLOAD_PENDING_RETRY and keep
           auto-retrying for up to 24h (handles rare tracks with intermittent

@@ -127,9 +127,9 @@ runbook: **[docs/PYPI-STORAGE-PRUNE.md](PYPI-STORAGE-PRUNE.md)**.
 
 ## Job stuck at `downloading_audio` status
 
-**Cause:** Before v0.130.0, audio downloads ran as FastAPI BackgroundTasks. Cloud Run would terminate "idle" instances mid-download. Since v0.130.0, downloads use a Cloud Run Job (`audio-download-job`) and a Cloud Scheduler recovery job runs every 5 minutes to fail stuck downloads automatically.
+**Cause:** Before v0.130.0, audio downloads ran as FastAPI BackgroundTasks. Cloud Run would terminate "idle" instances mid-download. Since v0.130.0, downloads use a Cloud Run Job (`audio-download-job`) and a Cloud Scheduler recovery job runs every 10 minutes (5 before 2026-09-26) to fail stuck downloads automatically.
 
-**Auto-recovery:** The `recover-stuck-downloads` scheduler (`/api/internal/recover-stuck-jobs`, every 5 min) detects jobs stuck in `downloading_audio` for >10 minutes and, since v0.192.3:
+**Auto-recovery:** The `recover-stuck-downloads` scheduler (`/api/internal/recover-stuck-jobs`, every 10 min) detects jobs stuck in `downloading_audio` for >10 minutes and, since v0.192.3:
 - **Torrent sources (RED/OPS)** → parks the job in `download_pending_retry` and keeps re-attempting the download for up to **24 hours** (handles rare tracks with few/intermittent seeders and transient tracker outages), then fails permanently with a clear message. No manual action needed. See `download_pending_retry` below.
 - **Other sources (YouTube/Spotify/URL)** → fails the job (deterministic); use the admin retry button to re-attempt.
 
@@ -404,7 +404,7 @@ gcloud compute instances describe encoding-worker-a \
 
 **Cause:** The render worker started (VM up, rendering underway) then died mid-render — Cloud Run instance recycle / SIGKILL / OOM / lost GCE VM — without unregistering. `updated_at` stops advancing. Before v0.192.3 nothing recovered this: the capacity-retry cron only looks at `render_pending_capacity`, `recover-stuck-jobs` only looked at `downloading_audio`, and the render Cloud Task has finite attempts.
 
-**Auto-recovery (v0.192.3+):** `recover-stuck-jobs` (every 5 min) now flags a job in `rendering_video` with no progress for **>45 min** (`rendering_video_stuck`) and re-parks it into `render_pending_capacity`, so the existing `retry-pending-render-jobs` cron resets it to `review_complete` and re-renders (same 24h ceiling). No manual action needed.
+**Auto-recovery (v0.192.3+):** `recover-stuck-jobs` (every 10 min) now flags a job in `rendering_video` with no progress for **>45 min** (`rendering_video_stuck`) and re-parks it into `render_pending_capacity`, so the existing `retry-pending-render-jobs` cron resets it to `review_complete` and re-renders (same 24h ceiling). No manual action needed.
 
 **Root-cause fix (v0.224.0+):** the dominant cause of this state was **backend deploys**: the render worker ran as a FastAPI BackgroundTask on the Cloud Run *service*, and every deploy rollout that landed mid-render SIGKILLed it ~10s after SIGTERM (the lifespan "park on shutdown" hook never runs in that scenario — uvicorn waits for background tasks *before* running lifespan shutdown, so it dies waiting; incident 2026-09-13, job `41e06b90`, tenant-E2E run #107). Since v0.224.0 the render worker runs as a **Cloud Run Job** (`video-encoding-job` with a `render_video_worker` args override, flag `USE_CLOUD_RUN_JOBS_FOR_RENDER`), which runs to completion regardless of service deploys — same fix the video worker got in 2026-03 (`USE_CLOUD_RUN_JOBS_FOR_VIDEO`). The 45-min sweep remains as the safety net for the remaining causes (job execution crash/OOM/timeout, lost GCE VM). Rollback: remove `USE_CLOUD_RUN_JOBS_FOR_RENDER=true` from the service env to fall back to the legacy Cloud Tasks path.
 
@@ -436,7 +436,7 @@ gcloud compute instances describe encoding-worker-a \
 
 **Symptoms:** Job status is `render_pending_capacity` (introduced 2026-05-05). User-facing message says *"Encoding capacity is temporarily unavailable. Your job will retry automatically — no action needed."* (As of v0.192.3 a mid-render stall can also land here — see "orphaned render" above.)
 
-**Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM. The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 5 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
+**Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM. The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 10 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
 
 The fallback fleet is diversified across **6 machine families** (broadened to the full pool in v0.195.0): `c4d-highcpu-32` primaries (`encoding-worker-a`/`-b`) in `us-central1-c`, plus 8 stopped fallbacks — `c4d` (`-fallback-a`/`-b`, zones a/b), `n2` (`-n2c`/`-n2f`, zones c/f), `c4` (`-c4a`, zone a), `n4d` (`-n4db`, zone b), `c2d` (`-c2df`, zone f), `n2d` (`-n2da`, zone a). Candidates are tried **fastest-first with a 15-min capacity cooldown** (a family that stocks out is demoted, then re-probed) — see `backend/services/encoding_worker_preference.py`. A single-family region-wide stockout (which took out c4d a/b/c at once on 2026-08-12) now still finds capacity in the 5 other families. If you see EVERY family return stockout, that's a genuinely severe regional event — wait, or add a cross-region fallback. NOTE: creating a *new* fallback VM (or re-creating a deleted one) still needs a one-time boot allocation, so a deep enough crunch can even block provisioning — a `pulumi up` may show the missing VM as "to create / errored" until capacity returns.
 
@@ -452,7 +452,7 @@ print((d.get('state_data') or {}).get('render_pending_capacity'))
 "
 ```
 
-**Force an immediate retry** (Cloud Scheduler runs every 5 min, but you can poke it manually):
+**Force an immediate retry** (Cloud Scheduler runs every 10 min, but you can poke it manually):
 ```bash
 ADMIN_TOKEN=$(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke | cut -d',' -f1)
 curl -X POST https://api.nomadkaraoke.com/api/internal/retry-pending-render-jobs \

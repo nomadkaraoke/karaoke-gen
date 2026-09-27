@@ -258,7 +258,7 @@ def _is_spike(current_count: int, rolling_counts: list[dict]) -> bool:
 class ErrorMonitor:
     """Orchestrates the full production error monitoring pipeline.
 
-    On each run (typically every 15 minutes via Cloud Scheduler), it:
+    On each run (hourly via Cloud Scheduler), it:
 
     1. Queries Cloud Logging for recent errors across all monitored services.
     2. Groups errors into patterns using normalisation + hashing.
