@@ -310,6 +310,16 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                     job_log.info(f"Audio downloaded: {os.path.basename(audio_path)}")
                     download_span.set_attribute("audio_file", os.path.basename(audio_path))
 
+                # Jobs with the user's own instrumental skip separation, so there's
+                # no vocals stem for the review waveform. Derive an approximation
+                # (mix − instrumental) on CPU alongside transcription.
+                derived_vocals_task = None
+                if getattr(job, 'existing_instrumental_gcs_path', None):
+                    derived_vocals_task = asyncio.create_task(asyncio.to_thread(
+                        _store_derived_vocals, job_id, job.existing_instrumental_gcs_path,
+                        audio_path, storage, job_manager, job_log,
+                    ))
+
                 # Set up LyricsTranscriber cache directory and sync from GCS
                 # This allows reusing cached AudioShake/lyrics API responses across Cloud Run instances
                 cache_dir = os.path.join(temp_dir, "lyrics-cache")
@@ -539,6 +549,21 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                 # cancelled on Cloud Run Job event-loop teardown, orphaning jobs at
                 # `downloading`; awaiting guarantees the screens Cloud Task is
                 # enqueued before this worker returns.
+                # Screens pre-computes the vocals peaks, so the derived stem must be
+                # registered before we advance. Never fails the job.
+                if derived_vocals_task is not None:
+                    try:
+                        # shield: on timeout stop waiting but let the thread finish
+                        # on its own (threads can't be cancelled; it cleans up after itself)
+                        await asyncio.wait_for(asyncio.shield(derived_vocals_task), DERIVED_VOCALS_TIMEOUT_SECONDS)
+                    except asyncio.TimeoutError:
+                        job_log.warning(
+                            f"Derived vocals still running after {DERIVED_VOCALS_TIMEOUT_SECONDS}s; "
+                            "continuing without waiting (non-fatal)"
+                        )
+                    except Exception as e:
+                        job_log.warning(f"Derived vocals task failed (non-fatal): {e}")
+
                 job_log.info("Lyrics worker complete, advancing to screen generation...")
                 job_manager.mark_lyrics_complete(job_id)
                 await job_manager.advance_to_screens_if_ready(job_id)
@@ -595,6 +620,44 @@ async def process_lyrics_transcription(job_id: str) -> bool:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
             logger.debug(f"[job:{job_id}] Cleaned up temp directory: {temp_dir}")
+
+
+# Waveform-only nicety: never let it hold up the lyrics -> screens handoff for long.
+DERIVED_VOCALS_TIMEOUT_SECONDS = 180
+
+
+def _store_derived_vocals(job_id, instrumental_gcs_path, mix_path, storage, job_manager, job_log) -> None:
+    """Derive approximate vocals (mix − user instrumental) for the review waveform
+    and register them as stems.vocals_derived. Best-effort: logs and returns on failure.
+
+    Uses its own temp dir (the worker's temp_dir may be removed on failure paths
+    while this thread is still running); only reads mix_path.
+    """
+    import shutil
+    import tempfile
+
+    from backend.services.derived_vocals import derive_vocals_file
+
+    work_dir = tempfile.mkdtemp(prefix="derived-vocals-")
+    try:
+        ext = os.path.splitext(instrumental_gcs_path)[1] or ".audio"
+        inst_path = os.path.join(work_dir, f"user_instrumental{ext}")
+        storage.download_file(instrumental_gcs_path, inst_path)
+        out_path = os.path.join(work_dir, "vocals_derived.flac")
+        result = derive_vocals_file(mix_path, inst_path, out_path)
+        summary = (f"offset {result.offset_samples} samples, gain {result.gain:.3f}, "
+                   f"residual {result.residual_ratio:.2f}")
+        if not result.useful:
+            job_log.info(f"Instrumental didn't cancel against the mix ({summary}); no vocal waveform")
+            return
+        gcs_path = f"jobs/{job_id}/stems/vocals_derived.flac"
+        storage.upload_file(out_path, gcs_path)
+        job_manager.update_file_url(job_id, 'stems', 'vocals_derived', gcs_path)
+        job_log.info(f"Derived vocals for review waveform ({summary})")
+    except Exception as e:
+        job_log.warning(f"Could not derive vocals for review waveform (non-fatal): {e}")
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
 
 
 async def download_audio(

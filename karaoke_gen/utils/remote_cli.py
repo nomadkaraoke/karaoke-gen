@@ -2127,6 +2127,9 @@ class JobMonitor:
             }
             
             for key, blob_path in stems.items():
+                # Review-waveform-only approximation (mix − user instrumental), not a deliverable
+                if key == 'vocals_derived':
+                    continue
                 if blob_path:
                     # Use descriptive filename if available, otherwise use GCS filename
                     filename = stem_name_mappings.get(key, Path(blob_path).name)

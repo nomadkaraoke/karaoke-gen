@@ -11,10 +11,13 @@ def vocals_stem_path(job) -> Optional[str]:
       - "vocals"       : full vocal from a 2-stem split (rare)
       - "vocals_clean" : full vocal from the primary vocal/instrumental
                          split (present on essentially all cloud jobs)
-      - "lead_vocals"  : last-resort fallback (misses backing lines)
+      - "lead_vocals"  : fallback (misses backing lines)
+      - "vocals_derived": mix minus the user's own instrumental, for jobs that
+                         skipped separation (backend/services/derived_vocals.py).
+                         Waveform-only — never a deliverable stem.
     """
     stems = job.file_urls.get("stems", {}) if job.file_urls else {}
-    for key in ("vocals", "vocals_clean", "lead_vocals"):
+    for key in ("vocals", "vocals_clean", "lead_vocals", "vocals_derived"):
         if stems.get(key):
             return stems[key]
     return None
