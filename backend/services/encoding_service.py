@@ -120,7 +120,21 @@ def _parse_resubmit_max() -> int:
 # since the a/b pair moved to Spot on 2026-09-26 — a Spot preemption, which STOPs
 # the VM). A job submitted to a VM in one of these states can never complete:
 # its in-memory job registry and ffmpeg process are gone.
-_STOPPED_VM_STATUSES = frozenset({"STOPPING", "STOPPED", "TERMINATED", "SUSPENDING", "SUSPENDED"})
+# PROVISIONING/STAGING/REPAIRING are included too: the job was accepted by a
+# RUNNING VM, so seeing the VM in a (re)start state means it went down and came
+# back (e.g. another request restarted a preempted worker) — the job is gone.
+_STOPPED_VM_STATUSES = frozenset({
+    "STOPPING", "STOPPED", "TERMINATED", "SUSPENDING", "SUSPENDED",
+    "PROVISIONING", "STAGING", "REPAIRING",
+})
+
+# While polling a job, refresh config/encoding-worker.last_activity_at at most
+# this often. The idle-shutdown function keeps the routed VM alive only while
+# last_activity_at is < IDLE_TIMEOUT_MINUTES (5) old, and its /health
+# active_jobs counts only RUNNING jobs — so without this, a VM whose encode ran
+# longer than the idle window could be stopped in the seconds between the job
+# finishing and our next poll collecting the result.
+ACTIVITY_TOUCH_INTERVAL_SECONDS = 60.0
 
 QUEUE_TIMEOUT_SECONDS = _parse_queue_timeout()
 ENCODING_RESUBMIT_MAX = _parse_resubmit_max()
@@ -344,6 +358,13 @@ class EncodingService:
             if ip and vm and ip == host:
                 return vm, zone
         return None
+
+    async def _touch_worker_activity(self, job_id: str) -> None:
+        """Best-effort refresh of last_activity_at (keeps the VM from idle-stop)."""
+        try:
+            await asyncio.to_thread(self._worker_manager.update_activity)
+        except Exception as e:  # noqa: BLE001 — keep-alive only, never fail the poll
+            logger.debug(f"[job:{job_id}] Could not refresh worker activity: {_format_exception(e)}")
 
     async def _stopped_worker_status(self, worker_url: Optional[str]) -> Optional[str]:
         """If the VM behind ``worker_url`` is stopped/preempted, return its GCE status.
@@ -847,6 +868,7 @@ class EncodingService:
         # counts from here; time spent "pending" in the worker's serialized
         # heavy queue counts against `queue_timeout` instead.
         run_started_at: Optional[float] = None
+        last_activity_touch: Optional[float] = None
 
         while True:
             now = asyncio.get_event_loop().time()
@@ -922,6 +944,12 @@ class EncodingService:
                 status = {}
 
             job_seen = True
+            if self._worker_manager and (
+                last_activity_touch is None
+                or now - last_activity_touch >= ACTIVITY_TOUCH_INTERVAL_SECONDS
+            ):
+                last_activity_touch = now
+                await self._touch_worker_activity(job_id)
             job_status = status.get("status", "unknown")
             progress = status.get("progress", 0)
             if run_started_at is None and (job_status == "running" or progress):

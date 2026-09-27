@@ -1298,7 +1298,9 @@ jobs:
               for key in ["primary_vm", "primary_ip", "primary_version",
                           "secondary_vm", "secondary_ip",
                           "active_override_vm", "active_override_ip", "active_override_zone"]:
-                  f.write(f"{key}={data.get(key, '')}\n")
+                  # `or ''`: a key stored as null must be empty, not the string
+                  # "None" (which later steps would treat as a real VM name).
+                  f.write(f"{key}={data.get(key) or ''}\n")
               f.write(f"deploy_in_progress={str(data.get('deploy_in_progress', False)).lower()}\n")
               # capacity_state is a map — emit as single-line JSON so the green
               # selection step can demote recently-stocked-out machine types.

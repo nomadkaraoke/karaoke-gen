@@ -975,6 +975,66 @@ class TestWaitForCompletionWorkerStopped:
                 )
 
     @pytest.mark.asyncio
+    async def test_restarted_worker_mid_boot_counts_as_lost(self, encoding_service):
+        """Another request restarted the preempted VM before our poll — STAGING
+        means it went down, so the job (accepted while RUNNING) is gone."""
+        self._with_manager(encoding_service, "STAGING")
+        with patch.object(encoding_service, "get_job_status", side_effect=self._conn_refused), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingJobLostError):
+                await encoding_service.wait_for_completion(
+                    "j1", worker_url="http://10.0.0.1:8080"
+                )
+
+    @pytest.mark.asyncio
+    async def test_polling_refreshes_worker_activity_at_most_once_a_minute(self, encoding_service):
+        """Keeps the routed VM inside the 5-min idle window for the whole encode,
+        so it isn't stopped between the job finishing and us collecting it."""
+        mgr = self._with_manager(encoding_service, "RUNNING")
+        # First call is wait_for_completion's start_time, then one per poll.
+        clock = iter([0, 0, 10, 20, 70, 80, 150])
+        statuses = iter([
+            {"status": "running", "progress": 10},
+            {"status": "running", "progress": 20},
+            {"status": "running", "progress": 30},
+            {"status": "running", "progress": 40},
+            {"status": "running", "progress": 50},
+            {"status": "complete", "output_files": ["a.mp4"]},
+        ])
+
+        async def status(job_id, worker_url=None):
+            return next(statuses)
+
+        with patch.object(encoding_service, "get_job_status", side_effect=status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.side_effect = lambda: next(clock)
+            result = await encoding_service.wait_for_completion(
+                "j1", worker_url="http://10.0.0.1:8080"
+            )
+
+        assert result["status"] == "complete"
+        # Touched at t=0, t=70, t=150 (>= 60s apart), not on every poll.
+        assert mgr.update_activity.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_activity_refresh_failure_does_not_fail_the_poll(self, encoding_service):
+        mgr = self._with_manager(encoding_service, "RUNNING")
+        mgr.update_activity.side_effect = Exception("firestore down")
+
+        async def status(job_id, worker_url=None):
+            return {"status": "complete", "output_files": ["a.mp4"]}
+
+        with patch.object(encoding_service, "get_job_status", side_effect=status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            result = await encoding_service.wait_for_completion("j1")
+        assert result["status"] == "complete"
+
+    @pytest.mark.asyncio
     async def test_preemption_is_resubmitted_by_run_with_lost_job_resubmit(self, encoding_service):
         """End-to-end: a preempted first attempt is resubmitted under a fresh id."""
         self._with_manager(encoding_service, "TERMINATED")

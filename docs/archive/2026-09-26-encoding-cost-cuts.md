@@ -47,6 +47,12 @@ only fired on lyric edits.
   it raises `EncodingJobLostError`, so `run_with_lost_job_resubmit` resubmits the
   encode (fresh `_retry_` id; outputs overwrite the same GCS paths). Before, a
   vanished VM surfaced after ~7 min as a non-resubmitted "lost contact" failure.
+- **Idle-stop vs. an encode in flight**: the idle function's `/health active_jobs`
+  counts only RUNNING jobs and `last_activity_at` used to be written only when a
+  VM was started, so with a 5-min window a long encode's VM could be stopped in
+  the seconds between the job finishing and the backend's next poll. The poll
+  loop now refreshes `last_activity_at` at most once a minute while waiting.
+  (A VM seen in STAGING/PROVISIONING after accepting a job also counts as lost.)
 - **Stale fallback entries** (a removed VM still listed in an instance's cached
   `ENCODING_WORKER_FALLBACK_VMS`) are now skipped (`NOT_FOUND` start error)
   instead of aborting the whole failover.
