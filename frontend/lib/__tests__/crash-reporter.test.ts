@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { addBreadcrumb, __resetDiagnosticsForTest } from '@/lib/diagnostics'
 import { isBenignError, reportClientError, __resetForTest } from '@/lib/crash-reporter'
 
 describe('isBenignError', () => {
@@ -36,6 +37,7 @@ describe('reportClientError', () => {
   let originalFetch: typeof global.fetch
   beforeEach(() => {
     __resetForTest()
+    __resetDiagnosticsForTest()
     originalFetch = global.fetch
     fetchSpy = jest.fn().mockResolvedValue({ ok: true } as Response)
     global.fetch = fetchSpy as unknown as typeof fetch
@@ -66,5 +68,35 @@ describe('reportClientError', () => {
       context: ctx,
     })
     expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+  const bodyOf = (call = 0) => JSON.parse(fetchSpy.mock.calls[call][1].body)
+
+  it('attaches diagnostics and the breadcrumb trail', async () => {
+    addBreadcrumb('upload', 'uploading file 2/2 (88 MB)')
+    await reportClientError({ error: new Error('boom'), source: 'window.onerror', context: ctx, extra: { lineno: 3 } })
+    const body = bodyOf()
+    expect(body.extra.lineno).toBe(3)
+    expect(body.extra.diagnostics).toEqual(expect.objectContaining({
+      page_age_s: expect.any(Number), dom_nodes: expect.any(Number), live_blob_urls: expect.any(Number), reports_this_page: 1,
+    }))
+    expect(body.extra.breadcrumbs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ category: 'upload', message: 'uploading file 2/2 (88 MB)' })])
+    )
+    expect(body.extra.synthetic_error).toBeUndefined()
+  })
+
+  it('drops the reporter-made stack of a synthetic error and flags it', async () => {
+    await reportClientError({ error: new Error('out of memory'), source: 'window.onerror', context: ctx, synthetic: true })
+    const body = bodyOf()
+    expect(body.message).toBe('Error: out of memory')
+    expect(body.stack).toBeNull()
+    expect(body.extra.synthetic_error).toBe(true)
+  })
+
+  it('caps how many reports one page load can send', async () => {
+    for (let i = 0; i < 30; i++) {
+      await reportClientError({ error: new Error(`distinct ${i}`), source: 'window.onerror', context: ctx })
+    }
+    expect(fetchSpy).toHaveBeenCalledTimes(20)
   })
 })

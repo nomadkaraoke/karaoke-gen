@@ -459,6 +459,12 @@ class GCEEncodingBackend(EncodingBackend):
             }
 
             # Add countdown padding if present (for audio sync with countdown-padded vocals)
+            # User-supplied instrumental: the encoder downloads it from uploads/
+            # and matches it by name regardless of extension (wav, m4a, ...).
+            existing_instrumental = input_config.options.get("existing_instrumental")
+            if existing_instrumental:
+                encoding_config["existing_instrumental"] = existing_instrumental
+
             countdown_padding = input_config.options.get("countdown_padding_seconds")
             if countdown_padding:
                 encoding_config["countdown_padding_seconds"] = countdown_padding

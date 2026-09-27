@@ -769,3 +769,16 @@ gcloud run jobs update lyrics-transcription-job \
 ```
 
 **Permanent fix:** Add `lyrics-transcription-job` update to CI deploy step in `.github/workflows/ci.yml` alongside the existing `video-encoding-job` and `audio-separation-job` updates (~line 1568).
+
+## Frontend error alert ("New Error Pattern Detected", service `frontend`)
+
+The Discord sample lists, in order: message → `At:` location (only when the browser supplied no stack) → URL / UA / Build → `Diag:` (page age, DOM/canvas/audio counts, live blob URLs, JS heap on Chromium, `reports_this_page`) → `Trail:` (last 10 breadcrumbs: navigation, clicks, upload phases, errors) → trimmed stack.
+
+For the full payload (all 30 breadcrumbs and every diagnostics field), query the ingest log:
+
+```bash
+gcloud logging read 'jsonPayload.message:"frontend_crash_reported" AND jsonPayload.error_pattern_id="<pattern_id>"' \
+  --limit=5 --format=json | jq '.[].jsonPayload | {client_url, client_release, client_extra}'
+```
+
+`synthetic_error: true` means the browser gave no Error object (e.g. Firefox `out of memory`), so there's no real stack. Use the trail plus `page_age_s` / `js_heap_used_mb` / `live_blob_urls` to see what the tab was doing. A very high `page_age_s` with no obvious trigger in the trail points at a long-lived tab or browser leak, not a specific action.

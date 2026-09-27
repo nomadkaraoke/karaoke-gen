@@ -812,6 +812,57 @@ def find_file(work_dir: Path, *patterns):
     return None
 
 
+def resolve_instrumental(work_dir: Path, config: dict):
+    """Pick the instrumental track in work_dir for this encode (user-supplied >
+    custom > with_backing > clean). Returns a Path or None."""
+    # Instrumental audio - respect user's selection from encoding config
+    instrumental_selection = config.get("instrumental_selection", "clean")
+    existing_instrumental = config.get("existing_instrumental")
+    logger.info(f"Instrumental selection from config: {instrumental_selection}")
+    if existing_instrumental:
+        logger.info(f"Existing instrumental from config: {existing_instrumental}")
+
+    if existing_instrumental:
+        # User-provided instrumental uploaded at job creation
+        # Downloaded to work_dir by process_job before run_encoding is called
+        instrumental = find_file(
+            work_dir,
+            "*existing_instrumental*", "*Instrumental User*",
+        )
+    elif instrumental_selection == "custom":
+        # Custom instrumental created via mute-region editing in review UI
+        # FLAC first (mute-region edits + review uploads are converted to FLAC),
+        # then any extension: staged user instrumentals keep their original
+        # extension (.wav, .m4a, ...) and used to fall through to
+        # "No instrumental audio found".
+        instrumental = find_file(
+            work_dir,
+            "*custom_instrumental*.flac", "*Instrumental Custom*.flac",
+            "*custom_instrumental*.mp3", "*custom_instrumental*.wav",
+            "*custom_instrumental*.m4a", "*custom_instrumental*.ogg",
+            "*custom_instrumental*.aac", "*Instrumental Custom*",
+        )
+    elif instrumental_selection == "with_backing":
+        # User selected instrumental with backing vocals
+        instrumental = find_file(
+            work_dir,
+            "*instrumental_with_backing*.flac", "*Instrumental Backing*.flac",
+            "*with_backing*.flac", "*Backing*.flac",
+            "*instrumental*.flac", "*Instrumental*.flac",
+            "*instrumental*.wav"
+        )
+    else:
+        # Default to clean instrumental
+        instrumental = find_file(
+            work_dir,
+            "*instrumental_clean*.flac", "*Instrumental Clean*.flac",
+            "*instrumental*.flac", "*Instrumental*.flac",
+            "*instrumental*.wav"
+        )
+
+    return instrumental
+
+
 def generate_mov_from_png(png_path: Path, mov_path: Path, duration: int = 5) -> Path:
     """Generate a MOV video from a static PNG image using FFmpeg.
 
@@ -1044,44 +1095,8 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
                     "videos/*vocals*.mkv", "videos/*vocals*.mov"
                 )
 
-        # Instrumental audio - respect user's selection from encoding config
         instrumental_selection = config.get("instrumental_selection", "clean")
-        existing_instrumental = config.get("existing_instrumental")
-        logger.info(f"Instrumental selection from config: {instrumental_selection}")
-        if existing_instrumental:
-            logger.info(f"Existing instrumental from config: {existing_instrumental}")
-
-        if existing_instrumental:
-            # User-provided instrumental uploaded at job creation
-            # Downloaded to work_dir by process_job before run_encoding is called
-            instrumental = find_file(
-                work_dir,
-                "*existing_instrumental*", "*Instrumental User*",
-            )
-        elif instrumental_selection == "custom":
-            # Custom instrumental created via mute-region editing in review UI
-            instrumental = find_file(
-                work_dir,
-                "*custom_instrumental*.flac", "*Instrumental Custom*.flac",
-                "*custom_instrumental*.mp3",
-            )
-        elif instrumental_selection == "with_backing":
-            # User selected instrumental with backing vocals
-            instrumental = find_file(
-                work_dir,
-                "*instrumental_with_backing*.flac", "*Instrumental Backing*.flac",
-                "*with_backing*.flac", "*Backing*.flac",
-                "*instrumental*.flac", "*Instrumental*.flac",
-                "*instrumental*.wav"
-            )
-        else:
-            # Default to clean instrumental
-            instrumental = find_file(
-                work_dir,
-                "*instrumental_clean*.flac", "*Instrumental Clean*.flac",
-                "*instrumental*.flac", "*Instrumental*.flac",
-                "*instrumental*.wav"
-            )
+        instrumental = resolve_instrumental(work_dir, config)
 
         logger.info(f"Found files:")
         logger.info(f"  Title video: {title_video}")

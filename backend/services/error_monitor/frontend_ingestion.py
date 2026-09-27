@@ -19,6 +19,10 @@ from backend.services.error_monitor.normalizer import (
 
 MAX_SAMPLE_MESSAGE_CHARS = 4000
 MAX_URL_CHARS = 512
+# Stack goes LAST in the sample and is trimmed: Discord shows only the head of
+# the sample, and a long stack used to push URL/UA/build/diagnostics off the end.
+MAX_SAMPLE_STACK_LINES = 15
+MAX_SAMPLE_BREADCRUMBS = 10
 
 # Crawlers/bots execute our JS (e.g. bingbot/Googlebot run headless Chrome) and
 # trip React DOM-reconciliation errors that no real user ever sees. Their reports
@@ -99,15 +103,47 @@ def sanitize_url(url: str) -> str:
         return url[:MAX_URL_CHARS]
 
 
+def _error_location(extra: dict | None) -> str | None:
+    """`file:line:col` from a window.onerror report's extra, if present."""
+    if not isinstance(extra, dict) or not extra.get("filename"):
+        return None
+    return f"{extra.get('filename')}:{extra.get('lineno', '?')}:{extra.get('colno', '?')}"
+
+
 def _stack_for_hashing(report: FrontendErrorReport) -> str:
     """Pick the most stable signal we have for pattern dedup.
 
     Prefer the stack (stable across invocations) over the message (sometimes
-    has interpolated values). Falls back to message if no stack.
+    has interpolated values). Errors with no real stack (the browser gave no
+    Error object, e.g. Firefox "out of memory") hash on message + location.
     """
     if report.stack:
         return report.stack
+    location = _error_location(report.extra)
+    if location:
+        return f"{report.message} @ {location}"
     return report.message
+
+
+def _format_diagnostics(extra: dict | None) -> str | None:
+    """One compact line from the client's diagnostics snapshot."""
+    diag = extra.get("diagnostics") if isinstance(extra, dict) else None
+    if not isinstance(diag, dict) or not diag:
+        return None
+    parts = [f"{k}={v}" for k, v in diag.items() if isinstance(v, (int, float, str, bool)) and v != ""]
+    return "Diag: " + " ".join(parts) if parts else None
+
+
+def _format_breadcrumbs(extra: dict | None) -> str | None:
+    """The last few client breadcrumbs (what the page was doing before the error)."""
+    crumbs = extra.get("breadcrumbs") if isinstance(extra, dict) else None
+    if not isinstance(crumbs, list) or not crumbs:
+        return None
+    lines = []
+    for c in crumbs[-MAX_SAMPLE_BREADCRUMBS:]:
+        if isinstance(c, dict):
+            lines.append(f"  {c.get('t', '?')}s [{c.get('category', '?')}] {str(c.get('message', ''))[:120]}")
+    return "Trail:\n" + "\n".join(lines) if lines else None
 
 
 def build_pattern_data(
@@ -126,8 +162,10 @@ def build_pattern_data(
     sample_parts: list[str] = []
     if report.message:
         sample_parts.append(report.message.strip())
-    if report.stack and report.stack.strip() != (report.message or "").strip():
-        sample_parts.append(report.stack.strip())
+    if not report.stack:
+        location = _error_location(report.extra)
+        if location:
+            sample_parts.append(f"At: {location} (no stack from browser)")
     clean_url = sanitize_url(report.url)
     if clean_url:
         sample_parts.append(f"URL: {clean_url}")
@@ -135,6 +173,15 @@ def build_pattern_data(
         sample_parts.append(f"UA: {report.user_agent[:200]}")
     if report.release:
         sample_parts.append(f"Build: {report.release}")
+    for line in (_format_diagnostics(report.extra), _format_breadcrumbs(report.extra)):
+        if line:
+            sample_parts.append(line)
+    if report.stack and report.stack.strip() != (report.message or "").strip():
+        stack_lines = report.stack.strip().splitlines()
+        trimmed = "\n".join(stack_lines[:MAX_SAMPLE_STACK_LINES])
+        if len(stack_lines) > MAX_SAMPLE_STACK_LINES:
+            trimmed += f"\n  … {len(stack_lines) - MAX_SAMPLE_STACK_LINES} more frames"
+        sample_parts.append("Stack:\n" + trimmed)
     sample_message = "\n".join(sample_parts)[:MAX_SAMPLE_MESSAGE_CHARS]
 
     return PatternData(

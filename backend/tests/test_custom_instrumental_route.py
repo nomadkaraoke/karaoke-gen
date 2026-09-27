@@ -1391,3 +1391,65 @@ class TestOrchestratorInstrumentalPath:
 
         assert "Backing" not in config.instrumental_audio_path
         assert "Custom" in config.instrumental_audio_path
+
+
+class TestUserInstrumentalReachesEncoder:
+    """Regression (job 3ea34552, 2026-09-26): a WAV user instrumental failed with
+    "No instrumental audio found" — the orchestrator path never told the GCE encoder
+    about the user instrumental, and the encoder's custom lookup only accepted
+    .flac/.mp3 while the staged copy kept its .wav extension."""
+
+    @pytest.mark.parametrize("ext", [".wav", ".m4a", ".ogg", ".aac", ".mp3", ".flac"])
+    def test_custom_lookup_accepts_staged_instrumental_of_any_extension(self, tmp_path, ext):
+        from backend.services.gce_encoding.main import resolve_instrumental
+
+        (tmp_path / f"custom_instrumental{ext}").write_bytes(b"x")
+        found = resolve_instrumental(tmp_path, {"instrumental_selection": "custom"})
+        assert found is not None and found.name == f"custom_instrumental{ext}"
+
+    def test_custom_lookup_prefers_flac(self, tmp_path):
+        from backend.services.gce_encoding.main import resolve_instrumental
+
+        (tmp_path / "custom_instrumental.wav").write_bytes(b"x")
+        (tmp_path / "custom_instrumental.flac").write_bytes(b"x")
+        assert resolve_instrumental(tmp_path, {"instrumental_selection": "custom"}).name == "custom_instrumental.flac"
+
+    def test_existing_instrumental_config_wins_over_selection(self, tmp_path):
+        from backend.services.gce_encoding.main import resolve_instrumental
+
+        (tmp_path / "existing_instrumental.wav").write_bytes(b"x")
+        (tmp_path / "instrumental_clean.flac").write_bytes(b"x")
+        found = resolve_instrumental(
+            tmp_path, {"instrumental_selection": "clean", "existing_instrumental": "uploads/j/audio/existing_instrumental.wav"}
+        )
+        assert found.name == "existing_instrumental.wav"
+
+    def test_orchestrator_config_carries_user_instrumental(self, tmp_path):
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = TestOrchestratorInstrumentalPath()._make_job(
+            "custom", existing_instrumental="uploads/test-orch/audio/existing_instrumental.wav"
+        )
+        config = create_orchestrator_config_from_job(job, str(tmp_path))
+        assert config.existing_instrumental_gcs_path == "uploads/test-orch/audio/existing_instrumental.wav"
+
+    @pytest.mark.asyncio
+    async def test_gce_backend_forwards_user_instrumental_in_encoding_config(self):
+        from backend.services.encoding_interface import EncodingInput, GCEEncodingBackend
+
+        backend = GCEEncodingBackend()
+        service = MagicMock()
+        service.encode_videos = AsyncMock(return_value={"status": "complete", "output_files": []})
+        backend._service = service
+
+        inp = EncodingInput(
+            title_video_path="t", karaoke_video_path="k", instrumental_audio_path="i",
+            instrumental_selection="custom",
+            options={"job_id": "j", "input_gcs_path": "gs://b/jobs/j/", "output_gcs_path": "gs://b/jobs/j/finals/",
+                     "existing_instrumental": "uploads/j/audio/existing_instrumental.wav"},
+        )
+        await backend.encode(inp)
+
+        cfg = service.encode_videos.call_args.kwargs["encoding_config"]
+        assert cfg["existing_instrumental"] == "uploads/j/audio/existing_instrumental.wav"
+        assert cfg["instrumental_selection"] == "custom"

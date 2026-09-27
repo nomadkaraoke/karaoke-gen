@@ -114,5 +114,13 @@ def report_client_error(payload: ClientErrorPayload, request: Request) -> Client
         result.pattern_id,
         result.is_new,
         payload.source,
+        # Full client diagnostics + breadcrumbs, searchable in Cloud Logging
+        # (the alert sample only carries a trimmed summary).
+        extra={
+            "error_pattern_id": result.pattern_id,
+            "client_url": sanitize_url(payload.url),
+            "client_release": payload.release,
+            "client_extra": payload.extra,
+        },
     )
     return ClientErrorResponse(pattern_id=result.pattern_id, is_new=result.is_new)
