@@ -238,7 +238,11 @@ def upload_staging_to_s3(
     critical = [b for b in candidates if not _is_large_last(b.name)]
     bulk = [b for b in candidates if _is_large_last(b.name)]
 
-    existing_sizes = _list_s3_sizes(s3_client, s3_bucket, [b.name for b in candidates])
+    try:
+        existing_sizes = _list_s3_sizes(s3_client, s3_bucket, [b.name for b in candidates])
+    except Exception as e:  # noqa: BLE001 — degrade to "upload everything", don't abort
+        logger.warning(f"Could not list existing S3 objects ({e}); uploading all candidates")
+        existing_sizes = {}
 
     counts = {"uploaded": 0, "skipped_exists": 0, "error": 0}
 

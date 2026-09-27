@@ -206,11 +206,21 @@ def backup_to_aws(request):
 
     # Step 5: Upload to S3. On non-Sundays, hold the Firestore export back
     # (it stays in GCS staging as a daily local backup); it ships to S3 weekly.
+    # git-repos/ uploads only in the same invocation as the git step: the
+    # incremental check trusts that a bundle's S3 LastModified is within
+    # _UPLOAD_LAG of its clone. A bundle left in staging by a failed upload
+    # must not ship on a later night (a push in between would then look backed
+    # up); next Sunday's git step re-bundles it fresh instead.
+    exclude = []
+    if not firestore_to_s3_today:
+        exclude.append("firestore/")
+    if not git_repos_today:
+        exclude.append(GIT_REPOS_PREFIX)
     try:
         results["s3_upload"] = upload_staging_to_s3(
             staging_bucket=STAGING_BUCKET,
             s3_bucket=S3_BUCKET,
-            exclude_prefixes=[] if firestore_to_s3_today else ["firestore/"],
+            exclude_prefixes=exclude,
         )
     except Exception as e:
         logger.error(f"S3 upload failed: {e}")

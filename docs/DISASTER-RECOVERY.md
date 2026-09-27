@@ -329,7 +329,10 @@ Forks are excluded by default (recoverable from upstream). The git step runs
 cross-cloud egress): a repo is only re-cloned and re-uploaded when its GitHub
 `pushed_at` is newer than its bundle's S3 upload time (minus a 1h safety lag);
 unchanged repos show `"status": "unchanged"` in the manifest and keep their
-existing S3 bundle. The first Sunday of each month re-bundles everything. So a
+existing S3 bundle. `git-repos/` only uploads to S3 in the same invocation as
+the git step (a bundle stranded in staging by a failed upload is re-bundled next
+Sunday rather than shipped late, which would break the lag assumption). The
+first Sunday of each month re-bundles everything. So a
 bundle is at most ~7 days behind (7-day RPO). To force a run now:
 `?mode=git_repos` (incremental) or `?mode=git_repos&full=1` (all repos) — see
 § "Git repo backup setup".
@@ -467,7 +470,7 @@ Per-prefix limits reflect each prefix's **S3 (off-site)** cadence, which is not 
 |--------|-------------------|---------------|
 | `gcs/job-files/`, `secrets/` | nightly | 36h |
 | `firestore/`, `bigquery/daily-refresh/` | weekly (Sundays) | 192h (≈8 days) |
-| `git-repos/manifest.json` | weekly (Sundays), incremental | 192h (≈8 days) + manifest must not show 0 bundled/unchanged with errors |
+| `git-repos/manifest.json` | weekly (Sundays), incremental | 192h (≈8 days) + manifest must not show 0 bundled with errors |
 
 Firestore exports to GCS staging nightly (24h local restore point) but only ships to S3 weekly to cut cross-cloud egress (see `backup_to_aws/main.py` → `firestore_to_s3_today`). The monitor only sees the S3 copy, so its Firestore limit must allow a full week — using the 36h nightly figure caused a false "DR backup is stale" alert every Tue–Sat (fixed 2026-06-18).
 

@@ -354,7 +354,9 @@ def test_full_refresh_ignores_existing_backups():
     assert _manifest(uploads)["full_refresh"] is True
 
 
-def test_all_unchanged_plus_an_error_is_not_systemic():
+def test_changed_repos_all_failing_is_systemic_even_with_unchanged():
+    # In incremental mode nearly every repo is "unchanged"; if every repo that
+    # actually needed bundling failed, that must still surface as a failure.
     def side_effect(cmd, **kw):
         raise subprocess.CalledProcessError(128, cmd, output=b"", stderr=b"fatal: not found")
 
@@ -363,7 +365,27 @@ def test_all_unchanged_plus_an_error_is_not_systemic():
         _make_repo("nomadkaraoke", "broken", pushed_at="2026-09-20T00:00:00Z"),
     ]]
     existing = {"git-repos/nomadkaraoke/quiet.bundle": _utc("2026-09-13T05:00:00")}
-    summary, uploads, _ = _run(pages, subprocess_side_effect=side_effect, existing_backups=existing)
+    client, uploads = _fake_gcs()
+    with patch("git_repos_export.requests.get", side_effect=_fake_requests_get(pages)), \
+         patch("git_repos_export.gcs_storage.Client", return_value=client), \
+         patch("git_repos_export.shutil.which", return_value="/usr/bin/git"), \
+         patch("git_repos_export.subprocess.run", side_effect=side_effect), \
+         patch("git_repos_export.tempfile.mkdtemp", return_value="/tmp/gitbak-x"), \
+         patch("git_repos_export.shutil.rmtree"):
+        with pytest.raises(RuntimeError, match="1 unchanged, 1 errors"):
+            export_git_repos(
+                staging_bucket="staging",
+                github_token="ghp_test",
+                owners=["nomadkaraoke"],
+                existing_backups=existing,
+            )
     manifest = _manifest(uploads)
     assert manifest["errors"] == 1 and manifest["unchanged"] == 1
-    assert "Bundled 0/2" in summary
+
+
+def test_all_unchanged_is_green():
+    pages = [[_make_repo("nomadkaraoke", "quiet", pushed_at="2026-09-01T00:00:00Z")]]
+    existing = {"git-repos/nomadkaraoke/quiet.bundle": _utc("2026-09-13T05:00:00")}
+    summary, uploads, run_mock = _run(pages, existing_backups=existing)
+    run_mock.assert_not_called()
+    assert "Bundled 0/1 repos (1 unchanged" in summary

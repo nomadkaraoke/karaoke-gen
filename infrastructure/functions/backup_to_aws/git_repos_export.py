@@ -375,12 +375,13 @@ def export_git_repos(
     )
     logger.info(summary)
 
-    # Systemic failure: nothing bundled successfully yet repos errored → surface
-    # it as a hard error (bad token, git broken, network down). A run where every
-    # repo was a *benign* skip (empty/oversized/unchanged) or where at least one
-    # bundled is not systemic, so it stays green with the counts noted in the
-    # summary.
-    if bundled == 0 and unchanged == 0 and errors > 0:
+    # Systemic failure: every repo we actually tried to bundle errored (bad
+    # token, git broken, network down) → surface it as a hard error. Repos
+    # skipped as unchanged/empty/oversized don't count as successes here: in
+    # incremental mode almost everything is unchanged, so counting them would
+    # hide a total failure of the week's changed repos. A run where at least
+    # one bundle succeeded, or nothing needed bundling, stays green.
+    if bundled == 0 and errors > 0:
         raise RuntimeError(summary)
 
     return summary
