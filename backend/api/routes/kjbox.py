@@ -443,12 +443,14 @@ async def catalog_resolve(body: ResolveRequest, _secret: str = Depends(require_k
     """Split + auto-correct a singer's free-text song search.
 
     kjbox calls this only when its own catalogue search found nothing, then
-    re-searches with the canonical artist/title and shows "Corrected to … —
-    you typed … Undo" (gen's AudioSourceStep correction, for the singer
-    search box). Response = the match judge verdict shape + typed_artist /
-    typed_title. Never 5xx on model trouble: kind "none".
+    shows gen's AudioSourceStep "Tidied to … / keep what I typed" (re-searching
+    when the song changed, and pre-filling its generate form). The AI splits the
+    one-line query; the job flow's judge_match catalog pass then tidies it, so
+    the canonical artist/title match what gen's own job form would use.
+    Response = the match judge verdict shape + typed_artist / typed_title.
+    Never 5xx on model trouble: kind "none".
     """
-    from backend.services.match_judge.free_text import _none, resolve_free_text
+    from backend.services.match_judge.free_text import _none, resolve_and_tidy
 
     query = " ".join(body.query.split())
     if not query:
@@ -464,7 +466,7 @@ async def catalog_resolve(body: ResolveRequest, _secret: str = Depends(require_k
         return hit
     if not _resolve_budget_ok():
         raise HTTPException(status_code=429, detail="rate_limited")
-    verdict = await resolve_free_text(query)
+    verdict = await resolve_and_tidy(query)
     if verdict.get("reason") != "unavailable":   # don't cache transient failures
         with _resolve_lock:
             if len(_resolve_cache) >= _RESOLVE_CACHE_MAX:

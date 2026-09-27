@@ -3,8 +3,12 @@
 gen's match judge takes a separate artist + title; a karaoke singer types one
 line ("the strokes max picu"). One small Gemini call splits the query into
 artist/title AND corrects typos in the same step, returning the match judge's
-verdict shape (kind cosmetic/content/ambiguous/none) plus the typed split, so
-kjbox can show gen's "Corrected to X — you typed Y. Undo".
+verdict shape (kind cosmetic/content/ambiguous/none) plus the typed split.
+
+:func:`resolve_and_tidy` then runs that split through the job flow's own
+:func:`judge_match` catalog pass, so the singer gets exactly the canonical
+artist/title gen's AudioSourceStep would "tidy" to (the catalog can't parse a
+one-line query itself — the AI only does the split + typo fix).
 """
 from __future__ import annotations
 
@@ -15,11 +19,13 @@ import logging
 from typing import Awaitable, Callable, Optional
 
 from backend.services.match_judge.ai import _model
-from backend.services.match_judge.verdict import KIND_NONE
+from backend.services.match_judge.classifier import normalize_for_match
+from backend.services.match_judge.verdict import KIND_COSMETIC, KIND_NONE, MatchVerdict
 
 logger = logging.getLogger(__name__)
 
 Generate = Callable[[str, str, str], Awaitable[dict]]
+Judge = Callable[[str, str], Awaitable[MatchVerdict]]
 
 _VALID_KINDS = {"cosmetic", "content", "ambiguous"}
 
@@ -82,6 +88,15 @@ def verdict_from_response(data: object, query: str) -> dict:
 
 
 def _verdict_from_response(data: object, query: str) -> dict:
+    if isinstance(data, dict) and data.get("kind") == KIND_NONE:
+        # Not a song the model recognises — keep its split so the catalog can
+        # still find it (resolve_and_tidy).
+        typed_artist, typed_title = data.get("typed_artist"), data.get("typed_title")
+        if (isinstance(typed_artist, str) and isinstance(typed_title, str)
+                and typed_artist.strip() and typed_title.strip()):
+            return {**_none(query, str(data.get("reason") or "no suggestion")),
+                    "typed_artist": typed_artist.strip(), "typed_title": typed_title.strip()}
+        return _none(query)
     if not isinstance(data, dict) or data.get("kind") not in _VALID_KINDS:
         return _none(query)
     for key in ("typed_artist", "typed_title", "canonical_artist", "canonical_title", "reason"):
@@ -125,6 +140,55 @@ async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
         logger.warning(f"resolve_free_text failed: {e}")
         return _none(query, "unavailable")
     return verdict_from_response(data, query)
+
+
+async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
+                           judge: Optional[Judge] = None, model: Optional[str] = None) -> dict:
+    """Free-text split/correct, then gen's catalog tidy (the job flow's fast pass).
+
+    The AI verdict's song — its canonical pick when confident, else the typed
+    split — is checked against the catalog with :func:`judge_match` (stage
+    "fast": catalog only, no second AI call). A confident catalog match wins:
+    its formatting becomes the canonical artist/title, kind "cosmetic" when the
+    query already named that song (only casing/punctuation/word order differ),
+    else "content". No catalog match → the AI verdict unchanged. Never raises.
+    """
+    verdict = await resolve_free_text(query, generate=generate, model=model)
+    kind = verdict.get("kind")
+    if kind in ("cosmetic", "content") and verdict.get("confident"):
+        artist, title = verdict["canonical_artist"], verdict["canonical_title"]
+    elif kind == KIND_NONE and verdict.get("typed_artist") and verdict.get("typed_title"):
+        artist, title = verdict["typed_artist"], verdict["typed_title"]
+    else:
+        return verdict
+    try:
+        cat = await (judge or _default_judge)(artist, title)
+    except Exception as e:
+        logger.warning(f"resolve_and_tidy catalog pass failed: {e}")
+        # Still answer with the AI verdict, but as a transient result: the
+        # resolve route doesn't cache "unavailable", so the tidy retries later.
+        return {**verdict, "reason": "unavailable"}
+    if not (cat.confident and cat.engine == "catalog" and cat.kind in (KIND_COSMETIC, KIND_NONE)
+            and cat.canonical_artist and cat.canonical_title):
+        return verdict
+    ca, ct = cat.canonical_artist, cat.canonical_title
+    typed = normalize_for_match(query)
+    same_song = typed in (normalize_for_match(f"{ca} {ct}"), normalize_for_match(f"{ct} {ca}"))
+    return {
+        **verdict,
+        "kind": KIND_COSMETIC if same_song else "content",
+        "confident": True,
+        "canonical_artist": ca,
+        "canonical_title": ct,
+        "alternatives": [],
+        "engine": "catalog",
+        "reason": "catalog match",
+    }
+
+
+async def _default_judge(artist: str, title: str) -> MatchVerdict:
+    from backend.services.match_judge.service import judge_match
+    return await judge_match(artist, title, stage="fast")
 
 
 async def _default_generate(model: str, system_prompt: str, user_prompt: str) -> dict:
