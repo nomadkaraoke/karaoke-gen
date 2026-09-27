@@ -18,6 +18,7 @@ to deliver it. Every failure here is non-fatal to the full job.
 
 from __future__ import annotations
 
+import gc
 import glob
 import logging
 import os
@@ -126,6 +127,7 @@ def separate_quick(
 
     # Free GPU memory before the ensemble loads its models.
     del sep
+    gc.collect()
     try:
         import torch
         if torch.cuda.is_available():
