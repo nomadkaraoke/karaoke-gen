@@ -164,6 +164,17 @@ Hard-won insights for the next person debugging GCE image builds:
    ./run.sh ...`, so the smoke test must verify tools-as-runner. The v2 smoke
    test uses startup-script + `sudo -iu runner` for this.
 
+## Which jobs use self-hosted runners (2026-09-26)
+
+karaoke-gen's test/package jobs (package/backend unit + integration + emulator
+tests, package builds, full frontend E2E) moved to **GitHub-hosted
+`ubuntu-latest`** runners — free for this public repo, and they never needed GCP
+credentials. That removed ~390 `gha-general-*` VMs/month. Only jobs that need
+the GCE runners still request them: `deploy-backend` (`docker-build` label —
+Docker image builds, same-region Artifact Registry) and the GPU integration
+tests in python-audio-separator (`gpu`). No workflow currently requests the
+plain general label; the `gha-runner-general` family is kept as a fallback.
+
 ## High-level architecture
 
 ```
@@ -242,7 +253,8 @@ GitHub schedules onto any runner whose labels are a superset of the job's.
 Each image is tagged `gha-runner-<variant>-<YYYYMMDD-HHMMSS>` and joined to the
 matching image family. The dispatcher always selects from the family, so the
 newest non-deprecated image wins automatically. The build workflow keeps the
-newest 2 images per family and **deletes** the rest (deprecated images still bill
+newest image per family (`KEEP_IMAGES_PER_FAMILY: 1` since 2026-09-26 — GPU/windows
+images are 15-21 GiB each) and **deletes** the rest (deprecated images still bill
 for storage; images that an existing disk was created from are never deleted).
 Until 2026-09-26 this step used an invalid gcloud filter and silently pruned
 nothing — 31 runner images (~360 GB archived, ~$18/mo) had accumulated; they were pruned by hand to
