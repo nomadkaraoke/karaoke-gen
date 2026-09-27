@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "जॉब {job_id} के लिए इंस्ट्रुमेंटल चुनने में त्रुटि: {error}",
     "downloadUrlsError": "डाउनलोड URLs प्राप्त करने में त्रुटि: {error}",
     "fileNoLongerAvailable": "फ़ाइल अब उपलब्ध नहीं है",
-    "deletePublishedRequiresFiles": "जॉब डिलीट करते समय इस ट्रैक की पब्लिश की गई फ़ाइलों को हटाना ज़रूरी है। delete_files=false के बिना डिलीट करने की दोबारा कोशिश करो।"
+    "deletePublishedRequiresFiles": "जॉब डिलीट करते समय इस ट्रैक की पब्लिश की गई फ़ाइलों को हटाना ज़रूरी है। delete_files=false के बिना डिलीट करने की दोबारा कोशिश करो।",
+    "instrumentalUploadBadPath": "अमान्य इंस्ट्रूमेंटल अपलोड संदर्भ। कृपया फिर से अपलोड करने की कोशिश करो।",
+    "instrumentalUploadBadType": "असमर्थित ऑडियो फ़ाइल प्रकार। कृपया इनमें से कोई एक अपलोड करो: {allowed}।",
+    "instrumentalUploadMissing": "हमें तुम्हारा अपलोड किया गया इंस्ट्रूमेंटल नहीं मिला। हो सकता है कि अपलोड पूरा न हुआ हो। कृपया फिर से कोशिश करो।",
+    "uploadDurationMismatchCancelled": "अवधि का बेमेल: इंस्ट्रूमेंटल {instrumental_duration}s का है लेकिन गाने का ऑडियो {audio_duration}s का है (वे 0.5s के भीतर मेल खाने चाहिए)। यह जॉब रद्द कर दी गई है और तुम्हारा क्रेडिट रीफ़ंड कर दिया गया है। कृपया मेल खाने वाली फ़ाइलों के साथ फिर से सबमिट करो।",
+    "instrumentalUploadTooLarge": "यह इंस्ट्रुमेंटल फ़ाइल {size_mb} MB की है, जो {max_mb} MB की सीमा से ज़्यादा है। कृपया इसके बजाय FLAC या MP3 वर्शन अपलोड करो।"
   },
   "review": {
     "jobNotFound": "जॉब नहीं मिली",

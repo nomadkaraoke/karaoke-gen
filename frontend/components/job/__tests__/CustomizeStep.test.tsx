@@ -103,6 +103,11 @@ describe("CustomizeStep", () => {
   })
 
   describe("private mode (isPrivate=true)", () => {
+    it("shows translated loading label when isSubmitting", () => {
+      render(<CustomizeStep {...defaultProps} isPrivate={true} isSubmitting={true} />)
+      expect(screen.getByText("Creating...")).toBeInTheDocument()
+    })
+
     it("shows custom video style section with side-by-side previews", () => {
       render(<CustomizeStep {...defaultProps} isPrivate={true} />)
 

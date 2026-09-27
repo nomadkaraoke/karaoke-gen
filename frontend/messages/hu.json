@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Renderelés előtt mindig megállunk, hogy átnézhesd a dalszöveget és kiválaszthasd az instrumentális alapot.",
     "reviewModeAuto": "Teljesen automatikus",
     "reviewModeAutoHint": "Csak akkor kérünk meg a dalszöveg vagy az instrumentális alap ellenőrzésére, ha tényleg emberi beavatkozásra van szükség. A problémamentes számok automatikusan elkészülnek.",
-    "reviewModeLabel": "Ellenőrzés"
+    "reviewModeLabel": "Ellenőrzés",
+    "ownInstrumentalChecking": "Hossz ellenőrzése...",
+    "ownInstrumentalChoose": "Instrumentális fájl kiválasztása",
+    "ownInstrumentalDesc": "Megvan a dal hivatalos instrumentális vagy kísérősávja? Töltsd fel, és ezt fogjuk használni a videódban ahelyett, hogy mesterséges intelligenciával távolítanánk el az éneket – így nincs szükség az instrumentális sáv átnézésére.",
+    "ownInstrumentalMismatch": "Ez az instrumentális sáv {instrumental} hosszú, de a dalod {song}. Ugyanolyan hosszúnak kell lenniük (legfeljebb fél másodperces eltéréssel).",
+    "ownInstrumentalSelected": "A(z) {name} ({size} MB) használata instrumentális sávként",
+    "ownInstrumentalTitle": "Saját instrumentális sáv (opcionális)",
+    "submitTrack": "Szám beküldése",
+    "ownInstrumentalRemove": "Eltávolítás"
   },
   "jobStatus": {
     "settingUp": "Beállítás",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Hangforrások keresése (újrapróbálkozás)",
     "waitingForCapacity": "Várakozás a kódoló szerverre (újrapróbálkozás)",
     "preparingAudio": "Hanganyagod előkészítése",
-    "processing": "Feldolgozás"
+    "processing": "Feldolgozás",
+    "waitingForUpload": "Várakozás a feltöltésre"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Kattints egy szegmensre alább a némításához, vagy Shift+húzással jelölj ki egy egyedi régiót a hullámformán.",
       "noBackingDetected": "Nincs háttérvokál észlelve — tiszta zenei alap ajánlott.",
       "addToMuteRegions": "Hozzáadás a némítási régiókhoz"
-    }
+    },
+    "uploadDurationMismatch": "Ez a fájl {uploaded} hosszú, de a dal hossza {expected}. Az instrumentális sávnak ugyanolyan hosszúnak kell lennie (legfeljebb fél másodperces eltéréssel), hogy a dalszöveg szinkronban maradjon.",
+    "uploadFinalizing": "Az instrumentális sáv ellenőrzése és konvertálása...",
+    "uploadSucceeded": "{filename} feltöltve. Mostantól ez van kiválasztva instrumentális sávként."
   },
   "referrals": {
     "title": "Ajánlások",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Úgy hívják, hogy Nomad Karaoke Generator: kiválasztasz bármilyen dalt - tényleg bármit, bármilyen rétegzenét -, és készít hozzá egy rendes karaoke videót. Valódi hangszeres sávleválasztás (az eredeti dal, nem egy feldolgozászenekar), szóról szóra szinkronizált dalszöveg, és általában körülbelül fél óra alatt elkészül. Ráadásul 33 nyelven működik.",
     "founderRole": "Alapító, Nomad Karaoke",
     "languageHint": "Ezt az oldalt 33 nyelven olvashatod - használd a fenti nyelvválasztót."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB / {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Kb. {seconds}mp van hátra",
+    "etaMinutes": "Kb. {minutes}p {seconds}mp van hátra",
+    "etaEstimating": "Hátralévő idő becslése...",
+    "failed": "A feltöltés nem sikerült. Próbáld újra.",
+    "fileOfCount": "{index}/{count}. fájl: {name}",
+    "finalizing": "A feltöltés kész, véglegesítés folyamatban...",
+    "keepTabOpen": "Tartsd nyitva ezt a lapot, amíg a feltöltés be nem fejeződik. Az oldal elhagyása vagy bezárása megszakítja a feltöltést.",
+    "modalTitle": "Fájlod feltöltése",
+    "networkError": "A feltöltés megszakadt. Ellenőrizd a kapcsolatodat, és próbáld újra.",
+    "preparing": "Feltöltés előkészítése...",
+    "uploadingPercent": "Feltöltés... {percent}%",
+    "tooLarge": "Ez a fájl {size} MB, ami meghaladja a {max} MB-os limitet. Kérlek, használj helyette FLAC vagy MP3 verziót."
   }
 }

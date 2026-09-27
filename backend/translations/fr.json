@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "Erreur lors de la sélection de l'instrumental pour la tâche {job_id} : {error}",
     "downloadUrlsError": "Erreur lors de l'obtention des URL de téléchargement : {error}",
     "fileNoLongerAvailable": "Le fichier n'est plus disponible",
-    "deletePublishedRequiresFiles": "Les fichiers publiés de cette piste doivent être supprimés en même temps que la tâche. Réessaie la suppression sans delete_files=false."
+    "deletePublishedRequiresFiles": "Les fichiers publiés de cette piste doivent être supprimés en même temps que la tâche. Réessaie la suppression sans delete_files=false.",
+    "instrumentalUploadBadPath": "Référence de téléversement de l'instrumentale non valide. Réessaie de téléverser le fichier.",
+    "instrumentalUploadBadType": "Type de fichier audio non pris en charge. Téléverse l'un des formats suivants : {allowed}.",
+    "instrumentalUploadMissing": "Nous n'avons pas trouvé ton instrumentale téléversée. Le téléversement n'est peut-être pas terminé. Réessaie.",
+    "uploadDurationMismatchCancelled": "Différence de durée : l'instrumentale fait {instrumental_duration}s alors que l'audio de la chanson fait {audio_duration}s (ils doivent correspondre à 0,5s près). Cette tâche a été annulée et ton crédit a été remboursé. Réessaie avec des fichiers correspondants.",
+    "instrumentalUploadTooLarge": "Ce fichier instrumental fait {size_mb} Mo, ce qui dépasse la limite de {max_mb} Mo. Téléverse plutôt une version FLAC ou MP3."
   },
   "review": {
     "jobNotFound": "Tâche introuvable",

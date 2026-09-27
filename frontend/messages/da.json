@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Vi stopper altid og lader dig gennemgå sangteksten og vælge instrumentalnummeret før rendering.",
     "reviewModeAuto": "Fuldautomatisk",
     "reviewModeAutoHint": "Vi beder dig kun om at gennemgå sangteksten eller instrumentalnummeret, hvis der virkelig er brug for et menneske. Numre, vi er sikre på, færdiggøres automatisk.",
-    "reviewModeLabel": "Gennemgang"
+    "reviewModeLabel": "Gennemgang",
+    "ownInstrumentalChecking": "Tjekker længden...",
+    "ownInstrumentalChoose": "Vælg instrumentalfil",
+    "ownInstrumentalDesc": "Har du det officielle instrumentalnummer eller backing track til denne sang? Upload det, så bruger vi det i din video i stedet for at fjerne vokalen med AI, så der ikke er noget instrumentalnummer, der skal gennemgås.",
+    "ownInstrumentalMismatch": "Dette instrumentalnummer er {instrumental} langt, men din sang er {song}. De skal have samme længde (inden for et halvt sekund).",
+    "ownInstrumentalSelected": "Bruger {name} ({size} MB) som instrumentalnummer",
+    "ownInstrumentalTitle": "Dit eget instrumentalnummer (valgfrit)",
+    "submitTrack": "Indsend nummer",
+    "ownInstrumentalRemove": "Fjern"
   },
   "jobStatus": {
     "settingUp": "Sætter op",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Finder lydkilder (prøver igen)",
     "waitingForCapacity": "Venter på kodningsserver (prøver igen)",
     "preparingAudio": "Forbereder din lyd",
-    "processing": "Behandler"
+    "processing": "Behandler",
+    "waitingForUpload": "Venter på upload"
   },
   "jobCard": {
     "actionNeeded": "Handling påkrævet",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Klik på et segment nedenfor for at dæmpe det, eller Shift+træk på bølgeformen for at markere en tilpasset region.",
       "noBackingDetected": "Ingen baggrundsvokal opdaget — ren instrumental anbefales.",
       "addToMuteRegions": "Tilføj til dæmpede regioner"
-    }
+    },
+    "uploadDurationMismatch": "Denne fil er {uploaded} lang, men sangen er {expected}. Dit instrumentalnummer skal have samme længde (inden for et halvt sekund), så teksten forbliver synkroniseret.",
+    "uploadFinalizing": "Tjekker og konverterer dit instrumentalnummer...",
+    "uploadSucceeded": "{filename} er uploadet. Det er nu valgt som dit instrumentalnummer."
   },
   "referrals": {
     "title": "Henvisninger",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Det hedder Nomad Karaoke Generator: du vælger en hvilken som helst sang - hvad som helst, uanset hvor nichepræget det er - og den skaber en ordentlig karaokevideo til den. Ægte instrumental adskillelse (den originale sang, ikke et coverband), ord-for-ord synkroniserede tekster, og den er som regel klar på cirka en halv time. Den fungerer desuden på 33 sprog.",
     "founderRole": "Grundlægger, Nomad Karaoke",
     "languageHint": "Du kan læse denne side på 33 forskellige sprog - brug sprogvælgeren øverst."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB af {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Cirka {seconds}s tilbage",
+    "etaMinutes": "Cirka {minutes}m {seconds}s tilbage",
+    "etaEstimating": "Beregner resterende tid...",
+    "failed": "Uploaden mislykkedes. Prøv igen.",
+    "fileOfCount": "Fil {index} af {count}: {name}",
+    "finalizing": "Upload fuldført, afslutter...",
+    "keepTabOpen": "Hold denne fane åben, indtil uploaden er færdig. Hvis du forlader eller lukker denne side, stoppes uploaden.",
+    "modalTitle": "Uploader din fil",
+    "networkError": "Uploaden blev afbrudt. Tjek din forbindelse, og prøv igen.",
+    "preparing": "Forbereder upload...",
+    "uploadingPercent": "Uploader... {percent}%",
+    "tooLarge": "Denne fil er på {size} MB, hvilket overskrider grænsen på {max} MB. Brug i stedet en FLAC- eller MP3-version."
   }
 }

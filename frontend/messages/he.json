@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "תמיד נעצור ונאפשר לך לבדוק את המילים ולבחור את הפלייבק לפני ההפקה.",
     "reviewModeAuto": "אוטומטי לחלוטין",
     "reviewModeAutoHint": "נבקש ממך לבדוק את המילים או הפלייבק רק אם משהו באמת דורש התערבות אנושית. שירים עם רמת ודאות גבוהה יעובדו באופן אוטומטי.",
-    "reviewModeLabel": "בדיקה"
+    "reviewModeLabel": "בדיקה",
+    "ownInstrumentalChecking": "בודקים את האורך...",
+    "ownInstrumentalChoose": "בחירת קובץ פלייבק",
+    "ownInstrumentalDesc": "יש לך את הפלייבק הרשמי או רצועת הליווי לשיר הזה? אפשר להעלות אותו ונשתמש בו בסרטון שלך במקום להסיר את השירה באמצעות AI, כך שלא יהיה צורך לבדוק את הפלייבק.",
+    "ownInstrumentalMismatch": "אורך הפלייבק הזה הוא {instrumental}, אך אורך השיר הוא {song}. הם חייבים להיות באותו אורך (בטווח של חצי שנייה).",
+    "ownInstrumentalSelected": "משתמשים ב-{name} ({size} MB) כפלייבק",
+    "ownInstrumentalTitle": "פלייבק משלך (אופציונלי)",
+    "submitTrack": "שליחת רצועה",
+    "ownInstrumentalRemove": "הסרה"
   },
   "jobStatus": {
     "settingUp": "מגדיר",
@@ -622,7 +630,8 @@
     "findingAudioSources": "מחפש מקורות שמע (מנסה שוב)",
     "waitingForCapacity": "ממתין לשרת הקידוד (מנסה שוב)",
     "preparingAudio": "מכינים את האודיו שלך",
-    "processing": "בעיבוד"
+    "processing": "בעיבוד",
+    "waitingForUpload": "ממתין להעלאה"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",
@@ -1548,7 +1557,10 @@
       "clickSegment": "לחץ על מקטע למטה כדי להשתיק אותו, או Shift+גרור על גל הקול כדי לסמן אזור מותאם אישית.",
       "noBackingDetected": "לא זוהו קולות רקע — מומלץ פלייבק נקי.",
       "addToMuteRegions": "הוסף לאזורי השתקה"
-    }
+    },
+    "uploadDurationMismatch": "אורך הקובץ הזה הוא {uploaded}, אך אורך השיר הוא {expected}. הפלייבק שלך חייב להיות באותו אורך (בטווח של חצי שנייה) כדי שהמילים יישארו מסונכרנות.",
+    "uploadFinalizing": "בודקים וממירים את הפלייבק שלך...",
+    "uploadSucceeded": "הקובץ {filename} הועלה בהצלחה. כעת הוא נבחר כפלייבק שלך."
   },
   "referrals": {
     "title": "הפניות",
@@ -1882,5 +1894,21 @@
     "whatItIs": "קוראים לזה Nomad Karaoke Generator: אתם בוחרים כל שיר - כל דבר, לא משנה כמה הוא נישתי - וזה יוצר עבורו סרטון קריוקי מקצועי. הפרדת כלים אמיתית (השיר המקורי, לא להקת קאברים), מילים מסונכרנות מילה במילה, ובדרך כלל זה מוכן תוך כחצי שעה. וזה עובד גם ב-33 שפות.",
     "founderRole": "מייסד, Nomad Karaoke",
     "languageHint": "אפשר לקרוא את העמוד הזה בכל אחת מ-33 שפות - בעזרת בוחר השפות שלמעלה."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB מתוך {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "נותרו כ-{seconds} שנ'",
+    "etaMinutes": "נותרו כ-{minutes} דק' ו-{seconds} שנ'",
+    "etaEstimating": "מעריך את הזמן שנותר...",
+    "failed": "ההעלאה נכשלה. נא לנסות שוב.",
+    "fileOfCount": "קובץ {index} מתוך {count}: {name}",
+    "finalizing": "ההעלאה הושלמה, מסיימים...",
+    "keepTabOpen": "יש להשאיר את הכרטיסייה הזו פתוחה עד לסיום ההעלאה. עזיבה או סגירה של הדף תפסיק את ההעלאה.",
+    "modalTitle": "מעלים את הקובץ שלך",
+    "networkError": "ההעלאה הופסקה. נא לבדוק את החיבור לרשת ולנסות שוב.",
+    "preparing": "מכינים את ההעלאה...",
+    "uploadingPercent": "מעלים... {percent}%",
+    "tooLarge": "הקובץ בגודל {size} MB, מעבר למגבלה של {max} MB. אנא השתמשו בגרסת FLAC או MP3 במקום."
   }
 }

@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "Fout bij het selecteren van instrumental voor taak {job_id}: {error}",
     "downloadUrlsError": "Fout bij het ophalen van download-URL's: {error}",
     "fileNoLongerAvailable": "Bestand niet meer beschikbaar",
-    "deletePublishedRequiresFiles": "De gepubliceerde bestanden van deze track moeten worden verwijderd als de taak wordt verwijderd. Probeer het verwijderen opnieuw zonder delete_files=false."
+    "deletePublishedRequiresFiles": "De gepubliceerde bestanden van deze track moeten worden verwijderd als de taak wordt verwijderd. Probeer het verwijderen opnieuw zonder delete_files=false.",
+    "instrumentalUploadBadPath": "Ongeldige referentie voor de instrumentale upload. Probeer opnieuw te uploaden.",
+    "instrumentalUploadBadType": "Niet-ondersteund audiobestandstype. Upload een van de volgende: {allowed}.",
+    "instrumentalUploadMissing": "We konden je geüploade instrumentale track niet vinden. De upload is mogelijk niet voltooid. Probeer het opnieuw.",
+    "uploadDurationMismatchCancelled": "Verschil in tijdsduur: de instrumentale track duurt {instrumental_duration}s, maar de songaudio duurt {audio_duration}s (ze moeten binnen 0.5s overeenkomen). Deze taak is geannuleerd en je tegoed is teruggestort. Dien opnieuw in met overeenkomende bestanden.",
+    "instrumentalUploadTooLarge": "Dit instrumentale bestand is {size_mb} MB, wat de limiet van {max_mb} MB overschrijdt. Upload in plaats daarvan een FLAC- of MP3-versie."
   },
   "review": {
     "jobNotFound": "Taak niet gevonden",

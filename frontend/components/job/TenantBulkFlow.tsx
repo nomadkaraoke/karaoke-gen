@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { api, ApiError, type BulkAnalyzeResponse } from "@/lib/api"
+import { useBeforeUnloadGuard } from "@/hooks/useUploadTask"
 import { uploadResumable, ResumableUploadError } from "@/lib/resumable-upload"
 import {
   saveRowSessions, markRowDone, clearBatch, loadPendingBatch, matchRepickedFile,
@@ -113,15 +114,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   // Uploads survive most interruptions, but warn before an intentional
   // navigation away mid-batch (the in-memory File handles would be lost;
   // recovery would then require a re-pick).
-  useEffect(() => {
-    if (!isSubmitting) return
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      e.returnValue = ""
-    }
-    window.addEventListener("beforeunload", warn)
-    return () => window.removeEventListener("beforeunload", warn)
-  }, [isSubmitting])
+  useBeforeUnloadGuard(isSubmitting)
 
   // Map file identity -> File for uploads and dropdown validation.
   const fileMap = useMemo(() => {

@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Wir pausieren immer, damit du vor dem Rendern den Text überprüfen und das Instrumental auswählen kannst.",
     "reviewModeAuto": "Vollautomatisch",
     "reviewModeAutoHint": "Wir bitten dich nur dann, den Text oder das Instrumental zu überprüfen, wenn wirklich menschliches Eingreifen nötig ist. Titel mit hoher Erkennungsrate werden automatisch fertiggestellt.",
-    "reviewModeLabel": "Überprüfung"
+    "reviewModeLabel": "Überprüfung",
+    "ownInstrumentalChecking": "Länge wird überprüft...",
+    "ownInstrumentalChoose": "Instrumental-Datei auswählen",
+    "ownInstrumentalDesc": "Hast du das offizielle Instrumental oder den Backing-Track für diesen Song? Lade es hoch und wir verwenden es in deinem Video, anstatt den Gesang mit KI zu entfernen, sodass du kein Instrumental überprüfen musst.",
+    "ownInstrumentalMismatch": "Dieses Instrumental ist {instrumental} lang, aber dein Song ist {song}. Beide müssen die gleiche Länge haben (innerhalb einer halben Sekunde).",
+    "ownInstrumentalSelected": "{name} ({size} MB) wird als Instrumental verwendet",
+    "ownInstrumentalTitle": "Dein eigenes Instrumental (optional)",
+    "submitTrack": "Track einreichen",
+    "ownInstrumentalRemove": "Entfernen"
   },
   "jobStatus": {
     "settingUp": "Richte ein",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Suche nach Audioquellen (erneuter Versuch)",
     "waitingForCapacity": "Warten auf Kodierungsserver (erneuter Versuch)",
     "preparingAudio": "Dein Audio wird vorbereitet",
-    "processing": "Wird verarbeitet"
+    "processing": "Wird verarbeitet",
+    "waitingForUpload": "Wartet auf Upload"
   },
   "jobCard": {
     "actionNeeded": "Aktion erforderlich",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Klicke unten auf ein Segment, um es stummzuschalten, oder markiere mit Umschalt+Ziehen auf der Wellenform einen benutzerdefinierten Bereich.",
       "noBackingDetected": "Kein Hintergrundgesang erkannt — reines Instrumental empfohlen.",
       "addToMuteRegions": "Zu stummgeschalteten Bereichen hinzufügen"
-    }
+    },
+    "uploadDurationMismatch": "Diese Datei ist {uploaded} lang, aber der Song ist {expected}. Dein Instrumental muss die gleiche Länge haben (innerhalb einer halben Sekunde), damit der Text synchron bleibt.",
+    "uploadFinalizing": "Dein Instrumental wird überprüft und konvertiert...",
+    "uploadSucceeded": "{filename} wurde hochgeladen. Es ist jetzt als dein Instrumental ausgewählt."
   },
   "referrals": {
     "title": "Empfehlungen",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Es heißt Nomad Karaoke Generator: Du wählst einen beliebigen Song aus – egal was, wie nischig auch immer – und er erstellt ein richtiges Karaoke-Video dafür. Echte Instrumentaltrennung (Originalsong, keine Coverband), Wort für Wort synchronisierter Text, und es ist normalerweise in etwa einer halben Stunde fertig. Es funktioniert außerdem in 33 Sprachen.",
     "founderRole": "Gründer, Nomad Karaoke",
     "languageHint": "Du kannst diese Seite in einer von 33 Sprachen lesen – nutze dafür einfach die Sprachauswahl oben."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB von {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Noch etwa {seconds}s",
+    "etaMinutes": "Noch etwa {minutes}m {seconds}s",
+    "etaEstimating": "Verbleibende Zeit wird geschätzt...",
+    "failed": "Der Upload ist fehlgeschlagen. Bitte versuche es erneut.",
+    "fileOfCount": "Datei {index} von {count}: {name}",
+    "finalizing": "Upload abgeschlossen, wird fertiggestellt...",
+    "keepTabOpen": "Lass diesen Tab geöffnet, bis der Upload abgeschlossen ist. Wenn du diese Seite verlässt oder schließt, wird der Upload abgebrochen.",
+    "modalTitle": "Deine Datei wird hochgeladen",
+    "networkError": "Der Upload wurde unterbrochen. Überprüfe deine Verbindung und versuche es erneut.",
+    "preparing": "Upload wird vorbereitet...",
+    "uploadingPercent": "Wird hochgeladen... {percent}%",
+    "tooLarge": "Diese Datei ist {size} MB groß und liegt über dem Limit von {max} MB. Bitte verwende stattdessen eine FLAC- oder MP3-Version."
   }
 }

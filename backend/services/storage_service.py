@@ -346,6 +346,11 @@ class StorageService:
             logger.error(f"Error listing files with prefix {prefix}: {e}")
             raise
     
+    def get_file_size(self, blob_path: str) -> Optional[int]:
+        """Size in bytes of a GCS object, or None if it doesn't exist."""
+        blob = self.bucket.get_blob(blob_path)
+        return blob.size if blob is not None else None
+
     def file_exists(self, blob_path: str) -> bool:
         """Check if a file exists in GCS."""
         try:

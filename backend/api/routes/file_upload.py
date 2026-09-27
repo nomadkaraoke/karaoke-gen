@@ -260,6 +260,7 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # Bulk-upload grouping: jobs created from the same tenant bulk batch share a
     # batch_id (stamped into state_data) so they can be grouped/filtered later.
     batch_id: Optional[str] = Field(None, description="Groups jobs created together in one tenant bulk batch")
+    requires_audio_edit: bool = Field(False, description="Pause after upload for user to edit input audio")
 
     # Upload mechanism. "signed_put" (default) returns single-shot signed PUT
     # URLs; "resumable" returns GCS resumable session URIs that support chunked
@@ -1314,6 +1315,17 @@ async def create_job_with_upload_urls(
         # Record job creation metric
         metrics.record_job_created(job_id, source="upload")
 
+        # The job stays PENDING until the client PUTs the files and calls
+        # uploads-complete. Flag it so the dashboard can say "Waiting for upload"
+        # (not the misleading "Setting up") and the stale-upload sweep can cancel
+        # + refund jobs whose browser upload never finished.
+        job_manager.update_state_data(job_id, 'awaiting_upload', True)
+
+        # Store requires_audio_edit flag in state_data (start_job_processing parks
+        # at the audio editor when set)
+        if body.requires_audio_edit:
+            job_manager.update_state_data(job_id, 'requires_audio_edit', True)
+
         # Stamp bulk-batch grouping so jobs created together can be grouped/filtered later.
         if body.batch_id:
             job_manager.update_state_data(job_id, 'batch_id', body.batch_id)
@@ -1426,6 +1438,17 @@ async def mark_uploads_complete(
         if not job:
             raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
+        # A signed-in user may not finalize someone else's job. (Token auth without
+        # an email — trusted API integrations creating jobs on behalf of a
+        # body.user_email — keeps working, as before this check existed.)
+        if (
+            not auth_result.is_admin
+            and auth_result.user_email
+            and job.user_email
+            and auth_result.user_email.lower() != job.user_email.lower()
+        ):
+            raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
+
         # Verify job is in pending state
         if job.status != JobStatus.PENDING:
             raise HTTPException(
@@ -1499,12 +1522,22 @@ async def mark_uploads_complete(
                     storage_service, audio_gcs_path, instrumental_gcs_path
                 )
                 if not duration_valid:
+                    # Cancel (refunds the credit) so the job isn't stranded PENDING
+                    # with uploaded files — the stale-upload sweep skips those.
+                    job_manager.cancel_job(
+                        job_id,
+                        reason=(
+                            f"Instrumental duration ({instrumental_duration:.2f}s) does not match "
+                            f"audio duration ({audio_duration:.2f}s)"
+                        ),
+                    )
                     raise HTTPException(
                         status_code=400,
                         detail={
                             "error": "duration_mismatch",
-                            "message": f"Instrumental duration ({instrumental_duration:.2f}s) does not match audio duration ({audio_duration:.2f}s). "
-                                      f"Difference must be within 0.5 seconds.",
+                            "message": t(locale, "jobs.uploadDurationMismatchCancelled",
+                                         instrumental_duration=f"{instrumental_duration:.1f}",
+                                         audio_duration=f"{audio_duration:.1f}"),
                             "audio_duration": audio_duration,
                             "instrumental_duration": instrumental_duration,
                             "difference": abs(audio_duration - instrumental_duration),
@@ -1523,6 +1556,7 @@ async def mark_uploads_complete(
         
         # Update job with GCS paths
         job_manager.update_job(job_id, update_data)
+        job_manager.delete_state_data_keys(job_id, ['awaiting_upload'])
         
         logger.info(f"Validated uploads for job {job_id}: {body.uploaded_files}")
         

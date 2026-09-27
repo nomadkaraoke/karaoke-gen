@@ -545,3 +545,26 @@ class TestTranscodeReviewStems:
         job.file_urls = {}
         assert service.transcode_review_stems(job) == []
         mock_storage.download_file.assert_not_called()
+
+
+class TestInvalidateCache:
+    """invalidate_cache() drops the cached OGG for a source overwritten in place."""
+
+    def test_deletes_cached_ogg(self):
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        storage = Mock()
+        AudioTranscodingService(storage_service=storage).invalidate_cache(
+            "jobs/abc/stems/custom_instrumental.flac"
+        )
+        storage.delete_file.assert_called_once_with(
+            "jobs/abc/review-audio/custom_instrumental.ogg", ignore_missing=True
+        )
+
+    def test_storage_errors_are_swallowed(self):
+        from backend.services.audio_transcoding_service import AudioTranscodingService
+
+        storage = Mock()
+        storage.delete_file.side_effect = RuntimeError("gcs down")
+        # Must not raise — a failed invalidation only risks a stale preview
+        AudioTranscodingService(storage_service=storage).invalidate_cache("jobs/abc/stems/x.flac")
