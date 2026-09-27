@@ -1155,12 +1155,21 @@ export const api = {
       { ...createOptions, existing_instrumental: instrumentalFile ? true : undefined },
     );
 
-    const targets = files.map(f => {
-      const entry = createResponse.upload_urls.find(u => u.file_type === f.file_type);
-      if (!entry) throw new ApiError(`No upload URL returned for ${f.file_type}`, 500);
-      return { file: f.file, url: entry.upload_url, contentType: entry.content_type };
-    });
-    await uploadFilesToSignedUrls(targets, onProgress);
+    try {
+      const targets = files.map(f => {
+        const entry = createResponse.upload_urls.find(u => u.file_type === f.file_type);
+        if (!entry) throw new ApiError(`No upload URL returned for ${f.file_type}`, 500);
+        return { file: f.file, url: entry.upload_url, contentType: entry.content_type };
+      });
+      await uploadFilesToSignedUrls(targets, onProgress);
+    } catch (err) {
+      // The job was created (and charged) before the bytes were sent. Cancel it
+      // (refunds the credit) so a retry isn't blocked and nothing is left
+      // stranded at "Waiting for upload". Best-effort: the stale-upload sweep
+      // is the backstop.
+      await this.cancelJob(createResponse.job_id, 'Upload did not complete').catch(() => {});
+      throw err;
+    }
 
     onProgress?.({ phase: 'finalizing', loaded: totalBytes, total: totalBytes });
     await this.completeJobUpload(createResponse.job_id, files.map(f => f.file_type));

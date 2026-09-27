@@ -24,8 +24,13 @@ from backend.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
 
-# Signed upload URLs expire after 60 minutes, so after 2h no upload can land.
-STALE_UPLOAD_HOURS = 2
+# Signed upload URLs expire after 60 minutes, but GCS only checks expiry when the
+# PUT starts — a big file on a slow uplink can still be streaming hours later, and
+# a single-shot PUT isn't visible until it finishes. 6h leaves plenty of margin.
+STALE_UPLOAD_HOURS = 6
+# Some but not all files landed (e.g. mix uploaded, instrumental didn't) and
+# uploads-complete was never called: give a human a day, then cancel + refund.
+STALE_PARTIAL_UPLOAD_HOURS = 24
 
 CANCEL_REASON = "Audio upload never finished. Please submit the song again."
 
@@ -34,10 +39,10 @@ def process_stale_uploads() -> Dict[str, Any]:
     """
     Cancel (and refund) PENDING jobs whose browser upload never completed.
 
-    Skips tenant jobs: tenant bulk uploads use resumable sessions that can be
-    resumed for days via the re-pick recovery flow.
-    Skips any job that already has objects under ``uploads/{job_id}/`` — the
-    bytes landed, so it needs a human look rather than an auto-cancel.
+    Skips tenant bulk jobs (``state_data.batch_id``): they use resumable sessions
+    that can be resumed for days via the re-pick recovery flow.
+    Jobs with some objects under ``uploads/{job_id}/`` get a longer grace period
+    (``STALE_PARTIAL_UPLOAD_HOURS``) before being cancelled.
     """
     firestore = FirestoreService()
     job_manager = JobManager()
@@ -60,7 +65,7 @@ def process_stale_uploads() -> Dict[str, Any]:
             state_data = job.state_data or {}
             if not state_data.get('awaiting_upload'):
                 continue
-            if getattr(job, 'tenant_id', ''):
+            if state_data.get('batch_id'):
                 continue
 
             created_at = job.created_at
@@ -70,11 +75,12 @@ def process_stale_uploads() -> Dict[str, Any]:
             if hours_elapsed < STALE_UPLOAD_HOURS:
                 continue
 
-            if storage.list_files(f"uploads/{job.job_id}/"):
+            if hours_elapsed < STALE_PARTIAL_UPLOAD_HOURS and storage.list_files(f"uploads/{job.job_id}/"):
                 skipped_has_files += 1
                 logger.warning(
-                    f"Job {job.job_id}: awaiting_upload for {hours_elapsed:.1f}h but files "
-                    f"exist under uploads/ — uploads-complete never called; leaving for admin"
+                    f"Job {job.job_id}: awaiting_upload for {hours_elapsed:.1f}h with some files "
+                    f"under uploads/ — uploads-complete never called; cancelling at "
+                    f"{STALE_PARTIAL_UPLOAD_HOURS}h"
                 )
                 continue
 

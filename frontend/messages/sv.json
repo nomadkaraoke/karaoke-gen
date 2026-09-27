@@ -1908,6 +1908,7 @@
     "modalTitle": "Laddar upp din fil",
     "networkError": "Uppladdningen avbröts. Kontrollera din anslutning och försök igen.",
     "preparing": "Förbereder uppladdningen...",
-    "uploadingPercent": "Laddar upp... {percent}%"
+    "uploadingPercent": "Laddar upp... {percent}%",
+    "tooLarge": "Den här filen är {size} MB, vilket överskrider gränsen på {max} MB. Använd en FLAC- eller MP3-version istället."
   }
 }

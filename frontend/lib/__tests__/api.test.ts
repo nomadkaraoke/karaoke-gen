@@ -461,6 +461,24 @@ describe("API Client", () => {
       )
     })
 
+    it("cancels the created job (refund) when the upload fails, then rethrows", async () => {
+      global.XMLHttpRequest = jest.fn(() => ({
+        open: jest.fn(), setRequestHeader: jest.fn(), upload: {}, status: 0, statusText: "",
+        send: jest.fn(function (this: any) { this.onerror() }),
+      })) as any
+      mockCreate("dropped-1", [{ file_type: "audio", upload_url: "https://gcs/a", content_type: "audio/wav" }])
+      ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: async () => ({ status: "success", message: "cancelled" }) })
+
+      const err = await api.createJobFromUploadedAudio(new File(["x"], "a.wav"), "A", "T").catch(e => e)
+
+      expect(err.status).toBe(0)
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/jobs/dropped-1/cancel"),
+        expect.objectContaining({ method: "POST" }),
+      )
+      expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining("uploads-complete"), expect.anything())
+    })
+
     it("throws if an upload URL is missing", async () => {
       const file = new File(["x"], "a.wav", { type: "audio/wav" })
       mockCreate("bad-789", [])

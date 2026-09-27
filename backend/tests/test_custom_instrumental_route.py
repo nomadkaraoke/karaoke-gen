@@ -855,6 +855,7 @@ class TestSignedInstrumentalUpload:
     ):
         mock_job_manager.get_job.return_value = review_job
         mock_storage = MagicMock()
+        mock_storage.get_file_size.return_value = 40 * 1024 * 1024
         mock_storage.file_exists.return_value = True
         mock_audio_segment = MagicMock()
         mock_audio_segment.__len__ = MagicMock(return_value=240000)
@@ -884,11 +885,28 @@ class TestSignedInstrumentalUpload:
         mock_transcoding.get_review_audio_url_async.assert_awaited_once_with(
             "jobs/job-abc/stems/custom_instrumental.flac", expiration_minutes=120,
         )
+        # Stem overwritten in place -> stale cached OGG must be dropped before signing
+        mock_transcoding.invalidate_cache.assert_called_once_with("jobs/job-abc/stems/custom_instrumental.flac")
+
+    def test_complete_rejects_oversized_upload_without_downloading(
+        self, review_job, mock_job_manager, patched_client
+    ):
+        mock_job_manager.get_job.return_value = review_job
+        mock_storage = MagicMock()
+        mock_storage.get_file_size.return_value = 300 * 1024 * 1024
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage):
+            response = self._complete(patched_client)
+
+        assert response.status_code == 400
+        assert "300 MB" in response.json()["detail"] and "200 MB" in response.json()["detail"]
+        mock_storage.download_file.assert_not_called()
+        mock_job_manager.update_file_url.assert_not_called()
 
     def test_complete_missing_blob_returns_404(self, review_job, mock_job_manager, patched_client):
         mock_job_manager.get_job.return_value = review_job
         mock_storage = MagicMock()
-        mock_storage.file_exists.return_value = False
+        mock_storage.get_file_size.return_value = None
 
         with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage):
             response = self._complete(patched_client)
@@ -921,6 +939,7 @@ class TestSignedInstrumentalUpload:
         review_job.input_media_gcs_path = "jobs/job-abc/input/song.wav"
         mock_job_manager.get_job.return_value = review_job
         mock_storage = MagicMock()
+        mock_storage.get_file_size.return_value = 40 * 1024 * 1024
         mock_storage.file_exists.return_value = True
         mock_audio_segment = MagicMock()
         mock_audio_segment.__len__ = MagicMock(return_value=180000)

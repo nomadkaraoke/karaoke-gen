@@ -1908,6 +1908,7 @@
     "modalTitle": "Mengunggah file Anda",
     "networkError": "Pengunggahan terputus. Periksa koneksi Anda dan coba lagi.",
     "preparing": "Menyiapkan pengunggahan...",
-    "uploadingPercent": "Mengunggah... {percent}%"
+    "uploadingPercent": "Mengunggah... {percent}%",
+    "tooLarge": "File ini berukuran {size} MB, melebihi batas {max} MB. Silakan gunakan versi FLAC atau MP3 sebagai gantinya."
   }
 }

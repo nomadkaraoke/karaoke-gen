@@ -4,9 +4,9 @@ import * as upload from "@/lib/upload"
 
 jest.mock("@/lib/upload", () => {
   const actual = jest.requireActual("@/lib/upload")
-  return { ...actual, getAudioFileDuration: jest.fn() }
+  return { ...actual, checkInstrumentalFile: jest.fn() }
 })
-const getDuration = upload.getAudioFileDuration as jest.Mock
+const check = upload.checkInstrumentalFile as jest.Mock
 
 const mix = new File(["m"], "song.wav", { type: "audio/wav" })
 const inst = new File(["i"], "inst.wav", { type: "audio/wav" })
@@ -16,10 +16,10 @@ function pick(file: File) {
 }
 
 describe("OwnInstrumentalField", () => {
-  beforeEach(() => getDuration.mockReset())
+  beforeEach(() => check.mockReset())
 
   it("accepts an instrumental that matches the song length", async () => {
-    getDuration.mockResolvedValueOnce(200).mockResolvedValueOnce(200.3)
+    check.mockResolvedValue({ ok: true })
     const onChange = jest.fn()
     render(<OwnInstrumentalField mixFile={mix} file={null} onChange={onChange} />)
 
@@ -29,7 +29,7 @@ describe("OwnInstrumentalField", () => {
   })
 
   it("rejects a mismatched instrumental with a readable error", async () => {
-    getDuration.mockResolvedValueOnce(200).mockResolvedValueOnce(185)
+    check.mockResolvedValue({ ok: false, reason: "mismatch", fileSeconds: 185, expectedSeconds: 200 })
     const onChange = jest.fn()
     render(<OwnInstrumentalField mixFile={mix} file={null} onChange={onChange} />)
 
@@ -39,13 +39,21 @@ describe("OwnInstrumentalField", () => {
     expect(onChange).not.toHaveBeenCalledWith(inst)
   })
 
-  it("accepts the file when the browser can't read durations (backend re-checks)", async () => {
-    getDuration.mockResolvedValue(null)
+  it("rejects an oversized instrumental with the size limit", async () => {
+    check.mockResolvedValue({ ok: false, reason: "tooLarge", sizeMb: 350, maxMb: 200 })
     const onChange = jest.fn()
     render(<OwnInstrumentalField mixFile={mix} file={null} onChange={onChange} />)
 
     pick(inst)
-    await waitFor(() => expect(onChange).toHaveBeenCalledWith(inst))
+    expect(await screen.findByRole("alert")).toHaveTextContent("This file is 350 MB, which is over the 200 MB limit")
+    expect(onChange).toHaveBeenCalledWith(null)
+  })
+
+  it("checks the pick against the mix file", async () => {
+    check.mockResolvedValue({ ok: true })
+    render(<OwnInstrumentalField mixFile={mix} file={null} onChange={jest.fn()} />)
+    pick(inst)
+    await waitFor(() => expect(check).toHaveBeenCalledWith(inst, mix))
   })
 
   it("shows the chosen file and lets the user remove it", () => {

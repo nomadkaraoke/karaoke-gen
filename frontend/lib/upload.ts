@@ -24,8 +24,48 @@ export interface SignedUploadTarget {
   contentType: string;
 }
 
-/** Max difference between a mix and its instrumental, matching the backend check. */
-export const DURATION_TOLERANCE_SECONDS = 0.5;
+/**
+ * The backend requires mix and instrumental within 0.5s (exact decode). Browser
+ * <audio> metadata can be a second or two off (e.g. VBR MP3 without a Xing
+ * header), so the client only blocks clear mismatches and leaves the precise
+ * check to the server.
+ */
+export const CLIENT_DURATION_TOLERANCE_SECONDS = 1.5;
+
+/** Keep in sync with MAX_INSTRUMENTAL_UPLOAD_BYTES in backend/api/routes/jobs.py. */
+export const MAX_INSTRUMENTAL_UPLOAD_BYTES = 200 * 1024 * 1024;
+
+export type InstrumentalCheck =
+  | { ok: true }
+  | { ok: false; reason: 'tooLarge'; sizeMb: number; maxMb: number }
+  | { ok: false; reason: 'mismatch'; fileSeconds: number; expectedSeconds: number };
+
+/**
+ * Pre-upload sanity check for a user-supplied instrumental, shared by every
+ * flow that accepts one. `expected` is the song's length (seconds) or the mix
+ * file itself. Unknown durations pass — the backend re-checks.
+ */
+export async function checkInstrumentalFile(
+  file: File,
+  expected: number | File | null,
+): Promise<InstrumentalCheck> {
+  if (file.size > MAX_INSTRUMENTAL_UPLOAD_BYTES) {
+    return {
+      ok: false,
+      reason: 'tooLarge',
+      sizeMb: Math.round(file.size / (1024 * 1024)),
+      maxMb: MAX_INSTRUMENTAL_UPLOAD_BYTES / (1024 * 1024),
+    };
+  }
+  const [fileSeconds, expectedSeconds] = await Promise.all([
+    getAudioFileDuration(file),
+    expected instanceof File ? getAudioFileDuration(expected) : Promise.resolve(expected && expected > 0 ? expected : null),
+  ]);
+  if (durationsMismatch(fileSeconds, expectedSeconds)) {
+    return { ok: false, reason: 'mismatch', fileSeconds: fileSeconds as number, expectedSeconds: expectedSeconds as number };
+  }
+  return { ok: true };
+}
 
 /**
  * PUT one file to a signed URL with upload progress.
@@ -113,10 +153,10 @@ export function getAudioFileDuration(file: File, timeoutMs = 10000): Promise<num
   });
 }
 
-/** True when both durations are known and differ by more than the backend tolerance. */
+/** True when both durations are known and clearly differ (see CLIENT_DURATION_TOLERANCE_SECONDS). */
 export function durationsMismatch(a: number | null, b: number | null): boolean {
   if (a == null || b == null) return false;
-  return Math.abs(a - b) > DURATION_TOLERANCE_SECONDS;
+  return Math.abs(a - b) > CLIENT_DURATION_TOLERANCE_SECONDS;
 }
 
 /** True for network-level upload failures (offline, connection dropped, tab suspended). */

@@ -1908,6 +1908,7 @@
     "modalTitle": "Đang tải tệp của bạn lên",
     "networkError": "Quá trình tải lên bị gián đoạn. Hãy kiểm tra kết nối mạng và thử lại.",
     "preparing": "Đang chuẩn bị tải lên...",
-    "uploadingPercent": "Đang tải lên... {percent}%"
+    "uploadingPercent": "Đang tải lên... {percent}%",
+    "tooLarge": "Tệp này có dung lượng {size} MB, vượt quá giới hạn {max} MB. Bạn vui lòng sử dụng phiên bản FLAC hoặc MP3 để thay thế."
   }
 }

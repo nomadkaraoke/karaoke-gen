@@ -1908,6 +1908,7 @@
     "modalTitle": "Przesyłanie Twojego pliku",
     "networkError": "Przesyłanie zostało przerwane. Sprawdź połączenie z internetem i spróbuj ponownie.",
     "preparing": "Przygotowywanie przesyłania...",
-    "uploadingPercent": "Przesyłanie... {percent}%"
+    "uploadingPercent": "Przesyłanie... {percent}%",
+    "tooLarge": "Ten plik ma {size} MB, co przekracza limit {max} MB. Użyj zamiast tego wersji FLAC lub MP3."
   }
 }

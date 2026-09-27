@@ -1908,6 +1908,7 @@
     "modalTitle": "ファイルをアップロード中",
     "networkError": "アップロードが中断されました。接続を確認して、もう一度お試しください。",
     "preparing": "アップロードの準備中...",
-    "uploadingPercent": "アップロード中... {percent}%"
+    "uploadingPercent": "アップロード中... {percent}%",
+    "tooLarge": "このファイルのサイズは{size} MBで、上限の{max} MBを超えています。代わりにFLACまたはMP3バージョンをご利用ください。"
   }
 }

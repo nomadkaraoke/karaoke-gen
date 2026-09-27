@@ -1908,6 +1908,7 @@
     "modalTitle": "Dosyan yükleniyor",
     "networkError": "Yükleme kesintiye uğradı. Bağlantını kontrol et ve tekrar dene.",
     "preparing": "Yükleme hazırlanıyor...",
-    "uploadingPercent": "Yükleniyor... %{percent}"
+    "uploadingPercent": "Yükleniyor... %{percent}",
+    "tooLarge": "Bu dosya {size} MB boyutunda ve {max} MB sınırını aşıyor. Lütfen bunun yerine FLAC veya MP3 sürümünü kullan."
   }
 }

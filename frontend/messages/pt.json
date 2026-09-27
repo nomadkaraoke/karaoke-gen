@@ -1908,6 +1908,7 @@
     "modalTitle": "Enviando seu arquivo",
     "networkError": "O upload foi interrompido. Verifique sua conexão e tente novamente.",
     "preparing": "Preparando o upload...",
-    "uploadingPercent": "Enviando... {percent}%"
+    "uploadingPercent": "Enviando... {percent}%",
+    "tooLarge": "Este arquivo tem {size} MB, o que ultrapassa o limite de {max} MB. Por favor, use uma versão em FLAC ou MP3."
   }
 }

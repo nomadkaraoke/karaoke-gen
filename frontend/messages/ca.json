@@ -1908,6 +1908,7 @@
     "modalTitle": "Pujant el teu fitxer",
     "networkError": "La càrrega s'ha interromput. Comprova la connexió i torna-ho a provar.",
     "preparing": "Preparant la càrrega...",
-    "uploadingPercent": "Pujant... {percent}%"
+    "uploadingPercent": "Pujant... {percent}%",
+    "tooLarge": "Aquest fitxer ocupa {size} MB, cosa que supera el límit de {max} MB. Si us plau, utilitza una versió en FLAC o MP3 en comptes d'aquesta."
   }
 }

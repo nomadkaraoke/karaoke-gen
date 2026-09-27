@@ -1327,9 +1327,11 @@ async def create_custom_instrumental(
         # Store the custom instrumental path in job file_urls
         job_manager.update_file_url(job_id, 'stems', 'custom_instrumental', output_path)
 
-        # Generate signed URL for playback
+        # Generate signed URL for playback (overwrote the stem in place — drop any
+        # cached transcode of a previous custom/uploaded instrumental first)
         from backend.services.audio_transcoding_service import AudioTranscodingService
         transcoding = AudioTranscodingService(storage_service=storage)
+        await asyncio.to_thread(transcoding.invalidate_cache, output_path)
         audio_url = await transcoding.get_review_audio_url_async(output_path, expiration_minutes=120)
 
         logger.info(f"Job {job_id}: Custom instrumental created with {len(mute_regions)} mute regions")
@@ -1372,6 +1374,10 @@ def _get_review_job(job_id: str, auth_result: AuthResult, locale: str):
             detail=t(locale, "jobs.reviewNotInState", status=job.status)
         )
     return job
+
+
+# Keep in sync with MAX_INSTRUMENTAL_UPLOAD_BYTES in frontend/lib/upload.ts
+MAX_INSTRUMENTAL_UPLOAD_BYTES = 200 * 1024 * 1024
 
 
 async def _store_custom_instrumental(
@@ -1431,6 +1437,7 @@ async def _store_custom_instrumental(
     try:
         from backend.services.audio_transcoding_service import AudioTranscodingService
         transcoding = AudioTranscodingService(storage_service=storage)
+        await asyncio.to_thread(transcoding.invalidate_cache, output_path)
         audio_url = await transcoding.get_review_audio_url_async(output_path, expiration_minutes=120)
     except Exception as e:
         logger.warning(f"Job {job_id}: Could not create playback URL for custom instrumental: {e}")
@@ -1558,8 +1565,17 @@ async def complete_instrumental_upload(
         raise HTTPException(status_code=400, detail=t(locale, "jobs.instrumentalUploadBadPath"))
 
     storage = StorageService()
-    if not await asyncio.to_thread(storage.file_exists, body.gcs_path):
+    size = await asyncio.to_thread(storage.get_file_size, body.gcs_path)
+    if size is None:
         raise HTTPException(status_code=404, detail=t(locale, "jobs.instrumentalUploadMissing"))
+    # Decoding holds tmpfs copy + PCM + FLAC in memory on a 2Gi instance.
+    if size > MAX_INSTRUMENTAL_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=t(locale, "jobs.instrumentalUploadTooLarge",
+                     size_mb=f"{size / (1024 * 1024):.0f}",
+                     max_mb=f"{MAX_INSTRUMENTAL_UPLOAD_BYTES // (1024 * 1024)}"),
+        )
 
     tmp_path = None
     try:

@@ -1908,6 +1908,7 @@
     "modalTitle": "Memuat naik fail anda",
     "networkError": "Muat naik terganggu. Semak sambungan anda dan cuba lagi.",
     "preparing": "Menyediakan muat naik...",
-    "uploadingPercent": "Memuat naik... {percent}%"
+    "uploadingPercent": "Memuat naik... {percent}%",
+    "tooLarge": "Fail ini bersaiz {size} MB, melebihi had {max} MB. Sila gunakan versi FLAC atau MP3 sebagai ganti."
   }
 }

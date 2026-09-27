@@ -1908,6 +1908,7 @@
     "modalTitle": "Se încarcă fișierul tău",
     "networkError": "Încărcarea a fost întreruptă. Verifică-ți conexiunea și încearcă din nou.",
     "preparing": "Se pregătește încărcarea...",
-    "uploadingPercent": "Se încarcă... {percent}%"
+    "uploadingPercent": "Se încarcă... {percent}%",
+    "tooLarge": "Acest fișier are {size} MB, ceea ce depășește limita de {max} MB. Te rugăm să folosești în schimb o versiune FLAC sau MP3."
   }
 }

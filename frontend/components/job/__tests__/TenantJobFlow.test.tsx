@@ -10,11 +10,11 @@ jest.mock("@/lib/api", () => {
 })
 jest.mock("@/lib/upload", () => {
   const actual = jest.requireActual("@/lib/upload")
-  return { ...actual, getAudioFileDuration: jest.fn() }
+  return { ...actual, checkInstrumentalFile: jest.fn() }
 })
 
 const createJob = api.createJobFromUploadedAudio as jest.Mock
-const getDuration = upload.getAudioFileDuration as jest.Mock
+const check = upload.checkInstrumentalFile as jest.Mock
 
 const mix = new File(["m"], "mix.wav", { type: "audio/wav" })
 const inst = new File(["i"], "inst.wav", { type: "audio/wav" })
@@ -29,11 +29,11 @@ function fillForm() {
 describe("TenantJobFlow", () => {
   beforeEach(() => {
     createJob.mockReset()
-    getDuration.mockReset()
+    check.mockReset()
   })
 
   it("submits both files through the shared upload path and shows the progress modal", async () => {
-    getDuration.mockResolvedValue(200)
+    check.mockResolvedValue({ ok: true })
     let finish!: (v: any) => void
     createJob.mockImplementation((_m, _a, _t, _o, report) => {
       report({ phase: "uploading", loaded: 1, total: 2, fileName: "inst.wav", fileIndex: 2, fileCount: 2 })
@@ -54,7 +54,7 @@ describe("TenantJobFlow", () => {
   })
 
   it("blocks a mismatched instrumental before uploading anything", async () => {
-    getDuration.mockResolvedValueOnce(200).mockResolvedValueOnce(170)
+    check.mockResolvedValue({ ok: false, reason: "mismatch", fileSeconds: 170, expectedSeconds: 200 })
     render(<TenantJobFlow onJobCreated={jest.fn()} />)
     fillForm()
     fireEvent.click(screen.getByRole("button", { name: /Submit Track/ }))
@@ -64,7 +64,7 @@ describe("TenantJobFlow", () => {
   })
 
   it("shows a connection error when the upload drops", async () => {
-    getDuration.mockResolvedValue(null)
+    check.mockResolvedValue({ ok: true })
     const { ApiError } = jest.requireActual("@/lib/api-error")
     createJob.mockRejectedValue(new ApiError("Upload failed: network error", 0))
     render(<TenantJobFlow onJobCreated={jest.fn()} />)

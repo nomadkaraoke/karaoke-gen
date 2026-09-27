@@ -53,7 +53,8 @@
     "instrumentalUploadBadPath": "Ungültige Referenz für das hochgeladene Instrumental. Bitte versuche den Upload erneut.",
     "instrumentalUploadBadType": "Nicht unterstützter Audiodateityp. Bitte lade eines der folgenden Formate hoch: {allowed}.",
     "instrumentalUploadMissing": "Wir konnten dein hochgeladenes Instrumental nicht finden. Der Upload wurde möglicherweise nicht abgeschlossen. Bitte versuche es erneut.",
-    "uploadDurationMismatchCancelled": "Dauer stimmt nicht überein: Das Instrumental ist {instrumental_duration}s lang, das Song-Audio jedoch {audio_duration}s (sie müssen bis auf 0.5s übereinstimmen). Dieser Auftrag wurde abgebrochen und dein Guthaben erstattet. Bitte reiche es mit übereinstimmenden Dateien erneut ein."
+    "uploadDurationMismatchCancelled": "Dauer stimmt nicht überein: Das Instrumental ist {instrumental_duration}s lang, das Song-Audio jedoch {audio_duration}s (sie müssen bis auf 0.5s übereinstimmen). Dieser Auftrag wurde abgebrochen und dein Guthaben erstattet. Bitte reiche es mit übereinstimmenden Dateien erneut ein.",
+    "instrumentalUploadTooLarge": "Diese Instrumental-Datei ist {size_mb} MB groß, was über dem Limit von {max_mb} MB liegt. Bitte lade stattdessen eine FLAC- oder MP3-Version hoch."
   },
   "review": {
     "jobNotFound": "Auftrag nicht gefunden",

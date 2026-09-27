@@ -1908,6 +1908,7 @@
     "modalTitle": "Fájlod feltöltése",
     "networkError": "A feltöltés megszakadt. Ellenőrizd a kapcsolatodat, és próbáld újra.",
     "preparing": "Feltöltés előkészítése...",
-    "uploadingPercent": "Feltöltés... {percent}%"
+    "uploadingPercent": "Feltöltés... {percent}%",
+    "tooLarge": "Ez a fájl {size} MB, ami meghaladja a {max} MB-os limitet. Kérlek, használj helyette FLAC vagy MP3 verziót."
   }
 }

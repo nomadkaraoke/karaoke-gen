@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { api, ApiError } from "@/lib/api"
-import { durationsMismatch, getAudioFileDuration, isNetworkUploadError } from "@/lib/upload"
+import { checkInstrumentalFile, isNetworkUploadError } from "@/lib/upload"
 import { useUploadTask } from "@/hooks/useUploadTask"
 import { UploadProgressModal } from "@/components/upload/UploadProgressModal"
 import { formatDuration } from "./OwnInstrumentalField"
@@ -28,6 +28,7 @@ type SubmitPhase = "idle" | "submitting" | "done"
 
 export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
   const t = useTranslations('jobFlow')
+  const tUpload = useTranslations('upload')
   const { branding } = useTenant()
 
   // Form fields
@@ -79,15 +80,14 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
     try {
       // Catch a mismatched instrumental before uploading both files — the backend
       // rejects anything more than 0.5s off, but only after the full upload.
-      const [mixSeconds, instSeconds] = await Promise.all([
-        getAudioFileDuration(mixedFile),
-        getAudioFileDuration(instrumentalFile),
-      ])
-      if (durationsMismatch(mixSeconds, instSeconds)) {
-        setError(t('ownInstrumentalMismatch', {
-          instrumental: formatDuration(instSeconds as number),
-          song: formatDuration(mixSeconds as number),
-        }))
+      const check = await checkInstrumentalFile(instrumentalFile, mixedFile)
+      if (!check.ok) {
+        setError(check.reason === 'tooLarge'
+          ? tUpload('tooLarge', { size: check.sizeMb, max: check.maxMb })
+          : t('ownInstrumentalMismatch', {
+              instrumental: formatDuration(check.fileSeconds),
+              song: formatDuration(check.expectedSeconds),
+            }))
         setPhase("idle")
         return
       }

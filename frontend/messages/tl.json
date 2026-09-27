@@ -1908,6 +1908,7 @@
     "modalTitle": "Ina-upload ang iyong file",
     "networkError": "Naantala ang pag-upload. Suriin ang iyong koneksyon at subukang muli.",
     "preparing": "Inihahanda ang pag-upload...",
-    "uploadingPercent": "Ina-upload... {percent}%"
+    "uploadingPercent": "Ina-upload... {percent}%",
+    "tooLarge": "Ang file na ito ay {size} MB, na lampas sa {max} MB na limitasyon. Mangyaring gumamit na lang ng bersyong FLAC o MP3."
   }
 }

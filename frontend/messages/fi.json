@@ -1908,6 +1908,7 @@
     "modalTitle": "Ladataan tiedostoasi",
     "networkError": "Lataus keskeytyi. Tarkista verkkoyhteytesi ja yritä uudelleen.",
     "preparing": "Valmistellaan latausta...",
-    "uploadingPercent": "Ladataan... {percent}%"
+    "uploadingPercent": "Ladataan... {percent}%",
+    "tooLarge": "Tämän tiedoston koko on {size} MB, mikä ylittää {max} MB:n rajan. Käytä sen sijaan FLAC- tai MP3-versiota."
   }
 }

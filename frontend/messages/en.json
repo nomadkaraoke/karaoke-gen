@@ -1908,6 +1908,7 @@
     "keepTabOpen": "Keep this tab open until the upload finishes. Leaving or closing this page will stop the upload.",
     "fileOfCount": "File {index} of {count}: {name}",
     "networkError": "The upload was interrupted. Check your connection and try again.",
-    "failed": "The upload failed. Please try again."
+    "failed": "The upload failed. Please try again.",
+    "tooLarge": "This file is {size} MB, which is over the {max} MB limit. Please use a FLAC or MP3 version instead."
   }
 }

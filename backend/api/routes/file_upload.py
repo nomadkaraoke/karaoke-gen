@@ -1438,9 +1438,15 @@ async def mark_uploads_complete(
         if not job:
             raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
-        # Only the job's owner (or an admin) may finalize its uploads.
-        from backend.api.routes.jobs import _check_job_ownership
-        if not _check_job_ownership(job, auth_result):
+        # A signed-in user may not finalize someone else's job. (Token auth without
+        # an email — trusted API integrations creating jobs on behalf of a
+        # body.user_email — keeps working, as before this check existed.)
+        if (
+            not auth_result.is_admin
+            and auth_result.user_email
+            and job.user_email
+            and auth_result.user_email.lower() != job.user_email.lower()
+        ):
             raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
 
         # Verify job is in pending state

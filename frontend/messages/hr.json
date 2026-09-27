@@ -1908,6 +1908,7 @@
     "modalTitle": "Prijenos tvoje datoteke",
     "networkError": "Prijenos je prekinut. Provjeri internetsku vezu i pokušaj ponovno.",
     "preparing": "Priprema prijenosa...",
-    "uploadingPercent": "Prijenos u tijeku... {percent}%"
+    "uploadingPercent": "Prijenos u tijeku... {percent}%",
+    "tooLarge": "Ova datoteka ima {size} MB, što premašuje ograničenje od {max} MB. Umjesto toga upotrijebi FLAC ili MP3 verziju."
   }
 }

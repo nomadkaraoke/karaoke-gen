@@ -199,7 +199,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
             requires_audio_edit: requiresAudioEdit || undefined,
             review_mode: reviewMode,
             backing_preference: backingPreference,
-            instrumentalFile: isPrivate ? instrumentalFile : null,
+            instrumentalFile: isPrivate && !requiresAudioEdit ? instrumentalFile : null,
           },
           report,
         ))
@@ -585,7 +585,9 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           onConfirm={handleConfirm}
           onBack={() => setStep(3)}
           isSubmitting={isSubmitting}
-          instrumentalSlot={audioSource === "upload" && pendingFile ? (
+          // Not with "edit audio first": an edited mix would no longer line up
+          // with the untouched instrumental.
+          instrumentalSlot={audioSource === "upload" && pendingFile && !requiresAudioEdit ? (
             <OwnInstrumentalField
               mixFile={pendingFile}
               file={instrumentalFile}

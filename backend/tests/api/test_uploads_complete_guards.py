@@ -59,6 +59,21 @@ async def test_non_owner_forbidden(mocks):
 
 
 @pytest.mark.asyncio
+async def test_email_less_token_auth_still_allowed(mocks):
+    """Trusted API tokens without an email create jobs on behalf of body.user_email
+    and must still be able to finalize them."""
+    mocks["storage"].list_files.side_effect = lambda prefix: (
+        ["uploads/job-1/audio/song.wav"] if prefix == "uploads/job-1/audio/" else []
+    )
+    with patch("backend.api.routes.file_upload.get_credential_manager"), \
+         patch("backend.api.routes.file_upload._validate_audio_durations", new_callable=AsyncMock):
+        try:
+            await _call(_auth(email=None), files=("audio",))
+        except HTTPException as e:
+            assert e.status_code != 403
+
+
+@pytest.mark.asyncio
 async def test_duration_mismatch_cancels_job_then_400(mocks):
     with patch("backend.api.routes.file_upload._validate_audio_durations",
                new_callable=AsyncMock, return_value=(False, 200.0, 190.0)):

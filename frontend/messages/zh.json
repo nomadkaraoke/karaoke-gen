@@ -1908,6 +1908,7 @@
     "modalTitle": "正在上传文件",
     "networkError": "上传已中断。请检查网络连接并重试。",
     "preparing": "正在准备上传...",
-    "uploadingPercent": "正在上传... {percent}%"
+    "uploadingPercent": "正在上传... {percent}%",
+    "tooLarge": "此文件大小为 {size} MB，已超出 {max} MB 的限制。请改用 FLAC 或 MP3 版本。"
   }
 }

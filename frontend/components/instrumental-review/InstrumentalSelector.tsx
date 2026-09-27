@@ -24,7 +24,7 @@ import { SelectionOptions } from "./SelectionOptions"
 import { CustomUpload } from "./CustomUpload"
 import { UploadProgressModal } from "@/components/upload/UploadProgressModal"
 import { useUploadTask } from "@/hooks/useUploadTask"
-import { durationsMismatch, getAudioFileDuration, isNetworkUploadError } from "@/lib/upload"
+import { checkInstrumentalFile, isNetworkUploadError } from "@/lib/upload"
 import { InstrumentalGuidancePanel } from "./InstrumentalGuidancePanel"
 
 interface InstrumentalSelectorProps {
@@ -461,12 +461,14 @@ export function InstrumentalSelector({ job, isLocalMode = false, isReadOnly = fa
       setUploadError("")
       // The backend rejects instrumentals >0.5s off the original — check before
       // making the user wait for a long upload.
-      const fileSeconds = await getAudioFileDuration(file)
-      if (durationsMismatch(fileSeconds, duration > 0 ? duration : null)) {
-        const message = t('uploadDurationMismatch', {
-          uploaded: formatTime(fileSeconds as number),
-          expected: formatTime(duration),
-        })
+      const check = await checkInstrumentalFile(file, duration)
+      if (!check.ok) {
+        const message = check.reason === 'tooLarge'
+          ? tUpload('tooLarge', { size: check.sizeMb, max: check.maxMb })
+          : t('uploadDurationMismatch', {
+              uploaded: formatTime(check.fileSeconds),
+              expected: formatTime(check.expectedSeconds),
+            })
         setUploadError(message)
         toast.error(message)
         return

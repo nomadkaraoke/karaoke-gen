@@ -53,7 +53,8 @@
     "instrumentalUploadBadPath": "Riferimento al caricamento della base strumentale non valido. Prova a caricarla di nuovo.",
     "instrumentalUploadBadType": "Tipo di file audio non supportato. Carica uno dei seguenti formati: {allowed}.",
     "instrumentalUploadMissing": "Non siamo riusciti a trovare la base strumentale caricata. Il caricamento potrebbe non essere stato completato. Riprova.",
-    "uploadDurationMismatchCancelled": "Discrepanza di durata: la base strumentale dura {instrumental_duration}s ma l'audio del brano dura {audio_duration}s (devono corrispondere entro 0.5s). Questa operazione è stata annullata e il tuo credito è stato rimborsato. Invia di nuovo la richiesta con file corrispondenti."
+    "uploadDurationMismatchCancelled": "Discrepanza di durata: la base strumentale dura {instrumental_duration}s ma l'audio del brano dura {audio_duration}s (devono corrispondere entro 0.5s). Questa operazione è stata annullata e il tuo credito è stato rimborsato. Invia di nuovo la richiesta con file corrispondenti.",
+    "instrumentalUploadTooLarge": "Questo file strumentale è di {size_mb} MB, che supera il limite di {max_mb} MB. Carica invece una versione in FLAC o MP3."
   },
   "review": {
     "jobNotFound": "Lavoro non trovato",

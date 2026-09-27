@@ -1908,6 +1908,7 @@
     "modalTitle": "מעלים את הקובץ שלך",
     "networkError": "ההעלאה הופסקה. נא לבדוק את החיבור לרשת ולנסות שוב.",
     "preparing": "מכינים את ההעלאה...",
-    "uploadingPercent": "מעלים... {percent}%"
+    "uploadingPercent": "מעלים... {percent}%",
+    "tooLarge": "הקובץ בגודל {size} MB, מעבר למגבלה של {max} MB. אנא השתמשו בגרסת FLAC או MP3 במקום."
   }
 }

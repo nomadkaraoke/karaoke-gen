@@ -214,12 +214,14 @@ Content-Type: application/json
 Triggers async processing.
 
 Between steps 1 and 3 the job is `pending` with `state_data.awaiting_upload: true` (shown as
-"Waiting for upload" on the dashboard; cleared by `uploads-complete`). Non-tenant jobs still
-awaiting upload 2h after creation (signed URLs expire at 60 min) with nothing under
-`uploads/{job_id}/` are auto-cancelled with credit refund by the hourly
-`process-stale-reviews` run (`backend/workers/stale_upload_processor.py`).
+"Waiting for upload" on the dashboard; cleared by `uploads-complete`). The web client cancels
+its own job (refunding the credit) when the upload fails. As a backstop, the hourly
+`process-stale-reviews` run (`backend/workers/stale_upload_processor.py`) cancels and refunds
+jobs still awaiting upload 6h after creation (signed URLs expire at 60 min, but an in-flight
+PUT can outlast that), or 24h if some files already landed under `uploads/{job_id}/`. Tenant
+bulk (`batch_id`) jobs are exempt.
 
-The caller must own the job (or be admin). With an `existing_instrumental` file, a >0.5s
+A signed-in user can't finalize another user's job (admins and email-less API tokens can). With an `existing_instrumental` file, a >0.5s
 duration mismatch cancels the job (credit refunded) and returns 400
 `{detail: {error: "duration_mismatch", message, audio_duration, instrumental_duration, difference}}`.
 
@@ -472,7 +474,7 @@ POST /api/jobs/{job_id}/instrumental-upload-complete
 → same response as upload-instrumental
 ```
 
-Same ownership/status checks as `upload-instrumental`. Extensions: flac, mp3, wav, m4a, ogg, aac, aif, aiff, opus
+Same ownership/status checks as `upload-instrumental`. Max 200 MB (400 otherwise). Extensions: flac, mp3, wav, m4a, ogg, aac, aif, aiff, opus
 (400 otherwise). `gcs_path` must be this job's `custom_instrumental_source` object (400 otherwise); 404 if the
 upload never landed. Both routes share one processing helper (duration check, FLAC conversion,
 `stems.custom_instrumental`).
@@ -2568,7 +2570,7 @@ Called by Cloud Scheduler hourly. Queries for jobs in `awaiting_review`, `in_rev
 `awaiting_duration_confirm` status. Sends reminder emails at 24h; auto-cancels with full credit
 refund at 48h (all `credits_charged` are returned for duration-confirm expirations). Excludes
 made-for-you and tenant jobs. Also cancels (with refund) signed-URL upload jobs whose browser upload
-never finished (`state_data.awaiting_upload` for >= 2h, no files in `uploads/{job_id}/`, non-tenant).
+never finished (`state_data.awaiting_upload` for >= 6h, or >= 24h with partial files; not tenant bulk).
 Returns `{status: "started", message: "..."}` immediately; processing runs in background.
 
 ## Referral System

@@ -1,6 +1,8 @@
 import { ApiError } from "../api-error"
 import {
+  checkInstrumentalFile,
   durationsMismatch,
+  MAX_INSTRUMENTAL_UPLOAD_BYTES,
   getAudioFileDuration,
   isNetworkUploadError,
   putFileToSignedUrl,
@@ -88,9 +90,9 @@ describe("uploadFilesToSignedUrls", () => {
 })
 
 describe("durationsMismatch", () => {
-  it("flags differences over half a second only when both are known", () => {
-    expect(durationsMismatch(180, 180.4)).toBe(false)
-    expect(durationsMismatch(180, 180.6)).toBe(true)
+  it("flags only clear differences (browser metadata is imprecise) when both are known", () => {
+    expect(durationsMismatch(180, 181.4)).toBe(false)
+    expect(durationsMismatch(180, 181.6)).toBe(true)
     expect(durationsMismatch(null, 100)).toBe(false)
     expect(durationsMismatch(100, null)).toBe(false)
   })
@@ -136,5 +138,54 @@ describe("getAudioFileDuration", () => {
   it("resolves null on timeout", async () => {
     stubAudio(() => {})
     await expect(getAudioFileDuration(new File(["a"], "a.wav"), 10)).resolves.toBeNull()
+  })
+})
+
+describe("checkInstrumentalFile", () => {
+  const realCreate = document.createElement.bind(document)
+  beforeEach(() => {
+    global.URL.createObjectURL = jest.fn(() => "blob:x")
+    global.URL.revokeObjectURL = jest.fn()
+  })
+  afterEach(() => jest.restoreAllMocks())
+
+  function stubDurations(byName: Record<string, number | null>) {
+    jest.spyOn(URL, "createObjectURL").mockImplementation((f: any) => "blob:" + f.name)
+    jest.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      if (tag !== "audio") return realCreate(tag)
+      const el: any = { removeAttribute: jest.fn() }
+      Object.defineProperty(el, "src", { set(v: string) {
+        const name = v.replace("blob:", "")
+        setTimeout(() => {
+          const d = byName[name]
+          if (d == null) el.onerror()
+          else { el.duration = d; el.onloadedmetadata() }
+        }, 0)
+      } })
+      return el
+    })
+  }
+
+  it("rejects files over the size limit without decoding them", async () => {
+    const big = new File(["x"], "big.wav")
+    Object.defineProperty(big, "size", { value: MAX_INSTRUMENTAL_UPLOAD_BYTES + 1 })
+    await expect(checkInstrumentalFile(big, 100)).resolves.toEqual({ ok: false, reason: "tooLarge", sizeMb: 200, maxMb: 200 })
+  })
+
+  it("compares against a mix file", async () => {
+    stubDurations({ "mix.wav": 200, "inst.wav": 170 })
+    await expect(checkInstrumentalFile(new File(["i"], "inst.wav"), new File(["m"], "mix.wav")))
+      .resolves.toEqual({ ok: false, reason: "mismatch", fileSeconds: 170, expectedSeconds: 200 })
+  })
+
+  it("compares against a known duration and passes near-matches", async () => {
+    stubDurations({ "inst.wav": 200.9 })
+    await expect(checkInstrumentalFile(new File(["i"], "inst.wav"), 200)).resolves.toEqual({ ok: true })
+  })
+
+  it("passes when the duration can't be read (server re-checks)", async () => {
+    stubDurations({ "inst.aiff": null })
+    await expect(checkInstrumentalFile(new File(["i"], "inst.aiff"), 200)).resolves.toEqual({ ok: true })
+    await expect(checkInstrumentalFile(new File(["i"], "x.wav"), 0)).resolves.toEqual({ ok: true })
   })
 })

@@ -1908,6 +1908,7 @@
     "modalTitle": "Je bestand uploaden",
     "networkError": "De upload is onderbroken. Controleer je verbinding en probeer het opnieuw.",
     "preparing": "Upload voorbereiden...",
-    "uploadingPercent": "Uploaden... {percent}%"
+    "uploadingPercent": "Uploaden... {percent}%",
+    "tooLarge": "Dit bestand is {size} MB, wat groter is dan de limiet van {max} MB. Gebruik in plaats daarvan een FLAC- of MP3-versie."
   }
 }

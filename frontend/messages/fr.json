@@ -1908,6 +1908,7 @@
     "modalTitle": "Téléversement de ton fichier",
     "networkError": "Le téléversement a été interrompu. Vérifie ta connexion et réessaie.",
     "preparing": "Préparation du téléversement...",
-    "uploadingPercent": "Téléversement... {percent} %"
+    "uploadingPercent": "Téléversement... {percent} %",
+    "tooLarge": "Ce fichier fait {size} Mo, ce qui dépasse la limite de {max} Mo. Utilise plutôt une version FLAC ou MP3."
   }
 }

@@ -1908,6 +1908,7 @@
     "modalTitle": "Caricamento del tuo file",
     "networkError": "Il caricamento è stato interrotto. Controlla la tua connessione e riprova.",
     "preparing": "Preparazione del caricamento...",
-    "uploadingPercent": "Caricamento in corso... {percent}%"
+    "uploadingPercent": "Caricamento in corso... {percent}%",
+    "tooLarge": "Questo file è di {size} MB e supera il limite di {max} MB. Usa invece una versione FLAC o MP3."
   }
 }

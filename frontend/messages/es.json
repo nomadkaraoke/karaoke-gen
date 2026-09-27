@@ -1908,6 +1908,7 @@
     "modalTitle": "Subiendo tu archivo",
     "networkError": "La subida se interrumpió. Comprueba tu conexión e inténtalo de nuevo.",
     "preparing": "Preparando la subida...",
-    "uploadingPercent": "Subiendo... {percent}%"
+    "uploadingPercent": "Subiendo... {percent}%",
+    "tooLarge": "Este archivo tiene {size} MB, lo que supera el límite de {max} MB. Por favor, usa una versión en FLAC o MP3 en su lugar."
   }
 }

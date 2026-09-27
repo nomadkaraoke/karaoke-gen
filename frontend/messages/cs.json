@@ -1908,6 +1908,7 @@
     "modalTitle": "Nahrávání souboru",
     "networkError": "Nahrávání bylo přerušeno. Zkontroluj připojení a zkus to znovu.",
     "preparing": "Příprava nahrávání...",
-    "uploadingPercent": "Nahrávání... {percent}%"
+    "uploadingPercent": "Nahrávání... {percent}%",
+    "tooLarge": "Tento soubor má {size} MB, což překračuje limit {max} MB. Použij prosím raději verzi ve formátu FLAC nebo MP3."
   }
 }

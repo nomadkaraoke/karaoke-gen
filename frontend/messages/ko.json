@@ -1908,6 +1908,7 @@
     "modalTitle": "파일 업로드 중",
     "networkError": "업로드가 중단되었습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.",
     "preparing": "업로드 준비 중...",
-    "uploadingPercent": "업로드 중... {percent}%"
+    "uploadingPercent": "업로드 중... {percent}%",
+    "tooLarge": "이 파일의 크기는 {size} MB로 최대 용량인 {max} MB를 초과합니다. 대신 FLAC 또는 MP3 버전을 사용해 주세요."
   }
 }

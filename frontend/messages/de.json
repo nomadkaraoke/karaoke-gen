@@ -1908,6 +1908,7 @@
     "modalTitle": "Deine Datei wird hochgeladen",
     "networkError": "Der Upload wurde unterbrochen. Überprüfe deine Verbindung und versuche es erneut.",
     "preparing": "Upload wird vorbereitet...",
-    "uploadingPercent": "Wird hochgeladen... {percent}%"
+    "uploadingPercent": "Wird hochgeladen... {percent}%",
+    "tooLarge": "Diese Datei ist {size} MB groß und liegt über dem Limit von {max} MB. Bitte verwende stattdessen eine FLAC- oder MP3-Version."
   }
 }

@@ -53,7 +53,8 @@
     "instrumentalUploadBadPath": "Hindi wasto ang reference sa pag-upload ng instrumental. Pakisubukang mag-upload muli.",
     "instrumentalUploadBadType": "Hindi suportado ang uri ng audio file. Mangyaring mag-upload ng isa sa: {allowed}.",
     "instrumentalUploadMissing": "Hindi namin mahanap ang na-upload mong instrumental. Maaaring hindi natapos ang pag-upload. Pakisubukan muli.",
-    "uploadDurationMismatchCancelled": "Hindi tugma ang haba: ang instrumental ay {instrumental_duration}s ngunit ang audio ng kanta ay {audio_duration}s (dapat magkatugma ang mga ito sa loob ng 0.5s). Kinansela ang job na ito at naibalik na ang iyong credit. Mangyaring magsumite muli na may magkatugmang mga file."
+    "uploadDurationMismatchCancelled": "Hindi tugma ang haba: ang instrumental ay {instrumental_duration}s ngunit ang audio ng kanta ay {audio_duration}s (dapat magkatugma ang mga ito sa loob ng 0.5s). Kinansela ang job na ito at naibalik na ang iyong credit. Mangyaring magsumite muli na may magkatugmang mga file.",
+    "instrumentalUploadTooLarge": "Ang instrumental file na ito ay {size_mb} MB, na lampas sa {max_mb} MB na limitasyon. Mangyaring mag-upload na lang ng bersyong FLAC o MP3."
   },
   "review": {
     "jobNotFound": "Hindi nahanap ang job",

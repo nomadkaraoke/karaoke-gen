@@ -53,7 +53,8 @@
     "instrumentalUploadBadPath": "Neplatný odkaz na nahraný instrumentál. Zkus to prosím nahrát znovu.",
     "instrumentalUploadBadType": "Nepodporovaný typ zvukového souboru. Nahraj prosím jeden z: {allowed}.",
     "instrumentalUploadMissing": "Nepodařilo se najít tvůj nahraný instrumentál. Nahrávání možná nebylo dokončeno. Zkus to prosím znovu.",
-    "uploadDurationMismatchCancelled": "Nesoulad délky: instrumentál má {instrumental_duration} s, ale audio skladby má {audio_duration} s (musí se shodovat do 0,5 s). Tato úloha byla zrušena a tvůj kredit byl vrácen. Odešli to prosím znovu s odpovídajícími soubory."
+    "uploadDurationMismatchCancelled": "Nesoulad délky: instrumentál má {instrumental_duration} s, ale audio skladby má {audio_duration} s (musí se shodovat do 0,5 s). Tato úloha byla zrušena a tvůj kredit byl vrácen. Odešli to prosím znovu s odpovídajícími soubory.",
+    "instrumentalUploadTooLarge": "Tento instrumentální soubor má {size_mb} MB, což překračuje limit {max_mb} MB. Nahraj prosím místo toho verzi ve formátu FLAC nebo MP3."
   },
   "review": {
     "jobNotFound": "Úloha nebyla nalezena",

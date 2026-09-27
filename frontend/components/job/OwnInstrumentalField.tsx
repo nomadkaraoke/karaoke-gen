@@ -4,9 +4,10 @@ import { useRef, useState } from "react"
 import { useTranslations } from 'next-intl'
 import { AlertTriangle, Music2, Upload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { durationsMismatch, getAudioFileDuration } from "@/lib/upload"
+import { checkInstrumentalFile } from "@/lib/upload"
 
-const ACCEPT = ".flac,.mp3,.wav,.m4a,.ogg,.aac,.aif,.aiff,.opus"
+// Must match the backend allow-list for existing_instrumental (ALLOWED_AUDIO_EXTENSIONS).
+const ACCEPT = ".flac,.mp3,.wav,.m4a,.ogg,.aac"
 
 export function formatDuration(seconds: number): string {
   const total = Math.round(seconds)
@@ -28,6 +29,7 @@ interface OwnInstrumentalFieldProps {
  */
 export function OwnInstrumentalField({ mixFile, file, onChange, disabled }: OwnInstrumentalFieldProps) {
   const t = useTranslations('jobFlow')
+  const tUpload = useTranslations('upload')
   const inputRef = useRef<HTMLInputElement>(null)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState("")
@@ -37,15 +39,14 @@ export function OwnInstrumentalField({ mixFile, file, onChange, disabled }: OwnI
     setError("")
     setChecking(true)
     try {
-      const [mixSeconds, instSeconds] = await Promise.all([
-        getAudioFileDuration(mixFile),
-        getAudioFileDuration(picked),
-      ])
-      if (durationsMismatch(mixSeconds, instSeconds)) {
-        setError(t('ownInstrumentalMismatch', {
-          instrumental: formatDuration(instSeconds as number),
-          song: formatDuration(mixSeconds as number),
-        }))
+      const check = await checkInstrumentalFile(picked, mixFile)
+      if (!check.ok) {
+        setError(check.reason === 'tooLarge'
+          ? tUpload('tooLarge', { size: check.sizeMb, max: check.maxMb })
+          : t('ownInstrumentalMismatch', {
+              instrumental: formatDuration(check.fileSeconds),
+              song: formatDuration(check.expectedSeconds),
+            }))
         onChange(null)
         return
       }

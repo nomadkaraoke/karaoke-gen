@@ -1908,6 +1908,7 @@
     "modalTitle": "Uploader din fil",
     "networkError": "Uploaden blev afbrudt. Tjek din forbindelse, og prøv igen.",
     "preparing": "Forbereder upload...",
-    "uploadingPercent": "Uploader... {percent}%"
+    "uploadingPercent": "Uploader... {percent}%",
+    "tooLarge": "Denne fil er på {size} MB, hvilket overskrider grænsen på {max} MB. Brug i stedet en FLAC- eller MP3-version."
   }
 }
