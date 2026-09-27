@@ -971,6 +971,14 @@ optional) lets the judge tell whether weak audio results hint at a typo. The cal
 never blocks job creation — on timeout/error it returns a `none` verdict. Disable
 the AI layer with `MATCH_JUDGE_ENABLED=false` (deterministic+catalog still run).
 
+> **In practice the correction comes from Gemini.** The catalog pass is only confident when the
+> typed text *equals* a catalog entry after case, punctuation and accent folding. The catalog it
+> queries (decide `/api/catalog/tracks`) is BigQuery prefix-only `LIKE 'q%'`, so any typo
+> ("the stokes" / "max picu") gets zero candidates. Most job submissions therefore go
+> `fast … needs_ai=True` then `full … engine=ai`, which prod logs confirm. kjbox's singer search
+> is designing an on-device typo-tolerant matcher that uses Gemini only as a fallback. Read
+> `kjbox/docs/SONG-IDENTIFICATION.md` before reusing this judge for free-text search.
+
 `stage` (optional, `"fast"` | `"full"`, default `"full"`) supports a two-call
 pattern the frontend uses to keep the tidy off the critical path:
 
