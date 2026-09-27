@@ -82,6 +82,11 @@ class OrchestratorConfig:
     # Instrumental selection (clean, with_backing, or custom)
     instrumental_selection: str = "clean"
 
+    # User-supplied instrumental (GCS blob path under uploads/), e.g. tenant jobs
+    # and private "bring your own instrumental" jobs. Passed to the GCE encoder
+    # so it downloads the file itself and uses its any-extension lookup.
+    existing_instrumental_gcs_path: Optional[str] = None
+
     # Audio synchronization - pad instrumental to match countdown-padded vocals
     countdown_padding_seconds: Optional[float] = None
 
@@ -485,6 +490,7 @@ class VideoWorkerOrchestrator:
                 "input_gcs_path": input_gcs_path,
                 "output_gcs_path": output_gcs_path,
                 "countdown_padding_seconds": self.config.countdown_padding_seconds,
+                "existing_instrumental": self.config.existing_instrumental_gcs_path,
             },
         )
 
@@ -1239,6 +1245,7 @@ def create_orchestrator_config_from_job(
 
         # Instrumental selection (for GCE encoding)
         instrumental_selection=instrumental_selection,
+        existing_instrumental_gcs_path=existing_instrumental,
 
         # Audio synchronization - pad instrumental to match countdown-padded vocals
         countdown_padding_seconds=countdown_padding_seconds,

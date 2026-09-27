@@ -54,3 +54,25 @@ describe("useUploadTask", () => {
     expect(result.current.progress).toBeNull()
   })
 })
+
+describe("useUploadTask breadcrumbs", () => {
+  it("records phase/file changes (not every progress tick) for crash reports", async () => {
+    const { __resetDiagnosticsForTest, getBreadcrumbs } = jest.requireActual("@/lib/diagnostics")
+    __resetDiagnosticsForTest()
+    const { result } = renderHook(() => useUploadTask())
+    await act(async () => {
+      await result.current.run(async (report) => {
+        for (let i = 0; i < 5; i++) report({ phase: "uploading", loaded: i, total: 10 * 1048576, fileIndex: 1, fileCount: 2 })
+        report({ phase: "uploading", loaded: 6, total: 10 * 1048576, fileIndex: 2, fileCount: 2 })
+        report({ phase: "finalizing", loaded: 10, total: 10 * 1048576 })
+      })
+    })
+    expect(getBreadcrumbs().filter((c: any) => c.category === "upload").map((c: any) => c.message)).toEqual([
+      "start",
+      "uploading file 1/2 (10 MB)",
+      "uploading file 2/2 (10 MB)",
+      "finalizing (10 MB)",
+      "done",
+    ])
+  })
+})
