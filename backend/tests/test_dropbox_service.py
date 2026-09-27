@@ -531,3 +531,69 @@ class TestFileExists:
 
         service.file_exists("Karaoke/x.flac")
         mock_client.files_get_metadata.assert_called_once_with("/Karaoke/x.flac")
+
+
+class TestDropboxLosslessExclusion:
+    """2026-09-26 cost cut: Nomad's own Dropbox folders skip the lossless 4K MP4
+    (it stays in GCS); tenant folders still get everything."""
+
+    @patch("backend.services.dropbox_service.secretmanager.SecretManagerServiceClient")
+    def test_upload_folder_skips_excluded_suffixes(self, mock_sm_client_class, tmp_path):
+        from backend.services.dropbox_service import DropboxService
+
+        mock_response = Mock()
+        mock_response.payload.data = json.dumps({"access_token": "token"}).encode()
+        mock_sm_client_class.return_value.access_secret_version.return_value = mock_response
+
+        (tmp_path / "A - B (Final Karaoke Lossless 4k).mp4").write_text("x")
+        (tmp_path / "A - B (Final Karaoke Lossless 4k).mkv").write_text("x")
+        (tmp_path / "A - B (Final Karaoke Lossy 4k).mp4").write_text("x")
+
+        service = DropboxService()
+        with patch.object(service, "upload_file") as mock_upload:
+            service.upload_folder(
+                str(tmp_path), "/Uploads/folder",
+                exclude_suffixes=(" (Final Karaoke Lossless 4k).mp4",),
+            )
+
+        uploaded = sorted(c.args[1].rsplit("/", 1)[1] for c in mock_upload.call_args_list)
+        assert uploaded == [
+            "A - B (Final Karaoke Lossless 4k).mkv",
+            "A - B (Final Karaoke Lossy 4k).mp4",
+        ]
+
+    def _settings(self, suffixes=" (Final Karaoke Lossless 4k).mp4"):
+        s = Mock()
+        s.default_dropbox_path = "/MediaUnsynced/Karaoke/Tracks-Organized"
+        s.default_private_dropbox_path = "/MediaUnsynced/Karaoke/Tracks-NonPublished"
+        s.dropbox_skip_output_suffixes = suffixes
+        return s
+
+    def test_own_folders_skip_lossless_mp4_only_by_default(self):
+        from backend.config import Settings
+        from backend.services.dropbox_service import dropbox_skip_suffixes_for
+
+        default = Settings().dropbox_skip_output_suffixes
+        with patch("backend.config.get_settings", return_value=self._settings(default)):
+            for path in ("/MediaUnsynced/Karaoke/Tracks-Organized",
+                         "/MediaUnsynced/Karaoke/Tracks-NonPublished/"):
+                skip = dropbox_skip_suffixes_for(path)
+                assert skip == (" (Final Karaoke Lossless 4k).mp4",)
+                # The MKV is promised in the Dropbox folder (completion email, Fiverr bot).
+                assert not any(s.endswith(".mkv") for s in skip)
+
+    def test_tenant_folder_gets_everything(self):
+        from backend.services.dropbox_service import dropbox_skip_suffixes_for
+
+        with patch("backend.config.get_settings", return_value=self._settings()):
+            assert dropbox_skip_suffixes_for("/MediaUnsynced/Karaoke/Tracks-VocalStar") == ()
+            assert dropbox_skip_suffixes_for(None) == ()
+
+    def test_multiple_suffixes_and_empty_config(self):
+        from backend.services.dropbox_service import dropbox_skip_suffixes_for
+
+        both = " (Final Karaoke Lossless 4k).mp4| (Final Karaoke Lossless 4k).mkv"
+        with patch("backend.config.get_settings", return_value=self._settings(both)):
+            assert len(dropbox_skip_suffixes_for("/MediaUnsynced/Karaoke/Tracks-Organized")) == 2
+        with patch("backend.config.get_settings", return_value=self._settings("")):
+            assert dropbox_skip_suffixes_for("/MediaUnsynced/Karaoke/Tracks-Organized") == ()

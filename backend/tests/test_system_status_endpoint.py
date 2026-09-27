@@ -167,7 +167,7 @@ class TestSystemStatusAdmin:
         assert admin["on_fallback"] is False
         assert admin["active_vm"] == "encoding-worker-b"
         assert admin["active_zone"] == "us-central1-c"
-        assert admin["active_machine_type"] == "c4d-highcpu-32"
+        assert admin["active_machine_type"] == "c4d-highcpu-16"
 
     @pytest.mark.asyncio
     async def test_admin_sees_capacity_fallback_worker(
@@ -203,5 +203,5 @@ class TestSystemStatusAdmin:
         assert admin["on_fallback"] is True
         assert admin["active_vm"] == "encoding-worker-fallback-n2c"
         assert admin["active_zone"] == "us-central1-a"
-        # "n2c" family token → n2-highcpu-32 (inferred from the VM name).
-        assert admin["active_machine_type"] == "n2-highcpu-32"
+        # "n2c" family token → n2-highcpu-16 (inferred from the VM name).
+        assert admin["active_machine_type"] == "n2-highcpu-16"

@@ -3,7 +3,9 @@ Encoding Worker VM resources — blue-green deployment pair.
 
 Manages two identical VMs (a/b) for zero-downtime deployments.
 Only one is active (primary) at a time; the other is stopped (secondary).
-Both auto-shutdown when idle to minimize cost.
+Both auto-shutdown when idle to minimize cost, and both run on SPOT capacity
+(preempted → STOPPED, restarted on demand; lost encodes are resubmitted). One
+on-demand fallback VM in a different family/zone absorbs Spot stockouts.
 
 See docs/superpowers/specs/2026-03-24-blue-green-encoding-worker-design.md
 """
@@ -80,18 +82,42 @@ def create_encoding_worker_vms(
             advanced_machine_features=compute.InstanceAdvancedMachineFeaturesArgs(
                 threads_per_core=2,
             ),
+            scheduling=_primary_pair_scheduling(),
         )
         vms.append(vm)
     return vms
 
 
+def _primary_pair_scheduling() -> compute.InstanceSchedulingArgs:
+    """Scheduling for the a/b pair: Spot with STOP-on-preemption.
+
+    STOP (not DELETE) keeps the VM, its disk and static IP, so a preempted
+    worker is just a TERMINATED instance that the backend's ensure-running path
+    restarts like any idle-stopped worker. automatic_restart must be False and
+    on_host_maintenance TERMINATE for Spot.
+    """
+    if not EncodingWorkerConfig.PRIMARY_PAIR_SPOT:
+        return compute.InstanceSchedulingArgs(
+            provisioning_model="STANDARD",
+            preemptible=False,
+            automatic_restart=True,
+            on_host_maintenance="MIGRATE",
+        )
+    return compute.InstanceSchedulingArgs(
+        provisioning_model="SPOT",
+        preemptible=True,
+        automatic_restart=False,
+        on_host_maintenance="TERMINATE",
+        instance_termination_action="STOP",
+    )
+
+
 def create_encoding_worker_fallback_ips() -> list[compute.Address]:
     """Create static IPs for the capacity-fallback VMs.
 
-    These IPs back the fallback fleet that absorbs a primary-family stockout —
-    both alternate zones AND an alternate machine family (n2-highcpu-32) so a
-    region-wide c4d-highcpu-32 ZONE_RESOURCE_POOL_EXHAUSTED can't take out every
-    lane. One IP per entry in EncodingWorkerConfig.FALLBACKS (order-aligned).
+    These IPs back the on-demand fallback that absorbs a Spot/c4d stockout of
+    the primary pair (alternate zone AND machine family). One IP per entry in
+    EncodingWorkerConfig.FALLBACKS (order-aligned).
     """
     ips = []
     for fb in EncodingWorkerConfig.FALLBACKS:
@@ -115,14 +141,13 @@ def create_encoding_worker_fallback_vms(
 ) -> list[compute.Instance]:
     """Create capacity-fallback encoding worker VMs.
 
-    Provisioned stopped — only started by the application when the primary zone
-    rejects starts with ZONE_RESOURCE_POOL_EXHAUSTED. The fleet diversifies
-    across both alternate zones AND an alternate machine family
-    (n2-highcpu-32) so a region-wide c4d-highcpu-32 stockout cannot exhaust
-    every lane at once (incident 2026-08-12). Each entry's machine_type and
-    disk_type come from EncodingWorkerConfig.FALLBACKS — n2 uses pd-balanced
-    because it does not support hyperdisk-balanced. Cost when stopped is just
-    the 50 GB boot disk (~$4-5/mo each).
+    Provisioned stopped — only started by the application when the Spot primary
+    pair can't start (ZONE_RESOURCE_POOL_EXHAUSTED / Spot stockout). On-demand
+    (default STANDARD scheduling — never preempted), in a different machine
+    family and zone from the c4d pair (incident 2026-08-12). Each entry's
+    machine_type and disk_type come from EncodingWorkerConfig.FALLBACKS — c2d/n2
+    use pd-balanced because they don't support hyperdisk-balanced. Cost when
+    stopped is just the 50 GB boot disk.
     """
     startup_script = read_script("encoding_worker.sh")
     custom_image = f"projects/{PROJECT_ID}/global/images/family/encoding-worker"

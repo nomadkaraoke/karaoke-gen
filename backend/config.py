@@ -326,6 +326,19 @@ class Settings(BaseSettings):
     default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")
     default_private_brand_prefix: Optional[str] = os.getenv("DEFAULT_PRIVATE_BRAND_PREFIX", "NOMADNP")
 
+    # Output files NOT uploaded to Nomad's own Dropbox folders (DEFAULT_DROPBOX_PATH /
+    # DEFAULT_PRIVATE_DROPBOX_PATH), as "|"-separated filename suffixes. They stay in
+    # GCS (job-page downloads, YouTube upload, AWS backup) — this only saves the
+    # multi-GB internet egress + upload time. Tenant Dropbox folders are exempt
+    # (B2B tenants expect the full set). Default skips only the lossless 4K MP4,
+    # which no customer-facing text promises in Dropbox. The lossless MKV IS promised
+    # there (completion email + the Fiverr bot), so add
+    # " (Final Karaoke Lossless 4k).mkv" only after updating those.
+    # See docs/archive/2026-09-26-encoding-cost-cuts.md.
+    dropbox_skip_output_suffixes: str = os.getenv(
+        "DROPBOX_SKIP_OUTPUT_SUFFIXES", " (Final Karaoke Lossless 4k).mp4"
+    )
+
     # YouTube Data API v3 Quota Configuration
     # Daily quota limit (YouTube grants 10,000 units/day by default)
     youtube_quota_daily_limit: int = int(os.getenv("YOUTUBE_QUOTA_DAILY_LIMIT", "10000"))

@@ -10,19 +10,40 @@ Run locally with: `pytest infrastructure/test_encoding_worker_config.py`
 resource graph via `pulumi preview`).
 """
 
-from config import EncodingWorkerConfig, MachineTypes
+from config import ENCODING_WORKER_ZONE, EncodingWorkerConfig, MachineTypes
 
 
-def test_fallback_fleet_has_machine_family_diversity():
-    """At least one fallback must use a machine family OTHER than the primary,
-    otherwise a single-family stockout takes out every lane at once."""
-    families = {fb["machine_type"] for fb in EncodingWorkerConfig.FALLBACKS}
-    assert MachineTypes.ENCODING_WORKER in families
-    assert any(mt != MachineTypes.ENCODING_WORKER for mt in families), (
-        "fallback fleet is single-machine-family — a c4d stockout would exhaust "
-        "every lane (see incident 2026-08-12)"
-    )
-    assert MachineTypes.ENCODING_WORKER_ALT in families
+def test_fallback_is_a_different_machine_family_and_zone_from_primary():
+    """The on-demand fallback must not share the Spot pair's family or zone,
+    otherwise a single c4d / Spot / zone stockout takes out every lane at once
+    (incident 2026-08-12)."""
+    assert EncodingWorkerConfig.FALLBACKS, "need at least one capacity fallback"
+    primary_family = _family(MachineTypes.ENCODING_WORKER)
+    primary_zone_suffix = ENCODING_WORKER_ZONE.rsplit("-", 1)[1]
+    for fb in EncodingWorkerConfig.FALLBACKS:
+        assert _family(fb["machine_type"]) != primary_family, fb
+        assert fb["zone_suffix"] != primary_zone_suffix, fb
+
+
+def test_fleet_is_cost_cut_shape():
+    """2026-09-26 cost cut: Spot a/b pair + exactly one on-demand fallback, all
+    16 vCPU. Growing this again should be a deliberate decision (update the
+    fallback secret + docs), not an accident."""
+    assert len(EncodingWorkerConfig.VM_NAMES) == 2
+    assert len(EncodingWorkerConfig.FALLBACKS) == 1
+    assert EncodingWorkerConfig.PRIMARY_PAIR_SPOT is True
+    for mt in [MachineTypes.ENCODING_WORKER] + [fb["machine_type"] for fb in EncodingWorkerConfig.FALLBACKS]:
+        assert mt.endswith("-16"), mt
+
+
+def test_idle_shutdown_is_fast_but_outlives_review_heartbeat():
+    """Idle VMs stop after 5 min, checked every 2 min. The lyrics-review page
+    heartbeats every 2 min (frontend REVIEW_HEARTBEAT_INTERVAL_MS) so an active
+    review keeps the warm VM alive — the timeout must leave margin over it."""
+    assert EncodingWorkerConfig.IDLE_TIMEOUT_MINUTES == 5
+    assert EncodingWorkerConfig.IDLE_CHECK_SCHEDULE == "*/2 * * * *"
+    review_heartbeat_minutes = 2
+    assert EncodingWorkerConfig.IDLE_TIMEOUT_MINUTES >= 2 * review_heartbeat_minutes
 
 
 def test_n2_fallbacks_use_pd_balanced_disk():
@@ -65,18 +86,6 @@ def test_every_fallback_disk_type_matches_its_family_capability():
         assert fb["disk_type"] == _FAMILY_DISK_TYPE[fam], fb
 
 
-def test_pool_has_at_least_five_types_across_multiple_lineages():
-    """The broadened pool must be ≥5 distinct machine types spanning ≥3 lineages
-    (AMD Turin / Intel Emerald / AMD Milan / Intel Cascade / AMD Rome) so a
-    newest-gen stockout can't exhaust every lane."""
-    types = {fb["machine_type"] for fb in EncodingWorkerConfig.FALLBACKS}
-    # primary (c4d) + the fallback types.
-    types.add(MachineTypes.ENCODING_WORKER)
-    assert len(types) >= 5, f"pool has only {len(types)} types: {types}"
-    families = {_family(mt) for mt in types}
-    assert len(families) >= 3, f"pool spans only {families}"
-
-
 def test_zone_spread_avoids_same_type_same_zone():
     """No machine type should sit twice in the same zone (correlated stockout)."""
     seen = set()
@@ -100,18 +109,6 @@ def test_fallback_names_and_ips_are_unique_and_aligned():
     ]
     assert len(set(EncodingWorkerConfig.FALLBACK_VM_NAMES)) == len(fb)
     assert len(set(EncodingWorkerConfig.FALLBACK_IP_NAMES)) == len(fb)
-
-
-def test_original_c4d_fallbacks_unchanged():
-    """The first two entries must remain the original c4d a/b fallbacks
-    (byte-identical) so `pulumi up` does NOT recreate the existing VMs —
-    recreating a c4d VM would need the very capacity we're trying to avoid
-    depending on."""
-    a, b = EncodingWorkerConfig.FALLBACKS[0], EncodingWorkerConfig.FALLBACKS[1]
-    assert a == {"suffix": "a", "zone_suffix": "a",
-                 "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"}
-    assert b == {"suffix": "b", "zone_suffix": "b",
-                 "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"}
 
 
 def test_worker_boot_disk_fits_packer_image_size():

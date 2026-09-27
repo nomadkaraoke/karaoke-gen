@@ -221,7 +221,7 @@ TESTMAIL_NAMESPACE=...       # testmail.app namespace
 
 ## Encoding Worker Operations
 
-The encoding worker is a blue-green primary pair (`encoding-worker-a`/`-b`, c4d) plus a ranked pool of 8 stopped fallback VMs spanning 6 machine families (c4d/c4/n4d/c2d/n2d/n2) for stockout resilience — 10 VMs total. Candidate ordering (runtime + deploy) is the shared `backend/services/encoding_worker_preference.py`. See [ARCHITECTURE.md](ARCHITECTURE.md#encoding-worker-blue-green-primary-pair--multi-family-fallback-pool) for the full design.
+The encoding worker is a Spot blue-green primary pair (`encoding-worker-a`/`-b`, c4d-highcpu-16) plus one stopped on-demand fallback (`encoding-worker-fallback-c2df`, c2d-highcpu-16, us-central1-f) — 3 VMs total since 2026-09-26. CI only blue-green redeploys the worker when a path in `infrastructure/encoding-worker/worker_code_paths.txt` changed since the serving version (or via Actions → CI → Run workflow with "Force a blue-green redeploy of the GCE encoding worker"). Candidate ordering (runtime + deploy) is the shared `backend/services/encoding_worker_preference.py`. See [ARCHITECTURE.md](ARCHITECTURE.md#encoding-worker-blue-green-primary-pair--multi-family-fallback-pool) for the full design.
 
 ### Seed Firestore config (initial setup or reset)
 

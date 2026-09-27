@@ -38,10 +38,11 @@
         │ (jobs)   │  │ (files)  │  │  (API keys)  │ │  Worker (*)  │
         └──────────┘  └──────────┘  └──────────────┘ └──────────────┘
 
-(*) GCE Encoding Worker: a ranked pool of 6 x86_64 32-vCPU highcpu machine
-    families (c4d/c4/n4d/c2d/n2d/n2). c4d-highcpu-32 (AMD EPYC Turin) is the
-    fastest and stays the primary/preferred pick; the other families are
-    stockout-resilience fallbacks selected fastest-first with a capacity cooldown.
+(*) GCE Encoding Worker: a Spot c4d-highcpu-16 blue-green pair (AMD EPYC
+    Turin, the preferred pick) plus ONE on-demand c2d-highcpu-16 fallback in a
+    different zone for Spot/c4d stockouts (3 VMs since 2026-09-26 — see
+    docs/archive/2026-09-26-encoding-cost-cuts.md). Candidates are selected
+    fastest-first with a capacity cooldown.
     Used for both final video encoding and preview video generation.
     Uses immutable deployment pattern - see infrastructure/encoding-worker/README.md
     and the "Encoding Worker" section below.
@@ -305,16 +306,25 @@ karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses 
 ## Encoding Worker: blue-green primary pair + multi-family fallback pool
 
 The GCE encoding worker is a **blue-green primary pair** (`encoding-worker-a`/`-b`,
-both c4d-highcpu-32 in us-central1-c) plus a **ranked pool of stockout-resilience
-fallback VMs** spanning 6 x86_64 machine families (see "Multi-instance-type pool"
-below). **10 VMs total**, all TERMINATED by default and started on demand.
+both **Spot** c4d-highcpu-16 in us-central1-c) plus **one on-demand fallback**
+(`encoding-worker-fallback-c2df`, c2d-highcpu-16, us-central1-f). **3 VMs total**
+(cut from 10 on 2026-09-26 — docs/archive/2026-09-26-encoding-cost-cuts.md), all
+TERMINATED by default, started on demand, and idle-stopped after 5 min.
+
+**Spot preemption:** the pair uses `instance_termination_action=STOP`, so a
+preempted worker is just a TERMINATED VM that the next request restarts. An
+encode in flight when the VM is preempted is detected by
+`EncodingService.wait_for_completion` (the pinned worker VM is no longer RUNNING)
+and raised as `EncodingJobLostError`, which `run_with_lost_job_resubmit` resubmits
+— the resubmit's connection failure then starts the Spot VM again, or the
+on-demand fallback if Spot capacity is gone.
 
 ### Architecture
 
 ```text
 Frontend → Backend (Cloud Run) → Firestore config → active worker (primary, or a
                                                    ↑  capacity-fallback "override")
-Cloud Scheduler (5 min) → Cloud Function → checks idle + stops VMs
+Cloud Scheduler (2 min) → Cloud Function → checks idle (5 min) + stops VMs
                                                    ↑
 CI (GitHub Actions) → selects a fresh "green" (ranked pool) → health + encode test
                        → promote (swap primary OR set active_override) → stop old
@@ -323,10 +333,13 @@ CI (GitHub Actions) → selects a fresh "green" (ranked pool) → health + encod
 ### Multi-instance-type pool (stockout resilience, v0.195.0)
 
 A single machine family can hit a region-wide `ZONE_RESOURCE_POOL_EXHAUSTED`
-stockout across every zone at once. To survive that, the fallback fleet spans
-**6 families** (c4d, c4, n4d, c2d, n2d, n2 — all `-highcpu-32`, ≥32 GB) across
-zones a/b/c/f: `encoding-worker-fallback-a`/`-b` (c4d), `-n2c`/`-n2f` (n2),
-`-c4a` (c4), `-n4db` (n4d), `-c2df` (c2d), `-n2da` (n2d).
+stockout across every zone at once. To survive that, the fallback lives in a
+different family AND zone from the c4d pair: `encoding-worker-fallback-c2df`
+(c2d-highcpu-16, on-demand, us-central1-f). The pool was 8 fallbacks across 6
+families (v0.195.0) until the 2026-09-26 cost cut; the selection machinery below
+still handles any number of fallbacks — re-add entries to
+`EncodingWorkerConfig.FALLBACKS` + the `encoding-worker-fallback-vms` secret if
+stockouts become a problem again.
 
 **Candidate ordering is one shared pure module**,
 `backend/services/encoding_worker_preference.py::ordered_candidates(pool, capacity_state)`,

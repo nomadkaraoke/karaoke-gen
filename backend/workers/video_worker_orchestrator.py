@@ -931,8 +931,15 @@ class VideoWorkerOrchestrator:
             folder_name = f"{self.result.brand_code or 'TRACK-0000'} - {base_name}"
             remote_folder = f"{self.config.dropbox_path}/{folder_name}"
 
-            # Upload entire output directory
-            dropbox.upload_folder(self.config.output_dir, remote_folder)
+            # Upload the output directory, minus files Nomad's own Dropbox archive
+            # doesn't need (lossless 4K MP4 by default — it stays in GCS). Tenant
+            # folders get everything. See dropbox_skip_suffixes_for.
+            from backend.services.dropbox_service import dropbox_skip_suffixes_for
+
+            skip = dropbox_skip_suffixes_for(self.config.dropbox_path)
+            if skip:
+                self.job_log.info(f"Excluding from Dropbox upload (kept in GCS): {list(skip)}")
+            dropbox.upload_folder(self.config.output_dir, remote_folder, exclude_suffixes=skip)
 
             # Create sharing link
             try:

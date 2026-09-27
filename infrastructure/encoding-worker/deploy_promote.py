@@ -6,13 +6,14 @@ delegates the *decisions* to the pure functions here so the branching — the pa
 that's easy to get wrong and impossible to run locally in CI — has real unit
 tests (`backend/tests/test_deploy_promote.py`).
 
-Background: us-central1 is in a persistent c4d Spot stockout, so the c4d
-primary/secondary are usually down and all traffic runs on an n2 fallback
-recorded as `active_override_vm`. A naive "start the c4d secondary and swap"
-deploy can't start the secondary and never refreshes the serving fallback, so
-worker-side changes never reach production. These helpers make the deploy pick a
-*fresh* green target (c4d secondary if it starts, else a different n2 fallback)
-and then promote that validated green to serving with zero downtime.
+Background: the c4d primary/secondary are Spot VMs (since 2026-09-26) and c4d
+capacity in us-central1 can run out, in which case traffic runs on the on-demand
+fallback recorded as `active_override_vm`. A naive "start the c4d secondary and
+swap" deploy can't start the secondary and never refreshes the serving fallback,
+so worker-side changes never reach production. These helpers make the deploy pick
+a *fresh* green target (c4d secondary if it starts, else a fallback) and then
+promote that validated green to serving with zero downtime. CI only runs this when
+worker code changed (infrastructure/encoding-worker/worker_code_paths.txt).
 """
 from __future__ import annotations
 

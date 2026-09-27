@@ -116,6 +116,12 @@ def _parse_resubmit_max() -> int:
         return 2
 
 
+# GCE statuses meaning the worker VM is not running (idle-stop, deploy stop, or —
+# since the a/b pair moved to Spot on 2026-09-26 — a Spot preemption, which STOPs
+# the VM). A job submitted to a VM in one of these states can never complete:
+# its in-memory job registry and ffmpeg process are gone.
+_STOPPED_VM_STATUSES = frozenset({"STOPPING", "STOPPED", "TERMINATED", "SUSPENDING", "SUSPENDED"})
+
 QUEUE_TIMEOUT_SECONDS = _parse_queue_timeout()
 ENCODING_RESUBMIT_MAX = _parse_resubmit_max()
 
@@ -272,6 +278,97 @@ class EncodingService:
         async with sem:
             yield
 
+    def _fallback_entries(self) -> list:
+        """Parse ENCODING_WORKER_FALLBACK_VMS into candidate dicts.
+
+        Schema: '[{"vm":"encoding-worker-fallback-c2df","zone":"us-central1-f",
+        "ip":"34.x.x.x","machine_type":"c2d-highcpu-16"}, ...]'. machine_type is
+        optional (inferred from the VM name for legacy entries). Malformed input
+        degrades to fewer/no fallbacks — this runs during connection recovery and
+        must never raise.
+        """
+        import json as _json
+        raw = self.settings.encoding_worker_fallback_vms
+        if not raw:
+            return []
+        try:
+            parsed = _json.loads(raw)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
+            return []
+        # A non-list root (null, dict, scalar) parses fine but would blow up
+        # `for item in parsed` and escape during connection recovery — degrade
+        # to no fallbacks instead.
+        if not isinstance(parsed, list):
+            logger.warning("ENCODING_WORKER_FALLBACK_VMS must be a JSON list; ignoring")
+            return []
+        entries = []
+        for item in parsed:
+            try:
+                entries.append({
+                    "vm": item["vm"],
+                    "zone": item["zone"],
+                    "ip": item["ip"],
+                    "machine_type": item.get("machine_type"),
+                    "kind": "fallback",
+                })
+            except (KeyError, TypeError) as e:
+                logger.warning(f"Skipping malformed fallback candidate {item}: {e}")
+                continue
+        return entries
+
+    def _vm_for_worker_url(self, worker_url: Optional[str]) -> Optional[tuple]:
+        """Map a worker base URL (http://<ip>:8080) back to its (vm_name, zone).
+
+        Looks at the blue-green primary/secondary, the active override, and the
+        configured fallbacks. Returns None when unknown (no manager, unparseable
+        URL, or an IP no longer in the fleet). BLOCKING (Firestore read).
+        """
+        if not self._worker_manager or not worker_url:
+            return None
+        from urllib.parse import urlparse
+
+        host = urlparse(worker_url).hostname
+        if not host:
+            return None
+        config = self._worker_manager.get_config()
+        default_zone = self._worker_manager._zone
+        known = [
+            (config.primary_ip, config.primary_vm, default_zone),
+            (config.secondary_ip, config.secondary_vm, default_zone),
+            (config.active_override_ip, config.active_override_vm,
+             config.active_override_zone or default_zone),
+        ]
+        known.extend((fb["ip"], fb["vm"], fb["zone"]) for fb in self._fallback_entries())
+        for ip, vm, zone in known:
+            if ip and vm and ip == host:
+                return vm, zone
+        return None
+
+    async def _stopped_worker_status(self, worker_url: Optional[str]) -> Optional[str]:
+        """If the VM behind ``worker_url`` is stopped/preempted, return its GCE status.
+
+        Returns None when the VM is running, unknown, or the lookup fails — the
+        caller then falls back to the ordinary poll-failure tolerance. Blocking
+        Firestore/Compute calls run off the event loop.
+        """
+        if not self._worker_manager:
+            return None
+        try:
+            # Unpinned (legacy) polls target the current active URL.
+            url = worker_url or await asyncio.to_thread(self._get_worker_url)
+            found = await asyncio.to_thread(self._vm_for_worker_url, url)
+            if not found:
+                return None
+            vm_name, zone = found
+            status = await asyncio.to_thread(self._worker_manager.get_vm_status, vm_name, zone)
+        except Exception as e:  # noqa: BLE001 — best-effort diagnosis only
+            logger.debug(f"Could not check worker VM status for {worker_url}: {_format_exception(e)}")
+            return None
+        if status in _STOPPED_VM_STATUSES:
+            return f"{vm_name} is {status}"
+        return None
+
     def _build_worker_candidates(self) -> list:
         """Build the ranked candidate list for ensure_any_running.
 
@@ -310,37 +407,9 @@ class EncodingService:
             "is_primary": True,
         }]
 
-        # Optional capacity-fallback VMs in alternate zones/families, configured via
-        # env var. Schema: '[{"vm":"encoding-worker-fallback-c4a","zone":"us-central1-a",
-        # "ip":"34.x.x.x","machine_type":"c4-highcpu-32"}, ...]'. machine_type is
-        # optional (inferred from the VM name for legacy entries). Empty by default;
-        # populated after `pulumi up` provisions the fallback VMs.
-        import json as _json
-        raw = self.settings.encoding_worker_fallback_vms
-        if raw:
-            try:
-                parsed = _json.loads(raw)
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid ENCODING_WORKER_FALLBACK_VMS JSON: {e}")
-                parsed = []
-            # A non-list root (null, dict, scalar) parses fine but would blow up
-            # `for item in parsed` and escape this method during connection
-            # recovery — degrade to no fallbacks instead.
-            if not isinstance(parsed, list):
-                logger.warning("ENCODING_WORKER_FALLBACK_VMS must be a JSON list; ignoring")
-                parsed = []
-            for item in parsed:
-                try:
-                    pool.append({
-                        "vm": item["vm"],
-                        "zone": item["zone"],
-                        "ip": item["ip"],
-                        "machine_type": item.get("machine_type"),
-                        "kind": "fallback",
-                    })
-                except (KeyError, TypeError) as e:
-                    logger.warning(f"Skipping malformed fallback candidate {item}: {e}")
-                    continue
+        # Optional capacity-fallback VMs in alternate zones/families (see
+        # _fallback_entries). Empty when unconfigured.
+        pool.extend(self._fallback_entries())
 
         # Rank fastest-first, demoting types that recently stocked out. Keeps the
         # primary (c4d) at the top whenever it has capacity.
@@ -807,6 +876,25 @@ class EncodingService:
                     )
                     raise EncodingJobLostError(
                         f"Encoding job {job_id} was lost by the worker (restarted mid-run)",
+                        job_id=job_id,
+                    ) from e
+                # The worker VM itself went away (Spot preemption, idle/deploy
+                # stop). Nothing on that VM can finish this job, so waiting out the
+                # remaining poll tolerance (several minutes of retries) only delays
+                # recovery — and "lost contact" is NOT resubmitted. Surface it as a
+                # lost job so run_with_lost_job_resubmit re-submits it; the
+                # resubmit's connection failure then restarts a worker (the Spot
+                # VM, or the on-demand fallback if Spot capacity is gone).
+                stopped = await self._stopped_worker_status(worker_url)
+                if stopped:
+                    logger.warning(
+                        f"[job:{job_id}] Encoding worker VM stopped mid-job ({stopped}) — "
+                        f"likely Spot preemption; treating job as lost for resubmission"
+                    )
+                    self._invalidate_cached_url()
+                    raise EncodingJobLostError(
+                        f"Encoding job {job_id} was lost: worker VM {stopped} "
+                        f"(Spot preemption or stop)",
                         job_id=job_id,
                     ) from e
                 consecutive_failures += 1

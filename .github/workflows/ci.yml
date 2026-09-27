@@ -7,6 +7,15 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
+    inputs:
+      force_encoding_worker_deploy:
+        # Manual override for the encoding-worker deploy gate (see "Decide
+        # encoding-worker deploy" in deploy-backend). Dispatch on main re-runs
+        # package-build + deploy-backend; with this ticked the GCE worker is
+        # blue-green redeployed even if no worker code changed.
+        description: "Force a blue-green redeploy of the GCE encoding worker"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -824,7 +833,7 @@ jobs:
   package-build:
     name: "Package - Build"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - name: Free disk space (only if low)
         # GitHub-hosted runners (free for this public repo) currently have ~86 GB
@@ -1079,7 +1088,7 @@ jobs:
     name: "Deploy - Backend (Cloud Run)"
     needs: [package-build]
     runs-on: [self-hosted, linux, gcp, docker-build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
       id-token: write
@@ -1298,8 +1307,47 @@ jobs:
                 f"active_override={data.get('active_override_vm')}")
           PYEOF
 
+      # Gate the blue-green worker deploy on worker-affecting changes. It boots a
+      # fresh green VM + runs a real test encode, which used to happen on EVERY
+      # push to main (~5x/day) even for frontend/backend-only changes. The wheel,
+      # startup.sh and version.txt above are still uploaded every time, so any
+      # worker that cold-boots (they idle-stop after 5 min) runs the latest code.
+      # Diff base = the version the serving worker was last validated at (not
+      # github.event.before), so a cancelled/skipped deploy can never lose a
+      # worker change. Any doubt → deploy (fail open).
+      - name: Decide encoding-worker deploy
+        id: worker_gate
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_encoding_worker_deploy == true }}
+          SERVING_VERSION: ${{ steps.config.outputs.primary_version }}
+          OVERRIDE_VM: ${{ steps.config.outputs.active_override_vm }}
+        run: |
+          mapfile -t PATHS < <(grep -v '^\s*#' infrastructure/encoding-worker/worker_code_paths.txt | grep -v '^\s*$')
+          DEPLOY=true
+          if [ "$FORCE" = "true" ]; then
+            REASON="manual override (workflow_dispatch force_encoding_worker_deploy)"
+          elif [ -n "$OVERRIDE_VM" ] && [ "$OVERRIDE_VM" != "None" ]; then
+            REASON="capacity override $OVERRIDE_VM is serving — refresh it"
+          elif [ -z "$SERVING_VERSION" ] || [ "$SERVING_VERSION" = "None" ]; then
+            REASON="serving worker version unknown"
+          elif ! git fetch --no-tags --depth=1 origin "refs/tags/v${SERVING_VERSION}:refs/tags/v${SERVING_VERSION}"; then
+            REASON="tag v${SERVING_VERSION} not fetchable"
+          elif ! CHANGED=$(git diff --name-only "v${SERVING_VERSION}" HEAD -- "${PATHS[@]}"); then
+            REASON="git diff against v${SERVING_VERSION} failed"
+          elif [ -z "$CHANGED" ]; then
+            DEPLOY=false
+            REASON="no worker-affecting changes since serving v${SERVING_VERSION}"
+          else
+            REASON="worker-affecting changes since v${SERVING_VERSION}"
+            echo "Changed worker paths:"; echo "$CHANGED" | head -50
+          fi
+          echo "deploy=${DEPLOY}" >> "$GITHUB_OUTPUT"
+          echo "Encoding-worker blue-green deploy: ${DEPLOY} (${REASON})"
+          echo "### Encoding worker deploy: ${DEPLOY}" >> "$GITHUB_STEP_SUMMARY"
+          echo "${REASON}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Wait for concurrent deploy
-        if: steps.config.outputs.deploy_in_progress == 'true'
+        if: steps.worker_gate.outputs.deploy == 'true' && steps.config.outputs.deploy_in_progress == 'true'
         run: |
           echo "Another deploy is in progress, waiting..."
           python3 << 'PYEOF'
@@ -1318,6 +1366,7 @@ jobs:
           PYEOF
 
       - name: Set deploy in progress
+        if: steps.worker_gate.outputs.deploy == 'true'
         run: |
           python3 << 'PYEOF'
           from datetime import datetime, timezone
@@ -1338,6 +1387,7 @@ jobs:
       # infrastructure/encoding-worker/deploy_promote.py.
       - name: Select & start green target
         id: green
+        if: steps.worker_gate.outputs.deploy == 'true'
         # Never hard-fail the whole backend deploy just because no encoding
         # worker could be validated — emit green_ok=false and let the gated
         # health/encode/promote steps skip while the Cloud Run deploy proceeds.
@@ -1578,7 +1628,7 @@ jobs:
         # always() so the deploy_in_progress flag is ALWAYS cleared, even when the
         # green step found no worker (its downstream steps skip, but the flag was
         # already set). Skips only on a fully successful promote (passed == true).
-        if: always() && steps.encode-test.outputs.passed != 'true'
+        if: always() && steps.worker_gate.outputs.deploy == 'true' && steps.encode-test.outputs.passed != 'true'
         run: |
           GREEN_VM="${{ steps.green.outputs.green_vm }}"
           GREEN_ZONE="${{ steps.green.outputs.green_zone }}"
@@ -1719,7 +1769,7 @@ jobs:
       # step guarantees the lock is released so the next deploy doesn't stall 10 min
       # in "Wait for concurrent deploy". Idempotent with the other clears.
       - name: Clear encoding-worker deploy lock
-        if: always()
+        if: always() && steps.worker_gate.outputs.deploy == 'true'
         run: |
           python3 -c "
           from google.cloud import firestore

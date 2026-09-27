@@ -1180,7 +1180,12 @@ async def _handle_native_distribution(
                 remote_folder = f"{dropbox_path}/{folder_name}"
 
                 job_log.info(f"Uploading to Dropbox folder: {remote_folder}")
-                dropbox.upload_folder(temp_dir, remote_folder)
+                from backend.services.dropbox_service import dropbox_skip_suffixes_for
+
+                dropbox.upload_folder(
+                    temp_dir, remote_folder,
+                    exclude_suffixes=dropbox_skip_suffixes_for(dropbox_path),
+                )
                 
                 # Create sharing link
                 try:

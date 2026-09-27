@@ -33,7 +33,7 @@ def get_project_number() -> str:
 REGION = "us-central1"
 ZONE = f"{REGION}-a"
 
-# Encoding worker zone - uses us-central1-c due to c4d-highcpu-32 availability
+# Encoding worker zone - uses us-central1-c due to c4d availability
 # (us-central1-a and us-central1-b often lack capacity for high-end C4D instances)
 ENCODING_WORKER_ZONE = f"{REGION}-c"
 
@@ -47,23 +47,19 @@ class MachineTypes:
     GITHUB_RUNNER = "e2-standard-4"  # 4 vCPU, 16GB RAM
     GITHUB_BUILD_RUNNER = "e2-standard-8"  # 8 vCPU, 32GB RAM - dedicated Docker build runner
     GITHUB_GPU_RUNNER = "n1-standard-4"  # 4 vCPU, 15GB RAM - GPU runners need N1 series
-    ENCODING_WORKER = "c4d-highcpu-32"  # 32 vCPU, AMD EPYC 9B45 Turin - 4.92x faster than c4-standard-8
-    # Capacity-fallback machine family, deliberately DIFFERENT from ENCODING_WORKER.
-    # c4d-highcpu-32 suffered a region-wide ZONE_RESOURCE_POOL_EXHAUSTED stockout across
-    # us-central1-a/-b/-c simultaneously (2026-08-12) which took out every same-family lane.
-    # n2-highcpu-32 (Intel Cascade/Ice Lake) draws from a much deeper, independent pool, so a
-    # c4d shortage cannot exhaust it. n2 does NOT support hyperdisk-balanced → uses pd-balanced.
-    ENCODING_WORKER_ALT = "n2-highcpu-32"  # 32 vCPU, Intel Cascade/Ice Lake - deep-capacity fallback pool
-    # Broadened ranked pool (2026-08-15) — ≥5 x86_64, 32-vCPU, ≥32 GB highcpu types
-    # across 4 distinct silicon lineages, so a stockout of the newest-gen cohort
-    # (c4d/c4, the crunch) cannot exhaust every lane. Encode-speed ranking lives in
-    # backend/services/encoding_worker_preference.py::SPEED_RANK. Disk-type rule:
-    # next-gen Titanium families (c4/c4d/n4/n4d) support hyperdisk-balanced ONLY;
-    # older families (c2d/n2/n2d) use pd-balanced. Getting this wrong = pulumi error.
-    ENCODING_WORKER_C4 = "c4-highcpu-32"    # 32 vCPU / 64 GB, Intel Emerald Rapids (hyperdisk-only)
-    ENCODING_WORKER_N4D = "n4d-highcpu-32"  # 32 vCPU / 64 GB, AMD Titanium (hyperdisk-only)
-    ENCODING_WORKER_C2D = "c2d-highcpu-32"  # 32 vCPU / 64 GB, AMD Milan (Zen3), deep pool (pd-balanced)
-    ENCODING_WORKER_N2D = "n2d-highcpu-32"  # 32 vCPU / 32 GB, AMD Rome/Milan, deep pool (pd-balanced)
+    # Encoding workers (2026-09-26 cost cut, docs/archive/2026-09-26-encoding-cost-cuts.md):
+    # 16 vCPU instead of 32 — an approved speed-for-cost trade (finalization x264
+    # only kept ~66-78% of 32 vCPUs busy; ffmpeg auto-threads adapt to 16). The
+    # worker serializes heavy jobs (ENCODING_HEAVY_CONCURRENCY=1), and highcpu-16
+    # still has ~30-32 GB RAM — enough for one 4K encode (~18 GB peak).
+    ENCODING_WORKER = "c4d-highcpu-16"  # 16 vCPU / 30 GB, AMD EPYC Turin — Spot blue-green pair
+    # The ONE on-demand capacity fallback. Deliberately a DIFFERENT machine family
+    # and zone from the c4d Spot pair: c4d suffered a region-wide
+    # ZONE_RESOURCE_POOL_EXHAUSTED stockout (2026-08-12), and Spot capacity can
+    # vanish at any time. c2d (AMD Milan) draws from a deep, mature pool and is
+    # on-demand, so it is not preemptible. c2d does NOT support hyperdisk →
+    # pd-balanced boot disk.
+    ENCODING_WORKER_FALLBACK = "c2d-highcpu-16"  # 16 vCPU / 32 GB, AMD Milan (Zen3), on-demand
     FLACFETCH = "e2-small"  # 0.5 vCPU, 2GB RAM
 
 
@@ -308,56 +304,38 @@ class EncodingWorkerConfig:
     """Configuration for blue-green encoding worker VMs."""
     VM_NAMES = ["encoding-worker-a", "encoding-worker-b"]
     IP_NAMES = ["encoding-worker-ip-a", "encoding-worker-ip-b"]
-    IDLE_CHECK_SCHEDULE = "*/5 * * * *"  # Every 5 minutes
-    IDLE_TIMEOUT_MINUTES = 15
+    # Stop idle workers fast: VMs bill per second while RUNNING, and with only
+    # ~5-20 jobs/day most of the old 15-min tail was paid idle time. The function
+    # still NEVER stops a VM with active jobs (fail-safe on unconfirmed /health).
+    IDLE_CHECK_SCHEDULE = "*/2 * * * *"  # Every 2 minutes
+    IDLE_TIMEOUT_MINUTES = 5
     FUNCTION_NAME = "encoding-worker-idle-shutdown"
     FUNCTION_MEMORY = "512M"  # Increased from 256M — OOM with gRPC/Firestore/Compute client libs
     FUNCTION_TIMEOUT = 120  # 2 minutes
 
-    # Capacity-resilience fallback fleet. Each VM is provisioned STOPPED in an
-    # alternate zone / machine family and is started on demand only when the
-    # primary zone rejects a start with ZONE_RESOURCE_POOL_EXHAUSTED. Cost when
-    # stopped is just the 50 GB boot disk (~$4-5/mo each).
+    # The a/b blue-green pair runs on SPOT capacity (~60-70% cheaper). A preempted
+    # Spot VM is STOPPED (not deleted) — the backend restarts it on the next
+    # request, and an encode lost to preemption is resubmitted automatically
+    # (encoding_service.wait_for_completion → EncodingJobLostError).
+    PRIMARY_PAIR_SPOT = True
+
+    # Capacity-resilience fallback. Provisioned STOPPED and started on demand only
+    # when the Spot pair can't start (ZONE_RESOURCE_POOL_EXHAUSTED / Spot
+    # stockout). ON-DEMAND (never preempted) and a different family + zone from the
+    # c4d pair so one shortage can't take out both lanes. Cost when stopped is just
+    # the 50 GB boot disk.
     #
-    # Machine-family diversity is DELIBERATE. The primary pair and the two c4d
-    # fallbacks are all c4d-highcpu-32, so a region-wide c4d stockout (observed
-    # 2026-08-12 across us-central1-a/-b/-c at once) exhausts every lane
-    # simultaneously and forces slow local encoding (→ 524 on preview, parked
-    # renders). The n2-highcpu-32 fallbacks draw from an independent, much deeper
-    # pool so a c4d shortage cannot take them out. n2 does not support
-    # hyperdisk-balanced, hence pd-balanced boot disks on those entries.
+    # Was 8 fallbacks across 6 families (2026-08-15) — cut to 1 on 2026-09-26
+    # (fleet 10 → 3 VMs) to save the idle disk/IP spend; c2df was kept because it
+    # is a deep-pool, pd-balanced (cheaper disk) family in a separate zone.
     #
     # Each entry: name/IP suffix, zone suffix ({REGION}-{zone_suffix}),
-    # machine_type, boot disk_type. ORDER MATTERS — IPs and VMs are zipped by
-    # position. (Candidate PRIORITY is no longer positional: it is decided at
-    # runtime/deploy by the shared speed-rank + cooldown in
-    # backend/services/encoding_worker_preference.py.) Keep the existing a/b/n2c/n2f
-    # entries first and byte-identical so Pulumi does not recreate those VMs; the
-    # broadened-pool entries are APPENDED so the change is purely additive
-    # (verify `pulumi preview` shows only new IPs+VMs, zero replace).
-    #
-    # Zone spread: one machine type per zone where possible so a single
-    # (type × zone) stockout can't correlate across the pool. c4d primary lives in
-    # zone c (the primary pair), so the c4 fallback goes to a, n4d to b, c2d to f,
-    # n2d to a — 4 lineages across 4 zones.
+    # machine_type, boot disk_type. IPs and VMs are zipped by position. The
+    # runtime/deploy candidate PRIORITY is decided by the shared speed-rank +
+    # cooldown in backend/services/encoding_worker_preference.py.
     FALLBACKS = [
-        {"suffix": "a", "zone_suffix": "a",
-         "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"},
-        {"suffix": "b", "zone_suffix": "b",
-         "machine_type": MachineTypes.ENCODING_WORKER, "disk_type": "hyperdisk-balanced"},
-        {"suffix": "n2c", "zone_suffix": "c",
-         "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
-        {"suffix": "n2f", "zone_suffix": "f",
-         "machine_type": MachineTypes.ENCODING_WORKER_ALT, "disk_type": "pd-balanced"},
-        # --- Broadened pool (2026-08-15), appended (additive-only) ---
-        {"suffix": "c4a", "zone_suffix": "a",
-         "machine_type": MachineTypes.ENCODING_WORKER_C4, "disk_type": "hyperdisk-balanced"},
-        {"suffix": "n4db", "zone_suffix": "b",
-         "machine_type": MachineTypes.ENCODING_WORKER_N4D, "disk_type": "hyperdisk-balanced"},
         {"suffix": "c2df", "zone_suffix": "f",
-         "machine_type": MachineTypes.ENCODING_WORKER_C2D, "disk_type": "pd-balanced"},
-        {"suffix": "n2da", "zone_suffix": "a",
-         "machine_type": MachineTypes.ENCODING_WORKER_N2D, "disk_type": "pd-balanced"},
+         "machine_type": MachineTypes.ENCODING_WORKER_FALLBACK, "disk_type": "pd-balanced"},
     ]
 
     # Derived name lists (kept for readability / any external reference).

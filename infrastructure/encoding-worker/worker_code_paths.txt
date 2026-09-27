@@ -1,0 +1,34 @@
+# Paths whose changes require a blue-green redeploy of the GCE encoding worker.
+#
+# CI (.github/workflows/ci.yml, "Decide encoding-worker deploy") diffs these
+# paths between the version the serving worker was last validated at
+# (config/encoding-worker.primary_version → git tag v<version>) and HEAD. No
+# diff → the fresh-green boot + test encode + swap is skipped (it used to run on
+# every push to main). The wheel/startup.sh/version.txt are STILL uploaded to
+# GCS on every deploy, so any worker that cold-boots picks up the latest wheel.
+#
+# The worker process runs backend/services/gce_encoding/main.py and imports
+# karaoke_gen (render/encode) plus a few backend modules.
+# backend/tests/test_encoding_worker_code_paths.py derives that import closure
+# and fails if a module the worker imports is not covered here — so adding a new
+# worker import can't silently bypass the gate.
+#
+# One git pathspec per line; blank lines and # comments are ignored.
+karaoke_gen/
+backend/__init__.py
+backend/services/__init__.py
+backend/models/__init__.py
+backend/services/gce_encoding/
+backend/services/local_encoding_service.py
+backend/services/local_preview_encoding_service.py
+backend/services/theme_service.py
+backend/services/storage_service.py
+backend/services/langfuse_preloader.py
+backend/services/nltk_preloader.py
+backend/services/spacy_preloader.py
+backend/models/theme.py
+backend/utils/
+backend/config.py
+infrastructure/encoding-worker/
+infrastructure/packer/
+poetry.lock

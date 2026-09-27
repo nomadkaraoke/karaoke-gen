@@ -27,7 +27,8 @@ import {
 } from '@/lib/lyrics-review/types'
 import type { EditLog, EditLogEntry, EditFeedbackReason } from '@/lib/lyrics-review/types'
 import type { InstrumentalSelectionType, LyricsReviewApiClient } from '@/lib/api'
-import { lyricsReviewApi, warmupEncodingWorker, heartbeatEncodingWorker, getAccessToken } from '@/lib/api'
+import { lyricsReviewApi, getAccessToken } from '@/lib/api'
+import { useEncodingWorkerKeepAlive } from '@/lib/lyrics-review/hooks/useEncodingWorkerKeepAlive'
 import { cn } from '@/lib/utils'
 import ReferenceView from './ReferenceView'
 import TranscriptionView from './TranscriptionView'
@@ -492,25 +493,12 @@ export default function LyricsAnalyzer({
     setSessionRestoreOpen(true)
   }, [sessionClient])
 
-  // Warm up encoding worker VM when lyrics review page loads.
-  // Only in cloud mode (jobId present) — the endpoint is review-auth scoped to
-  // the job, and there's no cloud encoding VM to warm in local mode.
-  useEffect(() => {
-    if (!isReadOnly && jobId) {
-      warmupEncodingWorker(jobId)
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Debounced heartbeat — keeps VM alive during active editing
-  const lastHeartbeat = useRef(0)
-  const sendHeartbeat = useCallback(() => {
-    if (!jobId) return
-    const now = Date.now()
-    if (now - lastHeartbeat.current > 60_000) {
-      lastHeartbeat.current = now
-      heartbeatEncodingWorker(jobId)
-    }
-  }, [jobId])
+  // Keep the encoding worker VM warm while reviewing: warmup on load, heartbeat
+  // on edits AND periodically while the tab is visible and in use, so the 5-min
+  // backend idle shutdown doesn't stop it under an active reviewer. Only in cloud
+  // mode (jobId present) — the endpoints are review-auth scoped to the job, and
+  // there's no cloud encoding VM to warm in local mode.
+  const { sendHeartbeat } = useEncodingWorkerKeepAlive(jobId, !isReadOnly)
 
   // Heartbeat the encoding worker as the reviewer works. Crash recovery /
   // restore now flows entirely through review sessions (server in cloud mode,

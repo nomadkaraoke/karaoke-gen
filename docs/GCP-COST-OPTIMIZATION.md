@@ -80,11 +80,11 @@ The `concurrency=1` setting may have been added deliberately for performance rea
 ### 🔍 GCE Encoding Worker
 
 **Current State (updated v0.195.0 — the opportunities below are largely SHIPPED):**
-- No longer a single 24/7 VM. It is a pool of **on-demand** VMs: a c4d-highcpu-32
-  blue-green primary pair + 8 stopped fallbacks across 6 machine families
-  (c4d/c4/n4d/c2d/n2d/n2) for stockout resilience.
-- **Idle auto-shutdown is live** (JIT start on the lyrics-review page; a Cloud
-  Function stops idle VMs after 15 min). When idle, cost is just boot disks
+- No longer a single 24/7 VM. Since 2026-09-26 it is 3 VMs: a **Spot**
+  c4d-highcpu-16 blue-green pair + 1 stopped on-demand c2d-highcpu-16 fallback
+  (was 10 × 32-vCPU on-demand VMs — see docs/archive/2026-09-26-encoding-cost-cuts.md).
+- **Idle auto-shutdown is live** (JIT start + heartbeat on the lyrics-review page;
+  a Cloud Function checks every 2 min and stops idle VMs after 5 min). When idle, cost is just boot disks
   (50 GB since 2026-09-26, ~$4-5/VM/mo; was 100 GB / ~$10 — see
   docs/archive/2026-09-26-encoding-worker-disk-cost.md); compute is billed only while encoding — so the historical
   "~$700/mo running 24/7" no longer applies.

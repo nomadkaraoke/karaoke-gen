@@ -1,7 +1,7 @@
 """
 Encoding Worker Idle Shutdown Cloud Function.
 
-Triggered by Cloud Scheduler every 5 minutes. Checks all encoding worker
+Triggered by Cloud Scheduler every 2 minutes. Checks all encoding worker
 VMs (primary, secondary, AND multi-zone fallbacks) and stops any that
 are idle. Without checking the fallbacks, a fallback VM started during a
 capacity event could be left running indefinitely after the event clears
@@ -11,7 +11,7 @@ iterated primary/secondary in the default zone.
 
 Idle criteria (all must be true to stop a VM):
 - No active encoding jobs (from /health endpoint active_jobs)
-- No recent user activity (from Firestore last_activity_at > 15 min)
+- No recent user activity (from Firestore last_activity_at > IDLE_TIMEOUT_MINUTES)
   - Only applies to the *currently routed* VM: `active_override_vm` if
     set, else primary. Secondary and non-active fallbacks always stop on
     idle so they don't leak after a capacity event.
@@ -20,7 +20,8 @@ Idle criteria (all must be true to stop a VM):
 Environment variables:
 - GCP_PROJECT: GCP project ID (default: nomadkaraoke)
 - GCP_ZONE: Default zone for primary/secondary (default: us-central1-c)
-- IDLE_TIMEOUT_MINUTES: Minutes of inactivity before shutdown (default: 15)
+- IDLE_TIMEOUT_MINUTES: Minutes of inactivity before shutdown (default: 5;
+  Pulumi sets it from EncodingWorkerConfig.IDLE_TIMEOUT_MINUTES)
 - ENCODING_WORKER_FALLBACK_VMS: JSON list of {vm, zone, ip} for fallback
   VMs in alternate zones. Same secret the backend uses for multi-zone
   failover. Empty/missing → no fallbacks checked.
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 PROJECT_ID = os.environ.get("GCP_PROJECT", "nomadkaraoke")
 ZONE = os.environ.get("GCP_ZONE", "us-central1-c")
-IDLE_TIMEOUT_MINUTES = int(os.environ.get("IDLE_TIMEOUT_MINUTES", "15"))
+IDLE_TIMEOUT_MINUTES = int(os.environ.get("IDLE_TIMEOUT_MINUTES", "5"))
 DEPLOY_STALE_TIMEOUT_MINUTES = 20
 ENCODING_WORKER_PORT = 8080
 
@@ -218,7 +219,7 @@ def idle_shutdown(request):
 
         # Fail SAFE: never stop a VM unless /health gives us a *confirmed*
         # active_jobs == 0. If we can't reach the VM or confirm its job count,
-        # keep it alive this cycle (the function reruns every 5 min, so a
+        # keep it alive this cycle (the function reruns every 2 min, so a
         # genuinely idle VM is reclaimed once /health responds). This prevents
         # stopping a VM mid-render — the cause of "lost contact with worker"
         # (incident 2026-06-15).

@@ -869,6 +869,134 @@ class TestWaitForCompletionLostJob:
         assert result["status"] == "complete"
 
 
+class TestWaitForCompletionWorkerStopped:
+    """The a/b workers run on Spot (2026-09-26). A preempted (STOPPED) worker VM
+    must surface as a lost job immediately so run_with_lost_job_resubmit re-submits
+    it, instead of burning the poll tolerance and failing with "lost contact"."""
+
+    def _with_manager(self, encoding_service, vm_status, fallbacks_json=None):
+        cfg = MagicMock()
+        cfg.primary_vm, cfg.primary_ip = "encoding-worker-a", "10.0.0.1"
+        cfg.secondary_vm, cfg.secondary_ip = "encoding-worker-b", "10.0.0.2"
+        cfg.active_override_vm = cfg.active_override_ip = cfg.active_override_zone = None
+        mgr = MagicMock()
+        mgr._zone = "us-central1-c"
+        mgr.get_config.return_value = cfg
+        mgr.get_vm_status.return_value = vm_status
+        encoding_service._worker_manager = mgr
+        encoding_service.settings.encoding_worker_fallback_vms = fallbacks_json
+        return mgr
+
+    @staticmethod
+    async def _conn_refused(job_id, worker_url=None):
+        raise aiohttp.ClientConnectorError(
+            connection_key=MagicMock(), os_error=OSError("Connection refused")
+        )
+
+    @pytest.mark.asyncio
+    async def test_preempted_worker_raises_lost_error_on_first_failure(self, encoding_service):
+        mgr = self._with_manager(encoding_service, "TERMINATED")
+        calls = 0
+
+        async def status(job_id, worker_url=None):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return {"status": "running", "progress": 40}
+            return await self._conn_refused(job_id, worker_url)
+
+        with patch.object(encoding_service, "get_job_status", side_effect=status), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingJobLostError, match="encoding-worker-a is TERMINATED"):
+                await encoding_service.wait_for_completion(
+                    "j1", worker_url="http://10.0.0.1:8080"
+                )
+
+        assert calls == 2  # bailed on the first failed poll
+        mgr.get_vm_status.assert_called_with("encoding-worker-a", "us-central1-c")
+
+    @pytest.mark.asyncio
+    async def test_stopped_fallback_worker_resolved_via_fallback_list(self, encoding_service):
+        import json
+        mgr = self._with_manager(
+            encoding_service, "STOPPING",
+            fallbacks_json=json.dumps([{"vm": "encoding-worker-fallback-c2df",
+                                        "zone": "us-central1-f", "ip": "10.0.0.9"}]),
+        )
+        with patch.object(encoding_service, "get_job_status", side_effect=self._conn_refused), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(EncodingJobLostError):
+                await encoding_service.wait_for_completion(
+                    "j1", worker_url="http://10.0.0.9:8080"
+                )
+        mgr.get_vm_status.assert_called_with("encoding-worker-fallback-c2df", "us-central1-f")
+
+    @pytest.mark.asyncio
+    async def test_running_worker_keeps_normal_poll_tolerance(self, encoding_service):
+        """A RUNNING VM that's just slow/unreachable is NOT a lost job."""
+        self._with_manager(encoding_service, "RUNNING")
+        with patch.object(encoding_service, "get_job_status", side_effect=self._conn_refused), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(RuntimeError, match="consecutive poll failures"):
+                await encoding_service.wait_for_completion(
+                    "j1", worker_url="http://10.0.0.1:8080"
+                )
+
+    @pytest.mark.asyncio
+    async def test_unknown_worker_ip_keeps_normal_poll_tolerance(self, encoding_service):
+        mgr = self._with_manager(encoding_service, "TERMINATED")
+        with patch.object(encoding_service, "get_job_status", side_effect=self._conn_refused), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(RuntimeError, match="consecutive poll failures"):
+                await encoding_service.wait_for_completion(
+                    "j1", worker_url="http://10.9.9.9:8080"
+                )
+        mgr.get_vm_status.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_status_lookup_failure_is_non_fatal(self, encoding_service):
+        mgr = self._with_manager(encoding_service, "TERMINATED")
+        mgr.get_vm_status.side_effect = Exception("compute API down")
+        with patch.object(encoding_service, "get_job_status", side_effect=self._conn_refused), \
+             patch("asyncio.sleep", new_callable=AsyncMock), \
+             patch("asyncio.get_event_loop") as mock_loop:
+            mock_loop.return_value.time.return_value = 0
+            with pytest.raises(RuntimeError, match="consecutive poll failures"):
+                await encoding_service.wait_for_completion(
+                    "j1", worker_url="http://10.0.0.1:8080"
+                )
+
+    @pytest.mark.asyncio
+    async def test_preemption_is_resubmitted_by_run_with_lost_job_resubmit(self, encoding_service):
+        """End-to-end: a preempted first attempt is resubmitted under a fresh id."""
+        self._with_manager(encoding_service, "TERMINATED")
+        attempts = []
+
+        async def operation(job_id):
+            attempts.append(job_id)
+            if len(attempts) == 1:
+                with patch.object(encoding_service, "get_job_status",
+                                  side_effect=self._conn_refused), \
+                     patch("asyncio.sleep", new_callable=AsyncMock):
+                    return await encoding_service.wait_for_completion(
+                        job_id, worker_url="http://10.0.0.1:8080"
+                    )
+            return {"status": "complete"}
+
+        result = await run_with_lost_job_resubmit(operation, "job123")
+        assert result == {"status": "complete"}
+        assert attempts[0] == "job123"
+        assert attempts[1].startswith("job123_retry_")
+
+
 class TestPreviewQueueTimeout:
     """A queued preview must not wait the long default queue_timeout — an
     interactive user is waiting, so total wait is capped at the short timeout."""
@@ -1178,15 +1306,15 @@ class TestBuildWorkerCandidates:
         cands = svc._build_worker_candidates()
         assert cands[0].vm_name == "encoding-worker-a"
         assert cands[0].is_primary is True
-        assert cands[0].machine_type == "c4d-highcpu-32"
+        assert cands[0].machine_type == "c4d-highcpu-16"
 
     def test_fallbacks_ranked_fastest_first(self, encoding_service):
         import json
         fallbacks = json.dumps([
             {"vm": "encoding-worker-fallback-n2f", "zone": "us-central1-f", "ip": "10.0.0.5",
-             "machine_type": "n2-highcpu-32"},
+             "machine_type": "n2-highcpu-16"},
             {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.6",
-             "machine_type": "c4-highcpu-32"},
+             "machine_type": "c4-highcpu-16"},
         ])
         svc = self._service_with_fallbacks(encoding_service, fallbacks)
         order = [c.vm_name for c in svc._build_worker_candidates()]
@@ -1199,10 +1327,10 @@ class TestBuildWorkerCandidates:
         from datetime import datetime, timezone
         fallbacks = json.dumps([
             {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.6",
-             "machine_type": "c4-highcpu-32"},
+             "machine_type": "c4-highcpu-16"},
         ])
         # c4d@us-central1-c stocked out "now" → demoted below c4.
-        cap = {"c4d-highcpu-32@us-central1-c": datetime.now(timezone.utc).isoformat()}
+        cap = {"c4d-highcpu-16@us-central1-c": datetime.now(timezone.utc).isoformat()}
         svc = self._service_with_fallbacks(encoding_service, fallbacks, capacity_state=cap)
         cands = svc._build_worker_candidates()
         order = [c.vm_name for c in cands]

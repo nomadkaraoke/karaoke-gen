@@ -149,9 +149,12 @@ EOF
 ```
 
 ### GCE Encoding Worker
-The worker is a c4d blue-green primary pair (`encoding-worker-a`/`-b`, us-central1-c)
-plus 8 stopped fallback VMs across 6 machine families for stockout resilience
-(`encoding-worker-fallback-{a,b,n2c,n2f,c4a,n4db,c2df,n2da}`). The currently-serving
+The worker is a **Spot** c4d-highcpu-16 blue-green primary pair (`encoding-worker-a`/`-b`,
+us-central1-c) plus ONE stopped on-demand fallback (`encoding-worker-fallback-c2df`,
+c2d-highcpu-16, us-central1-f) — 3 VMs since 2026-09-26. Idle VMs stop after 5 min.
+CI blue-green redeploys the worker only when worker code changed
+(`infrastructure/encoding-worker/worker_code_paths.txt`); force it via Actions → CI →
+Run workflow → "Force a blue-green redeploy of the GCE encoding worker". The currently-serving
 VM is `active_override_vm` in `config/encoding-worker` if set, else `primary_vm`.
 Use that VM name + its zone below (there is no VM literally named `encoding-worker`):
 ```bash

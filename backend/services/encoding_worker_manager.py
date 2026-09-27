@@ -34,6 +34,7 @@ from typing import Any, Optional
 
 import aiohttp
 
+from google.api_core import exceptions as gcp_exceptions
 from google.cloud import firestore
 
 from backend.services.encoding_errors import (
@@ -126,7 +127,7 @@ class EncodingWorkerConfig:
 
         Returns the capacity-fallback override if set, otherwise the primary
         URL. The override mechanism lets us route around a zone that's
-        temporarily out of c4d-highcpu-32 capacity without rewriting the
+        temporarily out of c4d (Spot) capacity without rewriting the
         blue-green primary/secondary tracking.
         """
         if self.active_override_ip:
@@ -141,7 +142,7 @@ class EncodingWorkerCandidate:
     Carries everything needed to talk to the worker: VM name + zone (so the
     GCE compute client targets the right zone) and external IP (so successful
     starts can be persisted as the active URL override). ``machine_type`` (e.g.
-    "c4d-highcpu-32") lets the manager record/clear per-(type,zone) capacity
+    "c4d-highcpu-16") lets the manager record/clear per-(type,zone) capacity
     state so the shared preference logic can demote a stocked-out type.
     """
 
@@ -444,7 +445,20 @@ class EncodingWorkerManager:
         has_explicit_primary = any(getattr(c, "is_primary", False) for c in candidates)
         for index, candidate in enumerate(candidates):
             try:
-                status = self.get_vm_status(candidate.vm_name, zone=candidate.zone)
+                try:
+                    status = self.get_vm_status(candidate.vm_name, zone=candidate.zone)
+                except gcp_exceptions.NotFound as nf:
+                    # A candidate that no longer exists (e.g. a fallback VM removed
+                    # from the fleet while an instance still holds the old
+                    # ENCODING_WORKER_FALLBACK_VMS list) must be SKIPPED, not
+                    # abort the whole failover — otherwise one stale entry blocks
+                    # every later (real) candidate.
+                    raise EncodingWorkerStartError(
+                        f"VM {candidate.vm_name} not found in {candidate.zone}: {nf}",
+                        vm_name=candidate.vm_name,
+                        zone=candidate.zone,
+                        code="NOT_FOUND",
+                    ) from nf
                 started = False
                 if status not in ("RUNNING", "STAGING"):
                     logger.info(
