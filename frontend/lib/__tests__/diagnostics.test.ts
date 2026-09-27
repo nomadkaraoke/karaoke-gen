@@ -7,6 +7,7 @@ import {
   collectDiagnostics,
   getBreadcrumbs,
   installDiagnostics,
+  safeHash,
 } from '@/lib/diagnostics'
 
 describe('diagnostics', () => {
@@ -34,6 +35,14 @@ describe('diagnostics', () => {
   it('records client-side navigation', () => {
     window.history.pushState({}, '', '/en/app/jobs')
     expect(getBreadcrumbs().at(-1)).toMatchObject({ category: 'nav', message: 'pushState /en/app/jobs' })
+  })
+
+  it('never records tokens from the URL hash', () => {
+    expect(safeHash('#/3ea34552/review?token=abc123')).toBe('#/3ea34552/review')
+    expect(safeHash('#/j/instrumental&t=secret')).toBe('#/j/instrumental')
+    window.history.pushState({}, '', '/en/app/jobs#/j1/review?token=s3cret')
+    expect(getBreadcrumbs().at(-1)!.message).toBe('pushState /en/app/jobs#/j1/review')
+    expect(JSON.stringify(getBreadcrumbs())).not.toContain('s3cret')
   })
 
   it('tracks outstanding blob URLs', () => {

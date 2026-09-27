@@ -42,6 +42,14 @@ export function getBreadcrumbs(): Breadcrumb[] {
   return breadcrumbs.slice()
 }
 
+/**
+ * Hash route without any query-ish part — review links can carry tokens
+ * (e.g. `#/<job>/review?token=…`); the route alone is what's useful.
+ */
+export function safeHash(hash: string): string {
+  return hash.split(/[?&]/)[0].slice(0, 80)
+}
+
 /** Short human label for a clicked element: role/tag + accessible text. */
 function describeElement(el: Element | null): string | null {
   const target = el?.closest?.('button, a, [role="button"], [role="tab"], input, select, label')
@@ -60,19 +68,19 @@ export function installDiagnostics(): void {
   if (installed || typeof window === 'undefined') return
   installed = true
   try {
-    addBreadcrumb('nav', `load ${window.location.pathname}${window.location.hash}`)
+    addBreadcrumb('nav', `load ${window.location.pathname}${safeHash(window.location.hash)}`)
 
     // Route changes (Next.js client navigation uses history.pushState/replaceState).
     for (const method of ['pushState', 'replaceState'] as const) {
       const original = window.history[method]
       window.history[method] = function (this: History, ...args: Parameters<History['pushState']>) {
         const result = original.apply(this, args)
-        addBreadcrumb('nav', `${method} ${window.location.pathname}${window.location.hash}`)
+        addBreadcrumb('nav', `${method} ${window.location.pathname}${safeHash(window.location.hash)}`)
         return result
       } as History['pushState']
     }
     window.addEventListener('popstate', () => addBreadcrumb('nav', `popstate ${window.location.pathname}`))
-    window.addEventListener('hashchange', () => addBreadcrumb('nav', `hash ${window.location.hash}`))
+    window.addEventListener('hashchange', () => addBreadcrumb('nav', `hash ${safeHash(window.location.hash)}`))
     document.addEventListener('visibilitychange', () => addBreadcrumb('page', `visibility ${document.visibilityState}`))
 
     document.addEventListener(
