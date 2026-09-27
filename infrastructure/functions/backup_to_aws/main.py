@@ -6,8 +6,10 @@ Nightly backup pipeline:
 2. BigQuery export to GCS staging (weekly/monthly schedule)
 3. GCS job files delta sync to staging
 4. Secret Manager export (encrypted with sealed-box public key) to staging
-4b. Git repos backup — bundle every repo under the configured GitHub owners to
-    staging (nightly; survives loss of GitHub access, e.g. an account ban)
+4b. Git repos backup — bundle repos under the configured GitHub owners to
+    staging (weekly on Sundays, incremental: only repos pushed since their
+    bundle last reached S3; full re-bundle on the first Sunday of each month;
+    survives loss of GitHub access, e.g. an account ban)
 5. Upload staging files to S3 (Firestore export held back except Sundays)
 6. Discord alert
 
@@ -31,7 +33,7 @@ from bigquery_export import export_bigquery_tables
 from gcs_sync import sync_gcs_to_staging
 from git_repos_export import export_git_repos, get_github_token
 from secrets_export import export_secrets
-from s3_upload import upload_staging_to_s3
+from s3_upload import get_s3_client, list_s3_objects, upload_staging_to_s3
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,6 +47,34 @@ BACKUP_ENCRYPTION_PUBKEY = os.environ.get("BACKUP_ENCRYPTION_PUBKEY", "")
 # read at runtime from Secret Manager ("github-backup-token"); if it has no
 # value the git-repo step is skipped and the rest of the pipeline still runs.
 GIT_BACKUP_OWNERS = os.environ.get("GIT_BACKUP_OWNERS", "")
+
+
+GIT_REPOS_PREFIX = "git-repos/"
+
+
+def _run_git_repos_backup(full_refresh: bool) -> str:
+    """Stage bundles for repos changed since their S3 copy (or all, if
+    ``full_refresh``). Returns a summary string; raises on systemic failure."""
+    github_token = get_github_token(GCP_PROJECT)
+    if not github_token:
+        logger.warning("github-backup-token has no value — skipping git repo backup")
+        return "skipped (no token)"
+
+    existing = None
+    if not full_refresh:
+        try:
+            existing = list_s3_objects(get_s3_client(GCP_PROJECT), S3_BUCKET, GIT_REPOS_PREFIX)
+        except Exception as e:  # noqa: BLE001 — can't see S3 -> safe fallback is a full bundle
+            logger.warning(f"Could not list existing git bundles in S3 ({e}); bundling all repos")
+
+    owners = [o.strip() for o in GIT_BACKUP_OWNERS.split(",") if o.strip()] or None
+    return export_git_repos(
+        staging_bucket=STAGING_BUCKET,
+        github_token=github_token,
+        owners=owners,
+        existing_backups=existing,
+        full_refresh=full_refresh,
+    )
 
 
 @functions_framework.http
@@ -65,6 +95,23 @@ def backup_to_aws(request):
             )
         return json.dumps({"status": "drill_reminder_sent"}), 200
 
+    # Manual git-repo-only run (e.g. to verify a change or force a refresh
+    # without re-running the Firestore export, which collides on same-day paths):
+    #   ?mode=git_repos            incremental
+    #   ?mode=git_repos&full=1     re-bundle everything
+    if request.args.get("mode") == "git_repos":
+        try:
+            summary = _run_git_repos_backup(full_refresh=request.args.get("full") == "1")
+            upload = upload_staging_to_s3(
+                staging_bucket=STAGING_BUCKET,
+                s3_bucket=S3_BUCKET,
+                include_prefixes=[GIT_REPOS_PREFIX],
+            )
+            return json.dumps({"status": "ok", "git_repos": summary, "s3_upload": upload}), 200
+        except Exception as e:
+            logger.error(f"Manual git repos backup failed: {e}")
+            return json.dumps({"status": "failed", "errors": [f"Git repos: {e}"]}), 500
+
     today = datetime.date.today()
     date_str = today.isoformat()
     results = {}
@@ -75,6 +122,8 @@ def backup_to_aws(request):
     # weekly cadence. This is the bulk of the cross-cloud egress, so weekly
     # off-site keeps a 1-week off-site RPO while a 1-day local RPO is retained.
     firestore_to_s3_today = today.weekday() == 6  # Sunday
+    git_repos_today = today.weekday() == 6  # Sunday
+    git_full_refresh_today = git_repos_today and today.day <= 7  # first Sunday of the month
 
     logger.info(f"Starting backup for {date_str} (firestore->S3: {firestore_to_s3_today})")
 
@@ -140,33 +189,38 @@ def backup_to_aws(request):
         logger.error(f"Secrets export failed: {e}")
         errors.append(f"Secrets: {e}")
 
-    # Step 4b: Git repos backup (nightly). Bundle every repo under the
-    # configured GitHub owners so code + full history survives loss of GitHub
-    # access (e.g. an account ban). Bundles are small, so they ship to S3 every
-    # night (not held back like Firestore). Cleanly skipped if no token is set.
-    try:
-        github_token = get_github_token(GCP_PROJECT)
-        if github_token:
-            owners = [o.strip() for o in GIT_BACKUP_OWNERS.split(",") if o.strip()] or None
-            results["git_repos"] = export_git_repos(
-                staging_bucket=STAGING_BUCKET,
-                github_token=github_token,
-                owners=owners,
-            )
-        else:
-            logger.warning("github-backup-token has no value — skipping git repo backup")
-            results["git_repos"] = "skipped (no token)"
-    except Exception as e:
-        logger.error(f"Git repos backup failed: {e}")
-        errors.append(f"Git repos: {e}")
+    # Step 4b: Git repos backup (weekly, Sundays). Bundles repos so code + full
+    # history survives loss of GitHub access (e.g. an account ban). Incremental:
+    # only repos pushed since their bundle last landed in S3 are re-cloned and
+    # re-uploaded (cross-cloud egress was a nightly full re-upload of ~120
+    # bundles). The first Sunday of each month re-bundles everything as a
+    # belt-and-braces refresh. Cleanly skipped if no token is set.
+    if git_repos_today:
+        try:
+            results["git_repos"] = _run_git_repos_backup(full_refresh=git_full_refresh_today)
+        except Exception as e:
+            logger.error(f"Git repos backup failed: {e}")
+            errors.append(f"Git repos: {e}")
+    else:
+        results["git_repos"] = "skipped (weekly, runs Sundays)"
 
     # Step 5: Upload to S3. On non-Sundays, hold the Firestore export back
     # (it stays in GCS staging as a daily local backup); it ships to S3 weekly.
+    # git-repos/ uploads only in the same invocation as the git step: the
+    # incremental check trusts that a bundle's S3 LastModified is within
+    # _UPLOAD_LAG of its clone. A bundle left in staging by a failed upload
+    # must not ship on a later night (a push in between would then look backed
+    # up); next Sunday's git step re-bundles it fresh instead.
+    exclude = []
+    if not firestore_to_s3_today:
+        exclude.append("firestore/")
+    if not git_repos_today:
+        exclude.append(GIT_REPOS_PREFIX)
     try:
         results["s3_upload"] = upload_staging_to_s3(
             staging_bucket=STAGING_BUCKET,
             s3_bucket=S3_BUCKET,
-            exclude_prefixes=[] if firestore_to_s3_today else ["firestore/"],
+            exclude_prefixes=exclude,
         )
     except Exception as e:
         logger.error(f"S3 upload failed: {e}")

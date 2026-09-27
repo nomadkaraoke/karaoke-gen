@@ -19,6 +19,7 @@ from backend.services.error_monitor.config import (
     AUTO_RESOLVE_MIN_HOURS,
     AUTO_RESOLVE_MULTIPLIER,
     ROLLING_WINDOW_DAYS,
+    LOOKBACK_MINUTES,
 )
 
 # ---------------------------------------------------------------------------
@@ -174,7 +175,9 @@ class ErrorPatternsAdapter:
         snap = doc_ref.get()
         ts_iso = _iso(data.timestamp)
 
-        new_rolling_entry = {"ts": ts_iso, "count": data.count}
+        # window_minutes lets spike detection normalise counts across a change
+        # of monitor cadence (15 -> 60 min on 2026-09-26).
+        new_rolling_entry = {"ts": ts_iso, "count": data.count, "window_minutes": LOOKBACK_MINUTES}
 
         if not snap.exists:
             # ── brand new pattern ──────────────────────────────────────────

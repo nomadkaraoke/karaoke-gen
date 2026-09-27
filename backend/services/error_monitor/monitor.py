@@ -23,6 +23,7 @@ from google.cloud import secretmanager
 
 from backend.services.error_monitor.config import (
     GCP_PROJECT,
+    LEGACY_ROLLING_WINDOW_MINUTES,
     LOOKBACK_MINUTES,
     MAX_LOG_ENTRIES,
     MONITORED_CLOUD_FUNCTIONS,
@@ -214,15 +215,22 @@ def _group_by_pattern(entries: list[dict]) -> dict[str, dict]:
 def _rolling_average(rolling_counts: list[dict]) -> float:
     """Compute the mean count from a list of rolling_count dicts.
 
+    Each entry's count is scaled to the current ``LOOKBACK_MINUTES`` window
+    (entries without ``window_minutes`` predate it and were 15-minute counts),
+    so a change of monitor cadence doesn't read as a spike.
+
     Args:
-        rolling_counts: List of ``{"count": int, ...}`` dicts.
+        rolling_counts: List of ``{"count": int, "window_minutes"?: int, ...}`` dicts.
 
     Returns:
         The arithmetic mean as a float, or ``0.0`` for an empty list.
     """
     if not rolling_counts:
         return 0.0
-    total = sum(entry.get("count", 0) for entry in rolling_counts)
+    total = 0.0
+    for entry in rolling_counts:
+        window = entry.get("window_minutes") or LEGACY_ROLLING_WINDOW_MINUTES
+        total += entry.get("count", 0) * LOOKBACK_MINUTES / window
     return total / len(rolling_counts)
 
 
@@ -258,7 +266,7 @@ def _is_spike(current_count: int, rolling_counts: list[dict]) -> bool:
 class ErrorMonitor:
     """Orchestrates the full production error monitoring pipeline.
 
-    On each run (typically every 15 minutes via Cloud Scheduler), it:
+    On each run (hourly via Cloud Scheduler), it:
 
     1. Queries Cloud Logging for recent errors across all monitored services.
     2. Groups errors into patterns using normalisation + hashing.

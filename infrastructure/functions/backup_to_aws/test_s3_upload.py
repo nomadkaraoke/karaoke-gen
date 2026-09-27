@@ -3,9 +3,22 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from botocore.exceptions import ClientError
 
-_NOT_FOUND = ClientError({"Error": {"Code": "404"}}, "HeadObject")
+def _set_s3_listing(client, objects):
+    """Make the S3 client's list_objects_v2 paginator serve ``objects``
+    ({key: size}), filtered by Prefix + Delimiter like real S3."""
+
+    def paginate(Bucket, Prefix="", Delimiter=None):
+        contents = []
+        for key, size in objects.items():
+            if not key.startswith(Prefix):
+                continue
+            if Delimiter and Delimiter in key[len(Prefix):]:
+                continue
+            contents.append({"Key": key, "Size": size})
+        return [{"Contents": contents}]
+
+    client.get_paginator.return_value.paginate.side_effect = paginate
 
 
 def _blob(name, size=1234, crc32c=None):
@@ -20,9 +33,9 @@ def _blob(name, size=1234, crc32c=None):
 
 
 def _mock_boto(mock_boto):
-    """Default: nothing exists in S3 yet (HEAD -> 404), so everything uploads."""
+    """Default: nothing exists in S3 yet, so everything uploads."""
     client = mock_boto.return_value
-    client.head_object.side_effect = _NOT_FOUND
+    _set_s3_listing(client, {})
     return client
 
 
@@ -106,12 +119,7 @@ class TestUploadStagingToS3(unittest.TestCase):
         present = _blob("gcs/job-files/jobs/abc/finals/portrait_1080x1920.mp4", size=999)
         fresh = _blob("secrets/2026-09-15.bin", size=42)
 
-        def head(Bucket, Key):
-            if Key == present.name:
-                return {"ContentLength": 999}
-            raise _NOT_FOUND
-
-        client.head_object.side_effect = head
+        _set_s3_listing(client, {present.name: 999})
         mock_storage.return_value.bucket.return_value.list_blobs.return_value = [present, fresh]
 
         upload_staging_to_s3("staging", "s3b")
@@ -164,6 +172,80 @@ class TestUploadStagingToS3(unittest.TestCase):
         critical_phase, bulk_phase = phases
         self.assertCountEqual(critical_phase, [sec.name, git.name])
         self.assertEqual(bulk_phase, [final.name])
+
+
+    @patch("s3_upload.boto3.client")
+    @patch("s3_upload.storage.Client")
+    @patch("s3_upload.get_aws_credentials")
+    def test_never_uses_head_object(self, mock_creds, mock_storage, mock_boto):
+        """Regression (2026-09-14..26 outage): the backup-writer IAM user lacks
+        s3:GetObject, so HEAD on an existing key returns 403. Existence must come from listing."""
+        from s3_upload import upload_staging_to_s3
+
+        mock_creds.return_value = {"access_key_id": "x", "secret_access_key": "y"}
+        client = _mock_boto(mock_boto)
+        client.head_object.side_effect = AssertionError("HEAD must not be called")
+        blob = _blob("secrets/2026-09-27.bin")
+        mock_storage.return_value.bucket.return_value.list_blobs.return_value = [blob]
+
+        summary = upload_staging_to_s3("staging", "s3b")
+
+        self.assertEqual(client.upload_fileobj.call_count, 1)
+        self.assertNotIn("errors", summary)
+
+    @patch("s3_upload.boto3.client")
+    @patch("s3_upload.storage.Client")
+    @patch("s3_upload.get_aws_credentials")
+    def test_git_repos_always_overwritten_even_if_same_size(self, mock_creds, mock_storage, mock_boto):
+        """A changed bundle can keep its byte size; git-repos/ is only staged
+        when it changed, so it must upload regardless of the size match."""
+        from s3_upload import upload_staging_to_s3
+
+        mock_creds.return_value = {"access_key_id": "x", "secret_access_key": "y"}
+        client = mock_boto.return_value
+        bundle = _blob("git-repos/nomadkaraoke/karaoke-gen.bundle", size=500)
+        manifest = _blob("git-repos/manifest.json", size=77)
+        _set_s3_listing(client, {bundle.name: 500, manifest.name: 77})
+        mock_storage.return_value.bucket.return_value.list_blobs.return_value = [bundle, manifest]
+
+        upload_staging_to_s3("staging", "s3b")
+
+        uploaded = {c.kwargs["Key"] for c in client.upload_fileobj.call_args_list}
+        self.assertEqual(uploaded, {bundle.name, manifest.name})
+
+    @patch("s3_upload.boto3.client")
+    @patch("s3_upload.storage.Client")
+    @patch("s3_upload.get_aws_credentials")
+    def test_include_prefixes_limits_upload(self, mock_creds, mock_storage, mock_boto):
+        from s3_upload import upload_staging_to_s3
+
+        mock_creds.return_value = {"access_key_id": "x", "secret_access_key": "y"}
+        client = _mock_boto(mock_boto)
+        git = _blob("git-repos/manifest.json")
+        sec = _blob("secrets/2026-09-27.bin")
+        mock_storage.return_value.bucket.return_value.list_blobs.return_value = [git, sec]
+
+        upload_staging_to_s3("staging", "s3b", include_prefixes=["git-repos/"])
+
+        self.assertEqual(client.upload_fileobj.call_count, 1)
+        self.assertEqual(client.upload_fileobj.call_args.kwargs["Key"], git.name)
+        sec.delete.assert_not_called()
+
+
+class TestListS3Objects(unittest.TestCase):
+    def test_returns_key_to_last_modified(self):
+        from s3_upload import list_s3_objects
+
+        client = MagicMock()
+        client.get_paginator.return_value.paginate.return_value = [
+            {"Contents": [{"Key": "git-repos/a/b.bundle", "LastModified": "t1"}]},
+            {"Contents": [{"Key": "git-repos/a/c.bundle", "LastModified": "t2"}]},
+            {},
+        ]
+        self.assertEqual(
+            list_s3_objects(client, "s3b", "git-repos/"),
+            {"git-repos/a/b.bundle": "t1", "git-repos/a/c.bundle": "t2"},
+        )
 
 
 if __name__ == "__main__":

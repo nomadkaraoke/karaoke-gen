@@ -17,11 +17,18 @@ GCP_REGION: str = os.environ.get("GCP_REGION", "us-central1")
 # Log querying settings
 # ---------------------------------------------------------------------------
 
-#: How far back to look for errors on each run (minutes).
-LOOKBACK_MINUTES: int = 15
+#: How far back to look for errors on each run (minutes). Must equal the
+#: scheduler interval (ErrorMonitorConfig.MONITOR_SCHEDULE, hourly since
+#: 2026-09-26) so consecutive windows tile without gaps or double counting.
+LOOKBACK_MINUTES: int = 60
 
-#: Maximum number of log entries to fetch per service per run.
-MAX_LOG_ENTRIES: int = 500
+#: Window (minutes) assumed for ``rolling_counts`` entries written before
+#: entries recorded their own ``window_minutes`` (i.e. the 15-min era).
+LEGACY_ROLLING_WINDOW_MINUTES: int = 15
+
+#: Maximum number of log entries to fetch per resource type per run (scaled
+#: 4x with the 15 -> 60 min window to keep the same per-minute capacity).
+MAX_LOG_ENTRIES: int = 2000
 
 # ---------------------------------------------------------------------------
 # Monitored services

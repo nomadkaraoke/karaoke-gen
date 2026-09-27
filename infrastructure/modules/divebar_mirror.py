@@ -80,6 +80,15 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
         force_destroy=False,  # Protect against accidental deletion
         uniform_bucket_level_access=True,
         versioning=storage.BucketVersioningArgs(enabled=False),
+        # Autoclass (2026-09-26 GCP cost cut): mirror files are read sparsely
+        # (kjbox on-demand downloads), so let untouched files walk down to
+        # Nearline (30d) -> Coldline (90d) -> Archive (365d). Autoclass charges
+        # no retrieval/early-deletion fees and any read moves the object back
+        # to Standard, so the ARCHIVE terminal class has no access penalty.
+        autoclass=storage.BucketAutoclassArgs(
+            enabled=True,
+            terminal_storage_class="ARCHIVE",
+        ),
     )
     resources["files_bucket"] = files_bucket
 

@@ -19,9 +19,19 @@ working set, not the sum of all repos.
 A ``manifest.json`` alongside the bundles records exactly which repos existed at
 backup time (visibility, default branch, description, size, fork/archived flags)
 — essential when recreating repos and settings from scratch after a ban.
+
+Incremental (2026-09-26, egress cost cut): the step runs weekly and only
+re-bundles repos that changed since their bundle last landed in S3. A repo is
+"unchanged" when S3 already holds its bundle and that S3 object was uploaded at
+least ``_UPLOAD_LAG`` after the repo's GitHub ``pushed_at``. The lag covers the
+clone -> S3-upload gap within one run (bounded by the function's 30-min
+deadline): a push that lands after the clone but before the upload is newer
+than ``LastModified - _UPLOAD_LAG`` and so is re-bundled next time. S3 itself is
+the state store — no separate bookkeeping to drift or expire.
 """
 
 import base64
+import datetime
 import json
 import logging
 import os
@@ -52,6 +62,10 @@ _MAX_PAGES = 30
 # mirror. Both are well under the function's 1800s deadline.
 _CLONE_TIMEOUT = 1200
 _BUNDLE_TIMEOUT = 600
+
+# Max gap between cloning a repo and its bundle reaching S3 in the same run
+# (function deadline is 30 min; doubled for slack). See module docstring.
+_UPLOAD_LAG = datetime.timedelta(hours=1)
 
 
 def get_github_token(project: str, secret_id: str = "github-backup-token") -> str:
@@ -209,6 +223,24 @@ def _repo_entry(repo: dict) -> dict:
     }
 
 
+def _parse_github_time(value: str | None) -> datetime.datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _is_unchanged(repo: dict, backed_up_at: datetime.datetime | None) -> bool:
+    """True if the S3 bundle (uploaded at ``backed_up_at``) already contains the
+    repo's latest push. Unknown ``pushed_at`` or no S3 copy -> not unchanged."""
+    pushed_at = _parse_github_time(repo.get("pushed_at"))
+    if backed_up_at is None or pushed_at is None:
+        return False
+    return backed_up_at - _UPLOAD_LAG >= pushed_at
+
+
 def export_git_repos(
     staging_bucket: str,
     github_token: str,
@@ -216,13 +248,15 @@ def export_git_repos(
     include_forks: bool = False,
     max_repo_size_kb: int = DEFAULT_MAX_REPO_SIZE_KB,
     staging_prefix: str = "git-repos/",
+    existing_backups: dict | None = None,
+    full_refresh: bool = False,
 ) -> str:
     """Bundle every repo under ``owners`` and write to the GCS staging bucket.
 
     Bundles land at ``{staging_prefix}{owner}/{repo}.bundle`` and a
-    ``{staging_prefix}manifest.json`` records the full repo inventory. The
-    nightly S3 upload step then ships them off-site (they are small, so unlike
-    Firestore they upload every night, not weekly).
+    ``{staging_prefix}manifest.json`` records the full repo inventory (including
+    ``unchanged`` repos whose existing S3 bundle is still current). The S3
+    upload step then ships them off-site.
 
     Per-repo failures are recorded in the manifest and counted in the summary
     but do not abort the run (mirrors ``secrets_export`` behaviour). Only a
@@ -238,6 +272,11 @@ def export_git_repos(
             recoverable from upstream).
         max_repo_size_kb: Skip repos larger than this (GitHub-reported size).
         staging_prefix: Prefix under the staging bucket for bundles/manifest.
+        existing_backups: ``{s3_key: LastModified}`` for bundles already in S3
+            (``s3_upload.list_s3_objects``). Repos whose bundle is present and
+            newer than their last push are recorded as ``unchanged`` and not
+            re-cloned/re-uploaded. ``None`` -> bundle everything.
+        full_refresh: Ignore ``existing_backups`` and re-bundle every repo.
 
     Returns:
         Summary string.
@@ -256,8 +295,15 @@ def export_git_repos(
     gcs_client = gcs_storage.Client()
     bucket = gcs_client.bucket(staging_bucket)
 
-    manifest: dict = {"owners": owners, "repos": []}
-    bundled = errors = skipped = 0
+    existing_backups = {} if full_refresh else (existing_backups or {})
+
+    manifest: dict = {
+        "owners": owners,
+        "repos": [],
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "full_refresh": full_refresh,
+    }
+    bundled = errors = skipped = unchanged = 0
 
     for repo in repos:
         owner = repo["owner"]["login"]
@@ -273,10 +319,18 @@ def export_git_repos(
             manifest["repos"].append(entry)
             continue
 
+        dst = f"{staging_prefix}{owner}/{name}.bundle"
+        backed_up_at = existing_backups.get(dst)
+        if _is_unchanged(repo, backed_up_at):
+            entry["status"] = "unchanged"
+            entry["backed_up_at"] = backed_up_at.isoformat()
+            unchanged += 1
+            manifest["repos"].append(entry)
+            continue
+
         workdir = tempfile.mkdtemp(prefix="gitbak-")
         try:
             bundle_path = _bundle_repo(repo, github_token, workdir)
-            dst = f"{staging_prefix}{owner}/{name}.bundle"
             bucket.blob(dst).upload_from_filename(bundle_path)
             entry["status"] = "bundled"
             entry["bundle_bytes"] = os.path.getsize(bundle_path)
@@ -305,6 +359,7 @@ def export_git_repos(
     manifest["bundled"] = bundled
     manifest["errors"] = errors
     manifest["skipped"] = skipped
+    manifest["unchanged"] = unchanged
     manifest["total"] = len(repos)
 
     # Always write the manifest — even on a bad run it records what we saw.
@@ -315,14 +370,17 @@ def export_git_repos(
 
     summary = (
         f"Bundled {bundled}/{len(repos)} repos "
-        f"({errors} errors, {skipped} skipped) to gs://{staging_bucket}/{staging_prefix}"
+        f"({unchanged} unchanged, {errors} errors, {skipped} skipped) "
+        f"to gs://{staging_bucket}/{staging_prefix}"
     )
     logger.info(summary)
 
-    # Systemic failure: nothing bundled successfully yet repos errored → surface
-    # it as a hard error (bad token, git broken, network down). A run where every
-    # repo was a *benign* skip (empty/oversized) or where at least one bundled is
-    # not systemic, so it stays green with the counts noted in the summary.
+    # Systemic failure: every repo we actually tried to bundle errored (bad
+    # token, git broken, network down) → surface it as a hard error. Repos
+    # skipped as unchanged/empty/oversized don't count as successes here: in
+    # incremental mode almost everything is unchanged, so counting them would
+    # hide a total failure of the week's changed repos. A run where at least
+    # one bundle succeeded, or nothing needed bundling, stays green.
     if bundled == 0 and errors > 0:
         raise RuntimeError(summary)
 

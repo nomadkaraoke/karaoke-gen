@@ -345,19 +345,19 @@ class TestIsSpike:
         m = _import_monitor_module()
         # rolling_counts of 1 each for the past 5 periods, current count = 10
         # avg = 1.0, SPIKE_MULTIPLIER=5.0, so 10 > 5 and 10 >= SPIKE_MIN_COUNT=5
-        rolling_counts = [{"count": 1}, {"count": 1}, {"count": 1}, {"count": 1}, {"count": 1}]
+        rolling_counts = [{"count": 1, "window_minutes": 60}, {"count": 1, "window_minutes": 60}, {"count": 1, "window_minutes": 60}, {"count": 1, "window_minutes": 60}, {"count": 1, "window_minutes": 60}]
         assert m._is_spike(current_count=10, rolling_counts=rolling_counts) is True
 
     def test_rejects_non_spike_count(self):
         m = _import_monitor_module()
-        rolling_counts = [{"count": 4}, {"count": 4}, {"count": 4}, {"count": 4}]
+        rolling_counts = [{"count": 4, "window_minutes": 60}, {"count": 4, "window_minutes": 60}, {"count": 4, "window_minutes": 60}, {"count": 4, "window_minutes": 60}]
         # avg = 4.0, 5x = 20, current=5 → not a spike
         assert m._is_spike(current_count=5, rolling_counts=rolling_counts) is False
 
     def test_rejects_spike_below_min_count(self):
         m = _import_monitor_module()
         # avg = 0.5, 5x = 2.5, current = 3 → exceeds multiplier but below SPIKE_MIN_COUNT
-        rolling_counts = [{"count": 1}, {"count": 0}]
+        rolling_counts = [{"count": 1, "window_minutes": 60}, {"count": 0, "window_minutes": 60}]
         assert m._is_spike(current_count=3, rolling_counts=rolling_counts) is False
 
     def test_empty_rolling_counts_not_a_spike(self):
@@ -375,15 +375,28 @@ class TestRollingAverage:
 
     def test_computes_average_correctly(self):
         m = _import_monitor_module()
-        rolling = [{"count": 2}, {"count": 4}, {"count": 6}]
+        rolling = [{"count": 2, "window_minutes": 60}, {"count": 4, "window_minutes": 60}, {"count": 6, "window_minutes": 60}]
         result = m._rolling_average(rolling)
         assert result == pytest.approx(4.0)
 
     def test_single_entry_returns_that_value(self):
         m = _import_monitor_module()
-        rolling = [{"count": 7}]
+        rolling = [{"count": 7, "window_minutes": 60}]
         result = m._rolling_average(rolling)
         assert result == pytest.approx(7.0)
+
+    def test_legacy_15_min_entries_scaled_to_current_window(self):
+        m = _import_monitor_module()
+        # Pre-2026-09-26 entries had no window_minutes and counted 15 min of
+        # errors; at the 60-min cadence they must count 4x.
+        rolling = [{"count": 2}, {"count": 8, "window_minutes": 60}]
+        assert m._rolling_average(rolling) == pytest.approx((8.0 + 8.0) / 2)
+
+    def test_legacy_history_does_not_fake_a_spike(self):
+        m = _import_monitor_module()
+        # Steady 2 errors / 15 min == 8 / hour: an 8/hour run is not a spike.
+        rolling = [{"count": 2}] * 10
+        assert m._is_spike(current_count=8, rolling_counts=rolling) is False
 
     def test_empty_list_returns_zero(self):
         m = _import_monitor_module()
@@ -392,7 +405,7 @@ class TestRollingAverage:
 
     def test_counts_with_zeros(self):
         m = _import_monitor_module()
-        rolling = [{"count": 0}, {"count": 0}, {"count": 10}]
+        rolling = [{"count": 0, "window_minutes": 60}, {"count": 0, "window_minutes": 60}, {"count": 10, "window_minutes": 60}]
         result = m._rolling_average(rolling)
         assert result == pytest.approx(10 / 3)
 
@@ -849,7 +862,7 @@ class TestSpikeDetectionFlow:
         # avg=1.0, 5x=5.0, current_count=10 → spike detected
         monitor.firestore_adapter.get_pattern.return_value = {
             "pattern_id": "spike-pattern-1",
-            "rolling_counts": [{"count": 1}, {"count": 1}, {"count": 1}, {"count": 1}],
+            "rolling_counts": [{"count": 1, "window_minutes": 60}] * 4,
         }
         monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
         monitor.firestore_adapter.get_active_patterns.return_value = []

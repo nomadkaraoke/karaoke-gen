@@ -37,7 +37,7 @@ from config import (
     DiskSizes,
 )
 from modules import database, storage as storage_module, artifact_registry, secrets
-from modules import cloud_tasks, cloud_run, monitoring, networking, runner_manager
+from modules import cloud_tasks, cloud_run, monitoring, runner_manager
 from modules import divebar_mirror, kn_data_sync, divebar_lookup, backup
 from modules import audio_separator_service
 from modules import edge_security
@@ -68,9 +68,9 @@ all_secrets = secrets.create_secrets()
 queues = cloud_tasks.create_queues()
 
 # ==================== Networking ====================
-# VPC connector for Cloud Run to access internal resources (e.g., flacfetch VM)
-vpc_access_api = networking.enable_vpc_access_api()
-vpc_connector = networking.create_vpc_connector(vpc_access_api)
+# The serverless VPC connector (cloud-run-connector) was removed 2026-09-26:
+# it only existed to reach the old flacfetch GCE VM's internal IP, and flacfetch
+# now runs off-GCP behind a public HTTPS URL. All backend egress is public.
 
 # ==================== Cloud Build IAM ====================
 # These bindings allow Cloud Build to access Artifact Registry and deploy as the backend SA
@@ -188,8 +188,8 @@ edge_resources = edge_security.configure_edge_security()
 video_encoding_job = cloud_run.create_video_encoding_job(bucket, backend_service_account)
 lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
 audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
-audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account, vpc_connector)
-bulk_search_job = cloud_run.create_bulk_search_job(bucket, backend_service_account, vpc_connector)
+audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account)
+bulk_search_job = cloud_run.create_bulk_search_job(bucket, backend_service_account)
 
 # ==================== Error Monitor ====================
 
@@ -495,7 +495,10 @@ recover_stuck_downloads_scheduler = cloudscheduler.Job(
     name="recover-stuck-downloads",
     description="Detect and recover jobs stuck in downloading_audio status",
     region=REGION,
-    schedule="*/5 * * * *",  # Every 5 minutes
+    # Every 10 min (was 5; 2026-09-26 cost cut — each tick streams the
+    # processing-status job docs from Firestore). Recovery sweeps only, with
+    # ~10-min stall thresholds, so worst-case detection moves from ~15 to ~20 min.
+    schedule="*/10 * * * *",
     time_zone="America/Los_Angeles",
     http_target=cloudscheduler.JobHttpTargetArgs(
         uri="https://api.nomadkaraoke.com/api/internal/recover-stuck-jobs",
@@ -521,7 +524,10 @@ retry_pending_render_jobs_scheduler = cloudscheduler.Job(
     name="retry-pending-render-jobs",
     description="Auto-retry render jobs parked on GCE encoding capacity exhaustion",
     region=REGION,
-    schedule="*/5 * * * *",  # Every 5 minutes
+    # Every 10 min (was 5; 2026-09-26 cost cut — each tick streams the
+    # processing-status job docs from Firestore). Recovery sweeps only, with
+    # ~10-min stall thresholds, so worst-case detection moves from ~15 to ~20 min.
+    schedule="*/10 * * * *",
     time_zone="America/Los_Angeles",
     http_target=cloudscheduler.JobHttpTargetArgs(
         uri="https://api.nomadkaraoke.com/api/internal/retry-pending-render-jobs",
@@ -776,10 +782,6 @@ pulumi.export("gdrive_validator_scheduler_name", gdrive_validator_scheduler.name
 pulumi.export("recover_stuck_downloads_scheduler_name", recover_stuck_downloads_scheduler.name)
 pulumi.export("disposable_domains_sync_scheduler_name", disposable_domains_sync_scheduler.name)
 pulumi.export("gdrive_validator_service_account", gdrive_validator_sa.email)
-
-# VPC networking
-pulumi.export("vpc_connector_name", vpc_connector.name)
-pulumi.export("vpc_connector_self_link", vpc_connector.self_link)
 
 # Encoding workers (blue-green pair)
 pulumi.export("encoding_worker_a_ip", encoding_worker_ips[0].address)

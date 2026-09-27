@@ -28,8 +28,10 @@ def _cloud_run_task_timeout_seconds() -> int:
         pathlib.Path(__file__).resolve().parents[2]
         / "infrastructure" / "modules" / "cloud_run.py"
     ).read_text()
-    # The audio-download job block sets timeout="NNNNs" right before max_retries.
-    m = re.search(r'timeout="(\d+)s",\s*\n\s*max_retries=2,\s*\n\s*vpc_access=', src)
+    # Scope to the create_audio_download_job() body, then take its task timeout.
+    start = src.index("def create_audio_download_job(")
+    end = src.index("\ndef ", start + 1)
+    m = re.search(r'timeout="(\d+)s",\s*\n\s*max_retries=2,', src[start:end])
     assert m, "could not locate audio-download-job timeout in cloud_run.py"
     return int(m.group(1))
 

@@ -645,7 +645,7 @@ When two sequential human review steps can be combined into one, do it. We origi
 - 6 GCE encoding workers: 2 primaries in `us-central1-c` (blue-green, `c4d-highcpu-32`) + 2 `c4d` capacity fallbacks in `us-central1-a`/`-b` + 2 `n2-highcpu-32` fallbacks in `us-central1-c`/`-f`. All idle by default; started on demand.
 - `EncodingWorkerCandidate` list iterated in `ensure_any_running` — primary first, fallbacks in declared order. Capacity errors fall through to next candidate; non-capacity start errors also fall through (broadened in PR #750).
 - New `RENDER_PENDING_CAPACITY` job state for transient infra failures — different from `FAILED` (which is for unrecoverable bugs).
-- Cloud Scheduler fires `/api/internal/retry-pending-render-jobs` every 5 min; 24h hard timeout per job.
+- Cloud Scheduler fires `/api/internal/retry-pending-render-jobs` every 10 min; 24h hard timeout per job.
 - `EncodingWorkerConfig.active_url` returns the override URL when set, else primary. `_get_worker_url()` consults this with a 30s TTL cache.
 - Both Cloud Run service AND Cloud Run Job (video-encoding-job) need `ENCODING_WORKER_FALLBACK_VMS` env — they each instantiate their own `EncodingService`.
 
@@ -2077,3 +2077,20 @@ fallbacks — go through `JobManager.start_job_processing`, which ignored it, so
 users never saw the audio editor. `start_job_processing` now parks such jobs via the
 shared `enter_audio_edit` helper. Any new "audio just arrived" path must go through one
 of these two gates.
+
+## GCS Autoclass bumps `updated`; S3 HEAD needs GetObject (2026-09-26 cost cuts)
+
+- **Autoclass / lifecycle storage-class transitions change an object's `updated`
+  timestamp** (it tracks any metadata change). Anything that detects "changed since
+  last run" via `blob.updated` will treat every cooled object as new — and reading it
+  pulls it straight back to Standard, defeating Autoclass. Use `time_created` (the
+  current generation's creation time) for content-change detection. The DR
+  `gcs_sync.py` was switched before Autoclass was enabled on the job-files bucket.
+- **S3 HEAD on an existing key returns 403 without `s3:GetObject`** (404 only for
+  missing keys when you have `s3:ListBucket`). The write-only `backup-writer` IAM user
+  therefore failed every *overwrite* for 12 days after #997 added a HEAD-based
+  "already uploaded?" check. Use `ListObjectsV2` for existence/size checks with that
+  user, and test new S3 calls against the real least-privilege credential.
+- **Removing a serverless VPC connector from a gcloud-deployed Cloud Run service needs
+  `--clear-vpc-connector`**: just dropping `--vpc-connector` from `gcloud run deploy`
+  keeps the existing setting. Detach every service/job before deleting the connector.

@@ -98,12 +98,12 @@ class TestDefaultValues:
     def test_lookback_minutes_default(self):
         from backend.services.error_monitor import config
 
-        assert config.LOOKBACK_MINUTES == 15
+        assert config.LOOKBACK_MINUTES == 60
 
     def test_max_log_entries_default(self):
         from backend.services.error_monitor import config
 
-        assert config.MAX_LOG_ENTRIES == 500
+        assert config.MAX_LOG_ENTRIES == 2000
 
     def test_spike_multiplier_default(self):
         from backend.services.error_monitor import config
