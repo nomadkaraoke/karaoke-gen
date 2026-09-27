@@ -1839,6 +1839,7 @@ DOWNLOAD_FILENAME_SUFFIXES = {
     "txt_zip": " (Final Karaoke TXT).zip",
     "with_vocals_mp4": " (With Vocals).mp4",
     "with_vocals": " (With Vocals).mkv",  # legacy: raw MKV from render step
+    "video_mp4": " (Quick Version).mp4",  # file_urls.quick — kjbox make-it draft
 }
 
 

@@ -2788,6 +2788,11 @@ env `KJBOX_PARTNER_SECRET`, Secret Manager `kjbox-partner-secret`):
 `503 {"detail": "not configured"}` while unset (deploys dark), `403` if wrong.
 Code: `backend/api/routes/kjbox.py` + `backend/services/kjbox_partner_service.py`.
 
+**Quick version:** kjbox jobs also get a draft scrolling-lyrics video a few minutes after the audio
+downloads (see ARCHITECTURE.md § "Quick version"). No new endpoint: poll `GET /api/jobs/{job_id}`
+for `state_data.quick_version.status == "ready"`, then download
+`GET /api/jobs/{job_id}/download/quick/video_mp4` (`… (Quick Version).mp4`).
+
 ### Send code
 
 ```http

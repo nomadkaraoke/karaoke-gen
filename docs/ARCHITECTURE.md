@@ -584,6 +584,28 @@ Audio stem separation runs **directly inside the audio worker Cloud Run Job** �
 
 **Rollback**: The old audio-separator Cloud Run Service (HTTP endpoint) is kept for rollback but no longer receives traffic. It will be removed in a future phase.
 
+### Quick version (kjbox make-it jobs)
+
+For jobs created by kjbox on behalf of a singer (`request_metadata.client_id` starts with
+`kjbox`), the audio worker also produces a rough **scrolling-lyrics draft video** within a few
+minutes of the audio landing, so the singer can sing now instead of waiting ~30 min for the
+full NOMAD version. Code: `backend/services/quick_version/` (a port of kjbox `fastgen/`).
+
+1. **Before the ensemble**, one fast single-model pass (`mel_band_roformer_instrumental_fv7z_gabox.ckpt`,
+   already baked into the image; MDXC overlap 2; override with `QUICK_VERSION_MODEL`) on the
+   warm L4 → quick instrumental + vocals.
+2. A **background thread** renders the video while the GPU runs the ensemble: LRCLIB lyrics
+   (line-synced → time-anchored scroll; plain → constant crawl; none → title card), PIL-rasterised
+   crawl PNG + one ffmpeg `overlay` pass, 854×480, vocals mixed back in at 30% as a guide.
+3. Uploads `jobs/{id}/quick/quick.mp4` → `file_urls.quick.video_mp4`, and records
+   `state_data.quick_version = {status: separating|rendering|ready|failed, lyrics_tier, ready_at, …}`.
+4. The worker joins the render (≤300 s) before cleaning up its temp dir — even when the ensemble
+   fails. Quick-version failures never fail the job. Skipped when `quick_version.status == ready`
+   (job retries), in remote-API separation mode, or with `KJBOX_QUICK_VERSION_ENABLED=false`.
+
+kjbox's GenPoller reads `state_data.quick_version` from `GET /api/jobs/{id}` and downloads the file
+via `/api/jobs/{id}/download/quick/video_mp4`.
+
 ## Multitenancy
 
 The platform supports white-label B2B portals where business customers get their own branded karaoke generation experience.
