@@ -84,7 +84,8 @@ def _inventory(only_types: Optional[set]) -> List[Dict[str, Any]]:
         if data.get("primary_vm"):
             workers.append({
                 "vm": data["primary_vm"], "zone": DEFAULT_C4D_ZONE,
-                "ip": data.get("primary_ip"), "machine_type": "c4d-highcpu-32",
+                # Keep in sync with encoding_worker_preference.PRIMARY_MACHINE_TYPE.
+                "ip": data.get("primary_ip"), "machine_type": "c4d-highcpu-16",
             })
     except Exception as e:  # noqa: BLE001
         print(f"WARN: could not read primary from Firestore ({e}); benchmarking fallbacks only")
@@ -238,9 +239,17 @@ def benchmark(args) -> Dict[str, float]:
 
 
 def _suggest_ranks(medians: Dict[str, float]) -> Dict[str, int]:
-    """Map medians → SPEED_RANK ints (fastest = smallest), spaced by 10."""
+    """Map medians → SPEED_RANK ints (fastest = smallest), spaced by 10.
+
+    Keyed by machine FAMILY ("c4d-highcpu-16" → "c4d"), matching
+    encoding_worker_preference.SPEED_RANK (family-keyed since 2026-09-26).
+    """
     ordered = sorted(medians.items(), key=lambda kv: kv[1])
     return {mt: (idx + 1) * 10 for idx, (mt, _) in enumerate(ordered)}
+
+
+def _family(machine_type: str) -> str:
+    return machine_type.split("-", 1)[0].lower()
 
 
 def main() -> int:
@@ -282,7 +291,10 @@ def main() -> int:
     for mt, secs in sorted(medians.items(), key=lambda kv: kv[1]):
         print(f"  {mt:>16}: {secs:>7.1f}s   → suggested SPEED_RANK {ranks[mt]}")
 
-    payload = {"medians_seconds": medians, "suggested_speed_rank": ranks}
+    family_ranks: Dict[str, int] = {}
+    for mt, rank in sorted(ranks.items(), key=lambda kv: kv[1]):
+        family_ranks.setdefault(_family(mt), rank)  # fastest size wins per family
+    payload = {"medians_seconds": medians, "suggested_speed_rank": family_ranks}
     if args.json_out:
         with open(args.json_out, "w") as f:
             json.dump(payload, f, indent=2)

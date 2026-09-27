@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import re
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 from google.cloud import secretmanager
 
@@ -249,13 +249,20 @@ class DropboxService:
                 )
                 cursor.offset = file_obj.tell()
 
-    def upload_folder(self, local_dir: str, remote_path: str) -> None:
+    def upload_folder(
+        self,
+        local_dir: str,
+        remote_path: str,
+        exclude_suffixes: Sequence[str] = (),
+    ) -> None:
         """
         Recursively upload all files and subdirectories to Dropbox folder.
 
         Args:
             local_dir: Local directory to upload
             remote_path: Dropbox destination folder path
+            exclude_suffixes: Filename suffixes to skip (see
+                dropbox_skip_suffixes_for). Skipped files stay on local disk / GCS.
         """
         # Ensure remote path starts with /
         if not remote_path.startswith("/"):
@@ -264,6 +271,7 @@ class DropboxService:
         logger.info(f"Uploading folder {local_dir} to {remote_path}")
 
         uploaded_count = 0
+        skipped_count = 0
         for root, _dirs, files in os.walk(local_dir):
             # Calculate the relative path from local_dir to current root
             rel_root = os.path.relpath(root, local_dir)
@@ -273,12 +281,19 @@ class DropboxService:
                 current_remote = f"{remote_path}/{rel_root}"
 
             for filename in files:
+                if exclude_suffixes and filename.endswith(tuple(exclude_suffixes)):
+                    logger.info(f"Skipping {filename} (excluded from Dropbox upload)")
+                    skipped_count += 1
+                    continue
                 local_file = os.path.join(root, filename)
                 remote_file = f"{current_remote}/{filename}"
                 self.upload_file(local_file, remote_file)
                 uploaded_count += 1
 
-        logger.info(f"Uploaded {uploaded_count} files to {remote_path}")
+        logger.info(
+            f"Uploaded {uploaded_count} files to {remote_path}"
+            + (f" (skipped {skipped_count} excluded)" if skipped_count else "")
+        )
 
     def create_shared_link(self, path: str) -> str:
         """
@@ -351,3 +366,27 @@ class DropboxService:
 def get_dropbox_service() -> DropboxService:
     """Factory function to get a DropboxService instance."""
     return DropboxService()
+
+
+def dropbox_skip_suffixes_for(dropbox_path: Optional[str]) -> Tuple[str, ...]:
+    """Filename suffixes to leave out of a Dropbox upload to ``dropbox_path``.
+
+    Only Nomad's own folders (DEFAULT_DROPBOX_PATH / DEFAULT_PRIVATE_DROPBOX_PATH)
+    skip anything — tenant folders get the full output set. The suffix list comes
+    from settings.dropbox_skip_output_suffixes ("|"-separated). Skipped files are
+    still in GCS, so job-page downloads and YouTube uploads are unaffected.
+    """
+    from backend.config import get_settings
+
+    settings = get_settings()
+    if not dropbox_path:
+        return ()
+    own_paths = {
+        p.rstrip("/")
+        for p in (settings.default_dropbox_path, settings.default_private_dropbox_path)
+        if p
+    }
+    if dropbox_path.rstrip("/") not in own_paths:
+        return ()
+    raw = settings.dropbox_skip_output_suffixes or ""
+    return tuple(s for s in raw.split("|") if s.strip())

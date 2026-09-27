@@ -450,7 +450,7 @@ async def system_status(
                 # alternate family) the override points at the live VM;
                 # otherwise it's the blue-green primary. The primary pair is
                 # always c4d — fallbacks carry their family in the VM name
-                # (…-fallback-n2c, …-fallback-c4a), which infer_machine_type
+                # (…-fallback-c2df), which infer_machine_type
                 # decodes when no explicit machine_type is stored on the config.
                 on_fallback = bool(config.active_override_vm)
                 active_vm = config.active_override_vm or config.primary_vm

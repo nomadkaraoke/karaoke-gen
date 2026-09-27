@@ -494,6 +494,56 @@ class TestEnsureAnyRunning:
         # Only the first candidate's start was attempted.
         mock_compute.start.assert_called_once()
 
+    def test_skips_deleted_candidate_and_starts_next(self, manager, mock_db, mock_compute):
+        """A candidate VM that no longer exists (removed from the fleet while an
+        instance still holds a stale fallback list) is skipped, not fatal."""
+        from google.api_core import exceptions as gcp_exceptions
+
+        stopped = MagicMock()
+        stopped.status = "TERMINATED"
+
+        def _get(project, zone, instance):
+            if instance == "encoding-worker-fallback-gone":
+                raise gcp_exceptions.NotFound("instance not found")
+            return stopped
+
+        mock_compute.get.side_effect = _get
+        # Primary: Spot capacity exhausted. Deleted fallback: NotFound. Live fallback: ok.
+        mock_compute.start.side_effect = [_capacity_op(), _ok_op()]
+
+        candidates = [
+            EncodingWorkerCandidate(vm_name="encoding-worker-blue", zone="us-central1-c",
+                                    ip="10.0.0.1", is_primary=True),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-gone", zone="us-central1-a",
+                                    ip="10.0.0.2"),
+            EncodingWorkerCandidate(vm_name="encoding-worker-fallback-c2df", zone="us-central1-f",
+                                    ip="10.0.0.3"),
+        ]
+
+        with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
+            mock_dt.now.return_value = datetime(2026, 9, 26, 9, 0, 0, tzinfo=UTC)
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            result = manager.ensure_any_running(candidates)
+
+        assert result["vm_name"] == "encoding-worker-fallback-c2df"
+        assert result["fell_back"] is True
+        # The deleted VM was never asked to start.
+        started = [c.kwargs["instance"] for c in mock_compute.start.call_args_list]
+        assert started == ["encoding-worker-blue", "encoding-worker-fallback-c2df"]
+
+    def test_all_candidates_missing_raises_start_error(self, manager, mock_compute):
+        """If every candidate is gone, surface a typed start error (not a bare NotFound)."""
+        from google.api_core import exceptions as gcp_exceptions
+
+        mock_compute.get.side_effect = gcp_exceptions.NotFound("gone")
+        candidates = [
+            EncodingWorkerCandidate(vm_name="vm-x", zone="us-central1-a", ip="10.0.0.9"),
+        ]
+        with pytest.raises(EncodingWorkerStartError) as exc_info:
+            manager.ensure_any_running(candidates)
+        assert exc_info.value.code == "NOT_FOUND"
+        mock_compute.start.assert_not_called()
+
     def test_falls_through_to_next_zone_on_capacity_error(self, manager, mock_db, mock_compute):
         """Capacity error on candidate 1 triggers a try of candidate 2."""
         mock_instance = MagicMock()
@@ -953,9 +1003,9 @@ class TestCapacityStateFeedback:
 
         candidates = [
             EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
-                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-16", is_primary=True),
             EncodingWorkerCandidate(vm_name="encoding-worker-fallback-n2f", zone="us-central1-f",
-                                    ip="10.0.0.2", machine_type="n2-highcpu-32"),
+                                    ip="10.0.0.2", machine_type="n2-highcpu-16"),
         ]
 
         with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
@@ -970,7 +1020,7 @@ class TestCapacityStateFeedback:
         recorded = {}
         for c in set_calls:
             recorded.update(c.args[0]["capacity_state"])
-        assert recorded.get("c4d-highcpu-32@us-central1-c") == "2026-05-05T09:00:00+00:00"
+        assert recorded.get("c4d-highcpu-16@us-central1-c") == "2026-05-05T09:00:00+00:00"
 
     def test_clears_stockout_for_type_on_clean_start(self, manager, mock_db, mock_compute):
         mock_instance = MagicMock()
@@ -980,7 +1030,7 @@ class TestCapacityStateFeedback:
 
         candidates = [
             EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
-                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-16", is_primary=True),
         ]
 
         with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
@@ -994,7 +1044,7 @@ class TestCapacityStateFeedback:
             payload = c.args[0] if c.args else {}
             if "capacity_state" in payload:
                 cleared.update(payload["capacity_state"])
-        assert cleared.get("c4d-highcpu-32@us-central1-c") is None
+        assert cleared.get("c4d-highcpu-16@us-central1-c") is None
 
     def test_stockout_write_failure_does_not_break_start(self, manager, mock_db, mock_compute):
         """A Firestore error while recording a stockout must not abort failover."""
@@ -1008,9 +1058,9 @@ class TestCapacityStateFeedback:
 
         candidates = [
             EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
-                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-16", is_primary=True),
             EncodingWorkerCandidate(vm_name="encoding-worker-fallback-n2f", zone="us-central1-f",
-                                    ip="10.0.0.2", machine_type="n2-highcpu-32"),
+                                    ip="10.0.0.2", machine_type="n2-highcpu-16"),
         ]
 
         with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
@@ -1035,9 +1085,9 @@ class TestCapacityStateFeedback:
         # Fallback is first (primary demoted), primary flagged but ranked second.
         candidates = [
             EncodingWorkerCandidate(vm_name="encoding-worker-fallback-c2df", zone="us-central1-f",
-                                    ip="10.0.0.9", machine_type="c2d-highcpu-32", is_primary=False),
+                                    ip="10.0.0.9", machine_type="c2d-highcpu-16", is_primary=False),
             EncodingWorkerCandidate(vm_name="encoding-worker-a", zone="us-central1-c",
-                                    ip="10.0.0.1", machine_type="c4d-highcpu-32", is_primary=True),
+                                    ip="10.0.0.1", machine_type="c4d-highcpu-16", is_primary=True),
         ]
 
         with patch("backend.services.encoding_worker_manager.datetime") as mock_dt:
@@ -1101,7 +1151,7 @@ class TestDemoteActiveWorker:
         assert doc_ref.set.called
         set_args, set_kwargs = doc_ref.set.call_args
         assert "capacity_state" in set_args[0]
-        assert "c4-highcpu-32@us-central1-c" in set_args[0]["capacity_state"]
+        assert "c4-highcpu-16@us-central1-c" in set_args[0]["capacity_state"]
         assert set_kwargs.get("merge") is True
 
         # Cleared the active_override so the retry starts from the primary.

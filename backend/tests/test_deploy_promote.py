@@ -176,15 +176,15 @@ class TestSelectGreenRankingSharedWithRuntime:
     # 6-type pool with explicit machine_type (mirrors the post-rollout secret).
     POOL = [
         {"vm": "encoding-worker-fallback-c4a", "zone": "us-central1-a", "ip": "10.0.0.1",
-         "machine_type": "c4-highcpu-32"},
+         "machine_type": "c4-highcpu-16"},
         {"vm": "encoding-worker-fallback-n4db", "zone": "us-central1-b", "ip": "10.0.0.2",
-         "machine_type": "n4d-highcpu-32"},
+         "machine_type": "n4d-highcpu-16"},
         {"vm": "encoding-worker-fallback-c2df", "zone": "us-central1-f", "ip": "10.0.0.3",
-         "machine_type": "c2d-highcpu-32"},
+         "machine_type": "c2d-highcpu-16"},
         {"vm": "encoding-worker-fallback-n2da", "zone": "us-central1-a", "ip": "10.0.0.4",
-         "machine_type": "n2d-highcpu-32"},
+         "machine_type": "n2d-highcpu-16"},
         {"vm": "encoding-worker-fallback-n2c", "zone": "us-central1-c", "ip": "10.0.0.5",
-         "machine_type": "n2-highcpu-32"},
+         "machine_type": "n2-highcpu-16"},
     ]
 
     def test_secondary_c4d_leads_then_fastest_fallbacks(self):
@@ -205,7 +205,7 @@ class TestSelectGreenRankingSharedWithRuntime:
         from datetime import datetime, timezone
         cfg = _config(
             active_override_vm=None,
-            capacity_state={"c4d-highcpu-32@us-central1-c": datetime.now(timezone.utc).isoformat()},
+            capacity_state={"c4d-highcpu-16@us-central1-c": datetime.now(timezone.utc).isoformat()},
         )
         cands = select_green_candidates(cfg, self.POOL)
         vms = [c["vm"] for c in cands]
@@ -218,4 +218,4 @@ class TestSelectGreenRankingSharedWithRuntime:
     def test_machine_type_carried_through(self):
         cands = select_green_candidates(_config(active_override_vm=None), self.POOL)
         c4 = next(c for c in cands if c["vm"] == "encoding-worker-fallback-c4a")
-        assert c4["machine_type"] == "c4-highcpu-32"
+        assert c4["machine_type"] == "c4-highcpu-16"

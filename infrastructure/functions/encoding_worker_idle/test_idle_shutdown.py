@@ -107,7 +107,7 @@ class TestIdleShutdown:
 
     def test_skips_deploy_in_progress(self, mock_compute, mock_firestore):
         """Should skip idle check when a deploy is in progress."""
-        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
         config = _make_config(
             deploy_in_progress=True,
             deploy_in_progress_since=recent,
@@ -147,7 +147,7 @@ class TestIdleShutdown:
 
     def test_recent_activity_keeps_primary_alive(self, mock_compute, mock_firestore):
         """Recent activity should keep the primary VM alive but stop the secondary."""
-        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
         config = _make_config(last_activity_at=recent)
         _setup_firestore(mock_firestore, config)
 
@@ -162,6 +162,33 @@ class TestIdleShutdown:
         assert result["results"]["encoding-worker-b"] == "stopped"
         # Only secondary should be stopped
         assert mock_compute.stop.call_count == 1
+
+    def test_default_idle_timeout_is_five_minutes(self):
+        """2026-09-26 cost cut: idle VMs stop after 5 min (was 15)."""
+        assert main.IDLE_TIMEOUT_MINUTES == 5
+
+    def test_review_heartbeat_within_timeout_keeps_primary_alive(self, mock_compute, mock_firestore):
+        """The lyrics-review page heartbeats every ~2 min; a heartbeat 4 min ago is
+        still inside the 5-min window, so the warm primary must NOT be stopped
+        while someone is reviewing (it's kept warm for the preview + final render)."""
+        heartbeat = (datetime.now(timezone.utc) - timedelta(minutes=4)).isoformat()
+        _setup_firestore(mock_firestore, _make_config(last_activity_at=heartbeat))
+        mock_compute.get.return_value = _make_instance(status="RUNNING", ip="1.2.3.4")
+
+        with patch("main.check_active_jobs", return_value=0):
+            response, _ = main.idle_shutdown(MagicMock())
+
+        assert json.loads(response)["results"]["encoding-worker-a"] == "active_session"
+
+    def test_activity_older_than_timeout_stops_idle_primary(self, mock_compute, mock_firestore):
+        stale = (datetime.now(timezone.utc) - timedelta(minutes=6)).isoformat()
+        _setup_firestore(mock_firestore, _make_config(last_activity_at=stale))
+        mock_compute.get.return_value = _make_instance(status="RUNNING", ip="1.2.3.4")
+
+        with patch("main.check_active_jobs", return_value=0):
+            response, _ = main.idle_shutdown(MagicMock())
+
+        assert json.loads(response)["results"]["encoding-worker-a"] == "stopped"
 
     def test_skips_terminated_vms(self, mock_compute, mock_firestore):
         """VMs that are already TERMINATED should be skipped."""
@@ -299,7 +326,7 @@ class TestFallbackVms:
     def test_idle_fallback_gets_stopped(self, mock_compute, mock_firestore, fallback_env):
         """A fallback VM that's RUNNING but idle (no jobs, not active) must be stopped.
         This is the bug the fix addresses — previously fallbacks were never checked."""
-        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
         config = _make_config(last_activity_at=recent)
         _setup_firestore(mock_firestore, config)
 
@@ -345,7 +372,7 @@ class TestFallbackVms:
                 {"vm": "encoding-worker-fallback-n2f", "zone": "us-central1-f", "ip": "4.4.4.4"},
             ]),
         )
-        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
         _setup_firestore(mock_firestore, _make_config(last_activity_at=recent))
 
         # Only the n2-f fallback is RUNNING+idle → it must be stopped in -f.
@@ -376,7 +403,7 @@ class TestFallbackVms:
         """When a capacity-fallback override is set, that fallback is the
         currently-routed VM and gets the keep-alive treatment (matching
         what primary normally gets). Primary should still stop on idle."""
-        recent = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+        recent = (datetime.now(timezone.utc) - timedelta(minutes=2)).isoformat()
         config = {
             **_make_config(last_activity_at=recent),
             "active_override_vm": "encoding-worker-fallback-a",

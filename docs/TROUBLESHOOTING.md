@@ -438,7 +438,9 @@ gcloud compute instances describe encoding-worker-a \
 
 **Background — what this state means:** GCE returned `ZONE_RESOURCE_POOL_EXHAUSTED` or transient `503 SERVICE_UNAVAILABLE` from `compute.instances.start` on every encoding-worker VM. The render worker parks the job in `RENDER_PENDING_CAPACITY` instead of failing it; Cloud Scheduler retries it every 10 min via `/api/internal/retry-pending-render-jobs`. Hard timeout is 24 hours (then transitions to `failed` with a clear permanent-failure message).
 
-The fallback fleet is diversified across **6 machine families** (broadened to the full pool in v0.195.0): `c4d-highcpu-32` primaries (`encoding-worker-a`/`-b`) in `us-central1-c`, plus 8 stopped fallbacks — `c4d` (`-fallback-a`/`-b`, zones a/b), `n2` (`-n2c`/`-n2f`, zones c/f), `c4` (`-c4a`, zone a), `n4d` (`-n4db`, zone b), `c2d` (`-c2df`, zone f), `n2d` (`-n2da`, zone a). Candidates are tried **fastest-first with a 15-min capacity cooldown** (a family that stocks out is demoted, then re-probed) — see `backend/services/encoding_worker_preference.py`. A single-family region-wide stockout (which took out c4d a/b/c at once on 2026-08-12) now still finds capacity in the 5 other families. If you see EVERY family return stockout, that's a genuinely severe regional event — wait, or add a cross-region fallback. NOTE: creating a *new* fallback VM (or re-creating a deleted one) still needs a one-time boot allocation, so a deep enough crunch can even block provisioning — a `pulumi up` may show the missing VM as "to create / errored" until capacity returns.
+Since 2026-09-26 the fleet is 3 VMs: **Spot** `c4d-highcpu-16` primaries (`encoding-worker-a`/`-b`) in `us-central1-c`, plus ONE stopped on-demand fallback `encoding-worker-fallback-c2df` (`c2d-highcpu-16`, `us-central1-f`). Candidates are tried **fastest-first with a 15-min capacity cooldown** — see `backend/services/encoding_worker_preference.py`. If both the Spot pair and the c2d fallback return stockout, that's a genuinely severe regional event — wait, or (re-)add a fallback in another family/zone to `EncodingWorkerConfig.FALLBACKS` **and** the `encoding-worker-fallback-vms` secret (the 2026-08-15 pool had 8 fallbacks across 6 families). NOTE: creating a *new* fallback VM needs a one-time boot allocation, so a deep enough crunch can even block provisioning.
+
+**Spot preemption mid-encode** is expected occasionally: the backend sees the pinned worker VM is TERMINATED/STOPPING, logs `Encoding worker VM stopped mid-job (... ) — likely Spot preemption`, and resubmits the encode as `<job>_retry_<hex>` (up to `ENCODING_RESUBMIT_MAX`, default 2). Repeated preemptions → the job fails with the lost-job error; check `gcloud compute operations list --filter="operationType=compute.instances.preempted"`.
 
 **Related symptom — preview 524 / "NetworkError":** the same capacity exhaustion also makes `POST /api/review/{id}/preview-video` fall back to slow local encoding (~130–160 s), which exceeds Cloudflare's ~100 s edge timeout → the browser shows a **524** or Firefox *"NetworkError when attempting to fetch resource"* even though the backend returns 200. If a user reports the review preview failing, check for a concurrent stockout; the already-rendered preview mp4 (if any) is fetchable via `GET /api/review/{id}/preview-video/{hash}` (302 → signed GCS URL) with a Bearer admin token. Completing the review does **not** require the preview.
 
@@ -466,18 +468,13 @@ gcloud logging read 'protoPayload.methodName:"instances.start" AND "ZONE_RESOURC
   --project=nomadkaraoke --freshness=30m --limit=5 \
   --format='value(timestamp, protoPayload.resourceName)'
 
-# Try starting a fallback in each of the 6 families; if ALL refuse, it's severe — wait.
+# Try starting each worker; if ALL refuse, it's severe — wait.
 # Synchronous (no --async) so the start op surfaces stockout inline, and we capture
 # gcloud's own exit status rather than piping (a pipe would return sed's status).
 for VM_ZONE in \
-  "encoding-worker-fallback-a:us-central1-a" \
-  "encoding-worker-fallback-b:us-central1-b" \
-  "encoding-worker-fallback-n2c:us-central1-c" \
-  "encoding-worker-fallback-n2f:us-central1-f" \
-  "encoding-worker-fallback-c4a:us-central1-a" \
-  "encoding-worker-fallback-n4db:us-central1-b" \
-  "encoding-worker-fallback-c2df:us-central1-f" \
-  "encoding-worker-fallback-n2da:us-central1-a"; do
+  "encoding-worker-a:us-central1-c" \
+  "encoding-worker-b:us-central1-c" \
+  "encoding-worker-fallback-c2df:us-central1-f"; do
   VM="${VM_ZONE%%:*}"; ZONE="${VM_ZONE##*:}"
   if OUT=$(gcloud compute instances start "$VM" --zone="$ZONE" --project=nomadkaraoke 2>&1); then
     echo "$VM: OK (started — remember to stop it)"

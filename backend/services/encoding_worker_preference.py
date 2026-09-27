@@ -33,21 +33,24 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-# Lower rank = faster = preferred. Seeded from CPU architecture; refine with the
-# measured medians from infrastructure/encoding-worker/benchmark_types.py.
-#   c4d  AMD EPYC Turin (Zen5)      — current primary, fastest
+# Lower rank = faster = preferred. Keyed by machine FAMILY (the prefix before the
+# first "-"), so the ranking is independent of the vCPU size — the fleet moved
+# from *-highcpu-32 to *-highcpu-16 on 2026-09-26 and could move again. Seeded
+# from CPU architecture; refine with the measured medians from
+# infrastructure/encoding-worker/benchmark_types.py.
+#   c4d  AMD EPYC Turin (Zen5)      — Spot blue-green primary pair, fastest
 #   c4   Intel Emerald Rapids       — newest Intel perf tier
 #   n4d  AMD (Titanium)             — flexible/deep AMD
-#   c2d  AMD Milan (Zen3)           — mature, deep pool
-#   n2d  AMD Rome/Milan             — deep pool (32 GB floor)
-#   n2   Intel Cascade/Ice Lake     — current fallback (32 GB floor)
+#   c2d  AMD Milan (Zen3)           — mature, deep pool (current on-demand fallback)
+#   n2d  AMD Rome/Milan             — deep pool
+#   n2   Intel Cascade/Ice Lake     — deep pool
 SPEED_RANK: Dict[str, int] = {
-    "c4d-highcpu-32": 10,
-    "c4-highcpu-32": 20,
-    "n4d-highcpu-32": 30,
-    "c2d-highcpu-32": 50,
-    "n2d-highcpu-32": 60,
-    "n2-highcpu-32": 70,
+    "c4d": 10,
+    "c4": 20,
+    "n4d": 30,
+    "c2d": 50,
+    "n2d": 60,
+    "n2": 70,
 }
 
 # Rank for a candidate whose machine type is unknown and cannot be inferred:
@@ -58,20 +61,26 @@ UNKNOWN_RANK = 1000
 COOLDOWN_SECONDS = 900  # 15 minutes
 
 # Machine type of the blue-green primary/secondary pair (encoding-worker-a/-b).
-# They are always c4d; used when a candidate carries no explicit machine_type.
-PRIMARY_MACHINE_TYPE = "c4d-highcpu-32"
+# They are always c4d (Spot); used when a candidate carries no explicit
+# machine_type. Keep in sync with infrastructure/config.py MachineTypes.ENCODING_WORKER.
+PRIMARY_MACHINE_TYPE = "c4d-highcpu-16"
 
-# vm-name substring → machine type, for backward-compat inference when a fallback
-# entry predates the machine_type field. Checked in order — longer / more-specific
-# family tokens FIRST so "n2d" is not shadowed by "n2", nor "c4d" by "c4".
-_NAME_TOKEN_TO_TYPE = (
-    ("c4d", "c4d-highcpu-32"),
-    ("n4d", "n4d-highcpu-32"),
-    ("n2d", "n2d-highcpu-32"),
-    ("c2d", "c2d-highcpu-32"),
-    ("c4", "c4-highcpu-32"),
-    ("n2", "n2-highcpu-32"),
-)
+# Current vCPU size of the fleet — used only to turn a family inferred from a VM
+# name into a full machine type (for display + cooldown keys).
+_FLEET_SIZE_SUFFIX = "-highcpu-16"
+
+# vm-name substring → machine family, for backward-compat inference when a
+# fallback entry predates the machine_type field. Checked in order — longer /
+# more-specific family tokens FIRST so "n2d" is not shadowed by "n2", nor "c4d"
+# by "c4".
+_NAME_TOKEN_TO_FAMILY = ("c4d", "n4d", "n2d", "c2d", "c4", "n2")
+
+
+def machine_family(machine_type: Optional[str]) -> Optional[str]:
+    """``"c4d-highcpu-16"`` → ``"c4d"``; None/empty → None."""
+    if not machine_type:
+        return None
+    return machine_type.split("-", 1)[0].lower()
 
 
 def _candidate_name(candidate: Dict[str, Any]) -> str:
@@ -83,21 +92,22 @@ def infer_machine_type(candidate: Dict[str, Any]) -> Optional[str]:
     """Best-effort machine type: explicit ``machine_type`` field, else vm-name token.
 
     Fallback secret entries created before the ``machine_type`` field carry only
-    vm/zone/ip; the VM-name family token (…-fallback-n2c, …-fallback-c4a) is the
-    only hint. Returns None when nothing matches (caller treats as UNKNOWN_RANK).
+    vm/zone/ip; the VM-name family token (…-fallback-c2df) is the only hint and
+    is expanded to the current fleet size. Returns None when nothing matches
+    (caller treats as UNKNOWN_RANK).
     """
     explicit = candidate.get("machine_type")
     if explicit:
         return explicit
     name = _candidate_name(candidate).lower()
-    for token, mtype in _NAME_TOKEN_TO_TYPE:
-        if token in name:
-            return mtype
+    for family in _NAME_TOKEN_TO_FAMILY:
+        if family in name:
+            return f"{family}{_FLEET_SIZE_SUFFIX}"
     return None
 
 
 def _speed_rank(candidate: Dict[str, Any]) -> int:
-    return SPEED_RANK.get(infer_machine_type(candidate), UNKNOWN_RANK)
+    return SPEED_RANK.get(machine_family(infer_machine_type(candidate)), UNKNOWN_RANK)
 
 
 def cooldown_key(candidate: Dict[str, Any]) -> Optional[str]:
