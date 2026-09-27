@@ -1928,6 +1928,15 @@ jobs:
             echo "📦 Copying current GPU base from us-east4 to us-central1 (one-time)..."
             if timeout 30m docker buildx imagetools create --tag "$GPU_BASE_IMAGE" "$LEGACY_GPU_BASE_IMAGE"; then
               echo "✅ GPU base copied to us-central1"
+              # imagetools wraps the image in a single-entry index; tag the
+              # child manifest too so AR's delete-untagged cleanup policy can
+              # never treat it as an orphan.
+              CHILD=$(docker manifest inspect "$GPU_BASE_IMAGE" | jq -r '.manifests[0].digest // ""' || echo "")
+              if [ -n "$CHILD" ]; then
+                gcloud artifacts docker tags add "${GPU_BASE_IMAGE%:*}@${CHILD}" \
+                  "${GPU_BASE_IMAGE%:*}:content-${WANT_HASH:0:12}" --quiet \
+                  || echo "⚠️ Could not tag child manifest (non-fatal)"
+              fi
               echo "needs_rebuild=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
@@ -1959,7 +1968,10 @@ jobs:
           provenance: false
 
       - name: Build and push GPU app image
-        timeout-minutes: 10
+        # Normally ~2 min (only app layers are new). After a GPU base rebuild
+        # this push also uploads the ~13 GB base layers to us-east4 (they can't
+        # be cross-mounted from the us-central1 registry), hence the headroom.
+        timeout-minutes: 40
         uses: docker/build-push-action@v6
         with:
           context: .
