@@ -1890,6 +1890,32 @@ class TestJobMonitorDownloads:
     
     @patch.object(RemoteKaraokeClient, 'download_file_via_gsutil')
     @patch('pathlib.Path.mkdir')
+    def test_download_outputs_skips_waveform_only_derived_vocals(self, mock_mkdir, mock_download, monitor, tmp_path):
+        """stems.vocals_derived (mix minus the user's instrumental) is a review-waveform
+        aid, not a deliverable — it must not be downloaded as a vocals stem."""
+        monitor.config.output_dir = str(tmp_path)
+        mock_download.return_value = True
+
+        job_data = {
+            "artist": "Test Artist",
+            "title": "Test Title",
+            "state_data": {},
+            "file_urls": {
+                "stems": {
+                    "vocals_derived": "jobs/123/stems/vocals_derived.flac",
+                    "instrumental_clean": "jobs/123/stems/instrumental_clean.flac",
+                }
+            }
+        }
+
+        monitor.download_outputs("job-123", job_data)
+
+        downloaded = " ".join(str(c) for c in mock_download.call_args_list)
+        assert "vocals_derived" not in downloaded
+        assert "instrumental_clean" in downloaded
+
+    @patch.object(RemoteKaraokeClient, 'download_file_via_gsutil')
+    @patch('pathlib.Path.mkdir')
     def test_download_outputs_packages(self, mock_mkdir, mock_download, monitor, tmp_path):
         """Test downloading CDG/TXT packages."""
         monitor.config.output_dir = str(tmp_path)
