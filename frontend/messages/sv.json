@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Vi stannar alltid och låter dig granska texten och välja instrumentalversion före rendering.",
     "reviewModeAuto": "Helt automatiskt",
     "reviewModeAutoHint": "Vi ber dig bara granska texten eller instrumentalversionen om något verkligen kräver mänsklig bedömning. Spår vi är säkra på slutförs automatiskt.",
-    "reviewModeLabel": "Granskning"
+    "reviewModeLabel": "Granskning",
+    "ownInstrumentalChecking": "Kontrollerar längden...",
+    "ownInstrumentalChoose": "Välj instrumentalfil",
+    "ownInstrumentalDesc": "Har du det officiella instrumental- eller bakgrundsspåret till den här låten? Ladda upp det så använder vi det i din video istället för att ta bort sången med AI, så slipper du granska något instrumentalspår.",
+    "ownInstrumentalMismatch": "Det här instrumentalspåret är {instrumental} långt men din låt är {song}. De måste vara lika långa (inom en halv sekund).",
+    "ownInstrumentalSelected": "Använder {name} ({size} MB) som instrumentalspår",
+    "ownInstrumentalTitle": "Ditt eget instrumentalspår (valfritt)",
+    "submitTrack": "Skicka in spår",
+    "ownInstrumentalRemove": "Ta bort"
   },
   "jobStatus": {
     "settingUp": "Ställer in",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Söker efter ljudkällor (försöker igen)",
     "waitingForCapacity": "Väntar på kodningsserver (försöker igen)",
     "preparingAudio": "Förbereder ditt ljud",
-    "processing": "Bearbetar"
+    "processing": "Bearbetar",
+    "waitingForUpload": "Väntar på uppladdning"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Klicka på ett segment nedan för att stänga av ljudet för det, eller Shift+dra på vågformen för att markera en anpassad region.",
       "noBackingDetected": "Ingen bakgrundssång upptäcktes — ren instrumental rekommenderas.",
       "addToMuteRegions": "Lägg till i avstängda regioner"
-    }
+    },
+    "uploadDurationMismatch": "Den här filen är {uploaded} lång men låten är {expected}. Ditt instrumentalspår måste vara lika långt (inom en halv sekund) så att texten förblir synkroniserad.",
+    "uploadFinalizing": "Kontrollerar och konverterar ditt instrumentalspår...",
+    "uploadSucceeded": "{filename} har laddats upp. Den är nu vald som ditt instrumentalspår."
   },
   "referrals": {
     "title": "Värvningar",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Den kallas Nomad Karaoke Generator: du väljer vilken låt som helst - vad som helst, hur nischad den än är - och den skapar en riktig karaokevideo för den. Äkta instrumentalseparering (originallåten, inte ett coverband), ord-för-ord-synkade texter, och den är oftast klar på ungefär en halvtimme. Den fungerar dessutom på 33 språk.",
     "founderRole": "Grundare, Nomad Karaoke",
     "languageHint": "Du kan läsa den här sidan på något av 33 språk - använd språkväljaren högst upp."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB av {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Cirka {seconds}s kvar",
+    "etaMinutes": "Cirka {minutes}m {seconds}s kvar",
+    "etaEstimating": "Beräknar återstående tid...",
+    "failed": "Uppladdningen misslyckades. Försök igen.",
+    "fileOfCount": "Fil {index} av {count}: {name}",
+    "finalizing": "Uppladdningen är klar, slutför...",
+    "keepTabOpen": "Håll den här fliken öppen tills uppladdningen är klar. Uppladdningen avbryts om du lämnar eller stänger den här sidan.",
+    "modalTitle": "Laddar upp din fil",
+    "networkError": "Uppladdningen avbröts. Kontrollera din anslutning och försök igen.",
+    "preparing": "Förbereder uppladdningen...",
+    "uploadingPercent": "Laddar upp... {percent}%",
+    "tooLarge": "Den här filen är {size} MB, vilket överskrider gränsen på {max} MB. Använd en FLAC- eller MP3-version istället."
   }
 }

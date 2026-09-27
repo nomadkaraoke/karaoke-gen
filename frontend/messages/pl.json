@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Zawsze zatrzymamy proces i pozwolimy Ci sprawdzić tekst oraz wybrać podkład przed renderowaniem.",
     "reviewModeAuto": "W pełni automatyczny",
     "reviewModeAutoHint": "Poprosimy Cię o sprawdzenie tekstu lub podkładu tylko wtedy, gdy coś naprawdę wymaga weryfikacji przez człowieka. Utwory, co do których system ma pewność, są kończone automatycznie.",
-    "reviewModeLabel": "Weryfikacja"
+    "reviewModeLabel": "Weryfikacja",
+    "ownInstrumentalChecking": "Sprawdzanie długości...",
+    "ownInstrumentalChoose": "Wybierz plik z podkładem",
+    "ownInstrumentalDesc": "Masz oficjalny podkład lub wersję instrumentalną do tego utworu? Prześlij plik, a użyjemy go w Twoim wideo zamiast usuwać wokal za pomocą AI, dzięki czemu nie trzeba będzie sprawdzać podkładu.",
+    "ownInstrumentalMismatch": "Ten podkład trwa {instrumental}, ale Twój utwór ma {song}. Muszą mieć tę samą długość (z dokładnością do pół sekundy).",
+    "ownInstrumentalSelected": "Jako podkład zostanie użyty plik {name} ({size} MB)",
+    "ownInstrumentalTitle": "Własny podkład (opcjonalnie)",
+    "submitTrack": "Prześlij utwór",
+    "ownInstrumentalRemove": "Usuń"
   },
   "jobStatus": {
     "settingUp": "Konfigurowanie",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Wyszukiwanie źródeł audio (ponawianie)",
     "waitingForCapacity": "Oczekiwanie na serwer kodujący (ponawianie)",
     "preparingAudio": "Przygotowywanie Twojego audio",
-    "processing": "Przetwarzanie"
+    "processing": "Przetwarzanie",
+    "waitingForUpload": "Oczekiwanie na przesłanie"
   },
   "jobCard": {
     "actionNeeded": "Wymagane działanie",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Kliknij segment poniżej, aby go wyciszyć, lub użyj Shift+przeciągnij na przebiegu fali, aby zaznaczyć niestandardowy region.",
       "noBackingDetected": "Nie wykryto chórków — zalecany czysty podkład.",
       "addToMuteRegions": "Dodaj do wyciszonych regionów"
-    }
+    },
+    "uploadDurationMismatch": "Ten plik trwa {uploaded}, ale utwór ma {expected}. Twój podkład musi mieć tę samą długość (z dokładnością do pół sekundy), aby tekst pozostał zsynchronizowany.",
+    "uploadFinalizing": "Sprawdzanie i konwertowanie podkładu...",
+    "uploadSucceeded": "Przesłano {filename}. Plik został wybrany jako Twój podkład."
   },
   "referrals": {
     "title": "Polecenia",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Nazywa się to Nomad Karaoke Generator: wybierasz dowolną piosenkę - cokolwiek, nieważne jak niszowego - a on tworzy do niej porządne wideo karaoke. Prawdziwa separacja instrumentów (oryginalna piosenka, a nie cover band), tekst zsynchronizowany słowo po słowie, a wszystko to zazwyczaj gotowe w około pół godziny. Działa również w 33 językach.",
     "founderRole": "Założyciel, Nomad Karaoke",
     "languageHint": "Możesz przeczytać tę stronę w jednym z 33 języków - skorzystaj z menu wyboru języka na górze strony."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB z {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Pozostało około {seconds}s",
+    "etaMinutes": "Pozostało około {minutes}m {seconds}s",
+    "etaEstimating": "Szacowanie pozostałego czasu...",
+    "failed": "Przesyłanie nie powiodło się. Spróbuj ponownie.",
+    "fileOfCount": "Plik {index} z {count}: {name}",
+    "finalizing": "Przesyłanie zakończone, trwa finalizacja...",
+    "keepTabOpen": "Nie zamykaj tej karty, dopóki przesyłanie się nie zakończy. Opuszczenie lub zamknięcie tej strony przerwie przesyłanie.",
+    "modalTitle": "Przesyłanie Twojego pliku",
+    "networkError": "Przesyłanie zostało przerwane. Sprawdź połączenie z internetem i spróbuj ponownie.",
+    "preparing": "Przygotowywanie przesyłania...",
+    "uploadingPercent": "Przesyłanie... {percent}%",
+    "tooLarge": "Ten plik ma {size} MB, co przekracza limit {max} MB. Użyj zamiast tego wersji FLAC lub MP3."
   }
 }

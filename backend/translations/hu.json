@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "Hiba a(z) {job_id} feladat instrumentális sávjának kiválasztásakor: {error}",
     "downloadUrlsError": "Hiba a letöltési URL-ek lekérésekor: {error}",
     "fileNoLongerAvailable": "A fájl már nem elérhető",
-    "deletePublishedRequiresFiles": "Ennek a számnak a közzétett fájljait el kell távolítani a feladat törlésekor. Próbáld újra a törlést a delete_files=false nélkül."
+    "deletePublishedRequiresFiles": "Ennek a számnak a közzétett fájljait el kell távolítani a feladat törlésekor. Próbáld újra a törlést a delete_files=false nélkül.",
+    "instrumentalUploadBadPath": "Érvénytelen hangszeres feltöltési hivatkozás. Kérlek, próbáld meg újra feltölteni.",
+    "instrumentalUploadBadType": "Nem támogatott hangfájltípus. Kérlek, a következők egyikét töltsd fel: {allowed}.",
+    "instrumentalUploadMissing": "Nem találtuk a feltöltött hangszeres sávot. Lehet, hogy a feltöltés nem fejeződött be. Kérlek, próbáld újra.",
+    "uploadDurationMismatchCancelled": "Időtartam-eltérés: a hangszeres sáv hossza {instrumental_duration} mp, de a dal hanganyaga {audio_duration} mp (legfeljebb 0,5 mp lehet az eltérés). Ezt a feladatot töröltük, a kreditedet pedig visszatérítettük. Kérlek, küldd be újra egyező fájlokkal.",
+    "instrumentalUploadTooLarge": "Ez az instrumentális fájl {size_mb} MB méretű, ami meghaladja a {max_mb} MB-os limitet. Kérlek, tölts fel helyette egy FLAC vagy MP3 verziót."
   },
   "review": {
     "jobNotFound": "A feladat nem található",

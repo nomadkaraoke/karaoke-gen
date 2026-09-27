@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "ジョブ {job_id} のインストゥルメンタル選択中にエラーが発生しました: {error}",
     "downloadUrlsError": "ダウンロードURLの取得中にエラーが発生しました: {error}",
     "fileNoLongerAvailable": "ファイルはご利用いただけなくなりました",
-    "deletePublishedRequiresFiles": "ジョブを削除する際は、このトラックの公開済みファイルも削除する必要があります。delete_files=false を指定せずに、削除を再試行してください。"
+    "deletePublishedRequiresFiles": "ジョブを削除する際は、このトラックの公開済みファイルも削除する必要があります。delete_files=false を指定せずに、削除を再試行してください。",
+    "instrumentalUploadBadPath": "インスト音源のアップロード情報が無効です。もう一度アップロードをお試しください。",
+    "instrumentalUploadBadType": "サポートされていない音声ファイル形式です。次のいずれかをアップロードしてください：{allowed}",
+    "instrumentalUploadMissing": "アップロードされたインスト音源が見つかりませんでした。アップロードが完了していない可能性があります。もう一度お試しください。",
+    "uploadDurationMismatchCancelled": "再生時間が一致しません：インスト音源は{instrumental_duration}秒ですが、元の楽曲音源は{audio_duration}秒です（差を0.5秒以内に収める必要があります）。この処理はキャンセルされ、クレジットが返還されました。長さが一致するファイルで再度お試しください。",
+    "instrumentalUploadTooLarge": "このインスト音源ファイルは{size_mb} MBで、上限の{max_mb} MBを超えています。代わりにFLACまたはMP3形式のファイルをアップロードしてください。"
   },
   "review": {
     "jobNotFound": "ジョブが見つかりません",

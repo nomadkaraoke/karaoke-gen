@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "Lỗi khi chọn nhạc nền cho công việc {job_id}: {error}",
     "downloadUrlsError": "Lỗi khi lấy URL tải xuống: {error}",
     "fileNoLongerAvailable": "Tệp không còn khả dụng",
-    "deletePublishedRequiresFiles": "Các tệp đã xuất bản của bài hát này phải được xóa khi xóa tác vụ. Vui lòng thử xóa lại mà không có delete_files=false."
+    "deletePublishedRequiresFiles": "Các tệp đã xuất bản của bài hát này phải được xóa khi xóa tác vụ. Vui lòng thử xóa lại mà không có delete_files=false.",
+    "instrumentalUploadBadPath": "Tham chiếu tệp nhạc nền tải lên không hợp lệ. Vui lòng thử tải lên lại.",
+    "instrumentalUploadBadType": "Định dạng tệp âm thanh không được hỗ trợ. Vui lòng tải lên một trong các định dạng: {allowed}.",
+    "instrumentalUploadMissing": "Chúng tôi không tìm thấy bản nhạc nền bạn đã tải lên. Quá trình tải lên có thể chưa hoàn tất. Vui lòng thử lại.",
+    "uploadDurationMismatchCancelled": "Thời lượng không khớp: bản nhạc nền dài {instrumental_duration}s nhưng âm thanh bài hát dài {audio_duration}s (chúng phải khớp nhau trong vòng 0.5s). Tác vụ này đã bị hủy và credit của bạn đã được hoàn lại. Vui lòng gửi lại với các tệp có thời lượng khớp nhau.",
+    "instrumentalUploadTooLarge": "Tệp nhạc nền này có dung lượng {size_mb} MB, vượt quá giới hạn {max_mb} MB. Vui lòng tải lên phiên bản FLAC hoặc MP3 thay thế."
   },
   "review": {
     "jobNotFound": "Không tìm thấy công việc",

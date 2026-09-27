@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "We stoppen altijd zodat je de songtekst kunt controleren en de instrumentale versie kunt kiezen voordat we renderen.",
     "reviewModeAuto": "Volledig automatisch",
     "reviewModeAutoHint": "We vragen je alleen de songtekst of instrumentale versie te controleren als er echt een menselijke blik nodig is. Nummers waarvan we zeker zijn, worden automatisch afgerond.",
-    "reviewModeLabel": "Controleren"
+    "reviewModeLabel": "Controleren",
+    "ownInstrumentalChecking": "Lengte controleren...",
+    "ownInstrumentalChoose": "Kies een instrumentaal bestand",
+    "ownInstrumentalDesc": "Heb je de officiële instrumental of backingtrack voor dit nummer? Upload deze en we gebruiken hem in je video in plaats van de zang te verwijderen met AI, zodat je geen instrumental hoeft te controleren.",
+    "ownInstrumentalMismatch": "Deze instrumental is {instrumental} lang, maar je nummer is {song}. Ze moeten even lang zijn (binnen een halve seconde).",
+    "ownInstrumentalSelected": "{name} ({size} MB) wordt gebruikt als instrumental",
+    "ownInstrumentalTitle": "Je eigen instrumental (optioneel)",
+    "submitTrack": "Track indienen",
+    "ownInstrumentalRemove": "Verwijderen"
   },
   "jobStatus": {
     "settingUp": "Instellen",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Audiobronnen zoeken (opnieuw proberen)",
     "waitingForCapacity": "Wachten op encodingserver (opnieuw proberen)",
     "preparingAudio": "Je audio voorbereiden",
-    "processing": "Verwerken"
+    "processing": "Verwerken",
+    "waitingForUpload": "Wachten op upload"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Klik op een segment hieronder om het te dempen, of Shift+sleep op de golfvorm om een aangepaste regio te markeren.",
       "noBackingDetected": "Geen achtergrondzang gedetecteerd — schone instrumental aanbevolen.",
       "addToMuteRegions": "Toevoegen aan demp regio's"
-    }
+    },
+    "uploadDurationMismatch": "Dit bestand is {uploaded} lang, maar het nummer is {expected}. Je instrumental moet even lang zijn (binnen een halve seconde) zodat de songtekst synchroon blijft.",
+    "uploadFinalizing": "Je instrumental controleren en converteren...",
+    "uploadSucceeded": "{filename} geüpload. Deze is nu geselecteerd als je instrumental."
   },
   "referrals": {
     "title": "Verwijzingen",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Het heet Nomad Karaoke Generator: je kiest een willekeurig nummer - wat dan ook, hoe niche ook - en het maakt er een echte karaoke-video van. Echte instrumentale scheiding (origineel nummer, geen coverband), woord-voor-woord gesynchroniseerde songteksten, en het is meestal in ongeveer een half uur klaar. Het werkt ook in 33 talen.",
     "founderRole": "Oprichter, Nomad Karaoke",
     "languageHint": "Je kunt deze pagina in een van de 33 talen lezen - gebruik de taalkiezer bovenaan."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB van {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Nog ongeveer {seconds}s",
+    "etaMinutes": "Nog ongeveer {minutes}m {seconds}s",
+    "etaEstimating": "Resterende tijd berekenen...",
+    "failed": "De upload is mislukt. Probeer het opnieuw.",
+    "fileOfCount": "Bestand {index} van {count}: {name}",
+    "finalizing": "Upload voltooid, even afronden...",
+    "keepTabOpen": "Houd dit tabblad open totdat de upload is voltooid. Als je deze pagina verlaat of sluit, wordt de upload gestopt.",
+    "modalTitle": "Je bestand uploaden",
+    "networkError": "De upload is onderbroken. Controleer je verbinding en probeer het opnieuw.",
+    "preparing": "Upload voorbereiden...",
+    "uploadingPercent": "Uploaden... {percent}%",
+    "tooLarge": "Dit bestand is {size} MB, wat groter is dan de limiet van {max} MB. Gebruik in plaats daarvan een FLAC- of MP3-versie."
   }
 }

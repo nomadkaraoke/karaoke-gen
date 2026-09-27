@@ -95,6 +95,14 @@ class AudioTranscodingService:
 
         return cache_path
 
+    def invalidate_cache(self, source_gcs_path: str) -> None:
+        """Drop the cached OGG for a source that was overwritten in place (cache is
+        keyed only on the source path, so a stale transcode would otherwise be served)."""
+        try:
+            self.storage.delete_file(self._get_cache_path(source_gcs_path), ignore_missing=True)
+        except Exception as e:
+            logger.warning(f"Could not invalidate review-audio cache for {source_gcs_path}: {e}")
+
     def transcode_if_needed(self, source_gcs_path: str) -> str:
         """
         Return the GCS path of the transcoded OGG file, transcoding if not cached.

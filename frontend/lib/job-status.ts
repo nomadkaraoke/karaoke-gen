@@ -189,6 +189,19 @@ export function getJobStep(job: Job): JobStep {
     };
   }
 
+  // Signed-URL upload jobs sit in "pending" until the browser finishes PUTting
+  // the audio to GCS. "Setting up" implies we're working on it; we're not —
+  // we're waiting on the submitting tab.
+  if (status === "pending" && job.state_data?.awaiting_upload) {
+    return {
+      step: 1,
+      total: TOTAL_STEPS,
+      label: "waitingForUpload",
+      isBlocking: false,
+      color: "text-amber-400",
+    };
+  }
+
   // Upload-based jobs (tenant portals, or any job with a pre-supplied instrumental)
   // have nothing to download — the "download" stage is really just staging the user's
   // own uploaded files. Show a clear label instead of the misleading "Downloading".

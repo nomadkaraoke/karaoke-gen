@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Vždy sa zastavíme a necháme ťa skontrolovať text a vybrať inštrumentálnu verziu pred renderovaním.",
     "reviewModeAuto": "Plne automatické",
     "reviewModeAutoHint": "Požiadame ťa o kontrolu textu alebo inštrumentálnej verzie len vtedy, ak to skutočne vyžaduje ľudský zásah. Skladby s vysokou istotou sa dokončia automaticky.",
-    "reviewModeLabel": "Kontrola"
+    "reviewModeLabel": "Kontrola",
+    "ownInstrumentalChecking": "Kontrola dĺžky...",
+    "ownInstrumentalChoose": "Vyber inštrumentálny súbor",
+    "ownInstrumentalDesc": "Máš k tejto skladbe oficiálny inštrumentál alebo sprievodnú stopu? Nahraj ju a použijeme ju v tvojom videu namiesto odstraňovania vokálov pomocou AI, takže nebude potrebné kontrolovať inštrumentál.",
+    "ownInstrumentalMismatch": "Tento inštrumentál má dĺžku {instrumental}, ale tvoja skladba má {song}. Musia mať rovnakú dĺžku (v rozmedzí pol sekundy).",
+    "ownInstrumentalSelected": "Ako inštrumentál sa používa {name} ({size} MB)",
+    "ownInstrumentalTitle": "Tvoj vlastný inštrumentál (voliteľné)",
+    "submitTrack": "Odoslať skladbu",
+    "ownInstrumentalRemove": "Odstrániť"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Hľadanie zdrojov zvuku (opakovaný pokus)",
     "waitingForCapacity": "Čaká sa na kódovací server (opakovaný pokus)",
     "preparingAudio": "Pripravuje sa tvoje audio",
-    "processing": "Spracováva sa"
+    "processing": "Spracováva sa",
+    "waitingForUpload": "Čaká sa na nahranie"
   },
   "jobCard": {
     "actionNeeded": "Vyžaduje sa akcia",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Klikni na segment nižšie pre jeho stlmenie, alebo pomocou Shift+ťahanie na zvukovej vlne označ vlastný región.",
       "noBackingDetected": "Nezistili sa žiadne sprievodné vokály — odporúča sa čistá inštrumentálka.",
       "addToMuteRegions": "Pridať do stlmených regiónov"
-    }
+    },
+    "uploadDurationMismatch": "Tento súbor má dĺžku {uploaded}, ale skladba má {expected}. Tvoj inštrumentál musí mať rovnakú dĺžku (v rozmedzí pol sekundy), aby text zostal synchronizovaný.",
+    "uploadFinalizing": "Kontrolujeme a konvertujeme tvoj inštrumentál...",
+    "uploadSucceeded": "Súbor {filename} bol nahraný. Teraz je vybraný ako tvoj inštrumentál."
   },
   "referrals": {
     "title": "Odporúčania",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Volá sa to Nomad Karaoke Generator: vyberieš si akúkoľvek pieseň - čokoľvek, nech je to akokoľvek okrajové - a vytvorí ti k nej poriadne karaoke video. Skutočné oddelenie inštrumentálnej zložky (originálna pieseň, nie cover kapela), text synchronizovaný slovo po slove, a zvyčajne je to hotové asi za pol hodinu. Funguje to aj v 33 jazykoch.",
     "founderRole": "Zakladateľ, Nomad Karaoke",
     "languageHint": "Túto stránku si môžeš prečítať v ktoromkoľvek z 33 jazykov - použi prepínač jazykov v hornej časti."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB z {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Zostáva približne {seconds} s",
+    "etaMinutes": "Zostáva približne {minutes} min {seconds} s",
+    "etaEstimating": "Odhaduje sa zostávajúci čas...",
+    "failed": "Nahrávanie zlyhalo. Prosím, skús to znova.",
+    "fileOfCount": "Súbor {index} z {count}: {name}",
+    "finalizing": "Nahrávanie je hotové, dokončujeme...",
+    "keepTabOpen": "Nechaj túto kartu otvorenú, kým sa nahrávanie nedokončí. Odchodom z tejto stránky alebo jej zatvorením sa nahrávanie preruší.",
+    "modalTitle": "Nahrávanie tvojho súboru",
+    "networkError": "Nahrávanie bolo prerušené. Skontroluj svoje pripojenie a skús to znova.",
+    "preparing": "Pripravuje sa nahrávanie...",
+    "uploadingPercent": "Nahráva sa... {percent}%",
+    "tooLarge": "Tento súbor má {size} MB, čo presahuje limit {max} MB. Prosím, použi namiesto toho verziu FLAC alebo MP3."
   }
 }

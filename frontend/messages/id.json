@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Kami akan selalu berhenti sejenak agar Anda dapat meninjau lirik dan memilih instrumental sebelum proses rendering.",
     "reviewModeAuto": "Sepenuhnya otomatis",
     "reviewModeAutoHint": "Kami hanya akan meminta Anda meninjau lirik atau instrumental jika benar-benar membutuhkan campur tangan manusia. Trek dengan tingkat akurasi tinggi akan selesai secara otomatis.",
-    "reviewModeLabel": "Tinjau"
+    "reviewModeLabel": "Tinjau",
+    "ownInstrumentalChecking": "Memeriksa durasi...",
+    "ownInstrumentalChoose": "Pilih file instrumental",
+    "ownInstrumentalDesc": "Punya file instrumental resmi atau backing track untuk lagu ini? Unggah file tersebut dan kami akan menggunakannya di video Anda alih-alih menghapus vokal dengan AI, sehingga tidak ada instrumental yang perlu ditinjau.",
+    "ownInstrumentalMismatch": "Instrumental ini berdurasi {instrumental}, tetapi lagu Anda berdurasi {song}. Keduanya harus berdurasi sama (dengan toleransi setengah detik).",
+    "ownInstrumentalSelected": "Menggunakan {name} ({size} MB) sebagai instrumental",
+    "ownInstrumentalTitle": "Instrumental Anda sendiri (opsional)",
+    "submitTrack": "Kirim Trek",
+    "ownInstrumentalRemove": "Hapus"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Mencari sumber audio (mencoba lagi)",
     "waitingForCapacity": "Menunggu server encoding (mencoba lagi)",
     "preparingAudio": "Menyiapkan audio Anda",
-    "processing": "Memproses"
+    "processing": "Memproses",
+    "waitingForUpload": "Menunggu pengunggahan"
   },
   "jobCard": {
     "actionNeeded": "Perlu tindakan",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Klik segmen di bawah ini untuk membisukannya, atau Shift+drag pada waveform untuk menandai area kustom.",
       "noBackingDetected": "Tidak ada vokal latar yang terdeteksi — instrumental bersih direkomendasikan.",
       "addToMuteRegions": "Tambahkan ke area bisu"
-    }
+    },
+    "uploadDurationMismatch": "File ini berdurasi {uploaded}, tetapi lagunya berdurasi {expected}. File instrumental Anda harus berdurasi sama (dengan toleransi setengah detik) agar lirik tetap sinkron.",
+    "uploadFinalizing": "Memeriksa dan mengonversi instrumental Anda...",
+    "uploadSucceeded": "Berhasil mengunggah {filename}. File ini sekarang dipilih sebagai instrumental Anda."
   },
   "referrals": {
     "title": "Referensi",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Namanya Nomad Karaoke Generator: Anda bisa memilih lagu apa saja - apa pun itu, se-niche apa pun - dan alat ini akan membuat video karaoke yang sesungguhnya untuk lagu tersebut. Pemisahan instrumental yang nyata (lagu asli, bukan band cover), lirik yang disinkronkan kata demi kata, dan biasanya siap dalam waktu sekitar setengah jam. Alat ini juga mendukung 33 bahasa.",
     "founderRole": "Pendiri, Nomad Karaoke",
     "languageHint": "Anda bisa membaca halaman ini dalam salah satu dari 33 bahasa - gunakan pilihan bahasa di bagian atas."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB dari {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Sekitar {seconds}d lagi",
+    "etaMinutes": "Sekitar {minutes}m {seconds}d lagi",
+    "etaEstimating": "Memperkirakan sisa waktu...",
+    "failed": "Pengunggahan gagal. Silakan coba lagi.",
+    "fileOfCount": "File {index} dari {count}: {name}",
+    "finalizing": "Pengunggahan selesai, menyelesaikan proses...",
+    "keepTabOpen": "Biarkan tab ini tetap terbuka sampai pengunggahan selesai. Meninggalkan atau menutup halaman ini akan menghentikan pengunggahan.",
+    "modalTitle": "Mengunggah file Anda",
+    "networkError": "Pengunggahan terputus. Periksa koneksi Anda dan coba lagi.",
+    "preparing": "Menyiapkan pengunggahan...",
+    "uploadingPercent": "Mengunggah... {percent}%",
+    "tooLarge": "File ini berukuran {size} MB, melebihi batas {max} MB. Silakan gunakan versi FLAC atau MP3 sebagai gantinya."
   }
 }

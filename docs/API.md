@@ -213,7 +213,20 @@ Content-Type: application/json
 
 Triggers async processing.
 
+Between steps 1 and 3 the job is `pending` with `state_data.awaiting_upload: true` (shown as
+"Waiting for upload" on the dashboard; cleared by `uploads-complete`). The web client cancels
+its own job (refunding the credit) when the upload fails. As a backstop, the hourly
+`process-stale-reviews` run (`backend/workers/stale_upload_processor.py`) cancels and refunds
+jobs still awaiting upload 6h after creation (signed URLs expire at 60 min, but an in-flight
+PUT can outlast that), or 24h if some files already landed under `uploads/{job_id}/`. Tenant
+bulk (`batch_id`) jobs are exempt.
+
+A signed-in user can't finalize another user's job (admins and email-less API tokens can). With an `existing_instrumental` file, a >0.5s
+duration mismatch cancels the job (credit refunded) and returns 400
+`{detail: {error: "duration_mismatch", message, audio_duration, instrumental_duration, difference}}`.
+
 **Optional fields:**
+- `requires_audio_edit`: pause at the audio editor after upload (stored in `state_data`).
 - `upload_mode`: `"signed_put"` (default) or `"resumable"`. With `"resumable"`, each
   `upload_urls` entry has `resumable: true` and `upload_url` is a **GCS resumable session
   URI** — upload in 256KiB-aligned chunks with `Content-Range` headers, query the persisted
@@ -435,16 +448,36 @@ Content-Type: multipart/form-data
 file: <audio file (mp3, wav, flac, ogg, aac, m4a)>
 ```
 
-Uploads an external instrumental audio file for use during review. The uploaded file's duration is validated against the original audio — must match within ±0.5 seconds. Requires job to be in `awaiting_review` or `in_review` state.
+Uploads an external instrumental audio file for use during review. The uploaded file's duration is validated against the original audio — must match within ±0.5 seconds. Requires job to be in `awaiting_review` or `in_review` state. Kept for CLI/back-compat; files over ~32 MiB exceed Cloud Run's request cap, so the web UI uses the signed-URL flow below.
 
 Response:
 ```json
 {
   "status": "success",
   "duration_seconds": 240.0,
-  "message": "Custom instrumental uploaded (240.0s)"
+  "message": "Custom instrumental uploaded (240.0s)",
+  "audio_url": "https://storage.googleapis.com/...signed FLAC URL for playback (null if signing failed)"
 }
 ```
+
+**Signed-URL variant (web UI, any size):**
+
+```http
+POST /api/jobs/{job_id}/instrumental-upload-url
+{"filename": "inst.wav", "content_type": "audio/wav"}
+→ {"upload_url": "<signed PUT>", "gcs_path": "jobs/{job_id}/uploads/custom_instrumental_source.wav", "content_type": "audio/wav"}
+
+PUT <upload_url>            (browser → GCS directly)
+
+POST /api/jobs/{job_id}/instrumental-upload-complete
+{"gcs_path": "jobs/{job_id}/uploads/custom_instrumental_source.wav"}
+→ same response as upload-instrumental
+```
+
+Same ownership/status checks as `upload-instrumental`. Max 200 MB (400 otherwise). Extensions: flac, mp3, wav, m4a, ogg, aac, aif, aiff, opus
+(400 otherwise). `gcs_path` must be this job's `custom_instrumental_source` object (400 otherwise); 404 if the
+upload never landed. Both routes share one processing helper (duration check, FLAC conversion,
+`stems.custom_instrumental`).
 
 Error (duration mismatch):
 ```json
@@ -2536,8 +2569,9 @@ POST /api/internal/process-stale-reviews
 Called by Cloud Scheduler hourly. Queries for jobs in `awaiting_review`, `in_review`, or
 `awaiting_duration_confirm` status. Sends reminder emails at 24h; auto-cancels with full credit
 refund at 48h (all `credits_charged` are returned for duration-confirm expirations). Excludes
-made-for-you and tenant jobs. Returns `{status: "started", message: "..."}` immediately; processing
-runs in background.
+made-for-you and tenant jobs. Also cancels (with refund) signed-URL upload jobs whose browser upload
+never finished (`state_data.awaiting_upload` for >= 6h, or >= 24h with partial files; not tenant bulk).
+Returns `{status: "started", message: "..."}` immediately; processing runs in background.
 
 ## Referral System
 

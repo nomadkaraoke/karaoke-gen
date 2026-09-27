@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Siempre nos detendremos y te dejaremos revisar las letras y elegir el instrumental antes del renderizado.",
     "reviewModeAuto": "Completamente automático",
     "reviewModeAutoHint": "Solo te pediremos que revises las letras o el instrumental si algo realmente necesita a un humano. Las pistas con alta confianza terminan automáticamente.",
-    "reviewModeLabel": "Revisión"
+    "reviewModeLabel": "Revisión",
+    "ownInstrumentalChecking": "Comprobando la duración...",
+    "ownInstrumentalChoose": "Elegir archivo instrumental",
+    "ownInstrumentalDesc": "¿Tienes el instrumental oficial o la pista de acompañamiento de esta canción? Súbelo y lo usaremos en tu video en lugar de eliminar las voces con IA, así no habrá ningún instrumental que revisar.",
+    "ownInstrumentalMismatch": "Este instrumental dura {instrumental}, pero tu canción dura {song}. Deben tener la misma duración (con una diferencia máxima de medio segundo).",
+    "ownInstrumentalSelected": "Usando {name} ({size} MB) como instrumental",
+    "ownInstrumentalTitle": "Tu propio instrumental (opcional)",
+    "submitTrack": "Enviar pista",
+    "ownInstrumentalRemove": "Quitar"
   },
   "jobStatus": {
     "settingUp": "Configurando",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Buscando fuentes de audio (reintentando)",
     "waitingForCapacity": "Esperando al servidor de codificación (reintentando)",
     "preparingAudio": "Preparando tu audio",
-    "processing": "Procesando"
+    "processing": "Procesando",
+    "waitingForUpload": "Esperando la subida"
   },
   "jobCard": {
     "actionNeeded": "Acción necesaria",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Haz clic en un segmento a continuación para silenciarlo, o haz Shift+arrastrar en la forma de onda para marcar una región personalizada.",
       "noBackingDetected": "No se detectaron coros — se recomienda instrumental limpio.",
       "addToMuteRegions": "Añadir a regiones silenciadas"
-    }
+    },
+    "uploadDurationMismatch": "Este archivo dura {uploaded}, pero la canción dura {expected}. Tu instrumental debe tener la misma duración (con una diferencia máxima de medio segundo) para que las letras se mantengan sincronizadas.",
+    "uploadFinalizing": "Comprobando y convirtiendo tu instrumental...",
+    "uploadSucceeded": "Se subió {filename}. Ahora está seleccionado como tu instrumental."
   },
   "referrals": {
     "title": "Referencias",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Se llama Nomad Karaoke Generator: eliges cualquier canción - cualquiera, por muy de nicho que sea - y crea un video de karaoke adecuado para ella. Separación instrumental real (canción original, no una banda de versiones), letras sincronizadas palabra por palabra, y normalmente está listo en aproximadamente media hora. También funciona en 33 idiomas.",
     "founderRole": "Fundador, Nomad Karaoke",
     "languageHint": "Puedes leer esta página en cualquiera de los 33 idiomas disponibles; solo usa el selector de idioma en la parte superior."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB de {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Aproximadamente {seconds}s restantes",
+    "etaMinutes": "Aproximadamente {minutes}m {seconds}s restantes",
+    "etaEstimating": "Estimando el tiempo restante...",
+    "failed": "La subida falló. Por favor, inténtalo de nuevo.",
+    "fileOfCount": "Archivo {index} de {count}: {name}",
+    "finalizing": "Subida completada, finalizando...",
+    "keepTabOpen": "Mantén abierta esta pestaña hasta que termine la subida. Salir de esta página o cerrarla detendrá la subida.",
+    "modalTitle": "Subiendo tu archivo",
+    "networkError": "La subida se interrumpió. Comprueba tu conexión e inténtalo de nuevo.",
+    "preparing": "Preparando la subida...",
+    "uploadingPercent": "Subiendo... {percent}%",
+    "tooLarge": "Este archivo tiene {size} MB, lo que supera el límite de {max} MB. Por favor, usa una versión en FLAC o MP3 en su lugar."
   }
 }

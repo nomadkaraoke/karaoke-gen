@@ -22,7 +22,7 @@ jest.mock('@/lib/api', () => ({
     checkCommunityVersions: jest.fn(),
     createJobFromSearch: jest.fn(),
     createJobFromUrl: jest.fn(),
-    uploadJobSmart: jest.fn(),
+    createJobFromUploadedAudio: jest.fn(),
     createJob: jest.fn(),
     deleteJob: jest.fn(),
     uploadFile: jest.fn(),
@@ -459,8 +459,8 @@ describe('Visibility (is_private) — respected across all audio source paths', 
 
   // -- Upload fallback path --
 
-  it('upload path: is_private=true is passed to uploadJobSmart', async () => {
-    mockApi.uploadJobSmart.mockResolvedValue({
+  it('upload path: is_private=true is passed to createJobFromUploadedAudio', async () => {
+    mockApi.createJobFromUploadedAudio.mockResolvedValue({
       status: 'success',
       job_id: 'upload-private-job',
       message: 'Created',
@@ -469,11 +469,11 @@ describe('Visibility (is_private) — respected across all audio source paths', 
     const mockFile = new File(['audio'], 'song.mp3', { type: 'audio/mpeg' })
 
     // Simulate what GuidedJobFlow.handleConfirm() does for upload path
-    await api.uploadJobSmart(mockFile, 'Test Artist', 'Test Song', {
+    await api.createJobFromUploadedAudio(mockFile, 'Test Artist', 'Test Song', {
       is_private: true,
     })
 
-    expect(mockApi.uploadJobSmart).toHaveBeenCalledWith(
+    expect(mockApi.createJobFromUploadedAudio).toHaveBeenCalledWith(
       mockFile,
       'Test Artist',
       'Test Song',
@@ -481,8 +481,8 @@ describe('Visibility (is_private) — respected across all audio source paths', 
     )
   })
 
-  it('upload path: is_private=false is passed to uploadJobSmart', async () => {
-    mockApi.uploadJobSmart.mockResolvedValue({
+  it('upload path: is_private=false is passed to createJobFromUploadedAudio', async () => {
+    mockApi.createJobFromUploadedAudio.mockResolvedValue({
       status: 'success',
       job_id: 'upload-public-job',
       message: 'Created',
@@ -490,11 +490,11 @@ describe('Visibility (is_private) — respected across all audio source paths', 
 
     const mockFile = new File(['audio'], 'song.flac', { type: 'audio/flac' })
 
-    await api.uploadJobSmart(mockFile, 'Test Artist', 'Test Song', {
+    await api.createJobFromUploadedAudio(mockFile, 'Test Artist', 'Test Song', {
       is_private: false,
     })
 
-    expect(mockApi.uploadJobSmart).toHaveBeenCalledWith(
+    expect(mockApi.createJobFromUploadedAudio).toHaveBeenCalledWith(
       mockFile,
       'Test Artist',
       'Test Song',
@@ -543,7 +543,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
       )
       return response.job_id
     } else if (params.audioSource === 'upload' && params.pendingFile) {
-      const response = await api.uploadJobSmart(
+      const response = await api.createJobFromUploadedAudio(
         params.pendingFile, effectiveArtist, effectiveTitle,
         { is_private: params.isPrivate }
       )
@@ -586,7 +586,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
       expect.objectContaining({ is_private: true })
     )
     expect(mockApi.createJobFromUrl).not.toHaveBeenCalled()
-    expect(mockApi.uploadJobSmart).not.toHaveBeenCalled()
+    expect(mockApi.createJobFromUploadedAudio).not.toHaveBeenCalled()
   })
 
   it('search + published: creates job via createJobFromSearch with is_private=false', async () => {
@@ -661,7 +661,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
       { is_private: true }
     )
     expect(mockApi.createJobFromSearch).not.toHaveBeenCalled()
-    expect(mockApi.uploadJobSmart).not.toHaveBeenCalled()
+    expect(mockApi.createJobFromUploadedAudio).not.toHaveBeenCalled()
   })
 
   it('URL + published: creates job via createJobFromUrl with is_private=false', async () => {
@@ -714,8 +714,8 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
 
   // -- Upload fallback path --
 
-  it('upload + private: creates job via uploadJobSmart with is_private=true', async () => {
-    mockApi.uploadJobSmart.mockResolvedValue({
+  it('upload + private: creates job via createJobFromUploadedAudio with is_private=true', async () => {
+    mockApi.createJobFromUploadedAudio.mockResolvedValue({
       status: 'success', job_id: 'upl-001', message: 'Created',
     })
 
@@ -732,7 +732,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
     })
 
     expect(jobId).toBe('upl-001')
-    expect(mockApi.uploadJobSmart).toHaveBeenCalledWith(
+    expect(mockApi.createJobFromUploadedAudio).toHaveBeenCalledWith(
       mockFile,
       'My Band',
       'Our Song',
@@ -742,8 +742,8 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
     expect(mockApi.createJobFromUrl).not.toHaveBeenCalled()
   })
 
-  it('upload + published: creates job via uploadJobSmart with is_private=false', async () => {
-    mockApi.uploadJobSmart.mockResolvedValue({
+  it('upload + published: creates job via createJobFromUploadedAudio with is_private=false', async () => {
+    mockApi.createJobFromUploadedAudio.mockResolvedValue({
       status: 'success', job_id: 'upl-002', message: 'Created',
     })
 
@@ -760,7 +760,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
     })
 
     expect(jobId).toBe('upl-002')
-    expect(mockApi.uploadJobSmart).toHaveBeenCalledWith(
+    expect(mockApi.createJobFromUploadedAudio).toHaveBeenCalledWith(
       mockFile,
       'Another Band',
       'Public Song',
@@ -769,7 +769,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
   })
 
   it('upload + display overrides: effective artist/title used', async () => {
-    mockApi.uploadJobSmart.mockResolvedValue({
+    mockApi.createJobFromUploadedAudio.mockResolvedValue({
       status: 'success', job_id: 'upl-003', message: 'Created',
     })
 
@@ -785,7 +785,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
       pendingFile: mockFile,
     })
 
-    expect(mockApi.uploadJobSmart).toHaveBeenCalledWith(
+    expect(mockApi.createJobFromUploadedAudio).toHaveBeenCalledWith(
       mockFile,
       'Custom Display Artist',  // display override used
       'Custom Display Title',   // display override used
@@ -825,11 +825,11 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
 
     expect(mockApi.createJobFromUrl).toHaveBeenCalledTimes(1)
     expect(mockApi.createJobFromSearch).not.toHaveBeenCalled()
-    expect(mockApi.uploadJobSmart).not.toHaveBeenCalled()
+    expect(mockApi.createJobFromUploadedAudio).not.toHaveBeenCalled()
   })
 
   it('upload path never calls search or URL APIs', async () => {
-    mockApi.uploadJobSmart.mockResolvedValue({
+    mockApi.createJobFromUploadedAudio.mockResolvedValue({
       status: 'success', job_id: 'excl-upl', message: 'Created',
     })
 
@@ -842,7 +842,7 @@ describe('GuidedJobFlow handleConfirm — all three audio source paths', () => {
       pendingFile: mockFile,
     })
 
-    expect(mockApi.uploadJobSmart).toHaveBeenCalledTimes(1)
+    expect(mockApi.createJobFromUploadedAudio).toHaveBeenCalledTimes(1)
     expect(mockApi.createJobFromSearch).not.toHaveBeenCalled()
     expect(mockApi.createJobFromUrl).not.toHaveBeenCalled()
   })

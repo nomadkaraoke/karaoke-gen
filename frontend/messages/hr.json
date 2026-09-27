@@ -575,7 +575,15 @@
     "reviewModeAlwaysHint": "Uvijek ćemo stati i dopustiti ti da pregledaš tekst i odabereš instrumental prije renderiranja.",
     "reviewModeAuto": "Potpuno automatski",
     "reviewModeAutoHint": "Tražit ćemo od tebe pregled teksta ili instrumentala samo ako je zaista potrebna ljudska provjera. Ako smo sigurni u rezultat, obrada se završava automatski.",
-    "reviewModeLabel": "Pregled"
+    "reviewModeLabel": "Pregled",
+    "ownInstrumentalChecking": "Provjera trajanja...",
+    "ownInstrumentalChoose": "Odaberi datoteku instrumentala",
+    "ownInstrumentalDesc": "Imaš službeni instrumental ili matricu za ovu pjesmu? Prenesi ga i upotrijebit ćemo ga u tvom videu umjesto uklanjanja vokala pomoću umjetne inteligencije, pa nećeš morati pregledavati instrumental.",
+    "ownInstrumentalMismatch": "Ovaj instrumental traje {instrumental}, a tvoja pjesma {song}. Moraju biti istog trajanja (unutar pola sekunde).",
+    "ownInstrumentalSelected": "Kao instrumental koristi se {name} ({size} MB)",
+    "ownInstrumentalTitle": "Tvoj vlastiti instrumental (neobavezno)",
+    "submitTrack": "Pošalji pjesmu",
+    "ownInstrumentalRemove": "Ukloni"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",
@@ -622,7 +630,8 @@
     "findingAudioSources": "Traženje izvora zvuka (ponovni pokušaj)",
     "waitingForCapacity": "Čeka se server za kodiranje (ponovni pokušaj)",
     "preparingAudio": "Priprema tvog audiozapisa",
-    "processing": "Obrada"
+    "processing": "Obrada",
+    "waitingForUpload": "Čeka se prijenos"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",
@@ -1548,7 +1557,10 @@
       "clickSegment": "Klikni segment u nastavku za utišavanje, ili Shift+povlačenje na valnom obliku za označavanje prilagođene regije.",
       "noBackingDetected": "Nisu detektirani prateći vokali — preporučuje se čisti instrumental.",
       "addToMuteRegions": "Dodaj u regije za utišavanje"
-    }
+    },
+    "uploadDurationMismatch": "Ova datoteka traje {uploaded}, a pjesma {expected}. Tvoj instrumental mora biti istog trajanja (unutar pola sekunde) kako bi tekst ostao sinkroniziran.",
+    "uploadFinalizing": "Provjeravamo i pretvaramo tvoj instrumental...",
+    "uploadSucceeded": "Datoteka {filename} je prenesena. Sada je odabrana kao tvoj instrumental."
   },
   "referrals": {
     "title": "Preporuke",
@@ -1882,5 +1894,21 @@
     "whatItIs": "Zove se Nomad Karaoke Generator: odabereš bilo koju pjesmu - bilo što, koliko god bila specifična - i on za nju napravi pravi karaoke video. Pravo odvajanje instrumentala (originalna pjesma, a ne cover bend), tekst sinkroniziran riječ po riječ, i obično je gotovo za oko pola sata. Također radi na 33 jezika.",
     "founderRole": "Osnivač, Nomad Karaoke",
     "languageHint": "Ovu stranicu možeš čitati na bilo kojem od 33 jezika - koristi birač jezika na vrhu."
+  },
+  "upload": {
+    "sizeProgress": "{loaded} MB od {total} MB",
+    "speed": "{speed} MB/s",
+    "etaSeconds": "Preostalo je oko {seconds}s",
+    "etaMinutes": "Preostalo je oko {minutes}m {seconds}s",
+    "etaEstimating": "Procjena preostalog vremena...",
+    "failed": "Prijenos nije uspio. Pokušaj ponovno.",
+    "fileOfCount": "Datoteka {index} od {count}: {name}",
+    "finalizing": "Prijenos je dovršen, završna obrada u tijeku...",
+    "keepTabOpen": "Ostavi ovu karticu otvorenu dok prijenos ne završi. Napuštanje ili zatvaranje ove stranice prekinut će prijenos.",
+    "modalTitle": "Prijenos tvoje datoteke",
+    "networkError": "Prijenos je prekinut. Provjeri internetsku vezu i pokušaj ponovno.",
+    "preparing": "Priprema prijenosa...",
+    "uploadingPercent": "Prijenos u tijeku... {percent}%",
+    "tooLarge": "Ova datoteka ima {size} MB, što premašuje ograničenje od {max} MB. Umjesto toga upotrijebi FLAC ili MP3 verziju."
   }
 }

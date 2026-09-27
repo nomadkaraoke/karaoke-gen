@@ -49,7 +49,12 @@
     "instrumentalSelected": "Instrumental selected. Video generation started.",
     "instrumentalSelectionError": "Error selecting instrumental for job {job_id}: {error}",
     "downloadUrlsError": "Error getting download URLs: {error}",
-    "deletePublishedRequiresFiles": "This track's published files must be removed when the job is deleted. Retry the delete without delete_files=false."
+    "deletePublishedRequiresFiles": "This track's published files must be removed when the job is deleted. Retry the delete without delete_files=false.",
+    "instrumentalUploadBadType": "Unsupported audio file type. Please upload one of: {allowed}.",
+    "instrumentalUploadBadPath": "Invalid instrumental upload reference. Please try uploading again.",
+    "instrumentalUploadMissing": "We couldn't find your uploaded instrumental. The upload may not have finished. Please try again.",
+    "uploadDurationMismatchCancelled": "Duration mismatch: the instrumental is {instrumental_duration}s but the song audio is {audio_duration}s (they must match within 0.5s). This job has been cancelled and your credit refunded. Please submit again with matching files.",
+    "instrumentalUploadTooLarge": "This instrumental file is {size_mb} MB, which is over the {max_mb} MB limit. Please upload a FLAC or MP3 version instead."
   },
   "review": {
     "jobNotFound": "Job not found",

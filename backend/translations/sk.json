@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "Chyba pri výbere inštrumentálu pre úlohu {job_id}: {error}",
     "downloadUrlsError": "Chyba pri získavaní adries URL na stiahnutie: {error}",
     "fileNoLongerAvailable": "Súbor už nie je dostupný",
-    "deletePublishedRequiresFiles": "Publikované súbory tejto skladby musia byť pri odstránení úlohy vymazané. Zopakuj odstránenie bez delete_files=false."
+    "deletePublishedRequiresFiles": "Publikované súbory tejto skladby musia byť pri odstránení úlohy vymazané. Zopakuj odstránenie bez delete_files=false.",
+    "instrumentalUploadBadPath": "Neplatný odkaz na nahraný inštrumentál. Skús to, prosím, nahrať znova.",
+    "instrumentalUploadBadType": "Nepodporovaný typ zvukového súboru. Nahraj, prosím, jeden z: {allowed}.",
+    "instrumentalUploadMissing": "Nenašli sme tvoj nahraný inštrumentál. Nahrávanie sa pravdepodobne nedokončilo. Skús to, prosím, znova.",
+    "uploadDurationMismatchCancelled": "Nezhoda dĺžky: inštrumentál má {instrumental_duration}s, ale zvuk skladby má {audio_duration}s (musia sa zhodovať s presnosťou do 0.5s). Táto úloha bola zrušená a tvoj kredit ti bol vrátený. Odošli to, prosím, znova so zhodujúcimi sa súbormi.",
+    "instrumentalUploadTooLarge": "Tento inštrumentálny súbor má {size_mb} MB, čo prekračuje limit {max_mb} MB. Namiesto toho prosím nahraj verziu vo formáte FLAC alebo MP3."
   },
   "review": {
     "jobNotFound": "Úloha sa nenašla",

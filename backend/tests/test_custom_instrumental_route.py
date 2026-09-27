@@ -763,6 +763,238 @@ class TestUploadInstrumentalEndpoint:
         assert "Failed to process audio file" in response.json()["detail"]
 
 
+class TestSignedInstrumentalUpload:
+    """Tests for the signed-URL instrumental upload:
+    POST /api/jobs/{job_id}/instrumental-upload-url and
+    POST /api/jobs/{job_id}/instrumental-upload-complete."""
+
+    HEADERS = {"Authorization": "Bearer test-admin-token"}
+    GCS_PATH = "jobs/job-abc/uploads/custom_instrumental_source.wav"
+
+    # --- instrumental-upload-url ---
+
+    def test_upload_url_happy_path(self, review_job, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = review_job
+        mock_storage = MagicMock()
+        mock_storage.generate_signed_upload_url.return_value = "https://signed-put"
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage):
+            response = patched_client.post(
+                "/api/jobs/job-abc/instrumental-upload-url",
+                json={"filename": "My Instrumental.WAV", "content_type": "audio/wav"},
+                headers=self.HEADERS,
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "upload_url": "https://signed-put",
+            "gcs_path": self.GCS_PATH,
+            "content_type": "audio/wav",
+        }
+        mock_storage.generate_signed_upload_url.assert_called_once_with(self.GCS_PATH, "audio/wav", 60)
+
+    def test_upload_url_rejects_non_audio_extension(self, review_job, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = review_job
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=MagicMock()):
+            response = patched_client.post(
+                "/api/jobs/job-abc/instrumental-upload-url",
+                json={"filename": "evil.exe", "content_type": "application/octet-stream"},
+                headers=self.HEADERS,
+            )
+
+        assert response.status_code == 400
+        assert ".wav" in response.json()["detail"]
+
+    def test_upload_url_wrong_status(self, completed_job, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = completed_job
+
+        response = patched_client.post(
+            "/api/jobs/job-abc/instrumental-upload-url",
+            json={"filename": "track.wav", "content_type": "audio/wav"},
+            headers=self.HEADERS,
+        )
+
+        assert response.status_code == 400
+        assert "not in review state" in response.json()["detail"].lower()
+
+    def test_upload_url_job_not_found(self, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = None
+
+        response = patched_client.post(
+            "/api/jobs/nope/instrumental-upload-url",
+            json={"filename": "track.wav", "content_type": "audio/wav"},
+            headers=self.HEADERS,
+        )
+
+        assert response.status_code == 404
+
+    def test_upload_url_forbidden_for_non_owner(self, review_job, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = review_job
+
+        with patch("backend.api.routes.jobs._check_job_ownership", return_value=False):
+            response = patched_client.post(
+                "/api/jobs/job-abc/instrumental-upload-url",
+                json={"filename": "track.wav", "content_type": "audio/wav"},
+                headers=self.HEADERS,
+            )
+
+        assert response.status_code == 403
+
+    # --- instrumental-upload-complete ---
+
+    def _complete(self, patched_client, gcs_path=None):
+        return patched_client.post(
+            "/api/jobs/job-abc/instrumental-upload-complete",
+            json={"gcs_path": gcs_path or self.GCS_PATH},
+            headers=self.HEADERS,
+        )
+
+    def test_complete_happy_path_converts_stores_and_returns_audio_url(
+        self, review_job, mock_job_manager, patched_client
+    ):
+        mock_job_manager.get_job.return_value = review_job
+        mock_storage = MagicMock()
+        mock_storage.get_file_size.return_value = 40 * 1024 * 1024
+        mock_storage.file_exists.return_value = True
+        mock_audio_segment = MagicMock()
+        mock_audio_segment.__len__ = MagicMock(return_value=240000)
+        mock_transcoding = MagicMock()
+        mock_transcoding.get_review_audio_url_async = AsyncMock(return_value="https://signed-get")
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage), \
+             patch("pydub.AudioSegment.from_file", return_value=mock_audio_segment), \
+             patch("backend.api.routes.jobs._get_audio_duration_ffprobe_signed",
+                   new_callable=AsyncMock, return_value=240.2), \
+             patch("backend.services.audio_transcoding_service.AudioTranscodingService",
+                   return_value=mock_transcoding):
+            response = self._complete(patched_client)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["duration_seconds"] == 240.0
+        assert data["audio_url"] == "https://signed-get"
+        # Downloaded the uploaded object, converted WAV -> FLAC, stored as the custom stem
+        assert mock_storage.download_file.call_args[0][0] == self.GCS_PATH
+        mock_audio_segment.export.assert_called_once()
+        assert mock_storage.upload_file.call_args[0][1] == "jobs/job-abc/stems/custom_instrumental.flac"
+        mock_job_manager.update_file_url.assert_called_with(
+            "job-abc", "stems", "custom_instrumental", "jobs/job-abc/stems/custom_instrumental.flac",
+        )
+        mock_transcoding.get_review_audio_url_async.assert_awaited_once_with(
+            "jobs/job-abc/stems/custom_instrumental.flac", expiration_minutes=120,
+        )
+        # Stem overwritten in place -> stale cached OGG must be dropped before signing
+        mock_transcoding.invalidate_cache.assert_called_once_with("jobs/job-abc/stems/custom_instrumental.flac")
+
+    def test_complete_rejects_oversized_upload_without_downloading(
+        self, review_job, mock_job_manager, patched_client
+    ):
+        mock_job_manager.get_job.return_value = review_job
+        mock_storage = MagicMock()
+        mock_storage.get_file_size.return_value = 300 * 1024 * 1024
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage):
+            response = self._complete(patched_client)
+
+        assert response.status_code == 400
+        assert "300 MB" in response.json()["detail"] and "200 MB" in response.json()["detail"]
+        mock_storage.download_file.assert_not_called()
+        mock_job_manager.update_file_url.assert_not_called()
+
+    def test_complete_missing_blob_returns_404(self, review_job, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = review_job
+        mock_storage = MagicMock()
+        mock_storage.get_file_size.return_value = None
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage):
+            response = self._complete(patched_client)
+
+        assert response.status_code == 404
+        assert "upload may not have finished" in response.json()["detail"]
+        mock_job_manager.update_file_url.assert_not_called()
+
+    @pytest.mark.parametrize("bad_path", [
+        "jobs/other-job/uploads/custom_instrumental_source.wav",
+        "jobs/job-abc/stems/custom_instrumental.flac",
+        "jobs/job-abc/uploads/custom_instrumental_source.wav/../../secret.wav",
+        "jobs/job-abc/uploads/custom_instrumental_source.exe",
+    ])
+    def test_complete_rejects_foreign_or_malformed_path(
+        self, bad_path, review_job, mock_job_manager, patched_client
+    ):
+        mock_job_manager.get_job.return_value = review_job
+        mock_storage = MagicMock()
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage):
+            response = self._complete(patched_client, gcs_path=bad_path)
+
+        assert response.status_code == 400
+        mock_storage.download_file.assert_not_called()
+
+    def test_complete_duration_mismatch_returns_readable_400(
+        self, review_job, mock_job_manager, patched_client
+    ):
+        review_job.input_media_gcs_path = "jobs/job-abc/input/song.wav"
+        mock_job_manager.get_job.return_value = review_job
+        mock_storage = MagicMock()
+        mock_storage.get_file_size.return_value = 40 * 1024 * 1024
+        mock_storage.file_exists.return_value = True
+        mock_audio_segment = MagicMock()
+        mock_audio_segment.__len__ = MagicMock(return_value=180000)
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=mock_storage), \
+             patch("pydub.AudioSegment.from_file", return_value=mock_audio_segment), \
+             patch("backend.api.routes.jobs._get_audio_duration_ffprobe_signed",
+                   new_callable=AsyncMock, return_value=210.0):
+            response = self._complete(patched_client)
+
+        assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert "Duration mismatch" in detail and "180.0s" in detail and "210.0s" in detail
+        mock_storage.upload_file.assert_not_called()
+        mock_job_manager.update_file_url.assert_not_called()
+
+    def test_complete_wrong_status(self, completed_job, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = completed_job
+
+        response = self._complete(patched_client)
+
+        assert response.status_code == 400
+
+    def test_complete_forbidden_for_non_owner(self, review_job, mock_job_manager, patched_client):
+        mock_job_manager.get_job.return_value = review_job
+
+        with patch("backend.api.routes.jobs._check_job_ownership", return_value=False):
+            response = self._complete(patched_client)
+
+        assert response.status_code == 403
+
+    def test_multipart_upload_also_returns_audio_url(self, review_job, mock_job_manager, patched_client):
+        """The legacy multipart route shares the same processing helper."""
+        mock_job_manager.get_job.return_value = review_job
+        mock_audio_segment = MagicMock()
+        mock_audio_segment.__len__ = MagicMock(return_value=60000)
+        mock_transcoding = MagicMock()
+        mock_transcoding.get_review_audio_url_async = AsyncMock(return_value="https://signed-get")
+
+        with patch("backend.api.routes.jobs.StorageService", return_value=MagicMock()), \
+             patch("pydub.AudioSegment.from_file", return_value=mock_audio_segment), \
+             patch("backend.api.routes.jobs._get_audio_duration_ffprobe_signed",
+                   new_callable=AsyncMock, return_value=None), \
+             patch("backend.services.audio_transcoding_service.AudioTranscodingService",
+                   return_value=mock_transcoding):
+            response = patched_client.post(
+                "/api/jobs/job-abc/upload-instrumental",
+                files={"file": ("track.flac", b"audio", "audio/flac")},
+                headers=self.HEADERS,
+            )
+
+        assert response.status_code == 200
+        assert response.json()["audio_url"] == "https://signed-get"
+
+
 # --- Tests: _get_audio_duration_ffprobe_signed helper ---
 
 

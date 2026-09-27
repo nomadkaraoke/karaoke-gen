@@ -6,6 +6,8 @@ import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDeta
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest, BoardResponse, SubmitRequestResponse, SongRequestPublic, DailyVoteStatus, ClaimWelcomeCreditResponse } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse, AddLyricsResult } from './lyrics-review/types';
 import { beginRequest, endRequest, configureHealthProbe } from './backend-status';
+import { ApiError } from './api-error';
+import { putFileToSignedUrl, uploadFilesToSignedUrls, type UploadProgress } from './upload';
 
 // In development, use relative URLs to go through Next.js proxy (avoids CORS)
 // In production (static export), use the full backend URL
@@ -462,23 +464,7 @@ export interface BulkAnalyzeResponse {
   ignored: BulkIgnoredFile[];
 }
 
-export interface UploadProgress {
-  phase: 'creating' | 'uploading' | 'finalizing';
-  loaded: number;
-  total: number;
-}
-
-class ApiError extends Error {
-  status: number;
-  data?: any;
-
-  constructor(message: string, status: number, data?: any) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.data = data;
-  }
-}
+export type { UploadProgress } from './upload';
 
 /**
  * Thrown when we couldn't get any answer from our own backend — the request failed
@@ -1063,8 +1049,7 @@ export const api = {
   },
 
   /**
-   * Upload a file directly to a GCS signed URL.
-   * Uses XMLHttpRequest for progress tracking.
+   * Upload a file directly to a GCS signed URL, with progress.
    */
   uploadToSignedUrl(
     signedUrl: string,
@@ -1072,30 +1057,7 @@ export const api = {
     contentType: string,
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', signedUrl, true);
-      xhr.setRequestHeader('Content-Type', contentType);
-
-      if (onProgress) {
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            onProgress(e.loaded, e.total);
-          }
-        };
-      }
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new ApiError(`Upload failed: ${xhr.statusText}`, xhr.status));
-        }
-      };
-
-      xhr.onerror = () => reject(new ApiError('Upload failed: network error', 0));
-      xhr.send(file);
-    });
+    return putFileToSignedUrl(signedUrl, file, contentType, onProgress);
   },
 
   /**
@@ -1159,53 +1121,58 @@ export const api = {
   },
 
   /**
-   * Smart upload: uses direct upload for small files (<25MB),
-   * signed URL flow for large files (>=25MB).
+   * Create a job from the user's own audio file(s): create the job, upload the
+   * bytes straight to GCS (signed URLs — Cloud Run caps request bodies at 32 MiB),
+   * then tell the backend to start. An optional instrumental makes the job skip
+   * vocal separation and instrumental review entirely.
    */
-  async uploadJobSmart(
+  async createJobFromUploadedAudio(
     file: File,
     artist: string,
     title: string,
-    options?: { is_private?: boolean; requires_audio_edit?: boolean; review_mode?: string; backing_preference?: string },
+    options?: {
+      is_private?: boolean;
+      requires_audio_edit?: boolean;
+      review_mode?: string;
+      backing_preference?: string;
+      instrumentalFile?: File | null;
+    },
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<UploadJobResponse> {
-    const SIGNED_URL_THRESHOLD = 25 * 1024 * 1024; // 25MB
+    const { instrumentalFile, ...createOptions } = options ?? {};
+    const files: Array<{ file: File; file_type: string }> = [{ file, file_type: 'audio' }];
+    if (instrumentalFile) files.push({ file: instrumentalFile, file_type: 'existing_instrumental' });
+    const totalBytes = files.reduce((sum, f) => sum + f.file.size, 0);
 
-    if (file.size < SIGNED_URL_THRESHOLD) {
-      // Small file: use existing direct upload
-      return this.uploadJob(file, artist, title, options);
-    }
-
-    // Large file: use signed URL flow
-    // Step 1: Create job and get signed URL
-    onProgress?.({ phase: 'creating', loaded: 0, total: file.size });
-
-    const contentType = file.type || 'application/octet-stream';
+    onProgress?.({ phase: 'creating', loaded: 0, total: totalBytes });
     const createResponse = await this.createJobWithUploadUrls(
       artist, title,
-      [{ filename: file.name, content_type: contentType, file_type: 'audio' }],
-      options,
+      files.map(f => ({
+        filename: f.file.name,
+        content_type: f.file.type || 'application/octet-stream',
+        file_type: f.file_type,
+      })),
+      { ...createOptions, existing_instrumental: instrumentalFile ? true : undefined },
     );
 
-    const audioUrl = createResponse.upload_urls.find(u => u.file_type === 'audio');
-    if (!audioUrl) {
-      throw new ApiError('No upload URL returned for audio file', 500);
+    try {
+      const targets = files.map(f => {
+        const entry = createResponse.upload_urls.find(u => u.file_type === f.file_type);
+        if (!entry) throw new ApiError(`No upload URL returned for ${f.file_type}`, 500);
+        return { file: f.file, url: entry.upload_url, contentType: entry.content_type };
+      });
+      await uploadFilesToSignedUrls(targets, onProgress);
+    } catch (err) {
+      // The job was created (and charged) before the bytes were sent. Cancel it
+      // (refunds the credit) so a retry isn't blocked and nothing is left
+      // stranded at "Waiting for upload". Best-effort: the stale-upload sweep
+      // is the backstop.
+      await this.cancelJob(createResponse.job_id, 'Upload did not complete').catch(() => {});
+      throw err;
     }
 
-    // Step 2: Upload file directly to GCS
-    onProgress?.({ phase: 'uploading', loaded: 0, total: file.size });
-
-    await this.uploadToSignedUrl(
-      audioUrl.upload_url,
-      file,
-      audioUrl.content_type,
-      (loaded, total) => onProgress?.({ phase: 'uploading', loaded, total }),
-    );
-
-    // Step 3: Notify backend that upload is complete
-    onProgress?.({ phase: 'finalizing', loaded: file.size, total: file.size });
-
-    await this.completeJobUpload(createResponse.job_id, ['audio']);
+    onProgress?.({ phase: 'finalizing', loaded: totalBytes, total: totalBytes });
+    await this.completeJobUpload(createResponse.job_id, files.map(f => f.file_type));
 
     return {
       status: 'success',
@@ -1477,7 +1444,40 @@ export const api = {
   /**
    * Upload a custom instrumental file
    */
-  async uploadCustomInstrumental(jobId: string, file: File): Promise<{ status: string; duration_seconds: number; message: string }> {
+  /**
+   * Upload the user's own instrumental during instrumental review: signed PUT
+   * straight to GCS (Cloud Run caps request bodies at 32 MiB), then the backend
+   * validates duration, converts to FLAC and stores it as the custom stem.
+   */
+  async uploadInstrumentalForReview(
+    jobId: string,
+    file: File,
+    onProgress?: (progress: UploadProgress) => void,
+  ): Promise<{ status: string; duration_seconds: number; message: string; audio_url?: string }> {
+    const contentType = file.type || 'application/octet-stream';
+    onProgress?.({ phase: 'creating', loaded: 0, total: file.size });
+    const urlResponse = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-upload-url`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name, content_type: contentType }),
+    });
+    const target = await handleResponse<{ upload_url: string; gcs_path: string; content_type: string }>(urlResponse);
+
+    await uploadFilesToSignedUrls(
+      [{ file, url: target.upload_url, contentType: target.content_type || contentType }],
+      onProgress,
+    );
+
+    onProgress?.({ phase: 'finalizing', loaded: file.size, total: file.size });
+    const completeResponse = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/instrumental-upload-complete`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gcs_path: target.gcs_path }),
+    });
+    return handleResponse(completeResponse);
+  },
+
+  async uploadCustomInstrumental(jobId: string, file: File): Promise<{ status: string; duration_seconds: number; message: string; audio_url?: string }> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -1730,14 +1730,7 @@ export const api = {
    * Upload a file directly to a GCS signed URL.
    */
   async uploadFileToSignedUrl(url: string, file: File, contentType: string): Promise<void> {
-    const response = await apiFetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': contentType },
-      body: file,
-    });
-    if (!response.ok) {
-      throw new ApiError(`Upload failed: ${response.statusText}`, response.status);
-    }
+    return putFileToSignedUrl(url, file, contentType);
   },
 
   /**

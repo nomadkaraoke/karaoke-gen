@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useTranslations } from 'next-intl'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,6 +41,10 @@ interface CustomizeStepProps {
   onConfirm: () => void
   onBack: () => void
   isSubmitting: boolean
+  /** Private-mode extra section above Processing options (e.g. own-instrumental picker). */
+  instrumentalSlot?: ReactNode
+  /** Hide the backing-vocals choice (meaningless when the user supplies the instrumental). */
+  hideBackingPreference?: boolean
   disabled?: boolean
 }
 
@@ -208,6 +212,7 @@ function ProcessingOptions({
   onReviewModeChange,
   backingPreference,
   onBackingPreferenceChange,
+  hideBackingPreference,
   disabled,
   t,
 }: {
@@ -215,6 +220,7 @@ function ProcessingOptions({
   onReviewModeChange: (v: ReviewMode) => void
   backingPreference: BackingPreference
   onBackingPreferenceChange: (v: BackingPreference) => void
+  hideBackingPreference?: boolean
   disabled?: boolean
   t: ReturnType<typeof useTranslations>
 }) {
@@ -258,7 +264,7 @@ function ProcessingOptions({
         </p>
       </div>
 
-      <div className="space-y-1.5">
+      {!hideBackingPreference && <div className="space-y-1.5">
         <Label className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {t('backingPrefLabel')}
         </Label>
@@ -276,7 +282,7 @@ function ProcessingOptions({
             {t('backingPrefReview')}
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
@@ -302,6 +308,8 @@ export function CustomizeStep({
   onConfirm,
   onBack,
   isSubmitting,
+  instrumentalSlot,
+  hideBackingPreference,
   disabled,
 }: CustomizeStepProps) {
   const t = useTranslations('jobFlow')
@@ -734,11 +742,14 @@ export function CustomizeStep({
         </p>
       </div>
 
+      {instrumentalSlot}
+
       <ProcessingOptions
         reviewMode={reviewMode}
         onReviewModeChange={onReviewModeChange}
         backingPreference={backingPreference}
         onBackingPreferenceChange={onBackingPreferenceChange}
+        hideBackingPreference={hideBackingPreference}
         disabled={disabled || isSubmitting}
         t={t}
       />
@@ -752,10 +763,10 @@ export function CustomizeStep({
         {isSubmitting ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating...
+            {t('creating')}
           </>
         ) : (
-          "Create Karaoke Video"
+          t('createKaraokeVideo')
         )}
       </Button>
     </div>

@@ -49,7 +49,12 @@
     "instrumentalSelectionError": "Virhe valittaessa instrumentaalia työlle {job_id}: {error}",
     "downloadUrlsError": "Virhe haettaessa latausosoitteita: {error}",
     "fileNoLongerAvailable": "Tiedosto ei ole enää saatavilla",
-    "deletePublishedRequiresFiles": "Tämän kappaleen julkaistut tiedostot täytyy poistaa työn poistamisen yhteydessä. Yritä poistoa uudelleen ilman delete_files=false -määritystä."
+    "deletePublishedRequiresFiles": "Tämän kappaleen julkaistut tiedostot täytyy poistaa työn poistamisen yhteydessä. Yritä poistoa uudelleen ilman delete_files=false -määritystä.",
+    "instrumentalUploadBadPath": "Virheellinen instrumentaaliraidan latausviite. Yritä ladata uudelleen.",
+    "instrumentalUploadBadType": "Äänitiedostomuotoa ei tueta. Lataa jokin seuraavista: {allowed}.",
+    "instrumentalUploadMissing": "Emme löytäneet lataamaasi instrumentaaliraitaa. Lataus ei ehkä ole valmistunut. Yritä uudelleen.",
+    "uploadDurationMismatchCancelled": "Kestot eivät täsmää: instrumentaaliraita on {instrumental_duration} s, mutta kappaleen ääni on {audio_duration} s (niiden on täsmättävä 0,5 sekunnin tarkkuudella). Tämä työ on peruutettu ja krediittisi on palautettu. Lähetä uudelleen toisiinsa täsmäävillä tiedostoilla.",
+    "instrumentalUploadTooLarge": "Tämä instrumentaalitiedosto on {size_mb} MB, mikä ylittää {max_mb} MB:n rajan. Lataa sen sijaan FLAC- tai MP3-versio."
   },
   "review": {
     "jobNotFound": "Työtä ei löytynyt",
