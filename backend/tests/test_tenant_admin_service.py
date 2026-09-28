@@ -24,6 +24,7 @@ class FakeStorage:
 
     def __init__(self):
         self.blobs: dict[str, bytes] = {}
+        self.cache_control: dict[str, str | None] = {}
 
     def upload_json(self, path, data, if_generation_match=None):
         if if_generation_match == 0 and path in self.blobs:
@@ -46,8 +47,9 @@ class FakeStorage:
         self.blobs[dst] = self.blobs.get(src, b"")
         return dst
 
-    def upload_fileobj(self, fileobj, path, content_type=None):
+    def upload_fileobj(self, fileobj, path, content_type=None, cache_control=None):
         self.blobs[path] = fileobj.read()
+        self.cache_control[path] = cache_control
         return path
 
     def delete_file(self, path, ignore_missing=False):
@@ -130,6 +132,8 @@ def test_create_tenant_happy_path(fake_storage):
     assert "themes/randy-vild/assets/intro_bg.png" in fake_storage.blobs
     # Admin-provided background uploaded + referenced by BARE basename
     assert fake_storage.blobs["themes/randy-vild/assets/karaoke_background.png"] == b"newbg"
+    # Uploaded theme assets may later be overwritten in place — never edge-cache them
+    assert fake_storage.cache_control["themes/randy-vild/assets/karaoke_background.png"] == "no-store"
     style = json.loads(fake_storage.blobs["themes/randy-vild/style_params.json"].decode())
     assert style["karaoke"]["background_image"] == "karaoke_background.png"
 
@@ -291,6 +295,8 @@ def test_update_tenant_full_theme_and_config(fake_storage):
     assert style["intro"]["title_color"] == "#123456"
     # asset replaced
     assert fake_storage.blobs["themes/randy-vild/assets/kbg.jpg"] == b"replacement"
+    # Overwritten in place, so it must be written no-store to be visible immediately
+    assert fake_storage.cache_control["themes/randy-vild/assets/kbg.jpg"] == "no-store"
 
 
 def test_update_tenant_rejects_bad_style_params(fake_storage):

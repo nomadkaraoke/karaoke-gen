@@ -14,6 +14,13 @@ from datetime import timedelta
 
 from backend.config import settings
 
+# The bucket is publicly readable, and GCS serves publicly readable objects that
+# lack an explicit Cache-Control with ``public, max-age=3600`` — reads (including
+# the backend's own authenticated API reads) can then be answered from an edge
+# cache for up to an hour after the object is overwritten. Mutable state written
+# by the backend must never be cached.
+NO_STORE_CACHE_CONTROL = "no-store"
+
 
 logger = logging.getLogger(__name__)
 
@@ -70,12 +77,24 @@ class StorageService:
             logger.error(f"Error uploading file {local_path}: {e}")
             raise
     
-    def upload_fileobj(self, file_obj: BinaryIO, destination_path: str, content_type: Optional[str] = None) -> str:
-        """Upload a file object to GCS."""
+    def upload_fileobj(
+        self,
+        file_obj: BinaryIO,
+        destination_path: str,
+        content_type: Optional[str] = None,
+        cache_control: Optional[str] = None,
+    ) -> str:
+        """Upload a file object to GCS.
+
+        Pass ``cache_control=NO_STORE_CACHE_CONTROL`` for objects that may be
+        overwritten in place and must be visible immediately (e.g. theme assets).
+        """
         try:
             blob = self.bucket.blob(destination_path)
             if content_type:
                 blob.content_type = content_type
+            if cache_control:
+                blob.cache_control = cache_control
             blob.upload_from_file(file_obj, rewind=True)
             logger.info(f"Uploaded file object to gs://{settings.gcs_bucket_name}/{destination_path}")
             return destination_path
@@ -376,6 +395,9 @@ class StorageService:
         try:
             blob = self.bucket.blob(destination_path)
             blob.content_type = "application/json"
+            # JSON objects are mutable state (configs, registries, corrections) —
+            # never let GCS edge-cache them, or overwrites stay invisible for ~1h.
+            blob.cache_control = NO_STORE_CACHE_CONTROL
             upload_kwargs = {"content_type": "application/json"}
             if if_generation_match is not None:
                 upload_kwargs["if_generation_match"] = if_generation_match
@@ -390,9 +412,17 @@ class StorageService:
             raise
     
     def download_json(self, source_path: str) -> Dict[str, Any]:
-        """Download and parse a JSON file from GCS."""
+        """Download and parse a JSON file from GCS, always reading the latest version.
+
+        Objects written before ``upload_json`` set ``no-store`` carry GCS's default
+        public cache policy, so a plain download can return a stale cached copy.
+        Resolving the live generation first (metadata request, not cached) and
+        downloading that exact generation bypasses any cached copy.
+        """
         try:
-            blob = self.bucket.blob(source_path)
+            blob = self.bucket.get_blob(source_path)
+            if blob is None:
+                raise NotFound(f"gs://{settings.gcs_bucket_name}/{source_path} not found")
             content = blob.download_as_text()
             data = json.loads(content)
             logger.info(f"Downloaded JSON from gs://{settings.gcs_bucket_name}/{source_path}")

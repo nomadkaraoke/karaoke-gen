@@ -30,6 +30,7 @@ def create_bucket() -> storage.Bucket:
                     "https://gen.nomadkaraoke.com",
                     "https://vocalstar.nomadkaraoke.com",
                     "https://singa.nomadkaraoke.com",
+                    "https://randy-vild.nomadkaraoke.com",
                     "http://localhost:3000",
                 ],
                 # PUT: direct-to-GCS uploads. GET/HEAD: the lyrics-review vocals
