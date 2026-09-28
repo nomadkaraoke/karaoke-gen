@@ -818,7 +818,7 @@ A change tagged critical-path requires, before it enforces new behavior:
 - A **composed integration test** of the affected seam (producer + consumer, real, with
   only the external boundary mocked) — see the New Guard checklist item 5.
 - **Shadow-first** rollout for any new enforcement (checklist item 4).
-- A **post-deploy canary / real-job verification** before the change is trusted at 100%
+- A **real-job verification in production** (manual, or the daily E2E) before the change is trusted at 100%
   (a fresh happy-path job plus, where relevant, an admin-reset + retry to exercise the
   recovery path).
 
