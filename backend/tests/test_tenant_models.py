@@ -258,11 +258,12 @@ class TestTenantConfig:
         assert full_config.is_email_allowed("User@VOCAL-STAR.COM") is True
         assert full_config.is_email_allowed("User@VocalStarMusic.com") is True
 
-    def test_is_email_allowed_no_domain_restrictions(self, basic_config):
-        """Test any email allowed when no domain restrictions."""
-        # basic_config has empty allowed_email_domains
-        assert basic_config.is_email_allowed("anyone@gmail.com") is True
-        assert basic_config.is_email_allowed("user@anything.com") is True
+    def test_is_email_allowed_no_allowlist_means_admins_only(self, basic_config):
+        """No allowlist = admins only. Tenant jobs don't use consumer credits, so
+        a tenant portal must never be open to arbitrary sign-ups."""
+        assert basic_config.is_email_allowed("anyone@gmail.com") is False
+        assert basic_config.is_email_allowed("user@anything.com") is False
+        assert basic_config.is_email_allowed("andrew@nomadkaraoke.com") is True
 
     def test_is_email_allowed_require_domain_false_still_enforced(self):
         """A non-empty allowlist is always enforced — the legacy

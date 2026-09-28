@@ -619,6 +619,28 @@ class TestVerifyGrantsCredits:
             from backend.main import app
             app.dependency_overrides.clear()
 
+    def test_verify_tenant_login_skips_consumer_credits(self, mock_user_svc):
+        """Tenant portal sign-ins never get the consumer welcome-credit flow: no
+        eval/grant, no credits-denied screen or email, no consumer welcome email."""
+        user = User(email="randyvild@gmail.com", credits=0, email_verified=True)
+        client = self._make_verify_client(mock_user_svc, user, credits_eligible=False)
+        mock_ml_doc = mock_user_svc.db.collection.return_value.document.return_value.get.return_value
+        mock_ml_doc.to_dict.return_value = {"email": user.email, "tenant_id": "randy-vild"}
+        mock_user_svc.grant_welcome_credits_if_eligible.return_value = (False, "denied")
+
+        try:
+            with patch("backend.services.tenant_service.get_tenant_service") as gts:
+                gts.return_value.get_tenant_config.return_value = None
+                response = client.get("/api/users/auth/verify?token=valid-token")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["credit_status"] == "not_applicable"
+            assert data["credits_granted"] == 0
+            mock_user_svc.grant_welcome_credits_if_eligible.assert_not_called()
+        finally:
+            from backend.main import app
+            app.dependency_overrides.clear()
+
     def test_verify_passes_precomputed_eval(self, mock_user_svc):
         """Verify endpoint passes pre-computed eval from magic link doc."""
         user = User(email="new@example.com", credits=2, email_verified=True)

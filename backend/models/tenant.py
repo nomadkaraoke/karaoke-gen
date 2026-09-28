@@ -175,7 +175,8 @@ class TenantConfig(BaseModel):
         """Check if an email address may sign in to this tenant's portal.
 
         - Nomad Karaoke admins (admin email domain) can always sign in.
-        - No allowlist at all (no domains, no emails) = open portal.
+        - No allowlist at all (no domains, no emails) = admins only. Tenant jobs
+          are free of consumer credits, so a portal must never be open to anyone.
         - Otherwise only an ``allowed_emails`` entry or a matching domain is
           allowed. (``require_email_domain`` is vestigial: any non-empty
           allowlist is always enforced.)
@@ -189,7 +190,7 @@ class TenantConfig(BaseModel):
         allowed_emails = [e.strip().lower() for e in self.auth.allowed_emails]
         domains = self.auth.allowed_email_domains
         if not allowed_emails and not domains:
-            return True
+            return False
 
         if email_lower in allowed_emails:
             return True

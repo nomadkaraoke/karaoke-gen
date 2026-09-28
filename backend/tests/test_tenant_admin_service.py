@@ -515,7 +515,9 @@ def test_update_access_lists_normalized_and_enforced(fake_storage):
         storage=fake_storage,
     )
     assert reopened.auth.require_email_domain is False
-    assert reopened.is_email_allowed("random@gmail.com")
+    # Empty allowlist = admins only (never an open portal)
+    assert not reopened.is_email_allowed("random@gmail.com")
+    assert reopened.is_email_allowed("andrew@nomadkaraoke.com")
 
 
 def test_update_rejects_invalid_domain(fake_storage):

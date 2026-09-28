@@ -554,7 +554,7 @@ export default function AdminTenantsPage() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground -mt-2">
-                Comma-separated. Who can sign in to the portal. Both blank = anyone. Nomad Karaoke admins can always sign in.
+                Comma-separated. Who can sign in to the portal. Both blank = only Nomad Karaoke admins (who can always sign in).
               </p>
 
               <div>
@@ -691,7 +691,7 @@ export default function AdminTenantsPage() {
                 </div>
                 {accessOpen ? (
                   <p className="flex items-center gap-1.5 text-xs text-amber-500">
-                    <AlertTriangle className="h-3.5 w-3.5" /> Open portal: anyone can sign in. Add emails or domains to restrict it.
+                    <AlertTriangle className="h-3.5 w-3.5" /> No client access yet: only Nomad Karaoke admins can sign in. Add the client&apos;s emails or domains.
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">Only these can sign in (plus Nomad Karaoke admins).</p>

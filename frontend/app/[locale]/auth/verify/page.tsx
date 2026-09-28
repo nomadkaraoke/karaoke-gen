@@ -114,12 +114,15 @@ function VerifyMagicLinkContent() {
           }
         }
 
-        // Show appropriate interstitial based on credit status
-        if (status === "granted" && credits > 0) {
+        // Show appropriate interstitial based on credit status. Never on a tenant
+        // portal — tenants don't use consumer credits (backend sends not_applicable;
+        // this is defence in depth).
+        const isTenantLogin = !!lastVerifyResponse?.tenant_subdomain
+        if (!isTenantLogin && status === "granted" && credits > 0) {
           setState("credits_granted")
-        } else if (status === "denied") {
+        } else if (!isTenantLogin && status === "denied") {
           setState("credits_denied")
-        } else if (status === "pending_review") {
+        } else if (!isTenantLogin && status === "pending_review") {
           setState("credits_pending")
         } else {
           // Returning user or not applicable — go to the intended destination.

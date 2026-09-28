@@ -20,6 +20,12 @@ jest.mock('@/lib/auth', () => ({
 
 const mockUseAuth = useAuth as unknown as jest.Mock
 
+// Tenant context: default Nomad (consumer) unless a test flips it
+let mockIsDefaultTenant = true
+jest.mock('@/lib/tenant', () => ({
+  useTenant: () => ({ isDefault: mockIsDefaultTenant }),
+}))
+
 // Mock window.location.reload
 const mockReload = jest.fn()
 Object.defineProperty(window, 'location', {
@@ -30,6 +36,19 @@ Object.defineProperty(window, 'location', {
 describe('AuthStatus', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockIsDefaultTenant = true
+  })
+
+  it('hides consumer credits on tenant portals', () => {
+    mockIsDefaultTenant = false
+    mockUseAuth.mockReturnValue({
+      user: { email: 'randyvild@gmail.com', credits: 0, display_name: null },
+      logout: jest.fn(),
+    })
+    render(<AuthStatus />)
+
+    expect(screen.getByText('randyvild@gmail.com')).toBeInTheDocument()
+    expect(screen.queryByText(/credits available/i)).not.toBeInTheDocument()
   })
 
   it('shows Login button when not authenticated', () => {

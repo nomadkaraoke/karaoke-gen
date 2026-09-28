@@ -54,6 +54,26 @@ class JobManager:
         self.firestore = FirestoreService()
         self.storage = StorageService()
     
+    @staticmethod
+    def _is_tenant_billed(tenant_id: Optional[str], user_email: Optional[str]) -> bool:
+        """True if this job is billed to a tenant (not consumer credits).
+
+        The tenant context can come from the client-controlled X-Tenant-ID
+        header, so a tenant id alone is NOT proof of membership: the user must
+        be allowed on that tenant's portal (its email/domain allowlist; an empty
+        allowlist admits admins only). Otherwise the job is charged normally.
+        """
+        if not tenant_id or not user_email:
+            return False
+        try:
+            from backend.services.tenant_service import get_tenant_service
+
+            config = get_tenant_service().get_tenant_config(tenant_id)
+        except Exception:
+            logger.exception(f"Tenant lookup failed for {tenant_id}; charging consumer credits")
+            return False
+        return bool(config and config.is_active and config.is_email_allowed(user_email))
+
     def create_job(self, job_create: JobCreate, is_admin: bool = False) -> Job:
         """
         Create a new job with initial state PENDING.
@@ -68,9 +88,15 @@ class JobManager:
         Raises:
             ValueError: If theme_id is not provided (all jobs require a theme)
         """
-        # Check credits (skip for admins)
+        # Check credits (skip for admins, and for tenant-portal jobs: tenants are
+        # billed under a separate commercial agreement, never consumer credits)
         credits_to_charge = job_create.credits
-        if job_create.user_email and not is_admin:
+        charge_credits = (
+            bool(job_create.user_email)
+            and not is_admin
+            and not self._is_tenant_billed(job_create.tenant_id, job_create.user_email)
+        )
+        if charge_credits:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()
             credits_available = user_service.check_credits(job_create.user_email)
@@ -149,12 +175,12 @@ class JobManager:
                 "created_from": job_create.request_metadata.get("created_from", "unknown"),
             },
             # Record how many credits were charged for this job (authoritative running total).
-            # When charging is bypassed (admin / no user_email), set credits_charged=0 and
-            # payment_bypassed=True so duration reconciliation short-circuits without pausing,
-            # charging, or refunding.
+            # When charging is bypassed (admin / no user_email / tenant portal), set
+            # credits_charged=0 and payment_bypassed=True so duration reconciliation
+            # short-circuits without pausing, charging, or refunding.
             state_data=(
                 {"credits_charged": 0, "payment_bypassed": True}
-                if (is_admin or not job_create.user_email)
+                if not charge_credits
                 else {"credits_charged": credits_to_charge}
             ),
         )
@@ -163,7 +189,7 @@ class JobManager:
         logger.info(f"Created new job {job_id} with status PENDING")
 
         # Deduct credits atomically (after job is persisted so we have job_id for transaction record)
-        if job_create.user_email and not is_admin:
+        if charge_credits:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()
             success, _remaining, deduct_msg = user_service.deduct_credits(
