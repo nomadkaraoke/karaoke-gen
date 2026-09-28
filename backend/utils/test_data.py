@@ -17,9 +17,9 @@ TEST_EMAIL_DOMAINS = [
 # These live on the internal nomadkaraoke.com domain (so they'd otherwise pass
 # is_internal_email, not is_test_email), but every job they create is E2E test
 # data. Listed here so admin dashboards' exclude_test filter hides their jobs.
-# e2e-test-runner is the persistent account the CI post-deploy canary and daily
-# E2E workflows impersonate; without this entry its piri/dog jobs leak into the
-# admin "My Jobs" view.
+# e2e-test-runner is the persistent account the daily E2E workflow
+# impersonates; without this entry its piri/dog jobs leak into the admin
+# "My Jobs" view.
 TEST_EMAIL_ADDRESSES = [
     "e2e-test-runner@nomadkaraoke.com",
 ]

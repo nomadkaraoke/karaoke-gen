@@ -63,7 +63,7 @@ defense-in-depth beneath the signing-free review path.
 ## Fast rollback (bad backend deploy)
 
 **When to use:** a merge-to-main deploy shipped a bad backend revision — the
-post-deploy canary failed, the error monitor/Discord is alerting, or you can see
+daily E2E failed, the error monitor/Discord is alerting, or you can see
 failing jobs/5xx in production — and you want to get back to the last known-good
 state *now* rather than wait for a forward fix to build and deploy.
 
@@ -104,7 +104,7 @@ scripts/rollback.sh --image-version v0.222.2 --jobs-only
 - After rollback, confirm the serving version:
   `curl -s https://api.nomadkaraoke.com/api/health/detailed | jq .version`.
 - This is the manual counterpart to CI's automatic service canary: a failed
-  post-deploy canary leaves the *service* on the prior revision automatically
+  candidate-revision smoke leaves the *service* on the prior revision automatically
   (the new revision is deployed `--no-traffic`), but the **jobs** have no
   auto-rollback — if a bad deploy reached the jobs, re-pin them with this script.
 
