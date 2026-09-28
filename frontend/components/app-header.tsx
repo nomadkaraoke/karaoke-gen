@@ -103,10 +103,12 @@ export function AppHeader({ children }: { children?: ReactNode }) {
         <div className="px-3 pb-2 flex items-center gap-1 flex-wrap">
           {children}
           <HelpDropdown tHeader={tHeader} showLabel />
-          <Link href="/app/referrals" className="flex items-center gap-1.5 text-sm hover:underline min-h-[36px] px-2" style={{ color: 'var(--text-muted)' }}>
-            <Users className="w-4 h-4" />
-            <span>{t('referrals')}</span>
-          </Link>
+          {isDefaultTenant && (
+            <Link href="/app/referrals" className="flex items-center gap-1.5 text-sm hover:underline min-h-[36px] px-2" style={{ color: 'var(--text-muted)' }}>
+              <Users className="w-4 h-4" />
+              <span>{t('referrals')}</span>
+            </Link>
+          )}
           <LanguageSwitcher showLabel />
           {mounted && <ThemeToggle isDarkMode={isDarkMode} toggleTheme={toggleTheme} t={t} />}
         </div>

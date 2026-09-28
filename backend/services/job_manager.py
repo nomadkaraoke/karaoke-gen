@@ -54,6 +54,26 @@ class JobManager:
         self.firestore = FirestoreService()
         self.storage = StorageService()
     
+    @staticmethod
+    def _is_tenant_billed(tenant_id: Optional[str], user_email: Optional[str]) -> bool:
+        """True if this job is billed to a tenant (not consumer credits).
+
+        The tenant context can come from the client-controlled X-Tenant-ID
+        header, so a tenant id alone is NOT proof of membership: the user must
+        be allowed on that tenant's portal (its email/domain allowlist; an empty
+        allowlist admits admins only). Otherwise the job is charged normally.
+        """
+        if not tenant_id or not user_email:
+            return False
+        try:
+            from backend.services.tenant_service import get_tenant_service
+
+            config = get_tenant_service().get_tenant_config(tenant_id)
+        except Exception:
+            logger.exception(f"Tenant lookup failed for {tenant_id}; charging consumer credits")
+            return False
+        return bool(config and config.is_active and config.is_email_allowed(user_email))
+
     def create_job(self, job_create: JobCreate, is_admin: bool = False) -> Job:
         """
         Create a new job with initial state PENDING.
@@ -71,7 +91,11 @@ class JobManager:
         # Check credits (skip for admins, and for tenant-portal jobs: tenants are
         # billed under a separate commercial agreement, never consumer credits)
         credits_to_charge = job_create.credits
-        charge_credits = bool(job_create.user_email) and not is_admin and not job_create.tenant_id
+        charge_credits = (
+            bool(job_create.user_email)
+            and not is_admin
+            and not self._is_tenant_billed(job_create.tenant_id, job_create.user_email)
+        )
         if charge_credits:
             from backend.services.user_service import get_user_service
             user_service = get_user_service()
