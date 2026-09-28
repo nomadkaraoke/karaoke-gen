@@ -41,6 +41,12 @@ from backend.models.tenant import (
 from backend.models.theme import ColorOverrides
 from backend.services.storage_service import NO_STORE_CACHE_CONTROL, StorageService
 from backend.services.theme_service import METADATA_FILE, THEMES_PREFIX, get_theme_service
+from backend.services.tenant_domain_service import (
+    TenantDomainConflictError,
+    TenantDomainError,
+    TenantDomainService,
+    get_tenant_domain_service,
+)
 from backend.services.tenant_service import (
     DEFAULT_SENDER_EMAIL,
     TENANTS_PREFIX,
@@ -72,6 +78,8 @@ IMAGE_CONTENT_TYPES = {
 }
 
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_DOMAIN_RE = re.compile(r"^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$")
 
 
 class TenantValidationError(ValueError):
@@ -84,6 +92,10 @@ class TenantConflictError(ValueError):
 
 class TenantNotFoundError(ValueError):
     """Raised when the requested tenant does not exist."""
+
+
+class TenantProvisioningError(RuntimeError):
+    """Raised when the tenant's subdomain (Cloudflare) could not be set up/removed."""
 
 
 # Top-level sections a valid theme style_params document may contain.
@@ -104,6 +116,24 @@ def _validate_tenant_id(tenant_id: str) -> None:
         )
     if tenant_id in RESERVED_TENANT_IDS:
         raise TenantValidationError(f"'{tenant_id}' is a reserved subdomain and cannot be used.")
+
+
+def _normalize_emails(emails: Optional[List[str]]) -> List[str]:
+    cleaned = sorted({(e or "").strip().lower() for e in (emails or []) if (e or "").strip()})
+    bad = [e for e in cleaned if not _EMAIL_RE.match(e)]
+    if bad:
+        raise TenantValidationError(f"Invalid email address(es): {', '.join(bad)}")
+    return cleaned
+
+
+def _normalize_domains(domains: Optional[List[str]]) -> List[str]:
+    cleaned = sorted(
+        {(d or "").strip().lower().lstrip("@") for d in (domains or []) if (d or "").strip()}
+    )
+    bad = [d for d in cleaned if not _DOMAIN_RE.match(d)]
+    if bad:
+        raise TenantValidationError(f"Invalid email domain(s): {', '.join(bad)}")
+    return cleaned
 
 
 def _content_type_for(ext: str) -> str:
@@ -173,6 +203,7 @@ def create_tenant(
     tenant_id: Optional[str] = None,
     subdomain: Optional[str] = None,
     allowed_email_domains: Optional[List[str]] = None,
+    allowed_emails: Optional[List[str]] = None,
     colors: Optional[ColorOverrides] = None,
     style_params_override: Optional[Dict] = None,
     tagline: Optional[str] = None,
@@ -182,16 +213,23 @@ def create_tenant(
     backgrounds: Optional[Dict[str, Tuple[bytes, str]]] = None,
     logo: Optional[Tuple[bytes, str]] = None,
     storage: Optional[StorageService] = None,
+    domain_service: Optional[TenantDomainService] = None,
 ) -> TenantConfig:
     """
-    Provision a new white-label tenant (theme + config) in GCS.
+    Provision a new white-label tenant: theme + config in GCS, then its
+    ``{id}.nomadkaraoke.com`` subdomain in Cloudflare. If the subdomain can't be
+    provisioned the GCS side is rolled back, so a tenant either works end-to-end
+    or doesn't exist.
 
     Args:
         name: Display name (e.g. "Randy Vild").
         tenant_id: Slug id; derived from name if omitted.
-        subdomain: Full subdomain; defaults to ``{id}.nomadkaraoke.com``.
-        allowed_email_domains: Domains permitted to log in (empty = no restriction;
-            admins can always sign in).
+        subdomain: Full subdomain; must be ``{id}.nomadkaraoke.com`` (the portal
+            edge function and backend middleware derive the tenant id from the
+            first hostname label). Defaults to that.
+        allowed_email_domains: Domains permitted to log in.
+        allowed_emails: Individual addresses permitted to log in (e.g. a client's
+            gmail). Both lists empty = open portal; admins can always sign in.
         colors: Lyric/title/artist colour overrides applied to the theme.
         tagline: Optional portal tagline.
         distribution_mode: "download_only" (default), "all", or "cloud_only".
@@ -200,12 +238,13 @@ def create_tenant(
         backgrounds: {field -> (bytes, ext)} for karaoke/intro/end backgrounds.
         logo: (bytes, ext) for the portal logo.
         storage: Injected StorageService (for tests).
+        domain_service: Injected TenantDomainService (for tests).
 
     Returns:
         The persisted TenantConfig.
 
     Raises:
-        TenantValidationError, TenantConflictError, ValueError.
+        TenantValidationError, TenantConflictError, TenantProvisioningError, ValueError.
     """
     name = (name or "").strip()
     if not name:
@@ -214,9 +253,16 @@ def create_tenant(
     tenant_id = (tenant_id or slugify_tenant_id(name)).strip().lower()
     _validate_tenant_id(tenant_id)
 
-    subdomain = (subdomain or f"{tenant_id}.{BASE_DOMAIN}").strip().lower()
+    expected_subdomain = f"{tenant_id}.{BASE_DOMAIN}"
+    subdomain = (subdomain or expected_subdomain).strip().lower()
+    if subdomain != expected_subdomain:
+        raise TenantValidationError(
+            f"Subdomain must be '{expected_subdomain}' — the portal derives the tenant "
+            "id from the first label of the hostname."
+        )
 
     storage = storage or StorageService()
+    domain_service = domain_service or get_tenant_domain_service()
     tenant_service = get_tenant_service()
     theme_service = get_theme_service()
 
@@ -234,6 +280,15 @@ def create_tenant(
             f"A theme named '{theme_id}' already exists; choose a different tenant id."
         )
 
+    # Fail fast (before any write) if the hostname is owned by a non-tenant
+    # DNS record (e.g. an existing product subdomain) or Cloudflare is unusable.
+    try:
+        domain_service.check_available(subdomain)
+    except TenantDomainConflictError as exc:
+        raise TenantConflictError(str(exc)) from exc
+    except TenantDomainError as exc:
+        raise TenantProvisioningError(str(exc)) from exc
+
     # --- Derive theme from the default Nomad theme ---------------------------
     base_theme_id = theme_service.get_default_theme_id()
     if not base_theme_id:
@@ -243,7 +298,8 @@ def create_tenant(
         raise ValueError(f"Default theme '{base_theme_id}' style params could not be loaded.")
 
     # --- Build the tenant config (logo_url filled in after reservation) -------
-    domains = sorted({d.strip().lower() for d in (allowed_email_domains or []) if d.strip()})
+    domains = _normalize_domains(allowed_email_domains)
+    emails = _normalize_emails(allowed_emails)
     now = datetime.now(timezone.utc)
 
     branding = TenantBranding(
@@ -289,7 +345,8 @@ def create_tenant(
         ),
         auth=TenantAuth(
             allowed_email_domains=domains,
-            require_email_domain=bool(domains),
+            allowed_emails=emails,
+            require_email_domain=bool(domains or emails),
             fixed_token_ids=[],
             sender_email=DEFAULT_SENDER_EMAIL,
         ),
@@ -361,6 +418,23 @@ def create_tenant(
 
     tenant_service.invalidate_cache(tenant_id)
     theme_service.invalidate_cache()
+
+    # --- Subdomain (Cloudflare Pages custom domain + CNAME) ------------------
+    try:
+        domain_service.provision(subdomain)
+    except Exception as exc:
+        logger.error(f"Provisioning subdomain {subdomain} failed; rolling back tenant '{tenant_id}': {exc}")
+        try:
+            _delete_tenant_storage(storage, tenant_id, theme_id)
+        except Exception:  # pragma: no cover - best effort
+            logger.exception(f"Rollback of tenant '{tenant_id}' storage failed")
+        try:  # a half-provisioned Pages domain (CNAME failed) must not linger
+            domain_service.deprovision(subdomain)
+        except Exception:  # pragma: no cover - best effort
+            logger.exception(f"Rollback of subdomain {subdomain} failed")
+        tenant_service.invalidate_cache(tenant_id)
+        theme_service.invalidate_cache()
+        raise TenantProvisioningError(f"Could not set up {subdomain}: {exc}") from exc
 
     logger.info(f"Created tenant '{tenant_id}' (theme '{theme_id}', subdomain '{subdomain}')")
     return config
@@ -459,6 +533,13 @@ def update_tenant(
 
     theme_id = _theme_id_for(config)
 
+    config_updates = dict(config_updates or {})
+    new_subdomain = config_updates.pop("subdomain", None)  # never persisted as sent
+    if new_subdomain is not None and str(new_subdomain).strip().lower() != config.subdomain:
+        raise TenantValidationError(
+            "The portal subdomain can't be changed (it is derived from the tenant id)."
+        )
+
     # 1. Assets (uploaded files -> theme assets, keyed by their target basename)
     for name, (data, ext) in (assets or {}).items():
         safe = _safe_asset_name(name)
@@ -490,9 +571,23 @@ def update_tenant(
         branding["logo_url"] = f"gs://{settings.gcs_bucket_name}/{logo_path}"
         merged_updates["branding"] = branding
 
-    # 4. Config merge
+    # 4. Config merge (access lists normalized; any allowlist => enforced)
+    auth_updates = merged_updates.get("auth")
+    if isinstance(auth_updates, dict):
+        auth_updates = dict(auth_updates)
+        if "allowed_emails" in auth_updates:
+            auth_updates["allowed_emails"] = _normalize_emails(auth_updates["allowed_emails"])
+        if "allowed_email_domains" in auth_updates:
+            auth_updates["allowed_email_domains"] = _normalize_domains(
+                auth_updates["allowed_email_domains"]
+            )
+        merged_updates["auth"] = auth_updates
     if merged_updates:
         config = _merge_config(config, merged_updates)
+    if isinstance(auth_updates, dict) and "require_email_domain" not in auth_updates:
+        config.auth.require_email_domain = bool(
+            config.auth.allowed_email_domains or config.auth.allowed_emails
+        )
 
     config.updated_at = datetime.now(timezone.utc)
     storage.upload_json(f"{TENANTS_PREFIX}/{tenant_id}/config.json", config.model_dump(mode="json"))
@@ -529,9 +624,120 @@ def list_tenants(storage: Optional[StorageService] = None) -> List[Dict[str, obj
                 "subdomain": data.get("subdomain"),
                 "is_active": data.get("is_active", True),
                 "locked_theme": defaults.get("locked_theme"),
+                "theme_id": defaults.get("theme_id"),
                 "dropbox_path": defaults.get("dropbox_path"),
                 "created_at": data.get("created_at"),
             }
         )
     summaries.sort(key=lambda t: str(t.get("name") or t.get("id") or "").lower())
     return summaries
+
+
+def _unregister_theme_metadata(storage: StorageService, theme_id: str) -> None:
+    """Remove a theme from themes/_metadata.json (read-modify-write, idempotent)."""
+    try:
+        registry = storage.download_json(METADATA_FILE)
+    except Exception:
+        return
+    themes = registry.get("themes") or []
+    kept = [t for t in themes if t.get("id") != theme_id]
+    if len(kept) != len(themes):
+        registry["themes"] = kept
+        storage.upload_json(METADATA_FILE, registry)
+
+
+def _delete_tenant_storage(storage: StorageService, tenant_id: str, theme_id: Optional[str]) -> None:
+    """Delete a tenant's theme (files + registry entry) and config/logo from GCS."""
+    if theme_id:
+        _unregister_theme_metadata(storage, theme_id)
+        storage.delete_folder(f"{THEMES_PREFIX}/{theme_id}/")
+    # Config last: while it exists the tenant is still addressable for a retry.
+    storage.delete_folder(f"{TENANTS_PREFIX}/{tenant_id}/")
+
+
+def delete_tenant(
+    tenant_id: str,
+    *,
+    storage: Optional[StorageService] = None,
+    domain_service: Optional[TenantDomainService] = None,
+) -> None:
+    """
+    Delete a tenant completely: its subdomain (Cloudflare Pages domain + CNAME),
+    its theme (assets, style_params, registry entry) and its config/logo.
+
+    Jobs already created for the tenant are kept (finished outputs stay
+    downloadable) but can no longer be re-rendered with the deleted theme.
+
+    The theme is kept if it is the default theme or another tenant still uses it.
+
+    Raises:
+        TenantNotFoundError, TenantProvisioningError (nothing in GCS is deleted
+        if the subdomain can't be removed, so the delete can simply be retried).
+    """
+    storage = storage or StorageService()
+    domain_service = domain_service or get_tenant_domain_service()
+    tenant_service = get_tenant_service()
+    theme_service = get_theme_service()
+
+    config = tenant_service.get_tenant_config(tenant_id, force_refresh=True)
+    if not config:
+        raise TenantNotFoundError(f"Tenant '{tenant_id}' not found.")
+
+    # Always the canonical host (subdomain changes are rejected, but legacy
+    # configs could differ) — deprovision only ever touches OUR records.
+    hostname = TenantDomainService.hostname_for(tenant_id)
+    try:
+        domain_service.deprovision(hostname)
+    except TenantDomainError as exc:
+        raise TenantProvisioningError(f"Could not remove {hostname}: {exc}") from exc
+
+    # Delete the tenant's own 1:1 theme (named after the tenant — the one
+    # create_tenant made) even if the tenant has since switched to another
+    # theme; never delete a theme another tenant uses or the default theme.
+    theme_id: Optional[str] = tenant_id
+    shared = any(
+        t.get("id") != tenant_id and theme_id in (t.get("locked_theme"), t.get("theme_id"))
+        for t in list_tenants(storage)
+    )
+    if shared or theme_id == theme_service.get_default_theme_id():
+        logger.info(f"Keeping theme '{theme_id}' while deleting tenant '{tenant_id}'")
+        theme_id = None
+
+    _delete_tenant_storage(storage, tenant_id, theme_id)
+    # delete_folder swallows errors — verify, so a failed delete isn't a 204.
+    if storage.file_exists(f"{TENANTS_PREFIX}/{tenant_id}/config.json"):
+        raise TenantProvisioningError(
+            f"Subdomain removed but tenant '{tenant_id}' storage could not be deleted; retry the delete."
+        )
+    tenant_service.invalidate_cache(tenant_id)
+    theme_service.invalidate_cache()
+    logger.info(f"Deleted tenant '{tenant_id}' (subdomain '{hostname}', theme '{theme_id}')")
+
+
+def get_tenant_domain_status(
+    tenant_id: str, *, domain_service: Optional[TenantDomainService] = None
+) -> Optional[Dict[str, object]]:
+    """Cloudflare provisioning state of the tenant's subdomain (None if unavailable)."""
+    domain_service = domain_service or get_tenant_domain_service()
+    try:
+        return domain_service.status(TenantDomainService.hostname_for(tenant_id)).to_dict()
+    except TenantDomainError as exc:
+        logger.warning(f"Could not read domain status for tenant '{tenant_id}': {exc}")
+        return None
+
+
+def provision_tenant_domain(
+    tenant_id: str, *, domain_service: Optional[TenantDomainService] = None
+) -> Dict[str, object]:
+    """(Re)provision an existing tenant's subdomain — for tenants created before
+    automation, or to retry after a transient Cloudflare failure."""
+    domain_service = domain_service or get_tenant_domain_service()
+    if not get_tenant_service().tenant_exists(tenant_id):
+        raise TenantNotFoundError(f"Tenant '{tenant_id}' not found.")
+    hostname = TenantDomainService.hostname_for(tenant_id)
+    try:
+        return domain_service.provision(hostname).to_dict()
+    except TenantDomainConflictError as exc:
+        raise TenantConflictError(str(exc)) from exc
+    except TenantDomainError as exc:
+        raise TenantProvisioningError(str(exc)) from exc

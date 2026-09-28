@@ -88,6 +88,12 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # Pulumi as `edge:originSecret` for the Cloudflare header transform.
         # See modules/edge_security.py.
         "edge-origin-secret",
+        # Cloudflare API token for the admin tenant console: adds/removes each
+        # tenant's `<id>.nomadkaraoke.com` Pages custom domain (project
+        # karaoke-gen-tenant) + proxied CNAME. Account-owned token scoped to
+        # Pages Read/Write (account) + DNS Read/Write (nomadkaraoke.com zone
+        # only). Value added manually. See services/tenant_domain_service.py.
+        "cloudflare-tenant-domains-token",
     ]
 
     secrets = {}

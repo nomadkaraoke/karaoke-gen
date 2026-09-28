@@ -13,6 +13,8 @@ const createTenant = jest.fn()
 const getTenant = jest.fn()
 const updateTenant = jest.fn()
 const getThemeTemplate = jest.fn()
+const deleteTenant = jest.fn()
+const provisionTenantDomain = jest.fn()
 
 jest.mock('@/lib/api', () => ({
   adminApi: {
@@ -21,6 +23,8 @@ jest.mock('@/lib/api', () => ({
     getTenant: (...args: unknown[]) => getTenant(...args),
     updateTenant: (...args: unknown[]) => updateTenant(...args),
     getThemeTemplate: (...args: unknown[]) => getThemeTemplate(...args),
+    deleteTenant: (...args: unknown[]) => deleteTenant(...args),
+    provisionTenantDomain: (...args: unknown[]) => provisionTenantDomain(...args),
   },
 }))
 
@@ -43,6 +47,7 @@ beforeEach(() => {
     tenant: { id: 'randy-vild', name: 'Randy Vild', subdomain: 'randy-vild.nomadkaraoke.com', is_active: true },
     preview_url: 'https://gen.nomadkaraoke.com/en/app?preview_tenant=randy-vild',
     subdomain_url: 'https://randy-vild.nomadkaraoke.com',
+    domain: { hostname: 'randy-vild.nomadkaraoke.com', state: 'active', dns_ok: true, pages_status: 'active' },
   })
   getTenant.mockResolvedValue({
     tenant: {
@@ -52,12 +57,17 @@ beforeEach(() => {
       is_active: true,
       branding: { tagline: 'Be a Vocal Star' },
       defaults: { dropbox_path: '/Karaoke/Tracks-VocalStar', brand_prefix: 'VSTAR', distribution_mode: 'download_only' },
-      auth: { allowed_email_domains: ['vocal-star.com'] },
+      auth: { allowed_email_domains: ['vocal-star.com'], allowed_emails: ['boss@gmail.com'] },
     },
     theme_id: 'vocalstar',
     style_params: { intro: { title_color: '#ffff00' }, karaoke: {}, end: {}, cdg: {} },
     assets: ['karaoke_background.jpg', 'Oswald-SemiBold.ttf'],
     preview_url: 'https://gen.nomadkaraoke.com/en/app?preview_tenant=vocalstar',
+    domain: { hostname: 'vocalstar.nomadkaraoke.com', state: 'missing', dns_ok: false, pages_status: null },
+  })
+  deleteTenant.mockResolvedValue(undefined)
+  provisionTenantDomain.mockResolvedValue({
+    domain: { hostname: 'vocalstar.nomadkaraoke.com', state: 'provisioning', dns_ok: true, pages_status: 'initializing' },
   })
   updateTenant.mockResolvedValue({ tenant: { id: 'vocalstar', name: 'Vocal Star', subdomain: 'vocalstar.nomadkaraoke.com', is_active: true } })
   getThemeTemplate.mockResolvedValue({ style_params: { intro: {}, karaoke: {}, end: {}, cdg: {} } })
@@ -91,6 +101,8 @@ describe('Admin Tenants page', () => {
     const fd = createTenant.mock.calls[0][0] as FormData
     expect(fd.get('name')).toBe('Randy Vild')
     expect(fd.get('tenant_id')).toBe('randy-vild')
+    // Subdomain is derived server-side, never sent
+    expect(fd.get('subdomain')).toBeNull()
 
     // Success view shows the preview link
     expect(
@@ -123,6 +135,59 @@ describe('Admin Tenants page', () => {
     expect(config.name).toBe('Vocal Star')
     expect(config.defaults.dropbox_path).toBe('/Karaoke/Tracks-VocalStar')
     expect(JSON.parse(fd.get('style_params') as string).intro.title_color).toBe('#ffff00')
+    expect(config.auth).toEqual({ allowed_email_domains: ['vocal-star.com'], allowed_emails: ['boss@gmail.com'] })
+    expect(config.subdomain).toBeUndefined()
+  })
+
+  it('edits individual allowed emails', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+    const emails = await screen.findByLabelText(/allowed emails/i)
+    expect(emails).toHaveValue('boss@gmail.com')
+    fireEvent.change(emails, { target: { value: 'Randy@Gmail.com, andrew@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }))
+    await waitFor(() => expect(updateTenant).toHaveBeenCalledTimes(1))
+    const config = JSON.parse((updateTenant.mock.calls[0][1] as FormData).get('config') as string)
+    expect(config.auth.allowed_emails).toEqual(['randy@gmail.com', 'andrew@example.com'])
+  })
+
+  it('warns when the portal is open to anyone', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+    fireEvent.change(await screen.findByLabelText(/allowed emails/i), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText(/allowed email domains/i), { target: { value: '' } })
+    expect(screen.getByText(/anyone can sign in/i)).toBeInTheDocument()
+  })
+
+  it('shows domain status and can set up a missing domain', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+    expect(await screen.findByText('not set up')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /set up domain/i }))
+    await waitFor(() => expect(provisionTenantDomain).toHaveBeenCalledWith('vocalstar'))
+    expect(await screen.findByText(/provisioning \(initializing\)/)).toBeInTheDocument()
+  })
+
+  it('deletes a tenant only after typing its id', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+    await screen.findByLabelText(/allowed emails/i)
+    fireEvent.click(screen.getByRole('button', { name: /delete tenant/i }))
+
+    const confirmBtn = () => screen.getAllByRole('button', { name: /^delete tenant$/i }).slice(-1)[0]
+    const input = await screen.findByLabelText(/to confirm/i)
+    expect(confirmBtn()).toBeDisabled()
+    fireEvent.change(input, { target: { value: 'vocal' } })
+    expect(confirmBtn()).toBeDisabled()
+    fireEvent.change(input, { target: { value: 'vocalstar' } })
+    fireEvent.click(confirmBtn())
+
+    await waitFor(() => expect(deleteTenant).toHaveBeenCalledWith('vocalstar'))
+    await waitFor(() => expect(listTenants).toHaveBeenCalledTimes(2))
   })
 
   it('blocks save when the theme JSON is invalid', async () => {
@@ -132,5 +197,17 @@ describe('Admin Tenants page', () => {
     const editor = await screen.findByPlaceholderText(/"intro":/)
     fireEvent.change(editor, { target: { value: '{ not valid json' } })
     expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled()
+  })
+})
+
+
+describe('Admin Tenants page — access warning edge cases', () => {
+  it('treats separator-only input as an open portal (matches what Save sends)', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+    fireEvent.change(await screen.findByLabelText(/allowed emails/i), { target: { value: ' , ' } })
+    fireEvent.change(screen.getByLabelText(/allowed email domains/i), { target: { value: ',' } })
+    expect(screen.getByText(/anyone can sign in/i)).toBeInTheDocument()
   })
 })

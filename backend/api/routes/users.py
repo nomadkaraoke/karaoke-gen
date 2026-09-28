@@ -298,9 +298,9 @@ async def send_magic_link(
     tenant_config = get_tenant_config_from_request(http_request)
 
     # Validate email domain for tenant if configured
-    if tenant_config and tenant_config.auth.allowed_email_domains:
+    if tenant_config:
         if not tenant_config.is_email_allowed(email):
-            logger.warning(f"Email domain not allowed for tenant {tenant_id}: {_mask_email(email)}")
+            logger.warning(f"Email not allowed for tenant {tenant_id}: {_mask_email(email)}")
             # Return success anyway to prevent email enumeration
             return SendMagicLinkResponse(
                 status="success",
