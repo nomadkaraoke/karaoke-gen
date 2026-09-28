@@ -773,12 +773,7 @@ The frontend's `TenantProvider` reads `window.__TENANT_CONFIG__` on startup (no 
 
 **Admin preview**: Admins can preview any tenant's branding in the main app by appending `?preview_tenant=<tenant_id>` to any URL. This bypasses subdomain detection and loads the specified tenant config, useful for verifying branding before DNS cutover.
 
-**Giving a tenant its own subdomain** (not automated — `/admin/tenants` create only writes GCS config + theme). Cloudflare Pages does not accept wildcard custom domains, so each tenant needs:
-1. Pages custom domain on `karaoke-gen-tenant`: `POST /accounts/{acct}/pages/projects/karaoke-gen-tenant/domains {"name":"<id>.nomadkaraoke.com"}`
-2. DNS: proxied `CNAME <id>` → `karaoke-gen-tenant.pages.dev` in the `nomadkaraoke.com` zone (Cloudflare API, not Pulumi)
-3. ~~GCS CORS~~ — no longer needed: bucket CORS allows any origin (safe because the bucket is private; signed URLs are the auth).
-
-Tenants with subdomains: `vocalstar`, `singa`, `randy-vild` (steps 1–2 done via API 2026-09-28).
+**Tenant subdomains are automatic** (v0.246.0): `/admin/tenants` create provisions `{id}.nomadkaraoke.com` via the Cloudflare API (`services/tenant_domain_service.py`, secret `cloudflare-tenant-domains-token` = account-owned token scoped to Pages Read/Write + DNS Read/Write on the nomadkaraoke.com zone only), and delete removes it. Cloudflare Pages has no wildcard custom domains, so each tenant gets: (1) a Pages custom domain on `karaoke-gen-tenant`, (2) a proxied `CNAME <id>` → `karaoke-gen-tenant.pages.dev`. Existing non-tenant DNS records are never taken over or deleted. No GCS CORS change is needed (bucket CORS allows any origin — safe because the bucket is private and signed URLs are the auth). Tenants created before this can be backfilled with **Manage → Set up domain** (`POST /api/admin/tenants/{id}/domain`).
 
 **Theme/tenant edits take effect immediately**: while the storage bucket was publicly readable (until 2026-09-28), GCS served objects with the default `Cache-Control: public, max-age=3600` and even the backend's own reads could return a stale copy for up to an hour after an overwrite. The bucket is now private (`public_access_prevention=enforced`), and as defence in depth `StorageService.upload_json` writes `no-store`, theme asset/logo uploads pass `cache_control=no-store`, and `download_json` resolves the live generation before downloading (bypassing any cached copy of objects written before this).
 

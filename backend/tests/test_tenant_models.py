@@ -288,6 +288,42 @@ class TestTenantConfig:
         # Subdomain of allowed domain should work
         assert full_config.is_email_allowed("user@sub.vocal-star.com") is False
 
+    def test_is_email_allowed_individual_emails(self):
+        """Individual addresses (e.g. a client's gmail) can be allowlisted."""
+        config = TenantConfig(
+            id="randy-vild",
+            name="Randy Vild",
+            subdomain="randy-vild.nomadkaraoke.com",
+            auth=TenantAuth(allowed_emails=["randy@gmail.com"], require_email_domain=True),
+        )
+        assert config.is_email_allowed("randy@gmail.com") is True
+        assert config.is_email_allowed(" Randy@GMAIL.com ") is True
+        assert config.is_email_allowed("other@gmail.com") is False
+
+    def test_is_email_allowed_emails_enforced_even_if_require_flag_false(self):
+        """Listing individual emails always restricts access (legacy flag ignored)."""
+        config = TenantConfig(
+            id="t",
+            name="T",
+            subdomain="t.nomadkaraoke.com",
+            auth=TenantAuth(allowed_emails=["a@gmail.com"], require_email_domain=False),
+        )
+        assert config.is_email_allowed("b@gmail.com") is False
+
+    def test_is_email_allowed_emails_and_domains_combined(self):
+        config = TenantConfig(
+            id="t",
+            name="T",
+            subdomain="t.nomadkaraoke.com",
+            auth=TenantAuth(allowed_emails=["a@gmail.com"], allowed_email_domains=["label.com"]),
+        )
+        assert config.is_email_allowed("a@gmail.com") is True
+        assert config.is_email_allowed("exec@label.com") is True
+        assert config.is_email_allowed("b@gmail.com") is False
+
+    def test_admins_can_always_sign_in(self, full_config):
+        assert full_config.is_email_allowed("andrew@nomadkaraoke.com") is True
+
 
 class TestTenantPublicConfig:
     """Tests for TenantPublicConfig model."""

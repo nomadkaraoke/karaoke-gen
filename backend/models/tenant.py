@@ -117,6 +117,10 @@ class TenantAuth(BaseModel):
         default_factory=list,
         description="Email domains allowed for magic link auth (e.g., ['vocal-star.com'])"
     )
+    allowed_emails: List[str] = Field(
+        default_factory=list,
+        description="Individual email addresses allowed for magic link auth (e.g. a client's gmail)"
+    )
     require_email_domain: bool = Field(
         True,
         description="If true, only allowed domains can sign up. If false, domains get auto-approved."
@@ -161,16 +165,33 @@ class TenantConfig(BaseModel):
         return f"{self.id}@nomadkaraoke.com"
 
     def is_email_allowed(self, email: str) -> bool:
-        """Check if an email address is allowed for this tenant."""
-        if not self.auth.allowed_email_domains:
-            # No domain restrictions
+        """Check if an email address may sign in to this tenant's portal.
+
+        - Nomad Karaoke admins (admin email domain) can always sign in.
+        - No allowlist at all (no domains, no emails) = open portal.
+        - An explicit ``allowed_emails`` entry or matching domain = allowed.
+        - Otherwise: denied when individual emails are listed; for legacy
+          domain-only configs, ``require_email_domain`` decides.
+        """
+        from backend.services.auth_service import is_admin_email  # avoid import cycle
+
+        email_lower = (email or "").strip().lower()
+        if is_admin_email(email_lower):
             return True
 
-        email_lower = email.lower()
-        for domain in self.auth.allowed_email_domains:
+        allowed_emails = [e.strip().lower() for e in self.auth.allowed_emails]
+        domains = self.auth.allowed_email_domains
+        if not allowed_emails and not domains:
+            return True
+
+        if email_lower in allowed_emails:
+            return True
+        for domain in domains:
             if email_lower.endswith(f"@{domain.lower()}"):
                 return True
 
+        if allowed_emails:
+            return False
         return not self.auth.require_email_domain
 
 

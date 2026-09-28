@@ -2600,6 +2600,14 @@ export interface TenantSummary {
   created_at?: string | null;
 }
 
+/** Cloudflare state of a tenant's {id}.nomadkaraoke.com portal subdomain. */
+export interface TenantDomainStatus {
+  hostname: string;
+  state: 'active' | 'provisioning' | 'missing';
+  dns_ok: boolean;
+  pages_status?: string | null;
+}
+
 export interface TenantCreateResult {
   tenant: {
     id: string;
@@ -2609,6 +2617,7 @@ export interface TenantCreateResult {
   };
   preview_url: string;
   subdomain_url: string;
+  domain?: TenantDomainStatus | null;
 }
 
 export interface TenantDetail {
@@ -2617,6 +2626,7 @@ export interface TenantDetail {
   style_params: Record<string, any>;
   assets: string[];
   preview_url: string;
+  domain?: TenantDomainStatus | null;
 }
 
 export interface CommunityReviewItem {
@@ -2728,6 +2738,28 @@ export const adminApi = {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: formData,
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Delete a tenant: portal subdomain (Cloudflare), theme, and config. Jobs are kept.
+   */
+  async deleteTenant(tenantId: string): Promise<void> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) await handleResponse(response);
+  },
+
+  /**
+   * (Re)provision a tenant's {id}.nomadkaraoke.com subdomain (idempotent).
+   */
+  async provisionTenantDomain(tenantId: string): Promise<{ domain: TenantDomainStatus }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/admin/tenants/${encodeURIComponent(tenantId)}/domain`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
     });
     return handleResponse(response);
   },

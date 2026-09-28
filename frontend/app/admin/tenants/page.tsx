@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { adminApi, TenantSummary, TenantCreateResult, TenantDetail } from "@/lib/api"
+import { adminApi, TenantSummary, TenantCreateResult, TenantDetail, TenantDomainStatus } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   Building2, Plus, RefreshCw, Loader2, Copy, Check, ExternalLink, Settings2, Code2, WandSparkles,
+  Trash2, Globe, AlertTriangle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -84,11 +85,24 @@ function ThemeJsonEditor({
   )
 }
 
+// --- Portal subdomain status ------------------------------------------------
+function DomainBadge({ domain }: { domain?: TenantDomainStatus | null }) {
+  if (!domain) return <Badge variant="outline">unknown</Badge>
+  if (domain.state === "active") return <Badge>live</Badge>
+  if (domain.state === "provisioning") return <Badge variant="secondary">provisioning ({domain.pages_status || "dns"})</Badge>
+  return <Badge variant="destructive">not set up</Badge>
+}
+
+function splitList(text: string): string[] {
+  return text.split(/[\s,;]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)
+}
+
 const EMPTY_FORM = {
   name: "",
   tenant_id: "",
   subdomain: "",
   allowed_email_domains: "",
+  allowed_emails: "",
   artist_color: "",
   title_color: "",
   sung_lyrics_color: "",
@@ -132,9 +146,15 @@ export default function AdminTenantsPage() {
   const [manageLoading, setManageLoading] = useState(false)
   const [detail, setDetail] = useState<TenantDetail | null>(null)
   const [mCfg, setMCfg] = useState({
-    name: "", subdomain: "", tagline: "", allowed_email_domains: "",
+    name: "", subdomain: "", tagline: "", allowed_email_domains: "", allowed_emails: "",
     dropbox_path: "", brand_prefix: "", distribution_mode: "download_only", is_active: true,
   })
+  const [domainBusy, setDomainBusy] = useState(false)
+
+  // --- Delete state -----------------------------------------------------------
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState("")
+  const [deleting, setDeleting] = useState(false)
   const [styleText, setStyleText] = useState("")
   const [newAssets, setNewAssets] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
@@ -208,7 +228,7 @@ export default function AdminTenantsPage() {
     try {
       const fd = new FormData()
       const fields: (keyof typeof EMPTY_FORM)[] = [
-        "name", "tenant_id", "subdomain", "allowed_email_domains",
+        "name", "tenant_id", "allowed_email_domains", "allowed_emails",
         "artist_color", "title_color", "sung_lyrics_color", "unsung_lyrics_color",
         "tagline", "distribution_mode", "dropbox_path", "brand_prefix",
       ]
@@ -232,6 +252,23 @@ export default function AdminTenantsPage() {
     }
   }
 
+  // After create, poll the portal subdomain until Cloudflare has issued its cert.
+  useEffect(() => {
+    if (!created || created.domain?.state === "active") return
+    let tries = 0
+    const timer = setInterval(async () => {
+      tries += 1
+      try {
+        const d = await adminApi.getTenant(created.tenant.id)
+        setCreated((c) => (c ? { ...c, domain: d.domain } : c))
+        if (d.domain?.state === "active" || tries >= 40) clearInterval(timer)
+      } catch {
+        if (tries >= 40) clearInterval(timer)
+      }
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [created?.tenant.id, created?.domain?.state]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const copyPreview = async () => {
     if (!created) return
     await navigator.clipboard.writeText(created.preview_url)
@@ -254,6 +291,7 @@ export default function AdminTenantsPage() {
         subdomain: t.subdomain || "",
         tagline: t.branding?.tagline || "",
         allowed_email_domains: (t.auth?.allowed_email_domains || []).join(", "),
+        allowed_emails: (t.auth?.allowed_emails || []).join(", "),
         dropbox_path: t.defaults?.dropbox_path || "",
         brand_prefix: t.defaults?.brand_prefix || "",
         distribution_mode: t.defaults?.distribution_mode || "download_only",
@@ -276,10 +314,8 @@ export default function AdminTenantsPage() {
     }
     setSaving(true)
     try {
-      const domains = mCfg.allowed_email_domains.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
       const configUpdate: Record<string, any> = {
         name: mCfg.name.trim(),
-        subdomain: mCfg.subdomain.trim(),
         is_active: mCfg.is_active,
         branding: { tagline: mCfg.tagline.trim() || null },
         defaults: {
@@ -288,7 +324,11 @@ export default function AdminTenantsPage() {
           distribution_mode: mCfg.distribution_mode,
         },
         features: { dropbox_upload: !!mCfg.dropbox_path.trim() },
-        auth: { allowed_email_domains: domains, require_email_domain: domains.length > 0 },
+        // Backend normalizes these and enforces the allowlist whenever either is non-empty.
+        auth: {
+          allowed_email_domains: splitList(mCfg.allowed_email_domains),
+          allowed_emails: splitList(mCfg.allowed_emails),
+        },
       }
       const fd = new FormData()
       fd.append("config", JSON.stringify(configUpdate))
@@ -305,6 +345,49 @@ export default function AdminTenantsPage() {
       setSaving(false)
     }
   }
+
+  const setUpDomain = async () => {
+    if (!manageId) return
+    setDomainBusy(true)
+    try {
+      const { domain } = await adminApi.provisionTenantDomain(manageId)
+      setDetail((d) => (d ? { ...d, domain } : d))
+      toast({ title: "Domain set up", description: `${domain.hostname}: ${domain.state}` })
+    } catch (err: any) {
+      toast({ title: "Domain setup failed", description: err.message || "Unknown error", variant: "destructive" })
+    } finally {
+      setDomainBusy(false)
+    }
+  }
+
+  const refreshDomain = async () => {
+    if (!manageId) return
+    setDomainBusy(true)
+    try {
+      const d = await adminApi.getTenant(manageId)
+      setDetail((cur) => (cur ? { ...cur, domain: d.domain } : cur))
+    } finally {
+      setDomainBusy(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!manageId || deleteConfirm !== manageId) return
+    setDeleting(true)
+    try {
+      await adminApi.deleteTenant(manageId)
+      toast({ title: "Tenant deleted", description: `${manageId} and its portal subdomain were removed.` })
+      setDeleteOpen(false)
+      setManageOpen(false)
+      loadTenants()
+    } catch (err: any) {
+      toast({ title: "Failed to delete tenant", description: err.message || "Unknown error", variant: "destructive" })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const accessOpen = !mCfg.allowed_emails.trim() && !mCfg.allowed_email_domains.trim()
 
   return (
     <div className="p-6 space-y-6">
@@ -351,7 +434,9 @@ export default function AdminTenantsPage() {
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell className="font-mono text-xs">{t.id}</TableCell>
-                    <TableCell className="text-xs">{t.subdomain}</TableCell>
+                    <TableCell className="text-xs">
+                      <a href={`https://${t.subdomain}`} target="_blank" rel="noreferrer" className="hover:underline">{t.subdomain}</a>
+                    </TableCell>
                     <TableCell className="text-xs">{t.dropbox_path || "download only"}</TableCell>
                     <TableCell>
                       <Badge variant={t.is_active ? "default" : "secondary"}>{t.is_active ? "active" : "inactive"}</Badge>
@@ -380,8 +465,8 @@ export default function AdminTenantsPage() {
           <DialogHeader>
             <DialogTitle>Create tenant</DialogTitle>
             <DialogDescription>
-              Provisions a branded portal with a locked theme. Jobs are private and delivered to
-              Dropbox (or download only). Drive it immediately via the preview link — no DNS.
+              Provisions a branded portal with a locked theme at its own subdomain (DNS + certificate
+              are set up automatically). Jobs are private and delivered to Dropbox (or download only).
             </DialogDescription>
           </DialogHeader>
 
@@ -393,6 +478,12 @@ export default function AdminTenantsPage() {
                   <CardDescription>Open the preview link, switch to <strong>Bulk</strong>, and drop the album folder.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <a href={created.subdomain_url} target="_blank" rel="noreferrer" className="font-mono hover:underline">{created.subdomain_url}</a>
+                    <DomainBadge domain={created.domain} />
+                    {created.domain?.state !== "active" && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                  </div>
                   <div className="flex items-center gap-2">
                     <Input readOnly value={created.preview_url} className="font-mono text-xs" />
                     <Button variant="outline" size="icon" onClick={copyPreview}>
@@ -422,15 +513,23 @@ export default function AdminTenantsPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="create-subdomain">Subdomain</Label>
-                <Input id="create-subdomain" value={form.subdomain} onChange={(e) => setForm((f) => ({ ...f, subdomain: e.target.value }))} placeholder="randy-vild.nomadkaraoke.com" className="font-mono text-sm" />
-                <p className="text-xs text-muted-foreground">Only needed for a real client portal (DNS + Cloudflare). The preview link works without it.</p>
+                <Label htmlFor="create-subdomain">Portal subdomain</Label>
+                <Input id="create-subdomain" value={form.subdomain} readOnly placeholder="randy-vild.nomadkaraoke.com" className="font-mono text-sm" />
+                <p className="text-xs text-muted-foreground">Derived from the tenant ID; DNS and the certificate are provisioned automatically.</p>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="create-domains">Allowed email domains <span className="text-muted-foreground">(optional)</span></Label>
-                <Input id="create-domains" value={form.allowed_email_domains} onChange={(e) => set("allowed_email_domains", e.target.value)} placeholder="client.com, label.com" />
-                <p className="text-xs text-muted-foreground">Comma-separated. Blank = no restriction (you can always log in as admin).</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="create-emails">Allowed emails</Label>
+                  <Input id="create-emails" value={form.allowed_emails} onChange={(e) => set("allowed_emails", e.target.value)} placeholder="client@gmail.com" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="create-domains">Allowed email domains</Label>
+                  <Input id="create-domains" value={form.allowed_email_domains} onChange={(e) => set("allowed_email_domains", e.target.value)} placeholder="client.com, label.com" />
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Comma-separated. Who can sign in to the portal. Both blank = anyone. Nomad Karaoke admins can always sign in.
+              </p>
 
               <div>
                 <Label className="mb-2 block">Theme colours <span className="text-muted-foreground">(blank = Nomad default)</span></Label>
@@ -523,8 +622,8 @@ export default function AdminTenantsPage() {
                   <Input id="manage-name" value={mCfg.name} onChange={(e) => setMCfg((c) => ({ ...c, name: e.target.value }))} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="manage-subdomain">Subdomain</Label>
-                  <Input id="manage-subdomain" value={mCfg.subdomain} onChange={(e) => setMCfg((c) => ({ ...c, subdomain: e.target.value }))} className="font-mono text-sm" />
+                  <Label htmlFor="manage-subdomain">Portal subdomain</Label>
+                  <Input id="manage-subdomain" value={mCfg.subdomain} readOnly className="font-mono text-sm" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -537,15 +636,44 @@ export default function AdminTenantsPage() {
                   <Input id="manage-brand-prefix" value={mCfg.brand_prefix} onChange={(e) => setMCfg((c) => ({ ...c, brand_prefix: e.target.value }))} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="manage-domains">Allowed email domains</Label>
-                  <Input id="manage-domains" value={mCfg.allowed_email_domains} onChange={(e) => setMCfg((c) => ({ ...c, allowed_email_domains: e.target.value }))} placeholder="client.com, label.com" />
+              <div className="flex items-center gap-2 rounded-md border p-3 text-sm">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <a href={`https://${mCfg.subdomain}`} target="_blank" rel="noreferrer" className="font-mono hover:underline">{mCfg.subdomain}</a>
+                <DomainBadge domain={detail.domain} />
+                <div className="ml-auto flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={refreshDomain} disabled={domainBusy}>
+                    <RefreshCw className={`h-3.5 w-3.5 ${domainBusy ? "animate-spin" : ""}`} />
+                  </Button>
+                  {detail.domain?.state !== "active" && (
+                    <Button variant="outline" size="sm" onClick={setUpDomain} disabled={domainBusy}>
+                      {detail.domain?.state === "missing" ? "Set up domain" : "Retry setup"}
+                    </Button>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="manage-tagline">Tagline</Label>
-                  <Input id="manage-tagline" value={mCfg.tagline} onChange={(e) => setMCfg((c) => ({ ...c, tagline: e.target.value }))} />
+              </div>
+              <div className="space-y-2 rounded-md border p-3">
+                <Label>Portal access</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="manage-emails" className="text-xs text-muted-foreground">Allowed emails</Label>
+                    <Input id="manage-emails" value={mCfg.allowed_emails} onChange={(e) => setMCfg((c) => ({ ...c, allowed_emails: e.target.value }))} placeholder="client@gmail.com, manager@gmail.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="manage-domains" className="text-xs text-muted-foreground">Allowed email domains</Label>
+                    <Input id="manage-domains" value={mCfg.allowed_email_domains} onChange={(e) => setMCfg((c) => ({ ...c, allowed_email_domains: e.target.value }))} placeholder="client.com, label.com" />
+                  </div>
                 </div>
+                {accessOpen ? (
+                  <p className="flex items-center gap-1.5 text-xs text-amber-500">
+                    <AlertTriangle className="h-3.5 w-3.5" /> Open portal: anyone can sign in. Add emails or domains to restrict it.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Only these can sign in (plus Nomad Karaoke admins).</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="manage-tagline">Tagline</Label>
+                <Input id="manage-tagline" value={mCfg.tagline} onChange={(e) => setMCfg((c) => ({ ...c, tagline: e.target.value }))} />
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={mCfg.is_active} onCheckedChange={(v) => setMCfg((c) => ({ ...c, is_active: v }))} id="active-switch" />
@@ -571,9 +699,14 @@ export default function AdminTenantsPage() {
               </div>
 
               <DialogFooter className="flex items-center justify-between sm:justify-between">
-                <Button asChild variant="ghost">
-                  <a href={detail.preview_url} target="_blank" rel="noreferrer">Open preview <ExternalLink className="h-4 w-4 ml-2" /></a>
-                </Button>
+                <div className="flex gap-2">
+                  <Button asChild variant="ghost">
+                    <a href={detail.preview_url} target="_blank" rel="noreferrer">Open preview <ExternalLink className="h-4 w-4 ml-2" /></a>
+                  </Button>
+                  <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => { setDeleteConfirm(""); setDeleteOpen(true) }} disabled={saving}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete tenant
+                  </Button>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => setManageOpen(false)} disabled={saving}>Close</Button>
                   <Button onClick={handleSave} disabled={saving || !!styleError}>
@@ -583,6 +716,30 @@ export default function AdminTenantsPage() {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {manageId}?</DialogTitle>
+            <DialogDescription>
+              Removes the portal subdomain ({mCfg.subdomain}), the tenant&apos;s theme and assets, and its
+              config. Existing jobs and their finished files are kept, but can&apos;t be re-rendered with
+              this theme afterwards.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1">
+            <Label htmlFor="delete-confirm">Type <span className="font-mono">{manageId}</span> to confirm</Label>
+            <Input id="delete-confirm" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} className="font-mono" autoComplete="off" />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting || deleteConfirm !== manageId}>
+              {deleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting…</> : "Delete tenant"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

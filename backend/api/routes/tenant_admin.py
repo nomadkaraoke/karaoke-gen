@@ -23,11 +23,15 @@ from backend.services.tenant_admin_service import (
     IMAGE_CONTENT_TYPES,
     TenantConflictError,
     TenantNotFoundError,
+    TenantProvisioningError,
     TenantValidationError,
     create_tenant,
+    delete_tenant,
     get_default_style_params,
     get_tenant_detail,
+    get_tenant_domain_status,
     list_tenants,
+    provision_tenant_domain,
     update_tenant,
 )
 
@@ -60,6 +64,9 @@ class TenantCreateResponse(BaseModel):
     tenant: TenantPublicConfig
     preview_url: str
     subdomain_url: str
+    # Cloudflare state of the portal subdomain: {hostname, state, dns_ok, pages_status}.
+    # state is "active" once the certificate is issued (usually within ~1 min).
+    domain: Optional[Dict[str, Any]] = None
 
 
 class TenantDetailResponse(BaseModel):
@@ -68,6 +75,11 @@ class TenantDetailResponse(BaseModel):
     style_params: Dict[str, Any]
     assets: List[str]
     preview_url: str
+    domain: Optional[Dict[str, Any]] = None
+
+
+class TenantDomainResponse(BaseModel):
+    domain: Dict[str, Any]
 
 
 class TenantTemplateResponse(BaseModel):
@@ -175,7 +187,38 @@ async def admin_get_tenant(tenant_id: str, auth_data: AuthResult = Depends(requi
         detail = get_tenant_detail(tenant_id)
     except TenantNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    return TenantDetailResponse(preview_url=_preview_url(tenant_id), **detail)
+    return TenantDetailResponse(
+        preview_url=_preview_url(tenant_id),
+        domain=get_tenant_domain_status(tenant_id),
+        **detail,
+    )
+
+
+@router.post("/{tenant_id}/domain", response_model=TenantDomainResponse)
+async def admin_provision_tenant_domain(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
+    """(Re)provision the tenant's {id}.nomadkaraoke.com subdomain (idempotent)."""
+    try:
+        domain = provision_tenant_domain(tenant_id)
+    except TenantNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except TenantConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except TenantProvisioningError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    logger.info(f"Admin {auth_data.user_email or 'admin:unknown'} provisioned domain for tenant '{tenant_id}'")
+    return TenantDomainResponse(domain=domain)
+
+
+@router.delete("/{tenant_id}", status_code=204)
+async def admin_delete_tenant(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
+    """Delete a tenant: subdomain (Cloudflare), theme, and config. Jobs are kept."""
+    try:
+        delete_tenant(tenant_id)
+    except TenantNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except TenantProvisioningError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    logger.info(f"Admin {auth_data.user_email or 'admin:unknown'} deleted tenant '{tenant_id}'")
 
 
 @router.put("/{tenant_id}", response_model=TenantUpdateResponse)
@@ -236,6 +279,7 @@ async def admin_create_tenant(
     tenant_id: Optional[str] = Form(None),
     subdomain: Optional[str] = Form(None),
     allowed_email_domains: Optional[str] = Form(None),
+    allowed_emails: Optional[str] = Form(None),
     artist_color: Optional[str] = Form(None),
     title_color: Optional[str] = Form(None),
     sung_lyrics_color: Optional[str] = Form(None),
@@ -287,6 +331,7 @@ async def admin_create_tenant(
             tenant_id=_clean(tenant_id),
             subdomain=_clean(subdomain),
             allowed_email_domains=_parse_domains(allowed_email_domains),
+            allowed_emails=_parse_domains(allowed_emails),
             colors=colors,
             style_params_override=style_override,
             tagline=_clean(tagline),
@@ -300,6 +345,8 @@ async def admin_create_tenant(
         raise HTTPException(status_code=409, detail=str(exc))
     except TenantValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except TenantProvisioningError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:  # pragma: no cover - defensive
@@ -313,4 +360,5 @@ async def admin_create_tenant(
         tenant=TenantPublicConfig.from_config(config),
         preview_url=_preview_url(config.id),
         subdomain_url=config.get_frontend_url(),
+        domain=get_tenant_domain_status(config.id),
     )
