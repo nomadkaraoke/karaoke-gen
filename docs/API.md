@@ -971,6 +971,14 @@ optional) lets the judge tell whether weak audio results hint at a typo. The cal
 never blocks job creation — on timeout/error it returns a `none` verdict. Disable
 the AI layer with `MATCH_JUDGE_ENABLED=false` (deterministic+catalog still run).
 
+> **In practice the correction comes from Gemini.** The catalog pass is only confident when the
+> typed text *equals* a catalog entry after case, punctuation and accent folding. The catalog it
+> queries (decide `/api/catalog/tracks`) is BigQuery prefix-only `LIKE 'q%'`, so any typo
+> ("the stokes" / "max picu") gets zero candidates. Most job submissions therefore go
+> `fast … needs_ai=True` then `full … engine=ai`, which prod logs confirm. kjbox's singer search
+> is designing an on-device typo-tolerant matcher that uses Gemini only as a fallback. Read
+> `kjbox/docs/SONG-IDENTIFICATION.md` before reusing this judge for free-text search.
+
 `stage` (optional, `"fast"` | `"full"`, default `"full"`) supports a two-call
 pattern the frontend uses to keep the tidy off the critical path:
 
@@ -2893,18 +2901,31 @@ by Nomad.
 ```http
 POST /api/kjbox/catalog/resolve
 X-Kjbox-Secret: <partner secret>
-{"query": "the strokes max picu"}
-→ {"kind": "content", "confident": true, "typed_artist": "the strokes", "typed_title": "max picu",
-   "canonical_artist": "The Strokes", "canonical_title": "Machu Picchu", "alternatives": [],
-   "engine": "ai", "reason": "…"}
+{"query": "rihanna push up on me"}
+→ {"kind": "cosmetic", "confident": true, "typed_artist": "rihanna", "typed_title": "push up on me",
+   "canonical_artist": "Rihanna", "canonical_title": "Push Up On Me", "alternatives": [],
+   "engine": "catalog", "reason": "catalog match"}
 ```
 
-Splits a singer's one-line search into artist/title and corrects typos in one
-small Gemini call (`backend/services/match_judge/free_text.py`, the match
-judge's model + kinds). kjbox calls it only when its own catalogue search is
-empty. Model trouble → `kind: "none"` (never 5xx). Results are cached per
-case-folded query (in-process, 2000 entries); AI calls are capped partner-wide
-at 120/min per instance (`429 rate_limited`; cache hits are free).
+Gives a singer's one-line search the same tidy as the job form's
+AudioSourceStep ("Tidied to …" / "Corrected to …"). Two steps
+(`backend/services/match_judge/free_text.py`, `resolve_and_tidy`):
+
+1. **Split + typo fix** — one small Gemini call splits the free text into
+   artist/title and corrects typos (the catalog can't parse a one-line query:
+   decide's track search finds nothing for "rihanna push up on me").
+2. **Catalog tidy** — the chosen song (the AI's canonical pick, or its typed
+   split when it didn't recognise the song) goes through the job flow's own
+   `judge_match(stage="fast")`. A confident catalog match wins: its formatting
+   becomes `canonical_*`, `engine: "catalog"`, kind `cosmetic` when the query
+   already named that song (only casing/punctuation/word order differ), else
+   `content`. No catalog match → the AI verdict unchanged.
+
+kind `none` keeps the AI's `typed_artist`/`typed_title` split when it has one
+(kjbox pre-fills its make-it form with it). kjbox calls this only when its own
+catalogue search is empty. Model trouble → `kind: "none"` (never 5xx). Results
+are cached per case-folded query (in-process, 2000 entries); calls are capped
+partner-wide at 120/min per instance (`429 rate_limited`; cache hits are free).
 
 ### Review emails for kjbox jobs
 

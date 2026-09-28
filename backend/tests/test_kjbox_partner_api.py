@@ -746,7 +746,7 @@ class TestCatalogResolve:
                     "typed_title": "max picu", "alternatives": [], "engine": "ai", "reason": ""}
 
         from backend.services.match_judge import free_text
-        monkeypatch.setattr(free_text, "resolve_free_text", fake_resolve)
+        monkeypatch.setattr(free_text, "resolve_and_tidy", fake_resolve)
         return calls
 
     def _post(self, client, q):
