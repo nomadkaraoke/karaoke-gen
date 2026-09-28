@@ -74,7 +74,7 @@ state *now* rather than wait for a forward fix to build and deploy.
   (`video-encoding-job`, `lyrics-transcription-job`, `audio-separation-job`) by
   re-pinning them to a previous image tag. `lyrics-transcription-job` runs in us-east4 from the
   `karaoke-backend-cpu` image copy. That copy only has tags from releases after the region move, so
-  a rollback past that point needs `--service-only`. `audio-download-job` and `bulk-search-job`
+  `rollback.sh` skips (with a warning) any job whose target tag is missing and re-pins the rest. `audio-download-job` and `bulk-search-job`
   track `:latest` and aren't re-pinned. Cloud Run Jobs can't traffic-split, so
   they are re-pinned; the old image takes effect on each job's **next** invocation
   (in-flight runs are unaffected).
@@ -787,6 +787,7 @@ done
 ```bash
 gcloud run services update karaoke-backend --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1
 gcloud run jobs update audio-download-job --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1  # legacy job triggers lyrics
+gcloud run jobs update bulk-search-job --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1  # legacy job triggers downloads
 ```
 The next CI deploy resets the service env. Make it permanent by adding `CPU_JOBS_REGION` to
 `--set-env-vars` in `ci.yml`.

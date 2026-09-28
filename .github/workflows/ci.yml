@@ -2149,7 +2149,8 @@ jobs:
             --quiet
 
           # Lyrics transcription job (CPU, us-east4 — see CPU_JOBS_REGION in
-          # backend/config.py). audio-download-job and bulk-search-job track the
+          # backend/config.py). The us-east4 job is created by Pulumi, so
+          # `pulumi up` must run BEFORE merging a change that introduces it. audio-download-job and bulk-search-job track the
           # :latest tag pushed above, so they need no update here.
           # NOTE: image-only update. Adding --update-secrets here crashed gcloud
           # ("Invalid secret path ... in annotation") because this job's existing
