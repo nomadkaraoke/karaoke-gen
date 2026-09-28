@@ -1303,7 +1303,8 @@ kept. `502` if Cloudflare removal fails (nothing in GCS is deleted, so it can be
 
 **Portal access:** `allowed_emails` (individual addresses, e.g. a client's gmail) and
 `allowed_email_domains` (form fields on create; `config.auth.*` on `PUT`). Either non-empty → only
-listed emails/domains receive magic links; both empty → open portal. `@nomadkaraoke.com` admins can
+listed emails/domains receive magic links (always — the legacy `require_email_domain` flag no
+longer loosens a non-empty allowlist); both empty → open portal. `@nomadkaraoke.com` admins can
 always sign in.
 
 Admin-only endpoints (`require_admin`) that mint and manage white-label tenants from the admin panel

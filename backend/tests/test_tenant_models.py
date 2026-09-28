@@ -264,8 +264,9 @@ class TestTenantConfig:
         assert basic_config.is_email_allowed("anyone@gmail.com") is True
         assert basic_config.is_email_allowed("user@anything.com") is True
 
-    def test_is_email_allowed_require_domain_false(self):
-        """Test non-matching emails allowed when require_email_domain=False."""
+    def test_is_email_allowed_require_domain_false_still_enforced(self):
+        """A non-empty allowlist is always enforced — the legacy
+        require_email_domain=False loophole no longer lets other emails in."""
         config = TenantConfig(
             id="flexible",
             name="Flexible Tenant",
@@ -278,8 +279,8 @@ class TestTenantConfig:
 
         # Matching domain still works
         assert config.is_email_allowed("user@preferred.com") is True
-        # Non-matching also allowed since require_email_domain=False
-        assert config.is_email_allowed("user@other.com") is True
+        # Non-matching is rejected despite require_email_domain=False
+        assert config.is_email_allowed("user@other.com") is False
 
     def test_is_email_allowed_partial_domain_no_match(self, full_config):
         """Test partial domain matches don't work (must be exact suffix)."""

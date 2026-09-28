@@ -199,3 +199,15 @@ describe('Admin Tenants page', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled()
   })
 })
+
+
+describe('Admin Tenants page — access warning edge cases', () => {
+  it('treats separator-only input as an open portal (matches what Save sends)', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /manage/i }))
+    fireEvent.change(await screen.findByLabelText(/allowed emails/i), { target: { value: ' , ' } })
+    fireEvent.change(screen.getByLabelText(/allowed email domains/i), { target: { value: ',' } })
+    expect(screen.getByText(/anyone can sign in/i)).toBeInTheDocument()
+  })
+})

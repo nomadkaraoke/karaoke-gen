@@ -554,3 +554,29 @@ def test_delete_keeps_theme_not_owned_by_tenant(fake_storage):
     )
     tas.delete_tenant("randy-vild", storage=fake_storage)
     assert "themes/foo/style_params.json" in fake_storage.blobs
+
+
+def test_update_does_not_persist_subdomain_echo(fake_storage):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    updated = tas.update_tenant(
+        "randy-vild", config_updates={"subdomain": "  Randy-Vild.nomadkaraoke.com "}, storage=fake_storage
+    )
+    assert updated.subdomain == "randy-vild.nomadkaraoke.com"
+
+
+def test_delete_removes_own_theme_even_after_switching_themes(fake_storage):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    fake_storage.blobs["themes/foo/style_params.json"] = b"{}"
+    tas.update_tenant("randy-vild", config_updates={"defaults": {"locked_theme": "foo"}}, storage=fake_storage)
+    tas.delete_tenant("randy-vild", storage=fake_storage)
+    assert not any(p.startswith("themes/randy-vild/") for p in fake_storage.blobs)
+    assert "themes/foo/style_params.json" in fake_storage.blobs
+    # id reusable
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+
+
+def test_delete_reports_storage_failure(fake_storage, monkeypatch):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    monkeypatch.setattr(fake_storage, "delete_folder", lambda prefix: 0)  # GCS failure swallowed
+    with pytest.raises(tas.TenantProvisioningError, match="retry"):
+        tas.delete_tenant("randy-vild", storage=fake_storage)

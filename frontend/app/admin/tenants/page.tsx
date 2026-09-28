@@ -255,23 +255,36 @@ export default function AdminTenantsPage() {
   // After create, poll the portal subdomain until Cloudflare has issued its cert.
   const createdId = created?.tenant.id
   const createdActive = created?.domain?.state === "active"
+  const [pollRound, setPollRound] = useState(0)
+  const [pollExhausted, setPollExhausted] = useState(false)
   useEffect(() => {
-    // Keyed on the tenant id only, so status flapping can't reset the try cap.
+    // Keyed on the tenant id (+ manual "check again"), so status flapping can't
+    // reset the try cap. One request at a time, so a slow older response can't
+    // overwrite a newer status.
     if (!createdId || createdActive) return
+    setPollExhausted(false)
     let tries = 0
+    let inFlight = false
+    let stopped = false
+    const stop = () => { stopped = true; clearInterval(timer) }
     const timer = setInterval(async () => {
+      if (inFlight || stopped) return
+      inFlight = true
       tries += 1
       try {
         const d = await adminApi.getTenant(createdId)
+        if (stopped) return
         setCreated((c) => (c ? { ...c, domain: d.domain } : c))
-        if (d.domain?.state === "active") clearInterval(timer)
+        if (d.domain?.state === "active") stop()
       } catch {
         // keep polling until the cap
+      } finally {
+        inFlight = false
       }
-      if (tries >= 40) clearInterval(timer)
+      if (!stopped && tries >= 40) { stop(); setPollExhausted(true) }
     }, 5000)
-    return () => clearInterval(timer)
-  }, [createdId]) // eslint-disable-line react-hooks/exhaustive-deps
+    return stop
+  }, [createdId, pollRound]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const copyPreview = async () => {
     if (!created) return
@@ -370,6 +383,8 @@ export default function AdminTenantsPage() {
     try {
       const d = await adminApi.getTenant(manageId)
       setDetail((cur) => (cur ? { ...cur, domain: d.domain } : cur))
+    } catch (err: any) {
+      toast({ title: "Couldn't refresh domain status", description: err.message || "Unknown error", variant: "destructive" })
     } finally {
       setDomainBusy(false)
     }
@@ -391,7 +406,8 @@ export default function AdminTenantsPage() {
     }
   }
 
-  const accessOpen = !mCfg.allowed_emails.trim() && !mCfg.allowed_email_domains.trim()
+  // Computed from exactly what Save submits (e.g. "," alone = no entries = open).
+  const accessOpen = splitList(mCfg.allowed_emails).length === 0 && splitList(mCfg.allowed_email_domains).length === 0
 
   return (
     <div className="p-6 space-y-6">
@@ -486,7 +502,13 @@ export default function AdminTenantsPage() {
                     <Globe className="h-4 w-4 text-muted-foreground" />
                     <a href={created.subdomain_url} target="_blank" rel="noreferrer" className="font-mono hover:underline">{created.subdomain_url}</a>
                     <DomainBadge domain={created.domain} />
-                    {created.domain?.state !== "active" && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                    {created.domain?.state !== "active" && !pollExhausted && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                    {created.domain?.state !== "active" && pollExhausted && (
+                      <>
+                        <span className="text-xs text-muted-foreground">still pending — the certificate can take a few minutes</span>
+                        <Button variant="outline" size="sm" onClick={() => setPollRound((n) => n + 1)}>Check again</Button>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Input readOnly value={created.preview_url} className="font-mono text-xs" />

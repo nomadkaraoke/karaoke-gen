@@ -533,8 +533,9 @@ def update_tenant(
 
     theme_id = _theme_id_for(config)
 
-    new_subdomain = (config_updates or {}).get("subdomain")
-    if new_subdomain is not None and new_subdomain.strip().lower() != config.subdomain:
+    config_updates = dict(config_updates or {})
+    new_subdomain = config_updates.pop("subdomain", None)  # never persisted as sent
+    if new_subdomain is not None and str(new_subdomain).strip().lower() != config.subdomain:
         raise TenantValidationError(
             "The portal subdomain can't be changed (it is derived from the tenant id)."
         )
@@ -690,18 +691,24 @@ def delete_tenant(
     except TenantDomainError as exc:
         raise TenantProvisioningError(f"Could not remove {hostname}: {exc}") from exc
 
-    # Only delete the tenant's own 1:1 theme (the one create_tenant made), and
-    # never if another tenant uses it or it is the default theme.
-    theme_id: Optional[str] = _theme_id_for(config)
+    # Delete the tenant's own 1:1 theme (named after the tenant — the one
+    # create_tenant made) even if the tenant has since switched to another
+    # theme; never delete a theme another tenant uses or the default theme.
+    theme_id: Optional[str] = tenant_id
     shared = any(
         t.get("id") != tenant_id and theme_id in (t.get("locked_theme"), t.get("theme_id"))
         for t in list_tenants(storage)
     )
-    if theme_id != tenant_id or shared or theme_id == theme_service.get_default_theme_id():
+    if shared or theme_id == theme_service.get_default_theme_id():
         logger.info(f"Keeping theme '{theme_id}' while deleting tenant '{tenant_id}'")
         theme_id = None
 
     _delete_tenant_storage(storage, tenant_id, theme_id)
+    # delete_folder swallows errors — verify, so a failed delete isn't a 204.
+    if storage.file_exists(f"{TENANTS_PREFIX}/{tenant_id}/config.json"):
+        raise TenantProvisioningError(
+            f"Subdomain removed but tenant '{tenant_id}' storage could not be deleted; retry the delete."
+        )
     tenant_service.invalidate_cache(tenant_id)
     theme_service.invalidate_cache()
     logger.info(f"Deleted tenant '{tenant_id}' (subdomain '{hostname}', theme '{theme_id}')")

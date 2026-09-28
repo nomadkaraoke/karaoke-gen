@@ -169,9 +169,9 @@ class TenantConfig(BaseModel):
 
         - Nomad Karaoke admins (admin email domain) can always sign in.
         - No allowlist at all (no domains, no emails) = open portal.
-        - An explicit ``allowed_emails`` entry or matching domain = allowed.
-        - Otherwise: denied when individual emails are listed; for legacy
-          domain-only configs, ``require_email_domain`` decides.
+        - Otherwise only an ``allowed_emails`` entry or a matching domain is
+          allowed. (``require_email_domain`` is vestigial: any non-empty
+          allowlist is always enforced.)
         """
         from backend.services.auth_service import is_admin_email  # avoid import cycle
 
@@ -190,9 +190,7 @@ class TenantConfig(BaseModel):
             if email_lower.endswith(f"@{domain.lower()}"):
                 return True
 
-        if allowed_emails:
-            return False
-        return not self.auth.require_email_domain
+        return False
 
 
 class TenantPublicConfig(BaseModel):
