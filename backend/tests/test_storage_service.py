@@ -9,6 +9,7 @@ These tests mock the GCS client to verify:
 """
 import json
 import pytest
+from google.cloud.exceptions import NotFound
 from unittest.mock import Mock, MagicMock, patch
 from io import BytesIO
 
@@ -161,6 +162,8 @@ class TestStorageServiceUpload:
         uploaded_content = call_args[0][0]
         assert json.loads(uploaded_content) == data
         assert result == "data/config.json"
+        # Mutable JSON must never be edge-cached (bucket is publicly readable)
+        assert mock_blob.cache_control == "no-store"
 
 
 class TestStorageServiceDownload:
@@ -244,7 +247,7 @@ class TestStorageServiceDownload:
         mock_blob = Mock()
         mock_blob.download_as_text.return_value = '{"key": "value", "count": 42}'
         mock_bucket = Mock()
-        mock_bucket.blob.return_value = mock_blob
+        mock_bucket.get_blob.return_value = mock_blob
         mock_client = Mock()
         mock_client.bucket.return_value = mock_bucket
         mock_client_class.return_value = mock_client
@@ -253,6 +256,53 @@ class TestStorageServiceDownload:
         result = service.download_json("data/config.json")
         
         assert result == {"key": "value", "count": 42}
+        # Resolves the live generation (metadata GET) and downloads that blob,
+        # so a stale edge-cached copy of an overwritten object can't be served.
+        mock_bucket.get_blob.assert_called_once_with("data/config.json")
+        mock_bucket.blob.assert_not_called()
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_download_json_missing_raises_not_found(self, mock_settings, mock_client_class):
+        """A missing object raises NotFound (get_blob returns None)."""
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+
+        mock_bucket = Mock()
+        mock_bucket.get_blob.return_value = None
+        mock_client = Mock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_client_class.return_value = mock_client
+
+        service = StorageService()
+        with pytest.raises(NotFound):
+            service.download_json("data/missing.json")
+
+    @patch("backend.services.storage_service.storage.Client")
+    @patch("backend.services.storage_service.settings")
+    def test_upload_fileobj_sets_cache_control_when_given(self, mock_settings, mock_client_class):
+        """upload_fileobj applies an explicit Cache-Control (used for theme assets)."""
+        mock_settings.google_cloud_project = "test-project"
+        mock_settings.gcs_bucket_name = "test-bucket"
+
+        mock_blob = Mock()
+        mock_blob.cache_control = None
+        mock_bucket = Mock()
+        mock_bucket.blob.return_value = mock_blob
+        mock_client = Mock()
+        mock_client.bucket.return_value = mock_bucket
+        mock_client_class.return_value = mock_client
+
+        service = StorageService()
+        service.upload_fileobj(BytesIO(b"img"), "themes/t/assets/bg.png", content_type="image/png",
+                               cache_control="no-store")
+        assert mock_blob.cache_control == "no-store"
+
+        other_blob = Mock()
+        other_blob.cache_control = None
+        mock_bucket.blob.return_value = other_blob
+        service.upload_fileobj(BytesIO(b"x"), "jobs/j/file.bin")
+        assert other_blob.cache_control is None
 
 
 class TestStorageServiceDelete:

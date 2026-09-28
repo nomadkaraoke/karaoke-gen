@@ -434,6 +434,12 @@ class ThemeService:
             True if theme exists, False otherwise
         """
         metadata = self._load_metadata()
+        if any(t.id == theme_id for t in metadata.themes):
+            return True
+        # The registry cache is per-instance: a theme just created (e.g. by the
+        # admin tenant console on another instance) won't be in it yet. Re-read
+        # before rejecting.
+        metadata = self._load_metadata(force_refresh=True)
         return any(t.id == theme_id for t in metadata.themes)
 
     def get_default_theme_id(self) -> Optional[str]:

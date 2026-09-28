@@ -376,6 +376,20 @@ ALLOWED_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
 ALLOWED_FONT_EXTENSIONS = {'.ttf', '.otf', '.woff', '.woff2'}
 
 
+def _require_theme_exists(theme_id: Optional[str], locale: str) -> None:
+    """Reject an unknown theme BEFORE the job document is created.
+
+    ``_prepare_theme_for_job`` runs after ``create_job``; if the theme lookup
+    failed there, the request 400'd but left an orphaned PENDING job behind
+    (e.g. a tenant bulk submit right after the tenant was created).
+    """
+    if theme_id and not get_theme_service().theme_exists(theme_id):
+        raise HTTPException(
+            status_code=400,
+            detail=t(locale, "fileUpload.invalidTheme", theme_id=theme_id)
+        )
+
+
 def _prepare_theme_for_job(
     job_id: str,
     theme_id: str,
@@ -714,6 +728,7 @@ async def upload_and_create_job(
             # UI language the job was submitted in (admin-only signal)
             locale=get_full_locale_from_request(request),
         )
+        _require_theme_exists(effective_theme_id, locale)
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
 
@@ -1304,6 +1319,7 @@ async def create_job_with_upload_urls(
             # UI language the job was submitted in (admin-only signal)
             locale=get_full_locale_from_request(request),
         )
+        _require_theme_exists(effective_theme_id, locale)
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
 
@@ -1997,6 +2013,7 @@ async def create_job_from_url(
             # UI language the job was submitted in (admin-only signal)
             locale=get_full_locale_from_request(request),
         )
+        _require_theme_exists(effective_theme_id, locale)
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
 
@@ -2304,6 +2321,7 @@ async def create_finalise_only_job(
             # UI language the job was submitted in (admin-only signal)
             locale=get_full_locale_from_request(request),
         )
+        _require_theme_exists(effective_theme_id, locale)
         job = job_manager.create_job(job_create, is_admin=auth_result.is_admin)
         job_id = job.job_id
 

@@ -773,6 +773,15 @@ The frontend's `TenantProvider` reads `window.__TENANT_CONFIG__` on startup (no 
 
 **Admin preview**: Admins can preview any tenant's branding in the main app by appending `?preview_tenant=<tenant_id>` to any URL. This bypasses subdomain detection and loads the specified tenant config, useful for verifying branding before DNS cutover.
 
+**Giving a tenant its own subdomain** (not automated — `/admin/tenants` create only writes GCS config + theme). Cloudflare Pages does not accept wildcard custom domains, so each tenant needs:
+1. Pages custom domain on `karaoke-gen-tenant`: `POST /accounts/{acct}/pages/projects/karaoke-gen-tenant/domains {"name":"<id>.nomadkaraoke.com"}`
+2. DNS: proxied `CNAME <id>` → `karaoke-gen-tenant.pages.dev` in the `nomadkaraoke.com` zone (Cloudflare API, not Pulumi)
+3. GCS CORS: add `https://<id>.nomadkaraoke.com` to `infrastructure/modules/storage.py` (`pulumi up`). Tenant **bulk** uploads work without it (resumable sessions carry the Origin); single-track signed PUTs and the review waveform fetch need it.
+
+Tenants with subdomains: `vocalstar`, `singa`, `randy-vild` (steps 1–2 done via API 2026-09-28).
+
+**Theme/tenant edits take effect immediately**: the storage bucket is publicly readable, so GCS would otherwise serve objects with the default `Cache-Control: public, max-age=3600` and even the backend's own reads could return a stale copy for up to an hour after an overwrite. `StorageService.upload_json` writes `no-store`, theme asset/logo uploads pass `cache_control=no-store`, and `download_json` resolves the live generation before downloading (bypassing any cached copy of objects written before this).
+
 ## Tech Stack
 
 - **Backend**: FastAPI, Python 3.12, Cloud Run

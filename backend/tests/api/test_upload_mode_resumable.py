@@ -71,7 +71,7 @@ def endpoint_mocks():
         job_manager.create_job.return_value = Mock(job_id="job-123")
         storage.generate_signed_upload_url.return_value = "https://signed-put"
         storage.create_resumable_upload_session.return_value = "https://session-uri"
-        yield {"storage": storage, "job_manager": job_manager}
+        yield {"storage": storage, "job_manager": job_manager, "theme_svc": theme_svc}
 
 
 @pytest.mark.asyncio
@@ -125,3 +125,17 @@ async def test_requires_audio_edit_not_set_by_default(endpoint_mocks, auth):
     await create_job_with_upload_urls(_request(), _body(), auth)
     keys = [c.args[1] for c in endpoint_mocks["job_manager"].update_state_data.call_args_list]
     assert "requires_audio_edit" not in keys
+
+
+@pytest.mark.asyncio
+async def test_unknown_theme_rejected_before_job_is_created(endpoint_mocks, auth):
+    """Regression: theme validation ran after create_job, so a 400 "Theme not found"
+    (e.g. tenant bulk submit right after tenant creation) left orphaned
+    "Waiting for upload" jobs behind."""
+    from fastapi import HTTPException
+
+    endpoint_mocks["theme_svc"].return_value.theme_exists.return_value = False
+    with pytest.raises(HTTPException) as exc:
+        await create_job_with_upload_urls(_request(), _body(theme_id="missing-theme"), auth)
+    assert exc.value.status_code == 400
+    endpoint_mocks["job_manager"].create_job.assert_not_called()

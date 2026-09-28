@@ -39,7 +39,7 @@ from backend.models.tenant import (
     TenantFeatures,
 )
 from backend.models.theme import ColorOverrides
-from backend.services.storage_service import StorageService
+from backend.services.storage_service import NO_STORE_CACHE_CONTROL, StorageService
 from backend.services.theme_service import METADATA_FILE, THEMES_PREFIX, get_theme_service
 from backend.services.tenant_service import (
     DEFAULT_SENDER_EMAIL,
@@ -330,6 +330,7 @@ def create_tenant(
                 io.BytesIO(data),
                 f"{THEMES_PREFIX}/{theme_id}/assets/{filename}",
                 content_type=_content_type_for(ext),
+                cache_control=NO_STORE_CACHE_CONTROL,
             )
             style_params.setdefault(section, {})["background_image"] = filename
 
@@ -341,7 +342,10 @@ def create_tenant(
             logo_ext = logo_ext.lower().lstrip(".")
             logo_path = f"{TENANTS_PREFIX}/{tenant_id}/logo.{logo_ext}"
             storage.upload_fileobj(
-                io.BytesIO(logo_data), logo_path, content_type=_content_type_for(logo_ext)
+                io.BytesIO(logo_data),
+                logo_path,
+                content_type=_content_type_for(logo_ext),
+                cache_control=NO_STORE_CACHE_CONTROL,
             )
             config.branding.logo_url = f"gs://{settings.gcs_bucket_name}/{logo_path}"
             config.updated_at = datetime.now(timezone.utc)
@@ -462,6 +466,7 @@ def update_tenant(
             io.BytesIO(data),
             f"{THEMES_PREFIX}/{theme_id}/assets/{safe}",
             content_type=_content_type_for(ext),
+            cache_control=NO_STORE_CACHE_CONTROL,
         )
 
     # 2. Full theme style_params replace
@@ -476,7 +481,10 @@ def update_tenant(
         logo_ext = logo_ext.lower().lstrip(".")
         logo_path = f"{TENANTS_PREFIX}/{tenant_id}/logo.{logo_ext}"
         storage.upload_fileobj(
-            io.BytesIO(logo_data), logo_path, content_type=_content_type_for(logo_ext)
+            io.BytesIO(logo_data),
+            logo_path,
+            content_type=_content_type_for(logo_ext),
+            cache_control=NO_STORE_CACHE_CONTROL,
         )
         branding = dict(merged_updates.get("branding") or {})
         branding["logo_url"] = f"gs://{settings.gcs_bucket_name}/{logo_path}"
