@@ -233,6 +233,29 @@ class TestThemeService:
         service = ThemeService(storage=mock_storage)
         assert service.theme_exists("unknown") is False
 
+    def test_theme_exists_refreshes_stale_cache_on_miss(self, mock_storage, sample_metadata):
+        """A theme created after this instance cached the registry is still found."""
+        mock_storage.download_json.return_value = sample_metadata
+        service = ThemeService(storage=mock_storage)
+        service.list_themes()  # warm the per-instance cache without the new theme
+
+        updated = {
+            **sample_metadata,
+            "themes": sample_metadata["themes"]
+            + [{"id": "new-tenant", "name": "New", "description": "New", "is_default": False}],
+        }
+        mock_storage.download_json.return_value = updated
+
+        assert service.theme_exists("new-tenant") is True
+
+    def test_theme_exists_hit_uses_cache(self, mock_storage, sample_metadata):
+        """A cache hit does not re-download the registry."""
+        mock_storage.download_json.return_value = sample_metadata
+        service = ThemeService(storage=mock_storage)
+        service.theme_exists("nomad")
+        service.theme_exists("nomad")
+        assert mock_storage.download_json.call_count == 1
+
     def test_get_default_theme_id(self, mock_storage, sample_metadata):
         """Test get_default_theme_id returns the default theme."""
         mock_storage.download_json.return_value = sample_metadata

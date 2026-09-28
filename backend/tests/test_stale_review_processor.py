@@ -166,6 +166,52 @@ class TestProcessStaleReviews:
         assert call_args[0][1]['state_data.expiry_reminder_sent'] is True
         assert 'state_data.expiry_reminder_sent_at' in call_args[0][1]
 
+    @pytest.mark.parametrize("email", [
+        "e2e-test-runner@nomadkaraoke.com",
+        "abc.xyz@inbox.testmail.app",
+    ])
+    async def test_test_account_reminder_is_silent(self, email, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        """A stranded E2E job hits the 24h window: no email, but still marked so it isn't retried."""
+        job = _make_job(hours_ago=30, user_email=email)
+        mock_firestore.list_jobs.side_effect = [[job], [], []]
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            result = await process_stale_reviews()
+
+        assert result["reminders_sent"] == 1
+        mock_email_service.send_review_reminder.assert_not_called()
+        assert mock_firestore.update_job.call_args[0][1]['state_data.expiry_reminder_sent'] is True
+
+    async def test_test_account_review_expiry_cancels_without_email(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        """A stranded E2E job past 48h is still expired (not left forever), just silently."""
+        job = _make_job(hours_ago=50, user_email="e2e-test-runner@nomadkaraoke.com")
+        mock_firestore.list_jobs.side_effect = [[job], [], []]
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            result = await process_stale_reviews()
+
+        assert result["jobs_expired"] == 1
+        mock_job_manager.cancel_job.assert_called_once()
+        mock_email_service.send_review_expired.assert_not_called()
+
+    async def test_test_account_duration_confirm_expiry_cancels_without_email(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        job = _make_job(
+            hours_ago=50,
+            status=JobStatus.AWAITING_DURATION_CONFIRM,
+            user_email="e2e-test-runner@nomadkaraoke.com",
+        )
+        mock_firestore.list_jobs.side_effect = [[], [], [job]]
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            result = await process_stale_reviews()
+
+        assert result["jobs_expired"] == 1
+        mock_job_manager.cancel_job.assert_called_once()
+        mock_email_service.send_duration_confirm_expired.assert_not_called()
+
     async def test_kjbox_job_reminder_uses_one_click_login_link(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
         """kjbox singers never signed in on gen → the 24h reminder links via a sign-in token."""
         job = _make_job(hours_ago=30)

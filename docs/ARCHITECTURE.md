@@ -272,7 +272,7 @@ Three Cloud Functions manage the community karaoke data pipeline, running daily 
 | Function | Schedule | Purpose |
 |----------|----------|---------|
 | `divebar-mirror` | Daily 2:00 AM ET | Indexes 48K+ files from [diveBar Karaoke Google Drive](https://drive.google.com/drive/folders/1zxnSZcE03gzy0YVGOdnTrEIi8It_3Wu8) into BigQuery `divebar_catalog` |
-| `kn-data-sync` | Daily 3:05 AM + 4:30 AM ET | Fetches KaraokeNerds catalog (281K songs) and community tracks (58K with YouTube URLs) to BigQuery + GCS |
+| `kn-data-sync` | Daily 3:05 AM + 4:30 AM ET | Fetches KaraokeNerds catalog (281K songs) and community tracks (58K with YouTube URLs) to BigQuery + GCS. `full` mode then exports the **kjbox song-identification index** (≈2M songs: Spotify popularity ≥ 30 + all KN; `EXPORT DATA` → `gs://nomadkaraoke-kn-data/song-id/<run>/songs-*.tsv.gz`, manifest `song-id/latest.json`, last 3 runs kept), which the NomadPC downloads. Design: kjbox `docs/SONG-IDENTIFICATION.md` |
 | `divebar-lookup` | Daily 6:00 AM ET + on-demand API | Public search/lookup API for KJ Controller; rebuilds KN↔Divebar cross-reference index |
 
 **Infrastructure** (Pulumi-managed in `infrastructure/`):
@@ -610,12 +610,16 @@ For jobs created by kjbox on behalf of a singer (`request_metadata.client_id` st
 minutes of the audio landing, so the singer can sing now instead of waiting ~30 min for the
 full NOMAD version. Code: `backend/services/quick_version/` (a port of kjbox `fastgen/`).
 
-1. **Before the ensemble**, one fast single-model pass (`mel_band_roformer_instrumental_fv7z_gabox.ckpt`,
-   already baked into the image; MDXC overlap 2; override with `QUICK_VERSION_MODEL`) on the
-   warm L4 → quick instrumental + vocals.
+1. **Before the ensemble**, one fast single-model pass (`UVR-MDX-NET-Inst_HQ_4.onnx`, fastgen's model;
+   baked by `download_models.py` `EXTRA_MODELS`, downloaded on load until the next GPU base rebuild;
+   falls back to the always-baked `mel_band_roformer_instrumental_fv7z_gabox.ckpt`, which took
+   14 s load + 124 s for a 3:15 song on the L4; override with `QUICK_VERSION_MODEL`) → quick
+   instrumental + vocals.
 2. A **background thread** renders the video while the GPU runs the ensemble: LRCLIB lyrics
    (line-synced → time-anchored scroll; plain → constant crawl; none → title card), PIL-rasterised
-   crawl PNG + one ffmpeg `overlay` pass, 854×480, vocals mixed back in at 30% as a guide.
+   crawl PNG + one ffmpeg `overlay` pass, 854×480, vocals mixed back in at 30% as a guide. Every
+   ffmpeg input and the output are bounded with `-t <duration>`: the GPU image's ffmpeg 4.4 never
+   ends on `-shortest` alone once `amix` is involved (first prod job ran into the 300 s join timeout).
 3. Uploads `jobs/{id}/quick/quick.mp4` → `file_urls.quick.video_mp4`, and records
    `state_data.quick_version = {status: separating|rendering|ready|failed, lyrics_tier, ready_at, …}`.
 4. The worker joins the render (≤300 s) before cleaning up its temp dir — even when the ensemble
@@ -772,6 +776,10 @@ The frontend's `TenantProvider` reads `window.__TENANT_CONFIG__` on startup (no 
 **Magic link emails**: When a tenant user requests a magic link, the email uses the tenant-specific URL (e.g., `https://vocalstar.nomadkaraoke.com/auth/verify?token=...`) rather than the main app URL. The `job_notification_service.py` resolves the correct base URL from the tenant config's `subdomain` field.
 
 **Admin preview**: Admins can preview any tenant's branding in the main app by appending `?preview_tenant=<tenant_id>` to any URL. This bypasses subdomain detection and loads the specified tenant config, useful for verifying branding before DNS cutover.
+
+**Tenant subdomains are automatic** (v0.246.0): `/admin/tenants` create provisions `{id}.nomadkaraoke.com` via the Cloudflare API (`services/tenant_domain_service.py`, secret `cloudflare-tenant-domains-token` = account-owned token scoped to Pages Read/Write + DNS Read/Write on the nomadkaraoke.com zone only), and delete removes it. Cloudflare Pages has no wildcard custom domains, so each tenant gets: (1) a Pages custom domain on `karaoke-gen-tenant`, (2) a proxied `CNAME <id>` → `karaoke-gen-tenant.pages.dev`. Existing non-tenant DNS records are never taken over or deleted. **Token blast radius (accepted risk):** Cloudflare can't scope Pages permissions to one project, so this token can modify any Pages project in the account (incl. the consumer `karaoke-gen` site) — it lives only in Secret Manager, readable by the backend SA; rotate it if the backend is ever compromised. DNS access is limited to the nomadkaraoke.com zone. No GCS CORS change is needed (bucket CORS allows any origin — safe because the bucket is private and signed URLs are the auth). Tenants created before this can be backfilled with **Manage → Set up domain** (`POST /api/admin/tenants/{id}/domain`). The subdomain is immutable (derived from the id). After a delete, other backend instances may still serve the tenant's cached config for up to 5 minutes (per-instance `TenantService` TTL).
+
+**Theme/tenant edits take effect immediately**: while the storage bucket was publicly readable (until 2026-09-28), GCS served objects with the default `Cache-Control: public, max-age=3600` and even the backend's own reads could return a stale copy for up to an hour after an overwrite. The bucket is now private (`public_access_prevention=enforced`), and as defence in depth `StorageService.upload_json` writes `no-store`, theme asset/logo uploads pass `cache_control=no-store`, and `download_json` resolves the live generation before downloading (bypassing any cached copy of objects written before this).
 
 ## Tech Stack
 

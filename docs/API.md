@@ -1292,8 +1292,28 @@ GET  /api/admin/tenants/_template
 GET  /api/admin/tenants/{id}
 POST /api/admin/tenants           (multipart/form-data)
 PUT  /api/admin/tenants/{id}      (multipart/form-data)
+DELETE /api/admin/tenants/{id}
+POST /api/admin/tenants/{id}/domain
 Authorization: Bearer <admin token>
 ```
+
+**Lifecycle (v0.246.0):** creating a tenant also provisions its portal at `{id}.nomadkaraoke.com`
+(Cloudflare Pages custom domain on `karaoke-gen-tenant` + proxied CNAME, via
+`services/tenant_domain_service.py` and the `cloudflare-tenant-domains-token` secret). If the
+hostname already has a non-tenant DNS record → `409` before anything is written; if Cloudflare
+fails → the GCS side is rolled back and `502` is returned. `subdomain` must equal
+`{id}.nomadkaraoke.com`. Create and `GET /{id}` responses include
+`domain: {hostname, state: active|provisioning|missing, dns_ok, pages_status}` (certificate issuance
+usually takes ~1 min). `POST /{id}/domain` idempotently (re)provisions (backfill/retry).
+`DELETE /{id}` → `204`: removes the subdomain (only records pointing at the tenant Pages project),
+theme (assets, style_params, registry entry — kept if default or shared) and config/logo; jobs are
+kept. `502` if Cloudflare removal fails (nothing in GCS is deleted, so it can be retried).
+
+**Portal access:** `allowed_emails` (individual addresses, e.g. a client's gmail) and
+`allowed_email_domains` (form fields on create; `config.auth.*` on `PUT`). Either non-empty → only
+listed emails/domains receive magic links (always — the legacy `require_email_domain` flag no
+longer loosens a non-empty allowlist); both empty → open portal. `@nomadkaraoke.com` admins can
+always sign in.
 
 Admin-only endpoints (`require_admin`) that mint and manage white-label tenants from the admin panel
 (`/admin/tenants`), replacing the hand-run `scripts/setup-*-tenant.py` recipe.

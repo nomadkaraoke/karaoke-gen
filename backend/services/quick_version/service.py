@@ -36,9 +36,16 @@ STATE_KEY = "quick_version"
 FILE_CATEGORY = "quick"
 FILE_KEY = "video_mp4"
 
-# Already baked into the GPU image (instrumental_clean preset's first model),
-# so no image rebuild is needed. Override with QUICK_VERSION_MODEL.
-DEFAULT_QUICK_MODEL = "mel_band_roformer_instrumental_fv7z_gabox.ckpt"
+# fastgen's model: a light MDX-Net ONNX (~60 MB), ~10x less compute than a
+# roformer. The baked roformer (instrumental_clean preset's first model) took
+# 14 s to load + 124 s to separate a 3:15 song on the L4 (prod, 2026-09-28).
+# If the ONNX isn't in /models yet, audio-separator downloads it on load
+# (baked by download_models.py on the next GPU base rebuild). Override with
+# QUICK_VERSION_MODEL.
+DEFAULT_QUICK_MODEL = "UVR-MDX-NET-Inst_HQ_4.onnx"
+# Always baked into the GPU image — used if the default can't be loaded
+# (e.g. the model download fails).
+FALLBACK_QUICK_MODEL = "mel_band_roformer_instrumental_fv7z_gabox.ckpt"
 # Roformer (MDXC) overlap: the library default is 8; 2 is ~4x less compute and
 # plenty for a draft.
 QUICK_MDXC_OVERLAP = 2
@@ -106,8 +113,17 @@ def separate_quick(
     }
     if model_dir:
         kwargs["model_file_dir"] = model_dir
-    sep = separator_factory(**kwargs)
-    sep.load_model(model_filename=model)
+    candidates = [model] + ([FALLBACK_QUICK_MODEL] if model != FALLBACK_QUICK_MODEL else [])
+    sep = None
+    for i, name in enumerate(candidates):
+        try:
+            sep = separator_factory(**kwargs)
+            sep.load_model(model_filename=name)
+            break
+        except Exception as exc:
+            if i == len(candidates) - 1:
+                raise
+            logger.warning(f"Quick model {name} failed to load ({exc}); falling back to {candidates[i + 1]}")
     outputs = sep.separate(audio_path, {
         "Instrumental": "quick_instrumental", "Vocals": "quick_vocals",
         "instrumental": "quick_instrumental", "vocals": "quick_vocals",

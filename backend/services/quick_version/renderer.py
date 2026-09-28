@@ -270,11 +270,19 @@ def build_scroll_y_expr(
 def build_ffmpeg_cmd(
     instrumental: str, vocals: Optional[str], vocals_level: float,
     crawl_png: str, y_expr: str, out_path: str, width: int, height: int, fps: int,
+    duration: float,
 ) -> List[str]:
+    """Every input and the output are explicitly bounded to ``duration``.
+
+    ``-shortest`` alone is NOT enough: ffmpeg 4.4 (the GPU image's Ubuntu 22.04
+    package) never ends when an ``amix`` output is paired with the infinite
+    lavfi colour + looped PNG video — a 20 s song rendered 540 s+ of video until
+    the timeout (prod job 405eed71, 2026-09-28). ffmpeg 8 happens to stop."""
+    dur = f"{max(duration, 0.1):.3f}"
     overlay = f"[0:v][1:v]overlay=x=(W-w)/2:y={y_expr}[v]"
     inputs = [
-        "-f", "lavfi", "-i", f"color=c=black:s={width}x{height}:r={fps}",
-        "-loop", "1", "-framerate", str(fps), "-i", crawl_png,
+        "-f", "lavfi", "-i", f"color=c=black:s={width}x{height}:r={fps}:d={dur}",
+        "-loop", "1", "-framerate", str(fps), "-t", dur, "-i", crawl_png,
         "-i", instrumental,
     ]
     if vocals and vocals_level > 0:
@@ -292,6 +300,7 @@ def build_ffmpeg_cmd(
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "26", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
+        "-t", dur,
         "-shortest",
         out_path,
     ]
@@ -339,7 +348,7 @@ def render_quick_video(
     y_expr, _ = build_scroll_y_expr(lines, centers, duration, s.height, img_h, s.reading_frac)
 
     cmd = build_ffmpeg_cmd(instrumental_path, vocals_path, s.vocals_level, crawl_png, y_expr,
-                           out_path, width, s.height, s.fps)
+                           out_path, width, s.height, s.fps, duration)
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=ffmpeg_timeout)
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg failed ({proc.returncode}): {proc.stderr[-2000:]}")

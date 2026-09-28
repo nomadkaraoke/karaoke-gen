@@ -6,9 +6,9 @@ dispatcher. The heavy lifting lives in ``ephemeral.py``:
 
 * ``workflow_job.queued`` webhook → ``create_ephemeral_runner`` (mints a JIT
   config, creates a fresh GCE VM, returns).
-* Cloud Scheduler tick (every 15 min) → ``cleanup_orphans`` (reconciles GCE
+* Cloud Scheduler tick (every 5 min) → ``cleanup_orphans`` (reconciles GCE
   VMs against org-runner registrations, deletes stragglers, de-registers
-  zombies).
+  zombies, then re-dispatches jobs stuck ``queued`` with no runner coming).
 
 Environment variables: see ``ephemeral.py``.
 

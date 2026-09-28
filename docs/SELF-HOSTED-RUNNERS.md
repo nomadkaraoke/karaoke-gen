@@ -34,7 +34,7 @@ GitHub-hosted runners work but are slower (2 vCPU, 7GB RAM) and costs scale line
 | Build runner | 1x `github-build-runner`, `e2-standard-8`, 200GB SSD | Docker image builds (needs more CPU/RAM) |
 | GPU runners | 3x `github-gpu-runner-{1..3}`, `n1-standard-4` + T4 GPU, 200GB SSD | Audio separation model testing |
 | Cloud Function | `github-runner-manager`, Gen2, Python 3.12, 5min timeout | Start/stop VMs based on webhooks and idle checks |
-| Cloud Scheduler | `runner-manager-idle-check`, every 15 min | Trigger idle runner checks |
+| Cloud Scheduler | `runner-manager-idle-check`, every 5 min | Orphan cleanup + stalled-job re-dispatch (see EPHEMERAL-GHA-RUNNERS.md) |
 | Cloud NAT | `github-runners-nat` + `github-runners-router` | Outbound internet for VMs (no external IPs) |
 
 All runner VMs are in `us-central1-a`.

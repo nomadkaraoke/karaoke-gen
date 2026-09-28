@@ -264,8 +264,9 @@ class TestTenantConfig:
         assert basic_config.is_email_allowed("anyone@gmail.com") is True
         assert basic_config.is_email_allowed("user@anything.com") is True
 
-    def test_is_email_allowed_require_domain_false(self):
-        """Test non-matching emails allowed when require_email_domain=False."""
+    def test_is_email_allowed_require_domain_false_still_enforced(self):
+        """A non-empty allowlist is always enforced — the legacy
+        require_email_domain=False loophole no longer lets other emails in."""
         config = TenantConfig(
             id="flexible",
             name="Flexible Tenant",
@@ -278,8 +279,8 @@ class TestTenantConfig:
 
         # Matching domain still works
         assert config.is_email_allowed("user@preferred.com") is True
-        # Non-matching also allowed since require_email_domain=False
-        assert config.is_email_allowed("user@other.com") is True
+        # Non-matching is rejected despite require_email_domain=False
+        assert config.is_email_allowed("user@other.com") is False
 
     def test_is_email_allowed_partial_domain_no_match(self, full_config):
         """Test partial domain matches don't work (must be exact suffix)."""
@@ -287,6 +288,42 @@ class TestTenantConfig:
         assert full_config.is_email_allowed("user@star.com") is False
         # Subdomain of allowed domain should work
         assert full_config.is_email_allowed("user@sub.vocal-star.com") is False
+
+    def test_is_email_allowed_individual_emails(self):
+        """Individual addresses (e.g. a client's gmail) can be allowlisted."""
+        config = TenantConfig(
+            id="randy-vild",
+            name="Randy Vild",
+            subdomain="randy-vild.nomadkaraoke.com",
+            auth=TenantAuth(allowed_emails=["randy@gmail.com"], require_email_domain=True),
+        )
+        assert config.is_email_allowed("randy@gmail.com") is True
+        assert config.is_email_allowed(" Randy@GMAIL.com ") is True
+        assert config.is_email_allowed("other@gmail.com") is False
+
+    def test_is_email_allowed_emails_enforced_even_if_require_flag_false(self):
+        """Listing individual emails always restricts access (legacy flag ignored)."""
+        config = TenantConfig(
+            id="t",
+            name="T",
+            subdomain="t.nomadkaraoke.com",
+            auth=TenantAuth(allowed_emails=["a@gmail.com"], require_email_domain=False),
+        )
+        assert config.is_email_allowed("b@gmail.com") is False
+
+    def test_is_email_allowed_emails_and_domains_combined(self):
+        config = TenantConfig(
+            id="t",
+            name="T",
+            subdomain="t.nomadkaraoke.com",
+            auth=TenantAuth(allowed_emails=["a@gmail.com"], allowed_email_domains=["label.com"]),
+        )
+        assert config.is_email_allowed("a@gmail.com") is True
+        assert config.is_email_allowed("exec@label.com") is True
+        assert config.is_email_allowed("b@gmail.com") is False
+
+    def test_admins_can_always_sign_in(self, full_config):
+        assert full_config.is_email_allowed("andrew@nomadkaraoke.com") is True
 
 
 class TestTenantPublicConfig:

@@ -3,8 +3,10 @@ Ephemeral GitHub Actions runner dispatcher.
 
 Creates a single-use GCE VM per `workflow_job.queued` webhook, registers it as
 a JIT-config ephemeral runner with the nomadkaraoke org, and lets the VM
-self-destruct after the job runs. An orphan-cleanup pass runs every 15 min to
-catch VMs whose job died before the runner could de-register itself.
+self-destruct after the job runs. A scheduled pass (every 5 min) catches VMs
+whose job died before the runner could de-register itself, and re-dispatches
+self-hosted jobs left `queued` with no runner coming (dropped webhook, VM that
+never registered or was preempted).
 
 This module is invoked from main.py when RUNNER_MODE=ephemeral.
 """
@@ -37,6 +39,19 @@ RUNNER_SERVICE_ACCOUNT = os.environ.get(
 # Orphan cleanup thresholds
 ORPHAN_GRACE_MINUTES = int(os.environ.get("ORPHAN_GRACE_MINUTES", "30"))
 MAX_VM_LIFETIME_MINUTES = int(os.environ.get("MAX_VM_LIFETIME_MINUTES", "120"))
+
+# Stalled-job re-dispatch: a self-hosted job still `queued` this long after
+# creation, with no spare runner capacity for its family, gets a fresh VM.
+# Covers dropped webhooks (Cloud Run 429), VMs that never register, and VMs
+# preempted before picking up their job. Kill switch: REDISPATCH_ENABLED=false.
+REDISPATCH_ENABLED = os.environ.get("REDISPATCH_ENABLED", "true").lower() != "false"
+REDISPATCH_AFTER_MINUTES = int(os.environ.get("REDISPATCH_AFTER_MINUTES", "5"))
+MAX_REDISPATCH_PER_TICK = int(os.environ.get("MAX_REDISPATCH_PER_TICK", "5"))
+# Stop retrying a job queued this long: if runners are broken fleet-wide (e.g.
+# a deprecated baked runner version — every VM registers, gets rejected, halts)
+# re-dispatching would launch a doomed VM per job every tick. Past this age a
+# human needs to look; the existing dispatcher alerts cover that.
+REDISPATCH_GIVE_UP_MINUTES = int(os.environ.get("REDISPATCH_GIVE_UP_MINUTES", "60"))
 
 # Max seconds to block confirming the VM *insert operation* succeeded (NOT VM
 # boot — just that the API accepted and fulfilled instance creation). A timeout
@@ -659,6 +674,9 @@ def cleanup_orphans(pat: str) -> dict:
                 else:
                     result["delete_failed"].append(name)
 
+    deleted = set(result["deleted_vms"])
+    live_vms = [(zone, inst) for zone, inst in vms if inst.name not in deleted]
+
     # Zombie runners: ephemeral-named runners with no live VM.
     for runner in runners:
         name = runner["name"]
@@ -677,4 +695,178 @@ def cleanup_orphans(pat: str) -> dict:
             print(f"Failed to deregister {name}: {exc!r}")
             result["deregister_failed"].append(name)
 
+    if REDISPATCH_ENABLED:
+        # Never let a re-dispatch failure mask the cleanup result.
+        try:
+            result["redispatch"] = redispatch_stalled_jobs(pat, live_vms, runner_by_name)
+        except Exception as exc:  # noqa: BLE001
+            print(f"redispatch_stalled_jobs failed: {exc!r}")
+            result["redispatch"] = {"error": str(exc)}
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Stalled-job re-dispatch
+# ---------------------------------------------------------------------------
+
+
+def _parse_github_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def list_org_repos(pat: str) -> list[str]:
+    """Names of the org's non-archived repos (paginated, up to 1000)."""
+    names: list[str] = []
+    page = 1
+    while page <= 10:
+        result = _github_request(
+            "GET", f"/orgs/{GITHUB_ORG}/repos?type=all&per_page=100&page={page}", pat
+        )
+        if not isinstance(result, list):
+            break
+        names.extend(r["name"] for r in result if not r.get("archived"))
+        if len(result) < 100:
+            break
+        page += 1
+    return names
+
+
+def list_queued_self_hosted_jobs(pat: str) -> list[dict]:
+    """Every org job still waiting for a self-hosted runner.
+
+    GitHub has no org-wide "queued jobs" endpoint, so walk each repo's queued
+    and in-progress runs (a deploy job can sit queued inside an in-progress
+    run) and collect their queued jobs. A failure on one repo (e.g. a PAT
+    without access) is logged and skipped rather than aborting the pass.
+    """
+    jobs: list[dict] = []
+    for repo in list_org_repos(pat):
+        try:
+            run_ids: set[int] = set()
+            for status in ("queued", "in_progress"):
+                runs = _github_request(
+                    "GET",
+                    f"/repos/{GITHUB_ORG}/{repo}/actions/runs?status={status}&per_page=50",
+                    pat,
+                )
+                if isinstance(runs, dict):
+                    run_ids.update(r["id"] for r in runs.get("workflow_runs", []))
+            for run_id in sorted(run_ids):
+                run_jobs = _github_request(
+                    "GET",
+                    f"/repos/{GITHUB_ORG}/{repo}/actions/runs/{run_id}/jobs?filter=latest&per_page=100",
+                    pat,
+                )
+                if not isinstance(run_jobs, dict):
+                    continue
+                for job in run_jobs.get("jobs", []):
+                    if job.get("status") == "queued" and "self-hosted" in job.get("labels", []):
+                        jobs.append({**job, "repo": repo})
+        except Exception as exc:  # noqa: BLE001
+            print(f"Skipping {repo} in stalled-job scan: {exc!r}")
+    return jobs
+
+
+def _family_of_runner_name(name: str) -> str | None:
+    """``gha-gpu-windows-abc123`` → ``gpu-windows``; None if not ours."""
+    if not name.startswith("gha-") or "-" not in name[len("gha-"):]:
+        return None
+    return name[len("gha-"):].rsplit("-", 1)[0]
+
+
+def _spare_capacity_by_family(
+    vms: list[tuple[str, compute_v1.Instance]], runner_by_name: dict[str, dict]
+) -> dict[str, int]:
+    """Count runners that could still pick up a queued job, per family.
+
+    A VM counts if it is still booting inside the orphan grace window, or
+    registered, online and idle. "Booting" includes a registered-but-offline
+    runner: ``generate-jitconfig`` registers the runner (offline) before the VM
+    even exists, so a fresh dispatch normally shows up that way. Busy, stopped
+    and past-grace VMs don't count — they will never take a new job.
+    """
+    spare: dict[str, int] = {}
+    for _, instance in vms:
+        family = _family_of_runner_name(instance.name)
+        if family is None or getattr(instance, "status", "") in ("TERMINATED", "STOPPING", "SUSPENDED"):
+            continue
+        runner = runner_by_name.get(instance.name)
+        if runner is None or runner.get("status") != "online":
+            available = _vm_age_minutes(instance) < ORPHAN_GRACE_MINUTES
+        else:
+            available = not runner.get("busy")
+        if available:
+            spare[family] = spare.get(family, 0) + 1
+    return spare
+
+
+def redispatch_stalled_jobs(
+    pat: str,
+    vms: list[tuple[str, compute_v1.Instance]],
+    runner_by_name: dict[str, dict],
+) -> dict:
+    """Launch a fresh runner for each stalled job not covered by spare capacity.
+
+    JIT runners aren't bound to a job — any queued job with matching labels
+    takes the first free runner — so we compare per-family demand (all queued
+    jobs) against spare supply, and only act when some job has been queued
+    longer than REDISPATCH_AFTER_MINUTES (and less than
+    REDISPATCH_GIVE_UP_MINUTES). Launches per family are capped at the number
+    of stalled jobs, and per tick at MAX_REDISPATCH_PER_TICK.
+    """
+    result: dict = {"stalled_jobs": [], "given_up": [], "dispatched": [], "dispatch_failed": []}
+    queued = list_queued_self_hosted_jobs(pat)
+    if not queued:
+        return result
+
+    now = datetime.now(timezone.utc)
+    demand: dict[str, int] = {}
+    stalled: dict[str, list[dict]] = {}
+    for job in queued:
+        family = resolve_family(job["labels"]).name
+        created = job.get("created_at")
+        age = (now - _parse_github_time(created)).total_seconds() / 60 if created else 0
+        if age >= REDISPATCH_GIVE_UP_MINUTES:
+            # Excluded from demand too, so a job we've abandoned doesn't make
+            # every later stalled job in its family look under-supplied.
+            print(f"Not re-dispatching {job['repo']} job {job.get('id')}: queued {age:.0f}min (> give-up)")
+            result["given_up"].append(job.get("id"))
+            continue
+        demand[family] = demand.get(family, 0) + 1
+        if age >= REDISPATCH_AFTER_MINUTES:
+            stalled.setdefault(family, []).append(job)
+            result["stalled_jobs"].append(
+                f"{job['repo']}#{job.get('run_id')}/{job.get('name')} ({age:.0f}min, {family})"
+            )
+
+    spare = _spare_capacity_by_family(vms, runner_by_name)
+    budget = MAX_REDISPATCH_PER_TICK
+    to_launch: list[dict] = []
+    for family, jobs in stalled.items():
+        deficit = demand[family] - spare.get(family, 0)
+        count = min(max(deficit, 0), len(jobs), budget)
+        print(
+            f"Re-dispatch {family}: queued={demand[family]} stalled={len(jobs)} "
+            f"spare={spare.get(family, 0)} launching={count}"
+        )
+        to_launch.extend(jobs[:count])
+        budget -= count
+        if budget <= 0:
+            break
+
+    if not to_launch:
+        return result
+
+    # Each launch blocks up to INSERT_CONFIRM_TIMEOUT_SECONDS; run them in
+    # parallel so a full budget stays well inside the function timeout.
+    with ThreadPoolExecutor(max_workers=len(to_launch)) as ex:
+        futures = {ex.submit(create_ephemeral_runner, job["labels"], pat): job for job in to_launch}
+        for fut in as_completed(futures):
+            job = futures[fut]
+            try:
+                result["dispatched"].append(fut.result()["runner_name"])
+            except Exception as exc:  # noqa: BLE001
+                print(f"Re-dispatch for {job['repo']} job {job.get('id')} failed: {exc!r}")
+                result["dispatch_failed"].append(job.get("id"))
     return result

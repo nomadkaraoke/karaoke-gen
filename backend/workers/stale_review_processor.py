@@ -16,6 +16,7 @@ from backend.models.job import JobStatus
 from backend.services.email_service import get_email_service
 from backend.services.firestore_service import FirestoreService
 from backend.services.job_manager import JobManager
+from backend.utils.test_data import is_test_email
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,8 @@ async def process_stale_reviews() -> Dict[str, Any]:
         - 48h expiry: add_credits(credits_charged) + cancel_job + send_duration_confirm_expired
           The full credits_charged amount (not flat 1) is refunded.
 
-    Excludes made-for-you and tenant jobs.
+    Excludes made-for-you and tenant jobs. Jobs owned by automated-test accounts
+    (e.g. a stranded E2E job) are still expired, but never emailed.
 
     Returns:
         Summary dict with counts and any errors encountered.
@@ -121,6 +123,10 @@ async def process_stale_reviews() -> Dict[str, Any]:
 
             is_duration_confirm = job.status in _DURATION_CONFIRM_STATUSES
 
+            # A stranded E2E job must not email the test account (it forwards to
+            # a real inbox) — still expire it, just silently.
+            send_emails = bool(job.user_email) and not is_test_email(job.user_email)
+
             if hours_elapsed >= REVIEW_EXPIRY_HOURS:
                 if is_duration_confirm:
                     # Duration-confirm expiry: refund full credits_charged, then cancel.
@@ -179,7 +185,7 @@ async def process_stale_reviews() -> Dict[str, Any]:
                                 f"Job {job.job_id}: failed to set duration_confirm_expiry_processed: {flag_err}"
                             )
 
-                        if job.user_email:
+                        if send_emails:
                             try:
                                 email_service.send_duration_confirm_expired(
                                     to_email=job.user_email,
@@ -209,7 +215,7 @@ async def process_stale_reviews() -> Dict[str, Any]:
                         jobs_expired += 1
 
                         # Send expiry notification email
-                        if job.user_email:
+                        if send_emails:
                             try:
                                 from backend.services.user_service import get_user_service
                                 user_service = get_user_service()
@@ -249,7 +255,7 @@ async def process_stale_reviews() -> Dict[str, Any]:
                 )
 
                 # Send reminder email (different email per status)
-                if job.user_email:
+                if send_emails:
                     try:
                         # Look up user locale for email
                         user_locale = "en"

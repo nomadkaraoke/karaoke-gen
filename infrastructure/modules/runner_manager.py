@@ -6,7 +6,7 @@ into a single-use GCE VM via JIT registration, plus a scheduled orphan-cleanup
 pass:
 
 1. Cloud Function (Gen2) — webhook entry point + scheduler entry point
-2. Cloud Scheduler — invokes the cleanup pass every 15 minutes
+2. Cloud Scheduler — invokes the cleanup + stalled-job re-dispatch pass every 5 minutes
 3. IAM bindings — permissions to create/delete Compute Engine instances and
    read the webhook secret + GitHub PAT from Secret Manager
 
@@ -185,7 +185,7 @@ def create_cloud_function(
             service_account_email=service_account.email,
             environment_variables=env_vars,
             min_instance_count=0,  # Scale to zero when not in use
-            max_instance_count=5,  # Allow some concurrency for multiple webhooks
+            max_instance_count=RunnerManagerConfig.FUNCTION_MAX_INSTANCES,
         ),
         opts=pulumi.ResourceOptions(
             depends_on=list(permissions.values()),
@@ -251,7 +251,7 @@ def create_idle_check_scheduler(
     return gcp.cloudscheduler.Job(
         "runner-manager-idle-check",
         name="runner-manager-idle-check",
-        description="Triggers orphan-cleanup pass for ephemeral GHA runner VMs every 15 minutes",
+        description="Triggers orphan-cleanup + stalled-job re-dispatch for ephemeral GHA runners every 5 minutes",
         schedule=RunnerManagerConfig.IDLE_CHECK_SCHEDULE,
         time_zone="UTC",
         region=REGION,
@@ -267,6 +267,11 @@ def create_idle_check_scheduler(
                 audience=function.url,
             ),
         ),
+        # The pass now scans every org repo and may launch VMs (each insert
+        # confirm blocks up to 90s). Match the function timeout so a slow tick
+        # isn't treated as failed and retried while still running — a
+        # concurrent retry could re-dispatch the same stalled jobs twice.
+        attempt_deadline=f"{RunnerManagerConfig.FUNCTION_TIMEOUT}s",
         retry_config=gcp.cloudscheduler.JobRetryConfigArgs(
             retry_count=2,
             max_retry_duration="60s",

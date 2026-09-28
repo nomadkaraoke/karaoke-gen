@@ -111,14 +111,22 @@ class TestLayout:
         assert (expr, timed) == ("480.00", False)
 
     def test_ffmpeg_cmd_mixes_guide_vocals(self):
-        cmd = r.build_ffmpeg_cmd("i.flac", "v.flac", 0.3, "c.png", "Y", "o.mp4", 854, 480, 24)
+        cmd = r.build_ffmpeg_cmd("i.flac", "v.flac", 0.3, "c.png", "Y", "o.mp4", 854, 480, 24, 180.0)
         filt = cmd[cmd.index("-filter_complex") + 1]
         assert "amix=inputs=2:normalize=0" in filt and "volume=0.300" in filt
         assert cmd[-1] == "o.mp4" and "+faststart" in cmd
 
     def test_ffmpeg_cmd_without_vocals_maps_instrumental(self):
-        cmd = r.build_ffmpeg_cmd("i.flac", None, 0.3, "c.png", "Y", "o.mp4", 854, 480, 24)
+        cmd = r.build_ffmpeg_cmd("i.flac", None, 0.3, "c.png", "Y", "o.mp4", 854, 480, 24, 180.0)
         assert "2:a" in cmd and "v.flac" not in cmd
+
+    def test_ffmpeg_cmd_bounds_every_stream_to_duration(self):
+        """ffmpeg 4.4 + amix never ends on -shortest alone (prod 2026-09-28)."""
+        cmd = r.build_ffmpeg_cmd("i.flac", "v.flac", 0.3, "c.png", "Y", "o.mp4", 854, 480, 24, 195.04)
+        assert "color=c=black:s=854x480:r=24:d=195.040" in cmd
+        png = cmd.index("c.png")
+        assert cmd[png - 3:png - 1] == ["-t", "195.040"]
+        assert cmd[-4:-2] == ["-t", "195.040"]
 
     def test_font_is_bundled(self):
         assert os.path.exists(r._FONT_PATH)
@@ -225,6 +233,24 @@ class TestSeparateQuick:
         qs.separate_quick("in.flac", str(tmp_path), None, separator_factory=_FakeSeparator)
         assert _FakeSeparator.instances[0].model == "other.onnx"
         assert "model_file_dir" not in _FakeSeparator.instances[0].kwargs
+
+    def test_falls_back_to_baked_model_when_default_fails(self, tmp_path):
+        class FirstFails(_FakeSeparator):
+            def load_model(self, model_filename):
+                if model_filename == qs.DEFAULT_QUICK_MODEL:
+                    raise RuntimeError("download failed")
+                self.model = model_filename
+        _FakeSeparator.instances.clear()
+        inst, _ = qs.separate_quick("in.flac", str(tmp_path), "/models", separator_factory=FirstFails)
+        assert _FakeSeparator.instances[-1].model == qs.FALLBACK_QUICK_MODEL
+        assert inst.endswith("quick_instrumental.flac")
+
+    def test_both_models_failing_raises(self, tmp_path):
+        class AllFail(_FakeSeparator):
+            def load_model(self, model_filename):
+                raise RuntimeError("nope")
+        with pytest.raises(RuntimeError):
+            qs.separate_quick("in.flac", str(tmp_path), "/models", separator_factory=AllFail)
 
     def test_no_instrumental_raises(self, tmp_path):
         class Empty(_FakeSeparator):

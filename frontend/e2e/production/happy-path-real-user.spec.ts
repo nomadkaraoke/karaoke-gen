@@ -216,10 +216,10 @@ test.describe('E2E Happy Path - Real User with Full UI Interactions', () => {
   // Allow ONE retry. Each retry creates a fresh ~15-20 min karaoke job, so we
   // don't want the prod config's default of 2 — but prod smoke tests can hit
   // genuinely transient infra (encoder cold-start, network blips), and with
-  // retries:0 a single flake hard-fails and PAGES (daily E2E + the post-deploy
-  // canary). One retry lets a genuine flake self-heal on a clean run while
-  // capping the wasted time at a single extra attempt — a passing run never
-  // retries, so there's no steady-state cost.
+  // retries:0 a single flake hard-fails and PAGES (daily E2E). One retry lets
+  // a genuine flake self-heal on a clean run while capping the wasted time at a
+  // single extra attempt — a passing run never retries, so there's no
+  // steady-state cost.
   test.describe.configure({ retries: 1 });
 
   // Safety-net job tracker. The in-flow cleanup (Step 12) only runs on a fully

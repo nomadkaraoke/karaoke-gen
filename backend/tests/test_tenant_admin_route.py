@@ -16,6 +16,7 @@ from backend.services.auth_service import AuthResult, UserType
 from backend.services.tenant_admin_service import (
     TenantConflictError,
     TenantNotFoundError,
+    TenantProvisioningError,
     TenantValidationError,
 )
 from backend.models.tenant import TenantConfig, TenantDefaults, TenantFeatures
@@ -34,6 +35,15 @@ def get_mock_admin():
         user_email="admin@nomadkaraoke.com",
         is_admin=True,
     )
+
+
+DOMAIN = {"hostname": "randy-vild.nomadkaraoke.com", "state": "active", "dns_ok": True, "pages_status": "active"}
+
+
+@pytest.fixture(autouse=True)
+def stub_domain_status(monkeypatch):
+    """Never reach Cloudflare from route tests."""
+    monkeypatch.setattr(tenant_admin, "get_tenant_domain_status", lambda tid: DOMAIN)
 
 
 @pytest.fixture
@@ -239,3 +249,85 @@ def test_list_tenants(client, monkeypatch):
     resp = client.get("/api/admin/tenants")
     assert resp.status_code == 200
     assert resp.json()["tenants"][0]["id"] == "a"
+
+
+def test_get_tenant_detail_includes_domain_status(client, monkeypatch):
+    monkeypatch.setattr(
+        tenant_admin,
+        "get_tenant_detail",
+        lambda tid: {"tenant": {"id": tid}, "theme_id": tid, "style_params": {}, "assets": []},
+    )
+    body = client.get("/api/admin/tenants/randy-vild").json()
+    assert body["domain"] == DOMAIN
+
+
+def test_create_tenant_provisioning_failure_maps_to_502(client, monkeypatch):
+    def fail(**kwargs):
+        raise TenantProvisioningError("Could not set up randy-vild.nomadkaraoke.com: cloudflare 500")
+
+    monkeypatch.setattr(tenant_admin, "create_tenant", fail)
+    resp = client.post("/api/admin/tenants", data={"name": "Randy Vild"})
+    assert resp.status_code == 502
+    assert "cloudflare" in resp.json()["detail"]
+
+
+def test_create_tenant_passes_allowed_emails(client, monkeypatch):
+    captured = {}
+
+    def fake_create(**kwargs):
+        captured.update(kwargs)
+        return _sample_config()
+
+    monkeypatch.setattr(tenant_admin, "create_tenant", fake_create)
+    resp = client.post(
+        "/api/admin/tenants", data={"name": "Randy Vild", "allowed_emails": "randy@gmail.com, me@x.com"}
+    )
+    assert resp.status_code == 201
+    assert captured["allowed_emails"] == ["randy@gmail.com", "me@x.com"]
+    assert resp.json()["domain"] == DOMAIN
+
+
+def test_delete_tenant(client, monkeypatch):
+    deleted = []
+    monkeypatch.setattr(tenant_admin, "delete_tenant", lambda tid: deleted.append(tid))
+    resp = client.delete("/api/admin/tenants/randy-vild")
+    assert resp.status_code == 204
+    assert deleted == ["randy-vild"]
+
+
+def test_delete_tenant_404(client, monkeypatch):
+    def raise_nf(tid):
+        raise TenantNotFoundError("nope")
+
+    monkeypatch.setattr(tenant_admin, "delete_tenant", raise_nf)
+    assert client.delete("/api/admin/tenants/ghost").status_code == 404
+
+
+def test_delete_tenant_cloudflare_failure_502(client, monkeypatch):
+    def fail(tid):
+        raise TenantProvisioningError("Could not remove host")
+
+    monkeypatch.setattr(tenant_admin, "delete_tenant", fail)
+    assert client.delete("/api/admin/tenants/randy-vild").status_code == 502
+
+
+def test_provision_domain_endpoint(client, monkeypatch):
+    monkeypatch.setattr(tenant_admin, "provision_tenant_domain", lambda tid: DOMAIN)
+    resp = client.post("/api/admin/tenants/randy-vild/domain")
+    assert resp.status_code == 200
+    assert resp.json()["domain"] == DOMAIN
+
+
+def test_provision_domain_conflict_409(client, monkeypatch):
+    def conflict(tid):
+        raise TenantConflictError("has foreign DNS records")
+
+    monkeypatch.setattr(tenant_admin, "provision_tenant_domain", conflict)
+    assert client.post("/api/admin/tenants/decide/domain").status_code == 409
+
+
+def test_admin_endpoints_require_admin():
+    app.dependency_overrides.clear()
+    c = TestClient(app)
+    assert c.delete("/api/admin/tenants/randy-vild").status_code in (401, 403)
+    assert c.post("/api/admin/tenants/randy-vild/domain").status_code in (401, 403)

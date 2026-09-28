@@ -133,7 +133,13 @@ class RunnerManagerConfig:
     FUNCTION_TIMEOUT = 300  # 5 minutes
     # Scheduler cadence for the orphan-cleanup pass (reconciles ephemeral VMs
     # against org-runner registrations, deletes stragglers).
-    IDLE_CHECK_SCHEDULE = "*/15 * * * *"  # Every 15 minutes
+    # Also re-dispatches self-hosted jobs stuck `queued` (dropped webhook,
+    # VM that never registered), so the cadence bounds how long a job strands.
+    IDLE_CHECK_SCHEDULE = "*/5 * * * *"  # Every 5 minutes
+    # Each webhook holds an instance for up to ~90s confirming the VM insert,
+    # so a CI burst needs headroom — at 5, bursts got Cloud Run 429s and GitHub
+    # never redelivers a dropped webhook (2026-09-27 stalled deploy).
+    FUNCTION_MAX_INSTANCES = 20
 
 
 class SecretNames:
