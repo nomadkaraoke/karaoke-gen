@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 # Presets to bake into the GPU image
 PRESETS_TO_DOWNLOAD = ["instrumental_clean", "karaoke"]
+# Individual models baked in addition to the presets.
+# UVR-MDX-NET-Inst_HQ_4.onnx: the kjbox make-it "quick version" separation
+# (backend/services/quick_version/service.py).
+EXTRA_MODELS = ["UVR-MDX-NET-Inst_HQ_4.onnx"]
 
 
 def download_preset_models(model_dir: str) -> None:
@@ -34,7 +38,9 @@ def download_preset_models(model_dir: str) -> None:
     for preset_name in PRESETS_TO_DOWNLOAD:
         models_to_download.update(presets[preset_name]["models"])
 
-    logger.info(f"Downloading {len(models_to_download)} models for presets: {PRESETS_TO_DOWNLOAD}")
+    models_to_download.update(EXTRA_MODELS)
+
+    logger.info(f"Downloading {len(models_to_download)} models for presets {PRESETS_TO_DOWNLOAD} + {EXTRA_MODELS}")
     for model in sorted(models_to_download):
         logger.info(f"  Downloading: {model}")
         sep = Separator(model_file_dir=model_dir)
