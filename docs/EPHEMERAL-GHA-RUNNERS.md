@@ -194,13 +194,40 @@ Fresh GCE VM boots from custom image
         ▼
 Boot disk auto-deletes; VM is gone
 
-Every 15 min: orphan cleanup pass
+Every 5 min: orphan cleanup + stalled-job re-dispatch pass
         │  ─ list VMs labelled purpose=gha-ephemeral-runner
         │  ─ cross-reference with org runners list
         │  ─ delete VMs older than 30 min with no registration
         │  ─ delete VMs older than 2 h regardless (hung job protection)
         │  ─ de-register zombie GHA runners with no live VM
+        │  ─ scan every org repo for self-hosted jobs still `queued`
+        │  ─ per family: if a job is queued 5–60 min and queued jobs outnumber
+        │    spare runners (booting VMs + idle online runners), launch the
+        │    shortfall (max 5 per pass)
 ```
+
+### Stalled-job re-dispatch (2026-09-28)
+
+GitHub sends `workflow_job.queued` **once** and never redelivers a failed
+webhook, and the webhook path launches exactly one VM. Three incidents left a
+deploy job `queued` indefinitely (prod half-deployed each time):
+
+* 2026-08-08 / 2026-09-25 — the dispatched GPU-family VM was preempted before it
+  registered; nothing replaced it.
+* 2026-09-27 — the `deploy-backend` webhook got a **Cloud Run 429** ("no
+  available instance"): a CI burst had all 5 function instances busy, each
+  blocked up to 90s confirming its VM insert. No VM was ever created.
+
+Fixes: `max_instance_count` 5 → 20 (`RunnerManagerConfig.FUNCTION_MAX_INSTANCES`),
+and the scheduled pass (now every 5 min) re-dispatches stranded jobs regardless
+of cause. JIT runners aren't bound to a job, so it compares per-family demand
+with spare supply rather than tracking individual jobs. It stops retrying a job
+after 60 min so fleet-wide runner breakage (see "stale baked runner version"
+below) can't become a VM-launch loop. Env knobs on the function:
+`REDISPATCH_ENABLED` (kill switch), `REDISPATCH_AFTER_MINUTES` (5),
+`REDISPATCH_GIVE_UP_MINUTES` (60), `MAX_REDISPATCH_PER_TICK` (5). The scheduler
+response JSON includes a `redispatch` object (`stalled_jobs`, `given_up`,
+`dispatched`, `dispatch_failed`); log lines start `Re-dispatch`.
 
 ## Modes
 

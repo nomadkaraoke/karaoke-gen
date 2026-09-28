@@ -520,6 +520,243 @@ class TestCleanupOrphans:
         assert "gha-general-stuck" not in result["deleted_vms"]
 
 
+def _queued_job(job_id, labels, age_minutes, repo="karaoke-gen", run_id=1, name="Deploy"):
+    created = datetime.now(timezone.utc) - timedelta(minutes=age_minutes)
+    return {
+        "id": job_id,
+        "run_id": run_id,
+        "name": name,
+        "repo": repo,
+        "status": "queued",
+        "labels": labels,
+        "created_at": created.isoformat().replace("+00:00", "Z"),
+    }
+
+
+BUILD_LABELS = ["self-hosted", "linux", "gcp", "docker-build"]
+GPU_LABELS = ["self-hosted", "linux", "gcp", "gpu"]
+
+
+class TestRedispatchStalledJobs:
+    """Stalled `queued` jobs get a fresh VM only when no spare runner is coming."""
+
+    def _run(self, ep, jobs, vms=(), runners=None):
+        with patch.object(ep, "list_queued_self_hosted_jobs", return_value=jobs), patch.object(
+            ep,
+            "create_ephemeral_runner",
+            side_effect=lambda labels, pat: {"runner_name": f"gha-{ep.resolve_family(labels).name}-new"},
+        ) as create:
+            result = ep.redispatch_stalled_jobs("ghp_test", list(vms), runners or {})
+        return result, create
+
+    def test_dropped_webhook_job_is_redispatched(self):
+        # The 2026-09-27 incident: deploy job queued, its webhook got a 429,
+        # so no VM exists for it at all.
+        ep = _fresh_module()
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=12)])
+
+        create.assert_called_once_with(BUILD_LABELS, "ghp_test")
+        assert result["dispatched"] == ["gha-build-new"]
+        assert len(result["stalled_jobs"]) == 1
+
+    def test_young_job_is_left_alone(self):
+        ep = _fresh_module()
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=2)])
+
+        create.assert_not_called()
+        assert result["stalled_jobs"] == []
+
+    def test_booting_vm_covers_the_stalled_job(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-build-booting", age_minutes=3))]
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=8)], vms=vms)
+
+        create.assert_not_called()
+
+    def test_registered_offline_booting_vm_covers_the_stalled_job(self):
+        # generate-jitconfig registers the runner (offline) before the VM boots,
+        # so this is what a fresh dispatch actually looks like.
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-gpu-booting", age_minutes=4))]
+        runners = {"gha-gpu-booting": {"name": "gha-gpu-booting", "status": "offline", "busy": False}}
+        result, create = self._run(ep, [_queued_job(1, GPU_LABELS, age_minutes=7)], vms=vms, runners=runners)
+
+        create.assert_not_called()
+
+    def test_given_up_job_does_not_consume_spare_capacity(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-build-idle", age_minutes=10))]
+        runners = {"gha-build-idle": {"name": "gha-build-idle", "status": "online", "busy": False}}
+        jobs = [_queued_job(1, BUILD_LABELS, age_minutes=90), _queued_job(2, BUILD_LABELS, age_minutes=8)]
+        result, create = self._run(ep, jobs, vms=vms, runners=runners)
+
+        create.assert_not_called()
+        assert result["given_up"] == [1]
+
+    def test_idle_registered_runner_covers_the_stalled_job(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-build-idle", age_minutes=40))]
+        runners = {"gha-build-idle": {"name": "gha-build-idle", "status": "online", "busy": False}}
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=8)], vms=vms, runners=runners)
+
+        create.assert_not_called()
+
+    def test_busy_runner_does_not_count_as_spare(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-build-busy", age_minutes=10))]
+        runners = {"gha-build-busy": {"name": "gha-build-busy", "status": "online", "busy": True}}
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=8)], vms=vms, runners=runners)
+
+        create.assert_called_once()
+
+    def test_never_registered_vm_past_grace_does_not_count_as_spare(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-build-dud", age_minutes=45))]
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=40)], vms=vms)
+
+        create.assert_called_once()
+
+    def test_terminated_vm_does_not_count_as_spare(self):
+        # GPU-preempted runner (2026-09-25 incident shape).
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-gpu-preempted", age_minutes=10, status="TERMINATED"))]
+        result, create = self._run(ep, [_queued_job(1, GPU_LABELS, age_minutes=20)], vms=vms)
+
+        create.assert_called_once_with(GPU_LABELS, "ghp_test")
+
+    def test_spare_capacity_is_per_family(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-general-booting", age_minutes=2))]
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=8)], vms=vms)
+
+        create.assert_called_once_with(BUILD_LABELS, "ghp_test")
+
+    def test_young_jobs_consume_spare_before_stalled_ones_are_covered(self):
+        # One booting VM, one young + one stalled job: the booting VM can only
+        # take one of them, so exactly one extra VM is launched.
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-build-booting", age_minutes=1))]
+        jobs = [_queued_job(1, BUILD_LABELS, age_minutes=1), _queued_job(2, BUILD_LABELS, age_minutes=9)]
+        result, create = self._run(ep, jobs, vms=vms)
+
+        assert create.call_count == 1
+
+    def test_gives_up_on_jobs_queued_past_limit(self):
+        # Fleet-wide runner breakage must not become a VM-launch loop.
+        ep = _fresh_module()
+        result, create = self._run(ep, [_queued_job(1, BUILD_LABELS, age_minutes=90)])
+
+        create.assert_not_called()
+        assert result["given_up"] == [1]
+
+    def test_launches_capped_per_tick(self):
+        ep = _fresh_module(MAX_REDISPATCH_PER_TICK="2")
+        jobs = [_queued_job(i, BUILD_LABELS, age_minutes=10) for i in range(4)]
+        result, create = self._run(ep, jobs)
+
+        assert create.call_count == 2
+
+    def test_dispatch_failure_is_recorded_and_others_continue(self):
+        ep = _fresh_module()
+        jobs = [_queued_job(1, BUILD_LABELS, age_minutes=10), _queued_job(2, BUILD_LABELS, age_minutes=10)]
+        outcomes = iter([RuntimeError("stockout"), {"runner_name": "gha-build-ok"}])
+
+        def fake_create(labels, pat):
+            outcome = next(outcomes)
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+
+        with patch.object(ep, "list_queued_self_hosted_jobs", return_value=jobs), patch.object(
+            ep, "create_ephemeral_runner", side_effect=fake_create
+        ):
+            result = ep.redispatch_stalled_jobs("ghp_test", [], {})
+
+        assert result["dispatched"] == ["gha-build-ok"]
+        assert len(result["dispatch_failed"]) == 1
+
+
+class TestFamilyOfRunnerName:
+    def test_parses_families(self):
+        ep = _fresh_module()
+        assert ep._family_of_runner_name("gha-build-ff3b555e0491") == "build"
+        assert ep._family_of_runner_name("gha-gpu-windows-abc123") == "gpu-windows"
+        assert ep._family_of_runner_name("github-runner-1") is None
+
+
+class TestListQueuedSelfHostedJobs:
+    def test_collects_queued_self_hosted_jobs_across_repos(self):
+        ep = _fresh_module()
+
+        def fake_request(method, path, pat, body=None):
+            if path.startswith("/orgs/test-org/repos"):
+                return [{"name": "karaoke-gen"}, {"name": "old-repo", "archived": True}, {"name": "flacfetch"}]
+            if path.startswith("/repos/test-org/karaoke-gen/actions/runs?status=in_progress"):
+                return {"workflow_runs": [{"id": 11}]}
+            if path.startswith("/repos/test-org/karaoke-gen/actions/runs?status=queued"):
+                return {"workflow_runs": [{"id": 11}]}  # duplicate across statuses
+            if path.startswith("/repos/test-org/karaoke-gen/actions/runs/11/jobs"):
+                return {
+                    "jobs": [
+                        {"id": 1, "status": "queued", "labels": BUILD_LABELS},
+                        {"id": 2, "status": "queued", "labels": ["ubuntu-latest"]},
+                        {"id": 3, "status": "completed", "labels": BUILD_LABELS},
+                    ]
+                }
+            if path.startswith("/repos/test-org/flacfetch/"):
+                raise RuntimeError("403 no access")
+            if path.startswith("/repos/test-org/old-repo/"):
+                raise AssertionError("archived repos must be skipped")
+            return {"workflow_runs": []}
+
+        with patch.object(ep, "_github_request", side_effect=fake_request) as req:
+            jobs = ep.list_queued_self_hosted_jobs("ghp_test")
+
+        assert [(j["repo"], j["id"]) for j in jobs] == [("karaoke-gen", 1)]
+        # Run 11 appeared under both statuses but its jobs are fetched once.
+        job_calls = [c for c in req.call_args_list if "/runs/11/jobs" in c.args[1]]
+        assert len(job_calls) == 1
+
+
+class TestCleanupTriggersRedispatch:
+    def test_redispatch_sees_only_surviving_vms(self):
+        ep = _fresh_module()
+        vms = [
+            ("us-central1-a", _make_instance("gha-build-dead", age_minutes=3, status="TERMINATED")),
+            ("us-central1-a", _make_instance("gha-build-booting", age_minutes=2)),
+        ]
+        with patch.object(ep, "_list_all_ephemeral_vms", return_value=vms), patch.object(
+            ep, "list_org_runners", return_value=[]
+        ), patch.object(ep, "_delete_vm", return_value=("gha-build-dead", "deleted")), patch.object(
+            ep, "_log_serial_tail"
+        ), patch.object(ep, "redispatch_stalled_jobs", return_value={"dispatched": []}) as redispatch:
+            result = ep.cleanup_orphans("ghp_test")
+
+        live = [inst.name for _, inst in redispatch.call_args.args[1]]
+        assert live == ["gha-build-booting"]
+        assert result["redispatch"] == {"dispatched": []}
+
+    def test_redispatch_error_does_not_break_cleanup(self):
+        ep = _fresh_module()
+        with patch.object(ep, "_list_all_ephemeral_vms", return_value=[]), patch.object(
+            ep, "list_org_runners", return_value=[]
+        ), patch.object(ep, "redispatch_stalled_jobs", side_effect=RuntimeError("github down")):
+            result = ep.cleanup_orphans("ghp_test")
+
+        assert result["redispatch"] == {"error": "github down"}
+        assert result["deleted_vms"] == []
+
+    def test_kill_switch_disables_redispatch(self):
+        ep = _fresh_module(REDISPATCH_ENABLED="false")
+        with patch.object(ep, "_list_all_ephemeral_vms", return_value=[]), patch.object(
+            ep, "list_org_runners", return_value=[]
+        ), patch.object(ep, "redispatch_stalled_jobs") as redispatch:
+            result = ep.cleanup_orphans("ghp_test")
+
+        redispatch.assert_not_called()
+        assert "redispatch" not in result
+
+
 class TestLogSerialTail:
     """Serial console capture is best-effort and must never block the delete."""
 
