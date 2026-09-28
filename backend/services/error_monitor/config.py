@@ -55,6 +55,8 @@ MONITORED_CLOUD_RUN_JOBS: list[str] = [
     "audio-download-job",
     # karaoke-decide weekly MusicBrainz dump -> BigQuery refresh
     "mb-refresh",
+    # karaoke-decide ListenBrainz statistics dump -> BigQuery refresh
+    "lb-refresh",
 ]
 
 # Gen2 Cloud Functions log as cloud_run_revision, not cloud_function.
