@@ -71,6 +71,11 @@ GMAIL_LIKE_DOMAINS = {
 
 # Well-known email providers that are never disposable.
 # These skip all external API checks for zero-latency validation.
+# Our own domains are never disposable. External disposable-email APIs have
+# flagged nomadkaraoke.com (auto-learned into manual_domains), which blocked
+# every admin magic-link sign-in.
+NEVER_DISPOSABLE_DOMAINS = {"nomadkaraoke.com"}
+
 WELL_KNOWN_PROVIDERS = {
     "gmail.com",
     "googlemail.com",
@@ -261,8 +266,8 @@ class EmailValidationService:
 
         domain = email.lower().split("@")[-1]
 
-        # Tier 0: Well-known providers — skip everything
-        if domain in WELL_KNOWN_PROVIDERS:
+        # Tier 0: Well-known providers and our own domains — skip everything
+        if domain in WELL_KNOWN_PROVIDERS or domain in NEVER_DISPOSABLE_DOMAINS:
             return False
 
         # Tier 1: Static blocklist (instant, always available)
@@ -394,6 +399,9 @@ class EmailValidationService:
         This persists the result so future checks don't need the API call.
         Fire-and-forget: errors are logged but don't affect the caller.
         """
+        if domain in NEVER_DISPOSABLE_DOMAINS or domain in WELL_KNOWN_PROVIDERS:
+            logger.warning(f"Refusing to auto-learn protected domain as disposable: {domain}")
+            return
         try:
             doc_ref = self.db.collection(BLOCKLISTS_COLLECTION).document(
                 BLOCKLIST_CONFIG_DOC

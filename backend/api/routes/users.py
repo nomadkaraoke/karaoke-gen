@@ -239,7 +239,15 @@ async def send_magic_link(
 
     locale = get_locale_from_request(http_request)
 
-    if email_validation.is_disposable_domain(email):
+    # On a tenant portal, an address the tenant explicitly allowlisted (by email
+    # or domain) was vouched for by an admin — don't second-guess it with the
+    # disposable-domain heuristics (external APIs have false positives).
+    request_tenant_config = get_tenant_config_from_request(http_request)
+    tenant_vouched = bool(
+        request_tenant_config and request_tenant_config.is_explicitly_allowlisted(email)
+    )
+
+    if not tenant_vouched and email_validation.is_disposable_domain(email):
         logger.warning(f"Blocked disposable email signup attempt: {_mask_email(email)}")
         raise HTTPException(
             status_code=422,

@@ -164,6 +164,13 @@ class TenantConfig(BaseModel):
         # Default pattern: {tenant_id}@nomadkaraoke.com
         return f"{self.id}@nomadkaraoke.com"
 
+    def is_explicitly_allowlisted(self, email: str) -> bool:
+        """True if the email is named in allowed_emails or matches an allowed domain."""
+        email_lower = (email or "").strip().lower()
+        if email_lower in [e.strip().lower() for e in self.auth.allowed_emails]:
+            return True
+        return any(email_lower.endswith(f"@{d.lower()}") for d in self.auth.allowed_email_domains)
+
     def is_email_allowed(self, email: str) -> bool:
         """Check if an email address may sign in to this tenant's portal.
 

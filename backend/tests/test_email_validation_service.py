@@ -178,6 +178,23 @@ class TestDisposableDomainDetection:
     def test_detect_invalid_email_returns_false(self, email_service):
         """Test invalid email returns False."""
         assert email_service.is_disposable_domain("notanemail") is False
+
+    def test_own_domain_never_disposable_even_if_blocklisted(self, email_service, mock_db, mock_external_apis):
+        """Regression: nomadkaraoke.com got auto-learned as disposable (external API
+        false positive), blocking every admin magic-link sign-in."""
+        mock_db.collection.return_value.document.return_value.get.return_value.to_dict.return_value[
+            "manual_domains"
+        ] = ["nomadkaraoke.com"]
+        type(email_service)._blocklist_cache = None
+        mock_external_apis.return_value.get.return_value.json.return_value = {"disposable": "true"}
+        assert email_service.is_disposable_domain("randy@nomadkaraoke.com") is False
+        assert email_service.is_disposable_domain("Admin@NomadKaraoke.com") is False
+        mock_external_apis.return_value.get.assert_not_called()
+
+    def test_auto_learn_refuses_own_domain(self, email_service, mock_db):
+        mock_db.reset_mock()
+        email_service._auto_learn_domain("nomadkaraoke.com")
+        mock_db.collection.return_value.document.return_value.set.assert_not_called()
         assert email_service.is_disposable_domain("") is False
 
 
