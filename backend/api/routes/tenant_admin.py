@@ -13,6 +13,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ValidationError
 
 from backend.api.dependencies import require_admin
@@ -52,6 +53,7 @@ class TenantSummary(BaseModel):
     subdomain: Optional[str] = None
     is_active: bool = True
     locked_theme: Optional[str] = None
+    theme_id: Optional[str] = None
     dropbox_path: Optional[str] = None
     created_at: Optional[str] = None
 
@@ -180,8 +182,10 @@ async def admin_tenant_theme_template(auth_data: AuthResult = Depends(require_ad
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+# Sync handlers: FastAPI runs them in its threadpool, so the blocking GCS and
+# Cloudflare calls don't stall the event loop (the admin UI polls this).
 @router.get("/{tenant_id}", response_model=TenantDetailResponse)
-async def admin_get_tenant(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
+def admin_get_tenant(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
     """Return a tenant's full config, theme style_params, and asset list for editing."""
     try:
         detail = get_tenant_detail(tenant_id)
@@ -195,7 +199,7 @@ async def admin_get_tenant(tenant_id: str, auth_data: AuthResult = Depends(requi
 
 
 @router.post("/{tenant_id}/domain", response_model=TenantDomainResponse)
-async def admin_provision_tenant_domain(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
+def admin_provision_tenant_domain(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
     """(Re)provision the tenant's {id}.nomadkaraoke.com subdomain (idempotent)."""
     try:
         domain = provision_tenant_domain(tenant_id)
@@ -210,7 +214,7 @@ async def admin_provision_tenant_domain(tenant_id: str, auth_data: AuthResult = 
 
 
 @router.delete("/{tenant_id}", status_code=204)
-async def admin_delete_tenant(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
+def admin_delete_tenant(tenant_id: str, auth_data: AuthResult = Depends(require_admin)):
     """Delete a tenant: subdomain (Cloudflare), theme, and config. Jobs are kept."""
     try:
         delete_tenant(tenant_id)
@@ -248,7 +252,8 @@ async def admin_update_tenant(
     logo_image = await _read_image(logo, "logo")
 
     try:
-        updated = update_tenant(
+        updated = await run_in_threadpool(
+            update_tenant,
             tenant_id,
             config_updates=config_updates,
             style_params=style,
@@ -326,7 +331,8 @@ async def admin_create_tenant(
         raise HTTPException(status_code=400, detail="style_params must be a JSON object.")
 
     try:
-        config = create_tenant(
+        config = await run_in_threadpool(
+            create_tenant,
             name=name,
             tenant_id=_clean(tenant_id),
             subdomain=_clean(subdomain),
@@ -360,5 +366,5 @@ async def admin_create_tenant(
         tenant=TenantPublicConfig.from_config(config),
         preview_url=_preview_url(config.id),
         subdomain_url=config.get_frontend_url(),
-        domain=get_tenant_domain_status(config.id),
+        domain=await run_in_threadpool(get_tenant_domain_status, config.id),
     )

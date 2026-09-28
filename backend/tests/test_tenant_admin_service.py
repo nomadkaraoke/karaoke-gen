@@ -416,6 +416,8 @@ def test_create_rolls_back_everything_when_provisioning_fails(fake_storage, fake
     registry = json.loads(fake_storage.blobs["themes/_metadata.json"].decode())
     assert [t["id"] for t in registry["themes"]] == ["nomad"]
     assert set(fake_storage.blobs) == set(before)
+    # A half-provisioned Pages domain is cleaned up too
+    assert fake_domains.deprovisioned == ["randy-vild.nomadkaraoke.com"]
 
 
 def test_delete_tenant_removes_domain_theme_and_config(fake_storage, fake_domains):
@@ -523,3 +525,32 @@ def test_update_rejects_invalid_domain(fake_storage):
             "randy-vild", config_updates={"auth": {"allowed_email_domains": ["not a domain"]}},
             storage=fake_storage,
         )
+
+
+def test_update_rejects_subdomain_change(fake_storage):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    with pytest.raises(tas.TenantValidationError, match="can't be changed"):
+        tas.update_tenant("randy-vild", config_updates={"subdomain": "other.nomadkaraoke.com"}, storage=fake_storage)
+    # Same value is fine (the UI may echo it back)
+    tas.update_tenant("randy-vild", config_updates={"subdomain": "randy-vild.nomadkaraoke.com"}, storage=fake_storage)
+
+
+def test_delete_always_deprovisions_canonical_host(fake_storage, fake_domains):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    cfg_path = "tenants/randy-vild/config.json"
+    cfg = json.loads(fake_storage.blobs[cfg_path].decode())
+    cfg["subdomain"] = "legacy.example.com"  # legacy/odd config
+    fake_storage.blobs[cfg_path] = json.dumps(cfg).encode()
+    tas.delete_tenant("randy-vild", storage=fake_storage)
+    assert fake_domains.deprovisioned == ["randy-vild.nomadkaraoke.com"]
+
+
+def test_delete_keeps_theme_not_owned_by_tenant(fake_storage):
+    """A tenant pointing at some other theme (not its 1:1 theme) never deletes it."""
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    fake_storage.blobs["themes/foo/style_params.json"] = b"{}"
+    tas.update_tenant(
+        "randy-vild", config_updates={"defaults": {"locked_theme": "foo", "theme_id": "foo"}}, storage=fake_storage
+    )
+    tas.delete_tenant("randy-vild", storage=fake_storage)
+    assert "themes/foo/style_params.json" in fake_storage.blobs

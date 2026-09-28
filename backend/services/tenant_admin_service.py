@@ -428,6 +428,10 @@ def create_tenant(
             _delete_tenant_storage(storage, tenant_id, theme_id)
         except Exception:  # pragma: no cover - best effort
             logger.exception(f"Rollback of tenant '{tenant_id}' storage failed")
+        try:  # a half-provisioned Pages domain (CNAME failed) must not linger
+            domain_service.deprovision(subdomain)
+        except Exception:  # pragma: no cover - best effort
+            logger.exception(f"Rollback of subdomain {subdomain} failed")
         tenant_service.invalidate_cache(tenant_id)
         theme_service.invalidate_cache()
         raise TenantProvisioningError(f"Could not set up {subdomain}: {exc}") from exc
@@ -529,6 +533,12 @@ def update_tenant(
 
     theme_id = _theme_id_for(config)
 
+    new_subdomain = (config_updates or {}).get("subdomain")
+    if new_subdomain is not None and new_subdomain.strip().lower() != config.subdomain:
+        raise TenantValidationError(
+            "The portal subdomain can't be changed (it is derived from the tenant id)."
+        )
+
     # 1. Assets (uploaded files -> theme assets, keyed by their target basename)
     for name, (data, ext) in (assets or {}).items():
         safe = _safe_asset_name(name)
@@ -613,6 +623,7 @@ def list_tenants(storage: Optional[StorageService] = None) -> List[Dict[str, obj
                 "subdomain": data.get("subdomain"),
                 "is_active": data.get("is_active", True),
                 "locked_theme": defaults.get("locked_theme"),
+                "theme_id": defaults.get("theme_id"),
                 "dropbox_path": defaults.get("dropbox_path"),
                 "created_at": data.get("created_at"),
             }
@@ -671,20 +682,23 @@ def delete_tenant(
     if not config:
         raise TenantNotFoundError(f"Tenant '{tenant_id}' not found.")
 
-    hostname = (config.subdomain or "").strip().lower()
-    if hostname == f"{tenant_id}.{BASE_DOMAIN}":
-        try:
-            domain_service.deprovision(hostname)
-        except TenantDomainError as exc:
-            raise TenantProvisioningError(f"Could not remove {hostname}: {exc}") from exc
+    # Always the canonical host (subdomain changes are rejected, but legacy
+    # configs could differ) — deprovision only ever touches OUR records.
+    hostname = TenantDomainService.hostname_for(tenant_id)
+    try:
+        domain_service.deprovision(hostname)
+    except TenantDomainError as exc:
+        raise TenantProvisioningError(f"Could not remove {hostname}: {exc}") from exc
 
+    # Only delete the tenant's own 1:1 theme (the one create_tenant made), and
+    # never if another tenant uses it or it is the default theme.
     theme_id: Optional[str] = _theme_id_for(config)
     shared = any(
-        t.get("id") != tenant_id and t.get("locked_theme") == theme_id
+        t.get("id") != tenant_id and theme_id in (t.get("locked_theme"), t.get("theme_id"))
         for t in list_tenants(storage)
     )
-    if shared or theme_id == theme_service.get_default_theme_id():
-        logger.info(f"Keeping theme '{theme_id}' (shared or default) while deleting tenant '{tenant_id}'")
+    if theme_id != tenant_id or shared or theme_id == theme_service.get_default_theme_id():
+        logger.info(f"Keeping theme '{theme_id}' while deleting tenant '{tenant_id}'")
         theme_id = None
 
     _delete_tenant_storage(storage, tenant_id, theme_id)

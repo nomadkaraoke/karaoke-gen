@@ -253,21 +253,25 @@ export default function AdminTenantsPage() {
   }
 
   // After create, poll the portal subdomain until Cloudflare has issued its cert.
+  const createdId = created?.tenant.id
+  const createdActive = created?.domain?.state === "active"
   useEffect(() => {
-    if (!created || created.domain?.state === "active") return
+    // Keyed on the tenant id only, so status flapping can't reset the try cap.
+    if (!createdId || createdActive) return
     let tries = 0
     const timer = setInterval(async () => {
       tries += 1
       try {
-        const d = await adminApi.getTenant(created.tenant.id)
+        const d = await adminApi.getTenant(createdId)
         setCreated((c) => (c ? { ...c, domain: d.domain } : c))
-        if (d.domain?.state === "active" || tries >= 40) clearInterval(timer)
+        if (d.domain?.state === "active") clearInterval(timer)
       } catch {
-        if (tries >= 40) clearInterval(timer)
+        // keep polling until the cap
       }
+      if (tries >= 40) clearInterval(timer)
     }, 5000)
     return () => clearInterval(timer)
-  }, [created?.tenant.id, created?.domain?.state]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [createdId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const copyPreview = async () => {
     if (!created) return
