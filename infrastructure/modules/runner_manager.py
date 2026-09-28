@@ -267,6 +267,11 @@ def create_idle_check_scheduler(
                 audience=function.url,
             ),
         ),
+        # The pass now scans every org repo and may launch VMs (each insert
+        # confirm blocks up to 90s). Match the function timeout so a slow tick
+        # isn't treated as failed and retried while still running — a
+        # concurrent retry could re-dispatch the same stalled jobs twice.
+        attempt_deadline=f"{RunnerManagerConfig.FUNCTION_TIMEOUT}s",
         retry_config=gcp.cloudscheduler.JobRetryConfigArgs(
             retry_count=2,
             max_retry_duration="60s",

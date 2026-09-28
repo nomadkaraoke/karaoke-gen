@@ -780,9 +780,11 @@ def _spare_capacity_by_family(
 ) -> dict[str, int]:
     """Count runners that could still pick up a queued job, per family.
 
-    A VM counts if it is booting (not yet registered, still inside the orphan
-    grace window) or registered, online and idle. Busy, stopped and
-    past-grace unregistered VMs don't — they will never take a new job.
+    A VM counts if it is still booting inside the orphan grace window, or
+    registered, online and idle. "Booting" includes a registered-but-offline
+    runner: ``generate-jitconfig`` registers the runner (offline) before the VM
+    even exists, so a fresh dispatch normally shows up that way. Busy, stopped
+    and past-grace VMs don't count — they will never take a new job.
     """
     spare: dict[str, int] = {}
     for _, instance in vms:
@@ -790,10 +792,10 @@ def _spare_capacity_by_family(
         if family is None or getattr(instance, "status", "") in ("TERMINATED", "STOPPING", "SUSPENDED"):
             continue
         runner = runner_by_name.get(instance.name)
-        if runner is None:
+        if runner is None or runner.get("status") != "online":
             available = _vm_age_minutes(instance) < ORPHAN_GRACE_MINUTES
         else:
-            available = runner.get("status") == "online" and not runner.get("busy")
+            available = not runner.get("busy")
         if available:
             spare[family] = spare.get(family, 0) + 1
     return spare
@@ -823,13 +825,16 @@ def redispatch_stalled_jobs(
     stalled: dict[str, list[dict]] = {}
     for job in queued:
         family = resolve_family(job["labels"]).name
-        demand[family] = demand.get(family, 0) + 1
         created = job.get("created_at")
         age = (now - _parse_github_time(created)).total_seconds() / 60 if created else 0
         if age >= REDISPATCH_GIVE_UP_MINUTES:
+            # Excluded from demand too, so a job we've abandoned doesn't make
+            # every later stalled job in its family look under-supplied.
             print(f"Not re-dispatching {job['repo']} job {job.get('id')}: queued {age:.0f}min (> give-up)")
             result["given_up"].append(job.get("id"))
-        elif age >= REDISPATCH_AFTER_MINUTES:
+            continue
+        demand[family] = demand.get(family, 0) + 1
+        if age >= REDISPATCH_AFTER_MINUTES:
             stalled.setdefault(family, []).append(job)
             result["stalled_jobs"].append(
                 f"{job['repo']}#{job.get('run_id')}/{job.get('name')} ({age:.0f}min, {family})"

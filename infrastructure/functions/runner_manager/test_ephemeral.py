@@ -573,6 +573,26 @@ class TestRedispatchStalledJobs:
 
         create.assert_not_called()
 
+    def test_registered_offline_booting_vm_covers_the_stalled_job(self):
+        # generate-jitconfig registers the runner (offline) before the VM boots,
+        # so this is what a fresh dispatch actually looks like.
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-gpu-booting", age_minutes=4))]
+        runners = {"gha-gpu-booting": {"name": "gha-gpu-booting", "status": "offline", "busy": False}}
+        result, create = self._run(ep, [_queued_job(1, GPU_LABELS, age_minutes=7)], vms=vms, runners=runners)
+
+        create.assert_not_called()
+
+    def test_given_up_job_does_not_consume_spare_capacity(self):
+        ep = _fresh_module()
+        vms = [("us-central1-a", _make_instance("gha-build-idle", age_minutes=10))]
+        runners = {"gha-build-idle": {"name": "gha-build-idle", "status": "online", "busy": False}}
+        jobs = [_queued_job(1, BUILD_LABELS, age_minutes=90), _queued_job(2, BUILD_LABELS, age_minutes=8)]
+        result, create = self._run(ep, jobs, vms=vms, runners=runners)
+
+        create.assert_not_called()
+        assert result["given_up"] == [1]
+
     def test_idle_registered_runner_covers_the_stalled_job(self):
         ep = _fresh_module()
         vms = [("us-central1-a", _make_instance("gha-build-idle", age_minutes=40))]
