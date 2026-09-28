@@ -2094,3 +2094,20 @@ of these two gates.
 - **Removing a serverless VPC connector from a gcloud-deployed Cloud Run service needs
   `--clear-vpc-connector`**: just dropping `--vpc-connector` from `gcloud run deploy`
   keeps the existing setting. Detach every service/job before deleting the connector.
+
+## A public GCS bucket makes the backend read its own stale writes (2026-09-28, v0.245.3)
+
+`karaoke-gen-storage-nomadkaraoke` had an out-of-band `allUsers` objectViewer grant
+(added by hand 2025-12-22 to host a one-off `public/job-inspector.html`; never in Pulumi).
+Besides exposing every customer file to anonymous listing, it changed caching: GCS serves
+publicly readable objects without an explicit Cache-Control as `public, max-age=3600`,
+and **authenticated API reads can be answered from that edge cache too**. A tenant created
+in the admin console was "Theme not found" for new jobs because the backend downloaded the
+pre-tenant `themes/_metadata.json` two minutes after it was rewritten.
+
+- Never make the main bucket public for convenience — host debug pages elsewhere or sign a URL.
+  `public_access_prevention="enforced"` is now set in Pulumi so a stray grant can't take effect.
+- Mutable JSON is written `no-store` and `download_json` reads the live generation
+  (`bucket.get_blob` → generation-pinned download), so this class of staleness can't recur.
+- Removing an IAM member that Pulumi doesn't manage needs an explicit
+  `gcloud storage buckets remove-iam-policy-binding`; PAP=enforced blocks it meanwhile.
