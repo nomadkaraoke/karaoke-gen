@@ -397,6 +397,7 @@ class WorkerService:
             job_id=job_id,
             cloud_run_job_name="audio-download-job",
             worker_module="audio_download_worker",
+            location=self.settings.cpu_jobs_region,
         )
 
     async def trigger_bulk_search_worker(self, batch_id: str) -> bool:
@@ -419,7 +420,7 @@ class WorkerService:
                 logger.error("GOOGLE_CLOUD_PROJECT not set, cannot trigger bulk search job")
                 return False
 
-            location = self.settings.gcp_region
+            location = self.settings.cpu_jobs_region
             job_name = f"projects/{project}/locations/{location}/jobs/bulk-search-job"
             client = run_v2.JobsClient()
             request = run_v2.RunJobRequest(
@@ -472,6 +473,7 @@ class WorkerService:
             job_id=job_id,
             cloud_run_job_name="lyrics-transcription-job",
             worker_module="lyrics_worker",
+            location=self.settings.cpu_jobs_region,
         )
     
     async def trigger_screens_worker(self, job_id: str) -> bool:

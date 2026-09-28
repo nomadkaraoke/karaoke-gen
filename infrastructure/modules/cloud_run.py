@@ -12,6 +12,34 @@ from config import PROJECT_ID, REGION
 
 AUDIO_WORKER_GPU_REGION = "us-east4"  # L4 GPU quota available here
 
+# Region for the latency-critical CPU jobs (audio-download, lyrics-transcription,
+# bulk-search). Cloud Run Jobs in us-central1 queue 2-5 min before the container
+# starts, regardless of image size or CPU (measured 2026-09-28 with Google's tiny
+# sample job image: us-central1 4-5 min, us-east4 8-19s). Must match the
+# backend's CPU_JOBS_REGION default (backend/config.py). GCP_REGION inside these
+# jobs stays REGION: the bucket, queues and other resources are still there.
+CPU_JOBS_REGION = "us-east4"
+
+
+def cpu_job_image(region: str) -> str:
+    """CPU backend image for a job in ``region``, pulled from a same-region registry.
+
+    CI pushes the CPU app image to both us-central1 (karaoke-repo) and us-east4
+    (the existing karaoke-backend-gpu repo, as ``karaoke-backend-cpu``) so jobs
+    never pull the multi-GB image across regions (Artifact Registry egress).
+    """
+    if region == REGION:
+        return f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest"
+    if region == AUDIO_WORKER_GPU_REGION:
+        return f"{region}-docker.pkg.dev/{PROJECT_ID}/karaoke-backend-gpu/karaoke-backend-cpu:latest"
+    raise ValueError(f"No CPU backend image registry configured for region {region}")
+
+
+def _job_resource_name(base: str, region: str) -> str:
+    """Pulumi logical name: unchanged for REGION, suffixed for other regions so the
+    us-east4 job can coexist with the legacy us-central1 one during cutover."""
+    return base if region == REGION else f"{base}-{region}"
+
 
 def create_domain_mapping() -> cloudrun.DomainMapping:
     """
@@ -38,6 +66,7 @@ def create_domain_mapping() -> cloudrun.DomainMapping:
 def create_lyrics_transcription_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,
+    region: str = REGION,
 ) -> cloudrunv2.Job:
     """
     Create the Cloud Run Job for lyrics transcription.
@@ -56,14 +85,15 @@ def create_lyrics_transcription_job(
         cloudrunv2.Job: The Cloud Run Job resource.
     """
     lyrics_transcription_job = cloudrunv2.Job(
-        "lyrics-transcription-job",
+        _job_resource_name("lyrics-transcription-job", region),
         name="lyrics-transcription-job",
-        location=REGION,
+        location=region,
+        deletion_protection=False,  # Allow the legacy-region copy to be removed
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
                     cloudrunv2.JobTemplateTemplateContainerArgs(
-                        image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+                        image=cpu_job_image(region),
                         args=["python", "-m", "backend.workers.lyrics_worker"],
                         resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
                             limits={
@@ -271,6 +301,7 @@ def create_audio_separation_job(
 def create_audio_download_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,
+    region: str = REGION,
 ) -> cloudrunv2.Job:
     """
     Create the Cloud Run Job for audio downloading.
@@ -290,14 +321,15 @@ def create_audio_download_job(
     """
 
     audio_download_job = cloudrunv2.Job(
-        "audio-download-job",
+        _job_resource_name("audio-download-job", region),
         name="audio-download-job",
-        location=REGION,
+        location=region,
+        deletion_protection=False,  # Allow the legacy-region copy to be removed
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
                     cloudrunv2.JobTemplateTemplateContainerArgs(
-                        image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+                        image=cpu_job_image(region),
                         args=["python", "-m", "backend.workers.audio_download_worker"],
                         resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
                             limits={
@@ -398,6 +430,7 @@ def create_audio_download_job(
 def create_bulk_search_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,
+    region: str = REGION,
 ) -> cloudrunv2.Job:
     """
     Create the Cloud Run Job for Bulk Mode batch audio search.
@@ -412,14 +445,15 @@ def create_bulk_search_job(
     """
 
     bulk_search_job = cloudrunv2.Job(
-        "bulk-search-job",
+        _job_resource_name("bulk-search-job", region),
         name="bulk-search-job",
-        location=REGION,
+        location=region,
+        deletion_protection=False,  # Allow the legacy-region copy to be removed
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
                     cloudrunv2.JobTemplateTemplateContainerArgs(
-                        image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+                        image=cpu_job_image(region),
                         args=["python", "-m", "backend.workers.bulk_search_worker"],
                         resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
                             limits={

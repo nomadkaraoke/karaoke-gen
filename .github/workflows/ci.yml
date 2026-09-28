@@ -1106,6 +1106,13 @@ jobs:
       GPU_REPOSITORY: karaoke-backend-gpu
       GPU_BASE_IMAGE_NAME: karaoke-backend-gpu-base
       GPU_APP_IMAGE_NAME: karaoke-backend
+      # CPU app image copy for the latency-critical CPU jobs (audio-download,
+      # lyrics-transcription, bulk-search) in us-east4, where Cloud Run Jobs start
+      # in ~15s instead of 2-5 min. Lives in the existing us-east4 repo so the jobs
+      # pull same-region; only changed app layers cross regions on each push.
+      CPU_JOBS_REGISTRY: us-east4-docker.pkg.dev
+      CPU_JOBS_REPOSITORY: karaoke-backend-gpu
+      CPU_JOBS_IMAGE_NAME: karaoke-backend-cpu
     steps:
       - name: Check disk space (aggressive for Docker builds)
         run: |
@@ -1859,6 +1866,9 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:v${{ steps.version_check.outputs.version }}
+            ${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:latest
+            ${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:v${{ steps.version_check.outputs.version }}
           # Registry cache for app layers
           # ignore-error=true allows build to continue if cache doesn't exist yet
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:cache,ignore-error=true
@@ -2127,6 +2137,7 @@ jobs:
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:${{ github.sha }}"
           GPU_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:${{ github.sha }}"
+          CPU_JOBS_IMAGE="${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:${{ github.sha }}"
 
           echo "📦 Updating Cloud Run Jobs..."
 
@@ -2137,7 +2148,9 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
-          # Lyrics transcription job (CPU, us-central1)
+          # Lyrics transcription job (CPU, us-east4 — see CPU_JOBS_REGION in
+          # backend/config.py). audio-download-job and bulk-search-job track the
+          # :latest tag pushed above, so they need no update here.
           # NOTE: image-only update. Adding --update-secrets here crashed gcloud
           # ("Invalid secret path ... in annotation") because this job's existing
           # secrets are stored via Cloud Run secret *aliases* that --update-secrets
@@ -2147,8 +2160,8 @@ jobs:
           # doc); until then the proactive flag stays unset and the worker's
           # _run_proactive_auto_correct() returns early (no-op).
           gcloud run jobs update lyrics-transcription-job \
-            --image "$IMAGE" \
-            --region us-central1 \
+            --image "$CPU_JOBS_IMAGE" \
+            --region us-east4 \
             --project ${{ env.PROJECT_ID }} \
             --quiet
 

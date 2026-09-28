@@ -6,6 +6,28 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Cloud Run Job start latency was the region, not our image (Sep 2026, v0.246.3)
+
+Every us-central1 CPU Cloud Run Job (download, lyrics, encoding, error monitor, even decide's 203 MB
+image on 4 CPU) waited 2-5 min between "execution created" and the container starting. The obvious
+suspects were image size, lazy imports and CPU, and all three were wrong. The execution's `Started`
+condition fired about 10s before the first Python log, so Python wasn't the problem. The decisive
+test was a throwaway job running Google's tiny sample image in three regions:
+**us-central1 4-5 min, us-east4 8-19s, us-east1 8-25s.** All four us-central1 probes started in the
+same second, so executions are queued and released in batches on Google's side. Quotas were far from
+their limits.
+
+- **Separate your own startup time from the platform's first.** Compare `status.startTime`, the
+  `Started` condition's `lastTransitionTime`, and the first app log line. Only the last gap is ours.
+- **An A/B with a trivial image across regions** isolates platform behaviour in minutes and costs
+  pennies. Do it before optimizing image size or imports.
+- **When moving a job's region, keep the data-heavy jobs next to the bucket.** Download, lyrics and
+  bulk search move small files, so they moved to us-east4. `video-encoding-job` pulls multi-GB
+  outputs, so it stayed. Also push the image to a same-region registry so the multi-GB image never
+  crosses regions (Artifact Registry egress).
+- **Keep region-for-jobs separate from `GCP_REGION`.** The workers still use `GCP_REGION` for other
+  resources. Same lesson as `cloud_tasks_region` (job b8bda9c2).
+
 ## "Eager" prep keyed to the wrong pipeline stage silently became lazy (Sep 2026, v0.238.0)
 
 **Symptom:** clicking the backing-vocals waveform in the preview modal played nothing for 7-15 s.
