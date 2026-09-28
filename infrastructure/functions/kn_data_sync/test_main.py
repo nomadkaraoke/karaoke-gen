@@ -79,7 +79,7 @@ def test_export_writes_manifest_for_this_run_only(clients):
     out = main._export_song_id_index()
     sql = bq.query.call_args[0][0]
     assert sql.startswith("EXPORT DATA OPTIONS(uri='gs://nomadkaraoke-kn-data/song-id/")
-    assert "compression='GZIP'" in sql and "karaokenerds_raw" in sql and "spotify_tracks_normalized" in sql
+    assert "compression='GZIP'" in sql and "karaokenerds_raw" in sql and "spotify_tracks_normalized" in sql and "mb_recordings_enriched" in sql
     manifest = json.loads(gcs.uploaded["song-id/latest.json"])
     assert manifest["run"] == out["run"] and out["shards"] == 2
     assert all(f"/song-id/{out['run']}/" in s for s in manifest["shards"])
