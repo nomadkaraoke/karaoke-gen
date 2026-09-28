@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/lib/auth"
+import { useTenant } from "@/lib/tenant"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { AuthDialog } from "./AuthDialog"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
@@ -30,6 +31,8 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
   const tHeader = useTranslations('header')
   const router = useRouter()
   const { user, logout } = useAuth()
+  // Tenant portals are billed under a separate agreement: no consumer credits UI.
+  const { isDefault: showCredits } = useTenant()
   const { showTestData, setShowTestData } = useAdminSettings()
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
@@ -76,17 +79,19 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             <span className="hidden sm:inline max-w-[150px] truncate">
               {user.display_name || user.email}
             </span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation()
-                handleBuyCredits()
-              }}
-              className="flex items-center gap-1 text-warning font-medium hover:text-warning/80 transition-colors cursor-pointer"
-              title={t('buyMoreCredits')}
-            >
-              <Coins className="w-3 h-3" />
-              {t('creditsAvailable', { count: user.credits })}
-            </span>
+            {showCredits && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleBuyCredits()
+                }}
+                className="flex items-center gap-1 text-warning font-medium hover:text-warning/80 transition-colors cursor-pointer"
+                title={t('buyMoreCredits')}
+              >
+                <Coins className="w-3 h-3" />
+                {t('creditsAvailable', { count: user.credits })}
+              </span>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56 bg-card border-border">
@@ -98,6 +103,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </DropdownMenuLabel>
+          {showCredits && (<>
           <DropdownMenuSeparator className="bg-border" />
           <DropdownMenuItem
             className="text-muted-foreground focus:text-foreground focus:bg-secondary cursor-default"
@@ -135,6 +141,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
               <span>{t('earnFreeCredit')}</span>
             </DropdownMenuItem>
           )}
+          </>)}
           {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
             <>
               <DropdownMenuSeparator className="bg-border" />
@@ -172,10 +179,12 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
         open={showFeedbackDialog}
         onClose={() => setShowFeedbackDialog(false)}
       />
-      <BuyCreditsDialog
-        open={showBuyCreditsDialog}
-        onClose={() => setShowBuyCreditsDialog(false)}
-      />
+      {showCredits && (
+        <BuyCreditsDialog
+          open={showBuyCreditsDialog}
+          onClose={() => setShowBuyCreditsDialog(false)}
+        />
+      )}
     </>
     )
   }

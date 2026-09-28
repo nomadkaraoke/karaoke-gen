@@ -114,8 +114,14 @@ function VerifyMagicLinkContent() {
           }
         }
 
-        // Show appropriate interstitial based on credit status
-        if (status === "granted" && credits > 0) {
+        // Show appropriate interstitial based on credit status. Never on a tenant
+        // portal — tenants don't use consumer credits (backend sends not_applicable;
+        // this is defence in depth).
+        const isTenantLogin = !!lastVerifyResponse?.tenant_subdomain
+        if (isTenantLogin) {
+          setState("success")
+          setTimeout(() => router.push("/app"), 1500)
+        } else if (status === "granted" && credits > 0) {
           setState("credits_granted")
         } else if (status === "denied") {
           setState("credits_denied")

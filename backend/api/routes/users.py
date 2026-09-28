@@ -365,7 +365,9 @@ async def send_magic_link(
     # will be ready and verification will be instant.
     # Skip for test emails — they get auto-granted without evaluation.
     # Skip for board sign-in — it never grants a welcome credit, so there's nothing to eval.
-    if existing_user is None and not is_test_email(email) and not is_board_signin:
+    # Skip for tenant portals — tenant users are billed under a separate agreement and
+    # never get consumer welcome credits.
+    if existing_user is None and not is_test_email(email) and not is_board_signin and not tenant_id:
         thread = threading.Thread(
             target=_precompute_credit_eval,
             args=(magic_link.token, email),
@@ -571,14 +573,16 @@ async def verify_magic_link(
     # Board sign-in grants NO welcome credit — it's identity only. The credit is granted
     # later, when the user converts via the "make it yourself now" flow (claim endpoint),
     # or when their requested track gets picked (Phase 2).
+    # Tenant portal sign-ins never touch consumer credits (no eval, no denial/welcome
+    # emails, no credit interstitial) — tenants have a separate commercial agreement.
     result = complete_verified_login(
         user,
         user_service=user_service,
         email_service=email_service,
         is_first_login=is_first_login,
         precomputed_eval=precomputed_eval,
-        grant_welcome_credit=magic_link_purpose != "requests_board",
-        referral_code=referral_code,
+        grant_welcome_credit=magic_link_purpose != "requests_board" and not magic_link_tenant_id,
+        referral_code=referral_code if not magic_link_tenant_id else None,
         locale=locale if has_accept_language else None,
         ui_locale=get_full_locale_from_request(http_request),
         ip_address=ip_address,

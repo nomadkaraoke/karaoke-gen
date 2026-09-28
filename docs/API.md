@@ -1312,7 +1312,13 @@ kept. `502` if Cloudflare removal fails (nothing in GCS is deleted, so it can be
 **Portal access:** `allowed_emails` (individual addresses, e.g. a client's gmail) and
 `allowed_email_domains` (form fields on create; `config.auth.*` on `PUT`). Either non-empty → only
 listed emails/domains receive magic links (always — the legacy `require_email_domain` flag no
-longer loosens a non-empty allowlist); both empty → open portal. `@nomadkaraoke.com` admins can
+longer loosens a non-empty allowlist); both empty → **admins only** (never an open portal).
+
+**Tenant users never touch consumer credits** (v0.247.0): tenant-portal sign-ins skip the welcome
+credit (no AI credit eval, no credits-denied/welcome emails, `credit_status: not_applicable`) and
+referral attribution; tenant jobs (`tenant_id` set) are never credit-checked or charged and are created
+with `payment_bypassed` (no duration-credit pauses, no refunds). Tenants are billed under a separate
+agreement. The frontend hides credits, Buy Credits and Referrals on tenant portals. `@nomadkaraoke.com` admins can
 always sign in.
 
 Admin-only endpoints (`require_admin`) that mint and manage white-label tenants from the admin panel

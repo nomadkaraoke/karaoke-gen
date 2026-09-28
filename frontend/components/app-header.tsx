@@ -65,10 +65,13 @@ export function AppHeader({ children }: { children?: ReactNode }) {
         <div className="flex items-center gap-2 shrink-0">
           {children}
           <HelpDropdown tHeader={tHeader} />
-          <Link href="/app/referrals" className="flex items-center gap-1.5 text-sm hover:underline min-h-[40px] px-3" style={{ color: 'var(--text-muted)' }}>
-            <Users className="w-4 h-4" />
-            <span>{t('referrals')}</span>
-          </Link>
+          {/* Referrals are a consumer program — never shown on tenant portals */}
+          {isDefaultTenant && (
+            <Link href="/app/referrals" className="flex items-center gap-1.5 text-sm hover:underline min-h-[40px] px-3" style={{ color: 'var(--text-muted)' }}>
+              <Users className="w-4 h-4" />
+              <span>{t('referrals')}</span>
+            </Link>
+          )}
           <LanguageSwitcher />
           <AuthStatus />
           {mounted && <ThemeToggle isDarkMode={isDarkMode} toggleTheme={toggleTheme} t={t} />}

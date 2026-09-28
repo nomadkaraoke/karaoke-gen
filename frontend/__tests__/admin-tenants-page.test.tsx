@@ -152,13 +152,13 @@ describe('Admin Tenants page', () => {
     expect(config.auth.allowed_emails).toEqual(['randy@gmail.com', 'andrew@example.com'])
   })
 
-  it('warns when the portal is open to anyone', async () => {
+  it('warns when no client can sign in yet', async () => {
     render(<AdminTenantsPage />)
     await screen.findByText('Vocal Star')
     fireEvent.click(screen.getByRole('button', { name: /manage/i }))
     fireEvent.change(await screen.findByLabelText(/allowed emails/i), { target: { value: '' } })
     fireEvent.change(screen.getByLabelText(/allowed email domains/i), { target: { value: '' } })
-    expect(screen.getByText(/anyone can sign in/i)).toBeInTheDocument()
+    expect(screen.getByText(/only nomad karaoke admins can sign in/i)).toBeInTheDocument()
   })
 
   it('shows domain status and can set up a missing domain', async () => {
@@ -202,12 +202,12 @@ describe('Admin Tenants page', () => {
 
 
 describe('Admin Tenants page — access warning edge cases', () => {
-  it('treats separator-only input as an open portal (matches what Save sends)', async () => {
+  it('treats separator-only input as no client access (matches what Save sends)', async () => {
     render(<AdminTenantsPage />)
     await screen.findByText('Vocal Star')
     fireEvent.click(screen.getByRole('button', { name: /manage/i }))
     fireEvent.change(await screen.findByLabelText(/allowed emails/i), { target: { value: ' , ' } })
     fireEvent.change(screen.getByLabelText(/allowed email domains/i), { target: { value: ',' } })
-    expect(screen.getByText(/anyone can sign in/i)).toBeInTheDocument()
+    expect(screen.getByText(/only nomad karaoke admins can sign in/i)).toBeInTheDocument()
   })
 })
