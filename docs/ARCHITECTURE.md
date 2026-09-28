@@ -610,12 +610,16 @@ For jobs created by kjbox on behalf of a singer (`request_metadata.client_id` st
 minutes of the audio landing, so the singer can sing now instead of waiting ~30 min for the
 full NOMAD version. Code: `backend/services/quick_version/` (a port of kjbox `fastgen/`).
 
-1. **Before the ensemble**, one fast single-model pass (`mel_band_roformer_instrumental_fv7z_gabox.ckpt`,
-   already baked into the image; MDXC overlap 2; override with `QUICK_VERSION_MODEL`) on the
-   warm L4 → quick instrumental + vocals.
+1. **Before the ensemble**, one fast single-model pass (`UVR-MDX-NET-Inst_HQ_4.onnx`, fastgen's model;
+   baked by `download_models.py` `EXTRA_MODELS`, downloaded on load until the next GPU base rebuild;
+   falls back to the always-baked `mel_band_roformer_instrumental_fv7z_gabox.ckpt`, which took
+   14 s load + 124 s for a 3:15 song on the L4; override with `QUICK_VERSION_MODEL`) → quick
+   instrumental + vocals.
 2. A **background thread** renders the video while the GPU runs the ensemble: LRCLIB lyrics
    (line-synced → time-anchored scroll; plain → constant crawl; none → title card), PIL-rasterised
-   crawl PNG + one ffmpeg `overlay` pass, 854×480, vocals mixed back in at 30% as a guide.
+   crawl PNG + one ffmpeg `overlay` pass, 854×480, vocals mixed back in at 30% as a guide. Every
+   ffmpeg input and the output are bounded with `-t <duration>`: the GPU image's ffmpeg 4.4 never
+   ends on `-shortest` alone once `amix` is involved (first prod job ran into the 300 s join timeout).
 3. Uploads `jobs/{id}/quick/quick.mp4` → `file_urls.quick.video_mp4`, and records
    `state_data.quick_version = {status: separating|rendering|ready|failed, lyrics_tier, ready_at, …}`.
 4. The worker joins the render (≤300 s) before cleaning up its temp dir — even when the ensemble
