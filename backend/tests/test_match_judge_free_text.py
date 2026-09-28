@@ -133,3 +133,17 @@ def test_ambiguous_and_failures_skip_the_catalog():
     assert v["kind"] == "ambiguous" and seen == []
     v, seen = _tidy("t", None)
     assert v["kind"] == "none" and seen == []
+
+
+def test_prompt_covers_descriptive_queries():
+    from backend.services.match_judge.free_text import _SYSTEM_PROMPT
+    assert "DESCRIBE" in _SYSTEM_PROMPT and "titanic" in _SYSTEM_PROMPT
+
+
+def test_description_resolved_to_a_song_is_content():
+    ai = {"kind": "content", "confident": True, "typed_artist": "", "typed_title": "that song from titanic",
+          "canonical_artist": "Céline Dion", "canonical_title": "My Heart Will Go On"}
+    hit = MatchVerdict("cosmetic", True, "Céline Dion", "My Heart Will Go On", engine="catalog")
+    v, seen = _tidy("that song from titanic", ai, hit)
+    assert seen == [("Céline Dion", "My Heart Will Go On")]
+    assert v["kind"] == "content" and v["canonical_title"] == "My Heart Will Go On"

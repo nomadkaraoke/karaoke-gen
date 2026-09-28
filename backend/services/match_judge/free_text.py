@@ -32,7 +32,11 @@ _VALID_KINDS = {"cosmetic", "content", "ambiguous"}
 _SYSTEM_PROMPT = (
     "You resolve a karaoke singer's free-text song search. The query is one line "
     "holding an artist and/or a song title in any order, often lazily typed or "
-    "misspelled (e.g. 'the strokes max picu' = The Strokes — Machu Picchu).\n"
+    "misspelled (e.g. 'the strokes max picu' = The Strokes — Machu Picchu). It may "
+    "instead DESCRIBE the song — where it's from, a line of its lyrics, what it's "
+    "about (e.g. 'that song from titanic' = Céline Dion — My Heart Will Go On; "
+    "'is this the real life' = Queen — Bohemian Rhapsody). Then name the song meant "
+    "(kind 'content'), or use 'ambiguous' with the likely songs when several fit.\n"
     "Return JSON with: kind, confident, typed_artist, typed_title, canonical_artist, "
     "canonical_title, alternatives, reason.\n"
     "typed_artist/typed_title: how the query splits as typed (either may be empty).\n"
