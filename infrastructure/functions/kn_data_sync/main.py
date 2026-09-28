@@ -5,7 +5,8 @@ Fetches daily exports from the KaraokeNerds API and loads them into BigQuery
 and GCS. Replaces the legacy pipeline in projectbread-karaokay.
 
 Two modes (controlled by request body):
-  mode=full      — Fetch full song catalog, store to GCS + refresh BigQuery
+  mode=full      — Fetch full song catalog, store to GCS + refresh BigQuery, then
+                   export the kjbox song-identification index (see below)
   mode=community — Fetch community tracks (with YouTube URLs), store to GCS + refresh BigQuery
 
 Environment variables:
@@ -32,6 +33,59 @@ GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "nomadkaraoke")
 KARAOKENERDS_API_KEY = os.environ.get("KARAOKENERDS_API_KEY", "")
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "nomadkaraoke-kn-data")
 DATASET_ID = "karaoke_decide"
+
+# kjbox song-identification index: every song a singer might mean, exported daily
+# after the KN refresh and downloaded by the NomadPC's nomad-catalog-sync. Design:
+# kjbox docs/SONG-IDENTIFICATION.md. Rows from three sources, merged/deduped on the
+# device (scripts/build_song_id_db.py):
+#   - MusicBrainz recordings (weekly-refreshed by karaoke-decide's mb-refresh — the
+#     source that keeps NEW songs coming): kept when Spotify track popularity >= 30
+#     (via ISRC), or 3+ recordings, or the artist's Spotify popularity >= 50; songs
+#     with no track score get 0.8 x artist popularity, capped at 50 (an
+#     estimate must not outrank a measured Spotify score)
+#   - the static July 2025 Spotify snapshot (popularity >= 30)
+#   - every KaraokeNerds song (daily; karaoke = 1)
+# ~6.7 GB scanned per run (~$0.04). Each run writes a dated folder + a manifest
+# (song-id/latest.json) naming its shards, so the device never mixes runs.
+SONG_ID_PREFIX = "song-id"
+SONG_ID_KEEP_RUNS = 3
+SONG_ID_SQL = r"""
+WITH
+art AS (
+  SELECT name_normalized, MAX(popularity) apop
+  FROM `{project}.{dataset}.mb_artists_normalized`
+  WHERE spotify_artist_id IS NOT NULL
+  GROUP BY name_normalized),
+mb AS (
+  SELECT r.artist_normalized na, r.name_normalized nt,
+         ARRAY_AGG(STRUCT(r.artist_credit AS a, r.title AS t) ORDER BY r.spotify_popularity DESC LIMIT 1)[OFFSET(0)] best,
+         COUNT(DISTINCT r.recording_mbid) recs, MAX(r.spotify_popularity) sp
+  FROM `{project}.{dataset}.mb_recordings_enriched` r
+  WHERE r.name_normalized IS NOT NULL AND r.artist_normalized IS NOT NULL
+    AND NOT REGEXP_CONTAINS(LOWER(IFNULL(r.disambiguation, '')), r'\b(live|demo|rehearsal|instrumental|karaoke)\b')
+  GROUP BY na, nt),
+mb_kept AS (
+  SELECT mb.best.a artist, mb.best.t title,
+         -- no Spotify track score (e.g. released after the July 2025 snapshot): estimate from the
+         -- artist's popularity, a little below it and capped at 50, so a known artist's new song still
+         -- ranks sensibly but never above a measured track score
+         COALESCE(NULLIF(mb.sp, 0), CAST(LEAST(art.apop * 0.8, 50) AS INT64), mb.sp) popularity, 0 karaoke
+  FROM mb LEFT JOIN art ON art.name_normalized = mb.na
+  WHERE mb.sp >= 30 OR mb.recs >= 3 OR art.apop >= 50),
+sp AS (
+  SELECT ARRAY_AGG(STRUCT(artist_name AS a, track_name AS t) ORDER BY popularity DESC LIMIT 1)[OFFSET(0)] best,
+         MAX(popularity) p
+  FROM `{project}.{dataset}.spotify_tracks_normalized`
+  GROUP BY normalized_artist, normalized_title),
+kn AS (
+  SELECT ANY_VALUE(Artist) a, ANY_VALUE(Title) t
+  FROM `{project}.{dataset}.karaokenerds_raw`
+  WHERE Artist IS NOT NULL AND Title IS NOT NULL
+  GROUP BY LOWER(Artist), LOWER(Title))
+SELECT artist, title, popularity, karaoke FROM mb_kept
+UNION ALL SELECT sp.best.a, sp.best.t, sp.p, 0 FROM sp
+UNION ALL SELECT a, t, CAST(NULL AS INT64), 1 FROM kn
+"""
 
 # API endpoints
 SONGS_URL = "https://karaokenerds.com/Data/Songs"
@@ -170,6 +224,43 @@ def _load_community_to_bigquery(raw_bytes: bytes) -> int:
     return load_job.output_rows
 
 
+def _export_song_id_index() -> dict:
+    """EXPORT DATA the song-identification index to GCS + write the manifest.
+
+    Server-side export (no rows pass through this function). Columns:
+    artist, title, popularity (blank = karaoke-only row), karaoke (0/1); TSV,
+    gzipped, no header, sharded by BigQuery.
+    """
+    run = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    folder = f"{SONG_ID_PREFIX}/{run}"
+    client = bigquery.Client(project=GCP_PROJECT_ID)
+    select = SONG_ID_SQL.format(project=GCP_PROJECT_ID, dataset=DATASET_ID)
+    export = (
+        f"EXPORT DATA OPTIONS(uri='gs://{GCS_BUCKET}/{folder}/songs-*.tsv.gz', format='CSV', "
+        "field_delimiter='\t', header=false, compression='GZIP', overwrite=true) AS " + select
+    )
+    client.query(export).result()
+
+    gcs = storage.Client(project=GCP_PROJECT_ID)
+    bucket = gcs.bucket(GCS_BUCKET)
+    shards = sorted(b.name for b in gcs.list_blobs(GCS_BUCKET, prefix=f"{folder}/"))
+    if not shards:
+        raise RuntimeError(f"song-id export wrote no files under {folder}/")
+    manifest = {"run": run, "shards": [f"gs://{GCS_BUCKET}/{name}" for name in shards],
+                "columns": ["artist", "title", "popularity", "karaoke"]}
+    bucket.blob(f"{SONG_ID_PREFIX}/latest.json").upload_from_string(
+        json.dumps(manifest), content_type="application/json")
+
+    # Prune old runs (keep a few so a device mid-download never loses its shards).
+    runs = sorted({b.name.split("/")[1] for b in gcs.list_blobs(GCS_BUCKET, prefix=f"{SONG_ID_PREFIX}/")
+                   if b.name.count("/") >= 2})
+    for old in runs[:-SONG_ID_KEEP_RUNS]:
+        for b in gcs.list_blobs(GCS_BUCKET, prefix=f"{SONG_ID_PREFIX}/{old}/"):
+            b.delete()
+    logger.info("song-id index exported: %s (%d shards)", folder, len(shards))
+    return {"run": run, "shards": len(shards)}
+
+
 @functions_framework.http
 def sync_kn_data(request):
     """
@@ -210,6 +301,16 @@ def sync_kn_data(request):
         else:
             rows_loaded = _load_community_to_bigquery(raw_bytes)
 
+        # Step 4 (full mode): refresh the kjbox song-identification index from the
+        # just-loaded KN table. Its failure must not fail the KN sync itself.
+        song_id = None
+        if mode == "full":
+            try:
+                song_id = _export_song_id_index()
+            except Exception as e:  # noqa: BLE001
+                logger.exception("song-id index export failed")
+                song_id = {"error": str(e)}
+
         duration = time.time() - start
 
         result = {
@@ -218,6 +319,7 @@ def sync_kn_data(request):
             "records_fetched": record_count,
             "rows_loaded": rows_loaded,
             "gcs_path": f"gs://{GCS_BUCKET}/{gcs_path}",
+            "song_id_index": song_id,
             "duration_s": round(duration, 1),
         }
 
