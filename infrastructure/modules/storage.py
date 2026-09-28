@@ -24,15 +24,20 @@ def create_bucket() -> storage.Bucket:
         location="US-CENTRAL1",
         force_destroy=False,  # Prevent accidental deletion
         uniform_bucket_level_access=True,
+        # Never publicly readable: every consumer is an authenticated service
+        # account and browsers only ever get V4 signed URLs. (An out-of-band
+        # `allUsers` objectViewer grant existed 2025-12-22 → 2026-09-28 to host a
+        # debug page; it exposed every customer file AND made GCS edge-cache
+        # objects for 1h, so backend reads of overwritten configs went stale.)
+        public_access_prevention="enforced",
         cors=[
             storage.BucketCorArgs(
-                origins=[
-                    "https://gen.nomadkaraoke.com",
-                    "https://vocalstar.nomadkaraoke.com",
-                    "https://singa.nomadkaraoke.com",
-                    "https://randy-vild.nomadkaraoke.com",
-                    "http://localhost:3000",
-                ],
+                # Any origin: tenant portals get new *.nomadkaraoke.com
+                # subdomains at runtime (admin tenant console), and a per-tenant
+                # list here can't keep up. Safe because the bucket is private —
+                # a cross-origin request only succeeds with a signed URL or an
+                # origin-bound resumable session, which are the auth.
+                origins=["*"],
                 # PUT: direct-to-GCS uploads. GET/HEAD: the lyrics-review vocals
                 # waveform fetch()es the signed stem URL and reads its bytes via
                 # decodeAudioData — unlike <audio> playback, that's a cross-origin
