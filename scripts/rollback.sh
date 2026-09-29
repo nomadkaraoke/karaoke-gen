@@ -227,12 +227,17 @@ if [[ "$ROLL_JOBS" == "true" ]]; then
     IFS=':' read -r job_name job_region job_repo <<< "$entry"
     echo "--- ${job_name} (${job_region}) ---"
     # The us-east4 CPU image copy only has tags from v0.247.1 onward. Skip a job
-    # whose target tag doesn't exist instead of aborting the loop (set -e), so the
-    # remaining jobs still get re-pinned.
-    if ! gcloud artifacts docker images describe "${job_repo}:${IMAGE_VERSION}" \
-        --project="${PROJECT_ID}" >/dev/null 2>&1; then
-      echo "⚠️  ${job_repo}:${IMAGE_VERSION} not found — SKIPPING ${job_name} (left on its current image)" >&2
-      continue
+    # ONLY when its target tag genuinely doesn't exist, so the remaining jobs
+    # still get re-pinned; any other lookup error (auth, network) aborts loudly
+    # rather than letting the rollback look complete with a job on the bad image.
+    if ! describe_err=$(gcloud artifacts docker images describe "${job_repo}:${IMAGE_VERSION}" \
+        --project="${PROJECT_ID}" 2>&1 >/dev/null); then
+      if grep -qiE "not ?found|NOT_FOUND|manifest unknown" <<< "$describe_err"; then
+        echo "⚠️  ${job_repo}:${IMAGE_VERSION} not found — SKIPPING ${job_name} (left on its current image)" >&2
+        continue
+      fi
+      echo "❌ Could not inspect ${job_repo}:${IMAGE_VERSION}: ${describe_err}" >&2
+      exit 1
     fi
     run_cmd gcloud run jobs update "${job_name}" \
       --image="${job_repo}:${IMAGE_VERSION}" \

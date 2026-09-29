@@ -1875,6 +1875,23 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:cache,mode=max,ignore-error=true
           provenance: false
 
+      - name: Pre-import CPU image for us-east4 jobs
+        # A new image digest costs a one-time ~2.5 min "Container image import" on
+        # its FIRST execution in a region (measured 2026-09-29); later executions
+        # of any job using that digest start in ~8s. audio-download-job runs
+        # :latest (just pushed), so a no-op execution now performs the import
+        # while the service deploy + smoke test run, instead of on the first
+        # customer download. Async on purpose: the import overlaps the rest of
+        # the deploy. Non-fatal: worst case the first download pays the import.
+        run: |
+          gcloud run jobs execute audio-download-job \
+            --region us-east4 \
+            --project ${{ env.PROJECT_ID }} \
+            --args="python,-c,pass" \
+            --async \
+            --quiet \
+            || echo "::warning::us-east4 CPU image pre-import execution failed to start (non-fatal)"
+
       # ============================================
       # GPU Image Build (for audio worker with L4 GPU)
       # Same pattern as base image: hash check → rebuild if needed.
@@ -2172,19 +2189,6 @@ jobs:
             --region us-east4 \
             --project ${{ env.PROJECT_ID }} \
             --quiet
-
-          # Pre-import the new CPU image in us-east4. A new image digest costs a
-          # one-time ~2.5 min "Container image import" on its FIRST execution in a
-          # region (measured 2026-09-29); later executions of any job using that
-          # digest start in ~8s. Without this, the first customer download after
-          # every deploy would pay the import. The no-op run exits 0 immediately.
-          gcloud run jobs execute audio-download-job \
-            --region us-east4 \
-            --project ${{ env.PROJECT_ID }} \
-            --args="python,-c,pass" \
-            --async \
-            --quiet \
-            || echo "::warning::us-east4 CPU image pre-import execution failed to start (non-fatal)"
 
           echo "✅ Cloud Run Jobs updated"
 

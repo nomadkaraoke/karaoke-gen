@@ -543,6 +543,7 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 │                                                                 │
 │  Triggered via: google.cloud.run_v2.JobsClient.run_job()        │
 │  Job ID passed as: --job-id argument                            │
+│  (bulk-search-job takes --batch-id instead)                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
