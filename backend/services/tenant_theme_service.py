@@ -42,30 +42,46 @@ from backend.services.theme_service import THEMES_PREFIX
 logger = logging.getLogger(__name__)
 
 FONT_CONTENT_TYPES = {"ttf": "font/ttf", "otf": "font/otf"}
+MAX_IMAGE_SIDE = 8000  # 4K backgrounds are 3840x2160; this leaves headroom
+MAX_IMAGE_PIXELS = 40_000_000  # decoded size bound (PIL only errors at ~179 MP)
 UPLOAD_EXTENSIONS = set(IMAGE_CONTENT_TYPES) | set(FONT_CONTENT_TYPES)
 
 # (section, field) pairs that hold image asset basenames.
+# (existing_image is not editable: neither the preview nor production resolves it.)
 IMAGE_FIELDS = (
     ("intro", "background_image"),
-    ("intro", "existing_image"),
     ("karaoke", "background_image"),
     ("end", "background_image"),
-    ("end", "existing_image"),
     ("cdg", "instrumental_background"),
     ("cdg", "title_screen_background"),
     ("cdg", "outro_background"),
 )
 FONT_FIELDS = (("intro", "font"), ("karaoke", "font_path"), ("end", "font"), ("cdg", "font_path"))
 
-REQUIRED_KARAOKE_DEFAULTS = {
-    "underline": False,
-    "strike_out": False,
-    "angle": 0.0,
-    "encoding": 0,
-    "ass_name": "Default",
-}
+DEFAULT_FONT = "AvenirNext-Bold.ttf"  # bundled; used when a draft names no font
+
+# Every key lyrics_transcriber.output.ass.style.build_karaoke_styles reads without a
+# default — a theme missing one previews fine but crashes every real render.
+REQUIRED_KARAOKE_KEYS = (
+    "font", "ass_name", "primary_color", "secondary_color", "outline_color", "back_color",
+    "bold", "italic", "underline", "strike_out", "scale_x", "scale_y", "spacing", "angle",
+    "border_style", "outline", "shadow", "margin_l", "margin_r", "margin_v", "encoding",
+)
+
+# Free-text values written verbatim into the ASS header / style line.
+ASS_TEXT_FIELDS = (("karaoke", "font"), ("karaoke", "ass_name"))
+_ASS_UNSAFE = re.compile(r"[,\r\n{}\\]")
 
 NUMERIC_BOUNDS = {
+    ("karaoke", "scale_x"): (10, 400),
+    ("karaoke", "scale_y"): (10, 400),
+    ("karaoke", "spacing"): (-50, 200),
+    ("karaoke", "angle"): (-360, 360),
+    ("karaoke", "border_style"): (1, 4),
+    ("karaoke", "margin_l"): (0, 3840),
+    ("karaoke", "margin_r"): (0, 3840),
+    ("karaoke", "margin_v"): (0, 2160),
+    ("karaoke", "encoding"): (0, 255),
     ("karaoke", "font_size"): (40, 600),
     ("karaoke", "top_padding"): (0, 2000),
     ("karaoke", "max_line_length"): (10, 80),
@@ -114,7 +130,7 @@ def _check_region(value: object, where: str) -> None:
         return
     try:
         x, y, w, h = (int(float(p)) for p in str(value).split(","))
-    except ValueError as exc:
+    except (ValueError, OverflowError) as exc:
         raise TenantValidationError(f"{where} must be 'x, y, width, height'.") from exc
     if min(x, y) < 0 or w <= 0 or h <= 0 or x + w > 3840 or y + h > 2160:
         raise TenantValidationError(f"{where} must fit inside the 3840x2160 frame.")
@@ -134,6 +150,10 @@ def sanitize_style_params(
     assets = set(available_assets)
     fonts_ok = assets | set(bundled_fonts())
 
+    for section in ("intro", "end"):
+        if "existing_image" in styles[section]:
+            styles[section]["existing_image"] = None
+
     for section, field in IMAGE_FIELDS:
         value = styles[section].get(field)
         if value in (None, ""):
@@ -146,16 +166,34 @@ def sanitize_style_params(
         styles[section][field] = name
 
     # One font for every section (the render pipeline applies intro.font everywhere).
-    font = styles["intro"].get("font")
-    if font:
-        font = _basename_only(font, "intro.font")
-        if font not in fonts_ok:
-            raise TenantValidationError(f"Font '{font}' isn't available — upload it or pick a built-in font.")
-        for section, field in FONT_FIELDS:
-            styles[section][field] = font
+    # Always set, so no section can keep a path of its own (e.g. an absolute
+    # karaoke.font_path would otherwise reach the ffmpeg fontsdir / libass).
+    font = _basename_only(styles["intro"].get("font") or DEFAULT_FONT, "intro.font")
+    if font not in fonts_ok:
+        raise TenantValidationError(f"Font '{font}' isn't available — upload it or pick a built-in font.")
+    for section, field in FONT_FIELDS:
+        styles[section][field] = font
 
-    for key, default in REQUIRED_KARAOKE_DEFAULTS.items():
-        styles["karaoke"].setdefault(key, default)
+    from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
+
+    for key in REQUIRED_KARAOKE_KEYS:
+        if styles["karaoke"].get(key) is None:
+            styles["karaoke"][key] = DEFAULT_KARAOKE_STYLE[key]
+    for section, field in ASS_TEXT_FIELDS:
+        value = styles[section].get(field)
+        if not isinstance(value, str) or not value.strip() or len(value) > 80 or _ASS_UNSAFE.search(value):
+            raise TenantValidationError(f"{section}.{field} must be a short name without commas or line breaks.")
+
+    singers = styles["karaoke"].get("singers")
+    if singers is not None:
+        if not isinstance(singers, dict) or not all(isinstance(v, dict) for v in singers.values()):
+            raise TenantValidationError("karaoke.singers must map singer keys to colour settings.")
+        for key, colours in singers.items():
+            for name, value in colours.items():
+                if name.endswith("_color") and (
+                    not _RGBA.match(str(value)) or any(int(p) > 255 for p in str(value).split(","))
+                ):
+                    raise TenantValidationError(f"karaoke.singers.{key}.{name} must be 'r, g, b, a' (0-255).")
 
     for (section, field), (lo, hi) in NUMERIC_BOUNDS.items():
         if field in styles[section] and styles[section][field] is not None:
@@ -187,10 +225,32 @@ def _font_local_path(storage: StorageService, theme_id: str, font: str, workdir:
     return os.path.join(BUNDLED_FONTS_DIR, font)
 
 
+class ThemeNotEditableError(TenantValidationError):
+    """The tenant uses a shared/default theme it may not modify."""
+
+
+def _editable_theme_id(config) -> str:
+    """Tenants may only edit their own 1:1 theme (the one the admin console
+    creates, named after the tenant) — never a shared or default theme."""
+    theme_id = _theme_id_for(config)
+    if theme_id != config.id:
+        raise ThemeNotEditableError(
+            "This portal uses a shared theme, so it can't be edited here. Contact Nomad Karaoke."
+        )
+    return theme_id
+
+
+class ThemeNotFoundError(TenantValidationError):
+    """The tenant's theme files are missing."""
+
+
 def get_theme_for_editor(config, storage: Optional[StorageService] = None) -> Dict[str, object]:
     storage = storage or StorageService()
-    theme_id = _theme_id_for(config)
-    style_params = storage.download_json(f"{THEMES_PREFIX}/{theme_id}/style_params.json")
+    theme_id = _editable_theme_id(config)
+    try:
+        style_params = storage.download_json(f"{THEMES_PREFIX}/{theme_id}/style_params.json")
+    except Exception as exc:
+        raise ThemeNotFoundError("This portal's theme couldn't be found. Contact Nomad Karaoke.") from exc
     assets = _theme_assets(storage, theme_id)
     fonts = sorted(set(bundled_fonts()) | {a for a in assets if a.lower().endswith((".ttf", ".otf"))})
     images = [a for a in assets if a.rsplit(".", 1)[-1].lower() in IMAGE_CONTENT_TYPES]
@@ -218,14 +278,19 @@ def store_uploaded_asset(
 
         try:
             with Image.open(io.BytesIO(data)) as img:
+                width, height = img.size
                 img.verify()
         except Exception as exc:
             raise TenantValidationError("That image file couldn't be read.") from exc
+        if width > MAX_IMAGE_SIDE or height > MAX_IMAGE_SIDE or width * height > MAX_IMAGE_PIXELS:
+            raise TenantValidationError(
+                f"That image is too large ({width}x{height}). Use up to {MAX_IMAGE_SIDE}x{MAX_IMAGE_SIDE} pixels."
+            )
 
     stem = _safe_asset_name(filename).rsplit(".", 1)[0][:60] or "asset"
     digest = hashlib.sha256(data).hexdigest()[:8]
     name = f"{stem}-{digest}.{ext}"
-    theme_id = _theme_id_for(config)
+    theme_id = _editable_theme_id(config)
     content_type = FONT_CONTENT_TYPES.get(ext) or _content_type_for(ext)
     storage.upload_fileobj(
         io.BytesIO(data),
@@ -238,7 +303,7 @@ def store_uploaded_asset(
 
 def prepare_preview_styles(config, style_params: object, storage: Optional[StorageService] = None) -> Dict:
     storage = storage or StorageService()
-    theme_id = _theme_id_for(config)
+    theme_id = _editable_theme_id(config)
     styles, _font = sanitize_style_params(style_params, available_assets=_theme_assets(storage, theme_id))
     return styles
 
@@ -246,21 +311,20 @@ def prepare_preview_styles(config, style_params: object, storage: Optional[Stora
 def save_tenant_theme(config, style_params: object, storage: Optional[StorageService] = None) -> Dict:
     """Validate, finalise (font family / bundled font copy) and save the theme."""
     storage = storage or StorageService()
-    theme_id = _theme_id_for(config)
+    theme_id = _editable_theme_id(config)
     styles, font = sanitize_style_params(style_params, available_assets=_theme_assets(storage, theme_id))
 
     assets: Dict[str, Tuple[bytes, str]] = {}
-    if font:
-        with tempfile.TemporaryDirectory() as workdir:
-            local = _font_local_path(storage, theme_id, font, workdir)
-            try:
-                styles["karaoke"]["font"] = font_family_name(local)
-            except Exception as exc:
-                raise TenantValidationError(f"Font '{font}' couldn't be read.") from exc
-            if not storage.file_exists(f"{THEMES_PREFIX}/{theme_id}/assets/{font}"):
-                # Bundled font: copy into the theme so render jobs download it.
-                with open(local, "rb") as fh:
-                    assets[font] = (fh.read(), font.rsplit(".", 1)[-1])
+    with tempfile.TemporaryDirectory() as workdir:
+        local = _font_local_path(storage, theme_id, font, workdir)
+        try:
+            styles["karaoke"]["font"] = font_family_name(local)
+        except Exception as exc:
+            raise TenantValidationError(f"Font '{font}' couldn't be read.") from exc
+        if not storage.file_exists(f"{THEMES_PREFIX}/{theme_id}/assets/{font}"):
+            # Bundled font: copy into the theme so render jobs download it.
+            with open(local, "rb") as fh:
+                assets[font] = (fh.read(), font.rsplit(".", 1)[-1])
 
     update_tenant(config.id, style_params=styles, assets=assets or None, storage=storage)
     logger.info(f"Tenant '{config.id}' saved theme '{theme_id}' (font={font})")

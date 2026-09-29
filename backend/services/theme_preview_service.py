@@ -104,11 +104,41 @@ _FONT_TARGETS = (("intro", "font"), ("karaoke", "font_path"), ("end", "font"), (
 
 _download_lock = threading.Lock()
 
+# Cloud Run's /tmp is in-memory: keep both on-disk caches bounded.
+ASSET_CACHE_ROOT = os.path.join(tempfile.gettempdir(), "theme-preview-assets")
+BG_CACHE_ROOT = os.path.join(tempfile.gettempdir(), "theme-preview-bg")
+ASSET_CACHE_MAX_BYTES = 300 * 1024 * 1024
+BG_CACHE_MAX_BYTES = 300 * 1024 * 1024
+
 
 def _cache_dir(theme_id: str) -> str:
-    path = os.path.join(tempfile.gettempdir(), "theme-preview-assets", theme_id)
+    path = os.path.join(ASSET_CACHE_ROOT, theme_id)
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def _evict(root: str, max_bytes: int, keep: str = "") -> None:
+    """Delete least-recently-used files under root until it fits in max_bytes."""
+    files = []
+    for dirpath, _dirs, names in os.walk(root):
+        for name in names:
+            path = os.path.join(dirpath, name)
+            try:
+                st = os.stat(path)
+            except OSError:
+                continue
+            files.append((st.st_atime, st.st_size, path))
+    total = sum(size for _t, size, _p in files)
+    for _atime, size, path in sorted(files):
+        if total <= max_bytes:
+            break
+        if path == keep:
+            continue
+        try:
+            os.remove(path)
+            total -= size
+        except OSError:
+            pass
 
 
 def _local_theme_asset(storage: StorageService, theme_id: str, basename: str) -> Optional[str]:
@@ -121,7 +151,16 @@ def _local_theme_asset(storage: StorageService, theme_id: str, basename: str) ->
     with _download_lock:
         if not os.path.isfile(local):
             os.makedirs(gen_dir, exist_ok=True)
-            blob.download_to_filename(local)
+            # Download to a temp name + atomic rename: a failed download must
+            # never leave a partial file that later looks cached.
+            partial = f"{local}.part-{os.getpid()}-{threading.get_ident()}"
+            try:
+                blob.download_to_filename(partial)
+                os.replace(partial, local)
+            finally:
+                if os.path.exists(partial):
+                    os.remove(partial)
+            _evict(ASSET_CACHE_ROOT, ASSET_CACHE_MAX_BYTES, keep=local)
     return local
 
 
@@ -256,14 +295,15 @@ class _FrameRenderer:
         """Production's 4K scale+pad of the background, cached per source file."""
         st = os.stat(path)
         key = hashlib.sha1(f"{path}:{st.st_size}:{st.st_mtime_ns}".encode()).hexdigest()[:16]
-        cached = os.path.join(tempfile.gettempdir(), "theme-preview-bg", f"{key}.png")
+        cached = os.path.join(BG_CACHE_ROOT, f"{key}.png")
         if os.path.isfile(cached):
             return cached
-        os.makedirs(os.path.dirname(cached), exist_ok=True)
+        os.makedirs(BG_CACHE_ROOT, exist_ok=True)
         resized = self.gen._resize_background_image(path)
         if resized == path:
             return path
         os.replace(resized, cached)
+        _evict(BG_CACHE_ROOT, BG_CACHE_MAX_BYTES, keep=cached)
         return cached
 
     def frame(self, ass_path: str, at_seconds: float, out_png: str) -> None:

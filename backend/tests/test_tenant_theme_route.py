@@ -128,3 +128,18 @@ def test_save_and_upload(client_for):
     assert resp.status_code == 200 and resp.json()["name"] == "bg-1234abcd.png"
     assert store.call_args.args[1] == "bg.png"
     assert client.post("/api/tenant/theme/assets", files={"file": ("e.png", b"")}).status_code == 400
+
+
+def test_error_mapping_and_sample_limits(client_for):
+    from backend.services.tenant_theme_service import ThemeNotEditableError, ThemeNotFoundError
+
+    client = client_for()
+    with patch.object(tenant_theme, "get_theme_for_editor", side_effect=ThemeNotFoundError("gone")):
+        assert client.get("/api/tenant/theme").status_code == 404
+    with patch.object(tenant_theme, "get_theme_for_editor", side_effect=ThemeNotEditableError("shared")):
+        assert client.get("/api/tenant/theme").status_code == 403
+    resp = client.post(
+        "/api/tenant/theme/preview",
+        json={"style_params": {}, "sample": {"lyrics": ["x" * 121]}},
+    )
+    assert resp.status_code == 422  # per-line length capped

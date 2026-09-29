@@ -183,3 +183,84 @@ def test_get_theme_for_editor_lists_images_and_fonts():
     data = tts.get_theme_for_editor(_config(), storage=storage)
     assert data["images"] == ["bg.jpg"]
     assert "Custom-abc12345.ttf" in data["fonts"] and "AvenirNext-Bold.ttf" in data["fonts"]
+
+
+# --- review hardening -----------------------------------------------------------
+
+
+def test_missing_intro_font_cannot_leave_a_path_in_other_sections():
+    """Regression: with intro.font unset, karaoke.font_path used to survive
+    unsanitised and reach ffmpeg's fontsdir / libass."""
+    style = _style()
+    style["intro"]["font"] = None
+    style["karaoke"]["font_path"] = "/proc/self/environ"
+    style["end"]["font"] = "/etc/passwd"
+    styles, font = tts.sanitize_style_params(style, available_assets=ASSETS)
+    assert font == tts.DEFAULT_FONT
+    for section, field in tts.FONT_FIELDS:
+        assert styles[section][field] == tts.DEFAULT_FONT
+
+
+@pytest.mark.parametrize("field,value", [("ass_name", "Nomad\nDialogue: 0"), ("font", "Evil, Font"), ("font", "x" * 81)])
+def test_ass_text_fields_cannot_inject(field, value):
+    style = _style()
+    style["karaoke"][field] = value
+    with pytest.raises(TenantValidationError):
+        tts.sanitize_style_params(style, available_assets=ASSETS)
+
+
+def test_all_renderer_required_karaoke_keys_are_filled():
+    from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
+
+    styles, _ = tts.sanitize_style_params(_style(), available_assets=ASSETS)
+    for key in tts.REQUIRED_KARAOKE_KEYS:
+        assert styles["karaoke"][key] is not None
+    assert styles["karaoke"]["bold"] == DEFAULT_KARAOKE_STYLE["bold"]
+
+
+def test_existing_image_is_forced_off():
+    style = _style()
+    style["intro"]["existing_image"] = "bg.jpg"
+    styles, _ = tts.sanitize_style_params(style, available_assets=ASSETS)
+    assert styles["intro"]["existing_image"] is None
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda s: s["karaoke"].update(singers={"1": {"primary_color": "999, 0, 0, 255"}}),
+        lambda s: s["karaoke"].update(singers=["nope"]),
+        lambda s: s["karaoke"].update(scale_x=5000),
+        lambda s: s["intro"].update(title_region="inf,0,100,100"),
+    ],
+)
+def test_more_invalid_values_rejected(mutate):
+    style = _style()
+    mutate(style)
+    with pytest.raises(TenantValidationError):
+        tts.sanitize_style_params(style, available_assets=ASSETS)
+
+
+def test_huge_image_upload_rejected():
+    buf = io.BytesIO()
+    Image.new("1", (9000, 10)).save(buf, "PNG")  # tiny file, oversized dimensions
+    with pytest.raises(TenantValidationError, match="too large"):
+        tts.store_uploaded_asset(_config(), "wide.png", buf.getvalue(), storage=FakeStorage())
+
+
+def test_shared_theme_is_not_editable():
+    shared = _config().model_copy(update={"defaults": TenantDefaults(theme_id="nomad", locked_theme="nomad")})
+    with pytest.raises(tts.ThemeNotEditableError):
+        tts.get_theme_for_editor(shared, storage=FakeStorage())
+    with pytest.raises(tts.ThemeNotEditableError):
+        tts.save_tenant_theme(shared, _style(), storage=FakeStorage())
+    with pytest.raises(tts.ThemeNotEditableError):
+        tts.store_uploaded_asset(shared, "a.png", _png_bytes(), storage=FakeStorage())
+
+
+def test_missing_theme_file_is_not_found():
+    storage = FakeStorage()
+    del storage.blobs["themes/randy-vild/style_params.json"]
+    storage.download_json = lambda path: (_ for _ in ()).throw(FileNotFoundError(path))
+    with pytest.raises(tts.ThemeNotFoundError):
+        tts.get_theme_for_editor(_config(), storage=storage)

@@ -104,3 +104,38 @@ def test_font_family_name_from_bundled_font():
 
     name = tps.font_family_name(os.path.join(tps.BUNDLED_FONTS_DIR, "AvenirNext-Bold.ttf"))
     assert name.startswith("Avenir Next")
+
+
+def test_evict_keeps_cache_under_limit(tmp_path):
+    import os
+    import time
+
+    for i in range(5):
+        p = tmp_path / f"f{i}"
+        p.write_bytes(b"x" * 100)
+        os.utime(p, (time.time() - 100 + i, time.time()))
+    tps._evict(str(tmp_path), 250, keep=str(tmp_path / "f0"))
+    remaining = sorted(p.name for p in tmp_path.iterdir())
+    assert sum((tmp_path / n).stat().st_size for n in remaining) <= 250
+    assert "f0" in remaining  # the file just written is never evicted
+
+
+def test_failed_download_leaves_no_partial_cache_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(tps, "ASSET_CACHE_ROOT", str(tmp_path))
+
+    class Blob:
+        generation = 7
+
+        def download_to_filename(self, path):
+            open(path, "wb").write(b"partial")
+            raise IOError("network died")
+
+    class Storage:
+        class bucket:
+            @staticmethod
+            def get_blob(path):
+                return Blob()
+
+    with pytest.raises(IOError):
+        tps._local_theme_asset(Storage, "t1", "bg.jpg")
+    assert not any(f.is_file() for f in tmp_path.rglob("*"))

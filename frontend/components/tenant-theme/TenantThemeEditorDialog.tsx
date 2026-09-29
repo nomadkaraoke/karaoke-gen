@@ -129,8 +129,11 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
   // Debounced exact server preview; stale requests are aborted.
   useEffect(() => {
     if (!open || !draft) return
+    // A render of an older draft is now stale — cancel it immediately so its image
+    // can't flash in while the debounce waits.
+    abortRef.current?.abort()
+    setPreviewing(true)
     const handle = setTimeout(async () => {
-      abortRef.current?.abort()
       const controller = new AbortController()
       abortRef.current = controller
       setPreviewing(true)

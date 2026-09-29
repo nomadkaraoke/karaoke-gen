@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr
 
 from backend.api.dependencies import require_auth
 from backend.middleware.tenant import get_tenant_config_from_request
@@ -22,6 +22,8 @@ from backend.models.tenant import TenantConfig
 from backend.services.auth_service import AuthResult
 from backend.services.tenant_admin_service import TenantValidationError
 from backend.services.tenant_theme_service import (
+    ThemeNotEditableError,
+    ThemeNotFoundError,
     get_theme_for_editor,
     prepare_preview_styles,
     save_tenant_theme,
@@ -57,6 +59,14 @@ def require_tenant_member(
     return config
 
 
+def _raise_http(exc: TenantValidationError) -> None:
+    if isinstance(exc, ThemeNotFoundError):
+        raise HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, ThemeNotEditableError):
+        raise HTTPException(status_code=403, detail=str(exc))
+    raise HTTPException(status_code=400, detail=str(exc))
+
+
 class ThemeResponse(BaseModel):
     theme_id: str
     style_params: Dict[str, Any]
@@ -67,7 +77,7 @@ class ThemeResponse(BaseModel):
 class PreviewSample(BaseModel):
     artist: str = Field("Artist Name", max_length=80)
     title: str = Field("Song Title", max_length=80)
-    lyrics: Optional[List[str]] = Field(None, max_length=4)
+    lyrics: Optional[List[constr(max_length=120)]] = Field(None, max_length=4)
 
 
 class PreviewRequest(BaseModel):
@@ -90,7 +100,10 @@ class AssetResponse(BaseModel):
 
 @router.get("", response_model=ThemeResponse)
 def get_theme(config: TenantConfig = Depends(require_tenant_member)):
-    return ThemeResponse(**get_theme_for_editor(config))
+    try:
+        return ThemeResponse(**get_theme_for_editor(config))
+    except TenantValidationError as exc:
+        _raise_http(exc)
 
 
 @router.post("/assets", response_model=AssetResponse)
@@ -103,7 +116,7 @@ async def upload_asset(file: UploadFile = File(...), config: TenantConfig = Depe
     try:
         name = await run_in_threadpool(store_uploaded_asset, config, file.filename or "asset", data)
     except TenantValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        _raise_http(exc)
     return AssetResponse(name=name)
 
 
@@ -112,7 +125,7 @@ async def preview_theme(body: PreviewRequest, config: TenantConfig = Depends(req
     try:
         styles = await run_in_threadpool(prepare_preview_styles, config, body.style_params)
     except TenantValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        _raise_http(exc)
 
     loop = asyncio.get_running_loop()
     async with _PREVIEW_SEMAPHORE:
@@ -141,6 +154,6 @@ async def preview_theme(body: PreviewRequest, config: TenantConfig = Depends(req
 def save_theme(body: SaveRequest, config: TenantConfig = Depends(require_tenant_member)):
     try:
         save_tenant_theme(config, body.style_params)
+        return ThemeResponse(**get_theme_for_editor(config))
     except TenantValidationError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-    return ThemeResponse(**get_theme_for_editor(config))
+        _raise_http(exc)
