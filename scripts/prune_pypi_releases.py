@@ -278,8 +278,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--keep-days",
         type=int,
-        default=60,
-        help="Keep every release younger than this many days (default: 60).",
+        default=30,
+        help="Keep every release younger than this many days (default: 30).",
     )
     parser.add_argument(
         "--format",

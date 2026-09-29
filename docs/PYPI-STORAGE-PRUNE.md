@@ -27,10 +27,12 @@ human step.
 
 ## Retention policy
 
-Keep every release from the **last 60 days**, plus the **newest release of each
+Keep every release from the **last 30 days**, plus the **newest release of each
 older calendar month**, plus the **latest release overall**. Delete the rest.
 Run recurringly, this holds steady-state around 6–7 GB — permanently under the
-cap. Deletion is irreversible and a deleted version/filename can never be
+cap. (The window was 60 days until 2026-09-29; at the current release rate a
+60-day window alone is ~9.6 GB, so a prune freed only ~1 GB and the cap refilled
+within a week.) Deletion is irreversible and a deleted version/filename can never be
 re-uploaded; that's acceptable here (nothing builds from source; PyPI is only the
 public `pip install` channel, whose users want recent versions).
 
@@ -72,8 +74,8 @@ python scripts/prune_pypi_releases.py --format console-js
 python scripts/prune_pypi_releases.py --format json
 python scripts/prune_pypi_releases.py --format markdown
 
-# Tune the window (default 60 days) or target another project
-python scripts/prune_pypi_releases.py --keep-days 90 --project karaoke-gen
+# Tune the window (default 30 days) or target another project
+python scripts/prune_pypi_releases.py --keep-days 60 --project karaoke-gen
 ```
 
 Stdlib only — no dependencies to install.
