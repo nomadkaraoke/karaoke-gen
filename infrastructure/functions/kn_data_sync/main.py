@@ -37,41 +37,73 @@ DATASET_ID = "karaoke_decide"
 # kjbox song-identification index: every song a singer might mean, exported daily
 # after the KN refresh and downloaded by the NomadPC's nomad-catalog-sync. Design:
 # kjbox docs/SONG-IDENTIFICATION.md. Rows from three sources, merged/deduped on the
-# device (scripts/build_song_id_db.py):
+# device (scripts/build_song_id_db.py keeps the highest popularity per song):
 #   - MusicBrainz recordings (weekly-refreshed by karaoke-decide's mb-refresh — the
-#     source that keeps NEW songs coming): kept when Spotify track popularity >= 30
-#     (via ISRC), or 3+ recordings, or the artist's Spotify popularity >= 50; songs
-#     with no track score get 0.8 x artist popularity, capped at 50 (an
-#     estimate must not outrank a measured Spotify score)
+#     source that keeps NEW songs coming). Kept when Spotify track popularity >= 30
+#     (via ISRC), or 3+ recordings, or the artist's Spotify popularity >= 50, or ListenBrainz shows
+#     current listening (>= 5 listeners this/last year, or >= 3 last/this month — how
+#     brand-new artists get in). Popularity = the higher of the Spotify track score and
+#     the ListenBrainz score; songs with neither get 0.8 x artist popularity (Spotify or
+#     ListenBrainz, whichever is higher), capped at 50
+#     (an estimate must not outrank a measured score).
 #   - the static July 2025 Spotify snapshot (popularity >= 30)
 #   - every KaraokeNerds song (daily; karaoke = 1)
-# ~6.7 GB scanned per run (~$0.04). Each run writes a dated folder + a manifest
+# ListenBrainz (karaoke-decide's lb-refresh, fortnightly dumps) is mapped onto Spotify's
+# 0-100 scale per stats range: score = offset + slope * log10(listeners), fitted to the
+# median Spotify popularity of songs that have both (2026-09-29; e.g. 100 this_year
+# listeners ~ 49, 1,000 ~ 68). Ranges with fewer listeners per user period get a bigger
+# offset, so a new release scored on this month's listeners ranks like an old hit with
+# the same share of listeners. Ranges below 3 listeners are ignored (noise).
+# ~9 GB scanned per run (~$0.06). Each run writes a dated folder + a manifest
 # (song-id/latest.json) naming its shards, so the device never mixes runs.
 SONG_ID_PREFIX = "song-id"
 SONG_ID_KEEP_RUNS = 3
 SONG_ID_SQL = r"""
 WITH
+lb_rec AS (
+  SELECT recording_mbid,
+         MAX(CASE stats_range WHEN 'all_time' THEN 8 WHEN 'this_year' THEN 11 WHEN 'year' THEN 12
+                              WHEN 'half_yearly' THEN 12 WHEN 'month' THEN 14 WHEN 'this_month' THEN 20 END
+             + 19 * LOG10(listeners)) lbp,
+         MAX(IF(stats_range IN ('this_year', 'half_yearly', 'year'), listeners, 0)) l_recent,
+         MAX(IF(stats_range IN ('month', 'this_month'), listeners, 0)) l_month
+  FROM `{project}.{dataset}.lb_recording_popularity`
+  WHERE stats_range IN ('all_time', 'this_year', 'year', 'half_yearly', 'month', 'this_month')
+    AND listeners >= 3
+  GROUP BY recording_mbid),
+lb_art AS (
+  SELECT artist_mbid, MAX(IF(stats_range = 'all_time', 2, 6) + 17 * LOG10(listeners)) lbp
+  FROM `{project}.{dataset}.lb_artist_popularity`
+  WHERE stats_range IN ('all_time', 'this_year') AND listeners >= 3
+  GROUP BY artist_mbid),
 art AS (
-  SELECT name_normalized, MAX(popularity) apop
-  FROM `{project}.{dataset}.mb_artists_normalized`
-  WHERE spotify_artist_id IS NOT NULL
-  GROUP BY name_normalized),
+  -- mb_artists_normalized.popularity defaults to 50 without a Spotify match, so only trust it with one.
+  -- sap (Spotify) gates inclusion; apop (the higher of Spotify and ListenBrainz) only feeds the estimate —
+  -- a ListenBrainz-popular artist's songs get in through their own listeners, not wholesale.
+  SELECT n.name_normalized, MAX(IF(n.spotify_artist_id IS NOT NULL, n.popularity, NULL)) sap,
+         GREATEST(IFNULL(MAX(IF(n.spotify_artist_id IS NOT NULL, n.popularity, NULL)), 0),
+                  IFNULL(CAST(LEAST(MAX(l.lbp), 100) AS INT64), 0)) apop
+  FROM `{project}.{dataset}.mb_artists_normalized` n LEFT JOIN lb_art l USING (artist_mbid)
+  WHERE n.spotify_artist_id IS NOT NULL OR l.lbp IS NOT NULL
+  GROUP BY n.name_normalized),
 mb AS (
   SELECT r.artist_normalized na, r.name_normalized nt,
-         ARRAY_AGG(STRUCT(r.artist_credit AS a, r.title AS t) ORDER BY r.spotify_popularity DESC LIMIT 1)[OFFSET(0)] best,
-         COUNT(DISTINCT r.recording_mbid) recs, MAX(r.spotify_popularity) sp
-  FROM `{project}.{dataset}.mb_recordings_enriched` r
-  WHERE r.name_normalized IS NOT NULL AND r.artist_normalized IS NOT NULL
+         ARRAY_AGG(STRUCT(r.artist_credit AS a, r.title AS t) ORDER BY r.spotify_popularity DESC, lb.lbp DESC LIMIT 1)[OFFSET(0)] best,
+         COUNT(DISTINCT r.recording_mbid) recs, MAX(r.spotify_popularity) sp,
+         CAST(LEAST(MAX(lb.lbp), 100) AS INT64) lbp, MAX(lb.l_recent) l_recent, MAX(lb.l_month) l_month
+  FROM `{project}.{dataset}.mb_recordings_enriched` r LEFT JOIN lb_rec lb USING (recording_mbid)
+  WHERE r.name_normalized IS NOT NULL AND r.artist_normalized IS NOT NULL AND r.name_normalized != ''
     AND NOT REGEXP_CONTAINS(LOWER(IFNULL(r.disambiguation, '')), r'\b(live|demo|rehearsal|instrumental|karaoke)\b')
   GROUP BY na, nt),
 mb_kept AS (
   SELECT mb.best.a artist, mb.best.t title,
-         -- no Spotify track score (e.g. released after the July 2025 snapshot): estimate from the
-         -- artist's popularity, a little below it and capped at 50, so a known artist's new song still
-         -- ranks sensibly but never above a measured track score
-         COALESCE(NULLIF(mb.sp, 0), CAST(LEAST(art.apop * 0.8, 50) AS INT64), mb.sp) popularity, 0 karaoke
+         -- measured score (Spotify track or ListenBrainz) first; else estimate from the artist's popularity,
+         -- a little below it and capped at 50, so a known artist's new song still ranks sensibly but never
+         -- above a measured score
+         COALESCE(NULLIF(GREATEST(IFNULL(mb.sp, 0), IFNULL(mb.lbp, 0)), 0),
+                  CAST(LEAST(art.apop * 0.8, 50) AS INT64), mb.sp) popularity, 0 karaoke
   FROM mb LEFT JOIN art ON art.name_normalized = mb.na
-  WHERE mb.sp >= 30 OR mb.recs >= 3 OR art.apop >= 50),
+  WHERE mb.sp >= 30 OR mb.recs >= 3 OR art.sap >= 50 OR mb.l_recent >= 5 OR mb.l_month >= 3),
 sp AS (
   SELECT ARRAY_AGG(STRUCT(artist_name AS a, track_name AS t) ORDER BY popularity DESC LIMIT 1)[OFFSET(0)] best,
          MAX(popularity) p
