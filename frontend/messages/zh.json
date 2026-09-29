@@ -1828,7 +1828,10 @@
     "resumeDiscard": "放弃",
     "retryingConn": "连接出现小问题 — 正在重试…",
     "sessionExpired": "上传会话已过期 — 请移除此曲目并重新开始",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "正在上传 {count} 首曲目",
+    "uploadModalTracksDone": "已提交 {done} / {count} 首曲目",
+    "uploadModalTracksFailed": "{count} 首失败，稍后可重试"
   },
   "requests": {
     "convertBody": "现在就使用 Generator 亲自制作您的卡拉OK视频吧 —— 首个视频免费。",

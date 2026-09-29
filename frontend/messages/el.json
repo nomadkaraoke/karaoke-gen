@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Απόρριψη",
     "retryingConn": "Πρόβλημα σύνδεσης — νέα προσπάθεια…",
     "sessionExpired": "Η συνεδρία μεταφόρτωσης έληξε — αφαίρεσε αυτό το κομμάτι και ξεκίνησέ το ξανά",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Μεταφόρτωση {count} κομματιών",
+    "uploadModalTracksDone": "{done} από {count} κομμάτια υποβλήθηκαν",
+    "uploadModalTracksFailed": "{count} απέτυχαν, μπορείς να δοκιμάσεις ξανά αργότερα"
   },
   "requests": {
     "convertBody": "Χρησιμοποίησε το Generator μόνος σου και φτιάξε το καραόκε βίντεό σου τώρα — το πρώτο είναι κερασμένο από εμάς.",

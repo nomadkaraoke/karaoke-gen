@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Scarta",
     "retryingConn": "Problema di connessione — nuovo tentativo…",
     "sessionExpired": "Sessione di caricamento scaduta — rimuovi questa traccia e caricala di nuovo",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Caricamento di {count} tracce",
+    "uploadModalTracksDone": "{done} su {count} tracce inviate",
+    "uploadModalTracksFailed": "{count} non riuscite, puoi riprovare più tardi"
   },
   "requests": {
     "convertBody": "Usa il Generator e crea subito il tuo video karaoke — il primo te lo offriamo noi.",

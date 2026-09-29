@@ -1828,7 +1828,10 @@
     "resumeDiscard": "रद्द करो",
     "retryingConn": "कनेक्शन में दिक्कत — फिर से कोशिश कर रहे हैं…",
     "sessionExpired": "अपलोड सेशन समाप्त हो गया — इस ट्रैक को हटाओ और इसे फिर से शुरू करो",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "{count} ट्रैक अपलोड हो रहे हैं",
+    "uploadModalTracksDone": "{count} में से {done} ट्रैक सबमिट हो गए",
+    "uploadModalTracksFailed": "{count} विफल हो गए, तुम बाद में दोबारा कोशिश कर सकते हो"
   },
   "requests": {
     "convertBody": "खुद Generator का इस्तेमाल करो और अभी अपना कराओके वीडियो बनाओ — तुम्हारा पहला वीडियो हमारी तरफ से मुफ्त है।",

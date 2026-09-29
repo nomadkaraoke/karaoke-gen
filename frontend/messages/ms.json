@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Buang",
     "retryingConn": "Gangguan sambungan — mencuba semula…",
     "sessionExpired": "Sesi muat naik tamat tempoh — buang trek ini dan mulakan semula",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Memuat naik {count} trek",
+    "uploadModalTracksDone": "{done} daripada {count} trek dihantar",
+    "uploadModalTracksFailed": "{count} gagal, anda boleh mencuba lagi selepas ini"
   },
   "requests": {
     "convertBody": "Gunakan Generator sendiri dan hasilkan video karaoke anda sekarang — video pertama anda adalah percuma daripada kami.",

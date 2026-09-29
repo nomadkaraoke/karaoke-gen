@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Forkast",
     "retryingConn": "Tilkoblingsproblem — prøver på nytt…",
     "sessionExpired": "Opplastingsøkten er utløpt — fjern dette sporet og start det på nytt",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Laster opp {count} spor",
+    "uploadModalTracksDone": "{done} av {count} spor sendt inn",
+    "uploadModalTracksFailed": "{count} feilet, du kan prøve igjen etterpå"
   },
   "requests": {
     "convertBody": "Bruk Generator selv og lag karaokevideoen din akkurat nå — den første spanderer vi.",

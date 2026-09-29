@@ -319,6 +319,80 @@ it('offers to resume an unfinished batch and resumes without re-creating jobs', 
   expect(mockUploadResumable.mock.calls.map(c => c[0])).toEqual(['https://session/audio', 'https://session/inst'])
 })
 
+it('shows a batch-wide upload modal with byte progress, track counts and connection state', async () => {
+  // Two 1 MB rows (mixed + instrumental each 512 KB) so aggregate bytes are exact.
+  const half = 'x'.repeat(512 * 1024)
+  const bigFiles = [MIXED_1, INST_1, MIXED_2, INST_2].map(name => new File([half], name, { type: 'audio/mpeg' }))
+  mockApi.createJobWithUploadUrls.mockImplementation(async () => ({
+    status: 'success',
+    job_id: `job-${Math.random().toString(36).slice(2, 8)}`,
+    message: 'ok',
+    upload_urls: [
+      { file_type: 'audio', gcs_path: 'p1', upload_url: 'https://session/audio', content_type: 'audio/mpeg', resumable: true },
+      { file_type: 'existing_instrumental', gcs_path: 'p2', upload_url: 'https://session/inst', content_type: 'audio/mpeg', resumable: true },
+    ],
+    server_version: '1',
+  }))
+  // Hold every upload open so the test can drive progress by hand.
+  const pending: { onProgress: (p: any) => void; resolve: () => void }[] = []
+  mockUploadResumable.mockImplementation((_url, _file, opts: any) =>
+    new Promise<void>(resolve => { pending.push({ onProgress: opts.onProgress, resolve }) }))
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  fireEvent.change(screen.getByTestId('bulk-files-input'), { target: { files: bigFiles } })
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 2 tracks/i }))
+
+  const modal = await screen.findByTestId('upload-progress-modal')
+  expect(within(modal).getByText('Uploading 2 tracks')).toBeInTheDocument()
+  await waitFor(() => expect(pending).toHaveLength(2)) // both rows' mixed files in flight
+
+  // Row 1 has sent 512 KB of its 1 MB → 25% of the 2 MB batch.
+  const { act } = await import('react')
+  act(() => pending[0].onProgress({ loaded: 512 * 1024, bytesPerSecond: 1024, state: 'uploading' }))
+  expect(within(modal).getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25')
+  expect(within(modal).getByText(/0\.5 MB of 2\.0 MB/)).toBeInTheDocument()
+  expect(within(modal).getByTestId('upload-progress-detail')).toHaveTextContent('0 of 2 tracks submitted')
+
+  // The resumable engine waiting for the network surfaces as a notice.
+  act(() => pending[1].onProgress({ loaded: 0, bytesPerSecond: null, state: 'waiting-online' }))
+  expect(within(modal).getByText(/Waiting for connection/)).toBeInTheDocument()
+
+  // Finish row 1 (mixed then instrumental) → 1 of 2 submitted.
+  act(() => pending[0].resolve())
+  await waitFor(() => expect(pending).toHaveLength(3))
+  act(() => pending[2].resolve())
+  await waitFor(() => expect(screen.getByTestId('upload-progress-detail')).toHaveTextContent('1 of 2 tracks submitted'))
+
+  // Finish row 2 → modal closes and the done summary shows.
+  act(() => pending[1].resolve())
+  await waitFor(() => expect(pending).toHaveLength(4))
+  act(() => pending[3].resolve())
+  await waitFor(() => expect(screen.queryByTestId('upload-progress-modal')).not.toBeInTheDocument())
+  expect(mockApi.completeJobUpload).toHaveBeenCalledTimes(2)
+})
+
+it('drops a failed row out of the modal totals and reports it', async () => {
+  mockApi.uploadToSignedUrl.mockRejectedValueOnce(new Error('network blip'))
+  let releaseSecond: () => void = () => {}
+  mockApi.uploadToSignedUrl.mockImplementation(() => new Promise<void>(r => { releaseSecond = r }))
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 2 tracks/i }))
+
+  await waitFor(() => expect(screen.getByTestId('upload-progress-detail')).toHaveTextContent('1 failed'))
+  const { act } = await import('react')
+  // Let the surviving row finish; the modal closes and the failed row stays retryable.
+  for (let i = 0; i < 2; i++) {
+    act(() => releaseSecond())
+    await new Promise(r => setTimeout(r, 0))
+  }
+  await waitFor(() => expect(screen.queryByTestId('upload-progress-modal')).not.toBeInTheDocument())
+  expect(screen.getByText(/will retry on submit/i)).toBeInTheDocument()
+})
+
 it('matchRepickedFile requires an exact size and disambiguates by mtime', () => {
   const { matchRepickedFile } = jest.requireActual('@/lib/upload-recovery')
   const persisted = { fileType: 'audio', identity: 'a.mp3', name: 'a.mp3', size: 1, lastModified: 111, sessionUri: 's' }

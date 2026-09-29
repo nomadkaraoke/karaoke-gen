@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Kassera",
     "retryingConn": "Anslutningsproblem — försöker igen…",
     "sessionExpired": "Uppladdningssessionen har löpt ut — ta bort det här spåret och starta om det",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Laddar upp {count} spår",
+    "uploadModalTracksDone": "{done} av {count} spår har skickats in",
+    "uploadModalTracksFailed": "{count} misslyckades, du kan försöka igen efteråt"
   },
   "requests": {
     "convertBody": "Använd Generator själv och gör din karaokevideo direkt — vi bjuder på din första.",

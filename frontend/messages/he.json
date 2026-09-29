@@ -1828,7 +1828,10 @@
     "resumeDiscard": "ביטול",
     "retryingConn": "תקלת חיבור קלה — מנסים שוב…",
     "sessionExpired": "פג תוקף סשן ההעלאה — הסירו את הרצועה הזו והתחילו מחדש",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "מעלה {count} רצועות",
+    "uploadModalTracksDone": "{done} מתוך {count} רצועות נשלחו",
+    "uploadModalTracksFailed": "{count} נכשלו, אפשר לנסות שוב לאחר מכן"
   },
   "requests": {
     "convertBody": "השתמשו ב-Generator בעצמכם והכינו סרטון קריוקי ממש עכשיו — הראשון עלינו.",

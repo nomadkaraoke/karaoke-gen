@@ -1828,7 +1828,10 @@
     "resumeDiscard": "ลบทิ้ง",
     "retryingConn": "การเชื่อมต่อมีปัญหา — กำลังลองใหม่…",
     "sessionExpired": "เซสชันการอัปโหลดหมดอายุแล้ว — โปรดลบเพลงนี้ออกแล้วเริ่มใหม่อีกครั้ง",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "กำลังอัปโหลด {count} แทร็ก",
+    "uploadModalTracksDone": "ส่งแล้ว {done} จาก {count} แทร็ก",
+    "uploadModalTracksFailed": "ไม่สำเร็จ {count} แทร็ก คุณสามารถลองใหม่อีกครั้งได้ในภายหลัง"
   },
   "requests": {
     "convertBody": "ลองใช้ Generator สร้างวิดีโอคาราโอเกะด้วยตัวคุณเองได้เลยตอนนี้ — วิดีโอแรกเราให้ฟรี",

@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Descarta",
     "retryingConn": "Problema de connexió — reintentant…",
     "sessionExpired": "La sessió de pujada ha caducat — elimina aquesta pista i torna-la a començar",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Pujant {count} pistes",
+    "uploadModalTracksDone": "{done} de {count} pistes enviades",
+    "uploadModalTracksFailed": "{count} han fallat, pots tornar-ho a provar després"
   },
   "requests": {
     "convertBody": "Fes servir el Generator tu mateix i crea el teu vídeo de karaoke ara mateix — el primer va a càrrec nostre.",

@@ -40,6 +40,12 @@ interface UploadProgressModalProps {
   progress: UploadProgress
   /** Override the post-upload label (e.g. "Checking your instrumental..."). */
   finalizingLabel?: string
+  /** Override the modal title (e.g. "Uploading 10 tracks"). */
+  title?: string
+  /** Extra status line under the label (e.g. "3 of 10 tracks uploaded"). */
+  detail?: string
+  /** Highlighted connection note (e.g. paused offline) shown instead of the ETA. */
+  notice?: string
 }
 
 /**
@@ -48,7 +54,7 @@ interface UploadProgressModalProps {
  * dismissed — leaving the page kills the upload (useUploadTask also installs a
  * beforeunload guard). Shared by every upload flow.
  */
-export function UploadProgressModal({ progress, finalizingLabel }: UploadProgressModalProps) {
+export function UploadProgressModal({ progress, finalizingLabel, title, detail, notice }: UploadProgressModalProps) {
   const t = useTranslations('upload')
   const samplesRef = useRef<ProgressSample[]>([])
   const [estimate, setEstimate] = useState<ReturnType<typeof estimateTransfer>>(null)
@@ -101,8 +107,8 @@ export function UploadProgressModal({ progress, finalizingLabel }: UploadProgres
         data-testid="upload-progress-modal"
       >
         <DialogTitle className="flex items-center gap-2 text-foreground">
-          <UploadCloud className="w-5 h-5 text-[var(--brand-pink)]" />
-          {t('modalTitle')}
+          <UploadCloud className="w-5 h-5 text-[var(--tenant-primary,var(--brand-pink))]" />
+          {title ?? t('modalTitle')}
         </DialogTitle>
 
         <div className="space-y-2" role="status" aria-live="polite">
@@ -110,6 +116,9 @@ export function UploadProgressModal({ progress, finalizingLabel }: UploadProgres
             <Loader2 className="w-4 h-4 animate-spin shrink-0" />
             {label}
           </div>
+          {detail && (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }} data-testid="upload-progress-detail">{detail}</p>
+          )}
           {showFileLine && (
             <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
               {t('fileOfCount', { index: progress.fileIndex ?? 1, count: progress.fileCount ?? 1, name: progress.fileName ?? '' })}
@@ -124,7 +133,7 @@ export function UploadProgressModal({ progress, finalizingLabel }: UploadProgres
             aria-valuenow={barPercent}
           >
             <div
-              className={`h-full bg-[var(--brand-pink)] transition-[width] duration-300 ${progress.phase === 'uploading' ? '' : 'animate-pulse'}`}
+              className={`h-full bg-[var(--tenant-primary,var(--brand-pink))] transition-[width] duration-300 ${progress.phase === 'uploading' ? '' : 'animate-pulse'}`}
               style={{ width: `${Math.max(barPercent, 2)}%` }}
             />
           </div>
@@ -134,7 +143,7 @@ export function UploadProgressModal({ progress, finalizingLabel }: UploadProgres
                 {t('sizeProgress', { loaded: (progress.loaded / MB).toFixed(1), total: (progress.total / MB).toFixed(1) })}
                 {estimate && <> · {t('speed', { speed: (estimate.bytesPerSec / MB).toFixed(1) })}</>}
               </span>
-              <span>{etaText}</span>
+              {notice ? <span className="text-amber-300">{notice}</span> : <span>{etaText}</span>}
             </div>
           )}
         </div>

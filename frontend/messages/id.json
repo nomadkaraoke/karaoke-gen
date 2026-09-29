@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Abaikan",
     "retryingConn": "Gangguan koneksi — mencoba lagi…",
     "sessionExpired": "Sesi unggah kedaluwarsa — hapus trek ini dan mulai lagi",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Mengunggah {count} trek",
+    "uploadModalTracksDone": "{done} dari {count} trek terkirim",
+    "uploadModalTracksFailed": "{count} gagal, Anda bisa mencoba lagi setelahnya"
   },
   "requests": {
     "convertBody": "Gunakan Generator dan buat sendiri video karaoke Anda sekarang juga — video pertama Anda gratis dari kami.",

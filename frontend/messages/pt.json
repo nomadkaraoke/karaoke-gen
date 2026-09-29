@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Descartar",
     "retryingConn": "Problema de conexão — tentando novamente…",
     "sessionExpired": "Sessão de envio expirada — remova esta faixa e comece novamente",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Enviando {count} faixas",
+    "uploadModalTracksDone": "{done} de {count} faixas enviadas",
+    "uploadModalTracksFailed": "{count} falharam, você pode tentar novamente depois"
   },
   "requests": {
     "convertBody": "Use o Generator e crie seu vídeo de karaokê agora mesmo — o primeiro é por nossa conta.",

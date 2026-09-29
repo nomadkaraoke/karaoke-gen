@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Descartar",
     "retryingConn": "Problema de conexión — reintentando…",
     "sessionExpired": "La sesión de subida ha caducado — elimina esta pista y vuelve a empezar",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Subiendo {count} pistas",
+    "uploadModalTracksDone": "{done} de {count} pistas enviadas",
+    "uploadModalTracksFailed": "{count} fallaron, puedes volver a intentarlo después"
   },
   "requests": {
     "convertBody": "Usa el Generator tú mismo y haz tu video de karaoke ahora mismo — el primero va por nuestra cuenta.",

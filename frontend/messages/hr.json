@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Odbaci",
     "retryingConn": "Problem s vezom — pokušavam ponovno…",
     "sessionExpired": "Sesija prijenosa je istekla — ukloni ovu pjesmu i pokreni je ponovno",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Učitavanje {count} pjesama",
+    "uploadModalTracksDone": "{done} od {count} pjesama poslano",
+    "uploadModalTracksFailed": "{count} nije uspjelo, možeš pokušati ponovno kasnije"
   },
   "requests": {
     "convertBody": "Upotrijebi Generator i napravi svoj karaoke video odmah — prvi je na naš račun.",

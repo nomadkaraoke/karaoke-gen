@@ -1828,7 +1828,10 @@
     "resumeDiscard": "تجاهل",
     "retryingConn": "خلل في الاتصال — جارٍ إعادة المحاولة...",
     "sessionExpired": "انتهت صلاحية جلسة الرفع — قم بإزالة هذا المقطع وابدأ من جديد",
-    "speedMBs": "{mb} ميغابايت/ثانية"
+    "speedMBs": "{mb} ميغابايت/ثانية",
+    "uploadModalTitle": "جارٍ رفع {count} من المسارات",
+    "uploadModalTracksDone": "تم إرسال {done} من أصل {count} مسار",
+    "uploadModalTracksFailed": "فشل {count}، يمكنك إعادة المحاولة لاحقاً"
   },
   "requests": {
     "convertBody": "استخدم Generator بنفسك واصنع فيديو الكاريوكي الخاص بك الآن — الفيديو الأول على حسابنا.",

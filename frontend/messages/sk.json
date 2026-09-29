@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Zahodiť",
     "retryingConn": "Výpadok pripojenia — skúšam znova…",
     "sessionExpired": "Relácia nahrávania vypršala — odstráň túto skladbu a začni znova",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Nahrávanie {count} skladieb",
+    "uploadModalTracksDone": "{done} z {count} skladieb odoslaných",
+    "uploadModalTracksFailed": "{count} zlyhalo, potom to môžeš skúsiť znova"
   },
   "requests": {
     "convertBody": "Použi Generator sám a vytvor si svoje karaoke video hneď teraz — prvé máš od nás zadarmo.",

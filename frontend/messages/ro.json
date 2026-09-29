@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Renunță",
     "retryingConn": "Problemă de conexiune — reîncercăm…",
     "sessionExpired": "Sesiunea de încărcare a expirat — elimină această piesă și începe din nou",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Se încarcă {count} piese",
+    "uploadModalTracksDone": "{done} din {count} piese trimise",
+    "uploadModalTracksFailed": "{count} au eșuat, poți reîncerca mai târziu"
   },
   "requests": {
     "convertBody": "Folosește chiar tu Generator și creează-ți videoclipul de karaoke acum — primul este din partea noastră.",
