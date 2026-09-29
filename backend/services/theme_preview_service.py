@@ -356,7 +356,7 @@ def render_karaoke_frame(styles: Dict, lines: List[str], workdir: str) -> bytes:
         logger=logger,
     )
     try:
-        ass_path = subtitles.generate_ass(segments, "preview", os.path.join(workdir, "no-audio.flac"))
+        ass_path = subtitles.generate_ass(segments, "preview", None)  # no audio: duration from segments
     except Exception as exc:
         raise ThemePreviewError(f"Lyrics layout failed: {exc}") from exc
 
