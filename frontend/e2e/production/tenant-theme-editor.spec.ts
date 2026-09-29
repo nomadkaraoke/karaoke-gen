@@ -35,7 +35,7 @@ test.describe("Tenant theme editor", () => {
     // Consumer credits UI never appears on a tenant portal
     await expect(page.getByText(/credits available/i)).toHaveCount(0)
 
-    await page.getByTestId("user-menu-trigger").click()
+    await page.locator("[data-testid=user-menu-trigger]:visible").first().click()
     await page.getByRole("menuitem", { name: "Theme & style" }).click()
 
     const editor = page.getByTestId("tenant-theme-editor")
@@ -58,7 +58,7 @@ test.describe("Tenant theme editor", () => {
 
     await editor.getByRole("button", { name: "Discard changes" }).click()
     await expect(editor.getByRole("button", { name: "Save theme" })).toBeDisabled()
-    await editor.getByRole("button", { name: "Close" }).click()
+    await editor.getByRole("button", { name: "Close", exact: true }).first().click()
     await expect(editor).toBeHidden()
   })
 })
