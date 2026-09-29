@@ -30,6 +30,7 @@ from backend.models.requests import (
     CompleteReviewRequest,
     CreateCustomInstrumentalRequest,
 )
+from backend.services.audio_download_limits import KEEP_TRYING_STATE_KEY
 from backend.services.job_manager import JobManager
 from backend.services.tempo_label import apply_tempo_to_title
 from backend.services.worker_service import get_worker_service
@@ -2014,15 +2015,26 @@ async def cancel_job(
     }
 
 
+class RetryJobRequest(BaseModel):
+    """Optional body for POST /jobs/{id}/retry."""
+    # For a stalled torrent download: wait up to an hour (instead of the default
+    # 20 minutes) for the file's seeder to come back online.
+    keep_trying: bool = False
+
+
 @router.post("/{job_id}/retry")
 async def retry_job(
     job_id: str,
     request: Request,
     background_tasks: BackgroundTasks,
+    body: Optional[RetryJobRequest] = None,
     auth_result: AuthResult = Depends(require_auth)
 ) -> dict:
     """
     Retry a failed or cancelled job from the last successful checkpoint.
+
+    Body (optional): ``{"keep_trying": true}`` retries a stalled audio download
+    with the extended (1 hour) stall budget.
 
     This endpoint allows resuming jobs that failed or were cancelled during:
     - Audio processing (re-runs from beginning if input audio exists)
@@ -2266,6 +2278,8 @@ async def retry_job(
                 'error_message': None,
                 'error_details': None,
             })
+            keep_trying = bool(body and body.keep_trying)
+            job_manager.update_state_data(job_id, KEEP_TRYING_STATE_KEY, keep_trying or None)
 
             # Reset to DOWNLOADING_AUDIO state
             if not job_manager.transition_to_state(
@@ -2281,7 +2295,9 @@ async def retry_job(
 
             # Trigger audio download via Cloud Run Job (runs to completion,
             # immune to HTTP instance termination)
-            triggered = await worker_service.trigger_audio_download_worker(job_id)
+            triggered = await worker_service.trigger_audio_download_worker(
+                job_id, keep_trying=keep_trying
+            )
             if not triggered:
                 job_manager.fail_job(job_id, "Failed to trigger audio download worker")
                 raise HTTPException(
@@ -2293,6 +2309,7 @@ async def retry_job(
                 "status": "success",
                 "job_id": job_id,
                 "job_status": "downloading_audio",
+                "keep_trying": keep_trying,
                 "message": f"Job retry started: re-downloading from {job.source_name}",
                 "retry_stage": "audio_download"
             }
@@ -2309,6 +2326,53 @@ async def retry_job(
     except Exception as e:
         logger.error(f"Error retrying job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/choose-different-audio")
+async def choose_different_audio(
+    job_id: str,
+    request: Request,
+    auth_result: AuthResult = Depends(require_auth)
+) -> dict:
+    """
+    Reopen audio selection for a job whose audio download failed.
+
+    Moves a FAILED job (error stage ``audio_download``) back to
+    AWAITING_AUDIO_SELECTION using its cached search results, so the owner can
+    pick another source (e.g. the Spotify version when the only torrent seeder
+    is offline) via the usual Select Audio dialog.
+    """
+    locale = get_locale_from_request(request)
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+    if not _check_job_ownership(job, auth_result):
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
+    if job.status != JobStatus.FAILED or (job.error_details or {}).get('stage') != 'audio_download':
+        raise HTTPException(
+            status_code=400,
+            detail="Only jobs whose audio download failed can choose different audio",
+        )
+    if _is_auto_retry_pending(job.state_data):
+        raise HTTPException(
+            status_code=409,
+            detail="An automatic retry is already in progress. Please wait a few minutes."
+        )
+    if not (job.state_data or {}).get('audio_search_results'):
+        raise HTTPException(status_code=400, detail="No saved audio search results for this job")
+
+    job_manager.update_job(job_id, {'error_message': None, 'error_details': None})
+    job_manager.update_state_data(job_id, KEEP_TRYING_STATE_KEY, None)
+    if not job_manager.transition_to_state(
+        job_id=job_id,
+        new_status=JobStatus.AWAITING_AUDIO_SELECTION,
+        progress=10,
+        message="Choosing different audio after a failed download",
+    ):
+        raise HTTPException(status_code=500, detail="Failed to reopen audio selection")
+
+    logger.info(f"Job {job_id}: reopened audio selection after failed download")
+    return {"status": "success", "job_id": job_id, "job_status": "awaiting_audio_selection"}
 
 
 @router.get("/{job_id}/logs")

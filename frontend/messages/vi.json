@@ -1971,5 +1971,16 @@
     "close": "Đóng",
     "saving": "Đang lưu…",
     "songTitle": "Tên bài hát"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Vui lòng thử lại sau giây lát.",
+    "chooseDifferentAudio": "Chọn âm thanh khác",
+    "explanation": "Bài hát này có độ khả dụng thấp, nên nguồn nhạc có thể đang ngoại tuyến lúc này. Nguồn thường sẽ sớm hoạt động trở lại: chúng tôi có thể tiếp tục thử, hoặc bạn có thể chọn một nguồn âm thanh khác.",
+    "explanationExtended": "Chúng tôi đã tiếp tục thử, nhưng nguồn nhạc của bài hát này vẫn đang ngoại tuyến. Bạn có thể tiếp tục thử lại, hoặc chọn một nguồn âm thanh khác.",
+    "keepTrying": "Tiếp tục thử (tối đa 1 giờ)",
+    "keepTryingStarted": "Vẫn đang thử",
+    "keepTryingStartedDesc": "Chúng tôi sẽ tiếp tục chờ tối đa 1 giờ. Bạn có thể đóng trang này; tác vụ của bạn vẫn sẽ tiếp tục chạy.",
+    "title": "Âm thanh của bạn vẫn chưa bắt đầu tải xuống sau {minutes} phút",
+    "actionFailed": "Đã xảy ra lỗi"
   }
 }

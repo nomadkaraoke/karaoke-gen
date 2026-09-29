@@ -268,6 +268,33 @@ Query parameters:
 - `hide_completed` (bool, default: false) - Exclude successful completions (complete, prep_complete) server-side. Failed jobs remain visible.
 - `search` (string, optional) - Text search filter (summary mode only). Case-insensitive substring match against artist, title, audio_search_artist, audio_search_title, and job_id. When active, fetches up to 1000 results internally and filters in Python.
 
+#### Retry Job
+
+```http
+POST /api/jobs/{job_id}/retry
+Content-Type: application/json
+
+{"keep_trying": false}   # body optional
+```
+
+Resumes a `failed`/`cancelled` job from its last checkpoint. `409` while a Cloud
+Run auto-retry is pending. For an audio-download failure it re-runs the download.
+`keep_trying: true` retries a **stalled torrent** (`error_details.code ==
+"audio_download_stalled"`) with the extended stall budget (1 hour instead of 20
+minutes; see `backend/services/audio_download_limits.py`).
+
+#### Choose Different Audio
+
+```http
+POST /api/jobs/{job_id}/choose-different-audio
+```
+
+For a `failed` job whose `error_details.stage == "audio_download"`: moves it back
+to `awaiting_audio_selection` using its saved search results, so the owner can
+pick another source via the Select Audio dialog. `400` if the job isn't an
+audio-download failure or has no saved results, `403` for non-owners, `409` while
+an auto-retry is pending.
+
 #### Delete Job
 
 ```http

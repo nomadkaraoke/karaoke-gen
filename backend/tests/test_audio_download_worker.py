@@ -884,3 +884,262 @@ class TestDownloadAudio:
                 target_file=None, download_url=None, remote_search_id=None,
                 selection_index=None, selected={}, storage_service=mock_storage,
             )
+
+
+# ---------------------------------------------------------------------------
+# Torrent stall -> "Keep trying?" prompt (no silent auto-retry)
+# ---------------------------------------------------------------------------
+
+from backend.services import audio_download_limits  # noqa: E402
+from backend.services.flacfetch_client import (  # noqa: E402
+    FlacfetchDownloadStalledError,
+    FlacfetchServiceError,
+)
+
+
+def _red_job(**state) -> Job:
+    return _make_job(source_name="RED", source_id="987654", state_data=dict(state))
+
+
+def _mock_flacfetch(wait_side_effect=None):
+    client = MagicMock()
+    client.download_by_id = AsyncMock(return_value="dl_1")
+    client.download = AsyncMock(return_value="dl_1")
+    if wait_side_effect is not None:
+        client.wait_for_download = AsyncMock(side_effect=wait_side_effect)
+    else:
+        client.wait_for_download = AsyncMock(return_value={
+            "status": "complete",
+            "gcs_path": "gs://karaoke-gen-storage-nomadkaraoke/uploads/test-job-123/audio/song.flac",
+        })
+    return client
+
+
+class TestTorrentStallAwaitsUser:
+    """A stalled torrent fails the job with a user prompt instead of auto-retrying."""
+
+    async def _run(self, job, flacfetch, attempt="0"):
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker.get_flacfetch_client", return_value=flacfetch), \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.workers.audio_download_worker.reconcile_and_maybe_pause",
+                   new_callable=AsyncMock, return_value=False), \
+             patch.dict(os.environ, {"CLOUD_RUN_TASK_ATTEMPT": attempt}, clear=False):
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+            mock_ws_factory.return_value = AsyncMock()
+
+            result = await process_audio_download("test-job-123")
+        return result, mock_jm
+
+    @pytest.mark.asyncio
+    async def test_stall_fails_job_with_stalled_details_and_no_retry_pending(self):
+        flacfetch = _mock_flacfetch(FlacfetchDownloadStalledError("Download failed: stalled"))
+
+        result, mock_jm = await self._run(_red_job(), flacfetch, attempt="0")
+
+        assert result is False
+        mock_jm.fail_job.assert_called_once()
+        assert mock_jm.fail_job.call_args.kwargs["error_details"] == {
+            'stage': 'audio_download',
+            'code': 'audio_download_stalled',
+            'stall_minutes': 20,
+            'keep_trying': False,
+        }
+        pending_updates = [c for c in mock_jm.update_state_data.call_args_list
+                           if c.args[1] == 'cloud_run_retry_pending']
+        assert pending_updates, "stall must explicitly clear any retry-pending marker"
+        assert all(c.args[2] is None for c in pending_updates), (
+            f"stall must not mark an auto-retry pending; got {pending_updates}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_default_job_uses_default_stall_budget(self):
+        flacfetch = _mock_flacfetch()
+
+        result, _ = await self._run(_red_job(), flacfetch)
+
+        assert result is True
+        assert flacfetch.download_by_id.await_args.kwargs["max_stall_seconds"] == 1200
+        assert flacfetch.wait_for_download.await_args.kwargs["timeout"] == (
+            audio_download_limits.torrent_wait_timeout_seconds(False)
+        )
+
+    @pytest.mark.asyncio
+    async def test_keep_trying_uses_extended_stall_budget(self):
+        flacfetch = _mock_flacfetch()
+
+        result, _ = await self._run(_red_job(audio_download_keep_trying=True), flacfetch)
+
+        assert result is True
+        assert flacfetch.download_by_id.await_args.kwargs["max_stall_seconds"] == 3600
+        assert flacfetch.wait_for_download.await_args.kwargs["timeout"] == (
+            audio_download_limits.torrent_wait_timeout_seconds(True)
+        )
+
+    @pytest.mark.asyncio
+    async def test_keep_trying_stall_reports_60_minutes(self):
+        flacfetch = _mock_flacfetch(FlacfetchDownloadStalledError("Download failed: stalled"))
+
+        result, mock_jm = await self._run(_red_job(audio_download_keep_trying=True), flacfetch)
+
+        assert result is False
+        details = mock_jm.fail_job.call_args.kwargs["error_details"]
+        assert details["code"] == "audio_download_stalled"
+        assert details["stall_minutes"] == 60
+        assert details["keep_trying"] is True
+
+    @pytest.mark.asyncio
+    async def test_non_stall_failure_still_marks_retry_pending(self):
+        flacfetch = _mock_flacfetch(FlacfetchServiceError("Download failed: tracker 500"))
+
+        result, mock_jm = await self._run(_red_job(), flacfetch, attempt="0")
+
+        assert result is False
+        pending = [c.args[2] for c in mock_jm.update_state_data.call_args_list
+                   if c.args[1] == 'cloud_run_retry_pending']
+        assert len(pending) == 1 and pending[0]['expected_attempt'] == 1
+        assert mock_jm.fail_job.call_args.kwargs["error_details"] == {'stage': 'audio_download'}
+
+    @pytest.mark.asyncio
+    async def test_success_clears_keep_trying_flag(self):
+        flacfetch = _mock_flacfetch()
+
+        result, mock_jm = await self._run(_red_job(audio_download_keep_trying=True), flacfetch)
+
+        assert result is True
+        mock_jm.update_state_data.assert_any_call(
+            "test-job-123", audio_download_limits.KEEP_TRYING_STATE_KEY, None
+        )
+
+
+class TestMainExitCodes:
+    """main() exits 0 for a stalled download (no Cloud Run retry), 1 otherwise."""
+
+    def _run_main(self, error_details):
+        from backend.workers import audio_download_worker as worker
+
+        failed_job = _make_job(status=JobStatus.FAILED, error_details=error_details)
+        with patch.object(worker, "process_audio_download", new=AsyncMock(return_value=False)), \
+             patch.object(worker, "JobManager") as mock_jm_cls, \
+             patch("sys.argv", ["audio_download_worker", "--job-id", "test-job-123"]):
+            mock_jm_cls.return_value.get_job.return_value = failed_job
+            with pytest.raises(SystemExit) as exc_info:
+                worker.main()
+        return exc_info.value.code
+
+    def test_exits_zero_when_stalled_awaiting_user(self):
+        assert self._run_main({'stage': 'audio_download', 'code': 'audio_download_stalled'}) == 0
+
+    def test_exits_one_for_other_failures(self):
+        assert self._run_main({'stage': 'audio_download'}) == 1
+
+    def test_exits_one_when_job_lookup_fails(self):
+        from backend.workers import audio_download_worker as worker
+
+        with patch.object(worker, "process_audio_download", new=AsyncMock(return_value=False)), \
+             patch.object(worker, "JobManager", side_effect=RuntimeError("firestore down")), \
+             patch("sys.argv", ["audio_download_worker", "--job-id", "test-job-123"]):
+            with pytest.raises(SystemExit) as exc_info:
+                worker.main()
+        assert exc_info.value.code == 1
+
+
+class TestDownloadHeartbeat:
+    """_download_heartbeat keeps updated_at fresh during a long torrent wait so
+    the recover-stuck-jobs cron (>10 min without update) doesn't park the job."""
+
+    @staticmethod
+    def _progress_writes(mock_jm):
+        return [c.args[2] for c in mock_jm.update_state_data.call_args_list
+                if c.args[1] == 'audio_download_progress']
+
+    def test_first_call_writes_progress(self):
+        from backend.workers.audio_download_worker import _download_heartbeat
+
+        mock_jm = MagicMock()
+        callback = _download_heartbeat("test-job-123", job_manager=mock_jm)
+
+        with patch("backend.workers.audio_download_worker.time.monotonic", return_value=5000.0):
+            callback({"status": "downloading", "progress": 12.5, "peers": 1, "download_speed_kbps": 800})
+
+        writes = self._progress_writes(mock_jm)
+        assert len(writes) == 1
+        assert writes[0]["progress"] == 12.5
+        assert writes[0]["peers"] == 1
+        assert writes[0]["download_speed_kbps"] == 800
+        assert "at" in writes[0]
+        assert mock_jm.update_state_data.call_args.args[0] == "test-job-123"
+
+    def test_missing_fields_default_to_zero(self):
+        from backend.workers.audio_download_worker import _download_heartbeat
+
+        mock_jm = MagicMock()
+        callback = _download_heartbeat("test-job-123", job_manager=mock_jm)
+        with patch("backend.workers.audio_download_worker.time.monotonic", return_value=5000.0):
+            callback({"status": "queued"})
+
+        write = self._progress_writes(mock_jm)[0]
+        assert write["progress"] == 0 and write["peers"] == 0 and write["download_speed_kbps"] == 0
+
+    def test_throttles_writes_to_heartbeat_interval(self):
+        from backend.workers.audio_download_worker import _download_heartbeat
+
+        interval = audio_download_limits.HEARTBEAT_INTERVAL_SECONDS
+        mock_jm = MagicMock()
+        callback = _download_heartbeat("test-job-123", job_manager=mock_jm)
+        # Poll every few seconds; only calls >= interval apart should write.
+        times = [1000.0, 1005.0, 1000.0 + interval - 1, 1000.0 + interval,
+                 1000.0 + interval + 10, 1000.0 + 2 * interval]
+
+        with patch("backend.workers.audio_download_worker.time.monotonic", side_effect=times):
+            for _ in times:
+                callback({"status": "downloading", "progress": 0, "peers": 0})
+
+        assert len(self._progress_writes(mock_jm)) == 3
+
+    def test_write_error_is_swallowed_and_retried_next_interval(self):
+        from backend.workers.audio_download_worker import _download_heartbeat
+
+        interval = audio_download_limits.HEARTBEAT_INTERVAL_SECONDS
+        mock_jm = MagicMock()
+        mock_jm.update_state_data.side_effect = [RuntimeError("firestore unavailable"), None]
+        callback = _download_heartbeat("test-job-123", job_manager=mock_jm)
+
+        with patch("backend.workers.audio_download_worker.time.monotonic",
+                   side_effect=[1000.0, 1000.0 + interval]):
+            callback({"status": "downloading"})  # must not raise
+            callback({"status": "downloading"})
+
+        assert mock_jm.update_state_data.call_count == 2
+
+    def test_defaults_to_new_job_manager(self):
+        from backend.workers.audio_download_worker import _download_heartbeat
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.time.monotonic", return_value=5000.0):
+            _download_heartbeat("test-job-123")({"status": "downloading"})
+
+        mock_jm_cls.return_value.update_state_data.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_download_torrent_passes_heartbeat_progress_callback(self):
+        from backend.workers.audio_download_worker import _download_torrent
+
+        flacfetch = _mock_flacfetch()
+        with patch("backend.workers.audio_download_worker.get_flacfetch_client", return_value=flacfetch), \
+             patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.time.monotonic", return_value=5000.0):
+            await _download_torrent(
+                "test-job-123", "RED", "987654", None, None, None, None,
+            )
+            callback = flacfetch.wait_for_download.await_args.kwargs["progress_callback"]
+            assert callable(callback)
+            callback({"status": "downloading", "progress": 50})
+
+        writes = [c.args for c in mock_jm_cls.return_value.update_state_data.call_args_list
+                  if c.args[1] == 'audio_download_progress']
+        assert len(writes) == 1 and writes[0][0] == "test-job-123"

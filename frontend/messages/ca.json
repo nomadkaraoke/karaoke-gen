@@ -1971,5 +1971,16 @@
     "close": "Tanca",
     "saving": "Desant…",
     "songTitle": "Títol de la cançó"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Torna-ho a provar d'aquí a un moment.",
+    "chooseDifferentAudio": "Tria un àudio diferent",
+    "explanation": "Aquesta pista té poca disponibilitat, de manera que la font podria estar fora de línia ara mateix. Sovint torna a estar disponible aviat: podem continuar provant-ho o pots triar una font d'àudio diferent.",
+    "explanationExtended": "Ho hem continuat provant, però la font d'aquesta pista continua fora de línia. Pots continuar provant-ho o triar una font d'àudio diferent.",
+    "keepTrying": "Continua provant-ho (fins a 1 hora)",
+    "keepTryingStarted": "Continuem provant-ho",
+    "keepTryingStartedDesc": "Continuarem esperant fins a una hora. Pots tancar aquesta pàgina; la teva tasca continuarà.",
+    "title": "El teu àudio no ha començat a descarregar-se al cap de {minutes} minuts",
+    "actionFailed": "Hi ha hagut un problema"
   }
 }

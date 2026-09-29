@@ -1971,5 +1971,16 @@
     "close": "Zatvori",
     "saving": "Spremanje…",
     "songTitle": "Naslov pjesme"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Pokušaj ponovno za trenutak.",
+    "chooseDifferentAudio": "Odaberi drugi audiozapis",
+    "explanation": "Ova je pjesma slabo dostupna, pa je njezin izvor možda trenutačno nedostupan. Često ubrzo ponovno proradi: možemo nastaviti pokušavati ili možeš odabrati drugi izvor zvuka.",
+    "explanationExtended": "Nastavili smo pokušavati, ali izvor ove pjesme i dalje je nedostupan. Možeš nastaviti pokušavati ili odabrati drugi izvor zvuka.",
+    "keepTrying": "Nastavi pokušavati (do 1 sat)",
+    "keepTryingStarted": "I dalje pokušavamo",
+    "keepTryingStartedDesc": "Čekat ćemo do sat vremena. Možeš zatvoriti ovu stranicu; tvoj se zadatak nastavlja.",
+    "title": "Preuzimanje tvog audiozapisa nije započelo nakon {minutes} minuta",
+    "actionFailed": "Nešto je pošlo po zlu"
   }
 }

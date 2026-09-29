@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTranslations } from 'next-intl'
 import { Job, api } from "@/lib/api"
 import { isAutoRetryPending } from "@/lib/job-status"
+import { isStalledDownload } from "./StalledDownloadNotice"
 import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -26,7 +27,8 @@ export function JobActions({ job, onRefresh }: JobActionsProps) {
   const autoRetryPending = isAutoRetryPending(job)
   // Hide the manual Retry button while a Cloud Run Job auto-retry is in flight —
   // otherwise the user races the system and creates a parallel execution.
-  const canRetry = job.status === "failed" && !autoRetryPending
+  // A stalled download has its own Keep trying / Choose different audio prompt.
+  const canRetry = job.status === "failed" && !autoRetryPending && !isStalledDownload(job)
   const canDelete = !["complete", "failed", "prep_complete"].includes(job.status)
 
   async function handleRetry() {

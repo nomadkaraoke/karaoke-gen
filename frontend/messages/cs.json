@@ -1971,5 +1971,16 @@
     "close": "Zavřít",
     "saving": "Ukládám…",
     "songTitle": "Název písně"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Zkus to prosím za chvilku znovu.",
+    "chooseDifferentAudio": "Vybrat jiné audio",
+    "explanation": "Tato skladba má nízkou dostupnost, takže její zdroj může být právě teď offline. Často bývá brzy znovu dostupný: můžeme to zkoušet dál, nebo můžeš vybrat jiný zdroj audia.",
+    "explanationExtended": "Zkoušeli jsme to, ale zdroj této skladby je stále offline. Můžeš to zkoušet dál, nebo vybrat jiný zdroj audia.",
+    "keepTrying": "Zkoušet dál (až 1 hodinu)",
+    "keepTryingStarted": "Stále to zkoušíme",
+    "keepTryingStartedDesc": "Budeme dál čekat až hodinu. Tuto stránku můžeš zavřít, tvoje úloha poběží dál.",
+    "title": "Tvoje audio se nezačalo stahovat ani po {minutes} minutách",
+    "actionFailed": "Něco se pokazilo"
   }
 }

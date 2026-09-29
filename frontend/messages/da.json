@@ -1971,5 +1971,16 @@
     "close": "Luk",
     "saving": "Gemmer…",
     "songTitle": "Sangtitel"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Prøv igen om et øjeblik.",
+    "chooseDifferentAudio": "Vælg en anden lyd",
+    "explanation": "Dette nummer har lav tilgængelighed, så kilden er muligvis offline lige nu. Den vender ofte hurtigt tilbage: vi kan blive ved med at prøve, eller du kan vælge en anden lydkilde.",
+    "explanationExtended": "Vi blev ved med at prøve, men kilden til dette nummer er stadig offline. Du kan blive ved med at prøve, eller vælge en anden lydkilde.",
+    "keepTrying": "Bliv ved med at prøve (op til 1 time)",
+    "keepTryingStarted": "Prøver stadig",
+    "keepTryingStartedDesc": "Vi bliver ved med at vente i op til en time. Du kan roligt lukke denne side; din opgave fortsætter.",
+    "title": "Din lyd er ikke begyndt at downloade efter {minutes} minutter",
+    "actionFailed": "Noget gik galt"
   }
 }

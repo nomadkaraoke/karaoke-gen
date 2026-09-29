@@ -1971,5 +1971,16 @@
     "close": "Sulje",
     "saving": "Tallennetaan…",
     "songTitle": "Kappaleen nimi"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Yritä hetken kuluttua uudelleen.",
+    "chooseDifferentAudio": "Valitse toinen ääniraita",
+    "explanation": "Tämän kappaleen saatavuus on heikko, joten sen lähde saattaa olla juuri nyt offline-tilassa. Se palautuu usein pian saataville: voimme jatkaa yrittämistä tai voit valita toisen äänilähteen.",
+    "explanationExtended": "Jatkoimme yrittämistä, mutta tämän kappaleen lähde on edelleen offline-tilassa. Voit yrittää vielä uudelleen tai valita toisen äänilähteen.",
+    "keepTrying": "Jatka yrittämistä (enintään 1 tunti)",
+    "keepTryingStarted": "Yritetään edelleen",
+    "keepTryingStartedDesc": "Odotamme enintään tunnin ajan. Voit sulkea tämän sivun – työsi jatkuu taustalla.",
+    "title": "Äänitiedostosi lataus ei ole alkanut {minutes} minuuttiin",
+    "actionFailed": "Jotain meni pieleen"
   }
 }

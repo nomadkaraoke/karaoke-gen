@@ -1971,5 +1971,16 @@
     "close": "閉じる",
     "saving": "保存中…",
     "songTitle": "曲名"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "しばらくしてからもう一度お試しください。",
+    "chooseDifferentAudio": "別の音源を選択",
+    "explanation": "このトラックは利用可能なソースが少ないため、現在音源がオフラインになっている可能性があります。すぐに復帰することも多いので、このまま再試行を続けるか、別の音源をお選びいただけます。",
+    "explanationExtended": "再試行を続けましたが、このトラックの音源はまだオフラインのままです。もう一度再試行を続けるか、別の音源をお選びいただけます。",
+    "keepTrying": "再試行を続ける（最長1時間）",
+    "keepTryingStarted": "再試行中",
+    "keepTryingStartedDesc": "最長1時間待機を続けます。このページを閉じても処理は継続されます。",
+    "title": "{minutes}分経過しても音源のダウンロードが開始されません",
+    "actionFailed": "問題が発生しました"
   }
 }

@@ -77,6 +77,19 @@ describe('JobCard', () => {
     expect(screen.getByText('Something went wrong')).toBeInTheDocument()
   })
 
+  it('shows the stalled-download prompt instead of the raw error', () => {
+    const stalledJob = {
+      ...mockJob,
+      status: 'failed',
+      error_message: 'Audio download failed: Torrent download stalled for 1200s',
+      error_details: { stage: 'audio_download', code: 'audio_download_stalled', stall_minutes: 20 },
+    }
+    render(<JobCard job={stalledJob} onRefresh={mockOnRefresh} />)
+    expect(screen.getByTestId('stalled-download-notice')).toBeInTheDocument()
+    expect(screen.getByText('Keep trying (up to 1 hour)')).toBeInTheDocument()
+    expect(screen.queryByText(/Torrent download stalled/)).not.toBeInTheDocument()
+  })
+
   it('hides stale error message on completed jobs', () => {
     // Regression: a transient failure (e.g. Cloud Run auto-retried download)
     // leaves error_message populated even after the job completes. We must

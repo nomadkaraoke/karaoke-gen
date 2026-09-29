@@ -1971,5 +1971,16 @@
     "close": "Zamknij",
     "saving": "Zapisywanie…",
     "songTitle": "Tytuł piosenki"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Spróbuj ponownie za chwilę.",
+    "chooseDifferentAudio": "Wybierz inne audio",
+    "explanation": "Ten utwór ma niską dostępność, dlatego jego źródło może być teraz offline. Zwykle szybko wraca do sieci: możemy próbować dalej albo możesz wybrać inne źródło audio.",
+    "explanationExtended": "Próbowaliśmy dalej, ale źródło tego utworu nadal jest offline. Możesz próbować dalej lub wybrać inne źródło audio.",
+    "keepTrying": "Próbuj dalej (do 1 godziny)",
+    "keepTryingStarted": "Nadal próbujemy",
+    "keepTryingStartedDesc": "Będziemy czekać maksymalnie godzinę. Możesz zamknąć tę stronę – Twoje zadanie będzie kontynuowane.",
+    "title": "Pobieranie Twojego audio nie rozpoczęło się po {minutes} minutach",
+    "actionFailed": "Coś poszło nie tak"
   }
 }

@@ -1971,5 +1971,16 @@
     "close": "Bezárás",
     "saving": "Mentés…",
     "songTitle": "Dal címe"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Kérlek, próbáld újra egy pillanat múlva.",
+    "chooseDifferentAudio": "Válassz másik hanganyagot",
+    "explanation": "Ennek a számnak alacsony az elérhetősége, így a forrása jelenleg offline lehet. Gyakran hamar helyreáll: próbálkozhatunk tovább, vagy választhatsz másik hangforrást is.",
+    "explanationExtended": "Tovább próbálkoztunk, de a szám forrása még mindig offline. Megpróbálhatod újra, vagy választhatsz másik hangforrást.",
+    "keepTrying": "Próbálkozzunk tovább (akár 1 órán át)",
+    "keepTryingStarted": "Még próbálkozunk",
+    "keepTryingStartedDesc": "Még akár egy órán át várunk. Bezárhatod ezt az oldalt; a feladatod folytatódik.",
+    "title": "A hanganyagod letöltése {minutes} perc után sem indult el",
+    "actionFailed": "Valami hiba történt"
   }
 }

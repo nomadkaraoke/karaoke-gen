@@ -382,7 +382,7 @@ class WorkerService:
     # Convenience methods for specific workers
     # These provide a cleaner API and better IDE autocomplete
 
-    async def trigger_audio_download_worker(self, job_id: str) -> bool:
+    async def trigger_audio_download_worker(self, job_id: str, keep_trying: bool = False) -> bool:
         """
         Trigger audio download worker.
 
@@ -392,12 +392,18 @@ class WorkerService:
         Uses Cloud Run Jobs to avoid instance termination during long-running
         downloads. This replaces the BackgroundTasks approach that caused
         jobs to get stuck when Cloud Run scaled down instances.
+
+        The execution timeout is overridden to fit the torrent stall budget
+        (longer for a user's "Keep trying" retry) — see audio_download_limits.
         """
+        from backend.services.audio_download_limits import task_timeout_seconds
+
         return await self._trigger_worker_cloud_run_job(
             job_id=job_id,
             cloud_run_job_name="audio-download-job",
             worker_module="audio_download_worker",
             location=self.settings.cpu_jobs_region,
+            timeout_seconds=task_timeout_seconds(keep_trying),
         )
 
     async def trigger_bulk_search_worker(self, batch_id: str) -> bool:
@@ -649,6 +655,7 @@ class WorkerService:
         cloud_run_job_name: str,
         worker_module: str,
         location: str | None = None,
+        timeout_seconds: int | None = None,
     ) -> bool:
         """
         Trigger a worker as a Cloud Run Job.
@@ -662,6 +669,8 @@ class WorkerService:
             cloud_run_job_name: Name of the Cloud Run Job (e.g., "lyrics-transcription-job")
             worker_module: Worker module name (e.g., "lyrics_worker")
             location: GCP region for the job (defaults to settings.gcp_region)
+            timeout_seconds: Per-execution task timeout override (default: the
+                job's configured timeout)
 
         Returns:
             True if job was triggered successfully, False otherwise
@@ -690,19 +699,20 @@ class WorkerService:
             client = run_v2.JobsClient()
 
             # Run the job with overrides for the specific job_id
-            request = run_v2.RunJobRequest(
-                name=job_name,
-                overrides=run_v2.RunJobRequest.Overrides(
-                    container_overrides=[
-                        run_v2.RunJobRequest.Overrides.ContainerOverride(
-                            args=[
-                                "python", "-m", f"backend.workers.{worker_module}",
-                                "--job-id", job_id,
-                            ],
-                        )
-                    ]
-                )
+            overrides = run_v2.RunJobRequest.Overrides(
+                container_overrides=[
+                    run_v2.RunJobRequest.Overrides.ContainerOverride(
+                        args=[
+                            "python", "-m", f"backend.workers.{worker_module}",
+                            "--job-id", job_id,
+                        ],
+                    )
+                ]
             )
+            if timeout_seconds:
+                from google.protobuf import duration_pb2
+                overrides.timeout = duration_pb2.Duration(seconds=int(timeout_seconds))
+            request = run_v2.RunJobRequest(name=job_name, overrides=overrides)
 
             # Run the job (async operation), retrying transient control-plane errors.
             operation = await self._run_job_with_retry(

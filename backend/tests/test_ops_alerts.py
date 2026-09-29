@@ -188,3 +188,74 @@ def test_failed_delivery_does_not_suppress_next(enabled, monkeypatch):
     # acked, this must still be attempted (not throttled away) and now succeed.
     assert ops_alerts.notify_job_failed(db, "jobs", "job-2", additional_fields={"error_message": "same err"}) is True
     assert len(calls) == 2
+
+
+# ---------------------------------------------------------------------------
+# Auto-retry pending / stalled download
+# ---------------------------------------------------------------------------
+
+def _job_with_retry_pending(expires_at, **kwargs):
+    doc = _job(**kwargs)
+    doc["state_data"]["cloud_run_retry_pending"] = {"expires_at": expires_at, "expected_attempt": 1}
+    return doc
+
+
+def _iso(delta_minutes):
+    from datetime import datetime, timedelta, timezone
+    return (datetime.now(timezone.utc) + timedelta(minutes=delta_minutes)).isoformat()
+
+
+def test_unexpired_retry_pending_skips_alert(enabled, captured):
+    db = FakeFirestore(jobs={"job-1": _job_with_retry_pending(_iso(10))})
+    sent = ops_alerts.notify_job_failed(db, "jobs", "job-1", message="transient flacfetch 500")
+    assert sent is False
+    assert captured == []
+
+
+def test_retry_pending_z_suffix_and_naive_timestamps_honoured(enabled, captured):
+    from datetime import datetime, timedelta, timezone
+    future = datetime.now(timezone.utc) + timedelta(minutes=10)
+    db = FakeFirestore(jobs={
+        "z": _job_with_retry_pending(future.strftime("%Y-%m-%dT%H:%M:%SZ")),
+        "naive": _job_with_retry_pending(future.replace(tzinfo=None).isoformat()),
+    })
+    assert ops_alerts.notify_job_failed(db, "jobs", "z", message="err z") is False
+    assert ops_alerts.notify_job_failed(db, "jobs", "naive", message="err naive") is False
+    assert captured == []
+
+
+def test_skipped_retry_pending_does_not_consume_throttle(enabled, captured):
+    """The final attempt (marker cleared) must still alert for the same signature."""
+    db = FakeFirestore(jobs={
+        "job-1": _job_with_retry_pending(_iso(10)),
+        "job-1-final": _job(),
+    })
+    ops_alerts.notify_job_failed(db, "jobs", "job-1", message="same failure")
+    assert ops_alerts.notify_job_failed(db, "jobs", "job-1-final", message="same failure") is True
+    assert len(captured) == 1
+
+
+@pytest.mark.parametrize("expires_at", [_iso(-1), "not-a-date", None])
+def test_expired_or_invalid_retry_pending_still_alerts(enabled, captured, expires_at):
+    db = FakeFirestore(jobs={"job-1": _job_with_retry_pending(expires_at)})
+    sent = ops_alerts.notify_job_failed(db, "jobs", "job-1", message=f"err {expires_at}")
+    assert sent is True
+    assert len(captured) == 1
+
+
+def test_stalled_download_headline(enabled, captured):
+    doc = _job()
+    doc["error_details"] = {"stage": "audio_download", "code": "audio_download_stalled"}
+    db = FakeFirestore(jobs={"job-1": doc})
+    assert ops_alerts.notify_job_failed(db, "jobs", "job-1", message="stalled 20 min") is True
+    headline = captured[0].splitlines()[0]
+    assert "Audio download stalled" in headline
+    assert "Job failed" not in headline
+
+
+def test_other_failures_keep_job_failed_headline(enabled, captured):
+    doc = _job()
+    doc["error_details"] = {"stage": "audio_download"}
+    db = FakeFirestore(jobs={"job-1": doc})
+    ops_alerts.notify_job_failed(db, "jobs", "job-1", message="tracker 500")
+    assert "Job failed" in captured[0].splitlines()[0]

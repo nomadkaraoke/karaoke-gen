@@ -1971,5 +1971,16 @@
     "close": "关闭",
     "saving": "保存中…",
     "songTitle": "歌曲名称"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "请稍后再试。",
+    "chooseDifferentAudio": "选择其他音频",
+    "explanation": "这首曲目的可用性较低，其音频来源目前可能处于离线状态。通常很快就会恢复：我们可以继续尝试，或者您可以选择其他音频来源。",
+    "explanationExtended": "我们一直在尝试，但该曲目的音频来源仍处于离线状态。您可以继续重试，或者选择其他音频来源。",
+    "keepTrying": "继续尝试（最多 1 小时）",
+    "keepTryingStarted": "仍在尝试",
+    "keepTryingStartedDesc": "我们会继续等待最多 1 小时。您可以关闭此页面，您的任务将继续进行。",
+    "title": "等待 {minutes} 分钟后，您的音频仍未开始下载",
+    "actionFailed": "出错了"
   }
 }

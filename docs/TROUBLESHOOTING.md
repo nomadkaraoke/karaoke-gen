@@ -136,6 +136,11 @@ runbook: **[docs/PYPI-STORAGE-PRUNE.md](PYPI-STORAGE-PRUNE.md)**.
 - **Torrent sources (RED/OPS)** → parks the job in `download_pending_retry` and keeps re-attempting the download for up to **24 hours** (handles rare tracks with few/intermittent seeders and transient tracker outages), then fails permanently with a clear message. No manual action needed. See `download_pending_retry` below.
 - **Other sources (YouTube/Spotify/URL)** → fails the job (deterministic); use the admin retry button to re-attempt.
 
+**The stuck check needs a heartbeat.** A torrent wait can legitimately last 20-60 min
+(see "Audio download stalled" below), so while waiting the worker writes
+`state_data.audio_download_progress` (`progress`, `peers`, `at`) every 2 min. That bumps
+`updated_at`, so only a genuinely dead worker (no update for 10 min) gets parked.
+
 **Manual recovery:**
 
 ```bash
@@ -152,6 +157,33 @@ curl -X POST "https://api.nomadkaraoke.com/api/internal/recover-stuck-jobs" \
 curl -X POST "https://api.nomadkaraoke.com/api/jobs/YOUR_JOB_ID/retry" \
   -H "X-Admin-Token: $(gcloud secrets versions access latest --secret=admin-tokens --project=nomadkaraoke)"
 ```
+
+---
+
+## Audio download stalled ("Your audio hasn't started downloading after N minutes")
+
+**Symptoms:** A `failed` job with `error_details.code == "audio_download_stalled"`. The job
+card shows an amber prompt with **Keep trying (up to 1 hour)** and **Choose different
+audio** instead of the raw error. Discord gets a 🟠 "Audio download stalled" alert.
+
+**Cause:** A torrent (RED/OPS) made **no progress** for the whole stall budget, almost
+always because its only seeder is offline (flacfetch logs `peers: 0` on every re-announce).
+Seeders often come back soon; job 64be8a87 (2026-09-29) sat at 0 peers for 10 min, then
+finished in 17s on the next attempt. flacfetch ≥ 0.31 reports `error_code:
+"torrent_stalled"` for this case.
+
+**Behaviour (v0.250.0+):**
+- First attempt waits **20 min** with no progress (`max_stall_seconds` sent per request to
+  flacfetch; the Cloud Run execution timeout is overridden to fit, see
+  `backend/services/audio_download_limits.py`).
+- On a stall the worker fails the job with the code above and exits 0, so there is **no
+  Cloud Run auto-retry** of the same torrent. Other download failures still auto-retry.
+- **Keep trying** → `POST /api/jobs/{id}/retry {"keep_trying": true}`, which waits up to
+  **60 min** (flacfetch's cap).
+- **Choose different audio** → `POST /api/jobs/{id}/choose-different-audio`, which sets the job
+  back to `awaiting_audio_selection` with its saved results.
+
+**Admin:** use the same buttons on the job card, or reset to "Audio" in admin.
 
 ---
 

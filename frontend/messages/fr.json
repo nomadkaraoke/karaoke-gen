@@ -1971,5 +1971,16 @@
     "close": "Fermer",
     "saving": "Enregistrement…",
     "songTitle": "Titre de la chanson"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Réessaie dans un instant.",
+    "chooseDifferentAudio": "Choisir un autre audio",
+    "explanation": "Cette piste a une faible disponibilité, sa source est donc peut-être hors ligne en ce moment. Elle revient souvent rapidement : nous pouvons continuer d'essayer, ou tu peux choisir une autre source audio.",
+    "explanationExtended": "Nous avons continué d'essayer, mais la source de cette piste est toujours hors ligne. Tu peux continuer d'essayer, ou choisir une autre source audio.",
+    "keepTrying": "Continuer d'essayer (jusqu'à 1 heure)",
+    "keepTryingStarted": "Toujours en train d'essayer",
+    "keepTryingStartedDesc": "Nous allons continuer d'attendre jusqu'à une heure. Tu peux fermer cette page ; ton traitement continue.",
+    "title": "Le téléchargement de ton audio n'a pas commencé après {minutes} minutes",
+    "actionFailed": "Une erreur est survenue"
   }
 }

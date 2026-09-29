@@ -1845,8 +1845,24 @@ export const api = {
   /**
    * Retry a failed job
    */
-  async retryJob(jobId: string): Promise<{ status: string; job_id: string; message: string }> {
+  async retryJob(
+    jobId: string,
+    options?: { keepTrying?: boolean }
+  ): Promise<{ status: string; job_id: string; message: string }> {
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/retry`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keep_trying: !!options?.keepTrying }),
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Reopen audio selection for a job whose audio download failed
+   * (e.g. a stalled torrent) so the user can pick another source.
+   */
+  async chooseDifferentAudio(jobId: string): Promise<{ status: string; job_id: string; job_status: string }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/choose-different-audio`, {
       method: 'POST',
       headers: getAuthHeaders()
     });
