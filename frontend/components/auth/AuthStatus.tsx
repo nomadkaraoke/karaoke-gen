@@ -76,6 +76,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
           <Button
             variant="ghost"
             size="sm"
+            data-testid="user-menu-trigger"
             className="text-muted-foreground hover:text-foreground flex items-center gap-2 min-h-[40px] px-2 sm:px-3"
           >
             <User className="w-4 h-4" />

@@ -121,9 +121,10 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
     return () => { cancelled = true }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Invalid Advanced JSON is unsaved work too (the draft keeps its last valid value).
   const dirty = useMemo(
-    () => !!draft && !!saved && stableStringify(draft) !== stableStringify(saved),
-    [draft, saved],
+    () => !!jsonError || (!!draft && !!saved && stableStringify(draft) !== stableStringify(saved)),
+    [draft, saved, jsonError],
   )
 
   // Debounced exact server preview; stale requests are aborted.
@@ -208,10 +209,15 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
   const handleSave = async () => {
     if (!draft || jsonError) return
     setSaving(true)
+    const requested = draft
     try {
-      const data = await tenantThemeApi.save(draft)
+      const data = await tenantThemeApi.save(requested)
       setSaved(data.style_params)
-      setDraft(data.style_params)
+      // Keep edits made while the save was in flight; only adopt the server's
+      // normalised theme if the draft is still the one we sent.
+      setDraft((current) =>
+        current && stableStringify(current) !== stableStringify(requested) ? current : data.style_params,
+      )
       setImages(data.images)
       setFonts(data.fonts)
       toast({ title: t("savedTitle"), description: t("savedBody") })

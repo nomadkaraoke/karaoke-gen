@@ -149,3 +149,28 @@ it("shows a preview error without breaking the editor", async () => {
   await flushPreview()
   expect(await screen.findByText(/Font 'X.ttf' was not found/)).toBeInTheDocument()
 })
+
+it("keeps edits made while a save is in flight", async () => {
+  let resolveSave: (v: unknown) => void = () => {}
+  save.mockImplementation((sp) => new Promise((r) => { resolveSave = () => r({ ...DATA, style_params: sp }) }))
+  await openEditor()
+  fireEvent.click(screen.getByRole("tab", { name: "tabs.endScreen" }))
+  const msg = screen.getByLabelText("closingMessage")
+  fireEvent.change(msg, { target: { value: "FIRST" } })
+  fireEvent.click(screen.getByRole("button", { name: "save" }))
+  fireEvent.change(msg, { target: { value: "SECOND (typed during save)" } })
+  await act(async () => { resolveSave(undefined) })
+  expect(screen.getByLabelText("closingMessage")).toHaveValue("SECOND (typed during save)")
+  expect(screen.getByRole("button", { name: "save" })).toBeEnabled() // still unsaved
+})
+
+it("treats invalid Advanced JSON as unsaved work when closing", async () => {
+  const { onClose } = await openEditor()
+  fireEvent.click(screen.getByRole("tab", { name: "tabs.advanced" }))
+  fireEvent.change(screen.getByLabelText("advancedJson"), { target: { value: "{ half typed" } })
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(false)
+  fireEvent.click(screen.getByRole("button", { name: "close" }))
+  expect(confirm).toHaveBeenCalled()
+  expect(onClose).not.toHaveBeenCalled()
+  confirm.mockRestore()
+})

@@ -35,7 +35,7 @@ test.describe("Tenant theme editor", () => {
     // Consumer credits UI never appears on a tenant portal
     await expect(page.getByText(/credits available/i)).toHaveCount(0)
 
-    await page.getByRole("button", { name: /@nomadkaraoke\.com/i }).first().click()
+    await page.getByTestId("user-menu-trigger").click()
     await page.getByRole("menuitem", { name: "Theme & style" }).click()
 
     const editor = page.getByTestId("tenant-theme-editor")

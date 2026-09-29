@@ -108,11 +108,20 @@ def get_theme(config: TenantConfig = Depends(require_tenant_member)):
 
 @router.post("/assets", response_model=AssetResponse)
 async def upload_asset(file: UploadFile = File(...), config: TenantConfig = Depends(require_tenant_member)):
-    data = await file.read()
+    # Read in chunks and stop as soon as the limit is exceeded, so an oversized
+    # upload never gets materialised in memory in full.
+    chunks, size = [], 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        size += len(chunk)
+        if size > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=400, detail="The file is too large (max 15 MB).")
+        chunks.append(chunk)
+    data = b"".join(chunks)
     if not data:
         raise HTTPException(status_code=400, detail="The file is empty.")
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=400, detail="The file is too large (max 15 MB).")
     try:
         name = await run_in_threadpool(store_uploaded_asset, config, file.filename or "asset", data)
     except TenantValidationError as exc:
@@ -128,25 +137,27 @@ async def preview_theme(body: PreviewRequest, config: TenantConfig = Depends(req
         _raise_http(exc)
 
     loop = asyncio.get_running_loop()
-    async with _PREVIEW_SEMAPHORE:
-        try:
-            images = await asyncio.wait_for(
-                loop.run_in_executor(
-                    _PREVIEW_EXECUTOR,
-                    lambda: render_theme_preview(
-                        _theme_id_for(config),
-                        styles,
-                        artist=body.sample.artist,
-                        title=body.sample.title,
-                        lyrics=body.sample.lyrics,
-                    ),
-                ),
-                timeout=PREVIEW_TIMEOUT_S,
-            )
-        except ThemePreviewError as exc:
-            raise HTTPException(status_code=422, detail=str(exc))
-        except asyncio.TimeoutError:
-            raise HTTPException(status_code=504, detail="The preview took too long to render. Try again.")
+    await _PREVIEW_SEMAPHORE.acquire()
+    future = loop.run_in_executor(
+        _PREVIEW_EXECUTOR,
+        lambda: render_theme_preview(
+            _theme_id_for(config),
+            styles,
+            artist=body.sample.artist,
+            title=body.sample.title,
+            lyrics=body.sample.lyrics,
+        ),
+    )
+    # The slot is released only when the render really finishes — a timed-out
+    # render keeps running in its thread, so releasing early would let a burst
+    # queue unbounded work behind it.
+    future.add_done_callback(lambda _f: _PREVIEW_SEMAPHORE.release())
+    try:
+        images = await asyncio.wait_for(asyncio.shield(future), timeout=PREVIEW_TIMEOUT_S)
+    except ThemePreviewError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="The preview took too long to render. Try again.")
     return PreviewResponse(**images.as_data_urls())
 
 

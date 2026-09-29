@@ -143,3 +143,41 @@ def test_error_mapping_and_sample_limits(client_for):
         json={"style_params": {}, "sample": {"lyrics": ["x" * 121]}},
     )
     assert resp.status_code == 422  # per-line length capped
+
+
+def test_oversized_upload_rejected_without_calling_store(client_for, monkeypatch):
+    monkeypatch.setattr(tenant_theme, "MAX_UPLOAD_BYTES", 10)
+    with patch.object(tenant_theme, "store_uploaded_asset") as store:
+        resp = client_for().post("/api/tenant/theme/assets", files={"file": ("big.png", b"x" * 11)})
+    assert resp.status_code == 400 and "too large" in resp.json()["detail"]
+    store.assert_not_called()
+
+
+def test_timed_out_render_keeps_its_slot_until_it_finishes(client_for, monkeypatch):
+    """A 504'd render still occupies a worker thread, so its semaphore slot must
+    only be released once it really completes."""
+    import threading
+    import time
+
+    monkeypatch.setattr(tenant_theme, "PREVIEW_TIMEOUT_S", 0.05)
+    finished = threading.Event()
+
+    def slow_render(*a, **k):
+        time.sleep(0.4)
+        finished.set()
+        return PreviewImages(b"t", b"k")
+
+    free_before = tenant_theme._PREVIEW_SEMAPHORE._value
+    # `with` keeps TestClient's event loop alive across the request, like uvicorn's.
+    with patch.object(tenant_theme, "prepare_preview_styles", return_value={}), \
+         patch.object(tenant_theme, "render_theme_preview", side_effect=slow_render), \
+         client_for() as client:
+        resp = client.post("/api/tenant/theme/preview", json={"style_params": {}})
+        assert resp.status_code == 504
+        assert tenant_theme._PREVIEW_SEMAPHORE._value == free_before - 1  # still held
+        assert finished.wait(2)
+        for _ in range(50):
+            if tenant_theme._PREVIEW_SEMAPHORE._value == free_before:
+                break
+            time.sleep(0.02)
+    assert tenant_theme._PREVIEW_SEMAPHORE._value == free_before
