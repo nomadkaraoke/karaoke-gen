@@ -272,7 +272,7 @@ Three Cloud Functions manage the community karaoke data pipeline, running daily 
 | Function | Schedule | Purpose |
 |----------|----------|---------|
 | `divebar-mirror` | Daily 2:00 AM ET | Indexes 48K+ files from [diveBar Karaoke Google Drive](https://drive.google.com/drive/folders/1zxnSZcE03gzy0YVGOdnTrEIi8It_3Wu8) into BigQuery `divebar_catalog` |
-| `kn-data-sync` | Daily 3:05 AM + 4:30 AM ET | Fetches KaraokeNerds catalog (281K songs) and community tracks (58K with YouTube URLs) to BigQuery + GCS. `full` mode then exports the **kjbox song-identification index** (≈2M songs: Spotify popularity ≥ 30 + all KN; `EXPORT DATA` → `gs://nomadkaraoke-kn-data/song-id/<run>/songs-*.tsv.gz`, manifest `song-id/latest.json`, last 3 runs kept), which the NomadPC downloads. Design: kjbox `docs/SONG-IDENTIFICATION.md` |
+| `kn-data-sync` | Daily 3:05 AM + 4:30 AM ET | Fetches KaraokeNerds catalog (281K songs) and community tracks (58K with YouTube URLs) to BigQuery + GCS. `full` mode then exports the **kjbox song-identification index** (≈6.6M rows: MusicBrainz songs scored/kept by Spotify track popularity and **ListenBrainz** listeners (`lb_*` tables from karaoke-decide's `lb-refresh`), the Spotify snapshot ≥ 30, and all KN; ~8 GB scanned, ~25 s; `EXPORT DATA` → `gs://nomadkaraoke-kn-data/song-id/<run>/songs-*.tsv.gz`, manifest `song-id/latest.json`, last 3 runs kept), which the NomadPC downloads. Design: kjbox `docs/SONG-IDENTIFICATION.md` |
 | `divebar-lookup` | Daily 6:00 AM ET + on-demand API | Public search/lookup API for KJ Controller; rebuilds KN↔Divebar cross-reference index |
 
 **Infrastructure** (Pulumi-managed in `infrastructure/`):

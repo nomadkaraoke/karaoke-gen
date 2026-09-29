@@ -21,7 +21,15 @@ rm -f /tmp/kn-data-sync-source.zip
 zip -r /tmp/kn-data-sync-source.zip main.py requirements.txt
 
 echo "Uploading to GCS..."
-gsutil cp /tmp/kn-data-sync-source.zip "gs://${BUCKET_NAME}/kn-data-sync-source.zip"
+gcloud storage cp /tmp/kn-data-sync-source.zip "gs://${BUCKET_NAME}/kn-data-sync-source.zip"
+
+# Pulumi only names the bucket/object (no generation pin), so a new upload is not
+# a diff to it and `pulumi up` never rebuilds the function: deploy it directly.
+# Env vars, secrets, SA and limits stay as Pulumi set them.
+echo "Deploying function..."
+gcloud functions deploy "${FUNCTION_NAME}" --gen2 --region="${REGION}" --project="${PROJECT_ID}" \
+  --source="gs://${BUCKET_NAME}/kn-data-sync-source.zip" \
+  --runtime=python312 --entry-point=sync_kn_data --quiet
 
 echo ""
-echo "Source uploaded. The Cloud Function will be updated on next Pulumi deploy."
+echo "Deployed. Test run: gcloud scheduler jobs run kn-data-sync-full-daily --location ${REGION} --project ${PROJECT_ID}"

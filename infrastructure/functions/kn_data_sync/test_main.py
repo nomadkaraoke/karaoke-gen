@@ -127,3 +127,13 @@ def test_community_sync_does_not_export(monkeypatch):
     body, status, _ = main.sync_kn_data(req)
     assert status == 200 and json.loads(body)["song_id_index"] is None
     export.assert_not_called()
+
+
+def test_song_id_sql_uses_listenbrainz_and_keeps_the_four_columns():
+    sql = main.SONG_ID_SQL.format(project="p", dataset="d")
+    assert "{" not in sql and "}" not in sql                     # every placeholder filled
+    for table in ("lb_recording_popularity", "lb_artist_popularity", "mb_recordings_enriched",
+                  "spotify_tracks_normalized", "karaokenerds_raw"):
+        assert f"`p.d.{table}`" in sql
+    # the device's build_song_id_db.py reads exactly these columns, in this order
+    assert "SELECT artist, title, popularity, karaoke FROM mb_kept" in sql
