@@ -2152,16 +2152,15 @@ jobs:
         # daily E2E run and the codified `scripts/rollback.sh` (R2) for recovery
         # if a bad image reaches them.
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:${{ github.sha }}"
           GPU_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:${{ github.sha }}"
           CPU_JOBS_IMAGE="${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:${{ github.sha }}"
 
           echo "📦 Updating Cloud Run Jobs..."
 
-          # Video encoding job (CPU, us-central1)
+          # Video encoding job (CPU, us-east4; also runs render_video_worker)
           gcloud run jobs update video-encoding-job \
-            --image "$IMAGE" \
-            --region us-central1 \
+            --image "$CPU_JOBS_IMAGE" \
+            --region us-east4 \
             --project ${{ env.PROJECT_ID }} \
             --quiet
 

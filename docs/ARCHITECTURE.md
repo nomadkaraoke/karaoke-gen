@@ -539,7 +539,7 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 │  lyrics-transcription-job    - 5-15 min (AudioShake + correction, us-east4)│
 │  bulk-search-job             - batch audio search (us-east4)    │
 │  audio-separation-job        - 10-20 min (L4 GPU, us-east4, direct) │
-│  video-encoding-job          - up to 60 min (us-central1)       │
+│  video-encoding-job          - up to 60 min (us-east4)          │
 │                                                                 │
 │  Triggered via: google.cloud.run_v2.JobsClient.run_job()        │
 │  Job ID passed as: --job-id argument                            │
@@ -547,9 +547,9 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Job regions**: the CPU jobs a customer waits on (download, lyrics, bulk search) run in `us-east4`
-(`CPU_JOBS_REGION`), because Cloud Run Jobs in `us-central1` wait 2-5 min before the container starts.
-`video-encoding-job` stays in `us-central1` next to the bucket. See TROUBLESHOOTING.md, "Cloud Run Jobs
+**Job regions**: the CPU jobs a customer waits on (download, lyrics, bulk search, video/render) run in
+`us-east4` (`CPU_JOBS_REGION`), because Cloud Run Jobs in `us-central1` wait 2-5 min before the
+container starts. The bucket and GCE encoding VMs stay in `us-central1`. See TROUBLESHOOTING.md, "Cloud Run Jobs
 take 2-5 minutes to start".
 
 **Why Cloud Run Jobs**: When using FastAPI BackgroundTasks, Cloud Run would terminate instances when HTTP requests completed, even if background work was still running. Cloud Run Jobs solve this by running workers as standalone processes that complete naturally. This applies to audio downloads (jobs 51b8231d, 89e497b1 were killed mid-download), lyrics transcription (job c94cc9d6 killed mid-processing), and audio separation.

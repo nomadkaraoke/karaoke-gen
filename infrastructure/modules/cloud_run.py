@@ -13,7 +13,7 @@ from config import PROJECT_ID, REGION
 AUDIO_WORKER_GPU_REGION = "us-east4"  # L4 GPU quota available here
 
 # Region for the latency-critical CPU jobs (audio-download, lyrics-transcription,
-# bulk-search). Cloud Run Jobs in us-central1 queue 2-5 min before the container
+# bulk-search, video-encoding). Cloud Run Jobs in us-central1 queue 2-5 min before the container
 # starts, regardless of image size or CPU (measured 2026-09-28 with Google's tiny
 # sample job image: us-central1 4-5 min, us-east4 8-19s). Must match the
 # backend's CPU_JOBS_REGION default (backend/config.py). GCP_REGION inside these
@@ -529,6 +529,7 @@ def create_bulk_search_job(
 def create_video_encoding_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,
+    region: str = REGION,
 ) -> cloudrunv2.Job:
     """
     Create the Cloud Run Job for video encoding.
@@ -549,14 +550,15 @@ def create_video_encoding_job(
         cloudrunv2.Job: The Cloud Run Job resource.
     """
     video_encoding_job = cloudrunv2.Job(
-        "video-encoding-job",
+        _job_resource_name("video-encoding-job", region),
         name="video-encoding-job",
-        location=REGION,
+        location=region,
+        deletion_protection=False,  # Allow the legacy-region copy to be removed
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
                     cloudrunv2.JobTemplateTemplateContainerArgs(
-                        image=f"{REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-repo/karaoke-backend:latest",
+                        image=cpu_job_image(region),
                         args=["python", "-m", "backend.workers.video_worker"],
                         resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
                             limits={

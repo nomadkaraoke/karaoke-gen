@@ -747,7 +747,7 @@ client.run_job(request=run_v2.RunJobRequest(
 | `audio-download-job` | `us-east4` | `audio_download_worker` | No |
 | `lyrics-transcription-job` | `us-east4` | `lyrics_worker` | No |
 | `bulk-search-job` | `us-east4` | `bulk_search_worker` | No |
-| `video-encoding-job` | `us-central1` | `video_worker` / `render_video_worker` | No |
+| `video-encoding-job` | `us-east4` | `video_worker` / `render_video_worker` | No |
 
 The CPU jobs above run in `us-east4` (`CPU_JOBS_REGION`) even though everything else lives in
 `us-central1`. See "Cloud Run Jobs take 2-5 minutes to start" below.
@@ -767,14 +767,17 @@ and `us-east1` took 8-25s. decide's 203 MB image on 4 CPU was just as slow in `u
 slimming our image or adding CPU doesn't help. Quotas were nowhere near their limits.
 
 **Fix in place:** the latency-critical CPU jobs (`audio-download-job`, `lyrics-transcription-job`,
-`bulk-search-job`) run in `us-east4`. The backend setting is `CPU_JOBS_REGION` (default `us-east4`),
+`bulk-search-job`, `video-encoding-job`) run in `us-east4`. The backend setting is `CPU_JOBS_REGION` (default `us-east4`),
 and the Pulumi constant `CPU_JOBS_REGION` must match it (a unit test checks this). CI pushes a copy of
 the CPU image to `us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-cpu` so the
 jobs pull from their own region. Inside the jobs, `GCP_REGION` stays `us-central1`. A new image digest takes a
 one-time ~2.5 min "Container image import" on its first execution in a region, so after each
 deploy CI starts one no-op `audio-download-job` execution (`python -c pass`) to do that import.
-`video-encoding-job` stays in `us-central1` on purpose: it moves multi-GB outputs through the
-us-central1 bucket, so running it in us-east4 would add inter-region GCS egress.
+`video-encoding-job` (video + post-review render) moved in v0.249.1. It reads about 0.3 GB per run
+from the us-central1 bucket, which is roughly 156 GB/month cross-region: about $1.60/month after
+GCS's 100 GB/month free inter-region tier, or $3/month worst case. Its writes to GCS and its
+internet uploads cost the same from either region. The GCE encoding VMs stay in `us-central1`; they
+have public IPs (port 8080, API key), so the job reaches them from us-east4.
 
 **Measure:**
 ```bash
@@ -790,6 +793,7 @@ done
 gcloud run services update karaoke-backend --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1
 gcloud run jobs update audio-download-job --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1  # legacy job triggers lyrics
 gcloud run jobs update bulk-search-job --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1  # legacy job triggers downloads
+gcloud run jobs update video-encoding-job --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1  # legacy job triggers render/video
 ```
 The next CI deploy resets the service env. Make it permanent by adding `CPU_JOBS_REGION` to
 `--set-env-vars` in `ci.yml`.
