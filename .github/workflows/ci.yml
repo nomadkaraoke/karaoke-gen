@@ -2173,6 +2173,19 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
+          # Pre-import the new CPU image in us-east4. A new image digest costs a
+          # one-time ~2.5 min "Container image import" on its FIRST execution in a
+          # region (measured 2026-09-29); later executions of any job using that
+          # digest start in ~8s. Without this, the first customer download after
+          # every deploy would pay the import. The no-op run exits 0 immediately.
+          gcloud run jobs execute audio-download-job \
+            --region us-east4 \
+            --project ${{ env.PROJECT_ID }} \
+            --args="python,-c,pass" \
+            --async \
+            --quiet \
+            || echo "::warning::us-east4 CPU image pre-import execution failed to start (non-fatal)"
+
           echo "✅ Cloud Run Jobs updated"
 
       - name: Verify deployment and version

@@ -770,7 +770,9 @@ slimming our image or adding CPU doesn't help. Quotas were nowhere near their li
 `bulk-search-job`) run in `us-east4`. The backend setting is `CPU_JOBS_REGION` (default `us-east4`),
 and the Pulumi constant `CPU_JOBS_REGION` must match it (a unit test checks this). CI pushes a copy of
 the CPU image to `us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-cpu` so the
-jobs pull from their own region. Inside the jobs, `GCP_REGION` stays `us-central1`.
+jobs pull from their own region. Inside the jobs, `GCP_REGION` stays `us-central1`. A new image digest takes a
+one-time ~2.5 min "Container image import" on its first execution in a region, so after each
+deploy CI starts one no-op `audio-download-job` execution (`python -c pass`) to do that import.
 `video-encoding-job` stays in `us-central1` on purpose: it moves multi-GB outputs through the
 us-central1 bucket, so running it in us-east4 would add inter-region GCS egress.
 
