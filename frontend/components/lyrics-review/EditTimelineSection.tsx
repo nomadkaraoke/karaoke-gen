@@ -70,6 +70,8 @@ interface EditTimelineSectionProps {
   isSpacebarPressed: boolean
   onWordUpdate: (index: number, updates: Partial<Word>) => void
   onPlaySegment?: (time: number) => void
+  /** Ctrl/Cmd-click a word bar in the timeline to delete it. */
+  onWordDelete?: (index: number) => void
   isGlobal?: boolean
   onTapStart?: () => void
   onTapEnd?: () => void
@@ -86,6 +88,7 @@ export default function EditTimelineSection({
   isSpacebarPressed,
   onWordUpdate,
   onPlaySegment,
+  onWordDelete,
   isGlobal = false,
   onTapStart,
   onTapEnd,
@@ -117,6 +120,7 @@ export default function EditTimelineSection({
           onWordUpdate={onWordUpdate}
           currentTime={currentTime}
           onPlaySegment={onPlaySegment}
+          onWordCtrlDelete={onWordDelete}
         />
       </div>
 

@@ -39,6 +39,9 @@ interface TimelineEditorProps {
   /** When set, pressing a word bar deletes it instead of starting a drag — the Waveforms
       rows pass this while Ctrl/Cmd is held, matching Ctrl-click-to-delete in Simple/Advanced. */
   onWordDelete?: (index: number) => void
+  /** Fires when a word bar is Ctrl/Cmd-clicked (read from the event, so no key tracking is
+      needed). Used by the Edit Segment modal to delete a word without scrolling the word list. */
+  onWordCtrlDelete?: (index: number) => void
 }
 
 // Pointer travel (px) beyond which a press counts as a drag rather than a click.
@@ -60,6 +63,7 @@ export default function TimelineEditor({
   compact = false,
   onWordClick,
   onWordDelete,
+  onWordCtrlDelete,
 }: TimelineEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   // Whether the current press has moved past the drag threshold. Distinguishes a click
@@ -169,6 +173,12 @@ export default function TimelineEditor({
     if (onWordDelete) {
       e.preventDefault()
       onWordDelete(wordIndex)
+      return
+    }
+
+    if (onWordCtrlDelete && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      onWordCtrlDelete(wordIndex)
       return
     }
 
@@ -466,11 +476,11 @@ export default function TimelineEditor({
         })}
       </div>
 
-      {/* In compact rows the waveform sits directly under the bars and doubles as the
-          click-to-play target (there's no ruler strip). */}
+      {/* The waveform doubles as a click-to-play target (in compact rows it's the only one,
+          since there's no ruler strip). */}
       <div
-        className={cn(compact && 'cursor-pointer')}
-        onClick={compact ? handleTimelineClick : undefined}
+        className={cn(onPlaySegment && 'cursor-pointer')}
+        onClick={handleTimelineClick}
       >
         <VocalsAudioDataLoaderContext.Consumer>
           {({ audioData: vocalsAudioData }) => (
