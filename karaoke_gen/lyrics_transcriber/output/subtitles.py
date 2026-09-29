@@ -88,8 +88,14 @@ class SubtitlesGenerator:
         """Generate full output path for a file."""
         return os.path.join(self.output_dir, f"{output_prefix}.{extension}")
 
-    def _get_audio_duration(self, audio_filepath: str, segments: Optional[List[LyricsSegment]] = None) -> float:
-        """Get audio duration using ffprobe."""
+    def _get_audio_duration(self, audio_filepath: Optional[str], segments: Optional[List[LyricsSegment]] = None) -> float:
+        """Get audio duration using ffprobe.
+
+        When ``audio_filepath`` is None (no audio exists, e.g. theme previews), skip
+        ffprobe and derive the duration from the segments without logging an error.
+        """
+        if audio_filepath is None:
+            return segments[-1].end_time + 30.0 if segments else 0.0
         try:
             probe_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", audio_filepath]
             probe_output = subprocess.check_output(probe_cmd, universal_newlines=True)
@@ -125,7 +131,7 @@ class SubtitlesGenerator:
         order = [1, 2, 0]
         return [sid for sid in order if sid in found]
 
-    def generate_ass(self, segments: List[LyricsSegment], output_prefix: str, audio_filepath: str) -> str:
+    def generate_ass(self, segments: List[LyricsSegment], output_prefix: str, audio_filepath: Optional[str]) -> str:
         self.logger.info("Generating ASS format subtitles")
         output_path = self._get_output_path(f"{output_prefix} (Karaoke)", "ass")
 
