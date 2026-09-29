@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag } from "lucide-react"
+import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag, Palette } from "lucide-react"
 import NextLink from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,6 +20,7 @@ import { useAdminSettings } from "@/lib/admin-settings"
 import { AuthDialog } from "./AuthDialog"
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
+import { TenantThemeEditorDialog } from "@/components/tenant-theme/TenantThemeEditorDialog"
 import { useTranslations } from "next-intl"
 
 interface AuthStatusProps {
@@ -29,6 +30,7 @@ interface AuthStatusProps {
 export function AuthStatus({ onAuthChange }: AuthStatusProps) {
   const t = useTranslations('auth.status')
   const tHeader = useTranslations('header')
+  const tTheme = useTranslations('tenantTheme')
   const router = useRouter()
   const { user, logout } = useAuth()
   // Tenant portals are billed under a separate agreement: no consumer credits UI.
@@ -37,6 +39,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
   const [showBuyCreditsDialog, setShowBuyCreditsDialog] = useState(false)
+  const [showThemeEditor, setShowThemeEditor] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   // Avoid hydration mismatch
@@ -73,6 +76,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
           <Button
             variant="ghost"
             size="sm"
+            data-testid="user-menu-trigger"
             className="text-muted-foreground hover:text-foreground flex items-center gap-2 min-h-[40px] px-2 sm:px-3"
           >
             <User className="w-4 h-4" />
@@ -142,6 +146,19 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
             </DropdownMenuItem>
           )}
           </>)}
+          {/* Tenant portals: every allowed user can edit the tenant's theme */}
+          {!showCredits && (
+            <>
+              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuItem
+                onClick={() => setShowThemeEditor(true)}
+                className="text-muted-foreground focus:text-foreground focus:bg-secondary"
+              >
+                <Palette className="w-4 h-4 mr-2" />
+                <span>{tTheme('menuItem')}</span>
+              </DropdownMenuItem>
+            </>
+          )}
           {(user.role === "admin" || user.email?.endsWith("@nomadkaraoke.com")) && (
             <>
               <DropdownMenuSeparator className="bg-border" />
@@ -179,6 +196,9 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
         open={showFeedbackDialog}
         onClose={() => setShowFeedbackDialog(false)}
       />
+      {!showCredits && (
+        <TenantThemeEditorDialog open={showThemeEditor} onClose={() => setShowThemeEditor(false)} />
+      )}
       {showCredits && (
         <BuyCreditsDialog
           open={showBuyCreditsDialog}
