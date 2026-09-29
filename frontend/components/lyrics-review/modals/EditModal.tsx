@@ -487,6 +487,7 @@ export default function EditModal({
                   isSpacebarPressed={isSpacebarPressed}
                   onWordUpdate={handleWordChange}
                   onPlaySegment={onPlaySegment}
+                  onWordDelete={isManualSyncing ? undefined : handleRemoveWord}
                   isGlobal={isGlobal}
                   onTapStart={handleTapStart}
                   onTapEnd={handleTapEnd}
