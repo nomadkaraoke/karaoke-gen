@@ -226,7 +226,7 @@ if [[ "$ROLL_JOBS" == "true" ]]; then
   for entry in "${JOBS[@]}"; do
     IFS=':' read -r job_name job_region job_repo <<< "$entry"
     echo "--- ${job_name} (${job_region}) ---"
-    # The us-east4 CPU image copy only has tags from v0.246.3 onward. Skip a job
+    # The us-east4 CPU image copy only has tags from v0.247.1 onward. Skip a job
     # whose target tag doesn't exist instead of aborting the loop (set -e), so the
     # remaining jobs still get re-pinned.
     if ! gcloud artifacts docker images describe "${job_repo}:${IMAGE_VERSION}" \

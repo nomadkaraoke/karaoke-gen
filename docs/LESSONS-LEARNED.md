@@ -6,7 +6,7 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
-## Cloud Run Job start latency was the region, not our image (Sep 2026, v0.246.3)
+## Cloud Run Job start latency was the region, not our image (Sep 2026, v0.247.1)
 
 Every us-central1 CPU Cloud Run Job (download, lyrics, encoding, error monitor, even decide's 203 MB
 image on 4 CPU) waited 2-5 min between "execution created" and the container starting. The obvious
