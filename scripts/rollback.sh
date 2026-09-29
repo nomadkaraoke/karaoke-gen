@@ -8,7 +8,7 @@
 #   This script is the single, documented, parameterized rollback path for:
 #     - the `karaoke-backend` Cloud Run SERVICE, and
 #     - the three Cloud Run JOBS that share the backend image:
-#         * video-encoding-job       (CPU, us-central1)
+#         * video-encoding-job       (CPU, us-east4 — CPU image copy)
 #         * lyrics-transcription-job (CPU, us-east4 — CPU image copy)
 #         * audio-separation-job     (GPU, us-east4 — uses the GPU image)
 #
@@ -70,7 +70,7 @@ CPU_EAST_IMAGE_REPO="us-east4-docker.pkg.dev/${PROJECT_ID}/karaoke-backend-gpu/k
 # audio-download-job / bulk-search-job are NOT re-pinned: they track :latest and
 # CI never re-pins them, so a pin here would stick past the next deploy.
 JOBS=(
-  "video-encoding-job:us-central1:${CPU_IMAGE_REPO}"
+  "video-encoding-job:us-east4:${CPU_EAST_IMAGE_REPO}"
   "lyrics-transcription-job:us-east4:${CPU_EAST_IMAGE_REPO}"
   "audio-separation-job:us-east4:${GPU_IMAGE_REPO}"
 )

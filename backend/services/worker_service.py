@@ -590,6 +590,7 @@ class WorkerService:
             job_id=job_id,
             cloud_run_job_name="video-encoding-job",
             worker_module="video_worker",
+            location=self.settings.cpu_jobs_region,
         )
 
     async def _run_job_with_retry(self, client, request, log_prefix: str):
@@ -739,6 +740,7 @@ class WorkerService:
                 job_id=job_id,
                 cloud_run_job_name="video-encoding-job",
                 worker_module="render_video_worker",
+                location=self.settings.cpu_jobs_region,
             )
         return await self.trigger_worker("render-video", job_id)
 

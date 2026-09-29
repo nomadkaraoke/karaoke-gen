@@ -21,10 +21,12 @@ their limits.
   `Started` condition's `lastTransitionTime`, and the first app log line. Only the last gap is ours.
 - **An A/B with a trivial image across regions** isolates platform behaviour in minutes and costs
   pennies. Do it before optimizing image size or imports.
-- **When moving a job's region, keep the data-heavy jobs next to the bucket.** Download, lyrics and
-  bulk search move small files, so they moved to us-east4. `video-encoding-job` pulls multi-GB
-  outputs, so it stayed. Also push the image to a same-region registry so the multi-GB image never
-  crosses regions (Artifact Registry egress).
+- **Measure cross-region transfer before assuming it's expensive.** Cloud Monitoring's
+  `run.googleapis.com/container/network/received_bytes_count` (kind=google) gives bytes per job, and
+  the Billing Catalog API gives exact SKU prices. `video-encoding-job` turned out to read only
+  ~156 GB/month, about $1.60/month after GCS's 100 GB free inter-region tier, so it moved too
+  (v0.249.1). Writes to GCS from Cloud Run are free. Also push the image to a same-region registry so
+  the multi-GB image never crosses regions (Artifact Registry egress).
 - **Keep region-for-jobs separate from `GCP_REGION`.** The workers still use `GCP_REGION` for other
   resources. Same lesson as `cloud_tasks_region` (job b8bda9c2).
 

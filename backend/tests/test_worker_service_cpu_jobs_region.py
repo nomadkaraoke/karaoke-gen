@@ -2,10 +2,9 @@
 
 Cloud Run Jobs in us-central1 queue 2-5 min before the container starts, even for
 a tiny sample image (measured 2026-09-28: us-central1 4-5 min, us-east4 8-19s).
-audio-download-job, lyrics-transcription-job and bulk-search-job therefore run in
-us-east4, while the jobs and workers keep GCP_REGION=us-central1 for everything
-else. video-encoding-job stays in gcp_region: it moves multi-GB outputs through
-the us-central1 bucket, so a cross-region copy would add GCS egress.
+audio-download-job, lyrics-transcription-job, bulk-search-job and
+video-encoding-job (video + post-review render workers) therefore run in us-east4,
+while the jobs and workers keep GCP_REGION=us-central1 for everything else.
 """
 from __future__ import annotations
 
@@ -68,9 +67,23 @@ async def test_cpu_jobs_region_env_override_for_rollback(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_video_encoding_job_stays_in_gcp_region(monkeypatch) -> None:
+async def test_video_encoding_job_triggered_in_us_east4(monkeypatch) -> None:
     name = await _triggered_job_name(_settings(monkeypatch), lambda s: s._trigger_cloud_run_job("job1"))
-    assert name == "projects/test-project/locations/us-central1/jobs/video-encoding-job"
+    assert name == "projects/test-project/locations/us-east4/jobs/video-encoding-job"
+
+
+@pytest.mark.asyncio
+async def test_render_video_job_triggered_in_us_east4(monkeypatch) -> None:
+    monkeypatch.setenv("USE_CLOUD_RUN_JOBS_FOR_RENDER", "true")
+    settings = _settings(monkeypatch)
+
+    async def trigger(service):
+        with patch.object(service, "_bump_worker_generation"), \
+             patch.object(service, "_start_encoding_worker_warmup"):
+            return await service.trigger_render_video_worker("job1")
+
+    name = await _triggered_job_name(settings, trigger)
+    assert name == "projects/test-project/locations/us-east4/jobs/video-encoding-job"
 
 
 def test_gcp_region_unaffected_by_cpu_jobs_region(monkeypatch) -> None:
