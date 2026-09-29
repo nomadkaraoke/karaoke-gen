@@ -205,6 +205,14 @@ class Settings(BaseSettings):
     # must still enqueue to the real queue location — building queue paths from
     # gcp_region 404s from those workers ("Queue does not exist").
     cloud_tasks_region: str = os.getenv("CLOUD_TASKS_REGION", "us-central1")
+    # Region of the latency-critical CPU Cloud Run Jobs (audio-download-job,
+    # lyrics-transcription-job, bulk-search-job). Cloud Run Jobs in us-central1
+    # queue 2-5 min before the container starts (measured 2026-09-28 with a tiny
+    # sample image: us-central1 4-5 min vs us-east4 8-19s), independent of image
+    # size or CPU. Rollback: set CPU_JOBS_REGION=us-central1 on the service AND
+    # the jobs (the download worker triggers the lyrics job). Deliberately
+    # separate from gcp_region, which these workers use for other resources.
+    cpu_jobs_region: str = os.getenv("CPU_JOBS_REGION", "us-east4")
     
     # Cloud Run Jobs (for long-running video encoding)
     # When enabled AND enable_cloud_tasks is true, video worker uses Cloud Run Jobs

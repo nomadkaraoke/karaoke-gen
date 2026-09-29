@@ -187,10 +187,23 @@ edge_resources = edge_security.configure_edge_security()
 # These use Cloud Run Jobs instead of Cloud Tasks to avoid instance termination
 # during long-running processing (the BackgroundTasks issue)
 video_encoding_job = cloud_run.create_video_encoding_job(bucket, backend_service_account)
-lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
 audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
-audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account)
-bulk_search_job = cloud_run.create_bulk_search_job(bucket, backend_service_account)
+# Latency-critical CPU jobs run in CPU_JOBS_REGION (us-east4): us-central1 Cloud
+# Run Jobs queue 2-5 min before starting. The legacy us-central1 copies are kept
+# until the backend has cut over (rollback path: CPU_JOBS_REGION=us-central1);
+# remove them in a follow-up once the us-east4 jobs are verified in prod.
+lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(
+    bucket, backend_service_account, region=cloud_run.CPU_JOBS_REGION
+)
+audio_download_job = cloud_run.create_audio_download_job(
+    bucket, backend_service_account, region=cloud_run.CPU_JOBS_REGION
+)
+bulk_search_job = cloud_run.create_bulk_search_job(
+    bucket, backend_service_account, region=cloud_run.CPU_JOBS_REGION
+)
+legacy_lyrics_transcription_job = cloud_run.create_lyrics_transcription_job(bucket, backend_service_account)
+legacy_audio_download_job = cloud_run.create_audio_download_job(bucket, backend_service_account)
+legacy_bulk_search_job = cloud_run.create_bulk_search_job(bucket, backend_service_account)
 
 # ==================== Error Monitor ====================
 

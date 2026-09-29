@@ -72,7 +72,10 @@ state *now* rather than wait for a forward fix to build and deploy.
   revision — instant, no rebuild), and
 - the three Cloud Run **jobs** that share the backend image
   (`video-encoding-job`, `lyrics-transcription-job`, `audio-separation-job`) by
-  re-pinning them to a previous image tag. Cloud Run Jobs can't traffic-split, so
+  re-pinning them to a previous image tag. `lyrics-transcription-job` runs in us-east4 from the
+  `karaoke-backend-cpu` image copy. That copy only has tags from releases after the region move, so
+  `rollback.sh` skips (with a warning) any job whose target tag is missing and re-pins the rest. `audio-download-job` and `bulk-search-job`
+  track `:latest` and aren't re-pinned. Cloud Run Jobs can't traffic-split, so
   they are re-pinned; the old image takes effect on each job's **next** invocation
   (in-flight runs are unaffected).
 
@@ -741,31 +744,55 @@ client.run_job(request=run_v2.RunJobRequest(
 | Job Name | Region | Module | GPU |
 |----------|--------|--------|-----|
 | `audio-separation-job` | `us-east4` | `audio_worker` | L4 |
-| `lyrics-transcription-job` | `us-central1` | `lyrics_worker` | No |
-| `video-encoding-job` | `us-central1` | `video_worker` | No |
+| `audio-download-job` | `us-east4` | `audio_download_worker` | No |
+| `lyrics-transcription-job` | `us-east4` | `lyrics_worker` | No |
+| `bulk-search-job` | `us-east4` | `bulk_search_worker` | No |
+| `video-encoding-job` | `us-central1` | `video_worker` / `render_video_worker` | No |
+
+The CPU jobs above run in `us-east4` (`CPU_JOBS_REGION`) even though everything else lives in
+`us-central1`. See "Cloud Run Jobs take 2-5 minutes to start" below.
 
 ---
 
-## CI does not update `lyrics-transcription-job` image
+## Cloud Run Jobs take 2-5 minutes to start
 
-**Symptoms:** Deployed code fixes don't take effect for lyrics processing. The backend service shows the new version, but lyrics jobs still crash with the old bug.
+**Symptoms:** A job execution sits between "created" and its first Python log line for 2-5 minutes.
+`gcloud run jobs executions describe <exec>` shows `Started deployed execution in 3m...`. Concurrent
+executions often start in the same second, as if a queue drained.
 
-**Cause:** The CI workflow (`.github/workflows/ci.yml`) updates `audio-separation-job` and `video-encoding-job` after deploy, but does NOT update `lyrics-transcription-job`. The job uses the `:latest` tag, but Cloud Run Jobs resolve the tag to a digest at update time — pushing a new `:latest` image doesn't automatically update running jobs.
+**Cause:** Google-side scheduling of Cloud Run **Jobs** in `us-central1`. It doesn't depend on our
+image, CPU or code. Measured 2026-09-28 with Google's tiny sample job image
+(`us-docker.pkg.dev/cloudrun/container/job`) on 1 CPU: `us-central1` took 4-5 min, while `us-east4`
+and `us-east1` took 8-25s. decide's 203 MB image on 4 CPU was just as slow in `us-central1`, so
+slimming our image or adding CPU doesn't help. Quotas were nowhere near their limits.
 
-**Manual fix after deploy:**
+**Fix in place:** the latency-critical CPU jobs (`audio-download-job`, `lyrics-transcription-job`,
+`bulk-search-job`) run in `us-east4`. The backend setting is `CPU_JOBS_REGION` (default `us-east4`),
+and the Pulumi constant `CPU_JOBS_REGION` must match it (a unit test checks this). CI pushes a copy of
+the CPU image to `us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-cpu` so the
+jobs pull from their own region. Inside the jobs, `GCP_REGION` stays `us-central1`. A new image digest takes a
+one-time ~2.5 min "Container image import" on its first execution in a region, so after each
+deploy CI starts one no-op `audio-download-job` execution (`python -c pass`) to do that import.
+`video-encoding-job` stays in `us-central1` on purpose: it moves multi-GB outputs through the
+us-central1 bucket, so running it in us-east4 would add inter-region GCS egress.
+
+**Measure:**
 ```bash
-# Pin to the specific version tag (preferred)
-gcloud run jobs update lyrics-transcription-job \
-  --image us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend:vX.Y.Z \
-  --region us-central1 --project nomadkaraoke
-
-# Or force re-resolve :latest
-gcloud run jobs update lyrics-transcription-job \
-  --image us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend:latest \
-  --region us-central1 --project nomadkaraoke
+for e in $(gcloud run jobs executions list --job audio-download-job --region us-east4 \
+    --project nomadkaraoke --limit 8 --format='value(name)'); do
+  gcloud run jobs executions describe $e --region us-east4 --project nomadkaraoke --format=json \
+    | jq -r '[.metadata.creationTimestamp, (.status.conditions[]|select(.type=="Started")|.message)]|@tsv'
+done
 ```
 
-**Permanent fix:** Add `lyrics-transcription-job` update to CI deploy step in `.github/workflows/ci.yml` alongside the existing `video-encoding-job` and `audio-separation-job` updates (~line 1568).
+**Rollback to us-central1** (the legacy jobs still exist until they're removed in a follow-up):
+```bash
+gcloud run services update karaoke-backend --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1
+gcloud run jobs update audio-download-job --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1  # legacy job triggers lyrics
+gcloud run jobs update bulk-search-job --region us-central1 --update-env-vars CPU_JOBS_REGION=us-central1  # legacy job triggers downloads
+```
+The next CI deploy resets the service env. Make it permanent by adding `CPU_JOBS_REGION` to
+`--set-env-vars` in `ci.yml`.
 
 ## Frontend error alert ("New Error Pattern Detected", service `frontend`)
 

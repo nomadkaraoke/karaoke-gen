@@ -9,7 +9,7 @@
 #     - the `karaoke-backend` Cloud Run SERVICE, and
 #     - the three Cloud Run JOBS that share the backend image:
 #         * video-encoding-job       (CPU, us-central1)
-#         * lyrics-transcription-job (CPU, us-central1)
+#         * lyrics-transcription-job (CPU, us-east4 — CPU image copy)
 #         * audio-separation-job     (GPU, us-east4 — uses the GPU image)
 #
 # TWO DIFFERENT MECHANISMS (intentional — see docs/TROUBLESHOOTING.md "Fast rollback"):
@@ -63,11 +63,15 @@ SERVICE_REGION="us-central1"
 CPU_IMAGE_REPO="us-central1-docker.pkg.dev/${PROJECT_ID}/karaoke-repo/karaoke-backend"
 # GPU (audio separation) image repository, co-located with the L4 GPU in us-east4.
 GPU_IMAGE_REPO="us-east4-docker.pkg.dev/${PROJECT_ID}/karaoke-backend-gpu/karaoke-backend"
+# CPU image copy for the CPU jobs that run in us-east4 (CPU_JOBS_REGION).
+CPU_EAST_IMAGE_REPO="us-east4-docker.pkg.dev/${PROJECT_ID}/karaoke-backend-gpu/karaoke-backend-cpu"
 
 # job_name:region:repo — audio-separation-job uses the GPU repo/region.
+# audio-download-job / bulk-search-job are NOT re-pinned: they track :latest and
+# CI never re-pins them, so a pin here would stick past the next deploy.
 JOBS=(
   "video-encoding-job:us-central1:${CPU_IMAGE_REPO}"
-  "lyrics-transcription-job:us-central1:${CPU_IMAGE_REPO}"
+  "lyrics-transcription-job:us-east4:${CPU_EAST_IMAGE_REPO}"
   "audio-separation-job:us-east4:${GPU_IMAGE_REPO}"
 )
 
@@ -222,6 +226,19 @@ if [[ "$ROLL_JOBS" == "true" ]]; then
   for entry in "${JOBS[@]}"; do
     IFS=':' read -r job_name job_region job_repo <<< "$entry"
     echo "--- ${job_name} (${job_region}) ---"
+    # The us-east4 CPU image copy only has tags from v0.247.1 onward. Skip a job
+    # ONLY when its target tag genuinely doesn't exist, so the remaining jobs
+    # still get re-pinned; any other lookup error (auth, network) aborts loudly
+    # rather than letting the rollback look complete with a job on the bad image.
+    if ! describe_err=$(gcloud artifacts docker images describe "${job_repo}:${IMAGE_VERSION}" \
+        --project="${PROJECT_ID}" 2>&1 >/dev/null); then
+      if grep -qiE "not ?found|NOT_FOUND|manifest unknown" <<< "$describe_err"; then
+        echo "⚠️  ${job_repo}:${IMAGE_VERSION} not found — SKIPPING ${job_name} (left on its current image)" >&2
+        continue
+      fi
+      echo "❌ Could not inspect ${job_repo}:${IMAGE_VERSION}: ${describe_err}" >&2
+      exit 1
+    fi
     run_cmd gcloud run jobs update "${job_name}" \
       --image="${job_repo}:${IMAGE_VERSION}" \
       --region="${job_region}" \
