@@ -1284,6 +1284,38 @@ The tenant portal's Bulk mode (`TenantBulkFlow.tsx`) renders these rows as an ed
 table, then submits each confirmed row through the standard signed-URL upload flow
 (`upload_mode: "resumable"`, `batch_id` grouping).
 
+#### Tenant Theme Editor (tenant users)
+
+```
+GET  /api/tenant/theme              → {theme_id, style_params, images[], fonts[]}
+POST /api/tenant/theme/assets       (multipart `file`) → {name}
+POST /api/tenant/theme/preview      {style_params, sample?: {artist, title, lyrics[]}} → {title_card, karaoke_frame}
+PUT  /api/tenant/theme              {style_params} → same as GET
+Authorization: Bearer <session/token>   (on the tenant portal: subdomain or X-Tenant-ID)
+```
+
+Self-service theme editing for **any user allowed on the tenant** (its email/domain allowlist; admins
+always). Tenant context may come from the client-controlled `X-Tenant-ID` header, so every endpoint
+re-checks membership (`require_tenant_member`): non-members/spoofed headers → 403, no/inactive tenant →
+404, a token scoped to another tenant → 403.
+
+- **Uploads** (PNG/JPG/GIF/WEBP ≤15 MB, TTF/OTF) are verified with PIL and stored content-addressed as
+  `<stem>-<sha8>.<ext>` under `themes/<id>/assets/` (`no-store`), so they never overwrite an asset
+  existing jobs use.
+- **Preview** renders the draft with the production renderers (`services/theme_preview_service.py`):
+  title card via `VideoGenerator.create_title_video(duration=0)`, karaoke frame via
+  `SegmentResizer` → `SubtitlesGenerator.generate_ass` → one ffmpeg frame (same `ass` filter/background
+  as the real render) with the first line half-sung. Returns 1280×720 JPEG data URLs (~2 s; ≤2
+  concurrent; identical drafts cached). 400 invalid draft, 422 render failure, 504 timeout.
+- **Save** (applies to jobs created afterwards). Stricter than the admin console: asset fields must
+  be basenames already in the theme's assets (no paths / `gs://`), numeric/colour/region bounds are
+  checked, and the font is made consistent with the render pipeline — `intro.font` is applied to
+  `karaoke.font_path`/`end.font`/`cdg.font_path`, `karaoke.font` is set to the TTF family name libass
+  matches, and a chosen bundled font is copied into the theme's assets. Tenants can't change their
+  config/allowlist through this API.
+
+UI: user menu → **Theme & style** on tenant portals (`components/tenant-theme/`).
+
 #### Tenant Provisioning (Admin Only)
 
 ```

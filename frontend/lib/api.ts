@@ -2658,6 +2658,73 @@ export interface CommunityRequestItem {
   picked_at?: string | null;
 }
 
+// --- Tenant self-service theme editor (/api/tenant/theme) -------------------
+
+export type ThemeStyleParams = Record<string, Record<string, any>>
+
+export interface TenantThemeData {
+  theme_id: string
+  style_params: ThemeStyleParams
+  images: string[]
+  fonts: string[]
+}
+
+export interface ThemePreviewSample {
+  artist?: string
+  title?: string
+  lyrics?: string[]
+}
+
+export interface ThemePreviewImages {
+  title_card: string // data:image/jpeg;base64,...
+  karaoke_frame: string
+}
+
+export const tenantThemeApi = {
+  /** The signed-in user's tenant theme + uploaded images and available fonts. */
+  async get(): Promise<TenantThemeData> {
+    const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme`, { headers: getAuthHeaders() })
+    return handleResponse<TenantThemeData>(response)
+  },
+
+  /** Upload a background image or font; returns the stored asset name. */
+  async uploadAsset(file: File): Promise<{ name: string }> {
+    const fd = new FormData()
+    fd.append('file', file)
+    const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/assets`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: fd,
+    })
+    return handleResponse<{ name: string }>(response)
+  },
+
+  /** Render exact previews of a draft theme (nothing is saved). */
+  async preview(
+    styleParams: ThemeStyleParams,
+    sample: ThemePreviewSample,
+    signal?: AbortSignal,
+  ): Promise<ThemePreviewImages> {
+    const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/preview`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ style_params: styleParams, sample }),
+      signal,
+    })
+    return handleResponse<ThemePreviewImages>(response)
+  },
+
+  /** Save the theme — applies to jobs created from now on. */
+  async save(styleParams: ThemeStyleParams): Promise<TenantThemeData> {
+    const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme`, {
+      method: 'PUT',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ style_params: styleParams }),
+    })
+    return handleResponse<TenantThemeData>(response)
+  },
+}
+
 export const adminApi = {
   /**
    * Full history of requests-board submissions across every status.
