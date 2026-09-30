@@ -102,8 +102,8 @@ function AppPageContent() {
   // Check if user is admin (for exclude_test parameter)
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
 
-  // Hide self-service jobs still in the guided-flow wizard, but keep made-for-you orders
-  // and other accounts' jobs visible at awaiting_audio_selection (see shouldShowJobOnDashboard).
+  // Admins can hide other accounts' jobs parked at awaiting_audio_selection
+  // (see shouldShowJobOnDashboard); everyone else sees all of their jobs.
   const viewerEmail = user?.email
   const showOthersAwaitingAudio = isAdmin ? showAwaitingAudioJobs : true
   const jobs = useMemo(

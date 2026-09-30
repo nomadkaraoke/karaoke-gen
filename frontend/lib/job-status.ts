@@ -455,16 +455,16 @@ export function sortJobs(jobs: Job[], field: JobSortField, direction: SortDirect
 /**
  * Whether a job should render as a standalone card on the main dashboard.
  *
- * Self-service jobs at `awaiting_audio_selection` are driven by the guided-flow
- * wizard in the same browser session and must NOT appear as standalone cards
- * (the wizard owns them). Jobs created server-side sit at that status with no
- * active guided-flow session, so they'd otherwise be invisible to an admin:
- * made-for-you orders (Stripe webhook) and jobs owned by another account (e.g.
- * fiverrbot's `fiverr@nomadkaraoke.com` jobs parked for a manual audio pick).
- * Keep those visible so their built-in audio-selection action is reachable.
+ * `awaiting_audio_selection` used to be hidden wholesale because the old
+ * guided flow left its own job at that status while the wizard owned it. The
+ * guided flow now searches without creating a job (`searchStandalone`), so every
+ * job at this status needs its card's audio-selection action: the viewer's own
+ * jobs (e.g. after "Choose different audio"), made-for-you orders, and jobs
+ * owned by other accounts (e.g. fiverrbot orders parked for a manual pick).
  *
  * `showOthersAwaitingAudio` is the admin toggle; when false, other accounts'
- * jobs at this status are hidden again (made-for-you orders stay visible).
+ * non-made-for-you jobs at this status are hidden. The viewer's own jobs and
+ * made-for-you orders always stay visible.
  */
 export function shouldShowJobOnDashboard(
   job: Pick<Job, 'status' | 'made_for_you' | 'user_email'>,
@@ -472,7 +472,7 @@ export function shouldShowJobOnDashboard(
 ): boolean {
   if (job.status !== 'awaiting_audio_selection' || job.made_for_you) return true;
   const { viewerEmail, showOthersAwaitingAudio = true } = options;
-  if (!showOthersAwaitingAudio || !viewerEmail || !job.user_email) return false;
-  return job.user_email.toLowerCase() !== viewerEmail.toLowerCase();
+  if (showOthersAwaitingAudio) return true;
+  return Boolean(viewerEmail && job.user_email && job.user_email.toLowerCase() === viewerEmail.toLowerCase());
 }
 

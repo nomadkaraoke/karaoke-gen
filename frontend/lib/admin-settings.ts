@@ -17,6 +17,7 @@ interface AdminSettings {
   /**
    * When true (default), the /app dashboard shows other accounts' jobs parked at
    * awaiting_audio_selection (e.g. fiverrbot orders needing a manual audio pick).
+   * The admin's own jobs and made-for-you orders are shown regardless.
    */
   showAwaitingAudioJobs: boolean
   setShowAwaitingAudioJobs: (show: boolean) => void
