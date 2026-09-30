@@ -62,6 +62,9 @@ interface EditTimelineSectionProps {
   words: Word[]
   /** Neighbouring segments' words, drawn greyed/read-only in the timeline padding for context. */
   contextWords?: Word[]
+  /** Nearest word edges in the previous / next lines — resizes (incl. edge auto-extend) stop there. */
+  prevBoundaryTime?: number | null
+  nextBoundaryTime?: number | null
   startTime: number
   endTime: number
   currentTime?: number
@@ -80,6 +83,8 @@ interface EditTimelineSectionProps {
 export default function EditTimelineSection({
   words,
   contextWords,
+  prevBoundaryTime,
+  nextBoundaryTime,
   startTime,
   endTime,
   currentTime,
@@ -115,6 +120,8 @@ export default function EditTimelineSection({
         <TimelineEditor
           words={words}
           contextWords={contextWords}
+          prevBoundaryTime={prevBoundaryTime}
+          nextBoundaryTime={nextBoundaryTime}
           startTime={startTime}
           endTime={endTime}
           onWordUpdate={onWordUpdate}
