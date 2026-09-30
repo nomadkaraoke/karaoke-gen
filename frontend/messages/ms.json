@@ -1971,5 +1971,16 @@
     "close": "Tutup",
     "saving": "Menyimpan…",
     "songTitle": "Tajuk lagu"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Sila cuba sebentar lagi.",
+    "chooseDifferentAudio": "Pilih audio lain",
+    "explanation": "Ketersediaan trek ini rendah, jadi sumbernya mungkin sedang di luar talian. Ia selalunya kembali aktif tidak lama lagi: kami boleh terus mencuba, atau anda boleh memilih sumber audio lain.",
+    "explanationExtended": "Kami telah mencuba, tetapi sumber trek ini masih di luar talian. Anda boleh terus mencuba lagi, atau memilih sumber audio lain.",
+    "keepTrying": "Terus mencuba (sehingga 1 jam)",
+    "keepTryingStarted": "Masih mencuba",
+    "keepTryingStartedDesc": "Kami akan terus menunggu sehingga 1 jam. Anda boleh menutup halaman ini; proses anda akan diteruskan.",
+    "title": "Audio anda belum mula dimuat turun selepas {minutes} minit",
+    "actionFailed": "Terdapat masalah"
   }
 }

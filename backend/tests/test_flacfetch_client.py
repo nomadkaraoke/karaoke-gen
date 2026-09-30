@@ -19,6 +19,7 @@ import httpx
 from backend.services.flacfetch_client import (
     FlacfetchClient,
     FlacfetchServiceError,
+    FlacfetchDownloadStalledError,
     _format_httpx_error,
     get_flacfetch_client,
     reset_flacfetch_client,
@@ -1290,3 +1291,109 @@ class TestCheckYoutube:
             with pytest.raises(FlacfetchServiceError, match="YouTube availability check failed"):
                 await client.check_youtube("some-id")
 
+
+
+class TestWaitForDownloadStalled:
+    """wait_for_download() distinguishes torrent stalls (user-recoverable) from other failures."""
+
+    @staticmethod
+    def _client_with_status(status: dict) -> FlacfetchClient:
+        client = FlacfetchClient(base_url="http://localhost:8080", api_key="test-key")
+
+        async def mock_get_status(download_id):
+            return {"download_id": download_id, **status}
+
+        client.get_download_status = mock_get_status
+        return client
+
+    @pytest.mark.asyncio
+    async def test_error_code_torrent_stalled_raises_stalled_error(self):
+        client = self._client_with_status({
+            "status": "failed",
+            "error": "No progress for 1200s",
+            "error_code": "torrent_stalled",
+        })
+
+        with pytest.raises(FlacfetchDownloadStalledError) as exc_info:
+            await client.wait_for_download("dl_1", timeout=10)
+
+        assert "No progress for 1200s" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_legacy_stall_message_raises_stalled_error(self):
+        """Older flacfetch (no error_code) is still detected from the message."""
+        client = self._client_with_status({
+            "status": "failed",
+            "error": "Torrent download stalled for 600s with no progress",
+        })
+
+        with pytest.raises(FlacfetchDownloadStalledError):
+            await client.wait_for_download("dl_1", timeout=10)
+
+    @pytest.mark.asyncio
+    async def test_other_failure_raises_plain_service_error(self):
+        client = self._client_with_status({
+            "status": "failed",
+            "error": "Tracker returned 403",
+            "error_code": "tracker_error",
+        })
+
+        with pytest.raises(FlacfetchServiceError) as exc_info:
+            await client.wait_for_download("dl_1", timeout=10)
+
+        assert not isinstance(exc_info.value, FlacfetchDownloadStalledError)
+
+    def test_stalled_error_is_service_error_subclass(self):
+        """Existing `except FlacfetchServiceError` handlers still catch stalls."""
+        assert issubclass(FlacfetchDownloadStalledError, FlacfetchServiceError)
+
+
+class TestDownloadMaxStallSeconds:
+    """download()/download_by_id() forward max_stall_seconds only when given."""
+
+    @staticmethod
+    def _patched_post():
+        mock_response = Mock()
+        mock_response.json.return_value = {"download_id": "dl_xyz789"}
+        mock_response.raise_for_status = Mock()
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        return mock_client
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("max_stall, expected", [(3600, 3600), (None, None)])
+    async def test_download_by_id_payload(self, max_stall, expected):
+        client = FlacfetchClient(base_url="http://localhost:8080", api_key="test-key")
+        mock_client = self._patched_post()
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await client.download_by_id(
+                source_name="RED", source_id="123", max_stall_seconds=max_stall,
+            )
+
+        payload = mock_client.post.call_args.kwargs["json"]
+        assert mock_client.post.call_args.args[0].endswith("/download-by-id")
+        if expected is None:
+            assert "max_stall_seconds" not in payload
+        else:
+            assert payload["max_stall_seconds"] == expected
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("max_stall, expected", [(1200, 1200), (None, None)])
+    async def test_download_payload(self, max_stall, expected):
+        client = FlacfetchClient(base_url="http://localhost:8080", api_key="test-key")
+        mock_client = self._patched_post()
+
+        with patch("httpx.AsyncClient", return_value=mock_client):
+            await client.download(
+                search_id="search_abc", result_index=0, max_stall_seconds=max_stall,
+            )
+
+        payload = mock_client.post.call_args.kwargs["json"]
+        assert mock_client.post.call_args.args[0].endswith("/download")
+        if expected is None:
+            assert "max_stall_seconds" not in payload
+        else:
+            assert payload["max_stall_seconds"] == expected

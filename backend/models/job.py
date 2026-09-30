@@ -203,6 +203,7 @@ STATE_TRANSITIONS = {
         JobStatus.LYRICS_COMPLETE,        # Retry from screens generation
         JobStatus.AWAITING_REVIEW,        # Retry from combined review
         JobStatus.RENDER_PENDING_CAPACITY,  # Operator parks a stale-failed job for auto-retry
+        JobStatus.AWAITING_AUDIO_SELECTION,  # Choose different audio after a failed download
     ],
     JobStatus.CANCELLED: [
         JobStatus.DOWNLOADING,            # Retry from beginning (if input audio exists)

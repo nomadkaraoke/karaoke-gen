@@ -1971,5 +1971,16 @@
     "close": "Sluiten",
     "saving": "Opslaan…",
     "songTitle": "Titel van het nummer"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Probeer het over een ogenblik opnieuw.",
+    "chooseDifferentAudio": "Kies andere audio",
+    "explanation": "Dit nummer is beperkt beschikbaar, waardoor de bron momenteel mogelijk offline is. Vaak is deze snel weer online: we kunnen het blijven proberen, of je kunt een andere audiobron kiezen.",
+    "explanationExtended": "We zijn het blijven proberen, maar de bron van dit nummer is nog steeds offline. Je kunt het nog eens proberen, of een andere audiobron kiezen.",
+    "keepTrying": "Blijf proberen (tot 1 uur)",
+    "keepTryingStarted": "Nog steeds aan het proberen",
+    "keepTryingStartedDesc": "We blijven tot maximaal een uur wachten. Je kunt deze pagina sluiten; je taak gaat gewoon door.",
+    "title": "Het downloaden van je audio is na {minutes} minuten nog niet begonnen",
+    "actionFailed": "Er is iets misgegaan"
   }
 }

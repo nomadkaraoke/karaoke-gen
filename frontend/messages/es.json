@@ -1971,5 +1971,16 @@
     "close": "Cerrar",
     "saving": "Guardando…",
     "songTitle": "Título de la canción"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Por favor, inténtalo de nuevo en un momento.",
+    "chooseDifferentAudio": "Elige un audio diferente",
+    "explanation": "Esta pista tiene baja disponibilidad, por lo que su fuente podría estar desconectada en este momento. Suele volver pronto: podemos seguir intentándolo o puedes elegir una fuente de audio diferente.",
+    "explanationExtended": "Seguimos intentándolo, pero la fuente de esta pista sigue desconectada. Puedes volver a intentarlo o elegir una fuente de audio diferente.",
+    "keepTrying": "Seguir intentándolo (hasta 1 hora)",
+    "keepTryingStarted": "Seguimos intentándolo",
+    "keepTryingStartedDesc": "Seguiremos esperando hasta una hora. Puedes cerrar esta página; tu trabajo continuará.",
+    "title": "Tu audio no ha comenzado a descargarse después de {minutes} minutos",
+    "actionFailed": "Algo salió mal"
   }
 }

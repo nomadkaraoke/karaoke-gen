@@ -1971,5 +1971,16 @@
     "close": "Tutup",
     "saving": "Menyimpan…",
     "songTitle": "Judul lagu"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Silakan coba beberapa saat lagi.",
+    "chooseDifferentAudio": "Pilih audio lain",
+    "explanation": "Trek ini memiliki ketersediaan rendah, jadi sumbernya mungkin sedang offline saat ini. Biasanya sumber akan segera aktif kembali: kami bisa terus mencoba, atau Anda bisa memilih sumber audio lain.",
+    "explanationExtended": "Kami sudah terus mencoba, tetapi sumber trek ini masih offline. Anda bisa mencoba lagi, atau memilih sumber audio lain.",
+    "keepTrying": "Terus mencoba (hingga 1 jam)",
+    "keepTryingStarted": "Masih mencoba",
+    "keepTryingStartedDesc": "Kami akan terus menunggu hingga 1 jam. Anda bisa menutup halaman ini; proses Anda akan tetap berjalan.",
+    "title": "Audio Anda belum mulai diunduh setelah {minutes} menit",
+    "actionFailed": "Terjadi kesalahan"
   }
 }

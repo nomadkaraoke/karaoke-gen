@@ -22,13 +22,19 @@ import mimetypes
 import os
 import shutil
 import tempfile
+import time
 from datetime import datetime, timedelta, timezone
 
 from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.worker_service import get_worker_service
-from backend.services.flacfetch_client import get_flacfetch_client, FlacfetchServiceError
+from backend.services.flacfetch_client import (
+    get_flacfetch_client,
+    FlacfetchDownloadStalledError,
+    FlacfetchServiceError,
+)
+from backend.services import audio_download_limits
 from backend.services.audio_search_service import DownloadError
 from backend.services.duration_reconciliation import reconcile_and_maybe_pause
 
@@ -80,14 +86,14 @@ DOWNLOAD_ALREADY_DONE_STATUSES = frozenset({
     JobStatus.CANCELLED,
 })
 
-# How long to wait for a flacfetch download before giving up. This MUST stay
-# strictly below the Cloud Run task `timeout` for audio-download-job (see
-# infrastructure/modules/cloud_run.py::create_audio_download_job). If they are
-# equal, Cloud Run SIGKILLs the task before this timeout can fire, so the
+# How long to wait for a (non-torrent) flacfetch download before giving up. This
+# MUST stay strictly below the Cloud Run task timeout for audio-download-job. If
+# they are equal, Cloud Run SIGKILLs the task before this timeout can fire, so the
 # worker never records retry-pending or fails gracefully — leaving an in-flight
-# auto-retry that races manual retries (job 1cd29294). The headroom below the
-# task timeout covers the final GCS upload + state transition.
-DOWNLOAD_WAIT_TIMEOUT_SECONDS = 1080  # task timeout is 1200s
+# auto-retry that races manual retries (job 1cd29294). The execution timeout is
+# overridden per run (audio_download_limits.task_timeout_seconds, >= 2700s);
+# torrents use the longer audio_download_limits.torrent_wait_timeout_seconds.
+DOWNLOAD_WAIT_TIMEOUT_SECONDS = 1080
 
 
 def _current_task_attempt() -> int:
@@ -132,10 +138,34 @@ def _clear_retry_pending_and_error(job_manager: JobManager, job_id: str) -> None
     no longer wrongly suggests action is required.
     """
     job_manager.update_state_data(job_id, 'cloud_run_retry_pending', None)
+    job_manager.update_state_data(job_id, audio_download_limits.KEEP_TRYING_STATE_KEY, None)
     job_manager.update_job(job_id, {
         'error_message': None,
         'error_details': {},
     })
+
+
+def _fail_stalled_download(job_manager: JobManager, job_id: str, keep_trying: bool, error: Exception) -> None:
+    """Fail a job whose torrent never started transferring, for the user to decide.
+
+    No Cloud Run auto-retry: re-adding the same torrent seconds later rarely helps
+    when its only seeder is offline. The job card shows a "Keep trying (up to 1
+    hour)" / "Choose different audio" prompt keyed on error_details.code, and
+    main() exits 0 so Cloud Run doesn't retry the task.
+    """
+    minutes = audio_download_limits.stall_seconds(keep_trying) // 60
+    job_manager.update_state_data(job_id, 'cloud_run_retry_pending', None)
+    job_manager.fail_job(
+        job_id,
+        f"Audio download didn't start within {minutes} minutes (source offline, "
+        f"no peers reachable): {error}",
+        error_details={
+            'stage': 'audio_download',
+            'code': audio_download_limits.STALLED_ERROR_CODE,
+            'stall_minutes': minutes,
+            'keep_trying': keep_trying,
+        },
+    )
 
 
 def _extract_gcs_path(filepath: str) -> str:
@@ -213,6 +243,8 @@ async def process_audio_download(job_id: str) -> bool:
                 logger.error(f"[job:{job_id}] No download params available, aborting")
                 return False
 
+        keep_trying = bool(job.state_data.get(audio_download_limits.KEEP_TRYING_STATE_KEY))
+
         # Get download params from job
         search_results = job.state_data.get('audio_search_results', [])
         selection_index = job.state_data.get('selected_audio_index')
@@ -250,6 +282,7 @@ async def process_audio_download(job_id: str) -> bool:
             selection_index=selection_index,
             selected=selected,
             storage_service=storage_service,
+            keep_trying=keep_trying,
         )
 
         # Concurrency guard: a second download run may have completed while we
@@ -332,15 +365,21 @@ async def process_audio_download(job_id: str) -> bool:
         logger.info(f"[job:{job_id}] Audio download complete, workers triggered")
         return True
 
+    except FlacfetchDownloadStalledError as e:
+        logger.warning(f"[job:{job_id}] Torrent stalled; asking the user to keep trying or re-pick: {e}")
+        _fail_stalled_download(job_manager, job_id, keep_trying, e)
+        return False
     except (DownloadError, FlacfetchServiceError) as e:
         logger.error(f"[job:{job_id}] Download failed: {e}")
         _mark_retry_pending_if_attempts_remain(job_manager, job_id)
-        job_manager.fail_job(job_id, f"Audio download failed: {e}")
+        job_manager.fail_job(job_id, f"Audio download failed: {e}",
+                             error_details={'stage': 'audio_download'})
         return False
     except Exception as e:
         logger.error(f"[job:{job_id}] Download failed: {e}", exc_info=True)
         _mark_retry_pending_if_attempts_remain(job_manager, job_id)
-        job_manager.fail_job(job_id, f"Audio download failed: {e}")
+        job_manager.fail_job(job_id, f"Audio download failed: {e}",
+                             error_details={'stage': 'audio_download'})
         return False
 
 
@@ -406,6 +445,7 @@ async def _download_audio(
     selection_index: int | None,
     selected: dict,
     storage_service: StorageService,
+    keep_trying: bool = False,
 ) -> tuple[str, str]:
     """
     Download audio from the selected source and return (gcs_path, filename).
@@ -418,7 +458,8 @@ async def _download_audio(
     elif source_name in ('RED', 'OPS'):
         return await _download_torrent(
             job_id, source_name, source_id, target_file,
-            download_url, remote_search_id, selection_index
+            download_url, remote_search_id, selection_index,
+            keep_trying=keep_trying,
         )
 
     elif source_name == 'Spotify':
@@ -465,6 +506,38 @@ async def _download_youtube(
         raise DownloadError(f"YouTube download failed: {e}")
 
 
+def _download_heartbeat(job_id: str, job_manager: JobManager | None = None):
+    """Progress callback that periodically records download progress on the job.
+
+    Besides giving admins visibility (progress / peers), each write bumps the
+    job's updated_at so the recover-stuck-jobs cron — which treats a job sitting
+    in downloading_audio for >10 min *without an update* as a dead worker — does
+    not park a torrent we're still legitimately waiting on (stall budgets are
+    20-60 min). Best-effort: a failed write never interrupts the download.
+    """
+    last_write = [0.0]
+    manager = [job_manager]  # created lazily once, reused for every write
+
+    def _callback(status: dict) -> None:
+        now = time.monotonic()
+        if last_write[0] and now - last_write[0] < audio_download_limits.HEARTBEAT_INTERVAL_SECONDS:
+            return
+        last_write[0] = now
+        try:
+            if manager[0] is None:
+                manager[0] = JobManager()
+            manager[0].update_state_data(job_id, 'audio_download_progress', {
+                'progress': status.get('progress', 0),
+                'peers': status.get('peers', 0),
+                'download_speed_kbps': status.get('download_speed_kbps', 0),
+                'at': datetime.now(timezone.utc).isoformat(),
+            })
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[job:{job_id}] Download heartbeat write failed: {e}")
+
+    return _callback
+
+
 async def _download_torrent(
     job_id: str,
     source_name: str,
@@ -473,8 +546,13 @@ async def _download_torrent(
     download_url: str | None,
     remote_search_id: str | None,
     selection_index: int | None,
+    keep_trying: bool = False,
 ) -> tuple[str, str]:
-    """Download from torrent source (RED/OPS) via flacfetch."""
+    """Download from torrent source (RED/OPS) via flacfetch.
+
+    flacfetch aborts after `stall_seconds(keep_trying)` with no progress, which
+    surfaces here as FlacfetchDownloadStalledError.
+    """
     flacfetch_client = get_flacfetch_client()
     if not flacfetch_client:
         raise DownloadError(
@@ -483,15 +561,20 @@ async def _download_torrent(
         )
 
     gcs_destination = f"uploads/{job_id}/audio/"
+    max_stall_seconds = audio_download_limits.stall_seconds(keep_trying)
 
     if source_id:
-        logger.info(f"[job:{job_id}] Torrent download: {source_name} ID={source_id}")
+        logger.info(
+            f"[job:{job_id}] Torrent download: {source_name} ID={source_id} "
+            f"(max stall {max_stall_seconds}s)"
+        )
         download_id = await flacfetch_client.download_by_id(
             source_name=source_name,
             source_id=source_id,
             target_file=target_file,
             download_url=download_url,
             gcs_path=gcs_destination,
+            max_stall_seconds=max_stall_seconds,
         )
     else:
         if not remote_search_id:
@@ -503,11 +586,13 @@ async def _download_torrent(
             search_id=remote_search_id,
             result_index=selection_index,
             gcs_path=gcs_destination,
+            max_stall_seconds=max_stall_seconds,
         )
 
     final_status = await flacfetch_client.wait_for_download(
         download_id,
-        timeout=DOWNLOAD_WAIT_TIMEOUT_SECONDS,
+        timeout=audio_download_limits.torrent_wait_timeout_seconds(keep_trying),
+        progress_callback=_download_heartbeat(job_id),
     )
 
     filepath = final_status.get("gcs_path") or final_status.get("output_path")
@@ -558,6 +643,16 @@ async def _download_spotify(
     return audio_gcs_path, filename
 
 
+def _failed_awaiting_user(job_id: str) -> bool:
+    """True if the job failed with a user-recoverable stall (see _fail_stalled_download)."""
+    try:
+        job = JobManager().get_job(job_id)
+    except Exception:
+        return False
+    details = (job.error_details or {}) if job else {}
+    return details.get('code') == audio_download_limits.STALLED_ERROR_CODE
+
+
 def main():
     """
     CLI entry point for running audio download worker as a Cloud Run Job.
@@ -591,6 +686,11 @@ def main():
         success = asyncio.run(process_audio_download(job_id))
         if success:
             logger.info(f"Audio download completed successfully for job {job_id}")
+            sys.exit(0)
+        elif _failed_awaiting_user(job_id):
+            # Stalled torrent: the job is failed with a "Keep trying?" prompt for
+            # the user. Exit 0 so Cloud Run doesn't auto-retry the same torrent.
+            logger.warning(f"Audio download stalled for job {job_id}; awaiting user decision")
             sys.exit(0)
         else:
             logger.error(f"Audio download failed for job {job_id}")

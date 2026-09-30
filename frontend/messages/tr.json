@@ -1971,5 +1971,16 @@
     "close": "Kapat",
     "saving": "Kaydediliyor…",
     "songTitle": "Şarkı adı"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Lütfen birazdan tekrar dene.",
+    "chooseDifferentAudio": "Farklı bir ses seç",
+    "explanation": "Bu parçanın erişilebilirliği düşük, bu yüzden kaynağı şu anda çevrimdışı olabilir. Genelde kısa süre içinde düzelir: denemeye devam edebiliriz veya farklı bir ses kaynağı seçebilirsin.",
+    "explanationExtended": "Denemeye devam ettik ancak bu parçanın kaynağı hâlâ çevrimdışı. Tekrar denemeye devam edebilir veya farklı bir ses kaynağı seçebilirsin.",
+    "keepTrying": "Denemeye devam et (1 saate kadar)",
+    "keepTryingStarted": "Hâlâ deneniyor",
+    "keepTryingStartedDesc": "1 saate kadar beklemeye devam edeceğiz. Bu sayfayı kapatabilirsin; işlemin devam eder.",
+    "title": "{minutes} dakika geçmesine rağmen ses dosyan inmeye başlamadı",
+    "actionFailed": "Bir şeyler ters gitti"
   }
 }

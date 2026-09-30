@@ -1971,5 +1971,16 @@
     "close": "Stäng",
     "saving": "Sparar…",
     "songTitle": "Låttitel"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Försök igen om en stund.",
+    "chooseDifferentAudio": "Välj ett annat ljud",
+    "explanation": "Det här spåret har låg tillgänglighet, så källan kan vara offline just nu. Den brukar komma tillbaka snart: vi kan fortsätta försöka, eller så kan du välja en annan ljudkälla.",
+    "explanationExtended": "Vi har fortsatt försöka, men spårets källa är fortfarande offline. Du kan fortsätta försöka, eller välja en annan ljudkälla.",
+    "keepTrying": "Fortsätt försöka (upp till 1 timme)",
+    "keepTryingStarted": "Försöker fortfarande",
+    "keepTryingStartedDesc": "Vi fortsätter vänta i upp till en timme. Du kan stänga den här sidan; ditt jobb fortsätter.",
+    "title": "Ditt ljud har inte börjat laddas ner efter {minutes} minuter",
+    "actionFailed": "Något gick fel"
   }
 }

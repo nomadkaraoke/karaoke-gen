@@ -1971,5 +1971,16 @@
     "close": "Chiudi",
     "saving": "Salvataggio…",
     "songTitle": "Titolo della canzone"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Riprova tra qualche istante.",
+    "chooseDifferentAudio": "Scegli un audio diverso",
+    "explanation": "Questa traccia ha una disponibilità limitata, quindi la sua sorgente potrebbe essere offline in questo momento. Spesso torna disponibile a breve: possiamo continuare a provare, oppure puoi scegliere una sorgente audio diversa.",
+    "explanationExtended": "Abbiamo continuato a provare, ma la sorgente di questa traccia è ancora offline. Puoi riprovare ancora, oppure scegliere una sorgente audio diversa.",
+    "keepTrying": "Continua a provare (fino a 1 ora)",
+    "keepTryingStarted": "Stiamo ancora provando",
+    "keepTryingStartedDesc": "Continueremo ad attendere fino a un'ora. Puoi chiudere questa pagina; l'elaborazione continuerà comunque.",
+    "title": "Il download del tuo audio non è ancora iniziato dopo {minutes} minuti",
+    "actionFailed": "Qualcosa è andato storto"
   }
 }

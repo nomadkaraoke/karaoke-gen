@@ -1971,5 +1971,16 @@
     "savedBody": "New videos will use your updated theme.",
     "saveFailed": "Couldn't save your theme",
     "discardConfirm": "You have unsaved theme changes. Close without saving?"
+  },
+  "stalledDownload": {
+    "title": "Your audio hasn't started downloading after {minutes} minutes",
+    "explanation": "This track has low availability, so its source may be offline right now. It often comes back soon: we can keep trying, or you can pick a different audio source.",
+    "explanationExtended": "We kept trying, but this track's source is still offline. You can keep trying again, or pick a different audio source.",
+    "keepTrying": "Keep trying (up to 1 hour)",
+    "chooseDifferentAudio": "Choose different audio",
+    "keepTryingStarted": "Still trying",
+    "keepTryingStartedDesc": "We'll keep waiting for up to an hour. You can close this page; your job carries on.",
+    "actionFailed": "Something went wrong",
+    "actionFailedDesc": "Please try again in a moment."
   }
 }

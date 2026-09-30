@@ -225,6 +225,20 @@ def _mark_alerted(doc_ref: Any, now: datetime) -> None:
         logger.debug("ops_alerts: could not record alert delivery: %s", exc)
 
 
+def _retry_pending(state_data: dict) -> bool:
+    """True if state_data.cloud_run_retry_pending is set and unexpired."""
+    pending = (state_data or {}).get("cloud_run_retry_pending")
+    if not isinstance(pending, dict) or not pending.get("expires_at"):
+        return False
+    try:
+        expires_at = datetime.fromisoformat(str(pending["expires_at"]).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at > datetime.now(timezone.utc)
+
+
 def notify_job_failed(
     db: Any,
     collection: str,
@@ -249,6 +263,8 @@ def notify_job_failed(
         # Enrich from the job doc (best-effort). We only just wrote it, so this
         # is a single extra read on the rare FAILED path.
         artist = title = environment = brand_code = None
+        retry_pending = False
+        error_code = None
         error_message = (additional_fields or {}).get("error_message") or message or ""
         try:
             snap = db.collection(collection).document(job_id).get()
@@ -260,6 +276,8 @@ def notify_job_failed(
                 environment = meta.get("environment")
                 state = job.get("state_data") or {}
                 brand_code = state.get("brand_code")
+                retry_pending = _retry_pending(state)
+                error_code = (job.get("error_details") or {}).get("code")
                 if not error_message:
                     error_message = job.get("error_message") or ""
         except Exception as exc:  # noqa: BLE001
@@ -269,6 +287,13 @@ def notify_job_failed(
             logger.debug("ops_alerts: skipping failure alert for %s env job %s", environment, job_id)
             return False
 
+        # A Cloud Run auto-retry is already queued: this failure is transient
+        # from the user's view (they see "Retrying automatically…"). If the final
+        # attempt also fails, it clears the marker first and alerts then.
+        if retry_pending:
+            logger.info("ops_alerts: skipping failure alert for job %s (auto-retry pending)", job_id)
+            return False
+
         now = datetime.now(timezone.utc)
         signature = _signature(error_message)
         should_send, is_novel, suppressed, doc_ref = _should_alert(db, signature, now)
@@ -276,8 +301,13 @@ def notify_job_failed(
             return False
 
         track = " - ".join(p for p in (artist, title) if p) or "(unknown track)"
+        headline = (
+            "🟠 **Audio download stalled** — waiting for the user to keep trying or pick other audio"
+            if error_code == "audio_download_stalled"
+            else "🔴 **Job failed** — near-real-time alert"
+        )
         lines = [
-            "🔴 **Job failed** — near-real-time alert",
+            headline,
             f"**Job:** `{job_id}`" + (f"  ({brand_code})" if brand_code else ""),
             f"**Track:** {track}",
         ]

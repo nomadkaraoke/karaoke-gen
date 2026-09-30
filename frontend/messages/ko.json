@@ -1971,5 +1971,16 @@
     "close": "닫기",
     "saving": "저장 중…",
     "songTitle": "노래 제목"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "잠시 후 다시 시도해 주세요.",
+    "chooseDifferentAudio": "다른 오디오 선택하기",
+    "explanation": "이 트랙은 가용성이 낮아 현재 소스가 오프라인 상태일 수 있습니다. 곧 복구되는 경우가 많으니 계속 시도해 보거나 다른 오디오 소스를 선택하실 수 있습니다.",
+    "explanationExtended": "계속 시도해 보았지만 이 트랙의 소스가 여전히 오프라인 상태입니다. 한 번 더 계속 시도하거나 다른 오디오 소스를 선택하실 수 있습니다.",
+    "keepTrying": "계속 시도하기 (최대 1시간)",
+    "keepTryingStarted": "계속 시도 중",
+    "keepTryingStartedDesc": "최대 1시간 동안 계속 대기합니다. 이 페이지를 닫으셔도 작업은 계속 진행됩니다.",
+    "title": "{minutes}분이 지났지만 오디오 다운로드가 시작되지 않았습니다",
+    "actionFailed": "문제가 발생했습니다"
   }
 }

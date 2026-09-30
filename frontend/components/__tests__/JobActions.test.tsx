@@ -52,6 +52,16 @@ describe('JobActions', () => {
       expect(screen.getByText('Retry')).toBeInTheDocument()
     })
 
+    it('hides the generic retry button for a stalled download (it has its own prompt)', () => {
+      const stalled = {
+        ...baseJob,
+        status: 'failed',
+        error_details: { stage: 'audio_download', code: 'audio_download_stalled' },
+      } as Job
+      render(<JobActions job={stalled} onRefresh={mockOnRefresh} />)
+      expect(screen.queryByText('Retry')).not.toBeInTheDocument()
+    })
+
     it('does not show retry button for cancelled jobs (legacy status)', () => {
       const cancelledJob = { ...baseJob, status: 'cancelled' } as Job
       render(

@@ -1971,5 +1971,16 @@
     "close": "Închide",
     "saving": "Se salvează…",
     "songTitle": "Titlul melodiei"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Te rugăm să încerci din nou peste câteva momente.",
+    "chooseDifferentAudio": "Alege un alt fișier audio",
+    "explanation": "Această piesă are o disponibilitate redusă, așa că sursa ei s-ar putea să fie offline în acest moment. De obicei revine repede: putem continua să încercăm sau poți alege o altă sursă audio.",
+    "explanationExtended": "Am continuat să încercăm, dar sursa acestei piese este în continuare offline. Putem continua să încercăm sau poți alege o altă sursă audio.",
+    "keepTrying": "Continuă încercările (până la 1 oră)",
+    "keepTryingStarted": "Încă încercăm",
+    "keepTryingStartedDesc": "Vom continua să așteptăm până la o oră. Poți închide această pagină; procesul tău va continua.",
+    "title": "Fișierul tău audio nu a început să se descarce după {minutes} minute",
+    "actionFailed": "Ceva nu a mers bine"
   }
 }

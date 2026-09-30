@@ -44,6 +44,21 @@ class FlacfetchServiceError(Exception):
     pass
 
 
+class FlacfetchDownloadStalledError(FlacfetchServiceError):
+    """A torrent made no progress for the whole stall ceiling (typically its only
+    seeder is offline). Recoverable by waiting longer or picking other audio, so
+    callers surface it to the user instead of auto-retrying the same torrent."""
+    pass
+
+
+def _is_stall_failure(status: Dict[str, Any]) -> bool:
+    """flacfetch >= 0.31 reports error_code='torrent_stalled'; older versions only
+    the message ("Torrent download stalled for 600s ...")."""
+    if status.get("error_code") == "torrent_stalled":
+        return True
+    return "download stalled for" in str(status.get("error") or "").lower()
+
+
 def _format_httpx_error(e: Exception) -> str:
     """
     Format an httpx exception into a descriptive error string.
@@ -287,6 +302,7 @@ class FlacfetchClient:
         result_index: int,
         output_filename: Optional[str] = None,
         gcs_path: Optional[str] = None,
+        max_stall_seconds: Optional[int] = None,
     ) -> str:
         """
         Start downloading an audio file.
@@ -299,6 +315,8 @@ class FlacfetchClient:
             result_index: Index of result to download
             output_filename: Optional custom filename (without extension)
             gcs_path: GCS path for upload (e.g., "uploads/job123/audio/")
+            max_stall_seconds: Torrents only — abort after this long with no progress
+                (overrides flacfetch's default ceiling)
 
         Returns:
             Download ID for tracking progress
@@ -307,7 +325,9 @@ class FlacfetchClient:
             FlacfetchServiceError: On download start failure (after all retries exhausted)
         """
         try:
-            return await with_retry(self._download_impl, search_id, result_index, output_filename, gcs_path)
+            return await with_retry(
+                self._download_impl, search_id, result_index, output_filename, gcs_path, max_stall_seconds
+            )
         except httpx.RequestError as e:
             raise FlacfetchServiceError(f"Download request failed: {_format_httpx_error(e)}")
         except httpx.HTTPStatusError as e:
@@ -319,6 +339,7 @@ class FlacfetchClient:
         result_index: int,
         output_filename: Optional[str] = None,
         gcs_path: Optional[str] = None,
+        max_stall_seconds: Optional[int] = None,
     ) -> str:
         """Implementation of download without error wrapping - lets httpx exceptions bubble up."""
         async with httpx.AsyncClient() as client:
@@ -331,6 +352,8 @@ class FlacfetchClient:
             if gcs_path:
                 payload["upload_to_gcs"] = True
                 payload["gcs_path"] = gcs_path
+            if max_stall_seconds:
+                payload["max_stall_seconds"] = max_stall_seconds
 
             resp = await client.post(
                 f"{self.base_url}/download",
@@ -351,6 +374,7 @@ class FlacfetchClient:
         target_file: Optional[str] = None,
         download_url: Optional[str] = None,
         gcs_path: Optional[str] = None,
+        max_stall_seconds: Optional[int] = None,
     ) -> str:
         """
         Start downloading directly by source ID (no prior search required).
@@ -368,6 +392,8 @@ class FlacfetchClient:
             target_file: For torrents, specific file to extract
             download_url: For YouTube/Spotify, direct URL (optional)
             gcs_path: GCS path for upload (e.g., "uploads/job123/audio/")
+            max_stall_seconds: Torrents only — abort after this long with no progress
+                (overrides flacfetch's default ceiling)
 
         Returns:
             Download ID for tracking progress
@@ -378,7 +404,8 @@ class FlacfetchClient:
         try:
             return await with_retry(
                 self._download_by_id_impl,
-                source_name, source_id, output_filename, target_file, download_url, gcs_path
+                source_name, source_id, output_filename, target_file, download_url, gcs_path,
+                max_stall_seconds,
             )
         except httpx.RequestError as e:
             raise FlacfetchServiceError(f"Download by ID request failed: {_format_httpx_error(e)}")
@@ -393,6 +420,7 @@ class FlacfetchClient:
         target_file: Optional[str] = None,
         download_url: Optional[str] = None,
         gcs_path: Optional[str] = None,
+        max_stall_seconds: Optional[int] = None,
     ) -> str:
         """Implementation of download_by_id without error wrapping - lets httpx exceptions bubble up."""
         async with httpx.AsyncClient() as client:
@@ -409,6 +437,8 @@ class FlacfetchClient:
             if gcs_path:
                 payload["upload_to_gcs"] = True
                 payload["gcs_path"] = gcs_path
+            if max_stall_seconds:
+                payload["max_stall_seconds"] = max_stall_seconds
 
             resp = await client.post(
                 f"{self.base_url}/download-by-id",
@@ -518,6 +548,8 @@ class FlacfetchClient:
                 return status
             elif download_status == "failed":
                 error = status.get("error", "Unknown error")
+                if _is_stall_failure(status):
+                    raise FlacfetchDownloadStalledError(f"Download failed: {error}")
                 raise FlacfetchServiceError(f"Download failed: {error}")
             elif download_status == "cancelled":
                 raise FlacfetchServiceError("Download was cancelled")

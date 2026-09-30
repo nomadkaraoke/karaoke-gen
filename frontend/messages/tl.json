@@ -1971,5 +1971,16 @@
     "close": "Isara",
     "saving": "Sini-save…",
     "songTitle": "Pamagat ng kanta"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Pakisubukang muli maya-maya.",
+    "chooseDifferentAudio": "Pumili ng ibang audio",
+    "explanation": "Mababa ang availability ng track na ito, kaya maaaring offline ang source nito sa ngayon. Madalas naman itong bumabalik agad: maaari naming ipagpatuloy ang pagsubok, o maaari kang pumili ng ibang audio source.",
+    "explanationExtended": "Patuloy naming sinubukan, ngunit offline pa rin ang source ng track na ito. Maaari mo pa ring ipagpatuloy ang pagsubok, o pumili ng ibang audio source.",
+    "keepTrying": "Ipagpatuloy ang pagsubok (hanggang 1 oras)",
+    "keepTryingStarted": "Sinusubukan pa rin",
+    "keepTryingStartedDesc": "Patuloy kaming maghihintay nang hanggang isang oras. Maaari mong isara ang page na ito; magpapatuloy pa rin ang iyong job.",
+    "title": "Hindi pa nagsisimulang mag-download ang iyong audio pagkalipas ng {minutes} minuto",
+    "actionFailed": "May nangyaring mali"
   }
 }

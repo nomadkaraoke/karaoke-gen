@@ -535,7 +535,7 @@ Audio and lyrics workers run as **Cloud Run Jobs** - standalone batch containers
 ┌─────────────────────────────────────────────────────────────────┐
 │  Cloud Run Jobs (via WorkerService)                             │
 │                                                                 │
-│  audio-download-job          - 30s-5 min (flacfetch/YouTube, us-east4) │
+│  audio-download-job          - 30s-5 min typical; torrent waits ≤20/60 min │
 │  lyrics-transcription-job    - 5-15 min (AudioShake + correction, us-east4)│
 │  bulk-search-job             - batch audio search (us-east4)    │
 │  audio-separation-job        - 10-20 min (L4 GPU, us-east4, direct) │

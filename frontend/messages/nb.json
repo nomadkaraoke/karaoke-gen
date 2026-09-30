@@ -1971,5 +1971,16 @@
     "close": "Lukk",
     "saving": "Lagrer…",
     "songTitle": "Sangtittel"
+  },
+  "stalledDownload": {
+    "actionFailedDesc": "Prøv igjen om et øyeblikk.",
+    "chooseDifferentAudio": "Velg et annet lydspor",
+    "explanation": "Dette sporet har lav tilgjengelighet, så kilden kan være nede akkurat nå. Den kommer ofte raskt tilbake: vi kan fortsette å prøve, eller du kan velge en annen lydkilde.",
+    "explanationExtended": "Vi fortsatte å prøve, men kilden til dette sporet er fortsatt nede. Du kan fortsette å prøve, eller velge en annen lydkilde.",
+    "keepTrying": "Fortsett å prøve (opptil 1 time)",
+    "keepTryingStarted": "Prøver fortsatt",
+    "keepTryingStartedDesc": "Vi fortsetter å vente i opptil én time. Du kan lukke denne siden; oppgaven din fortsetter.",
+    "title": "Nedlastingen av lydsporet ditt har ikke startet etter {minutes} minutter",
+    "actionFailed": "Noe gikk galt"
   }
 }

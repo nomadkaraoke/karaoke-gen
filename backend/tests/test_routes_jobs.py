@@ -193,6 +193,26 @@ class TestJobStatusTransitions:
         # FAILED should allow restart from beginning
         assert JobStatus.DOWNLOADING in valid_transitions, "FAILED should allow restart to DOWNLOADING"
 
+    def test_failed_can_reopen_audio_selection(self):
+        """FAILED -> AWAITING_AUDIO_SELECTION backs /choose-different-audio after a
+        stalled download; the re-pick then proceeds to DOWNLOADING_AUDIO."""
+        from backend.models.job import STATE_TRANSITIONS
+        assert JobStatus.AWAITING_AUDIO_SELECTION in STATE_TRANSITIONS[JobStatus.FAILED]
+        assert JobStatus.DOWNLOADING_AUDIO in STATE_TRANSITIONS[JobStatus.AWAITING_AUDIO_SELECTION]
+
+    def test_job_manager_accepts_failed_to_awaiting_audio_selection(self):
+        """The JobManager transition validator honours the new edge."""
+        from backend.services.job_manager import JobManager
+
+        job = Job(
+            job_id="t1", status=JobStatus.FAILED,
+            created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+        )
+        jm = JobManager.__new__(JobManager)
+        with patch.object(JobManager, "get_job", return_value=job):
+            assert jm.validate_state_transition("t1", JobStatus.AWAITING_AUDIO_SELECTION) is True
+            assert jm.validate_state_transition("t1", JobStatus.AWAITING_AUDIO_SELECTION, raise_on_invalid=True) is True
+
 
 class TestJobModelSerialization:
     """Tests for Job model serialization to/from API."""

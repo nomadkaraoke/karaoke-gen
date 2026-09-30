@@ -8,6 +8,7 @@ import { Zap, Globe } from "lucide-react"
 import { JobActions } from "./JobActions"
 import { AdminJobActions } from "./AdminJobActions"
 import { OutputLinks } from "./OutputLinks"
+import { StalledDownloadNotice, isStalledDownload } from "./StalledDownloadNotice"
 import { AudioSearchDialog } from "../audio-search/AudioSearchDialog"
 import { DurationCostConfirm } from "./DurationCostConfirm"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
@@ -257,7 +258,13 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
           state. Completed jobs may carry a stale error_message from a transient
           failure that was auto-retried; we don't want to alarm users about
           resolved issues. */}
-      {job.error_message && !isComplete && (
+      {isStalledDownload(job) ? (
+        <StalledDownloadNotice
+          job={job}
+          onRefresh={onRefresh}
+          onChooseAudio={() => setShowAudioSearch(true)}
+        />
+      ) : job.error_message && !isComplete && (
         <div className="mt-2 text-xs text-red-400 bg-red-500/10 rounded p-2 break-words">
           {job.error_message}
         </div>
