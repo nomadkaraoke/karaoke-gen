@@ -20,6 +20,7 @@ import {
   Trash2, Globe, AlertTriangle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { deliveryError, suggestDelivery } from "@/lib/tenant-delivery"
 
 // --- Colour field -----------------------------------------------------------
 function ColorField({
@@ -131,6 +132,7 @@ export default function AdminTenantsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [idEdited, setIdEdited] = useState(false)
+  const [deliveryEdited, setDeliveryEdited] = useState(false)
   const [karaokeBg, setKaraokeBg] = useState<File | null>(null)
   const [introBg, setIntroBg] = useState<File | null>(null)
   const [logo, setLogo] = useState<File | null>(null)
@@ -184,6 +186,10 @@ export default function AdminTenantsPage() {
         next.tenant_id = slug
         next.subdomain = slug ? `${slug}.nomadkaraoke.com` : ""
       }
+      if (key === "name" && !deliveryEdited) {
+        Object.assign(next, suggestDelivery(value))
+      }
+      if (key === "dropbox_path" || key === "brand_prefix") setDeliveryEdited(true)
       if (key === "tenant_id") {
         setIdEdited(true)
         next.subdomain = value ? `${value}.nomadkaraoke.com` : ""
@@ -195,6 +201,7 @@ export default function AdminTenantsPage() {
   const resetForm = () => {
     setForm({ ...EMPTY_FORM })
     setIdEdited(false)
+    setDeliveryEdited(false)
     setKaraokeBg(null)
     setIntroBg(null)
     setLogo(null)
@@ -222,6 +229,11 @@ export default function AdminTenantsPage() {
     }
     if (createStyleError) {
       toast({ title: "Invalid theme JSON", description: createStyleError, variant: "destructive" })
+      return
+    }
+    const createDeliveryError = deliveryError(form.dropbox_path, form.brand_prefix)
+    if (createDeliveryError) {
+      toast({ title: "Dropbox delivery incomplete", description: createDeliveryError, variant: "destructive" })
       return
     }
     setSubmitting(true)
@@ -327,6 +339,11 @@ export default function AdminTenantsPage() {
     if (!manageId) return
     if (styleError) {
       toast({ title: "Invalid theme JSON", description: styleError, variant: "destructive" })
+      return
+    }
+    const saveDeliveryError = deliveryError(mCfg.dropbox_path, mCfg.brand_prefix)
+    if (saveDeliveryError) {
+      toast({ title: "Dropbox delivery incomplete", description: saveDeliveryError, variant: "destructive" })
       return
     }
     setSaving(true)
@@ -457,7 +474,11 @@ export default function AdminTenantsPage() {
                     <TableCell className="text-xs">
                       <a href={`https://${t.subdomain}`} target="_blank" rel="noreferrer" className="hover:underline">{t.subdomain}</a>
                     </TableCell>
-                    <TableCell className="text-xs">{t.dropbox_path || "download only"}</TableCell>
+                    <TableCell className="text-xs">
+                      {t.dropbox_path
+                        ? <><span className="font-mono">{t.brand_prefix}</span> → {t.dropbox_path}</>
+                        : <span className="text-amber-600">download only (no Dropbox link in emails)</span>}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={t.is_active ? "default" : "secondary"}>{t.is_active ? "active" : "inactive"}</Badge>
                     </TableCell>
@@ -580,15 +601,15 @@ export default function AdminTenantsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="create-dropbox">Dropbox path <span className="text-muted-foreground">(optional)</span></Label>
+                  <Label htmlFor="create-dropbox">Dropbox output folder</Label>
                   <Input id="create-dropbox" value={form.dropbox_path} onChange={(e) => set("dropbox_path", e.target.value)} placeholder="/MediaUnsynced/Karaoke/Tracks-RandyVild" className="font-mono text-sm" />
-                  <p className="text-xs text-muted-foreground">Set = deliver to Dropbox. Blank = download only.</p>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="create-brand-prefix">Brand prefix <span className="text-muted-foreground">(optional)</span></Label>
-                  <Input id="create-brand-prefix" value={form.brand_prefix} onChange={(e) => set("brand_prefix", e.target.value)} placeholder="RVILD" />
+                  <Label htmlFor="create-brand-prefix">Brand prefix</Label>
+                  <Input id="create-brand-prefix" value={form.brand_prefix} onChange={(e) => set("brand_prefix", e.target.value.toUpperCase())} placeholder="RVILD" className="font-mono" />
                 </div>
               </div>
+              <DeliveryHint path={form.dropbox_path} prefix={form.brand_prefix} className="-mt-2" />
 
               <div className="space-y-1">
                 <Label htmlFor="create-logo">Logo <span className="text-muted-foreground">(optional)</span></Label>
@@ -659,9 +680,10 @@ export default function AdminTenantsPage() {
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="manage-brand-prefix">Brand prefix</Label>
-                  <Input id="manage-brand-prefix" value={mCfg.brand_prefix} onChange={(e) => setMCfg((c) => ({ ...c, brand_prefix: e.target.value }))} />
+                  <Input id="manage-brand-prefix" value={mCfg.brand_prefix} onChange={(e) => setMCfg((c) => ({ ...c, brand_prefix: e.target.value.toUpperCase() }))} className="font-mono" />
                 </div>
               </div>
+              <DeliveryHint path={mCfg.dropbox_path} prefix={mCfg.brand_prefix} className="-mt-2" />
               <div className="flex items-center gap-2 rounded-md border p-3 text-sm">
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 <a href={`https://${mCfg.subdomain}`} target="_blank" rel="noreferrer" className="font-mono hover:underline">{mCfg.subdomain}</a>
@@ -769,5 +791,23 @@ export default function AdminTenantsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function DeliveryHint({ path, prefix, className = "" }: { path: string; prefix: string; className?: string }) {
+  const error = deliveryError(path, prefix)
+  if (error) return <p className={`text-xs text-destructive ${className}`}>{error}</p>
+  if (!path.trim()) {
+    return (
+      <p className={`text-xs text-amber-600 ${className}`}>
+        Download only: nothing is delivered to Dropbox, so completion emails have no folder link.
+      </p>
+    )
+  }
+  return (
+    <p className={`text-xs text-muted-foreground ${className}`}>
+      Outputs are filed as <span className="font-mono">{prefix.trim().toUpperCase()}-0001 - Artist - Title</span> in
+      this folder (created automatically if missing), and the completion email links to it.
+    </p>
   )
 }

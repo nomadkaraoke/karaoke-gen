@@ -101,6 +101,9 @@ describe('Admin Tenants page', () => {
     const fd = createTenant.mock.calls[0][0] as FormData
     expect(fd.get('name')).toBe('Randy Vild')
     expect(fd.get('tenant_id')).toBe('randy-vild')
+    // Dropbox delivery pre-filled from the name (same parent as the other tenants)
+    expect(fd.get('dropbox_path')).toBe('/MediaUnsynced/Karaoke/Tracks-RandyVild')
+    expect(fd.get('brand_prefix')).toBe('RVILD')
     // Subdomain is derived server-side, never sent
     expect(fd.get('subdomain')).toBeNull()
 
@@ -110,6 +113,30 @@ describe('Admin Tenants page', () => {
     ).toBeInTheDocument()
     // List refreshed (initial + post-create)
     await waitFor(() => expect(listTenants).toHaveBeenCalledTimes(2))
+  })
+
+  it('blocks create when only one of Dropbox path / brand prefix is set', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /create tenant/i }))
+    fireEvent.change(await screen.findByPlaceholderText('Randy Vild'), { target: { value: 'Randy Vild' } })
+    fireEvent.change(screen.getByLabelText('Brand prefix'), { target: { value: '' } })
+
+    expect(screen.getByText(/Set both a Dropbox path and a brand prefix/)).toBeInTheDocument()
+    const submitButtons = screen.getAllByRole('button', { name: /^create tenant$/i })
+    fireEvent.click(submitButtons[submitButtons.length - 1])
+    await new Promise((r) => setTimeout(r, 0))
+    expect(createTenant).not.toHaveBeenCalled()
+  })
+
+  it('warns that download-only tenants get no Dropbox link', async () => {
+    render(<AdminTenantsPage />)
+    await screen.findByText('Vocal Star')
+    fireEvent.click(screen.getByRole('button', { name: /create tenant/i }))
+    fireEvent.change(await screen.findByPlaceholderText('Randy Vild'), { target: { value: 'Randy Vild' } })
+    fireEvent.change(screen.getByLabelText('Dropbox output folder'), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText('Brand prefix'), { target: { value: '' } })
+    expect(screen.getByText(/completion emails have no folder link/)).toBeInTheDocument()
   })
 
   it('manage loads the full theme JSON and saves config + style_params', async () => {

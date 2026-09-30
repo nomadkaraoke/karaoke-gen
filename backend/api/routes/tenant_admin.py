@@ -55,6 +55,7 @@ class TenantSummary(BaseModel):
     locked_theme: Optional[str] = None
     theme_id: Optional[str] = None
     dropbox_path: Optional[str] = None
+    brand_prefix: Optional[str] = None
     created_at: Optional[str] = None
 
 
@@ -262,8 +263,12 @@ async def admin_update_tenant(
         )
     except TenantNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+    except TenantConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
     except TenantValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except TenantProvisioningError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
     except ValidationError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid config: {exc}")
     except ValueError as exc:

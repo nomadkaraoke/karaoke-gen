@@ -597,3 +597,64 @@ class TestDropboxLosslessExclusion:
             assert len(dropbox_skip_suffixes_for("/MediaUnsynced/Karaoke/Tracks-Organized")) == 2
         with patch("backend.config.get_settings", return_value=self._settings("")):
             assert dropbox_skip_suffixes_for("/MediaUnsynced/Karaoke/Tracks-Organized") == ()
+
+
+class TestEnsureFolderAndMissingPaths:
+    """ensure_folder idempotency + list_folders on a not-yet-created tenant folder."""
+
+    def _service(self):
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        service._client = Mock()
+        return service
+
+    def _api_error(self, error):
+        from dropbox.exceptions import ApiError
+
+        return ApiError("req_id", error, "message", "headers")
+
+    def test_ensure_folder_creates(self):
+        service = self._service()
+        assert service.ensure_folder("MediaUnsynced/Karaoke/Tracks-X") is True
+        service._client.files_create_folder_v2.assert_called_once_with("/MediaUnsynced/Karaoke/Tracks-X")
+
+    def test_ensure_folder_existing_folder_is_noop(self):
+        from dropbox.files import CreateFolderError, WriteConflictError, WriteError
+
+        service = self._service()
+        service._client.files_create_folder_v2.side_effect = self._api_error(
+            CreateFolderError.path(WriteError.conflict(WriteConflictError.folder))
+        )
+        assert service.ensure_folder("/Tracks-X") is False
+
+    def test_ensure_folder_file_in_the_way_raises(self):
+        from dropbox.exceptions import ApiError
+        from dropbox.files import CreateFolderError, WriteConflictError, WriteError
+
+        service = self._service()
+        service._client.files_create_folder_v2.side_effect = self._api_error(
+            CreateFolderError.path(WriteError.conflict(WriteConflictError.file))
+        )
+        with pytest.raises(ApiError):
+            service.ensure_folder("/Tracks-X")
+
+    def test_list_folders_missing_path_is_empty(self):
+        from dropbox.files import ListFolderError, LookupError as DbxLookupError
+
+        service = self._service()
+        service._client.files_list_folder.side_effect = self._api_error(
+            ListFolderError.path(DbxLookupError.not_found)
+        )
+        assert service.list_folders("/Tracks-New") == []
+
+    def test_list_folders_other_errors_propagate(self):
+        from dropbox.exceptions import ApiError
+        from dropbox.files import ListFolderError, LookupError as DbxLookupError
+
+        service = self._service()
+        service._client.files_list_folder.side_effect = self._api_error(
+            ListFolderError.path(DbxLookupError.restricted_content)
+        )
+        with pytest.raises(ApiError):
+            service.list_folders("/Tracks-New")

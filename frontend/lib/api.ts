@@ -2622,6 +2622,7 @@ export interface TenantSummary {
   is_active: boolean;
   locked_theme?: string | null;
   dropbox_path?: string | null;
+  brand_prefix?: string | null;
   created_at?: string | null;
 }
 

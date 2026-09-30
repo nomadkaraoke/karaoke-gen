@@ -2156,3 +2156,23 @@ pre-tenant `themes/_metadata.json` two minutes after it was rewritten.
   (`bucket.get_blob` → generation-pinned download), so this class of staleness can't recur.
 - Removing an IAM member that Pulumi doesn't manage needs an explicit
   `gcloud storage buckets remove-iam-policy-binding`; PAP=enforced blocks it meanwhile.
+
+## Tenant Dropbox delivery: path + prefix + folder, and jobs snapshot at creation (2026-09-30, v0.254.0)
+
+The Randy Vild tenant was created with a blank (optional) Dropbox path, so every job was
+download-only and the completion email said "Here's the dropbox folder…" followed by
+`[Dropbox URL not available]`. Three traps, now closed in `tenant_admin_service`:
+
+- **Both fields or neither.** The worker only uploads when `dropbox_path` AND `brand_prefix` are set;
+  one without the other silently skipped delivery.
+- **A brand-new folder broke the first job.** The first allocation for a prefix scans the folder
+  (`BrandCodeService._get_initial_next_number`) and `files_list_folder` raised `not_found`.
+  Tenant create/update now creates the folder, and `list_folders` treats a missing path as empty.
+- **Jobs copy distribution settings at creation.** Fixing the tenant config doesn't reach in-flight
+  jobs — backfill `dropbox_path`/`brand_prefix` on their docs.
+
+Backfilling already-completed jobs without routing GBs through a laptop: `GET
+/api/admin/jobs/{id}/files` returns signed URLs, and Dropbox `files_save_url` makes Dropbox fetch
+them server-side. Fire them **sequentially** — ~25 concurrent `save_url` jobs gave random
+`download_failed`s that all succeeded on a one-at-a-time retry. (`redistribute_video` isn't usable
+from the API service: 4K finals are ~1.7 GB and Cloud Run `/tmp` counts against its 2 GiB.)

@@ -1410,7 +1410,7 @@ Admin-only endpoints (`require_admin`) that mint and manage white-label tenants 
 (`/admin/tenants`), replacing the hand-run `scripts/setup-*-tenant.py` recipe.
 
 - **`GET`** returns a summary list of all tenants (`id`, `name`, `subdomain`, `is_active`,
-  `locked_theme`, `dropbox_path`, `created_at`) read from `tenants/*/config.json` in GCS.
+  `locked_theme`, `dropbox_path`, `brand_prefix`, `created_at`) read from `tenants/*/config.json` in GCS.
 - **`POST`** (multipart) creates a tenant. Form fields: `name` (required), optional `tenant_id`
   (slug, derived from name if omitted), `subdomain`, `allowed_email_domains` (comma-separated),
   `artist_color`/`title_color`/`sung_lyrics_color`/`unsung_lyrics_color` (hex), `tagline`,
@@ -1424,7 +1424,18 @@ Admin-only endpoints (`require_admin`) that mint and manage white-label tenants 
   config plus a `preview_url` (`?preview_tenant={id}`) that drives the tenant — including its bulk
   flow — **without any DNS setup**. For **full theme customisation** at create time, pass a
   `style_params` field (full theme JSON string) — when present it is authoritative and the colour
-  fields are ignored. Errors: 400 (bad slug/reserved/invalid colour/image/JSON), 409 (exists).
+  fields are ignored. **Dropbox delivery** (v0.254.0): `dropbox_path` and `brand_prefix` must be set
+  together (the worker skips the upload unless both are set — outputs are filed as
+  `<PREFIX>-0001 - Artist - Title`); the path is normalized (leading `/`, no trailing `/`), the prefix
+  uppercased and must be 2-12 alphanumerics starting with a letter, and must not be the consumer
+  `DEFAULT_BRAND_PREFIX`/`DEFAULT_PRIVATE_BRAND_PREFIX` or another tenant's prefix (brand-code counters
+  are keyed by prefix alone). The Dropbox folder is **created up front** (idempotent) so the first job
+  delivers and its completion email carries a folder link; `features.dropbox_upload` always follows
+  the path. Both blank = download only (completion emails then have no Dropbox link — the admin UI
+  warns). The admin UI pre-fills `/MediaUnsynced/Karaoke/Tracks-<PascalName>` + a prefix derived from
+  the name (Vocal Star → VSTAR, Randy Vild → RVILD). Errors: 400 (bad slug/reserved/invalid
+  colour/image/JSON/half-set or bad delivery), 409 (exists / prefix taken), 502 (Cloudflare or Dropbox
+  folder creation failed).
 - **`GET /_template`** returns the default Nomad theme's full `style_params` — a starting point for
   editing a new theme (the admin UI seeds its JSON editor from this).
 - **`GET /{id}`** returns a tenant's full config, its theme `style_params`, its `assets` list, and a
@@ -1434,7 +1445,10 @@ Admin-only endpoints (`require_admin`) that mint and manage white-label tenants 
   JSON, replaces the theme), an optional `logo` image (updates `branding.logo_url`), and repeatable
   `assets` file uploads (images **or fonts**; each file's name becomes the theme asset name, so
   uploading `karaoke_background.jpg` replaces it). Re-render jobs to apply an updated theme.
-  Errors: 400 (invalid JSON/theme), 404 (not found).
+  Changing `defaults.dropbox_path`/`brand_prefix` applies the same delivery validation as create and
+  creates a new folder. **Existing jobs keep the `dropbox_path`/`brand_prefix` copied at job creation**
+  — backfill them on the job docs if a tenant gains Dropbox delivery mid-flight.
+  Errors: 400 (invalid JSON/theme/delivery), 404 (not found), 409 (prefix taken), 502 (Dropbox).
 
   Implemented in `backend/services/tenant_admin_service.py` + `backend/api/routes/tenant_admin.py`.
 

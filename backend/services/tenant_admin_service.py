@@ -80,6 +80,7 @@ IMAGE_CONTENT_TYPES = {
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _DOMAIN_RE = re.compile(r"^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$")
+_BRAND_PREFIX_RE = re.compile(r"^[A-Z][A-Z0-9]{1,11}$")
 
 
 class TenantValidationError(ValueError):
@@ -134,6 +135,77 @@ def _normalize_domains(domains: Optional[List[str]]) -> List[str]:
     if bad:
         raise TenantValidationError(f"Invalid email domain(s): {', '.join(bad)}")
     return cleaned
+
+
+def _normalize_delivery(
+    dropbox_path: Optional[str], brand_prefix: Optional[str]
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Normalize + validate the tenant's Dropbox delivery settings.
+
+    The video worker only delivers to Dropbox when BOTH a path and a brand prefix
+    are set (outputs are filed as ``<PREFIX>-0001 - Artist - Title``), so one
+    without the other would silently fall back to download-only.
+    """
+    path = (dropbox_path or "").strip().rstrip("/")
+    if path and not path.startswith("/"):
+        path = f"/{path}"
+    prefix = (brand_prefix or "").strip().upper()
+    if bool(path) != bool(prefix):
+        raise TenantValidationError(
+            "Dropbox delivery needs both a Dropbox path and a brand prefix "
+            "(outputs are filed as <PREFIX>-0001 - Artist - Title)."
+        )
+    if prefix and not _BRAND_PREFIX_RE.match(prefix):
+        raise TenantValidationError(
+            "Brand prefix must be 2-12 uppercase letters/numbers, starting with a letter."
+        )
+    return (path or None), (prefix or None)
+
+
+def _check_brand_prefix_available(
+    prefix: str, tenant_id: str, storage: StorageService
+) -> None:
+    """Reject a brand prefix used by the consumer defaults or another tenant.
+
+    Brand-code counters are keyed by prefix alone, so sharing one would
+    interleave numbering across two different Dropbox folders.
+    """
+    reserved = {
+        p.upper()
+        for p in (settings.default_brand_prefix, settings.default_private_brand_prefix)
+        if p
+    }
+    if prefix in reserved:
+        raise TenantValidationError(f"Brand prefix '{prefix}' is reserved for Nomad Karaoke.")
+    for other in list_tenants(storage=storage):
+        if other.get("id") != tenant_id and (other.get("brand_prefix") or "").upper() == prefix:
+            raise TenantConflictError(
+                f"Brand prefix '{prefix}' is already used by tenant '{other.get('id')}'."
+            )
+
+
+def get_dropbox_service():
+    """Lazy accessor — dropbox_service pulls in secretmanager, kept off the startup import graph."""
+    from backend.services.dropbox_service import get_dropbox_service as _get_dropbox_service
+
+    return _get_dropbox_service()
+
+
+def _ensure_dropbox_folder(path: str) -> None:
+    """Create the tenant's Dropbox output folder so delivery works from job one."""
+    try:
+        dropbox = get_dropbox_service()
+        if not dropbox.is_configured:
+            raise TenantProvisioningError(
+                "Dropbox isn't configured on the backend; can't create the output folder."
+            )
+        created = dropbox.ensure_folder(path)
+    except TenantProvisioningError:
+        raise
+    except Exception as exc:
+        raise TenantProvisioningError(f"Couldn't create Dropbox folder '{path}': {exc}") from exc
+    logger.info(f"Dropbox output folder {path} {'created' if created else 'already exists'}")
 
 
 def _content_type_for(ext: str) -> str:
@@ -269,6 +341,10 @@ def create_tenant(
     if tenant_service.tenant_exists(tenant_id):
         raise TenantConflictError(f"Tenant '{tenant_id}' already exists.")
 
+    dropbox_path, brand_prefix = _normalize_delivery(dropbox_path, brand_prefix)
+    if brand_prefix:
+        _check_brand_prefix_available(brand_prefix, tenant_id, storage)
+
     theme_id = tenant_id  # 1:1 theme per tenant, mirrors the setup scripts
 
     # The tenant id doubles as the theme id, and theme writes are not create-only.
@@ -288,6 +364,11 @@ def create_tenant(
         raise TenantConflictError(str(exc)) from exc
     except TenantDomainError as exc:
         raise TenantProvisioningError(str(exc)) from exc
+
+    # Create the Dropbox output folder up front (idempotent) so the first job
+    # delivers there and the completion email carries a real folder link.
+    if dropbox_path:
+        _ensure_dropbox_folder(dropbox_path)
 
     # --- Derive theme from the default Nomad theme ---------------------------
     base_theme_id = theme_service.get_default_theme_id()
@@ -571,7 +652,26 @@ def update_tenant(
         branding["logo_url"] = f"gs://{settings.gcs_bucket_name}/{logo_path}"
         merged_updates["branding"] = branding
 
-    # 4. Config merge (access lists normalized; any allowlist => enforced)
+    # 4. Dropbox delivery (path + prefix validated together; folder created;
+    #    the feature flag always follows the path so the two can't drift)
+    defaults_updates = merged_updates.get("defaults")
+    if isinstance(defaults_updates, dict) and (
+        "dropbox_path" in defaults_updates or "brand_prefix" in defaults_updates
+    ):
+        defaults_updates = dict(defaults_updates)
+        dropbox_path, brand_prefix = _normalize_delivery(
+            defaults_updates.get("dropbox_path", config.defaults.dropbox_path),
+            defaults_updates.get("brand_prefix", config.defaults.brand_prefix),
+        )
+        if brand_prefix:
+            _check_brand_prefix_available(brand_prefix, tenant_id, storage)
+        if dropbox_path and dropbox_path != config.defaults.dropbox_path:
+            _ensure_dropbox_folder(dropbox_path)
+        defaults_updates["dropbox_path"] = dropbox_path
+        defaults_updates["brand_prefix"] = brand_prefix
+        merged_updates["defaults"] = defaults_updates
+
+    # 5. Config merge (access lists normalized; any allowlist => enforced)
     auth_updates = merged_updates.get("auth")
     if isinstance(auth_updates, dict):
         auth_updates = dict(auth_updates)
@@ -584,6 +684,7 @@ def update_tenant(
         merged_updates["auth"] = auth_updates
     if merged_updates:
         config = _merge_config(config, merged_updates)
+    config.features.dropbox_upload = bool(config.defaults.dropbox_path)
     if isinstance(auth_updates, dict) and "require_email_domain" not in auth_updates:
         config.auth.require_email_domain = bool(
             config.auth.allowed_email_domains or config.auth.allowed_emails
@@ -626,6 +727,7 @@ def list_tenants(storage: Optional[StorageService] = None) -> List[Dict[str, obj
                 "locked_theme": defaults.get("locked_theme"),
                 "theme_id": defaults.get("theme_id"),
                 "dropbox_path": defaults.get("dropbox_path"),
+                "brand_prefix": defaults.get("brand_prefix"),
                 "created_at": data.get("created_at"),
             }
         )
