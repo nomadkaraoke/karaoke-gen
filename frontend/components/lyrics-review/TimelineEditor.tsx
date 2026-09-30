@@ -200,6 +200,10 @@ export default function TimelineEditor({
       return
     }
 
+    // The drag is tracked on the window (it may leave the row), so stop the browser from
+    // starting a text selection across the page.
+    e.preventDefault()
+
     const initialX = e.clientX - rect.left
     const initialTime = (initialX / rect.width) * viewDuration
     const pointerTime = viewStart + initialTime
