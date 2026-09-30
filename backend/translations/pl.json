@@ -54,7 +54,8 @@
     "instrumentalUploadBadType": "Nieobsługiwany typ pliku audio. Prześlij jeden z następujących: {allowed}.",
     "instrumentalUploadMissing": "Nie udało się znaleźć Twojego przesłanego podkładu instrumentalnego. Przesyłanie mogło się nie zakończyć. Spróbuj ponownie.",
     "uploadDurationMismatchCancelled": "Wersja instrumentalna ({instrumental_duration}s) nie zgadza się z plikiem audio utworu ({audio_duration}s), więc może to być niewłaściwy plik dla tej piosenki. To zadanie zostało anulowane, a Twój kredyt zwrócony. Sprawdź pliki i prześlij je ponownie.",
-    "instrumentalUploadTooLarge": "Ten plik instrumentalny ma {size_mb} MB, co przekracza limit {max_mb} MB. Prześlij zamiast tego wersję FLAC lub MP3."
+    "instrumentalUploadTooLarge": "Ten plik instrumentalny ma {size_mb} MB, co przekracza limit {max_mb} MB. Prześlij zamiast tego wersję FLAC lub MP3.",
+    "instrumentalConformUnavailable": "Nie udało nam się teraz przetworzyć Twojego podkładu instrumentalnego. Spróbuj przesłać go ponownie za chwilę."
   },
   "review": {
     "jobNotFound": "Nie znaleziono zadania",

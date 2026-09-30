@@ -120,6 +120,7 @@ beforeEach(() => {
   }))
   mockApi.uploadToSignedUrl.mockResolvedValue(undefined)
   mockApi.completeJobUpload.mockResolvedValue({ status: 'success', message: 'started' })
+  ;(mockApi.getJob as jest.Mock).mockResolvedValue({ status: 'pending' })
 })
 
 it('analyze populates one editable row per proposed pair and lists warnings', async () => {
@@ -407,6 +408,7 @@ it('a job the server rejected is retried as a fresh job, not re-finalized', asyn
   mockApi.completeJobUpload
     .mockRejectedValueOnce(new ApiError('Duration mismatch: cancelled', 400))
     .mockResolvedValueOnce({ status: 'success', message: 'started' })
+  ;(mockApi.getJob as jest.Mock).mockResolvedValueOnce({ status: 'cancelled' })
 
   render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
   selectFiles()
@@ -474,6 +476,52 @@ it('a recovered row whose job is already processing counts as submitted', async 
   fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
 
   await waitFor(() => expect(screen.getByText(/All tracks submitted/i)).toBeInTheDocument())
+})
+
+it('a first-time row whose finalize response was lost but job started is not duplicated', async () => {
+  // The server accepted uploads-complete but the response was lost; the
+  // client's retry of the call then gets a 400 "not pending". The job is
+  // processing, so the row is done — no second job.
+  const { ApiError } = jest.requireMock('@/lib/api')
+  mockApi.analyzeBulk.mockResolvedValue({
+    rows: [{ artist: 'Eddy Grant', title: 'I Dont Wanna Dance', mixed_filename: MIXED_1, instrumental_filename: INST_1, confidence: 'high', warning: null }],
+    unpaired: [],
+    ignored: [],
+  })
+  mockApi.completeJobUpload.mockRejectedValueOnce(new ApiError('Job is not pending', 400))
+  ;(mockApi.getJob as jest.Mock).mockResolvedValue({ status: 'transcribing' })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+
+  await waitFor(() => expect(screen.getByText(/All tracks submitted/i)).toBeInTheDocument())
+  expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(1)
+})
+
+it('a 400 on a still-pending job keeps the job for retry (no duplicate)', async () => {
+  const { ApiError } = jest.requireMock('@/lib/api')
+  mockApi.analyzeBulk.mockResolvedValue({
+    rows: [{ artist: 'Eddy Grant', title: 'I Dont Wanna Dance', mixed_filename: MIXED_1, instrumental_filename: INST_1, confidence: 'high', warning: null }],
+    unpaired: [],
+    ignored: [],
+  })
+  mockApi.completeJobUpload
+    .mockRejectedValueOnce(new ApiError('File not uploaded', 400))
+    .mockResolvedValueOnce({ status: 'success', message: 'started' })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+  await waitFor(() => expect(screen.getByText(/File not uploaded/)).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+  await waitFor(() => expect(mockApi.completeJobUpload).toHaveBeenCalledTimes(2))
+  expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(1)
+  const [first, second] = mockApi.completeJobUpload.mock.calls.map(c => c[0])
+  expect(second).toBe(first)
 })
 
 it('matchRepickedFile requires an exact size and disambiguates by mtime', () => {

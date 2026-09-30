@@ -54,7 +54,8 @@
     "instrumentalUploadBadType": "Ljudfilstypen stöds inte. Ladda upp någon av följande: {allowed}.",
     "instrumentalUploadMissing": "Vi kunde inte hitta ditt uppladdade instrumentala spår. Uppladdningen slutfördes eventuellt inte. Försök igen.",
     "uploadDurationMismatchCancelled": "Instrumentalspåret ({instrumental_duration}s) stämmer inte överens med låtens ljud ({audio_duration}s), så det kan vara fel fil för den här låten. Det här jobbet har avbrutits och din kredit har återbetalats. Kontrollera filerna och skicka in igen.",
-    "instrumentalUploadTooLarge": "Den här instrumentalfilen är på {size_mb} MB, vilket överskrider gränsen på {max_mb} MB. Ladda upp en FLAC- eller MP3-version istället."
+    "instrumentalUploadTooLarge": "Den här instrumentalfilen är på {size_mb} MB, vilket överskrider gränsen på {max_mb} MB. Ladda upp en FLAC- eller MP3-version istället.",
+    "instrumentalConformUnavailable": "Vi kunde inte bearbeta ditt instrumentalspår just nu. Försök att skicka in igen om en stund."
   },
   "review": {
     "jobNotFound": "Jobbet hittades inte",

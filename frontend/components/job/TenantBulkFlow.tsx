@@ -324,7 +324,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
         }
       }
 
-      updateRow(row.id, { status: "uploading", progress: 0, error: undefined, uploadState: "uploading" })
+      updateRow(row.id, { status: "uploading", progress: 0, loadedBytes: 0, error: undefined, uploadState: "uploading" })
       const audioUrl = uploadUrls.find(u => u.file_type === "audio")
       const instrumentalUrl = uploadUrls.find(u => u.file_type === "existing_instrumental")
       if (!audioUrl || !instrumentalUrl) throw new ApiError("Missing upload URL", 500)
@@ -362,17 +362,18 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       try {
         await api.completeJobUpload(jobId, ["audio", "existing_instrumental"])
       } catch (completeErr: any) {
-        const rejected = completeErr instanceof ApiError && completeErr.status === 400
-        // A recovered/retried row may have already completed before the previous
-        // session died; the job then rejects a second uploads-complete. Only
-        // treat that as success if the job really is processing.
-        if (rejected && hadExistingJob && await jobIsProcessing(jobId)) {
-          console.warn("[TenantBulkFlow] uploads-complete rejected for recovered row; job already processing:", jobId)
+        // A 400 can mean the job already started (a retried/recovered row, or a
+        // response lost after the server accepted it) or that the server
+        // rejected and cancelled it (e.g. an instrumental that doesn't match the
+        // song). Ask the job which it was.
+        if (!(completeErr instanceof ApiError && completeErr.status === 400)) throw completeErr
+        const status = await jobStatus(jobId)
+        if (status && !NOT_PROCESSING.has(status)) {
+          console.warn("[TenantBulkFlow] uploads-complete rejected but job is already processing:", jobId)
         } else {
-          if (rejected) {
-            // The server rejected (and cancelled) this job, e.g. an instrumental
-            // that doesn't match the song. Forget it so a retry creates a fresh
-            // job instead of re-finalizing the cancelled one.
+          if (status === "cancelled" || status === "failed") {
+            // Forget the dead job so a retry creates a fresh one instead of
+            // re-finalizing it.
             markRowDone(currentBatchId, row.id)
             updateRow(row.id, { jobId: undefined, uploadUrls: undefined })
           }
@@ -715,13 +716,12 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
 
 const NOT_PROCESSING = new Set(["pending", "cancelled", "failed"])
 
-// True when the job has moved past upload into real processing.
-async function jobIsProcessing(jobId: string): Promise<boolean> {
+// The job's current status, or null if it can't be fetched.
+async function jobStatus(jobId: string): Promise<string | null> {
   try {
-    const job = await api.getJob(jobId)
-    return !NOT_PROCESSING.has(job.status)
+    return (await api.getJob(jobId)).status
   } catch {
-    return false
+    return null
   }
 }
 

@@ -54,7 +54,8 @@
     "instrumentalUploadBadType": "Äänitiedostomuotoa ei tueta. Lataa jokin seuraavista: {allowed}.",
     "instrumentalUploadMissing": "Emme löytäneet lataamaasi instrumentaaliraitaa. Lataus ei ehkä ole valmistunut. Yritä uudelleen.",
     "uploadDurationMismatchCancelled": "Taustaraita ({instrumental_duration}s) ei täsmää kappaleen ääniraidan ({audio_duration}s) kanssa, joten se saattaa olla väärä tiedosto tälle kappaleelle. Tämä työ on peruutettu ja krediittisi on palautettu. Tarkista tiedostot ja lähetä uudelleen.",
-    "instrumentalUploadTooLarge": "Tämä instrumentaalitiedosto on {size_mb} MB, mikä ylittää {max_mb} MB:n rajan. Lataa sen sijaan FLAC- tai MP3-versio."
+    "instrumentalUploadTooLarge": "Tämä instrumentaalitiedosto on {size_mb} MB, mikä ylittää {max_mb} MB:n rajan. Lataa sen sijaan FLAC- tai MP3-versio.",
+    "instrumentalConformUnavailable": "Emme voineet käsitellä taustaraitaasi juuri nyt. Yritä lähettää uudelleen hetken kuluttua."
   },
   "review": {
     "jobNotFound": "Työtä ei löytynyt",

@@ -80,8 +80,9 @@ def test_conform_rejects_unrelated_instrumental(tmp_path):
     other, _ = _song(33, seed=2)
     _write_wav(tmp_path / "mix.wav", inst + vocals)
     _write_wav(tmp_path / "inst.wav", other)
-    with pytest.raises(InstrumentalConformError, match="doesn't match"):
+    with pytest.raises(InstrumentalConformError, match="doesn't match") as err:
         conform_instrumental(str(tmp_path / "mix.wav"), str(tmp_path / "inst.wav"), str(tmp_path / "o.flac"))
+    assert err.value.mismatch
 
 
 def test_build_filter_trims_lead_in_and_fades_long_outro():
@@ -108,5 +109,6 @@ def test_conform_rejects_mid_song_edit(tmp_path):
     edited = np.concatenate([inst[:cut], inst[cut + int(1.5 * SR):]])
     _write_wav(tmp_path / "mix.wav", mix)
     _write_wav(tmp_path / "inst.wav", edited)
-    with pytest.raises(InstrumentalConformError, match="mid-song"):
+    with pytest.raises(InstrumentalConformError, match="mid-song") as err:
         conform_instrumental(str(tmp_path / "mix.wav"), str(tmp_path / "inst.wav"), str(tmp_path / "o.flac"))
+    assert err.value.mismatch

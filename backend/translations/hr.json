@@ -54,7 +54,8 @@
     "instrumentalUploadBadType": "Nepodržana vrsta audio datoteke. Prenesi jednu od: {allowed}.",
     "instrumentalUploadMissing": "Nismo uspjeli pronaći tvoj preneseni instrumental. Prijenos možda nije dovršen. Pokušaj ponovno.",
     "uploadDurationMismatchCancelled": "Instrumental ({instrumental_duration}s) se ne podudara s audiozapisom pjesme ({audio_duration}s), pa je možda riječ o pogrešnoj datoteci za ovu pjesmu. Ovaj je zadatak otkazan, a tvoj je kredit vraćen. Provjeri datoteke i pošalji ponovno.",
-    "instrumentalUploadTooLarge": "Ova instrumentalna datoteka ima {size_mb} MB, što premašuje ograničenje od {max_mb} MB. Umjesto toga učitaj FLAC ili MP3 verziju."
+    "instrumentalUploadTooLarge": "Ova instrumentalna datoteka ima {size_mb} MB, što premašuje ograničenje od {max_mb} MB. Umjesto toga učitaj FLAC ili MP3 verziju.",
+    "instrumentalConformUnavailable": "Trenutačno nismo uspjeli obraditi tvoj instrumental. Pokušaj ponovno poslati za koji trenutak."
   },
   "review": {
     "jobNotFound": "Zadatak nije pronađen",

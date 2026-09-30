@@ -54,7 +54,8 @@
     "instrumentalUploadBadPath": "Invalid instrumental upload reference. Please try uploading again.",
     "instrumentalUploadMissing": "We couldn't find your uploaded instrumental. The upload may not have finished. Please try again.",
     "uploadDurationMismatchCancelled": "The instrumental ({instrumental_duration}s) doesn't line up with the song audio ({audio_duration}s), so it may be the wrong file for this song. This job has been cancelled and your credit refunded. Please check the files and submit again.",
-    "instrumentalUploadTooLarge": "This instrumental file is {size_mb} MB, which is over the {max_mb} MB limit. Please upload a FLAC or MP3 version instead."
+    "instrumentalUploadTooLarge": "This instrumental file is {size_mb} MB, which is over the {max_mb} MB limit. Please upload a FLAC or MP3 version instead.",
+    "instrumentalConformUnavailable": "We couldn't process your instrumental just now. Please try submitting again in a moment."
   },
   "review": {
     "jobNotFound": "Job not found",

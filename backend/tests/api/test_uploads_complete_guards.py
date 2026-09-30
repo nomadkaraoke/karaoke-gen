@@ -142,13 +142,41 @@ async def test_conform_helper_uploads_outside_audio_prefix():
 
 
 @pytest.mark.asyncio
-async def test_conform_helper_returns_none_on_mismatch_or_unexpected_error():
+async def test_conform_helper_returns_none_only_for_a_real_mismatch():
     from backend.api.routes.file_upload import _conform_mismatched_instrumental
     from backend.services.instrumental_conform import InstrumentalConformError
 
-    for exc in (InstrumentalConformError("wrong file"), OSError("disk full")):
-        storage = MagicMock()
-        with patch("backend.services.instrumental_conform.conform_instrumental", side_effect=exc):
-            assert await _conform_mismatched_instrumental(
-                storage, "job-1", "uploads/job-1/audio/a.wav", "uploads/job-1/audio/existing_instrumental.wav") is None
-        storage.upload_file.assert_not_called()
+    storage = MagicMock()
+    with patch("backend.services.instrumental_conform.conform_instrumental",
+               side_effect=InstrumentalConformError("wrong file", mismatch=True)):
+        assert await _conform_mismatched_instrumental(
+            storage, "job-1", "uploads/job-1/audio/a.wav", "uploads/job-1/audio/existing_instrumental.wav") is None
+    storage.upload_file.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exc", [OSError("disk full"), None])
+async def test_conform_helper_infra_failure_is_retryable_503(exc):
+    """GCS/ffmpeg failures must not cancel the job as a 'wrong file'."""
+    from backend.api.routes.file_upload import _conform_mismatched_instrumental
+    from backend.services.instrumental_conform import InstrumentalConformError
+
+    exc = exc or InstrumentalConformError("ffmpeg timed out")  # mismatch=False
+    with patch("backend.services.instrumental_conform.conform_instrumental", side_effect=exc):
+        with pytest.raises(HTTPException) as err:
+            await _conform_mismatched_instrumental(
+                MagicMock(), "job-1", "uploads/job-1/audio/a.wav", "uploads/job-1/audio/existing_instrumental.wav")
+    assert err.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_conform_infra_failure_does_not_cancel_job(mocks):
+    with patch("backend.api.routes.file_upload._validate_audio_durations",
+               new_callable=AsyncMock, return_value=(False, 200.0, 190.0)), \
+         patch("backend.api.routes.file_upload._conform_mismatched_instrumental",
+               new_callable=AsyncMock, side_effect=HTTPException(status_code=503, detail="try again")):
+        with pytest.raises(HTTPException) as exc:
+            await _call(_auth())
+    assert exc.value.status_code == 503
+    mocks["job_manager"].cancel_job.assert_not_called()
+    mocks["job_manager"].update_job.assert_not_called()

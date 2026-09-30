@@ -54,7 +54,8 @@
     "instrumentalUploadBadType": "Niet-ondersteund audiobestandstype. Upload een van de volgende: {allowed}.",
     "instrumentalUploadMissing": "We konden je geüploade instrumentale track niet vinden. De upload is mogelijk niet voltooid. Probeer het opnieuw.",
     "uploadDurationMismatchCancelled": "De instrumentale track ({instrumental_duration}s) komt niet overeen met de audio van het nummer ({audio_duration}s), dus het is mogelijk het verkeerde bestand voor dit nummer. Deze opdracht is geannuleerd en je tegoed is teruggestort. Controleer de bestanden en dien de aanvraag opnieuw in.",
-    "instrumentalUploadTooLarge": "Dit instrumentale bestand is {size_mb} MB, wat de limiet van {max_mb} MB overschrijdt. Upload in plaats daarvan een FLAC- of MP3-versie."
+    "instrumentalUploadTooLarge": "Dit instrumentale bestand is {size_mb} MB, wat de limiet van {max_mb} MB overschrijdt. Upload in plaats daarvan een FLAC- of MP3-versie.",
+    "instrumentalConformUnavailable": "We konden je instrumental zojuist niet verwerken. Probeer het over een ogenblik opnieuw in te dienen."
   },
   "review": {
     "jobNotFound": "Taak niet gevonden",

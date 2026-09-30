@@ -54,7 +54,8 @@
     "instrumentalUploadBadType": "Nem támogatott hangfájltípus. Kérlek, a következők egyikét töltsd fel: {allowed}.",
     "instrumentalUploadMissing": "Nem találtuk a feltöltött hangszeres sávot. Lehet, hogy a feltöltés nem fejeződött be. Kérlek, próbáld újra.",
     "uploadDurationMismatchCancelled": "Az instrumentális sáv ({instrumental_duration} mp) nem vág egybe a dal hanganyagával ({audio_duration} mp), ezért előfordulhat, hogy nem a megfelelő fájl tartozik ehhez a dalhoz. A feladat törölve lett, és a kreditedet visszatérítettük. Kérjük, ellenőrizd a fájlokat, és küldd be újra.",
-    "instrumentalUploadTooLarge": "Ez az instrumentális fájl {size_mb} MB méretű, ami meghaladja a {max_mb} MB-os limitet. Kérlek, tölts fel helyette egy FLAC vagy MP3 verziót."
+    "instrumentalUploadTooLarge": "Ez az instrumentális fájl {size_mb} MB méretű, ami meghaladja a {max_mb} MB-os limitet. Kérlek, tölts fel helyette egy FLAC vagy MP3 verziót.",
+    "instrumentalConformUnavailable": "Nem sikerült most feldolgozni a zenei alapodat. Kérlek, próbáld meg újra beküldeni egy pillanat múlva."
   },
   "review": {
     "jobNotFound": "A feladat nem található",

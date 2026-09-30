@@ -54,7 +54,8 @@
     "instrumentalUploadBadType": "סוג קובץ השמע אינו נתמך. אנא העלו קובץ מאחד הסוגים הבאים: {allowed}.",
     "instrumentalUploadMissing": "לא הצלחנו למצוא את הפלייבק שהעליתם. ייתכן שההעלאה לא הושלמה. אנא נסו שוב.",
     "uploadDurationMismatchCancelled": "הפלייבק ({instrumental_duration} שניות) אינו תואם לקובץ השמע של השיר ({audio_duration} שניות), ולכן ייתכן שמדובר בקובץ שגוי עבור שיר זה. משימה זו בוטלה והקרדיט שלך הוחזר. נא לבדוק את הקבצים ולשלוח שוב.",
-    "instrumentalUploadTooLarge": "קובץ הפלייבק הזה הוא בגודל {size_mb} MB, שחורג מהמגבלה של {max_mb} MB. נא להעלות גרסת FLAC או MP3 במקום זאת."
+    "instrumentalUploadTooLarge": "קובץ הפלייבק הזה הוא בגודל {size_mb} MB, שחורג מהמגבלה של {max_mb} MB. נא להעלות גרסת FLAC או MP3 במקום זאת.",
+    "instrumentalConformUnavailable": "לא הצלחנו לעבד את הפלייבק שלך כרגע. אנא נסה לשלוח שוב בעוד רגע."
   },
   "review": {
     "jobNotFound": "המשימה לא נמצאה",

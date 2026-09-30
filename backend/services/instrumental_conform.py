@@ -49,7 +49,13 @@ FFMPEG_TIMEOUT_SECONDS = 180
 
 
 class InstrumentalConformError(RuntimeError):
-    """The instrumental can't be lined up with the mix (likely the wrong file)."""
+    """Conforming failed. ``mismatch`` is True when the files themselves don't
+    line up (wrong file / mid-song edit) — a reason to reject the upload — and
+    False for processing failures (ffmpeg crash/timeout), which are retryable."""
+
+    def __init__(self, message: str, mismatch: bool = False):
+        super().__init__(message)
+        self.mismatch = mismatch
 
 
 @dataclass
@@ -135,13 +141,13 @@ def conform_instrumental(mix_path: str, instrumental_path: str, out_path: str) -
     correlation = min(correlations)
     if correlation < MIN_CORRELATION:
         raise InstrumentalConformError(
-            f"instrumental doesn't match the mix (correlation {correlation:.2f})"
+            f"instrumental doesn't match the mix (correlation {correlation:.2f})", mismatch=True
         )
     drift = abs(lags[1] - lags[0]) / SAMPLE_RATE
     if drift > MAX_OFFSET_DRIFT_SECONDS:
         raise InstrumentalConformError(
             f"instrumental is edited differently mid-song (offset {lags[0] / SAMPLE_RATE:+.3f}s early "
-            f"vs {lags[1] / SAMPLE_RATE:+.3f}s late)"
+            f"vs {lags[1] / SAMPLE_RATE:+.3f}s late)", mismatch=True
         )
     lag = lags[0]
 

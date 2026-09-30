@@ -509,9 +509,13 @@ class VideoWorkerOrchestrator:
         # existing-instrumental jobs fail at the encoder with "No instrumental audio found".
         if encoding_backend.name == "gce" and self.storage:
             try:
-                srcs = self.storage.list_files(f"uploads/{self.config.job_id}/audio/existing_instrumental")
-                if srcs:
-                    src = srcs[0]
+                # Prefer the job's recorded path: it points at the conformed copy
+                # (uploads/{job_id}/conformed/) when the upload was lined up with the mix.
+                src = self.config.existing_instrumental_gcs_path
+                if not src:
+                    srcs = self.storage.list_files(f"uploads/{self.config.job_id}/audio/existing_instrumental")
+                    src = srcs[0] if srcs else None
+                if src:
                     ext = os.path.splitext(src)[1].lower() or ".mp3"
                     dest = f"jobs/{self.config.job_id}/custom_instrumental{ext}"
                     self.storage.copy_blob(src, dest)

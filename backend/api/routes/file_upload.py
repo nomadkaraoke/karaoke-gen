@@ -1127,19 +1127,17 @@ async def _validate_audio_durations(
             shutil.rmtree(temp_dir)
 
 
-async def _conform_mismatched_instrumental(
+# Conforming decodes both files and runs ffmpeg in the API process (2Gi, /tmp is
+# in-memory); cap how many run at once per instance.
+_CONFORM_SEMAPHORE = asyncio.Semaphore(2)
+
+
+def _conform_mismatched_instrumental_sync(
     storage: StorageService,
     job_id: str,
     audio_gcs_path: str,
     instrumental_gcs_path: str,
 ) -> Optional[Tuple[str, Dict[str, Any]]]:
-    """Line the instrumental up with the mix and fit it to the mix's length.
-
-    Returns (conformed GCS path, adjustment details), or None when the files
-    don't line up (almost certainly the wrong instrumental). The original upload
-    is kept; the conformed copy lives outside the ``audio/`` prefix so it's never
-    mistaken for the mixed audio.
-    """
     from backend.services.instrumental_conform import InstrumentalConformError, conform_instrumental
 
     temp_dir = tempfile.mkdtemp(prefix="instrumental_conform_")
@@ -1150,20 +1148,46 @@ async def _conform_mismatched_instrumental(
         storage.download_file(audio_gcs_path, audio_local)
         storage.download_file(instrumental_gcs_path, instrumental_local)
         try:
-            result = await asyncio.to_thread(conform_instrumental, audio_local, instrumental_local, out_local)
+            result = conform_instrumental(audio_local, instrumental_local, out_local)
         except InstrumentalConformError as e:
+            if not e.mismatch:
+                raise
             logger.warning(f"Job {job_id}: instrumental could not be conformed: {e}")
             return None
         conformed_gcs_path = f"uploads/{job_id}/conformed/existing_instrumental.flac"
         storage.upload_file(out_local, conformed_gcs_path)
         return conformed_gcs_path, {**result.to_dict(), "original_gcs_path": instrumental_gcs_path}
-    except Exception as e:
-        # Rejecting beats rendering against a misaligned instrumental.
-        logger.error(f"Job {job_id}: conforming instrumental failed unexpectedly: {e}", exc_info=True)
-        return None
     finally:
         import shutil
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+async def _conform_mismatched_instrumental(
+    storage: StorageService,
+    job_id: str,
+    audio_gcs_path: str,
+    instrumental_gcs_path: str,
+    locale: str = "en",
+) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Line the instrumental up with the mix and fit it to the mix's length.
+
+    Returns (conformed GCS path, adjustment details), or None when the files
+    don't line up (almost certainly the wrong instrumental). The original upload
+    is kept; the conformed copy lives outside the ``audio/`` prefix so it's never
+    mistaken for the mixed audio. Infrastructure failures (GCS, ffmpeg crash)
+    raise a retryable 503 rather than cancelling the job as a "wrong file".
+    """
+    async with _CONFORM_SEMAPHORE:
+        try:
+            return await asyncio.to_thread(
+                _conform_mismatched_instrumental_sync, storage, job_id, audio_gcs_path, instrumental_gcs_path
+            )
+        except Exception as e:
+            logger.error(f"Job {job_id}: conforming instrumental failed unexpectedly: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=503,
+                detail=t(locale, "jobs.instrumentalConformUnavailable"),
+            ) from e
 
 
 def _get_gcs_path_for_file(job_id: str, file_type: str, filename: str) -> str:
@@ -1581,7 +1605,7 @@ async def mark_uploads_complete(
                     # shorter outro) are lined up with the mix automatically; only a
                     # file that doesn't correlate with the mix at all is rejected.
                     conform = await _conform_mismatched_instrumental(
-                        storage_service, job_id, audio_gcs_path, instrumental_gcs_path
+                        storage_service, job_id, audio_gcs_path, instrumental_gcs_path, locale
                     )
                     if conform is None:
                         # Cancel (refunds the credit) so the job isn't stranded PENDING
