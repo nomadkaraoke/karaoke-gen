@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "URL de Dropbox copiada",
     "copyCompletionMessage": "Copiar mensaje de finalización al portapapeles",
     "copied": "¡Copiado!",
-    "portrait": "Video vertical"
+    "portrait": "Video vertical",
+    "rerender": "Volver a renderizar",
+    "rerenderDesc": "Esto reconstruye las pantallas de título y final, el video de letras y cada descarga utilizando tu tema actual. Tus letras y el instrumental se mantienen exactamente como se revisaron, así que no hay nada que revisar de nuevo.",
+    "rerenderFailed": "No se pudo iniciar el nuevo renderizado: {error}",
+    "rerenderTime": "Normalmente tarda entre 10 y 15 minutos. Las descargas no estarán disponibles hasta que finalice.",
+    "rerenderTitle": "¿Volver a renderizar con tu tema actual?",
+    "rerenderTooltip": "Reconstruir este video con tu tema actual"
   },
   "themeSelector": {
     "videoTheme": "Tema de video",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Título de la canción en mayúsculas",
     "close": "Cerrar",
     "saving": "Guardando…",
-    "songTitle": "Título de la canción"
+    "songTitle": "Título de la canción",
+    "rerenderHint": "Para actualizar una pista que ya creaste, usa Volver a renderizar en su tarjeta."
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, inténtalo de nuevo en un momento.",

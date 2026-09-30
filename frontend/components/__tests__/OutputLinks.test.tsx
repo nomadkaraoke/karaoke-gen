@@ -5,7 +5,7 @@
  * including hiding links when outputs have been deleted.
  */
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { OutputLinks } from '../job/OutputLinks'
 import { Job } from '@/lib/api'
 
@@ -27,6 +27,7 @@ jest.mock('@/lib/tenant', () => ({
 jest.mock('@/lib/api', () => ({
   api: {
     getDownloadUrl: jest.fn((jobId, category, key) => `https://example.com/${jobId}/${category}/${key}`),
+    rerenderWithCurrentTheme: jest.fn(() => Promise.resolve({ status: 'processing' })),
   },
   adminApi: {
     getCompletionMessage: jest.fn(),
@@ -383,6 +384,56 @@ describe('OutputLinks', () => {
       expect(screen.getByText('720p Video')).toBeInTheDocument()
       expect(screen.queryByText('4K Video')).not.toBeInTheDocument()
       expect(screen.queryByText('YouTube')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('re-render with current theme (tenant portals)', () => {
+    const tenantJob: Job = { ...baseJob, state_data: {} }
+
+    const asTenant = (tenantId: string | null) => {
+      const { useTenant } = require('@/lib/tenant')
+      useTenant.mockReturnValue({ tenantId, features: { youtube_upload: false, dropbox_upload: false } })
+    }
+
+    it('shows Re-render for a finished portal track', () => {
+      asTenant('randy-vild')
+      render(<OutputLinks job={tenantJob} />)
+      expect(screen.getByText('Re-render')).toBeInTheDocument()
+    })
+
+    it('is hidden outside tenant portals', () => {
+      asTenant(null)
+      render(<OutputLinks job={tenantJob} />)
+      expect(screen.queryByText('Re-render')).not.toBeInTheDocument()
+    })
+
+    it('is hidden while the track is not finished', () => {
+      asTenant('randy-vild')
+      render(<OutputLinks job={{ ...tenantJob, status: 'rendering_video' }} />)
+      expect(screen.queryByText('Re-render')).not.toBeInTheDocument()
+    })
+
+    it('is hidden when outputs were deleted', () => {
+      asTenant('randy-vild')
+      render(<OutputLinks job={{ ...tenantJob, outputs_deleted_at: '2026-09-29T18:47:13Z' }} />)
+      expect(screen.queryByText('Re-render')).not.toBeInTheDocument()
+    })
+
+    it('confirms, then starts the re-render and refreshes the job', async () => {
+      asTenant('randy-vild')
+      const { api } = require('@/lib/api')
+      const onJobUpdated = jest.fn()
+      render(<OutputLinks job={tenantJob} onJobUpdated={onJobUpdated} />)
+
+      fireEvent.click(screen.getByText('Re-render'))
+      expect(screen.getByText('Re-render with your current theme?')).toBeInTheDocument()
+      expect(api.rerenderWithCurrentTheme).not.toHaveBeenCalled()
+
+      const buttons = screen.getAllByRole('button', { name: 'Re-render' })
+      fireEvent.click(buttons[buttons.length - 1])
+
+      await waitFor(() => expect(api.rerenderWithCurrentTheme).toHaveBeenCalledWith('test-123'))
+      await waitFor(() => expect(onJobUpdated).toHaveBeenCalled())
     })
   })
 })

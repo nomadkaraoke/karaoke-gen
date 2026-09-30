@@ -2327,6 +2327,15 @@ export const api = {
     return handleResponse(response);
   },
 
+  /** Re-render a finished tenant track with the tenant's current theme (no review). */
+  async rerenderWithCurrentTheme(jobId: string): Promise<{ status: string; job_id: string; theme_id: string }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/rerender`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
   async editCompletedTrack(jobId: string, updates?: { artist?: string; title?: string }): Promise<EditTrackResponse> {
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/edit`, {
       method: 'POST',

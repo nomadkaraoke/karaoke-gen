@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "URL de Dropbox copiat",
     "copyCompletionMessage": "Copia el missatge de finalització al porta-retalls",
     "copied": "Copiat!",
-    "portrait": "Vídeo vertical"
+    "portrait": "Vídeo vertical",
+    "rerender": "Tornar a renderitzar",
+    "rerenderDesc": "Això reconstrueix les pantalles de títol i de final, el vídeo de la lletra i totes les descàrregues amb el teu tema actual. La lletra i la pista instrumental es mantenen exactament tal com les has revisat, així que no cal tornar a revisar res.",
+    "rerenderFailed": "No s'ha pogut iniciar la nova renderització: {error}",
+    "rerenderTime": "Normalment triga entre 10 i 15 minuts. Les descàrregues no estaran disponibles fins que acabi.",
+    "rerenderTitle": "Vols tornar a renderitzar amb el teu tema actual?",
+    "rerenderTooltip": "Reconstrueix aquest vídeo amb el teu tema actual"
   },
   "themeSelector": {
     "videoTheme": "Tema del vídeo",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Títol de la cançó en majúscules",
     "close": "Tanca",
     "saving": "Desant…",
-    "songTitle": "Títol de la cançó"
+    "songTitle": "Títol de la cançó",
+    "rerenderHint": "Per actualitzar una pista que ja has creat, utilitza «Tornar a renderitzar» a la seva targeta."
   },
   "stalledDownload": {
     "actionFailedDesc": "Torna-ho a provar d'aquí a un moment.",

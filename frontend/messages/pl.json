@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Skopiowano URL Dropbox",
     "copyCompletionMessage": "Skopiuj wiadomość o zakończeniu do schowka",
     "copied": "Skopiowano!",
-    "portrait": "Wideo pionowe"
+    "portrait": "Wideo pionowe",
+    "rerender": "Wyrenderuj ponownie",
+    "rerenderDesc": "Spowoduje to ponowne wygenerowanie ekranu tytułowego i końcowego, wideo z tekstem oraz wszystkich plików do pobrania przy użyciu Twojego aktualnego motywu. Tekst i wersja instrumentalna pozostaną dokładnie takie, jak zostały sprawdzone, więc nie musisz niczego sprawdzać ponownie.",
+    "rerenderFailed": "Nie udało się rozpocząć ponownego renderowania: {error}",
+    "rerenderTime": "Zwykle zajmuje to około 10-15 minut. Pliki do pobrania będą niedostępne do momentu zakończenia.",
+    "rerenderTitle": "Wyrenderować ponownie z Twoim aktualnym motywem?",
+    "rerenderTooltip": "Przebuduj to wideo z Twoim aktualnym motywem"
   },
   "themeSelector": {
     "videoTheme": "Motyw wideo",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Tytuł piosenki wielkimi literami",
     "close": "Zamknij",
     "saving": "Zapisywanie…",
-    "songTitle": "Tytuł piosenki"
+    "songTitle": "Tytuł piosenki",
+    "rerenderHint": "Aby zaktualizować już utworzony utwór, użyj opcji „Wyrenderuj ponownie” na jego karcie."
   },
   "stalledDownload": {
     "actionFailedDesc": "Spróbuj ponownie za chwilę.",

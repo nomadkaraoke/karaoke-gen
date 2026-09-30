@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox URL'si kopyalandı",
     "copyCompletionMessage": "Tamamlama mesajını panoya kopyala",
     "copied": "Kopyalandı!",
-    "portrait": "Dikey Video"
+    "portrait": "Dikey Video",
+    "rerender": "Yeniden render et",
+    "rerenderDesc": "Bu işlem, mevcut temanı kullanarak başlık ve bitiş ekranlarını, şarkı sözü videosunu ve tüm indirmeleri yeniden oluşturur. Şarkı sözlerin ve enstrümantal altyapı tam olarak incelediğin gibi kalır, bu yüzden tekrar incelemen gereken bir şey yok.",
+    "rerenderFailed": "Yeniden render başlatılamadı: {error}",
+    "rerenderTime": "Genellikle yaklaşık 10-15 dakika sürer. Tamamlanana kadar indirmeler kullanılamaz.",
+    "rerenderTitle": "Mevcut temanla yeniden render edilsin mi?",
+    "rerenderTooltip": "Bu videoyu mevcut temanla yeniden oluştur"
   },
   "themeSelector": {
     "videoTheme": "Video Teması",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Şarkı adı büyük harflerle",
     "close": "Kapat",
     "saving": "Kaydediliyor…",
-    "songTitle": "Şarkı adı"
+    "songTitle": "Şarkı adı",
+    "rerenderHint": "Daha önce oluşturduğun bir parçayı güncellemek için kartındaki Yeniden render et seçeneğini kullan."
   },
   "stalledDownload": {
     "actionFailedDesc": "Lütfen birazdan tekrar dene.",

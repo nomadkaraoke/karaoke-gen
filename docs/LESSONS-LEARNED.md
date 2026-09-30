@@ -6,6 +6,14 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Re-running the render pipeline: three ways the OLD output sneaks back in (Sep 2026, v0.253.0)
+
+Building "re-render with the current theme" turned up three traps. Any path that re-runs screens/render/encode on a finished job (edit, visibility change, admin reset, theme re-render) has to handle all three.
+
+1. **The encoding worker caches finished jobs by id** (in memory, `jobs[job_id]`). Resubmitting the same id while the VM is still up returns `"cached"` with the *previous* outputs. Render and encode now submit as `encoding_worker_job_id(job_id, worker_generation)` → `{job_id}_g{n}`. Every trigger bumps the generation, so re-runs are fresh, while a duplicate delivery of the same trigger still dedups.
+2. **The encoder finds title/end cards with `**/*Title*.mov` across everything under `jobs/{id}/`.** Deleting `screens/title.mov` isn't enough: it then picks up the old `finals/<Artist> - <Title> (Title).mov` and splices the old intro/outro around the new video. Delete the MOVs in `finals/` too (the visibility flow deletes all of `finals/`).
+3. **`outputs_deleted_at` (set by Edit) was only cleared when the re-render distributed to YouTube/Dropbox/GDrive.** Tenant and undistributed private jobs re-rendered fine but hid every download indefinitely (jobs 2579a1ea and 6452888e; the second was a customer's track, hidden for a month). Every successful render now clears it. Clear UI-hiding flags on the success path itself, never inside an optional side effect.
+
 ## Cloud Run Job start latency was the region, not our image (Sep 2026, v0.247.1)
 
 Every us-central1 CPU Cloud Run Job (download, lyrics, encoding, error monitor, even decide's 203 MB

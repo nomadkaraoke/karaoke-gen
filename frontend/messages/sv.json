@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox-URL kopierad",
     "copyCompletionMessage": "Kopiera slutförandemeddelande till urklipp",
     "copied": "Kopierad!",
-    "portrait": "Stående video"
+    "portrait": "Stående video",
+    "rerender": "Rendera om",
+    "rerenderDesc": "Det här bygger om titel- och slutskärmarna, textvideon och alla nedladdningar med ditt nuvarande tema. Din låttext och ditt instrumentalspår förblir precis som du granskade dem, så det finns inget att granska igen.",
+    "rerenderFailed": "Kunde inte starta omrenderingen: {error}",
+    "rerenderTime": "Det tar vanligtvis cirka 10–15 minuter. Nedladdningar är inte tillgängliga förrän det är klart.",
+    "rerenderTitle": "Rendera om med ditt nuvarande tema?",
+    "rerenderTooltip": "Bygg om den här videon med ditt nuvarande tema"
   },
   "themeSelector": {
     "videoTheme": "Videotema",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Låttitel med versaler",
     "close": "Stäng",
     "saving": "Sparar…",
-    "songTitle": "Låttitel"
+    "songTitle": "Låttitel",
+    "rerenderHint": "För att uppdatera ett spår du redan har skapat, använd ”Rendera om” på dess kort."
   },
   "stalledDownload": {
     "actionFailedDesc": "Försök igen om en stund.",

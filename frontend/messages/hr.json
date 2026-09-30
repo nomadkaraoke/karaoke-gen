@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox URL kopiran",
     "copyCompletionMessage": "Kopiraj poruku o završetku u međuspremnik",
     "copied": "Kopirano!",
-    "portrait": "Okomiti video"
+    "portrait": "Okomiti video",
+    "rerender": "Ponovno renderiraj",
+    "rerenderDesc": "Ovim se ponovno izrađuju naslovni i odjavni ekrani, videozapis s tekstom i sva preuzimanja pomoću tvoje trenutačne teme. Tvoj tekst i instrumental ostaju točno onakvi kakvi su pregledani, tako da nema potrebe za ponovnim pregledom.",
+    "rerenderFailed": "Nije bilo moguće pokrenuti ponovno renderiranje: {error}",
+    "rerenderTime": "Obično traje oko 10–15 minuta. Preuzimanja nisu dostupna dok ne završi.",
+    "rerenderTitle": "Ponovno renderirati sa svojom trenutačnom temom?",
+    "rerenderTooltip": "Ponovno izradi ovaj videozapis sa svojom trenutačnom temom"
   },
   "themeSelector": {
     "videoTheme": "Video tema",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Naslov pjesme velikim slovima",
     "close": "Zatvori",
     "saving": "Spremanje…",
-    "songTitle": "Naslov pjesme"
+    "songTitle": "Naslov pjesme",
+    "rerenderHint": "Za ažuriranje pjesme koju si već izradio, upotrijebi »Ponovno renderiraj« na njezinoj kartici."
   },
   "stalledDownload": {
     "actionFailedDesc": "Pokušaj ponovno za trenutak.",

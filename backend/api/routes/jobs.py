@@ -2080,6 +2080,28 @@ async def retry_job(
         # Check what state exists to determine retry point
         file_urls = job.file_urls or {}
         state_data = job.state_data or {}
+
+        # A theme re-render that failed before its new screens were made: re-run
+        # the re-render (not the generic ladder below, which could send the job
+        # back to review). Once screens exist, the render/video branches below
+        # resume it correctly.
+        theme_rerender = state_data.get('theme_rerender') or {}
+        if (theme_rerender.get('theme_id') and original_status == JobStatus.FAILED
+                and not _has_title_screen(file_urls)):
+            from backend.services.theme_rerender_service import RerenderError, ThemeRerenderService
+            try:
+                await ThemeRerenderService(job_manager).start(
+                    job, theme_id=theme_rerender['theme_id'],
+                    requested_by=auth_result.user_email or "unknown",
+                )
+            except RerenderError as e:
+                raise HTTPException(status_code=e.status_code, detail=str(e))
+            return {
+                "status": "success",
+                "job_status": "lyrics_complete",
+                "message": "Job retry: re-running the theme re-render",
+                "retry_stage": "theme_rerender",
+            }
         
         # If we have a video with vocals and instrumental selection, retry video generation
         if (file_urls.get('videos', {}).get('with_vocals') and 
@@ -2960,6 +2982,64 @@ async def change_visibility(
     except Exception as e:
         logger.error(f"Error changing visibility for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to change visibility: {str(e)}")
+
+
+# =============================================================================
+# Re-render With Current Theme Endpoint
+# =============================================================================
+
+@router.post("/{job_id}/rerender")
+async def rerender_with_current_theme(
+    job_id: str,
+    http_request: Request,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Re-render a finished tenant track with the tenant's current theme.
+
+    Regenerates title/end screens, the lyrics video, final encodes and CDG/TXT
+    packages from the already-reviewed lyrics and instrumental selection — no
+    review step. Used after a tenant edits their theme. Free (tenant jobs are
+    never charged); only the job owner (still on the tenant allowlist) or an
+    admin may trigger it.
+    """
+    locale = get_locale_from_request(http_request)
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+    if not _check_job_ownership(job, auth_result):
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
+
+    from backend.services.tenant_admin_service import _theme_id_for
+    from backend.services.tenant_service import get_tenant_service
+    from backend.services.theme_rerender_service import (
+        RerenderError,
+        ThemeRerenderService,
+        validate_rerender,
+    )
+
+    reason = validate_rerender(job)
+    if reason:
+        raise HTTPException(status_code=400, detail=reason)
+
+    tenant = get_tenant_service().get_tenant_config(job.tenant_id)
+    if tenant is None or not tenant.is_active:
+        raise HTTPException(status_code=400, detail="This track's portal is no longer active.")
+    # Re-rendering is free work, so (like tenant billing) require the caller to
+    # still be on the tenant's allowlist — X-Tenant-ID alone proves nothing.
+    if not auth_result.is_admin and not tenant.is_email_allowed(auth_result.user_email or ""):
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
+
+    theme_id = _theme_id_for(tenant)
+    try:
+        await ThemeRerenderService(job_manager).start(
+            job, theme_id=theme_id, requested_by=auth_result.user_email or "unknown"
+        )
+    except RerenderError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+    return {"status": "processing", "job_id": job_id, "theme_id": theme_id}
 
 
 # =============================================================================
