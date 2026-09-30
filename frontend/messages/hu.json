@@ -316,7 +316,8 @@
       "signOut": "Kijelentkezés",
       "login": "Bejelentkezés",
       "discountActive": "kedvezmény aktív",
-      "discountActiveHint": "Kattints a kedvezmény bannerének megjelenítéséhez"
+      "discountActiveHint": "Kattints a kedvezmény bannerének megjelenítéséhez",
+      "showAwaitingAudioJobs": "Hangra váró feladatok megjelenítése"
     },
     "resendFailedBody": "Nálunk történt valami hiba. Kérlek, próbáld újra egy kicsit később, vagy jelentkezz be az alkalmazásból.",
     "resendFailedTitle": "Nem sikerült új linket küldeni",

@@ -316,7 +316,8 @@
       "signOut": "Cerrar sesión",
       "login": "Iniciar sesión",
       "discountActive": "descuento activo",
-      "discountActiveHint": "Haz clic para mostrar el banner de descuento"
+      "discountActiveHint": "Haz clic para mostrar el banner de descuento",
+      "showAwaitingAudioJobs": "Mostrar trabajos en espera de audio"
     },
     "resendFailedBody": "Algo salió mal de nuestra parte. Por favor, inténtalo de nuevo en un momento o inicia sesión desde la aplicación.",
     "resendFailedTitle": "No se pudo enviar un nuevo enlace",

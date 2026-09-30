@@ -316,7 +316,8 @@
       "signOut": "Esci",
       "login": "Accedi",
       "discountActive": "sconto attivo",
-      "discountActiveHint": "Clicca per mostrare il banner dello sconto"
+      "discountActiveHint": "Clicca per mostrare il banner dello sconto",
+      "showAwaitingAudioJobs": "Mostra lavori in attesa dell'audio"
     },
     "resendFailedBody": "Si è verificato un errore da parte nostra. Riprova tra poco, oppure accedi dall'app.",
     "resendFailedTitle": "Impossibile inviare un nuovo link",

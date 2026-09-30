@@ -316,7 +316,8 @@
       "signOut": "Odhlásiť sa",
       "login": "Prihlásiť sa",
       "discountActive": "zľava aktívna",
-      "discountActiveHint": "Kliknutím zobrazíš zľavový banner"
+      "discountActiveHint": "Kliknutím zobrazíš zľavový banner",
+      "showAwaitingAudioJobs": "Zobraziť úlohy čakajúce na audio"
     },
     "resendFailedBody": "Na našej strane sa niečo pokazilo. Skús to znova o chvíľu, alebo sa prihlás cez aplikáciu.",
     "resendFailedTitle": "Nepodarilo sa odoslať nový odkaz",

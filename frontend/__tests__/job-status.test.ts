@@ -801,4 +801,46 @@ describe('shouldShowJobOnDashboard', () => {
   it('keeps made-for-you orders visible even at awaiting_audio_selection', () => {
     expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection', made_for_you: true })).toBe(true);
   });
+
+  describe('jobs owned by another account (e.g. fiverrbot)', () => {
+    const fiverrJob = { status: 'awaiting_audio_selection', user_email: 'fiverr@nomadkaraoke.com' };
+
+    it('shows them to an admin viewer by default', () => {
+      expect(shouldShowJobOnDashboard(fiverrJob, { viewerEmail: 'andrew@nomadkaraoke.com' })).toBe(true);
+    });
+
+    it('still hides the viewer\'s own guided-flow jobs (case-insensitive)', () => {
+      expect(shouldShowJobOnDashboard(
+        { status: 'awaiting_audio_selection', user_email: 'Andrew@NomadKaraoke.com' },
+        { viewerEmail: 'andrew@nomadkaraoke.com' },
+      )).toBe(false);
+    });
+
+    it('hides them when the admin toggle is off', () => {
+      expect(shouldShowJobOnDashboard(fiverrJob, {
+        viewerEmail: 'andrew@nomadkaraoke.com', showOthersAwaitingAudio: false,
+      })).toBe(false);
+    });
+
+    it('keeps made-for-you orders visible even when the toggle is off', () => {
+      expect(shouldShowJobOnDashboard(
+        { ...fiverrJob, made_for_you: true },
+        { viewerEmail: 'andrew@nomadkaraoke.com', showOthersAwaitingAudio: false },
+      )).toBe(true);
+    });
+
+    it('hides them when viewer or owner email is unknown', () => {
+      expect(shouldShowJobOnDashboard(fiverrJob, {})).toBe(false);
+      expect(shouldShowJobOnDashboard(
+        { status: 'awaiting_audio_selection' }, { viewerEmail: 'andrew@nomadkaraoke.com' },
+      )).toBe(false);
+    });
+
+    it('does not affect jobs at other statuses', () => {
+      expect(shouldShowJobOnDashboard(
+        { status: 'complete', user_email: 'fiverr@nomadkaraoke.com' },
+        { viewerEmail: 'andrew@nomadkaraoke.com', showOthersAwaitingAudio: false },
+      )).toBe(true);
+    });
+  });
 });

@@ -316,7 +316,8 @@
       "signOut": "Odjavi se",
       "login": "Prijava",
       "discountActive": "popust aktivan",
-      "discountActiveHint": "Klikni za prikaz bannera s popustom"
+      "discountActiveHint": "Klikni za prikaz bannera s popustom",
+      "showAwaitingAudioJobs": "Prikaži poslove koji čekaju audio"
     },
     "resendFailedBody": "Nešto je pošlo po zlu s naše strane. Pokušaj ponovno za koji trenutak ili se prijavi iz aplikacije.",
     "resendFailedTitle": "Nismo uspjeli poslati novu poveznicu",

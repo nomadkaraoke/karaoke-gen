@@ -316,7 +316,8 @@
       "signOut": "Tanca sessió",
       "login": "Inicia sessió",
       "discountActive": "descompte actiu",
-      "discountActiveHint": "Fes clic per mostrar el bàner de descompte"
+      "discountActiveHint": "Fes clic per mostrar el bàner de descompte",
+      "showAwaitingAudioJobs": "Mostra les tasques pendents d'àudio"
     },
     "resendFailedBody": "Hi ha hagut un error per part nostra. Si us plau, torna-ho a provar d'aquí a un moment o inicia sessió des de l'aplicació.",
     "resendFailedTitle": "No s'ha pogut enviar un enllaç nou",

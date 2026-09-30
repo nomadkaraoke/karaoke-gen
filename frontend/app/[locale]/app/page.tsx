@@ -65,7 +65,7 @@ function AppPageContent() {
   // Bulk mode is available on the default portal (search-based) and on tenant
   // portals with the bulk_upload feature (folder upload + auto-pair).
   const showBulkToggle = isDefaultTenant || tenantFeatures.bulk_upload
-  const { showTestData } = useAdminSettings()
+  const { showTestData, showAwaitingAudioJobs } = useAdminSettings()
   const [jobLimit, setJobLimit] = useState<number>(() => {
     if (typeof window === "undefined") return 10
     const saved = localStorage.getItem("nomad-karaoke-job-limit")
@@ -103,10 +103,15 @@ function AppPageContent() {
   const isAdmin = user?.role === "admin" || user?.email?.endsWith("@nomadkaraoke.com")
 
   // Hide self-service jobs still in the guided-flow wizard, but keep made-for-you orders
-  // visible even at awaiting_audio_selection (see shouldShowJobOnDashboard).
+  // and other accounts' jobs visible at awaiting_audio_selection (see shouldShowJobOnDashboard).
+  const viewerEmail = user?.email
+  const showOthersAwaitingAudio = isAdmin ? showAwaitingAudioJobs : true
   const jobs = useMemo(
-    () => sortJobs(allJobs.filter(shouldShowJobOnDashboard), sortField, sortDirection, locale),
-    [allJobs, sortField, sortDirection, locale]
+    () => sortJobs(
+      allJobs.filter((job) => shouldShowJobOnDashboard(job, { viewerEmail, showOthersAwaitingAudio })),
+      sortField, sortDirection, locale,
+    ),
+    [allJobs, sortField, sortDirection, locale, viewerEmail, showOthersAwaitingAudio]
   )
 
   // Debounce search input — only update the query (which triggers API calls) after 300ms

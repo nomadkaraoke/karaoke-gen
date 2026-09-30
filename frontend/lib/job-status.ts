@@ -457,12 +457,22 @@ export function sortJobs(jobs: Job[], field: JobSortField, direction: SortDirect
  *
  * Self-service jobs at `awaiting_audio_selection` are driven by the guided-flow
  * wizard in the same browser session and must NOT appear as standalone cards
- * (the wizard owns them). Made-for-you orders also sit at that status, but they
- * are created server-side by the Stripe webhook with no active guided-flow
- * session — so they'd otherwise be invisible to an admin. Keep those visible so
- * their built-in "Open Audio Selection" action is reachable from the dashboard.
+ * (the wizard owns them). Jobs created server-side sit at that status with no
+ * active guided-flow session, so they'd otherwise be invisible to an admin:
+ * made-for-you orders (Stripe webhook) and jobs owned by another account (e.g.
+ * fiverrbot's `fiverr@nomadkaraoke.com` jobs parked for a manual audio pick).
+ * Keep those visible so their built-in audio-selection action is reachable.
+ *
+ * `showOthersAwaitingAudio` is the admin toggle; when false, other accounts'
+ * jobs at this status are hidden again (made-for-you orders stay visible).
  */
-export function shouldShowJobOnDashboard(job: Pick<Job, 'status' | 'made_for_you'>): boolean {
-  return job.status !== 'awaiting_audio_selection' || Boolean(job.made_for_you);
+export function shouldShowJobOnDashboard(
+  job: Pick<Job, 'status' | 'made_for_you' | 'user_email'>,
+  options: { viewerEmail?: string | null; showOthersAwaitingAudio?: boolean } = {},
+): boolean {
+  if (job.status !== 'awaiting_audio_selection' || job.made_for_you) return true;
+  const { viewerEmail, showOthersAwaitingAudio = true } = options;
+  if (!showOthersAwaitingAudio || !viewerEmail || !job.user_email) return false;
+  return job.user_email.toLowerCase() !== viewerEmail.toLowerCase();
 }
 

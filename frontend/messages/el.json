@@ -316,7 +316,8 @@
       "signOut": "Αποσύνδεση",
       "login": "Σύνδεση",
       "discountActive": "ενεργή έκπτωση",
-      "discountActiveHint": "Κάνε κλικ για εμφάνιση του banner έκπτωσης"
+      "discountActiveHint": "Κάνε κλικ για εμφάνιση του banner έκπτωσης",
+      "showAwaitingAudioJobs": "Εμφάνιση εργασιών σε αναμονή ήχου"
     },
     "resendFailedBody": "Κάτι πήγε στραβά από την πλευρά μας. Δοκίμασε ξανά σε λίγο ή συνδέσου από την εφαρμογή.",
     "resendFailedTitle": "Δεν μπορέσαμε να στείλουμε νέο σύνδεσμο",

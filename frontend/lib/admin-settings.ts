@@ -14,6 +14,12 @@ interface AdminSettings {
    */
   showTestData: boolean
   setShowTestData: (show: boolean) => void
+  /**
+   * When true (default), the /app dashboard shows other accounts' jobs parked at
+   * awaiting_audio_selection (e.g. fiverrbot orders needing a manual audio pick).
+   */
+  showAwaitingAudioJobs: boolean
+  setShowAwaitingAudioJobs: (show: boolean) => void
 }
 
 export const useAdminSettings = create<AdminSettings>()(
@@ -21,6 +27,8 @@ export const useAdminSettings = create<AdminSettings>()(
     (set) => ({
       showTestData: false,
       setShowTestData: (show) => set({ showTestData: show }),
+      showAwaitingAudioJobs: true,
+      setShowAwaitingAudioJobs: (show) => set({ showAwaitingAudioJobs: show }),
     }),
     {
       name: 'admin-settings',

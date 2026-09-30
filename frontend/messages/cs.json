@@ -316,7 +316,8 @@
       "signOut": "Odhlásit se",
       "login": "Přihlásit se",
       "discountActive": "sleva aktivní",
-      "discountActiveHint": "Kliknutím zobrazíš banner se slevou"
+      "discountActiveHint": "Kliknutím zobrazíš banner se slevou",
+      "showAwaitingAudioJobs": "Zobrazit úlohy čekající na audio"
     },
     "resendFailedBody": "Něco se u nás pokazilo. Zkus to prosím znovu za chvíli, nebo se přihlas z aplikace.",
     "resendFailedTitle": "Nepodařilo se odeslat nový odkaz",

@@ -316,7 +316,8 @@
       "signOut": "تسجيل الخروج",
       "login": "تسجيل الدخول",
       "discountActive": "خصم فعّال",
-      "discountActiveHint": "انقر لعرض شريط الخصم"
+      "discountActiveHint": "انقر لعرض شريط الخصم",
+      "showAwaitingAudioJobs": "عرض المهام بانتظار الصوت"
     },
     "resendFailedBody": "حدث خطأ من جانبنا. يرجى المحاولة مرة أخرى بعد قليل، أو تسجيل الدخول من التطبيق.",
     "resendFailedTitle": "تعذر إرسال رابط جديد",

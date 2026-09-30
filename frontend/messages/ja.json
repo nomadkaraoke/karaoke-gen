@@ -316,7 +316,8 @@
       "signOut": "サインアウト",
       "login": "ログイン",
       "discountActive": "割引適用中",
-      "discountActiveHint": "クリックして割引バナーを表示"
+      "discountActiveHint": "クリックして割引バナーを表示",
+      "showAwaitingAudioJobs": "音声待ちのジョブを表示"
     },
     "resendFailedBody": "申し訳ありません、エラーが発生しました。しばらくしてからもう一度お試しいただくか、アプリからサインインしてください。",
     "resendFailedTitle": "新しいリンクを送信できませんでした",
