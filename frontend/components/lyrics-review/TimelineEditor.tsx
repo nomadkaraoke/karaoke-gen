@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import { Word } from '@/lib/lyrics-review/types'
 import { WordDecoration } from '@/lib/lyrics-review/utils/wordDecorations'
 import { cn } from '@/lib/utils'
@@ -42,10 +42,24 @@ interface TimelineEditorProps {
   /** Fires when a word bar is Ctrl/Cmd-clicked (read from the event, so no key tracking is
       needed). Used by the Edit Segment modal to delete a word without scrolling the word list. */
   onWordCtrlDelete?: (index: number) => void
+  /** End of the nearest timed word in an *earlier* segment. Resizing (incl. edge auto-extend)
+      stops here so a word can't grow into the previous line. */
+  prevBoundaryTime?: number | null
+  /** Start of the nearest timed word in a *later* segment — the auto-extend / resize stop. */
+  nextBoundaryTime?: number | null
 }
 
 // Pointer travel (px) beyond which a press counts as a drag rather than a click.
 const DRAG_THRESHOLD_PX = 4
+
+// Edge auto-extend: while a resize handle is held within this many px of the timeline edge it
+// is heading toward (or beyond it), the word keeps growing and the view zooms out to follow, so
+// a word that ends seconds too early doesn't need a dozen drag-release cycles.
+export const AUTO_EXTEND_EDGE_PX = 24
+// Growth rate (seconds of word per second held), ramping from the inner edge of the zone to
+// the timeline edge so the reviewer can go slow near the target and fast when it's far away.
+export const AUTO_EXTEND_MIN_RATE = 1
+export const AUTO_EXTEND_MAX_RATE = 4
 
 export default function TimelineEditor({
   words,
@@ -64,7 +78,10 @@ export default function TimelineEditor({
   onWordClick,
   onWordDelete,
   onWordCtrlDelete,
+  prevBoundaryTime,
+  nextBoundaryTime,
 }: TimelineEditorProps) {
+  const { audioData } = useContext(VocalsAudioDataLoaderContext)
   const containerRef = useRef<HTMLDivElement>(null)
   // Whether the current press has moved past the drag threshold. Distinguishes a click
   // (open the modal) from a drag (move/resize the word timing).
@@ -75,7 +92,15 @@ export default function TimelineEditor({
     initialX: number
     initialTime: number
     word: Word
+    // Resize only: time offset between the grabbed pointer position and the edge being
+    // resized, so the edge tracks the pointer absolutely (stays correct as the view zooms).
+    grabOffset: number
   } | null>(null)
+  // View domain widened while auto-extending a resize past the edge; cleared on release (the
+  // committed segment bounds then cover the new timing).
+  const [dragView, setDragView] = useState<{ start: number; end: number } | null>(null)
+  // Latest pointer x (container-relative) during a drag, read by the auto-extend loop.
+  const pointerXRef = useRef(0)
 
   const MIN_DURATION = 0.1 // Minimum word duration in seconds
 
@@ -83,39 +108,13 @@ export default function TimelineEditor({
   // dragged/synced earlier and the last word later, and so the surrounding waveform + any word
   // blocks that spill just outside the segment stay visible. The whole timeline maps this padded
   // "view domain" to 0–100%; the segment itself is the un-shaded band in the middle.
-  const viewStart = Math.max(0, startTime - TIMELINE_PAD_SECONDS)
-  const viewEnd = endTime + TIMELINE_PAD_SECONDS
+  const viewStart = Math.min(Math.max(0, startTime - TIMELINE_PAD_SECONDS), dragView?.start ?? Infinity)
+  const viewEnd = Math.max(endTime + TIMELINE_PAD_SECONDS, dragView?.end ?? -Infinity)
   const viewDuration = viewEnd - viewStart
 
-  const checkCollision = (
-    proposedStart: number,
-    proposedEnd: number,
-    currentIndex: number,
-    isResize: boolean
-  ): boolean => {
-    if (isResize) {
-      // Compare against the nearest *timed* neighbours, not just array neighbours:
-      // unsynchronized words (null timestamps) aren't drawn on the timeline, so an
-      // adjacent null-timed word must be skipped to reach the real neighbour bar.
-      const nextWord = words
-        .slice(currentIndex + 1)
-        .find((word) => word.start_time !== null && word.end_time !== null)
-      if (nextWord && nextWord.start_time !== null && proposedEnd > nextWord.start_time) {
-        return true
-      }
-
-      const previousWord = words
-        .slice(0, currentIndex)
-        .reverse()
-        .find((word) => word.start_time !== null && word.end_time !== null)
-      if (previousWord && previousWord.end_time !== null && proposedStart < previousWord.end_time) {
-        return true
-      }
-
-      return false
-    }
-
-    return words.some((word, index) => {
+  // Overlap test for moving a whole word (resizes clamp against resizeBounds instead).
+  const checkCollision = (proposedStart: number, proposedEnd: number, currentIndex: number): boolean =>
+    words.some((word, index) => {
       if (index === currentIndex) return false
       if (word.start_time === null || word.end_time === null) return false
 
@@ -125,6 +124,25 @@ export default function TimelineEditor({
         (proposedStart <= word.start_time && proposedEnd >= word.end_time)
       )
     })
+
+  // How far a word's edges may be resized: up to the nearest *timed* neighbour in this segment
+  // (unsynchronized words aren't drawn, so they're skipped), else the neighbouring segment's
+  // nearest word, else the audio bounds. Neighbouring-segment limits never pull an edge back
+  // from where the drag started, so pre-existing overlaps don't snap on the first pixel.
+  const resizeBounds = (index: number, original: Word): { min: number; max: number } => {
+    const isTimed = (w: Word) => w.start_time !== null && w.end_time !== null
+    const next = words.slice(index + 1).find(isTimed)
+    const prev = words.slice(0, index).reverse().find(isTimed)
+    let max = next?.start_time ?? Infinity
+    if (!next) {
+      if (nextBoundaryTime != null) max = Math.max(nextBoundaryTime, original.end_time ?? -Infinity)
+      else if (audioData?.duration) max = Math.max(audioData.duration, original.end_time ?? -Infinity)
+    }
+    let min = prev?.end_time ?? 0
+    if (!prev && prevBoundaryTime != null) {
+      min = Math.min(prevBoundaryTime, original.start_time ?? Infinity)
+    }
+    return { min, max }
   }
 
   const timeToPosition = (time: number): number => {
@@ -184,23 +202,33 @@ export default function TimelineEditor({
 
     const initialX = e.clientX - rect.left
     const initialTime = (initialX / rect.width) * viewDuration
+    const pointerTime = viewStart + initialTime
+    const grabOffset =
+      type === 'resize-right'
+        ? word.end_time - pointerTime
+        : type === 'resize-left'
+          ? word.start_time - pointerTime
+          : 0
 
     hasDraggedRef.current = false
+    pointerXRef.current = initialX
     setDragState({
       wordIndex,
       type,
       initialX,
       initialTime,
       word,
+      grabOffset,
     })
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (clientX: number) => {
     if (!dragState || !containerRef.current) return
 
     const rect = containerRef.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
+    const x = clientX - rect.left
     const width = rect.width
+    pointerXRef.current = x
 
     // Ignore sub-threshold jitter so a click (which opens the modal) doesn't nudge the
     // timing; once the threshold is crossed the press is a drag for the rest of its life.
@@ -218,42 +246,28 @@ export default function TimelineEditor({
     )
       return
 
-    if (dragState.type === 'resize-right') {
-      const initialWordDuration = dragState.word.end_time - dragState.word.start_time
-      const initialWordWidth = (initialWordDuration / viewDuration) * width
-      const pixelDelta = x - dragState.initialX
-      const percentageMoved = pixelDelta / initialWordWidth
-      const timeDelta = initialWordDuration * percentageMoved
+    if (dragState.type === 'resize-right' || dragState.type === 'resize-left') {
+      // Absolute mapping: the edge sits under the pointer (plus the grab offset) in the
+      // *current* view, so it stays under the cursor even after auto-extend zoomed out.
+      const clampedX = Math.max(0, Math.min(width, x))
+      const pointerTime = viewStart + (clampedX / width) * viewDuration + dragState.grabOffset
+      const { min, max } = resizeBounds(dragState.wordIndex, dragState.word)
 
-      const proposedEnd = Math.max(
-        currentWord.start_time + MIN_DURATION,
-        dragState.word.end_time + timeDelta
-      )
-
-      if (checkCollision(currentWord.start_time, proposedEnd, dragState.wordIndex, true)) return
-
-      onWordUpdate(dragState.wordIndex, {
-        start_time: currentWord.start_time,
-        end_time: proposedEnd,
-      })
-    } else if (dragState.type === 'resize-left') {
-      const initialWordDuration = dragState.word.end_time - dragState.word.start_time
-      const initialWordWidth = (initialWordDuration / viewDuration) * width
-      const pixelDelta = x - dragState.initialX
-      const percentageMoved = pixelDelta / initialWordWidth
-      const timeDelta = initialWordDuration * percentageMoved
-
-      const proposedStart = Math.min(
-        currentWord.end_time - MIN_DURATION,
-        dragState.word.start_time + timeDelta
-      )
-
-      if (checkCollision(proposedStart, currentWord.end_time, dragState.wordIndex, true)) return
-
-      onWordUpdate(dragState.wordIndex, {
-        start_time: proposedStart,
-        end_time: currentWord.end_time,
-      })
+      if (dragState.type === 'resize-right') {
+        const proposedEnd = Math.min(max, Math.max(currentWord.start_time + MIN_DURATION, pointerTime))
+        if (proposedEnd === currentWord.end_time) return
+        onWordUpdate(dragState.wordIndex, {
+          start_time: currentWord.start_time,
+          end_time: proposedEnd,
+        })
+      } else {
+        const proposedStart = Math.max(min, Math.min(currentWord.end_time - MIN_DURATION, pointerTime))
+        if (proposedStart === currentWord.start_time) return
+        onWordUpdate(dragState.wordIndex, {
+          start_time: proposedStart,
+          end_time: currentWord.end_time,
+        })
+      }
     } else if (dragState.type === 'move') {
       const pixelsPerSecond = width / viewDuration
       const pixelDelta = x - dragState.initialX
@@ -266,7 +280,7 @@ export default function TimelineEditor({
       // Allow dragging a little outside the segment (into the padded view) so the first/last
       // word can extend the segment; updateSegment recomputes the segment bounds from the words.
       if (proposedStart < viewStart || proposedEnd > viewEnd) return
-      if (checkCollision(proposedStart, proposedEnd, dragState.wordIndex, false)) return
+      if (checkCollision(proposedStart, proposedEnd, dragState.wordIndex)) return
 
       onWordUpdate(dragState.wordIndex, {
         start_time: proposedStart,
@@ -275,20 +289,101 @@ export default function TimelineEditor({
     }
   }
 
-  const handleMouseUp = (fromLeave = false) => {
+  const handleMouseUp = () => {
     if (dragState) {
       if (hasDraggedRef.current) {
         // A real drag: persist the new timing.
         onCommit?.()
-      } else if (!fromLeave) {
-        // A click (no drag): open the Edit Segment modal. Skipped when the pointer merely
-        // left the row, so leaving without releasing doesn't spuriously open the modal.
+      } else {
+        // A click (no drag): open the Edit Segment modal.
         onWordClick?.(dragState.wordIndex)
       }
     }
     hasDraggedRef.current = false
     setDragState(null)
+    setDragView(null)
   }
+
+  // One step of edge auto-extend (called every animation frame during a resize drag): if the
+  // pointer is in the edge zone the handle is heading toward, grow the word at a rate scaled by
+  // how deep into the zone it is, and widen the view so the edge stays glued under the cursor.
+  // Stops by itself at the neighbouring word / audio bound; leaving the zone or releasing ends it.
+  const autoExtendStep = (dtSeconds: number) => {
+    if (!dragState || !hasDraggedRef.current || dragState.type === 'move') return
+    const width = containerRef.current?.getBoundingClientRect().width ?? 0
+    if (width <= 0) return
+    const word = words[dragState.wordIndex]
+    if (word.start_time === null || word.end_time === null) return
+
+    const x = pointerXRef.current
+    const isRight = dragState.type === 'resize-right'
+    const depth = isRight
+      ? (x - (width - AUTO_EXTEND_EDGE_PX)) / AUTO_EXTEND_EDGE_PX
+      : (AUTO_EXTEND_EDGE_PX - x) / AUTO_EXTEND_EDGE_PX
+    if (depth <= 0) return
+    const rate =
+      AUTO_EXTEND_MIN_RATE + (AUTO_EXTEND_MAX_RATE - AUTO_EXTEND_MIN_RATE) * Math.min(1, depth)
+    const step = rate * dtSeconds
+    const { min, max } = resizeBounds(dragState.wordIndex, dragState.word)
+    const fraction = Math.max(0, Math.min(width, x)) / width
+
+    if (isRight) {
+      const newEnd = Math.min(max, word.end_time + step)
+      if (newEnd <= word.end_time) return
+      onWordUpdate(dragState.wordIndex, { start_time: word.start_time, end_time: newEnd })
+      // Solve viewStart + fraction * (viewEnd - viewStart) + grabOffset = newEnd for viewEnd.
+      if (fraction > 0) {
+        const target = newEnd - dragState.grabOffset
+        const end = viewStart + (target - viewStart) / fraction
+        if (end > viewEnd) setDragView({ start: viewStart, end })
+      }
+    } else {
+      const newStart = Math.max(min, word.start_time - step)
+      if (newStart >= word.start_time) return
+      onWordUpdate(dragState.wordIndex, { start_time: newStart, end_time: word.end_time })
+      if (fraction < 1) {
+        const target = newStart - dragState.grabOffset
+        const start = Math.max(0, (target - fraction * viewEnd) / (1 - fraction))
+        if (start < viewStart) setDragView({ start, end: viewEnd })
+      }
+    }
+  }
+
+  // The window listeners + rAF loop outlive individual renders, so they call through a ref to
+  // the latest handlers (which close over the current words/view).
+  const handlersRef = useRef({ handleMouseMove, handleMouseUp, autoExtendStep })
+  handlersRef.current = { handleMouseMove, handleMouseUp, autoExtendStep }
+
+  // Track the pointer on the window while dragging, so pushing past the row edge (where
+  // auto-extend is fastest) or releasing outside it doesn't abandon the drag.
+  const dragging = dragState !== null
+  const resizing = dragState !== null && dragState.type !== 'move'
+  useEffect(() => {
+    if (!dragging) return
+    const onMove = (e: MouseEvent) => handlersRef.current.handleMouseMove(e.clientX)
+    const onUp = () => handlersRef.current.handleMouseUp()
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [dragging])
+
+  useEffect(() => {
+    if (!resizing) return
+    let frame = 0
+    let last: number | null = null
+    const tick = (now: number) => {
+      // Cap dt so a backgrounded tab doesn't leap the word forward on return.
+      const dt = last === null ? 0 : Math.min(0.05, (now - last) / 1000)
+      last = now
+      if (dt > 0) handlersRef.current.autoExtendStep(dt)
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [resizing])
 
   const handleContextMenu = (e: React.MouseEvent, wordIndex: number) => {
     e.preventDefault()
@@ -336,9 +431,6 @@ export default function TimelineEditor({
     <div
       ref={containerRef}
       className={cn(compact ? 'relative' : 'relative bg-card rounded border border-border')}
-      onMouseMove={handleMouseMove}
-      onMouseUp={() => handleMouseUp(false)}
-      onMouseLeave={() => handleMouseUp(true)}
     >
       {/* Out-of-segment padding: greyed bands on each side of the real segment. These sit above
           the waveform but below the word bars and are click-through so playback scrubbing still
