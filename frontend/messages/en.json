@@ -738,7 +738,13 @@
     "copyDropboxUrl": "Copy Dropbox URL",
     "dropboxUrlCopied": "Dropbox URL copied",
     "copyCompletionMessage": "Copy completion message to clipboard",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "rerender": "Re-render",
+    "rerenderTooltip": "Rebuild this video with your current theme",
+    "rerenderTitle": "Re-render with your current theme?",
+    "rerenderDesc": "This rebuilds the title and end screens, the lyrics video, and every download using your current theme. Your lyrics and instrumental stay exactly as reviewed, so there's nothing to review again.",
+    "rerenderTime": "It usually takes about 10-15 minutes. Downloads are unavailable until it finishes.",
+    "rerenderFailed": "Couldn't start the re-render: {error}"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",
@@ -1974,7 +1980,8 @@
     "savedTitle": "Theme saved",
     "savedBody": "New videos will use your updated theme.",
     "saveFailed": "Couldn't save your theme",
-    "discardConfirm": "You have unsaved theme changes. Close without saving?"
+    "discardConfirm": "You have unsaved theme changes. Close without saving?",
+    "rerenderHint": "To update a track you've already made, use Re-render on its card."
   },
   "stalledDownload": {
     "title": "Your audio hasn't started downloading after {minutes} minutes",

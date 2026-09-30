@@ -2963,6 +2963,64 @@ async def change_visibility(
 
 
 # =============================================================================
+# Re-render With Current Theme Endpoint
+# =============================================================================
+
+@router.post("/{job_id}/rerender")
+async def rerender_with_current_theme(
+    job_id: str,
+    http_request: Request,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Re-render a finished tenant track with the tenant's current theme.
+
+    Regenerates title/end screens, the lyrics video, final encodes and CDG/TXT
+    packages from the already-reviewed lyrics and instrumental selection — no
+    review step. Used after a tenant edits their theme. Free (tenant jobs are
+    never charged); only the job owner (still on the tenant allowlist) or an
+    admin may trigger it.
+    """
+    locale = get_locale_from_request(http_request)
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+    if not _check_job_ownership(job, auth_result):
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
+
+    from backend.services.tenant_admin_service import _theme_id_for
+    from backend.services.tenant_service import get_tenant_service
+    from backend.services.theme_rerender_service import (
+        RerenderError,
+        ThemeRerenderService,
+        validate_rerender,
+    )
+
+    reason = validate_rerender(job)
+    if reason:
+        raise HTTPException(status_code=400, detail=reason)
+
+    tenant = get_tenant_service().get_tenant_config(job.tenant_id)
+    if tenant is None or not tenant.is_active:
+        raise HTTPException(status_code=400, detail="This track's portal is no longer active.")
+    # Re-rendering is free work, so (like tenant billing) require the caller to
+    # still be on the tenant's allowlist — X-Tenant-ID alone proves nothing.
+    if not auth_result.is_admin and not tenant.is_email_allowed(auth_result.user_email or ""):
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
+
+    theme_id = _theme_id_for(tenant)
+    try:
+        await ThemeRerenderService(job_manager).start(
+            job, theme_id=theme_id, requested_by=auth_result.user_email or "unknown"
+        )
+    except RerenderError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+    return {"status": "processing", "job_id": job_id, "theme_id": theme_id}
+
+
+# =============================================================================
 # Duration Confirmation Endpoint
 # =============================================================================
 

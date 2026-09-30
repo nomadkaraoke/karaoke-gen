@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox URL másolva",
     "copyCompletionMessage": "Befejezési üzenet másolása a vágólapra",
     "copied": "Másolva!",
-    "portrait": "Álló videó"
+    "portrait": "Álló videó",
+    "rerender": "Újrarenderelés",
+    "rerenderDesc": "Ez újraépíti a cím- és záróképernyőket, a dalszöveges videót és minden letöltést a jelenlegi témáddal. A dalszöveged és az instrumentális alap pontosan úgy marad, ahogy ellenőrizted, így semmit sem kell újra átnézned.",
+    "rerenderFailed": "Nem sikerült elindítani az újrarenderelést: {error}",
+    "rerenderTime": "Általában körülbelül 10–15 percet vesz igénybe. A letöltések nem érhetők el, amíg be nem fejeződik.",
+    "rerenderTitle": "Újrarenderelés a jelenlegi témáddal?",
+    "rerenderTooltip": "A videó újraépítése a jelenlegi témáddal"
   },
   "themeSelector": {
     "videoTheme": "Videó téma",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Dalcím csupa nagybetűvel",
     "close": "Bezárás",
     "saving": "Mentés…",
-    "songTitle": "Dal címe"
+    "songTitle": "Dal címe",
+    "rerenderHint": "Egy már elkészített szám frissítéséhez használd az Újrarenderelés lehetőséget a kártyáján."
   },
   "stalledDownload": {
     "actionFailedDesc": "Kérlek, próbáld újra egy pillanat múlva.",

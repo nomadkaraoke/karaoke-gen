@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "URL Dropbox disalin",
     "copyCompletionMessage": "Salin mesej penyelesaian ke papan keratan",
     "copied": "Disalin!",
-    "portrait": "Video Potret"
+    "portrait": "Video Potret",
+    "rerender": "Render semula",
+    "rerenderDesc": "Ini membina semula skrin tajuk dan skrin akhir, video lirik, serta setiap muat turun menggunakan tema semasa anda. Lirik dan instrumental anda kekal tepat seperti yang telah disemak, jadi tiada apa-apa yang perlu disemak lagi.",
+    "rerenderFailed": "Tidak dapat memulakan render semula: {error}",
+    "rerenderTime": "Ia biasanya mengambil masa kira-kira 10-15 minit. Muat turun tidak tersedia sehingga proses ini selesai.",
+    "rerenderTitle": "Render semula dengan tema semasa anda?",
+    "rerenderTooltip": "Bina semula video ini dengan tema semasa anda"
   },
   "themeSelector": {
     "videoTheme": "Tema Video",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Tajuk lagu dalam huruf besar",
     "close": "Tutup",
     "saving": "Menyimpan…",
-    "songTitle": "Tajuk lagu"
+    "songTitle": "Tajuk lagu",
+    "rerenderHint": "Untuk mengemas kini trek yang telah anda buat, gunakan Render semula pada kadnya."
   },
   "stalledDownload": {
     "actionFailedDesc": "Sila cuba sebentar lagi.",

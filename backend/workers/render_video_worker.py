@@ -40,7 +40,7 @@ from backend.utils.audio_filenames import local_audio_filename
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
-from backend.workers.supersede import capture_generation, check_superseded
+from backend.workers.supersede import capture_generation, check_superseded, encoding_worker_job_id
 from backend.config import get_settings
 from backend.workers.registry import worker_registry
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
@@ -278,7 +278,9 @@ async def process_render_video(job_id: str) -> bool:
                             )
 
                         result = await run_with_lost_job_resubmit(
-                            _submit_render, job_id, log=job_log
+                            _submit_render,
+                            encoding_worker_job_id(job_id, captured_generation),
+                            log=job_log,
                         )
                         render_duration = time.time() - render_start
                         render_span.set_attribute("duration_seconds", render_duration)

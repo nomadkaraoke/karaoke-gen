@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox-URL kopiert",
     "copyCompletionMessage": "Abschlussnachricht in die Zwischenablage kopieren",
     "copied": "Kopiert!",
-    "portrait": "Hochformat-Video"
+    "portrait": "Hochformat-Video",
+    "rerender": "Neu rendern",
+    "rerenderDesc": "Dadurch werden Titel- und Endbildschirme, das Text-Video und alle Downloads mit deinem aktuellen Theme neu erstellt. Dein Text und das Instrumental bleiben genau so, wie du sie überprüft hast – du musst also nichts noch einmal überprüfen.",
+    "rerenderFailed": "Das erneute Rendern konnte nicht gestartet werden: {error}",
+    "rerenderTime": "Es dauert normalerweise etwa 10–15 Minuten. Downloads sind nicht verfügbar, bis der Vorgang abgeschlossen ist.",
+    "rerenderTitle": "Mit deinem aktuellen Theme neu rendern?",
+    "rerenderTooltip": "Dieses Video mit deinem aktuellen Theme neu erstellen"
   },
   "themeSelector": {
     "videoTheme": "Video-Theme",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Songtitel in Großbuchstaben",
     "close": "Schließen",
     "saving": "Speichere…",
-    "songTitle": "Songtitel"
+    "songTitle": "Songtitel",
+    "rerenderHint": "Um einen Track zu aktualisieren, den du bereits erstellt hast, verwende „Neu rendern“ auf dessen Karte."
   },
   "stalledDownload": {
     "actionFailedDesc": "Bitte versuche es gleich noch einmal.",

@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox URL gekopieerd",
     "copyCompletionMessage": "Kopieer voltooiingsbericht naar klembord",
     "copied": "Gekopieerd!",
-    "portrait": "Portretvideo"
+    "portrait": "Portretvideo",
+    "rerender": "Opnieuw renderen",
+    "rerenderDesc": "Hiermee worden de titel- en eindschermen, de songtekstvideo en alle downloads opnieuw opgebouwd met je huidige thema. Je songtekst en instrumentale track blijven precies zoals gecontroleerd, dus je hoeft niets opnieuw te controleren.",
+    "rerenderFailed": "Kon het opnieuw renderen niet starten: {error}",
+    "rerenderTime": "Het duurt meestal ongeveer 10-15 minuten. Downloads zijn niet beschikbaar tot het klaar is.",
+    "rerenderTitle": "Opnieuw renderen met je huidige thema?",
+    "rerenderTooltip": "Deze video opnieuw opbouwen met je huidige thema"
   },
   "themeSelector": {
     "videoTheme": "Video Thema",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Songtitel in hoofdletters",
     "close": "Sluiten",
     "saving": "Opslaan…",
-    "songTitle": "Titel van het nummer"
+    "songTitle": "Titel van het nummer",
+    "rerenderHint": "Om een track die je al hebt gemaakt bij te werken, gebruik je 'Opnieuw renderen' op de bijbehorende kaart."
   },
   "stalledDownload": {
     "actionFailedDesc": "Probeer het over een ogenblik opnieuw.",

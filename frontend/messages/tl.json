@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Nakopya na ang Dropbox URL",
     "copyCompletionMessage": "Kopyahin ang completion message sa clipboard",
     "copied": "Nakopya na!",
-    "portrait": "Portrait na Video"
+    "portrait": "Portrait na Video",
+    "rerender": "I-re-render",
+    "rerenderDesc": "Muli nitong bubuuin ang mga title at end screen, ang lyrics video, at bawat download gamit ang iyong kasalukuyang theme. Mananatili ang iyong lyrics at instrumental nang eksakto tulad ng na-review, kaya wala nang kailangang i-review ulit.",
+    "rerenderFailed": "Hindi masimulan ang pag-re-render: {error}",
+    "rerenderTime": "Karaniwang tumatagal ito nang mga 10-15 minuto. Hindi available ang mga download hangga't hindi ito natatapos.",
+    "rerenderTitle": "I-re-render gamit ang iyong kasalukuyang theme?",
+    "rerenderTooltip": "Muling buuin ang video na ito gamit ang iyong kasalukuyang theme"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Pamagat ng kanta sa malalaking titik",
     "close": "Isara",
     "saving": "Sini-save…",
-    "songTitle": "Pamagat ng kanta"
+    "songTitle": "Pamagat ng kanta",
+    "rerenderHint": "Para i-update ang isang track na nagawa mo na, gamitin ang I-re-render sa card nito."
   },
   "stalledDownload": {
     "actionFailedDesc": "Pakisubukang muli maya-maya.",

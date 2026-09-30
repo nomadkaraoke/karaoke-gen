@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox-URL kopieret",
     "copyCompletionMessage": "Kopier fuldførelsesbesked til udklipsholder",
     "copied": "Kopieret!",
-    "portrait": "Portrætvideo"
+    "portrait": "Portrætvideo",
+    "rerender": "Render igen",
+    "rerenderDesc": "Dette genopbygger titel- og slutskærmene, tekstvideoen og alle downloads med dit nuværende tema. Dine sangtekster og dit instrumentalspor forbliver præcis som gennemgået, så der er intet, der skal gennemgås igen.",
+    "rerenderFailed": "Kunne ikke starte genrenderingen: {error}",
+    "rerenderTime": "Det tager normalt omkring 10-15 minutter. Downloads er utilgængelige, indtil processen er færdig.",
+    "rerenderTitle": "Render igen med dit nuværende tema?",
+    "rerenderTooltip": "Genopbyg denne video med dit nuværende tema"
   },
   "themeSelector": {
     "videoTheme": "Videotema",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Sangtitel med store bogstaver",
     "close": "Luk",
     "saving": "Gemmer…",
-    "songTitle": "Sangtitel"
+    "songTitle": "Sangtitel",
+    "rerenderHint": "For at opdatere et nummer, du allerede har lavet, skal du bruge Render igen på dets kort."
   },
   "stalledDownload": {
     "actionFailedDesc": "Prøv igen om et øjeblik.",

@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox URL 已复制",
     "copyCompletionMessage": "将完成消息复制到剪贴板",
     "copied": "已复制！",
-    "portrait": "竖屏视频"
+    "portrait": "竖屏视频",
+    "rerender": "重新渲染",
+    "rerenderDesc": "这将使用您当前的主题重新生成片头和片尾画面、歌词视频以及所有下载内容。您的歌词和伴奏将完全保持审核后的状态，无需再次审核。",
+    "rerenderFailed": "无法开始重新渲染：{error}",
+    "rerenderTime": "通常需要大约 10-15 分钟。渲染完成前暂无法下载。",
+    "rerenderTitle": "使用当前主题重新渲染？",
+    "rerenderTooltip": "使用当前主题重新生成此视频"
   },
   "themeSelector": {
     "videoTheme": "视频主题",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "歌曲名大写",
     "close": "关闭",
     "saving": "保存中…",
-    "songTitle": "歌曲名称"
+    "songTitle": "歌曲名称",
+    "rerenderHint": "若要更新已制作的曲目，请在其卡片上使用“重新渲染”。"
   },
   "stalledDownload": {
     "actionFailedDesc": "请稍后再试。",
