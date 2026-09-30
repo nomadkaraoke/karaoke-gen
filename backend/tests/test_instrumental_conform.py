@@ -112,3 +112,15 @@ def test_conform_rejects_mid_song_edit(tmp_path):
     with pytest.raises(InstrumentalConformError, match="mid-song") as err:
         conform_instrumental(str(tmp_path / "mix.wav"), str(tmp_path / "inst.wav"), str(tmp_path / "o.flac"))
     assert err.value.mismatch
+
+
+def test_undecodable_input_is_a_rejecting_mismatch(tmp_path):
+    """Too-long/empty input fails identically on every retry, so it must be a
+    mismatch (reject), not a retryable processing error."""
+    from unittest.mock import patch
+    from backend.services.derived_vocals import DerivedVocalsError
+
+    with patch("backend.services.instrumental_conform._decode_mono", side_effect=DerivedVocalsError("too long")):
+        with pytest.raises(InstrumentalConformError) as err:
+            conform_instrumental("mix.wav", "inst.wav", str(tmp_path / "o.flac"))
+    assert err.value.mismatch

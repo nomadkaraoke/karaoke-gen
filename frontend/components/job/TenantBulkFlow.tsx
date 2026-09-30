@@ -402,7 +402,10 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     const submittable = rows.filter(r => rowIsValid(r, fileMap) && (r.status === "pending" || r.status === "error"))
     if (submittable.length === 0) return
     setIsSubmitting(true)
-    setRunRowIds(submittable.map(r => r.id))
+    // Rows being retried are queued, not failed, until a worker picks them up.
+    const runIds = new Set(submittable.map(r => r.id))
+    setRows(prev => prev.map(r => (runIds.has(r.id) && r.status === "error" ? { ...r, status: "pending", error: undefined } : r)))
+    setRunRowIds([...runIds])
     setError("")
     // Reuse the batch id across retries/recovery so jobs and IndexedDB records
     // stay grouped under one batch.

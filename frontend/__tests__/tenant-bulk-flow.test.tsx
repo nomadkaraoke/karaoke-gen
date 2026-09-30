@@ -524,6 +524,27 @@ it('a 400 on a still-pending job keeps the job for retry (no duplicate)', async 
   expect(second).toBe(first)
 })
 
+it('rows queued for retry are not counted as failed in the modal', async () => {
+  // Four rows fail, then are retried: only 3 start at once, the 4th waits.
+  const rows4 = [1, 2, 3, 4].map(i => ({ artist: 'A', title: `S${i}`, mixed_filename: `m${i}.mp3`, instrumental_filename: `i${i}.mp3`, confidence: 'high', warning: null }))
+  mockApi.analyzeBulk.mockResolvedValue({ rows: rows4, unpaired: [], ignored: [] })
+  const files = rows4.flatMap(r => [new File(['x'], r.mixed_filename, { type: 'audio/mpeg' }), new File(['x'], r.instrumental_filename, { type: 'audio/mpeg' })])
+  mockApi.createJobWithUploadUrls.mockRejectedValue(new Error('backend down'))
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  fireEvent.change(screen.getByTestId('bulk-files-input'), { target: { files } })
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 4 tracks/i }))
+  await waitFor(() => expect(screen.getAllByText(/will retry on submit/i)).toHaveLength(4))
+
+  // Retry with creation hanging, so rows stay queued / in flight.
+  mockApi.createJobWithUploadUrls.mockImplementation(() => new Promise(() => {}))
+  fireEvent.click(screen.getByRole('button', { name: /Submit 4 tracks/i }))
+  const detail = await screen.findByTestId('upload-progress-detail')
+  expect(detail).toHaveTextContent('0 of 4 tracks submitted')
+  expect(detail).not.toHaveTextContent('failed')
+})
+
 it('matchRepickedFile requires an exact size and disambiguates by mtime', () => {
   const { matchRepickedFile } = jest.requireActual('@/lib/upload-recovery')
   const persisted = { fileType: 'audio', identity: 'a.mp3', name: 'a.mp3', size: 1, lastModified: 111, sessionUri: 's' }

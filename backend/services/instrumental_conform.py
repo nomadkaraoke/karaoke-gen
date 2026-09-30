@@ -127,7 +127,9 @@ def conform_instrumental(mix_path: str, instrumental_path: str, out_path: str) -
         mix = _decode_mono(mix_path)
         inst = _decode_mono(instrumental_path)
     except DerivedVocalsError as e:
-        raise InstrumentalConformError(str(e)) from e
+        # Too long / undecodable input fails the same way every time: reject it
+        # rather than hand back a retryable error.
+        raise InstrumentalConformError(str(e), mismatch=True) from e
 
     # Measure the offset early and late in the song. One constant shift is all
     # this can fix, so the two must agree and both must be a genuine match.
