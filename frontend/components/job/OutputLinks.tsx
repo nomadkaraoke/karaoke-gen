@@ -221,9 +221,9 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   const hasExternalLinks = showYoutubeLink || showDropboxLink
 
   // Re-render with the portal's current theme (after a theme edit). Tenant
-  // portal only; the backend enforces the rest (ownership, allowlist, no
-  // external distribution).
-  const canRerender = !!tenantId && job.status === "complete" && !!hasDownloads && !hasExternalLinks
+  // portal only; the backend enforces the rest (ownership, allowlist, not
+  // published to YouTube/Drive — a tenant Dropbox archive is refreshed in place).
+  const canRerender = !!tenantId && job.status === "complete" && !!hasDownloads && !showYoutubeLink
 
   return (
     <div className="space-y-2">

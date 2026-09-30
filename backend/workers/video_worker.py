@@ -1140,7 +1140,8 @@ async def _handle_native_distribution(
     base_name = f"{safe_artist} - {safe_title}"
 
     # Check if we should preserve existing brand code (Batch 6: --keep-brand-code)
-    keep_brand_code = getattr(job, 'keep_brand_code', None)
+    from backend.services.theme_rerender_service import rerender_brand_code
+    keep_brand_code = getattr(job, 'keep_brand_code', None) or rerender_brand_code(job)
     if keep_brand_code:
         brand_code = keep_brand_code
         result['brand_code'] = brand_code

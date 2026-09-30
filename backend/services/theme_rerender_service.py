@@ -15,9 +15,10 @@ trigger the screens worker. The screens worker regenerates the screens with the
 new style, restores REVIEW_COMPLETE and triggers the render worker, which renders
 from the existing corrections; the video worker then re-encodes and completes.
 
-Scope is deliberately narrow: tenant jobs with no external distribution
-(YouTube/Dropbox/GDrive) — re-rendering a distributed job would need the
-delete/redistribute dance the visibility flow does, which tenants don't use.
+Scope: tenant jobs. A tenant Dropbox archive folder is refreshed in place under
+the job's existing brand code (see rerender_brand_code). Jobs published to
+YouTube/GDrive are rejected — those would need the delete/redistribute dance of
+the visibility flow, which tenants don't use.
 """
 import logging
 from datetime import datetime, timezone
@@ -85,9 +86,25 @@ def validate_rerender(job) -> Optional[str]:
         return "This track has no instrumental selection to re-render with."
     if not ((job.file_urls or {}).get("lyrics") or {}).get("corrections"):
         return "This track has no reviewed lyrics to re-render with."
-    if state_data.get("youtube_url") or state_data.get("dropbox_link") or state_data.get("gdrive_files"):
-        return "This track was published to YouTube/Dropbox/Drive and can't be re-rendered here."
+    if state_data.get("youtube_url") or state_data.get("gdrive_files"):
+        return "This track was published to YouTube/Google Drive and can't be re-rendered here."
+    # Tenant Dropbox archives (e.g. RVILD-0001 - Artist - Title) are refreshed in
+    # place, which needs the brand code the folder is named after.
+    if state_data.get("dropbox_link") and not state_data.get("brand_code"):
+        return "This track's Dropbox folder can't be identified, so it can't be re-rendered here."
     return None
+
+
+def rerender_brand_code(job) -> Optional[str]:
+    """Brand code a theme re-render must reuse, if one is in progress.
+
+    A re-render refreshes the job's existing Dropbox folder (uploads overwrite)
+    instead of allocating a new code. Scoped to the re-render marker (cleared on
+    success) rather than the job's ``keep_brand_code`` field so a later Edit,
+    which recycles the code, can't reuse it.
+    """
+    marker = (getattr(job, "state_data", None) or {}).get("theme_rerender") or {}
+    return marker.get("brand_code") or None
 
 
 class ThemeRerenderService:
@@ -140,6 +157,8 @@ class ThemeRerenderService:
                 "requested_by": requested_by,
                 "requested_at": now.isoformat(),
                 "theme_id": theme_id,
+                "brand_code": (job.state_data or {}).get("brand_code")
+                or ((job.state_data or {}).get("theme_rerender") or {}).get("brand_code"),
             },
             # The old screens are deleted below. Drop their file_urls so nothing
             # (e.g. a later retry) reuses them.
