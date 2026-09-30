@@ -211,8 +211,8 @@ class Settings(BaseSettings):
     # 2026-09-28 with a tiny sample image: us-central1 4-5 min vs us-east4 8-19s),
     # independent of image size or CPU. video-encoding-job reads ~0.3 GB/run from
     # the us-central1 bucket cross-region (~$1.60/mo, 2026-09-29 model). Rollback:
-    # set CPU_JOBS_REGION=us-central1 on the service AND the jobs (the download
-    # worker triggers the lyrics job). Deliberately separate from gcp_region,
+    # recreate the jobs in us-central1 via Pulumi, then set CPU_JOBS_REGION on the
+    # service AND the jobs (see docs/TROUBLESHOOTING.md). Deliberately separate from gcp_region,
     # which these workers use for other resources (queues, encoding VM zones).
     cpu_jobs_region: str = os.getenv("CPU_JOBS_REGION", "us-east4")
     
