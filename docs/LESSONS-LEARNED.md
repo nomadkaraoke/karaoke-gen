@@ -6,7 +6,7 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
-## Re-running the render pipeline: three ways the OLD output sneaks back in (Sep 2026, v0.252.0)
+## Re-running the render pipeline: three ways the OLD output sneaks back in (Sep 2026, v0.253.0)
 
 Building "re-render with the current theme" turned up three traps. Any path that re-runs screens/render/encode on a finished job (edit, visibility change, admin reset, theme re-render) has to handle all three.
 
