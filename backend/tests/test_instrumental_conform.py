@@ -96,3 +96,17 @@ def test_build_filter_delays_late_start_and_pads_short_outro():
     assert af.startswith("adelay=delays=1500.000:all=1")
     assert "apad=whole_dur=200.000000" in af
     assert "afade" not in af
+
+
+@requires_ffmpeg
+def test_conform_rejects_mid_song_edit(tmp_path):
+    """A bar removed in the middle: the start lines up but the second half is
+    early. A start/end fix would hide that, so it must be rejected."""
+    inst, vocals = _song(180)
+    mix = inst + vocals
+    cut = int(90 * SR)  # between the early (45s) and late (135s) alignment windows
+    edited = np.concatenate([inst[:cut], inst[cut + int(1.5 * SR):]])
+    _write_wav(tmp_path / "mix.wav", mix)
+    _write_wav(tmp_path / "inst.wav", edited)
+    with pytest.raises(InstrumentalConformError, match="mid-song"):
+        conform_instrumental(str(tmp_path / "mix.wav"), str(tmp_path / "inst.wav"), str(tmp_path / "o.flac"))

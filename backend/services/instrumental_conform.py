@@ -7,7 +7,8 @@ instrumental must start at the same moment and run the same length. Rather than
 reject the job, we find the start offset by cross-correlation (the same method
 as derived_vocals), then trim/pad the start and trim (with a fade) or pad the
 end so it matches the mix exactly. Files that don't correlate at all are almost
-certainly the wrong pairing and are still rejected.
+certainly the wrong pairing and are still rejected, as are files whose offset
+changes between early and late in the song (an edit in the middle).
 
 Runs in the API request (uploads-complete), so it decodes a bounded mono copy
 for alignment and does the actual edit with one ffmpeg pass on the original.
@@ -36,6 +37,12 @@ ALIGN_WINDOW_SECONDS = 60.0
 MIN_CORRELATION = 0.3
 # Fade applied when the instrumental's extra outro is cut at the mix's end.
 END_FADE_SECONDS = 2.0
+# Offsets measured early and late in the song must agree this closely; a bigger
+# difference means an edit in the middle (removed bar, longer bridge), which a
+# single start/end fix can't correct.
+MAX_OFFSET_DRIFT_SECONDS = 0.02
+# Where the two alignment excerpts start, as a fraction of the mix length.
+ALIGN_POINTS = (0.25, 0.75)
 # How close the conformed file must land to the mix length.
 LENGTH_TOLERANCE_SECONDS = 0.05
 FFMPEG_TIMEOUT_SECONDS = 180
@@ -68,10 +75,11 @@ def _probe_duration(path: str) -> float:
     return float(json.loads(out)["format"]["duration"])
 
 
-def _aligned_correlation(mix: np.ndarray, inst: np.ndarray, lag: int, window: int) -> float:
+def _aligned_correlation(mix: np.ndarray, inst: np.ndarray, lag: int, window: int,
+                         start_fraction: float = 0.25) -> float:
     """Pearson correlation of a mix excerpt vs the instrumental shifted by lag."""
     window = max(1, min(window, len(mix)))
-    start = min(len(mix) // 4, len(mix) - window)
+    start = min(int(len(mix) * start_fraction), len(mix) - window)
     excerpt = mix[start: start + window].astype(np.float64)
     shifted = np.zeros(window, dtype=np.float64)
     lo = start - lag
@@ -115,13 +123,27 @@ def conform_instrumental(mix_path: str, instrumental_path: str, out_path: str) -
     except DerivedVocalsError as e:
         raise InstrumentalConformError(str(e)) from e
 
+    # Measure the offset early and late in the song. One constant shift is all
+    # this can fix, so the two must agree and both must be a genuine match.
     window = int(ALIGN_WINDOW_SECONDS * SAMPLE_RATE)
-    lag = find_offset(mix, inst, int(MAX_LAG_SECONDS * SAMPLE_RATE), window)
-    correlation = _aligned_correlation(mix, inst, lag, window)
+    max_lag = int(MAX_LAG_SECONDS * SAMPLE_RATE)
+    lags, correlations = [], []
+    for fraction in ALIGN_POINTS:
+        point_lag = find_offset(mix, inst, max_lag, window, start_fraction=fraction)
+        lags.append(point_lag)
+        correlations.append(_aligned_correlation(mix, inst, point_lag, window, start_fraction=fraction))
+    correlation = min(correlations)
     if correlation < MIN_CORRELATION:
         raise InstrumentalConformError(
             f"instrumental doesn't match the mix (correlation {correlation:.2f})"
         )
+    drift = abs(lags[1] - lags[0]) / SAMPLE_RATE
+    if drift > MAX_OFFSET_DRIFT_SECONDS:
+        raise InstrumentalConformError(
+            f"instrumental is edited differently mid-song (offset {lags[0] / SAMPLE_RATE:+.3f}s early "
+            f"vs {lags[1] / SAMPLE_RATE:+.3f}s late)"
+        )
+    lag = lags[0]
 
     mix_duration = _probe_duration(mix_path)
     original_duration = _probe_duration(instrumental_path)
