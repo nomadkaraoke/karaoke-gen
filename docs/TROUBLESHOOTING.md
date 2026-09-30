@@ -790,16 +790,23 @@ done
 
 **Rollback to us-central1.** The legacy us-central1 copies were removed on 2026-09-30, after the
 us-east4 jobs were verified in prod. To move back:
-1. Pulumi (`infrastructure/__main__.py`): set `CPU_JOBS_REGION = "us-central1"` in
-   `modules/cloud_run.py` (the jobs then use the default region and the `karaoke-repo` image), or add
-   `create_*_job(bucket, backend_service_account)` calls with no `region=` argument. Then run
-   `pulumi up`.
-2. Change the backend default `CPU_JOBS_REGION` in `backend/config.py` to match. A unit test enforces
-   that the two match. Deploy.
-3. Update the CI "Update Cloud Run Jobs" step (`ci.yml`) and `scripts/rollback.sh` to use us-central1
-   and the `karaoke-repo` image.
+1. **Add** the us-central1 jobs in Pulumi alongside the us-east4 ones: in `infrastructure/__main__.py`,
+   add `create_*_job(bucket, backend_service_account)` calls with no `region=` argument, so they use
+   the default region and the `karaoke-repo` image. Run `pulumi up`. Don't change the
+   `CPU_JOBS_REGION` constant yet, because that would replace the us-east4 jobs the live backend is
+   still using.
+2. **Switch** the backend with the env var, not the constants. Add `CPU_JOBS_REGION=us-central1` to
+   the service's `--set-env-vars` in `ci.yml`, and point the CI "Update Cloud Run Jobs" step at
+   us-central1 and `karaoke-repo`. Changing the Pulumi constant now would re-point the us-east4
+   declarations onto the same logical names as the step-1 jobs. Deploy, and confirm new executions
+   land in us-central1. The download/bulk-search/video jobs trigger other jobs, so add the same env
+   var to the us-central1 job definitions from step 1.
+3. **Remove** the us-east4 job declarations in Pulumi, then set both `CPU_JOBS_REGION` defaults
+   (`backend/config.py` and `infrastructure/modules/cloud_run.py`; a unit test enforces that they
+   match) to `us-central1`. Run `pulumi up`. Update `scripts/rollback.sh` to use us-central1 and the
+   `karaoke-repo` image.
 
-A rollback of the backend service to before v0.247.1 also needs step 1, because older revisions
+A rollback of the backend service to before v0.247.1 also needs step 1 first, because older revisions
 trigger the jobs in us-central1.
 
 ## Frontend error alert ("New Error Pattern Detected", service `frontend`)
