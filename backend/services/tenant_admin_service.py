@@ -670,9 +670,6 @@ def update_tenant(
         defaults_updates["dropbox_path"] = dropbox_path
         defaults_updates["brand_prefix"] = brand_prefix
         merged_updates["defaults"] = defaults_updates
-        features = dict(merged_updates.get("features") or {})
-        features["dropbox_upload"] = bool(dropbox_path)
-        merged_updates["features"] = features
 
     # 5. Config merge (access lists normalized; any allowlist => enforced)
     auth_updates = merged_updates.get("auth")
@@ -687,6 +684,7 @@ def update_tenant(
         merged_updates["auth"] = auth_updates
     if merged_updates:
         config = _merge_config(config, merged_updates)
+    config.features.dropbox_upload = bool(config.defaults.dropbox_path)
     if isinstance(auth_updates, dict) and "require_email_domain" not in auth_updates:
         config.auth.require_email_domain = bool(
             config.auth.allowed_email_domains or config.auth.allowed_emails

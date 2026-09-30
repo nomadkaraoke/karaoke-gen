@@ -730,3 +730,11 @@ def test_update_keeping_own_prefix_is_not_a_conflict(fake_storage):
 def test_list_tenants_includes_brand_prefix(fake_storage):
     tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
     assert tas.list_tenants(storage=fake_storage)[0]["brand_prefix"] == "RVILD"
+
+
+def test_update_features_only_cannot_desync_dropbox_flag(fake_storage):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    updated = tas.update_tenant(
+        "randy-vild", config_updates={"features": {"dropbox_upload": True}}, storage=fake_storage
+    )
+    assert updated.features.dropbox_upload is False  # no path → flag stays off

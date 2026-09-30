@@ -10,7 +10,8 @@ export function suggestDelivery(name: string): { dropbox_path: string; brand_pre
   const pascal = words.map((w) => w[0].toUpperCase() + w.slice(1)).join("")
   const initials = words.slice(0, -1).map((w) => w[0]).join("")
   const prefix = (initials + words[words.length - 1]).toUpperCase().replace(/^[0-9]+/, "").slice(0, 8)
-  return { dropbox_path: `${DROPBOX_TENANT_PARENT}/Tracks-${pascal}`, brand_prefix: prefix }
+  // Backend requires 2-12 chars; leave it blank for the admin to fill in rather than suggest an invalid one.
+  return { dropbox_path: `${DROPBOX_TENANT_PARENT}/Tracks-${pascal}`, brand_prefix: prefix.length >= 2 ? prefix : "" }
 }
 
 /** Dropbox delivery needs both fields (the worker skips the upload otherwise). */

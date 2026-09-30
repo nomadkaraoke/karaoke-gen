@@ -13,6 +13,10 @@ describe('suggestDelivery', () => {
     expect(suggestDelivery('  ')).toEqual({ dropbox_path: '', brand_prefix: '' })
   })
 
+  it('leaves the prefix blank rather than suggest an invalid 1-char one', () => {
+    expect(suggestDelivery('X').brand_prefix).toBe('')
+  })
+
   it('caps the prefix at 8 chars and never starts with a digit', () => {
     expect(suggestDelivery('Supercalifragilistic').brand_prefix).toBe('SUPERCAL')
     expect(suggestDelivery('99 Luftballons').brand_prefix).toBe('LUFTBALL')
