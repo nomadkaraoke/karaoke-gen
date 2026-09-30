@@ -162,6 +162,52 @@ class TestThemeRerenderService:
         storage.delete_file.assert_not_called()
 
 
+class TestRerenderReviewFixes:
+    @pytest.mark.asyncio
+    async def test_deletes_old_title_end_movs_from_finals(self, patched_deps):
+        """The encoder globs **/*Title*.mov — an old finals MOV would be spliced in."""
+        service, _, storage, worker_service = _service()
+        storage.list_files.return_value = [
+            "jobs/job123/finals/Randy Vild - What Goes Up (Title).mov",
+            "jobs/job123/finals/Randy Vild - What Goes Up (End).mov",
+            "jobs/job123/finals/title_mov.mov",
+            "jobs/job123/finals/end_mov.mov",
+            "jobs/job123/finals/lossy_4k_mp4.mp4",
+            "jobs/job123/finals/lossless_4k_mkv.mkv",
+        ]
+        with patch("backend.services.worker_service.get_worker_service", return_value=worker_service):
+            await service.start(_job(), theme_id="randy-vild", requested_by="x")
+
+        storage.list_files.assert_called_once_with("jobs/job123/finals/")
+        deleted = {c.args[0] for c in storage.delete_file.call_args_list}
+        assert "jobs/job123/finals/Randy Vild - What Goes Up (Title).mov" in deleted
+        assert "jobs/job123/finals/Randy Vild - What Goes Up (End).mov" in deleted
+        assert "jobs/job123/finals/title_mov.mov" in deleted
+        assert "jobs/job123/finals/end_mov.mov" in deleted
+        assert "jobs/job123/finals/lossy_4k_mp4.mp4" not in deleted
+        assert "jobs/job123/finals/lossless_4k_mkv.mkv" not in deleted
+
+    def test_failed_rerender_is_rerenderable(self):
+        job = _job(status="failed", state_data={"instrumental_selection": "custom",
+                                                 "theme_rerender": {"theme_id": "randy-vild"}})
+        assert validate_rerender(job) is None
+
+    def test_failed_ordinary_job_is_not_rerenderable(self):
+        assert "Only finished tracks" in validate_rerender(_job(status="failed"))
+
+    @pytest.mark.asyncio
+    async def test_claims_failed_rerender(self, patched_deps):
+        service, _, _, worker_service = _service(claim_status="failed")
+        transaction = service.job_manager.firestore.db.transaction.return_value
+        job = _job(status="failed", state_data={"instrumental_selection": "custom",
+                                                 "theme_rerender": {"theme_id": "randy-vild"}})
+        with patch("backend.services.worker_service.get_worker_service", return_value=worker_service):
+            await service.start(job, theme_id="randy-vild", requested_by="x")
+        transaction.update.assert_called_once()
+        assert transaction.update.call_args.args[1]["error_message"] is None
+        worker_service.trigger_screens_worker.assert_awaited_once_with("job123")
+
+
 class TestEncodingWorkerJobId:
     def test_generation_zero_keeps_plain_job_id(self):
         assert encoding_worker_job_id("job123", 0) == "job123"
@@ -271,3 +317,27 @@ class TestRerenderRoute:
         start = AsyncMock(side_effect=RerenderConflictError("already"))
         resp, _ = _call(client, _auth(), _job(), _tenant(), start=start)
         assert resp.status_code == 409
+
+
+class TestRetryAfterFailedRerender:
+    def test_retry_reruns_rerender_when_screens_missing(self, client):
+        test_client, app = client
+        from backend.api.dependencies import require_auth
+
+        async def override():
+            return _auth()
+
+        app.dependency_overrides[require_auth] = override
+        job = _job(status="failed", state_data={"instrumental_selection": "custom",
+                                                 "theme_rerender": {"theme_id": "randy-vild"}})
+        job.error_details = {"stage": "screens"}
+        job_manager = MagicMock()
+        job_manager.get_job.return_value = job
+        start = AsyncMock()
+        with patch("backend.api.routes.jobs.job_manager", job_manager), \
+             patch("backend.api.routes.jobs.JobManager", return_value=job_manager), \
+             patch.object(ThemeRerenderService, "start", start):
+            resp = test_client.post("/api/jobs/job123/retry")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["retry_stage"] == "theme_rerender"
+        assert start.await_args.kwargs["theme_id"] == "randy-vild"

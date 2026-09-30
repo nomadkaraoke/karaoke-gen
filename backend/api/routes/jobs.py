@@ -2080,6 +2080,28 @@ async def retry_job(
         # Check what state exists to determine retry point
         file_urls = job.file_urls or {}
         state_data = job.state_data or {}
+
+        # A theme re-render that failed before its new screens were made: re-run
+        # the re-render (not the generic ladder below, which could send the job
+        # back to review). Once screens exist, the render/video branches below
+        # resume it correctly.
+        theme_rerender = state_data.get('theme_rerender') or {}
+        if (theme_rerender.get('theme_id') and original_status == JobStatus.FAILED
+                and not _has_title_screen(file_urls)):
+            from backend.services.theme_rerender_service import RerenderError, ThemeRerenderService
+            try:
+                await ThemeRerenderService(job_manager).start(
+                    job, theme_id=theme_rerender['theme_id'],
+                    requested_by=auth_result.user_email or "unknown",
+                )
+            except RerenderError as e:
+                raise HTTPException(status_code=e.status_code, detail=str(e))
+            return {
+                "status": "success",
+                "job_status": "lyrics_complete",
+                "message": "Job retry: re-running the theme re-render",
+                "retry_stage": "theme_rerender",
+            }
         
         # If we have a video with vocals and instrumental selection, retry video generation
         if (file_urls.get('videos', {}).get('with_vocals') and 

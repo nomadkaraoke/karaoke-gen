@@ -398,6 +398,9 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 # this job distributes anywhere (tenant jobs never do).
                 'outputs_deleted_at': None,
                 'outputs_deleted_by': None,
+                # A theme re-render (if any) finished; only a FAILED re-render
+                # keeps this marker (it lets the retry re-run the re-render).
+                'state_data.theme_rerender': DELETE_FIELD,
             }
             if result.distribution_warnings:
                 state_updates['state_data.distribution_warnings'] = result.distribution_warnings

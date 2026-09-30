@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 # Screens + lyrics video are regenerated; stale copies must go so the encoder
 # can't reuse them (it prefers an existing screens/*.mov over the new PNG).
+# Old title/end MOVs in finals/ are removed separately (see _delete_stale_artifacts).
 _REGENERATED_ARTIFACTS = [
     "screens/title.mov",
     "screens/title.jpg",
@@ -59,11 +60,19 @@ class RerenderConflictError(RerenderError):
         super().__init__(message, status_code=409)
 
 
+def _claimable_statuses(job) -> set:
+    """COMPLETE, plus FAILED when the failure was a re-render (so it can be retried)."""
+    statuses = {JobStatus.COMPLETE.value}
+    if (job.state_data or {}).get("theme_rerender"):
+        statuses.add(JobStatus.FAILED.value)
+    return statuses
+
+
 def validate_rerender(job) -> Optional[str]:
     """Return a reason the job can't be re-rendered, or None if it can."""
     if not getattr(job, "tenant_id", None):
         return "Re-rendering with the current theme is only available for portal tracks."
-    if job.status != JobStatus.COMPLETE.value:
+    if job.status not in _claimable_statuses(job):
         return f"Only finished tracks can be re-rendered (current status: {job.status})."
     if getattr(job, "outputs_deleted_at", None):
         return "This track's outputs were deleted, so it can't be re-rendered."
@@ -143,21 +152,17 @@ class ThemeRerenderService:
                 "message": f"Re-render with current theme '{theme_id}' requested by {requested_by}",
             }]),
         }
-        self._claim(job_id, update)
+        self._claim(job_id, update, _claimable_statuses(job))
 
-        for rel in _REGENERATED_ARTIFACTS:
-            try:
-                self.storage.delete_file(f"jobs/{job_id}/{rel}", ignore_missing=True)
-            except Exception as e:  # best-effort, like the visibility flow
-                logger.warning(f"[job:{job_id}] Re-render: failed to delete {rel}: {e}")
+        self._delete_stale_artifacts(job_id)
 
         from backend.services.worker_service import get_worker_service
         triggered = await get_worker_service().trigger_screens_worker(job_id)
         if not triggered:
-            logger.error(f"[job:{job_id}] Re-render: failed to trigger screens worker, restoring complete")
+            logger.error(f"[job:{job_id}] Re-render: failed to trigger screens worker, restoring {job.status}")
             self.job_manager.update_job(job_id, {
-                "status": JobStatus.COMPLETE.value,
-                "progress": 100,
+                "status": job.status,
+                "progress": 100 if job.status == JobStatus.COMPLETE.value else job.progress,
                 "state_data.regen_restore_status": DELETE_FIELD,
                 "state_data.theme_rerender": DELETE_FIELD,
             })
@@ -165,8 +170,33 @@ class ThemeRerenderService:
 
         logger.info(f"[job:{job_id}] Re-render with theme '{theme_id}' started by {requested_by}")
 
-    def _claim(self, job_id: str, update: dict) -> None:
-        """Atomically apply ``update`` iff the job is still COMPLETE."""
+    def _delete_stale_artifacts(self, job_id: str) -> None:
+        """Best-effort removal of everything the re-render regenerates.
+
+        The GCE encoder looks up the title/end MOV with ``**/*Title*.mov`` /
+        ``**/*End*.mov`` across everything it downloaded from ``jobs/{id}/``, so
+        once ``screens/title.mov`` is gone it would pick up the OLD
+        ``finals/<Artist> - <Title> (Title).mov`` (or ``finals/title_mov.mov``)
+        and splice the old theme's intro/outro around the new lyrics video.
+        finals/ only holds MOVs for those title/end cards, so drop every MOV there.
+        The MP4/MKV/zip finals stay (overwritten by the re-render).
+        """
+        paths = [f"jobs/{job_id}/{rel}" for rel in _REGENERATED_ARTIFACTS]
+        try:
+            paths += [
+                p for p in self.storage.list_files(f"jobs/{job_id}/finals/")
+                if p.lower().endswith(".mov")
+            ]
+        except Exception as e:
+            logger.warning(f"[job:{job_id}] Re-render: failed to list finals: {e}")
+        for path in paths:
+            try:
+                self.storage.delete_file(path, ignore_missing=True)
+            except Exception as e:  # best-effort, like the visibility flow
+                logger.warning(f"[job:{job_id}] Re-render: failed to delete {path}: {e}")
+
+    def _claim(self, job_id: str, update: dict, allowed_statuses: set) -> None:
+        """Atomically apply ``update`` iff the job's status is still claimable."""
         db = self.job_manager.firestore.db
         job_ref = db.collection("jobs").document(job_id)
 
@@ -174,7 +204,7 @@ class ThemeRerenderService:
         def claim(transaction):
             snapshot = job_ref.get(transaction=transaction)
             status = (snapshot.to_dict() or {}).get("status") if snapshot.exists else None
-            if status != JobStatus.COMPLETE.value:
+            if status not in allowed_statuses:
                 return False
             transaction.update(job_ref, update)
             return True
