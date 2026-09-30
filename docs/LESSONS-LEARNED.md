@@ -2157,7 +2157,7 @@ pre-tenant `themes/_metadata.json` two minutes after it was rewritten.
 - Removing an IAM member that Pulumi doesn't manage needs an explicit
   `gcloud storage buckets remove-iam-policy-binding`; PAP=enforced blocks it meanwhile.
 
-## Tenant Dropbox delivery: path + prefix + folder, and jobs snapshot at creation (2026-09-30, v0.252.0)
+## Tenant Dropbox delivery: path + prefix + folder, and jobs snapshot at creation (2026-09-30, v0.254.0)
 
 The Randy Vild tenant was created with a blank (optional) Dropbox path, so every job was
 download-only and the completion email said "Here's the dropbox folder…" followed by
