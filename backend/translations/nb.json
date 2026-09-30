@@ -53,8 +53,9 @@
     "instrumentalUploadBadPath": "Ugyldig referanse for opplasting av instrumental. Prøv å laste opp på nytt.",
     "instrumentalUploadBadType": "Lydfiltypen støttes ikke. Vennligst last opp en av følgende: {allowed}.",
     "instrumentalUploadMissing": "Vi fant ikke den opplastede instrumentalen din. Det kan hende opplastingen ikke ble fullført. Prøv igjen.",
-    "uploadDurationMismatchCancelled": "Ulik varighet: instrumentalen er {instrumental_duration}s, men sanglyden er {audio_duration}s (de må stemme overens innen 0,5 s). Denne jobben har blitt kansellert og kreditten din er refundert. Vennligst send inn på nytt med filer som stemmer overens.",
-    "instrumentalUploadTooLarge": "Denne instrumentalfilen er på {size_mb} MB, noe som er over grensen på {max_mb} MB. Vennligst last opp en FLAC- eller MP3-versjon i stedet."
+    "uploadDurationMismatchCancelled": "Instrumentalsporet ({instrumental_duration}s) stemmer ikke overens med sanglyden ({audio_duration}s), så det kan være feil fil for denne sangen. Denne jobben har blitt kansellert og kreditten din er refundert. Vennligst sjekk filene og send inn på nytt.",
+    "instrumentalUploadTooLarge": "Denne instrumentalfilen er på {size_mb} MB, noe som er over grensen på {max_mb} MB. Vennligst last opp en FLAC- eller MP3-versjon i stedet.",
+    "instrumentalConformUnavailable": "Vi kunne ikke behandle instrumentalen din akkurat nå. Prøv å sende inn på nytt om et øyeblikk."
   },
   "review": {
     "jobNotFound": "Jobben ble ikke funnet",

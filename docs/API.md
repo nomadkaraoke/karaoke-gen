@@ -221,8 +221,18 @@ jobs still awaiting upload 6h after creation (signed URLs expire at 60 min, but 
 PUT can outlast that), or 24h if some files already landed under `uploads/{job_id}/`. Tenant
 bulk (`batch_id`) jobs are exempt.
 
-A signed-in user can't finalize another user's job (admins and email-less API tokens can). With an `existing_instrumental` file, a >0.5s
-duration mismatch cancels the job (credit refunded) and returns 400
+A signed-in user can't finalize another user's job (admins and email-less API tokens can).
+
+With an `existing_instrumental` file whose length differs from the mix by >0.5s, the backend
+lines the instrumental up with the mix (`backend/services/instrumental_conform.py`): it finds the
+start offset by FFT cross-correlation at 25% and 75% of the song (±15s), trims/pads the start,
+then trims the end with a 2s fade or pads it with silence to the mix length. The conformed FLAC
+is stored at `uploads/{job_id}/conformed/existing_instrumental.flac` (becomes
+`existing_instrumental_gcs_path`; the original upload is kept) and the adjustment is recorded in
+`state_data.instrumental_conformed` (`start_trimmed_seconds`, `end_trimmed_seconds`,
+`correlation`, `original_gcs_path`, …). Only when that fails — correlation < 0.3 (wrong file) or
+the two offsets differ by >20 ms (edited differently mid-song) — is the job cancelled (credit
+refunded) with 400
 `{detail: {error: "duration_mismatch", message, audio_duration, instrumental_duration, difference}}`.
 
 **Optional fields:**

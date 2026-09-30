@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Negeren",
     "retryingConn": "Verbindingsprobleem — opnieuw proberen…",
     "sessionExpired": "Uploadsessie verlopen — verwijder deze track en start opnieuw",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "{count} tracks uploaden",
+    "uploadModalTracksDone": "{done} van {count} tracks ingediend",
+    "uploadModalTracksFailed": "{count} mislukt, je kunt het hierna opnieuw proberen"
   },
   "requests": {
     "convertBody": "Gebruik de Generator zelf en maak nu meteen je karaokevideo — de eerste krijg je van ons.",

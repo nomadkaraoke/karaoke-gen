@@ -96,15 +96,16 @@ def _encode_flac(samples: np.ndarray, out_path: str, sample_rate: int = SAMPLE_R
 
 
 def find_offset(mix: np.ndarray, inst: np.ndarray, max_lag: int,
-                window: int = int(ALIGN_WINDOW_SECONDS * SAMPLE_RATE)) -> int:
+                window: int = int(ALIGN_WINDOW_SECONDS * SAMPLE_RATE),
+                start_fraction: float = 0.25) -> int:
     """Lag (samples) that best aligns inst to mix: mix[n] ≈ inst[n - lag].
 
-    Correlates a `window`-sample excerpt of the mix (from a quarter of the way
-    in, past intros) against the matching instrumental span ±max_lag, so memory
-    and time are independent of track length.
+    Correlates a `window`-sample excerpt of the mix (by default from a quarter
+    of the way in, past intros) against the matching instrumental span
+    ±max_lag, so memory and time are independent of track length.
     """
     window = max(1, min(window, len(mix)))
-    start = min(len(mix) // 4, len(mix) - window)
+    start = min(int(len(mix) * start_fraction), len(mix) - window)
     excerpt = mix[start: start + window].astype(np.float64)
 
     # Instrumental span covering every candidate lag, zero-padded where it runs

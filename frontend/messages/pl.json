@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Odrzuć",
     "retryingConn": "Problem z połączeniem — ponawianie…",
     "sessionExpired": "Sesja przesyłania wygasła — usuń ten utwór i zacznij od nowa",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Przesyłanie {count} utworów",
+    "uploadModalTracksDone": "Przesłano {done} z {count} utworów",
+    "uploadModalTracksFailed": "{count} nie powiodło się, możesz spróbować ponownie później"
   },
   "requests": {
     "convertBody": "Użyj Generatora i stwórz swoje wideo karaoke już teraz — pierwsze jest na nasz koszt.",

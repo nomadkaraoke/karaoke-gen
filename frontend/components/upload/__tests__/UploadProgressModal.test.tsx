@@ -80,4 +80,19 @@ describe("UploadProgressModal", () => {
     rerender(<UploadProgressModal progress={{ phase: "finalizing", loaded: 100 * MB, total: 100 * MB }} />)
     expect(screen.getByText("Upload complete, finishing up...")).toBeInTheDocument()
   })
+
+  it("accepts a custom title, detail line and connection notice in place of the ETA", () => {
+    render(
+      <UploadProgressModal
+        progress={{ phase: "uploading", loaded: 1 * MB, total: 10 * MB }}
+        title="Uploading 10 tracks"
+        detail="3 of 10 tracks submitted"
+        notice="Waiting for connection"
+      />
+    )
+    expect(screen.getByText("Uploading 10 tracks")).toBeInTheDocument()
+    expect(screen.getByTestId("upload-progress-detail")).toHaveTextContent("3 of 10 tracks submitted")
+    expect(screen.getByText("Waiting for connection")).toBeInTheDocument()
+    expect(screen.queryByText("Estimating time left...")).not.toBeInTheDocument()
+  })
 })

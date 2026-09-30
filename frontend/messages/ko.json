@@ -1828,7 +1828,10 @@
     "resumeDiscard": "버리기",
     "retryingConn": "연결이 불안정합니다 — 다시 시도 중…",
     "sessionExpired": "업로드 세션이 만료되었습니다 — 해당 트랙을 삭제한 후 다시 시작해 주세요",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "{count}개 트랙 업로드 중",
+    "uploadModalTracksDone": "{count}개 중 {done}개 트랙 제출 완료",
+    "uploadModalTracksFailed": "{count}개 실패, 나중에 다시 시도할 수 있습니다"
   },
   "requests": {
     "convertBody": "직접 Generator를 사용해 지금 바로 가라오케 영상을 만들어 보세요 — 첫 번째는 무료입니다.",

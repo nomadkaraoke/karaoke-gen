@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Hủy bỏ",
     "retryingConn": "Gián đoạn kết nối — đang thử lại…",
     "sessionExpired": "Phiên tải lên đã hết hạn — hãy xóa bài hát này và bắt đầu lại",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Đang tải lên {count} bài hát",
+    "uploadModalTracksDone": "Đã gửi {done} trên {count} bài hát",
+    "uploadModalTracksFailed": "{count} bài thất bại, bạn có thể thử lại sau"
   },
   "requests": {
     "convertBody": "Hãy tự dùng Generator để tạo video karaoke ngay bây giờ — video đầu tiên hoàn toàn miễn phí.",

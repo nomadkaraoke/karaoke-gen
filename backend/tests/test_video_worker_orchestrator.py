@@ -767,6 +767,40 @@ class TestVideoWorkerOrchestratorEncoding:
             assert orchestrator.result.final_video_720p == "/output/720p.mp4"
             assert orchestrator.result.encoding_time_seconds == 120.5
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("recorded, expected_src, expected_dest", [
+        # Conformed (lined-up) copy recorded on the job wins over the raw upload.
+        ("uploads/test-job/conformed/existing_instrumental.flac",
+         "uploads/test-job/conformed/existing_instrumental.flac", "jobs/test-job/custom_instrumental.flac"),
+        # Legacy jobs without a recorded path still find the upload by prefix.
+        (None, "uploads/test-job/audio/existing_instrumental.wav", "jobs/test-job/custom_instrumental.wav"),
+    ])
+    async def test_gce_stages_recorded_instrumental(self, recorded, expected_src, expected_dest):
+        from backend.services.encoding_interface import EncodingOutput
+
+        config = OrchestratorConfig(
+            job_id="test-job", artist="A", title="T",
+            title_video_path="/t.mov", karaoke_video_path="/k.mov",
+            instrumental_audio_path="/a.flac", output_dir="/out",
+            existing_instrumental_gcs_path=recorded,
+        )
+        storage = MagicMock()
+        storage.list_files.return_value = ["uploads/test-job/audio/existing_instrumental.wav"]
+        orchestrator = VideoWorkerOrchestrator(config, storage=storage)
+        backend = MagicMock()
+        backend.name = "gce"
+        backend.encode = AsyncMock(return_value=EncodingOutput(
+            success=True, lossless_4k_mp4_path="/out/l.mp4", lossy_4k_mp4_path="/out/y.mp4",
+            lossy_720p_mp4_path="/out/7.mp4", lossless_mkv_path="/out/l.mkv",
+            encoding_time_seconds=1.0, encoding_backend="gce",
+        ))
+        with patch.object(orchestrator, "_get_encoding_backend", return_value=backend):
+            try:
+                await orchestrator._run_encoding()
+            except Exception:
+                pass  # later GCS result handling isn't under test here
+        storage.copy_blob.assert_any_call(expected_src, expected_dest)
+
     def test_encoding_input_gcs_paths_pattern(self):
         """Test that EncodingInput.options contains proper GCS paths structure.
 

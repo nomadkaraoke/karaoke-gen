@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Отменить",
     "retryingConn": "Сбой подключения — повторная попытка…",
     "sessionExpired": "Сессия загрузки истекла — удали этот трек и начни заново",
-    "speedMBs": "{mb} МБ/с"
+    "speedMBs": "{mb} МБ/с",
+    "uploadModalTitle": "Загрузка {count} треков",
+    "uploadModalTracksDone": "Отправлено {done} из {count} треков",
+    "uploadModalTracksFailed": "Не удалось: {count}, ты сможешь повторить попытку позже"
   },
   "requests": {
     "convertBody": "Воспользуйся Generator и сделай караоке-видео прямо сейчас — первое за наш счет.",

@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Abandonner",
     "retryingConn": "Problème de connexion — nouvelle tentative…",
     "sessionExpired": "La session d'envoi a expiré — retire cette piste et recommence",
-    "speedMBs": "{mb} Mo/s"
+    "speedMBs": "{mb} Mo/s",
+    "uploadModalTitle": "Téléversement de {count} pistes",
+    "uploadModalTracksDone": "{done} sur {count} pistes envoyées",
+    "uploadModalTracksFailed": "{count} ont échoué, tu pourras réessayer ensuite"
   },
   "requests": {
     "convertBody": "Utilise le Generator pour créer ta vidéo karaoké toi-même dès maintenant — la première est offerte.",

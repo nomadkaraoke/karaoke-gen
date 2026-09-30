@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Elvetés",
     "retryingConn": "Kapcsolati hiba — újrapróbálkozás…",
     "sessionExpired": "A feltöltési munkamenet lejárt — távolítsd el ezt a számot, és kezdd újra",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "{count} szám feltöltése",
+    "uploadModalTracksDone": "{done} / {count} szám beküldve",
+    "uploadModalTracksFailed": "{count} sikertelen, utána újrapróbálhatod"
   },
   "requests": {
     "convertBody": "Használd a Generatort, és készítsd el a saját karaoke videódat most azonnal — az első a mi ajándékunk.",

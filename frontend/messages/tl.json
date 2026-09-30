@@ -1828,7 +1828,10 @@
     "resumeDiscard": "I-discard",
     "retryingConn": "May problema sa koneksyon — sinusubukang muli…",
     "sessionExpired": "Nag-expire na ang upload session — alisin ang track na ito at simulan muli",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Ina-upload ang {count} na track",
+    "uploadModalTracksDone": "{done} sa {count} na track ang naisumite",
+    "uploadModalTracksFailed": "{count} ang nabigo, maaari mong subukang muli pagkatapos"
   },
   "requests": {
     "convertBody": "Gamitin ang Generator at gumawa ng sarili mong karaoke video ngayon din — sagot namin ang una mo.",

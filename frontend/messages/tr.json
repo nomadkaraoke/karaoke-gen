@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Vazgeç",
     "retryingConn": "Bağlantı sorunu — tekrar deneniyor…",
     "sessionExpired": "Yükleme oturumunun süresi doldu — bu parçayı kaldır ve tekrar başlat",
-    "speedMBs": "{mb} MB/sn"
+    "speedMBs": "{mb} MB/sn",
+    "uploadModalTitle": "{count} parça yükleniyor",
+    "uploadModalTracksDone": "{count} parçadan {done} tanesi gönderildi",
+    "uploadModalTracksFailed": "{count} başarısız oldu, daha sonra tekrar deneyebilirsin"
   },
   "requests": {
     "convertBody": "Generator'ı kendin kullan ve karaoke videonu hemen şimdi yap — ilki bizden.",

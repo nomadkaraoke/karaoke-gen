@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react"
 import { useTranslations } from 'next-intl'
 import { api, ApiError, type BulkAnalyzeResponse } from "@/lib/api"
 import { useBeforeUnloadGuard } from "@/hooks/useUploadTask"
+import { UploadProgressModal } from "@/components/upload/UploadProgressModal"
+import type { UploadProgress } from "@/lib/upload"
 import { uploadResumable, ResumableUploadError } from "@/lib/resumable-upload"
 import {
   saveRowSessions, markRowDone, clearBatch, loadPendingBatch, matchRepickedFile,
@@ -33,6 +35,8 @@ interface EditableRow {
   warning: string | null
   status: RowStatus
   progress: number
+  // Bytes of this row's mixed + instrumental files uploaded so far.
+  loadedBytes?: number
   error?: string
   jobId?: string
   // Upload URLs from a successful create call (resumable session URIs when the
@@ -90,6 +94,8 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   const [ignored, setIgnored] = useState<BulkAnalyzeResponse["ignored"]>([])
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Rows in the current submit run — drives the batch-wide progress modal.
+  const [runRowIds, setRunRowIds] = useState<string[] | null>(null)
   // One batch id per review-table lifetime (fresh analyze or recovery), shared
   // by every row's job and by the IndexedDB recovery records.
   const [batchId, setBatchId] = useState<string | null>(null)
@@ -150,6 +156,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     setIgnored([])
     setError("")
     setIsSubmitting(false)
+    setRunRowIds(null)
     setBatchId(null)
     recoveryModeRef.current = false
     if (folderInputRef.current) folderInputRef.current.value = ""
@@ -317,7 +324,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
         }
       }
 
-      updateRow(row.id, { status: "uploading", progress: 0, error: undefined, uploadState: "uploading" })
+      updateRow(row.id, { status: "uploading", progress: 0, loadedBytes: 0, error: undefined, uploadState: "uploading" })
       const audioUrl = uploadUrls.find(u => u.file_type === "audio")
       const instrumentalUrl = uploadUrls.find(u => u.file_type === "existing_instrumental")
       if (!audioUrl || !instrumentalUrl) throw new ApiError("Missing upload URL", 500)
@@ -327,6 +334,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       const reportBytes = (loadedBytes: number, rate: number | null, state: EditableRow["uploadState"]) => {
         updateRow(row.id, {
           progress: Math.min(100, Math.round((loadedBytes / totalBytes) * 100)),
+          loadedBytes: Math.min(totalBytes, loadedBytes),
           bytesPerSecond: rate,
           etaSeconds: rate && rate > 0 ? Math.max(0, (totalBytes - loadedBytes) / rate) : null,
           uploadState: state,
@@ -350,17 +358,27 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       await uploadOne(audioUrl, mixedFile, 0)
       await uploadOne(instrumentalUrl, instrumentalFile, mixedFile.size)
 
-      updateRow(row.id, { status: "completing", progress: 100, etaSeconds: 0 })
+      updateRow(row.id, { status: "completing", progress: 100, loadedBytes: totalBytes, etaSeconds: 0 })
       try {
         await api.completeJobUpload(jobId, ["audio", "existing_instrumental"])
       } catch (completeErr: any) {
-        // A recovered/retried row may have already completed before the previous
-        // session died; the job then rejects a second uploads-complete. The
-        // uploads themselves are verified done (session offsets), so treat it
-        // as success rather than stranding the row.
-        const alreadyStarted = hadExistingJob && completeErr instanceof ApiError && completeErr.status === 400
-        if (!alreadyStarted) throw completeErr
-        console.warn("[TenantBulkFlow] uploads-complete rejected for recovered row; assuming already processing:", jobId)
+        // A 400 can mean the job already started (a retried/recovered row, or a
+        // response lost after the server accepted it) or that the server
+        // rejected and cancelled it (e.g. an instrumental that doesn't match the
+        // song). Ask the job which it was.
+        if (!(completeErr instanceof ApiError && completeErr.status === 400)) throw completeErr
+        const status = await jobStatus(jobId)
+        if (status && !NOT_PROCESSING.has(status)) {
+          console.warn("[TenantBulkFlow] uploads-complete rejected but job is already processing:", jobId)
+        } else {
+          if (status === "cancelled" || status === "failed") {
+            // Forget the dead job so a retry creates a fresh one instead of
+            // re-finalizing it.
+            markRowDone(currentBatchId, row.id)
+            updateRow(row.id, { jobId: undefined, uploadUrls: undefined })
+          }
+          throw completeErr
+        }
       }
       markRowDone(currentBatchId, row.id)
       updateRow(row.id, { status: "done" })
@@ -384,6 +402,10 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     const submittable = rows.filter(r => rowIsValid(r, fileMap) && (r.status === "pending" || r.status === "error"))
     if (submittable.length === 0) return
     setIsSubmitting(true)
+    // Rows being retried are queued, not failed, until a worker picks them up.
+    const runIds = new Set(submittable.map(r => r.id))
+    setRows(prev => prev.map(r => (runIds.has(r.id) && r.status === "error" ? { ...r, status: "pending", error: undefined } : r)))
+    setRunRowIds([...runIds])
     setError("")
     // Reuse the batch id across retries/recovery so jobs and IndexedDB records
     // stay grouped under one batch.
@@ -405,11 +427,61 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
     await Promise.all(Array.from({ length: Math.min(SUBMIT_CONCURRENCY, queue.length) }, worker))
 
     setIsSubmitting(false)
+    setRunRowIds(null)
     onJobsChanged()
     // Show the done summary only if every submittable row succeeded; otherwise
     // stay on the review table so the operator can retry the failed rows.
     if (succeeded === submittable.length) setPhase("done")
   }
+
+  // Batch-wide progress for the upload modal: bytes across every row in this
+  // run (failed rows drop out so the bar can still reach 100%), plus track
+  // counts and the resumable engine's connection state.
+  const runProgress = useMemo(() => {
+    if (!runRowIds) return null
+    const runRows = rows.filter(r => runRowIds.includes(r.id))
+    let total = 0
+    let loaded = 0
+    let finished = 0
+    let failed = 0
+    let anyUploadStarted = false
+    let offline = false
+    let retrying = false
+    for (const r of runRows) {
+      if (r.status === "error") { failed++; continue }
+      const size = (fileMap.get(r.mixedFilename)?.size ?? 0) + (fileMap.get(r.instrumentalFilename)?.size ?? 0)
+      total += size
+      if (r.status === "done" || r.status === "completing") {
+        loaded += size
+        anyUploadStarted = true
+        if (r.status === "done") finished++
+      } else if (r.status === "uploading") {
+        loaded += Math.min(size, r.loadedBytes ?? 0)
+        anyUploadStarted = true
+        if (r.uploadState === "waiting-online") offline = true
+        if (r.uploadState === "retrying") retrying = true
+      }
+    }
+    const allBytesIn = total > 0 && loaded >= total
+    const progress: UploadProgress = {
+      phase: !anyUploadStarted ? "creating" : allBytesIn ? "finalizing" : "uploading",
+      loaded,
+      total,
+    }
+    return { progress, count: runRows.length, finished, failed, offline, retrying }
+  }, [runRowIds, rows, fileMap])
+
+  const uploadModal = runProgress && (
+    <UploadProgressModal
+      progress={runProgress.progress}
+      title={t('uploadModalTitle', { count: runProgress.count })}
+      detail={[
+        t('uploadModalTracksDone', { done: runProgress.finished, count: runProgress.count }),
+        runProgress.failed > 0 ? t('uploadModalTracksFailed', { count: runProgress.failed }) : null,
+      ].filter(Boolean).join(" · ")}
+      notice={runProgress.offline ? t('pausedOffline') : runProgress.retrying ? t('retryingConn') : undefined}
+    />
+  )
 
   // ---- Select phase -------------------------------------------------------
   if (phase === "select" || phase === "analyzing") {
@@ -513,6 +585,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
   const hasWarnings = unpaired.length > 0 || ignored.length > 0
   return (
     <div className="space-y-4">
+      {uploadModal}
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           {t('reviewSummary', { rows: rows.length, valid: validCount })}
@@ -642,6 +715,17 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       </Button>
     </div>
   )
+}
+
+const NOT_PROCESSING = new Set(["pending", "cancelled", "failed"])
+
+// The job's current status, or null if it can't be fetched.
+async function jobStatus(jobId: string): Promise<string | null> {
+  try {
+    return (await api.getJob(jobId)).status
+  } catch {
+    return null
+  }
 }
 
 // "3.2 MB/s · 2m 10s left" — empty until the engine has a throughput sample.

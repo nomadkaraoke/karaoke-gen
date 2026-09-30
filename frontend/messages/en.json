@@ -1828,7 +1828,10 @@
     "resumeBannerTitle": "Resume unfinished batch?",
     "resumeBannerDesc": "{count} tracks from an earlier session can be resumed. Re-select the same folder to continue — already-uploaded parts won't be sent again.",
     "resumeChoose": "Choose folder to resume",
-    "resumeDiscard": "Discard"
+    "resumeDiscard": "Discard",
+    "uploadModalTitle": "Uploading {count} tracks",
+    "uploadModalTracksDone": "{done} of {count} tracks submitted",
+    "uploadModalTracksFailed": "{count} failed, you can retry after"
   },
   "requests": {
     "title": "Vote for the next free karaoke track",

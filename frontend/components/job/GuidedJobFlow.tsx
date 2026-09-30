@@ -589,7 +589,6 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           // with the untouched instrumental.
           instrumentalSlot={audioSource === "upload" && pendingFile && !requiresAudioEdit ? (
             <OwnInstrumentalField
-              mixFile={pendingFile}
               file={instrumentalFile}
               onChange={setInstrumentalFile}
               disabled={isSubmitting}

@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Verwerfen",
     "retryingConn": "Verbindungsproblem — erneuter Versuch…",
     "sessionExpired": "Upload-Sitzung abgelaufen — entferne diesen Track und starte ihn neu",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "{count} Tracks werden hochgeladen",
+    "uploadModalTracksDone": "{done} von {count} Tracks übermittelt",
+    "uploadModalTracksFailed": "{count} fehlgeschlagen, du kannst es danach erneut versuchen"
   },
   "requests": {
     "convertBody": "Nutze den Generator selbst und erstelle dein Karaoke-Video sofort — dein erstes geht auf uns.",

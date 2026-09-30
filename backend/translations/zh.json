@@ -53,8 +53,9 @@
     "instrumentalUploadBadPath": "伴奏上传引用无效。请尝试重新上传。",
     "instrumentalUploadBadType": "不支持的音频文件类型。请上传以下格式之一：{allowed}。",
     "instrumentalUploadMissing": "未找到您上传的伴奏。上传可能尚未完成，请重试。",
-    "uploadDurationMismatchCancelled": "时长不匹配：伴奏时长为 {instrumental_duration} 秒，但歌曲音频时长为 {audio_duration} 秒（两者相差须在 0.5 秒以内）。该任务已取消，您的点数已退还。请使用时长匹配的文件重新提交。",
-    "instrumentalUploadTooLarge": "此伴奏文件大小为 {size_mb} MB，已超出 {max_mb} MB 的限制。请改为上传 FLAC 或 MP3 版本。"
+    "uploadDurationMismatchCancelled": "伴奏时长（{instrumental_duration} 秒）与歌曲音频时长（{audio_duration} 秒）不匹配，可能不是该歌曲对应的正确文件。该任务已取消，您的点数已退还。请检查文件后重新提交。",
+    "instrumentalUploadTooLarge": "此伴奏文件大小为 {size_mb} MB，已超出 {max_mb} MB 的限制。请改为上传 FLAC 或 MP3 版本。",
+    "instrumentalConformUnavailable": "我们刚才无法处理您的伴奏。请稍后重新尝试提交。"
   },
   "review": {
     "jobNotFound": "未找到任务",

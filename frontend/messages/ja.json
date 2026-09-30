@@ -1828,7 +1828,10 @@
     "resumeDiscard": "破棄",
     "retryingConn": "接続が不安定です — 再試行中…",
     "sessionExpired": "アップロードセッションの期限が切れました — このトラックを削除して、もう一度やり直してください",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "{count}曲をアップロード中",
+    "uploadModalTracksDone": "{count}曲中{done}曲を送信しました",
+    "uploadModalTracksFailed": "{count}件が失敗しました。後で再試行できます"
   },
   "requests": {
     "convertBody": "Generatorを使って、今すぐご自身でカラオケ動画を作成してみましょう。最初の1曲は無料です。",

@@ -1828,7 +1828,10 @@
     "resumeDiscard": "Hylkää",
     "retryingConn": "Yhteys pätkii — yritetään uudelleen…",
     "sessionExpired": "Latausistunto vanhentui — poista tämä kappale ja aloita alusta",
-    "speedMBs": "{mb} MB/s"
+    "speedMBs": "{mb} MB/s",
+    "uploadModalTitle": "Ladataan {count} kappaletta",
+    "uploadModalTracksDone": "{done} / {count} kappaletta lähetetty",
+    "uploadModalTracksFailed": "{count} epäonnistui, voit yrittää uudelleen jälkeenpäin"
   },
   "requests": {
     "convertBody": "Käytä Generatoria itse ja tee karaokevideosi heti — me tarjoamme ensimmäisen.",

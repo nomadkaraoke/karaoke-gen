@@ -53,8 +53,9 @@
     "instrumentalUploadBadPath": "Referencia de subida de instrumental inválida. Por favor, intenta subirlo de nuevo.",
     "instrumentalUploadBadType": "Tipo de archivo de audio no compatible. Por favor, sube uno de los siguientes: {allowed}.",
     "instrumentalUploadMissing": "No pudimos encontrar el instrumental que subiste. Es posible que la subida no haya finalizado. Por favor, inténtalo de nuevo.",
-    "uploadDurationMismatchCancelled": "Discrepancia en la duración: el instrumental dura {instrumental_duration}s pero el audio de la canción dura {audio_duration}s (deben coincidir con una diferencia máxima de 0.5s). Este trabajo ha sido cancelado y se ha reembolsado tu crédito. Por favor, vuelve a enviarlo con archivos que coincidan.",
-    "instrumentalUploadTooLarge": "Este archivo instrumental tiene {size_mb} MB, lo que supera el límite de {max_mb} MB. Por favor, sube una versión en FLAC o MP3 en su lugar."
+    "uploadDurationMismatchCancelled": "El instrumental ({instrumental_duration}s) no coincide con el audio de la canción ({audio_duration}s), por lo que podría ser el archivo incorrecto para esta canción. Este trabajo ha sido cancelado y tu crédito ha sido reembolsado. Por favor, revisa los archivos y vuelve a enviarlos.",
+    "instrumentalUploadTooLarge": "Este archivo instrumental tiene {size_mb} MB, lo que supera el límite de {max_mb} MB. Por favor, sube una versión en FLAC o MP3 en su lugar.",
+    "instrumentalConformUnavailable": "No pudimos procesar tu instrumental en este momento. Por favor, intenta enviarlo de nuevo en un momento."
   },
   "review": {
     "jobNotFound": "Trabajo no encontrado",

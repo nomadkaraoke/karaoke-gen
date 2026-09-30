@@ -53,8 +53,9 @@
     "instrumentalUploadBadPath": "インスト音源のアップロード情報が無効です。もう一度アップロードをお試しください。",
     "instrumentalUploadBadType": "サポートされていない音声ファイル形式です。次のいずれかをアップロードしてください：{allowed}",
     "instrumentalUploadMissing": "アップロードされたインスト音源が見つかりませんでした。アップロードが完了していない可能性があります。もう一度お試しください。",
-    "uploadDurationMismatchCancelled": "再生時間が一致しません：インスト音源は{instrumental_duration}秒ですが、元の楽曲音源は{audio_duration}秒です（差を0.5秒以内に収める必要があります）。この処理はキャンセルされ、クレジットが返還されました。長さが一致するファイルで再度お試しください。",
-    "instrumentalUploadTooLarge": "このインスト音源ファイルは{size_mb} MBで、上限の{max_mb} MBを超えています。代わりにFLACまたはMP3形式のファイルをアップロードしてください。"
+    "uploadDurationMismatchCancelled": "インスト音源（{instrumental_duration}秒）の長さが楽曲音源（{audio_duration}秒）と一致しないため、この曲とは異なるファイルの可能性があります。このジョブはキャンセルされ、クレジットは返却されました。ファイルをご確認のうえ、再度送信してください。",
+    "instrumentalUploadTooLarge": "このインスト音源ファイルは{size_mb} MBで、上限の{max_mb} MBを超えています。代わりにFLACまたはMP3形式のファイルをアップロードしてください。",
+    "instrumentalConformUnavailable": "インスト音源を処理できませんでした。少し時間をおいてから、もう一度送信してください。"
   },
   "review": {
     "jobNotFound": "ジョブが見つかりません",
