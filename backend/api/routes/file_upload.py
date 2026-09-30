@@ -432,8 +432,14 @@ def _prepare_theme_for_job(
         color_overrides=color_overrides_model
     )
 
-    # Get YouTube description template if available
-    youtube_desc = theme_service.get_youtube_description(theme_id)
+    # Settings.default_youtube_description is the single source of truth for
+    # YouTube descriptions. A theme's legacy youtube_description.txt is only a
+    # fallback when no canonical template is configured — otherwise it silently
+    # overrode the template on every themed job (the nomad theme's copy was stale
+    # Fiverr text, which the daily description-backfill worker then had to undo).
+    youtube_desc = None
+    if not get_settings().default_youtube_description:
+        youtube_desc = theme_service.get_youtube_description(theme_id)
 
     logger.info(f"Prepared theme '{theme_id}' for job {job_id}")
 

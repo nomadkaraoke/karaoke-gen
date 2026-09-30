@@ -1881,5 +1881,38 @@ class TestUploadEndpointThemeSupport:
         )
 
 
+class TestPrepareThemeYoutubeDescriptionPrecedence:
+    """The canonical Settings.default_youtube_description must win over a theme's
+    legacy youtube_description.txt (which previously overrode it on every themed
+    job, publishing stale Fiverr text that the backfill worker then had to fix)."""
+
+    def _run(self, default_description):
+        from backend.api.routes.file_upload import _prepare_theme_for_job
+
+        theme_service = MagicMock()
+        theme_service.theme_exists.return_value = True
+        theme_service.prepare_job_style.return_value = ("jobs/j1/style_params.json", {"bg": "x"})
+        theme_service.get_youtube_description.return_value = "OLD THEME DESCRIPTION"
+        settings = MagicMock(default_youtube_description=default_description)
+
+        with patch("backend.api.routes.file_upload.get_theme_service", return_value=theme_service), \
+             patch("backend.api.routes.file_upload.get_settings", return_value=settings):
+            return _prepare_theme_for_job("j1", "nomad"), theme_service
+
+    def test_canonical_template_suppresses_theme_description(self):
+        (style_path, assets, youtube_desc), theme_service = self._run("🎤 Sing along to {title}")
+
+        assert style_path == "jobs/j1/style_params.json"
+        assert assets == {"bg": "x"}
+        assert youtube_desc is None
+        theme_service.get_youtube_description.assert_not_called()
+
+    def test_theme_description_used_when_no_canonical_template(self):
+        (_, _, youtube_desc), theme_service = self._run("")
+
+        assert youtube_desc == "OLD THEME DESCRIPTION"
+        theme_service.get_youtube_description.assert_called_once_with("nomad")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
