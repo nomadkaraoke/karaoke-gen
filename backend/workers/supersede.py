@@ -37,6 +37,19 @@ def capture_generation(job) -> int:
         return 0
 
 
+def encoding_worker_job_id(job_id: str, generation: int) -> str:
+    """Id to submit to the encoding worker for this run of a job.
+
+    The encoding worker caches finished jobs in memory by id and answers a
+    resubmission with the OLD result ("cached"). A re-run of the same job (theme
+    re-render, edit, admin reset) bumps ``worker_generation``, so keying the
+    worker id by generation makes each run a fresh worker job, while a duplicate
+    delivery of the same trigger (same generation) still dedups. Output GCS paths
+    are explicit in the request, so the id doesn't move any files.
+    """
+    return f"{job_id}_g{generation}" if generation else job_id
+
+
 def _normalize_status(status) -> Optional[JobStatus]:
     """Job.status is deserialised with use_enum_values=True (a plain str)."""
     if isinstance(status, JobStatus):

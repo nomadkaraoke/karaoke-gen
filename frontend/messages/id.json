@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "URL Dropbox disalin",
     "copyCompletionMessage": "Salin pesan penyelesaian ke clipboard",
     "copied": "Tersalin!",
-    "portrait": "Video Potret"
+    "portrait": "Video Potret",
+    "rerender": "Render Ulang",
+    "rerenderDesc": "Ini akan membuat ulang layar judul dan penutup, video lirik, serta semua file unduhan menggunakan tema Anda saat ini. Lirik dan instrumental Anda akan tetap persis seperti yang telah ditinjau, jadi tidak ada yang perlu ditinjau lagi.",
+    "rerenderFailed": "Gagal memulai render ulang: {error}",
+    "rerenderTime": "Biasanya membutuhkan waktu sekitar 10-15 menit. Unduhan tidak tersedia sampai prosesnya selesai.",
+    "rerenderTitle": "Render ulang dengan tema Anda saat ini?",
+    "rerenderTooltip": "Buat ulang video ini dengan tema Anda saat ini"
   },
   "themeSelector": {
     "videoTheme": "Tema Video",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Judul lagu dalam huruf kapital",
     "close": "Tutup",
     "saving": "Menyimpan…",
-    "songTitle": "Judul lagu"
+    "songTitle": "Judul lagu",
+    "rerenderHint": "Untuk memperbarui trek yang sudah Anda buat, gunakan Render Ulang pada kartunya."
   },
   "stalledDownload": {
     "actionFailedDesc": "Silakan coba beberapa saat lagi.",

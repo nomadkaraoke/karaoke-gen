@@ -496,7 +496,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
         )}
 
         <DialogFooter className="flex items-center gap-2 sm:justify-between">
-          <p className="text-xs text-muted-foreground">{t("appliesToNewJobs")}</p>
+          <p className="text-xs text-muted-foreground">{t("appliesToNewJobs")} {t("rerenderHint")}</p>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => { if (saved) { setDraft(saved); setJsonText(JSON.stringify(saved, null, 2)); setJsonError(null) } }}
               disabled={!dirty || saving}>

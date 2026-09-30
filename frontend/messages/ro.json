@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "URL Dropbox copiat",
     "copyCompletionMessage": "Copiază mesajul de finalizare în clipboard",
     "copied": "Copiat!",
-    "portrait": "Video portret"
+    "portrait": "Video portret",
+    "rerender": "Randează din nou",
+    "rerenderDesc": "Această acțiune reconstruiește ecranele de titlu și de final, videoclipul cu versuri și toate descărcările folosind tema ta actuală. Versurile și instrumentalul tău rămân exact așa cum le-ai verificat, așa că nu mai trebuie să verifici nimic.",
+    "rerenderFailed": "Nu s-a putut porni re-randarea: {error}",
+    "rerenderTime": "Durează de obicei aproximativ 10-15 minute. Descărcările nu sunt disponibile până la finalizare.",
+    "rerenderTitle": "Randezi din nou cu tema ta actuală?",
+    "rerenderTooltip": "Reconstruiește acest videoclip cu tema ta actuală"
   },
   "themeSelector": {
     "videoTheme": "Temă video",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Titlu melodie cu majuscule",
     "close": "Închide",
     "saving": "Se salvează…",
-    "songTitle": "Titlul melodiei"
+    "songTitle": "Titlul melodiei",
+    "rerenderHint": "Pentru a actualiza o piesă pe care ai creat-o deja, folosește „Randează din nou” pe cardul acesteia."
   },
   "stalledDownload": {
     "actionFailedDesc": "Te rugăm să încerci din nou peste câteva momente.",

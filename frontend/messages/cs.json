@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox URL zkopírováno",
     "copyCompletionMessage": "Kopírovat zprávu o dokončení do schránky",
     "copied": "Zkopírováno!",
-    "portrait": "Video na výšku"
+    "portrait": "Video na výšku",
+    "rerender": "Znovu vyrenderovat",
+    "rerenderDesc": "Tím se znovu vytvoří úvodní a závěrečná obrazovka, video s textem a všechny soubory ke stažení s použitím tvého aktuálního motivu. Tvůj text i instrumentální stopa zůstanou přesně tak, jak byly zkontrolovány, takže už nemusíš nic znovu kontrolovat.",
+    "rerenderFailed": "Nepodařilo se spustit opětovné renderování: {error}",
+    "rerenderTime": "Obvykle to trvá přibližně 10–15 minut. Stahování nebude k dispozici, dokud se proces nedokončí.",
+    "rerenderTitle": "Znovu vyrenderovat s tvým aktuálním motivem?",
+    "rerenderTooltip": "Znovu vytvořit toto video s tvým aktuálním motivem"
   },
   "themeSelector": {
     "videoTheme": "Motiv videa",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Název skladby velkými písmeny",
     "close": "Zavřít",
     "saving": "Ukládám…",
-    "songTitle": "Název písně"
+    "songTitle": "Název písně",
+    "rerenderHint": "Pokud chceš aktualizovat skladbu, kterou už máš hotovou, použij na její kartě možnost Znovu vyrenderovat."
   },
   "stalledDownload": {
     "actionFailedDesc": "Zkus to prosím za chvilku znovu.",

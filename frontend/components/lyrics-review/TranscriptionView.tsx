@@ -9,7 +9,10 @@ import { Play, Trash2, Type, Clock, AudioWaveform } from 'lucide-react'
 import { HighlightedText } from './shared/HighlightedText'
 import { TranscriptionViewProps, TranscriptionWordPosition } from '@/lib/lyrics-review/types'
 import { deleteSegment } from '@/lib/lyrics-review/utils/segmentOperations'
-import { computeContextWordsBySegment } from '@/lib/lyrics-review/utils/contextWords'
+import {
+  computeContextWordsBySegment,
+  computeNeighbourBoundsBySegment,
+} from '@/lib/lyrics-review/utils/contextWords'
 import { buildSegmentDecorations } from '@/lib/lyrics-review/utils/wordDecorations'
 import { TIMELINE_PAD_SECONDS } from './TimelineEditor'
 import WaveformSegmentRow from './WaveformSegmentRow'
@@ -69,6 +72,12 @@ export default function TranscriptionView({
       waveformsMode
         ? computeContextWordsBySegment(data.corrected_segments, TIMELINE_PAD_SECONDS)
         : null,
+    [waveformsMode, data.corrected_segments]
+  )
+  // Nearest word edges in the neighbouring lines, so a Waveforms-row resize / edge auto-extend
+  // stops at the next line's first word even when it's beyond the drawn context padding.
+  const neighbourBoundsBySegment = useMemo(
+    () => (waveformsMode ? computeNeighbourBoundsBySegment(data.corrected_segments) : null),
     [waveformsMode, data.corrected_segments]
   )
 
@@ -183,6 +192,8 @@ export default function TranscriptionView({
                 segment={segment}
                 segmentIndex={segmentIndex}
                 contextWords={contextWordsBySegment?.get(segmentIndex) ?? []}
+                prevBoundaryTime={neighbourBoundsBySegment?.get(segmentIndex)?.prevEnd ?? null}
+                nextBoundaryTime={neighbourBoundsBySegment?.get(segmentIndex)?.nextStart ?? null}
                 currentTime={currentTime}
                 wordDecorations={decorationsBySegment?.get(segment.id) ?? new Map()}
                 onCommit={(idx, updated) => onCommitSegment?.(idx, updated)}

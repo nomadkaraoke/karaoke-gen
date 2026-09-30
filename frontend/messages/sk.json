@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox URL skopírovaná",
     "copyCompletionMessage": "Kopírovať správu o dokončení do schránky",
     "copied": "Skopírované!",
-    "portrait": "Video na výšku"
+    "portrait": "Video na výšku",
+    "rerender": "Znova vyrenderovať",
+    "rerenderDesc": "Týmto sa znova vytvorí úvodná a záverečná obrazovka, video s textom a všetky súbory na stiahnutie pomocou tvojej aktuálnej témy. Tvoj text a inštrumentálna stopa zostanú presne v takom stave, v akom boli skontrolované, takže už nemusíš nič znova kontrolovať.",
+    "rerenderFailed": "Nepodarilo sa spustiť opätovné renderovanie: {error}",
+    "rerenderTime": "Zvyčajne to trvá približne 10 – 15 minút. Súbory na stiahnutie nebudú k dispozícii, kým sa proces nedokončí.",
+    "rerenderTitle": "Znova vyrenderovať s tvojou aktuálnou témou?",
+    "rerenderTooltip": "Znova vytvoriť toto video s tvojou aktuálnou témou"
   },
   "themeSelector": {
     "videoTheme": "Téma videa",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Názov skladby veľkými písmenami",
     "close": "Zavrieť",
     "saving": "Ukladá sa…",
-    "songTitle": "Názov piesne"
+    "songTitle": "Názov piesne",
+    "rerenderHint": "Ak chceš aktualizovať už vytvorenú skladbu, použi možnosť „Znova vyrenderovať“ na jej karte."
   },
   "stalledDownload": {
     "actionFailedDesc": "Skús to, prosím, o chvíľu znova.",

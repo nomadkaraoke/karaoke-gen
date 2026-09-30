@@ -342,6 +342,22 @@ Response:
 
 **Validation:** Job must be `complete`, not a tenant job, not already at target visibility, and no concurrent visibility change in progress.
 
+### Re-render With Current Theme (tenant jobs)
+
+Re-render a finished tenant track with the tenant's **current** theme, e.g. after editing it in "Theme & style". Jobs snapshot the theme at creation, so theme edits otherwise apply only to new jobs.
+
+```http
+POST /api/jobs/{job_id}/rerender
+```
+
+Response: `{"status": "processing", "job_id": "abc123", "theme_id": "randy-vild"}`
+
+Re-snapshots the tenant theme onto the job (`style_params_gcs_path`, `style_assets`), deletes the old screens and `videos/with_vocals`, then goes `LYRICS_COMPLETE` (with `state_data.regen_restore_status = "review_complete"`) → screens → render → encode → `complete`. It reuses the reviewed `corrections_updated.json` and `instrumental_selection`, so there's no review step. Free (tenant jobs are never charged). About 10-15 minutes.
+
+**Access:** the job owner, if still on the tenant allowlist, or an admin.
+
+**Validation (400):** tenant job; `complete`; outputs not deleted; has a theme, reviewed lyrics and an instrumental selection; never distributed to YouTube/Dropbox/GDrive. **409** if the job left `complete` in the meantime (e.g. a double-click already started a re-render).
+
 ### Review
 
 The combined review flow allows users to review lyrics AND select instrumental track in a single session.
@@ -1408,7 +1424,7 @@ Admin-only endpoints (`require_admin`) that mint and manage white-label tenants 
   config plus a `preview_url` (`?preview_tenant={id}`) that drives the tenant — including its bulk
   flow — **without any DNS setup**. For **full theme customisation** at create time, pass a
   `style_params` field (full theme JSON string) — when present it is authoritative and the colour
-  fields are ignored. **Dropbox delivery** (v0.252.0): `dropbox_path` and `brand_prefix` must be set
+  fields are ignored. **Dropbox delivery** (v0.254.0): `dropbox_path` and `brand_prefix` must be set
   together (the worker skips the upload unless both are set — outputs are filed as
   `<PREFIX>-0001 - Artist - Title`); the path is normalized (leading `/`, no trailing `/`), the prefix
   uppercased and must be 2-12 alphanumerics starting with a letter, and must not be the consumer

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { api, adminApi, Job } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
-import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil } from "lucide-react"
+import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil, RefreshCw } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import {
   Dialog,
@@ -54,6 +54,8 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false)
   const [isChangingVisibility, setIsChangingVisibility] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showRerenderDialog, setShowRerenderDialog] = useState(false)
+  const [isStartingRerender, setIsStartingRerender] = useState(false)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -188,6 +190,20 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
     }
   }, [job.job_id, isPrivate, onJobUpdated])
 
+  const handleRerender = useCallback(async () => {
+    setIsStartingRerender(true)
+    setShowRerenderDialog(false)
+    try {
+      await api.rerenderWithCurrentTheme(job.job_id)
+      onJobUpdated?.()
+    } catch (err) {
+      console.error("Failed to start re-render:", err)
+      alert(t('rerenderFailed', { error: err instanceof Error ? err.message : String(err) }))
+    } finally {
+      setIsStartingRerender(false)
+    }
+  }, [job.job_id, onJobUpdated, t])
+
   const hasOutputs = showYoutubeLink || showDropboxLink || (!outputsUnavailable && downloadUrls && Object.keys(downloadUrls).length > 0)
 
   // Check if we have any downloads (and outputs are currently available)
@@ -204,10 +220,15 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   // Check if we have any external links (filtered by tenant features)
   const hasExternalLinks = showYoutubeLink || showDropboxLink
 
+  // Re-render with the portal's current theme (after a theme edit). Tenant
+  // portal only; the backend enforces the rest (ownership, allowlist, no
+  // external distribution).
+  const canRerender = !!tenantId && job.status === "complete" && !!hasDownloads && !hasExternalLinks
+
   return (
     <div className="space-y-2">
       {/* Links, Downloads, and Admin Tools - all in one row */}
-      {(hasDownloads || hasExternalLinks || isAdmin || canChangeVisibility) && (
+      {(hasDownloads || hasExternalLinks || isAdmin || canChangeVisibility || canRerender) && (
         <div className="flex flex-wrap gap-1.5">
           {/* Links first */}
           {hasExternalLinks && (
@@ -350,6 +371,20 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                 ? (isPrivate ? t('makingPublic') : t('makingPrivate'))
                 : (isPrivate ? t('makePublic') : t('makePrivate'))
               }
+            </button>
+          )}
+
+          {/* Re-render with current theme (tenant portals) */}
+          {canRerender && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowRerenderDialog(true) }}
+              disabled={isStartingRerender}
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors disabled:opacity-50"
+              title={t('rerenderTooltip')}
+            >
+              {isStartingRerender ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              {t('rerender')}
             </button>
           )}
 
@@ -519,6 +554,25 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
             <AlertDialogAction onClick={handleChangeVisibility}>
               {isPrivate ? t('makePublic') : t('makePrivate')}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Re-render Confirmation Dialog */}
+      <AlertDialog open={showRerenderDialog} onOpenChange={setShowRerenderDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('rerenderTitle')}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>{t('rerenderDesc')}</p>
+                <p>{t('rerenderTime')}</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRerender}>{t('rerender')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

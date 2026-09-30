@@ -15,6 +15,9 @@ interface WaveformSegmentRowProps {
   segmentIndex: number
   /** Neighbouring segments' words within the padded window, greyed/read-only for context. */
   contextWords: Word[]
+  /** Nearest word edges in the previous / next lines — resizes (incl. edge auto-extend) stop there. */
+  prevBoundaryTime?: number | null
+  nextBoundaryTime?: number | null
   /** Per-word bar colour + AI-correction ghost text, keyed by word id. */
   wordDecorations: Map<string, WordDecoration>
   currentTime?: number
@@ -43,6 +46,8 @@ export default function WaveformSegmentRow({
   segment,
   segmentIndex,
   contextWords,
+  prevBoundaryTime,
+  nextBoundaryTime,
   wordDecorations,
   currentTime,
   onCommit,
@@ -125,6 +130,8 @@ export default function WaveformSegmentRow({
           <TimelineEditor
             words={words}
             contextWords={contextWords}
+            prevBoundaryTime={prevBoundaryTime}
+            nextBoundaryTime={nextBoundaryTime}
             startTime={startTime}
             endTime={endTime}
             onWordUpdate={handleWordUpdate}

@@ -28,6 +28,7 @@ from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.tracing import job_span, add_span_event
+from backend.workers.supersede import capture_generation, encoding_worker_job_id
 from backend.services.original_audio import (
     original_audio_gcs_path,
     original_audio_output_filename,
@@ -105,6 +106,10 @@ class OrchestratorConfig:
 
     # Encoding backend preference
     encoding_backend: str = "auto"  # "auto", "local", "gce"
+
+    # state_data.worker_generation at config time; keys the encoding-worker job
+    # id so a re-run never gets the previous run's cached encode back.
+    worker_generation: int = 0
 
     # Additional options
     dry_run: bool = False
@@ -538,7 +543,9 @@ class VideoWorkerOrchestrator:
             add_span_event("encoding_started", {"backend": encoding_backend.name})
 
             output = await run_with_lost_job_resubmit(
-                _submit_encode, self.config.job_id, log=self.job_log
+                _submit_encode,
+                encoding_worker_job_id(self.config.job_id, self.config.worker_generation),
+                log=self.job_log,
             )
 
             add_span_event("encoding_completed", {
@@ -713,22 +720,6 @@ class VideoWorkerOrchestrator:
         # Google Drive upload
         if self.config.gdrive_folder_id:
             await self._upload_to_gdrive()
-
-        # Clear outputs_deleted_at if set (job was re-processed after output deletion)
-        # Only clear if we actually uploaded something
-        uploads_happened = (
-            self.result.youtube_url or
-            self.result.dropbox_link or
-            self.result.gdrive_files
-        )
-        if uploads_happened and self.job_manager:
-            job = self.job_manager.get_job(self.config.job_id)
-            if job and job.outputs_deleted_at:
-                self.job_manager.update_job(self.config.job_id, {
-                    "outputs_deleted_at": None,
-                    "outputs_deleted_by": None,
-                })
-                self.job_log.info("Cleared outputs_deleted_at flag (job was re-processed)")
 
         # Incident-hardening G1 (SHADOW): before a public release is considered
         # done, assert the outputs it *should* have shipped (lossy 4K + 720p, plus
@@ -1215,6 +1206,7 @@ def create_orchestrator_config_from_job(
                 break
 
     return OrchestratorConfig(
+        worker_generation=capture_generation(job),
         job_id=job.job_id,
         artist=job.artist,
         title=job.title,

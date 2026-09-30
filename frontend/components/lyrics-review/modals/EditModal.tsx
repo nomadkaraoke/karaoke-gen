@@ -29,6 +29,9 @@ interface EditModalProps {
   currentTime?: number
   /** Words from neighbouring segments near this one, shown as greyed read-only context in the timeline padding. */
   contextWords?: Word[]
+  /** Nearest word edges in the previous / next lines — timeline resizes stop there. */
+  prevBoundaryTime?: number | null
+  nextBoundaryTime?: number | null
   onDelete?: (segmentIndex: number) => void
   onAddSegment?: (segmentIndex: number) => void
   onSplitSegment?: (segmentIndex: number, afterWordIndex: number) => void
@@ -49,6 +52,8 @@ export default function EditModal({
   onPlaySegment,
   currentTime = 0,
   contextWords,
+  prevBoundaryTime,
+  nextBoundaryTime,
   onDelete,
   onAddSegment,
   onSplitSegment,
@@ -479,6 +484,8 @@ export default function EditModal({
                 <EditTimelineSection
                   words={editedSegment.words}
                   contextWords={contextWords}
+                  prevBoundaryTime={prevBoundaryTime}
+                  nextBoundaryTime={nextBoundaryTime}
                   startTime={startTime}
                   endTime={endTime}
                   currentTime={currentTime}

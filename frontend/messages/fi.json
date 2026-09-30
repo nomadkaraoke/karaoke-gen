@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Dropbox-URL kopioitu",
     "copyCompletionMessage": "Kopioi valmistumisviesti leikepöydälle",
     "copied": "Kopioitu!",
-    "portrait": "Pystyvideo"
+    "portrait": "Pystyvideo",
+    "rerender": "Renderöi uudelleen",
+    "rerenderDesc": "Tämä luo uudelleen alku- ja loppuruudut, sanoitusvideon sekä kaikki lataustiedostot nykyisellä teemallasi. Sanoituksesi ja instrumentaalisi pysyvät täsmälleen sellaisina kuin tarkistit ne, joten mitään ei tarvitse tarkistaa uudelleen.",
+    "rerenderFailed": "Uudelleenrenderöintiä ei voitu aloittaa: {error}",
+    "rerenderTime": "Tämä kestää yleensä noin 10–15 minuuttia. Lataukset eivät ole saatavilla ennen kuin se on valmis.",
+    "rerenderTitle": "Renderöidäänkö uudelleen nykyisellä teemallasi?",
+    "rerenderTooltip": "Luo tämä video uudelleen nykyisellä teemallasi"
   },
   "themeSelector": {
     "videoTheme": "Videoteema",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Kappaleen nimi isoilla kirjaimilla",
     "close": "Sulje",
     "saving": "Tallennetaan…",
-    "songTitle": "Kappaleen nimi"
+    "songTitle": "Kappaleen nimi",
+    "rerenderHint": "Jos haluat päivittää jo tekemäsi kappaleen, käytä sen kortissa olevaa Renderöi uudelleen -toimintoa."
   },
   "stalledDownload": {
     "actionFailedDesc": "Yritä hetken kuluttua uudelleen.",

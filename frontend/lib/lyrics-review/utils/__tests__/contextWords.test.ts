@@ -1,4 +1,4 @@
-import { computeContextWordsBySegment } from '../contextWords'
+import { computeContextWordsBySegment, computeNeighbourBoundsBySegment } from '../contextWords'
 import { LyricsSegment, Word } from '../../types'
 
 const word = (id: string, text: string, start: number | null, end: number | null): Word => ({
@@ -71,5 +71,31 @@ describe('computeContextWordsBySegment', () => {
     const forS0 = map.get(0)!.map((w) => w.id)
     expect(forS0).toContain('c')
     expect(forS0).not.toContain('b')
+  })
+})
+
+describe('computeNeighbourBoundsBySegment', () => {
+  it('returns the previous line end and next line start per segment', () => {
+    const segments = [
+      segment('s0', [word('a', 'let', 1, 2), word('b', 'go', 2, 3)]),
+      segment('s1', [word('c', 'never', 9, 10)]),
+      segment('s2', [word('d', 'my', 20, 21)]),
+    ]
+    const bounds = computeNeighbourBoundsBySegment(segments)
+    expect(bounds.get(0)).toEqual({ prevEnd: null, nextStart: 9 })
+    expect(bounds.get(1)).toEqual({ prevEnd: 3, nextStart: 20 })
+    expect(bounds.get(2)).toEqual({ prevEnd: 10, nextStart: null })
+  })
+
+  it('skips untimed words and untimed segments', () => {
+    const segments = [
+      segment('s0', [word('a', 'one', 1, 2), word('b', 'two', null, null)]),
+      segment('s1', [word('c', 'gap', null, null)]),
+      segment('s2', [word('d', 'three', null, null), word('e', 'four', 8, 9)]),
+    ]
+    const bounds = computeNeighbourBoundsBySegment(segments)
+    expect(bounds.get(0)).toEqual({ prevEnd: null, nextStart: 8 })
+    expect(bounds.get(1)).toEqual({ prevEnd: 2, nextStart: 8 })
+    expect(bounds.get(2)).toEqual({ prevEnd: 2, nextStart: null })
   })
 })

@@ -729,7 +729,13 @@
     "dropboxUrlCopied": "Đã sao chép URL Dropbox",
     "copyCompletionMessage": "Sao chép tin nhắn hoàn thành vào khay nhớ tạm",
     "copied": "Đã sao chép!",
-    "portrait": "Video dọc"
+    "portrait": "Video dọc",
+    "rerender": "Kết xuất lại",
+    "rerenderDesc": "Thao tác này sẽ dựng lại màn hình mở đầu và kết thúc, video lời bài hát và tất cả các bản tải xuống với chủ đề hiện tại của bạn. Lời bài hát và nhạc không lời vẫn được giữ nguyên đúng như đã duyệt, nên bạn không cần phải duyệt lại.",
+    "rerenderFailed": "Không thể bắt đầu kết xuất lại: {error}",
+    "rerenderTime": "Quá trình này thường mất khoảng 10-15 phút. Bạn sẽ không thể tải xuống cho đến khi hoàn tất.",
+    "rerenderTitle": "Kết xuất lại với chủ đề hiện tại của bạn?",
+    "rerenderTooltip": "Dựng lại video này với chủ đề hiện tại của bạn"
   },
   "themeSelector": {
     "videoTheme": "Chủ đề video",
@@ -1974,7 +1980,8 @@
     "uppercaseTitle": "Viết hoa tên bài hát",
     "close": "Đóng",
     "saving": "Đang lưu…",
-    "songTitle": "Tên bài hát"
+    "songTitle": "Tên bài hát",
+    "rerenderHint": "Để cập nhật bài hát bạn đã tạo, hãy dùng nút Kết xuất lại trên thẻ của bài hát đó."
   },
   "stalledDownload": {
     "actionFailedDesc": "Vui lòng thử lại sau giây lát.",
