@@ -86,8 +86,10 @@ class DropboxService:
             path: Dropbox path to list (e.g., "/Karaoke/Tracks-Organized")
 
         Returns:
-            List of folder names in the path
+            List of folder names in the path (empty if the path doesn't exist yet,
+            e.g. a brand-new tenant folder — the upload creates it)
         """
+        from dropbox.exceptions import ApiError
         from dropbox.files import FolderMetadata
 
         # Ensure path starts with /
@@ -96,7 +98,14 @@ class DropboxService:
 
         logger.info(f"Listing folders at Dropbox path: {path}")
 
-        result = self.client.files_list_folder(path)
+        try:
+            result = self.client.files_list_folder(path)
+        except ApiError as e:
+            err = e.error
+            if err.is_path() and err.get_path().is_not_found():
+                logger.info(f"Dropbox path {path} does not exist yet; treating as empty")
+                return []
+            raise
         folders = []
 
         # Get all entries (handling pagination)
@@ -111,6 +120,32 @@ class DropboxService:
 
         logger.info(f"Found {len(folders)} folders in {path}")
         return folders
+
+    def ensure_folder(self, path: str) -> bool:
+        """
+        Create a Dropbox folder (and any missing parents) if it doesn't exist.
+
+        Args:
+            path: Dropbox folder path (e.g., "/MediaUnsynced/Karaoke/Tracks-RandyVild")
+
+        Returns:
+            True if the folder was created, False if it already existed
+        """
+        from dropbox.exceptions import ApiError
+
+        if not path.startswith("/"):
+            path = f"/{path}"
+
+        try:
+            self.client.files_create_folder_v2(path)
+        except ApiError as e:
+            err = e.error
+            write_err = err.get_path() if err.is_path() else None
+            if write_err is not None and write_err.is_conflict() and write_err.get_conflict().is_folder():
+                return False
+            raise
+        logger.info(f"Created Dropbox folder {path}")
+        return True
 
     def get_next_brand_code(self, path: str, brand_prefix: str) -> str:
         """

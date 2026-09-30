@@ -133,13 +133,37 @@ def fake_domains(monkeypatch):
     return d
 
 
+class FakeDropbox:
+    """Stand-in for DropboxService recording folder creation."""
+
+    def __init__(self):
+        self.is_configured = True
+        self.ensured = []
+        self.fail = None
+
+    def ensure_folder(self, path):
+        if self.fail:
+            raise self.fail
+        self.ensured.append(path)
+        return True
+
+
+@pytest.fixture
+def fake_dropbox(monkeypatch):
+    d = FakeDropbox()
+    monkeypatch.setattr(tas, "get_dropbox_service", lambda: d)
+    return d
+
+
 @pytest.fixture(autouse=True)
-def patch_singletons(fake_storage, fake_domains, monkeypatch):
+def patch_singletons(fake_storage, fake_domains, fake_dropbox, monkeypatch):
     """Point the service's tenant/theme singletons at the fake storage."""
     monkeypatch.setattr(tas, "get_tenant_service", lambda: TenantService(storage=fake_storage))
     monkeypatch.setattr(tas, "get_theme_service", lambda: ThemeService(storage=fake_storage))
     # Ensure logo gs:// url is deterministic
     monkeypatch.setattr(tas.settings, "gcs_bucket_name", "test-bucket", raising=False)
+    monkeypatch.setattr(tas.settings, "default_brand_prefix", "NOMAD", raising=False)
+    monkeypatch.setattr(tas.settings, "default_private_brand_prefix", "NOMADNP", raising=False)
     return fake_storage
 
 
@@ -331,7 +355,7 @@ def test_update_tenant_full_theme_and_config(fake_storage):
     }
     updated = tas.update_tenant(
         "randy-vild",
-        config_updates={"name": "Randy Vild Deluxe", "defaults": {"brand_prefix": "RVD"}},
+        config_updates={"name": "Randy Vild Deluxe", "defaults": {"dropbox_path": "/K/RV", "brand_prefix": "RVD"}},
         style_params=new_style,
         assets={"kbg.jpg": (b"replacement", "jpg")},
         storage=fake_storage,
@@ -582,3 +606,127 @@ def test_delete_reports_storage_failure(fake_storage, monkeypatch):
     monkeypatch.setattr(fake_storage, "delete_folder", lambda prefix: 0)  # GCS failure swallowed
     with pytest.raises(tas.TenantProvisioningError, match="retry"):
         tas.delete_tenant("randy-vild", storage=fake_storage)
+
+
+# --- Dropbox delivery (path + brand prefix + folder creation) -----------------
+
+
+def test_create_creates_dropbox_folder_and_normalizes(fake_storage, fake_dropbox):
+    config = tas.create_tenant(
+        name="Randy Vild",
+        dropbox_path=" MediaUnsynced/Karaoke/Tracks-RandyVild/ ",
+        brand_prefix="rvild",
+        storage=fake_storage,
+    )
+    assert config.defaults.dropbox_path == "/MediaUnsynced/Karaoke/Tracks-RandyVild"
+    assert config.defaults.brand_prefix == "RVILD"
+    assert config.features.dropbox_upload is True
+    assert fake_dropbox.ensured == ["/MediaUnsynced/Karaoke/Tracks-RandyVild"]
+
+
+def test_create_download_only_does_not_touch_dropbox(fake_storage, fake_dropbox):
+    tas.create_tenant(name="Solo Client", storage=fake_storage)
+    assert fake_dropbox.ensured == []
+
+
+@pytest.mark.parametrize(
+    "path,prefix",
+    [("/Karaoke/Tracks-X", None), (None, "XYZ")],
+)
+def test_create_requires_path_and_prefix_together(fake_storage, path, prefix):
+    with pytest.raises(tas.TenantValidationError, match="both a Dropbox path and a brand prefix"):
+        tas.create_tenant(name="Half Set", dropbox_path=path, brand_prefix=prefix, storage=fake_storage)
+    assert "tenants/half-set/config.json" not in fake_storage.blobs
+
+
+@pytest.mark.parametrize("prefix", ["R", "1ABC", "RV-ILD", "TOOLONGPREFIX1"])
+def test_create_rejects_bad_brand_prefix(fake_storage, prefix):
+    with pytest.raises(tas.TenantValidationError, match="Brand prefix"):
+        tas.create_tenant(name="Bad Prefix", dropbox_path="/K/T", brand_prefix=prefix, storage=fake_storage)
+
+
+@pytest.mark.parametrize("prefix", ["NOMAD", "nomadnp"])
+def test_create_rejects_reserved_brand_prefix(fake_storage, prefix):
+    with pytest.raises(tas.TenantValidationError, match="reserved"):
+        tas.create_tenant(name="Sneaky", dropbox_path="/K/T", brand_prefix=prefix, storage=fake_storage)
+
+
+def test_create_rejects_brand_prefix_used_by_other_tenant(fake_storage):
+    tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
+    with pytest.raises(tas.TenantConflictError, match="randy-vild"):
+        tas.create_tenant(name="Copycat", dropbox_path="/K/CC", brand_prefix="RVILD", storage=fake_storage)
+
+
+def test_create_fails_before_any_write_when_folder_creation_fails(fake_storage, fake_dropbox):
+    fake_dropbox.fail = RuntimeError("insufficient_space")
+    with pytest.raises(tas.TenantProvisioningError, match="insufficient_space"):
+        tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
+    assert "tenants/randy-vild/config.json" not in fake_storage.blobs
+
+
+def test_create_fails_when_dropbox_not_configured(fake_storage, fake_dropbox):
+    fake_dropbox.is_configured = False
+    with pytest.raises(tas.TenantProvisioningError, match="isn't configured"):
+        tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
+
+
+def test_update_enables_dropbox_delivery(fake_storage, fake_dropbox):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    updated = tas.update_tenant(
+        "randy-vild",
+        config_updates={
+            "defaults": {"dropbox_path": "/MediaUnsynced/Karaoke/Tracks-RandyVild", "brand_prefix": "rvild"},
+            # a stale client flag must not win over the path
+            "features": {"dropbox_upload": False},
+        },
+        storage=fake_storage,
+    )
+    assert updated.defaults.dropbox_path == "/MediaUnsynced/Karaoke/Tracks-RandyVild"
+    assert updated.defaults.brand_prefix == "RVILD"
+    assert updated.features.dropbox_upload is True
+    assert fake_dropbox.ensured == ["/MediaUnsynced/Karaoke/Tracks-RandyVild"]
+
+
+def test_update_prefix_only_keeps_path_and_skips_folder(fake_storage, fake_dropbox):
+    tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
+    fake_dropbox.ensured.clear()
+    updated = tas.update_tenant(
+        "randy-vild", config_updates={"defaults": {"brand_prefix": "RVD"}}, storage=fake_storage
+    )
+    assert updated.defaults.dropbox_path == "/K/RV"
+    assert updated.defaults.brand_prefix == "RVD"
+    assert fake_dropbox.ensured == []  # path unchanged → no Dropbox call
+
+
+def test_update_clearing_both_disables_dropbox(fake_storage):
+    tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
+    updated = tas.update_tenant(
+        "randy-vild",
+        config_updates={"defaults": {"dropbox_path": None, "brand_prefix": None}},
+        storage=fake_storage,
+    )
+    assert updated.defaults.dropbox_path is None
+    assert updated.features.dropbox_upload is False
+
+
+def test_update_rejects_path_without_prefix(fake_storage):
+    tas.create_tenant(name="Randy Vild", storage=fake_storage)
+    with pytest.raises(tas.TenantValidationError):
+        tas.update_tenant(
+            "randy-vild", config_updates={"defaults": {"dropbox_path": "/K/RV"}}, storage=fake_storage
+        )
+
+
+def test_update_keeping_own_prefix_is_not_a_conflict(fake_storage):
+    tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
+    updated = tas.update_tenant(
+        "randy-vild",
+        config_updates={"defaults": {"dropbox_path": "/K/RV2", "brand_prefix": "RVILD"}},
+        storage=fake_storage,
+    )
+    assert updated.defaults.dropbox_path == "/K/RV2"
+
+
+def test_list_tenants_includes_brand_prefix(fake_storage):
+    tas.create_tenant(name="Randy Vild", dropbox_path="/K/RV", brand_prefix="RVILD", storage=fake_storage)
+    assert tas.list_tenants(storage=fake_storage)[0]["brand_prefix"] == "RVILD"
