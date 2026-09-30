@@ -68,7 +68,13 @@ import { useAutoCorrect } from '@/hooks/useAutoCorrect'
 import type { AiSuggestion } from '@/lib/api/autoCorrect'
 import type { ServerSuggestionUndoInfo } from '@/lib/lyrics-review/utils/autoCorrectApply'
 import { getWordsFromIds } from '@/lib/lyrics-review/utils/wordUtils'
-import { applyOffsetToCorrectionData, applyOffsetToSegment, applyOffsetToWord } from '@/lib/lyrics-review/utils/timingUtils'
+import {
+  applyOffsetToCorrectionData,
+  applyOffsetToSegment,
+  applyOffsetToTime,
+  applyOffsetToWord,
+} from '@/lib/lyrics-review/utils/timingUtils'
+import { computeNeighbourBoundsBySegment } from '@/lib/lyrics-review/utils/contextWords'
 import { resolveInitialViewMode } from '@/lib/lyrics-review/utils/segmentTiming'
 import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
 
@@ -1504,6 +1510,18 @@ export default function LyricsAnalyzer({
     return timingOffsetMs !== 0 ? nearby.map((w) => applyOffsetToWord(w, timingOffsetMs)) : nearby
   }, [editModalSegment, data.corrected_segments, timingOffsetMs])
 
+  // Nearest word edges in the neighbouring lines (offset-applied), so the modal timeline's resize /
+  // edge auto-extend can't grow a word into an adjacent line beyond the drawn context window.
+  const editNeighbourBounds = useMemo(() => {
+    if (!editModalSegment || editModalSegment.index === null) return null
+    const bounds = computeNeighbourBoundsBySegment(data.corrected_segments).get(editModalSegment.index)
+    if (!bounds) return null
+    return {
+      prevEnd: applyOffsetToTime(bounds.prevEnd, timingOffsetMs),
+      nextStart: applyOffsetToTime(bounds.nextStart, timingOffsetMs),
+    }
+  }, [editModalSegment, data.corrected_segments, timingOffsetMs])
+
   // Timing offset handlers
   const handleOpenTimingOffsetModal = useCallback(() => {
     setIsTimingOffsetModalOpen(true)
@@ -1830,6 +1848,8 @@ export default function LyricsAnalyzer({
           onPlaySegment={handlePlaySegment}
           currentTime={currentAudioTime}
           contextWords={editContextWords}
+          prevBoundaryTime={editNeighbourBounds?.prevEnd ?? null}
+          nextBoundaryTime={editNeighbourBounds?.nextStart ?? null}
           originalTranscribedSegment={
             editModalSegment?.segment &&
             editModalSegment?.index !== null &&
