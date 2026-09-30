@@ -714,22 +714,6 @@ class VideoWorkerOrchestrator:
         if self.config.gdrive_folder_id:
             await self._upload_to_gdrive()
 
-        # Clear outputs_deleted_at if set (job was re-processed after output deletion)
-        # Only clear if we actually uploaded something
-        uploads_happened = (
-            self.result.youtube_url or
-            self.result.dropbox_link or
-            self.result.gdrive_files
-        )
-        if uploads_happened and self.job_manager:
-            job = self.job_manager.get_job(self.config.job_id)
-            if job and job.outputs_deleted_at:
-                self.job_manager.update_job(self.config.job_id, {
-                    "outputs_deleted_at": None,
-                    "outputs_deleted_by": None,
-                })
-                self.job_log.info("Cleared outputs_deleted_at flag (job was re-processed)")
-
         # Incident-hardening G1 (SHADOW): before a public release is considered
         # done, assert the outputs it *should* have shipped (lossy 4K + 720p, plus
         # CDG when enabled) actually landed on the public GDrive share. This closes

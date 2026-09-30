@@ -393,6 +393,11 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 'state_data.gdrive_files': result.gdrive_files,
                 # Clear the visibility-change guard flag (previously popped from the map).
                 'state_data.visibility_change_in_progress': DELETE_FIELD,
+                # Fresh finals were just uploaded, so any earlier "outputs deleted"
+                # marker (edit flow, admin delete) is stale — regardless of whether
+                # this job distributes anywhere (tenant jobs never do).
+                'outputs_deleted_at': None,
+                'outputs_deleted_by': None,
             }
             if result.distribution_warnings:
                 state_updates['state_data.distribution_warnings'] = result.distribution_warnings
@@ -1014,7 +1019,9 @@ async def generate_video_legacy(job_id: str) -> bool:
                     'youtube_url': result.get('youtube_url'),
                     'dropbox_link': result.get('dropbox_link'),
                     'gdrive_files': result.get('gdrive_files'),
-                }
+                },
+                'outputs_deleted_at': None,
+                'outputs_deleted_by': None,
             })
 
             # Mark job as complete (triggers completion email with youtube_url now available)
