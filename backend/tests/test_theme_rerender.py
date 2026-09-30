@@ -52,8 +52,9 @@ class TestValidateRerender:
         ({"prep_only": True}, "can't be re-rendered"),
         ({"state_data": {}}, "instrumental selection"),
         ({"file_urls": {}}, "reviewed lyrics"),
-        ({"state_data": {"instrumental_selection": "clean", "dropbox_link": "https://db"}}, "published"),
+        ({"state_data": {"instrumental_selection": "clean", "dropbox_link": "https://db"}}, "Dropbox folder"),
         ({"state_data": {"instrumental_selection": "clean", "youtube_url": "https://yt"}}, "published"),
+        ({"state_data": {"instrumental_selection": "clean", "gdrive_files": {"mp4": "x"}}}, "published"),
     ])
     def test_rejections(self, overrides, fragment):
         assert fragment in validate_rerender(_job(**overrides))
@@ -206,6 +207,47 @@ class TestRerenderReviewFixes:
         transaction.update.assert_called_once()
         assert transaction.update.call_args.args[1]["error_message"] is None
         worker_service.trigger_screens_worker.assert_awaited_once_with("job123")
+
+
+class TestDropboxArchivedTenantJobs:
+    """Tenants like randy-vild archive to Dropbox (RVILD-0001 - Artist - Title)."""
+
+    def test_dropbox_archived_job_with_brand_code_is_rerenderable(self):
+        job = _job(state_data={"instrumental_selection": "custom",
+                               "dropbox_link": "https://db", "brand_code": "RVILD-0001"})
+        assert validate_rerender(job) is None
+
+    @pytest.mark.asyncio
+    async def test_marker_records_brand_code_to_reuse(self, patched_deps):
+        service, _, _, worker_service = _service()
+        transaction = service.job_manager.firestore.db.transaction.return_value
+        job = _job(state_data={"instrumental_selection": "custom",
+                               "dropbox_link": "https://db", "brand_code": "RVILD-0001"})
+        with patch("backend.services.worker_service.get_worker_service", return_value=worker_service):
+            await service.start(job, theme_id="randy-vild", requested_by="x")
+        marker = transaction.update.call_args.args[1]["state_data.theme_rerender"]
+        assert marker["brand_code"] == "RVILD-0001"
+
+    def test_rerender_brand_code(self):
+        from backend.services.theme_rerender_service import rerender_brand_code
+        assert rerender_brand_code(_job(state_data={"theme_rerender": {"brand_code": "RVILD-0001"}})) == "RVILD-0001"
+        assert rerender_brand_code(_job(state_data={"brand_code": "RVILD-0001"})) is None
+        assert rerender_brand_code(_job(state_data=None)) is None
+
+    def test_orchestrator_keeps_brand_code_during_rerender(self):
+        """Refresh the existing Dropbox folder instead of allocating RVILD-0002."""
+        from backend.workers.video_worker_orchestrator import create_orchestrator_config_from_job
+
+        job = MagicMock()
+        job.job_id = "job123"
+        job.artist = "A"
+        job.title = "T"
+        job.keep_brand_code = None
+        job.state_data = {"instrumental_selection": "custom", "brand_code": "RVILD-0001",
+                          "theme_rerender": {"brand_code": "RVILD-0001"}}
+        job.file_urls = {}
+        config = create_orchestrator_config_from_job(job, temp_dir="/tmp/x")
+        assert config.keep_brand_code == "RVILD-0001"
 
 
 class TestEncodingWorkerJobId:

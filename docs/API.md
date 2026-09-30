@@ -356,7 +356,7 @@ Re-snapshots the tenant theme onto the job (`style_params_gcs_path`, `style_asse
 
 **Access:** the job owner, if still on the tenant allowlist, or an admin.
 
-**Validation (400):** tenant job; `complete`; outputs not deleted; has a theme, reviewed lyrics and an instrumental selection; never distributed to YouTube/Dropbox/GDrive. **409** if the job left `complete` in the meantime (e.g. a double-click already started a re-render).
+**Validation (400):** tenant job; `complete` (or `failed` mid re-render); outputs not deleted; has a theme, reviewed lyrics and an instrumental selection; never published to YouTube/GDrive. A tenant Dropbox archive (e.g. `RVILD-0001 - Artist - Title`) is refreshed in place: the re-render reuses the job's brand code (`state_data.theme_rerender.brand_code` → orchestrator `keep_brand_code`), and Dropbox uploads overwrite. **409** if the job left `complete` in the meantime (e.g. a double-click already started a re-render).
 
 ### Review
 

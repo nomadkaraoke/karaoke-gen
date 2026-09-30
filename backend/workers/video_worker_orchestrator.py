@@ -29,6 +29,7 @@ from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.tracing import job_span, add_span_event
 from backend.workers.supersede import capture_generation, encoding_worker_job_id
+from backend.services.theme_rerender_service import rerender_brand_code
 from backend.services.original_audio import (
     original_audio_gcs_path,
     original_audio_output_filename,
@@ -1244,7 +1245,7 @@ def create_orchestrator_config_from_job(
         original_audio_filename=original_audio_output_filename(job, base_name),
 
         # Keep existing brand code
-        keep_brand_code=getattr(job, 'keep_brand_code', None),
+        keep_brand_code=getattr(job, 'keep_brand_code', None) or rerender_brand_code(job),
 
         # Instrumental selection (for GCE encoding)
         instrumental_selection=instrumental_selection,
