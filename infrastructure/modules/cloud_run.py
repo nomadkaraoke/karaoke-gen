@@ -36,8 +36,9 @@ def cpu_job_image(region: str) -> str:
 
 
 def _job_resource_name(base: str, region: str) -> str:
-    """Pulumi logical name: unchanged for REGION, suffixed for other regions so the
-    us-east4 job can coexist with the legacy us-central1 one during cutover."""
+    """Pulumi logical name: unchanged for REGION, suffixed for other regions. The
+    suffix let the us-east4 jobs coexist with the us-central1 ones during cutover;
+    keep it, since renaming a logical name would make Pulumi replace the job."""
     return base if region == REGION else f"{base}-{region}"
 
 
@@ -88,7 +89,7 @@ def create_lyrics_transcription_job(
         _job_resource_name("lyrics-transcription-job", region),
         name="lyrics-transcription-job",
         location=region,
-        deletion_protection=False,  # Allow the legacy-region copy to be removed
+        deletion_protection=False,  # Allow Pulumi to replace/move it (region change = delete+create)
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
@@ -324,7 +325,7 @@ def create_audio_download_job(
         _job_resource_name("audio-download-job", region),
         name="audio-download-job",
         location=region,
-        deletion_protection=False,  # Allow the legacy-region copy to be removed
+        deletion_protection=False,  # Allow Pulumi to replace/move it (region change = delete+create)
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
@@ -448,7 +449,7 @@ def create_bulk_search_job(
         _job_resource_name("bulk-search-job", region),
         name="bulk-search-job",
         location=region,
-        deletion_protection=False,  # Allow the legacy-region copy to be removed
+        deletion_protection=False,  # Allow Pulumi to replace/move it (region change = delete+create)
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
@@ -553,7 +554,7 @@ def create_video_encoding_job(
         _job_resource_name("video-encoding-job", region),
         name="video-encoding-job",
         location=region,
-        deletion_protection=False,  # Allow the legacy-region copy to be removed
+        deletion_protection=False,  # Allow Pulumi to replace/move it (region change = delete+create)
         template=cloudrunv2.JobTemplateArgs(
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
