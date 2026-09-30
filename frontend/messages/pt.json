@@ -316,7 +316,8 @@
       "signOut": "Sair",
       "login": "Entrar",
       "discountActive": "desconto ativo",
-      "discountActiveHint": "Clique para mostrar o banner de desconto"
+      "discountActiveHint": "Clique para mostrar o banner de desconto",
+      "showAwaitingAudioJobs": "Mostrar tarefas aguardando áudio"
     },
     "resendFailedBody": "Algo deu errado por aqui. Por favor, tente novamente em instantes ou faça login pelo aplicativo.",
     "resendFailedTitle": "Não foi possível enviar um novo link",

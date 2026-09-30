@@ -316,7 +316,8 @@
       "signOut": "Log Keluar",
       "login": "Log Masuk",
       "discountActive": "diskaun aktif",
-      "discountActiveHint": "Klik untuk papar sepanduk diskaun"
+      "discountActiveHint": "Klik untuk papar sepanduk diskaun",
+      "showAwaitingAudioJobs": "Tunjukkan Tugasan yang Menunggu Audio"
     },
     "resendFailedBody": "Terdapat masalah di pihak kami. Sila cuba sebentar lagi, atau log masuk dari aplikasi.",
     "resendFailedTitle": "Tidak dapat menghantar pautan baharu",

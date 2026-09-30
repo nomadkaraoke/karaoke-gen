@@ -316,7 +316,8 @@
       "signOut": "Uitloggen",
       "login": "Inloggen",
       "discountActive": "korting actief",
-      "discountActiveHint": "Klik om de kortingsbanner te tonen"
+      "discountActiveHint": "Klik om de kortingsbanner te tonen",
+      "showAwaitingAudioJobs": "Toon taken die wachten op audio"
     },
     "resendFailedBody": "Er is aan onze kant iets misgegaan. Probeer het zo nog eens, of log in via de app.",
     "resendFailedTitle": "We konden geen nieuwe link sturen",

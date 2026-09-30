@@ -316,7 +316,8 @@
       "signOut": "Logga ut",
       "login": "Logga in",
       "discountActive": "rabatt aktiv",
-      "discountActiveHint": "Klicka för att visa rabattbannern"
+      "discountActiveHint": "Klicka för att visa rabattbannern",
+      "showAwaitingAudioJobs": "Visa jobb som väntar på ljud"
     },
     "resendFailedBody": "Något gick fel på vår sida. Försök igen om en stund, eller logga in från appen.",
     "resendFailedTitle": "Kunde inte skicka en ny länk",

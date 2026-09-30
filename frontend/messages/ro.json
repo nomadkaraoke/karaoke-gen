@@ -316,7 +316,8 @@
       "signOut": "Deconectează-te",
       "login": "Autentificare",
       "discountActive": "reducere activă",
-      "discountActiveHint": "Dă click pentru a afișa bannerul de reducere"
+      "discountActiveHint": "Dă click pentru a afișa bannerul de reducere",
+      "showAwaitingAudioJobs": "Afișează sarcinile în așteptarea fișierului audio"
     },
     "resendFailedBody": "A apărut o problemă la noi. Încearcă din nou în câteva momente sau conectează-te din aplicație.",
     "resendFailedTitle": "Nu am putut trimite un link nou",

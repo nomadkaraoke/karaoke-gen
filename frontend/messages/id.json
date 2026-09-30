@@ -316,7 +316,8 @@
       "signOut": "Keluar",
       "login": "Masuk",
       "discountActive": "diskon aktif",
-      "discountActiveHint": "Klik untuk menampilkan banner diskon"
+      "discountActiveHint": "Klik untuk menampilkan banner diskon",
+      "showAwaitingAudioJobs": "Tampilkan Tugas yang Menunggu Audio"
     },
     "resendFailedBody": "Terjadi kesalahan pada sistem kami. Silakan coba beberapa saat lagi, atau masuk melalui aplikasi.",
     "resendFailedTitle": "Gagal mengirim tautan baru",

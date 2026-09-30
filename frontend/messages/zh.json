@@ -316,7 +316,8 @@
       "signOut": "登出",
       "login": "登录",
       "discountActive": "折扣已生效",
-      "discountActiveHint": "点击显示折扣横幅"
+      "discountActiveHint": "点击显示折扣横幅",
+      "showAwaitingAudioJobs": "显示等待音频的任务"
     },
     "resendFailedBody": "系统出了点小问题。请稍后再试，或直接在应用内登录。",
     "resendFailedTitle": "无法发送新链接",

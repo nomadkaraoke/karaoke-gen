@@ -1946,6 +1946,19 @@ carries the flag; the email now deep-links to
 - Any field a frontend filter branches on must be in `SUMMARY_FIELD_PATHS`, or
   it arrives `undefined` and the branch silently takes the wrong path.
 
+**Recurrence (Sep 2026):** fiverrbot parks orders with no recommended audio at
+`awaiting_audio_selection` via `POST /api/audio-search/search` (owner
+`fiverr@nomadkaraoke.com`, not `made_for_you`), expecting the admin to click
+Select Audio in `/app` — and they were hidden by the same filter (job
+`bdf35771`). Worse, the viewer's **own** jobs were hidden too, so gen's
+"Choose different audio" (stalled-torrent recovery, v0.250.0) moved a job to
+this status and its card, with the picker it had just opened, vanished. The
+wizard reason for hiding no longer holds (the guided flow searches via
+`searchStandalone` and never creates a job at this status). Fix (v0.251.0): show
+every `awaiting_audio_selection` job. Admins get a "Show Jobs Awaiting Audio"
+switch in the account menu (`showAwaitingAudioJobs` in `lib/admin-settings.ts`,
+default on) that hides only **other accounts'** non-made-for-you jobs there.
+
 ---
 
 ## Spike-based alerting is blind to novel low-volume failures (NOMAD-1632 follow-up, v0.223.0)

@@ -316,7 +316,8 @@
       "signOut": "Abmelden",
       "login": "Anmelden",
       "discountActive": "Rabatt aktiv",
-      "discountActiveHint": "Klicke, um das Rabatt-Banner anzuzeigen"
+      "discountActiveHint": "Klicke, um das Rabatt-Banner anzuzeigen",
+      "showAwaitingAudioJobs": "Auf Audio wartende Aufträge anzeigen"
     },
     "resendFailedBody": "Auf unserer Seite ist etwas schiefgelaufen. Bitte versuche es in einem Moment noch einmal oder melde dich über die App an.",
     "resendFailedTitle": "Neuer Link konnte nicht gesendet werden",

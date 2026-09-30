@@ -788,17 +788,46 @@ describe('isVisibilityChangeInProgress', () => {
 });
 
 describe('shouldShowJobOnDashboard', () => {
+  const viewer = { viewerEmail: 'andrew@nomadkaraoke.com' };
+  const fiverrJob = { status: 'awaiting_audio_selection', user_email: 'fiverr@nomadkaraoke.com' };
+  const ownJob = { status: 'awaiting_audio_selection', user_email: 'Andrew@NomadKaraoke.com' };
+
   it('shows normal (non-audio-selection) jobs', () => {
     expect(shouldShowJobOnDashboard({ status: 'complete' })).toBe(true);
     expect(shouldShowJobOnDashboard({ status: 'awaiting_review' })).toBe(true);
   });
 
-  it('hides self-service jobs still in the guided-flow at awaiting_audio_selection', () => {
-    expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection' })).toBe(false);
-    expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection', made_for_you: false })).toBe(false);
+  it('shows awaiting_audio_selection jobs by default', () => {
+    expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection' })).toBe(true);
+    expect(shouldShowJobOnDashboard(fiverrJob, viewer)).toBe(true);
   });
 
-  it('keeps made-for-you orders visible even at awaiting_audio_selection', () => {
-    expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection', made_for_you: true })).toBe(true);
+  it("shows the viewer's own job after 'Choose different audio'", () => {
+    expect(shouldShowJobOnDashboard(ownJob, viewer)).toBe(true);
+  });
+
+  describe('with the admin toggle off', () => {
+    const off = { ...viewer, showOthersAwaitingAudio: false };
+
+    it("hides other accounts' jobs (e.g. fiverrbot)", () => {
+      expect(shouldShowJobOnDashboard(fiverrJob, off)).toBe(false);
+    });
+
+    it("keeps the viewer's own jobs (case-insensitive)", () => {
+      expect(shouldShowJobOnDashboard(ownJob, off)).toBe(true);
+    });
+
+    it('keeps made-for-you orders visible', () => {
+      expect(shouldShowJobOnDashboard({ ...fiverrJob, made_for_you: true }, off)).toBe(true);
+    });
+
+    it('hides jobs whose owner or viewer is unknown', () => {
+      expect(shouldShowJobOnDashboard({ status: 'awaiting_audio_selection' }, off)).toBe(false);
+      expect(shouldShowJobOnDashboard(fiverrJob, { showOthersAwaitingAudio: false })).toBe(false);
+    });
+
+    it('does not affect jobs at other statuses', () => {
+      expect(shouldShowJobOnDashboard({ ...fiverrJob, status: 'complete' }, off)).toBe(true);
+    });
   });
 });

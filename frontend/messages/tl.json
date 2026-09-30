@@ -316,7 +316,8 @@
       "signOut": "Mag-sign Out",
       "login": "Mag-login",
       "discountActive": "aktibo ang discount",
-      "discountActiveHint": "I-click para ipakita ang discount banner"
+      "discountActiveHint": "I-click para ipakita ang discount banner",
+      "showAwaitingAudioJobs": "Ipakita ang mga Job na Naghihintay ng Audio"
     },
     "resendFailedBody": "May nagkaproblema sa aming panig. Pakisubukan ulit maya-maya, o mag-sign in mula sa app.",
     "resendFailedTitle": "Hindi maipadala ang bagong link",

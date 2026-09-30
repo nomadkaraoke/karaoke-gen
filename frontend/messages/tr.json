@@ -316,7 +316,8 @@
       "signOut": "Çıkış Yap",
       "login": "Giriş",
       "discountActive": "indirim aktif",
-      "discountActiveHint": "İndirim afişini göstermek için tıkla"
+      "discountActiveHint": "İndirim afişini göstermek için tıkla",
+      "showAwaitingAudioJobs": "Ses Bekleyen İşleri Göster"
     },
     "resendFailedBody": "Sistemimizde bir sorun oluştu. Lütfen kısa bir süre sonra tekrar dene veya uygulamadan giriş yap.",
     "resendFailedTitle": "Yeni bağlantı gönderilemedi",

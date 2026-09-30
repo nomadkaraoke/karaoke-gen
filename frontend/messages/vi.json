@@ -316,7 +316,8 @@
       "signOut": "Đăng xuất",
       "login": "Đăng nhập",
       "discountActive": "đang áp dụng giảm giá",
-      "discountActiveHint": "Nhấp để hiển thị banner giảm giá"
+      "discountActiveHint": "Nhấp để hiển thị banner giảm giá",
+      "showAwaitingAudioJobs": "Hiển thị các tác vụ đang chờ âm thanh"
     },
     "resendFailedBody": "Đã có lỗi xảy ra từ phía chúng tôi. Vui lòng thử lại trong giây lát hoặc đăng nhập từ ứng dụng.",
     "resendFailedTitle": "Không thể gửi liên kết mới",

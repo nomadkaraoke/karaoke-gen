@@ -316,7 +316,8 @@
       "signOut": "התנתק",
       "login": "התחבר",
       "discountActive": "הנחה פעילה",
-      "discountActiveHint": "לחצו להצגת באנר ההנחה"
+      "discountActiveHint": "לחצו להצגת באנר ההנחה",
+      "showAwaitingAudioJobs": "הצג משימות הממתינות לאודיו"
     },
     "resendFailedBody": "משהו השתבש אצלנו. אנא נסו שוב בעוד רגע, או היכנסו דרך האפליקציה.",
     "resendFailedTitle": "לא הצלחנו לשלוח קישור חדש",

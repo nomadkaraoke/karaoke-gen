@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag, Palette } from "lucide-react"
+import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag, Palette, Music } from "lucide-react"
 import NextLink from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +35,7 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
   const { user, logout } = useAuth()
   // Tenant portals are billed under a separate agreement: no consumer credits UI.
   const { isDefault: showCredits } = useTenant()
-  const { showTestData, setShowTestData } = useAdminSettings()
+  const { showTestData, setShowTestData, showAwaitingAudioJobs, setShowAwaitingAudioJobs } = useAdminSettings()
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
   const [showBuyCreditsDialog, setShowBuyCreditsDialog] = useState(false)
@@ -177,6 +177,18 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
                 <Switch
                   checked={showTestData}
                   onCheckedChange={setShowTestData}
+                  className="ml-2"
+                />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => e.preventDefault()}
+                className="text-muted-foreground focus:text-foreground focus:bg-secondary"
+              >
+                <Music className="w-4 h-4 mr-2" />
+                <span className="flex-1">{t('showAwaitingAudioJobs')}</span>
+                <Switch
+                  checked={showAwaitingAudioJobs}
+                  onCheckedChange={setShowAwaitingAudioJobs}
                   className="ml-2"
                 />
               </DropdownMenuItem>

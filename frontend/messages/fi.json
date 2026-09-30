@@ -316,7 +316,8 @@
       "signOut": "Kirjaudu ulos",
       "login": "Kirjaudu",
       "discountActive": "alennus aktiivinen",
-      "discountActiveHint": "Klikkaa näyttääksesi alennusbannerin"
+      "discountActiveHint": "Klikkaa näyttääksesi alennusbannerin",
+      "showAwaitingAudioJobs": "Näytä ääntä odottavat työt"
     },
     "resendFailedBody": "Jokin meni pieleen. Yritä hetken kuluttua uudelleen tai kirjaudu sisään sovelluksen kautta.",
     "resendFailedTitle": "Uuden linkin lähettäminen epäonnistui",

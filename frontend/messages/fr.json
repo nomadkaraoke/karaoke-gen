@@ -316,7 +316,8 @@
       "signOut": "Se déconnecter",
       "login": "Connexion",
       "discountActive": "réduction active",
-      "discountActiveHint": "Clique pour afficher la bannière de réduction"
+      "discountActiveHint": "Clique pour afficher la bannière de réduction",
+      "showAwaitingAudioJobs": "Afficher les tâches en attente d'audio"
     },
     "resendFailedBody": "Un problème est survenu de notre côté. Réessaie dans un instant, ou connecte-toi depuis l'application.",
     "resendFailedTitle": "Impossible d'envoyer un nouveau lien",

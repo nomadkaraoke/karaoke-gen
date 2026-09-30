@@ -316,7 +316,8 @@
       "signOut": "Wyloguj się",
       "login": "Zaloguj się",
       "discountActive": "zniżka aktywna",
-      "discountActiveHint": "Kliknij, aby wyświetlić baner ze zniżką"
+      "discountActiveHint": "Kliknij, aby wyświetlić baner ze zniżką",
+      "showAwaitingAudioJobs": "Pokaż zadania oczekujące na audio"
     },
     "resendFailedBody": "Coś poszło nie tak po naszej stronie. Spróbuj ponownie za chwilę lub zaloguj się w aplikacji.",
     "resendFailedTitle": "Nie udało się wysłać nowego linku",
