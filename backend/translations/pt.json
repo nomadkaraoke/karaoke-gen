@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Referência de upload do instrumental inválida. Tente fazer o upload novamente.",
     "instrumentalUploadBadType": "Tipo de arquivo de áudio não suportado. Faça o upload de um dos seguintes: {allowed}.",
     "instrumentalUploadMissing": "Não conseguimos encontrar o instrumental enviado. O upload pode não ter sido concluído. Tente novamente.",
-    "uploadDurationMismatchCancelled": "Diferença de duração: o instrumental tem {instrumental_duration}s, mas o áudio da música tem {audio_duration}s (a diferença deve ser de no máximo 0.5s). Esta tarefa foi cancelada e seu crédito foi reembolsado. Envie novamente com arquivos correspondentes.",
+    "uploadDurationMismatchCancelled": "O instrumental ({instrumental_duration}s) não coincide com o áudio da música ({audio_duration}s), portanto pode ser o arquivo errado para esta música. Esta tarefa foi cancelada e seu crédito foi reembolsado. Por favor, verifique os arquivos e envie novamente.",
     "instrumentalUploadTooLarge": "Este arquivo instrumental tem {size_mb} MB, o que ultrapassa o limite de {max_mb} MB. Por favor, envie uma versão em FLAC ou MP3 em vez disso."
   },
   "review": {

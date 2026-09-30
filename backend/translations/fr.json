@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Référence de téléversement de l'instrumentale non valide. Réessaie de téléverser le fichier.",
     "instrumentalUploadBadType": "Type de fichier audio non pris en charge. Téléverse l'un des formats suivants : {allowed}.",
     "instrumentalUploadMissing": "Nous n'avons pas trouvé ton instrumentale téléversée. Le téléversement n'est peut-être pas terminé. Réessaie.",
-    "uploadDurationMismatchCancelled": "Différence de durée : l'instrumentale fait {instrumental_duration}s alors que l'audio de la chanson fait {audio_duration}s (ils doivent correspondre à 0,5s près). Cette tâche a été annulée et ton crédit a été remboursé. Réessaie avec des fichiers correspondants.",
+    "uploadDurationMismatchCancelled": "L'instrumental ({instrumental_duration}s) ne correspond pas à l'audio du morceau ({audio_duration}s), il s'agit donc peut-être du mauvais fichier pour cette chanson. Cette tâche a été annulée et ton crédit a été remboursé. Vérifie les fichiers et réessaie.",
     "instrumentalUploadTooLarge": "Ce fichier instrumental fait {size_mb} Mo, ce qui dépasse la limite de {max_mb} Mo. Téléverse plutôt une version FLAC ou MP3."
   },
   "review": {

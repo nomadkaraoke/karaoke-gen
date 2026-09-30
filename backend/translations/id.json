@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Referensi unggahan instrumental tidak valid. Silakan coba unggah lagi.",
     "instrumentalUploadBadType": "Tipe file audio tidak didukung. Silakan unggah salah satu dari: {allowed}.",
     "instrumentalUploadMissing": "Kami tidak dapat menemukan instrumental yang Anda unggah. Pengunggahan mungkin belum selesai. Silakan coba lagi.",
-    "uploadDurationMismatchCancelled": "Durasi tidak cocok: instrumental berdurasi {instrumental_duration} detik tetapi audio lagu berdurasi {audio_duration} detik (keduanya harus cocok dalam rentang 0,5 detik). Proses ini telah dibatalkan dan kredit Anda telah dikembalikan. Silakan kirimkan kembali dengan file yang cocok.",
+    "uploadDurationMismatchCancelled": "Audio instrumental ({instrumental_duration} detik) tidak selaras dengan audio lagu ({audio_duration} detik), sehingga mungkin ini bukan file yang tepat untuk lagu ini. Proses ini telah dibatalkan dan kredit Anda telah dikembalikan. Silakan periksa file Anda dan kirimkan kembali.",
     "instrumentalUploadTooLarge": "File instrumental ini berukuran {size_mb} MB, yang melebihi batas {max_mb} MB. Silakan unggah versi FLAC atau MP3 sebagai gantinya."
   },
   "review": {

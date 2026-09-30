@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Neplatný odkaz na nahraný inštrumentál. Skús to, prosím, nahrať znova.",
     "instrumentalUploadBadType": "Nepodporovaný typ zvukového súboru. Nahraj, prosím, jeden z: {allowed}.",
     "instrumentalUploadMissing": "Nenašli sme tvoj nahraný inštrumentál. Nahrávanie sa pravdepodobne nedokončilo. Skús to, prosím, znova.",
-    "uploadDurationMismatchCancelled": "Nezhoda dĺžky: inštrumentál má {instrumental_duration}s, ale zvuk skladby má {audio_duration}s (musia sa zhodovať s presnosťou do 0.5s). Táto úloha bola zrušená a tvoj kredit ti bol vrátený. Odošli to, prosím, znova so zhodujúcimi sa súbormi.",
+    "uploadDurationMismatchCancelled": "Inštrumentálna stopa ({instrumental_duration}s) sa nezhoduje so zvukom skladby ({audio_duration}s), takže môže ísť o nesprávny súbor pre túto skladbu. Táto úloha bola zrušená a tvoj kredit bol vrátený. Prosím, skontroluj súbory a odošli ich znova.",
     "instrumentalUploadTooLarge": "Tento inštrumentálny súbor má {size_mb} MB, čo prekračuje limit {max_mb} MB. Namiesto toho prosím nahraj verziu vo formáte FLAC alebo MP3."
   },
   "review": {

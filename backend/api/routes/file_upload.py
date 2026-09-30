@@ -1127,6 +1127,45 @@ async def _validate_audio_durations(
             shutil.rmtree(temp_dir)
 
 
+async def _conform_mismatched_instrumental(
+    storage: StorageService,
+    job_id: str,
+    audio_gcs_path: str,
+    instrumental_gcs_path: str,
+) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Line the instrumental up with the mix and fit it to the mix's length.
+
+    Returns (conformed GCS path, adjustment details), or None when the files
+    don't line up (almost certainly the wrong instrumental). The original upload
+    is kept; the conformed copy lives outside the ``audio/`` prefix so it's never
+    mistaken for the mixed audio.
+    """
+    from backend.services.instrumental_conform import InstrumentalConformError, conform_instrumental
+
+    temp_dir = tempfile.mkdtemp(prefix="instrumental_conform_")
+    try:
+        audio_local = os.path.join(temp_dir, "audio" + Path(audio_gcs_path).suffix)
+        instrumental_local = os.path.join(temp_dir, "instrumental" + Path(instrumental_gcs_path).suffix)
+        out_local = os.path.join(temp_dir, "conformed.flac")
+        storage.download_file(audio_gcs_path, audio_local)
+        storage.download_file(instrumental_gcs_path, instrumental_local)
+        try:
+            result = await asyncio.to_thread(conform_instrumental, audio_local, instrumental_local, out_local)
+        except InstrumentalConformError as e:
+            logger.warning(f"Job {job_id}: instrumental could not be conformed: {e}")
+            return None
+        conformed_gcs_path = f"uploads/{job_id}/conformed/existing_instrumental.flac"
+        storage.upload_file(out_local, conformed_gcs_path)
+        return conformed_gcs_path, {**result.to_dict(), "original_gcs_path": instrumental_gcs_path}
+    except Exception as e:
+        # Rejecting beats rendering against a misaligned instrumental.
+        logger.error(f"Job {job_id}: conforming instrumental failed unexpectedly: {e}", exc_info=True)
+        return None
+    finally:
+        import shutil
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 def _get_gcs_path_for_file(job_id: str, file_type: str, filename: str) -> str:
     """Generate the GCS path for a file based on its type."""
     ext = Path(filename).suffix.lower()
@@ -1538,28 +1577,40 @@ async def mark_uploads_complete(
                     storage_service, audio_gcs_path, instrumental_gcs_path
                 )
                 if not duration_valid:
-                    # Cancel (refunds the credit) so the job isn't stranded PENDING
-                    # with uploaded files — the stale-upload sweep skips those.
-                    job_manager.cancel_job(
-                        job_id,
-                        reason=(
-                            f"Instrumental duration ({instrumental_duration:.2f}s) does not match "
-                            f"audio duration ({audio_duration:.2f}s)"
-                        ),
+                    # Different edits of the same song (extra count-in, longer or
+                    # shorter outro) are lined up with the mix automatically; only a
+                    # file that doesn't correlate with the mix at all is rejected.
+                    conform = await _conform_mismatched_instrumental(
+                        storage_service, job_id, audio_gcs_path, instrumental_gcs_path
                     )
-                    raise HTTPException(
-                        status_code=400,
-                        detail={
-                            "error": "duration_mismatch",
-                            "message": t(locale, "jobs.uploadDurationMismatchCancelled",
-                                         instrumental_duration=f"{instrumental_duration:.1f}",
-                                         audio_duration=f"{audio_duration:.1f}"),
-                            "audio_duration": audio_duration,
-                            "instrumental_duration": instrumental_duration,
-                            "difference": abs(audio_duration - instrumental_duration),
-                        }
-                    )
-                logger.info(f"Duration validation passed: audio={audio_duration:.2f}s, instrumental={instrumental_duration:.2f}s")
+                    if conform is None:
+                        # Cancel (refunds the credit) so the job isn't stranded PENDING
+                        # with uploaded files — the stale-upload sweep skips those.
+                        job_manager.cancel_job(
+                            job_id,
+                            reason=(
+                                f"Instrumental duration ({instrumental_duration:.2f}s) does not match "
+                                f"audio duration ({audio_duration:.2f}s) and could not be aligned"
+                            ),
+                        )
+                        raise HTTPException(
+                            status_code=400,
+                            detail={
+                                "error": "duration_mismatch",
+                                "message": t(locale, "jobs.uploadDurationMismatchCancelled",
+                                             instrumental_duration=f"{instrumental_duration:.1f}",
+                                             audio_duration=f"{audio_duration:.1f}"),
+                                "audio_duration": audio_duration,
+                                "instrumental_duration": instrumental_duration,
+                                "difference": abs(audio_duration - instrumental_duration),
+                            }
+                        )
+                    conformed_path, conform_info = conform
+                    update_data['existing_instrumental_gcs_path'] = conformed_path
+                    job_manager.update_state_data(job_id, 'instrumental_conformed', conform_info)
+                    logger.info(f"Job {job_id}: conformed instrumental to mix length: {conform_info}")
+                else:
+                    logger.info(f"Duration validation passed: audio={audio_duration:.2f}s, instrumental={instrumental_duration:.2f}s")
             except HTTPException:
                 raise
             except Exception as e:

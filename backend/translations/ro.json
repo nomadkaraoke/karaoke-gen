@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Referință nevalidă pentru încărcarea instrumentalului. Te rugăm să încerci să încarci din nou.",
     "instrumentalUploadBadType": "Tip de fișier audio neacceptat. Te rugăm să încarci unul dintre: {allowed}.",
     "instrumentalUploadMissing": "Nu am putut găsi instrumentalul încărcat. Este posibil ca încărcarea să nu se fi finalizat. Te rugăm să încerci din nou.",
-    "uploadDurationMismatchCancelled": "Nepotrivire de durată: instrumentalul are {instrumental_duration}s, dar fișierul audio al piesei are {audio_duration}s (trebuie să coincidă în limita a 0.5s). Această sarcină a fost anulată, iar creditul ți-a fost rambursat. Te rugăm să trimiți din nou cu fișiere care se potrivesc.",
+    "uploadDurationMismatchCancelled": "Instrumentalul ({instrumental_duration}s) nu se potrivește cu fișierul audio al melodiei ({audio_duration}s), așa că este posibil să fie fișierul greșit pentru această melodie. Această sarcină a fost anulată, iar creditul tău a fost rambursat. Te rugăm să verifici fișierele și să trimiți din nou.",
     "instrumentalUploadTooLarge": "Acest fișier instrumental are {size_mb} MB, ceea ce depășește limita de {max_mb} MB. Te rugăm să încarci în schimb o versiune FLAC sau MP3."
   },
   "review": {

@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Ugyldig reference til instrumental-upload. Prøv venligst at uploade igen.",
     "instrumentalUploadBadType": "Ikke-understøttet lydfiltype. Upload venligst en af følgende: {allowed}.",
     "instrumentalUploadMissing": "Vi kunne ikke finde din uploadede instrumental. Uploaden blev muligvis ikke fuldført. Prøv venligst igen.",
-    "uploadDurationMismatchCancelled": "Uoverensstemmelse i varighed: instrumentalen er {instrumental_duration}s, men sangens lyd er {audio_duration}s (de skal matche inden for 0,5s). Dette job er blevet annulleret, og din kredit er refunderet. Indsend venligst igen med matchende filer.",
+    "uploadDurationMismatchCancelled": "Instrumentalsporet ({instrumental_duration}s) stemmer ikke overens med sangens lydspor ({audio_duration}s), så det er muligvis den forkerte fil til denne sang. Denne opgave er blevet annulleret, og din kredit er blevet refunderet. Tjek venligst filerne, og indsend igen.",
     "instrumentalUploadTooLarge": "Denne instrumentalfil er på {size_mb} MB, hvilket overskrider grænsen på {max_mb} MB. Upload venligst en FLAC- eller MP3-version i stedet."
   },
   "review": {

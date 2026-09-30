@@ -53,13 +53,23 @@ describe("TenantJobFlow", () => {
     expect(screen.queryByTestId("upload-progress-modal")).not.toBeInTheDocument()
   })
 
-  it("blocks a mismatched instrumental before uploading anything", async () => {
-    check.mockResolvedValue({ ok: false, reason: "mismatch", fileSeconds: 170, expectedSeconds: 200 })
+  it("only checks the size cap before uploading (length mismatches are lined up server-side)", async () => {
+    check.mockResolvedValue({ ok: true })
     render(<TenantJobFlow onJobCreated={jest.fn()} />)
     fillForm()
     fireEvent.click(screen.getByRole("button", { name: /Submit Track/ }))
 
-    expect(await screen.findByText(/This instrumental is 2:50 long but your song is 3:20/)).toBeInTheDocument()
+    await waitFor(() => expect(createJob).toHaveBeenCalled())
+    expect(check).toHaveBeenCalledWith(expect.any(File), null)
+  })
+
+  it("blocks an oversized instrumental before uploading anything", async () => {
+    check.mockResolvedValue({ ok: false, reason: "tooLarge", sizeMb: 350, maxMb: 200 })
+    render(<TenantJobFlow onJobCreated={jest.fn()} />)
+    fillForm()
+    fireEvent.click(screen.getByRole("button", { name: /Submit Track/ }))
+
+    expect(await screen.findByText(/This file is 350 MB, which is over the 200 MB limit/)).toBeInTheDocument()
     expect(createJob).not.toHaveBeenCalled()
   })
 

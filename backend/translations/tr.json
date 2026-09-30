@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Geçersiz enstrümantal yükleme referansı. Lütfen tekrar yüklemeyi dene.",
     "instrumentalUploadBadType": "Desteklenmeyen ses dosyası türü. Lütfen şunlardan birini yükle: {allowed}.",
     "instrumentalUploadMissing": "Yüklediğin enstrümantali bulamadık. Yükleme tamamlanmamış olabilir. Lütfen tekrar dene.",
-    "uploadDurationMismatchCancelled": "Süre uyuşmazlığı: Enstrümantal {instrumental_duration} sn ancak şarkı sesi {audio_duration} sn (aralarındaki fark en fazla 0,5 sn olmalıdır). Bu işlem iptal edildi ve kredin iade edildi. Lütfen eşleşen dosyalarla tekrar gönder.",
+    "uploadDurationMismatchCancelled": "Enstrümantal ({instrumental_duration} sn.) şarkı sesiyle ({audio_duration} sn.) uyuşmuyor, bu yüzden bu şarkı için yanlış dosya olabilir. Bu işlem iptal edildi ve kredin iade edildi. Lütfen dosyaları kontrol edip tekrar gönder.",
     "instrumentalUploadTooLarge": "Bu enstrümantal dosya {size_mb} MB ve {max_mb} MB sınırını aşıyor. Lütfen bunun yerine bir FLAC veya MP3 sürümü yükle."
   },
   "review": {

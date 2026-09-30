@@ -78,9 +78,9 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
     setPhase("submitting")
 
     try {
-      // Catch a mismatched instrumental before uploading both files — the backend
-      // rejects anything more than 0.5s off, but only after the full upload.
-      const check = await checkInstrumentalFile(instrumentalFile, mixedFile)
+      // Size cap only: a length mismatch is lined up with the mix server-side
+      // (uploads-complete), so different edits of the same song are accepted.
+      const check = await checkInstrumentalFile(instrumentalFile, null)
       if (!check.ok) {
         setError(check.reason === 'tooLarge'
           ? tUpload('tooLarge', { size: check.sizeMb, max: check.maxMb })

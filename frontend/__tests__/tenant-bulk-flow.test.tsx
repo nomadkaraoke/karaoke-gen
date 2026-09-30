@@ -25,6 +25,7 @@ jest.mock('@/lib/api', () => ({
     createJobWithUploadUrls: jest.fn(),
     uploadToSignedUrl: jest.fn(),
     completeJobUpload: jest.fn(),
+    getJob: jest.fn(),
   },
   ApiError: class ApiError extends Error {
     status: number
@@ -391,6 +392,88 @@ it('drops a failed row out of the modal totals and reports it', async () => {
   }
   await waitFor(() => expect(screen.queryByTestId('upload-progress-modal')).not.toBeInTheDocument())
   expect(screen.getByText(/will retry on submit/i)).toBeInTheDocument()
+})
+
+it('a job the server rejected is retried as a fresh job, not re-finalized', async () => {
+  // Regression: a duration-mismatch 400 cancels the job server-side. The row
+  // used to keep the cancelled jobId, and the retry's 400 ("not pending") was
+  // then mistaken for "already processing" — showing Submitted for a dead job.
+  const { ApiError } = jest.requireMock('@/lib/api')
+  mockApi.analyzeBulk.mockResolvedValue({
+    rows: [{ artist: 'Eddy Grant', title: 'I Dont Wanna Dance', mixed_filename: MIXED_1, instrumental_filename: INST_1, confidence: 'high', warning: null }],
+    unpaired: [],
+    ignored: [],
+  })
+  mockApi.completeJobUpload
+    .mockRejectedValueOnce(new ApiError('Duration mismatch: cancelled', 400))
+    .mockResolvedValueOnce({ status: 'success', message: 'started' })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+  await waitFor(() => expect(screen.getByText(/Duration mismatch: cancelled/)).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+  await waitFor(() => expect(mockApi.completeJobUpload).toHaveBeenCalledTimes(2))
+  expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(2)
+  const [first, second] = mockApi.completeJobUpload.mock.calls.map(c => c[0])
+  expect(second).not.toBe(first)
+  expect(markRowDone).toHaveBeenCalled()
+})
+
+it('a recovered row whose job was cancelled is not reported as submitted', async () => {
+  const { ApiError } = jest.requireMock('@/lib/api')
+  const mixedFile = new File(['x'], MIXED_1, { type: 'audio/mpeg', lastModified: 111 })
+  const instFile = new File(['x'], INST_1, { type: 'audio/mpeg', lastModified: 222 })
+  mockLoadPendingBatch.mockResolvedValue({
+    batchId: 'b', rows: [{
+      key: 'b:row-1', batchId: 'b', rowId: 'row-1', jobId: 'job-dead', artist: 'Eddy Grant', title: 'I Dont Wanna Dance', createdAt: Date.now(),
+      files: [
+        { fileType: 'audio', identity: MIXED_1, name: MIXED_1, size: 1, lastModified: 111, sessionUri: 'https://session/audio' },
+        { fileType: 'existing_instrumental', identity: INST_1, name: INST_1, size: 1, lastModified: 222, sessionUri: 'https://session/inst' },
+      ],
+    }],
+  })
+  mockApi.completeJobUpload.mockRejectedValueOnce(new ApiError('Job is not pending', 400))
+  ;(mockApi.getJob as jest.Mock).mockResolvedValue({ job_id: 'job-dead', status: 'cancelled' })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  await screen.findByTestId('resume-banner')
+  fireEvent.click(screen.getByRole('button', { name: /Choose folder to resume/i }))
+  fireEvent.change(screen.getByTestId('bulk-folder-input'), { target: { files: [mixedFile, instFile] } })
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+
+  await waitFor(() => expect(screen.getByText(/Job is not pending/)).toBeInTheDocument())
+  expect(mockApi.getJob).toHaveBeenCalledWith('job-dead')
+  expect(screen.queryByText(/Submitted/)).not.toBeInTheDocument()
+})
+
+it('a recovered row whose job is already processing counts as submitted', async () => {
+  const { ApiError } = jest.requireMock('@/lib/api')
+  const mixedFile = new File(['x'], MIXED_1, { type: 'audio/mpeg', lastModified: 111 })
+  const instFile = new File(['x'], INST_1, { type: 'audio/mpeg', lastModified: 222 })
+  mockLoadPendingBatch.mockResolvedValue({
+    batchId: 'b', rows: [{
+      key: 'b:row-1', batchId: 'b', rowId: 'row-1', jobId: 'job-live', artist: 'Eddy Grant', title: 'I Dont Wanna Dance', createdAt: Date.now(),
+      files: [
+        { fileType: 'audio', identity: MIXED_1, name: MIXED_1, size: 1, lastModified: 111, sessionUri: 'https://session/audio' },
+        { fileType: 'existing_instrumental', identity: INST_1, name: INST_1, size: 1, lastModified: 222, sessionUri: 'https://session/inst' },
+      ],
+    }],
+  })
+  mockApi.completeJobUpload.mockRejectedValueOnce(new ApiError('Job is not pending', 400))
+  ;(mockApi.getJob as jest.Mock).mockResolvedValue({ job_id: 'job-live', status: 'transcribing' })
+
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  await screen.findByTestId('resume-banner')
+  fireEvent.click(screen.getByRole('button', { name: /Choose folder to resume/i }))
+  fireEvent.change(screen.getByTestId('bulk-folder-input'), { target: { files: [mixedFile, instFile] } })
+  await screen.findAllByLabelText('Artist')
+  fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))
+
+  await waitFor(() => expect(screen.getByText(/All tracks submitted/i)).toBeInTheDocument())
 })
 
 it('matchRepickedFile requires an exact size and disambiguates by mtime', () => {

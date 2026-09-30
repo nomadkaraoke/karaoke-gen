@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "Rujukan muat naik instrumental tidak sah. Sila cuba muat naik semula.",
     "instrumentalUploadBadType": "Jenis fail audio tidak disokong. Sila muat naik salah satu daripada: {allowed}.",
     "instrumentalUploadMissing": "Kami tidak dapat mencari instrumental yang anda muat naik. Proses muat naik mungkin belum selesai. Sila cuba lagi.",
-    "uploadDurationMismatchCancelled": "Durasi tidak sepadan: instrumental adalah {instrumental_duration}s tetapi audio lagu adalah {audio_duration}s (kedua-duanya mesti sepadan dalam lingkungan 0.5s). Tugasan ini telah dibatalkan dan kredit anda telah dikembalikan. Sila hantar semula dengan fail yang sepadan.",
+    "uploadDurationMismatchCancelled": "Instrumental ({instrumental_duration}s) tidak sepadan dengan audio lagu ({audio_duration}s), jadi ia mungkin fail yang salah untuk lagu ini. Tugasan ini telah dibatalkan dan kredit anda telah dikembalikan. Sila semak fail tersebut dan hantar semula.",
     "instrumentalUploadTooLarge": "Fail instrumental ini bersaiz {size_mb} MB, iaitu melebihi had {max_mb} MB. Sila muat naik versi FLAC atau MP3 sebagai ganti."
   },
   "review": {

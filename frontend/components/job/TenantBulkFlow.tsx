@@ -362,13 +362,22 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       try {
         await api.completeJobUpload(jobId, ["audio", "existing_instrumental"])
       } catch (completeErr: any) {
+        const rejected = completeErr instanceof ApiError && completeErr.status === 400
         // A recovered/retried row may have already completed before the previous
-        // session died; the job then rejects a second uploads-complete. The
-        // uploads themselves are verified done (session offsets), so treat it
-        // as success rather than stranding the row.
-        const alreadyStarted = hadExistingJob && completeErr instanceof ApiError && completeErr.status === 400
-        if (!alreadyStarted) throw completeErr
-        console.warn("[TenantBulkFlow] uploads-complete rejected for recovered row; assuming already processing:", jobId)
+        // session died; the job then rejects a second uploads-complete. Only
+        // treat that as success if the job really is processing.
+        if (rejected && hadExistingJob && await jobIsProcessing(jobId)) {
+          console.warn("[TenantBulkFlow] uploads-complete rejected for recovered row; job already processing:", jobId)
+        } else {
+          if (rejected) {
+            // The server rejected (and cancelled) this job, e.g. an instrumental
+            // that doesn't match the song. Forget it so a retry creates a fresh
+            // job instead of re-finalizing the cancelled one.
+            markRowDone(currentBatchId, row.id)
+            updateRow(row.id, { jobId: undefined, uploadUrls: undefined })
+          }
+          throw completeErr
+        }
       }
       markRowDone(currentBatchId, row.id)
       updateRow(row.id, { status: "done" })
@@ -702,6 +711,18 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
       </Button>
     </div>
   )
+}
+
+const NOT_PROCESSING = new Set(["pending", "cancelled", "failed"])
+
+// True when the job has moved past upload into real processing.
+async function jobIsProcessing(jobId: string): Promise<boolean> {
+  try {
+    const job = await api.getJob(jobId)
+    return !NOT_PROCESSING.has(job.status)
+  } catch {
+    return false
+  }
 }
 
 // "3.2 MB/s · 2m 10s left" — empty until the engine has a throughput sample.

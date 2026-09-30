@@ -15,19 +15,17 @@ export function formatDuration(seconds: number): string {
 }
 
 interface OwnInstrumentalFieldProps {
-  /** The song (mix) file the instrumental must match in length. */
-  mixFile: File
   file: File | null
   onChange: (file: File | null) => void
   disabled?: boolean
 }
 
 /**
- * Optional "bring your own instrumental" picker for private upload jobs. The
- * backend rejects instrumentals more than 0.5s longer/shorter than the mix, so
- * check that in the browser first rather than after a long upload.
+ * Optional "bring your own instrumental" picker for private upload jobs. Only
+ * the size cap is checked here: an instrumental of a different length is lined
+ * up with the mix by the backend when the upload completes.
  */
-export function OwnInstrumentalField({ mixFile, file, onChange, disabled }: OwnInstrumentalFieldProps) {
+export function OwnInstrumentalField({ file, onChange, disabled }: OwnInstrumentalFieldProps) {
   const t = useTranslations('jobFlow')
   const tUpload = useTranslations('upload')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -39,7 +37,7 @@ export function OwnInstrumentalField({ mixFile, file, onChange, disabled }: OwnI
     setError("")
     setChecking(true)
     try {
-      const check = await checkInstrumentalFile(picked, mixFile)
+      const check = await checkInstrumentalFile(picked, null)
       if (!check.ok) {
         setError(check.reason === 'tooLarge'
           ? tUpload('tooLarge', { size: check.sizeMb, max: check.maxMb })

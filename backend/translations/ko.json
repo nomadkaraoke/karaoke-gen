@@ -53,7 +53,7 @@
     "instrumentalUploadBadPath": "반주 업로드 정보가 올바르지 않습니다. 다시 업로드해 주세요.",
     "instrumentalUploadBadType": "지원하지 않는 오디오 파일 형식입니다. 다음 형식 중 하나를 업로드해 주세요: {allowed}.",
     "instrumentalUploadMissing": "업로드한 반주 파일을 찾을 수 없습니다. 업로드가 완료되지 않았을 수 있습니다. 다시 시도해 주세요.",
-    "uploadDurationMismatchCancelled": "재생 시간 불일치: 반주는 {instrumental_duration}초이지만 노래 오디오는 {audio_duration}초입니다(0.5초 이내로 일치해야 합니다). 해당 작업이 취소되었으며 크레딧이 환불되었습니다. 길이가 일치하는 파일로 다시 제출해 주세요.",
+    "uploadDurationMismatchCancelled": "반주({instrumental_duration}초)의 길이가 원곡 오디오({audio_duration}초)와 일치하지 않아 이 곡에 맞는 파일이 아닐 수 있습니다. 해당 작업은 취소되었으며 크레딧이 환불되었습니다. 파일을 확인하신 후 다시 제출해 주세요.",
     "instrumentalUploadTooLarge": "이 반주 파일의 용량은 {size_mb} MB로 제한 용량인 {max_mb} MB를 초과했습니다. 대신 FLAC 또는 MP3 버전으로 업로드해 주세요."
   },
   "review": {
