@@ -994,7 +994,8 @@
       "editSegment": "编辑片段 {index}",
       "untimedSegment": "无单词时间轴 — 点击编辑",
       "waveforms": "波形图",
-      "missingLyricsMarker": "可能缺失歌词 {start}–{end}"
+      "missingLyricsMarker": "可能缺失歌词 {start}–{end}",
+      "waveformsSeparating": "正在分离人声与音乐。波形图将在一两分钟内自动显示。"
     },
     "editActionBar": {
       "reset": "重置",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "纯净版伴奏会移除的背景和声——点击试听会被移除的部分。",
       "playingWhileEncoding": "正在播放：{stem}",
       "stopAudio": "停止音频",
-      "loadingAudio": "正在加载：{stem}…"
+      "loadingAudio": "正在加载：{stem}…",
+      "previewDiffersNote": "此预览仅用于快速检查歌词同步情况。为了提高生成速度，预览采用了纯黑背景，因此画面效果与包含完整背景和样式的最终视频会有所不同。",
+      "previewNoTranslationNote": "翻译歌词（{language}）将在审核后添加，因此只会出现在最终视频中，不会在此预览中显示。"
     },
     "gapNavigator": {
       "previousGap": "上一个未匹配片段 (P)",

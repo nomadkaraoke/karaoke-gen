@@ -994,7 +994,8 @@
       "editSegment": "Modifier le segment {index}",
       "untimedSegment": "Aucune synchronisation des mots — clique pour modifier",
       "waveforms": "Formes d'onde",
-      "missingLyricsMarker": "Paroles potentiellement manquantes {start}–{end}"
+      "missingLyricsMarker": "Paroles potentiellement manquantes {start}–{end}",
+      "waveformsSeparating": "Séparation de la voix et de la musique. Les formes d'onde apparaîtront automatiquement d'ici une minute ou deux."
     },
     "editActionBar": {
       "reset": "Réinitialiser",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Chœurs que l'instrumental pur supprime — clique pour écouter ce qui sera retiré.",
       "playingWhileEncoding": "Lecture : {stem}",
       "stopAudio": "Arrêter l'audio",
-      "loadingAudio": "Chargement : {stem}…"
+      "loadingAudio": "Chargement : {stem}…",
+      "previewDiffersNote": "Cet aperçu est un rendu rapide pour vérifier la synchronisation de tes paroles. Il utilise un fond noir uni pour plus de rapidité, il ne ressemblera donc pas exactement à ta vidéo finale, qui intégrera ton arrière-plan complet et ton style.",
+      "previewNoTranslationNote": "Les paroles traduites ({language}) sont ajoutées après vérification, elles apparaîtront donc dans la vidéo finale mais pas dans cet aperçu."
     },
     "gapNavigator": {
       "previousGap": "Écart précédent (P)",

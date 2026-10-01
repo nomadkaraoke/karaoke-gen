@@ -994,7 +994,8 @@
       "editSegment": "Upravit segment {index}",
       "untimedSegment": "Bez časování slov — klikni pro úpravu",
       "waveforms": "Zvukové křivky",
-      "missingLyricsMarker": "Možný chybějící text {start}–{end}"
+      "missingLyricsMarker": "Možný chybějící text {start}–{end}",
+      "waveformsSeparating": "Oddělujeme vokály od hudby. Zvukové křivky se automaticky zobrazí za minutu nebo dvě."
     },
     "editActionBar": {
       "reset": "Resetovat",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Doprovodné vokály, které čistá instrumentálka odstraní — klikni a poslechni si, o co přijdeš.",
       "playingWhileEncoding": "Přehrává se: {stem}",
       "stopAudio": "Zastavit zvuk",
-      "loadingAudio": "Načítání: {stem}…"
+      "loadingAudio": "Načítání: {stem}…",
+      "previewDiffersNote": "Tento náhled je rychlý render pro kontrolu synchronizace textu. Kvůli rychlosti využívá jen jednoduché černé pozadí, takže nebude vypadat přesně jako finální video, které použije tvé plné pozadí i styl.",
+      "previewNoTranslationNote": "Přeložený text ({language}) se přidává až po kontrole, takže se objeví ve finálním videu, ale ne v tomto náhledu."
     },
     "gapNavigator": {
       "previousGap": "Předchozí mezera (P)",

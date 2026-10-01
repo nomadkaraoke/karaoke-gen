@@ -994,7 +994,8 @@
       "editSegment": "Uredi segment {index}",
       "untimedSegment": "Nema vremenskih oznaka riječi — klikni za uređivanje",
       "waveforms": "Valni oblici",
-      "missingLyricsMarker": "Možda nedostaje tekst {start}–{end}"
+      "missingLyricsMarker": "Možda nedostaje tekst {start}–{end}",
+      "waveformsSeparating": "Odvajanje vokala od glazbe. Valni oblici pojavit će se automatski za minutu ili dvije."
     },
     "editActionBar": {
       "reset": "Poništi",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Prateći vokali koje čisti instrumental uklanja — klikni da čuješ što izostavljaš.",
       "playingWhileEncoding": "Svira: {stem}",
       "stopAudio": "Zaustavi zvuk",
-      "loadingAudio": "Učitavanje: {stem}…"
+      "loadingAudio": "Učitavanje: {stem}…",
+      "previewDiffersNote": "Ovaj je pretpregled brzi render za provjeru sinkronizacije teksta. Radi brzine koristi običnu crnu pozadinu, pa neće izgledati točno kao tvoj konačni video koji koristi tvoju punu pozadinu i stil.",
+      "previewNoTranslationNote": "Prevedeni tekst ({language}) dodaje se nakon pregleda, pa će se prikazati u konačnom videu, ali ne i u ovom pretpregledu."
     },
     "gapNavigator": {
       "previousGap": "Prethodna praznina (P)",

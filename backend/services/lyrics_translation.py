@@ -287,6 +287,13 @@ def prepare_job_translations(
     language = normalize_language(getattr(job, "translation_language", None))
     if not language:
         _remove_stale(storage, stored_path)
+        if job_manager is not None and (getattr(job, "state_data", None) or {}).get("lyrics_translation"):
+            # Translation was turned off since a previous render: clear the old outcome
+            # so the republished video isn't labelled "(With Translation into X)".
+            try:
+                job_manager.update_state_data(job_id, "lyrics_translation", {"status": "off"})
+            except Exception:
+                logger.warning(f"[job:{job_id}] could not clear lyrics_translation status", exc_info=True)
         return None
     status: Dict[str, Any] = {"language": language}
     path: Optional[str] = None

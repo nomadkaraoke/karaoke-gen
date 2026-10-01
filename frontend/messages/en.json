@@ -1006,7 +1006,8 @@
       "longWordWarning": "This word lasts {seconds}s — unusually long. Play the line and check its end time hasn't run into the instrumental.",
       "longGapWarning": "{seconds}s gap before the next word — often a stray early word (e.g. a phantom \"and\"). Click to play from here.",
       "playFromGap": "Play from the end of this gap",
-      "missingLyricsMarker": "Possible missing lyrics {start}–{end}"
+      "missingLyricsMarker": "Possible missing lyrics {start}–{end}",
+      "waveformsSeparating": "Separating vocals from the music. Waveforms will appear automatically in a minute or two."
     },
     "editActionBar": {
       "reset": "Reset",
@@ -1090,6 +1091,8 @@
       "timedOut": "The preview video is taking longer than expected. Please try again.",
       "retry": "Retry",
       "unsupportedBrowser": "Your browser does not support the video tag.",
+      "previewDiffersNote": "This preview is a quick render to check your lyrics sync. It uses a plain black background for speed, so it won't look exactly like your final video, which uses your full background and style.",
+      "previewNoTranslationNote": "Translated lyrics ({language}) are added after review, so they appear in the final video but not in this preview.",
       "audioLabel": "Preview audio:",
       "audioOriginal": "Original (with vocals)",
       "audioInstrumental": "Instrumental",

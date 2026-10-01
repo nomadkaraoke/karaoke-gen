@@ -994,7 +994,8 @@
       "editSegment": "Editează segmentul {index}",
       "untimedSegment": "Fără sincronizare pe cuvinte — dă click pentru a edita",
       "waveforms": "Forme de undă",
-      "missingLyricsMarker": "Posibile versuri lipsă {start}–{end}"
+      "missingLyricsMarker": "Posibile versuri lipsă {start}–{end}",
+      "waveformsSeparating": "Se separă vocea de muzică. Formele de undă vor apărea automat într-un minut sau două."
     },
     "editActionBar": {
       "reset": "Resetează",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Vocile de fundal pe care instrumentalul curat le elimină — dă click pentru a auzi ce ai pierde.",
       "playingWhileEncoding": "Se redă: {stem}",
       "stopAudio": "Oprește audio",
-      "loadingAudio": "Se încarcă: {stem}…"
+      "loadingAudio": "Se încarcă: {stem}…",
+      "previewDiffersNote": "Această previzualizare este o randare rapidă pentru a verifica sincronizarea versurilor tale. Folosește un fundal negru simplu pentru rapiditate, așa că nu va arăta exact ca videoclipul tău final, care folosește fundalul și stilul tău complet.",
+      "previewNoTranslationNote": "Versurile traduse ({language}) sunt adăugate după verificare, așa că vor apărea în videoclipul final, dar nu și în această previzualizare."
     },
     "gapNavigator": {
       "previousGap": "Golul anterior (P)",

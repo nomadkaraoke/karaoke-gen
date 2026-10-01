@@ -52,6 +52,31 @@ describe('PreviewVideoSection', () => {
     expect(apiClient.getPreviewVideoStatus).not.toHaveBeenCalled()
   })
 
+  it('explains the preview is a quick sync-check render, not the final look', async () => {
+    renderSection(makeApiClient())
+    await flush()
+
+    const note = screen.getByTestId('preview-differs-note')
+    expect(note).toHaveTextContent(/plain black background/)
+    expect(note).not.toHaveTextContent(/Translated lyrics/)
+  })
+
+  it('says translated lyrics are added after review when the job has a translation language', async () => {
+    render(
+      <PreviewVideoSection
+        apiClient={makeApiClient()}
+        isModalOpen={true}
+        updatedData={data}
+        translationLanguage="es"
+      />
+    )
+    await flush()
+
+    expect(screen.getByTestId('preview-differs-note')).toHaveTextContent(
+      'Translated lyrics (Spanish) are added after review'
+    )
+  })
+
   it('polls the status endpoint until ready when encoding runs in background', async () => {
     const apiClient = makeApiClient({
       generatePreviewVideo: jest.fn().mockResolvedValue({

@@ -39,6 +39,8 @@ interface ReviewChangesModalProps {
   apiClient?: ApiClient | null
   timingOffsetMs?: number
   isDuet?: boolean
+  /** Job's post-review translation language, if any (shown as a preview caveat). */
+  translationLanguage?: string | null
   /** When true (e.g. tenant / uploaded-instrumental jobs) approving here completes the
    *  track directly — there is no instrumental-review step — so the CTA reflects that. */
   completesReview?: boolean
@@ -70,6 +72,7 @@ export default function ReviewChangesModal({
   apiClient = null,
   timingOffsetMs = 0,
   isDuet,
+  translationLanguage = null,
   completesReview = false,
   offerInlineChoice = false,
   autoConfident = false,
@@ -155,6 +158,7 @@ export default function ReviewChangesModal({
           updatedData={data}
           timingOffsetMs={timingOffsetMs}
           isDuet={isDuet}
+          translationLanguage={translationLanguage}
           instrumentalOptions={instrumentalOptions}
           autoSelection={selected}
           onTimeUpdate={setPreviewTime}

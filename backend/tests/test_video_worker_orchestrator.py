@@ -1222,7 +1222,41 @@ class TestVideoWorkerOrchestratorDistribution:
                 await orchestrator._upload_to_youtube()
 
                 mock_service.upload_video.assert_called_once()
+                assert mock_service.upload_video.call_args.kwargs["title"] == "Test Artist - Test Title (Karaoke)"
                 assert orchestrator.result.youtube_url == "https://youtube.com/watch?v=video123"
+
+    @pytest.mark.asyncio
+    async def test_upload_to_youtube_labels_translated_video(self):
+        """A video showing translated lyrics says so in its YouTube title + description."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            video_file = os.path.join(temp_dir, "test.mp4")
+            with open(video_file, "w") as f:
+                f.write("dummy video")
+
+            config = OrchestratorConfig(
+                job_id="test-job",
+                artist="Manel",
+                title="Benvolgut",
+                title_video_path="/path/title.mov",
+                karaoke_video_path="/path/karaoke.mov",
+                instrumental_audio_path="/path/audio.flac",
+                enable_youtube_upload=True,
+                youtube_credentials={"token": "test"},
+                translation_language_name="English",
+            )
+            orchestrator = VideoWorkerOrchestrator(config)
+            orchestrator.result.final_video_lossy = video_file
+
+            with patch.object(orchestrator, "_get_youtube_service") as mock_get:
+                mock_service = MagicMock()
+                mock_service.upload_video.return_value = ("v", "https://youtube.com/watch?v=v")
+                mock_get.return_value = mock_service
+
+                await orchestrator._upload_to_youtube()
+
+                kwargs = mock_service.upload_video.call_args.kwargs
+                assert kwargs["title"] == "Manel - Benvolgut (With Translation into English) (Karaoke)"
+                assert "translated lyrics (English)" in kwargs["description"]
 
     @pytest.mark.asyncio
     async def test_upload_to_dropbox(self):

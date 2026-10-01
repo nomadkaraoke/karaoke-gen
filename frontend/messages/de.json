@@ -994,7 +994,8 @@
       "editSegment": "Bearbeite Segment {index}",
       "untimedSegment": "Keine Wort-Timings — klicke zum Bearbeiten",
       "waveforms": "Wellenformen",
-      "missingLyricsMarker": "Möglicherweise fehlender Text {start}–{end}"
+      "missingLyricsMarker": "Möglicherweise fehlender Text {start}–{end}",
+      "waveformsSeparating": "Der Gesang wird von der Musik getrennt. Die Wellenformen erscheinen automatisch in ein bis zwei Minuten."
     },
     "editActionBar": {
       "reset": "Zurücksetzen",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Hintergrundgesang, den das reine Instrumental entfernt — klicke, um zu hören, was du weglassen würdest.",
       "playingWhileEncoding": "Wiedergabe: {stem}",
       "stopAudio": "Audio stoppen",
-      "loadingAudio": "Lade: {stem}…"
+      "loadingAudio": "Lade: {stem}…",
+      "previewDiffersNote": "Diese Vorschau ist ein schneller Renderdurchlauf, um deine Textsynchronisation zu überprüfen. Aus Geschwindigkeitsgründen wird ein einfacher schwarzer Hintergrund verwendet, daher sieht sie nicht genau wie dein finales Video aus, das deinen vollständigen Hintergrund und Stil nutzt.",
+      "previewNoTranslationNote": "Der übersetzte Text ({language}) wird nach der Überprüfung hinzugefügt, daher erscheint er im finalen Video, aber nicht in dieser Vorschau."
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",

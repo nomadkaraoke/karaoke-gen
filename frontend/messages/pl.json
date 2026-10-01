@@ -994,7 +994,8 @@
       "editSegment": "Edytuj segment {index}",
       "untimedSegment": "Brak synchronizacji słów — kliknij, aby edytować",
       "waveforms": "Fale dźwiękowe",
-      "missingLyricsMarker": "Możliwy brak tekstu {start}–{end}"
+      "missingLyricsMarker": "Możliwy brak tekstu {start}–{end}",
+      "waveformsSeparating": "Oddzielamy wokal od muzyki. Przebiegi falowe pojawią się automatycznie za minutę lub dwie."
     },
     "editActionBar": {
       "reset": "Resetuj",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Chórki, które usuwa czysty podkład instrumentalny — kliknij, aby posłuchać, co usuwasz.",
       "playingWhileEncoding": "Odtwarzanie: {stem}",
       "stopAudio": "Zatrzymaj audio",
-      "loadingAudio": "Ładowanie: {stem}…"
+      "loadingAudio": "Ładowanie: {stem}…",
+      "previewDiffersNote": "Ten podgląd to szybki render, który pozwala sprawdzić synchronizację tekstu. Aby przyspieszyć generowanie, używa zwykłego czarnego tła, więc nie będzie wyglądał dokładnie tak jak Twoje finalne wideo, które zawiera pełne tło i styl.",
+      "previewNoTranslationNote": "Przetłumaczony tekst ({language}) jest dodawany po weryfikacji, więc pojawi się w finalnym wideo, ale nie w tym podglądzie."
     },
     "gapNavigator": {
       "previousGap": "Poprzednia luka (P)",

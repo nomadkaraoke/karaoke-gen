@@ -17,8 +17,13 @@ const AUDIO_DATA: AudioData = {
 }
 
 const Probe = () => {
-  const { audioData } = useContext(VocalsAudioDataLoaderContext)
-  return <div data-testid="probe">{audioData ? 'loaded' : 'empty'}</div>
+  const { audioData, status } = useContext(VocalsAudioDataLoaderContext)
+  return (
+    <>
+      <div data-testid="probe">{audioData ? 'loaded' : 'empty'}</div>
+      <div data-testid="status">{status}</div>
+    </>
+  )
 }
 
 // Flush the pending promise chain inside the loader's .then/.catch handlers.
@@ -63,6 +68,7 @@ describe('VocalsAudioDataLoader', () => {
     )
     await flushPromises()
     expect(screen.getByTestId('probe')).toHaveTextContent('empty')
+    expect(screen.getByTestId('status')).toHaveTextContent('separating')
 
     await act(async () => {
       jest.advanceTimersByTime(15_000)
@@ -74,6 +80,7 @@ describe('VocalsAudioDataLoader', () => {
     })
     expect(fetchAudioData).toHaveBeenCalledTimes(3)
     expect(screen.getByTestId('probe')).toHaveTextContent('loaded')
+    expect(screen.getByTestId('status')).toHaveTextContent('ready')
   })
 
   it('does not retry on a terminal error (e.g. 404: job has no vocal stem)', async () => {
@@ -92,6 +99,7 @@ describe('VocalsAudioDataLoader', () => {
     })
     expect(fetchAudioData).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('probe')).toHaveTextContent('empty')
+    expect(screen.getByTestId('status')).toHaveTextContent('failed')
     expect(consoleError).toHaveBeenCalled()
 
     consoleError.mockRestore()

@@ -994,7 +994,8 @@
       "editSegment": "Edit segmen {index}",
       "untimedSegment": "Tidak ada timing kata — klik untuk mengedit",
       "waveforms": "Bentuk gelombang",
-      "missingLyricsMarker": "Kemungkinan ada lirik yang hilang {start}–{end}"
+      "missingLyricsMarker": "Kemungkinan ada lirik yang hilang {start}–{end}",
+      "waveformsSeparating": "Sedang memisahkan vokal dari musik. Bentuk gelombang akan muncul otomatis dalam satu atau dua menit."
     },
     "editActionBar": {
       "reset": "Atur Ulang",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Vokal latar yang dihapus oleh instrumental bersih — klik untuk mendengarkan bagian yang akan dihilangkan.",
       "playingWhileEncoding": "Memutar: {stem}",
       "stopAudio": "Hentikan audio",
-      "loadingAudio": "Memuat: {stem}…"
+      "loadingAudio": "Memuat: {stem}…",
+      "previewDiffersNote": "Pratinjau ini adalah render cepat untuk memeriksa sinkronisasi lirik Anda. Pratinjau ini menggunakan latar belakang hitam polos agar lebih cepat, jadi tampilannya tidak akan sama persis dengan video akhir Anda yang menggunakan latar belakang dan gaya lengkap.",
+      "previewNoTranslationNote": "Lirik terjemahan ({language}) ditambahkan setelah peninjauan, jadi akan muncul di video akhir, tetapi tidak di pratinjau ini."
     },
     "gapNavigator": {
       "previousGap": "Celah sebelumnya (P)",

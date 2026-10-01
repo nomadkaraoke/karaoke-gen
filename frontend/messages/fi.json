@@ -994,7 +994,8 @@
       "editSegment": "Muokkaa segmenttiä {index}",
       "untimedSegment": "Ei sana-ajoituksia — muokkaa klikkaamalla",
       "waveforms": "Aaltomuodot",
-      "missingLyricsMarker": "Mahdollisesti puuttuvia sanoituksia {start}–{end}"
+      "missingLyricsMarker": "Mahdollisesti puuttuvia sanoituksia {start}–{end}",
+      "waveformsSeparating": "Erotetaan laulu musiikista. Aaltomuodot ilmestyvät automaattisesti minuutin tai parin kuluessa."
     },
     "editActionBar": {
       "reset": "Nollaa",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Taustalaulut, jotka puhdas instrumentaaliversio poistaa — klikkaa kuullaksesi, mitä jäisi pois.",
       "playingWhileEncoding": "Toistetaan: {stem}",
       "stopAudio": "Pysäytä ääni",
-      "loadingAudio": "Ladataan: {stem}…"
+      "loadingAudio": "Ladataan: {stem}…",
+      "previewDiffersNote": "Tämä esikatselu on nopea renderöinti sanoitusten synkronoinnin tarkistamiseen. Siinä käytetään nopeuden vuoksi pelkkää mustaa taustaa, joten se ei näytä aivan samalta kuin lopullinen videosi, jossa käytetään valitsemaasi taustaa ja tyyliä.",
+      "previewNoTranslationNote": "Käännetyt sanoitukset ({language}) lisätään tarkistuksen jälkeen, joten ne näkyvät lopullisessa videossa, mutta eivät tässä esikatselussa."
     },
     "gapNavigator": {
       "previousGap": "Edellinen aukko (P)",

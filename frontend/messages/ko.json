@@ -994,7 +994,8 @@
       "editSegment": "구간 {index} 편집",
       "untimedSegment": "단어 타이밍 없음 — 클릭해서 편집하세요",
       "waveforms": "파형",
-      "missingLyricsMarker": "가사 누락 가능 구간 {start}–{end}"
+      "missingLyricsMarker": "가사 누락 가능 구간 {start}–{end}",
+      "waveformsSeparating": "음악에서 보컬을 분리하는 중입니다. 1~2분 내에 파형이 자동으로 표시됩니다."
     },
     "editActionBar": {
       "reset": "초기화",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "깔끔한 반주에서 제거되는 백보컬 — 클릭해서 어떤 소리가 빠지는지 들어보세요.",
       "playingWhileEncoding": "재생 중: {stem}",
       "stopAudio": "오디오 중지",
-      "loadingAudio": "불러오는 중: {stem}…"
+      "loadingAudio": "불러오는 중: {stem}…",
+      "previewDiffersNote": "이 미리보기는 가사 싱크 확인을 위해 빠르게 렌더링된 영상입니다. 빠른 처리를 위해 단순한 검은색 배경을 사용하므로, 선택하신 배경과 스타일이 모두 적용되는 최종 영상과는 다르게 보일 수 있습니다.",
+      "previewNoTranslationNote": "번역 가사({language})는 검토 후에 추가되므로 최종 영상에는 표시되지만, 이 미리보기에는 표시되지 않습니다."
     },
     "gapNavigator": {
       "previousGap": "이전 공백 (P)",

@@ -994,7 +994,8 @@
       "editSegment": "Editar segmento {index}",
       "untimedSegment": "Sin tiempos por palabra — haz clic para editar",
       "waveforms": "Formas de onda",
-      "missingLyricsMarker": "Posible letra faltante {start}–{end}"
+      "missingLyricsMarker": "Posible letra faltante {start}–{end}",
+      "waveformsSeparating": "Separando la voz de la música. Las formas de onda aparecerán automáticamente en uno o dos minutos."
     },
     "editActionBar": {
       "reset": "Restablecer",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Coros que elimina el instrumental limpio — haz clic para escuchar lo que estarías dejando fuera.",
       "playingWhileEncoding": "Reproduciendo: {stem}",
       "stopAudio": "Detener audio",
-      "loadingAudio": "Cargando: {stem}…"
+      "loadingAudio": "Cargando: {stem}…",
+      "previewDiffersNote": "Esta vista previa es un renderizado rápido para revisar tu sincronización de letras. Usa un fondo negro liso para mayor velocidad, por lo que no se verá exactamente igual que tu video final, que usa tu fondo y estilo completos.",
+      "previewNoTranslationNote": "Las letras traducidas ({language}) se agregan después de la revisión, por lo que aparecerán en el video final, pero no en esta vista previa."
     },
     "gapNavigator": {
       "previousGap": "Hueco anterior (P)",

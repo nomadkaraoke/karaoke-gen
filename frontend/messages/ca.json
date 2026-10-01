@@ -994,7 +994,8 @@
       "editSegment": "Edita el segment {index}",
       "untimedSegment": "Sense sincronització de paraules — fes clic per editar",
       "waveforms": "Formes d'ona",
-      "missingLyricsMarker": "Possible falta de lletra {start}–{end}"
+      "missingLyricsMarker": "Possible falta de lletra {start}–{end}",
+      "waveformsSeparating": "Separant la veu de la música. Les formes d'ona apareixeran automàticament d'aquí a un minut o dos."
     },
     "editActionBar": {
       "reset": "Restableix",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Cors que l'instrumental net elimina — fes clic per escoltar què deixaries fora.",
       "playingWhileEncoding": "Reproduint: {stem}",
       "stopAudio": "Atura l'àudio",
-      "loadingAudio": "S'està carregant: {stem}…"
+      "loadingAudio": "S'està carregant: {stem}…",
+      "previewDiffersNote": "Aquesta previsualització és una renderització ràpida per comprovar la sincronització de la lletra. Utilitza un fons negre llis per anar més ràpid, així que no es veurà exactament com el teu vídeo final, que utilitza el teu fons i estil complets.",
+      "previewNoTranslationNote": "La lletra traduïda ({language}) s'afegeix després de la revisió, així que apareixerà al vídeo final, però no en aquesta previsualització."
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",

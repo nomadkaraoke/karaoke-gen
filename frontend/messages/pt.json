@@ -994,7 +994,8 @@
       "editSegment": "Editar segmento {index}",
       "untimedSegment": "Sem marcação de tempo nas palavras — clique para editar",
       "waveforms": "Formas de onda",
-      "missingLyricsMarker": "Possível letra ausente {start}–{end}"
+      "missingLyricsMarker": "Possível letra ausente {start}–{end}",
+      "waveformsSeparating": "Separando os vocais da música. As formas de onda aparecerão automaticamente em um ou dois minutos."
     },
     "editActionBar": {
       "reset": "Redefinir",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Vocais de apoio que o instrumental limpo remove — clique para ouvir o que vai ficar de fora.",
       "playingWhileEncoding": "Tocando: {stem}",
       "stopAudio": "Parar áudio",
-      "loadingAudio": "Carregando: {stem}…"
+      "loadingAudio": "Carregando: {stem}…",
+      "previewDiffersNote": "Esta prévia é uma renderização rápida para você conferir a sincronização da letra. Ela usa um fundo preto simples para ser mais rápida, por isso não ficará exatamente igual ao seu vídeo final, que usa seu plano de fundo e estilo completos.",
+      "previewNoTranslationNote": "A letra traduzida ({language}) é adicionada após a revisão, então aparecerá no vídeo final, mas não nesta prévia."
     },
     "gapNavigator": {
       "previousGap": "Lacuna anterior (P)",

@@ -291,3 +291,33 @@ class TestUpdateJobYouTubeUrl:
         with patch('backend.workers.youtube_queue_processor.JobManager', return_value=mock_job_manager):
             with pytest.raises(RuntimeError, match="firestore down"):
                 _update_job_youtube_url("job-123", "https://youtube.com/watch?v=abc")
+
+
+class TestProcessSingleUploadTranslationLabel:
+    """Queued uploads label translated videos exactly like the live upload path."""
+
+    def test_translated_job_title_and_description_labelled(self, tmp_path):
+        import asyncio
+        from types import SimpleNamespace
+        from backend.workers.youtube_queue_processor import _process_single_upload
+
+        job = SimpleNamespace(
+            job_id="job-tr", artist="Manel", title="Benvolgut",
+            state_data={"lyrics_translation": {"language": "en", "status": "translated"}},
+        )
+        youtube = MagicMock()
+        youtube.upload_video.return_value = ("vid", "https://youtube.com/watch?v=vid")
+        settings = SimpleNamespace(default_youtube_description="Body")
+
+        with patch('backend.workers.youtube_queue_processor.JobManager') as jm, \
+             patch('backend.workers.youtube_queue_processor.StorageService'), \
+             patch('backend.workers.youtube_queue_processor._download_video_from_gcs', return_value=str(tmp_path / "v.mkv")), \
+             patch('backend.workers.youtube_queue_processor._download_thumbnail_from_gcs', return_value=None), \
+             patch('backend.workers.youtube_queue_processor._create_youtube_service', return_value=youtube):
+            jm.return_value.get_job.return_value = job
+            url = asyncio.run(_process_single_upload("job-tr", {}, MagicMock(), settings))
+
+        assert url == "https://youtube.com/watch?v=vid"
+        kwargs = youtube.upload_video.call_args.kwargs
+        assert kwargs["title"] == "Manel - Benvolgut (With Translation into English) (Karaoke)"
+        assert kwargs["description"].startswith("This karaoke video includes translated lyrics (English)")

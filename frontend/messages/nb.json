@@ -994,7 +994,8 @@
       "editSegment": "Rediger segment {index}",
       "untimedSegment": "Ingen tidsstempler for ord — klikk for å redigere",
       "waveforms": "Bølgeformer",
-      "missingLyricsMarker": "Mulig manglende sangtekst {start}–{end}"
+      "missingLyricsMarker": "Mulig manglende sangtekst {start}–{end}",
+      "waveformsSeparating": "Skiller vokal fra musikken. Bølgeformene vises automatisk om et minutt eller to."
     },
     "editActionBar": {
       "reset": "Tilbakestill",
@@ -1089,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Bakgrunnsvokal som den rene instrumentalen fjerner — klikk for å høre hva du velger bort.",
       "playingWhileEncoding": "Spiller av: {stem}",
       "stopAudio": "Stopp lyd",
-      "loadingAudio": "Laster inn: {stem}…"
+      "loadingAudio": "Laster inn: {stem}…",
+      "previewDiffersNote": "Denne forhåndsvisningen er en rask rendring for å sjekke synkroniseringen av sangteksten. Den bruker en enkel, svart bakgrunn for at det skal gå raskt, så den vil ikke se helt lik ut som den endelige videoen din, som bruker den fullstendige bakgrunnen og stilen din.",
+      "previewNoTranslationNote": "Oversatt sangtekst ({language}) legges til etter gjennomgangen, så den vises i den endelige videoen, men ikke i denne forhåndsvisningen."
     },
     "gapNavigator": {
       "previousGap": "Forrige hull (P)",
