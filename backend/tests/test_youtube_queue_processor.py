@@ -267,15 +267,27 @@ class TestUpdateJobYouTubeUrl:
         # (which would clobber a concurrently-changed sibling like brand_code).
         assert "state_data" not in payload
 
-    def test_handles_missing_job(self):
-        """Should not raise when job not found."""
+    def test_missing_job_raises(self):
+        """A missing job must surface as a failure, so the processor flags the
+        queue entry needs_attention instead of silently losing the URL."""
         from backend.workers.youtube_queue_processor import _update_job_youtube_url
 
         mock_job_manager = Mock()
         mock_job_manager.get_job.return_value = None
 
         with patch('backend.workers.youtube_queue_processor.JobManager', return_value=mock_job_manager):
-            # Should not raise
-            _update_job_youtube_url("nonexistent", "https://youtube.com/watch?v=abc")
+            with pytest.raises(RuntimeError, match="not found"):
+                _update_job_youtube_url("nonexistent", "https://youtube.com/watch?v=abc")
 
         mock_job_manager.update_job.assert_not_called()
+
+    def test_update_failure_propagates(self):
+        from backend.workers.youtube_queue_processor import _update_job_youtube_url
+
+        mock_job_manager = Mock()
+        mock_job_manager.get_job.return_value = Mock(state_data={})
+        mock_job_manager.update_job.side_effect = RuntimeError("firestore down")
+
+        with patch('backend.workers.youtube_queue_processor.JobManager', return_value=mock_job_manager):
+            with pytest.raises(RuntimeError, match="firestore down"):
+                _update_job_youtube_url("job-123", "https://youtube.com/watch?v=abc")

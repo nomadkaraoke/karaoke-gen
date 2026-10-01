@@ -137,7 +137,11 @@ def claim_with_youtube_queue(
         YOUTUBE_UPLOAD_QUEUE_COLLECTION,
     )
 
-    job_ref = db.collection("jobs").document(job_id)
+    from backend.config import get_settings
+
+    # Same collection the YouTube queue's mark_processing transaction reads, so
+    # the two claims always contend on the same job document.
+    job_ref = db.collection(get_settings().firestore_collection).document(job_id)
     queue_ref = db.collection(YOUTUBE_UPLOAD_QUEUE_COLLECTION).document(job_id)
     marker_key = f"state_data.{ADMIN_RERENDER_MARKER}"
 

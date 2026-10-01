@@ -144,7 +144,11 @@ def claim_for_rerender(db, job_id: str, update: dict, allowed_statuses: set) -> 
     Raises RerenderConflictError otherwise (e.g. a double-click already
     started a re-render).
     """
-    job_ref = db.collection("jobs").document(job_id)
+    from backend.config import get_settings
+
+    # Same collection the YouTube queue's mark_processing transaction reads, so
+    # the two claims always contend on the same job document.
+    job_ref = db.collection(get_settings().firestore_collection).document(job_id)
 
     @firestore.transactional
     def claim(transaction):

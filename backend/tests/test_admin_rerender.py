@@ -1689,6 +1689,45 @@ class TestQueueProcessorFlow:
         queue_service.mark_post_upload_error.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_real_url_write_failure_flags_needs_attention(self):
+        """End to end through the REAL _update_job_youtube_url (not a raising mock):
+        a failed job write must reach mark_post_upload_error."""
+        from backend.workers import youtube_queue_processor as qp
+        entries = [_q_entry("job123")]
+        queue_service = MagicMock()
+        queue_service.get_queued_uploads.side_effect = [entries, []]
+        queue_service.mark_processing.return_value = True
+        queue_service.db.get_all.return_value = []
+        quota = MagicMock()
+        quota.check_quota_available.return_value = (True, 1, "ok")
+        job_manager = MagicMock()
+        job_manager.get_job.return_value = MagicMock(state_data={})
+        job_manager.update_job.side_effect = RuntimeError("firestore down")
+        with patch.object(qp, "get_youtube_upload_queue_service", return_value=queue_service), \
+             patch.object(qp, "get_youtube_quota_service", return_value=quota), \
+             patch.object(qp, "_process_single_upload", new=AsyncMock(return_value="https://youtu.be/new")), \
+             patch.object(qp, "JobManager", return_value=job_manager), \
+             patch.object(qp, "_send_youtube_upload_notification", new=AsyncMock()), \
+             patch.object(qp, "notify_community_publish", new=AsyncMock()):
+            await qp.process_youtube_upload_queue()
+        queue_service.mark_completed.assert_called_once_with("job123", "https://youtu.be/new")
+        queue_service.mark_failed.assert_not_called()
+        queue_service.mark_post_upload_error.assert_called_once()
+
+    def test_claim_reads_configured_jobs_collection(self):
+        """The re-render claim must contend on the same job document the queue's
+        mark_processing transaction reads (settings.firestore_collection)."""
+        from backend.services import admin_rerender_service as ars
+        db = MagicMock()
+        with patch("backend.config.get_settings", return_value=MagicMock(firestore_collection="jobs-test")), \
+             patch.object(ars.firestore, "transactional", side_effect=lambda f: (lambda tx: None)):
+            try:
+                ars.claim_with_youtube_queue(db, "job123", {}, {"complete"}, cancel_deferred_upload=False)
+            except Exception:
+                pass
+        db.collection.assert_any_call("jobs-test")
+
+    @pytest.mark.asyncio
     async def test_community_failure_after_upload_never_requeues(self):
         r = await _run_queue([_q_entry("job123")], {"job123": {"status": "complete", "state_data": {}}},
                              community=AsyncMock(side_effect=RuntimeError("song requests down")))

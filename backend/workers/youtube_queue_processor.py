@@ -375,21 +375,23 @@ def _create_youtube_service(settings):
 
 
 def _update_job_youtube_url(job_id: str, youtube_url: str) -> None:
-    """Update job state_data with the YouTube URL after deferred upload."""
-    try:
-        job_manager = JobManager()
-        job = job_manager.get_job(job_id)
-        if job:
-            # Atomic per-field writes: this deferred upload can land while other
-            # state_data is being written, so rewriting the whole map from a
-            # snapshot could clobber a sibling key.
-            job_manager.update_job(job_id, {
-                "state_data.youtube_url": youtube_url,
-                "state_data.youtube_upload_queued": False,  # No longer queued
-            })
-            logger.info(f"Updated job {job_id} state_data with YouTube URL")
-    except Exception as e:
-        logger.error(f"Failed to update job {job_id} with YouTube URL: {e}")
+    """Update job state_data with the YouTube URL after deferred upload.
+
+    Raises on failure (including a missing job) so the caller records the queue
+    entry as completed-with-``needs_attention`` instead of silently losing the URL.
+    """
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise RuntimeError(f"job {job_id} not found while recording YouTube URL {youtube_url}")
+    # Atomic per-field writes: this deferred upload can land while other
+    # state_data is being written, so rewriting the whole map from a
+    # snapshot could clobber a sibling key.
+    job_manager.update_job(job_id, {
+        "state_data.youtube_url": youtube_url,
+        "state_data.youtube_upload_queued": False,  # No longer queued
+    })
+    logger.info(f"Updated job {job_id} state_data with YouTube URL")
 
 
 async def _send_youtube_upload_notification(
