@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "Nepodařilo se najít tvůj nahraný instrumentál. Nahrávání možná nebylo dokončeno. Zkus to prosím znovu.",
     "uploadDurationMismatchCancelled": "Instrumentální stopa ({instrumental_duration}s) časově nesedí se zvukem skladby ({audio_duration}s), takže může jít o nesprávný soubor pro tuto skladbu. Tato úloha byla zrušena a tvůj kredit byl vrácen. Zkontroluj prosím soubory a odešli je znovu.",
     "instrumentalUploadTooLarge": "Tento instrumentální soubor má {size_mb} MB, což překračuje limit {max_mb} MB. Nahraj prosím místo toho verzi ve formátu FLAC nebo MP3.",
-    "instrumentalConformUnavailable": "Právě se nám nepodařilo zpracovat tvůj instrumentál. Zkus to prosím za chvíli odeslat znovu."
+    "instrumentalConformUnavailable": "Právě se nám nepodařilo zpracovat tvůj instrumentál. Zkus to prosím za chvíli odeslat znovu.",
+    "adminRerenderRetryAdminOnly": "Tuto skladbu právě znovu renderuje náš tým, takže ji může znovu spustit pouze administrátor. Kontaktuj prosím podporu a my to pro tebe dokončíme."
   },
   "review": {
     "jobNotFound": "Úloha nebyla nalezena",

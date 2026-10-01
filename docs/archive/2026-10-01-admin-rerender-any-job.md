@@ -33,7 +33,8 @@ that rebuilds any completed job end to end with no review.
    `file_urls.screens` / `videos.with_vocals`. Style fields are untouched.
 3. Deletes regenerated artifacts (screens, with_vocals, `finals/*.mov` — the encoder
    globs `**/*Title*.mov`) via the shared `delete_regenerated_artifacts`.
-4. Deletes published outputs via the new shared
+4. Deletes published outputs (only for destinations it will re-publish to — see
+   review fix 6) via the new shared
    `backend/services/published_outputs_cleanup.py` (also now used by Edit): YouTube,
    Dropbox (effective dist path, so private jobs hit the private folder), GDrive (with
    `cleanup_mirror=False` — same brand code, so the kjbox GCS mirror object is
@@ -72,3 +73,56 @@ that rebuilds any completed job end to end with no review.
   files; Dropbox uploads overwrite.
 - `jobs_completed` on the user is incremented again on completion (same as Edit and
   the tenant re-render).
+
+## Review fixes (second commit)
+
+1. **Stale deferred YouTube upload.** The re-render cancels the job's
+   `youtube_upload_queue` entry (`cancel_upload`: `queued`/`failed` → `cancelled`;
+   a `processing` entry is reported, not stopped). The queue processor defers any
+   entry while the job has an active admin re-render and isn't `complete` (the
+   finals are being rebuilt), and suppresses the follow-up + voter emails while a
+   silent re-render's marker is present, even for legacy entries without
+   `notify_user`.
+2. **Retry is admin-only** while an active `admin_rerender` marker exists: a
+   customer's `POST /api/jobs/{id}/retry` gets 403 `jobs.adminRerenderRetryAdminOnly`
+   ("contact support"), for every retry branch, not just the re-run one.
+3. **Marker scoped to its run.** The marker records the job's `review_token` at
+   claim; `active_admin_rerender()` ignores it once the token changes (any trip back
+   through review mints a new one). `suppress_customer_notifications`,
+   `rerender_brand_code`, kept outputs and retry eligibility all go through it. The
+   admin reset, admin restart, admin delete-outputs, Edit and private→public
+   visibility flows also delete the marker outright.
+4. **Legacy video worker path** drops `admin_rerender`/`theme_rerender` from the
+   state_data map it rewrites and applies the same notification/kept-output rules.
+5. **No stuck LYRICS_COMPLETE.** Everything after the claim (audit log, artifact
+   deletes, output deletes, queue cancel, screens trigger) is wrapped: any exception
+   marks the job `failed` (`error_details.stage = "admin_rerender"`) with the marker
+   kept, and the endpoint returns 500 "retry it".
+6. **Only delete what will be re-published.** `plan_republish()` mirrors the video
+   worker: YouTube needs `enable_youtube_upload` on a non-private job plus configured
+   credentials; Dropbox needs effective `dropbox_path` + `brand_prefix`; GDrive needs
+   effective `gdrive_folder_id`. Outputs for other destinations are left in place:
+   `cleanup_results[dest] = {"status": "kept", reason}`, a warning in the response /
+   marker / timeline / job log, their state_data link isn't cleared, and the video
+   worker keeps that link (`kept_outputs`) instead of overwriting it with `None`.
+7. **Discord + community voters.** The orchestrator's Discord "new video" post is
+   skipped when `notify_customer` is false. `notify_community_publish(...,
+   notify_voters=False)` still marks the request published with the new URL but
+   emails no voters.
+8. **Edit's Dropbox folder name changed.** Edit now uses the shared
+   `dropbox_folder_path()`, which sanitises artist/title like the uploader does
+   (`sanitize_filename`). Before, Edit built the raw `"{brand} - {Artist} - {Title}"`
+   and silently missed folders for names with special characters (`/`, `?`, `"`,
+   curly quotes, ...). Deliberate fix; covered by a test.
+9. **No blocking I/O on the event loop.** The publish plan (YouTube credential
+   lookup), the Firestore claim transaction and all post-claim GCS/YouTube/Dropbox/
+   GDrive work run via `asyncio.to_thread`; deletions still complete before the
+   screens worker is triggered (so before distribution).
+
+## Follow-ups
+
+- Three other copies of published-output deletion remain and should move onto
+  `published_outputs_cleanup.py`: `backend/api/routes/admin.py` delete-outputs
+  (~L1740-1810), `backend/api/routes/jobs.py` (~L2440-2545), and
+  `backend/services/visibility_change_service.py` `_delete_public_outputs` /
+  `_delete_distributed_outputs` (~L280-410).

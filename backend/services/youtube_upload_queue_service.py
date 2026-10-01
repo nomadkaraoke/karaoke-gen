@@ -212,6 +212,40 @@ class YouTubeUploadQueueService:
                 f"for job {job_id} (attempt {attempts}/{max_attempts}): {error}"
             )
 
+    def cancel_upload(self, job_id: str, reason: str) -> Dict[str, Any]:
+        """
+        Cancel a job's pending deferred upload (e.g. its finals are being re-rendered).
+
+        ``queued``/``failed`` entries become ``cancelled`` (never picked up again;
+        a later ``queue_upload`` for the job overwrites the doc). An entry that
+        is already ``processing`` can't be stopped and is reported as such.
+
+        Returns:
+            ``{"status": "cancelled" | "skipped" | "processing", ...}``
+        """
+        doc_ref = self.db.collection(YOUTUBE_UPLOAD_QUEUE_COLLECTION).document(job_id)
+
+        @firestore.transactional
+        def cancel_in_transaction(transaction):
+            doc = doc_ref.get(transaction=transaction)
+            if not doc.exists:
+                return {"status": "skipped", "reason": "no queue entry"}
+            previous = (doc.to_dict() or {}).get("status")
+            if previous in ("queued", "failed"):
+                transaction.update(doc_ref, {
+                    "status": "cancelled",
+                    "last_error": f"Cancelled: {reason}",
+                    "updated_at": datetime.now(PACIFIC_TZ),
+                })
+                return {"status": "cancelled", "previous_status": previous}
+            if previous == "processing":
+                return {"status": "processing", "reason": "upload already in progress"}
+            return {"status": "skipped", "reason": f"entry is {previous}"}
+
+        result = cancel_in_transaction(self.db.transaction())
+        logger.info(f"YouTube upload queue entry for job {job_id}: cancel -> {result}")
+        return result
+
     def retry_upload(self, job_id: str) -> bool:
         """
         Admin manual retry: reset a failed upload back to queued.

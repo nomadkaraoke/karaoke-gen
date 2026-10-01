@@ -34,13 +34,18 @@ def _youtube_url_for_job(job) -> Optional[str]:
     return dist.get("youtube_video_url") or None
 
 
-async def notify_community_publish(job_id: str, youtube_url: str) -> Optional[str]:
+async def notify_community_publish(
+    job_id: str, youtube_url: str, notify_voters: bool = True
+) -> Optional[str]:
     """Advance a community pick to ``published`` and fan out voter emails.
 
     Idempotent and best-effort: safe to call from both publish paths and to
     re-run after a partial failure. Marking published is always safe to repeat;
     voter emails are guarded by the request's ``notified_voters`` /
     ``voters_notified`` flags so no one is emailed twice.
+
+    ``notify_voters=False`` (an admin re-render without customer notification)
+    still marks the request published with the new URL but emails nobody.
 
     Returns the request id if this was a community pick, else ``None`` (a normal,
     non-community job — no-op).
@@ -55,6 +60,9 @@ async def notify_community_publish(job_id: str, youtube_url: str) -> Optional[st
         service.mark_published(request.id, youtube_url)
 
         if request.voters_notified:
+            return request.id
+        if not notify_voters:
+            logger.info("community pick %s re-published (job %s): voter emails suppressed", request.id, job_id)
             return request.id
 
         # Email up-voters we haven't already reached (retry-safe): exclude the

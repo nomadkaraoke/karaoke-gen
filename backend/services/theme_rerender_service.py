@@ -95,11 +95,6 @@ def validate_rerender(job) -> Optional[str]:
     return None
 
 
-# state_data markers of an in-progress re-render that keeps the job's brand code:
-# the tenant theme re-render and the admin re-render (admin_rerender_service).
-_RERENDER_MARKERS = ("theme_rerender", "admin_rerender")
-
-
 def rerender_brand_code(job) -> Optional[str]:
     """Brand code a re-render (theme or admin) must reuse, if one is in progress.
 
@@ -109,11 +104,12 @@ def rerender_brand_code(job) -> Optional[str]:
     so a later Edit, which recycles the code, can't reuse it.
     """
     state_data = getattr(job, "state_data", None) or {}
-    for key in _RERENDER_MARKERS:
-        code = (state_data.get(key) or {}).get("brand_code")
-        if code:
-            return code
-    return None
+    code = (state_data.get("theme_rerender") or {}).get("brand_code")
+    if code:
+        return code
+    # Admin re-render (only while its marker belongs to the current run).
+    from backend.services.admin_rerender_service import admin_rerender_brand_code
+    return admin_rerender_brand_code(job)
 
 
 def delete_regenerated_artifacts(storage: StorageService, job_id: str) -> None:

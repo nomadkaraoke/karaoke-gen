@@ -82,9 +82,9 @@ class OrchestratorConfig:
     # Keep existing brand code (for re-processing)
     keep_brand_code: Optional[str] = None
 
-    # Whether the customer may be notified about this run (False for an admin
-    # re-render the admin didn't opt into announcing). Gates the follow-up
-    # email of a quota-deferred YouTube upload.
+    # Whether this run may be announced (False for an admin re-render the admin
+    # didn't opt into announcing). Gates the Discord "new video" post and the
+    # follow-up email of a quota-deferred YouTube upload.
     notify_customer: bool = True
 
     # Instrumental selection (clean, with_backing, or custom)
@@ -1082,6 +1082,10 @@ class VideoWorkerOrchestrator:
 
         if not self.config.discord_webhook_url:
             self.job_log.debug("No Discord webhook configured, skipping notification")
+            return
+
+        if not self.config.notify_customer:
+            self.job_log.info("Admin re-render without notification: skipping Discord post")
             return
 
         if not self.result.youtube_url:

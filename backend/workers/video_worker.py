@@ -37,7 +37,10 @@ from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
-from backend.services.admin_rerender_service import suppress_customer_notifications
+from backend.services.admin_rerender_service import (
+    admin_rerender_kept_outputs,
+    suppress_customer_notifications,
+)
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
@@ -386,12 +389,15 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             # visibility-change flow or the worker_generation supersession fence
             # (an Increment reverted by a stale full-map write). Dot-path writes
             # touch only the distribution-result keys.
+            # An admin re-render leaves outputs it doesn't re-publish in place
+            # (e.g. YouTube now disabled) — keep their links.
+            kept_outputs = admin_rerender_kept_outputs(job)
             state_updates: Dict[str, Any] = {
                 'state_data.brand_code': result.brand_code,
-                'state_data.youtube_url': result.youtube_url,
+                'state_data.youtube_url': result.youtube_url or kept_outputs.get('youtube_url'),
                 'state_data.youtube_upload_queued': result.youtube_upload_queued,
-                'state_data.dropbox_link': result.dropbox_link,
-                'state_data.gdrive_files': result.gdrive_files,
+                'state_data.dropbox_link': result.dropbox_link or kept_outputs.get('dropbox_link'),
+                'state_data.gdrive_files': result.gdrive_files or kept_outputs.get('gdrive_files'),
                 # Clear the visibility-change guard flag (previously popped from the map).
                 'state_data.visibility_change_in_progress': DELETE_FIELD,
                 # Fresh finals were just uploaded, so any earlier "outputs deleted"
@@ -459,7 +465,9 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             if result.youtube_url and not result.youtube_upload_queued:
                 try:
                     from backend.services.community_publish import notify_community_publish
-                    await notify_community_publish(job_id, result.youtube_url)
+                    await notify_community_publish(
+                        job_id, result.youtube_url, notify_voters=notify_customer
+                    )
                 except Exception:
                     logger.exception(f"[job:{job_id}] Community publish fan-out failed (non-fatal)")
 
@@ -1026,14 +1034,20 @@ async def generate_video_legacy(job_id: str) -> bool:
             # _handle_native_distribution already saved them but job.state_data
             # is stale (fetched before distribution ran)
             logger.info(f"[job:{job_id}] Video generation complete")
+            notify_customer = not suppress_customer_notifications(job)
+            kept_outputs = admin_rerender_kept_outputs(job)
+            new_state_data = {
+                **job.state_data,
+                'brand_code': result.get('brand_code'),
+                'youtube_url': result.get('youtube_url') or kept_outputs.get('youtube_url'),
+                'dropbox_link': result.get('dropbox_link') or kept_outputs.get('dropbox_link'),
+                'gdrive_files': result.get('gdrive_files') or kept_outputs.get('gdrive_files'),
+            }
+            # A theme/admin re-render finished — drop its marker.
+            new_state_data.pop('theme_rerender', None)
+            new_state_data.pop('admin_rerender', None)
             job_manager.update_job(job_id, {
-                'state_data': {
-                    **job.state_data,
-                    'brand_code': result.get('brand_code'),
-                    'youtube_url': result.get('youtube_url'),
-                    'dropbox_link': result.get('dropbox_link'),
-                    'gdrive_files': result.get('gdrive_files'),
-                },
+                'state_data': new_state_data,
                 'outputs_deleted_at': None,
                 'outputs_deleted_by': None,
             })
@@ -1055,7 +1069,7 @@ async def generate_video_legacy(job_id: str) -> bool:
                 progress=100,
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
-                notify=not suppress_customer_notifications(job),
+                notify=notify_customer,
             )
 
             # Advance a requests-board community pick to `published` + fan out
@@ -1063,7 +1077,9 @@ async def generate_video_legacy(job_id: str) -> bool:
             if result.get('youtube_url'):
                 try:
                     from backend.services.community_publish import notify_community_publish
-                    await notify_community_publish(job_id, result.get('youtube_url'))
+                    await notify_community_publish(
+                        job_id, result.get('youtube_url'), notify_voters=notify_customer
+                    )
                 except Exception:
                     logger.exception(f"[job:{job_id}] Community publish fan-out failed (non-fatal)")
 

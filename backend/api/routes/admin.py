@@ -1310,6 +1310,9 @@ async def reset_job(
     # backend/workers/supersede.py. Atomic with the clears above so an in-flight
     # worker can never observe a half-applied reset.
     clear_updates["state_data.worker_generation"] = Increment(1)
+    # A reset starts a new run: drop any failed admin re-render's marker.
+    from backend.services.admin_rerender_service import clear_admin_rerender_update
+    clear_updates.update(clear_admin_rerender_update(job))
 
     # Add timeline event
     clear_updates["timeline"] = ArrayUnion([timeline_event])
@@ -1861,6 +1864,9 @@ async def delete_job_outputs(
         if key in state_data:
             update_payload[f"state_data.{key}"] = DELETE_FIELD
             cleared_keys.append(key)
+    # Outputs are gone; a failed admin re-render's marker no longer applies.
+    from backend.services.admin_rerender_service import clear_admin_rerender_update
+    update_payload.update(clear_admin_rerender_update(job))
 
     # Add timeline event with structured metadata
     timeline_event = {
@@ -2469,6 +2475,7 @@ class AdminRerenderResponse(BaseModel):
     notify_customer: bool
     previous_outputs: Dict[str, Any]
     cleanup_results: Dict[str, Any]
+    warnings: List[str] = []
 
 
 @router.post("/jobs/{job_id}/rerender", response_model=AdminRerenderResponse)
@@ -2483,10 +2490,12 @@ async def admin_rerender_job(
     Regenerates title/end screens, the karaoke video, every encoded format and
     the CDG/TXT packages from the job's existing reviewed lyrics and
     instrumental selection, with the job's existing style snapshot. Published
-    outputs (YouTube video, Google Drive files, Dropbox folder) are deleted up
-    front and re-published under the SAME brand code when the pipeline
-    finishes (the YouTube URL changes). The customer is only emailed/notified
-    on completion when ``notify_customer`` is true.
+    outputs (YouTube video, Google Drive files, Dropbox folder) the re-render
+    will re-publish are deleted up front and re-published under the SAME brand
+    code when the pipeline finishes (the YouTube URL changes); outputs for
+    destinations no longer configured are left in place (see ``warnings``).
+    The customer (and Discord / community voters) are only notified on
+    completion when ``notify_customer`` is true.
 
     Works for tenant and consumer, public and private jobs in ``complete``
     status (or ``failed`` after a previous admin re-render).
@@ -2497,7 +2506,7 @@ async def admin_rerender_job(
     body = body or AdminRerenderRequest()
     admin_email = auth_data.user_email or "unknown"
     job_manager = JobManager()
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
@@ -2521,6 +2530,7 @@ async def admin_rerender_job(
         notify_customer=body.notify_customer,
         previous_outputs=result["previous_outputs"],
         cleanup_results=result["cleanup_results"],
+        warnings=result.get("warnings") or [],
     )
 
 
@@ -2613,6 +2623,13 @@ async def restart_job(
     deleted_paths = []
     workers_triggered = []
     error_msg = None
+
+    # A restart starts a new run: drop any failed admin re-render's marker.
+    from backend.services.admin_rerender_service import clear_admin_rerender_update
+    marker_clear = clear_admin_rerender_update(job)
+    if marker_clear:
+        job_manager.update_job(job_id, marker_clear)
+        cleared_keys.append("admin_rerender")
 
     from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
     db = job_manager.firestore.db

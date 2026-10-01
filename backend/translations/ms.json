@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "Kami tidak dapat mencari instrumental yang anda muat naik. Proses muat naik mungkin belum selesai. Sila cuba lagi.",
     "uploadDurationMismatchCancelled": "Instrumental ({instrumental_duration}s) tidak sepadan dengan audio lagu ({audio_duration}s), jadi ia mungkin fail yang salah untuk lagu ini. Tugasan ini telah dibatalkan dan kredit anda telah dikembalikan. Sila semak fail tersebut dan hantar semula.",
     "instrumentalUploadTooLarge": "Fail instrumental ini bersaiz {size_mb} MB, iaitu melebihi had {max_mb} MB. Sila muat naik versi FLAC atau MP3 sebagai ganti.",
-    "instrumentalConformUnavailable": "Kami tidak dapat memproses instrumental anda sebentar tadi. Sila cuba hantar semula sebentar lagi."
+    "instrumentalConformUnavailable": "Kami tidak dapat memproses instrumental anda sebentar tadi. Sila cuba hantar semula sebentar lagi.",
+    "adminRerenderRetryAdminOnly": "Trek ini sedang dirender semula oleh pasukan kami, jadi ia hanya boleh dicuba semula oleh pentadbir. Sila hubungi pihak sokongan dan kami akan menyelesaikannya untuk anda."
   },
   "review": {
     "jobNotFound": "Tugasan tidak dijumpai",

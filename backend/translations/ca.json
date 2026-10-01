@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "No hem pogut trobar l'instrumental que has pujat. És possible que la pujada no s'hagi completat. Si us plau, torna-ho a intentar.",
     "uploadDurationMismatchCancelled": "L'instrumental ({instrumental_duration}s) no coincideix amb l'àudio de la cançó ({audio_duration}s), per la qual cosa podria ser el fitxer equivocat per a aquesta cançó. Aquesta tasca s'ha cancel·lat i se t'ha reemborsat el crèdit. Comprova els fitxers i torna-ho a enviar.",
     "instrumentalUploadTooLarge": "Aquest fitxer instrumental fa {size_mb} MB, que supera el límit de {max_mb} MB. Si us plau, penja una versió en FLAC o MP3 en comptes d'això.",
-    "instrumentalConformUnavailable": "No hem pogut processar el teu instrumental ara mateix. Si us plau, torna-ho a enviar d'aquí a un moment."
+    "instrumentalConformUnavailable": "No hem pogut processar el teu instrumental ara mateix. Si us plau, torna-ho a enviar d'aquí a un moment.",
+    "adminRerenderRetryAdminOnly": "Aquesta pista l'està tornant a renderitzar el nostre equip, així que només la pot reintentar un administrador. Posa't en contacte amb el servei de suport i te l'acabarem."
   },
   "review": {
     "jobNotFound": "Tasca no trobada",

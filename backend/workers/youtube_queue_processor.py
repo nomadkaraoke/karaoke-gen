@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import tempfile
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 from backend.config import get_settings
 from backend.services.community_publish import notify_community_publish
@@ -74,6 +74,13 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
             logger.info(f"YouTube queue processor: quota exhausted after {processed} uploads")
             break
 
+        # Don't upload while an admin re-render is rebuilding the finals; the
+        # entry stays queued (and the re-render re-queues/overwrites it anyway).
+        rerender_in_progress, rerender_suppresses = _admin_rerender_state(job_id)
+        if rerender_in_progress:
+            logger.info(f"YouTube queue processor: job {job_id} is being re-rendered, deferring upload")
+            continue
+
         # Claim the entry
         if not queue_service.mark_processing(job_id):
             logger.info(f"YouTube queue processor: could not claim job {job_id}, skipping")
@@ -87,16 +94,17 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
                 # Update job state_data with the YouTube URL
                 _update_job_youtube_url(job_id, youtube_url)
 
-                # Send follow-up email (unless queued by an admin re-render
-                # that wasn't meant to notify the customer)
-                if entry.get("notify_user", True):
+                # Send follow-up email — unless queued by (or processed during)
+                # an admin re-render that wasn't meant to notify the customer.
+                notify = entry.get("notify_user", True) and not rerender_suppresses
+                if notify:
                     await _send_youtube_upload_notification(job_id, entry, youtube_url)
                 else:
-                    logger.info(f"YouTube queue processor: skipping follow-up email for job {job_id} (notify_user=False)")
+                    logger.info(f"YouTube queue processor: skipping follow-up email for job {job_id} (notifications suppressed)")
 
                 # If this was a requests-board community pick, mark it published
                 # and fan out "your track is live" emails to everyone who voted.
-                await notify_community_publish(job_id, youtube_url)
+                await notify_community_publish(job_id, youtube_url, notify_voters=notify)
 
                 processed += 1
             else:
@@ -128,6 +136,28 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
         "failed": failed,
         "remaining": remaining_count,
     }
+
+
+def _admin_rerender_state(job_id: str) -> Tuple[bool, bool]:
+    """``(in_progress, suppress_notifications)`` for the job's admin re-render, if any.
+
+    ``in_progress``: an admin re-render is running and the job isn't complete
+    yet — its finals in GCS are stale or about to be replaced, so the upload
+    must wait. ``suppress_notifications``: the re-render isn't announcing to the
+    customer, so no follow-up / voter emails.
+    """
+    try:
+        from backend.services.admin_rerender_service import (
+            active_admin_rerender,
+            suppress_customer_notifications,
+        )
+        job = JobManager().get_job(job_id)
+        if not job or not active_admin_rerender(job):
+            return False, False
+        return job.status != "complete", suppress_customer_notifications(job)
+    except Exception as e:
+        logger.warning(f"YouTube queue processor: admin re-render check failed for job {job_id}: {e}")
+        return False, False
 
 
 async def _process_single_upload(

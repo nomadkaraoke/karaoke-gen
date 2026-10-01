@@ -403,6 +403,11 @@ async def edit_completed_track(
         if key in state_data:
             update_payload[f"state_data.{key}"] = DELETE_FIELD
 
+    # An earlier (failed) admin re-render's marker must not leak into the
+    # edited run (notification suppression, forced brand code).
+    from backend.services.admin_rerender_service import clear_admin_rerender_update
+    update_payload.update(clear_admin_rerender_update(job))
+
     # Clear processing state so workers re-run from scratch
     processing_keys = ["render_progress", "video_progress", "encoding_progress", "review_complete"]
     for key in processing_keys:
@@ -1995,6 +2000,16 @@ async def retry_job(
             detail=t(locale, "jobs.notCompleted", status=job.status)
         )
 
+    # A failed admin re-render is admin-only to resume: every retry path keeps
+    # its marker (brand code, deleted/re-published outputs, notification choice).
+    from backend.services.admin_rerender_service import active_admin_rerender
+    admin_rerender = active_admin_rerender(job)
+    if admin_rerender and not auth_result.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail=t(locale, "jobs.adminRerenderRetryAdminOnly"),
+        )
+
     # Refuse if a Cloud Run Job auto-retry is already coming for this job.
     # Otherwise the manual retry races with the automatic one and produces
     # duplicate downloads and downstream worker triggers (see job 8a9c74ff).
@@ -2041,7 +2056,6 @@ async def retry_job(
         # Same for an admin re-render (state_data.admin_rerender): re-run it,
         # keeping the admin's notify_customer choice. Its published outputs were
         # already removed on the first attempt (recorded in the marker).
-        admin_rerender = state_data.get('admin_rerender') or {}
         if (admin_rerender and original_status == JobStatus.FAILED
                 and not _has_title_screen(file_urls)):
             from backend.services.admin_rerender_service import AdminRerenderService

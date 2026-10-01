@@ -194,6 +194,8 @@ class VisibilityChangeService:
             job_id=job_id, theme_id="nomad"
         )
 
+        from backend.services.admin_rerender_service import clear_admin_rerender_update
+
         # Step 4: Reset styles and update job fields
         # Step 5: Set status to LYRICS_COMPLETE with regen_restore_status
         # Step 6: Clear progress keys and set guard flag
@@ -215,6 +217,9 @@ class VisibilityChangeService:
             "outputs_deleted_at": None,
             "outputs_deleted_by": None,
             "updated_at": datetime.now(timezone.utc),
+            # New run (new theme, new brand code): drop any failed admin
+            # re-render's marker so it can't suppress notifications here.
+            **clear_admin_rerender_update(job),
             "timeline": ArrayUnion([{
                 "status": "lyrics_complete",
                 "timestamp": datetime.now(timezone.utc).isoformat(),

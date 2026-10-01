@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "No pudimos encontrar el instrumental que subiste. Es posible que la subida no haya finalizado. Por favor, inténtalo de nuevo.",
     "uploadDurationMismatchCancelled": "El instrumental ({instrumental_duration}s) no coincide con el audio de la canción ({audio_duration}s), por lo que podría ser el archivo incorrecto para esta canción. Este trabajo ha sido cancelado y tu crédito ha sido reembolsado. Por favor, revisa los archivos y vuelve a enviarlos.",
     "instrumentalUploadTooLarge": "Este archivo instrumental tiene {size_mb} MB, lo que supera el límite de {max_mb} MB. Por favor, sube una versión en FLAC o MP3 en su lugar.",
-    "instrumentalConformUnavailable": "No pudimos procesar tu instrumental en este momento. Por favor, intenta enviarlo de nuevo en un momento."
+    "instrumentalConformUnavailable": "No pudimos procesar tu instrumental en este momento. Por favor, intenta enviarlo de nuevo en un momento.",
+    "adminRerenderRetryAdminOnly": "Esta pista está siendo rerenderizada por nuestro equipo, por lo que solo un administrador puede reintentarla. Por favor, contacta con soporte y la terminaremos por ti."
   },
   "review": {
     "jobNotFound": "Trabajo no encontrado",

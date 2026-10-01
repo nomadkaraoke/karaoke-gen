@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "Vi kunne ikke finde din uploadede instrumental. Uploaden blev muligvis ikke fuldført. Prøv venligst igen.",
     "uploadDurationMismatchCancelled": "Instrumentalsporet ({instrumental_duration}s) stemmer ikke overens med sangens lydspor ({audio_duration}s), så det er muligvis den forkerte fil til denne sang. Denne opgave er blevet annulleret, og din kredit er blevet refunderet. Tjek venligst filerne, og indsend igen.",
     "instrumentalUploadTooLarge": "Denne instrumentalfil er på {size_mb} MB, hvilket overskrider grænsen på {max_mb} MB. Upload venligst en FLAC- eller MP3-version i stedet.",
-    "instrumentalConformUnavailable": "Vi kunne ikke behandle dit instrumentalspor lige nu. Prøv venligst at indsende igen om et øjeblik."
+    "instrumentalConformUnavailable": "Vi kunne ikke behandle dit instrumentalspor lige nu. Prøv venligst at indsende igen om et øjeblik.",
+    "adminRerenderRetryAdminOnly": "Dette track bliver renderet igen af vores team, så det kun kan genstartes af en administrator. Kontakt venligst support, så gør vi det færdigt for dig."
   },
   "review": {
     "jobNotFound": "Jobbet blev ikke fundet",
