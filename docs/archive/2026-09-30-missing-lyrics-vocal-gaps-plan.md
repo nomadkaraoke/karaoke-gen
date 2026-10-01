@@ -128,3 +128,27 @@ Server-side via `scripts/audit_vocal_gaps.py` (results stored on each job).
 - Found while building: sonner's `<Toaster />` isn't mounted anywhere (root layout mounts
   the shadcn `ui/toaster`), so `toast` from `sonner` in the review UI is silently invisible.
   The hint is therefore inline rather than a toast. Worth a separate fix.
+
+### Phase 2b review fixes (code review)
+- **Edge tolerance:** words starting within 0.05s of a gap edge are its neighbours (backend
+  rounds gap bounds to 2dp and `end` = next word's start, e.g. 19.996 vs 20.0).
+- **Stale-analysis guard:** a gap is only shown if, in the segments AS LOADED, it holds no
+  words and the neighbouring words sit within 1s of both edges (or it touches the song
+  start / has no words after it). The frontend can't recompute `input_key`, so this is the
+  proxy for "the analysis matches this transcription".
+- **Insert position by word times:** a gap inside one segment (words 5–9s + a word at 22s)
+  splits that segment — earlier words keep the id, later words get a fresh id — with the
+  lines inserted between (logged as `segment_split` + `segment_add`).
+- **No fabricated timing:** lines take word timings from the synced reference source
+  (`reference_lyrics[source].segments`, matched by text inside the gap, all words timed);
+  otherwise words are inserted UNTIMED (segment bounds = the gap, so Play/Edit open there)
+  and the existing "N lyric word(s) have no timing yet" submit guard forces a Tap To Sync.
+- **Pending state:** untimed words between the gap's neighbouring timed words (inserted
+  here, typed via Edit/Add Lyrics, or Replace All) → no Insert (no duplicates); the callout
+  shows a "not timed yet" note + Sync timing instead. Timed words inside close the gap.
+- Re-sync hint appends across inserts; a line leaves it once re-synced or deleted.
+- Duet singer: following segment's, then preceding (as `addSegmentBefore`).
+- Display timing offset applied to the callout range, Play time and markers.
+- Read-only tooltip moved to a focusable wrapper (disabled buttons get no hover).
+- Caveat: the submit guard reports via a sonner toast, and sonner's `<Toaster />` isn't
+  mounted, so a blocked submit is currently silent (pre-existing; fix separately).

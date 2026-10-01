@@ -1499,14 +1499,15 @@
       "description": "La veu principal canta aquí, però no hi ha lletra.",
       "expectedFrom": "Lletra esperada aquí (de {source}):",
       "insert": "Insereix aquestes línies",
-      "insertedHint": "Torna a sincronitzar-les perquè coincideixin amb la veu: obre cada línia i fes servir Prem per sincronitzar.",
-      "insertedTitle": "Línies inserides amb sincronització estimada",
+      "insertedHint": "Obre cada línia i utilitza Tap To Sync perquè les paraules coincideixin amb la veu. Les línies sense temporització s'han de sincronitzar abans de poder generar el vídeo.",
+      "insertedTitle": "Comprova la temporització de les línies inserides",
       "noLines": "No hi ha línies de referència disponibles per a aquesta part — afegeix la lletra manualment.",
       "play": "Reprodueix",
       "readOnly": "L'edició està desactivada en el mode de només lectura",
       "syncTiming": "Sincronitza la temporització",
       "title": "Possible falta de lletra a {start}–{end}",
-      "dismiss": "Descarta"
+      "dismiss": "Descarta",
+      "pendingSync": "S'ha afegit lletra aquí, però encara no està sincronitzada. Utilitza Sincronitza la temporització (Tap To Sync) abans de generar el vídeo."
     }
   },
   "instrumentalReview": {

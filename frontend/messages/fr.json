@@ -1499,14 +1499,15 @@
       "description": "La voix principale chante ici, mais il n'y a pas de paroles.",
       "expectedFrom": "Paroles attendues ici (d'après {source}) :",
       "insert": "Insérer ces lignes",
-      "insertedHint": "Resynchronise-les pour qu'elles s'alignent sur le chant : ouvre chaque ligne et utilise Tap To Sync.",
-      "insertedTitle": "Lignes insérées avec un timing estimé",
+      "insertedHint": "Ouvre chaque ligne et utilise Tap To Sync pour que les mots soient calés sur le chant. Les lignes sans minutage doivent être synchronisées avant de pouvoir générer la vidéo.",
+      "insertedTitle": "Vérifie le minutage des lignes insérées",
       "noLines": "Aucune ligne de référence n'est disponible pour cette partie — ajoute les paroles manuellement.",
       "play": "Lecture",
       "readOnly": "La modification est désactivée en mode lecture seule",
       "syncTiming": "Synchroniser le timing",
       "title": "Paroles potentiellement manquantes à {start}–{end}",
-      "dismiss": "Ignorer"
+      "dismiss": "Ignorer",
+      "pendingSync": "Des paroles ont été ajoutées ici, mais ne sont pas encore synchronisées. Utilise Synchroniser le minutage (Tap To Sync) avant de générer la vidéo."
     }
   },
   "instrumentalReview": {

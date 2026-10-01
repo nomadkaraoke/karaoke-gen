@@ -1499,14 +1499,15 @@
       "description": "Kumakanta ang lead vocal dito pero walang lyrics.",
       "expectedFrom": "Inaasahang may lyrics dito (mula sa {source}):",
       "insert": "I-insert ang mga linyang ito",
-      "insertedHint": "I-sync muli ang mga ito para tumugma sa pagkanta: buksan ang bawat linya at gamitin ang Tap To Sync.",
-      "insertedTitle": "Na-insert ang mga linya nang may tinatayang timing",
+      "insertedHint": "Buksan ang bawat linya at gamitin ang Tap To Sync para sumabay ang mga salita sa pagkanta. Kailangang i-sync ang mga linyang walang timing bago ma-generate ang video.",
+      "insertedTitle": "I-check ang timing ng mga idinagdag na linya",
       "noLines": "Walang available na reference lines para sa bahaging ito — manu-manong idagdag ang lyrics.",
       "play": "I-play",
       "readOnly": "Naka-disable ang pag-edit sa read-only mode",
       "syncTiming": "I-sync ang timing",
       "title": "Posibleng may kulang na lyrics sa {start}–{end}",
-      "dismiss": "I-dismiss"
+      "dismiss": "I-dismiss",
+      "pendingSync": "May idinagdag na lyrics dito pero wala pang timing. Gamitin ang Sync timing (Tap To Sync) bago i-generate ang video."
     }
   },
   "instrumentalReview": {

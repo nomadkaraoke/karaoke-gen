@@ -1499,14 +1499,15 @@
       "description": "La voce solista sta cantando qui, ma non c'è testo.",
       "expectedFrom": "Testo previsto qui (da {source}):",
       "insert": "Inserisci queste righe",
-      "insertedHint": "Risincronizzale per allinearle con il cantato: apri ciascuna riga e usa Tap To Sync.",
-      "insertedTitle": "Righe inserite con tempistiche stimate",
+      "insertedHint": "Apri ogni riga e usa Tap To Sync in modo che le parole vadano a tempo con il cantato. Le righe senza tempistiche devono essere sincronizzate prima di poter generare il video.",
+      "insertedTitle": "Controlla le tempistiche delle righe inserite",
       "noLines": "Nessuna riga di riferimento disponibile per questa parte — aggiungi il testo manualmente.",
       "play": "Riproduci",
       "readOnly": "La modifica è disabilitata in modalità solo lettura",
       "syncTiming": "Sincronizza i tempi",
       "title": "Possibile testo mancante a {start}–{end}",
-      "dismiss": "Ignora"
+      "dismiss": "Ignora",
+      "pendingSync": "Il testo è stato aggiunto qui, ma non è ancora sincronizzato. Usa Sincronizza tempistiche (Tap To Sync) prima di generare il video."
     }
   },
   "instrumentalReview": {

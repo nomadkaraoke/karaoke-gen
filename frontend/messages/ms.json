@@ -1499,14 +1499,15 @@
       "description": "Vokal utama sedang menyanyi di sini tetapi tiada lirik.",
       "expectedFrom": "Lirik sepatutnya ada di sini (daripada {source}):",
       "insert": "Masukkan baris ini",
-      "insertedHint": "Segerakkan semula agar selaras dengan nyanyian: buka setiap baris dan gunakan Ketik Untuk Segerak.",
-      "insertedTitle": "Baris dimasukkan dengan anggaran masa",
+      "insertedHint": "Buka setiap baris dan gunakan Tap To Sync supaya perkataan selaras dengan nyanyian. Baris tanpa pemasaan mesti disegerakkan sebelum video boleh dijana.",
+      "insertedTitle": "Semak pemasaan baris yang dimasukkan",
       "noLines": "Tiada baris rujukan tersedia untuk bahagian ini — tambah lirik secara manual.",
       "play": "Mainkan",
       "readOnly": "Penyuntingan dilumpuhkan dalam mod baca sahaja",
       "syncTiming": "Segerakkan masa",
       "title": "Kemungkinan lirik tertinggal pada {start}–{end}",
-      "dismiss": "Tolak"
+      "dismiss": "Tolak",
+      "pendingSync": "Lirik telah ditambah di sini tetapi belum ditetapkan masanya. Gunakan Segerakkan pemasaan (Tap To Sync) sebelum menjana video."
     }
   },
   "instrumentalReview": {

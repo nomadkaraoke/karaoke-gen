@@ -90,7 +90,39 @@ describe('MissingLyricsCallout', () => {
     expect(screen.getByText('Possible missing lyrics at 0:20–0:32')).toBeInTheDocument()
     const btn = screen.getByRole('button', { name: /Insert these lines/ })
     expect(btn).toBeDisabled()
-    expect(btn).toHaveAttribute('title', 'Editing is disabled in read-only mode')
+    // The disabled button can't receive hover (pointer-events-none), so the explanation
+    // sits on a focusable wrapper.
+    const wrapper = screen.getByTestId('missing-lyrics-insert-wrapper')
+    expect(wrapper).toHaveAttribute('title', 'Editing is disabled in read-only mode')
+    expect(wrapper).toHaveAttribute('tabindex', '0')
+    expect(btn).not.toHaveAttribute('title')
+    expect(btn).toHaveAccessibleName(/read-only/)
+  })
+
+  it('applies the timing offset to the shown range and the Play time', async () => {
+    const onPlay = jest.fn()
+    render(
+      <MissingLyricsCallout
+        gaps={openGaps([gap()])}
+        isReadOnly={false}
+        onInsert={jest.fn()}
+        onPlay={onPlay}
+        timingOffsetMs={2000}
+      />
+    )
+    expect(screen.getByText('Possible missing lyrics at 0:22–0:34')).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: /Play/ }))
+    expect(onPlay).toHaveBeenCalledWith(22.66)
+  })
+
+  it('pending gap (untimed lyrics already there): no Insert, shows a Sync timing prompt', async () => {
+    const onSync = jest.fn()
+    const pendingGap = { ...openGaps([gap()])[0], pendingSegmentIndex: 3 }
+    render(<MissingLyricsCallout gaps={[pendingGap]} isReadOnly={false} onInsert={jest.fn()} onSync={onSync} />)
+    expect(screen.queryByRole('button', { name: /Insert these lines/ })).not.toBeInTheDocument()
+    expect(screen.getByTestId('missing-lyrics-pending')).toHaveTextContent(/aren't timed yet/)
+    await userEvent.setup().click(screen.getByTestId('missing-lyrics-pending-sync'))
+    expect(onSync).toHaveBeenCalledWith(3)
   })
 
   it('hides the insert button and explains when no reference lines are available', () => {
@@ -115,7 +147,7 @@ describe('MissingLyricsResyncHint', () => {
   it('lists inserted lines with a Sync timing button each, opening the right segment', async () => {
     const onSync = jest.fn()
     render(<MissingLyricsResyncHint lines={lines} onSync={onSync} onDismiss={jest.fn()} />)
-    expect(screen.getByText('Lines inserted with estimated timing')).toBeInTheDocument()
+    expect(screen.getByText('Check the timing of the inserted lines')).toBeInTheDocument()
     expect(screen.getByText(/use Tap To Sync/)).toBeInTheDocument()
     const buttons = screen.getAllByRole('button', { name: /Sync timing/ })
     expect(buttons).toHaveLength(2)

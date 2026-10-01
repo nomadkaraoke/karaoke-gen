@@ -1499,14 +1499,15 @@
       "description": "W tym miejscu słychać główny wokal, ale brakuje tekstu.",
       "expectedFrom": "Oczekiwany tekst w tym miejscu (z {source}):",
       "insert": "Wstaw te wersy",
-      "insertedHint": "Zsynchronizuj je ponownie, aby dopasować do śpiewu: otwórz każdy wers i użyj funkcji Tap To Sync.",
-      "insertedTitle": "Wersy wstawione z szacowanym czasem",
+      "insertedHint": "Otwórz każdą linijkę i użyj opcji Tap To Sync, aby dopasować słowa do śpiewu. Linijki bez przypisanego czasu muszą zostać zsynchronizowane przed wygenerowaniem wideo.",
+      "insertedTitle": "Sprawdź synchronizację wstawionych linijek",
       "noLines": "Brak wersów referencyjnych dla tego fragmentu — dodaj tekst ręcznie.",
       "play": "Odtwórz",
       "readOnly": "Edycja jest wyłączona w trybie tylko do odczytu",
       "syncTiming": "Zsynchronizuj czas",
       "title": "Możliwy brak tekstu w {start}–{end}",
-      "dismiss": "Odrzuć"
+      "dismiss": "Odrzuć",
+      "pendingSync": "Tekst został tutaj dodany, ale nie jest jeszcze zsynchronizowany. Użyj opcji Synchronizuj czas (Tap To Sync) przed wygenerowaniem wideo."
     }
   },
   "instrumentalReview": {

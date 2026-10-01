@@ -898,13 +898,52 @@ const missingLyricsCorrectionData = {
   },
 };
 
-test.describe('Lyrics Review - Possible Missing Lyrics', () => {
+// Same fixture, but the synced reference (LRCLIB) carries word timings for both lines,
+// so inserted lines take those timings instead of being inserted untimed.
+const lrclibWord = (id: string, text: string, start: number) => ({ id, text, start_time: start, end_time: start + 0.6 });
+const missingLyricsSyncedRefData = {
+  ...missingLyricsCorrectionData,
+  reference_lyrics: {
+    ...mockCorrectionData.reference_lyrics,
+    lrclib: {
+      segments: [
+        {
+          id: 'lrc_1',
+          text: 'Dropped line number one',
+          start_time: 3.5,
+          end_time: 5.9,
+          words: ['Dropped', 'line', 'number', 'one'].map((t, i) => lrclibWord(`lrc_1_${i}`, t, 3.5 + i * 0.6)),
+        },
+        {
+          id: 'lrc_2',
+          text: 'Dropped line two',
+          start_time: 6.5,
+          end_time: 8.3,
+          words: ['Dropped', 'line', 'two'].map((t, i) => lrclibWord(`lrc_2_${i}`, t, 6.5 + i * 0.6)),
+        },
+      ],
+      metadata: { source: 'lrclib', is_synced: true },
+    },
+  },
+};
+
+const transcriptOrder = async (page: Page) => {
+  const syncedCard = page.locator('h3', { hasText: 'Synced Lyrics' }).locator('xpath=../..');
+  const transcript = await syncedCard.innerText();
+  return {
+    hello: transcript.indexOf('Hello'),
+    dropped: transcript.indexOf('Dropped'),
+    another: transcript.indexOf('another'),
+  };
+};
+
+test.describe('Lyrics Review - Possible Missing Lyrics (untimed insert)', () => {
   test.beforeEach(async ({ page }) => {
     await clearAuthToken(page);
     await setupLocalModeMocks(page, missingLyricsCorrectionData);
   });
 
-  test('warns about an evidenced gap, inserts the reference lines, and undo brings the warning back', async ({ page }) => {
+  test('warns about an evidenced gap; Insert adds untimed lines that must be synced; undo restores', async ({ page }) => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');
 
@@ -919,36 +958,57 @@ test.describe('Lyrics Review - Possible Missing Lyrics', () => {
 
     await page.getByTestId('missing-lyrics-insert').click();
 
-    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(0);
-    await expect(page.getByTestId('missing-lyrics-marker')).toHaveCount(0);
-    // Re-sync guidance: one "Sync timing" entry per inserted line.
+    // No reference word timings → inserted untimed; the gap is now "pending sync":
+    // no second Insert, a Sync timing prompt instead.
+    await expect(callout).toHaveCount(1);
+    await expect(page.getByTestId('missing-lyrics-insert')).toHaveCount(0);
+    await expect(page.getByTestId('missing-lyrics-pending')).toBeVisible();
     const hint = page.getByTestId('missing-lyrics-resync-hint');
-    await expect(hint).toContainText('Lines inserted with estimated timing');
     await expect(hint.getByTestId('missing-lyrics-sync-line')).toHaveCount(2);
-    // Inserted words now show in the synced lyrics, in order between the two lines.
-    const syncedCard = page.locator('h3', { hasText: 'Synced Lyrics' }).locator('xpath=../..');
-    const transcript = await syncedCard.innerText();
-    const iHello = transcript.indexOf('Hello');
-    const iDropped = transcript.indexOf('Dropped');
-    const iAnother = transcript.indexOf('another');
-    expect(iHello).toBeGreaterThanOrEqual(0);
-    expect(iDropped).toBeGreaterThan(iHello);
-    expect(iAnother).toBeGreaterThan(iDropped);
+    const order = await transcriptOrder(page);
+    expect(order.hello).toBeGreaterThanOrEqual(0);
+    expect(order.dropped).toBeGreaterThan(order.hello);
+    expect(order.another).toBeGreaterThan(order.dropped);
 
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
-    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(1);
+    await expect(page.getByTestId('missing-lyrics-insert')).toHaveCount(1);
     await expect(page.getByTestId('missing-lyrics-resync-hint')).toHaveCount(0);
   });
 
-  test('"Sync timing" opens the Edit modal for the first inserted line', async ({ page }) => {
+  test('"Sync timing" opens the Edit modal (Tap To Sync) for the inserted line', async ({ page }) => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');
     await page.getByTestId('missing-lyrics-insert').click();
-    await page.getByTestId('missing-lyrics-sync-line').first().click();
+    await page.getByTestId('missing-lyrics-pending-sync').click();
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 5000 });
     await expect(dialog.getByRole('button', { name: /Tap To Sync/ }).first()).toBeVisible();
-    // The modal is editing the first inserted line.
     await expect(dialog).toContainText('Dropped');
+  });
+});
+
+test.describe('Lyrics Review - Possible Missing Lyrics (synced reference timings)', () => {
+  test.beforeEach(async ({ page }) => {
+    await clearAuthToken(page);
+    await setupLocalModeMocks(page, missingLyricsSyncedRefData);
+  });
+
+  test('Insert uses the LRCLIB word timings, closing the gap; undo brings it back', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(1, { timeout: 10000 });
+
+    await page.getByTestId('missing-lyrics-insert').click();
+
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(0);
+    await expect(page.getByTestId('missing-lyrics-marker')).toHaveCount(0);
+    // Still offered for a check/re-sync until the reviewer touches the timing.
+    await expect(page.getByTestId('missing-lyrics-resync-hint').getByTestId('missing-lyrics-sync-line')).toHaveCount(2);
+    const order = await transcriptOrder(page);
+    expect(order.dropped).toBeGreaterThan(order.hello);
+    expect(order.another).toBeGreaterThan(order.dropped);
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(1);
   });
 });

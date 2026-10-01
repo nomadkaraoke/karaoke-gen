@@ -1499,14 +1499,15 @@
       "description": "Leadvokalen synger her, men der er ingen sangtekst.",
       "expectedFrom": "Forventet sangtekst her (fra {source}):",
       "insert": "Indsæt disse linjer",
-      "insertedHint": "Synkroniser dem igen, så de passer til sangen: åbn hver linje, og brug Tap To Sync.",
-      "insertedTitle": "Linjer indsat med estimeret timing",
+      "insertedHint": "Åbn hver linje, og brug Tap To Sync, så ordene passer til sangen. Linjer uden timing skal synkroniseres, før videoen kan genereres.",
+      "insertedTitle": "Tjek timingen på de indsatte linjer",
       "noLines": "Der er ingen referencelinjer tilgængelige for denne del – tilføj sangteksten manuelt.",
       "play": "Afspil",
       "readOnly": "Redigering er deaktiveret i skrivebeskyttet tilstand",
       "syncTiming": "Synkroniser timing",
       "title": "Muligvis manglende sangtekst ved {start}–{end}",
-      "dismiss": "Afvis"
+      "dismiss": "Afvis",
+      "pendingSync": "Der er tilføjet sangtekst her, men den er ikke timet endnu. Brug Synkroniser timing (Tap To Sync), før du genererer videoen."
     }
   },
   "instrumentalReview": {

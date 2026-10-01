@@ -1499,14 +1499,15 @@
       "description": "Vocea principală cântă aici, dar nu există versuri.",
       "expectedFrom": "Versuri așteptate aici (din {source}):",
       "insert": "Inserează aceste rânduri",
-      "insertedHint": "Resincronizează-le pentru a se potrivi cu vocea: deschide fiecare rând și folosește Tap To Sync.",
-      "insertedTitle": "Rânduri inserate cu timpi estimați",
+      "insertedHint": "Deschide fiecare vers și folosește Tap To Sync astfel încât cuvintele să se potrivească cu vocea. Versurile fără timpi trebuie sincronizate înainte ca videoclipul să poată fi generat.",
+      "insertedTitle": "Verifică sincronizarea versurilor inserate",
       "noLines": "Nu există rânduri de referință disponibile pentru această parte — adaugă versurile manual.",
       "play": "Redă",
       "readOnly": "Editarea este dezactivată în modul doar citire",
       "syncTiming": "Sincronizează timpii",
       "title": "Posibile versuri lipsă la {start}–{end}",
-      "dismiss": "Închide"
+      "dismiss": "Închide",
+      "pendingSync": "Aici au fost adăugate versuri, dar nu sunt încă sincronizate. Folosește Sincronizare timpi (Tap To Sync) înainte de a genera videoclipul."
     }
   },
   "instrumentalReview": {

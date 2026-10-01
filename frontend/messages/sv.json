@@ -1499,14 +1499,15 @@
       "description": "Här hörs leadsång men det finns ingen låttext.",
       "expectedFrom": "Låttext förväntas här (från {source}):",
       "insert": "Infoga dessa rader",
-      "insertedHint": "Synka om dem så att de matchar sången: öppna varje rad och använd Tap To Sync.",
-      "insertedTitle": "Rader infogade med uppskattad timing",
+      "insertedHint": "Öppna varje rad och använd Tap To Sync så att orden matchar sången. Rader utan timing måste synkas innan videon kan genereras.",
+      "insertedTitle": "Kontrollera timingen för de infogade raderna",
       "noLines": "Inga referensrader finns tillgängliga för den här delen – lägg till låttexten manuellt.",
       "play": "Spela",
       "readOnly": "Redigering är inaktiverad i skrivskyddat läge",
       "syncTiming": "Synka timing",
       "title": "Eventuellt saknad låttext vid {start}–{end}",
-      "dismiss": "Avfärda"
+      "dismiss": "Avfärda",
+      "pendingSync": "Låttext har lagts till här men är inte tajmad än. Använd Synka timing (Tap To Sync) innan du genererar videon."
     }
   },
   "instrumentalReview": {

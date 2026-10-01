@@ -5,6 +5,7 @@ import { AlertTriangle, Play, ListPlus, Info, X, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatGapTime, type OpenMissingLyricsGap } from '@/lib/lyrics-review/utils/missingLyrics'
 import type { LyricsSegment } from '@/lib/lyrics-review/types'
+import { applyOffsetToTime } from '@/lib/lyrics-review/utils/timingUtils'
 
 interface MissingLyricsCalloutProps {
   gaps: OpenMissingLyricsGap[]
@@ -12,6 +13,13 @@ interface MissingLyricsCalloutProps {
   audioReady?: boolean
   onPlay?: (startTime: number) => void
   onInsert: (gap: OpenMissingLyricsGap) => void
+  /** Open a segment in the Edit modal (Tap To Sync) — used when lines are pending sync. */
+  onSync?: (segmentIndex: number) => void
+  /**
+   * Display timing offset (ms), applied exactly like the review's displayData so the range
+   * shown — and the time Play receives — match the displayed segments.
+   */
+  timingOffsetMs?: number
 }
 
 /**
@@ -25,6 +33,8 @@ export default function MissingLyricsCallout({
   audioReady = true,
   onPlay,
   onInsert,
+  onSync,
+  timingOffsetMs = 0,
 }: MissingLyricsCalloutProps) {
   const t = useTranslations('lyricsReview.missingLyrics')
   if (gaps.length === 0) return null
@@ -32,7 +42,10 @@ export default function MissingLyricsCallout({
   return (
     <div className="flex flex-col gap-2 mb-2" data-testid="missing-lyrics-callout">
       {gaps.map((open) => {
-        const range = { start: formatGapTime(open.gap.start), end: formatGapTime(open.gap.end) }
+        const displayStart = applyOffsetToTime(open.gap.start, timingOffsetMs) as number
+        const displayEnd = applyOffsetToTime(open.gap.end, timingOffsetMs) as number
+        const range = { start: formatGapTime(displayStart), end: formatGapTime(displayEnd) }
+        const pending = open.pendingSegmentIndex !== null
         return (
           <div
             key={open.id}
@@ -61,31 +74,57 @@ export default function MissingLyricsCallout({
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">{t('noLines')}</p>
               )}
+              {pending && (
+                <p className="mt-2 text-xs text-amber-500" data-testid="missing-lyrics-pending">
+                  {t('pendingSync')}
+                </p>
+              )}
               <div className="mt-2 flex flex-wrap gap-2">
                 {onPlay && (
                   <Button
                     variant="outline"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => onPlay(open.gap.start)}
+                    onClick={() => onPlay(displayStart)}
                     disabled={!audioReady}
                   >
                     <Play className="h-3.5 w-3.5 mr-1" />
                     {t('play')}
                   </Button>
                 )}
-                {open.lines.length > 0 && (
+                {pending && onSync && !isReadOnly && (
                   <Button
+                    variant="outline"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => onInsert(open)}
-                    disabled={isReadOnly}
-                    title={isReadOnly ? t('readOnly') : undefined}
-                    data-testid="missing-lyrics-insert"
+                    onClick={() => onSync(open.pendingSegmentIndex as number)}
+                    data-testid="missing-lyrics-pending-sync"
                   >
-                    <ListPlus className="h-3.5 w-3.5 mr-1" />
-                    {t('insert')}
+                    <Timer className="h-3.5 w-3.5 mr-1" />
+                    {t('syncTiming')}
                   </Button>
+                )}
+                {!pending && open.lines.length > 0 && (
+                  // Disabled buttons get pointer-events-none, so the read-only explanation
+                  // lives on a focusable wrapper where hover/focus can reach it.
+                  <span
+                    title={isReadOnly ? t('readOnly') : undefined}
+                    tabIndex={isReadOnly ? 0 : undefined}
+                    className="inline-flex"
+                    data-testid="missing-lyrics-insert-wrapper"
+                  >
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => onInsert(open)}
+                      disabled={isReadOnly}
+                      aria-label={isReadOnly ? `${t('insert')} (${t('readOnly')})` : undefined}
+                      data-testid="missing-lyrics-insert"
+                    >
+                      <ListPlus className="h-3.5 w-3.5 mr-1" />
+                      {t('insert')}
+                    </Button>
+                  </span>
                 )}
               </div>
             </div>

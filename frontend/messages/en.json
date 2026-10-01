@@ -1515,10 +1515,11 @@
       "play": "Play",
       "insert": "Insert these lines",
       "readOnly": "Editing is disabled in read-only mode",
-      "insertedHint": "Re-sync them so they line up with the singing: open each line and use Tap To Sync.",
+      "insertedHint": "Open each line and use Tap To Sync so the words line up with the singing. Lines without timing must be synced before the video can be generated.",
       "syncTiming": "Sync timing",
-      "insertedTitle": "Lines inserted with estimated timing",
-      "dismiss": "Dismiss"
+      "insertedTitle": "Check the timing of the inserted lines",
+      "dismiss": "Dismiss",
+      "pendingSync": "Lyrics have been added here but aren't timed yet. Use Sync timing (Tap To Sync) before generating the video."
     }
   },
   "instrumentalReview": {

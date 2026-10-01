@@ -1499,14 +1499,15 @@
       "description": "La voz principal está cantando aquí, pero no hay letra.",
       "expectedFrom": "Letra esperada aquí (de {source}):",
       "insert": "Insertar estas líneas",
-      "insertedHint": "Vuelve a sincronizarlas para que coincidan con la voz: abre cada línea y usa Tap To Sync.",
-      "insertedTitle": "Líneas insertadas con tiempos estimados",
+      "insertedHint": "Abre cada línea y usa Tap To Sync para que las palabras coincidan con la voz. Las líneas sin tiempos deben sincronizarse antes de poder generar el video.",
+      "insertedTitle": "Revisa los tiempos de las líneas insertadas",
       "noLines": "No hay líneas de referencia disponibles para esta parte — agrega la letra manualmente.",
       "play": "Reproducir",
       "readOnly": "La edición está desactivada en el modo de solo lectura",
       "syncTiming": "Sincronizar tiempos",
       "title": "Posible letra faltante en {start}–{end}",
-      "dismiss": "Descartar"
+      "dismiss": "Descartar",
+      "pendingSync": "Se han añadido letras aquí, pero aún no tienen tiempos. Usa Sincronizar tiempos (Tap To Sync) antes de generar el video."
     }
   },
   "instrumentalReview": {

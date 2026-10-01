@@ -1499,14 +1499,15 @@
       "description": "主唱在此处有演唱，但没有歌词。",
       "expectedFrom": "此处应有歌词（来自 {source}）：",
       "insert": "插入这些歌词",
-      "insertedHint": "重新同步歌词，使其与演唱保持对齐：打开每一行并使用 Tap To Sync。",
-      "insertedTitle": "已按预估时间插入歌词",
+      "insertedHint": "展开每一行并使用 Tap To Sync，使歌词与演唱完美对齐。未设定时间轴的行必须先完成同步，才能生成视频。",
+      "insertedTitle": "检查已插入歌词行的时间轴",
       "noLines": "此部分没有可用的参考歌词——请手动添加歌词。",
       "play": "播放",
       "readOnly": "只读模式下无法编辑",
       "syncTiming": "同步时间",
       "title": "{start}–{end} 处可能缺失歌词",
-      "dismiss": "忽略"
+      "dismiss": "忽略",
+      "pendingSync": "此处已添加歌词，但尚未设定时间轴。在生成视频前，请先使用“同步时间轴 (Tap To Sync)”。"
     }
   },
   "instrumentalReview": {

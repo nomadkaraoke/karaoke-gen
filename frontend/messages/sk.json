@@ -1499,14 +1499,15 @@
       "description": "Hlavný vokál tu spieva, ale nie je tu žiadny text.",
       "expectedFrom": "Tu sa očakáva text (z {source}):",
       "insert": "Vložiť tieto riadky",
-      "insertedHint": "Znova ich zosynchronizuj, aby sedeli so spevom: otvor každý riadok a použi Tap To Sync.",
-      "insertedTitle": "Riadky vložené s odhadovaným časovaním",
+      "insertedHint": "Otvor každý riadok a použi funkciu Tap To Sync, aby slová sedeli so spevom. Riadky bez načasovania musíš pred vygenerovaním videa zosynchronizovať.",
+      "insertedTitle": "Skontroluj načasovanie vložených riadkov",
       "noLines": "Pre túto časť nie sú k dispozícii žiadne referenčné riadky – pridaj text ručne.",
       "play": "Prehrať",
       "readOnly": "V režime len na čítanie sú úpravy zakázané",
       "syncTiming": "Synchronizovať časovanie",
       "title": "Možný chýbajúci text v čase {start}–{end}",
-      "dismiss": "Zavrieť"
+      "dismiss": "Zavrieť",
+      "pendingSync": "Sem bol pridaný text piesne, ale zatiaľ nie je načasovaný. Pred vygenerovaním videa použi Synchronizovať časovanie (Tap To Sync)."
     }
   },
   "instrumentalReview": {

@@ -1499,14 +1499,15 @@
       "description": "Päälaulu kuuluu tässä, mutta sanoituksia ei ole.",
       "expectedFrom": "Tähän odotetaan sanoituksia (lähteestä {source}):",
       "insert": "Lisää nämä rivit",
-      "insertedHint": "Synkronoi ne uudelleen, jotta ne täsmäävät laulun kanssa: avaa kukin rivi ja käytä Tap To Sync -toimintoa.",
-      "insertedTitle": "Rivit lisätty arvioidulla ajoituksella",
+      "insertedHint": "Avaa jokainen rivi ja käytä Tap To Sync -toimintoa, jotta sanat täsmäävät laulun kanssa. Rivit, joilla ei ole ajoitusta, on synkronoitava ennen kuin video voidaan luoda.",
+      "insertedTitle": "Tarkista lisättyjen rivien ajoitus",
       "noLines": "Tähän osioon ei ole saatavilla viiterivejä – lisää sanoitukset manuaalisesti.",
       "play": "Toista",
       "readOnly": "Muokkaus on poistettu käytöstä vain luku -tilassa",
       "syncTiming": "Synkronoi ajoitus",
       "title": "Mahdollisesti puuttuvia sanoituksia kohdassa {start}–{end}",
-      "dismiss": "Ohita"
+      "dismiss": "Ohita",
+      "pendingSync": "Tähän on lisätty sanoituksia, mutta niitä ei ole vielä ajoitettu. Käytä Synkronoi ajoitus (Tap To Sync) -toimintoa ennen videon luomista."
     }
   },
   "instrumentalReview": {

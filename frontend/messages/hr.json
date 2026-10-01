@@ -1499,14 +1499,15 @@
       "description": "Glavni vokal ovdje pjeva, ali nema teksta.",
       "expectedFrom": "Ovdje se očekuje tekst (iz {source}):",
       "insert": "Umetni ove retke",
-      "insertedHint": "Ponovno ih sinkroniziraj kako bi se uskladili s pjevanjem: otvori svaki redak i upotrijebi Tap To Sync.",
-      "insertedTitle": "Retci umetnuti s procijenjenim vremenom",
+      "insertedHint": "Otvori svaki redak i upotrijebi Tap To Sync kako bi se riječi uskladile s pjevanjem. Retci bez vremenskih oznaka moraju se sinkronizirati prije nego što se videozapis može generirati.",
+      "insertedTitle": "Provjeri vremensko usklađivanje umetnutih redaka",
       "noLines": "Nema dostupnih referentnih redaka za ovaj dio — dodaj tekst ručno.",
       "play": "Reproduciraj",
       "readOnly": "Uređivanje je onemogućeno u načinu samo za čitanje",
       "syncTiming": "Sinkroniziraj vrijeme",
       "title": "Možda nedostaje tekst na {start}–{end}",
-      "dismiss": "Odbaci"
+      "dismiss": "Odbaci",
+      "pendingSync": "Ovdje je dodan tekst pjesme, ali još nije vremenski usklađen. Upotrijebi sinkronizaciju vremena (Tap To Sync) prije generiranja videozapisa."
     }
   },
   "instrumentalReview": {

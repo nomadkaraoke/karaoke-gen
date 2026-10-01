@@ -1499,14 +1499,15 @@
       "description": "O vocal principal está cantando aqui, mas não há letra.",
       "expectedFrom": "Letra esperada aqui (de {source}):",
       "insert": "Inserir estas linhas",
-      "insertedHint": "Ressincronize-as para que fiquem alinhadas com o canto: abra cada linha e use o Tap To Sync.",
-      "insertedTitle": "Linhas inseridas com tempo estimado",
+      "insertedHint": "Abra cada linha e use o Toque para Sincronizar para que as palavras fiquem alinhadas com a voz. Linhas sem marcação de tempo devem ser sincronizadas antes que o vídeo possa ser gerado.",
+      "insertedTitle": "Verifique a sincronização das linhas inseridas",
       "noLines": "Nenhuma linha de referência disponível para esta parte — adicione a letra manualmente.",
       "play": "Reproduzir",
       "readOnly": "A edição está desativada no modo somente leitura",
       "syncTiming": "Sincronizar tempo",
       "title": "Possível letra ausente em {start}–{end}",
-      "dismiss": "Dispensar"
+      "dismiss": "Dispensar",
+      "pendingSync": "A letra foi adicionada aqui, mas ainda não está sincronizada. Use Sincronizar tempo (Toque para Sincronizar) antes de gerar o vídeo."
     }
   },
   "instrumentalReview": {

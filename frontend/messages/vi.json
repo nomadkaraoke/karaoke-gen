@@ -1499,14 +1499,15 @@
       "description": "Đoạn này có giọng hát chính nhưng không có lời bài hát.",
       "expectedFrom": "Lời bài hát dự kiến cho đoạn này (từ {source}):",
       "insert": "Chèn các dòng này",
-      "insertedHint": "Đồng bộ lại để khớp với tiếng hát: mở từng dòng và sử dụng Tap To Sync.",
-      "insertedTitle": "Đã chèn các dòng với thời gian ước tính",
+      "insertedHint": "Mở từng dòng và dùng Tap To Sync để các từ khớp với giọng hát. Bạn cần đồng bộ các dòng chưa có mốc thời gian trước khi có thể tạo video.",
+      "insertedTitle": "Kiểm tra mốc thời gian của các dòng đã chèn",
       "noLines": "Không có dòng tham chiếu nào cho đoạn này — bạn hãy tự thêm lời bài hát.",
       "play": "Phát",
       "readOnly": "Không thể chỉnh sửa ở chế độ chỉ đọc",
       "syncTiming": "Đồng bộ thời gian",
       "title": "Có thể thiếu lời bài hát tại {start}–{end}",
-      "dismiss": "Bỏ qua"
+      "dismiss": "Bỏ qua",
+      "pendingSync": "Lời bài hát đã được thêm vào đây nhưng chưa có mốc thời gian. Bạn hãy dùng tính năng Đồng bộ thời gian (Tap To Sync) trước khi tạo video."
     }
   },
   "instrumentalReview": {

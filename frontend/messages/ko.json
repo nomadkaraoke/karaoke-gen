@@ -1499,14 +1499,15 @@
       "description": "리드 보컬이 노래하고 있지만 가사가 없습니다.",
       "expectedFrom": "이 부분의 예상 가사({source}):",
       "insert": "이 가사 삽입",
-      "insertedHint": "노래에 맞게 싱크를 다시 맞춰주세요. 각 줄을 열고 Tap To Sync를 사용하시면 됩니다.",
-      "insertedTitle": "예상 타이밍으로 가사가 삽입되었습니다",
+      "insertedHint": "각 줄을 열고 노래에 맞춰 가사가 나오도록 Tap To Sync를 사용해 보세요. 타이밍이 설정되지 않은 줄은 비디오를 생성하기 전에 반드시 싱크를 맞춰야 합니다.",
+      "insertedTitle": "삽입된 줄의 타이밍을 확인해 주세요",
       "noLines": "이 부분에 대한 참조 가사가 없습니다. 가사를 직접 추가해 주세요.",
       "play": "재생",
       "readOnly": "읽기 전용 모드에서는 편집할 수 없습니다",
       "syncTiming": "타이밍 싱크 맞추기",
       "title": "{start}–{end} 구간 가사 누락 가능성",
-      "dismiss": "닫기"
+      "dismiss": "닫기",
+      "pendingSync": "가사가 추가되었지만 아직 타이밍이 설정되지 않았습니다. 비디오를 생성하기 전에 타이밍 싱크(Tap To Sync)를 진행해 주세요."
     }
   },
   "instrumentalReview": {

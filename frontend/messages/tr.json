@@ -1499,14 +1499,15 @@
       "description": "Ana vokal burada şarkı söylüyor ama şarkı sözü yok.",
       "expectedFrom": "Burada şarkı sözü bekleniyor ({source} kaynağından):",
       "insert": "Bu satırları ekle",
-      "insertedHint": "Vokalle hizalanmaları için yeniden senkronize et: her satırı aç ve Eşitlemek İçin Dokun özelliğini kullan.",
-      "insertedTitle": "Satırlar tahmini zamanlamayla eklendi",
+      "insertedHint": "Her satırı aç ve kelimelerin şarkıyla hizalanması için Tap To Sync özelliğini kullan. Video oluşturulmadan önce zamanlaması olmayan satırların senkronize edilmesi gerekir.",
+      "insertedTitle": "Eklenen satırların zamanlamasını kontrol et",
       "noLines": "Bu kısım için referans satır bulunmuyor — şarkı sözlerini manuel olarak ekle.",
       "play": "Oynat",
       "readOnly": "Salt okunur modda düzenleme devre dışıdır",
       "syncTiming": "Zamanlamayı senkronize et",
       "title": "{start}–{end} arasında olası eksik şarkı sözleri",
-      "dismiss": "Kapat"
+      "dismiss": "Kapat",
+      "pendingSync": "Şarkı sözleri buraya eklendi ancak henüz zamanlanmadı. Videoyu oluşturmadan önce Zamanlamayı senkronize et (Tap To Sync) özelliğini kullan."
     }
   },
   "instrumentalReview": {

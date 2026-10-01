@@ -1499,14 +1499,15 @@
       "description": "Hier ist der Hauptgesang zu hören, aber es gibt keinen Text.",
       "expectedFrom": "Hier wird Text erwartet (aus {source}):",
       "insert": "Diese Zeilen einfügen",
-      "insertedHint": "Synchronisiere sie neu, damit sie zum Gesang passen: Öffne jede Zeile und nutze Tap To Sync.",
-      "insertedTitle": "Zeilen mit geschätztem Timing eingefügt",
+      "insertedHint": "Öffne jede Zeile und nutze Tap To Sync, damit die Wörter zum Gesang passen. Zeilen ohne Timing müssen synchronisiert werden, bevor das Video generiert werden kann.",
+      "insertedTitle": "Überprüfe das Timing der eingefügten Zeilen",
       "noLines": "Für diesen Teil sind keine Referenzzeilen verfügbar – füge den Text manuell hinzu.",
       "play": "Abspielen",
       "readOnly": "Die Bearbeitung ist im schreibgeschützten Modus deaktiviert",
       "syncTiming": "Timing synchronisieren",
       "title": "Möglicherweise fehlender Text bei {start}–{end}",
-      "dismiss": "Ausblenden"
+      "dismiss": "Ausblenden",
+      "pendingSync": "Hier wurde Text hinzugefügt, der aber noch kein Timing hat. Nutze Timing synchronisieren (Tap To Sync), bevor du das Video generierst."
     }
   },
   "instrumentalReview": {

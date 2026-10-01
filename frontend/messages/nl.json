@@ -1499,14 +1499,15 @@
       "description": "Hier is leadzang te horen, maar er is geen songtekst.",
       "expectedFrom": "Hier wordt songtekst verwacht (van {source}):",
       "insert": "Deze regels invoegen",
-      "insertedHint": "Synchroniseer ze opnieuw zodat ze gelijklopen met de zang: open elke regel en gebruik Tap To Sync.",
-      "insertedTitle": "Regels ingevoegd met geschatte timing",
+      "insertedHint": "Open elke regel en gebruik Tap To Sync zodat de woorden synchroon lopen met de zang. Regels zonder timing moeten worden gesynchroniseerd voordat je de video kunt genereren.",
+      "insertedTitle": "Controleer de timing van de ingevoegde regels",
       "noLines": "Er zijn geen referentieregels beschikbaar voor dit deel — voeg de songtekst handmatig toe.",
       "play": "Afspelen",
       "readOnly": "Bewerken is uitgeschakeld in de alleen-lezenmodus",
       "syncTiming": "Timing synchroniseren",
       "title": "Mogelijk ontbrekende songtekst bij {start}–{end}",
-      "dismiss": "Sluiten"
+      "dismiss": "Sluiten",
+      "pendingSync": "Er is hier songtekst toegevoegd, maar die is nog niet getimed. Gebruik Timing synchroniseren (Tap To Sync) voordat je de video genereert."
     }
   },
   "instrumentalReview": {
