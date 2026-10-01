@@ -15,7 +15,7 @@ import logging
 import os
 import subprocess
 import unicodedata
-from typing import FrozenSet, Optional
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +50,13 @@ def missing_codepoints(font_path: Optional[str], text: Optional[str]) -> FrozenS
 
     Unreadable/nonexistent fonts are treated as covering everything (we can't tell,
     so don't override the caller's choice). ``None`` means PIL's default font, which
-    only covers Latin.
+    only covers Latin (plus typographic punctuation like ’ “ ” – …).
     """
     if not text:
         return frozenset()
     needed = {ord(ch) for ch in text if _needs_glyph(ch)}
     if font_path is None:
-        return frozenset(cp for cp in needed if cp >= 0x0250)
+        return frozenset(cp for cp in needed if cp >= 0x0250 and not 0x2000 <= cp <= 0x206F)
     if not os.path.exists(font_path):
         return frozenset()
     cmap = _font_codepoints(font_path)
@@ -99,43 +99,57 @@ def font_covers_text(font_path: Optional[str], text: Optional[str]) -> bool:
     return not missing_codepoints(font_path, text)
 
 
-@functools.lru_cache(maxsize=128)
-def find_font_covering(codepoints: FrozenSet[int], bold: bool = True) -> Optional[str]:
-    """Ask fontconfig for a (bold) sans font covering all ``codepoints``.
+# Successful lookups only: a transient fontconfig failure (e.g. a timeout on a cold
+# font cache) must not disable fallback for the rest of the process.
+_FALLBACK_CACHE: Dict[Tuple[FrozenSet[int], bool], str] = {}
 
-    fc-match always returns *something*, so the result's cmap is verified; if the
-    best match doesn't cover everything we try every font fc-list reports for the
-    charset. Returns None when no installed font covers the text.
-    """
-    if not codepoints:
-        return None
-    charset = " ".join(f"{cp:x}" for cp in sorted(codepoints))
-    weight = ":weight=bold" if bold else ""
-    candidates = []
+
+def _covers(font_path: str, codepoints: FrozenSet[int]) -> bool:
+    return bool(font_path) and os.path.exists(font_path) and not (codepoints - (_font_codepoints(font_path) or frozenset()))
+
+
+def _fontconfig(cmd: List[str], timeout: float) -> Optional[str]:
     try:
-        result = subprocess.run(
-            ["fc-match", "--format=%{file}", f"sans-serif{weight}:charset={charset}"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if result.returncode == 0 and result.stdout:
-            candidates.append(result.stdout.strip())
-        result = subprocess.run(
-            ["fc-list", f":charset={charset}", "file"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.returncode == 0:
-            files = sorted(line.split(":")[0].strip() for line in result.stdout.splitlines() if line.strip())
-            # Prefer bold Noto Sans (installed in the Cloud Run + encoding worker images)
-            files.sort(key=lambda f: ("noto" not in f.lower(), "bold" not in f.lower() if bold else False, "sans" not in f.lower()))
-            candidates.extend(files)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:
         logger.warning(f"fontconfig lookup failed ({e}); cannot find fallback font")
         return None
+    return result.stdout if result.returncode == 0 else None
 
-    for path in candidates:
-        if path and os.path.exists(path) and not (codepoints - (_font_codepoints(path) or frozenset())):
-            return path
-    return None
+
+def find_font_covering(codepoints: FrozenSet[int], bold: bool = True) -> Optional[str]:
+    """Ask fontconfig for a sans font (bold if ``bold``) covering all ``codepoints``.
+
+    fc-match always returns *something*, so its answer's cmap is verified; only if it
+    doesn't cover everything do we scan every font fc-list reports for the charset.
+    Returns None when no installed font covers all of them.
+    """
+    if not codepoints:
+        return None
+    key = (codepoints, bold)
+    if key in _FALLBACK_CACHE:
+        return _FALLBACK_CACHE[key]
+
+    charset = " ".join(f"{cp:x}" for cp in sorted(codepoints))
+    weight = ":weight=bold" if bold else ""
+    found = None
+    match = _fontconfig(["fc-match", "--format=%{file}", f"sans-serif{weight}:charset={charset}"], timeout=5)
+    if match and _covers(match.strip(), codepoints):
+        found = match.strip()
+    else:
+        listing = _fontconfig(["fc-list", f":charset={charset}", "file"], timeout=10) or ""
+        files = sorted(line.split(":")[0].strip() for line in listing.splitlines() if line.strip())
+        # Prefer Noto Sans (installed in the Cloud Run + encoding worker images) in the
+        # requested weight
+        files.sort(key=lambda f: ("noto" not in f.lower(), ("bold" in f.lower()) != bold, "sans" not in f.lower()))
+        found = next((f for f in files if _covers(f, codepoints)), None)
+
+    if found:
+        _FALLBACK_CACHE[key] = found
+    return found
+
+
+find_font_covering.cache_clear = _FALLBACK_CACHE.clear  # type: ignore[attr-defined]
 
 
 def resolve_font_for_text(font_path: Optional[str], text: Optional[str], bold: bool = True) -> Optional[str]:

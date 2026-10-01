@@ -86,8 +86,10 @@ class TestGetFontPathForText:
         result = generator._get_font_path_for_text("/path/to/Montserrat-Bold.ttf", "周杰倫")
         assert result == "/path/to/Montserrat-Bold.ttf"
 
-    def test_noto_font_not_overridden(self, generator):
-        """If the configured font is already a Noto/CJK font, don't override."""
+    @patch("karaoke_gen.video_generator.font_covers_text", return_value=True)
+    @patch("karaoke_gen.video_generator.os.path.exists", return_value=True)
+    def test_configured_font_covering_cjk_not_overridden(self, _exists, _covers, generator):
+        """If the configured font actually has the CJK glyphs, keep it."""
         result = generator._get_font_path_for_text(
             "/usr/share/fonts/noto/NotoSansCJK-Bold.ttc", "周杰倫"
         )

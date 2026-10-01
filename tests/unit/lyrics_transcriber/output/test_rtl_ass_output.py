@@ -8,6 +8,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from PIL import ImageFont
 
 from karaoke_gen.lyrics_transcriber.output.ass.config import LineState, LineTimingInfo, ScreenConfig
 from karaoke_gen.lyrics_transcriber.output.ass.lyrics_line import LyricsLine
@@ -194,11 +195,34 @@ class TestMeasureText:
         style = _style()
         style.Fontpath = _avenir()
         line = LyricsLine(segment=_segment(["hi"]), screen_config=_screen_config())
-        with patch("karaoke_gen.lyrics_transcriber.output.ass.lyrics_line.find_font_covering", return_value=None) as find:
+        with patch("karaoke_gen.lyrics_transcriber.output.ass.lyrics_line.find_font_covering",
+                   return_value=_avenir()) as find:
             line._measure_text("שני משוגעים", style)
+        find.assert_called_once()
         (missing,), kwargs = find.call_args
         assert ord("ש") in missing and ord(" ") not in missing
         assert kwargs == {"bold": bool(style.Bold)}
+
+    def test_per_glyph_fallback_when_no_single_font_covers_line(self):
+        """libass falls back per glyph: a Hebrew line with a CJK character must not be
+        measured entirely with the Latin-only style font."""
+        style = _style()
+        style.Fontpath = _avenir()
+        line = LyricsLine(segment=_segment(["hi"]), screen_config=_screen_config())
+        heb, cjk = "/fonts/hebrew.ttf", "/fonts/cjk.ttc"
+
+        def find(cps, bold):
+            if len(cps) > 1:
+                return None  # nothing covers Hebrew + CJK together
+            return cjk if next(iter(cps)) == ord("青") else heb
+
+        fonts_used = []
+        with patch("karaoke_gen.lyrics_transcriber.output.ass.lyrics_line.find_font_covering", side_effect=find), \
+             patch("karaoke_gen.lyrics_transcriber.output.ass.lyrics_line._measure_font",
+                   side_effect=lambda path, size: fonts_used.append(path) or ImageFont.truetype(_avenir(), size)), \
+             patch("karaoke_gen.lyrics_transcriber.output.ass.lyrics_line.ass_font_scale", return_value=0.7):
+            line._measure_text("שני 青", style)
+        assert heb in fonts_used and cjk in fonts_used
 
     def test_missing_font_file_falls_back_to_default(self):
         style = _style()

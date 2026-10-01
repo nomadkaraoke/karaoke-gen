@@ -30,7 +30,7 @@ from typing import Dict, List
 import pytest
 from PIL import features
 
-from karaoke_gen.lyrics_transcriber.output.ass.text_direction import RTL_KARAOKE_FILL_TAGS
+from karaoke_gen.lyrics_transcriber.output.ass.text_direction import rtl_karaoke_fill_tags
 
 from .ass_render_harness import (
     WIDTH,
@@ -230,21 +230,24 @@ class TestRenderedHighlight:
         assert gap <= LEAD_IN_MAX_GAP, f"lead-in stops {gap}px from the text"
 
 
-@pytest.mark.parametrize("name", ["hebrew", "arabic"])
-def test_rtl_fill_tags_do_not_move_the_line(tmp_path, name):
-    """{\\frz180\\frx180\\fry180} must be a visual no-op apart from the fill direction:
-    the same line rendered without it must occupy exactly the same pixels."""
+@pytest.mark.parametrize("name,angle", [("hebrew", 0), ("arabic", 0), ("hebrew", 5), ("hebrew", -8)])
+def test_rtl_fill_tags_do_not_move_the_line(tmp_path, name, angle):
+    """The RTL fill tags must be a visual no-op apart from the fill direction — including
+    for themes with a rotated karaoke style (\\frz would otherwise replace the Angle):
+    the same line rendered without them must occupy exactly the same pixels."""
     words = next(s.words for s in SAMPLES if s.name == name)
-    ass_path = generate_ass(tmp_path, [make_segment(words)])
+    ass_path = generate_ass(tmp_path, [make_segment(words)], angle=angle)
     with open(ass_path, encoding="utf-8") as f:
         ass = f.read()
-    assert RTL_KARAOKE_FILL_TAGS in ass
+    tags = rtl_karaoke_fill_tags(angle)
+    assert tags in ass
     plain_path = tmp_path / "plain.ass"
-    plain_path.write_text(ass.replace(RTL_KARAOKE_FILL_TAGS, ""), encoding="utf-8")
+    plain_path.write_text(ass.replace(tags, ""), encoding="utf-8")
 
-    with_tags = _line(render_frames(ass_path, [T_BEFORE]), T_BEFORE)
-    without = _line(render_frames(str(plain_path), [T_BEFORE]), T_BEFORE)
-    for attr in ("left", "right", "top", "bottom"):
-        assert abs(getattr(with_tags, attr) - getattr(without, attr)) <= 1, (
-            f"{attr}: {getattr(with_tags, attr)} with tags vs {getattr(without, attr)} without"
-        )
+    def ink_box(path):
+        frame = render_frames(str(path), [T_BEFORE]).frames[T_BEFORE]
+        ys, xs = (frame.max(axis=2) > 90).nonzero()
+        return xs.min(), ys.min(), xs.max(), ys.max()
+
+    with_tags, without = ink_box(ass_path), ink_box(plain_path)
+    assert all(abs(a - b) <= 1 for a, b in zip(with_tags, without)), f"{with_tags} with tags vs {without} without"

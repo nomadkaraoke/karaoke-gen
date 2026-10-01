@@ -21,6 +21,18 @@ import unicodedata
 # Visually a no-op; makes libass (>= 0.15) sweep \kf fills right-to-left.
 RTL_KARAOKE_FILL_TAGS = r"{\frz180\frx180\fry180}"
 
+
+def rtl_karaoke_fill_tags(style_angle: float = 0) -> str:
+    """RTL fill tags for a style rotated by ``style_angle`` degrees.
+
+    ``\\frz`` replaces the style's Angle, so fold it in: ``\\frx180\\fry180`` is itself
+    a 180° z-rotation, so ``\\frz(180+angle)`` nets out to the theme's own angle.
+    """
+    if not style_angle:
+        return RTL_KARAOKE_FILL_TAGS
+    return r"{\frz" + f"{180 + style_angle:g}" + r"\frx180\fry180}"
+
+
 # libass: -1 = auto-detect base direction per paragraph (LTR text is unaffected).
 ASS_ENCODING_AUTO_DIRECTION = -1
 

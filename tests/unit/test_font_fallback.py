@@ -114,3 +114,36 @@ class TestAssFontScale:
         bogus = tmp_path / "x.ttf"
         bogus.write_bytes(b"nope")
         assert ff.ass_font_scale(str(bogus)) == 0.70
+
+
+class TestFallbackLookupRobustness:
+    def test_fc_list_skipped_when_fc_match_covers(self):
+        with patch.object(ff.subprocess, "run", side_effect=_fc(match_stdout=MONTSERRAT)) as run:
+            ff.find_font_covering(frozenset({ord("a")}))
+        assert [c.args[0][0] for c in run.call_args_list] == ["fc-match"]
+
+    def test_failed_lookup_is_not_cached(self):
+        """A transient fontconfig timeout (cold cache) must not disable fallback for the
+        rest of the process."""
+        cps = frozenset({ord("a")})
+        with patch.object(ff.subprocess, "run", side_effect=subprocess.TimeoutExpired("fc-match", 5)):
+            assert ff.find_font_covering(cps) is None
+        with patch.object(ff.subprocess, "run", side_effect=_fc(match_stdout=MONTSERRAT)):
+            assert ff.find_font_covering(cps) == MONTSERRAT
+
+    def test_successful_lookup_is_cached(self):
+        cps = frozenset({ord("a")})
+        with patch.object(ff.subprocess, "run", side_effect=_fc(match_stdout=MONTSERRAT)) as run:
+            ff.find_font_covering(cps)
+            ff.find_font_covering(cps)
+        assert run.call_count == 1
+
+    @pytest.mark.parametrize("bold,expected", [(True, "NotoSansHebrew-Bold.ttf"), (False, "NotoSansHebrew-Regular.ttf")])
+    def test_fc_list_candidates_prefer_requested_weight(self, bold, expected):
+        listing = "/f/NotoSansHebrew-Bold.ttf: \n/f/NotoSansHebrew-Regular.ttf: \n"
+        with patch.object(ff.subprocess, "run", side_effect=_fc(match_stdout="", list_stdout=listing)), \
+             patch.object(ff, "_covers", side_effect=lambda path, cps: path.startswith("/f/")):
+            assert ff.find_font_covering(frozenset({1488}), bold=bold) == "/f/" + expected
+
+    def test_default_font_covers_typographic_punctuation(self):
+        assert ff.missing_codepoints(None, "Don’t Stop – “Me” Now…") == frozenset()

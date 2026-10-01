@@ -137,3 +137,12 @@ def test_portrait_header_font_covers_title(script):
     if font.path == THEME_FONT:
         skip_unless_ci(f"no installed font covers {script}")
     _assert_no_tofu(font.path, TITLES[script])
+
+
+def test_latin_only_noto_font_is_not_kept_for_cjk_title(tmp_path):
+    """A theme font named Noto*-Bold that is Latin-only must not pass for a CJK font."""
+    latin_noto = tmp_path / "NotoSans-Bold.ttf"
+    shutil.copy(THEME_FONT, latin_noto)  # Latin-only font under a "noto" name
+    gen = _generator()
+    gen._cjk_font_path = "/fonts/NotoSansCJK-Bold.ttc"
+    assert gen._get_font_path_for_text(str(latin_noto), TITLES["chinese"]) == "/fonts/NotoSansCJK-Bold.ttc"

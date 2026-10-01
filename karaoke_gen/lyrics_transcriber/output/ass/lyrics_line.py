@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import functools
 from typing import Optional, Tuple, List
 import logging
 from datetime import timedelta
@@ -9,8 +10,18 @@ from karaoke_gen.lyrics_transcriber.types import LyricsSegment
 from karaoke_gen.lyrics_transcriber.output.ass.event import Event
 from karaoke_gen.lyrics_transcriber.output.ass.style import Style
 from karaoke_gen.lyrics_transcriber.output.ass.config import LineState, ScreenConfig
-from karaoke_gen.lyrics_transcriber.output.ass.text_direction import RTL_KARAOKE_FILL_TAGS, is_rtl_text
-from karaoke_gen.utils.font_fallback import ass_font_scale, covers_char, find_font_covering, missing_codepoints
+from karaoke_gen.lyrics_transcriber.output.ass.text_direction import is_rtl_text, rtl_karaoke_fill_tags
+from karaoke_gen.utils.font_fallback import ass_font_scale, find_font_covering, missing_codepoints
+
+
+@functools.lru_cache(maxsize=32)
+def _measure_font(path: str, size: int) -> ImageFont.FreeTypeFont:
+    """Fonts are loaded once per (path, size): fallback CJK .ttc files are 20MB+."""
+    try:
+        return ImageFont.truetype(path, size=size)
+    except OSError as e:
+        logging.getLogger(__name__).warning(f"Font error ({e}), using default for measurement")
+        return ImageFont.load_default()
 
 
 @dataclass
@@ -42,28 +53,38 @@ class LyricsLine:
             bbox = font.getbbox(text)
             return bbox[2] - bbox[0], bbox[3] - bbox[1]
 
+        # libass picks a fallback per glyph. Prefer one font for all missing characters
+        # (usually the case: one script); otherwise resolve each character on its own,
+        # e.g. a Hebrew line with a CJK character or a symbol the Hebrew font lacks.
         missing = missing_codepoints(font_path, text)
-        fallback_path = find_font_covering(missing, bold=bool(style.Bold)) if missing else None
+        bold = bool(style.Bold)
+        shared_fallback = find_font_covering(missing, bold=bold) if missing else None
+        per_char = {} if shared_fallback or not missing else {
+            cp: find_font_covering(frozenset({cp}), bold=bold) or font_path for cp in missing
+        }
+
+        def font_for(ch: str) -> str:
+            if ord(ch) not in missing:
+                return font_path
+            return shared_fallback or per_char[ord(ch)]
 
         # Group consecutive characters by the font that will draw them
         runs: List[Tuple[str, str]] = []
         for ch in text:
-            path = font_path if (fallback_path is None or covers_char(font_path, ch)) else fallback_path
+            path = font_for(ch)
             if runs and runs[-1][0] == path:
                 runs[-1] = (path, runs[-1][1] + ch)
             else:
                 runs.append((path, ch))
 
-        width, height = 0.0, 0
+        # Width = sum of advances; height = union of ink extents on the shared baseline
+        width, top, bottom = 0.0, 0, 0
         for path, run in runs:
-            try:
-                font = ImageFont.truetype(path, size=max(1, int(style.Fontsize * ass_font_scale(path))))
-            except OSError as e:
-                self.logger.warning(f"Font error ({e}), using default for measurement")
-                font = ImageFont.load_default()
+            font = _measure_font(path, max(1, int(style.Fontsize * ass_font_scale(path))))
             width += font.getlength(run)
-            bbox = font.getbbox(run)
-            height = max(height, bbox[3] - bbox[1])
+            bbox = font.getbbox(run, anchor="ls")
+            top, bottom = min(top, bbox[1]), max(bottom, bbox[3])
+        height = bottom - top
 
         self.logger.debug(f"Text dimensions for '{text}': width={width:.0f}px, height={height}px")
         return int(round(width)), height
@@ -248,15 +269,14 @@ class LyricsLine:
             f"{{\\an8}}{{\\pos({x_pos},{state.y_position})}}"
             f"{{\\fad({config.fade_in_ms},{config.fade_out_ms})}}"
         )
-        rtl = is_rtl_text(self.segment.text)
-        if rtl:
-            text += RTL_KARAOKE_FILL_TAGS
+        rtl_tags = rtl_karaoke_fill_tags(line_style.Angle) if is_rtl_text(self.segment.text) else ""
+        text += rtl_tags
 
         # Add the main lyrics text with karaoke timing
         text += self._create_ass_text(
             timedelta(seconds=state.timing.fade_in_time),
             styles_by_singer=styles_by_singer,
-            rtl=rtl,
+            rtl_tags=rtl_tags,
         )
 
         main_event.Text = text
@@ -281,14 +301,14 @@ class LyricsLine:
         self,
         start_ts: timedelta,
         styles_by_singer: Optional[dict] = None,
-        rtl: bool = False,
+        rtl_tags: str = "",
     ) -> str:
         """Create the ASS text with karaoke timing tags and word-level singer overrides.
 
-        ``rtl``: the line starts with RTL_KARAOKE_FILL_TAGS; ``{\\r}`` resets every
-        override, so the tags are re-emitted after each reset.
+        ``rtl_tags``: the RTL fill tags the line starts with (empty for LTR); ``{\\r}``
+        resets every override, so they are re-emitted after each reset.
         """
-        reset = r"{\r}" + (RTL_KARAOKE_FILL_TAGS if rtl else "")
+        reset = r"{\r}" + rtl_tags
         # Every tag is derived from one absolute centisecond timeline (relative to the
         # event start), so rounding and small inter-word gaps can't accumulate. Dropping
         # gaps <= 0.1s used to make the highlight run ahead of the vocal by the sum of

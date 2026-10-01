@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
 
-from karaoke_gen.utils.font_fallback import resolve_font_for_text
+from karaoke_gen.utils.font_fallback import font_covers_text, resolve_font_for_text
 
 
 def _find_cjk_font() -> str | None:
@@ -402,8 +402,9 @@ class VideoGenerator:
         if not _text_needs_cjk_font(text):
             return resolve_font_for_text(font_path, text)
 
-        # If font_path is already a CJK-capable system font, keep it
-        if font_path and ("noto" in font_path.lower() or "cjk" in font_path.lower()):
+        # Keep the configured font only if it actually has the glyphs (a Latin-only
+        # NotoSans-Bold.ttf would otherwise pass a "noto" filename check and draw tofu)
+        if font_path and os.path.exists(font_path) and font_covers_text(font_path, text):
             return font_path
 
         # Lazy-load CJK font path
