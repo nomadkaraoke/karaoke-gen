@@ -1,6 +1,7 @@
 import {
   buildMissingLyricsSegments,
   findOpenMissingLyricsGaps,
+  fitTimedLinesToWindow,
   formatGapTime,
   gapHasWords,
   gapInsertIndex,
@@ -328,5 +329,56 @@ describe('formatGapTime', () => {
     expect(formatGapTime(20.66)).toBe('0:20')
     expect(formatGapTime(32.4)).toBe('0:32')
     expect(formatGapTime(125.9)).toBe('2:05')
+  })
+})
+
+
+describe('fitting synced-reference timings into the gap (job 5710831e regression)', () => {
+  // LRCLIB is line-synced; its last line in the gap ended at 33.07s while the next
+  // transcribed line starts at 32.40s.
+  const lrclibLine = (id: string, start: number, end: number, texts: string[]) => seg(id, start, end, texts)
+  const reference = {
+    lrclib: {
+      segments: [
+        lrclibLine('r1', 21.28, 24.97, ['line', 'one']),
+        lrclibLine('r2', 24.97, 29.36, ['line', 'two']),
+        lrclibLine('r3', 29.36, 33.07, ['line', 'three']),
+      ],
+    },
+  }
+  const open = { gap: gap(), lines: ['line one', 'line two', 'line three'], source: 'lrclib', synced: true }
+
+  it('inserted words never overlap the following line; lines that fit keep exact timing', () => {
+    const { inserted, data } = insertMissingLyrics(dataWith(segments, reference), open)
+    expect(inserted).toHaveLength(3)
+    expect(inserted[0].words[0].start_time).toBeCloseTo(21.28)
+    expect(inserted[1].words[0].start_time).toBeCloseTo(24.97)
+    expect(inserted[1].words[1].end_time).toBeCloseTo(29.36)
+    const last = inserted[2].words[inserted[2].words.length - 1]
+    expect(last.end_time).toBeLessThanOrEqual(32.4 - 0.05 + 1e-9)
+    expect(inserted[2].words[0].start_time).toBeCloseTo(29.36)
+    // chronological, non-overlapping across the whole result
+    const words = data.corrected_segments.flatMap((s) => s.words).filter((w) => w.start_time !== null)
+    for (let i = 1; i < words.length; i++) {
+      expect(words[i].start_time!).toBeGreaterThanOrEqual(words[i - 1].end_time! - 1e-9)
+    }
+    expect(countUntimedWords(data.corrected_segments)).toBe(0)
+  })
+
+  it('a line that starts before the previous line ends is pushed after it', () => {
+    const fitted = fitTimedLinesToWindow([seg('x', 18, 22, ['a', 'b'])], 20.71, 32.35)
+    expect(fitted[0].words[0].start_time).toBeCloseTo(20.71)
+    expect(fitted[0].words[1].end_time).toBeCloseTo(22)
+  })
+
+  it('a line with no room left falls back to untimed (submit guard forces a sync)', () => {
+    const fitted = fitTimedLinesToWindow([seg('x', 32.3, 34, ['a', 'b', 'c'])], 20.71, 32.35)
+    expect(fitted[0].words.every((w) => w.start_time === null && w.end_time === null)).toBe(true)
+    expect(countUntimedWords(fitted)).toBe(3)
+  })
+
+  it('untimed lines pass through unchanged', () => {
+    const u = untimedSeg('u', ['a', 'b'])
+    expect(fitTimedLinesToWindow([u], 0, 10)[0]).toBe(u)
   })
 })
