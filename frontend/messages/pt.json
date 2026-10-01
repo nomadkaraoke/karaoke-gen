@@ -735,7 +735,18 @@
     "rerenderFailed": "Não foi possível iniciar a nova renderização: {error}",
     "rerenderTime": "Geralmente leva cerca de 10 a 15 minutos. Os downloads ficam indisponíveis até terminar.",
     "rerenderTitle": "Renderizar novamente com o seu tema atual?",
-    "rerenderTooltip": "Recriar este vídeo com o seu tema atual"
+    "rerenderTooltip": "Recriar este vídeo com o seu tema atual",
+    "adminRerenderBrandCode": "O código da marca {brandCode} continua o mesmo.",
+    "adminRerenderDesc": "Isso gera novamente as telas de título e encerramento, o vídeo de karaokê e todos os formatos de download com o renderizador atual, usando a letra e o instrumental já revisados e o estilo existente da faixa. Nada volta para revisão.",
+    "adminRerenderNotify": "Enviar e-mail ao cliente quando terminar",
+    "adminRerenderPublished": "Se a faixa estiver publicada, o vídeo do YouTube é excluído e reenviado (ele recebe uma NOVA URL), e os arquivos do Google Drive e do Dropbox são substituídos.",
+    "adminRerenderTime": "Geralmente leva de 10 a 20 minutos. Os downloads ficam indisponíveis até terminar.",
+    "adminRerenderTitle": "Renderizar esta faixa novamente?",
+    "adminRerenderTooltip": "Admin: gerar novamente todos os vídeos com o renderizador atual, sem revisão",
+    "adminRerender": "Renderizar novamente",
+    "adminRerenderFailed": "Não foi possível iniciar a nova renderização: {error}",
+    "adminRerenderStarted": "Nova renderização iniciada.",
+    "adminRerenderStartedWithWarnings": "Nova renderização iniciada. Algumas saídas publicadas foram mantidas:"
   },
   "themeSelector": {
     "videoTheme": "Tema do Vídeo",

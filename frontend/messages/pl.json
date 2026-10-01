@@ -735,7 +735,18 @@
     "rerenderFailed": "Nie udało się rozpocząć ponownego renderowania: {error}",
     "rerenderTime": "Zwykle zajmuje to około 10-15 minut. Pliki do pobrania będą niedostępne do momentu zakończenia.",
     "rerenderTitle": "Wyrenderować ponownie z Twoim aktualnym motywem?",
-    "rerenderTooltip": "Przebuduj to wideo z Twoim aktualnym motywem"
+    "rerenderTooltip": "Przebuduj to wideo z Twoim aktualnym motywem",
+    "adminRerenderBrandCode": "Kod marki {brandCode} pozostaje bez zmian.",
+    "adminRerenderDesc": "Spowoduje to ponowne wygenerowanie ekranu tytułowego i końcowego, wideo karaoke oraz wszystkich formatów do pobrania za pomocą aktualnego renderera, przy użyciu już zweryfikowanego tekstu i ścieżki instrumentalnej oraz istniejącego stylu utworu. Nic nie wraca do weryfikacji.",
+    "adminRerenderNotify": "Wyślij e-mail do klienta po zakończeniu",
+    "adminRerenderPublished": "Jeśli utwór jest opublikowany, film na YouTube zostanie usunięty i przesłany ponownie (otrzyma NOWY adres URL), a pliki na Google Drive i Dropbox zostaną zastąpione.",
+    "adminRerenderTime": "Zwykle zajmuje to 10-20 minut. Pliki do pobrania będą niedostępne do momentu zakończenia.",
+    "adminRerenderTitle": "Ponownie wyrenderować ten utwór?",
+    "adminRerenderTooltip": "Administrator: wygeneruj ponownie każde wideo za pomocą aktualnego renderera, bez weryfikacji",
+    "adminRerender": "Wyrenderuj ponownie",
+    "adminRerenderFailed": "Nie udało się rozpocząć ponownego renderowania: {error}",
+    "adminRerenderStarted": "Rozpoczęto ponowne renderowanie.",
+    "adminRerenderStartedWithWarnings": "Rozpoczęto ponowne renderowanie. Niektóre opublikowane pliki wyjściowe pozostawiono na miejscu:"
   },
   "themeSelector": {
     "videoTheme": "Motyw wideo",

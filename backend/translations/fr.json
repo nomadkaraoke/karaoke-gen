@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "Nous n'avons pas trouvé ton instrumentale téléversée. Le téléversement n'est peut-être pas terminé. Réessaie.",
     "uploadDurationMismatchCancelled": "L'instrumental ({instrumental_duration}s) ne correspond pas à l'audio du morceau ({audio_duration}s), il s'agit donc peut-être du mauvais fichier pour cette chanson. Cette tâche a été annulée et ton crédit a été remboursé. Vérifie les fichiers et réessaie.",
     "instrumentalUploadTooLarge": "Ce fichier instrumental fait {size_mb} Mo, ce qui dépasse la limite de {max_mb} Mo. Téléverse plutôt une version FLAC ou MP3.",
-    "instrumentalConformUnavailable": "Nous n'avons pas pu traiter ton instrumental à l'instant. Réessaie de le soumettre dans un instant."
+    "instrumentalConformUnavailable": "Nous n'avons pas pu traiter ton instrumental à l'instant. Réessaie de le soumettre dans un instant.",
+    "adminRerenderRetryAdminOnly": "Cette piste fait l'objet d'un nouveau rendu par notre équipe, elle ne peut donc être relancée que par un administrateur. Contacte le support et nous la terminerons pour toi."
   },
   "review": {
     "jobNotFound": "Tâche introuvable",

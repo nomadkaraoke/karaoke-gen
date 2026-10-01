@@ -37,6 +37,11 @@ from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
+from backend.services.admin_rerender_service import (
+    active_admin_rerender,
+    admin_rerender_kept_outputs,
+    suppress_customer_notifications,
+)
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
@@ -385,12 +390,15 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             # visibility-change flow or the worker_generation supersession fence
             # (an Increment reverted by a stale full-map write). Dot-path writes
             # touch only the distribution-result keys.
+            # An admin re-render leaves outputs it doesn't re-publish in place
+            # (e.g. YouTube now disabled) — keep their links.
+            kept_outputs = admin_rerender_kept_outputs(job)
             state_updates: Dict[str, Any] = {
                 'state_data.brand_code': result.brand_code,
-                'state_data.youtube_url': result.youtube_url,
+                'state_data.youtube_url': result.youtube_url or kept_outputs.get('youtube_url'),
                 'state_data.youtube_upload_queued': result.youtube_upload_queued,
-                'state_data.dropbox_link': result.dropbox_link,
-                'state_data.gdrive_files': result.gdrive_files,
+                'state_data.dropbox_link': result.dropbox_link or kept_outputs.get('dropbox_link'),
+                'state_data.gdrive_files': result.gdrive_files or kept_outputs.get('gdrive_files'),
                 # Clear the visibility-change guard flag (previously popped from the map).
                 'state_data.visibility_change_in_progress': DELETE_FIELD,
                 # Fresh finals were just uploaded, so any earlier "outputs deleted"
@@ -398,9 +406,11 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 # this job distributes anywhere (tenant jobs never do).
                 'outputs_deleted_at': None,
                 'outputs_deleted_by': None,
-                # A theme re-render (if any) finished; only a FAILED re-render
-                # keeps this marker (it lets the retry re-run the re-render).
+                # A theme/admin re-render (if any) finished; only a FAILED
+                # re-render keeps its marker (it lets the retry re-run it).
                 'state_data.theme_rerender': DELETE_FIELD,
+                # The admin re-render marker is cleared atomically WITH the
+                # COMPLETE transition below, so a failed transition keeps it.
             }
             if result.distribution_warnings:
                 state_updates['state_data.distribution_warnings'] = result.distribution_warnings
@@ -432,12 +442,26 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             }
             if result.distribution_warnings:
                 completion_metadata["distribution_warnings"] = result.distribution_warnings
+            # An admin re-render only emails/pushes the customer if the admin
+            # opted in (read from the snapshot taken at worker start — the
+            # marker itself was just cleared above).
+            notify_customer = not suppress_customer_notifications(job)
+            is_admin_rerender = bool(active_admin_rerender(job))
+            if is_admin_rerender:
+                completion_metadata["admin_rerender"] = True
+                completion_metadata["customer_notified"] = notify_customer
+            if not notify_customer:
+                job_log.info("Admin re-render: completion email/push suppressed (notify_customer=False)")
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.COMPLETE,
                 progress=100,
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
+                notify=notify_customer,
+                extra_updates={'state_data.admin_rerender': DELETE_FIELD},
+                # An admin re-render isn't a newly completed job for the user.
+                count_completion=not is_admin_rerender,
             )
 
             # If this was a requests-board community pick published directly here
@@ -448,6 +472,9 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             if result.youtube_url and not result.youtube_upload_queued:
                 try:
                     from backend.services.community_publish import notify_community_publish
+                    # Idempotent: voters already fully notified are never
+                    # re-emailed, so a quiet admin re-render only completes an
+                    # OWED fan-out (voters are owed "it's live").
                     await notify_community_publish(job_id, result.youtube_url)
                 except Exception:
                     logger.exception(f"[job:{job_id}] Community publish fan-out failed (non-fatal)")
@@ -948,7 +975,11 @@ async def generate_video_legacy(job_id: str) -> bool:
                     organised_dir_rclone_root=getattr(job, 'organised_dir_rclone_root', None),
                     public_share_dir=None,  # Not used in cloud
                     # Notifications
-                    discord_webhook_url=getattr(job, 'discord_webhook_url', None),
+                    # A quiet admin re-render doesn't announce the new video.
+                    discord_webhook_url=(
+                        None if suppress_customer_notifications(job)
+                        else getattr(job, 'discord_webhook_url', None)
+                    ),
                     # YouTube upload (server-side with pre-loaded credentials)
                     youtube_client_secrets_file=None,  # Not used with pre-stored credentials
                     youtube_description_file=youtube_desc_path,
@@ -1015,14 +1046,20 @@ async def generate_video_legacy(job_id: str) -> bool:
             # _handle_native_distribution already saved them but job.state_data
             # is stale (fetched before distribution ran)
             logger.info(f"[job:{job_id}] Video generation complete")
+            notify_customer = not suppress_customer_notifications(job)
+            kept_outputs = admin_rerender_kept_outputs(job)
+            new_state_data = {
+                **job.state_data,
+                'brand_code': result.get('brand_code'),
+                'youtube_url': result.get('youtube_url') or kept_outputs.get('youtube_url'),
+                'dropbox_link': result.get('dropbox_link') or kept_outputs.get('dropbox_link'),
+                'gdrive_files': result.get('gdrive_files') or kept_outputs.get('gdrive_files'),
+            }
+            # A theme/admin re-render finished — drop its marker.
+            new_state_data.pop('theme_rerender', None)
+            new_state_data.pop('admin_rerender', None)
             job_manager.update_job(job_id, {
-                'state_data': {
-                    **job.state_data,
-                    'brand_code': result.get('brand_code'),
-                    'youtube_url': result.get('youtube_url'),
-                    'dropbox_link': result.get('dropbox_link'),
-                    'gdrive_files': result.get('gdrive_files'),
-                },
+                'state_data': new_state_data,
                 'outputs_deleted_at': None,
                 'outputs_deleted_by': None,
             })
@@ -1044,6 +1081,8 @@ async def generate_video_legacy(job_id: str) -> bool:
                 progress=100,
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
+                notify=notify_customer,
+                count_completion=not active_admin_rerender(job),
             )
 
             # Advance a requests-board community pick to `published` + fan out

@@ -735,7 +735,18 @@
     "rerenderFailed": "Nu s-a putut porni re-randarea: {error}",
     "rerenderTime": "Durează de obicei aproximativ 10-15 minute. Descărcările nu sunt disponibile până la finalizare.",
     "rerenderTitle": "Randezi din nou cu tema ta actuală?",
-    "rerenderTooltip": "Reconstruiește acest videoclip cu tema ta actuală"
+    "rerenderTooltip": "Reconstruiește acest videoclip cu tema ta actuală",
+    "adminRerenderBrandCode": "Codul de brand {brandCode} rămâne același.",
+    "adminRerenderDesc": "Această acțiune regenerează ecranele de titlu și de final, videoclipul karaoke și fiecare format de descărcare cu rendererul actual, folosind instrumentalul și versurile deja revizuite și stilul existent al piesei. Nimic nu se întoarce la revizuire.",
+    "adminRerenderNotify": "Trimite un e-mail clientului când este gata",
+    "adminRerenderPublished": "Dacă piesa este publicată, videoclipul de pe YouTube este șters și reîncărcat (primește un URL NOU), iar fișierele din Google Drive și Dropbox sunt înlocuite.",
+    "adminRerenderTime": "Durează de obicei între 10 și 20 de minute. Descărcările nu sunt disponibile până la finalizare.",
+    "adminRerenderTitle": "Randezi din nou această piesă?",
+    "adminRerenderTooltip": "Admin: regenerează toate videoclipurile cu rendererul actual, fără revizuire",
+    "adminRerender": "Randează din nou",
+    "adminRerenderFailed": "Nu s-a putut porni re-randarea: {error}",
+    "adminRerenderStarted": "Re-randarea a început.",
+    "adminRerenderStartedWithWarnings": "Re-randarea a început. Unele rezultate publicate au fost păstrate:"
   },
   "themeSelector": {
     "videoTheme": "Temă video",

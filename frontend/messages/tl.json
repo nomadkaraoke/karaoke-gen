@@ -735,7 +735,18 @@
     "rerenderFailed": "Hindi masimulan ang pag-re-render: {error}",
     "rerenderTime": "Karaniwang tumatagal ito nang mga 10-15 minuto. Hindi available ang mga download hangga't hindi ito natatapos.",
     "rerenderTitle": "I-re-render gamit ang iyong kasalukuyang theme?",
-    "rerenderTooltip": "Muling buuin ang video na ito gamit ang iyong kasalukuyang theme"
+    "rerenderTooltip": "Muling buuin ang video na ito gamit ang iyong kasalukuyang theme",
+    "adminRerenderBrandCode": "Mananatiling pareho ang brand code na {brandCode}.",
+    "adminRerenderDesc": "Muling bubuuin nito ang title at end screens, ang karaoke video, at bawat download format gamit ang kasalukuyang renderer, gamit ang nasuri nang lyrics at instrumental at ang umiiral na estilo ng track. Walang ibabalik sa pagsusuri.",
+    "adminRerenderNotify": "I-email ang customer kapag tapos na",
+    "adminRerenderPublished": "Kung naka-publish ang track, buburahin at muling ia-upload ang YouTube video (magkakaroon ito ng BAGONG URL), at papalitan ang mga file sa Google Drive at Dropbox.",
+    "adminRerenderTime": "Karaniwan itong tumatagal ng 10-20 minuto. Hindi magiging available ang mga download hanggang sa matapos ito.",
+    "adminRerenderTitle": "I-re-render ang track na ito?",
+    "adminRerenderTooltip": "Admin: muling buuin ang bawat video gamit ang kasalukuyang renderer, nang walang pagsusuri",
+    "adminRerender": "I-re-render",
+    "adminRerenderFailed": "Hindi masimulan ang pag-re-render: {error}",
+    "adminRerenderStarted": "Nagsimula na ang re-render.",
+    "adminRerenderStartedWithWarnings": "Nagsimula na ang re-render. May ilang na-publish na output na hindi ginalaw:"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",

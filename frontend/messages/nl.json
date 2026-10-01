@@ -735,7 +735,18 @@
     "rerenderFailed": "Kon het opnieuw renderen niet starten: {error}",
     "rerenderTime": "Het duurt meestal ongeveer 10-15 minuten. Downloads zijn niet beschikbaar tot het klaar is.",
     "rerenderTitle": "Opnieuw renderen met je huidige thema?",
-    "rerenderTooltip": "Deze video opnieuw opbouwen met je huidige thema"
+    "rerenderTooltip": "Deze video opnieuw opbouwen met je huidige thema",
+    "adminRerenderBrandCode": "De merkcode {brandCode} blijft hetzelfde.",
+    "adminRerenderDesc": "Dit genereert de titel- en eindschermen, de karaokevideo en elk downloadformaat opnieuw met de huidige renderer, met behulp van de al beoordeelde songtekst en instrumentale track en de bestaande stijl van de track. Er gaat niets terug naar beoordeling.",
+    "adminRerenderNotify": "E-mail de klant zodra het klaar is",
+    "adminRerenderPublished": "Als de track is gepubliceerd, wordt de YouTube-video verwijderd en opnieuw geüpload (deze krijgt een NIEUWE URL), en worden de Google Drive- en Dropbox-bestanden vervangen.",
+    "adminRerenderTime": "Het duurt meestal 10-20 minuten. Downloads zijn niet beschikbaar totdat het klaar is.",
+    "adminRerenderTitle": "Deze track opnieuw renderen?",
+    "adminRerenderTooltip": "Admin: genereer elke video opnieuw met de huidige renderer, zonder beoordeling",
+    "adminRerender": "Opnieuw renderen",
+    "adminRerenderFailed": "Kon het opnieuw renderen niet starten: {error}",
+    "adminRerenderStarted": "Opnieuw renderen gestart.",
+    "adminRerenderStartedWithWarnings": "Opnieuw renderen gestart. Sommige gepubliceerde outputs zijn ongewijzigd gelaten:"
   },
   "themeSelector": {
     "videoTheme": "Video Thema",

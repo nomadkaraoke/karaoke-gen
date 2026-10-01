@@ -3266,6 +3266,27 @@ export const adminApi = {
   },
 
   /**
+   * Re-render a completed job end to end with the current renderer, without
+   * review (admin only). Keeps the job's style and brand code; published
+   * outputs are replaced (YouTube gets a new URL). The customer is only
+   * notified when notifyCustomer is true.
+   */
+  async rerenderJob(jobId: string, notifyCustomer: boolean = false): Promise<AdminRerenderResponse> {
+    const response = await apiFetch(
+      `${API_BASE_URL}/api/admin/jobs/${jobId}/rerender`,
+      {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notify_customer: notifyCustomer }),
+      }
+    );
+    return handleResponse(response);
+  },
+
+  /**
    * Regenerate title and end screens with current artist/title metadata (admin only).
    * Use when you've edited artist/title and need screens to reflect the new metadata.
    */
@@ -3978,6 +3999,18 @@ export interface ClearWorkersResponse {
   job_id: string;
   message: string;
   cleared_keys: string[];
+}
+
+export interface AdminRerenderResponse {
+  status: string;
+  job_id: string;
+  message: string;
+  brand_code?: string | null;
+  notify_customer: boolean;
+  previous_outputs: Record<string, unknown>;
+  cleanup_results: Record<string, unknown>;
+  /** Outputs left in place (destination not re-published), e.g. YouTube now disabled. */
+  warnings?: string[];
 }
 
 export interface RegenerateScreensResponse {

@@ -735,7 +735,18 @@
     "rerenderFailed": "Das erneute Rendern konnte nicht gestartet werden: {error}",
     "rerenderTime": "Es dauert normalerweise etwa 10–15 Minuten. Downloads sind nicht verfügbar, bis der Vorgang abgeschlossen ist.",
     "rerenderTitle": "Mit deinem aktuellen Theme neu rendern?",
-    "rerenderTooltip": "Dieses Video mit deinem aktuellen Theme neu erstellen"
+    "rerenderTooltip": "Dieses Video mit deinem aktuellen Theme neu erstellen",
+    "adminRerenderBrandCode": "Der Brand-Code {brandCode} bleibt gleich.",
+    "adminRerenderDesc": "Dies generiert den Titel- und Endbildschirm, das Karaoke-Video und jedes Download-Format mit dem aktuellen Renderer neu – unter Verwendung des bereits überprüften Texts, des Instrumentals und des bestehenden Stils des Tracks. Nichts geht zurück zur Überprüfung.",
+    "adminRerenderNotify": "Kunden per E-Mail benachrichtigen, sobald fertig",
+    "adminRerenderPublished": "Wenn der Track veröffentlicht ist, wird das YouTube-Video gelöscht und neu hochgeladen (es erhält eine NEUE URL), und die Dateien auf Google Drive und Dropbox werden ersetzt.",
+    "adminRerenderTime": "Es dauert normalerweise 10–20 Minuten. Downloads sind nicht verfügbar, bis der Vorgang abgeschlossen ist.",
+    "adminRerenderTitle": "Diesen Track neu rendern?",
+    "adminRerenderTooltip": "Admin: Jedes Video mit dem aktuellen Renderer ohne Überprüfung neu generieren",
+    "adminRerender": "Neu rendern",
+    "adminRerenderFailed": "Das erneute Rendern konnte nicht gestartet werden: {error}",
+    "adminRerenderStarted": "Erneutes Rendern gestartet.",
+    "adminRerenderStartedWithWarnings": "Erneutes Rendern gestartet. Einige veröffentlichte Ausgaben wurden beibehalten:"
   },
   "themeSelector": {
     "videoTheme": "Video-Theme",

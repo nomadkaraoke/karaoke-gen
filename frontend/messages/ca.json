@@ -735,7 +735,18 @@
     "rerenderFailed": "No s'ha pogut iniciar la nova renderització: {error}",
     "rerenderTime": "Normalment triga entre 10 i 15 minuts. Les descàrregues no estaran disponibles fins que acabi.",
     "rerenderTitle": "Vols tornar a renderitzar amb el teu tema actual?",
-    "rerenderTooltip": "Reconstrueix aquest vídeo amb el teu tema actual"
+    "rerenderTooltip": "Reconstrueix aquest vídeo amb el teu tema actual",
+    "adminRerenderBrandCode": "El codi de marca {brandCode} es manté igual.",
+    "adminRerenderDesc": "Això torna a generar les pantalles de títol i finals, el vídeo de karaoke i tots els formats de descàrrega amb el renderitzador actual, utilitzant la lletra i la pista instrumental ja revisades i l'estil existent de la pista. Res no torna a revisió.",
+    "adminRerenderNotify": "Envia un correu electrònic al client quan acabi",
+    "adminRerenderPublished": "Si la pista està publicada, el vídeo de YouTube s'elimina i es torna a penjar (obté una NOVA URL), i se substitueixen els fitxers de Google Drive i Dropbox.",
+    "adminRerenderTime": "Normalment triga entre 10 i 20 minuts. Les descàrregues no estaran disponibles fins que acabi.",
+    "adminRerenderTitle": "Vols tornar a renderitzar aquesta pista?",
+    "adminRerenderTooltip": "Admin: regenera tots els vídeos amb el renderitzador actual, sense revisió",
+    "adminRerender": "Tornar a renderitzar",
+    "adminRerenderFailed": "No s'ha pogut iniciar la nova renderització: {error}",
+    "adminRerenderStarted": "S'ha iniciat la rerenderització.",
+    "adminRerenderStartedWithWarnings": "S'ha iniciat la rerenderització. Algunes sortides publicades s'han mantingut al seu lloc:"
   },
   "themeSelector": {
     "videoTheme": "Tema del vídeo",

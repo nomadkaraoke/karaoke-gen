@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "アップロードされたインスト音源が見つかりませんでした。アップロードが完了していない可能性があります。もう一度お試しください。",
     "uploadDurationMismatchCancelled": "インスト音源（{instrumental_duration}秒）の長さが楽曲音源（{audio_duration}秒）と一致しないため、この曲とは異なるファイルの可能性があります。このジョブはキャンセルされ、クレジットは返却されました。ファイルをご確認のうえ、再度送信してください。",
     "instrumentalUploadTooLarge": "このインスト音源ファイルは{size_mb} MBで、上限の{max_mb} MBを超えています。代わりにFLACまたはMP3形式のファイルをアップロードしてください。",
-    "instrumentalConformUnavailable": "インスト音源を処理できませんでした。少し時間をおいてから、もう一度送信してください。"
+    "instrumentalConformUnavailable": "インスト音源を処理できませんでした。少し時間をおいてから、もう一度送信してください。",
+    "adminRerenderRetryAdminOnly": "このトラックは現在当チームにて再レンダリング中のため、管理者のみ再試行できます。サポートまでお問い合わせいただければ、こちらで処理を完了いたします。"
   },
   "review": {
     "jobNotFound": "ジョブが見つかりません",

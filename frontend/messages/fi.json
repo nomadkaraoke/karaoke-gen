@@ -735,7 +735,18 @@
     "rerenderFailed": "Uudelleenrenderöintiä ei voitu aloittaa: {error}",
     "rerenderTime": "Tämä kestää yleensä noin 10–15 minuuttia. Lataukset eivät ole saatavilla ennen kuin se on valmis.",
     "rerenderTitle": "Renderöidäänkö uudelleen nykyisellä teemallasi?",
-    "rerenderTooltip": "Luo tämä video uudelleen nykyisellä teemallasi"
+    "rerenderTooltip": "Luo tämä video uudelleen nykyisellä teemallasi",
+    "adminRerenderBrandCode": "Brändikoodi {brandCode} pysyy samana.",
+    "adminRerenderDesc": "Tämä luo uudelleen alku- ja loppuruudut, karaokevideon sekä kaikki latausmuodot nykyisellä renderöijällä käyttäen jo tarkistettuja sanoituksia ja instrumentaalia sekä kappaleen nykyistä tyyliä. Mikään ei palaa tarkistettavaksi.",
+    "adminRerenderNotify": "Lähetä asiakkaalle sähköposti, kun valmis",
+    "adminRerenderPublished": "Jos kappale on julkaistu, YouTube-video poistetaan ja ladataan uudelleen (se saa UUDEN URL-osoitteen), ja Google Drive - ja Dropbox-tiedostot korvataan.",
+    "adminRerenderTime": "Tämä kestää yleensä 10–20 minuuttia. Lataukset eivät ole käytettävissä, ennen kuin se valmistuu.",
+    "adminRerenderTitle": "Renderöidäänkö tämä kappale uudelleen?",
+    "adminRerenderTooltip": "Ylläpito: luo kaikki videot uudelleen nykyisellä renderöijällä ilman tarkistusta",
+    "adminRerender": "Renderöi uudelleen",
+    "adminRerenderFailed": "Uudelleenrenderöintiä ei voitu aloittaa: {error}",
+    "adminRerenderStarted": "Uudelleenrenderöinti aloitettu.",
+    "adminRerenderStartedWithWarnings": "Uudelleenrenderöinti aloitettu. Osa julkaistuista tuotoksista jätettiin paikoilleen:"
   },
   "themeSelector": {
     "videoTheme": "Videoteema",

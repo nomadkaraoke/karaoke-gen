@@ -735,7 +735,18 @@
     "rerenderFailed": "Impossible de relancer le rendu : {error}",
     "rerenderTime": "Cela prend généralement de 10 à 15 minutes. Les téléchargements restent indisponibles jusqu'à ce que ce soit terminé.",
     "rerenderTitle": "Relancer le rendu avec ton thème actuel ?",
-    "rerenderTooltip": "Régénérer cette vidéo avec ton thème actuel"
+    "rerenderTooltip": "Régénérer cette vidéo avec ton thème actuel",
+    "adminRerenderBrandCode": "Le code de marque {brandCode} reste inchangé.",
+    "adminRerenderDesc": "Cela régénère les écrans de titre et de fin, la vidéo karaoké et tous les formats de téléchargement avec le moteur de rendu actuel, en utilisant les paroles et la piste instrumentale déjà vérifiées ainsi que le style existant du morceau. Rien ne repasse en révision.",
+    "adminRerenderNotify": "Envoyer un e-mail au client une fois terminé",
+    "adminRerenderPublished": "Si le morceau est publié, la vidéo YouTube est supprimée et remise en ligne (elle aura une NOUVELLE URL), et les fichiers Google Drive et Dropbox sont remplacés.",
+    "adminRerenderTime": "Cela prend généralement de 10 à 20 minutes. Les téléchargements sont indisponibles jusqu'à la fin du traitement.",
+    "adminRerenderTitle": "Relancer le rendu de ce morceau ?",
+    "adminRerenderTooltip": "Admin : régénérer toutes les vidéos avec le moteur de rendu actuel, sans révision",
+    "adminRerender": "Relancer le rendu",
+    "adminRerenderFailed": "Impossible de relancer le rendu : {error}",
+    "adminRerenderStarted": "Nouveau rendu lancé.",
+    "adminRerenderStartedWithWarnings": "Nouveau rendu lancé. Certaines sorties publiées ont été laissées en place :"
   },
   "themeSelector": {
     "videoTheme": "Thème vidéo",

@@ -735,7 +735,18 @@
     "rerenderFailed": "Nepodarilo sa spustiť opätovné renderovanie: {error}",
     "rerenderTime": "Zvyčajne to trvá približne 10 – 15 minút. Súbory na stiahnutie nebudú k dispozícii, kým sa proces nedokončí.",
     "rerenderTitle": "Znova vyrenderovať s tvojou aktuálnou témou?",
-    "rerenderTooltip": "Znova vytvoriť toto video s tvojou aktuálnou témou"
+    "rerenderTooltip": "Znova vytvoriť toto video s tvojou aktuálnou témou",
+    "adminRerenderBrandCode": "Kód značky {brandCode} zostáva rovnaký.",
+    "adminRerenderDesc": "Týmto sa znova vygenerujú úvodné a záverečné obrazovky, karaoke video a všetky formáty na stiahnutie pomocou aktuálneho renderera, pričom sa použije už skontrolovaný text, inštrumentálna stopa a existujúci štýl skladby. Nič sa nevracia na kontrolu.",
+    "adminRerenderNotify": "Pošli zákazníkovi e-mail po dokončení",
+    "adminRerenderPublished": "Ak je skladba zverejnená, video na YouTube sa vymaže a znova nahrá (získa NOVÚ URL adresu) a súbory na Google Drive a Dropboxe sa nahradia.",
+    "adminRerenderTime": "Zvyčajne to trvá 10 – 20 minút. Sťahovanie nie je k dispozícii, kým sa to nedokončí.",
+    "adminRerenderTitle": "Znova vyrenderovať túto skladbu?",
+    "adminRerenderTooltip": "Admin: znova vygeneruj každé video pomocou aktuálneho renderera bez kontroly",
+    "adminRerender": "Znova vyrenderovať",
+    "adminRerenderFailed": "Nepodarilo sa spustiť opätovné renderovanie: {error}",
+    "adminRerenderStarted": "Opätovné renderovanie sa začalo.",
+    "adminRerenderStartedWithWarnings": "Opätovné renderovanie sa začalo. Niektoré publikované výstupy boli ponechané na mieste:"
   },
   "themeSelector": {
     "videoTheme": "Téma videa",

@@ -735,7 +735,18 @@
     "rerenderFailed": "No se pudo iniciar el nuevo renderizado: {error}",
     "rerenderTime": "Normalmente tarda entre 10 y 15 minutos. Las descargas no estarán disponibles hasta que finalice.",
     "rerenderTitle": "¿Volver a renderizar con tu tema actual?",
-    "rerenderTooltip": "Reconstruir este video con tu tema actual"
+    "rerenderTooltip": "Reconstruir este video con tu tema actual",
+    "adminRerenderBrandCode": "El código de marca {brandCode} se mantiene igual.",
+    "adminRerenderDesc": "Esto regenera la pantalla de título y la pantalla final, el video de karaoke y cada formato de descarga con el renderizador actual, usando las letras y el instrumental ya revisados y el estilo existente de la pista. Nada vuelve a revisión.",
+    "adminRerenderNotify": "Enviar un correo al cliente al terminar",
+    "adminRerenderPublished": "Si la pista está publicada, el video de YouTube se elimina y se vuelve a subir (obtiene una NUEVA URL), y los archivos de Google Drive y Dropbox se reemplazan.",
+    "adminRerenderTime": "Suele tardar entre 10 y 20 minutos. Las descargas no estarán disponibles hasta que finalice.",
+    "adminRerenderTitle": "¿Volver a renderizar esta pista?",
+    "adminRerenderTooltip": "Admin: regenerar cada video con el renderizador actual, sin revisión",
+    "adminRerender": "Volver a renderizar",
+    "adminRerenderFailed": "No se pudo iniciar el nuevo renderizado: {error}",
+    "adminRerenderStarted": "Re-renderizado iniciado.",
+    "adminRerenderStartedWithWarnings": "Re-renderizado iniciado. Algunas salidas publicadas se mantuvieron:"
   },
   "themeSelector": {
     "videoTheme": "Tema de video",

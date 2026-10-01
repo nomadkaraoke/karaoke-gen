@@ -14,7 +14,6 @@ from google.cloud import firestore
 
 from backend.config import settings
 
-
 logger = logging.getLogger(__name__)
 
 YOUTUBE_UPLOAD_QUEUE_COLLECTION = "youtube_upload_queue"
@@ -43,6 +42,7 @@ class YouTubeUploadQueueService:
         title: str,
         brand_code: Optional[str],
         reason: str = "quota_exceeded",
+        notify_user: bool = True,
     ) -> None:
         """
         Queue a YouTube upload for later processing.
@@ -54,6 +54,8 @@ class YouTubeUploadQueueService:
             title: Song title
             brand_code: Release ID (e.g., "NOMAD-1287")
             reason: Why the upload was deferred
+            notify_user: Email the user when the deferred upload completes
+                (False for an admin re-render without customer notification)
         """
         doc_ref = self.db.collection(YOUTUBE_UPLOAD_QUEUE_COLLECTION).document(job_id)
         now = datetime.now(PACIFIC_TZ)
@@ -72,6 +74,7 @@ class YouTubeUploadQueueService:
             "last_error": None,
             "youtube_url": None,
             "notification_sent": False,
+            "notify_user": notify_user,
             "updated_at": now,
         })
 
@@ -127,16 +130,27 @@ class YouTubeUploadQueueService:
             True if successfully claimed, False if already processing/completed
         """
         doc_ref = self.db.collection(YOUTUBE_UPLOAD_QUEUE_COLLECTION).document(job_id)
+        job_ref = self.db.collection(settings.firestore_collection).document(job_id)
 
         @firestore.transactional
         def claim_in_transaction(transaction, doc_ref):
             doc = doc_ref.get(transaction=transaction)
+            # Read the job in the same transaction: an admin re-render claims the
+            # job only if no upload is processing (and reads this queue doc), so
+            # with both transactions reading both docs they can never overlap.
+            job_doc = job_ref.get(transaction=transaction)
             if not doc.exists:
                 return False
 
             data = doc.to_dict()
             if data.get("status") != "queued":
                 return False
+
+            if job_doc.exists:
+                from backend.services.admin_rerender_service import admin_rerender_blocks_upload
+                if admin_rerender_blocks_upload(job_doc.to_dict() or {}):
+                    logger.info(f"YouTube upload for job {job_id} deferred: admin re-render in progress")
+                    return False  # leave queued; picked up once the re-render completes
 
             attempts = data.get("attempts", 0)
             max_attempts = data.get("max_attempts", 5)
@@ -207,6 +221,22 @@ class YouTubeUploadQueueService:
                 f"YouTube upload {'failed permanently' if new_status == 'failed' else 'will retry'} "
                 f"for job {job_id} (attempt {attempts}/{max_attempts}): {error}"
             )
+
+    def mark_post_upload_error(self, job_id: str, youtube_url: str, error: str) -> None:
+        """The video was uploaded but a follow-up step failed.
+
+        Terminal "completed" (never re-queued — that would upload it twice) with
+        the URL and a ``needs_attention`` flag + error for an operator.
+        """
+        doc_ref = self.db.collection(YOUTUBE_UPLOAD_QUEUE_COLLECTION).document(job_id)
+        doc_ref.update({
+            "status": "completed",
+            "youtube_url": youtube_url,
+            "needs_attention": True,
+            "post_upload_error": error,
+            "updated_at": datetime.now(PACIFIC_TZ),
+        })
+        logger.error(f"YouTube upload for job {job_id} succeeded ({youtube_url}) but a follow-up step failed: {error}")
 
     def retry_upload(self, job_id: str) -> bool:
         """

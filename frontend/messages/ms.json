@@ -735,7 +735,18 @@
     "rerenderFailed": "Tidak dapat memulakan render semula: {error}",
     "rerenderTime": "Ia biasanya mengambil masa kira-kira 10-15 minit. Muat turun tidak tersedia sehingga proses ini selesai.",
     "rerenderTitle": "Render semula dengan tema semasa anda?",
-    "rerenderTooltip": "Bina semula video ini dengan tema semasa anda"
+    "rerenderTooltip": "Bina semula video ini dengan tema semasa anda",
+    "adminRerenderBrandCode": "Kod jenama {brandCode} kekal sama.",
+    "adminRerenderDesc": "Tindakan ini akan menjana semula skrin tajuk dan penamat, video karaoke serta setiap format muat turun dengan renderer semasa, menggunakan lirik dan instrumental yang telah disemak serta gaya sedia ada trek. Tiada apa-apa yang akan dihantar semula untuk semakan.",
+    "adminRerenderNotify": "E-mel pelanggan apabila selesai",
+    "adminRerenderPublished": "Jika trek telah diterbitkan, video YouTube akan dipadam dan dimuat naik semula (ia akan mendapat URL BAHARU), dan fail Google Drive serta Dropbox akan digantikan.",
+    "adminRerenderTime": "Ia biasanya mengambil masa 10-20 minit. Muat turun tidak tersedia sehingga proses selesai.",
+    "adminRerenderTitle": "Render semula trek ini?",
+    "adminRerenderTooltip": "Admin: jana semula setiap video dengan renderer semasa, tanpa semakan",
+    "adminRerender": "Render semula",
+    "adminRerenderFailed": "Tidak dapat memulakan render semula: {error}",
+    "adminRerenderStarted": "Render semula dimulakan.",
+    "adminRerenderStartedWithWarnings": "Render semula dimulakan. Beberapa output yang diterbitkan telah dikekalkan:"
   },
   "themeSelector": {
     "videoTheme": "Tema Video",

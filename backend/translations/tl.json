@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "Hindi namin mahanap ang na-upload mong instrumental. Maaaring hindi natapos ang pag-upload. Pakisubukan muli.",
     "uploadDurationMismatchCancelled": "Hindi tumutugma ang instrumental ({instrumental_duration}s) sa audio ng kanta ({audio_duration}s), kaya maaaring maling file ito para sa kantang ito. Kinansela ang job na ito at na-refund ang iyong credit. Pakisuri ang mga file at i-submit muli.",
     "instrumentalUploadTooLarge": "Ang instrumental file na ito ay {size_mb} MB, na lampas sa {max_mb} MB na limitasyon. Mangyaring mag-upload na lang ng bersyong FLAC o MP3.",
-    "instrumentalConformUnavailable": "Hindi namin naproseso ang iyong instrumental sa ngayon. Pakisubukang isumite muli sa ilang sandali."
+    "instrumentalConformUnavailable": "Hindi namin naproseso ang iyong instrumental sa ngayon. Pakisubukang isumite muli sa ilang sandali.",
+    "adminRerenderRetryAdminOnly": "Kasalukuyang nire-render muli ng aming team ang track na ito, kaya admin lamang ang maaaring sumubok muli nito. Mangyaring makipag-ugnayan sa support at tatapusin namin ito para sa iyo."
   },
   "review": {
     "jobNotFound": "Hindi nahanap ang job",

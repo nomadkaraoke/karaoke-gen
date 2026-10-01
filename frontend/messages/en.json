@@ -744,7 +744,18 @@
     "rerenderTitle": "Re-render with your current theme?",
     "rerenderDesc": "This rebuilds the title and end screens, the lyrics video, and every download using your current theme. Your lyrics and instrumental stay exactly as reviewed, so there's nothing to review again.",
     "rerenderTime": "It usually takes about 10-15 minutes. Downloads are unavailable until it finishes.",
-    "rerenderFailed": "Couldn't start the re-render: {error}"
+    "rerenderFailed": "Couldn't start the re-render: {error}",
+    "adminRerender": "Re-render",
+    "adminRerenderTooltip": "Admin: regenerate every video with the current renderer, without review",
+    "adminRerenderTitle": "Re-render this track?",
+    "adminRerenderDesc": "This regenerates the title and end screens, the karaoke video and every download format with the current renderer, using the already-reviewed lyrics and instrumental and the track's existing style. Nothing goes back to review.",
+    "adminRerenderPublished": "If the track is published, the YouTube video is deleted and re-uploaded (it gets a NEW URL), and the Google Drive and Dropbox files are replaced.",
+    "adminRerenderBrandCode": "The brand code {brandCode} stays the same.",
+    "adminRerenderTime": "It usually takes 10-20 minutes. Downloads are unavailable until it finishes.",
+    "adminRerenderNotify": "Email the customer when done",
+    "adminRerenderFailed": "Couldn't start the re-render: {error}",
+    "adminRerenderStarted": "Re-render started.",
+    "adminRerenderStartedWithWarnings": "Re-render started. Some published outputs were left in place:"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",

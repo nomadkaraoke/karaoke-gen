@@ -55,7 +55,8 @@
     "instrumentalUploadMissing": "Non siamo riusciti a trovare la base strumentale caricata. Il caricamento potrebbe non essere stato completato. Riprova.",
     "uploadDurationMismatchCancelled": "La base strumentale ({instrumental_duration}s) non coincide con l'audio del brano ({audio_duration}s), quindi potrebbe trattarsi del file sbagliato per questo brano. Questo lavoro è stato annullato e il tuo credito è stato rimborsato. Controlla i file e invia di nuovo.",
     "instrumentalUploadTooLarge": "Questo file strumentale è di {size_mb} MB, che supera il limite di {max_mb} MB. Carica invece una versione in FLAC o MP3.",
-    "instrumentalConformUnavailable": "Non siamo riusciti a elaborare la tua base strumentale in questo momento. Riprova a inviarla tra qualche istante."
+    "instrumentalConformUnavailable": "Non siamo riusciti a elaborare la tua base strumentale in questo momento. Riprova a inviarla tra qualche istante.",
+    "adminRerenderRetryAdminOnly": "Questa traccia è in fase di re-rendering da parte del nostro team, quindi può essere riavviata solo da un amministratore. Contatta l'assistenza e la completeremo per te."
   },
   "review": {
     "jobNotFound": "Lavoro non trovato",

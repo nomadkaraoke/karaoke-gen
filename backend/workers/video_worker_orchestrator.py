@@ -30,6 +30,7 @@ from backend.services.storage_service import StorageService
 from backend.services.tracing import job_span, add_span_event
 from backend.workers.supersede import capture_generation, encoding_worker_job_id
 from backend.services.theme_rerender_service import rerender_brand_code
+from backend.services.admin_rerender_service import suppress_customer_notifications
 from backend.services.original_audio import (
     original_audio_gcs_path,
     original_audio_output_filename,
@@ -80,6 +81,11 @@ class OrchestratorConfig:
 
     # Keep existing brand code (for re-processing)
     keep_brand_code: Optional[str] = None
+
+    # Whether this run may be announced (False for an admin re-render the admin
+    # didn't opt into announcing). Gates the Discord "new video" post and the
+    # follow-up email of a quota-deferred YouTube upload.
+    notify_customer: bool = True
 
     # Instrumental selection (clean, with_backing, or custom)
     instrumental_selection: str = "clean"
@@ -873,6 +879,7 @@ class VideoWorkerOrchestrator:
                 title=self.config.title,
                 brand_code=self.result.brand_code,
                 reason=reason,
+                notify_user=self.config.notify_customer,
             )
             self.result.youtube_upload_queued = True
             self.job_log.info(f"YouTube upload queued for later processing (reason: {reason})")
@@ -1077,6 +1084,10 @@ class VideoWorkerOrchestrator:
             self.job_log.debug("No Discord webhook configured, skipping notification")
             return
 
+        if not self.config.notify_customer:
+            self.job_log.info("Admin re-render without notification: skipping Discord post")
+            return
+
         if not self.result.youtube_url:
             self.job_log.info("No YouTube URL available, skipping Discord notification")
             return
@@ -1246,6 +1257,7 @@ def create_orchestrator_config_from_job(
 
         # Keep existing brand code
         keep_brand_code=getattr(job, 'keep_brand_code', None) or rerender_brand_code(job),
+        notify_customer=not suppress_customer_notifications(job),
 
         # Instrumental selection (for GCE encoding)
         instrumental_selection=instrumental_selection,

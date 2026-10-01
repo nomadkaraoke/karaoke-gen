@@ -5,8 +5,9 @@ import { useTranslations } from 'next-intl'
 import { api, adminApi, Job } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
-import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil, RefreshCw } from "lucide-react"
+import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil, RefreshCw, RotateCcw } from "lucide-react"
 import { useAuth } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { EditTrackModal } from "./EditTrackModal"
 
 interface OutputLinksProps {
@@ -56,6 +58,9 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showRerenderDialog, setShowRerenderDialog] = useState(false)
   const [isStartingRerender, setIsStartingRerender] = useState(false)
+  const [showAdminRerenderDialog, setShowAdminRerenderDialog] = useState(false)
+  const [isStartingAdminRerender, setIsStartingAdminRerender] = useState(false)
+  const [adminRerenderNotify, setAdminRerenderNotify] = useState(false)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -70,6 +75,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   }, [])
 
   const { user } = useAuth()
+  const { toast } = useToast()
   const { features, tenantId } = useTenant()
   const isAdmin = user?.role === 'admin'
 
@@ -204,6 +210,34 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
     }
   }, [job.job_id, onJobUpdated, t])
 
+  const handleAdminRerender = useCallback(async () => {
+    setIsStartingAdminRerender(true)
+    setShowAdminRerenderDialog(false)
+    try {
+      const response = await adminApi.rerenderJob(job.job_id, adminRerenderNotify)
+      const warnings = response?.warnings ?? []
+      // Outputs whose destination isn't re-published are left in place — tell
+      // the admin which (backend wording; admin-only technical detail).
+      toast(warnings.length > 0
+        ? {
+            title: t('adminRerenderStartedWithWarnings'),
+            description: (
+              <ul className="list-disc pl-4" data-testid="admin-rerender-warnings">
+                {warnings.map((w) => <li key={w}>{w}</li>)}
+              </ul>
+            ),
+          }
+        : { title: t('adminRerenderStarted') })
+      onJobUpdated?.()
+    } catch (err) {
+      console.error("Failed to start admin re-render:", err)
+      alert(t('adminRerenderFailed', { error: err instanceof Error ? err.message : String(err) }))
+    } finally {
+      setIsStartingAdminRerender(false)
+      setAdminRerenderNotify(false)
+    }
+  }, [job.job_id, adminRerenderNotify, onJobUpdated, t, toast])
+
   const hasOutputs = showYoutubeLink || showDropboxLink || (!outputsUnavailable && downloadUrls && Object.keys(downloadUrls).length > 0)
 
   // Check if we have any downloads (and outputs are currently available)
@@ -225,10 +259,16 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   // published to YouTube/Drive — a tenant Dropbox archive is refreshed in place).
   const canRerender = !!tenantId && job.status === "complete" && !!hasDownloads && !showYoutubeLink
 
+  // Admin re-render of ANY completed job with the current renderer (existing
+  // style, no review). The backend enforces the rest (reviewed lyrics +
+  // instrumental selection present, not mid visibility change).
+  const canAdminRerender = isAdmin && job.status === "complete" && !outputsDeleted && !visibilityChangeInProgress
+  const brandCode = job.state_data?.brand_code || null
+
   return (
     <div className="space-y-2">
       {/* Links, Downloads, and Admin Tools - all in one row */}
-      {(hasDownloads || hasExternalLinks || isAdmin || canChangeVisibility || canRerender) && (
+      {(hasDownloads || hasExternalLinks || isAdmin || canChangeVisibility || canRerender || canAdminRerender) && (
         <div className="flex flex-wrap gap-1.5">
           {/* Links first */}
           {hasExternalLinks && (
@@ -385,6 +425,21 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
             >
               {isStartingRerender ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
               {t('rerender')}
+            </button>
+          )}
+
+          {/* Admin re-render with the current renderer (any completed job) */}
+          {canAdminRerender && (
+            <button
+              type="button"
+              data-testid="admin-rerender-button"
+              onClick={(e) => { e.stopPropagation(); setShowAdminRerenderDialog(true) }}
+              disabled={isStartingAdminRerender}
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors disabled:opacity-50"
+              title={t('adminRerenderTooltip')}
+            >
+              {isStartingAdminRerender ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+              {t('adminRerender')}
             </button>
           )}
 
@@ -573,6 +628,43 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleRerender}>{t('rerender')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Admin Re-render Confirmation Dialog */}
+      <AlertDialog
+        open={showAdminRerenderDialog}
+        onOpenChange={(open) => { setShowAdminRerenderDialog(open); if (!open) setAdminRerenderNotify(false) }}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()} data-testid="admin-rerender-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('adminRerenderTitle')}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>{t('adminRerenderDesc')}</p>
+                <p>{t('adminRerenderPublished')}</p>
+                {brandCode && <p>{t('adminRerenderBrandCode', { brandCode })}</p>}
+                <p>{t('adminRerenderTime')}</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id={`admin-rerender-notify-${job.job_id}`}
+              data-testid="admin-rerender-notify"
+              checked={adminRerenderNotify}
+              onCheckedChange={(checked) => setAdminRerenderNotify(checked === true)}
+            />
+            <Label htmlFor={`admin-rerender-notify-${job.job_id}`} className="text-sm">
+              {t('adminRerenderNotify')}
+            </Label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAdminRerender} data-testid="admin-rerender-confirm">
+              {t('adminRerender')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
