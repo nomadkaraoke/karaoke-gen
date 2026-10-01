@@ -33,6 +33,9 @@ review. Auto-approval must never be the reason a job fails.
 """
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -159,8 +162,10 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
 
         # Shadow-only: sung stretches the transcription has no words for (dropped
         # lines). Recorded for calibration; never changes the verdict (yet).
-        vocal_gaps_info = _vocal_gaps_shadow(
-            job_id, job, corrections, ai_suggestions, stems, audio_complete, storage, job_manager
+        # Stem download + decode: keep it off the event loop.
+        vocal_gaps_info = await asyncio.to_thread(
+            _vocal_gaps_shadow,
+            job_id, job, corrections, ai_suggestions, stems, audio_complete, storage, job_manager,
         )
 
         blockers = _enforcement_blockers(job, settings)
@@ -372,28 +377,42 @@ def analyze_vocal_gaps(job_id, corrections, segments, stems, storage):
         return VocalGapsResult(error=str(e))
 
 
+def vocal_gaps_input_key(segments, stems) -> str:
+    """Fingerprint of what a vocal-gap analysis looked at: word timings, stem, detector
+    version. A reset, re-transcription, audio edit or new AI suggestions changes it."""
+    from backend.services.auto_approval.vocal_gaps import VOCAL_GAPS_VERSION
+
+    words = [(w.get("id"), round(w.get("start_time") or 0, 2), round(w.get("end_time") or 0, 2))
+             for seg in segments for w in (seg.get("words") or [])]
+    stem = stems.get("lead_vocals") or stems.get("vocals_clean")
+    blob = json.dumps([VOCAL_GAPS_VERSION, stem, words], ensure_ascii=False)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+
+
 def _vocal_gaps_shadow(job_id, job, corrections, ai_suggestions, stems, audio_complete,
                        storage, job_manager) -> Dict[str, Any]:
-    """Analyze once per job (when stems exist) and store ``state_data.vocal_gaps``.
+    """Analyze when stems exist and store ``state_data.vocal_gaps``; reuse a stored
+    result only if it was computed from the same lyrics + stem (``input_key``).
 
-    Returns a compact summary for the shadow payload. Never raises.
+    Returns a compact summary for the shadow payload. Never raises. Blocking (stem
+    download + decode): call via ``asyncio.to_thread``.
     """
     try:
-        existing = (job.state_data or {}).get("vocal_gaps")
-        if existing:
-            return {"status": "cached", "suspect_count": existing.get("suspect_count"),
-                    "max_suspect_run_s": existing.get("max_suspect_run_s")}
         if not audio_complete:
             return {"status": "pending_audio"}
-        result = analyze_vocal_gaps(
-            job_id, corrections, _published_segments(corrections, ai_suggestions), stems, storage
-        )
+        segments = _published_segments(corrections, ai_suggestions)
+        input_key = vocal_gaps_input_key(segments, stems)
+        existing = (job.state_data or {}).get("vocal_gaps")
+        if existing and existing.get("input_key") == input_key:
+            return {"status": "cached", "suspect_count": existing.get("suspect_count"),
+                    "max_suspect_run_s": existing.get("max_suspect_run_s")}
+        result = analyze_vocal_gaps(job_id, corrections, segments, stems, storage)
         if result is None:
             return {"status": "no_lead_stem"}
         if result.error:
             return {"status": "error", "error": result.error}
         stored = {**result.to_dict(), "analyzed_at": datetime.now(timezone.utc).isoformat(),
-                  "source": "auto_approval"}
+                  "source": "auto_approval", "input_key": input_key}
         job_manager.update_state_data(job_id, "vocal_gaps", stored)
         return {"status": "checked", "suspect_count": result.suspect_count,
                 "max_suspect_run_s": result.max_suspect_run_s}
@@ -435,7 +454,8 @@ def analyze_job_vocal_gaps(job_id: str, store: bool = True) -> Dict[str, Any]:
         if result.error:
             return {"status": "error", "error": result.error}
         payload = {**result.to_dict(), "analyzed_at": datetime.now(timezone.utc).isoformat(),
-                   "source": "backfill", "lyrics_source": lyrics_source}
+                   "source": "backfill", "lyrics_source": lyrics_source,
+                   "input_key": vocal_gaps_input_key(segments, stems)}
         if store:
             job_manager.update_state_data(job_id, "vocal_gaps", payload)
         return {"status": "checked", "stored": store, "vocal_gaps": payload}

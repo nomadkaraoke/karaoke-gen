@@ -40,6 +40,11 @@ BREATH_BRIDGE_S = 0.5     # silences this short inside singing don't end a vocal
 # dropped line in a 20s gap is only 20% active). On job 5710831e genuine
 # instrumentals peaked at 0.16s runs vs 11.76s for the dropped lines.
 SUSPECT_MIN_RUN_S = 3.0
+# A vocal run that starts at the gap's first frame is usually the previous word's held
+# note (transcribed end_time under-extended — a known AudioShake failure). Don't count
+# its first seconds as "unlyricked"; dropped lines run far longer (11.76s on 5710831e).
+# Held notes up to ALLOWANCE + SUSPECT_MIN_RUN_S (4.5s) past the word's end are tolerated.
+HELD_NOTE_ALLOWANCE_S = 1.5  # calibrate with the audit; 2.0 hid a single 4s dropped line
 MAX_REFERENCE_LINES = 12  # more than this between anchors = misaligned anchors, not a gap
 
 
@@ -122,10 +127,11 @@ def _reference_index(correction_data: Dict[str, Any]) -> Dict[str, Dict[str, Tup
     index: Dict[str, Dict[str, Tuple[int, int, int]]] = {}
     for source, ref in (correction_data.get("reference_lyrics") or {}).items():
         ids: Dict[str, Tuple[int, int, int]] = {}
-        for li, seg in enumerate(ref.get("segments") or []):
+        for li, seg in enumerate((ref or {}).get("segments") or []):
             seg_words = seg.get("words") or []
             for wi, w in enumerate(seg_words):
-                ids[w["id"]] = (li, wi, len(seg_words))
+                if w.get("id"):
+                    ids[w["id"]] = (li, wi, len(seg_words))
         index[source] = ids
     return index
 
@@ -147,7 +153,7 @@ def _transcribed_to_reference(correction_data: Dict[str, Any]) -> Dict[str, Dict
 
 
 def reference_lines_between(correction_data: Dict[str, Any], word_before: Optional[dict],
-                            word_after: Optional[dict]) -> Dict[str, List[str]]:
+                            word_after: Optional[dict], _indexes=None) -> Dict[str, List[str]]:
     """Reference lines strictly between the reference positions of the words around a gap.
 
     Only whole reference lines are returned, and only when both neighbours map to the
@@ -156,8 +162,7 @@ def reference_lines_between(correction_data: Dict[str, Any], word_before: Option
     """
     if not word_before or not word_after:
         return {}
-    ref_index = _reference_index(correction_data)
-    t2r = _transcribed_to_reference(correction_data)
+    ref_index, t2r = _indexes or (_reference_index(correction_data), _transcribed_to_reference(correction_data))
     before = t2r.get(word_before.get("id"), {})
     after = t2r.get(word_after.get("id"), {})
     out: Dict[str, List[str]] = {}
@@ -173,7 +178,8 @@ def reference_lines_between(correction_data: Dict[str, Any], word_before: Option
         # headers like "[Chorus]" tokenised differently): a gap's preceding word
         # "landing" on the first word of a line really ended the previous line, and
         # a following word landing on the last word of a line starts the next one.
-        if b_word == 0:
+        b_len = len(correction_data["reference_lyrics"][source]["segments"][b_line].get("words") or [])
+        if b_word == 0 and b_len > 1:
             b_line -= 1
         if a_word == a_len - 1 and a_len > 1:
             a_line += 1
@@ -182,7 +188,7 @@ def reference_lines_between(correction_data: Dict[str, Any], word_before: Option
         if first > last or last - first + 1 > MAX_REFERENCE_LINES:
             continue
         segs = correction_data["reference_lyrics"][source]["segments"]
-        lines = [segs[i]["text"].strip() for i in range(first, last + 1)]
+        lines = [(segs[i].get("text") or "").strip() for i in range(first, last + 1)]
         lines = [l for l in lines if l and not (l.startswith("[") and l.endswith("]"))]  # drop [Chorus] headers
         if lines:
             out[source] = lines
@@ -197,8 +203,19 @@ def compute_vocal_gaps(segments: List[dict], lead_vocals_path: str,
     try:
         samples, sr = _load_mono(lead_vocals_path)
         active, frame_s = _rms_activity(samples, sr)
+        if len(active) == 0 or not active.any():
+            # A failed separation must not be recorded as a clean "no gaps" pass
+            return VocalGapsResult(error="empty or silent lead-vocal audio")
         bridged = _bridge(active, int(round(BREATH_BRIDGE_S / frame_s)))
         duration = len(active) * frame_s
+        allowance = int(round(HELD_NOTE_ALLOWANCE_S / frame_s))
+
+        correction_data = correction_data or {}
+        try:
+            indexes = (_reference_index(correction_data), _transcribed_to_reference(correction_data))
+        except Exception as e:  # noqa: BLE001 — reference evidence is secondary
+            logger.warning("vocal gaps: reference index failed: %s", e)
+            indexes = None
 
         result = VocalGapsResult()
         for start, end, before, after in transcription_gaps(segments, duration):
@@ -206,11 +223,20 @@ def compute_vocal_gaps(segments: List[dict], lead_vocals_path: str,
             if i1 <= i0:
                 continue
             frac = float(active[i0:i1].mean())
-            run_s = _longest_run(bridged[i0:i1]) * frame_s
+            window = bridged[i0:i1].copy()
+            # Discount a held note carried over from the word before the gap
+            if before is not None and window[0]:
+                window[:allowance] = False
+            run_s = _longest_run(window) * frame_s
+            try:
+                refs = reference_lines_between(correction_data, before, after, indexes) if indexes else {}
+            except Exception as e:  # noqa: BLE001 — never lose the audio result to bad reference data
+                logger.warning("vocal gaps: reference lookup failed: %s", e)
+                refs = {}
             gap = VocalGap(
                 start=round(start, 2), end=round(end, 2), duration=round(end - start, 2),
                 active_fraction=round(frac, 3), longest_run_s=round(run_s, 2),
-                reference_lines=reference_lines_between(correction_data or {}, before, after),
+                reference_lines=refs,
             )
             gap.suspect = run_s >= SUSPECT_MIN_RUN_S
             result.gaps.append(gap)

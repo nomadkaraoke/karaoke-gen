@@ -52,7 +52,10 @@ Insert the three lines in review (Tap To Sync) and re-render after PR #1094 depl
   lines between the reference positions of the words either side (section headers
   dropped, ±1-word anchor drift at line boundaries snapped, reversed/huge spans → none).
   `suspect` = longest run ≥3s (NOT active fraction: a dropped line followed by an
-  instrumental in the same gap dilutes the fraction).
+  instrumental in the same gap dilutes the fraction), after a 1.5s held-note allowance
+  for a run touching the gap start. Silent/empty stems → error, never a clean pass.
+  Stored results are keyed by `input_key` (word timings + stem + version) so resets /
+  edits recompute.
 - On 5710831e: one suspect gap 20.66–32.40s (96% active, 11.76s run) with exactly the 3
   missing Genius lines; the three real instrumentals have ≤0.16s runs.
 - Executor computes it once per job when stems exist (any verdict), stores
@@ -65,6 +68,11 @@ Anchor `reference_word_ids` can be shifted one word at "[Section]" header bounda
 (Genius "[קדם-פזמון]": the anchor for "כמו איזה שני משוגעים בחוף" maps its last word to the
 next line's first word). Worth a separate look — it probably mis-highlights reference words
 in the review UI too.
+
+## Known overlap
+`timing_check` G3 (`max_unclaimed_run_s`) is a whole-song version of the same idea. Once the
+audit shows which formulation separates dropped lines from ad-libs/held notes best, fold
+them into one detector (one stem download/decode; currently AUTO jobs decode twice).
 
 ## Next
 Deploy → run the audit (needs `gcloud auth login` for the admin token) → hand-check

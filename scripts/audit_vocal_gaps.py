@@ -34,13 +34,22 @@ def _jobs(days: int, limit: int):
 
     db = firestore.Client(project="nomadkaraoke")
     since = datetime.now(timezone.utc) - timedelta(days=days)
-    query = (db.collection("jobs").where(filter=firestore.FieldFilter("status", "==", "complete"))
-             .where(filter=firestore.FieldFilter("created_at", ">=", since)).limit(limit))
-    return [(d.id, d.to_dict()) for d in query.stream()]
+    # Range + order on created_at only (no composite index needed); status filtered here
+    query = (db.collection("jobs").where(filter=firestore.FieldFilter("created_at", ">=", since))
+             .order_by("created_at", direction=firestore.Query.DESCENDING))
+    jobs = []
+    for d in query.stream():
+        data = d.to_dict()
+        if data.get("status") == "complete":
+            jobs.append((d.id, data))
+            if len(jobs) >= limit:
+                break
+    return jobs
 
 
 def _analyze(job_id: str, token: str, dry_run: bool) -> dict:
-    for attempt in range(3):
+    attempts = 3
+    for attempt in range(1, attempts + 1):
         try:
             r = requests.post(f"{API}/api/internal/jobs/{job_id}/vocal-gaps",
                               params={"dry_run": str(dry_run).lower()},
@@ -48,9 +57,12 @@ def _analyze(job_id: str, token: str, dry_run: bool) -> dict:
             if r.status_code == 200:
                 return r.json()
             err = f"HTTP {r.status_code}: {r.text[:200]}"
+            if r.status_code < 500:  # auth/not-found won't fix itself
+                break
         except requests.RequestException as e:
             err = str(e)
-        time.sleep(5 * (attempt + 1))
+        if attempt < attempts:
+            time.sleep(5 * attempt)
     return {"job_id": job_id, "status": "request_failed", "error": err}
 
 

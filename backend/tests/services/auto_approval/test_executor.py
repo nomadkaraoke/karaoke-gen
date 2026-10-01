@@ -522,9 +522,18 @@ async def test_vocal_gaps_analyzed_for_review_bound_jobs_too() -> None:
     assert _stored_vocal_gaps(job_manager)["suspect_count"] == 1
 
 
+def _input_key_for(job, corrections=None):
+    from backend.services.auto_approval.executor import vocal_gaps_input_key
+
+    corrections = corrections or _confident_corrections()
+    return vocal_gaps_input_key(corrections["corrected_segments"], job.file_urls["stems"])
+
+
 @pytest.mark.asyncio
-async def test_vocal_gaps_not_recomputed_when_cached() -> None:
-    job = _job_with_lead_stem(state_extra={"vocal_gaps": {"suspect_count": 0, "max_suspect_run_s": 0.0}})
+async def test_vocal_gaps_not_recomputed_when_cached_for_same_inputs() -> None:
+    job = _job_with_lead_stem()
+    job.state_data["vocal_gaps"] = {"suspect_count": 0, "max_suspect_run_s": 0.0,
+                                    "input_key": _input_key_for(job)}
     with patch("backend.services.auto_approval.executor.analyze_vocal_gaps") as analyze, \
          patch("backend.services.auto_approval.executor._compute_timing_signals",
                return_value=_timing_signals(fired=False)):
@@ -532,6 +541,34 @@ async def test_vocal_gaps_not_recomputed_when_cached() -> None:
     analyze.assert_not_called()
     assert _stored_vocal_gaps(job_manager) is None
     assert job_manager.update_processing_metadata.call_args[0][2]["vocal_gaps"]["status"] == "cached"
+
+
+@pytest.mark.asyncio
+async def test_stale_vocal_gaps_recomputed_when_lyrics_changed() -> None:
+    """A stored result from different lyrics/stem (reset, edit, re-transcription) is
+    not reused — it would corrupt the calibration data."""
+    job = _job_with_lead_stem()
+    job.state_data["vocal_gaps"] = {"suspect_count": 5, "max_suspect_run_s": 9.0, "input_key": "stale"}
+    with patch("backend.services.auto_approval.executor.analyze_vocal_gaps",
+               return_value=_vocal_gaps_result(suspect_count=0)) as analyze, \
+         patch("backend.services.auto_approval.executor._compute_timing_signals",
+               return_value=_timing_signals(fired=False)):
+        _, job_manager, _, _ = await _run(job)
+    analyze.assert_called_once()
+    stored = _stored_vocal_gaps(job_manager)
+    assert stored["suspect_count"] == 0 and stored["input_key"] == _input_key_for(job)
+
+
+def test_input_key_changes_with_word_timing_and_stem() -> None:
+    from backend.services.auto_approval.executor import vocal_gaps_input_key
+
+    segs = _confident_corrections()["corrected_segments"]
+    stems = {"lead_vocals": "a.flac"}
+    key = vocal_gaps_input_key(segs, stems)
+    moved = [{**segs[0], "words": [{**segs[0]["words"][0], "start_time": 9.0}] + segs[0]["words"][1:]}]
+    assert vocal_gaps_input_key(moved, stems) != key
+    assert vocal_gaps_input_key(segs, {"lead_vocals": "b.flac"}) != key
+    assert vocal_gaps_input_key(segs, stems) == key
 
 
 @pytest.mark.asyncio

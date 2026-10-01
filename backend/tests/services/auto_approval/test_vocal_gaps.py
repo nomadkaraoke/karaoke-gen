@@ -102,7 +102,8 @@ class TestComputeVocalGaps:
         assert dropped.suspect
         # Diluted by the instrumental sharing the gap — the run, not the fraction, decides
         assert 0.4 < dropped.active_fraction < 0.6
-        assert dropped.longest_run_s >= 11.0, "breaths inside singing must be bridged"
+        # 12s of bridged singing, minus the held-note allowance at the gap start
+        assert dropped.longest_run_s >= 10.0, "breaths inside singing must be bridged"
         assert result.suspect_count == 1
         assert result.max_suspect_run_s == dropped.longest_run_s
 
@@ -120,6 +121,36 @@ class TestComputeVocalGaps:
         gap = next(g for g in compute_vocal_gaps(segs, stem).gaps if g.start == 8.0)
         assert gap.active_fraction < 0.25
         assert gap.suspect
+
+    def test_held_note_past_last_word_is_not_suspect(self, tmp_path):
+        """The word's transcribed end is 3.5s before the singer stops (held note)."""
+        stem = _synth_stem(tmp_path, [(2.0, 11.5), (25.0, 30.0)])
+        segs = _segments([_word("a", "a", 2.0, 8.0)], [_word("b", "b", 25.0, 30.0)])
+        gap = next(g for g in compute_vocal_gaps(segs, stem).gaps if g.start == 8.0)
+        assert not gap.suspect
+        assert gap.longest_run_s == pytest.approx(2.0, abs=0.1)
+
+    def test_singing_after_a_pause_gets_no_allowance(self, tmp_path):
+        """A dropped line that starts after a real pause is counted in full."""
+        stem = _synth_stem(tmp_path, [(2.0, 8.0), (10.0, 14.0), (25.0, 30.0)])
+        segs = _segments([_word("a", "a", 2.0, 8.0)], [_word("b", "b", 25.0, 30.0)])
+        gap = next(g for g in compute_vocal_gaps(segs, stem).gaps if g.start == 8.0)
+        assert gap.suspect
+        assert gap.longest_run_s == pytest.approx(4.0, abs=0.1)
+
+    def test_silent_stem_is_an_error_not_a_clean_pass(self, tmp_path):
+        stem = _synth_stem(tmp_path, [], duration_s=20.0)
+        result = compute_vocal_gaps(_segments([_word("a", "a", 2.0, 4.0)]), stem)
+        assert result.error and "silent" in result.error
+        assert result.gaps == []
+
+    def test_malformed_reference_does_not_lose_audio_result(self, tmp_path):
+        stem = _synth_stem(tmp_path, [(2.0, 20.0)], duration_s=25.0)
+        bad = {"reference_lyrics": {"genius": {"segments": [{"words": [{"text": "no id"}]}]}},
+               "anchor_sequences": [{"transcribed_word_ids": ["a"], "reference_word_ids": {"genius": ["zz"]}}]}
+        result = compute_vocal_gaps(_segments([_word("a", "a", 2.0, 4.0)]), stem, bad)
+        assert result.error is None
+        assert result.suspect_count == 1
 
     def test_brief_ad_lib_in_gap_is_not_suspect(self, tmp_path):
         stem = _synth_stem(tmp_path, [(2.0, 8.0), (14.0, 15.5), (25.0, 30.0)])
@@ -193,6 +224,15 @@ class TestReferenceLinesBetween:
         assert reference_lines_between(data, self.before, self.after) == {
             "genius": ["we kept moments close", "you were pretty as a flower"]
         }
+
+    def test_single_word_line_before_gap_is_not_reported_missing(self):
+        lines = ["intro words here", "Yeah", "dropped line one", "after the gap"]
+        data = {"reference_lyrics": {"genius": _ref(lines)},
+                "anchor_sequences": [
+                    {"transcribed_word_ids": ["t_before"], "reference_word_ids": {"genius": ["r1_0"]}},
+                    {"transcribed_word_ids": ["t_after"], "reference_word_ids": {"genius": ["r3_0"]}}],
+                "gap_sequences": []}
+        assert reference_lines_between(data, self.before, self.after) == {"genius": ["dropped line one"]}
 
     def test_section_headers_are_dropped(self):
         data = _correction_data(["r1_3"], ["r7_0"])
