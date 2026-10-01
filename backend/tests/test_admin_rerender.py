@@ -1720,11 +1720,10 @@ class TestQueueProcessorFlow:
         from backend.services import admin_rerender_service as ars
         db = MagicMock()
         with patch("backend.config.get_settings", return_value=MagicMock(firestore_collection="jobs-test")), \
-             patch.object(ars.firestore, "transactional", side_effect=lambda f: (lambda tx: None)):
-            try:
-                ars.claim_with_youtube_queue(db, "job123", {}, {"complete"}, cancel_deferred_upload=False)
-            except Exception:
-                pass
+             patch.object(ars.firestore, "transactional",
+                          side_effect=lambda f: (lambda tx: ("ok", {"status": "none"}))):
+            outcome = ars.claim_with_youtube_queue(db, "job123", {}, {"complete"}, cancel_deferred_upload=False)
+        assert outcome == {"status": "none"}
         db.collection.assert_any_call("jobs-test")
 
     @pytest.mark.asyncio
