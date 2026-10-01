@@ -268,6 +268,33 @@ def test_stale_takeover_loses_to_a_concurrent_takeover() -> None:
     assert w._acquire_lease(storage, "j") == (False, None)
 
 
+def test_own_lease_after_lost_create_response_counts_as_held(monkeypatch) -> None:
+    """Upload retry after a lost response 412s on our own write: still ours."""
+    import json as _json
+    from backend.workers import auto_correct_worker as w
+
+    bucket = _FakeBucket()
+    storage = SimpleNamespace(bucket=bucket)
+    monkeypatch.setattr(w.uuid, "uuid4", lambda: SimpleNamespace(hex="mytoken"))
+    real_blob = bucket.blob
+
+    def _blob_lost_response(path):
+        b = real_blob(path)
+        orig = b.upload_from_string
+
+        def _upload(data, content_type=None, if_generation_match=None):
+            orig(data, content_type=content_type, if_generation_match=if_generation_match)
+            raise gexc.PreconditionFailed("retry of a create that already landed")
+
+        b.upload_from_string = _upload
+        return b
+
+    bucket.blob = _blob_lost_response
+    held, gen = w._acquire_lease(storage, "j")
+    assert held and gen == bucket.objects["jobs/j/lyrics/auto_correct_inflight.json"][0]
+    assert _json.loads(bucket.objects["jobs/j/lyrics/auto_correct_inflight.json"][1])["token"] == "mytoken"
+
+
 def test_release_never_deletes_a_lease_someone_else_took_over() -> None:
     import time as _time
     from backend.workers import auto_correct_worker as w

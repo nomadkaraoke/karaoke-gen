@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ LEASE_PATH = "jobs/{job_id}/lyrics/auto_correct_inflight.json"
 LEASE_TTL_SECONDS = 240
 # How long a non-holder waits for the holder's cache (fits inside the lyrics
 # trigger's 200s HTTP timeout).
-PEER_WAIT_SECONDS = 180
+PEER_WAIT_SECONDS = 150
 PEER_POLL_SECONDS = 3
 
 
@@ -52,11 +53,11 @@ def _precondition_failed():
         return ()
 
 
-def _write_lease(storage, path: str, if_generation_match: int) -> Optional[int]:
+def _write_lease(storage, path: str, if_generation_match: int, token: str) -> Optional[int]:
     """Conditional lease write; returns the generation we wrote (our fence token)."""
     blob = storage.bucket.blob(path)
     blob.upload_from_string(
-        json.dumps({"acquired_at": time.time()}),
+        json.dumps({"acquired_at": time.time(), "token": token}),
         content_type="application/json",
         if_generation_match=if_generation_match,
     )
@@ -74,26 +75,32 @@ def _acquire_lease(storage, job_id: str) -> Tuple[bool, Optional[int]]:
     """
     path = LEASE_PATH.format(job_id=job_id)
     precondition_failed = _precondition_failed()
+    token = uuid.uuid4().hex
     try:
         try:
-            return True, _write_lease(storage, path, if_generation_match=0)
+            return True, _write_lease(storage, path, if_generation_match=0, token=token)
         except precondition_failed:
             pass
         existing = storage.bucket.get_blob(path)
         if existing is None:  # holder released between our two calls — retry once
             try:
-                return True, _write_lease(storage, path, if_generation_match=0)
+                return True, _write_lease(storage, path, if_generation_match=0, token=token)
             except precondition_failed:
                 return False, None
         try:
-            acquired_at = float(json.loads(existing.download_as_bytes()).get("acquired_at") or 0)
+            lease = json.loads(existing.download_as_bytes())
         except Exception:  # noqa: BLE001 — unreadable lease → treat as stale
-            acquired_at = 0.0
+            lease = {}
+        if lease.get("token") == token:
+            # Our own create succeeded but its response was lost and the client's
+            # retry hit the precondition — we DO hold it.
+            return True, existing.generation
+        acquired_at = float(lease.get("acquired_at") or 0)
         if time.time() - acquired_at <= LEASE_TTL_SECONDS:
             return False, None
         # Stale (crashed holder): take over only the generation we just read.
         try:
-            return True, _write_lease(storage, path, if_generation_match=existing.generation)
+            return True, _write_lease(storage, path, if_generation_match=existing.generation, token=token)
         except precondition_failed:
             return False, None  # another instance took it over first
     except Exception as e:  # noqa: BLE001 — fail open
@@ -197,7 +204,8 @@ async def _generate(job_id: str) -> dict:
             )
             return {"status": "skipped", "reason": "no_references"}
 
-        held, lease_generation = _acquire_lease(storage, job_id)
+        # Off-loop: up to 4 blocking GCS round-trips.
+        held, lease_generation = await asyncio.to_thread(_acquire_lease, storage, job_id)
         if not held:
             return await _wait_for_peer(storage, job_id)
 
@@ -210,7 +218,7 @@ async def _generate(job_id: str) -> dict:
             lease_generation = None
             raise
         finally:
-            _release_lease(storage, job_id, lease_generation)
+            await asyncio.to_thread(_release_lease, storage, job_id, lease_generation)
     except Exception as e:  # noqa: BLE001 — proactive is best-effort, never fatal
         logger.warning("[job:%s] proactive auto-correct failed (non-fatal): %s", job_id, e, exc_info=True)
         return {"status": "error", "message": str(e)}
