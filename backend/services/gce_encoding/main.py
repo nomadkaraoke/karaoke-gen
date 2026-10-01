@@ -459,8 +459,11 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
             from karaoke_gen.lyrics_transcriber.output.translations import load_and_apply_translations
 
             translations_path = work_dir / "translations.json"
-            download_single_file_from_gcs(request.translations_gcs_path, translations_path)
-            load_and_apply_translations(correction_result.corrected_segments, str(translations_path))
+            try:
+                download_single_file_from_gcs(request.translations_gcs_path, translations_path)
+                load_and_apply_translations(correction_result.corrected_segments, str(translations_path))
+            except Exception as e:  # translations are best-effort: never fail the render
+                logger.error(f"[job:{job_id}] Translated lyrics unavailable, rendering without: {e}")
 
         jobs[job_id]["progress"] = 25
 

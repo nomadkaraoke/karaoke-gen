@@ -262,3 +262,29 @@ def test_preview_renders_sample_with_translations():
     assert url.startswith("data:image/jpeg;base64,")
     render.assert_called_once()
     assert render.call_args.kwargs["translations"] == tp.SAMPLES["fr"]["translations"]
+
+
+def test_concurrent_cold_previews_render_once():
+    import threading
+    import time as _time
+
+    from backend.services import translation_preview as tp
+
+    tp._CACHE.clear()
+    theme_service = MagicMock()
+    theme_service.get_default_theme_id.return_value = "nomad"
+    theme_service.get_theme_style_params.return_value = {"karaoke": {}}
+
+    def slow_render(*a, **k):
+        _time.sleep(0.2)
+        return b"jpeg"
+
+    with patch.object(tp, "get_theme_service", return_value=theme_service), \
+         patch.object(tp, "resolve_assets", side_effect=lambda s, t: s), \
+         patch.object(tp, "render_karaoke_frame", side_effect=slow_render) as render:
+        threads = [threading.Thread(target=tp.render_translation_preview, args=("de",)) for _ in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    assert render.call_count == 1

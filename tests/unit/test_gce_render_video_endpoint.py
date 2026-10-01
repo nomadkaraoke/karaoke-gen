@@ -427,3 +427,22 @@ class TestRenderVideoTranslations:
             helper._run_with_mocks("rv-tr-001", work_dir, request, helper._make_mock_outputs(tmp_path), tmp_path)
         translations_module.load_and_apply_translations.assert_called_once()
         assert translations_module.load_and_apply_translations.call_args[0][1] == str(work_dir / "translations.json")
+
+    def test_translation_download_failure_does_not_fail_render(self, tmp_path):
+        import sys as _sys
+        from backend.services.gce_encoding.main import RenderVideoRequest, jobs
+
+        helper = TestRunRenderVideo()
+        work_dir = tmp_path / "work"
+        work_dir.mkdir()
+        request = RenderVideoRequest(
+            job_id="rv-tr-002", original_corrections_gcs_path="gs://b/jobs/t/lyrics/corrections.json",
+            audio_gcs_path="gs://b/jobs/t/audio.flac", output_gcs_prefix="gs://b/jobs/t", artist="A", title="T",
+            translations_gcs_path="gs://b/jobs/t/lyrics/translations.json",
+        )
+        translations_module = MagicMock()
+        translations_module.load_and_apply_translations.side_effect = FileNotFoundError("gone")
+        with patch.dict(_sys.modules, {"karaoke_gen.lyrics_transcriber.output.translations": translations_module}):
+            helper._run_with_mocks("rv-tr-002", work_dir, request, helper._make_mock_outputs(tmp_path), tmp_path)
+        assert jobs["rv-tr-002"]["status"] != "failed"
+        assert jobs["rv-tr-002"]["output_files"]

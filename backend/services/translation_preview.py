@@ -23,6 +23,7 @@ FALLBACK_THEME_ID = "nomad"
 _CACHE: "OrderedDict[tuple, str]" = OrderedDict()
 _CACHE_MAX = 40
 _lock = threading.Lock()
+_key_locks: "dict[tuple, threading.Lock]" = {}  # bounded: themes x 33 languages
 
 
 def render_translation_preview(language: str, theme_id: Optional[str] = None) -> str:
@@ -37,7 +38,17 @@ def render_translation_preview(language: str, theme_id: Optional[str] = None) ->
         if key in _CACHE:
             _CACHE.move_to_end(key)
             return _CACHE[key]
+        key_lock = _key_locks.setdefault(key, threading.Lock())
+    # One render per key: concurrent cold requests wait for it instead of each running ffmpeg
+    with key_lock:
+        with _lock:
+            if key in _CACHE:
+                _CACHE.move_to_end(key)
+                return _CACHE[key]
+        return _render_and_cache(key, theme_service, theme_id, code)
 
+
+def _render_and_cache(key: tuple, theme_service, theme_id: str, code: str) -> str:
     style_params = theme_service.get_theme_style_params(theme_id)
     if style_params is None:
         raise ValueError(f"Theme not found: {theme_id}")
