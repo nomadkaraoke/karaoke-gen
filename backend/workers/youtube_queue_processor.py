@@ -87,8 +87,12 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
                 # Update job state_data with the YouTube URL
                 _update_job_youtube_url(job_id, youtube_url)
 
-                # Send follow-up email
-                await _send_youtube_upload_notification(job_id, entry, youtube_url)
+                # Send follow-up email (unless queued by an admin re-render
+                # that wasn't meant to notify the customer)
+                if entry.get("notify_user", True):
+                    await _send_youtube_upload_notification(job_id, entry, youtube_url)
+                else:
+                    logger.info(f"YouTube queue processor: skipping follow-up email for job {job_id} (notify_user=False)")
 
                 # If this was a requests-board community pick, mark it published
                 # and fan out "your track is live" emails to everyone who voted.

@@ -735,7 +735,16 @@
     "rerenderFailed": "Không thể bắt đầu kết xuất lại: {error}",
     "rerenderTime": "Quá trình này thường mất khoảng 10-15 phút. Bạn sẽ không thể tải xuống cho đến khi hoàn tất.",
     "rerenderTitle": "Kết xuất lại với chủ đề hiện tại của bạn?",
-    "rerenderTooltip": "Dựng lại video này với chủ đề hiện tại của bạn"
+    "rerenderTooltip": "Dựng lại video này với chủ đề hiện tại của bạn",
+    "adminRerenderBrandCode": "Mã thương hiệu {brandCode} vẫn được giữ nguyên.",
+    "adminRerenderDesc": "Thao tác này sẽ tạo lại màn hình tiêu đề và màn hình kết thúc, video karaoke cũng như mọi định dạng tải xuống bằng trình kết xuất hiện tại, sử dụng lời bài hát và nhạc nền đã duyệt cùng phong cách hiện có của bài hát. Sẽ không có nội dung nào cần duyệt lại.",
+    "adminRerenderNotify": "Gửi email cho khách hàng khi hoàn tất",
+    "adminRerenderPublished": "Nếu bài hát đã được xuất bản, video YouTube sẽ bị xóa và tải lên lại (sẽ có URL MỚI), đồng thời các tệp trên Google Drive và Dropbox sẽ được thay thế.",
+    "adminRerenderTime": "Quá trình này thường mất khoảng 10-20 phút. Bạn sẽ không thể tải xuống cho đến khi hoàn tất.",
+    "adminRerenderTitle": "Render lại bài hát này?",
+    "adminRerenderTooltip": "Quản trị viên: tạo lại mọi video bằng trình kết xuất hiện tại mà không cần duyệt",
+    "adminRerender": "Kết xuất lại",
+    "adminRerenderFailed": "Không thể bắt đầu kết xuất lại: {error}"
   },
   "themeSelector": {
     "videoTheme": "Chủ đề video",

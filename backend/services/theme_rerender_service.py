@@ -95,16 +95,72 @@ def validate_rerender(job) -> Optional[str]:
     return None
 
 
-def rerender_brand_code(job) -> Optional[str]:
-    """Brand code a theme re-render must reuse, if one is in progress.
+# state_data markers of an in-progress re-render that keeps the job's brand code:
+# the tenant theme re-render and the admin re-render (admin_rerender_service).
+_RERENDER_MARKERS = ("theme_rerender", "admin_rerender")
 
-    A re-render refreshes the job's existing Dropbox folder (uploads overwrite)
-    instead of allocating a new code. Scoped to the re-render marker (cleared on
-    success) rather than the job's ``keep_brand_code`` field so a later Edit,
-    which recycles the code, can't reuse it.
+
+def rerender_brand_code(job) -> Optional[str]:
+    """Brand code a re-render (theme or admin) must reuse, if one is in progress.
+
+    A re-render refreshes the job's existing Dropbox folder / re-publishes under
+    the same code instead of allocating a new one. Scoped to the re-render
+    marker (cleared on success) rather than the job's ``keep_brand_code`` field
+    so a later Edit, which recycles the code, can't reuse it.
     """
-    marker = (getattr(job, "state_data", None) or {}).get("theme_rerender") or {}
-    return marker.get("brand_code") or None
+    state_data = getattr(job, "state_data", None) or {}
+    for key in _RERENDER_MARKERS:
+        code = (state_data.get(key) or {}).get("brand_code")
+        if code:
+            return code
+    return None
+
+
+def delete_regenerated_artifacts(storage: StorageService, job_id: str) -> None:
+    """Best-effort removal of everything a re-render regenerates.
+
+    The GCE encoder looks up the title/end MOV with ``**/*Title*.mov`` /
+    ``**/*End*.mov`` across everything it downloaded from ``jobs/{id}/``, so
+    once ``screens/title.mov`` is gone it would pick up the OLD
+    ``finals/<Artist> - <Title> (Title).mov`` (or ``finals/title_mov.mov``)
+    and splice the old intro/outro around the new lyrics video.
+    finals/ only holds MOVs for those title/end cards, so drop every MOV there.
+    The MP4/MKV/zip finals stay (overwritten by the re-render).
+    """
+    paths = [f"jobs/{job_id}/{rel}" for rel in _REGENERATED_ARTIFACTS]
+    try:
+        paths += [
+            p for p in storage.list_files(f"jobs/{job_id}/finals/")
+            if p.lower().endswith(".mov")
+        ]
+    except Exception as e:
+        logger.warning(f"[job:{job_id}] Re-render: failed to list finals: {e}")
+    for path in paths:
+        try:
+            storage.delete_file(path, ignore_missing=True)
+        except Exception as e:  # best-effort, like the visibility flow
+            logger.warning(f"[job:{job_id}] Re-render: failed to delete {path}: {e}")
+
+
+def claim_for_rerender(db, job_id: str, update: dict, allowed_statuses: set) -> None:
+    """Atomically apply ``update`` iff the job's status is still claimable.
+
+    Raises RerenderConflictError otherwise (e.g. a double-click already
+    started a re-render).
+    """
+    job_ref = db.collection("jobs").document(job_id)
+
+    @firestore.transactional
+    def claim(transaction):
+        snapshot = job_ref.get(transaction=transaction)
+        status = (snapshot.to_dict() or {}).get("status") if snapshot.exists else None
+        if status not in allowed_statuses:
+            return False
+        transaction.update(job_ref, update)
+        return True
+
+    if not claim(db.transaction()):
+        raise RerenderConflictError("This track is already being re-rendered or is no longer finished.")
 
 
 class ThemeRerenderService:
@@ -190,43 +246,7 @@ class ThemeRerenderService:
         logger.info(f"[job:{job_id}] Re-render with theme '{theme_id}' started by {requested_by}")
 
     def _delete_stale_artifacts(self, job_id: str) -> None:
-        """Best-effort removal of everything the re-render regenerates.
-
-        The GCE encoder looks up the title/end MOV with ``**/*Title*.mov`` /
-        ``**/*End*.mov`` across everything it downloaded from ``jobs/{id}/``, so
-        once ``screens/title.mov`` is gone it would pick up the OLD
-        ``finals/<Artist> - <Title> (Title).mov`` (or ``finals/title_mov.mov``)
-        and splice the old theme's intro/outro around the new lyrics video.
-        finals/ only holds MOVs for those title/end cards, so drop every MOV there.
-        The MP4/MKV/zip finals stay (overwritten by the re-render).
-        """
-        paths = [f"jobs/{job_id}/{rel}" for rel in _REGENERATED_ARTIFACTS]
-        try:
-            paths += [
-                p for p in self.storage.list_files(f"jobs/{job_id}/finals/")
-                if p.lower().endswith(".mov")
-            ]
-        except Exception as e:
-            logger.warning(f"[job:{job_id}] Re-render: failed to list finals: {e}")
-        for path in paths:
-            try:
-                self.storage.delete_file(path, ignore_missing=True)
-            except Exception as e:  # best-effort, like the visibility flow
-                logger.warning(f"[job:{job_id}] Re-render: failed to delete {path}: {e}")
+        delete_regenerated_artifacts(self.storage, job_id)
 
     def _claim(self, job_id: str, update: dict, allowed_statuses: set) -> None:
-        """Atomically apply ``update`` iff the job's status is still claimable."""
-        db = self.job_manager.firestore.db
-        job_ref = db.collection("jobs").document(job_id)
-
-        @firestore.transactional
-        def claim(transaction):
-            snapshot = job_ref.get(transaction=transaction)
-            status = (snapshot.to_dict() or {}).get("status") if snapshot.exists else None
-            if status not in allowed_statuses:
-                return False
-            transaction.update(job_ref, update)
-            return True
-
-        if not claim(db.transaction()):
-            raise RerenderConflictError("This track is already being re-rendered or is no longer finished.")
+        claim_for_rerender(self.job_manager.firestore.db, job_id, update, allowed_statuses)

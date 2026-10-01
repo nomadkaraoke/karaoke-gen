@@ -494,6 +494,7 @@ class JobManager:
         state_data_updates: Optional[Dict[str, Any]] = None,
         raise_on_invalid: bool = True,
         timeline_metadata: Optional[Dict[str, Any]] = None,
+        notify: bool = True,
     ) -> bool:
         """
         Transition job to new state with validation.
@@ -507,6 +508,9 @@ class JobManager:
             raise_on_invalid: If True (default), raise InvalidStateTransitionError
                               on invalid transitions. If False, return False silently.
             timeline_metadata: Optional structured metadata to attach to the timeline event
+            notify: If False, skip the user email/push notifications for this
+                    transition (e.g. an admin re-render the admin didn't opt
+                    into announcing to the customer).
 
         Returns:
             True if transition succeeded, False if failed (only when raise_on_invalid=False)
@@ -581,7 +585,10 @@ class JobManager:
                 logger.exception(f"Failed to increment jobs_completed for job {job_id}")
 
         # Trigger notifications asynchronously (fire-and-forget)
-        self._trigger_state_notifications(job_id, new_status)
+        if notify:
+            self._trigger_state_notifications(job_id, new_status)
+        else:
+            logger.info(f"Job {job_id}: notifications suppressed for transition to {new_status}")
 
         return True
 

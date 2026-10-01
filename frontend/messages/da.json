@@ -735,7 +735,16 @@
     "rerenderFailed": "Kunne ikke starte genrenderingen: {error}",
     "rerenderTime": "Det tager normalt omkring 10-15 minutter. Downloads er utilgængelige, indtil processen er færdig.",
     "rerenderTitle": "Render igen med dit nuværende tema?",
-    "rerenderTooltip": "Genopbyg denne video med dit nuværende tema"
+    "rerenderTooltip": "Genopbyg denne video med dit nuværende tema",
+    "adminRerenderBrandCode": "Brandkoden {brandCode} forbliver uændret.",
+    "adminRerenderDesc": "Dette regenererer titel- og slutskærmene, karaokevideoen og alle downloadformater med den aktuelle renderer ved hjælp af den allerede gennemgåede sangtekst og instrumentalsporet samt sporets eksisterende stil. Intet sendes tilbage til gennemsyn.",
+    "adminRerenderNotify": "Send en e-mail til kunden, når det er færdigt",
+    "adminRerenderPublished": "Hvis sporet er udgivet, slettes YouTube-videoen og uploades igen (den får en NY URL), og Google Drive- og Dropbox-filerne erstattes.",
+    "adminRerenderTime": "Det tager normalt 10-20 minutter. Downloads er utilgængelige, indtil det er færdigt.",
+    "adminRerenderTitle": "Render dette spor igen?",
+    "adminRerenderTooltip": "Admin: regenerer alle videoer med den aktuelle renderer uden gennemsyn",
+    "adminRerender": "Render igen",
+    "adminRerenderFailed": "Kunne ikke starte genrenderingen: {error}"
   },
   "themeSelector": {
     "videoTheme": "Videotema",

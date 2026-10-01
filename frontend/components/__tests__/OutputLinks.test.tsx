@@ -32,6 +32,7 @@ jest.mock('@/lib/api', () => ({
   adminApi: {
     getCompletionMessage: jest.fn(),
     sendCompletionEmail: jest.fn(),
+    rerenderJob: jest.fn(() => Promise.resolve({ status: 'processing' })),
   },
 }))
 
@@ -434,6 +435,119 @@ describe('OutputLinks', () => {
 
       await waitFor(() => expect(api.rerenderWithCurrentTheme).toHaveBeenCalledWith('test-123'))
       await waitFor(() => expect(onJobUpdated).toHaveBeenCalled())
+    })
+  })
+
+  describe('admin re-render (any completed job)', () => {
+    const asAdmin = (isAdmin: boolean) => {
+      const { useAuth } = require('@/lib/auth')
+      useAuth.mockReturnValue({ user: { role: isAdmin ? 'admin' : 'user' } })
+      const { useTenant } = require('@/lib/tenant')
+      useTenant.mockReturnValue({ tenantId: null, features: { youtube_upload: true, dropbox_upload: true } })
+    }
+    const publishedJob: Job = {
+      ...baseJob,
+      state_data: { ...baseJob.state_data, brand_code: 'NOMAD-1234' },
+    }
+
+    it('shows Re-render to admins on a completed job', () => {
+      asAdmin(true)
+      render(<OutputLinks job={publishedJob} />)
+      expect(screen.getByTestId('admin-rerender-button')).toHaveTextContent('Re-render')
+    })
+
+    it('is hidden from non-admins', () => {
+      asAdmin(false)
+      render(<OutputLinks job={publishedJob} />)
+      expect(screen.queryByTestId('admin-rerender-button')).not.toBeInTheDocument()
+    })
+
+    it.each(['rendering_video', 'awaiting_review', 'failed', 'encoding'])(
+      'is hidden while the job is %s',
+      (status) => {
+        asAdmin(true)
+        render(<OutputLinks job={{ ...publishedJob, status }} />)
+        expect(screen.queryByTestId('admin-rerender-button')).not.toBeInTheDocument()
+      },
+    )
+
+    it('is hidden when outputs were deleted', () => {
+      asAdmin(true)
+      render(<OutputLinks job={{ ...publishedJob, outputs_deleted_at: '2026-09-29T18:47:13Z' }} />)
+      expect(screen.queryByTestId('admin-rerender-button')).not.toBeInTheDocument()
+    })
+
+    it('is hidden during a visibility change', () => {
+      asAdmin(true)
+      const job: Job = { ...publishedJob, state_data: { ...publishedJob.state_data, visibility_change_in_progress: true } }
+      render(<OutputLinks job={job} />)
+      expect(screen.queryByTestId('admin-rerender-button')).not.toBeInTheDocument()
+    })
+
+    it('confirm dialog explains the consequences and defaults to not emailing', async () => {
+      asAdmin(true)
+      const { adminApi } = require('@/lib/api')
+      const onJobUpdated = jest.fn()
+      render(<OutputLinks job={publishedJob} onJobUpdated={onJobUpdated} />)
+
+      fireEvent.click(screen.getByTestId('admin-rerender-button'))
+      expect(screen.getByText('Re-render this track?')).toBeInTheDocument()
+      expect(screen.getByText(/without review|Nothing goes back to review/)).toBeInTheDocument()
+      expect(screen.getByText(/gets a NEW URL/)).toBeInTheDocument()
+      expect(screen.getByText('The brand code NOMAD-1234 stays the same.')).toBeInTheDocument()
+      expect(screen.getByText('Email the customer when done')).toBeInTheDocument()
+      expect(screen.getByTestId('admin-rerender-notify')).toHaveAttribute('data-state', 'unchecked')
+      expect(adminApi.rerenderJob).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByTestId('admin-rerender-confirm'))
+
+      await waitFor(() => expect(adminApi.rerenderJob).toHaveBeenCalledWith('test-123', false))
+      await waitFor(() => expect(onJobUpdated).toHaveBeenCalled())
+    })
+
+    it('sends notify_customer=true when the checkbox is ticked', async () => {
+      asAdmin(true)
+      const { adminApi } = require('@/lib/api')
+      render(<OutputLinks job={publishedJob} />)
+
+      fireEvent.click(screen.getByTestId('admin-rerender-button'))
+      fireEvent.click(screen.getByTestId('admin-rerender-notify'))
+      expect(screen.getByTestId('admin-rerender-notify')).toHaveAttribute('data-state', 'checked')
+      fireEvent.click(screen.getByTestId('admin-rerender-confirm'))
+
+      await waitFor(() => expect(adminApi.rerenderJob).toHaveBeenCalledWith('test-123', true))
+    })
+
+    it('omits the brand code line when the job has none', () => {
+      asAdmin(true)
+      render(<OutputLinks job={{ ...baseJob, state_data: {} }} />)
+      fireEvent.click(screen.getByTestId('admin-rerender-button'))
+      expect(screen.queryByText(/The brand code/)).not.toBeInTheDocument()
+    })
+
+    it('cancelling does not start a re-render', () => {
+      asAdmin(true)
+      const { adminApi } = require('@/lib/api')
+      render(<OutputLinks job={publishedJob} />)
+      fireEvent.click(screen.getByTestId('admin-rerender-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(adminApi.rerenderJob).not.toHaveBeenCalled()
+    })
+
+    it('alerts with the server error when the re-render cannot start', async () => {
+      asAdmin(true)
+      const { adminApi } = require('@/lib/api')
+      adminApi.rerenderJob.mockRejectedValueOnce(new Error('This job is already being re-rendered'))
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {})
+      render(<OutputLinks job={publishedJob} />)
+
+      fireEvent.click(screen.getByTestId('admin-rerender-button'))
+      fireEvent.click(screen.getByTestId('admin-rerender-confirm'))
+
+      await waitFor(() => expect(alertSpy).toHaveBeenCalledWith(
+        "Couldn't start the re-render: This job is already being re-rendered",
+      ))
+      alertSpy.mockRestore()
     })
   })
 })

@@ -2449,6 +2449,82 @@ async def regenerate_screens(
 
 
 # =============================================================================
+# Admin Re-render Endpoint
+# =============================================================================
+
+class AdminRerenderRequest(BaseModel):
+    """Request body for POST /api/admin/jobs/{job_id}/rerender."""
+    notify_customer: bool = Field(
+        False,
+        description="Email/push the customer when the re-render completes (default: no notification)",
+    )
+
+
+class AdminRerenderResponse(BaseModel):
+    """Response from the admin re-render endpoint."""
+    status: str
+    job_id: str
+    message: str
+    brand_code: Optional[str] = None
+    notify_customer: bool
+    previous_outputs: Dict[str, Any]
+    cleanup_results: Dict[str, Any]
+
+
+@router.post("/jobs/{job_id}/rerender", response_model=AdminRerenderResponse)
+async def admin_rerender_job(
+    job_id: str,
+    body: Optional[AdminRerenderRequest] = None,
+    auth_data: AuthResult = Depends(require_admin),
+):
+    """
+    Re-render a completed job end to end without review (admin only).
+
+    Regenerates title/end screens, the karaoke video, every encoded format and
+    the CDG/TXT packages from the job's existing reviewed lyrics and
+    instrumental selection, with the job's existing style snapshot. Published
+    outputs (YouTube video, Google Drive files, Dropbox folder) are deleted up
+    front and re-published under the SAME brand code when the pipeline
+    finishes (the YouTube URL changes). The customer is only emailed/notified
+    on completion when ``notify_customer`` is true.
+
+    Works for tenant and consumer, public and private jobs in ``complete``
+    status (or ``failed`` after a previous admin re-render).
+    """
+    from backend.services.admin_rerender_service import AdminRerenderService
+    from backend.services.theme_rerender_service import RerenderError
+
+    body = body or AdminRerenderRequest()
+    admin_email = auth_data.user_email or "unknown"
+    job_manager = JobManager()
+    job = job_manager.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    try:
+        result = await AdminRerenderService(job_manager).start(
+            job, requested_by=admin_email, notify_customer=body.notify_customer
+        )
+    except RerenderError as e:
+        logger.warning(f"Admin {admin_email} re-render of job {job_id} rejected ({e.status_code}): {e}")
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+    logger.info(
+        f"Admin {admin_email} started re-render of job {job_id} "
+        f"(notify_customer={body.notify_customer}, brand_code={result['brand_code']})"
+    )
+    return AdminRerenderResponse(
+        status="processing",
+        job_id=job_id,
+        message="Re-render started. Published outputs will be replaced when it completes.",
+        brand_code=result["brand_code"],
+        notify_customer=body.notify_customer,
+        previous_outputs=result["previous_outputs"],
+        cleanup_results=result["cleanup_results"],
+    )
+
+
+# =============================================================================
 # Restart Job Endpoint
 # =============================================================================
 

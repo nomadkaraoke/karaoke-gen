@@ -735,7 +735,16 @@
     "rerenderFailed": "Nem sikerült elindítani az újrarenderelést: {error}",
     "rerenderTime": "Általában körülbelül 10–15 percet vesz igénybe. A letöltések nem érhetők el, amíg be nem fejeződik.",
     "rerenderTitle": "Újrarenderelés a jelenlegi témáddal?",
-    "rerenderTooltip": "A videó újraépítése a jelenlegi témáddal"
+    "rerenderTooltip": "A videó újraépítése a jelenlegi témáddal",
+    "adminRerenderBrandCode": "A(z) {brandCode} márkakód változatlan marad.",
+    "adminRerenderDesc": "Ez újragenerálja a cím- és záróképernyőket, a karaokevideót és minden letöltési formátumot az aktuális renderelővel, a már ellenőrzött dalszöveget és hangszeres alapot, valamint a szám meglévő stílusát felhasználva. Semmi sem kerül vissza ellenőrzésre.",
+    "adminRerenderNotify": "E-mail küldése az ügyfélnek, amikor elkészül",
+    "adminRerenderPublished": "Ha a szám közzé van téve, a YouTube-videó törlődik és újra feltöltődik (ÚJ URL-t kap), a Google Drive- és Dropbox-fájlok pedig lecserélődnek.",
+    "adminRerenderTime": "Általában 10–20 percet vesz igénybe. A letöltések nem érhetők el, amíg be nem fejeződik.",
+    "adminRerenderTitle": "Újrarendereled ezt a számot?",
+    "adminRerenderTooltip": "Admin: az összes videó újragenerálása az aktuális renderelővel, ellenőrzés nélkül",
+    "adminRerender": "Újrarenderelés",
+    "adminRerenderFailed": "Nem sikerült elindítani az újrarenderelést: {error}"
   },
   "themeSelector": {
     "videoTheme": "Videó téma",

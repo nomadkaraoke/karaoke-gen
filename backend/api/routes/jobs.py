@@ -293,7 +293,6 @@ async def edit_completed_track(
     No additional credits are consumed — the original credit covers re-edits.
     """
     locale = get_locale_from_request(http_request)
-    import re
     from datetime import timezone
     from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
 
@@ -324,94 +323,30 @@ async def edit_completed_track(
     cleanup_results = {}
 
     # Snapshot current outputs before cleanup (preserved in timeline metadata)
-    previous_outputs = {}
-    if state_data.get('youtube_url'):
-        previous_outputs['youtube_url'] = state_data['youtube_url']
-    if state_data.get('dropbox_link'):
-        previous_outputs['dropbox_link'] = state_data['dropbox_link']
-    if state_data.get('brand_code'):
-        previous_outputs['brand_code'] = state_data['brand_code']
-    if state_data.get('gdrive_files'):
-        previous_outputs['gdrive_files'] = state_data['gdrive_files']
+    from backend.services.published_outputs_cleanup import (
+        delete_dropbox_folder,
+        delete_gdrive_files,
+        delete_youtube_video,
+        snapshot_published_outputs,
+    )
+    previous_outputs = snapshot_published_outputs(state_data)
 
     log_to_job(job_id, "edit", "INFO", f"Edit initiated by {user_email}", {"previous_outputs": previous_outputs})
 
     # --- Phase 1: Clean up distributed outputs ---
 
-    # Delete YouTube video
-    youtube_url = state_data.get('youtube_url')
-    if youtube_url:
-        try:
-            video_id_match = re.search(r'(?:youtu\.be/|youtube\.com/watch\?v=)([^&\s]+)', youtube_url)
-            if video_id_match:
-                video_id = video_id_match.group(1)
-                from karaoke_gen.karaoke_finalise.karaoke_finalise import KaraokeFinalise
-                from backend.services.youtube_service import get_youtube_service
-                youtube_service = get_youtube_service()
-                if youtube_service.is_configured:
-                    finalise = KaraokeFinalise(
-                        dry_run=False,
-                        non_interactive=True,
-                        user_youtube_credentials=youtube_service.get_credentials_dict()
-                    )
-                    success = finalise.delete_youtube_video(video_id)
-                    cleanup_results["youtube"] = {"status": "success" if success else "failed", "video_id": video_id}
-                else:
-                    cleanup_results["youtube"] = {"status": "skipped", "reason": "YouTube not configured"}
-            else:
-                cleanup_results["youtube"] = {"status": "failed", "reason": f"Could not extract video ID from {youtube_url}"}
-        except Exception as e:
-            logger.error(f"Error deleting YouTube video for job {job_id}: {e}", exc_info=True)
-            cleanup_results["youtube"] = {"status": "error", "error": str(e)}
-    else:
-        cleanup_results["youtube"] = {"status": "skipped", "reason": "no youtube_url"}
+    cleanup_results["youtube"] = delete_youtube_video(job_id, state_data.get('youtube_url'))
     log_to_job(job_id, "edit", "INFO", f"YouTube cleanup: {cleanup_results['youtube'].get('status')}", cleanup_results["youtube"])
 
-    # Delete Dropbox folder
     brand_code = state_data.get('brand_code')
-    dropbox_path = getattr(job, 'dropbox_path', None)
-    if brand_code and dropbox_path:
-        try:
-            from backend.services.dropbox_service import get_dropbox_service
-            dropbox = get_dropbox_service()
-            if dropbox.is_configured:
-                base_name = f"{job.artist} - {job.title}"
-                folder_name = f"{brand_code} - {base_name}"
-                full_path = f"{dropbox_path}/{folder_name}"
-                success = dropbox.delete_folder(full_path)
-                cleanup_results["dropbox"] = {"status": "success" if success else "failed", "path": full_path}
-            else:
-                cleanup_results["dropbox"] = {"status": "skipped", "reason": "Dropbox not configured"}
-        except Exception as e:
-            logger.error(f"Error deleting Dropbox folder for job {job_id}: {e}", exc_info=True)
-            cleanup_results["dropbox"] = {"status": "error", "error": str(e)}
-    else:
-        cleanup_results["dropbox"] = {"status": "skipped", "reason": "no brand_code or dropbox_path"}
+    cleanup_results["dropbox"] = delete_dropbox_folder(
+        job_id, getattr(job, 'dropbox_path', None), brand_code, job.artist, job.title
+    )
     log_to_job(job_id, "edit", "INFO", f"Dropbox cleanup: {cleanup_results['dropbox'].get('status')}", cleanup_results["dropbox"])
 
-    # Delete Google Drive files
-    gdrive_files = state_data.get('gdrive_files')
-    if gdrive_files:
-        try:
-            from backend.services.gdrive_service import get_gdrive_service
-            gdrive = get_gdrive_service()
-            if gdrive.is_configured:
-                file_ids = list(gdrive_files.values()) if isinstance(gdrive_files, dict) else []
-                delete_results = gdrive.delete_files(file_ids)
-                all_success = all(delete_results.values())
-                cleanup_results["gdrive"] = {"status": "success" if all_success else "partial", "files": delete_results}
-                # Also remove the Nomad 720p master from the GCS fast-sync mirror
-                # (prefix-keyed by brand_code, so it covers renames). Non-fatal,
-                # Nomad-brand only, no-op otherwise.
-                from backend.services.nomad_master_mirror import cleanup_nomad_masters
-                cleanup_nomad_masters(brand_code)
-            else:
-                cleanup_results["gdrive"] = {"status": "skipped", "reason": "Google Drive not configured"}
-        except Exception as e:
-            logger.error(f"Error deleting Google Drive files for job {job_id}: {e}", exc_info=True)
-            cleanup_results["gdrive"] = {"status": "error", "error": str(e)}
-    else:
-        cleanup_results["gdrive"] = {"status": "skipped", "reason": "no gdrive_files"}
+    # Also removes the Nomad 720p master from the GCS fast-sync mirror (the
+    # brand code is recycled below, so the mirror copy must go).
+    cleanup_results["gdrive"] = delete_gdrive_files(job_id, state_data.get('gdrive_files'), brand_code)
     log_to_job(job_id, "edit", "INFO", f"GDrive cleanup: {cleanup_results['gdrive'].get('status')}", cleanup_results["gdrive"])
 
     # Delete GCS finals folder
@@ -2102,7 +2037,30 @@ async def retry_job(
                 "message": "Job retry: re-running the theme re-render",
                 "retry_stage": "theme_rerender",
             }
-        
+
+        # Same for an admin re-render (state_data.admin_rerender): re-run it,
+        # keeping the admin's notify_customer choice. Its published outputs were
+        # already removed on the first attempt (recorded in the marker).
+        admin_rerender = state_data.get('admin_rerender') or {}
+        if (admin_rerender and original_status == JobStatus.FAILED
+                and not _has_title_screen(file_urls)):
+            from backend.services.admin_rerender_service import AdminRerenderService
+            from backend.services.theme_rerender_service import RerenderError
+            try:
+                await AdminRerenderService(job_manager).start(
+                    job,
+                    requested_by=auth_result.user_email or "unknown",
+                    notify_customer=bool(admin_rerender.get('notify_customer', False)),
+                )
+            except RerenderError as e:
+                raise HTTPException(status_code=e.status_code, detail=str(e))
+            return {
+                "status": "success",
+                "job_status": "lyrics_complete",
+                "message": "Job retry: re-running the admin re-render",
+                "retry_stage": "admin_rerender",
+            }
+
         # If we have a video with vocals and instrumental selection, retry video generation
         if (file_urls.get('videos', {}).get('with_vocals') and 
             state_data.get('instrumental_selection')):

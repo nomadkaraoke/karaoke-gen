@@ -735,7 +735,16 @@
     "rerenderFailed": "Nije bilo moguće pokrenuti ponovno renderiranje: {error}",
     "rerenderTime": "Obično traje oko 10–15 minuta. Preuzimanja nisu dostupna dok ne završi.",
     "rerenderTitle": "Ponovno renderirati sa svojom trenutačnom temom?",
-    "rerenderTooltip": "Ponovno izradi ovaj videozapis sa svojom trenutačnom temom"
+    "rerenderTooltip": "Ponovno izradi ovaj videozapis sa svojom trenutačnom temom",
+    "adminRerenderBrandCode": "Kod brenda {brandCode} ostaje isti.",
+    "adminRerenderDesc": "Ovo ponovno generira uvodni i završni zaslon, karaoke videozapis i sve formate za preuzimanje pomoću trenutačnog renderera, koristeći već pregledani tekst i instrumental te postojeći stil pjesme. Ništa se ne vraća na pregled.",
+    "adminRerenderNotify": "Pošalji e-mail kupcu kada završi",
+    "adminRerenderPublished": "Ako je pjesma objavljena, YouTube videozapis se briše i ponovno prenosi (dobiva NOVI URL), a datoteke na Google Driveu i Dropboxu se zamjenjuju.",
+    "adminRerenderTime": "Obično traje 10-20 minuta. Preuzimanja nisu dostupna dok ne završi.",
+    "adminRerenderTitle": "Ponovno renderirati ovu pjesmu?",
+    "adminRerenderTooltip": "Admin: ponovno generiraj svaki videozapis pomoću trenutačnog renderera, bez pregleda",
+    "adminRerender": "Ponovno renderiraj",
+    "adminRerenderFailed": "Nije bilo moguće pokrenuti ponovno renderiranje: {error}"
   },
   "themeSelector": {
     "videoTheme": "Video tema",

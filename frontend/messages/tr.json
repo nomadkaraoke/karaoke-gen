@@ -735,7 +735,16 @@
     "rerenderFailed": "Yeniden render başlatılamadı: {error}",
     "rerenderTime": "Genellikle yaklaşık 10-15 dakika sürer. Tamamlanana kadar indirmeler kullanılamaz.",
     "rerenderTitle": "Mevcut temanla yeniden render edilsin mi?",
-    "rerenderTooltip": "Bu videoyu mevcut temanla yeniden oluştur"
+    "rerenderTooltip": "Bu videoyu mevcut temanla yeniden oluştur",
+    "adminRerenderBrandCode": "{brandCode} marka kodu aynı kalır.",
+    "adminRerenderDesc": "Bu işlem; önceden incelenmiş şarkı sözlerini, enstrümantali ve parçanın mevcut stilini kullanarak başlık ve bitiş ekranlarını, karaoke videosunu ve tüm indirme formatlarını güncel render motoruyla yeniden oluşturur. Hiçbir şey inceleme aşamasına geri dönmez.",
+    "adminRerenderNotify": "Tamamlandığında müşteriye e-posta gönder",
+    "adminRerenderPublished": "Parça yayınlanmışsa YouTube videosu silinir ve yeniden yüklenir (YENİ bir URL alır), Google Drive ve Dropbox dosyaları ise yenileriyle değiştirilir.",
+    "adminRerenderTime": "Genellikle 10-20 dakika sürer. Tamamlanana kadar indirmeler kullanılamaz.",
+    "adminRerenderTitle": "Bu parça yeniden render edilsin mi?",
+    "adminRerenderTooltip": "Admin: İnceleme olmadan, güncel render motoruyla tüm videoları yeniden oluştur",
+    "adminRerender": "Yeniden render et",
+    "adminRerenderFailed": "Yeniden render başlatılamadı: {error}"
   },
   "themeSelector": {
     "videoTheme": "Video Teması",

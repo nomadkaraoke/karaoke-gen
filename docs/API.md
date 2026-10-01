@@ -2429,6 +2429,37 @@ Response:
 
 Screen generation takes 30-60 seconds. Monitor progress via job timeline or logs.
 
+#### Re-render Any Completed Job (Admin)
+
+```http
+POST /api/admin/jobs/{job_id}/rerender
+Authorization: Bearer ADMIN_TOKEN
+Content-Type: application/json
+
+{"notify_customer": false}
+```
+
+Rebuilds a completed job end to end with the **current renderer** (e.g. after a renderer bug fix): title/end screens, the karaoke video, every encoded format, CDG/TXT packages, then distribution. It reuses the reviewed `corrections_updated.json`, `state_data.instrumental_selection` and the job's **existing style snapshot** (`style_params_gcs_path` / `style_assets` — no theme re-snapshot), so there is no review step. Works for consumer and tenant, public and private jobs. Surfaced as the admin-only "Re-render" button on job cards in `/app`.
+
+- **Body** (optional): `notify_customer` (default `false`). When false, the completion email + push (and the follow-up email of a quota-deferred YouTube upload) are skipped.
+- **Published outputs** are deleted up front (YouTube video, Google Drive files, Dropbox folder `{dropbox_path}/{brand_code} - {Artist} - {Title}`; private jobs use the private Dropbox path) and re-published at the end of the pipeline. The **brand code is kept** (not recycled): `state_data.admin_rerender.brand_code` → orchestrator `keep_brand_code`. YouTube gets a new upload, so the **YouTube URL changes**. Cleanup failures are logged but don't abort (re-uploads replace same-named leftovers).
+- Marker `state_data.admin_rerender` (`requested_by`, `requested_at`, `notify_customer`, `brand_code`, `previous_outputs`, `cleanup_results`) is cleared on success. A failed admin re-render keeps it: `POST /api/jobs/{id}/retry` re-runs the re-render (`retry_stage: "admin_rerender"`) while screens are missing, otherwise the normal render/video retry resumes it, still keeping the brand code and the notification choice.
+
+Response:
+```json
+{
+  "status": "processing",
+  "job_id": "abc123",
+  "message": "Re-render started. Published outputs will be replaced when it completes.",
+  "brand_code": "NOMAD-1234",
+  "notify_customer": false,
+  "previous_outputs": {"youtube_url": "https://www.youtube.com/watch?v=...", "brand_code": "NOMAD-1234", "dropbox_link": "...", "gdrive_files": {"mp4": "..."}},
+  "cleanup_results": {"youtube": {"status": "success", "video_id": "..."}, "dropbox": {"status": "success", "path": "..."}, "gdrive": {"status": "success", "files": {}}, "brand_code": {"status": "kept", "code": "NOMAD-1234"}}
+}
+```
+
+Errors: **403** non-admin; **404** unknown job; **400** not `complete` (or `failed` after an admin re-render), outputs deleted, prep/finalise-only, visibility change in progress, or missing reviewed lyrics / instrumental selection; **409** the job left `complete` meanwhile (double-click); **503** the screens worker couldn't be triggered (job is set `failed` with the marker kept — retry it).
+
 #### Prepare Review Audio
 
 ```http

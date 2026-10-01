@@ -735,7 +735,16 @@
     "rerenderFailed": "Gagal memulai render ulang: {error}",
     "rerenderTime": "Biasanya membutuhkan waktu sekitar 10-15 menit. Unduhan tidak tersedia sampai prosesnya selesai.",
     "rerenderTitle": "Render ulang dengan tema Anda saat ini?",
-    "rerenderTooltip": "Buat ulang video ini dengan tema Anda saat ini"
+    "rerenderTooltip": "Buat ulang video ini dengan tema Anda saat ini",
+    "adminRerenderBrandCode": "Kode brand {brandCode} tetap sama.",
+    "adminRerenderDesc": "Ini akan membuat ulang layar judul dan penutup, video karaoke, serta setiap format unduhan dengan renderer saat ini, menggunakan lirik dan instrumental yang sudah ditinjau serta gaya trek yang sudah ada. Tidak ada yang dikembalikan ke tahap peninjauan.",
+    "adminRerenderNotify": "Kirim email ke pelanggan setelah selesai",
+    "adminRerenderPublished": "Jika trek dipublikasikan, video YouTube akan dihapus dan diunggah ulang (akan mendapatkan URL BARU), serta file Google Drive dan Dropbox akan diganti.",
+    "adminRerenderTime": "Proses ini biasanya membutuhkan waktu 10-20 menit. Unduhan tidak tersedia sampai proses selesai.",
+    "adminRerenderTitle": "Render ulang trek ini?",
+    "adminRerenderTooltip": "Admin: buat ulang setiap video dengan renderer saat ini, tanpa peninjauan",
+    "adminRerender": "Render Ulang",
+    "adminRerenderFailed": "Gagal memulai render ulang: {error}"
   },
   "themeSelector": {
     "videoTheme": "Tema Video",

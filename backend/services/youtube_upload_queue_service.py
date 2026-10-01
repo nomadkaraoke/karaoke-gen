@@ -43,6 +43,7 @@ class YouTubeUploadQueueService:
         title: str,
         brand_code: Optional[str],
         reason: str = "quota_exceeded",
+        notify_user: bool = True,
     ) -> None:
         """
         Queue a YouTube upload for later processing.
@@ -54,6 +55,8 @@ class YouTubeUploadQueueService:
             title: Song title
             brand_code: Release ID (e.g., "NOMAD-1287")
             reason: Why the upload was deferred
+            notify_user: Email the user when the deferred upload completes
+                (False for an admin re-render without customer notification)
         """
         doc_ref = self.db.collection(YOUTUBE_UPLOAD_QUEUE_COLLECTION).document(job_id)
         now = datetime.now(PACIFIC_TZ)
@@ -72,6 +75,7 @@ class YouTubeUploadQueueService:
             "last_error": None,
             "youtube_url": None,
             "notification_sent": False,
+            "notify_user": notify_user,
             "updated_at": now,
         })
 

@@ -735,7 +735,16 @@
     "rerenderFailed": "Impossibile avviare il nuovo rendering: {error}",
     "rerenderTime": "Di solito richiede circa 10-15 minuti. I download non saranno disponibili fino al termine.",
     "rerenderTitle": "Vuoi renderizzare di nuovo con il tuo tema attuale?",
-    "rerenderTooltip": "Ricrea questo video con il tuo tema attuale"
+    "rerenderTooltip": "Ricrea questo video con il tuo tema attuale",
+    "adminRerenderBrandCode": "Il codice del brand {brandCode} rimane invariato.",
+    "adminRerenderDesc": "Questa operazione rigenera le schermate del titolo e finali, il video karaoke e ogni formato di download con il renderer attuale, utilizzando il testo e la base strumentale già revisionati e lo stile esistente della traccia. Nulla torna in revisione.",
+    "adminRerenderNotify": "Invia un'email al cliente al termine",
+    "adminRerenderPublished": "Se la traccia è pubblicata, il video su YouTube viene eliminato e ricaricato (avrà un NUOVO URL), e i file su Google Drive e Dropbox vengono sostituiti.",
+    "adminRerenderTime": "Di solito ci vogliono 10-20 minuti. I download non saranno disponibili fino al completamento.",
+    "adminRerenderTitle": "Rieseguire il rendering di questa traccia?",
+    "adminRerenderTooltip": "Admin: rigenera ogni video con il renderer attuale, senza revisione",
+    "adminRerender": "Renderizza di nuovo",
+    "adminRerenderFailed": "Impossibile avviare il nuovo rendering: {error}"
   },
   "themeSelector": {
     "videoTheme": "Tema video",

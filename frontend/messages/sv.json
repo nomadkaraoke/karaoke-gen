@@ -735,7 +735,16 @@
     "rerenderFailed": "Kunde inte starta omrenderingen: {error}",
     "rerenderTime": "Det tar vanligtvis cirka 10–15 minuter. Nedladdningar är inte tillgängliga förrän det är klart.",
     "rerenderTitle": "Rendera om med ditt nuvarande tema?",
-    "rerenderTooltip": "Bygg om den här videon med ditt nuvarande tema"
+    "rerenderTooltip": "Bygg om den här videon med ditt nuvarande tema",
+    "adminRerenderBrandCode": "Varumärkeskoden {brandCode} förblir densamma.",
+    "adminRerenderDesc": "Det här återskapar titel- och slutskärmarna, karaokevideon och alla nedladdningsformat med den aktuella renderaren, med hjälp av den redan granskade låttexten och instrumentalspåret samt spårets befintliga stil. Inget skickas tillbaka för granskning.",
+    "adminRerenderNotify": "Mejla kunden när det är klart",
+    "adminRerenderPublished": "Om spåret är publicerat raderas YouTube-videon och laddas upp på nytt (den får en NY URL), och filerna på Google Drive och Dropbox ersätts.",
+    "adminRerenderTime": "Det tar vanligtvis 10–20 minuter. Nedladdningar är inte tillgängliga förrän det är klart.",
+    "adminRerenderTitle": "Rendera om det här spåret?",
+    "adminRerenderTooltip": "Admin: återskapa alla videor med den aktuella renderaren, utan granskning",
+    "adminRerender": "Rendera om",
+    "adminRerenderFailed": "Kunde inte starta omrenderingen: {error}"
   },
   "themeSelector": {
     "videoTheme": "Videotema",

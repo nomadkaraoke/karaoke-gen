@@ -735,7 +735,16 @@
     "rerenderFailed": "再レンダリングを開始できませんでした: {error}",
     "rerenderTime": "通常、約10〜15分かかります。完了するまでダウンロードはご利用いただけません。",
     "rerenderTitle": "現在のテーマで再レンダリングしますか？",
-    "rerenderTooltip": "現在のテーマでこの動画を再構築する"
+    "rerenderTooltip": "現在のテーマでこの動画を再構築する",
+    "adminRerenderBrandCode": "ブランドコード {brandCode} は変更されません。",
+    "adminRerenderDesc": "確認済みの歌詞、インストゥルメンタル音源、トラックの既存スタイルを使用して、現在のレンダラーでタイトル画面・終了画面、カラオケ動画、すべてのダウンロード形式を再生成します。再度レビューに戻ることはありません。",
+    "adminRerenderNotify": "完了時にお客様へメールを送信する",
+    "adminRerenderPublished": "トラックが公開されている場合、YouTube動画は削除されて再アップロードされ（URLが新しくなります）、Google DriveおよびDropboxのファイルは差し替えられます。",
+    "adminRerenderTime": "通常10〜20分ほどかかります。完了するまでダウンロードはご利用いただけません。",
+    "adminRerenderTitle": "このトラックを再レンダリングしますか？",
+    "adminRerenderTooltip": "管理者用：レビューなしで、現在のレンダラーを使ってすべての動画を再生成します",
+    "adminRerender": "再レンダリング",
+    "adminRerenderFailed": "再レンダリングを開始できませんでした: {error}"
   },
   "themeSelector": {
     "videoTheme": "動画テーマ",

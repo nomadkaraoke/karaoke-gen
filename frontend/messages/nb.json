@@ -735,7 +735,16 @@
     "rerenderFailed": "Kunne ikke starte ny rendering: {error}",
     "rerenderTime": "Det tar vanligvis omtrent 10–15 minutter. Nedlastinger er utilgjengelige frem til det er fullført.",
     "rerenderTitle": "Rendre på nytt med det nåværende temaet ditt?",
-    "rerenderTooltip": "Bygg denne videoen på nytt med det nåværende temaet ditt"
+    "rerenderTooltip": "Bygg denne videoen på nytt med det nåværende temaet ditt",
+    "adminRerenderBrandCode": "Merkevarekoden {brandCode} forblir den samme.",
+    "adminRerenderDesc": "Dette regenererer tittel- og sluttskjermene, karaokevideoen og alle nedlastingsformater med gjeldende renderer, ved hjelp av allerede gjennomgått tekst og instrumental samt sporets eksisterende stil. Ingenting sendes tilbake til gjennomgang.",
+    "adminRerenderNotify": "Send e-post til kunden når det er ferdig",
+    "adminRerenderPublished": "Hvis sporet er publisert, slettes YouTube-videoen og lastes opp på nytt (den får en NY URL), og Google Drive- og Dropbox-filene erstattes.",
+    "adminRerenderTime": "Det tar vanligvis 10–20 minutter. Nedlastinger er utilgjengelige frem til det er ferdig.",
+    "adminRerenderTitle": "Rendre dette sporet på nytt?",
+    "adminRerenderTooltip": "Admin: regenerer alle videoer med gjeldende renderer, uten gjennomgang",
+    "adminRerender": "Rendre på nytt",
+    "adminRerenderFailed": "Kunne ikke starte ny rendering: {error}"
   },
   "themeSelector": {
     "videoTheme": "Videotema",

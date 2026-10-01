@@ -735,7 +735,16 @@
     "rerenderFailed": "재렌더링을 시작하지 못했습니다: {error}",
     "rerenderTime": "보통 10~15분 정도 소요됩니다. 완료될 때까지 다운로드할 수 없습니다.",
     "rerenderTitle": "현재 테마로 재렌더링하시겠습니까?",
-    "rerenderTooltip": "현재 테마로 이 영상을 다시 생성합니다"
+    "rerenderTooltip": "현재 테마로 이 영상을 다시 생성합니다",
+    "adminRerenderBrandCode": "브랜드 코드 {brandCode}는 그대로 유지됩니다.",
+    "adminRerenderDesc": "이미 검토가 완료된 가사와 반주 음원, 기존 트랙 스타일을 사용하여 현재 렌더러로 타이틀 및 엔딩 화면, 노래방 영상, 모든 다운로드 형식을 다시 생성합니다. 검토 단계로 되돌아가지 않습니다.",
+    "adminRerenderNotify": "완료 시 고객에게 이메일 발송",
+    "adminRerenderPublished": "트랙이 이미 게시된 경우, YouTube 영상은 삭제 후 다시 업로드되며(새 URL이 생성됨), Google Drive 및 Dropbox 파일이 교체됩니다.",
+    "adminRerenderTime": "보통 10~20분 정도 소요됩니다. 완료될 때까지 다운로드를 이용할 수 없습니다.",
+    "adminRerenderTitle": "이 트랙을 다시 렌더링하시겠습니까?",
+    "adminRerenderTooltip": "관리자: 검토 과정 없이 현재 렌더러로 모든 영상 재생성",
+    "adminRerender": "재렌더링",
+    "adminRerenderFailed": "재렌더링을 시작하지 못했습니다: {error}"
   },
   "themeSelector": {
     "videoTheme": "비디오 테마",

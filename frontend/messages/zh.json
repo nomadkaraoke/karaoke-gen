@@ -735,7 +735,16 @@
     "rerenderFailed": "无法开始重新渲染：{error}",
     "rerenderTime": "通常需要大约 10-15 分钟。渲染完成前暂无法下载。",
     "rerenderTitle": "使用当前主题重新渲染？",
-    "rerenderTooltip": "使用当前主题重新生成此视频"
+    "rerenderTooltip": "使用当前主题重新生成此视频",
+    "adminRerenderBrandCode": "品牌代码 {brandCode} 保持不变。",
+    "adminRerenderDesc": "这将使用当前渲染器重新生成片头和片尾画面、卡拉OK视频以及所有下载格式，并采用已审核的歌词、伴奏和曲目现有的样式。无需再次审核。",
+    "adminRerenderNotify": "完成后通过邮件通知客户",
+    "adminRerenderPublished": "如果该曲目已发布，YouTube 视频将被删除并重新上传（会生成新的 URL），Google Drive 和 Dropbox 中的文件也会被替换。",
+    "adminRerenderTime": "通常需要 10-20 分钟。处理完成前暂无法下载。",
+    "adminRerenderTitle": "重新渲染此曲目？",
+    "adminRerenderTooltip": "管理员：使用当前渲染器重新生成所有视频，无需审核",
+    "adminRerender": "重新渲染",
+    "adminRerenderFailed": "无法开始重新渲染：{error}"
   },
   "themeSelector": {
     "videoTheme": "视频主题",

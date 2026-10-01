@@ -37,6 +37,7 @@ from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
+from backend.services.admin_rerender_service import suppress_customer_notifications
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
@@ -398,9 +399,10 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 # this job distributes anywhere (tenant jobs never do).
                 'outputs_deleted_at': None,
                 'outputs_deleted_by': None,
-                # A theme re-render (if any) finished; only a FAILED re-render
-                # keeps this marker (it lets the retry re-run the re-render).
+                # A theme/admin re-render (if any) finished; only a FAILED
+                # re-render keeps its marker (it lets the retry re-run it).
                 'state_data.theme_rerender': DELETE_FIELD,
+                'state_data.admin_rerender': DELETE_FIELD,
             }
             if result.distribution_warnings:
                 state_updates['state_data.distribution_warnings'] = result.distribution_warnings
@@ -432,12 +434,21 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             }
             if result.distribution_warnings:
                 completion_metadata["distribution_warnings"] = result.distribution_warnings
+            # An admin re-render only emails/pushes the customer if the admin
+            # opted in (read from the snapshot taken at worker start — the
+            # marker itself was just cleared above).
+            notify_customer = not suppress_customer_notifications(job)
+            if not notify_customer:
+                completion_metadata["admin_rerender"] = True
+                completion_metadata["customer_notified"] = False
+                job_log.info("Admin re-render: completion email/push suppressed (notify_customer=False)")
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.COMPLETE,
                 progress=100,
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
+                notify=notify_customer,
             )
 
             # If this was a requests-board community pick published directly here
@@ -1044,6 +1055,7 @@ async def generate_video_legacy(job_id: str) -> bool:
                 progress=100,
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
+                notify=not suppress_customer_notifications(job),
             )
 
             # Advance a requests-board community pick to `published` + fan out
