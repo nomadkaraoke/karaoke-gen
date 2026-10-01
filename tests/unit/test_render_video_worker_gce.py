@@ -75,6 +75,9 @@ class TestRenderVideoWorkerGCERouting:
             p = patch(target)
             patches.append(p)
             mocks[name] = p.start()
+        # First run of a job: generation 0, so the worker job id is the bare job id
+        # (a MagicMock generation would be truthy and add a "_g<mock>" suffix).
+        mocks["capture_generation"].return_value = 0
 
         # Also patch worker_service import used in the GCE path
         worker_svc_patch = patch("backend.services.worker_service.get_worker_service")

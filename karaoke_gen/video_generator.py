@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from PIL import Image, ImageDraw, ImageFont
 
+from karaoke_gen.utils.font_fallback import font_covers_text, resolve_font_for_text
+
 
 def _find_cjk_font() -> str | None:
     """Find a system CJK font using fontconfig (fc-match).
@@ -392,12 +394,17 @@ class VideoGenerator:
 
         If the text contains CJK characters and the current font is a bundled
         Latin-only font, switch to a system CJK font so glyphs render correctly.
+        For any other script the font lacks glyphs for (Hebrew, Arabic, Thai, ...),
+        switch to a system font that covers the whole string.
         """
-        if not text or not _text_needs_cjk_font(text):
+        if not text:
             return font_path
+        if not _text_needs_cjk_font(text):
+            return resolve_font_for_text(font_path, text)
 
-        # If font_path is already a CJK-capable system font, keep it
-        if font_path and ("noto" in font_path.lower() or "cjk" in font_path.lower()):
+        # Keep the configured font only if it actually has the glyphs (a Latin-only
+        # NotoSans-Bold.ttf would otherwise pass a "noto" filename check and draw tofu)
+        if font_path and os.path.exists(font_path) and font_covers_text(font_path, text):
             return font_path
 
         # Lazy-load CJK font path
@@ -411,7 +418,8 @@ class VideoGenerator:
         if self._cjk_font_path:
             self.logger.info(f"Using CJK font for text with CJK characters: {text[:30]}...")
             return self._cjk_font_path
-        return font_path
+        # No Noto CJK — any installed font that covers the text beats tofu
+        return resolve_font_for_text(font_path, text)
 
     def _render_all_text(self, draw, font_path, title_text, artist_text, format, render_bounding_boxes):
         """Render all text elements on the image."""

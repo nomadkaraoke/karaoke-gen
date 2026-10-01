@@ -382,13 +382,16 @@ jobs:
           # hardening as the emulator job's Firestore-emulator install).
           for attempt in 1 2 3 4 5; do
             sudo rm -rf /var/lib/apt/lists/*
-            if sudo apt-get update -y && sudo apt-get install -y ffmpeg; then
+            # fonts-noto-core/-cjk: Hebrew, Arabic and CJK glyphs for the CJK/RTL karaoke
+            # render tests (tests/unit/lyrics_transcriber/output/test_ass_render_highlight.py),
+            # matching the fonts in the backend image and encoding worker.
+            if sudo apt-get update -y && sudo apt-get install -y ffmpeg fonts-noto-core fonts-noto-cjk; then
               break
             fi
             echo "apt install attempt ${attempt} failed (likely a transient Hash Sum mismatch); retrying in 15s..."
             sleep 15
           done
-          dpkg -s ffmpeg >/dev/null 2>&1
+          dpkg -s ffmpeg fonts-noto-core fonts-noto-cjk >/dev/null 2>&1
 
       - name: Cache spaCy model
         uses: actions/cache@v4

@@ -18,6 +18,8 @@ from typing import Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
+from karaoke_gen.utils.font_fallback import resolve_font_for_text
+
 RGB = Tuple[int, int, int]
 RGBA = Tuple[int, int, int, int]
 
@@ -61,9 +63,12 @@ def _gradient(cfg: PortraitBrandConfig) -> Image.Image:
     return img
 
 
-def _load_font(cfg: PortraitBrandConfig, size: int):
-    if cfg.font_path and os.path.isfile(cfg.font_path):
-        return ImageFont.truetype(cfg.font_path, size)
+def _load_font(cfg: PortraitBrandConfig, size: int, text: Optional[str] = None):
+    font_path = cfg.font_path if cfg.font_path and os.path.isfile(cfg.font_path) else None
+    # Theme fonts are Latin-only; swap in a system font for e.g. Hebrew/CJK song titles
+    font_path = resolve_font_for_text(font_path, text)
+    if font_path:
+        return ImageFont.truetype(font_path, size)
     # Pillow >= 10.1 supports a sized default font, so the no-custom-font fallback
     # still respects the layout's intended scaling instead of the tiny legacy bitmap.
     try:
@@ -128,7 +133,7 @@ def build_background(
     if cfg.wordmark_image and os.path.isfile(cfg.wordmark_image):
         header_bottom = _paste_wordmark(img, cfg, header_top)
     elif cfg.brand_text:
-        f_brand = _load_font(cfg, int(cfg.width * 0.075))
+        f_brand = _load_font(cfg, int(cfg.width * 0.075), cfg.brand_text)
         bw = draw.textlength(cfg.brand_text, font=f_brand)
         draw.text(((cfg.width - bw) / 2, header_top), cfg.brand_text,
                   font=f_brand, fill=cfg.brand_color)
@@ -137,25 +142,25 @@ def build_background(
     # Song title + artist under the header
     y0 = header_bottom + int(cfg.height * 0.014)
     if title:
-        f_title = _load_font(cfg, int(cfg.width * 0.056))
+        f_title = _load_font(cfg, int(cfg.width * 0.056), title)
         tw = draw.textlength(title, font=f_title)
         draw.text(((cfg.width - tw) / 2, y0), title, font=f_title, fill=cfg.title_color)
         y0 += int(cfg.width * 0.056 * 1.15)
     if artist:
-        f_artist = _load_font(cfg, int(cfg.width * 0.041))
+        f_artist = _load_font(cfg, int(cfg.width * 0.041), artist)
         aw = draw.textlength(artist, font=f_artist)
         draw.text(((cfg.width - aw) / 2, y0), artist, font=f_artist, fill=cfg.artist_color)
 
     # End message (centred)
     if variant == "end" and cfg.end_text:
-        f_end = _load_font(cfg, int(cfg.width * 0.06))
+        f_end = _load_font(cfg, int(cfg.width * 0.06), cfg.end_text)
         ew = draw.textlength(cfg.end_text, font=f_end)
         draw.text(((cfg.width - ew) / 2, cfg.height * 0.46), cfg.end_text,
                   font=f_end, fill=cfg.end_text_color)
 
     # Footer handle
     if cfg.footer_text:
-        f_foot = _load_font(cfg, int(cfg.width * 0.035))
+        f_foot = _load_font(cfg, int(cfg.width * 0.035), cfg.footer_text)
         fw = draw.textlength(cfg.footer_text, font=f_foot)
         draw.text(((cfg.width - fw) / 2, cfg.height - int(cfg.height * 0.057)),
                   cfg.footer_text, font=f_foot, fill=cfg.footer_color)

@@ -10,8 +10,9 @@ from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
 # East-Asian Wide ('W') and Fullwidth ('F') glyphs are far wider than a Latin
 # character in the karaoke render. ``max_line_length`` (40) was calibrated for Latin
 # text — measuring the real fonts confirms ~41 Latin chars fill the 4K frame width at
-# the effective render size (libass renders at ~0.70x the nominal Fontsize; see
-# lyrics_line.ASS_FONT_SCALE). So a raw character count badly under-estimates CJK
+# the effective render size (libass scales a font so ascender+descender = Fontsize,
+# ~0.73x the em size for Avenir Next; see font_fallback.ass_font_scale). So a raw
+# character count badly under-estimates CJK
 # width: a line well under 40 *characters* is far wider than the frame, and libass
 # smart-wraps it onto a second physical row that overlaps the slot below — the lyrics
 # overlap this metric fixes.

@@ -1,5 +1,6 @@
 from karaoke_gen.lyrics_transcriber.output.ass.formatters import Formatters
 from karaoke_gen.lyrics_transcriber.output.ass.constants import ALIGN_BOTTOM_CENTER
+from karaoke_gen.lyrics_transcriber.output.ass.text_direction import ASS_ENCODING_AUTO_DIRECTION
 
 
 class Style:
@@ -249,7 +250,10 @@ def build_karaoke_styles(karaoke_style: dict, singers, solo: bool = False) -> li
         s.MarginL = int(karaoke_style["margin_l"])
         s.MarginR = int(karaoke_style["margin_r"])
         s.MarginV = int(karaoke_style["margin_v"])
-        s.Encoding = int(karaoke_style["encoding"])
+        # Always auto-detect paragraph direction, whatever the theme says: with the
+        # VSFilter default (0) libass lays Hebrew/Arabic lines out left-to-right.
+        # LTR lines render identically. See ass/text_direction.py.
+        s.Encoding = ASS_ENCODING_AUTO_DIRECTION
         # Alignment is set later by the caller via ALIGN_TOP_CENTER; leave default
         return s
 

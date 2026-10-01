@@ -1,14 +1,27 @@
 from dataclasses import dataclass
+import functools
 from typing import Optional, Tuple, List
 import logging
 from datetime import timedelta
-from PIL import Image, ImageDraw, ImageFont
+from PIL import ImageFont
 import os
 
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment
 from karaoke_gen.lyrics_transcriber.output.ass.event import Event
 from karaoke_gen.lyrics_transcriber.output.ass.style import Style
 from karaoke_gen.lyrics_transcriber.output.ass.config import LineState, ScreenConfig
+from karaoke_gen.lyrics_transcriber.output.ass.text_direction import is_rtl_text, rtl_karaoke_fill_tags
+from karaoke_gen.utils.font_fallback import ass_font_scale, find_font_covering, missing_codepoints
+
+
+@functools.lru_cache(maxsize=32)
+def _measure_font(path: str, size: int) -> ImageFont.FreeTypeFont:
+    """Fonts are loaded once per (path, size): fallback CJK .ttc files are 20MB+."""
+    try:
+        return ImageFont.truetype(path, size=size)
+    except OSError as e:
+        logging.getLogger(__name__).warning(f"Font error ({e}), using default for measurement")
+        return ImageFont.load_default()
 
 
 @dataclass
@@ -25,39 +38,56 @@ class LyricsLine:
         if self.logger is None:
             self.logger = logging.getLogger(__name__)
 
-    def _get_font(self, style: Style) -> ImageFont.FreeTypeFont:
-        """Get the font for text measurements."""
-        # ASS renders fonts about 70% of their actual size
-        ASS_FONT_SCALE = 0.70
+    def _measure_text(self, text: str, style: Style) -> Tuple[int, int]:
+        """Pixel (width, height) of ``text`` as libass will render it in ``style``.
 
-        # Scale down the font size to match ASS rendering
-        adjusted_size = int(style.Fontsize * ASS_FONT_SCALE)
-        self.logger.debug(f"Adjusting font size from {style.Fontsize} to {adjusted_size} to match ASS rendering")
+        Mirrors libass: characters the style font covers use it; the rest use a
+        fontconfig fallback (regular weight unless the style is bold), and each font is
+        scaled from its own metrics (see ``ass_font_scale``). Measuring Hebrew/CJK with
+        the style font alone would use .notdef widths.
+        """
+        font_path = style.Fontpath if style.Fontpath and os.path.exists(style.Fontpath) else None
+        if font_path is None:
+            self.logger.warning(f"Could not load font {style.Fontpath}, using default for measurement")
+            font = ImageFont.load_default()
+            bbox = font.getbbox(text)
+            return bbox[2] - bbox[0], bbox[3] - bbox[1]
 
-        try:
-            # Use the Fontpath property from Style class
-            if style.Fontpath and os.path.exists(style.Fontpath):
-                return ImageFont.truetype(style.Fontpath, size=adjusted_size)
-            self.logger.warning(f"Could not load font {style.Fontpath}, using default")
-            return ImageFont.load_default()
-        except (OSError, AttributeError) as e:
-            self.logger.warning(f"Font error ({e}), using default")
-            return ImageFont.load_default()
+        # libass picks a fallback per glyph. Prefer one font for all missing characters
+        # (usually the case: one script); otherwise resolve each character on its own,
+        # e.g. a Hebrew line with a CJK character or a symbol the Hebrew font lacks.
+        missing = missing_codepoints(font_path, text)
+        bold = bool(style.Bold)
+        shared_fallback = find_font_covering(missing, bold=bold) if missing else None
+        per_char = {} if shared_fallback or not missing else {
+            cp: find_font_covering(frozenset({cp}), bold=bold) or font_path for cp in missing
+        }
 
-    def _get_text_dimensions(self, text: str, font: ImageFont.FreeTypeFont) -> Tuple[int, int]:
-        """Get the pixel dimensions of rendered text."""
-        # Create an image the same size as the video frame
-        img = Image.new("RGB", (self.screen_config.video_width, self.screen_config.video_height), color="black")
-        draw = ImageDraw.Draw(img)
+        def font_for(ch: str) -> str:
+            if ord(ch) not in missing:
+                return font_path
+            return shared_fallback or per_char[ord(ch)]
 
-        # Get the bounding box
-        bbox = draw.textbbox((0, 0), text, font=font)
-        width = bbox[2] - bbox[0]
-        height = bbox[3] - bbox[1]
+        # Group consecutive characters by the font that will draw them
+        runs: List[Tuple[str, str]] = []
+        for ch in text:
+            path = font_for(ch)
+            if runs and runs[-1][0] == path:
+                runs[-1] = (path, runs[-1][1] + ch)
+            else:
+                runs.append((path, ch))
 
-        self.logger.debug(f"Text dimensions for '{text}': width={width}px, height={height}px")
-        self.logger.debug(f"Video dimensions: {self.screen_config.video_width}x{self.screen_config.video_height}")
-        return width, height
+        # Width = sum of advances; height = union of ink extents on the shared baseline
+        width, top, bottom = 0.0, 0, 0
+        for path, run in runs:
+            font = _measure_font(path, max(1, int(style.Fontsize * ass_font_scale(path))))
+            width += font.getlength(run)
+            bbox = font.getbbox(run, anchor="ls")
+            top, bottom = min(top, bbox[1]), max(bottom, bbox[3])
+        height = bottom - top
+
+        self.logger.debug(f"Text dimensions for '{text}': width={width:.0f}px, height={height}px")
+        return int(round(width)), height
 
     # fmt: off
     def _create_lead_in_text(self, state: LineState) -> Tuple[str, bool]:
@@ -115,17 +145,27 @@ class LyricsLine:
         self.logger.debug(f"  Rectangle fully faded out at: {fade_out_end:.2f}s")
         
         # Calculate dimensions and positions using configurable percentages
-        font = self._get_font(style)
         # Apply case transformation to match the actual rendered text
         main_text = self._apply_case_transform(self.segment.text)
-        main_width, main_height = self._get_text_dimensions(main_text, font)
+        # RTL lines start on the right, so the lead-in comes in from the right edge
+        rtl = is_rtl_text(main_text)
+        main_width, main_height = self._measure_text(main_text, style)
         rect_width = int(self.screen_config.video_width * (config.lead_in_width_percent / 100))
         rect_height = int(self.screen_config.video_height * (config.lead_in_height_percent / 100))
-        # Calculate where the left edge of the centered text will be
+        # Calculate where the edge of the centered text the singer starts from will be
         text_left = self.screen_config.video_width//2 - main_width//2
-        # Apply horizontal offset if configured
+        text_right = text_left + main_width
+        # Apply horizontal offset if configured (mirrored for RTL)
         horizontal_offset = int(self.screen_config.video_width * (config.lead_in_horiz_offset_percent / 100))
-        final_x_position = text_left + horizontal_offset
+        if rtl:
+            # With \an8 libass centres a drawing's width on the \move target, so the
+            # LTR box ends rect_width/2 before text_left. Mirror that gap on the right
+            # (shape drawn at x in [0, rect_width]) and slide in from off-screen right.
+            final_x_position = text_right + rect_width - horizontal_offset
+            start_x_position = self.screen_config.video_width + rect_width
+        else:
+            final_x_position = text_left + horizontal_offset
+            start_x_position = 0
         # Apply vertical offset if configured
         vertical_offset = int(self.screen_config.video_height * (config.lead_in_vert_offset_percent / 100))
         final_y_position = state.y_position + main_height + vertical_offset
@@ -158,7 +198,7 @@ class LyricsLine:
         # Build the indicator rectangle text with configurable styling
         main_text = (
             f"{{\\an8}}"  # center-bottom alignment
-            f"{{\\move(0,{final_y_position},{final_x_position},{final_y_position},0,{move_duration})}}"  # Move until line start
+            f"{{\\move({start_x_position},{final_y_position},{final_x_position},{final_y_position},0,{move_duration})}}"  # Move until line start
             f"{{\\c{config.get_lead_in_color_ass_format()}}}"  # Configurable lead-in color in ASS format
             f"{{\\alpha{config.get_lead_in_opacity_ass_format()}}}"  # Configurable opacity
             f"{{\\fad(800,500)}}"  # 800ms fade in, 500ms fade out
@@ -173,8 +213,12 @@ class LyricsLine:
         else:
             main_text += f"{{\\bord0}}"  # No outline
         
-        # Add the rectangle shape
-        main_text += f"{{\\p1}}m {-rect_width} {-rect_height} l 0 {-rect_height} 0 0 {-rect_width} 0{{\\p0}}"  # Draw up from bottom
+        # Add the rectangle shape, drawn up from the bottom on the side facing away
+        # from the text (left of an LTR line's start, right of an RTL line's start)
+        if rtl:
+            main_text += f"{{\\p1}}m 0 {-rect_height} l {rect_width} {-rect_height} {rect_width} 0 0 0{{\\p0}}"
+        else:
+            main_text += f"{{\\p1}}m {-rect_width} {-rect_height} l 0 {-rect_height} 0 0 {-rect_width} 0{{\\p0}}"
         
         main_event.Text = main_text
         
@@ -225,11 +269,14 @@ class LyricsLine:
             f"{{\\an8}}{{\\pos({x_pos},{state.y_position})}}"
             f"{{\\fad({config.fade_in_ms},{config.fade_out_ms})}}"
         )
+        rtl_tags = rtl_karaoke_fill_tags(line_style.Angle) if is_rtl_text(self.segment.text) else ""
+        text += rtl_tags
 
         # Add the main lyrics text with karaoke timing
         text += self._create_ass_text(
             timedelta(seconds=state.timing.fade_in_time),
             styles_by_singer=styles_by_singer,
+            rtl_tags=rtl_tags,
         )
 
         main_event.Text = text
@@ -254,27 +301,39 @@ class LyricsLine:
         self,
         start_ts: timedelta,
         styles_by_singer: Optional[dict] = None,
+        rtl_tags: str = "",
     ) -> str:
-        """Create the ASS text with karaoke timing tags and word-level singer overrides."""
-        # Initial delay before first word
-        first_word_time = self.segment.start_time
+        """Create the ASS text with karaoke timing tags and word-level singer overrides.
 
-        # Add initial delay for regular lines
-        start_time = max(0, (first_word_time - start_ts.total_seconds()) * 100)
-        text = r"{\k" + str(int(round(start_time))) + r"}"
+        ``rtl_tags``: the RTL fill tags the line starts with (empty for LTR); ``{\\r}``
+        resets every override, so they are re-emitted after each reset.
+        """
+        reset = r"{\r}" + rtl_tags
+        # Every tag is derived from one absolute centisecond timeline (relative to the
+        # event start), so rounding and small inter-word gaps can't accumulate. Dropping
+        # gaps <= 0.1s used to make the highlight run ahead of the vocal by the sum of
+        # those gaps (0.2s+ by the end of some real lines).
+        line_start = start_ts.total_seconds()
 
-        prev_end_time = first_word_time
+        def to_cs(t: float) -> int:
+            return int(round((t - line_start) * 100))
+
+        cursor = max(0, to_cs(self.segment.start_time))
+        text = r"{\k" + str(cursor) + r"}"
+
         segment_singer = self.segment.singer if self.segment.singer is not None else 1
         current_inline_singer = None  # tracks whether we've emitted a color override
 
         for word in self.segment.words:
-            # Add gap between words if needed
-            gap = word.start_time - prev_end_time
-            if gap > 0.1:  # Only add gap if significant
-                text += r"{\k" + str(int(round(gap * 100))) + r"}"
+            # Pause the highlight for any gap before the word (overlaps clamp to 0)
+            word_start = max(to_cs(word.start_time), cursor)
+            if word_start > cursor:
+                text += r"{\k" + str(word_start - cursor) + r"}"
 
             # Add the word with its duration
-            duration = int(round((word.end_time - word.start_time) * 100))
+            word_end = max(to_cs(word.end_time), word_start)
+            duration = word_end - word_start
+            cursor = word_end
             # Apply case transformation to the word text
             # Defensive strip: Word.__post_init__ should already handle this,
             # but embedded newlines in ASS dialogue events cause silent word
@@ -306,19 +365,18 @@ class LyricsLine:
                 elif current_inline_singer is not None:
                     # Missing singer in map — reset to line's base style so the
                     # previous override color doesn't bleed onto this word.
-                    text += r"{\r}"
+                    text += reset
                     current_inline_singer = None
             elif not needs_override and current_inline_singer is not None:
-                text += r"{\r}"
+                text += reset
                 current_inline_singer = None
 
             text += r"{\kf" + str(duration) + r"}" + transformed_text + " "
 
-            prev_end_time = word.end_time  # Track the actual end time of the word
 
         # Close any lingering override
         if current_inline_singer is not None:
-            text += r"{\r}"
+            text += reset
 
         return text.rstrip()
 
