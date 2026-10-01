@@ -171,6 +171,7 @@ If all optimizations implemented:
 - **2026-02-10:** Initial analysis and GitHub runner optimization implemented
 - **2026-02-10:** Runners reduced from 20 → 3 with auto-scaling, saving $1,390/month
 - **2026-03-03:** Added dedicated on-demand build runner (`e2-standard-8`) for Docker deploys to prevent spot preemption during builds (~$0.27/hr only when deploying)
+- **2026-10-01:** Retired the `gha-build-*` build runner (~$21/mo at ~120 deploys/mo). `deploy-backend` runs on free `ubuntu-latest`; images build in Cloud Build us-central1 (same-region AR pulls, e2-standard-2 free tier, ~7 build-min/deploy). Not built on the hosted runner because pulling the 4.2 GB CPU + 13 GB GPU bases is internet egress (~$2/deploy).
 
 ## 2026-09-26 cuts (post-credit-expiry, target: whole project < $300/mo)
 

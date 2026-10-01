@@ -170,10 +170,19 @@ karaoke-gen's test/package jobs (package/backend unit + integration + emulator
 tests, package builds, full frontend E2E) moved to **GitHub-hosted
 `ubuntu-latest`** runners — free for this public repo, and they never needed GCP
 credentials. That removed ~390 `gha-general-*` VMs/month. Only jobs that need
-the GCE runners still request them: `deploy-backend` (`docker-build` label —
-Docker image builds, same-region Artifact Registry) and the GPU integration
-tests in python-audio-separator (`gpu`). No workflow currently requests the
-plain general label; the `gha-runner-general` family is kept as a fallback.
+the GCE runners still request them: the GPU integration tests in
+python-audio-separator (`gpu`). No workflow currently requests the plain general
+label; the `gha-runner-general` family is kept as a fallback.
+
+**2026-10-01:** `deploy-backend` also moved off the `docker-build` (`gha-build-*`,
+e2-standard-8) runners to `ubuntu-latest`; its Docker images are now built by
+Cloud Build in us-central1 (`infrastructure/cloudbuild/`). Building on the
+hosted runner itself was rejected: the app images are built FROM ~4.2 GB (CPU)
+and ~13 GB (GPU) bases in us-central1 AR, so every deploy would pull ~17 GB over
+GCP internet egress (~$2/deploy, ~$250/mo). Cloud Build pulls them same-region
+for free and its e2-standard-2 minutes are in the 2,500 min/month free tier
+(~7 min/deploy). The `build` family stays in the dispatcher but is unused and
+excluded from the monthly image bake (`variants=all`).
 
 ## High-level architecture
 

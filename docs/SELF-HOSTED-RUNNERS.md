@@ -31,7 +31,7 @@ GitHub-hosted runners work but are slower (2 vCPU, 7GB RAM) and costs scale line
 | Component | Spec | Purpose |
 |-----------|------|---------|
 | General runners | 3x `github-runner-{1..3}`, `e2-standard-4`, 200GB SSD | Execute CI jobs (lint, test, type check, build) |
-| Build runner | 1x `github-build-runner`, `e2-standard-8`, 200GB SSD | Docker image builds (needs more CPU/RAM) |
+| Build runner | 1x `github-build-runner`, `e2-standard-8`, 200GB SSD | **Unused since 2026-10-01** — `deploy-backend` runs on `ubuntu-latest` and builds images in Cloud Build (see EPHEMERAL-GHA-RUNNERS.md) |
 | GPU runners | 3x `github-gpu-runner-{1..3}`, `n1-standard-4` + T4 GPU, 200GB SSD | Audio separation model testing |
 | Cloud Function | `github-runner-manager`, Gen2, Python 3.12, 5min timeout | Start/stop VMs based on webhooks and idle checks |
 | Cloud Scheduler | `runner-manager-idle-check`, every 5 min | Orphan cleanup + stalled-job re-dispatch (see EPHEMERAL-GHA-RUNNERS.md) |
@@ -52,7 +52,7 @@ All runner VMs are in `us-central1-a`.
 | Label Set | VMs | Used By |
 |-----------|-----|---------|
 | `[self-hosted, linux, x64, gcp, large-disk]` | general runners | Most CI jobs |
-| `[self-hosted, linux, x64, gcp, large-disk, docker-build]` | build runner | Docker image builds |
+| `[self-hosted, linux, x64, gcp, large-disk, docker-build]` | build runner | Unused since 2026-10-01 (images build in Cloud Build) |
 | `[self-hosted, linux, x64, gcp, gpu]` | GPU runners | Audio separation tests |
 
 ## How Auto-Scaling Works
