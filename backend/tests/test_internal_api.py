@@ -364,3 +364,35 @@ class TestAutoApprovalEval:
     def test_eval_requires_admin(self, client):
         response = client.post("/api/internal/jobs/test123/auto-approval-eval")
         assert response.status_code == 401
+
+
+class TestVocalGapsEndpoint:
+    """POST /api/internal/jobs/{job_id}/vocal-gaps — missing-lyrics backfill/inspect."""
+
+    def test_stores_by_default(self, client):
+        with patch(
+            'backend.services.auto_approval.executor.analyze_job_vocal_gaps',
+            return_value={"status": "checked", "stored": True},
+        ) as analyze:
+            response = client.post(
+                "/api/internal/jobs/test123/vocal-gaps",
+                headers={"Authorization": "Bearer test-admin-token"},
+            )
+        assert response.status_code == 200
+        assert response.json() == {"job_id": "test123", "status": "checked", "stored": True}
+        analyze.assert_called_once_with("test123", True)
+
+    def test_dry_run_does_not_store(self, client):
+        with patch(
+            'backend.services.auto_approval.executor.analyze_job_vocal_gaps',
+            return_value={"status": "checked", "stored": False},
+        ) as analyze:
+            client.post(
+                "/api/internal/jobs/test123/vocal-gaps?dry_run=true",
+                headers={"Authorization": "Bearer test-admin-token"},
+            )
+        analyze.assert_called_once_with("test123", False)
+
+    def test_requires_admin(self, client):
+        response = client.post("/api/internal/jobs/test123/vocal-gaps")
+        assert response.status_code == 401

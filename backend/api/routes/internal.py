@@ -204,6 +204,26 @@ async def trigger_auto_approval_eval(
     return {"job_id": job_id, **result}
 
 
+@router.post("/jobs/{job_id}/vocal-gaps")
+async def analyze_vocal_gaps_endpoint(
+    job_id: str,
+    dry_run: bool = False,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin)
+):
+    """
+    Find sung stretches with no transcribed lyrics for a job (admin only).
+
+    Shadow-mode calibration/backfill for the missing-lyrics detector: downloads the
+    lead-vocal stem server-side, analyzes the job's current lyrics and stores
+    ``state_data.vocal_gaps`` (unless ``dry_run``). Never changes job status.
+    """
+    from backend.services.auto_approval.executor import analyze_job_vocal_gaps
+
+    logger.info(f"[job:{job_id}] vocal gap analysis requested (dry_run={dry_run})")
+    result = await asyncio.to_thread(analyze_job_vocal_gaps, job_id, not dry_run)
+    return {"job_id": job_id, **result}
+
+
 @router.post("/workers/lyrics", response_model=WorkerResponse)
 async def trigger_lyrics_worker(
     request: WorkerRequest,
