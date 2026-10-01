@@ -41,7 +41,7 @@ from backend.services.auto_approval.models import (
     LyricsVerdict,
 )
 
-SCORER_VERSION = "0.4.0"
+SCORER_VERSION = "0.5.0"
 
 # --- Lyrics thresholds (deliberately conservative; the safe intersection first) ---
 # The AUTO tier requires a synced reference the transcription matches with ZERO
@@ -373,12 +373,42 @@ def extract_lyrics_signals(
     )
 
 
+def _fmt_time(seconds: float) -> str:
+    return f"{int(seconds // 60)}:{int(seconds % 60):02d}"
+
+
+def missing_lyrics_reasons(vocal_gaps: Optional[Dict[str, Any]]) -> List[str]:
+    """Human-readable reasons for each evidenced vocal gap (sung, no lyrics, and the
+    reference lyrics put lines there). Empty when there's nothing to flag."""
+    reasons = []
+    for gap in (vocal_gaps or {}).get("gaps") or []:
+        if not gap.get("evidenced"):
+            continue
+        lines = max(
+            [len(v) for v in (gap.get("synced_reference_lines") or {}).values()]
+            + [len(v) for v in (gap.get("reference_lines") or {}).values()] + [0]
+        )
+        reasons.append(
+            f"possible missing lyrics: ~{gap['longest_run_s']:.0f}s of singing at "
+            f"{_fmt_time(gap['start'])}-{_fmt_time(gap['end'])} has no transcribed words, and the "
+            f"reference lyrics have {lines} line(s) there"
+        )
+    return reasons
+
+
 def score_lyrics(
     correction_data: Dict[str, Any],
     ai_suggestions: Optional[List[Dict[str, Any]]] = None,
     timing_signals: Optional[Any] = None,
+    vocal_gaps: Optional[Dict[str, Any]] = None,
 ) -> LyricsResult:
     """Decide whether the lyrics look safe to auto-approve.
+
+    ``vocal_gaps`` (a stored ``VocalGapsResult`` dict) is a never-auto gate when any
+    gap is *evidenced*: the lead vocal sings for >=3s with no transcribed words AND
+    the reference lyrics place lines there (transcription dropped them — anchor
+    coverage can't see omissions). Audio-only gaps don't gate (2026-10 audit:
+    ~25% precision without reference evidence).
 
     ``timing_signals`` (a ``timing_check.TimingSignals``) is optional because
     computing it needs the lead-vocal stem (audio IO the executor performs only
@@ -415,6 +445,11 @@ def score_lyrics(
             f"{s.suspicious_parenthetical_count} multi-second short parenthetical lines"
         )
         return LyricsResult(LyricsVerdict.REVIEW, "phantom-gate", s, reasons)
+
+    missing = missing_lyrics_reasons(vocal_gaps)
+    if missing:
+        reasons.extend(missing)
+        return LyricsResult(LyricsVerdict.REVIEW, "missing-lyrics-gate", s, reasons)
 
     if timing_signals is not None and getattr(timing_signals, "fired", None):
         sig = timing_signals
@@ -635,13 +670,14 @@ def score_job(
     backing_analysis: Optional[Dict[str, Any]],
     ai_suggestions: Optional[List[Dict[str, Any]]] = None,
     timing_signals: Optional[Any] = None,
+    vocal_gaps: Optional[Dict[str, Any]] = None,
 ) -> AutoApprovabilityVerdict:
     """Produce the combined shadow verdict for a job.
 
     ``overall_auto`` is the narrow safe intersection: confident lyrics AND a
     non-subjective (no-audible-backing) backing decision.
     """
-    lyrics = score_lyrics(correction_data, ai_suggestions, timing_signals)
+    lyrics = score_lyrics(correction_data, ai_suggestions, timing_signals, vocal_gaps)
     backing = score_backing(backing_analysis)
     overall_auto = lyrics.verdict == LyricsVerdict.AUTO and backing.non_subjective
     return AutoApprovabilityVerdict(

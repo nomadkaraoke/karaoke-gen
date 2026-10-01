@@ -148,6 +148,25 @@ class TestGetCorrectionDataReturnsUpdatedCorrections:
             # Verify the returned data is the original
             assert result["corrected_segments"][0]["text"] == "Hello world"
 
+    @pytest.mark.parametrize("stored", [None, {"gaps": [{"start": 20.66, "end": 32.4, "evidenced": True}],
+                                                "evidenced_count": 1}])
+    def test_includes_vocal_gaps_for_missing_lyrics_marker(self, mock_job, original_corrections, stored):
+        """The review UI marks possible missing lyrics from state_data.vocal_gaps."""
+        from backend.api.routes.review import get_correction_data
+
+        if stored:
+            mock_job.state_data = {"vocal_gaps": stored}
+        with patch("backend.api.routes.review.JobManager") as MockJobManager, \
+             patch("backend.api.routes.review.StorageService") as MockStorageService:
+            MockJobManager.return_value.get_job.return_value = mock_job
+            storage = MockStorageService.return_value
+            storage.file_exists.side_effect = lambda path: "corrections_updated" not in path
+            storage.download_json.return_value = original_corrections.copy()
+            storage.generate_signed_url.return_value = "https://signed-url.com"
+            import asyncio
+            result = asyncio.run(get_correction_data("test-job-123", ("user@test.com", "job_owner")))
+        assert result["vocal_gaps"] == stored
+
     def test_returns_proxy_audio_urls_and_omits_waveform_without_signing(
         self, mock_job, original_corrections
     ):

@@ -77,3 +77,24 @@ them into one detector (one stem download/decode; currently AUTO jobs decode twi
 ## Next
 Deploy → run the audit (needs `gcloud auth login` for the admin token) → hand-check
 suspects → pick the gate threshold → Phase 2: scorer gate + SectionDetector + review UI.
+
+## Audit results (2026-10-01, v0.256.0, 262 completed jobs, last 60 days)
+Server-side via `scripts/audit_vocal_gaps.py` (results stored on each job).
+
+- Longest unlyricked vocal run per job: p50 0.7s, p75 2.4s, p90 5.1s, p95 7.4s, p99 22.4s.
+- Jobs with a run ≥3s: 47 (18%); ≥6s: 21; ≥10s: 8 — far too many for an audio-only gate.
+- Cross-check against **synced** reference lyrics (LRCLIB line timestamps): of 57 suspect
+  gaps on jobs with a synced reference, only **15** have a reference line timestamped
+  inside the gap (~25% precision at 3s; ~60% at ≥6s). The rest are vocal chops / samples /
+  ad-libs / synth bleed (DnB-heavy: Etherwood, London Elektricity, Danny Byrd, …).
+- Reference lines between the neighbouring anchors appeared on only 3 suspect gaps
+  (5710831e, XTC, Etherwood) — high precision when present, low recall (repeated choruses
+  break the anchor-span method).
+
+### Phase 2 decision: evidence-based gate
+- **REVIEW gate** (explicit reason) when a vocal run ≥3s AND reference lyrics place
+  lines inside the gap — synced reference timestamps inside the gap, or reference lines
+  between the neighbouring anchors.
+- Audio-only runs: record + soft note in review, no gate (precision too low).
+- `SectionDetector`: don't label a gap INSTRUMENTAL when the evidence rule fires.
+- Review UI: marker at the gap + the reference lines (from either method) offered for insert.

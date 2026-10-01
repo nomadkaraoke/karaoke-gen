@@ -34,16 +34,19 @@ def _jobs(days: int, limit: int):
 
     db = firestore.Client(project="nomadkaraoke")
     since = datetime.now(timezone.utc) - timedelta(days=days)
-    # Range + order on created_at only (no composite index needed); status filtered here
-    query = (db.collection("jobs").where(filter=firestore.FieldFilter("created_at", ">=", since))
-             .order_by("created_at", direction=firestore.Query.DESCENDING))
+    # Range + order on created_at only (no composite index needed); status filtered here.
+    # Job docs store created_at as an ISO-8601 string (sorts correctly as text); fall
+    # back to a timestamp comparison for any docs written as Firestore timestamps.
     jobs = []
-    for d in query.stream():
-        data = d.to_dict()
-        if data.get("status") == "complete":
-            jobs.append((d.id, data))
-            if len(jobs) >= limit:
-                break
+    for bound in (since.strftime("%Y-%m-%dT%H:%M:%S"), since):
+        query = (db.collection("jobs").where(filter=firestore.FieldFilter("created_at", ">=", bound))
+                 .order_by("created_at", direction=firestore.Query.DESCENDING))
+        for d in query.stream():
+            data = d.to_dict()
+            if data.get("status") == "complete":
+                jobs.append((d.id, data))
+                if len(jobs) >= limit:
+                    return jobs
     return jobs
 
 
