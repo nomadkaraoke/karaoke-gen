@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Phần hát bè mà bản nhạc nền thuần sẽ loại bỏ — nhấp để nghe thử phần bạn sắp bỏ đi.",
       "playingWhileEncoding": "Đang phát: {stem}",
       "stopAudio": "Dừng âm thanh",
-      "loadingAudio": "Đang tải: {stem}…"
+      "loadingAudio": "Đang tải: {stem}…",
+      "previewDiffersNote": "Bản xem trước này được kết xuất nhanh để bạn kiểm tra độ đồng bộ lời bài hát. Bản xem trước sử dụng nền đen trơn để xử lý nhanh hơn, vì vậy sẽ không hoàn toàn giống với video hoàn chỉnh của bạn vốn có đầy đủ hình nền và phong cách bạn đã chọn.",
+      "previewNoTranslationNote": "Bản dịch lời bài hát ({language}) được thêm vào sau khi xem lại, nên sẽ xuất hiện trong video hoàn chỉnh chứ không có trong bản xem trước này."
     },
     "gapNavigator": {
       "previousGap": "Đoạn trống trước (P)",

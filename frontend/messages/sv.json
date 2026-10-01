@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Bakgrundssång som den rena instrumentalversionen tar bort — klicka för att höra vad du väljer bort.",
       "playingWhileEncoding": "Spelar: {stem}",
       "stopAudio": "Stoppa ljud",
-      "loadingAudio": "Laddar: {stem}…"
+      "loadingAudio": "Laddar: {stem}…",
+      "previewDiffersNote": "Den här förhandsgranskningen är en snabb rendering för att kontrollera synkningen av din låttext. Den har en enkel svart bakgrund för att det ska gå snabbare, så den kommer inte att se ut exakt som din slutliga video, som använder din fullständiga bakgrund och stil.",
+      "previewNoTranslationNote": "Översatt låttext ({language}) läggs till efter granskningen, så den visas i den slutliga videon men inte i den här förhandsgranskningen."
     },
     "gapNavigator": {
       "previousGap": "Föregående lucka (P)",

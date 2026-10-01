@@ -534,6 +534,7 @@ function LyricsReviewWrapper({ job, isLocalMode = false, isReplay = false }: { j
           isLocalMode={isLocalMode}
           jobId={job.job_id}
           hasExistingInstrumental={!!job.existing_instrumental_gcs_path}
+          translationLanguage={job.translation_language}
         />
       </main>
     </div>

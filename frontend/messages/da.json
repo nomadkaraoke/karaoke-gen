@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Baggrundsvokaler, som den rene instrumental fjerner — klik for at høre, hvad du udelader.",
       "playingWhileEncoding": "Afspiller: {stem}",
       "stopAudio": "Stop lyd",
-      "loadingAudio": "Indlæser: {stem}…"
+      "loadingAudio": "Indlæser: {stem}…",
+      "previewDiffersNote": "Denne forhåndsvisning er en hurtig rendering til at tjekke tekstsynkroniseringen. Den bruger en helt sort baggrund af hensyn til hastigheden, så den ser ikke helt ud som din endelige video, der bruger din fulde baggrund og stil.",
+      "previewNoTranslationNote": "Oversatte sangtekster ({language}) tilføjes efter gennemgang, så de vises i den endelige video, men ikke i denne forhåndsvisning."
     },
     "gapNavigator": {
       "previousGap": "Forrige hul (P)",

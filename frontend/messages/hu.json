@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "A tiszta instrumentális verzió által eltávolított háttérvokálok — kattints, hogy meghallgasd, mit hagynál ki.",
       "playingWhileEncoding": "Lejátszás: {stem}",
       "stopAudio": "Hang leállítása",
-      "loadingAudio": "Betöltés: {stem}…"
+      "loadingAudio": "Betöltés: {stem}…",
+      "previewDiffersNote": "Ez az előnézet egy gyors renderelés, hogy ellenőrizhesd a dalszöveg szinkronját. A gyorsaság kedvéért sima fekete hátteret használ, így nem fog pontosan úgy kinézni, mint a végleges videód, amely a teljes hátteredet és stílusodat használja.",
+      "previewNoTranslationNote": "A lefordított dalszöveget ({language}) az ellenőrzés után adjuk hozzá, így megjelenik a végleges videóban, de ebben az előnézetben még nem."
     },
     "gapNavigator": {
       "previousGap": "Előző hézag (P)",

@@ -257,23 +257,28 @@ async def _process_single_upload(
         # Build metadata
         artist = entry.get("artist", job.artist or "Unknown")
         title = entry.get("title", job.title or "Unknown")
-        youtube_title = f"{artist} - {title} (Karaoke)"
+        # Render title + description + tags via the shared renderer (single source
+        # of truth, also used by the live upload + bulk-rewrite tool).
+        from backend.services.youtube_description import (
+            build_youtube_tags,
+            build_youtube_title,
+            render_youtube_description,
+            translated_language_name,
+        )
+
+        translation_name = translated_language_name(job.state_data)
+        youtube_title = build_youtube_title(artist, title, translation_name)
         if len(youtube_title) > 95:
             youtube_title = youtube_title[:92] + " ..."
 
         brand_code = entry.get("brand_code") or job.state_data.get("brand_code")
-        # Render description + tags via the shared renderer (single source of
-        # truth, also used by the bulk-rewrite tool).
-        from backend.services.youtube_description import (
-            build_youtube_tags,
-            render_youtube_description,
-        )
 
         description = render_youtube_description(
             artist=artist,
             title=title,
             brand_code=brand_code,
             template=settings.default_youtube_description or None,
+            translation_language_name=translation_name,
         )
 
         # Upload

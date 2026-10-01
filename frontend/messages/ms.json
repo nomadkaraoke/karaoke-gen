@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Vokal latar yang dibuang oleh instrumental bersih — klik untuk mendengar bahagian yang akan dibuang.",
       "playingWhileEncoding": "Sedang dimainkan: {stem}",
       "stopAudio": "Hentikan audio",
-      "loadingAudio": "Memuatkan: {stem}…"
+      "loadingAudio": "Memuatkan: {stem}…",
+      "previewDiffersNote": "Pratonton ini ialah render pantas untuk menyemak penyegerakan lirik anda. Ia menggunakan latar belakang hitam kosong untuk mempercepat proses, jadi ia tidak akan kelihatan sama persis dengan video akhir anda yang menggunakan latar belakang dan gaya penuh anda.",
+      "previewNoTranslationNote": "Lirik terjemahan ({language}) akan ditambah selepas semakan, jadi ia akan dipaparkan dalam video akhir tetapi bukan dalam pratonton ini."
     },
     "gapNavigator": {
       "previousGap": "Jurang sebelumnya (P)",

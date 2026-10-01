@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Hintergrundgesang, den das reine Instrumental entfernt — klicke, um zu hören, was du weglassen würdest.",
       "playingWhileEncoding": "Wiedergabe: {stem}",
       "stopAudio": "Audio stoppen",
-      "loadingAudio": "Lade: {stem}…"
+      "loadingAudio": "Lade: {stem}…",
+      "previewDiffersNote": "Diese Vorschau ist ein schneller Renderdurchlauf, um deine Textsynchronisation zu überprüfen. Aus Geschwindigkeitsgründen wird ein einfacher schwarzer Hintergrund verwendet, daher sieht sie nicht genau wie dein finales Video aus, das deinen vollständigen Hintergrund und Stil nutzt.",
+      "previewNoTranslationNote": "Der übersetzte Text ({language}) wird nach der Überprüfung hinzugefügt, daher erscheint er im finalen Video, aber nicht in dieser Vorschau."
     },
     "gapNavigator": {
       "previousGap": "Vorherige Lücke (P)",

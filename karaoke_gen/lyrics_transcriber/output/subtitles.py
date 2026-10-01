@@ -16,6 +16,17 @@ from karaoke_gen.lyrics_transcriber.output.ass.section_detector import SectionDe
 from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig, translation_layout
 
 
+# Translation rows render at this fraction of the lyric colour's opacity, so they read as
+# secondary to the sung line (Andrew: identical white made it unclear which to read).
+TRANSLATION_OPACITY = 0.7
+
+
+def _fade(color, opacity: float):
+    """Scale an (r, g, b, a) style colour's alpha (255 = opaque) by ``opacity``."""
+    r, g, b, a = color
+    return (r, g, b, int(round(a * opacity)))
+
+
 class SubtitlesGenerator:
     """Handles generation of subtitle files in various formats."""
 
@@ -179,7 +190,12 @@ class SubtitlesGenerator:
         return config
 
     def _build_translation_style(self, primary: Style, karaoke_styles: dict) -> Style:
-        """Static style for translation rows: the unsung lyric colour at a smaller size."""
+        """Static style for translation rows: the unsung lyric colour, faded and smaller.
+
+        Faded (TRANSLATION_OPACITY) so the reader's eye goes to the sung lyric first,
+        rather than two identical-looking white lines competing. A theme's explicit
+        ``translation_color`` (with its own alpha) is used as-is.
+        """
         style = copy.copy(primary)
         style.Name = "Karaoke.Translation"
         style.Fontsize = self.config.translation_font_size
@@ -187,7 +203,10 @@ class SubtitlesGenerator:
         if color:
             style.PrimaryColour = tuple(int(x.strip()) for x in str(color).split(","))
         else:
-            style.PrimaryColour = primary.SecondaryColour  # unsung lyric colour
+            # Fade outline/shadow too, or they read as a dark halo around faded text.
+            style.PrimaryColour = _fade(primary.SecondaryColour, TRANSLATION_OPACITY)  # unsung colour
+            style.OutlineColour = _fade(primary.OutlineColour, TRANSLATION_OPACITY)
+            style.BackColour = _fade(primary.BackColour, TRANSLATION_OPACITY)
         ratio = self.config.translation_font_size / max(1, self.font_size)
         if primary.Outline:
             style.Outline = max(1, int(round(primary.Outline * ratio)))

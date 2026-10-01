@@ -132,6 +132,9 @@ export interface LyricsAnalyzerProps {
   isLocalMode?: boolean
   jobId?: string
   hasExistingInstrumental?: boolean
+  /** Language the lyrics get translated into after review (job option), if any —
+   *  the preview modal explains the translation isn't in the preview. */
+  translationLanguage?: string | null
 }
 
 export default function LyricsAnalyzer({
@@ -143,6 +146,7 @@ export default function LyricsAnalyzer({
   isLocalMode = false,
   jobId,
   hasExistingInstrumental = false,
+  translationLanguage = null,
 }: LyricsAnalyzerProps) {
   const t = useTranslations('lyricsReview')
   const router = useRouter()
@@ -1925,6 +1929,7 @@ export default function LyricsAnalyzer({
           apiClient={apiClient}
           timingOffsetMs={timingOffsetMs}
           isDuet={isDuet}
+          translationLanguage={translationLanguage}
           completesReview={hasExistingInstrumental || ((offerInlineInstrumentalChoice || autoInstrumentalConfident) && !reviewInstrumentalAnyway)}
           offerInlineChoice={offerInlineInstrumentalChoice}
           autoConfident={autoInstrumentalConfident}

@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Cors que l'instrumental net elimina — fes clic per escoltar què deixaries fora.",
       "playingWhileEncoding": "Reproduint: {stem}",
       "stopAudio": "Atura l'àudio",
-      "loadingAudio": "S'està carregant: {stem}…"
+      "loadingAudio": "S'està carregant: {stem}…",
+      "previewDiffersNote": "Aquesta previsualització és una renderització ràpida per comprovar la sincronització de la lletra. Utilitza un fons negre llis per anar més ràpid, així que no es veurà exactament com el teu vídeo final, que utilitza el teu fons i estil complets.",
+      "previewNoTranslationNote": "La lletra traduïda ({language}) s'afegeix després de la revisió, així que apareixerà al vídeo final, però no en aquesta previsualització."
     },
     "gapNavigator": {
       "previousGap": "Buit anterior (P)",

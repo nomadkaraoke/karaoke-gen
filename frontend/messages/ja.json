@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "クリーン・インストゥルメンタルで削除されるバックコーラス — クリックして、省かれる音声を聴いてみてください。",
       "playingWhileEncoding": "再生中: {stem}",
       "stopAudio": "音声を停止",
-      "loadingAudio": "読み込み中: {stem}…"
+      "loadingAudio": "読み込み中: {stem}…",
+      "previewDiffersNote": "このプレビューは歌詞の同期を確認するための簡易レンダリングです。処理速度向上のため無地の黒背景を使用しており、設定した背景やスタイルが反映される完成版の動画とは見た目が異なります。",
+      "previewNoTranslationNote": "翻訳された歌詞（{language}）は確認後に追加されるため、完成版の動画には表示されますが、このプレビューには表示されません。"
     },
     "gapNavigator": {
       "previousGap": "前のギャップ (P)",

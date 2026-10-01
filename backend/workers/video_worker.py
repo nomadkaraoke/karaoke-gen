@@ -45,6 +45,7 @@ from backend.services.admin_rerender_service import (
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
+from backend.services.youtube_description import translated_language_name
 from backend.services.encoding_service import get_encoding_service, run_with_lost_job_resubmit
 from backend.config import get_settings
 from backend.workers.style_helper import load_style_config
@@ -624,6 +625,7 @@ async def redistribute_video(job_id: str) -> bool:
             discord_webhook_url=dist.discord_webhook_url,
             youtube_credentials=youtube_credentials,
             youtube_description_template=dist.youtube_description,
+            translation_language_name=translated_language_name(job.state_data),
             dropbox_path=dist.dropbox_path,
             gdrive_folder_id=dist.gdrive_folder_id,
             enable_cdg=getattr(job, 'enable_cdg', False),

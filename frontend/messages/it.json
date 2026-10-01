@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Cori che la strumentale pulita rimuove — clicca per ascoltare cosa stai escludendo.",
       "playingWhileEncoding": "In riproduzione: {stem}",
       "stopAudio": "Ferma audio",
-      "loadingAudio": "Caricamento: {stem}…"
+      "loadingAudio": "Caricamento: {stem}…",
+      "previewDiffersNote": "Questa anteprima è un rendering rapido per verificare la sincronizzazione del testo. Usa un semplice sfondo nero per velocizzare i tempi, quindi non sarà esattamente come il tuo video finale, che utilizzerà lo sfondo e lo stile completi.",
+      "previewNoTranslationNote": "Il testo tradotto ({language}) viene aggiunto dopo la revisione, quindi apparirà nel video finale ma non in questa anteprima."
     },
     "gapNavigator": {
       "previousGap": "Lacuna precedente (P)",

@@ -7,7 +7,7 @@ import pytest
 from karaoke_gen.lyrics_transcriber.output.ass.config import translation_layout
 from karaoke_gen.lyrics_transcriber.output.ass.lyrics_line import LyricsLine
 from karaoke_gen.lyrics_transcriber.output.segment_resizer import SegmentResizer, split_text_proportionally
-from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
+from karaoke_gen.lyrics_transcriber.output.subtitles import TRANSLATION_OPACITY, SubtitlesGenerator
 from karaoke_gen.lyrics_transcriber.output.translations import apply_translations, load_and_apply_translations
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment, Word
 from karaoke_gen.portrait.renderer import PortraitLayout, _computed_top_padding, build_portrait_ass
@@ -160,14 +160,24 @@ def test_translation_layout_shows_three_lines_per_screen(tmp_path):
     assert ys[3] == ys[0]  # 4th line reuses the first slot: 3 slots per screen
 
 
-def test_translation_style_uses_unsung_colour_and_smaller_font(tmp_path):
+def _ass_alpha(colour: str) -> int:
+    """Opacity (255 = opaque) of an ASS ``&HAABBGGRR`` colour."""
+    return 255 - int(colour.strip()[2:4], 16)
+
+
+def test_translation_style_uses_faded_unsung_colour_and_smaller_font(tmp_path):
     ass = generate(tmp_path, [seg("hello there", 1, translation="hola")])
     style = next(line for line in ass.splitlines() if line.startswith("Style: Karaoke.Translation"))
     fields = style.split(",")
     assert int(fields[3]) == translation_layout(FONT, FONT).translation_font_size
-    lyric_style = next(line for line in ass.splitlines() if line.startswith("Style: ") and "Translation" not in line)
-    # Primary colour of the translation = secondary (unsung) colour of the lyric style
-    assert fields[4] == lyric_style.split(",")[5]
+    lyric = next(line for line in ass.splitlines() if line.startswith("Style: ") and "Translation" not in line).split(",")
+    # Translation colour = the lyric's unsung (secondary) colour, same RGB...
+    assert fields[4].strip()[4:] == lyric[5].strip()[4:]
+    # ...at 70% of its opacity, so it reads as secondary to the sung line. Outline and
+    # shadow fade by the same factor (no dark halo around faded text).
+    for ours, theirs in ((fields[4], lyric[5]), (fields[6], lyric[6]), (fields[7], lyric[7])):
+        assert _ass_alpha(ours) == round(_ass_alpha(theirs) * TRANSLATION_OPACITY)
+    assert _ass_alpha(fields[4]) < 255
 
 
 def test_theme_can_override_translation_colour_and_size(tmp_path):

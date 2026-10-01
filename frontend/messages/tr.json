@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Temiz enstrümantalin kaldırdığı geri vokaller — neleri çıkardığını dinlemek için tıkla.",
       "playingWhileEncoding": "Çalıyor: {stem}",
       "stopAudio": "Sesi durdur",
-      "loadingAudio": "Yükleniyor: {stem}…"
+      "loadingAudio": "Yükleniyor: {stem}…",
+      "previewDiffersNote": "Bu önizleme, şarkı sözü senkronizasyonunu kontrol etmen için hızlıca render edilmiştir. Hız kazandırmak için düz siyah bir arka plan kullanılır; bu yüzden asıl arka planını ve stilini kullanan nihai videonla birebir aynı görünmeyecektir.",
+      "previewNoTranslationNote": "Çevrilen şarkı sözleri ({language}) incelemeden sonra eklenir; bu yüzden nihai videoda görünür ancak bu önizlemede yer almaz."
     },
     "gapNavigator": {
       "previousGap": "Önceki boşluk (P)",

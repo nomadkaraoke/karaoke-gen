@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   useState,
   useEffect,
@@ -69,6 +69,9 @@ interface PreviewVideoSectionProps {
   autoSelection?: string | null
   /** Reports the video's current playback time (drives the backing-vocals playhead). */
   onTimeUpdate?: (currentTime: number) => void
+  /** Job's translation language: translations are generated after review, so they
+   *  can't appear in this preview — say so rather than surprise the reviewer. */
+  translationLanguage?: string | null
 }
 
 type PreviewState =
@@ -88,10 +91,20 @@ function PreviewVideoSection(
     instrumentalOptions,
     autoSelection,
     onTimeUpdate,
+    translationLanguage = null,
   }: PreviewVideoSectionProps,
   ref: React.Ref<PreviewVideoHandle>
 ) {
   const t = useTranslations('lyricsReview.previewVideo')
+  const uiLocale = useLocale()
+  const translationLanguageName = useMemo(() => {
+    if (!translationLanguage) return null
+    try {
+      return new Intl.DisplayNames([uiLocale], { type: 'language' }).of(translationLanguage) ?? translationLanguage
+    } catch {
+      return translationLanguage
+    }
+  }, [translationLanguage, uiLocale])
   const [previewState, setPreviewState] = useState<PreviewState>({ status: 'generating' })
   const [retryNonce, setRetryNonce] = useState(0)
   // Whether the instrumental stem (vs the original with-vocals audio) is playing.
@@ -556,6 +569,16 @@ function PreviewVideoSection(
           </video>
         </div>
       )}
+
+      {/* The preview is a fast sync check, not the final render — without this,
+          reviewers expecting a WYSIWYG preview read the black background (and missing
+          translation row) as a problem with their video. */}
+      <p className="mt-2 text-center text-xs text-muted-foreground" data-testid="preview-differs-note">
+        {t('previewDiffersNote')}
+        {translationLanguageName && (
+          <> {t('previewNoTranslationNote', { language: translationLanguageName })}</>
+        )}
+      </p>
 
       {showToggle && (
         // Preview audio is audition only — it changes what you hear while checking

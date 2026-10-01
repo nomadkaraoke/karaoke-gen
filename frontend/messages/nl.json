@@ -1090,7 +1090,9 @@
       "backingVocalsWaveformRemoved": "Achtergrondzang die de cleane instrumentale versie verwijdert — klik om te horen wat je weglaat.",
       "playingWhileEncoding": "Speelt af: {stem}",
       "stopAudio": "Audio stoppen",
-      "loadingAudio": "Laden: {stem}…"
+      "loadingAudio": "Laden: {stem}…",
+      "previewDiffersNote": "Deze preview is een snelle render om de synchronisatie van je songtekst te controleren. Om het proces te versnellen wordt een effen zwarte achtergrond gebruikt, dus de preview ziet er niet precies zo uit als je uiteindelijke video, waarin je volledige achtergrond en stijl worden gebruikt.",
+      "previewNoTranslationNote": "De vertaalde songtekst ({language}) wordt na de controle toegevoegd, dus deze verschijnt wel in de uiteindelijke video, maar niet in deze preview."
     },
     "gapNavigator": {
       "previousGap": "Vorig gat (P)",

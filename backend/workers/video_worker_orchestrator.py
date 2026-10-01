@@ -27,6 +27,7 @@ from pathlib import Path
 from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
+from backend.services.youtube_description import translated_language_name
 from backend.services.tracing import job_span, add_span_event
 from backend.workers.supersede import capture_generation, encoding_worker_job_id
 from backend.services.theme_rerender_service import rerender_brand_code
@@ -68,6 +69,8 @@ class OrchestratorConfig:
     discord_webhook_url: Optional[str] = None
     youtube_credentials: Optional[Dict[str, Any]] = None
     youtube_description_template: Optional[str] = None
+    # Set when the video shows translated lyrics (labels the YouTube title/description)
+    translation_language_name: Optional[str] = None
     cdg_styles: Optional[Dict[str, Any]] = None
 
     # Dropbox/GDrive configuration
@@ -812,14 +815,16 @@ class VideoWorkerOrchestrator:
         try:
             youtube_service = self._get_youtube_service()
 
-            # Build video title
-            title = f"{self.config.artist} - {self.config.title} (Karaoke)"
-
-            # Build description + tags via the shared renderer (single source of
-            # truth, also used by the bulk-rewrite tool).
+            # Build title + description + tags via the shared renderer (single
+            # source of truth, also used by the queue processor + bulk-rewrite tool).
             from backend.services.youtube_description import (
                 build_youtube_tags,
+                build_youtube_title,
                 render_youtube_description,
+            )
+
+            title = build_youtube_title(
+                self.config.artist, self.config.title, self.config.translation_language_name
             )
 
             description = render_youtube_description(
@@ -827,6 +832,7 @@ class VideoWorkerOrchestrator:
                 title=self.config.title,
                 brand_code=self.result.brand_code,
                 template=self.config.youtube_description_template or None,
+                translation_language_name=self.config.translation_language_name,
             )
 
             # Upload
@@ -1245,6 +1251,7 @@ def create_orchestrator_config_from_job(
         discord_webhook_url=dist.discord_webhook_url,
         youtube_credentials=youtube_credentials,
         youtube_description_template=dist.youtube_description,
+        translation_language_name=translated_language_name(job.state_data),
         cdg_styles=cdg_styles,
 
         # Dropbox/GDrive (overridden for private tracks)

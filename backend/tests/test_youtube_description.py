@@ -3,9 +3,12 @@ import pytest
 
 from backend.config import get_settings
 from backend.services.youtube_description import (
+    YOUTUBE_TITLE_MAX,
     build_youtube_tags,
+    build_youtube_title,
     hashtagify,
     render_youtube_description,
+    translated_language_name,
 )
 
 
@@ -109,3 +112,35 @@ class TestBuildTags:
         tags = build_youtube_tags("A" * 300, "B" * 300)
         total = sum(len(t) + 1 for t in tags)
         assert total <= 460
+
+
+class TestTranslationLabel:
+    """Published videos with translated lyrics say so (Andrew: like the tempo label)."""
+
+    def test_only_a_successful_translation_counts(self):
+        assert translated_language_name({"lyrics_translation": {"language": "es", "status": "translated"}}) == "Spanish"
+        assert translated_language_name({"lyrics_translation": {"language": "es", "status": "failed"}}) is None
+        assert translated_language_name({"lyrics_translation": {"language": "es", "status": "same_language"}}) is None
+        assert translated_language_name({}) is None
+        assert translated_language_name(None) is None
+
+    def test_untranslated_title_unchanged(self):
+        assert build_youtube_title("Manel", "Benvolgut") == "Manel - Benvolgut (Karaoke)"
+
+    def test_translated_title_label_before_karaoke(self):
+        assert (
+            build_youtube_title("Manel", "Benvolgut", "English")
+            == "Manel - Benvolgut (With Translation into English) (Karaoke)"
+        )
+
+    def test_long_title_truncates_song_not_label(self):
+        out = build_youtube_title("A Very Long Artist Name Indeed", "An Extremely Long Song Title That Goes On And On", "Portuguese")
+        assert len(out) <= YOUTUBE_TITLE_MAX
+        assert out.endswith(" ... (With Translation into Portuguese) (Karaoke)")
+        assert out.startswith("A Very Long Artist Name Indeed - ")
+
+    def test_description_notice(self):
+        desc = render_youtube_description("Manel", "Benvolgut", template="Body", translation_language_name="English")
+        assert desc.startswith("This karaoke video includes translated lyrics (English) beneath each line.")
+        assert desc.endswith("Body")
+        assert "translation" not in render_youtube_description("Manel", "Benvolgut", template="Body")
