@@ -186,5 +186,48 @@ If all optimizations implemented:
 | Firestore PITR disabled (nightly export remains) | `database.py` | PITR storage |
 | `recover-stuck-downloads` / `retry-pending-render-jobs` every 5 → 10 min | `__main__.py` | ~half their Firestore reads |
 
-Kept: the `audio-separator` Cloud Run GPU service (still used by external remote-CLI
-clients; already scale-to-zero).
+Kept (at the time): the `audio-separator` Cloud Run GPU service — shut down in round 2 below.
+
+## 2026-10-01 cuts, round 2 (run-rate ~$400 → target < $300/mo)
+
+| Change | Where | Est. saving |
+|--------|-------|-------------|
+| `karaoke-backend` min-instances 1 → 0 (Andrew accepts a ~15s cold start on the first request after idle). With `--cpu-throttling` (request-based billing), idle non-min instances are free, so the 60s `/api/health` uptime check and the `*/10` schedulers keeping it warm don't cost idle charges | `ci.yml` | ~$24/mo |
+| `audio-separator` Cloud Run GPU service (us-east4) + its SA, IAM, output bucket and `audio-separator` AR repo (~42 GB) **deleted**; python-audio-separator's `deploy-to-cloudrun.yml` made manual-only | `__main__.py` (flag `audioSeparatorServiceEnabled`, default off) | ~$22/mo |
+| `backup-to-aws` no longer copies job files to S3 (they rely on GCS versioning + soft-delete); freshness monitor no longer checks `gcs/job-files/` | `functions/backup_to_aws/main.py`, `dr-backup-freshness.yml`, `DISASTER-RECOVERY.md` | ~$15/mo egress |
+| Artifact Registry cleanup: per package keep the 10 most recent versions + tags `latest`/`content-`/`cache`, delete everything else (tagged *or* untagged) older than 7 days. Before, tagged per-commit images were never deleted (~265 + ~244 tagged backend versions had piled up). Legacy 13 GB `karaoke-backend-gpu-base` package in us-east4 deleted (gcloud). `gcf-artifacts` (Google-managed, not in Pulumi) got a gcloud policy: keep 3 most recent + all tagged, delete untagged > 7d | `artifact_registry.py`, `gpu_artifact_registry.py` | ~$8–10/mo |
+| Secret Manager: 12 superseded versions disabled → destroyed (none pinned; all consumers use `:latest`) | gcloud (out of Pulumi) | < $1/mo |
+
+### Audio separator service (shut down, on-demand redeploy)
+
+The standalone `audio-separator` API (L4 GPU Cloud Run service, us-east4) is still
+defined in `infrastructure/modules/audio_separator_service.py`, gated behind a Pulumi
+config flag. To bring it back:
+
+```bash
+cd infrastructure
+pulumi config set audioSeparatorServiceEnabled true --stack nomadkaraoke/karaoke-gen-infrastructure/prod
+env -u GOOGLE_APPLICATION_CREDENTIALS GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token --account=admin@nomadkaraoke.com) \
+  pulumi up --stack nomadkaraoke/karaoke-gen-infrastructure/prod   # creates repo, SA, bucket, service (placeholder :latest image)
+# The image repo starts empty, so build + deploy the image from python-audio-separator:
+gh workflow run deploy-to-cloudrun.yml --repo nomadkaraoke/python-audio-separator
+# Then point clients at it:
+export AUDIO_SEPARATOR_API_URL=$(gcloud run services describe audio-separator --region us-east4 --project nomadkaraoke --format='value(status.url)')
+```
+
+The output bucket is protected by the project's `deny-destructive-operations` IAM deny
+policy. When you shut the service down again (`pulumi config rm audioSeparatorServiceEnabled`
++ `pulumi up`), delete the bucket first with
+`gcloud storage rm -r gs://nomadkaraoke-audio-separator-outputs --impersonate-service-account=break-glass@nomadkaraoke.iam.gserviceaccount.com`,
+then `pulumi refresh --target <bucket urn>`.
+
+### Out-of-Pulumi changes (2026-10-01)
+
+- `gcloud artifacts packages delete karaoke-backend-gpu-base --repository=karaoke-backend-gpu --location=us-east4`
+  (13 GB legacy base; the base has lived in us-central1 `karaoke-repo` since 2026-09-27; the CI one-time-copy fallback that read it was removed).
+- `gcloud artifacts repositories set-cleanup-policies gcf-artifacts --location=us-central1` (policy above).
+- Secret versions disabled, then destroyed: `encoding-worker-fallback-vms` v1–4, `flacfetch-api-url` v1,
+  `github-runner-pat` v1, `pushbullet-api-key` v1–2, `rapidapi-key` v1, `spotify-cookie` v1,
+  `discord-releases-webhook` v1–2. App-rotated secrets (`dropbox-oauth-credentials`, `spotify-oauth-token`,
+  `youtube-cookies`) keep their own retention and were left alone, as was `gemini-api-key`.
+- `gs://nomadkaraoke-audio-separator-outputs` deleted via break-glass SA (IAM deny policy blocks Pulumi).

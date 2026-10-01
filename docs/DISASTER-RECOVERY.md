@@ -1,6 +1,6 @@
 # Disaster Recovery Runbook
 
-**Last updated:** 2026-06-18
+**Last updated:** 2026-10-01
 **Design doc:** `docs/archive/2026-03-27-business-continuity-design.md`
 **Implementation plan:** `docs/archive/2026-03-29-business-continuity-plan.md`
 **External services reference:** `docs/archive/2026-03-29-external-services-config.md`
@@ -13,7 +13,7 @@
 | BigQuery (weekly) | S3 `bigquery/daily-refresh/` | Load Parquet files | 7 days |
 | BigQuery (monthly) | S3 `bigquery/musicbrainz/` | Load Parquet files | 30 days |
 | BigQuery (Spotify) | S3 `bigquery/spotify/` | Load from Glacier Deep Archive | N/A (static) |
-| GCS job files | S3 `gcs/job-files/` | Sync to new bucket | 24h |
+| GCS job files | **GCS only** — object versioning (non-current kept 30d) + soft-delete (7d). Off-site S3 copy **stopped 2026-10-01**; S3 `gcs/job-files/` is a frozen snapshot up to 2026-09-30 | Restore non-current/soft-deleted generation in GCS | N/A off-site (frozen); in-GCS recovery window 7–30d |
 | Git repos (code) | S3 `git-repos/{owner}/{repo}.bundle` (+ `manifest.json`) | `git clone <bundle>` then push to a new remote | 7 days (weekly, Sundays; incremental) |
 | Secret Manager | S3 `secrets/YYYY-MM-DD.bin` (sealed-box encrypted) | Decrypt with private key from KeepassXC | 24h |
 | AWS credentials (function) | GCP Secret Manager `aws-backup-credentials` | Read directly | On-change |
@@ -109,7 +109,7 @@ gcloud storage cp gs://karaoke-gen-storage-nomadkaraoke/jobs/JOB_ID/file.flac#GE
   gs://karaoke-gen-storage-nomadkaraoke/jobs/JOB_ID/file.flac
 ```
 
-**Option C — Restore from S3 (if A and B both miss the window):**
+**Option C — Restore from S3 (if A and B both miss the window; only works for files that existed by 2026-09-30 — the nightly S3 copy of job files was stopped 2026-10-01, see § "Job files: off-site copy stopped"):**
 ```bash
 aws s3 sync s3://nomadkaraoke-backup/gcs/job-files/jobs/JOB_ID/ /tmp/gcs-restore/
 
@@ -209,7 +209,9 @@ aws s3api restore-object --bucket nomadkaraoke-backup \
 # Create new bucket
 gsutil mb -l US-CENTRAL1 gs://karaoke-gen-storage-nomadkaraoke-v2/
 
-# Sync from S3 (146 GB last we measured — needs a host with comparable disk + bandwidth)
+# Sync from S3 (146 GB last we measured — needs a host with comparable disk + bandwidth).
+# NOTE: frozen snapshot — job files created/changed after 2026-09-30 are NOT in S3
+# (off-site copy stopped 2026-10-01). Newer outputs must be regenerated.
 aws s3 sync s3://nomadkaraoke-backup/gcs/job-files/ /tmp/gcs-restore/
 gsutil -m cp -r /tmp/gcs-restore/ gs://karaoke-gen-storage-nomadkaraoke-v2/
 ```
@@ -462,13 +464,13 @@ export AWS_DEFAULT_REGION=us-east-1
 
 ## Backup freshness monitor
 
-A GitHub Actions cron (`.github/workflows/dr-backup-freshness.yml`) runs daily at 14:00 UTC and checks that the most recent objects in `s3://nomadkaraoke-backup/firestore/`, `gcs/job-files/`, `secrets/`, `bigquery/daily-refresh/`, and `git-repos/manifest.json` are no older than their per-prefix limit. Stale or missing backups → Discord alert + workflow failure.
+A GitHub Actions cron (`.github/workflows/dr-backup-freshness.yml`) runs daily at 14:00 UTC and checks that the most recent objects in `s3://nomadkaraoke-backup/firestore/`, `secrets/`, `bigquery/daily-refresh/`, and `git-repos/manifest.json` are no older than their per-prefix limit. Stale or missing backups → Discord alert + workflow failure.
 
 Per-prefix limits reflect each prefix's **S3 (off-site)** cadence, which is not the same as its GCS-staging cadence:
 
 | Prefix | S3 upload cadence | Monitor limit |
 |--------|-------------------|---------------|
-| `gcs/job-files/`, `secrets/` | nightly | 36h |
+| `secrets/` | nightly | 36h |
 | `firestore/`, `bigquery/daily-refresh/` | weekly (Sundays) | 192h (≈8 days) |
 | `git-repos/manifest.json` | weekly (Sundays), incremental | 192h (≈8 days) + manifest must show 0 bundle errors |
 
@@ -548,6 +550,23 @@ re-import). The raw source files are not.
 | S3 data transfer out to GCP | ~$0.09/GB |
 | Full Spotify dataset retrieval + transfer (~100 GB) | ~$25 total |
 | Full GCS job-files egress (~150 GB) | ~$14 |
+
+## Job files: off-site copy stopped (2026-10-01)
+
+The nightly `backup-to-aws` step that delta-synced `karaoke-gen-storage-nomadkaraoke`
+(`jobs/`, `tenants/`, `themes/`) → staging `gcs/job-files/` → S3 was removed on
+2026-10-01 as a GCP cost cut (~$15/mo cross-cloud egress; business cash constraint).
+Job outputs are regenerable from their inputs, and the primary bucket keeps
+**object versioning** (non-current versions deleted 30 days after being superseded)
+plus **7-day soft-delete**, which covers accidental overwrite/delete. What is
+*not* covered any more: loss of the whole GCP project/bucket for files created after
+2026-09-30. The existing S3 `gcs/job-files/` objects were deliberately left in place
+(frozen snapshot). Firestore (weekly), secrets (nightly), BigQuery, kn-data and git
+bundle backups are unchanged. The freshness monitor no longer checks `gcs/job-files/`.
+
+To re-enable: restore the Step 3 `sync_gcs_to_staging(source_bucket="karaoke-gen-storage-nomadkaraoke", staging_prefix="gcs/job-files/")`
+call in `infrastructure/functions/backup_to_aws/main.py` (see git history) and
+re-add the `gcs/job-files/` row to `.github/workflows/dr-backup-freshness.yml`.
 
 ## Incident: S3 overwrites silently failing 2026-09-14 → 2026-09-26
 

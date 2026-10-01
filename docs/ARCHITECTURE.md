@@ -605,10 +605,13 @@ Audio stem separation runs **directly inside the audio worker Cloud Run Job** �
 - **Two-stage ensemble preset** — `instrumental_clean` (stage 1) + `karaoke` (stage 2).
 - **Model cache** — Models are downloaded to `model_file_dir` (GCS-backed or local) and reused across executions.
 
-**The `audio-separator` Cloud Run GPU service** (us-east4, scale-to-zero) is no longer used by
-prod gen jobs, but it still serves external remote-separation clients (`audio-separator-remote` /
-local `karaoke-gen` CLI with `AUDIO_SEPARATOR_API_URL`; ~40 `/separate` calls/month as of
-2026-09). Keep it at min-instances 0; don't remove it without checking its request logs first.
+**The `audio-separator` Cloud Run GPU service** (us-east4) was **shut down on 2026-10-01**
+(GCP cost cut, ~$22/mo). Prod gen jobs never used it; its only callers were Andrew's own
+remote-separation clients (`audio-separator-remote` / local `karaoke-gen` CLI with
+`AUDIO_SEPARATOR_API_URL`). Leave `AUDIO_SEPARATOR_API_URL` unset to separate locally. It
+is still defined in Pulumi behind the `audioSeparatorServiceEnabled` flag — see
+[GCP-COST-OPTIMIZATION.md](GCP-COST-OPTIMIZATION.md#audio-separator-service-shut-down-on-demand-redeploy)
+to bring it back on demand.
 
 ### Quick version (kjbox make-it jobs)
 

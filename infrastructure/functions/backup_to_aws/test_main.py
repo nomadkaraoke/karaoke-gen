@@ -58,3 +58,24 @@ def test_manual_git_mode_only_uploads_git_prefix():
     git.assert_called_once_with(full_refresh=True)
     assert upload.call_args.kwargs["include_prefixes"] == ["git-repos/"]
     fs.assert_not_called()
+
+
+def test_job_files_bucket_is_not_synced_off_site():
+    """Job files stopped going to S3 on 2026-10-01 (egress cost cut); only the
+    small kn-data bucket is still delta-synced to staging."""
+    _FakeDate.today_value = datetime.date(2026, 9, 29)
+    request = MagicMock()
+    request.args = {}
+    with patch("main.datetime.date", _FakeDate), \
+         patch("main.export_firestore", return_value="fs"), \
+         patch("main.export_bigquery_tables", return_value={}), \
+         patch("main.sync_gcs_to_staging", return_value="gcs") as sync, \
+         patch("main.export_secrets", return_value="sec") as secrets, \
+         patch("main._run_git_repos_backup", return_value="git"), \
+         patch("main.upload_staging_to_s3", return_value="s3"), \
+         patch("main.send_alert"):
+        main.backup_to_aws(request)
+    sources = [c.kwargs["source_bucket"] for c in sync.call_args_list]
+    assert sources == ["nomadkaraoke-kn-data"]
+    assert all(c.kwargs["staging_prefix"] != "gcs/job-files/" for c in sync.call_args_list)
+    secrets.assert_called_once()

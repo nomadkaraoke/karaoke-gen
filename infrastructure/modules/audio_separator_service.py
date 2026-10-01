@@ -2,7 +2,12 @@
 Audio Separator Cloud Run GPU Service.
 
 Deploys the audio-separator API as a Cloud Run service with L4 GPU acceleration.
-Replaces the Modal deployment for audio stem separation.
+Replaced the Modal deployment for audio stem separation.
+
+DISABLED BY DEFAULT since 2026-10-01 (GCP cost cut): only created when the
+Pulumi config flag ``audioSeparatorServiceEnabled`` is true. Prod jobs never
+call it (they use the audio-separation-job GPU Cloud Run Job). See
+docs/GCP-COST-OPTIMIZATION.md for the on-demand redeploy steps.
 
 Resources created:
 - Artifact Registry repository for audio-separator Docker images
@@ -139,6 +144,9 @@ def create_service(
         "audio-separator-service",
         name="audio-separator",
         location=AUDIO_SEPARATOR_REGION,
+        # Off by default and only brought up on demand (see __main__.py), so
+        # it must be destroyable by flipping audioSeparatorServiceEnabled off.
+        deletion_protection=False,
         ingress="INGRESS_TRAFFIC_ALL",
         template=cloudrunv2.ServiceTemplateArgs(
             scaling=cloudrunv2.ServiceTemplateScalingArgs(

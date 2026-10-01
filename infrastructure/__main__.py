@@ -655,18 +655,29 @@ divebar_sync_compute_admin = gcp.projects.IAMMember(
 backup_resources = backup.create_backup_resources(all_secrets)
 
 # ==================== Audio Separator GPU Service ====================
-# Cloud Run GPU (L4) service for audio stem separation — replaces Modal
-audio_separator_resources = audio_separator_service.create_all_resources()
-
-# Grant audio separator read access to main storage bucket (for GCS URI passthrough)
-gcp.storage.BucketIAMMember(
-    "audio-separator-storage-reader",
-    bucket=bucket.name,
-    role="roles/storage.objectViewer",
-    member=audio_separator_resources["service_account"].email.apply(
-        lambda email: f"serviceAccount:{email}"
-    ),
+# Standalone Cloud Run GPU (L4, us-east4) audio-separator API service.
+# SHUT DOWN 2026-10-01 (GCP cost cut, ~$22/mo): prod jobs never used it —
+# separation runs in the `audio-separation-job` GPU Cloud Run Job (local GPU
+# mode). Its only callers were Andrew's own tools (kjbox original-vocals
+# scripts, kjbox/fastgen). To bring it back on demand, see
+# docs/GCP-COST-OPTIMIZATION.md § "Audio separator service (shut down, on-demand redeploy)":
+#   pulumi config set audioSeparatorServiceEnabled true && pulumi up --target ...
+AUDIO_SEPARATOR_SERVICE_ENABLED = (
+    pulumi.Config().get_bool("audioSeparatorServiceEnabled") or False
 )
+audio_separator_resources = None
+if AUDIO_SEPARATOR_SERVICE_ENABLED:
+    audio_separator_resources = audio_separator_service.create_all_resources()
+
+    # Grant audio separator read access to main storage bucket (for GCS URI passthrough)
+    gcp.storage.BucketIAMMember(
+        "audio-separator-storage-reader",
+        bucket=bucket.name,
+        role="roles/storage.objectViewer",
+        member=audio_separator_resources["service_account"].email.apply(
+            lambda email: f"serviceAccount:{email}"
+        ),
+    )
 
 # ==================== Compute VMs ====================
 
@@ -837,9 +848,10 @@ pulumi.export("divebar_lookup_function_url", divebar_lookup_resources["function"
 pulumi.export("divebar_sync_vm_name", divebar_sync_instance.name)
 pulumi.export("divebar_sync_scheduler_name", divebar_sync_scheduler.name)
 
-# Audio separator GPU service
-pulumi.export("audio_separator_service_url", audio_separator_resources["service"].uri)
-pulumi.export("audio_separator_service_account", audio_separator_resources["service_account"].email)
+# Audio separator GPU service (only when re-enabled on demand)
+if audio_separator_resources is not None:
+    pulumi.export("audio_separator_service_url", audio_separator_resources["service"].uri)
+    pulumi.export("audio_separator_service_account", audio_separator_resources["service_account"].email)
 
 # Encoding worker idle shutdown
 pulumi.export("encoding_worker_idle_function_url", encoding_worker_idle_resources["function"].url)

@@ -312,16 +312,14 @@ async def flacfetch_health() -> Dict[str, Any]:
 
 
 def check_audio_separator_status() -> Dict[str, Any]:
-    """Check audio separator availability without calling the remote GPU service."""
-    from backend.config import get_settings
+    """Report audio separation availability.
 
-    settings = get_settings()
-    if not settings.audio_separator_api_url:
-        return {
-            "available": False,
-            "status": "not_configured",
-        }
-
+    Separation runs in the ``audio-separation-job`` GPU Cloud Run Job (local
+    GPU mode, models baked into the image). The standalone ``audio-separator``
+    Cloud Run GPU service was shut down on 2026-10-01 (cost cut), so there is
+    no remote service to probe — this reports the installed package version
+    only and never calls out to anything.
+    """
     try:
         from importlib.metadata import version
         pkg_version = version("audio-separator")
@@ -331,6 +329,7 @@ def check_audio_separator_status() -> Dict[str, Any]:
     return {
         "available": True,
         "status": "ok",
+        "mode": "gpu_job",
         "version": pkg_version,
     }
 
@@ -338,34 +337,12 @@ def check_audio_separator_status() -> Dict[str, Any]:
 @router.get("/health/audio-separator")
 async def audio_separator_health() -> Dict[str, Any]:
     """
-    Return the installed audio-separator package version.
+    Return audio separation status (installed audio-separator package version).
 
-    Does NOT call the remote GPU service — that would cold-start an expensive
-    Cloud Run GPU instance (~$0.07 per wake). Instead reports the locally
-    installed package version, which matches what the audio worker uses.
-
-    No authentication required.
+    Does NOT call any remote service — separation runs in the
+    audio-separation-job GPU Cloud Run Job. No authentication required.
     """
-    from backend.config import get_settings
-
-    settings = get_settings()
-    if not settings.audio_separator_api_url:
-        return {
-            "available": False,
-            "status": "not_configured",
-        }
-
-    try:
-        from importlib.metadata import version
-        pkg_version = version("audio-separator")
-    except Exception:
-        pkg_version = None
-
-    return {
-        "available": True,
-        "status": "ok",
-        "version": pkg_version,
-    }
+    return check_audio_separator_status()
 
 
 def _get_encoding_worker_manager():

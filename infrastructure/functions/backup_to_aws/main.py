@@ -4,7 +4,10 @@ Backup to AWS Cloud Function.
 Nightly backup pipeline:
 1. Firestore export to GCS staging (nightly; uploaded to S3 weekly on Sundays)
 2. BigQuery export to GCS staging (weekly/monthly schedule)
-3. GCS job files delta sync to staging
+3. GCS delta sync of nomadkaraoke-kn-data to staging. (Job files from the
+   karaoke-gen-storage bucket are NOT copied off-site any more — stopped
+   2026-10-01 to save ~$15/mo egress; they rely on GCS object versioning
+   + soft-delete only. See docs/DISASTER-RECOVERY.md.)
 4. Secret Manager export (encrypted with sealed-box public key) to staging
 4b. Git repos backup — bundle repos under the configured GitHub owners to
     staging (weekly on Sundays, incremental: only repos pushed since their
@@ -152,16 +155,11 @@ def backup_to_aws(request):
         logger.error(f"BigQuery export failed: {e}")
         errors.append(f"BigQuery: {e}")
 
-    # Step 3: GCS delta sync (nightly) — primary job-files bucket
-    try:
-        results["gcs_sync"] = sync_gcs_to_staging(
-            source_bucket="karaoke-gen-storage-nomadkaraoke",
-            staging_bucket=STAGING_BUCKET,
-            staging_prefix="gcs/job-files/",
-        )
-    except Exception as e:
-        logger.error(f"GCS sync failed: {e}")
-        errors.append(f"GCS sync: {e}")
+    # Step 3 (removed 2026-10-01): the nightly delta sync of job files
+    # (karaoke-gen-storage-nomadkaraoke -> gcs/job-files/) was the bulk of the
+    # remaining cross-cloud egress (~$15/mo) for regenerable outputs. Job files
+    # now rely on GCS object versioning + soft-delete only; existing S3 copies
+    # under gcs/job-files/ are left in place. See docs/DISASTER-RECOVERY.md.
 
     # Step 3b: GCS delta sync — nomadkaraoke-kn-data (small, irreplaceable
     # internal sync data from KaraokeNerds API; not publicly regenerable).
