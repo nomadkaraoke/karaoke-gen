@@ -2176,3 +2176,28 @@ Backfilling already-completed jobs without routing GBs through a laptop: `GET
 them server-side. Fire them **sequentially** — ~25 concurrent `save_url` jobs gave random
 `download_failed`s that all succeeded on a one-at-a-time retry. (`redistribute_video` isn't usable
 from the API service: 4K finals are ~1.7 GB and Cloud Run `/tmp` counts against its 2 GiB.)
+
+## RTL karaoke: libass lays Hebrew/Arabic out LTR unless told otherwise (2026-09-30, v0.255.0)
+
+A Hebrew job (5710831e, Omer Adam – "שני משוגעים") shipped with the lyrics laid out *and*
+highlighted left-to-right, and a title card of "?" boxes. Reading the frames by eye got
+the diagnosis wrong the first time; pixel measurement against Chrome-rendered references
+got it right. What we learned (verified on prod's static ffmpeg 7.0.2 and libass 0.17.x):
+
+- **`Encoding=0` forces LTR paragraphs** ("VSFilter compat"). The `{\kf}` before each word
+  splits the line into runs, so each Hebrew word is shaped correctly but the words go
+  left→right. `Encoding=-1` = auto direction per line; LTR lines are unaffected.
+  `build_karaoke_styles` now forces it regardless of theme.
+- **`\kf` always wipes left→right within a word** ([libass#406](https://github.com/libass/libass/issues/406)).
+  `{\frz180\frx180\fry180}` (visually a no-op) flips the wipe since libass 0.15, without
+  splitting words, so Arabic still joins. `{\r}` resets it, so re-emit after every reset.
+- **With `\an8`, libass centres a `\p1` drawing's width on its position**, ignoring the
+  shape's own coordinates. Mirror lead-in geometry accordingly.
+- **PIL doesn't do per-glyph font fallback; libass does.** Anything measured or drawn with
+  PIL (title cards, lead-in placement) must pick a font that covers the text
+  (`karaoke_gen/utils/font_fallback.py`) and scale it like libass does
+  (`upem / (usWinAscent + usWinDescent)`, not a fixed 0.70).
+- **macOS libass (CoreText provider) ≠ prod (fontconfig).** Different fallback fonts, no CJK
+  fallback. Verify rendering in Linux (`scripts/run-render-tests-linux.sh`).
+- **Dropped sub-0.1s word gaps made the highlight run early** (up to 0.22s by line end on
+  this job). Karaoke tags now come from one absolute centisecond timeline.

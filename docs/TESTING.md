@@ -212,6 +212,27 @@ def test_transcribe_lyrics_returns_lyrics_dir(tmp_path):
 
 See [LESSONS-LEARNED.md](LESSONS-LEARNED.md#test-the-contract-not-just-the-function-mar-2026) for the production bug this pattern caused.
 
+#### Render tests: verify lyrics as they actually render (CJK / RTL)
+
+Correct-looking ASS tags can still render wrong (a Hebrew job shipped with words laid
+out and highlighted left-to-right). `tests/unit/lyrics_transcriber/output/test_ass_render_highlight.py`
+generates ASS with the real `SubtitlesGenerator` in a pure-colour palette (sung = green,
+unsung = magenta, lead-in = cyan, on black), renders frames with ffmpeg/libass
+(`ass_render_harness.py`), and asserts on pixels for English, Hebrew, Arabic, Chinese,
+Japanese, Korean and an RTL duet line: highlight starts at the reading-start edge,
+sung pixels always precede unsung ones in reading order (pins word order *and* in-word
+fill direction), progress is monotonic and in time with the words, the lead-in lands
+outside the start edge, and libass found every glyph. `tests/unit/test_font_fallback_render.py`
+does the same for PIL-rendered title cards / portrait headers (no `.notdef` tofu, Hebrew
+title reads right-to-left).
+
+- **CI** installs `fonts-noto-core fonts-noto-cjk` and runs with `CI=true`, where these
+  tests fail instead of skipping on a missing precondition.
+- **macOS**: Homebrew libass uses the CoreText font provider (different fallback fonts, no
+  CJK fallback), so font-sensitive checks skip. Run the full set in Linux against both
+  Debian's ffmpeg and prod's static ffmpeg with `scripts/run-render-tests-linux.sh`.
+- When touching ASS generation, add a sample to `SAMPLES` rather than asserting on tag strings.
+
 ### Integration Tests (`tests/integration/`)
 
 **Purpose:** Test CLI workflows and component interactions.
