@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Usando {name} ({size} MB) como instrumental",
     "ownInstrumentalTitle": "Tu propio instrumental (opcional)",
     "submitTrack": "Enviar pista",
-    "ownInstrumentalRemove": "Quitar"
+    "ownInstrumentalRemove": "Quitar",
+    "translatedLyricsHint": "Después de la revisión de letras, la IA traduce cada línea al {language} y la muestra en un texto más pequeño debajo de las letras en tu video. Las traducciones no se pueden editar.",
+    "translatedLyricsLanguageLabel": "Traducir letras al",
+    "translatedLyricsPreviewAlt": "Fotograma de ejemplo de un video de karaoke con letras traducidas al {language}",
+    "translatedLyricsPreviewError": "No se pudo cargar la vista previa.",
+    "translatedLyricsPreviewLoading": "Renderizando vista previa...",
+    "translatedLyricsToggle": "Agregar letras traducidas",
+    "translatedLyricsToggleHint": "Muestra una traducción por IA de cada línea en un texto más pequeño debajo de las letras. Ideal para aprender un idioma.",
+    "translatedLyricsPreviewRetry": "Intentar de nuevo"
   },
   "jobStatus": {
     "settingUp": "Configurando",

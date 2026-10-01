@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Menggunakan {name} ({size} MB) sebagai instrumental",
     "ownInstrumentalTitle": "Instrumental Anda sendiri (opsional)",
     "submitTrack": "Kirim Trek",
-    "ownInstrumentalRemove": "Hapus"
+    "ownInstrumentalRemove": "Hapus",
+    "translatedLyricsHint": "Setelah lirik ditinjau, AI akan menerjemahkan setiap baris ke {language} dan menampilkannya dengan teks yang lebih kecil di bawah lirik pada video Anda. Terjemahan tidak dapat diedit.",
+    "translatedLyricsLanguageLabel": "Terjemahkan lirik ke",
+    "translatedLyricsPreviewAlt": "Contoh frame video karaoke dengan lirik yang diterjemahkan ke {language}",
+    "translatedLyricsPreviewError": "Tidak dapat memuat pratinjau.",
+    "translatedLyricsPreviewLoading": "Merender pratinjau...",
+    "translatedLyricsToggle": "Tambahkan lirik terjemahan",
+    "translatedLyricsToggleHint": "Tampilkan terjemahan AI untuk setiap baris dengan teks yang lebih kecil di bawah lirik. Sangat cocok untuk belajar bahasa.",
+    "translatedLyricsPreviewRetry": "Coba lagi"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",

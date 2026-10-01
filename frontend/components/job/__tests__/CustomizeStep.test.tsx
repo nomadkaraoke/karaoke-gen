@@ -1,5 +1,12 @@
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { CustomizeStep } from "../steps/CustomizeStep"
+import { api } from "@/lib/api"
+
+jest.mock("@/lib/api", () => ({
+  api: { getTranslationPreview: jest.fn() },
+}))
+
+const mockGetTranslationPreview = api.getTranslationPreview as jest.Mock
 
 // Mock canvas-based components — they require browser APIs not available in jsdom
 jest.mock("../TitleCardPreview", () => ({
@@ -61,6 +68,10 @@ const defaultProps = {
   onIntroBackgroundChange: jest.fn(),
   colorOverrides: {},
   onColorOverridesChange: jest.fn(),
+  reviewMode: "auto" as const,
+  onReviewModeChange: jest.fn(),
+  backingPreference: "auto" as const,
+  onBackingPreferenceChange: jest.fn(),
   onConfirm: jest.fn(),
   onBack: jest.fn(),
   isSubmitting: false,
@@ -214,5 +225,134 @@ describe("CustomizeStep", () => {
 
     const createBtn = screen.getByText("Creating...").closest("button")
     expect(createBtn).toBeDisabled()
+  })
+})
+
+describe("CustomizeStep — translated lyrics", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    global.URL.createObjectURL = jest.fn(() => "blob:mock")
+    global.URL.revokeObjectURL = jest.fn()
+    mockGetTranslationPreview.mockImplementation(async (lang: string) => ({ image: `data:image/jpeg;base64,${lang}` }))
+  })
+
+  it("hides the option when no change handler is provided", () => {
+    render(<CustomizeStep {...defaultProps} />)
+    expect(screen.queryByText("Add translated lyrics")).not.toBeInTheDocument()
+  })
+
+  it.each([false, true])("is off by default with no language select or preview (isPrivate=%s)", (isPrivate) => {
+    render(
+      <CustomizeStep {...defaultProps} isPrivate={isPrivate}
+        translationLanguage={null} onTranslationLanguageChange={jest.fn()} />
+    )
+    const toggle = screen.getByRole("switch", { name: "Add translated lyrics" })
+    expect(toggle).toHaveAttribute("aria-checked", "false")
+    expect(screen.queryByLabelText("Translate lyrics into")).not.toBeInTheDocument()
+    expect(mockGetTranslationPreview).not.toHaveBeenCalled()
+  })
+
+  it("turning the toggle on selects the UI locale", () => {
+    const onChange = jest.fn()
+    render(<CustomizeStep {...defaultProps} translationLanguage={null} onTranslationLanguageChange={onChange} />)
+    fireEvent.click(screen.getByRole("switch", { name: "Add translated lyrics" }))
+    // jest.setup mocks useLocale() → "en"
+    expect(onChange).toHaveBeenCalledWith("en")
+  })
+
+  it("turning the toggle off clears the language", async () => {
+    const onChange = jest.fn()
+    render(<CustomizeStep {...defaultProps} translationLanguage="es" onTranslationLanguageChange={onChange} />)
+    await screen.findByTestId("translated-lyrics-preview")
+    fireEvent.click(screen.getByRole("switch", { name: "Add translated lyrics" }))
+    expect(onChange).toHaveBeenCalledWith(null)
+  })
+
+  it("when on, shows a language select with all 33 languages, a hint and the preview", async () => {
+    render(<CustomizeStep {...defaultProps} translationLanguage="es" onTranslationLanguageChange={jest.fn()} />)
+
+    const select = screen.getByLabelText("Translate lyrics into") as HTMLSelectElement
+    expect(select.value).toBe("es")
+    expect(select.options).toHaveLength(33)
+    // Options are labelled with language names, sorted by label
+    const labels = Array.from(select.options).map((o) => o.textContent || "")
+    expect(labels).toContain("Spanish")
+    expect([...labels].sort((a, b) => a.localeCompare(b, "en"))).toEqual(labels)
+
+    expect(screen.getByText(/translates each line into Spanish/)).toBeInTheDocument()
+    expect(screen.getByTestId("translated-lyrics-preview-loading")).toBeInTheDocument()
+
+    const img = await screen.findByTestId("translated-lyrics-preview")
+    expect(img).toHaveAttribute("src", "data:image/jpeg;base64,es")
+    expect(mockGetTranslationPreview).toHaveBeenCalledWith("es")
+  })
+
+  it("changing the language calls onChange and refetches the preview, caching per language", async () => {
+    const onChange = jest.fn()
+    const { rerender } = render(
+      <CustomizeStep {...defaultProps} translationLanguage="es" onTranslationLanguageChange={onChange} />
+    )
+    await screen.findByTestId("translated-lyrics-preview")
+
+    fireEvent.change(screen.getByLabelText("Translate lyrics into"), { target: { value: "fr" } })
+    expect(onChange).toHaveBeenCalledWith("fr")
+
+    rerender(<CustomizeStep {...defaultProps} translationLanguage="fr" onTranslationLanguageChange={onChange} />)
+    await waitFor(() =>
+      expect(screen.getByTestId("translated-lyrics-preview")).toHaveAttribute("src", "data:image/jpeg;base64,fr")
+    )
+    expect(mockGetTranslationPreview).toHaveBeenCalledWith("fr")
+
+    // Switching back uses the cached preview — no second request for "es"
+    rerender(<CustomizeStep {...defaultProps} translationLanguage="es" onTranslationLanguageChange={onChange} />)
+    expect(screen.getByTestId("translated-lyrics-preview")).toHaveAttribute("src", "data:image/jpeg;base64,es")
+    expect(mockGetTranslationPreview.mock.calls.filter(([l]) => l === "es")).toHaveLength(1)
+  })
+
+  it("ignores a stale preview response for a previously selected language", async () => {
+    let resolveEs: (v: { image: string }) => void = () => {}
+    mockGetTranslationPreview.mockImplementation((lang: string) =>
+      lang === "es"
+        ? new Promise((resolve) => { resolveEs = resolve })
+        : Promise.resolve({ image: `data:image/jpeg;base64,${lang}` })
+    )
+    const { rerender } = render(
+      <CustomizeStep {...defaultProps} translationLanguage="es" onTranslationLanguageChange={jest.fn()} />
+    )
+    rerender(<CustomizeStep {...defaultProps} translationLanguage="de" onTranslationLanguageChange={jest.fn()} />)
+    await waitFor(() =>
+      expect(screen.getByTestId("translated-lyrics-preview")).toHaveAttribute("src", "data:image/jpeg;base64,de")
+    )
+
+    await act(async () => { resolveEs({ image: "data:image/jpeg;base64,es" }) })
+    expect(screen.getByTestId("translated-lyrics-preview")).toHaveAttribute("src", "data:image/jpeg;base64,de")
+  })
+
+  it("shows a graceful error when the preview fails", async () => {
+    mockGetTranslationPreview.mockRejectedValue(new Error("boom"))
+    render(<CustomizeStep {...defaultProps} translationLanguage="ja" onTranslationLanguageChange={jest.fn()} />)
+    expect(await screen.findByTestId("translated-lyrics-preview-error")).toHaveTextContent("Couldn't load the preview")
+    expect(screen.queryByTestId("translated-lyrics-preview")).not.toBeInTheDocument()
+  })
+
+  it("retries a failed preview", async () => {
+    mockGetTranslationPreview.mockRejectedValueOnce(new Error("boom"))
+    mockGetTranslationPreview.mockResolvedValueOnce({ image: "data:image/jpeg;base64,ja" })
+    render(<CustomizeStep {...defaultProps} translationLanguage="ja" onTranslationLanguageChange={jest.fn()} />)
+    fireEvent.click(await screen.findByTestId("translated-lyrics-preview-retry"))
+    await waitFor(() =>
+      expect(screen.getByTestId("translated-lyrics-preview")).toHaveAttribute("src", "data:image/jpeg;base64,ja")
+    )
+    expect(mockGetTranslationPreview).toHaveBeenCalledTimes(2)
+  })
+
+  it("disables the toggle and select while submitting", async () => {
+    render(
+      <CustomizeStep {...defaultProps} isSubmitting={true}
+        translationLanguage="es" onTranslationLanguageChange={jest.fn()} />
+    )
+    await screen.findByTestId("translated-lyrics-preview")
+    expect(screen.getByRole("switch", { name: "Add translated lyrics" })).toBeDisabled()
+    expect(screen.getByLabelText("Translate lyrics into")).toBeDisabled()
   })
 })

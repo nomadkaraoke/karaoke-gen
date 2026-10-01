@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "{name} ({size} MB) in uso come base strumentale",
     "ownInstrumentalTitle": "La tua base strumentale (opzionale)",
     "submitTrack": "Invia traccia",
-    "ownInstrumentalRemove": "Rimuovi"
+    "ownInstrumentalRemove": "Rimuovi",
+    "translatedLyricsHint": "Dopo la revisione del testo, l'IA traduce ogni riga in {language} e la mostra in caratteri più piccoli sotto il testo nel tuo video. Le traduzioni non possono essere modificate.",
+    "translatedLyricsLanguageLabel": "Traduci il testo in",
+    "translatedLyricsPreviewAlt": "Esempio di fotogramma di un video karaoke con il testo tradotto in {language}",
+    "translatedLyricsPreviewError": "Impossibile caricare l'anteprima.",
+    "translatedLyricsPreviewLoading": "Rendering dell'anteprima...",
+    "translatedLyricsToggle": "Aggiungi testo tradotto",
+    "translatedLyricsToggleHint": "Mostra una traduzione IA di ogni riga in caratteri più piccoli sotto il testo. Ottimo per imparare una lingua.",
+    "translatedLyricsPreviewRetry": "Riprova"
   },
   "jobStatus": {
     "settingUp": "Configurazione",

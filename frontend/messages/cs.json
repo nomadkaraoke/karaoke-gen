@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Jako instrumentální stopa se použije {name} ({size} MB)",
     "ownInstrumentalTitle": "Vlastní instrumentální stopa (volitelné)",
     "submitTrack": "Odeslat stopu",
-    "ownInstrumentalRemove": "Odstranit"
+    "ownInstrumentalRemove": "Odstranit",
+    "translatedLyricsHint": "Po kontrole textu AI přeloží každý řádek do {language} a zobrazí ho menším písmem pod textem ve tvém videu. Překlady nelze upravovat.",
+    "translatedLyricsLanguageLabel": "Přeložit text písně do",
+    "translatedLyricsPreviewAlt": "Ukázkový snímek karaoke videa s textem přeloženým do {language}",
+    "translatedLyricsPreviewError": "Nepodařilo se načíst náhled.",
+    "translatedLyricsPreviewLoading": "Generování náhledu...",
+    "translatedLyricsToggle": "Přidat přeložený text",
+    "translatedLyricsToggleHint": "Zobrazí AI překlad každého řádku menším písmem pod textem písně. Skvělé pro učení cizích jazyků.",
+    "translatedLyricsPreviewRetry": "Zkusit znovu"
   },
   "jobStatus": {
     "settingUp": "Nastavování",

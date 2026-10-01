@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Kao instrumental koristi se {name} ({size} MB)",
     "ownInstrumentalTitle": "Tvoj vlastiti instrumental (neobavezno)",
     "submitTrack": "Pošalji pjesmu",
-    "ownInstrumentalRemove": "Ukloni"
+    "ownInstrumentalRemove": "Ukloni",
+    "translatedLyricsHint": "Nakon pregleda teksta pjesme, AI prevodi svaki redak na {language} i prikazuje ga manjim slovima ispod teksta pjesme u tvom videu. Prijevodi se ne mogu uređivati.",
+    "translatedLyricsLanguageLabel": "Prevedi tekst pjesme na",
+    "translatedLyricsPreviewAlt": "Primjer kadra karaoke videa s tekstom prevedenim na {language}",
+    "translatedLyricsPreviewError": "Nije uspjelo učitavanje pretpregleda.",
+    "translatedLyricsPreviewLoading": "Generiranje pretpregleda...",
+    "translatedLyricsToggle": "Dodaj prevedeni tekst pjesme",
+    "translatedLyricsToggleHint": "Prikaži AI prijevod svakog retka manjim slovima ispod teksta pjesme. Odlično za učenje jezika.",
+    "translatedLyricsPreviewRetry": "Pokušaj ponovno"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",

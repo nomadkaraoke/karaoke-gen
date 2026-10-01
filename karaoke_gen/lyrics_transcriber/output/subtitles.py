@@ -1,3 +1,4 @@
+import copy
 import os
 import logging
 from typing import List, Optional, Tuple, Union
@@ -12,7 +13,7 @@ from karaoke_gen.lyrics_transcriber.output.ass.style import Style
 from karaoke_gen.lyrics_transcriber.output.ass.constants import ALIGN_TOP_CENTER
 from karaoke_gen.lyrics_transcriber.output.ass import LyricsScreen
 from karaoke_gen.lyrics_transcriber.output.ass.section_detector import SectionDetector
-from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig
+from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig, translation_layout
 
 
 class SubtitlesGenerator:
@@ -139,12 +140,18 @@ class SubtitlesGenerator:
             self.logger.debug(f"Processing {len(segments)} segments")
             song_duration = self._get_audio_duration(audio_filepath, segments)
 
-            screens = self._create_screens(segments, song_duration)
-            self.logger.debug(f"Created {len(screens)} initial screens")
+            base_config = self.config
+            if any(seg.translation for seg in segments):
+                self.config = self._translation_config(base_config)
+            try:
+                screens = self._create_screens(segments, song_duration)
+                self.logger.debug(f"Created {len(screens)} initial screens")
 
-            lyric_subtitles_ass = self._create_styled_subtitles(
-                screens, self.video_resolution, self.font_size, segments=segments
-            )
+                lyric_subtitles_ass = self._create_styled_subtitles(
+                    screens, self.video_resolution, self.font_size, segments=segments
+                )
+            finally:
+                self.config = base_config
             self.logger.debug("Created styled subtitles")
 
             lyric_subtitles_ass.write(output_path)
@@ -154,6 +161,38 @@ class SubtitlesGenerator:
         except Exception as e:
             self.logger.error(f"Failed to generate ASS file: {str(e)}", exc_info=True)
             raise
+
+    def _translation_config(self, base: ScreenConfig) -> ScreenConfig:
+        """Copy of ``base`` with taller line slots that fit a translation row under each line."""
+        layout = translation_layout(self.font_size, base.line_height, self.styles.get("karaoke", {}))
+        config = copy.copy(base)
+        config.line_height = layout.slot_height
+        config.lyric_line_height = layout.lyric_line_height
+        config.max_visible_lines = min(base.max_visible_lines, layout.max_visible_lines)
+        config.translation_font_size = layout.translation_font_size
+        config.translation_gap = layout.gap
+        config.translation_max_rows = layout.max_rows
+        self.logger.info(
+            f"Translated lyrics: {config.max_visible_lines} lines/screen, slot {layout.slot_height}px, "
+            f"translation font {layout.translation_font_size}px x{layout.max_rows} rows"
+        )
+        return config
+
+    def _build_translation_style(self, primary: Style, karaoke_styles: dict) -> Style:
+        """Static style for translation rows: the unsung lyric colour at a smaller size."""
+        style = copy.copy(primary)
+        style.Name = "Karaoke.Translation"
+        style.Fontsize = self.config.translation_font_size
+        color = karaoke_styles.get("translation_color")
+        if color:
+            style.PrimaryColour = tuple(int(x.strip()) for x in str(color).split(","))
+        else:
+            style.PrimaryColour = primary.SecondaryColour  # unsung lyric colour
+        ratio = self.config.translation_font_size / max(1, self.font_size)
+        if primary.Outline:
+            style.Outline = max(1, int(round(primary.Outline * ratio)))
+        style.Alignment = ALIGN_TOP_CENTER
+        return style
 
     def _create_screens(self, segments: List[LyricsSegment], song_duration: float) -> List[LyricsScreen]:
         """Create screens from segments with detailed logging."""
@@ -183,6 +222,7 @@ class SubtitlesGenerator:
                     start_time=max(0, seg.start_time + offset_seconds),
                     end_time=seg.end_time + offset_seconds,
                     singer=seg.singer,  # Preserve segment-level singer
+                    translation=seg.translation,
                 )
                 for seg in segments
             ]
@@ -206,7 +246,8 @@ class SubtitlesGenerator:
     def _create_section_screens(self, segments: List[LyricsSegment], song_duration: float) -> List[SectionScreen]:
         """Create section screens using SectionDetector."""
         section_detector = SectionDetector(logger=self.logger)
-        return section_detector.process_segments(segments, self.video_resolution, self.config.line_height, song_duration)
+        # Lyric line height, not the taller translated-lyrics slot, so section cards don't move
+        return section_detector.process_segments(segments, self.video_resolution, self.config.lyric_line_height, song_duration)
 
     def _get_instrumental_times(self, section_screens: List[SectionScreen]) -> List[Tuple[float, float]]:
         """Extract instrumental section time boundaries."""
@@ -353,6 +394,11 @@ class SubtitlesGenerator:
         if not solo:
             name_to_singer = {"Karaoke.Singer1": 1, "Karaoke.Singer2": 2, "Karaoke.Both": 0}
             styles_by_singer = {name_to_singer[s.Name]: s for s in style_list}
+
+        if self.config.translation_font_size:
+            translation_style = self._build_translation_style(style_list[0], karaoke_styles)
+            a.add_style(translation_style)
+            self.config.translation_style = translation_style
 
         a.events_format = ["Layer", "Style", "Start", "End", "MarginV", "Text"]
         # Primary (fallback) style is the first one (singer 1 for duet, ass_name for solo)

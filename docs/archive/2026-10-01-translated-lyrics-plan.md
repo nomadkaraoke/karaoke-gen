@@ -1,0 +1,90 @@
+# Translated lyrics beneath the karaoke lyrics (2026-10-01)
+
+## Goal
+> a karaoke-gen feature to produce karaoke videos with lyrics translations rendered in smaller
+> text below the primary synced lyrics - so eg. language learners can easily sing karaoke of
+> some cool songs in a language which isn't their primary language, while learning the meanings
+> of the lyrics at the same time rather than just blindly repeating the sounds
+
+Decisions (Andrew, 2026-10-01): every job, a job-submission option (free for now; may cost
+credits later); a toggle with a language picker that shows a preview of the final look; no
+editing; translate the lyrics **post-review** so the corrected text is translated. Mixed
+directions must work (e.g. a Hebrew song with English translations). 3 lyric lines per screen
+when translating. Landscape + portrait videos.
+
+## Design
+
+**Data.** `Job.translation_language` (one of the 33 UI locale codes, `None` = off). Every
+creation route accepts `translation_language`; `JobCreate` normalizes it (unsupported → off).
+Admin PATCH can set/clear it.
+
+**When.** `render_video_worker` calls `prepare_job_translations` right after the job enters
+RENDERING_VIDEO (so retries see it as rendering), before the render itself (≤ 2 × 90s attempts): it
+loads the final segments (corrections.json + corrections_updated.json, exactly what renders),
+translates every line in one Gemini call (`backend/services/lyrics_translation.py`,
+`LYRICS_TRANSLATION_MODEL`, default gemini-3.8-flash via Vertex), and writes
+`jobs/{id}/lyrics/translations.json` (`{language, language_name, model, lines: [{segment_id,
+text, translation}]}`). Identical requests hit a GCS cache (`lyrics-translation-cache/`), so a
+theme re-render or admin re-render costs nothing. Status goes to `state_data.lyrics_translation`
+(`translated` / `same_language` / `failed`). A failure **never blocks the render**: it's logged
+as an error (error monitor) and the video renders without translations (admin can re-render).
+If most lines come back unchanged the song is already in that language → no row. A stale file is
+deleted whenever a render has no translations (the encoder reads it for the portrait video).
+
+**Render.** `LyricsSegment.translation` (optional, round-trips through to/from_dict).
+`karaoke_gen/lyrics_transcriber/output/translations.py` applies the file by segment id (text
+fallback). The GCE render request gets `translations_gcs_path`; the portrait render reads
+`lyrics/translations.json` from the job download. The review preview video does not show
+translations (they don't exist until after review).
+
+- `SubtitlesGenerator.generate_ass`: if any segment has a translation, it uses a copy of the
+  ScreenConfig with taller slots (`ass/config.py:translation_layout`): lyric line + gap
+  (0.12×font) + `translation_max_rows` × 1.15 × translation font (0.5×font), and
+  `max_visible_lines = min(theme, 3)`. Positions/timing math is unchanged (it only uses
+  `line_height`). Without translations the output is byte-identical to before.
+- Style `Karaoke.Translation`: the lyric style at the smaller size, in the **unsung** colour,
+  outline scaled; `Encoding=-1` inherited, so libass picks paragraph direction per event.
+- `LyricsLine._create_translation_event`: one static Dialogue (no `\k`), same start/end/fade as
+  the line, at `y + lyric_line_height + gap`. Text is sanitized (no `{}`/`\`), case-transformed
+  like the lyric, wrapped to `translation_max_rows` (default 1), then uniformly scaled
+  (`\fscx\fscy`) to fit 92% of the width.
+- **RTL/LTR mix:** the translation is its own event without the lyric's RTL fill tags, so a
+  Hebrew line keeps its right-to-left highlight while an English translation beneath lays out
+  left-to-right (and vice versa). Covered by pixel render tests.
+- **Split lines:** `SegmentResizer` splits long lines into pieces shown together; the
+  translation is shared across the pieces in proportion to their width
+  (`split_text_proportionally`, word boundaries; CJK/Thai between grapheme clusters, so a Thai
+  tone mark never starts a piece), so no piece has an empty row. Trade-off (accepted): the split
+  is by length, not meaning, so for languages with very different word order a fragment can sit
+  under the "wrong" half, and the pieces can straddle a screen change. Reading both rows in order
+  still gives the full translation. Portrait orphan merges concatenate translations; the portrait top padding is
+  recomputed for the taller block.
+- Section cards (INSTRUMENTAL) keep the lyric line height, so they don't move. Shrink-to-fit
+  estimates width from the character count when the style font file is missing.
+- Theme keys (optional, `karaoke` block): `translation_font_size` / `translation_font_ratio`,
+  `translation_color`, `translation_max_rows`, `translation_max_visible_lines`.
+
+**Preview.** `GET /api/themes/translation-preview?language=xx` → `{image}` (JPEG data URL):
+the default theme's real karaoke frame (theme_preview_service renderer) with sample lyrics and
+committed sample translations (`backend/services/translation_preview_samples.py`, generated by
+`backend/scripts/generate_translation_preview_samples.py`; English target uses a Spanish
+sample). No LLM call at preview time; in-memory cache per (theme, language).
+
+**Frontend.** CustomizeStep: "Add translated lyrics" toggle → language select (default UI
+locale, names via `Intl.DisplayNames`) + preview image + hint; GuidedJobFlow passes
+`translation_language` to job creation. Admin job edit field.
+
+## Tests
+- `tests/unit/lyrics_transcriber/output/test_translated_lyrics.py` — data model, resizer
+  sharing, ASS layout/style/positions, sanitizing, scale-to-fit, mixed RTL/LTR, portrait.
+- `tests/unit/lyrics_transcriber/output/test_translated_lyrics_render.py` — libass pixel
+  tests (Latin, Hebrew, Arabic, CJK translations; Hebrew/Arabic lyrics with English/Arabic
+  translations; RTL highlight unaffected). Run in Linux: `scripts/run-render-tests-linux.sh`.
+- `backend/tests/test_lyrics_translation.py` — service (retry, cache, count validation),
+  job preparation (reviewed text, same-language, failure, stale cleanup), model, preview route.
+- `backend/tests/test_render_video_worker_translations.py`, `tests/unit/test_gce_render_video_endpoint.py`.
+
+## Follow-ups
+- Credits pricing for translated jobs (LLM cost is ~1 flash call per job).
+- Optional: show translations in the review preview video; editable translations.
+- CDG/TXT outputs don't include translations.

@@ -98,6 +98,8 @@ class JobUpdateRequest(BaseModel):
     review_mode: Optional[str] = None
     # Backing-vocals preference: "auto" | "clean" | "review"
     backing_preference: Optional[str] = None
+    # Translated lyrics language code ("" turns it off)
+    translation_language: Optional[str] = None
 
     # Editable boolean fields
     enable_cdg: Optional[bool] = None
@@ -136,6 +138,7 @@ EDITABLE_JOB_FIELDS = {
     "is_private",
     "review_mode",
     "backing_preference",
+    "translation_language",
     # Exempts a job from the stale-review auto-expiry (48h cancel+refund) —
     # the stale_review_processor skips made_for_you jobs. Used for admin-driven
     # batches (e.g. KaraokeHunt outreach) that must wait at review indefinitely.
@@ -1020,6 +1023,16 @@ async def update_job(
             status_code=400,
             detail='review_mode must be "auto" or "always_review"',
         )
+
+    # Translated lyrics: "" / null turns it off; otherwise a supported language code
+    if "translation_language" in updates:
+        from backend.services.lyrics_translation import normalize_language
+
+        raw = updates["translation_language"]
+        code = normalize_language(raw) if raw else None
+        if raw and code is None:
+            raise HTTPException(status_code=400, detail=f"Unsupported translation_language: {raw}")
+        updates["translation_language"] = code
 
     # backing_preference likewise gates the instrumental decision — reject typos.
     if "backing_preference" in updates and updates["backing_preference"] not in (

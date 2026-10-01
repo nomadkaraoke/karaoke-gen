@@ -117,6 +117,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
   // Full-auto review (workstream C): up-front autonomy + backing-vocals preference.
   const [reviewMode, setReviewMode] = useState<ReviewMode>("auto")
   const [backingPreference, setBackingPreference] = useState<BackingPreference>("auto")
+  // Translated lyrics: UI locale code to translate each lyric line into, or null = off.
+  const [translationLanguage, setTranslationLanguage] = useState<string | null>(null)
 
   // Custom style state
   const [karaokeBackground, setKaraokeBackground] = useState<File | null>(null)
@@ -188,6 +190,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           requires_audio_edit: requiresAudioEdit || undefined,
           review_mode: reviewMode,
           backing_preference: backingPreference,
+          translation_language: translationLanguage ?? undefined,
         })
         createdJobId = response.job_id
       } else if (audioSource === "upload" && pendingFile) {
@@ -199,6 +202,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
             requires_audio_edit: requiresAudioEdit || undefined,
             review_mode: reviewMode,
             backing_preference: backingPreference,
+            translation_language: translationLanguage ?? undefined,
             instrumentalFile: isPrivate && !requiresAudioEdit ? instrumentalFile : null,
           },
           report,
@@ -217,6 +221,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           requires_audio_edit: requiresAudioEdit || undefined,
           review_mode: reviewMode,
           backing_preference: backingPreference,
+          translation_language: translationLanguage ?? undefined,
         })
         createdJobId = response.job_id
       } else {
@@ -278,6 +283,7 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
     setRequiresAudioEdit(false)
     setReviewMode("auto")
     setBackingPreference("auto")
+    setTranslationLanguage(null)
     setKaraokeBackground(null)
     setIntroBackground(null)
     setColorOverrides({})
@@ -582,6 +588,8 @@ export function GuidedJobFlow({ onJobCreated }: GuidedJobFlowProps) {
           onReviewModeChange={setReviewMode}
           backingPreference={backingPreference}
           onBackingPreferenceChange={setBackingPreference}
+          translationLanguage={translationLanguage}
+          onTranslationLanguageChange={setTranslationLanguage}
           onConfirm={handleConfirm}
           onBack={() => setStep(3)}
           isSubmitting={isSubmitting}

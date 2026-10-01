@@ -11,6 +11,11 @@ from karaoke_gen.lyrics_transcriber.output.ass.event import Event
 from karaoke_gen.lyrics_transcriber.output.ass.style import Style
 from karaoke_gen.lyrics_transcriber.output.ass.config import LineState, ScreenConfig
 from karaoke_gen.lyrics_transcriber.output.ass.text_direction import is_rtl_text, rtl_karaoke_fill_tags
+from karaoke_gen.lyrics_transcriber.output.segment_resizer import (
+    display_width,
+    grapheme_clusters,
+    is_unspaced_script,
+)
 from karaoke_gen.utils.font_fallback import ass_font_scale, find_font_covering, missing_codepoints
 
 
@@ -282,7 +287,96 @@ class LyricsLine:
         main_event.Text = text
         events.append(main_event)
 
+        translation_event = self._create_translation_event(state, config)
+        if translation_event:
+            events.append(translation_event)
+
         return events
+
+    # Fraction of the frame width a translation may use before it's wrapped / scaled
+    TRANSLATION_MAX_WIDTH_FRACTION = 0.92
+
+    # Average glyph advance / font size, used when the style font file isn't available
+    ESTIMATED_CHAR_WIDTH_RATIO = 0.6
+
+    def _translation_width(self, text: str, style: Style) -> float:
+        """Rendered width of a translation row; estimated from the character count
+        when the font file is missing (PIL's default font would under-measure)."""
+        if style.Fontpath and os.path.exists(style.Fontpath):
+            return self._measure_text(text, style)[0]
+        return display_width(text) * style.Fontsize * self.ESTIMATED_CHAR_WIDTH_RATIO
+
+    @staticmethod
+    def _clean_translation(text: str) -> str:
+        """Plain text safe for an ASS Dialogue: no override blocks, escapes or newlines."""
+        cleaned = text.replace("{", "(").replace("}", ")").replace("\\", " ")
+        return " ".join(cleaned.split())
+
+    @staticmethod
+    def _split_rows(text: str, rows: int) -> List[str]:
+        """Split ``text`` into ``rows`` lines of similar length at word boundaries.
+
+        Unspaced scripts (CJK, Thai) split between characters.
+        """
+        if rows <= 1:
+            return [text]
+        tokens = text.split(" ")
+        joiner = " "
+        if len(tokens) < rows and is_unspaced_script(text):
+            tokens, joiner = grapheme_clusters(text), ""
+        if len(tokens) < rows:
+            return [text]
+        out: List[str] = []
+        remaining = tokens
+        for r in range(rows, 1, -1):
+            total = len(joiner.join(remaining))
+            target = total / r
+            best_i, best_diff = 1, None
+            for i in range(1, len(remaining) - r + 2):
+                diff = abs(len(joiner.join(remaining[:i])) - target)
+                if best_diff is None or diff < best_diff:
+                    best_i, best_diff = i, diff
+            out.append(joiner.join(remaining[:best_i]))
+            remaining = remaining[best_i:]
+        out.append(joiner.join(remaining))
+        return out
+
+    def _create_translation_event(self, state: LineState, config: ScreenConfig) -> Optional[Event]:
+        """Static (un-highlighted) translation row(s) beneath the lyric line."""
+        style = getattr(config, "translation_style", None)
+        if style is None or not self.segment.translation:
+            return None
+        text = self._clean_translation(self._apply_case_transform(self.segment.translation))
+        if not text:
+            return None
+
+        max_width = config.video_width * self.TRANSLATION_MAX_WIDTH_FRACTION
+        rows = [text]
+        widest = self._translation_width(text, style)
+        if widest > max_width and config.translation_max_rows > 1:
+            rows = self._split_rows(text, config.translation_max_rows)
+            widest = max(self._translation_width(row, style) for row in rows)
+        # Still too wide: shrink to fit rather than overflow the frame edges
+        scale = 100
+        if widest > max_width:
+            scale = max(1, int(max_width / widest * 100))
+
+        y = state.y_position + config.lyric_line_height + config.translation_gap
+        tags = (
+            f"{{\\an8}}{{\\pos({config.video_width // 2},{y})}}"
+            f"{{\\fad({config.fade_in_ms},{config.fade_out_ms})}}"
+        )
+        if scale < 100:
+            tags += f"{{\\fscx{scale}\\fscy{scale}}}"
+
+        event = Event()
+        event.type = "Dialogue"
+        event.Layer = 0
+        event.Style = style
+        event.Start = state.timing.fade_in_time
+        event.End = state.timing.end_time
+        event.Text = tags + "\\N".join(rows)
+        return event
 
     def _apply_case_transform(self, text: str) -> str:
         """Apply case transformation to text based on screen config setting."""

@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Χρήση του {name} ({size} MB) ως instrumental",
     "ownInstrumentalTitle": "Το δικό σου instrumental (προαιρετικό)",
     "submitTrack": "Υποβολή κομματιού",
-    "ownInstrumentalRemove": "Αφαίρεση"
+    "ownInstrumentalRemove": "Αφαίρεση",
+    "translatedLyricsHint": "Αφού ελεγχθούν οι στίχοι, το AI μεταφράζει κάθε γραμμή στα {language} και την εμφανίζει με μικρότερα γράμματα κάτω από τους στίχους στο βίντεό σου. Δεν είναι δυνατή η επεξεργασία των μεταφράσεων.",
+    "translatedLyricsLanguageLabel": "Μετάφραση στίχων στα",
+    "translatedLyricsPreviewAlt": "Παράδειγμα καρέ βίντεο καραόκε με στίχους μεταφρασμένους στα {language}",
+    "translatedLyricsPreviewError": "Δεν ήταν δυνατή η φόρτωση της προεπισκόπησης.",
+    "translatedLyricsPreviewLoading": "Απόδοση προεπισκόπησης...",
+    "translatedLyricsToggle": "Προσθήκη μεταφρασμένων στίχων",
+    "translatedLyricsToggleHint": "Εμφάνισε μια μετάφραση μέσω AI για κάθε γραμμή με μικρότερα γράμματα κάτω από τους στίχους. Ιδανικό για την εκμάθηση μιας γλώσσας.",
+    "translatedLyricsPreviewRetry": "Δοκίμασε ξανά"
   },
   "jobStatus": {
     "settingUp": "Ρύθμιση",

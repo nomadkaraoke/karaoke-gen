@@ -1336,6 +1336,8 @@ function AdminJobsPageContent() {
                       { key: "theme_id", label: "Theme", value: selectedJob.theme_id || "default" },
                       { key: "brand_prefix", label: "Brand Prefix", value: selectedJob.brand_prefix },
                       { key: "customer_email", label: "Customer Email", value: selectedJob.customer_email },
+                      // Language code (e.g. "es"); clear to turn translated lyrics off
+                      { key: "translation_language", label: "Translation", value: selectedJob.translation_language || "" },
                     ].map(({ key, label, value }) => (
                       <div key={key} className="flex items-center gap-2 group">
                         <span className="text-[10px] font-medium text-muted-foreground uppercase w-20 shrink-0">{label}</span>

@@ -155,6 +155,8 @@ class RenderVideoRequest(BaseModel):
     # Multi-singer / duet rendering. When True, OutputConfig is_duet is set
     # so the SubtitlesGenerator and CDGGenerator emit per-singer styles.
     is_duet: bool = False
+    # Translated lyrics (lyrics/translations.json) drawn beneath each line.
+    translations_gcs_path: Optional[str] = None
 
 
 class JobStatus(BaseModel):
@@ -451,6 +453,17 @@ def run_render_video(job_id: str, work_dir: Path, request: "RenderVideoRequest")
                 correction_result = base_result
         else:
             correction_result = base_result
+
+        # 2b. Translated lyrics (shown beneath each line)
+        if request.translations_gcs_path:
+            from karaoke_gen.lyrics_transcriber.output.translations import load_and_apply_translations
+
+            translations_path = work_dir / "translations.json"
+            try:
+                download_single_file_from_gcs(request.translations_gcs_path, translations_path)
+                load_and_apply_translations(correction_result.corrected_segments, str(translations_path))
+            except Exception as e:  # translations are best-effort: never fail the render
+                logger.error(f"[job:{job_id}] Translated lyrics unavailable, rendering without: {e}")
 
         jobs[job_id]["progress"] = 25
 
@@ -964,6 +977,13 @@ def render_portrait_into_outputs(
             return None
         with open(corrections_file, "r", encoding="utf-8") as f:
             correction_result = CorrectionResult.from_dict(json.load(f))
+
+        # Translated lyrics, if the job has them (downloaded with the job's lyrics/)
+        translations_file = work_dir / "lyrics" / "translations.json"
+        if translations_file.is_file():
+            from karaoke_gen.lyrics_transcriber.output.translations import load_and_apply_translations
+
+            load_and_apply_translations(correction_result.corrected_segments, str(translations_file))
 
         # Theme styles (optional — renderer fills defaults).
         styles = {}

@@ -25,6 +25,7 @@ Observability:
 - Logs include [job:ID] prefix for easy filtering in Cloud Logging
 - Worker start/end timing logged with WORKER_START/WORKER_END markers
 """
+import asyncio
 import logging
 import os
 import tempfile
@@ -39,6 +40,8 @@ from backend.exceptions import InvalidStateTransitionError
 from backend.utils.audio_filenames import local_audio_filename
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
+from backend.services.lyrics_translation import prepare_job_translations
+from karaoke_gen.lyrics_transcriber.output.translations import apply_translations
 from backend.services.job_health_service import validate_worker_can_run
 from backend.workers.supersede import capture_generation, check_superseded, encoding_worker_job_id
 from backend.config import get_settings
@@ -195,6 +198,20 @@ async def process_render_video(job_id: str) -> bool:
                 encoding_service = get_encoding_service()
                 use_gce = encoding_service.is_enabled
 
+                async def prepare_translations() -> Optional[str]:
+                    """Translate the final (reviewed) lyrics once, after the job is in
+                    RENDERING_VIDEO. Never blocks the render (failure = no translations)."""
+                    try:
+                        path = await asyncio.to_thread(
+                            prepare_job_translations, job_id, job, storage, job_manager
+                        )
+                    except Exception as exc:
+                        logger.error(f"[job:{job_id}] Translated lyrics skipped: {exc}", exc_info=True)
+                        return None
+                    if path:
+                        job_log.info(f"Rendering with translated lyrics ({job.translation_language})")
+                    return path
+
                 if use_gce:
                     # ============ GCE RENDER VIDEO PATH ============
                     job_log.info("GCE encoding enabled - delegating render_video to encoding worker")
@@ -207,6 +224,7 @@ async def process_render_video(job_id: str) -> bool:
                         progress=75,
                         message="Rendering karaoke video on encoding worker"
                     )
+                    translations_gcs = await prepare_translations()
 
                     # Build render config from job metadata (no downloads needed on Cloud Run!)
                     bucket_name = settings.gcs_bucket_name
@@ -228,6 +246,9 @@ async def process_render_video(job_id: str) -> bool:
                         "video_resolution": "4k",
                         "is_duet": is_duet,
                     }
+
+                    if translations_gcs:
+                        render_config["translations_gcs_path"] = f"gs://{bucket_name}/{translations_gcs}"
 
                     if has_updated:
                         render_config["updated_corrections_gcs_path"] = f"gs://{bucket_name}/{updated_corrections_gcs}"
@@ -405,6 +426,7 @@ async def process_render_video(job_id: str) -> bool:
                         progress=75,
                         message="Rendering karaoke video with corrected lyrics"
                     )
+                    translations_gcs = await prepare_translations()
 
                     with tempfile.TemporaryDirectory() as temp_dir:
                         job_log.info(f"Created temp directory: {temp_dir}")
@@ -481,6 +503,14 @@ async def process_render_video(job_id: str) -> bool:
                         # "'<' not supported between instances of 'NoneType' and 'float'".
                         # Failing here gives the user an actionable message and never sends a
                         # broken job to the GCE encoder (which runs its own pinned wheel).
+                        if translations_gcs:
+                            try:
+                                apply_translations(
+                                    correction_result.corrected_segments, storage.download_json(translations_gcs)
+                                )
+                            except Exception as exc:
+                                job_log.error(f"Could not apply translated lyrics, rendering without: {exc}")
+
                         try:
                             validate_segment_timing(correction_result.corrected_segments)
                         except LyricsTimingError as timing_err:

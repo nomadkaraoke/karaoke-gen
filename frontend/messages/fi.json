@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Käytetään tiedostoa {name} ({size} MB) taustaraitana",
     "ownInstrumentalTitle": "Oma taustaraita (valinnainen)",
     "submitTrack": "Lähetä raita",
-    "ownInstrumentalRemove": "Poista"
+    "ownInstrumentalRemove": "Poista",
+    "translatedLyricsHint": "Kun sanoitukset on tarkistettu, tekoäly kääntää jokaisen rivin kielelle {language} ja näyttää sen pienemmällä tekstillä sanoitusten alla videossasi. Käännöksiä ei voi muokata.",
+    "translatedLyricsLanguageLabel": "Käännä sanoitukset kielelle",
+    "translatedLyricsPreviewAlt": "Esimerkkikuva karaokevideosta, jonka sanoitukset on käännetty kielelle {language}",
+    "translatedLyricsPreviewError": "Esikatselua ei voitu ladata.",
+    "translatedLyricsPreviewLoading": "Luodaan esikatselua...",
+    "translatedLyricsToggle": "Lisää käännetyt sanoitukset",
+    "translatedLyricsToggleHint": "Näytä jokaisen rivin tekoälykäännös pienemmällä tekstillä sanoitusten alla. Erinomainen kielen opetteluun.",
+    "translatedLyricsPreviewRetry": "Yritä uudelleen"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",

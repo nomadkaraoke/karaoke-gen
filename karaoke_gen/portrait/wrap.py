@@ -38,6 +38,7 @@ def _merge(a: LyricsSegment, b: LyricsSegment) -> LyricsSegment:
         start_time=min(a.start_time, b.start_time),
         end_time=max(a.end_time, b.end_time),
         singer=a.singer if a.singer == b.singer else None,
+        translation=" ".join(t for t in (a.translation, b.translation) if t) or None,
     )
 
 

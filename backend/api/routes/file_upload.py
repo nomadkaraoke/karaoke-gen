@@ -188,6 +188,7 @@ class CreateJobFromUrlRequest(BaseModel):
     # Review autonomy + backing-vocals preference (full-auto review, workstream C)
     review_mode: str = Field("auto", description="'auto' (skip review when confident) or 'always_review'")
     backing_preference: str = Field("auto", description="'auto' (retain backing where safe), 'clean', or 'review'")
+    translation_language: Optional[str] = Field(None, description="Translated lyrics language code (e.g. 'es') shown beneath each line; omit for none")
 
 
 class CreateJobFromUrlResponse(BaseModel):
@@ -250,6 +251,7 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # Review autonomy + backing-vocals preference (full-auto review, workstream C)
     review_mode: str = Field("auto", description="'auto' (skip review when confident) or 'always_review'")
     backing_preference: str = Field("auto", description="'auto' (retain backing where safe), 'clean', or 'review'")
+    translation_language: Optional[str] = Field(None, description="Translated lyrics language code (e.g. 'es') shown beneath each line; omit for none")
 
     # Non-interactive mode
     non_interactive: bool = Field(False, description="Skip interactive steps (lyrics review, instrumental selection)")
@@ -496,6 +498,7 @@ async def upload_and_create_job(
     # Review autonomy + backing-vocals preference (full-auto review, workstream C)
     review_mode: str = Form("auto", description="'auto' (skip review when confident) or 'always_review'"),
     backing_preference: str = Form("auto", description="'auto' (retain backing where safe), 'clean', or 'review'"),
+    translation_language: Optional[str] = Form(None, description="Translated lyrics language code (e.g. 'es') shown beneath each line; omit for none"),
     # Private (non-published) track mode
     is_private: bool = Form(False, description="Private track: Dropbox only (Tracks-NonPublished/NOMADNP), no YouTube/GDrive"),
     # Audio editing
@@ -727,6 +730,7 @@ async def upload_and_create_job(
             # Review autonomy + backing-vocals preference (full-auto review)
             review_mode=review_mode,
             backing_preference=backing_preference,
+            translation_language=translation_language,
             # Private (non-published) track mode
             is_private=is_private,
             # Tenant scoping
@@ -1382,6 +1386,7 @@ async def create_job_with_upload_urls(
             non_interactive=body.non_interactive,
             review_mode=body.review_mode,
             backing_preference=body.backing_preference,
+            translation_language=body.translation_language,
             is_private=effective_is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
@@ -2088,6 +2093,7 @@ async def create_job_from_url(
             non_interactive=body.non_interactive,
             review_mode=body.review_mode,
             backing_preference=body.backing_preference,
+            translation_language=body.translation_language,
             is_private=body.is_private,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",

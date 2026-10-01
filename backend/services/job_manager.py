@@ -142,6 +142,8 @@ class JobManager:
             review_mode=job_create.review_mode,
             # Backing-vocals preference ("auto"=retain-where-safe | clean | review)
             backing_preference=job_create.backing_preference,
+            # Translated lyrics beneath each line (None = off)
+            translation_language=job_create.translation_language,
             # Distribution settings
             brand_prefix=job_create.brand_prefix,
             discord_webhook_url=job_create.discord_webhook_url,

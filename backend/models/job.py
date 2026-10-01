@@ -290,6 +290,11 @@ class Job(BaseModel):
     # instrumental. Consumed by the auto-approval instrumental decision.
     backing_preference: str = "auto"
 
+    # Translated lyrics: language code (one of the UI locales, e.g. "en", "es") whose
+    # LLM translation of each reviewed line is drawn in smaller text beneath it in the
+    # karaoke videos. None = no translation row. See backend/services/lyrics_translation.py.
+    translation_language: Optional[str] = None
+
     # Multi-tenant support ("" = consumer portal, "vocalstar"/etc = tenant portal)
     tenant_id: str = ""                          # Tenant ID for white-label portal scoping
 
@@ -586,6 +591,8 @@ class JobCreate(BaseModel):
     # "auto" (default) = retain backing vocals where confidently safe; "clean" =
     # always strip backing vocals; "review" = always let a human pick the instrumental.
     backing_preference: str = "auto"
+    # Translated lyrics language (see Job.translation_language); None = off
+    translation_language: Optional[str] = None
 
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")
@@ -683,6 +690,16 @@ class JobCreate(BaseModel):
         more human oversight), so a typo can never silently skip review. The
         executor already treats any non-"auto" value as an enforcement blocker."""
         return v if v in ("auto", "always_review") else "always_review"
+
+    @validator('translation_language')
+    def _normalize_translation_language(cls, v):
+        """Supported language code; empty or unsupported values turn the feature off
+        (every creation route passes the client value straight through)."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        from backend.services.lyrics_translation import normalize_language
+
+        return normalize_language(v)
 
     @validator('backing_preference')
     def _normalize_backing_preference(cls, v):

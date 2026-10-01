@@ -393,3 +393,56 @@ class TestEmptyCorrectionsValidation:
 
         # update_correction_result_with_data should NOT have been called
         mock_update.assert_not_called()
+
+
+class TestRenderVideoTranslations:
+    """Translated lyrics: the render request carries translations.json to apply."""
+
+    def test_translations_path_defaults_to_none(self):
+        from backend.services.gce_encoding.main import RenderVideoRequest
+
+        req = RenderVideoRequest(
+            job_id="j", original_corrections_gcs_path="gs://b/c.json", audio_gcs_path="gs://b/a.flac",
+            output_gcs_prefix="gs://b/jobs/j", artist="A", title="T",
+        )
+        assert req.translations_gcs_path is None
+
+    def test_translations_downloaded_and_applied(self, tmp_path):
+        import sys as _sys
+        from backend.services.gce_encoding.main import RenderVideoRequest
+
+        helper = TestRunRenderVideo()
+        work_dir = tmp_path / "work"
+        work_dir.mkdir()
+        request = RenderVideoRequest(
+            job_id="rv-tr-001",
+            original_corrections_gcs_path="gs://bucket/jobs/t/lyrics/corrections.json",
+            audio_gcs_path="gs://bucket/jobs/t/audio.flac",
+            output_gcs_prefix="gs://bucket/jobs/t",
+            artist="A", title="T",
+            translations_gcs_path="gs://bucket/jobs/t/lyrics/translations.json",
+        )
+        translations_module = MagicMock()
+        with patch.dict(_sys.modules, {"karaoke_gen.lyrics_transcriber.output.translations": translations_module}):
+            helper._run_with_mocks("rv-tr-001", work_dir, request, helper._make_mock_outputs(tmp_path), tmp_path)
+        translations_module.load_and_apply_translations.assert_called_once()
+        assert translations_module.load_and_apply_translations.call_args[0][1] == str(work_dir / "translations.json")
+
+    def test_translation_download_failure_does_not_fail_render(self, tmp_path):
+        import sys as _sys
+        from backend.services.gce_encoding.main import RenderVideoRequest, jobs
+
+        helper = TestRunRenderVideo()
+        work_dir = tmp_path / "work"
+        work_dir.mkdir()
+        request = RenderVideoRequest(
+            job_id="rv-tr-002", original_corrections_gcs_path="gs://b/jobs/t/lyrics/corrections.json",
+            audio_gcs_path="gs://b/jobs/t/audio.flac", output_gcs_prefix="gs://b/jobs/t", artist="A", title="T",
+            translations_gcs_path="gs://b/jobs/t/lyrics/translations.json",
+        )
+        translations_module = MagicMock()
+        translations_module.load_and_apply_translations.side_effect = FileNotFoundError("gone")
+        with patch.dict(_sys.modules, {"karaoke_gen.lyrics_transcriber.output.translations": translations_module}):
+            helper._run_with_mocks("rv-tr-002", work_dir, request, helper._make_mock_outputs(tmp_path), tmp_path)
+        assert jobs["rv-tr-002"]["status"] != "failed"
+        assert jobs["rv-tr-002"]["output_files"]

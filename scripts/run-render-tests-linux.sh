@@ -13,7 +13,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 IMAGE="karaoke-gen-render-tests:1"
-TESTS="tests/unit/lyrics_transcriber/output/test_ass_render_highlight.py tests/unit/test_font_fallback_render.py"
+TESTS="tests/unit/lyrics_transcriber/output/test_ass_render_highlight.py tests/unit/lyrics_transcriber/output/test_translated_lyrics_render.py tests/unit/test_font_fallback_render.py"
 
 if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   echo "Building $IMAGE (one-off, a few minutes)..."

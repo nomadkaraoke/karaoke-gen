@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "سيُستخدم {name} ({size} ميغابايت) كمقطع موسيقي",
     "ownInstrumentalTitle": "مقطعك الموسيقي (اختياري)",
     "submitTrack": "إرسال المسار",
-    "ownInstrumentalRemove": "إزالة"
+    "ownInstrumentalRemove": "إزالة",
+    "translatedLyricsHint": "بعد مراجعة كلمات الأغنية، يتولى الذكاء الاصطناعي ترجمة كل سطر إلى {language} وعرضه بخط أصغر أسفل كلمات الأغنية في الفيديو. لا يمكن تعديل الترجمات.",
+    "translatedLyricsLanguageLabel": "ترجمة كلمات الأغنية إلى",
+    "translatedLyricsPreviewAlt": "إطار تجريبي لفيديو كاريوكي مع كلمات مترجمة إلى {language}",
+    "translatedLyricsPreviewError": "تعذر تحميل المعاينة.",
+    "translatedLyricsPreviewLoading": "جارٍ إنشاء المعاينة...",
+    "translatedLyricsToggle": "إضافة كلمات مترجمة",
+    "translatedLyricsToggleHint": "عرض ترجمة بالذكاء الاصطناعي لكل سطر بخط أصغر أسفل كلمات الأغنية. ميزة رائعة لتعلم اللغات.",
+    "translatedLyricsPreviewRetry": "حاول مرة أخرى"
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",

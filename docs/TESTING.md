@@ -224,7 +224,10 @@ sung pixels always precede unsung ones in reading order (pins word order *and* i
 fill direction), progress is monotonic and in time with the words, the lead-in lands
 outside the start edge, and libass found every glyph. `tests/unit/test_font_fallback_render.py`
 does the same for PIL-rendered title cards / portrait headers (no `.notdef` tofu, Hebrew
-title reads right-to-left).
+title reads right-to-left). `test_translated_lyrics_render.py` covers translated lyrics: the
+translation row renders beneath its line (smaller, centred, never highlighted, every glyph
+found) for Latin/Hebrew/Arabic/CJK translations and mixed directions (Hebrew/Arabic lyrics with
+English or Arabic translations), and an RTL lyric still fills right-to-left.
 
 - **CI** installs `fonts-noto-core fonts-noto-cjk` and runs with `CI=true`, where these
   tests fail instead of skipping on a missing precondition.

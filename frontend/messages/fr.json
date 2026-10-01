@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Utilisation de {name} ({size} Mo) comme instrumental",
     "ownInstrumentalTitle": "Ton propre instrumental (facultatif)",
     "submitTrack": "Soumettre le morceau",
-    "ownInstrumentalRemove": "Retirer"
+    "ownInstrumentalRemove": "Retirer",
+    "translatedLyricsHint": "Une fois les paroles vérifiées, l'IA traduit chaque ligne en {language} et l'affiche en plus petit sous les paroles dans ta vidéo. Les traductions ne peuvent pas être modifiées.",
+    "translatedLyricsLanguageLabel": "Traduire les paroles en",
+    "translatedLyricsPreviewAlt": "Exemple d'image de vidéo karaoké avec les paroles traduites en {language}",
+    "translatedLyricsPreviewError": "Impossible de charger l'aperçu.",
+    "translatedLyricsPreviewLoading": "Génération de l'aperçu...",
+    "translatedLyricsToggle": "Ajouter les paroles traduites",
+    "translatedLyricsToggleHint": "Affiche une traduction par IA de chaque ligne en plus petit sous les paroles. Idéal pour apprendre une langue.",
+    "translatedLyricsPreviewRetry": "Réessayer"
   },
   "jobStatus": {
     "settingUp": "Configuration",

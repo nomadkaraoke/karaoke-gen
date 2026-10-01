@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "使用 {name}（{size} MB）作为伴奏",
     "ownInstrumentalTitle": "自带伴奏（可选）",
     "submitTrack": "提交曲目",
-    "ownInstrumentalRemove": "移除"
+    "ownInstrumentalRemove": "移除",
+    "translatedLyricsHint": "歌词审核完成后，AI 会将每行歌词翻译为{language}，并以较小字号显示在视频中的歌词下方。翻译内容无法编辑。",
+    "translatedLyricsLanguageLabel": "将歌词翻译为",
+    "translatedLyricsPreviewAlt": "歌词已翻译为{language}的卡拉OK视频画面示例",
+    "translatedLyricsPreviewError": "无法加载预览。",
+    "translatedLyricsPreviewLoading": "正在渲染预览...",
+    "translatedLyricsToggle": "添加歌词翻译",
+    "translatedLyricsToggleHint": "在歌词下方以较小字号显示每行歌词的 AI 翻译。非常适合用来学习语言。",
+    "translatedLyricsPreviewRetry": "重试"
   },
   "jobStatus": {
     "settingUp": "设置中",

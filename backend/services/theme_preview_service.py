@@ -249,7 +249,7 @@ def render_title_card(styles: Dict, artist: str, title: str, workdir: str) -> by
     return _to_jpeg(f"{noext}.png")
 
 
-def _sample_segments(lines: List[str]):
+def _sample_segments(lines: List[str], translations: Optional[List[str]] = None):
     """Evenly-timed segments: line i starts at 2+3i s, words spread over 2.5 s.
 
     Starts < 10 s and gaps < 10 s so SectionDetector adds no intro/instrumental.
@@ -266,7 +266,14 @@ def _sample_segments(lines: List[str]):
             for j, w in enumerate(words_text)
         ]
         segments.append(
-            LyricsSegment(id=f"s{i}", text=" ".join(words_text), words=words, start_time=start, end_time=start + 2.5)
+            LyricsSegment(
+                id=f"s{i}",
+                text=" ".join(words_text),
+                words=words,
+                start_time=start,
+                end_time=start + 2.5,
+                translation=(translations[i] if translations and i < len(translations) else None) or None,
+            )
         )
     return segments
 
@@ -330,8 +337,13 @@ class _FrameRenderer:
             raise ThemePreviewError("Karaoke frame render timed out") from exc
 
 
-def render_karaoke_frame(styles: Dict, lines: List[str], workdir: str) -> bytes:
-    """One frame of the karaoke video with the first line about half sung."""
+def render_karaoke_frame(
+    styles: Dict, lines: List[str], workdir: str, translations: Optional[List[str]] = None
+) -> bytes:
+    """One frame of the karaoke video with the first line about half sung.
+
+    ``translations`` (one per line) renders the translated-lyrics layout.
+    """
     from karaoke_gen.lyrics_transcriber.output.segment_resizer import SegmentResizer
     from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
     from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
@@ -345,7 +357,7 @@ def render_karaoke_frame(styles: Dict, lines: List[str], workdir: str) -> bytes:
     font_size = karaoke.get("font_size", DEFAULT_FONT_SIZE)
     max_line_length = karaoke.get("max_line_length", DEFAULT_MAX_LINE_LENGTH)
     segments = SegmentResizer(max_line_length=max_line_length, logger=logger).resize_segments(
-        _sample_segments(lines)
+        _sample_segments(lines, translations)
     )
     subtitles = SubtitlesGenerator(
         output_dir=workdir,

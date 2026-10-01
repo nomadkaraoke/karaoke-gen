@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "Sử dụng {name} ({size} MB) làm nhạc beat",
     "ownInstrumentalTitle": "Nhạc beat của riêng bạn (không bắt buộc)",
     "submitTrack": "Gửi bản nhạc",
-    "ownInstrumentalRemove": "Xóa"
+    "ownInstrumentalRemove": "Xóa",
+    "translatedLyricsHint": "Sau khi lời bài hát được duyệt, AI sẽ dịch từng dòng sang {language} và hiển thị bằng chữ nhỏ hơn bên dưới lời bài hát trong video của bạn. Không thể chỉnh sửa bản dịch.",
+    "translatedLyricsLanguageLabel": "Dịch lời bài hát sang",
+    "translatedLyricsPreviewAlt": "Khung hình video karaoke mẫu có lời bài hát được dịch sang {language}",
+    "translatedLyricsPreviewError": "Không thể tải bản xem trước.",
+    "translatedLyricsPreviewLoading": "Đang tạo bản xem trước...",
+    "translatedLyricsToggle": "Thêm bản dịch lời bài hát",
+    "translatedLyricsToggleHint": "Hiển thị bản dịch AI của từng dòng bằng chữ nhỏ hơn bên dưới lời bài hát. Rất thích hợp để học ngoại ngữ.",
+    "translatedLyricsPreviewRetry": "Thử lại"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",

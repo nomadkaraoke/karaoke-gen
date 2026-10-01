@@ -2658,6 +2658,7 @@ class CreateFromSearchRequest(BaseModel):
     requires_audio_edit: bool = Field(False, description="Pause after download for user to edit input audio")
     review_mode: str = Field("auto", description="'auto' (skip review when confident) or 'always_review'")
     backing_preference: str = Field("auto", description="'auto' (retain backing where safe), 'clean', or 'review'")
+    translation_language: Optional[str] = Field(None, description="Translated lyrics language code (e.g. 'es') shown beneath each line; omit for none")
 
     @validator('display_artist', 'display_title')
     def strip_whitespace(cls, v):
@@ -2815,6 +2816,7 @@ async def create_job_from_search(
             is_private=body.is_private,
             review_mode=body.review_mode,
             backing_preference=body.backing_preference,
+            translation_language=body.translation_language,
             tenant_id=tenant_id,
             locale=get_full_locale_from_request(request),
         )

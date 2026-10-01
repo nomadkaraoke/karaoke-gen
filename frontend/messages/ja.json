@@ -584,7 +584,15 @@
     "ownInstrumentalSelected": "{name}（{size} MB）をインスト音源として使用",
     "ownInstrumentalTitle": "お手持ちのインスト音源（任意）",
     "submitTrack": "トラックを送信",
-    "ownInstrumentalRemove": "削除"
+    "ownInstrumentalRemove": "削除",
+    "translatedLyricsHint": "歌詞の確認後、AIが各行を{language}に翻訳し、動画内の歌詞の下に小さめの文字で表示します。翻訳の編集はできません。",
+    "translatedLyricsLanguageLabel": "歌詞の翻訳先言語",
+    "translatedLyricsPreviewAlt": "歌詞が{language}に翻訳されたカラオケ動画フレームの例",
+    "translatedLyricsPreviewError": "プレビューを読み込めませんでした。",
+    "translatedLyricsPreviewLoading": "プレビューをレンダリング中...",
+    "translatedLyricsToggle": "翻訳歌詞を追加",
+    "translatedLyricsToggleHint": "歌詞の下に各行のAI翻訳を小さめの文字で表示します。語学学習にも最適です。",
+    "translatedLyricsPreviewRetry": "もう一度試す"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",

@@ -896,3 +896,66 @@ describe("extractErrorMessage", () => {
     expect(result).toBe('{"some":"object"}')
   })
 })
+
+describe("translated lyrics — job creation + preview", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  function mockOk(json: unknown = { status: "success", job_id: "j1", message: "ok" }) {
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({ ok: true, json: async () => json })
+  }
+  const lastBody = () => {
+    const calls = (global.fetch as jest.Mock).mock.calls
+    return calls[calls.length - 1][1].body
+  }
+
+  it("uploadJob sends translation_language as a form field only when set", async () => {
+    const file = new File(["x"], "a.mp3", { type: "audio/mpeg" })
+    mockOk()
+    await api.uploadJob(file, "A", "T", { translation_language: "es" })
+    expect((lastBody() as FormData).get("translation_language")).toBe("es")
+
+    mockOk()
+    await api.uploadJob(file, "A", "T", {})
+    expect((lastBody() as FormData).get("translation_language")).toBeNull()
+  })
+
+  it("createJobFromUrl sends translation_language in the JSON body only when set", async () => {
+    mockOk()
+    await api.createJobFromUrl("https://youtube.com/watch?v=1", "A", "T", { translation_language: "ja" })
+    expect(JSON.parse(lastBody()).translation_language).toBe("ja")
+
+    mockOk()
+    await api.createJobFromUrl("https://youtube.com/watch?v=1", "A", "T", {})
+    expect(JSON.parse(lastBody())).not.toHaveProperty("translation_language")
+  })
+
+  it("createJobWithUploadUrls sends translation_language in the JSON body", async () => {
+    mockOk({ status: "success", job_id: "j1", message: "ok", upload_urls: [], server_version: "1" })
+    await api.createJobWithUploadUrls("A", "T", [], { translation_language: "fr" })
+    expect(JSON.parse(lastBody()).translation_language).toBe("fr")
+  })
+
+  it("createJobFromSearch sends translation_language in the JSON body", async () => {
+    mockOk()
+    await api.createJobFromSearch({
+      search_session_id: "s", selection_index: 0, artist: "A", title: "T", translation_language: "de",
+    })
+    expect(JSON.parse(lastBody()).translation_language).toBe("de")
+  })
+
+  it("getTranslationPreview requests the preview for the language and returns the image", async () => {
+    mockOk({ image: "data:image/jpeg;base64,abc" })
+    const result = await api.getTranslationPreview("pt")
+    expect(result).toEqual({ image: "data:image/jpeg;base64,abc" })
+    expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain("/api/themes/translation-preview?language=pt")
+  })
+
+  it("getTranslationPreview throws ApiError on an unsupported language", async () => {
+    ;(global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false, status: 400, json: async () => ({ detail: "Unsupported language" }),
+    })
+    await expect(api.getTranslationPreview("xx")).rejects.toThrow(ApiError)
+  })
+})
