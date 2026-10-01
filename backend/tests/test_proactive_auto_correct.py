@@ -126,12 +126,71 @@ async def test_lyrics_worker_trigger_swallows_errors() -> None:
 
 # ---- de-duplication (lyrics trigger vs screens pre-apply race) ----
 
+import google.api_core.exceptions as gexc  # noqa: E402
+
+
+class _FakeBlob:
+    def __init__(self, bucket, path):
+        self.bucket, self.path = bucket, path
+        self.generation = None
+
+    def upload_from_string(self, data, content_type=None, if_generation_match=None):
+        current = self.bucket.objects.get(self.path)
+        current_gen = current[0] if current else 0
+        if if_generation_match is not None and if_generation_match != current_gen:
+            raise gexc.PreconditionFailed("generation mismatch")
+        self.bucket.next_gen += 1
+        self.generation = self.bucket.next_gen
+        self.bucket.objects[self.path] = (self.generation, data)
+
+    def download_as_bytes(self):
+        return self.bucket.objects[self.path][1].encode()
+
+    def delete(self, if_generation_match=None):
+        current = self.bucket.objects.get(self.path)
+        if current is None:
+            raise gexc.NotFound("gone")
+        if if_generation_match is not None and if_generation_match != current[0]:
+            raise gexc.PreconditionFailed("generation mismatch")
+        del self.bucket.objects[self.path]
+
+
+class _FakeBucket:
+    def __init__(self):
+        self.objects: dict = {}
+        self.next_gen = 100
+
+    def blob(self, path):
+        return _FakeBlob(self, path)
+
+    def get_blob(self, path):
+        if path not in self.objects:
+            return None
+        b = _FakeBlob(self, path)
+        b.generation = self.objects[path][0]
+        return b
+
+    def put_lease(self, job_id, acquired_at):
+        import json as _json
+        self.next_gen += 1
+        self.objects[f"jobs/{job_id}/lyrics/auto_correct_inflight.json"] = (
+            self.next_gen, _json.dumps({"acquired_at": acquired_at}))
+
+
+def _patch_with_bucket(service):
+    p_set, p_st, p_jm, _p_svc, storage = _patch(service=service)
+    bucket = _FakeBucket()
+    storage.bucket = bucket
+    storage.file_exists.side_effect = lambda p: p.endswith("corrections.json") or p in bucket.objects
+    return p_set, p_st, p_jm, storage, bucket
+
+
 @pytest.mark.asyncio
 async def test_concurrent_calls_on_same_instance_share_one_run() -> None:
     """Regression (job 96cf1100): the lyrics trigger and the screens pre-apply
     both called this within seconds and each ran the multi-model suggest."""
-    import threading
     import asyncio as _asyncio
+    import threading
 
     release = threading.Event()
     svc = MagicMock()
@@ -141,49 +200,33 @@ async def test_concurrent_calls_on_same_instance_share_one_run() -> None:
         return SimpleNamespace(suggestions=[1, 2, 3], model="m", elapsed_seconds=1.0)
 
     svc.suggest.side_effect = _slow_suggest
-    p_set, p_st, p_jm, _p_svc, storage = _patch(service=svc)
+    p_set, p_st, p_jm, storage, bucket = _patch_with_bucket(svc)
     with p_set, p_st, p_jm, patch("backend.services.auto_correct.get_auto_correct_service", return_value=svc):
         first = _asyncio.create_task(process_proactive_auto_correct("job-dup"))
         await _asyncio.sleep(0.05)
+        assert "jobs/job-dup/lyrics/auto_correct_inflight.json" in bucket.objects  # lease held
         second = _asyncio.create_task(process_proactive_auto_correct("job-dup"))
         await _asyncio.sleep(0.05)
         release.set()
         r1, r2 = await _asyncio.gather(first, second)
-    assert svc.suggest.call_count == 1
-    assert r1 == r2 == {"status": "generated", "suggestions": 3}
-    # Lease taken create-only and released afterwards.
-    lease_calls = [c for c in storage.upload_json.call_args_list if "auto_correct_inflight" in c.args[0]]
-    assert lease_calls and lease_calls[0].kwargs.get("if_generation_match") == 0
-    storage.delete_file.assert_called_once()
+        assert svc.suggest.call_count == 1
+        assert r1 == r2 == {"status": "generated", "suggestions": 3}
+        assert bucket.objects == {}  # our lease released
 
-    # A later (non-concurrent) call is not blocked by a leftover in-flight entry.
-    with p_set, p_st, p_jm, patch("backend.services.auto_correct.get_auto_correct_service", return_value=svc):
+        # A later (non-concurrent) call isn't blocked by a leftover in-flight entry.
         await process_proactive_auto_correct("job-dup")
-    assert svc.suggest.call_count == 2  # second suggest hits the service's own GCS cache in prod
+    assert svc.suggest.call_count == 2  # in prod this hits the service's own GCS cache
 
 
 @pytest.mark.asyncio
 async def test_peer_instance_holding_lease_is_awaited_not_duplicated(monkeypatch) -> None:
     import time as _time
-    import google.api_core.exceptions as gexc
     from backend.workers import auto_correct_worker as w
 
     monkeypatch.setattr(w, "PEER_POLL_SECONDS", 0)
     svc = MagicMock()
-    p_set, p_st, p_jm, _p_svc, storage = _patch(service=svc)
-
-    def _upload(path, data, if_generation_match=None):
-        if "auto_correct_inflight" in path and if_generation_match == 0:
-            raise gexc.PreconditionFailed("held by peer")
-        return path
-
-    def _download(path):
-        if "auto_correct_inflight" in path:
-            return {"acquired_at": _time.time()}  # fresh lease
-        return CORRECTIONS
-
-    storage.upload_json.side_effect = _upload
-    storage.download_json.side_effect = _download
+    p_set, p_st, p_jm, storage, bucket = _patch_with_bucket(svc)
+    bucket.put_lease("job-peer", _time.time())  # fresh lease held by another instance
     peer_cache = iter([None, None, [{"id": "s1"}, {"id": "s2"}]])
     with p_set, p_st, p_jm, \
             patch("backend.services.auto_correct.get_auto_correct_service", return_value=svc), \
@@ -192,49 +235,88 @@ async def test_peer_instance_holding_lease_is_awaited_not_duplicated(monkeypatch
         result = await process_proactive_auto_correct("job-peer")
     assert result == {"status": "deduped", "suggestions": 2}
     svc.suggest.assert_not_called()
-    storage.delete_file.assert_not_called()  # never release someone else's lease
+    assert "jobs/job-peer/lyrics/auto_correct_inflight.json" in bucket.objects  # never released theirs
 
 
 @pytest.mark.asyncio
-async def test_stale_peer_lease_is_taken_over() -> None:
-    import google.api_core.exceptions as gexc
-
+async def test_stale_peer_lease_is_taken_over_with_generation_fence() -> None:
     svc = MagicMock()
     svc.suggest.return_value = SimpleNamespace(suggestions=[1], model="m", elapsed_seconds=1.0)
-    p_set, p_st, p_jm, _p_svc, storage = _patch(service=svc)
-
-    def _upload(path, data, if_generation_match=None):
-        if "auto_correct_inflight" in path and if_generation_match == 0:
-            raise gexc.PreconditionFailed("leftover from crashed instance")
-        return path
-
-    storage.upload_json.side_effect = _upload
-    storage.download_json.side_effect = lambda p: {"acquired_at": 0} if "inflight" in p else CORRECTIONS
+    p_set, p_st, p_jm, storage, bucket = _patch_with_bucket(svc)
+    bucket.put_lease("job-stale", 0)  # leftover from a crashed instance
     with p_set, p_st, p_jm, patch("backend.services.auto_correct.get_auto_correct_service", return_value=svc):
         result = await process_proactive_auto_correct("job-stale")
     assert result["status"] == "generated"
     svc.suggest.assert_called_once()
+    assert bucket.objects == {}
+
+
+def test_stale_takeover_loses_to_a_concurrent_takeover() -> None:
+    from backend.workers import auto_correct_worker as w
+
+    bucket = _FakeBucket()
+    bucket.put_lease("j", 0)
+    storage = SimpleNamespace(bucket=bucket)
+    real_get_blob = bucket.get_blob
+
+    def _get_blob_then_race(path):
+        observed = real_get_blob(path)
+        bucket.put_lease("j", 0)  # another instance takes over after our read
+        return observed
+
+    bucket.get_blob = _get_blob_then_race
+    assert w._acquire_lease(storage, "j") == (False, None)
+
+
+def test_release_never_deletes_a_lease_someone_else_took_over() -> None:
+    import time as _time
+    from backend.workers import auto_correct_worker as w
+
+    bucket = _FakeBucket()
+    storage = SimpleNamespace(bucket=bucket)
+    held, gen = w._acquire_lease(storage, "j")
+    assert held and gen is not None
+    bucket.put_lease("j", _time.time())  # superseded (e.g. our run outlived the TTL)
+    w._release_lease(storage, "j", gen)
+    assert "jobs/j/lyrics/auto_correct_inflight.json" in bucket.objects
 
 
 @pytest.mark.asyncio
 async def test_peer_failure_does_not_regenerate(monkeypatch) -> None:
     import time as _time
-    import google.api_core.exceptions as gexc
     from backend.workers import auto_correct_worker as w
 
     monkeypatch.setattr(w, "PEER_POLL_SECONDS", 0)
     svc = MagicMock()
-    p_set, p_st, p_jm, _p_svc, storage = _patch(service=svc)
-    storage.upload_json.side_effect = lambda path, data, if_generation_match=None: (
-        (_ for _ in ()).throw(gexc.PreconditionFailed("held"))
-        if "inflight" in path and if_generation_match == 0 else path
-    )
-    storage.download_json.side_effect = lambda p: {"acquired_at": _time.time()} if "inflight" in p else CORRECTIONS
-    # corrections.json exists; the lease disappears (peer finished) with no cache.
-    storage.file_exists.side_effect = lambda p: "inflight" not in p
+    p_set, p_st, p_jm, storage, bucket = _patch_with_bucket(svc)
+    bucket.put_lease("job-peer-fail", _time.time())
+    lease = "jobs/job-peer-fail/lyrics/auto_correct_inflight.json"
+
+    def _no_cache(*_a):
+        bucket.objects.pop(lease, None)  # peer finishes (fails) without writing a cache
+        return None
+
     with p_set, p_st, p_jm, \
             patch("backend.services.auto_correct.get_auto_correct_service", return_value=svc), \
-            patch("backend.services.auto_approval.executor._load_ai_suggestions", return_value=None):
+            patch("backend.services.auto_approval.executor._load_ai_suggestions", side_effect=_no_cache):
         result = await process_proactive_auto_correct("job-peer-fail")
     assert result == {"status": "skipped", "reason": "peer_failed"}
     svc.suggest.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_timed_out_run_keeps_its_lease(monkeypatch) -> None:
+    from backend.workers import auto_correct_worker as w
+
+    svc = MagicMock()
+    p_set, p_st, p_jm, storage, bucket = _patch_with_bucket(svc)
+
+    async def _timeout(*_a, **_k):
+        raise TimeoutError()
+
+    monkeypatch.setattr(w, "_run_suggest", _timeout)
+    with p_set, p_st, p_jm:
+        result = await process_proactive_auto_correct("job-slow")
+    assert result["status"] == "error"
+    # suggest() may still be running in its thread: the lease must stay until TTL.
+    assert "jobs/job-slow/lyrics/auto_correct_inflight.json" in bucket.objects

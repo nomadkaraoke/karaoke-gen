@@ -14,9 +14,10 @@ failure just means the UI does the call on demand instead.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
-from typing import Dict
+from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -43,40 +44,71 @@ PEER_WAIT_SECONDS = 180
 PEER_POLL_SECONDS = 3
 
 
-def _acquire_lease(storage, job_id: str) -> bool:
-    """Create-only lease write. True if we hold it (or can't tell — fail open)."""
-    path = LEASE_PATH.format(job_id=job_id)
+def _precondition_failed():
     try:
         from google.api_core.exceptions import PreconditionFailed
+        return PreconditionFailed
     except Exception:  # pragma: no cover - google libs always present in prod
-        PreconditionFailed = ()  # type: ignore[assignment]
+        return ()
+
+
+def _write_lease(storage, path: str, if_generation_match: int) -> Optional[int]:
+    """Conditional lease write; returns the generation we wrote (our fence token)."""
+    blob = storage.bucket.blob(path)
+    blob.upload_from_string(
+        json.dumps({"acquired_at": time.time()}),
+        content_type="application/json",
+        if_generation_match=if_generation_match,
+    )
+    return blob.generation
+
+
+def _acquire_lease(storage, job_id: str) -> Tuple[bool, Optional[int]]:
+    """Try to take the cross-instance lease.
+
+    Returns ``(held, generation)``. Every write is generation-fenced: create-only
+    first, and a stale-lease takeover only succeeds against the exact generation
+    we observed, so two instances can't both take over the same stale lease.
+    Fails OPEN (``(True, None)``) on unexpected storage errors — the lease is an
+    optimisation and must never stop suggestions from being generated.
+    """
+    path = LEASE_PATH.format(job_id=job_id)
+    precondition_failed = _precondition_failed()
     try:
-        storage.upload_json(path, {"acquired_at": time.time()}, if_generation_match=0)
-        return True
-    except PreconditionFailed:
-        pass
-    except Exception as e:  # noqa: BLE001 — lease is an optimisation; fail open
-        logger.info("[job:%s] auto-correct lease write failed, proceeding: %s", job_id, e)
-        return True
-    # Someone else holds it — unless it's stale (crashed holder), then take over.
-    try:
-        acquired_at = float((storage.download_json(path) or {}).get("acquired_at") or 0)
-    except Exception:  # noqa: BLE001 — vanished/unreadable lease → treat as stale
-        acquired_at = 0.0
-    if time.time() - acquired_at > LEASE_TTL_SECONDS:
         try:
-            storage.upload_json(path, {"acquired_at": time.time()})
-        except Exception:  # noqa: BLE001
+            return True, _write_lease(storage, path, if_generation_match=0)
+        except precondition_failed:
             pass
-        return True
-    return False
+        existing = storage.bucket.get_blob(path)
+        if existing is None:  # holder released between our two calls — retry once
+            try:
+                return True, _write_lease(storage, path, if_generation_match=0)
+            except precondition_failed:
+                return False, None
+        try:
+            acquired_at = float(json.loads(existing.download_as_bytes()).get("acquired_at") or 0)
+        except Exception:  # noqa: BLE001 — unreadable lease → treat as stale
+            acquired_at = 0.0
+        if time.time() - acquired_at <= LEASE_TTL_SECONDS:
+            return False, None
+        # Stale (crashed holder): take over only the generation we just read.
+        try:
+            return True, _write_lease(storage, path, if_generation_match=existing.generation)
+        except precondition_failed:
+            return False, None  # another instance took it over first
+    except Exception as e:  # noqa: BLE001 — fail open
+        logger.info("[job:%s] auto-correct lease unavailable, proceeding: %s", job_id, e)
+        return True, None
 
 
-def _release_lease(storage, job_id: str) -> None:
+def _release_lease(storage, job_id: str, generation: Optional[int]) -> None:
+    """Delete OUR lease generation only — never a lease someone else took over."""
+    if generation is None:
+        return  # unknown fence token: let it go stale rather than risk deleting another's
     try:
-        storage.delete_file(LEASE_PATH.format(job_id=job_id), ignore_missing=True)
-    except Exception as e:  # noqa: BLE001 — a leftover lease just goes stale
-        logger.info("[job:%s] auto-correct lease release failed: %s", job_id, e)
+        storage.bucket.blob(LEASE_PATH.format(job_id=job_id)).delete(if_generation_match=generation)
+    except Exception as e:  # noqa: BLE001 — gone/superseded/failed: it just goes stale
+        logger.info("[job:%s] auto-correct lease not released: %s", job_id, e)
 
 
 async def _wait_for_peer(storage, job_id: str) -> dict:
@@ -165,13 +197,20 @@ async def _generate(job_id: str) -> dict:
             )
             return {"status": "skipped", "reason": "no_references"}
 
-        if not _acquire_lease(storage, job_id):
+        held, lease_generation = _acquire_lease(storage, job_id)
+        if not held:
             return await _wait_for_peer(storage, job_id)
 
         try:
             return await _run_suggest(job_id, data, segments, reference_lyrics)
+        except asyncio.TimeoutError:
+            # wait_for can't stop the worker thread: suggest() may still finish
+            # and write the cache. Keep the lease (it expires via the TTL) so no
+            # one starts a duplicate run meanwhile.
+            lease_generation = None
+            raise
         finally:
-            _release_lease(storage, job_id)
+            _release_lease(storage, job_id, lease_generation)
     except Exception as e:  # noqa: BLE001 — proactive is best-effort, never fatal
         logger.warning("[job:%s] proactive auto-correct failed (non-fatal): %s", job_id, e, exc_info=True)
         return {"status": "error", "message": str(e)}
