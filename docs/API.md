@@ -1464,6 +1464,37 @@ POST /api/internal/jobs/{job_id}/trigger-render-video
 POST /api/internal/jobs/{job_id}/trigger-video
 ```
 
+#### Vocal gaps (missing-lyrics detector, shadow mode)
+
+```http
+POST /api/internal/jobs/{job_id}/vocal-gaps[?dry_run=true]
+```
+
+Finds sung stretches with no transcribed words — transcription can silently drop whole
+lines, which then render as a fake "INSTRUMENTAL" section. Downloads the job's lead-vocal
+stem server-side, analyzes the job's current lyrics (`corrections_updated.json` if present)
+and stores `state_data.vocal_gaps` (skipped with `dry_run=true`). Never changes job status.
+The same analysis runs automatically in the auto-approval executor once stems exist.
+
+```json
+{
+  "job_id": "5710831e",
+  "status": "checked",
+  "stored": true,
+  "vocal_gaps": {
+    "version": "0.1.0",
+    "gaps": [{"start": 20.66, "end": 32.4, "duration": 11.74, "active_fraction": 0.96,
+              "longest_run_s": 11.76, "suspect": true,
+              "reference_lines": {"genius": ["…", "…", "…"]}}],
+    "suspect_count": 1, "max_suspect_run_s": 11.76,
+    "source": "backfill", "lyrics_source": "corrections_updated", "analyzed_at": "…"
+  }
+}
+```
+
+`status` is one of `checked`, `no_job`, `no_corrections`, `no_lead_stem`, `error`.
+Bulk calibration: `scripts/audit_vocal_gaps.py`.
+
 ## Job States
 
 | State | Description |

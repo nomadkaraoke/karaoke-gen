@@ -33,6 +33,9 @@ review. Auto-approval must never be the reason a job fails.
 """
 from __future__ import annotations
 
+import asyncio
+import hashlib
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -157,6 +160,14 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
                             timing_signals=signals,
                         )
 
+        # Shadow-only: sung stretches the transcription has no words for (dropped
+        # lines). Recorded for calibration; never changes the verdict (yet).
+        # Stem download + decode: keep it off the event loop.
+        vocal_gaps_info = await asyncio.to_thread(
+            _vocal_gaps_shadow,
+            job_id, job, corrections, ai_suggestions, stems, audio_complete, storage, job_manager,
+        )
+
         blockers = _enforcement_blockers(job, settings)
         custom_instrumental = has_custom_instrumental(job)
         backing_preference = getattr(job, "backing_preference", "auto") or "auto"
@@ -216,6 +227,7 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             "trigger": trigger,
             "enforcement_blockers": blockers,
             "timing": timing_info,
+            "vocal_gaps": vocal_gaps_info,
             "audio_complete_at_scoring": audio_complete,
             "backing_analysis_available": backing_analysis is not None,
             "ai_suggestions_available": ai_suggestions is not None,
@@ -324,6 +336,134 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
         return {"outcome": "error", "error": str(e)}
 
 
+def _published_segments(corrections, ai_suggestions):
+    """The segments auto-ship would publish: raw + auto-applied AI suggestions."""
+    from backend.services.auto_approval.apply import build_applied_segments
+
+    segments = corrections.get("corrected_segments") or []
+    if ai_suggestions:
+        applied = build_applied_segments(corrections, ai_suggestions)
+        if not applied.get("aborted"):
+            segments = applied["segments"]
+    return segments
+
+
+def analyze_vocal_gaps(job_id, corrections, segments, stems, storage):
+    """Download the lead-vocal stem and find sung stretches with no transcribed words.
+
+    Returns ``None`` when no lead/vocals stem is registered, else a
+    ``VocalGapsResult`` (``.error`` set on analysis failure). Never raises.
+    """
+    import os
+    import tempfile
+
+    from backend.services.auto_approval.vocal_gaps import VocalGapsResult, compute_vocal_gaps
+
+    stem_path = stems.get("lead_vocals") or stems.get("vocals_clean")
+    if not stem_path:
+        return None
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local = os.path.join(temp_dir, "lead_vocals.flac")
+            storage.download_file(stem_path, local)
+            result = compute_vocal_gaps(segments, local, corrections)
+        logger.info(
+            f"[job:{job_id}] vocal gaps: {len(result.gaps)} gap(s), "
+            f"suspect={result.suspect_count} max_run={result.max_suspect_run_s}s error={result.error}"
+        )
+        return result
+    except Exception as e:  # noqa: BLE001 — shadow analysis is best-effort
+        logger.warning(f"[job:{job_id}] vocal gap analysis failed non-fatally: {e}")
+        return VocalGapsResult(error=str(e))
+
+
+def vocal_gaps_input_key(segments, stems) -> str:
+    """Fingerprint of what a vocal-gap analysis looked at: word timings, stem, detector
+    version. A reset, re-transcription, audio edit or new AI suggestions changes it."""
+    from backend.services.auto_approval.vocal_gaps import VOCAL_GAPS_VERSION
+
+    words = [(w.get("id"), round(w.get("start_time") or 0, 2), round(w.get("end_time") or 0, 2))
+             for seg in segments for w in (seg.get("words") or [])]
+    stem = stems.get("lead_vocals") or stems.get("vocals_clean")
+    blob = json.dumps([VOCAL_GAPS_VERSION, stem, words], ensure_ascii=False)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+
+
+def _vocal_gaps_shadow(job_id, job, corrections, ai_suggestions, stems, audio_complete,
+                       storage, job_manager) -> Dict[str, Any]:
+    """Analyze when stems exist and store ``state_data.vocal_gaps``; reuse a stored
+    result only if it was computed from the same lyrics + stem (``input_key``).
+
+    Returns a compact summary for the shadow payload. Never raises. Blocking (stem
+    download + decode): call via ``asyncio.to_thread``.
+    """
+    try:
+        if not audio_complete:
+            return {"status": "pending_audio"}
+        segments = _published_segments(corrections, ai_suggestions)
+        input_key = vocal_gaps_input_key(segments, stems)
+        existing = (job.state_data or {}).get("vocal_gaps")
+        if existing and existing.get("input_key") == input_key:
+            return {"status": "cached", "suspect_count": existing.get("suspect_count"),
+                    "max_suspect_run_s": existing.get("max_suspect_run_s")}
+        result = analyze_vocal_gaps(job_id, corrections, segments, stems, storage)
+        if result is None:
+            return {"status": "no_lead_stem"}
+        if result.error:
+            return {"status": "error", "error": result.error}
+        stored = {**result.to_dict(), "analyzed_at": datetime.now(timezone.utc).isoformat(),
+                  "source": "auto_approval", "input_key": input_key}
+        job_manager.update_state_data(job_id, "vocal_gaps", stored)
+        return {"status": "checked", "suspect_count": result.suspect_count,
+                "max_suspect_run_s": result.max_suspect_run_s}
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[job:{job_id}] vocal gap shadow failed non-fatally: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+def analyze_job_vocal_gaps(job_id: str, store: bool = True) -> Dict[str, Any]:
+    """Backfill/inspect: vocal gaps for the lyrics a job actually has now.
+
+    Uses the reviewed ``corrections_updated.json`` segments when present (what was
+    rendered), with reference lyrics + anchors from ``corrections.json``. Runs
+    synchronously (stem download + numpy, a few seconds). Never raises.
+    """
+    from backend.services.job_manager import JobManager
+    from backend.services.storage_service import StorageService
+
+    try:
+        job_manager, storage = JobManager(), StorageService()
+        job = job_manager.get_job(job_id)
+        if not job:
+            return {"status": "no_job"}
+        corrections_path = CORRECTIONS_PATH.format(job_id=job_id)
+        if not storage.file_exists(corrections_path):
+            return {"status": "no_corrections"}
+        corrections = storage.download_json(corrections_path)
+        segments = corrections.get("corrected_segments") or []
+        lyrics_source = "corrections"
+        updated_path = CORRECTIONS_UPDATED_PATH.format(job_id=job_id)
+        if storage.file_exists(updated_path):
+            updated = storage.download_json(updated_path)
+            if updated.get("corrected_segments"):
+                segments, lyrics_source = updated["corrected_segments"], "corrections_updated"
+        stems = (job.file_urls or {}).get("stems", {}) if job.file_urls else {}
+        result = analyze_vocal_gaps(job_id, corrections, segments, stems, storage)
+        if result is None:
+            return {"status": "no_lead_stem"}
+        if result.error:
+            return {"status": "error", "error": result.error}
+        payload = {**result.to_dict(), "analyzed_at": datetime.now(timezone.utc).isoformat(),
+                   "source": "backfill", "lyrics_source": lyrics_source,
+                   "input_key": vocal_gaps_input_key(segments, stems)}
+        if store:
+            job_manager.update_state_data(job_id, "vocal_gaps", payload)
+        return {"status": "checked", "stored": store, "vocal_gaps": payload}
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[job:{job_id}] vocal gap backfill failed: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 def _compute_timing_signals(job_id, corrections, ai_suggestions, stems, storage):
     """Download the lead-vocal stem and run the timing-plausibility analysis
     on the POST-AI word stream (the state auto-ship would publish).
@@ -335,7 +475,6 @@ def _compute_timing_signals(job_id, corrections, ai_suggestions, stems, storage)
     import os
     import tempfile
 
-    from backend.services.auto_approval.apply import build_applied_segments
     from backend.services.auto_approval.timing_check import (
         TimingSignals,
         compute_timing_signals,
@@ -348,11 +487,7 @@ def _compute_timing_signals(job_id, corrections, ai_suggestions, stems, storage)
         # The published state is raw + auto-applied suggestions; on an apply
         # abort the executor falls back to human review anyway, so analyzing
         # the raw segments there is only shadow data.
-        segments = corrections.get("corrected_segments") or []
-        if ai_suggestions:
-            applied = build_applied_segments(corrections, ai_suggestions)
-            if not applied.get("aborted"):
-                segments = applied["segments"]
+        segments = _published_segments(corrections, ai_suggestions)
         with tempfile.TemporaryDirectory() as temp_dir:
             local = os.path.join(temp_dir, "lead_vocals.flac")
             storage.download_file(stem_path, local)
