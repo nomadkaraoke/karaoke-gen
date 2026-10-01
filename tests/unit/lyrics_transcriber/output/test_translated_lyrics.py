@@ -300,3 +300,14 @@ def test_instrumental_card_position_unchanged_by_translations(tmp_path):
     plain = [seg("first line", 1), seg("after the break", 40)]
     translated = [seg("first line", 1, translation="primera"), seg("after the break", 40, translation="después")]
     assert instrumental_y(plain) == instrumental_y(translated)
+
+
+def test_japanese_split_prefers_punctuation_over_mid_word():
+    # Seen in prod (job ca2e881a): 無駄 ("waste") was cut in half across two rows
+    parts = split_text_proportionally("ねえ、おかしいでしょ、無駄な時間を省いてあげる", [22, 32])
+    assert parts == ["ねえ、おかしいでしょ、", "無駄な時間を省いてあげる"]
+
+
+def test_japanese_split_falls_back_to_a_phrase_boundary():
+    parts = split_text_proportionally("自分の生活をしようとしてるのに", [1, 1])
+    assert parts == ["自分の生活を", "しようとしてるのに"]  # after the particle を, not inside しよう

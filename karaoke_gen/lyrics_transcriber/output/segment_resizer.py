@@ -72,10 +72,45 @@ def grapheme_clusters(text: str) -> List[str]:
     return clusters
 
 
+_BREAK_AFTER = set("、。，,．.！!？?；;：:・…）)」』】〕〉》 ")
+# Japanese particles: a break right after one usually falls between phrases
+_JA_PARTICLES = set("をはがにでともへの")
+
+
+def _char_script(ch: str) -> str:
+    if "\u3040" <= ch <= "\u309f":
+        return "hiragana"
+    if "\u30a0" <= ch <= "\u30ff" or "\u31f0" <= ch <= "\u31ff":
+        return "katakana"
+    if "\u4e00" <= ch <= "\u9fff" or "\u3400" <= ch <= "\u4dbf":
+        return "han"
+    return "other"
+
+
+def _unspaced_break_penalty(tokens: List[str], end: int, unit: float) -> float:
+    """Cost (in characters) of splitting unspaced text before ``tokens[end]``.
+
+    Free after punctuation; cheap after a Japanese particle or where hiragana gives way
+    to kanji/katakana (usually a new word); otherwise a mid-word cut, avoided unless
+    nothing else fits.
+    """
+    if end <= 0 or end >= len(tokens):
+        return 0.0
+    prev, nxt = tokens[end - 1][-1], tokens[end][0]
+    if prev in _BREAK_AFTER:
+        return 0.0
+    if _char_script(prev) == "hiragana" and _char_script(nxt) in ("han", "katakana"):
+        return 0.25 * unit
+    if prev in _JA_PARTICLES and _char_script(nxt) != "other":
+        return 0.25 * unit
+    return unit
+
+
 def split_text_proportionally(text: str, weights: List[float]) -> List[str]:
     """Split ``text`` into ``len(weights)`` consecutive parts sized by ``weights``.
 
-    Splits at spaces; unspaced scripts (CJK, Thai) split between characters.
+    Splits at spaces. Unspaced scripts (CJK, Thai) split between grapheme clusters,
+    preferring punctuation and likely word starts over cutting a word in half.
     Parts can be empty when there are fewer tokens than weights.
     """
     n = len(weights)
@@ -83,11 +118,14 @@ def split_text_proportionally(text: str, weights: List[float]) -> List[str]:
         return [text]
     tokens = text.split()
     joiner = " "
+    unspaced = False
     if len(tokens) < n and is_unspaced_script(text):
-        tokens, joiner = grapheme_clusters(text), ""
+        tokens, joiner, unspaced = grapheme_clusters(text), "", True
     total_weight = sum(max(0.0, w) for w in weights) or float(n)
     lengths = [len(t) for t in tokens]
     total_len = sum(lengths) or 1
+    # A mid-word cut costs as much as moving the split by a whole average part
+    unit = total_len / n
     parts: List[str] = []
     start = 0
     cumulative_weight = 0.0
@@ -97,14 +135,23 @@ def split_text_proportionally(text: str, weights: List[float]) -> List[str]:
             break
         cumulative_weight += max(0.0, w) if sum(weights) > 0 else 1.0
         target = total_len * cumulative_weight / total_weight
-        # Smallest end index whose cumulative length is closest to the target
-        best_end, best_diff, running = start, None, sum(lengths[:start])
-        for end in range(start, len(tokens) + 1):
+        # End index whose cumulative length is closest to the target (plus break cost)
+        best_end, best_cost, running = start, None, sum(lengths[:start])
+        # Leave at least one token for this part and each remaining one, when there are enough
+        remaining_parts = n - 1 - i
+        lo, hi = start, len(tokens)
+        if len(tokens) - start >= remaining_parts + 1:
+            lo, hi = start + 1, len(tokens) - remaining_parts
+        for end in range(start, hi + 1):
             if end > start:
                 running += lengths[end - 1]
-            diff = abs(running - target)
-            if best_diff is None or diff < best_diff:
-                best_end, best_diff = end, diff
+            if end < lo:
+                continue
+            cost = abs(running - target)
+            if unspaced:
+                cost += _unspaced_break_penalty(tokens, end, unit)
+            if best_cost is None or cost < best_cost:
+                best_end, best_cost = end, cost
         parts.append(joiner.join(tokens[start:best_end]))
         start = best_end
     return parts
