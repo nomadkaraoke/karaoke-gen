@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Använder {name} ({size} MB) som instrumentalspår",
     "ownInstrumentalTitle": "Ditt eget instrumentalspår (valfritt)",
     "submitTrack": "Skicka in spår",
-    "ownInstrumentalRemove": "Ta bort"
+    "ownInstrumentalRemove": "Ta bort",
+    "translatedLyricsHint": "När låttexten har granskats översätter AI varje rad till {language} och visar den i mindre stil under låttexten i din video. Översättningar kan inte redigeras.",
+    "translatedLyricsLanguageLabel": "Översätt låttext till",
+    "translatedLyricsPreviewAlt": "Exempelbildruta från karaokevideo med låttext översatt till {language}",
+    "translatedLyricsPreviewError": "Kunde inte läsa in förhandsgranskningen. Din video kommer fortfarande att innehålla den översatta låttexten.",
+    "translatedLyricsPreviewLoading": "Renderar förhandsgranskning...",
+    "translatedLyricsToggle": "Lägg till översatt låttext",
+    "translatedLyricsToggleHint": "Visa en AI-översättning av varje rad i mindre stil under låttexten. Perfekt för att lära sig ett språk."
   },
   "jobStatus": {
     "settingUp": "Ställer in",

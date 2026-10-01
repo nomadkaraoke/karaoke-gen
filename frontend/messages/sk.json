@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Ako inštrumentál sa používa {name} ({size} MB)",
     "ownInstrumentalTitle": "Tvoj vlastný inštrumentál (voliteľné)",
     "submitTrack": "Odoslať skladbu",
-    "ownInstrumentalRemove": "Odstrániť"
+    "ownInstrumentalRemove": "Odstrániť",
+    "translatedLyricsHint": "Po kontrole textu piesne AI preloží každý riadok do jazyka {language} a zobrazí ho menším písmom pod textom v tvojom videu. Preklady sa nedajú upravovať.",
+    "translatedLyricsLanguageLabel": "Preložiť text piesne do",
+    "translatedLyricsPreviewAlt": "Ukážka snímky karaoke videa s textom preloženým do jazyka {language}",
+    "translatedLyricsPreviewError": "Náhľad sa nepodarilo načítať. Tvoje video bude aj tak obsahovať preložený text.",
+    "translatedLyricsPreviewLoading": "Generuje sa náhľad...",
+    "translatedLyricsToggle": "Pridať preložený text",
+    "translatedLyricsToggleHint": "Zobrazí AI preklad každého riadku menším písmom pod textom. Skvelé na učenie sa jazyka."
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",

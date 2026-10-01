@@ -117,6 +117,10 @@ class Settings(BaseSettings):
     custom_lyrics_default_strictness: str = os.getenv("CUSTOM_LYRICS_DEFAULT_STRICTNESS", "balanced")
     custom_lyrics_max_output_lines_multiplier: float = float(os.getenv("CUSTOM_LYRICS_MAX_OUTPUT_LINES_MULTIPLIER", "2.0"))
 
+    # Translated lyrics — per-job opt-in (Job.translation_language): the reviewed
+    # lyrics are translated line-by-line just before the karaoke video renders.
+    lyrics_translation_model: str = os.getenv("LYRICS_TRANSLATION_MODEL", "gemini-3.8-flash")
+
     # AI auto-correct suggestions — opt-in, user-triggered from the lyrics
     # review UI. Stateless: one whole-song LLM call returning word-level
     # suggestions the reviewer accepts/rejects individually.

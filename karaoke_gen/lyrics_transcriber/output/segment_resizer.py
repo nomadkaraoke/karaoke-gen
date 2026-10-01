@@ -44,6 +44,58 @@ def display_width(text: str) -> float:
     return sum(_char_width(ch) for ch in text)
 
 
+def is_unspaced_script(text: str) -> bool:
+    """True for text in a script written without spaces between words (CJK, Thai, ...)."""
+    return any(
+        "\u0e00" <= ch <= "\u0eff"  # Thai, Lao
+        or "\u1000" <= ch <= "\u109f"  # Myanmar
+        or "\u1780" <= ch <= "\u17ff"  # Khmer
+        or "\u2e80" <= ch <= "\ua4cf"  # CJK, kana, Yi
+        or "\uac00" <= ch <= "\ud7af"  # Hangul syllables
+        or "\uf900" <= ch <= "\ufaff"
+        or "\uff00" <= ch <= "\uffef"
+        for ch in text
+    )
+
+
+def split_text_proportionally(text: str, weights: List[float]) -> List[str]:
+    """Split ``text`` into ``len(weights)`` consecutive parts sized by ``weights``.
+
+    Splits at spaces; unspaced scripts (CJK, Thai) split between characters.
+    Parts can be empty when there are fewer tokens than weights.
+    """
+    n = len(weights)
+    if n <= 1:
+        return [text]
+    tokens = text.split()
+    joiner = " "
+    if len(tokens) < n and is_unspaced_script(text):
+        tokens, joiner = [c for c in text if not c.isspace()], ""
+    total_weight = sum(max(0.0, w) for w in weights) or float(n)
+    lengths = [len(t) for t in tokens]
+    total_len = sum(lengths) or 1
+    parts: List[str] = []
+    start = 0
+    cumulative_weight = 0.0
+    for i, w in enumerate(weights):
+        if i == n - 1:
+            parts.append(joiner.join(tokens[start:]))
+            break
+        cumulative_weight += max(0.0, w) if sum(weights) > 0 else 1.0
+        target = total_len * cumulative_weight / total_weight
+        # Smallest end index whose cumulative length is closest to the target
+        best_end, best_diff, running = start, None, sum(lengths[:start])
+        for end in range(start, len(tokens) + 1):
+            if end > start:
+                running += lengths[end - 1]
+            diff = abs(running - target)
+            if best_diff is None or diff < best_diff:
+                best_end, best_diff = end, diff
+        parts.append(joiner.join(tokens[start:best_end]))
+        start = best_end
+    return parts
+
+
 class SegmentResizer:
     """Handles resizing of lyrics segments to ensure proper line lengths and natural breaks.
 
@@ -129,8 +181,17 @@ class SegmentResizer:
                 resized_segments.append(cleaned_segment)
                 continue
 
-            # Process oversized segments
-            resized_segments.extend(self._split_oversized_segment(segment_idx, segment))
+            # Process oversized segments. The pieces show together on screen, so the
+            # line's translation is shared out in proportion to each piece's width
+            # (reads on in order, and no piece is left with an empty row beneath it).
+            pieces = self._split_oversized_segment(segment_idx, segment)
+            if pieces and segment.translation:
+                shares = split_text_proportionally(
+                    segment.translation, [self._display_width(p.text) for p in pieces]
+                )
+                for piece, share in zip(pieces, shares):
+                    piece.translation = share or None
+            resized_segments.extend(pieces)
 
         self._log_output_segments(resized_segments)
         return resized_segments
@@ -165,6 +226,7 @@ class SegmentResizer:
             start_time=segment.start_time,
             end_time=segment.end_time,
             singer=segment.singer,
+            translation=segment.translation,
         )
 
     def _create_cleaned_word(self, word: Word) -> Word:
@@ -242,6 +304,7 @@ class SegmentResizer:
             start_time=segment.start_time,
             end_time=segment.end_time,
             singer=segment.singer,
+            translation=segment.translation,
         )
 
     def _split_oversized_segment(self, segment_idx: int, segment: LyricsSegment) -> List[LyricsSegment]:

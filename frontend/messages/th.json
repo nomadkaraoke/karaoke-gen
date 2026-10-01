@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "กำลังใช้ {name} ({size} MB) เป็นไฟล์ดนตรี",
     "ownInstrumentalTitle": "ไฟล์ดนตรีของคุณเอง (ไม่บังคับ)",
     "submitTrack": "ส่งแทร็ก",
-    "ownInstrumentalRemove": "นำออก"
+    "ownInstrumentalRemove": "นำออก",
+    "translatedLyricsHint": "หลังจากตรวจสอบเนื้อเพลงแล้ว AI จะแปลแต่ละบรรทัดเป็น {language} และแสดงเป็นข้อความขนาดเล็กกว่าไว้ใต้เนื้อเพลงในวิดีโอของคุณ โดยคำแปลจะไม่สามารถแก้ไขได้",
+    "translatedLyricsLanguageLabel": "แปลเนื้อเพลงเป็น",
+    "translatedLyricsPreviewAlt": "ตัวอย่างเฟรมวิดีโอคาราโอเกะพร้อมเนื้อเพลงที่แปลเป็น {language}",
+    "translatedLyricsPreviewError": "ไม่สามารถโหลดตัวอย่างได้ แต่วิดีโอของคุณจะยังคงมีคำแปลเนื้อเพลงรวมอยู่ด้วยตามปกติ",
+    "translatedLyricsPreviewLoading": "กำลังสร้างตัวอย่าง...",
+    "translatedLyricsToggle": "เพิ่มคำแปลเนื้อเพลง",
+    "translatedLyricsToggleHint": "แสดงคำแปลจาก AI ของแต่ละบรรทัดด้วยข้อความขนาดเล็กกว่าไว้ใต้เนื้อเพลง เหมาะอย่างยิ่งสำหรับการเรียนภาษา"
   },
   "jobStatus": {
     "settingUp": "กำลังตั้งค่า",

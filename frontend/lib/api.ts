@@ -148,6 +148,8 @@ export interface Job {
   // Theme and branding
   theme_id?: string;
   brand_prefix?: string;
+  // Translated lyrics: language code shown beneath the synced lyrics (null/absent = off)
+  translation_language?: string | null;
   // Customer order fields
   customer_email?: string;
   made_for_you?: boolean;
@@ -958,6 +960,8 @@ export const api = {
       requires_audio_edit?: boolean;
       review_mode?: string;
       backing_preference?: string;
+      /** UI locale code to show an AI translation of each lyric line beneath the lyrics. Omit = off. */
+      translation_language?: string;
     }
   ): Promise<UploadJobResponse> {
     const formData = new FormData();
@@ -998,6 +1002,9 @@ export const api = {
     if (options?.backing_preference) {
       formData.append('backing_preference', options.backing_preference);
     }
+    if (options?.translation_language) {
+      formData.append('translation_language', options.translation_language);
+    }
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/upload`, {
       method: 'POST',
@@ -1025,6 +1032,8 @@ export const api = {
       upload_mode?: 'signed_put' | 'resumable';
       review_mode?: string;
       backing_preference?: string;
+      /** UI locale code to show an AI translation of each lyric line beneath the lyrics. Omit = off. */
+      translation_language?: string;
     }
   ): Promise<CreateJobWithUploadUrlsResponse> {
     const body: Record<string, any> = { artist, title, files };
@@ -1035,6 +1044,7 @@ export const api = {
     if (options?.upload_mode) body.upload_mode = options.upload_mode;
     if (options?.review_mode) body.review_mode = options.review_mode;
     if (options?.backing_preference) body.backing_preference = options.backing_preference;
+    if (options?.translation_language) body.translation_language = options.translation_language;
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
       method: 'POST',
@@ -1135,6 +1145,8 @@ export const api = {
       requires_audio_edit?: boolean;
       review_mode?: string;
       backing_preference?: string;
+      /** UI locale code to show an AI translation of each lyric line beneath the lyrics. Omit = off. */
+      translation_language?: string;
       instrumentalFile?: File | null;
     },
     onProgress?: (progress: UploadProgress) => void,
@@ -1200,6 +1212,8 @@ export const api = {
       requires_audio_edit?: boolean;
       review_mode?: string;
       backing_preference?: string;
+      /** UI locale code to show an AI translation of each lyric line beneath the lyrics. Omit = off. */
+      translation_language?: string;
     }
   ): Promise<{ status: string; job_id: string; message: string }> {
     const body: Record<string, any> = { url };
@@ -1216,6 +1230,7 @@ export const api = {
     if (options?.requires_audio_edit) body.requires_audio_edit = options.requires_audio_edit;
     if (options?.review_mode) body.review_mode = options.review_mode;
     if (options?.backing_preference) body.backing_preference = options.backing_preference;
+    if (options?.translation_language) body.translation_language = options.translation_language;
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-from-url`, {
       method: 'POST',
@@ -1640,6 +1655,8 @@ export const api = {
     requires_audio_edit?: boolean;
     review_mode?: string;
     backing_preference?: string;
+    /** UI locale code to show an AI translation of each lyric line beneath the lyrics. Omit = off. */
+    translation_language?: string;
   }): Promise<{ status: string; job_id: string; message: string }> {
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-from-search`, {
       method: 'POST',
@@ -1915,6 +1932,18 @@ export const api = {
     });
     const data = await handleResponse<{ description: string | null }>(response);
     return data.description;
+  },
+
+  /**
+   * Get a rendered sample frame of the default theme's karaoke video showing
+   * the translated-lyrics row in the given language. Returns a data: URL.
+   */
+  async getTranslationPreview(language: string): Promise<{ image: string }> {
+    const response = await apiFetch(
+      `${API_BASE_URL}/api/themes/translation-preview?language=${encodeURIComponent(language)}`,
+      { headers: getAuthHeaders() }
+    );
+    return handleResponse<{ image: string }>(response);
   },
 
   // ==========================================================================
@@ -3965,6 +3994,8 @@ export interface JobUpdateRequest {
   non_interactive?: boolean;
   prep_only?: boolean;
   is_private?: boolean;
+  /** Translated lyrics language code; "" turns translated lyrics off. */
+  translation_language?: string;
 }
 
 export interface JobUpdateResponse {

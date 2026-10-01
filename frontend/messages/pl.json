@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Jako podkład zostanie użyty plik {name} ({size} MB)",
     "ownInstrumentalTitle": "Własny podkład (opcjonalnie)",
     "submitTrack": "Prześlij utwór",
-    "ownInstrumentalRemove": "Usuń"
+    "ownInstrumentalRemove": "Usuń",
+    "translatedLyricsHint": "Po sprawdzeniu tekstu AI przetłumaczy każdy wers na {language} i wyświetli go mniejszą czcionką pod tekstem w Twoim wideo. Tłumaczeń nie można edytować.",
+    "translatedLyricsLanguageLabel": "Przetłumacz tekst na",
+    "translatedLyricsPreviewAlt": "Przykładowy kadr z wideo karaoke z tekstem przetłumaczonym na {language}",
+    "translatedLyricsPreviewError": "Nie udało się załadować podglądu. Twoje wideo nadal będzie zawierać przetłumaczony tekst.",
+    "translatedLyricsPreviewLoading": "Renderowanie podglądu...",
+    "translatedLyricsToggle": "Dodaj przetłumaczony tekst",
+    "translatedLyricsToggleHint": "Pokaż tłumaczenie AI każdego wersu mniejszą czcionką pod tekstem utworu. Świetne do nauki języka."
   },
   "jobStatus": {
     "settingUp": "Konfigurowanie",

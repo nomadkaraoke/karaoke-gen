@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "{name} ({size} MB) wird als Instrumental verwendet",
     "ownInstrumentalTitle": "Dein eigenes Instrumental (optional)",
     "submitTrack": "Track einreichen",
-    "ownInstrumentalRemove": "Entfernen"
+    "ownInstrumentalRemove": "Entfernen",
+    "translatedLyricsHint": "Nach der Textüberprüfung übersetzt die KI jede Zeile in {language} und zeigt sie in kleinerer Schrift unter dem Text in deinem Video an. Übersetzungen können nicht bearbeitet werden.",
+    "translatedLyricsLanguageLabel": "Text übersetzen in",
+    "translatedLyricsPreviewAlt": "Beispiel-Frame eines Karaoke-Videos mit in {language} übersetztem Text",
+    "translatedLyricsPreviewError": "Die Vorschau konnte nicht geladen werden. Dein Video wird den übersetzten Text trotzdem enthalten.",
+    "translatedLyricsPreviewLoading": "Vorschau wird gerendert...",
+    "translatedLyricsToggle": "Übersetzten Text hinzufügen",
+    "translatedLyricsToggleHint": "Zeigt eine KI-Übersetzung jeder Zeile in kleinerer Schrift unter dem Text an. Ideal zum Sprachenlernen."
   },
   "jobStatus": {
     "settingUp": "Richte ein",

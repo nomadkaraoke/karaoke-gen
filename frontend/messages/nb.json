@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Bruker {name} ({size} MB) som instrumental",
     "ownInstrumentalTitle": "Egen instrumental (valgfritt)",
     "submitTrack": "Send inn spor",
-    "ownInstrumentalRemove": "Fjern"
+    "ownInstrumentalRemove": "Fjern",
+    "translatedLyricsHint": "Etter at sangteksten er gjennomgått, oversetter AI hver linje til {language} og viser den med mindre skrift under sangteksten i videoen din. Oversettelsene kan ikke redigeres.",
+    "translatedLyricsLanguageLabel": "Oversett sangteksten til",
+    "translatedLyricsPreviewAlt": "Eksempelbilde fra karaokevideo med sangtekst oversatt til {language}",
+    "translatedLyricsPreviewError": "Kunne ikke laste inn forhåndsvisningen. Videoen din vil likevel inneholde den oversatte sangteksten.",
+    "translatedLyricsPreviewLoading": "Genererer forhåndsvisning...",
+    "translatedLyricsToggle": "Legg til oversatt sangtekst",
+    "translatedLyricsToggleHint": "Vis en AI-oversettelse av hver linje med mindre skrift under sangteksten. Flott for å lære et språk."
   },
   "jobStatus": {
     "settingUp": "Setter opp",

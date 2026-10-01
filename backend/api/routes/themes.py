@@ -6,6 +6,7 @@ These endpoints are public (no authentication required) to allow theme selection
 before job creation.
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -41,6 +42,35 @@ async def list_themes(request: Request) -> ThemesListResponse:
             status_code=500,
             detail=t(locale, "themes.themesLoadError")
         )
+
+
+@router.get("/translation-preview")
+async def get_translation_preview(language: str, request: Request) -> dict:
+    """
+    Preview frame of a translated-lyrics karaoke video in ``language``.
+
+    Renders the default theme's karaoke frame with sample lyrics and their
+    (pre-generated) translation beneath each line, so users can see the option
+    before enabling it at job creation. Public, like the other theme endpoints.
+
+    Returns:
+        Object with ``image`` (JPEG data URL)
+
+    Raises:
+        400: Unsupported language
+    """
+    from backend.services.lyrics_translation import normalize_language
+    from backend.services.translation_preview import render_translation_preview
+
+    code = normalize_language(language)
+    if code is None:
+        raise HTTPException(status_code=400, detail=f"Unsupported language: {language}")
+    try:
+        image = await asyncio.to_thread(render_translation_preview, code)
+    except Exception as e:
+        logger.error(f"Error rendering translation preview for {code}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Could not render the translation preview")
+    return {"image": image}
 
 
 @router.get("/{theme_id}", response_model=ThemeDetailResponse)

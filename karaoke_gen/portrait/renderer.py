@@ -58,7 +58,9 @@ def _ffprobe_duration(path: str) -> float:
     return float(out)
 
 
-def _computed_top_padding(layout: PortraitLayout) -> int:
+def _computed_top_padding(
+    layout: PortraitLayout, line_height: Optional[int] = None, max_visible_lines: Optional[int] = None
+) -> int:
     """Top padding that centres the visible lyric block at ``block_center_frac``.
 
     ``SubtitlesGenerator`` positions the first line at
@@ -66,7 +68,7 @@ def _computed_top_padding(layout: PortraitLayout) -> int:
     ``ass.lyrics_screen.PositionCalculator``). Invert that so the block's centre
     lands where we want it.
     """
-    total = layout.max_visible_lines * layout.line_height
+    total = (max_visible_lines or layout.max_visible_lines) * (line_height or layout.line_height)
     desired_first_top = layout.height * layout.block_center_frac - total / 2
     tp = (4.0 / 3.0) * (desired_first_top - (layout.height - total) / 4.0)
     return max(0, int(round(tp)))
@@ -109,7 +111,6 @@ def build_portrait_ass(
     k = styles["karaoke"]
     k["font_size"] = layout.font_size
     k["max_visible_lines"] = layout.max_visible_lines
-    k["top_padding"] = _computed_top_padding(layout)
     if font_path:
         k["font_path"] = font_path
     elif k.get("font_path") and not os.path.isfile(k["font_path"]):
@@ -117,6 +118,17 @@ def build_portrait_ass(
         k.pop("font_path", None)
 
     segments = prepare_portrait_segments(correction_result, layout, logger)
+
+    if any(seg.translation for seg in segments):
+        # SubtitlesGenerator switches to taller slots (fewer lines); centre that block
+        from karaoke_gen.lyrics_transcriber.output.ass.config import translation_layout
+
+        tl = translation_layout(layout.font_size, layout.line_height, k)
+        k["top_padding"] = _computed_top_padding(
+            layout, tl.slot_height, min(layout.max_visible_lines, tl.max_visible_lines)
+        )
+    else:
+        k["top_padding"] = _computed_top_padding(layout)
 
     gen = SubtitlesGenerator(
         output_dir=output_dir,

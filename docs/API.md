@@ -1224,6 +1224,27 @@ GET /api/themes
 
 No auth required. Returns available video themes.
 
+```http
+GET /api/themes/translation-preview?language=es
+```
+
+No auth required. Returns `{"image": "data:image/jpeg;base64,..."}`: a real karaoke-video frame
+of the default theme with sample lyrics and their translation (in `language`) beneath each line —
+the preview shown when a user turns on translated lyrics at job creation. `language` is one of the
+33 UI locale codes (400 otherwise). Sample translations are pre-generated
+(`backend/services/translation_preview_samples.py`), so no LLM call is made.
+
+### Translated Lyrics
+
+Every job-creation endpoint (URL, search, upload, bulk `settings`) accepts an optional
+`translation_language` (UI locale code, e.g. `"en"`, `"es"`, `"he"`; omitted/unsupported = off;
+admin job PATCH can set it, `""` clears it). After lyrics review, the render worker translates the
+final lyrics line by line (`LYRICS_TRANSLATION_MODEL`, default `gemini-3.8-flash`) into
+`jobs/{id}/lyrics/translations.json` and the landscape + portrait videos show each translation in
+smaller text beneath its line (3 lines per screen). Outcome in `state_data.lyrics_translation`
+(`status`: `translated` / `same_language` / `failed`; a failure renders without translations).
+See [archive/2026-10-01-translated-lyrics-plan.md](archive/2026-10-01-translated-lyrics-plan.md).
+
 ### Tenant Config
 
 ```http

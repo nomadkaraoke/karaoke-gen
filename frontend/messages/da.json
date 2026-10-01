@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Bruger {name} ({size} MB) som instrumentalnummer",
     "ownInstrumentalTitle": "Dit eget instrumentalnummer (valgfrit)",
     "submitTrack": "Indsend nummer",
-    "ownInstrumentalRemove": "Fjern"
+    "ownInstrumentalRemove": "Fjern",
+    "translatedLyricsHint": "Når sangteksten er blevet gennemgået, oversætter AI hver linje til {language} og viser den med mindre skrift under sangteksten i din video. Oversættelser kan ikke redigeres.",
+    "translatedLyricsLanguageLabel": "Oversæt sangtekst til",
+    "translatedLyricsPreviewAlt": "Eksempel på et karaokevideobillede med sangtekst oversat til {language}",
+    "translatedLyricsPreviewError": "Kunne ikke indlæse forhåndsvisningen. Din video vil stadig indeholde den oversatte sangtekst.",
+    "translatedLyricsPreviewLoading": "Genererer forhåndsvisning...",
+    "translatedLyricsToggle": "Tilføj oversat sangtekst",
+    "translatedLyricsToggleHint": "Vis en AI-oversættelse af hver linje med mindre skrift under sangteksten. Godt til at lære et sprog."
   },
   "jobStatus": {
     "settingUp": "Sætter op",

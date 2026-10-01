@@ -1,4 +1,12 @@
 from dataclasses import dataclass
+from typing import Optional
+
+# Translated-lyrics layout defaults (see apply_translation_layout)
+DEFAULT_TRANSLATION_FONT_RATIO = 0.5  # translation font size / lyric font size
+DEFAULT_TRANSLATION_MAX_ROWS = 1  # rows reserved under each lyric line
+DEFAULT_TRANSLATION_MAX_VISIBLE_LINES = 3  # lyric lines per screen when translating
+TRANSLATION_GAP_RATIO = 0.12  # gap between a lyric line and its translation / lyric font size
+TRANSLATION_ROW_RATIO = 1.15  # translation row height / translation font size
 
 
 class ScreenConfig:
@@ -81,6 +89,14 @@ class ScreenConfig:
         self.lead_in_vert_offset_percent = lead_in_vert_offset_percent
         # Text formatting configuration
         self.text_case_transform = text_case_transform
+        # Translated-lyrics layout: set by apply_translation_layout when any line
+        # carries a translation. None = no translation row (classic layout).
+        self.translation_style = None
+        self.translation_font_size: int = 0
+        self.translation_gap: int = 0
+        self.translation_max_rows: int = DEFAULT_TRANSLATION_MAX_ROWS
+        # Height of the lyric line itself within its (taller) slot
+        self.lyric_line_height: int = line_height
 
     def get_lead_in_color_ass_format(self) -> str:
         """Convert RGB lead-in color to ASS format.
@@ -159,6 +175,42 @@ class ScreenConfig:
         # Convert percentage to alpha value
         alpha = int((100 - self.lead_in_opacity_percent) / 100 * 255)
         return f"&H{alpha:02X}&"
+
+
+@dataclass
+class TranslationLayout:
+    """Geometry of a lyric slot that has a translation row beneath the line."""
+
+    slot_height: int  # lyric line + gap + translation rows (the new line_height)
+    lyric_line_height: int
+    translation_font_size: int
+    gap: int
+    max_rows: int
+    max_visible_lines: int
+
+
+def translation_layout(font_size: float, line_height: int, karaoke_styles: Optional[dict] = None) -> TranslationLayout:
+    """Slot geometry for translated lyrics.
+
+    Theme keys (all optional, in the ``karaoke`` block): ``translation_font_size``
+    (absolute) or ``translation_font_ratio``, ``translation_max_rows``,
+    ``translation_max_visible_lines``.
+    """
+    k = karaoke_styles or {}
+    t_size = k.get("translation_font_size") or font_size * float(k.get("translation_font_ratio", DEFAULT_TRANSLATION_FONT_RATIO))
+    t_size = max(1, int(round(t_size)))
+    max_rows = max(1, int(k.get("translation_max_rows", DEFAULT_TRANSLATION_MAX_ROWS)))
+    gap = int(round(font_size * TRANSLATION_GAP_RATIO))
+    slot = int(line_height + gap + max_rows * t_size * TRANSLATION_ROW_RATIO)
+    max_visible = int(k.get("translation_max_visible_lines", DEFAULT_TRANSLATION_MAX_VISIBLE_LINES))
+    return TranslationLayout(
+        slot_height=slot,
+        lyric_line_height=line_height,
+        translation_font_size=t_size,
+        gap=gap,
+        max_rows=max_rows,
+        max_visible_lines=max_visible,
+    )
 
 
 @dataclass

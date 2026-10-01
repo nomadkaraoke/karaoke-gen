@@ -9,6 +9,7 @@ import { ArrowLeft, Loader2, Palette, Image as ImageIcon, Paintbrush, Sparkles }
 import { TitleCardPreview } from "../TitleCardPreview"
 import { KaraokeBackgroundPreview } from "../KaraokeBackgroundPreview"
 import { ImageUploadField } from "../ImageUploadField"
+import { TranslatedLyricsOption } from "../TranslatedLyricsOption"
 
 export interface ColorOverrides {
   artist_color?: string
@@ -38,6 +39,10 @@ interface CustomizeStepProps {
   onReviewModeChange: (value: ReviewMode) => void
   backingPreference: BackingPreference
   onBackingPreferenceChange: (value: BackingPreference) => void
+  /** Language code for translated lyrics beneath the synced lyrics; null = off. */
+  translationLanguage?: string | null
+  /** Omit to hide the translated-lyrics option entirely. */
+  onTranslationLanguageChange?: (value: string | null) => void
   onConfirm: () => void
   onBack: () => void
   isSubmitting: boolean
@@ -305,6 +310,8 @@ export function CustomizeStep({
   onReviewModeChange,
   backingPreference,
   onBackingPreferenceChange,
+  translationLanguage = null,
+  onTranslationLanguageChange,
   onConfirm,
   onBack,
   isSubmitting,
@@ -468,6 +475,14 @@ export function CustomizeStep({
           disabled={disabled || isSubmitting}
           t={t}
         />
+
+        {onTranslationLanguageChange && (
+          <TranslatedLyricsOption
+            value={translationLanguage}
+            onChange={onTranslationLanguageChange}
+            disabled={disabled || isSubmitting}
+          />
+        )}
 
         <Button
           onClick={onConfirm}
@@ -753,6 +768,14 @@ export function CustomizeStep({
         disabled={disabled || isSubmitting}
         t={t}
       />
+
+      {onTranslationLanguageChange && (
+        <TranslatedLyricsOption
+          value={translationLanguage}
+          onChange={onTranslationLanguageChange}
+          disabled={disabled || isSubmitting}
+        />
+      )}
 
       {/* Create button */}
       <Button

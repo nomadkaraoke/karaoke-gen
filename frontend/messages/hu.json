@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "A(z) {name} ({size} MB) használata instrumentális sávként",
     "ownInstrumentalTitle": "Saját instrumentális sáv (opcionális)",
     "submitTrack": "Szám beküldése",
-    "ownInstrumentalRemove": "Eltávolítás"
+    "ownInstrumentalRemove": "Eltávolítás",
+    "translatedLyricsHint": "A dalszöveg átnézése után az AI minden sort lefordít a következő nyelvre: {language}, és kisebb szövegként jeleníti meg a videódban a dalszöveg alatt. A fordítások nem szerkeszthetők.",
+    "translatedLyricsLanguageLabel": "Dalszöveg fordítása erre a nyelvre",
+    "translatedLyricsPreviewAlt": "Példa karaoke videóképkocka {language} nyelvre lefordított dalszöveggel",
+    "translatedLyricsPreviewError": "Nem sikerült betölteni az előnézetet. A videód ettől függetlenül tartalmazni fogja a lefordított dalszöveget.",
+    "translatedLyricsPreviewLoading": "Előnézet renderelése...",
+    "translatedLyricsToggle": "Lefordított dalszöveg hozzáadása",
+    "translatedLyricsToggleHint": "Minden sor AI-fordítását kisebb szövegként jeleníti meg a dalszöveg alatt. Nagyszerű nyelvtanuláshoz."
   },
   "jobStatus": {
     "settingUp": "Beállítás",

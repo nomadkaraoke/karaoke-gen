@@ -64,6 +64,8 @@ class LyricsSegment:
     start_time: float
     end_time: float
     singer: Optional[SingerId] = None
+    # Translation of this line shown in smaller text beneath it (translated-lyrics videos)
+    translation: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert LyricsSegment to dictionary for JSON serialization."""
@@ -76,6 +78,8 @@ class LyricsSegment:
         }
         if self.singer is not None:
             d["singer"] = self.singer
+        if self.translation is not None:
+            d["translation"] = self.translation
         return d
 
     @classmethod
@@ -88,6 +92,7 @@ class LyricsSegment:
             start_time=data["start_time"],
             end_time=data["end_time"],
             singer=data.get("singer"),
+            translation=data.get("translation"),
         )
 
 

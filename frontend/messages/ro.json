@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Se folosește {name} ({size} MB) ca negativ",
     "ownInstrumentalTitle": "Propriul tău negativ (opțional)",
     "submitTrack": "Trimite piesa",
-    "ownInstrumentalRemove": "Elimină"
+    "ownInstrumentalRemove": "Elimină",
+    "translatedLyricsHint": "După ce versurile sunt revizuite, inteligența artificială traduce fiecare rând în {language} și îl afișează cu caractere mai mici sub versuri în videoclipul tău. Traducerile nu pot fi editate.",
+    "translatedLyricsLanguageLabel": "Tradu versurile în",
+    "translatedLyricsPreviewAlt": "Exemplu de cadru video karaoke cu versurile traduse în {language}",
+    "translatedLyricsPreviewError": "Previzualizarea nu a putut fi încărcată. Videoclipul tău va include în continuare versurile traduse.",
+    "translatedLyricsPreviewLoading": "Se randează previzualizarea...",
+    "translatedLyricsToggle": "Adaugă versuri traduse",
+    "translatedLyricsToggleHint": "Afișează o traducere generată de AI a fiecărui rând, cu caractere mai mici, sub versuri. Excelent pentru a învăța o limbă străină."
   },
   "jobStatus": {
     "settingUp": "Se configurează",

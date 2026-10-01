@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Usando {name} ({size} MB) como instrumental",
     "ownInstrumentalTitle": "Seu próprio instrumental (opcional)",
     "submitTrack": "Enviar faixa",
-    "ownInstrumentalRemove": "Remover"
+    "ownInstrumentalRemove": "Remover",
+    "translatedLyricsHint": "Depois que a letra for revisada, a IA traduz cada linha para {language} e exibe o texto em tamanho menor abaixo da letra no seu vídeo. As traduções não podem ser editadas.",
+    "translatedLyricsLanguageLabel": "Traduzir letra para",
+    "translatedLyricsPreviewAlt": "Exemplo de quadro do vídeo de karaokê com a letra traduzida para {language}",
+    "translatedLyricsPreviewError": "Não foi possível carregar a prévia. Mesmo assim, seu vídeo incluirá a letra traduzida.",
+    "translatedLyricsPreviewLoading": "Renderizando prévia...",
+    "translatedLyricsToggle": "Adicionar letra traduzida",
+    "translatedLyricsToggleHint": "Exibe uma tradução por IA de cada linha em tamanho menor abaixo da letra. Ótimo para aprender um idioma."
   },
   "jobStatus": {
     "settingUp": "Configurando",

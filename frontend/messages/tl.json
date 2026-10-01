@@ -584,7 +584,14 @@
     "ownInstrumentalSelected": "Ginagamit ang {name} ({size} MB) bilang instrumental",
     "ownInstrumentalTitle": "Sarili mong instrumental (opsyonal)",
     "submitTrack": "Isumite ang Track",
-    "ownInstrumentalRemove": "Alisin"
+    "ownInstrumentalRemove": "Alisin",
+    "translatedLyricsHint": "Pagkatapos masuri ang lyrics, isasalin ng AI ang bawat linya sa {language} at ipapakita ito sa mas maliit na text sa ilalim ng lyrics sa iyong video. Hindi maaaring i-edit ang mga salin.",
+    "translatedLyricsLanguageLabel": "Isalin ang lyrics sa",
+    "translatedLyricsPreviewAlt": "Halimbawang frame ng karaoke video na may lyrics na isinalin sa {language}",
+    "translatedLyricsPreviewError": "Hindi ma-load ang preview. Isasama pa rin sa iyong video ang mga isinaling lyrics.",
+    "translatedLyricsPreviewLoading": "Nire-render ang preview...",
+    "translatedLyricsToggle": "Magdagdag ng isinaling lyrics",
+    "translatedLyricsToggleHint": "Magpakita ng AI translation ng bawat linya sa mas maliit na text sa ilalim ng lyrics. Maganda para sa pag-aaral ng wika."
   },
   "jobStatus": {
     "settingUp": "Sine-set up",
