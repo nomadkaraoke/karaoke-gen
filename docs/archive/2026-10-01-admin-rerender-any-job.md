@@ -123,17 +123,9 @@ that rebuilds any completed job end to end with no review.
 
 1. **Admin restart** folds the marker deletion into the restart's own atomic
    update, so a rejected restart (e.g. 400 on `preserve_audio_stems`) keeps it.
-2. **Community reconcile.** `notify_community_publish(notify_voters=False)` calls
-   `mark_voter_fanout_suppressed` (`voters_notified=True` + `voter_fanout_suppressed`
-   audit flag), so `reconcile_community_publishes` pass 2 doesn't email voters later.
-   Genuinely-unnotified normal publishes are still retried.
-3. **In-flight deferred upload vs claim.** After a queued upload finishes, the
-   processor re-reads the job. If an admin re-render claimed it meanwhile it never
-   writes `youtube_url` or emails. If the re-render re-publishes YouTube
-   (`marker.republish_youtube`), the just-uploaded old-finals video is deleted and
-   the entry cancelled (safest: no stale public video, and the re-render uploads
-   the new one). Otherwise the upload is kept as the job's YouTube output via
-   `marker.kept_outputs.youtube_url`, so completion keeps the link.
+2. ~~Community reconcile suppression~~ — replaced in the final round (C).
+3. ~~Post-upload reconciliation of an in-flight upload~~ — replaced in the final
+   round by mutual exclusion (A).
 4. **Marker cleared atomically with COMPLETE.** `transition_to_state(...,
    extra_updates={"state_data.admin_rerender": DELETE_FIELD})` writes it in the
    same Firestore update as the status; a failed transition keeps the marker.
@@ -161,6 +153,41 @@ that rebuilds any completed job end to end with no review.
 11. **Claim uses the active marker** (a stale one can't leak brand code / history /
     retry flag), and a **CANCELLED** admin re-render can be resumed by the admin
     endpoint and `/retry`, like FAILED.
+
+## Final review round (simplification)
+
+A. **Mutual exclusion instead of reconciliation.** Two Firestore transactions that
+   each read BOTH docs (`jobs/{id}` + `youtube_upload_queue/{id}`):
+   - the admin re-render claim (`claim_with_youtube_queue`) aborts with 409 "A YouTube
+     upload for this track is in progress — try again in a few minutes." if the
+     entry is `processing`; a `queued`/`failed` entry is cancelled inside the same
+     transaction when YouTube will be re-published, otherwise left with a warning;
+   - the queue's `mark_processing` refuses (entry stays `queued`) while the job has an
+     ACTIVE admin re-render and isn't `complete` (`admin_rerender_blocks_upload`).
+   An in-flight upload and a re-render can therefore never overlap, so the round-2
+   post-upload re-read / stale-video deletion / `kept_outputs.youtube_url` write and
+   the processor's halted-cancel logic are gone, as is `cancel_upload` — nothing but
+   the claim transaction cancels entries, so the re-render's own later
+   `queue_upload` entry is never cancelled. Refused claims don't count towards the
+   20-uploads-per-run cap and the fetch page is 100, so they can't starve the queue.
+B. **Never re-queue after a successful upload.** `mark_completed` is recorded first;
+   failures in follow-up steps (job URL write, community publish) or in
+   `mark_completed` itself flag the entry `needs_attention` / `post_upload_error`
+   (terminal `completed`) instead of `mark_failed` (which re-queued → double upload).
+C. **Community voters: only re-notification is suppressed.** The round-2
+   `notify_voters` / `voter_fanout_suppressed` mechanism is removed;
+   `notify_community_publish` is back to main's behaviour: voters already fully
+   notified are never re-emailed, an owed (unnotified / partially notified) fan-out
+   is completed, and `voters_notified` is only set when it actually completed.
+D. `transition_to_state` raises `ValueError` if `state_data_updates` and
+   `extra_updates['state_data.*']` are combined (Firestore conflicting-path trap).
+E. `delete_dropbox_folder` also checks the legacy raw-name folder
+   (`{brand} - {Artist} - {Title}` unsanitised) when it differs from the sanitised
+   one, deletes whichever exist, reports `deleted` / `failed`, and only reports
+   `success` (which allows brand-code recycling) when no folder remains.
+F. `delete_youtube_video` extracts the video id inside the try — a malformed
+   (non-string) URL returns `{"status": "error"}` instead of raising.
+G. The queue processor reads the fetched jobs in one `db.get_all` batch.
 
 ## Follow-ups
 

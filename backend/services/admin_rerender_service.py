@@ -38,6 +38,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from google.cloud import firestore
 from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
 
 from backend.models.job import JobStatus
@@ -51,8 +52,8 @@ from backend.services.published_outputs_cleanup import (
 )
 from backend.services.storage_service import StorageService
 from backend.services.theme_rerender_service import (
+    RerenderConflictError,
     RerenderError,
-    claim_for_rerender,
     delete_regenerated_artifacts,
 )
 
@@ -92,6 +93,93 @@ def active_admin_rerender(job) -> Dict[str, Any]:
         if marker["review_token"] != getattr(job, "review_token", None):
             return {}
     return marker
+
+
+def admin_rerender_blocks_upload(job_data: Dict[str, Any]) -> bool:
+    """True if a queued YouTube upload must not start for this job (raw job doc).
+
+    An ACTIVE (review_token-scoped) admin re-render on a job that isn't complete
+    is rebuilding (or failed while rebuilding) the finals. Used inside the
+    queue's claim transaction, which reads the job doc.
+    """
+    from types import SimpleNamespace
+
+    view = SimpleNamespace(
+        state_data=job_data.get("state_data") or {},
+        review_token=job_data.get("review_token"),
+    )
+    return bool(active_admin_rerender(view)) and job_data.get("status") != JobStatus.COMPLETE.value
+
+
+UPLOAD_IN_PROGRESS_MESSAGE = (
+    "A YouTube upload for this track is in progress — try again in a few minutes."
+)
+
+
+def claim_with_youtube_queue(
+    db, job_id: str, update: Dict[str, Any], allowed_statuses: set,
+    cancel_deferred_upload: bool, keep_reason: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Atomically claim the job for an admin re-render, reading its YouTube queue doc too.
+
+    - job status not claimable → RerenderConflictError (409);
+    - a deferred upload is ``processing`` → RerenderConflictError (409): an
+      upload of the old finals must never overlap the re-render;
+    - a ``queued``/``failed`` entry is cancelled in the same transaction when
+      the re-render will re-publish YouTube, otherwise left in place (warning).
+
+    The queue's ``mark_processing`` transaction reads the job doc and refuses
+    while an admin re-render is active, so the two can never interleave.
+    Returns the queue outcome, e.g. ``{"status": "cancelled", "previous_status": "queued"}``.
+    """
+    from backend.services.youtube_upload_queue_service import (
+        PACIFIC_TZ,
+        YOUTUBE_UPLOAD_QUEUE_COLLECTION,
+    )
+
+    job_ref = db.collection("jobs").document(job_id)
+    queue_ref = db.collection(YOUTUBE_UPLOAD_QUEUE_COLLECTION).document(job_id)
+    marker_key = f"state_data.{ADMIN_RERENDER_MARKER}"
+
+    @firestore.transactional
+    def claim(transaction):
+        snapshot = job_ref.get(transaction=transaction)
+        queue_snapshot = queue_ref.get(transaction=transaction)
+        status = (snapshot.to_dict() or {}).get("status") if snapshot.exists else None
+        if status not in allowed_statuses:
+            return "not_claimable", None
+        queue_status = (queue_snapshot.to_dict() or {}).get("status") if queue_snapshot.exists else None
+        if queue_status == "processing":
+            return "uploading", None
+
+        payload = dict(update)  # fresh copy per transaction attempt
+        if queue_status in ("queued", "failed"):
+            if cancel_deferred_upload:
+                transaction.update(queue_ref, {
+                    "status": "cancelled",
+                    "last_error": "Cancelled: admin re-render will re-upload",
+                    "updated_at": datetime.now(PACIFIC_TZ),
+                })
+                outcome = {"status": "cancelled", "previous_status": queue_status}
+            else:
+                warning = f"pending deferred YouTube upload left queued (YouTube not re-published: {keep_reason})"
+                marker = dict(payload[marker_key])
+                marker["warnings"] = [*marker.get("warnings", []), warning]
+                payload[marker_key] = marker
+                outcome = {"status": "kept", "previous_status": queue_status, "reason": keep_reason,
+                           "warning": warning}
+        else:
+            outcome = {"status": "skipped",
+                       "reason": "no queue entry" if queue_status is None else f"entry is {queue_status}"}
+        transaction.update(job_ref, payload)
+        return "ok", outcome
+
+    result, outcome = claim(db.transaction())
+    if result == "uploading":
+        raise RerenderConflictError(UPLOAD_IN_PROGRESS_MESSAGE)
+    if result != "ok":
+        raise RerenderConflictError("This track is already being re-rendered or is no longer finished.")
+    return outcome
 
 
 def clear_admin_rerender_update(job) -> Dict[str, Any]:
@@ -220,9 +308,13 @@ class AdminRerenderService:
 
         plan = await asyncio.to_thread(plan_republish, job)
         update, context = self._build_claim(job, requested_by, notify_customer, plan)
-        await asyncio.to_thread(
-            claim_for_rerender, self.job_manager.firestore.db, job.job_id, update, _claimable_statuses(job)
+        queue_outcome = await asyncio.to_thread(
+            claim_with_youtube_queue, self.job_manager.firestore.db, job.job_id, update,
+            _claimable_statuses(job), plan["youtube"][0], plan["youtube"][1],
         )
+        context["youtube_queue"] = queue_outcome
+        if queue_outcome.get("warning"):
+            context["warnings"].append(queue_outcome["warning"])
 
         job_id = job.job_id
         try:
@@ -277,10 +369,6 @@ class AdminRerenderService:
                 kept_outputs[link_key] = state_data[link_key]
                 warnings.append(f"{destination} output left in place (not re-published): {why}")
         republish_youtube = plan["youtube"][0]
-        if not republish_youtube and state_data.get("youtube_upload_queued"):
-            warnings.append(
-                f"pending deferred YouTube upload left queued (YouTube not re-published: {plan['youtube'][1]})"
-            )
 
         now = datetime.now(timezone.utc)
         message = (
@@ -373,7 +461,9 @@ class AdminRerenderService:
             log_to_job(job_id, _LOG_SOURCE, "WARNING", warning)
 
         delete_regenerated_artifacts(self.storage, job_id)
-        return self._delete_published_outputs(job, job.state_data or {}, context["brand_code"], plan)
+        return self._delete_published_outputs(
+            job, job.state_data or {}, context["brand_code"], plan, context.get("youtube_queue")
+        )
 
     def _fail_run(self, job_id: str, error: str, reason: str) -> None:
         """Mark the run FAILED, keeping the marker so it can be retried."""
@@ -389,7 +479,10 @@ class AdminRerenderService:
         except Exception:
             logger.exception(f"[job:{job_id}] Failed to mark admin re-render as failed")
 
-    def _delete_published_outputs(self, job, state_data: dict, brand_code: Optional[str], plan) -> Dict[str, Any]:
+    def _delete_published_outputs(
+        self, job, state_data: dict, brand_code: Optional[str], plan,
+        youtube_queue: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Delete outputs the re-render will re-publish; keep the rest. Best-effort.
 
         Failures don't abort the re-render: the re-publish targets the same
@@ -421,10 +514,8 @@ class AdminRerenderService:
             delete_gdrive_files(job_id, state_data.get("gdrive_files"), brand_code, cleanup_mirror=False)
             if plan["gdrive"][0] else kept("gdrive")
         )
-        results["youtube_queue"] = (
-            self._cancel_deferred_youtube_upload(job_id)
-            if plan["youtube"][0] else {"status": "kept", "reason": plan["youtube"][1]}
-        )
+        # Handled atomically by the claim transaction (claim_with_youtube_queue).
+        results["youtube_queue"] = youtube_queue or {"status": "skipped", "reason": "no queue entry"}
         results["brand_code"] = {"status": "kept", "code": brand_code}
 
         for service in ("youtube", "dropbox", "gdrive", "youtube_queue"):
@@ -449,17 +540,3 @@ class AdminRerenderService:
         except Exception as e:  # audit only — never block the re-render
             logger.warning(f"[job:{job_id}] Failed to record admin re-render cleanup results: {e}")
         return results
-
-    @staticmethod
-    def _cancel_deferred_youtube_upload(job_id: str) -> Dict[str, Any]:
-        """Cancel a pending quota-deferred upload from the original run.
-
-        Otherwise the hourly queue processor could upload the OLD finals,
-        overwrite ``youtube_url`` mid-pipeline and email the customer.
-        """
-        try:
-            from backend.services.youtube_upload_queue_service import get_youtube_upload_queue_service
-            return get_youtube_upload_queue_service().cancel_upload(job_id, reason="admin_rerender")
-        except Exception as e:  # the queue processor also honours the marker
-            logger.warning(f"[job:{job_id}] Failed to cancel deferred YouTube upload: {e}")
-            return {"status": "error", "error": str(e)}

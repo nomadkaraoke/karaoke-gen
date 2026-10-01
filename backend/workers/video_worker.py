@@ -472,9 +472,10 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             if result.youtube_url and not result.youtube_upload_queued:
                 try:
                     from backend.services.community_publish import notify_community_publish
-                    await notify_community_publish(
-                        job_id, result.youtube_url, notify_voters=notify_customer
-                    )
+                    # Idempotent: voters already fully notified are never
+                    # re-emailed, so a quiet admin re-render only completes an
+                    # OWED fan-out (voters are owed "it's live").
+                    await notify_community_publish(job_id, result.youtube_url)
                 except Exception:
                     logger.exception(f"[job:{job_id}] Community publish fan-out failed (non-fatal)")
 
@@ -1089,9 +1090,7 @@ async def generate_video_legacy(job_id: str) -> bool:
             if result.get('youtube_url'):
                 try:
                     from backend.services.community_publish import notify_community_publish
-                    await notify_community_publish(
-                        job_id, result.get('youtube_url'), notify_voters=notify_customer
-                    )
+                    await notify_community_publish(job_id, result.get('youtube_url'))
                 except Exception:
                     logger.exception(f"[job:{job_id}] Community publish fan-out failed (non-fatal)")
 

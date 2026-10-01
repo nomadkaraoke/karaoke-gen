@@ -450,15 +450,6 @@ class SongRequestService:
             {"notified_voters": firestore.ArrayUnion(emails), "updated_at": _now_iso()}
         )
 
-    def mark_voter_fanout_suppressed(self, request_id: str) -> None:
-        """Record that voters were intentionally NOT emailed for this publish
-        (quiet admin re-render). Sets ``voters_notified`` so the reconcile's
-        ``list_published_unnotified`` pass skips it; ``voter_fanout_suppressed``
-        records why."""
-        self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
-            {"voters_notified": True, "voter_fanout_suppressed": True, "updated_at": _now_iso()}
-        )
-
     def mark_voters_notified(self, request_id: str) -> None:
         self.db.collection(REQUESTS_COLLECTION).document(request_id).update(
             {"voters_notified": True, "updated_at": _now_iso()}

@@ -70,7 +70,9 @@ class TestDropbox:
         dropbox.delete_folder.return_value = True
         with patch("backend.services.dropbox_service.get_dropbox_service", return_value=dropbox):
             result = cleanup.delete_dropbox_folder("j", "/K", "NOMAD-1", "Artist", "Title")
-        assert result == {"status": "success", "path": "/K/NOMAD-1 - Artist - Title"}
+        assert result == {"status": "success", "path": "/K/NOMAD-1 - Artist - Title",
+                          "deleted": ["/K/NOMAD-1 - Artist - Title"]}
+        dropbox.file_exists.assert_not_called()  # names identical: no probing
 
     def test_error(self):
         dropbox = MagicMock(is_configured=True)

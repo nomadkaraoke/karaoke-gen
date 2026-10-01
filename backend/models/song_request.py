@@ -78,9 +78,6 @@ class SongRequest(BaseModel):
     # Voters already successfully emailed on publish — lets a re-run retry only the
     # failures instead of re-emailing everyone (voters_notified is the all-done flag).
     notified_voters: list[str] = Field(default_factory=list)
-    # A quiet admin re-render re-published this pick without emailing voters;
-    # voters_notified is set too so the publish reconcile doesn't fan out later.
-    voter_fanout_suppressed: bool = False
 
     # Existing-community-version review (set by the daily picker's KaraokeNerds check).
     review_state: Optional[ReviewState] = None

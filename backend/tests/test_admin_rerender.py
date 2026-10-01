@@ -105,15 +105,20 @@ class TestValidateAdminRerender:
 
 # --- Service ------------------------------------------------------------------
 
-def _service(claim_status="complete", trigger_ok=True):
-    """AdminRerenderService wired to a fake Firestore transaction + storage."""
+def _service(claim_status="complete", trigger_ok=True, queue_status=None):
+    """AdminRerenderService wired to a fake Firestore (job + youtube_upload_queue docs)."""
     job_manager = MagicMock()
     job_manager.update_job.return_value = None
-    doc_ref = MagicMock()
-    snapshot = MagicMock(exists=True)
-    snapshot.to_dict.return_value = {"status": claim_status}
-    doc_ref.get.return_value = snapshot
-    job_manager.firestore.db.collection.return_value.document.return_value = doc_ref
+    docs = {}
+    for name, status in (("jobs", claim_status), ("youtube_upload_queue", queue_status)):
+        ref = MagicMock(name=f"{name}_ref")
+        snapshot = MagicMock(exists=status is not None)
+        snapshot.to_dict.return_value = {"status": status} if status is not None else None
+        ref.get.return_value = snapshot
+        docs[name] = ref
+    collections = {name: MagicMock(**{"document.return_value": ref}) for name, ref in docs.items()}
+    job_manager.firestore.db.collection.side_effect = lambda name: collections[name]
+    job_manager.firestore.db._docs = docs
     storage = MagicMock()
     storage.list_files.return_value = []
     worker_service = MagicMock()
@@ -130,12 +135,8 @@ def deps():
     prepare_theme = MagicMock()
     brand_service = MagicMock()
     plan = MagicMock(return_value={"youtube": (True, None), "dropbox": (True, None), "gdrive": (True, None)})
-    queue_service = MagicMock()
-    queue_service.cancel_upload.return_value = {"status": "skipped", "reason": "no queue entry"}
     with patch("backend.services.theme_rerender_service.firestore.transactional", lambda fn: fn), \
          patch(f"{SVC}.plan_republish", plan), \
-         patch("backend.services.youtube_upload_queue_service.get_youtube_upload_queue_service",
-               return_value=queue_service), \
          patch(f"{SVC}.log_to_job"), \
          patch(f"{SVC}.delete_youtube_video", youtube), \
          patch(f"{SVC}.delete_dropbox_folder", dropbox), \
@@ -144,7 +145,7 @@ def deps():
          patch("backend.services.brand_code_service.get_brand_code_service", return_value=brand_service):
         yield SimpleNamespace(youtube=youtube, dropbox=dropbox, gdrive=gdrive,
                               prepare_theme=prepare_theme, brand_service=brand_service,
-                              plan=plan, queue_service=queue_service)
+                              plan=plan)
 
 
 async def _start(service, worker_service, job, **kwargs):
@@ -152,10 +153,22 @@ async def _start(service, worker_service, job, **kwargs):
         return await service.start(job, requested_by="admin@nomadkaraoke.com", **kwargs)
 
 
-def _claim_update(service):
+def _job_updates(service):
     transaction = service.job_manager.firestore.db.transaction.return_value
-    transaction.update.assert_called_once()
-    return transaction.update.call_args.args[1]
+    job_ref = service.job_manager.firestore.db._docs["jobs"]
+    return [c.args[1] for c in transaction.update.call_args_list if c.args[0] is job_ref]
+
+
+def _queue_updates(service):
+    transaction = service.job_manager.firestore.db.transaction.return_value
+    queue_ref = service.job_manager.firestore.db._docs["youtube_upload_queue"]
+    return [c.args[1] for c in transaction.update.call_args_list if c.args[0] is queue_ref]
+
+
+def _claim_update(service):
+    updates = _job_updates(service)
+    assert len(updates) == 1, updates
+    return updates[0]
 
 
 class TestAdminRerenderService:
@@ -839,97 +852,6 @@ class TestKeepOutputsThatWontBeRepublished:
 
 # --- #1: stale deferred YouTube upload ----------------------------------------
 
-class TestStaleYouTubeQueueEntry:
-    @pytest.mark.asyncio
-    async def test_rerender_cancels_pending_queue_entry(self, deps):
-        deps.queue_service.cancel_upload.return_value = {"status": "cancelled", "previous_status": "queued"}
-        service, _, worker_service = _service()
-        result = await _start(service, worker_service, _job())
-        deps.queue_service.cancel_upload.assert_called_once_with("job123", reason="admin_rerender")
-        assert result["cleanup_results"]["youtube_queue"]["status"] == "cancelled"
-        assert _claim_update(service)["state_data.youtube_upload_queued"] is DELETE_FIELD
-
-    @pytest.mark.asyncio
-    async def test_queue_cancel_failure_is_best_effort(self, deps):
-        deps.queue_service.cancel_upload.side_effect = RuntimeError("firestore down")
-        service, _, worker_service = _service()
-        result = await _start(service, worker_service, _job())
-        assert result["cleanup_results"]["youtube_queue"]["status"] == "error"
-        worker_service.trigger_screens_worker.assert_awaited_once()
-
-    def _queue_service(self, status):
-        from backend.services.youtube_upload_queue_service import YouTubeUploadQueueService
-        db = MagicMock()
-        doc = MagicMock(exists=status is not None)
-        doc.to_dict.return_value = {"status": status}
-        doc_ref = db.collection.return_value.document.return_value
-        doc_ref.get.return_value = doc
-        return YouTubeUploadQueueService(db=db), db
-
-    @pytest.mark.parametrize("status, expected", [
-        ("queued", "cancelled"), ("failed", "cancelled"), ("processing", "processing"),
-        ("completed", "skipped"), (None, "skipped"),
-    ])
-    def test_cancel_upload(self, status, expected):
-        service, db = self._queue_service(status)
-        with patch("backend.services.youtube_upload_queue_service.firestore.transactional", lambda fn: fn):
-            result = service.cancel_upload("job123", reason="admin_rerender")
-        assert result["status"] == expected
-        transaction = db.transaction.return_value
-        if expected == "cancelled":
-            assert transaction.update.call_args.args[1]["status"] == "cancelled"
-        else:
-            transaction.update.assert_not_called()
-
-    async def _process(self, job, entry_extra=None):
-        from backend.workers import youtube_queue_processor as qp
-
-        entry = {"job_id": "job123", "user_email": "c@example.com", "artist": "A",
-                 "title": "T", "brand_code": "NOMAD-1234", **(entry_extra or {})}
-        queue_service = MagicMock()
-        queue_service.get_queued_uploads.side_effect = [[entry], []]
-        queue_service.mark_processing.return_value = True
-        quota_service = MagicMock()
-        quota_service.check_quota_available.return_value = (True, 10000, "ok")
-        job_manager = MagicMock()
-        job_manager.get_job.return_value = job
-        upload = AsyncMock(return_value="https://youtu.be/x")
-        send = AsyncMock()
-        community = AsyncMock()
-        with patch.object(qp, "get_youtube_upload_queue_service", return_value=queue_service), \
-             patch.object(qp, "get_youtube_quota_service", return_value=quota_service), \
-             patch.object(qp, "JobManager", return_value=job_manager), \
-             patch.object(qp, "_process_single_upload", new=upload), \
-             patch.object(qp, "_update_job_youtube_url"), \
-             patch.object(qp, "_send_youtube_upload_notification", new=send), \
-             patch.object(qp, "notify_community_publish", new=community):
-            await qp.process_youtube_upload_queue()
-        return SimpleNamespace(upload=upload, send=send, community=community, queue=queue_service)
-
-    @pytest.mark.asyncio
-    async def test_processor_defers_upload_while_rerender_in_progress(self):
-        job = _job(status="rendering_video", state_data={"admin_rerender": {"brand_code": "NOMAD-1234"}})
-        r = await self._process(job)
-        r.upload.assert_not_awaited()
-        r.queue.mark_processing.assert_not_called()
-        r.send.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_processor_suppresses_emails_while_marker_present(self):
-        """Legacy entry (no notify_user) processed during a silent admin re-render."""
-        job = _job(status="complete", state_data={"admin_rerender": {"brand_code": "NOMAD-1234"}})
-        r = await self._process(job)
-        r.upload.assert_awaited_once()
-        r.send.assert_not_awaited()
-        assert r.community.await_args.kwargs["notify_voters"] is False
-
-    @pytest.mark.asyncio
-    async def test_processor_normal_job_emails(self):
-        r = await self._process(_job(state_data={}))
-        r.send.assert_awaited_once()
-        assert r.community.await_args.kwargs["notify_voters"] is True
-
-
 # --- #2: retry is admin-only for an admin re-render -------------------------------
 
 class TestRetryRequiresAdmin:
@@ -1162,7 +1084,7 @@ class TestFailureAfterClaim:
         # plan_republish (mocked in deps), the Firestore claim and the post-claim
         # deletions all go through to_thread.
         names = {getattr(fn, "__name__", None) for fn in calls}
-        assert {"claim_for_rerender", "_after_claim"} <= names
+        assert {"claim_with_youtube_queue", "_after_claim"} <= names
         assert deps.plan in calls
 
 
@@ -1193,51 +1115,6 @@ class TestDiscordAndCommunityGating:
         await o._run_notifications()
         o._discord_service.post_video_notification.assert_called_once_with("https://youtu.be/new")
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("marker, expected", [
-        ({"brand_code": "NOMAD-1234"}, False),
-        ({"brand_code": "NOMAD-1234", "notify_customer": True}, True),
-        (None, True),
-    ])
-    async def test_video_worker_passes_notify_voters(self, marker, expected):
-        state = {"instrumental_selection": "clean"}
-        if marker:
-            state["admin_rerender"] = marker
-        community = AsyncMock()
-        await _run_video_worker(state, community=community)
-        assert community.await_args.kwargs["notify_voters"] is expected
-
-    def _request(self, voters_notified=False):
-        return SimpleNamespace(id="req1", voters_notified=voters_notified, owner_email="o@x.com",
-                               submitted_by=None, notified_voters=[], artist="A", title="T")
-
-    @pytest.mark.asyncio
-    async def test_community_publish_updates_url_but_skips_voter_emails(self):
-        from backend.services.community_publish import notify_community_publish
-        service = MagicMock()
-        service.get_by_job_id.return_value = self._request()
-        service.list_upvoters.return_value = ["v@x.com"]
-        notifier = MagicMock()
-        notifier.send_community_track_live_email = AsyncMock(return_value=True)
-        with patch("backend.services.song_request_service.get_song_request_service", return_value=service), \
-             patch("backend.services.job_notification_service.get_job_notification_service", return_value=notifier):
-            assert await notify_community_publish("job123", "https://youtu.be/new", notify_voters=False) == "req1"
-        service.mark_published.assert_called_once_with("req1", "https://youtu.be/new")
-        notifier.send_community_track_live_email.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_community_publish_emails_voters_by_default(self):
-        from backend.services.community_publish import notify_community_publish
-        service = MagicMock()
-        service.get_by_job_id.return_value = self._request()
-        service.list_upvoters.return_value = ["v@x.com"]
-        notifier = MagicMock()
-        notifier.send_community_track_live_email = AsyncMock(return_value=True)
-        with patch("backend.services.song_request_service.get_song_request_service", return_value=service), \
-             patch("backend.services.job_notification_service.get_job_notification_service", return_value=notifier):
-            await notify_community_publish("job123", "https://youtu.be/new")
-        notifier.send_community_track_live_email.assert_awaited_once()
-
 
 # --- #8: Edit's Dropbox folder name now matches the uploader (sanitised) -------------
 
@@ -1262,6 +1139,8 @@ class TestEditDropboxPathSanitised:
         job_manager.get_job.return_value = job
         dropbox = MagicMock(is_configured=True)
         dropbox.delete_folder.return_value = True
+        sanitised = f"/Karaoke/Tracks-Organized/NOMAD-0042 - {sanitize_filename(artist)} - {sanitize_filename(title)}"
+        dropbox.file_exists.side_effect = lambda path: path == sanitised  # only the uploader's name exists
         with patch.object(jobs_routes, "job_manager", job_manager), \
              patch.object(jobs_routes, "FirestoreService"), \
              patch.object(jobs_routes, "StorageService"), \
@@ -1273,7 +1152,8 @@ class TestEditDropboxPathSanitised:
         expected = f"/Karaoke/Tracks-Organized/NOMAD-0042 - {sanitize_filename(artist)} - {sanitize_filename(title)}"
         assert expected != f"/Karaoke/Tracks-Organized/NOMAD-0042 - {artist} - {title}"
         dropbox.delete_folder.assert_called_once_with(expected)
-        assert resp.json()["cleanup_results"]["dropbox"] == {"status": "success", "path": expected}
+        assert resp.json()["cleanup_results"]["dropbox"] == {
+            "status": "success", "path": expected, "deleted": [expected]}
 
 
 # =============================================================================
@@ -1329,218 +1209,7 @@ class TestRestartMarkerAtomic:
 
 # --- R2#2: quiet re-publish vs. the community reconcile ------------------------------
 
-class _FakeSongRequestService:
-    """In-memory stand-in honouring the voters_notified query the reconcile uses."""
-
-    def __init__(self, requests, upvoters):
-        self.requests = {r.id: r for r in requests}
-        self.upvoters = upvoters
-
-    def get_by_job_id(self, job_id):
-        return next((r for r in self.requests.values() if r.job_id == job_id), None)
-
-    def mark_published(self, request_id, url):
-        self.requests[request_id].status = "published"
-        self.requests[request_id].youtube_url = url
-
-    def mark_voter_fanout_suppressed(self, request_id):
-        self.requests[request_id].voters_notified = True
-        self.requests[request_id].voter_fanout_suppressed = True
-
-    def mark_voters_notified(self, request_id):
-        self.requests[request_id].voters_notified = True
-
-    def add_notified_voters(self, request_id, emails):
-        self.requests[request_id].notified_voters += emails
-
-    def list_upvoters(self, request_id):
-        return list(self.upvoters.get(request_id, []))
-
-    def list_in_progress(self):
-        return [r for r in self.requests.values() if r.status == "in_progress"]
-
-    def list_published_unnotified(self):
-        return [r for r in self.requests.values() if r.status == "published" and not r.voters_notified]
-
-
-def _song_request(rid, job_id, **kw):
-    fields = dict(id=rid, job_id=job_id, status="in_progress", youtube_url=None, voters_notified=False,
-                  notified_voters=[], owner_email="owner@x.com", submitted_by=None, artist="A", title="T",
-                  voter_fanout_suppressed=False)
-    fields.update(kw)
-    return SimpleNamespace(**fields)
-
-
-class TestQuietRepublishVsReconcile:
-    async def _run(self, service, coro_factory):
-        notifier = MagicMock()
-        notifier.send_community_track_live_email = AsyncMock(return_value=True)
-        with patch("backend.services.song_request_service.get_song_request_service", return_value=service), \
-             patch("backend.services.job_notification_service.get_job_notification_service", return_value=notifier), \
-             patch("backend.services.job_manager.JobManager"):
-            await coro_factory()
-        return notifier
-
-    @pytest.mark.asyncio
-    async def test_reconcile_does_not_email_after_quiet_republish(self):
-        from backend.services.community_publish import notify_community_publish, reconcile_community_publishes
-        service = _FakeSongRequestService(
-            [_song_request("quiet", "job-quiet", status="published", voters_notified=False)],
-            {"quiet": ["v1@x.com"]},
-        )
-
-        async def go():
-            await notify_community_publish("job-quiet", "https://youtu.be/new", notify_voters=False)
-            await reconcile_community_publishes()
-
-        notifier = await self._run(service, go)
-        notifier.send_community_track_live_email.assert_not_awaited()
-        req = service.requests["quiet"]
-        assert req.youtube_url == "https://youtu.be/new"
-        assert req.voter_fanout_suppressed is True
-
-    @pytest.mark.asyncio
-    async def test_reconcile_still_retries_genuinely_unnotified_publishes(self):
-        from backend.services.community_publish import reconcile_community_publishes
-        service = _FakeSongRequestService(
-            [_song_request("normal", "job-normal", status="published", youtube_url="https://youtu.be/n")],
-            {"normal": ["v2@x.com"]},
-        )
-        notifier = await self._run(service, reconcile_community_publishes)
-        notifier.send_community_track_live_email.assert_awaited_once()
-        assert service.requests["normal"].voters_notified is True
-
-    def test_service_marks_suppression(self):
-        from backend.services.song_request_service import SongRequestService
-        svc = SongRequestService.__new__(SongRequestService)
-        svc.db = MagicMock()
-        svc.mark_voter_fanout_suppressed("req1")
-        payload = svc.db.collection.return_value.document.return_value.update.call_args.args[0]
-        assert payload["voters_notified"] is True and payload["voter_fanout_suppressed"] is True
-
-
 # --- R2#3 + R2#6: queue processor vs admin re-render --------------------------------
-
-def _queue_entry(job_id, **extra):
-    return {"job_id": job_id, "user_email": "c@example.com", "artist": "A", "title": "T",
-            "brand_code": "NOMAD-1234", **extra}
-
-
-async def _process_queue(entries, jobs, uploaded="https://youtu.be/old"):
-    """Run the processor; ``jobs`` maps job_id -> job or list of jobs (successive reads)."""
-    from backend.workers import youtube_queue_processor as qp
-
-    queue_service = MagicMock()
-    queue_service.get_queued_uploads.side_effect = [entries, []]
-    queue_service.mark_processing.return_value = True
-    quota_service = MagicMock()
-    quota_service.check_quota_available.return_value = (True, 10000, "ok")
-    reads = {k: (list(v) if isinstance(v, list) else None) for k, v in jobs.items()}
-
-    def get_job(job_id):
-        seq = reads.get(job_id)
-        if seq is None:
-            return jobs.get(job_id)
-        return seq.pop(0) if len(seq) > 1 else seq[0]
-
-    job_manager = MagicMock()
-    job_manager.get_job.side_effect = get_job
-    upload = AsyncMock(return_value=uploaded)
-    send = AsyncMock()
-    community = AsyncMock()
-    update_url = MagicMock()
-    delete_video = MagicMock(return_value={"status": "success", "video_id": "old"})
-    with patch.object(qp, "get_youtube_upload_queue_service", return_value=queue_service), \
-         patch.object(qp, "get_youtube_quota_service", return_value=quota_service), \
-         patch.object(qp, "JobManager", return_value=job_manager), \
-         patch.object(qp, "_process_single_upload", new=upload), \
-         patch.object(qp, "_update_job_youtube_url", update_url), \
-         patch.object(qp, "_send_youtube_upload_notification", new=send), \
-         patch.object(qp, "notify_community_publish", new=community), \
-         patch("backend.services.published_outputs_cleanup.delete_youtube_video", delete_video), \
-         patch("backend.services.firestore_service.log_to_job"):
-        await qp.process_youtube_upload_queue()
-    return SimpleNamespace(queue=queue_service, upload=upload, send=send, community=community,
-                           update_url=update_url, delete_video=delete_video, job_manager=job_manager)
-
-
-class TestQueueProcessorRerenderRaces:
-    @pytest.mark.asyncio
-    async def test_upload_overlapping_claim_is_discarded_and_deleted(self):
-        before = _job(state_data={})
-        after = _job(status="generating_screens",
-                     state_data={"admin_rerender": {"brand_code": "NOMAD-1234", "republish_youtube": True}})
-        r = await _process_queue([_queue_entry("job123")], {"job123": [before, after]})
-        r.upload.assert_awaited_once()
-        r.update_url.assert_not_called()
-        r.send.assert_not_awaited()
-        r.community.assert_not_awaited()
-        r.delete_video.assert_called_once_with("job123", "https://youtu.be/old")
-        r.queue.cancel_upload.assert_called_once_with("job123", "superseded_by_admin_rerender")
-        r.queue.mark_completed.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_upload_overlapping_claim_kept_when_youtube_not_republished(self):
-        before = _job(state_data={})
-        after = _job(status="rendering_video",
-                     state_data={"admin_rerender": {"brand_code": "NOMAD-1234", "republish_youtube": False}})
-        r = await _process_queue([_queue_entry("job123")], {"job123": [before, after]})
-        r.delete_video.assert_not_called()
-        r.update_url.assert_not_called()
-        r.send.assert_not_awaited()
-        r.job_manager.update_job.assert_called_once_with(
-            "job123", {"state_data.admin_rerender.kept_outputs.youtube_url": "https://youtu.be/old"})
-        r.queue.mark_completed.assert_called_once_with("job123", "https://youtu.be/old")
-
-    @pytest.mark.asyncio
-    async def test_halted_rerender_entry_is_cancelled_not_starving(self):
-        failed = _job(job_id="dead", status="failed",
-                      state_data={"admin_rerender": {"brand_code": "X", "republish_youtube": True}})
-        r = await _process_queue([_queue_entry("dead"), _queue_entry("ok")],
-                                 {"dead": failed, "ok": _job(job_id="ok", state_data={})})
-        r.queue.cancel_upload.assert_called_once_with("dead", "admin_rerender_halted")
-        assert [c.args[0] for c in r.upload.await_args_list] == ["ok"]
-
-    @pytest.mark.asyncio
-    async def test_halted_rerender_not_republishing_keeps_owed_upload(self):
-        failed = _job(status="cancelled",
-                      state_data={"admin_rerender": {"brand_code": "X", "republish_youtube": False}})
-        r = await _process_queue([_queue_entry("job123")], {"job123": failed})
-        r.queue.cancel_upload.assert_not_called()
-        r.upload.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_deferred_entries_cannot_starve_the_queue(self):
-        from backend.workers import youtube_queue_processor as qp
-        busy = _job(status="encoding", state_data={"admin_rerender": {"brand_code": "X"}})
-        entries = [_queue_entry(f"busy{i}") for i in range(30)] + [_queue_entry("ok")]
-        jobs = {f"busy{i}": busy for i in range(30)}
-        jobs["ok"] = _job(job_id="ok", state_data={})
-        r = await _process_queue(entries, jobs)
-        assert r.queue.get_queued_uploads.call_args_list[0].kwargs["limit"] == qp.QUEUE_FETCH_LIMIT
-        assert [c.args[0] for c in r.upload.await_args_list] == ["ok"]
-
-    @pytest.mark.asyncio
-    async def test_upload_attempts_capped_per_run(self):
-        from backend.workers import youtube_queue_processor as qp
-        entries = [_queue_entry(f"j{i}") for i in range(qp.MAX_UPLOADS_PER_RUN + 5)]
-        r = await _process_queue(entries, {e["job_id"]: _job(job_id=e["job_id"], state_data={}) for e in entries})
-        assert r.upload.await_count == qp.MAX_UPLOADS_PER_RUN
-
-    @pytest.mark.asyncio
-    async def test_job_reads_run_off_the_event_loop(self):
-        from backend.workers import youtube_queue_processor as qp
-        calls = []
-        real = __import__("asyncio").to_thread
-
-        async def spy(fn, *a, **k):
-            calls.append(fn)
-            return await real(fn, *a, **k)
-
-        with patch.object(qp.asyncio, "to_thread", side_effect=spy):
-            await _process_queue([_queue_entry("job123")], {"job123": _job(state_data={})})
-        assert qp._admin_rerender_state in calls
-
 
 # --- R2#4/#5: atomic marker clear + completion counting ------------------------------
 
@@ -1595,50 +1264,6 @@ class TestTransitionExtrasAndCounting:
 
 
 # --- R2#7: deferred YouTube upload kept when YouTube isn't re-published ----------------
-
-class TestDeferredUploadKept:
-    @pytest.mark.asyncio
-    async def test_not_republishing_youtube_keeps_queue_and_flag(self, deps):
-        deps.plan.return_value = {"youtube": (False, "YouTube upload is disabled for this job"),
-                                  "dropbox": (True, None), "gdrive": (True, None)}
-        service, _, worker_service = _service()
-        job = _job(state_data={**_job().state_data, "youtube_upload_queued": True})
-        result = await _start(service, worker_service, job)
-        deps.queue_service.cancel_upload.assert_not_called()
-        update = _claim_update(service)
-        assert "state_data.youtube_upload_queued" not in update
-        assert "state_data.youtube_url" not in update
-        assert update["state_data.admin_rerender"]["republish_youtube"] is False
-        assert result["cleanup_results"]["youtube_queue"]["status"] == "kept"
-        assert any("deferred YouTube upload left queued" in w for w in result["warnings"])
-
-    @pytest.mark.asyncio
-    async def test_republishing_youtube_cancels_queue_and_clears_flag(self, deps):
-        service, _, worker_service = _service()
-        await _start(service, worker_service, _job(state_data={**_job().state_data, "youtube_upload_queued": True}))
-        deps.queue_service.cancel_upload.assert_called_once()
-        update = _claim_update(service)
-        assert update["state_data.youtube_upload_queued"] is DELETE_FIELD
-        assert update["state_data.admin_rerender"]["republish_youtube"] is True
-
-    def test_credential_check_error_means_no_youtube_changes_with_reason(self):
-        from backend.services.admin_rerender_service import plan_republish
-        with patch("backend.services.youtube_service.get_youtube_service", side_effect=RuntimeError("secret mgr")):
-            republish, why = plan_republish(_job())["youtube"]
-        assert republish is False
-        assert "couldn't verify YouTube credentials" in why and "secret mgr" in why
-
-    @pytest.mark.asyncio
-    async def test_credential_check_error_end_to_end(self, deps):
-        """Real plan with a failing credential lookup: YouTube untouched, warned."""
-        deps.plan.side_effect = _REAL_PLAN_REPUBLISH
-        service, _, worker_service = _service()
-        with patch("backend.services.youtube_service.get_youtube_service", side_effect=RuntimeError("boom")):
-            result = await _start(service, worker_service, _job())
-        deps.youtube.assert_not_called()
-        deps.queue_service.cancel_upload.assert_not_called()
-        assert any("youtube output left in place" in w and "couldn't verify" in w for w in result["warnings"])
-
 
 # --- R2#8: legacy path Discord gating + kept brand code ---------------------------------
 
@@ -1720,6 +1345,7 @@ class TestDeleteOutputsSharedHelpers:
         job_manager.get_job.return_value = job
         dropbox = MagicMock(is_configured=True)
         dropbox.delete_folder.return_value = True
+        dropbox.file_exists.side_effect = lambda path: "AC_DC" in path  # sanitised folder only
         yt = MagicMock(return_value={"status": "success", "video_id": "abc123"})
         gd = MagicMock(return_value={"status": "success", "files": {}})
         with patch.object(admin_routes, "JobManager", return_value=job_manager), \
@@ -1791,3 +1417,480 @@ class TestActiveMarkerInClaimAndCancelled:
             resp = test_client.post("/api/jobs/job123/retry")
         assert resp.status_code == 200, resp.text
         assert resp.json()["retry_stage"] == "admin_rerender"
+
+
+# =============================================================================
+# Final review round
+# =============================================================================
+
+# --- A: re-render claim and queue claim are mutually exclusive ------------------------
+
+class TestClaimReadsYouTubeQueue:
+    @pytest.mark.asyncio
+    async def test_claim_refused_while_upload_processing(self, deps):
+        service, storage, worker_service = _service(queue_status="processing")
+        with pytest.raises(RerenderConflictError) as exc:
+            await _start(service, worker_service, _job())
+        assert exc.value.status_code == 409
+        assert "YouTube upload for this track is in progress" in str(exc.value)
+        assert _job_updates(service) == [] and _queue_updates(service) == []
+        deps.youtube.assert_not_called()
+        storage.delete_file.assert_not_called()
+        worker_service.trigger_screens_worker.assert_not_awaited()
+
+    def test_route_maps_upload_in_progress_to_409(self, client):
+        from backend.services.admin_rerender_service import UPLOAD_IN_PROGRESS_MESSAGE
+        start = AsyncMock(side_effect=RerenderConflictError(UPLOAD_IN_PROGRESS_MESSAGE))
+        resp, _ = _post(client, _auth(), _job(), start=start)
+        assert resp.status_code == 409
+        assert "try again in a few minutes" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("queue_status", ["queued", "failed"])
+    async def test_claim_cancels_pending_entry_in_same_transaction(self, deps, queue_status):
+        service, _, worker_service = _service(queue_status=queue_status)
+        result = await _start(service, worker_service, _job())
+        transaction = service.job_manager.firestore.db.transaction.return_value
+        # both writes go through the one claim transaction
+        assert len(transaction.update.call_args_list) == 2
+        assert _queue_updates(service)[0]["status"] == "cancelled"
+        assert _claim_update(service)["state_data.youtube_upload_queued"] is DELETE_FIELD
+        assert result["cleanup_results"]["youtube_queue"] == {"status": "cancelled", "previous_status": queue_status}
+
+    @pytest.mark.asyncio
+    async def test_no_queue_entry(self, deps):
+        service, _, worker_service = _service()
+        result = await _start(service, worker_service, _job())
+        assert _queue_updates(service) == []
+        assert result["cleanup_results"]["youtube_queue"]["status"] == "skipped"
+
+    @pytest.mark.asyncio
+    async def test_entry_kept_with_warning_when_youtube_not_republished(self, deps):
+        deps.plan.return_value = {"youtube": (False, "YouTube upload is disabled for this job"),
+                                  "dropbox": (True, None), "gdrive": (True, None)}
+        service, _, worker_service = _service(queue_status="queued")
+        job = _job(state_data={**_job().state_data, "youtube_upload_queued": True})
+        result = await _start(service, worker_service, job)
+        assert _queue_updates(service) == []
+        update = _claim_update(service)
+        assert "state_data.youtube_upload_queued" not in update
+        assert "state_data.youtube_url" not in update
+        warning = next(w for w in result["warnings"] if "deferred YouTube upload left queued" in w)
+        assert warning in update["state_data.admin_rerender"]["warnings"]
+        assert result["cleanup_results"]["youtube_queue"]["status"] == "kept"
+
+    @pytest.mark.asyncio
+    async def test_credential_check_error_leaves_youtube_and_queue_alone(self, deps):
+        deps.plan.side_effect = _REAL_PLAN_REPUBLISH
+        service, _, worker_service = _service(queue_status="queued")
+        with patch("backend.services.youtube_service.get_youtube_service", side_effect=RuntimeError("boom")):
+            result = await _start(service, worker_service, _job())
+        deps.youtube.assert_not_called()
+        assert _queue_updates(service) == []
+        assert any("couldn't verify YouTube credentials" in w for w in result["warnings"])
+
+
+def _queue_service_with(job_doc, queue_status="queued"):
+    """Real YouTubeUploadQueueService over a fake db holding one queue doc + one job doc."""
+    from backend.services.youtube_upload_queue_service import YouTubeUploadQueueService
+    db = MagicMock()
+    refs = {}
+    for name, data in (("youtube_upload_queue", {"status": queue_status, "attempts": 0, "max_attempts": 5}),
+                       ("jobs", job_doc)):
+        ref = MagicMock(name=name)
+        snap = MagicMock(exists=data is not None)
+        snap.to_dict.return_value = data
+        ref.get.return_value = snap
+        refs[name] = ref
+    db.collection.side_effect = lambda name: MagicMock(**{"document.return_value": refs[name]})
+    return YouTubeUploadQueueService(db=db), db, refs
+
+
+class TestQueueClaimReadsJob:
+    def _claim(self, job_doc, queue_status="queued"):
+        service, db, refs = _queue_service_with(job_doc, queue_status)
+        with patch("backend.services.youtube_upload_queue_service.firestore.transactional", lambda fn: fn):
+            ok = service.mark_processing("job123")
+        updates = db.transaction.return_value.update.call_args_list
+        return ok, updates, refs
+
+    def test_refuses_while_admin_rerender_active(self):
+        ok, updates, refs = self._claim({"status": "rendering_video", "review_token": "t",
+                                         "state_data": {"admin_rerender": {"review_token": "t"}}})
+        assert ok is False and updates == []
+        refs["jobs"].get.assert_called_once()  # read inside the transaction
+
+    def test_refuses_while_admin_rerender_failed(self):
+        ok, updates, _ = self._claim({"status": "failed", "state_data": {"admin_rerender": {"brand_code": "X"}}})
+        assert ok is False and updates == []
+
+    @pytest.mark.parametrize("job_doc", [
+        {"status": "complete", "state_data": {}},                                   # normal job
+        {"status": "complete", "state_data": {"admin_rerender": {"brand_code": "X"}}},  # re-render done
+        {"status": "rendering_video", "review_token": "new",                        # stale marker
+         "state_data": {"admin_rerender": {"review_token": "old"}}},
+        None,                                                                       # job doc missing
+    ])
+    def test_claims_otherwise(self, job_doc):
+        ok, updates, _ = self._claim(job_doc)
+        assert ok is True
+        assert updates[0].args[1]["status"] == "processing"
+        assert updates[0].args[1]["attempts"] == 1
+
+    def test_not_queued_still_refused(self):
+        ok, updates, _ = self._claim({"status": "complete", "state_data": {}}, queue_status="completed")
+        assert ok is False and updates == []
+
+    def test_cancel_upload_removed(self):
+        """Nothing outside the re-render's claim transaction cancels queue entries,
+        so the re-render's own later queue_upload entry can't be cancelled."""
+        from backend.services.youtube_upload_queue_service import YouTubeUploadQueueService
+        assert not hasattr(YouTubeUploadQueueService, "cancel_upload")
+
+
+def _snapshot(job_id, data):
+    snap = MagicMock(exists=data is not None, id=job_id)
+    snap.to_dict.return_value = data
+    return snap
+
+
+def _q_entry(job_id, **extra):
+    return {"job_id": job_id, "user_email": "c@example.com", "artist": "A", "title": "T",
+            "brand_code": "NOMAD-1234", **extra}
+
+
+async def _run_queue(entries, job_docs=None, claimable=None, upload=None, update_url=None, community=None):
+    from backend.workers import youtube_queue_processor as qp
+
+    queue_service = MagicMock()
+    queue_service.get_queued_uploads.side_effect = [entries, []]
+    claimable = claimable if claimable is not None else {e["job_id"] for e in entries}
+    queue_service.mark_processing.side_effect = lambda job_id: job_id in claimable
+    job_docs = job_docs or {}
+    queue_service.db.get_all.return_value = [
+        _snapshot(job_id, data) for job_id, data in job_docs.items()
+    ]
+    quota_service = MagicMock()
+    quota_service.check_quota_available.return_value = (True, 10000, "ok")
+    upload = upload or AsyncMock(return_value="https://youtu.be/new")
+    send = AsyncMock()
+    community = community or AsyncMock()
+    update_url = update_url or MagicMock()
+    job_manager_cls = MagicMock()
+    with patch.object(qp, "get_youtube_upload_queue_service", return_value=queue_service), \
+         patch.object(qp, "get_youtube_quota_service", return_value=quota_service), \
+         patch.object(qp, "JobManager", job_manager_cls), \
+         patch.object(qp, "_process_single_upload", new=upload), \
+         patch.object(qp, "_update_job_youtube_url", update_url), \
+         patch.object(qp, "_send_youtube_upload_notification", new=send), \
+         patch.object(qp, "notify_community_publish", new=community):
+        summary = await qp.process_youtube_upload_queue()
+    return SimpleNamespace(queue=queue_service, upload=upload, send=send, community=community,
+                           update_url=update_url, summary=summary, job_manager_cls=job_manager_cls)
+
+
+class TestQueueProcessorFlow:
+    @pytest.mark.asyncio
+    async def test_normal_flow_unchanged(self):
+        r = await _run_queue([_q_entry("job123")], {"job123": {"status": "complete", "state_data": {}}})
+        r.queue.mark_processing.assert_called_once_with("job123")
+        r.queue.mark_completed.assert_called_once_with("job123", "https://youtu.be/new")
+        r.update_url.assert_called_once_with("job123", "https://youtu.be/new")
+        r.send.assert_awaited_once()
+        r.community.assert_awaited_once_with("job123", "https://youtu.be/new")
+        r.queue.mark_failed.assert_not_called()
+        assert r.summary["processed"] == 1
+
+    @pytest.mark.asyncio
+    async def test_refused_claim_leaves_entry_and_does_not_starve(self):
+        from backend.workers import youtube_queue_processor as qp
+        entries = [_q_entry(f"busy{i}") for i in range(30)] + [_q_entry("ok")]
+        r = await _run_queue(entries, claimable={"ok"})
+        assert r.queue.get_queued_uploads.call_args_list[0].kwargs["limit"] == qp.QUEUE_FETCH_LIMIT
+        assert [c.args[0] for c in r.upload.await_args_list] == ["ok"]
+        r.queue.mark_failed.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_upload_attempts_capped(self):
+        from backend.workers import youtube_queue_processor as qp
+        entries = [_q_entry(f"j{i}") for i in range(qp.MAX_UPLOADS_PER_RUN + 5)]
+        r = await _run_queue(entries)
+        assert r.upload.await_count == qp.MAX_UPLOADS_PER_RUN
+
+    @pytest.mark.asyncio
+    async def test_rerender_own_entry_uploads_without_email(self):
+        """The re-render's own queued upload (notify_user=False) is processed, never cancelled."""
+        r = await _run_queue([_q_entry("job123", notify_user=False)],
+                             {"job123": {"status": "complete", "state_data": {}}})
+        r.upload.assert_awaited_once()
+        r.queue.mark_completed.assert_called_once()
+        r.send.assert_not_awaited()
+        assert not any("cancel" in name for name, *_ in r.queue.mock_calls)
+
+    @pytest.mark.asyncio
+    async def test_silent_marker_suppresses_email(self):
+        r = await _run_queue([_q_entry("job123")], {"job123": {
+            "status": "complete", "state_data": {"admin_rerender": {"brand_code": "X"}}}})
+        r.send.assert_not_awaited()
+
+    # --- G: batched job reads ---
+    @pytest.mark.asyncio
+    async def test_jobs_read_in_one_batch(self):
+        entries = [_q_entry("a"), _q_entry("b"), _q_entry("a")]
+        r = await _run_queue(entries, {"a": {"status": "complete", "state_data": {}},
+                                       "b": {"status": "complete", "state_data": {}}})
+        r.queue.db.get_all.assert_called_once()
+        assert len(r.queue.db.get_all.call_args.args[0]) == 2  # de-duplicated ids
+        r.job_manager_cls.return_value.get_job.assert_not_called()
+
+    def test_batch_helper_builds_views_and_survives_errors(self):
+        from backend.workers.youtube_queue_processor import _get_jobs_batch
+        db = MagicMock()
+        db.get_all.return_value = [_snapshot("a", {"status": "complete", "review_token": "t",
+                                                   "state_data": {"x": 1}}),
+                                   _snapshot("gone", None)]
+        jobs = _get_jobs_batch(db, ["a", "gone"])
+        assert set(jobs) == {"a"}
+        assert jobs["a"].status == "complete" and jobs["a"].review_token == "t"
+        assert jobs["a"].state_data == {"x": 1}
+        db.get_all.side_effect = RuntimeError("down")
+        assert _get_jobs_batch(db, ["a"]) == {}
+        assert _get_jobs_batch(db, []) == {}
+
+    # --- B: never re-queue after a successful upload ---
+    @pytest.mark.asyncio
+    async def test_post_upload_error_never_requeues(self):
+        r = await _run_queue([_q_entry("job123")], {"job123": {"status": "complete", "state_data": {}}},
+                             update_url=MagicMock(side_effect=RuntimeError("firestore down")))
+        r.queue.mark_completed.assert_called_once_with("job123", "https://youtu.be/new")
+        r.queue.mark_failed.assert_not_called()
+        r.queue.mark_post_upload_error.assert_called_once()
+        assert r.queue.mark_post_upload_error.call_args.args[:2] == ("job123", "https://youtu.be/new")
+
+    @pytest.mark.asyncio
+    async def test_mark_completed_failure_never_requeues(self):
+        from backend.workers import youtube_queue_processor as qp
+        entries = [_q_entry("job123")]
+        queue_service = MagicMock()
+        queue_service.get_queued_uploads.side_effect = [entries, []]
+        queue_service.mark_processing.return_value = True
+        queue_service.mark_completed.side_effect = RuntimeError("write failed")
+        queue_service.db.get_all.return_value = []
+        quota = MagicMock()
+        quota.check_quota_available.return_value = (True, 1, "ok")
+        with patch.object(qp, "get_youtube_upload_queue_service", return_value=queue_service), \
+             patch.object(qp, "get_youtube_quota_service", return_value=quota), \
+             patch.object(qp, "_process_single_upload", new=AsyncMock(return_value="https://youtu.be/new")), \
+             patch.object(qp, "_update_job_youtube_url"), \
+             patch.object(qp, "_send_youtube_upload_notification", new=AsyncMock()), \
+             patch.object(qp, "notify_community_publish", new=AsyncMock()):
+            await qp.process_youtube_upload_queue()
+        queue_service.mark_failed.assert_not_called()
+        queue_service.mark_post_upload_error.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_community_failure_after_upload_never_requeues(self):
+        r = await _run_queue([_q_entry("job123")], {"job123": {"status": "complete", "state_data": {}}},
+                             community=AsyncMock(side_effect=RuntimeError("song requests down")))
+        r.queue.mark_failed.assert_not_called()
+        r.queue.mark_post_upload_error.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_upload_failure_still_requeues(self):
+        r = await _run_queue([_q_entry("job123")], {"job123": {"status": "complete", "state_data": {}}},
+                             upload=AsyncMock(side_effect=RuntimeError("network")))
+        r.queue.mark_failed.assert_called_once_with("job123", "network")
+        r.queue.mark_post_upload_error.assert_not_called()
+
+    def test_mark_post_upload_error_is_terminal(self):
+        from backend.services.youtube_upload_queue_service import YouTubeUploadQueueService
+        db = MagicMock()
+        YouTubeUploadQueueService(db=db).mark_post_upload_error("job123", "https://youtu.be/x", "boom")
+        payload = db.collection.return_value.document.return_value.update.call_args.args[0]
+        assert payload["status"] == "completed" and payload["needs_attention"] is True
+        assert payload["youtube_url"] == "https://youtu.be/x"
+
+
+# --- C: community voters are owed "it's live"; only re-notification is suppressed ------
+
+class _FakeRequests:
+    def __init__(self, requests, upvoters):
+        self.requests = {r.id: r for r in requests}
+        self.upvoters = upvoters
+
+    def get_by_job_id(self, job_id):
+        return next((r for r in self.requests.values() if r.job_id == job_id), None)
+
+    def mark_published(self, rid, url):
+        self.requests[rid].status, self.requests[rid].youtube_url = "published", url
+
+    def mark_voters_notified(self, rid):
+        self.requests[rid].voters_notified = True
+
+    def add_notified_voters(self, rid, emails):
+        self.requests[rid].notified_voters = [*self.requests[rid].notified_voters, *emails]
+
+    def list_upvoters(self, rid):
+        return list(self.upvoters.get(rid, []))
+
+    def list_in_progress(self):
+        return [r for r in self.requests.values() if r.status == "in_progress"]
+
+    def list_published_unnotified(self):
+        return [r for r in self.requests.values() if r.status == "published" and not r.voters_notified]
+
+
+def _req(rid, job_id, **kw):
+    fields = dict(id=rid, job_id=job_id, status="published", youtube_url="https://youtu.be/old",
+                  voters_notified=False, notified_voters=[], owner_email="owner@x.com",
+                  submitted_by=None, artist="A", title="T")
+    fields.update(kw)
+    return SimpleNamespace(**fields)
+
+
+class TestCommunityVotersOnQuietRepublish:
+    async def _go(self, service, coro):
+        notifier = MagicMock()
+        notifier.send_community_track_live_email = AsyncMock(return_value=True)
+        with patch("backend.services.song_request_service.get_song_request_service", return_value=service), \
+             patch("backend.services.job_notification_service.get_job_notification_service", return_value=notifier), \
+             patch("backend.services.job_manager.JobManager"):
+            await coro()
+        return notifier
+
+    @pytest.mark.asyncio
+    async def test_already_notified_voters_are_not_re_emailed(self):
+        from backend.services.community_publish import notify_community_publish, reconcile_community_publishes
+        svc = _FakeRequests([_req("r1", "job123", voters_notified=True, notified_voters=["v@x.com"])],
+                            {"r1": ["v@x.com"]})
+
+        async def go():
+            await notify_community_publish("job123", "https://youtu.be/new")
+            await reconcile_community_publishes()
+
+        notifier = await self._go(svc, go)
+        notifier.send_community_track_live_email.assert_not_awaited()
+        assert svc.requests["r1"].youtube_url == "https://youtu.be/new"
+
+    @pytest.mark.asyncio
+    async def test_owed_fanout_is_completed_by_quiet_republish(self):
+        """Partially notified before: the remaining voters are still owed 'it's live'."""
+        from backend.services.community_publish import notify_community_publish
+        svc = _FakeRequests([_req("r1", "job123", notified_voters=["a@x.com"])],
+                            {"r1": ["a@x.com", "b@x.com"]})
+        notifier = await self._go(svc, lambda: notify_community_publish("job123", "https://youtu.be/new"))
+        sent_to = [c.kwargs["to_email"] for c in notifier.send_community_track_live_email.await_args_list]
+        assert sent_to == ["b@x.com"]
+        assert svc.requests["r1"].voters_notified is True  # only because it actually completed
+
+    @pytest.mark.asyncio
+    async def test_failed_send_leaves_request_unnotified_for_reconcile(self):
+        from backend.services.community_publish import notify_community_publish, reconcile_community_publishes
+        svc = _FakeRequests([_req("r1", "job123")], {"r1": ["b@x.com"]})
+        notifier = MagicMock()
+        notifier.send_community_track_live_email = AsyncMock(side_effect=[False, True])
+        with patch("backend.services.song_request_service.get_song_request_service", return_value=svc), \
+             patch("backend.services.job_notification_service.get_job_notification_service", return_value=notifier), \
+             patch("backend.services.job_manager.JobManager"):
+            await notify_community_publish("job123", "https://youtu.be/new")
+            assert svc.requests["r1"].voters_notified is False
+            await reconcile_community_publishes()
+        assert svc.requests["r1"].voters_notified is True
+        assert notifier.send_community_track_live_email.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_video_worker_calls_plain_community_publish(self):
+        community = AsyncMock()
+        await _run_video_worker({"instrumental_selection": "clean",
+                                 "admin_rerender": {"brand_code": "NOMAD-1234"}}, community=community)
+        community.assert_awaited_once_with("job123", "https://www.youtube.com/watch?v=new456")
+
+
+# --- D: conflicting state_data paths --------------------------------------------------
+
+class TestTransitionStateDataConflict:
+    def test_both_state_data_forms_rejected(self):
+        from backend.models.job import JobStatus
+        from backend.services.job_manager import JobManager
+        jm = JobManager.__new__(JobManager)
+        jm.firestore = MagicMock()
+        jm.validate_state_transition = MagicMock(return_value=True)
+        jm.update_job_status = MagicMock()
+        with pytest.raises(ValueError, match="state_data_updates OR"):
+            jm.transition_to_state("job123", JobStatus.COMPLETE, state_data_updates={"a": 1},
+                                   extra_updates={"state_data.admin_rerender": DELETE_FIELD})
+        jm.update_job_status.assert_not_called()
+
+    def test_non_state_data_extras_combine_fine(self):
+        from backend.models.job import JobStatus
+        from backend.services.job_manager import JobManager
+        jm = JobManager.__new__(JobManager)
+        jm.firestore = MagicMock()
+        jm.validate_state_transition = MagicMock(return_value=True)
+        jm.update_job_status = MagicMock()
+        jm.get_job = MagicMock(return_value=SimpleNamespace(state_data={"x": 1}, user_email=None))
+        jm._trigger_state_notifications = MagicMock()
+        jm.transition_to_state("job123", JobStatus.COMPLETE, state_data_updates={"a": 1},
+                               extra_updates={"outputs_deleted_at": None}, count_completion=False)
+        kwargs = jm.update_job_status.call_args.kwargs
+        assert kwargs["state_data"] == {"x": 1, "a": 1} and kwargs["outputs_deleted_at"] is None
+
+
+# --- E: legacy raw-name Dropbox folders ---------------------------------------------------
+
+class TestDropboxLegacyFolderName:
+    ARTIST, TITLE = "Beyoncé", "Love On Top: Live — “Encore”"
+
+    def _delete(self, existing, failing=()):
+        from backend.services.published_outputs_cleanup import (
+            delete_dropbox_folder, dropbox_folder_path, legacy_dropbox_folder_path)
+        sanitised = dropbox_folder_path("/K", "NOMAD-1", self.ARTIST, self.TITLE)
+        legacy = legacy_dropbox_folder_path("/K", "NOMAD-1", self.ARTIST, self.TITLE)
+        assert sanitised != legacy
+        names = {"sanitised": sanitised, "legacy": legacy}
+        dropbox = MagicMock(is_configured=True)
+        dropbox.file_exists.side_effect = lambda p: p in {names[n] for n in existing}
+        dropbox.delete_folder.side_effect = lambda p: p not in {names[n] for n in failing}
+        with patch("backend.services.dropbox_service.get_dropbox_service", return_value=dropbox):
+            return delete_dropbox_folder("job123", "/K", "NOMAD-1", self.ARTIST, self.TITLE), names, dropbox
+
+    def test_only_legacy_folder_exists(self):
+        result, names, dropbox = self._delete({"legacy"})
+        assert result["status"] == "success"
+        assert result["deleted"] == [names["legacy"]]
+        dropbox.delete_folder.assert_called_once_with(names["legacy"])
+
+    def test_both_exist(self):
+        result, names, _ = self._delete({"sanitised", "legacy"})
+        assert result["status"] == "success"
+        assert result["deleted"] == [names["sanitised"], names["legacy"]]
+
+    def test_neither_exists(self):
+        result, _, dropbox = self._delete(set())
+        assert result["status"] == "success" and result["deleted"] == []
+        dropbox.delete_folder.assert_not_called()
+
+    def test_failure_on_one_is_not_success(self):
+        result, names, _ = self._delete({"sanitised", "legacy"}, failing={"legacy"})
+        assert result["status"] == "failed"
+        assert result["failed"] == [names["legacy"]]
+        assert result["deleted"] == [names["sanitised"]]
+
+    def test_existence_check_error_still_attempts_delete(self):
+        from backend.services.published_outputs_cleanup import delete_dropbox_folder
+        dropbox = MagicMock(is_configured=True)
+        dropbox.file_exists.side_effect = RuntimeError("rate limited")
+        dropbox.delete_folder.return_value = True
+        with patch("backend.services.dropbox_service.get_dropbox_service", return_value=dropbox):
+            result = delete_dropbox_folder("job123", "/K", "NOMAD-1", self.ARTIST, self.TITLE)
+        assert result["status"] == "success" and dropbox.delete_folder.call_count == 2
+
+
+# --- F: YouTube helper never raises -----------------------------------------------------
+
+class TestYouTubeHelperNeverRaises:
+    @pytest.mark.parametrize("bad_url", [12345, ["https://youtu.be/x"], {"url": "x"}])
+    def test_non_string_url(self, bad_url):
+        from backend.services.published_outputs_cleanup import delete_youtube_video
+        result = delete_youtube_video("job123", bad_url)
+        assert result["status"] == "error"

@@ -38,10 +38,12 @@ def delete_youtube_video(job_id: str, youtube_url: Optional[str]) -> Dict[str, A
     """Delete the job's YouTube video (via the server-side YouTube credentials)."""
     if not youtube_url:
         return {"status": "skipped", "reason": "no youtube_url"}
-    video_id = youtube_video_id(youtube_url)
-    if not video_id:
-        return {"status": "failed", "reason": f"Could not extract video ID from {youtube_url}"}
+    video_id = None
     try:
+        # Inside the try: a malformed (e.g. non-string) URL must not raise.
+        video_id = youtube_video_id(youtube_url)
+        if not video_id:
+            return {"status": "failed", "reason": f"Could not extract video ID from {youtube_url}"}
         from karaoke_gen.karaoke_finalise.karaoke_finalise import KaraokeFinalise
         from backend.services.youtube_service import get_youtube_service
 
@@ -60,6 +62,13 @@ def delete_youtube_video(job_id: str, youtube_url: Optional[str]) -> Dict[str, A
         return {"status": "error", "error": str(e), "video_id": video_id}
 
 
+def legacy_dropbox_folder_path(
+    dropbox_path: str, brand_code: str, artist: Optional[str], title: Optional[str]
+) -> str:
+    """Raw-name folder (no sanitisation) that older Edit/delete code assumed."""
+    return f"{dropbox_path}/{brand_code} - {artist or 'Unknown'} - {title or 'Unknown'}"
+
+
 def dropbox_folder_path(dropbox_path: str, brand_code: str, artist: Optional[str], title: Optional[str]) -> str:
     """The Dropbox folder the distribution step uploads to (same sanitisation)."""
     from karaoke_gen.utils import sanitize_filename
@@ -76,7 +85,13 @@ def delete_dropbox_folder(
     artist: Optional[str],
     title: Optional[str],
 ) -> Dict[str, Any]:
-    """Delete the job's ``{dropbox_path}/{brand_code} - {Artist} - {Title}`` folder."""
+    """Delete the job's ``{dropbox_path}/{brand_code} - {Artist} - {Title}`` folder.
+
+    The uploader sanitises artist/title; older code paths assumed the raw names.
+    When the two differ, both are checked and whichever exists is deleted.
+    ``success`` (which lets callers recycle the brand code) only when no folder
+    remains; ``deleted`` lists what was removed.
+    """
     if not (brand_code and dropbox_path):
         return {"status": "skipped", "reason": "no brand_code or dropbox_path"}
     try:
@@ -86,8 +101,23 @@ def delete_dropbox_folder(
         if not dropbox.is_configured:
             return {"status": "skipped", "reason": "Dropbox not configured"}
         full_path = dropbox_folder_path(dropbox_path, brand_code, artist, title)
-        success = dropbox.delete_folder(full_path)
-        return {"status": "success" if success else "failed", "path": full_path}
+        legacy_path = legacy_dropbox_folder_path(dropbox_path, brand_code, artist, title)
+        candidates = [full_path] if legacy_path == full_path else [full_path, legacy_path]
+
+        deleted, failed = [], []
+        for path in candidates:
+            if len(candidates) > 1:
+                try:
+                    if not dropbox.file_exists(path):
+                        continue
+                except Exception as e:  # unknown → attempt the delete anyway
+                    logger.warning(f"[job:{job_id}] Dropbox existence check failed for {path}: {e}")
+            # delete_folder is True when deleted OR already absent.
+            (deleted if dropbox.delete_folder(path) else failed).append(path)
+        result = {"status": "failed" if failed else "success", "path": full_path, "deleted": deleted}
+        if failed:
+            result["failed"] = failed
+        return result
     except Exception as e:
         logger.error(f"[job:{job_id}] Error deleting Dropbox folder: {e}", exc_info=True)
         return {"status": "error", "error": str(e)}

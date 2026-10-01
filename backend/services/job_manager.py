@@ -525,6 +525,17 @@ class JobManager:
         Raises:
             InvalidStateTransitionError: If transition is invalid and raise_on_invalid=True
         """
+        if state_data_updates and any(
+            key == "state_data" or key.startswith("state_data.") for key in (extra_updates or {})
+        ):
+            # state_data_updates rewrites the whole state_data map; a dot-path
+            # write to state_data.* in the same Firestore update is a
+            # conflicting-path error (and would be ambiguous anyway).
+            raise ValueError(
+                "transition_to_state: pass state_data changes via state_data_updates OR "
+                "extra_updates['state_data.*'], not both"
+            )
+
         if not self.validate_state_transition(job_id, new_status, raise_on_invalid=raise_on_invalid):
             return False
 

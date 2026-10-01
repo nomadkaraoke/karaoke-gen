@@ -7,7 +7,6 @@ Called by Cloud Scheduler via an internal endpoint (hourly).
 import asyncio
 import logging
 import os
-from dataclasses import dataclass, field
 import shutil
 import tempfile
 from typing import Dict, Any, Optional
@@ -23,8 +22,8 @@ from backend.services.youtube_upload_queue_service import get_youtube_upload_que
 logger = logging.getLogger(__name__)
 
 # Uploads attempted per run (quota-bound anyway) vs entries fetched: the fetch
-# is larger so entries deferred for an in-flight admin re-render can't fill the
-# page and starve everything behind them.
+# is larger so entries whose claim is refused (job mid admin re-render) can't
+# fill the page and starve everything behind them.
 MAX_UPLOADS_PER_RUN = 20
 QUEUE_FETCH_LIMIT = 100
 
@@ -56,8 +55,8 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
             "remaining": len(queue_service.get_queued_uploads()),
         }
 
-    # Get queued uploads. Fetch more than we'll upload so entries deferred for
-    # an in-flight admin re-render can't occupy the whole page and starve others.
+    # Get queued uploads. Fetch more than we'll upload so entries whose claim is
+    # refused (job mid admin re-render) can't fill the page and starve others.
     queued = queue_service.get_queued_uploads(limit=QUEUE_FETCH_LIMIT)
     if not queued:
         logger.info("YouTube queue processor: no uploads queued")
@@ -71,10 +70,13 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
 
     logger.info(f"YouTube queue processor: processing {len(queued)} queued uploads")
 
+    # One batched read of the jobs (for the admin re-render notification
+    # choice) instead of a Firestore round-trip per entry.
+    jobs = await asyncio.to_thread(_get_jobs_batch, queue_service.db, [e["job_id"] for e in queued])
+
     processed = 0
     failed = 0
     attempted = 0
-    job_manager = JobManager()
 
     for entry in queued:
         job_id = entry["job_id"]
@@ -87,64 +89,23 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
             logger.info(f"YouTube queue processor: quota exhausted after {processed} uploads")
             break
 
-        # Admin re-render interplay (see _admin_rerender_state).
-        rerender = await asyncio.to_thread(_admin_rerender_state, job_manager, job_id)
-        if rerender.state == "in_pipeline":
-            # Finals are being rebuilt: leave queued; picked up once complete.
-            logger.info(f"YouTube queue processor: job {job_id} is being re-rendered, deferring upload")
-            continue
-        if rerender.state == "halted":
-            if rerender.marker.get("republish_youtube", True):
-                # A failed/cancelled admin re-render that re-publishes YouTube:
-                # its finals may be partial and resuming it re-queues the
-                # upload, so cancel rather than let the entry sit forever.
-                await asyncio.to_thread(queue_service.cancel_upload, job_id, "admin_rerender_halted")
-                logger.warning(f"YouTube queue processor: cancelled upload for job {job_id} (admin re-render failed/cancelled)")
-            else:
-                # The re-render isn't re-publishing YouTube, so this is the
-                # original run's owed upload: keep it queued until the re-render
-                # is resumed/finished (the larger fetch page stops it starving others).
-                logger.info(f"YouTube queue processor: job {job_id} has a halted admin re-render, deferring upload")
-            continue
-        rerender_suppresses = rerender.suppress
-        attempted += 1
-
-        # Claim the entry
+        # Claim the entry. The claim transaction also reads the job and refuses
+        # while an admin re-render is active on it (the re-render's claim in turn
+        # refuses while an upload is processing), so the two never overlap.
         if not queue_service.mark_processing(job_id):
             logger.info(f"YouTube queue processor: could not claim job {job_id}, skipping")
             continue
+        attempted += 1
 
+        uploaded_url = None
         try:
             youtube_url = await _process_single_upload(job_id, entry, quota_service, settings)
             if youtube_url:
-                # An admin re-render may have claimed the job while this (old
-                # finals) upload was in flight — it can't be cancelled once
-                # processing. Re-check before touching the job or emailing.
-                after = await asyncio.to_thread(_admin_rerender_state, job_manager, job_id)
-                if after.state in ("in_pipeline", "halted"):
-                    await asyncio.to_thread(
-                        _handle_upload_superseded_by_rerender, job_id, youtube_url, after.marker, queue_service
-                    )
-                    processed += 1
-                    continue
-
+                uploaded_url = youtube_url
+                # Record completion FIRST: from here on the entry must never go
+                # back to "queued" (that would upload the video a second time).
                 queue_service.mark_completed(job_id, youtube_url)
-
-                # Update job state_data with the YouTube URL
-                _update_job_youtube_url(job_id, youtube_url)
-
-                # Send follow-up email — unless queued by (or processed during)
-                # an admin re-render that wasn't meant to notify the customer.
-                notify = entry.get("notify_user", True) and not rerender_suppresses
-                if notify:
-                    await _send_youtube_upload_notification(job_id, entry, youtube_url)
-                else:
-                    logger.info(f"YouTube queue processor: skipping follow-up email for job {job_id} (notifications suppressed)")
-
-                # If this was a requests-board community pick, mark it published
-                # and fan out "your track is live" emails to everyone who voted.
-                await notify_community_publish(job_id, youtube_url, notify_voters=notify)
-
+                await _after_successful_upload(job_id, entry, youtube_url, jobs.get(job_id), queue_service)
                 processed += 1
             else:
                 queue_service.mark_failed(job_id, "Upload returned no URL")
@@ -153,6 +114,13 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
         except Exception as e:
             error_str = str(e)
             logger.exception(f"YouTube queue processor: failed to process job {job_id}: {e}")
+
+            if uploaded_url:
+                # The video IS on YouTube; only recording it failed. Never
+                # re-queue — flag for attention instead.
+                _flag_post_upload_error(queue_service, job_id, uploaded_url, error_str)
+                processed += 1
+                continue
 
             # If quota exceeded, stop processing entirely
             if "quotaExceeded" in error_str:
@@ -177,84 +145,72 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
     }
 
 
-@dataclass
-class _RerenderState:
-    """Admin re-render situation of a queued job.
-
-    state: ``none`` (no active admin re-render), ``complete`` (marker still
-    present on a complete job), ``in_pipeline`` (re-render running — finals are
-    stale/being replaced), ``halted`` (re-render failed/cancelled).
-    """
-    state: str = "none"
-    suppress: bool = False
-    marker: Dict[str, Any] = field(default_factory=dict)
-
-
-_HALTED_STATUSES = {"failed", "cancelled"}
-
-
-def _admin_rerender_state(job_manager: JobManager, job_id: str) -> _RerenderState:
-    """Blocking (Firestore read) — call via asyncio.to_thread."""
+async def _after_successful_upload(job_id: str, entry: Dict[str, Any], youtube_url: str, job, queue_service) -> None:
+    """Post-upload side effects. Each is isolated: a failure is logged and the
+    entry flagged for attention, never re-queued (the upload already happened)."""
     try:
-        from backend.services.admin_rerender_service import (
-            active_admin_rerender,
-            suppress_customer_notifications,
-        )
-        job = job_manager.get_job(job_id)
-        marker = active_admin_rerender(job) if job else {}
-        if not marker:
-            return _RerenderState()
-        suppress = suppress_customer_notifications(job)
-        status = getattr(job, "status", None)
-        if status == "complete":
-            state = "complete"
-        elif status in _HALTED_STATUSES:
-            state = "halted"
-        else:
-            state = "in_pipeline"
-        return _RerenderState(state=state, suppress=suppress, marker=marker)
+        # Update job state_data with the YouTube URL
+        _update_job_youtube_url(job_id, youtube_url)
     except Exception as e:
-        logger.warning(f"YouTube queue processor: admin re-render check failed for job {job_id}: {e}")
-        return _RerenderState()
+        logger.exception(f"YouTube queue processor: failed to record URL for job {job_id}")
+        _flag_post_upload_error(queue_service, job_id, youtube_url, f"update job: {e}")
 
-
-def _handle_upload_superseded_by_rerender(
-    job_id: str, youtube_url: str, marker: Dict[str, Any], queue_service
-) -> None:
-    """An old-finals upload finished after an admin re-render claimed the job.
-
-    Never write youtube_url or email. If the re-render will re-publish to
-    YouTube, delete the just-uploaded stale video (the re-render uploads the new
-    one; its duplicate-by-title replace would also catch it). Otherwise keep it
-    — it's the only YouTube copy — and record it as a kept output so the
-    re-render's completion keeps the link.
-    """
-    from backend.services.published_outputs_cleanup import delete_youtube_video
-
-    if marker.get("republish_youtube", True):
-        result = delete_youtube_video(job_id, youtube_url)
-        logger.warning(
-            f"YouTube queue processor: job {job_id} was claimed by an admin re-render during "
-            f"upload; deleted stale video {youtube_url} -> {result.get('status')}"
-        )
-        queue_service.cancel_upload(job_id, "superseded_by_admin_rerender")
-        note = {"status": "superseded", "youtube_url": youtube_url, "delete": result}
+    # Send follow-up email — unless queued by (or processed during) an admin
+    # re-render that wasn't meant to notify the customer.
+    from backend.services.admin_rerender_service import suppress_customer_notifications
+    if entry.get("notify_user", True) and not (job is not None and suppress_customer_notifications(job)):
+        await _send_youtube_upload_notification(job_id, entry, youtube_url)
     else:
-        JobManager().update_job(job_id, {
-            "state_data.admin_rerender.kept_outputs.youtube_url": youtube_url,
-        })
-        queue_service.mark_completed(job_id, youtube_url)
-        logger.warning(
-            f"YouTube queue processor: job {job_id} was claimed by an admin re-render during "
-            f"upload; YouTube isn't re-published, so kept {youtube_url} as its output"
-        )
-        note = {"status": "kept", "youtube_url": youtube_url}
+        logger.info(f"YouTube queue processor: skipping follow-up email for job {job_id} (notifications suppressed)")
+
+    # If this was a requests-board community pick, mark it published and fan out
+    # "your track is live" emails to everyone who voted (idempotent: voters
+    # already notified are never re-emailed).
     try:
-        from backend.services.firestore_service import log_to_job
-        log_to_job(job_id, "youtube-queue", "WARNING",
-                   "Deferred YouTube upload overlapped an admin re-render", note)
+        await notify_community_publish(job_id, youtube_url)
+    except Exception as e:
+        logger.exception(f"YouTube queue processor: community publish failed for job {job_id}")
+        _flag_post_upload_error(queue_service, job_id, youtube_url, f"community publish: {e}")
+
+
+def _flag_post_upload_error(queue_service, job_id: str, youtube_url: str, error: str) -> None:
+    """Mark an uploaded entry as needing attention — terminal, never re-queued."""
+    try:
+        queue_service.mark_post_upload_error(job_id, youtube_url, error)
     except Exception:
-        pass
+        logger.exception(f"YouTube queue processor: could not flag post-upload error for job {job_id}")
+
+
+def _get_jobs_batch(db, job_ids) -> Dict[str, Any]:
+    """Read the given jobs in one ``get_all`` call; returns ``{job_id: job view}``.
+
+    The view carries only what the notification check needs (status,
+    review_token, state_data). Best-effort: on error, returns ``{}`` (the
+    authoritative admin re-render check is in the claim transaction).
+    """
+    from types import SimpleNamespace
+
+    unique_ids = list(dict.fromkeys(job_ids))
+    if not unique_ids:
+        return {}
+    try:
+        collection = db.collection(get_settings().firestore_collection)
+        refs = [collection.document(job_id) for job_id in unique_ids]
+        jobs = {}
+        for snapshot in db.get_all(refs):
+            if not snapshot.exists:
+                continue
+            data = snapshot.to_dict() or {}
+            jobs[snapshot.id] = SimpleNamespace(
+                job_id=snapshot.id,
+                status=data.get("status"),
+                review_token=data.get("review_token"),
+                state_data=data.get("state_data") or {},
+            )
+        return jobs
+    except Exception as e:
+        logger.warning(f"YouTube queue processor: batch job read failed: {e}")
+        return {}
 
 
 async def _process_single_upload(
