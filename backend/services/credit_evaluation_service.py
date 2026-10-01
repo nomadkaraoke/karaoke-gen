@@ -305,6 +305,9 @@ class CreditEvaluationService:
             contents=prompt,
             config=genai.types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
+                # Grant/deny classification over a short signal list: low
+                # thinking is ample (Gemini 3 Flash defaults to high).
+                thinking_config=genai.types.ThinkingConfig(thinking_level="low"),
             ),
         )
         return response.text
