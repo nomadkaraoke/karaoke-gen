@@ -588,10 +588,11 @@
     "translatedLyricsHint": "Un cop revisada la lletra, la IA tradueix cada línia a {language} i la mostra en un text més petit a sota de la lletra al teu vídeo. Les traduccions no es poden editar.",
     "translatedLyricsLanguageLabel": "Tradueix la lletra a",
     "translatedLyricsPreviewAlt": "Fotograma d'exemple de vídeo de karaoke amb la lletra traduïda a {language}",
-    "translatedLyricsPreviewError": "No s'ha pogut carregar la previsualització. El teu vídeo inclourà igualment la lletra traduïda.",
+    "translatedLyricsPreviewError": "No s'ha pogut carregar la previsualització.",
     "translatedLyricsPreviewLoading": "Renderitzant la previsualització...",
     "translatedLyricsToggle": "Afegeix la lletra traduïda",
-    "translatedLyricsToggleHint": "Mostra una traducció amb IA de cada línia en un text més petit a sota de la lletra. Ideal per aprendre un idioma."
+    "translatedLyricsToggleHint": "Mostra una traducció amb IA de cada línia en un text més petit a sota de la lletra. Ideal per aprendre un idioma.",
+    "translatedLyricsPreviewRetry": "Torna-ho a provar"
   },
   "jobStatus": {
     "settingUp": "Configurant",

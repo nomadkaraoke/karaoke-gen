@@ -18,7 +18,8 @@ when translating. Landscape + portrait videos.
 creation route accepts `translation_language`; `JobCreate` normalizes it (unsupported → off).
 Admin PATCH can set/clear it.
 
-**When.** `render_video_worker` calls `prepare_job_translations` just before rendering: it
+**When.** `render_video_worker` calls `prepare_job_translations` right after the job enters
+RENDERING_VIDEO (so retries see it as rendering), before the render itself (≤ 2 × 90s attempts): it
 loads the final segments (corrections.json + corrections_updated.json, exactly what renders),
 translates every line in one Gemini call (`backend/services/lyrics_translation.py`,
 `LYRICS_TRANSLATION_MODEL`, default gemini-3.8-flash via Vertex), and writes
@@ -52,9 +53,14 @@ translations (they don't exist until after review).
   left-to-right (and vice versa). Covered by pixel render tests.
 - **Split lines:** `SegmentResizer` splits long lines into pieces shown together; the
   translation is shared across the pieces in proportion to their width
-  (`split_text_proportionally`, word boundaries; CJK/Thai between characters), so no piece has
-  an empty row. Portrait orphan merges concatenate translations; the portrait top padding is
+  (`split_text_proportionally`, word boundaries; CJK/Thai between grapheme clusters, so a Thai
+  tone mark never starts a piece), so no piece has an empty row. Trade-off (accepted): the split
+  is by length, not meaning, so for languages with very different word order a fragment can sit
+  under the "wrong" half, and the pieces can straddle a screen change. Reading both rows in order
+  still gives the full translation. Portrait orphan merges concatenate translations; the portrait top padding is
   recomputed for the taller block.
+- Section cards (INSTRUMENTAL) keep the lyric line height, so they don't move. Shrink-to-fit
+  estimates width from the character count when the style font file is missing.
 - Theme keys (optional, `karaoke` block): `translation_font_size` / `translation_font_ratio`,
   `translation_color`, `translation_max_rows`, `translation_max_visible_lines`.
 

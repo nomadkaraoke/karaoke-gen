@@ -588,10 +588,11 @@
     "translatedLyricsHint": "Po kontrole textu piesne AI preloží každý riadok do jazyka {language} a zobrazí ho menším písmom pod textom v tvojom videu. Preklady sa nedajú upravovať.",
     "translatedLyricsLanguageLabel": "Preložiť text piesne do",
     "translatedLyricsPreviewAlt": "Ukážka snímky karaoke videa s textom preloženým do jazyka {language}",
-    "translatedLyricsPreviewError": "Náhľad sa nepodarilo načítať. Tvoje video bude aj tak obsahovať preložený text.",
+    "translatedLyricsPreviewError": "Nepodarilo sa načítať náhľad.",
     "translatedLyricsPreviewLoading": "Generuje sa náhľad...",
     "translatedLyricsToggle": "Pridať preložený text",
-    "translatedLyricsToggleHint": "Zobrazí AI preklad každého riadku menším písmom pod textom. Skvelé na učenie sa jazyka."
+    "translatedLyricsToggleHint": "Zobrazí AI preklad každého riadku menším písmom pod textom. Skvelé na učenie sa jazyka.",
+    "translatedLyricsPreviewRetry": "Skúsiť znova"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",

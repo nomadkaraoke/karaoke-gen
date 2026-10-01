@@ -588,10 +588,11 @@
     "translatedLyricsHint": "לאחר בדיקת מילות השיר, ה-AI יתרגם כל שורה ל-{language} ויציג אותה בטקסט קטן יותר מתחת למילים בסרטון שלך. לא ניתן לערוך את התרגומים.",
     "translatedLyricsLanguageLabel": "תרגום מילות השיר ל-",
     "translatedLyricsPreviewAlt": "דוגמה לפריים מתוך סרטון קריוקי עם מילים מתורגמות ל-{language}",
-    "translatedLyricsPreviewError": "לא הצלחנו לטעון את התצוגה המקדימה. הסרטון שלך עדיין יכלול את המילים המתורגמות.",
+    "translatedLyricsPreviewError": "לא הצלחנו לטעון את התצוגה המקדימה.",
     "translatedLyricsPreviewLoading": "יוצר תצוגה מקדימה...",
     "translatedLyricsToggle": "הוספת מילים מתורגמות",
-    "translatedLyricsToggleHint": "הצגת תרגום AI של כל שורה בטקסט קטן יותר מתחת למילות השיר. מעולה ללימוד שפות."
+    "translatedLyricsToggleHint": "הצגת תרגום AI של כל שורה בטקסט קטן יותר מתחת למילות השיר. מעולה ללימוד שפות.",
+    "translatedLyricsPreviewRetry": "נסה שוב"
   },
   "jobStatus": {
     "settingUp": "מגדיר",

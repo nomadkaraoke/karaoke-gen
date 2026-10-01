@@ -588,10 +588,11 @@
     "translatedLyricsHint": "После проверки текста песни ИИ переведет каждую строку на {language} и покажет ее более мелким шрифтом под текстом в твоем видео. Перевод нельзя редактировать.",
     "translatedLyricsLanguageLabel": "Перевести текст песни на",
     "translatedLyricsPreviewAlt": "Пример кадра караоке-видео с переводом текста на {language}",
-    "translatedLyricsPreviewError": "Не удалось загрузить предпросмотр. В твоем видео все равно будет перевод текста.",
+    "translatedLyricsPreviewError": "Не удалось загрузить предпросмотр.",
     "translatedLyricsPreviewLoading": "Рендеринг предпросмотра...",
     "translatedLyricsToggle": "Добавить перевод текста песни",
-    "translatedLyricsToggleHint": "Показывать ИИ-перевод каждой строки более мелким шрифтом под текстом песни. Отлично подходит для изучения языка."
+    "translatedLyricsToggleHint": "Показывать ИИ-перевод каждой строки более мелким шрифтом под текстом песни. Отлично подходит для изучения языка.",
+    "translatedLyricsPreviewRetry": "Попробовать снова"
   },
   "jobStatus": {
     "settingUp": "Настройка",

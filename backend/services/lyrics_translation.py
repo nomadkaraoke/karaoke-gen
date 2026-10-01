@@ -60,7 +60,7 @@ TRANSLATION_LANGUAGES: Dict[str, str] = {
 TRANSLATIONS_GCS_NAME = "translations.json"
 CACHE_PREFIX = "lyrics-translation-cache"
 CACHE_VERSION = 1
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 2
 BACKOFF_SECONDS = 2.0
 # More than this share of lines coming back unchanged = the song is already in the
 # target language, so a translation row would just repeat the lyrics.
@@ -183,7 +183,7 @@ class LyricsTranslationService:
             vertexai=True,
             project=self.settings.google_cloud_project,
             location="global",
-            http_options=types.HttpOptions(timeout=180_000),
+            http_options=types.HttpOptions(timeout=90_000),  # 2 attempts: render waits <= ~3 min
         )
         response = client.models.generate_content(
             model=self.model,
@@ -272,7 +272,9 @@ def load_final_segments(storage, job_id: str):
     return base.corrected_segments
 
 
-def prepare_job_translations(job, storage, job_manager=None, service: Optional[LyricsTranslationService] = None) -> Optional[str]:
+def prepare_job_translations(
+    job_id: str, job, storage, job_manager=None, service: Optional[LyricsTranslationService] = None
+) -> Optional[str]:
     """Translate a job's final lyrics and store ``translations.json``.
 
     Returns the GCS path (relative to the bucket) when the video should show
@@ -281,7 +283,6 @@ def prepare_job_translations(job, storage, job_manager=None, service: Optional[L
     an error and recorded in ``state_data.lyrics_translation`` so an admin can
     re-render once fixed.
     """
-    job_id = job.job_id
     stored_path = f"jobs/{job_id}/lyrics/{TRANSLATIONS_GCS_NAME}"
     language = normalize_language(getattr(job, "translation_language", None))
     if not language:

@@ -588,10 +588,11 @@
     "translatedLyricsHint": "Nadat de songtekst is gecontroleerd, vertaalt AI elke regel naar het {language} en toont deze in kleinere letters onder de songtekst in je video. Vertalingen kunnen niet worden bewerkt.",
     "translatedLyricsLanguageLabel": "Songtekst vertalen naar",
     "translatedLyricsPreviewAlt": "Voorbeeld van een karaoke-videoframe met songtekst vertaald naar het {language}",
-    "translatedLyricsPreviewError": "Het voorbeeld kon niet worden geladen. Je video bevat de vertaalde songtekst alsnog.",
+    "translatedLyricsPreviewError": "Kon het voorbeeld niet laden.",
     "translatedLyricsPreviewLoading": "Voorbeeld renderen...",
     "translatedLyricsToggle": "Vertaalde songtekst toevoegen",
-    "translatedLyricsToggleHint": "Toon een AI-vertaling van elke regel in kleinere letters onder de songtekst. Ideaal om een taal te leren."
+    "translatedLyricsToggleHint": "Toon een AI-vertaling van elke regel in kleinere letters onder de songtekst. Ideaal om een taal te leren.",
+    "translatedLyricsPreviewRetry": "Probeer opnieuw"
   },
   "jobStatus": {
     "settingUp": "Instellen",

@@ -246,7 +246,8 @@ class SubtitlesGenerator:
     def _create_section_screens(self, segments: List[LyricsSegment], song_duration: float) -> List[SectionScreen]:
         """Create section screens using SectionDetector."""
         section_detector = SectionDetector(logger=self.logger)
-        return section_detector.process_segments(segments, self.video_resolution, self.config.line_height, song_duration)
+        # Lyric line height, not the taller translated-lyrics slot, so section cards don't move
+        return section_detector.process_segments(segments, self.video_resolution, self.config.lyric_line_height, song_duration)
 
     def _get_instrumental_times(self, section_screens: List[SectionScreen]) -> List[Tuple[float, float]]:
         """Extract instrumental section time boundaries."""

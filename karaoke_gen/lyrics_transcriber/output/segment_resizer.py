@@ -58,6 +58,20 @@ def is_unspaced_script(text: str) -> bool:
     )
 
 
+def grapheme_clusters(text: str) -> List[str]:
+    """Characters of ``text`` (spaces dropped) with combining marks kept on their base
+    character, so splitting Thai/Khmer/Myanmar never strands a vowel or tone mark."""
+    clusters: List[str] = []
+    for ch in text:
+        if ch.isspace():
+            continue
+        if clusters and unicodedata.category(ch).startswith("M"):
+            clusters[-1] += ch
+        else:
+            clusters.append(ch)
+    return clusters
+
+
 def split_text_proportionally(text: str, weights: List[float]) -> List[str]:
     """Split ``text`` into ``len(weights)`` consecutive parts sized by ``weights``.
 
@@ -70,7 +84,7 @@ def split_text_proportionally(text: str, weights: List[float]) -> List[str]:
     tokens = text.split()
     joiner = " "
     if len(tokens) < n and is_unspaced_script(text):
-        tokens, joiner = [c for c in text if not c.isspace()], ""
+        tokens, joiner = grapheme_clusters(text), ""
     total_weight = sum(max(0.0, w) for w in weights) or float(n)
     lengths = [len(t) for t in tokens]
     total_len = sum(lengths) or 1

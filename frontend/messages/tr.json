@@ -588,10 +588,11 @@
     "translatedLyricsHint": "Şarkı sözleri incelendikten sonra yapay zeka her satırı {language} diline çevirir ve videonda sözlerin altında daha küçük bir metin olarak gösterir. Çeviriler düzenlenemez.",
     "translatedLyricsLanguageLabel": "Şarkı sözlerini şu dile çevir",
     "translatedLyricsPreviewAlt": "{language} diline çevrilmiş şarkı sözlerini içeren örnek karaoke video karesi",
-    "translatedLyricsPreviewError": "Önizleme yüklenemedi. Videon yine de çevrilmiş şarkı sözlerini içerecek.",
+    "translatedLyricsPreviewError": "Önizleme yüklenemedi.",
     "translatedLyricsPreviewLoading": "Önizleme oluşturuluyor...",
     "translatedLyricsToggle": "Çevrilmiş şarkı sözleri ekle",
-    "translatedLyricsToggleHint": "Her satırın yapay zeka çevirisini şarkı sözlerinin altında daha küçük bir metin olarak göster. Dil öğrenmek için harika."
+    "translatedLyricsToggleHint": "Her satırın yapay zeka çevirisini şarkı sözlerinin altında daha küçük bir metin olarak göster. Dil öğrenmek için harika.",
+    "translatedLyricsPreviewRetry": "Tekrar dene"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",

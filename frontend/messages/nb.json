@@ -588,10 +588,11 @@
     "translatedLyricsHint": "Etter at sangteksten er gjennomgått, oversetter AI hver linje til {language} og viser den med mindre skrift under sangteksten i videoen din. Oversettelsene kan ikke redigeres.",
     "translatedLyricsLanguageLabel": "Oversett sangteksten til",
     "translatedLyricsPreviewAlt": "Eksempelbilde fra karaokevideo med sangtekst oversatt til {language}",
-    "translatedLyricsPreviewError": "Kunne ikke laste inn forhåndsvisningen. Videoen din vil likevel inneholde den oversatte sangteksten.",
+    "translatedLyricsPreviewError": "Kunne ikke laste forhåndsvisningen.",
     "translatedLyricsPreviewLoading": "Genererer forhåndsvisning...",
     "translatedLyricsToggle": "Legg til oversatt sangtekst",
-    "translatedLyricsToggleHint": "Vis en AI-oversettelse av hver linje med mindre skrift under sangteksten. Flott for å lære et språk."
+    "translatedLyricsToggleHint": "Vis en AI-oversettelse av hver linje med mindre skrift under sangteksten. Flott for å lære et språk.",
+    "translatedLyricsPreviewRetry": "Prøv igjen"
   },
   "jobStatus": {
     "settingUp": "Setter opp",

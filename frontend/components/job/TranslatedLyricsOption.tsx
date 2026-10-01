@@ -76,15 +76,17 @@ export function TranslatedLyricsOption({ value, onChange, disabled }: Translated
     onChange(checked ? defaultLanguage : null)
   }
 
+  function clearFailure(code: string) {
+    setFailed((prev) => {
+      const next = { ...prev }
+      delete next[code]
+      return next
+    })
+  }
+
   function handleLanguageChange(code: string) {
-    // Re-selecting a language whose preview failed retries it.
-    if (failed[code]) {
-      setFailed((prev) => {
-        const next = { ...prev }
-        delete next[code]
-        return next
-      })
-    }
+    // Selecting a language whose preview failed retries it.
+    if (failed[code]) clearFailure(code)
     onChange(code)
   }
 
@@ -154,9 +156,21 @@ export function TranslatedLyricsOption({ value, onChange, disabled }: Translated
               />
             ) : previewFailed ? (
               <div className="absolute inset-0 flex items-center justify-center p-4 text-center">
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }} data-testid="translated-lyrics-preview-error">
-                  {t('translatedLyricsPreviewError')}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }} data-testid="translated-lyrics-preview-error">
+                    {t('translatedLyricsPreviewError')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => clearFailure(value)}
+                    disabled={disabled}
+                    className="text-xs underline"
+                    style={{ color: 'var(--brand-pink)' }}
+                    data-testid="translated-lyrics-preview-retry"
+                  >
+                    {t('translatedLyricsPreviewRetry')}
+                  </button>
+                </div>
               </div>
             ) : (
               <div

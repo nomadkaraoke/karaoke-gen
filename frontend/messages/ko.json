@@ -588,10 +588,11 @@
     "translatedLyricsHint": "가사 검토 후 AI가 각 줄을 {language}(으)로 번역하여 동영상 가사 아래에 작은 글씨로 표시합니다. 번역 내용은 수정할 수 없습니다.",
     "translatedLyricsLanguageLabel": "가사 번역 언어",
     "translatedLyricsPreviewAlt": "가사가 {language}(으)로 번역된 노래방 동영상 프레임 예시",
-    "translatedLyricsPreviewError": "미리보기를 불러올 수 없습니다. 완성될 동영상에는 번역된 가사가 정상적으로 포함됩니다.",
+    "translatedLyricsPreviewError": "미리보기를 불러올 수 없습니다.",
     "translatedLyricsPreviewLoading": "미리보기 렌더링 중...",
     "translatedLyricsToggle": "번역 가사 추가",
-    "translatedLyricsToggleHint": "가사 아래에 각 줄의 AI 번역을 작은 글씨로 표시합니다. 언어 학습에 아주 좋습니다."
+    "translatedLyricsToggleHint": "가사 아래에 각 줄의 AI 번역을 작은 글씨로 표시합니다. 언어 학습에 아주 좋습니다.",
+    "translatedLyricsPreviewRetry": "다시 시도"
   },
   "jobStatus": {
     "settingUp": "설정 중",

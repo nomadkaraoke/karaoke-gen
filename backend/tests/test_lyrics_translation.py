@@ -54,7 +54,7 @@ def test_supported_languages_match_ui_locales():
     import os
 
     messages = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "messages")
-    locales = {f[:-5] for f in os.listdir(messages) if f.endswith(".json")}
+    locales = {f[:-5] for f in os.listdir(messages) if f.endswith(".json") and not f.startswith(".")}
     assert set(lt.TRANSLATION_LANGUAGES) == locales
 
 
@@ -150,7 +150,7 @@ def job(language="es", job_id="job1"):
 
 def test_no_language_removes_stale_file_and_returns_none():
     storage = FakeStorage({"jobs/job1/lyrics/translations.json": {"lines": []}})
-    assert prepare_job_translations(job(None), storage) is None
+    assert prepare_job_translations("job1", job(None), storage) is None
     assert "jobs/job1/lyrics/translations.json" in storage.deleted
 
 
@@ -162,7 +162,7 @@ def test_translates_final_reviewed_lyrics():
     })
     svc = make_service([{"translations": ["Hola mundo", "Adiós"]}], storage)
     jm = MagicMock()
-    path = prepare_job_translations(job(), storage, jm, service=svc)
+    path = prepare_job_translations("job1", job(), storage, jm, service=svc)
     assert path == "jobs/job1/lyrics/translations.json"
     data = storage.files[path]
     assert data["language"] == "es" and data["language_name"] == "Spanish"
@@ -177,7 +177,7 @@ def test_same_language_song_gets_no_translation_row():
     storage = FakeStorage({"jobs/job1/lyrics/corrections.json": corrections("Hola amigo", "Te quiero")})
     svc = make_service([{"translations": ["Hola amigo", "Te quiero"]}], storage)
     jm = MagicMock()
-    assert prepare_job_translations(job(), storage, jm, service=svc) is None
+    assert prepare_job_translations("job1", job(), storage, jm, service=svc) is None
     assert jm.update_state_data.call_args[0][2]["status"] == "same_language"
     assert "jobs/job1/lyrics/translations.json" not in storage.files
 
@@ -189,7 +189,7 @@ def test_failure_never_blocks_render():
     })
     svc = make_service([Exception("400 bad request")], storage)
     jm = MagicMock()
-    assert prepare_job_translations(job(), storage, jm, service=svc) is None
+    assert prepare_job_translations("job1", job(), storage, jm, service=svc) is None
     status = jm.update_state_data.call_args[0][2]
     assert status["status"] == "failed" and "bad request" in status["error"]
     assert "jobs/job1/lyrics/translations.json" not in storage.files

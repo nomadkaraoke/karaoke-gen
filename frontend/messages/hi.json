@@ -588,10 +588,11 @@
     "translatedLyricsHint": "बोल की समीक्षा होने के बाद, AI हर पंक्ति का {language} में अनुवाद करता है और तुम्हारे वीडियो में बोल के नीचे छोटे टेक्स्ट में दिखाता है। अनुवाद एडिट नहीं किए जा सकते।",
     "translatedLyricsLanguageLabel": "बोल का अनुवाद इस भाषा में करें",
     "translatedLyricsPreviewAlt": "कराओके वीडियो फ्रेम का उदाहरण जिसमें बोल का अनुवाद {language} में है",
-    "translatedLyricsPreviewError": "प्रीव्यू लोड नहीं किया जा सका। तुम्हारे वीडियो में फिर भी अनुवादित बोल शामिल होंगे।",
+    "translatedLyricsPreviewError": "पूर्वावलोकन लोड नहीं किया जा सका।",
     "translatedLyricsPreviewLoading": "प्रीव्यू रेंडर किया जा रहा है...",
     "translatedLyricsToggle": "अनुवादित बोल जोड़ें",
-    "translatedLyricsToggleHint": "बोल के नीचे छोटे टेक्स्ट में हर पंक्ति का AI अनुवाद दिखाएं। नई भाषा सीखने के लिए बहुत बढ़िया।"
+    "translatedLyricsToggleHint": "बोल के नीचे छोटे टेक्स्ट में हर पंक्ति का AI अनुवाद दिखाएं। नई भाषा सीखने के लिए बहुत बढ़िया।",
+    "translatedLyricsPreviewRetry": "फिर से कोशिश करो"
   },
   "jobStatus": {
     "settingUp": "सेटअप हो रहा है",

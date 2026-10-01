@@ -335,6 +335,17 @@ describe("CustomizeStep — translated lyrics", () => {
     expect(screen.queryByTestId("translated-lyrics-preview")).not.toBeInTheDocument()
   })
 
+  it("retries a failed preview", async () => {
+    mockGetTranslationPreview.mockRejectedValueOnce(new Error("boom"))
+    mockGetTranslationPreview.mockResolvedValueOnce({ image: "data:image/jpeg;base64,ja" })
+    render(<CustomizeStep {...defaultProps} translationLanguage="ja" onTranslationLanguageChange={jest.fn()} />)
+    fireEvent.click(await screen.findByTestId("translated-lyrics-preview-retry"))
+    await waitFor(() =>
+      expect(screen.getByTestId("translated-lyrics-preview")).toHaveAttribute("src", "data:image/jpeg;base64,ja")
+    )
+    expect(mockGetTranslationPreview).toHaveBeenCalledTimes(2)
+  })
+
   it("disables the toggle and select while submitting", async () => {
     render(
       <CustomizeStep {...defaultProps} isSubmitting={true}

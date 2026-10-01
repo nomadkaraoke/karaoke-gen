@@ -588,10 +588,11 @@
     "translatedLyricsHint": "Selepas lirik disemak, AI akan menterjemahkan setiap baris ke dalam {language} dan memaparkannya dalam teks yang lebih kecil di bawah lirik dalam video anda. Terjemahan tidak boleh diedit.",
     "translatedLyricsLanguageLabel": "Terjemahkan lirik ke",
     "translatedLyricsPreviewAlt": "Contoh bingkai video karaoke dengan lirik yang diterjemahkan ke dalam {language}",
-    "translatedLyricsPreviewError": "Tidak dapat memuatkan pratonton. Video anda tetap akan menyertakan lirik yang diterjemahkan.",
+    "translatedLyricsPreviewError": "Tidak dapat memuatkan pratonton.",
     "translatedLyricsPreviewLoading": "Menjana pratonton...",
     "translatedLyricsToggle": "Tambah lirik terjemahan",
-    "translatedLyricsToggleHint": "Paparkan terjemahan AI bagi setiap baris dalam teks yang lebih kecil di bawah lirik. Sangat sesuai untuk belajar bahasa."
+    "translatedLyricsToggleHint": "Paparkan terjemahan AI bagi setiap baris dalam teks yang lebih kecil di bawah lirik. Sangat sesuai untuk belajar bahasa.",
+    "translatedLyricsPreviewRetry": "Cuba lagi"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",

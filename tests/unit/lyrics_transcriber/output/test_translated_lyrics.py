@@ -267,3 +267,36 @@ def test_split_hebrew_lyric_shares_english_translation_in_reading_order():
     assert len(out) >= 2
     assert " ".join(s.translation for s in out if s.translation) == long.translation
     assert out[0].translation.startswith("Like")
+
+
+def test_thai_split_never_strands_a_combining_mark():
+    import unicodedata
+
+    text = "ฉันรักเธอมากที่สุดในโลกนี้"
+    for n in (2, 3, 4):
+        parts = split_text_proportionally(text, [1] * n)
+        assert "".join(parts) == text
+        for part in parts:
+            assert part and not unicodedata.category(part[0]).startswith("M")
+
+
+def test_missing_font_estimates_width_so_long_translation_still_shrinks(tmp_path):
+    karaoke = dict(DEFAULT_KARAOKE_STYLE)
+    karaoke["font_path"] = ""  # unresolved: PIL's tiny default font would under-measure
+    gen = SubtitlesGenerator(output_dir=str(tmp_path), video_resolution=(1080, 1920), font_size=88,
+                             line_height=118, styles={"karaoke": karaoke})
+    with open(gen.generate_ass([seg("hello there", 1, translation=" ".join(["palabra"] * 15))], "t", None),
+              encoding="utf-8") as f:
+        translated = next(d for d in dialogues(f.read()) if "Karaoke.Translation" in d)
+    assert re.search(r"\\fscx(\d+)", translated)
+
+
+def test_instrumental_card_position_unchanged_by_translations(tmp_path):
+    def instrumental_y(segments):
+        ass = generate(tmp_path, segments)
+        card = next(d for d in dialogues(ass) if "INSTRUMENTAL" in d)
+        return positions([card])[0][1] if "\\pos" in card else card
+
+    plain = [seg("first line", 1), seg("after the break", 40)]
+    translated = [seg("first line", 1, translation="primera"), seg("after the break", 40, translation="después")]
+    assert instrumental_y(plain) == instrumental_y(translated)
