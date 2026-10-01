@@ -1123,7 +1123,8 @@
       "noCorrections": "No agentic corrections"
     },
     "toasts": {
-      "customLyricsSaved": "Custom lyrics applied. Manually sync each edited segment to ensure word timings are good for customised lyrics."
+      "customLyricsSaved": "Custom lyrics applied. Manually sync each edited segment to ensure word timings are good for customised lyrics.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# lyric word has} other {# lyric words have}} no timing yet. Open the synchronizer and tap each line to the beat before generating the video."
     },
     "modals": {
       "addLyrics": {

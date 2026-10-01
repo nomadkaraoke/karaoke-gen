@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Sanakohtaiset laulajamuutokset koskevat vain karaokevideota — CDG-tuloste käyttää segmentin päälaulajaa."
     },
     "toasts": {
-      "customLyricsSaved": "Mukautetut sanoitukset otettu käyttöön. Synkronoi jokainen muokattu segmentti manuaalisesti varmistaaksesi, että sanojen ajoitukset sopivat mukautettuihin sanoituksiin."
+      "customLyricsSaved": "Mukautetut sanoitukset otettu käyttöön. Synkronoi jokainen muokattu segmentti manuaalisesti varmistaaksesi, että sanojen ajoitukset sopivat mukautettuihin sanoituksiin.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# sanoituksen sanalta puuttuu} other {# sanoituksen sanalta puuttuu}} vielä ajoitus. Avaa synkronointityökalu ja napauta jokainen rivi biitin tahtiin ennen videon luomista."
     },
     "autoCorrect": {
       "accept": "Hyväksy ehdotus",

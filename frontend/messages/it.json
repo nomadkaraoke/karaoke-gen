@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Le sovrascritture del cantante a livello di parola si applicano solo al video karaoke — l'output CDG usa il cantante principale del segmento."
     },
     "toasts": {
-      "customLyricsSaved": "Testo personalizzato applicato. Sincronizza manualmente ogni segmento modificato per assicurarti che il tempismo delle parole sia corretto per il testo personalizzato."
+      "customLyricsSaved": "Testo personalizzato applicato. Sincronizza manualmente ogni segmento modificato per assicurarti che il tempismo delle parole sia corretto per il testo personalizzato.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# parola del testo non è ancora sincronizzata} other {# parole del testo non sono ancora sincronizzate}}. Apri il sincronizzatore e tocca ogni riga a tempo prima di generare il video."
     },
     "autoCorrect": {
       "accept": "Accetta suggerimento",

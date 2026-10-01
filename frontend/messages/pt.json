@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "As substituições de cantor no nível da palavra se aplicam apenas ao vídeo de karaokê — a saída CDG usa o cantor principal do segmento."
     },
     "toasts": {
-      "customLyricsSaved": "Letras personalizadas aplicadas. Sincronize manualmente cada segmento editado para garantir que o tempo das palavras fique adequado para as novas letras."
+      "customLyricsSaved": "Letras personalizadas aplicadas. Sincronize manualmente cada segmento editado para garantir que o tempo das palavras fique adequado para as novas letras.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# palavra da letra ainda não tem} other {# palavras da letra ainda não têm}} sincronização. Abra o sincronizador e toque em cada linha no ritmo antes de gerar o vídeo."
     },
     "autoCorrect": {
       "accept": "Aceitar sugestão",

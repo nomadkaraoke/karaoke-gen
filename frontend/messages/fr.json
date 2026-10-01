@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Les modifications de chanteur au niveau des mots s'appliquent uniquement à la vidéo karaoké — la sortie CDG utilise le chanteur principal du segment."
     },
     "toasts": {
-      "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct."
+      "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# mot n'a} other {# mots n'ont}} pas encore de timing. Ouvre le synchroniseur et appuie sur chaque ligne en rythme avant de générer la vidéo."
     },
     "autoCorrect": {
       "accept": "Accepter la suggestion",

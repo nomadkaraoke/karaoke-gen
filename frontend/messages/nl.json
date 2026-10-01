@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Zangeraanpassingen op woordniveau zijn alleen van toepassing op de karaokevideo — CDG-uitvoer gebruikt de hoofdzanger van het segment."
     },
     "toasts": {
-      "customLyricsSaved": "Aangepaste songtekst toegepast. Synchroniseer elk bewerkt segment handmatig zodat de timing van de woorden perfect aansluit op de nieuwe songtekst."
+      "customLyricsSaved": "Aangepaste songtekst toegepast. Synchroniseer elk bewerkt segment handmatig zodat de timing van de woorden perfect aansluit op de nieuwe songtekst.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# woord in de songtekst heeft} other {# woorden in de songtekst hebben}} nog geen timing. Open de synchronizer en tik elke regel mee op de maat voordat je de video genereert."
     },
     "autoCorrect": {
       "accept": "Accepteer suggestie",

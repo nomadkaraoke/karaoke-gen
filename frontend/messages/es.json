@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Las anulaciones de cantante a nivel de palabra se aplican solo al video de karaoke — la salida CDG usa el cantante principal del segmento."
     },
     "toasts": {
-      "customLyricsSaved": "Letras personalizadas aplicadas. Sincroniza manualmente cada segmento editado para asegurar que los tiempos de las palabras sean correctos para las letras personalizadas."
+      "customLyricsSaved": "Letras personalizadas aplicadas. Sincroniza manualmente cada segmento editado para asegurar que los tiempos de las palabras sean correctos para las letras personalizadas.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# palabra de la letra aún no tiene sincronización} other {# palabras de la letra aún no tienen sincronización}}. Abre el sincronizador y pulsa cada línea al ritmo antes de generar el video."
     },
     "autoCorrect": {
       "accept": "Aceptar sugerencia",

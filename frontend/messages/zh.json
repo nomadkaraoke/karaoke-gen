@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "词级歌手覆盖设置仅适用于卡拉OK视频 — CDG 输出将使用该片段的主要歌手。"
     },
     "toasts": {
-      "customLyricsSaved": "已应用自定义歌词。请手动同步每个编辑过的片段，以确保自定义歌词的每个词都能准确同步。"
+      "customLyricsSaved": "已应用自定义歌词。请手动同步每个编辑过的片段，以确保自定义歌词的每个词都能准确同步。",
+      "untimedWordsBlockSubmit": "{count, plural, one {还有 # 个歌词字词} other {还有 # 个歌词字词}}尚未设置时间。在生成视频前，请打开同步器并跟随节拍点击每一行。"
     },
     "autoCorrect": {
       "accept": "接受建议",

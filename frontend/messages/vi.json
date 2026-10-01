@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Các ghi đè ca sĩ cấp độ từ chỉ áp dụng cho video karaoke — đầu ra CDG sử dụng ca sĩ chính của đoạn."
     },
     "toasts": {
-      "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh."
+      "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# từ trong lời bài hát} other {# từ trong lời bài hát}} chưa được khớp thời gian. Bạn hãy mở trình đồng bộ và nhấn từng dòng theo nhịp trước khi tạo video."
     },
     "autoCorrect": {
       "accept": "Chấp nhận đề xuất",

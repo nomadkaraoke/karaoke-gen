@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Overstyring av sanger på ordnivå gjelder kun for karaokevideoen — CDG-utdata bruker segmentets hovedsanger."
     },
     "toasts": {
-      "customLyricsSaved": "Egendefinert tekst er lagt til. Synkroniser hvert redigerte segment manuelt for å sikre at timingen av ordene stemmer for den tilpassede teksten."
+      "customLyricsSaved": "Egendefinert tekst er lagt til. Synkroniser hvert redigerte segment manuelt for å sikre at timingen av ordene stemmer for den tilpassede teksten.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# tekstord har} other {# tekstord har}} ingen timing ennå. Åpne synkronisatoren og trykk på hver linje i takt med musikken før du genererer videoen."
     },
     "autoCorrect": {
       "accept": "Godta forslag",

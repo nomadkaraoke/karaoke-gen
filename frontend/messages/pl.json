@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Nadpisania wokalisty na poziomie słów dotyczą tylko wideo karaoke — plik CDG używa głównego wokalisty segmentu."
     },
     "toasts": {
-      "customLyricsSaved": "Zastosowano własny tekst. Zsynchronizuj ręcznie każdy edytowany segment, aby upewnić się, że czas wyświetlania słów pasuje do nowego tekstu."
+      "customLyricsSaved": "Zastosowano własny tekst. Zsynchronizuj ręcznie każdy edytowany segment, aby upewnić się, że czas wyświetlania słów pasuje do nowego tekstu.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# słowo tekstu nie ma} few {# słowa tekstu nie mają} many {# słów tekstu nie ma} other {# słów tekstu nie ma}} jeszcze synchronizacji. Otwórz synchronizator i wystukaj każdą linijkę do rytmu przed wygenerowaniem wideo."
     },
     "autoCorrect": {
       "accept": "Zaakceptuj sugestię",

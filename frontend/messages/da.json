@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Sanger-tilsidesættelser på ordniveau gælder kun for karaoke-videoen — CDG-output bruger segmentets primære sanger."
     },
     "toasts": {
-      "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst."
+      "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# ord i sangteksten har} other {# ord i sangteksten har}} endnu ingen timing. Åbn synkroniseringsværktøjet og tryk på hver linje i takt med rytmen, før du genererer videoen."
     },
     "autoCorrect": {
       "accept": "Accepter forslag",

@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Přepsání zpěváka na úrovni slov se vztahuje pouze na karaoke video — výstup CDG používá hlavního zpěváka segmentu."
     },
     "toasts": {
-      "customLyricsSaved": "Vlastní text byl aplikován. Ručně synchronizuj každý upravený segment, aby bylo zajištěno správné načasování slov pro upravený text."
+      "customLyricsSaved": "Vlastní text byl aplikován. Ručně synchronizuj každý upravený segment, aby bylo zajištěno správné načasování slov pro upravený text.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# slovo textu ještě nemá} few {# slova textu ještě nemají} other {# slov textu ještě nemá}} časování. Otevři synchronizátor a před vygenerováním videa odklepej každý řádek do rytmu."
     },
     "autoCorrect": {
       "accept": "Přijmout návrh",

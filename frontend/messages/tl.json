@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Ang mga word-level singer override ay para lang sa karaoke video — ginagamit ng CDG output ang pangunahing singer ng segment."
     },
     "toasts": {
-      "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics."
+      "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# salita sa lyrics ang} other {# salita sa lyrics ang}} wala pang timing. Buksan ang synchronizer at i-tap ang bawat linya kasabay ng beat bago i-generate ang video."
     },
     "autoCorrect": {
       "accept": "Tanggapin ang mungkahi",

@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Les modificacions de cantant a nivell de paraula només s'apliquen al vídeo de karaoke — la sortida CDG utilitza el cantant principal del segment."
     },
     "toasts": {
-      "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada."
+      "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# paraula de la lletra encara no té} other {# paraules de la lletra encara no tenen}} sincronització. Obre el sincronitzador i prem cada línia al ritme abans de generar el vídeo."
     },
     "autoCorrect": {
       "accept": "Accepta el suggeriment",

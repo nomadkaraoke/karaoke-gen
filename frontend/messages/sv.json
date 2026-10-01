@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Åsidosättningar av sångare på ordnivå gäller endast för karaokevideon — CDG-utdata använder segmentets huvudsakliga sångare."
     },
     "toasts": {
-      "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten."
+      "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# ord i låttexten har} other {# ord i låttexten har}} ingen timing än. Öppna synkroniseraren och tryck på varje rad i takt med musiken innan du genererar videon."
     },
     "autoCorrect": {
       "accept": "Acceptera förslag",

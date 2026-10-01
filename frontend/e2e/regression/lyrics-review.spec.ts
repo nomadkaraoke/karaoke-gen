@@ -975,6 +975,22 @@ test.describe('Lyrics Review - Possible Missing Lyrics (untimed insert)', () => 
     await expect(page.getByTestId('missing-lyrics-resync-hint')).toHaveCount(0);
   });
 
+  test('submitting with unsynced inserted lines is blocked with a visible message', async ({ page }) => {
+    // The guard reports via a sonner toast; until the sonner <Toaster> was mounted in
+    // the root layout, the submit was silently swallowed.
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('missing-lyrics-insert').click();
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.getByRole('button', { name: /preview video/i }).click();
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+    await dialog.getByRole('button', { name: /proceed|complete|generate/i }).last().click();
+
+    await expect(page.getByText(/lyric words? (has|have) no timing yet/)).toBeVisible({ timeout: 5000 });
+  });
+
   test('"Sync timing" opens the Edit modal (Tap To Sync) for the inserted line', async ({ page }) => {
     await page.goto('/app/jobs/local/review');
     await page.waitForLoadState('networkidle');

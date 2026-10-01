@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Suprascrierile cântărețului la nivel de cuvânt se aplică doar videoclipului de karaoke — rezultatul CDG folosește cântărețul principal al segmentului."
     },
     "toasts": {
-      "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate."
+      "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# cuvânt din versuri nu are} few {# cuvinte din versuri nu au} other {# de cuvinte din versuri nu au}} încă sincronizare. Deschide sincronizatorul și apasă pe fiecare vers pe ritm înainte de a genera videoclipul."
     },
     "autoCorrect": {
       "accept": "Acceptă sugestia",

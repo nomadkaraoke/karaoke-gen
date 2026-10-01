@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "Tetapan ganti penyanyi peringkat perkataan hanya digunakan pada video karaoke — output CDG menggunakan penyanyi utama segmen tersebut."
     },
     "toasts": {
-      "customLyricsSaved": "Lirik tersuai digunakan. Segerakkan setiap segmen yang disunting secara manual untuk memastikan pemasaan perkataan adalah tepat untuk lirik tersuai."
+      "customLyricsSaved": "Lirik tersuai digunakan. Segerakkan setiap segmen yang disunting secara manual untuk memastikan pemasaan perkataan adalah tepat untuk lirik tersuai.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# perkataan lirik belum ada pemasaan} other {# perkataan lirik belum ada pemasaan}}. Buka penyegerak dan ketik setiap baris mengikut rentak sebelum menjana video."
     },
     "autoCorrect": {
       "accept": "Terima cadangan",

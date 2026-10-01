@@ -1432,7 +1432,8 @@
       "wordOverrideNote": "A szavankénti énekes-felülbírálások csak a karaoke videóra vonatkoznak — a CDG kimenet a szegmens fő énekesét használja."
     },
     "toasts": {
-      "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez."
+      "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# szó a dalszövegben} other {# szó a dalszövegben}} még nincs időzítve. Nyisd meg a szinkronizálót, és a videó generálása előtt koppints az egyes sorokra az ütemre."
     },
     "autoCorrect": {
       "accept": "Javaslat elfogadása",

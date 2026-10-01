@@ -1138,9 +1138,7 @@ export default function LyricsAnalyzer({
     // it here with an actionable message so the user can synchronize first.
     const untimed = countUntimedWords(data.corrected_segments)
     if (untimed > 0) {
-      toast.error(
-        `${untimed} lyric word(s) have no timing yet. Open the synchronizer and tap each line to the beat before generating the video.`
-      )
+      toast.error(t('toasts.untimedWordsBlockSubmit', { count: untimed }))
       return
     }
 
@@ -1232,7 +1230,7 @@ export default function LyricsAnalyzer({
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, offerInlineInstrumentalChoice, currentInstrumental, reviewInstrumentalAnyway])
+  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, offerInlineInstrumentalChoice, currentInstrumental, reviewInstrumentalAnyway, t])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
