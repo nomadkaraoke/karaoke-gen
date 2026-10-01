@@ -319,7 +319,7 @@ async def _call_with_retry(client: genai.Client, prompt: str) -> str:
                 model=MODEL,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_level="medium"),
+                    thinking_config=types.ThinkingConfig(thinking_level="low"),
                     temperature=0.3,
                 ),
             )

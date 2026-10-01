@@ -475,6 +475,9 @@ def default_generate(system_prompt: str, user_prompt: str) -> dict:
             response_mime_type="application/json",
             response_schema=copy.deepcopy(RESPONSE_SCHEMA),
             temperature=0,
+            # Simple extraction/classification: low thinking keeps cost and
+            # latency down (Gemini 3 Flash defaults to high/dynamic thinking).
+            thinking_config=types.ThinkingConfig(thinking_level="low"),
         ),
     )
     return json.loads(response.text)
