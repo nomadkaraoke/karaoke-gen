@@ -20,6 +20,50 @@
 const TESTMAIL_API_KEY = process.env.TESTMAIL_API_KEY;
 const TESTMAIL_NAMESPACE = process.env.TESTMAIL_NAMESPACE;
 const TESTMAIL_API_URL = 'https://api.testmail.app/api/json';
+const ADMIN_API_URL = process.env.E2E_API_URL || 'https://api.nomadkaraoke.com';
+
+/**
+ * When an expected email never reaches testmail.app, ask the backend whether it
+ * ever sent one. Turns an opaque "no email" timeout into either "backend never
+ * sent it" (e.g. Postmark rejected the send — check backend logs) or "sent but
+ * not delivered" (Postmark → testmail.app delivery problem).
+ *
+ * Uses the admin email-history endpoint, which merges Postmark's outbound
+ * records with our email_log; failed sends appear in neither. Best-effort:
+ * returns null if no admin token is set or the lookup itself fails.
+ */
+export async function diagnoseMissingEmail(emailAddress: string): Promise<string | null> {
+  const adminToken = process.env.E2E_ADMIN_TOKEN;
+  if (!adminToken) return null;
+
+  try {
+    const response = await fetch(
+      `${ADMIN_API_URL}/api/admin/users/${encodeURIComponent(emailAddress)}/emails`,
+      { headers: { 'X-Admin-Token': adminToken }, signal: AbortSignal.timeout(15000) },
+    );
+    if (!response.ok) return `email-history lookup failed (HTTP ${response.status})`;
+
+    const data: { count?: number; emails?: Array<{ subject?: string; status?: string | null }> } =
+      await response.json();
+    const emails = data.emails || [];
+    if (emails.length === 0) {
+      return (
+        'backend has NO record of sending any email to this address — the send failed server-side ' +
+        '(check karaoke-backend logs for "Postmark returned status" / "Failed to send")'
+      );
+    }
+    const summary = emails
+      .slice(0, 3)
+      .map((e) => `"${e.subject ?? '?'}"${e.status ? ` (${e.status})` : ''}`)
+      .join(', ');
+    return (
+      `backend sent ${emails.length} email(s) to this address [${summary}] but none reached ` +
+      'testmail.app — likely a Postmark → testmail.app delivery or testmail.app API problem'
+    );
+  } catch (error) {
+    return `email-history lookup failed: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
 
 /**
  * Inbox object compatible with existing test code
@@ -147,6 +191,7 @@ export async function createEmailHelper(): Promise<EmailHelper> {
       // For longer timeouts, we poll multiple times
       const pollInterval = Math.min(timeout, 30000); // 30s max per poll
       const startTime = Date.now();
+      let lastPollError: string | null = null;
 
       while (Date.now() - startTime < timeout) {
         const remainingTime = timeout - (Date.now() - startTime);
@@ -196,18 +241,23 @@ export async function createEmailHelper(): Promise<EmailHelper> {
             };
           }
         } catch (error) {
-          // If it's a timeout or network error, continue polling
-          if (Date.now() - startTime < timeout) {
-            console.log(`Polling for email... (${Math.round((Date.now() - startTime) / 1000)}s elapsed): ${error instanceof Error ? error.message : String(error)}`);
-            continue;
-          }
-          throw error;
+          // A timeout or network error just means "no email yet" — keep polling
+          // until the overall timeout, then report the diagnosis below rather than
+          // the last (misleading) AbortError from a livequery that simply waited.
+          lastPollError = error instanceof Error ? error.message : String(error);
+          console.log(`Polling for email... (${Math.round((Date.now() - startTime) / 1000)}s elapsed): ${lastPollError}`);
         } finally {
           clearTimeout(abortTimer);
         }
       }
 
-      throw new Error(`Timed out waiting for email after ${timeout}ms`);
+      const emailAddress = `${TESTMAIL_NAMESPACE}.${inboxId}@inbox.testmail.app`;
+      const diagnosis = await diagnoseMissingEmail(emailAddress);
+      throw new Error(
+        `Timed out waiting for email to ${emailAddress} after ${timeout}ms` +
+          (diagnosis ? ` — ${diagnosis}` : '') +
+          (lastPollError ? ` (last testmail.app poll error: ${lastPollError})` : ''),
+      );
     },
 
     /**

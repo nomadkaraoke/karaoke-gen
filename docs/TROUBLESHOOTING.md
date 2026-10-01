@@ -60,6 +60,34 @@ defense-in-depth beneath the signing-free review path.
 
 ---
 
+## Emails not arriving / E2E "Timed out waiting for email" (Postmark HTML 403)
+
+**Symptom:** magic links or job emails never arrive; E2E Daily Stage 1 fails at
+"Sign up via magic link". Backend logs show
+`Postmark returned status 403: <html>…403 Forbidden…` followed by
+`Failed to send magic link email to …`.
+
+**Cause:** a bare nginx HTML 403 (not Postmark's JSON error format) is an edge/IP-level
+block at `api.postmarkapp.com`, not a token or payload problem. Seen intermittently
+from `karaoke-backend` (us-central1, shared Cloud Run egress IPs) since 2026-09-30;
+us-east4 Cloud Run Jobs were unaffected. A JSON 403 (`ErrorCode=10`) is a real bad-token error instead.
+
+**Mitigation in code:** `PostmarkEmailProvider` retries 429 / 5xx / non-JSON 403 /
+connect timeouts (backoff 1s, 3s). JSON Postmark errors and read timeouts are not
+retried (deterministic, or risk of a duplicate send).
+
+**Diagnosis:**
+```bash
+gcloud logging read 'resource.labels.service_name="karaoke-backend" AND (textPayload:"Postmark returned status" OR textPayload:"Failed to send")' \
+  --project nomadkaraoke --freshness 2d --limit 50 --format='value(timestamp,textPayload)'
+```
+The E2E `waitForEmail` helper now checks `GET /api/admin/users/{email}/emails` on
+timeout and reports whether the backend sent anything ("backend has NO record…" =
+server-side send failure; "backend sent N email(s)…" = delivery/testmail problem).
+
+**If it persists after retries:** contact Postmark support with failure timestamps, or
+give the backend a static egress IP (Direct VPC egress + Cloud NAT).
+
 ## Fast rollback (bad backend deploy)
 
 **When to use:** a merge-to-main deploy shipped a bad backend revision — the

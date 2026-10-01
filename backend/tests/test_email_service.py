@@ -257,6 +257,109 @@ class TestPostmarkEmailProvider:
         assert result is False
 
 
+class TestPostmarkRetry:
+    """Transient Postmark failures are retried; deterministic errors are not."""
+
+    def _response(self, status_code, body=None, json_body=True):
+        resp = Mock()
+        resp.status_code = status_code
+        if json_body:
+            resp.json.return_value = body or {"MessageID": "abc"}
+        else:
+            resp.json.side_effect = ValueError("not json")
+        resp.text = "" if json_body else "<html><center><h1>403 Forbidden</h1></center></html>"
+        return resp
+
+    def _send(self, provider):
+        return provider.send_email_detailed(
+            to_email="user@example.com", subject="Test", html_content="<p>x</p>"
+        )
+
+    @pytest.fixture(autouse=True)
+    def no_sleep(self):
+        with patch("backend.services.email_service.time.sleep") as mock_sleep:
+            self.mock_sleep = mock_sleep
+            yield
+
+    @pytest.fixture
+    def provider(self):
+        return PostmarkEmailProvider(server_token="t", from_email="f@e.com")
+
+    def test_html_403_then_success_is_retried(self, provider):
+        """The prod failure mode: nginx HTML 403 from Postmark's edge, then OK."""
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.side_effect = [self._response(403, json_body=False), self._response(200)]
+            result = self._send(provider)
+
+        assert result.success is True
+        assert result.message_id == "abc"
+        assert mock_post.call_count == 2
+        self.mock_sleep.assert_called_once_with(1.0)
+
+    def test_html_403_gives_up_after_all_attempts(self, provider):
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._response(403, json_body=False)
+            result = self._send(provider)
+
+        assert result.success is False
+        assert mock_post.call_count == 3
+        assert [c.args[0] for c in self.mock_sleep.call_args_list] == [1.0, 3.0]
+
+    @pytest.mark.parametrize("status", [429, 500, 503])
+    def test_rate_limit_and_server_errors_are_retried(self, provider, status):
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.side_effect = [self._response(status, body={"ErrorCode": 0}), self._response(200)]
+            result = self._send(provider)
+
+        assert result.success is True
+        assert mock_post.call_count == 2
+
+    @pytest.mark.parametrize(
+        "status,body",
+        [
+            (403, {"ErrorCode": 10, "Message": "Bad or missing API token"}),  # JSON 403 = real auth error
+            (422, {"ErrorCode": 300, "Message": "Invalid email request"}),
+            (422, {"ErrorCode": 406, "Message": "Inactive recipient"}),
+        ],
+    )
+    def test_deterministic_postmark_errors_not_retried(self, provider, status, body):
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._response(status, body=body)
+            result = self._send(provider)
+
+        assert result.success is False
+        assert mock_post.call_count == 1
+        self.mock_sleep.assert_not_called()
+
+    def test_connect_timeout_is_retried(self, provider):
+        import requests as _requests
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.side_effect = [_requests.ConnectTimeout("slow"), self._response(200)]
+            result = self._send(provider)
+
+        assert result.success is True
+        assert mock_post.call_count == 2
+
+    def test_connect_timeout_on_every_attempt_fails_cleanly(self, provider):
+        import requests as _requests
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.side_effect = _requests.ConnectTimeout("slow")
+            result = self._send(provider)
+
+        assert result.success is False
+        assert mock_post.call_count == 3
+
+    def test_read_timeout_not_retried_to_avoid_duplicate_send(self, provider):
+        """Postmark may have accepted the message; it has no idempotency key."""
+        import requests as _requests
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.side_effect = _requests.ReadTimeout("no response")
+            result = self._send(provider)
+
+        assert result.success is False
+        assert mock_post.call_count == 1
+
+
 class TestEmailServiceProviderSelection:
     """Tests for EmailService._get_provider() selection logic."""
 
