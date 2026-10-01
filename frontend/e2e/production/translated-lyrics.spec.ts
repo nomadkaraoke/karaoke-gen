@@ -15,10 +15,10 @@ import { URLS } from '../helpers/constants';
 
 const API_URL = URLS.production.api;
 
-test.describe('Translated lyrics preview', () => {
-  // API-only: the prod config's always-on trace hangs on the large image responses
-  test.use({ trace: 'off', video: 'off', screenshot: 'off' });
+// API-only: the prod config's always-on trace hangs on the large image responses
+test.use({ trace: 'off', video: 'off', screenshot: 'off' });
 
+test.describe('Translated lyrics preview', () => {
   for (const language of ['es', 'he', 'ja']) {
     test(`renders a preview frame for ${language}`, async ({ request }) => {
       test.setTimeout(60_000);
