@@ -985,7 +985,8 @@
       "playFromGap": "このギャップの終わりから再生",
       "editSegment": "セグメント {index} を編集",
       "untimedSegment": "単語のタイミング未設定 — クリックして編集",
-      "waveforms": "波形"
+      "waveforms": "波形",
+      "missingLyricsMarker": "歌詞が抜けている可能性 {start}–{end}"
     },
     "editActionBar": {
       "reset": "リセット",
@@ -1493,6 +1494,19 @@
       "cancelSync": "キャンセル",
       "hold": "長押し...",
       "tap": "タップ"
+    },
+    "missingLyrics": {
+      "description": "ここでリードボーカルが歌っていますが、歌詞がありません。",
+      "expectedFrom": "ここに入る想定の歌詞（{source}より）:",
+      "insert": "これらの行を挿入",
+      "insertedHint": "歌声に合わせて再同期してください。各行を開いて「Tap To Sync」を使用してください。",
+      "insertedTitle": "推定タイミングで行が挿入されました",
+      "noLines": "このパートで利用できる参照用の歌詞がありません。手動で歌詞を追加してください。",
+      "play": "再生",
+      "readOnly": "読み取り専用モードでは編集できません",
+      "syncTiming": "タイミングを同期",
+      "title": "{start}–{end} で歌詞が抜けている可能性があります",
+      "dismiss": "閉じる"
     }
   },
   "instrumentalReview": {

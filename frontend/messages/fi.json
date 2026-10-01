@@ -985,7 +985,8 @@
       "playFromGap": "Toista tämän tauon lopusta",
       "editSegment": "Muokkaa segmenttiä {index}",
       "untimedSegment": "Ei sana-ajoituksia — muokkaa klikkaamalla",
-      "waveforms": "Aaltomuodot"
+      "waveforms": "Aaltomuodot",
+      "missingLyricsMarker": "Mahdollisesti puuttuvia sanoituksia {start}–{end}"
     },
     "editActionBar": {
       "reset": "Nollaa",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Peruuta",
       "hold": "PIDÄ...",
       "tap": "NAPAUTA"
+    },
+    "missingLyrics": {
+      "description": "Päälaulu kuuluu tässä, mutta sanoituksia ei ole.",
+      "expectedFrom": "Tähän odotetaan sanoituksia (lähteestä {source}):",
+      "insert": "Lisää nämä rivit",
+      "insertedHint": "Synkronoi ne uudelleen, jotta ne täsmäävät laulun kanssa: avaa kukin rivi ja käytä Tap To Sync -toimintoa.",
+      "insertedTitle": "Rivit lisätty arvioidulla ajoituksella",
+      "noLines": "Tähän osioon ei ole saatavilla viiterivejä – lisää sanoitukset manuaalisesti.",
+      "play": "Toista",
+      "readOnly": "Muokkaus on poistettu käytöstä vain luku -tilassa",
+      "syncTiming": "Synkronoi ajoitus",
+      "title": "Mahdollisesti puuttuvia sanoituksia kohdassa {start}–{end}",
+      "dismiss": "Ohita"
     }
   },
   "instrumentalReview": {

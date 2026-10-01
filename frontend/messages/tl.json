@@ -985,7 +985,8 @@
       "playFromGap": "I-play mula sa dulo ng puwang na ito",
       "editSegment": "I-edit ang segment {index}",
       "untimedSegment": "Walang timing ng salita — i-click para i-edit",
-      "waveforms": "Mga waveform"
+      "waveforms": "Mga waveform",
+      "missingLyricsMarker": "Posibleng may kulang na lyrics {start}–{end}"
     },
     "editActionBar": {
       "reset": "I-reset",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Kanselahin",
       "hold": "I-HOLD...",
       "tap": "I-TAP"
+    },
+    "missingLyrics": {
+      "description": "Kumakanta ang lead vocal dito pero walang lyrics.",
+      "expectedFrom": "Inaasahang may lyrics dito (mula sa {source}):",
+      "insert": "I-insert ang mga linyang ito",
+      "insertedHint": "I-sync muli ang mga ito para tumugma sa pagkanta: buksan ang bawat linya at gamitin ang Tap To Sync.",
+      "insertedTitle": "Na-insert ang mga linya nang may tinatayang timing",
+      "noLines": "Walang available na reference lines para sa bahaging ito — manu-manong idagdag ang lyrics.",
+      "play": "I-play",
+      "readOnly": "Naka-disable ang pag-edit sa read-only mode",
+      "syncTiming": "I-sync ang timing",
+      "title": "Posibleng may kulang na lyrics sa {start}–{end}",
+      "dismiss": "I-dismiss"
     }
   },
   "instrumentalReview": {

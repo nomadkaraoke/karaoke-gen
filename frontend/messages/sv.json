@@ -985,7 +985,8 @@
       "playFromGap": "Spela upp från slutet av detta mellanrum",
       "editSegment": "Redigera segment {index}",
       "untimedSegment": "Ingen ordtajming — klicka för att redigera",
-      "waveforms": "Vågformer"
+      "waveforms": "Vågformer",
+      "missingLyricsMarker": "Eventuellt saknad låttext {start}–{end}"
     },
     "editActionBar": {
       "reset": "Återställ",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Avbryt",
       "hold": "HÅLL IN...",
       "tap": "TRYCK"
+    },
+    "missingLyrics": {
+      "description": "Här hörs leadsång men det finns ingen låttext.",
+      "expectedFrom": "Låttext förväntas här (från {source}):",
+      "insert": "Infoga dessa rader",
+      "insertedHint": "Synka om dem så att de matchar sången: öppna varje rad och använd Tap To Sync.",
+      "insertedTitle": "Rader infogade med uppskattad timing",
+      "noLines": "Inga referensrader finns tillgängliga för den här delen – lägg till låttexten manuellt.",
+      "play": "Spela",
+      "readOnly": "Redigering är inaktiverad i skrivskyddat läge",
+      "syncTiming": "Synka timing",
+      "title": "Eventuellt saknad låttext vid {start}–{end}",
+      "dismiss": "Avfärda"
     }
   },
   "instrumentalReview": {

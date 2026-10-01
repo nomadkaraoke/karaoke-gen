@@ -1,13 +1,14 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { useState, useMemo } from 'react'
+import { Fragment, useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Play, Trash2, Type, Clock, AudioWaveform } from 'lucide-react'
+import { Play, Trash2, Type, Clock, AudioWaveform, AlertTriangle } from 'lucide-react'
 import { HighlightedText } from './shared/HighlightedText'
-import { TranscriptionViewProps, TranscriptionWordPosition } from '@/lib/lyrics-review/types'
+import { TranscriptionViewProps, TranscriptionWordPosition, MissingLyricsMarker } from '@/lib/lyrics-review/types'
+import { formatGapTime } from '@/lib/lyrics-review/utils/missingLyrics'
 import { deleteSegment } from '@/lib/lyrics-review/utils/segmentOperations'
 import {
   computeContextWordsBySegment,
@@ -52,6 +53,7 @@ export default function TranscriptionView({
   isDuet,
   onSegmentSingerChange,
   onSegmentFocus,
+  missingLyricsMarkers,
 }: TranscriptionViewProps) {
   const t = useTranslations('lyricsReview.transcription')
   const tHeader = useTranslations('lyricsReview.header')
@@ -147,6 +149,31 @@ export default function TranscriptionView({
       }
     }, [data.corrected_segments])
 
+  // Possible-missing-lyrics markers, grouped by the segment index they sit before.
+  const markersByIndex = useMemo(() => {
+    const map = new Map<number, MissingLyricsMarker[]>()
+    for (const m of missingLyricsMarkers ?? []) {
+      map.set(m.beforeSegmentIndex, [...(map.get(m.beforeSegmentIndex) ?? []), m])
+    }
+    return map
+  }, [missingLyricsMarkers])
+
+  const renderMarkers = (index: number) =>
+    (markersByIndex.get(index) ?? []).map((m) => (
+      <button
+        key={m.id}
+        type="button"
+        data-testid="missing-lyrics-marker"
+        onClick={() =>
+          document.getElementById(m.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+        className="flex w-full items-center gap-1.5 rounded border border-dashed border-amber-500/60 bg-amber-500/10 px-2 py-0.5 text-left text-xs text-amber-500 hover:bg-amber-500/20"
+      >
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        {t('missingLyricsMarker', { start: formatGapTime(m.start), end: formatGapTime(m.end) })}
+      </button>
+    ))
+
   const handleDeleteSegment = (segmentIndex: number) => {
     if (onDataChange) {
       const updatedData = deleteSegment(data, segmentIndex)
@@ -187,8 +214,9 @@ export default function TranscriptionView({
           // (e.g. an over-long trailing word) at a glance without opening a modal per line.
           <div className="flex flex-col gap-[5px]">
             {data.corrected_segments.map((segment, segmentIndex) => (
+              <Fragment key={segment.id}>
+              {renderMarkers(segmentIndex)}
               <WaveformSegmentRow
-                key={segment.id}
                 segment={segment}
                 segmentIndex={segmentIndex}
                 contextWords={contextWordsBySegment?.get(segmentIndex) ?? []}
@@ -206,7 +234,9 @@ export default function TranscriptionView({
                     : undefined
                 }
               />
+              </Fragment>
             ))}
+            {renderMarkers(data.corrected_segments.length)}
           </div>
         ) : (
           // Advanced rows are full-width pill timelines, so give them a bit
@@ -263,8 +293,9 @@ export default function TranscriptionView({
                 : ''
 
               return (
+                <Fragment key={segment.id}>
+                {renderMarkers(segmentIndex)}
                 <div
-                  key={segment.id}
                   tabIndex={isDuet && onSegmentFocus ? 0 : undefined}
                   onFocus={isDuet && onSegmentFocus ? () => onSegmentFocus(segmentIndex) : undefined}
                   onBlur={isDuet && onSegmentFocus ? () => onSegmentFocus(null) : undefined}
@@ -354,8 +385,10 @@ export default function TranscriptionView({
                     />
                   </div>
                 </div>
+                </Fragment>
               )
             })}
+            {renderMarkers(data.corrected_segments.length)}
           </div>
         )}
 

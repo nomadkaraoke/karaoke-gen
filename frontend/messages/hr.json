@@ -985,7 +985,8 @@
       "playFromGap": "Reproduciraj od kraja ove pauze",
       "editSegment": "Uredi segment {index}",
       "untimedSegment": "Nema vremenskih oznaka riječi — klikni za uređivanje",
-      "waveforms": "Valni oblici"
+      "waveforms": "Valni oblici",
+      "missingLyricsMarker": "Možda nedostaje tekst {start}–{end}"
     },
     "editActionBar": {
       "reset": "Poništi",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Odustani",
       "hold": "DRŽI...",
       "tap": "TAPNI"
+    },
+    "missingLyrics": {
+      "description": "Glavni vokal ovdje pjeva, ali nema teksta.",
+      "expectedFrom": "Ovdje se očekuje tekst (iz {source}):",
+      "insert": "Umetni ove retke",
+      "insertedHint": "Ponovno ih sinkroniziraj kako bi se uskladili s pjevanjem: otvori svaki redak i upotrijebi Tap To Sync.",
+      "insertedTitle": "Retci umetnuti s procijenjenim vremenom",
+      "noLines": "Nema dostupnih referentnih redaka za ovaj dio — dodaj tekst ručno.",
+      "play": "Reproduciraj",
+      "readOnly": "Uređivanje je onemogućeno u načinu samo za čitanje",
+      "syncTiming": "Sinkroniziraj vrijeme",
+      "title": "Možda nedostaje tekst na {start}–{end}",
+      "dismiss": "Odbaci"
     }
   },
   "instrumentalReview": {

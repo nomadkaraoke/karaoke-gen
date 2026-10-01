@@ -985,7 +985,8 @@
       "playFromGap": "Phát từ cuối khoảng trống này",
       "editSegment": "Chỉnh sửa đoạn {index}",
       "untimedSegment": "Chưa căn thời gian chữ — nhấp để chỉnh sửa",
-      "waveforms": "Dạng sóng"
+      "waveforms": "Dạng sóng",
+      "missingLyricsMarker": "Có thể thiếu lời bài hát {start}–{end}"
     },
     "editActionBar": {
       "reset": "Đặt lại",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Hủy",
       "hold": "GIỮ...",
       "tap": "CHẠM"
+    },
+    "missingLyrics": {
+      "description": "Đoạn này có giọng hát chính nhưng không có lời bài hát.",
+      "expectedFrom": "Lời bài hát dự kiến cho đoạn này (từ {source}):",
+      "insert": "Chèn các dòng này",
+      "insertedHint": "Đồng bộ lại để khớp với tiếng hát: mở từng dòng và sử dụng Tap To Sync.",
+      "insertedTitle": "Đã chèn các dòng với thời gian ước tính",
+      "noLines": "Không có dòng tham chiếu nào cho đoạn này — bạn hãy tự thêm lời bài hát.",
+      "play": "Phát",
+      "readOnly": "Không thể chỉnh sửa ở chế độ chỉ đọc",
+      "syncTiming": "Đồng bộ thời gian",
+      "title": "Có thể thiếu lời bài hát tại {start}–{end}",
+      "dismiss": "Bỏ qua"
     }
   },
   "instrumentalReview": {

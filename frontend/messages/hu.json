@@ -985,7 +985,8 @@
       "playFromGap": "Lejátszás a szünet végétől",
       "editSegment": "{index}. szegmens szerkesztése",
       "untimedSegment": "Nincs szóidőzítés — kattints a szerkesztéshez",
-      "waveforms": "Hullámformák"
+      "waveforms": "Hullámformák",
+      "missingLyricsMarker": "Lehetséges hiányzó dalszöveg: {start}–{end}"
     },
     "editActionBar": {
       "reset": "Visszaállítás",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Mégse",
       "hold": "TARTSD...",
       "tap": "KOPPINTS"
+    },
+    "missingLyrics": {
+      "description": "Itt énekel a vezérvokál, de nincs dalszöveg.",
+      "expectedFrom": "Itt dalszöveg várható (forrás: {source}):",
+      "insert": "Szúrd be ezeket a sorokat",
+      "insertedHint": "Szinkronizáld őket újra, hogy igazodjanak az énekhez: nyisd meg az egyes sorokat, és használd a Tap To Sync funkciót.",
+      "insertedTitle": "Sorok beszúrva becsült időzítéssel",
+      "noLines": "Ehhez a részhez nincsenek elérhető referenciasorok — add hozzá a dalszöveget manuálisan.",
+      "play": "Lejátszás",
+      "readOnly": "A szerkesztés csak olvasható módban le van tiltva",
+      "syncTiming": "Időzítés szinkronizálása",
+      "title": "Lehetséges hiányzó dalszöveg itt: {start}–{end}",
+      "dismiss": "Elvetés"
     }
   },
   "instrumentalReview": {

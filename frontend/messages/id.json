@@ -985,7 +985,8 @@
       "playFromGap": "Putar dari akhir jeda ini",
       "editSegment": "Edit segmen {index}",
       "untimedSegment": "Tidak ada timing kata — klik untuk mengedit",
-      "waveforms": "Bentuk gelombang"
+      "waveforms": "Bentuk gelombang",
+      "missingLyricsMarker": "Kemungkinan ada lirik yang hilang {start}–{end}"
     },
     "editActionBar": {
       "reset": "Atur Ulang",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Batal",
       "hold": "TAHAN...",
       "tap": "KETUK"
+    },
+    "missingLyrics": {
+      "description": "Vokal utama bernyanyi di sini, tetapi tidak ada lirik.",
+      "expectedFrom": "Lirik yang diperkirakan ada di sini (dari {source}):",
+      "insert": "Sisipkan baris ini",
+      "insertedHint": "Sinkronkan ulang agar pas dengan nyanyiannya: buka setiap baris dan gunakan Tap To Sync.",
+      "insertedTitle": "Baris disisipkan dengan perkiraan waktu",
+      "noLines": "Tidak ada baris referensi yang tersedia untuk bagian ini — tambahkan lirik secara manual.",
+      "play": "Putar",
+      "readOnly": "Pengeditan dinonaktifkan dalam mode hanya-baca",
+      "syncTiming": "Sinkronkan waktu",
+      "title": "Kemungkinan ada lirik yang hilang pada {start}–{end}",
+      "dismiss": "Abaikan"
     }
   },
   "instrumentalReview": {

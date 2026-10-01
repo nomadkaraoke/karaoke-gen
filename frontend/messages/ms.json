@@ -985,7 +985,8 @@
       "playFromGap": "Main dari penghujung jurang ini",
       "editSegment": "Sunting segmen {index}",
       "untimedSegment": "Tiada pemasaan perkataan — klik untuk sunting",
-      "waveforms": "Bentuk gelombang"
+      "waveforms": "Bentuk gelombang",
+      "missingLyricsMarker": "Kemungkinan lirik tertinggal {start}–{end}"
     },
     "editActionBar": {
       "reset": "Tetapkan Semula",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Batal",
       "hold": "TAHAN...",
       "tap": "TEKAN"
+    },
+    "missingLyrics": {
+      "description": "Vokal utama sedang menyanyi di sini tetapi tiada lirik.",
+      "expectedFrom": "Lirik sepatutnya ada di sini (daripada {source}):",
+      "insert": "Masukkan baris ini",
+      "insertedHint": "Segerakkan semula agar selaras dengan nyanyian: buka setiap baris dan gunakan Ketik Untuk Segerak.",
+      "insertedTitle": "Baris dimasukkan dengan anggaran masa",
+      "noLines": "Tiada baris rujukan tersedia untuk bahagian ini — tambah lirik secara manual.",
+      "play": "Mainkan",
+      "readOnly": "Penyuntingan dilumpuhkan dalam mod baca sahaja",
+      "syncTiming": "Segerakkan masa",
+      "title": "Kemungkinan lirik tertinggal pada {start}–{end}",
+      "dismiss": "Tolak"
     }
   },
   "instrumentalReview": {

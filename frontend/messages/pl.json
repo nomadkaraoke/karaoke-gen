@@ -985,7 +985,8 @@
       "playFromGap": "Odtwórz od końca tej przerwy",
       "editSegment": "Edytuj segment {index}",
       "untimedSegment": "Brak synchronizacji słów — kliknij, aby edytować",
-      "waveforms": "Fale dźwiękowe"
+      "waveforms": "Fale dźwiękowe",
+      "missingLyricsMarker": "Możliwy brak tekstu {start}–{end}"
     },
     "editActionBar": {
       "reset": "Resetuj",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Anuluj",
       "hold": "PRZYTRZYMAJ...",
       "tap": "STUKNIJ"
+    },
+    "missingLyrics": {
+      "description": "W tym miejscu słychać główny wokal, ale brakuje tekstu.",
+      "expectedFrom": "Oczekiwany tekst w tym miejscu (z {source}):",
+      "insert": "Wstaw te wersy",
+      "insertedHint": "Zsynchronizuj je ponownie, aby dopasować do śpiewu: otwórz każdy wers i użyj funkcji Tap To Sync.",
+      "insertedTitle": "Wersy wstawione z szacowanym czasem",
+      "noLines": "Brak wersów referencyjnych dla tego fragmentu — dodaj tekst ręcznie.",
+      "play": "Odtwórz",
+      "readOnly": "Edycja jest wyłączona w trybie tylko do odczytu",
+      "syncTiming": "Zsynchronizuj czas",
+      "title": "Możliwy brak tekstu w {start}–{end}",
+      "dismiss": "Odrzuć"
     }
   },
   "instrumentalReview": {

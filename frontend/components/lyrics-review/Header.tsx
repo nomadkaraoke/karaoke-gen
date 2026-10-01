@@ -249,6 +249,7 @@ export default function Header({
                         size="icon"
                         onClick={onUndo}
                         disabled={!canUndo}
+                        aria-label={t('undo')}
                         className="h-8 w-8"
                       >
                         <Undo2 className="h-3.5 w-3.5" />
@@ -263,6 +264,7 @@ export default function Header({
                         size="icon"
                         onClick={onRedo}
                         disabled={!canRedo}
+                        aria-label={t('redo')}
                         className="h-8 w-8"
                       >
                         <Redo2 className="h-3.5 w-3.5" />

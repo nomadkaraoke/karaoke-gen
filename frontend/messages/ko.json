@@ -985,7 +985,8 @@
       "playFromGap": "이 공백의 끝부분부터 재생",
       "editSegment": "구간 {index} 편집",
       "untimedSegment": "단어 타이밍 없음 — 클릭해서 편집하세요",
-      "waveforms": "파형"
+      "waveforms": "파형",
+      "missingLyricsMarker": "가사 누락 가능 구간 {start}–{end}"
     },
     "editActionBar": {
       "reset": "초기화",
@@ -1493,6 +1494,19 @@
       "cancelSync": "취소",
       "hold": "길게 누르기...",
       "tap": "탭"
+    },
+    "missingLyrics": {
+      "description": "리드 보컬이 노래하고 있지만 가사가 없습니다.",
+      "expectedFrom": "이 부분의 예상 가사({source}):",
+      "insert": "이 가사 삽입",
+      "insertedHint": "노래에 맞게 싱크를 다시 맞춰주세요. 각 줄을 열고 Tap To Sync를 사용하시면 됩니다.",
+      "insertedTitle": "예상 타이밍으로 가사가 삽입되었습니다",
+      "noLines": "이 부분에 대한 참조 가사가 없습니다. 가사를 직접 추가해 주세요.",
+      "play": "재생",
+      "readOnly": "읽기 전용 모드에서는 편집할 수 없습니다",
+      "syncTiming": "타이밍 싱크 맞추기",
+      "title": "{start}–{end} 구간 가사 누락 가능성",
+      "dismiss": "닫기"
     }
   },
   "instrumentalReview": {

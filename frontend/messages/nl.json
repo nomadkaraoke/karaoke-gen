@@ -985,7 +985,8 @@
       "playFromGap": "Afspelen vanaf het einde van deze pauze",
       "editSegment": "Bewerk segment {index}",
       "untimedSegment": "Geen woordtimings — klik om te bewerken",
-      "waveforms": "Golfvormen"
+      "waveforms": "Golfvormen",
+      "missingLyricsMarker": "Mogelijk ontbrekende songtekst {start}–{end}"
     },
     "editActionBar": {
       "reset": "Resetten",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Annuleren",
       "hold": "HOUD VAST...",
       "tap": "TIK"
+    },
+    "missingLyrics": {
+      "description": "Hier is leadzang te horen, maar er is geen songtekst.",
+      "expectedFrom": "Hier wordt songtekst verwacht (van {source}):",
+      "insert": "Deze regels invoegen",
+      "insertedHint": "Synchroniseer ze opnieuw zodat ze gelijklopen met de zang: open elke regel en gebruik Tap To Sync.",
+      "insertedTitle": "Regels ingevoegd met geschatte timing",
+      "noLines": "Er zijn geen referentieregels beschikbaar voor dit deel — voeg de songtekst handmatig toe.",
+      "play": "Afspelen",
+      "readOnly": "Bewerken is uitgeschakeld in de alleen-lezenmodus",
+      "syncTiming": "Timing synchroniseren",
+      "title": "Mogelijk ontbrekende songtekst bij {start}–{end}",
+      "dismiss": "Sluiten"
     }
   },
   "instrumentalReview": {

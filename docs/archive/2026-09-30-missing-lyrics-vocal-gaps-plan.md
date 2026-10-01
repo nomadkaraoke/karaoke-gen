@@ -98,3 +98,33 @@ Server-side via `scripts/audit_vocal_gaps.py` (results stored on each job).
 - Audio-only runs: record + soft note in review, no gate (precision too low).
 - `SectionDetector`: don't label a gap INSTRUMENTAL when the evidence rule fires.
 - Review UI: marker at the gap + the reference lines (from either method) offered for insert.
+
+## Phase 2b built: review UI marker + insert
+- `GET /api/review/{job_id}/correction-data` → `vocal_gaps` (typed as `VocalGapsResult` in
+  `frontend/lib/lyrics-review/types.ts`). Only **evidenced** gaps are shown; audio-only
+  suspects stay hidden (precision too low). Nothing shows when `vocal_gaps` is null/empty.
+- Open gaps are derived from the reviewer's CURRENT segments
+  (`lib/lyrics-review/utils/missingLyrics.ts`): a gap is open while no timed word starts in
+  `[start, end)`. `vocal_gaps` is never mutated, so inserting/typing lines hides the marker
+  and undo brings it back. Taken from the loaded data so restored sessions still show it.
+- `MissingLyricsCallout` (above Synced Lyrics): "Possible missing lyrics at m:ss–m:ss", the
+  expected lines (synced reference lines preferred, else anchor-bounded reference lines,
+  with the source name), Play, and **Insert these lines**. `TranscriptionView` draws a
+  dashed amber marker row at the gap's chronological position (all three view modes);
+  clicking it scrolls to the callout.
+- Insert (`hooks/useMissingLyrics.ts`): one segment per line, words split on whitespace,
+  provisional timings spread evenly per word across `[start+0.1, end-0.1]`, inserted before
+  the first segment starting after the gap midpoint, singer inherited from the neighbour.
+  Goes through `updateDataWithHistory` (one undo step) and logs one `segment_add` edit-log
+  entry per line (`details.origin = "missing_lyrics_gap"`).
+- Re-sync guidance: `MissingLyricsResyncHint` lists the inserted lines (while they exist)
+  with a **Sync timing** button each, opening the existing Edit modal (Tap To Sync). No
+  new timing system.
+- Read-only/replay: marker + lines shown, insert disabled.
+- Tests: Jest (`missingLyrics.test.ts`, `useMissingLyrics.test.tsx`,
+  `MissingLyricsCallout.test.tsx`, `TranscriptionView.missingLyrics.test.tsx`) + Playwright
+  regression (`lyrics-review.spec.ts` › "Possible Missing Lyrics": insert, order, undo, Sync
+  timing → Edit modal).
+- Found while building: sonner's `<Toaster />` isn't mounted anywhere (root layout mounts
+  the shadcn `ui/toaster`), so `toast` from `sonner` in the review UI is silently invisible.
+  The hint is therefore inline rather than a toast. Worth a separate fix.

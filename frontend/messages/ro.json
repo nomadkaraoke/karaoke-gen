@@ -985,7 +985,8 @@
       "playFromGap": "Redă de la sfârșitul acestei pauze",
       "editSegment": "Editează segmentul {index}",
       "untimedSegment": "Fără sincronizare pe cuvinte — dă click pentru a edita",
-      "waveforms": "Forme de undă"
+      "waveforms": "Forme de undă",
+      "missingLyricsMarker": "Posibile versuri lipsă {start}–{end}"
     },
     "editActionBar": {
       "reset": "Resetează",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Anulează",
       "hold": "ȚINE...",
       "tap": "APASĂ"
+    },
+    "missingLyrics": {
+      "description": "Vocea principală cântă aici, dar nu există versuri.",
+      "expectedFrom": "Versuri așteptate aici (din {source}):",
+      "insert": "Inserează aceste rânduri",
+      "insertedHint": "Resincronizează-le pentru a se potrivi cu vocea: deschide fiecare rând și folosește Tap To Sync.",
+      "insertedTitle": "Rânduri inserate cu timpi estimați",
+      "noLines": "Nu există rânduri de referință disponibile pentru această parte — adaugă versurile manual.",
+      "play": "Redă",
+      "readOnly": "Editarea este dezactivată în modul doar citire",
+      "syncTiming": "Sincronizează timpii",
+      "title": "Posibile versuri lipsă la {start}–{end}",
+      "dismiss": "Închide"
     }
   },
   "instrumentalReview": {

@@ -179,7 +179,7 @@ const mockJobData = {
 };
 
 // Setup function to configure mocks for local mode
-async function setupLocalModeMocks(page: Page) {
+async function setupLocalModeMocks(page: Page, correctionData: object = mockCorrectionData) {
   return setupApiFixtures(page, {
     mocks: [
       // Job endpoint - returns mock job for local mode
@@ -192,13 +192,13 @@ async function setupLocalModeMocks(page: Page) {
       {
         method: 'GET',
         path: '/api/jobs/local/corrections',
-        response: { body: mockCorrectionData },
+        response: { body: correctionData },
       },
       // Correction data endpoint (new review path)
       {
         method: 'GET',
         path: '/api/review/local/correction-data',
-        response: { body: mockCorrectionData },
+        response: { body: correctionData },
       },
       // Submit corrections endpoint (POST, not PUT)
       {
@@ -210,13 +210,13 @@ async function setupLocalModeMocks(page: Page) {
       {
         method: 'POST',
         path: '/api/review/local/handlers',
-        response: { body: { status: 'success', data: mockCorrectionData } },
+        response: { body: { status: 'success', data: correctionData } },
       },
       // Add lyrics endpoint
       {
         method: 'POST',
         path: '/api/review/local/add-lyrics',
-        response: { body: { status: 'success', data: mockCorrectionData } },
+        response: { body: { status: 'success', data: correctionData } },
       },
       // Preview video generation endpoint
       {
@@ -845,5 +845,110 @@ test.describe('Combined Review Flow', () => {
 
     // Should NOT say "Complete Review" (old flow)
     await expect(page.locator('button:has-text("Complete Review")')).not.toBeVisible();
+  });
+});
+
+// Possible missing lyrics (vocal-gaps phase 2b): an "evidenced" gap — the lead vocal
+// sings 5.2–9.8s with no transcribed words and the reference expects lines there.
+const missingLyricsCorrectionData = {
+  ...mockCorrectionData,
+  corrected_segments: [
+    mockCorrectionData.corrected_segments[0],
+    {
+      ...mockCorrectionData.corrected_segments[1],
+      start_time: 10.0,
+      end_time: 12.0,
+      words: mockCorrectionData.corrected_segments[1].words.map((w, i) => ({
+        ...w,
+        start_time: 10.0 + i * 0.5,
+        end_time: 10.5 + i * 0.5,
+      })),
+    },
+  ],
+  vocal_gaps: {
+    version: '0.2.0',
+    gaps: [
+      {
+        start: 2.5,
+        end: 10.0,
+        duration: 7.5,
+        active_fraction: 0.8,
+        longest_run_s: 6.1,
+        reference_lines: { genius: ['Plain reference line'] },
+        synced_reference_lines: { lrclib: ['Dropped line number one', 'Dropped line two'] },
+        suspect: true,
+        evidenced: true,
+      },
+      {
+        // Audio-only suspect gap — must NOT be shown.
+        start: 12.0,
+        end: 20.0,
+        duration: 8.0,
+        active_fraction: 0.5,
+        longest_run_s: 3.5,
+        reference_lines: {},
+        synced_reference_lines: {},
+        suspect: true,
+        evidenced: false,
+      },
+    ],
+    suspect_count: 2,
+    evidenced_count: 1,
+    max_suspect_run_s: 6.1,
+  },
+};
+
+test.describe('Lyrics Review - Possible Missing Lyrics', () => {
+  test.beforeEach(async ({ page }) => {
+    await clearAuthToken(page);
+    await setupLocalModeMocks(page, missingLyricsCorrectionData);
+  });
+
+  test('warns about an evidenced gap, inserts the reference lines, and undo brings the warning back', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+
+    const callout = page.getByTestId('missing-lyrics-gap');
+    await expect(callout).toHaveCount(1, { timeout: 10000 });
+    await expect(callout).toContainText('Possible missing lyrics at 0:02–0:10');
+    await expect(callout).toContainText('from lrclib');
+    await expect(callout).toContainText('Dropped line number one');
+    await expect(callout).not.toContainText('Plain reference line');
+    await expect(page.getByTestId('missing-lyrics-marker')).toHaveCount(1);
+    await expect(page.getByText(/Possible missing lyrics at 0:12/)).toHaveCount(0);
+
+    await page.getByTestId('missing-lyrics-insert').click();
+
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(0);
+    await expect(page.getByTestId('missing-lyrics-marker')).toHaveCount(0);
+    // Re-sync guidance: one "Sync timing" entry per inserted line.
+    const hint = page.getByTestId('missing-lyrics-resync-hint');
+    await expect(hint).toContainText('Lines inserted with estimated timing');
+    await expect(hint.getByTestId('missing-lyrics-sync-line')).toHaveCount(2);
+    // Inserted words now show in the synced lyrics, in order between the two lines.
+    const syncedCard = page.locator('h3', { hasText: 'Synced Lyrics' }).locator('xpath=../..');
+    const transcript = await syncedCard.innerText();
+    const iHello = transcript.indexOf('Hello');
+    const iDropped = transcript.indexOf('Dropped');
+    const iAnother = transcript.indexOf('another');
+    expect(iHello).toBeGreaterThanOrEqual(0);
+    expect(iDropped).toBeGreaterThan(iHello);
+    expect(iAnother).toBeGreaterThan(iDropped);
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(1);
+    await expect(page.getByTestId('missing-lyrics-resync-hint')).toHaveCount(0);
+  });
+
+  test('"Sync timing" opens the Edit modal for the first inserted line', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('missing-lyrics-insert').click();
+    await page.getByTestId('missing-lyrics-sync-line').first().click();
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await expect(dialog.getByRole('button', { name: /Tap To Sync/ }).first()).toBeVisible();
+    // The modal is editing the first inserted line.
+    await expect(dialog).toContainText('Dropped');
   });
 });

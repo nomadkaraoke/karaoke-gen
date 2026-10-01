@@ -985,7 +985,8 @@
       "playFromGap": "Reprodueix des del final d'aquesta pausa",
       "editSegment": "Edita el segment {index}",
       "untimedSegment": "Sense sincronització de paraules — fes clic per editar",
-      "waveforms": "Formes d'ona"
+      "waveforms": "Formes d'ona",
+      "missingLyricsMarker": "Possible falta de lletra {start}–{end}"
     },
     "editActionBar": {
       "reset": "Restableix",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Cancel·la",
       "hold": "MANTÉN...",
       "tap": "TOCA"
+    },
+    "missingLyrics": {
+      "description": "La veu principal canta aquí, però no hi ha lletra.",
+      "expectedFrom": "Lletra esperada aquí (de {source}):",
+      "insert": "Insereix aquestes línies",
+      "insertedHint": "Torna a sincronitzar-les perquè coincideixin amb la veu: obre cada línia i fes servir Prem per sincronitzar.",
+      "insertedTitle": "Línies inserides amb sincronització estimada",
+      "noLines": "No hi ha línies de referència disponibles per a aquesta part — afegeix la lletra manualment.",
+      "play": "Reprodueix",
+      "readOnly": "L'edició està desactivada en el mode de només lectura",
+      "syncTiming": "Sincronitza la temporització",
+      "title": "Possible falta de lletra a {start}–{end}",
+      "dismiss": "Descarta"
     }
   },
   "instrumentalReview": {

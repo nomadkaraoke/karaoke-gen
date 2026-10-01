@@ -985,7 +985,8 @@
       "playFromGap": "Reproducir desde el final de este hueco",
       "editSegment": "Editar segmento {index}",
       "untimedSegment": "Sin tiempos por palabra — haz clic para editar",
-      "waveforms": "Formas de onda"
+      "waveforms": "Formas de onda",
+      "missingLyricsMarker": "Posible letra faltante {start}–{end}"
     },
     "editActionBar": {
       "reset": "Restablecer",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Cancelar",
       "hold": "MANTÉN...",
       "tap": "TOCA"
+    },
+    "missingLyrics": {
+      "description": "La voz principal está cantando aquí, pero no hay letra.",
+      "expectedFrom": "Letra esperada aquí (de {source}):",
+      "insert": "Insertar estas líneas",
+      "insertedHint": "Vuelve a sincronizarlas para que coincidan con la voz: abre cada línea y usa Tap To Sync.",
+      "insertedTitle": "Líneas insertadas con tiempos estimados",
+      "noLines": "No hay líneas de referencia disponibles para esta parte — agrega la letra manualmente.",
+      "play": "Reproducir",
+      "readOnly": "La edición está desactivada en el modo de solo lectura",
+      "syncTiming": "Sincronizar tiempos",
+      "title": "Posible letra faltante en {start}–{end}",
+      "dismiss": "Descartar"
     }
   },
   "instrumentalReview": {

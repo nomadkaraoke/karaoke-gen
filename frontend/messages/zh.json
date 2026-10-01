@@ -985,7 +985,8 @@
       "playFromGap": "从该间隙的末尾开始播放",
       "editSegment": "编辑片段 {index}",
       "untimedSegment": "无单词时间轴 — 点击编辑",
-      "waveforms": "波形图"
+      "waveforms": "波形图",
+      "missingLyricsMarker": "可能缺失歌词 {start}–{end}"
     },
     "editActionBar": {
       "reset": "重置",
@@ -1493,6 +1494,19 @@
       "cancelSync": "取消",
       "hold": "按住...",
       "tap": "点击"
+    },
+    "missingLyrics": {
+      "description": "主唱在此处有演唱，但没有歌词。",
+      "expectedFrom": "此处应有歌词（来自 {source}）：",
+      "insert": "插入这些歌词",
+      "insertedHint": "重新同步歌词，使其与演唱保持对齐：打开每一行并使用 Tap To Sync。",
+      "insertedTitle": "已按预估时间插入歌词",
+      "noLines": "此部分没有可用的参考歌词——请手动添加歌词。",
+      "play": "播放",
+      "readOnly": "只读模式下无法编辑",
+      "syncTiming": "同步时间",
+      "title": "{start}–{end} 处可能缺失歌词",
+      "dismiss": "忽略"
     }
   },
   "instrumentalReview": {

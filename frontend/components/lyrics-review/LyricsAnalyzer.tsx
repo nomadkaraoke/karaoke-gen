@@ -77,6 +77,9 @@ import {
 import { computeNeighbourBoundsBySegment } from '@/lib/lyrics-review/utils/contextWords'
 import { resolveInitialViewMode } from '@/lib/lyrics-review/utils/segmentTiming'
 import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
+import MissingLyricsCallout, { MissingLyricsResyncHint } from './MissingLyricsCallout'
+import { useMissingLyrics } from '@/lib/lyrics-review/hooks/useMissingLyrics'
+import type { OpenMissingLyricsGap } from '@/lib/lyrics-review/utils/missingLyrics'
 
 // Add type for window augmentation
 declare global {
@@ -1522,6 +1525,39 @@ export default function LyricsAnalyzer({
     }
   }, [editModalSegment, data.corrected_segments, timingOffsetMs])
 
+  // Possible missing lyrics: evidenced vocal gaps (singing, no words, reference lines
+  // expected) that still have no words in the CURRENT segments. Taken from the loaded
+  // data (a restored session may predate the analysis) and never mutated — the marker
+  // goes away when words land in the gap and comes back on undo.
+  const missingLyrics = useMissingLyrics({
+    vocalGaps: initialData.vocal_gaps ?? data.vocal_gaps,
+    data,
+    updateDataWithHistory,
+    editLog,
+    isReadOnly,
+  })
+
+  // Insert the expected reference lines as provisional segments (one undoable step),
+  // then point the reviewer at the existing per-line Tap To Sync in the Edit modal via
+  // a persistent hint listing the inserted lines (derived from current data, so it
+  // shrinks/vanishes if they're deleted or the insert is undone).
+  const [insertedMissingLyricsIds, setInsertedMissingLyricsIds] = useState<string[]>([])
+  const handleInsertMissingLyrics = useCallback(
+    (open: OpenMissingLyricsGap) => {
+      const result = missingLyrics.insertLines(open)
+      if (!result) return
+      setInsertedMissingLyricsIds(result.inserted.map((s) => s.id))
+    },
+    [missingLyrics]
+  )
+  const insertedMissingLyricsLines = useMemo(() => {
+    if (insertedMissingLyricsIds.length === 0) return []
+    const wanted = new Set(insertedMissingLyricsIds)
+    return data.corrected_segments
+      .map((segment, index) => ({ segment, index }))
+      .filter(({ segment }) => wanted.has(segment.id))
+  }, [insertedMissingLyricsIds, data.corrected_segments])
+
   // Timing offset handlers
   const handleOpenTimingOffsetModal = useCallback(() => {
     setIsTimingOffsetModalOpen(true)
@@ -1629,6 +1665,20 @@ export default function LyricsAnalyzer({
           )}
         >
           <div className={cn(isMobile ? 'w-full' : 'flex-1 min-w-0')}>
+          <MissingLyricsCallout
+            gaps={missingLyrics.openGaps}
+            isReadOnly={isReadOnly}
+            audioReady={reviewAudioReady}
+            onPlay={handlePlaySegment}
+            onInsert={handleInsertMissingLyrics}
+          />
+          {!isReadOnly && (
+            <MissingLyricsResyncHint
+              lines={insertedMissingLyricsLines}
+              onSync={handleEditSegmentFromWaveforms}
+              onDismiss={() => setInsertedMissingLyricsIds([])}
+            />
+          )}
           <TranscriptionView
             data={displayData}
             mode={effectiveMode}
@@ -1664,6 +1714,7 @@ export default function LyricsAnalyzer({
               updateDataWithHistory({ ...data, corrected_segments: segments }, 'singer change')
             }}
             onSegmentFocus={setFocusedSegmentIndex}
+            missingLyricsMarkers={missingLyrics.markers}
           />
           </div>
           {waveformsLayout && referenceLayout.collapsed ? (

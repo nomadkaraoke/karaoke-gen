@@ -985,7 +985,8 @@
       "playFromGap": "Spill av fra slutten av dette mellomrommet",
       "editSegment": "Rediger segment {index}",
       "untimedSegment": "Ingen tidsstempler for ord — klikk for å redigere",
-      "waveforms": "Bølgeformer"
+      "waveforms": "Bølgeformer",
+      "missingLyricsMarker": "Mulig manglende sangtekst {start}–{end}"
     },
     "editActionBar": {
       "reset": "Tilbakestill",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Avbryt",
       "hold": "HOLD...",
       "tap": "TRYKK"
+    },
+    "missingLyrics": {
+      "description": "Hovedvokalen synger her, men det er ingen sangtekst.",
+      "expectedFrom": "Forventet sangtekst her (fra {source}):",
+      "insert": "Sett inn disse linjene",
+      "insertedHint": "Synkroniser dem på nytt så de passer til sangen: åpne hver linje og bruk Trykk for å synkronisere.",
+      "insertedTitle": "Linjer satt inn med estimert timing",
+      "noLines": "Ingen referanselinjer er tilgjengelige for denne delen – legg til sangteksten manuelt.",
+      "play": "Spill av",
+      "readOnly": "Redigering er deaktivert i skrivebeskyttet modus",
+      "syncTiming": "Synkroniser timing",
+      "title": "Mulig manglende sangtekst ved {start}–{end}",
+      "dismiss": "Lukk"
     }
   },
   "instrumentalReview": {

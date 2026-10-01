@@ -985,7 +985,8 @@
       "playFromGap": "Jouer à partir de la fin de ce blanc",
       "editSegment": "Modifier le segment {index}",
       "untimedSegment": "Aucune synchronisation des mots — clique pour modifier",
-      "waveforms": "Formes d'onde"
+      "waveforms": "Formes d'onde",
+      "missingLyricsMarker": "Paroles potentiellement manquantes {start}–{end}"
     },
     "editActionBar": {
       "reset": "Réinitialiser",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Annuler",
       "hold": "MAINTIENS...",
       "tap": "APPUIE"
+    },
+    "missingLyrics": {
+      "description": "La voix principale chante ici, mais il n'y a pas de paroles.",
+      "expectedFrom": "Paroles attendues ici (d'après {source}) :",
+      "insert": "Insérer ces lignes",
+      "insertedHint": "Resynchronise-les pour qu'elles s'alignent sur le chant : ouvre chaque ligne et utilise Tap To Sync.",
+      "insertedTitle": "Lignes insérées avec un timing estimé",
+      "noLines": "Aucune ligne de référence n'est disponible pour cette partie — ajoute les paroles manuellement.",
+      "play": "Lecture",
+      "readOnly": "La modification est désactivée en mode lecture seule",
+      "syncTiming": "Synchroniser le timing",
+      "title": "Paroles potentiellement manquantes à {start}–{end}",
+      "dismiss": "Ignorer"
     }
   },
   "instrumentalReview": {

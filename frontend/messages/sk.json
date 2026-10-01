@@ -985,7 +985,8 @@
       "playFromGap": "Prehrať od konca tejto medzery",
       "editSegment": "Uprav segment {index}",
       "untimedSegment": "Žiadne časovanie slov — klikni pre úpravu",
-      "waveforms": "Zvukové vlny"
+      "waveforms": "Zvukové vlny",
+      "missingLyricsMarker": "Možný chýbajúci text {start}–{end}"
     },
     "editActionBar": {
       "reset": "Obnoviť",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Zrušiť",
       "hold": "DRŽ...",
       "tap": "ŤUKNI"
+    },
+    "missingLyrics": {
+      "description": "Hlavný vokál tu spieva, ale nie je tu žiadny text.",
+      "expectedFrom": "Tu sa očakáva text (z {source}):",
+      "insert": "Vložiť tieto riadky",
+      "insertedHint": "Znova ich zosynchronizuj, aby sedeli so spevom: otvor každý riadok a použi Tap To Sync.",
+      "insertedTitle": "Riadky vložené s odhadovaným časovaním",
+      "noLines": "Pre túto časť nie sú k dispozícii žiadne referenčné riadky – pridaj text ručne.",
+      "play": "Prehrať",
+      "readOnly": "V režime len na čítanie sú úpravy zakázané",
+      "syncTiming": "Synchronizovať časovanie",
+      "title": "Možný chýbajúci text v čase {start}–{end}",
+      "dismiss": "Zavrieť"
     }
   },
   "instrumentalReview": {

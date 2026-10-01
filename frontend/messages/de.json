@@ -985,7 +985,8 @@
       "playFromGap": "Vom Ende dieser Lücke abspielen",
       "editSegment": "Bearbeite Segment {index}",
       "untimedSegment": "Keine Wort-Timings — klicke zum Bearbeiten",
-      "waveforms": "Wellenformen"
+      "waveforms": "Wellenformen",
+      "missingLyricsMarker": "Möglicherweise fehlender Text {start}–{end}"
     },
     "editActionBar": {
       "reset": "Zurücksetzen",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Abbrechen",
       "hold": "HALTEN...",
       "tap": "TIPPEN"
+    },
+    "missingLyrics": {
+      "description": "Hier ist der Hauptgesang zu hören, aber es gibt keinen Text.",
+      "expectedFrom": "Hier wird Text erwartet (aus {source}):",
+      "insert": "Diese Zeilen einfügen",
+      "insertedHint": "Synchronisiere sie neu, damit sie zum Gesang passen: Öffne jede Zeile und nutze Tap To Sync.",
+      "insertedTitle": "Zeilen mit geschätztem Timing eingefügt",
+      "noLines": "Für diesen Teil sind keine Referenzzeilen verfügbar – füge den Text manuell hinzu.",
+      "play": "Abspielen",
+      "readOnly": "Die Bearbeitung ist im schreibgeschützten Modus deaktiviert",
+      "syncTiming": "Timing synchronisieren",
+      "title": "Möglicherweise fehlender Text bei {start}–{end}",
+      "dismiss": "Ausblenden"
     }
   },
   "instrumentalReview": {

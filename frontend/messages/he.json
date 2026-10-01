@@ -985,7 +985,8 @@
       "playFromGap": "נגן מסוף הפער הזה",
       "editSegment": "עריכת מקטע {index}",
       "untimedSegment": "ללא תזמון מילים — לחצו לעריכה",
-      "waveforms": "צורות גל"
+      "waveforms": "צורות גל",
+      "missingLyricsMarker": "ייתכן שחסרות מילים {start}–{end}"
     },
     "editActionBar": {
       "reset": "אפס",
@@ -1493,6 +1494,19 @@
       "cancelSync": "ביטול",
       "hold": "החזק...",
       "tap": "הקש"
+    },
+    "missingLyrics": {
+      "description": "יש כאן שירה מובילה, אך אין מילים.",
+      "expectedFrom": "מילים צפויות כאן (מתוך {source}):",
+      "insert": "הוסף שורות אלה",
+      "insertedHint": "סנכרן אותן מחדש כדי שיתאימו לשירה: פתח כל שורה והשתמש ב-Tap To Sync.",
+      "insertedTitle": "השורות נוספו עם תזמון משוער",
+      "noLines": "אין שורות מקור זמינות לקטע זה — הוסף את המילים באופן ידני.",
+      "play": "נגן",
+      "readOnly": "העריכה מושבתת במצב קריאה בלבד",
+      "syncTiming": "סנכרון תזמון",
+      "title": "ייתכן שחסרות מילים ב-{start}–{end}",
+      "dismiss": "התעלם"
     }
   },
   "instrumentalReview": {

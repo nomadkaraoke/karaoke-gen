@@ -985,7 +985,8 @@
       "playFromGap": "Riproduci dalla fine di questa pausa",
       "editSegment": "Modifica segmento {index}",
       "untimedSegment": "Nessuna sincronizzazione delle parole — clicca per modificare",
-      "waveforms": "Forme d'onda"
+      "waveforms": "Forme d'onda",
+      "missingLyricsMarker": "Possibile testo mancante {start}–{end}"
     },
     "editActionBar": {
       "reset": "Reimposta",
@@ -1493,6 +1494,19 @@
       "cancelSync": "Annulla",
       "hold": "TIENI PREMUTO...",
       "tap": "TOCCA"
+    },
+    "missingLyrics": {
+      "description": "La voce solista sta cantando qui, ma non c'è testo.",
+      "expectedFrom": "Testo previsto qui (da {source}):",
+      "insert": "Inserisci queste righe",
+      "insertedHint": "Risincronizzale per allinearle con il cantato: apri ciascuna riga e usa Tap To Sync.",
+      "insertedTitle": "Righe inserite con tempistiche stimate",
+      "noLines": "Nessuna riga di riferimento disponibile per questa parte — aggiungi il testo manualmente.",
+      "play": "Riproduci",
+      "readOnly": "La modifica è disabilitata in modalità solo lettura",
+      "syncTiming": "Sincronizza i tempi",
+      "title": "Possibile testo mancante a {start}–{end}",
+      "dismiss": "Ignora"
     }
   },
   "instrumentalReview": {

@@ -184,6 +184,11 @@ export interface CorrectionData {
   // Instrumental selection data (added for combined review flow)
   instrumental_options?: InstrumentalOption[]
   backing_vocals_analysis?: BackingVocalsAnalysis | null
+  // Sung stretches with no transcribed words (possible missing lyrics), from the
+  // backend's vocal-gaps analysis (backend/services/auto_approval/vocal_gaps.py).
+  // Absent/null when the job wasn't analyzed. Read-only: the review UI derives
+  // which gaps are still open from the current segments, never mutates this.
+  vocal_gaps?: VocalGapsResult | null
   // Replay mode (read-only re-open of a completed job via ?replay=true). Present
   // only in replay; carries the reviewer's ordered edit log for narration.
   replay?: {
@@ -196,6 +201,33 @@ export interface CorrectionData {
     post_ai_segments?: LyricsSegment[] | null
     has_manual_edits?: boolean
   }
+}
+
+/** One transcription gap where the lead vocal is singing (see vocal_gaps.py). */
+export interface VocalGap {
+  start: number
+  end: number
+  duration: number
+  active_fraction: number
+  longest_run_s: number
+  /** source -> reference lines between the anchors either side of the gap */
+  reference_lines?: Record<string, string[]>
+  /** source -> synced reference lines (e.g. LRCLIB) timestamped inside the gap */
+  synced_reference_lines?: Record<string, string[]>
+  /** sung run long enough to be dropped lyrics (audio only — noisy) */
+  suspect: boolean
+  /** suspect AND reference lyrics place lines in this gap (reliable) */
+  evidenced: boolean
+}
+
+export interface VocalGapsResult {
+  version?: string
+  gaps?: VocalGap[]
+  suspect_count?: number
+  evidenced_count?: number
+  max_suspect_run_s?: number
+  input_key?: string
+  error?: string | null
 }
 
 /** Instrumental option from the combined review endpoint */
@@ -484,6 +516,16 @@ export interface TranscriptionViewProps {
   isDuet?: boolean
   onSegmentSingerChange?: (segmentIdx: number, next: SingerId) => void
   onSegmentFocus?: (segmentIndex: number | null) => void
+  /** Possible-missing-lyrics markers, drawn as a row before `beforeSegmentIndex`. */
+  missingLyricsMarkers?: MissingLyricsMarker[]
+}
+
+export interface MissingLyricsMarker {
+  id: string
+  /** Index in corrected_segments the marker sits before (== length → after the last). */
+  beforeSegmentIndex: number
+  start: number
+  end: number
 }
 
 export interface ReferenceViewProps extends BaseViewProps {
