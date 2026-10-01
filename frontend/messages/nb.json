@@ -994,7 +994,8 @@
       "editSegment": "Rediger segment {index}",
       "untimedSegment": "Ingen tidsstempler for ord — klikk for å redigere",
       "waveforms": "Bølgeformer",
-      "missingLyricsMarker": "Mulig manglende sangtekst {start}–{end}"
+      "missingLyricsMarker": "Mulig manglende sangtekst {start}–{end}",
+      "waveformsSeparating": "Skiller vokal fra musikken. Bølgeformene vises automatisk om et minutt eller to."
     },
     "editActionBar": {
       "reset": "Tilbakestill",

@@ -994,7 +994,8 @@
       "editSegment": "Edita el segment {index}",
       "untimedSegment": "Sense sincronització de paraules — fes clic per editar",
       "waveforms": "Formes d'ona",
-      "missingLyricsMarker": "Possible falta de lletra {start}–{end}"
+      "missingLyricsMarker": "Possible falta de lletra {start}–{end}",
+      "waveformsSeparating": "Separant la veu de la música. Les formes d'ona apareixeran automàticament d'aquí a un minut o dos."
     },
     "editActionBar": {
       "reset": "Restableix",

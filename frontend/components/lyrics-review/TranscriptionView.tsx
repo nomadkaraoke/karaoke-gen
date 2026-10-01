@@ -1,11 +1,12 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { Fragment, useState, useMemo } from 'react'
+import { Fragment, useContext, useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Play, Trash2, Type, Clock, AudioWaveform, AlertTriangle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Play, Trash2, Type, Clock, AudioWaveform, AlertTriangle, Loader2 } from 'lucide-react'
 import { HighlightedText } from './shared/HighlightedText'
 import { TranscriptionViewProps, TranscriptionWordPosition, MissingLyricsMarker } from '@/lib/lyrics-review/types'
 import { formatGapTime } from '@/lib/lyrics-review/utils/missingLyrics'
@@ -17,6 +18,7 @@ import {
 import { buildSegmentDecorations } from '@/lib/lyrics-review/utils/wordDecorations'
 import { TIMELINE_PAD_SECONDS } from './TimelineEditor'
 import WaveformSegmentRow from './WaveformSegmentRow'
+import { VocalsAudioDataLoaderContext } from './VocalsAudioDataLoader'
 import SegmentDetailsModal from './modals/SegmentDetailsModal'
 import SingerChip from './SingerChip'
 import { resolveSegmentSinger, hasWordOverrides } from '@/lib/lyrics-review/duet'
@@ -65,6 +67,11 @@ export default function TranscriptionView({
   // timeline. Keeping `advancedMode` derived avoids churning the HighlightedText wiring.
   const advancedMode = viewMode === 'advanced'
   const waveformsMode = viewMode === 'waveforms'
+  // Review opens as soon as lyrics are ready, while audio separation is often still
+  // running — the strips stay empty until the vocal stem lands, so the Waveforms
+  // toggle shows a spinner + tooltip until then.
+  const { status: vocalsStatus } = useContext(VocalsAudioDataLoaderContext)
+  const vocalsSeparating = vocalsStatus === 'separating'
 
   // Greyed read-only neighbour words per segment, for the Waveforms inline timeline padding.
   // Only computed in Waveforms mode. `data.corrected_segments` here is already offset-applied
@@ -200,10 +207,19 @@ export default function TranscriptionView({
               <Clock className="h-3.5 w-3.5 mr-1.5" />
               {t('advanced')}
             </ToggleGroupItem>
-            <ToggleGroupItem value="waveforms" aria-label="waveforms view" className="h-7 px-2.5 text-[0.75rem]">
-              <AudioWaveform className="h-3.5 w-3.5 mr-1.5" />
-              {t('waveforms')}
-            </ToggleGroupItem>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ToggleGroupItem value="waveforms" aria-label="waveforms view" className="h-7 px-2.5 text-[0.75rem]">
+                  {vocalsSeparating ? (
+                    <Loader2 data-testid="waveforms-separating-spinner" className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <AudioWaveform className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {t('waveforms')}
+                </ToggleGroupItem>
+              </TooltipTrigger>
+              {vocalsSeparating && <TooltipContent>{t('waveformsSeparating')}</TooltipContent>}
+            </Tooltip>
           </ToggleGroup>
         </div>
 

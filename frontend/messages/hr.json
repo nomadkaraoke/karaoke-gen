@@ -994,7 +994,8 @@
       "editSegment": "Uredi segment {index}",
       "untimedSegment": "Nema vremenskih oznaka riječi — klikni za uređivanje",
       "waveforms": "Valni oblici",
-      "missingLyricsMarker": "Možda nedostaje tekst {start}–{end}"
+      "missingLyricsMarker": "Možda nedostaje tekst {start}–{end}",
+      "waveformsSeparating": "Odvajanje vokala od glazbe. Valni oblici pojavit će se automatski za minutu ili dvije."
     },
     "editActionBar": {
       "reset": "Poništi",

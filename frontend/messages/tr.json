@@ -994,7 +994,8 @@
       "editSegment": "{index}. bölümü düzenle",
       "untimedSegment": "Kelime zamanlaması yok — düzenlemek için tıkla",
       "waveforms": "Dalga formları",
-      "missingLyricsMarker": "Olası eksik şarkı sözleri {start}–{end}"
+      "missingLyricsMarker": "Olası eksik şarkı sözleri {start}–{end}",
+      "waveformsSeparating": "Vokaller müzikten ayrıştırılıyor. Dalga biçimleri bir iki dakika içinde otomatik olarak görünecek."
     },
     "editActionBar": {
       "reset": "Sıfırla",

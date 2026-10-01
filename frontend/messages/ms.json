@@ -994,7 +994,8 @@
       "editSegment": "Sunting segmen {index}",
       "untimedSegment": "Tiada pemasaan perkataan — klik untuk sunting",
       "waveforms": "Bentuk gelombang",
-      "missingLyricsMarker": "Kemungkinan lirik tertinggal {start}–{end}"
+      "missingLyricsMarker": "Kemungkinan lirik tertinggal {start}–{end}",
+      "waveformsSeparating": "Sedang mengasingkan vokal daripada muzik. Bentuk gelombang akan muncul secara automatik dalam satu atau dua minit."
     },
     "editActionBar": {
       "reset": "Tetapkan Semula",

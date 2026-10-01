@@ -994,7 +994,8 @@
       "editSegment": "Bearbeite Segment {index}",
       "untimedSegment": "Keine Wort-Timings — klicke zum Bearbeiten",
       "waveforms": "Wellenformen",
-      "missingLyricsMarker": "Möglicherweise fehlender Text {start}–{end}"
+      "missingLyricsMarker": "Möglicherweise fehlender Text {start}–{end}",
+      "waveformsSeparating": "Der Gesang wird von der Musik getrennt. Die Wellenformen erscheinen automatisch in ein bis zwei Minuten."
     },
     "editActionBar": {
       "reset": "Zurücksetzen",

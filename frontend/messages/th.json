@@ -994,7 +994,8 @@
       "editSegment": "แก้ไขส่วนที่ {index}",
       "untimedSegment": "ไม่มีการกำหนดเวลาคำ — คลิกเพื่อแก้ไข",
       "waveforms": "คลื่นเสียง",
-      "missingLyricsMarker": "อาจมีเนื้อเพลงตกหล่น {start}–{end}"
+      "missingLyricsMarker": "อาจมีเนื้อเพลงตกหล่น {start}–{end}",
+      "waveformsSeparating": "กำลังแยกเสียงร้องออกจากดนตรี รูปคลื่นเสียงจะปรากฏขึ้นโดยอัตโนมัติในอีกประมาณ 1-2 นาที"
     },
     "editActionBar": {
       "reset": "รีเซ็ต",

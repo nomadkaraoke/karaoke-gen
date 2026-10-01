@@ -994,7 +994,8 @@
       "editSegment": "Редактировать сегмент {index}",
       "untimedSegment": "Нет таймингов слов — нажми, чтобы отредактировать",
       "waveforms": "Звуковые волны",
-      "missingLyricsMarker": "Возможно, пропущен текст {start}–{end}"
+      "missingLyricsMarker": "Возможно, пропущен текст {start}–{end}",
+      "waveformsSeparating": "Отделяем вокал от музыки. Звуковые волны появятся автоматически через минуту-две."
     },
     "editActionBar": {
       "reset": "Сбросить",

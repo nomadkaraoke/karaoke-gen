@@ -7,7 +7,15 @@ import { createContext, PropsWithChildren, useEffect, useState } from 'react'
 // Excludes legitimate separation-in-progress waits shorter than one 202 poll.
 const SLOW_LOAD_REPORT_MS = 20_000
 
-export const VocalsAudioDataLoaderContext = createContext<{ audioData: AudioData | null }>({ audioData: null })
+/** `separating`: the vocal stem doesn't exist yet (endpoint 202) — audio
+ *  separation is still running in the background, so the Waveforms view can
+ *  tell the reviewer strips are on their way rather than showing empty rows. */
+export type VocalsAudioStatus = 'idle' | 'loading' | 'separating' | 'ready' | 'failed'
+
+export const VocalsAudioDataLoaderContext = createContext<{ audioData: AudioData | null; status: VocalsAudioStatus }>({
+	audioData: null,
+	status: 'idle',
+})
 
 export interface AudioDataLoaderProps extends PropsWithChildren {
 	audioUrl: string | null
@@ -31,9 +39,11 @@ const TRANSIENT_RETRY_DELAYS_MS = [5_000, 15_000, 30_000, 60_000]
 
 export const VocalsAudioDataLoader = ({ audioUrl, peaksUrl, children }: AudioDataLoaderProps) => {
 	const [audioData, setAudioData] = useState<AudioData | null>(null)
+	const [status, setStatus] = useState<VocalsAudioStatus>('idle')
 
 	useEffect(() => {
 		if (!audioUrl && !peaksUrl) return
+		setStatus('loading')
 
 		// Guard against (a) an unhandled rejection when the endpoint 404s (no vocal
 		// stem for this job) and (b) a stale in-flight fetch resolving after a newer
@@ -58,10 +68,12 @@ export const VocalsAudioDataLoader = ({ audioUrl, peaksUrl, children }: AudioDat
 						})
 					}
 					setAudioData(audioData)
+					setStatus('ready')
 				})
 				.catch((error) => {
 					if (cancelled) return
 					if (error instanceof AudioNotReadyError && attempt < NOT_READY_MAX_RETRIES) {
+						setStatus('separating')
 						retryTimer = setTimeout(() => load(attempt + 1, transientAttempt, usePeaks), NOT_READY_RETRY_MS)
 						return
 					}
@@ -91,6 +103,7 @@ export const VocalsAudioDataLoader = ({ audioUrl, peaksUrl, children }: AudioDat
 						transient_retries: transientAttempt,
 					})
 					setAudioData(null)
+					setStatus('failed')
 				})
 		}
 
@@ -100,11 +113,12 @@ export const VocalsAudioDataLoader = ({ audioUrl, peaksUrl, children }: AudioDat
 			cancelled = true
 			if (retryTimer) clearTimeout(retryTimer)
 			setAudioData(null)
+			setStatus('idle')
 		}
 	}, [audioUrl, peaksUrl])
 
 	return (
-		<VocalsAudioDataLoaderContext.Provider value={{ audioData }}>
+		<VocalsAudioDataLoaderContext.Provider value={{ audioData, status }}>
 			{children}
 		</VocalsAudioDataLoaderContext.Provider>
 	)

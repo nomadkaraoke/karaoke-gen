@@ -994,7 +994,8 @@
       "editSegment": "Editează segmentul {index}",
       "untimedSegment": "Fără sincronizare pe cuvinte — dă click pentru a edita",
       "waveforms": "Forme de undă",
-      "missingLyricsMarker": "Posibile versuri lipsă {start}–{end}"
+      "missingLyricsMarker": "Posibile versuri lipsă {start}–{end}",
+      "waveformsSeparating": "Se separă vocea de muzică. Formele de undă vor apărea automat într-un minut sau două."
     },
     "editActionBar": {
       "reset": "Resetează",

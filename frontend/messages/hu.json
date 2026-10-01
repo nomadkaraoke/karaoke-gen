@@ -994,7 +994,8 @@
       "editSegment": "{index}. szegmens szerkesztése",
       "untimedSegment": "Nincs szóidőzítés — kattints a szerkesztéshez",
       "waveforms": "Hullámformák",
-      "missingLyricsMarker": "Lehetséges hiányzó dalszöveg: {start}–{end}"
+      "missingLyricsMarker": "Lehetséges hiányzó dalszöveg: {start}–{end}",
+      "waveformsSeparating": "Az ének leválasztása a zenéről. A hullámformák egy-két percen belül automatikusan megjelennek."
     },
     "editActionBar": {
       "reset": "Visszaállítás",

@@ -994,7 +994,8 @@
       "editSegment": "تعديل المقطع {index}",
       "untimedSegment": "لا توجد توقيتات للكلمات — انقر للتعديل",
       "waveforms": "الأشكال الموجية",
-      "missingLyricsMarker": "كلمات مفقودة محتملة {start}–{end}"
+      "missingLyricsMarker": "كلمات مفقودة محتملة {start}–{end}",
+      "waveformsSeparating": "جارٍ فصل صوت الغناء عن الموسيقى. ستظهر الموجات الصوتية تلقائيًا خلال دقيقة أو دقيقتين."
     },
     "editActionBar": {
       "reset": "إعادة تعيين",

@@ -994,7 +994,8 @@
       "editSegment": "I-edit ang segment {index}",
       "untimedSegment": "Walang timing ng salita — i-click para i-edit",
       "waveforms": "Mga waveform",
-      "missingLyricsMarker": "Posibleng may kulang na lyrics {start}–{end}"
+      "missingLyricsMarker": "Posibleng may kulang na lyrics {start}–{end}",
+      "waveformsSeparating": "Pinaghihiwalay ang vocals mula sa musika. Awtomatikong lalabas ang mga waveform sa loob ng isa o dalawang minuto."
     },
     "editActionBar": {
       "reset": "I-reset",

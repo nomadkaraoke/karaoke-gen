@@ -994,7 +994,8 @@
       "editSegment": "Chỉnh sửa đoạn {index}",
       "untimedSegment": "Chưa căn thời gian chữ — nhấp để chỉnh sửa",
       "waveforms": "Dạng sóng",
-      "missingLyricsMarker": "Có thể thiếu lời bài hát {start}–{end}"
+      "missingLyricsMarker": "Có thể thiếu lời bài hát {start}–{end}",
+      "waveformsSeparating": "Đang tách giọng hát khỏi nhạc. Dạng sóng sẽ tự động hiển thị sau khoảng một đến hai phút."
     },
     "editActionBar": {
       "reset": "Đặt lại",

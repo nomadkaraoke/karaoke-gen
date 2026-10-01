@@ -1006,7 +1006,8 @@
       "longWordWarning": "This word lasts {seconds}s — unusually long. Play the line and check its end time hasn't run into the instrumental.",
       "longGapWarning": "{seconds}s gap before the next word — often a stray early word (e.g. a phantom \"and\"). Click to play from here.",
       "playFromGap": "Play from the end of this gap",
-      "missingLyricsMarker": "Possible missing lyrics {start}–{end}"
+      "missingLyricsMarker": "Possible missing lyrics {start}–{end}",
+      "waveformsSeparating": "Separating vocals from the music. Waveforms will appear automatically in a minute or two."
     },
     "editActionBar": {
       "reset": "Reset",

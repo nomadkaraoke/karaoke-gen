@@ -26,7 +26,7 @@ function renderEditor(props: Partial<React.ComponentProps<typeof TimelineEditor>
   }
   const utils = render(
     <VocalsAudioDataLoaderContext.Provider
-      value={{ audioData: { amplitudes: [0.1, 0.2], duration: 20 } as never }}
+      value={{ audioData: { amplitudes: [0.1, 0.2], duration: 20 } as never, status: 'ready' }}
     >
       <TimelineEditor {...merged} />
     </VocalsAudioDataLoaderContext.Provider>
@@ -113,7 +113,7 @@ describe('TimelineEditor resize edge auto-extend', () => {
     const onCommit = jest.fn()
     const utils = render(
       <VocalsAudioDataLoaderContext.Provider
-        value={{ audioData: { amplitudes: [0.1], duration: 60 } as never }}
+        value={{ audioData: { amplitudes: [0.1], duration: 60 } as never, status: 'ready' }}
       >
         <Host initial={words} onUpdate={(w) => (latest = w)} onCommit={onCommit} {...extra} />
       </VocalsAudioDataLoaderContext.Provider>

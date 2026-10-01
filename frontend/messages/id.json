@@ -994,7 +994,8 @@
       "editSegment": "Edit segmen {index}",
       "untimedSegment": "Tidak ada timing kata — klik untuk mengedit",
       "waveforms": "Bentuk gelombang",
-      "missingLyricsMarker": "Kemungkinan ada lirik yang hilang {start}–{end}"
+      "missingLyricsMarker": "Kemungkinan ada lirik yang hilang {start}–{end}",
+      "waveformsSeparating": "Sedang memisahkan vokal dari musik. Bentuk gelombang akan muncul otomatis dalam satu atau dua menit."
     },
     "editActionBar": {
       "reset": "Atur Ulang",

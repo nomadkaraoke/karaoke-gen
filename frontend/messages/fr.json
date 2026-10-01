@@ -994,7 +994,8 @@
       "editSegment": "Modifier le segment {index}",
       "untimedSegment": "Aucune synchronisation des mots — clique pour modifier",
       "waveforms": "Formes d'onde",
-      "missingLyricsMarker": "Paroles potentiellement manquantes {start}–{end}"
+      "missingLyricsMarker": "Paroles potentiellement manquantes {start}–{end}",
+      "waveformsSeparating": "Séparation de la voix et de la musique. Les formes d'onde apparaîtront automatiquement d'ici une minute ou deux."
     },
     "editActionBar": {
       "reset": "Réinitialiser",

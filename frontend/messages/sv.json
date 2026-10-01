@@ -994,7 +994,8 @@
       "editSegment": "Redigera segment {index}",
       "untimedSegment": "Ingen ordtajming — klicka för att redigera",
       "waveforms": "Vågformer",
-      "missingLyricsMarker": "Eventuellt saknad låttext {start}–{end}"
+      "missingLyricsMarker": "Eventuellt saknad låttext {start}–{end}",
+      "waveformsSeparating": "Separerar sången från musiken. Vågformerna visas automatiskt om en minut eller två."
     },
     "editActionBar": {
       "reset": "Återställ",

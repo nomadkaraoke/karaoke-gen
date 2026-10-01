@@ -994,7 +994,8 @@
       "editSegment": "עריכת מקטע {index}",
       "untimedSegment": "ללא תזמון מילים — לחצו לעריכה",
       "waveforms": "צורות גל",
-      "missingLyricsMarker": "ייתכן שחסרות מילים {start}–{end}"
+      "missingLyricsMarker": "ייתכן שחסרות מילים {start}–{end}",
+      "waveformsSeparating": "מפרידים את השירה מהמוזיקה. גלי הקול יופיעו אוטומטית תוך דקה או שתיים."
     },
     "editActionBar": {
       "reset": "אפס",

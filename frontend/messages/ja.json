@@ -994,7 +994,8 @@
       "editSegment": "セグメント {index} を編集",
       "untimedSegment": "単語のタイミング未設定 — クリックして編集",
       "waveforms": "波形",
-      "missingLyricsMarker": "歌詞が抜けている可能性 {start}–{end}"
+      "missingLyricsMarker": "歌詞が抜けている可能性 {start}–{end}",
+      "waveformsSeparating": "音楽からボーカルを分離しています。1〜2分ほどで波形が自動的に表示されます。"
     },
     "editActionBar": {
       "reset": "リセット",

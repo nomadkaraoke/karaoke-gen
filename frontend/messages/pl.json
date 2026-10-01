@@ -994,7 +994,8 @@
       "editSegment": "Edytuj segment {index}",
       "untimedSegment": "Brak synchronizacji słów — kliknij, aby edytować",
       "waveforms": "Fale dźwiękowe",
-      "missingLyricsMarker": "Możliwy brak tekstu {start}–{end}"
+      "missingLyricsMarker": "Możliwy brak tekstu {start}–{end}",
+      "waveformsSeparating": "Oddzielamy wokal od muzyki. Przebiegi falowe pojawią się automatycznie za minutę lub dwie."
     },
     "editActionBar": {
       "reset": "Resetuj",

@@ -994,7 +994,8 @@
       "editSegment": "Επεξεργασία τμήματος {index}",
       "untimedSegment": "Χωρίς χρονισμό λέξεων — κάνε κλικ για επεξεργασία",
       "waveforms": "Κυματομορφές",
-      "missingLyricsMarker": "Πιθανώς λείπουν στίχοι {start}–{end}"
+      "missingLyricsMarker": "Πιθανώς λείπουν στίχοι {start}–{end}",
+      "waveformsSeparating": "Γίνεται διαχωρισμός των φωνητικών από τη μουσική. Οι κυματομορφές θα εμφανιστούν αυτόματα σε ένα ή δύο λεπτά."
     },
     "editActionBar": {
       "reset": "Επαναφορά",

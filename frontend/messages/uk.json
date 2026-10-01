@@ -994,7 +994,8 @@
       "editSegment": "Редагувати сегмент {index}",
       "untimedSegment": "Немає таймінгів слів — натисни, щоб редагувати",
       "waveforms": "Аудіохвилі",
-      "missingLyricsMarker": "Можливо, пропущено текст {start}–{end}"
+      "missingLyricsMarker": "Можливо, пропущено текст {start}–{end}",
+      "waveformsSeparating": "Відокремлюємо вокал від музики. Аудіохвилі з'являться автоматично за хвилину-дві."
     },
     "editActionBar": {
       "reset": "Скинути",

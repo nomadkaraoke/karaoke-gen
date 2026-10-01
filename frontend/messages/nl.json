@@ -994,7 +994,8 @@
       "editSegment": "Bewerk segment {index}",
       "untimedSegment": "Geen woordtimings — klik om te bewerken",
       "waveforms": "Golfvormen",
-      "missingLyricsMarker": "Mogelijk ontbrekende songtekst {start}–{end}"
+      "missingLyricsMarker": "Mogelijk ontbrekende songtekst {start}–{end}",
+      "waveformsSeparating": "De zang wordt gescheiden van de muziek. De golfvormen verschijnen automatisch binnen een minuut of twee."
     },
     "editActionBar": {
       "reset": "Resetten",

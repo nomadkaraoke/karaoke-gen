@@ -994,7 +994,8 @@
       "editSegment": "सेगमेंट {index} एडिट करो",
       "untimedSegment": "शब्दों की टाइमिंग नहीं है — एडिट करने के लिए क्लिक करो",
       "waveforms": "वेवफॉर्म",
-      "missingLyricsMarker": "संभवतः छूटे हुए लिरिक्स {start}–{end}"
+      "missingLyricsMarker": "संभवतः छूटे हुए लिरिक्स {start}–{end}",
+      "waveformsSeparating": "संगीत से वोकल्स अलग किए जा रहे हैं। वेवफ़ॉर्म एक या दो मिनट में अपने आप दिखाई देंगे।"
     },
     "editActionBar": {
       "reset": "रीसेट करो",

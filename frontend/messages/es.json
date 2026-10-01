@@ -994,7 +994,8 @@
       "editSegment": "Editar segmento {index}",
       "untimedSegment": "Sin tiempos por palabra — haz clic para editar",
       "waveforms": "Formas de onda",
-      "missingLyricsMarker": "Posible letra faltante {start}–{end}"
+      "missingLyricsMarker": "Posible letra faltante {start}–{end}",
+      "waveformsSeparating": "Separando la voz de la música. Las formas de onda aparecerán automáticamente en uno o dos minutos."
     },
     "editActionBar": {
       "reset": "Restablecer",

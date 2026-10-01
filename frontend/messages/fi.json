@@ -994,7 +994,8 @@
       "editSegment": "Muokkaa segmenttiä {index}",
       "untimedSegment": "Ei sana-ajoituksia — muokkaa klikkaamalla",
       "waveforms": "Aaltomuodot",
-      "missingLyricsMarker": "Mahdollisesti puuttuvia sanoituksia {start}–{end}"
+      "missingLyricsMarker": "Mahdollisesti puuttuvia sanoituksia {start}–{end}",
+      "waveformsSeparating": "Erotetaan laulu musiikista. Aaltomuodot ilmestyvät automaattisesti minuutin tai parin kuluessa."
     },
     "editActionBar": {
       "reset": "Nollaa",

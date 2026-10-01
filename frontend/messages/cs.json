@@ -994,7 +994,8 @@
       "editSegment": "Upravit segment {index}",
       "untimedSegment": "Bez časování slov — klikni pro úpravu",
       "waveforms": "Zvukové křivky",
-      "missingLyricsMarker": "Možný chybějící text {start}–{end}"
+      "missingLyricsMarker": "Možný chybějící text {start}–{end}",
+      "waveformsSeparating": "Oddělujeme vokály od hudby. Zvukové křivky se automaticky zobrazí za minutu nebo dvě."
     },
     "editActionBar": {
       "reset": "Resetovat",

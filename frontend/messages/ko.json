@@ -994,7 +994,8 @@
       "editSegment": "구간 {index} 편집",
       "untimedSegment": "단어 타이밍 없음 — 클릭해서 편집하세요",
       "waveforms": "파형",
-      "missingLyricsMarker": "가사 누락 가능 구간 {start}–{end}"
+      "missingLyricsMarker": "가사 누락 가능 구간 {start}–{end}",
+      "waveformsSeparating": "음악에서 보컬을 분리하는 중입니다. 1~2분 내에 파형이 자동으로 표시됩니다."
     },
     "editActionBar": {
       "reset": "초기화",

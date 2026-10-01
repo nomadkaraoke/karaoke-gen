@@ -994,7 +994,8 @@
       "editSegment": "编辑片段 {index}",
       "untimedSegment": "无单词时间轴 — 点击编辑",
       "waveforms": "波形图",
-      "missingLyricsMarker": "可能缺失歌词 {start}–{end}"
+      "missingLyricsMarker": "可能缺失歌词 {start}–{end}",
+      "waveformsSeparating": "正在分离人声与音乐。波形图将在一两分钟内自动显示。"
     },
     "editActionBar": {
       "reset": "重置",
