@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Rendre dette sporet på nytt?",
     "adminRerenderTooltip": "Admin: regenerer alle videoer med gjeldende renderer, uten gjennomgang",
     "adminRerender": "Rendre på nytt",
-    "adminRerenderFailed": "Kunne ikke starte ny rendering: {error}"
+    "adminRerenderFailed": "Kunne ikke starte ny rendering: {error}",
+    "adminRerenderStarted": "Re-rendering startet.",
+    "adminRerenderStartedWithWarnings": "Re-rendering startet. Noen publiserte utdata ble stående:"
   },
   "themeSelector": {
     "videoTheme": "Videotema",

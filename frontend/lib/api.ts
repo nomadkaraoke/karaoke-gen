@@ -3266,10 +3266,6 @@ export const adminApi = {
   },
 
   /**
-   * Regenerate title and end screens with current artist/title metadata (admin only).
-   * Use when you've edited artist/title and need screens to reflect the new metadata.
-   */
-  /**
    * Re-render a completed job end to end with the current renderer, without
    * review (admin only). Keeps the job's style and brand code; published
    * outputs are replaced (YouTube gets a new URL). The customer is only
@@ -3290,6 +3286,10 @@ export const adminApi = {
     return handleResponse(response);
   },
 
+  /**
+   * Regenerate title and end screens with current artist/title metadata (admin only).
+   * Use when you've edited artist/title and need screens to reflect the new metadata.
+   */
   async regenerateScreens(jobId: string): Promise<RegenerateScreensResponse> {
     const response = await apiFetch(
       `${API_BASE_URL}/api/admin/jobs/${jobId}/regenerate-screens`,
@@ -4009,6 +4009,8 @@ export interface AdminRerenderResponse {
   notify_customer: boolean;
   previous_outputs: Record<string, unknown>;
   cleanup_results: Record<string, unknown>;
+  /** Outputs left in place (destination not re-published), e.g. YouTube now disabled. */
+  warnings?: string[];
 }
 
 export interface RegenerateScreensResponse {

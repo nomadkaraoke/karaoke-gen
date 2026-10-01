@@ -744,7 +744,9 @@
     "adminRerenderTitle": "क्या इस ट्रैक को दोबारा रेंडर करना चाहते हो?",
     "adminRerenderTooltip": "एडमिन: बिना रिव्यू के, मौजूदा रेंडरर के साथ हर वीडियो को फिर से जनरेट करो",
     "adminRerender": "री-रेंडर करें",
-    "adminRerenderFailed": "री-रेंडर शुरू नहीं किया जा सका: {error}"
+    "adminRerenderFailed": "री-रेंडर शुरू नहीं किया जा सका: {error}",
+    "adminRerenderStarted": "री-रेंडर शुरू हो गया है।",
+    "adminRerenderStartedWithWarnings": "री-रेंडर शुरू हो गया है। कुछ प्रकाशित आउटपुट वैसे ही छोड़ दिए गए हैं:"
   },
   "themeSelector": {
     "videoTheme": "वीडियो थीम",

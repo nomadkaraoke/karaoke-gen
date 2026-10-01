@@ -744,7 +744,9 @@
     "adminRerenderTitle": "¿Volver a renderizar esta pista?",
     "adminRerenderTooltip": "Admin: regenerar cada video con el renderizador actual, sin revisión",
     "adminRerender": "Volver a renderizar",
-    "adminRerenderFailed": "No se pudo iniciar el nuevo renderizado: {error}"
+    "adminRerenderFailed": "No se pudo iniciar el nuevo renderizado: {error}",
+    "adminRerenderStarted": "Re-renderizado iniciado.",
+    "adminRerenderStartedWithWarnings": "Re-renderizado iniciado. Algunas salidas publicadas se mantuvieron:"
   },
   "themeSelector": {
     "videoTheme": "Tema de video",

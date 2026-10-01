@@ -744,7 +744,9 @@
     "adminRerenderTitle": "לרנדר מחדש את הרצועה הזו?",
     "adminRerenderTooltip": "ניהול: יצירה מחדש של כל הסרטונים באמצעות מנוע הרינדור הנוכחי, ללא בדיקה",
     "adminRerender": "רינדור מחדש",
-    "adminRerenderFailed": "לא ניתן היה להתחיל את הרינדור מחדש: {error}"
+    "adminRerenderFailed": "לא ניתן היה להתחיל את הרינדור מחדש: {error}",
+    "adminRerenderStarted": "הרינדור מחדש החל.",
+    "adminRerenderStartedWithWarnings": "הרינדור מחדש החל. חלק מהתוצרים שפורסמו הושארו במקומם:"
   },
   "themeSelector": {
     "videoTheme": "ערכת נושא לוידאו",

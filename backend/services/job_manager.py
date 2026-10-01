@@ -495,6 +495,8 @@ class JobManager:
         raise_on_invalid: bool = True,
         timeline_metadata: Optional[Dict[str, Any]] = None,
         notify: bool = True,
+        extra_updates: Optional[Dict[str, Any]] = None,
+        count_completion: bool = True,
     ) -> bool:
         """
         Transition job to new state with validation.
@@ -511,6 +513,11 @@ class JobManager:
             notify: If False, skip the user email/push notifications for this
                     transition (e.g. an admin re-render the admin didn't opt
                     into announcing to the customer).
+            extra_updates: Additional Firestore field updates (dot paths allowed,
+                    e.g. ``{"state_data.admin_rerender": DELETE_FIELD}``) written
+                    in the SAME update as the status change.
+            count_completion: If False, don't increment the user's completed-jobs
+                    counter on COMPLETE (an admin re-render isn't a new job).
 
         Returns:
             True if transition succeeded, False if failed (only when raise_on_invalid=False)
@@ -546,6 +553,7 @@ class JobManager:
                 merged_state_data = {**job.state_data, **state_data_updates}
 
         # Update job status (includes timeline event), passing state_data if present
+        extra = dict(extra_updates or {})
         if merged_state_data is not None:
             self.update_job_status(
                 job_id=job_id,
@@ -553,7 +561,8 @@ class JobManager:
                 progress=progress,
                 message=message,
                 timeline_metadata=timeline_metadata,
-                state_data=merged_state_data
+                state_data=merged_state_data,
+                **extra,
             )
         else:
             self.update_job_status(
@@ -562,6 +571,7 @@ class JobManager:
                 progress=progress,
                 message=message,
                 timeline_metadata=timeline_metadata,
+                **extra,
             )
         
         # Apply review token update separately if generated
@@ -574,7 +584,9 @@ class JobManager:
         logger.info(f"Job {job_id} transitioned to {new_status}")
 
         # Increment user's completed jobs counter on terminal success states
-        if new_status in (JobStatus.COMPLETE, JobStatus.PREP_COMPLETE):
+        if new_status in (JobStatus.COMPLETE, JobStatus.PREP_COMPLETE) and not count_completion:
+            logger.info(f"Job {job_id}: completion not counted towards the user's jobs_completed")
+        elif new_status in (JobStatus.COMPLETE, JobStatus.PREP_COMPLETE):
             try:
                 job = self.get_job(job_id)
                 if job and job.user_email:

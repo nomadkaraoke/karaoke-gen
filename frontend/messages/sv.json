@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Rendera om det här spåret?",
     "adminRerenderTooltip": "Admin: återskapa alla videor med den aktuella renderaren, utan granskning",
     "adminRerender": "Rendera om",
-    "adminRerenderFailed": "Kunde inte starta omrenderingen: {error}"
+    "adminRerenderFailed": "Kunde inte starta omrenderingen: {error}",
+    "adminRerenderStarted": "Omrendering har startat.",
+    "adminRerenderStartedWithWarnings": "Omrendering har startat. Vissa publicerade utdata har lämnats kvar:"
   },
   "themeSelector": {
     "videoTheme": "Videotema",

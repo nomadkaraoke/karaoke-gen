@@ -744,7 +744,9 @@
     "adminRerenderTitle": "重新渲染此曲目？",
     "adminRerenderTooltip": "管理员：使用当前渲染器重新生成所有视频，无需审核",
     "adminRerender": "重新渲染",
-    "adminRerenderFailed": "无法开始重新渲染：{error}"
+    "adminRerenderFailed": "无法开始重新渲染：{error}",
+    "adminRerenderStarted": "重新渲染已开始。",
+    "adminRerenderStartedWithWarnings": "重新渲染已开始。部分已发布的输出已保留："
   },
   "themeSelector": {
     "videoTheme": "视频主题",

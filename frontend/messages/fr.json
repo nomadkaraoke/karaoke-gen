@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Relancer le rendu de ce morceau ?",
     "adminRerenderTooltip": "Admin : régénérer toutes les vidéos avec le moteur de rendu actuel, sans révision",
     "adminRerender": "Relancer le rendu",
-    "adminRerenderFailed": "Impossible de relancer le rendu : {error}"
+    "adminRerenderFailed": "Impossible de relancer le rendu : {error}",
+    "adminRerenderStarted": "Nouveau rendu lancé.",
+    "adminRerenderStartedWithWarnings": "Nouveau rendu lancé. Certaines sorties publiées ont été laissées en place :"
   },
   "themeSelector": {
     "videoTheme": "Thème vidéo",

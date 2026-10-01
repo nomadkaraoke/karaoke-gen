@@ -753,7 +753,9 @@
     "adminRerenderBrandCode": "The brand code {brandCode} stays the same.",
     "adminRerenderTime": "It usually takes 10-20 minutes. Downloads are unavailable until it finishes.",
     "adminRerenderNotify": "Email the customer when done",
-    "adminRerenderFailed": "Couldn't start the re-render: {error}"
+    "adminRerenderFailed": "Couldn't start the re-render: {error}",
+    "adminRerenderStarted": "Re-render started.",
+    "adminRerenderStartedWithWarnings": "Re-render started. Some published outputs were left in place:"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",

@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Εκ νέου render αυτού του κομματιού;",
     "adminRerenderTooltip": "Διαχειριστής: αναδημιουργία κάθε βίντεο με τον τρέχοντα renderer, χωρίς έλεγχο",
     "adminRerender": "Επαναδημιουργία",
-    "adminRerenderFailed": "Δεν ήταν δυνατή η έναρξη της επαναδημιουργίας: {error}"
+    "adminRerenderFailed": "Δεν ήταν δυνατή η έναρξη της επαναδημιουργίας: {error}",
+    "adminRerenderStarted": "Η επαναπόδοση ξεκίνησε.",
+    "adminRerenderStartedWithWarnings": "Η επαναπόδοση ξεκίνησε. Ορισμένα δημοσιευμένα αρχεία εξόδου διατηρήθηκαν στη θέση τους:"
   },
   "themeSelector": {
     "videoTheme": "Θέμα Βίντεο",

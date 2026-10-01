@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Ponovno renderirati ovu pjesmu?",
     "adminRerenderTooltip": "Admin: ponovno generiraj svaki videozapis pomoću trenutačnog renderera, bez pregleda",
     "adminRerender": "Ponovno renderiraj",
-    "adminRerenderFailed": "Nije bilo moguće pokrenuti ponovno renderiranje: {error}"
+    "adminRerenderFailed": "Nije bilo moguće pokrenuti ponovno renderiranje: {error}",
+    "adminRerenderStarted": "Pokrenuto je ponovno renderiranje.",
+    "adminRerenderStartedWithWarnings": "Pokrenuto je ponovno renderiranje. Neki objavljeni izlazi ostavljeni su netaknuti:"
   },
   "themeSelector": {
     "videoTheme": "Video tema",

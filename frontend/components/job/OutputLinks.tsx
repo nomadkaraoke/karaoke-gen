@@ -7,6 +7,7 @@ import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil, RefreshCw, RotateCcw } from "lucide-react"
 import { useAuth } from "@/lib/auth"
+import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -74,6 +75,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   }, [])
 
   const { user } = useAuth()
+  const { toast } = useToast()
   const { features, tenantId } = useTenant()
   const isAdmin = user?.role === 'admin'
 
@@ -212,7 +214,20 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
     setIsStartingAdminRerender(true)
     setShowAdminRerenderDialog(false)
     try {
-      await adminApi.rerenderJob(job.job_id, adminRerenderNotify)
+      const response = await adminApi.rerenderJob(job.job_id, adminRerenderNotify)
+      const warnings = response?.warnings ?? []
+      // Outputs whose destination isn't re-published are left in place — tell
+      // the admin which (backend wording; admin-only technical detail).
+      toast(warnings.length > 0
+        ? {
+            title: t('adminRerenderStartedWithWarnings'),
+            description: (
+              <ul className="list-disc pl-4" data-testid="admin-rerender-warnings">
+                {warnings.map((w) => <li key={w}>{w}</li>)}
+              </ul>
+            ),
+          }
+        : { title: t('adminRerenderStarted') })
       onJobUpdated?.()
     } catch (err) {
       console.error("Failed to start admin re-render:", err)
@@ -221,7 +236,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
       setIsStartingAdminRerender(false)
       setAdminRerenderNotify(false)
     }
-  }, [job.job_id, adminRerenderNotify, onJobUpdated, t])
+  }, [job.job_id, adminRerenderNotify, onJobUpdated, t, toast])
 
   const hasOutputs = showYoutubeLink || showDropboxLink || (!outputsUnavailable && downloadUrls && Object.keys(downloadUrls).length > 0)
 

@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Renderizar esta faixa novamente?",
     "adminRerenderTooltip": "Admin: gerar novamente todos os vídeos com o renderizador atual, sem revisão",
     "adminRerender": "Renderizar novamente",
-    "adminRerenderFailed": "Não foi possível iniciar a nova renderização: {error}"
+    "adminRerenderFailed": "Não foi possível iniciar a nova renderização: {error}",
+    "adminRerenderStarted": "Nova renderização iniciada.",
+    "adminRerenderStartedWithWarnings": "Nova renderização iniciada. Algumas saídas publicadas foram mantidas:"
   },
   "themeSelector": {
     "videoTheme": "Tema do Vídeo",

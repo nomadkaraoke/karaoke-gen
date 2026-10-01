@@ -744,7 +744,9 @@
     "adminRerenderTitle": "إعادة تصيير هذا المسار؟",
     "adminRerenderTooltip": "المسؤول: إعادة إنشاء كل مقطع فيديو باستخدام أداة التصيير الحالية، دون مراجعة",
     "adminRerender": "إعادة التصيير",
-    "adminRerenderFailed": "تعذر بدء إعادة التصيير: {error}"
+    "adminRerenderFailed": "تعذر بدء إعادة التصيير: {error}",
+    "adminRerenderStarted": "بدأت إعادة التصيير.",
+    "adminRerenderStartedWithWarnings": "بدأت إعادة التصيير. تم الإبقاء على بعض المخرجات المنشورة في مكانها:"
   },
   "themeSelector": {
     "videoTheme": "سمة الفيديو",

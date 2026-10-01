@@ -744,7 +744,9 @@
     "adminRerenderTitle": "ต้องการเรนเดอร์แทร็กนี้ใหม่หรือไม่?",
     "adminRerenderTooltip": "ผู้ดูแลระบบ: สร้างวิดีโอทั้งหมดขึ้นมาใหม่ด้วยระบบเรนเดอร์ปัจจุบัน โดยไม่ต้องส่งตรวจสอบซ้ำ",
     "adminRerender": "เรนเดอร์ใหม่",
-    "adminRerenderFailed": "ไม่สามารถเริ่มการเรนเดอร์ใหม่ได้: {error}"
+    "adminRerenderFailed": "ไม่สามารถเริ่มการเรนเดอร์ใหม่ได้: {error}",
+    "adminRerenderStarted": "เริ่มการเรนเดอร์ใหม่แล้ว",
+    "adminRerenderStartedWithWarnings": "เริ่มการเรนเดอร์ใหม่แล้ว ผลลัพธ์ที่เผยแพร่แล้วบางส่วนยังคงอยู่ที่เดิม:"
   },
   "themeSelector": {
     "videoTheme": "ธีมวิดีโอ",

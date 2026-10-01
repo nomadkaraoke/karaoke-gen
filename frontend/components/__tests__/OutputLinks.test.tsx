@@ -23,6 +23,11 @@ jest.mock('@/lib/tenant', () => ({
   })),
 }))
 
+const mockToast = jest.fn()
+jest.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}))
+
 // Mock the api module
 jest.mock('@/lib/api', () => ({
   api: {
@@ -548,6 +553,33 @@ describe('OutputLinks', () => {
         "Couldn't start the re-render: This job is already being re-rendered",
       ))
       alertSpy.mockRestore()
+    })
+
+    it('toasts a plain confirmation when nothing was left in place', async () => {
+      asAdmin(true)
+      const { adminApi } = require('@/lib/api')
+      adminApi.rerenderJob.mockResolvedValueOnce({ status: 'processing', warnings: [] })
+      render(<OutputLinks job={publishedJob} />)
+      fireEvent.click(screen.getByTestId('admin-rerender-button'))
+      fireEvent.click(screen.getByTestId('admin-rerender-confirm'))
+      await waitFor(() => expect(mockToast).toHaveBeenCalledWith({ title: 'Re-render started.' }))
+    })
+
+    it('lists outputs kept in place after starting', async () => {
+      asAdmin(true)
+      const { adminApi } = require('@/lib/api')
+      adminApi.rerenderJob.mockResolvedValueOnce({
+        status: 'processing',
+        warnings: ['youtube output left in place (not re-published): YouTube upload is disabled for this job'],
+      })
+      render(<OutputLinks job={publishedJob} />)
+      fireEvent.click(screen.getByTestId('admin-rerender-button'))
+      fireEvent.click(screen.getByTestId('admin-rerender-confirm'))
+      await waitFor(() => expect(mockToast).toHaveBeenCalled())
+      const arg = mockToast.mock.calls[0][0]
+      expect(arg.title).toBe('Re-render started. Some published outputs were left in place:')
+      render(<>{arg.description}</>)
+      expect(screen.getByTestId('admin-rerender-warnings')).toHaveTextContent('YouTube upload is disabled for this job')
     })
   })
 })

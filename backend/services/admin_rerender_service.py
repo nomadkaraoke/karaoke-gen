@@ -123,10 +123,10 @@ def admin_rerender_kept_outputs(job) -> Dict[str, Any]:
 # --- Validation / planning -----------------------------------------------------
 
 def _claimable_statuses(job) -> set:
-    """COMPLETE, plus FAILED when the failure was an admin re-render (retry)."""
+    """COMPLETE, plus FAILED/CANCELLED when that was an admin re-render (resume)."""
     statuses = {JobStatus.COMPLETE.value}
     if active_admin_rerender(job):
-        statuses.add(JobStatus.FAILED.value)
+        statuses.update({JobStatus.FAILED.value, JobStatus.CANCELLED.value})
     return statuses
 
 
@@ -169,10 +169,13 @@ def plan_republish(job) -> Dict[str, Tuple[bool, Optional[str]]]:
         try:
             from backend.services.youtube_service import get_youtube_service
             configured = get_youtube_service().is_configured
-        except Exception as e:  # treat as "won't upload" — never delete what we can't replace
+            reason = "YouTube credentials are not configured"
+        except Exception as e:
+            # Can't plan → don't delete or cancel anything YouTube; warn instead.
             logger.warning(f"[job:{job.job_id}] YouTube credential check failed: {e}")
             configured = False
-        plan["youtube"] = (True, None) if configured else (False, "YouTube credentials are not configured")
+            reason = f"couldn't verify YouTube credentials ({e})"
+        plan["youtube"] = (True, None) if configured else (False, reason)
 
     if dist.dropbox_path and dist.brand_prefix:
         plan["dropbox"] = (True, None)
@@ -254,7 +257,9 @@ class AdminRerenderService:
 
     def _build_claim(self, job, requested_by: str, notify_customer: bool, plan) -> Tuple[dict, dict]:
         state_data = job.state_data or {}
-        previous_marker = raw_admin_rerender_marker(job)
+        # Only the ACTIVE (same-run) marker carries over: a stale one from an
+        # earlier run must not leak its brand code / history into this run.
+        previous_marker = active_admin_rerender(job)
         # On a retry the re-published outputs were already removed (and cleared
         # from state_data) by the first attempt — keep that attempt's record.
         previous_outputs = {
@@ -271,6 +276,11 @@ class AdminRerenderService:
                 link_key = _DESTINATION_LINK[destination]
                 kept_outputs[link_key] = state_data[link_key]
                 warnings.append(f"{destination} output left in place (not re-published): {why}")
+        republish_youtube = plan["youtube"][0]
+        if not republish_youtube and state_data.get("youtube_upload_queued"):
+            warnings.append(
+                f"pending deferred YouTube upload left queued (YouTube not re-published: {plan['youtube'][1]})"
+            )
 
         now = datetime.now(timezone.utc)
         message = (
@@ -299,6 +309,7 @@ class AdminRerenderService:
                 "previous_outputs": previous_outputs,
                 "kept_outputs": kept_outputs,
                 "warnings": warnings,
+                "republish_youtube": republish_youtube,
                 # Run identity: a later trip through review mints a new token,
                 # which retires this marker (see active_admin_rerender).
                 "review_token": getattr(job, "review_token", None),
@@ -330,8 +341,9 @@ class AdminRerenderService:
             if republish:
                 for key in _DESTINATION_KEYS[destination]:
                     update[f"state_data.{key}"] = DELETE_FIELD
-        # A stale deferred upload is cancelled after the claim either way.
-        update["state_data.youtube_upload_queued"] = DELETE_FIELD
+        # youtube_upload_queued is only cleared (and the deferred upload
+        # cancelled) when YouTube will be re-published — it's in
+        # _DESTINATION_KEYS["youtube"] above.
 
         context = {
             "message": message,
@@ -340,6 +352,7 @@ class AdminRerenderService:
             "warnings": warnings,
             "notify_customer": bool(notify_customer),
             "is_retry": is_retry,
+            "republish_youtube": republish_youtube,
         }
         return update, context
 
@@ -408,7 +421,10 @@ class AdminRerenderService:
             delete_gdrive_files(job_id, state_data.get("gdrive_files"), brand_code, cleanup_mirror=False)
             if plan["gdrive"][0] else kept("gdrive")
         )
-        results["youtube_queue"] = self._cancel_deferred_youtube_upload(job_id)
+        results["youtube_queue"] = (
+            self._cancel_deferred_youtube_upload(job_id)
+            if plan["youtube"][0] else {"status": "kept", "reason": plan["youtube"][1]}
+        )
         results["brand_code"] = {"status": "kept", "code": brand_code}
 
         for service in ("youtube", "dropbox", "gdrive", "youtube_queue"):

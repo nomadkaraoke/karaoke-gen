@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Повторно відрендерити цей трек?",
     "adminRerenderTooltip": "Адмін: згенерувати заново всі відео за допомогою поточного рендерера, без перевірки",
     "adminRerender": "Перерендерити",
-    "adminRerenderFailed": "Не вдалося запустити повторний рендеринг: {error}"
+    "adminRerenderFailed": "Не вдалося запустити повторний рендеринг: {error}",
+    "adminRerenderStarted": "Повторний рендеринг розпочато.",
+    "adminRerenderStartedWithWarnings": "Повторний рендеринг розпочато. Деякі опубліковані вихідні файли залишено без змін:"
   },
   "themeSelector": {
     "videoTheme": "Тема відео",

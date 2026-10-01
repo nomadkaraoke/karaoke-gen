@@ -744,7 +744,9 @@
     "adminRerenderTitle": "이 트랙을 다시 렌더링하시겠습니까?",
     "adminRerenderTooltip": "관리자: 검토 과정 없이 현재 렌더러로 모든 영상 재생성",
     "adminRerender": "재렌더링",
-    "adminRerenderFailed": "재렌더링을 시작하지 못했습니다: {error}"
+    "adminRerenderFailed": "재렌더링을 시작하지 못했습니다: {error}",
+    "adminRerenderStarted": "재렌더링이 시작되었습니다.",
+    "adminRerenderStartedWithWarnings": "재렌더링이 시작되었습니다. 게시된 일부 결과물은 그대로 유지되었습니다:"
   },
   "themeSelector": {
     "videoTheme": "비디오 테마",

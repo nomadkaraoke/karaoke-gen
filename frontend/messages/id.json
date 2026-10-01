@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Render ulang trek ini?",
     "adminRerenderTooltip": "Admin: buat ulang setiap video dengan renderer saat ini, tanpa peninjauan",
     "adminRerender": "Render Ulang",
-    "adminRerenderFailed": "Gagal memulai render ulang: {error}"
+    "adminRerenderFailed": "Gagal memulai render ulang: {error}",
+    "adminRerenderStarted": "Render ulang dimulai.",
+    "adminRerenderStartedWithWarnings": "Render ulang dimulai. Beberapa output yang dipublikasikan tetap dipertahankan:"
   },
   "themeSelector": {
     "videoTheme": "Tema Video",

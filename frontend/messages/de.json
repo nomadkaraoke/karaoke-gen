@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Diesen Track neu rendern?",
     "adminRerenderTooltip": "Admin: Jedes Video mit dem aktuellen Renderer ohne Überprüfung neu generieren",
     "adminRerender": "Neu rendern",
-    "adminRerenderFailed": "Das erneute Rendern konnte nicht gestartet werden: {error}"
+    "adminRerenderFailed": "Das erneute Rendern konnte nicht gestartet werden: {error}",
+    "adminRerenderStarted": "Erneutes Rendern gestartet.",
+    "adminRerenderStartedWithWarnings": "Erneutes Rendern gestartet. Einige veröffentlichte Ausgaben wurden beibehalten:"
   },
   "themeSelector": {
     "videoTheme": "Video-Theme",

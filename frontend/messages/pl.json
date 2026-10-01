@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Ponownie wyrenderować ten utwór?",
     "adminRerenderTooltip": "Administrator: wygeneruj ponownie każde wideo za pomocą aktualnego renderera, bez weryfikacji",
     "adminRerender": "Wyrenderuj ponownie",
-    "adminRerenderFailed": "Nie udało się rozpocząć ponownego renderowania: {error}"
+    "adminRerenderFailed": "Nie udało się rozpocząć ponownego renderowania: {error}",
+    "adminRerenderStarted": "Rozpoczęto ponowne renderowanie.",
+    "adminRerenderStartedWithWarnings": "Rozpoczęto ponowne renderowanie. Niektóre opublikowane pliki wyjściowe pozostawiono na miejscu:"
   },
   "themeSelector": {
     "videoTheme": "Motyw wideo",

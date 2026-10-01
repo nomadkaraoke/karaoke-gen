@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Znova vyrenderovať túto skladbu?",
     "adminRerenderTooltip": "Admin: znova vygeneruj každé video pomocou aktuálneho renderera bez kontroly",
     "adminRerender": "Znova vyrenderovať",
-    "adminRerenderFailed": "Nepodarilo sa spustiť opätovné renderovanie: {error}"
+    "adminRerenderFailed": "Nepodarilo sa spustiť opätovné renderovanie: {error}",
+    "adminRerenderStarted": "Opätovné renderovanie sa začalo.",
+    "adminRerenderStartedWithWarnings": "Opätovné renderovanie sa začalo. Niektoré publikované výstupy boli ponechané na mieste:"
   },
   "themeSelector": {
     "videoTheme": "Téma videa",

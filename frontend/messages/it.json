@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Rieseguire il rendering di questa traccia?",
     "adminRerenderTooltip": "Admin: rigenera ogni video con il renderer attuale, senza revisione",
     "adminRerender": "Renderizza di nuovo",
-    "adminRerenderFailed": "Impossibile avviare il nuovo rendering: {error}"
+    "adminRerenderFailed": "Impossibile avviare il nuovo rendering: {error}",
+    "adminRerenderStarted": "Nuovo rendering avviato.",
+    "adminRerenderStartedWithWarnings": "Nuovo rendering avviato. Alcuni output pubblicati sono stati lasciati invariati:"
   },
   "themeSelector": {
     "videoTheme": "Tema video",

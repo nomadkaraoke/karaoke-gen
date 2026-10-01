@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Újrarendereled ezt a számot?",
     "adminRerenderTooltip": "Admin: az összes videó újragenerálása az aktuális renderelővel, ellenőrzés nélkül",
     "adminRerender": "Újrarenderelés",
-    "adminRerenderFailed": "Nem sikerült elindítani az újrarenderelést: {error}"
+    "adminRerenderFailed": "Nem sikerült elindítani az újrarenderelést: {error}",
+    "adminRerenderStarted": "Az újrarenderelés elindult.",
+    "adminRerenderStartedWithWarnings": "Az újrarenderelés elindult. Néhány közzétett kimenet a helyén maradt:"
   },
   "themeSelector": {
     "videoTheme": "Videó téma",

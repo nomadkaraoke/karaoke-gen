@@ -1688,7 +1688,6 @@ async def delete_job_outputs(
     Returns:
         Deletion results for each service
     """
-    import re
     from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
 
     admin_email = auth_data.user_email or "unknown"
@@ -1714,97 +1713,29 @@ async def delete_job_outputs(
         )
 
     state_data = job.state_data or {}
-    results = {
-        "youtube": {"status": "skipped", "reason": "no youtube_url in state_data"},
-        "dropbox": {"status": "skipped", "reason": "no brand_code or dropbox_path"},
-        "gdrive": {"status": "skipped", "reason": "no gdrive_files in state_data"},
-    }
+    from backend.services.published_outputs_cleanup import (
+        delete_dropbox_folder,
+        delete_gdrive_files,
+        delete_youtube_video,
+        snapshot_published_outputs,
+    )
 
     # Snapshot current outputs before cleanup (preserved in timeline metadata)
-    deleted_outputs = {}
-    if state_data.get('youtube_url'):
-        deleted_outputs['youtube_url'] = state_data['youtube_url']
-    if state_data.get('dropbox_link'):
-        deleted_outputs['dropbox_link'] = state_data['dropbox_link']
-    if state_data.get('brand_code'):
-        deleted_outputs['brand_code'] = state_data['brand_code']
-    if state_data.get('gdrive_files'):
-        deleted_outputs['gdrive_files'] = state_data['gdrive_files']
+    deleted_outputs = snapshot_published_outputs(state_data)
 
     log_to_job(job_id, "admin", "INFO", f"Output deletion initiated by {admin_email}", {"deleted_outputs": deleted_outputs})
 
-    # Clean up YouTube
-    youtube_url = state_data.get('youtube_url')
-    if youtube_url:
-        try:
-            video_id_match = re.search(r'(?:youtu\.be/|youtube\.com/watch\?v=)([^&\s]+)', youtube_url)
-            if video_id_match:
-                video_id = video_id_match.group(1)
-
-                from karaoke_gen.karaoke_finalise.karaoke_finalise import KaraokeFinalise
-                from backend.services.youtube_service import get_youtube_service
-
-                youtube_service = get_youtube_service()
-                if youtube_service.is_configured:
-                    finalise = KaraokeFinalise(
-                        dry_run=False,
-                        non_interactive=True,
-                        user_youtube_credentials=youtube_service.get_credentials_dict()
-                    )
-                    success = finalise.delete_youtube_video(video_id)
-                    results["youtube"] = {
-                        "status": "success" if success else "failed",
-                        "video_id": video_id
-                    }
-                else:
-                    results["youtube"] = {"status": "skipped", "reason": "YouTube credentials not configured"}
-            else:
-                results["youtube"] = {"status": "failed", "reason": f"Could not extract video ID from {youtube_url}"}
-        except Exception as e:
-            logger.error(f"Error deleting YouTube video for job {job_id}: {e}", exc_info=True)
-            results["youtube"] = {"status": "error", "error": str(e)}
-
-    # Clean up Dropbox
+    # Shared helpers (same as Edit / admin re-render): the Dropbox folder name is
+    # sanitised exactly like the uploader names it.
     brand_code = state_data.get('brand_code')
-    dropbox_path = getattr(job, 'dropbox_path', None)
-    if brand_code and dropbox_path:
-        try:
-            from backend.services.dropbox_service import get_dropbox_service
-            dropbox = get_dropbox_service()
-            if dropbox.is_configured:
-                base_name = f"{job.artist} - {job.title}"
-                folder_name = f"{brand_code} - {base_name}"
-                full_path = f"{dropbox_path}/{folder_name}"
-                success = dropbox.delete_folder(full_path)
-                results["dropbox"] = {
-                    "status": "success" if success else "failed",
-                    "path": full_path
-                }
-            else:
-                results["dropbox"] = {"status": "skipped", "reason": "Dropbox credentials not configured"}
-        except Exception as e:
-            logger.error(f"Error deleting Dropbox folder for job {job_id}: {e}", exc_info=True)
-            results["dropbox"] = {"status": "error", "error": str(e)}
-
-    # Clean up Google Drive
-    gdrive_files = state_data.get('gdrive_files')
-    if gdrive_files:
-        try:
-            from backend.services.gdrive_service import get_gdrive_service
-            gdrive = get_gdrive_service()
-            if gdrive.is_configured:
-                file_ids = list(gdrive_files.values()) if isinstance(gdrive_files, dict) else []
-                delete_results = gdrive.delete_files(file_ids)
-                all_success = all(delete_results.values())
-                results["gdrive"] = {
-                    "status": "success" if all_success else "partial",
-                    "files": delete_results
-                }
-            else:
-                results["gdrive"] = {"status": "skipped", "reason": "Google Drive credentials not configured"}
-        except Exception as e:
-            logger.error(f"Error deleting Google Drive files for job {job_id}: {e}", exc_info=True)
-            results["gdrive"] = {"status": "error", "error": str(e)}
+    results = {
+        "youtube": delete_youtube_video(job_id, state_data.get('youtube_url')),
+        "dropbox": delete_dropbox_folder(
+            job_id, getattr(job, 'dropbox_path', None), brand_code, job.artist, job.title
+        ),
+        # Mirror cleanup happens below for any brand_code, Drive files or not.
+        "gdrive": delete_gdrive_files(job_id, state_data.get('gdrive_files'), brand_code, cleanup_mirror=False),
+    }
 
     # Remove the Nomad 720p master(s) from the GCS fast-sync mirror too (prefix-keyed
     # by brand_code, covers renames). Non-fatal, Nomad-only, no-op otherwise.
@@ -2624,12 +2555,11 @@ async def restart_job(
     workers_triggered = []
     error_msg = None
 
-    # A restart starts a new run: drop any failed admin re-render's marker.
+    # A restart starts a new run: drop any failed admin re-render's marker —
+    # folded into the restart's own atomic update below, so a restart that is
+    # rejected (e.g. 400 on preserve_audio_stems) keeps the marker.
     from backend.services.admin_rerender_service import clear_admin_rerender_update
     marker_clear = clear_admin_rerender_update(job)
-    if marker_clear:
-        job_manager.update_job(job_id, marker_clear)
-        cleared_keys.append("admin_rerender")
 
     from google.cloud.firestore_v1 import DELETE_FIELD, ArrayUnion
     db = job_manager.firestore.db
@@ -2683,6 +2613,9 @@ async def restart_job(
         ]
 
         update_payload = {}
+        update_payload.update(marker_clear)
+        if marker_clear:
+            cleared_keys.append("admin_rerender")
         for key in keys_to_clear:
             if key in state_data:
                 update_payload[f"state_data.{key}"] = DELETE_FIELD
@@ -2736,6 +2669,9 @@ async def restart_job(
         ]
 
         update_payload = {}
+        update_payload.update(marker_clear)
+        if marker_clear:
+            cleared_keys.append("admin_rerender")
         for key in keys_to_clear:
             if key in state_data:
                 update_payload[f"state_data.{key}"] = DELETE_FIELD

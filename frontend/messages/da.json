@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Render dette spor igen?",
     "adminRerenderTooltip": "Admin: regenerer alle videoer med den aktuelle renderer uden gennemsyn",
     "adminRerender": "Render igen",
-    "adminRerenderFailed": "Kunne ikke starte genrenderingen: {error}"
+    "adminRerenderFailed": "Kunne ikke starte genrenderingen: {error}",
+    "adminRerenderStarted": "Genrendering startet.",
+    "adminRerenderStartedWithWarnings": "Genrendering startet. Nogle udgivne outputs blev bibeholdt:"
   },
   "themeSelector": {
     "videoTheme": "Videotema",

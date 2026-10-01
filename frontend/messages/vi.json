@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Render lại bài hát này?",
     "adminRerenderTooltip": "Quản trị viên: tạo lại mọi video bằng trình kết xuất hiện tại mà không cần duyệt",
     "adminRerender": "Kết xuất lại",
-    "adminRerenderFailed": "Không thể bắt đầu kết xuất lại: {error}"
+    "adminRerenderFailed": "Không thể bắt đầu kết xuất lại: {error}",
+    "adminRerenderStarted": "Đã bắt đầu kết xuất lại.",
+    "adminRerenderStartedWithWarnings": "Đã bắt đầu kết xuất lại. Một số tệp đầu ra đã xuất bản được giữ nguyên:"
   },
   "themeSelector": {
     "videoTheme": "Chủ đề video",

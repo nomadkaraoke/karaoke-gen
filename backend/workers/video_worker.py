@@ -38,6 +38,7 @@ from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.admin_rerender_service import (
+    active_admin_rerender,
     admin_rerender_kept_outputs,
     suppress_customer_notifications,
 )
@@ -408,7 +409,8 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 # A theme/admin re-render (if any) finished; only a FAILED
                 # re-render keeps its marker (it lets the retry re-run it).
                 'state_data.theme_rerender': DELETE_FIELD,
-                'state_data.admin_rerender': DELETE_FIELD,
+                # The admin re-render marker is cleared atomically WITH the
+                # COMPLETE transition below, so a failed transition keeps it.
             }
             if result.distribution_warnings:
                 state_updates['state_data.distribution_warnings'] = result.distribution_warnings
@@ -444,9 +446,11 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             # opted in (read from the snapshot taken at worker start — the
             # marker itself was just cleared above).
             notify_customer = not suppress_customer_notifications(job)
-            if not notify_customer:
+            is_admin_rerender = bool(active_admin_rerender(job))
+            if is_admin_rerender:
                 completion_metadata["admin_rerender"] = True
-                completion_metadata["customer_notified"] = False
+                completion_metadata["customer_notified"] = notify_customer
+            if not notify_customer:
                 job_log.info("Admin re-render: completion email/push suppressed (notify_customer=False)")
             job_manager.transition_to_state(
                 job_id=job_id,
@@ -455,6 +459,9 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
                 notify=notify_customer,
+                extra_updates={'state_data.admin_rerender': DELETE_FIELD},
+                # An admin re-render isn't a newly completed job for the user.
+                count_completion=not is_admin_rerender,
             )
 
             # If this was a requests-board community pick published directly here
@@ -967,7 +974,11 @@ async def generate_video_legacy(job_id: str) -> bool:
                     organised_dir_rclone_root=getattr(job, 'organised_dir_rclone_root', None),
                     public_share_dir=None,  # Not used in cloud
                     # Notifications
-                    discord_webhook_url=getattr(job, 'discord_webhook_url', None),
+                    # A quiet admin re-render doesn't announce the new video.
+                    discord_webhook_url=(
+                        None if suppress_customer_notifications(job)
+                        else getattr(job, 'discord_webhook_url', None)
+                    ),
                     # YouTube upload (server-side with pre-loaded credentials)
                     youtube_client_secrets_file=None,  # Not used with pre-stored credentials
                     youtube_description_file=youtube_desc_path,
@@ -1070,6 +1081,7 @@ async def generate_video_legacy(job_id: str) -> bool:
                 message="Karaoke generation complete!",
                 timeline_metadata=completion_metadata,
                 notify=notify_customer,
+                count_completion=not active_admin_rerender(job),
             )
 
             # Advance a requests-board community pick to `published` + fan out

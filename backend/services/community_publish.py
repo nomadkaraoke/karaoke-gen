@@ -62,6 +62,9 @@ async def notify_community_publish(
         if request.voters_notified:
             return request.id
         if not notify_voters:
+            # Record the suppression so the reconcile (list_published_unnotified)
+            # doesn't email the voters on its next run anyway.
+            service.mark_voter_fanout_suppressed(request.id)
             logger.info("community pick %s re-published (job %s): voter emails suppressed", request.id, job_id)
             return request.id
 

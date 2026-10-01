@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Render semula trek ini?",
     "adminRerenderTooltip": "Admin: jana semula setiap video dengan renderer semasa, tanpa semakan",
     "adminRerender": "Render semula",
-    "adminRerenderFailed": "Tidak dapat memulakan render semula: {error}"
+    "adminRerenderFailed": "Tidak dapat memulakan render semula: {error}",
+    "adminRerenderStarted": "Render semula dimulakan.",
+    "adminRerenderStartedWithWarnings": "Render semula dimulakan. Beberapa output yang diterbitkan telah dikekalkan:"
   },
   "themeSelector": {
     "videoTheme": "Tema Video",

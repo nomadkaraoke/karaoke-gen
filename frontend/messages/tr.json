@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Bu parça yeniden render edilsin mi?",
     "adminRerenderTooltip": "Admin: İnceleme olmadan, güncel render motoruyla tüm videoları yeniden oluştur",
     "adminRerender": "Yeniden render et",
-    "adminRerenderFailed": "Yeniden render başlatılamadı: {error}"
+    "adminRerenderFailed": "Yeniden render başlatılamadı: {error}",
+    "adminRerenderStarted": "Yeniden render başlatıldı.",
+    "adminRerenderStartedWithWarnings": "Yeniden render başlatıldı. Yayınlanan bazı çıktılar olduğu gibi bırakıldı:"
   },
   "themeSelector": {
     "videoTheme": "Video Teması",

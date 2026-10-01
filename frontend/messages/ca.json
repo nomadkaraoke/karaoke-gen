@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Vols tornar a renderitzar aquesta pista?",
     "adminRerenderTooltip": "Admin: regenera tots els vídeos amb el renderitzador actual, sense revisió",
     "adminRerender": "Tornar a renderitzar",
-    "adminRerenderFailed": "No s'ha pogut iniciar la nova renderització: {error}"
+    "adminRerenderFailed": "No s'ha pogut iniciar la nova renderització: {error}",
+    "adminRerenderStarted": "S'ha iniciat la rerenderització.",
+    "adminRerenderStartedWithWarnings": "S'ha iniciat la rerenderització. Algunes sortides publicades s'han mantingut al seu lloc:"
   },
   "themeSelector": {
     "videoTheme": "Tema del vídeo",

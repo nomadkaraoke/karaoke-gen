@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Deze track opnieuw renderen?",
     "adminRerenderTooltip": "Admin: genereer elke video opnieuw met de huidige renderer, zonder beoordeling",
     "adminRerender": "Opnieuw renderen",
-    "adminRerenderFailed": "Kon het opnieuw renderen niet starten: {error}"
+    "adminRerenderFailed": "Kon het opnieuw renderen niet starten: {error}",
+    "adminRerenderStarted": "Opnieuw renderen gestart.",
+    "adminRerenderStartedWithWarnings": "Opnieuw renderen gestart. Sommige gepubliceerde outputs zijn ongewijzigd gelaten:"
   },
   "themeSelector": {
     "videoTheme": "Video Thema",

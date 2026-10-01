@@ -744,7 +744,9 @@
     "adminRerenderTitle": "このトラックを再レンダリングしますか？",
     "adminRerenderTooltip": "管理者用：レビューなしで、現在のレンダラーを使ってすべての動画を再生成します",
     "adminRerender": "再レンダリング",
-    "adminRerenderFailed": "再レンダリングを開始できませんでした: {error}"
+    "adminRerenderFailed": "再レンダリングを開始できませんでした: {error}",
+    "adminRerenderStarted": "再レンダリングを開始しました。",
+    "adminRerenderStartedWithWarnings": "再レンダリングを開始しました。一部の公開済み出力はそのまま保持されました："
   },
   "themeSelector": {
     "videoTheme": "動画テーマ",

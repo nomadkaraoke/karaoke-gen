@@ -2056,7 +2056,7 @@ async def retry_job(
         # Same for an admin re-render (state_data.admin_rerender): re-run it,
         # keeping the admin's notify_customer choice. Its published outputs were
         # already removed on the first attempt (recorded in the marker).
-        if (admin_rerender and original_status == JobStatus.FAILED
+        if (admin_rerender and original_status in (JobStatus.FAILED, JobStatus.CANCELLED)
                 and not _has_title_screen(file_urls)):
             from backend.services.admin_rerender_service import AdminRerenderService
             from backend.services.theme_rerender_service import RerenderError

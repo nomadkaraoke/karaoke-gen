@@ -744,7 +744,9 @@
     "adminRerenderTitle": "I-re-render ang track na ito?",
     "adminRerenderTooltip": "Admin: muling buuin ang bawat video gamit ang kasalukuyang renderer, nang walang pagsusuri",
     "adminRerender": "I-re-render",
-    "adminRerenderFailed": "Hindi masimulan ang pag-re-render: {error}"
+    "adminRerenderFailed": "Hindi masimulan ang pag-re-render: {error}",
+    "adminRerenderStarted": "Nagsimula na ang re-render.",
+    "adminRerenderStartedWithWarnings": "Nagsimula na ang re-render. May ilang na-publish na output na hindi ginalaw:"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",

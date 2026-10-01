@@ -744,7 +744,9 @@
     "adminRerenderTitle": "Renderöidäänkö tämä kappale uudelleen?",
     "adminRerenderTooltip": "Ylläpito: luo kaikki videot uudelleen nykyisellä renderöijällä ilman tarkistusta",
     "adminRerender": "Renderöi uudelleen",
-    "adminRerenderFailed": "Uudelleenrenderöintiä ei voitu aloittaa: {error}"
+    "adminRerenderFailed": "Uudelleenrenderöintiä ei voitu aloittaa: {error}",
+    "adminRerenderStarted": "Uudelleenrenderöinti aloitettu.",
+    "adminRerenderStartedWithWarnings": "Uudelleenrenderöinti aloitettu. Osa julkaistuista tuotoksista jätettiin paikoilleen:"
   },
   "themeSelector": {
     "videoTheme": "Videoteema",
