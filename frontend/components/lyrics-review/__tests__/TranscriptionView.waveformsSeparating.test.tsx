@@ -15,7 +15,7 @@ const data = {
   corrections: [],
 } as unknown as CorrectionData
 
-const renderWithStatus = (status: VocalsAudioStatus) =>
+const renderWithStatus = (status: VocalsAudioStatus, viewMode: 'simple' | 'waveforms' = 'simple') =>
   render(
     <VocalsAudioDataLoaderContext.Provider value={{ audioData: null, status }}>
       <TranscriptionView
@@ -24,7 +24,7 @@ const renderWithStatus = (status: VocalsAudioStatus) =>
         flashingType={null}
         highlightInfo={null}
         mode="edit"
-        viewMode="simple"
+        viewMode={viewMode}
       />
     </VocalsAudioDataLoaderContext.Provider>
   )
@@ -43,5 +43,10 @@ describe('TranscriptionView Waveforms toggle while separation runs', () => {
   it.each<VocalsAudioStatus>(['loading', 'ready', 'failed', 'idle'])('shows the normal icon when status is %s', (status) => {
     renderWithStatus(status)
     expect(screen.queryByTestId('waveforms-separating-spinner')).not.toBeInTheDocument()
+  })
+
+  it('keeps the selected styling on the Waveforms toggle once the waveforms load', () => {
+    renderWithStatus('ready', 'waveforms')
+    expect(screen.getByRole('radio', { name: 'waveforms view' })).toHaveAttribute('data-state', 'on')
   })
 })

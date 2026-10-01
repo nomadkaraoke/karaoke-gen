@@ -207,19 +207,24 @@ export default function TranscriptionView({
               <Clock className="h-3.5 w-3.5 mr-1.5" />
               {t('advanced')}
             </ToggleGroupItem>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ToggleGroupItem value="waveforms" aria-label="waveforms view" className="h-7 px-2.5 text-[0.75rem]">
-                  {vocalsSeparating ? (
+            {vocalsSeparating ? (
+              // Only wrap while separating: TooltipTrigger's own data-state overrides the
+              // toggle's data-state="on", which would hide the selected styling.
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ToggleGroupItem value="waveforms" aria-label="waveforms view" className="h-7 px-2.5 text-[0.75rem]">
                     <Loader2 data-testid="waveforms-separating-spinner" className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                  ) : (
-                    <AudioWaveform className="h-3.5 w-3.5 mr-1.5" />
-                  )}
-                  {t('waveforms')}
-                </ToggleGroupItem>
-              </TooltipTrigger>
-              {vocalsSeparating && <TooltipContent>{t('waveformsSeparating')}</TooltipContent>}
-            </Tooltip>
+                    {t('waveforms')}
+                  </ToggleGroupItem>
+                </TooltipTrigger>
+                <TooltipContent>{t('waveformsSeparating')}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <ToggleGroupItem value="waveforms" aria-label="waveforms view" className="h-7 px-2.5 text-[0.75rem]">
+                <AudioWaveform className="h-3.5 w-3.5 mr-1.5" />
+                {t('waveforms')}
+              </ToggleGroupItem>
+            )}
           </ToggleGroup>
         </div>
 

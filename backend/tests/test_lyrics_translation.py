@@ -154,6 +154,19 @@ def test_no_language_removes_stale_file_and_returns_none():
     assert "jobs/job1/lyrics/translations.json" in storage.deleted
 
 
+def test_translation_turned_off_clears_previous_outcome():
+    # A re-render after an admin removes the language must not keep the old
+    # "translated" outcome, or YouTube would still be labelled with a translation.
+    from backend.services.youtube_description import translated_language_name
+
+    j = job(None)
+    j.state_data = {"lyrics_translation": {"language": "es", "status": "translated"}}
+    jm = MagicMock()
+    assert prepare_job_translations("job1", j, FakeStorage({}), jm) is None
+    jm.update_state_data.assert_called_once_with("job1", "lyrics_translation", {"status": "off"})
+    assert translated_language_name({"lyrics_translation": {"status": "off"}}) is None
+
+
 def test_translates_final_reviewed_lyrics():
     storage = FakeStorage({
         "jobs/job1/lyrics/corrections.json": corrections("Hello world", "Goodbye"),
