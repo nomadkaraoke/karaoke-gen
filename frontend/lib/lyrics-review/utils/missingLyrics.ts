@@ -276,6 +276,59 @@ export const buildMissingLyricsSegments = (
   return out
 }
 
+const MIN_WORD_S = 0.05 // a fitted line must leave at least this much per word
+const EDGE_PAD_S = 0.05 // keep this clear of the neighbouring lines' words
+
+/**
+ * Keep synced-reference timings inside the space the gap actually has: a reference line
+ * may run past the next transcribed line (LRCLIB is line-synced; its last line in a gap
+ * often ends after the next line starts — job 5710831e: 33.07s vs next line at 32.40s).
+ * Each timed line is clamped to [previous line's end, `hi`] and only an overflowing line
+ * is compressed (affinely, keeping its word proportions); a line that can't fit sensibly
+ * falls back to untimed, so the submit guard forces a Tap To Sync. Pure.
+ */
+export const fitTimedLinesToWindow = (
+  lines: LyricsSegment[],
+  lo: number,
+  hi: number
+): LyricsSegment[] => {
+  let cursor = lo
+  return lines.map((seg) => {
+    if (!seg.words.length || !seg.words.every(isTimed)) return seg
+    const t0 = seg.words[0].start_time as number
+    const t1 = seg.words[seg.words.length - 1].end_time as number
+    const start = Math.max(t0, cursor)
+    const end = Math.min(t1, hi)
+    if (t1 > t0 && start === t0 && end === t1) {
+      cursor = t1
+      return seg
+    }
+    if (end - start < MIN_WORD_S * seg.words.length || t1 <= t0) {
+      const words = seg.words.map((w) => ({ ...w, start_time: null, end_time: null }))
+      return { ...seg, words, start_time: Math.max(lo, cursor), end_time: hi }
+    }
+    const k = (end - start) / (t1 - t0)
+    const map = (t: number) => Math.round((start + (t - t0) * k) * 1000) / 1000
+    const words = seg.words.map((w) => ({
+      ...w,
+      start_time: map(w.start_time as number),
+      end_time: map(w.end_time as number),
+    }))
+    cursor = end
+    return { ...seg, words, start_time: words[0].start_time, end_time: words[words.length - 1].end_time }
+  })
+}
+
+const lastTimedEnd = (seg?: LyricsSegment): number | null => {
+  const timed = (seg?.words ?? []).filter(isTimed)
+  return timed.length ? (timed[timed.length - 1].end_time as number) : null
+}
+
+const firstTimedStart = (seg?: LyricsSegment): number | null => {
+  const timed = (seg?.words ?? []).find(isTimed)
+  return timed ? (timed.start_time as number) : null
+}
+
 /**
  * Insert the gap's reference lines into `data.corrected_segments` at the right
  * chronological position (splitting a segment that spans the gap). Pure.
@@ -297,7 +350,12 @@ export const insertMissingLyrics = (
   const singer = following?.singer ?? preceding?.singer
   const referenceSegments =
     open.synced && open.source ? data.reference_lyrics?.[open.source]?.segments ?? null : null
-  const inserted = buildMissingLyricsSegments(open.gap, open.lines, singer, referenceSegments)
+  const built = buildMissingLyricsSegments(open.gap, open.lines, singer, referenceSegments)
+  // Window the inserted lines may occupy: after the preceding line's last word, before
+  // the following line's first word (and within the gap).
+  const lo = Math.max(open.gap.start, (lastTimedEnd(preceding) ?? -Infinity) + EDGE_PAD_S)
+  const hi = Math.min(open.gap.end, (firstTimedStart(following) ?? Infinity) - EDGE_PAD_S)
+  const inserted = fitTimedLinesToWindow(built, lo, hi)
   if (inserted.length === 0) {
     return { data, insertedAt: plan.insertAt, inserted, split: null }
   }
