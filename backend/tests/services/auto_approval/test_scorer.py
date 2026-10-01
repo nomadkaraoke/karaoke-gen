@@ -445,3 +445,38 @@ def test_timing_gate_flows_through_score_job() -> None:
     verdict = score_job(_corrections_json(), None, None, timing_signals=sig)
     assert verdict.lyrics.tier == "timing-gate"
     assert verdict.overall_auto is False
+
+
+
+# ---------------------------------------------------------------- missing-lyrics gate
+
+def _gap(evidenced, start=20.66, end=32.4, run=10.26, synced=None, refs=None):
+    return {"start": start, "end": end, "longest_run_s": run, "suspect": True, "evidenced": evidenced,
+            "synced_reference_lines": synced or {}, "reference_lines": refs or {}}
+
+
+class TestMissingLyricsGate:
+    def test_reasons_only_for_evidenced_gaps(self):
+        from backend.services.auto_approval.scorer import missing_lyrics_reasons
+
+        gaps = {"gaps": [_gap(True, synced={"lrclib": ["a", "b", "c"]}, refs={"genius": ["a", "b"]}),
+                         _gap(False, start=60, end=80)]}
+        reasons = missing_lyrics_reasons(gaps)
+        assert len(reasons) == 1
+        assert "~10s of singing at 0:20-0:32" in reasons[0] and "3 line(s)" in reasons[0]
+
+    def test_no_gaps_no_reasons(self):
+        from backend.services.auto_approval.scorer import missing_lyrics_reasons
+
+        assert missing_lyrics_reasons(None) == []
+        assert missing_lyrics_reasons({"gaps": []}) == []
+
+    def test_evidenced_gap_overrides_confident_lyrics(self):
+        from backend.services.auto_approval.scorer import score_lyrics
+        from backend.services.auto_approval.models import LyricsVerdict
+
+        data = _corrections_json(anchor_words=20, gap_words=0, synced=True)
+        assert score_lyrics(data).verdict == LyricsVerdict.AUTO
+        gated = score_lyrics(data, vocal_gaps={"gaps": [_gap(True, synced={"lrclib": ["x"]})]})
+        assert gated.verdict == LyricsVerdict.REVIEW and gated.tier == "missing-lyrics-gate"
+        assert score_lyrics(data, vocal_gaps={"gaps": [_gap(False)]}).verdict == LyricsVerdict.AUTO

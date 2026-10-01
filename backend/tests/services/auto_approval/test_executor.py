@@ -476,13 +476,14 @@ async def test_gated_lyrics_skip_timing_compute() -> None:
 
 # ---------------------------------------------------------------- vocal gaps (shadow)
 
-def _vocal_gaps_result(suspect_count=1, error=None):
+def _vocal_gaps_result(suspect_count=1, error=None, evidenced=False):
     from backend.services.auto_approval.vocal_gaps import VocalGap, VocalGapsResult
 
     gaps = [VocalGap(start=20.66, end=32.4, duration=11.74, active_fraction=0.96,
-                     longest_run_s=11.76, suspect=True,
+                     longest_run_s=11.76, suspect=True, evidenced=evidenced,
                      reference_lines={"genius": ["line one", "line two"]})] if suspect_count else []
     return VocalGapsResult(gaps=gaps, suspect_count=suspect_count,
+                           evidenced_count=1 if (evidenced and suspect_count) else 0,
                            max_suspect_run_s=11.76 if suspect_count else 0.0, error=error)
 
 
@@ -506,7 +507,38 @@ async def test_vocal_gaps_analyzed_and_stored_without_changing_outcome() -> None
     assert stored["gaps"][0]["reference_lines"] == {"genius": ["line one", "line two"]}
     assert stored["source"] == "auto_approval" and "analyzed_at" in stored
     payload = job_manager.update_processing_metadata.call_args[0][2]
-    assert payload["vocal_gaps"] == {"status": "checked", "suspect_count": 1, "max_suspect_run_s": 11.76}
+    assert payload["vocal_gaps"] == {"status": "checked", "suspect_count": 1, "evidenced_count": 0,
+                                     "max_suspect_run_s": 11.76}
+
+
+@pytest.mark.asyncio
+async def test_evidenced_missing_lyrics_block_auto_approval() -> None:
+    """Singing with no words where the reference lyrics have lines = dropped lyrics:
+    a confident job must go to review with an explicit reason."""
+    with patch("backend.services.auto_approval.executor.analyze_vocal_gaps",
+               return_value=_vocal_gaps_result(evidenced=True)), \
+         patch("backend.services.auto_approval.executor._compute_timing_signals") as timing:
+        result, job_manager, _, worker = await _run(_job_with_lead_stem())
+    assert result["outcome"] == "review"
+    worker.trigger_render_video_worker.assert_not_called()
+    timing.assert_not_called()  # lyrics no longer AUTO, so the timing check is skipped
+    payload = job_manager.update_processing_metadata.call_args[0][2]
+    assert payload["lyrics"]["tier"] == "missing-lyrics-gate"
+    assert any("possible missing lyrics" in r and "0:20-0:32" in r and "2 line(s)" in r
+               for r in payload["lyrics"]["reasons"])
+    assert payload["vocal_gaps"]["evidenced_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_cached_evidenced_gaps_still_gate() -> None:
+    job = _job_with_lead_stem()
+    gaps = _vocal_gaps_result(evidenced=True).to_dict()
+    job.state_data["vocal_gaps"] = {**gaps, "input_key": _input_key_for(job)}
+    with patch("backend.services.auto_approval.executor.analyze_vocal_gaps") as analyze:
+        result, job_manager, _, _ = await _run(job)
+    analyze.assert_not_called()
+    assert result["outcome"] == "review"
+    assert job_manager.update_processing_metadata.call_args[0][2]["lyrics"]["tier"] == "missing-lyrics-gate"
 
 
 @pytest.mark.asyncio

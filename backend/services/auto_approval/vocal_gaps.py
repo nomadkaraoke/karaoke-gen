@@ -30,7 +30,7 @@ from backend.services.auto_approval.timing_check import _load_mono, _rms_activit
 
 logger = logging.getLogger(__name__)
 
-VOCAL_GAPS_VERSION = "0.1.0"
+VOCAL_GAPS_VERSION = "0.2.0"
 
 MIN_GAP_S = 3.0           # shorter gaps are normal phrasing
 BREATH_BRIDGE_S = 0.5     # silences this short inside singing don't end a vocal run
@@ -56,7 +56,10 @@ class VocalGap:
     active_fraction: float     # share of the gap where the lead vocal is active
     longest_run_s: float       # longest vocal run inside the gap, breaths bridged
     reference_lines: Dict[str, List[str]] = field(default_factory=dict)  # source -> lines
-    suspect: bool = False
+    # Synced reference lines (e.g. LRCLIB) whose timestamp falls inside the gap
+    synced_reference_lines: Dict[str, List[str]] = field(default_factory=dict)
+    suspect: bool = False      # sung run long enough to be dropped lyrics (audio only)
+    evidenced: bool = False    # suspect AND reference lyrics place lines in this gap
 
 
 @dataclass
@@ -64,6 +67,7 @@ class VocalGapsResult:
     version: str = VOCAL_GAPS_VERSION
     gaps: List[VocalGap] = field(default_factory=list)
     suspect_count: int = 0
+    evidenced_count: int = 0
     max_suspect_run_s: float = 0.0
     error: Optional[str] = None
 
@@ -195,6 +199,37 @@ def reference_lines_between(correction_data: Dict[str, Any], word_before: Option
     return out
 
 
+# ---- synced reference lines in a gap ---------------------------------------------
+
+SYNCED_EDGE_S = 0.5  # line must start this far inside the gap (tolerates small offsets)
+
+
+def _synced_reference_lines(correction_data: Dict[str, Any]) -> Dict[str, List[Tuple[float, str]]]:
+    """source -> [(line start time, text)] for reference sources with word timings."""
+    out: Dict[str, List[Tuple[float, str]]] = {}
+    for source, ref in (correction_data.get("reference_lyrics") or {}).items():
+        lines = []
+        for seg in (ref or {}).get("segments") or []:
+            starts = [w.get("start_time") for w in seg.get("words") or [] if w.get("start_time") is not None]
+            text = (seg.get("text") or "").strip()
+            if starts and text and not (text.startswith("[") and text.endswith("]")):
+                lines.append((float(starts[0]), text))
+        if lines:
+            out[source] = lines
+    return out
+
+
+def synced_lines_in_gap(synced: Dict[str, List[Tuple[float, str]]], start: float, end: float) -> Dict[str, List[str]]:
+    """Synced reference lines that start inside (start, end), with an edge tolerance.
+
+    On the 2026-10 audit this was the most reliable evidence of dropped lyrics: only ~25%
+    of audio-only suspect gaps had a synced reference line inside them.
+    """
+    found = {src: [t for ts, t in lines if start + SYNCED_EDGE_S <= ts <= end - SYNCED_EDGE_S]
+             for src, lines in synced.items()}
+    return {src: lines for src, lines in found.items() if lines}
+
+
 # ---- entry point ----------------------------------------------------------------
 
 def compute_vocal_gaps(segments: List[dict], lead_vocals_path: str,
@@ -216,6 +251,11 @@ def compute_vocal_gaps(segments: List[dict], lead_vocals_path: str,
         except Exception as e:  # noqa: BLE001 — reference evidence is secondary
             logger.warning("vocal gaps: reference index failed: %s", e)
             indexes = None
+        try:
+            synced = _synced_reference_lines(correction_data)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("vocal gaps: synced reference parse failed: %s", e)
+            synced = {}
 
         result = VocalGapsResult()
         for start, end, before, after in transcription_gaps(segments, duration):
@@ -238,11 +278,14 @@ def compute_vocal_gaps(segments: List[dict], lead_vocals_path: str,
                 active_fraction=round(frac, 3), longest_run_s=round(run_s, 2),
                 reference_lines=refs,
             )
+            gap.synced_reference_lines = synced_lines_in_gap(synced, start, end)
             gap.suspect = run_s >= SUSPECT_MIN_RUN_S
+            gap.evidenced = gap.suspect and bool(gap.reference_lines or gap.synced_reference_lines)
             result.gaps.append(gap)
 
         suspects = [g for g in result.gaps if g.suspect]
         result.suspect_count = len(suspects)
+        result.evidenced_count = sum(1 for g in suspects if g.evidenced)
         result.max_suspect_run_s = max((g.longest_run_s for g in suspects), default=0.0)
         return result
     except Exception as e:  # noqa: BLE001 — shadow analysis is best-effort

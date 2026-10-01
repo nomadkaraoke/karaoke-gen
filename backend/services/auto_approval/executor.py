@@ -38,7 +38,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from backend.models.job import JobStatus
 from backend.services.auto_approval.instrumental import (
@@ -128,7 +128,16 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
         audio_complete = bool(state_data.get("audio_complete", False))
         stems = (job.file_urls or {}).get("stems", {}) if job.file_urls else {}
 
-        verdict = score_job(corrections, backing_analysis, ai_suggestions)
+        # Missing-lyrics gate input: sung stretches the transcription has no words
+        # for. Gates only when reference lyrics put lines in the gap ("evidenced");
+        # fail-OPEN on pending audio / analysis errors (recorded below). Stem
+        # download + decode: keep it off the event loop.
+        vocal_gaps_info, vocal_gaps = await asyncio.to_thread(
+            _vocal_gaps_shadow,
+            job_id, job, corrections, ai_suggestions, stems, audio_complete, storage, job_manager,
+        )
+
+        verdict = score_job(corrections, backing_analysis, ai_suggestions, vocal_gaps=vocal_gaps)
 
         # Timing-plausibility gate: word timing vs the lead-vocal stem. Audio
         # IO (~15MB stem + a few seconds of numpy), so it runs only when the
@@ -157,16 +166,8 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
                     if signals.fired:
                         verdict = score_job(
                             corrections, backing_analysis, ai_suggestions,
-                            timing_signals=signals,
+                            timing_signals=signals, vocal_gaps=vocal_gaps,
                         )
-
-        # Shadow-only: sung stretches the transcription has no words for (dropped
-        # lines). Recorded for calibration; never changes the verdict (yet).
-        # Stem download + decode: keep it off the event loop.
-        vocal_gaps_info = await asyncio.to_thread(
-            _vocal_gaps_shadow,
-            job_id, job, corrections, ai_suggestions, stems, audio_complete, storage, job_manager,
-        )
 
         blockers = _enforcement_blockers(job, settings)
         custom_instrumental = has_custom_instrumental(job)
@@ -390,35 +391,37 @@ def vocal_gaps_input_key(segments, stems) -> str:
 
 
 def _vocal_gaps_shadow(job_id, job, corrections, ai_suggestions, stems, audio_complete,
-                       storage, job_manager) -> Dict[str, Any]:
+                       storage, job_manager) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
     """Analyze when stems exist and store ``state_data.vocal_gaps``; reuse a stored
     result only if it was computed from the same lyrics + stem (``input_key``).
 
-    Returns a compact summary for the shadow payload. Never raises. Blocking (stem
-    download + decode): call via ``asyncio.to_thread``.
+    Returns ``(summary for the payload, full vocal-gaps dict or None)``. Never raises.
+    Blocking (stem download + decode): call via ``asyncio.to_thread``.
     """
     try:
         if not audio_complete:
-            return {"status": "pending_audio"}
+            return {"status": "pending_audio"}, None
         segments = _published_segments(corrections, ai_suggestions)
         input_key = vocal_gaps_input_key(segments, stems)
         existing = (job.state_data or {}).get("vocal_gaps")
         if existing and existing.get("input_key") == input_key:
             return {"status": "cached", "suspect_count": existing.get("suspect_count"),
-                    "max_suspect_run_s": existing.get("max_suspect_run_s")}
+                    "evidenced_count": existing.get("evidenced_count", 0),
+                    "max_suspect_run_s": existing.get("max_suspect_run_s")}, existing
         result = analyze_vocal_gaps(job_id, corrections, segments, stems, storage)
         if result is None:
-            return {"status": "no_lead_stem"}
+            return {"status": "no_lead_stem"}, None
         if result.error:
-            return {"status": "error", "error": result.error}
+            return {"status": "error", "error": result.error}, None
         stored = {**result.to_dict(), "analyzed_at": datetime.now(timezone.utc).isoformat(),
                   "source": "auto_approval", "input_key": input_key}
         job_manager.update_state_data(job_id, "vocal_gaps", stored)
         return {"status": "checked", "suspect_count": result.suspect_count,
-                "max_suspect_run_s": result.max_suspect_run_s}
+                "evidenced_count": result.evidenced_count,
+                "max_suspect_run_s": result.max_suspect_run_s}, stored
     except Exception as e:  # noqa: BLE001
-        logger.warning(f"[job:{job_id}] vocal gap shadow failed non-fatally: {e}")
-        return {"status": "error", "error": str(e)}
+        logger.warning(f"[job:{job_id}] vocal gap analysis failed non-fatally: {e}")
+        return {"status": "error", "error": str(e)}, None
 
 
 def analyze_job_vocal_gaps(job_id: str, store: bool = True) -> Dict[str, Any]:

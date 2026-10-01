@@ -259,3 +259,62 @@ class TestReferenceLinesBetween:
                    if g.start == 8.0)
         assert gap.suspect
         assert gap.reference_lines == {"genius": ["we kept moments close", "you were pretty as a flower"]}
+
+
+
+# --------------------------------------------------------------- synced reference evidence
+
+class TestSyncedEvidence:
+    def _synced_ref(self, lines):
+        """[(start, text)] -> reference source with word timings (like LRCLIB)."""
+        segs = []
+        for li, (start, text) in enumerate(lines):
+            segs.append({"text": text, "words": [
+                {"id": f"s{li}_{wi}", "text": t, "start_time": start + wi * 0.3, "end_time": start + wi * 0.3 + 0.25}
+                for wi, t in enumerate(text.split())]})
+        return {"segments": segs}
+
+    def test_lines_inside_gap_with_edge_tolerance(self):
+        from backend.services.auto_approval.vocal_gaps import _synced_reference_lines, synced_lines_in_gap
+
+        data = {"reference_lyrics": {"lrclib": self._synced_ref(
+            [(5.0, "before gap"), (8.2, "at the edge"), (12.0, "dropped one"), (18.0, "dropped two"),
+             (19.8, "too close to end"), (25.0, "after gap")]),
+            "genius": _ref(["unsynced line"])}}
+        synced = _synced_reference_lines(data)
+        assert set(synced) == {"lrclib"}  # unsynced sources ignored
+        assert synced_lines_in_gap(synced, 8.0, 20.0) == {"lrclib": ["dropped one", "dropped two"]}
+        assert synced_lines_in_gap(synced, 30.0, 40.0) == {}
+
+    def test_section_headers_ignored(self):
+        from backend.services.auto_approval.vocal_gaps import _synced_reference_lines
+
+        data = {"reference_lyrics": {"lrclib": self._synced_ref([(1.0, "[Chorus]"), (2.0, "real line")])}}
+        assert _synced_reference_lines(data) == {"lrclib": [(2.0, "real line")]}
+
+    def test_evidenced_requires_suspect_and_reference(self, tmp_path):
+        # singing 2-20s, words only 2-4s; synced reference has lines at 10s and 15s
+        stem = _synth_stem(tmp_path, [(2.0, 20.0), (30.0, 34.0)])
+        segs = _segments([_word("a", "a", 2.0, 4.0)], [_word("b", "b", 30.0, 34.0)])
+        data = {"reference_lyrics": {"lrclib": self._synced_ref([(10.0, "dropped line"), (15.0, "another")])}}
+        result = compute_vocal_gaps(segs, stem, data)
+        gap = next(g for g in result.gaps if g.start == 4.0)
+        assert gap.suspect and gap.evidenced
+        assert gap.synced_reference_lines == {"lrclib": ["dropped line", "another"]}
+        assert result.evidenced_count == 1
+
+    def test_reference_lines_without_singing_are_not_evidenced(self, tmp_path):
+        """An instrumental where the reference (mis)places lines must not gate."""
+        stem = _synth_stem(tmp_path, [(2.0, 4.0), (30.0, 34.0)])
+        segs = _segments([_word("a", "a", 2.0, 4.0)], [_word("b", "b", 30.0, 34.0)])
+        data = {"reference_lyrics": {"lrclib": self._synced_ref([(10.0, "misplaced line")])}}
+        gap = next(g for g in compute_vocal_gaps(segs, stem, data).gaps if g.start == 4.0)
+        assert gap.synced_reference_lines and not gap.suspect and not gap.evidenced
+
+    def test_singing_without_reference_is_suspect_but_not_evidenced(self, tmp_path):
+        stem = _synth_stem(tmp_path, [(2.0, 20.0), (30.0, 34.0)])
+        segs = _segments([_word("a", "a", 2.0, 4.0)], [_word("b", "b", 30.0, 34.0)])
+        result = compute_vocal_gaps(segs, stem, {})
+        gap = next(g for g in result.gaps if g.start == 4.0)
+        assert gap.suspect and not gap.evidenced
+        assert result.evidenced_count == 0

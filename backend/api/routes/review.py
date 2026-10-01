@@ -802,6 +802,8 @@ async def get_correction_data(
     - All lyrics correction data (segments, reference lyrics, anchors, etc.)
     - instrumental_options: List of available instrumental tracks with audio URLs
     - backing_vocals_analysis: Analysis data to help users choose instrumental
+    - vocal_gaps: sung stretches with no transcribed words (possible missing
+      lyrics) — see services/auto_approval/vocal_gaps.py
 
     Replay mode (``?replay=true``, requires full auth — admin/owner, not a
     review-token link): serves the SAME payload for a job in ANY status so the
@@ -898,6 +900,10 @@ async def get_correction_data(
         # Get backing vocals analysis from state_data (populated by screens_worker)
         backing_vocals_analysis = job.state_data.get('backing_vocals_analysis', {})
         corrections_data['backing_vocals_analysis'] = backing_vocals_analysis
+
+        # Possible missing lyrics (auto-approval analysis): the review UI marks
+        # "evidenced" gaps and offers the reference lines for insertion.
+        corrections_data['vocal_gaps'] = job.state_data.get('vocal_gaps') or None
 
         # Per-screen skip (C1): tell the frontend whether each review half is
         # confidently auto-resolved, so it can skip the instrumental screen (or the
