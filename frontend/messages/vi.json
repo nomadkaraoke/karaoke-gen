@@ -985,7 +985,8 @@
       "playFromGap": "Phát từ cuối khoảng trống này",
       "editSegment": "Chỉnh sửa đoạn {index}",
       "untimedSegment": "Chưa căn thời gian chữ — nhấp để chỉnh sửa",
-      "waveforms": "Dạng sóng"
+      "waveforms": "Dạng sóng",
+      "missingLyricsMarker": "Có thể thiếu lời bài hát {start}–{end}"
     },
     "editActionBar": {
       "reset": "Đặt lại",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Các ghi đè ca sĩ cấp độ từ chỉ áp dụng cho video karaoke — đầu ra CDG sử dụng ca sĩ chính của đoạn."
     },
     "toasts": {
-      "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh."
+      "customLyricsSaved": "Đã áp dụng lời bài hát tùy chỉnh. Hãy đồng bộ hóa thủ công từng phân đoạn đã chỉnh sửa để đảm bảo nhịp điệu hiển thị từ khớp với lời bài hát tùy chỉnh.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# từ trong lời bài hát} other {# từ trong lời bài hát}} chưa được khớp thời gian. Bạn hãy mở trình đồng bộ và nhấn từng dòng theo nhịp trước khi tạo video."
     },
     "autoCorrect": {
       "accept": "Chấp nhận đề xuất",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Hủy",
       "hold": "GIỮ...",
       "tap": "CHẠM"
+    },
+    "missingLyrics": {
+      "description": "Đoạn này có giọng hát chính nhưng không có lời bài hát.",
+      "expectedFrom": "Lời bài hát dự kiến cho đoạn này (từ {source}):",
+      "insert": "Chèn các dòng này",
+      "insertedHint": "Mở từng dòng và dùng Tap To Sync để các từ khớp với giọng hát. Bạn cần đồng bộ các dòng chưa có mốc thời gian trước khi có thể tạo video.",
+      "insertedTitle": "Kiểm tra mốc thời gian của các dòng đã chèn",
+      "noLines": "Không có dòng tham chiếu nào cho đoạn này — bạn hãy tự thêm lời bài hát.",
+      "play": "Phát",
+      "readOnly": "Không thể chỉnh sửa ở chế độ chỉ đọc",
+      "syncTiming": "Đồng bộ thời gian",
+      "title": "Có thể thiếu lời bài hát tại {start}–{end}",
+      "dismiss": "Bỏ qua",
+      "pendingSync": "Lời bài hát đã được thêm vào đây nhưng chưa có mốc thời gian. Bạn hãy dùng tính năng Đồng bộ thời gian (Tap To Sync) trước khi tạo video."
     }
   },
   "instrumentalReview": {

@@ -985,7 +985,8 @@
       "playFromGap": "Afspil fra slutningen af denne pause",
       "editSegment": "Rediger segment {index}",
       "untimedSegment": "Ingen tidsangivelser for ord — klik for at redigere",
-      "waveforms": "Bølgeformer"
+      "waveforms": "Bølgeformer",
+      "missingLyricsMarker": "Muligvis manglende sangtekst {start}–{end}"
     },
     "editActionBar": {
       "reset": "Nulstil",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Sanger-tilsidesættelser på ordniveau gælder kun for karaoke-videoen — CDG-output bruger segmentets primære sanger."
     },
     "toasts": {
-      "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst."
+      "customLyricsSaved": "Tilpasset sangtekst anvendt. Synkroniser manuelt hvert redigeret segment for at sikre, at ordtimingen passer til den tilpassede sangtekst.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# ord i sangteksten har} other {# ord i sangteksten har}} endnu ingen timing. Åbn synkroniseringsværktøjet og tryk på hver linje i takt med rytmen, før du genererer videoen."
     },
     "autoCorrect": {
       "accept": "Accepter forslag",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Annuller",
       "hold": "HOLD...",
       "tap": "TRYK"
+    },
+    "missingLyrics": {
+      "description": "Leadvokalen synger her, men der er ingen sangtekst.",
+      "expectedFrom": "Forventet sangtekst her (fra {source}):",
+      "insert": "Indsæt disse linjer",
+      "insertedHint": "Åbn hver linje, og brug Tap To Sync, så ordene passer til sangen. Linjer uden timing skal synkroniseres, før videoen kan genereres.",
+      "insertedTitle": "Tjek timingen på de indsatte linjer",
+      "noLines": "Der er ingen referencelinjer tilgængelige for denne del – tilføj sangteksten manuelt.",
+      "play": "Afspil",
+      "readOnly": "Redigering er deaktiveret i skrivebeskyttet tilstand",
+      "syncTiming": "Synkroniser timing",
+      "title": "Muligvis manglende sangtekst ved {start}–{end}",
+      "dismiss": "Afvis",
+      "pendingSync": "Der er tilføjet sangtekst her, men den er ikke timet endnu. Brug Synkroniser timing (Tap To Sync), før du genererer videoen."
     }
   },
   "instrumentalReview": {

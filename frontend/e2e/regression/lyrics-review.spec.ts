@@ -179,7 +179,7 @@ const mockJobData = {
 };
 
 // Setup function to configure mocks for local mode
-async function setupLocalModeMocks(page: Page) {
+async function setupLocalModeMocks(page: Page, correctionData: object = mockCorrectionData) {
   return setupApiFixtures(page, {
     mocks: [
       // Job endpoint - returns mock job for local mode
@@ -192,13 +192,13 @@ async function setupLocalModeMocks(page: Page) {
       {
         method: 'GET',
         path: '/api/jobs/local/corrections',
-        response: { body: mockCorrectionData },
+        response: { body: correctionData },
       },
       // Correction data endpoint (new review path)
       {
         method: 'GET',
         path: '/api/review/local/correction-data',
-        response: { body: mockCorrectionData },
+        response: { body: correctionData },
       },
       // Submit corrections endpoint (POST, not PUT)
       {
@@ -210,13 +210,13 @@ async function setupLocalModeMocks(page: Page) {
       {
         method: 'POST',
         path: '/api/review/local/handlers',
-        response: { body: { status: 'success', data: mockCorrectionData } },
+        response: { body: { status: 'success', data: correctionData } },
       },
       // Add lyrics endpoint
       {
         method: 'POST',
         path: '/api/review/local/add-lyrics',
-        response: { body: { status: 'success', data: mockCorrectionData } },
+        response: { body: { status: 'success', data: correctionData } },
       },
       // Preview video generation endpoint
       {
@@ -845,5 +845,186 @@ test.describe('Combined Review Flow', () => {
 
     // Should NOT say "Complete Review" (old flow)
     await expect(page.locator('button:has-text("Complete Review")')).not.toBeVisible();
+  });
+});
+
+// Possible missing lyrics (vocal-gaps phase 2b): an "evidenced" gap — the lead vocal
+// sings 5.2–9.8s with no transcribed words and the reference expects lines there.
+const missingLyricsCorrectionData = {
+  ...mockCorrectionData,
+  corrected_segments: [
+    mockCorrectionData.corrected_segments[0],
+    {
+      ...mockCorrectionData.corrected_segments[1],
+      start_time: 10.0,
+      end_time: 12.0,
+      words: mockCorrectionData.corrected_segments[1].words.map((w, i) => ({
+        ...w,
+        start_time: 10.0 + i * 0.5,
+        end_time: 10.5 + i * 0.5,
+      })),
+    },
+  ],
+  vocal_gaps: {
+    version: '0.2.0',
+    gaps: [
+      {
+        start: 2.5,
+        end: 10.0,
+        duration: 7.5,
+        active_fraction: 0.8,
+        longest_run_s: 6.1,
+        reference_lines: { genius: ['Plain reference line'] },
+        synced_reference_lines: { lrclib: ['Dropped line number one', 'Dropped line two'] },
+        suspect: true,
+        evidenced: true,
+      },
+      {
+        // Audio-only suspect gap — must NOT be shown.
+        start: 12.0,
+        end: 20.0,
+        duration: 8.0,
+        active_fraction: 0.5,
+        longest_run_s: 3.5,
+        reference_lines: {},
+        synced_reference_lines: {},
+        suspect: true,
+        evidenced: false,
+      },
+    ],
+    suspect_count: 2,
+    evidenced_count: 1,
+    max_suspect_run_s: 6.1,
+  },
+};
+
+// Same fixture, but the synced reference (LRCLIB) carries word timings for both lines,
+// so inserted lines take those timings instead of being inserted untimed.
+const lrclibWord = (id: string, text: string, start: number) => ({ id, text, start_time: start, end_time: start + 0.6 });
+const missingLyricsSyncedRefData = {
+  ...missingLyricsCorrectionData,
+  reference_lyrics: {
+    ...mockCorrectionData.reference_lyrics,
+    lrclib: {
+      segments: [
+        {
+          id: 'lrc_1',
+          text: 'Dropped line number one',
+          start_time: 3.5,
+          end_time: 5.9,
+          words: ['Dropped', 'line', 'number', 'one'].map((t, i) => lrclibWord(`lrc_1_${i}`, t, 3.5 + i * 0.6)),
+        },
+        {
+          id: 'lrc_2',
+          text: 'Dropped line two',
+          start_time: 6.5,
+          end_time: 8.3,
+          words: ['Dropped', 'line', 'two'].map((t, i) => lrclibWord(`lrc_2_${i}`, t, 6.5 + i * 0.6)),
+        },
+      ],
+      metadata: { source: 'lrclib', is_synced: true },
+    },
+  },
+};
+
+const transcriptOrder = async (page: Page) => {
+  const syncedCard = page.locator('h3', { hasText: 'Synced Lyrics' }).locator('xpath=../..');
+  const transcript = await syncedCard.innerText();
+  return {
+    hello: transcript.indexOf('Hello'),
+    dropped: transcript.indexOf('Dropped'),
+    another: transcript.indexOf('another'),
+  };
+};
+
+test.describe('Lyrics Review - Possible Missing Lyrics (untimed insert)', () => {
+  test.beforeEach(async ({ page }) => {
+    await clearAuthToken(page);
+    await setupLocalModeMocks(page, missingLyricsCorrectionData);
+  });
+
+  test('warns about an evidenced gap; Insert adds untimed lines that must be synced; undo restores', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+
+    const callout = page.getByTestId('missing-lyrics-gap');
+    await expect(callout).toHaveCount(1, { timeout: 10000 });
+    await expect(callout).toContainText('Possible missing lyrics at 0:02–0:10');
+    await expect(callout).toContainText('from lrclib');
+    await expect(callout).toContainText('Dropped line number one');
+    await expect(callout).not.toContainText('Plain reference line');
+    await expect(page.getByTestId('missing-lyrics-marker')).toHaveCount(1);
+    await expect(page.getByText(/Possible missing lyrics at 0:12/)).toHaveCount(0);
+
+    await page.getByTestId('missing-lyrics-insert').click();
+
+    // No reference word timings → inserted untimed; the gap is now "pending sync":
+    // no second Insert, a Sync timing prompt instead.
+    await expect(callout).toHaveCount(1);
+    await expect(page.getByTestId('missing-lyrics-insert')).toHaveCount(0);
+    await expect(page.getByTestId('missing-lyrics-pending')).toBeVisible();
+    const hint = page.getByTestId('missing-lyrics-resync-hint');
+    await expect(hint.getByTestId('missing-lyrics-sync-line')).toHaveCount(2);
+    const order = await transcriptOrder(page);
+    expect(order.hello).toBeGreaterThanOrEqual(0);
+    expect(order.dropped).toBeGreaterThan(order.hello);
+    expect(order.another).toBeGreaterThan(order.dropped);
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByTestId('missing-lyrics-insert')).toHaveCount(1);
+    await expect(page.getByTestId('missing-lyrics-resync-hint')).toHaveCount(0);
+  });
+
+  test('submitting with unsynced inserted lines is blocked with a visible message', async ({ page }) => {
+    // The guard reports via a sonner toast; until the sonner <Toaster> was mounted in
+    // the root layout, the submit was silently swallowed.
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('missing-lyrics-insert').click();
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.getByRole('button', { name: /preview video/i }).click();
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+    await dialog.getByRole('button', { name: /proceed|complete|generate/i }).last().click();
+
+    await expect(page.getByText(/lyric words? (has|have) no timing yet/)).toBeVisible({ timeout: 5000 });
+  });
+
+  test('"Sync timing" opens the Edit modal (Tap To Sync) for the inserted line', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('missing-lyrics-insert').click();
+    await page.getByTestId('missing-lyrics-pending-sync').click();
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await expect(dialog.getByRole('button', { name: /Tap To Sync/ }).first()).toBeVisible();
+    await expect(dialog).toContainText('Dropped');
+  });
+});
+
+test.describe('Lyrics Review - Possible Missing Lyrics (synced reference timings)', () => {
+  test.beforeEach(async ({ page }) => {
+    await clearAuthToken(page);
+    await setupLocalModeMocks(page, missingLyricsSyncedRefData);
+  });
+
+  test('Insert uses the LRCLIB word timings, closing the gap; undo brings it back', async ({ page }) => {
+    await page.goto('/app/jobs/local/review');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(1, { timeout: 10000 });
+
+    await page.getByTestId('missing-lyrics-insert').click();
+
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(0);
+    await expect(page.getByTestId('missing-lyrics-marker')).toHaveCount(0);
+    // Still offered for a check/re-sync until the reviewer touches the timing.
+    await expect(page.getByTestId('missing-lyrics-resync-hint').getByTestId('missing-lyrics-sync-line')).toHaveCount(2);
+    const order = await transcriptOrder(page);
+    expect(order.dropped).toBeGreaterThan(order.hello);
+    expect(order.another).toBeGreaterThan(order.dropped);
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await expect(page.getByTestId('missing-lyrics-gap')).toHaveCount(1);
   });
 });

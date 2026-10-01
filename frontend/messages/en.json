@@ -997,7 +997,8 @@
       "aiTooltipEstimated": "Auto-corrected by our system. The timing here was estimated, so play this line and adjust the word timings if needed.",
       "longWordWarning": "This word lasts {seconds}s — unusually long. Play the line and check its end time hasn't run into the instrumental.",
       "longGapWarning": "{seconds}s gap before the next word — often a stray early word (e.g. a phantom \"and\"). Click to play from here.",
-      "playFromGap": "Play from the end of this gap"
+      "playFromGap": "Play from the end of this gap",
+      "missingLyricsMarker": "Possible missing lyrics {start}–{end}"
     },
     "editActionBar": {
       "reset": "Reset",
@@ -1122,7 +1123,8 @@
       "noCorrections": "No agentic corrections"
     },
     "toasts": {
-      "customLyricsSaved": "Custom lyrics applied. Manually sync each edited segment to ensure word timings are good for customised lyrics."
+      "customLyricsSaved": "Custom lyrics applied. Manually sync each edited segment to ensure word timings are good for customised lyrics.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# lyric word has} other {# lyric words have}} no timing yet. Open the synchronizer and tap each line to the beat before generating the video."
     },
     "modals": {
       "addLyrics": {
@@ -1505,6 +1507,20 @@
       "conflictTooltip": "There are different suggestions for these words — accepting one variant rejects the others.",
       "cachedBadge": "cached",
       "cachedTooltip": "Restored from a previous run on the same lyrics — no AI cost was incurred."
+    },
+    "missingLyrics": {
+      "title": "Possible missing lyrics at {start}–{end}",
+      "description": "The lead vocal is singing here but there are no lyrics.",
+      "expectedFrom": "Lyrics expected here (from {source}):",
+      "noLines": "No reference lines are available for this part — add the lyrics manually.",
+      "play": "Play",
+      "insert": "Insert these lines",
+      "readOnly": "Editing is disabled in read-only mode",
+      "insertedHint": "Open each line and use Tap To Sync so the words line up with the singing. Lines without timing must be synced before the video can be generated.",
+      "syncTiming": "Sync timing",
+      "insertedTitle": "Check the timing of the inserted lines",
+      "dismiss": "Dismiss",
+      "pendingSync": "Lyrics have been added here but aren't timed yet. Use Sync timing (Tap To Sync) before generating the video."
     }
   },
   "instrumentalReview": {

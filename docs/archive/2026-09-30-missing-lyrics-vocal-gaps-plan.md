@@ -98,3 +98,57 @@ Server-side via `scripts/audit_vocal_gaps.py` (results stored on each job).
 - Audio-only runs: record + soft note in review, no gate (precision too low).
 - `SectionDetector`: don't label a gap INSTRUMENTAL when the evidence rule fires.
 - Review UI: marker at the gap + the reference lines (from either method) offered for insert.
+
+## Phase 2b built: review UI marker + insert
+- `GET /api/review/{job_id}/correction-data` → `vocal_gaps` (typed as `VocalGapsResult` in
+  `frontend/lib/lyrics-review/types.ts`). Only **evidenced** gaps are shown; audio-only
+  suspects stay hidden (precision too low). Nothing shows when `vocal_gaps` is null/empty.
+- Open gaps are derived from the reviewer's CURRENT segments
+  (`lib/lyrics-review/utils/missingLyrics.ts`): a gap is open while no timed word starts in
+  `[start, end)`. `vocal_gaps` is never mutated, so inserting/typing lines hides the marker
+  and undo brings it back. Taken from the loaded data so restored sessions still show it.
+- `MissingLyricsCallout` (above Synced Lyrics): "Possible missing lyrics at m:ss–m:ss", the
+  expected lines (synced reference lines preferred, else anchor-bounded reference lines,
+  with the source name), Play, and **Insert these lines**. `TranscriptionView` draws a
+  dashed amber marker row at the gap's chronological position (all three view modes);
+  clicking it scrolls to the callout.
+- Insert (`hooks/useMissingLyrics.ts`): one segment per line, words split on whitespace,
+  provisional timings spread evenly per word across `[start+0.1, end-0.1]`, inserted before
+  the first segment starting after the gap midpoint, singer inherited from the neighbour.
+  Goes through `updateDataWithHistory` (one undo step) and logs one `segment_add` edit-log
+  entry per line (`details.origin = "missing_lyrics_gap"`).
+- Re-sync guidance: `MissingLyricsResyncHint` lists the inserted lines (while they exist)
+  with a **Sync timing** button each, opening the existing Edit modal (Tap To Sync). No
+  new timing system.
+- Read-only/replay: marker + lines shown, insert disabled.
+- Tests: Jest (`missingLyrics.test.ts`, `useMissingLyrics.test.tsx`,
+  `MissingLyricsCallout.test.tsx`, `TranscriptionView.missingLyrics.test.tsx`) + Playwright
+  regression (`lyrics-review.spec.ts` › "Possible Missing Lyrics": insert, order, undo, Sync
+  timing → Edit modal).
+- Found while building: sonner's `<Toaster />` isn't mounted anywhere (root layout mounts
+  the shadcn `ui/toaster`), so `toast` from `sonner` in the review UI is silently invisible.
+  The hint is therefore inline rather than a toast. Worth a separate fix.
+
+### Phase 2b review fixes (code review)
+- **Edge tolerance:** words starting within 0.05s of a gap edge are its neighbours (backend
+  rounds gap bounds to 2dp and `end` = next word's start, e.g. 19.996 vs 20.0).
+- **Stale-analysis guard:** a gap is only shown if, in the segments AS LOADED, it holds no
+  words and the neighbouring words sit within 1s of both edges (or it touches the song
+  start / has no words after it). The frontend can't recompute `input_key`, so this is the
+  proxy for "the analysis matches this transcription".
+- **Insert position by word times:** a gap inside one segment (words 5–9s + a word at 22s)
+  splits that segment — earlier words keep the id, later words get a fresh id — with the
+  lines inserted between (logged as `segment_split` + `segment_add`).
+- **No fabricated timing:** lines take word timings from the synced reference source
+  (`reference_lyrics[source].segments`, matched by text inside the gap, all words timed);
+  otherwise words are inserted UNTIMED (segment bounds = the gap, so Play/Edit open there)
+  and the existing "N lyric word(s) have no timing yet" submit guard forces a Tap To Sync.
+- **Pending state:** untimed words between the gap's neighbouring timed words (inserted
+  here, typed via Edit/Add Lyrics, or Replace All) → no Insert (no duplicates); the callout
+  shows a "not timed yet" note + Sync timing instead. Timed words inside close the gap.
+- Re-sync hint appends across inserts; a line leaves it once re-synced or deleted.
+- Duet singer: following segment's, then preceding (as `addSegmentBefore`).
+- Display timing offset applied to the callout range, Play time and markers.
+- Read-only tooltip moved to a focusable wrapper (disabled buttons get no hover).
+- Caveat: the submit guard reports via a sonner toast, and sonner's `<Toaster />` isn't
+  mounted, so a blocked submit is currently silent (pre-existing; fix separately).

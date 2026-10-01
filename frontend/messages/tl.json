@@ -985,7 +985,8 @@
       "playFromGap": "I-play mula sa dulo ng puwang na ito",
       "editSegment": "I-edit ang segment {index}",
       "untimedSegment": "Walang timing ng salita — i-click para i-edit",
-      "waveforms": "Mga waveform"
+      "waveforms": "Mga waveform",
+      "missingLyricsMarker": "Posibleng may kulang na lyrics {start}–{end}"
     },
     "editActionBar": {
       "reset": "I-reset",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Ang mga word-level singer override ay para lang sa karaoke video — ginagamit ng CDG output ang pangunahing singer ng segment."
     },
     "toasts": {
-      "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics."
+      "customLyricsSaved": "Nailapat na ang custom na lyrics. I-sync nang manu-mano ang bawat na-edit na segment para masigurong maayos ang timing ng mga salita sa na-customize na lyrics.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# salita sa lyrics ang} other {# salita sa lyrics ang}} wala pang timing. Buksan ang synchronizer at i-tap ang bawat linya kasabay ng beat bago i-generate ang video."
     },
     "autoCorrect": {
       "accept": "Tanggapin ang mungkahi",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Kanselahin",
       "hold": "I-HOLD...",
       "tap": "I-TAP"
+    },
+    "missingLyrics": {
+      "description": "Kumakanta ang lead vocal dito pero walang lyrics.",
+      "expectedFrom": "Inaasahang may lyrics dito (mula sa {source}):",
+      "insert": "I-insert ang mga linyang ito",
+      "insertedHint": "Buksan ang bawat linya at gamitin ang Tap To Sync para sumabay ang mga salita sa pagkanta. Kailangang i-sync ang mga linyang walang timing bago ma-generate ang video.",
+      "insertedTitle": "I-check ang timing ng mga idinagdag na linya",
+      "noLines": "Walang available na reference lines para sa bahaging ito — manu-manong idagdag ang lyrics.",
+      "play": "I-play",
+      "readOnly": "Naka-disable ang pag-edit sa read-only mode",
+      "syncTiming": "I-sync ang timing",
+      "title": "Posibleng may kulang na lyrics sa {start}–{end}",
+      "dismiss": "I-dismiss",
+      "pendingSync": "May idinagdag na lyrics dito pero wala pang timing. Gamitin ang Sync timing (Tap To Sync) bago i-generate ang video."
     }
   },
   "instrumentalReview": {

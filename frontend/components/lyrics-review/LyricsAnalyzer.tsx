@@ -77,6 +77,9 @@ import {
 import { computeNeighbourBoundsBySegment } from '@/lib/lyrics-review/utils/contextWords'
 import { resolveInitialViewMode } from '@/lib/lyrics-review/utils/segmentTiming'
 import { VocalsAudioDataLoader } from './VocalsAudioDataLoader'
+import MissingLyricsCallout, { MissingLyricsResyncHint } from './MissingLyricsCallout'
+import { useMissingLyrics } from '@/lib/lyrics-review/hooks/useMissingLyrics'
+import type { OpenMissingLyricsGap } from '@/lib/lyrics-review/utils/missingLyrics'
 
 // Add type for window augmentation
 declare global {
@@ -1135,9 +1138,7 @@ export default function LyricsAnalyzer({
     // it here with an actionable message so the user can synchronize first.
     const untimed = countUntimedWords(data.corrected_segments)
     if (untimed > 0) {
-      toast.error(
-        `${untimed} lyric word(s) have no timing yet. Open the synchronizer and tap each line to the beat before generating the video.`
-      )
+      toast.error(t('toasts.untimedWordsBlockSubmit', { count: untimed }))
       return
     }
 
@@ -1229,7 +1230,7 @@ export default function LyricsAnalyzer({
       toast.error('Failed to submit corrections. Please try again.')
       setIsSubmitting(false) // Reset on error so user can retry
     }
-  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, offerInlineInstrumentalChoice, currentInstrumental, reviewInstrumentalAnyway])
+  }, [apiClient, data, timingOffsetMs, editLog, isLocalMode, jobId, hasExistingInstrumental, isDuet, autoInstrumentalConfident, offerInlineInstrumentalChoice, currentInstrumental, reviewInstrumentalAnyway, t])
 
   // Play segment handler
   const handlePlaySegment = useCallback(
@@ -1522,6 +1523,31 @@ export default function LyricsAnalyzer({
     }
   }, [editModalSegment, data.corrected_segments, timingOffsetMs])
 
+  // Possible missing lyrics: evidenced vocal gaps (singing, no words, reference lines
+  // expected) that still have no timed words in the CURRENT segments. The analysis comes
+  // from the loaded data (a restored session may predate it), is checked against the
+  // segments as loaded (stale-analysis guard), and is never mutated — the marker goes
+  // away when words land in the gap and comes back on undo. Inserts go through
+  // updateDataWithHistory (one undo step); the hook also tracks inserted lines that still
+  // need a Tap To Sync for the re-sync hint.
+  const initialSegments = initialData.corrected_segments
+  const missingLyrics = useMissingLyrics({
+    vocalGaps: initialData.vocal_gaps ?? data.vocal_gaps,
+    initialSegments,
+    data,
+    updateDataWithHistory,
+    editLog,
+    isReadOnly,
+    timingOffsetMs,
+  })
+  const insertMissingLyricsLines = missingLyrics.insertLines
+  const handleInsertMissingLyrics = useCallback(
+    (open: OpenMissingLyricsGap) => {
+      insertMissingLyricsLines(open)
+    },
+    [insertMissingLyricsLines]
+  )
+
   // Timing offset handlers
   const handleOpenTimingOffsetModal = useCallback(() => {
     setIsTimingOffsetModalOpen(true)
@@ -1629,6 +1655,22 @@ export default function LyricsAnalyzer({
           )}
         >
           <div className={cn(isMobile ? 'w-full' : 'flex-1 min-w-0')}>
+          <MissingLyricsCallout
+            gaps={missingLyrics.openGaps}
+            isReadOnly={isReadOnly}
+            audioReady={reviewAudioReady}
+            onPlay={handlePlaySegment}
+            onInsert={handleInsertMissingLyrics}
+            onSync={handleEditSegmentFromWaveforms}
+            timingOffsetMs={timingOffsetMs}
+          />
+          {!isReadOnly && (
+            <MissingLyricsResyncHint
+              lines={missingLyrics.resyncLines}
+              onSync={handleEditSegmentFromWaveforms}
+              onDismiss={missingLyrics.dismissResync}
+            />
+          )}
           <TranscriptionView
             data={displayData}
             mode={effectiveMode}
@@ -1664,6 +1706,7 @@ export default function LyricsAnalyzer({
               updateDataWithHistory({ ...data, corrected_segments: segments }, 'singer change')
             }}
             onSegmentFocus={setFocusedSegmentIndex}
+            missingLyricsMarkers={missingLyrics.markers}
           />
           </div>
           {waveformsLayout && referenceLayout.collapsed ? (

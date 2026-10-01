@@ -985,7 +985,8 @@
       "playFromGap": "Spill av fra slutten av dette mellomrommet",
       "editSegment": "Rediger segment {index}",
       "untimedSegment": "Ingen tidsstempler for ord — klikk for å redigere",
-      "waveforms": "Bølgeformer"
+      "waveforms": "Bølgeformer",
+      "missingLyricsMarker": "Mulig manglende sangtekst {start}–{end}"
     },
     "editActionBar": {
       "reset": "Tilbakestill",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Overstyring av sanger på ordnivå gjelder kun for karaokevideoen — CDG-utdata bruker segmentets hovedsanger."
     },
     "toasts": {
-      "customLyricsSaved": "Egendefinert tekst er lagt til. Synkroniser hvert redigerte segment manuelt for å sikre at timingen av ordene stemmer for den tilpassede teksten."
+      "customLyricsSaved": "Egendefinert tekst er lagt til. Synkroniser hvert redigerte segment manuelt for å sikre at timingen av ordene stemmer for den tilpassede teksten.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# tekstord har} other {# tekstord har}} ingen timing ennå. Åpne synkronisatoren og trykk på hver linje i takt med musikken før du genererer videoen."
     },
     "autoCorrect": {
       "accept": "Godta forslag",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Avbryt",
       "hold": "HOLD...",
       "tap": "TRYKK"
+    },
+    "missingLyrics": {
+      "description": "Hovedvokalen synger her, men det er ingen sangtekst.",
+      "expectedFrom": "Forventet sangtekst her (fra {source}):",
+      "insert": "Sett inn disse linjene",
+      "insertedHint": "Åpne hver linje og bruk Tap To Sync slik at ordene stemmer med sangen. Linjer uten timing må synkroniseres før videoen kan genereres.",
+      "insertedTitle": "Sjekk timingen på de innsatte linjene",
+      "noLines": "Ingen referanselinjer er tilgjengelige for denne delen – legg til sangteksten manuelt.",
+      "play": "Spill av",
+      "readOnly": "Redigering er deaktivert i skrivebeskyttet modus",
+      "syncTiming": "Synkroniser timing",
+      "title": "Mulig manglende sangtekst ved {start}–{end}",
+      "dismiss": "Lukk",
+      "pendingSync": "Det er lagt til sangtekst her, men den er ikke timet ennå. Bruk Synkroniser timing (Tap To Sync) før du genererer videoen."
     }
   },
   "instrumentalReview": {

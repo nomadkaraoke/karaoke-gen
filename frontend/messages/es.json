@@ -985,7 +985,8 @@
       "playFromGap": "Reproducir desde el final de este hueco",
       "editSegment": "Editar segmento {index}",
       "untimedSegment": "Sin tiempos por palabra — haz clic para editar",
-      "waveforms": "Formas de onda"
+      "waveforms": "Formas de onda",
+      "missingLyricsMarker": "Posible letra faltante {start}–{end}"
     },
     "editActionBar": {
       "reset": "Restablecer",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Las anulaciones de cantante a nivel de palabra se aplican solo al video de karaoke — la salida CDG usa el cantante principal del segmento."
     },
     "toasts": {
-      "customLyricsSaved": "Letras personalizadas aplicadas. Sincroniza manualmente cada segmento editado para asegurar que los tiempos de las palabras sean correctos para las letras personalizadas."
+      "customLyricsSaved": "Letras personalizadas aplicadas. Sincroniza manualmente cada segmento editado para asegurar que los tiempos de las palabras sean correctos para las letras personalizadas.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# palabra de la letra aún no tiene sincronización} other {# palabras de la letra aún no tienen sincronización}}. Abre el sincronizador y pulsa cada línea al ritmo antes de generar el video."
     },
     "autoCorrect": {
       "accept": "Aceptar sugerencia",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Cancelar",
       "hold": "MANTÉN...",
       "tap": "TOCA"
+    },
+    "missingLyrics": {
+      "description": "La voz principal está cantando aquí, pero no hay letra.",
+      "expectedFrom": "Letra esperada aquí (de {source}):",
+      "insert": "Insertar estas líneas",
+      "insertedHint": "Abre cada línea y usa Tap To Sync para que las palabras coincidan con la voz. Las líneas sin tiempos deben sincronizarse antes de poder generar el video.",
+      "insertedTitle": "Revisa los tiempos de las líneas insertadas",
+      "noLines": "No hay líneas de referencia disponibles para esta parte — agrega la letra manualmente.",
+      "play": "Reproducir",
+      "readOnly": "La edición está desactivada en el modo de solo lectura",
+      "syncTiming": "Sincronizar tiempos",
+      "title": "Posible letra faltante en {start}–{end}",
+      "dismiss": "Descartar",
+      "pendingSync": "Se han añadido letras aquí, pero aún no tienen tiempos. Usa Sincronizar tiempos (Tap To Sync) antes de generar el video."
     }
   },
   "instrumentalReview": {

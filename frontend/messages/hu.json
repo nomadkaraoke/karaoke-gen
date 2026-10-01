@@ -985,7 +985,8 @@
       "playFromGap": "Lejátszás a szünet végétől",
       "editSegment": "{index}. szegmens szerkesztése",
       "untimedSegment": "Nincs szóidőzítés — kattints a szerkesztéshez",
-      "waveforms": "Hullámformák"
+      "waveforms": "Hullámformák",
+      "missingLyricsMarker": "Lehetséges hiányzó dalszöveg: {start}–{end}"
     },
     "editActionBar": {
       "reset": "Visszaállítás",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "A szavankénti énekes-felülbírálások csak a karaoke videóra vonatkoznak — a CDG kimenet a szegmens fő énekesét használja."
     },
     "toasts": {
-      "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez."
+      "customLyricsSaved": "Egyedi dalszöveg alkalmazva. Szinkronizáld manuálisan az összes szerkesztett szegmenst, hogy a szavak időzítése megfelelő legyen a testreszabott dalszöveghez.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# szó a dalszövegben} other {# szó a dalszövegben}} még nincs időzítve. Nyisd meg a szinkronizálót, és a videó generálása előtt koppints az egyes sorokra az ütemre."
     },
     "autoCorrect": {
       "accept": "Javaslat elfogadása",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Mégse",
       "hold": "TARTSD...",
       "tap": "KOPPINTS"
+    },
+    "missingLyrics": {
+      "description": "Itt énekel a vezérvokál, de nincs dalszöveg.",
+      "expectedFrom": "Itt dalszöveg várható (forrás: {source}):",
+      "insert": "Szúrd be ezeket a sorokat",
+      "insertedHint": "Nyisd meg az egyes sorokat, és használd a Tap To Sync funkciót, hogy a szavak illeszkedjenek az énekhez. Az időzítés nélküli sorokat szinkronizálni kell a videó generálása előtt.",
+      "insertedTitle": "Ellenőrizd a beszúrt sorok időzítését",
+      "noLines": "Ehhez a részhez nincsenek elérhető referenciasorok — add hozzá a dalszöveget manuálisan.",
+      "play": "Lejátszás",
+      "readOnly": "A szerkesztés csak olvasható módban le van tiltva",
+      "syncTiming": "Időzítés szinkronizálása",
+      "title": "Lehetséges hiányzó dalszöveg itt: {start}–{end}",
+      "dismiss": "Elvetés",
+      "pendingSync": "Ide bekerült a dalszöveg, de még nincs időzítve. Használd az Időzítés szinkronizálása (Tap To Sync) funkciót a videó generálása előtt."
     }
   },
   "instrumentalReview": {

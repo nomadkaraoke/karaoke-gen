@@ -985,7 +985,8 @@
       "playFromGap": "Bu boşluğun sonundan itibaren oynat",
       "editSegment": "{index}. bölümü düzenle",
       "untimedSegment": "Kelime zamanlaması yok — düzenlemek için tıkla",
-      "waveforms": "Dalga formları"
+      "waveforms": "Dalga formları",
+      "missingLyricsMarker": "Olası eksik şarkı sözleri {start}–{end}"
     },
     "editActionBar": {
       "reset": "Sıfırla",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Kelime düzeyindeki şarkıcı geçersiz kılmaları yalnızca karaoke videosuna uygulanır — CDG çıktısı bölümün ana şarkıcısını kullanır."
     },
     "toasts": {
-      "customLyricsSaved": "Özel şarkı sözleri uygulandı. Özelleştirilmiş sözlerde kelime zamanlamalarının doğru olduğundan emin olmak için düzenlenen her bölümü manuel olarak senkronize et."
+      "customLyricsSaved": "Özel şarkı sözleri uygulandı. Özelleştirilmiş sözlerde kelime zamanlamalarının doğru olduğundan emin olmak için düzenlenen her bölümü manuel olarak senkronize et.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# kelimenin} other {# kelimenin}} henüz zamanlaması yok. Videoyu oluşturmadan önce senkronizatörü aç ve her satıra ritme göre dokun."
     },
     "autoCorrect": {
       "accept": "Öneriyi kabul et",
@@ -1493,6 +1495,20 @@
       "cancelSync": "İptal",
       "hold": "BASILI TUT...",
       "tap": "DOKUN"
+    },
+    "missingLyrics": {
+      "description": "Ana vokal burada şarkı söylüyor ama şarkı sözü yok.",
+      "expectedFrom": "Burada şarkı sözü bekleniyor ({source} kaynağından):",
+      "insert": "Bu satırları ekle",
+      "insertedHint": "Her satırı aç ve kelimelerin şarkıyla hizalanması için Tap To Sync özelliğini kullan. Video oluşturulmadan önce zamanlaması olmayan satırların senkronize edilmesi gerekir.",
+      "insertedTitle": "Eklenen satırların zamanlamasını kontrol et",
+      "noLines": "Bu kısım için referans satır bulunmuyor — şarkı sözlerini manuel olarak ekle.",
+      "play": "Oynat",
+      "readOnly": "Salt okunur modda düzenleme devre dışıdır",
+      "syncTiming": "Zamanlamayı senkronize et",
+      "title": "{start}–{end} arasında olası eksik şarkı sözleri",
+      "dismiss": "Kapat",
+      "pendingSync": "Şarkı sözleri buraya eklendi ancak henüz zamanlanmadı. Videoyu oluşturmadan önce Zamanlamayı senkronize et (Tap To Sync) özelliğini kullan."
     }
   },
   "instrumentalReview": {

@@ -985,7 +985,8 @@
       "playFromGap": "Jouer à partir de la fin de ce blanc",
       "editSegment": "Modifier le segment {index}",
       "untimedSegment": "Aucune synchronisation des mots — clique pour modifier",
-      "waveforms": "Formes d'onde"
+      "waveforms": "Formes d'onde",
+      "missingLyricsMarker": "Paroles potentiellement manquantes {start}–{end}"
     },
     "editActionBar": {
       "reset": "Réinitialiser",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Les modifications de chanteur au niveau des mots s'appliquent uniquement à la vidéo karaoké — la sortie CDG utilise le chanteur principal du segment."
     },
     "toasts": {
-      "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct."
+      "customLyricsSaved": "Paroles personnalisées appliquées. Synchronise manuellement chaque segment modifié pour t'assurer que le timing des mots est correct.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# mot n'a} other {# mots n'ont}} pas encore de timing. Ouvre le synchroniseur et appuie sur chaque ligne en rythme avant de générer la vidéo."
     },
     "autoCorrect": {
       "accept": "Accepter la suggestion",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Annuler",
       "hold": "MAINTIENS...",
       "tap": "APPUIE"
+    },
+    "missingLyrics": {
+      "description": "La voix principale chante ici, mais il n'y a pas de paroles.",
+      "expectedFrom": "Paroles attendues ici (d'après {source}) :",
+      "insert": "Insérer ces lignes",
+      "insertedHint": "Ouvre chaque ligne et utilise Tap To Sync pour que les mots soient calés sur le chant. Les lignes sans minutage doivent être synchronisées avant de pouvoir générer la vidéo.",
+      "insertedTitle": "Vérifie le minutage des lignes insérées",
+      "noLines": "Aucune ligne de référence n'est disponible pour cette partie — ajoute les paroles manuellement.",
+      "play": "Lecture",
+      "readOnly": "La modification est désactivée en mode lecture seule",
+      "syncTiming": "Synchroniser le timing",
+      "title": "Paroles potentiellement manquantes à {start}–{end}",
+      "dismiss": "Ignorer",
+      "pendingSync": "Des paroles ont été ajoutées ici, mais ne sont pas encore synchronisées. Utilise Synchroniser le minutage (Tap To Sync) avant de générer la vidéo."
     }
   },
   "instrumentalReview": {

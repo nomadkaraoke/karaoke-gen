@@ -985,7 +985,8 @@
       "playFromGap": "Reprodueix des del final d'aquesta pausa",
       "editSegment": "Edita el segment {index}",
       "untimedSegment": "Sense sincronització de paraules — fes clic per editar",
-      "waveforms": "Formes d'ona"
+      "waveforms": "Formes d'ona",
+      "missingLyricsMarker": "Possible falta de lletra {start}–{end}"
     },
     "editActionBar": {
       "reset": "Restableix",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Les modificacions de cantant a nivell de paraula només s'apliquen al vídeo de karaoke — la sortida CDG utilitza el cantant principal del segment."
     },
     "toasts": {
-      "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada."
+      "customLyricsSaved": "Lletra personalitzada aplicada. Sincronitza manualment cada segment editat per assegurar-te que els temps de les paraules són correctes per a la lletra personalitzada.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# paraula de la lletra encara no té} other {# paraules de la lletra encara no tenen}} sincronització. Obre el sincronitzador i prem cada línia al ritme abans de generar el vídeo."
     },
     "autoCorrect": {
       "accept": "Accepta el suggeriment",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Cancel·la",
       "hold": "MANTÉN...",
       "tap": "TOCA"
+    },
+    "missingLyrics": {
+      "description": "La veu principal canta aquí, però no hi ha lletra.",
+      "expectedFrom": "Lletra esperada aquí (de {source}):",
+      "insert": "Insereix aquestes línies",
+      "insertedHint": "Obre cada línia i utilitza Tap To Sync perquè les paraules coincideixin amb la veu. Les línies sense temporització s'han de sincronitzar abans de poder generar el vídeo.",
+      "insertedTitle": "Comprova la temporització de les línies inserides",
+      "noLines": "No hi ha línies de referència disponibles per a aquesta part — afegeix la lletra manualment.",
+      "play": "Reprodueix",
+      "readOnly": "L'edició està desactivada en el mode de només lectura",
+      "syncTiming": "Sincronitza la temporització",
+      "title": "Possible falta de lletra a {start}–{end}",
+      "dismiss": "Descarta",
+      "pendingSync": "S'ha afegit lletra aquí, però encara no està sincronitzada. Utilitza Sincronitza la temporització (Tap To Sync) abans de generar el vídeo."
     }
   },
   "instrumentalReview": {

@@ -985,7 +985,8 @@
       "playFromGap": "Redă de la sfârșitul acestei pauze",
       "editSegment": "Editează segmentul {index}",
       "untimedSegment": "Fără sincronizare pe cuvinte — dă click pentru a edita",
-      "waveforms": "Forme de undă"
+      "waveforms": "Forme de undă",
+      "missingLyricsMarker": "Posibile versuri lipsă {start}–{end}"
     },
     "editActionBar": {
       "reset": "Resetează",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Suprascrierile cântărețului la nivel de cuvânt se aplică doar videoclipului de karaoke — rezultatul CDG folosește cântărețul principal al segmentului."
     },
     "toasts": {
-      "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate."
+      "customLyricsSaved": "Versurile personalizate au fost aplicate. Sincronizează manual fiecare segment editat pentru a te asigura că temporizarea cuvintelor este corectă pentru versurile personalizate.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# cuvânt din versuri nu are} few {# cuvinte din versuri nu au} other {# de cuvinte din versuri nu au}} încă sincronizare. Deschide sincronizatorul și apasă pe fiecare vers pe ritm înainte de a genera videoclipul."
     },
     "autoCorrect": {
       "accept": "Acceptă sugestia",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Anulează",
       "hold": "ȚINE...",
       "tap": "APASĂ"
+    },
+    "missingLyrics": {
+      "description": "Vocea principală cântă aici, dar nu există versuri.",
+      "expectedFrom": "Versuri așteptate aici (din {source}):",
+      "insert": "Inserează aceste rânduri",
+      "insertedHint": "Deschide fiecare vers și folosește Tap To Sync astfel încât cuvintele să se potrivească cu vocea. Versurile fără timpi trebuie sincronizate înainte ca videoclipul să poată fi generat.",
+      "insertedTitle": "Verifică sincronizarea versurilor inserate",
+      "noLines": "Nu există rânduri de referință disponibile pentru această parte — adaugă versurile manual.",
+      "play": "Redă",
+      "readOnly": "Editarea este dezactivată în modul doar citire",
+      "syncTiming": "Sincronizează timpii",
+      "title": "Posibile versuri lipsă la {start}–{end}",
+      "dismiss": "Închide",
+      "pendingSync": "Aici au fost adăugate versuri, dar nu sunt încă sincronizate. Folosește Sincronizare timpi (Tap To Sync) înainte de a genera videoclipul."
     }
   },
   "instrumentalReview": {

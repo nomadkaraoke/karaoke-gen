@@ -985,7 +985,8 @@
       "playFromGap": "Putar dari akhir jeda ini",
       "editSegment": "Edit segmen {index}",
       "untimedSegment": "Tidak ada timing kata — klik untuk mengedit",
-      "waveforms": "Bentuk gelombang"
+      "waveforms": "Bentuk gelombang",
+      "missingLyricsMarker": "Kemungkinan ada lirik yang hilang {start}–{end}"
     },
     "editActionBar": {
       "reset": "Atur Ulang",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Penggantian penyanyi tingkat kata hanya berlaku untuk video karaoke — output CDG menggunakan penyanyi utama segmen tersebut."
     },
     "toasts": {
-      "customLyricsSaved": "Lirik kustom berhasil diterapkan. Sinkronkan setiap segmen yang diedit secara manual untuk memastikan ketepatan waktu lirik yang baru."
+      "customLyricsSaved": "Lirik kustom berhasil diterapkan. Sinkronkan setiap segmen yang diedit secara manual untuk memastikan ketepatan waktu lirik yang baru.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# kata lirik} other {# kata lirik}} belum diatur waktunya. Buka alat sinkronisasi dan ketuk setiap baris mengikuti irama sebelum membuat video."
     },
     "autoCorrect": {
       "accept": "Terima saran",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Batal",
       "hold": "TAHAN...",
       "tap": "KETUK"
+    },
+    "missingLyrics": {
+      "description": "Vokal utama bernyanyi di sini, tetapi tidak ada lirik.",
+      "expectedFrom": "Lirik yang diperkirakan ada di sini (dari {source}):",
+      "insert": "Sisipkan baris ini",
+      "insertedHint": "Buka setiap baris dan gunakan Tap To Sync agar kata-katanya selaras dengan nyanyian. Baris tanpa pengaturan waktu harus disinkronkan sebelum video dapat dibuat.",
+      "insertedTitle": "Periksa pengaturan waktu baris yang disisipkan",
+      "noLines": "Tidak ada baris referensi yang tersedia untuk bagian ini — tambahkan lirik secara manual.",
+      "play": "Putar",
+      "readOnly": "Pengeditan dinonaktifkan dalam mode hanya-baca",
+      "syncTiming": "Sinkronkan waktu",
+      "title": "Kemungkinan ada lirik yang hilang pada {start}–{end}",
+      "dismiss": "Abaikan",
+      "pendingSync": "Lirik telah ditambahkan di sini, tetapi belum diatur waktunya. Gunakan Sinkronkan waktu (Tap To Sync) sebelum membuat video."
     }
   },
   "instrumentalReview": {

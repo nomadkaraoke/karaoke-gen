@@ -985,7 +985,8 @@
       "playFromGap": "Vom Ende dieser Lücke abspielen",
       "editSegment": "Bearbeite Segment {index}",
       "untimedSegment": "Keine Wort-Timings — klicke zum Bearbeiten",
-      "waveforms": "Wellenformen"
+      "waveforms": "Wellenformen",
+      "missingLyricsMarker": "Möglicherweise fehlender Text {start}–{end}"
     },
     "editActionBar": {
       "reset": "Zurücksetzen",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Sänger-Überschreibungen auf Wortebene gelten nur für das Karaoke-Video — die CDG-Ausgabe verwendet den Hauptsänger des Segments."
     },
     "toasts": {
-      "customLyricsSaved": "Benutzerdefinierter Text angewendet. Synchronisiere jedes bearbeitete Segment manuell, um sicherzustellen, dass das Wort-Timing für den neuen Text stimmt."
+      "customLyricsSaved": "Benutzerdefinierter Text angewendet. Synchronisiere jedes bearbeitete Segment manuell, um sicherzustellen, dass das Wort-Timing für den neuen Text stimmt.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# Wort im Text hat} other {# Wörter im Text haben}} noch kein Timing. Öffne die Textsynchronisation und tippe jede Zeile im Takt an, bevor du das Video generierst."
     },
     "autoCorrect": {
       "accept": "Vorschlag akzeptieren",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Abbrechen",
       "hold": "HALTEN...",
       "tap": "TIPPEN"
+    },
+    "missingLyrics": {
+      "description": "Hier ist der Hauptgesang zu hören, aber es gibt keinen Text.",
+      "expectedFrom": "Hier wird Text erwartet (aus {source}):",
+      "insert": "Diese Zeilen einfügen",
+      "insertedHint": "Öffne jede Zeile und nutze Tap To Sync, damit die Wörter zum Gesang passen. Zeilen ohne Timing müssen synchronisiert werden, bevor das Video generiert werden kann.",
+      "insertedTitle": "Überprüfe das Timing der eingefügten Zeilen",
+      "noLines": "Für diesen Teil sind keine Referenzzeilen verfügbar – füge den Text manuell hinzu.",
+      "play": "Abspielen",
+      "readOnly": "Die Bearbeitung ist im schreibgeschützten Modus deaktiviert",
+      "syncTiming": "Timing synchronisieren",
+      "title": "Möglicherweise fehlender Text bei {start}–{end}",
+      "dismiss": "Ausblenden",
+      "pendingSync": "Hier wurde Text hinzugefügt, der aber noch kein Timing hat. Nutze Timing synchronisieren (Tap To Sync), bevor du das Video generierst."
     }
   },
   "instrumentalReview": {

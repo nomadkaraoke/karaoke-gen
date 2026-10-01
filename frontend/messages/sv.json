@@ -985,7 +985,8 @@
       "playFromGap": "Spela upp från slutet av detta mellanrum",
       "editSegment": "Redigera segment {index}",
       "untimedSegment": "Ingen ordtajming — klicka för att redigera",
-      "waveforms": "Vågformer"
+      "waveforms": "Vågformer",
+      "missingLyricsMarker": "Eventuellt saknad låttext {start}–{end}"
     },
     "editActionBar": {
       "reset": "Återställ",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Åsidosättningar av sångare på ordnivå gäller endast för karaokevideon — CDG-utdata använder segmentets huvudsakliga sångare."
     },
     "toasts": {
-      "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten."
+      "customLyricsSaved": "Anpassad låttext tillämpad. Synkronisera varje redigerat segment manuellt för att säkerställa att tajmingen stämmer för den anpassade låttexten.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# ord i låttexten har} other {# ord i låttexten har}} ingen timing än. Öppna synkroniseraren och tryck på varje rad i takt med musiken innan du genererar videon."
     },
     "autoCorrect": {
       "accept": "Acceptera förslag",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Avbryt",
       "hold": "HÅLL IN...",
       "tap": "TRYCK"
+    },
+    "missingLyrics": {
+      "description": "Här hörs leadsång men det finns ingen låttext.",
+      "expectedFrom": "Låttext förväntas här (från {source}):",
+      "insert": "Infoga dessa rader",
+      "insertedHint": "Öppna varje rad och använd Tap To Sync så att orden matchar sången. Rader utan timing måste synkas innan videon kan genereras.",
+      "insertedTitle": "Kontrollera timingen för de infogade raderna",
+      "noLines": "Inga referensrader finns tillgängliga för den här delen – lägg till låttexten manuellt.",
+      "play": "Spela",
+      "readOnly": "Redigering är inaktiverad i skrivskyddat läge",
+      "syncTiming": "Synka timing",
+      "title": "Eventuellt saknad låttext vid {start}–{end}",
+      "dismiss": "Avfärda",
+      "pendingSync": "Låttext har lagts till här men är inte tajmad än. Använd Synka timing (Tap To Sync) innan du genererar videon."
     }
   },
   "instrumentalReview": {

@@ -985,7 +985,8 @@
       "playFromGap": "从该间隙的末尾开始播放",
       "editSegment": "编辑片段 {index}",
       "untimedSegment": "无单词时间轴 — 点击编辑",
-      "waveforms": "波形图"
+      "waveforms": "波形图",
+      "missingLyricsMarker": "可能缺失歌词 {start}–{end}"
     },
     "editActionBar": {
       "reset": "重置",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "词级歌手覆盖设置仅适用于卡拉OK视频 — CDG 输出将使用该片段的主要歌手。"
     },
     "toasts": {
-      "customLyricsSaved": "已应用自定义歌词。请手动同步每个编辑过的片段，以确保自定义歌词的每个词都能准确同步。"
+      "customLyricsSaved": "已应用自定义歌词。请手动同步每个编辑过的片段，以确保自定义歌词的每个词都能准确同步。",
+      "untimedWordsBlockSubmit": "{count, plural, one {还有 # 个歌词字词} other {还有 # 个歌词字词}}尚未设置时间。在生成视频前，请打开同步器并跟随节拍点击每一行。"
     },
     "autoCorrect": {
       "accept": "接受建议",
@@ -1493,6 +1495,20 @@
       "cancelSync": "取消",
       "hold": "按住...",
       "tap": "点击"
+    },
+    "missingLyrics": {
+      "description": "主唱在此处有演唱，但没有歌词。",
+      "expectedFrom": "此处应有歌词（来自 {source}）：",
+      "insert": "插入这些歌词",
+      "insertedHint": "展开每一行并使用 Tap To Sync，使歌词与演唱完美对齐。未设定时间轴的行必须先完成同步，才能生成视频。",
+      "insertedTitle": "检查已插入歌词行的时间轴",
+      "noLines": "此部分没有可用的参考歌词——请手动添加歌词。",
+      "play": "播放",
+      "readOnly": "只读模式下无法编辑",
+      "syncTiming": "同步时间",
+      "title": "{start}–{end} 处可能缺失歌词",
+      "dismiss": "忽略",
+      "pendingSync": "此处已添加歌词，但尚未设定时间轴。在生成视频前，请先使用“同步时间轴 (Tap To Sync)”。"
     }
   },
   "instrumentalReview": {

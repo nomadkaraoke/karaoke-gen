@@ -985,7 +985,8 @@
       "playFromGap": "Odtwórz od końca tej przerwy",
       "editSegment": "Edytuj segment {index}",
       "untimedSegment": "Brak synchronizacji słów — kliknij, aby edytować",
-      "waveforms": "Fale dźwiękowe"
+      "waveforms": "Fale dźwiękowe",
+      "missingLyricsMarker": "Możliwy brak tekstu {start}–{end}"
     },
     "editActionBar": {
       "reset": "Resetuj",
@@ -1431,7 +1432,8 @@
       "wordOverrideNote": "Nadpisania wokalisty na poziomie słów dotyczą tylko wideo karaoke — plik CDG używa głównego wokalisty segmentu."
     },
     "toasts": {
-      "customLyricsSaved": "Zastosowano własny tekst. Zsynchronizuj ręcznie każdy edytowany segment, aby upewnić się, że czas wyświetlania słów pasuje do nowego tekstu."
+      "customLyricsSaved": "Zastosowano własny tekst. Zsynchronizuj ręcznie każdy edytowany segment, aby upewnić się, że czas wyświetlania słów pasuje do nowego tekstu.",
+      "untimedWordsBlockSubmit": "{count, plural, one {# słowo tekstu nie ma} few {# słowa tekstu nie mają} many {# słów tekstu nie ma} other {# słów tekstu nie ma}} jeszcze synchronizacji. Otwórz synchronizator i wystukaj każdą linijkę do rytmu przed wygenerowaniem wideo."
     },
     "autoCorrect": {
       "accept": "Zaakceptuj sugestię",
@@ -1493,6 +1495,20 @@
       "cancelSync": "Anuluj",
       "hold": "PRZYTRZYMAJ...",
       "tap": "STUKNIJ"
+    },
+    "missingLyrics": {
+      "description": "W tym miejscu słychać główny wokal, ale brakuje tekstu.",
+      "expectedFrom": "Oczekiwany tekst w tym miejscu (z {source}):",
+      "insert": "Wstaw te wersy",
+      "insertedHint": "Otwórz każdą linijkę i użyj opcji Tap To Sync, aby dopasować słowa do śpiewu. Linijki bez przypisanego czasu muszą zostać zsynchronizowane przed wygenerowaniem wideo.",
+      "insertedTitle": "Sprawdź synchronizację wstawionych linijek",
+      "noLines": "Brak wersów referencyjnych dla tego fragmentu — dodaj tekst ręcznie.",
+      "play": "Odtwórz",
+      "readOnly": "Edycja jest wyłączona w trybie tylko do odczytu",
+      "syncTiming": "Zsynchronizuj czas",
+      "title": "Możliwy brak tekstu w {start}–{end}",
+      "dismiss": "Odrzuć",
+      "pendingSync": "Tekst został tutaj dodany, ale nie jest jeszcze zsynchronizowany. Użyj opcji Synchronizuj czas (Tap To Sync) przed wygenerowaniem wideo."
     }
   },
   "instrumentalReview": {

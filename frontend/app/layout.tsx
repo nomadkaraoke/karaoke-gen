@@ -9,6 +9,10 @@ import { ServiceWorkerRegistration } from "@/components/service-worker-registrat
 import { GoogleAnalytics } from "@/components/google-analytics"
 import ClientErrorInit from "@/components/ClientErrorInit"
 import { Toaster } from "@/components/ui/toaster"
+// sonner toasts (lyrics/instrumental review, admin pages) need their own container —
+// without it every sonner toast() is silently dropped (e.g. the "N words have no
+// timing yet" submit guard in lyrics review).
+import { Toaster as SonnerToaster } from "@/components/ui/sonner"
 import "./globals.css"
 
 // AvenirNext Bold - matches the font used in actual Nomad theme title card generation
@@ -55,6 +59,7 @@ export default function RootLayout({
               <ImpersonationBannerWrapper />
               {children}
               <Toaster />
+              <SonnerToaster richColors closeButton />
             </TenantProvider>
           </ThemeProvider>
         </DefaultIntlProvider>
