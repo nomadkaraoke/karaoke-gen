@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import sys
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
 from typing import NamedTuple, Optional, List
@@ -174,6 +175,65 @@ class PostmarkEmailProvider(EmailProvider):
 
     API_URL = "https://api.postmarkapp.com/email"
 
+    # Seconds to sleep before each retry of a transient failure. Postmark's edge
+    # intermittently answers some us-central1 Cloud Run egress IPs with a bare
+    # nginx HTML 403 (not its JSON error format) — a fresh connection a moment
+    # later often succeeds. Kept short: magic-link sends block the request.
+    RETRY_DELAYS = (1.0, 3.0)
+
+    @staticmethod
+    def _is_transient_failure(response: requests.Response) -> bool:
+        """True for failures worth retrying: 429, 5xx, or a non-JSON 403.
+
+        Postmark's own API errors (bad token, invalid payload, suppressed
+        recipient) come back as JSON and are deterministic, so retrying them
+        would just repeat the same answer. A 403 without a JSON body is an
+        edge/IP-level block, not a verdict on the request itself.
+        """
+        status = response.status_code
+        if status == 429 or status >= 500:
+            return True
+        if status == 403:
+            try:
+                response.json()
+            except ValueError:
+                return True
+        return False
+
+    def _post_with_retry(self, payload: dict) -> requests.Response:
+        """POST to Postmark, retrying transient failures with backoff.
+
+        Only connect-phase errors are retried among exceptions: a read timeout
+        may mean Postmark already accepted the message, and it has no
+        idempotency key, so retrying could send a duplicate.
+        """
+        attempts = len(self.RETRY_DELAYS) + 1
+        for attempt in range(1, attempts + 1):
+            try:
+                response = requests.post(
+                    self.API_URL,
+                    headers={
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-Postmark-Server-Token": self.server_token,
+                    },
+                    json=payload,
+                    timeout=10,
+                )
+            except requests.ConnectTimeout:
+                if attempt == attempts:
+                    raise
+                logger.warning(f"Postmark connect timeout (attempt {attempt}/{attempts}); retrying")
+            else:
+                if attempt == attempts or not self._is_transient_failure(response):
+                    return response
+                logger.warning(
+                    f"Postmark returned transient status {response.status_code} "
+                    f"(attempt {attempt}/{attempts}); retrying"
+                )
+            time.sleep(self.RETRY_DELAYS[attempt - 1])
+        raise AssertionError("unreachable")  # pragma: no cover
+
     def __init__(self, server_token: str, from_email: str, from_name: str = "Nomad Karaoke"):
         self.server_token = server_token
         self.from_email = from_email
@@ -235,16 +295,7 @@ class PostmarkEmailProvider(EmailProvider):
             if bcc_emails:
                 payload["Bcc"] = ", ".join(_dedupe_emails(bcc_emails))
 
-            response = requests.post(
-                self.API_URL,
-                headers={
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "X-Postmark-Server-Token": self.server_token,
-                },
-                json=payload,
-                timeout=10,
-            )
+            response = self._post_with_retry(payload)
 
             if 200 <= response.status_code < 300:
                 cc_info = f" (CC: {', '.join(cc_emails)})" if cc_emails else ""
