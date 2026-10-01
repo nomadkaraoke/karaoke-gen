@@ -377,6 +377,18 @@ describe('fitting synced-reference timings into the gap (job 5710831e regression
     expect(countUntimedWords(fitted)).toBe(3)
   })
 
+  it('a zero-length reference line inside the window becomes untimed, not "timed"', () => {
+    const zero: LyricsSegment = {
+      ...seg('z', 21, 21, ['a', 'b']),
+      words: [
+        { id: 'z-w0', text: 'a', start_time: 21, end_time: 21 },
+        { id: 'z-w1', text: 'b', start_time: 21, end_time: 21 },
+      ],
+    }
+    const fitted = fitTimedLinesToWindow([zero], 20.71, 32.35)
+    expect(countUntimedWords(fitted)).toBe(2)
+  })
+
   it('untimed lines pass through unchanged', () => {
     const u = untimedSeg('u', ['a', 'b'])
     expect(fitTimedLinesToWindow([u], 0, 10)[0]).toBe(u)

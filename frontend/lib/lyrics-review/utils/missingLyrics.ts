@@ -299,7 +299,7 @@ export const fitTimedLinesToWindow = (
     const t1 = seg.words[seg.words.length - 1].end_time as number
     const start = Math.max(t0, cursor)
     const end = Math.min(t1, hi)
-    if (start === t0 && end === t1) {
+    if (t1 > t0 && start === t0 && end === t1) {
       cursor = t1
       return seg
     }
