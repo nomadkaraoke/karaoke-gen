@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       variants:
-        description: 'Comma-separated variants to build (general,build,gpu,gpu-windows) or "all"'
+        description: 'Comma-separated variants to build (general,build,gpu,gpu-windows) or "all" (= all except build)'
         required: false
         default: 'all'
       skip_prune:
@@ -55,7 +55,10 @@ jobs:
         run: |
           requested='${{ github.event.inputs.variants || 'all' }}'
           if [[ "$requested" == "all" || -z "$requested" ]]; then
-            echo 'variants=["general","build","gpu","gpu-windows"]' >> "$GITHUB_OUTPUT"
+            # "build" (docker-build label) is excluded from "all": no job uses it
+            # since deploy-backend moved to ubuntu-latest + Cloud Build
+            # (2026-10-01). Still buildable via an explicit variants=build.
+            echo 'variants=["general","gpu","gpu-windows"]' >> "$GITHUB_OUTPUT"
           else
             json="$(echo "$requested" | tr ',' '\n' | jq -R . | jq -sc .)"
             echo "variants=$json" >> "$GITHUB_OUTPUT"

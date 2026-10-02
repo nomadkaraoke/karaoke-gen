@@ -1,0 +1,41 @@
+# Backend image build, submitted by the deploy-backend job in
+# .github/workflows/ci.yml (`gcloud builds submit --region us-central1`).
+# The CPU and GPU images build in parallel; the actual logic lives in
+# build-backend-images.sh (see its header for why this runs in Cloud Build).
+#
+# Machine type / disk / timeout are passed on the gcloud command line so CI can
+# use the free-tier e2-standard-2 for normal deploys and a bigger machine only
+# when a base image must be rebuilt.
+substitutions:
+  _SHA: ""
+  _VERSION: ""
+  _RUN_ID: ""
+  _BUILD_BASE: "false"
+  _BASE_HASH: ""
+  _BUILD_GPU_BASE: "false"
+  _GPU_BASE_HASH: ""
+
+steps:
+  - id: cpu
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args: ["infrastructure/cloudbuild/build-backend-images.sh", "cpu"]
+    waitFor: ["-"]
+    env:
+      - "SHA=${_SHA}"
+      - "VERSION=${_VERSION}"
+      - "RUN_ID=${_RUN_ID}"
+      - "BUILD_BASE=${_BUILD_BASE}"
+      - "BASE_HASH=${_BASE_HASH}"
+
+  - id: gpu
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args: ["infrastructure/cloudbuild/build-backend-images.sh", "gpu"]
+    waitFor: ["-"]
+    env:
+      - "SHA=${_SHA}"
+      - "VERSION=${_VERSION}"
+      - "RUN_ID=${_RUN_ID}"
+      - "BUILD_GPU_BASE=${_BUILD_GPU_BASE}"
+      - "GPU_BASE_HASH=${_GPU_BASE_HASH}"

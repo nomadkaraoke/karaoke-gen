@@ -1090,7 +1090,10 @@ jobs:
   deploy-backend:
     name: "Deploy - Backend (Cloud Run)"
     needs: [package-build]
-    runs-on: [self-hosted, linux, gcp, docker-build]
+    # GitHub-hosted (free for this public repo). Docker images are built in
+    # Cloud Build us-central1 (see "Build and push images" below), so nothing
+    # large is pulled from Artifact Registry to this runner.
+    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
@@ -1117,28 +1120,6 @@ jobs:
       CPU_JOBS_REPOSITORY: karaoke-backend-gpu
       CPU_JOBS_IMAGE_NAME: karaoke-backend-cpu
     steps:
-      - name: Check disk space (aggressive for Docker builds)
-        run: |
-          echo "Checking disk space..."
-          USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-          echo "Current disk usage: ${USAGE}%"
-          if [ "$USAGE" -gt 50 ]; then
-            echo "Disk usage above 50%, cleaning unused images..."
-            docker system prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After image cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 70 ]; then
-            echo "Still above 70%, clearing build cache..."
-            docker builder prune -af || true
-            USAGE=$(df / | tail -1 | awk '{print $5}' | tr -d '%')
-            echo "After build cache cleanup: ${USAGE}%"
-          fi
-          if [ "$USAGE" -gt 85 ]; then
-            echo "::error::Disk usage ${USAGE}% exceeds 85% even after cleanup. Runner needs maintenance."
-            exit 1
-          fi
-
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -1759,13 +1740,18 @@ jobs:
           gcloud auth configure-docker ${{ env.GPU_REGISTRY }} --quiet
 
       # ============================================
-      # Docker Build with BuildKit + Registry Cache
-      # This replaces expensive Cloud Build with free GitHub Actions
-      # Registry cache persists between builds for fast rebuilds
+      # Image builds run in Cloud Build (us-central1), not on this runner.
+      #
+      # This job runs on a free GitHub-hosted runner. The app images are built
+      # FROM large bases in us-central1 AR (CPU ~4.2 GB, GPU ~13 GB compressed);
+      # pulling those to a GitHub-hosted runner is GCP internet egress
+      # (~$0.12/GB → ~$2/deploy, far more than the old self-hosted build VM).
+      # Cloud Build in us-central1 pulls them same-region (free) and the
+      # e2-standard-2 default pool is in the 2,500 build-min/month free tier
+      # (~7 min/deploy, CPU+GPU built in parallel). Only the hash checks below
+      # (manifest + ~10KB config blob) touch AR from here.
+      # See infrastructure/cloudbuild/build-backend-images.sh.
       # ============================================
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Calculate base image hash
         id: base-hash
@@ -1781,7 +1767,6 @@ jobs:
           BASE_IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:latest"
 
           # Fetch hash label directly from registry (10KB config blob, not full image)
-          # This avoids issues with stale local Docker cache on GitHub runners
           EXISTING_HASH=""
 
           # Get the manifest (small JSON, ~1KB) - includes config digest
@@ -1812,71 +1797,133 @@ jobs:
             echo "needs_rebuild=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push base image (if needed)
-        if: steps.check-base.outputs.needs_rebuild == 'true'
-        timeout-minutes: 20
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/Dockerfile.base
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:${{ github.sha }}
-          # Registry cache for ALL layers (mode=max) - persists between builds
-          # ignore-error=true allows build to continue if cache doesn't exist yet
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:cache,ignore-error=true
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:cache,mode=max,ignore-error=true
-          build-args: |
-            BUILD_DATE=${{ github.run_id }}
-            BUILD_ID=${{ github.sha }}
-            BASE_CONTENT_HASH=${{ steps.base-hash.outputs.hash }}
-          # Provenance disabled for smaller image and faster push
-          provenance: false
-
-      - name: Ensure local base image is current (if not rebuilt)
-        if: steps.check-base.outputs.needs_rebuild == 'false'
+      - name: Calculate GPU base image hash
+        id: gpu-base-hash
         run: |
-          BASE_IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.BASE_IMAGE_NAME }}:latest"
+          # Hash Dockerfile.gpu-base + poetry.lock (resolved deps that affect GPU image)
+          # Using poetry.lock instead of pyproject.toml so that version-only bumps
+          # (which don't change dependencies) don't trigger expensive GPU base rebuilds
+          CURRENT_HASH=$(cat backend/Dockerfile.gpu-base poetry.lock | sha256sum | cut -d' ' -f1)
+          echo "hash=$CURRENT_HASH" >> $GITHUB_OUTPUT
+          echo "📋 GPU base content hash: $CURRENT_HASH"
 
-          # Get the config digest from registry manifest (identifies the image content)
-          # This is the same value as Docker's Image ID for the same image
-          REGISTRY_CONFIG_DIGEST=$(docker manifest inspect $BASE_IMAGE 2>/dev/null | jq -r '.config.digest' || echo "")
+      - name: Check if GPU base image exists and is current
+        id: check-gpu-base
+        run: |
+          WANT_HASH="${{ steps.gpu-base-hash.outputs.hash }}"
+          GPU_BASE_IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest"
 
-          # Get local image's ID (which is the config digest)
-          LOCAL_IMAGE_ID=$(docker image inspect $BASE_IMAGE --format='{{.Id}}' 2>/dev/null || echo "")
+          # Read the base.content.hash label without pulling the image
+          # (manifest ~1KB + config blob ~10KB). The GPU base lives in
+          # us-central1 (karaoke-repo), next to Cloud Build. The one-time copy
+          # from the legacy us-east4 location was removed: it ran via
+          # `buildx imagetools create` on THIS runner, which on a GitHub-hosted
+          # runner would stream ~13 GB through internet egress.
+          host="${GPU_BASE_IMAGE%%/*}"
+          path="${GPU_BASE_IMAGE#*/}"
+          path="${path%:*}"
+          MANIFEST=$(docker manifest inspect "$GPU_BASE_IMAGE" 2>/dev/null || echo "")
+          # A base copied with `buildx imagetools create` is a single-entry
+          # index — follow it to the image manifest.
+          CHILD=$(echo "$MANIFEST" | jq -r '.manifests[0].digest // ""' 2>/dev/null || echo "")
+          if [ -n "$CHILD" ] && [ "$CHILD" != "null" ]; then
+            MANIFEST=$(docker manifest inspect "${GPU_BASE_IMAGE%:*}@${CHILD}" 2>/dev/null || echo "")
+          fi
+          DIGEST=$(echo "$MANIFEST" | jq -r '.config.digest // ""' 2>/dev/null || echo "")
+          EXISTING_HASH=""
+          if [ -n "$DIGEST" ] && [ "$DIGEST" != "null" ]; then
+            EXISTING_HASH=$(curl -sL -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+              "https://${host}/v2/${path}/blobs/${DIGEST}" 2>/dev/null \
+              | jq -r '.config.Labels["base.content.hash"] // ""' 2>/dev/null || echo "")
+          fi
+          echo "📋 Registry GPU base image hash: ${EXISTING_HASH:-<none>}"
 
-          echo "Registry config digest: $REGISTRY_CONFIG_DIGEST"
-          echo "Local image ID:         $LOCAL_IMAGE_ID"
-
-          if [ -z "$LOCAL_IMAGE_ID" ]; then
-            echo "📥 Base image not in local cache - pulling from registry"
-            docker pull $BASE_IMAGE
-          elif [ "$LOCAL_IMAGE_ID" != "$REGISTRY_CONFIG_DIGEST" ]; then
-            echo "🔄 Local cache has different image - pulling latest"
-            docker pull $BASE_IMAGE
+          if [ -n "$EXISTING_HASH" ] && [ "$EXISTING_HASH" = "$WANT_HASH" ]; then
+            echo "✅ GPU base image is up to date"
+            echo "needs_rebuild=false" >> "$GITHUB_OUTPUT"
           else
-            echo "✅ Local cache matches registry - skipping pull"
+            echo "🔄 GPU base image needs rebuild (Dockerfile.gpu-base or poetry.lock changed)"
+            echo "   Current: $WANT_HASH"
+            echo "   Registry: $EXISTING_HASH"
+            echo "needs_rebuild=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build and push app image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:v${{ steps.version_check.outputs.version }}
-            ${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:latest
-            ${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.CPU_JOBS_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.CPU_JOBS_REPOSITORY }}/${{ env.CPU_JOBS_IMAGE_NAME }}:v${{ steps.version_check.outputs.version }}
-          # Registry cache for app layers
-          # ignore-error=true allows build to continue if cache doesn't exist yet
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:cache,ignore-error=true
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.APP_IMAGE_NAME }}:cache,mode=max,ignore-error=true
-          provenance: false
+      - name: Build and push images (Cloud Build us-central1)
+        id: images
+        env:
+          BUILD_BASE: ${{ steps.check-base.outputs.needs_rebuild }}
+          BUILD_GPU_BASE: ${{ steps.check-gpu-base.outputs.needs_rebuild }}
+          BASE_HASH: ${{ steps.base-hash.outputs.hash }}
+          GPU_BASE_HASH: ${{ steps.gpu-base-hash.outputs.hash }}
+          VERSION: ${{ steps.version_check.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Normal deploy: app layers only → free-tier e2-standard-2 (~7 min,
+          # measured). A base rebuild (≈monthly, on poetry.lock / Dockerfile.*base
+          # changes) gets a bigger paid machine + disk + timeout.
+          if [ "$BUILD_BASE" = "true" ] || [ "$BUILD_GPU_BASE" = "true" ]; then
+            MACHINE_ARGS=(--machine-type=e2-highcpu-8 --disk-size=300 --timeout=7200s)
+            echo "🔄 Base rebuild needed (cpu=$BUILD_BASE gpu=$BUILD_GPU_BASE) → e2-highcpu-8"
+          else
+            MACHINE_ARGS=(--disk-size=150 --timeout=3600s)
+          fi
+
+          # Minimal build context (what the Dockerfiles COPY + the build script).
+          SRC="$RUNNER_TEMP/backend-image-src.tgz"
+          tar -czf "$SRC" backend karaoke_gen lyrics_transcriber_temp \
+            pyproject.toml poetry.lock README.md LICENSE .dockerignore \
+            infrastructure/cloudbuild
+
+          BUILD_ID=$(gcloud builds submit "$SRC" \
+            --region=us-central1 \
+            --project=${{ env.PROJECT_ID }} \
+            --config=infrastructure/cloudbuild/backend-images.yaml \
+            "${MACHINE_ARGS[@]}" \
+            --substitutions="_SHA=${{ github.sha }},_VERSION=${VERSION},_RUN_ID=${{ github.run_id }},_BUILD_BASE=${BUILD_BASE},_BASE_HASH=${BASE_HASH},_BUILD_GPU_BASE=${BUILD_GPU_BASE},_GPU_BASE_HASH=${GPU_BASE_HASH}" \
+            --async --format='value(id)')
+          # Recorded before waiting so the cancel step below can stop the build
+          # if this job is cancelled (ci concurrency cancels superseded deploys;
+          # an orphaned build would otherwise still push :latest tags).
+          echo "$BUILD_ID" > "$RUNNER_TEMP/cloudbuild_id"
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "☁️ Cloud Build: https://console.cloud.google.com/cloud-build/builds;region=us-central1/${BUILD_ID}?project=${{ env.PROJECT_ID }}"
+
+          # Stream logs (returns when the build finishes), then check status.
+          gcloud builds log "$BUILD_ID" --region=us-central1 --project=${{ env.PROJECT_ID }} --stream \
+            || echo "::warning::log streaming ended early; checking build status"
+          # Tolerate transient API errors: a failed poll must not abort the
+          # step (the cancel step below would then kill a healthy build).
+          FAILS=0
+          while true; do
+            if ! STATUS=$(gcloud builds describe "$BUILD_ID" --region=us-central1 \
+              --project=${{ env.PROJECT_ID }} --format='value(status)'); then
+              FAILS=$((FAILS + 1))
+              if [ "$FAILS" -ge 5 ]; then
+                echo "::error::Cannot read Cloud Build $BUILD_ID status"
+                exit 1
+              fi
+              sleep 15
+              continue
+            fi
+            FAILS=0
+            case "$STATUS" in
+              QUEUED|PENDING|WORKING) sleep 15 ;;
+              *) break ;;
+            esac
+          done
+          echo "Cloud Build status: $STATUS"
+          if [ "$STATUS" != "SUCCESS" ]; then
+            echo "::error::Cloud Build $BUILD_ID finished with status $STATUS"
+            exit 1
+          fi
+
+      - name: Cancel Cloud Build if this job did not finish
+        if: always() && steps.images.outcome != 'success' && steps.images.outcome != 'skipped'
+        run: |
+          ID_FILE="$RUNNER_TEMP/cloudbuild_id"
+          [ -s "$ID_FILE" ] || exit 0
+          gcloud builds cancel "$(cat "$ID_FILE")" --region=us-central1 \
+            --project=${{ env.PROJECT_ID }} --quiet || true
 
       - name: Pre-import CPU image for us-east4 jobs
         # A new image digest costs a one-time ~2.5 min "Container image import" on
@@ -1894,142 +1941,6 @@ jobs:
             --async \
             --quiet \
             || echo "::warning::us-east4 CPU image pre-import execution failed to start (non-fatal)"
-
-      # ============================================
-      # GPU Image Build (for audio worker with L4 GPU)
-      # Same pattern as base image: hash check → rebuild if needed.
-      #
-      # Region layout (cost): the ~13 GB GPU base image and all BuildKit
-      # caches live in us-central1 (karaoke-repo), next to this runner, so
-      # building the app layer on top of the base is same-region (free). Only
-      # the FINAL app image is pushed to us-east4 (karaoke-backend-gpu), where
-      # the audio-separation Cloud Run job pulls it same-region. That push only
-      # uploads the small changed app layers — the base layers already exist
-      # there. Previously the base lived in us-east4 and every deploy pulled
-      # ~13 GB across regions (~$12-16/mo AR inter-region egress).
-      # ============================================
-
-      - name: Calculate GPU base image hash
-        id: gpu-base-hash
-        run: |
-          # Hash Dockerfile.gpu-base + poetry.lock (resolved deps that affect GPU image)
-          # Using poetry.lock instead of pyproject.toml so that version-only bumps
-          # (which don't change dependencies) don't trigger expensive GPU base rebuilds
-          CURRENT_HASH=$(cat backend/Dockerfile.gpu-base poetry.lock | sha256sum | cut -d' ' -f1)
-          echo "hash=$CURRENT_HASH" >> $GITHUB_OUTPUT
-          echo "📋 GPU base content hash: $CURRENT_HASH"
-
-      - name: Check if GPU base image exists and is current
-        id: check-gpu-base
-        run: |
-          WANT_HASH="${{ steps.gpu-base-hash.outputs.hash }}"
-          GPU_BASE_IMAGE="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest"
-          # Legacy location (pre cost-fix). Only used to seed us-central1 once.
-          LEGACY_GPU_BASE_IMAGE="${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest"
-
-          # Read the base.content.hash label of an image without pulling it
-          # (manifest ~1KB + config blob ~10KB).
-          image_hash() {
-            local image="$1" host path manifest digest
-            host="${image%%/*}"
-            path="${image#*/}"
-            path="${path%:*}"
-            manifest=$(docker manifest inspect "$image" 2>/dev/null || echo "")
-            # `buildx imagetools create` (the one-time copy below) wraps the
-            # image in a single-entry index — follow it to the image manifest.
-            local child
-            child=$(echo "$manifest" | jq -r '.manifests[0].digest // ""' 2>/dev/null || echo "")
-            if [ -n "$child" ] && [ "$child" != "null" ]; then
-              manifest=$(docker manifest inspect "${image%:*}@${child}" 2>/dev/null || echo "")
-            fi
-            digest=$(echo "$manifest" | jq -r '.config.digest // ""' 2>/dev/null || echo "")
-            if [ -z "$digest" ] || [ "$digest" = "null" ]; then
-              echo ""
-              return
-            fi
-            curl -sL -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-              "https://${host}/v2/${path}/blobs/${digest}" 2>/dev/null \
-              | jq -r '.config.Labels["base.content.hash"] // ""' 2>/dev/null || echo ""
-          }
-
-          EXISTING_HASH=$(image_hash "$GPU_BASE_IMAGE")
-          echo "📋 Registry GPU base image hash (us-central1): ${EXISTING_HASH:-<none>}"
-
-          if [ -n "$EXISTING_HASH" ] && [ "$EXISTING_HASH" = "$WANT_HASH" ]; then
-            echo "✅ GPU base image is up to date"
-            echo "needs_rebuild=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # One-time migration: if the legacy us-east4 base is already current,
-          # copy it byte-for-byte (same digests) instead of rebuilding from
-          # scratch, so the image content is unchanged by the move.
-          LEGACY_HASH=$(image_hash "$LEGACY_GPU_BASE_IMAGE")
-          echo "📋 Legacy GPU base image hash (us-east4): ${LEGACY_HASH:-<none>}"
-          if [ -n "$LEGACY_HASH" ] && [ "$LEGACY_HASH" = "$WANT_HASH" ]; then
-            echo "📦 Copying current GPU base from us-east4 to us-central1 (one-time)..."
-            if timeout 30m docker buildx imagetools create --tag "$GPU_BASE_IMAGE" "$LEGACY_GPU_BASE_IMAGE"; then
-              echo "✅ GPU base copied to us-central1"
-              # imagetools wraps the image in a single-entry index; tag the
-              # child manifest too so AR's delete-untagged cleanup policy can
-              # never treat it as an orphan.
-              CHILD=$(docker manifest inspect "$GPU_BASE_IMAGE" | jq -r '.manifests[0].digest // ""' || echo "")
-              if [ -n "$CHILD" ]; then
-                gcloud artifacts docker tags add "${GPU_BASE_IMAGE%:*}@${CHILD}" \
-                  "${GPU_BASE_IMAGE%:*}:content-${WANT_HASH:0:12}" --quiet \
-                  || echo "⚠️ Could not tag child manifest (non-fatal)"
-              fi
-              echo "needs_rebuild=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "⚠️ Copy failed — falling back to a rebuild"
-          fi
-
-          echo "🔄 GPU base image needs rebuild (Dockerfile.gpu-base or poetry.lock changed)"
-          echo "   Current: $WANT_HASH"
-          echo "   Registry: $EXISTING_HASH"
-          echo "needs_rebuild=true" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push GPU base image (if needed)
-        if: steps.check-gpu-base.outputs.needs_rebuild == 'true'
-        timeout-minutes: 45
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/Dockerfile.gpu-base
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,ignore-error=true
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:cache,mode=max,ignore-error=true
-          build-args: |
-            BUILD_DATE=${{ github.run_id }}
-            BUILD_ID=${{ github.sha }}
-            BASE_CONTENT_HASH=${{ steps.gpu-base-hash.outputs.hash }}
-          provenance: false
-
-      - name: Build and push GPU app image
-        # Normally ~2 min (only app layers are new). After a GPU base rebuild
-        # this push also uploads the ~13 GB base layers to us-east4 (they can't
-        # be cross-mounted from the us-central1 registry), hence the headroom.
-        timeout-minutes: 40
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/Dockerfile
-          push: true
-          # Final image → us-east4 (same region as the audio-separation job).
-          tags: |
-            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:latest
-            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.GPU_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.GPU_REPOSITORY }}/${{ env.GPU_APP_IMAGE_NAME }}:v${{ steps.version_check.outputs.version }}
-          # Base + cache → us-central1 (same region as this runner).
-          build-args: |
-            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GPU_BASE_IMAGE_NAME }}:latest
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/karaoke-backend-gpu:cache,ignore-error=true
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/karaoke-backend-gpu:cache,mode=max,ignore-error=true
-          provenance: false
 
       # ============================================
       # Deploy to Cloud Run
@@ -2243,8 +2154,7 @@ jobs:
           echo "Branch: ${{ github.ref_name }}"
           echo "Run: ${{ github.run_number }}"
           echo ""
-          echo "📊 Built on self-hosted GCP runner (200GB SSD, no disk space issues)"
-          echo "   Runner: gcp-runner with 4 vCPU, 16GB RAM"
+          echo "📊 Images built in Cloud Build us-central1: ${{ steps.images.outputs.build_id }}"
 
   # NOTE: Pulumi infrastructure deploys are done locally, not in CI.
   # CI runners run on the infrastructure Pulumi manages, creating a circular
