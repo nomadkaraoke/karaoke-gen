@@ -381,27 +381,28 @@ class PostmarkEmailProvider(EmailProvider):
         SMTP returns no Postmark MessageID and can't report suppressed
         recipients synchronously (Postmark logs those as bounces instead).
         """
-        msg = EmailMessage()
-        msg["From"] = formataddr((self.from_name, sender_email))
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        msg["X-PM-Message-Stream"] = self.MESSAGE_STREAM
         cc = _dedupe_emails(cc_emails) if cc_emails else []
         bcc = _dedupe_emails(bcc_emails) if bcc_emails else []
-        if cc:
-            msg["Cc"] = ", ".join(cc)
-        if text_content:
-            msg.set_content(text_content)
-            msg.add_alternative(html_content, subtype="html")
-        else:
-            msg.set_content(html_content, subtype="html")
-
         try:
+            msg = EmailMessage()
+            msg["From"] = formataddr((self.from_name, sender_email))
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg["X-PM-Message-Stream"] = self.MESSAGE_STREAM
+            if cc:
+                msg["Cc"] = ", ".join(cc)
+            if text_content:
+                msg.set_content(text_content)
+                msg.add_alternative(html_content, subtype="html")
+            else:
+                msg.set_content(html_content, subtype="html")
+
             with smtplib.SMTP(self.SMTP_HOST, self.SMTP_PORT, timeout=self.SMTP_TIMEOUT) as smtp:
                 smtp.starttls(context=ssl.create_default_context())
                 smtp.login(self.server_token, self.server_token)
                 smtp.send_message(msg, to_addrs=[to_email, *cc, *bcc])
-        except (smtplib.SMTPException, OSError):
+        except (smtplib.SMTPException, OSError, ValueError):
+            # ValueError: EmailMessage rejects CR/LF in header values.
             logger.exception(f"Failed to send email to {to_email} via Postmark SMTP fallback")
             return SendResult(success=False, message_id=None)
 

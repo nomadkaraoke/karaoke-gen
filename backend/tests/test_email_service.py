@@ -352,6 +352,16 @@ class TestPostmarkRetry:
 
         assert result.success is False
 
+    def test_smtp_fallback_rejects_header_injection_without_raising(self, provider, mock_smtp):
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._response(403, json_body=False)
+            result = provider.send_email_detailed(
+                to_email="user@example.com", subject="Song\nBcc: evil@example.com", html_content="<p>x</p>"
+            )
+
+        assert result.success is False
+        self.smtp.send_message.assert_not_called()
+
     def test_smtp_success_clears_stale_message_id(self, provider, mock_smtp):
         provider.last_message_id = "old"
         with patch("backend.services.email_service.requests.post") as mock_post:
