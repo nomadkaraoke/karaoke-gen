@@ -121,6 +121,14 @@ Alert policies are defined in `infrastructure/__main__.py` as Pulumi resources:
 - **Severity**: Critical
 - **Auto-close**: 10 minutes after resolution
 
+### Email - Postmark SMTP fallback failing (emails being lost)
+- **Defined in**: `modules/monitoring.py` → `create_email_delivery_observability()`
+- **Condition**: any failed Postmark SMTP-fallback send in karaoke-backend **or** karaoke-decide in a 10-minute window. Counted by the log-based metric `email/postmark_smtp_fallback_failures`.
+- **Gotcha**: the filter matches both `jsonPayload.message` (karaoke-backend logs structured JSON) and `textPayload` (karaoke-decide logs plain text). A filter on only one field silently misses the other service.
+- **Meaning**: the Postmark API was edge-blocked (HTML 403) **and** the SMTP fallback failed, so users aren't getting magic links or order emails.
+- **Action / options**: `docs/archive/2026-10-02-postmark-ip-block-options.md` (static egress IP via the existing Cloud NAT, ~$4–7/mo)
+- **Auto-close**: 60 minutes after resolution
+
 ## Notification Channels
 
 Notification channels are managed as Pulumi IaC in

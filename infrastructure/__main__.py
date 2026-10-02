@@ -225,6 +225,9 @@ alert_policies = monitoring.create_alert_policies(notification_channels)
 # Ephemeral GHA-runner dispatcher: log-based metrics + alerts
 runner_observability = monitoring.create_ephemeral_runner_observability(notification_channels)
 
+# Postmark SMTP-fallback failures (emails lost despite the fallback): metric + alert
+email_delivery_observability = monitoring.create_email_delivery_observability(notification_channels)
+
 # ==================== Cloud Function: GDrive Validator ====================
 
 # Cloud Storage bucket for function source code
@@ -793,6 +796,10 @@ pulumi.export("error_rate_alert_id", alert_policies["error_rate"].name)
 pulumi.export("queue_backlog_alert_id", alert_policies["queue_backlog"].name)
 pulumi.export("memory_alert_id", alert_policies["memory"].name)
 pulumi.export("service_unavailable_alert_id", alert_policies["service_unavailable"].name)
+pulumi.export(
+    "smtp_fallback_failure_alert_id",
+    email_delivery_observability["smtp_fallback_failure_alert"].name,
+)
 
 # YouTube upload queue
 pulumi.export("youtube_upload_queue", queues["youtube-upload-queue"].name)

@@ -500,3 +500,108 @@ def create_ephemeral_runner_observability(
     )
 
     return resources
+
+
+# Matches a failed Postmark SMTP-fallback send in either service (see
+# create_email_delivery_observability). Kept module-level so it can be
+# sanity-checked with `gcloud logging read` before applying.
+SMTP_FALLBACK_FAILURE_LOG_FILTER = (
+    'resource.type="cloud_run_revision" '
+    'AND resource.labels.service_name=("karaoke-backend" OR "karaoke-decide") '
+    'AND ((jsonPayload.message:"Failed to send email to" '
+    'AND jsonPayload.message:"via Postmark SMTP fallback") '
+    'OR (textPayload:"Failed to send email to" '
+    'AND textPayload:"via Postmark SMTP fallback"))'
+)
+
+
+def create_email_delivery_observability(
+    channels: dict[str, gcp.monitoring.NotificationChannel],
+) -> dict:
+    """Log-based metric + alert for failed Postmark SMTP-fallback sends.
+
+    Since 2026-09-30 Postmark's API edge blocks some shared us-central1 Cloud
+    Run egress IPs (IP-reputation block, confirmed by Postmark ticket
+    #11562402 — they won't lift it). karaoke-backend (v0.263.1+) and
+    karaoke-decide (v0.9.3+) fall back to Postmark SMTP on that HTML 403. If
+    the SMTP fallback *itself* fails, emails (magic links, order
+    confirmations) are being lost again — most likely Postmark has started
+    blocking SMTP from our IPs too. That is the trigger to add a static egress
+    IP (Cloud NAT); see docs/archive/2026-10-02-postmark-ip-block-options.md.
+
+    Cost: the log-based counter metric is within the free metric allotment;
+    alert policies are free until 2027-09-01, then $0.35/month per metric
+    reference.
+    """
+    notification_channels = _channel_names(channels)
+    resources: dict = {}
+
+    # Both services log "Failed to send email to <addr> via Postmark SMTP
+    # fallback" (logger.exception) when the fallback send raises. NOTE the
+    # payload field differs: karaoke-backend logs structured JSON
+    # (jsonPayload.message) while karaoke-decide logs plain text
+    # (textPayload) — the filter must match both or gen failures go unseen.
+    resources["smtp_fallback_failure_metric"] = gcp.logging.Metric(
+        "postmark-smtp-fallback-failures",
+        name="email/postmark_smtp_fallback_failures",
+        description="Counts Postmark SMTP-fallback send failures (karaoke-backend + karaoke-decide)",
+        filter=SMTP_FALLBACK_FAILURE_LOG_FILTER,
+        metric_descriptor=gcp.logging.MetricMetricDescriptorArgs(
+            metric_kind="DELTA",
+            value_type="INT64",
+            unit="1",
+            display_name="Postmark SMTP fallback failures",
+        ),
+    )
+
+    resources["smtp_fallback_failure_alert"] = gcp.monitoring.AlertPolicy(
+        "postmark-smtp-fallback-failures-alert",
+        display_name="Email - Postmark SMTP fallback failing (emails being lost)",
+        combiner="OR",
+        conditions=[
+            gcp.monitoring.AlertPolicyConditionArgs(
+                display_name="Any SMTP-fallback send failure",
+                condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
+                    filter=(
+                        'metric.type="logging.googleapis.com/user/email/postmark_smtp_fallback_failures" '
+                        'AND resource.type="cloud_run_revision"'
+                    ),
+                    comparison="COMPARISON_GT",
+                    threshold_value=0,
+                    duration="0s",
+                    aggregations=[
+                        gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
+                            alignment_period="600s",
+                            per_series_aligner="ALIGN_SUM",
+                            cross_series_reducer="REDUCE_SUM",
+                        ),
+                    ],
+                    trigger=gcp.monitoring.AlertPolicyConditionConditionThresholdTriggerArgs(
+                        count=1,
+                    ),
+                ),
+            ),
+        ],
+        alert_strategy=gcp.monitoring.AlertPolicyAlertStrategyArgs(
+            auto_close="3600s",
+        ),
+        documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
+            content=(
+                "An email failed to send via BOTH the Postmark API (edge-blocked, HTML 403) "
+                "AND the Postmark SMTP fallback. Users are not receiving magic links / "
+                "order emails.\n\n"
+                "1. Logs: `textPayload:\"via Postmark SMTP fallback\"` on karaoke-backend / "
+                "karaoke-decide — check the exception (SMTP 4xx/5xx, connection refused, auth).\n"
+                "2. If Postmark is now blocking SMTP too: add a static egress IP (Cloud NAT). "
+                "Options, costs and Pulumi steps: "
+                "`docs/archive/2026-10-02-postmark-ip-block-options.md` in karaoke-gen.\n"
+                "3. Postmark ticket history: #11562402."
+            ),
+            mime_type="text/markdown",
+        ),
+        enabled=True,
+        notification_channels=notification_channels,
+        opts=pulumi.ResourceOptions(depends_on=[resources["smtp_fallback_failure_metric"]]),
+    )
+
+    return resources
