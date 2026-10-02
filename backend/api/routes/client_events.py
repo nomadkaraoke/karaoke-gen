@@ -47,6 +47,7 @@ _db_singleton = None
 EventType = Literal[
     "banner_reconnecting",
     "banner_unavailable",
+    "banner_waking",
     "lyrics_load_failed",
     "waveform_slow",
     "waveform_failed",

@@ -6,10 +6,14 @@
  * and backend calls are addressed with relative "/api/..." URLs.
  */
 
-import { apiFetch, BackendUnavailableError, __backendHealthProbe } from '@/lib/api'
+import { apiFetch, BackendUnavailableError, __backendHealthProbe, __backendPrewarm } from '@/lib/api'
 import {
   getBackendStatus,
   configureHealthProbe,
+  configurePrewarm,
+  markBackendReachable,
+  prewarmBackend,
+  __resetBackendStatusForTest,
   STALL_RECONNECTING_MS,
   STALL_UNAVAILABLE_MS,
 } from '@/lib/backend-status'
@@ -44,8 +48,14 @@ describe('apiFetch', () => {
   beforeEach(() => {
     fetchMock.mockReset()
     ;(globalThis as unknown as { fetch: unknown }).fetch = fetchMock
-    // Re-register the real probe so its cached verdict resets between tests.
+    // Reset the store (reachability, in-flight reads) and re-register the real
+    // probe so its cached verdict resets between tests.
+    __resetBackendStatusForTest()
     configureHealthProbe(__backendHealthProbe)
+    configurePrewarm(__backendPrewarm)
+    // Default to a WARM session (backend answered moments ago); cold-start tests
+    // reset this explicitly.
+    markBackendReachable()
   })
 
   afterEach(() => {
@@ -155,6 +165,9 @@ describe('apiFetch', () => {
 
   it('surfaces the banner for a stalled GET once the health probe confirms the outage, then clears', async () => {
     jest.useFakeTimers()
+    // The backend WAS answering moments ago, so this stall is a recycle/outage,
+    // not a cold start — the normal reconnecting/unavailable path applies.
+    markBackendReachable()
     // Everything hangs — the backend is genuinely unreachable (recycle-style: the
     // origin holds requests open, so the probe only fails via its own timeout).
     let settleGet!: (r: Response) => void
@@ -188,6 +201,58 @@ describe('apiFetch', () => {
     settleGet(mockResponse(200, { ok: true }))
     await p
     expect(getBackendStatus()).toBe('online')
+  })
+
+  it('shows the calm waking state (not the warning) when a fresh session hits a cold backend', async () => {
+    jest.useFakeTimers()
+    __resetBackendStatusForTest()
+    configureHealthProbe(__backendHealthProbe)
+    // Nothing has answered yet this session; Cloud Run queues every request
+    // (including /api/health) for ~18s while an instance boots.
+    let settleGet!: (r: Response) => void
+    fetchMock.mockImplementation((url: unknown) => {
+      if (String(url).includes('/api/health')) return new Promise<Response>(() => {})
+      return new Promise<Response>((res) => {
+        settleGet = res
+      })
+    })
+
+    const p = apiFetch('/api/jobs')
+    p.catch(() => {})
+
+    // Cold mode probes at 1s; the probe times out at 4s → waking by ~6s.
+    await jest.advanceTimersByTimeAsync(3_000)
+    expect(getBackendStatus()).toBe('online')
+    await jest.advanceTimersByTimeAsync(3_000)
+    expect(getBackendStatus()).toBe('waking')
+    // Still calm at 18s — never the reconnecting/unavailable warning.
+    await jest.advanceTimersByTimeAsync(12_000)
+    expect(getBackendStatus()).toBe('waking')
+
+    // Instance is up: the queued GET completes (no hard-timeout at 45s hit).
+    settleGet(mockResponse(200, { jobs: [] }))
+    const res = await p
+    expect(res.status).toBe(200)
+    expect(getBackendStatus()).toBe('online')
+  })
+
+  it('prewarm sends an untracked, preflight-free GET /api/health and marks the backend reachable', async () => {
+    jest.useFakeTimers()
+    __resetBackendStatusForTest()
+    fetchMock.mockResolvedValue(mockResponse(200))
+    prewarmBackend()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toMatch(/\/api\/health$/)
+    expect(init).toEqual({ cache: 'no-store', keepalive: true }) // no headers → no preflight
+    expect(getBackendStatus()).toBe('online')
+
+    // Reachable now, so a later stall is treated as a recycle (normal path),
+    // and a second prewarm within the freshness window is a no-op.
+    prewarmBackend()
+    await jest.advanceTimersByTimeAsync(0)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('never surfaces the banner for a slow GET while the backend is reachable (health probe OK)', async () => {

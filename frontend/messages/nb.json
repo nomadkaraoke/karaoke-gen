@@ -1825,7 +1825,11 @@
       "reassurance": "Eventuelle karaokevideoer som lages akkurat nå påvirkes ikke, og vil fortsette å behandles.",
       "title": "Vi har problemer med å nå serverne våre"
     },
-    "dismiss": "Lukk"
+    "dismiss": "Lukk",
+    "waking": {
+      "body": "Dette tar vanligvis rundt 20 sekunder. Takk for tålmodigheten!",
+      "title": "Starter opp karaokeserverne våre…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} låter blir nå behandlet.",

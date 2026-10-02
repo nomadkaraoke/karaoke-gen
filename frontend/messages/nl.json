@@ -1825,7 +1825,11 @@
       "reassurance": "Karaokevideo's die momenteel worden gemaakt, ondervinden hier geen hinder van en worden gewoon verder verwerkt.",
       "title": "We kunnen onze servers even niet bereiken"
     },
-    "dismiss": "Sluiten"
+    "dismiss": "Sluiten",
+    "waking": {
+      "body": "Dit duurt meestal ongeveer 20 seconden. Bedankt voor je geduld!",
+      "title": "Onze karaokeservers worden opgestart…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} tracks worden nu verwerkt.",

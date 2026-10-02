@@ -1825,7 +1825,11 @@
       "reassurance": "Şu anda oluşturulmakta olan karaoke videoları bu durumdan etkilenmez ve işlenmeye devam eder.",
       "title": "Sunucularımıza ulaşmakta sorun yaşıyoruz"
     },
-    "dismiss": "Kapat"
+    "dismiss": "Kapat",
+    "waking": {
+      "body": "Bu işlem genellikle yaklaşık 20 saniye sürer. Sabrın için teşekkürler!",
+      "title": "Karaoke sunucularımız başlatılıyor…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} parça şu anda işleniyor.",

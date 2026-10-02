@@ -1825,7 +1825,11 @@
       "reassurance": "Obecnie tworzone filmy karaoke są bezpieczne i będą nadal przetwarzane.",
       "title": "Mamy problem z połączeniem z naszymi serwerami"
     },
-    "dismiss": "Zamknij"
+    "dismiss": "Zamknij",
+    "waking": {
+      "body": "Zwykle zajmuje to około 20 sekund. Dziękujemy za cierpliwość!",
+      "title": "Uruchamiamy nasze serwery karaoke…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} utworów jest teraz przetwarzanych.",

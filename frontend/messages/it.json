@@ -1825,7 +1825,11 @@
       "reassurance": "I video karaoke attualmente in fase di creazione non subiranno interruzioni e continueranno a essere elaborati.",
       "title": "Abbiamo problemi a raggiungere i nostri server"
     },
-    "dismiss": "Ignora"
+    "dismiss": "Ignora",
+    "waking": {
+      "body": "Di solito ci vogliono circa 20 secondi. Grazie per la pazienza!",
+      "title": "Avvio dei nostri server karaoke in corso…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} tracce sono ora in fase di elaborazione.",

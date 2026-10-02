@@ -1825,7 +1825,11 @@
       "reassurance": "Videoclipurile de karaoke aflate în curs de creare nu sunt afectate și vor continua să fie procesate.",
       "title": "Întâmpinăm probleme la conectarea cu serverele noastre"
     },
-    "dismiss": "Închide"
+    "dismiss": "Închide",
+    "waking": {
+      "body": "De obicei, durează aproximativ 20 de secunde. Îți mulțumim pentru răbdare!",
+      "title": "Pornim serverele de karaoke…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} piese sunt acum în curs de procesare.",

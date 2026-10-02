@@ -1825,7 +1825,11 @@
       "reassurance": "Karaoke videá, ktoré sa práve vytvárajú, to neovplyvní a ich spracovanie bude pokračovať.",
       "title": "Máme problémy s pripojením k našim serverom"
     },
-    "dismiss": "Zavrieť"
+    "dismiss": "Zavrieť",
+    "waking": {
+      "body": "Zvyčajne to trvá približne 20 sekúnd. Ďakujeme za trpezlivosť!",
+      "title": "Spúšťame naše karaoke servery…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} skladieb sa teraz spracúva.",

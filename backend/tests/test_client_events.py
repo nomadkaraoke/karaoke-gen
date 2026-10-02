@@ -51,6 +51,15 @@ class TestReportClientEvent:
         # Query string (may carry tokens) must be stripped before persisting.
         assert "SECRET" not in doc["url"]
 
+    def test_cold_start_waking_event_accepted(self, client, fresh_limiter_and_db):
+        resp = client.post(
+            "/api/client-events",
+            json=_event(type="banner_waking", detail={"stall_ms": 5000, "since_reachable_ms": None}),
+        )
+        assert resp.status_code == 202
+        (doc,) = fresh_limiter_and_db.collection.return_value.add.call_args[0]
+        assert doc["type"] == "banner_waking"
+
     def test_unknown_event_type_rejected(self, client):
         resp = client.post("/api/client-events", json=_event(type="something_else"))
         assert resp.status_code == 422

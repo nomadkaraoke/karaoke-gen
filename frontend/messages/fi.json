@@ -1825,7 +1825,11 @@
       "reassurance": "Tämä ei vaikuta parhaillaan luotaviin karaokevideoihin, vaan niiden käsittely jatkuu normaalisti.",
       "title": "Palvelimiimme yhdistämisessä on ongelmia"
     },
-    "dismiss": "Ohita"
+    "dismiss": "Ohita",
+    "waking": {
+      "body": "Tämä kestää yleensä noin 20 sekuntia. Kiitos kärsivällisyydestäsi!",
+      "title": "Käynnistetään karaokepalvelimiamme…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} kappaletta on nyt käsittelyssä.",

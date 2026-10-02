@@ -1825,7 +1825,11 @@
       "reassurance": "Els vídeos de karaoke que s'estiguin creant ara mateix no es veuran afectats i es continuaran processant.",
       "title": "Tenim problemes per connectar amb els nostres servidors"
     },
-    "dismiss": "Descarta"
+    "dismiss": "Descarta",
+    "waking": {
+      "body": "Normalment triga uns 20 segons. Gràcies per la teva paciència!",
+      "title": "S'estan iniciant els nostres servidors de karaoke…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "S'estan processant {count} pistes.",

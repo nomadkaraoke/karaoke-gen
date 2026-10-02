@@ -371,6 +371,10 @@
   },
   "backendStatus": {
     "reconnecting": "Reconnecting…",
+    "waking": {
+      "title": "Starting up our karaoke servers…",
+      "body": "This usually takes about 20 seconds. Thanks for your patience!"
+    },
     "unavailable": {
       "title": "We're having trouble reaching our servers",
       "body": "This is usually temporary — please try again in a couple of minutes.",
