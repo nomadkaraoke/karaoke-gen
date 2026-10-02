@@ -72,7 +72,8 @@ block at `api.postmarkapp.com`, not a token or payload problem. Seen from
 `karaoke-backend` and karaoke-decide (us-central1, shared Cloud Run egress IPs) since
 2026-09-30, in blocks lasting hours (all sends failed 2026-10-02 11:25 UTC onward);
 us-east4 Cloud Run Jobs were unaffected. IP Allowlisting is OFF in Postmark (checked
-2026-10-02), so this is Postmark's network firewall — ticket #11562402. A JSON 403
+2026-10-02), so this is Postmark's network firewall — ticket #11562402, where Postmark
+confirmed an IP-reputation block on the shared Google IP that they won't lift. A JSON 403
 (`ErrorCode=10`) is a real bad-token error instead.
 
 **Mitigation in code:** on an HTML 403, `PostmarkEmailProvider` immediately re-sends via
@@ -93,8 +94,14 @@ The E2E `waitForEmail` helper now checks `GET /api/admin/users/{email}/emails` o
 timeout and reports whether the backend sent anything ("backend has NO record…" =
 server-side send failure; "backend sent N email(s)…" = delivery/testmail problem).
 
-**If SMTP fallback also fails:** follow up on the Postmark ticket, or give the backend a
-static egress IP (Direct VPC egress + Cloud NAT).
+**Alert:** "Email - Postmark SMTP fallback failing (emails being lost)" (log-based metric
+`email/postmark_smtp_fallback_failures`, `infrastructure/modules/monitoring.py`) fires if a
+fallback send fails in karaoke-backend or karaoke-decide.
+
+**If SMTP fallback also fails / the alert fires:** Postmark is likely blocking SMTP from our
+IPs too → give the services a static egress IP. Options, measured costs (~$4–7/mo for the
+recommended reuse-the-existing-NAT route) and Pulumi steps:
+[`docs/archive/2026-10-02-postmark-ip-block-options.md`](archive/2026-10-02-postmark-ip-block-options.md).
 
 ## Fast rollback (bad backend deploy)
 
