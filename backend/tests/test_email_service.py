@@ -285,25 +285,80 @@ class TestPostmarkRetry:
     def provider(self):
         return PostmarkEmailProvider(server_token="t", from_email="f@e.com")
 
-    def test_html_403_then_success_is_retried(self, provider):
-        """The prod failure mode: nginx HTML 403 from Postmark's edge, then OK."""
+    @pytest.fixture
+    def mock_smtp(self):
+        with patch("backend.services.email_service.smtplib.SMTP") as smtp_cls:
+            self.smtp = smtp_cls.return_value.__enter__.return_value
+            yield smtp_cls
+
+    def test_html_403_falls_back_to_smtp_without_api_retries(self, provider, mock_smtp):
+        """The prod failure mode: nginx HTML 403 from Postmark's edge lasts hours."""
         with patch("backend.services.email_service.requests.post") as mock_post:
-            mock_post.side_effect = [self._response(403, json_body=False), self._response(200)]
+            mock_post.return_value = self._response(403, json_body=False)
             result = self._send(provider)
 
         assert result.success is True
-        assert result.message_id == "abc"
-        assert mock_post.call_count == 2
-        self.mock_sleep.assert_called_once_with(1.0)
+        assert result.message_id is None
+        assert mock_post.call_count == 1
+        self.mock_sleep.assert_not_called()
+        mock_smtp.assert_called_once_with("smtp.postmarkapp.com", 587, timeout=15)
+        self.smtp.starttls.assert_called_once()
+        self.smtp.login.assert_called_once_with("t", "t")
+        msg = self.smtp.send_message.call_args.args[0]
+        assert msg["To"] == "user@example.com"
+        assert msg["From"] == "Nomad Karaoke <f@e.com>"
+        assert msg["X-PM-Message-Stream"] == "outbound"
+        assert self.smtp.send_message.call_args.kwargs["to_addrs"] == ["user@example.com"]
 
-    def test_html_403_gives_up_after_all_attempts(self, provider):
+    def test_smtp_fallback_builds_multipart_with_cc_bcc(self, provider, mock_smtp):
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._response(403, json_body=False)
+            result = provider.send_email_detailed(
+                to_email="user@example.com",
+                subject="Ünïcode subject",
+                html_content="<p>hi</p>",
+                text_content="hi",
+                cc_emails=["cc@example.com", "CC@example.com"],
+                bcc_emails=["bcc@example.com"],
+                from_email_override="tenant@example.com",
+            )
+
+        assert result.success is True
+        msg = self.smtp.send_message.call_args.args[0]
+        assert msg["Cc"] == "cc@example.com"
+        assert msg["Bcc"] is None  # BCC never appears in headers
+        assert msg["Subject"] == "Ünïcode subject"
+        assert msg["From"] == "Nomad Karaoke <tenant@example.com>"
+        assert msg.get_body(("plain",)).get_content().strip() == "hi"
+        assert msg.get_body(("html",)).get_content().strip() == "<p>hi</p>"
+        assert self.smtp.send_message.call_args.kwargs["to_addrs"] == [
+            "user@example.com", "cc@example.com", "bcc@example.com"
+        ]
+
+    def test_smtp_fallback_failure_reports_failure(self, provider, mock_smtp):
+        import smtplib as _smtplib
+        self.smtp.login.side_effect = _smtplib.SMTPAuthenticationError(535, b"bad")
         with patch("backend.services.email_service.requests.post") as mock_post:
             mock_post.return_value = self._response(403, json_body=False)
             result = self._send(provider)
 
         assert result.success is False
-        assert mock_post.call_count == 3
-        assert [c.args[0] for c in self.mock_sleep.call_args_list] == [1.0, 3.0]
+
+    def test_smtp_fallback_connection_error_reports_failure(self, provider, mock_smtp):
+        mock_smtp.side_effect = OSError("unreachable")
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._response(403, json_body=False)
+            result = self._send(provider)
+
+        assert result.success is False
+
+    def test_smtp_success_clears_stale_message_id(self, provider, mock_smtp):
+        provider.last_message_id = "old"
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._response(403, json_body=False)
+            self._send(provider)
+
+        assert provider.last_message_id is None
 
     @pytest.mark.parametrize("status", [429, 500, 503])
     def test_rate_limit_and_server_errors_are_retried(self, provider, status):
@@ -340,14 +395,15 @@ class TestPostmarkRetry:
         assert result.success is True
         assert mock_post.call_count == 2
 
-    def test_connect_timeout_on_every_attempt_fails_cleanly(self, provider):
+    def test_connect_timeout_on_every_attempt_falls_back_to_smtp(self, provider, mock_smtp):
         import requests as _requests
         with patch("backend.services.email_service.requests.post") as mock_post:
             mock_post.side_effect = _requests.ConnectTimeout("slow")
             result = self._send(provider)
 
-        assert result.success is False
+        assert result.success is True
         assert mock_post.call_count == 3
+        self.smtp.send_message.assert_called_once()
 
     def test_read_timeout_not_retried_to_avoid_duplicate_send(self, provider):
         """Postmark may have accepted the message; it has no idempotency key."""
