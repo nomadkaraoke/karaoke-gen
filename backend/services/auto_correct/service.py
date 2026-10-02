@@ -710,22 +710,19 @@ class AutoCorrectService:
     def _call_gemini(
         self, model: str, system_prompt: str, user_prompt: str, *, job_id: str
     ) -> tuple[Any, Optional[TokenUsage]]:
-        from google import genai
         from google.genai import types
 
-        client = genai.Client(
-            vertexai=True,
-            project=self.settings.google_cloud_project,
-            location="global",
-            # Milliseconds; bounds the call so a hung model never strands the UI.
-            http_options=types.HttpOptions(timeout=120_000),
-        )
+        from backend.services.gemini_client import get_genai_client, note_gemini_failure
+
         # Deep-copy: the google-genai SDK mutates the schema dict in place,
         # which would poison the shared module-level constant for other
         # providers running in the same process.
         import copy
 
         try:
+            # Gemini Developer API (API key). Timeout in milliseconds bounds the
+            # call so a hung model never strands the UI.
+            client = get_genai_client(timeout_ms=120_000)
             response = client.models.generate_content(
                 model=model,
                 contents=[user_prompt],
@@ -736,6 +733,15 @@ class AutoCorrectService:
                 ),
             )
         except Exception as exc:  # surface as 502, never a stuck job
+            if note_gemini_failure("auto_correct", exc):
+                # Quota / prepaid credit / key problem: retrying won't help.
+                # Non-retryable so compare mode drops the Gemini leg at once
+                # and keeps the other model's (Opus) suggestions.
+                raise AutoCorrectServiceError(
+                    "Gemini is unavailable (quota/billing/key) — skipped",
+                    status_code=503,
+                    retryable=False,
+                ) from exc
             if _is_transient_model_error(exc):
                 logger.warning(
                     "auto-correct model rate-limited/overloaded job=%s model=%s (%s)",

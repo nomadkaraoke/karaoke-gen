@@ -1403,11 +1403,17 @@ For indefinite loops (like polling), use outer timeout (total duration) + inner 
 ### Secret Manager Access
 Service account needs `roles/secretmanager.secretAccessor`. Mount as env var or volume. Use GCP workload identity, not key files.
 
-### Vertex AI Auth
-Use `project` parameter with `ChatGoogleGenerativeAI` to trigger Vertex AI backend with ADC. Don't require `GOOGLE_API_KEY`.
-
-### Gemini 3 Requires Global Location
-Gemini 3 models require `location="global"`, not regional endpoints like `us-central1`.
+### Gemini: Developer API key, never Vertex (2026-10-01)
+All Gemini calls use the **Gemini Developer API** (AI Studio key in Secret Manager
+`gemini-api-key`, billed outside the nomadkaraoke project) via
+`backend/services/gemini_client.get_genai_client()`; `aiplatform.googleapis.com` and
+`generativelanguage.googleapis.com` are **disabled** in nomadkaraoke so no AI spend lands
+on it. Key = `GEMINI_API_KEY` env (CI `--set-secrets` for the service, Pulumi for jobs),
+else Secret Manager read at runtime. Rotate = add a secret version (new instances/job
+executions pick it up). Classify failures with `note_gemini_failure(caller, exc)`:
+quota/billing/key errors (not per-minute 429s) skip retries, degrade, and Discord-alert
+at most once per 6h. (Supersedes the old "Vertex AI Auth" / "global location" notes —
+the Developer API has no project/location.)
 
 ### LangChain: REST over gRPC
 Use `langchain-google-genai` (REST) instead of `langchain-google-vertexai` (gRPC) to avoid silent hangs.

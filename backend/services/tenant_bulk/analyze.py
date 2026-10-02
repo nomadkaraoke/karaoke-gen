@@ -431,6 +431,9 @@ def analyze_filenames(
             llm_rows, leftover = _llm_analyze(leftover, generate)
             rows.extend(llm_rows)
         except Exception as e:  # pragma: no cover - resilience guard
+            from backend.services.gemini_client import note_gemini_failure
+
+            note_gemini_failure("tenant_bulk_analyze", e)
             logger.warning("Bulk-analyze LLM pass failed, using regex result: %s", e)
 
     unpaired = [_describe_unpaired(fn) for fn in leftover]
@@ -438,7 +441,7 @@ def analyze_filenames(
 
 
 # ---------------------------------------------------------------------------
-# Default Vertex-Gemini generate (mirrors backend.services.match_judge.ai)
+# Default Gemini generate (mirrors backend.services.match_judge.ai)
 # ---------------------------------------------------------------------------
 
 def _default_model() -> str:
@@ -451,22 +454,18 @@ def _default_model() -> str:
 
 
 def default_generate(system_prompt: str, user_prompt: str) -> dict:
-    """Blocking Vertex-Gemini call producing schema-constrained JSON.
+    """Blocking Gemini (Developer API) call producing schema-constrained JSON.
 
     Wrap in ``asyncio.to_thread`` when calling from async code.
     """
-    from google import genai
     from google.genai import types
 
     from backend.config import settings
 
+    from backend.services.gemini_client import get_genai_client
+
     timeout_ms = int(getattr(settings, "tenant_bulk_timeout_ms", 30000))
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location="global",
-        http_options=types.HttpOptions(timeout=timeout_ms),
-    )
+    client = get_genai_client(timeout_ms=timeout_ms)
     response = client.models.generate_content(
         model=_default_model(),
         contents=[user_prompt],

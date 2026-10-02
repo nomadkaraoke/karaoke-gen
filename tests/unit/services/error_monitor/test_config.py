@@ -181,11 +181,6 @@ class TestDefaultValues:
         assert isinstance(config.LLM_ANALYSIS_MODEL, str)
         assert len(config.LLM_ANALYSIS_MODEL) > 0
 
-    def test_llm_vertex_location_is_string(self):
-        from backend.services.error_monitor import config
-
-        assert isinstance(config.LLM_VERTEX_LOCATION, str)
-        assert len(config.LLM_VERTEX_LOCATION) > 0
 
 
 class TestEnvVarOverrides:

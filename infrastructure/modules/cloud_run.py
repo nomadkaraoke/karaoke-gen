@@ -153,6 +153,17 @@ def create_lyrics_transcription_job(
                                 name="GCS_BUCKET_NAME",
                                 value=bucket.name,
                             ),
+                            # Gemini Developer API key (AI Studio; Vertex AI is
+                            # disabled in this project). Rotate = new secret version.
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GEMINI_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/gemini-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
                             # Genius API token (for lyrics fetching)
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="GENIUS_API_TOKEN",
@@ -587,6 +598,17 @@ def create_video_encoding_job(
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="DEFAULT_BRAND_PREFIX",
                                 value="NOMAD",
+                            ),
+                            # Gemini Developer API key (AI Studio; Vertex AI is
+                            # disabled in this project). Rotate = new secret version.
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GEMINI_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/gemini-api-key",
+                                        version="latest",
+                                    ),
+                                ),
                             ),
                             # Discord webhook for release notifications
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(

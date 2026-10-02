@@ -18,6 +18,8 @@ if 'FIRESTORE_EMULATOR_HOST' not in os.environ:
     os.environ.setdefault('GCS_BUCKET_NAME', 'test-bucket')
     os.environ.setdefault('FIRESTORE_COLLECTION', 'jobs')
     os.environ.setdefault('ENVIRONMENT', 'test')
+# Gemini Developer API key: never let a test fall through to Secret Manager.
+os.environ.setdefault('GEMINI_API_KEY', 'test-gemini-key')
 
 import pytest
 from unittest.mock import Mock, MagicMock, AsyncMock, patch

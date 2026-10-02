@@ -295,11 +295,9 @@ class CreditEvaluationService:
         """Call Gemini and return the response text."""
         from google import genai
 
-        client = genai.Client(
-            vertexai=True,
-            project=self.settings.google_cloud_project,
-            location="global",
-        )
+        from backend.services.gemini_client import get_genai_client
+
+        client = get_genai_client(timeout_ms=60_000)
         response = client.models.generate_content(
             model=self.settings.credit_eval_model,
             contents=prompt,
@@ -405,7 +403,13 @@ class CreditEvaluationService:
                 feedback_content=feedback_content,
             )
 
-            response_text = self._call_gemini(prompt)
+            try:
+                response_text = self._call_gemini(prompt)
+            except Exception as gemini_exc:
+                from backend.services.gemini_client import note_gemini_failure
+
+                note_gemini_failure("credit_evaluation", gemini_exc)
+                raise
             evaluation = _parse_gemini_response(response_text)
             evaluation.signals = signals
 

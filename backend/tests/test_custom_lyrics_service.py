@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import os
 import json
 from unittest.mock import MagicMock, patch
 
@@ -103,11 +104,11 @@ def test_text_only_happy_path(service: CustomLyricsService) -> None:
     assert result.line_count_mismatch is False
     assert result.iterations_used == 0
     assert result.model == "gemini-3.1-pro-preview"
-    assert mock_client_cls.call_args.kwargs == {
-        "vertexai": True,
-        "project": "test-project",
-        "location": "global",
-    }
+    # Gemini Developer API (API key) — never Vertex AI.
+    kwargs = mock_client_cls.call_args.kwargs
+    assert kwargs["api_key"] == os.environ["GEMINI_API_KEY"]
+    assert kwargs["vertexai"] is False and "project" not in kwargs
+    assert kwargs["http_options"].timeout == 300_000
 
 
 def test_docx_input_parsed_to_text(

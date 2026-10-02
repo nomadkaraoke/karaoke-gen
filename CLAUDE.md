@@ -112,7 +112,7 @@ See `docs/TESTING.md` § "Ad-Hoc Production Debugging" for full details.
 - Only `/admin/*` is English-only — it has no `[locale]/admin` counterpart and inherits `DefaultIntlProvider` from the root layout
 - Internal links use `Link` from `@/i18n/routing` (locale-aware)
 - After adding/changing English strings: `python frontend/scripts/translate.py --messages-dir frontend/messages --target all`
-- Translation uses Gemini 3.8 Flash via Vertex AI with GCS cache for efficiency
+- Translation uses Gemini 3.8 Flash via the **Gemini Developer API** (key: `GEMINI_API_KEY`, else Secret Manager `gemini-api-key` via your gcloud login — `frontend/scripts/gemini_client.py`) with GCS cache for efficiency. **Vertex AI is disabled in the GCP project — never use `vertexai=True`; backend code uses `backend/services/gemini_client.get_genai_client()`.**
 - CI validates all locale files have matching keys — **PR will fail if translations are missing**
 - Pre-commit hook auto-translates when en.json changes (enable: `git config core.hooksPath .githooks`)
 - Don't hardcode user-facing strings — add to `messages/en.json` and use `t('key')`

@@ -126,7 +126,10 @@ async def judge_match(
 
     try:
         return await ai(artist, title, candidates, audio_tier)
-    except Exception:
+    except Exception as exc:
+        from backend.services.gemini_client import note_gemini_failure
+
+        note_gemini_failure("match_judge", exc)
         # Graceful degradation: returning no-suggestion is a safe fallback (the
         # user just gets no auto-match). Log at WARNING (with traceback) so a
         # transient AI blip does not page as a red "new error pattern".

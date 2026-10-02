@@ -134,7 +134,9 @@ def _signature(error_message: str) -> str:
         return hashlib.sha256((error_message or "").encode("utf-8")).hexdigest()
 
 
-def _should_alert(db: Any, signature: str, now: datetime) -> tuple[bool, bool, int, Any]:
+def _should_alert(
+    db: Any, signature: str, now: datetime, throttle_minutes: Optional[int] = None
+) -> tuple[bool, bool, int, Any]:
     """Decide whether to send, WITHOUT yet acknowledging delivery.
 
     Returns ``(should_send, is_novel, suppressed_since_last, doc_ref)``:
@@ -182,7 +184,8 @@ def _should_alert(db: Any, signature: str, now: datetime) -> tuple[bool, bool, i
         if last_alerted_raw:
             try:
                 last_alerted = datetime.fromisoformat(last_alerted_raw)
-                within_window = (now - last_alerted) < timedelta(minutes=_throttle_minutes())
+                window = throttle_minutes if throttle_minutes is not None else _throttle_minutes()
+                within_window = (now - last_alerted) < timedelta(minutes=window)
             except (TypeError, ValueError):
                 within_window = False
 
@@ -223,6 +226,36 @@ def _mark_alerted(doc_ref: Any, now: datetime) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("ops_alerts: could not record alert delivery: %s", exc)
+
+
+def send_throttled_ops_alert(key: str, message: str, throttle_minutes: int) -> bool:
+    """Send an ops alert at most once per ``throttle_minutes`` for ``key``.
+
+    The throttle lives in Firestore (same dedup collection as job-failure
+    alerts), so it holds across every Cloud Run instance and job execution.
+    Fails open (sends) if Firestore is unreachable. Best-effort; never raises.
+    Returns True if an alert was sent.
+    """
+    try:
+        if not _is_enabled():
+            return False
+        from backend.services.firestore_service import get_firestore_client
+
+        now = datetime.now(timezone.utc)
+        should_send, _novel, suppressed, doc_ref = _should_alert(
+            get_firestore_client(), key, now, throttle_minutes=throttle_minutes
+        )
+        if not should_send:
+            return False
+        if suppressed:
+            message += f"\n_(Collapsed {suppressed} earlier occurrence(s).)_"
+        sent = send_ops_alert(message)
+        if sent:
+            _mark_alerted(doc_ref, now)
+        return sent
+    except Exception as exc:  # noqa: BLE001 - alerting must never raise
+        logger.warning("ops_alerts: throttled alert %s failed: %s", key, exc)
+        return False
 
 
 def _retry_pending(state_data: dict) -> bool:

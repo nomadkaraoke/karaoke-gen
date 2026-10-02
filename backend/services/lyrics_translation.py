@@ -176,15 +176,11 @@ class LyricsTranslationService:
     # ---- model ----
 
     def _call_gemini(self, user_prompt: str) -> Any:
-        from google import genai
         from google.genai import types
 
-        client = genai.Client(
-            vertexai=True,
-            project=self.settings.google_cloud_project,
-            location="global",
-            http_options=types.HttpOptions(timeout=90_000),  # 2 attempts: render waits <= ~3 min
-        )
+        from backend.services.gemini_client import get_genai_client
+
+        client = get_genai_client(timeout_ms=90_000)  # 2 attempts: render waits <= ~3 min
         response = client.models.generate_content(
             model=self.model,
             contents=[user_prompt],
@@ -245,6 +241,14 @@ class LyricsTranslationService:
             except (LyricsTranslationError, ValueError) as exc:  # malformed output: retry
                 last_error = exc
             except Exception as exc:
+                from backend.services.gemini_client import note_gemini_failure
+
+                if note_gemini_failure("lyrics_translation", exc):
+                    # Quota/credit/key problem: don't retry; the render goes ahead
+                    # without the translation row.
+                    raise LyricsTranslationError(
+                        "translation service unavailable (Gemini quota/billing) — rendered without translation"
+                    ) from exc
                 if not _is_transient(exc):
                     raise LyricsTranslationError(f"translation model error: {exc}") from exc
                 last_error = exc

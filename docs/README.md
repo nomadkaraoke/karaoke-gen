@@ -57,6 +57,8 @@
 
 ## Recent Changes
 
+- **Gemini moved off Vertex AI** (2026-10-01, v0.262.0): every Gemini call (auto-correct compare leg, match-judge, parse-titles, credit eval, tenant bulk analyze, custom lyrics, lyrics translation, error-monitor LLM, agentic correction, translate.py) now uses the Gemini Developer API with the `gemini-api-key` secret via `backend/services/gemini_client.py`, so no AI spend lands on the nomadkaraoke project (Vertex APIs disabled there). Quota/billing/key failures degrade per caller and send one Discord ops alert per 6h. See LESSONS-LEARNED "Gemini: Developer API key, never Vertex".
+
 - **Translated lyrics follow-ups + review waveform spinner** (2026-10-01, v0.261.0):
   - The translation row now renders at 70% of the unsung colour's opacity, with outline and shadow faded to match, so it reads as secondary to the sung line (`subtitles.py:TRANSLATION_OPACITY`). A theme's `karaoke.translation_color` still wins.
   - Published videos with translations get "(With Translation into X)" in the YouTube title, before "(Karaoke)". Only the artist/title get truncated, never the label. The description also gets a notice. This applies to the live upload and the quota queue, but only when `state_data.lyrics_translation.status == "translated"` (`youtube_description.build_youtube_title`).

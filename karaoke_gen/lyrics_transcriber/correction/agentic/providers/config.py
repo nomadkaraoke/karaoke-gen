@@ -61,7 +61,7 @@ class ProviderConfig:
         return ProviderConfig(
             openai_api_key=os.getenv("OPENAI_API_KEY"),
             anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
-            google_api_key=os.getenv("GOOGLE_API_KEY"),
+            google_api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"),
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY"),
             privacy_mode=os.getenv("PRIVACY_MODE", "false").lower() in {"1", "true", "yes"},
             cache_dir=cache_dir,

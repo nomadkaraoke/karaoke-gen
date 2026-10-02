@@ -80,13 +80,9 @@ def grant_backend_permissions(
         member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
-    # Grant Vertex AI User permissions (for Gemini agentic AI correction)
-    bindings["vertex_ai_iam"] = gcp.projects.IAMMember(
-        "karaoke-backend-vertexai-user",
-        project=PROJECT_ID,
-        role="roles/aiplatform.user",
-        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
-    )
+    # No Vertex AI role: Gemini is called via the Gemini Developer API with the
+    # `gemini-api-key` secret (read via the project-level secretAccessor role
+    # above), and aiplatform.googleapis.com is disabled in this project.
 
     # Grant backend service account permission to enqueue Cloud Tasks
     bindings["cloud_tasks_enqueuer"] = gcp.projects.IAMMember(

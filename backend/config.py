@@ -82,9 +82,9 @@ class Settings(BaseSettings):
 
     # Agentic AI Correction (for lyrics correction via LLM)
     # Only used when skip_correction=false
-    # When enabled, uses Gemini via Vertex AI for intelligent lyrics correction
+    # When enabled, uses Gemini (Developer API, key GEMINI_API_KEY) for intelligent lyrics correction
     use_agentic_ai: bool = os.getenv("USE_AGENTIC_AI", "true").lower() in ("true", "1", "yes")
-    agentic_ai_model: str = os.getenv("AGENTIC_AI_MODEL", "vertexai/gemini-3.8-flash")
+    agentic_ai_model: str = os.getenv("AGENTIC_AI_MODEL", "gemini/gemini-3.8-flash")
     # Timeout for agentic correction in seconds. If correction takes longer, abort and
     # use uncorrected transcription - human review will fix any issues.
     agentic_correction_timeout_seconds: int = int(os.getenv("AGENTIC_CORRECTION_TIMEOUT_SECONDS", "180"))

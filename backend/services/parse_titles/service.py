@@ -56,6 +56,9 @@ async def _parse_chunk(chunk: list[dict], *, model, generate) -> list[dict]:
     try:
         results = await ai.ai_parse(chunk, model=model, generate=generate)
     except Exception as exc:
+        from backend.services.gemini_client import note_gemini_failure
+
+        note_gemini_failure("parse_titles", exc)
         logger.warning(
             "parse_titles chunk degraded (%s); blanks for %d items", exc, len(chunk))
         return _blanks(chunk)
