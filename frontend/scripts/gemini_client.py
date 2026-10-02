@@ -84,7 +84,8 @@ def get_genai_client():
     """Build a google-genai client for the Gemini Developer API."""
     from google import genai
 
-    return genai.Client(api_key=get_api_key())
+    # vertexai=False pins the Developer API even if GOOGLE_GENAI_USE_VERTEXAI is set.
+    return genai.Client(vertexai=False, api_key=get_api_key())
 
 
 # Message fragments that mean "the key/account can't pay or isn't valid" — a

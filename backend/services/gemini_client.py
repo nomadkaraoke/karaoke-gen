@@ -74,7 +74,8 @@ def get_genai_client(timeout_ms: Optional[int] = None) -> Any:
     from google.genai import types
 
     http_options = types.HttpOptions(timeout=int(timeout_ms)) if timeout_ms else None
-    return genai.Client(api_key=get_api_key(), http_options=http_options)
+    # vertexai=False pins the Developer API even if GOOGLE_GENAI_USE_VERTEXAI is set.
+    return genai.Client(vertexai=False, api_key=get_api_key(), http_options=http_options)
 
 
 # Message fragments that mean "the key/account can't pay or isn't valid" — a

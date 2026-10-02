@@ -107,7 +107,7 @@ def test_text_only_happy_path(service: CustomLyricsService) -> None:
     # Gemini Developer API (API key) — never Vertex AI.
     kwargs = mock_client_cls.call_args.kwargs
     assert kwargs["api_key"] == os.environ["GEMINI_API_KEY"]
-    assert "vertexai" not in kwargs and "project" not in kwargs
+    assert kwargs["vertexai"] is False and "project" not in kwargs
     assert kwargs["http_options"].timeout == 300_000
 
 

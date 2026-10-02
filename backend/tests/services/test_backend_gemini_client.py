@@ -115,7 +115,7 @@ def test_client_uses_api_key_never_vertex(monkeypatch):
     kwargs = client_cls.call_args.kwargs
     assert kwargs["api_key"] == "k"
     assert kwargs["http_options"].timeout == 1234
-    assert "vertexai" not in kwargs and "project" not in kwargs and "location" not in kwargs
+    assert kwargs["vertexai"] is False and "project" not in kwargs and "location" not in kwargs
 
 
 # ---- note_gemini_failure / alert throttle --------------------------------------

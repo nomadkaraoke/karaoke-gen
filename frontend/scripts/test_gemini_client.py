@@ -112,3 +112,13 @@ def test_quota_message_hints_env_key(monkeypatch):
     assert "environment" not in gemini_client.quota_exhausted_message()
     monkeypatch.setenv("GEMINI_API_KEY", "x")
     assert "GEMINI_API_KEY environment variable" in gemini_client.quota_exhausted_message()
+
+
+def test_client_pins_developer_api(monkeypatch):
+    """vertexai=False even if GOOGLE_GENAI_USE_VERTEXAI is set in the environment."""
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+    with mock.patch("google.genai.Client") as client_cls:
+        gemini_client.get_genai_client()
+    kwargs = client_cls.call_args.kwargs
+    assert kwargs["vertexai"] is False and kwargs["api_key"] == "k"
