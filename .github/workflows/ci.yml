@@ -1033,6 +1033,11 @@ jobs:
             PR_NUM=""
             PR_TITLE=""
           fi
+          # The backend deploy splices PR_TITLE into the comma-delimited
+          # `gcloud run deploy --set-env-vars "...,PR_TITLE=..."` (inside a
+          # double-quoted shell string): a comma in a PR title broke the v0.261.2
+          # deploy. Commas → ';', drop newlines and shell-active chars.
+          PR_TITLE=$(printf '%s' "$PR_TITLE" | tr ',' ';' | tr -d '\n\r"`$\\')
           echo "pr_number=${PR_NUM}" >> $GITHUB_OUTPUT
           echo "pr_title=${PR_TITLE}" >> $GITHUB_OUTPUT
         env:
@@ -1153,6 +1158,11 @@ jobs:
             PR_NUM=""
             PR_TITLE=""
           fi
+          # The backend deploy splices PR_TITLE into the comma-delimited
+          # `gcloud run deploy --set-env-vars "...,PR_TITLE=..."` (inside a
+          # double-quoted shell string): a comma in a PR title broke the v0.261.2
+          # deploy. Commas → ';', drop newlines and shell-active chars.
+          PR_TITLE=$(printf '%s' "$PR_TITLE" | tr ',' ';' | tr -d '\n\r"`$\\')
           echo "pr_number=${PR_NUM}" >> $GITHUB_OUTPUT
           echo "pr_title=${PR_TITLE}" >> $GITHUB_OUTPUT
         env:
