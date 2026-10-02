@@ -43,6 +43,7 @@ class TestIsQuotaOrBillingError:
             RuntimeError("429 RESOURCE_EXHAUSTED quota"),
             RuntimeError("Your credits have been exhausted"),
             GeminiKeyUnavailableError("no key"),
+            RuntimeError("429 RESOURCE_EXHAUSTED quotaId GenerateRequestsPerDayPerProjectPerModel, retryDelay 3600s"),
         ],
     )
     def test_positive(self, exc):

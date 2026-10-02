@@ -403,7 +403,13 @@ class CreditEvaluationService:
                 feedback_content=feedback_content,
             )
 
-            response_text = self._call_gemini(prompt)
+            try:
+                response_text = self._call_gemini(prompt)
+            except Exception as gemini_exc:
+                from backend.services.gemini_client import note_gemini_failure
+
+                note_gemini_failure("credit_evaluation", gemini_exc)
+                raise
             evaluation = _parse_gemini_response(response_text)
             evaluation.signals = signals
 
@@ -415,9 +421,6 @@ class CreditEvaluationService:
             return evaluation
 
         except Exception as e:
-            from backend.services.gemini_client import note_gemini_failure
-
-            note_gemini_failure("credit_evaluation", e)
             logger.exception(f"Credit evaluation failed for {email} — pending manual review (fail-closed)")
             # Include whatever signals were collected before the failure
             collected_signals = locals().get("signals")

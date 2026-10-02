@@ -26,6 +26,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import threading
 import time
 from typing import Any, Optional
 
@@ -90,10 +91,16 @@ _QUOTA_PATTERNS = re.compile(
 # A 429 that names a per-minute quota / carries a retry delay is an ordinary
 # rate limit (transient — retry with backoff), not exhausted credit.
 _RATE_LIMIT_PATTERNS = re.compile(r"PerMinute|retryDelay|retry in \d", re.IGNORECASE)
+# ...unless it names a per-day quota: that won't clear for hours — treat as exhausted.
+_DAILY_QUOTA_PATTERN = re.compile(r"PerDay", re.IGNORECASE)
+
+
+def _is_rate_limit(text: str) -> bool:
+    return bool(_RATE_LIMIT_PATTERNS.search(text)) and not _DAILY_QUOTA_PATTERN.search(text)
 
 
 def is_quota_or_billing_error(exc: Optional[BaseException]) -> bool:
-    """True if ``exc`` (or anything in its cause chain) is a Gemini quota,
+    """True if ``exc`` (or anything in its ``__cause__`` chain) is a Gemini quota,
     prepaid-credit, billing or API-key error — i.e. needs a top-up/key rotation,
     not a retry.
 
@@ -113,13 +120,15 @@ def is_quota_or_billing_error(exc: Optional[BaseException]) -> bool:
             code = getattr(exc, "status_code", None)
         status = str(getattr(exc, "status", "") or "")
         if code == 429 or status == "RESOURCE_EXHAUSTED":
-            return not _RATE_LIMIT_PATTERNS.search(str(exc))
+            return not _is_rate_limit(str(exc))
         if code == 403 or status == "PERMISSION_DENIED":
             return True
         text = str(exc)
-        if _QUOTA_PATTERNS.search(text) and not _RATE_LIMIT_PATTERNS.search(text):
+        if _QUOTA_PATTERNS.search(text) and not _is_rate_limit(text):
             return True
-        exc = exc.__cause__ or exc.__context__
+        # Only explicit chaining (`raise X from e`): implicit __context__ could
+        # attribute an unrelated earlier error (e.g. a Firestore 403) to Gemini.
+        exc = exc.__cause__
     return False
 
 
@@ -133,6 +142,11 @@ def _alert_hours() -> float:
 # In-process throttle so a burst of failures in one instance doesn't hit
 # Firestore on every call; the Firestore doc throttles across instances/jobs.
 _last_alert_attempt: float = 0.0
+_alert_lock = threading.Lock()
+# Alert I/O (Firestore + Secret Manager + Discord) runs on a daemon thread so it
+# never blocks the caller — several callers are on the asyncio event loop.
+# Tests flip this off to run it inline.
+_ALERT_IN_BACKGROUND = True
 
 
 def note_gemini_failure(caller: str, exc: BaseException) -> bool:
@@ -156,9 +170,20 @@ def _maybe_alert(caller: str, exc: BaseException) -> None:
     global _last_alert_attempt
     window = _alert_hours() * 3600
     now = time.monotonic()
-    if _last_alert_attempt and now - _last_alert_attempt < window:
-        return
-    _last_alert_attempt = now
+    with _alert_lock:
+        if _last_alert_attempt and now - _last_alert_attempt < window:
+            return
+        _last_alert_attempt = now
+    if _ALERT_IN_BACKGROUND:
+        threading.Thread(
+            target=_send_alert, args=(caller, exc, window), name="gemini-quota-alert", daemon=True
+        ).start()
+    else:
+        _send_alert(caller, exc, window)
+
+
+def _send_alert(caller: str, exc: BaseException, window: float) -> None:
+    global _last_alert_attempt
     from backend.services import ops_alerts
 
     err = str(exc).strip()
@@ -173,4 +198,10 @@ def _maybe_alert(caller: str, exc: BaseException) -> None:
         f"**Fix:** {QUOTA_EXHAUSTED_MESSAGE}\n"
         f"**Error:** ```{err}```"
     )
-    ops_alerts.send_throttled_ops_alert(_ALERT_KEY, message, throttle_minutes=int(window / 60))
+    try:
+        ops_alerts.send_throttled_ops_alert(_ALERT_KEY, message, throttle_minutes=int(window / 60))
+    except Exception:  # noqa: BLE001 - alerting must never raise
+        logger.warning("Gemini quota alert failed", exc_info=True)
+        # Let the next failure in this instance try again.
+        with _alert_lock:
+            _last_alert_attempt = 0.0

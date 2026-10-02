@@ -35,6 +35,7 @@ RATE_LIMIT = FakeAPIError(
 @pytest.fixture(autouse=True)
 def _reset_alert_throttle(monkeypatch):
     monkeypatch.setattr(gemini_client, "_last_alert_attempt", 0.0)
+    monkeypatch.setattr(gemini_client, "_ALERT_IN_BACKGROUND", False)
 
 
 # ---- classifier -------------------------------------------------------------
@@ -50,6 +51,7 @@ def _reset_alert_throttle(monkeypatch):
         FakeAPIError(400, "FAILED_PRECONDITION", "check your plan and billing details"),
         RuntimeError("API key expired. Please renew the API key."),
         GeminiKeyUnavailableError("no key"),
+        RuntimeError("429 RESOURCE_EXHAUSTED quotaId GenerateRequestsPerDayPerProjectPerModel, retryDelay 3600s"),
     ],
 )
 def test_classifier_positive(exc):
@@ -136,9 +138,30 @@ def test_note_failure_alerts_once_per_window():
     assert send.call_args.kwargs["throttle_minutes"] == 360
 
 
-def test_note_failure_never_raises():
-    with patch("backend.services.ops_alerts.send_throttled_ops_alert", side_effect=RuntimeError):
-        assert note_gemini_failure("x", QUOTA) is False
+def test_note_failure_never_raises_and_rearms_after_failed_send():
+    with patch("backend.services.ops_alerts.send_throttled_ops_alert", side_effect=RuntimeError) as send:
+        assert note_gemini_failure("x", QUOTA) is True
+        assert note_gemini_failure("x", QUOTA) is True
+    # A failed send doesn't silence the instance for 6h.
+    assert send.call_count == 2
+
+
+def test_alert_runs_in_background_thread(monkeypatch):
+    import threading
+
+    monkeypatch.setattr(gemini_client, "_ALERT_IN_BACKGROUND", True)
+    done = threading.Event()
+    seen = {}
+
+    def fake_send(*_a, **_k):
+        seen["thread"] = threading.current_thread().name
+        done.set()
+        return True
+
+    with patch("backend.services.ops_alerts.send_throttled_ops_alert", side_effect=fake_send):
+        assert note_gemini_failure("x", QUOTA) is True
+        assert done.wait(5)
+    assert seen["thread"] == "gemini-quota-alert"
 
 
 def test_throttled_ops_alert_respects_firestore_window(monkeypatch):
@@ -268,3 +291,14 @@ def test_error_monitor_llm_does_not_retry_on_quota():
         with pytest.raises(FakeAPIError):
             llm_analysis._call_llm("sys", "user")
     sleep.assert_not_called()
+
+
+def test_classifier_ignores_implicit_context():
+    """A Gemini-unrelated 403 raised earlier must not be blamed on Gemini."""
+    try:
+        try:
+            raise FakeAPIError(403, "PERMISSION_DENIED", "firestore says no")
+        except FakeAPIError:
+            raise ValueError("later, unrelated failure")  # implicit __context__ only
+    except ValueError as exc:
+        assert not is_quota_or_billing_error(exc)

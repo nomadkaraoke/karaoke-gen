@@ -101,10 +101,16 @@ _QUOTA_PATTERNS = re.compile(
 # A 429 that names a per-minute quota / carries a retry delay is an ordinary
 # rate limit (transient — retry with backoff), not exhausted credit.
 _RATE_LIMIT_PATTERNS = re.compile(r"PerMinute|retryDelay|retry in \d", re.IGNORECASE)
+# ...unless it names a per-day quota: that won't clear for hours — treat as exhausted.
+_DAILY_QUOTA_PATTERN = re.compile(r"PerDay", re.IGNORECASE)
+
+
+def _is_rate_limit(text: str) -> bool:
+    return bool(_RATE_LIMIT_PATTERNS.search(text)) and not _DAILY_QUOTA_PATTERN.search(text)
 
 
 def is_quota_or_billing_error(exc: BaseException | None) -> bool:
-    """True if ``exc`` (or anything in its cause chain) is a Gemini quota,
+    """True if ``exc`` (or anything in its ``__cause__`` chain) is a Gemini quota,
     prepaid-credit, billing or API-key error — i.e. needs a top-up/key rotation,
     not a retry.
 
@@ -123,11 +129,13 @@ def is_quota_or_billing_error(exc: BaseException | None) -> bool:
             code = getattr(exc, "status_code", None)
         status = str(getattr(exc, "status", "") or "")
         if code == 429 or status == "RESOURCE_EXHAUSTED":
-            return not _RATE_LIMIT_PATTERNS.search(str(exc))
+            return not _is_rate_limit(str(exc))
         if code == 403 or status == "PERMISSION_DENIED":
             return True
         text = str(exc)
-        if _QUOTA_PATTERNS.search(text) and not _RATE_LIMIT_PATTERNS.search(text):
+        if _QUOTA_PATTERNS.search(text) and not _is_rate_limit(text):
             return True
-        exc = exc.__cause__ or exc.__context__
+        # Only explicit chaining (`raise X from e`): implicit __context__ could
+        # attribute an unrelated earlier error (e.g. a Firestore 403) to Gemini.
+        exc = exc.__cause__
     return False
