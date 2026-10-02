@@ -61,8 +61,17 @@ Steps:
 2. Switch `github-runners-nat` to `nat_ip_allocate_option="MANUAL_ONLY"` with `nat_ips=[address.self_link]`. Its traffic is all ours (CI runners plus our services), so the IP's reputation is our own. You could also keep the runners on AUTO by giving the NAT subnetwork-specific config and putting Cloud Run on its own subnet; that's more config for no saving.
 3. Put **karaoke-backend** and **karaoke-decide** on **Direct VPC egress**: `--network=default --subnet=default --vpc-egress=all-traffic`, set in each service's deploy config (gen: the CI deploy step or `modules/cloud_run.py`; decide: its own `infrastructure/`). `all-traffic` is required, because `private-ranges-only` keeps internet traffic on Google's shared IPs.
 4. Make sure **Private Google Access** is on for that subnet, so Firestore/GCS/Secret Manager/Gemini traffic goes direct and isn't billed as NAT data processing.
-5. Check NAT port allocation (`min_ports_per_vm`, dynamic port allocation) against peak backend concurrency (max 20 instances). Cloud NAT port exhaustion shows up as connection timeouts.
-6. Apply locally with `pulumi up` **before** merging (repo rule). Verify by triggering a magic link and confirming `Email sent to … via Postmark` (API path) in the logs. Optionally tell Postmark the new IP on ticket #11562402.
+5. **Size the NAT for Cloud Run.** Port exhaustion makes outbound connections time out, which would break email again and every other outbound call too. Settings on the `RouterNat`:
+   - `endpoint_types=["ENDPOINT_TYPE_VM"]`. This is the default, and Direct VPC egress instances count as VM endpoints.
+   - `enable_dynamic_port_allocation=True` with `min_ports_per_vm=128` and `max_ports_per_vm=4096`. Google's guidance is a minimum of at least ~2× the ports each Cloud Run instance needs. A backend instance makes many concurrent outbound calls (Stripe, Postmark, flacfetch, AudioShake), so 64 static ports could run out.
+   - Capacity check: 1 NAT IP = 64,512 ports, about 504 endpoints at 128 min ports each. Peak demand is 20 backend + 10 decide max instances, plus CI runners, which is well under that. If NAT logs ever show `OUT_OF_RESOURCES` / dropped packets, add a second reserved IP to `nat_ips`.
+   - Turn on NAT logging (`log_config.filter="ALL"` temporarily, then back to `ERRORS_ONLY`) for the first week, to watch for drops and to measure the data-processing volume.
+6. Apply locally with `pulumi up` **before** merging (repo rule).
+7. **Verify the reserved IP is actually used.** A successful Postmark send alone doesn't prove it, since the old dynamic IP might just not be blocked at that moment.
+   - From inside the deployed service's network path, call an IP-echo endpoint, e.g. `curl -s https://checkip.amazonaws.com`. Do this from a one-off Cloud Run job using the same `--network/--subnet/--vpc-egress=all-traffic` settings, or a temporary admin-only debug endpoint. The result must equal the reserved `email-egress-ip` address.
+   - With NAT logging on `ALL`, confirm that translations from the Cloud Run subnet show the reserved IP.
+   - Then trigger a magic link and confirm `Email sent to … via Postmark` (the API path, not the SMTP fallback) in the logs.
+   - Optionally tell Postmark the new IP on ticket #11562402.
 
 Cost estimate:
 - **IP:** switching AUTO → 1 reserved IP: $3.65/mo vs the ~$2.90 auto-IP spend today, so **+~$0.75**.
