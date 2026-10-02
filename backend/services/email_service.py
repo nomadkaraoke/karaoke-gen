@@ -11,9 +11,13 @@ import html
 import logging
 import os
 import re
+import smtplib
+import ssl
 import sys
 import time
 from abc import ABC, abstractmethod
+from email.message import EmailMessage
+from email.utils import formataddr
 from datetime import datetime, timedelta, timezone
 from typing import NamedTuple, Optional, List
 from zoneinfo import ZoneInfo
@@ -175,29 +179,40 @@ class PostmarkEmailProvider(EmailProvider):
 
     API_URL = "https://api.postmarkapp.com/email"
 
-    # Seconds to sleep before each retry of a transient failure. Postmark's edge
-    # intermittently answers some us-central1 Cloud Run egress IPs with a bare
-    # nginx HTML 403 (not its JSON error format) — a fresh connection a moment
-    # later often succeeds. Kept short: magic-link sends block the request.
+    # SMTP fallback for when Postmark's API edge blocks us. Since 2026-09-30 the
+    # edge has answered us-central1 Cloud Run egress IPs with a bare nginx HTML
+    # 403 for hours at a time, so retrying the API doesn't help; SMTP is served
+    # by separate infrastructure. Auth = server token as username and password.
+    SMTP_HOST = "smtp.postmarkapp.com"
+    SMTP_PORT = 587
+    SMTP_TIMEOUT = 15
+    MESSAGE_STREAM = "outbound"
+
+    # Seconds to sleep before each retry of a transient failure (429 / 5xx /
+    # connect timeout). Kept short: magic-link sends block the request.
     RETRY_DELAYS = (1.0, 3.0)
 
     @staticmethod
     def _is_transient_failure(response: requests.Response) -> bool:
-        """True for failures worth retrying: 429, 5xx, or a non-JSON 403.
+        """True for failures worth retrying against the API: 429 or 5xx."""
+        status = response.status_code
+        return status == 429 or status >= 500
+
+    @staticmethod
+    def _is_edge_block(response: requests.Response) -> bool:
+        """True for a 403 without a JSON body: an IP-level block at Postmark's edge.
 
         Postmark's own API errors (bad token, invalid payload, suppressed
-        recipient) come back as JSON and are deterministic, so retrying them
-        would just repeat the same answer. A 403 without a JSON body is an
-        edge/IP-level block, not a verdict on the request itself.
+        recipient) come back as JSON and are verdicts on the request itself; a
+        bare HTML 403 never reached the API, so the message was not accepted and
+        it's safe to resend it over SMTP.
         """
-        status = response.status_code
-        if status == 429 or status >= 500:
+        if response.status_code != 403:
+            return False
+        try:
+            response.json()
+        except ValueError:
             return True
-        if status == 403:
-            try:
-                response.json()
-            except ValueError:
-                return True
         return False
 
     def _post_with_retry(self, payload: dict) -> requests.Response:
@@ -295,7 +310,20 @@ class PostmarkEmailProvider(EmailProvider):
             if bcc_emails:
                 payload["Bcc"] = ", ".join(_dedupe_emails(bcc_emails))
 
-            response = self._post_with_retry(payload)
+            try:
+                response = self._post_with_retry(payload)
+            except requests.ConnectTimeout:
+                # Never connected, so Postmark didn't accept it: safe to resend.
+                logger.warning("Postmark API connect timed out on every attempt; falling back to SMTP")
+                return self._send_via_smtp(to_email, subject, html_content, text_content,
+                                           cc_emails, bcc_emails, sender_email)
+
+            if self._is_edge_block(response):
+                logger.warning(
+                    f"Postmark API edge returned HTML 403 for {to_email}; falling back to SMTP"
+                )
+                return self._send_via_smtp(to_email, subject, html_content, text_content,
+                                           cc_emails, bcc_emails, sender_email)
 
             if 200 <= response.status_code < 300:
                 cc_info = f" (CC: {', '.join(cc_emails)})" if cc_emails else ""
@@ -337,6 +365,50 @@ class PostmarkEmailProvider(EmailProvider):
         except requests.RequestException:
             logger.exception("Failed to send email via Postmark")
             return SendResult(success=False, message_id=None)
+
+    def _send_via_smtp(
+        self,
+        to_email: str,
+        subject: str,
+        html_content: str,
+        text_content: Optional[str],
+        cc_emails: Optional[List[str]],
+        bcc_emails: Optional[List[str]],
+        sender_email: str,
+    ) -> SendResult:
+        """Send through Postmark's SMTP endpoint (used when the API is unreachable).
+
+        SMTP returns no Postmark MessageID and can't report suppressed
+        recipients synchronously (Postmark logs those as bounces instead).
+        """
+        cc = _dedupe_emails(cc_emails) if cc_emails else []
+        bcc = _dedupe_emails(bcc_emails) if bcc_emails else []
+        try:
+            msg = EmailMessage()
+            msg["From"] = formataddr((self.from_name, sender_email))
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            msg["X-PM-Message-Stream"] = self.MESSAGE_STREAM
+            if cc:
+                msg["Cc"] = ", ".join(cc)
+            if text_content:
+                msg.set_content(text_content)
+                msg.add_alternative(html_content, subtype="html")
+            else:
+                msg.set_content(html_content, subtype="html")
+
+            with smtplib.SMTP(self.SMTP_HOST, self.SMTP_PORT, timeout=self.SMTP_TIMEOUT) as smtp:
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.login(self.server_token, self.server_token)
+                smtp.send_message(msg, to_addrs=[to_email, *cc, *bcc])
+        except (smtplib.SMTPException, OSError, ValueError):
+            # ValueError: EmailMessage rejects CR/LF in header values.
+            logger.exception(f"Failed to send email to {to_email} via Postmark SMTP fallback")
+            return SendResult(success=False, message_id=None)
+
+        logger.info(f"Email sent to {to_email} via Postmark SMTP fallback")
+        self.last_message_id = None
+        return SendResult(success=True, message_id=None)
 
 
 # Query params that carry single-use auth/capability tokens (magic-link sign-in,
