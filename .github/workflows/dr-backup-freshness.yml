@@ -60,8 +60,10 @@ jobs:
           # only uploaded to S3 *weekly* (Sundays) to cut cross-cloud egress —
           # see backup_to_aws/main.py (firestore_to_s3_today). This monitor only
           # sees the S3 (off-site) copy, so their limits must allow a full week
-          # plus slack (192h ≈ 8 days), NOT the 36h nightly cadence. GCS job
-          # files and secrets DO upload to S3 nightly, so they stay at 36h.
+          # plus slack (192h ≈ 8 days), NOT the 36h nightly cadence. Secrets DO
+          # upload to S3 nightly, so they stay at 36h. GCS job files are NOT
+          # tracked: their off-site copy was stopped 2026-10-01 (egress cost
+          # cut) — they rely on GCS versioning + soft-delete only.
           # Git repos are also weekly (Sundays) AND incremental since
           # 2026-09-26 — only repos pushed that week get a fresh bundle, so a
           # quiet week legitimately leaves every .bundle older than 8 days.
@@ -70,7 +72,6 @@ jobs:
           # a run where every repo failed still reads as stale.
           TARGETS = [
               ("Firestore",         "firestore/",              192, None),
-              ("GCS job files",     "gcs/job-files/",          36,  None),
               ("Encrypted secrets", "secrets/",                36,  None),
               ("BigQuery weekly",   "bigquery/daily-refresh/", 192, None),
               ("Git repos",         "git-repos/manifest.json", 192, None),

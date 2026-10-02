@@ -205,3 +205,27 @@ class TestSystemStatusAdmin:
         assert admin["active_zone"] == "us-central1-a"
         # "n2c" family token → n2-highcpu-16 (inferred from the VM name).
         assert admin["active_machine_type"] == "n2-highcpu-16"
+
+
+class TestAudioSeparatorStatus:
+    """Separation runs in the audio-separation-job GPU Cloud Run Job; the
+    standalone audio-separator service was shut down (2026-10-01), so the
+    status must not depend on AUDIO_SEPARATOR_API_URL or call anything."""
+
+    def test_reports_ok_without_api_url(self, monkeypatch):
+        from backend.api.routes.health import check_audio_separator_status
+
+        monkeypatch.delenv("AUDIO_SEPARATOR_API_URL", raising=False)
+        status = check_audio_separator_status()
+        assert status["available"] is True
+        assert status["status"] == "ok"
+        assert status["mode"] == "gpu_job"
+        assert "version" in status
+
+    @pytest.mark.asyncio
+    async def test_endpoint_matches_status_helper(self):
+        from backend.api.routes.health import audio_separator_health
+
+        from backend.api.routes.health import check_audio_separator_status
+
+        assert await audio_separator_health() == check_audio_separator_status()

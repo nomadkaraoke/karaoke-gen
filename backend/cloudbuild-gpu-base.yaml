@@ -15,9 +15,9 @@ steps:
       - '-f'
       - 'backend/Dockerfile.gpu-base'
       - '-t'
-      - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:latest'
+      - 'us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend-gpu-base:latest'
       - '-t'
-      - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:$BUILD_ID'
+      - 'us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend-gpu-base:$BUILD_ID'
       - '--build-arg'
       - 'BUILD_DATE=$_BUILD_DATE'
       - '--build-arg'
@@ -25,8 +25,8 @@ steps:
       - '.'
 
 images:
-  - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:latest'
-  - 'us-east4-docker.pkg.dev/nomadkaraoke/karaoke-backend-gpu/karaoke-backend-gpu-base:$BUILD_ID'
+  - 'us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend-gpu-base:latest'
+  - 'us-central1-docker.pkg.dev/nomadkaraoke/karaoke-repo/karaoke-backend-gpu-base:$BUILD_ID'
 
 timeout: '3600s'
 

@@ -240,6 +240,11 @@ class AudioProcessor:
                 except Exception as e:
                     error_str = str(e)
                     self.logger.error(f"Remote API processing failed: {error_str}")
+                    self.logger.error(
+                        "Note: Nomad Karaoke's hosted audio-separator API (Cloud Run, us-east4) "
+                        "was shut down on 2026-10-01 to cut costs. Unset AUDIO_SEPARATOR_API_URL "
+                        "to separate locally on this machine, or point it at your own deployment."
+                    )
                     # Never fall back for API processing errors (download failures,
                     # missing files, etc.) — retrying locally won't help.
                     # Only fall back for transient network errors AND only when
