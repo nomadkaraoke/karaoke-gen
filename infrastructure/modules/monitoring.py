@@ -529,6 +529,11 @@ def create_email_delivery_observability(
     blocking SMTP from our IPs too. That is the trigger to add a static egress
     IP (Cloud NAT); see docs/archive/2026-10-02-postmark-ip-block-options.md.
 
+    Apply gotcha: on the very first ``pulumi up`` the AlertPolicy can fail
+    because GCP hasn't propagated the just-created log-based metric yet
+    (``depends_on`` orders creation but can't wait for propagation). Re-run
+    ``pulumi up`` a minute later and it succeeds (happened 2026-10-02).
+
     Cost: the log-based counter metric is within the free metric allotment;
     alert policies are free until 2027-09-01, then $0.35/month per metric
     reference.
