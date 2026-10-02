@@ -1415,6 +1415,20 @@ quota/billing/key errors (not per-minute 429s) skip retries, degrade, and Discor
 at most once per 6h. (Supersedes the old "Vertex AI Auth" / "global location" notes —
 the Developer API has no project/location.)
 
+**Manual (non-Pulumi) changes made 2026-10-02 (admin@nomadkaraoke.com), after v0.262.0
+deployed and Vertex `request_count` stayed at zero:**
+- 02:46Z `roles/aiplatform.user` binding for `karaoke-backend` deleted (Pulumi, targeted).
+- 02:47Z removed cross-project `roles/aiplatform.user` for
+  `aquarius-backend@aquarius-fundraising-mvp.iam.gserviceaccount.com` (zero traffic).
+- 02:48Z `gcloud services disable aiplatform.googleapis.com generativelanguage.googleapis.com`
+  (no `--force` needed). Re-enable with `gcloud services enable ...` if ever required.
+- 02:49Z deleted unused restricted API key `98073667-…` ("Generative Language API Key";
+  0 valid requests in 30 days; undelete possible for 30 days via `gcloud services api-keys undelete`).
+- `gemini-api-key` belongs to AI Studio project `gen-lang-client-0983596166` (number
+  810524901596), billed to "Aquarius Billing". To swap keys: `printf '%s' "$KEY" | gcloud
+  secrets versions add gemini-api-key --project=nomadkaraoke --data-file=-`, then roll the
+  service (any new revision) — jobs pick it up on their next execution.
+
 ### LangChain: REST over gRPC
 Use `langchain-google-genai` (REST) instead of `langchain-google-vertexai` (gRPC) to avoid silent hangs.
 
