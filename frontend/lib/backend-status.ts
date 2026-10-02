@@ -121,6 +121,8 @@ let probeEpoch = 0
 
 /** When a backend response last succeeded (0 = never in this page session). */
 let lastReachableAt = 0
+/** Start of the current cold-start episode (null = none); cleared by any response. */
+let coldEpisodeStartedAt: number | null = null
 
 const listeners = new Set<() => void>()
 
@@ -156,8 +158,15 @@ function computeFromStalls(): BackendStatus {
 function inColdStartWindow(): boolean {
   if (inFlight.size === 0) return false
   const oldest = oldestStartedAt()
-  if (Date.now() - oldest >= WAKING_ESCALATE_MS) return false
-  return lastReachableAt === 0 || lastReachableAt < oldest - REACHABLE_FRESH_MS
+  const notRecentlyReachable =
+    lastReachableAt === 0 || lastReachableAt < oldest - REACHABLE_FRESH_MS
+  if (!notRecentlyReachable) return false
+  // Escalation is measured from when this cold episode BEGAN, not from the oldest
+  // read still pending — otherwise, as stalled reads time out and newer (e.g.
+  // polling) reads become the oldest, a genuine outage would flap
+  // unavailable → waking → unavailable. Only a backend response ends the episode.
+  if (coldEpisodeStartedAt === null) coldEpisodeStartedAt = oldest
+  return Date.now() - coldEpisodeStartedAt < WAKING_ESCALATE_MS
 }
 
 /** Fire a health probe if one isn't running and the last verdict has gone stale. */
@@ -249,6 +258,13 @@ export function endRequest(id: number): void {
  */
 export function markBackendReachable(): void {
   lastReachableAt = Date.now()
+  coldEpisodeStartedAt = null
+  // The backend just answered, so any earlier failed-probe verdict is stale: drop
+  // it rather than let it vouch for a future stall (re-probe instead).
+  if (lastProbeOk === false) {
+    lastProbeOk = null
+    consecutiveProbeFailures = 0
+  }
   if (inFlight.size > 0 || status !== 'online') recompute()
 }
 
@@ -290,10 +306,14 @@ export function prewarmBackend(): void {
 /**
  * Pre-warm now, and again whenever the tab becomes visible after being hidden for
  * PREWARM_AFTER_HIDDEN_MS (long enough that the backend may have scaled to zero).
- * Idempotent; call from any client component mounted app-wide.
+ * Idempotent; call from any client component mounted app-wide, passing
+ * `__backendPrewarm` from lib/api.ts.
  */
-export function installBackendPrewarm(): void {
+export function installBackendPrewarm(fn?: Prewarm): void {
   if (typeof document === 'undefined') return
+  // Callers pass the fetch explicitly so the pre-warm works even on a page that
+  // hasn't (yet) loaded lib/api.ts, which is where it's otherwise registered.
+  if (fn && !prewarmFn) configurePrewarm(fn)
   prewarmBackend()
   if (visibilityListenerInstalled) return
   visibilityListenerInstalled = true
@@ -347,6 +367,7 @@ export function __resetBackendStatusForTest(): void {
   inFlight.clear()
   devOverride = null
   lastReachableAt = 0
+  coldEpisodeStartedAt = null
   prewarmInFlight = false
   hiddenAt = null
   configureHealthProbe(null)

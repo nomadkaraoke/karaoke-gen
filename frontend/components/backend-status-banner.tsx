@@ -10,6 +10,7 @@ import {
   __installBackendStatusDevHook,
 } from "@/lib/backend-status"
 import { reportDegradationEvent } from "@/lib/degradation-events"
+import { __backendPrewarm } from "@/lib/api"
 
 /**
  * App-wide, non-blocking banner that reacts to backend connectivity (see
@@ -36,7 +37,7 @@ export function BackendStatusBanner() {
   // and pre-warm a possibly scaled-to-zero backend as early as possible (this
   // banner is mounted app-wide, so every page that talks to the backend gets it).
   useEffect(() => {
-    installBackendPrewarm()
+    installBackendPrewarm(__backendPrewarm)
     __installBackendStatusDevHook()
   }, [])
 

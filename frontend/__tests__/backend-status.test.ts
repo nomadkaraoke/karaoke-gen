@@ -303,6 +303,44 @@ describe('backend-status store (cold start / waking)', () => {
     expect(getBackendStatus()).toBe('unavailable')
   })
 
+  it('escalation is measured from the start of the cold episode, so a long outage never flaps back to waking', async () => {
+    configureHealthProbe(coldProbe())
+    const first = beginRequest()
+    open.push(first)
+    await jest.advanceTimersByTimeAsync(30_000)
+    open.push(beginRequest()) // e.g. a polling read starting mid-episode
+    await jest.advanceTimersByTimeAsync(31_000) // t=61s
+    expect(getBackendStatus()).toBe('unavailable')
+
+    // The first read times out; the newer one (only 31s old) is now the oldest.
+    endRequest(first)
+    open = open.filter((id) => id !== first)
+    await jest.advanceTimersByTimeAsync(1000)
+    expect(getBackendStatus()).toBe('unavailable') // not back to 'waking'
+  })
+
+  it('a stale failed-probe verdict from before the backend answered cannot trigger waking', async () => {
+    // An earlier episode leaves a failed verdict behind...
+    configureHealthProbe(() => Promise.resolve(false))
+    const old = beginRequest()
+    await jest.advanceTimersByTimeAsync(6000)
+    expect(getBackendStatus()).toBe('waking')
+    markBackendReachable()
+    endRequest(old)
+    expect(getBackendStatusDebug().lastProbeOk).toBeNull() // verdict dropped
+
+    // ...much later (backend idle-timeout window passed, but kept warm by others),
+    // a read that's merely slow: the fresh probe answers OK → nothing shown.
+    configureHealthProbe(() => new Promise<boolean>((res) => setTimeout(() => res(true), 2500)))
+    markBackendReachable()
+    await jest.advanceTimersByTimeAsync(REACHABLE_FRESH_MS + 1000)
+    open.push(beginRequest())
+    await jest.advanceTimersByTimeAsync(3500) // past WAKING_SHOW_MS, probe still pending
+    expect(getBackendStatus()).toBe('online')
+    await jest.advanceTimersByTimeAsync(5000)
+    expect(getBackendStatus()).toBe('online')
+  })
+
   it('previously reachable, then a stall → normal reconnecting banner (recycle, not a cold start)', async () => {
     configureHealthProbe(coldProbe())
     markBackendReachable()
@@ -351,6 +389,15 @@ describe('backend-status prewarm', () => {
     configurePrewarm(null)
     __resetBackendStatusForTest()
     jest.useRealTimers()
+  })
+
+  it('installBackendPrewarm registers the passed fetch when api.ts has not', async () => {
+    configurePrewarm(null)
+    const warm = jest.fn(() => Promise.resolve(true))
+    installBackendPrewarm(warm)
+    await jest.advanceTimersByTimeAsync(0)
+    expect(warm).toHaveBeenCalledTimes(1)
+    expect(getBackendStatusDebug().sinceReachableMs).toBe(0)
   })
 
   it('fires once while in flight and marks the backend reachable on success', async () => {

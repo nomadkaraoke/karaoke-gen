@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getAccessToken } from "@/lib/api"
+import { getAccessToken, __backendPrewarm } from "@/lib/api"
 import { installBackendPrewarm } from "@/lib/backend-status"
 import { useAuth } from "@/lib/auth"
 import { useAdminSettings } from "@/lib/admin-settings"
@@ -108,7 +108,7 @@ export default function AdminLayout({
   // Admin isn't under [locale] (no BackendStatusBanner), so pre-warm a possibly
   // scaled-to-zero backend here too.
   useEffect(() => {
-    installBackendPrewarm()
+    installBackendPrewarm(__backendPrewarm)
   }, [])
 
   useEffect(() => {
