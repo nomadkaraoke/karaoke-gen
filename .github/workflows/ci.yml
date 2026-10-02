@@ -1891,9 +1891,21 @@ jobs:
           # Stream logs (returns when the build finishes), then check status.
           gcloud builds log "$BUILD_ID" --region=us-central1 --project=${{ env.PROJECT_ID }} --stream \
             || echo "::warning::log streaming ended early; checking build status"
+          # Tolerate transient API errors: a failed poll must not abort the
+          # step (the cancel step below would then kill a healthy build).
+          FAILS=0
           while true; do
-            STATUS=$(gcloud builds describe "$BUILD_ID" --region=us-central1 \
-              --project=${{ env.PROJECT_ID }} --format='value(status)')
+            if ! STATUS=$(gcloud builds describe "$BUILD_ID" --region=us-central1 \
+              --project=${{ env.PROJECT_ID }} --format='value(status)'); then
+              FAILS=$((FAILS + 1))
+              if [ "$FAILS" -ge 5 ]; then
+                echo "::error::Cannot read Cloud Build $BUILD_ID status"
+                exit 1
+              fi
+              sleep 15
+              continue
+            fi
+            FAILS=0
             case "$STATUS" in
               QUEUED|PENDING|WORKING) sleep 15 ;;
               *) break ;;
