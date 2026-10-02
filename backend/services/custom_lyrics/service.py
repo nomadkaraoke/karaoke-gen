@@ -562,36 +562,43 @@ class CustomLyricsService:
         pdf_bytes: Optional[bytes],
         settings: GenerationSettings,
     ) -> list[str]:
-        from google import genai
         from google.genai import types
 
-        client = genai.Client(
-            vertexai=True,
-            project=self.settings.google_cloud_project,
-            location="global",
-        )
+        from backend.services.gemini_client import get_genai_client, note_gemini_failure
+
         contents: list = [user_prompt]
         if pdf_bytes is not None:
             contents.append(
                 types.Part.from_bytes(mime_type="application/pdf", data=pdf_bytes)
             )
 
-        response = client.models.generate_content(
-            model=self.settings.custom_lyrics_model,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.4,
-                response_mime_type="application/json",
-                response_schema={
-                    "type": "object",
-                    "properties": {
-                        "lines": {"type": "array", "items": {"type": "string"}}
+        try:
+            # Bounded so a stalled call can't hang the request (Gemini Developer API).
+            client = get_genai_client(timeout_ms=300_000)
+            response = client.models.generate_content(
+                model=self.settings.custom_lyrics_model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.4,
+                    response_mime_type="application/json",
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "lines": {"type": "array", "items": {"type": "string"}}
+                        },
+                        "required": ["lines"],
                     },
-                    "required": ["lines"],
-                },
-            ),
-        )
+                ),
+            )
+        except Exception as exc:
+            if note_gemini_failure("custom_lyrics", exc):
+                raise CustomLyricsServiceError(
+                    "The AI lyrics service is temporarily unavailable. Please try "
+                    "again later, or edit the lyrics manually.",
+                    status_code=503,
+                ) from exc
+            raise
         # The model can return no text (safety block, MAX_TOKENS with no content,
         # empty candidate). `response.text` is then None and json.loads(None) would
         # raise a raw TypeError -> uncaught 500 without CORS headers -> the browser

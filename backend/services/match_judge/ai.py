@@ -149,18 +149,14 @@ async def _default_generate(model: str, system_prompt: str, user_prompt: str) ->
 def _blocking_generate(model: str, system_prompt: str, user_prompt: str) -> dict:
     import copy
 
-    from google import genai
     from google.genai import types
 
     from backend.config import settings
 
+    from backend.services.gemini_client import get_genai_client
+
     timeout_ms = int(getattr(settings, "match_judge_timeout_ms", 3000))
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location="global",
-        http_options=types.HttpOptions(timeout=timeout_ms),
-    )
+    client = get_genai_client(timeout_ms=timeout_ms)
     response = client.models.generate_content(
         model=model,
         contents=[user_prompt],

@@ -106,7 +106,8 @@ def test_gives_up_after_max_attempts():
 
 
 def test_transient_error_retried_permanent_error_raised():
-    transient = Exception("429 RESOURCE_EXHAUSTED")
+    # Per-minute rate limit: transient, retried.
+    transient = Exception("429 RESOURCE_EXHAUSTED quotaId GenerateRequestsPerMinutePerProjectPerModel")
     svc = make_service([transient, {"translations": ["uno"]}])
     assert svc.translate_lines(["one"], "es") == ["uno"]
 
@@ -114,6 +115,19 @@ def test_transient_error_retried_permanent_error_raised():
     with pytest.raises(LyricsTranslationError):
         svc.translate_lines(["one"], "es")
     assert svc._call_gemini.call_count == 1
+
+
+def test_quota_exhausted_not_retried_and_alerts():
+    class QuotaError(Exception):
+        code = 403
+        status = "PERMISSION_DENIED"
+
+    svc = make_service([QuotaError("Your prepayment credits are depleted")])
+    with patch("backend.services.gemini_client._maybe_alert") as alert:
+        with pytest.raises(LyricsTranslationError, match="unavailable"):
+            svc.translate_lines(["one"], "es")
+    assert svc._call_gemini.call_count == 1
+    alert.assert_called_once()
 
 
 def test_unsupported_language_raises():

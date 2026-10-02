@@ -23,7 +23,9 @@ Usage:
 
 Requires:
     - ANTHROPIC_API_KEY in the environment (for claude-* models)
-    - GCP creds for Vertex/Firestore/GCS:
+    - Gemini Developer API key for gemini-* models: GEMINI_API_KEY, else read
+      from Secret Manager `gemini-api-key` via your gcloud login (in-process only)
+    - GCP creds for Firestore/GCS:
       gcloud auth application-default login  (or GOOGLE_APPLICATION_CREDENTIALS)
     - GOOGLE_CLOUD_PROJECT=nomadkaraoke (set automatically below if unset)
 
@@ -56,6 +58,17 @@ logger.setLevel(logging.INFO)
 PROJECT = "nomadkaraoke"
 GCS_BUCKET = "karaoke-gen-storage-nomadkaraoke"
 DEFAULT_MODELS = ["claude-opus-5-5", "gemini-3.8-flash"]
+
+
+def _ensure_gemini_key() -> None:
+    """Populate GEMINI_API_KEY (this process only) from Secret Manager via gcloud."""
+    if os.environ.get("GEMINI_API_KEY"):
+        return
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, os.path.join(repo_root, "frontend", "scripts"))
+    from gemini_client import get_api_key  # noqa: E402 - scripts helper (gcloud fallback)
+
+    os.environ["GEMINI_API_KEY"] = get_api_key()
 
 
 # ---------------------------------------------------------------------------
@@ -284,6 +297,8 @@ def main() -> int:
     parser.add_argument("--models", nargs="+", default=DEFAULT_MODELS,
                         help=f"Models to measure (default: {' '.join(DEFAULT_MODELS)})")
     args = parser.parse_args()
+    if any(m.startswith("gemini") for m in args.models):
+        _ensure_gemini_key()
 
     if any(m.startswith("claude") for m in args.models) and not os.environ.get("ANTHROPIC_API_KEY"):
         logger.error("ANTHROPIC_API_KEY is not set — required for claude-* models")

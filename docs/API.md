@@ -736,7 +736,7 @@ Content-Type: application/json
 
 AI correction suggestions for the lyrics review UI. Stateless: one whole-song
 LLM call per model (Claude models use the Anthropic API via the
-`anthropic-api-key` secret, Gemini models use Vertex AI) compares the
+`anthropic-api-key` secret, Gemini models use the Gemini Developer API, key `gemini-api-key`) compares the
 client's current transcription against the reference sources and returns
 word-id-keyed suggestions. Nothing is applied server-side — the reviewer
 accepts/rejects each suggestion in the UI and persistence flows through the
@@ -1017,7 +1017,7 @@ Content-Type: application/json
 ```
 
 Decides the official formatting for a typed artist/title and whether it matches a
-real song. A deterministic normalizer + the catalog run first; a light Vertex
+real song. A deterministic normalizer + the catalog run first; a light Gemini
 Gemini model (`MATCH_JUDGE_MODEL`, default `gemini-3.8-flash`) is consulted
 **only** when those aren't confident. `audio_confidence_tier` (1=strong..3=weak,
 optional) lets the judge tell whether weak audio results hint at a typo. The call
@@ -1340,7 +1340,7 @@ Artist/Title. Pure analysis — filenames only, no uploads, no state written.
 - **Auth:** tenant session required; gated on the tenant's `features.bulk_upload` flag (403 otherwise).
 - **Limits:** max 100 audio files per request (non-audio files don't count toward the cap; 2000-filename payload guard).
 - **Two passes:** deterministic regex for the `S<code>-<1|2> Artist - Title <Guide|BV|Instru>`
-  convention, then a Vertex-Gemini pass (`backend/services/tenant_bulk/analyze.py`) for
+  convention, then a Gemini pass (`backend/services/tenant_bulk/analyze.py`) for
   whatever the regex couldn't confidently pair. Falls back to regex-only if the model errors.
 
 Response:

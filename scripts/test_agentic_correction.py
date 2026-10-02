@@ -6,7 +6,8 @@ This script allows testing the agentic correction locally without deploying
 to Cloud Run or running a full karaoke job.
 
 Usage:
-    # Test with default Vertex AI (requires gcloud auth):
+    # Test with the default Gemini model (Developer API; GEMINI_API_KEY, else
+    # read from Secret Manager `gemini-api-key` via your gcloud login):
     python scripts/test_agentic_correction.py
 
     # Test with a specific model:
@@ -17,8 +18,7 @@ Usage:
     PRIVACY_MODE=1 python scripts/test_agentic_correction.py
 
 Environment variables:
-    GOOGLE_CLOUD_PROJECT: GCP project ID (required for Vertex AI)
-    GCP_LOCATION: Vertex AI location (default: global)
+    GEMINI_API_KEY: Gemini Developer API key (else fetched via gcloud)
     AGENTIC_AI_MODEL: Override the model (e.g., openai/gpt-4o)
     PRIVACY_MODE: Set to 1 to use local Ollama
     LANGFUSE_PUBLIC_KEY: Langfuse public key for tracing
@@ -209,12 +209,15 @@ def main():
     model = router.choose_model("unknown", 0.5)
     logger.info(f"Selected model: {model}")
 
-    # Validate environment for Vertex AI
-    if model.startswith("vertexai/") and not project_id:
-        logger.error("GOOGLE_CLOUD_PROJECT environment variable is required for Vertex AI")
-        logger.error("Set it with: export GOOGLE_CLOUD_PROJECT=your-project-id")
-        logger.error("Or use a different model: AGENTIC_AI_MODEL=openai/gpt-4o")
-        sys.exit(1)
+    # Gemini Developer API key (this process only; never written to disk)
+    if model.split("/", 1)[0] in ("gemini", "google", "vertexai") and not (
+        os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    ):
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "scripts"))
+        from gemini_client import get_api_key
+
+        os.environ["GEMINI_API_KEY"] = get_api_key()
+        config = ProviderConfig.from_env()
 
     # Create the agent
     logger.info(f"\nCreating AgenticCorrector with model: {model}")

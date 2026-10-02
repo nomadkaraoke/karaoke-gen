@@ -1,5 +1,8 @@
 import os
 import pytest
+
+# Gemini Developer API key: never let a test fall through to Secret Manager.
+os.environ.setdefault("GEMINI_API_KEY", "test-gemini-key")
 import tempfile
 import logging
 from unittest.mock import MagicMock

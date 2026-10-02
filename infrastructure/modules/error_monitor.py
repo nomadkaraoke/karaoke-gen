@@ -91,6 +91,17 @@ def create_error_monitor(
                                 name="ENVIRONMENT",
                                 value="production",
                             ),
+                            # Gemini Developer API key (AI Studio; Vertex AI is
+                            # disabled in this project). Rotate = new secret version.
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="GEMINI_API_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/gemini-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
                             # Discord webhook for alert notifications
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="DISCORD_WEBHOOK_URL",

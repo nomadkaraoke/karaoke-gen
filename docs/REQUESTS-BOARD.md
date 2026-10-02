@@ -99,7 +99,7 @@ the same KaraokeNerds check the normal job-submission flow uses runs at two poin
 - **Auth:** reuses gen's passwordless magic-link system. Board sign-in sends
   `purpose="requests_board"`, which creates an identity **without** granting a welcome credit and
   with a higher per-IP signup cap (so a whole venue on shared WiFi can sign in).
-- **Auto-correct:** reuses `match_judge` (Vertex Gemini) — the same artist/title canonicalizer the
+- **Auto-correct:** reuses `match_judge` (Gemini) — the same artist/title canonicalizer the
   job-submission flow uses.
 - **Storage:** two Firestore collections — `song_requests` (one doc per song, with a denormalized
   `vote_count`) and `song_request_votes` (one doc per person per day, id `{email}__{YYYY-MM-DD}`,

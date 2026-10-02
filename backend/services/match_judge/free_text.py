@@ -141,6 +141,9 @@ async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
         data = await (generate or _default_generate)(
             model or _model(), _SYSTEM_PROMPT, f'Singer typed: "{query}"')
     except Exception as e:
+        from backend.services.gemini_client import note_gemini_failure
+
+        note_gemini_failure("match_judge_free_text", e)
         logger.warning(f"resolve_free_text failed: {e}")
         return _none(query, "unavailable")
     return verdict_from_response(data, query)
@@ -200,17 +203,13 @@ async def _default_generate(model: str, system_prompt: str, user_prompt: str) ->
 
 
 def _blocking_generate(model: str, system_prompt: str, user_prompt: str) -> dict:
-    from google import genai
     from google.genai import types
 
     from backend.config import settings
 
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location="global",
-        http_options=types.HttpOptions(timeout=int(getattr(settings, "match_judge_timeout_ms", 12000))),
-    )
+    from backend.services.gemini_client import get_genai_client
+
+    client = get_genai_client(timeout_ms=int(getattr(settings, "match_judge_timeout_ms", 12000)))
     response = client.models.generate_content(
         model=model,
         contents=[user_prompt],

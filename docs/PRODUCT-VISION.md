@@ -132,7 +132,7 @@ Commercial producers pay for API access or custom integration to generate tracks
 ### What Works
 - Audio upload and separation (Cloud Run GPU)
 - Lyrics transcription (AudioShake API)
-- Agentic AI correction (Gemini 3 Flash via Vertex AI)
+- Agentic AI correction (Gemini 3 Flash via the Gemini Developer API)
 - Human lyrics review (React UI)
 - Preview video generation
 - Instrumental selection (clean vs. with backing vocals)
@@ -190,7 +190,7 @@ Commercial producers pay for API access or custom integration to generate tracks
 - **Secrets**: Google Secret Manager
 - **Audio Separation**: Cloud Run GPU (L4, us-east4)
 - **Lyrics Transcription**: AudioShake API
-- **AI Correction**: Vertex AI (Gemini 3 Flash)
+- **AI Correction**: Gemini Developer API (Gemini 3 Flash)
 - **Payments**: Stripe
 - **Email**: Postmark
 - **IaC**: Pulumi

@@ -123,18 +123,14 @@ async def _default_generate(model: str, system: str, user: str) -> dict:
 
 
 def _blocking_generate(model: str, system: str, user: str) -> dict:
-    from google import genai
     from google.genai import types
 
     from backend.config import settings
 
+    from backend.services.gemini_client import get_genai_client
+
     timeout_ms = int(getattr(settings, "parse_titles_timeout_ms", 20000))
-    client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud_project,
-        location="global",
-        http_options=types.HttpOptions(timeout=timeout_ms),
-    )
+    client = get_genai_client(timeout_ms=timeout_ms)
     response = client.models.generate_content(
         model=model,
         contents=[user],

@@ -303,7 +303,7 @@ Some external services lock to redirect URIs or treat the old GCP project ID as 
 - YouTube OAuth (redirect URIs)
 - Stripe webhook endpoint URL (secret regenerates)
 - AudioShake API key (rotate as a precaution if old project was compromised)
-- Gemini / Vertex API (project-scoped — needs new project enabled)
+- Gemini Developer API key (`gemini-api-key` secret; key lives in an AI Studio project outside nomadkaraoke — just copy the secret)
 - Discord webhook URLs (re-issue if old GCP exposure could have leaked them)
 - Cloudflare API tokens (rotate)
 

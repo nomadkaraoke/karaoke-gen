@@ -1,6 +1,6 @@
 """LLM-powered incident analysis and duplicate detection for the error monitor.
 
-Uses Gemini Flash via the google-generativeai library to:
+Uses Gemini Flash via the Gemini Developer API (backend.services.gemini_client) to:
   1. Group related error patterns into incidents with root-cause analysis.
   2. Identify near-duplicate patterns that the regex normalizer missed.
 
@@ -17,13 +17,11 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from google import genai
 from google.genai import types as genai_types
 
+from backend.services.gemini_client import get_genai_client, note_gemini_failure
 from backend.services.error_monitor.config import (
-    GCP_PROJECT,
     LLM_ANALYSIS_MODEL,
-    LLM_VERTEX_LOCATION,
     MIN_PATTERNS_FOR_ANALYSIS,
     SERVICE_DEPENDENCY_MAP,
 )
@@ -96,11 +94,7 @@ def _call_llm(
 
     for attempt in range(_RETRY_ATTEMPTS):
         try:
-            client = genai.Client(
-                vertexai=True,
-                project=GCP_PROJECT,
-                location=LLM_VERTEX_LOCATION,
-            )
+            client = get_genai_client(timeout_ms=120_000)
             response = client.models.generate_content(
                 model=LLM_ANALYSIS_MODEL,
                 contents=user_prompt,
@@ -111,6 +105,10 @@ def _call_llm(
             )
             return response.text
         except Exception as exc:  # noqa: BLE001
+            if note_gemini_failure("error_monitor", exc):
+                # Quota/credit/key problem: don't retry — callers fall back to
+                # alerts without the AI summary.
+                raise
             last_exc = exc
             delay = _RETRY_BASE_DELAY * (2**attempt)
             logger.warning(

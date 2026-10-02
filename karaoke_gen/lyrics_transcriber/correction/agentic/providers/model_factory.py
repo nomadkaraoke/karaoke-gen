@@ -20,8 +20,9 @@ except ImportError:
 
 # Error message constant for TRY003 compliance
 GOOGLE_API_KEY_MISSING_ERROR = (
-    "GOOGLE_API_KEY environment variable is required for Google/Gemini models. "
-    "Get an API key from https://aistudio.google.com/app/apikey"
+    "GEMINI_API_KEY (or GOOGLE_API_KEY) environment variable is required for Gemini "
+    "models (Gemini Developer API; on Cloud Run it is injected from Secret Manager "
+    "`gemini-api-key`). Vertex AI is not used."
 )
 
 
@@ -191,8 +192,10 @@ class ModelFactory:
                 return self._create_openai_model(model_name, callbacks, config)
             elif provider == "anthropic":
                 return self._create_anthropic_model(model_name, callbacks, config)
-            elif provider in ("vertexai", "google"):
-                return self._create_vertexai_model(model_name, callbacks, config)
+            elif provider in ("gemini", "google", "vertexai"):
+                # "vertexai/..." is accepted for backward compatibility but is
+                # served by the Gemini Developer API (Vertex is disabled).
+                return self._create_gemini_model(model_name, callbacks, config)
             else:
                 raise ValueError(f"Unsupported provider: {provider}")
         except ImportError as e:
@@ -245,57 +248,37 @@ class ModelFactory:
         logger.debug(f"🤖 Created Anthropic model: {model_name}")
         return model
 
-    def _create_vertexai_model(
+    def _create_gemini_model(
         self, model_name: str, callbacks: List[Any], config: ProviderConfig
     ) -> Any:
         """Create ChatGoogleGenerativeAI model for Google Gemini.
 
-        Uses the unified langchain-google-genai package which supports both:
-        - Vertex AI backend (service account / ADC auth) - when project is set
-        - Google AI Studio backend (API key auth) - when only api_key is set
+        Always uses the Gemini Developer API (API key auth) — never Vertex AI, so
+        no project/location is passed. The key comes from GEMINI_API_KEY (or
+        GOOGLE_API_KEY); on Cloud Run it's injected from Secret Manager
+        ``gemini-api-key``.
 
-        On Cloud Run, ADC (Application Default Credentials) are used automatically
-        when the project parameter is provided, using the service account attached
-        to the Cloud Run service.
-
-        This is a REST-based API that avoids the gRPC connection issues
+        langchain-google-genai is REST-based, avoiding the gRPC connection issues
         seen with the deprecated langchain-google-vertexai package.
         """
         from langchain_google_genai import ChatGoogleGenerativeAI
 
         start_time = time.time()
 
-        # Determine authentication method
         api_key = config.google_api_key
-        project = config.gcp_project_id
-
-        # Prefer Vertex AI (service account) if project is set, otherwise require API key
-        if not project and not api_key:
+        if not api_key:
             raise ValueError(GOOGLE_API_KEY_MISSING_ERROR)
 
-        if project:
-            logger.info(f"🤖 Creating Google Gemini model via Vertex AI (project={project}): {model_name}")
-        else:
-            logger.info(f"🤖 Creating Google Gemini model via AI Studio API: {model_name}")
+        logger.info(f"🤖 Creating Google Gemini model via Gemini Developer API: {model_name}")
 
-        # Build kwargs - only include api_key if set (otherwise ADC is used)
-        model_kwargs = {
-            "model": model_name,
-            "convert_system_message_to_human": True,  # Gemini doesn't support system messages
-            "max_retries": config.max_retries,
-            "timeout": config.request_timeout_seconds,
-            "callbacks": callbacks,
-        }
-
-        # Add project to trigger Vertex AI backend with ADC
-        if project:
-            model_kwargs["project"] = project
-
-        # Add API key if available (can be used with or without project)
-        if api_key:
-            model_kwargs["google_api_key"] = api_key
-
-        model = ChatGoogleGenerativeAI(**model_kwargs)
+        model = ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=api_key,
+            convert_system_message_to_human=True,  # Gemini doesn't support system messages
+            max_retries=config.max_retries,
+            timeout=config.request_timeout_seconds,
+            callbacks=callbacks,
+        )
 
         elapsed = time.time() - start_time
         logger.info(f"🤖 Google Gemini model created in {elapsed:.2f}s: {model_name}")
