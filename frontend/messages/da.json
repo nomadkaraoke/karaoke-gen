@@ -1825,7 +1825,11 @@
       "reassurance": "Eventuelle karaokevideoer, der i øjeblikket bliver lavet, påvirkes ikke og vil fortsat blive behandlet.",
       "title": "Vi har problemer med at få forbindelse til vores servere"
     },
-    "dismiss": "Afvis"
+    "dismiss": "Afvis",
+    "waking": {
+      "body": "Det tager normalt omkring 20 sekunder. Tak for din tålmodighed!",
+      "title": "Starter vores karaokeservere…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} numre bliver nu behandlet.",

@@ -1825,7 +1825,11 @@
       "reassurance": "Karaokevideor som håller på att skapas påverkas inte, utan fortsätter att bearbetas.",
       "title": "Vi har problem med att nå våra servrar"
     },
-    "dismiss": "Avfärda"
+    "dismiss": "Avfärda",
+    "waking": {
+      "body": "Det brukar ta cirka 20 sekunder. Tack för ditt tålamod!",
+      "title": "Startar våra karaokeservrar…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} spår bearbetas nu.",

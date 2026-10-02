@@ -1825,7 +1825,11 @@
       "reassurance": "Les vidéos de karaoké en cours de création ne sont pas affectées et continueront d'être traitées.",
       "title": "Nous avons des difficultés à joindre nos serveurs"
     },
-    "dismiss": "Ignorer"
+    "dismiss": "Ignorer",
+    "waking": {
+      "body": "Cela prend généralement une vingtaine de secondes. Merci de ta patience !",
+      "title": "Démarrage de nos serveurs de karaoké…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} pistes sont maintenant en cours de traitement.",

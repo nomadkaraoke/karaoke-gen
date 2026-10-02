@@ -1825,7 +1825,11 @@
       "reassurance": "Os vídeos de karaokê que estão sendo criados no momento não serão afetados e continuarão sendo processados.",
       "title": "Estamos com problemas para acessar nossos servidores"
     },
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "waking": {
+      "body": "Isso geralmente leva cerca de 20 segundos. Agradecemos a sua paciência!",
+      "title": "Iniciando nossos servidores de karaokê…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} faixas estão sendo processadas agora.",

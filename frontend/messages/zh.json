@@ -1825,7 +1825,11 @@
       "reassurance": "当前正在制作的卡拉OK视频不会受到影响，系统将继续进行处理。",
       "title": "我们连接服务器时遇到了一些问题"
     },
-    "dismiss": "忽略"
+    "dismiss": "忽略",
+    "waking": {
+      "body": "通常需要大约 20 秒，感谢您的耐心等待！",
+      "title": "正在启动卡拉OK服务器…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} 首曲目正在处理中。",

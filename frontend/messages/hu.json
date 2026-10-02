@@ -1825,7 +1825,11 @@
       "reassurance": "A jelenleg készülő karaoke videókat ez nem érinti, a feldolgozásuk zavartalanul folytatódik.",
       "title": "Nem tudjuk elérni a szervereinket"
     },
-    "dismiss": "Elvetés"
+    "dismiss": "Elvetés",
+    "waking": {
+      "body": "Ez általában körülbelül 20 másodpercet vesz igénybe. Köszönjük a türelmedet!",
+      "title": "Karaokeszervereink indítása…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} szám feldolgozása folyamatban van.",

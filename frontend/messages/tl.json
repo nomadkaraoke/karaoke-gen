@@ -1825,7 +1825,11 @@
       "reassurance": "Ang anumang karaoke video na kasalukuyang ginagawa ay hindi maaapektuhan at patuloy na ipoproseso.",
       "title": "Nahihirapan kaming kumonekta sa aming mga server"
     },
-    "dismiss": "I-dismiss"
+    "dismiss": "I-dismiss",
+    "waking": {
+      "body": "Karaniwang tumatagal ito nang mga 20 segundo. Salamat sa iyong paghihintay!",
+      "title": "Sinisimulan na ang aming mga karaoke server…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "Pinoproseso na ang {count} track.",

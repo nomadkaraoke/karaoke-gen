@@ -1825,7 +1825,11 @@
       "reassurance": "Sebarang video karaoke yang sedang dihasilkan tidak terjejas dan akan terus diproses.",
       "title": "Kami menghadapi masalah menyambung ke pelayan kami"
     },
-    "dismiss": "Tutup"
+    "dismiss": "Tutup",
+    "waking": {
+      "body": "Ini biasanya mengambil masa kira-kira 20 saat. Terima kasih atas kesabaran anda!",
+      "title": "Memulakan pelayan karaoke kami…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} trek sedang diproses sekarang.",

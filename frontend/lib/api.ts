@@ -5,7 +5,13 @@
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
 import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest, BoardResponse, SubmitRequestResponse, SongRequestPublic, DailyVoteStatus, ClaimWelcomeCreditResponse } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse, AddLyricsResult } from './lyrics-review/types';
-import { beginRequest, endRequest, configureHealthProbe } from './backend-status';
+import {
+  beginRequest,
+  endRequest,
+  configureHealthProbe,
+  configurePrewarm,
+  markBackendReachable,
+} from './backend-status';
 import { ApiError } from './api-error';
 import { putFileToSignedUrl, uploadFilesToSignedUrls, type UploadProgress } from './upload';
 
@@ -546,6 +552,20 @@ export function __backendHealthProbe(): Promise<boolean> {
 }
 configureHealthProbe(__backendHealthProbe);
 
+// Cold-start pre-warm (see prewarmBackend in backend-status.ts): an untracked,
+// fire-and-forget GET /api/health so a scaled-to-zero backend starts booting while
+// the user is still reading the page. Deliberately NOT time-boxed: aborting it
+// would gain nothing, and letting it complete is how we learn the backend is up.
+// A plain GET with no custom headers, so it never needs a CORS preflight.
+/** Exported for tests. */
+export function __backendPrewarm(): Promise<boolean> {
+  return globalThis
+    .fetch(`${API_BASE_URL}/api/health`, { cache: 'no-store', keepalive: true })
+    .then((res) => res.ok)
+    .catch(() => false);
+}
+configurePrewarm(__backendPrewarm);
+
 /** True only for calls to our own backend API — GCS signed-URL uploads and any other
  *  third-party host pass straight through apiFetch untouched (no timeout/retry/status).
  *  Resolves relative URLs and Request inputs (whose `.url` is always absolute) against
@@ -663,6 +683,12 @@ export async function apiFetch(
         throw new BackendUnavailableError(err);
       }
       cleanup();
+
+      if (!TRANSIENT_STATUS.has(response.status)) {
+        // The backend answered (even a 4xx is proof it's up) — this is what lets
+        // the status store tell a later stall (recycle) from a cold start.
+        markBackendReachable();
+      }
 
       if (TRANSIENT_STATUS.has(response.status)) {
         if (allowRetry && attempt < maxAttempts) {

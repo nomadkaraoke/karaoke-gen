@@ -1825,7 +1825,11 @@
       "reassurance": "Los videos de karaoke que se estén creando en este momento no se verán afectados y seguirán procesándose.",
       "title": "Tenemos problemas para conectar con nuestros servidores"
     },
-    "dismiss": "Descartar"
+    "dismiss": "Descartar",
+    "waking": {
+      "body": "Esto suele tardar unos 20 segundos. ¡Gracias por tu paciencia!",
+      "title": "Iniciando nuestros servidores de karaoke…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} pistas se están procesando ahora.",

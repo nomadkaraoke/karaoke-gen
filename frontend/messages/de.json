@@ -1825,7 +1825,11 @@
       "reassurance": "Alle Karaoke-Videos, die gerade erstellt werden, sind davon nicht betroffen und werden weiterverarbeitet.",
       "title": "Wir haben Probleme, unsere Server zu erreichen"
     },
-    "dismiss": "Ausblenden"
+    "dismiss": "Ausblenden",
+    "waking": {
+      "body": "Das dauert normalerweise etwa 20 Sekunden. Danke für deine Geduld!",
+      "title": "Unsere Karaoke-Server werden gestartet…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} Tracks werden jetzt verarbeitet.",

@@ -1825,7 +1825,11 @@
       "reassurance": "Ovo ne utječe na karaoke videozapise koji se trenutno izrađuju i njihova će se obrada nastaviti.",
       "title": "Imamo problema s povezivanjem na naše servere"
     },
-    "dismiss": "Odbaci"
+    "dismiss": "Odbaci",
+    "waking": {
+      "body": "Ovo obično traje oko 20 sekundi. Hvala ti na strpljenju!",
+      "title": "Pokrećemo naše karaoke poslužitelje…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} pjesama se sada obrađuje.",

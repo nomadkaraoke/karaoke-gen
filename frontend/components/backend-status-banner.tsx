@@ -6,9 +6,11 @@ import { Loader2, CloudOff, X } from "lucide-react"
 import {
   useBackendStatus,
   getBackendStatusDebug,
+  installBackendPrewarm,
   __installBackendStatusDevHook,
 } from "@/lib/backend-status"
 import { reportDegradationEvent } from "@/lib/degradation-events"
+import { __backendPrewarm } from "@/lib/api"
 
 /**
  * App-wide, non-blocking banner that reacts to backend connectivity (see
@@ -17,6 +19,8 @@ import { reportDegradationEvent } from "@/lib/degradation-events"
  * broken and any in-flight karaoke renders keep running. Rather than every screen
  * showing its own scary error, this shows a single reassuring message:
  *
+ *   - "waking":       a calm, branded "starting up our karaoke servers" card while a
+ *                     scaled-to-zero backend cold-starts (~15-20s). No warning colours.
  *   - "reconnecting": a subtle pill with a spinner while we transparently retry.
  *   - "unavailable":  a gentle card explaining it's temporary and that ongoing jobs
  *                     are unaffected, once trouble persists past the threshold.
@@ -29,8 +33,11 @@ export function BackendStatusBanner() {
   const t = useTranslations("backendStatus")
   const [dismissed, setDismissed] = useState(false)
 
-  // Expose the dev/preview trigger (window.__nkBackendStatus) for manual UX review.
+  // Expose the dev/preview trigger (window.__nkBackendStatus) for manual UX review,
+  // and pre-warm a possibly scaled-to-zero backend as early as possible (this
+  // banner is mounted app-wide, so every page that talks to the backend gets it).
   useEffect(() => {
+    installBackendPrewarm(__backendPrewarm)
     __installBackendStatusDevHook()
   }, [])
 
@@ -49,17 +56,44 @@ export function BackendStatusBanner() {
     if (status === "unavailable" && dismissed) return
     const debug = getBackendStatusDebug()
     reportDegradationEvent(
-      status === "unavailable" ? "banner_unavailable" : "banner_reconnecting",
+      status === "unavailable"
+        ? "banner_unavailable"
+        : status === "waking"
+          ? "banner_waking"
+          : "banner_reconnecting",
       {
         stall_ms: debug.oldestStallMs,
         in_flight: debug.inFlightCount,
         probe_ok: debug.lastProbeOk,
         probe_failures: debug.consecutiveProbeFailures,
+        since_reachable_ms: debug.sinceReachableMs,
       },
     )
   }, [status, dismissed])
 
   if (status === "online") return null
+
+  if (status === "waking") {
+    return (
+      <div
+        className="fixed top-3 left-1/2 z-[60] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 pointer-events-none"
+        role="status"
+        aria-live="polite"
+        data-testid="backend-waking"
+      >
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--card-border)] bg-[var(--card)]/95 px-4 py-3 text-[var(--text)] shadow-2xl backdrop-blur">
+          <Loader2
+            className="h-5 w-5 shrink-0 animate-spin"
+            style={{ color: "var(--tenant-primary)" }}
+          />
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold">{t("waking.title")}</p>
+            <p className="text-xs leading-relaxed text-[var(--text-muted)]">{t("waking.body")}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (status === "reconnecting") {
     return (

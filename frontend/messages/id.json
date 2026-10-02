@@ -1825,7 +1825,11 @@
       "reassurance": "Video karaoke yang sedang dibuat tidak akan terpengaruh dan akan terus diproses.",
       "title": "Kami kesulitan terhubung ke server"
     },
-    "dismiss": "Abaikan"
+    "dismiss": "Abaikan",
+    "waking": {
+      "body": "Proses ini biasanya membutuhkan waktu sekitar 20 detik. Terima kasih atas kesabaran Anda!",
+      "title": "Menyalakan server karaoke kami…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} trek sedang diproses.",

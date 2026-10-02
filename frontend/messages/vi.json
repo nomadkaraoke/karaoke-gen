@@ -1825,7 +1825,11 @@
       "reassurance": "Các video karaoke đang được tạo sẽ không bị ảnh hưởng và vẫn tiếp tục được xử lý.",
       "title": "Chúng tôi đang gặp sự cố khi kết nối với máy chủ"
     },
-    "dismiss": "Bỏ qua"
+    "dismiss": "Bỏ qua",
+    "waking": {
+      "body": "Quá trình này thường mất khoảng 20 giây. Cảm ơn bạn đã kiên nhẫn chờ đợi!",
+      "title": "Đang khởi động hệ thống máy chủ karaoke…"
+    }
   },
   "tenantBulk": {
     "allSubmittedDesc": "{count} bài hát hiện đang được xử lý.",

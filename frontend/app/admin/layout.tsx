@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getAccessToken } from "@/lib/api"
+import { getAccessToken, __backendPrewarm } from "@/lib/api"
+import { installBackendPrewarm } from "@/lib/backend-status"
 import { useAuth } from "@/lib/auth"
 import { useAdminSettings } from "@/lib/admin-settings"
 import { Loader2 } from "lucide-react"
@@ -103,6 +104,12 @@ export default function AdminLayout({
   // IMPORTANT: All hooks must be called before any conditional returns
   // to satisfy React's Rules of Hooks
   const { showTestData, setShowTestData } = useAdminSettings()
+
+  // Admin isn't under [locale] (no BackendStatusBanner), so pre-warm a possibly
+  // scaled-to-zero backend here too.
+  useEffect(() => {
+    installBackendPrewarm(__backendPrewarm)
+  }, [])
 
   useEffect(() => {
     const token = getAccessToken()
