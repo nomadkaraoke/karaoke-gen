@@ -31,6 +31,7 @@ def test_gemini_model_uses_api_key_not_project(monkeypatch, spec):
     kwargs = chat.call_args.kwargs
     assert kwargs["google_api_key"] == "dev-key"
     assert kwargs["model"] == "gemini-3.8-flash"
+    assert kwargs["vertexai"] is False
     assert "project" not in kwargs and "location" not in kwargs
 
 

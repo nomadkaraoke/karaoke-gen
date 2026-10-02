@@ -274,6 +274,8 @@ class ModelFactory:
         model = ChatGoogleGenerativeAI(
             model=model_name,
             google_api_key=api_key,
+            # Pin the Developer API even if GOOGLE_GENAI_USE_VERTEXAI is set.
+            vertexai=False,
             convert_system_message_to_human=True,  # Gemini doesn't support system messages
             max_retries=config.max_retries,
             timeout=config.request_timeout_seconds,
