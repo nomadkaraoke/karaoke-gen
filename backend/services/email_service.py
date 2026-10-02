@@ -397,10 +397,18 @@ class PostmarkEmailProvider(EmailProvider):
             else:
                 msg.set_content(html_content, subtype="html")
 
-            with smtplib.SMTP(self.SMTP_HOST, self.SMTP_PORT, timeout=self.SMTP_TIMEOUT) as smtp:
+            smtp = smtplib.SMTP(self.SMTP_HOST, self.SMTP_PORT, timeout=self.SMTP_TIMEOUT)
+            try:
                 smtp.starttls(context=ssl.create_default_context())
                 smtp.login(self.server_token, self.server_token)
                 smtp.send_message(msg, to_addrs=[to_email, *cc, *bcc])
+            finally:
+                # A failed QUIT after an accepted send must not fail the send
+                # (a caller retry would then duplicate the email).
+                try:
+                    smtp.quit()
+                except (smtplib.SMTPException, OSError):
+                    smtp.close()
         except (smtplib.SMTPException, OSError, ValueError):
             # ValueError: EmailMessage rejects CR/LF in header values.
             logger.exception(f"Failed to send email to {to_email} via Postmark SMTP fallback")

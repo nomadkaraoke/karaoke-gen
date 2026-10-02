@@ -288,7 +288,7 @@ class TestPostmarkRetry:
     @pytest.fixture
     def mock_smtp(self):
         with patch("backend.services.email_service.smtplib.SMTP") as smtp_cls:
-            self.smtp = smtp_cls.return_value.__enter__.return_value
+            self.smtp = smtp_cls.return_value
             yield smtp_cls
 
     def test_html_403_falls_back_to_smtp_without_api_retries(self, provider, mock_smtp):
@@ -361,6 +361,17 @@ class TestPostmarkRetry:
 
         assert result.success is False
         self.smtp.send_message.assert_not_called()
+
+    def test_quit_failure_after_send_still_reports_success(self, provider, mock_smtp):
+        """Postmark already accepted the message; a failed QUIT must not trigger a resend."""
+        import smtplib as _smtplib
+        self.smtp.quit.side_effect = _smtplib.SMTPServerDisconnected("gone")
+        with patch("backend.services.email_service.requests.post") as mock_post:
+            mock_post.return_value = self._response(403, json_body=False)
+            result = self._send(provider)
+
+        assert result.success is True
+        self.smtp.close.assert_called_once()
 
     def test_smtp_success_clears_stale_message_id(self, provider, mock_smtp):
         provider.last_message_id = "old"
