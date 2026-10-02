@@ -53,6 +53,7 @@ GIT_BACKUP_OWNERS = os.environ.get("GIT_BACKUP_OWNERS", "")
 
 
 GIT_REPOS_PREFIX = "git-repos/"
+JOB_FILES_PREFIX = "gcs/job-files/"
 
 
 def _run_git_repos_backup(full_refresh: bool) -> str:
@@ -209,7 +210,9 @@ def backup_to_aws(request):
     # _UPLOAD_LAG of its clone. A bundle left in staging by a failed upload
     # must not ship on a later night (a push in between would then look backed
     # up); next Sunday's git step re-bundles it fresh instead.
-    exclude = []
+    # gcs/job-files/ is never shipped any more (off-site job-file copy stopped
+    # 2026-10-01) — also skip anything a pre-change run left in staging.
+    exclude = [JOB_FILES_PREFIX]
     if not firestore_to_s3_today:
         exclude.append("firestore/")
     if not git_repos_today:

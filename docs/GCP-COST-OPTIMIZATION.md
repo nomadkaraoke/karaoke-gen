@@ -206,12 +206,17 @@ config flag. To bring it back:
 
 ```bash
 cd infrastructure
-pulumi config set audioSeparatorServiceEnabled true --stack nomadkaraoke/karaoke-gen-infrastructure/prod
-env -u GOOGLE_APPLICATION_CREDENTIALS GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token --account=admin@nomadkaraoke.com) \
-  pulumi up --stack nomadkaraoke/karaoke-gen-infrastructure/prod   # creates repo, SA, bucket, service (placeholder :latest image)
-# The image repo starts empty, so build + deploy the image from python-audio-separator:
-gh workflow run deploy-to-cloudrun.yml --repo nomadkaraoke/python-audio-separator
-# Then point clients at it:
+STACK=nomadkaraoke/karaoke-gen-infrastructure/prod
+PULUMI="env -u GOOGLE_APPLICATION_CREDENTIALS GOOGLE_OAUTH_ACCESS_TOKEN=$(gcloud auth print-access-token --account=admin@nomadkaraoke.com) pulumi"
+pulumi config set audioSeparatorServiceEnabled true --stack $STACK
+# 1) Create ONLY the (empty) Artifact Registry repo first — the service references
+#    api:latest, which must exist before Cloud Run will accept the service.
+$PULUMI up --stack $STACK --target 'urn:pulumi:prod::karaoke-gen-infrastructure::gcp:artifactregistry/repository:Repository::audio-separator-artifact-repo'
+# 2) Build + push api:<sha> and api:latest (from a python-audio-separator checkout)
+gcloud builds submit --config cloudbuild.yaml --region=us-east4 --project=nomadkaraoke --substitutions=SHORT_SHA=$(git rev-parse --short=8 HEAD)
+# 3) Create the service, SA, IAM and output bucket
+$PULUMI up --stack $STACK
+# Later image updates: gh workflow run deploy-to-cloudrun.yml --repo nomadkaraoke/python-audio-separator
 export AUDIO_SEPARATOR_API_URL=$(gcloud run services describe audio-separator --region us-east4 --project nomadkaraoke --format='value(status.url)')
 ```
 

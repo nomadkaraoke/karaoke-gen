@@ -33,13 +33,13 @@ def _run(today):
 def test_weekday_skips_git_and_holds_back_firestore_and_git_repos():
     git, upload = _run(datetime.date(2026, 9, 29))  # Tuesday
     git.assert_not_called()
-    assert set(upload.call_args.kwargs["exclude_prefixes"]) == {"firestore/", "git-repos/"}
+    assert set(upload.call_args.kwargs["exclude_prefixes"]) == {"gcs/job-files/", "firestore/", "git-repos/"}
 
 
 def test_sunday_runs_incremental_git_and_uploads_everything():
     git, upload = _run(datetime.date(2026, 9, 27))  # Sunday, day 27
     git.assert_called_once_with(full_refresh=False)
-    assert upload.call_args.kwargs["exclude_prefixes"] == []
+    assert upload.call_args.kwargs["exclude_prefixes"] == ["gcs/job-files/"]
 
 
 def test_first_sunday_of_month_is_full_refresh():
