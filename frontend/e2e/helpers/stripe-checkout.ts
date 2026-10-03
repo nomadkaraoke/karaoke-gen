@@ -174,8 +174,15 @@ export async function completeStripeCheckout(page: Page): Promise<{ redirected: 
       console.log('  WARNING: card number field not visible after selecting Card');
       // Dump the accordion DOM so the next Stripe markup change is diagnosable
       // from artifacts alone.
-      const html = await page.content().catch(() => '');
-      fs.writeFileSync('test-results/stripe-checkout-dom.html', html);
+      // page.content() only covers the main frame; the accordion usually
+      // lives in a nested iframe, so dump every frame.
+      const dumps: string[] = [];
+      for (const frame of page.frames()) {
+        if (frame.isDetached()) continue;
+        const html = await frame.content().catch(() => '');
+        dumps.push(`<!-- ===== frame: ${frame.url()} ===== -->\n${html}`);
+      }
+      fs.writeFileSync('test-results/stripe-checkout-dom.html', dumps.join('\n\n'));
     }
   }
 
