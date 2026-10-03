@@ -258,7 +258,7 @@ export function AudioSourceStep({
     preloadKaraokeBg()
   }, [])
 
-  const confidence = useMemo(() => getSearchConfidence(results, title), [results, title])
+  const confidence = useMemo(() => getSearchConfidence(results, title, artist), [results, title, artist])
   const groupedResults = useMemo(() => groupResults(results), [results])
   const otherResultsCount = results.length > 0 && confidence.bestResult ? results.length - 1 : 0
 

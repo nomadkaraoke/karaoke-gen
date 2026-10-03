@@ -165,7 +165,8 @@ const BEST_RESULT_PRIORITY = [
 // Within a category, prefers highest seeders, then popularity (view_count).
 export function getBestResult(
   results: ExtendedAudioSearchResult[],
-  searchTitle = ''
+  searchTitle = '',
+  searchArtist = ''
 ): ExtendedAudioSearchResult | null {
   if (results.length === 0) return null
 
@@ -173,7 +174,10 @@ export function getBestResult(
     ? results.filter(r => !['YOUTUBE', 'VINYL RIPS'].includes(categorizeResult(r))
         && isConfirmedTitleMatch(searchTitle, r))
     : []
-  const pool = titleMatches.length > 0 ? titleMatches : results
+  // Same title by the requested artist beats a more popular cover/namesake
+  // (George Strait's "The Chair" vs Braxton Keith's).
+  const artistMatches = searchArtist ? titleMatches.filter(r => isArtistMatch(searchArtist, r)) : []
+  const pool = artistMatches.length > 0 ? artistMatches : titleMatches.length > 0 ? titleMatches : results
 
   let best: ExtendedAudioSearchResult | null = null
   let bestPriority = Infinity
@@ -297,6 +301,33 @@ function titleCore(s: string): string {
 }
 
 /**
+ * Whether the result's artist is the requested artist. Lenient on purpose:
+ * "Braxton Keith, Someone" / "The Killers" vs "Killers" still match.
+ */
+export function isArtistMatch(searchArtist: string, result: ExtendedAudioSearchResult): boolean {
+  const norm = (x: string) => x.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+  const want = norm(searchArtist)
+  const have = norm(result.artist || '')
+  if (want.length < 2 || !have) return false
+  if (have === want || ` ${have} `.includes(` ${want} `) || ` ${want} `.includes(` ${have} `)) return true
+  // Small typos the singer's tidy didn't fix ("radiohed")
+  if (want.length < 5) return false
+  return editDistance(want, have) <= Math.floor(want.length / 5)
+}
+
+function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    }
+    prev = cur
+  }
+  return prev[b.length]
+}
+
+/**
  * True only when the result's track filename was actually compared and matched.
  * checkFilenameMismatch reports "no mismatch" when it can't compare (no
  * target_file → album title, title < 3 chars, non-Latin filename), which must not
@@ -329,7 +360,8 @@ export function getAvailabilityLabel(seeders: number | undefined | null): { text
  */
 export function getSearchConfidence(
   results: ExtendedAudioSearchResult[],
-  searchTitle: string
+  searchTitle: string,
+  searchArtist = ''
 ): SearchConfidence {
   if (results.length === 0) {
     return {
@@ -341,7 +373,7 @@ export function getSearchConfidence(
     }
   }
 
-  const best = getBestResult(results, searchTitle)
+  const best = getBestResult(results, searchTitle, searchArtist)
   const bestCat = best ? categorizeResult(best) : null
   const warnings: string[] = []
 
@@ -367,6 +399,7 @@ export function getSearchConfidence(
   // Spotify is an official release (16-bit WEB) — the right track from it is a
   // good source, second only to lossless torrents and far better than YouTube.
   const spotifyMatch = bestCat === 'SPOTIFY' && !!best && isConfirmedTitleMatch(searchTitle, best)
+    && (!searchArtist || isArtistMatch(searchArtist, best))
 
   if (!hasLossless && !spotifyMatch) {
     warnings.push('No lossless sources available — only YouTube/lossy or vinyl rips found')
@@ -381,7 +414,9 @@ export function getSearchConfidence(
   const reason = buildConfidenceReason(best, bestCat)
 
   // Tier 1: Best result is BEST CHOICE and no filename mismatch
-  if (bestCat === 'BEST CHOICE' && !bestHasMismatch) {
+  // "Perfect match" also needs the right artist — a well-seeded cover isn't one.
+  const artistOk = !searchArtist || (!!best && isArtistMatch(searchArtist, best))
+  if (bestCat === 'BEST CHOICE' && !bestHasMismatch && artistOk) {
     return { tier: 1, reason, bestResult: best, bestCategory: bestCat, warnings }
   }
 
