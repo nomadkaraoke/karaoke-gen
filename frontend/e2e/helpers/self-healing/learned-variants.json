@@ -1,4 +1,23 @@
 {
   "version": 1,
-  "steps": {}
+  "steps": {
+    "selectCard": [
+      {
+        "id": "19fdebfcbbb1",
+        "learnedAt": "2026-10-03T17:05:03.246Z",
+        "runUrl": "https://github.com/nomadkaraoke/karaoke-gen/actions/runs/37139075045",
+        "model": "gemini-3.1-flash-lite",
+        "actions": [
+          {
+            "type": "click",
+            "target": {
+              "by": "css",
+              "css": "[data-testid='card-accordion-item']",
+              "frameUrlIncludes": "checkout.stripe.com/c/pay"
+            }
+          }
+        ]
+      }
+    ]
+  }
 }
