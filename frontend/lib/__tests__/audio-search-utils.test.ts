@@ -10,6 +10,7 @@ import {
   getAvailabilityLabel,
   getSearchConfidence,
   isConfirmedTitleMatch,
+  isArtistMatch,
   ExtendedAudioSearchResult,
 } from '../audio-search-utils'
 
@@ -599,6 +600,31 @@ describe('title-matched best result', () => {
       makeResult({ index: 1, is_lossless: true, seeders: 5, release_type: 'Live album', target_file: '04 - The Chair.flac' }),
     ]
     expect(getBestResult(results, 'The Chair')?.index).toBe(1)
+  })
+
+  it('prefers the requested artist over a more popular same-title track', () => {
+    // Real prod search: George Strait's "The Chair" (popularity 68) outranked
+    // Braxton Keith's (65) when only the title was considered.
+    const strait = { ...spotify(7, 'Something Special', 'The Chair', 68), artist: 'George Strait' }
+    const results = [...braxtonKeithResults(), strait]
+    expect(getBestResult(results, 'The Chair')?.index).toBe(7)
+    const c = getSearchConfidence(results, 'The Chair', 'Braxton Keith')
+    expect(c.bestResult?.index).toBe(2)
+    expect(c.tier).toBe(2)
+  })
+
+  it('a Spotify title match by another artist is not a confident pick', () => {
+    const strait = { ...spotify(0, 'Something Special', 'The Chair', 68), artist: 'George Strait' }
+    expect(getSearchConfidence([strait], 'The Chair', 'Braxton Keith').tier).toBe(3)
+  })
+
+  it('isArtistMatch is lenient on featured artists and "The"', () => {
+    const r = (artist: string) => makeResult({ index: 0, artist })
+    expect(isArtistMatch('Braxton Keith', r('Braxton Keith, Someone'))).toBe(true)
+    expect(isArtistMatch('Killers', r('The Killers'))).toBe(true)
+    expect(isArtistMatch('Braxton Keith', r('George Strait'))).toBe(false)
+    expect(isArtistMatch('Kei', r('Braxton Keith'))).toBe(false)
+    expect(isArtistMatch('radiohed', r('Radiohead'))).toBe(true)
   })
 
   it('never promotes YouTube via a title match over a torrent', () => {
