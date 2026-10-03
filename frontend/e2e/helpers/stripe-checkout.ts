@@ -1,5 +1,6 @@
 // frontend/e2e/helpers/stripe-checkout.ts
 import { Page, Frame, Locator } from '@playwright/test';
+import * as fs from 'fs';
 
 /**
  * Automate Stripe's hosted checkout page (checkout.stripe.com).
@@ -127,12 +128,17 @@ export async function completeStripeCheckout(page: Page): Promise<{ redirected: 
   if (cardNumberField) {
     console.log('  Card fields already visible — no chooser to expand');
   } else {
+    // Stripe's accordion markup varies: older variants expose a radio/button
+    // named "Card"; the Oct 2026 variant renders a visually-hidden
+    // button "Pay with card" overlaying a plain "Card" text label (no radio
+    // role), so we also match the visible label text.
     const cardChoice = await locateVisibleInFrames(
       page,
       (f) =>
         f
-          .getByRole('radio', { name: /^Card$/i })
-          .or(f.getByRole('button', { name: /^Card$/i })),
+          .getByRole('radio', { name: /^(pay with )?card$/i })
+          .or(f.getByRole('button', { name: /^(pay with )?card$/i }))
+          .or(f.getByText('Card', { exact: true })),
       5_000
     );
     if (cardChoice) {
@@ -148,7 +154,35 @@ export async function completeStripeCheckout(page: Page): Promise<{ redirected: 
       15_000
     );
     if (!cardNumberField) {
+      // Last resort: the hidden "Pay with card" button isn't "visible" to
+      // Playwright, so fire its click handler directly.
+      for (const frame of page.frames()) {
+        if (frame.isDetached()) continue;
+        const hiddenBtn = frame.getByRole('button', { name: /^pay with card$/i, includeHidden: true }).first();
+        if (await hiddenBtn.count().catch(() => 0)) {
+          await hiddenBtn.dispatchEvent('click').catch(() => {});
+          console.log('  Dispatched click on hidden "Pay with card" button');
+        }
+      }
+      cardNumberField = await locateVisibleInFrames(
+        page,
+        (f) => cardFieldLocator(f, 'cardNumber'),
+        10_000
+      );
+    }
+    if (!cardNumberField) {
       console.log('  WARNING: card number field not visible after selecting Card');
+      // Dump the accordion DOM so the next Stripe markup change is diagnosable
+      // from artifacts alone.
+      // page.content() only covers the main frame; the accordion usually
+      // lives in a nested iframe, so dump every frame.
+      const dumps: string[] = [];
+      for (const frame of page.frames()) {
+        if (frame.isDetached()) continue;
+        const html = await frame.content().catch(() => '');
+        dumps.push(`<!-- ===== frame: ${frame.url()} ===== -->\n${html}`);
+      }
+      fs.writeFileSync('test-results/stripe-checkout-dom.html', dumps.join('\n\n'));
     }
   }
 
