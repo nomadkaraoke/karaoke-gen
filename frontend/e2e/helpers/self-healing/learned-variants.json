@@ -18,6 +18,25 @@
           }
         ]
       }
+    ],
+    "fillPostalCode": [
+      {
+        "id": "92cb503db41b",
+        "learnedAt": "2026-10-03T17:35:16.436Z",
+        "runUrl": "https://github.com/nomadkaraoke/karaoke-gen/actions/runs/37140934446",
+        "model": "gemini-3.5-flash-lite",
+        "actions": [
+          {
+            "type": "fill",
+            "target": {
+              "by": "css",
+              "css": "#billingPostalCode",
+              "frameUrlIncludes": "checkout.stripe.com/c/pay"
+            },
+            "value": "{{POSTAL_CODE}}"
+          }
+        ]
+      }
     ]
   }
 }
