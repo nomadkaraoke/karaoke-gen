@@ -414,7 +414,9 @@ export function getSearchConfidence(
   const reason = buildConfidenceReason(best, bestCat)
 
   // Tier 1: Best result is BEST CHOICE and no filename mismatch
-  if (bestCat === 'BEST CHOICE' && !bestHasMismatch) {
+  // "Perfect match" also needs the right artist — a well-seeded cover isn't one.
+  const artistOk = !searchArtist || (!!best && isArtistMatch(searchArtist, best))
+  if (bestCat === 'BEST CHOICE' && !bestHasMismatch && artistOk) {
     return { tier: 1, reason, bestResult: best, bestCategory: bestCat, warnings }
   }
 

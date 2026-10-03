@@ -613,6 +613,13 @@ describe('title-matched best result', () => {
     expect(c.tier).toBe(2)
   })
 
+  it('a well-seeded cover by another artist is not a perfect (tier 1) match', () => {
+    const cover = makeResult({ index: 0, is_lossless: true, seeders: 200, release_type: 'Album',
+      artist: 'Postmodern Jukebox', target_file: '05 - Creep.flac' })
+    expect(getSearchConfidence([cover], 'Creep', 'Radiohead').tier).toBe(2)
+    expect(getSearchConfidence([{ ...cover, artist: 'Radiohead' }], 'Creep', 'Radiohead').tier).toBe(1)
+  })
+
   it('a Spotify title match by another artist is not a confident pick', () => {
     const strait = { ...spotify(0, 'Something Special', 'The Chair', 68), artist: 'George Strait' }
     expect(getSearchConfidence([strait], 'The Chair', 'Braxton Keith').tier).toBe(3)
