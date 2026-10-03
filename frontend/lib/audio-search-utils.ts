@@ -171,7 +171,7 @@ export function getBestResult(
 
   const titleMatches = searchTitle
     ? results.filter(r => !['YOUTUBE', 'VINYL RIPS'].includes(categorizeResult(r))
-        && !checkFilenameMismatch(searchTitle, r).isMismatch)
+        && isConfirmedTitleMatch(searchTitle, r))
     : []
   const pool = titleMatches.length > 0 ? titleMatches : results
 
@@ -279,6 +279,18 @@ export function checkFilenameMismatch(
 }
 
 /**
+ * True only when the result's track filename was actually compared and matched.
+ * checkFilenameMismatch reports "no mismatch" when it can't compare (no
+ * target_file → album title, title < 3 chars, non-Latin filename), which must not
+ * count as evidence that this is the right track.
+ */
+export function isConfirmedTitleMatch(searchTitle: string, result: ExtendedAudioSearchResult): boolean {
+  if (!result.target_file) return false
+  const m = checkFilenameMismatch(searchTitle, result)
+  return !m.isMismatch && m.filename !== '' && searchTitle.length >= 3
+}
+
+/**
  * Get a human-readable availability label + tooltip for a seeder count.
  */
 export function getAvailabilityLabel(seeders: number | undefined | null): { text: string; tooltip: string } {
@@ -331,7 +343,7 @@ export function getSearchConfidence(
 
   // Spotify is an official release (16-bit WEB) — the right track from it is a
   // good source, second only to lossless torrents and far better than YouTube.
-  const spotifyMatch = bestCat === 'SPOTIFY' && !bestHasMismatch
+  const spotifyMatch = bestCat === 'SPOTIFY' && !!best && isConfirmedTitleMatch(searchTitle, best)
 
   if (!hasLossless && !spotifyMatch) {
     warnings.push('No lossless sources available — only YouTube/lossy or vinyl rips found')

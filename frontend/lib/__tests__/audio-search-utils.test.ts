@@ -9,6 +9,7 @@ import {
   checkFilenameMismatch,
   getAvailabilityLabel,
   getSearchConfidence,
+  isConfirmedTitleMatch,
   ExtendedAudioSearchResult,
 } from '../audio-search-utils'
 
@@ -563,6 +564,22 @@ describe('title-matched best result', () => {
     const c = getSearchConfidence(results, 'The Chair')
     expect(c.bestResult?.index).toBe(1)
     expect(c.tier).toBe(1)
+  })
+
+  it('a Spotify album named after the song is not a track match', () => {
+    const results = [
+      makeResult({ index: 0, provider: 'Spotify', title: 'The Chair', artist: 'Braxton Keith' }),
+    ]
+    const c = getSearchConfidence(results, 'The Chair')
+    expect(c.tier).toBe(3)
+  })
+
+  it('isConfirmedTitleMatch needs a compared, matching track filename', () => {
+    expect(isConfirmedTitleMatch('The Chair', spotify(0, 'X', 'The Chair', 1))).toBe(true)
+    expect(isConfirmedTitleMatch('The Chair', spotify(0, 'X', 'Cozy', 1))).toBe(false)
+    expect(isConfirmedTitleMatch('Up', spotify(0, 'X', 'Up', 1))).toBe(false)
+    expect(isConfirmedTitleMatch('The Chair',
+      makeResult({ index: 0, provider: 'Spotify', title: 'The Chair' }))).toBe(false)
   })
 
   it('never promotes YouTube via a title match over a torrent', () => {
