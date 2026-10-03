@@ -61,7 +61,7 @@
   - **Screens worker:** now runs inline in its Cloud Tasks request (so CPU stays allocated under `--cpu-throttling`), with the heavy steps in worker threads: 4K PIL renders, GCS uploads, review-audio transcode, timing signals and pre-apply.
   - **Hourly stale-review cron:** runs in a thread.
   - **Matplotlib font cache:** pre-built in the base image (`MPLCONFIGDIR=/opt/mplconfig`), and pyplot is imported lazily.
-  - **Route handlers:** 166 `async def` routes that never awaited (sync Firestore/GCS/email/Gemini on the loop) are now plain `def`, so they run in FastAPI's threadpool. `backend/tests/test_no_blocking_async_routes.py` keeps it that way, and also blocks sync routes that call `asyncio.create_task`.
+  - **Route handlers:** 161 `async def` routes that never awaited (sync Firestore/GCS/email/Gemini on the loop) are now plain `def`, so they run in FastAPI's threadpool. `backend/tests/test_no_blocking_async_routes.py` keeps it that way, and also blocks sync routes that call `asyncio.create_task`.
   - **Loop watchdog:** new `backend/services/loop_watchdog.py` logs `EVENT_LOOP_STALL` with the blocking stack. Stalls ≥5s are recorded to `client_events` (`server_loop_stall`). A Cloud Monitoring alert fires on ≥2 stalls of ≥10s in 30 min.
   - **Telemetry identity:** `client_events` now records the server-resolved user (plus admin/internal/test flags), device fingerprint, tab id, tenant, and a `banner_recovered` event with episode duration. Use `scripts/client_events_report.py` for summaries.
 

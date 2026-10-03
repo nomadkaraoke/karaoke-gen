@@ -20,6 +20,7 @@ from backend.models.worker_log import WorkerLogEntry
 from backend.services.duration_reconciliation import reconcile_and_maybe_pause
 from backend.services.firestore_service import FirestoreService
 from backend.services.storage_service import StorageService
+from backend.utils.keyed_lock import job_lock
 
 
 logger = logging.getLogger(__name__)
@@ -487,7 +488,18 @@ class JobManager:
 
         return True
 
-    def transition_to_state(
+    def transition_to_state(self, job_id: str, *args, **kwargs) -> bool:
+        """Validate + apply a status transition (see _transition_to_state_unlocked).
+
+        Serialized per job within this instance: route handlers run in the
+        threadpool, so two concurrent requests (e.g. a double-clicked Complete)
+        could otherwise both pass validation and both transition/trigger
+        workers. (They used to be serialized by running on the event loop.)
+        """
+        with job_lock(job_id):
+            return self._transition_to_state_unlocked(job_id, *args, **kwargs)
+
+    def _transition_to_state_unlocked(
         self,
         job_id: str,
         new_status: JobStatus,
@@ -1312,8 +1324,13 @@ class JobManager:
         """
         Cancel a job.
         
-        Only jobs in non-terminal states can be cancelled.
+        Only jobs in non-terminal states can be cancelled. Serialized per job
+        within this instance so a double-clicked Cancel can't refund twice.
         """
+        with job_lock(job_id):
+            return self._cancel_job_unlocked(job_id, reason)
+
+    def _cancel_job_unlocked(self, job_id: str, reason: Optional[str]) -> bool:
         job = self.get_job(job_id)
         if not job:
             return False

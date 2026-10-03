@@ -565,7 +565,7 @@ def search_review_sessions(
 
 
 @router.get("/{job_id}/ping")
-def ping(job_id: str):
+async def ping(job_id: str):
     """Health check endpoint expected by frontend."""
     return {"status": "ok"}
 

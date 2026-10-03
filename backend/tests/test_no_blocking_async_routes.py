@@ -5,7 +5,7 @@ An ``async def`` handler runs ON that loop, so every sync Firestore / GCS /
 HTTP / email / LLM call inside it freezes every other request on the instance
 (users see the "Reconnecting" / "servers unavailable" banner). A plain ``def``
 handler is run by FastAPI in its threadpool instead. On 2026-10-03, 168
-handlers were async-without-await; they were converted and this test keeps it
+handlers were async-without-await; 161 were converted (trivial no-call ones like health checks stay async) and this test keeps it
 that way.
 
 Fix a failure by making the handler a plain ``def`` (FastAPI then runs it in
@@ -64,8 +64,14 @@ def _is_route(fn) -> bool:
     )
 
 
+def _is_trivial(fn) -> bool:
+    """No calls at all in the body (e.g. a health check returning a literal dict) —
+    can't block, and keeping it async means it never waits for a threadpool slot."""
+    return not any(isinstance(c, ast.Call) for stmt in fn.body for c in ast.walk(stmt))
+
+
 def find_offenders(source: str) -> list[str]:
-    """async routes that never await (and don't need the loop)."""
+    """async routes that never await (and don't need the loop, and aren't trivial)."""
     tree = ast.parse(source)
     return [
         n.name
@@ -74,6 +80,7 @@ def find_offenders(source: str) -> list[str]:
         and _is_route(n)
         and not _awaits_directly(n)
         and not _uses_loop_api(n)
+        and not _is_trivial(n)
     ]
 
 
@@ -112,6 +119,36 @@ def test_no_sync_route_uses_running_loop_apis():
     )
 
 
+def find_awaited_sync_routes(source: str) -> list[str]:
+    """`await some_sync_route(...)` within the same module — a TypeError at runtime
+    (awaiting the return value), usually swallowed by a broad except."""
+    tree = ast.parse(source)
+    sync_routes = {
+        n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and _is_route(n)
+    }
+    hits = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Await) and isinstance(node.value, ast.Call):
+            fn = node.value.func
+            # Bare names only: `await svc.health_check()` is a different object's
+            # (async) method that merely shares a route's name.
+            if isinstance(fn, ast.Name) and fn.id in sync_routes:
+                hits.append(fn.id)
+    return hits
+
+
+def test_no_await_of_sync_route_handlers():
+    offenders = []
+    for path in ROUTE_FILES:
+        for name in find_awaited_sync_routes(path.read_text()):
+            offenders.append(f"{path.relative_to(BACKEND.parent)}::await {name}(...)")
+    assert not offenders, (
+        "These code paths `await` a plain-`def` route handler (TypeError at runtime). "
+        "Call it via `await asyncio.to_thread(handler, ...)` instead:\n  "
+        + "\n  ".join(offenders)
+    )
+
+
 def test_detector_flags_and_allows_correctly():
     src = '''
 @router.get("/a")
@@ -123,6 +160,9 @@ async def good():
 
 @router.post("/c")
 def sync_ok(): return db.get()
+
+@router.get("/health")
+async def trivial(): return {"status": "ok"}
 
 @router.post("/d")
 async def nested_only():
@@ -144,3 +184,10 @@ def sync_spawns_task():
 '''
     assert sorted(find_offenders(src)) == ["bad", "nested_only"]
     assert find_loopless_sync_routes(src) == ["sync_spawns_task"]
+    caller = src + '''
+async def helper():
+    await sync_ok()
+    await asyncio.to_thread(sync_ok)
+    await client.sync_ok()
+'''
+    assert find_awaited_sync_routes(caller) == ["sync_ok"]

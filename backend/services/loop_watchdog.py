@@ -46,6 +46,18 @@ _MAX_STACK_CHARS = 8000
 
 Recorder = Callable[[dict], None]
 
+# Innermost frames that mean "the loop is idle, waiting for I/O" — not blocked.
+_IDLE_FUNCS = {"select", "poll", "epoll", "kqueue", "control", "_run_once"}
+_IDLE_FILES = ("selectors.py", "base_events.py")
+
+
+def _is_idle_frame(frame) -> bool:
+    """True when the loop thread is parked in the selector (idle), not running code."""
+    if frame is None:
+        return False
+    code = frame.f_code
+    return code.co_name in _IDLE_FUNCS and code.co_filename.endswith(_IDLE_FILES)
+
 
 def _format_stack(frame) -> tuple[str, str]:
     """Return (stack_text, culprit) for a frame; culprit = innermost own-code frame."""
@@ -139,10 +151,17 @@ class LoopWatchdog:
     # ----- detection (called from the watchdog thread; unit-testable) ------
     def _sample(self, age: float) -> None:
         frame = sys._current_frames().get(self._loop_thread_id) if self._loop_thread_id else None
+        if _is_idle_frame(frame):
+            # Loop is parked in select(): not blocked. This is what a CPU-throttled
+            # idle Cloud Run instance looks like when CPU returns (the watchdog
+            # thread can wake before the heartbeat does). Record it so _finish
+            # can drop an all-idle "stall" as a false positive.
+            self._samples.append({"at_s": round(age, 1), "culprit": "", "stack": "", "idle": True})
+            return
         stack, culprit = _format_stack(frame)
         if self._samples and self._samples[-1]["stack"] == stack:
             return  # identical to the previous sample — nothing new to learn
-        self._samples.append({"at_s": round(age, 1), "culprit": culprit, "stack": stack})
+        self._samples.append({"at_s": round(age, 1), "culprit": culprit, "stack": stack, "idle": False})
         level = logging.ERROR if age >= self.error_threshold_s else logging.WARNING
         logger.log(
             level,
@@ -186,6 +205,12 @@ class LoopWatchdog:
         self._samples = []
         if duration < self.stall_threshold_s:
             return
+        if samples and all(s.get("idle") for s in samples):
+            # Every sample saw the loop idle in select() — a throttled/idle gap
+            # (no CPU allocated between requests), not a blocking call.
+            logger.debug("loop watchdog: ignored idle gap of %dms", int(duration * 1000))
+            return
+        samples = [s for s in samples if not s.get("idle")]
         culprits = [s["culprit"] for s in samples if s["culprit"]]
         # The longest-lived sample is the most representative of the freeze.
         main_culprit = culprits[-1] if culprits else ""

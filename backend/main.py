@@ -4,6 +4,7 @@ FastAPI application entry point for karaoke generation backend.
 (Trivial comment touch to trigger backend CI on ephemeral runners after
  the 2026-05-17 dispatcher e2 fix; safe to remove on next backend edit.)
 """
+import asyncio
 import logging
 import threading
 import time
@@ -132,6 +133,16 @@ async def lifespan(app: FastAPI):
     threading.Thread(
         target=_run_background_warmup, name="startup-warmup", daemon=True
     ).start()
+
+    # asyncio.to_thread's default executor is min(32, cpu+4) ≈ 6 threads on our
+    # 2 vCPUs. The screens worker, stale-review cron, auto-correct and many
+    # review endpoints all offload into it (mostly I/O-bound), so size it up —
+    # otherwise review-page requests queue behind a few long-running jobs.
+    import concurrent.futures
+
+    asyncio.get_running_loop().set_default_executor(
+        concurrent.futures.ThreadPoolExecutor(max_workers=48, thread_name_prefix="to-thread")
+    )
 
     # Event-loop stall watchdog: makes "every request froze for 30s" episodes
     # self-diagnosing (logs the blocking stack; records >=5s stalls in prod).
@@ -285,7 +296,7 @@ async def insufficient_credits_exception_handler(request: Request, exc: Insuffic
 
 
 @app.get("/")
-def root():
+async def root():
     """Root endpoint."""
     return {
         "service": "karaoke-gen-backend",

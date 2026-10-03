@@ -1075,7 +1075,7 @@ async def update_job(
                     f"Auto-deleting outputs for job {job_id} (toggled to private by {admin_email})"
                 )
                 # Call the delete-outputs endpoint directly (same module)
-                await delete_job_outputs(job_id, auth_data)
+                await asyncio.to_thread(delete_job_outputs, job_id, auth_data)
                 auto_deleted = True
             except HTTPException:
                 # delete_job_outputs raises HTTPException on validation failures,

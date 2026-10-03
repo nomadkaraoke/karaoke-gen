@@ -178,7 +178,7 @@ def check_transmission_status() -> Dict[str, Any]:
 
 
 @router.get("/health")
-def health_check() -> Dict[str, str]:
+async def health_check() -> Dict[str, str]:
     """Health check endpoint."""
     return {
         "status": "healthy",
@@ -671,7 +671,7 @@ def job_consistency_check(
 
 
 @router.get("/readiness")
-def readiness_check() -> Dict[str, str]:
+async def readiness_check() -> Dict[str, str]:
     """Readiness check endpoint for Cloud Run."""
     return {
         "status": "ready",

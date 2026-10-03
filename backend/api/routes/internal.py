@@ -1374,7 +1374,7 @@ def _repark_stalled_render(job_manager: JobManager, job_id: str) -> bool:
 
 
 @router.get("/health")
-def internal_health(
+async def internal_health(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
 ):
     """

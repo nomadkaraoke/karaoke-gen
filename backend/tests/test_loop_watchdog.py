@@ -4,6 +4,7 @@ import logging
 import time
 
 import pytest
+from unittest.mock import patch
 
 from backend.services.loop_watchdog import LoopWatchdog, _format_stack
 
@@ -121,3 +122,69 @@ class TestRealLoop:
 
 def test_format_stack_none():
     assert _format_stack(None) == ("", "")
+
+
+class TestIdleGapSuppression:
+    """CPU-throttled idle instances: the watchdog thread can wake before the
+    heartbeat, see a big gap, but the loop is parked in select() — not blocked."""
+
+    def _run_gap(self, idle: bool, caplog):
+        caplog.set_level(logging.DEBUG, logger="backend.services.loop_watchdog")
+        clock = FakeClock()
+        recorded = []
+        wd = LoopWatchdog(clock=clock, recorder=recorded.append)
+        wd._loop_thread_id = 12345
+        with patch("backend.services.loop_watchdog._is_idle_frame", return_value=idle), \
+             patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
+            wd._last_tick = clock.t
+            for step in (1.0, 5.0, 15.0, 40.0):
+                clock.t = 1000.0 + step
+                wd.check()
+            clock.t = 1000.0 + 40.25
+            wd._last_tick = clock.t
+            wd.check()
+        return recorded
+
+    def test_all_idle_samples_are_not_a_stall(self, caplog):
+        recorded = self._run_gap(idle=True, caplog=caplog)
+        assert recorded == []
+        assert "EVENT_LOOP_STALL ended" not in caplog.text
+        assert "ignored idle gap" in caplog.text
+
+    def test_non_idle_samples_are_a_stall(self, caplog):
+        recorded = self._run_gap(idle=False, caplog=caplog)
+        assert len(recorded) == 1
+        assert "EVENT_LOOP_STALL ended" in caplog.text
+
+
+def test_is_idle_frame_detects_parked_selector():
+    """A thread blocked in selectors' select() is classified idle; a busy one isn't."""
+    import selectors
+    import socket
+    import sys
+    import threading
+
+    from backend.services.loop_watchdog import _is_idle_frame
+
+    a, b = socket.socketpair()
+    sel = selectors.DefaultSelector()
+    sel.register(a, selectors.EVENT_READ)
+    started = threading.Event()
+
+    def park():
+        started.set()
+        sel.select(timeout=2)
+
+    t = threading.Thread(target=park)
+    t.start()
+    started.wait()
+    time.sleep(0.2)
+    try:
+        assert _is_idle_frame(sys._current_frames()[t.ident]) is True
+        assert _is_idle_frame(sys._current_frames()[threading.get_ident()]) is False
+    finally:
+        b.send(b"x")
+        t.join()
+        sel.close()
+        a.close()
+        b.close()
