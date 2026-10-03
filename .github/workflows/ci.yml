@@ -181,6 +181,12 @@ jobs:
         working-directory: frontend
         run: npx playwright test smoke.spec.ts --project=chromium --reporter=line
 
+      # Offline (fixture pages + stub LLM) tests for the self-healing Stripe
+      # Checkout runner used by the daily production E2E.
+      - name: Run self-healing Stripe runner tests
+        working-directory: frontend
+        run: npx playwright test --config=playwright.selfheal.config.ts --reporter=line
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4

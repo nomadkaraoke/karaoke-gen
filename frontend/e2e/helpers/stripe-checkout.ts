@@ -1,47 +1,57 @@
 // frontend/e2e/helpers/stripe-checkout.ts
 import { Page, Frame, Locator } from '@playwright/test';
 import * as fs from 'fs';
+import { GeminiPlanner, type Planner } from './self-healing/llm-agent';
+import { SelfHealingRunner } from './self-healing/step-runner';
+import type { CheckoutStep, LearnedVariantsFile, Secrets, StepContext } from './self-healing/types';
 
 /**
  * Automate Stripe's hosted checkout page (checkout.stripe.com).
  *
  * ⚠️ Stripe changes this page's structure without notice — likely A/B testing
- * or staged rollouts, so BOTH the old and new layouts can appear on any given
- * day (and can flip back). We have observed at least three variants:
- *   1. Multi-method accordion of *radios* (Card / Cash App / Klarna / Bank),
- *      card fields inside iframes, Pay button in the top frame.   (Apr 2026)
- *   2. Single method (Card only): card fields render as *direct* textboxes in
- *      the top document, no chooser at all.                        (#916, Aug 17)
- *   3. Multi-method Payment Element where the chooser is *buttons* (not radios)
- *      and the whole element — chooser, card fields AND the "Pay" button — is
- *      rendered inside a nested same-origin iframe.                (Aug 19-20)
+ * or staged rollouts, so BOTH old and new layouts can appear on any given day
+ * (and can flip back). Observed variants (see git history for details):
+ *   1. Accordion of *radios* (Card / Cash App / Klarna / Bank).      (Apr 2026)
+ *   2. Card-only: card fields as direct textboxes, no chooser.        (#916, Aug 17)
+ *   3. Chooser as *buttons*, whole Payment Element in a nested iframe. (#919, Aug 20)
+ *   4. Required "Name on card" + "ZIP code" with new labels.          (#945, Aug 26)
+ *   5. Plain "Card" label + visually-hidden "Pay with card" button.   (#1115, Oct 3)
  *
- * DO NOT narrow this helper to a single layout — it must tolerate all of the
- * above. It does so by being layout-agnostic:
- *   - `page.getByRole(...)` only sees the top frame, so we search EVERY frame
- *     (top + nested iframes) for each element via `locateVisibleInFrames`.
- *   - The "Card" chooser is matched as a radio OR a button.
- *   - Card fields are matched whether direct inputs or iframe-nested.
- * If Stripe introduces yet another layout, extend the locators here rather than
- * assuming a single shape.
+ * So the flow is a sequence of SELF-HEALING STEPS (see ./self-healing/). Each
+ * step has a `verify` postcondition and is attempted with:
+ *   1. learned variants — recipes an LLM discovered on earlier runs, auto-
+ *      committed to self-healing/learned-variants.json by the daily workflow;
+ *   2. the hand-written builtin variants below;
+ *   3. an LLM fallback (Gemini) that drives the page one action at a time
+ *      until `verify` passes. Card data never reaches the LLM: it uses
+ *      `{{CARD_NUMBER}}`-style placeholders that we substitute locally, and
+ *      observations are redacted + input-masked.
+ * When the LLM heals a step and the purchase is confirmed server-side, the
+ * daily workflow opens an auto-merging PR adding the recipe to
+ * learned-variants.json — the next run replays it without the LLM.
+ *
+ * You can still add builtin variants by hand, but you shouldn't need to.
  *
  * Environment variables:
- *   E2E_STRIPE_CARD_NUMBER, E2E_STRIPE_CARD_EXPIRY,
- *   E2E_STRIPE_CARD_CVC, E2E_STRIPE_CARDHOLDER_NAME (optional)
+ *   E2E_STRIPE_CARD_NUMBER, E2E_STRIPE_CARD_EXPIRY, E2E_STRIPE_CARD_CVC,
+ *   E2E_STRIPE_CARDHOLDER_NAME (optional), E2E_STRIPE_ZIP (optional)
+ *   GEMINI_API_KEY — enables the LLM fallback (absent → deterministic only)
+ *   E2E_SELF_HEAL_MODELS — comma-separated Gemini model ids, cheapest first
+ *   E2E_SELF_HEAL_FORCE_LLM — comma-separated step ids to force through the LLM (testing)
  */
 
 interface CardDetails {
   number: string;
   expiry: string;
   cvc: string;
-  name?: string;
+  name: string;
+  zip: string;
 }
 
 function getCardDetailsFromEnv(): CardDetails {
   const number = process.env.E2E_STRIPE_CARD_NUMBER;
   const expiry = process.env.E2E_STRIPE_CARD_EXPIRY;
   const cvc = process.env.E2E_STRIPE_CARD_CVC;
-  const name = process.env.E2E_STRIPE_CARDHOLDER_NAME;
 
   if (!number || !expiry || !cvc) {
     throw new Error(
@@ -51,7 +61,13 @@ function getCardDetailsFromEnv(): CardDetails {
 
   // Default the name so a missing/empty secret can't leave the (now required)
   // "Name on card" field blank and get the Pay click rejected.
-  return { number, expiry, cvc, name: name || 'E2E Test' };
+  return {
+    number,
+    expiry,
+    cvc,
+    name: process.env.E2E_STRIPE_CARDHOLDER_NAME || 'E2E Test',
+    zip: process.env.E2E_STRIPE_ZIP || '10001',
+  };
 }
 
 /**
@@ -81,234 +97,20 @@ async function locateVisibleInFrames(
 }
 
 /**
- * Complete the Stripe Checkout page with card details from environment.
- *
- * @param page - Playwright page that will be redirected to checkout.stripe.com
- * @returns `{ redirected }` — whether the browser was observed navigating back
- *   to our success/app URL after payment. The redirect can be slow or dropped
- *   even when the charge succeeds (Stripe→site hop, 3DS interstitial), so this
- *   is reported rather than thrown: callers should treat the *server-side*
- *   credit grant (Stripe webhook) as the source of truth and use `redirected`
- *   only as a best-effort UX signal. Genuine failures (no Pay button, card
- *   declined) still throw.
+ * Accessible-name, placeholder and autocomplete metadata for each Stripe card
+ * field, used to build robust locators that work whether Stripe renders the
+ * field as a direct input or inside an iframe.
  */
-export async function completeStripeCheckout(page: Page): Promise<{ redirected: boolean }> {
-  const card = getCardDetailsFromEnv();
-
-  // Step 1: Wait for Stripe Checkout page to fully load
-  console.log('  Waiting for Stripe Checkout page...');
-  await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
-
-  // The "Pay" button is one of the last elements to render and confirms the
-  // Payment Element is interactive. It may be in the top frame (single-method
-  // layout) or a nested iframe (multi-method layout). Match it exactly so the
-  // "Pay with Link" / "Pay with Klarna" express buttons don't shadow it.
-  const payButton = await locateVisibleInFrames(
-    page,
-    (f) => f.getByRole('button', { name: /^Pay$/i }),
-    30_000
-  );
-  if (!payButton) {
-    await page.screenshot({ path: 'test-results/stripe-no-pay-button.png' });
-    throw new Error('Stripe "Pay" button not visible in any frame after 30s');
-  }
-  await page.screenshot({ path: 'test-results/stripe-checkout-loaded.png' });
-  console.log('  Stripe Checkout loaded');
-
-  // Step 2: Ensure the card fields are shown. In the single-method layout they
-  // are already visible; in the multi-method accordion we must expand "Card"
-  // (rendered as a button or radio depending on Stripe's variant).
-  console.log('  Selecting Card payment method...');
-  let cardNumberField = await locateVisibleInFrames(
-    page,
-    (f) => cardFieldLocator(f, 'cardNumber'),
-    5_000
-  );
-
-  if (cardNumberField) {
-    console.log('  Card fields already visible — no chooser to expand');
-  } else {
-    // Stripe's accordion markup varies: older variants expose a radio/button
-    // named "Card"; the Oct 2026 variant renders a visually-hidden
-    // button "Pay with card" overlaying a plain "Card" text label (no radio
-    // role), so we also match the visible label text.
-    const cardChoice = await locateVisibleInFrames(
-      page,
-      (f) =>
-        f
-          .getByRole('radio', { name: /^(pay with )?card$/i })
-          .or(f.getByRole('button', { name: /^(pay with )?card$/i }))
-          .or(f.getByText('Card', { exact: true })),
-      5_000
-    );
-    if (cardChoice) {
-      // force:true bypasses any overlay/accordion animation intercepting clicks.
-      await cardChoice.click({ force: true }).catch(() => {});
-      console.log('  Card payment method selected');
-    } else {
-      console.log('  No Card chooser found — waiting for card fields to render...');
-    }
-    cardNumberField = await locateVisibleInFrames(
-      page,
-      (f) => cardFieldLocator(f, 'cardNumber'),
-      15_000
-    );
-    if (!cardNumberField) {
-      // Last resort: the hidden "Pay with card" button isn't "visible" to
-      // Playwright, so fire its click handler directly.
-      for (const frame of page.frames()) {
-        if (frame.isDetached()) continue;
-        const hiddenBtn = frame.getByRole('button', { name: /^pay with card$/i, includeHidden: true }).first();
-        if (await hiddenBtn.count().catch(() => 0)) {
-          await hiddenBtn.dispatchEvent('click').catch(() => {});
-          console.log('  Dispatched click on hidden "Pay with card" button');
-        }
-      }
-      cardNumberField = await locateVisibleInFrames(
-        page,
-        (f) => cardFieldLocator(f, 'cardNumber'),
-        10_000
-      );
-    }
-    if (!cardNumberField) {
-      console.log('  WARNING: card number field not visible after selecting Card');
-      // Dump the accordion DOM so the next Stripe markup change is diagnosable
-      // from artifacts alone.
-      // page.content() only covers the main frame; the accordion usually
-      // lives in a nested iframe, so dump every frame.
-      const dumps: string[] = [];
-      for (const frame of page.frames()) {
-        if (frame.isDetached()) continue;
-        const html = await frame.content().catch(() => '');
-        dumps.push(`<!-- ===== frame: ${frame.url()} ===== -->\n${html}`);
-      }
-      fs.writeFileSync('test-results/stripe-checkout-dom.html', dumps.join('\n\n'));
-    }
-  }
-
-  await page.waitForTimeout(1000);
-  await page.screenshot({ path: 'test-results/stripe-card-selected.png' });
-
-  // Step 3-5: Fill card number, expiry, CVC
-  console.log('  Filling card number...');
-  await fillCardField(page, 'cardNumber', card.number);
-  console.log('  Filling card expiry...');
-  await fillCardField(page, 'cardExpiry', card.expiry);
-  console.log('  Filling CVC...');
-  await fillCardField(page, 'cardCvc', card.cvc);
-
-  // Step 6: Fill cardholder name if the field exists (any frame).
-  // Stripe renames/relabels this field across layouts — we've seen the
-  // accessible name be "Cardholder name", "Name on card", or "Full name on
-  // card", and the placeholder be "Full name on card" or "First and last
-  // name". Match all known variants so an empty name field can't silently
-  // block the Pay button (which produced a false "payment broken" alarm — the
-  // Pay click was rejected with "Please provide the name on your card").
-  if (card.name) {
-    const nameInput = await locateVisibleInFrames(
-      page,
-      (f) =>
-        f
-          .locator(
-            '[data-elements-stable-field-name="billingName"], #billingName, input[name="billingName"], input[placeholder="Full name on card"], input[placeholder="First and last name"]'
-          )
-          .or(f.getByRole('textbox', { name: /name on card|cardholder name/i })),
-      8_000
-    );
-    if (nameInput) {
-      console.log('  Filling cardholder name...');
-      await nameInput.fill(card.name);
-    } else {
-      console.log('  WARNING: cardholder name field not found — Pay may be rejected');
-    }
-  }
-
-  // Step 6b: Fill ZIP code (required for US cards) — search any frame.
-  // The accessible name is "ZIP code" (not exactly "ZIP"), so the regex must
-  // not anchor to ^zip$. Placeholder is often absent, so rely on the stable
-  // field name / accessible name too.
-  const zipInput = await locateVisibleInFrames(
-    page,
-    (f) =>
-      f
-        .locator(
-          '[data-elements-stable-field-name="billingPostalCode"], #billingPostalCode, input[name="billingPostalCode"], input[placeholder="ZIP"]'
-        )
-        .or(f.getByRole('textbox', { name: /zip|postal code/i })),
-    8_000
-  );
-  if (zipInput) {
-    console.log('  Filling ZIP code...');
-    await zipInput.fill(process.env.E2E_STRIPE_ZIP || '10001');
-  } else {
-    console.log('  WARNING: ZIP code field not found — Pay may be rejected');
-  }
-
-  // Step 6c: Uncheck "Save my information" to avoid a phone-number requirement
-  const saveCheckbox = await locateVisibleInFrames(
-    page,
-    (f) => f.getByRole('checkbox', { name: /save my information/i }),
-    2_000
-  );
-  if (saveCheckbox && (await saveCheckbox.isChecked().catch(() => false))) {
-    console.log('  Unchecking "Save my information"...');
-    await saveCheckbox.uncheck({ force: true }).catch(() => {});
-  }
-
-  await page.screenshot({ path: 'test-results/stripe-checkout-filled.png' });
-  console.log('  Card details filled');
-
-  // Step 7: Click "Pay" button (re-locate in case the frame re-rendered)
-  console.log('  Clicking Pay button...');
-  const finalPay = await locateVisibleInFrames(
-    page,
-    (f) => f.getByRole('button', { name: /^Pay$/i }),
-    10_000
-  );
-  if (!finalPay) {
-    await page.screenshot({ path: 'test-results/stripe-no-pay-button-final.png' });
-    throw new Error('Stripe "Pay" button not visible when ready to submit');
-  }
-  await finalPay.click();
-
-  console.log('  Payment submitted, waiting for redirect...');
-  // Wait for redirect back to our site. The charge itself completes on Stripe's
-  // side and is confirmed to us via webhook; the browser redirect back is a
-  // separate, sometimes-slow hop (and can stall on a 3DS interstitial). So a
-  // redirect timeout is NOT a payment failure — report it and let the caller
-  // verify the credit grant server-side instead of failing the whole test.
-  try {
-    await page.waitForURL(/nomadkaraoke\.com.*payment\/success|nomadkaraoke\.com.*\/app/, {
-      timeout: 60_000,
-    });
-    await page.screenshot({ path: 'test-results/stripe-checkout-complete.png' });
-    console.log('  Stripe Checkout complete — redirected to success page');
-    return { redirected: true };
-  } catch {
-    await page.screenshot({ path: 'test-results/stripe-checkout-no-redirect.png' });
-    console.warn(
-      '  ⚠️ Payment submitted but no redirect within 60s — will verify the credit ' +
-      'grant server-side (charge may have succeeded with a slow/dropped redirect)'
-    );
-    return { redirected: false };
-  }
-}
-
-/**
- * Accessible-name and placeholder metadata for each Stripe card field, used to
- * build robust locators that work whether Stripe renders the field as a direct
- * input (single-payment-method layout) or inside an iframe.
- */
-const CARD_FIELD_META: Record<string, { name: RegExp; placeholder?: string }> = {
-  cardNumber: { name: /card number/i, placeholder: '1234 1234 1234 1234' },
-  cardExpiry: { name: /expiration|expiry/i, placeholder: 'MM / YY' },
-  cardCvc: { name: /^cvc$|security code/i },
+const CARD_FIELD_META: Record<string, { name: RegExp; placeholder?: string; autocomplete: string }> = {
+  cardNumber: { name: /card number/i, placeholder: '1234 1234 1234 1234', autocomplete: 'cc-number' },
+  cardExpiry: { name: /expiration|expiry/i, placeholder: 'MM / YY', autocomplete: 'cc-exp' },
+  cardCvc: { name: /^cvc$|security code/i, autocomplete: 'cc-csc' },
 };
 
 /**
  * Locator for a Stripe card field within a given frame. Matches by Stripe's
- * stable field-name attribute, element id, input name, placeholder, or
- * accessible name — whichever the current Checkout layout uses.
+ * stable field-name attribute, element id, input name, autocomplete token,
+ * placeholder, or accessible name — whichever the current layout uses.
  */
 function cardFieldLocator(frame: Frame, fieldName: string): Locator {
   const meta = CARD_FIELD_META[fieldName];
@@ -317,22 +119,317 @@ function cardFieldLocator(frame: Frame, fieldName: string): Locator {
     `#${fieldName}`,
     `input[name="${fieldName}"]`,
   ];
+  if (meta?.autocomplete) selectors.push(`input[autocomplete="${meta.autocomplete}"]`);
   if (meta?.placeholder) selectors.push(`input[placeholder="${meta.placeholder}"]`);
   let loc = frame.locator(selectors.join(', '));
   if (meta) loc = loc.or(frame.getByRole('textbox', { name: meta.name }));
   return loc.first();
 }
 
+function nameFieldLocator(f: Frame): Locator {
+  // Stripe has labelled this "Cardholder name", "Name on card", "Full name on
+  // card"; placeholder "Full name on card" or "First and last name".
+  return f
+    .locator(
+      '[data-elements-stable-field-name="billingName"], #billingName, input[name="billingName"], input[autocomplete="cc-name"], input[placeholder="Full name on card"], input[placeholder="First and last name"]'
+    )
+    .or(f.getByRole('textbox', { name: /name on card|cardholder name/i }));
+}
+
+function zipFieldLocator(f: Frame): Locator {
+  // Accessible name is "ZIP code" (not exactly "ZIP") — don't anchor the regex.
+  return f
+    .locator(
+      '[data-elements-stable-field-name="billingPostalCode"], #billingPostalCode, input[name="billingPostalCode"], input[autocomplete="postal-code"], input[placeholder="ZIP"]'
+    )
+    .or(f.getByRole('textbox', { name: /zip|postal code/i }));
+}
+
+async function anyVisible(page: Page, make: (f: Frame) => Locator, timeout = 1_500): Promise<boolean> {
+  return (await locateVisibleInFrames(page, make, timeout)) !== null;
+}
+
+/** Builtin "fill" variant: locate with `make`, type `value`, record as lastFilled. */
+function fillVariant(name: string, make: (f: Frame) => Locator, value: string, typed: boolean) {
+  return {
+    name,
+    run: async (ctx: StepContext) => {
+      const input = await locateVisibleInFrames(ctx.page, make, 8_000);
+      if (!input) throw new Error(`${name}: field not found`);
+      await input.click();
+      if (typed) await input.pressSequentially(value, { delay: 50 });
+      else await input.fill(value);
+      ctx.lastFilled = input;
+    },
+  };
+}
+
+const digits = (s: string) => s.replace(/\D/g, '');
+
 /**
- * Fill a card field by name, searching every frame (top document + nested
- * iframes). Stripe renders card fields either as direct inputs (single-payment-
- * method layout) or inside the Payment Element iframe (multi-method layout).
+ * Fill-step postcondition: the element filled during this step holds the
+ * expected value AND looks like the intended field (so a fallback that typed
+ * the card number into, say, a phone field can't pass).
  */
-async function fillCardField(page: Page, fieldName: string, value: string): Promise<void> {
-  const input = await locateVisibleInFrames(page, (f) => cardFieldLocator(f, fieldName), 15_000);
-  if (!input) {
-    throw new Error(`Could not find card field: ${fieldName} in any frame`);
+function filledVerify(expected: string, fieldHint: RegExp, compare: 'digits' | 'text') {
+  return async (ctx: StepContext): Promise<boolean> => {
+    const el = ctx.lastFilled;
+    if (!el) return false;
+    const value = await el.inputValue({ timeout: 1_000 }).catch(() => '');
+    const ok = compare === 'digits' ? digits(value) === digits(expected) : value.trim() === expected.trim();
+    if (!ok) return false;
+    const descriptor = await el
+      .evaluate((node) => {
+        const i = node as HTMLInputElement;
+        const labels = Array.from(i.labels || []).map((l) => l.textContent || '');
+        return [i.id, i.name, i.autocomplete, i.placeholder, i.getAttribute('aria-label'), i.getAttribute('data-elements-stable-field-name'), ...labels].join(' ');
+      })
+      .catch(() => '');
+    return fieldHint.test(descriptor);
+  };
+}
+
+/**
+ * Back on our site after paying. Must NOT match the cancel URL
+ * (`gen.nomadkaraoke.com?cancelled=true`, Stripe's "Back" link).
+ */
+export function isSuccessRedirect(url: string): boolean {
+  return /nomadkaraoke\.com.*(payment\/success|\/app)/.test(url) && !/cancelled=true/.test(url);
+}
+
+/** Rate-limit the server-side paid check (verify polls every 500ms). */
+function throttled(check: () => Promise<boolean>, intervalMs = 5_000): () => Promise<boolean> {
+  let last = 0;
+  let lastResult = false;
+  return async () => {
+    if (lastResult || Date.now() - last < intervalMs) return lastResult;
+    last = Date.now();
+    lastResult = await check().catch(() => false);
+    return lastResult;
+  };
+}
+
+function buildSteps(card: CardDetails, verifyPaid?: () => Promise<boolean>): CheckoutStep[] {
+  const paidCheck = verifyPaid ? throttled(verifyPaid) : undefined;
+  const cardNumberVisible = (ctx: StepContext) =>
+    anyVisible(ctx.page, (f) => cardFieldLocator(f, 'cardNumber'));
+
+  return [
+    {
+      id: 'selectCard',
+      goal: 'Make the credit/debit CARD payment form visible (card number, expiry, CVC inputs). If payment methods are listed (Card, Cash App, Klarna, Bank…), select/expand "Card". Do not choose any other method and do not pay.',
+      verify: cardNumberVisible,
+      verifyTimeoutMs: 8_000,
+      builtins: [
+        {
+          name: 'click Card radio/button/label',
+          run: async ({ page }) => {
+            // Older variants: radio or button named "Card". Oct 2026: plain
+            // "Card" label over a visually-hidden "Pay with card" button.
+            const choice = await locateVisibleInFrames(
+              page,
+              (f) =>
+                f
+                  .getByRole('radio', { name: /^(pay with )?card$/i })
+                  .or(f.getByRole('button', { name: /^(pay with )?card$/i }))
+                  .or(f.getByText('Card', { exact: true })),
+              5_000
+            );
+            if (!choice) throw new Error('no Card chooser visible');
+            await choice.click({ force: true });
+          },
+        },
+        {
+          name: 'dispatch click on hidden "Pay with card"',
+          run: async ({ page }) => {
+            let fired = false;
+            for (const frame of page.frames()) {
+              if (frame.isDetached()) continue;
+              const btn = frame.getByRole('button', { name: /^pay with card$/i, includeHidden: true }).first();
+              if (await btn.count().catch(() => 0)) {
+                await btn.dispatchEvent('click');
+                fired = true;
+              }
+            }
+            if (!fired) throw new Error('no hidden "Pay with card" button');
+          },
+        },
+      ],
+    },
+    {
+      id: 'fillCardNumber',
+      goal: 'Type the card number into the card number input using value "{{CARD_NUMBER}}".',
+      placeholders: ['CARD_NUMBER'],
+      verify: filledVerify(card.number, /card.?number|cc-number|1234 1234/i, 'digits'),
+      builtins: [fillVariant('card number field', (f) => cardFieldLocator(f, 'cardNumber'), card.number, true)],
+    },
+    {
+      id: 'fillCardExpiry',
+      goal: 'Type the card expiry date into the expiration (MM / YY) input using value "{{CARD_EXPIRY}}".',
+      placeholders: ['CARD_EXPIRY'],
+      verify: filledVerify(card.expiry, /expir|cc-exp|mm ?\/ ?yy/i, 'digits'),
+      builtins: [fillVariant('card expiry field', (f) => cardFieldLocator(f, 'cardExpiry'), card.expiry, true)],
+    },
+    {
+      id: 'fillCardCvc',
+      goal: 'Type the card security code into the CVC input using value "{{CARD_CVC}}".',
+      placeholders: ['CARD_CVC'],
+      verify: filledVerify(card.cvc, /cvc|cvv|security|cc-csc/i, 'digits'),
+      builtins: [fillVariant('card CVC field', (f) => cardFieldLocator(f, 'cardCvc'), card.cvc, true)],
+    },
+    {
+      id: 'fillCardholderName',
+      goal: 'Type the cardholder name into the "Name on card"/cardholder-name input using value "{{CARDHOLDER_NAME}}".',
+      placeholders: ['CARDHOLDER_NAME'],
+      optional: true,
+      verify: filledVerify(card.name, /name/i, 'text'),
+      builtins: [fillVariant('cardholder name field', nameFieldLocator, card.name, false)],
+    },
+    {
+      id: 'fillPostalCode',
+      goal: 'Type the billing ZIP/postal code using value "{{POSTAL_CODE}}".',
+      placeholders: ['POSTAL_CODE'],
+      optional: true,
+      verify: filledVerify(card.zip, /zip|postal/i, 'text'),
+      builtins: [fillVariant('ZIP field', zipFieldLocator, card.zip, false)],
+    },
+    {
+      id: 'uncheckSaveInfo',
+      goal: 'Make sure "Save my information for faster checkout" (Stripe Link) is NOT checked.',
+      optional: true,
+      // Avoids Link's phone-number requirement.
+      verify: async ({ page }) => {
+        const cb = await locateVisibleInFrames(page, (f) => f.getByRole('checkbox', { name: /save my information/i }), 1_000);
+        return !cb || !(await cb.isChecked().catch(() => false));
+      },
+      builtins: [
+        {
+          name: 'uncheck "Save my information"',
+          run: async ({ page }) => {
+            const cb = await locateVisibleInFrames(page, (f) => f.getByRole('checkbox', { name: /save my information/i }), 2_000);
+            if (cb) await cb.uncheck({ force: true });
+          },
+        },
+      ],
+    },
+    {
+      id: 'submitPayment',
+      goal: 'Submit the card payment. If the form shows validation errors or empty REQUIRED fields (e.g. name, ZIP/postal code, country), fix them first using the placeholders, then click the main Pay/submit button (NOT Link/Klarna/other express buttons).',
+      allowSubmit: true,
+      placeholders: ['CARD_NUMBER', 'CARD_EXPIRY', 'CARD_CVC', 'CARDHOLDER_NAME', 'POSTAL_CODE'],
+      // Long: the Stripe→site redirect and webhook grant can each take a while,
+      // and a premature LLM fallback risks a second submit.
+      verifyTimeoutMs: 90_000,
+      verify: async ({ page }) => {
+        if (isSuccessRedirect(page.url())) return true;
+        return paidCheck ? paidCheck() : false;
+      },
+      builtins: [
+        {
+          name: 'click Pay',
+          run: async ({ page }) => {
+            const pay = await locateVisibleInFrames(page, (f) => f.getByRole('button', { name: /^Pay$/i }), 10_000);
+            if (!pay) throw new Error('Pay button not visible');
+            await pay.click();
+          },
+        },
+      ],
+    },
+  ];
+}
+
+async function dumpFrames(page: Page, file: string): Promise<void> {
+  // page.content() only covers the main frame; the Payment Element usually
+  // lives in a nested iframe, so dump every frame.
+  const dumps: string[] = [];
+  for (const frame of page.frames()) {
+    if (frame.isDetached()) continue;
+    const html = await frame.content().catch(() => '');
+    dumps.push(`<!-- ===== frame: ${frame.url()} ===== -->\n${html}`);
   }
-  await input.click();
-  await input.type(value, { delay: 50 });
+  fs.mkdirSync('test-results', { recursive: true });
+  fs.writeFileSync(file, dumps.join('\n\n'));
+}
+
+export const SELF_HEAL_ARTIFACT_DIR = 'test-results/self-heal';
+
+export interface StripeCheckoutOptions {
+  /**
+   * Server-side "did the purchase land?" check (e.g. credit balance increased).
+   * Used by the submit step's postcondition when the browser redirect is slow,
+   * so the LLM fallback never re-submits a payment that already succeeded.
+   */
+  verifyPaid?: () => Promise<boolean>;
+  /** Override the LLM planner (tests inject a stub; `null` disables the fallback). Default: Gemini from env. */
+  planner?: Planner | null;
+  /** Override learned variants (tests). Default: self-healing/learned-variants.json. */
+  learned?: LearnedVariantsFile;
+}
+
+/**
+ * Complete the Stripe Checkout page with card details from environment.
+ *
+ * @returns `redirected` — whether the browser was observed navigating back to
+ *   our site. The redirect can be slow or dropped even when the charge succeeds,
+ *   so callers should treat the *server-side* credit grant as the source of
+ *   truth. `selfHeal` — call `selfHeal.writeArtifacts(SELF_HEAL_ARTIFACT_DIR,
+ *   { flowVerified: true })` once the purchase is confirmed server-side so
+ *   any LLM-healed steps get promoted to learned variants.
+ */
+export async function completeStripeCheckout(
+  page: Page,
+  opts: StripeCheckoutOptions = {}
+): Promise<{ redirected: boolean; selfHeal: SelfHealingRunner }> {
+  const card = getCardDetailsFromEnv();
+  const secrets: Secrets = {
+    CARD_NUMBER: card.number,
+    CARD_EXPIRY: card.expiry,
+    CARD_CVC: card.cvc,
+    CARDHOLDER_NAME: card.name,
+    POSTAL_CODE: card.zip,
+  };
+  const planner = opts.planner !== undefined ? opts.planner : GeminiPlanner.fromEnv();
+  if (!planner) console.log('  (no LLM planner — GEMINI_API_KEY unset; self-healing fallback disabled)');
+  const runner = new SelfHealingRunner(page, secrets, planner, opts.learned);
+
+  console.log('  Waiting for Stripe Checkout page...');
+  await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
+  // Readiness: any of the Pay button, the card form or a Card chooser. Don't
+  // insist on one — that's exactly what Stripe keeps changing.
+  const ready = await locateVisibleInFrames(
+    page,
+    (f) =>
+      f
+        .getByRole('button', { name: /^Pay\b/i })
+        .or(cardFieldLocator(f, 'cardNumber'))
+        .or(f.getByText('Card', { exact: true })),
+    30_000
+  );
+  await page.screenshot({ path: 'test-results/stripe-checkout-loaded.png' });
+  console.log(ready ? '  Stripe Checkout loaded' : '  ⚠️ Stripe Checkout readiness signal not seen — continuing with self-healing steps');
+
+  try {
+    for (const step of buildSteps(card, opts.verifyPaid)) {
+      const outcome = await runner.run(step);
+      if (step.id === 'selectCard') await page.screenshot({ path: 'test-results/stripe-card-selected.png' });
+      if (step.id === 'uncheckSaveInfo') await page.screenshot({ path: 'test-results/stripe-checkout-filled.png' });
+      if (outcome.status === 'failed') {
+        await page.screenshot({ path: `test-results/stripe-step-failed-${step.id}.png` }).catch(() => {});
+        await dumpFrames(page, 'test-results/stripe-checkout-dom.html');
+        throw new Error(`Stripe Checkout step "${step.id}" failed: ${outcome.reason}`);
+      }
+    }
+  } catch (e) {
+    runner.writeArtifacts(SELF_HEAL_ARTIFACT_DIR, { flowVerified: false });
+    throw e;
+  }
+
+  const redirected = isSuccessRedirect(page.url());
+  await page.screenshot({ path: `test-results/stripe-checkout-${redirected ? 'complete' : 'no-redirect'}.png` }).catch(() => {});
+  if (redirected) {
+    console.log('  Stripe Checkout complete — redirected to our site');
+  } else {
+    console.warn('  ⚠️ Payment confirmed server-side but no browser redirect observed (slow/dropped redirect)');
+  }
+  return { redirected, selfHeal: runner };
 }
