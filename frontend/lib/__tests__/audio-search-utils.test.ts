@@ -578,8 +578,23 @@ describe('title-matched best result', () => {
     expect(isConfirmedTitleMatch('The Chair', spotify(0, 'X', 'The Chair', 1))).toBe(true)
     expect(isConfirmedTitleMatch('The Chair', spotify(0, 'X', 'Cozy', 1))).toBe(false)
     expect(isConfirmedTitleMatch('Up', spotify(0, 'X', 'Up', 1))).toBe(false)
+    expect(isConfirmedTitleMatch('The Chair', spotify(0, 'X', 'The Chairman', 1))).toBe(false)
+    expect(isConfirmedTitleMatch('The Chair', spotify(0, 'X', 'The Chair (feat. Someone)', 1))).toBe(true)
+    expect(isConfirmedTitleMatch('Hotel California',
+      spotify(0, 'X', 'Hotel California - 2013 Remaster', 1))).toBe(true)
+    expect(isConfirmedTitleMatch('Mr. Brightside', spotify(0, 'X', 'Mr. Brightside', 1))).toBe(true)
+    expect(isConfirmedTitleMatch('Creep',
+      makeResult({ index: 0, is_lossless: true, target_file: 'Pablo Honey/02 - Creep.flac' }))).toBe(true)
     expect(isConfirmedTitleMatch('The Chair',
       makeResult({ index: 0, provider: 'Spotify', title: 'The Chair' }))).toBe(false)
+  })
+
+  it('a title-matched live version beats an unranked fallback to results[0]', () => {
+    const results = [
+      spotify(0, 'Real Damn Deal', 'I Own This Bar', 40),
+      makeResult({ index: 1, is_lossless: true, seeders: 5, release_type: 'Live album', target_file: '04 - The Chair.flac' }),
+    ]
+    expect(getBestResult(results, 'The Chair')?.index).toBe(1)
   })
 
   it('never promotes YouTube via a title match over a torrent', () => {

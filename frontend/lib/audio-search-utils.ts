@@ -201,8 +201,8 @@ export function getBestResult(
     }
   }
 
-  // If nothing found (all vinyl rips), fall back to first result
-  return best ?? results[0]
+  // If nothing ranked (all vinyl rips / live), stay within the title matches
+  return best ?? pool[0]
 }
 
 // --- Confidence tier types and utilities ---
@@ -228,6 +228,8 @@ export interface FilenameMismatchResult {
  * Check if a result's track name doesn't match the search title.
  * Uses target_file for torrent/Spotify results, result.title for YouTube.
  */
+const AUDIO_EXT_RE = /\.(flac|mp3|m4a|wav|ogg|opus|aac|alac|ape|wv|aiff?|dsf|mp4|webm)$/i
+
 export function checkFilenameMismatch(
   searchTitle: string,
   result: ExtendedAudioSearchResult
@@ -244,7 +246,8 @@ export function checkFilenameMismatch(
     // Extract filename: strip directory path
     const rawFilename = result.target_file.split('/').pop() || result.target_file
     // Strip extension
-    const withoutExt = rawFilename.replace(/\.[^.]+$/, '')
+    // Only real audio extensions — Spotify track names have none ("Mr. Brightside")
+    const withoutExt = rawFilename.replace(AUDIO_EXT_RE, '')
     // Strip leading track number prefixes like "01 - ", "01. ", "1 ", "01-"
     filename = withoutExt.replace(/^\d{1,3}\s*[-.\s]\s*/, '')
   } else if (result.title) {
@@ -287,7 +290,15 @@ export function checkFilenameMismatch(
 export function isConfirmedTitleMatch(searchTitle: string, result: ExtendedAudioSearchResult): boolean {
   if (!result.target_file) return false
   const m = checkFilenameMismatch(searchTitle, result)
-  return !m.isMismatch && m.filename !== '' && searchTitle.length >= 3
+  if (m.isMismatch || !m.filename || searchTitle.length < 3) return false
+  // Whole-title equality once version suffixes are dropped: "The Chair (feat. X)"
+  // and "Hotel California - 2013 Remaster" match; "The Chairman" doesn't.
+  const core = (s: string) => s
+    .replace(/\s*[([].*$/, '')
+    .replace(/\s+-\s+.*$/, '')
+    .toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+  const t = core(searchTitle)
+  return t.length >= 3 && core(m.filename) === t
 }
 
 /**
