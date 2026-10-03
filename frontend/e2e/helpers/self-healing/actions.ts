@@ -12,11 +12,30 @@ export function substitutePlaceholders(value: string, secrets: Secrets): string 
   });
 }
 
-/** Frame URL without query/hash — stable across runs (Stripe puts session ids in the query). */
+/** Path segments that identify a session/object rather than a page (e.g. `cs_live_a1j04…`). */
+function isDynamicSegment(seg: string): boolean {
+  // Stripe object ids, or long opaque tokens (no '.'/'-' like real page names).
+  return (
+    /^[a-z]{2,5}_(live|test)_/i.test(seg) ||
+    (seg.length >= 16 && /^[A-Za-z0-9_]+$/.test(seg) && /\d/.test(seg) && /[a-z]/i.test(seg))
+  );
+}
+
+/**
+ * Stable frame key: host + path up to the first session-specific segment, no
+ * query/hash. Stripe puts the checkout session id in the PATH
+ * (`checkout.stripe.com/c/pay/cs_live_…`), so stripping the query isn't enough —
+ * a learned recipe must never pin (or leak) one run's session id.
+ */
 export function frameUrlKey(url: string): string {
   try {
     const u = new URL(url);
-    return `${u.host}${u.pathname}`;
+    const kept: string[] = [];
+    for (const seg of u.pathname.split('/').filter(Boolean)) {
+      if (isDynamicSegment(seg)) break;
+      kept.push(seg);
+    }
+    return kept.length ? `${u.host}/${kept.join('/')}` : u.host;
   } catch {
     return url;
   }

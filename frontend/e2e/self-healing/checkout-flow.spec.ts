@@ -135,6 +135,8 @@ test('guardrails: LLM may not click Pay outside the submit step or pick express 
   const planner = new ScriptedPlanner([
     (input) => ({ thought: 'just pay', status: 'act', action: { type: 'click', target: { frameIndex: elementsFrameIndex(input), by: 'role', role: 'button', name: 'Pay', exact: true } } }),
     (input) => ({ thought: 'use bank', status: 'act', action: { type: 'click', target: { frameIndex: elementsFrameIndex(input), by: 'role', role: 'tab', name: 'Bank' } } }),
+    // css target with no label — must be caught by the resolved-element guard
+    (input) => ({ thought: 'pay via css', status: 'act', action: { type: 'click', target: { frameIndex: elementsFrameIndex(input), by: 'css', css: '#pay' } } }),
     { thought: 'cannot', status: 'give_up' },
     { thought: 'cannot', status: 'give_up' },
     { thought: 'cannot', status: 'give_up' },
@@ -145,6 +147,7 @@ test('guardrails: LLM may not click Pay outside the submit step or pick express 
   const history = planner.inputs.at(-1)!.history.join('\n');
   expect(history).toContain('not allowed in this step');
   expect(history).toContain('alternative/express payment method');
+  expect(history).toContain('the target element is the final Pay/submit button');
 });
 
 test('without a planner, an unknown layout fails with a clear reason (deterministic-only mode)', async ({ page }) => {

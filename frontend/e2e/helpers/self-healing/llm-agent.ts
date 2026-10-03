@@ -1,5 +1,5 @@
 // frontend/e2e/helpers/self-healing/llm-agent.ts
-import { executeAction } from './actions';
+import { executeAction, resolveTarget } from './actions';
 import { observe, type Observation } from './observe';
 import type { Action, ActionType, CheckoutStep, StepContext, TargetSpec } from './types';
 
@@ -81,6 +81,62 @@ export function checkGuards(
   return null;
 }
 
+/** What a click target actually is on the page (not what the model called it). */
+export interface ResolvedElementInfo {
+  text?: string;
+  ariaLabel?: string;
+  value?: string;
+  title?: string;
+  testid?: string;
+  type?: string;
+}
+
+/**
+ * Guard the RESOLVED element of a click, so css/unnamed targets can't bypass
+ * the label-based checks (e.g. `[data-testid="hosted-payment-submit-button"]`).
+ */
+export function checkResolvedClick(
+  info: ResolvedElementInfo,
+  step: Pick<CheckoutStep, 'allowSubmit'>
+): string | null {
+  const labels = [info.text, info.ariaLabel, info.value, info.title].filter(Boolean) as string[];
+  for (const label of labels) {
+    if (FORBIDDEN_CLICK_RE.test(label)) {
+      return `Refused: the target element ("${label.slice(0, 60)}") is an alternative/express payment method or cancel link.`;
+    }
+  }
+  if (info.testid && /\b(link|klarna|cashapp|cash-app|bank|express|back|cancel)\b/i.test(info.testid.replace(/[-_]/g, ' '))) {
+    return `Refused: the target element (data-testid="${info.testid}") is an alternative/express payment method or cancel link.`;
+  }
+  if (!step.allowSubmit) {
+    const isSubmit =
+      info.type === 'submit' ||
+      (info.testid !== undefined && /submit/i.test(info.testid)) ||
+      labels.some((l) => SUBMIT_RE.test(l));
+    if (isSubmit) return 'Refused: the target element is the final Pay/submit button, which is not allowed in this step.';
+  }
+  return null;
+}
+
+async function describeResolved(ctx: StepContext, action: Action): Promise<ResolvedElementInfo | null> {
+  const found = await resolveTarget(ctx.page, action.target, 3_000);
+  if (!found) return null;
+  return found.locator
+    .evaluate((n) => {
+      const el = n as HTMLInputElement;
+      const clean = (v: string | null | undefined) => (v || '').replace(/\s+/g, ' ').trim() || undefined;
+      return {
+        text: clean(el.innerText || el.textContent),
+        ariaLabel: clean(el.getAttribute('aria-label')),
+        value: el.tagName === 'INPUT' || el.tagName === 'BUTTON' ? clean(el.getAttribute('value')) : undefined,
+        title: clean(el.getAttribute('title')),
+        testid: clean(el.getAttribute('data-testid')),
+        type: clean(el.getAttribute('type')),
+      };
+    })
+    .catch(() => null);
+}
+
 export function toTargetSpec(t: LlmTarget, frameKeys: string[]): TargetSpec {
   const { frameIndex, ...rest } = t;
   const spec: TargetSpec = { ...rest };
@@ -151,6 +207,14 @@ export async function healStep(step: CheckoutStep, ctx: StepContext, planner: Pl
       target: toTargetSpec(decision.action.target, observation.frameKeys),
       ...(decision.action.value !== undefined ? { value: decision.action.value } : {}),
     };
+    if (action.type === 'click') {
+      const info = await describeResolved(ctx, action);
+      const resolvedRefusal = info && checkResolvedClick(info, step);
+      if (resolvedRefusal) {
+        history.push(resolvedRefusal);
+        continue;
+      }
+    }
     try {
       const loc = await executeAction(ctx.page, action, ctx.secrets);
       if (action.type === 'fill') ctx.lastFilled = loc;

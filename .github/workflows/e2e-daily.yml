@@ -265,6 +265,7 @@ jobs:
       actions: write
     outputs:
       pr_url: ${{ steps.pr.outputs.pr_url }}
+      unchanged: ${{ steps.pr.outputs.unchanged }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -297,6 +298,7 @@ jobs:
           cp /tmp/self-heal/learned-variants.json "$TARGET"
           if git diff --quiet -- "$TARGET"; then
             echo "learned-variants.json unchanged vs main — nothing to do"
+            echo "unchanged=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -336,7 +338,8 @@ jobs:
           echo "Opened $PR_URL (auto-merge enabled, CI dispatched)"
 
       - name: Discord notification (self-heal)
-        if: always()
+        # Recipe already on main (e.g. merged between checkout and now) → nothing to report.
+        if: always() && steps.pr.outputs.unchanged != 'true'
         run: |
           PR="${{ steps.pr.outputs.pr_url }}"
           if [ -n "$PR" ]; then
@@ -537,7 +540,7 @@ jobs:
 
             Stage 1 (Credit Purchase): ${{ needs.e2e-credit-purchase.result || 'skipped' }}
             Stage 2 (Happy Path):      ${{ needs.e2e-happy-path.result || 'skipped' }}
-            Stripe self-heal:          ${{ needs.e2e-credit-purchase.outputs.healed == 'true' && format('Stripe changed its checkout; LLM fallback healed it. Auto-merge PR: {0}', needs.self-heal-pr.outputs.pr_url || '(failed to open — see run)') || 'not needed' }}
+            Stripe self-heal:          ${{ needs.e2e-credit-purchase.outputs.healed == 'true' && format('Stripe changed its checkout; LLM fallback healed it. Auto-merge PR: {0}', needs.self-heal-pr.outputs.pr_url || (needs.self-heal-pr.outputs.unchanged == 'true' && '(already on main)' || '(failed to open — see run)')) || 'not needed' }}
 
             Run: #${{ github.run_number }}
             Trigger: ${{ github.event_name }}

@@ -1,7 +1,7 @@
 // frontend/e2e/self-healing/units.spec.ts — pure-function tests (no browser page needed)
 import { test, expect } from '@playwright/test';
 import { frameUrlKey, substitutePlaceholders } from '../helpers/self-healing/actions';
-import { buildPrompt, checkGuards, toTargetSpec } from '../helpers/self-healing/llm-agent';
+import { buildPrompt, checkGuards, checkResolvedClick, toTargetSpec } from '../helpers/self-healing/llm-agent';
 import { MAX_LEARNED_PER_STEP, emptyFile, mergeLearned, variantId } from '../helpers/self-healing/learned-store';
 import { redact } from '../helpers/self-healing/observe';
 import { isSuccessRedirect } from '../helpers/stripe-checkout';
@@ -59,13 +59,36 @@ test.describe('checkGuards', () => {
   });
 });
 
+test.describe('checkResolvedClick (guards the real element, not the model label)', () => {
+  const fillStep = { allowSubmit: false };
+  test('refuses css/unnamed targets that resolve to the submit button outside submitPayment', () => {
+    expect(checkResolvedClick({ testid: 'hosted-payment-submit-button', text: 'Pay' }, fillStep)).toMatch(/not allowed/);
+    expect(checkResolvedClick({ type: 'submit', text: 'Continue' }, fillStep)).toMatch(/not allowed/);
+    expect(checkResolvedClick({ text: 'Pay $0.50' }, fillStep)).toMatch(/not allowed/);
+    expect(checkResolvedClick({ testid: 'hosted-payment-submit-button', text: 'Pay' }, { allowSubmit: true })).toBeNull();
+  });
+  test('refuses express methods / cancel even in the submit step', () => {
+    expect(checkResolvedClick({ text: 'Pay securely with Link' }, { allowSubmit: true })).not.toBeNull();
+    expect(checkResolvedClick({ testid: 'klarna-accordion-item' }, { allowSubmit: true })).not.toBeNull();
+    expect(checkResolvedClick({ text: 'Back to Nomad Karaoke' }, { allowSubmit: true })).not.toBeNull();
+  });
+  test('allows the card chooser', () => {
+    expect(checkResolvedClick({ testid: 'card-accordion-item', text: 'Card' }, fillStep)).toBeNull();
+    expect(checkResolvedClick({ ariaLabel: 'Pay with card', type: 'button' }, fillStep)).toBeNull();
+  });
+});
+
 test('toTargetSpec maps frameIndex to a stable frame key and drops empties', () => {
   const spec = toTargetSpec({ frameIndex: 1, by: 'role', role: 'tab', name: 'Card', css: '' }, ['checkout.stripe.com/c/pay/x', 'js.stripe.com/v3/inner.html']);
   expect(spec).toEqual({ frameUrlIncludes: 'js.stripe.com/v3/inner.html', by: 'role', role: 'tab', name: 'Card' });
 });
 
-test('frameUrlKey strips query and hash (session ids)', () => {
+test('frameUrlKey strips query, hash and session-id path segments', () => {
   expect(frameUrlKey('https://js.stripe.com/v3/elements-inner.html?id=abc#x')).toBe('js.stripe.com/v3/elements-inner.html');
+  // Real Stripe Checkout URL shape (run 37137960148): session id lives in the path.
+  expect(frameUrlKey('https://checkout.stripe.com/c/pay/cs_live_a1j0424mRKhVaGMhJ1P7KXkqvcueGqJ2ZWaoGi84JO7ueILw9w6Yd0tEl5#fid=x')).toBe('checkout.stripe.com/c/pay');
+  expect(frameUrlKey('https://checkout.stripe.com/c/pay/cs_test_abc')).toBe('checkout.stripe.com/c/pay');
+  expect(frameUrlKey('https://js.stripe.com/v3/elements-inner-accordion-8f2a.html')).toBe('js.stripe.com/v3/elements-inner-accordion-8f2a.html');
 });
 
 test('substitutePlaceholders substitutes known and throws on unknown', () => {
