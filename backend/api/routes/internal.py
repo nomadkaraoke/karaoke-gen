@@ -141,7 +141,7 @@ async def sync_disposable_domains_endpoint(
 
 
 @router.post("/workers/audio", response_model=WorkerResponse)
-async def trigger_audio_worker(
+def trigger_audio_worker(
     request: WorkerRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
@@ -225,7 +225,7 @@ async def analyze_vocal_gaps_endpoint(
 
 
 @router.post("/workers/lyrics", response_model=WorkerResponse)
-async def trigger_lyrics_worker(
+def trigger_lyrics_worker(
     request: WorkerRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
@@ -338,19 +338,41 @@ async def trigger_screens_worker(
         add_span_event("worker_skipped", {"reason": skip_response.status})
         return skip_response
     
-    # Add task to background tasks
-    background_tasks.add_task(generate_screens, job_id)
-    
+    from backend.config import get_settings
+
+    if not get_settings().enable_cloud_tasks:
+        # Direct-HTTP mode (local dev): the caller uses a 30s timeout, so keep
+        # the fire-and-forget background task there.
+        background_tasks.add_task(generate_screens, job_id)
+        add_span_event("worker_started")
+        return WorkerResponse(
+            status="started",
+            job_id=job_id,
+            message="Screens generation worker started"
+        )
+
+    # Cloud Tasks mode (prod): run the worker INLINE and respond when it's done.
+    # As a post-response BackgroundTask it ran on throttled CPU
+    # (--cpu-throttling only allocates CPU while a request is open) and
+    # its sync work blocked the event loop for every other request; inline,
+    # the open request keeps CPU allocated and the heavy steps run in worker
+    # threads. generate_screens handles its own failures (marks the job
+    # failed), so always 200 — a non-2xx would make Cloud Tasks re-run it.
     add_span_event("worker_started")
+    try:
+        ok = await generate_screens(job_id)
+    except Exception as e:  # noqa: BLE001 — never trigger a Cloud Tasks retry storm
+        logger.exception(f"[job:{job_id}] screens worker raised: {e}")
+        ok = False
     return WorkerResponse(
-        status="started",
+        status="completed" if ok else "failed",
         job_id=job_id,
-        message="Screens generation worker started"
+        message="Screens generation finished" if ok else "Screens generation failed",
     )
 
 
 @router.post("/workers/video", response_model=WorkerResponse)
-async def trigger_video_worker(
+def trigger_video_worker(
     request: WorkerRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
@@ -391,7 +413,7 @@ async def trigger_video_worker(
 
 
 @router.post("/workers/render-video", response_model=WorkerResponse)
-async def trigger_render_video_worker(
+def trigger_render_video_worker(
     request: WorkerRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
@@ -563,7 +585,7 @@ async def check_idle_reminder(
 
 
 @router.post("/youtube-queue/process")
-async def process_youtube_upload_queue(
+def process_youtube_upload_queue(
     http_request: Request,
     background_tasks: BackgroundTasks,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
@@ -603,7 +625,7 @@ async def process_youtube_upload_queue(
 
 
 @router.post("/process-stale-reviews")
-async def process_stale_reviews_endpoint(
+def process_stale_reviews_endpoint(
     http_request: Request,
     background_tasks: BackgroundTasks,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
@@ -649,7 +671,7 @@ async def process_stale_reviews_endpoint(
 
 
 @router.post("/youtube-backfill/run")
-async def youtube_backfill_run_endpoint(
+def youtube_backfill_run_endpoint(
     http_request: Request,
     background_tasks: BackgroundTasks,
     max_updates: Optional[int] = None,
@@ -1352,7 +1374,7 @@ def _repark_stalled_render(job_manager: JobManager, job_id: str) -> bool:
 
 
 @router.get("/health")
-async def internal_health(
+def internal_health(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
 ):
     """

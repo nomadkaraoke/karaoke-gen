@@ -133,7 +133,21 @@ async def lifespan(app: FastAPI):
         target=_run_background_warmup, name="startup-warmup", daemon=True
     ).start()
 
+    # Event-loop stall watchdog: makes "every request froze for 30s" episodes
+    # self-diagnosing (logs the blocking stack; records >=5s stalls in prod).
+    watchdog = None
+    if settings.loop_watchdog_enabled:
+        from backend.services.loop_watchdog import LoopWatchdog, firestore_stall_recorder
+
+        watchdog = LoopWatchdog(
+            recorder=firestore_stall_recorder if settings.environment == "production" else None,
+        )
+        watchdog.start()
+
     yield
+
+    if watchdog is not None:
+        await watchdog.stop()
 
     # Shutdown - best-effort parking of any still-registered workers.
     #
@@ -271,7 +285,7 @@ async def insufficient_credits_exception_handler(request: Request, exc: Insuffic
 
 
 @app.get("/")
-async def root():
+def root():
     """Root endpoint."""
     return {
         "service": "karaoke-gen-backend",

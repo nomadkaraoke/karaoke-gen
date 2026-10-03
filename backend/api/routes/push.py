@@ -88,7 +88,7 @@ class TestNotificationResponse(BaseModel):
 # Routes
 
 @router.get("/vapid-public-key", response_model=VapidPublicKeyResponse)
-async def get_vapid_public_key():
+def get_vapid_public_key():
     """
     Get the VAPID public key for push subscription.
 

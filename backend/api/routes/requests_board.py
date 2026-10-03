@@ -79,7 +79,7 @@ def _to_public(req: SongRequest, your_vote: Optional[int] = None) -> SongRequest
 
 
 @router.get("/requests", response_model=BoardResponse)
-async def list_requests(
+def list_requests(
     viewer_email: Optional[str] = Depends(optional_user_email),
 ):
     """The ranked board: active requests + recently published, with the caller's vote."""
@@ -134,7 +134,7 @@ async def submit_request(
 
 
 @router.post("/requests/{request_id}/vote", response_model=SongRequestPublic)
-async def vote(
+def vote(
     request_id: str,
     body: VoteBody,
     auth_result: AuthResult = Depends(require_auth),
@@ -158,7 +158,7 @@ async def vote(
 
 
 @router.get("/me", response_model=DailyVoteStatus)
-async def my_daily_status(
+def my_daily_status(
     auth_result: AuthResult = Depends(require_auth),
 ):
     """The caller's daily-vote status (has today's vote been used, and on what)."""

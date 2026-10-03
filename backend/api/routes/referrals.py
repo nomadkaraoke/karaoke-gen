@@ -41,7 +41,7 @@ class GenerateFlyerRequest(BaseModel):
 
 
 @router.get("/r/{code}", response_model=ReferralInterstitialResponse)
-async def get_referral_interstitial(code: str, no_track: bool = False):
+def get_referral_interstitial(code: str, no_track: bool = False):
     """
     Public endpoint: get interstitial data for a referral link.
 
@@ -76,14 +76,14 @@ async def get_referral_interstitial(code: str, no_track: bool = False):
 
 
 @router.get("/me")
-async def get_my_dashboard(auth=Depends(require_auth)):
+def get_my_dashboard(auth=Depends(require_auth)):
     """Get referral dashboard data for the authenticated user."""
     service = get_referral_service()
     return service.get_dashboard_data(auth.user_email)
 
 
 @router.put("/me")
-async def update_my_link(
+def update_my_link(
     updates: UpdateReferralLinkRequest,
     auth=Depends(require_auth),
 ):
@@ -108,7 +108,7 @@ async def update_my_link(
 
 
 @router.post("/me/connect")
-async def start_stripe_connect(auth=Depends(require_auth)):
+def start_stripe_connect(auth=Depends(require_auth)):
     """Start Stripe Connect onboarding for the authenticated user."""
     # Check if user already has a Connect account
     from backend.services.user_service import get_user_service
@@ -129,7 +129,7 @@ async def start_stripe_connect(auth=Depends(require_auth)):
 
 
 @router.post("/me/connect/dashboard-link")
-async def get_connect_dashboard_link(auth=Depends(require_auth)):
+def get_connect_dashboard_link(auth=Depends(require_auth)):
     """Get a login link to the Stripe Express dashboard for managing payout settings."""
     from backend.services.user_service import get_user_service
     user = get_user_service().get_user(auth.user_email)
@@ -145,7 +145,7 @@ async def get_connect_dashboard_link(auth=Depends(require_auth)):
 
 
 @router.post("/me/connect/update-link")
-async def get_connect_update_link(auth=Depends(require_auth)):
+def get_connect_update_link(auth=Depends(require_auth)):
     """Get a link to update Stripe Connect account info (re-onboarding)."""
     from backend.services.user_service import get_user_service
     user = get_user_service().get_user(auth.user_email)
@@ -165,7 +165,7 @@ class VanityRequest(BaseModel):
 
 
 @router.post("/me/vanity-request")
-async def request_vanity_url(
+def request_vanity_url(
     request: VanityRequest,
     auth=Depends(require_auth),
 ):
@@ -215,7 +215,7 @@ async def request_vanity_url(
 
 
 @router.post("/me/flyer")
-async def generate_flyer(
+def generate_flyer(
     request: GenerateFlyerRequest,
     auth=Depends(require_auth),
 ):
@@ -249,7 +249,7 @@ async def generate_flyer(
 
 
 @router.post("/admin/vanity")
-async def create_vanity_link(
+def create_vanity_link(
     request: CreateReferralLinkRequest,
     auth=Depends(require_admin),
 ):
@@ -276,7 +276,7 @@ async def create_vanity_link(
 
 
 @router.get("/admin/vanity-requests")
-async def list_vanity_requests(
+def list_vanity_requests(
     status: str = Query("pending", pattern="^(pending|approved|denied)$"),
     auth=Depends(require_admin),
 ):
@@ -293,7 +293,7 @@ async def list_vanity_requests(
 
 
 @router.post("/admin/vanity-requests/{request_id}/approve")
-async def approve_vanity_request(
+def approve_vanity_request(
     request_id: str,
     auth=Depends(require_admin),
 ):
@@ -332,7 +332,7 @@ async def approve_vanity_request(
 
 
 @router.post("/admin/vanity-requests/{request_id}/deny")
-async def deny_vanity_request(
+def deny_vanity_request(
     request_id: str,
     auth=Depends(require_admin),
 ):
@@ -346,7 +346,7 @@ async def deny_vanity_request(
 
 
 @router.get("/admin/links")
-async def list_links(
+def list_links(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     auth=Depends(require_admin),
@@ -406,7 +406,7 @@ async def admin_apply_discount(
 
 
 @router.put("/admin/links/{code}")
-async def update_link(
+def update_link(
     code: str,
     updates: UpdateReferralLinkRequest,
     auth=Depends(require_admin),
@@ -429,7 +429,7 @@ async def update_link(
 
 
 @router.post("/admin/links/{code}/flyer")
-async def admin_generate_flyer(
+def admin_generate_flyer(
     code: str,
     request: GenerateFlyerRequest,
     auth=Depends(require_admin),

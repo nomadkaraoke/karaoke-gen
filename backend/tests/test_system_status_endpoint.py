@@ -228,4 +228,4 @@ class TestAudioSeparatorStatus:
 
         from backend.api.routes.health import check_audio_separator_status
 
-        assert await audio_separator_health() == check_audio_separator_status()
+        assert audio_separator_health() == check_audio_separator_status()

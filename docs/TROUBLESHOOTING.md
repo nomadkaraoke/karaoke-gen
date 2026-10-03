@@ -60,6 +60,23 @@ defense-in-depth beneath the signing-free review path.
 
 ---
 
+## Users see "Reconnecting" / "servers unavailable" banner (API event loop frozen)
+
+**Symptom:** Users report the orange banner, or `client_events` shows `banner_unavailable` bursts. In the request logs, every request on one instance (including `/api/health`) finishes at the same moment after 10-45s.
+
+1. **Find the blocking line:**
+
+   ```bash
+   gcloud logging read 'resource.labels.service_name="karaoke-backend" AND jsonPayload.message:"EVENT_LOOP_STALL"' --project nomadkaraoke --limit 20 --format='value(timestamp,severity,jsonPayload.message)'
+   ```
+
+   The `in progress` lines include the loop thread's stack; `culprit=` is the innermost `backend/` or `karaoke_gen/` frame.
+2. **Fix:** move that sync work off the loop with `await asyncio.to_thread(...)`, or make the route a plain `def`. `test_no_blocking_async_routes.py` already blocks async routes that never await.
+3. **Measure user impact:** `python scripts/client_events_report.py --days 7`. It excludes admin/internal/test accounts unless you pass `--all`, and lists `server_loop_stall` culprits.
+4. **If there are no `EVENT_LOOP_STALL` lines:** the cause is elsewhere (cold start, deploy swap, Cloudflare). Check `banner_waking` events and revision times.
+
+Background: `docs/archive/2026-10-03-backend-loop-freezes-telemetry-plan.md`.
+
 ## Emails not arriving / E2E "Timed out waiting for email" (Postmark HTML 403)
 
 **Symptom:** magic links or job emails never arrive; E2E Daily Stage 1 fails at

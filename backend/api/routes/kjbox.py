@@ -147,7 +147,7 @@ def _pretend_sent() -> SendCodeResponse:
 # ------------------------------------------------------------------ endpoints
 
 @router.post("/auth/send-code", response_model=SendCodeResponse)
-async def send_code(
+def send_code(
     body: SendCodeRequest,
     http_request: Request,
     svc: KjboxPartnerService = Depends(get_kjbox_service),
@@ -221,7 +221,7 @@ async def send_code(
 
 
 @router.post("/auth/verify-code", response_model=VerifyCodeResponse)
-async def verify_code(
+def verify_code(
     body: VerifyCodeRequest,
     http_request: Request,
     svc: KjboxPartnerService = Depends(get_kjbox_service),
@@ -296,7 +296,7 @@ async def verify_code(
 
 
 @router.post("/credits/show-credit", response_model=ShowCreditResponse)
-async def show_credit(
+def show_credit(
     body: ShowCreditRequest,
     svc: KjboxPartnerService = Depends(get_kjbox_service),
     user_service: UserService = Depends(get_user_service),

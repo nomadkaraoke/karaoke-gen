@@ -445,7 +445,7 @@ def _bucket(status: str, pending_search: bool) -> str:
 
 
 @router.get("/{batch_id}", response_model=BulkBatchResponse)
-async def bulk_batch(
+def bulk_batch(
     request: Request,
     batch_id: str,
     auth_result: AuthResult = Depends(require_auth),

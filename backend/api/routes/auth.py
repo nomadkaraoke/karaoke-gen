@@ -91,7 +91,7 @@ class CredentialValidationResponse(BaseModel):
 # ===========================================================================
 
 @router.get("/status", response_model=AllCredentialsStatusResponse)
-async def get_credentials_status():
+def get_credentials_status():
     """
     Get the status of all OAuth credentials.
     
@@ -126,7 +126,7 @@ async def get_credentials_status():
 
 
 @router.get("/status/{service}", response_model=CredentialStatusResponse)
-async def get_service_credential_status(service: str, request: Request):
+def get_service_credential_status(service: str, request: Request):
     """
     Get the status of a specific service's OAuth credentials.
 
@@ -155,7 +155,7 @@ async def get_service_credential_status(service: str, request: Request):
 
 
 @router.post("/validate", response_model=CredentialValidationResponse)
-async def validate_credentials(request: CredentialValidationRequest, http_request: Request):
+def validate_credentials(request: CredentialValidationRequest, http_request: Request):
     """
     Validate that credentials are available for requested services.
 
@@ -200,7 +200,7 @@ async def validate_credentials(request: CredentialValidationRequest, http_reques
 # ===========================================================================
 
 @router.post("/youtube/device", response_model=DeviceAuthStartResponse)
-async def start_youtube_device_auth(request: Optional[DeviceAuthStartRequest] = None, http_request: Request = None):
+def start_youtube_device_auth(request: Optional[DeviceAuthStartRequest] = None, http_request: Request = None):
     """
     Start YouTube device authorization flow.
 
@@ -238,7 +238,7 @@ async def start_youtube_device_auth(request: Optional[DeviceAuthStartRequest] = 
 
 
 @router.get("/youtube/device/{device_code}", response_model=DeviceAuthPollResponse)
-async def poll_youtube_device_auth(device_code: str):
+def poll_youtube_device_auth(device_code: str):
     """
     Poll for YouTube device authorization completion.
     
@@ -263,7 +263,7 @@ async def poll_youtube_device_auth(device_code: str):
 
 
 @router.post("/gdrive/device", response_model=DeviceAuthStartResponse)
-async def start_gdrive_device_auth(request: Optional[DeviceAuthStartRequest] = None, http_request: Request = None):
+def start_gdrive_device_auth(request: Optional[DeviceAuthStartRequest] = None, http_request: Request = None):
     """
     Start Google Drive device authorization flow.
 
@@ -296,7 +296,7 @@ async def start_gdrive_device_auth(request: Optional[DeviceAuthStartRequest] = N
 
 
 @router.get("/gdrive/device/{device_code}", response_model=DeviceAuthPollResponse)
-async def poll_gdrive_device_auth(device_code: str):
+def poll_gdrive_device_auth(device_code: str):
     """
     Poll for Google Drive device authorization completion.
     """
@@ -316,7 +316,7 @@ async def poll_gdrive_device_auth(device_code: str):
 # ===========================================================================
 
 @router.post("/test-alert")
-async def test_credential_alert(background_tasks: BackgroundTasks, request: Request):
+def test_credential_alert(background_tasks: BackgroundTasks, request: Request):
     """
     Test the credential alert mechanism.
 

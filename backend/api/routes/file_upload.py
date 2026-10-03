@@ -1885,7 +1885,7 @@ class ValidateUrlResponse(BaseModel):
 
 
 @router.post("/jobs/validate-url", response_model=ValidateUrlResponse)
-async def validate_job_url(
+def validate_job_url(
     request: Request,
     body: ValidateUrlRequest,
     auth_result: AuthResult = Depends(require_auth),
@@ -2239,7 +2239,7 @@ def _get_gcs_path_for_finalise_file(job_id: str, file_type: str, filename: str) 
 
 
 @router.post("/jobs/create-finalise-only")
-async def create_finalise_only_job(
+def create_finalise_only_job(
     request: Request,
     body: CreateFinaliseOnlyJobRequest,
     auth_result: AuthResult = Depends(require_auth)
@@ -2476,7 +2476,7 @@ async def create_finalise_only_job(
 
 
 @router.post("/jobs/{job_id}/finalise-uploads-complete")
-async def mark_finalise_uploads_complete(
+def mark_finalise_uploads_complete(
     job_id: str,
     background_tasks: BackgroundTasks,
     body: UploadsCompleteRequest,
@@ -2702,7 +2702,7 @@ async def mark_finalise_uploads_complete(
 # ============================================================================
 
 @router.post("/jobs/{job_id}/style-upload-urls")
-async def get_style_upload_urls(
+def get_style_upload_urls(
     job_id: str,
     body: StyleUploadUrlsRequest,
     auth_result: AuthResult = Depends(require_auth),
@@ -2782,7 +2782,7 @@ async def get_style_upload_urls(
 
 
 @router.post("/jobs/{job_id}/style-uploads-complete")
-async def complete_style_uploads(
+def complete_style_uploads(
     job_id: str,
     body: StyleUploadsCompleteRequest,
     auth_result: AuthResult = Depends(require_auth),

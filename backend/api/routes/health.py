@@ -178,7 +178,7 @@ def check_transmission_status() -> Dict[str, Any]:
 
 
 @router.get("/health")
-async def health_check() -> Dict[str, str]:
+def health_check() -> Dict[str, str]:
     """Health check endpoint."""
     return {
         "status": "healthy",
@@ -335,7 +335,7 @@ def check_audio_separator_status() -> Dict[str, Any]:
 
 
 @router.get("/health/audio-separator")
-async def audio_separator_health() -> Dict[str, Any]:
+def audio_separator_health() -> Dict[str, Any]:
     """
     Return audio separation status (installed audio-separator package version).
 
@@ -546,7 +546,7 @@ async def detailed_health_check() -> Dict[str, Any]:
 
 
 @router.get("/health/preload-status")
-async def preload_status() -> Dict[str, Any]:
+def preload_status() -> Dict[str, Any]:
     """
     Check status of preloaded resources for performance optimization.
 
@@ -608,7 +608,7 @@ async def preload_status() -> Dict[str, Any]:
 
 
 @router.get("/health/job-consistency")
-async def job_consistency_check(
+def job_consistency_check(
     status: Optional[str] = None,
     limit: int = 50
 ) -> Dict[str, Any]:
@@ -671,7 +671,7 @@ async def job_consistency_check(
 
 
 @router.get("/readiness")
-async def readiness_check() -> Dict[str, str]:
+def readiness_check() -> Dict[str, str]:
     """Readiness check endpoint for Cloud Run."""
     return {
         "status": "ready",

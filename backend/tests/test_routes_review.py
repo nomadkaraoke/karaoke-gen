@@ -1401,7 +1401,7 @@ class TestGetPreviewVideoRedirect:
         from backend.api.routes.review import get_preview_video, _preview_videos
         _preview_videos.clear()  # force the standard-path / file_exists branch
         with patch("backend.api.routes.review.StorageService", return_value=mock_storage):
-            return asyncio.run(get_preview_video(
+            return (get_preview_video(
                 job_id=job_id,
                 preview_hash=preview_hash,
                 auth_info=("user@test.com", "job_owner"),
@@ -1789,7 +1789,7 @@ class TestPreviewVideoStatusEndpoint:
         import asyncio
         from backend.api.routes.review import get_preview_video_status
         with patch("backend.api.routes.review.StorageService", return_value=mock_storage):
-            return asyncio.run(get_preview_video_status(
+            return (get_preview_video_status(
                 job_id=job_id,
                 preview_hash=preview_hash,
                 auth_info=("user@test.com", "job_owner"),

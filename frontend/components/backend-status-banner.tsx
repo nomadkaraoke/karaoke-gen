@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Loader2, CloudOff, X } from "lucide-react"
 import {
@@ -8,8 +8,13 @@ import {
   getBackendStatusDebug,
   installBackendPrewarm,
   __installBackendStatusDevHook,
+  type BackendStatus,
 } from "@/lib/backend-status"
-import { reportDegradationEvent } from "@/lib/degradation-events"
+import {
+  reportDegradationEvent,
+  startDegradationEpisode,
+  endDegradationEpisode,
+} from "@/lib/degradation-events"
 import { __backendPrewarm } from "@/lib/api"
 
 /**
@@ -28,10 +33,26 @@ import { __backendPrewarm } from "@/lib/api"
  * It floats over content (no layout shift) and disappears the instant connectivity
  * is restored.
  */
+/** Severity order for an episode's peak status (higher = worse). */
+const SEVERITY: Record<Exclude<BackendStatus, "online">, number> = {
+  waking: 1,
+  reconnecting: 2,
+  unavailable: 3,
+}
+
+type Episode = {
+  startedAt: number
+  peak: Exclude<BackendStatus, "online">
+  dismissed: boolean
+}
+
 export function BackendStatusBanner() {
   const status = useBackendStatus()
   const t = useTranslations("backendStatus")
   const [dismissed, setDismissed] = useState(false)
+  // The current degradation episode (first non-online status → back online).
+  // A ref so re-renders never double-start or double-report.
+  const episodeRef = useRef<Episode | null>(null)
 
   // Expose the dev/preview trigger (window.__nkBackendStatus) for manual UX review,
   // and pre-warm a possibly scaled-to-zero backend as early as possible (this
@@ -45,6 +66,45 @@ export function BackendStatusBanner() {
   useEffect(() => {
     if (status === "online") setDismissed(false)
   }, [status])
+
+  // Episode tracking. Declared BEFORE the per-status reporting effect so the
+  // first banner event of an episode already carries its episode_id.
+  useEffect(() => {
+    const episode = episodeRef.current
+    if (status !== "online") {
+      if (!episode) {
+        startDegradationEpisode()
+        episodeRef.current = { startedAt: Date.now(), peak: status, dismissed: false }
+      } else if (SEVERITY[status] > SEVERITY[episode.peak]) {
+        episode.peak = status
+      }
+      return
+    }
+    if (!episode) return
+    // Back online: exactly one recovery event per episode, then close it.
+    episodeRef.current = null
+    reportDegradationEvent("banner_recovered", {
+      duration_ms: Date.now() - episode.startedAt,
+      peak_status: episode.peak,
+      dismissed: episode.dismissed,
+    })
+    endDegradationEpisode()
+  }, [status])
+
+  useEffect(() => {
+    if (dismissed && episodeRef.current) episodeRef.current.dismissed = true
+  }, [dismissed])
+
+  // Don't leak an open episode id into later reports if the banner unmounts.
+  useEffect(
+    () => () => {
+      if (episodeRef.current) {
+        episodeRef.current = null
+        endDegradationEpisode()
+      }
+    },
+    [],
+  )
 
   // Persist every banner display server-side (Andrew's telemetry ask): this is
   // the single global banner instance, so reporting here == "shown to a user".

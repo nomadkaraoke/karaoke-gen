@@ -215,7 +215,7 @@ def _precompute_credit_eval(token: str, email: str, collection: Optional[str] = 
 
 
 @router.post("/auth/magic-link", response_model=SendMagicLinkResponse)
-async def send_magic_link(
+def send_magic_link(
     request: SendMagicLinkRequest,
     http_request: Request,
     user_service: UserService = Depends(get_user_service),
@@ -504,7 +504,7 @@ def complete_verified_login(
 
 
 @router.get("/auth/verify", response_model=VerifyMagicLinkResponse)
-async def verify_magic_link(
+def verify_magic_link(
     token: str,
     http_request: Request,
     user_service: UserService = Depends(get_user_service),
@@ -628,7 +628,7 @@ class ClaimWelcomeCreditResponse(BaseModel):
 
 
 @router.post("/claim-welcome-credit", response_model=ClaimWelcomeCreditResponse)
-async def claim_welcome_credit(
+def claim_welcome_credit(
     auth_result: AuthResult = Depends(require_auth),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -658,7 +658,7 @@ class MagicLinkStatusResponse(BaseModel):
 
 
 @router.get("/auth/link-status", response_model=MagicLinkStatusResponse)
-async def magic_link_status(
+def magic_link_status(
     token: str,
     user_service: UserService = Depends(get_user_service),
 ):
@@ -680,7 +680,7 @@ async def magic_link_status(
 
 
 @router.post("/auth/resend-from-token", response_model=ResendFromTokenResponse)
-async def resend_magic_link_from_token(
+def resend_magic_link_from_token(
     request: ResendFromTokenRequest,
     http_request: Request,
     user_service: UserService = Depends(get_user_service),
@@ -831,7 +831,7 @@ async def resend_magic_link_from_token(
 
 
 @router.post("/auth/logout", response_model=LogoutResponse)
-async def logout(
+def logout(
     request: Request,
     authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
@@ -856,7 +856,7 @@ async def logout(
 # =============================================================================
 
 @router.get("/me", response_model=UserProfileResponse)
-async def get_current_user(
+def get_current_user(
     request: Request,
     authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
@@ -913,7 +913,7 @@ async def get_current_user(
 # =============================================================================
 
 @router.get("/credits/packages", response_model=CreditPackagesResponse)
-async def list_credit_packages():
+def list_credit_packages():
     """
     List available credit packages for purchase.
 
@@ -934,7 +934,7 @@ async def list_credit_packages():
 
 
 @router.post("/credits/checkout", response_model=CreateCheckoutResponse)
-async def create_checkout(
+def create_checkout(
     request: CreateCheckoutRequest,
     stripe_service: StripeService = Depends(get_stripe_service),
 ):
@@ -975,7 +975,7 @@ async def create_checkout(
 
 
 @router.post("/made-for-you/checkout", response_model=CreateCheckoutResponse)
-async def create_made_for_you_checkout(
+def create_made_for_you_checkout(
     request: MadeForYouCheckoutRequest,
     http_request: Request,
     stripe_service: StripeService = Depends(get_stripe_service),
@@ -1701,7 +1701,7 @@ async def stripe_webhook(
 # =============================================================================
 
 @router.get("/feedback/eligibility", response_model=FeedbackEligibilityResponse)
-async def check_feedback_eligibility(
+def check_feedback_eligibility(
     request: Request,
     authorization: Optional[str] = Header(None),
     user_service: UserService = Depends(get_user_service),
@@ -1741,7 +1741,7 @@ async def check_feedback_eligibility(
 
 
 @router.post("/feedback", response_model=UserFeedbackResponse)
-async def submit_user_feedback(
+def submit_user_feedback(
     http_request: Request,
     request: UserFeedbackRequest,
     authorization: Optional[str] = Header(None),
@@ -1965,7 +1965,7 @@ class UserDetailResponse(BaseModel):
 
 
 @router.get("/admin/users", response_model=UserListResponsePaginated)
-async def list_users(
+def list_users(
     limit: int = 50,
     offset: int = 0,
     search: Optional[str] = None,
@@ -2063,7 +2063,7 @@ async def list_users(
 
 
 @router.get("/admin/users/{email}/detail", response_model=UserDetailResponse)
-async def get_user_detail(
+def get_user_detail(
     email: str,
     request: Request,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
@@ -2166,7 +2166,7 @@ async def get_user_detail(
 
 
 @router.post("/admin/users", response_model=AdminCreateUserResponse, status_code=201)
-async def admin_create_user(
+def admin_create_user(
     request: AdminCreateUserRequest,
     auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
@@ -2228,7 +2228,7 @@ async def admin_create_user(
 
 
 @router.post("/admin/credits", response_model=AddCreditsResponse)
-async def add_credits_to_user(
+def add_credits_to_user(
     request: AddCreditsRequest,
     auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
@@ -2265,7 +2265,7 @@ async def add_credits_to_user(
 
 
 @router.post("/admin/users/{email}/disable")
-async def disable_user(
+def disable_user(
     email: str,
     request: Request,
     auth_data: AuthResult = Depends(require_admin),
@@ -2286,7 +2286,7 @@ async def disable_user(
 
 
 @router.post("/admin/users/{email}/enable")
-async def enable_user(
+def enable_user(
     email: str,
     request: Request,
     auth_data: AuthResult = Depends(require_admin),
@@ -2307,7 +2307,7 @@ async def enable_user(
 
 
 @router.delete("/admin/users/{email}")
-async def delete_user(
+def delete_user(
     email: str,
     request: Request,
     auth_data: AuthResult = Depends(require_admin),
@@ -2333,7 +2333,7 @@ async def delete_user(
 
 
 @router.post("/admin/users/{email}/role")
-async def set_user_role(
+def set_user_role(
     email: str,
     role: UserRole,
     request: Request,

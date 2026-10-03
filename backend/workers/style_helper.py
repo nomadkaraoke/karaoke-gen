@@ -8,6 +8,7 @@ This module uses the unified style_loader from karaoke_gen for
 consistent style handling across local CLI and cloud backend.
 """
 import json
+import asyncio
 import logging
 import os
 from pathlib import Path
@@ -101,7 +102,10 @@ class StyleConfig:
         self._has_custom_styles = bool(style_params_gcs_path)
         
         # Use the unified style loader
-        self._styles_path, self._style_params = load_styles_from_gcs(
+        # Sync GCS downloads (theme JSON, 4K backgrounds, fonts) — run off the
+        # event loop so they can't freeze the API instance (2026-10-03).
+        self._styles_path, self._style_params = await asyncio.to_thread(
+            load_styles_from_gcs,
             style_params_gcs_path=style_params_gcs_path,
             style_assets=style_assets,
             temp_dir=self.temp_dir,

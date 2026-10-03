@@ -463,7 +463,7 @@ class CacheStatsResponse(BaseModel):
 # =============================================================================
 
 @router.get("/audio-searches", response_model=AudioSearchListResponse)
-async def list_audio_searches(
+def list_audio_searches(
     limit: int = 50,
     status_filter: Optional[str] = None,
     exclude_test: bool = True,
@@ -670,7 +670,7 @@ async def clear_audio_search_cache(
 
 
 @router.post("/jobs/{job_id}/reset-worker-state")
-async def reset_worker_state(
+def reset_worker_state(
     job_id: str,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
@@ -880,7 +880,7 @@ def _extract_files_recursive(
 
 
 @router.get("/jobs/{job_id}/files", response_model=JobFilesResponse)
-async def get_job_files(
+def get_job_files(
     job_id: str,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
@@ -1588,7 +1588,7 @@ ALL_WORKER_PROGRESS_KEYS = [
 
 
 @router.post("/jobs/{job_id}/clear-workers", response_model=ClearWorkersResponse)
-async def clear_worker_state(
+def clear_worker_state(
     job_id: str,
     auth_data: AuthResult = Depends(require_admin),
 ):
@@ -1676,7 +1676,7 @@ TERMINAL_STATES = {"complete", "prep_complete", "failed", "cancelled"}
 
 
 @router.post("/jobs/{job_id}/delete-outputs", response_model=DeleteOutputsResponse)
-async def delete_job_outputs(
+def delete_job_outputs(
     job_id: str,
     auth_data: AuthResult = Depends(require_admin),
 ):
@@ -1881,7 +1881,7 @@ class OrphanedOutputsCleanupRequest(BaseModel):
 
 
 @router.post("/orphaned-outputs/cleanup")
-async def cleanup_orphaned_outputs(
+def cleanup_orphaned_outputs(
     req: OrphanedOutputsCleanupRequest,
     auth_data: AuthResult = Depends(require_admin),
 ) -> dict:
@@ -1999,7 +1999,7 @@ async def cleanup_orphaned_outputs(
 
 
 @router.get("/jobs/{job_id}/completion-message", response_model=CompletionMessageResponse)
-async def get_job_completion_message(
+def get_job_completion_message(
     job_id: str,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
@@ -2063,7 +2063,7 @@ async def get_job_completion_message(
 
 
 @router.post("/jobs/{job_id}/send-completion-email", response_model=SendCompletionEmailResponse)
-async def send_job_completion_email(
+def send_job_completion_email(
     job_id: str,
     request: SendCompletionEmailRequest,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
@@ -2141,7 +2141,7 @@ class MintLoginLinkRequest(BaseModel):
 
 
 @router.post("/users/{email}/login-link")
-async def mint_user_login_link(
+def mint_user_login_link(
     email: str,
     request: MintLoginLinkRequest,
     auth_data: AuthResult = Depends(require_admin),
@@ -2180,7 +2180,7 @@ class ImpersonateUserResponse(BaseModel):
 
 
 @router.post("/users/{email}/impersonate", response_model=ImpersonateUserResponse)
-async def impersonate_user(
+def impersonate_user(
     email: str,
     auth_data: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
@@ -2863,7 +2863,7 @@ OVERRIDE_AUDIO_ALLOWED_STATES = {
 
 
 @router.post("/jobs/{job_id}/override-audio-source", response_model=OverrideAudioSourceResponse)
-async def override_audio_source(
+def override_audio_source(
     job_id: str,
     request: OverrideAudioSourceRequest,
     auth_data: AuthResult = Depends(require_admin),
@@ -3168,7 +3168,7 @@ class WebhookEventItem(BaseModel):
 
 
 @router.get("/payments/summary", response_model=RevenueSummaryResponse)
-async def get_payment_summary(
+def get_payment_summary(
     days: int = 30,
     exclude_test: bool = True,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
@@ -3183,7 +3183,7 @@ async def get_payment_summary(
 
 
 @router.get("/payments/revenue-chart", response_model=List[RevenueChartPoint])
-async def get_revenue_chart(
+def get_revenue_chart(
     days: int = 30,
     group_by: str = "day",
     exclude_test: bool = True,
@@ -3196,7 +3196,7 @@ async def get_revenue_chart(
 
 
 @router.get("/payments", response_model=PaymentListResponse)
-async def list_payments(
+def list_payments(
     limit: int = 50,
     offset: int = 0,
     order_type: Optional[str] = None,
@@ -3216,7 +3216,7 @@ async def list_payments(
 
 
 @router.get("/payments/balance", response_model=StripeBalanceResponse)
-async def get_stripe_balance(
+def get_stripe_balance(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
     """Get current Stripe account balance."""
@@ -3226,7 +3226,7 @@ async def get_stripe_balance(
 
 
 @router.get("/payments/payouts", response_model=List[PayoutItem])
-async def get_payouts(
+def get_payouts(
     limit: int = 20,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
@@ -3237,7 +3237,7 @@ async def get_payouts(
 
 
 @router.get("/payments/disputes", response_model=List[DisputeItem])
-async def get_disputes(
+def get_disputes(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
     """Get open and recent disputes."""
@@ -3247,7 +3247,7 @@ async def get_disputes(
 
 
 @router.get("/payments/webhook-events", response_model=List[WebhookEventItem])
-async def get_webhook_events(
+def get_webhook_events(
     limit: int = 50,
     event_type: Optional[str] = None,
     status: Optional[str] = None,
@@ -3260,7 +3260,7 @@ async def get_webhook_events(
 
 
 @router.get("/payments/by-user/{email}")
-async def get_user_payments(
+def get_user_payments(
     email: str,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
@@ -3271,7 +3271,7 @@ async def get_user_payments(
 
 
 @router.get("/users/{email}/emails")
-async def get_user_emails(
+def get_user_emails(
     email: str,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
@@ -3282,7 +3282,7 @@ async def get_user_emails(
 
 
 @router.get("/emails/{message_id}")
-async def get_email_detail(
+def get_email_detail(
     message_id: str,
     source: str = "postmark",
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
@@ -3302,7 +3302,7 @@ async def get_email_detail(
 
 
 @router.get("/payments/{session_id}")
-async def get_payment_detail(
+def get_payment_detail(
     session_id: str,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
@@ -3316,7 +3316,7 @@ async def get_payment_detail(
 
 
 @router.post("/payments/{session_id}/refund", response_model=RefundResponse)
-async def refund_payment(
+def refund_payment(
     session_id: str,
     request: RefundRequest,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
@@ -3374,7 +3374,7 @@ async def refund_payment(
 
 
 @router.post("/payments/normalize-emails")
-async def normalize_payment_emails(
+def normalize_payment_emails(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
     """One-time backfill: lowercase all customer_email values in stripe_payments."""
@@ -3384,7 +3384,7 @@ async def normalize_payment_emails(
 
 
 @router.post("/backfill/user-stats")
-async def backfill_user_stats(
+def backfill_user_stats(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
     """One-time backfill: recalculate total_jobs_completed and total_spent for all users."""
@@ -3877,7 +3877,7 @@ async def get_audio_edit_review_detail(
 
 
 @router.get("/abuse/related/{email}")
-async def find_related_accounts(
+def find_related_accounts(
     email: str,
     auth_result: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
@@ -3927,7 +3927,7 @@ async def find_related_accounts(
 
 
 @router.get("/abuse/correlations")
-async def find_account_correlations(
+def find_account_correlations(
     auth_result: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -3977,7 +3977,7 @@ async def find_account_correlations(
 
 
 @router.get("/abuse/suspicious")
-async def find_suspicious_accounts(
+def find_suspicious_accounts(
     min_jobs: int = 2,
     max_spend: int = 0,
     auth_result: AuthResult = Depends(require_admin),
@@ -4016,7 +4016,7 @@ async def find_suspicious_accounts(
 
 
 @router.get("/abuse/by-ip/{ip_address:path}")
-async def find_users_by_ip(
+def find_users_by_ip(
     ip_address: str,
     auth_result: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
@@ -4041,7 +4041,7 @@ async def find_users_by_ip(
 
 
 @router.get("/abuse/by-fingerprint/{fingerprint}")
-async def find_users_by_fingerprint(
+def find_users_by_fingerprint(
     fingerprint: str,
     auth_result: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
@@ -4066,7 +4066,7 @@ async def find_users_by_fingerprint(
 
 
 @router.post("/abuse/backfill-ips")
-async def backfill_signup_ips(
+def backfill_signup_ips(
     auth_result: AuthResult = Depends(require_admin),
     user_service: UserService = Depends(get_user_service),
 ):
@@ -4165,7 +4165,7 @@ class IpBatchRequest(BaseModel):
 
 
 @router.get("/abuse/ip-info/{ip_address:path}")
-async def get_ip_info(
+def get_ip_info(
     ip_address: str,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -4175,7 +4175,7 @@ async def get_ip_info(
 
 
 @router.post("/abuse/ip-info/batch")
-async def get_ip_info_batch(
+def get_ip_info_batch(
     request: IpBatchRequest,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -4317,7 +4317,7 @@ class CommunityRequestListResponse(BaseModel):
 
 
 @router.get("/community-requests", response_model=CommunityRequestListResponse)
-async def list_community_requests(
+def list_community_requests(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
     """Full history of requests-board submissions across every status — who asked,
@@ -4371,7 +4371,7 @@ class CommunityReviewActionResponse(BaseModel):
 
 
 @router.get("/community-reviews", response_model=CommunityReviewListResponse)
-async def list_community_reviews(
+def list_community_reviews(
     auth_data: Tuple[str, UserType, int] = Depends(require_admin),
 ):
     """List requests-board picks the daily picker flagged because an existing

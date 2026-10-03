@@ -8,6 +8,7 @@ confirmation (awaiting_duration_confirm) and takes action:
 
 Called by Cloud Scheduler via an internal endpoint (hourly).
 """
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
@@ -33,6 +34,17 @@ _DURATION_CONFIRM_STATUSES = {JobStatus.AWAITING_DURATION_CONFIRM}
 
 
 async def process_stale_reviews() -> Dict[str, Any]:
+    """Async entry point: run the (entirely synchronous) processor in a worker thread.
+
+    The body does up to ~1500 Firestore job reads, credit refunds and email
+    sends (Postmark API → SMTP fallback, up to ~15s each). It used to be an
+    ``async def`` with no awaits, so the hourly cron froze every request on the
+    API instance for its whole duration (2026-10-03 analysis).
+    """
+    return await asyncio.to_thread(process_stale_reviews_sync)
+
+
+def process_stale_reviews_sync() -> Dict[str, Any]:
     """
     Query for stale review / duration-confirm jobs and take action.
 
