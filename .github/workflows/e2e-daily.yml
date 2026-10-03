@@ -296,9 +296,9 @@ jobs:
           approve_ci() {
             local branch=$1 runs pending active
             for _ in $(seq 1 18); do
-              runs=$(gh run list --workflow ci.yml --branch "$branch" --event pull_request --json databaseId,status,conclusion)
-              pending=$(jq -r '.[] | select(.conclusion == "action_required" or .status == "waiting" or .status == "action_required") | .databaseId' <<<"$runs")
-              active=$(jq '[.[] | select(.conclusion != "action_required" and .status != "waiting" and .status != "action_required")] | length' <<<"$runs")
+              runs=$(gh run list --workflow ci.yml --branch "$branch" --event pull_request --json databaseId,status,conclusion) || { sleep 10; continue; }
+              pending=$(jq -r '.[] | select(.conclusion == "action_required" or .status == "waiting" or .status == "action_required") | .databaseId' <<<"$runs") || pending=""
+              active=$(jq '[.[] | select(.conclusion != "action_required" and .status != "waiting" and .status != "action_required")] | length' <<<"$runs") || active=0
               for id in $pending; do
                 if gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/approve" >/dev/null; then
                   echo "Approved CI run $id"
@@ -320,7 +320,8 @@ jobs:
           if [ -n "$OPEN" ]; then
             echo "A self-heal PR is already open ($OPEN) — not opening another; making sure its CI can run"
             echo "pr_url=$OPEN" >> "$GITHUB_OUTPUT"
-            if ! approve_ci "$(gh pr view "$OPEN" --json headRefName --jq .headRefName)"; then
+            OPEN_BRANCH=$(gh pr view "$OPEN" --json headRefName --jq .headRefName || true)
+            if [ -z "$OPEN_BRANCH" ] || ! approve_ci "$OPEN_BRANCH"; then
               echo "ci_needs_approval=true" >> "$GITHUB_OUTPUT"
             fi
             exit 0
