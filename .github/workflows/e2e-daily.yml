@@ -288,12 +288,41 @@ jobs:
         run: |
           set -euo pipefail
           TARGET=frontend/e2e/helpers/self-healing/learned-variants.json
+
+          # A bot-authored PR's `pull_request` CI run is created as
+          # "action_required" (awaiting approval) and, until it runs, supersedes
+          # any other CI Gate result for the ruleset. Approve it; succeed once a
+          # pull_request run exists that is past approval.
+          approve_ci() {
+            local branch=$1 runs pending active
+            for _ in $(seq 1 18); do
+              runs=$(gh run list --workflow ci.yml --branch "$branch" --event pull_request --json databaseId,status,conclusion)
+              pending=$(jq -r '.[] | select(.conclusion == "action_required" or .status == "waiting" or .status == "action_required") | .databaseId' <<<"$runs")
+              active=$(jq '[.[] | select(.conclusion != "action_required" and .status != "waiting" and .status != "action_required")] | length' <<<"$runs")
+              for id in $pending; do
+                if gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/approve" >/dev/null; then
+                  echo "Approved CI run $id"
+                else
+                  echo "::warning::Could not approve CI run $id with GITHUB_TOKEN"
+                fi
+              done
+              if [ -z "$pending" ] && [ "$active" -gt 0 ]; then
+                echo "CI is running for $branch"
+                return 0
+              fi
+              sleep 10
+            done
+            return 1
+          }
           REPORT=/tmp/self-heal/self-heal-report.json
 
           OPEN=$(gh pr list --label e2e-self-heal --state open --json url --jq '.[0].url // ""')
           if [ -n "$OPEN" ]; then
-            echo "A self-heal PR is already open ($OPEN) — not opening another"
+            echo "A self-heal PR is already open ($OPEN) — not opening another; making sure its CI can run"
             echo "pr_url=$OPEN" >> "$GITHUB_OUTPUT"
+            if ! approve_ci "$(gh pr view "$OPEN" --json headRefName --jq .headRefName)"; then
+              echo "ci_needs_approval=true" >> "$GITHUB_OUTPUT"
+            fi
             exit 0
           fi
 
@@ -336,35 +365,15 @@ jobs:
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
           gh pr merge "$PR_URL" --auto --squash
 
-          # A bot-authored PR's `pull_request` CI run is created as
-          # "action_required" (awaiting approval) — and until it runs it
-          # supersedes any other CI Gate result for the ruleset. Approve it.
-          APPROVED=false
-          for _ in $(seq 1 18); do
-            IDS=$(gh run list --workflow ci.yml --branch "$BRANCH" --event pull_request --json databaseId,status,conclusion \
-              --jq '.[] | select(.status == "waiting" or .status == "action_required" or .conclusion == "action_required") | .databaseId')
-            for id in $IDS; do
-              if gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/approve" >/dev/null; then
-                echo "Approved CI run $id"; APPROVED=true
-              else
-                echo "::warning::Could not approve CI run $id with GITHUB_TOKEN"
-              fi
-            done
-            # Already running/finished without needing approval?
-            if [ -z "$IDS" ] && [ -n "$(gh run list --workflow ci.yml --branch "$BRANCH" --event pull_request --json databaseId --jq '.[0].databaseId // ""')" ]; then
-              APPROVED=true
-            fi
-            [ "$APPROVED" = "true" ] && break
-            sleep 10
-          done
-          if [ "$APPROVED" != "true" ]; then
-            # Fallback: dispatched CI (allowed from GITHUB_TOKEN) still puts a
-            # CI Gate check on the head SHA if no pull_request run exists.
+          if approve_ci "$BRANCH"; then
+            echo "Opened $PR_URL (auto-merge enabled, CI approved)"
+          else
+            # Fallback: dispatched CI (allowed from GITHUB_TOKEN) puts a CI Gate
+            # check on the head SHA if no pull_request run ever appears.
             gh workflow run ci.yml --ref "$BRANCH"
             echo "ci_needs_approval=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::CI for $PR_URL may need a one-click approval in the Actions tab"
+            echo "::warning::CI for $PR_URL may need a one-click approval (PR → Checks → Approve and run)"
           fi
-          echo "Opened $PR_URL (auto-merge enabled, CI approved=$APPROVED)"
 
       - name: Discord notification (self-heal)
         # Recipe already on main (e.g. merged between checkout and now) → nothing to report.
