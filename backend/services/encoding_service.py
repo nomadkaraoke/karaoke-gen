@@ -17,6 +17,7 @@ Usage:
 
 import asyncio
 import logging
+import threading
 import os
 import time
 import uuid
@@ -1381,25 +1382,49 @@ class EncodingService:
 _encoding_service: Optional[EncodingService] = None
 
 
+_encoding_service_lock = threading.Lock()
+
+
 def get_encoding_service() -> EncodingService:
-    """Get the singleton encoding service instance."""
+    """Get the singleton encoding service instance.
+
+    First construction imports ``google.cloud.compute_v1`` (a ~10s import on a
+    fresh Cloud Run instance) — the startup warmup thread builds it in the
+    background, and async callers should use ``asyncio.to_thread`` so a cold
+    call can't freeze the event loop (watchdog caught a 9.9s stall here in
+    /api/health/detailed, 2026-10-03).
+    """
     global _encoding_service
-    if _encoding_service is None:
-        _encoding_service = EncodingService()
-        # Wire up worker manager for dynamic URL resolution
-        try:
-            from backend.services.encoding_worker_manager import EncodingWorkerManager
-            from google.cloud import compute_v1, firestore
-            settings = get_settings()
-            db = firestore.Client(project=settings.google_cloud_project)
-            compute_client = compute_v1.InstancesClient()
-            manager = EncodingWorkerManager(
-                db=db,
-                compute_client=compute_client,
-                project_id=settings.google_cloud_project,
-            )
-            _encoding_service.set_worker_manager(manager)
-        except Exception:
-            # Fallback to static URL if worker manager setup fails
-            pass
+    if _encoding_service is not None:
+        return _encoding_service
+    with _encoding_service_lock:
+        if _encoding_service is not None:
+            return _encoding_service
+        _build_encoding_service()
     return _encoding_service
+
+
+def _build_encoding_service() -> None:
+    """Construct + wire the singleton; publish it only once fully wired, so the
+    lock-free fast path in get_encoding_service never sees a half-built one."""
+    global _encoding_service
+    if _encoding_service is not None:
+        return
+    service = EncodingService()
+    # Wire up worker manager for dynamic URL resolution
+    try:
+        from backend.services.encoding_worker_manager import EncodingWorkerManager
+        from google.cloud import compute_v1, firestore
+        settings = get_settings()
+        db = firestore.Client(project=settings.google_cloud_project)
+        compute_client = compute_v1.InstancesClient()
+        manager = EncodingWorkerManager(
+            db=db,
+            compute_client=compute_client,
+            project_id=settings.google_cloud_project,
+        )
+        service.set_worker_manager(manager)
+    except Exception:
+        # Fallback to static URL if worker manager setup fails
+        pass
+    _encoding_service = service

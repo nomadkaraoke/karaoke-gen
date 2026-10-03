@@ -57,6 +57,8 @@
 
 ## Recent Changes
 
+- **Encoding-service construction moved off the event loop** (2026-10-03, v0.264.1). The new loop watchdog's first prod catch was a 9.9s stall in `/api/health/detailed`. A cold `get_encoding_service()` imports `google.cloud.compute_v1` (~10s). It's now built in the startup warmup thread, is thread-safe, and async callers use `asyncio.to_thread`. (v0.264.0 was shipped by both #1120 and #1122.)
+
 - **API event-loop freezes fixed + degradation telemetry identifies users** (2026-10-03, v0.264.0). The "Reconnecting" pill and "servers unavailable" banner were mostly caused by the single API instance freezing for 20-45s. Plan + evidence: `docs/archive/2026-10-03-backend-loop-freezes-telemetry-plan.md`.
   - **Screens worker:** now runs inline in its Cloud Tasks request (so CPU stays allocated under `--cpu-throttling`), with the heavy steps in worker threads: 4K PIL renders, GCS uploads, review-audio transcode, timing signals and pre-apply.
   - **Hourly stale-review cron:** runs in a thread.
