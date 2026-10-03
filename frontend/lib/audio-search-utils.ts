@@ -158,14 +158,27 @@ const BEST_RESULT_PRIORITY = [
 // Returns the single best result from the array
 // Priority: BEST CHOICE > STUDIO ALBUMS > HI-RES 24-BIT > SINGLES > COMPILATIONS > SPOTIFY > YOUTUBE > OTHER
 // Skips VINYL RIPS (surface noise issues for karaoke) and LIVE VERSIONS (unless nothing else)
-// Within a category, prefers highest seeders
-export function getBestResult(results: ExtendedAudioSearchResult[]): ExtendedAudioSearchResult | null {
+// When searchTitle is given and any torrent/Spotify result's track name matches
+// it, only those are considered — a mismatched file is usually a different song,
+// so the right track from Spotify beats the wrong track from a better-seeded
+// torrent. YouTube never wins this way: video titles nearly always "match".
+// Within a category, prefers highest seeders, then popularity (view_count).
+export function getBestResult(
+  results: ExtendedAudioSearchResult[],
+  searchTitle = ''
+): ExtendedAudioSearchResult | null {
   if (results.length === 0) return null
+
+  const titleMatches = searchTitle
+    ? results.filter(r => !['YOUTUBE', 'VINYL RIPS'].includes(categorizeResult(r))
+        && !checkFilenameMismatch(searchTitle, r).isMismatch)
+    : []
+  const pool = titleMatches.length > 0 ? titleMatches : results
 
   let best: ExtendedAudioSearchResult | null = null
   let bestPriority = Infinity
 
-  for (const result of results) {
+  for (const result of pool) {
     const category = categorizeResult(result)
 
     // Skip vinyl rips entirely
@@ -178,10 +191,11 @@ export function getBestResult(results: ExtendedAudioSearchResult[]): ExtendedAud
       best = result
       bestPriority = effectivePriority
     } else if (effectivePriority === bestPriority && best) {
-      // Same category — prefer higher seeders
+      // Same category — prefer higher seeders, then more popular
       const currentSeeders = result.seeders ?? 0
       const bestSeeders = best.seeders ?? 0
-      if (currentSeeders > bestSeeders) {
+      if (currentSeeders > bestSeeders
+          || (currentSeeders === bestSeeders && (result.view_count ?? 0) > (best.view_count ?? 0))) {
         best = result
       }
     }
@@ -292,7 +306,7 @@ export function getSearchConfidence(
     }
   }
 
-  const best = getBestResult(results)
+  const best = getBestResult(results, searchTitle)
   const bestCat = best ? categorizeResult(best) : null
   const warnings: string[] = []
 
@@ -315,7 +329,11 @@ export function getSearchConfidence(
     return cat !== 'YOUTUBE' && cat !== 'SPOTIFY' && cat !== 'VINYL RIPS'
   })
 
-  if (!hasLossless) {
+  // Spotify is an official release (16-bit WEB) — the right track from it is a
+  // good source, second only to lossless torrents and far better than YouTube.
+  const spotifyMatch = bestCat === 'SPOTIFY' && !bestHasMismatch
+
+  if (!hasLossless && !spotifyMatch) {
     warnings.push('No lossless sources available — only YouTube/lossy or vinyl rips found')
   }
 
@@ -332,8 +350,8 @@ export function getSearchConfidence(
     return { tier: 1, reason, bestResult: best, bestCategory: bestCat, warnings }
   }
 
-  // Tier 3: No results, or only lossy/vinyl, or mismatch with low availability
-  if (!hasLossless) {
+  // Tier 3: No results, or only lossy/vinyl (bar a Spotify title match), or mismatch with low availability
+  if (!hasLossless && !spotifyMatch) {
     return { tier: 3, reason, bestResult: best, bestCategory: bestCat, warnings }
   }
 
@@ -358,6 +376,8 @@ function buildConfidenceReason(
     parts.push('High-quality lossless')
   } else if (best.is_lossless) {
     parts.push('Lossless')
+  } else if (bestCat === 'SPOTIFY') {
+    parts.push('Spotify audio')
   } else if (best.provider === 'YouTube') {
     parts.push('YouTube audio')
   } else {

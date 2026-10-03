@@ -506,3 +506,70 @@ describe('getSearchConfidence', () => {
     expect(confidence.bestResult?.index).toBe(0)
   })
 })
+
+// Real search from a live kjbox night (2026-10-01): "Braxton Keith - The Chair"
+// returned only Spotify results. `title` is the album, `target_file` the track.
+// The UI used to call this "Limited sources found" and push the singer to YouTube.
+const spotify = (index: number, album: string, track: string, popularity: number, release_type = 'Album') =>
+  makeResult({
+    index, provider: 'Spotify', title: album, target_file: track, artist: 'Braxton Keith',
+    quality: 'FLAC 16bit WEB', release_type, view_count: popularity * 10000,
+  })
+const braxtonKeithResults = () => [
+  spotify(0, 'Real Damn Deal', 'I Own This Bar', 40),
+  spotify(1, 'Cozy', 'Cozy', 45),
+  spotify(2, 'The Chair', 'The Chair', 65, 'Single'),
+  spotify(3, 'I Own This Bar', 'I Own This Bar', 40),
+  spotify(4, 'The Chair', 'Prescription', 20, 'Single'),
+  spotify(5, 'Highway Country', 'The Chair', 23, 'Compilation'),
+  spotify(6, 'pov: U fell in love', 'The Chair', 14, 'Compilation'),
+]
+
+describe('title-matched best result', () => {
+  it('picks the Spotify track whose name matches, most popular first', () => {
+    expect(getBestResult(braxtonKeithResults(), 'The Chair')?.index).toBe(2)
+  })
+
+  it('without a title keeps the old category/seeders behaviour', () => {
+    expect(getBestResult(braxtonKeithResults())?.index).toBe(2) // popularity tiebreak
+  })
+
+  it('a Spotify title match is a confident tier 2, not "limited sources"', () => {
+    const c = getSearchConfidence(braxtonKeithResults(), 'The Chair')
+    expect(c.tier).toBe(2)
+    expect(c.bestResult?.index).toBe(2)
+    expect(c.warnings).toEqual([])
+    expect(c.reason).toContain('Spotify')
+  })
+
+  it('Spotify with no matching track is still tier 3', () => {
+    const results = [spotify(0, 'Real Damn Deal', 'I Own This Bar', 40)]
+    expect(getSearchConfidence(results, 'The Chair').tier).toBe(3)
+  })
+
+  it('prefers the right track on Spotify over the wrong track on a torrent', () => {
+    const results = [
+      makeResult({ index: 0, is_lossless: true, seeders: 120, release_type: 'Album', target_file: '03 - Prescription.flac' }),
+      spotify(1, 'The Chair', 'The Chair', 65, 'Single'),
+    ]
+    expect(getBestResult(results, 'The Chair')?.index).toBe(1)
+  })
+
+  it('still prefers a matching torrent over matching Spotify', () => {
+    const results = [
+      spotify(0, 'The Chair', 'The Chair', 65, 'Single'),
+      makeResult({ index: 1, is_lossless: true, seeders: 120, release_type: 'Album', target_file: '01 - The Chair.flac' }),
+    ]
+    const c = getSearchConfidence(results, 'The Chair')
+    expect(c.bestResult?.index).toBe(1)
+    expect(c.tier).toBe(1)
+  })
+
+  it('never promotes YouTube via a title match over a torrent', () => {
+    const results = [
+      makeResult({ index: 0, is_lossless: true, seeders: 120, release_type: 'Album', target_file: '03 - Prescription.flac' }),
+      makeResult({ index: 1, provider: 'YouTube', title: 'Braxton Keith - The Chair (Official Video)' }),
+    ]
+    expect(getBestResult(results, 'The Chair')?.index).toBe(0)
+  })
+})
