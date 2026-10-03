@@ -161,7 +161,10 @@ export async function healStep(step: CheckoutStep, ctx: StepContext, planner: Pl
       escalation = Math.min(escalation + 1, MAX_ESCALATIONS);
       continue;
     }
-    if (await pollVerify(step, ctx, step.verifyTimeoutMs ?? 5_000)) {
+    // Clicks can trigger slow transitions (accordion, redirect); after a fill,
+    // a short check suffices — the model will usually need more actions.
+    const verifyMs = action.type === 'click' ? step.verifyTimeoutMs ?? 5_000 : 2_000;
+    if (await pollVerify(step, ctx, verifyMs)) {
       return { success: true, actions: executed, model, llmCalls };
     }
   }

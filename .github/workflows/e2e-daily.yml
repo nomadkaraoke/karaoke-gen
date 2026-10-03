@@ -256,7 +256,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: e2e-credit-purchase
-    if: always() && needs.e2e-credit-purchase.outputs.healed == 'true'
+    # Only learn from main — branch runs (e.g. testing self_heal_force_llm on a
+    # feature branch) must not open PRs against main.
+    if: always() && needs.e2e-credit-purchase.outputs.healed == 'true' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
       pull-requests: write
