@@ -104,6 +104,16 @@ def _run_background_warmup():
     except Exception as e:
         logger.warning(f"Langfuse preload failed (will initialize lazily): {e}")
 
+    # 4. Encoding service singleton — its first construction imports
+    # google.cloud.compute_v1 (~10s on a fresh instance). Build it here, off the
+    # event loop, before /api/health/detailed or a preview encode needs it.
+    try:
+        from backend.services.encoding_service import get_encoding_service
+
+        get_encoding_service()
+    except Exception as e:
+        logger.warning(f"Encoding service warmup failed (will build lazily): {e}")
+
     # Validate OAuth credentials (alerting only, nothing depends on it)
     try:
         validate_credentials_on_startup()

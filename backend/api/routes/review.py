@@ -512,7 +512,7 @@ async def _run_preview_encode(
     """GCE encode → local fallback → error marker (the cancellable inner body)."""
     job_id = job.job_id
     storage = StorageService()
-    encoding_service = get_encoding_service()
+    encoding_service = await asyncio.to_thread(get_encoding_service)
     preview_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.mp4"
 
     with job_log_context(job_id, worker="preview"):
@@ -1919,7 +1919,7 @@ async def generate_preview_video(
     job_manager = JobManager()
     storage = StorageService()
     settings = get_settings()
-    encoding_service = get_encoding_service()
+    encoding_service = await asyncio.to_thread(get_encoding_service)
 
     job = job_manager.get_job(job_id)
     if not job:

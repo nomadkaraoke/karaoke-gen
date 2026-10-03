@@ -1,6 +1,7 @@
 """
 Health check routes.
 """
+import asyncio
 import os
 import logging
 import subprocess
@@ -217,7 +218,7 @@ async def check_flacfetch_service_status() -> Dict[str, Any]:
 
 async def check_encoding_worker_status() -> Dict[str, Any]:
     """Check if GCE encoding worker is available and healthy."""
-    encoding_service = get_encoding_service()
+    encoding_service = await asyncio.to_thread(get_encoding_service)
 
     if not encoding_service.is_configured:
         return {

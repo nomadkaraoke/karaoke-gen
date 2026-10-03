@@ -119,3 +119,45 @@ async def test_stale_review_cron_runs_off_loop():
     with patch.object(stale_review_processor, "process_stale_reviews_sync", side_effect=_sleep):
         ticks = await _ticks_during(stale_review_processor.process_stale_reviews())
     assert ticks >= MIN_TICKS
+
+
+@pytest.mark.asyncio
+async def test_health_encoding_status_builds_service_off_loop():
+    """A cold get_encoding_service() (imports compute_v1, ~10s) must not block the loop."""
+    from backend.api.routes import health
+
+    def slow_build():
+        time.sleep(BLOCK_S)
+        svc = MagicMock()
+        svc.is_enabled = False
+        return svc
+
+    with patch.object(health, "get_encoding_service", side_effect=slow_build):
+        ticks = await _ticks_during(health.check_encoding_worker_status())
+    assert ticks >= MIN_TICKS
+
+
+def test_get_encoding_service_builds_once_under_concurrency():
+    import threading
+
+    from backend.services import encoding_service as es
+
+    builds = []
+
+    class FakeService:
+        def __init__(self):
+            builds.append(1)
+            time.sleep(0.05)
+
+        def set_worker_manager(self, m):
+            pass
+
+    with patch.object(es, "_encoding_service", None), patch.object(es, "EncodingService", FakeService):
+        results = []
+        threads = [threading.Thread(target=lambda: results.append(es.get_encoding_service())) for _ in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert len(builds) == 1
+        assert len({id(r) for r in results}) == 1
