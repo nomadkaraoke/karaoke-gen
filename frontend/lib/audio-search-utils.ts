@@ -158,14 +158,27 @@ const BEST_RESULT_PRIORITY = [
 // Returns the single best result from the array
 // Priority: BEST CHOICE > STUDIO ALBUMS > HI-RES 24-BIT > SINGLES > COMPILATIONS > SPOTIFY > YOUTUBE > OTHER
 // Skips VINYL RIPS (surface noise issues for karaoke) and LIVE VERSIONS (unless nothing else)
-// Within a category, prefers highest seeders
-export function getBestResult(results: ExtendedAudioSearchResult[]): ExtendedAudioSearchResult | null {
+// When searchTitle is given and any torrent/Spotify result's track name matches
+// it, only those are considered — a mismatched file is usually a different song,
+// so the right track from Spotify beats the wrong track from a better-seeded
+// torrent. YouTube never wins this way: video titles nearly always "match".
+// Within a category, prefers highest seeders, then popularity (view_count).
+export function getBestResult(
+  results: ExtendedAudioSearchResult[],
+  searchTitle = ''
+): ExtendedAudioSearchResult | null {
   if (results.length === 0) return null
+
+  const titleMatches = searchTitle
+    ? results.filter(r => !['YOUTUBE', 'VINYL RIPS'].includes(categorizeResult(r))
+        && isConfirmedTitleMatch(searchTitle, r))
+    : []
+  const pool = titleMatches.length > 0 ? titleMatches : results
 
   let best: ExtendedAudioSearchResult | null = null
   let bestPriority = Infinity
 
-  for (const result of results) {
+  for (const result of pool) {
     const category = categorizeResult(result)
 
     // Skip vinyl rips entirely
@@ -178,17 +191,18 @@ export function getBestResult(results: ExtendedAudioSearchResult[]): ExtendedAud
       best = result
       bestPriority = effectivePriority
     } else if (effectivePriority === bestPriority && best) {
-      // Same category — prefer higher seeders
+      // Same category — prefer higher seeders, then more popular
       const currentSeeders = result.seeders ?? 0
       const bestSeeders = best.seeders ?? 0
-      if (currentSeeders > bestSeeders) {
+      if (currentSeeders > bestSeeders
+          || (currentSeeders === bestSeeders && (result.view_count ?? 0) > (best.view_count ?? 0))) {
         best = result
       }
     }
   }
 
-  // If nothing found (all vinyl rips), fall back to first result
-  return best ?? results[0]
+  // If nothing ranked (all vinyl rips / live), stay within the title matches
+  return best ?? pool[0]
 }
 
 // --- Confidence tier types and utilities ---
@@ -214,6 +228,8 @@ export interface FilenameMismatchResult {
  * Check if a result's track name doesn't match the search title.
  * Uses target_file for torrent/Spotify results, result.title for YouTube.
  */
+const AUDIO_EXT_RE = /\.(flac|mp3|m4a|wav|ogg|opus|aac|alac|ape|wv|aiff?|dsf|mp4|webm)$/i
+
 export function checkFilenameMismatch(
   searchTitle: string,
   result: ExtendedAudioSearchResult
@@ -230,7 +246,8 @@ export function checkFilenameMismatch(
     // Extract filename: strip directory path
     const rawFilename = result.target_file.split('/').pop() || result.target_file
     // Strip extension
-    const withoutExt = rawFilename.replace(/\.[^.]+$/, '')
+    // Only real audio extensions — Spotify track names have none ("Mr. Brightside")
+    const withoutExt = rawFilename.replace(AUDIO_EXT_RE, '')
     // Strip leading track number prefixes like "01 - ", "01. ", "1 ", "01-"
     filename = withoutExt.replace(/^\d{1,3}\s*[-.\s]\s*/, '')
   } else if (result.title) {
@@ -264,6 +281,38 @@ export function checkFilenameMismatch(
   }
 }
 
+// Whole-title core for equality: drops only TRAILING version suffixes —
+// "The Chair (feat. X)", "Hotel California - 2013 Remaster" — so "The Chairman"
+// doesn't match "The Chair" and "(I Can't Get No) Satisfaction" stays intact.
+function titleCore(s: string): string {
+  const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
+  let c = s
+  for (let i = 0; i < 3; i++) {
+    const next = c.replace(/\s*[([][^)\]]*[)\]]\s*$/, '').replace(/\s+-\s+[^-]*$/, '')
+    if (next === c) break
+    c = next
+  }
+  const core = norm(c)
+  return core.length >= 3 ? core : norm(s)
+}
+
+/**
+ * True only when the result's track filename was actually compared and matched.
+ * checkFilenameMismatch reports "no mismatch" when it can't compare (no
+ * target_file → album title, title < 3 chars, non-Latin filename), which must not
+ * count as evidence that this is the right track.
+ */
+export function isConfirmedTitleMatch(searchTitle: string, result: ExtendedAudioSearchResult): boolean {
+  if (!result.target_file) return false
+  const m = checkFilenameMismatch(searchTitle, result)
+  if (m.isMismatch || !m.filename || searchTitle.length < 3) return false
+  const t = titleCore(searchTitle)
+  if (t.length < 3) return false
+  // Compare with and without the track-number strip ("7 Rings" must keep its 7)
+  const raw = (result.target_file.split('/').pop() || result.target_file).replace(AUDIO_EXT_RE, '')
+  return titleCore(m.filename) === t || titleCore(raw) === t
+}
+
 /**
  * Get a human-readable availability label + tooltip for a seeder count.
  */
@@ -292,7 +341,7 @@ export function getSearchConfidence(
     }
   }
 
-  const best = getBestResult(results)
+  const best = getBestResult(results, searchTitle)
   const bestCat = best ? categorizeResult(best) : null
   const warnings: string[] = []
 
@@ -315,7 +364,11 @@ export function getSearchConfidence(
     return cat !== 'YOUTUBE' && cat !== 'SPOTIFY' && cat !== 'VINYL RIPS'
   })
 
-  if (!hasLossless) {
+  // Spotify is an official release (16-bit WEB) — the right track from it is a
+  // good source, second only to lossless torrents and far better than YouTube.
+  const spotifyMatch = bestCat === 'SPOTIFY' && !!best && isConfirmedTitleMatch(searchTitle, best)
+
+  if (!hasLossless && !spotifyMatch) {
     warnings.push('No lossless sources available — only YouTube/lossy or vinyl rips found')
   }
 
@@ -332,8 +385,8 @@ export function getSearchConfidence(
     return { tier: 1, reason, bestResult: best, bestCategory: bestCat, warnings }
   }
 
-  // Tier 3: No results, or only lossy/vinyl, or mismatch with low availability
-  if (!hasLossless) {
+  // Tier 3: No results, or only lossy/vinyl (bar a Spotify title match), or mismatch with low availability
+  if (!hasLossless && !spotifyMatch) {
     return { tier: 3, reason, bestResult: best, bestCategory: bestCat, warnings }
   }
 
@@ -358,6 +411,8 @@ function buildConfidenceReason(
     parts.push('High-quality lossless')
   } else if (best.is_lossless) {
     parts.push('Lossless')
+  } else if (bestCat === 'SPOTIFY') {
+    parts.push('Spotify audio')
   } else if (best.provider === 'YouTube') {
     parts.push('YouTube audio')
   } else {
