@@ -507,8 +507,15 @@ Link/Klarna/Cash App/Bank/"Back to…" and on the final Pay button outside `subm
 **Fully automatic loop.** When the LLM heals a step and the purchase is verified server-side,
 the spec writes `test-results/self-heal/learned-variants.json`; the workflow's
 `self-heal-pr` job opens a data-only PR (label `e2e-self-heal`, `@coderabbitai ignore`),
-enables auto-merge, and dispatches `ci.yml` on the branch (GITHUB_TOKEN PRs don't trigger
-CI themselves). Next run replays the recipe without the LLM. Discord + the daily email
+enables auto-merge, and approves the PR's `pull_request` CI run (bot PRs' runs start as
+"action_required" and block the CI Gate until run; falls back to dispatching `ci.yml`).
+Next run replays the recipe without the LLM.
+
+**Repo setting this depends on (changed 2026-10-03, not in code):** the `protect main`
+ruleset (id 11423976) has `require_extra_approval_for_unattributed_changes: false`. GitHub
+defaults it to `true` (server-side, ~Aug 2026), which silently blocks bot-authored PRs
+(`mergeStateStatus: BLOCKED` with all checks green) until a human approves. If a ruleset
+update ever omits the key, GitHub resets it to `true` — set it explicitly. Discord + the daily email
 report 🩹 when this happens. Only one open self-heal PR at a time.
 
 The Gemini key is the AI Studio `gemini-api-key` (billed outside the nomadkaraoke project):
