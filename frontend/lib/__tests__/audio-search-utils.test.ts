@@ -625,6 +625,7 @@ describe('title-matched best result', () => {
     expect(isArtistMatch('Braxton Keith', r('George Strait'))).toBe(false)
     expect(isArtistMatch('Kei', r('Braxton Keith'))).toBe(false)
     expect(isArtistMatch('radiohed', r('Radiohead'))).toBe(true)
+    expect(isArtistMatch('U2', r('UB40'))).toBe(false)
   })
 
   it('never promotes YouTube via a title match over a torrent', () => {

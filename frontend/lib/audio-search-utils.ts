@@ -311,7 +311,8 @@ export function isArtistMatch(searchArtist: string, result: ExtendedAudioSearchR
   if (want.length < 2 || !have) return false
   if (have === want || ` ${have} `.includes(` ${want} `) || ` ${want} `.includes(` ${have} `)) return true
   // Small typos the singer's tidy didn't fix ("radiohed")
-  return editDistance(want, have) <= Math.max(1, Math.floor(want.length / 5))
+  if (want.length < 5) return false
+  return editDistance(want, have) <= Math.floor(want.length / 5)
 }
 
 function editDistance(a: string, b: string): number {
