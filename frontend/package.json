@@ -93,6 +93,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@google/genai": "^2.27.0",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.9",
     "@testing-library/jest-dom": "^6.9.1",

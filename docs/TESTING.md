@@ -480,6 +480,56 @@ The production tests cover:
 - Final encoding and download
 - Admin dashboard functionality
 
+## Self-Healing Stripe Checkout (daily E2E Stage 1)
+
+Stripe changes its hosted checkout page without notice (5 breaking changes Apr–Oct 2026),
+so `frontend/e2e/helpers/stripe-checkout.ts` runs the checkout as **verified sub-goals**
+(`selectCard`, `fillCardNumber`, `fillCardExpiry`, `fillCardCvc`, `fillCardholderName`,
+`fillPostalCode`, `uncheckSaveInfo`, `submitPayment`) via `e2e/helpers/self-healing/`:
+
+1. **Learned variants** (`self-healing/learned-variants.json`, newest first) — recipes the
+   LLM discovered on earlier live runs.
+2. **Builtin variants** — the hand-written selectors in `stripe-checkout.ts`.
+3. **LLM fallback** — Gemini (`E2E_SELF_HEAL_MODELS`, default
+   `gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.8-flash`; unavailable ids are skipped,
+   failures escalate down the list) is shown a redacted ARIA snapshot + input-masked screenshot
+   and drives the page one action at a time until the step's `verify` postcondition passes.
+
+Each attempt is judged only by the step's `verify` (e.g. "card-number input visible",
+"filled field holds the expected value and looks like a card-number field", "redirected to
+our success page or credit granted server-side") — never by "the click didn't throw".
+
+**Card data never reaches the LLM:** it may only use `{{CARD_NUMBER}}`-style placeholders
+(per-step allowlist) that are substituted locally; textbox values and PAN-like digit runs are
+redacted from observations; inputs are masked in screenshots. Guardrails refuse clicks on
+Link/Klarna/Cash App/Bank/"Back to…" and on the final Pay button outside `submitPayment`.
+
+**Fully automatic loop.** When the LLM heals a step and the purchase is verified server-side,
+the spec writes `test-results/self-heal/learned-variants.json`; the workflow's
+`self-heal-pr` job opens a data-only PR (label `e2e-self-heal`, `@coderabbitai ignore`),
+enables auto-merge, and approves the PR's `pull_request` CI run (bot PRs' runs start as
+"action_required" and block the CI Gate until run; falls back to dispatching `ci.yml`).
+Next run replays the recipe without the LLM.
+
+**Repo setting this depends on (changed 2026-10-03, not in code):** the `protect main`
+ruleset (id 11423976) has `require_extra_approval_for_unattributed_changes: false`. GitHub
+defaults it to `true` (server-side, ~Aug 2026), which silently blocks bot-authored PRs
+(`mergeStateStatus: BLOCKED` with all checks green) until a human approves. If a ruleset
+update ever omits the key, GitHub resets it to `true` — set it explicitly. Discord + the daily email
+report 🩹 when this happens. Only one open self-heal PR at a time.
+
+The Gemini key is the AI Studio `gemini-api-key` (billed outside the nomadkaraoke project):
+a `GEMINI_API_KEY` repo secret if set, else read from Secret Manager via keyless auth (the
+credential file is deleted before tests run). No key → deterministic-only, as before.
+
+```bash
+cd frontend
+# Offline tests (fixture checkout pages + stub LLM) — also run in CI's smoke job
+npx playwright test --config=playwright.selfheal.config.ts
+# Exercise the live LLM path end-to-end: Actions → E2E Daily → Run workflow →
+#   self_heal_force_llm = selectCard   (forces that step through Gemini; opens a PR)
+```
+
 ## Concurrent-Load Regression Test (review pages)
 
 `scripts/load-test-review.py` replays the 2026-09-18 "10 tabs melt the backend"

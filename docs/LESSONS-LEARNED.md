@@ -2236,3 +2236,26 @@ got it right. What we learned (verified on prod's static ffmpeg 7.0.2 and libass
   fallback. Verify rendering in Linux (`scripts/run-render-tests-linux.sh`).
 - **Dropped sub-0.1s word gaps made the highlight run early** (up to 0.22s by line end on
   this job). Karaoke tags now come from one absolute centisecond timeline.
+
+## Stripe Checkout E2E: self-heal instead of chasing selectors (2026-10-03)
+
+Stripe's hosted checkout broke the daily E2E five times in six months (radio→button chooser,
+card-only layout, nested iframe, relabelled name/ZIP, hidden "Pay with card" overlay). Each fix
+added another selector variant — and each next change still needed a human. Lessons:
+
+- **Verify sub-goals, don't trust actions.** Run #192 "selected Card" (it found nothing to
+  click), carried on, and failed later on a symptom. Every step now has a `verify`
+  postcondition; a variant only counts if the postcondition holds.
+- **Self-heal into data, not code.** The LLM fallback's output is a serializable recipe
+  (semantic role/name/text targets, never snapshot refs), promoted to `learned-variants.json`
+  by an auto-merging, data-only PR — safe to merge unattended and replayed without the LLM.
+- **Bot PRs hit three invisible merge gates** (found live on #1117): (1) their
+  `pull_request` CI run is created "action_required" and, unrun, supersedes a passing
+  dispatched CI Gate — approve it via `POST /actions/runs/{id}/approve`; (2) GitHub's new
+  ruleset default `require_extra_approval_for_unattributed_changes: true` demands a human
+  approval for bot-authored changes even with 0 required reviews — set false explicitly;
+  (3) review threads must be resolved → `@coderabbitai ignore` in bot PR bodies.
+- **Never send card data to an LLM.** Placeholders substituted locally + redacted snapshots +
+  masked screenshots; tests assert the prompt contains no secrets.
+
+See `docs/TESTING.md` § Self-Healing Stripe Checkout.
