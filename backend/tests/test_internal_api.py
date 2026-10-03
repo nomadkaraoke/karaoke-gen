@@ -167,6 +167,60 @@ class TestScreensWorkerEndpoint:
         assert response.status_code == 401
 
 
+class TestScreensWorkerInlineInCloudTasksMode:
+    """Prod (Cloud Tasks) runs screens INLINE so CPU stays allocated and the
+    heavy steps run in worker threads instead of a post-response BackgroundTask."""
+
+    def _settings(self, enable_cloud_tasks):
+        s = MagicMock()
+        s.enable_cloud_tasks = enable_cloud_tasks
+        return s
+
+    def test_cloud_tasks_mode_awaits_worker_inline(self, client, auth_headers):
+        import backend.api.routes.internal as internal_mod
+        with patch('backend.config.get_settings', return_value=self._settings(True)):
+            internal_mod.generate_screens.reset_mock()
+            internal_mod.generate_screens.return_value = True
+            response = client.post(
+                "/api/internal/workers/screens", headers=auth_headers, json={"job_id": "test123"}
+            )
+        assert response.status_code == 200
+        assert response.json()["status"] == "completed"
+        internal_mod.generate_screens.assert_awaited_once_with("test123")
+
+    def test_cloud_tasks_mode_worker_failure_still_200(self, client, auth_headers):
+        """A handled failure must not return non-2xx (Cloud Tasks would re-run it)."""
+        import backend.api.routes.internal as internal_mod
+        with patch('backend.config.get_settings', return_value=self._settings(True)):
+            internal_mod.generate_screens.return_value = False
+            response = client.post(
+                "/api/internal/workers/screens", headers=auth_headers, json={"job_id": "test123"}
+            )
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+
+    def test_cloud_tasks_mode_worker_exception_still_200(self, client, auth_headers):
+        import backend.api.routes.internal as internal_mod
+        with patch('backend.config.get_settings', return_value=self._settings(True)):
+            internal_mod.generate_screens.side_effect = RuntimeError("boom")
+            try:
+                response = client.post(
+                    "/api/internal/workers/screens", headers=auth_headers, json={"job_id": "test123"}
+                )
+            finally:
+                internal_mod.generate_screens.side_effect = None
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+
+    def test_direct_http_mode_keeps_background_task(self, client, auth_headers):
+        with patch('backend.config.get_settings', return_value=self._settings(False)):
+            response = client.post(
+                "/api/internal/workers/screens", headers=auth_headers, json={"job_id": "test123"}
+            )
+        assert response.status_code == 200
+        assert response.json()["status"] == "started"
+
+
 class TestVideoWorkerEndpoint:
     """Tests for POST /api/internal/workers/video."""
     

@@ -120,7 +120,7 @@ async def test_list_community_requests_maps_all_statuses():
     svc.list_all.return_value = [published, open_req]
     with patch("backend.services.song_request_service.get_song_request_service",
                MagicMock(return_value=svc)):
-        res = await list_community_requests(auth_data=("admin", None, 0))
+        res = list_community_requests(auth_data=("admin", None, 0))
     assert [r.id for r in res.requests] == ["pub", "op"]
     pub = res.requests[0]
     assert pub.status == "published"

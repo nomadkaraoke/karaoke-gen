@@ -19,6 +19,7 @@ from google.cloud import firestore
 from google.cloud.firestore_v1 import FieldFilter
 from google.cloud.firestore_v1 import Increment
 
+from backend.utils.keyed_lock import user_lock
 from backend.config import get_settings
 from backend.models.user import (
     User,
@@ -1056,7 +1057,14 @@ class UserService:
     # Credit Operations
     # =========================================================================
 
-    def add_credits(
+    def add_credits(self, email: str, *args, **kwargs) -> Tuple[bool, int, str]:
+        """Add credits (see _add_credits_unlocked). Serialized per user within this
+        instance — the read-modify-write isn't transactional, and threadpool route
+        handlers could otherwise interleave two grants and lose one."""
+        with user_lock(email):
+            return self._add_credits_unlocked(email, *args, **kwargs)
+
+    def _add_credits_unlocked(
         self,
         email: str,
         amount: int,

@@ -73,6 +73,18 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
     pip install -e .
 
+# Pre-build matplotlib's font cache at BUILD time. Without it, the first
+# `import matplotlib.pyplot` on every new Cloud Run instance scanned all the
+# Noto fonts above (20-40s of GIL-holding CPU) and froze the API's event loop
+# — prod logged "Matplotlib is building the font cache" in 17 of 28
+# "servers unavailable" banner episodes (2026-10-03 analysis). The cache lives
+# in MPLCONFIGDIR so it ships in the image instead of the in-memory $HOME.
+ENV MPLCONFIGDIR=/opt/mplconfig
+RUN mkdir -p /opt/mplconfig && \
+    python -c "import matplotlib; matplotlib.use('Agg'); import matplotlib.font_manager as fm; print(len(fm.fontManager.ttflist), 'fonts cached')" && \
+    ls /opt/mplconfig/fontlist-*.json && \
+    chmod -R a+rwX /opt/mplconfig
+
 # Now copy actual source code (AFTER deps installed, so code changes don't
 # invalidate the expensive pip install layer in registry cache)
 COPY karaoke_gen /app/karaoke_gen

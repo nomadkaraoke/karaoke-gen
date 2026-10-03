@@ -19,6 +19,7 @@ its existing client-side on-load auto-apply. Auto-approval must never strand a j
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -51,32 +52,33 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
         storage = StorageService()
 
         corrections_path = CORRECTIONS_PATH.format(job_id=job_id)
-        if not storage.file_exists(corrections_path):
+        # All GCS/Firestore calls below are sync — run them off the event loop.
+        if not await asyncio.to_thread(storage.file_exists, corrections_path):
             return {"outcome": "skipped", "reason": "no_corrections"}
 
         updated_path = CORRECTIONS_UPDATED_PATH.format(job_id=job_id)
-        if storage.file_exists(updated_path):
+        if await asyncio.to_thread(storage.file_exists, updated_path):
             # Already applied once (executor auto-complete, a prior pre-apply run,
             # or a human edit). Never clobber existing corrections_updated.json.
             try:
-                existing = storage.download_json(updated_path)
+                existing = await asyncio.to_thread(storage.download_json, updated_path)
                 if ((existing.get("metadata") or {}).get("auto_approval")):
                     return {"outcome": "skipped", "reason": "already_applied"}
             except Exception:
                 pass
             return {"outcome": "skipped", "reason": "corrections_updated_exists"}
 
-        corrections = storage.download_json(corrections_path)
+        corrections = await asyncio.to_thread(storage.download_json, corrections_path)
 
         # 1) Ensure the proactive suggestion cache exists (generate on miss, unless
         #    the caller — e.g. the load-time path — asked to only apply an existing
         #    cache so the request doesn't block on an LLM call).
-        ai_suggestions = _load_ai_suggestions(storage, job_id)
+        ai_suggestions = await asyncio.to_thread(_load_ai_suggestions, storage, job_id)
         if ai_suggestions is None and generate_on_miss and settings.auto_correct_proactive_enabled:
             logger.info(f"[job:{job_id}] pre-apply: cache miss, generating suggestions synchronously")
             from backend.workers.auto_correct_worker import process_proactive_auto_correct
             await process_proactive_auto_correct(job_id)  # bounded (180s) + best-effort
-            ai_suggestions = _load_ai_suggestions(storage, job_id)
+            ai_suggestions = await asyncio.to_thread(_load_ai_suggestions, storage, job_id)
 
         if ai_suggestions is None:
             # Unknown suggestion set (proactive disabled or generation failed) —
@@ -84,7 +86,7 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
             return {"outcome": "skipped", "reason": "no_suggestions_cache"}
 
         # 2) Apply with the executor's sanity gates.
-        result = build_applied_segments(corrections, ai_suggestions)
+        result = await asyncio.to_thread(build_applied_segments, corrections, ai_suggestions)
         if result.get("aborted"):
             logger.info(f"[job:{job_id}] pre-apply aborted ({result['aborted']}) — UI will apply client-side")
             return {"outcome": "skipped", "reason": result["aborted"]}
@@ -115,11 +117,13 @@ async def ensure_and_pre_apply(job_id: str, *, generate_on_miss: bool = True) ->
         except Exception:  # pragma: no cover - google libs always present in prod
             PreconditionFailed = ()  # type: ignore[assignment]
         try:
-            storage.upload_json(updated_path, updated, if_generation_match=0)
+            await asyncio.to_thread(storage.upload_json, updated_path, updated, if_generation_match=0)
         except PreconditionFailed:
             logger.info(f"[job:{job_id}] pre-apply raced a concurrent write — theirs wins")
             return {"outcome": "skipped", "reason": "raced_concurrent_write"}
-        JobManager().update_file_url(job_id, "lyrics", "corrections_updated", updated_path)
+        await asyncio.to_thread(
+            JobManager().update_file_url, job_id, "lyrics", "corrections_updated", updated_path
+        )
 
         logger.info(
             f"[job:{job_id}] pre-apply saved corrections_updated.json "

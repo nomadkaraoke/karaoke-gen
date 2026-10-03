@@ -44,7 +44,7 @@ async def _call_summary(auth: AuthResult):
          patch("backend.api.routes.jobs.job_manager") as mock_jm:
         # Return a fresh copy each call so pruning doesn't mutate shared state.
         mock_jm.list_jobs_summary.return_value = [dict(j) for j in JOBS]
-        return await list_jobs(request, fields="summary", auth_result=auth)
+        return list_jobs(request, fields="summary", auth_result=auth)
 
 
 @pytest.mark.asyncio

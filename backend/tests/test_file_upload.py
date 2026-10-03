@@ -1373,8 +1373,7 @@ class TestValidateJobUrlEndpoint:
         req = MagicMock()
         req.headers = {}
         with patch("backend.api.routes.file_upload.get_locale_from_request", return_value="en"):
-            return asyncio.run(
-                validate_job_url(
+            return (validate_job_url(
                     request=req,
                     body=ValidateUrlRequest(url=url),
                     auth_result=MagicMock(),

@@ -1087,7 +1087,7 @@ class TestCorrectionsDuetFlag:
         mock_request.headers = {}
 
         async def _run():
-            return await submit_corrections(
+            return submit_corrections(
                 job_id=mock_job.job_id,
                 submission=submission,
                 http_request=mock_request,
@@ -1219,7 +1219,7 @@ class TestCorrectionsFirestoreDocSize:
         mock_request.headers = {}
 
         async def _run():
-            return await submit_corrections(
+            return submit_corrections(
                 job_id=mock_job.job_id,
                 submission=submission,
                 http_request=mock_request,
@@ -1307,7 +1307,7 @@ class TestCompleteReviewSegmentGuard:
         mock_request.headers = {}
 
         async def _run():
-            return await complete_review(
+            return complete_review(
                 job_id=job.job_id,
                 body=None,
                 request=mock_request,

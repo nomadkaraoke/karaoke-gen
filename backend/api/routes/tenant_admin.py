@@ -169,13 +169,13 @@ async def _read_asset(upload: Optional[UploadFile], label: str) -> Optional[Tupl
 
 
 @router.get("", response_model=TenantListResponse)
-async def admin_list_tenants(auth_data: AuthResult = Depends(require_admin)):
+def admin_list_tenants(auth_data: AuthResult = Depends(require_admin)):
     """List all white-label tenants."""
     return TenantListResponse(tenants=[TenantSummary(**t) for t in list_tenants()])
 
 
 @router.get("/_template", response_model=TenantTemplateResponse)
-async def admin_tenant_theme_template(auth_data: AuthResult = Depends(require_admin)):
+def admin_tenant_theme_template(auth_data: AuthResult = Depends(require_admin)):
     """Return the default Nomad theme's full style_params as an editing starting point."""
     try:
         return TenantTemplateResponse(style_params=get_default_style_params())

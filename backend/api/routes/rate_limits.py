@@ -88,7 +88,7 @@ class SuccessResponse(BaseModel):
 # =============================================================================
 
 @router.get("/blocklists", response_model=BlocklistsResponse)
-async def get_blocklists(
+def get_blocklists(
     auth_result: AuthResult = Depends(require_admin),
 ):
     """Get all blocklist data with domain source separation."""
@@ -98,7 +98,7 @@ async def get_blocklists(
 
 
 @router.post("/blocklists/disposable-domains", response_model=SuccessResponse)
-async def add_disposable_domain(
+def add_disposable_domain(
     request: DomainRequest,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -118,7 +118,7 @@ async def add_disposable_domain(
 
 
 @router.delete("/blocklists/disposable-domains/{domain}", response_model=SuccessResponse)
-async def remove_disposable_domain(
+def remove_disposable_domain(
     domain: str,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -136,7 +136,7 @@ async def remove_disposable_domain(
 
 
 @router.post("/blocklists/allowlisted-domains", response_model=SuccessResponse)
-async def add_allowlisted_domain(
+def add_allowlisted_domain(
     request: DomainRequest,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -150,7 +150,7 @@ async def add_allowlisted_domain(
 
 
 @router.delete("/blocklists/allowlisted-domains/{domain}", response_model=SuccessResponse)
-async def remove_allowlisted_domain(
+def remove_allowlisted_domain(
     domain: str,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -187,7 +187,7 @@ async def trigger_sync(
 
 
 @router.post("/blocklists/blocked-emails", response_model=SuccessResponse)
-async def add_blocked_email(
+def add_blocked_email(
     request: EmailRequest,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -207,7 +207,7 @@ async def add_blocked_email(
 
 
 @router.delete("/blocklists/blocked-emails/{email}", response_model=SuccessResponse)
-async def remove_blocked_email(
+def remove_blocked_email(
     email: str,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -225,7 +225,7 @@ async def remove_blocked_email(
 
 
 @router.post("/blocklists/blocked-ips", response_model=SuccessResponse)
-async def add_blocked_ip(
+def add_blocked_ip(
     request: IPRequest,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -245,7 +245,7 @@ async def add_blocked_ip(
 
 
 @router.delete("/blocklists/blocked-ips/{ip_address}", response_model=SuccessResponse)
-async def remove_blocked_ip(
+def remove_blocked_ip(
     ip_address: str,
     auth_result: AuthResult = Depends(require_admin),
 ):
@@ -267,7 +267,7 @@ async def remove_blocked_ip(
 # =============================================================================
 
 @router.get("/youtube-queue", response_model=YouTubeQueueListResponse)
-async def get_youtube_queue(
+def get_youtube_queue(
     auth_result: AuthResult = Depends(require_admin),
 ):
     """
@@ -288,7 +288,7 @@ async def get_youtube_queue(
 
 
 @router.post("/youtube-queue/{job_id}/retry", response_model=SuccessResponse)
-async def retry_youtube_upload(
+def retry_youtube_upload(
     job_id: str,
     auth_result: AuthResult = Depends(require_admin),
 ):

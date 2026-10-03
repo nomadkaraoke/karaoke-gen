@@ -120,7 +120,7 @@ class TestGetStyleUploadUrls:
             )
         ])
 
-        result = await get_style_upload_urls("job-abc", body, admin_auth)
+        result = get_style_upload_urls("job-abc", body, admin_auth)
 
         assert result["status"] == "success"
         assert len(result["upload_urls"]) == 1
@@ -143,7 +143,7 @@ class TestGetStyleUploadUrls:
 
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await get_style_upload_urls("job-abc", body, admin_auth)
+            get_style_upload_urls("job-abc", body, admin_auth)
         assert exc_info.value.status_code == 400
         assert "Invalid file_type for style upload" in str(exc_info.value.detail)
 
@@ -163,7 +163,7 @@ class TestGetStyleUploadUrls:
 
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await get_style_upload_urls("nonexistent", body, admin_auth)
+            get_style_upload_urls("nonexistent", body, admin_auth)
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
@@ -183,7 +183,7 @@ class TestGetStyleUploadUrls:
 
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await get_style_upload_urls("job-abc", body, admin_auth)
+            get_style_upload_urls("job-abc", body, admin_auth)
         assert exc_info.value.status_code == 400
         assert "cutoff" in str(exc_info.value.detail).lower()
 
@@ -204,7 +204,7 @@ class TestGetStyleUploadUrls:
 
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await get_style_upload_urls("job-abc", body, user_auth)
+            get_style_upload_urls("job-abc", body, user_auth)
         assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
@@ -223,7 +223,7 @@ class TestGetStyleUploadUrls:
 
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await get_style_upload_urls("job-abc", body, admin_auth)
+            get_style_upload_urls("job-abc", body, admin_auth)
         assert exc_info.value.status_code == 400
         assert "extension" in str(exc_info.value.detail).lower()
 
@@ -239,7 +239,7 @@ class TestGetStyleUploadUrls:
             FileUploadRequest(filename="introimg.jpg", content_type="image/jpeg", file_type="style_intro_background"),
         ])
 
-        result = await get_style_upload_urls("job-abc", body, admin_auth)
+        result = get_style_upload_urls("job-abc", body, admin_auth)
         assert len(result["upload_urls"]) == 2
 
 
@@ -269,7 +269,7 @@ class TestCompleteStyleUploads:
                 uploaded_files=["style_karaoke_background"],
             )
 
-            result = await complete_style_uploads("job-abc", body, admin_auth)
+            result = complete_style_uploads("job-abc", body, admin_auth)
 
         assert result["status"] == "success"
         assert "karaoke_background" in result["assets_updated"]
@@ -310,7 +310,7 @@ class TestCompleteStyleUploads:
                 color_overrides={"artist_color": "#ff0000"},
             )
 
-            result = await complete_style_uploads("job-abc", body, admin_auth)
+            result = complete_style_uploads("job-abc", body, admin_auth)
 
         assert result["status"] == "success"
         mock_ts.apply_color_overrides.assert_called_once()
@@ -330,7 +330,7 @@ class TestCompleteStyleUploads:
 
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await complete_style_uploads("job-abc", body, admin_auth)
+            complete_style_uploads("job-abc", body, admin_auth)
         assert exc_info.value.status_code == 400
         assert "not uploaded" in str(exc_info.value.detail).lower()
 
@@ -345,5 +345,5 @@ class TestCompleteStyleUploads:
 
         from fastapi import HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await complete_style_uploads("job-abc", body, admin_auth)
+            complete_style_uploads("job-abc", body, admin_auth)
         assert exc_info.value.status_code == 400

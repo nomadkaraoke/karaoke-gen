@@ -76,7 +76,7 @@ async def _trigger_workers_parallel(job_id: str) -> None:
 
 
 @router.post("", response_model=JobResponse)
-async def create_job(
+def create_job(
     request: URLSubmissionRequest,
     http_request: Request,
     background_tasks: BackgroundTasks,
@@ -210,7 +210,7 @@ async def create_job(
 
 
 @router.get("/{job_id}", response_model=Job)
-async def get_job(
+def get_job(
     job_id: str,
     request: Request,
     auth_result: AuthResult = Depends(require_auth)
@@ -275,7 +275,7 @@ class EditTrackResponse(BaseModel):
 
 
 @router.post("/{job_id}/edit", response_model=EditTrackResponse)
-async def edit_completed_track(
+def edit_completed_track(
     job_id: str,
     request: EditTrackRequest,
     http_request: Request,
@@ -612,7 +612,7 @@ def _search_filter_jobs(jobs: List[Dict[str, Any]], search: str) -> List[Dict[st
 
 
 @router.get("", response_model=None)
-async def list_jobs(
+def list_jobs(
     request: Request,
     status: Optional[JobStatus] = None,
     environment: Optional[str] = None,
@@ -762,7 +762,7 @@ async def list_jobs(
 
 
 @router.delete("/{job_id}")
-async def delete_job(
+def delete_job(
     job_id: str,
     request: Request,
     delete_files: bool = True,
@@ -834,7 +834,7 @@ async def delete_job(
 
 
 @router.delete("")
-async def bulk_delete_jobs(
+def bulk_delete_jobs(
     request: Request,
     environment: Optional[str] = None,
     client_id: Optional[str] = None,
@@ -946,7 +946,7 @@ async def bulk_delete_jobs(
 # ============================================================================
 
 @router.get("/{job_id}/review-data")
-async def get_review_data(
+def get_review_data(
     job_id: str,
     request: Request,
     auth_result: AuthResult = Depends(require_auth)
@@ -1011,7 +1011,7 @@ async def get_review_data(
 
 
 @router.post("/{job_id}/start-review")
-async def start_review(
+def start_review(
     job_id: str,
     request: StartReviewRequest,
     http_request: Request,
@@ -1049,7 +1049,7 @@ async def start_review(
 
 
 @router.post("/{job_id}/corrections")
-async def submit_corrections(
+def submit_corrections(
     job_id: str,
     submission: CorrectionsSubmission,
     http_request: Request,
@@ -1151,7 +1151,7 @@ async def submit_corrections(
 
 
 @router.post("/{job_id}/edit-log")
-async def submit_edit_log(
+def submit_edit_log(
     job_id: str,
     edit_log: Dict[str, Any],
     request: Request,
@@ -1561,7 +1561,7 @@ async def _get_audio_duration_ffprobe_signed(job_id: str, job, storage: StorageS
 
 
 @router.post("/{job_id}/complete-review")
-async def complete_review(
+def complete_review(
     job_id: str,
     request: Request,
     background_tasks: BackgroundTasks,
@@ -1655,7 +1655,7 @@ async def complete_review(
 
 
 @router.post("/{job_id}/select-instrumental")
-async def select_instrumental(
+def select_instrumental(
     job_id: str,
     selection: InstrumentalSelection,
     request: Request,
@@ -1725,7 +1725,7 @@ async def select_instrumental(
 
 
 @router.get("/{job_id}/download-urls")
-async def get_download_urls(
+def get_download_urls(
     job_id: str,
     request: Request,
     auth_result: AuthResult = Depends(require_auth)
@@ -1796,7 +1796,7 @@ def _cleanup_temp_file(path: Optional[str]) -> None:
 
 
 @router.get("/{job_id}/download/{category}/{file_key}")
-async def download_file(
+def download_file(
     job_id: str,
     category: str,
     file_key: str,
@@ -1923,7 +1923,7 @@ async def download_file(
 
 
 @router.post("/{job_id}/cancel")
-async def cancel_job(
+def cancel_job(
     job_id: str,
     request: CancelJobRequest,
     http_request: Request,
@@ -2323,7 +2323,7 @@ async def retry_job(
 
 
 @router.post("/{job_id}/choose-different-audio")
-async def choose_different_audio(
+def choose_different_audio(
     job_id: str,
     request: Request,
     auth_result: AuthResult = Depends(require_auth)
@@ -2370,7 +2370,7 @@ async def choose_different_audio(
 
 
 @router.get("/{job_id}/logs")
-async def get_worker_logs(
+def get_worker_logs(
     job_id: str,
     request: Request,
     since_index: int = 0,
@@ -2598,7 +2598,7 @@ def _run_distribution_cleanup(job_id: str, job) -> dict:
 
 
 @router.post("/{job_id}/cleanup-distribution")
-async def cleanup_distribution(
+def cleanup_distribution(
     job_id: str,
     request: Request,
     delete_job: bool = True,

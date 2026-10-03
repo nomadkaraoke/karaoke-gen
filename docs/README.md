@@ -57,6 +57,14 @@
 
 ## Recent Changes
 
+- **API event-loop freezes fixed + degradation telemetry identifies users** (2026-10-03, v0.264.0). The "Reconnecting" pill and "servers unavailable" banner were mostly caused by the single API instance freezing for 20-45s. Plan + evidence: `docs/archive/2026-10-03-backend-loop-freezes-telemetry-plan.md`.
+  - **Screens worker:** now runs inline in its Cloud Tasks request (so CPU stays allocated under `--cpu-throttling`), with the heavy steps in worker threads: 4K PIL renders, GCS uploads, review-audio transcode, timing signals and pre-apply.
+  - **Hourly stale-review cron:** runs in a thread.
+  - **Matplotlib font cache:** pre-built in the base image (`MPLCONFIGDIR=/opt/mplconfig`), and pyplot is imported lazily.
+  - **Route handlers:** 161 `async def` routes that never awaited (sync Firestore/GCS/email/Gemini on the loop) are now plain `def`, so they run in FastAPI's threadpool. `backend/tests/test_no_blocking_async_routes.py` keeps it that way, and also blocks sync routes that call `asyncio.create_task`.
+  - **Loop watchdog:** new `backend/services/loop_watchdog.py` logs `EVENT_LOOP_STALL` with the blocking stack. Stalls ≥5s are recorded to `client_events` (`server_loop_stall`). A Cloud Monitoring alert fires on ≥2 stalls of ≥10s in 30 min.
+  - **Telemetry identity:** `client_events` now records the server-resolved user (plus admin/internal/test flags), device fingerprint, tab id, tenant, and a `banner_recovered` event with episode duration. Use `scripts/client_events_report.py` for summaries.
+
 - **Gemini moved off Vertex AI** (2026-10-01, v0.262.0): every Gemini call (auto-correct compare leg, match-judge, parse-titles, credit eval, tenant bulk analyze, custom lyrics, lyrics translation, error-monitor LLM, agentic correction, translate.py) now uses the Gemini Developer API with the `gemini-api-key` secret via `backend/services/gemini_client.py`, so no AI spend lands on the nomadkaraoke project (Vertex APIs disabled there). Quota/billing/key failures degrade per caller and send one Discord ops alert per 6h. See LESSONS-LEARNED "Gemini: Developer API key, never Vertex".
 
 - **Translated lyrics follow-ups + review waveform spinner** (2026-10-01, v0.261.0):

@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     
     # Application
     environment: str = os.getenv("ENVIRONMENT", "development")
+    # Event-loop stall watchdog (backend/services/loop_watchdog.py): logs the
+    # blocking stack when the single uvicorn loop stops ticking for >1s, and
+    # records stalls >=5s to Firestore client_events (production only).
+    loop_watchdog_enabled: bool = os.getenv("LOOP_WATCHDOG_ENABLED", "true").lower() in ("true", "1", "yes")
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     
     # Processing

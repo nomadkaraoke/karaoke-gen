@@ -546,7 +546,7 @@ async def _run_preview_encode(
 # Cross-job search endpoint MUST be registered before {job_id} routes
 # to avoid FastAPI matching "sessions" as a job_id path parameter.
 @router.get("/sessions/search")
-async def search_review_sessions(
+def search_review_sessions(
     q: str = "",
     limit: int = 20,
     auth_info: Tuple[str, str] = Depends(require_auth)
@@ -1621,7 +1621,7 @@ async def auto_correct_suggestions(
 
 
 @router.post("/{job_id}/handlers")
-async def update_handlers(
+def update_handlers(
     job_id: str,
     enabled_handlers: list,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -1637,7 +1637,7 @@ async def update_handlers(
 
 
 @router.post("/{job_id}/add-lyrics")
-async def add_lyrics(
+def add_lyrics(
     job_id: str,
     data: Dict[str, str],
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -1755,7 +1755,7 @@ async def add_lyrics(
 
 
 @router.post("/{job_id}/search-lyrics")
-async def search_lyrics(
+def search_lyrics(
     job_id: str,
     data: Dict[str, Any],
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -2092,7 +2092,7 @@ async def generate_preview_video(
 
 
 @router.get("/{job_id}/preview-video/{preview_hash}")
-async def get_preview_video(
+def get_preview_video(
     job_id: str,
     preview_hash: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -2131,7 +2131,7 @@ async def get_preview_video(
 
 
 @router.get("/{job_id}/preview-video/{preview_hash}/status")
-async def get_preview_video_status(
+def get_preview_video_status(
     job_id: str,
     preview_hash: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -2166,7 +2166,7 @@ async def get_preview_video_status(
 
 
 @router.post("/{job_id}/v1/annotations")
-async def submit_annotation(
+def submit_annotation(
     job_id: str,
     payload: Dict[str, Any],
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -2206,7 +2206,7 @@ async def submit_annotation(
 
 
 @router.get("/{job_id}/v1/annotations/stats")
-async def get_annotation_stats(
+def get_annotation_stats(
     job_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
@@ -2463,7 +2463,7 @@ async def get_waveform_data(
 
 
 @router.post("/{job_id}/sessions")
-async def save_review_session(
+def save_review_session(
     job_id: str,
     data: Dict[str, Any],
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -2541,7 +2541,7 @@ async def save_review_session(
 
 
 @router.get("/{job_id}/sessions")
-async def list_review_sessions(
+def list_review_sessions(
     job_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
 ):
@@ -2573,7 +2573,7 @@ async def list_review_sessions(
 
 
 @router.get("/{job_id}/sessions/{session_id}")
-async def get_review_session(
+def get_review_session(
     job_id: str,
     session_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -2614,7 +2614,7 @@ async def get_review_session(
 
 
 @router.delete("/{job_id}/sessions/{session_id}")
-async def delete_review_session(
+def delete_review_session(
     job_id: str,
     session_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth)
@@ -2646,7 +2646,7 @@ async def delete_review_session(
 
 
 @router.post("/{job_id}/audio-edit-sessions")
-async def save_audio_edit_session(
+def save_audio_edit_session(
     job_id: str,
     data: Dict[str, Any],
     auth_info: Tuple[str, str] = Depends(require_review_auth),
@@ -2706,7 +2706,7 @@ async def save_audio_edit_session(
 
 
 @router.get("/{job_id}/audio-edit-sessions")
-async def list_audio_edit_sessions(
+def list_audio_edit_sessions(
     job_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth),
 ):
@@ -2719,7 +2719,7 @@ async def list_audio_edit_sessions(
 
 
 @router.get("/{job_id}/audio-edit-sessions/{session_id}")
-async def get_audio_edit_session(
+def get_audio_edit_session(
     job_id: str,
     session_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth),
@@ -2747,7 +2747,7 @@ async def get_audio_edit_session(
 
 
 @router.delete("/{job_id}/audio-edit-sessions/{session_id}")
-async def delete_audio_edit_session(
+def delete_audio_edit_session(
     job_id: str,
     session_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth),
@@ -2836,7 +2836,7 @@ def _build_audio_edit_response(
 
 
 @router.get("/{job_id}/input-audio-info")
-async def get_input_audio_info(
+def get_input_audio_info(
     job_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth),
 ):
@@ -3059,7 +3059,7 @@ async def apply_audio_edit(
 
 
 @router.post("/{job_id}/audio-edit/undo")
-async def undo_audio_edit(
+def undo_audio_edit(
     job_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth),
 ):
@@ -3110,7 +3110,7 @@ async def undo_audio_edit(
 
 
 @router.post("/{job_id}/audio-edit/redo")
-async def redo_audio_edit(
+def redo_audio_edit(
     job_id: str,
     auth_info: Tuple[str, str] = Depends(require_review_auth),
 ):

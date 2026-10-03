@@ -462,7 +462,10 @@ async def _generate_title_screen(
         # Generate title screen images only (MOV video is generated on GCE encoding worker)
         # Pass duration=0 to skip FFmpeg video creation — Cloud Run doesn't have enough
         # memory for 4K H.264 encoding after right-sizing to 2Gi (PR #640).
-        video_generator.create_title_video(
+        # 4K PIL render + PNG/JPG encode is seconds of CPU — keep it off the
+        # event loop (it froze every request on the instance; 2026-10-03).
+        await asyncio.to_thread(
+            video_generator.create_title_video,
             artist=job.artist,
             title=job.title,
             format=title_format,
@@ -537,7 +540,10 @@ async def _generate_end_screen(
         # Generate end screen images only (MOV video is generated on GCE encoding worker)
         # Pass duration=0 to skip FFmpeg video creation — Cloud Run doesn't have enough
         # memory for 4K H.264 encoding after right-sizing to 2Gi (PR #640).
-        video_generator.create_end_video(
+        # 4K PIL render + PNG/JPG encode is seconds of CPU — keep it off the
+        # event loop (it froze every request on the instance; 2026-10-03).
+        await asyncio.to_thread(
+            video_generator.create_end_video,
             artist=job.artist,
             title=job.title,
             format=end_format,
@@ -583,6 +589,19 @@ async def _upload_screens(
         title_screen_path: Path to title screen image (.png)
         end_screen_path: Path to end screen image (.png)
     """
+    # Sync GCS uploads (multi-MB 4K PNGs) + Firestore writes — off the loop.
+    await asyncio.to_thread(
+        _upload_screens_sync, job_id, job_manager, storage, title_screen_path, end_screen_path
+    )
+
+
+def _upload_screens_sync(
+    job_id: str,
+    job_manager: JobManager,
+    storage: StorageService,
+    title_screen_path: str,
+    end_screen_path: str
+) -> None:
     # Upload title screen images (.png and .jpg)
     title_base = title_screen_path.replace('.png', '')
     for ext, key in [('.png', 'title_png'), ('.jpg', 'title_jpg')]:
@@ -757,13 +776,16 @@ async def _transcode_review_audio(
     from backend.services.audio_transcoding_service import AudioTranscodingService
 
     try:
-        job = job_manager.get_job(job_id)
+        job = await asyncio.to_thread(job_manager.get_job, job_id)
         if not job:
             job_log.warning(f"Could not get job {job_id} for review audio transcoding")
             return
 
+        # GCS download of up to 4 ~35MB FLACs + an ffmpeg transcode each (7-15s
+        # apiece) — this ran ON the event loop and froze the whole instance for
+        # 10-45s per job (2026-10-03 analysis). Run it in a worker thread.
         transcoding = AudioTranscodingService()
-        transcoded = transcoding.prepare_review_audio_for_job(job)
+        transcoded = await asyncio.to_thread(transcoding.prepare_review_audio_for_job, job)
 
         job_log.info(f"Review audio transcoding complete: {len(transcoded)} files")
 
@@ -771,7 +793,13 @@ async def _transcode_review_audio(
         # /waveform-data endpoint is a pure GCS-cache read when the user opens
         # review (a miss there decodes a whole stem — seconds of CPU on the
         # API instance, which is what wedged it under concurrent load).
-        from backend.services.audio_analysis_service import AudioAnalysisService
+        # The first import pulls in numpy/pydub/matplotlib (seconds of CPU on a
+        # fresh instance) — import it in a worker thread, not on the loop.
+        def _import_audio_analysis():
+            from backend.services.audio_analysis_service import AudioAnalysisService
+            return AudioAnalysisService
+
+        AudioAnalysisService = await asyncio.to_thread(_import_audio_analysis)
 
         stems = job.file_urls.get("stems", {}) if job.file_urls else {}
         waveform_source = stems.get("backing_vocals") or job.input_media_gcs_path

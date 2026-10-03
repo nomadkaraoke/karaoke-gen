@@ -4,6 +4,7 @@ FastAPI application entry point for karaoke generation backend.
 (Trivial comment touch to trigger backend CI on ephemeral runners after
  the 2026-05-17 dispatcher e2 fix; safe to remove on next backend edit.)
 """
+import asyncio
 import logging
 import threading
 import time
@@ -133,7 +134,31 @@ async def lifespan(app: FastAPI):
         target=_run_background_warmup, name="startup-warmup", daemon=True
     ).start()
 
+    # asyncio.to_thread's default executor is min(32, cpu+4) ≈ 6 threads on our
+    # 2 vCPUs. The screens worker, stale-review cron, auto-correct and many
+    # review endpoints all offload into it (mostly I/O-bound), so size it up —
+    # otherwise review-page requests queue behind a few long-running jobs.
+    import concurrent.futures
+
+    asyncio.get_running_loop().set_default_executor(
+        concurrent.futures.ThreadPoolExecutor(max_workers=48, thread_name_prefix="to-thread")
+    )
+
+    # Event-loop stall watchdog: makes "every request froze for 30s" episodes
+    # self-diagnosing (logs the blocking stack; records >=5s stalls in prod).
+    watchdog = None
+    if settings.loop_watchdog_enabled:
+        from backend.services.loop_watchdog import LoopWatchdog, firestore_stall_recorder
+
+        watchdog = LoopWatchdog(
+            recorder=firestore_stall_recorder if settings.environment == "production" else None,
+        )
+        watchdog.start()
+
     yield
+
+    if watchdog is not None:
+        await watchdog.stop()
 
     # Shutdown - best-effort parking of any still-registered workers.
     #

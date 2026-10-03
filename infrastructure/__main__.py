@@ -228,6 +228,9 @@ runner_observability = monitoring.create_ephemeral_runner_observability(notifica
 # Postmark SMTP-fallback failures (emails lost despite the fallback): metric + alert
 email_delivery_observability = monitoring.create_email_delivery_observability(notification_channels)
 
+# Event-loop stall alert (loop watchdog, 2026-10-03)
+event_loop_stall_observability = monitoring.create_event_loop_stall_observability(notification_channels)
+
 # ==================== Cloud Function: GDrive Validator ====================
 
 # Cloud Storage bucket for function source code
@@ -799,6 +802,10 @@ pulumi.export("service_unavailable_alert_id", alert_policies["service_unavailabl
 pulumi.export(
     "smtp_fallback_failure_alert_id",
     email_delivery_observability["smtp_fallback_failure_alert"].name,
+)
+pulumi.export(
+    "event_loop_stall_alert_id",
+    event_loop_stall_observability["event_loop_stall_alert"].name,
 )
 
 # YouTube upload queue

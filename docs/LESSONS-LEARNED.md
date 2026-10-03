@@ -6,6 +6,21 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## One event loop per instance: `async def` without `await` is a whole-instance freeze (Oct 2026, v0.264.0)
+
+The "servers unavailable" banner (49 episodes in 2 weeks) was mostly the API's own event loop freezing for 20-45s. Each episode hit 2-3 browsers in the same second, and only ~7 of 28 were near a deploy. Signature in the request logs: every request on the instance, `/api/health` included, completes at the same moment.
+
+- **The timestamp of a long-latency Cloud Run request log is its START time.** Requests that started at different times but all *end* together (start + latency is constant) mean the loop was blocked.
+- **A BackgroundTask that is an `async def` runs ON the loop.** The screens worker did 4K PIL renders, GCS transfers and ffmpeg transcodes there. Under `--cpu-throttling` it also ran CPU-starved after the response. Fix: await it inline in the Cloud Tasks request, with heavy steps in `asyncio.to_thread`.
+- **First `import matplotlib.pyplot` on a fresh instance builds the font cache.** With the Noto font set that was 20-40s of GIL-holding CPU (17 of 28 episodes). Pre-build it in the image (`MPLCONFIGDIR`) and import pyplot lazily. Moving the import to a thread alone wouldn't help, because the build holds the GIL.
+- **`async def` route + zero awaits = sync I/O on the loop.** 161 such routes existed. A plain `def` route runs in FastAPI's threadpool. The AST guard `backend/tests/test_no_blocking_async_routes.py` fails CI on new ones.
+  - The inverse also fails: a `def` route that calls `asyncio.create_task`/`get_running_loop`. In the threadpool, that raises, or silently does nothing if the `RuntimeError` is swallowed (`rate_limits.trigger_youtube_queue_processing` did exactly that).
+- **Moving a handler into the threadpool removes the implicit per-instance serialization.** A never-awaiting `async def` used to run start-to-finish uninterrupted, so non-transactional check-then-write code (a double-clicked Cancel refunding twice, a double Complete) was safe on one instance. `backend/utils/keyed_lock.py` restores that: `JobManager.transition_to_state`/`cancel_job` lock per job, `UserService.add_credits` per user. Also grep for `await <converted handler>(`; the guard test checks this now (it found `admin.update_job` awaiting `delete_job_outputs`).
+- **Watchdog vs `--cpu-throttling`:** an idle instance gets no CPU between requests, so a gap with the loop parked in `select()` is not a stall. The watchdog drops all-idle samples.
+- **Detection:** `backend/services/loop_watchdog.py` logs `EVENT_LOOP_STALL` with the loop thread's stack and a `culprit=file:line`. Grep for it before guessing.
+
+---
+
 ## Re-running the render pipeline: three ways the OLD output sneaks back in (Sep 2026, v0.253.0)
 
 Building "re-render with the current theme" turned up three traps. Any path that re-runs screens/render/encode on a finished job (edit, visibility change, admin reset, theme re-render) has to handle all three.

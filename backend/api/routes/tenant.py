@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/tenant", tags=["tenant"])
 
 
 @router.get("/config", response_model=TenantConfigResponse)
-async def get_tenant_config(
+def get_tenant_config(
     request: Request,
     tenant: Optional[str] = Query(
         None,
@@ -81,7 +81,7 @@ async def get_tenant_config(
 
 
 @router.get("/config/{tenant_id}", response_model=TenantConfigResponse)
-async def get_tenant_config_by_id(tenant_id: str):
+def get_tenant_config_by_id(tenant_id: str):
     """
     Get tenant configuration by explicit tenant ID.
 
@@ -102,7 +102,7 @@ async def get_tenant_config_by_id(tenant_id: str):
 
 
 @router.get("/asset/{tenant_id}/{asset_name}")
-async def get_tenant_asset(tenant_id: str, asset_name: str):
+def get_tenant_asset(tenant_id: str, asset_name: str):
     """
     Get a signed URL for a tenant asset (logo, favicon, etc.).
 

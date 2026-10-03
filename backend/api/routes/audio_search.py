@@ -1111,7 +1111,7 @@ async def search_audio_standalone(
 
 
 @router.get("/audio-search/{job_id}/results")
-async def get_audio_search_results(
+def get_audio_search_results(
     job_id: str,
     auth_result: AuthResult = Depends(require_auth)
 ):
@@ -1436,7 +1436,7 @@ async def provide_url_for_job(
 
 
 @router.post("/audio-search/{job_id}/attach-upload-url", response_model=AttachUploadUrlsResponse)
-async def attach_upload_url(
+def attach_upload_url(
     job_id: str,
     request: Request,
     body: AttachUploadUrlsRequest,
@@ -1471,7 +1471,7 @@ async def attach_upload_url(
 
 
 @router.post("/audio-search/{job_id}/attach-upload-complete", response_model=AttachResponse)
-async def attach_upload_complete(
+def attach_upload_complete(
     job_id: str,
     request: Request,
     background_tasks: BackgroundTasks,

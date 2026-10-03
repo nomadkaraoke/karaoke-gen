@@ -610,3 +610,100 @@ def create_email_delivery_observability(
     )
 
     return resources
+
+
+# Matches the watchdog's end-of-stall line at ERROR severity (stall >= 10s) on
+# karaoke-backend. backend/services/loop_watchdog.py logs
+# "EVENT_LOOP_STALL ended duration_ms=… culprit=…" — WARNING below 10s, ERROR
+# at/above. Kept module-level so it can be checked with `gcloud logging read`.
+EVENT_LOOP_STALL_LOG_FILTER = (
+    'resource.type="cloud_run_revision" '
+    'AND resource.labels.service_name="karaoke-backend" '
+    'AND severity>=ERROR '
+    'AND jsonPayload.message:"EVENT_LOOP_STALL ended"'
+)
+
+
+def create_event_loop_stall_observability(
+    channels: dict[str, gcp.monitoring.NotificationChannel],
+) -> dict:
+    """Log-based metric + alert for long karaoke-backend event-loop freezes.
+
+    The API runs one event loop per Cloud Run instance; any sync work on it
+    freezes every request (users see the "servers unavailable" banner after
+    ~20s). The watchdog logs each stall with the blocking stack + culprit line.
+    A single 10s stall can happen (e.g. a one-off cold import), so alert on
+    2+ in 30 minutes — that's a recurring blocker worth fixing. The log line's
+    ``culprit`` names the file:line to fix. Context:
+    docs/archive/2026-10-03-backend-loop-freezes-telemetry-plan.md.
+
+    Same first-apply propagation gotcha as the SMTP alert: if the AlertPolicy
+    fails because the new metric isn't visible yet, re-run ``pulumi up``.
+    """
+    notification_channels = _channel_names(channels)
+    resources: dict = {}
+
+    resources["event_loop_stall_metric"] = gcp.logging.Metric(
+        "backend-event-loop-stalls",
+        name="backend/event_loop_stalls",
+        description="karaoke-backend event-loop stalls >= 10s (loop watchdog)",
+        filter=EVENT_LOOP_STALL_LOG_FILTER,
+        metric_descriptor=gcp.logging.MetricMetricDescriptorArgs(
+            metric_kind="DELTA",
+            value_type="INT64",
+            unit="1",
+            display_name="Backend event-loop stalls >= 10s",
+        ),
+    )
+
+    resources["event_loop_stall_alert"] = gcp.monitoring.AlertPolicy(
+        "backend-event-loop-stalls-alert",
+        display_name="Backend - API event loop frozen >=10s (repeatedly)",
+        combiner="OR",
+        conditions=[
+            gcp.monitoring.AlertPolicyConditionArgs(
+                display_name=">=2 event-loop stalls of 10s+ in 30 minutes",
+                condition_threshold=gcp.monitoring.AlertPolicyConditionConditionThresholdArgs(
+                    filter=(
+                        'metric.type="logging.googleapis.com/user/backend/event_loop_stalls" '
+                        'AND resource.type="cloud_run_revision"'
+                    ),
+                    comparison="COMPARISON_GT",
+                    threshold_value=1,
+                    duration="0s",
+                    aggregations=[
+                        gcp.monitoring.AlertPolicyConditionConditionThresholdAggregationArgs(
+                            alignment_period="1800s",
+                            per_series_aligner="ALIGN_SUM",
+                            cross_series_reducer="REDUCE_SUM",
+                        ),
+                    ],
+                    trigger=gcp.monitoring.AlertPolicyConditionConditionThresholdTriggerArgs(
+                        count=1,
+                    ),
+                ),
+            ),
+        ],
+        alert_strategy=gcp.monitoring.AlertPolicyAlertStrategyArgs(
+            auto_close="3600s",
+        ),
+        documentation=gcp.monitoring.AlertPolicyDocumentationArgs(
+            content=(
+                "karaoke-backend's event loop froze for 10s+ more than once in 30 minutes — "
+                "every request on the instance (incl. /api/health) stalls; users see the "
+                "\"servers unavailable\" banner.\n\n"
+                "1. Logs: `jsonPayload.message:\"EVENT_LOOP_STALL\"` on karaoke-backend. The "
+                "`in progress` lines carry the event-loop thread's stack; `culprit=` is the "
+                "innermost backend/karaoke_gen frame — that's the blocking call.\n"
+                "2. Fix: move that sync work off the loop (`await asyncio.to_thread(...)`), or "
+                "make the route a plain `def`.\n"
+                "3. User impact: `python scripts/client_events_report.py --days 1`."
+            ),
+            mime_type="text/markdown",
+        ),
+        enabled=True,
+        notification_channels=notification_channels,
+        opts=pulumi.ResourceOptions(depends_on=[resources["event_loop_stall_metric"]]),
+    )
+
+    return resources

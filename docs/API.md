@@ -2934,9 +2934,20 @@ user-visible degraded-service surface: `banner_reconnecting`, `banner_unavailabl
 `banner_waking` (the connectivity banner — reported by `BackendStatusBanner`; `banner_waking`
 is the calm "starting up our karaoke servers" cold-start state), `lyrics_load_failed`
 (review page "temporarily unavailable"), `waveform_slow` / `waveform_failed`
-(Waveforms-mode strips late or missing). Body: `{type, url, job_id?, user_email?,
-locale, release, detail?}` — `detail` is size-capped server-side (≤12 keys, ≤200
-chars per value); URLs are stored query-stripped.
+(Waveforms-mode strips late or missing), and `banner_recovered` (sent once when the
+banner clears; `detail.duration_ms` / `peak_status` / `dismissed`). Body: `{type, url,
+job_id?, locale, release, detail?, device_fingerprint?, tab_id?, episode_id?}` — `detail`
+is size-capped server-side (≤12 keys, ≤200 chars per value); URLs are stored query-stripped.
+
+**Identity (v0.264.0):** the frontend sends its session token as `Authorization: Bearer …`
+when signed in; the server resolves and stores `user_email`, `is_admin`, `is_internal`
+(team domains) and `is_test` (automated-test accounts). A client-sent `user_email` is
+ignored. `device_fingerprint` is the FingerprintJS `visitorId` (same one the magic-link
+abuse checks store), `tab_id` is per browser tab, `episode_id` groups one degradation
+episode (first banner → `banner_recovered`), and `tenant` is derived from the page URL.
+`server_loop_stall` docs (written by the backend's event-loop watchdog, `source: "server"`)
+share the collection; clients can't submit that type (422).
+Summary: `python scripts/client_events_report.py [--days N] [--all]`.
 
 Each event emits a structured `client_event type=…` INFO log line and is
 best-effort persisted to the Firestore `client_events` collection (a Firestore

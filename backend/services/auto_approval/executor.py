@@ -154,8 +154,9 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
             elif not audio_complete:
                 timing_info = {"status": "pending_audio"}
             else:
-                signals = _compute_timing_signals(
-                    job_id, corrections, ai_suggestions, stems, storage
+                signals = await asyncio.to_thread(
+                    _compute_timing_signals,
+                    job_id, corrections, ai_suggestions, stems, storage,
                 )
                 if signals is None:
                     timing_info = {"status": "no_lead_stem"}

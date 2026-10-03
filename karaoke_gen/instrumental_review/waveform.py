@@ -5,22 +5,38 @@ This module provides the WaveformGenerator class which creates waveform
 images suitable for display in the instrumental review UI.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
 import numpy as np
 from pydub import AudioSegment
 
 from .models import AudibleSegment, MuteRegion
 
+if TYPE_CHECKING:  # annotations only — never import pyplot at module load
+    import matplotlib.pyplot as plt
+
 
 logger = logging.getLogger(__name__)
+
+
+def _pyplot():
+    """Import pyplot lazily.
+
+    Importing it at module load meant anything touching
+    ``karaoke_gen.instrumental_review`` (even just ``MuteRegion``) paid for
+    matplotlib's import — and on a fresh instance its font-cache build — on
+    whatever thread imported it, often the API's event loop.
+    """
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend
+    import matplotlib.pyplot as plt
+    return plt
 
 
 # Sample rate used to decode audio for the RMS envelope in generate_data_only.
@@ -163,7 +179,7 @@ class WaveformGenerator:
             bbox_inches='tight',
             pad_inches=0.1,
         )
-        plt.close(fig)
+        _pyplot().close(fig)
         
         logger.info(f"Waveform saved to: {output_path}")
         return output_path
@@ -335,7 +351,7 @@ class WaveformGenerator:
         fig_width = self.width / self.dpi
         fig_height = self.height / self.dpi
         
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=self.dpi)
+        fig, ax = _pyplot().subplots(figsize=(fig_width, fig_height), dpi=self.dpi)
         
         # Set background
         fig.patch.set_facecolor(self.background_color)

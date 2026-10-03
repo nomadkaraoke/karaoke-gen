@@ -22,7 +22,7 @@ router = APIRouter(prefix="/themes", tags=["themes"])
 
 
 @router.get("", response_model=ThemesListResponse)
-async def list_themes(request: Request) -> ThemesListResponse:
+def list_themes(request: Request) -> ThemesListResponse:
     """
     List all available themes.
 
@@ -74,7 +74,7 @@ async def get_translation_preview(language: str, request: Request) -> dict:
 
 
 @router.get("/{theme_id}", response_model=ThemeDetailResponse)
-async def get_theme(theme_id: str, request: Request) -> ThemeDetailResponse:
+def get_theme(theme_id: str, request: Request) -> ThemeDetailResponse:
     """
     Get detailed information about a specific theme.
 
@@ -113,7 +113,7 @@ async def get_theme(theme_id: str, request: Request) -> ThemeDetailResponse:
 
 
 @router.get("/{theme_id}/preview")
-async def get_theme_preview(theme_id: str, request: Request) -> dict:
+def get_theme_preview(theme_id: str, request: Request) -> dict:
     """
     Get a signed URL for the theme's preview image.
 
@@ -158,7 +158,7 @@ async def get_theme_preview(theme_id: str, request: Request) -> dict:
 
 
 @router.get("/{theme_id}/youtube-description")
-async def get_theme_youtube_description(theme_id: str, request: Request) -> dict:
+def get_theme_youtube_description(theme_id: str, request: Request) -> dict:
     """
     Get the YouTube description template for a theme.
 
