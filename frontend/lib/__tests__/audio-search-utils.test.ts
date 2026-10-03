@@ -583,6 +583,10 @@ describe('title-matched best result', () => {
     expect(isConfirmedTitleMatch('Hotel California',
       spotify(0, 'X', 'Hotel California - 2013 Remaster', 1))).toBe(true)
     expect(isConfirmedTitleMatch('Mr. Brightside', spotify(0, 'X', 'Mr. Brightside', 1))).toBe(true)
+    expect(isConfirmedTitleMatch('7 Rings', spotify(0, 'X', '7 rings', 1))).toBe(true)
+    expect(isConfirmedTitleMatch("(I Can't Get No) Satisfaction",
+      spotify(0, 'X', "(I Can't Get No) Satisfaction - Mono Version", 1))).toBe(true)
+    expect(isConfirmedTitleMatch('The Chair', spotify(0, 'X', 'The Chair (feat. X) [Remastered]', 1))).toBe(true)
     expect(isConfirmedTitleMatch('Creep',
       makeResult({ index: 0, is_lossless: true, target_file: 'Pablo Honey/02 - Creep.flac' }))).toBe(true)
     expect(isConfirmedTitleMatch('The Chair',
