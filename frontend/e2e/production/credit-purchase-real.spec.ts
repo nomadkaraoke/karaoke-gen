@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
 import { createEmailHelper, isEmailTestingAvailable } from '../helpers/email-testing';
-import { completeStripeCheckout } from '../helpers/stripe-checkout';
+import { completeStripeCheckout, SELF_HEAL_ARTIFACT_DIR } from '../helpers/stripe-checkout';
 import { getPageAuthToken, clickCompleteSignInGate } from '../helpers/auth';
 import { URLS, TIMEOUTS } from '../helpers/constants';
 import * as fs from 'fs';
@@ -229,7 +229,14 @@ test.describe('Real Credit Purchase Flow', () => {
 
       // Complete Stripe Checkout with real card. The redirect back to our site
       // is best-effort — the authoritative signal is the server-side credit grant.
-      const checkout = await completeStripeCheckout(page);
+      // verifyPaid lets the submit step confirm success server-side when the
+      // redirect is slow, so the self-healing fallback never re-submits.
+      const checkout = await completeStripeCheckout(page, {
+        verifyPaid: async () => {
+          const latest = await getCreditsViaAdmin(request, API_URL, adminToken!, inbox.emailAddress);
+          return latest !== null && latest > baselineCredits;
+        },
+      });
 
       // ===== STEP 6: Verify the purchase landed (server-side source of truth) =====
       console.log('\n=== STEP 6: Verify credit grant (server-side) ===');
@@ -246,6 +253,17 @@ test.describe('Real Credit Purchase Flow', () => {
         `unlike a slow browser redirect)`
       ).not.toBeNull();
       console.log(`  ✅ Server-side credit grant confirmed: ${baselineCredits} → ${newBalance}`);
+
+      // The purchase is proven end-to-end, so any step the LLM fallback healed
+      // is trustworthy: emit the merged learned-variants.json for the workflow
+      // to commit via an auto-merging PR.
+      const runUrl = process.env.GITHUB_RUN_ID
+        ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+        : undefined;
+      const { learnedWritten } = checkout.selfHeal.writeArtifacts(SELF_HEAL_ARTIFACT_DIR, { flowVerified: true, runUrl });
+      if (learnedWritten) {
+        console.log('  🩹 Self-healing: LLM-healed step(s) recorded — the workflow will open an auto-merge PR');
+      }
 
       // Best-effort UX check: if the browser redirected to the success page,
       // confirm it renders the expected confirmation. A missing redirect is only
