@@ -453,6 +453,52 @@ class WorkerService:
             )
             return False
 
+    async def trigger_storage_retention_job(
+        self,
+        dry_run: bool,
+        report_path: str,
+        max_jobs: Optional[int] = None,
+        include_orphans: bool = False,
+    ) -> bool:
+        """Start the storage-retention pass as the ``storage-retention-job`` Cloud Run Job.
+
+        A full pass takes minutes; the API service throttles CPU outside requests
+        and Cloudflare cuts requests at 100s, so it can't run in the request.
+        """
+        args = ["--dry-run", "true" if dry_run else "false", "--report-path", report_path]
+        if max_jobs is not None:
+            args += ["--max-jobs", str(int(max_jobs))]
+        if include_orphans:
+            args.append("--include-orphans")
+        if not self._use_cloud_tasks and not is_production():
+            return self._run_worker_module_locally("storage_retention_worker", args, log_prefix="[storage-retention]")
+        try:
+            from google.cloud import run_v2
+
+            project = self.settings.google_cloud_project
+            if not project:
+                logger.error("GOOGLE_CLOUD_PROJECT not set, cannot trigger storage-retention-job")
+                return False
+            job_name = f"projects/{project}/locations/{self.settings.cpu_jobs_region}/jobs/storage-retention-job"
+            request = run_v2.RunJobRequest(
+                name=job_name,
+                overrides=run_v2.RunJobRequest.Overrides(
+                    container_overrides=[
+                        run_v2.RunJobRequest.Overrides.ContainerOverride(
+                            args=["python", "-m", "backend.workers.storage_retention_worker", *args],
+                        )
+                    ]
+                ),
+            )
+            operation = await self._run_job_with_retry(
+                run_v2.JobsClient(), request, log_prefix="[storage-retention]"
+            )
+            logger.info(f"[storage-retention] Started Cloud Run Job storage-retention-job: {operation.metadata}")
+            return True
+        except Exception as e:
+            logger.error(f"[storage-retention] Failed to trigger storage-retention-job: {e}", exc_info=True)
+            return False
+
     async def trigger_audio_worker(self, job_id: str) -> bool:
         """
         Trigger audio separation worker.

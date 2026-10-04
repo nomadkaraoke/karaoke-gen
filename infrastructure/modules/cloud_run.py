@@ -538,6 +538,49 @@ def create_bulk_search_job(
     return bulk_search_job
 
 
+def create_storage_retention_job(
+    bucket: gcp.storage.Bucket,
+    service_account: gcp.serviceaccount.Account,
+    region: str = REGION,
+) -> cloudrunv2.Job:
+    """
+    Create the Cloud Run Job for the daily storage-retention pass.
+
+    Started by POST /api/internal/storage-retention/run (Cloud Scheduler) with
+    the dry-run flag etc. as container args (backend/workers/storage_retention_worker.py).
+    Tracks the CPU image's :latest tag like bulk-search-job. No retries: the
+    pass is idempotent and runs again tomorrow.
+    """
+    return cloudrunv2.Job(
+        _job_resource_name("storage-retention-job", region),
+        name="storage-retention-job",
+        location=region,
+        deletion_protection=False,
+        template=cloudrunv2.JobTemplateArgs(
+            template=cloudrunv2.JobTemplateTemplateArgs(
+                containers=[
+                    cloudrunv2.JobTemplateTemplateContainerArgs(
+                        image=cpu_job_image(region),
+                        args=["python", "-m", "backend.workers.storage_retention_worker"],
+                        resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
+                            limits={"cpu": "1", "memory": "1Gi"},
+                        ),
+                        envs=[
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="ENVIRONMENT", value="production"),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="GCS_BUCKET_NAME", value=bucket.name),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="GOOGLE_CLOUD_PROJECT", value=PROJECT_ID),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="FIRESTORE_COLLECTION", value="jobs"),
+                        ],
+                    )
+                ],
+                service_account=service_account.email,
+                timeout="3600s",
+                max_retries=0,
+            ),
+        ),
+    )
+
+
 def create_video_encoding_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,

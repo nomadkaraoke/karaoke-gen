@@ -228,7 +228,9 @@ jobs/{job_id}/
 
 Approved plan: `docs/archive/2026-10-03-gen-storage-retention-plan.md` (workspace repo). Generated files
 are regenerable, so a daily Cloud Scheduler job (`storage-retention-daily`, 10:30 UTC) →
-`POST /api/internal/storage-retention/run` → `backend/services/storage_retention.py` purges them from
+`POST /api/internal/storage-retention/run` → Cloud Run Job `storage-retention-job` (us-east4,
+`backend/workers/storage_retention_worker.py`; the API throttles CPU outside requests and Cloudflare
+cuts requests at 100s) → `backend/services/storage_retention.py` purges them from
 jobs completed (newest `complete` timeline entry) more than `STORAGE_RETENTION_MIN_AGE_DAYS` (30) ago.
 
 - **Kept forever:** `input/*` (incl. `edited.flac`), `lyrics/`, `style/`, `review_sessions/`,

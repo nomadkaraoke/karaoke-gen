@@ -709,7 +709,6 @@ def youtube_backfill_run_endpoint(
 
 @router.post("/storage-retention/run")
 async def storage_retention_run_endpoint(
-    background_tasks: BackgroundTasks,
     dry_run: Optional[bool] = None,
     job_ids: Optional[str] = None,
     min_age_days: Optional[int] = None,
@@ -760,17 +759,16 @@ async def storage_retention_run_endpoint(
     now = datetime.now(timezone.utc)
     report_path = StorageRetentionService.default_report_path(now, effective_dry_run)
 
-    async def _process():
-        try:
-            await asyncio.to_thread(
-                StorageRetentionService().run,
-                dry_run=effective_dry_run, max_jobs=max_jobs, include_orphans=include_orphans,
-                report_path=report_path, now=now,
-            )
-        except Exception as e:  # noqa: BLE001
-            logger.exception(f"STORAGE_RETENTION failed: {e}")
-
-    background_tasks.add_task(_process)
+    # A full pass takes minutes: run it as the storage-retention-job Cloud Run
+    # Job. (The API service throttles CPU outside requests, which starves a
+    # BackgroundTask, and Cloudflare cuts requests at 100s.)
+    from backend.services.worker_service import get_worker_service
+    started = await get_worker_service().trigger_storage_retention_job(
+        dry_run=effective_dry_run, report_path=report_path,
+        max_jobs=max_jobs, include_orphans=include_orphans,
+    )
+    if not started:
+        raise HTTPException(status_code=503, detail="Couldn't start the storage-retention job")
     return {
         "status": "started",
         "dry_run": effective_dry_run,

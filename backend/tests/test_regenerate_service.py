@@ -702,12 +702,28 @@ class TestInternalRetentionEndpoint:
         resp, _ = self._post(client, "/api/internal/storage-retention/run?min_age_days=0")
         assert resp.status_code == 400
 
-    def test_scheduled_run_starts_in_background(self, client):
-        resp, svc = self._post(client, "/api/internal/storage-retention/run")
+    def test_scheduled_run_starts_the_cloud_run_job(self, client):
+        # The full pass runs as the storage-retention-job Cloud Run Job (CPU is
+        # throttled outside requests and Cloudflare cuts requests at 100s).
+        ws = MagicMock()
+        ws.trigger_storage_retention_job = AsyncMock(return_value=True)
+        with patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            resp, svc = self._post(client, "/api/internal/storage-retention/run?include_orphans=true")
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "started" and body["dry_run"] is True
         assert body["report_path"].startswith("gs://bucket/storage-retention/reports/")
+        svc.run.assert_not_called()
+        kwargs = ws.trigger_storage_retention_job.await_args.kwargs
+        assert kwargs["dry_run"] is True and kwargs["include_orphans"] is True
+        assert kwargs["report_path"] == body["report_path"].removeprefix("gs://bucket/")
+
+    def test_job_trigger_failure_is_503(self, client):
+        ws = MagicMock()
+        ws.trigger_storage_retention_job = AsyncMock(return_value=False)
+        with patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            resp, _ = self._post(client, "/api/internal/storage-retention/run")
+        assert resp.status_code == 503
 
     def test_scoped_real_run_is_synchronous(self, client):
         resp, svc = self._post(client, "/api/internal/storage-retention/run?job_ids=job123&dry_run=false&min_age_days=0")
@@ -878,3 +894,45 @@ class TestStemsRestoreWatchdog:
         assert resp.status_code == 200, resp.text
         assert resp.json()["stems_restore_failed_jobs"] == ["job123"]
         jm.mark_job_failed.assert_called_once()
+
+
+
+class TestStorageRetentionWorker:
+    def test_cli_runs_service_with_args(self):
+        from backend.workers import storage_retention_worker
+        svc = MagicMock()
+        svc.run.return_value = {"summary": {}}
+        with patch("backend.services.storage_retention.StorageRetentionService", return_value=svc):
+            code = storage_retention_worker.main(
+                ["--dry-run", "false", "--max-jobs", "5", "--include-orphans", "--report-path", "r.json"])
+        assert code == 0
+        assert svc.run.call_args.kwargs == {"dry_run": False, "max_jobs": 5, "include_orphans": True,
+                                             "report_path": "r.json"}
+
+    def test_cli_defaults_to_dry_run(self):
+        from backend.workers import storage_retention_worker
+        svc = MagicMock()
+        svc.run.return_value = {}
+        with patch("backend.services.storage_retention.StorageRetentionService", return_value=svc):
+            storage_retention_worker.main([])
+        assert svc.run.call_args.kwargs["dry_run"] is True
+
+    def test_cli_crash_exit_code(self):
+        from backend.workers import storage_retention_worker
+        with patch("backend.services.storage_retention.StorageRetentionService", side_effect=RuntimeError("x")):
+            assert storage_retention_worker.main([]) == 1
+
+    @pytest.mark.asyncio
+    async def test_trigger_builds_job_args(self):
+        from backend.services.worker_service import WorkerService
+        ws = WorkerService.__new__(WorkerService)
+        ws._use_cloud_tasks = True
+        ws.settings = SimpleNamespace(google_cloud_project="p", cpu_jobs_region="us-east4")
+        ws._run_job_with_retry = AsyncMock(return_value=MagicMock(metadata={}))
+        with patch("google.cloud.run_v2.JobsClient"):
+            assert await ws.trigger_storage_retention_job(False, "r.json", max_jobs=3, include_orphans=True)
+        request = ws._run_job_with_retry.await_args.args[1]
+        assert request.name == "projects/p/locations/us-east4/jobs/storage-retention-job"
+        args = list(request.overrides.container_overrides[0].args)
+        assert args[:3] == ["python", "-m", "backend.workers.storage_retention_worker"]
+        assert args[3:] == ["--dry-run", "false", "--report-path", "r.json", "--max-jobs", "3", "--include-orphans"]
