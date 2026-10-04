@@ -640,7 +640,8 @@
     "waitingForCapacity": "Čeká se na kódovací server (opakovaný pokus)",
     "preparingAudio": "Připravujeme tvoje audio",
     "processing": "Zpracovává se",
-    "waitingForUpload": "Čeká se na nahrání"
+    "waitingForUpload": "Čeká se na nahrání",
+    "restoringStems": "Obnovování zvukových stop"
   },
   "jobCard": {
     "actionNeeded": "Vyžadována akce",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Zatím nejsou k dispozici žádné výstupy",
     "confirmCost": "Potvrdit cenu",
     "makingPublicInProgress": "Zveřejňujeme tuto skladbu — znovu ji renderujeme s výchozím brandingem a publikujeme. Obvykle to trvá 15–30 minut.",
-    "waitingForEncodingServer": "(čeká se na dostupnost kódovacího serveru)"
+    "waitingForEncodingServer": "(čeká se na dostupnost kódovacího serveru)",
+    "regeneratingInProgress": "Přegenerováváme tvé videosoubory. Obvykle to trvá 10–30 minut a jakmile budou hotové, pošleme ti e-mail."
   },
   "jobActions": {
     "delete": "Smazat",
@@ -754,7 +756,15 @@
     "adminRerender": "Znovu vyrenderovat",
     "adminRerenderFailed": "Nepodařilo se spustit opětovné renderování: {error}",
     "adminRerenderStarted": "Přerenderování zahájeno.",
-    "adminRerenderStartedWithWarnings": "Přerenderování zahájeno. Některé publikované výstupy byly ponechány na svém místě:"
+    "adminRerenderStartedWithWarnings": "Přerenderování zahájeno. Některé publikované výstupy byly ponechány na svém místě:",
+    "regenerate": "Přegenerovat video",
+    "regenerateDesc": "Abychom šetřili místo, uchováváme u starších skladeb pouze 720p video a balíčky CDG/TXT. Přegenerováním se znovu vytvoří 4K a další formáty z tvého zkontrolovaného textu a vybraného instrumentálu přesně tak jako předtím.",
+    "regenerateFailed": "Přegenerování se nepodařilo spustit: {error}",
+    "regenerateNoRepublish": "Tvé odkazy na YouTube, Dropbox a Google Drive zůstanou beze změny.",
+    "regenerateStarted": "Přegenerováváme tvé video. Jakmile bude hotové, pošleme ti e-mail.",
+    "regenerateTime": "Obvykle to trvá 10–30 minut. Jakmile bude hotové, pošleme ti e-mail.",
+    "regenerateTitle": "Přegenerovat toto video?",
+    "regenerateTooltip": "Abychom šetřili místo, u starších skladeb uchováváme pouze 720p video a karaoke balíčky. Přegeneruj ostatní formáty."
   },
   "themeSelector": {
     "videoTheme": "Motiv videa",

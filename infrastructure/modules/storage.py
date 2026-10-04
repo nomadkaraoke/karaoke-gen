@@ -68,11 +68,18 @@ def create_bucket() -> storage.Bucket:
                     matches_prefixes=["temp/", "uploads/"]
                 ),
             ),
+            # Noncurrent (overwritten OR deleted) versions are kept 7 days (was
+            # 30 until the 2026-10-03 storage-retention work): long enough to undo
+            # a bad overwrite/purge, short enough not to double-bill.
+            # No num_newer_versions condition: a DELETED object's last version has
+            # no newer version, so the old `num_newer_versions=1` rule kept every
+            # deleted file's bytes forever (and would have made the storage-
+            # retention purge free nothing).
             storage.BucketLifecycleRuleArgs(
                 action=storage.BucketLifecycleRuleActionArgs(type="Delete"),
                 condition=storage.BucketLifecycleRuleConditionArgs(
-                    num_newer_versions=1,
-                    days_since_noncurrent_time=30,
+                    with_state="ARCHIVED",
+                    days_since_noncurrent_time=7,
                 ),
             ),
         ],

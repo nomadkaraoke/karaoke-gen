@@ -640,7 +640,8 @@
     "waitingForCapacity": "Esperando al servidor de codificación (reintentando)",
     "preparingAudio": "Preparando tu audio",
     "processing": "Procesando",
-    "waitingForUpload": "Esperando la subida"
+    "waitingForUpload": "Esperando la subida",
+    "restoringStems": "Restaurando pistas de audio"
   },
   "jobCard": {
     "actionNeeded": "Acción necesaria",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "No hay salidas disponibles aún",
     "confirmCost": "Confirmar costo",
     "makingPublicInProgress": "Haciendo pública esta pista — re-renderizando con la marca predeterminada y republicando. Esto normalmente tarda de 15 a 30 minutos.",
-    "waitingForEncodingServer": "(esperando disponibilidad del servidor de codificación)"
+    "waitingForEncodingServer": "(esperando disponibilidad del servidor de codificación)",
+    "regeneratingInProgress": "Regenerando tus archivos de video. Esto suele tardar entre 10 y 30 minutos, y te enviaremos un correo electrónico cuando estén listos."
   },
   "jobActions": {
     "delete": "Eliminar",
@@ -754,7 +756,15 @@
     "adminRerender": "Volver a renderizar",
     "adminRerenderFailed": "No se pudo iniciar el nuevo renderizado: {error}",
     "adminRerenderStarted": "Re-renderizado iniciado.",
-    "adminRerenderStartedWithWarnings": "Re-renderizado iniciado. Algunas salidas publicadas se mantuvieron:"
+    "adminRerenderStartedWithWarnings": "Re-renderizado iniciado. Algunas salidas publicadas se mantuvieron:",
+    "regenerate": "Regenerar video",
+    "regenerateDesc": "Para ahorrar espacio, conservamos el video en 720p y los paquetes CDG/TXT de las pistas más antiguas. Al regenerar, se reconstruyen el 4K y otros formatos a partir de tus letras revisadas y el instrumental elegido, exactamente como antes.",
+    "regenerateFailed": "No se pudo iniciar la regeneración: {error}",
+    "regenerateNoRepublish": "Tus enlaces de YouTube, Dropbox y Google Drive se mantendrán tal como están.",
+    "regenerateStarted": "Regenerando tu video. Te enviaremos un correo electrónico cuando esté listo.",
+    "regenerateTime": "Suele tardar entre 10 y 30 minutos. Te enviaremos un correo electrónico cuando esté listo.",
+    "regenerateTitle": "¿Regenerar este video?",
+    "regenerateTooltip": "Para ahorrar espacio, las pistas más antiguas solo conservan el video en 720p y los paquetes de karaoke. Regenera los demás formatos."
   },
   "themeSelector": {
     "videoTheme": "Tema de video",

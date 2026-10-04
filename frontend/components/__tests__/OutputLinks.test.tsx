@@ -33,6 +33,7 @@ jest.mock('@/lib/api', () => ({
   api: {
     getDownloadUrl: jest.fn((jobId, category, key) => `https://example.com/${jobId}/${category}/${key}`),
     rerenderWithCurrentTheme: jest.fn(() => Promise.resolve({ status: 'processing' })),
+    regenerateJob: jest.fn(() => Promise.resolve({ status: 'processing', needs_stems: true })),
   },
   adminApi: {
     getCompletionMessage: jest.fn(),
@@ -580,6 +581,46 @@ describe('OutputLinks', () => {
       expect(arg.title).toBe('Re-render started. Some published outputs were left in place:')
       render(<>{arg.description}</>)
       expect(screen.getByTestId('admin-rerender-warnings')).toHaveTextContent('YouTube upload is disabled for this job')
+    })
+  })
+
+  describe('Regenerate video (storage retention)', () => {
+    const archivedJob: Job = {
+      ...baseJob,
+      renders_purged_at: '2026-09-01T00:00:00Z',
+      file_urls: {
+        finals: { lossy_720p_mp4: 'gs://bucket/finals/720p.mp4' },
+        packages: { cdg_zip: 'gs://bucket/packages/cdg.zip' },
+      },
+    }
+
+    it('shows the button and the kept downloads for an archived track', () => {
+      render(<OutputLinks job={archivedJob} />)
+      expect(screen.getByTestId('regenerate-button')).toHaveTextContent('Regenerate video')
+      expect(screen.getByText('720p Video')).toBeInTheDocument()
+      expect(screen.queryByText('4K Video')).not.toBeInTheDocument()
+    })
+
+    it('hides the button when all finals are present', () => {
+      render(<OutputLinks job={baseJob} />)
+      expect(screen.queryByTestId('regenerate-button')).not.toBeInTheDocument()
+    })
+
+    it('hides the button while the track is not complete', () => {
+      render(<OutputLinks job={{ ...archivedJob, status: 'rendering_video' }} />)
+      expect(screen.queryByTestId('regenerate-button')).not.toBeInTheDocument()
+    })
+
+    it('confirms then calls the regenerate API', async () => {
+      const { api } = require('@/lib/api')
+      const onJobUpdated = jest.fn()
+      render(<OutputLinks job={archivedJob} onJobUpdated={onJobUpdated} />)
+      fireEvent.click(screen.getByTestId('regenerate-button'))
+      expect(screen.getByTestId('regenerate-dialog')).toBeInTheDocument()
+      fireEvent.click(screen.getByTestId('regenerate-confirm'))
+      await waitFor(() => expect(api.regenerateJob).toHaveBeenCalledWith('test-123'))
+      await waitFor(() => expect(onJobUpdated).toHaveBeenCalled())
+      expect(mockToast).toHaveBeenCalled()
     })
   })
 })

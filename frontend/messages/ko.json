@@ -640,7 +640,8 @@
     "waitingForCapacity": "인코딩 서버 대기 중 (재시도 중)",
     "preparingAudio": "오디오 준비 중",
     "processing": "처리 중",
-    "waitingForUpload": "업로드 대기 중"
+    "waitingForUpload": "업로드 대기 중",
+    "restoringStems": "오디오 스템 복원 중"
   },
   "jobCard": {
     "actionNeeded": "조치 필요",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "아직 사용 가능한 출력이 없습니다",
     "confirmCost": "비용 확인",
     "makingPublicInProgress": "이 트랙을 공개로 전환하는 중입니다 — 기본 브랜딩으로 재렌더링 및 재게시를 진행합니다. 보통 15~30분 정도 소요됩니다.",
-    "waitingForEncodingServer": "(인코딩 서버 대기 중)"
+    "waitingForEncodingServer": "(인코딩 서버 대기 중)",
+    "regeneratingInProgress": "동영상 파일을 다시 생성하는 중입니다. 보통 10~30분 정도 걸리며, 완료되면 이메일로 알려드릴게요."
   },
   "jobActions": {
     "delete": "삭제",
@@ -754,7 +756,15 @@
     "adminRerender": "재렌더링",
     "adminRerenderFailed": "재렌더링을 시작하지 못했습니다: {error}",
     "adminRerenderStarted": "재렌더링이 시작되었습니다.",
-    "adminRerenderStartedWithWarnings": "재렌더링이 시작되었습니다. 게시된 일부 결과물은 그대로 유지되었습니다:"
+    "adminRerenderStartedWithWarnings": "재렌더링이 시작되었습니다. 게시된 일부 결과물은 그대로 유지되었습니다:",
+    "regenerate": "동영상 다시 생성",
+    "regenerateDesc": "저장 공간을 절약하기 위해 이전 트랙의 경우 720p 동영상과 CDG/TXT 패키지만 보관합니다. 다시 생성을 진행하면 검토를 마친 가사와 선택한 반주를 바탕으로 이전과 동일하게 4K 및 기타 포맷을 다시 제작합니다.",
+    "regenerateFailed": "다시 생성을 시작할 수 없습니다: {error}",
+    "regenerateNoRepublish": "YouTube, Dropbox 및 Google Drive 링크는 그대로 유지됩니다.",
+    "regenerateStarted": "동영상을 다시 생성하고 있습니다. 준비되면 이메일로 알려드릴게요.",
+    "regenerateTime": "보통 10~30분 정도 걸립니다. 준비되면 이메일로 알려드릴게요.",
+    "regenerateTitle": "이 동영상을 다시 생성할까요?",
+    "regenerateTooltip": "저장 공간을 절약하기 위해 이전 트랙은 720p 동영상과 노래방 패키지만 보관합니다. 다른 포맷을 다시 생성해 보세요."
   },
   "themeSelector": {
     "videoTheme": "비디오 테마",

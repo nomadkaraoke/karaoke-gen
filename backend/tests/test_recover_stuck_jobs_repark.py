@@ -69,10 +69,11 @@ def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=
     where.stream.side_effect = [
         iter(downloading or []), iter(rendering or []), iter(review_complete or []),
     ]
-    # Two .limit().stream() calls in order: download_pending_retry, then downloading
-    # (lost-screens-trigger sweep, bounded by SCREENS_RECOVERY_SCAN_LIMIT)
+    # Three .limit().stream() calls in order: download_pending_retry, then downloading
+    # (lost-screens-trigger sweep, bounded by SCREENS_RECOVERY_SCAN_LIMIT), then
+    # lyrics_complete (stalled storage-retention stems restore)
     where.limit.return_value.stream.side_effect = [
-        iter(pending or []), iter(downloading_prep or []),
+        iter(pending or []), iter(downloading_prep or []), iter([]),
     ]
     mock_jm.get_job.side_effect = lambda jid: (jobs or {}).get(jid)
     mock_jm.transition_to_state.return_value = True

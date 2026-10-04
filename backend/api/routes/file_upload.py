@@ -1652,6 +1652,20 @@ async def mark_uploads_complete(
                 logger.warning(f"Duration validation failed with error: {e}. Proceeding without validation.")
                 # Don't block the job if we can't validate - the video worker will fail more gracefully
         
+        # uploads/ expires after 7 days: keep the user's instrumental at the job
+        # root (where the video pipeline stages it anyway) so later re-renders,
+        # regenerates and edits still have it.
+        if (update_data.get('existing_instrumental_gcs_path') or '').startswith('uploads/'):
+            from backend.utils.existing_instrumental import persistent_instrumental_path
+            source = update_data['existing_instrumental_gcs_path']
+            dest = persistent_instrumental_path(job_id, source)
+            try:
+                storage_service.copy_blob(source, dest)
+                update_data['existing_instrumental_gcs_path'] = dest
+                logger.info(f"Job {job_id}: persisted existing instrumental {source} -> {dest}")
+            except Exception as e:
+                logger.warning(f"Job {job_id}: couldn't persist existing instrumental {source}: {e}")
+
         # Add style assets to update if any
         if style_assets:
             update_data['style_assets'] = style_assets

@@ -640,7 +640,8 @@
     "waitingForCapacity": "等待编码服务器 (正在重试)",
     "preparingAudio": "正在准备您的音频",
     "processing": "处理中",
-    "waitingForUpload": "等待上传"
+    "waitingForUpload": "等待上传",
+    "restoringStems": "正在恢复音频分轨"
   },
   "jobCard": {
     "actionNeeded": "需要操作",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "暂无可用输出",
     "confirmCost": "确认费用",
     "makingPublicInProgress": "正在公开此曲目 — 使用默认品牌重新渲染并重新发布。这通常需要 15–30 分钟。",
-    "waitingForEncodingServer": "(等待编码服务器可用)"
+    "waitingForEncodingServer": "(等待编码服务器可用)",
+    "regeneratingInProgress": "正在重新生成您的视频文件。这通常需要 10–30 分钟，完成后我们会发送邮件通知您。"
   },
   "jobActions": {
     "delete": "删除",
@@ -754,7 +756,15 @@
     "adminRerender": "重新渲染",
     "adminRerenderFailed": "无法开始重新渲染：{error}",
     "adminRerenderStarted": "重新渲染已开始。",
-    "adminRerenderStartedWithWarnings": "重新渲染已开始。部分已发布的输出已保留："
+    "adminRerenderStartedWithWarnings": "重新渲染已开始。部分已发布的输出已保留：",
+    "regenerate": "重新生成视频",
+    "regenerateDesc": "为节省空间，我们会保留较早曲目的 720p 视频以及 CDG/TXT 压缩包。重新生成会根据您已校对的歌词和选定的伴奏重新构建 4K 及其他格式，效果与之前完全一致。",
+    "regenerateFailed": "无法开始重新生成：{error}",
+    "regenerateNoRepublish": "您的 YouTube、Dropbox 和 Google Drive 链接将保持不变。",
+    "regenerateStarted": "正在重新生成您的视频。完成后我们会发送邮件通知您。",
+    "regenerateTime": "通常需要 10–30 分钟。完成后我们会发送邮件通知您。",
+    "regenerateTitle": "重新生成此视频？",
+    "regenerateTooltip": "为节省空间，较早的曲目仅保留 720p 视频和卡拉OK资源包。点击可重新生成其他格式。"
   },
   "themeSelector": {
     "videoTheme": "视频主题",

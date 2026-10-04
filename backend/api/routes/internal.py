@@ -707,6 +707,77 @@ def youtube_backfill_run_endpoint(
     }
 
 
+@router.post("/storage-retention/run")
+async def storage_retention_run_endpoint(
+    background_tasks: BackgroundTasks,
+    dry_run: Optional[bool] = None,
+    job_ids: Optional[str] = None,
+    min_age_days: Optional[int] = None,
+    max_jobs: Optional[int] = None,
+    include_orphans: bool = False,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    Purge regenerable files of old completed jobs (storage retention).
+
+    Called daily by Cloud Scheduler. DRY-RUN unless STORAGE_RETENTION_DRY_RUN is
+    false: it then only writes a report to GCS (path returned). See
+    backend/services/storage_retention.py for the policy.
+
+    Manual/testing params:
+    - ``job_ids=a,b`` scopes the pass to those jobs and runs synchronously
+      (returns the full report). Only a scoped pass may override ``dry_run=false``
+      or ``min_age_days`` — a global real purge only happens via the setting.
+    - ``max_jobs`` caps the jobs planned/purged; ``include_orphans`` adds a
+      report section on jobs/ folders with no Firestore doc (report only).
+    """
+    from datetime import datetime, timezone
+    from backend.config import get_settings
+    from backend.services.storage_retention import StorageRetentionService
+
+    settings = get_settings()
+    if not settings.storage_retention_enabled:
+        return {"status": "disabled", "message": "STORAGE_RETENTION_ENABLED is false"}
+
+    scoped = [j.strip() for j in (job_ids or "").split(",") if j.strip()]
+    if not scoped:
+        if dry_run is False and settings.storage_retention_dry_run:
+            raise HTTPException(
+                status_code=400,
+                detail="A global real purge needs STORAGE_RETENTION_DRY_RUN=false; pass job_ids to scope a real run.",
+            )
+        if min_age_days is not None:
+            raise HTTPException(status_code=400, detail="min_age_days can only be overridden with job_ids")
+    effective_dry_run = settings.storage_retention_dry_run if dry_run is None else dry_run
+
+    if scoped:
+        report = await asyncio.to_thread(
+            StorageRetentionService().run,
+            dry_run=effective_dry_run, job_ids=scoped, min_age_days=min_age_days, max_jobs=max_jobs,
+        )
+        return {"status": "complete", "report": report}
+
+    now = datetime.now(timezone.utc)
+    report_path = StorageRetentionService.default_report_path(now, effective_dry_run)
+
+    async def _process():
+        try:
+            await asyncio.to_thread(
+                StorageRetentionService().run,
+                dry_run=effective_dry_run, max_jobs=max_jobs, include_orphans=include_orphans,
+                report_path=report_path, now=now,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.exception(f"STORAGE_RETENTION failed: {e}")
+
+    background_tasks.add_task(_process)
+    return {
+        "status": "started",
+        "dry_run": effective_dry_run,
+        "report_path": f"gs://{settings.gcs_bucket_name}/{report_path}",
+    }
+
+
 @router.post("/community-daily-pick")
 async def community_daily_pick_endpoint(
     http_request: Request,
@@ -1165,6 +1236,32 @@ async def recover_stuck_jobs(
         except Exception as e:
             logger.warning(f"[job:{job_id}] screens re-trigger failed: {e}")
 
+    # --- Storage-retention stems restore whose audio job died silently ---
+    # (hard-killed GPU task: no except block ran, the job sits at
+    # lyrics_complete with stems_restore=running forever). Fail it so the
+    # customer/admin gets a Retry button; the retry re-runs the restore.
+    stems_restore_failed = []
+    from backend.services.stems_restore import restore_stalled
+    lc_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.LYRICS_COMPLETE.value)
+    ).limit(SCREENS_RECOVERY_SCAN_LIMIT).stream()
+    for doc in lc_query:
+        data = doc.to_dict() or {}
+        if not ((data.get("state_data") or {}).get("stems_restore")):
+            continue
+        job_id = data.get("job_id", doc.id)
+        job = job_manager.get_job(job_id)
+        if not job or not restore_stalled(job):
+            continue
+        logger.warning(f"[job:{job_id}] Stems restore stalled >60 min — failing for retry")
+        job_manager.update_job(job_id, {"state_data.stems_restore.status": "failed"})
+        job_manager.mark_job_failed(
+            job_id=job_id,
+            error_message="Restoring this track's audio stems timed out. Retry the job to try again.",
+            error_details={"stage": "stems_restore", "reason": "stalled"},
+        )
+        stems_restore_failed.append(job_id)
+
     logger.info(
         f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} "
         f"download_parked={len(download_parked)} download_retried={len(download_retried)} "
@@ -1193,6 +1290,7 @@ async def recover_stuck_jobs(
         "render_retriggered_count": len(render_retriggered),
         "screens_retriggered_jobs": screens_retriggered,
         "screens_retriggered_count": len(screens_retriggered),
+        "stems_restore_failed_jobs": stems_restore_failed,
     }
 
 

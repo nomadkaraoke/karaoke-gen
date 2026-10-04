@@ -187,10 +187,17 @@ def claim_with_youtube_queue(
 
 
 def clear_admin_rerender_update(job) -> Dict[str, Any]:
-    """Firestore update that drops the marker (empty if there is none)."""
+    """Firestore update that drops the marker (empty if there is none).
+
+    Also drops a storage-retention regenerate marker: every caller (admin
+    reset/restart, Edit, visibility change, delete outputs) starts a new run.
+    """
+    update: Dict[str, Any] = {}
     if raw_admin_rerender_marker(job):
-        return {f"state_data.{ADMIN_RERENDER_MARKER}": DELETE_FIELD}
-    return {}
+        update[f"state_data.{ADMIN_RERENDER_MARKER}"] = DELETE_FIELD
+    from backend.services.regenerate_service import clear_regenerate_update
+    update.update(clear_regenerate_update(job))
+    return update
 
 
 def suppress_customer_notifications(job) -> bool:
@@ -200,7 +207,11 @@ def suppress_customer_notifications(job) -> bool:
     suppresses them; normal jobs and the tenant theme re-render always notify.
     """
     marker = active_admin_rerender(job)
-    return bool(marker) and not marker.get("notify_customer", False)
+    if marker:
+        return not marker.get("notify_customer", False)
+    # A storage-retention regenerate notifies unless it was started quietly.
+    from backend.services.regenerate_service import regenerate_suppresses_notifications
+    return regenerate_suppresses_notifications(job)
 
 
 def admin_rerender_brand_code(job) -> Optional[str]:
@@ -228,6 +239,9 @@ def validate_admin_rerender(job) -> Optional[str]:
         return f"Only completed jobs can be re-rendered (current status: {job.status})."
     if getattr(job, "outputs_deleted_at", None):
         return "This job's outputs were deleted, so it can't be re-rendered."
+    from backend.services.storage_retention import PURGE_IN_PROGRESS_MESSAGE, purge_in_progress
+    if purge_in_progress(job):
+        return PURGE_IN_PROGRESS_MESSAGE
     if getattr(job, "prep_only", False) or getattr(job, "finalise_only", False):
         return "Prep-only / finalise-only jobs can't be re-rendered."
     state_data = job.state_data or {}

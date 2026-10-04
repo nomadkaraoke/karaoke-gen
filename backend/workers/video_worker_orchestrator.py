@@ -32,6 +32,7 @@ from backend.services.tracing import job_span, add_span_event
 from backend.workers.supersede import capture_generation, encoding_worker_job_id
 from backend.services.theme_rerender_service import rerender_brand_code
 from backend.services.admin_rerender_service import suppress_customer_notifications
+from backend.services.regenerate_service import is_gcs_only_run
 from backend.services.original_audio import (
     original_audio_gcs_path,
     original_audio_output_filename,
@@ -132,6 +133,12 @@ class OrchestratorConfig:
     # stays) `complete`, and `complete -> packaging`/`encoding` are illegal
     # transitions that would otherwise abort the redistribution.
     redistribute_mode: bool = False
+
+    # GCS-only regenerate (storage retention, backend/services/regenerate_service.py):
+    # rebuild the finals/packages in GCS but skip brand-code allocation, every
+    # distribution upload (YouTube/Dropbox/GDrive), the Discord post and the
+    # GDrive validation — the published outputs are left exactly as they are.
+    gcs_only: bool = False
 
 
 @dataclass
@@ -333,19 +340,27 @@ class VideoWorkerOrchestrator:
                 # Stage 2: Encoding
                 await self._run_encoding()
 
-                # Stage 3: Organization (brand code)
-                await self._run_organization()
+                if self.config.gcs_only:
+                    # Regenerate: GCS outputs only. Keep the existing brand code
+                    # (never allocate one) and publish nowhere.
+                    self.result.brand_code = self.config.keep_brand_code
+                    self.job_log.info(
+                        "GCS-only regenerate: skipping organization, distribution and notifications"
+                    )
+                else:
+                    # Stage 3: Organization (brand code)
+                    await self._run_organization()
 
-                # Stage 4: Distribution (YouTube, Dropbox, GDrive)
-                await self._run_distribution()
+                    # Stage 4: Distribution (YouTube, Dropbox, GDrive)
+                    await self._run_distribution()
 
-                # Stage 5: Notifications (Discord)
-                await self._run_notifications()
+                    # Stage 5: Notifications (Discord)
+                    await self._run_notifications()
 
-                # Stage 6: Post-distribution GDrive validation
-                # Only for jobs that uploaded to the public share (non-private)
-                if self.config.gdrive_folder_id:
-                    await self._trigger_gdrive_validation()
+                    # Stage 6: Post-distribution GDrive validation
+                    # Only for jobs that uploaded to the public share (non-private)
+                    if self.config.gdrive_folder_id:
+                        await self._trigger_gdrive_validation()
 
                 self.result.success = True
                 self.result.total_time_seconds = time.time() - start_time
@@ -533,8 +548,16 @@ class VideoWorkerOrchestrator:
                 if src:
                     ext = os.path.splitext(src)[1].lower() or ".mp3"
                     dest = f"jobs/{self.config.job_id}/custom_instrumental{ext}"
-                    self.storage.copy_blob(src, dest)
-                    self.job_log.info(f"Staged custom instrumental for GCE encoder: {dest}")
+                    if src != dest:
+                        self.storage.copy_blob(src, dest)
+                        self.job_log.info(f"Staged custom instrumental for GCE encoder: {dest}")
+                        # uploads/ expires after 7 days: point the job at the
+                        # kept job-root copy for future re-renders/regenerates.
+                        if src.startswith("uploads/") and self.job_manager:
+                            self.job_manager.update_job(
+                                self.config.job_id, {"existing_instrumental_gcs_path": dest}
+                            )
+                            self.config.existing_instrumental_gcs_path = dest
             except Exception as e:
                 self.job_log.warning(f"Failed to stage custom instrumental for GCE encoder: {e}")
 
@@ -1279,6 +1302,9 @@ def create_orchestrator_config_from_job(
         # Duet CDG rendering
         is_duet=is_duet,
         duet_corrections_json_path=duet_corrections_json_path,
+
+        # GCS-only regenerate (storage retention): no distribution at all
+        gcs_only=is_gcs_only_run(job),
 
         # Encoding backend - auto selects GCE if available
         encoding_backend="auto",

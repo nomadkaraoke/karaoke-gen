@@ -42,6 +42,8 @@ from backend.services.admin_rerender_service import (
     admin_rerender_kept_outputs,
     suppress_customer_notifications,
 )
+from backend.services.regenerate_service import active_regenerate
+from backend.utils.existing_instrumental import resolve_existing_instrumental
 from backend.services.job_health_service import validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
@@ -269,6 +271,17 @@ async def generate_video_orchestrated(job_id: str) -> bool:
         job_log.warning(status_error)
         return False
 
+    # A user-supplied instrumental recorded under uploads/ expires after 7 days;
+    # fall back to (and repoint the job at) its staged copy under jobs/{id}/.
+    if getattr(job, 'existing_instrumental_gcs_path', None):
+        job.existing_instrumental_gcs_path = resolve_existing_instrumental(
+            job, storage, job_manager=job_manager, log=job_log,
+        )
+
+    # Storage-retention regenerate: GCS outputs only (snapshot taken at worker
+    # start — the marker is cleared with the COMPLETE transition below).
+    regenerate = active_regenerate(job)
+
     # Create temporary working directory
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_video_{job_id}_")
     original_cwd = os.getcwd()
@@ -346,26 +359,30 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             if not result.success:
                 raise Exception(result.error_message or "Orchestrator failed")
 
-            # Prepare distribution directory for native uploads
-            with job_span("distribution", job_id):
-                await _handle_native_distribution(
-                    job_id=job_id,
-                    job=job,
-                    job_log=job_log,
-                    job_manager=job_manager,
-                    temp_dir=temp_dir,
-                    result={
-                        'brand_code': result.brand_code,
-                        'youtube_url': result.youtube_url,
-                        'final_video': result.final_video,
-                        'final_video_lossy': result.final_video_lossy,
-                        'final_video_720p': result.final_video_720p,
-                        'final_karaoke_cdg_zip': result.final_karaoke_cdg_zip,
-                        'dropbox_link': result.dropbox_link,
-                        'gdrive_files': result.gdrive_files,
-                    },
-                    storage=storage,
-                )
+            # Prepare distribution directory for native uploads. A GCS-only
+            # regenerate publishes nothing.
+            if regenerate:
+                job_log.info("GCS-only regenerate: skipping native distribution")
+            else:
+                with job_span("distribution", job_id):
+                    await _handle_native_distribution(
+                        job_id=job_id,
+                        job=job,
+                        job_log=job_log,
+                        job_manager=job_manager,
+                        temp_dir=temp_dir,
+                        result={
+                            'brand_code': result.brand_code,
+                            'youtube_url': result.youtube_url,
+                            'final_video': result.final_video,
+                            'final_video_lossy': result.final_video_lossy,
+                            'final_video_720p': result.final_video_720p,
+                            'final_karaoke_cdg_zip': result.final_karaoke_cdg_zip,
+                            'dropbox_link': result.dropbox_link,
+                            'gdrive_files': result.gdrive_files,
+                        },
+                        storage=storage,
+                    )
 
             # Upload generated files to GCS
             # Note: State transition to PACKAGING is handled by the orchestrator in _run_distribution()
@@ -394,12 +411,22 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             # An admin re-render leaves outputs it doesn't re-publish in place
             # (e.g. YouTube now disabled) — keep their links.
             kept_outputs = admin_rerender_kept_outputs(job)
-            state_updates: Dict[str, Any] = {
-                'state_data.brand_code': result.brand_code,
-                'state_data.youtube_url': result.youtube_url or kept_outputs.get('youtube_url'),
-                'state_data.youtube_upload_queued': result.youtube_upload_queued,
-                'state_data.dropbox_link': result.dropbox_link or kept_outputs.get('dropbox_link'),
-                'state_data.gdrive_files': result.gdrive_files or kept_outputs.get('gdrive_files'),
+            if regenerate:
+                # GCS-only regenerate: nothing was published, so the job's
+                # existing brand code / YouTube / Dropbox / Drive links stand.
+                state_updates: Dict[str, Any] = {}
+            else:
+                state_updates = {
+                    'state_data.brand_code': result.brand_code,
+                    'state_data.youtube_url': result.youtube_url or kept_outputs.get('youtube_url'),
+                    'state_data.youtube_upload_queued': result.youtube_upload_queued,
+                    'state_data.dropbox_link': result.dropbox_link or kept_outputs.get('dropbox_link'),
+                    'state_data.gdrive_files': result.gdrive_files or kept_outputs.get('gdrive_files'),
+                }
+            state_updates.update({
+                # Fresh renders were just uploaded, so a storage-retention purge
+                # marker is stale (the stems marker is cleared by the restore).
+                'renders_purged_at': None,
                 # Clear the visibility-change guard flag (previously popped from the map).
                 'state_data.visibility_change_in_progress': DELETE_FIELD,
                 # Fresh finals were just uploaded, so any earlier "outputs deleted"
@@ -410,9 +437,12 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 # A theme/admin re-render (if any) finished; only a FAILED
                 # re-render keeps its marker (it lets the retry re-run it).
                 'state_data.theme_rerender': DELETE_FIELD,
-                # The admin re-render marker is cleared atomically WITH the
-                # COMPLETE transition below, so a failed transition keeps it.
-            }
+                # The admin re-render / regenerate markers are cleared atomically
+                # WITH the COMPLETE transition below, so a failed transition keeps them.
+            })
+            if regenerate and regenerate.get('after') == 'change_to_private':
+                # The chained visibility change sets its own guard right away.
+                state_updates.pop('state_data.visibility_change_in_progress', None)
             if result.distribution_warnings:
                 state_updates['state_data.distribution_warnings'] = result.distribution_warnings
             job_manager.update_job(job_id, state_updates)
@@ -451,19 +481,33 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             if is_admin_rerender:
                 completion_metadata["admin_rerender"] = True
                 completion_metadata["customer_notified"] = notify_customer
+            if regenerate:
+                completion_metadata["regenerate"] = True
+                completion_metadata["customer_notified"] = notify_customer
+                completion_metadata["regenerate_source"] = regenerate.get("source")
             if not notify_customer:
-                job_log.info("Admin re-render: completion email/push suppressed (notify_customer=False)")
+                job_log.info("Re-render/regenerate: completion email/push suppressed (notify_customer=False)")
+            extra_updates = {'state_data.admin_rerender': DELETE_FIELD}
+            if regenerate:
+                from datetime import datetime as _dt, timezone as _tz
+                extra_updates['state_data.regenerate'] = DELETE_FIELD
+                extra_updates['renders_regenerated_at'] = _dt.now(_tz.utc)
             job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.COMPLETE,
                 progress=100,
-                message="Karaoke generation complete!",
+                message="Karaoke generation complete!" if not regenerate else "Video regenerated",
                 timeline_metadata=completion_metadata,
                 notify=notify_customer,
-                extra_updates={'state_data.admin_rerender': DELETE_FIELD},
-                # An admin re-render isn't a newly completed job for the user.
-                count_completion=not is_admin_rerender,
+                extra_updates=extra_updates,
+                # An admin re-render / regenerate isn't a newly completed job for the user.
+                count_completion=not (is_admin_rerender or regenerate),
             )
+
+            # A regenerate started by a public->private visibility change (the
+            # redistribution needs the full finals set): run that change now.
+            if regenerate and regenerate.get('after') == 'change_to_private':
+                await _run_chained_change_to_private(job_id, job_manager, regenerate, job_log)
 
             # If this was a requests-board community pick published directly here
             # (i.e. not deferred to the youtube_upload_queue), advance its request
@@ -530,6 +574,25 @@ async def generate_video_orchestrated(job_id: str) -> bool:
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
             logger.debug(f"Cleaned up temp directory: {temp_dir}")
+
+
+async def _run_chained_change_to_private(job_id: str, job_manager: JobManager, regenerate: Dict[str, Any], job_log) -> None:
+    """Finish a public->private visibility change that waited for a regenerate."""
+    from backend.services.visibility_change_service import VisibilityChangeService
+    requested_by = regenerate.get('requested_by') or 'unknown'
+    try:
+        fresh = job_manager.get_job(job_id)
+        await VisibilityChangeService(job_manager).change_to_private(
+            job_id, fresh, requested_by, regenerate_if_missing=False,
+        )
+        job_log.info("Regenerated finals redistributed: visibility changed to private")
+    except Exception as e:  # noqa: BLE001 - the regenerate itself succeeded
+        job_log.error(f"Visibility change to private after regenerate failed: {e}")
+        logger.exception(f"[job:{job_id}] Chained change_to_private failed")
+        try:
+            job_manager.update_job(job_id, {'state_data.visibility_change_in_progress': DELETE_FIELD})
+        except Exception:  # noqa: BLE001
+            pass
 
 
 async def redistribute_video(job_id: str) -> bool:

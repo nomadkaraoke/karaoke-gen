@@ -640,7 +640,8 @@
     "waitingForCapacity": "エンコーディングサーバーの空きを待機中（再試行中）",
     "preparingAudio": "音源を準備中",
     "processing": "処理中",
-    "waitingForUpload": "アップロード待機中"
+    "waitingForUpload": "アップロード待機中",
+    "restoringStems": "オーディオステムを復元中"
   },
   "jobCard": {
     "actionNeeded": "アクションが必要です",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "まだ利用可能な出力がありません",
     "confirmCost": "料金を確認",
     "makingPublicInProgress": "このトラックを公開しています — デフォルトのブランディングで再レンダリングし、再公開しています。通常15〜30分ほどかかります。",
-    "waitingForEncodingServer": "（エンコーディングサーバーの空きを待機中）"
+    "waitingForEncodingServer": "（エンコーディングサーバーの空きを待機中）",
+    "regeneratingInProgress": "動画ファイルを再生成しています。通常10〜30分ほどかかります。準備ができ次第、メールでお知らせします。"
   },
   "jobActions": {
     "delete": "削除",
@@ -754,7 +756,15 @@
     "adminRerender": "再レンダリング",
     "adminRerenderFailed": "再レンダリングを開始できませんでした: {error}",
     "adminRerenderStarted": "再レンダリングを開始しました。",
-    "adminRerenderStartedWithWarnings": "再レンダリングを開始しました。一部の公開済み出力はそのまま保持されました："
+    "adminRerenderStartedWithWarnings": "再レンダリングを開始しました。一部の公開済み出力はそのまま保持されました：",
+    "regenerate": "動画を再生成",
+    "regenerateDesc": "容量を節約するため、以前のトラックでは720p動画とCDG/TXTパッケージのみを保持しています。再生成すると、確認済みの歌詞と選択したインストゥルメンタル音源から、4Kやその他のフォーマットを以前とまったく同じように再作成します。",
+    "regenerateFailed": "再生成を開始できませんでした: {error}",
+    "regenerateNoRepublish": "YouTube、Dropbox、Google Driveのリンクはそのまま保持されます。",
+    "regenerateStarted": "動画を再生成しています。準備ができ次第、メールでお知らせします。",
+    "regenerateTime": "通常10〜30分ほどかかります。準備ができ次第、メールでお知らせします。",
+    "regenerateTitle": "この動画を再生成しますか？",
+    "regenerateTooltip": "容量を節約するため、以前のトラックでは720p動画とカラオケパッケージのみを保持しています。その他のフォーマットを再生成できます。"
   },
   "themeSelector": {
     "videoTheme": "動画テーマ",

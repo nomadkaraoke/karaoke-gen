@@ -653,7 +653,8 @@
     "transcribing": "Transcribing",
     "correcting": "Correcting",
     "lyricsDone": "Lyrics done",
-    "lyrics": "Lyrics"
+    "lyrics": "Lyrics",
+    "restoringStems": "Restoring audio stems"
   },
   "jobCard": {
     "actionNeeded": "Action needed",
@@ -667,7 +668,8 @@
     "autoAccept": "Will auto-accept",
     "autoSelect": "Will auto-select",
     "willAutoSelectFirst": "Will auto-select first",
-    "noOutputsAvailable": "No outputs available yet"
+    "noOutputsAvailable": "No outputs available yet",
+    "regeneratingInProgress": "Regenerating your video files. This usually takes 10–30 minutes, and we'll email you when they're ready."
   },
   "jobActions": {
     "delete": "Delete",
@@ -767,7 +769,15 @@
     "adminRerenderNotify": "Email the customer when done",
     "adminRerenderFailed": "Couldn't start the re-render: {error}",
     "adminRerenderStarted": "Re-render started.",
-    "adminRerenderStartedWithWarnings": "Re-render started. Some published outputs were left in place:"
+    "adminRerenderStartedWithWarnings": "Re-render started. Some published outputs were left in place:",
+    "regenerate": "Regenerate video",
+    "regenerateTooltip": "To save space, older tracks keep only the 720p video and karaoke packages. Regenerate the other formats.",
+    "regenerateTitle": "Regenerate this video?",
+    "regenerateDesc": "To save space, we keep the 720p video and the CDG/TXT packages of older tracks. Regenerating rebuilds the 4K and other formats from your reviewed lyrics and chosen instrumental, exactly as before.",
+    "regenerateNoRepublish": "Your YouTube, Dropbox and Google Drive links stay as they are.",
+    "regenerateTime": "It usually takes 10–30 minutes. We'll email you when it's ready.",
+    "regenerateStarted": "Regenerating your video. We'll email you when it's ready.",
+    "regenerateFailed": "Couldn't start regenerating: {error}"
   },
   "themeSelector": {
     "videoTheme": "Video Theme",

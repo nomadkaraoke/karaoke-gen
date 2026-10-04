@@ -640,7 +640,8 @@
     "waitingForCapacity": "Oczekiwanie na serwer kodujący (ponawianie)",
     "preparingAudio": "Przygotowywanie Twojego audio",
     "processing": "Przetwarzanie",
-    "waitingForUpload": "Oczekiwanie na przesłanie"
+    "waitingForUpload": "Oczekiwanie na przesłanie",
+    "restoringStems": "Przywracanie ścieżek audio"
   },
   "jobCard": {
     "actionNeeded": "Wymagane działanie",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Brak dostępnych wyników",
     "confirmCost": "Potwierdź koszt",
     "makingPublicInProgress": "Upublicznianie tego utworu — ponowne renderowanie z domyślnym brandingiem i ponowna publikacja. Zazwyczaj zajmuje to 15–30 minut.",
-    "waitingForEncodingServer": "(oczekiwanie na dostępność serwera kodującego)"
+    "waitingForEncodingServer": "(oczekiwanie na dostępność serwera kodującego)",
+    "regeneratingInProgress": "Trwa ponowne generowanie plików wideo. Zwykle zajmuje to 10–30 minut. Wyślemy Ci e-mail, gdy będą gotowe."
   },
   "jobActions": {
     "delete": "Usuń",
@@ -754,7 +756,15 @@
     "adminRerender": "Wyrenderuj ponownie",
     "adminRerenderFailed": "Nie udało się rozpocząć ponownego renderowania: {error}",
     "adminRerenderStarted": "Rozpoczęto ponowne renderowanie.",
-    "adminRerenderStartedWithWarnings": "Rozpoczęto ponowne renderowanie. Niektóre opublikowane pliki wyjściowe pozostawiono na miejscu:"
+    "adminRerenderStartedWithWarnings": "Rozpoczęto ponowne renderowanie. Niektóre opublikowane pliki wyjściowe pozostawiono na miejscu:",
+    "regenerate": "Wygeneruj wideo ponownie",
+    "regenerateDesc": "Aby zaoszczędzić miejsce, w przypadku starszych utworów zachowujemy wideo w 720p oraz pakiety CDG/TXT. Ponowne wygenerowanie odtworzy wersję 4K i inne formaty na podstawie Twojego zweryfikowanego tekstu oraz wybranego podkładu instrumentalnego, dokładnie tak jak wcześniej.",
+    "regenerateFailed": "Nie udało się rozpocząć ponownego generowania: {error}",
+    "regenerateNoRepublish": "Twoje linki do YouTube, Dropbox i Google Drive pozostaną bez zmian.",
+    "regenerateStarted": "Trwa ponowne generowanie Twojego wideo. Wyślemy Ci e-mail, gdy będzie gotowe.",
+    "regenerateTime": "Zwykle zajmuje to 10–30 minut. Wyślemy Ci e-mail, gdy będzie gotowe.",
+    "regenerateTitle": "Wygenerować to wideo ponownie?",
+    "regenerateTooltip": "Aby zaoszczędzić miejsce, w przypadku starszych utworów zachowujemy tylko wideo w 720p i pakiety karaoke. Wygeneruj ponownie pozostałe formaty."
   },
   "themeSelector": {
     "videoTheme": "Motyw wideo",

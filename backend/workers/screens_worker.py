@@ -117,6 +117,14 @@ async def generate_screens(job_id: str) -> bool:
         logger.error(f"[job:{job_id}] Prerequisites not met for screen generation")
         return False
 
+    # Storage retention purged this job's separated stems: re-run audio
+    # separation first (the audio worker re-triggers this worker when done), so
+    # review / render / encode find the stems where they always were.
+    from backend.services.stems_restore import NOT_NEEDED, FAILED as RESTORE_FAILED, maybe_start_stems_restore
+    restore = await maybe_start_stems_restore(job, job_manager, job_log)
+    if restore != NOT_NEEDED:
+        return restore != RESTORE_FAILED
+
     # Set up log capture for VideoGenerator and style_helper (after the guards above
     # so their early returns don't leak handlers).
     log_handler = setup_job_logging(job_id, "screens", *SCREENS_WORKER_LOGGERS)

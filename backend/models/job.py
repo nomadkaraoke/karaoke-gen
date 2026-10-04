@@ -391,6 +391,14 @@ class Job(BaseModel):
     outputs_deleted_at: Optional[datetime] = None  # Timestamp when outputs were deleted by admin
     outputs_deleted_by: Optional[str] = None       # Admin email who deleted outputs
 
+    # Storage retention (backend/services/storage_retention.py): set when the
+    # daily purge deleted this job's regenerable renders / separated stems.
+    # Cleared when they're rebuilt (regenerate / re-render / stems restore).
+    renders_purged_at: Optional[datetime] = None
+    stems_purged_at: Optional[datetime] = None
+    renders_regenerated_at: Optional[datetime] = None  # last GCS-only regenerate
+    storage_purge: Optional[Dict[str, Any]] = None  # manifest of the last purge
+
     # Credit refund tracking (prevents double-refund on cancel→delete or fail→delete)
     credit_refunded: bool = False
 

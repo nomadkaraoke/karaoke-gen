@@ -640,7 +640,8 @@
     "waitingForCapacity": "Odotetaan enkoodauspalvelinta (yritetään uudelleen)",
     "preparingAudio": "Valmistellaan ääniraitaasi",
     "processing": "Käsitellään",
-    "waitingForUpload": "Odotetaan latausta"
+    "waitingForUpload": "Odotetaan latausta",
+    "restoringStems": "Palautetaan erillisiä ääniraitoja (stems)"
   },
   "jobCard": {
     "actionNeeded": "Toimenpiteitä tarvitaan",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Ei tulosteita vielä saatavilla",
     "confirmCost": "Vahvista hinta",
     "makingPublicInProgress": "Kappaleesta tehdään julkinen — se renderöidään uudelleen oletusbrändäyksellä ja julkaistaan uudestaan. Tämä kestää yleensä 15–30 minuuttia.",
-    "waitingForEncodingServer": "(odotetaan enkoodauspalvelimen vapautumista)"
+    "waitingForEncodingServer": "(odotetaan enkoodauspalvelimen vapautumista)",
+    "regeneratingInProgress": "Videotiedostojasi luodaan uudelleen. Tähän menee yleensä 10–30 minuuttia, ja saat sähköpostia, kun ne ovat valmiina."
   },
   "jobActions": {
     "delete": "Poista",
@@ -754,7 +756,15 @@
     "adminRerender": "Renderöi uudelleen",
     "adminRerenderFailed": "Uudelleenrenderöintiä ei voitu aloittaa: {error}",
     "adminRerenderStarted": "Uudelleenrenderöinti aloitettu.",
-    "adminRerenderStartedWithWarnings": "Uudelleenrenderöinti aloitettu. Osa julkaistuista tuotoksista jätettiin paikoilleen:"
+    "adminRerenderStartedWithWarnings": "Uudelleenrenderöinti aloitettu. Osa julkaistuista tuotoksista jätettiin paikoilleen:",
+    "regenerate": "Luo video uudelleen",
+    "regenerateDesc": "Tilan säästämiseksi säilytämme vanhemmista kappaleista 720p-videon sekä CDG/TXT-paketit. Uudelleenluonti muodostaa 4K-videon ja muut tiedostomuodot uudelleen tarkistamiesi sanoitusten ja valitsemasi instrumentaalin pohjalta, aivan kuten aiemmin.",
+    "regenerateFailed": "Uudelleenluontia ei voitu aloittaa: {error}",
+    "regenerateNoRepublish": "YouTube-, Dropbox- ja Google Drive -linkkisi pysyvät ennallaan.",
+    "regenerateStarted": "Videotasi luodaan uudelleen. Saat sähköpostia, kun se on valmis.",
+    "regenerateTime": "Tähän menee yleensä 10–30 minuuttia. Saat sähköpostia, kun se on valmis.",
+    "regenerateTitle": "Luodaanko tämä video uudelleen?",
+    "regenerateTooltip": "Tilan säästämiseksi vanhemmista kappaleista säilytetään vain 720p-video ja karaokepaketit. Luo muut tiedostomuodot uudelleen."
   },
   "themeSelector": {
     "videoTheme": "Videoteema",

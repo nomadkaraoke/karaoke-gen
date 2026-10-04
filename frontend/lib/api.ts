@@ -140,6 +140,12 @@ export interface Job {
   user_email?: string;
   outputs_deleted_at?: string;
   outputs_deleted_by?: string;
+  /** Storage retention archived the big video files (720p + packages kept); "Regenerate video" rebuilds them. */
+  renders_purged_at?: string | null;
+  /** Storage retention archived the separated stems (re-separated on demand). */
+  stems_purged_at?: string | null;
+  finalise_only?: boolean;
+  prep_only?: boolean;
   edit_count?: number;
   existing_instrumental_gcs_path?: string;
   // Audio search fields
@@ -2383,6 +2389,14 @@ export const api = {
   },
 
   /** Re-render a finished tenant track with the tenant's current theme (no review). */
+  async regenerateJob(jobId: string): Promise<{ status: string; job_id: string; needs_stems: boolean; message: string }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/regenerate`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(response);
+  },
+
   async rerenderWithCurrentTheme(jobId: string): Promise<{ status: string; job_id: string; theme_id: string }> {
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/${jobId}/rerender`, {
       method: 'POST',

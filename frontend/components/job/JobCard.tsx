@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useTranslations, useLocale } from 'next-intl'
 import { Job } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Zap, Globe } from "lucide-react"
+import { Zap, Globe, Sparkles } from "lucide-react"
 import { JobActions } from "./JobActions"
 import { AdminJobActions } from "./AdminJobActions"
 import { OutputLinks } from "./OutputLinks"
@@ -12,7 +12,7 @@ import { StalledDownloadNotice, isStalledDownload } from "./StalledDownloadNotic
 import { AudioSearchDialog } from "../audio-search/AudioSearchDialog"
 import { DurationCostConfirm } from "./DurationCostConfirm"
 import { BuyCreditsDialog } from "@/components/credits/BuyCreditsDialog"
-import { getJobStep, formatStepIndicator, getJobProgressPercent, isWaitingForEncodingCapacity, isVisibilityChangeInProgress } from "@/lib/job-status"
+import { getJobStep, formatStepIndicator, getJobProgressPercent, isWaitingForEncodingCapacity, isVisibilityChangeInProgress, isRegenerating } from "@/lib/job-status"
 import { useAuth } from "@/lib/auth"
 import { LocaleBadge } from "@/components/admin/locale-badge"
 import { useDurationConfirm } from "@/hooks/use-duration-confirm"
@@ -251,6 +251,16 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
         <div className="mt-2 text-xs bg-blue-500/10 text-blue-300 rounded p-2 flex items-start gap-2">
           <Globe className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>{t('makingPublicInProgress')}</span>
+        </div>
+      )}
+
+      {/* Regenerate (storage retention) in progress: the archived video files
+          are being rebuilt; set expectations rather than showing a bare
+          processing state on a track the customer finished long ago. */}
+      {isRegenerating(job) && job.status !== "failed" && (
+        <div className="mt-2 text-xs bg-pink-500/10 text-pink-300 rounded p-2 flex items-start gap-2" data-testid="regenerating-notice">
+          <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>{t('regeneratingInProgress')}</span>
         </div>
       )}
 

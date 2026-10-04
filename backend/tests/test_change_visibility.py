@@ -32,7 +32,8 @@ def _make_job(
         title="Test Song",
         outputs_deleted_at=None,
         dropbox_path="/Tracks-Organized",
-        file_urls={"finals": {"lossy_4k_mp4": "gs://test/4k.mp4"}},
+        file_urls={"finals": {"lossy_4k_mp4": "gs://test/4k.mp4", "lossy_720p_mp4": "gs://test/720p.mp4"}},
+        renders_purged_at=None,
     )
 
 

@@ -365,6 +365,14 @@ class StorageService:
             logger.error(f"Error listing files with prefix {prefix}: {e}")
             raise
     
+    def list_files_with_sizes(self, prefix: str) -> list:
+        """List ``(name, size_bytes)`` for every object under ``prefix``."""
+        try:
+            return [(blob.name, int(blob.size or 0)) for blob in self.bucket.list_blobs(prefix=prefix)]
+        except Exception as e:
+            logger.error(f"Error listing files with prefix {prefix}: {e}")
+            raise
+
     def get_file_size(self, blob_path: str) -> Optional[int]:
         """Size in bytes of a GCS object, or None if it doesn't exist."""
         blob = self.bucket.get_blob(blob_path)

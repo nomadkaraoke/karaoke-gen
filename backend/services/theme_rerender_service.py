@@ -77,6 +77,9 @@ def validate_rerender(job) -> Optional[str]:
         return f"Only finished tracks can be re-rendered (current status: {job.status})."
     if getattr(job, "outputs_deleted_at", None):
         return "This track's outputs were deleted, so it can't be re-rendered."
+    from backend.services.storage_retention import PURGE_IN_PROGRESS_MESSAGE, purge_in_progress
+    if purge_in_progress(job):
+        return PURGE_IN_PROGRESS_MESSAGE
     if not getattr(job, "theme_id", None):
         return "This track wasn't made from a theme, so there's nothing to re-apply."
     if getattr(job, "prep_only", False) or getattr(job, "finalise_only", False):
@@ -109,7 +112,12 @@ def rerender_brand_code(job) -> Optional[str]:
         return code
     # Admin re-render (only while its marker belongs to the current run).
     from backend.services.admin_rerender_service import admin_rerender_brand_code
-    return admin_rerender_brand_code(job)
+    code = admin_rerender_brand_code(job)
+    if code:
+        return code
+    # GCS-only regenerate (storage retention): same brand code, nothing re-published.
+    from backend.services.regenerate_service import regenerate_brand_code
+    return regenerate_brand_code(job)
 
 
 def delete_regenerated_artifacts(storage: StorageService, job_id: str) -> None:

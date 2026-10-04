@@ -640,7 +640,8 @@
     "waitingForCapacity": "Kodlama sunucusu bekleniyor (yeniden deneniyor)",
     "preparingAudio": "Ses dosyan hazırlanıyor",
     "processing": "İşleniyor",
-    "waitingForUpload": "Yükleme bekleniyor"
+    "waitingForUpload": "Yükleme bekleniyor",
+    "restoringStems": "Ses kanalları geri yükleniyor"
   },
   "jobCard": {
     "actionNeeded": "Eylem gerekiyor",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Henüz çıktı yok",
     "confirmCost": "Ücreti Onayla",
     "makingPublicInProgress": "Bu parça herkese açık hale getiriliyor — varsayılan markalama ile yeniden işleniyor ve yeniden yayımlanıyor. Bu işlem genellikle 15–30 dakika sürer.",
-    "waitingForEncodingServer": "(kodlama sunucusunun müsait olması bekleniyor)"
+    "waitingForEncodingServer": "(kodlama sunucusunun müsait olması bekleniyor)",
+    "regeneratingInProgress": "Video dosyaların yeniden oluşturuluyor. Bu işlem genellikle 10–30 dakika sürer ve hazır olduğunda sana e-posta göndereceğiz."
   },
   "jobActions": {
     "delete": "Sil",
@@ -754,7 +756,15 @@
     "adminRerender": "Yeniden render et",
     "adminRerenderFailed": "Yeniden render başlatılamadı: {error}",
     "adminRerenderStarted": "Yeniden render başlatıldı.",
-    "adminRerenderStartedWithWarnings": "Yeniden render başlatıldı. Yayınlanan bazı çıktılar olduğu gibi bırakıldı:"
+    "adminRerenderStartedWithWarnings": "Yeniden render başlatıldı. Yayınlanan bazı çıktılar olduğu gibi bırakıldı:",
+    "regenerate": "Videoyu yeniden oluştur",
+    "regenerateDesc": "Yer tasarrufu sağlamak için eski parçaların 720p videosunu ve CDG/TXT paketlerini saklıyoruz. Yeniden oluşturma; gözden geçirdiğin şarkı sözlerinden ve seçtiğin enstrümantalden 4K ve diğer formatları tıpkı eskisi gibi tekrar üretir.",
+    "regenerateFailed": "Yeniden oluşturma başlatılamadı: {error}",
+    "regenerateNoRepublish": "YouTube, Dropbox ve Google Drive bağlantıların olduğu gibi kalır.",
+    "regenerateStarted": "Videon yeniden oluşturuluyor. Hazır olduğunda sana e-posta göndereceğiz.",
+    "regenerateTime": "Genellikle 10–30 dakika sürer. Hazır olduğunda sana e-posta göndereceğiz.",
+    "regenerateTitle": "Bu video yeniden oluşturulsun mu?",
+    "regenerateTooltip": "Yer tasarrufu sağlamak için eski parçalarda yalnızca 720p video ve karaoke paketleri saklanır. Diğer formatları yeniden oluşturabilirsin."
   },
   "themeSelector": {
     "videoTheme": "Video Teması",
