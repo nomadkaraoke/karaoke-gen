@@ -299,8 +299,12 @@ class TestStemsRestoreGate:
         ws.trigger_audio_worker = AsyncMock(return_value=True)
         with patch("backend.services.worker_service.get_worker_service", return_value=ws):
             assert await maybe_start_stems_restore(_job(), jm) == STARTED
-        marker = jm.update_job.call_args[0][1]["state_data.stems_restore"]
+        payload = jm.update_job.call_args[0][1]
+        marker = payload["state_data.stems_restore"]
         assert marker["status"] == "running" and marker["attempts"] == 1
+        # the screens idempotency mark is dropped so the restore's re-trigger runs
+        from backend.services import stems_restore
+        assert payload["state_data.screens_progress"] is stems_restore.DELETE_FIELD
         ws.trigger_audio_worker.assert_awaited_once_with("job123")
 
     @pytest.mark.asyncio
@@ -371,6 +375,7 @@ class TestStemsRestoreGate:
         update = jm.update_job.call_args[0][1]
         assert update["stems_purged_at"] is None
         assert "status" not in update
+        assert "state_data.screens_progress" in update
         # compare with the module's own sentinel (other suites stub firestore_v1)
         assert update["state_data.stems_restore"] is stems_restore.DELETE_FIELD
         ws.trigger_screens_worker.assert_awaited_once_with("job123")
@@ -936,3 +941,44 @@ class TestStorageRetentionWorker:
         args = list(request.overrides.container_overrides[0].args)
         assert args[:3] == ["python", "-m", "backend.workers.storage_retention_worker"]
         assert args[3:] == ["--dry-run", "false", "--report-path", "r.json", "--max-jobs", "3", "--include-orphans"]
+
+
+
+class TestLostRerenderScreensDispatch:
+    def test_parked_rerender_is_retriggered(self, client):
+        test_client, app = client
+        from backend.api.dependencies import require_admin
+
+        async def admin():
+            return _auth(email="admin@x.com", is_admin=True)
+
+        app.dependency_overrides[require_admin] = admin
+        state = {"regen_restore_status": "review_complete", "screens_progress": {"stage": "running"},
+                 "regenerate": {"review_token": "tok-1"}}
+        parked = _job(status="lyrics_complete", state_data=state,
+                      updated_at=datetime.now(timezone.utc) - timedelta(minutes=20))
+        fresh = _job(job_id="job456", status="lyrics_complete", state_data=dict(state),
+                     updated_at=datetime.now(timezone.utc))
+        docs = [SimpleNamespace(id=j.job_id, to_dict=(lambda j=j: {"job_id": j.job_id, "state_data": j.state_data}))
+                for j in (parked, fresh)]
+        jm = MagicMock()
+        jm.get_job.side_effect = lambda jid: {"job123": parked, "job456": fresh}[jid]
+
+        def where(filter=None):
+            q = MagicMock()
+            selected = docs if getattr(filter, "value", None) == "lyrics_complete" else []
+            q.stream.return_value = []
+            q.limit.return_value.stream.return_value = selected
+            return q
+
+        jm.firestore.db.collection.return_value.where.side_effect = where
+        ws = MagicMock()
+        ws.trigger_screens_worker = AsyncMock(return_value=True)
+        with patch("backend.api.routes.internal.JobManager", return_value=jm), \
+             patch("google.cloud.firestore_v1.FieldFilter",
+                   side_effect=lambda field, op, value: SimpleNamespace(value=value)), \
+             patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            resp = test_client.post("/api/internal/recover-stuck-jobs")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["regen_screens_retriggered_jobs"] == ["job123"]
+        ws.trigger_screens_worker.assert_awaited_once_with("job123")

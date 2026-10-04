@@ -72,6 +72,7 @@ async def maybe_start_stems_restore(job, job_manager, job_log=None) -> str:
         age = _age_seconds(marker.get("started_at"))
         if age is not None and age < STALE_RUNNING_SECONDS:
             logger.info(f"[job:{job_id}] Stems restore already running; skipping duplicate screens dispatch")
+            job_manager.update_job(job_id, {"state_data.screens_progress": DELETE_FIELD})
             return IN_PROGRESS
     attempts = int(marker.get("attempts") or 0)
     if attempts >= MAX_AUTO_ATTEMPTS:
@@ -79,6 +80,7 @@ async def maybe_start_stems_restore(job, job_manager, job_log=None) -> str:
             "Couldn't restore this track's audio stems (archived to save space) after "
             f"{attempts} attempts. Retry the job to try again."
         )
+        job_manager.update_job(job_id, {"state_data.screens_progress": DELETE_FIELD})
         job_manager.mark_job_failed(
             job_id=job_id, error_message=message,
             error_details={"stage": "stems_restore", "attempts": attempts},
@@ -90,6 +92,11 @@ async def maybe_start_stems_restore(job, job_manager, job_log=None) -> str:
         f"state_data.{STEMS_RESTORE_KEY}": {
             "status": "running", "attempts": attempts + 1, "started_at": now,
         },
+        # This screens dispatch ends here (the restore re-triggers screens), so
+        # drop the "running" idempotency mark /api/internal/workers/screens set —
+        # otherwise the re-trigger is skipped as "already running". Duplicate
+        # dispatches meanwhile are absorbed by the stems_restore marker.
+        "state_data.screens_progress": DELETE_FIELD,
         "message": "Restoring audio stems",
         "updated_at": datetime.now(timezone.utc),
     })
@@ -98,7 +105,8 @@ async def maybe_start_stems_restore(job, job_manager, job_log=None) -> str:
     from backend.services.worker_service import get_worker_service
     triggered = await get_worker_service().trigger_audio_worker(job_id)
     if not triggered:
-        job_manager.update_job(job_id, {f"state_data.{STEMS_RESTORE_KEY}.status": "failed"})
+        job_manager.update_job(job_id, {f"state_data.{STEMS_RESTORE_KEY}.status": "failed",
+                                        "state_data.screens_progress": DELETE_FIELD})
         job_manager.mark_job_failed(
             job_id=job_id,
             error_message="Couldn't start audio separation to restore this track's stems. Retry the job.",
@@ -114,6 +122,7 @@ async def complete_stems_restore(job_id: str, job_manager) -> bool:
     update = {
         "stems_purged_at": None,
         f"state_data.{STEMS_RESTORE_KEY}": DELETE_FIELD,
+        "state_data.screens_progress": DELETE_FIELD,
     }
     # A Cloud Run task retry succeeded after an earlier attempt marked the job
     # FAILED: put it back where the restore started so screens can continue.

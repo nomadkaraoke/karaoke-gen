@@ -1243,11 +1243,33 @@ async def recover_stuck_jobs(
     lc_query = jobs_ref.where(
         filter=FieldFilter("status", "==", JobStatus.LYRICS_COMPLETE.value)
     ).limit(SCREENS_RECOVERY_SCAN_LIMIT).stream()
+    regen_screens_retriggered = []
     for doc in lc_query:
         data = doc.to_dict() or {}
-        if not ((data.get("state_data") or {}).get("stems_restore")):
-            continue
+        sd = data.get("state_data") or {}
         job_id = data.get("job_id", doc.id)
+        # A re-render / regenerate / visibility flow parks the job at
+        # lyrics_complete only until its screens dispatch starts (which moves it
+        # to generating_screens within seconds). Still here after 10 min with no
+        # stems restore running = the dispatch was lost (or skipped by a stale
+        # screens_progress mark): clear the mark and re-trigger.
+        if sd.get("regen_restore_status") and not sd.get("stems_restore"):
+            if len(regen_screens_retriggered) >= SCREENS_RETRIGGERS_PER_TICK:
+                continue
+            job = job_manager.get_job(job_id)
+            age = _job_updated_age_seconds(job) if job else None
+            if job and age is not None and age > PREP_SCREENS_STALL_SECONDS:
+                from google.cloud.firestore_v1 import DELETE_FIELD as _DEL
+                logger.warning(f"[job:{job_id}] Re-render parked at lyrics_complete >10 min — re-triggering screens")
+                job_manager.update_job(job_id, {"state_data.screens_progress": _DEL})
+                try:
+                    if await worker_service.trigger_screens_worker(job_id):
+                        regen_screens_retriggered.append(job_id)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning(f"[job:{job_id}] re-render screens re-trigger failed: {e}")
+            continue
+        if not sd.get("stems_restore"):
+            continue
         job = job_manager.get_job(job_id)
         if not job or not restore_stalled(job):
             continue
@@ -1289,6 +1311,7 @@ async def recover_stuck_jobs(
         "screens_retriggered_jobs": screens_retriggered,
         "screens_retriggered_count": len(screens_retriggered),
         "stems_restore_failed_jobs": stems_restore_failed,
+        "regen_screens_retriggered_jobs": regen_screens_retriggered,
     }
 
 
