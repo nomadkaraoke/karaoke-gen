@@ -52,6 +52,16 @@ logger = logging.getLogger(__name__)
 
 POLICY_VERSION = 1
 REPORT_PREFIX = "storage-retention/reports"
+# Audit trail of every object deleted (kept forever; never touched by any purge
+# or lifecycle rule — see docs/STORAGE-RETENTION.md).
+DELETION_LOG_PREFIX = "storage-retention/deletion-logs"
+MODE_JOB_PURGE = "job_purge"
+MODE_ORPHAN = "orphan"
+ORPHAN_QUIET_DAYS = 30
+# Firestore collections whose doc id == the jobs/{id}/ folder name and that mean
+# "this folder still belongs to something". encoding_worker_jobs is NOT one: it's
+# the encoder's expiring result cache, left behind by deleted jobs.
+ORPHAN_RECORD_COLLECTIONS = ("jobs", "jobs-dev", "youtube_upload_queue")
 STATE_COLLECTION = "storage_retention"
 STATE_DOC = "state"
 SCAN_PAGE_SIZE = 200
@@ -234,6 +244,7 @@ class JobPlan:
     stems_purgeable: bool = True
     stems_note: Optional[str] = None
     skip_reason: Optional[str] = None
+    generations: Dict[str, Any] = field(default_factory=dict)
 
     @property
     def purge_bytes(self) -> int:
@@ -254,12 +265,26 @@ class JobPlan:
         return any(c in STEM_CATEGORIES for _, _, c in self.purge)
 
 
-def plan_job(job: Dict[str, Any], listing: List[Tuple[str, int]]) -> JobPlan:
+def _listing_entries(listing) -> List[Tuple[str, int, Any]]:
+    """Normalise a listing of ``(name, size)``, ``(name, size, gen)`` or meta dicts."""
+    out = []
+    for item in listing:
+        if isinstance(item, dict):
+            out.append((item["name"], int(item.get("size") or 0), item.get("generation")))
+        elif len(item) >= 3:
+            out.append((item[0], int(item[1] or 0), item[2]))
+        else:
+            out.append((item[0], int(item[1] or 0), None))
+    return out
+
+
+def plan_job(job: Dict[str, Any], listing) -> JobPlan:
     """Decide what to purge for one (already eligible) job from its GCS listing."""
     job_id = job["job_id"]
     prefix = f"jobs/{job_id}/"
     plan = JobPlan(job_id=job_id)
-    names = {name for name, _ in listing}
+    entries = _listing_entries(listing)
+    names = {name for name, _, _ in entries}
 
     # Re-rendering needs the input audio (render worker + separation). If it's
     # gone (e.g. pre-persistence jobs whose input expired from uploads/), nothing
@@ -276,7 +301,7 @@ def plan_job(job: Dict[str, Any], listing: List[Tuple[str, int]]) -> JobPlan:
         plan.stems_purgeable = False
         plan.stems_note = "existing_instrumental"
 
-    for name, size in listing:
+    for name, size, generation in entries:
         if not name.startswith(prefix):  # defence in depth: never outside jobs/{id}/
             continue
         action, category = classify_file(
@@ -284,9 +309,145 @@ def plan_job(job: Dict[str, Any], listing: List[Tuple[str, int]]) -> JobPlan:
         )
         if action == PURGE:
             plan.purge.append((name, size, category))
+            plan.generations[name] = generation
         else:
             plan.kept_bytes += size
     return plan
+
+
+def assert_deletable(path: str) -> None:
+    """Hard guard: retention code only ever deletes inside a jobs/{id}/ folder."""
+    parts = path.split("/")
+    if len(parts) < 3 or parts[0] != "jobs" or not parts[1] or path.startswith(DELETION_LOG_PREFIX):
+        raise ValueError(f"refusing to delete outside jobs/{{id}}/: {path}")
+
+
+def log_category(category: str) -> str:
+    """Category label used in the deletion log (finals, review-audio, screens-mov, ...)."""
+    return category.replace("_", "-")
+
+
+class DeletionLog:
+    """Append-only JSONL audit log of one run's deletions, flushed to GCS in batches.
+
+    ``storage-retention/deletion-logs/<run-ts>-<mode>.jsonl`` holds one line per
+    attempted delete; it is re-uploaded (whole) after every batch so a crash
+    mid-run still leaves a complete record of what was deleted up to the last
+    flush (the batch in flight is at most ``flush_every`` lines / one job).
+    """
+
+    def __init__(self, storage, run_ts: datetime, mode: str, flush_every: int = 200):
+        self.storage = storage
+        self.mode = mode
+        self.run_id = f"{run_ts.strftime('%Y%m%dT%H%M%SZ')}-{mode}"
+        self.path = f"{DELETION_LOG_PREFIX}/{self.run_id}.jsonl"
+        self.summary_path = f"{DELETION_LOG_PREFIX}/{self.run_id}.summary.json"
+        self.flush_every = flush_every
+        self._lines: List[str] = []
+        self._unflushed = 0
+        self.totals: Counter = Counter()
+        self.counts: Counter = Counter()
+        self.failures = 0
+        self.jobs: set = set()
+
+    def record(self, job_id: str, path: str, size: int, generation, category: str,
+               result: str, error: Optional[str] = None) -> None:
+        import json
+        entry = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "run_id": self.run_id,
+            "mode": self.mode,
+            "job_id": job_id,
+            "path": path,
+            "size_bytes": int(size or 0),
+            "generation": str(generation) if generation is not None else None,
+            "category": category,
+            "result": result,
+        }
+        if error:
+            entry["error"] = error[:500]
+        self._lines.append(json.dumps(entry, ensure_ascii=False))
+        self._unflushed += 1
+        if result == "deleted":
+            self.totals[category] += int(size or 0)
+            self.counts[category] += 1
+            self.jobs.add(job_id)
+        elif result == "failed":
+            self.failures += 1
+        if self._unflushed >= self.flush_every:
+            self.flush()
+
+    def flush(self) -> None:
+        if not self._lines:
+            return
+        try:
+            self.storage.upload_text(self.path, "\n".join(self._lines) + "\n", content_type="application/x-ndjson")
+            self._unflushed = 0
+        except Exception as e:  # noqa: BLE001 - logged; next flush retries the whole file
+            logger.error(f"storage retention: deletion log flush failed ({self.path}): {e}")
+
+    def write_summary(self, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        summary = {
+            "run_id": self.run_id,
+            "mode": self.mode,
+            "deletion_log": self.path,
+            "objects_deleted": sum(self.counts.values()),
+            "jobs": len(self.jobs),
+            "bytes_deleted": sum(self.totals.values()),
+            "gib_deleted": round(sum(self.totals.values()) / 2**30, 3),
+            "bytes_by_category": dict(self.totals),
+            "objects_by_category": dict(self.counts),
+            "failures": self.failures,
+            "written_at": datetime.now(timezone.utc).isoformat(),
+            **(extra or {}),
+        }
+        self.flush()
+        try:
+            self.storage.upload_json(self.summary_path, summary)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"storage retention: summary write failed ({self.summary_path}): {e}")
+        return summary
+
+
+def orphan_candidates(entries: Iterable[Dict[str, Any]], known_ids: set) -> Dict[str, List[Dict[str, Any]]]:
+    """Group ``jobs/{id}/...`` objects whose id has no job record."""
+    folders: Dict[str, List[Dict[str, Any]]] = {}
+    for meta in entries:
+        parts = meta["name"].split("/")
+        if len(parts) < 3 or parts[0] != "jobs" or not parts[1]:
+            continue
+        if parts[1] in known_ids:
+            continue
+        folders.setdefault(parts[1], []).append(meta)
+    return folders
+
+
+def plan_orphan_folder(job_id: str, objects: List[Dict[str, Any]], now: datetime,
+                       quiet_days: int = ORPHAN_QUIET_DAYS) -> Dict[str, Any]:
+    """Keep ``input/``; everything else in an orphan folder is deleted (if quiet)."""
+    prefix = f"jobs/{job_id}/"
+    latest = None
+    for meta in objects:
+        updated = _parse_ts(meta.get("updated"))
+        if updated and (latest is None or updated > latest):
+            latest = updated
+    keep, purge = [], []
+    for meta in objects:
+        if not meta["name"].startswith(prefix):
+            continue
+        (keep if meta["name"][len(prefix):].startswith("input/") else purge).append(meta)
+    skip = None
+    if latest is None or now - latest < timedelta(days=quiet_days):
+        skip = "recently_modified"
+    return {
+        "job_id": job_id,
+        "latest_update": latest.isoformat() if latest else None,
+        "skip_reason": skip,
+        "purge": purge,
+        "keep": keep,
+        "purge_bytes": sum(int(m.get("size") or 0) for m in purge),
+        "keep_bytes": sum(int(m.get("size") or 0) for m in keep),
+    }
 
 
 def file_url_deletions(file_urls: Dict[str, Any], purged_paths: Iterable[str]) -> List[str]:
@@ -395,6 +556,10 @@ class StorageRetentionService:
             "errors": [],
         }
         totals: Counter = Counter()
+        deletion_log = None if dry_run else DeletionLog(self.storage, now, MODE_JOB_PURGE)
+        if deletion_log:
+            report["deletion_log"] = deletion_log.path
+            report["deletion_summary"] = deletion_log.summary_path
         processed = 0
         scanned = 0
         last_id = None
@@ -413,7 +578,7 @@ class StorageRetentionService:
                 report["skipped"][reason] += 1
                 continue
             try:
-                listing = self.storage.list_files_with_sizes(f"jobs/{job['job_id']}/")
+                listing = self.storage.list_blob_meta(f"jobs/{job['job_id']}/")
                 plan = plan_job(job, listing)
             except Exception as e:  # noqa: BLE001 - one bad job never stops the pass
                 logger.exception(f"[job:{job.get('job_id')}] storage retention: planning failed")
@@ -438,7 +603,7 @@ class StorageRetentionService:
             }
             if not dry_run:
                 try:
-                    entry["result"] = self._execute(job["job_id"], plan, now, min_age, excluded)
+                    entry["result"] = self._execute(job["job_id"], plan, now, min_age, excluded, deletion_log)
                 except Exception as e:  # noqa: BLE001
                     logger.exception(f"[job:{plan.job_id}] storage retention: purge failed")
                     entry["result"] = {"status": "error", "error": str(e)}
@@ -452,6 +617,9 @@ class StorageRetentionService:
 
         if use_cursor:
             self._save_cursor(None if exhausted else last_id)
+        if deletion_log:
+            report["deletion_totals"] = deletion_log.write_summary(
+                {"report_path": report_path or self.default_report_path(now, dry_run)})
 
         report["skipped"] = dict(report["skipped"])
         report["summary"] = {
@@ -593,7 +761,8 @@ class StorageRetentionService:
 
         return _run_in_transaction(self.db, claim)
 
-    def _execute(self, job_id: str, plan: JobPlan, now: datetime, min_age: int, excluded: List[str]) -> Dict[str, Any]:
+    def _execute(self, job_id: str, plan: JobPlan, now: datetime, min_age: int, excluded: List[str],
+                 deletion_log: Optional["DeletionLog"] = None) -> Dict[str, Any]:
         from google.cloud.firestore_v1 import DELETE_FIELD
 
         if not self._claim(job_id, plan, now, min_age, excluded):
@@ -606,11 +775,19 @@ class StorageRetentionService:
             for path, size, category in plan.purge:
                 if not path.startswith(f"jobs/{job_id}/"):
                     continue
+                generation = plan.generations.get(path)
                 try:
-                    self.storage.delete_file(path, ignore_missing=True)
+                    assert_deletable(path)
+                    self.storage.delete_file(path, ignore_missing=True, if_generation_match=generation)
                     deleted.append((path, size, category))
+                    if deletion_log:
+                        deletion_log.record(job_id, path, size, generation, log_category(category), "deleted")
                 except Exception as e:  # noqa: BLE001
                     failures.append({"path": path, "error": str(e)})
+                    if deletion_log:
+                        deletion_log.record(job_id, path, size, generation, log_category(category), "failed", str(e))
+            if deletion_log:
+                deletion_log.flush()
 
             snap = ref.get()
             file_urls = (snap.to_dict() or {}).get("file_urls") or {} if snap.exists else {}
@@ -630,8 +807,11 @@ class StorageRetentionService:
                 "policy_version": POLICY_VERSION,
                 "bytes": sum(by_category.values()),
                 "bytes_by_category": dict(by_category),
-                "files": [{"path": p, "bytes": s, "category": c} for p, s, c in deleted],
+                "files": [{"path": p, "bytes": s, "category": c,
+                           "generation": str(plan.generations.get(p)) if plan.generations.get(p) is not None else None}
+                          for p, s, c in deleted],
                 "failures": failures,
+                "deletion_log": deletion_log.path if deletion_log else None,
             }
             ref.update(update)
         except Exception:
@@ -657,11 +837,14 @@ class StorageRetentionService:
             "failures": failures,
         }
 
-    # --- orphans (report only, never deleted) -------------------------------------
+    # --- orphan folders -----------------------------------------------------------
+
+    def _known_job_ids(self) -> set:
+        return {snap.id for snap in self.jobs_collection.select(["status"]).stream()}
 
     def orphan_job_folders(self) -> Dict[str, Any]:
         """``jobs/{id}/`` folders with no Firestore job doc (report only)."""
-        known = {snap.id for snap in self.jobs_collection.select(["status"]).stream()}
+        known = self._known_job_ids()
         sizes: Counter = Counter()
         for name, size in self.storage.list_files_with_sizes("jobs/"):
             parts = name.split("/")
@@ -673,3 +856,122 @@ class StorageRetentionService:
             "gib_total": round(total / 2**30, 2),
             "largest": [{"job_id": k, "gib": round(v / 2**30, 2)} for k, v in sizes.most_common(20)],
         }
+
+    def _record_holder(self, job_id: str) -> Optional[str]:
+        """Collection that (still) has a record for this folder id, checked live."""
+        for name in ORPHAN_RECORD_COLLECTIONS:
+            if self.db.collection(name).document(job_id).get().exists:
+                return name
+        return None
+
+    def purge_orphans(
+        self,
+        dry_run: bool = True,
+        max_folders: Optional[int] = None,
+        quiet_days: int = ORPHAN_QUIET_DAYS,
+        report_path: Optional[str] = None,
+        now: Optional[datetime] = None,
+    ) -> Dict[str, Any]:
+        """Delete everything but ``input/`` from job folders that have no job record.
+
+        Candidates come from one bucket listing vs. the ``jobs`` collection; each
+        folder is then re-checked LIVE before acting: no record in any of
+        ORPHAN_RECORD_COLLECTIONS, re-listed fresh, and no object modified in the
+        last ``quiet_days`` days. Dry-run by default.
+        """
+        started = time.time()
+        now = now or datetime.now(timezone.utc)
+        known = self._known_job_ids()
+        candidates = orphan_candidates(self.storage.list_blob_meta("jobs/"), known)
+        deletion_log = None if dry_run else DeletionLog(self.storage, now, MODE_ORPHAN)
+        report: Dict[str, Any] = {
+            "mode": MODE_ORPHAN,
+            "dry_run": dry_run,
+            "started_at": now.isoformat(),
+            "quiet_days": quiet_days,
+            "record_collections": list(ORPHAN_RECORD_COLLECTIONS),
+            "candidates": len(candidates),
+            "folders": [],
+            "skipped": Counter(),
+            "not_orphans": [],
+            "errors": [],
+        }
+        if deletion_log:
+            report["deletion_log"] = deletion_log.path
+            report["deletion_summary"] = deletion_log.summary_path
+        acted = 0
+        purge_bytes = keep_bytes = skipped_bytes = 0
+        by_ext: Counter = Counter()
+        for job_id in sorted(candidates):
+            if max_folders is not None and acted >= max_folders:
+                report["skipped"]["batch_limit"] += 1
+                continue
+            try:
+                holder = self._record_holder(job_id)
+                if holder:
+                    report["skipped"]["has_record"] += 1
+                    report["not_orphans"].append({"job_id": job_id, "collection": holder})
+                    continue
+                fresh = self.storage.list_blob_meta(f"jobs/{job_id}/")
+                plan = plan_orphan_folder(job_id, fresh, now, quiet_days)
+            except Exception as e:  # noqa: BLE001
+                report["errors"].append({"job_id": job_id, "error": str(e)})
+                continue
+            if plan["skip_reason"]:
+                report["skipped"][plan["skip_reason"]] += 1
+                skipped_bytes += plan["purge_bytes"] + plan["keep_bytes"]
+                continue
+            if not plan["purge"]:
+                report["skipped"]["nothing_to_purge"] += 1
+                keep_bytes += plan["keep_bytes"]
+                continue
+            acted += 1
+            purge_bytes += plan["purge_bytes"]
+            keep_bytes += plan["keep_bytes"]
+            for meta in plan["purge"]:
+                rel = meta["name"].split("/", 2)[2]
+                by_ext[rel.split("/", 1)[0] if "/" in rel else "(root)"] += int(meta.get("size") or 0)
+            folder = {
+                "job_id": job_id, "latest_update": plan["latest_update"],
+                "purge_bytes": plan["purge_bytes"], "keep_bytes": plan["keep_bytes"],
+                "purge_objects": len(plan["purge"]), "kept_input_objects": len(plan["keep"]),
+            }
+            if not dry_run:
+                deleted = failed = 0
+                for meta in plan["purge"]:
+                    path, size, gen = meta["name"], int(meta.get("size") or 0), meta.get("generation")
+                    try:
+                        assert_deletable(path)
+                        self.storage.delete_file(path, ignore_missing=True, if_generation_match=gen)
+                        deletion_log.record(job_id, path, size, gen, "orphan-nonInput", "deleted")
+                        deleted += 1
+                    except Exception as e:  # noqa: BLE001
+                        deletion_log.record(job_id, path, size, gen, "orphan-nonInput", "failed", str(e))
+                        failed += 1
+                deletion_log.flush()
+                folder.update({"deleted": deleted, "failed": failed})
+            report["folders"].append(folder)
+
+        report["skipped"] = dict(report["skipped"])
+        report["summary"] = {
+            "folders_acted" if not dry_run else "folders_to_purge": acted,
+            "gib_to_delete" if dry_run else "gib_deleted": round(purge_bytes / 2**30, 2),
+            "gib_input_kept": round(keep_bytes / 2**30, 2),
+            "gib_skipped_recent": round(skipped_bytes / 2**30, 2),
+            "gib_by_top_level_dir": {k: round(v / 2**30, 2) for k, v in by_ext.most_common()},
+            "duration_seconds": round(time.time() - started, 1),
+        }
+        report["report_path"] = report_path or (
+            f"{REPORT_PREFIX}/{now.strftime('%Y%m%dT%H%M%SZ')}-orphans-{'dry-run' if dry_run else 'run'}.json")
+        if deletion_log:
+            report["deletion_totals"] = deletion_log.write_summary({"report_path": report["report_path"]})
+        try:
+            self.storage.upload_json(report["report_path"], report)
+        except Exception as e:  # noqa: BLE001
+            report["report_write_error"] = str(e)
+        logger.info(
+            f"STORAGE_RETENTION ORPHANS {'DRY-RUN' if dry_run else 'RUN'}: candidates={len(candidates)} "
+            f"summary={report['summary']} skipped={report['skipped']} errors={len(report['errors'])} "
+            f"report=gs://{self.settings.gcs_bucket_name}/{report['report_path']}"
+        )
+        return report

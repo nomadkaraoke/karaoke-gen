@@ -25,16 +25,23 @@ def main(argv=None) -> int:
     parser.add_argument("--max-jobs", type=int, default=None)
     parser.add_argument("--include-orphans", action="store_true")
     parser.add_argument("--report-path", default=None)
+    parser.add_argument("--mode", choices=["job_purge", "orphans"], default="job_purge")
+    parser.add_argument("--max-folders", type=int, default=None)
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     from backend.services.storage_retention import StorageRetentionService
 
     try:
-        report = StorageRetentionService().run(
-            dry_run=args.dry_run, max_jobs=args.max_jobs,
-            include_orphans=args.include_orphans, report_path=args.report_path,
-        )
+        if args.mode == "orphans":
+            report = StorageRetentionService().purge_orphans(
+                dry_run=args.dry_run, max_folders=args.max_folders, report_path=args.report_path,
+            )
+        else:
+            report = StorageRetentionService().run(
+                dry_run=args.dry_run, max_jobs=args.max_jobs,
+                include_orphans=args.include_orphans, report_path=args.report_path,
+            )
     except Exception:
         logging.getLogger(__name__).exception("STORAGE_RETENTION job crashed")
         return 1
