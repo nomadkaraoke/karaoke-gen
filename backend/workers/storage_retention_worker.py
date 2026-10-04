@@ -38,7 +38,9 @@ def main(argv=None) -> int:
     except Exception:
         logging.getLogger(__name__).exception("STORAGE_RETENTION job crashed")
         return 1
-    return 1 if report.get("report_write_error") else 0
+    # Non-zero exit marks the Cloud Run execution failed (visible in the
+    # console/alerts) when the report couldn't be written or any job errored.
+    return 1 if (report.get("report_write_error") or report.get("errors")) else 0
 
 
 if __name__ == "__main__":

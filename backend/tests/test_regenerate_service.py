@@ -922,6 +922,13 @@ class TestStorageRetentionWorker:
             storage_retention_worker.main([])
         assert svc.run.call_args.kwargs["dry_run"] is True
 
+    def test_cli_job_errors_exit_nonzero(self):
+        from backend.workers import storage_retention_worker
+        svc = MagicMock()
+        svc.run.return_value = {"errors": [{"job_id": "x", "error": "boom"}]}
+        with patch("backend.services.storage_retention.StorageRetentionService", return_value=svc):
+            assert storage_retention_worker.main([]) == 1
+
     def test_cli_crash_exit_code(self):
         from backend.workers import storage_retention_worker
         with patch("backend.services.storage_retention.StorageRetentionService", side_effect=RuntimeError("x")):
