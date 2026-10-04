@@ -253,8 +253,11 @@ jobs completed (newest `complete` timeline entry) more than `STORAGE_RETENTION_M
   (regenerate, admin/theme re-render, private→public, Edit, retry) passes the screens worker, whose
   **stems gate** (`backend/services/stems_restore.py`) re-runs the audio-separation job in restore mode
   when `stems_purged_at` is set; the audio worker re-triggers screens when the stems are back.
-- Bucket: versioning on, overwritten versions kept 7 days, soft delete 7 days — purged bytes remain
-  recoverable for about a week.
+- Bucket: versioning on, noncurrent (overwritten or deleted) versions kept 7 days, soft delete 7 days —
+  purged bytes remain recoverable for about two weeks.
+- Every deleted object is logged (path, size, generation) under
+  `storage-retention/deletion-logs/`; review/restore commands and the one-off orphan-folder cleanup are in
+  `docs/STORAGE-RETENTION.md`.
 
 ## LyricsTranscriber Integration
 

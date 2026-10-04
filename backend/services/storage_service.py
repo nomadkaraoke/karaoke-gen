@@ -298,7 +298,8 @@ class StorageService:
             logger.error(f"Error generating signed {method} URL for {blob_path}: {e}")
             raise
     
-    def delete_file(self, blob_path: str, ignore_missing: bool = False) -> bool:
+    def delete_file(self, blob_path: str, ignore_missing: bool = False,
+                    if_generation_match: Optional[int] = None) -> bool:
         """Delete a file from GCS.
 
         Args:
@@ -314,7 +315,12 @@ class StorageService:
         """
         try:
             blob = self.bucket.blob(blob_path)
-            blob.delete()
+            if if_generation_match is not None:
+                # Only delete the exact version that was planned/logged; a newer
+                # write since then raises PreconditionFailed.
+                blob.delete(if_generation_match=if_generation_match)
+            else:
+                blob.delete()
             logger.info(f"Deleted gs://{settings.gcs_bucket_name}/{blob_path}")
             return True
         except NotFound:
@@ -372,6 +378,24 @@ class StorageService:
         except Exception as e:
             logger.error(f"Error listing files with prefix {prefix}: {e}")
             raise
+
+    def list_blob_meta(self, prefix: str) -> list:
+        """List ``{name, size, generation, updated}`` for every object under ``prefix``."""
+        try:
+            return [
+                {"name": b.name, "size": int(b.size or 0), "generation": b.generation, "updated": b.updated}
+                for b in self.bucket.list_blobs(prefix=prefix)
+            ]
+        except Exception as e:
+            logger.error(f"Error listing files with prefix {prefix}: {e}")
+            raise
+
+    def upload_text(self, destination_path: str, text: str, content_type: str = "text/plain") -> str:
+        """Upload a text object (overwrites)."""
+        blob = self.bucket.blob(destination_path)
+        blob.cache_control = NO_STORE_CACHE_CONTROL
+        blob.upload_from_string(text, content_type=content_type)
+        return destination_path
 
     def get_file_size(self, blob_path: str) -> Optional[int]:
         """Size in bytes of a GCS object, or None if it doesn't exist."""

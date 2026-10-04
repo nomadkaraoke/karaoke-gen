@@ -310,21 +310,34 @@ class TestFileUrlDeletions:
 # --- Service ----------------------------------------------------------------------
 
 class FakeStorage:
-    def __init__(self, files):
+    def __init__(self, files, updated=None):
         self.files = dict(files)
+        self.updated = dict(updated or {})
         self.deleted = []
         self.reports = {}
+        self.texts = {}
+        self.delete_generations = {}
 
     def list_files_with_sizes(self, prefix):
         return [(k, v) for k, v in sorted(self.files.items()) if k.startswith(prefix)]
 
-    def delete_file(self, path, ignore_missing=False):
+    def list_blob_meta(self, prefix):
+        old = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return [{"name": k, "size": v, "generation": 1000 + i, "updated": self.updated.get(k, old)}
+                for i, (k, v) in enumerate(sorted(self.files.items())) if k.startswith(prefix)]
+
+    def delete_file(self, path, ignore_missing=False, if_generation_match=None):
         self.deleted.append(path)
+        self.delete_generations[path] = if_generation_match
         self.files.pop(path, None)
         return True
 
     def upload_json(self, path, data):
         self.reports[path] = data
+        return path
+
+    def upload_text(self, path, text, content_type="text/plain"):
+        self.texts[path] = text
         return path
 
 
@@ -588,10 +601,10 @@ class TestServiceRealRun:
         svc, db, storage = _service([_job(job_id="a")])
         real_delete = storage.delete_file
 
-        def flaky(path, ignore_missing=False):
+        def flaky(path, ignore_missing=False, if_generation_match=None):
             if path.endswith("lossy_4k_mp4.mp4"):
                 raise RuntimeError("boom")
-            return real_delete(path, ignore_missing)
+            return real_delete(path, ignore_missing, if_generation_match)
 
         storage.delete_file = flaky
         svc.run(dry_run=False, now=NOW)
@@ -643,7 +656,7 @@ class TestInterruptedPurge:
         svc, db, storage = _service([_job(job_id="a")])
         seen = {}
 
-        def delete(path, ignore_missing=False):
+        def delete(path, ignore_missing=False, if_generation_match=None):
             # at the first delete the job must already say what's being purged
             if not seen:
                 doc = db.data["a"]
@@ -662,11 +675,11 @@ class TestInterruptedPurge:
         calls = {"n": 0}
         real = storage.delete_file
 
-        def dies_after_two(path, ignore_missing=False):
+        def dies_after_two(path, ignore_missing=False, if_generation_match=None):
             calls["n"] += 1
             if calls["n"] > 2:
                 raise SystemExit("instance killed")
-            return real(path, ignore_missing)
+            return real(path, ignore_missing, if_generation_match)
 
         storage.delete_file = dies_after_two
         with pytest.raises(SystemExit):
@@ -679,3 +692,201 @@ class TestInterruptedPurge:
         report = svc.run(dry_run=False, now=NOW + timedelta(hours=1))
         assert report["summary"]["jobs_purged"] == 1
         assert db.data["a"]["storage_purge"]["status"] == "complete"
+
+
+
+# --- Deletion audit log -------------------------------------------------------------
+
+import json as _json
+
+
+def _log_lines(storage, path):
+    return [_json.loads(line) for line in storage.texts[path].splitlines() if line]
+
+
+class TestDeletionLog:
+    def test_real_run_logs_every_deleted_object_with_generation(self):
+        svc, db, storage = _service([_job(job_id="a")])
+        report = svc.run(dry_run=False, now=NOW)
+        log_path = report["deletion_log"]
+        assert log_path == "storage-retention/deletion-logs/20261003T120000Z-job_purge.jsonl"
+        lines = _log_lines(storage, log_path)
+        assert {l["path"] for l in lines} == set(storage.deleted)
+        assert all(l["result"] == "deleted" and l["mode"] == "job_purge" and l["job_id"] == "a" for l in lines)
+        assert all(l["generation"] is not None for l in lines)
+        cats = {l["category"] for l in lines}
+        assert {"finals", "videos", "stems", "review-audio", "previews", "screens-mov"} == cats
+        # deletes are generation-pinned to exactly the logged version
+        for l in lines:
+            assert str(storage.delete_generations[l["path"]]) == l["generation"]
+        summary = storage.reports[report["deletion_summary"]]
+        assert summary["objects_deleted"] == len(lines)
+        assert summary["bytes_deleted"] == sum(l["size_bytes"] for l in lines)
+        assert summary["jobs"] == 1 and summary["failures"] == 0
+        # manifest on the job doc carries generations + log path
+        manifest = db.data["a"]["storage_purge"]
+        assert manifest["deletion_log"] == log_path
+        assert all(f["generation"] for f in manifest["files"])
+
+    def test_dry_run_writes_no_deletion_log(self):
+        svc, db, storage = _service([_job(job_id="a")])
+        report = svc.run(dry_run=True, now=NOW)
+        assert "deletion_log" not in report and storage.texts == {}
+
+    def test_failures_are_logged(self):
+        svc, db, storage = _service([_job(job_id="a")])
+        real = storage.delete_file
+
+        def flaky(path, ignore_missing=False, if_generation_match=None):
+            if path.endswith("lossy_4k_mp4.mp4"):
+                raise RuntimeError("412 precondition failed")
+            return real(path, ignore_missing, if_generation_match)
+
+        storage.delete_file = flaky
+        report = svc.run(dry_run=False, now=NOW)
+        failed = [l for l in _log_lines(storage, report["deletion_log"]) if l["result"] == "failed"]
+        assert len(failed) == 1 and "precondition" in failed[0]["error"]
+        assert storage.reports[report["deletion_summary"]]["failures"] == 1
+
+    def test_log_is_flushed_per_job_so_a_crash_keeps_the_record(self):
+        jobs = [_job(job_id="a"), _job(job_id="b")]
+        svc, db, storage = _service(jobs)
+        real = storage.delete_file
+
+        def die_on_b(path, ignore_missing=False, if_generation_match=None):
+            if path.startswith("jobs/b/"):
+                raise SystemExit("killed")
+            return real(path, ignore_missing, if_generation_match)
+
+        storage.delete_file = die_on_b
+        with pytest.raises(SystemExit):
+            svc.run(dry_run=False, now=NOW)
+        path = "storage-retention/deletion-logs/20261003T120000Z-job_purge.jsonl"
+        lines = _log_lines(storage, path)
+        assert lines and {l["job_id"] for l in lines} == {"a"}
+        assert {l["path"] for l in lines} == {p for p in storage.deleted if p.startswith("jobs/a/")}
+
+    @pytest.mark.parametrize("path", [
+        "storage-retention/deletion-logs/x.jsonl", "uploads/a/x.flac", "jobs/", "jobs//x", "temp/x",
+    ])
+    def test_guard_refuses_paths_outside_job_folders(self, path):
+        with pytest.raises(ValueError):
+            sr.assert_deletable(path)
+
+    def test_guard_allows_job_files(self):
+        sr.assert_deletable("jobs/a/finals/x.mp4")
+
+
+# --- Orphan folders ----------------------------------------------------------------
+
+def _orphan_service(files, updated=None, records=None):
+    db = FakeDb([_job(job_id="live")])
+    for coll, ids in (records or {}).items():
+        db.extra = getattr(db, "extra", {})
+        db.extra.update({(coll, i): True for i in ids})
+
+    real_collection = db.collection
+
+    def collection(name):
+        if name in ("jobs-dev", "youtube_upload_queue"):
+            extra = getattr(db, "extra", {})
+            return SimpleNamespace(document=lambda i: SimpleNamespace(
+                get=lambda: SimpleNamespace(exists=extra.get((name, i), False))))
+        return real_collection(name)
+
+    db.collection = collection
+    storage = FakeStorage(files, updated)
+    return StorageRetentionService(db=db, storage=storage, settings=_settings()), db, storage
+
+
+ORPHAN_FILES = {
+    "jobs/live/finals/lossy_4k_mp4.mp4": 10,
+    "jobs/ghost/input/song.flac": 100,
+    "jobs/ghost/finals/lossy_720p_mp4.mp4": 30,
+    "jobs/ghost/videos/with_vocals.mkv": 200,
+    "jobs/ghost/stems/custom_instrumental.flac": 40,
+    "jobs/ghost/custom_instrumental.mp3": 9,
+    "jobs/fresh/finals/x.mp4": 50,
+    "jobs/queued/finals/x.mp4": 70,
+    "jobs/_preview123/review-audio/mixed.ogg": 4,
+    "storage-retention/deletion-logs/old.jsonl": 1,
+    "uploads/ghost/audio/x.flac": 5,
+}
+
+
+class TestOrphans:
+    def _svc(self):
+        updated = {"jobs/fresh/finals/x.mp4": NOW - timedelta(days=2)}
+        return _orphan_service(ORPHAN_FILES, updated, records={"youtube_upload_queue": ["queued"]})
+
+    def test_plan_keeps_only_input(self):
+        objs = [{"name": k, "size": v, "updated": NOW - timedelta(days=90)}
+                for k, v in ORPHAN_FILES.items() if k.startswith("jobs/ghost/")]
+        plan = sr.plan_orphan_folder("ghost", objs, NOW)
+        assert [m["name"] for m in plan["keep"]] == ["jobs/ghost/input/song.flac"]
+        assert plan["purge_bytes"] == 30 + 200 + 40 + 9 and plan["skip_reason"] is None
+
+    def test_recent_folder_is_skipped(self):
+        plan = sr.plan_orphan_folder("x", [{"name": "jobs/x/a.mp4", "size": 1, "updated": NOW - timedelta(days=29)}], NOW)
+        assert plan["skip_reason"] == "recently_modified"
+
+    def test_dry_run_reports_without_deleting(self):
+        svc, db, storage = self._svc()
+        report = svc.purge_orphans(dry_run=True, now=NOW)
+        assert storage.deleted == [] and storage.texts == {}
+        assert report["candidates"] == 4  # ghost, fresh, queued, _preview123 (never "live")
+        assert sorted(f["job_id"] for f in report["folders"]) == ["_preview123", "ghost"]
+        assert report["skipped"] == {"recently_modified": 1, "has_record": 1}
+        assert report["not_orphans"] == [{"job_id": "queued", "collection": "youtube_upload_queue"}]
+        assert report["summary"]["gib_input_kept"] == round(100 / 2**30, 2)
+        assert report["report_path"].endswith("-orphans-dry-run.json")
+
+    def test_real_run_deletes_non_input_and_logs(self):
+        svc, db, storage = self._svc()
+        report = svc.purge_orphans(dry_run=False, now=NOW)
+        assert sorted(storage.deleted) == sorted([
+            "jobs/ghost/finals/lossy_720p_mp4.mp4", "jobs/ghost/videos/with_vocals.mkv",
+            "jobs/ghost/stems/custom_instrumental.flac", "jobs/ghost/custom_instrumental.mp3",
+            "jobs/_preview123/review-audio/mixed.ogg",
+        ])
+        for kept in ("jobs/ghost/input/song.flac", "jobs/live/finals/lossy_4k_mp4.mp4",
+                     "jobs/fresh/finals/x.mp4", "jobs/queued/finals/x.mp4",
+                     "storage-retention/deletion-logs/old.jsonl", "uploads/ghost/audio/x.flac"):
+            assert kept in storage.files
+        lines = _log_lines(storage, report["deletion_log"])
+        assert report["deletion_log"].endswith("-orphan.jsonl")
+        assert {l["category"] for l in lines} == {"orphan-nonInput"} and {l["mode"] for l in lines} == {"orphan"}
+        assert storage.reports[report["deletion_summary"]]["objects_deleted"] == 5
+
+    def test_record_created_after_listing_is_respected(self):
+        svc, db, storage = self._svc()
+        db.extra = {("jobs-dev", "ghost"): True}
+        svc.purge_orphans(dry_run=False, now=NOW)
+        assert not any(p.startswith("jobs/ghost/") for p in storage.deleted)
+
+    def test_batch_limit(self):
+        svc, db, storage = self._svc()
+        report = svc.purge_orphans(dry_run=False, max_folders=1, now=NOW)
+        assert len(report["folders"]) == 1 and report["skipped"]["batch_limit"] == 3
+
+
+class TestDeletionLogFlushFailure:
+    def test_run_stops_deleting_when_log_cannot_be_written(self):
+        svc, db, storage = _service([_job(job_id="a"), _job(job_id="b")])
+
+        def broken(path, text, content_type="text/plain"):
+            raise RuntimeError("gcs write denied")
+
+        storage.upload_text = broken
+        report = svc.run(dry_run=False, now=NOW)
+        assert not any(p.startswith("jobs/b/") for p in storage.deleted)
+        assert report["errors"] and "deletion log not persisted" in report["errors"][0]["error"]
+        assert storage.reports[report["deletion_summary"]]["log_flush_error"] == "gcs write denied"
+
+    def test_orphan_run_stops_too(self):
+        files = {"jobs/g1/finals/a.mp4": 1, "jobs/g2/finals/b.mp4": 1}
+        svc, db, storage = _orphan_service(files)
+        storage.upload_text = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("denied"))
+        report = svc.purge_orphans(dry_run=False, now=NOW)
+        assert storage.deleted == ["jobs/g1/finals/a.mp4"]
+        assert "deletion log not persisted" in report["errors"][0]["error"]

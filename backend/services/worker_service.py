@@ -459,6 +459,8 @@ class WorkerService:
         report_path: str,
         max_jobs: Optional[int] = None,
         include_orphans: bool = False,
+        mode: str = "job_purge",
+        max_folders: Optional[int] = None,
     ) -> bool:
         """Start the storage-retention pass as the ``storage-retention-job`` Cloud Run Job.
 
@@ -470,6 +472,10 @@ class WorkerService:
             args += ["--max-jobs", str(int(max_jobs))]
         if include_orphans:
             args.append("--include-orphans")
+        if mode != "job_purge":
+            args += ["--mode", mode]
+        if max_folders is not None:
+            args += ["--max-folders", str(int(max_folders))]
         if not self._use_cloud_tasks and not is_production():
             return self._run_worker_module_locally("storage_retention_worker", args, log_prefix="[storage-retention]")
         try:

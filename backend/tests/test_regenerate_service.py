@@ -723,6 +723,35 @@ class TestInternalRetentionEndpoint:
         assert kwargs["dry_run"] is True and kwargs["include_orphans"] is True
         assert kwargs["report_path"] == body["report_path"].removeprefix("gs://bucket/")
 
+    def _orphans(self, client, url):
+        test_client, app = client
+        from backend.api.dependencies import require_admin
+
+        async def admin():
+            return _auth(email="admin@x.com", is_admin=True)
+
+        app.dependency_overrides[require_admin] = admin
+        ws = MagicMock()
+        ws.trigger_storage_retention_job = AsyncMock(return_value=True)
+        with patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            return test_client.post(url), ws
+
+    def test_orphan_endpoint_defaults_to_dry_run(self, client):
+        resp, ws = self._orphans(client, "/api/internal/storage-retention/orphans")
+        assert resp.status_code == 200 and resp.json()["dry_run"] is True
+        kwargs = ws.trigger_storage_retention_job.await_args.kwargs
+        assert kwargs["mode"] == "orphans" and kwargs["dry_run"] is True
+        assert "-orphans-dry-run.json" in kwargs["report_path"]
+
+    def test_orphan_real_run_needs_confirmation(self, client):
+        resp, ws = self._orphans(client, "/api/internal/storage-retention/orphans?dry_run=false")
+        assert resp.status_code == 400
+        ws.trigger_storage_retention_job.assert_not_awaited()
+        resp, ws = self._orphans(
+            client, "/api/internal/storage-retention/orphans?dry_run=false&confirm=delete-orphan-job-folders")
+        assert resp.status_code == 200
+        assert ws.trigger_storage_retention_job.await_args.kwargs["dry_run"] is False
+
     def test_job_trigger_failure_is_503(self, client):
         ws = MagicMock()
         ws.trigger_storage_retention_job = AsyncMock(return_value=False)
@@ -914,6 +943,15 @@ class TestStorageRetentionWorker:
         assert svc.run.call_args.kwargs == {"dry_run": False, "max_jobs": 5, "include_orphans": True,
                                              "report_path": "r.json"}
 
+    def test_cli_orphan_mode(self):
+        from backend.workers import storage_retention_worker
+        svc = MagicMock()
+        svc.purge_orphans.return_value = {}
+        with patch("backend.services.storage_retention.StorageRetentionService", return_value=svc):
+            assert storage_retention_worker.main(["--mode", "orphans", "--max-folders", "7"]) == 0
+        assert svc.purge_orphans.call_args.kwargs == {"dry_run": True, "max_folders": 7, "report_path": None}
+        svc.run.assert_not_called()
+
     def test_cli_defaults_to_dry_run(self):
         from backend.workers import storage_retention_worker
         svc = MagicMock()
@@ -948,6 +986,9 @@ class TestStorageRetentionWorker:
         args = list(request.overrides.container_overrides[0].args)
         assert args[:3] == ["python", "-m", "backend.workers.storage_retention_worker"]
         assert args[3:] == ["--dry-run", "false", "--report-path", "r.json", "--max-jobs", "3", "--include-orphans"]
+        await ws.trigger_storage_retention_job(True, "o.json", mode="orphans", max_folders=2)
+        args = list(ws._run_job_with_retry.await_args.args[1].overrides.container_overrides[0].args)
+        assert args[3:] == ["--dry-run", "true", "--report-path", "o.json", "--mode", "orphans", "--max-folders", "2"]
 
 
 

@@ -776,6 +776,50 @@ async def storage_retention_run_endpoint(
     }
 
 
+ORPHAN_DELETE_CONFIRMATION = "delete-orphan-job-folders"
+
+
+@router.post("/storage-retention/orphans")
+async def storage_retention_orphans_endpoint(
+    dry_run: bool = True,
+    confirm: Optional[str] = None,
+    max_folders: Optional[int] = None,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    One-off cleanup of ``jobs/{id}/`` folders with no job record: keep ``input/``,
+    delete everything else (backend/services/storage_retention.py purge_orphans).
+
+    DRY-RUN unless ``dry_run=false&confirm=delete-orphan-job-folders``. Independent
+    of STORAGE_RETENTION_DRY_RUN and never run by the scheduler. Runs as the
+    storage-retention-job Cloud Run Job; the report path is returned.
+    """
+    from datetime import datetime, timezone
+    from backend.config import get_settings
+    from backend.services.storage_retention import REPORT_PREFIX
+    from backend.services.worker_service import get_worker_service
+
+    if not dry_run and confirm != ORPHAN_DELETE_CONFIRMATION:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A real orphan cleanup needs confirm={ORPHAN_DELETE_CONFIRMATION}",
+        )
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    report_path = f"{REPORT_PREFIX}/{now.strftime('%Y%m%dT%H%M%SZ')}-orphans-{'dry-run' if dry_run else 'run'}.json"
+    started = await get_worker_service().trigger_storage_retention_job(
+        dry_run=dry_run, report_path=report_path, mode="orphans", max_folders=max_folders,
+    )
+    if not started:
+        raise HTTPException(status_code=503, detail="Couldn't start the storage-retention job")
+    return {
+        "status": "started",
+        "mode": "orphans",
+        "dry_run": dry_run,
+        "report_path": f"gs://{settings.gcs_bucket_name}/{report_path}",
+    }
+
+
 @router.post("/community-daily-pick")
 async def community_daily_pick_endpoint(
     http_request: Request,
