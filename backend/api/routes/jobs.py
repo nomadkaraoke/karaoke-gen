@@ -3096,7 +3096,8 @@ async def regenerate_job_outputs(
     if not reason and not auth_result.is_admin and not renders_missing(job):
         reason = "This track's video files are all available — there's nothing to regenerate."
     if reason:
-        raise HTTPException(status_code=409 if "already" in reason or "right now" in reason else 400, detail=reason)
+        conflict = any(marker in reason for marker in ("already", "right now", "in progress"))
+        raise HTTPException(status_code=409 if conflict else 400, detail=reason)
 
     requested_by = auth_result.user_email or "unknown"
     if not auth_result.is_admin:

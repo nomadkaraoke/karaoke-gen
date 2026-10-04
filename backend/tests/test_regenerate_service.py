@@ -619,6 +619,12 @@ class TestRegenerateRoute:
         resp, start, _ = self._post(client, _auth(), _job(status="in_review"))
         assert resp.status_code == 400
 
+    def test_visibility_change_in_progress_is_409(self, client):
+        job = _job(state_data={"instrumental_selection": "clean", "visibility_change_in_progress": True})
+        resp, start, _ = self._post(client, _auth(), job)
+        assert resp.status_code == 409
+        start.assert_not_awaited()
+
     def test_conflict_409(self, client):
         resp, _, _ = self._post(client, _auth(), _job(),
                                 start=AsyncMock(side_effect=RerenderConflictError("busy")))
