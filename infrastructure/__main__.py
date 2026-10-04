@@ -200,6 +200,9 @@ audio_download_job = cloud_run.create_audio_download_job(
 bulk_search_job = cloud_run.create_bulk_search_job(
     bucket, backend_service_account, region=cloud_run.CPU_JOBS_REGION
 )
+storage_retention_job = cloud_run.create_storage_retention_job(
+    bucket, backend_service_account, region=cloud_run.CPU_JOBS_REGION
+)
 video_encoding_job = cloud_run.create_video_encoding_job(
     bucket, backend_service_account, region=cloud_run.CPU_JOBS_REGION
 )

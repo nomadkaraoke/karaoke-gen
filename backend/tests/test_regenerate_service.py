@@ -299,8 +299,12 @@ class TestStemsRestoreGate:
         ws.trigger_audio_worker = AsyncMock(return_value=True)
         with patch("backend.services.worker_service.get_worker_service", return_value=ws):
             assert await maybe_start_stems_restore(_job(), jm) == STARTED
-        marker = jm.update_job.call_args[0][1]["state_data.stems_restore"]
+        payload = jm.update_job.call_args[0][1]
+        marker = payload["state_data.stems_restore"]
         assert marker["status"] == "running" and marker["attempts"] == 1
+        # the screens idempotency mark is dropped so the restore's re-trigger runs
+        from backend.services import stems_restore
+        assert payload["state_data.screens_progress"] is stems_restore.DELETE_FIELD
         ws.trigger_audio_worker.assert_awaited_once_with("job123")
 
     @pytest.mark.asyncio
@@ -371,6 +375,7 @@ class TestStemsRestoreGate:
         update = jm.update_job.call_args[0][1]
         assert update["stems_purged_at"] is None
         assert "status" not in update
+        assert "state_data.screens_progress" in update
         # compare with the module's own sentinel (other suites stub firestore_v1)
         assert update["state_data.stems_restore"] is stems_restore.DELETE_FIELD
         ws.trigger_screens_worker.assert_awaited_once_with("job123")
@@ -702,12 +707,28 @@ class TestInternalRetentionEndpoint:
         resp, _ = self._post(client, "/api/internal/storage-retention/run?min_age_days=0")
         assert resp.status_code == 400
 
-    def test_scheduled_run_starts_in_background(self, client):
-        resp, svc = self._post(client, "/api/internal/storage-retention/run")
+    def test_scheduled_run_starts_the_cloud_run_job(self, client):
+        # The full pass runs as the storage-retention-job Cloud Run Job (CPU is
+        # throttled outside requests and Cloudflare cuts requests at 100s).
+        ws = MagicMock()
+        ws.trigger_storage_retention_job = AsyncMock(return_value=True)
+        with patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            resp, svc = self._post(client, "/api/internal/storage-retention/run?include_orphans=true")
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "started" and body["dry_run"] is True
         assert body["report_path"].startswith("gs://bucket/storage-retention/reports/")
+        svc.run.assert_not_called()
+        kwargs = ws.trigger_storage_retention_job.await_args.kwargs
+        assert kwargs["dry_run"] is True and kwargs["include_orphans"] is True
+        assert kwargs["report_path"] == body["report_path"].removeprefix("gs://bucket/")
+
+    def test_job_trigger_failure_is_503(self, client):
+        ws = MagicMock()
+        ws.trigger_storage_retention_job = AsyncMock(return_value=False)
+        with patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            resp, _ = self._post(client, "/api/internal/storage-retention/run")
+        assert resp.status_code == 503
 
     def test_scoped_real_run_is_synchronous(self, client):
         resp, svc = self._post(client, "/api/internal/storage-retention/run?job_ids=job123&dry_run=false&min_age_days=0")
@@ -878,3 +899,93 @@ class TestStemsRestoreWatchdog:
         assert resp.status_code == 200, resp.text
         assert resp.json()["stems_restore_failed_jobs"] == ["job123"]
         jm.mark_job_failed.assert_called_once()
+
+
+
+class TestStorageRetentionWorker:
+    def test_cli_runs_service_with_args(self):
+        from backend.workers import storage_retention_worker
+        svc = MagicMock()
+        svc.run.return_value = {"summary": {}}
+        with patch("backend.services.storage_retention.StorageRetentionService", return_value=svc):
+            code = storage_retention_worker.main(
+                ["--dry-run", "false", "--max-jobs", "5", "--include-orphans", "--report-path", "r.json"])
+        assert code == 0
+        assert svc.run.call_args.kwargs == {"dry_run": False, "max_jobs": 5, "include_orphans": True,
+                                             "report_path": "r.json"}
+
+    def test_cli_defaults_to_dry_run(self):
+        from backend.workers import storage_retention_worker
+        svc = MagicMock()
+        svc.run.return_value = {}
+        with patch("backend.services.storage_retention.StorageRetentionService", return_value=svc):
+            storage_retention_worker.main([])
+        assert svc.run.call_args.kwargs["dry_run"] is True
+
+    def test_cli_job_errors_exit_nonzero(self):
+        from backend.workers import storage_retention_worker
+        svc = MagicMock()
+        svc.run.return_value = {"errors": [{"job_id": "x", "error": "boom"}]}
+        with patch("backend.services.storage_retention.StorageRetentionService", return_value=svc):
+            assert storage_retention_worker.main([]) == 1
+
+    def test_cli_crash_exit_code(self):
+        from backend.workers import storage_retention_worker
+        with patch("backend.services.storage_retention.StorageRetentionService", side_effect=RuntimeError("x")):
+            assert storage_retention_worker.main([]) == 1
+
+    @pytest.mark.asyncio
+    async def test_trigger_builds_job_args(self):
+        from backend.services.worker_service import WorkerService
+        ws = WorkerService.__new__(WorkerService)
+        ws._use_cloud_tasks = True
+        ws.settings = SimpleNamespace(google_cloud_project="p", cpu_jobs_region="us-east4")
+        ws._run_job_with_retry = AsyncMock(return_value=MagicMock(metadata={}))
+        with patch("google.cloud.run_v2.JobsClient"):
+            assert await ws.trigger_storage_retention_job(False, "r.json", max_jobs=3, include_orphans=True)
+        request = ws._run_job_with_retry.await_args.args[1]
+        assert request.name == "projects/p/locations/us-east4/jobs/storage-retention-job"
+        args = list(request.overrides.container_overrides[0].args)
+        assert args[:3] == ["python", "-m", "backend.workers.storage_retention_worker"]
+        assert args[3:] == ["--dry-run", "false", "--report-path", "r.json", "--max-jobs", "3", "--include-orphans"]
+
+
+
+class TestLostRerenderScreensDispatch:
+    def test_parked_rerender_is_retriggered(self, client):
+        test_client, app = client
+        from backend.api.dependencies import require_admin
+
+        async def admin():
+            return _auth(email="admin@x.com", is_admin=True)
+
+        app.dependency_overrides[require_admin] = admin
+        state = {"regen_restore_status": "review_complete", "screens_progress": {"stage": "running"},
+                 "regenerate": {"review_token": "tok-1"}}
+        parked = _job(status="lyrics_complete", state_data=state,
+                      updated_at=datetime.now(timezone.utc) - timedelta(minutes=20))
+        fresh = _job(job_id="job456", status="lyrics_complete", state_data=dict(state),
+                     updated_at=datetime.now(timezone.utc))
+        docs = [SimpleNamespace(id=j.job_id, to_dict=(lambda j=j: {"job_id": j.job_id, "state_data": j.state_data}))
+                for j in (parked, fresh)]
+        jm = MagicMock()
+        jm.get_job.side_effect = lambda jid: {"job123": parked, "job456": fresh}[jid]
+
+        def where(filter=None):
+            q = MagicMock()
+            selected = docs if getattr(filter, "value", None) == "lyrics_complete" else []
+            q.stream.return_value = []
+            q.limit.return_value.stream.return_value = selected
+            return q
+
+        jm.firestore.db.collection.return_value.where.side_effect = where
+        ws = MagicMock()
+        ws.trigger_screens_worker = AsyncMock(return_value=True)
+        with patch("backend.api.routes.internal.JobManager", return_value=jm), \
+             patch("google.cloud.firestore_v1.FieldFilter",
+                   side_effect=lambda field, op, value: SimpleNamespace(value=value)), \
+             patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            resp = test_client.post("/api/internal/recover-stuck-jobs")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["regen_screens_retriggered_jobs"] == ["job123"]
+        ws.trigger_screens_worker.assert_awaited_once_with("job123")
