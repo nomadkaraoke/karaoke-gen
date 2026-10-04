@@ -64,7 +64,7 @@ days. With the `generation` from the log:
 ```bash
 OBJ='jobs/abc12345/finals/lossy_4k_mp4.mp4'; GEN=1790000000000000   # from a result=="deleted" log line
 # within ~7 days (noncurrent version):
-gcloud storage cp "gs://karaoke-gen-storage-nomadkaraoke/$OBJ#$GEN" "gs://karaoke-gen-storage-nomadkaraoke/$OBJ"
+gcloud storage cp --no-clobber "gs://karaoke-gen-storage-nomadkaraoke/$OBJ#$GEN" "gs://karaoke-gen-storage-nomadkaraoke/$OBJ"
 # days 7-14 (soft-deleted):
 gcloud storage restore "gs://karaoke-gen-storage-nomadkaraoke/$OBJ#$GEN"
 ```

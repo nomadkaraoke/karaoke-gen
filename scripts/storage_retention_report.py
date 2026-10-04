@@ -78,7 +78,7 @@ def find(bucket, needle):
                 # generation (a failed delete may have a newer live version).
                 restore = ""
                 if e["result"] == "deleted" and e.get("generation"):
-                    restore = (f"  restore: gcloud storage cp 'gs://{BUCKET}/{e['path']}#{e['generation']}' "
+                    restore = (f"  restore: gcloud storage cp --no-clobber 'gs://{BUCKET}/{e['path']}#{e['generation']}' "
                                f"'gs://{BUCKET}/{e['path']}'")
                 print(f"{run_id}  {e['result']:<7} {e['path']}  gen={e.get('generation')}  {e['size_bytes']}B{restore}")
 
