@@ -68,11 +68,14 @@ def create_bucket() -> storage.Bucket:
                     matches_prefixes=["temp/", "uploads/"]
                 ),
             ),
+            # Overwritten versions are kept 7 days (was 30 until the 2026-10-03
+            # storage-retention work): long enough to undo a bad overwrite, short
+            # enough that regenerated finals don't double-bill for a month.
             storage.BucketLifecycleRuleArgs(
                 action=storage.BucketLifecycleRuleActionArgs(type="Delete"),
                 condition=storage.BucketLifecycleRuleConditionArgs(
                     num_newer_versions=1,
-                    days_since_noncurrent_time=30,
+                    days_since_noncurrent_time=7,
                 ),
             ),
         ],

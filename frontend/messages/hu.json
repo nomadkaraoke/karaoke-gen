@@ -640,7 +640,8 @@
     "waitingForCapacity": "Várakozás a kódoló szerverre (újrapróbálkozás)",
     "preparingAudio": "Hanganyagod előkészítése",
     "processing": "Feldolgozás",
-    "waitingForUpload": "Várakozás a feltöltésre"
+    "waitingForUpload": "Várakozás a feltöltésre",
+    "restoringStems": "Hangsávok (stemek) visszaállítása"
   },
   "jobCard": {
     "actionNeeded": "Művelet szükséges",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Még nincsenek elérhető kimenetek",
     "confirmCost": "Költség megerősítése",
     "makingPublicInProgress": "A dal nyilvánossá tétele folyamatban — újrarenderelés az alapértelmezett arculattal és újraközzététel. Ez általában 15–30 percet vesz igénybe.",
-    "waitingForEncodingServer": "(várakozás a kódoló szerver elérhetőségére)"
+    "waitingForEncodingServer": "(várakozás a kódoló szerver elérhetőségére)",
+    "regeneratingInProgress": "A videofájljaid újragenerálása folyamatban van. Ez általában 10–30 percet vesz igénybe, és e-mailt küldünk, amint elkészülnek."
   },
   "jobActions": {
     "delete": "Törlés",
@@ -754,7 +756,15 @@
     "adminRerender": "Újrarenderelés",
     "adminRerenderFailed": "Nem sikerült elindítani az újrarenderelést: {error}",
     "adminRerenderStarted": "Az újrarenderelés elindult.",
-    "adminRerenderStartedWithWarnings": "Az újrarenderelés elindult. Néhány közzétett kimenet a helyén maradt:"
+    "adminRerenderStartedWithWarnings": "Az újrarenderelés elindult. Néhány közzétett kimenet a helyén maradt:",
+    "regenerate": "Videó újragenerálása",
+    "regenerateDesc": "Helytakarékossági okokból a régebbi számoknak csak a 720p videóját és a CDG/TXT csomagjait őrizzük meg. Az újragenerálás újra létrehozza a 4K-s és egyéb formátumokat az ellenőrzött dalszövegedből és a kiválasztott hangszeres alapból, pontosan úgy, mint korábban.",
+    "regenerateFailed": "Nem sikerült elindítani az újragenerálást: {error}",
+    "regenerateNoRepublish": "A YouTube-, Dropbox- és Google Drive-linkjeid változatlanok maradnak.",
+    "regenerateStarted": "A videód újragenerálása folyamatban van. E-mailt küldünk, amint elkészül.",
+    "regenerateTime": "Ez általában 10–30 percet vesz igénybe. E-mailt küldünk, amint elkészül.",
+    "regenerateTitle": "Újragenerálod ezt a videót?",
+    "regenerateTooltip": "Helytakarékossági okokból a régebbi számoknál csak a 720p videót és a karaoke csomagokat őrizzük meg. Generáld újra a többi formátumot."
   },
   "themeSelector": {
     "videoTheme": "Videó téma",

@@ -53,7 +53,7 @@ class VisibilityChangeService:
 
         return None
 
-    async def change_to_private(self, job_id: str, job, user_email: str) -> dict:
+    async def change_to_private(self, job_id: str, job, user_email: str, regenerate_if_missing: bool = True) -> dict:
         """
         Change a public job to private (fast path).
 
@@ -69,6 +69,23 @@ class VisibilityChangeService:
         deletion, no leaked NOMADNP code — see redistribute_video's failure path).
         """
         logger.info(f"[job:{job_id}] Starting visibility change: public -> private (by {user_email})")
+
+        # Storage retention may have purged the big finals of an old job. The
+        # private archive needs the full set, so regenerate them (GCS-only) first;
+        # the video worker runs this change again once they're back.
+        from backend.services.regenerate_service import AFTER_CHANGE_TO_PRIVATE, RegenerateService, renders_missing
+        if regenerate_if_missing and renders_missing(job):
+            logger.info(f"[job:{job_id}] Finals missing (storage retention): regenerating before going private")
+            await RegenerateService(self.job_manager).start(
+                job, requested_by=user_email, source="visibility_change",
+                notify_customer=False, after=AFTER_CHANGE_TO_PRIVATE,
+            )
+            return {
+                "status": "processing",
+                "message": "This track's video files were archived. They're being regenerated first, "
+                           "then the track will move to private automatically (about 15-30 minutes).",
+                "reprocessing_required": True,
+            }
 
         db = self.job_manager.firestore.db
         job_ref = db.collection("jobs").document(job_id)

@@ -640,7 +640,8 @@
     "waitingForCapacity": "Menunggu pelayan pengekodan (mencuba semula)",
     "preparingAudio": "Menyediakan audio anda",
     "processing": "Memproses",
-    "waitingForUpload": "Menunggu muat naik"
+    "waitingForUpload": "Menunggu muat naik",
+    "restoringStems": "Memulihkan stem audio"
   },
   "jobCard": {
     "actionNeeded": "Tindakan diperlukan",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Tiada output tersedia lagi",
     "confirmCost": "Sahkan Kos",
     "makingPublicInProgress": "Menjadikan trek ini awam — merender semula dengan penjenamaan lalai dan menerbitkan semula. Proses ini biasanya mengambil masa 15–30 minit.",
-    "waitingForEncodingServer": "(menunggu ketersediaan pelayan pengekodan)"
+    "waitingForEncodingServer": "(menunggu ketersediaan pelayan pengekodan)",
+    "regeneratingInProgress": "Sedang menjana semula fail video anda. Proses ini biasanya mengambil masa 10–30 minit, dan kami akan menghantar e-mel kepada anda setelah siap."
   },
   "jobActions": {
     "delete": "Padam",
@@ -754,7 +756,15 @@
     "adminRerender": "Render semula",
     "adminRerenderFailed": "Tidak dapat memulakan render semula: {error}",
     "adminRerenderStarted": "Render semula dimulakan.",
-    "adminRerenderStartedWithWarnings": "Render semula dimulakan. Beberapa output yang diterbitkan telah dikekalkan:"
+    "adminRerenderStartedWithWarnings": "Render semula dimulakan. Beberapa output yang diterbitkan telah dikekalkan:",
+    "regenerate": "Jana semula video",
+    "regenerateDesc": "Untuk menjimatkan ruang simpanan, kami hanya menyimpan video 720p serta pakej CDG/TXT bagi trek lama. Penjanaan semula akan membina semula format 4K dan format lain daripada lirik yang telah anda semak serta trek instrumental yang dipilih, sama seperti sebelumnya.",
+    "regenerateFailed": "Tidak dapat memulakan penjanaan semula: {error}",
+    "regenerateNoRepublish": "Pautan YouTube, Dropbox dan Google Drive anda akan kekal seperti sedia ada.",
+    "regenerateStarted": "Sedang menjana semula video anda. Kami akan menghantar e-mel kepada anda setelah siap.",
+    "regenerateTime": "Ia biasanya mengambil masa 10–30 minit. Kami akan menghantar e-mel kepada anda setelah siap.",
+    "regenerateTitle": "Jana semula video ini?",
+    "regenerateTooltip": "Untuk menjimatkan ruang simpanan, trek lama hanya menyimpan video 720p dan pakej karaoke. Jana semula untuk format lain."
   },
   "themeSelector": {
     "videoTheme": "Tema Video",

@@ -640,7 +640,8 @@
     "waitingForCapacity": "Venter på kodingsserver (prøver på nytt)",
     "preparingAudio": "Forbereder lyden din",
     "processing": "Behandler",
-    "waitingForUpload": "Venter på opplasting"
+    "waitingForUpload": "Venter på opplasting",
+    "restoringStems": "Gjenoppretter lydspor"
   },
   "jobCard": {
     "actionNeeded": "Handling kreves",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Ingen utdata tilgjengelig ennå",
     "confirmCost": "Bekreft kostnad",
     "makingPublicInProgress": "Gjør dette sporet offentlig — rendrer på nytt med standard profilering og publiserer på nytt. Dette tar vanligvis 15–30 minutter.",
-    "waitingForEncodingServer": "(venter på ledig kodingsserver)"
+    "waitingForEncodingServer": "(venter på ledig kodingsserver)",
+    "regeneratingInProgress": "Regenererer videofilene dine. Dette tar vanligvis 10–30 minutter, og vi sender deg en e-post når de er klare."
   },
   "jobActions": {
     "delete": "Slett",
@@ -754,7 +756,15 @@
     "adminRerender": "Rendre på nytt",
     "adminRerenderFailed": "Kunne ikke starte ny rendering: {error}",
     "adminRerenderStarted": "Re-rendering startet.",
-    "adminRerenderStartedWithWarnings": "Re-rendering startet. Noen publiserte utdata ble stående:"
+    "adminRerenderStartedWithWarnings": "Re-rendering startet. Noen publiserte utdata ble stående:",
+    "regenerate": "Regenerer video",
+    "regenerateDesc": "For å spare plass beholder vi 720p-videoen og CDG/TXT-pakkene for eldre spor. Ved å regenerere gjenoppbygges 4K og andre formater fra de gjennomgåtte sangtekstene og den valgte instrumentalen, nøyaktig som før.",
+    "regenerateFailed": "Kunne ikke starte regenerering: {error}",
+    "regenerateNoRepublish": "Lenkene dine til YouTube, Dropbox og Google Drive forblir uendret.",
+    "regenerateStarted": "Regenererer videoen din. Vi sender deg en e-post når den er klar.",
+    "regenerateTime": "Det tar vanligvis 10–30 minutter. Vi sender deg en e-post når den er klar.",
+    "regenerateTitle": "Vil du regenerere denne videoen?",
+    "regenerateTooltip": "For å spare plass beholder eldre spor bare 720p-videoen og karaokepakkene. Regenerer de andre formatene."
   },
   "themeSelector": {
     "videoTheme": "Videotema",

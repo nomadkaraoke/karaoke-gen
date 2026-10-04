@@ -640,7 +640,8 @@
     "waitingForCapacity": "Esperant el servidor de codificació (reintentant)",
     "preparingAudio": "Preparant el teu àudio",
     "processing": "Processant",
-    "waitingForUpload": "Esperant la pujada"
+    "waitingForUpload": "Esperant la pujada",
+    "restoringStems": "Restaurant les pistes d'àudio"
   },
   "jobCard": {
     "actionNeeded": "Acció necessària",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Encara no hi ha sortides disponibles",
     "confirmCost": "Confirmar cost",
     "makingPublicInProgress": "Fent pública aquesta pista — renderitzant de nou amb la marca predeterminada i republicant. Això sol trigar 15–30 minuts.",
-    "waitingForEncodingServer": "(esperant la disponibilitat del servidor de codificació)"
+    "waitingForEncodingServer": "(esperant la disponibilitat del servidor de codificació)",
+    "regeneratingInProgress": "S'estan regenerant els teus fitxers de vídeo. Això sol trigar entre 10 i 30 minuts, i t'enviarem un correu electrònic quan estiguin a punt."
   },
   "jobActions": {
     "delete": "Suprimeix",
@@ -754,7 +756,15 @@
     "adminRerender": "Tornar a renderitzar",
     "adminRerenderFailed": "No s'ha pogut iniciar la nova renderització: {error}",
     "adminRerenderStarted": "S'ha iniciat la rerenderització.",
-    "adminRerenderStartedWithWarnings": "S'ha iniciat la rerenderització. Algunes sortides publicades s'han mantingut al seu lloc:"
+    "adminRerenderStartedWithWarnings": "S'ha iniciat la rerenderització. Algunes sortides publicades s'han mantingut al seu lloc:",
+    "regenerate": "Regenera el vídeo",
+    "regenerateDesc": "Per estalviar espai, conservem el vídeo en 720p i els paquets CDG/TXT de les cançons més antigues. En regenerar-lo, es reconstrueixen el 4K i els altres formats a partir de la lletra revisada i la pista instrumental triada, exactament com abans.",
+    "regenerateFailed": "No s'ha pogut iniciar la regeneració: {error}",
+    "regenerateNoRepublish": "Els teus enllaços de YouTube, Dropbox i Google Drive es mantenen tal com estan.",
+    "regenerateStarted": "S'està regenerant el teu vídeo. T'enviarem un correu electrònic quan estigui a punt.",
+    "regenerateTime": "Normalment triga entre 10 i 30 minuts. T'enviarem un correu electrònic quan estigui a punt.",
+    "regenerateTitle": "Vols regenerar aquest vídeo?",
+    "regenerateTooltip": "Per estalviar espai, a les cançons més antigues només s'hi conserva el vídeo en 720p i els paquets de karaoke. Regenera els altres formats."
   },
   "themeSelector": {
     "videoTheme": "Tema del vídeo",

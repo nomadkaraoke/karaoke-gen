@@ -5,7 +5,8 @@ import { useTranslations } from 'next-intl'
 import { api, adminApi, Job } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
 import { Button } from "@/components/ui/button"
-import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil, RefreshCw, RotateCcw } from "lucide-react"
+import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil, RefreshCw, RotateCcw, Sparkles } from "lucide-react"
+import { canRegenerate as canRegenerateJob } from "@/lib/job-status"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -61,6 +62,8 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   const [showAdminRerenderDialog, setShowAdminRerenderDialog] = useState(false)
   const [isStartingAdminRerender, setIsStartingAdminRerender] = useState(false)
   const [adminRerenderNotify, setAdminRerenderNotify] = useState(false)
+  const [showRegenerateDialog, setShowRegenerateDialog] = useState(false)
+  const [isStartingRegenerate, setIsStartingRegenerate] = useState(false)
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const messageTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const emailTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -238,6 +241,25 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
     }
   }, [job.job_id, adminRerenderNotify, onJobUpdated, t, toast])
 
+  const handleRegenerate = useCallback(async () => {
+    setIsStartingRegenerate(true)
+    setShowRegenerateDialog(false)
+    try {
+      await api.regenerateJob(job.job_id)
+      toast({ title: t('regenerateStarted') })
+      onJobUpdated?.()
+    } catch (err) {
+      console.error("Failed to start regenerate:", err)
+      alert(t('regenerateFailed', { error: err instanceof Error ? err.message : String(err) }))
+    } finally {
+      setIsStartingRegenerate(false)
+    }
+  }, [job.job_id, onJobUpdated, t, toast])
+
+  // Storage retention: older tracks keep the 720p + packages; the rest can be
+  // rebuilt on demand (GCS only — nothing is re-published).
+  const canRegenerate = canRegenerateJob(job)
+
   const hasOutputs = showYoutubeLink || showDropboxLink || (!outputsUnavailable && downloadUrls && Object.keys(downloadUrls).length > 0)
 
   // Check if we have any downloads (and outputs are currently available)
@@ -268,7 +290,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   return (
     <div className="space-y-2">
       {/* Links, Downloads, and Admin Tools - all in one row */}
-      {(hasDownloads || hasExternalLinks || isAdmin || canChangeVisibility || canRerender || canAdminRerender) && (
+      {(hasDownloads || hasExternalLinks || isAdmin || canChangeVisibility || canRerender || canAdminRerender || canRegenerate) && (
         <div className="flex flex-wrap gap-1.5">
           {/* Links first */}
           {hasExternalLinks && (
@@ -389,6 +411,21 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
                   </a>
                 )}
             </>
+          )}
+
+          {/* Regenerate archived video files (storage retention) */}
+          {canRegenerate && (
+            <button
+              type="button"
+              data-testid="regenerate-button"
+              onClick={(e) => { e.stopPropagation(); setShowRegenerateDialog(true) }}
+              disabled={isStartingRegenerate}
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[var(--brand-pink)] hover:bg-[var(--brand-pink-hover)] text-white transition-colors disabled:opacity-50"
+              title={t('regenerateTooltip')}
+            >
+              {isStartingRegenerate ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {t('regenerate')}
+            </button>
           )}
 
           {/* Change Visibility Button */}
@@ -664,6 +701,28 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
             <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleAdminRerender} data-testid="admin-rerender-confirm">
               {t('adminRerender')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Regenerate Confirmation Dialog */}
+      <AlertDialog open={showRegenerateDialog} onOpenChange={setShowRegenerateDialog}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()} data-testid="regenerate-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('regenerateTitle')}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>{t('regenerateDesc')}</p>
+                <p>{t('regenerateNoRepublish')}</p>
+                <p>{t('regenerateTime')}</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRegenerate} data-testid="regenerate-confirm">
+              {t('regenerate')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

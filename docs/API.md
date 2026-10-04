@@ -358,6 +358,28 @@ Re-snapshots the tenant theme onto the job (`style_params_gcs_path`, `style_asse
 
 **Validation (400):** tenant job; `complete` (or `failed` mid re-render); outputs not deleted; has a theme, reviewed lyrics and an instrumental selection; never published to YouTube/GDrive. A tenant Dropbox archive (e.g. `RVILD-0001 - Artist - Title`) is refreshed in place: the re-render reuses the job's brand code (`state_data.theme_rerender.brand_code` → orchestrator `keep_brand_code`), and Dropbox uploads overwrite. **409** if the job left `complete` in the meantime (e.g. a double-click already started a re-render).
 
+### Regenerate Video (storage retention)
+
+Rebuild a finished track's archived video files. Storage retention (see
+docs/ARCHITECTURE.md § Storage Retention) keeps the 720p final and the CDG/TXT
+packages of tracks completed >30 days ago and archives the rest.
+
+```http
+POST /api/jobs/{job_id}/regenerate
+```
+
+Response: `{"status": "processing", "job_id": "abc123", "needs_stems": true, "message": "..."}`
+
+Claims the job (`complete` → `lyrics_complete` with `state_data.regen_restore_status = "review_complete"` and the `state_data.regenerate` marker) and triggers the screens worker. If `stems_purged_at` is set the screens worker first re-runs audio separation from `input_media_gcs_path` (`state_data.stems_restore`), then screens → render → encode, using the existing reviewed lyrics, `instrumental_selection` and style. **GCS only**: no brand-code allocation, no YouTube/Dropbox/Google Drive upload, no Discord post; published links are kept. The owner is emailed/pushed on completion; regenerate completions don't count as new jobs. On success `renders_purged_at` is cleared and `renders_regenerated_at` set.
+
+**Access:** the job owner or an admin (admin token, e.g. kjbox with `X-Client-Id: kjbox`). **Limits** (customers only, rolling 24h): `REGENERATE_MAX_PER_JOB_PER_DAY` (3) and `REGENERATE_MAX_PER_USER_PER_DAY` (10) → **429**. **400** when not regenerable (not `complete`, outputs deleted, prep/finalise-only, no reviewed lyrics/instrumental selection, input audio gone); **409** while a re-render / visibility change / purge is in progress. A failed regenerate is resumed by `POST /api/jobs/{id}/retry` (`retry_stage: "regenerate"`).
+
+Downloads of archived files (`GET /api/jobs/{id}/download/{category}/{key}`) return **410** with `detail = {"code": "output_archived", "message": ..., "regenerate_url": "/api/jobs/{id}/regenerate"}`.
+
+Admin variant (optional quiet run, no rate limit): `POST /api/admin/jobs/{job_id}/regenerate` with `{"notify_customer": false}`.
+
+A public → private visibility change on a track whose finals were archived regenerates them first (`after: "change_to_private"`), then runs the redistribution automatically.
+
 ### Review
 
 The combined review flow allows users to review lyrics AND select instrumental track in a single session.

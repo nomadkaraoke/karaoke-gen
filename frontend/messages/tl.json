@@ -640,7 +640,8 @@
     "waitingForCapacity": "Naghihintay sa encoding server (sinusubukan muli)",
     "preparingAudio": "Inihahanda ang iyong audio",
     "processing": "Pinoproseso",
-    "waitingForUpload": "Naghihintay ng pag-upload"
+    "waitingForUpload": "Naghihintay ng pag-upload",
+    "restoringStems": "Ipinapanumbalik ang audio stems"
   },
   "jobCard": {
     "actionNeeded": "Kailangan ng aksyon",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Wala pang available na outputs",
     "confirmCost": "Kumpirmahin ang Halaga",
     "makingPublicInProgress": "Ginagawang pampubliko ang track na ito — nire-render muli gamit ang default na branding at muling pina-publish. Karaniwan itong tumatagal ng 15–30 minuto.",
-    "waitingForEncodingServer": "(naghihintay na maging available ang encoding server)"
+    "waitingForEncodingServer": "(naghihintay na maging available ang encoding server)",
+    "regeneratingInProgress": "Muling binubuo ang iyong mga video file. Karaniwan itong tumatagal nang 10–30 minuto, at mag-e-email kami sa iyo kapag handa na ang mga ito."
   },
   "jobActions": {
     "delete": "Tanggalin",
@@ -754,7 +756,15 @@
     "adminRerender": "I-re-render",
     "adminRerenderFailed": "Hindi masimulan ang pag-re-render: {error}",
     "adminRerenderStarted": "Nagsimula na ang re-render.",
-    "adminRerenderStartedWithWarnings": "Nagsimula na ang re-render. May ilang na-publish na output na hindi ginalaw:"
+    "adminRerenderStartedWithWarnings": "Nagsimula na ang re-render. May ilang na-publish na output na hindi ginalaw:",
+    "regenerate": "Muling buuin ang video",
+    "regenerateDesc": "Para makatipid sa espasyo, itinatago lang namin ang 720p na video at ang mga CDG/TXT package ng mga lumang track. Sa muling pagbuo, gagawin ulit ang 4K at iba pang format mula sa iyong na-review na lyrics at napiling instrumental, tulad ng dati.",
+    "regenerateFailed": "Hindi masimulan ang muling pagbuo: {error}",
+    "regenerateNoRepublish": "Mananatili ang iyong mga link sa YouTube, Dropbox, at Google Drive tulad ng dati.",
+    "regenerateStarted": "Muling binubuo ang iyong video. Mag-e-email kami sa iyo kapag handa na ito.",
+    "regenerateTime": "Karaniwan itong tumatagal nang 10–30 minuto. Mag-e-email kami sa iyo kapag handa na ito.",
+    "regenerateTitle": "Muling buuin ang video na ito?",
+    "regenerateTooltip": "Para makatipid sa espasyo, ang 720p na video at mga karaoke package lang ang itinatago sa mga lumang track. Muling buuin ang iba pang mga format."
   },
   "themeSelector": {
     "videoTheme": "Video Theme",

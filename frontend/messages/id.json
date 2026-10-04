@@ -640,7 +640,8 @@
     "waitingForCapacity": "Menunggu server encoding (mencoba lagi)",
     "preparingAudio": "Menyiapkan audio Anda",
     "processing": "Memproses",
-    "waitingForUpload": "Menunggu pengunggahan"
+    "waitingForUpload": "Menunggu pengunggahan",
+    "restoringStems": "Memulihkan stem audio"
   },
   "jobCard": {
     "actionNeeded": "Perlu tindakan",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Belum ada output yang tersedia",
     "confirmCost": "Konfirmasi Biaya",
     "makingPublicInProgress": "Menjadikan trek ini publik — merender ulang dengan branding bawaan dan memublikasikan ulang. Proses ini biasanya memakan waktu 15–30 menit.",
-    "waitingForEncodingServer": "(menunggu ketersediaan server encoding)"
+    "waitingForEncodingServer": "(menunggu ketersediaan server encoding)",
+    "regeneratingInProgress": "Sedang membuat ulang file video Anda. Proses ini biasanya memerlukan waktu 10–30 menit, dan kami akan mengirim email saat sudah selesai."
   },
   "jobActions": {
     "delete": "Hapus",
@@ -754,7 +756,15 @@
     "adminRerender": "Render Ulang",
     "adminRerenderFailed": "Gagal memulai render ulang: {error}",
     "adminRerenderStarted": "Render ulang dimulai.",
-    "adminRerenderStartedWithWarnings": "Render ulang dimulai. Beberapa output yang dipublikasikan tetap dipertahankan:"
+    "adminRerenderStartedWithWarnings": "Render ulang dimulai. Beberapa output yang dipublikasikan tetap dipertahankan:",
+    "regenerate": "Buat ulang video",
+    "regenerateDesc": "Untuk menghemat ruang penyimpanan, kami hanya menyimpan video 720p dan paket CDG/TXT untuk lagu-lagu lama. Membuat ulang akan menyusun kembali format 4K dan format lainnya dari lirik yang telah Anda tinjau serta instrumental yang Anda pilih, persis seperti sebelumnya.",
+    "regenerateFailed": "Gagal memulai pembuatan ulang: {error}",
+    "regenerateNoRepublish": "Tautan YouTube, Dropbox, dan Google Drive Anda tidak akan berubah.",
+    "regenerateStarted": "Sedang membuat ulang video Anda. Kami akan mengirim email saat sudah selesai.",
+    "regenerateTime": "Proses ini biasanya memerlukan waktu 10–30 menit. Kami akan mengirim email saat sudah selesai.",
+    "regenerateTitle": "Buat ulang video ini?",
+    "regenerateTooltip": "Untuk menghemat ruang penyimpanan, lagu-lagu lama hanya mempertahankan video 720p dan paket karaoke. Buat ulang format lainnya."
   },
   "themeSelector": {
     "videoTheme": "Tema Video",

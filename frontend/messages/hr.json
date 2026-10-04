@@ -640,7 +640,8 @@
     "waitingForCapacity": "Čeka se server za kodiranje (ponovni pokušaj)",
     "preparingAudio": "Priprema tvog audiozapisa",
     "processing": "Obrada",
-    "waitingForUpload": "Čeka se prijenos"
+    "waitingForUpload": "Čeka se prijenos",
+    "restoringStems": "Vraćanje audio stemova"
   },
   "jobCard": {
     "actionNeeded": "Potrebna akcija",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Još nema dostupnih izlaza",
     "confirmCost": "Potvrdi cijenu",
     "makingPublicInProgress": "Objavljivanje ove pjesme — ponovno renderiranje sa zadanim brendiranjem i ponovno objavljivanje. To obično traje 15–30 minuta.",
-    "waitingForEncodingServer": "(čeka se dostupnost servera za kodiranje)"
+    "waitingForEncodingServer": "(čeka se dostupnost servera za kodiranje)",
+    "regeneratingInProgress": "Ponovno generiramo tvoje video datoteke. To obično traje 10–30 minuta, a poslat ćemo ti e-mail kada budu spremne."
   },
   "jobActions": {
     "delete": "Izbriši",
@@ -754,7 +756,15 @@
     "adminRerender": "Ponovno renderiraj",
     "adminRerenderFailed": "Nije bilo moguće pokrenuti ponovno renderiranje: {error}",
     "adminRerenderStarted": "Pokrenuto je ponovno renderiranje.",
-    "adminRerenderStartedWithWarnings": "Pokrenuto je ponovno renderiranje. Neki objavljeni izlazi ostavljeni su netaknuti:"
+    "adminRerenderStartedWithWarnings": "Pokrenuto je ponovno renderiranje. Neki objavljeni izlazi ostavljeni su netaknuti:",
+    "regenerate": "Ponovno generiraj video",
+    "regenerateDesc": "Radi uštede prostora, za starije pjesme čuvamo 720p video i CDG/TXT pakete. Ponovnim generiranjem ponovno se izrađuju 4K i ostali formati iz tvojeg pregledanog teksta i odabranog instrumentala, točno kao i prije.",
+    "regenerateFailed": "Nije uspjelo pokretanje ponovnog generiranja: {error}",
+    "regenerateNoRepublish": "Tvoje poveznice za YouTube, Dropbox i Google Drive ostaju nepromijenjene.",
+    "regenerateStarted": "Ponovno generiramo tvoj video. Poslat ćemo ti e-mail kada bude spreman.",
+    "regenerateTime": "To obično traje 10–30 minuta. Poslat ćemo ti e-mail kada bude spreman.",
+    "regenerateTitle": "Želiš li ponovno generirati ovaj video?",
+    "regenerateTooltip": "Radi uštede prostora, starije pjesme zadržavaju samo 720p video i karaoke pakete. Ponovno generiraj ostale formate."
   },
   "themeSelector": {
     "videoTheme": "Video tema",

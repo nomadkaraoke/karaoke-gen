@@ -224,6 +224,36 @@ jobs/{job_id}/
     └── lossy_720p.mp4
 ```
 
+## Storage Retention
+
+Approved plan: `docs/archive/2026-10-03-gen-storage-retention-plan.md` (workspace repo). Generated files
+are regenerable, so a daily Cloud Scheduler job (`storage-retention-daily`, 10:30 UTC) →
+`POST /api/internal/storage-retention/run` → `backend/services/storage_retention.py` purges them from
+jobs completed (newest `complete` timeline entry) more than `STORAGE_RETENTION_MIN_AGE_DAYS` (30) ago.
+
+- **Kept forever:** `input/*` (incl. `edited.flac`), `lyrics/`, `style/`, `review_sessions/`,
+  `audio_edit*/`, `uploads/`, `packages/`, `analysis/`, `screens/*.png|jpg`, the 720p final (both the
+  descriptive and `lossy_720p_mp4.mp4` copies), `stems/custom_instrumental.*`, `stems/vocals_derived.*`
+  and the job-root `custom_instrumental.*` / `existing_instrumental.*`. Unknown files are kept.
+- **Purged:** other `finals/*`, `videos/*`, `previews/*`, `encoded/*`, `quick/*.mp4`, `screens/*.mov`,
+  `review-audio/*`, and separated `stems/*` (only when the input audio is in `jobs/{id}/input/`).
+- **Never touched:** finalise-only jobs, jobs whose input audio is gone, jobs mid edit/re-render/
+  visibility change/regenerate, pending deferred YouTube uploads, `STORAGE_RETENTION_EXCLUDED_TENANTS`.
+- **DRY-RUN by default** (`STORAGE_RETENTION_DRY_RUN`, default true): writes a report to
+  `gs://<bucket>/storage-retention/reports/<ts>-dry-run.json`. Real runs purge
+  `STORAGE_RETENTION_MAX_JOBS_PER_RUN` jobs per pass (cursor in `storage_retention/state`), atomically
+  re-check eligibility (`state_data.storage_purge_in_progress` claim), drop the purged `file_urls`
+  entries and record `renders_purged_at`, `stems_purged_at` and a `storage_purge` manifest.
+  `?job_ids=a,b&dry_run=false&min_age_days=0` runs a scoped real pass (testing); a global real purge
+  only happens via the setting.
+- **Regenerate** (`backend/services/regenerate_service.py`): customer button / admin / kjbox →
+  GCS-only re-run (see docs/API.md § Regenerate Video). Every flow that rebuilds a completed job
+  (regenerate, admin/theme re-render, private→public, Edit, retry) passes the screens worker, whose
+  **stems gate** (`backend/services/stems_restore.py`) re-runs the audio-separation job in restore mode
+  when `stems_purged_at` is set; the audio worker re-triggers screens when the stems are back.
+- Bucket: versioning on, overwritten versions kept 7 days, soft delete 7 days — purged bytes remain
+  recoverable for about a week.
+
 ## LyricsTranscriber Integration
 
 **Key Design Decision**: We use LyricsTranscriber as a **library**, not a server.

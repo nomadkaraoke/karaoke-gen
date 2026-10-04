@@ -59,6 +59,32 @@ export function isVisibilityChangeInProgress(job: Pick<Job, 'state_data'>): bool
   return !!job.state_data?.visibility_change_in_progress;
 }
 
+/**
+ * Returns true while a "Regenerate video" run (storage retention) is rebuilding
+ * the track's archived files. Backed by `state_data.regenerate`, set when the
+ * regenerate starts and cleared when the job completes again.
+ */
+export function isRegenerating(job: Pick<Job, 'state_data' | 'status'>): boolean {
+  return !!job.state_data?.regenerate && job.status !== "complete";
+}
+
+/**
+ * True when a finished track's big video files were archived by storage
+ * retention (or are otherwise missing) and can be rebuilt with "Regenerate video".
+ * The 720p video and CDG/TXT packages are always kept.
+ */
+export function canRegenerate(job: Job): boolean {
+  if (job.status !== "complete") return false;
+  if (job.outputs_deleted_at || job.finalise_only || job.prep_only) return false;
+  if (job.state_data?.visibility_change_in_progress) return false;
+  if (job.renders_purged_at) return true;
+  const finals = job.file_urls?.finals;
+  // Only offer it for tracks that were actually made (have a 720p or a package)
+  // but are missing the 4K file.
+  const madeOnce = !!(finals?.lossy_720p_mp4 || job.file_urls?.packages?.cdg_zip);
+  return madeOnce && !finals?.lossy_4k_mp4;
+}
+
 export interface JobStep {
   step: number;
   total: number;
@@ -186,6 +212,17 @@ export function getJobStep(job: Job): JobStep {
       label: status.replace(/_/g, " "),
       isBlocking: false,
       color: "text-muted-foreground",
+    };
+  }
+
+  // Archived stems being re-separated before a regenerate / edit continues.
+  if (status === "lyrics_complete" && job.state_data?.stems_restore?.status === "running") {
+    return {
+      step: 4,
+      total: TOTAL_STEPS,
+      label: "restoringStems",
+      isBlocking: false,
+      color: "text-purple-400",
     };
   }
 

@@ -506,6 +506,32 @@ youtube_description_backfill_scheduler = cloudscheduler.Job(
     ),
 )
 
+# ==================== Storage Retention ====================
+
+# Daily purge of regenerable files (big finals, rendered videos, stems, ...) from
+# jobs completed >30 days ago — see backend/services/storage_retention.py. The
+# backend runs it DRY-RUN (report only) until STORAGE_RETENTION_DRY_RUN=false.
+storage_retention_scheduler = cloudscheduler.Job(
+    "storage-retention-scheduler",
+    name="storage-retention-daily",
+    description="Daily storage-retention pass (dry-run report until enabled)",
+    region=REGION,
+    schedule="30 10 * * *",  # 10:30 UTC daily (quiet hours for US customers)
+    time_zone="UTC",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/storage-retention/run",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=1,
+        min_backoff_duration="60s",
+        max_backoff_duration="300s",
+    ),
+)
+
 # ==================== Stuck Job Recovery ====================
 
 # Cloud Scheduler job to detect and recover stuck audio downloads

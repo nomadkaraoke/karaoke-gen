@@ -332,3 +332,32 @@ class TestEditPreservesTempoLabel:
         _, payload = self._edit(client, mock_job_manager, complete_job, auth_headers,
                                 {"title": "Better Name"}, None, "Test Song")
         assert payload["title"] == "Better Name"
+
+
+class TestEditStemsPurgedTrack:
+    """Storage retention purged the stems: review needs them, so the edit goes
+    through the screens worker (which re-separates first) instead of straight
+    to AWAITING_REVIEW."""
+
+    def test_stems_purged_edit_restores_stems_before_review(
+        self, client, complete_job, mock_job_manager, mock_worker_service, auth_headers
+    ):
+        complete_job.stems_purged_at = datetime.now(UTC)
+        response = client.post("/api/jobs/test-edit-123/edit", headers=auth_headers, json={})
+        assert response.status_code == 200
+        assert response.json()["metadata_updated"] is False
+        mock_job_manager.transition_to_state.assert_called_once_with(
+            "test-edit-123",
+            JobStatus.LYRICS_COMPLETE,
+            progress=55,
+            message="Restoring audio stems before review",
+        )
+        mock_worker_service.trigger_screens_worker.assert_called_once_with("test-edit-123")
+
+    def test_bring_your_own_instrumental_job_goes_straight_to_review(
+        self, client, complete_job, mock_job_manager, auth_headers
+    ):
+        complete_job.stems_purged_at = datetime.now(UTC)
+        complete_job.existing_instrumental_gcs_path = "jobs/test-edit-123/custom_instrumental.wav"
+        client.post("/api/jobs/test-edit-123/edit", headers=auth_headers, json={})
+        assert mock_job_manager.transition_to_state.call_args.args[1] == JobStatus.AWAITING_REVIEW

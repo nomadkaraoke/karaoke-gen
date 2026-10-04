@@ -36,6 +36,7 @@ from backend.services.tempo_label import apply_tempo_to_title
 from backend.services.worker_service import get_worker_service
 from backend.services.storage_service import StorageService
 from backend.services.theme_service import get_theme_service
+from backend.services.theme_rerender_service import RerenderError
 from backend.config import get_settings
 from backend.services.tracing import add_span_attribute
 from backend.api.dependencies import require_admin, require_auth
@@ -471,7 +472,11 @@ def edit_completed_track(
     job_ref.update(update_payload)
 
     # --- Phase 4: Transition state ---
-    if metadata_updated:
+    # Storage retention archived this track's stems: review needs them, so go
+    # through the screens worker, which re-separates them before review opens.
+    from backend.services.regenerate_service import stems_need_restore
+    stems_restore_needed = stems_need_restore(job)
+    if metadata_updated or stems_restore_needed:
         # Metadata changed → screens need regeneration.
         # Transition to LYRICS_COMPLETE so screens worker can run
         # (LYRICS_COMPLETE → GENERATING_SCREENS is a valid transition;
@@ -480,7 +485,10 @@ def edit_completed_track(
             job_id,
             JobStatus.LYRICS_COMPLETE,
             progress=55,
-            message="Regenerating screens with updated metadata",
+            message=(
+                "Regenerating screens with updated metadata" if metadata_updated
+                else "Restoring audio stems before review"
+            ),
         )
         background_tasks.add_task(worker_service.trigger_screens_worker, job_id)
     else:
@@ -536,6 +544,9 @@ _SUMMARY_STATE_DATA_KEYS = {
     'batch_id',
     'bulk_auto_selected',
     'awaiting_upload',
+    'regenerate',
+    'stems_restore',
+    'instrumental_selection',
 }
 _SUMMARY_FILE_URLS_KEYS = {'finals', 'videos', 'packages'}
 _HIDE_COMPLETED_STATUSES = ['complete', 'prep_complete', 'cancelled']
@@ -1784,6 +1795,31 @@ DOWNLOAD_FILENAME_SUFFIXES = {
 }
 
 
+def _archived_output(job, category: str, file_key: str) -> bool:
+    """True if storage retention purged this download (recorded in the job's manifest)."""
+    if not (getattr(job, 'renders_purged_at', None) or getattr(job, 'stems_purged_at', None)):
+        return False
+    manifest = getattr(job, 'storage_purge', None) or {}
+    for entry in manifest.get('files') or []:
+        path = (entry or {}).get('path') or ''
+        rel = path.split('/', 2)[-1] if path.startswith('jobs/') else path
+        if rel.startswith(f"{category}/{file_key}.") or rel == f"{category}/{file_key}":
+            return True
+    return False
+
+
+def _archived_error(job, locale: str) -> HTTPException:
+    """410 Gone with a machine-readable code so clients can offer/trigger a regenerate."""
+    return HTTPException(
+        status_code=410,
+        detail={
+            "code": "output_archived",
+            "message": t(locale, "jobs.fileNoLongerAvailable"),
+            "regenerate_url": f"/api/jobs/{job.job_id}/regenerate",
+        },
+    )
+
+
 def _cleanup_temp_file(path: Optional[str]) -> None:
     """Best-effort removal of a temp file created for a download that failed
     before streaming started (so it never reaches the iterator's cleanup)."""
@@ -1823,16 +1859,21 @@ def download_file(
 
     file_urls = job.file_urls or {}
     category_files = file_urls.get(category)
-    
-    if not category_files:
-        raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
-    
+
     if isinstance(category_files, dict):
         gcs_path = category_files.get(file_key)
-    else:
+    elif category_files:
         gcs_path = category_files if file_key == category else None
-    
+    else:
+        gcs_path = None
+
     if not gcs_path:
+        # Archived by storage retention: tell clients (UI, kjbox) it can be
+        # regenerated rather than a plain 404.
+        if _archived_output(job, category, file_key):
+            raise _archived_error(job, locale)
+        if not category_files:
+            raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
         raise HTTPException(status_code=404, detail=f"File '{file_key}' not found in '{category}'")
     
     # Determine content type based on file extension
@@ -1915,6 +1956,8 @@ def download_file(
         # doesn't trip the error-monitor.
         _cleanup_temp_file(tmp_path)
         logger.warning(f"Download requested for missing object {gcs_path}")
+        if getattr(job, 'renders_purged_at', None) or getattr(job, 'stems_purged_at', None):
+            raise _archived_error(job, locale)
         raise HTTPException(status_code=404, detail=t(locale, "jobs.fileNoLongerAvailable"))
     except Exception as e:
         _cleanup_temp_file(tmp_path)
@@ -2073,6 +2116,50 @@ async def retry_job(
                 "job_status": "lyrics_complete",
                 "message": "Job retry: re-running the admin re-render",
                 "retry_stage": "admin_rerender",
+            }
+
+        # A failed storage-retention regenerate: re-run it (re-claims the job and
+        # restores purged stems first) until its screens exist; after that the
+        # branches below resume it (the marker keeps the run GCS-only).
+        from backend.services.regenerate_service import active_regenerate, stems_need_restore, RegenerateService
+        from backend.services.theme_rerender_service import RerenderError
+        regenerate = active_regenerate(job)
+        if (regenerate and original_status in (JobStatus.FAILED, JobStatus.CANCELLED)
+                and (not _has_title_screen(file_urls) or stems_need_restore(job))):
+            try:
+                await RegenerateService(job_manager).start(
+                    job,
+                    requested_by=auth_result.user_email or "unknown",
+                    source=regenerate.get('source') or 'retry',
+                    notify_customer=bool(regenerate.get('notify_customer', True)),
+                    after=regenerate.get('after'),
+                )
+            except RerenderError as e:
+                raise HTTPException(status_code=e.status_code, detail=str(e))
+            return {
+                "status": "success",
+                "job_status": "lyrics_complete",
+                "message": "Job retry: re-running the regenerate",
+                "retry_stage": "regenerate",
+            }
+
+        # Stems archived by storage retention (e.g. an Edit whose stems restore
+        # failed): go back through the screens worker, which restores them first.
+        if stems_need_restore(job) and file_urls.get('lyrics', {}).get('corrections'):
+            job_manager.update_job(job_id, {'error_message': None, 'error_details': None})
+            if not job_manager.transition_to_state(
+                job_id=job_id,
+                new_status=JobStatus.LYRICS_COMPLETE,
+                progress=45,
+                message="Retrying: restoring audio stems",
+            ):
+                raise HTTPException(status_code=500, detail="Failed to transition job status for retry")
+            background_tasks.add_task(worker_service.trigger_screens_worker, job_id)
+            return {
+                "status": "success",
+                "job_status": "lyrics_complete",
+                "message": "Job retry started: restoring audio stems",
+                "retry_stage": "stems_restore",
             }
 
         # If we have a video with vocals and instrumental selection, retry video generation
@@ -2953,9 +3040,82 @@ async def change_visibility(
             reprocessing_required=result["reprocessing_required"],
         )
 
+    except RerenderError as e:
+        # Old track whose finals were archived and can't be regenerated right now.
+        raise HTTPException(status_code=e.status_code, detail=str(e))
     except Exception as e:
         logger.error(f"Error changing visibility for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to change visibility: {str(e)}")
+
+
+# =============================================================================
+# Regenerate (storage retention) Endpoint
+# =============================================================================
+
+@router.post("/{job_id}/regenerate")
+async def regenerate_job_outputs(
+    job_id: str,
+    http_request: Request,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """
+    Regenerate a finished track's video files after storage retention archived them.
+
+    Old tracks keep their 720p video and CDG/TXT packages; the other formats
+    (4K, lossless, with-vocals, ...) and, for some, the separated audio stems
+    are archived after 30 days. This rebuilds them in storage — re-running audio
+    separation first if needed — from the track's existing reviewed lyrics,
+    instrumental choice and style. Nothing is re-published (YouTube, Dropbox,
+    Google Drive stay as they are). The owner is emailed when it's ready.
+    Rate-limited per track and per user (admins exempt).
+    """
+    locale = get_locale_from_request(http_request)
+    job_manager = JobManager()
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
+    if not _check_job_ownership(job, auth_result):
+        raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionModify"))
+
+    from backend.services.regenerate_service import (
+        RegenerateService,
+        check_and_record_rate_limit,
+        validate_regenerate,
+    )
+
+    reason = validate_regenerate(job)
+    if reason:
+        raise HTTPException(status_code=409 if "already" in reason or "right now" in reason else 400, detail=reason)
+
+    requested_by = auth_result.user_email or "unknown"
+    if not auth_result.is_admin:
+        refusal = await asyncio.to_thread(
+            check_and_record_rate_limit, job_manager.firestore.db, job, requested_by, get_settings(),
+        )
+        if refusal:
+            raise HTTPException(status_code=429, detail=refusal)
+
+    source = "admin" if auth_result.is_admin else "customer"
+    client_id = (http_request.headers.get("X-Client-Id") or "").strip().lower()
+    if client_id == "kjbox":
+        source = "kjbox"
+    try:
+        result = await RegenerateService(job_manager).start(
+            job, requested_by=requested_by, source=source,
+            # The owner is always told when their track is ready again (kjbox /
+            # admin triggers too — the files are theirs).
+            notify_customer=True,
+        )
+    except RerenderError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+    logger.info(f"[job:{job_id}] Regenerate started by {requested_by} (source={source}, needs_stems={result['needs_stems']})")
+    return {
+        "status": "processing",
+        "job_id": job_id,
+        "needs_stems": result["needs_stems"],
+        "message": "Regenerating your video files. This usually takes 10-30 minutes; we'll email you when they're ready.",
+    }
 
 
 # =============================================================================

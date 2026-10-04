@@ -2399,6 +2399,55 @@ async def regenerate_screens(
 
 
 # =============================================================================
+# Admin Regenerate (storage retention) Endpoint
+# =============================================================================
+
+class AdminRegenerateRequest(BaseModel):
+    """Request body for POST /api/admin/jobs/{job_id}/regenerate."""
+    notify_customer: bool = Field(
+        False, description="Email/push the customer when the regenerate completes",
+    )
+
+
+@router.post("/jobs/{job_id}/regenerate")
+async def admin_regenerate_job(
+    job_id: str,
+    body: Optional[AdminRegenerateRequest] = None,
+    auth_data: AuthResult = Depends(require_admin),
+):
+    """
+    Rebuild a completed job's GCS outputs (storage retention), admin only.
+
+    Re-separates stems first if they were purged, then regenerates screens,
+    the lyrics video, every final and the packages in GCS. Unlike
+    ``/rerender`` nothing is deleted or re-published (YouTube/Dropbox/GDrive
+    untouched, same brand code). No rate limit.
+    """
+    from backend.services.regenerate_service import RegenerateService
+    from backend.services.theme_rerender_service import RerenderError
+
+    body = body or AdminRegenerateRequest()
+    admin_email = auth_data.user_email or "unknown"
+    job_manager = JobManager()
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    try:
+        result = await RegenerateService(job_manager).start(
+            job, requested_by=admin_email, source="admin", notify_customer=body.notify_customer,
+        )
+    except RerenderError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+    return {
+        "status": "processing",
+        "job_id": job_id,
+        "needs_stems": result["needs_stems"],
+        "notify_customer": body.notify_customer,
+        "message": "Regenerate started (GCS only; nothing re-published).",
+    }
+
+
+# =============================================================================
 # Admin Re-render Endpoint
 # =============================================================================
 

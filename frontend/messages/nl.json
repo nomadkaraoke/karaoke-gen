@@ -640,7 +640,8 @@
     "waitingForCapacity": "Wachten op encodingserver (opnieuw proberen)",
     "preparingAudio": "Je audio voorbereiden",
     "processing": "Verwerken",
-    "waitingForUpload": "Wachten op upload"
+    "waitingForUpload": "Wachten op upload",
+    "restoringStems": "Audiostems herstellen"
   },
   "jobCard": {
     "actionNeeded": "Actie vereist",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Nog geen outputs beschikbaar",
     "confirmCost": "Kosten bevestigen",
     "makingPublicInProgress": "Deze track wordt openbaar gemaakt — opnieuw renderen met standaard branding en opnieuw publiceren. Dit duurt meestal 15–30 minuten.",
-    "waitingForEncodingServer": "(wachten op beschikbaarheid van de encodingserver)"
+    "waitingForEncodingServer": "(wachten op beschikbaarheid van de encodingserver)",
+    "regeneratingInProgress": "Je videobestanden worden opnieuw gegenereerd. Dit duurt meestal 10–30 minuten en we sturen je een e-mail zodra ze klaar zijn."
   },
   "jobActions": {
     "delete": "Verwijderen",
@@ -754,7 +756,15 @@
     "adminRerender": "Opnieuw renderen",
     "adminRerenderFailed": "Kon het opnieuw renderen niet starten: {error}",
     "adminRerenderStarted": "Opnieuw renderen gestart.",
-    "adminRerenderStartedWithWarnings": "Opnieuw renderen gestart. Sommige gepubliceerde outputs zijn ongewijzigd gelaten:"
+    "adminRerenderStartedWithWarnings": "Opnieuw renderen gestart. Sommige gepubliceerde outputs zijn ongewijzigd gelaten:",
+    "regenerate": "Video opnieuw genereren",
+    "regenerateDesc": "Om ruimte te besparen, bewaren we van oudere nummers alleen de 720p-video en de CDG/TXT-pakketten. Door opnieuw te genereren worden de 4K-versie en andere formaten opnieuw opgebouwd op basis van je gecontroleerde songtekst en gekozen instrumentale track, precies zoals voorheen.",
+    "regenerateFailed": "Kon het opnieuw genereren niet starten: {error}",
+    "regenerateNoRepublish": "Je YouTube-, Dropbox- en Google Drive-links blijven gewoon hetzelfde.",
+    "regenerateStarted": "Je video wordt opnieuw gegenereerd. We sturen je een e-mail zodra deze klaar is.",
+    "regenerateTime": "Dit duurt meestal 10–30 minuten. We sturen je een e-mail zodra deze klaar is.",
+    "regenerateTitle": "Deze video opnieuw genereren?",
+    "regenerateTooltip": "Om ruimte te besparen, bewaren we van oudere nummers alleen de 720p-video en karaokepakketten. Genereer de overige formaten opnieuw."
   },
   "themeSelector": {
     "videoTheme": "Video Thema",

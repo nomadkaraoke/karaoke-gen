@@ -640,7 +640,8 @@
     "waitingForCapacity": "Väntar på kodningsserver (försöker igen)",
     "preparingAudio": "Förbereder ditt ljud",
     "processing": "Bearbetar",
-    "waitingForUpload": "Väntar på uppladdning"
+    "waitingForUpload": "Väntar på uppladdning",
+    "restoringStems": "Återställer ljudspår"
   },
   "jobCard": {
     "actionNeeded": "Åtgärd krävs",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Inga utdata tillgängliga ännu",
     "confirmCost": "Bekräfta kostnad",
     "makingPublicInProgress": "Gör det här spåret offentligt — renderar om med standardprofilering och publicerar på nytt. Detta tar vanligtvis 15–30 minuter.",
-    "waitingForEncodingServer": "(väntar på att kodningsservern ska bli tillgänglig)"
+    "waitingForEncodingServer": "(väntar på att kodningsservern ska bli tillgänglig)",
+    "regeneratingInProgress": "Återskapar dina videofiler. Det tar vanligtvis 10–30 minuter, och vi mejlar dig när de är klara."
   },
   "jobActions": {
     "delete": "Ta bort",
@@ -754,7 +756,15 @@
     "adminRerender": "Rendera om",
     "adminRerenderFailed": "Kunde inte starta omrenderingen: {error}",
     "adminRerenderStarted": "Omrendering har startat.",
-    "adminRerenderStartedWithWarnings": "Omrendering har startat. Vissa publicerade utdata har lämnats kvar:"
+    "adminRerenderStartedWithWarnings": "Omrendering har startat. Vissa publicerade utdata har lämnats kvar:",
+    "regenerate": "Återskapa video",
+    "regenerateDesc": "För att spara utrymme behåller vi 720p-videon och CDG/TXT-paketen för äldre låtar. Om du återskapar byggs 4K och övriga format upp igen från din granskade låttext och valda instrumentalversion, precis som tidigare.",
+    "regenerateFailed": "Kunde inte starta återskapandet: {error}",
+    "regenerateNoRepublish": "Dina länkar till YouTube, Dropbox och Google Drive förblir oförändrade.",
+    "regenerateStarted": "Återskapar din video. Vi mejlar dig när den är klar.",
+    "regenerateTime": "Det tar vanligtvis 10–30 minuter. Vi mejlar dig när den är klar.",
+    "regenerateTitle": "Vill du återskapa den här videon?",
+    "regenerateTooltip": "För att spara utrymme sparas endast 720p-videon och karaokepaketen för äldre låtar. Återskapa övriga format."
   },
   "themeSelector": {
     "videoTheme": "Videotema",

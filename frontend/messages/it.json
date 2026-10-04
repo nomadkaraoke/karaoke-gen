@@ -640,7 +640,8 @@
     "waitingForCapacity": "In attesa del server di codifica (nuovo tentativo)",
     "preparingAudio": "Preparazione del tuo audio",
     "processing": "Elaborazione",
-    "waitingForUpload": "In attesa del caricamento"
+    "waitingForUpload": "In attesa del caricamento",
+    "restoringStems": "Ripristino delle tracce audio (stem)"
   },
   "jobCard": {
     "actionNeeded": "Azione richiesta",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Nessun output ancora disponibile",
     "confirmCost": "Conferma costo",
     "makingPublicInProgress": "Stiamo rendendo pubblica questa traccia — nuovo rendering con il branding predefinito e ripubblicazione in corso. Di solito ci vogliono 15–30 minuti.",
-    "waitingForEncodingServer": "(in attesa della disponibilità del server di codifica)"
+    "waitingForEncodingServer": "(in attesa della disponibilità del server di codifica)",
+    "regeneratingInProgress": "Rigenerazione dei tuoi file video in corso. Di solito ci vorranno 10–30 minuti, ti invieremo un'email non appena saranno pronti."
   },
   "jobActions": {
     "delete": "Elimina",
@@ -754,7 +756,15 @@
     "adminRerender": "Renderizza di nuovo",
     "adminRerenderFailed": "Impossibile avviare il nuovo rendering: {error}",
     "adminRerenderStarted": "Nuovo rendering avviato.",
-    "adminRerenderStartedWithWarnings": "Nuovo rendering avviato. Alcuni output pubblicati sono stati lasciati invariati:"
+    "adminRerenderStartedWithWarnings": "Nuovo rendering avviato. Alcuni output pubblicati sono stati lasciati invariati:",
+    "regenerate": "Rigenera video",
+    "regenerateDesc": "Per risparmiare spazio, conserviamo il video a 720p e i pacchetti CDG/TXT dei brani meno recenti. Rigenerando ricostruirai il 4K e gli altri formati a partire dal testo che hai revisionato e dalla traccia strumentale scelta, esattamente come prima.",
+    "regenerateFailed": "Impossibile avviare la rigenerazione: {error}",
+    "regenerateNoRepublish": "I tuoi link a YouTube, Dropbox e Google Drive rimarranno invariati.",
+    "regenerateStarted": "Rigenerazione del tuo video in corso. Ti invieremo un'email non appena sarà pronto.",
+    "regenerateTime": "Di solito ci vorranno 10–30 minuti. Ti invieremo un'email non appena sarà pronto.",
+    "regenerateTitle": "Vuoi rigenerare questo video?",
+    "regenerateTooltip": "Per risparmiare spazio, per i brani meno recenti conserviamo solo il video a 720p e i pacchetti karaoke. Rigenera gli altri formati."
   },
   "themeSelector": {
     "videoTheme": "Tema video",

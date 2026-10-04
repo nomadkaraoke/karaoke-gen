@@ -640,7 +640,8 @@
     "waitingForCapacity": "Venter på kodningsserver (prøver igen)",
     "preparingAudio": "Forbereder din lyd",
     "processing": "Behandler",
-    "waitingForUpload": "Venter på upload"
+    "waitingForUpload": "Venter på upload",
+    "restoringStems": "Gendanner lydspor"
   },
   "jobCard": {
     "actionNeeded": "Handling påkrævet",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Ingen outputs tilgængelige endnu",
     "confirmCost": "Bekræft pris",
     "makingPublicInProgress": "Gør dette nummer offentligt — gen-renderer med standardbranding og genudgiver. Det tager normalt 15–30 minutter.",
-    "waitingForEncodingServer": "(venter på, at kodningsserveren bliver ledig)"
+    "waitingForEncodingServer": "(venter på, at kodningsserveren bliver ledig)",
+    "regeneratingInProgress": "Gendanner dine videofiler. Det tager normalt 10–30 minutter, og vi sender dig en e-mail, når de er klar."
   },
   "jobActions": {
     "delete": "Slet",
@@ -754,7 +756,15 @@
     "adminRerender": "Render igen",
     "adminRerenderFailed": "Kunne ikke starte genrenderingen: {error}",
     "adminRerenderStarted": "Genrendering startet.",
-    "adminRerenderStartedWithWarnings": "Genrendering startet. Nogle udgivne outputs blev bibeholdt:"
+    "adminRerenderStartedWithWarnings": "Genrendering startet. Nogle udgivne outputs blev bibeholdt:",
+    "regenerate": "Gendan video",
+    "regenerateDesc": "For at spare plads beholder vi 720p-videoen og CDG/TXT-pakkerne for ældre numre. Ved at gendanne genopbygges 4K og andre formater ud fra dine gennemgåede sangtekster og dit valgte instrumentalspor, præcis som før.",
+    "regenerateFailed": "Kunne ikke starte gendannelse: {error}",
+    "regenerateNoRepublish": "Dine links til YouTube, Dropbox og Google Drive forbliver uændrede.",
+    "regenerateStarted": "Gendanner din video. Vi sender dig en e-mail, når den er klar.",
+    "regenerateTime": "Det tager normalt 10–30 minutter. Vi sender dig en e-mail, når den er klar.",
+    "regenerateTitle": "Vil du gendanne denne video?",
+    "regenerateTooltip": "For at spare plads beholder ældre numre kun 720p-videoen og karaokepakkerne. Gendan de andre formater."
   },
   "themeSelector": {
     "videoTheme": "Videotema",

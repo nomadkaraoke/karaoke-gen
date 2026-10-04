@@ -102,6 +102,22 @@ async def test_matching_durations_do_not_cancel(mocks):
 
     mocks["job_manager"].cancel_job.assert_not_called()
     update = mocks["job_manager"].update_job.call_args[0][1]
+    # uploads/ expires after 7 days: the instrumental is persisted at the job root.
+    assert update["existing_instrumental_gcs_path"] == "jobs/job-1/custom_instrumental.wav"
+    mocks["storage"].copy_blob.assert_any_call(
+        "uploads/job-1/audio/existing_instrumental.wav", "jobs/job-1/custom_instrumental.wav"
+    )
+
+
+@pytest.mark.asyncio
+async def test_instrumental_persist_failure_keeps_upload_path(mocks):
+    mocks["storage"].copy_blob.side_effect = RuntimeError("gcs down")
+    with patch("backend.api.routes.file_upload._validate_audio_durations",
+               new_callable=AsyncMock, return_value=(True, 200.0, 200.2)), \
+         patch("backend.api.routes.file_upload.get_credential_manager"):
+        await _call(_auth(email=None, is_admin=True))
+
+    update = mocks["job_manager"].update_job.call_args[0][1]
     assert update["existing_instrumental_gcs_path"] == "uploads/job-1/audio/existing_instrumental.wav"
 
 
@@ -119,7 +135,8 @@ async def test_alignable_mismatch_uses_conformed_instrumental(mocks):
     conform.assert_awaited_once()
     mocks["job_manager"].cancel_job.assert_not_called()
     update = mocks["job_manager"].update_job.call_args[0][1]
-    assert update["existing_instrumental_gcs_path"] == conformed
+    assert update["existing_instrumental_gcs_path"] == "jobs/job-1/custom_instrumental.flac"
+    mocks["storage"].copy_blob.assert_any_call(conformed, "jobs/job-1/custom_instrumental.flac")
     mocks["job_manager"].update_state_data.assert_any_call("job-1", "instrumental_conformed", info)
 
 

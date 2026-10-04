@@ -640,7 +640,8 @@
     "waitingForCapacity": "ממתין לשרת הקידוד (מנסה שוב)",
     "preparingAudio": "מכינים את האודיו שלך",
     "processing": "בעיבוד",
-    "waitingForUpload": "ממתין להעלאה"
+    "waitingForUpload": "ממתין להעלאה",
+    "restoringStems": "משחזר ערוצי שמע (stems)"
   },
   "jobCard": {
     "actionNeeded": "נדרשת פעולה",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "אין פלטים זמינים עדיין",
     "confirmCost": "אישור עלות",
     "makingPublicInProgress": "הופך את הרצועה הזו לציבורית — מעבד מחדש עם מיתוג ברירת המחדל ומפרסם מחדש. זה בדרך כלל לוקח 15–30 דקות.",
-    "waitingForEncodingServer": "(ממתין לזמינות שרת הקידוד)"
+    "waitingForEncodingServer": "(ממתין לזמינות שרת הקידוד)",
+    "regeneratingInProgress": "מייצר מחדש את קובצי הווידאו שלך. בדרך כלל זה לוקח 10–30 דקות, ונשלח לך אימייל כשהם יהיו מוכנים."
   },
   "jobActions": {
     "delete": "מחק",
@@ -754,7 +756,15 @@
     "adminRerender": "רינדור מחדש",
     "adminRerenderFailed": "לא ניתן היה להתחיל את הרינדור מחדש: {error}",
     "adminRerenderStarted": "הרינדור מחדש החל.",
-    "adminRerenderStartedWithWarnings": "הרינדור מחדש החל. חלק מהתוצרים שפורסמו הושארו במקומם:"
+    "adminRerenderStartedWithWarnings": "הרינדור מחדש החל. חלק מהתוצרים שפורסמו הושארו במקומם:",
+    "regenerate": "יצירה מחדש של הווידאו",
+    "regenerateDesc": "כדי לחסוך במקום, אנחנו שומרים את הווידאו ב-720p ואת חבילות ה-CDG/TXT של שירים ישנים יותר. יצירה מחדש תבנה מחדש את ה-4K ואת הפורמטים הנוספים מתוך מילות השיר שבדקת ומגרסת הפלייבק שבחרת, בדיוק כמו קודם.",
+    "regenerateFailed": "לא ניתן היה להתחיל ביצירה מחדש: {error}",
+    "regenerateNoRepublish": "הקישורים שלך ל-YouTube, ל-Dropbox ול-Google Drive יישארו ללא שינוי.",
+    "regenerateStarted": "מייצר את הווידאו שלך מחדש. נשלח לך אימייל כשהוא יהיה מוכן.",
+    "regenerateTime": "בדרך כלל זה לוקח 10–30 דקות. נשלח לך אימייל כשהוא יהיה מוכן.",
+    "regenerateTitle": "ליצור מחדש את הווידאו הזה?",
+    "regenerateTooltip": "כדי לחסוך במקום, עבור שירים ישנים יותר נשמרים רק הווידאו ב-720p וחבילות הקריוקי. ניתן ליצור מחדש את שאר הפורמטים."
   },
   "themeSelector": {
     "videoTheme": "ערכת נושא לוידאו",

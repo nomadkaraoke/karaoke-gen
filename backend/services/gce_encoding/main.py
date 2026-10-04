@@ -856,21 +856,20 @@ def resolve_instrumental(work_dir: Path, config: dict):
             "*custom_instrumental*.aac", "*Instrumental Custom*",
         )
     elif instrumental_selection == "with_backing":
-        # User selected instrumental with backing vocals
+        # User selected instrumental with backing vocals. NO generic fallback:
+        # "*instrumental*.flac" used to match instrumental_clean.flac (or a kept
+        # custom_instrumental.flac) whenever the with-backing stem was missing,
+        # silently shipping the wrong instrumental. Missing => fail loudly.
         instrumental = find_file(
             work_dir,
             "*instrumental_with_backing*.flac", "*Instrumental Backing*.flac",
-            "*with_backing*.flac", "*Backing*.flac",
-            "*instrumental*.flac", "*Instrumental*.flac",
-            "*instrumental*.wav"
         )
     else:
-        # Default to clean instrumental
+        # Default to clean instrumental — never fall back to a with-backing or
+        # custom/user instrumental (same silent-wrong-instrumental risk).
         instrumental = find_file(
             work_dir,
             "*instrumental_clean*.flac", "*Instrumental Clean*.flac",
-            "*instrumental*.flac", "*Instrumental*.flac",
-            "*instrumental*.wav"
         )
 
     return instrumental

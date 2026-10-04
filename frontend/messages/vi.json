@@ -640,7 +640,8 @@
     "waitingForCapacity": "Đang chờ máy chủ mã hóa (đang thử lại)",
     "preparingAudio": "Đang chuẩn bị âm thanh của bạn",
     "processing": "Đang xử lý",
-    "waitingForUpload": "Đang chờ tải lên"
+    "waitingForUpload": "Đang chờ tải lên",
+    "restoringStems": "Đang khôi phục các stem âm thanh"
   },
   "jobCard": {
     "actionNeeded": "Cần hành động",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Chưa có đầu ra nào",
     "confirmCost": "Xác nhận chi phí",
     "makingPublicInProgress": "Đang chuyển bài hát này sang chế độ công khai — đang xuất lại video với thương hiệu mặc định và đăng tải lại. Quá trình này thường mất 15–30 phút.",
-    "waitingForEncodingServer": "(đang chờ máy chủ mã hóa khả dụng)"
+    "waitingForEncodingServer": "(đang chờ máy chủ mã hóa khả dụng)",
+    "regeneratingInProgress": "Đang tạo lại các tệp video của bạn. Quá trình này thường mất 10–30 phút và chúng tôi sẽ gửi email cho bạn khi hoàn tất."
   },
   "jobActions": {
     "delete": "Xóa",
@@ -754,7 +756,15 @@
     "adminRerender": "Kết xuất lại",
     "adminRerenderFailed": "Không thể bắt đầu kết xuất lại: {error}",
     "adminRerenderStarted": "Đã bắt đầu kết xuất lại.",
-    "adminRerenderStartedWithWarnings": "Đã bắt đầu kết xuất lại. Một số tệp đầu ra đã xuất bản được giữ nguyên:"
+    "adminRerenderStartedWithWarnings": "Đã bắt đầu kết xuất lại. Một số tệp đầu ra đã xuất bản được giữ nguyên:",
+    "regenerate": "Tạo lại video",
+    "regenerateDesc": "Để tiết kiệm dung lượng, chúng tôi giữ lại video 720p cùng các gói CDG/TXT của các bản nhạc cũ hơn. Quá trình tạo lại sẽ dựng lại định dạng 4K và các định dạng khác từ lời bài hát bạn đã duyệt và bản nhạc beat đã chọn, chính xác như trước.",
+    "regenerateFailed": "Không thể bắt đầu tạo lại: {error}",
+    "regenerateNoRepublish": "Các liên kết YouTube, Dropbox và Google Drive của bạn vẫn được giữ nguyên.",
+    "regenerateStarted": "Đang tạo lại video của bạn. Chúng tôi sẽ gửi email cho bạn khi hoàn tất.",
+    "regenerateTime": "Quá trình này thường mất 10–30 phút. Chúng tôi sẽ gửi email cho bạn khi hoàn tất.",
+    "regenerateTitle": "Tạo lại video này?",
+    "regenerateTooltip": "Để tiết kiệm dung lượng, các bản nhạc cũ hơn chỉ giữ lại video 720p và các gói karaoke. Tạo lại các định dạng khác."
   },
   "themeSelector": {
     "videoTheme": "Chủ đề video",

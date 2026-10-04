@@ -193,6 +193,15 @@ async def process_audio_separation(job_id: str) -> bool:
 
     quick_render = None
 
+    # Restore mode: storage retention purged this completed job's stems and the
+    # screens worker asked for them back (backend/services/stems_restore.py).
+    # Separate + upload as usual, then hand back to the screens worker; skip the
+    # first-run-only steps (quick version, prep-phase advance, auto-approval).
+    from backend.services.stems_restore import complete_stems_restore, is_restore_run, mark_restore_failed
+    restore_mode = is_restore_run(job)
+    if restore_mode:
+        job_log.info("RESTORE MODE: re-separating stems purged by storage retention")
+
     # Create temporary working directory
     temp_dir = tempfile.mkdtemp(prefix=f"karaoke_{job_id}_")
     job_log.info(f"Created temp directory: {temp_dir}")
@@ -240,7 +249,7 @@ async def process_audio_separation(job_id: str) -> bool:
                 # kjbox make-it jobs: a quick single-model separation on the warm
                 # GPU, then a background render of a scrolling-lyrics draft video
                 # while the ensemble below runs. Never raises; joined in `finally`.
-                if model_dir:
+                if model_dir and not restore_mode:
                     quick_render = start_quick_version(
                         job, audio_path, temp_dir, model_dir, job_manager, storage, job_log
                     )
@@ -364,7 +373,7 @@ async def process_audio_separation(job_id: str) -> bool:
 
                 # Store processing metadata for separation provenance
                 duration = time.time() - start_time
-                job_manager.update_processing_metadata(job_id, "separation", {
+                job_manager.update_processing_metadata(job_id, "separation_restore" if restore_mode else "separation", {
                     "provider": "local_gpu" if model_dir else "remote_api",
                     "clean_model": effective_model_names['clean_instrumental_model'],
                     "backing_models": effective_model_names['backing_vocals_models'],
@@ -382,6 +391,12 @@ async def process_audio_separation(job_id: str) -> bool:
                     await _analyze_backing_vocals(job_id, job_manager, storage, job_log)
                 except Exception as e:
                     logger.warning(f"[job:{job_id}] Backing vocals analysis failed (non-fatal): {e}")
+
+                if restore_mode:
+                    await complete_stems_restore(job_id, job_manager)
+                    duration = time.time() - start_time
+                    logger.info(f"[job:{job_id}] WORKER_END worker=audio mode=restore status=success duration={duration:.1f}s")
+                    return True
 
                 # Mark audio processing complete
                 job_manager.mark_audio_complete(job_id)
@@ -413,6 +428,8 @@ async def process_audio_separation(job_id: str) -> bool:
     except DownloadError as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=audio status=error duration={duration:.1f}s error={e}", exc_info=True)
+        if restore_mode:
+            mark_restore_failed(job_id, job_manager)
         job_manager.mark_job_failed(
             job_id=job_id,
             error_message=f"Audio download failed: {str(e)}",
@@ -423,6 +440,8 @@ async def process_audio_separation(job_id: str) -> bool:
     except Exception as e:
         duration = time.time() - start_time
         logger.error(f"[job:{job_id}] WORKER_END worker=audio status=error duration={duration:.1f}s error={e}", exc_info=True)
+        if restore_mode:
+            mark_restore_failed(job_id, job_manager)
         job_manager.mark_job_failed(
             job_id=job_id,
             error_message=f"Audio separation failed: {str(e)}",

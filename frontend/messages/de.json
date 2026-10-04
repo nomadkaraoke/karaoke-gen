@@ -640,7 +640,8 @@
     "waitingForCapacity": "Warten auf Kodierungsserver (erneuter Versuch)",
     "preparingAudio": "Dein Audio wird vorbereitet",
     "processing": "Wird verarbeitet",
-    "waitingForUpload": "Wartet auf Upload"
+    "waitingForUpload": "Wartet auf Upload",
+    "restoringStems": "Audio-Stems werden wiederhergestellt"
   },
   "jobCard": {
     "actionNeeded": "Aktion erforderlich",
@@ -654,7 +655,8 @@
     "noOutputsAvailable": "Noch keine Ausgaben verfügbar",
     "confirmCost": "Kosten bestätigen",
     "makingPublicInProgress": "Dieser Track wird öffentlich gemacht — erneutes Rendern mit Standard-Branding und erneute Veröffentlichung. Das dauert in der Regel 15–30 Minuten.",
-    "waitingForEncodingServer": "(Warten auf Verfügbarkeit des Kodierungsservers)"
+    "waitingForEncodingServer": "(Warten auf Verfügbarkeit des Kodierungsservers)",
+    "regeneratingInProgress": "Deine Videodateien werden neu generiert. Das dauert normalerweise 10–30 Minuten, und wir benachrichtigen dich per E-Mail, sobald sie fertig sind."
   },
   "jobActions": {
     "delete": "Löschen",
@@ -754,7 +756,15 @@
     "adminRerender": "Neu rendern",
     "adminRerenderFailed": "Das erneute Rendern konnte nicht gestartet werden: {error}",
     "adminRerenderStarted": "Erneutes Rendern gestartet.",
-    "adminRerenderStartedWithWarnings": "Erneutes Rendern gestartet. Einige veröffentlichte Ausgaben wurden beibehalten:"
+    "adminRerenderStartedWithWarnings": "Erneutes Rendern gestartet. Einige veröffentlichte Ausgaben wurden beibehalten:",
+    "regenerate": "Video neu generieren",
+    "regenerateDesc": "Um Speicherplatz zu sparen, behalten wir bei älteren Titeln nur das 720p-Video und die CDG/TXT-Pakete. Beim Neugenerieren werden das 4K-Video und andere Formate aus deinem überprüften Text und dem gewählten Instrumental genau wie zuvor neu erstellt.",
+    "regenerateFailed": "Neugenerierung konnte nicht gestartet werden: {error}",
+    "regenerateNoRepublish": "Deine YouTube-, Dropbox- und Google Drive-Links bleiben unverändert.",
+    "regenerateStarted": "Dein Video wird neu generiert. Wir benachrichtigen dich per E-Mail, sobald es fertig ist.",
+    "regenerateTime": "Das dauert normalerweise 10–30 Minuten. Wir benachrichtigen dich per E-Mail, sobald es fertig ist.",
+    "regenerateTitle": "Dieses Video neu generieren?",
+    "regenerateTooltip": "Um Speicherplatz zu sparen, behalten ältere Titel nur das 720p-Video und Karaoke-Pakete. Generiere die anderen Formate neu."
   },
   "themeSelector": {
     "videoTheme": "Video-Theme",
