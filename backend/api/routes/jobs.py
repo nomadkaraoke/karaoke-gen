@@ -312,6 +312,11 @@ def edit_completed_track(
             detail=t(locale, "jobs.notCompleted", status=job.status)
         )
 
+    # Storage retention is deleting this job's files right now (seconds).
+    from backend.services.storage_retention import PURGE_IN_PROGRESS_MESSAGE, purge_in_progress
+    if purge_in_progress(job):
+        raise HTTPException(status_code=409, detail=PURGE_IN_PROGRESS_MESSAGE)
+
     # Prevent editing if outputs already deleted (edit already in progress)
     if job.outputs_deleted_at:
         raise HTTPException(
@@ -2146,7 +2151,10 @@ async def retry_job(
         # Stems archived by storage retention (e.g. an Edit whose stems restore
         # failed): go back through the screens worker, which restores them first.
         if stems_need_restore(job) and file_urls.get('lyrics', {}).get('corrections'):
-            job_manager.update_job(job_id, {'error_message': None, 'error_details': None})
+            from google.cloud.firestore_v1 import DELETE_FIELD as _DEL
+            # A manual retry gets a fresh set of automatic restore attempts.
+            job_manager.update_job(job_id, {'error_message': None, 'error_details': None,
+                                            'state_data.stems_restore': _DEL})
             if not job_manager.transition_to_state(
                 job_id=job_id,
                 new_status=JobStatus.LYRICS_COMPLETE,
@@ -3080,10 +3088,13 @@ async def regenerate_job_outputs(
     from backend.services.regenerate_service import (
         RegenerateService,
         check_and_record_rate_limit,
+        renders_missing,
         validate_regenerate,
     )
 
     reason = validate_regenerate(job)
+    if not reason and not auth_result.is_admin and not renders_missing(job):
+        reason = "This track's video files are all available — there's nothing to regenerate."
     if reason:
         raise HTTPException(status_code=409 if "already" in reason or "right now" in reason else 400, detail=reason)
 

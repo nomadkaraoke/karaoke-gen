@@ -1236,6 +1236,32 @@ async def recover_stuck_jobs(
         except Exception as e:
             logger.warning(f"[job:{job_id}] screens re-trigger failed: {e}")
 
+    # --- Storage-retention stems restore whose audio job died silently ---
+    # (hard-killed GPU task: no except block ran, the job sits at
+    # lyrics_complete with stems_restore=running forever). Fail it so the
+    # customer/admin gets a Retry button; the retry re-runs the restore.
+    stems_restore_failed = []
+    from backend.services.stems_restore import restore_stalled
+    lc_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.LYRICS_COMPLETE.value)
+    ).limit(SCREENS_RECOVERY_SCAN_LIMIT).stream()
+    for doc in lc_query:
+        data = doc.to_dict() or {}
+        if not ((data.get("state_data") or {}).get("stems_restore")):
+            continue
+        job_id = data.get("job_id", doc.id)
+        job = job_manager.get_job(job_id)
+        if not job or not restore_stalled(job):
+            continue
+        logger.warning(f"[job:{job_id}] Stems restore stalled >60 min — failing for retry")
+        job_manager.update_job(job_id, {"state_data.stems_restore.status": "failed"})
+        job_manager.mark_job_failed(
+            job_id=job_id,
+            error_message="Restoring this track's audio stems timed out. Retry the job to try again.",
+            error_details={"stage": "stems_restore", "reason": "stalled"},
+        )
+        stems_restore_failed.append(job_id)
+
     logger.info(
         f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} "
         f"download_parked={len(download_parked)} download_retried={len(download_retried)} "
@@ -1264,6 +1290,7 @@ async def recover_stuck_jobs(
         "render_retriggered_count": len(render_retriggered),
         "screens_retriggered_jobs": screens_retriggered,
         "screens_retriggered_count": len(screens_retriggered),
+        "stems_restore_failed_jobs": stems_restore_failed,
     }
 
 

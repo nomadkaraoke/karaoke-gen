@@ -157,6 +157,8 @@ def validate_regenerate(job, after: Optional[str] = None) -> Optional[str]:
         return "This track has no reviewed lyrics to regenerate with."
     if not getattr(job, "input_media_gcs_path", None):
         return "This track's original audio is no longer available, so it can't be regenerated."
+    if not getattr(job, "theme_id", None):
+        return "This track has no video style to regenerate with."
     return None
 
 
@@ -281,7 +283,10 @@ class RegenerateService:
             f"Regenerate requested by {requested_by} ({source}): rebuilding GCS outputs only "
             f"(no YouTube/Dropbox/Google Drive changes){'; re-separating stems first' if needs_stems else ''}"
         )
+        # Only customer-triggered runs count towards the customer's daily limit.
         requests = _recent(state_data.get("regenerate_requests") or [], now, timedelta(hours=24))
+        if source == "customer":
+            requests = requests + [now.isoformat()]
         update: Dict[str, Any] = {
             "status": JobStatus.LYRICS_COMPLETE.value,
             "progress": 50,
@@ -295,7 +300,7 @@ class RegenerateService:
             "state_data.video_progress": DELETE_FIELD,
             "state_data.encoding_progress": DELETE_FIELD,
             "state_data.stems_restore": DELETE_FIELD,
-            "state_data.regenerate_requests": requests + [now.isoformat()],
+            "state_data.regenerate_requests": requests,
             f"state_data.{REGENERATE_MARKER}": {
                 "requested_by": requested_by,
                 "requested_at": now.isoformat(),

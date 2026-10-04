@@ -1046,6 +1046,12 @@ class JobManager:
             # default to 1.  payment_bypassed admin/no-email jobs have
             # credits_charged=0 and must not be refunded.
             state_data = job.state_data or {}
+            # A re-run of an already-delivered track (storage-retention
+            # regenerate, admin/theme re-render) was paid for when it first
+            # completed — cancelling the re-run must not refund that credit.
+            if any(state_data.get(k) for k in ("regenerate", "admin_rerender", "theme_rerender")):
+                logger.info(f"Job {job_id}: cancelled re-run of a delivered track, skipping refund")
+                return False
             credits_charged = int(state_data.get("credits_charged", 1))
 
             if credits_charged == 0:

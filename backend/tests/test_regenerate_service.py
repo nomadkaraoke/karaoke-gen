@@ -49,6 +49,7 @@ def _job(**overrides):
         review_token="tok-1",
         input_media_gcs_path="jobs/job123/input/song.flac",
         existing_instrumental_gcs_path=None,
+        theme_id="nomad",
         renders_purged_at=PURGED,
         stems_purged_at=PURGED,
         state_data={
@@ -122,6 +123,7 @@ class TestValidate:
         ({"state_data": {}}, "instrumental selection"),
         ({"file_urls": {}}, "reviewed lyrics"),
         ({"input_media_gcs_path": None}, "original audio"),
+        ({"theme_id": None}, "video style"),
     ])
     def test_rejections(self, overrides, fragment):
         assert fragment in validate_regenerate(_job(**overrides))
@@ -192,7 +194,7 @@ class TestRegenerateService:
         assert not any(k.startswith("state_data.youtube") or k.startswith("state_data.dropbox") for k in update)
         assert update["file_urls.videos.with_vocals"] is DELETE_FIELD
         assert update["state_data.stems_restore"] is DELETE_FIELD
-        assert len(update["state_data.regenerate_requests"]) == 1
+        assert len(update["state_data.regenerate_requests"]) == 1  # customer run counts
         worker.trigger_screens_worker.assert_awaited_once_with("job123")
         # stale title/end MOVs removed so the encoder can't reuse them; 720p kept
         deleted = [c.args[0] for c in storage.delete_file.call_args_list]
@@ -209,7 +211,10 @@ class TestRegenerateService:
     async def test_quiet_admin_regenerate(self, no_tx):
         service, storage, worker = _service()
         await _start(service, worker, _job(), source="admin", notify_customer=False)
-        assert _claim(service)["state_data.regenerate"]["notify_customer"] is False
+        update = _claim(service)
+        assert update["state_data.regenerate"]["notify_customer"] is False
+        # system/admin runs don't eat the customer's daily allowance
+        assert update["state_data.regenerate_requests"] == []
 
     @pytest.mark.asyncio
     async def test_change_to_private_chain_sets_visibility_guard(self, no_tx):
@@ -336,15 +341,36 @@ class TestStemsRestoreGate:
         jm.mark_job_failed.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_complete_heals_job_failed_by_earlier_attempt(self):
+        from backend.services.stems_restore import complete_stems_restore
+        jm, ws = MagicMock(), MagicMock()
+        jm.get_job.return_value = _job(status="failed", error_details={"stage": "audio_separation"})
+        ws.trigger_screens_worker = AsyncMock(return_value=True)
+        with patch("backend.services.worker_service.get_worker_service", return_value=ws):
+            await complete_stems_restore("job123", jm)
+        update = jm.update_job.call_args[0][1]
+        assert update["status"] == "lyrics_complete" and update["error_message"] is None
+
+    def test_restore_stalled(self):
+        from backend.services.stems_restore import restore_stalled
+        old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        fresh = datetime.now(timezone.utc).isoformat()
+        assert restore_stalled(_job(state_data={"stems_restore": {"status": "running", "started_at": old}}))
+        assert not restore_stalled(_job(state_data={"stems_restore": {"status": "running", "started_at": fresh}}))
+        assert not restore_stalled(_job(state_data={"stems_restore": {"status": "failed", "started_at": old}}))
+
+    @pytest.mark.asyncio
     async def test_complete_clears_marker_and_resumes_screens(self):
         from backend.services.stems_restore import complete_stems_restore
         jm, ws = MagicMock(), MagicMock()
+        jm.get_job.return_value = _job(status="lyrics_complete")
         ws.trigger_screens_worker = AsyncMock(return_value=True)
         with patch("backend.services.worker_service.get_worker_service", return_value=ws):
             assert await complete_stems_restore("job123", jm) is True
         from backend.services import stems_restore
         update = jm.update_job.call_args[0][1]
         assert update["stems_purged_at"] is None
+        assert "status" not in update
         # compare with the module's own sentinel (other suites stub firestore_v1)
         assert update["state_data.stems_restore"] is stems_restore.DELETE_FIELD
         ws.trigger_screens_worker.assert_awaited_once_with("job123")
@@ -353,6 +379,8 @@ class TestStemsRestoreGate:
         from backend.services.stems_restore import is_restore_run
         running = _job(state_data={"stems_restore": {"status": "running"}})
         assert is_restore_run(running)
+        # a Cloud Run task retry after a failed attempt still restores
+        assert is_restore_run(_job(state_data={"stems_restore": {"status": "failed"}}))
         assert not is_restore_run(_job())
         assert not is_restore_run(_job(stems_purged_at=None, state_data={"stems_restore": {"status": "running"}}))
 
@@ -572,6 +600,21 @@ class TestRegenerateRoute:
         limiter.assert_not_called()
         assert start.await_args.kwargs["source"] == "kjbox"
 
+    def test_customer_cannot_regenerate_a_complete_set(self, client):
+        full = _job(renders_purged_at=None, file_urls={
+            "lyrics": {"corrections": "c.json"},
+            "finals": {"lossy_4k_mp4": "a", "lossy_720p_mp4": "b"}})
+        resp, start, _ = self._post(client, _auth(), full)
+        assert resp.status_code == 400
+        start.assert_not_awaited()
+
+    def test_admin_can_regenerate_a_complete_set(self, client):
+        full = _job(renders_purged_at=None, file_urls={
+            "lyrics": {"corrections": "c.json"},
+            "finals": {"lossy_4k_mp4": "a", "lossy_720p_mp4": "b"}})
+        resp, start, _ = self._post(client, _auth(email="admin@x.com", is_admin=True), full)
+        assert resp.status_code == 200
+
     def test_invalid_job_400(self, client):
         resp, start, _ = self._post(client, _auth(), _job(status="in_review"))
         assert resp.status_code == 400
@@ -684,6 +727,17 @@ class TestVisibilityChain:
         redistribute.assert_not_awaited()
 
     @pytest.mark.asyncio
+    async def test_never_purged_job_missing_finals_redistributes_as_before(self):
+        from backend.services.visibility_change_service import VisibilityChangeService
+        start = AsyncMock()
+        job = _job(renders_purged_at=None)  # no 4K in file_urls, but nothing was purged
+        with patch.object(RegenerateService, "start", start), \
+             patch("backend.workers.video_worker.redistribute_video", new=AsyncMock(return_value=False)):
+            with pytest.raises(RuntimeError):
+                await VisibilityChangeService(job_manager=MagicMock()).change_to_private("job123", job, "u@x.com")
+        start.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_chained_call_does_not_loop(self):
         from backend.services.visibility_change_service import VisibilityChangeService
         start = AsyncMock()
@@ -769,3 +823,52 @@ class TestRetry:
         start.assert_not_awaited()
         assert jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.LYRICS_COMPLETE
         worker.trigger_screens_worker.assert_called_once_with("job123")
+
+
+
+class TestRefundGuard:
+    @pytest.mark.parametrize("marker", ["regenerate", "admin_rerender", "theme_rerender"])
+    def test_cancelling_a_rerun_of_a_delivered_track_does_not_refund(self, marker):
+        from backend.services.job_manager import JobManager
+        jm = JobManager.__new__(JobManager)
+        job = SimpleNamespace(credit_refunded=False, user_email="customer@example.com",
+                              state_data={marker: {"source": "customer"}, "credits_charged": 1})
+        with patch("backend.services.auth_service.is_admin_email", return_value=False), \
+             patch("backend.services.user_service.get_user_service") as users:
+            assert jm._refund_credit_for_job("job123", job, reason="job_cancelled") is False
+        users.return_value.add_credits.assert_not_called()
+
+
+class TestStemsRestoreWatchdog:
+    def test_recover_stuck_jobs_fails_stalled_restore(self, client):
+        test_client, app = client
+        from backend.api.dependencies import require_admin
+
+        async def admin():
+            return _auth(email="admin@x.com", is_admin=True)
+
+        app.dependency_overrides[require_admin] = admin
+        old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        stalled = _job(status="lyrics_complete",
+                       state_data={"stems_restore": {"status": "running", "started_at": old}})
+        doc = SimpleNamespace(id="job123", to_dict=lambda: {"job_id": "job123", "state_data": stalled.state_data})
+        jm = MagicMock()
+        jm.get_job.return_value = stalled
+
+        def where(filter=None):
+            q = MagicMock()
+            status = getattr(filter, "value", None)
+            docs = [doc] if status == "lyrics_complete" else []
+            q.stream.return_value = docs
+            q.limit.return_value.stream.return_value = docs
+            return q
+
+        jm.firestore.db.collection.return_value.where.side_effect = where
+        with patch("backend.api.routes.internal.JobManager", return_value=jm), \
+             patch("google.cloud.firestore_v1.FieldFilter",
+                   side_effect=lambda field, op, value: SimpleNamespace(value=value)), \
+             patch("backend.services.worker_service.get_worker_service"):
+            resp = test_client.post("/api/internal/recover-stuck-jobs")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["stems_restore_failed_jobs"] == ["job123"]
+        jm.mark_job_failed.assert_called_once()

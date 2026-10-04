@@ -73,8 +73,8 @@ class VisibilityChangeService:
         # Storage retention may have purged the big finals of an old job. The
         # private archive needs the full set, so regenerate them (GCS-only) first;
         # the video worker runs this change again once they're back.
-        from backend.services.regenerate_service import AFTER_CHANGE_TO_PRIVATE, RegenerateService, renders_missing
-        if regenerate_if_missing and renders_missing(job):
+        from backend.services.regenerate_service import AFTER_CHANGE_TO_PRIVATE, RegenerateService
+        if regenerate_if_missing and getattr(job, "renders_purged_at", None):
             logger.info(f"[job:{job_id}] Finals missing (storage retention): regenerating before going private")
             await RegenerateService(self.job_manager).start(
                 job, requested_by=user_email, source="visibility_change",

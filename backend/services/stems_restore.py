@@ -50,9 +50,14 @@ def _age_seconds(iso: Optional[str]) -> Optional[float]:
 
 
 def is_restore_run(job) -> bool:
-    """True when the audio worker was started to restore purged stems."""
+    """True when the audio worker was started to restore purged stems.
+
+    Keyed on the marker existing (any status), not just ``running``: when a
+    restore attempt fails, Cloud Run retries the task after the worker already
+    marked it failed — that retry must still run in restore mode.
+    """
     from backend.services.regenerate_service import stems_need_restore
-    return stems_need_restore(job) and restore_marker(job).get("status") == "running"
+    return stems_need_restore(job) and bool(restore_marker(job))
 
 
 async def maybe_start_stems_restore(job, job_manager, job_log=None) -> str:
@@ -106,15 +111,32 @@ async def maybe_start_stems_restore(job, job_manager, job_log=None) -> str:
 
 async def complete_stems_restore(job_id: str, job_manager) -> bool:
     """Audio worker (restore mode) finished: clear the markers and resume screens."""
-    job_manager.update_job(job_id, {
+    update = {
         "stems_purged_at": None,
         f"state_data.{STEMS_RESTORE_KEY}": DELETE_FIELD,
-    })
+    }
+    # A Cloud Run task retry succeeded after an earlier attempt marked the job
+    # FAILED: put it back where the restore started so screens can continue.
+    job = job_manager.get_job(job_id)
+    status = getattr(getattr(job, "status", None), "value", getattr(job, "status", None))
+    if status == "failed" and ((getattr(job, "error_details", None) or {}).get("stage")
+                               in ("audio_separation", "download_audio", "stems_restore")):
+        update.update({"status": "lyrics_complete", "error_message": None, "error_details": None})
+    job_manager.update_job(job_id, update)
     from backend.services.worker_service import get_worker_service
     triggered = await get_worker_service().trigger_screens_worker(job_id)
     if not triggered:
         logger.error(f"[job:{job_id}] Stems restored but the screens worker couldn't be triggered")
     return triggered
+
+
+def restore_stalled(job, now: Optional[datetime] = None) -> bool:
+    """A ``running`` restore whose audio job died without reporting back."""
+    marker = restore_marker(job)
+    if marker.get("status") != "running":
+        return False
+    age = _age_seconds(marker.get("started_at"))
+    return age is not None and age > STALE_RUNNING_SECONDS
 
 
 def mark_restore_failed(job_id: str, job_manager) -> None:

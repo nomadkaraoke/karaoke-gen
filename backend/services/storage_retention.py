@@ -156,15 +156,25 @@ def completed_at(job: Dict[str, Any]) -> Optional[datetime]:
 
 
 def _input_path(job: Dict[str, Any]) -> Optional[str]:
+    # Only input_media_gcs_path: it's what separation, render and regenerate read.
     path = job.get("input_media_gcs_path")
-    if not path:
-        audio = ((job.get("file_urls") or {}).get("input") or {})
-        path = audio.get("audio") if isinstance(audio, dict) else audio
     if not isinstance(path, str) or not path:
         return None
     if path.startswith("gs://"):
         path = path.split("/", 3)[-1]
     return path
+
+
+def regenerable_reason(job: Dict[str, Any]) -> Optional[str]:
+    """Why a regenerate of this job couldn't run (so its renders must be kept)."""
+    state_data = job.get("state_data") or {}
+    if not state_data.get("instrumental_selection"):
+        return "no_instrumental_selection"
+    if not ((job.get("file_urls") or {}).get("lyrics") or {}).get("corrections"):
+        return "no_reviewed_lyrics"
+    if not job.get("theme_id"):
+        return "no_theme"
+    return None
 
 
 def job_skip_reason(
@@ -199,6 +209,10 @@ def job_skip_reason(
         return "no_completion_time"
     if now - done < timedelta(days=min_age_days):
         return "too_recent"
+    # Only purge what a regenerate could rebuild.
+    reason = regenerable_reason(job)
+    if reason:
+        return f"not_regenerable_{reason}"
     return None
 
 
@@ -304,8 +318,15 @@ def _safe_key(key: str) -> bool:
 # Service
 # --------------------------------------------------------------------------------
 
+def _run_in_transaction(db, fn):
+    """Run ``fn(transaction)`` in a Firestore transaction (retried on contention)."""
+    from google.cloud import firestore
+    return firestore.transactional(fn)(db.transaction())
+
+
 _PROJECTION = [
-    "job_id", "status", "timeline", "updated_at", "finalise_only", "prep_only",
+    "job_id", "status", "timeline", "updated_at", "finalise_only", "prep_only", "theme_id",
+    "storage_purge.status", "state_data.instrumental_selection",
     "outputs_deleted_at", "tenant_id", "input_media_gcs_path", "file_urls",
     "existing_instrumental_gcs_path", "renders_purged_at", "stems_purged_at",
     "state_data.visibility_change_in_progress", "state_data.admin_rerender",
@@ -471,6 +492,8 @@ class StorageRetentionService:
 
     def _already_purged(self, job: Dict[str, Any]) -> bool:
         """Skip the GCS listing for jobs already purged since their last completion."""
+        if ((job.get("storage_purge") or {}).get("status")) == "pending":
+            return False  # an interrupted purge: finish it
         renders = _parse_ts(job.get("renders_purged_at"))
         if not renders:
             return False
@@ -533,13 +556,16 @@ class StorageRetentionService:
         except Exception as e:  # noqa: BLE001
             logger.warning(f"storage retention: couldn't save cursor: {e}")
 
-    def _claim(self, job_id: str, now: datetime, min_age: int, excluded: List[str]) -> bool:
-        """Atomically re-check eligibility on the live doc and mark the purge in progress."""
-        from google.cloud import firestore
+    def _claim(self, job_id: str, plan: "JobPlan", now: datetime, min_age: int, excluded: List[str]) -> bool:
+        """Atomically re-check eligibility on the live doc and mark the purge in progress.
 
+        The purge markers (``renders_purged_at`` / ``stems_purged_at``) and a
+        PENDING manifest are written HERE, before anything is deleted: if the
+        run dies mid-way, regenerate still knows to rebuild (and re-separate),
+        and the next pass finishes the job (``storage_purge.status == pending``).
+        """
         ref = self.jobs_collection.document(job_id)
 
-        @firestore.transactional
         def claim(transaction):
             snap = ref.get(transaction=transaction)
             if not snap.exists:
@@ -548,15 +574,29 @@ class StorageRetentionService:
             data.setdefault("job_id", job_id)
             if job_skip_reason(data, now, min_age, excluded):
                 return False
-            transaction.update(ref, {f"state_data.{PURGE_IN_PROGRESS_KEY}": now.isoformat()})
+            update: Dict[str, Any] = {
+                f"state_data.{PURGE_IN_PROGRESS_KEY}": now.isoformat(),
+                "storage_purge": {
+                    "status": "pending",
+                    "started_at": now.isoformat(),
+                    "policy_version": POLICY_VERSION,
+                    "planned_bytes": plan.purge_bytes,
+                    "planned_files": len(plan.purge),
+                },
+            }
+            if plan.purges_renders:
+                update["renders_purged_at"] = now
+            if plan.purges_stems:
+                update["stems_purged_at"] = now
+            transaction.update(ref, update)
             return True
 
-        return claim(self.db.transaction())
+        return _run_in_transaction(self.db, claim)
 
     def _execute(self, job_id: str, plan: JobPlan, now: datetime, min_age: int, excluded: List[str]) -> Dict[str, Any]:
         from google.cloud.firestore_v1 import DELETE_FIELD
 
-        if not self._claim(job_id, now, min_age, excluded):
+        if not self._claim(job_id, plan, now, min_age, excluded):
             return {"status": "skipped", "reason": "no_longer_eligible"}
 
         ref = self.jobs_collection.document(job_id)
@@ -585,6 +625,7 @@ class StorageRetentionService:
             if any(c in STEM_CATEGORIES for _, _, c in deleted):
                 update["stems_purged_at"] = now
             update["storage_purge"] = {
+                "status": "complete",
                 "purged_at": now.isoformat(),
                 "policy_version": POLICY_VERSION,
                 "bytes": sum(by_category.values()),

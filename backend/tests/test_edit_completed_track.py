@@ -361,3 +361,9 @@ class TestEditStemsPurgedTrack:
         complete_job.existing_instrumental_gcs_path = "jobs/test-edit-123/custom_instrumental.wav"
         client.post("/api/jobs/test-edit-123/edit", headers=auth_headers, json={})
         assert mock_job_manager.transition_to_state.call_args.args[1] == JobStatus.AWAITING_REVIEW
+
+
+    def test_edit_refused_while_purge_in_progress(self, client, complete_job, auth_headers):
+        complete_job.state_data["storage_purge_in_progress"] = datetime.now(UTC).isoformat()
+        response = client.post("/api/jobs/test-edit-123/edit", headers=auth_headers, json={})
+        assert response.status_code == 409

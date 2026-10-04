@@ -137,7 +137,8 @@ def _job(**overrides):
         ],
         "input_media_gcs_path": "jobs/job1/input/song.flac",
         "state_data": {"instrumental_selection": "clean"},
-        "file_urls": {},
+        "file_urls": {"lyrics": {"corrections": "jobs/job1/lyrics/corrections.json"}},
+        "theme_id": "nomad",
         "tenant_id": "",
     }
     job.update(overrides)
@@ -174,13 +175,18 @@ class TestEligibility:
         ({"state_data": {"storage_purge_in_progress": NOW.isoformat()}}, "purge_in_progress"),
         ({"timeline": [{"status": "complete", "timestamp": (NOW - timedelta(days=29)).isoformat()}]}, "too_recent"),
         ({"timeline": [], "updated_at": None}, "no_completion_time"),
+        # only purge what a regenerate could rebuild
+        ({"state_data": {}}, "not_regenerable_no_instrumental_selection"),
+        ({"file_urls": {}}, "not_regenerable_no_reviewed_lyrics"),
+        ({"theme_id": None}, "not_regenerable_no_theme"),
     ])
     def test_skip_reasons(self, overrides, reason):
         assert job_skip_reason(_job(**overrides), NOW, 30) == reason
 
     def test_stale_purge_claim_does_not_block(self):
         stale = (NOW - timedelta(hours=2)).isoformat()
-        assert job_skip_reason(_job(state_data={"storage_purge_in_progress": stale}), NOW, 30) is None
+        job = _job(state_data={"storage_purge_in_progress": stale, "instrumental_selection": "clean"})
+        assert job_skip_reason(job, NOW, 30) is None
 
     def test_excluded_tenant(self):
         assert job_skip_reason(_job(tenant_id="vocalstar"), NOW, 30, ["vocalstar"]) == "excluded_tenant"
@@ -251,9 +257,10 @@ class TestPlanJob:
         listing = [x for x in _listing() if "/input/" not in x[0]]
         assert plan_job(_job(), listing).skip_reason == "input_unavailable"
 
-    def test_input_from_file_urls_when_field_missing(self):
+    def test_input_only_from_input_media_gcs_path(self):
+        # regenerate/separation/render read input_media_gcs_path only
         job = _job(input_media_gcs_path=None, file_urls={"input": {"audio": "jobs/job1/input/song.flac"}})
-        assert plan_job(job, _listing()).skip_reason is None
+        assert plan_job(job, _listing()).skip_reason == "input_unavailable"
 
     def test_existing_instrumental_job_keeps_stems(self):
         plan = plan_job(_job(existing_instrumental_gcs_path="jobs/job1/custom_instrumental.flac"), _listing())
@@ -424,7 +431,11 @@ class FakeDb:
         return FakeCollection(self, name)
 
     def transaction(self):
-        return MagicMock()
+        class FakeTransaction:
+            def update(self_inner, ref, payload):
+                ref.update(payload)
+
+        return FakeTransaction()
 
 
 def _settings(**overrides):
@@ -439,7 +450,7 @@ def _settings(**overrides):
 
 @pytest.fixture(autouse=True)
 def _no_transactions():
-    with patch("google.cloud.firestore.transactional", lambda fn: fn), \
+    with patch.object(sr, "_run_in_transaction", lambda db, fn: fn(db.transaction())), \
          patch("backend.services.firestore_service.log_to_job"):
         yield
 
@@ -486,6 +497,7 @@ class TestServiceDryRun:
 class TestServiceRealRun:
     def test_real_run_deletes_and_records(self):
         job = _job(job_id="a", file_urls={
+            "lyrics": {"corrections": "jobs/a/lyrics/corrections.json"},
             "finals": {"lossy_4k_mp4": "jobs/a/finals/lossy_4k_mp4.mp4",
                        "lossy_720p_mp4": "jobs/a/finals/lossy_720p_mp4.mp4"},
             "stems": {"instrumental_clean": "jobs/a/stems/instrumental_clean.flac"},
@@ -507,6 +519,7 @@ class TestServiceRealRun:
         assert "with_vocals" not in doc["file_urls"]["videos"]
         assert doc["file_urls"]["packages"] == {"cdg_zip": "jobs/a/packages/cdg_zip.zip"}
         manifest = doc["storage_purge"]
+        assert manifest["status"] == "complete"
         assert manifest["bytes"] == sum(f["bytes"] for f in manifest["files"])
         assert {f["path"] for f in manifest["files"]} == set(storage.deleted)
         # the claim marker is cleared
@@ -623,3 +636,46 @@ class TestServiceRealRun:
         report = svc.run(dry_run=True, include_orphans=True, now=NOW)
         assert report["orphans"]["folders"] == 1
         assert report["orphans"]["largest"][0]["job_id"] == "ghost"
+
+
+class TestInterruptedPurge:
+    def test_markers_are_set_before_any_delete(self):
+        svc, db, storage = _service([_job(job_id="a")])
+        seen = {}
+
+        def delete(path, ignore_missing=False):
+            # at the first delete the job must already say what's being purged
+            if not seen:
+                doc = db.data["a"]
+                seen.update(renders=doc.get("renders_purged_at"), stems=doc.get("stems_purged_at"),
+                            status=(doc.get("storage_purge") or {}).get("status"))
+            storage.files.pop(path, None)
+            storage.deleted.append(path)
+            return True
+
+        storage.delete_file = delete
+        svc.run(dry_run=False, now=NOW)
+        assert seen == {"renders": NOW, "stems": NOW, "status": "pending"}
+
+    def test_interrupted_purge_is_finished_by_next_pass(self):
+        svc, db, storage = _service([_job(job_id="a")])
+        calls = {"n": 0}
+        real = storage.delete_file
+
+        def dies_after_two(path, ignore_missing=False):
+            calls["n"] += 1
+            if calls["n"] > 2:
+                raise SystemExit("instance killed")
+            return real(path, ignore_missing)
+
+        storage.delete_file = dies_after_two
+        with pytest.raises(SystemExit):
+            svc.run(dry_run=False, now=NOW)
+        doc = db.data["a"]
+        assert doc["storage_purge"]["status"] == "pending"
+        assert doc["stems_purged_at"] == NOW  # regenerate will re-separate
+        storage.delete_file = real
+        db.data["a"]["state_data"].pop("storage_purge_in_progress", None)  # stale claim
+        report = svc.run(dry_run=False, now=NOW + timedelta(hours=1))
+        assert report["summary"]["jobs_purged"] == 1
+        assert db.data["a"]["storage_purge"]["status"] == "complete"
