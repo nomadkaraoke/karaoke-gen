@@ -4,7 +4,7 @@ import { frameUrlKey, substitutePlaceholders } from '../helpers/self-healing/act
 import { buildPrompt, checkGuards, checkResolvedClick, toTargetSpec } from '../helpers/self-healing/llm-agent';
 import { MAX_LEARNED_PER_STEP, emptyFile, mergeLearned, variantId } from '../helpers/self-healing/learned-store';
 import { redact } from '../helpers/self-healing/observe';
-import { isSuccessRedirect } from '../helpers/stripe-checkout';
+import { cardErrorReason, isCheckoutConfirmUrl, isSuccessRedirect } from '../helpers/stripe-checkout';
 import type { Action } from '../helpers/self-healing/types';
 
 const secrets = { CARD_NUMBER: '4242424242424242', CARD_EXPIRY: '12/34', CARD_CVC: '123', CARDHOLDER_NAME: 'Fixture Tester', POSTAL_CODE: '10001' };
@@ -145,4 +145,28 @@ test('isSuccessRedirect accepts success/app URLs but not the cancel link', () =>
   expect(isSuccessRedirect('https://gen.nomadkaraoke.com/en/app')).toBe(true);
   expect(isSuccessRedirect('https://gen.nomadkaraoke.com?cancelled=true')).toBe(false);
   expect(isSuccessRedirect('https://checkout.stripe.com/c/pay/x')).toBe(false);
+});
+
+test.describe('card decline detection', () => {
+  test('card_error → abort reason with marker, codes and message', () => {
+    const reason = cardErrorReason(402, {
+      error: { type: 'card_error', code: 'card_declined', decline_code: 'generic_decline', message: 'Your card was declined.' },
+    });
+    expect(reason).toMatch(/^STRIPE_CARD_DECLINED: /);
+    expect(reason).toContain('HTTP 402, card_declined/generic_decline');
+    expect(reason).toContain('Your card was declined.');
+  });
+
+  test('non-card errors and junk bodies do not abort (the LLM may still fix the form)', () => {
+    expect(cardErrorReason(400, { error: { type: 'invalid_request_error', message: 'Missing postal code' } })).toBeNull();
+    expect(cardErrorReason(500, null)).toBeNull();
+    expect(cardErrorReason(402, 'not json')).toBeNull();
+  });
+
+  test('isCheckoutConfirmUrl matches only the payment page confirm endpoint', () => {
+    expect(isCheckoutConfirmUrl('https://api.stripe.com/v1/payment_pages/cs_live_abc/confirm')).toBe(true);
+    expect(isCheckoutConfirmUrl('https://api.stripe.com/v1/payment_pages/cs_live_abc/init')).toBe(false);
+    expect(isCheckoutConfirmUrl('https://api.stripe.com/v1/payment_methods')).toBe(false);
+    expect(isCheckoutConfirmUrl('not a url')).toBe(false);
+  });
 });

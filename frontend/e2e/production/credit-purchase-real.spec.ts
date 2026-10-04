@@ -83,6 +83,12 @@ const PROD_URL = URLS.production.frontend;
 const API_URL = URLS.production.api;
 
 test.describe('Real Credit Purchase Flow', () => {
+  // The real card is typed into Stripe's page: traces (every typed value +
+  // X-Admin-Token headers), videos and Playwright's automatic screenshots would
+  // all capture it, and test-results/ is uploaded from a PUBLIC repo. The
+  // checkout helper takes its own input-masked screenshots instead.
+  test.use({ trace: 'off', video: 'off', screenshot: 'off' });
+
   test('purchase 1 credit via Stripe Checkout with referral discount', async ({ page, request }) => {
     // ===== PREREQUISITES =====
     test.skip(!process.env.E2E_STRIPE_CARD_NUMBER, 'E2E_STRIPE_CARD_NUMBER not set');

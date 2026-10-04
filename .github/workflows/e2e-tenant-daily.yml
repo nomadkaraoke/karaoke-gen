@@ -83,8 +83,17 @@ jobs:
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
         continue-on-error: true
 
-      - name: Upload logs
+      - name: Scrub secrets from artifacts (public repo)
+        id: scrub
         if: always()
+        working-directory: frontend
+        env:
+          E2E_ADMIN_TOKEN: ${{ secrets.E2E_ADMIN_TOKEN }}
+          TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
+        run: node e2e/scripts/scrub-artifacts.mjs test-results playwright-report e2e-output.log
+
+      - name: Upload logs
+        if: always() && steps.scrub.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-tenant-${{ matrix.tenant }}-${{ github.run_number }}

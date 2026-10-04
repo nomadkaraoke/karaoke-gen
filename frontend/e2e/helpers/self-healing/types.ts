@@ -69,6 +69,11 @@ export interface CheckoutStep {
   allowSubmit?: boolean;
   /** Placeholders the LLM may use in this step, e.g. ['CARD_NUMBER']. */
   placeholders?: string[];
+  /**
+   * Non-recoverable condition that no variant or LLM can fix (e.g. the issuer
+   * declined the card). Returns a reason to fail the step immediately, or null.
+   */
+  abortReason?: () => string | null;
 }
 
 export interface LearnedVariant {

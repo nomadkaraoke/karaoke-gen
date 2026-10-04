@@ -7,6 +7,7 @@ import { completeStripeCheckout } from '../helpers/stripe-checkout';
 import { emptyFile } from '../helpers/self-healing/learned-store';
 import type { LearnedVariantsFile } from '../helpers/self-healing/types';
 import {
+  CARD_DECLINED_RESPONSE,
   CHECKOUT_URL,
   ELEMENTS_FUTURE,
   ELEMENTS_OCT2026,
@@ -155,4 +156,35 @@ test('without a planner, an unknown layout fails with a clear reason (determinis
   await page.goto(CHECKOUT_URL);
   await expect(completeStripeCheckout(page, { planner: null, learned: emptyFile() })).rejects.toThrow(/no LLM planner/);
   expect(fs.existsSync('test-results/stripe-checkout-dom.html')).toBe(true);
+});
+
+test('declined card fails fast with STRIPE_CARD_DECLINED — no LLM calls, no second Pay click', async ({ page }) => {
+  await serveCheckout(page, ELEMENTS_OCT2026, CARD_DECLINED_RESPONSE);
+  let confirmCalls = 0;
+  page.on('request', (r) => {
+    if (r.url().endsWith('/confirm') && r.method() === 'POST') confirmCalls++;
+  });
+  await page.goto(CHECKOUT_URL);
+  const planner = new ScriptedPlanner([]);
+
+  const started = Date.now();
+  await expect(completeStripeCheckout(page, { planner, learned: emptyFile() })).rejects.toThrow(
+    /STRIPE_CARD_DECLINED: .*card_declined\/generic_decline.*Your card was declined/
+  );
+  // Without the abort the submit step would poll its full 90s verify, then hand off to the LLM.
+  expect(Date.now() - started).toBeLessThan(60_000);
+  expect(planner.inputs).toHaveLength(0);
+  expect(confirmCalls).toBe(1);
+});
+
+test('failure artifacts never contain typed card data', async ({ page }) => {
+  await serveCheckout(page, ELEMENTS_OCT2026, CARD_DECLINED_RESPONSE);
+  await page.goto(CHECKOUT_URL);
+  await expect(completeStripeCheckout(page, { planner: null, learned: emptyFile() })).rejects.toThrow(/STRIPE_CARD_DECLINED/);
+  const dom = fs.readFileSync('test-results/stripe-checkout-dom.html', 'utf8');
+  expect(dom).toContain('id="cardNumber"');
+  for (const value of [TEST_CARD.E2E_STRIPE_CARD_NUMBER, TEST_CARD.E2E_STRIPE_CARD_EXPIRY, TEST_CARD.E2E_STRIPE_CARD_CVC]) {
+    expect(dom).not.toContain(`value="${value}"`);
+  }
+  expect(dom).not.toContain(TEST_CARD.E2E_STRIPE_CARD_NUMBER);
 });

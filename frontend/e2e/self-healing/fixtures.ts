@@ -5,6 +5,7 @@ import type { LlmDecision, Planner, PlannerInput } from '../helpers/self-healing
 export const CHECKOUT_URL = 'https://checkout.stripe.com/c/pay/cs_test_fixture#frag';
 export const ELEMENTS_URL = 'https://js.stripe.com/v3/elements-inner-payment.html?id=abc';
 export const SUCCESS_URL = 'https://gen.nomadkaraoke.com/payment/success?session_id=cs_test_fixture';
+export const CONFIRM_URL = 'https://api.stripe.com/v1/payment_pages/cs_test_fixture/confirm';
 
 export const TEST_CARD = {
   E2E_STRIPE_CARD_NUMBER: '4242424242424242',
@@ -62,13 +63,39 @@ const TOP_PAGE = `<!doctype html><html><body>
   <iframe src="${ELEMENTS_URL}" style="width:600px;height:500px"></iframe>
   <script>
     window.addEventListener('message', (e) => {
-      if (e.data === 'pay') window.location.href = '${SUCCESS_URL}';
+      // Like real Checkout: Pay → confirm API call → redirect only if it succeeded.
+      if (e.data === 'pay') {
+        fetch('${CONFIRM_URL}', { method: 'POST' }).then((r) => {
+          if (r.ok) window.location.href = '${SUCCESS_URL}';
+        });
+      }
     });
   </script>
 </body></html>`;
 
-/** Serve a fake Stripe Checkout (top page + Payment Element iframe) and our success page. */
-export async function serveCheckout(page: Page, elementsHtml: string): Promise<void> {
+/** Stripe's confirm response for a declined card. */
+export const CARD_DECLINED_RESPONSE = {
+  status: 402,
+  body: { error: { type: 'card_error', code: 'card_declined', decline_code: 'generic_decline', message: 'Your card was declined.' } },
+};
+
+/**
+ * Serve a fake Stripe Checkout (top page + Payment Element iframe) and our
+ * success page. `confirm` overrides the confirm API response (default 200).
+ */
+export async function serveCheckout(
+  page: Page,
+  elementsHtml: string,
+  confirm: { status: number; body: unknown } = { status: 200, body: { status: 'complete' } }
+): Promise<void> {
+  await page.route(CONFIRM_URL, (r) =>
+    r.fulfill({
+      status: confirm.status,
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify(confirm.body),
+    })
+  );
   await page.route('https://checkout.stripe.com/**', (r) => r.fulfill({ contentType: 'text/html', body: TOP_PAGE }));
   await page.route('https://js.stripe.com/**', (r) => r.fulfill({ contentType: 'text/html', body: elementsHtml }));
   await page.route('https://gen.nomadkaraoke.com/**', (r) =>
