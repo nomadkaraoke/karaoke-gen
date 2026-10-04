@@ -2116,6 +2116,15 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
+          # Storage-retention job (CPU, us-east4): pin to this commit's image so
+          # the deletion code (generation-pinned deletes + audit log) always
+          # matches the API that starts it.
+          gcloud run jobs update storage-retention-job \
+            --image "$CPU_JOBS_IMAGE" \
+            --region us-east4 \
+            --project ${{ env.PROJECT_ID }} \
+            --quiet
+
           # Audio separation job (GPU, us-east4) — uses GPU image
           gcloud run jobs update audio-separation-job \
             --image "$GPU_IMAGE" \

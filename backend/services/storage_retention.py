@@ -349,6 +349,8 @@ class DeletionLog:
         self.counts: Counter = Counter()
         self.failures = 0
         self.jobs: set = set()
+        # Set when the audit log couldn't be written: callers stop deleting.
+        self.flush_error: Optional[str] = None
 
     def record(self, job_id: str, path: str, size: int, generation, category: str,
                result: str, error: Optional[str] = None) -> None:
@@ -383,7 +385,9 @@ class DeletionLog:
         try:
             self.storage.upload_text(self.path, "\n".join(self._lines) + "\n", content_type="application/x-ndjson")
             self._unflushed = 0
-        except Exception as e:  # noqa: BLE001 - logged; next flush retries the whole file
+            self.flush_error = None
+        except Exception as e:  # noqa: BLE001 - recorded; the run stops deleting
+            self.flush_error = str(e)
             logger.error(f"storage retention: deletion log flush failed ({self.path}): {e}")
 
     def write_summary(self, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -398,6 +402,7 @@ class DeletionLog:
             "bytes_by_category": dict(self.totals),
             "objects_by_category": dict(self.counts),
             "failures": self.failures,
+            "log_flush_error": self.flush_error,
             "written_at": datetime.now(timezone.utc).isoformat(),
             **(extra or {}),
         }
@@ -609,6 +614,12 @@ class StorageRetentionService:
                     entry["result"] = {"status": "error", "error": str(e)}
                     report["errors"].append({"job_id": plan.job_id, "error": str(e)})
             report["jobs"].append(entry)
+            if deletion_log and deletion_log.flush_error:
+                # The audit log is a required safety record: no more deletes.
+                report["errors"].append({"job_id": plan.job_id,
+                                         "error": f"deletion log not persisted, run stopped: {deletion_log.flush_error}"})
+                exhausted = False
+                break
             if not dry_run and entry["result"].get("status") != "purged":
                 continue
             processed += 1
@@ -951,6 +962,10 @@ class StorageRetentionService:
                 deletion_log.flush()
                 folder.update({"deleted": deleted, "failed": failed})
             report["folders"].append(folder)
+            if deletion_log and deletion_log.flush_error:
+                report["errors"].append({"job_id": job_id,
+                                         "error": f"deletion log not persisted, run stopped: {deletion_log.flush_error}"})
+                break
 
         report["skipped"] = dict(report["skipped"])
         report["summary"] = {

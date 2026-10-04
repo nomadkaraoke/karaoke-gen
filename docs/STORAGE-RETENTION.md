@@ -41,14 +41,16 @@ forever.
 
 ```bash
 B=gs://karaoke-gen-storage-nomadkaraoke/storage-retention/deletion-logs
-gcloud storage ls $B/                                           # all runs
-gcloud storage cat $B/<run>.summary.json | jq .                 # one run's totals
-gcloud storage cat $B/<run>.jsonl | jq -s 'map(select(.result=="deleted")) | group_by(.category)
+gcloud storage ls "$B/"                                        # all runs
+RUN=20261004T150000Z-job_purge                                 # pick one from the listing
+gcloud storage cat "$B/$RUN.summary.json" | jq .               # one run's totals
+gcloud storage cat "$B/$RUN.jsonl" | jq -s 'map(select(.result=="deleted")) | group_by(.category)
   | map({category: .[0].category, objects: length, gib: (map(.size_bytes)|add/1073741824)})'
-gcloud storage cat $B/<run>.jsonl | jq -s 'group_by(.job_id) | map({job: .[0].job_id,
-  gib: (map(.size_bytes)|add/1073741824)}) | sort_by(-.gib)'    # per job
-gcloud storage cat $B/<run>.jsonl | jq -c 'select(.result=="failed")'
-gcloud storage cat "$B/*.jsonl" | jq -c 'select(.job_id=="<job>")'   # what was deleted for a job
+gcloud storage cat "$B/$RUN.jsonl" | jq -s 'group_by(.job_id) | map({job: .[0].job_id,
+  gib: (map(.size_bytes)|add/1073741824)}) | sort_by(-.gib)'   # per job
+gcloud storage cat "$B/$RUN.jsonl" | jq -c 'select(.result=="failed")'
+JOB=abc12345
+gcloud storage cat "$B/*.jsonl" | jq -c --arg j "$JOB" 'select(.job_id==$j)'   # everything deleted for a job
 ```
 
 Or: `python scripts/storage_retention_report.py` (all runs), `... <run_id>` (one run, per category and
@@ -60,10 +62,11 @@ The bucket keeps deleted objects as noncurrent versions for 7 days, then soft de
 days. With the `generation` from the log:
 
 ```bash
+OBJ='jobs/abc12345/finals/lossy_4k_mp4.mp4'; GEN=1790000000000000   # from a result=="deleted" log line
 # within ~7 days (noncurrent version):
-gcloud storage cp 'gs://karaoke-gen-storage-nomadkaraoke/<path>#<generation>' 'gs://karaoke-gen-storage-nomadkaraoke/<path>'
+gcloud storage cp "gs://karaoke-gen-storage-nomadkaraoke/$OBJ#$GEN" "gs://karaoke-gen-storage-nomadkaraoke/$OBJ"
 # days 7-14 (soft-deleted):
-gcloud storage restore 'gs://karaoke-gen-storage-nomadkaraoke/<path>#<generation>'
+gcloud storage restore "gs://karaoke-gen-storage-nomadkaraoke/$OBJ#$GEN"
 ```
 
 After restoring a purged job's files, prefer simply using "Regenerate video" (or

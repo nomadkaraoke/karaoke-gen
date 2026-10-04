@@ -74,8 +74,13 @@ def find(bucket, needle):
         run_id = blob.name[len(PREFIX):-len(".jsonl")]
         for e in _lines(bucket, run_id):
             if needle == e["job_id"] or needle in e["path"]:
-                print(f"{run_id}  {e['result']:<7} {e['path']}  gen={e['generation']}  {e['size_bytes']}B  "
-                      f"restore: gcloud storage cp 'gs://{BUCKET}/{e['path']}#{e['generation']}' 'gs://{BUCKET}/{e['path']}'")
+                # Only offer a restore for objects actually deleted at a known
+                # generation (a failed delete may have a newer live version).
+                restore = ""
+                if e["result"] == "deleted" and e.get("generation"):
+                    restore = (f"  restore: gcloud storage cp 'gs://{BUCKET}/{e['path']}#{e['generation']}' "
+                               f"'gs://{BUCKET}/{e['path']}'")
+                print(f"{run_id}  {e['result']:<7} {e['path']}  gen={e.get('generation')}  {e['size_bytes']}B{restore}")
 
 
 def main():

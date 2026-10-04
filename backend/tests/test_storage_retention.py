@@ -868,3 +868,25 @@ class TestOrphans:
         svc, db, storage = self._svc()
         report = svc.purge_orphans(dry_run=False, max_folders=1, now=NOW)
         assert len(report["folders"]) == 1 and report["skipped"]["batch_limit"] == 3
+
+
+class TestDeletionLogFlushFailure:
+    def test_run_stops_deleting_when_log_cannot_be_written(self):
+        svc, db, storage = _service([_job(job_id="a"), _job(job_id="b")])
+
+        def broken(path, text, content_type="text/plain"):
+            raise RuntimeError("gcs write denied")
+
+        storage.upload_text = broken
+        report = svc.run(dry_run=False, now=NOW)
+        assert not any(p.startswith("jobs/b/") for p in storage.deleted)
+        assert report["errors"] and "deletion log not persisted" in report["errors"][0]["error"]
+        assert storage.reports[report["deletion_summary"]]["log_flush_error"] == "gcs write denied"
+
+    def test_orphan_run_stops_too(self):
+        files = {"jobs/g1/finals/a.mp4": 1, "jobs/g2/finals/b.mp4": 1}
+        svc, db, storage = _orphan_service(files)
+        storage.upload_text = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("denied"))
+        report = svc.purge_orphans(dry_run=False, now=NOW)
+        assert storage.deleted == ["jobs/g1/finals/a.mp4"]
+        assert "deletion log not persisted" in report["errors"][0]["error"]
