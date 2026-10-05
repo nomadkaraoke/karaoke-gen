@@ -188,3 +188,26 @@ test('failure artifacts never contain typed card data', async ({ page }) => {
   }
   expect(dom).not.toContain(TEST_CARD.E2E_STRIPE_CARD_NUMBER);
 });
+
+test('no-charge mode (stopBeforeSubmit) fills the form with the public test card and never clicks Pay', async ({ page }) => {
+  await serveCheckout(page, ELEMENTS_OCT2026);
+  let confirmCalls = 0;
+  page.on('request', (r) => {
+    if (r.url().endsWith('/confirm')) confirmCalls++;
+  });
+  await page.goto(CHECKOUT_URL);
+  const saved = process.env.E2E_STRIPE_CARD_NUMBER;
+  delete process.env.E2E_STRIPE_CARD_NUMBER; // no real card needed in this mode
+  try {
+    const result = await completeStripeCheckout(page, { planner: new ScriptedPlanner([]), learned: emptyFile(), stopBeforeSubmit: true });
+    expect(result.redirected).toBe(false);
+    expect(result.selfHeal.outcomes.map((o) => o.stepId)).not.toContain('submitPayment');
+    expect(result.selfHeal.outcomes.every((o) => o.status === 'ok')).toBe(true);
+  } finally {
+    process.env.E2E_STRIPE_CARD_NUMBER = saved;
+  }
+  const frame = page.frames().find((f) => f.url().includes('js.stripe.com'))!;
+  await expect(frame.locator('#cardNumber')).toHaveValue('4242424242424242');
+  expect(confirmCalls).toBe(0);
+  expect(page.url()).toContain('checkout.stripe.com');
+});

@@ -48,7 +48,7 @@ import type { CheckoutStep, LearnedVariantsFile, Secrets, StepContext } from './
  *   E2E_SELF_HEAL_FORCE_LLM — comma-separated step ids to force through the LLM (testing)
  */
 
-interface CardDetails {
+export interface CardDetails {
   number: string;
   expiry: string;
   cvc: string;
@@ -417,7 +417,23 @@ export interface StripeCheckoutOptions {
   planner?: Planner | null;
   /** Override learned variants (tests). Default: self-healing/learned-variants.json. */
   learned?: LearnedVariantsFile;
+  /**
+   * No-charge mode: run every step up to (not including) submitPayment, then
+   * check the Pay button is present. Uses NO_CHARGE_CARD instead of the
+   * E2E_STRIPE_CARD_* secrets — Stripe's public test card, which live mode
+   * always rejects, so even an accidental Pay click cannot charge anything.
+   */
+  stopBeforeSubmit?: boolean;
 }
+
+/** Stripe's public test card (no secret). Live-mode Checkout declines it on submit. */
+export const NO_CHARGE_CARD: CardDetails = {
+  number: '4242424242424242',
+  expiry: '12/34',
+  cvc: '123',
+  name: 'E2E Test',
+  zip: '10001',
+};
 
 /**
  * Complete the Stripe Checkout page with card details from environment.
@@ -433,7 +449,7 @@ export async function completeStripeCheckout(
   page: Page,
   opts: StripeCheckoutOptions = {}
 ): Promise<{ redirected: boolean; selfHeal: SelfHealingRunner }> {
-  const card = getCardDetailsFromEnv();
+  const card = opts.stopBeforeSubmit ? NO_CHARGE_CARD : getCardDetailsFromEnv();
   const secrets: Secrets = {
     CARD_NUMBER: card.number,
     CARD_EXPIRY: card.expiry,
@@ -478,7 +494,10 @@ export async function completeStripeCheckout(
   console.log(ready ? '  Stripe Checkout loaded' : '  ⚠️ Stripe Checkout readiness signal not seen — continuing with self-healing steps');
 
   try {
-    for (const step of buildSteps(card, opts.verifyPaid, () => cardError)) {
+    const steps = buildSteps(card, opts.verifyPaid, () => cardError).filter(
+      (step) => !(opts.stopBeforeSubmit && step.id === 'submitPayment')
+    );
+    for (const step of steps) {
       const outcome = await runner.run(step);
       if (step.id === 'selectCard') await maskedScreenshot(page, 'test-results/stripe-card-selected.png');
       if (step.id === 'uncheckSaveInfo') await maskedScreenshot(page, 'test-results/stripe-checkout-filled.png');
@@ -493,6 +512,14 @@ export async function completeStripeCheckout(
     throw e;
   } finally {
     page.off('response', onResponse);
+  }
+
+  if (opts.stopBeforeSubmit) {
+    const pay = await locateVisibleInFrames(page, (f) => f.getByRole('button', { name: /^Pay$/i }), 10_000);
+    await maskedScreenshot(page, 'test-results/stripe-checkout-ready-no-charge.png');
+    if (!pay) throw new Error('No-charge mode: card form filled but the Pay button is not visible');
+    console.log('  Stripe Checkout filled and ready to pay — stopping before submit (no-charge mode)');
+    return { redirected: false, selfHeal: runner };
   }
 
   const redirected = isSuccessRedirect(page.url());
