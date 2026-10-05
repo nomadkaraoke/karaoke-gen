@@ -52,6 +52,10 @@ export class SelfHealingRunner {
 
     const forced = this.forceLlm.has(step.id);
     if (forced) console.log(`  ⚙️ step ${step.id}: E2E_SELF_HEAL_FORCE_LLM — skipping deterministic variants`);
+    const aborted = (): StepOutcome | null => {
+      const reason = step.abortReason?.();
+      return reason ? { stepId: step.id, status: 'failed', reason, llmCalls: 0 } : null;
+    };
 
     if (!forced) {
       for (const v of this.learned.steps[step.id] || []) {
@@ -66,6 +70,8 @@ export class SelfHealingRunner {
         } catch (e) {
           console.log(`    learned variant ${v.id} failed: ${(e as Error).message.split('\n')[0]}`);
         }
+        const stop = aborted();
+        if (stop) return stop;
       }
       for (const b of step.builtins) {
         try {
@@ -76,6 +82,8 @@ export class SelfHealingRunner {
         } catch (e) {
           console.log(`    builtin "${b.name}" failed: ${(e as Error).message.split('\n')[0]}`);
         }
+        const stop = aborted();
+        if (stop) return stop;
       }
     }
 
@@ -95,7 +103,8 @@ export class SelfHealingRunner {
       // Verified with zero actions (e.g. it only needed time) — nothing to learn.
       return { stepId: step.id, status: 'ok', via: 'builtin', variant: 'verified-after-wait' };
     }
-    return { stepId: step.id, status: 'failed', reason: heal.reason || 'LLM fallback failed', llmCalls: heal.llmCalls };
+    const reason = step.abortReason?.() || heal.reason || 'LLM fallback failed';
+    return { stepId: step.id, status: 'failed', reason, llmCalls: heal.llmCalls };
   }
 
   get healed() {

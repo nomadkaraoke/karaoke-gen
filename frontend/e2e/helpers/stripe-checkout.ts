@@ -1,7 +1,8 @@
 // frontend/e2e/helpers/stripe-checkout.ts
-import { Page, Frame, Locator } from '@playwright/test';
+import { Page, Frame, Locator, Response } from '@playwright/test';
 import * as fs from 'fs';
 import { GeminiPlanner, type Planner } from './self-healing/llm-agent';
+import { redact } from './self-healing/observe';
 import { SelfHealingRunner } from './self-healing/step-runner';
 import type { CheckoutStep, LearnedVariantsFile, Secrets, StepContext } from './self-healing/types';
 
@@ -31,6 +32,13 @@ import type { CheckoutStep, LearnedVariantsFile, Secrets, StepContext } from './
  * learned-variants.json — the next run replays it without the LLM.
  *
  * You can still add builtin variants by hand, but you shouldn't need to.
+ *
+ * A *declined card* is not a layout change: Stripe's confirm call returns a
+ * `card_error`, and the submit step fails immediately with a message starting
+ * `STRIPE_CARD_DECLINED` (no LLM retries, no further Pay clicks).
+ *
+ * Artifacts: test-results/ is uploaded from a PUBLIC repo, so every screenshot
+ * here masks inputs and the DOM dump has field values redacted.
  *
  * Environment variables:
  *   E2E_STRIPE_CARD_NUMBER, E2E_STRIPE_CARD_EXPIRY, E2E_STRIPE_CARD_CVC,
@@ -209,7 +217,49 @@ function throttled(check: () => Promise<boolean>, intervalMs = 5_000): () => Pro
   };
 }
 
-function buildSteps(card: CardDetails, verifyPaid?: () => Promise<boolean>): CheckoutStep[] {
+/** Marker the daily workflow greps for to report "card declined" instead of "checkout broken". */
+export const CARD_DECLINED_MARKER = 'STRIPE_CARD_DECLINED';
+
+/**
+ * Turn a failed Stripe Checkout `/payment_pages/<id>/confirm` response body
+ * into an abort reason — only for `card_error`s (declines, incorrect CVC,
+ * expired card…), which no UI retry can fix. Other errors (e.g. a missing
+ * required field) return null so the LLM fallback can still repair the form.
+ */
+export function cardErrorReason(status: number, body: unknown): string | null {
+  const err = (body as { error?: Record<string, unknown> } | null)?.error;
+  if (!err || err.type !== 'card_error') return null;
+  const codes = [err.code, err.decline_code].filter(Boolean).join('/');
+  return (
+    `${CARD_DECLINED_MARKER}: Stripe rejected the test card (HTTP ${status}, ${codes || 'card_error'}): ` +
+    `${err.message || 'no message'} — the issuer/card needs attention; this is not a Checkout layout change`
+  );
+}
+
+export function isCheckoutConfirmUrl(url: string): boolean {
+  try {
+    return /\/v1\/payment_pages\/[^/]+\/confirm$/.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** Screenshot with every input in every frame masked (artifacts are public). */
+async function maskedScreenshot(page: Page, file: string): Promise<void> {
+  await page
+    .screenshot({
+      path: file,
+      mask: page.frames().filter((f) => !f.isDetached()).map((f) => f.locator('input, textarea, select')),
+      maskColor: '#888888',
+    })
+    .catch(() => {});
+}
+
+function buildSteps(
+  card: CardDetails,
+  verifyPaid?: () => Promise<boolean>,
+  cardError?: () => string | null
+): CheckoutStep[] {
   const paidCheck = verifyPaid ? throttled(verifyPaid) : undefined;
   const cardNumberVisible = (ctx: StepContext) =>
     anyVisible(ctx.page, (f) => cardFieldLocator(f, 'cardNumber'));
@@ -320,6 +370,7 @@ function buildSteps(card: CardDetails, verifyPaid?: () => Promise<boolean>): Che
       // Long: the Stripe→site redirect and webhook grant can each take a while,
       // and a premature LLM fallback risks a second submit.
       verifyTimeoutMs: 90_000,
+      abortReason: cardError,
       verify: async ({ page }) => {
         if (isSuccessRedirect(page.url())) return true;
         return paidCheck ? paidCheck() : false;
@@ -338,14 +389,16 @@ function buildSteps(card: CardDetails, verifyPaid?: () => Promise<boolean>): Che
   ];
 }
 
-async function dumpFrames(page: Page, file: string): Promise<void> {
+async function dumpFrames(page: Page, file: string, secrets: Secrets): Promise<void> {
   // page.content() only covers the main frame; the Payment Element usually
   // lives in a nested iframe, so dump every frame.
   const dumps: string[] = [];
   for (const frame of page.frames()) {
     if (frame.isDetached()) continue;
-    const html = await frame.content().catch(() => '');
-    dumps.push(`<!-- ===== frame: ${frame.url()} ===== -->\n${html}`);
+    const html = (await frame.content().catch(() => ''))
+      // Typed card data lives in value="…" attributes.
+      .replace(/(<input\b[^>]*?\bvalue=)("[^"]*"|'[^']*')/gi, '$1"[redacted]"');
+    dumps.push(`<!-- ===== frame: ${frame.url()} ===== -->\n${redact(html, secrets)}`);
   }
   fs.mkdirSync('test-results', { recursive: true });
   fs.writeFileSync(file, dumps.join('\n\n'));
@@ -392,6 +445,22 @@ export async function completeStripeCheckout(
   if (!planner) console.log('  (no LLM planner — GEMINI_API_KEY unset; self-healing fallback disabled)');
   const runner = new SelfHealingRunner(page, secrets, planner, opts.learned);
 
+  // Watch Stripe's confirm call so a declined card fails fast with a clear reason
+  // instead of sending the LLM fallback to "fix" a form that is already correct.
+  let cardError: string | null = null;
+  const onResponse = async (res: Response) => {
+    if (res.status() < 400 || !isCheckoutConfirmUrl(res.url())) return;
+    const body = await res.json().catch(() => null);
+    const reason = cardErrorReason(res.status(), body);
+    if (reason) {
+      cardError = reason;
+      console.log(`  ✘ ${reason}`);
+    } else {
+      console.log(`  ⚠️ Stripe confirm returned HTTP ${res.status()} (not a card error — self-healing continues)`);
+    }
+  };
+  page.on('response', onResponse);
+
   console.log('  Waiting for Stripe Checkout page...');
   await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
   // Readiness: any of the Pay button, the card form or a Card chooser. Don't
@@ -405,27 +474,29 @@ export async function completeStripeCheckout(
         .or(f.getByText('Card', { exact: true })),
     30_000
   );
-  await page.screenshot({ path: 'test-results/stripe-checkout-loaded.png' });
+  await maskedScreenshot(page, 'test-results/stripe-checkout-loaded.png');
   console.log(ready ? '  Stripe Checkout loaded' : '  ⚠️ Stripe Checkout readiness signal not seen — continuing with self-healing steps');
 
   try {
-    for (const step of buildSteps(card, opts.verifyPaid)) {
+    for (const step of buildSteps(card, opts.verifyPaid, () => cardError)) {
       const outcome = await runner.run(step);
-      if (step.id === 'selectCard') await page.screenshot({ path: 'test-results/stripe-card-selected.png' });
-      if (step.id === 'uncheckSaveInfo') await page.screenshot({ path: 'test-results/stripe-checkout-filled.png' });
+      if (step.id === 'selectCard') await maskedScreenshot(page, 'test-results/stripe-card-selected.png');
+      if (step.id === 'uncheckSaveInfo') await maskedScreenshot(page, 'test-results/stripe-checkout-filled.png');
       if (outcome.status === 'failed') {
-        await page.screenshot({ path: `test-results/stripe-step-failed-${step.id}.png` }).catch(() => {});
-        await dumpFrames(page, 'test-results/stripe-checkout-dom.html');
+        await maskedScreenshot(page, `test-results/stripe-step-failed-${step.id}.png`);
+        await dumpFrames(page, 'test-results/stripe-checkout-dom.html', secrets);
         throw new Error(`Stripe Checkout step "${step.id}" failed: ${outcome.reason}`);
       }
     }
   } catch (e) {
     runner.writeArtifacts(SELF_HEAL_ARTIFACT_DIR, { flowVerified: false });
     throw e;
+  } finally {
+    page.off('response', onResponse);
   }
 
   const redirected = isSuccessRedirect(page.url());
-  await page.screenshot({ path: `test-results/stripe-checkout-${redirected ? 'complete' : 'no-redirect'}.png` }).catch(() => {});
+  await maskedScreenshot(page, `test-results/stripe-checkout-${redirected ? 'complete' : 'no-redirect'}.png`);
   if (redirected) {
     console.log('  Stripe Checkout complete — redirected to our site');
   } else {

@@ -294,8 +294,19 @@ jobs:
             --reporter=list \
             --timeout=3600000
 
-      - name: Upload test artifacts
+      - name: Scrub secrets from artifacts (public repo)
+        id: scrub
         if: always()
+        working-directory: frontend
+        env:
+          E2E_ADMIN_TOKEN: ${{ secrets.E2E_ADMIN_TOKEN }}
+          TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
+          E2E_BYPASS_KEY: ${{ secrets.E2E_BYPASS_KEY }}
+          E2E_TEST_TOKEN: ${{ steps.refresh_token.outputs.token }}
+        run: node e2e/scripts/scrub-artifacts.mjs test-results playwright-report
+
+      - name: Upload test artifacts
+        if: always() && steps.scrub.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-happy-path-results

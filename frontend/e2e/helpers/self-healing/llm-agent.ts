@@ -152,6 +152,7 @@ export async function pollVerify(step: CheckoutStep, ctx: StepContext, timeoutMs
   const deadline = Date.now() + timeoutMs;
   do {
     if (await step.verify(ctx).catch(() => false)) return true;
+    if (step.abortReason?.()) return false;
     await ctx.page.waitForTimeout(500);
   } while (Date.now() < deadline);
   return false;
@@ -165,6 +166,8 @@ export async function healStep(step: CheckoutStep, ctx: StepContext, planner: Pl
   let model = '';
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const aborted = step.abortReason?.();
+    if (aborted) return { success: false, actions: executed, model, llmCalls, reason: aborted };
     const observation = await observe(ctx.page, ctx.secrets);
     let decision: LlmDecision;
     try {

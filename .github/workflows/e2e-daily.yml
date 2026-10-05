@@ -58,6 +58,7 @@ jobs:
     outputs:
       session_token: ${{ steps.extract_token.outputs.token }}
       result: ${{ steps.test_result.outputs.result }}
+      failure_reason: ${{ steps.test_result.outputs.failure_reason }}
       healed: ${{ steps.self_heal.outputs.healed }}
     env:
       HAS_GEMINI_SECRET: ${{ secrets.GEMINI_API_KEY != '' }}
@@ -170,6 +171,13 @@ jobs:
             echo "result=success" >> "$GITHUB_OUTPUT"
           else
             echo "result=failure" >> "$GITHUB_OUTPUT"
+            # A declined card is an issuer/card problem, not a broken checkout —
+            # say so in the alerts (marker comes from e2e/helpers/stripe-checkout.ts).
+            REASON=$(grep -m1 -o 'STRIPE_CARD_DECLINED:.*' frontend/test-output-payment.log 2>/dev/null | sed 's/ — .*//' | tr -d '"\\' || true)
+            if [ -n "$REASON" ]; then
+              echo "failure_reason=Test card declined, not a checkout bug (${REASON#STRIPE_CARD_DECLINED: }). Check the card/issuer for a fraud hold, then re-run." >> "$GITHUB_OUTPUT"
+              echo "::error::$REASON"
+            fi
           fi
 
       - name: Detect self-healed Stripe steps
@@ -218,8 +226,21 @@ jobs:
             echo "token=" >> $GITHUB_OUTPUT
           fi
 
-      - name: Upload artifacts
+      - name: Scrub secrets from artifacts (public repo)
+        id: scrub
         if: always()
+        working-directory: frontend
+        env:
+          E2E_ADMIN_TOKEN: ${{ secrets.E2E_ADMIN_TOKEN }}
+          TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
+          E2E_STRIPE_CARD_NUMBER: ${{ secrets.E2E_STRIPE_CARD_NUMBER }}
+          E2E_STRIPE_CARD_EXPIRY: ${{ secrets.E2E_STRIPE_CARD_EXPIRY }}
+          E2E_STRIPE_CARD_CVC: ${{ secrets.E2E_STRIPE_CARD_CVC }}
+          E2E_SESSION_TOKEN: ${{ steps.extract_token.outputs.token }}
+        run: node e2e/scripts/scrub-artifacts.mjs --drop-videos --blank-inputs test-results test-output-payment.log
+
+      - name: Upload artifacts
+        if: always() && steps.scrub.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-payment-results-${{ github.run_number }}
@@ -230,10 +251,16 @@ jobs:
 
       - name: Discord notification (failure)
         if: steps.test_result.outputs.result == 'failure'
+        env:
+          # Via env + jq, never ${{ }} in the script: the reason contains Stripe's message text.
+          REASON: ${{ steps.test_result.outputs.failure_reason || 'Payment flow is broken. Customers may not be receiving credits.' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          WEBHOOK: ${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}
         run: |
-          curl -s -H "Content-Type: application/json" \
-            -d "{\"embeds\": [{\"title\": \"🚨 E2E Daily Test FAILED — Stage 1: Credit Purchase\", \"description\": \"Payment flow is broken. Customers may not be receiving credits.\n\n**Run:** #${{ github.run_number }}\n**Details:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\", \"color\": 15158332}]}" \
-            "${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}"
+          jq -n --arg reason "$REASON" --arg run "$RUN_NUMBER" --arg url "$RUN_URL" \
+            '{embeds: [{title: "🚨 E2E Daily Test FAILED — Stage 1: Credit Purchase", description: "\($reason)\n\n**Run:** #\($run)\n**Details:** \($url)", color: 15158332}]}' |
+            curl -s -H "Content-Type: application/json" -d @- "$WEBHOOK"
 
       - name: Fail if test failed
         if: steps.test_result.outputs.result == 'failure'
@@ -499,8 +526,19 @@ jobs:
             echo "result=failure" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload test artifacts
+      - name: Scrub secrets from artifacts (public repo)
+        id: scrub
         if: always()
+        working-directory: frontend
+        env:
+          E2E_ADMIN_TOKEN: ${{ secrets.E2E_ADMIN_TOKEN }}
+          TESTMAIL_API_KEY: ${{ secrets.TESTMAIL_API_KEY }}
+          E2E_BYPASS_KEY: ${{ secrets.E2E_BYPASS_KEY }}
+          E2E_TEST_TOKEN: ${{ steps.refresh_token.outputs.token || needs.e2e-credit-purchase.outputs.session_token || '' }}
+        run: node e2e/scripts/scrub-artifacts.mjs test-results playwright-report test-output-happy-path.log
+
+      - name: Upload test artifacts
+        if: always() && steps.scrub.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-happy-path-results-${{ github.run_number }}
@@ -511,7 +549,7 @@ jobs:
           retention-days: 30
 
       - name: Upload video recordings
-        if: always()
+        if: always() && steps.scrub.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-happy-path-videos-${{ github.run_number }}
@@ -581,7 +619,7 @@ jobs:
             E2E Daily Test Results
             ======================
 
-            Stage 1 (Credit Purchase): ${{ needs.e2e-credit-purchase.result || 'skipped' }}
+            Stage 1 (Credit Purchase): ${{ needs.e2e-credit-purchase.result || 'skipped' }}${{ needs.e2e-credit-purchase.outputs.failure_reason && format(' — {0}', needs.e2e-credit-purchase.outputs.failure_reason) || '' }}
             Stage 2 (Happy Path):      ${{ needs.e2e-happy-path.result || 'skipped' }}
             Stripe self-heal:          ${{ needs.e2e-credit-purchase.outputs.healed == 'true' && format('Stripe changed its checkout; LLM fallback healed it. Auto-merge PR: {0}', needs.self-heal-pr.outputs.pr_url || (needs.self-heal-pr.outputs.unchanged == 'true' && '(already on main)' || '(failed to open — see run)')) || 'not needed' }}
 

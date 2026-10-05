@@ -518,6 +518,13 @@ defaults it to `true` (server-side, ~Aug 2026), which silently blocks bot-author
 update ever omits the key, GitHub resets it to `true` — set it explicitly. Discord + the daily email
 report 🩹 when this happens. Only one open self-heal PR at a time.
 
+**Declined card ≠ layout change.** The helper watches Stripe's
+`/v1/payment_pages/<id>/confirm` response; a `card_error` (e.g. `card_declined/generic_decline`)
+fails `submitPayment` immediately with `STRIPE_CARD_DECLINED: …` — no LLM calls, no second Pay
+click. The workflow surfaces it as the Stage 1 `failure_reason` in Discord and the daily email
+("Test card declined, not a checkout bug"). Fix it on the card side (issuer fraud hold — e.g.
+after many live $0.50 runs in a day — or an expired/replaced card), then re-run.
+
 The Gemini key is the AI Studio `gemini-api-key` (billed outside the nomadkaraoke project):
 a `GEMINI_API_KEY` repo secret if set, else read from Secret Manager via keyless auth (the
 credential file is deleted before tests run). No key → deterministic-only, as before.
@@ -529,6 +536,24 @@ npx playwright test --config=playwright.selfheal.config.ts
 # Exercise the live LLM path end-to-end: Actions → E2E Daily → Run workflow →
 #   self_heal_force_llm = selectCard   (forces that step through Gemini; opens a PR)
 ```
+
+## E2E Artifacts Are Public — Scrub Before Upload
+
+karaoke-gen is a **public** repo: any signed-in GitHub user can download Actions artifacts.
+Every workflow that uploads production-E2E output runs `frontend/e2e/scripts/scrub-artifacts.mjs`
+first and only uploads if the scrub succeeded:
+
+- deletes Playwright traces (`*.zip` — they contain every request header incl. `X-Admin-Token`
+  and every typed value) and `e2e-session-token.txt`;
+- replaces literal secret values (admin token, testmail key, card number, session tokens…) and
+  card-number-shaped digit runs in text files; deletes any text file still containing a secret;
+- Stage 1 also passes `--drop-videos --blank-inputs` (videos of the Stripe page; `<input value>`
+  and ARIA-snapshot textbox values in DOM dumps / `error-context.md`).
+
+In addition, `playwright.production.config.ts` turns traces **off on CI** (`E2E_TRACE=on` to
+override), the credit-purchase spec disables trace/video/auto-screenshots, and the Stripe helper's
+own screenshots mask every input. When adding a new secret to a production E2E job, add its env
+var to `SECRET_ENV_VARS` in the scrubber and to the job's scrub step.
 
 ## Concurrent-Load Regression Test (review pages)
 

@@ -55,8 +55,10 @@ export default defineConfig({
     // Base URL for production
     baseURL: 'https://gen.nomadkaraoke.com',
 
-    // Collect trace always for debugging production issues
-    trace: 'on',
+    // Traces record every request header (X-Admin-Token) and typed value, and
+    // CI uploads test-results/ as artifacts of a PUBLIC repo — so on CI they're
+    // off unless explicitly requested (E2E_TRACE=on, e.g. for a private re-run).
+    trace: (process.env.E2E_TRACE as 'on' | 'off' | 'retain-on-failure' | undefined) ?? (process.env.CI ? 'off' : 'on'),
 
     // Always capture screenshots
     screenshot: 'on',

@@ -6,6 +6,21 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## Public-repo CI artifacts published the real test card and the admin token (Oct 2026)
+
+Investigating E2E Daily #200 ("Stage 1 failed", Stripe self-heal "not needed") showed two things:
+
+- **The failure was the issuer declining the card** (`confirm` → 402 `card_error/generic_decline`,
+  likely a fraud hold after ~8 live $0.50 charges in a day), but the self-healing runner treated it
+  like a layout change: 90s verify wait, then 6 Gemini calls "re-entering" a correct form. Detect
+  non-recoverable outcomes from the network (the confirm response), not from the UI, and abort.
+- **Every run's artifacts held the full card number/expiry/CVC** (manual screenshots, Playwright
+  auto-screenshots, videos, `error-context.md` ARIA snapshot, DOM dump) **and `X-Admin-Token`**
+  (trace network logs) — in a public repo, downloadable by anyone signed in to GitHub. `::add-mask::`
+  only protects *logs*, never artifacts. Fix: scrub before every upload (`e2e/scripts/scrub-artifacts.mjs`),
+  traces off on CI, masked screenshots. All 140 existing e2e artifacts were deleted; the exposed admin token
+  and test card must be rotated.
+
 ## One event loop per instance: `async def` without `await` is a whole-instance freeze (Oct 2026, v0.264.0)
 
 The "servers unavailable" banner (49 episodes in 2 weeks) was mostly the API's own event loop freezing for 20-45s. Each episode hit 2-3 browsers in the same second, and only ~7 of 28 were near a deploy. Signature in the request logs: every request on the instance, `/api/health` included, completes at the same moment.
