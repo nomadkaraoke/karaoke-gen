@@ -79,6 +79,15 @@ async function waitForCreditIncrease(
  *     for Stage 2 (happy path) to consume
  */
 
+/**
+ * E2E_PAYMENT_MODE:
+ *   'real' (default)  — pay with the E2E_STRIPE_CARD_* card and verify the credit grant.
+ *   'checkout-only'   — no charge: everything up to Stripe's Pay button (session
+ *                        creation, referral price, card form) with Stripe's public test
+ *                        card, then hand the new user's signup credit to Stage 2.
+ */
+const CHECKOUT_ONLY = process.env.E2E_PAYMENT_MODE === 'checkout-only';
+
 const PROD_URL = URLS.production.frontend;
 const API_URL = URLS.production.api;
 
@@ -92,7 +101,7 @@ test.use({ trace: 'off', video: 'off', screenshot: 'off' });
 test.describe('Real Credit Purchase Flow', () => {
   test('purchase 1 credit via Stripe Checkout with referral discount', async ({ page, request }) => {
     // ===== PREREQUISITES =====
-    test.skip(!process.env.E2E_STRIPE_CARD_NUMBER, 'E2E_STRIPE_CARD_NUMBER not set');
+    test.skip(!CHECKOUT_ONLY && !process.env.E2E_STRIPE_CARD_NUMBER, 'E2E_STRIPE_CARD_NUMBER not set');
     test.skip(!isEmailTestingAvailable(), 'Testmail credentials not set');
 
     const adminToken = process.env.E2E_ADMIN_TOKEN;
@@ -233,6 +242,27 @@ test.describe('Real Credit Purchase Flow', () => {
       // ===== STEP 5: Proceed to Stripe Checkout =====
       console.log('\n=== STEP 5: Stripe Checkout ===');
       await checkoutButton.click();
+
+      if (CHECKOUT_ONLY) {
+        console.log('  💳 E2E_PAYMENT_MODE=checkout-only — filling with Stripe test card, NOT paying');
+        await completeStripeCheckout(page, { stopBeforeSubmit: true });
+        // The discounted price must be what Stripe will charge.
+        await expect(page.getByText('$0.50').first()).toBeVisible({ timeout: TIMEOUTS.action });
+        console.log('  ✅ Checkout session shows the $0.50 referral price and is ready to pay');
+
+        // Stage 2 spends one credit; the new account's signup credit covers it.
+        expect(
+          baselineCredits,
+          'No-charge mode hands the signup credit to Stage 2, but the new account has 0 credits'
+        ).toBeGreaterThanOrEqual(1);
+
+        const outputDir = path.join(process.cwd(), 'test-results');
+        fs.mkdirSync(outputDir, { recursive: true });
+        fs.writeFileSync(path.join(outputDir, 'e2e-session-token.txt'), sessionToken);
+        console.log(`  Token saved for Stage 2 (user has ${baselineCredits} signup credit(s))`);
+        console.log('\n✅ CHECKOUT-ONLY TEST PASSED (no payment made)');
+        return;
+      }
 
       // Complete Stripe Checkout with real card. The redirect back to our site
       // is best-effort — the authoritative signal is the server-side credit grant.

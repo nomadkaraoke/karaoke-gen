@@ -482,6 +482,14 @@ The production tests cover:
 
 ## Self-Healing Stripe Checkout (daily E2E Stage 1)
 
+> **Payment mode (repo variable `E2E_REAL_PAYMENT`).** Unset/anything but `true` →
+> `E2E_PAYMENT_MODE=checkout-only` (current default since 2026-10-05, no working test card):
+> Stage 1 signs up via the referral link, creates a real Checkout session, fills it with Stripe's
+> public test card `4242…` (`NO_CHARGE_CARD`), asserts the $0.50 price + Pay button, and **stops
+> before Pay** — no charge, no credit grant, no self-heal PR. Stage 2 uses the new account's signup
+> credit. Set `E2E_REAL_PAYMENT=true` (Settings → Variables) to resume buying a real credit with
+> the `E2E_STRIPE_CARD_*` card.
+
 Stripe changes its hosted checkout page without notice (5 breaking changes Apr–Oct 2026),
 so `frontend/e2e/helpers/stripe-checkout.ts` runs the checkout as **verified sub-goals**
 (`selectCard`, `fillCardNumber`, `fillCardExpiry`, `fillCardCvc`, `fillCardholderName`,
