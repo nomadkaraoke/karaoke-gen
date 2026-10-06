@@ -177,6 +177,13 @@ class OutdatedJobsResponse(BaseModel):
 class RerenderOutdatedResponse(BaseModel):
     started: List[str]
     failed: Dict[str, str]
+    # Outdated tracks beyond this call's cap (ask again to start them).
+    remaining: List[str] = Field(default_factory=list)
+
+
+# Tracks started per bulk call: bounds the request time and the burst of
+# render/encode work it queues. The UI offers the remainder again.
+MAX_BULK_RERENDER = 20
 
 
 def _owner_scope(auth_result: AuthResult) -> Optional[str]:
@@ -236,12 +243,13 @@ async def rerender_outdated(
     job_ids = (await run_in_threadpool(
         outdated_jobs, config.id, theme_id, _owner_scope(auth_result)
     ))["job_ids"]
+    batch, remaining = job_ids[:MAX_BULK_RERENDER], job_ids[MAX_BULK_RERENDER:]
     job_manager = JobManager()
     service = ThemeRerenderService(job_manager)
     started: List[str] = []
     failed: Dict[str, str] = {}
-    for job_id in job_ids:
-        job = job_manager.get_job(job_id)
+    for job_id in batch:
+        job = await run_in_threadpool(job_manager.get_job, job_id)
         if job is None:
             continue
         try:
@@ -256,5 +264,8 @@ async def rerender_outdated(
         except Exception as e:
             logger.exception(f"[job:{job_id}] Bulk theme re-render failed to start")
             failed[job_id] = "Couldn't start the re-render."
-    logger.info(f"Tenant '{config.id}': bulk re-render started {len(started)}, failed {len(failed)}")
-    return RerenderOutdatedResponse(started=started, failed=failed)
+    logger.info(
+        f"Tenant '{config.id}': bulk re-render started {len(started)}, failed {len(failed)}, "
+        f"remaining {len(remaining)}"
+    )
+    return RerenderOutdatedResponse(started=started, failed=failed, remaining=remaining)

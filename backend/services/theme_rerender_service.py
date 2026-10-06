@@ -20,6 +20,7 @@ the job's existing brand code (see rerender_brand_code). Jobs published to
 YouTube/GDrive are rejected — those would need the delete/redistribute dance of
 the visibility flow, which tenants don't use.
 """
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -195,8 +196,9 @@ class ThemeRerenderService:
         # claim so a failure here leaves the job untouched; overwriting the style
         # copy of a still-complete job is harmless (its finals are already made).
         from backend.api.routes.file_upload import _prepare_theme_for_job
-        style_params_path, style_assets, _ = _prepare_theme_for_job(
-            job_id, theme_id, getattr(job, "color_overrides", None) or None
+        # GCS / Firestore calls are blocking: keep them off the event loop.
+        style_params_path, style_assets, _ = await asyncio.to_thread(
+            _prepare_theme_for_job, job_id, theme_id, getattr(job, "color_overrides", None) or None
         )
         if not style_params_path:
             raise RerenderError(f"Theme '{theme_id}' has no style to apply.", status_code=500)
@@ -239,9 +241,9 @@ class ThemeRerenderService:
                 "message": f"Re-render with current theme '{theme_id}' requested by {requested_by}",
             }]),
         }
-        self._claim(job_id, update, _claimable_statuses(job))
+        await asyncio.to_thread(self._claim, job_id, update, _claimable_statuses(job))
 
-        self._delete_stale_artifacts(job_id)
+        await asyncio.to_thread(self._delete_stale_artifacts, job_id)
 
         from backend.services.worker_service import get_worker_service
         triggered = await get_worker_service().trigger_screens_worker(job_id)

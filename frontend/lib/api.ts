@@ -2835,12 +2835,12 @@ export const tenantThemeApi = {
   },
 
   /** Re-render every outdated finished track with the current theme (no per-track emails). */
-  async rerenderOutdated(): Promise<{ started: string[]; failed: Record<string, string> }> {
+  async rerenderOutdated(): Promise<{ started: string[]; failed: Record<string, string>; remaining?: string[] }> {
     const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/rerender-outdated`, {
       method: 'POST',
       headers: getAuthHeaders(),
     })
-    return handleResponse<{ started: string[]; failed: Record<string, string> }>(response)
+    return handleResponse<{ started: string[]; failed: Record<string, string>; remaining?: string[] }>(response)
   },
 }
 

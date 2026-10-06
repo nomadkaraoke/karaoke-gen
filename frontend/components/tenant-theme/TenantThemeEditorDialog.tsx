@@ -241,8 +241,9 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
     try {
       const result = await tenantThemeApi.rerenderOutdated()
       clearOutdatedThemeJobs(result.started)
-      setRerenderStarted(result.started.length)
-      setSaveResult((r) => r && { ...r, outdated: Object.keys(result.failed) })
+      setRerenderStarted((n) => (n ?? 0) + result.started.length)
+      // Still outdated: failures, plus any beyond the server's per-call cap.
+      setSaveResult((r) => r && { ...r, outdated: [...Object.keys(result.failed), ...(result.remaining ?? [])] })
       if (Object.keys(result.failed).length) {
         toast({
           title: t("rerenderAllSomeFailed", { count: Object.keys(result.failed).length }),

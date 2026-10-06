@@ -217,3 +217,20 @@ describe("after saving: what happens to existing tracks", () => {
     expect(screen.queryByTestId("theme-save-result")).not.toBeInTheDocument()
   })
 })
+
+it("offers the tracks beyond the server's per-call cap again", async () => {
+  save.mockImplementation(async (sp) => ({ ...DATA, style_params: sp, refreshed_jobs: 0, outdated_job_ids: ["a", "b", "c"] }))
+  rerenderOutdated
+    .mockResolvedValueOnce({ started: ["a"], failed: {}, remaining: ["b", "c"] })
+    .mockResolvedValueOnce({ started: ["b", "c"], failed: {}, remaining: [] })
+  await openEditor()
+  fireEvent.click(screen.getByRole("tab", { name: "tabs.endScreen" }))
+  fireEvent.change(screen.getByLabelText("closingMessage"), { target: { value: "BYE" } })
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "save" })) })
+
+  await act(async () => { fireEvent.click(screen.getByTestId("theme-rerender-all")) })
+  expect(screen.getByText("outdatedFinished(2)")).toBeInTheDocument()
+  await act(async () => { fireEvent.click(screen.getByTestId("theme-rerender-all")) })
+  expect(screen.getByTestId("theme-rerender-started")).toHaveTextContent("rerenderAllStarted(3)")
+  expect(screen.queryByTestId("theme-rerender-all")).not.toBeInTheDocument()
+})

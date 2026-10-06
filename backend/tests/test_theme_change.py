@@ -352,7 +352,7 @@ def test_rerender_outdated_is_quiet_and_reports_failures(client_for):
          patch("backend.services.theme_rerender_service.ThemeRerenderService", return_value=service):
         resp = client_for().post("/api/tenant/theme/rerender-outdated")
     assert resp.status_code == 200
-    assert resp.json() == {"started": ["a", "c"], "failed": {"b": "published"}}
+    assert resp.json() == {"started": ["a", "c"], "failed": {"b": "published"}, "remaining": []}
     assert all(c.kwargs["notify_customer"] is False for c in service.start.call_args_list)
 
 
@@ -360,3 +360,19 @@ def test_new_endpoints_reject_non_members(client_for):
     client = client_for(email="stranger@example.com")
     assert client.get("/api/tenant/theme/outdated-jobs").status_code == 403
     assert client.post("/api/tenant/theme/rerender-outdated").status_code == 403
+
+
+def test_rerender_outdated_caps_each_call(client_for):
+    """Bounded per request; the rest come back as ``remaining`` for the UI to offer again."""
+    service = MagicMock()
+    service.start = AsyncMock(return_value=None)
+    jm = MagicMock()
+    jm.get_job.side_effect = lambda jid: SimpleNamespace(job_id=jid)
+    ids = [f"j{i}" for i in range(tenant_theme.MAX_BULK_RERENDER + 3)]
+    with patch.object(tenant_theme, "outdated_jobs", return_value={"job_ids": ids}), \
+         patch("backend.services.job_manager.JobManager", return_value=jm), \
+         patch("backend.services.theme_rerender_service.ThemeRerenderService", return_value=service):
+        body = client_for().post("/api/tenant/theme/rerender-outdated").json()
+    assert body["started"] == ids[:tenant_theme.MAX_BULK_RERENDER]
+    assert body["remaining"] == ids[tenant_theme.MAX_BULK_RERENDER:]
+    assert service.start.await_count == tenant_theme.MAX_BULK_RERENDER
