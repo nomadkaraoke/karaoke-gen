@@ -15,11 +15,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
+# Force google-auth to reach the metadata server over plain HTTP. google-auth
+# >=2.40 switches to mTLS over HTTPS when /run/google-mds-mtls/ certs exist, and
+# that handshake fails with CERTIFICATE_VERIFY_FAILED on our images. startup.sh
+# sets this in the systemd env file, but the Packer-baked startup-fallback.sh
+# (used when GCS is unreachable at boot) does not, which broke every job on
+# 2026-10-06. Defaulting it here covers every boot path. Must run before any
+# google library is imported.
+os.environ.setdefault("GCE_METADATA_MTLS_MODE", "none")
+
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, Depends
 from google.cloud import storage
 from packaging.version import Version
 from pydantic import BaseModel
 
+from . import self_heal
 from .persistence import JobStatePersister
 from backend.utils.audio_filenames import local_audio_filename
 
@@ -88,8 +98,28 @@ def _persist(job_id: str) -> None:
         persister.save(state)
 
 
+def _has_active_jobs() -> bool:
+    return any(j.get("status") in ("running", "pending") for j in jobs.values())
+
+
+def _self_heal_after_failure(error: Exception) -> None:
+    """Restart the worker if a job failed because the VM itself can't reach GCP."""
+    try:
+        self_heal.schedule_restart_if_unhealthy(str(error), _has_active_jobs)
+    except Exception as exc:  # noqa: BLE001 — must never mask the job failure
+        logger.warning("Self-heal scheduling failed: %r", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Refuse to serve if this boot came up broken (no API key / no GCP
+    # credentials, e.g. bootstrap fell back because the network wasn't up yet).
+    # Failing startup makes uvicorn exit; systemd then re-runs the bootstrap.
+    problem = await asyncio.to_thread(self_heal.boot_health_problem)
+    if problem:
+        logger.critical("Encoding worker booted unhealthy, exiting for systemd restart: %s", problem)
+        raise RuntimeError(f"Encoding worker booted unhealthy: {problem}")
+
     # Startup: read back any in-progress jobs from Firestore. They were
     # interrupted by the restart that brought us here — their work_dir is
     # gone, so mark them failed with the restart code so polls return a
@@ -1297,6 +1327,7 @@ async def process_job(job_id: str, request: EncodeRequest):
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
         _persist(job_id)
+        _self_heal_after_failure(e)
 
 
 async def process_preview_job(job_id: str, request: EncodePreviewRequest):
@@ -1327,6 +1358,7 @@ async def process_preview_job(job_id: str, request: EncodePreviewRequest):
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
         _persist(job_id)
+        _self_heal_after_failure(e)
 
 
 async def process_render_video_job(job_id: str, request: RenderVideoRequest):
@@ -1369,6 +1401,7 @@ async def process_render_video_job(job_id: str, request: RenderVideoRequest):
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
         _persist(job_id)
+        _self_heal_after_failure(e)
 
 
 @app.post("/encode-preview")

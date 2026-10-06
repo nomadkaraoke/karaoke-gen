@@ -262,6 +262,8 @@ async def process_render_video(job_id: str) -> bool:
                             for k, v in job.style_assets.items()
                         }
 
+                    capacity_marker_cleared = [False]
+
                     def progress_callback(progress: int):
                         # Update progress in place — the job is already in
                         # RENDERING_VIDEO when this fires, and going through
@@ -285,6 +287,13 @@ async def process_render_video(job_id: str) -> bool:
                             'progress': scaled,
                             'updated_at': datetime.now(UTC),
                         })
+                        # The worker is really rendering now, so drop the marker from
+                        # earlier parked attempts; otherwise the job card keeps saying
+                        # "waiting for encoding server availability" for the whole render.
+                        if progress and not capacity_marker_cleared[0]:
+                            capacity_marker_cleared[0] = True
+                            if (job.state_data or {}).get('render_pending_capacity'):
+                                job_manager.delete_state_data_key(job_id, 'render_pending_capacity')
 
                     with job_span("gce-render-video", job_id) as render_span:
                         render_start = time.time()

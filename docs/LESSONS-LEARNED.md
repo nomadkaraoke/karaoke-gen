@@ -2274,3 +2274,25 @@ added another selector variant — and each next change still needed a human. Le
   masked screenshots; tests assert the prompt contains no secrets.
 
 See `docs/TESTING.md` § Self-Healing Stripe Checkout.
+
+## Encoding worker: a degraded fallback that "works" is worse than a crash (2026-10-06)
+
+The primary encoding VM booted before its network was up. The bootstrap's one GCS download
+failed and it silently ran the image's fallback startup script, which wrote an env file
+missing both the API key and `GCE_METADATA_MTLS_MODE=none`. The worker came up, passed
+`/health`, and failed every job on the metadata-server SSL handshake for an hour. The
+backend deliberately retries the *primary* on infra errors (only fallbacks get demoted), so
+nothing broke the loop until a manual `systemctl restart`. Lessons:
+
+- **Put critical config in code, not only in the deploy script.** `GCE_METADATA_MTLS_MODE`
+  is now defaulted in `gce_encoding/main.py`, so every boot path (GCS startup, image
+  fallback, a hand-run uvicorn) gets it.
+- **Fail closed and let the supervisor retry.** Missing API key or no GCP credentials →
+  refuse to start; systemd (`Restart=always`) re-runs the bootstrap, which works once the
+  network is up. Gate this on "really a worker VM" (`INVOCATION_ID` **and**
+  `/opt/encoding-worker/bootstrap.sh`), because CI runners can be systemd services too.
+- **"Bounded retry on the primary" needs a bound.** The backend now logs primary infra
+  failures at ERROR, and the worker restarts itself, so the retry loop can't run silently.
+- **Worker app logs only reach the serial console**, not Cloud Logging. Check
+  `get-serial-port-output` first when the worker misbehaves.
+

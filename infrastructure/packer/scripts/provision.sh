@@ -237,8 +237,20 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 echo "=== Bootstrap: $(date) ==="
 echo "Downloading latest startup script from GCS..."
 
-# Download the CI-managed startup script
-if ! gsutil cp "${BUCKET}/encoding-worker/startup.sh" "${WORKER_DIR}/startup-latest.sh" 2>&1; then
+# Download the CI-managed startup script. Retry for ~2 minutes: on boot the
+# service can start before the network is up (2026-10-06: "Network is
+# unreachable"), and the fallback below is a degraded path we want to avoid.
+DOWNLOADED=false
+for attempt in $(seq 1 12); do
+    if gsutil cp "${BUCKET}/encoding-worker/startup.sh" "${WORKER_DIR}/startup-latest.sh" 2>&1; then
+        DOWNLOADED=true
+        break
+    fi
+    echo "startup.sh download failed (attempt ${attempt}/12), retrying in 10s..."
+    sleep 10
+done
+
+if [ "$DOWNLOADED" != "true" ]; then
     echo "ERROR: Failed to download startup.sh from GCS"
     echo "Falling back to local startup.sh if available..."
     if [ -f "${WORKER_DIR}/startup-fallback.sh" ]; then
@@ -269,9 +281,20 @@ echo "WARNING: Using fallback startup - GCS was unreachable"
 WORKER_DIR="/opt/encoding-worker"
 BUCKET="gs://karaoke-gen-storage-nomadkaraoke"
 
-# Fetch API key
+# Fetch API key. Without it the worker would accept unauthenticated requests,
+# so fail and let systemd retry the whole bootstrap instead.
 ENCODING_API_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key 2>/dev/null || echo "")
-echo "ENCODING_API_KEY=${ENCODING_API_KEY}" > "${WORKER_DIR}/env"
+if [ -z "$ENCODING_API_KEY" ]; then
+    echo "FATAL: could not fetch encoding-worker-api-key; exiting so systemd retries"
+    exit 1
+fi
+# Keep in sync with the env written by infrastructure/encoding-worker/startup.sh.
+# GCE_METADATA_MTLS_MODE=none: see the comment there (mTLS metadata access fails
+# with CERTIFICATE_VERIFY_FAILED on our images).
+cat > "${WORKER_DIR}/env" <<ENVFILE
+ENCODING_API_KEY=${ENCODING_API_KEY}
+GCE_METADATA_MTLS_MODE=none
+ENVFILE
 chmod 600 "${WORKER_DIR}/env"
 
 # Try to install wheel from fixed path

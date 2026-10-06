@@ -19,6 +19,7 @@ backend/__init__.py
 backend/services/__init__.py
 backend/models/__init__.py
 backend/services/gce_encoding/
+backend/services/encoding_errors.py
 backend/services/local_encoding_service.py
 backend/services/local_preview_encoding_service.py
 backend/services/theme_service.py
