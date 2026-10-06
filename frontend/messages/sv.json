@@ -764,7 +764,9 @@
     "regenerateStarted": "Återskapar din video. Vi mejlar dig när den är klar.",
     "regenerateTime": "Det tar vanligtvis 10–30 minuter. Vi mejlar dig när den är klar.",
     "regenerateTitle": "Vill du återskapa den här videon?",
-    "regenerateTooltip": "För att spara utrymme sparas endast 720p-videon och karaokepaketen för äldre låtar. Återskapa övriga format."
+    "regenerateTooltip": "För att spara utrymme sparas endast 720p-videon och karaokepaketen för äldre låtar. Återskapa övriga format.",
+    "outdatedTheme": "Äldre tema",
+    "outdatedThemeTooltip": "Den här videon skapades före din senaste temaändring. Rendera om den för att uppdatera dess utseende."
   },
   "themeSelector": {
     "videoTheme": "Videotema",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Redigera valfri temainställning direkt. Ändringar kontrolleras när du sparar.",
     "advancedJson": "Fullständig tema-JSON",
-    "appliesToNewJobs": "Sparade ändringar gäller för videor du skapar från och med nu.",
     "artistColour": "Färg på artistnamn",
     "artistName": "Artistnamn",
     "background": "Bakgrund",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Låttitel",
     "save": "Spara tema",
     "saveFailed": "Det gick inte att spara ditt tema",
-    "savedBody": "Nya videor kommer att använda ditt uppdaterade tema.",
     "savedTitle": "Tema sparat",
     "solidColour": "Enfärgad (ingen bild)",
     "sungColour": "Färg för sjungen text",
@@ -2033,7 +2033,16 @@
     "close": "Stäng",
     "saving": "Sparar…",
     "songTitle": "Låttitel",
-    "rerenderHint": "För att uppdatera ett spår du redan har skapat, använd ”Rendera om” på dess kort."
+    "appliesToInProgress": "Sparade ändringar gäller för nya videor och videor som fortfarande håller på att skapas.",
+    "finishedKeepOldLook": "Färdiga videor behåller sitt gamla utseende tills du renderar om dem.",
+    "outdatedFinished": "{count, plural, one {# färdig video har fortfarande det gamla utseendet.} other {# färdiga videor har fortfarande det gamla utseendet.}}",
+    "refreshedInProgress": "{count, plural, one {# video som fortfarande håller på att skapas kommer automatiskt få det nya utseendet.} other {# videor som fortfarande håller på att skapas kommer automatiskt få det nya utseendet.}}",
+    "rerenderAll": "{count, plural, one {Rendera om den nu} other {Rendera om alla #}}",
+    "rerenderAllFailed": "Det gick inte att starta omrendering",
+    "rerenderAllSomeFailed": "{count, plural, one {# video kunde inte renderas om} other {# videor kunde inte renderas om}}",
+    "rerenderAllStarted": "{count, plural, one {Renderar om # video med ditt nya tema. Det tar cirka 10–15 minuter; du kan följa förloppet på spåret.} other {Renderar om # videor med ditt nya tema. Varje video tar cirka 10–15 minuter; du kan följa förloppet på respektive spår.}}",
+    "rerenderAllStarting": "Startar…",
+    "savedBodyInProgress": "Nya videor, och videor som fortfarande håller på att skapas, kommer att använda ditt uppdaterade tema."
   },
   "stalledDownload": {
     "actionFailedDesc": "Försök igen om en stund.",

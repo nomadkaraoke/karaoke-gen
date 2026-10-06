@@ -457,6 +457,13 @@ def edit_completed_track(
         for key in list(file_urls.get('screens', {}).keys()):
             update_payload[f"file_urls.screens.{key}"] = DELETE_FIELD
 
+    # Tenant track made with an older theme: the edited version uses the current one.
+    try:
+        from backend.services.theme_change_service import edit_theme_update
+        update_payload.update(edit_theme_update(job, screens_regenerating=metadata_updated))
+    except Exception as e:
+        logger.warning(f"Couldn't apply the current theme to edited job {job_id}: {e}")
+
     # Add timeline event with structured metadata
     edit_number = (job.edit_count if hasattr(job, 'edit_count') else 0) + 1
     timeline_event = {
@@ -2091,6 +2098,7 @@ async def retry_job(
                 await ThemeRerenderService(job_manager).start(
                     job, theme_id=theme_rerender['theme_id'],
                     requested_by=auth_result.user_email or "unknown",
+                    notify_customer=theme_rerender.get('notify_customer', True),
                 )
             except RerenderError as e:
                 raise HTTPException(status_code=e.status_code, detail=str(e))

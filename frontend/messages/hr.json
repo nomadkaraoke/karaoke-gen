@@ -764,7 +764,9 @@
     "regenerateStarted": "Ponovno generiramo tvoj video. Poslat ćemo ti e-mail kada bude spreman.",
     "regenerateTime": "To obično traje 10–30 minuta. Poslat ćemo ti e-mail kada bude spreman.",
     "regenerateTitle": "Želiš li ponovno generirati ovaj video?",
-    "regenerateTooltip": "Radi uštede prostora, starije pjesme zadržavaju samo 720p video i karaoke pakete. Ponovno generiraj ostale formate."
+    "regenerateTooltip": "Radi uštede prostora, starije pjesme zadržavaju samo 720p video i karaoke pakete. Ponovno generiraj ostale formate.",
+    "outdatedTheme": "Starija tema",
+    "outdatedThemeTooltip": "Ovaj je videozapis izrađen prije tvoje posljednje promjene teme. Ponovno ga renderiraj kako bi ažurirao njegov izgled."
   },
   "themeSelector": {
     "videoTheme": "Video tema",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Izravno uredi bilo koju postavku teme. Promjene se provjeravaju prilikom spremanja.",
     "advancedJson": "Cjeloviti JSON teme",
-    "appliesToNewJobs": "Spremljene promjene primjenjuju se na videozapise koje ubuduće izradiš.",
     "artistColour": "Boja imena izvođača",
     "artistName": "Ime izvođača",
     "background": "Pozadina",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Naslov pjesme",
     "save": "Spremi temu",
     "saveFailed": "Spremanje tvoje teme nije uspjelo",
-    "savedBody": "Novi videozapisi koristit će tvoju ažuriranu temu.",
     "savedTitle": "Tema je spremljena",
     "solidColour": "Puna boja (bez slike)",
     "sungColour": "Boja otpjevanog teksta",
@@ -2033,7 +2033,16 @@
     "close": "Zatvori",
     "saving": "Spremanje…",
     "songTitle": "Naslov pjesme",
-    "rerenderHint": "Za ažuriranje pjesme koju si već izradio, upotrijebi »Ponovno renderiraj« na njezinoj kartici."
+    "appliesToInProgress": "Spremljene promjene primjenjuju se na nove videozapise i na videozapise koji se još uvijek izrađuju.",
+    "finishedKeepOldLook": "Dovršeni videozapisi zadržavaju stari izgled sve dok ih ponovno ne renderiraš.",
+    "outdatedFinished": "{count, plural, one {# dovršeni videozapis još uvijek ima stari izgled.} few {# dovršena videozapisa još uvijek imaju stari izgled.} other {# dovršenih videozapisa još uvijek ima stari izgled.}}",
+    "refreshedInProgress": "{count, plural, one {# videozapis koji se još izrađuje automatski će koristiti novi izgled.} few {# videozapisa koji se još izrađuju automatski će koristiti novi izgled.} other {# videozapisa koji se još izrađuju automatski će koristiti novi izgled.}}",
+    "rerenderAll": "{count, plural, one {Ponovno ga renderiraj sada} few {Ponovno renderiraj sva #} other {Ponovno renderiraj svih #}}",
+    "rerenderAllFailed": "Pokretanje ponovnog renderiranja nije uspjelo",
+    "rerenderAllSomeFailed": "{count, plural, one {# videozapis nije se mogao ponovno renderirati} few {# videozapisa nisu se mogla ponovno renderirati} other {# videozapisa nije se moglo ponovno renderirati}}",
+    "rerenderAllStarted": "{count, plural, one {Ponovno renderiranje # videozapisa s tvojom novom temom. Traje oko 10–15 minuta; napredak možeš pratiti na pjesmi.} few {Ponovno renderiranje # videozapisa s tvojom novom temom. Svaki traje oko 10–15 minuta; napredak možeš pratiti na svakoj pjesmi.} other {Ponovno renderiranje # videozapisa s tvojom novom temom. Svaki traje oko 10–15 minuta; napredak možeš pratiti na svakoj pjesmi.}}",
+    "rerenderAllStarting": "Pokretanje…",
+    "savedBodyInProgress": "Novi videozapisi i videozapisi koji se još izrađuju koristit će tvoju ažuriranu temu."
   },
   "stalledDownload": {
     "actionFailedDesc": "Pokušaj ponovno za trenutak.",

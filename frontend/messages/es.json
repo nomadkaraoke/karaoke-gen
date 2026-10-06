@@ -764,7 +764,9 @@
     "regenerateStarted": "Regenerando tu video. Te enviaremos un correo electrónico cuando esté listo.",
     "regenerateTime": "Suele tardar entre 10 y 30 minutos. Te enviaremos un correo electrónico cuando esté listo.",
     "regenerateTitle": "¿Regenerar este video?",
-    "regenerateTooltip": "Para ahorrar espacio, las pistas más antiguas solo conservan el video en 720p y los paquetes de karaoke. Regenera los demás formatos."
+    "regenerateTooltip": "Para ahorrar espacio, las pistas más antiguas solo conservan el video en 720p y los paquetes de karaoke. Regenera los demás formatos.",
+    "outdatedTheme": "Tema anterior",
+    "outdatedThemeTooltip": "Este video se creó antes de tu último cambio de tema. Vuelve a renderizarlo para actualizar su aspecto."
   },
   "themeSelector": {
     "videoTheme": "Tema de video",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Edita cualquier ajuste del tema directamente. Los cambios se comprueban al guardar.",
     "advancedJson": "JSON completo del tema",
-    "appliesToNewJobs": "Los cambios guardados se aplican a los videos que crees a partir de ahora.",
     "artistColour": "Color del nombre del artista",
     "artistName": "Nombre del artista",
     "background": "Fondo",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Título de la canción",
     "save": "Guardar tema",
     "saveFailed": "No se pudo guardar tu tema",
-    "savedBody": "Los nuevos videos usarán tu tema actualizado.",
     "savedTitle": "Tema guardado",
     "solidColour": "Color sólido (sin imagen)",
     "sungColour": "Color de las letras cantadas",
@@ -2033,7 +2033,16 @@
     "close": "Cerrar",
     "saving": "Guardando…",
     "songTitle": "Título de la canción",
-    "rerenderHint": "Para actualizar una pista que ya creaste, usa Volver a renderizar en su tarjeta."
+    "appliesToInProgress": "Los cambios guardados se aplican a los videos nuevos y a los videos que aún se están creando.",
+    "finishedKeepOldLook": "Los videos finalizados mantienen su aspecto anterior hasta que los vuelvas a renderizar.",
+    "outdatedFinished": "{count, plural, one {# video finalizado todavía tiene el aspecto anterior.} other {# videos finalizados todavía tienen el aspecto anterior.}}",
+    "refreshedInProgress": "{count, plural, one {# video que aún se está creando usará el aspecto nuevo automáticamente.} other {# videos que aún se están creando usarán el aspecto nuevo automáticamente.}}",
+    "rerenderAll": "{count, plural, one {Volver a renderizarlo ahora} other {Volver a renderizar los #}}",
+    "rerenderAllFailed": "No se pudo iniciar el nuevo renderizado",
+    "rerenderAllSomeFailed": "{count, plural, one {No se pudo volver a renderizar # video} other {No se pudieron volver a renderizar # videos}}",
+    "rerenderAllStarted": "{count, plural, one {Renderizando # video con tu nuevo tema. Tarda unos 10-15 minutos; puedes seguir su progreso en la pista.} other {Renderizando # videos con tu nuevo tema. Cada uno tarda unos 10-15 minutos; puedes seguir su progreso en cada pista.}}",
+    "rerenderAllStarting": "Iniciando…",
+    "savedBodyInProgress": "Los videos nuevos y los videos que aún se están creando usarán tu tema actualizado."
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, inténtalo de nuevo en un momento.",

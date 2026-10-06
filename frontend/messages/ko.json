@@ -764,7 +764,9 @@
     "regenerateStarted": "동영상을 다시 생성하고 있습니다. 준비되면 이메일로 알려드릴게요.",
     "regenerateTime": "보통 10~30분 정도 걸립니다. 준비되면 이메일로 알려드릴게요.",
     "regenerateTitle": "이 동영상을 다시 생성할까요?",
-    "regenerateTooltip": "저장 공간을 절약하기 위해 이전 트랙은 720p 동영상과 노래방 패키지만 보관합니다. 다른 포맷을 다시 생성해 보세요."
+    "regenerateTooltip": "저장 공간을 절약하기 위해 이전 트랙은 720p 동영상과 노래방 패키지만 보관합니다. 다른 포맷을 다시 생성해 보세요.",
+    "outdatedTheme": "이전 테마",
+    "outdatedThemeTooltip": "이 비디오는 최신 테마 변경 전에 제작되었습니다. 새로운 디자인을 적용하려면 다시 렌더링해 주세요."
   },
   "themeSelector": {
     "videoTheme": "비디오 테마",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "테마 설정을 직접 편집할 수 있습니다. 변경 사항은 저장할 때 확인됩니다.",
     "advancedJson": "전체 테마 JSON",
-    "appliesToNewJobs": "저장된 변경 사항은 앞으로 생성되는 동영상에 적용됩니다.",
     "artistColour": "아티스트 이름 색상",
     "artistName": "아티스트 이름",
     "background": "배경",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "곡 제목",
     "save": "테마 저장",
     "saveFailed": "테마를 저장하지 못했습니다",
-    "savedBody": "새 동영상에 업데이트된 테마가 적용됩니다.",
     "savedTitle": "테마 저장 완료",
     "solidColour": "단색 (이미지 없음)",
     "sungColour": "부른 가사 색상",
@@ -2033,7 +2033,16 @@
     "close": "닫기",
     "saving": "저장 중…",
     "songTitle": "노래 제목",
-    "rerenderHint": "이미 제작한 트랙을 업데이트하려면 해당 카드에서 '재렌더링'을 이용하세요."
+    "appliesToInProgress": "저장된 변경 사항은 새 비디오와 현재 제작 중인 비디오에 적용됩니다.",
+    "finishedKeepOldLook": "완료된 비디오는 다시 렌더링하기 전까지 이전 디자인이 유지됩니다.",
+    "outdatedFinished": "{count, plural, one {완료된 비디오 #개에 아직 이전 디자인이 적용되어 있습니다.} other {완료된 비디오 #개에 아직 이전 디자인이 적용되어 있습니다.}}",
+    "refreshedInProgress": "{count, plural, one {현재 제작 중인 비디오 #개에 새 디자인이 자동으로 적용됩니다.} other {현재 제작 중인 비디오 #개에 새 디자인이 자동으로 적용됩니다.}}",
+    "rerenderAll": "{count, plural, one {지금 다시 렌더링하기} other {#개 모두 다시 렌더링}}",
+    "rerenderAllFailed": "다시 렌더링을 시작하지 못했습니다",
+    "rerenderAllSomeFailed": "{count, plural, one {비디오 #개를 다시 렌더링하지 못했습니다} other {비디오 #개를 다시 렌더링하지 못했습니다}}",
+    "rerenderAllStarted": "{count, plural, one {새 테마로 비디오 #개를 다시 렌더링하는 중입니다. 약 10~15분 정도 걸리며, 트랙에서 진행 상황을 확인하실 수 있습니다.} other {새 테마로 비디오 #개를 다시 렌더링하는 중입니다. 각각 약 10~15분 정도 걸리며, 각 트랙에서 진행 상황을 확인하실 수 있습니다.}}",
+    "rerenderAllStarting": "시작하는 중…",
+    "savedBodyInProgress": "새 비디오와 현재 제작 중인 비디오에 업데이트된 테마가 적용됩니다."
   },
   "stalledDownload": {
     "actionFailedDesc": "잠시 후 다시 시도해 주세요.",

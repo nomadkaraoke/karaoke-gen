@@ -764,7 +764,9 @@
     "regenerateStarted": "Videotasi luodaan uudelleen. Saat sähköpostia, kun se on valmis.",
     "regenerateTime": "Tähän menee yleensä 10–30 minuuttia. Saat sähköpostia, kun se on valmis.",
     "regenerateTitle": "Luodaanko tämä video uudelleen?",
-    "regenerateTooltip": "Tilan säästämiseksi vanhemmista kappaleista säilytetään vain 720p-video ja karaokepaketit. Luo muut tiedostomuodot uudelleen."
+    "regenerateTooltip": "Tilan säästämiseksi vanhemmista kappaleista säilytetään vain 720p-video ja karaokepaketit. Luo muut tiedostomuodot uudelleen.",
+    "outdatedTheme": "Vanhempi teema",
+    "outdatedThemeTooltip": "Tämä video on luotu ennen viimeisintä teemamuutostasi. Renderöi se uudelleen päivittääksesi sen ulkoasun."
   },
   "themeSelector": {
     "videoTheme": "Videoteema",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Muokkaa mitä tahansa teema-asetusta suoraan. Muutokset tarkistetaan tallentaessasi.",
     "advancedJson": "Koko teeman JSON",
-    "appliesToNewJobs": "Tallennetut muutokset koskevat videoita, joita luot tästä eteenpäin.",
     "artistColour": "Esittäjän nimen väri",
     "artistName": "Esittäjän nimi",
     "background": "Tausta",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Kappaleen nimi",
     "save": "Tallenna teema",
     "saveFailed": "Teemasi tallentaminen epäonnistui",
-    "savedBody": "Uudet videot käyttävät päivitettyä teemaasi.",
     "savedTitle": "Teema tallennettu",
     "solidColour": "Yksivärinen (ei kuvaa)",
     "sungColour": "Laulettujen sanoitusten väri",
@@ -2033,7 +2033,16 @@
     "close": "Sulje",
     "saving": "Tallennetaan…",
     "songTitle": "Kappaleen nimi",
-    "rerenderHint": "Jos haluat päivittää jo tekemäsi kappaleen, käytä sen kortissa olevaa Renderöi uudelleen -toimintoa."
+    "appliesToInProgress": "Tallennetut muutokset koskevat uusia videoita sekä tekeillä olevia videoita.",
+    "finishedKeepOldLook": "Valmiit videot säilyttävät vanhan ulkoasunsa, kunnes renderöit ne uudelleen.",
+    "outdatedFinished": "{count, plural, one {# valmiissa videossa on vielä vanha ulkoasu.} other {# valmiissa videossa on vielä vanha ulkoasu.}}",
+    "refreshedInProgress": "{count, plural, one {# tekeillä oleva video käyttää uutta ulkoasua automaattisesti.} other {# tekeillä olevaa videota käyttää uutta ulkoasua automaattisesti.}}",
+    "rerenderAll": "{count, plural, one {Renderöi se uudelleen nyt} other {Renderöi kaikki # uudelleen}}",
+    "rerenderAllFailed": "Uudelleenrenderöintiä ei voitu aloittaa",
+    "rerenderAllSomeFailed": "{count, plural, one {# videota ei voitu renderöidä uudelleen} other {# videota ei voitu renderöidä uudelleen}}",
+    "rerenderAllStarted": "{count, plural, one {Renderöidään # video uudelleen uudella teemallasi. Siinä kestää noin 10–15 minuuttia, ja voit seurata edistymistä kappaleen tiedoissa.} other {Renderöidään # videota uudelleen uudella teemallasi. Kussakin kestää noin 10–15 minuuttia, ja voit seurata edistymistä kunkin kappaleen tiedoissa.}}",
+    "rerenderAllStarting": "Aloitetaan…",
+    "savedBodyInProgress": "Uudet ja tekeillä olevat videot käyttävät päivitettyä teemaasi."
   },
   "stalledDownload": {
     "actionFailedDesc": "Yritä hetken kuluttua uudelleen.",

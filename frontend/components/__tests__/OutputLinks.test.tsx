@@ -40,6 +40,9 @@ jest.mock('@/lib/api', () => ({
     sendCompletionEmail: jest.fn(),
     rerenderJob: jest.fn(() => Promise.resolve({ status: 'processing' })),
   },
+  tenantThemeApi: {
+    outdatedJobs: jest.fn(() => Promise.resolve({ theme_updated_at: null, job_ids: [] })),
+  },
 }))
 
 describe('OutputLinks', () => {
@@ -441,6 +444,57 @@ describe('OutputLinks', () => {
 
       await waitFor(() => expect(api.rerenderWithCurrentTheme).toHaveBeenCalledWith('test-123'))
       await waitFor(() => expect(onJobUpdated).toHaveBeenCalled())
+    })
+  })
+
+  describe('theme changed since a portal track was made', () => {
+    const tenantJob: Job = { ...baseJob, state_data: {} }
+
+    beforeEach(() => {
+      require('@/lib/tenant-theme-outdated').resetOutdatedThemeJobs()
+      const { useTenant } = require('@/lib/tenant')
+      useTenant.mockReturnValue({ tenantId: 'randy-vild', features: { youtube_upload: false, dropbox_upload: false } })
+    })
+
+    it('admins see one Re-render on portal tracks, not the theme one plus the admin one', () => {
+      const { useAuth } = require('@/lib/auth')
+      useAuth.mockReturnValue({ user: { role: 'admin' } })
+      render(<OutputLinks job={tenantJob} />)
+      expect(screen.getAllByRole('button', { name: /Re-render/ })).toHaveLength(1)
+      expect(screen.getByTestId('rerender-button')).toBeInTheDocument()
+      expect(screen.queryByTestId('admin-rerender-button')).not.toBeInTheDocument()
+    })
+
+    it('flags outdated tracks and clears the flag once a re-render starts', async () => {
+      const { tenantThemeApi, api } = require('@/lib/api')
+      tenantThemeApi.outdatedJobs.mockResolvedValueOnce({ theme_updated_at: '2026-10-06T14:35:00Z', job_ids: ['test-123'] })
+      render(<OutputLinks job={tenantJob} />)
+
+      expect(await screen.findByTestId('outdated-theme-badge')).toHaveTextContent('Older theme')
+      expect(screen.getByTestId('rerender-button')).toHaveAttribute(
+        'title', 'This video was made before your latest theme change. Re-render it to update its look.')
+
+      fireEvent.click(screen.getByTestId('rerender-button'))
+      const buttons = screen.getAllByRole('button', { name: 'Re-render' })
+      fireEvent.click(buttons[buttons.length - 1])
+      await waitFor(() => expect(api.rerenderWithCurrentTheme).toHaveBeenCalledWith('test-123'))
+      await waitFor(() => expect(screen.queryByTestId('outdated-theme-badge')).not.toBeInTheDocument())
+    })
+
+    it('fetches the outdated list once for all cards', async () => {
+      const { tenantThemeApi } = require('@/lib/api')
+      tenantThemeApi.outdatedJobs.mockClear()
+      render(<><OutputLinks job={tenantJob} /><OutputLinks job={{ ...tenantJob, job_id: 'other' }} /></>)
+      await waitFor(() => expect(tenantThemeApi.outdatedJobs).toHaveBeenCalledTimes(1))
+    })
+
+    it('does not fetch outside tenant portals', () => {
+      const { useTenant } = require('@/lib/tenant')
+      useTenant.mockReturnValue({ tenantId: null, features: { youtube_upload: true, dropbox_upload: true } })
+      const { tenantThemeApi } = require('@/lib/api')
+      tenantThemeApi.outdatedJobs.mockClear()
+      render(<OutputLinks job={tenantJob} />)
+      expect(tenantThemeApi.outdatedJobs).not.toHaveBeenCalled()
     })
   })
 

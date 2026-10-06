@@ -204,11 +204,15 @@ def suppress_customer_notifications(job) -> bool:
     """True if this run's customer-facing notifications must be skipped.
 
     Only an active admin re-render the admin didn't opt into announcing
-    suppresses them; normal jobs and the tenant theme re-render always notify.
+    suppresses them; normal jobs and a single tenant theme re-render notify.
     """
     marker = active_admin_rerender(job)
     if marker:
         return not marker.get("notify_customer", False)
+    # A bulk "re-render all outdated tracks" theme re-render is started quietly.
+    theme_marker = (getattr(job, "state_data", None) or {}).get("theme_rerender") or {}
+    if theme_marker.get("notify_customer") is False:
+        return True
     # A storage-retention regenerate notifies unless it was started quietly.
     from backend.services.regenerate_service import regenerate_suppresses_notifications
     return regenerate_suppresses_notifications(job)

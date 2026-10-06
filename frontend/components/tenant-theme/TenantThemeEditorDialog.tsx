@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
-import { AlertTriangle, ImageIcon, Loader2, Palette, Upload } from "lucide-react"
+import { AlertTriangle, CheckCircle2, ImageIcon, Loader2, Palette, RefreshCw, Upload } from "lucide-react"
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { tenantThemeApi, type ThemePreviewImages, type ThemeStyleParams } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
+import { clearOutdatedThemeJobs, setOutdatedThemeJobs } from "@/lib/tenant-theme-outdated"
 import {
   KARAOKE_DEFAULTS, formatRegion, getField, hexToRgba, parseRegion, rgbaToHex, setField, stableStringify,
   type Region,
@@ -96,6 +97,10 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [uploading, setUploading] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // What the last save did to existing tracks (shown until the next save).
+  const [saveResult, setSaveResult] = useState<{ refreshed: number; outdated: string[] } | null>(null)
+  const [rerenderingAll, setRerenderingAll] = useState(false)
+  const [rerenderStarted, setRerenderStarted] = useState<number | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   // Load the current theme each time the dialog opens.
@@ -220,11 +225,35 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
       )
       setImages(data.images)
       setFonts(data.fonts)
-      toast({ title: t("savedTitle"), description: t("savedBody") })
+      setSaveResult({ refreshed: data.refreshed_jobs ?? 0, outdated: data.outdated_job_ids ?? [] })
+      setRerenderStarted(null)
+      setOutdatedThemeJobs(data.outdated_job_ids ?? [])
+      toast({ title: t("savedTitle"), description: t("savedBodyInProgress") })
     } catch (err: any) {
       toast({ title: t("saveFailed"), description: err?.message, variant: "destructive" })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleRerenderAll = async () => {
+    setRerenderingAll(true)
+    try {
+      const result = await tenantThemeApi.rerenderOutdated()
+      clearOutdatedThemeJobs(result.started)
+      setRerenderStarted(result.started.length)
+      setSaveResult((r) => r && { ...r, outdated: Object.keys(result.failed) })
+      if (Object.keys(result.failed).length) {
+        toast({
+          title: t("rerenderAllSomeFailed", { count: Object.keys(result.failed).length }),
+          description: Object.values(result.failed)[0],
+          variant: "destructive",
+        })
+      }
+    } catch (err: any) {
+      toast({ title: t("rerenderAllFailed"), description: err?.message, variant: "destructive" })
+    } finally {
+      setRerenderingAll(false)
     }
   }
 
@@ -495,8 +524,38 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
           </div>
         )}
 
+        {saveResult && (saveResult.refreshed > 0 || saveResult.outdated.length > 0 || rerenderStarted !== null) && (
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm space-y-2" data-testid="theme-save-result">
+            {saveResult.refreshed > 0 && (
+              <p className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-green-500" />
+                {t("refreshedInProgress", { count: saveResult.refreshed })}
+              </p>
+            )}
+            {rerenderStarted !== null && rerenderStarted > 0 && (
+              <p className="flex items-start gap-2" data-testid="theme-rerender-started">
+                <RefreshCw className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                {t("rerenderAllStarted", { count: rerenderStarted })}
+              </p>
+            )}
+            {saveResult.outdated.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-500" />
+                  {t("outdatedFinished", { count: saveResult.outdated.length })}
+                </p>
+                <Button size="sm" onClick={handleRerenderAll} disabled={rerenderingAll} data-testid="theme-rerender-all">
+                  {rerenderingAll
+                    ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t("rerenderAllStarting")}</>
+                    : t("rerenderAll", { count: saveResult.outdated.length })}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <DialogFooter className="flex items-center gap-2 sm:justify-between">
-          <p className="text-xs text-muted-foreground">{t("appliesToNewJobs")} {t("rerenderHint")}</p>
+          <p className="text-xs text-muted-foreground">{t("appliesToInProgress")} {t("finishedKeepOldLook")}</p>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => { if (saved) { setDraft(saved); setJsonText(JSON.stringify(saved, null, 2)); setJsonError(null) } }}
               disabled={!dirty || saving}>

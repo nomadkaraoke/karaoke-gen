@@ -764,7 +764,9 @@
     "regenerateStarted": "Se regenerează videoclipul tău. Îți vom trimite un e-mail când este gata.",
     "regenerateTime": "Durează de obicei între 10 și 30 de minute. Îți vom trimite un e-mail când este gata.",
     "regenerateTitle": "Vrei să regenerezi acest videoclip?",
-    "regenerateTooltip": "Pentru a economisi spațiu, piesele mai vechi păstrează doar videoclipul 720p și pachetele karaoke. Regenerează celelalte formate."
+    "regenerateTooltip": "Pentru a economisi spațiu, piesele mai vechi păstrează doar videoclipul 720p și pachetele karaoke. Regenerează celelalte formate.",
+    "outdatedTheme": "Temă mai veche",
+    "outdatedThemeTooltip": "Acest videoclip a fost creat înainte de ultima ta schimbare de temă. Randează-l din nou pentru a-i actualiza aspectul."
   },
   "themeSelector": {
     "videoTheme": "Temă video",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Editează direct orice setare a temei. Modificările sunt verificate când salvezi.",
     "advancedJson": "JSON complet al temei",
-    "appliesToNewJobs": "Modificările salvate se aplică videoclipurilor pe care le creezi de acum înainte.",
     "artistColour": "Culoare nume artist",
     "artistName": "Nume artist",
     "background": "Fundal",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Titlu melodie",
     "save": "Salvează tema",
     "saveFailed": "Nu s-a putut salva tema ta",
-    "savedBody": "Videoclipurile noi vor folosi tema ta actualizată.",
     "savedTitle": "Temă salvată",
     "solidColour": "Culoare uniformă (fără imagine)",
     "sungColour": "Culoare versuri cântate",
@@ -2033,7 +2033,16 @@
     "close": "Închide",
     "saving": "Se salvează…",
     "songTitle": "Titlul melodiei",
-    "rerenderHint": "Pentru a actualiza o piesă pe care ai creat-o deja, folosește „Randează din nou” pe cardul acesteia."
+    "appliesToInProgress": "Modificările salvate se aplică videoclipurilor noi și celor care sunt încă în curs de creare.",
+    "finishedKeepOldLook": "Videoclipurile finalizate își păstrează aspectul vechi până când le randezi din nou.",
+    "outdatedFinished": "{count, plural, one {# videoclip finalizat are încă aspectul vechi.} few {# videoclipuri finalizate au încă aspectul vechi.} other {# de videoclipuri finalizate au încă aspectul vechi.}}",
+    "refreshedInProgress": "{count, plural, one {# videoclip aflat încă în curs de creare va folosi automat noul aspect.} few {# videoclipuri aflate încă în curs de creare vor folosi automat noul aspect.} other {# de videoclipuri aflate încă în curs de creare vor folosi automat noul aspect.}}",
+    "rerenderAll": "{count, plural, one {Randează-l din nou acum} few {Randează-le din nou pe toate cele #} other {Randează-le din nou pe toate cele #}}",
+    "rerenderAllFailed": "Nu s-a putut porni rerandarea",
+    "rerenderAllSomeFailed": "{count, plural, one {# videoclip nu a putut fi rerandat} few {# videoclipuri nu au putut fi rerandate} other {# de videoclipuri nu au putut fi rerandate}}",
+    "rerenderAllStarted": "{count, plural, one {Se rerandează # videoclip cu noua ta temă. Durează aproximativ 10-15 minute; îi poți urmări progresul pe piesă.} few {Se rerandează # videoclipuri cu noua ta temă. Fiecare durează aproximativ 10-15 minute; le poți urmări progresul pe fiecare piesă.} other {Se rerandează # de videoclipuri cu noua ta temă. Fiecare durează aproximativ 10-15 minute; le poți urmări progresul pe fiecare piesă.}}",
+    "rerenderAllStarting": "Se pornește…",
+    "savedBodyInProgress": "Videoclipurile noi și cele aflate încă în curs de creare vor folosi tema ta actualizată."
   },
   "stalledDownload": {
     "actionFailedDesc": "Te rugăm să încerci din nou peste câteva momente.",

@@ -12,6 +12,7 @@ const get = jest.fn()
 const preview = jest.fn()
 const save = jest.fn()
 const uploadAsset = jest.fn()
+const rerenderOutdated = jest.fn()
 const toast = jest.fn()
 
 jest.mock("@/lib/api", () => ({
@@ -20,6 +21,8 @@ jest.mock("@/lib/api", () => ({
     preview: (...a: unknown[]) => preview(...a),
     save: (...a: unknown[]) => save(...a),
     uploadAsset: (...a: unknown[]) => uploadAsset(...a),
+    rerenderOutdated: (...a: unknown[]) => rerenderOutdated(...a),
+    outdatedJobs: async () => ({ theme_updated_at: null, job_ids: [] }),
   },
 }))
 jest.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast }) }))
@@ -173,4 +176,44 @@ it("treats invalid Advanced JSON as unsaved work when closing", async () => {
   expect(confirm).toHaveBeenCalled()
   expect(onClose).not.toHaveBeenCalled()
   confirm.mockRestore()
+})
+
+describe("after saving: what happens to existing tracks", () => {
+  async function editAndSave() {
+    await openEditor()
+    fireEvent.click(screen.getByRole("tab", { name: "tabs.endScreen" }))
+    fireEvent.change(screen.getByLabelText("closingMessage"), { target: { value: "BYE" } })
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "save" })) })
+  }
+
+  it("says in-progress tracks were updated and offers to re-render outdated finished ones", async () => {
+    save.mockImplementation(async (sp) => ({ ...DATA, style_params: sp, refreshed_jobs: 3, outdated_job_ids: ["a", "b"] }))
+    rerenderOutdated.mockResolvedValue({ started: ["a", "b"], failed: {} })
+    await editAndSave()
+
+    expect(screen.getByText("refreshedInProgress(3)")).toBeInTheDocument()
+    expect(screen.getByText("outdatedFinished(2)")).toBeInTheDocument()
+    await act(async () => { fireEvent.click(screen.getByTestId("theme-rerender-all")) })
+
+    expect(rerenderOutdated).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId("theme-rerender-started")).toHaveTextContent("rerenderAllStarted(2)")
+    expect(screen.queryByTestId("theme-rerender-all")).not.toBeInTheDocument()
+  })
+
+  it("keeps the offer for tracks that couldn't be re-rendered", async () => {
+    save.mockImplementation(async (sp) => ({ ...DATA, style_params: sp, refreshed_jobs: 0, outdated_job_ids: ["a", "b"] }))
+    rerenderOutdated.mockResolvedValue({ started: ["a"], failed: { b: "published" } })
+    await editAndSave()
+    await act(async () => { fireEvent.click(screen.getByTestId("theme-rerender-all")) })
+
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "rerenderAllSomeFailed(1)", variant: "destructive" }))
+    expect(screen.getByText("outdatedFinished(1)")).toBeInTheDocument()
+    expect(screen.queryByText("refreshedInProgress(0)")).not.toBeInTheDocument()
+  })
+
+  it("shows nothing extra when no existing track was affected", async () => {
+    save.mockImplementation(async (sp) => ({ ...DATA, style_params: sp, refreshed_jobs: 0, outdated_job_ids: [] }))
+    await editAndSave()
+    expect(screen.queryByTestId("theme-save-result")).not.toBeInTheDocument()
+  })
 })

@@ -291,3 +291,30 @@ async def test_worker_skips_job_already_rendering():
     mock_job_manager.transition_to_state.assert_not_called()
     mock_job_manager.fail_job.assert_not_called()
     assert worker_registry.get_active_workers() == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("diverted, error, expected", [(True, None, True), (False, RuntimeError("x"), False)])
+async def test_worker_hands_theme_stale_job_to_screens_worker(diverted, error, expected):
+    """Theme edited after the screens were made: the worker diverts to the screens
+    worker (which re-triggers it) instead of rendering; a failed hand-off fails the job."""
+    from backend.workers import render_video_worker as rvw
+
+    mock_job_manager = MagicMock()
+    mock_job_manager.get_job.return_value = _build_minimal_job(JobStatus.REVIEW_COMPLETE)
+    divert = AsyncMock(return_value=diverted, side_effect=error)
+
+    with patch.object(rvw, "JobManager", return_value=mock_job_manager), \
+         patch.object(rvw, "StorageService"), \
+         patch.object(rvw, "get_settings"), \
+         patch.object(rvw, "create_job_logger", return_value=MagicMock()), \
+         patch.object(rvw, "setup_job_logging", return_value=MagicMock()), \
+         patch("backend.services.theme_change_service.divert_for_stale_screens", divert), \
+         patch.object(rvw, "get_encoding_service") as enc:
+        result = await rvw.process_render_video("stale-job")
+
+    assert result is expected
+    enc.assert_not_called()  # never started rendering
+    mock_job_manager.transition_to_state.assert_not_called()
+    assert mock_job_manager.mark_job_failed.called is (error is not None)
+    assert worker_registry.get_active_workers() == {}

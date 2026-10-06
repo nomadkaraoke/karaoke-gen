@@ -764,7 +764,9 @@
     "regenerateStarted": "Muling binubuo ang iyong video. Mag-e-email kami sa iyo kapag handa na ito.",
     "regenerateTime": "Karaniwan itong tumatagal nang 10–30 minuto. Mag-e-email kami sa iyo kapag handa na ito.",
     "regenerateTitle": "Muling buuin ang video na ito?",
-    "regenerateTooltip": "Para makatipid sa espasyo, ang 720p na video at mga karaoke package lang ang itinatago sa mga lumang track. Muling buuin ang iba pang mga format."
+    "regenerateTooltip": "Para makatipid sa espasyo, ang 720p na video at mga karaoke package lang ang itinatago sa mga lumang track. Muling buuin ang iba pang mga format.",
+    "outdatedTheme": "Lumang tema",
+    "outdatedThemeTooltip": "Ginawa ang video na ito bago ang pinakabagong pagbabago sa iyong tema. I-re-render ito para ma-update ang hitsura nito."
   },
   "themeSelector": {
     "videoTheme": "Video Theme",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Direktang i-edit ang anumang setting ng tema. Sinusuri ang mga pagbabago kapag nag-save ka.",
     "advancedJson": "Buong theme JSON",
-    "appliesToNewJobs": "Maa-apply ang mga na-save na pagbabago sa mga gagawin mong video mula ngayon.",
     "artistColour": "Kulay ng pangalan ng artist",
     "artistName": "Pangalan ng artist",
     "background": "Background",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Pamagat ng Kanta",
     "save": "I-save ang tema",
     "saveFailed": "Hindi ma-save ang iyong tema",
-    "savedBody": "Gagamitin ng mga bagong video ang iyong na-update na tema.",
     "savedTitle": "Nai-save ang tema",
     "solidColour": "Solid na kulay (walang larawan)",
     "sungColour": "Kulay ng nakantang lyrics",
@@ -2033,7 +2033,16 @@
     "close": "Isara",
     "saving": "Sini-save…",
     "songTitle": "Pamagat ng kanta",
-    "rerenderHint": "Para i-update ang isang track na nagawa mo na, gamitin ang I-re-render sa card nito."
+    "appliesToInProgress": "Nalalapat ang mga na-save na pagbabago sa mga bagong video at sa mga ginagawa pa.",
+    "finishedKeepOldLook": "Mananatili ang lumang hitsura ng mga tapos nang video hangga't hindi mo nire-re-render ang mga ito.",
+    "outdatedFinished": "{count, plural, one {# tapos nang video ang may lumang hitsura pa rin.} other {# tapos nang video ang may lumang hitsura pa rin.}}",
+    "refreshedInProgress": "{count, plural, one {Awtomatikong gagamitin ng # video na ginagawa pa ang bagong hitsura.} other {Awtomatikong gagamitin ng # video na ginagawa pa ang bagong hitsura.}}",
+    "rerenderAll": "{count, plural, one {I-re-render ito ngayon} other {I-re-render ang lahat ng #}}",
+    "rerenderAllFailed": "Hindi masimulan ang pag-re-render",
+    "rerenderAllSomeFailed": "{count, plural, one {Hindi ma-re-render ang # video} other {Hindi ma-re-render ang # video}}",
+    "rerenderAllStarted": "{count, plural, one {Nire-re-render ang # video gamit ang bago mong tema. Tumatagal ito nang mga 10-15 minuto; maaari mong subaybayan ang progreso nito sa track.} other {Nire-re-render ang # na video gamit ang bago mong tema. Tumatagal nang mga 10-15 minuto ang bawat isa; maaari mong subaybayan ang progreso ng mga ito sa bawat track.}}",
+    "rerenderAllStarting": "Sinisimulan na…",
+    "savedBodyInProgress": "Gagamitin ng mga bagong video, at ng mga video na ginagawa pa, ang iyong na-update na tema."
   },
   "stalledDownload": {
     "actionFailedDesc": "Pakisubukang muli maya-maya.",

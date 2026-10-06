@@ -764,7 +764,9 @@
     "regenerateStarted": "Đang tạo lại video của bạn. Chúng tôi sẽ gửi email cho bạn khi hoàn tất.",
     "regenerateTime": "Quá trình này thường mất 10–30 phút. Chúng tôi sẽ gửi email cho bạn khi hoàn tất.",
     "regenerateTitle": "Tạo lại video này?",
-    "regenerateTooltip": "Để tiết kiệm dung lượng, các bản nhạc cũ hơn chỉ giữ lại video 720p và các gói karaoke. Tạo lại các định dạng khác."
+    "regenerateTooltip": "Để tiết kiệm dung lượng, các bản nhạc cũ hơn chỉ giữ lại video 720p và các gói karaoke. Tạo lại các định dạng khác.",
+    "outdatedTheme": "Chủ đề cũ hơn",
+    "outdatedThemeTooltip": "Video này được tạo trước lần thay đổi chủ đề gần nhất của bạn. Hãy kết xuất lại để cập nhật giao diện mới."
   },
   "themeSelector": {
     "videoTheme": "Chủ đề video",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Chỉnh sửa trực tiếp bất kỳ cài đặt giao diện nào. Các thay đổi sẽ được kiểm tra khi bạn lưu.",
     "advancedJson": "JSON giao diện đầy đủ",
-    "appliesToNewJobs": "Các thay đổi đã lưu sẽ áp dụng cho các video bạn tạo từ bây giờ.",
     "artistColour": "Màu tên nghệ sĩ",
     "artistName": "Tên nghệ sĩ",
     "background": "Nền",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Tên bài hát",
     "save": "Lưu giao diện",
     "saveFailed": "Không thể lưu giao diện của bạn",
-    "savedBody": "Các video mới sẽ sử dụng giao diện đã cập nhật của bạn.",
     "savedTitle": "Đã lưu giao diện",
     "solidColour": "Màu đơn sắc (không có ảnh)",
     "sungColour": "Màu lời bài hát đã hát",
@@ -2033,7 +2033,16 @@
     "close": "Đóng",
     "saving": "Đang lưu…",
     "songTitle": "Tên bài hát",
-    "rerenderHint": "Để cập nhật bài hát bạn đã tạo, hãy dùng nút Kết xuất lại trên thẻ của bài hát đó."
+    "appliesToInProgress": "Các thay đổi đã lưu sẽ áp dụng cho video mới và các video đang được tạo.",
+    "finishedKeepOldLook": "Các video đã hoàn thành vẫn giữ giao diện cũ cho đến khi bạn kết xuất lại.",
+    "outdatedFinished": "{count, plural, one {# video đã hoàn thành vẫn giữ giao diện cũ.} other {# video đã hoàn thành vẫn giữ giao diện cũ.}}",
+    "refreshedInProgress": "{count, plural, one {# video đang được tạo sẽ tự động áp dụng giao diện mới.} other {# video đang được tạo sẽ tự động áp dụng giao diện mới.}}",
+    "rerenderAll": "{count, plural, one {Kết xuất lại ngay} other {Kết xuất lại cả # video}}",
+    "rerenderAllFailed": "Không thể bắt đầu kết xuất lại",
+    "rerenderAllSomeFailed": "{count, plural, one {Không thể kết xuất lại # video} other {Không thể kết xuất lại # video}}",
+    "rerenderAllStarted": "{count, plural, one {Đang kết xuất lại # video với chủ đề mới của bạn. Quá trình này mất khoảng 10-15 phút; bạn có thể theo dõi tiến trình trên bài hát.} other {Đang kết xuất lại # video với chủ đề mới của bạn. Mỗi video mất khoảng 10-15 phút; bạn có thể theo dõi tiến trình trên từng bài hát.}}",
+    "rerenderAllStarting": "Đang bắt đầu…",
+    "savedBodyInProgress": "Video mới và các video đang được tạo sẽ áp dụng chủ đề mới cập nhật của bạn."
   },
   "stalledDownload": {
     "actionFailedDesc": "Vui lòng thử lại sau giây lát.",

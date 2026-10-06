@@ -764,7 +764,9 @@
     "regenerateStarted": "Je video wordt opnieuw gegenereerd. We sturen je een e-mail zodra deze klaar is.",
     "regenerateTime": "Dit duurt meestal 10–30 minuten. We sturen je een e-mail zodra deze klaar is.",
     "regenerateTitle": "Deze video opnieuw genereren?",
-    "regenerateTooltip": "Om ruimte te besparen, bewaren we van oudere nummers alleen de 720p-video en karaokepakketten. Genereer de overige formaten opnieuw."
+    "regenerateTooltip": "Om ruimte te besparen, bewaren we van oudere nummers alleen de 720p-video en karaokepakketten. Genereer de overige formaten opnieuw.",
+    "outdatedTheme": "Ouder thema",
+    "outdatedThemeTooltip": "Deze video is gemaakt vóór je laatste themawijziging. Render hem opnieuw om de look bij te werken."
   },
   "themeSelector": {
     "videoTheme": "Video Thema",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Bewerk elke thema-instelling rechtstreeks. Wijzigingen worden gecontroleerd wanneer je opslaat.",
     "advancedJson": "Volledige thema-JSON",
-    "appliesToNewJobs": "Opgeslagen wijzigingen zijn van toepassing op video's die je vanaf nu maakt.",
     "artistColour": "Kleur artiestennaam",
     "artistName": "Artiestennaam",
     "background": "Achtergrond",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Songtitel",
     "save": "Thema opslaan",
     "saveFailed": "Kon je thema niet opslaan",
-    "savedBody": "Nieuwe video's gebruiken je bijgewerkte thema.",
     "savedTitle": "Thema opgeslagen",
     "solidColour": "Effen kleur (geen afbeelding)",
     "sungColour": "Kleur gezongen songtekst",
@@ -2033,7 +2033,16 @@
     "close": "Sluiten",
     "saving": "Opslaan…",
     "songTitle": "Titel van het nummer",
-    "rerenderHint": "Om een track die je al hebt gemaakt bij te werken, gebruik je 'Opnieuw renderen' op de bijbehorende kaart."
+    "appliesToInProgress": "Opgeslagen wijzigingen zijn van toepassing op nieuwe video's en video's die nog worden gemaakt.",
+    "finishedKeepOldLook": "Voltooide video's behouden hun oude look totdat je ze opnieuw rendert.",
+    "outdatedFinished": "{count, plural, one {# voltooide video heeft nog de oude look.} other {# voltooide video's hebben nog de oude look.}}",
+    "refreshedInProgress": "{count, plural, one {# video die nog wordt gemaakt, krijgt automatisch de nieuwe look.} other {# video's die nog worden gemaakt, krijgen automatisch de nieuwe look.}}",
+    "rerenderAll": "{count, plural, one {Nu opnieuw renderen} other {Alle # opnieuw renderen}}",
+    "rerenderAllFailed": "Kon het opnieuw renderen niet starten",
+    "rerenderAllSomeFailed": "{count, plural, one {# video kon niet opnieuw worden gerenderd} other {# video's konden niet opnieuw worden gerenderd}}",
+    "rerenderAllStarted": "{count, plural, one {# video wordt opnieuw gerenderd met je nieuwe thema. Dit duurt ongeveer 10-15 minuten; je kunt de voortgang volgen bij het nummer.} other {# video's worden opnieuw gerenderd met je nieuwe thema. Dit duurt per video ongeveer 10-15 minuten; je kunt de voortgang volgen bij elk nummer.}}",
+    "rerenderAllStarting": "Bezig met starten…",
+    "savedBodyInProgress": "Nieuwe video's en video's die nog worden gemaakt, krijgen je bijgewerkte thema."
   },
   "stalledDownload": {
     "actionFailedDesc": "Probeer het over een ogenblik opnieuw.",

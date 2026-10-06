@@ -764,7 +764,9 @@
     "regenerateStarted": "Sedang menjana semula video anda. Kami akan menghantar e-mel kepada anda setelah siap.",
     "regenerateTime": "Ia biasanya mengambil masa 10–30 minit. Kami akan menghantar e-mel kepada anda setelah siap.",
     "regenerateTitle": "Jana semula video ini?",
-    "regenerateTooltip": "Untuk menjimatkan ruang simpanan, trek lama hanya menyimpan video 720p dan pakej karaoke. Jana semula untuk format lain."
+    "regenerateTooltip": "Untuk menjimatkan ruang simpanan, trek lama hanya menyimpan video 720p dan pakej karaoke. Jana semula untuk format lain.",
+    "outdatedTheme": "Tema lama",
+    "outdatedThemeTooltip": "Video ini dibuat sebelum perubahan tema terkini anda. Render semula untuk mengemas kini rupanya."
   },
   "themeSelector": {
     "videoTheme": "Tema Video",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Edit sebarang tetapan tema secara terus. Perubahan akan disemak apabila anda menyimpan.",
     "advancedJson": "JSON tema penuh",
-    "appliesToNewJobs": "Perubahan yang disimpan akan digunakan untuk video yang anda cipta mulai sekarang.",
     "artistColour": "Warna nama artis",
     "artistName": "Nama artis",
     "background": "Latar belakang",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Tajuk Lagu",
     "save": "Simpan tema",
     "saveFailed": "Tidak dapat menyimpan tema anda",
-    "savedBody": "Video baharu akan menggunakan tema anda yang telah dikemas kini.",
     "savedTitle": "Tema berjaya disimpan",
     "solidColour": "Warna padu (tiada imej)",
     "sungColour": "Warna lirik yang dinyanyikan",
@@ -2033,7 +2033,16 @@
     "close": "Tutup",
     "saving": "Menyimpan…",
     "songTitle": "Tajuk lagu",
-    "rerenderHint": "Untuk mengemas kini trek yang telah anda buat, gunakan Render semula pada kadnya."
+    "appliesToInProgress": "Perubahan yang disimpan terpakai pada video baharu dan video yang masih sedang diproses.",
+    "finishedKeepOldLook": "Video yang telah selesai akan mengekalkan rupa lamanya sehingga anda merender semula.",
+    "outdatedFinished": "{count, plural, other {# video yang telah selesai masih menggunakan rupa lama.}}",
+    "refreshedInProgress": "{count, plural, other {# video yang masih sedang diproses akan menggunakan rupa baharu secara automatik.}}",
+    "rerenderAll": "{count, plural, one {Render semula sekarang} other {Render semula kesemua #}}",
+    "rerenderAllFailed": "Tidak dapat memulakan render semula",
+    "rerenderAllSomeFailed": "{count, plural, other {# video tidak dapat dirender semula}}",
+    "rerenderAllStarted": "{count, plural, one {Sedang merender semula # video dengan tema baharu anda. Ia mengambil masa kira-kira 10-15 minit; anda boleh melihat kemajuannya pada trek.} other {Sedang merender semula # video dengan tema baharu anda. Setiap satu mengambil masa kira-kira 10-15 minit; anda boleh melihat kemajuannya pada setiap trek.}}",
+    "rerenderAllStarting": "Memulakan…",
+    "savedBodyInProgress": "Video baharu dan video yang masih sedang diproses akan menggunakan tema anda yang dikemas kini."
   },
   "stalledDownload": {
     "actionFailedDesc": "Sila cuba sebentar lagi.",

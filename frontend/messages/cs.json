@@ -764,7 +764,9 @@
     "regenerateStarted": "Přegenerováváme tvé video. Jakmile bude hotové, pošleme ti e-mail.",
     "regenerateTime": "Obvykle to trvá 10–30 minut. Jakmile bude hotové, pošleme ti e-mail.",
     "regenerateTitle": "Přegenerovat toto video?",
-    "regenerateTooltip": "Abychom šetřili místo, u starších skladeb uchováváme pouze 720p video a karaoke balíčky. Přegeneruj ostatní formáty."
+    "regenerateTooltip": "Abychom šetřili místo, u starších skladeb uchováváme pouze 720p video a karaoke balíčky. Přegeneruj ostatní formáty.",
+    "outdatedTheme": "Starší motiv",
+    "outdatedThemeTooltip": "Toto video bylo vytvořeno před tvou poslední změnou motivu. Pokud chceš aktualizovat jeho vzhled, přerenderuj ho."
   },
   "themeSelector": {
     "videoTheme": "Motiv videa",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Uprav jakékoli nastavení motivu přímo. Změny se zkontrolují při uložení.",
     "advancedJson": "Kompletní JSON motivu",
-    "appliesToNewJobs": "Uložené změny se použijí na videa, která odteď vytvoříš.",
     "artistColour": "Barva jména interpreta",
     "artistName": "Jméno interpreta",
     "background": "Pozadí",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Název skladby",
     "save": "Uložit motiv",
     "saveFailed": "Nepodařilo se uložit motiv",
-    "savedBody": "Nová videa budou používat tvůj aktualizovaný motiv.",
     "savedTitle": "Motiv uložen",
     "solidColour": "Jednolitá barva (bez obrázku)",
     "sungColour": "Barva odzpívaného textu",
@@ -2033,7 +2033,16 @@
     "close": "Zavřít",
     "saving": "Ukládám…",
     "songTitle": "Název písně",
-    "rerenderHint": "Pokud chceš aktualizovat skladbu, kterou už máš hotovou, použij na její kartě možnost Znovu vyrenderovat."
+    "appliesToInProgress": "Uložené změny se projeví u nových videí i u videí, která se právě vytvářejí.",
+    "finishedKeepOldLook": "Dokončená videa si zachovají starý vzhled, dokud je nepřerenderuješ.",
+    "outdatedFinished": "{count, plural, one {# dokončené video má stále starý vzhled.} few {# dokončená videa mají stále starý vzhled.} other {# dokončených videí má stále starý vzhled.}}",
+    "refreshedInProgress": "{count, plural, one {# video, které se právě vytváří, automaticky použije nový vzhled.} few {# videa, která se právě vytvářejí, automaticky použijí nový vzhled.} other {# videí, která se právě vytvářejí, automaticky použije nový vzhled.}}",
+    "rerenderAll": "{count, plural, one {Přerenderovat hned} few {Přerenderovat všechna #} other {Přerenderovat všech #}}",
+    "rerenderAllFailed": "Přerenderování se nepodařilo spustit",
+    "rerenderAllSomeFailed": "{count, plural, one {# video se nepodařilo přerenderovat} few {# videa se nepodařilo přerenderovat} other {# videí se nepodařilo přerenderovat}}",
+    "rerenderAllStarted": "{count, plural, one {Přerenderovává se # video s tvým novým motivem. Trvá to asi 10–15 minut; průběh můžeš sledovat u skladby.} few {Přerenderovávají se # videa s tvým novým motivem. Každé trvá asi 10–15 minut; průběh můžeš sledovat u jednotlivých skladeb.} other {Přerenderovává se # videí s tvým novým motivem. Každé trvá asi 10–15 minut; průběh můžeš sledovat u jednotlivých skladeb.}}",
+    "rerenderAllStarting": "Spouští se…",
+    "savedBodyInProgress": "Nová videa a videa, která se právě vytvářejí, použijí tvůj aktualizovaný motiv."
   },
   "stalledDownload": {
     "actionFailedDesc": "Zkus to prosím za chvilku znovu.",

@@ -764,7 +764,9 @@
     "regenerateStarted": "Gendanner din video. Vi sender dig en e-mail, når den er klar.",
     "regenerateTime": "Det tager normalt 10–30 minutter. Vi sender dig en e-mail, når den er klar.",
     "regenerateTitle": "Vil du gendanne denne video?",
-    "regenerateTooltip": "For at spare plads beholder ældre numre kun 720p-videoen og karaokepakkerne. Gendan de andre formater."
+    "regenerateTooltip": "For at spare plads beholder ældre numre kun 720p-videoen og karaokepakkerne. Gendan de andre formater.",
+    "outdatedTheme": "Ældre tema",
+    "outdatedThemeTooltip": "Denne video blev lavet før din seneste temaændring. Genrender den for at opdatere dens udseende."
   },
   "themeSelector": {
     "videoTheme": "Videotema",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Rediger enhver temaindstilling direkte. Ændringer tjekkes, når du gemmer.",
     "advancedJson": "Fuld tema-JSON",
-    "appliesToNewJobs": "Gemte ændringer gælder for videoer, du opretter fra nu af.",
     "artistColour": "Farve på kunstnernavn",
     "artistName": "Kunstnernavn",
     "background": "Baggrund",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Sangtitel",
     "save": "Gem tema",
     "saveFailed": "Kunne ikke gemme dit tema",
-    "savedBody": "Nye videoer vil bruge dit opdaterede tema.",
     "savedTitle": "Tema gemt",
     "solidColour": "Ensfarvet (intet billede)",
     "sungColour": "Farve på sunget tekst",
@@ -2033,7 +2033,16 @@
     "close": "Luk",
     "saving": "Gemmer…",
     "songTitle": "Sangtitel",
-    "rerenderHint": "For at opdatere et nummer, du allerede har lavet, skal du bruge Render igen på dets kort."
+    "appliesToInProgress": "Gemte ændringer gælder for nye videoer og videoer, der stadig er i gang med at blive lavet.",
+    "finishedKeepOldLook": "Færdige videoer beholder deres gamle udseende, indtil du genrenderer dem.",
+    "outdatedFinished": "{count, plural, one {# færdig video har stadig det gamle udseende.} other {# færdige videoer har stadig det gamle udseende.}}",
+    "refreshedInProgress": "{count, plural, one {# video, der stadig er i gang med at blive lavet, bruger automatisk det nye udseende.} other {# videoer, der stadig er i gang med at blive lavet, bruger automatisk det nye udseende.}}",
+    "rerenderAll": "{count, plural, one {Genrender den nu} other {Genrender alle #}}",
+    "rerenderAllFailed": "Kunne ikke starte genrendering",
+    "rerenderAllSomeFailed": "{count, plural, one {# video kunne ikke genrenderes} other {# videoer kunne ikke genrenderes}}",
+    "rerenderAllStarted": "{count, plural, one {Genrenderer # video med dit nye tema. Det tager ca. 10-15 minutter; du kan følge status på nummeret.} other {Genrenderer # videoer med dit nye tema. Hver video tager ca. 10-15 minutter; du kan følge status på de enkelte numre.}}",
+    "rerenderAllStarting": "Starter…",
+    "savedBodyInProgress": "Nye videoer og videoer, der stadig er i gang med at blive lavet, vil bruge dit opdaterede tema."
   },
   "stalledDownload": {
     "actionFailedDesc": "Prøv igen om et øjeblik.",
