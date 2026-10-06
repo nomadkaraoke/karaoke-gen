@@ -764,7 +764,9 @@
     "regenerateStarted": "S'està regenerant el teu vídeo. T'enviarem un correu electrònic quan estigui a punt.",
     "regenerateTime": "Normalment triga entre 10 i 30 minuts. T'enviarem un correu electrònic quan estigui a punt.",
     "regenerateTitle": "Vols regenerar aquest vídeo?",
-    "regenerateTooltip": "Per estalviar espai, a les cançons més antigues només s'hi conserva el vídeo en 720p i els paquets de karaoke. Regenera els altres formats."
+    "regenerateTooltip": "Per estalviar espai, a les cançons més antigues només s'hi conserva el vídeo en 720p i els paquets de karaoke. Regenera els altres formats.",
+    "outdatedTheme": "Tema antic",
+    "outdatedThemeTooltip": "Aquest vídeo es va fer abans del teu últim canvi de tema. Torna'l a renderitzar per actualitzar-ne l'aspecte."
   },
   "themeSelector": {
     "videoTheme": "Tema del vídeo",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Edita qualsevol paràmetre del tema directament. Els canvis es comproven en desar.",
     "advancedJson": "JSON complet del tema",
-    "appliesToNewJobs": "Els canvis desats s'aplicaran als vídeos que creïs a partir d'ara.",
     "artistColour": "Color del nom de l'artista",
     "artistName": "Nom de l'artista",
     "background": "Fons",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Títol de la cançó",
     "save": "Desa el tema",
     "saveFailed": "No s'ha pogut desar el teu tema",
-    "savedBody": "Els vídeos nous utilitzaran el teu tema actualitzat.",
     "savedTitle": "Tema desat",
     "solidColour": "Color sòlid (sense imatge)",
     "sungColour": "Color de la lletra cantada",
@@ -2033,7 +2033,16 @@
     "close": "Tanca",
     "saving": "Desant…",
     "songTitle": "Títol de la cançó",
-    "rerenderHint": "Per actualitzar una pista que ja has creat, utilitza «Tornar a renderitzar» a la seva targeta."
+    "appliesToInProgress": "Els canvis desats s'apliquen als vídeos nous i als vídeos que encara s'estan creant.",
+    "finishedKeepOldLook": "Els vídeos acabats mantenen l'aspecte antic fins que els tornis a renderitzar.",
+    "outdatedFinished": "{count, plural, one {# vídeo acabat encara té l'aspecte antic.} other {# vídeos acabats encara tenen l'aspecte antic.}}",
+    "refreshedInProgress": "{count, plural, one {# vídeo que encara s'està fent tindrà el nou aspecte automàticament.} other {# vídeos que encara s'estan fent tindran el nou aspecte automàticament.}}",
+    "rerenderAll": "{count, plural, one {Torna'l a renderitzar ara} other {Torna'ls a renderitzar tots (#)}}",
+    "rerenderAllFailed": "No s'ha pogut iniciar la nova renderització",
+    "rerenderAllSomeFailed": "{count, plural, one {No s'ha pogut tornar a renderitzar # vídeo} other {No s'han pogut tornar a renderitzar # vídeos}}",
+    "rerenderAllStarted": "{count, plural, one {S'està tornant a renderitzar # vídeo amb el teu tema nou. Triga uns 10-15 minuts; en pots seguir el progrés a la cançó.} other {S'estan tornant a renderitzar # vídeos amb el teu tema nou. Cadascun triga uns 10-15 minuts; en pots seguir el progrés a cada cançó.}}",
+    "rerenderAllStarting": "S'està iniciant…",
+    "savedBodyInProgress": "Els vídeos nous i els vídeos que encara s'estan fent utilitzaran el teu tema actualitzat."
   },
   "stalledDownload": {
     "actionFailedDesc": "Torna-ho a provar d'aquí a un moment.",

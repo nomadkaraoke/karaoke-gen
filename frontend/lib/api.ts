@@ -2764,6 +2764,11 @@ export interface TenantThemeData {
   fonts: string[]
 }
 
+export interface TenantThemeSaveResult extends TenantThemeData {
+  refreshed_jobs: number
+  outdated_job_ids: string[]
+}
+
 export interface ThemePreviewSample {
   artist?: string
   title?: string
@@ -2809,14 +2814,33 @@ export const tenantThemeApi = {
     return handleResponse<ThemePreviewImages>(response)
   },
 
-  /** Save the theme — applies to jobs created from now on. */
-  async save(styleParams: ThemeStyleParams): Promise<TenantThemeData> {
+  /**
+   * Save the theme. Applies to new tracks and to tracks still in progress
+   * (`refreshed_jobs`); finished tracks made with the old theme are listed in
+   * `outdated_job_ids` (re-render to update them).
+   */
+  async save(styleParams: ThemeStyleParams): Promise<TenantThemeSaveResult> {
     const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme`, {
       method: 'PUT',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ style_params: styleParams }),
     })
-    return handleResponse<TenantThemeData>(response)
+    return handleResponse<TenantThemeSaveResult>(response)
+  },
+
+  /** The caller's finished tracks made with an older version of the theme. */
+  async outdatedJobs(): Promise<{ theme_updated_at: string | null; job_ids: string[] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/outdated-jobs`, { headers: getAuthHeaders() })
+    return handleResponse<{ theme_updated_at: string | null; job_ids: string[] }>(response)
+  },
+
+  /** Re-render every outdated finished track with the current theme (no per-track emails). */
+  async rerenderOutdated(): Promise<{ started: string[]; failed: Record<string, string>; remaining?: string[] }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/rerender-outdated`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    })
+    return handleResponse<{ started: string[]; failed: Record<string, string>; remaining?: string[] }>(response)
   },
 }
 

@@ -764,7 +764,9 @@
     "regenerateStarted": "Tvoje video sa znova generuje. Keď bude hotové, pošleme ti e-mail.",
     "regenerateTime": "Zvyčajne to trvá 10–30 minút. Keď bude hotové, pošleme ti e-mail.",
     "regenerateTitle": "Znova vygenerovať toto video?",
-    "regenerateTooltip": "Kvôli šetreniu miesta sa pri starších skladbách uchováva len 720p video a karaoke balíčky. Znova vygeneruj ostatné formáty."
+    "regenerateTooltip": "Kvôli šetreniu miesta sa pri starších skladbách uchováva len 720p video a karaoke balíčky. Znova vygeneruj ostatné formáty.",
+    "outdatedTheme": "Starší motív",
+    "outdatedThemeTooltip": "Toto video bolo vytvorené pred tvojou poslednou zmenou motívu. Pre aktualizáciu vzhľadu ho vygeneruj znova."
   },
   "themeSelector": {
     "videoTheme": "Téma videa",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Uprav akékoľvek nastavenie motívu priamo. Zmeny sa overia pri uložení.",
     "advancedJson": "Úplný JSON motívu",
-    "appliesToNewJobs": "Uložené zmeny sa použijú na videá, ktoré vytvoríš odteraz.",
     "artistColour": "Farba mena interpreta",
     "artistName": "Meno interpreta",
     "background": "Pozadie",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Názov skladby",
     "save": "Uložiť motív",
     "saveFailed": "Nepodarilo sa uložiť motív",
-    "savedBody": "Nové videá budú používať tvoj aktualizovaný motív.",
     "savedTitle": "Motív bol uložený",
     "solidColour": "Jednoliata farba (bez obrázka)",
     "sungColour": "Farba odspievaného textu",
@@ -2033,7 +2033,16 @@
     "close": "Zavrieť",
     "saving": "Ukladá sa…",
     "songTitle": "Názov piesne",
-    "rerenderHint": "Ak chceš aktualizovať už vytvorenú skladbu, použi možnosť „Znova vyrenderovať“ na jej karte."
+    "appliesToInProgress": "Uložené zmeny sa použijú na nové videá a na videá, ktoré sa stále vytvárajú.",
+    "finishedKeepOldLook": "Dokončené videá si zachovajú pôvodný vzhľad, kým ich nevygeneruješ znova.",
+    "outdatedFinished": "{count, plural, one {# dokončené video má stále starý vzhľad.} few {# dokončené videá majú stále starý vzhľad.} other {# dokončených videí má stále starý vzhľad.}}",
+    "refreshedInProgress": "{count, plural, one {# video, ktoré sa stále vytvára, automaticky použije nový vzhľad.} few {# videá, ktoré sa stále vytvárajú, automaticky použijú nový vzhľad.} other {# videí, ktoré sa stále vytvárajú, automaticky použije nový vzhľad.}}",
+    "rerenderAll": "{count, plural, one {Znova vygenerovať teraz} few {Znova vygenerovať všetky #} other {Znova vygenerovať všetkých #}}",
+    "rerenderAllFailed": "Nepodarilo sa spustiť opätovné generovanie",
+    "rerenderAllSomeFailed": "{count, plural, one {# video sa nepodarilo znova vygenerovať} few {# videá sa nepodarilo znova vygenerovať} other {# videí sa nepodarilo znova vygenerovať}}",
+    "rerenderAllStarted": "{count, plural, one {Znova sa generuje # video s tvojím novým motívom. Trvá to približne 10 – 15 minút; priebeh môžeš sledovať priamo na skladbe.} few {Znova sa generujú # videá s tvojím novým motívom. Každé trvá približne 10 – 15 minút; priebeh môžeš sledovať na jednotlivých skladbách.} other {Znova sa generuje # videí s tvojím novým motívom. Každé trvá približne 10 – 15 minút; priebeh môžeš sledovať na jednotlivých skladbách.}}",
+    "rerenderAllStarting": "Spúšťa sa…",
+    "savedBodyInProgress": "Nové videá a videá, ktoré sa stále vytvárajú, použijú tvoj aktualizovaný motív."
   },
   "stalledDownload": {
     "actionFailedDesc": "Skús to, prosím, o chvíľu znova.",

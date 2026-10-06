@@ -764,7 +764,9 @@
     "regenerateStarted": "Regenerando seu vídeo. Nós te enviaremos um e-mail quando estiver pronto.",
     "regenerateTime": "Geralmente leva de 10 a 30 minutos. Nós te enviaremos um e-mail quando estiver pronto.",
     "regenerateTitle": "Regenerar este vídeo?",
-    "regenerateTooltip": "Para economizar espaço, as faixas mais antigas mantêm apenas o vídeo em 720p e os pacotes de karaokê. Regenere os outros formatos."
+    "regenerateTooltip": "Para economizar espaço, as faixas mais antigas mantêm apenas o vídeo em 720p e os pacotes de karaokê. Regenere os outros formatos.",
+    "outdatedTheme": "Tema antigo",
+    "outdatedThemeTooltip": "Este vídeo foi feito antes da sua alteração de tema mais recente. Renderize-o novamente para atualizar o visual."
   },
   "themeSelector": {
     "videoTheme": "Tema do Vídeo",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Edite qualquer configuração de tema diretamente. As alterações são verificadas ao salvar.",
     "advancedJson": "JSON completo do tema",
-    "appliesToNewJobs": "As alterações salvas se aplicam aos vídeos que você criar a partir de agora.",
     "artistColour": "Cor do nome do artista",
     "artistName": "Nome do artista",
     "background": "Plano de fundo",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Título da Música",
     "save": "Salvar tema",
     "saveFailed": "Não foi possível salvar seu tema",
-    "savedBody": "Novos vídeos usarão seu tema atualizado.",
     "savedTitle": "Tema salvo",
     "solidColour": "Cor sólida (sem imagem)",
     "sungColour": "Cor da letra cantada",
@@ -2033,7 +2033,16 @@
     "close": "Fechar",
     "saving": "Salvando…",
     "songTitle": "Título da música",
-    "rerenderHint": "Para atualizar uma faixa que você já criou, use Renderizar novamente no card dela."
+    "appliesToInProgress": "As alterações salvas se aplicam a novos vídeos e a vídeos que ainda estão sendo feitos.",
+    "finishedKeepOldLook": "Os vídeos finalizados mantêm o visual antigo até que você os renderize novamente.",
+    "outdatedFinished": "{count, plural, one {# vídeo finalizado ainda está com o visual antigo.} other {# vídeos finalizados ainda estão com o visual antigo.}}",
+    "refreshedInProgress": "{count, plural, one {# vídeo que ainda está sendo feito usará o novo visual automaticamente.} other {# vídeos que ainda estão sendo feitos usarão o novo visual automaticamente.}}",
+    "rerenderAll": "{count, plural, one {Renderizar novamente agora} other {Renderizar todos os # novamente}}",
+    "rerenderAllFailed": "Não foi possível iniciar a nova renderização",
+    "rerenderAllSomeFailed": "{count, plural, one {# vídeo não pôde ser renderizado novamente} other {# vídeos não puderam ser renderizados novamente}}",
+    "rerenderAllStarted": "{count, plural, one {Renderizando # vídeo novamente com o seu novo tema. Leva cerca de 10 a 15 minutos; você pode acompanhar o progresso na faixa.} other {Renderizando # vídeos novamente com o seu novo tema. Cada um leva cerca de 10 a 15 minutos; você pode acompanhar o progresso em cada faixa.}}",
+    "rerenderAllStarting": "Iniciando…",
+    "savedBodyInProgress": "Novos vídeos, e vídeos que ainda estão sendo feitos, usarão o seu tema atualizado."
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, tente novamente em instantes.",

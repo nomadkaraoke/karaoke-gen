@@ -764,7 +764,9 @@
     "regenerateStarted": "Regenererer videoen din. Vi sender deg en e-post når den er klar.",
     "regenerateTime": "Det tar vanligvis 10–30 minutter. Vi sender deg en e-post når den er klar.",
     "regenerateTitle": "Vil du regenerere denne videoen?",
-    "regenerateTooltip": "For å spare plass beholder eldre spor bare 720p-videoen og karaokepakkene. Regenerer de andre formatene."
+    "regenerateTooltip": "For å spare plass beholder eldre spor bare 720p-videoen og karaokepakkene. Regenerer de andre formatene.",
+    "outdatedTheme": "Eldre tema",
+    "outdatedThemeTooltip": "Denne videoen ble laget før den siste temaendringen din. Gjengi den på nytt for å oppdatere utseendet."
   },
   "themeSelector": {
     "videoTheme": "Videotema",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Rediger temainnstillingene direkte. Endringer sjekkes når du lagrer.",
     "advancedJson": "Fullstendig tema-JSON",
-    "appliesToNewJobs": "Lagrede endringer gjelder for videoer du oppretter fra nå av.",
     "artistColour": "Farge på artistnavn",
     "artistName": "Artistnavn",
     "background": "Bakgrunn",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Sangtittel",
     "save": "Lagre tema",
     "saveFailed": "Kunne ikke lagre temaet ditt",
-    "savedBody": "Nye videoer vil bruke det oppdaterte temaet ditt.",
     "savedTitle": "Tema lagret",
     "solidColour": "Heldekkende farge (uten bilde)",
     "sungColour": "Farge på sunget tekst",
@@ -2033,7 +2033,16 @@
     "close": "Lukk",
     "saving": "Lagrer…",
     "songTitle": "Sangtittel",
-    "rerenderHint": "For å oppdatere et spor du allerede har laget, bruker du «Rendre på nytt» på kortet."
+    "appliesToInProgress": "Lagrede endringer gjelder for nye videoer og videoer som fortsatt lages.",
+    "finishedKeepOldLook": "Ferdige videoer beholder det gamle utseendet til du gjengir dem på nytt.",
+    "outdatedFinished": "{count, plural, one {# ferdig video har fortsatt det gamle utseendet.} other {# ferdige videoer har fortsatt det gamle utseendet.}}",
+    "refreshedInProgress": "{count, plural, one {# video som fortsatt lages, vil automatisk bruke det nye utseendet.} other {# videoer som fortsatt lages, vil automatisk bruke det nye utseendet.}}",
+    "rerenderAll": "{count, plural, one {Gjengi den på nytt nå} other {Gjengi alle # på nytt}}",
+    "rerenderAllFailed": "Kunne ikke starte ny gjengivelse",
+    "rerenderAllSomeFailed": "{count, plural, one {# video kunne ikke gjengis på nytt} other {# videoer kunne ikke gjengis på nytt}}",
+    "rerenderAllStarted": "{count, plural, one {Gjengir # video på nytt med det nye temaet ditt. Det tar omtrent 10–15 minutter; du kan følge fremdriften på sporet.} other {Gjengir # videoer på nytt med det nye temaet ditt. Hver video tar omtrent 10–15 minutter; du kan følge fremdriften på hvert spor.}}",
+    "rerenderAllStarting": "Starter…",
+    "savedBodyInProgress": "Nye videoer, og videoer som fortsatt lages, vil bruke det oppdaterte temaet ditt."
   },
   "stalledDownload": {
     "actionFailedDesc": "Prøv igjen om et øyeblikk.",

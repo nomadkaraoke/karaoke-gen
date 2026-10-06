@@ -29,6 +29,7 @@ from backend.services.tenant_theme_service import (
     save_tenant_theme,
     store_uploaded_asset,
 )
+from backend.services.theme_change_service import outdated_jobs, refresh_inflight_jobs
 from backend.services.theme_preview_service import ThemePreviewError, render_theme_preview
 from backend.services.tenant_admin_service import _theme_id_for
 
@@ -161,10 +162,110 @@ async def preview_theme(body: PreviewRequest, config: TenantConfig = Depends(req
     return PreviewResponse(**images.as_data_urls())
 
 
-@router.put("", response_model=ThemeResponse)
-def save_theme(body: SaveRequest, config: TenantConfig = Depends(require_tenant_member)):
+class SaveResponse(ThemeResponse):
+    # In-progress tracks switched to the new theme by this save.
+    refreshed_jobs: int = 0
+    # The caller's finished tracks made with an older theme (re-render to update).
+    outdated_job_ids: List[str] = Field(default_factory=list)
+
+
+class OutdatedJobsResponse(BaseModel):
+    theme_updated_at: Optional[str] = None
+    job_ids: List[str]
+
+
+class RerenderOutdatedResponse(BaseModel):
+    started: List[str]
+    failed: Dict[str, str]
+    # Outdated tracks beyond this call's cap (ask again to start them).
+    remaining: List[str] = Field(default_factory=list)
+
+
+# Tracks started per bulk call: bounds the request time and the burst of
+# render/encode work it queues. The UI offers the remainder again.
+MAX_BULK_RERENDER = 20
+
+
+def _owner_scope(auth_result: AuthResult) -> Optional[str]:
+    """Admins act on all the portal's tracks; members only on their own."""
+    return None if auth_result.is_admin else auth_result.user_email
+
+
+@router.put("", response_model=SaveResponse)
+def save_theme(
+    body: SaveRequest,
+    config: TenantConfig = Depends(require_tenant_member),
+    auth_result: AuthResult = Depends(require_auth),
+):
     try:
         save_tenant_theme(config, body.style_params)
-        return ThemeResponse(**get_theme_for_editor(config))
+        theme = get_theme_for_editor(config)
     except TenantValidationError as exc:
         _raise_http(exc)
+    theme_id = _theme_id_for(config)
+    # Never fail the save over the follow-up work: the theme is already stored.
+    refreshed = 0
+    try:
+        refreshed = refresh_inflight_jobs(config.id, theme_id)["updated"]
+    except Exception:
+        logger.exception(f"Tenant '{config.id}': refreshing in-progress tracks after theme save failed")
+    outdated: List[str] = []
+    try:
+        outdated = outdated_jobs(config.id, theme_id, _owner_scope(auth_result))["job_ids"]
+    except Exception:
+        logger.exception(f"Tenant '{config.id}': listing outdated tracks after theme save failed")
+    return SaveResponse(**theme, refreshed_jobs=refreshed, outdated_job_ids=outdated)
+
+
+@router.get("/outdated-jobs", response_model=OutdatedJobsResponse)
+def get_outdated_jobs(
+    config: TenantConfig = Depends(require_tenant_member),
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """Finished tracks made with an older version of the theme (re-render to update)."""
+    return OutdatedJobsResponse(**outdated_jobs(config.id, _theme_id_for(config), _owner_scope(auth_result)))
+
+
+@router.post("/rerender-outdated", response_model=RerenderOutdatedResponse)
+async def rerender_outdated(
+    config: TenantConfig = Depends(require_tenant_member),
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """Re-render every outdated finished track with the current theme.
+
+    Quiet: no per-track "your video is ready" email/push (one per track would
+    flood the inbox); the portal shows progress on each track.
+    """
+    from backend.services.job_manager import JobManager
+    from backend.services.theme_rerender_service import RerenderError, ThemeRerenderService
+
+    theme_id = _theme_id_for(config)
+    job_ids = (await run_in_threadpool(
+        outdated_jobs, config.id, theme_id, _owner_scope(auth_result)
+    ))["job_ids"]
+    batch, remaining = job_ids[:MAX_BULK_RERENDER], job_ids[MAX_BULK_RERENDER:]
+    job_manager = JobManager()
+    service = ThemeRerenderService(job_manager)
+    started: List[str] = []
+    failed: Dict[str, str] = {}
+    for job_id in batch:
+        job = await run_in_threadpool(job_manager.get_job, job_id)
+        if job is None:
+            continue
+        try:
+            await service.start(
+                job, theme_id=theme_id,
+                requested_by=auth_result.user_email or "unknown",
+                notify_customer=False,
+            )
+            started.append(job_id)
+        except RerenderError as e:
+            failed[job_id] = str(e)
+        except Exception as e:
+            logger.exception(f"[job:{job_id}] Bulk theme re-render failed to start")
+            failed[job_id] = "Couldn't start the re-render."
+    logger.info(
+        f"Tenant '{config.id}': bulk re-render started {len(started)}, failed {len(failed)}, "
+        f"remaining {len(remaining)}"
+    )
+    return RerenderOutdatedResponse(started=started, failed=failed, remaining=remaining)

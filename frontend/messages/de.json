@@ -764,7 +764,9 @@
     "regenerateStarted": "Dein Video wird neu generiert. Wir benachrichtigen dich per E-Mail, sobald es fertig ist.",
     "regenerateTime": "Das dauert normalerweise 10–30 Minuten. Wir benachrichtigen dich per E-Mail, sobald es fertig ist.",
     "regenerateTitle": "Dieses Video neu generieren?",
-    "regenerateTooltip": "Um Speicherplatz zu sparen, behalten ältere Titel nur das 720p-Video und Karaoke-Pakete. Generiere die anderen Formate neu."
+    "regenerateTooltip": "Um Speicherplatz zu sparen, behalten ältere Titel nur das 720p-Video und Karaoke-Pakete. Generiere die anderen Formate neu.",
+    "outdatedTheme": "Älteres Theme",
+    "outdatedThemeTooltip": "Dieses Video wurde vor deiner letzten Theme-Änderung erstellt. Rendere es erneut, um das Design zu aktualisieren."
   },
   "themeSelector": {
     "videoTheme": "Video-Theme",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Bearbeite jede Theme-Einstellung direkt. Änderungen werden beim Speichern überprüft.",
     "advancedJson": "Vollständiges Theme-JSON",
-    "appliesToNewJobs": "Gespeicherte Änderungen gelten für Videos, die du ab jetzt erstellst.",
     "artistColour": "Farbe des Künstlernamens",
     "artistName": "Künstlername",
     "background": "Hintergrund",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Songtitel",
     "save": "Theme speichern",
     "saveFailed": "Dein Theme konnte nicht gespeichert werden",
-    "savedBody": "Neue Videos werden dein aktualisiertes Theme verwenden.",
     "savedTitle": "Theme gespeichert",
     "solidColour": "Einfarbig (kein Bild)",
     "sungColour": "Farbe für gesungenen Text",
@@ -2033,7 +2033,16 @@
     "close": "Schließen",
     "saving": "Speichere…",
     "songTitle": "Songtitel",
-    "rerenderHint": "Um einen Track zu aktualisieren, den du bereits erstellt hast, verwende „Neu rendern“ auf dessen Karte."
+    "appliesToInProgress": "Gespeicherte Änderungen gelten für neue Videos und für Videos, die noch in Bearbeitung sind.",
+    "finishedKeepOldLook": "Fertige Videos behalten ihr altes Design, bis du sie erneut renderst.",
+    "outdatedFinished": "{count, plural, one {# fertiges Video hat noch das alte Design.} other {# fertige Videos haben noch das alte Design.}}",
+    "refreshedInProgress": "{count, plural, one {# Video, das noch in Bearbeitung ist, verwendet automatisch das neue Design.} other {# Videos, die noch in Bearbeitung sind, verwenden automatisch das neue Design.}}",
+    "rerenderAll": "{count, plural, one {Jetzt erneut rendern} other {Alle # erneut rendern}}",
+    "rerenderAllFailed": "Das erneute Rendern konnte nicht gestartet werden",
+    "rerenderAllSomeFailed": "{count, plural, one {# Video konnte nicht erneut gerendert werden} other {# Videos konnten nicht erneut gerendert werden}}",
+    "rerenderAllStarted": "{count, plural, one {# Video wird mit deinem neuen Theme erneut gerendert. Es dauert etwa 10–15 Minuten; du kannst den Fortschritt beim Track mitverfolgen.} other {# Videos werden mit deinem neuen Theme erneut gerendert. Jedes dauert etwa 10–15 Minuten; du kannst den Fortschritt bei jedem Track mitverfolgen.}}",
+    "rerenderAllStarting": "Wird gestartet…",
+    "savedBodyInProgress": "Neue Videos und Videos, die noch in Bearbeitung sind, verwenden dein aktualisiertes Theme."
   },
   "stalledDownload": {
     "actionFailedDesc": "Bitte versuche es gleich noch einmal.",

@@ -764,7 +764,9 @@
     "regenerateStarted": "Sedang membuat ulang video Anda. Kami akan mengirim email saat sudah selesai.",
     "regenerateTime": "Proses ini biasanya memerlukan waktu 10–30 menit. Kami akan mengirim email saat sudah selesai.",
     "regenerateTitle": "Buat ulang video ini?",
-    "regenerateTooltip": "Untuk menghemat ruang penyimpanan, lagu-lagu lama hanya mempertahankan video 720p dan paket karaoke. Buat ulang format lainnya."
+    "regenerateTooltip": "Untuk menghemat ruang penyimpanan, lagu-lagu lama hanya mempertahankan video 720p dan paket karaoke. Buat ulang format lainnya.",
+    "outdatedTheme": "Tema lama",
+    "outdatedThemeTooltip": "Video ini dibuat sebelum perubahan tema terbaru Anda. Render ulang untuk memperbarui tampilannya."
   },
   "themeSelector": {
     "videoTheme": "Tema Video",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Edit pengaturan tema apa pun secara langsung. Perubahan akan diperiksa saat Anda menyimpan.",
     "advancedJson": "JSON tema lengkap",
-    "appliesToNewJobs": "Perubahan yang disimpan berlaku untuk video yang Anda buat mulai sekarang.",
     "artistColour": "Warna nama artis",
     "artistName": "Nama artis",
     "background": "Latar belakang",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Judul Lagu",
     "save": "Simpan tema",
     "saveFailed": "Gagal menyimpan tema Anda",
-    "savedBody": "Video baru akan menggunakan tema yang telah diperbarui.",
     "savedTitle": "Tema berhasil disimpan",
     "solidColour": "Warna solid (tanpa gambar)",
     "sungColour": "Warna lirik yang dinyanyikan",
@@ -2033,7 +2033,16 @@
     "close": "Tutup",
     "saving": "Menyimpan…",
     "songTitle": "Judul lagu",
-    "rerenderHint": "Untuk memperbarui trek yang sudah Anda buat, gunakan Render Ulang pada kartunya."
+    "appliesToInProgress": "Perubahan yang disimpan berlaku untuk video baru dan video yang sedang dibuat.",
+    "finishedKeepOldLook": "Video yang sudah selesai tetap memakai tampilan lama sampai Anda merendernya ulang.",
+    "outdatedFinished": "{count, plural, other {# video yang sudah selesai masih memakai tampilan lama.}}",
+    "refreshedInProgress": "{count, plural, other {# video yang sedang dibuat akan memakai tampilan baru secara otomatis.}}",
+    "rerenderAll": "{count, plural, one {Render ulang sekarang} other {Render ulang semua (#)}}",
+    "rerenderAllFailed": "Gagal memulai render ulang",
+    "rerenderAllSomeFailed": "{count, plural, other {# video tidak dapat dirender ulang}}",
+    "rerenderAllStarted": "{count, plural, one {Merender ulang # video dengan tema baru Anda. Proses ini memakan waktu sekitar 10-15 menit; Anda dapat memantau progresnya di lagu terkait.} other {Merender ulang # video dengan tema baru Anda. Masing-masing memakan waktu sekitar 10-15 menit; Anda dapat memantau progresnya di setiap lagu.}}",
+    "rerenderAllStarting": "Memulai…",
+    "savedBodyInProgress": "Video baru, serta video yang sedang dibuat, akan menggunakan tema terbaru Anda."
   },
   "stalledDownload": {
     "actionFailedDesc": "Silakan coba beberapa saat lagi.",

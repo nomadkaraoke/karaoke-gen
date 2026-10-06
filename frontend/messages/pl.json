@@ -764,7 +764,9 @@
     "regenerateStarted": "Trwa ponowne generowanie Twojego wideo. Wyślemy Ci e-mail, gdy będzie gotowe.",
     "regenerateTime": "Zwykle zajmuje to 10–30 minut. Wyślemy Ci e-mail, gdy będzie gotowe.",
     "regenerateTitle": "Wygenerować to wideo ponownie?",
-    "regenerateTooltip": "Aby zaoszczędzić miejsce, w przypadku starszych utworów zachowujemy tylko wideo w 720p i pakiety karaoke. Wygeneruj ponownie pozostałe formaty."
+    "regenerateTooltip": "Aby zaoszczędzić miejsce, w przypadku starszych utworów zachowujemy tylko wideo w 720p i pakiety karaoke. Wygeneruj ponownie pozostałe formaty.",
+    "outdatedTheme": "Starszy motyw",
+    "outdatedThemeTooltip": "To wideo powstało przed Twoją ostatnią zmianą motywu. Wyrenderuj je ponownie, aby zaktualizować jego wygląd."
   },
   "themeSelector": {
     "videoTheme": "Motyw wideo",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Edytuj dowolne ustawienie motywu bezpośrednio. Zmiany są sprawdzane podczas zapisywania.",
     "advancedJson": "Pełny kod JSON motywu",
-    "appliesToNewJobs": "Zapisane zmiany będą dotyczyć filmów tworzonych od teraz.",
     "artistColour": "Kolor nazwy wykonawcy",
     "artistName": "Nazwa wykonawcy",
     "background": "Tło",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Tytuł piosenki",
     "save": "Zapisz motyw",
     "saveFailed": "Nie udało się zapisać twojego motywu",
-    "savedBody": "Nowe filmy będą korzystać ze zaktualizowanego motywu.",
     "savedTitle": "Zapisano motyw",
     "solidColour": "Jednolity kolor (bez obrazu)",
     "sungColour": "Kolor zaśpiewanego tekstu",
@@ -2033,7 +2033,16 @@
     "close": "Zamknij",
     "saving": "Zapisywanie…",
     "songTitle": "Tytuł piosenki",
-    "rerenderHint": "Aby zaktualizować już utworzony utwór, użyj opcji „Wyrenderuj ponownie” na jego karcie."
+    "appliesToInProgress": "Zapisane zmiany dotyczą nowych filmów oraz tych, które są jeszcze w trakcie tworzenia.",
+    "finishedKeepOldLook": "Ukończone filmy zachowają swój dotychczasowy wygląd, dopóki nie wyrenderujesz ich ponownie.",
+    "outdatedFinished": "{count, plural, one {# ukończony film nadal ma stary wygląd.} few {# ukończone filmy nadal mają stary wygląd.} many {# ukończonych filmów nadal ma stary wygląd.} other {# ukończonego filmu nadal ma stary wygląd.}}",
+    "refreshedInProgress": "{count, plural, one {# film będący w trakcie tworzenia automatycznie użyje nowego wyglądu.} few {# filmy będące w trakcie tworzenia automatycznie użyją nowego wyglądu.} many {# filmów będących w trakcie tworzenia automatycznie użyje nowego wyglądu.} other {# filmu będącego w trakcie tworzenia automatycznie użyje nowego wyglądu.}}",
+    "rerenderAll": "{count, plural, one {Wyrenderuj go ponownie teraz} few {Wyrenderuj ponownie wszystkie #} many {Wyrenderuj ponownie wszystkie #} other {Wyrenderuj ponownie wszystkie #}}",
+    "rerenderAllFailed": "Nie udało się rozpocząć ponownego renderowania",
+    "rerenderAllSomeFailed": "{count, plural, one {Nie udało się ponownie wyrenderować # filmu} few {Nie udało się ponownie wyrenderować # filmów} many {Nie udało się ponownie wyrenderować # filmów} other {Nie udało się ponownie wyrenderować # filmu}}",
+    "rerenderAllStarted": "{count, plural, one {Ponowne renderowanie # filmu z nowym motywem. Zajmuje to około 10-15 minut; możesz śledzić postęp przy utworze.} few {Ponowne renderowanie # filmów z nowym motywem. Każdy z nich zajmuje około 10-15 minut; możesz śledzić postępy przy każdym utworze.} many {Ponowne renderowanie # filmów z nowym motywem. Każdy z nich zajmuje około 10-15 minut; możesz śledzić postępy przy każdym utworze.} other {Ponowne renderowanie # filmu z nowym motywem. Każdy z nich zajmuje około 10-15 minut; możesz śledzić postępy przy każdym utworze.}}",
+    "rerenderAllStarting": "Uruchamianie…",
+    "savedBodyInProgress": "Nowe filmy oraz te w trakcie tworzenia będą korzystać z Twojego zaktualizowanego motywu."
   },
   "stalledDownload": {
     "actionFailedDesc": "Spróbuj ponownie za chwilę.",

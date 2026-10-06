@@ -764,7 +764,9 @@
     "regenerateStarted": "Régénération de ta vidéo en cours. Nous t'enverrons un e-mail dès qu'elle sera prête.",
     "regenerateTime": "Cela prend généralement de 10 à 30 minutes. Nous t'enverrons un e-mail dès que ce sera prêt.",
     "regenerateTitle": "Régénérer cette vidéo ?",
-    "regenerateTooltip": "Pour économiser de l'espace, les anciens morceaux ne conservent que la vidéo 720p et les packages karaoké. Régénère les autres formats."
+    "regenerateTooltip": "Pour économiser de l'espace, les anciens morceaux ne conservent que la vidéo 720p et les packages karaoké. Régénère les autres formats.",
+    "outdatedTheme": "Ancien thème",
+    "outdatedThemeTooltip": "Cette vidéo a été créée avant ton dernier changement de thème. Relance le rendu pour actualiser son apparence."
   },
   "themeSelector": {
     "videoTheme": "Thème vidéo",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "Modifie directement n'importe quel paramètre du thème. Les modifications sont vérifiées lorsque tu enregistres.",
     "advancedJson": "JSON complet du thème",
-    "appliesToNewJobs": "Les modifications enregistrées s'appliquent aux vidéos que tu créeras à partir de maintenant.",
     "artistColour": "Couleur du nom de l'artiste",
     "artistName": "Nom de l'artiste",
     "background": "Arrière-plan",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "Titre du morceau",
     "save": "Enregistrer le thème",
     "saveFailed": "Impossible d'enregistrer ton thème",
-    "savedBody": "Les nouvelles vidéos utiliseront ton thème mis à jour.",
     "savedTitle": "Thème enregistré",
     "solidColour": "Couleur unie (sans image)",
     "sungColour": "Couleur des paroles chantées",
@@ -2033,7 +2033,16 @@
     "close": "Fermer",
     "saving": "Enregistrement…",
     "songTitle": "Titre de la chanson",
-    "rerenderHint": "Pour mettre à jour un morceau que tu as déjà créé, utilise « Relancer le rendu » sur sa carte."
+    "appliesToInProgress": "Les modifications enregistrées s'appliquent aux nouvelles vidéos et à celles qui sont encore en cours de création.",
+    "finishedKeepOldLook": "Les vidéos terminées conservent leur ancienne apparence jusqu'à ce que tu relances leur rendu.",
+    "outdatedFinished": "{count, plural, one {# vidéo terminée a encore l'ancienne apparence.} other {# vidéos terminées ont encore l'ancienne apparence.}}",
+    "refreshedInProgress": "{count, plural, one {# vidéo encore en cours de création utilisera automatiquement la nouvelle apparence.} other {# vidéos encore en cours de création utiliseront automatiquement la nouvelle apparence.}}",
+    "rerenderAll": "{count, plural, one {Relancer le rendu maintenant} other {Tout relancer (#)}}",
+    "rerenderAllFailed": "Impossible de lancer le nouveau rendu",
+    "rerenderAllSomeFailed": "{count, plural, one {# vidéo n'a pas pu être recalculée} other {# vidéos n'ont pas pu être recalculées}}",
+    "rerenderAllStarted": "{count, plural, one {Nouveau rendu en cours pour # vidéo avec ton nouveau thème. Cela prend environ 10 à 15 minutes ; tu peux suivre sa progression sur le morceau.} other {Nouveau rendu en cours pour # vidéos avec ton nouveau thème. Chaque vidéo prend environ 10 à 15 minutes ; tu peux suivre leur progression sur chaque morceau.}}",
+    "rerenderAllStarting": "Démarrage…",
+    "savedBodyInProgress": "Les nouvelles vidéos, ainsi que celles encore en cours de création, utiliseront ton thème mis à jour."
   },
   "stalledDownload": {
     "actionFailedDesc": "Réessaie dans un instant.",

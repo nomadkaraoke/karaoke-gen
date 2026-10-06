@@ -764,7 +764,9 @@
     "regenerateStarted": "動画を再生成しています。準備ができ次第、メールでお知らせします。",
     "regenerateTime": "通常10〜30分ほどかかります。準備ができ次第、メールでお知らせします。",
     "regenerateTitle": "この動画を再生成しますか？",
-    "regenerateTooltip": "容量を節約するため、以前のトラックでは720p動画とカラオケパッケージのみを保持しています。その他のフォーマットを再生成できます。"
+    "regenerateTooltip": "容量を節約するため、以前のトラックでは720p動画とカラオケパッケージのみを保持しています。その他のフォーマットを再生成できます。",
+    "outdatedTheme": "以前のテーマ",
+    "outdatedThemeTooltip": "この動画は最新のテーマ変更前に作成されました。再レンダリングしてデザインを更新できます。"
   },
   "themeSelector": {
     "videoTheme": "動画テーマ",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "すべてのテーマ設定を直接編集できます。変更内容は保存時にチェックされます。",
     "advancedJson": "テーマJSON全体",
-    "appliesToNewJobs": "保存した変更内容は、今後作成する動画に適用されます。",
     "artistColour": "アーティスト名の色",
     "artistName": "アーティスト名",
     "background": "背景",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "曲名",
     "save": "テーマを保存",
     "saveFailed": "テーマを保存できませんでした",
-    "savedBody": "新しく作成する動画に、更新したテーマが適用されます。",
     "savedTitle": "テーマを保存しました",
     "solidColour": "単色（画像なし）",
     "sungColour": "歌唱済みの歌詞の色",
@@ -2033,7 +2033,16 @@
     "close": "閉じる",
     "saving": "保存中…",
     "songTitle": "曲名",
-    "rerenderHint": "すでに作成したトラックを更新するには、そのカードにある「再レンダリング」をご利用ください。"
+    "appliesToInProgress": "保存された変更は、新しい動画と現在作成中の動画に適用されます。",
+    "finishedKeepOldLook": "作成済みの動画は、再レンダリングするまで以前のデザインのまま保持されます。",
+    "outdatedFinished": "{count, plural, other {#本の作成済み動画は、以前のデザインのままです。}}",
+    "refreshedInProgress": "{count, plural, other {現在作成中の#本の動画には、自動的に新しいデザインが適用されます。}}",
+    "rerenderAll": "{count, plural, one {今すぐ再レンダリング} other {#本すべてを再レンダリング}}",
+    "rerenderAllFailed": "再レンダリングを開始できませんでした",
+    "rerenderAllSomeFailed": "{count, plural, other {#本の動画を再レンダリングできませんでした}}",
+    "rerenderAllStarted": "{count, plural, one {新しいテーマで#本の動画の再レンダリングを開始しました。完了まで約10〜15分かかります。進捗はトラック上で確認できます。} other {新しいテーマで#本の動画の再レンダリングを開始しました。1本あたり約10〜15分かかります。進捗は各トラックで確認できます。}}",
+    "rerenderAllStarting": "開始中…",
+    "savedBodyInProgress": "新しい動画および現在作成中の動画に、更新したテーマが適用されます。"
   },
   "stalledDownload": {
     "actionFailedDesc": "しばらくしてからもう一度お試しください。",

@@ -116,7 +116,9 @@ def test_preview_validation_and_render_errors(client_for):
 def test_save_and_upload(client_for):
     client = client_for()
     with patch.object(tenant_theme, "save_tenant_theme") as save, \
-         patch.object(tenant_theme, "get_theme_for_editor", return_value=THEME):
+         patch.object(tenant_theme, "get_theme_for_editor", return_value=THEME), \
+         patch.object(tenant_theme, "refresh_inflight_jobs", return_value={"updated": 0, "failed": 0}), \
+         patch.object(tenant_theme, "outdated_jobs", return_value={"job_ids": []}):
         resp = client.put("/api/tenant/theme", json={"style_params": {"intro": {"title_color": "#ffffff"}}})
     assert resp.status_code == 200
     assert save.call_args.args[0].id == "randy-vild"

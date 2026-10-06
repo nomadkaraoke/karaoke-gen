@@ -764,7 +764,9 @@
     "regenerateStarted": "正在重新生成您的视频。完成后我们会发送邮件通知您。",
     "regenerateTime": "通常需要 10–30 分钟。完成后我们会发送邮件通知您。",
     "regenerateTitle": "重新生成此视频？",
-    "regenerateTooltip": "为节省空间，较早的曲目仅保留 720p 视频和卡拉OK资源包。点击可重新生成其他格式。"
+    "regenerateTooltip": "为节省空间，较早的曲目仅保留 720p 视频和卡拉OK资源包。点击可重新生成其他格式。",
+    "outdatedTheme": "旧版主题",
+    "outdatedThemeTooltip": "此视频制作于您最近一次更改主题之前。重新渲染即可更新外观。"
   },
   "themeSelector": {
     "videoTheme": "视频主题",
@@ -1976,7 +1978,6 @@
   "tenantTheme": {
     "advancedHint": "直接编辑任意主题设置。所做更改将在保存时进行验证。",
     "advancedJson": "完整主题 JSON",
-    "appliesToNewJobs": "保存的更改将应用于您今后创建的视频。",
     "artistColour": "歌手名颜色",
     "artistName": "歌手名",
     "background": "背景",
@@ -2011,7 +2012,6 @@
     "sampleTitleDefault": "歌曲名",
     "save": "保存主题",
     "saveFailed": "无法保存您的主题",
-    "savedBody": "新视频将使用您更新后的主题。",
     "savedTitle": "主题已保存",
     "solidColour": "纯色（无图片）",
     "sungColour": "已唱歌词颜色",
@@ -2033,7 +2033,16 @@
     "close": "关闭",
     "saving": "保存中…",
     "songTitle": "歌曲名称",
-    "rerenderHint": "若要更新已制作的曲目，请在其卡片上使用“重新渲染”。"
+    "appliesToInProgress": "已保存的更改将应用于新视频以及正在制作中的视频。",
+    "finishedKeepOldLook": "已完成的视频将保持旧外观，除非您重新渲染。",
+    "outdatedFinished": "{count, plural, one {# 个已完成的视频仍在使用旧外观。} other {# 个已完成的视频仍在使用旧外观。}}",
+    "refreshedInProgress": "{count, plural, one {# 个正在制作中的视频将自动采用新外观。} other {# 个正在制作中的视频将自动采用新外观。}}",
+    "rerenderAll": "{count, plural, one {立即重新渲染} other {重新渲染全部 # 个视频}}",
+    "rerenderAllFailed": "无法开始重新渲染",
+    "rerenderAllSomeFailed": "{count, plural, one {# 个视频未能重新渲染} other {# 个视频未能重新渲染}}",
+    "rerenderAllStarted": "{count, plural, one {正在使用您的新主题重新渲染 # 个视频。大约需要 10-15 分钟；您可以在曲目页面查看进度。} other {正在使用您的新主题重新渲染 # 个视频。每个视频大约需要 10-15 分钟；您可以在各曲目页面查看进度。}}",
+    "rerenderAllStarting": "正在启动…",
+    "savedBodyInProgress": "新视频以及正在制作中的视频都将采用更新后的主题。"
   },
   "stalledDownload": {
     "actionFailedDesc": "请稍后再试。",

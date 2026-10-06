@@ -170,6 +170,25 @@ async def process_render_video(job_id: str) -> bool:
         await worker_registry.unregister(job_id, "render-video")
         return False
 
+    # The tenant edited its theme after this job's screens were made: regenerate
+    # them first (the screens worker re-triggers this worker when done).
+    from backend.services.theme_change_service import divert_for_stale_screens
+    try:
+        diverted = await divert_for_stale_screens(job, job_manager, storage)
+    except Exception as e:
+        logger.error(f"[job:{job_id}] WORKER_END worker=render-video status=error error={e}")
+        job_manager.mark_job_failed(
+            job_id=job_id,
+            error_message=f"Screen regeneration for the updated theme failed: {e}",
+            error_details={"stage": "render_video", "error": str(e)},
+        )
+        await worker_registry.unregister(job_id, "render-video")
+        return False
+    if diverted:
+        logger.info(f"[job:{job_id}] WORKER_END worker=render-video status=skipped reason=theme_screens_regen")
+        await worker_registry.unregister(job_id, "render-video")
+        return True
+
     # Capture the supersession fence at start. If an admin reset (or a newer
     # render trigger) advances the generation while we render, our result is
     # stale and must be discarded instead of overwriting fresh outputs or

@@ -777,7 +777,9 @@
     "regenerateNoRepublish": "Your YouTube, Dropbox and Google Drive links stay as they are.",
     "regenerateTime": "It usually takes 10–30 minutes. We'll email you when it's ready.",
     "regenerateStarted": "Regenerating your video. We'll email you when it's ready.",
-    "regenerateFailed": "Couldn't start regenerating: {error}"
+    "regenerateFailed": "Couldn't start regenerating: {error}",
+    "outdatedTheme": "Older theme",
+    "outdatedThemeTooltip": "This video was made before your latest theme change. Re-render it to update its look."
   },
   "themeSelector": {
     "videoTheme": "Video Theme",
@@ -2024,16 +2026,23 @@
     "rendering": "Rendering preview",
     "previewFailed": "The preview couldn't be rendered.",
     "previewHint": "Previews update a moment after each change. Nothing is saved until you click Save.",
-    "appliesToNewJobs": "Saved changes apply to videos you create from now on.",
     "discard": "Discard changes",
     "close": "Close",
     "save": "Save theme",
     "saving": "Saving…",
     "savedTitle": "Theme saved",
-    "savedBody": "New videos will use your updated theme.",
     "saveFailed": "Couldn't save your theme",
     "discardConfirm": "You have unsaved theme changes. Close without saving?",
-    "rerenderHint": "To update a track you've already made, use Re-render on its card."
+    "appliesToInProgress": "Saved changes apply to new videos and to videos that are still being made.",
+    "finishedKeepOldLook": "Finished videos keep their old look until you re-render them.",
+    "savedBodyInProgress": "New videos, and videos still being made, will use your updated theme.",
+    "refreshedInProgress": "{count, plural, one {# video that's still being made will use the new look automatically.} other {# videos that are still being made will use the new look automatically.}}",
+    "outdatedFinished": "{count, plural, one {# finished video still has the old look.} other {# finished videos still have the old look.}}",
+    "rerenderAll": "{count, plural, one {Re-render it now} other {Re-render all #}}",
+    "rerenderAllStarting": "Starting…",
+    "rerenderAllStarted": "{count, plural, one {Re-rendering # video with your new theme. It takes about 10-15 minutes; you can follow its progress on the track.} other {Re-rendering # videos with your new theme. Each takes about 10-15 minutes; you can follow their progress on each track.}}",
+    "rerenderAllSomeFailed": "{count, plural, one {# video couldn't be re-rendered} other {# videos couldn't be re-rendered}}",
+    "rerenderAllFailed": "Couldn't start the re-render"
   },
   "stalledDownload": {
     "title": "Your audio hasn't started downloading after {minutes} minutes",

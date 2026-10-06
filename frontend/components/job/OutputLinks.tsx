@@ -4,6 +4,7 @@ import { useRef, useCallback, useEffect, useState } from "react"
 import { useTranslations } from 'next-intl'
 import { api, adminApi, Job } from "@/lib/api"
 import { useTenant } from "@/lib/tenant"
+import { clearOutdatedThemeJobs, useOutdatedThemeJobs } from "@/lib/tenant-theme-outdated"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, ExternalLink, FolderOpen, Copy, Mail, Settings, Lock, Globe, Pencil, RefreshCw, RotateCcw, Sparkles } from "lucide-react"
 import { canRegenerate as canRegenerateJob } from "@/lib/job-status"
@@ -204,6 +205,7 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
     setShowRerenderDialog(false)
     try {
       await api.rerenderWithCurrentTheme(job.job_id)
+      clearOutdatedThemeJobs([job.job_id])
       onJobUpdated?.()
     } catch (err) {
       console.error("Failed to start re-render:", err)
@@ -280,11 +282,16 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
   // portal only; the backend enforces the rest (ownership, allowlist, not
   // published to YouTube/Drive — a tenant Dropbox archive is refreshed in place).
   const canRerender = !!tenantId && job.status === "complete" && !!hasDownloads && !showYoutubeLink
+  // Made before the latest theme save: nudge towards Re-render.
+  const outdatedThemeJobs = useOutdatedThemeJobs(!!tenantId)
+  const themeOutdated = canRerender && outdatedThemeJobs.has(job.job_id)
 
   // Admin re-render of ANY completed job with the current renderer (existing
   // style, no review). The backend enforces the rest (reviewed lyrics +
-  // instrumental selection present, not mid visibility change).
-  const canAdminRerender = isAdmin && job.status === "complete" && !outputsDeleted && !visibilityChangeInProgress
+  // instrumental selection present, not mid visibility change). Hidden where
+  // the portal's own Re-render is offered, so tenant cards don't show two
+  // identical "Re-render" buttons.
+  const canAdminRerender = isAdmin && !canRerender && job.status === "complete" && !outputsDeleted && !visibilityChangeInProgress
   const brandCode = job.state_data?.brand_code || null
 
   return (
@@ -457,11 +464,17 @@ export function OutputLinks({ job, onJobUpdated }: OutputLinksProps) {
               type="button"
               onClick={(e) => { e.stopPropagation(); setShowRerenderDialog(true) }}
               disabled={isStartingRerender}
-              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border border-[var(--card-border)] transition-colors disabled:opacity-50"
-              title={t('rerenderTooltip')}
+              data-testid="rerender-button"
+              className={`inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded bg-[#252525] hover:bg-[#333333] text-[var(--text)] border transition-colors disabled:opacity-50 ${themeOutdated ? "border-amber-500/70" : "border-[var(--card-border)]"}`}
+              title={themeOutdated ? t('outdatedThemeTooltip') : t('rerenderTooltip')}
             >
               {isStartingRerender ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
               {t('rerender')}
+              {themeOutdated && (
+                <span className="ml-1 rounded bg-amber-500/20 px-1.5 text-[10px] text-amber-400" data-testid="outdated-theme-badge">
+                  {t('outdatedTheme')}
+                </span>
+              )}
             </button>
           )}
 

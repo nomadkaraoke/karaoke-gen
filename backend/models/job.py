@@ -306,6 +306,9 @@ class Job(BaseModel):
 
     # Theme configuration (pre-made themes from GCS)
     theme_id: Optional[str] = None               # Theme identifier (e.g., "nomad", "default")
+    # When the theme was last re-snapshotted onto the job after creation (theme
+    # edit refresh, re-render, Edit). None = the creation-time snapshot (created_at).
+    theme_applied_at: Optional[datetime] = None
     color_overrides: Dict[str, str] = Field(default_factory=dict)
     """
     User color overrides applied on top of theme. Keys:
