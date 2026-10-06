@@ -344,7 +344,7 @@ Response:
 
 ### Re-render With Current Theme (tenant jobs)
 
-Re-render a finished tenant track with the tenant's **current** theme, e.g. after editing it in "Theme & style". Jobs snapshot the theme at creation, so theme edits otherwise apply only to new jobs.
+Re-render a finished tenant track with the tenant's **current** theme, e.g. after editing it in "Theme & style". Jobs snapshot the theme at creation. A theme save re-applies the theme to tracks that haven't started rendering (see Tenant Theme Editor → Save), but finished tracks keep the old look until they are re-rendered.
 
 ```http
 POST /api/jobs/{job_id}/rerender
@@ -1386,7 +1386,9 @@ table, then submits each confirmed row through the standard signed-URL upload fl
 GET  /api/tenant/theme              → {theme_id, style_params, images[], fonts[]}
 POST /api/tenant/theme/assets       (multipart `file`) → {name}
 POST /api/tenant/theme/preview      {style_params, sample?: {artist, title, lyrics[]}} → {title_card, karaoke_frame}
-PUT  /api/tenant/theme              {style_params} → same as GET
+PUT  /api/tenant/theme              {style_params} → GET fields + {refreshed_jobs, outdated_job_ids[]}
+GET  /api/tenant/theme/outdated-jobs → {theme_updated_at, job_ids[]}
+POST /api/tenant/theme/rerender-outdated → {started[], failed: {job_id: reason}}
 Authorization: Bearer <session/token>   (on the tenant portal: subdomain or X-Tenant-ID)
 ```
 
@@ -1403,14 +1405,31 @@ re-checks membership (`require_tenant_member`): non-members/spoofed headers → 
   `SegmentResizer` → `SubtitlesGenerator.generate_ass` → one ffmpeg frame (same `ass` filter/background
   as the real render) with the first line half-sung. Returns 1280×720 JPEG data URLs (~2 s; ≤2
   concurrent; identical drafts cached). 400 invalid draft, 422 render failure, 504 timeout.
-- **Save** (applies to jobs created afterwards). Stricter than the admin console: asset fields must
+- **Save** applies to new jobs **and to the tenant's tracks that haven't started rendering**
+  (`services/theme_change_service.py`). Each such job's style snapshot is replaced
+  (`theme_applied_at` set). Jobs whose screens may already exist (`generating_screens` →
+  `in_review`, `render_pending_capacity`) also get `state_data.theme_screens_stale`. When the render
+  worker picks one up, it diverts once through the screens worker (`LYRICS_COMPLETE` +
+  `regen_restore_status=review_complete`), which regenerates the title/end screens and re-triggers the
+  render, so a user who is mid-review is never interrupted. `review_complete` and later jobs are left
+  alone. `refreshed_jobs` counts the jobs updated. `outdated_job_ids` lists the caller's finished tracks
+  made with an older theme, where "older" means the theme's `style_params.json` write time is later
+  than `theme_applied_at`, falling back to `created_at`. Members see their own tracks; admins see all
+  of the tenant's tracks. Editing a finished tenant track (`POST /api/jobs/{id}/edit`) also re-applies
+  the current theme when the track's copy is outdated.
+- **Rerender-outdated** starts `POST /api/jobs/{id}/rerender` for every outdated track, **quietly**:
+  the `theme_rerender.notify_customer=false` marker suppresses the per-track completion email/push.
+- **Save validation** is stricter than the admin console: asset fields must
   be basenames already in the theme's assets (no paths / `gs://`), numeric/colour/region bounds are
   checked, and the font is made consistent with the render pipeline — `intro.font` is applied to
   `karaoke.font_path`/`end.font`/`cdg.font_path`, `karaoke.font` is set to the TTF family name libass
   matches, and a chosen bundled font is copied into the theme's assets. Tenants can't change their
   config/allowlist through this API.
 
-UI: user menu → **Theme & style** on tenant portals (`components/tenant-theme/`).
+UI: user menu → **Theme & style** on tenant portals (`components/tenant-theme/`). After a save, the
+editor says how many in-progress tracks were updated and offers **Re-render all N** for outdated
+finished tracks. Their job cards show an **Older theme** badge on Re-render
+(`lib/tenant-theme-outdated.ts`). On portal cards, admins see only this Re-render, not the admin one.
 
 #### Tenant Provisioning (Admin Only)
 
