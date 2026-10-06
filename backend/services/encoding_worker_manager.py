@@ -627,7 +627,11 @@ class EncodingWorkerManager:
         zone = config.active_override_zone
         if not vm:
             # Primary pair was serving — see docstring; leave selection untouched.
-            logger.warning(
+            # Logged at ERROR so it alerts: on 2026-10-06 a primary that booted
+            # without its env failed every job for an hour while this was a WARNING.
+            # The worker now restarts itself (gce_encoding/self_heal.py); if this
+            # keeps firing, that self-heal isn't working.
+            logger.error(
                 "Active encoding worker hit an infra failure while the primary was "
                 "serving; leaving selection unchanged for bounded retry: %s", reason,
             )

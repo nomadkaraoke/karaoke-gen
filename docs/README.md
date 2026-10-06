@@ -57,6 +57,13 @@
 
 ## Recent Changes
 
+- **Encoding worker heals itself after a bad boot** (2026-10-06, v0.266.4). The primary encoding VM booted before its network was up, so `bootstrap.sh` couldn't download `startup.sh` and fell back to the image's `startup-fallback.sh`. That script left out `ENCODING_API_KEY` and `GCE_METADATA_MTLS_MODE=none`, so every render and preview failed with `CERTIFICATE_VERIFY_FAILED` on the metadata server. A Randy Vild render looped in `render_pending_capacity` for an hour until the service was restarted by hand. Fixes:
+  - The worker defaults `GCE_METADATA_MTLS_MODE=none` itself (`gce_encoding/main.py`), so every boot path gets it.
+  - The worker refuses to start when the API key is missing or it can't get GCP credentials, and exits after an infra/auth job failure once idle. systemd then re-runs the bootstrap (`gce_encoding/self_heal.py`; only on worker VMs).
+  - The Packer bootstrap retries the GCS download for about 2 minutes. The fallback writes the mTLS setting and exits if it can't fetch the API key. This needs the new image.
+  - An infra failure on the primary now logs at ERROR, so it alerts.
+  - The job card stops showing "(waiting for encoding server availability)" once a retried render reports progress: `state_data.render_pending_capacity` is cleared.
+
 - **Encoding-service construction moved off the event loop** (2026-10-03, v0.264.1). The new loop watchdog's first prod catch was a 9.9s stall in `/api/health/detailed`. A cold `get_encoding_service()` imports `google.cloud.compute_v1` (~10s). It's now built in the startup warmup thread, is thread-safe, and async callers use `asyncio.to_thread`. (v0.264.0 was shipped by both #1120 and #1122.)
 
 - **API event-loop freezes fixed + degradation telemetry identifies users** (2026-10-03, v0.264.0). The "Reconnecting" pill and "servers unavailable" banner were mostly caused by the single API instance freezing for 20-45s. Plan + evidence: `docs/archive/2026-10-03-backend-loop-freezes-telemetry-plan.md`.

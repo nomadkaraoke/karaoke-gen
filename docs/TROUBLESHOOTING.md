@@ -493,6 +493,28 @@ gcloud compute instances describe encoding-worker-a \
 
 ---
 
+## Every render/preview fails with `CERTIFICATE_VERIFY_FAILED` on `metadata.google.internal`
+
+**Symptoms:** Jobs park in `render_pending_capacity` with `last_code: worker_infra_failure` and empty `last_vm`/`last_zone`, and retry every 10 min without recovering. Backend logs show `Worker reported an infrastructure/auth failure` with `Failed to retrieve https://metadata.google.internal/...` / `SSLCertVerificationError`. The worker still answers `/health`.
+
+**Cause (2026-10-06):** the VM booted before its network was up. `bootstrap.sh` couldn't download `startup.sh` from GCS and used the image's `startup-fallback.sh`, which (on images built before v0.266.4) writes an env file without `ENCODING_API_KEY` or `GCE_METADATA_MTLS_MODE=none`. google-auth then uses mTLS to the metadata server and fails.
+
+**Diagnose:** worker app logs are not in Cloud Logging; read the serial console (journald goes there):
+```bash
+gcloud compute instances get-serial-port-output encoding-worker-b --zone=us-central1-c --project=nomadkaraoke \
+  | grep -E "Bootstrap|FALLBACK|Network is unreachable|No API key configured|SSLCertVerificationError" | tail -20
+```
+`No API key configured - authentication disabled` on every request is the tell.
+
+**Fix:** since v0.266.4 the worker exits on its own (boot check + post-failure credential probe) and systemd re-runs the bootstrap. If that isn't happening, restart it by hand. Network is up by then, so the real `startup.sh` runs:
+```bash
+gcloud compute ssh encoding-worker-b --zone=us-central1-c --project=nomadkaraoke \
+  --command='sudo systemctl restart encoding-worker'
+```
+(Stale host key error → `ssh-keygen -R compute.<instance_id> -f ~/.ssh/google_compute_known_hosts`.) Parked jobs pick up on the next scheduler tick, or force it with `retry-pending-render-jobs` (see `render_pending_capacity` below).
+
+---
+
 ## Job stuck at `rendering_video` (orphaned render)
 
 **Symptoms:** Job frozen at `rendering_video` (step 7/10) for a long time with **no error** and **no Retry button** (it's a processing state, not `failed`).
