@@ -19,6 +19,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request,
 
 from datetime import datetime, timezone
 from google.cloud.exceptions import NotFound
+from backend.utils.loop_bridge import run_on_loop
 from backend.utils.request_helpers import get_client_ip
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -2777,6 +2778,25 @@ async def create_job_from_search(
     body: CreateFromSearchRequest,
     auth_result: AuthResult = Depends(require_auth)
 ) -> JobResponse:
+    """Create a job from a search session — see ``_create_job_from_search_sync``.
+
+    The work is almost all sync Firestore/GCS I/O (theme prep's upload_json
+    stalled the loop 5-9s), so it runs in a worker thread; only the audio
+    download trigger runs back on the loop.
+    """
+    loop = asyncio.get_running_loop()
+    return await asyncio.to_thread(
+        _create_job_from_search_sync, request, background_tasks, body, auth_result, loop
+    )
+
+
+def _create_job_from_search_sync(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: CreateFromSearchRequest,
+    auth_result: AuthResult,
+    loop: asyncio.AbstractEventLoop,
+) -> JobResponse:
     """
     Create a karaoke job from a previously completed standalone search session.
 
@@ -2977,7 +2997,7 @@ async def create_job_from_search(
 
         # Trigger audio download as a Cloud Run Job (survives instance shutdown)
         worker_service = get_worker_service()
-        triggered = await worker_service.trigger_audio_download_worker(job_id)
+        triggered = run_on_loop(loop, worker_service.trigger_audio_download_worker(job_id))
         if not triggered:
             job_manager.fail_job(job_id, "Failed to trigger audio download worker")
             raise HTTPException(status_code=500, detail="Failed to trigger audio download worker")

@@ -1282,6 +1282,42 @@ async def complete_review(
     After saving, triggers the render video worker which will use the
     pre-selected instrumental (no separate instrumental selection step).
     """
+    # Validation + GCS/Firestore writes are all sync (the corrections upload alone
+    # took 21s on 2026-10-08, freezing every request on the instance) — run them
+    # in a worker thread; only the render dispatch below runs on the loop.
+    instrumental_selection = await asyncio.to_thread(_save_review_completion, job_id, updated_data)
+
+    # Trigger the render video worker. AWAIT the dispatch (don't fire-and-forget)
+    # so the Cloud Task / Cloud Run Job dispatch is guaranteed enqueued before we
+    # return — a background asyncio task can be dropped if the Cloud Run instance
+    # is recycled right after the response, stranding the job at REVIEW_COMPLETE.
+    # If the dispatch itself fails we DON'T fail the user's approval: the job is
+    # safely at REVIEW_COMPLETE and the recover-stuck-jobs watchdog re-triggers
+    # render for REVIEW_COMPLETE jobs with no render underway within ~5 min.
+    from backend.services.worker_service import get_worker_service
+    worker_service = get_worker_service()
+    try:
+        await worker_service.trigger_render_video_worker(job_id)
+        logger.info(f"Job {job_id}: Combined review complete, render video worker triggered")
+    except Exception as e:
+        logger.error(
+            f"Job {job_id}: render trigger failed after review completion "
+            f"(watchdog will recover): {e}",
+            exc_info=True,
+        )
+
+    return {
+        "status": "success",
+        "instrumental_selection": instrumental_selection,
+    }
+
+
+def _save_review_completion(job_id: str, updated_data: Dict[str, Any]) -> str:
+    """Validate a review submission, persist it and move the job to REVIEW_COMPLETE.
+
+    Sync (blocking GCS + Firestore I/O) — call via ``asyncio.to_thread``.
+    Returns the resolved instrumental selection.
+    """
     job_manager = JobManager()
     storage = StorageService()
 
@@ -1398,30 +1434,7 @@ async def complete_review(
             progress=70,
             message=f"Review complete (instrumental: {instrumental_selection}), rendering video"
         )
-
-        # Trigger the render video worker. AWAIT the dispatch (don't fire-and-forget)
-        # so the Cloud Task / Cloud Run Job dispatch is guaranteed enqueued before we
-        # return — a background asyncio task can be dropped if the Cloud Run instance
-        # is recycled right after the response, stranding the job at REVIEW_COMPLETE.
-        # If the dispatch itself fails we DON'T fail the user's approval: the job is
-        # safely at REVIEW_COMPLETE and the recover-stuck-jobs watchdog re-triggers
-        # render for REVIEW_COMPLETE jobs with no render underway within ~5 min.
-        from backend.services.worker_service import get_worker_service
-        worker_service = get_worker_service()
-        try:
-            await worker_service.trigger_render_video_worker(job_id)
-            logger.info(f"Job {job_id}: Combined review complete, render video worker triggered")
-        except Exception as e:
-            logger.error(
-                f"Job {job_id}: render trigger failed after review completion "
-                f"(watchdog will recover): {e}",
-                exc_info=True,
-            )
-
-        return {
-            "status": "success",
-            "instrumental_selection": instrumental_selection,
-        }
+        return instrumental_selection
 
     except HTTPException:
         raise

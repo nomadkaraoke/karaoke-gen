@@ -574,6 +574,8 @@ Content-Type: application/json
 ```
 
 Reopens a completed track for editing. Cleans up all distributed outputs (YouTube, Dropbox, GDrive, GCS finals), recycles the brand code, and resets the job to `awaiting_review`. A new review token is issued automatically. No additional credits consumed.
+Because the track was already delivered, an edited job (`edit_count > 0`) is never refunded if it is later
+deleted, cancelled or fails (closes the complete → edit → delete credit loop, v0.267.2).
 
 If `artist` or `title` are provided and differ from current values, title/end screens are deleted and the screens worker is triggered to regenerate them in the background.
 

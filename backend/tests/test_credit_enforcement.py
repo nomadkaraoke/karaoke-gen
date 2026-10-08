@@ -144,11 +144,13 @@ class TestCreditRefundOnJobFailure:
     amount instead of a hard-coded 1.
     """
 
-    def _mock_job(self, credits_charged=1, credit_refunded=False, user_email="user@test.com"):
+    def _mock_job(self, credits_charged=1, credit_refunded=False, user_email="user@test.com",
+                  edit_count=0):
         """Helper: build a minimal mock Job with state_data.credits_charged."""
         job = Mock(spec=Job)
         job.user_email = user_email
         job.credit_refunded = credit_refunded
+        job.edit_count = edit_count
         job.state_data = {"credits_charged": credits_charged}
         return job
 
@@ -258,11 +260,12 @@ class TestCreditRefundOnJobCancellation:
     """
 
     def _mock_job(self, credits_charged=1, credit_refunded=False,
-                  user_email="user@test.com", status=None):
+                  user_email="user@test.com", status=None, edit_count=0):
         """Helper: build a minimal mock Job with state_data.credits_charged."""
         job = Mock(spec=Job)
         job.user_email = user_email
         job.credit_refunded = credit_refunded
+        job.edit_count = edit_count
         job.state_data = {"credits_charged": credits_charged}
         job.status = status or JobStatus.PENDING
         return job
@@ -298,6 +301,19 @@ class TestCreditRefundOnJobCancellation:
         mock_user_service.add_credits.assert_called_once_with(
             "user@test.com", amount=4, reason="job_cancelled", job_id="job123"
         )
+
+    def test_cancel_of_edited_track_skips_refund(
+        self, job_manager, mock_firestore_service, mock_user_service
+    ):
+        """Cancelling a re-edit of a delivered track doesn't refund the original credit."""
+        mock_job = self._mock_job(credits_charged=1, status=JobStatus.AWAITING_REVIEW, edit_count=2)
+        mock_firestore_service.get_job.return_value = mock_job
+        mock_firestore_service.update_job_status.return_value = True
+
+        with patch('backend.services.auth_service.is_admin_email', return_value=False):
+            job_manager.cancel_job("job123")
+
+        mock_user_service.add_credits.assert_not_called()
 
     def test_cancel_guard_prevents_double_refund_when_credit_refunded(
         self, job_manager, mock_firestore_service, mock_user_service
@@ -372,10 +388,11 @@ class TestCreditRefundOnJobDeletion:
     """
 
     def _mock_job(self, credits_charged=1, credit_refunded=False,
-                  user_email="user@test.com", status=None):
+                  user_email="user@test.com", status=None, edit_count=0):
         job = Mock(spec=Job)
         job.user_email = user_email
         job.credit_refunded = credit_refunded
+        job.edit_count = edit_count
         job.state_data = {"credits_charged": credits_charged}
         job.status = status or JobStatus.PENDING
         job.output_files = {}
@@ -439,6 +456,24 @@ class TestCreditRefundOnJobDeletion:
         job_manager.delete_job("job123")
 
         mock_user_service.add_credits.assert_not_called()
+
+    @pytest.mark.parametrize("status", [JobStatus.AWAITING_REVIEW, JobStatus.LYRICS_COMPLETE])
+    def test_no_refund_on_delete_of_edited_track(
+        self, job_manager, mock_firestore_service, mock_user_service, status
+    ):
+        """Complete → Edit → Delete must not refund: the track was already delivered.
+
+        Edit reopens a completed job (AWAITING_REVIEW, or LYRICS_COMPLETE when
+        metadata changed), so its status alone looks "never completed".
+        """
+        mock_job = self._mock_job(credits_charged=1, status=status, edit_count=1)
+        mock_firestore_service.get_job.return_value = mock_job
+
+        with patch('backend.services.auth_service.is_admin_email', return_value=False):
+            job_manager.delete_job("job123")
+
+        mock_user_service.add_credits.assert_not_called()
+        mock_firestore_service.delete_job.assert_called_once_with("job123")
 
     def test_delete_refund_failure_does_not_block_deletion(
         self, job_manager, mock_firestore_service, mock_user_service

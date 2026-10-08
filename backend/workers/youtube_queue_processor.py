@@ -43,7 +43,9 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
     queue_service = get_youtube_upload_queue_service()
 
     # Check if any quota is available
-    allowed, remaining, message = quota_service.check_quota_available()
+    # Every quota/queue call below is sync Firestore (+ Cloud Monitoring) I/O —
+    # each goes through asyncio.to_thread so this coroutine never blocks the loop.
+    allowed, remaining, message = await asyncio.to_thread(quota_service.check_quota_available)
     if not allowed:
         logger.info(f"YouTube queue processor: no quota available, skipping. {message}")
         return {
@@ -52,12 +54,12 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
             "message": message,
             "processed": 0,
             "failed": 0,
-            "remaining": len(queue_service.get_queued_uploads()),
+            "remaining": len(await asyncio.to_thread(queue_service.get_queued_uploads)),
         }
 
     # Get queued uploads. Fetch more than we'll upload so entries whose claim is
     # refused (job mid admin re-render) can't fill the page and starve others.
-    queued = queue_service.get_queued_uploads(limit=QUEUE_FETCH_LIMIT)
+    queued = await asyncio.to_thread(queue_service.get_queued_uploads, limit=QUEUE_FETCH_LIMIT)
     if not queued:
         logger.info("YouTube queue processor: no uploads queued")
         return {
@@ -84,7 +86,7 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
             break
 
         # Re-check quota before each upload
-        allowed, remaining, message = quota_service.check_quota_available()
+        allowed, remaining, message = await asyncio.to_thread(quota_service.check_quota_available)
         if not allowed:
             logger.info(f"YouTube queue processor: quota exhausted after {processed} uploads")
             break
@@ -92,7 +94,7 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
         # Claim the entry. The claim transaction also reads the job and refuses
         # while an admin re-render is active on it (the re-render's claim in turn
         # refuses while an upload is processing), so the two never overlap.
-        if not queue_service.mark_processing(job_id):
+        if not await asyncio.to_thread(queue_service.mark_processing, job_id):
             logger.info(f"YouTube queue processor: could not claim job {job_id}, skipping")
             continue
         attempted += 1
@@ -104,11 +106,11 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
                 uploaded_url = youtube_url
                 # Record completion FIRST: from here on the entry must never go
                 # back to "queued" (that would upload the video a second time).
-                queue_service.mark_completed(job_id, youtube_url)
+                await asyncio.to_thread(queue_service.mark_completed, job_id, youtube_url)
                 await _after_successful_upload(job_id, entry, youtube_url, jobs.get(job_id), queue_service)
                 processed += 1
             else:
-                queue_service.mark_failed(job_id, "Upload returned no URL")
+                await asyncio.to_thread(queue_service.mark_failed, job_id, "Upload returned no URL")
                 failed += 1
 
         except Exception as e:
@@ -118,21 +120,21 @@ async def process_youtube_upload_queue() -> Dict[str, Any]:
             if uploaded_url:
                 # The video IS on YouTube; only recording it failed. Never
                 # re-queue — flag for attention instead.
-                _flag_post_upload_error(queue_service, job_id, uploaded_url, error_str)
+                await asyncio.to_thread(_flag_post_upload_error, queue_service, job_id, uploaded_url, error_str)
                 processed += 1
                 continue
 
             # If quota exceeded, stop processing entirely
             if "quotaExceeded" in error_str:
-                queue_service.mark_failed(job_id, f"Quota exceeded: {error_str}")
+                await asyncio.to_thread(queue_service.mark_failed, job_id, f"Quota exceeded: {error_str}")
                 logger.warning("YouTube queue processor: quota exceeded, stopping")
                 failed += 1
                 break
 
-            queue_service.mark_failed(job_id, error_str)
+            await asyncio.to_thread(queue_service.mark_failed, job_id, error_str)
             failed += 1
 
-    remaining_count = len(queue_service.get_queued_uploads())
+    remaining_count = len(await asyncio.to_thread(queue_service.get_queued_uploads))
     logger.info(
         f"YouTube queue processor: done. processed={processed} failed={failed} remaining={remaining_count}"
     )
@@ -150,7 +152,7 @@ async def _after_successful_upload(job_id: str, entry: Dict[str, Any], youtube_u
     entry flagged for attention, never re-queued (the upload already happened)."""
     try:
         # Update job state_data with the YouTube URL
-        _update_job_youtube_url(job_id, youtube_url)
+        await asyncio.to_thread(_update_job_youtube_url, job_id, youtube_url)
     except Exception as e:
         logger.exception(f"YouTube queue processor: failed to record URL for job {job_id}")
         _flag_post_upload_error(queue_service, job_id, youtube_url, f"update job: {e}")
@@ -227,6 +229,17 @@ async def _process_single_upload(
     Returns:
         YouTube URL if successful, None otherwise
     """
+    # GCS download + the whole YouTube upload are blocking, and this runs inside
+    # the API process (internal/admin queue routes) — keep it off the event loop.
+    return await asyncio.to_thread(_process_single_upload_sync, job_id, entry, quota_service, settings)
+
+
+def _process_single_upload_sync(
+    job_id: str,
+    entry: Dict[str, Any],
+    quota_service,
+    settings,
+) -> Optional[str]:
     job_manager = JobManager()
     storage = StorageService()
 

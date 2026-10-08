@@ -161,3 +161,169 @@ def test_get_encoding_service_builds_once_under_concurrency():
             t.join()
         assert len(builds) == 1
         assert len({id(r) for r in results}) == 1
+
+
+# --- 2026-10-08: routes/cron stalls traced by the loop watchdog ---------------
+# complete_review's corrections upload (21s), create_job_from_search's theme prep
+# (5-9s), recover_stuck_jobs' Firestore scans (~260 stalls/week), the YouTube
+# queue processor and upload-duration validation all ran sync I/O on the loop.
+
+
+def test_run_on_loop_runs_coroutine_on_the_given_loop():
+    from backend.utils.loop_bridge import run_on_loop
+
+    async def main():
+        loop = asyncio.get_running_loop()
+        seen = {}
+
+        async def coro():
+            seen["loop"] = asyncio.get_running_loop()
+            return 42
+
+        result = await asyncio.to_thread(run_on_loop, loop, coro())
+        assert result == 42
+        assert seen["loop"] is loop
+
+    asyncio.run(main())
+
+
+def test_run_on_loop_propagates_exceptions():
+    from backend.utils.loop_bridge import run_on_loop
+
+    async def main():
+        loop = asyncio.get_running_loop()
+
+        async def boom():
+            raise ValueError("nope")
+
+        with pytest.raises(ValueError, match="nope"):
+            await asyncio.to_thread(run_on_loop, loop, boom())
+
+    asyncio.run(main())
+
+
+@pytest.mark.asyncio
+async def test_complete_review_saves_off_loop_and_triggers_render():
+    from unittest.mock import AsyncMock
+
+    from backend.api.routes import review
+    from backend.models.job import JobStatus
+
+    job = MagicMock()
+    job.status = JobStatus.AWAITING_REVIEW
+    job.file_urls = {}
+    job.existing_instrumental_gcs_path = None
+    job.state_data = {}
+    jm = MagicMock()
+    jm.get_job.return_value = job
+    jm.delete_state_data_keys.return_value = []
+    storage = MagicMock()
+    storage.upload_json.side_effect = _sleep
+
+    with patch.object(review, "JobManager", return_value=jm), \
+         patch.object(review, "StorageService", return_value=storage), \
+         patch("backend.services.worker_service.get_worker_service") as ws:
+        ws.return_value.trigger_render_video_worker = AsyncMock(return_value=True)
+        result = {}
+
+        async def call():
+            result.update(await review.complete_review(
+                job_id="j1",
+                updated_data={"corrections": [], "instrumental_selection": "clean"},
+                auth_info=("u@example.com", "job_owner"),
+            ))
+
+        ticks = await _ticks_during(call())
+
+    storage.upload_json.assert_called_once()
+    ws.return_value.trigger_render_video_worker.assert_awaited_once_with("j1")
+    assert result == {"status": "success", "instrumental_selection": "clean"}
+    assert ticks >= MIN_TICKS
+
+
+@pytest.mark.asyncio
+async def test_create_job_from_search_runs_off_loop():
+    from backend.api.routes import jobs
+
+    with patch.object(jobs, "_create_job_from_search_sync", side_effect=_sleep) as body:
+        ticks = await _ticks_during(
+            jobs.create_job_from_search(MagicMock(), MagicMock(), MagicMock(), MagicMock())
+        )
+    body.assert_called_once()
+    assert isinstance(body.call_args.args[-1], asyncio.AbstractEventLoop)
+    assert ticks >= MIN_TICKS
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("route, body", [
+    ("recover_stuck_jobs", "_recover_stuck_jobs_sync"),
+    ("retry_pending_render_jobs", "_retry_pending_render_jobs_sync"),
+])
+async def test_internal_crons_run_off_loop(route, body):
+    from backend.api.routes import internal
+
+    with patch.object(internal, body, side_effect=_sleep) as mock_body:
+        ticks = await _ticks_during(getattr(internal, route)(MagicMock(), MagicMock()))
+    mock_body.assert_called_once()
+    assert ticks >= MIN_TICKS
+
+
+@pytest.mark.asyncio
+async def test_upload_duration_validation_runs_off_loop():
+    from backend.api.routes import file_upload
+
+    with patch.object(file_upload, "_validate_audio_durations_sync", side_effect=_sleep):
+        ticks = await _ticks_during(file_upload._validate_audio_durations(MagicMock(), "a.flac", "i.flac"))
+    assert ticks >= MIN_TICKS
+
+
+@pytest.mark.asyncio
+async def test_youtube_queue_single_upload_runs_off_loop():
+    from backend.workers import youtube_queue_processor as qp
+
+    with patch.object(qp, "_process_single_upload_sync", side_effect=_sleep):
+        ticks = await _ticks_during(qp._process_single_upload("j1", {}, MagicMock(), MagicMock()))
+    assert ticks >= MIN_TICKS
+
+
+@pytest.mark.asyncio
+async def test_youtube_queue_quota_and_queue_reads_run_off_loop():
+    from backend.workers import youtube_queue_processor as qp
+
+    quota = MagicMock()
+    quota.check_quota_available.side_effect = lambda: (_sleep(), (True, 100, "ok"))[1]
+    queue = MagicMock()
+    queue.get_queued_uploads.side_effect = lambda **_kw: (_sleep(), [])[1]
+    with patch.object(qp, "get_youtube_quota_service", return_value=quota), \
+         patch.object(qp, "get_youtube_upload_queue_service", return_value=queue):
+        ticks = await _ticks_during(qp.process_youtube_upload_queue())
+    # 2 x BLOCK_S of blocking work; offloaded it ticks through both.
+    assert ticks >= 2 * MIN_TICKS
+
+
+@pytest.mark.asyncio
+async def test_cloud_run_job_dispatch_runs_off_loop():
+    from backend.services.worker_service import WorkerService
+
+    client = MagicMock()
+    client.run_job.side_effect = _sleep
+    ws = WorkerService.__new__(WorkerService)
+    ticks = await _ticks_during(ws._run_job_with_retry(client, MagicMock(), log_prefix="[t]"))
+    client.run_job.assert_called_once()
+    assert ticks >= MIN_TICKS
+
+
+@pytest.mark.asyncio
+async def test_render_trigger_bumps_generation_off_loop():
+    from unittest.mock import AsyncMock
+
+    from backend.services.worker_service import WorkerService
+
+    ws = WorkerService.__new__(WorkerService)
+    ws._use_cloud_tasks = False
+    ws.settings = MagicMock(use_cloud_run_jobs_for_render=False)
+    with patch.object(WorkerService, "_bump_worker_generation", side_effect=_sleep), \
+         patch.object(WorkerService, "_start_encoding_worker_warmup"), \
+         patch.object(WorkerService, "trigger_worker", new=AsyncMock(return_value=True)):
+        ticks = await _ticks_during(ws.trigger_render_video_worker("j1"))
+    assert ticks >= MIN_TICKS

@@ -1311,6 +1311,60 @@ class TestVideoWorkerOrchestratorDistribution:
         assert orchestrator.result.youtube_url is None
 
 
+    def _youtube_orchestrator(self, temp_dir):
+        video_file = os.path.join(temp_dir, "test.mp4")
+        with open(video_file, "w") as f:
+            f.write("dummy video")
+        config = OrchestratorConfig(
+            job_id="test-job",
+            artist="Eli",
+            title="The Comeback",
+            title_video_path="/path/title.mov",
+            karaoke_video_path="/path/karaoke.mov",
+            instrumental_audio_path="/path/audio.flac",
+            enable_youtube_upload=True,
+            youtube_credentials={"token": "test"},
+        )
+        orchestrator = VideoWorkerOrchestrator(config)
+        orchestrator.result.final_video_lossy = video_file
+        return orchestrator
+
+    @pytest.mark.asyncio
+    async def test_upload_to_youtube_failure_is_queued_for_retry(self):
+        """A failed (non-quota) upload goes to the deferred queue instead of being lost."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orchestrator = self._youtube_orchestrator(temp_dir)
+            with patch.object(orchestrator, "_get_youtube_service") as mock_get, \
+                 patch("backend.services.youtube_upload_queue_service.get_youtube_upload_queue_service") as mock_queue_get:
+                mock_get.return_value.upload_video.side_effect = Exception('<HttpError 410 returned "Gone">')
+
+                await orchestrator._upload_to_youtube()
+
+            queue_kwargs = mock_queue_get.return_value.queue_upload.call_args.kwargs
+            assert queue_kwargs["job_id"] == "test-job"
+            assert queue_kwargs["reason"] == "upload_error"
+            assert orchestrator.result.youtube_upload_queued is True
+            assert orchestrator.result.youtube_url is None
+            assert len(orchestrator.result.distribution_warnings) == 1
+            assert "queued for automatic retry" in orchestrator.result.distribution_warnings[0]
+
+    @pytest.mark.asyncio
+    async def test_upload_to_youtube_failure_and_queue_failure_warns(self):
+        """If queueing also fails, the warning names the upload error (not quota)."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            orchestrator = self._youtube_orchestrator(temp_dir)
+            with patch.object(orchestrator, "_get_youtube_service") as mock_get, \
+                 patch("backend.services.youtube_upload_queue_service.get_youtube_upload_queue_service") as mock_queue_get:
+                mock_get.return_value.upload_video.side_effect = Exception("Gone")
+                mock_queue_get.return_value.queue_upload.side_effect = Exception("firestore down")
+
+                await orchestrator._upload_to_youtube()
+
+            assert orchestrator.result.youtube_upload_queued is False
+            assert orchestrator.result.distribution_warnings == [
+                "YouTube upload skipped (upload failed: Gone) and failed to queue: firestore down"
+            ]
+
 class TestVideoWorkerOrchestratorNotifications:
     """Test notifications stage."""
 

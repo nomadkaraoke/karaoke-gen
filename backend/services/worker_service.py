@@ -625,7 +625,7 @@ class WorkerService:
         uses Cloud Run Jobs for execution (supports >30 min encoding).
         Otherwise, uses Cloud Tasks or direct HTTP.
         """
-        self._bump_worker_generation(job_id)
+        await asyncio.to_thread(self._bump_worker_generation, job_id)  # Firestore write
         self._start_encoding_worker_warmup(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_video:
             return await self._trigger_cloud_run_job(job_id)
@@ -663,7 +663,8 @@ class WorkerService:
         last_exc: Optional[Exception] = None
         for attempt in range(1, _RUN_JOB_MAX_ATTEMPTS + 1):
             try:
-                return client.run_job(request=request)
+                # Sync gRPC call (~1s) — keep it off the event loop.
+                return await asyncio.to_thread(client.run_job, request=request)
             except _TRANSIENT_RUN_JOB_ERRORS as e:
                 last_exc = e
                 if attempt >= _RUN_JOB_MAX_ATTEMPTS:
@@ -795,7 +796,7 @@ class WorkerService:
         rendering_video (incident 2026-09-13, job 41e06b90 — same class as
         incident 2026-03-08 which migrated the video worker to Cloud Run Jobs).
         """
-        self._bump_worker_generation(job_id)
+        await asyncio.to_thread(self._bump_worker_generation, job_id)  # Firestore write
         self._start_encoding_worker_warmup(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_render:
             return await self._trigger_worker_cloud_run_job(
