@@ -27,6 +27,8 @@ class TestCheckStateMachine:
     def _wd(self, **kw):
         clock = FakeClock()
         recorded = []
+        # cpu_clock tracks wall time: the process was running (not throttled) between checks.
+        kw.setdefault("cpu_clock", clock)
         wd = LoopWatchdog(clock=clock, recorder=recorded.append, **kw)
         wd._loop_thread_id = None  # no real frames in these tests
         return wd, clock, recorded
@@ -132,7 +134,7 @@ class TestIdleGapSuppression:
         caplog.set_level(logging.DEBUG, logger="backend.services.loop_watchdog")
         clock = FakeClock()
         recorded = []
-        wd = LoopWatchdog(clock=clock, recorder=recorded.append)
+        wd = LoopWatchdog(clock=clock, recorder=recorded.append, cpu_clock=clock)
         wd._loop_thread_id = 12345
         with patch("backend.services.loop_watchdog._is_idle_frame", return_value=idle), \
              patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
@@ -155,6 +157,89 @@ class TestIdleGapSuppression:
         recorded = self._run_gap(idle=False, caplog=caplog)
         assert len(recorded) == 1
         assert "EVENT_LOOP_STALL ended" in caplog.text
+
+
+class TestThrottledProcessFreeze:
+    """Cloud Run CPU throttling freezes every thread: the watchdog oversleeps and the
+    process burns ~no CPU. That gap is not a loop stall (2026-10-08 false alert:
+    30s "stall" in asyncio get_debug with no request in flight)."""
+
+    def _wd(self):
+        clock = FakeClock()
+        cpu = FakeClock()  # advances only when the test says the process ran
+        recorded = []
+        wd = LoopWatchdog(clock=clock, cpu_clock=cpu, recorder=recorded.append)
+        wd._loop_thread_id = 12345
+        return wd, clock, cpu, recorded
+
+    def _check(self, wd):
+        with patch("backend.services.loop_watchdog._is_idle_frame", return_value=False), \
+             patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
+            wd.check()
+
+    def test_frozen_gap_is_not_reported(self, caplog):
+        caplog.set_level(logging.DEBUG, logger="backend.services.loop_watchdog")
+        wd, clock, cpu, recorded = self._wd()
+        wd._last_tick = clock.t
+        self._check(wd)                 # baseline check
+        clock.t += 30.0                 # whole process frozen 30s, no CPU used
+        self._check(wd)
+        clock.t += 0.25
+        cpu.t += 0.01
+        wd._last_tick = clock.t         # thawed: heartbeat resumes
+        self._check(wd)
+        assert recorded == []
+        assert "EVENT_LOOP_STALL" not in caplog.text
+        assert "discounted 30000ms of process freeze" in caplog.text
+
+    def test_blocking_io_stall_still_reported(self, caplog):
+        """Blocking I/O on the loop: the watchdog keeps waking on time (GIL released)."""
+        caplog.set_level(logging.WARNING)
+        wd, clock, cpu, recorded = self._wd()
+        wd._last_tick = clock.t
+        self._check(wd)
+        for _ in range(int(12 / 0.25)):  # 12s stall, watchdog wakes every tick
+            clock.t += 0.25
+            cpu.t += 0.001
+            self._check(wd)
+        clock.t += 0.25
+        wd._last_tick = clock.t
+        self._check(wd)
+        assert len(recorded) == 1
+        assert "EVENT_LOOP_STALL ended duration_ms=12000" in caplog.text
+
+    def test_cpu_bound_gil_hog_still_reported(self, caplog):
+        """GIL-holding CPU work also starves the watchdog, but the process burns CPU."""
+        caplog.set_level(logging.WARNING)
+        wd, clock, cpu, recorded = self._wd()
+        wd._last_tick = clock.t
+        self._check(wd)
+        clock.t += 20.0
+        cpu.t += 19.5
+        self._check(wd)
+        clock.t += 0.25
+        wd._last_tick = clock.t
+        self._check(wd)
+        assert len(recorded) == 1
+        assert "EVENT_LOOP_STALL ended duration_ms=20000" in caplog.text
+
+    def test_freeze_inside_real_stall_is_subtracted(self, caplog):
+        """8s of real blocking then a 30s freeze reports ~8s, not 38s."""
+        caplog.set_level(logging.WARNING)
+        wd, clock, cpu, recorded = self._wd()
+        wd._last_tick = clock.t
+        self._check(wd)
+        for _ in range(int(8 / 0.25)):
+            clock.t += 0.25
+            cpu.t += 0.001
+            self._check(wd)
+        clock.t += 30.0                 # frozen
+        self._check(wd)
+        clock.t += 0.25
+        wd._last_tick = clock.t
+        self._check(wd)
+        assert "EVENT_LOOP_STALL ended duration_ms=8000" in caplog.text
+        assert recorded[0]["duration_ms"] == 8000
 
 
 def test_is_idle_frame_detects_parked_selector():

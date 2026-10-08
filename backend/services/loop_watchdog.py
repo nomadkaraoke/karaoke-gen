@@ -88,6 +88,9 @@ class LoopWatchdog:
         sample_at_s: tuple[float, ...] = (1.0, 5.0, 15.0),
         recorder: Optional[Recorder] = None,
         clock: Callable[[], float] = time.monotonic,
+        cpu_clock: Callable[[], float] = time.process_time,
+        frozen_gap_s: float = 2.0,
+        frozen_cpu_ratio: float = 0.25,
     ) -> None:
         self.tick_s = tick_s
         self.stall_threshold_s = stall_threshold_s
@@ -96,6 +99,19 @@ class LoopWatchdog:
         self.sample_at_s = tuple(sorted(sample_at_s))
         self.recorder = recorder
         self._clock = clock
+        self._cpu_clock = cpu_clock
+        # Cloud Run --cpu-throttling freezes the WHOLE process between requests —
+        # sometimes mid-callback, where the "loop parked in select()" check can't
+        # see it (2026-10-08: a 30s "stall" in asyncio's get_debug on an instance
+        # with no requests in flight). Signature: this watchdog thread itself
+        # oversleeps by >= frozen_gap_s while the process burns almost no CPU
+        # (a blocking I/O call lets this thread wake on time; GIL-hogging CPU
+        # work burns CPU). That frozen time is discounted from the stall.
+        self.frozen_gap_s = frozen_gap_s
+        self.frozen_cpu_ratio = frozen_cpu_ratio
+        self._last_check: Optional[float] = None
+        self._last_cpu = 0.0
+        self._stall_frozen_s = 0.0
 
         self._last_tick = clock()
         self._loop_thread_id: Optional[int] = None
@@ -170,8 +186,21 @@ class LoopWatchdog:
             extra={"loop_stall_age_ms": int(age * 1000), "loop_stall_culprit": culprit},
         )
 
+    def _frozen_gap(self, now: float) -> float:
+        """Seconds since the previous check during which the whole process was frozen."""
+        cpu = self._cpu_clock()
+        prev_check, prev_cpu = self._last_check, self._last_cpu
+        self._last_check, self._last_cpu = now, cpu
+        if prev_check is None:
+            return 0.0
+        gap = now - prev_check
+        if gap >= self.frozen_gap_s and (cpu - prev_cpu) < gap * self.frozen_cpu_ratio:
+            return gap
+        return 0.0
+
     def check(self, now: Optional[float] = None) -> None:
         now = self._clock() if now is None else now
+        frozen = self._frozen_gap(now)
         last = self._last_tick
         age = now - last
 
@@ -181,8 +210,11 @@ class LoopWatchdog:
                 self._stall_started_tick = last
                 self._samples = []
                 self._next_sample_idx = 0
+                self._stall_frozen_s = 0.0
             else:
                 return
+        # Only the part of the frozen gap after the last heartbeat belongs to this stall.
+        self._stall_frozen_s += min(frozen, age)
 
         # In a stall: has the heartbeat resumed?
         if last > self._stall_started_tick:
@@ -190,6 +222,16 @@ class LoopWatchdog:
             # previous one would have, so subtract the nominal sleep.
             duration = max(0.0, last - self._stall_started_tick - self.tick_s)
             self._finish(duration)
+            return
+
+        if frozen:
+            # Just thawed: the loop's stack shows where the freeze caught it, not
+            # what blocked it. Skip the samples due during the freeze.
+            while (
+                self._next_sample_idx < len(self.sample_at_s)
+                and age >= self.sample_at_s[self._next_sample_idx]
+            ):
+                self._next_sample_idx += 1
             return
 
         while (
@@ -201,8 +243,16 @@ class LoopWatchdog:
 
     def _finish(self, duration: float) -> None:
         samples = self._samples
+        frozen_s = self._stall_frozen_s
         self._in_stall = False
         self._samples = []
+        self._stall_frozen_s = 0.0
+        if frozen_s:
+            logger.debug(
+                "loop watchdog: discounted %dms of process freeze (CPU throttling) from a %dms gap",
+                int(frozen_s * 1000), int(duration * 1000),
+            )
+            duration = max(0.0, duration - frozen_s)
         if duration < self.stall_threshold_s:
             return
         if samples and all(s.get("idle") for s in samples):
