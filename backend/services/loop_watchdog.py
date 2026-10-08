@@ -89,7 +89,7 @@ class LoopWatchdog:
         recorder: Optional[Recorder] = None,
         clock: Callable[[], float] = time.monotonic,
         cpu_clock: Callable[[], float] = time.process_time,
-        frozen_gap_s: float = 2.0,
+        frozen_gap_s: float = 0.75,
         frozen_cpu_ratio: float = 0.25,
     ) -> None:
         self.tick_s = tick_s
@@ -107,6 +107,10 @@ class LoopWatchdog:
         # oversleeps by >= frozen_gap_s while the process burns almost no CPU
         # (a blocking I/O call lets this thread wake on time; GIL-hogging CPU
         # work burns CPU). That frozen time is discounted from the stall.
+        # 0.75s = 3 missed ticks: measured wake gaps stay <= 0.27s under sync I/O,
+        # pure-Python CPU and C-extension CPU on the loop, while partial throttling
+        # gives short 1-2.5s freezes (126 of 128 asyncio-internal "stalls" on
+        # 2026-10-08 had no request waiting on them).
         self.frozen_gap_s = frozen_gap_s
         self.frozen_cpu_ratio = frozen_cpu_ratio
         self._last_check: Optional[float] = None

@@ -1300,9 +1300,13 @@ async def _handle_native_distribution(
                 job_log.info(f"Uploading to Dropbox folder: {remote_folder}")
                 from backend.services.dropbox_service import dropbox_skip_suffixes_for
 
+                # The orchestrator already uploaded this folder minus stems/ and
+                # lyrics/ (prepared just above) — only send what's new or changed
+                # instead of re-uploading every file a second time.
                 dropbox.upload_folder(
                     temp_dir, remote_folder,
                     exclude_suffixes=dropbox_skip_suffixes_for(dropbox_path),
+                    skip_unchanged=True,
                 )
                 
                 # Create sharing link

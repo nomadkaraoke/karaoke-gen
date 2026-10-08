@@ -71,6 +71,18 @@ def validate_credentials_on_startup():
         logger.error(f"Failed to validate credentials on startup: {e}")
 
 
+# Imported lazily inside route handlers; pre-imported by the startup warmup thread.
+_LAZY_ROUTE_IMPORTS = (
+    "httpx",
+    "backend.services.worker_service",
+    "backend.services.flacfetch_client",
+    "backend.services.catalog_proxy_service",
+    "backend.services.ip_geolocation_service",
+    "backend.services.email_validation_service",
+    "backend.services.musicbrainz_service",
+)
+
+
 def _run_background_warmup():
     """Warm caches that used to block startup (runs in a daemon thread).
 
@@ -85,6 +97,19 @@ def _run_background_warmup():
     simply fall back to the preloaders' lazy paths.
     """
     warmup_start = time.time()
+
+    # 0. Modules that routes import lazily inside handlers. On a fresh instance
+    # the first such import ran ON the event loop: importing httpx/httpcore (via
+    # flacfetch_client / worker_service) froze it 4-15s on cold disk reads
+    # (EVENT_LOOP_STALL in importlib, 2026-10-08). Import them here first, so a
+    # request that needs them later finds them already in sys.modules.
+    import importlib
+
+    for module in _LAZY_ROUTE_IMPORTS:
+        try:
+            importlib.import_module(module)
+        except Exception as e:
+            logger.warning(f"Warmup import of {module} failed (will import lazily): {e}")
 
     # 1. SpaCy model (60+ second delay without preload)
     try:

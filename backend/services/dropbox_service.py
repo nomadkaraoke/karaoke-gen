@@ -8,6 +8,7 @@ replacing rclone for server-side operations. It handles:
 
 Credentials are loaded from Google Cloud Secret Manager.
 """
+import hashlib
 import json
 import logging
 import os
@@ -17,6 +18,22 @@ from typing import Optional, Sequence, Tuple
 from google.cloud import secretmanager
 
 logger = logging.getLogger(__name__)
+
+
+_DROPBOX_HASH_BLOCK = 4 * 1024 * 1024
+
+
+def dropbox_content_hash(path: str) -> str:
+    """Dropbox ``content_hash`` of a local file: SHA-256 of the concatenated
+    SHA-256 digests of each 4 MiB block (https://www.dropbox.com/developers/reference/content-hash)."""
+    overall = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            block = f.read(_DROPBOX_HASH_BLOCK)
+            if not block:
+                break
+            overall.update(hashlib.sha256(block).digest())
+    return overall.hexdigest()
 
 
 class DropboxService:
@@ -284,11 +301,46 @@ class DropboxService:
                 )
                 cursor.offset = file_obj.tell()
 
+    def _remote_content_hashes(self, remote_path: str) -> dict:
+        """``{path_lower: content_hash}`` for every file under ``remote_path``.
+
+        Best-effort: a missing folder is empty, and any other error returns ``{}``
+        (the caller then uploads everything, as before).
+        """
+        from dropbox.exceptions import ApiError
+        from dropbox.files import FileMetadata
+
+        try:
+            result = self.client.files_list_folder(remote_path, recursive=True)
+        except ApiError as e:
+            err = e.error
+            if err.is_path() and err.get_path().is_not_found():
+                return {}
+            logger.warning(f"Couldn't list {remote_path} to skip unchanged files: {e}")
+            return {}
+        except Exception as e:
+            logger.warning(f"Couldn't list {remote_path} to skip unchanged files: {e}")
+            return {}
+        hashes = {}
+        try:
+            while True:
+                for entry in result.entries:
+                    if isinstance(entry, FileMetadata) and entry.content_hash:
+                        hashes[entry.path_lower] = entry.content_hash
+                if not result.has_more:
+                    break
+                result = self.client.files_list_folder_continue(result.cursor)
+        except Exception as e:
+            logger.warning(f"Couldn't finish listing {remote_path} to skip unchanged files: {e}")
+            return {}
+        return hashes
+
     def upload_folder(
         self,
         local_dir: str,
         remote_path: str,
         exclude_suffixes: Sequence[str] = (),
+        skip_unchanged: bool = False,
     ) -> None:
         """
         Recursively upload all files and subdirectories to Dropbox folder.
@@ -298,6 +350,9 @@ class DropboxService:
             remote_path: Dropbox destination folder path
             exclude_suffixes: Filename suffixes to skip (see
                 dropbox_skip_suffixes_for). Skipped files stay on local disk / GCS.
+            skip_unchanged: Don't re-upload files already in the folder with the
+                same Dropbox content hash (one recursive listing up front). Used
+                when a second pass adds files to a folder that was just uploaded.
         """
         # Ensure remote path starts with /
         if not remote_path.startswith("/"):
@@ -305,8 +360,11 @@ class DropboxService:
 
         logger.info(f"Uploading folder {local_dir} to {remote_path}")
 
+        remote_hashes = self._remote_content_hashes(remote_path) if skip_unchanged else {}
+
         uploaded_count = 0
         skipped_count = 0
+        unchanged_count = 0
         for root, _dirs, files in os.walk(local_dir):
             # Calculate the relative path from local_dir to current root
             rel_root = os.path.relpath(root, local_dir)
@@ -322,12 +380,17 @@ class DropboxService:
                     continue
                 local_file = os.path.join(root, filename)
                 remote_file = f"{current_remote}/{filename}"
+                remote_hash = remote_hashes.get(remote_file.lower())
+                if remote_hash and remote_hash == dropbox_content_hash(local_file):
+                    unchanged_count += 1
+                    continue
                 self.upload_file(local_file, remote_file)
                 uploaded_count += 1
 
         logger.info(
             f"Uploaded {uploaded_count} files to {remote_path}"
             + (f" (skipped {skipped_count} excluded)" if skipped_count else "")
+            + (f" ({unchanged_count} already up to date)" if unchanged_count else "")
         )
 
     def create_shared_link(self, path: str) -> str:

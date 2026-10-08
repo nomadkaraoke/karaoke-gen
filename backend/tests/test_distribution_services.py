@@ -807,6 +807,42 @@ class TestVideoWorkerDistribution:
         mock_job_log.warning.assert_called()
 
     @pytest.mark.asyncio
+    async def test_handle_native_distribution_dropbox_skips_unchanged(self):
+        """The second Dropbox pass only sends what the orchestrator didn't already upload."""
+        from backend.workers.video_worker import _handle_native_distribution
+
+        mock_job = MagicMock()
+        mock_job.dropbox_path = "/Tracks"
+        mock_job.brand_prefix = "NOMAD"
+        mock_job.gdrive_folder_id = None
+        mock_job.is_private = False
+        mock_job.keep_brand_code = None
+        mock_job.artist = "Eli"
+        mock_job.title = "The Comeback"
+        mock_job.state_data = {}
+
+        mock_dropbox = MagicMock()
+        mock_dropbox.is_configured = True
+        mock_dropbox.create_shared_link.return_value = "https://dropbox/link"
+        dist = MagicMock(dropbox_path="/Tracks", brand_prefix="NOMAD", gdrive_folder_id=None)
+
+        with patch('backend.services.dropbox_service.get_dropbox_service', return_value=mock_dropbox), \
+             patch('backend.services.job_defaults_service.get_effective_distribution_for_job', return_value=dist), \
+             patch('backend.services.theme_rerender_service.rerender_brand_code', return_value=None):
+            await _handle_native_distribution(
+                job_id="test-123",
+                job=mock_job,
+                job_log=MagicMock(),
+                job_manager=MagicMock(),
+                temp_dir="/tmp/test",
+                result={"brand_code": "NOMAD-1754", "dropbox_link": "https://dropbox/link"},
+            )
+
+        args, kwargs = mock_dropbox.upload_folder.call_args
+        assert args == ("/tmp/test", "/Tracks/NOMAD-1754 - Eli - The Comeback")
+        assert kwargs["skip_unchanged"] is True
+
+    @pytest.mark.asyncio
     async def test_handle_native_distribution_gdrive_not_configured(self):
         """Test Google Drive upload skipped when service not configured."""
         from backend.workers.video_worker import _handle_native_distribution

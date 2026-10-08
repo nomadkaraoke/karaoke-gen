@@ -67,3 +67,36 @@ def test_lifespan_starts_warmup_thread_without_blocking_readiness():
                 assert not warmup_release.is_set()
         finally:
             warmup_release.set()
+
+
+def test_warmup_pre_imports_lazy_route_modules():
+    """httpx & co. are imported off the loop at boot (cold-start importlib stalls, 2026-10-08)."""
+    import importlib
+
+    with (
+        patch.object(main_module, "preload_spacy_model"),
+        patch.object(main_module, "preload_all_nltk_resources"),
+        patch.object(main_module, "preload_langfuse_handler"),
+        patch.object(main_module, "validate_credentials_on_startup"),
+        patch.object(importlib, "import_module", wraps=importlib.import_module) as imp,
+    ):
+        main_module._run_background_warmup()
+
+    imported = [c.args[0] for c in imp.call_args_list]
+    assert imported[: len(main_module._LAZY_ROUTE_IMPORTS)] == list(main_module._LAZY_ROUTE_IMPORTS)
+    assert "httpx" in main_module._LAZY_ROUTE_IMPORTS
+
+
+def test_lazy_route_import_failure_does_not_stop_warmup():
+    import importlib
+
+    with (
+        patch.object(main_module, "preload_spacy_model") as spacy_mock,
+        patch.object(main_module, "preload_all_nltk_resources"),
+        patch.object(main_module, "preload_langfuse_handler"),
+        patch.object(main_module, "validate_credentials_on_startup"),
+        patch.object(importlib, "import_module", side_effect=ImportError("nope")),
+    ):
+        main_module._run_background_warmup()
+
+    spacy_mock.assert_called_once()

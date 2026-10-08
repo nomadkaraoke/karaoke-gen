@@ -658,3 +658,122 @@ class TestEnsureFolderAndMissingPaths:
         )
         with pytest.raises(ApiError):
             service.list_folders("/Tracks-New")
+
+
+class TestUploadFolderSkipUnchanged:
+    """The video worker's second Dropbox pass (after the orchestrator uploaded the
+    same folder) must only send new/changed files, not re-upload everything."""
+
+    def _service(self):
+        from backend.services.dropbox_service import DropboxService
+
+        service = DropboxService()
+        service._client = Mock()
+        return service
+
+    @staticmethod
+    def _file_entry(path_lower, content_hash):
+        from dropbox.files import FileMetadata
+
+        entry = Mock(spec=FileMetadata)
+        entry.path_lower = path_lower
+        entry.content_hash = content_hash
+        return entry
+
+    def _listing(self, entries, has_more=False, cursor="c1"):
+        result = Mock()
+        result.entries = entries
+        result.has_more = has_more
+        result.cursor = cursor
+        return result
+
+    def test_content_hash_matches_dropbox_algorithm(self, tmp_path):
+        import hashlib
+
+        from backend.services.dropbox_service import dropbox_content_hash
+
+        block = 4 * 1024 * 1024
+        data = b"a" * block + b"b" * 10  # two blocks
+        f = tmp_path / "x.bin"
+        f.write_bytes(data)
+        expected = hashlib.sha256(
+            hashlib.sha256(data[:block]).digest() + hashlib.sha256(data[block:]).digest()
+        ).hexdigest()
+        assert dropbox_content_hash(str(f)) == expected
+
+        empty = tmp_path / "empty.bin"
+        empty.write_bytes(b"")
+        assert dropbox_content_hash(str(empty)) == hashlib.sha256(b"").hexdigest()
+
+    def test_skips_identical_uploads_new_and_changed(self, tmp_path):
+        from backend.services.dropbox_service import dropbox_content_hash
+
+        (tmp_path / "Song (Final Karaoke Lossy 4k).mp4").write_bytes(b"video")
+        (tmp_path / "Song (Karaoke).cdg").write_bytes(b"cdg-new")
+        (tmp_path / "stems").mkdir()
+        (tmp_path / "stems" / "Song (Vocals).flac").write_bytes(b"vocals")
+
+        service = self._service()
+        service._client.files_list_folder.return_value = self._listing([
+            self._file_entry(
+                "/tracks/nomad-1 - song/song (final karaoke lossy 4k).mp4",
+                dropbox_content_hash(str(tmp_path / "Song (Final Karaoke Lossy 4k).mp4")),
+            ),
+            self._file_entry("/tracks/nomad-1 - song/song (karaoke).cdg", "stale-hash"),
+        ])
+
+        with patch.object(service, "upload_file") as up:
+            service.upload_folder(str(tmp_path), "/Tracks/NOMAD-1 - Song", skip_unchanged=True)
+
+        uploaded = sorted(call.args[1] for call in up.call_args_list)
+        assert uploaded == [
+            "/Tracks/NOMAD-1 - Song/Song (Karaoke).cdg",          # changed
+            "/Tracks/NOMAD-1 - Song/stems/Song (Vocals).flac",    # new
+        ]
+        service._client.files_list_folder.assert_called_once_with("/Tracks/NOMAD-1 - Song", recursive=True)
+
+    def test_listing_paginates(self, tmp_path):
+        from backend.services.dropbox_service import dropbox_content_hash
+
+        (tmp_path / "a.txt").write_bytes(b"a")
+        (tmp_path / "b.txt").write_bytes(b"b")
+        service = self._service()
+        service._client.files_list_folder.return_value = self._listing(
+            [self._file_entry("/f/a.txt", dropbox_content_hash(str(tmp_path / "a.txt")))], has_more=True
+        )
+        service._client.files_list_folder_continue.return_value = self._listing(
+            [self._file_entry("/f/b.txt", dropbox_content_hash(str(tmp_path / "b.txt")))]
+        )
+        with patch.object(service, "upload_file") as up:
+            service.upload_folder(str(tmp_path), "/f", skip_unchanged=True)
+        up.assert_not_called()
+
+    def test_missing_folder_uploads_everything(self, tmp_path):
+        from dropbox.exceptions import ApiError
+        from dropbox.files import ListFolderError, LookupError as DbxLookupError
+
+        (tmp_path / "a.txt").write_bytes(b"a")
+        service = self._service()
+        service._client.files_list_folder.side_effect = ApiError(
+            "req", ListFolderError.path(DbxLookupError.not_found), "msg", "hdr"
+        )
+        with patch.object(service, "upload_file") as up:
+            service.upload_folder(str(tmp_path), "/new", skip_unchanged=True)
+        up.assert_called_once()
+
+    def test_listing_failure_falls_back_to_full_upload(self, tmp_path):
+        (tmp_path / "a.txt").write_bytes(b"a")
+        (tmp_path / "b.txt").write_bytes(b"b")
+        service = self._service()
+        service._client.files_list_folder.side_effect = RuntimeError("network down")
+        with patch.object(service, "upload_file") as up:
+            service.upload_folder(str(tmp_path), "/f", skip_unchanged=True)
+        assert up.call_count == 2
+
+    def test_default_does_not_list_or_skip(self, tmp_path):
+        (tmp_path / "a.txt").write_bytes(b"a")
+        service = self._service()
+        with patch.object(service, "upload_file") as up:
+            service.upload_folder(str(tmp_path), "/f")
+        service._client.files_list_folder.assert_not_called()
+        up.assert_called_once()
