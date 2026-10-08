@@ -1,6 +1,6 @@
 # Disaster Recovery Runbook
 
-**Last updated:** 2026-10-01
+**Last updated:** 2026-10-08
 **Design doc:** `docs/archive/2026-03-27-business-continuity-design.md`
 **Implementation plan:** `docs/archive/2026-03-29-business-continuity-plan.md`
 **External services reference:** `docs/archive/2026-03-29-external-services-config.md`
@@ -13,7 +13,8 @@
 | BigQuery (weekly) | S3 `bigquery/daily-refresh/` | Load Parquet files | 7 days |
 | BigQuery (monthly) | S3 `bigquery/musicbrainz/` | Load Parquet files | 30 days |
 | BigQuery (Spotify) | S3 `bigquery/spotify/` | Load from Glacier Deep Archive | N/A (static) |
-| GCS job files | **GCS only** — object versioning (non-current kept 30d) + soft-delete (7d). Off-site S3 copy **stopped 2026-10-01**; S3 `gcs/job-files/` is a frozen snapshot up to 2026-09-30 | Restore non-current/soft-deleted generation in GCS | N/A off-site (frozen); in-GCS recovery window 7–30d |
+| GCS job files | **GCS only** — object versioning (non-current kept 7d since 2026-10-03) + soft-delete (7d). Off-site S3 copy **stopped 2026-10-01**; S3 `gcs/job-files/` is a frozen snapshot up to 2026-09-30 | Restore non-current/soft-deleted generation in GCS | N/A off-site (frozen); in-GCS recovery window 7–30d |
+| User-uploaded inputs (mix, own instrumental, lyrics, style uploads) | `jobs/{id}/input/**` (KEEP forever; copied from `uploads/{id}/` by every pipeline worker, `backend/services/input_persistence.py`). `uploads/` expires after **180 days** (was 7 until 2026-10-08) | Read from `jobs/{id}/input/`; backfill stragglers with `POST /api/admin/persist-uploads?dry_run=false` | Irreplaceable: no off-site copy. Lost for 64 Jan–Feb 2026 consumer jobs + BYO-instrumental jobs before the fix |
 | Git repos (code) | S3 `git-repos/{owner}/{repo}.bundle` (+ `manifest.json`) | `git clone <bundle>` then push to a new remote | 7 days (weekly, Sundays; incremental) |
 | Secret Manager | S3 `secrets/YYYY-MM-DD.bin` (sealed-box encrypted) | Decrypt with private key from KeepassXC | 24h |
 | AWS credentials (function) | GCP Secret Manager `aws-backup-credentials` | Read directly | On-change |

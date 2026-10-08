@@ -557,7 +557,7 @@ class VideoWorkerOrchestrator:
                     if src != dest:
                         self.storage.copy_blob(src, dest)
                         self.job_log.info(f"Staged custom instrumental for GCE encoder: {dest}")
-                        # uploads/ expires after 7 days: point the job at the
+                        # uploads/ expires (bucket lifecycle): point the job at the
                         # kept job-root copy for future re-renders/regenerates.
                         if src.startswith("uploads/") and self.job_manager:
                             self.job_manager.update_job(

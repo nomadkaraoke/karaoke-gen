@@ -867,8 +867,13 @@ def resolve_instrumental(work_dir: Path, config: dict):
 
     if existing_instrumental:
         # User-provided instrumental uploaded at job creation
-        # Downloaded to work_dir by process_job before run_encoding is called
-        instrumental = find_file(
+        # Downloaded to work_dir by process_job before run_encoding is called.
+        # Prefer that top-level copy (it's exactly config["existing_instrumental"]):
+        # the job folder also holds persisted inputs (input/audio/existing_instrumental.*
+        # = the raw upload, input/conformed/... = its aligned copy), which the
+        # recursive glob below could return instead.
+        top_level = sorted(work_dir.glob("existing_instrumental.*"))
+        instrumental = top_level[0] if top_level else find_file(
             work_dir,
             "*existing_instrumental*", "*Instrumental User*",
         )

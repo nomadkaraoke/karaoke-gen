@@ -39,6 +39,7 @@ from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.utils.audio_filenames import local_audio_filename
 from backend.services.job_manager import JobManager
+from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.storage_service import StorageService
 from backend.services.lyrics_translation import prepare_job_translations
 from karaoke_gen.lyrics_transcriber.output.translations import apply_translations
@@ -129,6 +130,9 @@ async def process_render_video(job_id: str) -> bool:
         job_log.error(f"Job {job_id} not found in Firestore!")
         await worker_registry.unregister(job_id, "render-video")
         return False
+
+    # Copy uploads/{job_id}/** into jobs/{job_id}/input/ (uploads/ expires) and repoint the job.
+    await asyncio.to_thread(ensure_job_inputs_persisted, job, storage, job_manager, "render_video")
 
     # Hard idempotency gate (worker-side). The legacy HTTP endpoint enforces
     # this via _check_worker_idempotency at dispatch time, but the Cloud Run

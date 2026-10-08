@@ -24,6 +24,7 @@ import time
 from typing import Optional, Dict, Any
 
 from backend.services.job_manager import JobManager
+from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import DownloadError
 from backend.services.job_health_service import validate_worker_can_run
@@ -182,6 +183,9 @@ async def process_audio_separation(job_id: str) -> bool:
         logger.error(f"[job:{job_id}] Job not found in Firestore")
         job_log.error(f"Job {job_id} not found in Firestore!")
         return False
+
+    # Copy uploads/{job_id}/** into jobs/{job_id}/input/ (uploads/ expires) and repoint the job.
+    await asyncio.to_thread(ensure_job_inputs_persisted, job, storage, job_manager, "audio")
 
     # Validate job status is appropriate for audio worker
     # This helps catch bugs where the worker is triggered incorrectly
@@ -519,7 +523,7 @@ async def download_audio(
             storage.download_file(job.input_media_gcs_path, local_path)
             logger.info(f"Job {job_id}: Downloaded uploaded file to {local_path}")
 
-            # Persist uploaded audio to jobs/ prefix (uploads/ has 7-day lifecycle)
+            # Persist uploaded audio to jobs/ prefix (uploads/ is a lifecycle-expiring staging area; see input_persistence)
             if job.input_media_gcs_path.startswith("uploads/"):
                 try:
                     persistent_path = f"jobs/{job_id}/input/{safe_filename}"

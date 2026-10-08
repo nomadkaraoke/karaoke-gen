@@ -1664,7 +1664,7 @@ async def mark_uploads_complete(
                 logger.warning(f"Duration validation failed with error: {e}. Proceeding without validation.")
                 # Don't block the job if we can't validate - the video worker will fail more gracefully
         
-        # uploads/ expires after 7 days: keep the user's instrumental at the job
+        # uploads/ expires (bucket lifecycle): keep the user's instrumental at the job
         # root (where the video pipeline stages it anyway) so later re-renders,
         # regenerates and edits still have it.
         if (update_data.get('existing_instrumental_gcs_path') or '').startswith('uploads/'):

@@ -6,6 +6,29 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## User uploads sat under a 7-day-expiring prefix — inputs are irreplaceable (Oct 2026, v0.268.2)
+
+Every upload lands in `uploads/{job_id}/`, which had a bucket lifecycle **delete after 7 days**. Only
+the audio worker (stem separation) copied the mix to `jobs/{id}/input/`, best-effort. Bring-your-own-
+instrumental jobs (all tenant jobs) skip separation, the uploaded instrumental was only staged at
+render time, and lyrics/style uploads were never copied — so a job left in review >7 days, or
+re-rendered after 7 days, 404'd on its own input (randy-vild re-renders, 2026-10-08). Firestore also
+showed 64 completed Jan–Feb 2026 consumer jobs whose mix is gone for good (no S3 copy: the off-site
+sync only ever covered `jobs/`, `tenants/`, `themes/`).
+
+- **Rule:** anything a user gave us is never under an expiring prefix once a job exists. Every
+  pipeline worker calls `input_persistence.ensure_job_inputs_persisted` on entry (server-side copy of
+  `uploads/{id}/**` → `jobs/{id}/input/**` + repoint every job field); `uploads/` now expires after
+  180 days as a pure staging area. `jobs/{id}/input/` is KEEP-forever in `storage_retention`.
+- **Don't confine persistence to one stage**: inputs arrive late (conformed instrumentals, style
+  uploads) and stages get skipped per job type. Make it idempotent and call it everywhere.
+- **Lifecycle rules are data-retention policy**: review them like deletes — a `matches_prefixes`
+  entry is a silent `rm -rf` on a timer.
+- Recovery that worked: originals in Andrew's Dropbox, pulled GCP-side (Cloud Shell) via the
+  folder's existing shared link (the backend Dropbox app lacks `files.content.read`, but
+  `sharing.read` + `sharing_get_shared_link_file` works), conformed instrumentals re-derived
+  deterministically with `conform_instrumental` and checked against `state_data.instrumental_conformed`.
+
 ## Public-repo CI artifacts published the real test card and the admin token (Oct 2026)
 
 Investigating E2E Daily #200 ("Stage 1 failed", Stripe self-heal "not needed") showed two things:
