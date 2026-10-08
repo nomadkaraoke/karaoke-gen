@@ -2776,8 +2776,10 @@ export interface ThemePreviewSample {
 }
 
 export interface ThemePreviewImages {
-  title_card: string // data:image/jpeg;base64,...
+  // data:image/jpeg;base64,... — null for a screen the theme leaves out of videos
+  title_card: string | null
   karaoke_frame: string
+  end_screen: string | null
 }
 
 export const tenantThemeApi = {

@@ -99,7 +99,18 @@ def test_preview_returns_data_urls(client_for):
     assert resp.status_code == 200
     body = resp.json()
     assert body["title_card"].startswith("data:image/jpeg;base64,")
+    assert body["end_screen"] is None  # not rendered (e.g. the theme omits it)
     assert render.call_args.kwargs["artist"] == "Randy Vild"
+
+
+def test_preview_returns_end_screen_and_null_for_omitted_title(client_for):
+    with patch.object(tenant_theme, "prepare_preview_styles", return_value={"intro": {}}), \
+         patch.object(tenant_theme, "render_theme_preview", return_value=PreviewImages(None, b"k", b"e")):
+        resp = client_for().post("/api/tenant/theme/preview", json={"style_params": {"intro": {}}})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["title_card"] is None
+    assert body["end_screen"].startswith("data:image/jpeg;base64,")
 
 
 def test_preview_validation_and_render_errors(client_for):

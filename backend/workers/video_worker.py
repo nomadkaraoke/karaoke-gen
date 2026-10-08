@@ -50,7 +50,7 @@ from backend.services.youtube_service import get_youtube_service
 from backend.services.youtube_description import translated_language_name
 from backend.services.encoding_service import get_encoding_service, run_with_lost_job_resubmit
 from backend.config import get_settings
-from backend.workers.style_helper import load_style_config
+from backend.workers.style_helper import load_style_config, screen_included
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 
@@ -138,6 +138,9 @@ async def _encode_via_gce(
         "base_name": base_name,
         "instrumental_selection": instrumental_selection,
         "existing_instrumental": existing_instrumental,
+        # Screens the theme leaves out (the encoder must not rebuild them from other PNGs).
+        "include_title_screen": screen_included(job.state_data, "title"),
+        "include_end_screen": screen_included(job.state_data, "end"),
         # NOTE: intentionally no "ffmpeg_threads" — finalization ffmpeg commands in
         # LocalEncodingService carry no -threads flag, so x264 uses its all-core auto
         # default (measured ~66-78% of a 32-vCPU worker busy during the heavy libx264
@@ -1501,8 +1504,9 @@ def _validate_prerequisites(job) -> bool:
     
     # Check screens exist (MOV or PNG — MOV is no longer uploaded, PNG is the new default)
     screens = job.file_urls.get('screens', {})
-    has_title = screens.get('title') or screens.get('title_png')
-    has_end = screens.get('end') or screens.get('end_png')
+    # A screen the theme omits (state_data.screens_included) isn't needed.
+    has_title = screens.get('title') or screens.get('title_png') or not screen_included(job.state_data, 'title')
+    has_end = screens.get('end') or screens.get('end_png') or not screen_included(job.state_data, 'end')
     if not has_title or not has_end:
         logger.error(f"Job {job.job_id}: Missing title or end screen")
         return False

@@ -1988,7 +1988,6 @@
     "description": "Personalitza l'aparença dels teus vídeos de karaoke. Les previsualitzacions de la dreta es renderitzen exactament com els teus vídeos acabats.",
     "discard": "Descarta els canvis",
     "discardConfirm": "Tens canvis al tema sense desar. Vols tancar sense desar?",
-    "endScreenHint": "La pantalla final no es previsualitza; utilitza la mateixa font i estil de disseny que la targeta de títol.",
     "font": "Font",
     "fontHint": "S'utilitza una sola font per a la targeta de títol, la lletra i la pantalla final.",
     "jsonInvalid": "JSON no vàlid",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {No s'ha pogut tornar a renderitzar # vídeo} other {No s'han pogut tornar a renderitzar # vídeos}}",
     "rerenderAllStarted": "{count, plural, one {S'està tornant a renderitzar # vídeo amb el teu tema nou. Triga uns 10-15 minuts; en pots seguir el progrés a la cançó.} other {S'estan tornant a renderitzar # vídeos amb el teu tema nou. Cadascun triga uns 10-15 minuts; en pots seguir el progrés a cada cançó.}}",
     "rerenderAllStarting": "S'està iniciant…",
-    "savedBodyInProgress": "Els vídeos nous i els vídeos que encara s'estan fent utilitzaran el teu tema actualitzat."
+    "savedBodyInProgress": "Els vídeos nous i els vídeos que encara s'estan fent utilitzaran el teu tema actualitzat.",
+    "copyTitleCardLayout": "Copia el disseny de la targeta de títol",
+    "copyTitleCardLayoutHint": "Posa aquí el títol de la cançó i el nom de l'artista amb la mateixa mida, posició, colors i majúscules que a la teva targeta de títol.",
+    "endScreenFontHint": "La pantalla final utilitza el mateix tipus de lletra que la targeta de títol (canvia'l a la pestanya Targeta de títol).",
+    "endScreenOff": "Els vídeos s'acabaran quan s'acabi la cançó.",
+    "includeEndScreen": "Inclou una pantalla final al final de cada vídeo",
+    "includeTitleCard": "Inclou una targeta de títol a l'inici de cada vídeo",
+    "previewEndScreen": "Previsualització de la pantalla final",
+    "screenOmitted": "No s'inclou als teus vídeos",
+    "showArtistName": "Mostra el nom de l'artista",
+    "showSongTitle": "Mostra el títol de la cançó",
+    "titleCardOff": "Els vídeos començaran directament amb el vídeo amb la lletra."
   },
   "stalledDownload": {
     "actionFailedDesc": "Torna-ho a provar d'aquí a un moment.",

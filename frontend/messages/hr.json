@@ -1988,7 +1988,6 @@
     "description": "Prilagodi izgled svojih karaoke videozapisa. Pretpregledi s desne strane prikazuju se točno onako kako će izgledati tvoji gotovi videozapisi.",
     "discard": "Odbaci promjene",
     "discardConfirm": "Imaš nespremljene promjene teme. Želiš li zatvoriti bez spremanja?",
-    "endScreenHint": "Završni zaslon nema pretpregled; koristi isti font i stil izgleda kao i naslovna kartica.",
     "font": "Font",
     "fontHint": "Isti font koristi se za naslovnu karticu, tekst pjesme i završni zaslon.",
     "jsonInvalid": "Nevažeći JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# videozapis nije se mogao ponovno renderirati} few {# videozapisa nisu se mogla ponovno renderirati} other {# videozapisa nije se moglo ponovno renderirati}}",
     "rerenderAllStarted": "{count, plural, one {Ponovno renderiranje # videozapisa s tvojom novom temom. Traje oko 10–15 minuta; napredak možeš pratiti na pjesmi.} few {Ponovno renderiranje # videozapisa s tvojom novom temom. Svaki traje oko 10–15 minuta; napredak možeš pratiti na svakoj pjesmi.} other {Ponovno renderiranje # videozapisa s tvojom novom temom. Svaki traje oko 10–15 minuta; napredak možeš pratiti na svakoj pjesmi.}}",
     "rerenderAllStarting": "Pokretanje…",
-    "savedBodyInProgress": "Novi videozapisi i videozapisi koji se još izrađuju koristit će tvoju ažuriranu temu."
+    "savedBodyInProgress": "Novi videozapisi i videozapisi koji se još izrađuju koristit će tvoju ažuriranu temu.",
+    "copyTitleCardLayout": "Kopiraj izgled naslovne kartice",
+    "copyTitleCardLayoutHint": "Postavi da naziv pjesme i ime izvođača ovdje imaju istu veličinu, položaj, boje i velika/mala slova kao na tvojoj naslovnoj kartici.",
+    "endScreenFontHint": "Završni zaslon koristi isti font kao i naslovna kartica (promijeni ga na kartici „Naslovna kartica”).",
+    "endScreenOff": "Videozapisi će završiti kada pjesma završi.",
+    "includeEndScreen": "Uključi završni zaslon na kraju svakog videozapisa",
+    "includeTitleCard": "Uključi naslovnu karticu na početku svakog videozapisa",
+    "previewEndScreen": "Pretpregled završnog zaslona",
+    "screenOmitted": "Nije uključeno u tvoje videozapise",
+    "showArtistName": "Prikaži ime izvođača",
+    "showSongTitle": "Prikaži naziv pjesme",
+    "titleCardOff": "Videozapisi će započeti odmah s tekstom pjesme."
   },
   "stalledDownload": {
     "actionFailedDesc": "Pokušaj ponovno za trenutak.",

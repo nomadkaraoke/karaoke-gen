@@ -1988,7 +1988,6 @@
     "description": "Tilpass hvordan karaokevideoene dine ser ut. Forhåndsvisningene til høyre gjengis nøyaktig slik de ferdige videoene dine vil bli.",
     "discard": "Forkast endringer",
     "discardConfirm": "Du har ulagrede temaendringer. Vil du lukke uten å lagre?",
-    "endScreenHint": "Sluttskjermen forhåndsvises ikke; den bruker samme skrifttype og oppsett som tittelkortet.",
     "font": "Skrifttype",
     "fontHint": "Én skrifttype brukes for tittelkort, sangtekst og sluttskjerm.",
     "jsonInvalid": "Ugyldig JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# video kunne ikke gjengis på nytt} other {# videoer kunne ikke gjengis på nytt}}",
     "rerenderAllStarted": "{count, plural, one {Gjengir # video på nytt med det nye temaet ditt. Det tar omtrent 10–15 minutter; du kan følge fremdriften på sporet.} other {Gjengir # videoer på nytt med det nye temaet ditt. Hver video tar omtrent 10–15 minutter; du kan følge fremdriften på hvert spor.}}",
     "rerenderAllStarting": "Starter…",
-    "savedBodyInProgress": "Nye videoer, og videoer som fortsatt lages, vil bruke det oppdaterte temaet ditt."
+    "savedBodyInProgress": "Nye videoer, og videoer som fortsatt lages, vil bruke det oppdaterte temaet ditt.",
+    "copyTitleCardLayout": "Kopier oppsett for tittelkort",
+    "copyTitleCardLayoutHint": "Gi sangtittelen og artistnavnet her samme størrelse, plassering, farger og store/små bokstaver som på tittelkortet ditt.",
+    "endScreenFontHint": "Sluttskjermen bruker samme skrifttype som tittelkortet (endre den under Tittelkort-fanen).",
+    "endScreenOff": "Videoene avsluttes når sangen er ferdig.",
+    "includeEndScreen": "Inkluder en sluttskjerm på slutten av hver video",
+    "includeTitleCard": "Inkluder et tittelkort i starten av hver video",
+    "previewEndScreen": "Forhåndsvisning av sluttskjerm",
+    "screenOmitted": "Ikke inkludert i videoene dine",
+    "showArtistName": "Vis artistnavnet",
+    "showSongTitle": "Vis sangtittelen",
+    "titleCardOff": "Videoene starter rett på med sangtekstvideoen."
   },
   "stalledDownload": {
     "actionFailedDesc": "Prøv igjen om et øyeblikk.",

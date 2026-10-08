@@ -73,3 +73,32 @@ export function stableStringify(value: unknown): string {
   }
   return JSON.stringify(value)
 }
+
+/** Fields "Copy title card layout" takes from the title card for the end screen. */
+const TITLE_CARD_LAYOUT_FIELDS = [
+  "title_color", "artist_color", "title_region", "artist_region", "title_text_transform", "artist_text_transform",
+] as const
+const END_TEXT_GAP = 60
+
+/**
+ * Give the end screen's song title / artist name the title card's look, and move the
+ * closing message (at the same text size, at most) so it doesn't overlap them:
+ * just above the song title, or below the artist name if there's no room above.
+ */
+export function copyTitleCardLayoutToEnd(styles: ThemeStyleParams, extraFallback: Region): ThemeStyleParams {
+  let next = styles
+  for (const field of TITLE_CARD_LAYOUT_FIELDS) {
+    next = setField(next, "end", field, getField(styles, "intro", field) ?? null)
+  }
+  const titleRaw = getField(next, "end", "title_region")
+  if (!getField(next, "end", "extra_text") || typeof titleRaw !== "string") return next
+
+  const none: Region = { x: 0, y: 0, w: 0, h: 0 }
+  const title = parseRegion(titleRaw, none)
+  const artist = parseRegion(getField(next, "end", "artist_region"), none)
+  const extra = parseRegion(getField(next, "end", "extra_text_region"), extraFallback)
+  const h = Math.min(extra.h, title.h || extra.h)
+  let y = title.y - h - END_TEXT_GAP
+  if (y < 0) y = Math.max(title.y + title.h, artist.y + artist.h) + END_TEXT_GAP
+  return setField(next, "end", "extra_text_region", formatRegion({ ...extra, y, h }))
+}

@@ -1988,7 +1988,6 @@
     "description": "Passe das Aussehen deiner Karaoke-Videos an. Die Vorschauen auf der rechten Seite werden genau wie deine fertigen Videos gerendert.",
     "discard": "Änderungen verwerfen",
     "discardConfirm": "Du hast ungespeicherte Theme-Änderungen. Ohne Speichern schließen?",
-    "endScreenHint": "Für den Endbildschirm gibt es keine Vorschau; er verwendet dieselbe Schriftart und denselben Layout-Stil wie die Titelkarte.",
     "font": "Schriftart",
     "fontHint": "Für die Titelkarte, den Text und den Endbildschirm wird dieselbe Schriftart verwendet.",
     "jsonInvalid": "Ungültiges JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# Video konnte nicht erneut gerendert werden} other {# Videos konnten nicht erneut gerendert werden}}",
     "rerenderAllStarted": "{count, plural, one {# Video wird mit deinem neuen Theme erneut gerendert. Es dauert etwa 10–15 Minuten; du kannst den Fortschritt beim Track mitverfolgen.} other {# Videos werden mit deinem neuen Theme erneut gerendert. Jedes dauert etwa 10–15 Minuten; du kannst den Fortschritt bei jedem Track mitverfolgen.}}",
     "rerenderAllStarting": "Wird gestartet…",
-    "savedBodyInProgress": "Neue Videos und Videos, die noch in Bearbeitung sind, verwenden dein aktualisiertes Theme."
+    "savedBodyInProgress": "Neue Videos und Videos, die noch in Bearbeitung sind, verwenden dein aktualisiertes Theme.",
+    "copyTitleCardLayout": "Titelkarten-Layout kopieren",
+    "copyTitleCardLayoutHint": "Gib Songtitel und Interpretenname hier dieselbe Größe, Position, Farben und Großschreibung wie auf deiner Titelkarte.",
+    "endScreenFontHint": "Der Endbildschirm verwendet dieselbe Schriftart wie die Titelkarte (ändere sie im Reiter „Titelkarte“).",
+    "endScreenOff": "Videos enden, wenn der Song endet.",
+    "includeEndScreen": "Einen Endbildschirm am Ende jedes Videos einfügen",
+    "includeTitleCard": "Eine Titelkarte am Anfang jedes Videos einfügen",
+    "previewEndScreen": "Endbildschirm-Vorschau",
+    "screenOmitted": "Nicht in deinen Videos enthalten",
+    "showArtistName": "Interpretenname anzeigen",
+    "showSongTitle": "Songtitel anzeigen",
+    "titleCardOff": "Videos starten direkt mit dem Songtext-Video."
   },
   "stalledDownload": {
     "actionFailedDesc": "Bitte versuche es gleich noch einmal.",

@@ -701,6 +701,16 @@ def get_video_durations(style_params: Dict[str, Any]) -> Tuple[int, int]:
     return intro_duration, end_duration
 
 
+def screen_enabled(style_params: Optional[Dict[str, Any]], section: str) -> bool:
+    """Whether the theme includes the title ("intro") or end ("end") screen in videos.
+
+    ``enabled`` is optional (absent = included) and deliberately NOT in
+    DEFAULT_INTRO_STYLE / DEFAULT_END_STYLE, which double as the required-field
+    lists: adding it there would make every existing theme "incomplete".
+    """
+    return (style_params or {}).get(section, {}).get("enabled", True) is not False
+
+
 def get_existing_images(style_params: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     """
     Get existing title and end images from style parameters.

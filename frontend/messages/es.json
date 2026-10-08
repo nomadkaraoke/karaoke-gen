@@ -1988,7 +1988,6 @@
     "description": "Personaliza el aspecto de tus videos de karaoke. Las vistas previas de la derecha se renderizan exactamente igual que tus videos terminados.",
     "discard": "Descartar cambios",
     "discardConfirm": "Tienes cambios sin guardar en el tema. ¿Cerrar sin guardar?",
-    "endScreenHint": "La pantalla final no tiene vista previa; usa la misma fuente y estilo de diseño que la tarjeta de título.",
     "font": "Fuente",
     "fontHint": "Se usa una sola fuente para la tarjeta de título, las letras y la pantalla final.",
     "jsonInvalid": "JSON no válido",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {No se pudo volver a renderizar # video} other {No se pudieron volver a renderizar # videos}}",
     "rerenderAllStarted": "{count, plural, one {Renderizando # video con tu nuevo tema. Tarda unos 10-15 minutos; puedes seguir su progreso en la pista.} other {Renderizando # videos con tu nuevo tema. Cada uno tarda unos 10-15 minutos; puedes seguir su progreso en cada pista.}}",
     "rerenderAllStarting": "Iniciando…",
-    "savedBodyInProgress": "Los videos nuevos y los videos que aún se están creando usarán tu tema actualizado."
+    "savedBodyInProgress": "Los videos nuevos y los videos que aún se están creando usarán tu tema actualizado.",
+    "copyTitleCardLayout": "Copiar diseño de la tarjeta de título",
+    "copyTitleCardLayoutHint": "Aplica aquí al título de la canción y al nombre del artista el mismo tamaño, posición, colores y mayúsculas que en tu tarjeta de título.",
+    "endScreenFontHint": "La pantalla final usa la misma fuente que la tarjeta de título (cámbiala en la pestaña Tarjeta de título).",
+    "endScreenOff": "Los videos terminarán cuando termine la canción.",
+    "includeEndScreen": "Incluir una pantalla final al final de cada video",
+    "includeTitleCard": "Incluir una tarjeta de título al inicio de cada video",
+    "previewEndScreen": "Vista previa de la pantalla final",
+    "screenOmitted": "No incluido en tus videos",
+    "showArtistName": "Mostrar el nombre del artista",
+    "showSongTitle": "Mostrar el título de la canción",
+    "titleCardOff": "Los videos comenzarán directamente con el video de letras."
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, inténtalo de nuevo en un momento.",
