@@ -234,3 +234,103 @@ it("offers the tracks beyond the server's per-call cap again", async () => {
   expect(screen.getByTestId("theme-rerender-started")).toHaveTextContent("rerenderAllStarted(3)")
   expect(screen.queryByTestId("theme-rerender-all")).not.toBeInTheDocument()
 })
+
+describe("end screen", () => {
+  const END_IMAGES = { ...IMAGES, end_screen: "data:image/jpeg;base64,CCC" }
+
+  async function openEndTab() {
+    preview.mockResolvedValue(END_IMAGES)
+    await openEditor()
+    fireEvent.click(screen.getByRole("tab", { name: "tabs.endScreen" }))
+    await flushPreview()
+  }
+
+  function advancedJson() {
+    fireEvent.click(screen.getByRole("tab", { name: "tabs.advanced" }))
+    return JSON.parse((screen.getByLabelText("advancedJson") as HTMLTextAreaElement).value)
+  }
+
+  it("previews the end screen (instead of the title card) on its tab", async () => {
+    await openEndTab()
+    expect(await screen.findByTestId("preview-end_screen")).toHaveAttribute("src", END_IMAGES.end_screen)
+    expect(screen.queryByTestId("preview-title_card")).toBeNull()
+    expect(screen.getByTestId("preview-karaoke_frame")).toBeInTheDocument()
+  })
+
+  it("copies the title card's layout onto the end screen (smaller text like the title card)", async () => {
+    await openEndTab()
+    fireEvent.click(screen.getByTestId("end-copy-title-layout"))
+    const json = advancedJson()
+    expect(json.end).toMatchObject({
+      title_region: THEME.intro.title_region,
+      artist_region: THEME.intro.artist_region,
+      title_color: "#ffffff",
+      artist_color: "#ffdf6b",
+      title_text_transform: null,
+      artist_text_transform: null,
+    })
+    expect(json.end.extra_text).toBe("THANK YOU FOR SINGING!") // message text untouched
+    expect(json.end.extra_text_region).toBe("370,570,3100,350") // moved just above the song title
+  })
+
+  it("end-screen sliders edit the end section, not the title card", async () => {
+    await openEndTab()
+    fireEvent.click(screen.getByLabelText("showSongTitle"))
+    fireEvent.change(screen.getByLabelText("textSize(songTitle)"), { target: { value: "200" } })
+    fireEvent.change(screen.getByLabelText("textSize(closingMessage)"), { target: { value: "250" } })
+    const json = advancedJson()
+    expect(json.end.title_region).toBe("370,980,3100,200") // turned on from the title card's position
+    expect(json.end.extra_text_region).toBe("370,400,3100,250")
+    expect(json.intro.title_region).toBe(THEME.intro.title_region)
+  })
+
+  it("hiding the song title clears its end-screen region", async () => {
+    preview.mockResolvedValue(END_IMAGES)
+    get.mockResolvedValue({ ...DATA, style_params: { ...THEME, end: { ...THEME.end, title_region: "370,900,3100,350" } } })
+    await openEditor()
+    fireEvent.click(screen.getByRole("tab", { name: "tabs.endScreen" }))
+    expect(screen.getByLabelText("textSize(songTitle)")).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText("showSongTitle"))
+    expect(screen.queryByLabelText("textSize(songTitle)")).toBeNull()
+    expect(advancedJson().end.title_region).toBeNull()
+  })
+
+  it("a new closing message gets a region so it actually renders", async () => {
+    get.mockResolvedValue({ ...DATA, style_params: { ...THEME, end: { extra_text: null } } })
+    await openEndTab()
+    fireEvent.change(screen.getByLabelText("closingMessage"), { target: { value: "BYE" } })
+    expect(advancedJson().end).toMatchObject({ extra_text: "BYE", extra_text_region: "370,400,3100,400" })
+  })
+})
+
+describe("leaving out the title card / end screen", () => {
+  it("unticking the end screen saves enabled=false and shows it as not included", async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole("tab", { name: "tabs.endScreen" }))
+    preview.mockResolvedValue({ ...IMAGES, end_screen: null })
+    fireEvent.click(screen.getByTestId("end-enabled"))
+    expect(screen.getByText("endScreenOff")).toBeInTheDocument()
+    expect(screen.queryByLabelText("closingMessage")).toBeNull()
+    await flushPreview()
+    await waitFor(() => expect(preview.mock.calls.at(-1)[0].end.enabled).toBe(false))
+    expect(await screen.findByTestId("preview-end_screen-omitted")).toHaveTextContent("screenOmitted")
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "save" })) })
+    expect(save.mock.calls[0][0].end.enabled).toBe(false)
+  })
+
+  it("unticking the title card hides its settings; ticking it again restores them", async () => {
+    await openEditor()
+    fireEvent.click(screen.getByTestId("intro-enabled"))
+    expect(screen.getByText("titleCardOff")).toBeInTheDocument()
+    expect(screen.queryByLabelText("positionFromTop(songTitle)")).toBeNull()
+    fireEvent.click(screen.getByTestId("intro-enabled"))
+    expect(screen.getByLabelText("positionFromTop(songTitle)")).toBeInTheDocument()
+  })
+
+  it("treats a theme without an enabled key as including both screens", async () => {
+    await openEditor()
+    expect(screen.getByTestId("intro-enabled")).toBeChecked()
+    fireEvent.click(screen.getByRole("tab", { name: "tabs.endScreen" }))
+    expect(screen.getByTestId("end-enabled")).toBeChecked()
+  })
+})

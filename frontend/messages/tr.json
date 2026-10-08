@@ -1988,7 +1988,6 @@
     "description": "Karaoke videolarının nasıl görüneceğini özelleştir. Sağdaki önizlemeler, tamamlanan videolarınla birebir aynı şekilde işlenir.",
     "discard": "Değişiklikleri at",
     "discardConfirm": "Kaydedilmemiş tema değişikliklerin var. Kaydetmeden kapatılsın mı?",
-    "endScreenHint": "Bitiş ekranı için önizleme gösterilmez; başlık kartıyla aynı yazı tipini ve yerleşim stilini kullanır.",
     "font": "Yazı tipi",
     "fontHint": "Başlık kartı, şarkı sözleri ve bitiş ekranı için tek bir yazı tipi kullanılır.",
     "jsonInvalid": "Geçersiz JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# video yeniden işlenemedi} other {# video yeniden işlenemedi}}",
     "rerenderAllStarted": "{count, plural, one {# video yeni temanla yeniden işleniyor. Yaklaşık 10-15 dakika sürer; ilerlemeyi parça üzerinden takip edebilirsin.} other {# video yeni temanla yeniden işleniyor. Her biri yaklaşık 10-15 dakika sürer; ilerlemeyi ilgili parçalar üzerinden takip edebilirsin.}}",
     "rerenderAllStarting": "Başlatılıyor…",
-    "savedBodyInProgress": "Yeni videolar ve yapımı devam eden videolar güncellenen temanı kullanacak."
+    "savedBodyInProgress": "Yeni videolar ve yapımı devam eden videolar güncellenen temanı kullanacak.",
+    "copyTitleCardLayout": "Başlık kartı düzenini kopyala",
+    "copyTitleCardLayoutHint": "Buradaki şarkı adı ve sanatçı adına başlık kartındakiyle aynı boyutu, konumu, renkleri ve büyük/küçük harf kullanımını uygula.",
+    "endScreenFontHint": "Bitiş ekranı, başlık kartıyla aynı yazı tipini kullanır (Başlık kartı sekmesinden değiştirebilirsin).",
+    "endScreenOff": "Videolar şarkı bittiğinde sona erecek.",
+    "includeEndScreen": "Her videonun sonuna bir bitiş ekranı ekle",
+    "includeTitleCard": "Her videonun başına bir başlık kartı ekle",
+    "previewEndScreen": "Bitiş ekranı önizlemesi",
+    "screenOmitted": "Videolarına dahil edilmez",
+    "showArtistName": "Sanatçı adını göster",
+    "showSongTitle": "Şarkı adını göster",
+    "titleCardOff": "Videolar doğrudan şarkı sözü videosuyla başlayacak."
   },
   "stalledDownload": {
     "actionFailedDesc": "Lütfen birazdan tekrar dene.",

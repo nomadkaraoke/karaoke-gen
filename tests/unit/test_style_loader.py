@@ -745,3 +745,29 @@ class TestCdgDuetSingers:
         # Both (SingerId 0 → CDG singer 3) signature = yellow
         assert CDG_DUET_SINGERS[2].inactive_fill == (252, 211, 77)
         assert CDG_DUET_SINGERS[2].active_fill == (255, 255, 255)
+
+
+class TestScreenEnabled:
+    """Themes may leave the title ("intro") or end screen out of videos."""
+
+    def test_absent_flag_means_included(self):
+        from karaoke_gen.style_loader import screen_enabled
+
+        assert screen_enabled({"intro": {}, "end": {}}, "intro")
+        assert screen_enabled({}, "end")
+        assert screen_enabled(None, "end")
+
+    def test_only_explicit_false_omits(self):
+        from karaoke_gen.style_loader import screen_enabled
+
+        assert not screen_enabled({"end": {"enabled": False}}, "end")
+        assert screen_enabled({"end": {"enabled": True}}, "end")
+        assert screen_enabled({"end": {"enabled": None}}, "end")
+
+    def test_enabled_is_not_a_required_theme_field(self):
+        from karaoke_gen.style_loader import DEFAULT_END_STYLE, DEFAULT_INTRO_STYLE
+
+        # These double as required-field lists; adding "enabled" would make every
+        # existing theme fail validation.
+        assert "enabled" not in DEFAULT_INTRO_STYLE
+        assert "enabled" not in DEFAULT_END_STYLE

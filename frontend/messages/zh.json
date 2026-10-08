@@ -1988,7 +1988,6 @@
     "description": "自定义卡拉OK视频的外观。右侧预览与最终生成的视频效果完全一致。",
     "discard": "放弃更改",
     "discardConfirm": "您有未保存的主题更改。确定不保存直接关闭吗？",
-    "endScreenHint": "片尾画面不提供预览；它将采用与片头卡片相同的字体和布局样式。",
     "font": "字体",
     "fontHint": "片头卡片、歌词和片尾画面将使用同一种字体。",
     "jsonInvalid": "JSON 格式无效",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# 个视频未能重新渲染} other {# 个视频未能重新渲染}}",
     "rerenderAllStarted": "{count, plural, one {正在使用您的新主题重新渲染 # 个视频。大约需要 10-15 分钟；您可以在曲目页面查看进度。} other {正在使用您的新主题重新渲染 # 个视频。每个视频大约需要 10-15 分钟；您可以在各曲目页面查看进度。}}",
     "rerenderAllStarting": "正在启动…",
-    "savedBodyInProgress": "新视频以及正在制作中的视频都将采用更新后的主题。"
+    "savedBodyInProgress": "新视频以及正在制作中的视频都将采用更新后的主题。",
+    "copyTitleCardLayout": "复制片头卡布局",
+    "copyTitleCardLayoutHint": "让此处的歌曲名和艺术家姓名与片头卡上的大小、位置、颜色及大小写格式保持一致。",
+    "endScreenFontHint": "片尾画面使用与片头卡相同的字体（可在“片头卡”标签页中更改）。",
+    "endScreenOff": "歌曲播放完毕后视频随即结束。",
+    "includeEndScreen": "在每个视频结尾添加片尾画面",
+    "includeTitleCard": "在每个视频开头添加片头卡",
+    "previewEndScreen": "片尾画面预览",
+    "screenOmitted": "未包含在您的视频中",
+    "showArtistName": "显示艺术家姓名",
+    "showSongTitle": "显示歌曲名",
+    "titleCardOff": "视频将直接开始播放歌词视频。"
   },
   "stalledDownload": {
     "actionFailedDesc": "请稍后再试。",

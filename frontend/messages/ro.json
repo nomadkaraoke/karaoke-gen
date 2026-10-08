@@ -1988,7 +1988,6 @@
     "description": "Personalizează aspectul videoclipurilor tale de karaoke. Previzualizările din dreapta sunt randate exact ca videoclipurile tale finale.",
     "discard": "Renunță la modificări",
     "discardConfirm": "Ai modificări nesalvate la temă. Închizi fără să salvezi?",
-    "endScreenHint": "Ecranul de final nu este previzualizat; folosește același font și stil de aspect ca ecranul de titlu.",
     "font": "Font",
     "fontHint": "Se folosește un singur font pentru ecranul de titlu, versuri și ecranul de final.",
     "jsonInvalid": "JSON nevalid",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# videoclip nu a putut fi rerandat} few {# videoclipuri nu au putut fi rerandate} other {# de videoclipuri nu au putut fi rerandate}}",
     "rerenderAllStarted": "{count, plural, one {Se rerandează # videoclip cu noua ta temă. Durează aproximativ 10-15 minute; îi poți urmări progresul pe piesă.} few {Se rerandează # videoclipuri cu noua ta temă. Fiecare durează aproximativ 10-15 minute; le poți urmări progresul pe fiecare piesă.} other {Se rerandează # de videoclipuri cu noua ta temă. Fiecare durează aproximativ 10-15 minute; le poți urmări progresul pe fiecare piesă.}}",
     "rerenderAllStarting": "Se pornește…",
-    "savedBodyInProgress": "Videoclipurile noi și cele aflate încă în curs de creare vor folosi tema ta actualizată."
+    "savedBodyInProgress": "Videoclipurile noi și cele aflate încă în curs de creare vor folosi tema ta actualizată.",
+    "copyTitleCardLayout": "Copiază aspectul ecranului de titlu",
+    "copyTitleCardLayoutHint": "Aplică titlului melodiei și numelui artistului de aici aceeași dimensiune, poziție, culori și majuscule ca pe ecranul tău de titlu.",
+    "endScreenFontHint": "Ecranul de final folosește același font ca ecranul de titlu (îl poți schimba în fila Ecran de titlu).",
+    "endScreenOff": "Videoclipurile se vor termina când se termină melodia.",
+    "includeEndScreen": "Include un ecran de final la sfârșitul fiecărui videoclip",
+    "includeTitleCard": "Include un ecran de titlu la începutul fiecărui videoclip",
+    "previewEndScreen": "Previzualizare ecran de final",
+    "screenOmitted": "Nu este inclus în videoclipurile tale",
+    "showArtistName": "Afișează numele artistului",
+    "showSongTitle": "Afișează titlul melodiei",
+    "titleCardOff": "Videoclipurile vor începe direct cu versurile melodiei."
   },
   "stalledDownload": {
     "actionFailedDesc": "Te rugăm să încerci din nou peste câteva momente.",

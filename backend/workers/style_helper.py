@@ -31,10 +31,22 @@ from karaoke_gen.style_loader import (
     get_end_format,
     get_karaoke_format,
     get_cdg_format,
+    screen_enabled,
 )
 
 
 logger = logging.getLogger(__name__)
+
+# state_data key the screens worker writes: {"title": bool, "end": bool} — which
+# screens the job's theme includes. Absent (jobs screened before themes could omit
+# screens) means both were made.
+SCREENS_INCLUDED_KEY = "screens_included"
+
+
+def screen_included(state_data: Optional[Dict[str, Any]], screen: str) -> bool:
+    """Whether the job's videos include its "title" or "end" screen."""
+    included = (state_data or {}).get(SCREENS_INCLUDED_KEY) or {}
+    return included.get(screen, True) is not False
 
 
 # Re-export defaults for backwards compatibility with existing code
@@ -189,6 +201,16 @@ class StyleConfig:
         """Check if custom styles were provided (not using defaults)."""
         return self._has_custom_styles
     
+    @property
+    def include_title_screen(self) -> bool:
+        """Whether the theme puts a title screen at the start of the video."""
+        return screen_enabled(self._style_params, "intro")
+
+    @property
+    def include_end_screen(self) -> bool:
+        """Whether the theme puts an end screen at the end of the video."""
+        return screen_enabled(self._style_params, "end")
+
     @property
     def intro_video_duration(self) -> int:
         """

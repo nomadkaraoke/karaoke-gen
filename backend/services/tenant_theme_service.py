@@ -153,6 +153,9 @@ def sanitize_style_params(
     for section in ("intro", "end"):
         if "existing_image" in styles[section]:
             styles[section]["existing_image"] = None
+        # Optional on/off switch for including the screen in videos (absent = on).
+        if "enabled" in styles[section] and not isinstance(styles[section]["enabled"], bool):
+            raise TenantValidationError(f"{section}.enabled must be true or false.")
 
     for section, field in IMAGE_FIELDS:
         value = styles[section].get(field)

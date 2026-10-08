@@ -36,7 +36,7 @@ from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
 from backend.config import get_settings
-from backend.workers.style_helper import load_style_config, StyleConfig
+from backend.workers.style_helper import SCREENS_INCLUDED_KEY, load_style_config, StyleConfig
 from backend.workers.worker_logging import create_job_logger, setup_job_logging, job_logging_context
 from backend.services.tracing import job_span, add_span_event, add_span_attribute
 
@@ -187,38 +187,49 @@ async def generate_screens(job_id: str) -> bool:
                 # Initialize video generator
                 video_generator = _create_video_generator(temp_dir)
                 
+                # A theme may leave either screen out of its videos (intro/end.enabled=false).
+                include_title = style_config.include_title_screen
+                include_end = style_config.include_end_screen
+                title_screen_path = end_screen_path = None
+
                 # Generate title screen with style config
-                with job_span("generate-title-screen", job_id):
-                    job_log.info("Generating title screen...")
-                    title_screen_path = await _generate_title_screen(
-                        job_id=job_id,
-                        job=job,
-                        video_generator=video_generator,
-                        style_config=style_config,
-                        temp_dir=temp_dir,
-                        job_log=job_log
-                    )
-                    
-                    if not title_screen_path:
-                        raise Exception("Title screen generation failed")
-                    job_log.info(f"Title screen generated: {title_screen_path}")
-                
+                if include_title:
+                    with job_span("generate-title-screen", job_id):
+                        job_log.info("Generating title screen...")
+                        title_screen_path = await _generate_title_screen(
+                            job_id=job_id,
+                            job=job,
+                            video_generator=video_generator,
+                            style_config=style_config,
+                            temp_dir=temp_dir,
+                            job_log=job_log
+                        )
+
+                        if not title_screen_path:
+                            raise Exception("Title screen generation failed")
+                        job_log.info(f"Title screen generated: {title_screen_path}")
+                else:
+                    job_log.info("Theme omits the title screen — skipping it")
+
                 # Generate end screen with style config
-                with job_span("generate-end-screen", job_id):
-                    job_log.info("Generating end screen...")
-                    end_screen_path = await _generate_end_screen(
-                        job_id=job_id,
-                        job=job,
-                        video_generator=video_generator,
-                        style_config=style_config,
-                        temp_dir=temp_dir,
-                        job_log=job_log
-                    )
-                    
-                    if not end_screen_path:
-                        raise Exception("End screen generation failed")
-                    job_log.info(f"End screen generated: {end_screen_path}")
-                
+                if include_end:
+                    with job_span("generate-end-screen", job_id):
+                        job_log.info("Generating end screen...")
+                        end_screen_path = await _generate_end_screen(
+                            job_id=job_id,
+                            job=job,
+                            video_generator=video_generator,
+                            style_config=style_config,
+                            temp_dir=temp_dir,
+                            job_log=job_log
+                        )
+
+                        if not end_screen_path:
+                            raise Exception("End screen generation failed")
+                        job_log.info(f"End screen generated: {end_screen_path}")
+                else:
+                    job_log.info("Theme omits the end screen — skipping it")
+
                 # Upload screens to GCS
                 with job_span("upload-screens", job_id):
                     await _upload_screens(
@@ -228,7 +239,12 @@ async def generate_screens(job_id: str) -> bool:
                         title_screen_path=title_screen_path,
                         end_screen_path=end_screen_path
                     )
-                
+                # Read by the render/encode stages (which run before the style is
+                # loaded) so an omitted screen isn't treated as missing.
+                job_manager.update_state_data(
+                    job_id, SCREENS_INCLUDED_KEY, {"title": include_title, "end": include_end}
+                )
+
                 # Apply countdown padding if needed
                 await _apply_countdown_padding_if_needed(job_id, job_manager, job)
 
@@ -578,11 +594,11 @@ async def _upload_screens(
     job_id: str,
     job_manager: JobManager,
     storage: StorageService,
-    title_screen_path: str,
-    end_screen_path: str
+    title_screen_path: Optional[str],
+    end_screen_path: Optional[str]
 ) -> None:
     """
-    Upload title and end screen images to GCS.
+    Upload title and end screen images to GCS (None = screen omitted by the theme).
 
     Single Responsibility: Only handles uploads.
 
@@ -607,28 +623,21 @@ def _upload_screens_sync(
     job_id: str,
     job_manager: JobManager,
     storage: StorageService,
-    title_screen_path: str,
-    end_screen_path: str
+    title_screen_path: Optional[str],
+    end_screen_path: Optional[str]
 ) -> None:
-    # Upload title screen images (.png and .jpg)
-    title_base = title_screen_path.replace('.png', '')
-    for ext, key in [('.png', 'title_png'), ('.jpg', 'title_jpg')]:
-        image_path = f"{title_base}{ext}"
-        if os.path.exists(image_path):
-            gcs_path = f"jobs/{job_id}/screens/title{ext}"
-            url = storage.upload_file(image_path, gcs_path)
-            job_manager.update_file_url(job_id, 'screens', key, url)
-            logger.info(f"Job {job_id}: Uploaded title screen image ({ext})")
-
-    # Upload end screen images (.png and .jpg)
-    end_base = end_screen_path.replace('.png', '')
-    for ext, key in [('.png', 'end_png'), ('.jpg', 'end_jpg')]:
-        image_path = f"{end_base}{ext}"
-        if os.path.exists(image_path):
-            gcs_path = f"jobs/{job_id}/screens/end{ext}"
-            url = storage.upload_file(image_path, gcs_path)
-            job_manager.update_file_url(job_id, 'screens', key, url)
-            logger.info(f"Job {job_id}: Uploaded end screen image ({ext})")
+    for screen, path in (("title", title_screen_path), ("end", end_screen_path)):
+        if not path:
+            continue
+        # Upload the screen's images (.png and .jpg)
+        base = path.replace('.png', '')
+        for ext in ('.png', '.jpg'):
+            image_path = f"{base}{ext}"
+            if os.path.exists(image_path):
+                gcs_path = f"jobs/{job_id}/screens/{screen}{ext}"
+                url = storage.upload_file(image_path, gcs_path)
+                job_manager.update_file_url(job_id, 'screens', f"{screen}_{ext[1:]}", url)
+                logger.info(f"Job {job_id}: Uploaded {screen} screen image ({ext})")
 
 
 async def _analyze_backing_vocals(

@@ -264,3 +264,15 @@ def test_missing_theme_file_is_not_found():
     storage.download_json = lambda path: (_ for _ in ()).throw(FileNotFoundError(path))
     with pytest.raises(tts.ThemeNotFoundError):
         tts.get_theme_for_editor(_config(), storage=storage)
+
+
+@pytest.mark.parametrize("section", ["intro", "end"])
+def test_screen_enabled_flag_must_be_boolean(section):
+    style = _style()
+    style[section]["enabled"] = False
+    styles, _ = tts.sanitize_style_params(style, available_assets=ASSETS)
+    assert styles[section]["enabled"] is False
+
+    style[section]["enabled"] = "no"
+    with pytest.raises(TenantValidationError, match=f"{section}.enabled"):
+        tts.sanitize_style_params(style, available_assets=ASSETS)

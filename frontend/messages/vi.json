@@ -1988,7 +1988,6 @@
     "description": "Tùy chỉnh giao diện video karaoke của bạn. Bản xem trước ở bên phải được kết xuất chính xác như video hoàn thiện của bạn.",
     "discard": "Hủy thay đổi",
     "discardConfirm": "Bạn có thay đổi giao diện chưa lưu. Đóng mà không lưu?",
-    "endScreenHint": "Màn hình kết thúc không có bản xem trước; màn hình này sử dụng cùng phông chữ và kiểu bố cục với thẻ tiêu đề.",
     "font": "Phông chữ",
     "fontHint": "Dùng chung một phông chữ cho thẻ tiêu đề, lời bài hát và màn hình kết thúc.",
     "jsonInvalid": "JSON không hợp lệ",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {Không thể kết xuất lại # video} other {Không thể kết xuất lại # video}}",
     "rerenderAllStarted": "{count, plural, one {Đang kết xuất lại # video với chủ đề mới của bạn. Quá trình này mất khoảng 10-15 phút; bạn có thể theo dõi tiến trình trên bài hát.} other {Đang kết xuất lại # video với chủ đề mới của bạn. Mỗi video mất khoảng 10-15 phút; bạn có thể theo dõi tiến trình trên từng bài hát.}}",
     "rerenderAllStarting": "Đang bắt đầu…",
-    "savedBodyInProgress": "Video mới và các video đang được tạo sẽ áp dụng chủ đề mới cập nhật của bạn."
+    "savedBodyInProgress": "Video mới và các video đang được tạo sẽ áp dụng chủ đề mới cập nhật của bạn.",
+    "copyTitleCardLayout": "Sao chép bố cục thẻ tiêu đề",
+    "copyTitleCardLayoutHint": "Đặt tên bài hát và tên nghệ sĩ ở đây có cùng kích thước, vị trí, màu sắc và kiểu viết hoa như trên thẻ tiêu đề của bạn.",
+    "endScreenFontHint": "Màn hình kết thúc sử dụng cùng phông chữ với thẻ tiêu đề (thay đổi tại tab Thẻ tiêu đề).",
+    "endScreenOff": "Video sẽ kết thúc khi bài hát kết thúc.",
+    "includeEndScreen": "Thêm màn hình kết thúc vào cuối mỗi video",
+    "includeTitleCard": "Thêm thẻ tiêu đề vào đầu mỗi video",
+    "previewEndScreen": "Xem trước màn hình kết thúc",
+    "screenOmitted": "Không bao gồm trong video của bạn",
+    "showArtistName": "Hiển thị tên nghệ sĩ",
+    "showSongTitle": "Hiển thị tên bài hát",
+    "titleCardOff": "Video sẽ bắt đầu ngay với phần video lời bài hát."
   },
   "stalledDownload": {
     "actionFailedDesc": "Vui lòng thử lại sau giây lát.",

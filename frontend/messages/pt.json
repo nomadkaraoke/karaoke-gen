@@ -1988,7 +1988,6 @@
     "description": "Personalize a aparência dos seus vídeos de karaokê. As prévias à direita são renderizadas exatamente como seus vídeos finais.",
     "discard": "Descartar alterações",
     "discardConfirm": "Você tem alterações não salvas no tema. Fechar sem salvar?",
-    "endScreenHint": "A tela final não tem prévia; ela usa a mesma fonte e estilo de layout da tela de título.",
     "font": "Fonte",
     "fontHint": "Uma única fonte é usada para a tela de título, a letra e a tela final.",
     "jsonInvalid": "JSON inválido",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# vídeo não pôde ser renderizado novamente} other {# vídeos não puderam ser renderizados novamente}}",
     "rerenderAllStarted": "{count, plural, one {Renderizando # vídeo novamente com o seu novo tema. Leva cerca de 10 a 15 minutos; você pode acompanhar o progresso na faixa.} other {Renderizando # vídeos novamente com o seu novo tema. Cada um leva cerca de 10 a 15 minutos; você pode acompanhar o progresso em cada faixa.}}",
     "rerenderAllStarting": "Iniciando…",
-    "savedBodyInProgress": "Novos vídeos, e vídeos que ainda estão sendo feitos, usarão o seu tema atualizado."
+    "savedBodyInProgress": "Novos vídeos, e vídeos que ainda estão sendo feitos, usarão o seu tema atualizado.",
+    "copyTitleCardLayout": "Copiar layout do cartão de título",
+    "copyTitleCardLayoutHint": "Dê ao título da música e ao nome do artista aqui o mesmo tamanho, posição, cores e maiúsculas do seu cartão de título.",
+    "endScreenFontHint": "A tela final usa a mesma fonte do cartão de título (altere na aba Cartão de título).",
+    "endScreenOff": "Os vídeos terminarão quando a música acabar.",
+    "includeEndScreen": "Incluir uma tela final ao final de cada vídeo",
+    "includeTitleCard": "Incluir um cartão de título no início de cada vídeo",
+    "previewEndScreen": "Prévia da tela final",
+    "screenOmitted": "Não incluído nos seus vídeos",
+    "showArtistName": "Mostrar o nome do artista",
+    "showSongTitle": "Mostrar o título da música",
+    "titleCardOff": "Os vídeos começarão direto no vídeo com a letra."
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, tente novamente em instantes.",

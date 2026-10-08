@@ -1988,7 +1988,6 @@
     "description": "Mukauta karaokevideoidesi ulkoasua. Oikealla olevat esikatselut renderöidään täsmälleen kuten valmiit videosi.",
     "discard": "Hylkää muutokset",
     "discardConfirm": "Sinulla on tallentamattomia teemamuutoksia. Haluatko sulkea tallentamatta?",
-    "endScreenHint": "Loppuruutua ei esikatsella; se käyttää samaa fonttia ja asettelutyyliä kuin otsikkoruutu.",
     "font": "Fontti",
     "fontHint": "Samaa fonttia käytetään otsikkoruudussa, sanoituksissa ja loppuruudussa.",
     "jsonInvalid": "Virheellinen JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# videota ei voitu renderöidä uudelleen} other {# videota ei voitu renderöidä uudelleen}}",
     "rerenderAllStarted": "{count, plural, one {Renderöidään # video uudelleen uudella teemallasi. Siinä kestää noin 10–15 minuuttia, ja voit seurata edistymistä kappaleen tiedoissa.} other {Renderöidään # videota uudelleen uudella teemallasi. Kussakin kestää noin 10–15 minuuttia, ja voit seurata edistymistä kunkin kappaleen tiedoissa.}}",
     "rerenderAllStarting": "Aloitetaan…",
-    "savedBodyInProgress": "Uudet ja tekeillä olevat videot käyttävät päivitettyä teemaasi."
+    "savedBodyInProgress": "Uudet ja tekeillä olevat videot käyttävät päivitettyä teemaasi.",
+    "copyTitleCardLayout": "Kopioi nimikortin asettelu",
+    "copyTitleCardLayoutHint": "Käytä kappaleen nimeen ja esittäjään samaa kokoa, sijaintia, värejä ja kirjainkokoa kuin nimikortissasi.",
+    "endScreenFontHint": "Loppuruudussa käytetään samaa fonttia kuin nimikortissa (vaihda se Nimikortti-välilehdellä).",
+    "endScreenOff": "Videot päättyvät heti, kun kappale päättyy.",
+    "includeEndScreen": "Lisää loppuruutu jokaisen videon loppuun",
+    "includeTitleCard": "Lisää nimikortti jokaisen videon alkuun",
+    "previewEndScreen": "Loppuruudun esikatselu",
+    "screenOmitted": "Ei mukana videoissasi",
+    "showArtistName": "Näytä esittäjän nimi",
+    "showSongTitle": "Näytä kappaleen nimi",
+    "titleCardOff": "Videot alkavat heti sanoituksilla."
   },
   "stalledDownload": {
     "actionFailedDesc": "Yritä hetken kuluttua uudelleen.",

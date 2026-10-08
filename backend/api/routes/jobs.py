@@ -51,6 +51,7 @@ from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityRes
 from backend.services.user_service import get_user_service
 from backend.services.youtube_download_service import get_youtube_download_service
 from backend.services.pricing import duration_to_credits, is_blocked
+from backend.workers.style_helper import screen_included
 from pydantic import BaseModel, Field, HttpUrl, validator
 
 
@@ -588,8 +589,10 @@ def _is_auto_retry_pending(state_data: Optional[Dict[str, Any]]) -> bool:
     return expires_at > datetime.now(timezone.utc)
 
 
-def _has_title_screen(file_urls: Dict[str, Any]) -> bool:
-    """Return True if a title screen image (jpg or png) was generated.
+def _has_title_screen(file_urls: Dict[str, Any], state_data: Optional[Dict[str, Any]] = None) -> bool:
+    """Return True if the screens stage is done: a title screen image (jpg or png)
+    was generated, or the theme leaves the title screen out and the screens worker
+    finished.
 
     Used by the /retry endpoint to decide whether to resume from the render
     stage or rewind further. The actual screen URLs live under format-specific
@@ -598,9 +601,15 @@ def _has_title_screen(file_urls: Dict[str, Any]) -> bool:
     completed-review jobs back to AWAITING_REVIEW.
     """
     screens = file_urls.get('screens') or {}
-    if not isinstance(screens, dict):
-        return False
-    return any(k == 'title' or k.startswith('title_') for k in screens)
+    if isinstance(screens, dict) and any(k == 'title' or k.startswith('title_') for k in screens):
+        return True
+    # No title image by design: rely on the screens worker's completion marker
+    # (cleared by every re-render/regeneration, so a stale "omitted" can't count).
+    state_data = state_data or {}
+    return (
+        not screen_included(state_data, 'title')
+        and (state_data.get('screens_progress') or {}).get('stage') == 'complete'
+    )
 
 
 def _prune_state_data(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -2092,7 +2101,7 @@ async def retry_job(
         # resume it correctly.
         theme_rerender = state_data.get('theme_rerender') or {}
         if (theme_rerender.get('theme_id') and original_status == JobStatus.FAILED
-                and not _has_title_screen(file_urls)):
+                and not _has_title_screen(file_urls, state_data)):
             from backend.services.theme_rerender_service import RerenderError, ThemeRerenderService
             try:
                 await ThemeRerenderService(job_manager).start(
@@ -2113,7 +2122,7 @@ async def retry_job(
         # keeping the admin's notify_customer choice. Its published outputs were
         # already removed on the first attempt (recorded in the marker).
         if (admin_rerender and original_status in (JobStatus.FAILED, JobStatus.CANCELLED)
-                and not _has_title_screen(file_urls)):
+                and not _has_title_screen(file_urls, state_data)):
             from backend.services.admin_rerender_service import AdminRerenderService
             from backend.services.theme_rerender_service import RerenderError
             try:
@@ -2138,7 +2147,7 @@ async def retry_job(
         from backend.services.theme_rerender_service import RerenderError
         regenerate = active_regenerate(job)
         if (regenerate and original_status in (JobStatus.FAILED, JobStatus.CANCELLED)
-                and (not _has_title_screen(file_urls) or stems_need_restore(job))):
+                and (not _has_title_screen(file_urls, state_data) or stems_need_restore(job))):
             try:
                 await RegenerateService(job_manager).start(
                     job,
@@ -2217,7 +2226,7 @@ async def retry_job(
         # Review completion is proven by instrumental_selection in state_data
         # (set only when user submits the review endpoint)
         elif (file_urls.get('lyrics', {}).get('corrections') and
-              _has_title_screen(file_urls) and
+              _has_title_screen(file_urls, state_data) and
               state_data.get('instrumental_selection')):
 
             logger.info(f"Job {job_id}: Has corrections, screens, and completed review — retrying from render stage")
@@ -2254,7 +2263,7 @@ async def retry_job(
         # If we have corrections and screens but review was NOT completed,
         # return to awaiting_review so the user can review lyrics
         elif (file_urls.get('lyrics', {}).get('corrections') and
-              _has_title_screen(file_urls)):
+              _has_title_screen(file_urls, state_data)):
 
             logger.info(f"Job {job_id}: Has corrections and screens but review not completed — returning to review")
 

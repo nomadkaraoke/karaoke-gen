@@ -1,11 +1,13 @@
 """
-Exact previews of a (draft) theme: the real title card and one karaoke-video frame.
+Exact previews of a (draft) theme: the real title card, one karaoke-video frame and
+the real end screen.
 
 Used by the tenant theme editor. Both images come from the SAME renderers production
 uses, fed the draft ``style_params`` exactly the way a render job would see them:
 
 - **Title card**: ``karaoke_gen.video_generator.VideoGenerator.create_title_video``
   with ``intro_video_duration=0`` (PNG only — what ``screens_worker`` does on Cloud Run).
+- **End screen**: ``VideoGenerator.create_end_video`` the same way (``end_video_duration=0``).
 - **Karaoke frame**: ``SegmentResizer`` → ``SubtitlesGenerator.generate_ass`` (the
   generator's 4K layout: ``font_size`` default 250, ``line_height = font_size``,
   ``max_line_length`` default 36) → one frame burned with the same ffmpeg ``ass``
@@ -87,12 +89,18 @@ def font_family_name(font_file: str) -> str:
 
 @dataclass
 class PreviewImages:
-    title_card: bytes  # JPEG
-    karaoke_frame: bytes  # JPEG
+    # JPEGs. A screen the theme omits from videos (``enabled: false``) isn't rendered.
+    title_card: Optional[bytes]
+    karaoke_frame: bytes
+    end_screen: Optional[bytes] = None
 
-    def as_data_urls(self) -> Dict[str, str]:
-        enc = lambda b: "data:image/jpeg;base64," + base64.b64encode(b).decode()  # noqa: E731
-        return {"title_card": enc(self.title_card), "karaoke_frame": enc(self.karaoke_frame)}
+    def as_data_urls(self) -> Dict[str, Optional[str]]:
+        enc = lambda b: "data:image/jpeg;base64," + base64.b64encode(b).decode() if b else None  # noqa: E731
+        return {
+            "title_card": enc(self.title_card),
+            "karaoke_frame": enc(self.karaoke_frame),
+            "end_screen": enc(self.end_screen),
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -220,22 +228,26 @@ def _to_jpeg(png_path: str) -> bytes:
         return buf.getvalue()
 
 
-def render_title_card(styles: Dict, artist: str, title: str, workdir: str) -> bytes:
-    """Title card exactly as screens_worker renders it (PNG via PIL, no video)."""
-    from karaoke_gen.style_loader import DEFAULT_INTRO_STYLE
+def _screen_generator():
     from karaoke_gen.video_generator import VideoGenerator
 
-    fmt = {**DEFAULT_INTRO_STYLE, **(styles.get("intro") or {})}
-    generator = VideoGenerator(
+    return VideoGenerator(
         logger=logger,
         ffmpeg_base_command="ffmpeg -hide_banner -nostats -loglevel error",
         render_bounding_boxes=False,
         output_png=True,
         output_jpg=False,
     )
+
+
+def render_title_card(styles: Dict, artist: str, title: str, workdir: str) -> bytes:
+    """Title card exactly as screens_worker renders it (PNG via PIL, no video)."""
+    from karaoke_gen.style_loader import DEFAULT_INTRO_STYLE
+
+    fmt = {**DEFAULT_INTRO_STYLE, **(styles.get("intro") or {})}
     noext = os.path.join(workdir, "title")
     try:
-        generator.create_title_video(
+        _screen_generator().create_title_video(
             artist=artist,
             title=title,
             format=fmt,
@@ -246,6 +258,27 @@ def render_title_card(styles: Dict, artist: str, title: str, workdir: str) -> by
         )
     except Exception as exc:
         raise ThemePreviewError(f"Title card render failed: {exc}") from exc
+    return _to_jpeg(f"{noext}.png")
+
+
+def render_end_screen(styles: Dict, artist: str, title: str, workdir: str) -> bytes:
+    """End screen exactly as screens_worker renders it (PNG via PIL, no video)."""
+    from karaoke_gen.style_loader import DEFAULT_END_STYLE
+
+    fmt = {**DEFAULT_END_STYLE, **(styles.get("end") or {})}
+    noext = os.path.join(workdir, "end")
+    try:
+        _screen_generator().create_end_video(
+            artist=artist,
+            title=title,
+            format=fmt,
+            output_image_filepath_noext=noext,
+            output_video_filepath=os.path.join(workdir, "end.mov"),
+            existing_end_image=fmt.get("existing_image"),
+            end_video_duration=0,
+        )
+    except Exception as exc:
+        raise ThemePreviewError(f"End screen render failed: {exc}") from exc
     return _to_jpeg(f"{noext}.png")
 
 
@@ -406,11 +439,14 @@ def render_theme_preview(
             _CACHE.move_to_end(key)
             return _CACHE[key]
 
+    from karaoke_gen.style_loader import screen_enabled
+
     styles = resolve_assets(style_params, theme_id, storage)
     with tempfile.TemporaryDirectory(prefix="theme-preview-") as workdir:
         result = PreviewImages(
-            title_card=render_title_card(styles, artist, title, workdir),
+            title_card=render_title_card(styles, artist, title, workdir) if screen_enabled(styles, "intro") else None,
             karaoke_frame=render_karaoke_frame(styles, lines, workdir),
+            end_screen=render_end_screen(styles, artist, title, workdir) if screen_enabled(styles, "end") else None,
         )
     with _cache_lock:
         _CACHE[key] = result
