@@ -87,6 +87,9 @@ _LAZY_ROUTE_IMPORTS = (
 )
 
 
+LAZY_ROUTE_IMPORT_TIMEOUT_S = 30
+
+
 def _import_lazy_route_modules() -> None:
     import importlib
 
@@ -164,7 +167,17 @@ async def lifespan(app: FastAPI):
     validate_production_config()
 
     # Off the loop, but before readiness (Cloud Run holds requests meanwhile).
-    await asyncio.to_thread(_import_lazy_route_modules)
+    # Bounded so a hung cold-disk read can't keep the instance from ever going
+    # ready; the import keeps running in its thread and routes fall back to it.
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_import_lazy_route_modules), timeout=LAZY_ROUTE_IMPORT_TIMEOUT_S
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            f"Startup import of lazy route modules exceeded {LAZY_ROUTE_IMPORT_TIMEOUT_S}s; "
+            "continuing startup (first requests may import them on the event loop)"
+        )
 
     # NLP model / credential warmup runs in the background so it doesn't gate
     # readiness — Cloud Run holds all routed requests until lifespan startup

@@ -98,3 +98,16 @@ def test_lazy_route_import_failure_is_non_fatal():
 
     with patch.object(importlib, "import_module", side_effect=ImportError("nope")):
         main_module._import_lazy_route_modules()  # logs, doesn't raise
+
+
+def test_slow_lazy_route_import_does_not_block_startup(caplog):
+    import logging
+    import time
+
+    caplog.set_level(logging.ERROR)
+    with patch.object(main_module, "_run_background_warmup"), \
+         patch.object(main_module, "LAZY_ROUTE_IMPORT_TIMEOUT_S", 0.05), \
+         patch.object(main_module, "_import_lazy_route_modules", side_effect=lambda: time.sleep(0.5)):
+        with TestClient(main_module.app):
+            pass
+    assert "exceeded 0.05s; continuing startup" in caplog.text
