@@ -192,6 +192,23 @@ class TestThrottledProcessFreeze:
         assert "EVENT_LOOP_STALL" not in caplog.text
         assert "discounted 30000ms of process freeze" in caplog.text
 
+    def test_short_partial_throttle_freeze_is_not_reported(self, caplog):
+        """Partial throttling: the watchdog gets a slice every ~1.5s, burning ~no CPU."""
+        caplog.set_level(logging.WARNING)
+        wd, clock, cpu, recorded = self._wd()
+        wd._last_tick = clock.t
+        self._check(wd)
+        for _ in range(2):              # 2 x 1.5s sparse wake-ups, loop never ticks
+            clock.t += 1.5
+            cpu.t += 0.002
+            self._check(wd)
+        clock.t += 0.25
+        cpu.t += 0.01
+        wd._last_tick = clock.t
+        self._check(wd)
+        assert recorded == []
+        assert "EVENT_LOOP_STALL" not in caplog.text
+
     def test_blocking_io_stall_still_reported(self, caplog):
         """Blocking I/O on the loop: the watchdog keeps waking on time (GIL released)."""
         caplog.set_level(logging.WARNING)

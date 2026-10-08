@@ -71,6 +71,35 @@ def validate_credentials_on_startup():
         logger.error(f"Failed to validate credentials on startup: {e}")
 
 
+# Modules that route handlers import lazily. On a fresh instance the first such
+# import ran ON the event loop: httpx/httpcore (via flacfetch_client /
+# worker_service) froze it 3-15s on cold disk reads (EVENT_LOOP_STALL in
+# importlib, 2026-10-08). Lifespan startup imports them in a worker thread before
+# readiness — a background thread alone would still race the first request.
+_LAZY_ROUTE_IMPORTS = (
+    "httpx",
+    "backend.services.worker_service",
+    "backend.services.flacfetch_client",
+    "backend.services.catalog_proxy_service",
+    "backend.services.ip_geolocation_service",
+    "backend.services.email_validation_service",
+    "backend.services.musicbrainz_service",
+)
+
+
+LAZY_ROUTE_IMPORT_TIMEOUT_S = 30
+
+
+def _import_lazy_route_modules() -> None:
+    import importlib
+
+    for module in _LAZY_ROUTE_IMPORTS:
+        try:
+            importlib.import_module(module)
+        except Exception as e:
+            logger.warning(f"Startup import of {module} failed (will import lazily): {e}")
+
+
 def _run_background_warmup():
     """Warm caches that used to block startup (runs in a daemon thread).
 
@@ -136,6 +165,19 @@ async def lifespan(app: FastAPI):
     # running on dev defaults (wrong GCP project / GCS bucket / localhost worker
     # URL). No-op outside production. (Fallback audit 2026-06-09, Theme 7.)
     validate_production_config()
+
+    # Off the loop, but before readiness (Cloud Run holds requests meanwhile).
+    # Bounded so a hung cold-disk read can't keep the instance from ever going
+    # ready; the import keeps running in its thread and routes fall back to it.
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_import_lazy_route_modules), timeout=LAZY_ROUTE_IMPORT_TIMEOUT_S
+        )
+    except asyncio.TimeoutError:
+        logger.error(
+            f"Startup import of lazy route modules exceeded {LAZY_ROUTE_IMPORT_TIMEOUT_S}s; "
+            "continuing startup (first requests may import them on the event loop)"
+        )
 
     # NLP model / credential warmup runs in the background so it doesn't gate
     # readiness — Cloud Run holds all routed requests until lifespan startup

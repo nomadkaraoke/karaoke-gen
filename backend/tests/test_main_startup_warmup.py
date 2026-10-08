@@ -67,3 +67,47 @@ def test_lifespan_starts_warmup_thread_without_blocking_readiness():
                 assert not warmup_release.is_set()
         finally:
             warmup_release.set()
+
+
+
+def test_lazy_route_modules_import_before_readiness_off_loop():
+    """httpx & co. are imported in a worker thread during lifespan startup, before
+    the first request (cold-start importlib stalls, 2026-10-08)."""
+    import importlib
+
+    seen = []
+    real_import = importlib.import_module
+
+    def tracking_import(name, *a, **kw):
+        if name in main_module._LAZY_ROUTE_IMPORTS:
+            seen.append((name, threading.current_thread().name))
+        return real_import(name, *a, **kw)
+
+    with patch.object(main_module, "_run_background_warmup"), \
+         patch.object(importlib, "import_module", side_effect=tracking_import):
+        with TestClient(main_module.app):
+            pass
+
+    assert [name for name, _ in seen] == list(main_module._LAZY_ROUTE_IMPORTS)
+    # asyncio.to_thread's default-executor workers, i.e. not the event-loop thread.
+    assert all(thread.startswith("asyncio_") for _, thread in seen), seen
+
+
+def test_lazy_route_import_failure_is_non_fatal():
+    import importlib
+
+    with patch.object(importlib, "import_module", side_effect=ImportError("nope")):
+        main_module._import_lazy_route_modules()  # logs, doesn't raise
+
+
+def test_slow_lazy_route_import_does_not_block_startup(caplog):
+    import logging
+    import time
+
+    caplog.set_level(logging.ERROR)
+    with patch.object(main_module, "_run_background_warmup"), \
+         patch.object(main_module, "LAZY_ROUTE_IMPORT_TIMEOUT_S", 0.05), \
+         patch.object(main_module, "_import_lazy_route_modules", side_effect=lambda: time.sleep(0.5)):
+        with TestClient(main_module.app):
+            pass
+    assert "exceeded 0.05s; continuing startup" in caplog.text
