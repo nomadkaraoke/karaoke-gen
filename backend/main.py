@@ -71,7 +71,11 @@ def validate_credentials_on_startup():
         logger.error(f"Failed to validate credentials on startup: {e}")
 
 
-# Imported lazily inside route handlers; pre-imported by the startup warmup thread.
+# Modules that route handlers import lazily. On a fresh instance the first such
+# import ran ON the event loop: httpx/httpcore (via flacfetch_client /
+# worker_service) froze it 3-15s on cold disk reads (EVENT_LOOP_STALL in
+# importlib, 2026-10-08). Lifespan startup imports them in a worker thread before
+# readiness — a background thread alone would still race the first request.
 _LAZY_ROUTE_IMPORTS = (
     "httpx",
     "backend.services.worker_service",
@@ -81,6 +85,16 @@ _LAZY_ROUTE_IMPORTS = (
     "backend.services.email_validation_service",
     "backend.services.musicbrainz_service",
 )
+
+
+def _import_lazy_route_modules() -> None:
+    import importlib
+
+    for module in _LAZY_ROUTE_IMPORTS:
+        try:
+            importlib.import_module(module)
+        except Exception as e:
+            logger.warning(f"Startup import of {module} failed (will import lazily): {e}")
 
 
 def _run_background_warmup():
@@ -97,19 +111,6 @@ def _run_background_warmup():
     simply fall back to the preloaders' lazy paths.
     """
     warmup_start = time.time()
-
-    # 0. Modules that routes import lazily inside handlers. On a fresh instance
-    # the first such import ran ON the event loop: importing httpx/httpcore (via
-    # flacfetch_client / worker_service) froze it 4-15s on cold disk reads
-    # (EVENT_LOOP_STALL in importlib, 2026-10-08). Import them here first, so a
-    # request that needs them later finds them already in sys.modules.
-    import importlib
-
-    for module in _LAZY_ROUTE_IMPORTS:
-        try:
-            importlib.import_module(module)
-        except Exception as e:
-            logger.warning(f"Warmup import of {module} failed (will import lazily): {e}")
 
     # 1. SpaCy model (60+ second delay without preload)
     try:
@@ -161,6 +162,9 @@ async def lifespan(app: FastAPI):
     # running on dev defaults (wrong GCP project / GCS bucket / localhost worker
     # URL). No-op outside production. (Fallback audit 2026-06-09, Theme 7.)
     validate_production_config()
+
+    # Off the loop, but before readiness (Cloud Run holds requests meanwhile).
+    await asyncio.to_thread(_import_lazy_route_modules)
 
     # NLP model / credential warmup runs in the background so it doesn't gate
     # readiness — Cloud Run holds all routed requests until lifespan startup
