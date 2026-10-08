@@ -65,7 +65,21 @@ def create_bucket() -> storage.Bucket:
                 action=storage.BucketLifecycleRuleActionArgs(type="Delete"),
                 condition=storage.BucketLifecycleRuleConditionArgs(
                     age=7,
-                    matches_prefixes=["temp/", "uploads/"]
+                    matches_prefixes=["temp/"]
+                ),
+            ),
+            # uploads/ holds USER INPUTS (mix, own instrumental, lyrics, style
+            # uploads) — irreplaceable. Workers copy them to jobs/{id}/input/
+            # (kept forever; backend/services/input_persistence.py), so uploads/
+            # is only a staging area — but it used to expire after 7 days, and
+            # jobs that skipped the copy (bring-your-own-instrumental / tenant
+            # jobs, anything left in review >7 days) lost their inputs for good
+            # (2026-10-08). 6 months leaves ample time for any worker to persist.
+            storage.BucketLifecycleRuleArgs(
+                action=storage.BucketLifecycleRuleActionArgs(type="Delete"),
+                condition=storage.BucketLifecycleRuleConditionArgs(
+                    age=180,
+                    matches_prefixes=["uploads/"]
                 ),
             ),
             # Noncurrent (overwritten OR deleted) versions are kept 7 days (was

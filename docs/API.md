@@ -378,6 +378,8 @@ Downloads of archived files (`GET /api/jobs/{id}/download/{category}/{key}`) ret
 
 Admin variant (optional quiet run, no rate limit): `POST /api/admin/jobs/{job_id}/regenerate` with `{"notify_customer": false}`.
 
+**User inputs** (what regenerate/re-render needs) live in `jobs/{id}/input/**`: every pipeline worker copies `uploads/{id}/**` there on entry and repoints the job (`backend/services/input_persistence.py`; `uploads/` expires after 180 days). Backfill for jobs no worker will touch again: `POST /api/admin/persist-uploads` (admin; `?dry_run=false` to apply) → `{dry_run, jobs: {job_id: {copied, updated} | {would_copy} | {orphan: n} | {error}}}`; folders without a job document are reported as `orphan` and left in place.
+
 A public → private visibility change on a track whose finals were archived regenerates them first (`after: "change_to_private"`), then runs the redistribution automatically.
 
 ### Review

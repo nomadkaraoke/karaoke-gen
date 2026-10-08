@@ -4505,3 +4505,45 @@ async def action_community_review(
         status="made", request_id=request_id,
         message=f"Making our version (job {result.get('job_id')}).",
     )
+
+
+class PersistUploadsResponse(BaseModel):
+    dry_run: bool
+    jobs: Dict[str, Any]  # job_id -> {"copied", "updated"} | {"would_copy"} | {"error"} | {"orphan"}
+
+
+@router.post("/persist-uploads", response_model=PersistUploadsResponse)
+def persist_uploads(dry_run: bool = True, auth_data: AuthResult = Depends(require_admin)):
+    """Backfill: copy every job's ``uploads/{job_id}/**`` into ``jobs/{job_id}/input/``.
+
+    Same operation the workers run on entry (``input_persistence``), for jobs that
+    no worker will touch again. Folders with no job document (abandoned uploads)
+    are reported as ``orphan`` and left in place. Plain ``def``: blocking GCS and
+    Firestore calls run in the threadpool.
+    """
+    from backend.services.input_persistence import persist_job_inputs, persisted_path
+
+    storage = StorageService()
+    job_manager = JobManager()
+    by_job: Dict[str, List[str]] = {}
+    for blob in storage.bucket.list_blobs(prefix="uploads/"):
+        parts = blob.name.split("/")
+        if len(parts) > 2 and parts[1]:
+            by_job.setdefault(parts[1], []).append(blob.name)
+
+    results: Dict[str, Any] = {}
+    for job_id, names in sorted(by_job.items()):
+        job = job_manager.get_job(job_id)
+        if job is None:
+            results[job_id] = {"orphan": len(names)}
+            continue
+        if dry_run:
+            results[job_id] = {"would_copy": {n: persisted_path(job_id, n) for n in names}}
+            continue
+        try:
+            copied, updates = persist_job_inputs(job, storage, job_manager)
+            results[job_id] = {"copied": copied, "updated": updates}
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"persist-uploads: job {job_id} failed: {e}")
+            results[job_id] = {"error": str(e)}
+    return PersistUploadsResponse(dry_run=dry_run, jobs=results)

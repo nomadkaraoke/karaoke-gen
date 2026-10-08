@@ -33,6 +33,7 @@ from pathlib import Path
 
 from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
+from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.storage_service import StorageService
 from backend.services.job_health_service import validate_worker_can_run
 from backend.config import get_settings
@@ -99,6 +100,9 @@ async def generate_screens(job_id: str) -> bool:
     if not job:
         logger.error(f"[job:{job_id}] Job not found")
         return False
+
+    # Copy uploads/{job_id}/** into jobs/{job_id}/input/ (uploads/ expires) and repoint the job.
+    await asyncio.to_thread(ensure_job_inputs_persisted, job, storage, job_manager, "screens")
 
     # Idempotency guard: this worker may be dispatched twice (lyrics primary +
     # audio fallback triggers, or a Cloud Tasks redelivery). Once the job has

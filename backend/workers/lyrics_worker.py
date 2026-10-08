@@ -30,6 +30,7 @@ from pathlib import Path
 
 from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
+from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import DownloadError
 from backend.services.job_health_service import validate_worker_can_run
@@ -256,6 +257,9 @@ async def process_lyrics_transcription(job_id: str) -> bool:
                     logger.error(f"[job:{job_id}] Job not found in Firestore")
                     job_log.error(f"Job {job_id} not found in Firestore!")
                     return False
+
+                # Copy uploads/{job_id}/** into jobs/{job_id}/input/ (uploads/ expires) and repoint the job.
+                await asyncio.to_thread(ensure_job_inputs_persisted, job, storage, job_manager, "lyrics")
 
                 # Validate job status is appropriate for lyrics worker
                 # This helps catch bugs where the worker is triggered incorrectly

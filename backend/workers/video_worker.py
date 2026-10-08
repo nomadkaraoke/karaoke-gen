@@ -22,6 +22,7 @@ Observability:
 - Logs include [job:ID] prefix for easy filtering in Cloud Logging
 - Worker start/end timing logged with WORKER_START/WORKER_END markers
 """
+import asyncio
 import logging
 import os
 import shutil
@@ -36,6 +37,7 @@ from google.cloud.firestore_v1 import DELETE_FIELD
 from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
+from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.storage_service import StorageService
 from backend.services.admin_rerender_service import (
     active_admin_rerender,
@@ -261,6 +263,9 @@ async def generate_video_orchestrated(job_id: str) -> bool:
         logger.error(f"[job:{job_id}] Job not found")
         return False
 
+    # Copy uploads/{job_id}/** into jobs/{job_id}/input/ (uploads/ expires) and repoint the job.
+    await asyncio.to_thread(ensure_job_inputs_persisted, job, storage, job_manager, "video")
+
     # Validate prerequisites
     if not _validate_prerequisites(job):
         logger.error(f"[job:{job_id}] Prerequisites not met for video generation")
@@ -274,7 +279,7 @@ async def generate_video_orchestrated(job_id: str) -> bool:
         job_log.warning(status_error)
         return False
 
-    # A user-supplied instrumental recorded under uploads/ expires after 7 days;
+    # A user-supplied instrumental recorded under uploads/ expires (bucket lifecycle);
     # fall back to (and repoint the job at) its staged copy under jobs/{id}/.
     if getattr(job, 'existing_instrumental_gcs_path', None):
         job.existing_instrumental_gcs_path = resolve_existing_instrumental(
