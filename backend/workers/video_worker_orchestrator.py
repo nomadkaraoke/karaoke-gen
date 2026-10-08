@@ -898,12 +898,19 @@ class VideoWorkerOrchestrator:
                 self._queue_youtube_upload(user_email, reason="quota_exceeded_api")
                 return
 
-            self.job_log.error(f"YouTube upload failed: {e}")
-            self.result.distribution_warnings.append(f"YouTube upload failed: {e}")
+            # Transient failures (e.g. a dropped resumable session that outlived the
+            # in-process restarts) must not lose the upload: hand it to the deferred
+            # queue, which retries from the GCS finals (bounded by max_attempts).
+            self.job_log.error(f"YouTube upload failed, queueing for retry: {e}")
+            self._queue_youtube_upload(user_email, reason="upload_error", error=error_str)
+            if self.result.youtube_upload_queued:
+                self.result.distribution_warnings.append(
+                    f"YouTube upload failed, queued for automatic retry: {e}"
+                )
             # Don't fail the pipeline - YouTube is optional
 
-    def _queue_youtube_upload(self, user_email: str, reason: str = "quota_exceeded"):
-        """Queue a YouTube upload for later processing when quota is insufficient."""
+    def _queue_youtube_upload(self, user_email: str, reason: str = "quota_exceeded", error: Optional[str] = None):
+        """Queue a YouTube upload for later processing (insufficient quota or a failed upload)."""
         try:
             from backend.services.youtube_upload_queue_service import get_youtube_upload_queue_service
             queue_service = get_youtube_upload_queue_service()
@@ -920,8 +927,9 @@ class VideoWorkerOrchestrator:
             self.job_log.info(f"YouTube upload queued for later processing (reason: {reason})")
         except Exception as e:
             self.job_log.error(f"Failed to queue YouTube upload: {e}")
+            cause = f"upload failed: {error}" if error else "quota exceeded"
             self.result.distribution_warnings.append(
-                f"YouTube upload skipped (quota exceeded) and failed to queue: {e}"
+                f"YouTube upload skipped ({cause}) and failed to queue: {e}"
             )
 
     def _stage_original_audio_for_upload(self):

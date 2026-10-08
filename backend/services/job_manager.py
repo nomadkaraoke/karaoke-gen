@@ -1052,6 +1052,12 @@ class JobManager:
             if any(state_data.get(k) for k in ("regenerate", "admin_rerender", "theme_rerender")):
                 logger.info(f"Job {job_id}: cancelled re-run of a delivered track, skipping refund")
                 return False
+            # Same for a customer edit: "Edit" reopens a completed (delivered) track
+            # for review, so a delete/cancel/fail after it must not refund — otherwise
+            # complete → edit → delete returns the credit for a video already received.
+            if job.edit_count:
+                logger.info(f"Job {job_id}: edited track was already delivered, skipping refund")
+                return False
             credits_charged = int(state_data.get("credits_charged", 1))
 
             if credits_charged == 0:

@@ -28,6 +28,7 @@ from backend.workers.render_video_worker import process_render_video
 from backend.api.dependencies import require_admin
 from backend.services.auth_service import AuthResult, UserType
 from backend.services.job_manager import JobManager, PREP_PHASE_STATUSES
+from backend.utils.loop_bridge import run_in_body_thread, run_on_loop
 from backend.services.tracing import (
     extract_trace_context,
     start_span_with_context,
@@ -952,6 +953,16 @@ async def retry_pending_render_jobs(
     http_request: Request,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
 ):
+    """Cron: auto-retry RENDER_PENDING_CAPACITY jobs — see ``_retry_pending_render_jobs_sync``.
+
+    Firestore scans + updates run in a worker thread (they stalled the loop on
+    every tick); render triggers run back on the loop.
+    """
+    loop = asyncio.get_running_loop()
+    return await run_in_body_thread(_retry_pending_render_jobs_sync, http_request, loop)
+
+
+def _retry_pending_render_jobs_sync(http_request: Request, loop: asyncio.AbstractEventLoop):
     """
     Auto-retry jobs parked in RENDER_PENDING_CAPACITY.
 
@@ -1076,7 +1087,7 @@ async def retry_pending_render_jobs(
             continue
 
         try:
-            await worker_service.trigger_render_video_worker(job_id)
+            run_on_loop(loop, worker_service.trigger_render_video_worker(job_id))
             retried.append(job_id)
             logger.info(f"[job:{job_id}] Auto-retry triggered")
         except Exception as e:
@@ -1109,6 +1120,17 @@ async def recover_stuck_jobs(
     http_request: Request,
     auth_data: Tuple[str, UserType, int] = Depends(require_admin)
 ):
+    """Cron watchdog for stuck jobs — see ``_recover_stuck_jobs_sync``.
+
+    Its Firestore scans were the #1 event-loop staller (~260 stalls in a week,
+    up to 5s each), so the scan runs in a worker thread; worker re-triggers run
+    back on the loop.
+    """
+    loop = asyncio.get_running_loop()
+    return await run_in_body_thread(_recover_stuck_jobs_sync, http_request, loop)
+
+
+def _recover_stuck_jobs_sync(http_request: Request, loop: asyncio.AbstractEventLoop):
     """
     Detect and recover jobs stuck in a processing status.
 
@@ -1198,7 +1220,7 @@ async def recover_stuck_jobs(
         # a failing audio-worker (helper returns False after an external dispatch)
         # can't fan out to every queried job in one tick.
         retried_this_tick += 1
-        if await _retrigger_parked_download(job_manager, worker_service, job_id):
+        if _retrigger_parked_download(job_manager, worker_service, job_id, loop):
             download_retried.append(job_id)
 
     # --- Orphaned renders: re-park for automatic retry ---
@@ -1240,7 +1262,7 @@ async def recover_stuck_jobs(
             continue
         logger.warning(f"[job:{job_id}] REVIEW_COMPLETE stalled >10 min with no render — re-triggering")
         try:
-            if await worker_service.trigger_render_video_worker(job_id):
+            if run_on_loop(loop, worker_service.trigger_render_video_worker(job_id)):
                 render_retriggered.append(job_id)
         except Exception as e:
             logger.warning(f"[job:{job_id}] render re-trigger failed: {e}")
@@ -1276,7 +1298,7 @@ async def recover_stuck_jobs(
             "no screens — re-triggering"
         )
         try:
-            if await job_manager.advance_to_screens_if_ready(job_id):
+            if run_on_loop(loop, job_manager.advance_to_screens_if_ready(job_id)):
                 screens_retriggered.append(job_id)
         except Exception as e:
             logger.warning(f"[job:{job_id}] screens re-trigger failed: {e}")
@@ -1310,7 +1332,7 @@ async def recover_stuck_jobs(
                 logger.warning(f"[job:{job_id}] Re-render parked at lyrics_complete >10 min — re-triggering screens")
                 job_manager.update_job(job_id, {"state_data.screens_progress": _DEL})
                 try:
-                    if await worker_service.trigger_screens_worker(job_id):
+                    if run_on_loop(loop, worker_service.trigger_screens_worker(job_id)):
                         regen_screens_retriggered.append(job_id)
                 except Exception as e:  # noqa: BLE001
                     logger.warning(f"[job:{job_id}] re-render screens re-trigger failed: {e}")
@@ -1481,8 +1503,14 @@ def _park_download_for_retry(job_manager: JobManager, job_id: str, reason: str) 
     ))
 
 
-async def _retrigger_parked_download(job_manager: JobManager, worker_service, job_id: str) -> bool:
-    """Re-trigger the audio download for a DOWNLOAD_PENDING_RETRY job."""
+def _retrigger_parked_download(
+    job_manager: JobManager, worker_service, job_id: str, loop: asyncio.AbstractEventLoop
+) -> bool:
+    """Re-trigger the audio download for a DOWNLOAD_PENDING_RETRY job.
+
+    Called from the recover-stuck-jobs worker thread: the Firestore writes run
+    here, only the trigger coroutine goes back to the loop.
+    """
     from backend.models.job import JobStatus
 
     job_manager.update_job(job_id, {"error_message": None, "error_details": None})
@@ -1496,7 +1524,7 @@ async def _retrigger_parked_download(job_manager: JobManager, worker_service, jo
         logger.warning(f"[job:{job_id}] Could not transition parked download for retry")
         return False
     try:
-        await worker_service.trigger_audio_download_worker(job_id)
+        run_on_loop(loop, worker_service.trigger_audio_download_worker(job_id))
         logger.info(f"[job:{job_id}] Parked download re-triggered")
         return True
     except Exception as e:  # noqa: BLE001

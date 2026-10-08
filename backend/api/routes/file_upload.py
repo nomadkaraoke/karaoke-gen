@@ -1105,8 +1105,20 @@ async def _validate_audio_durations(
     Returns:
         Tuple of (is_valid, audio_duration, instrumental_duration)
     """
+    # Two GCS downloads + two full decodes (15s+ seen in prod) — never on the loop.
+    return await asyncio.to_thread(
+        _validate_audio_durations_sync, storage, audio_gcs_path, instrumental_gcs_path, tolerance_seconds
+    )
+
+
+def _validate_audio_durations_sync(
+    storage: StorageService,
+    audio_gcs_path: str,
+    instrumental_gcs_path: str,
+    tolerance_seconds: float,
+) -> Tuple[bool, float, float]:
     from pydub import AudioSegment
-    
+
     temp_dir = tempfile.mkdtemp(prefix="duration_check_")
     try:
         # Download audio file

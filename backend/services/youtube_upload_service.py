@@ -13,6 +13,7 @@ This service handles:
 
 import logging
 import os
+import time
 from typing import Optional, Dict, Any, Tuple
 
 from thefuzz import fuzz
@@ -31,6 +32,15 @@ class YouTubeUploadService:
 
     YOUTUBE_URL_PREFIX = "https://www.youtube.com/watch?v="
     SCOPES = ["https://www.googleapis.com/auth/youtube"]
+
+    # Resumable-upload robustness. Within one upload session, googleapiclient
+    # resumes chunks itself on 5xx/429/rate-limit responses (``num_retries``).
+    # A 404/410 means YouTube dropped the session entirely ("Gone") — nothing
+    # was created, so the only fix is a fresh session from byte 0.
+    UPLOAD_NUM_RETRIES = 3
+    UPLOAD_SESSION_ATTEMPTS = 3
+    UPLOAD_SESSION_LOST_STATUSES = (404, 410)
+    UPLOAD_RESTART_BACKOFF_SECONDS = 5
 
     def __init__(
         self,
@@ -372,16 +382,7 @@ class YouTubeUploadService:
         }.get(ext, "video/*")
 
         # Upload video
-        self.logger.info(f"Authenticating with YouTube...")
-        media_file = MediaFileUpload(video_path, mimetype=mime_type, resumable=True)
-
-        self.logger.info(f"Uploading video to YouTube...")
-        request = self.youtube_service.videos().insert(
-            part="snippet,status",
-            body=body,
-            media_body=media_file
-        )
-        response = request.execute()
+        response = self._execute_resumable_insert(video_path, mime_type, body)
 
         video_id = response.get("id")
         video_url = f"{self.YOUTUBE_URL_PREFIX}{video_id}"
@@ -407,6 +408,32 @@ class YouTubeUploadService:
             self.logger.warning(f"Thumbnail file not found, skipping: {thumbnail_path}")
 
         return video_id, video_url
+
+    def _execute_resumable_insert(self, video_path: str, mime_type: str, body: Dict[str, Any]) -> Dict[str, Any]:
+        """Run ``videos.insert`` as a resumable upload, restarting if the session is lost."""
+        from googleapiclient.errors import HttpError
+        from googleapiclient.http import MediaFileUpload
+
+        for attempt in range(1, self.UPLOAD_SESSION_ATTEMPTS + 1):
+            media_file = MediaFileUpload(video_path, mimetype=mime_type, resumable=True)
+            self.logger.info(f"Uploading video to YouTube (attempt {attempt}/{self.UPLOAD_SESSION_ATTEMPTS})...")
+            request = self.youtube_service.videos().insert(
+                part="snippet,status",
+                body=body,
+                media_body=media_file
+            )
+            try:
+                return request.execute(num_retries=self.UPLOAD_NUM_RETRIES)
+            except HttpError as e:
+                status = getattr(e.resp, "status", None)
+                if status not in self.UPLOAD_SESSION_LOST_STATUSES or attempt == self.UPLOAD_SESSION_ATTEMPTS:
+                    raise
+                delay = self.UPLOAD_RESTART_BACKOFF_SECONDS * attempt
+                self.logger.warning(
+                    f"YouTube upload session lost (HTTP {status}), restarting upload in {delay}s: {e}"
+                )
+                time.sleep(delay)
+        raise RuntimeError("unreachable")  # loop always returns or raises
 
 
 # Singleton instance and factory function (following existing service pattern)

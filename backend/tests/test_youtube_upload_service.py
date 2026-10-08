@@ -566,3 +566,64 @@ class TestGetYouTubeUploadService:
 
         assert service is not None
         assert service.client_secrets_file == "/path/to/secrets.json"
+
+
+class TestYouTubeUploadSessionRestart:
+    """A lost resumable session (404/410) restarts the upload; other errors don't."""
+
+    @staticmethod
+    def _http_error(status):
+        from googleapiclient.errors import HttpError
+
+        resp = MagicMock()
+        resp.status = status
+        resp.reason = "Gone"
+        return HttpError(resp, b'{"error": {"message": "Gone"}}', uri="https://youtube.googleapis.com/upload")
+
+    def _service(self, insert_execute_side_effect):
+        service = YouTubeUploadService(credentials={"token": "t"}, non_interactive=True, server_side_mode=True)
+        youtube = MagicMock()
+        youtube.videos.return_value.insert.return_value.execute.side_effect = insert_execute_side_effect
+        service._youtube_service = youtube
+        return service, youtube
+
+    @patch("time.sleep")
+    @patch("googleapiclient.http.MediaFileUpload")
+    def test_410_restarts_with_fresh_session(self, mock_media, mock_sleep):
+        service, youtube = self._service([self._http_error(410), {"id": "VID"}])
+
+        with patch.object(service, "check_duplicate", return_value=(False, None, None)):
+            video_id, video_url = service.upload_video(video_path="/v.mkv", title="A - B (Karaoke)", description="d")
+
+        assert video_id == "VID"
+        assert youtube.videos.return_value.insert.call_count == 2
+        assert mock_media.call_count == 2  # new MediaFileUpload per session
+        youtube.videos.return_value.insert.return_value.execute.assert_called_with(
+            num_retries=YouTubeUploadService.UPLOAD_NUM_RETRIES
+        )
+        mock_sleep.assert_called_once()
+
+    @patch("time.sleep")
+    @patch("googleapiclient.http.MediaFileUpload")
+    def test_410_on_every_attempt_raises(self, mock_media, mock_sleep):
+        attempts = YouTubeUploadService.UPLOAD_SESSION_ATTEMPTS
+        service, youtube = self._service([self._http_error(410)] * attempts)
+
+        with patch.object(service, "check_duplicate", return_value=(False, None, None)):
+            with pytest.raises(Exception, match="410"):
+                service.upload_video(video_path="/v.mkv", title="A - B (Karaoke)", description="d")
+
+        assert youtube.videos.return_value.insert.call_count == attempts
+        assert mock_sleep.call_count == attempts - 1
+
+    @patch("time.sleep")
+    @patch("googleapiclient.http.MediaFileUpload")
+    def test_quota_403_is_not_restarted(self, mock_media, mock_sleep):
+        service, youtube = self._service([self._http_error(403)])
+
+        with patch.object(service, "check_duplicate", return_value=(False, None, None)):
+            with pytest.raises(Exception, match="403"):
+                service.upload_video(video_path="/v.mkv", title="A - B (Karaoke)", description="d")
+
+        assert youtube.videos.return_value.insert.call_count == 1
+        mock_sleep.assert_not_called()
