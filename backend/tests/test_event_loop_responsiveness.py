@@ -202,6 +202,48 @@ def test_run_on_loop_propagates_exceptions():
     asyncio.run(main())
 
 
+def test_run_on_loop_times_out_and_cancels():
+    from backend.utils.loop_bridge import run_on_loop
+    import concurrent.futures
+
+    async def main():
+        loop = asyncio.get_running_loop()
+        cancelled = asyncio.Event()
+
+        async def hangs():
+            try:
+                await asyncio.sleep(10)
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+
+        with pytest.raises(concurrent.futures.TimeoutError):
+            await asyncio.to_thread(run_on_loop, loop, hangs(), 0.05)
+        await asyncio.wait_for(cancelled.wait(), 1)
+
+    asyncio.run(main())
+
+
+def test_run_in_body_thread_copies_context_and_uses_own_pool():
+    import contextvars
+    import threading
+
+    from backend.utils.loop_bridge import run_in_body_thread
+
+    var = contextvars.ContextVar("v", default=None)
+
+    def body():
+        return var.get(), threading.current_thread().name
+
+    async def main():
+        var.set("request-ctx")
+        return await run_in_body_thread(body)
+
+    value, thread_name = asyncio.run(main())
+    assert value == "request-ctx"
+    assert thread_name.startswith("route-body")
+
+
 @pytest.mark.asyncio
 async def test_complete_review_saves_off_loop_and_triggers_render():
     from unittest.mock import AsyncMock

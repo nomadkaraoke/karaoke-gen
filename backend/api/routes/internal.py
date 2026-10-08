@@ -28,7 +28,7 @@ from backend.workers.render_video_worker import process_render_video
 from backend.api.dependencies import require_admin
 from backend.services.auth_service import AuthResult, UserType
 from backend.services.job_manager import JobManager, PREP_PHASE_STATUSES
-from backend.utils.loop_bridge import run_on_loop
+from backend.utils.loop_bridge import run_in_body_thread, run_on_loop
 from backend.services.tracing import (
     extract_trace_context,
     start_span_with_context,
@@ -959,7 +959,7 @@ async def retry_pending_render_jobs(
     every tick); render triggers run back on the loop.
     """
     loop = asyncio.get_running_loop()
-    return await asyncio.to_thread(_retry_pending_render_jobs_sync, http_request, loop)
+    return await run_in_body_thread(_retry_pending_render_jobs_sync, http_request, loop)
 
 
 def _retry_pending_render_jobs_sync(http_request: Request, loop: asyncio.AbstractEventLoop):
@@ -1127,7 +1127,7 @@ async def recover_stuck_jobs(
     back on the loop.
     """
     loop = asyncio.get_running_loop()
-    return await asyncio.to_thread(_recover_stuck_jobs_sync, http_request, loop)
+    return await run_in_body_thread(_recover_stuck_jobs_sync, http_request, loop)
 
 
 def _recover_stuck_jobs_sync(http_request: Request, loop: asyncio.AbstractEventLoop):
@@ -1220,7 +1220,7 @@ def _recover_stuck_jobs_sync(http_request: Request, loop: asyncio.AbstractEventL
         # a failing audio-worker (helper returns False after an external dispatch)
         # can't fan out to every queried job in one tick.
         retried_this_tick += 1
-        if run_on_loop(loop, _retrigger_parked_download(job_manager, worker_service, job_id)):
+        if _retrigger_parked_download(job_manager, worker_service, job_id, loop):
             download_retried.append(job_id)
 
     # --- Orphaned renders: re-park for automatic retry ---
@@ -1503,8 +1503,14 @@ def _park_download_for_retry(job_manager: JobManager, job_id: str, reason: str) 
     ))
 
 
-async def _retrigger_parked_download(job_manager: JobManager, worker_service, job_id: str) -> bool:
-    """Re-trigger the audio download for a DOWNLOAD_PENDING_RETRY job."""
+def _retrigger_parked_download(
+    job_manager: JobManager, worker_service, job_id: str, loop: asyncio.AbstractEventLoop
+) -> bool:
+    """Re-trigger the audio download for a DOWNLOAD_PENDING_RETRY job.
+
+    Called from the recover-stuck-jobs worker thread: the Firestore writes run
+    here, only the trigger coroutine goes back to the loop.
+    """
     from backend.models.job import JobStatus
 
     job_manager.update_job(job_id, {"error_message": None, "error_details": None})
@@ -1518,7 +1524,7 @@ async def _retrigger_parked_download(job_manager: JobManager, worker_service, jo
         logger.warning(f"[job:{job_id}] Could not transition parked download for retry")
         return False
     try:
-        await worker_service.trigger_audio_download_worker(job_id)
+        run_on_loop(loop, worker_service.trigger_audio_download_worker(job_id))
         logger.info(f"[job:{job_id}] Parked download re-triggered")
         return True
     except Exception as e:  # noqa: BLE001

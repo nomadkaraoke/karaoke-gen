@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request,
 
 from datetime import datetime, timezone
 from google.cloud.exceptions import NotFound
-from backend.utils.loop_bridge import run_on_loop
+from backend.utils.loop_bridge import run_in_body_thread, run_on_loop
 from backend.utils.request_helpers import get_client_ip
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
@@ -2785,7 +2785,7 @@ async def create_job_from_search(
     download trigger runs back on the loop.
     """
     loop = asyncio.get_running_loop()
-    return await asyncio.to_thread(
+    return await run_in_body_thread(
         _create_job_from_search_sync, request, background_tasks, body, auth_result, loop
     )
 
