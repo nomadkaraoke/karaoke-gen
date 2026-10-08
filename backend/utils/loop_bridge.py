@@ -46,7 +46,11 @@ def run_on_loop(
     timeout: float = RUN_ON_LOOP_TIMEOUT_SECONDS,
 ) -> T:
     """From a worker thread, run ``coro`` on ``loop`` and return (or raise) its result."""
-    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    try:
+        future = asyncio.run_coroutine_threadsafe(coro, loop)
+    except Exception:
+        coro.close()  # loop closed (instance shutdown) — don't leak a never-awaited coroutine
+        raise
     try:
         return future.result(timeout=timeout)
     except concurrent.futures.TimeoutError:
