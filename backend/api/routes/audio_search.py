@@ -729,17 +729,17 @@ async def search_audio(
         credential_manager = get_credential_manager()
 
         if effective_enable_youtube_upload:
-            result = credential_manager.check_youtube_credentials()
+            result = await asyncio.to_thread(credential_manager.check_youtube_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
         
         if effective_dropbox_path:
-            result = credential_manager.check_dropbox_credentials()
+            result = await asyncio.to_thread(credential_manager.check_dropbox_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
         
         if effective_gdrive_folder_id:
-            result = credential_manager.check_gdrive_credentials()
+            result = await asyncio.to_thread(credential_manager.check_gdrive_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
         

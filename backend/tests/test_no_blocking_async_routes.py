@@ -191,3 +191,91 @@ async def helper():
     await client.sync_ok()
 '''
     assert find_awaited_sync_routes(caller) == ["sync_ok"]
+
+
+# Known-blocking calls (network / Secret Manager I/O) that awaiting *something else*
+# in the same handler doesn't excuse. On 2026-10-07 the routes below awaited
+# request.json() etc. (so test_no_async_route_without_await passed) yet froze the
+# loop 5-16s: a Dropbox token refresh (HTTP + Secret Manager write) inside
+# check_dropbox_credentials, and the GDrive validator's OIDC fetch + POST.
+# Pass these to asyncio.to_thread(fn, ...) — a reference, not a call — instead.
+BLOCKING_CALLS = {
+    "check_youtube_credentials",
+    "check_dropbox_credentials",
+    "check_gdrive_credentials",
+    "check_all_credentials",
+    "trigger_gdrive_validation",
+}
+_BLOCKING_MODULE_CALLS = {("requests", "get"), ("requests", "post"), ("requests", "put"),
+                          ("requests", "delete"), ("requests", "request"), ("time", "sleep")}
+
+
+def _blocking_call_name(call: ast.Call) -> str | None:
+    fn = call.func
+    if isinstance(fn, ast.Name) and fn.id in BLOCKING_CALLS:
+        return fn.id
+    if isinstance(fn, ast.Attribute):
+        if fn.attr in BLOCKING_CALLS:
+            return fn.attr
+        if isinstance(fn.value, ast.Name) and (fn.value.id, fn.attr) in _BLOCKING_MODULE_CALLS:
+            return f"{fn.value.id}.{fn.attr}"
+    return None
+
+
+def find_blocking_calls_in_async_routes(source: str) -> list[str]:
+    """`async def` routes that directly call a known-blocking function (excluding
+    nested sync helpers, which are presumably run via to_thread)."""
+    tree = ast.parse(source)
+    hits = []
+    for fn in ast.walk(tree):
+        if not (isinstance(fn, ast.AsyncFunctionDef) and _is_route(fn)):
+            continue
+        stack = list(fn.body)
+        while stack:
+            node = stack.pop()
+            if isinstance(node, (ast.FunctionDef, ast.Lambda, ast.ClassDef)):
+                continue
+            if isinstance(node, ast.Call) and (name := _blocking_call_name(node)):
+                hits.append(f"{fn.name}: {name}() line {node.lineno}")
+            stack.extend(ast.iter_child_nodes(node))
+    return hits
+
+
+def test_no_known_blocking_calls_in_async_routes():
+    offenders = []
+    for path in ROUTE_FILES:
+        for hit in find_blocking_calls_in_async_routes(path.read_text()):
+            offenders.append(f"{path.relative_to(BACKEND.parent)}::{hit}")
+    assert not offenders, (
+        "These `async def` routes call known-blocking functions directly on the event "
+        "loop. Use `await asyncio.to_thread(fn, ...)`:\n  " + "\n  ".join(sorted(offenders))
+    )
+
+
+def test_blocking_call_detector():
+    src = '''
+@router.post("/a")
+async def bad(request):
+    await request.json()
+    cm.check_dropbox_credentials()
+    requests.post(url)
+
+@router.post("/b")
+async def good(request):
+    await request.json()
+    await asyncio.to_thread(cm.check_dropbox_credentials)
+    await asyncio.to_thread(trigger_gdrive_validation, brand_code="X")
+
+@router.post("/c")
+def sync_ok():
+    cm.check_dropbox_credentials()
+
+@router.post("/d")
+async def helper_ok():
+    def _work():
+        return trigger_gdrive_validation()
+    await asyncio.to_thread(_work)
+'''
+    hits = find_blocking_calls_in_async_routes(src)
+    assert sorted(h.split(" line")[0] for h in hits) == [
+        "bad: check_dropbox_credentials()", "bad: requests.post()"]
