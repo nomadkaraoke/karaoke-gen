@@ -49,13 +49,17 @@ class OrchestratorConfig:
     artist: str
     title: str
 
-    # Input file paths (in temp_dir)
-    title_video_path: str
+    # Input file paths (in temp_dir). None = the theme leaves that screen out.
+    title_video_path: Optional[str]
     karaoke_video_path: str
     instrumental_audio_path: str
     end_video_path: Optional[str] = None
     lrc_file_path: Optional[str] = None
     title_jpg_path: Optional[str] = None
+
+    # Whether the theme includes the title / end screen (state_data.screens_included)
+    include_title_screen: bool = True
+    include_end_screen: bool = True
 
     # Output directory
     output_dir: str = ""
@@ -521,6 +525,8 @@ class VideoWorkerOrchestrator:
                 "output_gcs_path": output_gcs_path,
                 "countdown_padding_seconds": self.config.countdown_padding_seconds,
                 "existing_instrumental": self.config.existing_instrumental_gcs_path,
+                "include_title_screen": self.config.include_title_screen,
+                "include_end_screen": self.config.include_end_screen,
             },
         )
 
@@ -1096,7 +1102,10 @@ class VideoWorkerOrchestrator:
     async def _resolve_intro_seconds(self) -> float:
         """The master's silent title-card length = the job's style intro ``video_duration``
         (default 5s). Read the *actual* value — long-intro styles exist. Falls back to 5s
-        (``get_intro_format`` raises when no theme is loaded — that's the fallback path)."""
+        (``get_intro_format`` raises when no theme is loaded — that's the fallback path).
+        0 when the theme leaves the title card out (the master starts with the song)."""
+        if not self.config.include_title_screen:
+            return 0.0
         try:
             from backend.workers.style_helper import load_style_config
             import tempfile
@@ -1254,6 +1263,12 @@ def create_orchestrator_config_from_job(
                 duet_corrections_json_path = candidate
                 break
 
+    # Screens the theme leaves out (recorded by the screens worker).
+    from backend.workers.style_helper import screen_included
+
+    include_title = screen_included(job.state_data, "title")
+    include_end = screen_included(job.state_data, "end")
+
     return OrchestratorConfig(
         worker_generation=capture_generation(job),
         job_id=job.job_id,
@@ -1261,11 +1276,15 @@ def create_orchestrator_config_from_job(
         title=job.title,
 
         # Input files — use actual extension from GCS (PNG for new jobs, MOV for legacy)
-        title_video_path=os.path.join(temp_dir, f"{base_name} (Title){_screen_ext(job, 'title')}"),
+        title_video_path=(
+            os.path.join(temp_dir, f"{base_name} (Title){_screen_ext(job, 'title')}") if include_title else None
+        ),
         # Use actual extension from GCS path (typically .mkv) instead of hardcoding .mov
         karaoke_video_path=os.path.join(temp_dir, f"{base_name} (With Vocals){os.path.splitext(job.file_urls.get('videos', {}).get('with_vocals', '.mkv'))[1] or '.mkv'}"),
         instrumental_audio_path=instrumental_path,
-        end_video_path=os.path.join(temp_dir, f"{base_name} (End){_screen_ext(job, 'end')}"),
+        end_video_path=os.path.join(temp_dir, f"{base_name} (End){_screen_ext(job, 'end')}") if include_end else None,
+        include_title_screen=include_title,
+        include_end_screen=include_end,
         lrc_file_path=os.path.join(temp_dir, f"{base_name} (Karaoke).lrc"),
         title_jpg_path=os.path.join(temp_dir, f"{base_name} (Title).jpg"),
 

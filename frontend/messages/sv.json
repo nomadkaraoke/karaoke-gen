@@ -1988,7 +1988,6 @@
     "description": "Anpassa hur dina karaokevideor ser ut. Förhandsgranskningarna till höger renderas precis som dina färdiga videor.",
     "discard": "Kassera ändringar",
     "discardConfirm": "Du har osparade temaändringar. Vill du stänga utan att spara?",
-    "endScreenHint": "Slutskärmen förhandsgranskas inte. Den använder samma typsnitt och layoutstil som titelkortet.",
     "font": "Typsnitt",
     "fontHint": "Ett och samma typsnitt används för titelkortet, låttexten och slutskärmen.",
     "jsonInvalid": "Ogiltig JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# video kunde inte renderas om} other {# videor kunde inte renderas om}}",
     "rerenderAllStarted": "{count, plural, one {Renderar om # video med ditt nya tema. Det tar cirka 10–15 minuter; du kan följa förloppet på spåret.} other {Renderar om # videor med ditt nya tema. Varje video tar cirka 10–15 minuter; du kan följa förloppet på respektive spår.}}",
     "rerenderAllStarting": "Startar…",
-    "savedBodyInProgress": "Nya videor, och videor som fortfarande håller på att skapas, kommer att använda ditt uppdaterade tema."
+    "savedBodyInProgress": "Nya videor, och videor som fortfarande håller på att skapas, kommer att använda ditt uppdaterade tema.",
+    "copyTitleCardLayout": "Kopiera layout från titelkort",
+    "copyTitleCardLayoutHint": "Ge låttiteln och artistnamnet samma storlek, placering, färger och versalisering här som på ditt titelkort.",
+    "endScreenFontHint": "Slutskärmen använder samma typsnitt som titelkortet (ändra det under fliken Titelkort).",
+    "endScreenOff": "Videorna avslutas när låten är slut.",
+    "includeEndScreen": "Lägg till en slutskärm i slutet av varje video",
+    "includeTitleCard": "Lägg till ett titelkort i början av varje video",
+    "previewEndScreen": "Förhandsgranska slutskärm",
+    "screenOmitted": "Inkluderas inte i dina videor",
+    "showArtistName": "Visa artistnamnet",
+    "showSongTitle": "Visa låttiteln",
+    "titleCardOff": "Videorna startar direkt med textvideon."
   },
   "stalledDownload": {
     "actionFailedDesc": "Försök igen om en stund.",

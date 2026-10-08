@@ -137,7 +137,7 @@ class EncodingInput:
     Contains all the paths and metadata needed to encode a karaoke video.
     """
     # Required input files
-    title_video_path: str  # Title card video (MOV)
+    title_video_path: Optional[str]  # Title card video (MOV); None = theme omits it
     karaoke_video_path: str  # Main karaoke video with vocals (MOV/MKV)
     instrumental_audio_path: str  # Instrumental audio track (FLAC)
 
@@ -464,6 +464,12 @@ class GCEEncodingBackend(EncodingBackend):
             existing_instrumental = input_config.options.get("existing_instrumental")
             if existing_instrumental:
                 encoding_config["existing_instrumental"] = existing_instrumental
+
+            # Screens the theme leaves out: the encoder must skip them rather than
+            # rebuild them from whatever matching PNG it finds in the job folder.
+            for flag in ("include_title_screen", "include_end_screen"):
+                if input_config.options.get(flag) is False:
+                    encoding_config[flag] = False
 
             countdown_padding = input_config.options.get("countdown_padding_seconds")
             if countdown_padding:

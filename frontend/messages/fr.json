@@ -1988,7 +1988,6 @@
     "description": "Personnalise l'apparence de tes vidéos karaoké. Les aperçus à droite sont générés exactement comme tes vidéos finales.",
     "discard": "Abandonner les modifications",
     "discardConfirm": "Tu as des modifications non enregistrées sur ce thème. Fermer sans enregistrer ?",
-    "endScreenHint": "L'écran de fin n'a pas d'aperçu ; il utilise la même police et la même mise en page que l'écran de titre.",
     "font": "Police",
     "fontHint": "Une seule et même police est utilisée pour l'écran de titre, les paroles et l'écran de fin.",
     "jsonInvalid": "JSON non valide",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# vidéo n'a pas pu être recalculée} other {# vidéos n'ont pas pu être recalculées}}",
     "rerenderAllStarted": "{count, plural, one {Nouveau rendu en cours pour # vidéo avec ton nouveau thème. Cela prend environ 10 à 15 minutes ; tu peux suivre sa progression sur le morceau.} other {Nouveau rendu en cours pour # vidéos avec ton nouveau thème. Chaque vidéo prend environ 10 à 15 minutes ; tu peux suivre leur progression sur chaque morceau.}}",
     "rerenderAllStarting": "Démarrage…",
-    "savedBodyInProgress": "Les nouvelles vidéos, ainsi que celles encore en cours de création, utiliseront ton thème mis à jour."
+    "savedBodyInProgress": "Les nouvelles vidéos, ainsi que celles encore en cours de création, utiliseront ton thème mis à jour.",
+    "copyTitleCardLayout": "Copier la mise en page du carton de titre",
+    "copyTitleCardLayoutHint": "Applique ici au titre du morceau et au nom de l'artiste les mêmes taille, position, couleurs et majuscules que sur ton carton de titre.",
+    "endScreenFontHint": "L'écran de fin utilise la même police que le carton de titre (modifie-la dans l'onglet Carton de titre).",
+    "endScreenOff": "Les vidéos se termineront à la fin de la chanson.",
+    "includeEndScreen": "Inclure un écran de fin à la fin de chaque vidéo",
+    "includeTitleCard": "Inclure un carton de titre au début de chaque vidéo",
+    "previewEndScreen": "Aperçu de l'écran de fin",
+    "screenOmitted": "Non inclus dans tes vidéos",
+    "showArtistName": "Afficher le nom de l'artiste",
+    "showSongTitle": "Afficher le titre de la chanson",
+    "titleCardOff": "Les vidéos commenceront directement avec les paroles."
   },
   "stalledDownload": {
     "actionFailedDesc": "Réessaie dans un instant.",

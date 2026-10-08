@@ -1988,7 +1988,6 @@
     "description": "Personalizza l'aspetto dei tuoi video karaoke. Le anteprime a destra mostrano esattamente la resa finale dei tuoi video.",
     "discard": "Scarta modifiche",
     "discardConfirm": "Hai modifiche non salvate al tema. Vuoi chiudere senza salvare?",
-    "endScreenHint": "La schermata finale non viene mostrata in anteprima; utilizza lo stesso carattere e stile di layout della schermata del titolo.",
     "font": "Carattere",
     "fontHint": "Viene utilizzato un unico carattere per la schermata del titolo, il testo e la schermata finale.",
     "jsonInvalid": "JSON non valido",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {Impossibile rieseguire il rendering di # video} other {Impossibile rieseguire il rendering di # video}}",
     "rerenderAllStarted": "{count, plural, one {Rendering di # video con il tuo nuovo tema in corso. Richiede circa 10-15 minuti; puoi seguirne l'avanzamento sulla traccia.} other {Rendering di # video con il tuo nuovo tema in corso. Ciascuno richiede circa 10-15 minuti; puoi seguirne l'avanzamento su ciascuna traccia.}}",
     "rerenderAllStarting": "Avvio in corso…",
-    "savedBodyInProgress": "I nuovi video e quelli ancora in fase di creazione utilizzeranno il tuo tema aggiornato."
+    "savedBodyInProgress": "I nuovi video e quelli ancora in fase di creazione utilizzeranno il tuo tema aggiornato.",
+    "copyTitleCardLayout": "Copia il layout della schermata iniziale",
+    "copyTitleCardLayoutHint": "Applica qui al titolo del brano e al nome dell'artista le stesse dimensioni, posizione, colori e maiuscole della schermata iniziale.",
+    "endScreenFontHint": "La schermata finale usa lo stesso font della schermata iniziale (puoi modificarlo nella scheda Schermata iniziale).",
+    "endScreenOff": "I video termineranno alla fine del brano.",
+    "includeEndScreen": "Includi una schermata finale al termine di ogni video",
+    "includeTitleCard": "Includi una schermata iniziale all'inizio di ogni video",
+    "previewEndScreen": "Anteprima della schermata finale",
+    "screenOmitted": "Non inclusa nei tuoi video",
+    "showArtistName": "Mostra il nome dell'artista",
+    "showSongTitle": "Mostra il titolo del brano",
+    "titleCardOff": "I video inizieranno subito con il video con testo."
   },
   "stalledDownload": {
     "actionFailedDesc": "Riprova tra qualche istante.",

@@ -87,8 +87,10 @@ class PreviewRequest(BaseModel):
 
 
 class PreviewResponse(BaseModel):
-    title_card: str  # data:image/jpeg;base64,...
+    # data:image/jpeg;base64,... — null for a screen the theme leaves out of videos.
+    title_card: Optional[str] = None
     karaoke_frame: str
+    end_screen: Optional[str] = None
 
 
 class SaveRequest(BaseModel):

@@ -1988,7 +1988,6 @@
     "description": "Dostosuj wygląd swoich filmów karaoke. Podglądy po prawej stronie są renderowane dokładnie tak, jak twoje gotowe filmy.",
     "discard": "Odrzuć zmiany",
     "discardConfirm": "Masz niezapisane zmiany w motywie. Zamknąć bez zapisywania?",
-    "endScreenHint": "Ekran końcowy nie ma podglądu; używa tej samej czcionki i stylu układu co plansza tytułowa.",
     "font": "Czcionka",
     "fontHint": "Jedna czcionka jest używana do planszy tytułowej, tekstu piosenki i ekranu końcowego.",
     "jsonInvalid": "Nieprawidłowy JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {Nie udało się ponownie wyrenderować # filmu} few {Nie udało się ponownie wyrenderować # filmów} many {Nie udało się ponownie wyrenderować # filmów} other {Nie udało się ponownie wyrenderować # filmu}}",
     "rerenderAllStarted": "{count, plural, one {Ponowne renderowanie # filmu z nowym motywem. Zajmuje to około 10-15 minut; możesz śledzić postęp przy utworze.} few {Ponowne renderowanie # filmów z nowym motywem. Każdy z nich zajmuje około 10-15 minut; możesz śledzić postępy przy każdym utworze.} many {Ponowne renderowanie # filmów z nowym motywem. Każdy z nich zajmuje około 10-15 minut; możesz śledzić postępy przy każdym utworze.} other {Ponowne renderowanie # filmu z nowym motywem. Każdy z nich zajmuje około 10-15 minut; możesz śledzić postępy przy każdym utworze.}}",
     "rerenderAllStarting": "Uruchamianie…",
-    "savedBodyInProgress": "Nowe filmy oraz te w trakcie tworzenia będą korzystać z Twojego zaktualizowanego motywu."
+    "savedBodyInProgress": "Nowe filmy oraz te w trakcie tworzenia będą korzystać z Twojego zaktualizowanego motywu.",
+    "copyTitleCardLayout": "Skopiuj układ planszy tytułowej",
+    "copyTitleCardLayoutHint": "Ustaw tutaj dla tytułu utworu i nazwy wykonawcy taki sam rozmiar, pozycję, kolory oraz wielkość liter jak na planszy tytułowej.",
+    "endScreenFontHint": "Ekran końcowy używa tej samej czcionki co plansza tytułowa (możesz ją zmienić w zakładce Plansza tytułowa).",
+    "endScreenOff": "Filmy będą kończyć się wraz z końcem utworu.",
+    "includeEndScreen": "Dołącz ekran końcowy na końcu każdego filmu",
+    "includeTitleCard": "Dołącz planszę tytułową na początku każdego filmu",
+    "previewEndScreen": "Podgląd ekranu końcowego",
+    "screenOmitted": "Niedołączone do Twoich filmów",
+    "showArtistName": "Pokaż nazwę wykonawcy",
+    "showSongTitle": "Pokaż tytuł utworu",
+    "titleCardOff": "Filmy rozpoczną się od razu od wideo z tekstem utworu."
   },
   "stalledDownload": {
     "actionFailedDesc": "Spróbuj ponownie za chwilę.",

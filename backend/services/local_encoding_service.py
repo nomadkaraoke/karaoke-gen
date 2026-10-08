@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EncodingConfig:
     """Configuration for video encoding."""
-    title_video: str  # Path to title video
+    title_video: Optional[str]  # Path to title video (None = theme omits the title screen)
     karaoke_video: str  # Path to karaoke video (with vocals)
     instrumental_audio: str  # Path to instrumental audio
     end_video: Optional[str] = None  # Optional path to end credits video
@@ -369,16 +369,16 @@ class LocalEncodingService:
 
     def encode_lossless_mp4(
         self,
-        title_video: str,
+        title_video: Optional[str],
         karaoke_video: str,
         output_file: str,
         end_video: Optional[str] = None,
     ) -> bool:
         """
-        Create lossless 4K MP4 by concatenating title, karaoke, and optionally end videos.
+        Create lossless 4K MP4 by concatenating the title (if any), karaoke and end (if any) videos.
 
         Args:
-            title_video: Path to title video
+            title_video: Path to title video, or None when the theme omits the title screen
             karaoke_video: Path to karaoke video
             output_file: Path for output file
             end_video: Optional path to end credits video
@@ -386,34 +386,31 @@ class LocalEncodingService:
         Returns:
             True if successful, False otherwise
         """
-        # Quote file paths
-        title_quoted = shlex.quote(os.path.abspath(title_video))
-        karaoke_quoted = shlex.quote(os.path.abspath(karaoke_video))
-
-        # Build filter and inputs for concatenation
+        # (path, hardware-decode) per concat segment, in order
+        segments = []
+        if title_video:
+            segments.append((title_video, True))
+        segments.append((karaoke_video, True))
         if end_video and os.path.isfile(end_video):
-            end_quoted = shlex.quote(os.path.abspath(end_video))
-            extra_input = f"-i {end_quoted}"
-            concat_filter = (
-                '-filter_complex "[0:v:0][0:a:0][1:v:0][1:a:0][2:v:0][2:a:0]'
-                'concat=n=3:v=1:a=1[outv][outa]"'
+            segments.append((end_video, False))
+
+        def inputs(hwaccel: bool) -> str:
+            return " ".join(
+                (f"{self.hwaccel_decode_flags} " if hwaccel and hw else "") + f"-i {shlex.quote(os.path.abspath(path))}"
+                for path, hw in segments
             )
-        else:
-            extra_input = ""
-            concat_filter = (
-                '-filter_complex "[0:v:0][0:a:0][1:v:0][1:a:0]'
-                'concat=n=2:v=1:a=1[outv][outa]"'
-            )
+
+        streams = "".join(f"[{i}:v:0][{i}:a:0]" for i in range(len(segments)))
+        concat_filter = f'-filter_complex "{streams}concat=n={len(segments)}:v=1:a=1[outv][outa]"'
 
         gpu_command = (
-            f"{self._ffmpeg_base_command} {self.hwaccel_decode_flags} -i {title_quoted} "
-            f"{self.hwaccel_decode_flags} -i {karaoke_quoted} {extra_input} "
+            f"{self._ffmpeg_base_command} {inputs(True)} "
             f'{concat_filter} -map "[outv]" -map "[outa]" -c:v {self.video_encoder} '
             f'{self._get_nvenc_quality_settings("lossless")} -c:a pcm_s16le '
             f'{self.MP4_FLAGS} "{output_file}"'
         )
         cpu_command = (
-            f"{self._ffmpeg_base_command} -i {title_quoted} -i {karaoke_quoted} {extra_input} "
+            f"{self._ffmpeg_base_command} {inputs(False)} "
             f'{concat_filter} -map "[outv]" -map "[outa]" -c:v libx264 -c:a pcm_s16le '
             f'{self.MP4_FLAGS} "{output_file}"'
         )

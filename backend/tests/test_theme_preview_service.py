@@ -139,3 +139,59 @@ def test_failed_download_leaves_no_partial_cache_file(tmp_path, monkeypatch):
     with pytest.raises(IOError):
         tps._local_theme_asset(Storage, "t1", "bg.jpg")
     assert not any(f.is_file() for f in tmp_path.rglob("*"))
+
+
+def _with_end(theme, **end):
+    theme["end"] = {
+        "background_color": "#301020",
+        "background_image": None,
+        "font": "AvenirNext-Bold.ttf",
+        "title_color": "#ffffff",
+        "artist_color": "#ffdf6b",
+        "title_region": "370,900,3100,350",
+        "artist_region": "370,1450,3100,200",
+        "extra_text": "THANK YOU FOR SINGING!",
+        "extra_text_color": "#ff7acc",
+        "extra_text_region": "370,400,3100,400",
+        **end,
+    }
+    return theme
+
+
+def test_renders_the_end_screen_with_its_own_background_and_layout():
+    tps._CACHE.clear()
+    result = tps.render_theme_preview("t1", _with_end(_theme()), artist="Randy Vild", storage=_NoGcsAssets())
+    end = _img(result.end_screen)
+    assert end.size == (1280, 720)
+    r, g, b = end.getpixel((8, 8))  # the end section's own #301020, not the title card's
+    assert abs(r - 0x30) <= 6 and abs(g - 0x10) <= 6 and abs(b - 0x20) <= 6
+    assert result.as_data_urls()["end_screen"].startswith("data:image/jpeg;base64,")
+
+
+def test_end_screen_text_size_changes_only_the_end_screen():
+    """Randy Vild's report: the end screen's text size is its own setting."""
+    tps._CACHE.clear()
+    big = tps.render_theme_preview("t1", _with_end(_theme()), storage=_NoGcsAssets())
+    small = tps.render_theme_preview(
+        "t1", _with_end(_theme(), title_region="370,900,3100,120", extra_text_region="370,400,3100,120"),
+        storage=_NoGcsAssets(),
+    )
+    assert big.title_card == small.title_card
+    assert big.end_screen != small.end_screen
+
+    def text_pixels(data):
+        return sum(1 for r, g, b in _img(data).getdata() if r > 200 and g > 200 and b > 200)
+
+    assert text_pixels(small.end_screen) < text_pixels(big.end_screen) * 0.6
+
+
+def test_omitted_screens_are_not_rendered():
+    tps._CACHE.clear()
+    theme = _with_end(_theme())
+    theme["intro"]["enabled"] = False
+    theme["end"]["enabled"] = False
+    result = tps.render_theme_preview("t1", theme, storage=_NoGcsAssets())
+    assert result.title_card is None and result.end_screen is None
+    assert _img(result.karaoke_frame).size == (1280, 720)
+    urls = result.as_data_urls()
+    assert urls["title_card"] is None and urls["end_screen"] is None

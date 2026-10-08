@@ -1988,7 +1988,6 @@
     "description": "I-customize ang hitsura ng iyong mga karaoke video. Ang mga preview sa kanan ay nire-render nang eksaktong katulad ng iyong mga tapos na video.",
     "discard": "Ibalewala ang mga pagbabago",
     "discardConfirm": "May mga hindi ka pa nai-save na pagbabago sa tema. Isara nang hindi sine-save?",
-    "endScreenHint": "Walang preview ang end screen; ginagamit nito ang parehong font at estilo ng layout tulad ng title card.",
     "font": "Font",
     "fontHint": "Isang font ang ginagamit para sa title card, lyrics, at end screen.",
     "jsonInvalid": "Di-wastong JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {Hindi ma-re-render ang # video} other {Hindi ma-re-render ang # video}}",
     "rerenderAllStarted": "{count, plural, one {Nire-re-render ang # video gamit ang bago mong tema. Tumatagal ito nang mga 10-15 minuto; maaari mong subaybayan ang progreso nito sa track.} other {Nire-re-render ang # na video gamit ang bago mong tema. Tumatagal nang mga 10-15 minuto ang bawat isa; maaari mong subaybayan ang progreso ng mga ito sa bawat track.}}",
     "rerenderAllStarting": "Sinisimulan na…",
-    "savedBodyInProgress": "Gagamitin ng mga bagong video, at ng mga video na ginagawa pa, ang iyong na-update na tema."
+    "savedBodyInProgress": "Gagamitin ng mga bagong video, at ng mga video na ginagawa pa, ang iyong na-update na tema.",
+    "copyTitleCardLayout": "Kopyahin ang layout ng title card",
+    "copyTitleCardLayoutHint": "Gawing pareho ang laki, posisyon, mga kulay, at capitalization ng pamagat ng kanta at pangalan ng artist dito tulad ng nasa iyong title card.",
+    "endScreenFontHint": "Ginagamit ng end screen ang parehong font tulad ng sa title card (baguhin ito sa tab na Title card).",
+    "endScreenOff": "Matatapos ang mga video kapag natapos na ang kanta.",
+    "includeEndScreen": "Maglagay ng end screen sa dulo ng bawat video",
+    "includeTitleCard": "Maglagay ng title card sa simula ng bawat video",
+    "previewEndScreen": "Preview ng end screen",
+    "screenOmitted": "Hindi kasama sa iyong mga video",
+    "showArtistName": "Ipakita ang pangalan ng artist",
+    "showSongTitle": "Ipakita ang pamagat ng kanta",
+    "titleCardOff": "Magsisimula agad ang mga video sa mismong lyrics video."
   },
   "stalledDownload": {
     "actionFailedDesc": "Pakisubukang muli maya-maya.",

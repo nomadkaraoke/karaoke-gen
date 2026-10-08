@@ -1988,7 +1988,6 @@
     "description": "Tilpas, hvordan dine karaokevideoer ser ud. Forhåndsvisningerne til højre gengives præcis som dine færdige videoer.",
     "discard": "Forkast ændringer",
     "discardConfirm": "Du har ugemte temaændringer. Vil du lukke uden at gemme?",
-    "endScreenHint": "Slutskærmen forhåndsvises ikke; den bruger samme skrifttype og layoutstil som titelkortet.",
     "font": "Skrifttype",
     "fontHint": "Én skrifttype bruges til titelkortet, sangteksten og slutskærmen.",
     "jsonInvalid": "Ugyldig JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# video kunne ikke genrenderes} other {# videoer kunne ikke genrenderes}}",
     "rerenderAllStarted": "{count, plural, one {Genrenderer # video med dit nye tema. Det tager ca. 10-15 minutter; du kan følge status på nummeret.} other {Genrenderer # videoer med dit nye tema. Hver video tager ca. 10-15 minutter; du kan følge status på de enkelte numre.}}",
     "rerenderAllStarting": "Starter…",
-    "savedBodyInProgress": "Nye videoer og videoer, der stadig er i gang med at blive lavet, vil bruge dit opdaterede tema."
+    "savedBodyInProgress": "Nye videoer og videoer, der stadig er i gang med at blive lavet, vil bruge dit opdaterede tema.",
+    "copyTitleCardLayout": "Kopiér titelkortets layout",
+    "copyTitleCardLayoutHint": "Giv sangtitlen og kunstnernavnet her samme størrelse, placering, farver og store/små bogstaver som på dit titelkort.",
+    "endScreenFontHint": "Slutskærmen bruger samme skrifttype som titelkortet (skift den under fanen Titelkort).",
+    "endScreenOff": "Videoer slutter, når sangen slutter.",
+    "includeEndScreen": "Inkludér en slutskærm i slutningen af hver video",
+    "includeTitleCard": "Inkludér et titelkort i starten af hver video",
+    "previewEndScreen": "Forhåndsvisning af slutskærm",
+    "screenOmitted": "Ikke inkluderet i dine videoer",
+    "showArtistName": "Vis kunstnernavn",
+    "showSongTitle": "Vis sangtitel",
+    "titleCardOff": "Videoer starter med det samme med sangtekstvideoen."
   },
   "stalledDownload": {
     "actionFailedDesc": "Prøv igen om et øjeblik.",

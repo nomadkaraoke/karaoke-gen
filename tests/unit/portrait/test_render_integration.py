@@ -94,3 +94,37 @@ def test_render_portrait_end_to_end(tmp_path):
     # Central lyric band should contain near-white text pixels.
     band = img.crop((0, 900, 1080, 1500))
     assert band.getextrema()[1] > 180, "expected bright lyric text in the body frame"
+
+
+@pytest.mark.parametrize(
+    "intro_enabled,end_enabled,expected",
+    [(False, True, 5.0), (True, False, 5.0), (False, False, 4.0)],
+)
+def test_render_portrait_omits_screens_the_theme_leaves_out(tmp_path, intro_enabled, end_enabled, expected):
+    audio = tmp_path / "instr.flac"
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+         "-i", "anullsrc=r=44100:cl=stereo", "-t", "4", str(audio)],
+        check=True,
+    )
+    out = tmp_path / "portrait.mp4"
+    styles = {
+        "karaoke": {},
+        "intro": {"video_duration": 1, "enabled": intro_enabled},
+        "end": {"video_duration": 1, "enabled": end_enabled},
+    }
+    render_portrait_video(
+        correction_result=_fixture_result(),
+        instrumental_path=str(audio),
+        styles=styles,
+        artist="Test Artist",
+        title="Test Title",
+        output_path=str(out),
+        layout=PortraitLayout(),
+    )
+    dur = float(subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(out)],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip())
+    assert abs(dur - expected) < 0.5

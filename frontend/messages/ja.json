@@ -1988,7 +1988,6 @@
     "description": "カラオケ動画の見た目をカスタマイズできます。右側のプレビューには、完成版動画とまったく同じ仕上がりが表示されます。",
     "discard": "変更を破棄",
     "discardConfirm": "保存されていないテーマの変更があります。保存せずに閉じますか？",
-    "endScreenHint": "エンド画面のプレビューは表示されません。タイトルカードと同じフォントとレイアウトスタイルが適用されます。",
     "font": "フォント",
     "fontHint": "タイトルカード、歌詞、エンド画面には共通のフォントが使用されます。",
     "jsonInvalid": "無効なJSONです",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, other {#本の動画を再レンダリングできませんでした}}",
     "rerenderAllStarted": "{count, plural, one {新しいテーマで#本の動画の再レンダリングを開始しました。完了まで約10〜15分かかります。進捗はトラック上で確認できます。} other {新しいテーマで#本の動画の再レンダリングを開始しました。1本あたり約10〜15分かかります。進捗は各トラックで確認できます。}}",
     "rerenderAllStarting": "開始中…",
-    "savedBodyInProgress": "新しい動画および現在作成中の動画に、更新したテーマが適用されます。"
+    "savedBodyInProgress": "新しい動画および現在作成中の動画に、更新したテーマが適用されます。",
+    "copyTitleCardLayout": "タイトルカードのレイアウトをコピー",
+    "copyTitleCardLayoutHint": "曲名とアーティスト名のサイズ、位置、色、大文字・小文字の設定をタイトルカードと同じにします。",
+    "endScreenFontHint": "エンドスクリーンにはタイトルカードと同じフォントが使用されます（「タイトルカード」タブで変更できます）。",
+    "endScreenOff": "曲が終わると動画も終了します。",
+    "includeEndScreen": "各動画の最後にエンドスクリーンを含める",
+    "includeTitleCard": "各動画の最初にタイトルカードを含める",
+    "previewEndScreen": "エンドスクリーンのプレビュー",
+    "screenOmitted": "動画には含まれません",
+    "showArtistName": "アーティスト名を表示",
+    "showSongTitle": "曲名を表示",
+    "titleCardOff": "動画は歌詞画面からすぐに始まります。"
   },
   "stalledDownload": {
     "actionFailedDesc": "しばらくしてからもう一度お試しください。",

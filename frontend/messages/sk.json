@@ -1988,7 +1988,6 @@
     "description": "Prispôsob si vzhľad svojich karaoke videí. Ukážky vpravo sa vykresľujú presne tak, ako budú vyzerať tvoje hotové videá.",
     "discard": "Zahodiť zmeny",
     "discardConfirm": "Máš neuložené zmeny motívu. Zavrieť bez uloženia?",
-    "endScreenHint": "Záverečná obrazovka nemá náhľad; používa rovnaké písmo a štýl rozloženia ako titulná karta.",
     "font": "Písmo",
     "fontHint": "Rovnaké písmo sa používa pre titulnú kartu, text piesne a záverečnú obrazovku.",
     "jsonInvalid": "Neplatný JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# video sa nepodarilo znova vygenerovať} few {# videá sa nepodarilo znova vygenerovať} other {# videí sa nepodarilo znova vygenerovať}}",
     "rerenderAllStarted": "{count, plural, one {Znova sa generuje # video s tvojím novým motívom. Trvá to približne 10 – 15 minút; priebeh môžeš sledovať priamo na skladbe.} few {Znova sa generujú # videá s tvojím novým motívom. Každé trvá približne 10 – 15 minút; priebeh môžeš sledovať na jednotlivých skladbách.} other {Znova sa generuje # videí s tvojím novým motívom. Každé trvá približne 10 – 15 minút; priebeh môžeš sledovať na jednotlivých skladbách.}}",
     "rerenderAllStarting": "Spúšťa sa…",
-    "savedBodyInProgress": "Nové videá a videá, ktoré sa stále vytvárajú, použijú tvoj aktualizovaný motív."
+    "savedBodyInProgress": "Nové videá a videá, ktoré sa stále vytvárajú, použijú tvoj aktualizovaný motív.",
+    "copyTitleCardLayout": "Skopírovať rozloženie úvodnej karty",
+    "copyTitleCardLayoutHint": "Nastav názvu skladby a menu interpreta rovnakú veľkosť, pozíciu, farby a veľké písmená ako na úvodnej karte.",
+    "endScreenFontHint": "Záverečná obrazovka používa rovnaké písmo ako úvodná karta (zmeniť ho môžeš na karte Úvodná karta).",
+    "endScreenOff": "Videá sa skončia hneď po skončení skladby.",
+    "includeEndScreen": "Pridať záverečnú obrazovku na koniec každého videa",
+    "includeTitleCard": "Pridať úvodnú kartu na začiatok každého videa",
+    "previewEndScreen": "Náhľad záverečnej obrazovky",
+    "screenOmitted": "Nezahrnuté vo tvojich videách",
+    "showArtistName": "Zobraziť meno interpreta",
+    "showSongTitle": "Zobraziť názov skladby",
+    "titleCardOff": "Videá začnú hneď videom s textom piesne."
   },
   "stalledDownload": {
     "actionFailedDesc": "Skús to, prosím, o chvíľu znova.",

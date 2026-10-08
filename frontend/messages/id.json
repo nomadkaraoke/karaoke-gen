@@ -1988,7 +1988,6 @@
     "description": "Sesuaikan tampilan video karaoke Anda. Pratinjau di sebelah kanan dirender persis seperti video akhir Anda.",
     "discard": "Buang perubahan",
     "discardConfirm": "Ada perubahan tema yang belum disimpan. Tutup tanpa menyimpan?",
-    "endScreenHint": "Layar penutup tidak ditampilkan di pratinjau; tampilannya menggunakan font dan gaya tata letak yang sama dengan kartu judul.",
     "font": "Font",
     "fontHint": "Satu font digunakan untuk kartu judul, lirik, dan layar penutup.",
     "jsonInvalid": "JSON tidak valid",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, other {# video tidak dapat dirender ulang}}",
     "rerenderAllStarted": "{count, plural, one {Merender ulang # video dengan tema baru Anda. Proses ini memakan waktu sekitar 10-15 menit; Anda dapat memantau progresnya di lagu terkait.} other {Merender ulang # video dengan tema baru Anda. Masing-masing memakan waktu sekitar 10-15 menit; Anda dapat memantau progresnya di setiap lagu.}}",
     "rerenderAllStarting": "Memulai…",
-    "savedBodyInProgress": "Video baru, serta video yang sedang dibuat, akan menggunakan tema terbaru Anda."
+    "savedBodyInProgress": "Video baru, serta video yang sedang dibuat, akan menggunakan tema terbaru Anda.",
+    "copyTitleCardLayout": "Salin tata letak kartu judul",
+    "copyTitleCardLayoutHint": "Samakan ukuran, posisi, warna, dan huruf kapital untuk judul lagu dan nama artis di sini dengan kartu judul Anda.",
+    "endScreenFontHint": "Layar akhir menggunakan font yang sama dengan kartu judul (ubah di tab Kartu judul).",
+    "endScreenOff": "Video akan berakhir saat lagu selesai.",
+    "includeEndScreen": "Sertakan layar akhir di bagian akhir setiap video",
+    "includeTitleCard": "Sertakan kartu judul di awal setiap video",
+    "previewEndScreen": "Pratinjau layar akhir",
+    "screenOmitted": "Tidak disertakan dalam video Anda",
+    "showArtistName": "Tampilkan nama artis",
+    "showSongTitle": "Tampilkan judul lagu",
+    "titleCardOff": "Video akan langsung dimulai dengan video lirik."
   },
   "stalledDownload": {
     "actionFailedDesc": "Silakan coba beberapa saat lagi.",

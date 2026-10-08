@@ -14,11 +14,15 @@ import { tenantThemeApi, type ThemePreviewImages, type ThemeStyleParams } from "
 import { useTenant } from "@/lib/tenant"
 import { clearOutdatedThemeJobs, setOutdatedThemeJobs } from "@/lib/tenant-theme-outdated"
 import {
-  KARAOKE_DEFAULTS, formatRegion, getField, hexToRgba, parseRegion, rgbaToHex, setField, stableStringify,
+  KARAOKE_DEFAULTS, copyTitleCardLayoutToEnd, formatRegion, getField, hexToRgba, parseRegion, rgbaToHex, setField, stableStringify,
   type Region,
 } from "./theme-utils"
 
 const PREVIEW_DEBOUNCE_MS = 700
+// End-screen text positions used when a theme has none (matches the stock end screen).
+const END_EXTRA_FALLBACK: Region = { x: 370, y: 400, w: 3100, h: 400 }
+const END_TITLE_FALLBACK: Region = { x: 370, y: 900, w: 3100, h: 350 }
+const END_ARTIST_FALLBACK: Region = { x: 370, y: 1450, w: 3100, h: 200 }
 const selectClass =
   "h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
 
@@ -320,6 +324,36 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
     )
   }
 
+  // A text item on the end screen is hidden when its region is null.
+  const regionToggle = (field: "title_region" | "artist_region", label: string, fallback: Region) => (
+    <label className="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={!!getField(draft!, "end", field)}
+        onChange={(e) => update("end", field, e.target.checked ? formatRegion(parseRegion(getField(draft!, "intro", field), fallback)) : null)}
+      />
+      {label}
+    </label>
+  )
+
+  // Absent = included (older themes have no "enabled" key).
+  const screenToggle = (section: "intro" | "end", label: string) => (
+    <label className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium">
+      <input
+        type="checkbox"
+        data-testid={`${section}-enabled`}
+        checked={getField(draft!, section, "enabled") !== false}
+        onChange={(e) => update(section, "enabled", e.target.checked)}
+      />
+      {label}
+    </label>
+  )
+
+  // The end screen's song title / artist name take the title card's look.
+  const copyTitleCardLayout = () => {
+    setDraft((d) => (d ? copyTitleCardLayoutToEnd(d, END_EXTRA_FALLBACK) : d))
+  }
+
   const upperToggle = (section: "intro" | "end", field: string, label: string) => (
     <label className="flex items-center gap-2 text-sm">
       <input
@@ -377,6 +411,15 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
 
   const tabs: Tab[] = ["titleCard", "karaoke", "endScreen", "advanced"]
 
+  // The screen being edited, then the lyrics frame (Advanced shows all three).
+  type PreviewKind = "title_card" | "karaoke_frame" | "end_screen"
+  const previewKinds: PreviewKind[] =
+    tab === "endScreen" ? ["end_screen", "karaoke_frame"]
+      : tab === "advanced" ? ["title_card", "karaoke_frame", "end_screen"]
+        : ["title_card", "karaoke_frame"]
+  const previewLabel = (kind: PreviewKind) =>
+    kind === "title_card" ? t("previewTitleCard") : kind === "end_screen" ? t("previewEndScreen") : t("previewKaraoke")
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
       <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto" data-testid="tenant-theme-editor">
@@ -412,20 +455,27 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
 
               {tab === "titleCard" && (
                 <div className="space-y-4">
-                  {bgField("intro")}
-                  <div className="grid grid-cols-2 gap-3">
-                    <ColorInput id="intro-title-colour" label={t("titleColour")} value={getField<string>(draft!, "intro", "title_color") || "#ffffff"}
-                      onChange={(v) => update("intro", "title_color", v)} />
-                    <ColorInput id="intro-artist-colour" label={t("artistColour")} value={getField<string>(draft!, "intro", "artist_color") || "#ffdf6b"}
-                      onChange={(v) => update("intro", "artist_color", v)} />
-                  </div>
-                  {regionSliders("intro", "title_region", t("songTitle"), { x: 370, y: 980, w: 3100, h: 350 })}
-                  {regionSliders("intro", "artist_region", t("artistName"), { x: 370, y: 1400, w: 3100, h: 450 })}
-                  <div className="flex flex-wrap gap-4">
-                    {upperToggle("intro", "title_text_transform", t("uppercaseTitle"))}
-                    {upperToggle("intro", "artist_text_transform", t("uppercaseArtist"))}
-                  </div>
-                  {fontField()}
+                  {screenToggle("intro", t("includeTitleCard"))}
+                  {getField(draft!, "intro", "enabled") === false ? (
+                    <p className="text-sm text-muted-foreground">{t("titleCardOff")}</p>
+                  ) : (
+                    <>
+                      {bgField("intro")}
+                      <div className="grid grid-cols-2 gap-3">
+                        <ColorInput id="intro-title-colour" label={t("titleColour")} value={getField<string>(draft!, "intro", "title_color") || "#ffffff"}
+                          onChange={(v) => update("intro", "title_color", v)} />
+                        <ColorInput id="intro-artist-colour" label={t("artistColour")} value={getField<string>(draft!, "intro", "artist_color") || "#ffdf6b"}
+                          onChange={(v) => update("intro", "artist_color", v)} />
+                      </div>
+                      {regionSliders("intro", "title_region", t("songTitle"), { x: 370, y: 980, w: 3100, h: 350 })}
+                      {regionSliders("intro", "artist_region", t("artistName"), { x: 370, y: 1400, w: 3100, h: 450 })}
+                      <div className="flex flex-wrap gap-4">
+                        {upperToggle("intro", "title_text_transform", t("uppercaseTitle"))}
+                        {upperToggle("intro", "artist_text_transform", t("uppercaseArtist"))}
+                      </div>
+                      {fontField()}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -452,19 +502,55 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
 
               {tab === "endScreen" && (
                 <div className="space-y-4">
-                  {bgField("end")}
-                  <div className="space-y-1">
-                    <Label htmlFor="end-extra-text">{t("closingMessage")}</Label>
-                    <Input id="end-extra-text" value={getField<string>(draft!, "end", "extra_text") || ""}
-                      onChange={(e) => update("end", "extra_text", e.target.value || null)} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <ColorInput id="end-extra-colour" label={t("closingMessageColour")} value={getField<string>(draft!, "end", "extra_text_color") || "#ffffff"}
-                      onChange={(v) => update("end", "extra_text_color", v)} />
-                    <ColorInput id="end-title-colour" label={t("titleColour")} value={getField<string>(draft!, "end", "title_color") || "#ffffff"}
-                      onChange={(v) => update("end", "title_color", v)} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{t("endScreenHint")}</p>
+                  {screenToggle("end", t("includeEndScreen"))}
+                  {getField(draft!, "end", "enabled") === false ? (
+                    <p className="text-sm text-muted-foreground">{t("endScreenOff")}</p>
+                  ) : (
+                    <>
+                      {bgField("end")}
+                      <div className="space-y-1">
+                        <Label htmlFor="end-extra-text">{t("closingMessage")}</Label>
+                        <Input id="end-extra-text" value={getField<string>(draft!, "end", "extra_text") || ""}
+                          onChange={(e) => {
+                            update("end", "extra_text", e.target.value || null)
+                            // The renderer skips text without a region — give a new message one.
+                            if (e.target.value && !getField(draft!, "end", "extra_text_region")) {
+                              update("end", "extra_text_region", formatRegion(END_EXTRA_FALLBACK))
+                            }
+                          }} />
+                      </div>
+                      {!!getField(draft!, "end", "extra_text") && (
+                        <>
+                          <ColorInput id="end-extra-colour" label={t("closingMessageColour")} value={getField<string>(draft!, "end", "extra_text_color") || "#ffffff"}
+                            onChange={(v) => update("end", "extra_text_color", v)} />
+                          {regionSliders("end", "extra_text_region", t("closingMessage"), END_EXTRA_FALLBACK)}
+                        </>
+                      )}
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+                        <p className="text-xs text-muted-foreground">{t("copyTitleCardLayoutHint")}</p>
+                        <Button size="sm" variant="secondary" onClick={copyTitleCardLayout} data-testid="end-copy-title-layout">
+                          {t("copyTitleCardLayout")}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <ColorInput id="end-title-colour" label={t("titleColour")} value={getField<string>(draft!, "end", "title_color") || "#ffffff"}
+                          onChange={(v) => update("end", "title_color", v)} />
+                        <ColorInput id="end-artist-colour" label={t("artistColour")} value={getField<string>(draft!, "end", "artist_color") || "#ffdf6b"}
+                          onChange={(v) => update("end", "artist_color", v)} />
+                      </div>
+                      {regionToggle("title_region", t("showSongTitle"), END_TITLE_FALLBACK)}
+                      {!!getField(draft!, "end", "title_region") &&
+                        regionSliders("end", "title_region", t("songTitle"), END_TITLE_FALLBACK)}
+                      {regionToggle("artist_region", t("showArtistName"), END_ARTIST_FALLBACK)}
+                      {!!getField(draft!, "end", "artist_region") &&
+                        regionSliders("end", "artist_region", t("artistName"), END_ARTIST_FALLBACK)}
+                      <div className="flex flex-wrap gap-4">
+                        {upperToggle("end", "title_text_transform", t("uppercaseTitle"))}
+                        {upperToggle("end", "artist_text_transform", t("uppercaseArtist"))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{t("endScreenFontHint")}</p>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -496,16 +582,18 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                   <Input id="sample-title" value={sampleTitle} onChange={(e) => setSampleTitle(e.target.value)} />
                 </div>
               </div>
-              {(["title_card", "karaoke_frame"] as const).map((kind) => (
+              {previewKinds.map((kind) => (
                 <figure key={kind} className="space-y-1">
-                  <figcaption className="text-xs font-medium text-muted-foreground">
-                    {kind === "title_card" ? t("previewTitleCard") : t("previewKaraoke")}
-                  </figcaption>
+                  <figcaption className="text-xs font-medium text-muted-foreground">{previewLabel(kind)}</figcaption>
                   <div className="relative aspect-video overflow-hidden rounded-md border bg-black">
-                    {preview?.[kind] && (
+                    {preview?.[kind] ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={preview[kind]} alt={kind === "title_card" ? t("previewTitleCard") : t("previewKaraoke")}
+                      <img src={preview[kind]!} alt={previewLabel(kind)}
                         data-testid={`preview-${kind}`} className="h-full w-full object-contain" />
+                    ) : preview && kind !== "karaoke_frame" && !previewing && (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground" data-testid={`preview-${kind}-omitted`}>
+                        {t("screenOmitted")}
+                      </div>
                     )}
                     {previewing && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40">

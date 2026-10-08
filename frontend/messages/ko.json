@@ -1988,7 +1988,6 @@
     "description": "노래방 동영상의 디자인을 맞춤 설정하세요. 오른쪽 미리보기는 완성된 동영상과 동일하게 렌더링됩니다.",
     "discard": "변경 사항 취소",
     "discardConfirm": "저장되지 않은 테마 변경 사항이 있습니다. 저장하지 않고 닫으시겠습니까?",
-    "endScreenHint": "엔딩 화면은 미리보기가 제공되지 않으며, 타이틀 카드와 동일한 글꼴 및 레이아웃 스타일을 사용합니다.",
     "font": "글꼴",
     "fontHint": "타이틀 카드, 가사, 엔딩 화면에 동일한 글꼴이 사용됩니다.",
     "jsonInvalid": "유효하지 않은 JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {비디오 #개를 다시 렌더링하지 못했습니다} other {비디오 #개를 다시 렌더링하지 못했습니다}}",
     "rerenderAllStarted": "{count, plural, one {새 테마로 비디오 #개를 다시 렌더링하는 중입니다. 약 10~15분 정도 걸리며, 트랙에서 진행 상황을 확인하실 수 있습니다.} other {새 테마로 비디오 #개를 다시 렌더링하는 중입니다. 각각 약 10~15분 정도 걸리며, 각 트랙에서 진행 상황을 확인하실 수 있습니다.}}",
     "rerenderAllStarting": "시작하는 중…",
-    "savedBodyInProgress": "새 비디오와 현재 제작 중인 비디오에 업데이트된 테마가 적용됩니다."
+    "savedBodyInProgress": "새 비디오와 현재 제작 중인 비디오에 업데이트된 테마가 적용됩니다.",
+    "copyTitleCardLayout": "타이틀 카드 레이아웃 복사",
+    "copyTitleCardLayoutHint": "곡 제목과 아티스트 이름을 타이틀 카드와 동일한 크기, 위치, 색상 및 대소문자로 설정합니다.",
+    "endScreenFontHint": "엔드 스크린에는 타이틀 카드와 동일한 글꼴이 사용됩니다(타이틀 카드 탭에서 변경할 수 있습니다).",
+    "endScreenOff": "곡이 끝나면 동영상이 바로 종료됩니다.",
+    "includeEndScreen": "각 동영상 끝에 엔드 스크린 포함",
+    "includeTitleCard": "각 동영상 시작 부분에 타이틀 카드 포함",
+    "previewEndScreen": "엔드 스크린 미리보기",
+    "screenOmitted": "동영상에 포함되지 않음",
+    "showArtistName": "아티스트 이름 표시",
+    "showSongTitle": "곡 제목 표시",
+    "titleCardOff": "타이틀 카드 없이 가사 영상으로 바로 시작됩니다."
   },
   "stalledDownload": {
     "actionFailedDesc": "잠시 후 다시 시도해 주세요.",

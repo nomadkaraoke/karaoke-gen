@@ -1988,7 +1988,6 @@
     "description": "Přizpůsob si vzhled svých karaoke videí. Náhledy vpravo se vykreslují přesně tak, jak budou vypadat tvá hotová videa.",
     "discard": "Zahodit změny",
     "discardConfirm": "Máš neuložené změny motivu. Zavřít bez uložení?",
-    "endScreenHint": "Závěrečná obrazovka nemá náhled; používá stejné písmo a styl rozvržení jako úvodní karta.",
     "font": "Písmo",
     "fontHint": "Pro úvodní kartu, text písně i závěrečnou obrazovku se používá jedno písmo.",
     "jsonInvalid": "Neplatný JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# video se nepodařilo přerenderovat} few {# videa se nepodařilo přerenderovat} other {# videí se nepodařilo přerenderovat}}",
     "rerenderAllStarted": "{count, plural, one {Přerenderovává se # video s tvým novým motivem. Trvá to asi 10–15 minut; průběh můžeš sledovat u skladby.} few {Přerenderovávají se # videa s tvým novým motivem. Každé trvá asi 10–15 minut; průběh můžeš sledovat u jednotlivých skladeb.} other {Přerenderovává se # videí s tvým novým motivem. Každé trvá asi 10–15 minut; průběh můžeš sledovat u jednotlivých skladeb.}}",
     "rerenderAllStarting": "Spouští se…",
-    "savedBodyInProgress": "Nová videa a videa, která se právě vytvářejí, použijí tvůj aktualizovaný motiv."
+    "savedBodyInProgress": "Nová videa a videa, která se právě vytvářejí, použijí tvůj aktualizovaný motiv.",
+    "copyTitleCardLayout": "Zkopírovat rozvržení úvodní karty",
+    "copyTitleCardLayoutHint": "Nastav názvu skladby a jménu interpreta stejnou velikost, pozici, barvy a velká písmena jako na úvodní kartě.",
+    "endScreenFontHint": "Závěrečná obrazovka používá stejné písmo jako úvodní karta (můžeš ho změnit na záložce Úvodní karta).",
+    "endScreenOff": "Videa skončí hned, jakmile skončí skladba.",
+    "includeEndScreen": "Přidat závěrečnou obrazovku na konec každého videa",
+    "includeTitleCard": "Přidat úvodní kartu na začátek každého videa",
+    "previewEndScreen": "Náhled závěrečné obrazovky",
+    "screenOmitted": "Není součástí tvých videí",
+    "showArtistName": "Zobrazit jméno interpreta",
+    "showSongTitle": "Zobrazit název skladby",
+    "titleCardOff": "Videa začnou rovnou videem s textem."
   },
   "stalledDownload": {
     "actionFailedDesc": "Zkus to prosím za chvilku znovu.",

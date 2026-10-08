@@ -23,6 +23,7 @@ from karaoke_gen.lyrics_transcriber.output.segment_resizer import SegmentResizer
 from karaoke_gen.lyrics_transcriber.output.subtitles import SubtitlesGenerator
 from karaoke_gen.portrait.background import PortraitBrandConfig, build_background
 from karaoke_gen.portrait.wrap import balance_segments
+from karaoke_gen.style_loader import screen_enabled
 
 PORTRAIT_WIDTH = 1080
 PORTRAIT_HEIGHT = 1920
@@ -206,24 +207,35 @@ def render_portrait_video(
             ass_filter += f":fontsdir='{_escape_ass_path(os.path.dirname(os.path.abspath(font_path)))}'"
 
         w, h = layout.width, layout.height
-        filtergraph = (
-            f"[1:v]{ass_filter},trim=duration={body_dur:.3f},setpts=PTS-STARTPTS,"
-            f"scale={w}:{h},setsar=1,fps=30[body];"
-            f"[0:v]scale={w}:{h},setsar=1,fps=30[intro];"
-            f"[2:v]scale={w}:{h},setsar=1,fps=30[outro];"
-            # Pair each card with its own silence and the body with the instrumental:
-            # intro(v)+intro_silence(4:a), body(v)+instrumental(3:a), outro(v)+outro_silence(5:a).
-            f"[intro][4:a][body][3:a][outro][5:a]concat=n=3:v=1:a=1[v][a]"
-        )
+        # Inputs 0/1: the looping body background + the instrumental. Each card the
+        # theme includes adds a still (cut to its length) and its own silence.
+        inputs = [
+            "-loop", "1", "-framerate", "30", "-i", bg_body,
+            "-i", os.path.abspath(instrumental_path),
+        ]
+        chains = [
+            f"[0:v]{ass_filter},trim=duration={body_dur:.3f},setpts=PTS-STARTPTS,"
+            f"scale={w}:{h},setsar=1,fps=30[body]"
+        ]
+        segments = {"body": "[body][1:a]"}
+        for name, image, seconds, enabled in (
+            ("intro", bg_body, intro, screen_enabled(styles, "intro")),
+            ("outro", bg_end, outro, screen_enabled(styles, "end")),
+        ):
+            if not enabled:
+                continue
+            video_idx = sum(1 for arg in inputs if arg == "-i")
+            inputs += ["-loop", "1", "-framerate", "30", "-t", f"{seconds:.3f}", "-i", image]
+            inputs += ["-f", "lavfi", "-t", f"{seconds:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
+            chains.append(f"[{video_idx}:v]scale={w}:{h},setsar=1,fps=30[{name}]")
+            segments[name] = f"[{name}][{video_idx + 1}:a]"
+        order = [segments[n] for n in ("intro", "body", "outro") if n in segments]
+        # Pair each card with its own silence and the body with the instrumental.
+        filtergraph = ";".join(chains) + ";" + "".join(order) + f"concat=n={len(order)}:v=1:a=1[v][a]"
 
         cmd = [
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-            "-loop", "1", "-framerate", "30", "-t", f"{intro:.3f}", "-i", bg_body,
-            "-loop", "1", "-framerate", "30", "-i", bg_body,
-            "-loop", "1", "-framerate", "30", "-t", f"{outro:.3f}", "-i", bg_end,
-            "-i", os.path.abspath(instrumental_path),
-            "-f", "lavfi", "-t", f"{intro:.3f}", "-i", "anullsrc=r=48000:cl=stereo",
-            "-f", "lavfi", "-t", f"{outro:.3f}", "-i", "anullsrc=r=48000:cl=stereo",
+            *inputs,
             "-filter_complex", filtergraph,
             "-map", "[v]", "-map", "[a]",
             "-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p",

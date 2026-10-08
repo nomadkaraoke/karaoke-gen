@@ -575,7 +575,7 @@ Content-Type: application/json
 
 Reopens a completed track for editing. Cleans up all distributed outputs (YouTube, Dropbox, GDrive, GCS finals), recycles the brand code, and resets the job to `awaiting_review`. A new review token is issued automatically. No additional credits consumed.
 Because the track was already delivered, an edited job (`edit_count > 0`) is never refunded if it is later
-deleted, cancelled or fails (closes the complete → edit → delete credit loop, v0.267.2).
+deleted, cancelled or fails (closes the complete → edit → delete credit loop, v0.268.1).
 
 If `artist` or `title` are provided and differ from current values, title/end screens are deleted and the screens worker is triggered to regenerate them in the background.
 
@@ -1387,7 +1387,7 @@ table, then submits each confirmed row through the standard signed-URL upload fl
 ```
 GET  /api/tenant/theme              → {theme_id, style_params, images[], fonts[]}
 POST /api/tenant/theme/assets       (multipart `file`) → {name}
-POST /api/tenant/theme/preview      {style_params, sample?: {artist, title, lyrics[]}} → {title_card, karaoke_frame}
+POST /api/tenant/theme/preview      {style_params, sample?: {artist, title, lyrics[]}} → {title_card, karaoke_frame, end_screen}
 PUT  /api/tenant/theme              {style_params} → GET fields + {refreshed_jobs, outdated_job_ids[]}
 GET  /api/tenant/theme/outdated-jobs → {theme_updated_at, job_ids[]}
 POST /api/tenant/theme/rerender-outdated → {started[], failed: {job_id: reason}}
@@ -1403,10 +1403,21 @@ re-checks membership (`require_tenant_member`): non-members/spoofed headers → 
   `<stem>-<sha8>.<ext>` under `themes/<id>/assets/` (`no-store`), so they never overwrite an asset
   existing jobs use.
 - **Preview** renders the draft with the production renderers (`services/theme_preview_service.py`):
-  title card via `VideoGenerator.create_title_video(duration=0)`, karaoke frame via
+  title card via `VideoGenerator.create_title_video(duration=0)`, end screen via
+  `VideoGenerator.create_end_video(duration=0)`, karaoke frame via
   `SegmentResizer` → `SubtitlesGenerator.generate_ass` → one ffmpeg frame (same `ass` filter/background
   as the real render) with the first line half-sung. Returns 1280×720 JPEG data URLs (~2 s; ≤2
-  concurrent; identical drafts cached). 400 invalid draft, 422 render failure, 504 timeout.
+  concurrent; identical drafts cached). A screen the theme leaves out is `null`. 400 invalid draft,
+  422 render failure, 504 timeout.
+- **Leaving out the title card / end screen**: `intro.enabled` / `end.enabled` (optional bool, absent
+  = included; deliberately not in `DEFAULT_INTRO_STYLE`/`DEFAULT_END_STYLE`, which double as the
+  required-field lists). Read via `style_loader.screen_enabled`. The screens worker skips an omitted
+  screen and records `state_data.screens_included = {title, end}`; the render prerequisites, `/retry`
+  ladder (`_has_title_screen`), orchestrator and encoding config read that marker. The GCE encoder gets
+  explicit `include_title_screen` / `include_end_screen` = false (its loose `*title*.png` /
+  `*end*.png` globs would otherwise rebuild an omitted screen from `style/*_background.png`), and
+  `LocalEncodingService.encode_lossless_mp4` / the portrait renderer concat only the included segments.
+  No `(Title).mov` / `(End).mov` is delivered and the original-vocals guide gets no intro offset.
 - **Save** applies to new jobs **and to the tenant's tracks that haven't started rendering**
   (`services/theme_change_service.py`). Each such job's style snapshot is replaced
   (`theme_applied_at` set). Jobs whose screens may already exist (`generating_screens` →

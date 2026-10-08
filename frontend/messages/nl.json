@@ -1988,7 +1988,6 @@
     "description": "Pas aan hoe je karaokevideo's eruitzien. De voorvertoningen aan de rechterkant worden precies zo weergegeven als je voltooide video's.",
     "discard": "Wijzigingen verwerpen",
     "discardConfirm": "Je hebt niet-opgeslagen themawijzigingen. Sluiten zonder op te slaan?",
-    "endScreenHint": "Het eindscherm heeft geen voorvertoning; het gebruikt hetzelfde lettertype en dezelfde lay-outstijl als de titelkaart.",
     "font": "Lettertype",
     "fontHint": "Er wordt één lettertype gebruikt voor de titelkaart, de songtekst en het eindscherm.",
     "jsonInvalid": "Ongeldige JSON",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, one {# video kon niet opnieuw worden gerenderd} other {# video's konden niet opnieuw worden gerenderd}}",
     "rerenderAllStarted": "{count, plural, one {# video wordt opnieuw gerenderd met je nieuwe thema. Dit duurt ongeveer 10-15 minuten; je kunt de voortgang volgen bij het nummer.} other {# video's worden opnieuw gerenderd met je nieuwe thema. Dit duurt per video ongeveer 10-15 minuten; je kunt de voortgang volgen bij elk nummer.}}",
     "rerenderAllStarting": "Bezig met starten…",
-    "savedBodyInProgress": "Nieuwe video's en video's die nog worden gemaakt, krijgen je bijgewerkte thema."
+    "savedBodyInProgress": "Nieuwe video's en video's die nog worden gemaakt, krijgen je bijgewerkte thema.",
+    "copyTitleCardLayout": "Lay-out van titelkaart kopiëren",
+    "copyTitleCardLayoutHint": "Geef de titel van het nummer en de naam van de artiest hier dezelfde grootte, positie, kleuren en hoofdletters als op je titelkaart.",
+    "endScreenFontHint": "Het eindscherm gebruikt hetzelfde lettertype als de titelkaart (pas dit aan op het tabblad Titelkaart).",
+    "endScreenOff": "Video's eindigen zodra het nummer is afgelopen.",
+    "includeEndScreen": "Een eindscherm toevoegen aan het einde van elke video",
+    "includeTitleCard": "Een titelkaart toevoegen aan het begin van elke video",
+    "previewEndScreen": "Voorbeeld van eindscherm",
+    "screenOmitted": "Niet inbegrepen in je video's",
+    "showArtistName": "Artiestennaam tonen",
+    "showSongTitle": "Titel van het nummer tonen",
+    "titleCardOff": "Video's starten meteen met de songtekstvideo."
   },
   "stalledDownload": {
     "actionFailedDesc": "Probeer het over een ogenblik opnieuw.",

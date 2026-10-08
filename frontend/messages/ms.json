@@ -1988,7 +1988,6 @@
     "description": "Sesuaikan rupa video karaoke anda. Pratonton di sebelah kanan dipaparkan tepat seperti video anda yang telah siap.",
     "discard": "Buang perubahan",
     "discardConfirm": "Anda mempunyai perubahan tema yang belum disimpan. Tutup tanpa menyimpan?",
-    "endScreenHint": "Skrin penamat tidak dipratonton; ia menggunakan fon dan gaya reka letak yang sama seperti kad tajuk.",
     "font": "Fon",
     "fontHint": "Satu fon digunakan untuk kad tajuk, lirik dan skrin penamat.",
     "jsonInvalid": "JSON tidak sah",
@@ -2042,7 +2041,18 @@
     "rerenderAllSomeFailed": "{count, plural, other {# video tidak dapat dirender semula}}",
     "rerenderAllStarted": "{count, plural, one {Sedang merender semula # video dengan tema baharu anda. Ia mengambil masa kira-kira 10-15 minit; anda boleh melihat kemajuannya pada trek.} other {Sedang merender semula # video dengan tema baharu anda. Setiap satu mengambil masa kira-kira 10-15 minit; anda boleh melihat kemajuannya pada setiap trek.}}",
     "rerenderAllStarting": "Memulakan…",
-    "savedBodyInProgress": "Video baharu dan video yang masih sedang diproses akan menggunakan tema anda yang dikemas kini."
+    "savedBodyInProgress": "Video baharu dan video yang masih sedang diproses akan menggunakan tema anda yang dikemas kini.",
+    "copyTitleCardLayout": "Salin reka letak kad tajuk",
+    "copyTitleCardLayoutHint": "Gunakan saiz, kedudukan, warna dan huruf besar yang sama untuk tajuk lagu dan nama artis di sini seperti pada kad tajuk anda.",
+    "endScreenFontHint": "Skrin penamat menggunakan fon yang sama seperti kad tajuk (ubah pada tab Kad tajuk).",
+    "endScreenOff": "Video akan tamat apabila lagu tamat.",
+    "includeEndScreen": "Sertakan skrin penamat pada penghujung setiap video",
+    "includeTitleCard": "Sertakan kad tajuk pada permulaan setiap video",
+    "previewEndScreen": "Pratonton skrin penamat",
+    "screenOmitted": "Tidak disertakan dalam video anda",
+    "showArtistName": "Tunjukkan nama artis",
+    "showSongTitle": "Tunjukkan tajuk lagu",
+    "titleCardOff": "Video akan terus bermula dengan video lirik."
   },
   "stalledDownload": {
     "actionFailedDesc": "Sila cuba sebentar lagi.",

@@ -1086,15 +1086,20 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         # Title/end screens: look for MOV first, fall back to generating from PNG.
         # Since PR #640 right-sized Cloud Run to 2Gi, the screens_worker only generates
         # PNG/JPG images — MOV video generation now happens here on the GCE worker.
-        title_video = find_file(work_dir, "screens/title.mov", "*Title*.mov", "*title*.mov")
-        end_video = find_file(work_dir, "screens/end.mov", "*End*.mov", "*end*.mov")
+        # A theme may leave a screen out. Don't look for it at all then: the loose globs
+        # below also match theme assets (style/cdg_title_background.png,
+        # style/end_background.png) and old finals, which would bring it back.
+        include_title = config.get("include_title_screen", True) is not False
+        include_end = config.get("include_end_screen", True) is not False
+        title_video = find_file(work_dir, "screens/title.mov", "*Title*.mov", "*title*.mov") if include_title else None
+        end_video = find_file(work_dir, "screens/end.mov", "*End*.mov", "*end*.mov") if include_end else None
 
         # Get intro/end video durations from style config (default 5s)
         intro_duration = config.get("intro_video_duration", 5)
         end_duration = config.get("end_video_duration", 5)
 
         # Generate title MOV from PNG if missing or invalid (< 1KB = empty shell)
-        if not title_video or title_video.stat().st_size < 1024:
+        if include_title and (not title_video or title_video.stat().st_size < 1024):
             title_png = find_file(work_dir, "screens/title.png", "*Title*.png", "*title*.png")
             if title_png:
                 title_mov_path = title_png.parent / "title.mov"
@@ -1104,7 +1109,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
                 logger.warning(f"Title MOV is only {title_video.stat().st_size} bytes and no PNG found")
 
         # Generate end MOV from PNG if missing or invalid
-        if not end_video or (end_video and end_video.stat().st_size < 1024):
+        if include_end and (not end_video or end_video.stat().st_size < 1024):
             end_png = find_file(work_dir, "screens/end.png", "*End*.png", "*end*.png")
             if end_png:
                 end_mov_path = end_png.parent / "end.mov"
@@ -1159,8 +1164,10 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
             logger.info(f"  Countdown padding: {countdown_padding_seconds}s - will be handled by LocalEncodingService")
 
         # Validate required files
-        if not title_video:
+        if include_title and not title_video:
             raise ValueError(f"No title video found in {work_dir}. Check screens/ subdirectory.")
+        if not include_title or not include_end:
+            logger.info(f"  Theme omits screens: title={'kept' if include_title else 'omitted'}, end={'kept' if include_end else 'omitted'}")
         if not karaoke_video:
             raise ValueError(f"No karaoke video found in {work_dir}")
         if not instrumental:
@@ -1174,7 +1181,7 @@ def run_encoding(job_id: str, work_dir: Path, config: dict):
         # Build encoding config with proper file names
         # Note: countdown_padding_seconds is passed to LocalEncodingService which handles padding
         encoding_config = EncodingConfig(
-            title_video=str(title_video),
+            title_video=str(title_video) if title_video else None,
             karaoke_video=str(karaoke_video),
             instrumental_audio=str(instrumental),
             end_video=str(end_video) if end_video else None,
