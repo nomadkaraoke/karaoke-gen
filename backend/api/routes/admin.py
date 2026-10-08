@@ -4533,14 +4533,14 @@ def persist_uploads(dry_run: bool = True, auth_data: AuthResult = Depends(requir
 
     results: Dict[str, Any] = {}
     for job_id, names in sorted(by_job.items()):
-        job = job_manager.get_job(job_id)
-        if job is None:
-            results[job_id] = {"orphan": len(names)}
-            continue
-        if dry_run:
-            results[job_id] = {"would_copy": {n: persisted_path(job_id, n) for n in names}}
-            continue
         try:
+            job = job_manager.get_job(job_id)
+            if job is None:
+                results[job_id] = {"orphan": len(names)}
+                continue
+            if dry_run:
+                results[job_id] = {"would_copy": {n: persisted_path(job_id, n) for n in names}}
+                continue
             copied, updates = persist_job_inputs(job, storage, job_manager)
             results[job_id] = {"copied": copied, "updated": updates}
         except Exception as e:  # noqa: BLE001

@@ -53,6 +53,7 @@ def _job(**fields):
         input_media_gcs_path="uploads/j1/audio/01-Song Mix.wav",
         existing_instrumental_gcs_path="uploads/j1/conformed/existing_instrumental.flac",
         style_params_gcs_path=None,
+        lyrics_file_gcs_path="uploads/j1/lyrics/user_lyrics.txt",
         file_urls={"input": {"audio": "uploads/j1/audio/01-Song Mix.wav"}, "stems": {"x": "jobs/j1/stems/x.flac"}},
         state_data={"instrumental_conformed": {"original_gcs_path": "uploads/j1/audio/existing_instrumental.wav", "correlation": 0.8}},
         style_assets={},
@@ -93,6 +94,7 @@ def test_copies_every_upload_and_repoints_every_reference():
     assert updates == {
         "input_media_gcs_path": "jobs/j1/input/audio/01-Song Mix.wav",
         "existing_instrumental_gcs_path": "jobs/j1/input/conformed/existing_instrumental.flac",
+        "lyrics_file_gcs_path": "jobs/j1/input/lyrics/user_lyrics.txt",
         "file_urls.input.audio": "jobs/j1/input/audio/01-Song Mix.wav",
         "state_data.instrumental_conformed.original_gcs_path": "jobs/j1/input/audio/existing_instrumental.wav",
     }
@@ -112,6 +114,7 @@ def test_idempotent_second_run_copies_nothing():
     job = _job(
         input_media_gcs_path="jobs/j1/input/audio/01-Song Mix.wav",
         existing_instrumental_gcs_path="jobs/j1/input/conformed/existing_instrumental.flac",
+        lyrics_file_gcs_path="jobs/j1/input/lyrics/user_lyrics.txt",
         file_urls={"input": {"audio": "jobs/j1/input/audio/01-Song Mix.wav"}},
         state_data={},
     )
@@ -139,8 +142,8 @@ def test_paths_to_already_expired_uploads_are_left_alone():
 def test_style_assets_and_style_params_are_repointed():
     bucket = FakeBucket({"uploads/j1/style/style_params.json": b"{}", "uploads/j1/style/bg.png": b"png"})
     job = _job(
-        input_media_gcs_path=None, existing_instrumental_gcs_path=None, file_urls={}, state_data={},
-        style_params_gcs_path="uploads/j1/style/style_params.json",
+        input_media_gcs_path=None, existing_instrumental_gcs_path=None, lyrics_file_gcs_path=None,
+        file_urls={}, state_data={}, style_params_gcs_path="uploads/j1/style/style_params.json",
         style_assets={"karaoke_background": "uploads/j1/style/bg.png", "font": "themes/nomad/assets/A.ttf"},
     )
     _copied, updates = persist_job_inputs(job, SimpleNamespace(bucket=bucket), MagicMock())
@@ -209,7 +212,8 @@ def test_backfill_apply_persists_each_job():
     bucket = FakeBucket(UPLOADS)
     jm = MagicMock()
     jm.get_job.side_effect = lambda jid: _job(job_id=jid, input_media_gcs_path=f"uploads/{jid}/audio/other.wav",
-                                               existing_instrumental_gcs_path=None, file_urls={}, state_data={}) \
+                                               existing_instrumental_gcs_path=None, lyrics_file_gcs_path=None,
+                                               file_urls={}, state_data={}) \
         if jid == "j10" else _job()
     with patch("backend.api.routes.admin.StorageService", return_value=SimpleNamespace(bucket=bucket)), \
          patch("backend.api.routes.admin.JobManager", return_value=jm):
@@ -231,3 +235,21 @@ def test_encoder_prefers_the_downloaded_existing_instrumental(tmp_path):
     (tmp_path / "existing_instrumental.flac").write_bytes(b"configured")
     picked = resolve_instrumental(tmp_path, {"existing_instrumental": "jobs/j1/input/conformed/existing_instrumental.flac"})
     assert picked == tmp_path / "existing_instrumental.flac"
+
+
+def test_backfill_keeps_going_when_one_job_lookup_fails():
+    bucket = FakeBucket(UPLOADS)
+    jm = MagicMock()
+
+    def get_job(jid):
+        if jid == "j1":
+            raise RuntimeError("firestore hiccup")
+        return _job(job_id=jid, input_media_gcs_path=f"uploads/{jid}/audio/other.wav",
+                    existing_instrumental_gcs_path=None, lyrics_file_gcs_path=None, file_urls={}, state_data={})
+
+    jm.get_job.side_effect = get_job
+    with patch("backend.api.routes.admin.StorageService", return_value=SimpleNamespace(bucket=bucket)), \
+         patch("backend.api.routes.admin.JobManager", return_value=jm):
+        body = _admin_client().post("/api/admin/persist-uploads?dry_run=false").json()
+    assert body["jobs"]["j1"] == {"error": "firestore hiccup"}
+    assert body["jobs"]["j10"]["copied"] == 1

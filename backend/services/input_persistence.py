@@ -48,7 +48,9 @@ def _rewrites(value: Any, mapping: Dict[str, str], path: str, out: Dict[str, str
 
 
 # Job fields that can hold an input path (top-level, plus everything under these maps).
-_SCALAR_FIELDS = ("input_media_gcs_path", "existing_instrumental_gcs_path", "style_params_gcs_path")
+_SCALAR_FIELDS = (
+    "input_media_gcs_path", "existing_instrumental_gcs_path", "lyrics_file_gcs_path", "style_params_gcs_path",
+)
 _MAP_FIELDS = ("file_urls", "state_data", "style_assets")
 
 
