@@ -610,17 +610,17 @@ async def upload_and_create_job(
         credential_manager = get_credential_manager()
 
         if effective_enable_youtube_upload and not is_private:
-            result = credential_manager.check_youtube_credentials()
+            result = await asyncio.to_thread(credential_manager.check_youtube_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
 
         if dist.dropbox_path:
-            result = credential_manager.check_dropbox_credentials()
+            result = await asyncio.to_thread(credential_manager.check_dropbox_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
 
         if dist.gdrive_folder_id and not is_private:
-            result = credential_manager.check_gdrive_credentials()
+            result = await asyncio.to_thread(credential_manager.check_gdrive_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
 
@@ -930,7 +930,7 @@ async def upload_and_create_job(
         distribution_services: Dict[str, Any] = {}
 
         if dist.dropbox_path:
-            dropbox_result = credential_manager.check_dropbox_credentials()
+            dropbox_result = await asyncio.to_thread(credential_manager.check_dropbox_credentials)
             distribution_services["dropbox"] = {
                 "enabled": True,
                 "path": dist.dropbox_path,
@@ -939,7 +939,7 @@ async def upload_and_create_job(
             }
 
         if dist.gdrive_folder_id:
-            gdrive_result = credential_manager.check_gdrive_credentials()
+            gdrive_result = await asyncio.to_thread(credential_manager.check_gdrive_credentials)
             distribution_services["gdrive"] = {
                 "enabled": True,
                 "folder_id": dist.gdrive_folder_id,
@@ -948,7 +948,7 @@ async def upload_and_create_job(
             }
         
         if effective_enable_youtube_upload:
-            youtube_result = credential_manager.check_youtube_credentials()
+            youtube_result = await asyncio.to_thread(credential_manager.check_youtube_credentials)
             distribution_services["youtube"] = {
                 "enabled": True,
                 "credentials_valid": youtube_result.status == CredentialStatus.VALID,
@@ -1315,17 +1315,17 @@ async def create_job_with_upload_urls(
         credential_manager = get_credential_manager()
 
         if effective_enable_youtube_upload and not effective_is_private:
-            result = credential_manager.check_youtube_credentials()
+            result = await asyncio.to_thread(credential_manager.check_youtube_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
 
         if dist.dropbox_path:
-            result = credential_manager.check_dropbox_credentials()
+            result = await asyncio.to_thread(credential_manager.check_dropbox_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
 
         if dist.gdrive_folder_id and not effective_is_private:
-            result = credential_manager.check_gdrive_credentials()
+            result = await asyncio.to_thread(credential_manager.check_gdrive_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
 
@@ -1695,7 +1695,7 @@ async def mark_uploads_complete(
         updated_job = job_manager.get_job(job_id)
         
         if updated_job.dropbox_path:
-            dropbox_result = credential_manager.check_dropbox_credentials()
+            dropbox_result = await asyncio.to_thread(credential_manager.check_dropbox_credentials)
             distribution_services["dropbox"] = {
                 "enabled": True,
                 "path": updated_job.dropbox_path,
@@ -1703,7 +1703,7 @@ async def mark_uploads_complete(
             }
         
         if updated_job.gdrive_folder_id:
-            gdrive_result = credential_manager.check_gdrive_credentials()
+            gdrive_result = await asyncio.to_thread(credential_manager.check_gdrive_credentials)
             distribution_services["gdrive"] = {
                 "enabled": True,
                 "folder_id": updated_job.gdrive_folder_id,
@@ -1711,7 +1711,7 @@ async def mark_uploads_complete(
             }
         
         if updated_job.enable_youtube_upload:
-            youtube_result = credential_manager.check_youtube_credentials()
+            youtube_result = await asyncio.to_thread(credential_manager.check_youtube_credentials)
             distribution_services["youtube"] = {
                 "enabled": True,
                 "credentials_valid": youtube_result.status == CredentialStatus.VALID,
@@ -2029,17 +2029,17 @@ async def create_job_from_url(
         credential_manager = get_credential_manager()
 
         if effective_enable_youtube_upload and not body.is_private:
-            result = credential_manager.check_youtube_credentials()
+            result = await asyncio.to_thread(credential_manager.check_youtube_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"youtube ({result.message})")
 
         if dist.dropbox_path:
-            result = credential_manager.check_dropbox_credentials()
+            result = await asyncio.to_thread(credential_manager.check_dropbox_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"dropbox ({result.message})")
 
         if dist.gdrive_folder_id and not body.is_private:
-            result = credential_manager.check_gdrive_credentials()
+            result = await asyncio.to_thread(credential_manager.check_gdrive_credentials)
             if result.status != CredentialStatus.VALID:
                 invalid_services.append(f"gdrive ({result.message})")
 

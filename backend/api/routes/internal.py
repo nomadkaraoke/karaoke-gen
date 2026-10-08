@@ -931,7 +931,10 @@ async def trigger_gdrive_validation_endpoint(
         add_span_attribute("brand_code", str(brand_code))
 
     try:
-        result = trigger_gdrive_validation(brand_code=brand_code, expect_cdg=expect_cdg)
+        # Sync OIDC fetch + HTTP POST (up to 60s) — off the event loop.
+        result = await asyncio.to_thread(
+            trigger_gdrive_validation, brand_code=brand_code, expect_cdg=expect_cdg
+        )
         if result is None:
             return {"status": "skipped", "message": "GDRIVE_VALIDATOR_URL not configured"}
 
