@@ -28,8 +28,40 @@ class TestNormalizeForMatch:
             "Jay Z and Beyonce"
         )
 
+    def test_non_latin_scripts_are_preserved(self):
+        # Regression: the ASCII-only filter erased every non-Latin character, so
+        # all Cyrillic/CJK/etc. strings collapsed to "" and compared equal.
+        assert normalize_for_match("Луна") == "луна"
+        assert normalize_for_match("永活盼望") == "永活盼望"
+        assert normalize_for_match("Луна") != normalize_for_match("从灵乐队")
+
+    def test_non_latin_casing_punctuation_and_whitespace_fold(self):
+        assert normalize_for_match("Золотые  Лепестки!") == normalize_for_match(
+            "золотые лепестки"
+        )
+
+    def test_latin_accents_still_fold(self):
+        assert normalize_for_match("Beyoncé") == "beyonce"
+        assert normalize_for_match("Sigur Rós") == "sigur ros"
+
+    def test_non_latin_combining_marks_are_kept(self):
+        # Japanese voiced kana (が) must not collapse to unvoiced (か); Hindi
+        # vowel signs must survive.
+        assert normalize_for_match("が") != normalize_for_match("か")
+        assert normalize_for_match("गीत") == "गीत"
+        assert normalize_for_match("गति") != normalize_for_match("गत")
+
+    def test_underscore_is_treated_as_punctuation(self):
+        assert normalize_for_match("foo_bar") == "foo bar"
+
 
 class TestClassifyCatalogMatch:
+    def test_different_non_latin_songs_are_not_cosmetic_matches(self):
+        verdict = classify_catalog_match(
+            "Луна", "Золотые Лепестки", [_cand("从灵乐队", "永活盼望")]
+        )
+        assert verdict is None or verdict.kind != "cosmetic"
+
     def test_casing_only_difference_is_cosmetic(self):
         verdict = classify_catalog_match(
             "paramore",

@@ -39,6 +39,14 @@ ROWS = [
     # Unknown brand code -> name falls back to the code.
     {"Artist": "Some Band", "Title": "Obscure", "Brand": "ZZTOP7",
      "Watch": "https://youtu.be/eeeeeeeeeee"},
+    # Non-Latin scripts must keep their own identity (regression: they used to
+    # normalize to an empty key and all collide with each other).
+    {"Artist": "从灵乐队", "Title": "永活盼望", "Brand": "BALKARUS",
+     "Watch": "https://youtu.be/zzzzzzzzzzz"},
+    {"Artist": "Кино", "Title": "Группа крови", "Brand": "NOMAD",
+     "Watch": "https://youtu.be/kkkkkkkkkkk"},
+    # All-punctuation row normalizes to empty — must not be indexed.
+    {"Artist": "!!!", "Title": "???", "Brand": "X", "Watch": "https://youtu.be/ppppppppppp"},
     # Missing artist/title rows are skipped.
     {"Artist": "", "Title": "No Artist", "Brand": "X", "Watch": "https://youtu.be/fffffffffff"},
 ]
@@ -140,6 +148,36 @@ async def test_no_match_returns_false():
 async def test_blank_input_returns_false_without_lookup():
     assert (await check_community_versions("", "Dreams"))["has_community"] is False
     assert (await check_community_versions("ABBA", ""))["has_community"] is False
+
+
+@pytest.mark.asyncio
+async def test_non_latin_song_does_not_match_unrelated_non_latin_song():
+    # Regression: "Луна - Золотые Лепестки" matched "从灵乐队 - 永活盼望" because
+    # both normalized to an empty key.
+    result = await check_community_versions("Луна", "Золотые Лепестки")
+    assert result["has_community"] is False
+
+
+@pytest.mark.asyncio
+async def test_non_latin_song_matches_itself():
+    cjk = await check_community_versions("从灵乐队", "永活盼望")
+    assert cjk["has_community"] is True
+    assert cjk["songs"][0]["artist"] == "从灵乐队"
+    cyr = await check_community_versions("кино", "  ГРУППА  крови ")
+    assert cyr["has_community"] is True
+    assert cyr["songs"][0]["artist"] == "Кино"
+
+
+def test_build_index_skips_rows_that_normalize_to_empty():
+    index = _build_index(ROWS)
+    assert all(
+        a and t for a, t in (k.split(svc._KEY_SEP) for k in index)
+    ), "no index key may have an empty artist or title"
+
+
+@pytest.mark.asyncio
+async def test_punctuation_only_input_never_matches():
+    assert (await check_community_versions("!!!", "???"))["has_community"] is False
 
 
 # --- Batch (Bulk Mode) ---
