@@ -45,3 +45,18 @@ def test_packer_fallback_clears_gce_cache_before_secret_fetch():
     fallback = text[text.index("startup-fallback.sh << 'FALLBACK'"):]
     assert CACHE_RM in fallback
     assert fallback.index(CACHE_RM) < fallback.index(SECRET_FETCH)
+
+
+def test_startup_metadata_probe_has_total_timeout():
+    text = STARTUP.read_text()
+    lines = text.splitlines()
+    url_idx = next(i for i, l in enumerate(lines) if "computeMetadata/v1/instance/id" in l)
+    # The curl flags sit on the line before the URL continuation.
+    assert "--max-time" in lines[url_idx - 1] + lines[url_idx]
+
+
+def test_startup_exits_nonzero_without_api_key():
+    text = STARTUP.read_text()
+    block = text[text.index('if [ -z "$ENCODING_API_KEY" ]; then'):]
+    block = block[: block.index("fi")]
+    assert "exit 1" in block

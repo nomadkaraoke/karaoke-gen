@@ -44,7 +44,7 @@ mkdir -p "${TMP_DIR}"
 echo "[1/5] Fetching API key from Secret Manager..."
 rm -f /root/.config/gcloud/gce "${HOME:-/root}/.config/gcloud/gce"
 for attempt in $(seq 1 30); do
-    if curl -sf --connect-timeout 2 -H "Metadata-Flavor: Google" \
+    if curl -sf --connect-timeout 2 --max-time 3 -H "Metadata-Flavor: Google" \
         "http://metadata.google.internal/computeMetadata/v1/instance/id" >/dev/null 2>&1; then
         break
     fi
@@ -62,8 +62,10 @@ for attempt in $(seq 1 6); do
 done
 
 if [ -z "$ENCODING_API_KEY" ]; then
-    echo "WARNING: No API key found in Secret Manager"
-    echo "Service will start but may reject requests"
+    # The worker refuses to serve without a key (self_heal boot check), so fail
+    # here and let systemd re-run the bootstrap rather than start broken.
+    echo "FATAL: No API key found in Secret Manager; exiting so systemd retries"
+    exit 1
 fi
 
 # Read this VM's GCE instance name so the encoding worker can tag its
