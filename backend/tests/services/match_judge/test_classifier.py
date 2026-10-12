@@ -48,7 +48,8 @@ class TestNormalizeForMatch:
         # Japanese voiced kana (が) must not collapse to unvoiced (か); Hindi
         # vowel signs must survive.
         assert normalize_for_match("が") != normalize_for_match("か")
-        assert normalize_for_match("गीत") != normalize_for_match("गत")
+        assert normalize_for_match("गीत") == "गीत"
+        assert normalize_for_match("गति") != normalize_for_match("गत")
 
     def test_underscore_is_treated_as_punctuation(self):
         assert normalize_for_match("foo_bar") == "foo bar"

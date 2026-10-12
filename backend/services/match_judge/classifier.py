@@ -19,11 +19,6 @@ from backend.services.match_judge.verdict import (
     MatchVerdict,
 )
 
-# Unicode-aware: keeps letters/digits of every script (Cyrillic, CJK, Arabic…).
-# An ASCII-only class here erased all non-Latin text, so every non-Latin song
-# normalized to "" and they all "matched" each other. "_" is word-class in
-# regex, so it's stripped explicitly.
-_NON_ALNUM = re.compile(r"[^\w\s]|_")
 _WS = re.compile(r"\s+")
 
 # Combining marks are folded only on Latin/Greek/Cyrillic bases, where they're
@@ -46,6 +41,20 @@ def _fold_accents(text: str) -> str:
     return unicodedata.normalize("NFC", "".join(out))
 
 
+def _strip_punctuation(text: str) -> str:
+    """Replace everything but letters, digits, combining marks and whitespace
+    with a space.
+
+    Unicode-aware: an ASCII-only filter here erased all non-Latin text, so every
+    non-Latin song normalized to "" and they all "matched" each other. Marks are
+    kept explicitly because regex ``\\w`` drops them (Indic vowel signs).
+    """
+    return "".join(
+        c if c.isalnum() or c.isspace() or unicodedata.category(c).startswith("M") else " "
+        for c in text
+    )
+
+
 def normalize_for_match(text: str) -> str:
     """Aggressive key used only for equality comparison (never displayed).
 
@@ -57,7 +66,7 @@ def normalize_for_match(text: str) -> str:
     s = s.replace("&", " and ")
     s = _fold_accents(s)
     s = s.casefold()
-    s = _NON_ALNUM.sub(" ", s)
+    s = _strip_punctuation(s)
     s = _WS.sub(" ", s).strip()
     return s
 
