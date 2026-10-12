@@ -33,8 +33,33 @@ rm -rf "${TMP_DIR}"
 mkdir -p "${TMP_DIR}"
 
 # 1. Fetch API key from Secret Manager
+#
+# Boot race (2026-10-09, 2026-10-12): if gcloud's first call runs before DHCP
+# brings up the metadata server, gcloud writes "False" to its on-GCE cache
+# (/root/.config/gcloud/gce) and every later gcloud call in this boot runs
+# with no credentials -> empty API key -> the worker's self-heal refuses to
+# serve -> systemd re-runs this script, which hits the same poisoned cache,
+# forever (until the VM idle-stops). So: drop the cache, wait for the metadata
+# server, and retry the fetch instead of giving up after one attempt.
 echo "[1/5] Fetching API key from Secret Manager..."
-ENCODING_API_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key 2>/dev/null || echo "")
+rm -f /root/.config/gcloud/gce "${HOME:-/root}/.config/gcloud/gce"
+for attempt in $(seq 1 30); do
+    if curl -sf --connect-timeout 2 -H "Metadata-Flavor: Google" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/id" >/dev/null 2>&1; then
+        break
+    fi
+    echo "Metadata server not reachable yet (attempt ${attempt}/30), waiting 2s..."
+    sleep 2
+done
+
+ENCODING_API_KEY=""
+for attempt in $(seq 1 6); do
+    ENCODING_API_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key 2>/dev/null || echo "")
+    [ -n "$ENCODING_API_KEY" ] && break
+    echo "API key fetch failed (attempt ${attempt}/6), retrying in 5s..."
+    rm -f /root/.config/gcloud/gce "${HOME:-/root}/.config/gcloud/gce"
+    sleep 5
+done
 
 if [ -z "$ENCODING_API_KEY" ]; then
     echo "WARNING: No API key found in Secret Manager"
