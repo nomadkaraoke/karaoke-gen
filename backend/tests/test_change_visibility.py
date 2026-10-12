@@ -267,7 +267,8 @@ class TestChangeToPublic:
     async def test_drops_file_urls_for_deleted_artifacts(self):
         """Screens, lyrics video and finals blobs are deleted, so their refs must go
         too: a stale videos.with_vocals made retry skip the render and 404 (82f48738)."""
-        from google.cloud.firestore_v1 import DELETE_FIELD
+        # The service's own sentinel: other tests may swap google.cloud.firestore_v1 for a mock.
+        from backend.services.visibility_change_service import DELETE_FIELD
 
         mock_job_manager = MagicMock()
         mock_job_ref = MagicMock()
