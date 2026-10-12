@@ -515,6 +515,18 @@ gcloud compute ssh encoding-worker-b --zone=us-central1-c --project=nomadkaraoke
 
 ---
 
+## Render fails "Cannot connect to host <worker-ip>:8080" and the VM never answers `/health`
+
+**Symptoms:** a render that cold-started the primary VM retries 8 times (~90s) and fails with `ClientConnectorError ... Connect call failed`. The backend keeps logging `encoding-worker-b /health unconfirmed; keeping alive (fail-safe)` until the VM idle-stops.
+
+**Cause (2026-10-09 `f4310aea`, 2026-10-12 `82f48738`):** `startup.sh`'s first gcloud call ran before DHCP, so gcloud cached "not on GCE" (`/root/.config/gcloud/gce` = `False`). Every later gcloud call in that boot had no credentials: no API key, the self-heal refuses to serve, systemd re-runs `startup.sh`, and it hits the same cache forever.
+
+**Diagnose:** the serial log shows repeated `WARNING: No API key found in Secret Manager`, and on the VM `sudo cat /root/.config/gcloud/gce` prints `False`.
+
+**Fix:** since v0.268.3 `startup.sh` deletes that cache, waits for the metadata server and retries the secret fetch, so the next restart recovers by itself. By hand: `sudo rm -f /root/.config/gcloud/gce && sudo systemctl restart encoding-worker`.
+
+---
+
 ## Job stuck at `rendering_video` (orphaned render)
 
 **Symptoms:** Job frozen at `rendering_video` (step 7/10) for a long time with **no error** and **no Retry button** (it's a processing state, not `failed`).
