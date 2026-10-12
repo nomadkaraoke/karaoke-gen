@@ -282,7 +282,10 @@ WORKER_DIR="/opt/encoding-worker"
 BUCKET="gs://karaoke-gen-storage-nomadkaraoke"
 
 # Fetch API key. Without it the worker would accept unauthenticated requests,
-# so fail and let systemd retry the whole bootstrap instead.
+# so fail and let systemd retry the whole bootstrap instead. Drop gcloud's
+# on-GCE cache first: a pre-DHCP gcloud call poisons it with "False" (see
+# infrastructure/encoding-worker/startup.sh).
+rm -f /root/.config/gcloud/gce
 ENCODING_API_KEY=$(gcloud secrets versions access latest --secret=encoding-worker-api-key 2>/dev/null || echo "")
 if [ -z "$ENCODING_API_KEY" ]; then
     echo "FATAL: could not fetch encoding-worker-api-key; exiting so systemd retries"
