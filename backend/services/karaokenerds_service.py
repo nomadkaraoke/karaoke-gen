@@ -68,8 +68,14 @@ _index_lock = asyncio.Lock()
 _KEY_SEP = "\x1f"
 
 
-def _match_key(artist: str, title: str) -> str:
-    return f"{normalize_for_match(artist)}{_KEY_SEP}{normalize_for_match(title)}"
+def _match_key(artist: str, title: str) -> str | None:
+    """Normalized (artist, title) key, or None if either side normalizes to empty
+    (punctuation-only input) — an empty key must never match anything."""
+    norm_artist = normalize_for_match(artist)
+    norm_title = normalize_for_match(title)
+    if not norm_artist or not norm_title:
+        return None
+    return f"{norm_artist}{_KEY_SEP}{norm_title}"
 
 
 def _build_index(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -91,6 +97,8 @@ def _build_index(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         youtube_url = _normalize_youtube_url(row.get("Watch"))
 
         key = _match_key(artist, title)
+        if key is None:
+            continue
         song = index.get(key)
         if song is None:
             # Keep the first-seen display casing for artist/title.
@@ -167,7 +175,8 @@ async def _get_index() -> dict[str, dict[str, Any]]:
 
 def _lookup(index: dict[str, dict[str, Any]], artist: str, title: str) -> dict:
     """Build a check result for one (artist, title) from the index."""
-    song = index.get(_match_key(artist, title))
+    key = _match_key(artist, title)
+    song = index.get(key) if key else None
     if not song or not song.get("community_tracks"):
         return {"has_community": False, "songs": [], "best_youtube_url": None}
 

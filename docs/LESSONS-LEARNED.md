@@ -2330,3 +2330,20 @@ nothing broke the loop until a manual `systemctl restart`. Lessons:
 - **Worker app logs only reach the serial console**, not Cloud Logging. Check
   `get-serial-port-output` first when the worker misbehaves.
 
+
+## Match keys must be Unicode-aware, and an empty key never matches (2026-10-12, v0.268.4)
+
+`normalize_for_match` (used for community-version lookup, request-board dedup, KaraokeHunt
+dedup, and the match judge) filtered with `[^0-9a-z\s]`, which erased every non-Latin
+character. All Cyrillic/CJK/Arabic/etc. songs normalized to `""`, so "Луна - Золотые
+Лепестки" showed "A karaoke version already exists" with 166 unrelated community versions
+(e.g. "从灵乐队 - 永活盼望"). Lessons:
+
+- **Use `\w` (Unicode) for "alphanumeric", never `a-z`.** Strip `_` explicitly.
+- **Fold diacritics only where they are accents** (Latin/Greek/Cyrillic bases). Japanese
+  dakuten and Indic vowel signs are combining marks too, and dropping them merges
+  different words.
+- **Treat an empty normalized key as "no key".** The community index skips such rows
+  and lookups return no match, so punctuation-only input can't collide either.
+- **Check a real index for oversized buckets.** One `'\x1f'` key with 166 tracks was
+  the giveaway; the largest legitimate bucket has 5.

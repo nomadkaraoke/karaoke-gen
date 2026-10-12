@@ -19,20 +19,39 @@ from backend.services.match_judge.verdict import (
     MatchVerdict,
 )
 
-_NON_ALNUM = re.compile(r"[^0-9a-z\s]")
+# Unicode-aware: keeps letters/digits of every script (Cyrillic, CJK, Arabic…).
+# An ASCII-only class here erased all non-Latin text, so every non-Latin song
+# normalized to "" and they all "matched" each other. "_" is word-class in
+# regex, so it's stripped explicitly.
+_NON_ALNUM = re.compile(r"[^\w\s]|_")
 _WS = re.compile(r"\s+")
+
+# Combining marks are folded only on Latin/Greek/Cyrillic bases, where they're
+# diacritics ('é' -> 'e'). Elsewhere they carry meaning (Japanese voiced kana,
+# Indic vowel signs), so they're kept.
+_DIACRITIC_BASE_MAX = 0x052F
 
 
 def _fold_accents(text: str) -> str:
-    """Drop combining marks so 'Beyoncé' and 'beyonce' compare equal."""
-    decomposed = unicodedata.normalize("NFKD", text)
-    return "".join(c for c in decomposed if not unicodedata.combining(c))
+    """Drop diacritics so 'Beyoncé' and 'beyonce' compare equal."""
+    out: list[str] = []
+    base_ord = 0
+    for c in unicodedata.normalize("NFKD", text):
+        if unicodedata.combining(c):
+            if base_ord <= _DIACRITIC_BASE_MAX:
+                continue
+        else:
+            base_ord = ord(c)
+        out.append(c)
+    return unicodedata.normalize("NFC", "".join(out))
 
 
 def normalize_for_match(text: str) -> str:
     """Aggressive key used only for equality comparison (never displayed).
 
     Folds casing, accents, punctuation, whitespace, and treats '&' as 'and'.
+    Non-Latin letters are preserved. Can return "" (blank/punctuation-only
+    input) — callers must not treat two empty keys as a match.
     """
     s = normalize_text(text or "")
     s = s.replace("&", " and ")
