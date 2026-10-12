@@ -264,6 +264,34 @@ class TestChangeToPublic:
             assert style_update["status"] == "lyrics_complete"
 
     @pytest.mark.asyncio
+    async def test_drops_file_urls_for_deleted_artifacts(self):
+        """Screens, lyrics video and finals blobs are deleted, so their refs must go
+        too: a stale videos.with_vocals made retry skip the render and 404 (82f48738)."""
+        from google.cloud.firestore_v1 import DELETE_FIELD
+
+        mock_job_manager = MagicMock()
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+             patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("p.json", {}, None)), \
+             patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
+
+            mock_storage_cls.return_value = MagicMock()
+            mock_worker_svc.return_value.trigger_screens_worker = AsyncMock(return_value=True)
+
+            await service.change_to_public("test-123", job, "user@example.com")
+
+            payload = next(c.args[0] for c in mock_job_ref.update.call_args_list if "theme_id" in c.args[0])
+            assert payload["file_urls.screens"] is DELETE_FIELD
+            assert payload["file_urls.videos.with_vocals"] is DELETE_FIELD
+            assert payload["file_urls.finals"] is DELETE_FIELD
+
+    @pytest.mark.asyncio
     async def test_rollback_on_worker_failure(self):
         mock_job_manager = MagicMock()
         mock_job_ref = MagicMock()

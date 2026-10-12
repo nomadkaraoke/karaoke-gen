@@ -231,6 +231,12 @@ class VisibilityChangeService:
             "state_data.render_progress": DELETE_FIELD,
             "state_data.video_progress": DELETE_FIELD,
             "state_data.encoding_progress": DELETE_FIELD,
+            # Their blobs were deleted above. A stale videos.with_vocals ref made
+            # a retry after a failed render skip the render and 404 on the
+            # missing MKV (job 82f48738); the workers re-add all three.
+            "file_urls.screens": DELETE_FIELD,
+            "file_urls.videos.with_vocals": DELETE_FIELD,
+            "file_urls.finals": DELETE_FIELD,
             "outputs_deleted_at": None,
             "outputs_deleted_by": None,
             "updated_at": datetime.now(timezone.utc),
