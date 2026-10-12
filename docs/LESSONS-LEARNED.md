@@ -2339,7 +2339,9 @@ character. All Cyrillic/CJK/Arabic/etc. songs normalized to `""`, so "Луна -
 Лепестки" showed "A karaoke version already exists" with 166 unrelated community versions
 (e.g. "从灵乐队 - 永活盼望"). Lessons:
 
-- **Use `\w` (Unicode) for "alphanumeric", never `a-z`.** Strip `_` explicitly.
+- **Never use `a-z` for "alphanumeric".** Keep Unicode letters, digits, whitespace *and
+  combining marks* (`unicodedata.category(c)[0] == "M"`); everything else becomes a space.
+  Regex `\w` is not enough — it drops marks, so Hindi "गति" collided with "गत".
 - **Fold diacritics only where they are accents** (Latin/Greek/Cyrillic bases). Japanese
   dakuten and Indic vowel signs are combining marks too, and dropping them merges
   different words.
