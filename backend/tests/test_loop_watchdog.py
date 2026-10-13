@@ -290,3 +290,156 @@ def test_is_idle_frame_detects_parked_selector():
         sel.close()
         a.close()
         b.close()
+
+
+class TestRequestAwareSeverity:
+    """Only stalls a request waited on reach ERROR (the alerting level).
+
+    2026-10-12/13 flapping alert: autoscaled instances served one request, then sat
+    idle and CPU-throttled during the 10-min SpaCy warmup; their 10-40s "stalls"
+    had no request on them yet paged twice."""
+
+    def _wd(self):
+        from backend.services.loop_watchdog import RequestTracker
+
+        clock = FakeClock()
+        tracker = RequestTracker()
+        recorded = []
+        wd = LoopWatchdog(clock=clock, cpu_clock=clock, recorder=recorded.append,
+                          request_tracker=tracker)
+        wd._loop_thread_id = None
+        return wd, clock, tracker, recorded
+
+    def _stall(self, wd, clock, seconds, during=None, after_resume=None):
+        wd._last_tick = clock.t
+        start = clock.t
+        t = 0.0
+        while t < seconds:
+            t = min(seconds, t + 0.25)
+            clock.t = start + t
+            wd.check()
+            if during and t >= seconds / 2:
+                during()
+                during = None
+        clock.t += 0.25
+        wd._last_tick = clock.t          # heartbeat resumes
+        wd.check()
+        if after_resume:
+            after_resume()
+        for _ in range(3):               # grace window checks
+            clock.t += 0.25
+            wd._last_tick = clock.t
+            wd.check()
+
+    def _ended(self, caplog):
+        return [r for r in caplog.records if "EVENT_LOOP_STALL ended" in r.getMessage()]
+
+    def test_idle_instance_long_stall_is_warning(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        self._stall(wd, clock, 21.0)
+        ended = self._ended(caplog)
+        assert len(ended) == 1
+        assert ended[0].levelno == logging.WARNING
+        assert "requests_affected=0" in ended[0].getMessage()
+        assert recorded[0]["requests_affected"] == 0  # still recorded for forensics
+
+    def test_idle_in_progress_samples_are_warning(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        wd._loop_thread_id = 12345
+        with patch("backend.services.loop_watchdog._is_idle_frame", return_value=False), \
+             patch("backend.services.loop_watchdog._format_stack",
+                   side_effect=lambda f, n=iter(range(99)): (f"stack{next(n)}", "x.py:1")), \
+             patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
+            self._stall(wd, clock, 16.0)
+        progress = [r for r in caplog.records if "in progress" in r.getMessage()]
+        assert len(progress) == 3  # 1s, 5s, 15s samples
+        assert all(r.levelno == logging.WARNING for r in progress)
+
+    def test_in_flight_in_progress_sample_at_15s_is_error(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        wd._loop_thread_id = 12345
+        tracker.begin()
+        with patch("backend.services.loop_watchdog._is_idle_frame", return_value=False), \
+             patch("backend.services.loop_watchdog._format_stack",
+                   side_effect=lambda f, n=iter(range(99)): (f"stack{next(n)}", "x.py:1")), \
+             patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
+            self._stall(wd, clock, 16.0)
+        progress = [r for r in caplog.records if "in progress" in r.getMessage()]
+        assert [r.levelno for r in progress] == [logging.WARNING, logging.WARNING, logging.ERROR]
+
+    def test_in_flight_request_makes_it_error(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        tracker.begin()
+        self._stall(wd, clock, 12.0)
+        ended = self._ended(caplog)
+        assert ended[0].levelno == logging.ERROR
+        assert "requests_affected=1" in ended[0].getMessage()
+
+    def test_request_queued_during_stall_accepted_after_resume_is_error(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        self._stall(wd, clock, 12.0, after_resume=tracker.begin)
+        ended = self._ended(caplog)
+        assert len(ended) == 1
+        assert ended[0].levelno == logging.ERROR
+
+    def test_request_finished_mid_stall_still_counts(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        tracker.begin()
+        self._stall(wd, clock, 12.0, during=tracker.end)
+        assert self._ended(caplog)[0].levelno == logging.ERROR
+
+    def test_short_idle_stall_logged_once_after_grace(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        self._stall(wd, clock, 2.0)
+        ended = self._ended(caplog)
+        assert len(ended) == 1
+        assert "duration_ms=2000" in ended[0].getMessage()
+        assert not wd._in_stall
+
+    def test_without_tracker_severity_unchanged(self, caplog):
+        caplog.set_level(logging.WARNING)
+        clock = FakeClock()
+        wd = LoopWatchdog(clock=clock, cpu_clock=clock)
+        wd._loop_thread_id = None
+        self._stall(wd, clock, 12.0)
+        ended = self._ended(caplog)
+        assert ended[0].levelno == logging.ERROR
+        assert "requests_affected=unknown" in ended[0].getMessage()
+
+
+class TestRequestTrackingMiddleware:
+    @pytest.mark.asyncio
+    async def test_counts_http_requests_including_errors(self):
+        from backend.services.loop_watchdog import RequestTracker, RequestTrackingMiddleware
+
+        tracker = RequestTracker()
+        seen = []
+
+        async def app(scope, receive, send):
+            seen.append(tracker.in_flight)
+            if scope.get("path") == "/boom":
+                raise RuntimeError("boom")
+
+        mw = RequestTrackingMiddleware(app, tracker=tracker)
+        await mw({"type": "http", "path": "/"}, None, None)
+        with pytest.raises(RuntimeError):
+            await mw({"type": "http", "path": "/boom"}, None, None)
+        await mw({"type": "lifespan"}, None, None)
+        assert seen == [1, 1, 0]
+        assert tracker.in_flight == 0
+        assert tracker.started == 2
+
+    def test_main_app_installs_middleware(self):
+        from backend.main import app
+        from backend.services.loop_watchdog import RequestTrackingMiddleware
+
+        classes = [m.cls for m in app.user_middleware]
+        # add_middleware inserts at index 0 → outermost is first.
+        assert classes[0] is RequestTrackingMiddleware

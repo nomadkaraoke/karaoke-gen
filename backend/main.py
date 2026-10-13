@@ -200,10 +200,17 @@ async def lifespan(app: FastAPI):
     # self-diagnosing (logs the blocking stack; records >=5s stalls in prod).
     watchdog = None
     if settings.loop_watchdog_enabled:
-        from backend.services.loop_watchdog import LoopWatchdog, firestore_stall_recorder
+        from backend.services.loop_watchdog import (
+            LoopWatchdog,
+            firestore_stall_recorder,
+            request_tracker,
+        )
 
         watchdog = LoopWatchdog(
             recorder=firestore_stall_recorder if settings.environment == "production" else None,
+            # Stalls nobody waited on (idle, CPU-throttled autoscaled instances)
+            # stay WARNING so they don't trip the >=10s stall alert.
+            request_tracker=request_tracker,
         )
         watchdog.start()
 
@@ -291,6 +298,12 @@ app.add_middleware(TenantMiddleware)
 # any work. No-op unless EDGE_AUTH_MODE is warn/enforce. See
 # backend/middleware/edge_auth.py.
 app.add_middleware(EdgeAuthMiddleware)
+
+# Counts in-flight requests for the loop watchdog (outermost, so every request that
+# waited on a stalled loop counts — even ones the edge lock rejects).
+from backend.services.loop_watchdog import RequestTrackingMiddleware  # noqa: E402
+
+app.add_middleware(RequestTrackingMiddleware)
 
 # Include routers
 app.include_router(health.router, prefix="/api")

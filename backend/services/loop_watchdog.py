@@ -46,6 +46,55 @@ _MAX_STACK_CHARS = 8000
 
 Recorder = Callable[[dict], None]
 
+
+class RequestTracker:
+    """Counts HTTP requests so the watchdog can tell whether a stall hurt anyone.
+
+    Mutated only on the event-loop thread (by ``RequestTrackingMiddleware``) and
+    read from the watchdog thread; plain ints are safe to read under the GIL.
+
+    Why (2026-10-12/13 flapping alert): Cloud Run autoscaling starts extra
+    instances that serve one request and then sit idle, CPU-throttled, while the
+    SpaCy/NLTK warmup thread trickles along for 10+ minutes. Those idle instances
+    produced 10-40s "stalls" (empty culprit — the freeze consumed the sampling
+    schedule) with no request on them, tripping the >=2-in-30min alert. A stall
+    with no request in flight and none queued behind it affects nobody.
+    """
+
+    def __init__(self) -> None:
+        self.in_flight = 0
+        self.started = 0
+
+    def begin(self) -> None:
+        self.in_flight += 1
+        self.started += 1
+
+    def end(self) -> None:
+        self.in_flight = max(0, self.in_flight - 1)
+
+
+# Process-wide tracker: the middleware is attached at import time, the watchdog
+# is created later in the lifespan — both share this instance.
+request_tracker = RequestTracker()
+
+
+class RequestTrackingMiddleware:
+    """Pure-ASGI middleware feeding ``request_tracker`` (no per-request allocation
+    beyond the wrapper call; outermost so even rejected requests count)."""
+
+    def __init__(self, app, tracker: Optional[RequestTracker] = None) -> None:
+        self.app = app
+        self.tracker = tracker or request_tracker
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            return await self.app(scope, receive, send)
+        self.tracker.begin()
+        try:
+            return await self.app(scope, receive, send)
+        finally:
+            self.tracker.end()
+
 # Innermost frames that mean "the loop is idle, waiting for I/O" — not blocked.
 _IDLE_FUNCS = {"select", "poll", "epoll", "kqueue", "control", "_run_once"}
 _IDLE_FILES = ("selectors.py", "base_events.py")
@@ -91,6 +140,8 @@ class LoopWatchdog:
         cpu_clock: Callable[[], float] = time.process_time,
         frozen_gap_s: float = 0.75,
         frozen_cpu_ratio: float = 0.25,
+        request_tracker: Optional[RequestTracker] = None,
+        request_grace_s: float = 0.5,
     ) -> None:
         self.tick_s = tick_s
         self.stall_threshold_s = stall_threshold_s
@@ -116,6 +167,16 @@ class LoopWatchdog:
         self._last_check: Optional[float] = None
         self._last_cpu = 0.0
         self._stall_frozen_s = 0.0
+        # With a tracker, a stall only escalates to ERROR (the alerting level) if
+        # a request was in flight when it began or arrived during it. Requests
+        # queued in the socket during the freeze are accepted right after the loop
+        # resumes, so the verdict waits ``request_grace_s`` after resume.
+        self.request_tracker = request_tracker
+        self.request_grace_s = request_grace_s
+        self._stall_in_flight = 0
+        self._stall_started_count = 0
+        self._resumed_at: Optional[float] = None
+        self._resumed_duration = 0.0
 
         self._last_tick = clock()
         self._loop_thread_id: Optional[int] = None
@@ -182,7 +243,15 @@ class LoopWatchdog:
         if self._samples and self._samples[-1]["stack"] == stack:
             return  # identical to the previous sample — nothing new to learn
         self._samples.append({"at_s": round(age, 1), "culprit": culprit, "stack": stack, "idle": False})
-        level = logging.ERROR if age >= self.error_threshold_s else logging.WARNING
+        # Same impact rule as _finish: an idle instance's stall never logs ERROR.
+        # (Requests still queued in the socket are invisible until the loop
+        # resumes, so this can under-call mid-stall; the ended line decides.)
+        no_impact = self.request_tracker is not None and self._requests_affected() == 0
+        level = (
+            logging.ERROR
+            if age >= self.error_threshold_s and not no_impact
+            else logging.WARNING
+        )
         logger.log(
             level,
             "EVENT_LOOP_STALL in progress age_ms=%d culprit=%s\n%s",
@@ -215,8 +284,17 @@ class LoopWatchdog:
                 self._samples = []
                 self._next_sample_idx = 0
                 self._stall_frozen_s = 0.0
+                self._resumed_at = None
+                if self.request_tracker is not None:
+                    self._stall_in_flight = self.request_tracker.in_flight
+                    self._stall_started_count = self.request_tracker.started
             else:
                 return
+        if self._resumed_at is not None:
+            # Loop already resumed; waiting out the grace window for queued requests.
+            if self._requests_affected() or now - self._resumed_at >= self.request_grace_s:
+                self._finish(self._resumed_duration)
+            return
         # Only the part of the frozen gap after the last heartbeat belongs to this stall.
         self._stall_frozen_s += min(frozen, age)
 
@@ -225,6 +303,10 @@ class LoopWatchdog:
             # The heartbeat that ended the stall fired one tick_s after the
             # previous one would have, so subtract the nominal sleep.
             duration = max(0.0, last - self._stall_started_tick - self.tick_s)
+            if self.request_tracker is not None and not self._requests_affected():
+                self._resumed_at = now
+                self._resumed_duration = duration
+                return
             self._finish(duration)
             return
 
@@ -245,9 +327,19 @@ class LoopWatchdog:
             self._next_sample_idx += 1
             self._sample(age)
 
+    def _requests_affected(self) -> int:
+        """Requests that waited on this stall: in flight at its start + started since."""
+        t = self.request_tracker
+        if t is None:
+            return 0
+        return self._stall_in_flight + max(0, t.started - self._stall_started_count)
+
     def _finish(self, duration: float) -> None:
         samples = self._samples
         frozen_s = self._stall_frozen_s
+        affected = self._requests_affected()
+        tracked = self.request_tracker is not None
+        self._resumed_at = None
         self._in_stall = False
         self._samples = []
         self._stall_frozen_s = 0.0
@@ -268,15 +360,23 @@ class LoopWatchdog:
         culprits = [s["culprit"] for s in samples if s["culprit"]]
         # The longest-lived sample is the most representative of the freeze.
         main_culprit = culprits[-1] if culprits else ""
-        level = logging.ERROR if duration >= self.error_threshold_s else logging.WARNING
+        # No request waited on it (idle, typically CPU-throttled instance) → never
+        # ERROR: the alert counts ERROR lines and nobody saw this freeze.
+        no_impact = tracked and affected == 0
+        level = (
+            logging.ERROR
+            if duration >= self.error_threshold_s and not no_impact
+            else logging.WARNING
+        )
         logger.log(
             level,
-            "EVENT_LOOP_STALL ended duration_ms=%d culprit=%s",
-            int(duration * 1000), main_culprit,
+            "EVENT_LOOP_STALL ended duration_ms=%d culprit=%s requests_affected=%s",
+            int(duration * 1000), main_culprit, affected if tracked else "unknown",
             extra={
                 "loop_stall_duration_ms": int(duration * 1000),
                 "loop_stall_culprit": main_culprit,
                 "loop_stall_culprits": culprits,
+                "loop_stall_requests_affected": affected if tracked else None,
             },
         )
         if self.recorder is not None and duration >= self.record_threshold_s:
@@ -286,6 +386,7 @@ class LoopWatchdog:
                     "culprit": main_culprit,
                     "culprits": culprits,
                     "stack": samples[-1]["stack"] if samples else "",
+                    "requests_affected": affected if tracked else None,
                 })
             except Exception:
                 logger.exception("Failed to record loop stall (non-fatal)")
@@ -332,6 +433,7 @@ def firestore_stall_recorder(stall: dict) -> None:
         "detail": {
             "duration_ms": stall["duration_ms"],
             "culprit": stall["culprit"][:300],
+            "requests_affected": stall.get("requests_affected"),
         },
         "culprits": [c[:300] for c in stall.get("culprits", [])][:5],
         "stack": stall.get("stack", "")[:_MAX_STACK_CHARS],
