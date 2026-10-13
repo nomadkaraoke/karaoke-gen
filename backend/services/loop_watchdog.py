@@ -167,6 +167,11 @@ class LoopWatchdog:
         self._last_check: Optional[float] = None
         self._last_cpu = 0.0
         self._stall_frozen_s = 0.0
+        # A freeze can carry the stall past every sample_at_s point without a
+        # sample. If the loop is STILL blocked after the thaw, that is real
+        # blocking — take one sample then so the stall has a culprit (2026-10-12:
+        # 10-40s ERROR stalls all had an empty culprit).
+        self._sample_after_thaw = False
         # With a tracker, a stall only escalates to ERROR (the alerting level) if
         # a request was in flight when it began or arrived during it. Requests
         # queued in the socket during the freeze are accepted right after the loop
@@ -247,9 +252,13 @@ class LoopWatchdog:
         # (Requests still queued in the socket are invisible until the loop
         # resumes, so this can under-call mid-stall; the ended line decides.)
         no_impact = self.request_tracker is not None and self._requests_affected() == 0
+        # Judge severity on blocked time only: frozen (throttled) time is discounted
+        # from the final duration too, so a post-thaw sample mustn't claim ERROR
+        # for a block that ends up below the threshold.
+        blocked = max(0.0, age - self._stall_frozen_s)
         level = (
             logging.ERROR
-            if age >= self.error_threshold_s and not no_impact
+            if blocked >= self.error_threshold_s and not no_impact
             else logging.WARNING
         )
         logger.log(
@@ -284,6 +293,7 @@ class LoopWatchdog:
                 self._samples = []
                 self._next_sample_idx = 0
                 self._stall_frozen_s = 0.0
+                self._sample_after_thaw = False
                 self._resumed_at = None
                 if self.request_tracker is not None:
                     self._stall_in_flight = self.request_tracker.in_flight
@@ -313,12 +323,21 @@ class LoopWatchdog:
         if frozen:
             # Just thawed: the loop's stack shows where the freeze caught it, not
             # what blocked it. Skip the samples due during the freeze.
+            skipped = False
             while (
                 self._next_sample_idx < len(self.sample_at_s)
                 and age >= self.sample_at_s[self._next_sample_idx]
             ):
                 self._next_sample_idx += 1
+                skipped = True
+            if skipped:
+                self._sample_after_thaw = True
             return
+
+        if self._sample_after_thaw:
+            # First on-time check after a freeze and the loop still hasn't ticked.
+            self._sample_after_thaw = False
+            self._sample(age)
 
         while (
             self._next_sample_idx < len(self.sample_at_s)

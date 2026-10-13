@@ -259,6 +259,76 @@ class TestThrottledProcessFreeze:
         assert recorded[0]["duration_ms"] == 8000
 
 
+class TestSampleAfterThaw:
+    """A freeze that skips every sample point must not leave a real post-thaw
+    block without a stack (2026-10-12: 10-40s ERROR stalls with culprit='')."""
+
+    def _wd(self):
+        clock, cpu = FakeClock(), FakeClock()
+        recorded = []
+        wd = LoopWatchdog(clock=clock, cpu_clock=cpu, recorder=recorded.append)
+        wd._loop_thread_id = 12345
+        return wd, clock, cpu, recorded
+
+    def _check(self, wd):
+        with patch("backend.services.loop_watchdog._is_idle_frame", return_value=False), \
+             patch("backend.services.loop_watchdog._format_stack",
+                   return_value=("stack", "backend/x.py:1 in blocker")), \
+             patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
+            wd.check()
+
+    def test_block_after_freeze_gets_a_culprit(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, cpu, recorded = self._wd()
+        wd._last_tick = clock.t
+        self._check(wd)
+        clock.t += 20.0                  # frozen past 1/5/15s sample points
+        self._check(wd)
+        for _ in range(int(12 / 0.25)):  # then really blocked for 12s
+            clock.t += 0.25
+            cpu.t += 0.001
+            self._check(wd)
+        clock.t += 0.25
+        wd._last_tick = clock.t
+        self._check(wd)
+        assert "EVENT_LOOP_STALL in progress" in caplog.text
+        assert recorded[0]["culprit"] == "backend/x.py:1 in blocker"
+        assert "duration_ms=12000" in caplog.text
+
+    def test_post_thaw_sample_level_ignores_frozen_time(self, caplog):
+        """20s freeze + 2s real block with a request waiting: WARNING, not ERROR."""
+        from backend.services.loop_watchdog import RequestTracker
+
+        caplog.set_level(logging.WARNING)
+        wd, clock, cpu, recorded = self._wd()
+        wd.request_tracker = RequestTracker()
+        wd.request_tracker.begin()
+        wd._last_tick = clock.t
+        self._check(wd)
+        clock.t += 20.0
+        self._check(wd)
+        for _ in range(8):
+            clock.t += 0.25
+            cpu.t += 0.001
+            self._check(wd)
+        progress = [r for r in caplog.records if "in progress" in r.getMessage()]
+        assert progress and all(r.levelno == logging.WARNING for r in progress)
+
+    def test_pure_freeze_still_silent(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, cpu, recorded = self._wd()
+        wd._last_tick = clock.t
+        self._check(wd)
+        clock.t += 20.0
+        self._check(wd)
+        clock.t += 0.25
+        cpu.t += 0.01
+        wd._last_tick = clock.t          # loop resumes on the first on-time check
+        self._check(wd)
+        assert "EVENT_LOOP_STALL" not in caplog.text
+        assert recorded == []
+
+
 def test_is_idle_frame_detects_parked_selector():
     """A thread blocked in selectors' select() is classified idle; a busy one isn't."""
     import selectors

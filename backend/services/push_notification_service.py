@@ -4,10 +4,12 @@ Push Notification Service for Web Push Notifications.
 Handles sending push notifications to users' browsers/devices using the Web Push protocol.
 Uses pywebpush library for VAPID authentication and push message encryption.
 """
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional, List
 
+from google.cloud.firestore_v1 import ArrayRemove
 from pywebpush import webpush, WebPushException
 
 from backend.config import get_settings
@@ -81,6 +83,26 @@ class PushNotificationService:
         return self.vapid_public_key
 
     async def send_push(
+        self,
+        user_email: str,
+        title: str,
+        body: str,
+        url: str = "/app/",
+        tag: Optional[str] = None,
+        tenant_id: Optional[str] = None
+    ) -> int:
+        """Async entry point: runs ``send_push_sync`` in a worker thread.
+
+        The body is all blocking I/O (a Firestore read, one ``webpush`` HTTP POST
+        per device, maybe a Firestore update). Running it on the API event loop
+        froze every request on the instance (loop watchdog, 2026-10-13:
+        ``push_notification_service.py:166 in send_push`` with a request waiting).
+        """
+        return await asyncio.to_thread(
+            self.send_push_sync, user_email, title, body, url, tag, tenant_id
+        )
+
+    def send_push_sync(
         self,
         user_email: str,
         title: str,
@@ -191,12 +213,12 @@ class PushNotificationService:
 
         # Remove invalid subscriptions
         if invalid_subscriptions:
-            await self._remove_invalid_subscriptions(user_email, invalid_subscriptions)
+            self._remove_invalid_subscriptions(user_email, invalid_subscriptions)
 
         logger.info(f"Push notifications sent to {success_count}/{len(subscriptions)} devices for {user_email}")
         return success_count
 
-    async def _remove_invalid_subscriptions(self, user_email: str, endpoints: List[str]) -> None:
+    def _remove_invalid_subscriptions(self, user_email: str, endpoints: List[str]) -> None:
         """Remove invalid subscriptions from user's list."""
         try:
             user_ref = self.db.collection("gen_users").document(user_email)
@@ -207,12 +229,15 @@ class PushNotificationService:
             user_data = user_doc.to_dict()
             current_subs = user_data.get("push_subscriptions", [])
 
-            # Filter out invalid subscriptions
-            valid_subs = [s for s in current_subs if s["endpoint"] not in endpoints]
+            stale = [s for s in current_subs if s["endpoint"] in endpoints]
 
-            if len(valid_subs) < len(current_subs):
-                user_ref.update({"push_subscriptions": valid_subs})
-                logger.info(f"Removed {len(current_subs) - len(valid_subs)} invalid subscriptions for {user_email}")
+            if stale:
+                # ArrayRemove deletes exactly these entries server-side, so a device
+                # registered concurrently (add_subscription) isn't overwritten by a
+                # whole-array rewrite. send_push_sync runs in a worker thread, so the
+                # two can now overlap within one instance too.
+                user_ref.update({"push_subscriptions": ArrayRemove(stale)})
+                logger.info(f"Removed {len(stale)} invalid subscriptions for {user_email}")
 
         except Exception as e:
             logger.error(f"Failed to remove invalid subscriptions: {e}")

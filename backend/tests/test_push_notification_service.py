@@ -100,6 +100,24 @@ class TestSendPush:
             assert result == 0
 
     @pytest.mark.asyncio
+    async def test_send_push_runs_off_the_event_loop_thread(self, push_service):
+        """The blocking Firestore/webpush body must not run on the API loop thread."""
+        import threading
+
+        loop_thread = threading.get_ident()
+        seen = {}
+
+        def fake_sync(*args, **kwargs):
+            seen["thread"] = threading.get_ident()
+            return 3
+
+        with patch.object(push_service, "send_push_sync", side_effect=fake_sync) as m:
+            result = await push_service.send_push("a@b.com", "T", "B", "/x", "tag", "singa")
+        assert result == 3
+        assert seen["thread"] != loop_thread
+        m.assert_called_once_with("a@b.com", "T", "B", "/x", "tag", "singa")
+
+    @pytest.mark.asyncio
     async def test_send_push_no_user(self, push_service):
         """send_push returns 0 when user not found."""
         # Mock user not existing
@@ -169,8 +187,15 @@ class TestSendPush:
             result = await push_service.send_push("test@example.com", "Title", "Body")
 
             assert result == 0
-            # Verify invalid subscription was cleaned up
-            push_service.db.collection.return_value.document.return_value.update.assert_called()
+            # Verify only the gone subscription is removed, atomically (ArrayRemove),
+            # rather than rewriting the whole array over a concurrent add.
+            from backend.services.push_notification_service import ArrayRemove
+            update = push_service.db.collection.return_value.document.return_value.update
+            update.assert_called_once()
+            (payload,), _ = update.call_args
+            assert payload == {"push_subscriptions": ArrayRemove([
+                mock_doc.to_dict.return_value["push_subscriptions"][0]
+            ])}
 
 
 class TestSubscriptionManagement:
