@@ -77,7 +77,10 @@ async function fetchAndStore(
   const base = deps.apiBaseUrl ?? "https://api.nomadkaraoke.com"
   const p = (async () => {
     try {
-      const response = await deps.fetchFn(
+      // Call unbound: Workers' fetch throws "Illegal invocation" when invoked as a
+      // method (this === deps) — that broke every edge config fetch in v0.268.6.
+      const fetchFn = deps.fetchFn
+      const response = await fetchFn(
         `${base}/api/tenant/config?tenant=${encodeURIComponent(tenantId)}`,
         {
           headers: { "Content-Type": "application/json", "X-Tenant-ID": tenantId },
