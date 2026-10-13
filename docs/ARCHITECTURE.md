@@ -818,6 +818,14 @@ window.__TENANT_CONFIG__ = { id: "vocalstar", branding: { ... }, features: { ...
 
 The frontend's `TenantProvider` reads `window.__TENANT_CONFIG__` on startup (no API round-trip needed for initial render). This approach works for both custom domains (`vocalstar.nomadkaraoke.com`) and the shared tenant portal domain.
 
+**Edge config cache** (`frontend/lib/edge/tenantConfigCache.ts`, v0.268.6). The edge cache works as stale-while-revalidate:
+- A config fetched under 5 minutes ago is served as is.
+- An older copy is still served, and a background refresh runs via `waitUntil`. Copies are kept up to 7 days.
+- A colo that has never cached the tenant waits on `/api/tenant/config` for at most 3s. On timeout or error the HTML goes out without injection, and `TenantProvider` fetches the config itself.
+- Concurrent misses in one isolate share a single backend fetch.
+
+Before this, a crawler loading 17 portal pages at once caused 17 simultaneous cache misses. Cloud Run spawned 5 cold instances, and the HTML waited 15-17s (2026-10-13). Branding changes still reach the edge within about 5 minutes, plus one page view to trigger the refresh.
+
 **Magic link emails**: When a tenant user requests a magic link, the email uses the tenant-specific URL (e.g., `https://vocalstar.nomadkaraoke.com/auth/verify?token=...`) rather than the main app URL. The `job_notification_service.py` resolves the correct base URL from the tenant config's `subdomain` field.
 
 **Admin preview**: Admins can preview any tenant's branding in the main app by appending `?preview_tenant=<tenant_id>` to any URL. This bypasses subdomain detection and loads the specified tenant config, useful for verifying branding before DNS cutover.
