@@ -10,30 +10,7 @@
  * Non-HTML requests (JS, CSS, images) pass through unmodified.
  */
 
-interface TenantBranding {
-  primary_color: string
-  secondary_color: string
-  accent_color: string | null
-  background_color: string | null
-  favicon_url: string | null
-  site_title: string
-}
-
-interface TenantPublicConfig {
-  id: string
-  name: string
-  subdomain: string
-  is_active: boolean
-  branding: TenantBranding
-}
-
-interface TenantConfigResponse {
-  tenant: TenantPublicConfig | null
-  is_default: boolean
-}
-
-const API_BASE_URL = "https://api.nomadkaraoke.com"
-const CACHE_TTL_SECONDS = 300 // 5 minutes
+import { getTenantConfig } from "../lib/edge/tenantConfigCache"
 
 /**
  * Compute a contrasting foreground color (black or white) for a given hex color.
@@ -72,60 +49,6 @@ function extractTenantFromHost(hostname: string): string | null {
 }
 
 /**
- * Fetch tenant config from backend with Cloudflare Cache API caching.
- */
-async function fetchTenantConfigCached(
-  tenantId: string,
-  cacheKey: string
-): Promise<TenantConfigResponse | null> {
-  // Try cache first
-  const cache = caches.default
-  const cachedResponse = await cache.match(cacheKey)
-  if (cachedResponse) {
-    try {
-      return await cachedResponse.json()
-    } catch {
-      // Cache corrupted, proceed to fetch
-    }
-  }
-
-  // Fetch from backend
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/api/tenant/config?tenant=${encodeURIComponent(tenantId)}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-Tenant-ID": tenantId,
-        },
-      }
-    )
-
-    if (!response.ok) {
-      console.error(`Tenant config fetch failed: ${response.status}`)
-      return null
-    }
-
-    const data: TenantConfigResponse = await response.json()
-
-    // Cache the response
-    const cacheResponse = new Response(JSON.stringify(data), {
-      headers: {
-        "Content-Type": "application/json",
-        "Cache-Control": `s-maxage=${CACHE_TTL_SECONDS}`,
-      },
-    })
-    // Don't await — fire-and-forget cache put
-    cache.put(cacheKey, cacheResponse)
-
-    return data
-  } catch (err) {
-    console.error("Failed to fetch tenant config:", err)
-    return null
-  }
-}
-
-/**
  * Escape a string for safe injection into an HTML <script> tag.
  * Prevents XSS via </script> or <!-- injection.
  */
@@ -153,9 +76,13 @@ export const onRequest: PagesFunction = async (context) => {
     return response
   }
 
-  // Fetch tenant config (cached at edge)
+  // Tenant config: edge-cached, stale-while-revalidate, bounded wait on a miss.
   const cacheKey = `${url.origin}/__tenant_config__/${tenantId}`
-  const config = await fetchTenantConfigCached(tenantId, cacheKey)
+  const config = await getTenantConfig(tenantId, cacheKey, {
+    cache: caches.default,
+    fetchFn: fetch,
+    waitUntil: (p) => context.waitUntil(p),
+  })
   if (!config || !config.tenant) {
     return response
   }
