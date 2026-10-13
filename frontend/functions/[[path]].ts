@@ -80,7 +80,7 @@ export const onRequest: PagesFunction = async (context) => {
   const cacheKey = `${url.origin}/__tenant_config__/${tenantId}`
   const config = await getTenantConfig(tenantId, cacheKey, {
     cache: caches.default,
-    fetchFn: fetch,
+    fetchFn: (input, init) => fetch(input, init),
     waitUntil: (p) => context.waitUntil(p),
   })
   if (!config || !config.tenant) {

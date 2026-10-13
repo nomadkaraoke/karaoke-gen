@@ -67,6 +67,18 @@ describe("getTenantConfig (edge stale-while-revalidate)", () => {
     expect(cache.store.has(KEY)).toBe(true)
   })
 
+  it("calls fetchFn unbound (Workers fetch throws 'Illegal invocation' as a method)", async () => {
+    // Mimics Cloudflare's fetch: any `this` other than undefined/global throws.
+    const fetchFn = jest.fn(function (this: unknown) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError("Illegal invocation: function called with incorrect `this` reference.")
+      }
+      return Promise.resolve(new Response(JSON.stringify(CONFIG), { status: 200 }))
+    })
+    const { deps } = setup(fetchFn as unknown as jest.Mock)
+    expect(await getTenantConfig("singa", KEY, deps)).toEqual(CONFIG)
+  })
+
   it("serves a fresh cache hit without touching the backend", async () => {
     const { fetchFn, deps, background, advance } = setup()
     await getTenantConfig("singa", KEY, deps)
