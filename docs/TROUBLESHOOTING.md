@@ -75,6 +75,8 @@ defense-in-depth beneath the signing-free review path.
 3. **Measure user impact:** `python scripts/client_events_report.py --days 7`. It excludes admin/internal/test accounts unless you pass `--all`, and lists `server_loop_stall` culprits.
 4. **If there are no `EVENT_LOOP_STALL` lines:** the cause is elsewhere (cold start, deploy swap, Cloudflare). Check `banner_waking` events and revision times.
 
+5. **Alert "≥2 event-loop stalls of 10s+" fired but no user complained:** check `requests_affected=` on the `EVENT_LOOP_STALL ended` lines. Since v0.268.5 a stall is ERROR, the level the alert counts, only if a request was in flight or queued behind it. Before that, idle autoscaled instances that were CPU-throttled during the ~10-minute SpaCy warmup logged 10-40s "stalls" with an empty `culprit=` and paged (2026-10-12/13). Lines with `requests_affected=0` stay at WARNING.
+
 Background: `docs/archive/2026-10-03-backend-loop-freezes-telemetry-plan.md`.
 
 ## Emails not arriving / E2E "Timed out waiting for email" (Postmark HTML 403)

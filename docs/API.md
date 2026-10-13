@@ -3002,7 +3002,8 @@ ignored. `device_fingerprint` is the FingerprintJS `visitorId` (same one the mag
 abuse checks store), `tab_id` is per browser tab, `episode_id` groups one degradation
 episode (first banner → `banner_recovered`), and `tenant` is derived from the page URL.
 `server_loop_stall` docs (written by the backend's event-loop watchdog, `source: "server"`)
-share the collection; clients can't submit that type (422).
+share the collection; clients can't submit that type (422). Their `detail.requests_affected`
+counts requests that waited on the stall (0 = idle instance; the field is absent on events written before v0.268.5).
 Summary: `python scripts/client_events_report.py [--days N] [--all]`.
 
 Each event emits a structured `client_event type=…` INFO log line and is
