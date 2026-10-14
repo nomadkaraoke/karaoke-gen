@@ -1,0 +1,40 @@
+# Paths whose changes make CI publish a new karaoke-gen release to PyPI.
+#
+# PyPI is only the public `pip install karaoke-gen` channel for the CLIs
+# (karaoke-gen, karaoke-gen-remote, karaoke-bulk). Nothing in production
+# installs from it: Cloud Run builds from source, and the GCE encoding worker
+# pulls the wheel from GCS. Each wheel is ~62 MiB (it bundles the 33-locale
+# Next.js review UI), and PyPI caps the whole project at 10 GB, so publishing
+# on every merge to main filled the cap every few weeks.
+#
+# CI (.github/workflows/ci.yml, "Decide PyPI publish" → scripts/pypi_publish_gate.py)
+# diffs these paths between the latest version on PyPI (git tag v<version>)
+# and HEAD. No diff → no upload; the git tag and GitHub release are still
+# created. pyproject.toml is checked separately with its version line ignored,
+# because every PR bumps it.
+#
+# Force a publish anyway with "[publish-pypi]" in the merge commit message (e.g.
+# in the PR title) or Actions → CI → Run workflow → "Publish to PyPI".
+#
+# tests/unit/test_pypi_publish_gate.py derives the backend.* import
+# closure of karaoke_gen and fails if a module the CLI imports is not listed.
+#
+# Deliberately NOT listed (they would trigger a ~62 MiB upload on most merges):
+#   - frontend/**: the CLI's local review server bundles the Next.js export, but
+#     review-UI tweaks reach CLI users with the next CLI release, which is good
+#     enough. Force a publish if a UI fix must reach CLI users now.
+#   - backend/config.py: cloud-service settings, changed on most backend PRs.
+#     The CLI only imports it indirectly (theme listing via storage_service).
+#
+# One git pathspec per line; blank lines and # comments are ignored.
+karaoke_gen/
+backend/__init__.py
+backend/models/__init__.py
+backend/models/theme.py
+backend/services/__init__.py
+backend/services/langfuse_preloader.py
+backend/services/local_preview_encoding_service.py
+backend/services/nltk_preloader.py
+backend/services/spacy_preloader.py
+backend/services/storage_service.py
+backend/services/theme_service.py

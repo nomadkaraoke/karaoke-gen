@@ -16,6 +16,13 @@ on:
         description: "Force a blue-green redeploy of the GCE encoding worker"
         type: boolean
         default: false
+      publish_pypi:
+        # Manual override for the PyPI publish gate (see "Decide PyPI publish"
+        # in package-publish). Publishes the current version to PyPI even if no
+        # CLI-affecting path changed since the latest version there.
+        description: "Publish to PyPI (even without CLI-affecting changes)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -935,7 +942,7 @@ jobs:
     name: "Deploy - Publish to PyPI"
     runs-on: ubuntu-latest
     needs: [package-build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -974,14 +981,32 @@ jobs:
             echo "✨ Tag v$VERSION does not exist, proceeding with release"
           fi
 
+      # Publish only when something CLI users get changed since the latest
+      # version on PyPI (scripts/pypi_publish_paths.txt, or pyproject.toml beyond
+      # the version bump). Each wheel is ~62 MiB and PyPI caps the project at
+      # 10 GB; publishing on every merge filled it every few weeks. PyPI is only
+      # the public `pip install` channel — Cloud Run and the encoding worker
+      # (GCS wheel) don't use it. Force: "[publish-pypi]" in the commit message
+      # or the workflow_dispatch input. The tag + GitHub release below still
+      # happen on every release (the encoding-worker gate diffs against tags).
+      - name: Decide PyPI publish
+        id: pypi_gate
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_pypi == true }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          ARGS=(--current-version "${{ steps.extract_version.outputs.version }}" --commit-message "$COMMIT_MESSAGE")
+          if [ "$FORCE" = "true" ]; then ARGS+=(--force); fi
+          python scripts/pypi_publish_gate.py "${ARGS[@]}"
+
       - name: Publish to PyPI
-        if: steps.check_tag.outputs.tag_exists == 'false'
+        if: steps.pypi_gate.outputs.publish == 'true'
         run: |
           echo "📦 Publishing the following files to PyPI:"
           ls -la dist/
           echo "🚀 Publishing to PyPI..."
           poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
-          poetry publish
+          poetry publish --skip-existing
 
       - name: Create Git Tag
         if: steps.check_tag.outputs.tag_exists == 'false'
@@ -1003,12 +1028,10 @@ jobs:
             This release was automatically created from the main branch.
 
             ### Installation
-            ```bash
-            pip install karaoke-gen==${{ steps.extract_version.outputs.version }}
-            ```
+            ${{ steps.pypi_gate.outputs.publish == 'true' && format('`pip install karaoke-gen=={0}`', steps.extract_version.outputs.version) || 'Not published to PyPI (no CLI-affecting changes); install the wheel attached below.' }}
 
             ### Assets
-            - Python package published to PyPI
+            - Python wheel attached below
             - Frontend deployed to Cloudflare Pages at gen.nomadkaraoke.com
 
             For detailed changes, see the commit history.
