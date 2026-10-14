@@ -190,7 +190,9 @@ unaffected.
 deletion snippet, or run `python scripts/prune_pypi_releases.py` yourself. Full
 runbook: **[docs/PYPI-STORAGE-PRUNE.md](PYPI-STORAGE-PRUNE.md)**. After pruning,
 re-run the failed job: the gate diffs against the version on PyPI, so it still
-sees the unpublished CLI change.
+sees the unpublished CLI change. The `package-dist` build artifact only lives for
+one day, so if the failure is older, run a fresh CI workflow on `main` instead
+(Actions → CI → Run workflow, ticking **"Publish to PyPI"**).
 
 ## A CLI change isn't on PyPI
 

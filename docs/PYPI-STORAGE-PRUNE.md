@@ -75,9 +75,9 @@ public `pip install` channel, whose users want recent versions).
 3. Open browser devtools → **Console**.
 4. Paste the snippet and press Enter. It reads the page's CSRF token and POSTs a
    whole-version delete for each planned version, ~0.5s apart, logging progress.
-5. Reload to confirm. If a publish was blocked, re-run it: push an empty commit /
-   re-run the failed CI `Deploy - Publish to PyPI` job, or `poetry publish`
-   locally.
+5. Reload to confirm. If a publish was blocked, re-run the failed CI
+   `Deploy - Publish to PyPI` job (within a day; its build artifact expires), or
+   run Actions → CI → Run workflow on `main` with **"Publish to PyPI"** ticked.
 
 > The aggregate `pypi.org/pypi/karaoke-gen/json` is Fastly-cached and lags a few
 > minutes after deletes — trust the logged-in manage page for live state.
