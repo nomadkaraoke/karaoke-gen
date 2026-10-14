@@ -62,6 +62,16 @@ class TestClassify:
         c = bf.classify(_video("Beyoncé – Halo (Karaoke)"))
         assert c["eligible"] and c["artist"] == "Beyoncé" and c["song_title"] == "Halo"
 
+    def test_translated_title_parses_language_and_clean_song_title(self):
+        c = bf.classify(_video("Shakira - Hips Don't Lie (With Translation into Spanish) (Karaoke)"))
+        assert c["eligible"] and c["artist"] == "Shakira"
+        assert c["song_title"] == "Hips Don't Lie"
+        assert c["translation_language_name"] == "Spanish"
+
+    def test_untranslated_title_has_no_translation_language(self):
+        c = bf.classify(_video("Coldplay - Yellow (Karaoke)"))
+        assert c["translation_language_name"] is None
+
 
 class TestBuildEntries:
     def test_targets_and_skip_and_override(self):
@@ -96,6 +106,33 @@ class TestBuildEntries:
         assert entries[0]["brand_code"] == "NOMAD-1603"
         assert entries[0]["will_change"] is False
 
+    def test_translated_video_matching_upload_description_is_left_alone(self):
+        """A translated upload's live description must not be rewritten without its notice."""
+        from backend.services.youtube_description import build_youtube_title, render_youtube_description
+        title = build_youtube_title("Shakira", "Hips Don't Lie", "Spanish")
+        current = render_youtube_description(
+            artist="Shakira", title="Hips Don't Lie", brand_code="NOMAD-2001",
+            translation_language_name="Spanish",
+        )
+        v = _video(title, current, vid="t")
+        entries = bf.build_entries({"t": v}, ["t"], skip_ids=set(), include_overrides={})
+        assert entries[0]["target"]
+        assert entries[0]["will_change"] is False
+
+    def test_translated_video_reverted_description_gets_notice_restored(self):
+        from backend.services.youtube_description import build_youtube_title, render_youtube_description
+        title = build_youtube_title("Shakira", "Hips Don't Lie", "Spanish")
+        reverted = render_youtube_description(
+            artist="Shakira", title="Hips Don't Lie (With Translation into Spanish)",
+            brand_code="NOMAD-2001",
+        )
+        v = _video(title, reverted, vid="t")
+        entries = bf.build_entries({"t": v}, ["t"], skip_ids=set(), include_overrides={})
+        assert entries[0]["will_change"] is True
+        new_desc = bf.render_for(entries[0])
+        assert new_desc.startswith("This karaoke video includes translated lyrics (Spanish)")
+        assert "(With Translation into Spanish)" not in new_desc
+
 
 class TestBuildUpdateSnippet:
     def test_preserves_title_category_and_swaps_description(self):
@@ -116,6 +153,15 @@ class TestBuildUpdateSnippet:
         assert "karaoke" in body["tags"]
         assert "Coldplay" in body["tags"]
         assert body["tags"] != ["old"]
+
+    def test_translated_video_keeps_title_and_tags_use_clean_song_title(self):
+        title = "Shakira - Hips Don't Lie (With Translation into Spanish) (Karaoke)"
+        entry = bf.classify(_video(title))
+        body = bf.build_update_snippet({"title": title, "categoryId": "10"}, entry, enrich_tags=True)
+        assert body["title"] == title
+        assert "Hips Don't Lie" in body["tags"]
+        assert not any("Translation" in t for t in body["tags"])
+        assert "translated lyrics (Spanish)" in body["description"]
 
     def test_missing_category_defaults_to_music(self):
         entry = bf.classify(_video("Coldplay - Yellow (Karaoke)"))

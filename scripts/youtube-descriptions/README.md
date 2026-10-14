@@ -76,6 +76,13 @@ Both live in the backend package so they ship in the Cloud Run image:
   title/tags/category/language; only `--update-tags` refreshes tags.
 - **Idempotent + resumable.** Only videos whose rendered description actually
   differs are updated.
+- **Per-video variants must be recoverable from the live title.** The worker
+  re-checks the *whole* channel every day (even after a cycle completes), so any
+  description variant the upload pipeline renders — tempo notice, translated-lyrics
+  notice — has to be re-derived from the YouTube title or the worker will
+  "correct" it away. `classify()` strips the `(With Translation into <Language>)`
+  label from the parsed song title and passes the language to the renderer; add
+  the same handling here for any new per-video variant.
 - **Quota-capped.** `videos.update` = 50 units; the worker also reserves headroom
   for uploads via `YouTubeQuotaService`.
 
