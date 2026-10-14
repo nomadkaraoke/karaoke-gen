@@ -145,9 +145,19 @@ def test_same_day_uploads_pick_latest_overall():
 def test_console_js_is_wellformed_and_contains_versions():
     js = prune.render_console_js("karaoke-gen", ["1.2.3", "4.5.6"])
     assert "confirm_delete_version" in js
-    assert "csrf_token" in js
     assert json.dumps(["1.2.3", "4.5.6"]) in js
     assert "/manage/project/${project}/release/" in js
+
+
+def test_console_js_submits_every_form_field_and_verifies_by_404():
+    # PyPI's delete form requires acknowledge_* checkboxes (2026) and answers a
+    # rejected submit with a 200 re-render, so the snippet must copy the form's
+    # checkbox + hidden (CSRF) inputs and only count a 404 afterwards as deleted.
+    js = prune.render_console_js("karaoke-gen", ["1.2.3"])
+    assert 'i.type === "checkbox"' in js
+    assert 'i.type === "hidden"' in js
+    assert "check.status === 404" in js
+    assert "res.ok" not in js
 
 
 def test_render_json_shape():
