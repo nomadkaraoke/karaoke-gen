@@ -160,7 +160,7 @@ npm run build
 npx wrangler pages deploy out
 ```
 
-Requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` environment variables (set via `.envrc` or exported manually). The `wrangler.toml` in the repo root configures the project name and build output directory.
+Requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` environment variables (set via `.envrc` or exported manually). Since 2026-10-14 these must point at the dedicated **Nomad Karaoke** Cloudflare account (`4585249dcf5d2f9fb4e075c5382cd071`) — the workspace `.envrc` does this (the personal account is `PERSONAL_CLOUDFLARE_*` there), as do the CI GitHub secrets of the same names (Pages-only token). The `wrangler.toml` in the repo root configures the project name (`karaoke-gen`, i.e. `karaoke-gen-9k4.pages.dev`, custom domain `gen.nomadkaraoke.com`) and build output directory. Tenant portals deploy to the separate `karaoke-gen-tenant` project (`karaoke-gen-tenant-x0h.pages.dev`); the pages.dev names carry suffixes because they are globally unique and the projects were recreated in the new account.
 
 ### Testing Tenant Portals Locally
 
