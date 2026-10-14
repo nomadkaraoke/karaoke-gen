@@ -30,7 +30,7 @@ version on PyPI (git tag `v<version>`):
 
 Frontend changes (the bundled review UI) and `backend/config.py` are deliberately
 not gated; they reach CLI users with the next CLI release. Force a publish with
-**`[publish-pypi]`** in the merge commit message (PR title) or Actions → CI → Run
+**`[publish-pypi]`** in the PR title (only the squash commit's subject line counts) or Actions → CI → Run
 workflow → **"Publish to PyPI"**. The git tag and GitHub release (with the wheel
 attached) are still created for every version. If PyPI or git can't be read, the
 gate publishes (fails open). Replayed over v0.200–v0.268 it would have published

@@ -986,8 +986,8 @@ jobs:
       # the version bump). Each wheel is ~62 MiB and PyPI caps the project at
       # 10 GB; publishing on every merge filled it every few weeks. PyPI is only
       # the public `pip install` channel — Cloud Run and the encoding worker
-      # (GCS wheel) don't use it. Force: "[publish-pypi]" in the commit message
-      # or the workflow_dispatch input. The tag + GitHub release below still
+      # (GCS wheel) don't use it. Force: "[publish-pypi]" in the commit subject
+      # (PR title) or the workflow_dispatch input. The tag + GitHub release below still
       # happen on every release (the encoding-worker gate diffs against tags).
       - name: Decide PyPI publish
         id: pypi_gate

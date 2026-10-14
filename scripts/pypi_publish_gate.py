@@ -10,8 +10,8 @@ something CLI users get has changed since the latest version on PyPI:
   * a path in scripts/pypi_publish_paths.txt changed, or
   * pyproject.toml changed in anything other than its `version = ...` line
     (dependencies, entry points, package includes), or
-  * a publish was forced ("[publish-pypi]" in the commit message, or the
-    workflow_dispatch input).
+  * a publish was forced ("[publish-pypi]" in the commit subject, i.e. the PR
+    title, or the workflow_dispatch input).
 
 The diff base is the version currently on PyPI, not the previous commit, so a
 skipped or failed publish can never lose a CLI change: the next push still sees
@@ -93,8 +93,11 @@ def decide(
 ) -> Decision:
     if force:
         return Decision(True, "forced by workflow_dispatch input")
-    if FORCE_MARKER in commit_message:
-        return Decision(True, f"forced by {FORCE_MARKER} in the commit message")
+    # Subject line only (= the PR title on a squash merge). The body carries the
+    # whole PR description, which may just mention the marker (PR #1145 did).
+    subject = commit_message.splitlines()[0] if commit_message else ""
+    if FORCE_MARKER in subject:
+        return Decision(True, f"forced by {FORCE_MARKER} in the commit subject")
 
     try:
         pypi_version = get_pypi_version()

@@ -13,8 +13,8 @@
 # created. pyproject.toml is checked separately with its version line ignored,
 # because every PR bumps it.
 #
-# Force a publish anyway with "[publish-pypi]" in the merge commit message (e.g.
-# in the PR title) or Actions → CI → Run workflow → "Publish to PyPI".
+# Force a publish anyway with "[publish-pypi]" in the PR title (the squash
+# commit's subject line; the body is ignored) or Actions → CI → Run workflow → "Publish to PyPI".
 #
 # tests/unit/test_pypi_publish_gate.py derives the backend.* import
 # closure of karaoke_gen and fails if a module the CLI imports is not listed.
