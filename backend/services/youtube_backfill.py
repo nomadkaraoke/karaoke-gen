@@ -35,6 +35,10 @@ KARAOKE_TITLE_RE = re.compile(
 )
 FALLBACK_TITLE_RE = re.compile(r"^\s*(?P<artist>.+?)\s*[-–—]\s*(?P<title>.+?)\s*$")
 BRAND_CODE_RE = re.compile(r"\bNOMAD(?:NP)?-\d{3,}\b")
+# Label build_youtube_title puts before "(Karaoke)" on videos with translated lyrics.
+# Stripped from the parsed song title and fed back to the renderer so the rewrite
+# keeps the translation notice instead of baking the label into the description.
+TRANSLATION_LABEL_RE = re.compile(r"\s*\(\s*With Translation into (?P<lang>[^)]+?)\s*\)\s*$", re.IGNORECASE)
 
 # Description substrings that signal "this is one of our karaoke uploads".
 KARAOKE_DESC_MARKERS = (
@@ -137,6 +141,13 @@ def classify(video: Dict) -> Dict:
             song_title = m2.group("title").strip()
             parse_conf = "medium"
 
+    translation_language_name = None
+    if song_title:
+        tm = TRANSLATION_LABEL_RE.search(song_title)
+        if tm:
+            translation_language_name = tm.group("lang")
+            song_title = song_title[: tm.start()].strip()
+
     if "ai-powered vocal separation" in low_desc:
         kind = "terse_new"
     elif "fiverr.com" in low_desc:
@@ -159,6 +170,7 @@ def classify(video: Dict) -> Dict:
         "artist": artist,
         "song_title": song_title,
         "brand_code": brand_code,
+        "translation_language_name": translation_language_name,
         "parse_confidence": parse_conf,
         "kind": kind,
         "is_karaoke": is_karaoke,
@@ -173,6 +185,7 @@ def render_for(entry: Dict) -> str:
         artist=entry.get("artist"),
         title=entry.get("song_title"),
         brand_code=entry.get("brand_code"),
+        translation_language_name=entry.get("translation_language_name"),
     )
 
 
