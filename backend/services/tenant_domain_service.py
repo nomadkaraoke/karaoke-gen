@@ -189,7 +189,7 @@ class TenantDomainService:
             self._request(
                 "PATCH",
                 f"/zones/{self.zone_id}/dns_records/{record['id']}",
-                json={"content": self.pages_target},
+                json={"content": self.pages_target, "proxied": True},
             )
             logger.info(f"Repointed DNS CNAME {hostname} -> {self.pages_target}")
         elif not ours:
