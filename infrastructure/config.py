@@ -232,7 +232,7 @@ class CloudflareConfig:
     # edge module activates as soon as a WAF/DNS-scoped `cloudflare:apiToken`
     # is set. NOTE: the zone is on the **Free** plan (managed WAF ruleset is
     # Pro+; see managed_waf_enabled).
-    DEFAULT_ZONE_ID = "807f07f458f9cd38251f3b7948d55172"
+    DEFAULT_ZONE_ID = "2324a342622e93343cf4e08227d82c02"  # Nomad Karaoke account since 2026-10
 
     @staticmethod
     def enabled():
