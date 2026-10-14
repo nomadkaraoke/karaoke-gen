@@ -100,11 +100,19 @@ def test_already_on_pypi_skips_without_touching_git():
     assert git.calls == []
 
 
-@pytest.mark.parametrize("kwargs", [{"force": True}, {"message": "fix: cli flag [publish-pypi]\n\nbody"}])
+@pytest.mark.parametrize("kwargs", [{"force": True}, {"message": "fix: cli flag [publish-pypi] (#12)\n\nbody"}])
 def test_force_publishes_even_without_changes(kwargs):
     git = FakeGit(changed=[])
     assert _decide(git, **kwargs).publish is True
     assert git.calls == []
+
+
+def test_marker_in_commit_body_does_not_force():
+    # A squash merge's body is the PR description, which may just *mention* the
+    # marker (PR #1145's did, forcing an unwanted publish).
+    git = FakeGit(changed=[])
+    d = _decide(git, message="ci: gate PyPI publish (#1145)\n\nForce with `[publish-pypi]` in the PR title.")
+    assert d.publish is False
 
 
 def test_fails_open_when_pypi_unreachable():

@@ -30,7 +30,7 @@ version on PyPI (git tag `v<version>`):
 
 Frontend changes (the bundled review UI) and `backend/config.py` are deliberately
 not gated; they reach CLI users with the next CLI release. Force a publish with
-**`[publish-pypi]`** in the merge commit message (PR title) or Actions → CI → Run
+**`[publish-pypi]`** in the PR title (only the squash commit's subject line counts) or Actions → CI → Run
 workflow → **"Publish to PyPI"**. The git tag and GitHub release (with the wheel
 attached) are still created for every version. If PyPI or git can't be read, the
 gate publishes (fails open). Replayed over v0.200–v0.268 it would have published
@@ -73,14 +73,23 @@ public `pip install` channel, whose users want recent versions).
 1. Open the tracking issue (or run the script locally, below) to get the snippet.
 2. Go to **<https://pypi.org/manage/project/karaoke-gen/releases/>** and log in.
 3. Open browser devtools → **Console**.
-4. Paste the snippet and press Enter. It reads the page's CSRF token and POSTs a
-   whole-version delete for each planned version, ~0.5s apart, logging progress.
+4. Paste the snippet and press Enter. For each planned version it reads that
+   release's delete form (CSRF token plus the required `acknowledge_*`
+   checkboxes), submits it, and counts it deleted only once the release's manage
+   page 404s. If every version logs "still exists", PyPI changed the form again:
+   inspect the form fields on one release page and update `render_console_js`.
 5. Reload to confirm. If a publish was blocked, re-run the failed CI
    `Deploy - Publish to PyPI` job (within a day; its build artifact expires), or
    run Actions → CI → Run workflow on `main` with **"Publish to PyPI"** ticked.
 
 > The aggregate `pypi.org/pypi/karaoke-gen/json` is Fastly-cached and lags a few
 > minutes after deletes — trust the logged-in manage page for live state.
+> Even the per-version `pypi.org/pypi/karaoke-gen/<v>/json` stayed 200 for minutes
+> after deletes on 2026-10-14; the manage page 404 is the reliable check.
+
+**Prune log:** 2026-06-22 (42 releases, → 6.36 GB) · 2026-09-29 (69, → ~6.8 GB) ·
+2026-10-14 (88 at `--keep-days 14`, 10.73 → ~4.1 GB; 53 kept, done alongside the
+publish gate).
 
 ## Running the planner locally
 

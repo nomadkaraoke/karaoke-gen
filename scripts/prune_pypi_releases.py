@@ -162,32 +162,40 @@ def render_console_js(project: str, versions: list[str]) -> str:
     """A snippet to paste into the browser console on the logged-in PyPI page:
     https://pypi.org/manage/project/<project>/releases/
 
-    It reads the session CSRF token from the page and POSTs a whole-version
-    delete for each listed version, ~500ms apart, logging progress.
+    For each version it fetches that release's manage page, reads the real
+    delete-version form (CSRF token plus every required "acknowledge_*"
+    checkbox; PyPI added those in 2026 and silently re-renders the page with a
+    200 if any is missing), POSTs it, then counts the version as deleted only if
+    its manage page now 404s. ~400ms apart, logging progress.
     """
     versions_json = json.dumps(versions)
     return f"""// Paste on https://pypi.org/manage/project/{project}/releases/ while logged in.
 (async () => {{
   const project = {json.dumps(project)};
   const versions = {versions_json};
-  const el = document.querySelector('input[name="csrf_token"]');
-  if (!el) {{ console.error("No csrf_token on page — are you on the releases management page, logged in?"); return; }}
-  const csrf = el.value;
   let ok = 0, fail = 0;
   for (const v of versions) {{
+    const page = `/manage/project/${{project}}/release/${{encodeURIComponent(v)}}/`;
     try {{
-      const res = await fetch(`/manage/project/${{project}}/release/${{encodeURIComponent(v)}}/`, {{
-        method: "POST",
-        credentials: "include",
-        headers: {{ "Content-Type": "application/x-www-form-urlencoded" }},
-        body: `csrf_token=${{encodeURIComponent(csrf)}}&confirm_delete_version=${{encodeURIComponent(v)}}`,
-      }});
-      if (res.ok || res.redirected) {{ ok++; console.log(`✓ deleted ${{v}} (${{ok}}/${{versions.length}})`); }}
-      else {{ fail++; console.warn(`✗ ${{v}} → HTTP ${{res.status}}`); }}
+      const res = await fetch(page, {{ credentials: "include" }});
+      if (res.status === 404) {{ ok++; console.log(`✓ ${{v}} already gone`); continue; }}
+      const doc = new DOMParser().parseFromString(await res.text(), "text/html");
+      const form = [...doc.querySelectorAll("form")].find(f => f.querySelector('[name="confirm_delete_version"]'));
+      if (!form) {{ fail++; console.warn(`✗ ${{v}}: no delete form — logged in as an owner?`); continue; }}
+      const body = new URLSearchParams();
+      for (const i of form.querySelectorAll("input")) {{
+        if (i.type === "checkbox") body.append(i.name, i.value || "on");
+        else if (i.type === "hidden") body.append(i.name, i.value);
+      }}
+      body.set("confirm_delete_version", v);
+      await fetch(page, {{ method: "POST", credentials: "include", body }});
+      const check = await fetch(page, {{ credentials: "include" }});
+      if (check.status === 404) {{ ok++; console.log(`✓ deleted ${{v}} (${{ok}}/${{versions.length}})`); }}
+      else {{ fail++; console.warn(`✗ ${{v}} still exists (HTTP ${{check.status}}) — the delete form may have changed`); }}
     }} catch (e) {{ fail++; console.warn(`✗ ${{v}}`, e); }}
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 400));
   }}
-  console.log(`Done. deleted=${{ok}} failed=${{fail}}. Reload to confirm.`);
+  console.log(`Done. deleted=${{ok}} failed=${{fail}}.`);
 }})();
 """
 
