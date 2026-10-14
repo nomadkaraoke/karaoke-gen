@@ -37,7 +37,8 @@ source /Users/andrew/Projects/nomadkaraoke/.envrc   # CF token + account id
 ```
 
 Idempotent. NOT Pulumi/wrangler-managed — the `karaokehunt.com` zone
-(`02440ab623269c428be9e65a16bee280`, Andrew's account `a7dd2a2b…`) is outside
+(`a9136845466472d41ea82a156059ad9b`, the Nomad Karaoke account `4585249d…` since
+2026-10-14; previously zone `02440ab6…` in Andrew's personal account) is outside
 IaC, so this script + `docs/ARCHITECTURE.md` are the change record.
 
 ## Kill switch
@@ -46,7 +47,7 @@ Delete the Worker route (fast, reversible — requests fall through to the dead
 origin again, i.e. pre-interceptor behaviour):
 
 ```bash
-curl -sX GET "https://api.cloudflare.com/client/v4/zones/02440ab623269c428be9e65a16bee280/workers/routes" \
+curl -sX GET "https://api.cloudflare.com/client/v4/zones/a9136845466472d41ea82a156059ad9b/workers/routes" \
   -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"   # find route id
 curl -sX DELETE ".../workers/routes/<id>" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
 ```

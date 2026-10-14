@@ -14,7 +14,7 @@
  * backend finishes its handler independently.
  *
  * Deployed by deploy.sh (NOT Pulumi/wrangler): zone karaokehunt.com
- * (02440ab623269c428be9e65a16bee280) in Andrew's Cloudflare account.
+ * (a9136845466472d41ea82a156059ad9b) in the Nomad Karaoke Cloudflare account.
  * FORWARDER_SECRET binding = Secret Manager `karaokehunt-forwarder-secret`.
  */
 export default {
