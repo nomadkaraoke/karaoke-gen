@@ -7,7 +7,7 @@ the tenant id from the first hostname label). Cloudflare Pages has no wildcard
 custom domains, so each tenant needs two Cloudflare objects:
 
 1. a Pages custom domain on ``karaoke-gen-tenant`` (Cloudflare issues the cert), and
-2. a proxied ``CNAME {tenant_id} -> karaoke-gen-tenant.pages.dev`` in the
+2. a proxied ``CNAME {tenant_id} -> <project>.pages.dev`` (``PAGES_TARGET``) in the
    ``nomadkaraoke.com`` zone.
 
 Both operations are idempotent. We never take over or delete a DNS record that
@@ -32,10 +32,16 @@ logger = logging.getLogger(__name__)
 CF_API = "https://api.cloudflare.com/client/v4"
 CF_TOKEN_SECRET = "cloudflare-tenant-domains-token"
 # Non-secret identifiers (overridable for tests / other environments).
-CF_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "a7dd2a2bee7151ef4dc7a9f53d99b520")
-CF_ZONE_ID = os.getenv("CLOUDFLARE_NOMADKARAOKE_ZONE_ID", "807f07f458f9cd38251f3b7948d55172")
+# The "Nomad Karaoke" Cloudflare account (admin@nomadkaraoke.com) since 2026-10.
+CF_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "4585249dcf5d2f9fb4e075c5382cd071")
+CF_ZONE_ID = os.getenv("CLOUDFLARE_NOMADKARAOKE_ZONE_ID", "2324a342622e93343cf4e08227d82c02")
 PAGES_PROJECT = os.getenv("TENANT_PAGES_PROJECT", "karaoke-gen-tenant")
-PAGES_TARGET = f"{PAGES_PROJECT}.pages.dev"
+# A Pages project's *.pages.dev subdomain is globally unique, so the project recreated in the
+# new account got a suffixed one; it is not derivable from the project name.
+PAGES_TARGET = os.getenv("TENANT_PAGES_TARGET", "karaoke-gen-tenant-x0h.pages.dev")
+# CNAME targets written before the account move. Still treated as ours so existing tenant
+# records can be checked and deprovisioned (never created).
+LEGACY_PAGES_TARGETS = frozenset({"karaoke-gen-tenant.pages.dev"})
 BASE_DOMAIN = "nomadkaraoke.com"
 
 
@@ -82,13 +88,15 @@ class TenantDomainService:
         account_id: str = CF_ACCOUNT_ID,
         zone_id: str = CF_ZONE_ID,
         pages_project: str = PAGES_PROJECT,
+        pages_target: str = PAGES_TARGET,
     ):
         self._api_token = api_token
         self._client = client
         self.account_id = account_id
         self.zone_id = zone_id
         self.pages_project = pages_project
-        self.pages_target = f"{pages_project}.pages.dev"
+        self.pages_target = pages_target.rstrip(".").lower()
+        self._owned_targets = {self.pages_target} | LEGACY_PAGES_TARGETS
 
     # --- HTTP plumbing -------------------------------------------------------
 
@@ -144,7 +152,7 @@ class TenantDomainService:
     def _is_ours(self, record: Dict) -> bool:
         return (
             record.get("type") == "CNAME"
-            and (record.get("content") or "").rstrip(".").lower() == self.pages_target
+            and (record.get("content") or "").rstrip(".").lower() in self._owned_targets
         )
 
     # --- Public API ------------------------------------------------------------
@@ -172,7 +180,19 @@ class TenantDomainService:
             pages = body.get("result") or {}
             logger.info(f"Added Pages custom domain {hostname} to {self.pages_project}")
 
-        if not any(self._is_ours(r) for r in self._dns_records(hostname)):
+        ours = [r for r in self._dns_records(hostname) if self._is_ours(r)]
+        current = [r for r in ours if (r.get("content") or "").rstrip(".").lower() == self.pages_target]
+        if ours and not current:
+            # Record from before the account move still points at the old project's
+            # pages.dev host: repoint it rather than adding a second CNAME.
+            record = ours[0]
+            self._request(
+                "PATCH",
+                f"/zones/{self.zone_id}/dns_records/{record['id']}",
+                json={"content": self.pages_target},
+            )
+            logger.info(f"Repointed DNS CNAME {hostname} -> {self.pages_target}")
+        elif not ours:
             label = hostname[: -len(BASE_DOMAIN) - 1]
             self._request(
                 "POST",

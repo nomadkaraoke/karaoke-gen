@@ -17,7 +17,8 @@ from backend.services.tenant_domain_service import (
 ACCOUNT = "acct"
 ZONE = "zone"
 PROJECT = "karaoke-gen-tenant"
-TARGET = f"{PROJECT}.pages.dev"
+TARGET = "karaoke-gen-tenant-x0h.pages.dev"
+LEGACY_TARGET = "karaoke-gen-tenant.pages.dev"
 HOST = "randy-vild.nomadkaraoke.com"
 
 
@@ -71,6 +72,11 @@ class FakeCloudflare:
             self._next_id += 1
             self.dns.append(record)
             return httpx.Response(200, json={"success": True, "result": record})
+        if path.startswith(dns_prefix + "/") and request.method == "PATCH":
+            rid = path.rsplit("/", 1)[-1]
+            record = next(r for r in self.dns if r["id"] == rid)
+            record.update(json.loads(request.content))
+            return httpx.Response(200, json={"success": True, "result": record})
         if path.startswith(dns_prefix + "/") and request.method == "DELETE":
             rid = path.rsplit("/", 1)[-1]
             self.dns = [r for r in self.dns if r["id"] != rid]
@@ -90,7 +96,8 @@ def svc(cf):
         base_url="https://api.cloudflare.com/client/v4", transport=httpx.MockTransport(cf.handler)
     )
     return TenantDomainService(
-        api_token="tok", client=client, account_id=ACCOUNT, zone_id=ZONE, pages_project=PROJECT
+        api_token="tok", client=client, account_id=ACCOUNT, zone_id=ZONE, pages_project=PROJECT,
+        pages_target=TARGET,
     )
 
 
@@ -146,6 +153,31 @@ def test_deprovision_removes_only_our_records(svc, cf):
     svc.deprovision(HOST)
     assert HOST not in cf.pages
     assert [r["id"] for r in cf.dns] == ["keep"]
+
+
+def test_legacy_target_record_is_repointed_not_duplicated(svc, cf):
+    # A tenant CNAME created before the Cloudflare account move points at the old
+    # project's pages.dev host. It is still ours: no conflict, and provision repoints it.
+    cf.dns.append({"id": "old", "type": "CNAME", "name": HOST, "content": LEGACY_TARGET, "proxied": True})
+    svc.check_available(HOST)
+    status = svc.provision(HOST)
+    assert [(r["id"], r["content"]) for r in cf.dns] == [("old", TARGET)]
+    assert ("PATCH", f"/zones/{ZONE}/dns_records/old") in cf.calls
+    assert not [c for c in cf.calls if c == ("POST", f"/zones/{ZONE}/dns_records")]
+    assert status.dns_ok is True
+
+
+def test_deprovision_removes_legacy_target_record(svc, cf):
+    cf.dns.append({"id": "old", "type": "CNAME", "name": HOST, "content": LEGACY_TARGET, "proxied": True})
+    svc.deprovision(HOST)
+    assert cf.dns == []
+
+
+def test_default_pages_target_is_new_account_project():
+    from backend.services import tenant_domain_service as tds
+
+    # The project's pages.dev host isn't derivable from its name (globally unique subdomains).
+    assert TenantDomainService(api_token="tok").pages_target == tds.PAGES_TARGET
 
 
 def test_deprovision_when_nothing_exists_is_noop(svc, cf):
