@@ -18,7 +18,7 @@
 #      the Worker route exists.
 set -euo pipefail
 
-ZONE_ID="02440ab623269c428be9e65a16bee280" # karaokehunt.com
+ZONE_ID="a9136845466472d41ea82a156059ad9b" # karaokehunt.com (Nomad Karaoke Cloudflare account since 2026-10)
 SCRIPT_NAME="karaokehunt-interceptor"
 ROUTE_PATTERN="create.karaokehunt.com/*"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
