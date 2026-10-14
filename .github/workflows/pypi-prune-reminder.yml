@@ -1,8 +1,8 @@
 name: PyPI prune reminder
 
-# PyPI caps total *project* size at 10 GB. karaoke-gen auto-publishes a ~62 MiB
-# wheel on every merge to main (~3 GB/month), so the project refills the cap
-# every few months and `poetry publish` then fails with "Project size too large".
+# PyPI caps total *project* size at 10 GB. karaoke-gen publishes a ~62 MiB wheel
+# whenever CLI code changes (scripts/pypi_publish_gate.py), so the project slowly
+# refills the cap and `poetry publish` then fails with "Project size too large".
 #
 # PyPI has NO deletion API (upload tokens are upload-only), so this can't
 # auto-delete. Instead it runs monthly, computes the retention plan

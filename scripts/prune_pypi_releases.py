@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Compute (and help you execute) a PyPI storage-retention prune for karaoke-gen.
 
-PyPI caps total *project* size at 10 GB. karaoke-gen auto-publishes a ~62 MiB
-universal wheel on every merge to main (~3 GB/month), so the project refills the
-cap every few months and `poetry publish` then fails with HTTP 400 "Project size
-too large". See docs/PYPI-STORAGE-PRUNE.md for the full story.
+PyPI caps total *project* size at 10 GB. karaoke-gen publishes a ~62 MiB
+universal wheel whenever CLI code changes (scripts/pypi_publish_gate.py), so the
+project slowly refills the cap and `poetry publish` then fails with HTTP 400
+"Project size too large". See docs/PYPI-STORAGE-PRUNE.md for the full story.
 
 PyPI offers **no deletion API** (upload tokens and Trusted Publishing are
 upload-only), so this script never deletes anything itself. It:

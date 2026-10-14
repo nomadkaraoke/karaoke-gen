@@ -3,11 +3,11 @@
 ## The problem
 
 PyPI caps **total project size at 10 GB**. `karaoke-gen` publishes a universal
-`py3-none-any` wheel on every merge to `main` (auto-versioned in CI). Since the
+`py3-none-any` wheel from CI on merges to `main`. Since the
 i18n initiative the wheel bundles a Next.js static export pre-rendered into 33
 locales (the CLI local lyrics-review UI serves it at runtime), so each release is
-**~62 MiB**. At ~50 releases/month that's **~3 GB/month**, so the project refills
-the cap every few months and the publish step fails:
+**~62 MiB**. Publishing on every merge (~100 releases/month by Sep 2026, ~6 GB/month)
+refilled the cap every few weeks and the publish step failed:
 
 ```
 HTTP Error 400: Project size too large. Limit for project 'karaoke-gen'
@@ -16,6 +16,27 @@ total size is 10 GB.
 
 Only the public `pip install` publish step fails — the Cloud Run backend and the
 GCE encoding worker (which pulls the wheel from **GCS**, not PyPI) are unaffected.
+
+## Prevention: publish only when the CLI changed (since v0.268.9)
+
+PyPI is only the public `pip install karaoke-gen` channel for the CLIs; nothing in
+production installs from it. So the `Deploy - Publish to PyPI` job runs
+**`scripts/pypi_publish_gate.py`** first and uploads only if, since the latest
+version on PyPI (git tag `v<version>`):
+
+- a path in **`scripts/pypi_publish_paths.txt`** changed (`karaoke_gen/` plus the
+  `backend/` modules it imports; a unit test keeps that list in sync), or
+- `pyproject.toml` changed beyond its `version =` line (dependencies, entry points).
+
+Frontend changes (the bundled review UI) and `backend/config.py` are deliberately
+not gated; they reach CLI users with the next CLI release. Force a publish with
+**`[publish-pypi]`** in the merge commit message (PR title) or Actions → CI → Run
+workflow → **"Publish to PyPI"**. The git tag and GitHub release (with the wheel
+attached) are still created for every version. If PyPI or git can't be read, the
+gate publishes (fails open). Replayed over v0.200–v0.268 it would have published
+24 of 136 releases (~0.7 GB/month instead of ~4 GB).
+
+The monthly prune below stays as the backstop.
 
 ## Why we can't just automate deletion
 

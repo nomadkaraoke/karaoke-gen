@@ -178,15 +178,27 @@ scripts/rollback.sh --image-version v0.222.2 --jobs-only
 ## CI "Deploy - Publish to PyPI" fails: "Project size too large"
 
 **Cause:** PyPI caps total project size at 10 GB. Each `karaoke-gen` release is a
-~62 MiB wheel (bundled 33-locale frontend) auto-published on every merge, so the
-project refills the cap every few months. Only the public `pip install` publish
+~62 MiB wheel (bundled 33-locale frontend). Until v0.268.9 every merge published
+one, which refilled the cap every few weeks. Since then CI publishes only when
+CLI-affecting code changed (`scripts/pypi_publish_gate.py`), about 1 in 6 merges.
+Only the public `pip install` publish
 step fails — Cloud Run and the GCE encoding worker (pulls the wheel from GCS) are
 unaffected.
 
 **Fix:** prune old releases per the retention policy. A monthly workflow
 (`pypi-prune-reminder.yml`) opens/updates a tracking issue with a paste-in
 deletion snippet, or run `python scripts/prune_pypi_releases.py` yourself. Full
-runbook: **[docs/PYPI-STORAGE-PRUNE.md](PYPI-STORAGE-PRUNE.md)**.
+runbook: **[docs/PYPI-STORAGE-PRUNE.md](PYPI-STORAGE-PRUNE.md)**. After pruning,
+re-run the failed job: the gate diffs against the version on PyPI, so it still
+sees the unpublished CLI change.
+
+## A CLI change isn't on PyPI
+
+Expected if the merge only touched paths outside `scripts/pypi_publish_paths.txt`
+(e.g. a review-UI tweak in `frontend/`). The "Decide PyPI publish" step in the
+`Deploy - Publish to PyPI` job logs why. To publish now: Actions → CI → Run
+workflow on `main` with **"Publish to PyPI"** ticked, or put `[publish-pypi]` in
+the PR title before squash-merging.
 
 ---
 
