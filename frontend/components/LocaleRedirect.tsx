@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { routing } from '@/i18n/routing';
+import { captureAttribution } from '@/lib/attribution';
 
 /**
  * Detects the user's preferred locale and redirects to the locale-prefixed
@@ -12,6 +13,9 @@ import { routing } from '@/i18n/routing';
  */
 export function LocaleRedirect() {
   useEffect(() => {
+    // Capture first-touch attribution here: after location.replace the external
+    // document.referrer is gone (it becomes this page).
+    captureAttribution();
     const locale = detectLocale();
     const { pathname, search, hash } = window.location;
     window.location.replace(`/${locale}${pathname}${search}${hash}`);

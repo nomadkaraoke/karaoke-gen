@@ -174,6 +174,7 @@ ruleset_nomadkaraoke_com_request_dynamic_redirect = cloudflare.Ruleset("ruleset-
             "action": "redirect",
             "action_parameters": {
                 "from_value": {
+                    "preserve_query_string": True,
                     "status_code": 302,
                     "target_url": {
                         "value": "https://gen.nomadkaraoke.com/en/requests",

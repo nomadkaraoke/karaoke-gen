@@ -9,8 +9,8 @@ Supports:
 """
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List, Dict
-from pydantic import BaseModel, EmailStr, Field
+from typing import Annotated, Optional, List, Dict
+from pydantic import BaseModel, EmailStr, Field, StringConstraints
 
 
 class UserRole(str, Enum):
@@ -118,8 +118,15 @@ class User(BaseModel):
     # Acquisition channel for accounts created outside the gen website, e.g.
     # "kjbox" (signed up via an emailed code on a karaoke-night singer page).
     # None = normal gen website signup (all pre-existing docs).
+    # Gen website signups record their first-touch marketing source here too:
+    # utm_source when the landing URL carried one, else the referring site's domain
+    # (e.g. "youtube", "google.com"). Full detail lives in signup_attribution.
     signup_source: Optional[str] = None
     signup_venue: Optional[str] = None  # Venue name reported by the partner (kjbox)
+    # First-touch attribution captured by the frontend before signup (see
+    # backend/services/signup_attribution.py): utm_* params, external referrer
+    # domain, landing path and when it was captured.
+    signup_attribution: Optional[Dict[str, str]] = None
 
     # Referral system
     referral_code: Optional[str] = None  # User's own referral code
@@ -196,6 +203,11 @@ class SendMagicLinkRequest(BaseModel):
     email: str
     device_fingerprint: Optional[str] = None
     referral_code: Optional[str] = None  # From referral interstitial
+    # First-touch marketing attribution (utm_*, referrer, landing_path), recorded on
+    # the user only when this request creates the account.
+    attribution: Optional[
+        Dict[Annotated[str, StringConstraints(max_length=32)], Optional[Annotated[str, StringConstraints(max_length=500)]]]
+    ] = Field(default=None, max_length=16)
     # "requests_board" = board sign-in (identity only; no welcome credit / no IP limit).
     purpose: Optional[str] = None
 

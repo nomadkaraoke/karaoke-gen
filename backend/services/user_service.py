@@ -12,7 +12,7 @@ import os
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Tuple
+from typing import Dict, Optional, List, Tuple
 
 from google.api_core import exceptions as google_exceptions
 from google.cloud import firestore
@@ -131,6 +131,7 @@ class UserService:
         device_fingerprint: Optional[str] = None,
         signup_source: Optional[str] = None,
         signup_venue: Optional[str] = None,
+        signup_attribution: Optional[Dict[str, str]] = None,
     ) -> User:
         """
         Get existing user or create a new one.
@@ -145,6 +146,9 @@ class UserService:
             signup_source: Acquisition channel for partner signups (e.g. "kjbox");
                 only recorded when the user is created here
             signup_venue: Partner-reported venue for the signup (kjbox)
+            signup_attribution: Cleaned first-touch UTM/referrer attribution
+                (see signup_attribution.clean_attribution); only recorded when
+                the user is created here
 
         Note: If user exists but has a different tenant_id, the existing user is returned.
         Users are uniquely identified by email, not email+tenant.
@@ -168,6 +172,7 @@ class UserService:
             device_fingerprint=device_fingerprint,
             signup_source=signup_source,
             signup_venue=signup_venue,
+            signup_attribution=signup_attribution,
         )
         self._save_user(user)
         logger.info(f"Created new user: {email} (tenant: {tenant_id or 'default'}) — credits pending verification")
@@ -243,6 +248,7 @@ class UserService:
         device_fingerprint: Optional[str] = None,
         referral_code: Optional[str] = None,
         purpose: Optional[str] = None,
+        attribution: Optional[Dict[str, object]] = None,
     ) -> MagicLinkToken:
         """
         Create a magic link token for email authentication.
@@ -256,15 +262,28 @@ class UserService:
             user_agent: Client user agent for auditing
             tenant_id: Tenant ID for white-label portals (None = default Nomad Karaoke)
             device_fingerprint: Browser fingerprint for anti-abuse
+            attribution: Raw client-supplied first-touch UTM/referrer data; cleaned
+                and stored only if this call creates the user
         """
+        from backend.services.signup_attribution import clean_attribution, derive_signup_source
+
         email = email.lower()
 
-        # Ensure user exists (with tenant association, signup IP, and fingerprint)
+        try:
+            signup_attribution = clean_attribution(attribution)
+        except Exception:  # attribution is best-effort and must never block sign-in
+            logger.warning("Ignoring unparseable signup attribution", exc_info=True)
+            signup_attribution = None
+
+        # Ensure user exists (with tenant association, signup IP, fingerprint and
+        # first-touch attribution — the latter two only matter on creation)
         self.get_or_create_user(
             email,
             tenant_id=tenant_id,
             signup_ip=ip_address,
             device_fingerprint=device_fingerprint,
+            signup_source=derive_signup_source(signup_attribution),
+            signup_attribution=signup_attribution,
         )
 
         # Generate secure token

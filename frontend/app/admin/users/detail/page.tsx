@@ -509,6 +509,25 @@ export default function AdminUserDetailPage() {
                 {user.has_submitted_feedback ? "Yes" : "No"}
               </Badge>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Signup Source</span>
+              <span className="text-sm" data-testid="signup-source">
+                {user.signup_source || "direct / unknown"}
+                {user.signup_venue && <> ({user.signup_venue})</>}
+              </span>
+            </div>
+            {user.signup_attribution && (
+              <div className="text-xs text-muted-foreground space-y-0.5" data-testid="signup-attribution">
+                {Object.entries(user.signup_attribution)
+                  .filter(([key]) => key !== "captured_at")
+                  .map(([key, value]) => (
+                    <div key={key} className="flex justify-between gap-2">
+                      <span>{key}</span>
+                      <code className="bg-muted px-1 rounded truncate max-w-[60%]">{value}</code>
+                    </div>
+                  ))}
+              </div>
+            )}
             {user.referral_discount_expires_at && (
               <div className="flex items-center gap-2 text-sm">
                 <Tag className="w-4 h-4 text-purple-500" />

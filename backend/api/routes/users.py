@@ -13,7 +13,7 @@ import html
 import logging
 import threading
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 
@@ -327,6 +327,7 @@ def send_magic_link(
         device_fingerprint=device_fingerprint,
         referral_code=request.referral_code,
         purpose=request.purpose,
+        attribution=request.attribution,
     )
 
     # Get tenant-specific email configuration
@@ -1960,8 +1961,89 @@ class UserDetailResponse(BaseModel):
     referred_by_code: Optional[str] = None
     referral_discount_expires_at: Optional[str] = None
     referral_code: Optional[str] = None
+    # Acquisition: channel label + first-touch UTM/referrer detail
+    signup_source: Optional[str] = None
+    signup_venue: Optional[str] = None
+    signup_attribution: Optional[dict] = None
     # Recent session details (IP, user agent, fingerprint)
     recent_sessions: list[dict] = []
+
+
+class AttributionSourceRow(BaseModel):
+    """Funnel counts for one acquisition channel."""
+    source: str
+    signups: int = 0
+    verified: int = 0
+    made_job: int = 0
+    paid: int = 0
+    revenue_cents: int = 0
+
+
+class AttributionSummaryResponse(BaseModel):
+    days: int
+    total_signups: int
+    sources: list[AttributionSourceRow]
+
+
+def _as_datetime(value) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    # Compare as naive UTC (model_dump stores utcnow() ISO strings without an offset)
+    if parsed.tzinfo:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+@router.get("/admin/attribution-summary", response_model=AttributionSummaryResponse)
+def attribution_summary(
+    days: int = 90,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Signups -> verified -> made a job -> paid, grouped by signup_source (admin only).
+
+    Covers consumer accounts created in the last ``days`` (test and tenant users
+    excluded). Users without a recorded source show as "direct / unknown"; all
+    accounts created before attribution capture shipped (2026-10) land there.
+    """
+    from datetime import timedelta
+
+    days = max(1, min(days, 3650))
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    fields = [
+        "email", "created_at", "signup_source", "email_verified",
+        "total_jobs_created", "total_spent", "tenant_id",
+    ]
+    rows: dict[str, AttributionSourceRow] = {}
+    total = 0
+    for doc in user_service.db.collection(USERS_COLLECTION).select(fields).stream():
+        data = doc.to_dict() or {}
+        if data.get("tenant_id") or is_test_email(data.get("email", "")):
+            continue
+        created = _as_datetime(data.get("created_at"))
+        if not created or created < cutoff:
+            continue
+        source = data.get("signup_source") or "direct / unknown"
+        row = rows.setdefault(source, AttributionSourceRow(source=source))
+        row.signups += 1
+        total += 1
+        if data.get("email_verified"):
+            row.verified += 1
+        if (data.get("total_jobs_created") or 0) > 0:
+            row.made_job += 1
+        spent = data.get("total_spent") or 0
+        if spent > 0:
+            row.paid += 1
+            row.revenue_cents += spent
+    sources = sorted(rows.values(), key=lambda r: (-r.paid, -r.signups, r.source))
+    return AttributionSummaryResponse(days=days, total_signups=total, sources=sources)
 
 
 @router.get("/admin/users", response_model=UserListResponsePaginated)
@@ -2161,6 +2243,9 @@ def get_user_detail(
         referred_by_code=user.referred_by_code,
         referral_discount_expires_at=user.referral_discount_expires_at.isoformat() if user.referral_discount_expires_at and hasattr(user.referral_discount_expires_at, 'isoformat') else str(user.referral_discount_expires_at) if user.referral_discount_expires_at else None,
         referral_code=user.referral_code,
+        signup_source=user.signup_source,
+        signup_venue=user.signup_venue,
+        signup_attribution=user.signup_attribution,
         recent_sessions=active_sessions,
     )
 

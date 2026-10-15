@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware"
 import type { User, UserPublic } from "./types"
 import { api, adminApi, setAccessToken, clearAccessToken, getAccessToken } from "./api"
 import { getReferralCode, clearReferralCode } from './referral'
+import { getAttribution } from './attribution'
 
 interface AuthStore {
   user: User | null
@@ -58,7 +59,7 @@ export const useAuth = create<AuthStore>()(
           const { getDeviceFingerprint } = await import('./fingerprint')
           const fingerprint = await getDeviceFingerprint()
           const referralCode = getReferralCode()
-          await api.sendMagicLink(email, fingerprint, referralCode, purpose)
+          await api.sendMagicLink(email, fingerprint, referralCode, purpose, getAttribution())
           set({ isLoading: false })
           return true
         } catch (err) {

@@ -1985,8 +1985,14 @@ export const api = {
   /**
    * Send a magic link email for passwordless login
    */
-  async sendMagicLink(email: string, deviceFingerprint?: string | null, referralCode?: string | null, purpose?: string | null): Promise<MagicLinkResponse> {
-    const body: Record<string, string> = { email }
+  async sendMagicLink(
+    email: string,
+    deviceFingerprint?: string | null,
+    referralCode?: string | null,
+    purpose?: string | null,
+    attribution?: Record<string, string | undefined> | null,
+  ): Promise<MagicLinkResponse> {
+    const body: Record<string, unknown> = { email }
     if (deviceFingerprint) {
       body.device_fingerprint = deviceFingerprint
     }
@@ -1995,6 +2001,9 @@ export const api = {
     }
     if (purpose) {
       body.purpose = purpose
+    }
+    if (attribution) {
+      body.attribution = attribution
     }
     const response = await apiFetch(`${API_BASE_URL}/api/users/auth/magic-link`, {
       method: 'POST',
@@ -2564,6 +2573,10 @@ export interface AdminUserDetail {
   referred_by_code?: string | null;
   referral_discount_expires_at?: string | null;
   referral_code?: string | null;
+  // Acquisition: channel label + first-touch UTM/referrer detail
+  signup_source?: string | null;
+  signup_venue?: string | null;
+  signup_attribution?: Record<string, string> | null;
   recent_sessions?: Array<{
     ip_address?: string;
     user_agent?: string;
