@@ -588,3 +588,19 @@ class TestGetBrandCodeService:
 
             # Clean up
             module._brand_code_service = None
+
+
+class TestIsPreservedBrandCode:
+    def test_tenant_code_matching_keep_brand_code_is_preserved(self):
+        from types import SimpleNamespace
+        from backend.services.brand_code_service import is_preserved_brand_code
+
+        assert is_preserved_brand_code(SimpleNamespace(keep_brand_code="VS6588"), "VS6588")
+
+    def test_allocated_code_is_not_preserved(self):
+        from types import SimpleNamespace
+        from backend.services.brand_code_service import is_preserved_brand_code
+
+        assert not is_preserved_brand_code(SimpleNamespace(keep_brand_code=None), "VSTAR-0003")
+        assert not is_preserved_brand_code(SimpleNamespace(), "VSTAR-0003")
+        assert not is_preserved_brand_code(SimpleNamespace(keep_brand_code="VS1"), "VSTAR-0003")

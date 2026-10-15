@@ -522,6 +522,23 @@ class TestDeleteOutputsBrandCodeRecycling:
             assert data["deleted_services"]["brand_code"]["code"] == "NOMAD-1234"
             mock_svc.recycle_brand_code.assert_called_once_with("NOMAD", 1234)
 
+    def test_tenant_preserved_brand_code_is_never_recycled(self, client, mock_complete_job):
+        """A tenant's own track code (keep_brand_code) must not go back into a counter."""
+        mock_complete_job.keep_brand_code = "NOMAD-1234"  # looks allocated, but tenant-supplied
+        with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \
+             patch('backend.api.routes.admin.get_user_service') as mock_user_service, \
+             patch('backend.services.brand_code_service.get_brand_code_service') as mock_get_svc:
+            mock_jm = Mock()
+            mock_jm.get_job.return_value = mock_complete_job
+            mock_jm_class.return_value = mock_jm
+            mock_user_service.return_value.db = Mock()
+
+            response = client.post("/api/admin/jobs/test-job-123/delete-outputs")
+
+            assert response.status_code == 200
+            assert response.json()["deleted_services"]["brand_code"]["reason"] == "Tenant-supplied code (not allocated)"
+            mock_get_svc.return_value.recycle_brand_code.assert_not_called()
+
     def test_brand_code_not_recycled_without_brand_code(self, client, mock_job_no_outputs):
         """Test that no recycling happens when job has no brand code."""
         with patch('backend.api.routes.admin.JobManager') as mock_jm_class, \

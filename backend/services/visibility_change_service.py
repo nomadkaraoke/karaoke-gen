@@ -446,8 +446,9 @@ class VisibilityChangeService:
             except Exception as e:
                 logger.warning(f"[job:{job_id}] Failed to delete GCS finals: {e}")
 
-        # Recycle brand code
-        if brand_code:
+        # Recycle brand code (never a tenant-supplied / preserved one)
+        from backend.services.brand_code_service import is_preserved_brand_code
+        if brand_code and not is_preserved_brand_code(job, brand_code):
             try:
                 from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
                 prefix, number = BrandCodeService.parse_brand_code(brand_code)

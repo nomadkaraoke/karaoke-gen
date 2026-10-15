@@ -127,6 +127,20 @@ class Settings:
     title_screen_transition: str = "centertexttoplogobottomtext"
     title_artist_gap: int = 30
     title_top_padding: int = 0
+    # Title card ("up card") layout. Defaults reproduce the original layout:
+    # title (30px, shrinks to fit) / gap / artist (25px), centered on screen.
+    # Font for the title card + outro (defaults to `font`, the lyrics font).
+    title_font: Path | None = None
+    title_font_size: int = 30
+    artist_font_size: int = 25
+    title_max_height: int = 200
+    # Optional line between title and artist, e.g. "MADE FAMOUS BY".
+    title_separator_text: str = ""
+    title_separator_color: RGBColor = field(converter=to_rgbcolor, default="#ffffff")
+    title_separator_font_size: int = 14
+    # When set, the text block is centered in the area below this y offset
+    # (e.g. below a logo baked into the title background) instead of on screen.
+    title_block_top: int | None = None
     intro_duration_seconds: float = 5.0
     first_syllable_buffer_seconds: float = 3.0
 

@@ -174,7 +174,21 @@ def sanitize_style_params(
     font = _basename_only(styles["intro"].get("font") or DEFAULT_FONT, "intro.font")
     if font not in fonts_ok:
         raise TenantValidationError(f"Font '{font}' isn't available — upload it or pick a built-in font.")
+    # The one exception: CDG may keep a distinct lyrics font (rendered as its own
+    # "cdg_font" asset — e.g. a condensed face so lyric lines fit the CDG screen),
+    # as long as it's a basename the theme can actually serve.
+    cdg_font = styles["cdg"].get("font_path")
+    keep_cdg_font = (
+        isinstance(cdg_font, str)
+        and cdg_font
+        and os.path.basename(cdg_font) == cdg_font
+        and cdg_font != font
+        and cdg_font.lower().endswith((".ttf", ".otf"))
+        and cdg_font in fonts_ok
+    )
     for section, field in FONT_FIELDS:
+        if keep_cdg_font and (section, field) == ("cdg", "font_path"):
+            continue
         styles[section][field] = font
 
     from karaoke_gen.style_loader import DEFAULT_KARAOKE_STYLE
@@ -328,6 +342,18 @@ def save_tenant_theme(config, style_params: object, storage: Optional[StorageSer
             # Bundled font: copy into the theme so render jobs download it.
             with open(local, "rb") as fh:
                 assets[font] = (fh.read(), font.rsplit(".", 1)[-1])
+        cdg_font = styles["cdg"].get("font_path")
+        if cdg_font and cdg_font != font:
+            # Distinct CDG lyrics font: it must really be a font, and a bundled one
+            # is copied into the theme so render jobs find it.
+            cdg_local = _font_local_path(storage, theme_id, cdg_font, workdir)
+            try:
+                font_family_name(cdg_local)
+            except Exception as exc:
+                raise TenantValidationError(f"CDG font '{cdg_font}' couldn't be read.") from exc
+            if not storage.file_exists(f"{THEMES_PREFIX}/{theme_id}/assets/{cdg_font}"):
+                with open(cdg_local, "rb") as fh:
+                    assets[cdg_font] = (fh.read(), cdg_font.rsplit(".", 1)[-1])
 
     update_tenant(config.id, style_params=styles, assets=assets or None, storage=storage)
     logger.info(f"Tenant '{config.id}' saved theme '{theme_id}' (font={font})")

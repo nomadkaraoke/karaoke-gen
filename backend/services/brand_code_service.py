@@ -217,6 +217,18 @@ class BrandCodeService:
         return match.group(1), int(match.group(2))
 
 
+def is_preserved_brand_code(job, brand_code: Optional[str]) -> bool:
+    """True when ``brand_code`` came from the job itself (``keep_brand_code`` — e.g. a
+    tenant's own catalogue code like "VS6588"), not from the allocator.
+
+    Such codes must never be recycled into a counter: a tenant code that happens to
+    look like an allocated one (e.g. "VSTAR-0005") would otherwise put that number
+    back in the pool and cause a duplicate later.
+    """
+    kept = getattr(job, "keep_brand_code", None)
+    return bool(kept) and kept == brand_code
+
+
 def get_brand_code_service() -> BrandCodeService:
     """Get or create the singleton BrandCodeService instance."""
     global _brand_code_service

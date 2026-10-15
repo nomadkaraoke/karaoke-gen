@@ -1552,109 +1552,106 @@ class KaraokeComposer:
                 self.config.border,  # border
                 self.config.title_color,  # title color
                 self.config.artist_color,  # artist color
+                self.config.title_separator_color,  # separator line color (index 4)
             ],
         )
 
-        smallfont = ImageFont.truetype(self.config.font, 25)
-        bigfont_size = 30
-        MAX_HEIGHT = 200
-        # Try rendering the title and artist to an image
+        bigfont_size = self.config.title_font_size
+        artist_font_size = self.config.artist_font_size
+        separator_font_size = self.config.title_separator_font_size
+        MAX_HEIGHT = self.config.title_max_height
+        MIN_FONT_SIZE = 10
+        separator_text = (self.config.title_separator_text or "").strip()
+        # Try rendering the title (+ optional separator line, e.g. "MADE FAMOUS BY")
+        # and artist to an image, shrinking until the block fits MAX_HEIGHT.
         while True:
             self.logger.debug(f"trying song title at size {bigfont_size}")
-            text_image = Image.new("P", (CDG_VISIBLE_WIDTH, MAX_HEIGHT * 2), 0)
+            text_image = Image.new("P", (CDG_VISIBLE_WIDTH, MAX_HEIGHT * 3), 0)
             y = 0
 
-            if self.config.title_top_padding:
-                self.logger.info(f"title top padding set to {self.config.title_top_padding} in config, setting as initial y position")
-                y = self.config.title_top_padding
-                self.logger.info(f"Initial y position with padding: {y}")
-            else:
-                self.logger.info("no title top padding configured; starting with y = 0")
-                self.logger.info(f"Initial y position without padding: {y}")
+            bigfont = ImageFont.truetype(self._title_font_path(), bigfont_size)
+            smallfont = ImageFont.truetype(self._title_font_path(), artist_font_size)
 
-            bigfont = ImageFont.truetype(self.config.font, bigfont_size)
+            def draw_block(text: str, font, color_index: int, y: int) -> int:
+                for image in render_lines(
+                    get_wrapped_text(
+                        text,
+                        font=font,
+                        width=text_image.width,
+                    ).split("\n"),
+                    font=font,
+                ):
+                    text_image.paste(
+                        image.point(lambda v: v and color_index, "P"),
+                        ((text_image.width - image.width) // 2, y),
+                        mask=image.point(lambda v: v and 255, "1"),
+                    )
+                    y += int(font.size)
+                return y
 
-            # Draw song title
+            # Draw song title (index 2 = title color)
             title_start_y = y
-            self.logger.info(f"Starting to draw title at y={y}")
-            for image in render_lines(
-                get_wrapped_text(
-                    self.config.title,
-                    font=bigfont,
-                    width=text_image.width,
-                ).split("\n"),
-                font=bigfont,
-            ):
-                text_image.paste(
-                    # Use index 2 for title color
-                    image.point(lambda v: v and 2, "P"),
-                    ((text_image.width - image.width) // 2, y),
-                    mask=image.point(lambda v: v and 255, "1"),
-                )
-                y += int(bigfont.size)
-            title_end_y = y
-            self.logger.info(f"Finished drawing title at y={y}, title height={title_end_y - title_start_y}")
+            y = draw_block(self.config.title, bigfont, 2, y)
+            self.logger.info(f"Finished drawing title at y={y}, title height={y - title_start_y}")
 
             # Add vertical gap between title and artist using configured value
             y += self.config.title_artist_gap
-            self.logger.info(f"After adding title_artist_gap of {self.config.title_artist_gap}, y is now {y}")
 
-            # Draw song artist
+            if separator_text:
+                # Optional separator line (index 4 = separator color), then the
+                # same gap again before the artist.
+                separator_font = ImageFont.truetype(self._title_font_path(), separator_font_size)
+                y = draw_block(separator_text, separator_font, 4, y)
+                y += self.config.title_artist_gap
+
+            # Draw song artist (index 3 = artist color)
             artist_start_y = y
-            self.logger.info(f"Starting to draw artist at y={y}")
-            for image in render_lines(
-                get_wrapped_text(
-                    self.config.artist,
-                    font=smallfont,
-                    width=text_image.width,
-                ).split("\n"),
-                font=smallfont,
-            ):
-                text_image.paste(
-                    # Use index 3 for artist color
-                    image.point(lambda v: v and 3, "P"),
-                    ((text_image.width - image.width) // 2, y),
-                    mask=image.point(lambda v: v and 255, "1"),
-                )
-                y += int(smallfont.size)
-            artist_end_y = y
-            self.logger.info(f"Finished drawing artist at y={y}, artist height={artist_end_y - artist_start_y}")
-            self.logger.info(f"Total content height before cropping: {artist_end_y - title_start_y}")
+            y = draw_block(self.config.artist, smallfont, 3, y)
+            self.logger.info(f"Finished drawing artist at y={y}, artist height={y - artist_start_y}")
 
             # Break out of loop only if text box ends up small enough
             bbox = text_image.getbbox()
-            self.logger.info(f"Original bounding box from getbbox(): {bbox}")
             if bbox is None:
                 # If there's no content, still create a minimal bbox
                 bbox = (0, 0, text_image.width, 1)
                 self.logger.info("No content found, created minimal bbox")
-            
+
             # We'll crop to just the content area, without padding
-            original_height = text_image.height
             text_image = text_image.crop(bbox)
-            self.logger.info(f"After cropping: text_image dimensions={text_image.width}x{text_image.height}, height difference={original_height - text_image.height}")
-            
+
             if text_image.height <= MAX_HEIGHT:
                 self.logger.debug("height just right")
                 break
-            # If text box is not small enough, reduce font size of title
+            # If text box is not small enough, reduce the title font size first;
+            # once the title is at the floor, shrink the artist + separator too so
+            # very long titles/artists can never loop forever.
             self.logger.debug("height too big; reducing font size")
-            bigfont_size -= 2
+            if bigfont_size - 2 >= max(MIN_FONT_SIZE, min(artist_font_size, self.config.title_font_size)):
+                bigfont_size -= 2
+            elif artist_font_size - 2 >= MIN_FONT_SIZE or bigfont_size - 2 >= MIN_FONT_SIZE:
+                bigfont_size = max(MIN_FONT_SIZE, bigfont_size - 2)
+                artist_font_size = max(MIN_FONT_SIZE, artist_font_size - 2)
+                separator_font_size = max(MIN_FONT_SIZE, separator_font_size - 1)
+            else:
+                self.logger.warning("title card text still too tall at minimum font size; using it anyway")
+                break
 
-        # Calculate position - center horizontally, but add padding to vertical position
+        # Calculate position - center horizontally
         center_x = (CDG_SCREEN_WIDTH - text_image.width) // 2
-        
-        # Standard centered position
-        standard_center_y = (CDG_SCREEN_HEIGHT - text_image.height) // 2
-        
-        # Add the title_top_padding to shift the entire content downward
-        padding_offset = self.config.title_top_padding if self.config.title_top_padding else 0
-        final_y = standard_center_y + padding_offset
-        
-        self.logger.info(f"Pasting text image ({text_image.width}x{text_image.height}) onto background")
-        self.logger.info(f"Standard centered position would be y={standard_center_y}")
-        self.logger.info(f"With padding offset of {padding_offset}, final position is y={final_y}")
-        
+
+        if self.config.title_block_top is not None:
+            # Center the text block in the area below title_block_top (e.g. below a
+            # logo at the top of the background), keeping it inside the safe area.
+            area_top = self.config.title_block_top
+            area_bottom = CDG_SCREEN_HEIGHT - (CDG_SCREEN_HEIGHT - CDG_VISIBLE_HEIGHT) // 2
+            final_y = max(area_top, area_top + (area_bottom - area_top - text_image.height) // 2)
+        else:
+            # Standard centered position, shifted down by title_top_padding
+            standard_center_y = (CDG_SCREEN_HEIGHT - text_image.height) // 2
+            padding_offset = self.config.title_top_padding if self.config.title_top_padding else 0
+            final_y = standard_center_y + padding_offset
+        self.logger.info(f"Pasting text image ({text_image.width}x{text_image.height}) at y={final_y}")
+
         background_image.paste(
             text_image,
             (
@@ -1738,65 +1735,58 @@ class KaraokeComposer:
             ],
         )
 
-        smallfont = ImageFont.truetype(self.config.font, 25)
-        MAX_HEIGHT = 200
-
-        # Render text to an image
-        self.logger.debug(f"rendering outro text")
-        text_image = Image.new("P", (CDG_VISIBLE_WIDTH, MAX_HEIGHT * 2), 0)
-        y = 0
-
-        # Render first line of outro text
+        safe_bottom = CDG_SCREEN_HEIGHT - (CDG_SCREEN_HEIGHT - CDG_VISIBLE_HEIGHT) // 2
+        area_top = self.config.title_block_top
+        # Keep the outro text below a logo baked into the background when configured.
+        MAX_HEIGHT = (safe_bottom - area_top) if area_top is not None else 200
         outro_text_line1 = self.config.outro_text_line1.replace("$artist", self.config.artist).replace("$title", self.config.title)
-
-        for image in render_lines(
-            get_wrapped_text(
-                outro_text_line1,
-                font=smallfont,
-                width=text_image.width,
-            ).split("\n"),
-            font=smallfont,
-        ):
-            text_image.paste(
-                # Use index 2 for line 1 color
-                image.point(lambda v: v and 2, "P"),
-                ((text_image.width - image.width) // 2, y),
-                mask=image.point(lambda v: v and 255, "1"),
-            )
-            y += int(smallfont.size)
-
-        # Add vertical gap between title and artist using configured value
-        y += self.config.outro_line1_line2_gap
-
-        # Render second line of outro text
         outro_text_line2 = self.config.outro_text_line2.replace("$artist", self.config.artist).replace("$title", self.config.title)
 
-        for image in render_lines(
-            get_wrapped_text(
-                outro_text_line2,
-                font=smallfont,
-                width=text_image.width,
-            ).split("\n"),
-            font=smallfont,
-        ):
-            text_image.paste(
-                # Use index 3 for line 2 color
-                image.point(lambda v: v and 3, "P"),
-                ((text_image.width - image.width) // 2, y),
-                mask=image.point(lambda v: v and 255, "1"),
-            )
-            y += int(smallfont.size)
+        font_size = 25
+        while True:
+            smallfont = ImageFont.truetype(self._title_font_path(), font_size)
 
-        # Break out of loop only if text box ends up small enough
-        text_image = text_image.crop(text_image.getbbox())
-        assert text_image.height <= MAX_HEIGHT
+            # Render text to an image
+            self.logger.debug(f"rendering outro text at size {font_size}")
+            text_image = Image.new("P", (CDG_VISIBLE_WIDTH, MAX_HEIGHT * 3), 0)
+            y = 0
+
+            for line_text, color_index in ((outro_text_line1, 2), (outro_text_line2, 3)):
+                for image in render_lines(
+                    get_wrapped_text(
+                        line_text,
+                        font=smallfont,
+                        width=text_image.width,
+                    ).split("\n"),
+                    font=smallfont,
+                ):
+                    text_image.paste(
+                        # Index 2 = line 1 color, index 3 = line 2 color
+                        image.point(lambda v, c=color_index: v and c, "P"),
+                        ((text_image.width - image.width) // 2, y),
+                        mask=image.point(lambda v: v and 255, "1"),
+                    )
+                    y += int(smallfont.size)
+                if color_index == 2:
+                    # Add vertical gap between line 1 and line 2 using configured value
+                    y += self.config.outro_line1_line2_gap
+
+            bbox = text_image.getbbox() or (0, 0, text_image.width, 1)
+            text_image = text_image.crop(bbox)
+            if text_image.height <= MAX_HEIGHT or font_size <= 10:
+                break
+            font_size -= 2
 
         # Draw text onto image
+        if area_top is not None:
+            outro_y = max(area_top, area_top + (safe_bottom - area_top - text_image.height) // 2)
+        else:
+            outro_y = (CDG_SCREEN_HEIGHT - text_image.height) // 2
         background_image.paste(
             text_image,
             (
                 (CDG_SCREEN_WIDTH - text_image.width) // 2,
-                (CDG_SCREEN_HEIGHT - text_image.height) // 2,
+                outro_y,
             ),
             mask=text_image.point(lambda v: v and 255, "1"),
         )
@@ -1818,6 +1808,16 @@ class KaraokeComposer:
             self.writer.queue_packets(packets.get(coord, []))
 
         self.writer.queue_packets([no_instruction()] * (end - self.writer.packets_queued))
+
+    def _title_font_path(self):
+        """Font for the title card + outro: `title_font` when it exists, else the lyrics font."""
+        title_font = self.config.title_font
+        if title_font:
+            for candidate in (Path(title_font), self.relative_dir / title_font):
+                if candidate.is_file():
+                    return str(candidate)
+            self.logger.warning(f"Title font not found: {title_font}; using the lyrics font")
+        return self.config.font
 
     def _load_image(
         self,

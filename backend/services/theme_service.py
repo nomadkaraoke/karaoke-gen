@@ -364,6 +364,13 @@ class ThemeService:
             ("cdg_outro_background", "cdg", "outro_background"),
         ]
 
+        # A distinct CDG lyrics font gets its own asset (the shared "font" asset —
+        # intro.font — is otherwise applied to every section, CDG included).
+        main_font = os.path.basename(str(style_params.get("intro", {}).get("font") or ""))
+        cdg_font = os.path.basename(str(style_params.get("cdg", {}).get("font_path") or ""))
+        if cdg_font and cdg_font != main_font:
+            asset_checks.append(("cdg_font", "cdg", "font_path"))
+
         for asset_key, section, field in asset_checks:
             if section in style_params and field in style_params[section]:
                 value = style_params[section][field]

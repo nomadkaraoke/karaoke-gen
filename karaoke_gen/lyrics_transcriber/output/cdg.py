@@ -254,56 +254,65 @@ class CDGGenerator:
         self._write_toml_file(toml_data, output_file)
 
     def _validate_and_setup_font(self, cdg_styles: dict) -> None:
-        """Validate and set up font path in CDG styles.
+        """Validate and set up font paths in CDG styles.
 
-        Resolution order:
+        Resolution order for ``font_path`` (lyrics font):
         1. Use font_path as-is if it's an absolute path that exists
         2. Use font_path as-is if it exists as a relative path
         3. Try full relative path inside bundled fonts directory
         4. Try just the filename inside bundled fonts directory
         5. Fall back to arial.ttf from bundled fonts
-        """
-        if not cdg_styles.get("font_path"):
-            return
 
+        ``title_font_path`` (optional font for the title card / outro, usually the
+        theme's main font) resolves the same way but falls back to ``font_path``.
+        """
+        if cdg_styles.get("font_path"):
+            resolved = self._resolve_font_file(cdg_styles["font_path"])
+            font_path = cdg_styles["font_path"]
+            fonts_dir = os.path.join(os.path.dirname(__file__), "fonts")
+            fallback_font = os.path.join(fonts_dir, "arial.ttf")
+            if resolved:
+                cdg_styles["font_path"] = resolved
+            elif os.path.isfile(fallback_font):
+                # Last resort: fall back to arial.ttf
+                cdg_styles["font_path"] = os.path.abspath(fallback_font)
+                self.logger.warning(f"Font file {font_path} not found, falling back to bundled arial.ttf")
+            else:
+                self.logger.error(f"Font file {font_path} not found and no bundled fonts available in {fonts_dir}")
+                cdg_styles["font_path"] = None
+
+        if cdg_styles.get("title_font_path"):
+            resolved = self._resolve_font_file(cdg_styles["title_font_path"])
+            if resolved:
+                cdg_styles["title_font_path"] = resolved
+            else:
+                self.logger.warning(
+                    f"Title font {cdg_styles['title_font_path']} not found, using the lyrics font for the title card"
+                )
+                cdg_styles.pop("title_font_path")
+
+    def _resolve_font_file(self, font_path: str) -> Optional[str]:
+        """Absolute path for a font: as given, else in the bundled fonts dir; None if missing."""
         fonts_dir = os.path.join(os.path.dirname(__file__), "fonts")
-        font_path = cdg_styles["font_path"]
 
         # Already exists (absolute or relative to cwd) — absolutize to avoid CWD issues
         if os.path.isfile(font_path):
-            cdg_styles["font_path"] = os.path.abspath(font_path)
-            return
+            return os.path.abspath(font_path)
 
         # Try full relative path in bundled fonts dir
         package_font_path = os.path.join(fonts_dir, font_path)
         if os.path.isfile(package_font_path):
-            cdg_styles["font_path"] = os.path.abspath(package_font_path)
             self.logger.debug(f"Found font in package fonts directory: {package_font_path}")
-            return
+            return os.path.abspath(package_font_path)
 
         # Try just the filename in bundled fonts dir
         font_filename = os.path.basename(font_path)
         package_font_by_name = os.path.join(fonts_dir, font_filename)
         if os.path.isfile(package_font_by_name):
-            cdg_styles["font_path"] = os.path.abspath(package_font_by_name)
-            self.logger.warning(
-                f"Font file {font_path} not found, using bundled font: {font_filename}"
-            )
-            return
+            self.logger.warning(f"Font file {font_path} not found, using bundled font: {font_filename}")
+            return os.path.abspath(package_font_by_name)
 
-        # Last resort: fall back to arial.ttf
-        fallback_font = os.path.join(fonts_dir, "arial.ttf")
-        if os.path.isfile(fallback_font):
-            cdg_styles["font_path"] = os.path.abspath(fallback_font)
-            self.logger.warning(
-                f"Font file {font_path} not found, falling back to bundled arial.ttf"
-            )
-            return
-
-        self.logger.error(
-            f"Font file {font_path} not found and no bundled fonts available in {fonts_dir}"
-        )
-        cdg_styles["font_path"] = None
+        return None
 
     def _compose_cdg(self, toml_file: str) -> None:
         """Compose CDG using KaraokeComposer."""
@@ -435,7 +444,13 @@ class CDGGenerator:
 
         optional_styles_with_defaults = {
             "title_top_padding": 0,
-            # Any other optional parameters with their default values
+            # Title card ("up card") layout — defaults reproduce the original layout
+            "title_font_size": 30,
+            "artist_font_size": 25,
+            "title_max_height": 200,
+            "title_separator_text": "",
+            "title_separator_color": "#ffffff",
+            "title_separator_font_size": 14,
         }
         
         # Add any missing optional parameters with their default values
@@ -610,6 +625,20 @@ class CDGGenerator:
             "outro_line1_color": cdg_styles["outro_line1_color"],
             "outro_line2_color": cdg_styles["outro_line2_color"],
             "outro_line1_line2_gap": cdg_styles["outro_line1_line2_gap"],
+            "title_font_size": cdg_styles["title_font_size"],
+            "artist_font_size": cdg_styles["artist_font_size"],
+            "title_max_height": cdg_styles["title_max_height"],
+            "title_separator_text": cdg_styles["title_separator_text"],
+            "title_separator_color": cdg_styles["title_separator_color"],
+            "title_separator_font_size": cdg_styles["title_separator_font_size"],
+            # Title card / outro font (theme's main font); falls back to `font` in the composer
+            **({"title_font": cdg_styles["title_font_path"]} if cdg_styles.get("title_font_path") else {}),
+            # TOML has no null: only emitted when the theme sets it
+            **(
+                {"title_block_top": cdg_styles["title_block_top"]}
+                if cdg_styles.get("title_block_top") is not None
+                else {}
+            ),
         }
 
     def _write_toml_file(self, toml_data: dict, output_file: str) -> None:

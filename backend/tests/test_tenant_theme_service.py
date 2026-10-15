@@ -177,6 +177,28 @@ def test_save_copies_bundled_font_sets_family_and_never_touches_config(monkeypat
     assert calls["style_params"]["karaoke"]["font_path"] == "AvenirNext-Bold.ttf"
 
 
+def test_save_keeps_distinct_cdg_font_and_copies_it_when_bundled(monkeypatch):
+    storage = FakeStorage()
+    calls = {}
+    monkeypatch.setattr(tts, "update_tenant", lambda tenant_id, **kw: calls.update(kw))
+    style = _style()
+    style["cdg"]["font_path"] = "Oswald-SemiBold.ttf"
+    tts.save_tenant_theme(_config(), style, storage=storage)
+    assert calls["style_params"]["cdg"]["font_path"] == "Oswald-SemiBold.ttf"
+    assert calls["style_params"]["karaoke"]["font_path"] == "AvenirNext-Bold.ttf"
+    assert "Oswald-SemiBold.ttf" in calls["assets"]
+
+
+def test_save_rejects_an_unreadable_distinct_cdg_font(monkeypatch):
+    storage = FakeStorage()
+    storage.blobs["themes/randy-vild/assets/Custom-abc12345.ttf"] = b"not really a font"
+    monkeypatch.setattr(tts, "update_tenant", lambda tenant_id, **kw: None)
+    style = _style()
+    style["cdg"]["font_path"] = "Custom-abc12345.ttf"
+    with pytest.raises(TenantValidationError):
+        tts.save_tenant_theme(_config(), style, storage=storage)
+
+
 def test_get_theme_for_editor_lists_images_and_fonts():
     storage = FakeStorage()
     storage.blobs["themes/randy-vild/assets/Custom-abc12345.ttf"] = b"font"
@@ -276,3 +298,20 @@ def test_screen_enabled_flag_must_be_boolean(section):
     style[section]["enabled"] = "no"
     with pytest.raises(TenantValidationError, match=f"{section}.enabled"):
         tts.sanitize_style_params(style, available_assets=ASSETS)
+
+
+def test_sanitize_keeps_a_distinct_available_cdg_font():
+    style = _style()
+    style["cdg"]["font_path"] = "Oswald-SemiBold.ttf"  # bundled, condensed for CDG lyrics
+    styles, font = tts.sanitize_style_params(style, available_assets=ASSETS)
+    assert font == "AvenirNext-Bold.ttf"
+    assert styles["karaoke"]["font_path"] == "AvenirNext-Bold.ttf"
+    assert styles["cdg"]["font_path"] == "Oswald-SemiBold.ttf"
+
+
+@pytest.mark.parametrize("bad", ["/abs/Oswald-SemiBold.ttf", "NotAFont-zzz.ttf", "bg.jpg"])
+def test_sanitize_replaces_unsafe_or_unknown_cdg_font_with_main_font(bad):
+    style = _style()
+    style["cdg"]["font_path"] = bad
+    styles, _ = tts.sanitize_style_params(style, available_assets=ASSETS)
+    assert styles["cdg"]["font_path"] == "AvenirNext-Bold.ttf"
