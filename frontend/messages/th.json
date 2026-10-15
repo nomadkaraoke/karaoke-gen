@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "กำลังสร้างตัวอย่าง...",
     "translatedLyricsToggle": "เพิ่มคำแปลเนื้อเพลง",
     "translatedLyricsToggleHint": "แสดงคำแปลจาก AI ของแต่ละบรรทัดด้วยข้อความขนาดเล็กกว่าไว้ใต้เนื้อเพลง เหมาะอย่างยิ่งสำหรับการเรียนภาษา",
-    "translatedLyricsPreviewRetry": "ลองอีกครั้ง"
+    "translatedLyricsPreviewRetry": "ลองอีกครั้ง",
+    "trackCode": "รหัสแทร็ก (ไม่บังคับ)",
+    "trackCodeHint": "รหัสแคตตาล็อกของคุณเอง โดยจะแสดงไว้ที่ด้านหน้าของชื่อไฟล์ผลลัพธ์ทุกไฟล์ เช่น \"VS6588 - Artist - Title\"",
+    "trackCodeInvalid": "ใช้อักษรและตัวเลขเท่านั้น (สามารถคั่นด้วย - หรือ _ ได้) สูงสุด 24 ตัวอักษร",
+    "trackCodePlaceholder": "เช่น VS6588"
   },
   "jobStatus": {
     "settingUp": "กำลังตั้งค่า",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "กำลังอัปโหลด {count} แทร็ก",
     "uploadModalTracksDone": "ส่งแล้ว {done} จาก {count} แทร็ก",
-    "uploadModalTracksFailed": "ไม่สำเร็จ {count} แทร็ก คุณสามารถลองใหม่อีกครั้งได้ในภายหลัง"
+    "uploadModalTracksFailed": "ไม่สำเร็จ {count} แทร็ก คุณสามารถลองใหม่อีกครั้งได้ในภายหลัง",
+    "trackCode": "รหัสแทร็ก (ไม่บังคับ)",
+    "trackCodeHint": "รหัสแคตตาล็อกของคุณเอง โดยจะแสดงไว้ที่ด้านหน้าของชื่อไฟล์ผลลัพธ์ทุกไฟล์ เช่น \"VS6588 - Artist - Title\"",
+    "trackCodeInvalid": "ใช้อักษรและตัวเลขเท่านั้น (สามารถคั่นด้วย - หรือ _ ได้) สูงสุด 24 ตัวอักษร",
+    "trackCodePlaceholder": "เช่น VS6588"
   },
   "requests": {
     "convertBody": "ลองใช้ Generator สร้างวิดีโอคาราโอเกะด้วยตัวคุณเองได้เลยตอนนี้ — วิดีโอแรกเราให้ฟรี",

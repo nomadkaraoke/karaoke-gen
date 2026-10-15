@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Önizleme oluşturuluyor...",
     "translatedLyricsToggle": "Çevrilmiş şarkı sözleri ekle",
     "translatedLyricsToggleHint": "Her satırın yapay zeka çevirisini şarkı sözlerinin altında daha küçük bir metin olarak göster. Dil öğrenmek için harika.",
-    "translatedLyricsPreviewRetry": "Tekrar dene"
+    "translatedLyricsPreviewRetry": "Tekrar dene",
+    "trackCode": "Parça kodu (isteğe bağlı)",
+    "trackCodeHint": "Kendi katalog kodun. Her çıktı dosya adının başına eklenir, örn. \"VS6588 - Sanatçı - Şarkı Adı\".",
+    "trackCodeInvalid": "Yalnızca harf ve rakam kullanabilirsin (- veya _ ile birleştirebilirsin), en fazla 24 karakter.",
+    "trackCodePlaceholder": "örn. VS6588"
   },
   "jobStatus": {
     "settingUp": "Ayarlanıyor",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/sn",
     "uploadModalTitle": "{count} parça yükleniyor",
     "uploadModalTracksDone": "{count} parçadan {done} tanesi gönderildi",
-    "uploadModalTracksFailed": "{count} başarısız oldu, daha sonra tekrar deneyebilirsin"
+    "uploadModalTracksFailed": "{count} başarısız oldu, daha sonra tekrar deneyebilirsin",
+    "trackCode": "Parça kodu (isteğe bağlı)",
+    "trackCodeHint": "Kendi katalog kodun. Her çıktı dosya adının başına eklenir, örn. \"VS6588 - Sanatçı - Şarkı Adı\".",
+    "trackCodeInvalid": "Yalnızca harf ve rakam kullanabilirsin (- veya _ ile birleştirebilirsin), en fazla 24 karakter.",
+    "trackCodePlaceholder": "örn. VS6588"
   },
   "requests": {
     "convertBody": "Generator'ı kendin kullan ve karaoke videonu hemen şimdi yap — ilki bizden.",

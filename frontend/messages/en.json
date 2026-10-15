@@ -607,7 +607,11 @@
     "afterApproval": "After approval, your karaoke video is rendered and delivered. ~10 minutes",
     "trackProgressTenant": "Track progress in the Recent Jobs list.",
     "submitAnother": "Submit Another Track",
-    "submitTrack": "Submit Track"
+    "submitTrack": "Submit Track",
+    "trackCode": "Track code (optional)",
+    "trackCodePlaceholder": "e.g. VS6588",
+    "trackCodeHint": "Your own catalogue code. It goes at the start of every output file name, e.g. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Use letters and numbers only (you can join them with - or _), up to 24 characters."
   },
   "jobStatus": {
     "settingUp": "Setting up",
@@ -1894,7 +1898,11 @@
     "resumeDiscard": "Discard",
     "uploadModalTitle": "Uploading {count} tracks",
     "uploadModalTracksDone": "{done} of {count} tracks submitted",
-    "uploadModalTracksFailed": "{count} failed, you can retry after"
+    "uploadModalTracksFailed": "{count} failed, you can retry after",
+    "trackCode": "Track code (optional)",
+    "trackCodePlaceholder": "e.g. VS6588",
+    "trackCodeHint": "Your own catalogue code. It goes at the start of every output file name, e.g. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Use letters and numbers only (you can join them with - or _), up to 24 characters."
   },
   "requests": {
     "title": "Vote for the next free karaoke track",

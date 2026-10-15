@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Απόδοση προεπισκόπησης...",
     "translatedLyricsToggle": "Προσθήκη μεταφρασμένων στίχων",
     "translatedLyricsToggleHint": "Εμφάνισε μια μετάφραση μέσω AI για κάθε γραμμή με μικρότερα γράμματα κάτω από τους στίχους. Ιδανικό για την εκμάθηση μιας γλώσσας.",
-    "translatedLyricsPreviewRetry": "Δοκίμασε ξανά"
+    "translatedLyricsPreviewRetry": "Δοκίμασε ξανά",
+    "trackCode": "Κωδικός κομματιού (προαιρετικό)",
+    "trackCodeHint": "Ο δικός σου κωδικός καταλόγου. Μπαίνει στην αρχή του ονόματος κάθε αρχείου εξόδου, π.χ. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Χρησιμοποίησε μόνο γράμματα και αριθμούς (μπορείς να τα συνδέσεις με - ή _), έως 24 χαρακτήρες.",
+    "trackCodePlaceholder": "π.χ. VS6588"
   },
   "jobStatus": {
     "settingUp": "Ρύθμιση",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Μεταφόρτωση {count} κομματιών",
     "uploadModalTracksDone": "{done} από {count} κομμάτια υποβλήθηκαν",
-    "uploadModalTracksFailed": "{count} απέτυχαν, μπορείς να δοκιμάσεις ξανά αργότερα"
+    "uploadModalTracksFailed": "{count} απέτυχαν, μπορείς να δοκιμάσεις ξανά αργότερα",
+    "trackCode": "Κωδικός κομματιού (προαιρετικό)",
+    "trackCodeHint": "Ο δικός σου κωδικός καταλόγου. Μπαίνει στην αρχή του ονόματος κάθε αρχείου εξόδου, π.χ. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Χρησιμοποίησε μόνο γράμματα και αριθμούς (μπορείς να τα συνδέσεις με - ή _), έως 24 χαρακτήρες.",
+    "trackCodePlaceholder": "π.χ. VS6588"
   },
   "requests": {
     "convertBody": "Χρησιμοποίησε το Generator μόνος σου και φτιάξε το καραόκε βίντεό σου τώρα — το πρώτο είναι κερασμένο από εμάς.",

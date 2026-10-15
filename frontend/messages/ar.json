@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "جارٍ إنشاء المعاينة...",
     "translatedLyricsToggle": "إضافة كلمات مترجمة",
     "translatedLyricsToggleHint": "عرض ترجمة بالذكاء الاصطناعي لكل سطر بخط أصغر أسفل كلمات الأغنية. ميزة رائعة لتعلم اللغات.",
-    "translatedLyricsPreviewRetry": "حاول مرة أخرى"
+    "translatedLyricsPreviewRetry": "حاول مرة أخرى",
+    "trackCode": "رمز التراك (اختياري)",
+    "trackCodeHint": "رمز الكتالوج الخاص بك. يوضع في بداية اسم كل ملف مُخرَج، مثل: \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "استخدم الأحرف والأرقام فقط (يمكنك الربط بينها باستخدام - أو _)، بحد أقصى 24 حرفًا.",
+    "trackCodePlaceholder": "مثال: VS6588"
   },
   "jobStatus": {
     "settingUp": "جاري الإعداد",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} ميغابايت/ثانية",
     "uploadModalTitle": "جارٍ رفع {count} من المسارات",
     "uploadModalTracksDone": "تم إرسال {done} من أصل {count} مسار",
-    "uploadModalTracksFailed": "فشل {count}، يمكنك إعادة المحاولة لاحقاً"
+    "uploadModalTracksFailed": "فشل {count}، يمكنك إعادة المحاولة لاحقاً",
+    "trackCode": "رمز التراك (اختياري)",
+    "trackCodeHint": "رمز الكتالوج الخاص بك. يوضع في بداية اسم كل ملف مُخرَج، مثل: \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "استخدم الأحرف والأرقام فقط (يمكنك الربط بينها باستخدام - أو _)، بحد أقصى 24 حرفًا.",
+    "trackCodePlaceholder": "مثال: VS6588"
   },
   "requests": {
     "convertBody": "استخدم Generator بنفسك واصنع فيديو الكاريوكي الخاص بك الآن — الفيديو الأول على حسابنا.",

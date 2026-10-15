@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { isValidTrackCode, normalizeTrackCode, TRACK_CODE_MAX_LEN } from "@/lib/track-code"
 
 const AUDIO_EXTENSIONS = [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac", ".opus", ".aiff", ".aif"]
 const MAX_FILES = 100
@@ -29,6 +30,8 @@ interface EditableRow {
   id: string
   artist: string
   title: string
+  // Tenant catalogue code (optional), prefixed onto every output file.
+  trackCode: string
   mixedFilename: string
   instrumentalFilename: string
   confidence: string
@@ -72,6 +75,7 @@ function rowIsValid(row: EditableRow, fileMap: Map<string, File>): boolean {
   return Boolean(
     row.artist.trim() &&
     row.title.trim() &&
+    isValidTrackCode(row.trackCode) &&
     row.mixedFilename &&
     row.instrumentalFilename &&
     row.mixedFilename !== row.instrumentalFilename &&
@@ -185,6 +189,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
         id: `row-${i}-${r.mixed_filename}`,
         artist: r.artist,
         title: r.title,
+        trackCode: r.track_code ?? "",
         mixedFilename: r.mixed_filename,
         instrumentalFilename: r.instrumental_filename,
         confidence: r.confidence,
@@ -219,6 +224,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
         id: pr.rowId,
         artist: pr.artist,
         title: pr.title,
+        trackCode: "", // resumed rows already have their job (and code) created
         mixedFilename: mixedFile ? identityOf(mixedFile) : (mixed?.identity ?? ""),
         instrumentalFilename: instrumentalFile ? identityOf(instrumentalFile) : (instrumental?.identity ?? ""),
         confidence: "high",
@@ -292,7 +298,10 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
             { filename: mixedFile.name, content_type: mixedFile.type || "application/octet-stream", file_type: "audio" },
             { filename: instrumentalFile.name, content_type: instrumentalFile.type || "application/octet-stream", file_type: "existing_instrumental" },
           ],
-          { is_private: true, existing_instrumental: true, batch_id: currentBatchId, upload_mode: "resumable" },
+          {
+            is_private: true, existing_instrumental: true, batch_id: currentBatchId, upload_mode: "resumable",
+            track_code: normalizeTrackCode(row.trackCode),
+          },
         )
         jobId = createResponse.job_id
         uploadUrls = createResponse.upload_urls
@@ -631,6 +640,16 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
                   onChange={e => updateRow(row.id, { title: e.target.value })}
                   style={{ borderColor: "var(--card-border)", color: "var(--text)", backgroundColor: "var(--input)" }} />
               </div>
+              <Input aria-label={t('trackCode')} placeholder={t('trackCodePlaceholder')} value={row.trackCode}
+                maxLength={TRACK_CODE_MAX_LEN}
+                disabled={isSubmitting || row.status === "done"}
+                aria-invalid={!isValidTrackCode(row.trackCode)}
+                title={isValidTrackCode(row.trackCode) ? t('trackCodeHint') : t('trackCodeInvalid')}
+                onChange={e => updateRow(row.id, { trackCode: e.target.value })}
+                style={{
+                  borderColor: isValidTrackCode(row.trackCode) ? "var(--card-border)" : "#ef4444",
+                  color: "var(--text)", backgroundColor: "var(--input)",
+                }} />
               <div className="grid grid-cols-2 gap-2">
                 <label className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
                   <span>{t('mixed')}</span>

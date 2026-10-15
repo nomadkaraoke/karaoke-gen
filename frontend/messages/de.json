@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Vorschau wird gerendert...",
     "translatedLyricsToggle": "Übersetzten Text hinzufügen",
     "translatedLyricsToggleHint": "Zeigt eine KI-Übersetzung jeder Zeile in kleinerer Schrift unter dem Text an. Ideal zum Sprachenlernen.",
-    "translatedLyricsPreviewRetry": "Erneut versuchen"
+    "translatedLyricsPreviewRetry": "Erneut versuchen",
+    "trackCode": "Track-Code (optional)",
+    "trackCodeHint": "Dein eigener Katalogcode. Er wird an den Anfang jedes Ausgabedateinamens gesetzt, z. B. „VS6588 - Artist - Title“.",
+    "trackCodeInvalid": "Verwende nur Buchstaben und Zahlen (du kannst sie mit - oder _ verbinden), maximal 24 Zeichen.",
+    "trackCodePlaceholder": "z. B. VS6588"
   },
   "jobStatus": {
     "settingUp": "Richte ein",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "{count} Tracks werden hochgeladen",
     "uploadModalTracksDone": "{done} von {count} Tracks übermittelt",
-    "uploadModalTracksFailed": "{count} fehlgeschlagen, du kannst es danach erneut versuchen"
+    "uploadModalTracksFailed": "{count} fehlgeschlagen, du kannst es danach erneut versuchen",
+    "trackCode": "Track-Code (optional)",
+    "trackCodeHint": "Dein eigener Katalogcode. Er wird an den Anfang jedes Ausgabedateinamens gesetzt, z. B. „VS6588 - Artist - Title“.",
+    "trackCodeInvalid": "Verwende nur Buchstaben und Zahlen (du kannst sie mit - oder _ verbinden), maximal 24 Zeichen.",
+    "trackCodePlaceholder": "z. B. VS6588"
   },
   "requests": {
     "convertBody": "Nutze den Generator selbst und erstelle dein Karaoke-Video sofort — dein erstes geht auf uns.",

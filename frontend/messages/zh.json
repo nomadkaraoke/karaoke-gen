@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "正在渲染预览...",
     "translatedLyricsToggle": "添加歌词翻译",
     "translatedLyricsToggleHint": "在歌词下方以较小字号显示每行歌词的 AI 翻译。非常适合用来学习语言。",
-    "translatedLyricsPreviewRetry": "重试"
+    "translatedLyricsPreviewRetry": "重试",
+    "trackCode": "曲目代码（可选）",
+    "trackCodeHint": "您自有的编号代码。它将显示在每个输出文件名的开头，例如 \"VS6588 - 歌手 - 歌名\"。",
+    "trackCodeInvalid": "仅限使用字母和数字（可用 - 或 _ 连接），最多 24 个字符。",
+    "trackCodePlaceholder": "例如 VS6588"
   },
   "jobStatus": {
     "settingUp": "设置中",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "正在上传 {count} 首曲目",
     "uploadModalTracksDone": "已提交 {done} / {count} 首曲目",
-    "uploadModalTracksFailed": "{count} 首失败，稍后可重试"
+    "uploadModalTracksFailed": "{count} 首失败，稍后可重试",
+    "trackCode": "曲目代码（可选）",
+    "trackCodeHint": "您自有的编号代码。它将显示在每个输出文件名的开头，例如 \"VS6588 - 歌手 - 歌名\"。",
+    "trackCodeInvalid": "仅限使用字母和数字（可用 - 或 _ 连接），最多 24 个字符。",
+    "trackCodePlaceholder": "例如 VS6588"
   },
   "requests": {
     "convertBody": "现在就使用 Generator 亲自制作您的卡拉OK视频吧 —— 首个视频免费。",

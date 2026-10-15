@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Rendering dell'anteprima...",
     "translatedLyricsToggle": "Aggiungi testo tradotto",
     "translatedLyricsToggleHint": "Mostra una traduzione IA di ogni riga in caratteri più piccoli sotto il testo. Ottimo per imparare una lingua.",
-    "translatedLyricsPreviewRetry": "Riprova"
+    "translatedLyricsPreviewRetry": "Riprova",
+    "trackCode": "Codice traccia (facoltativo)",
+    "trackCodeHint": "Il tuo codice di catalogo. Verrà inserito all'inizio del nome di ogni file generato, ad es. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Usa solo lettere e numeri (puoi collegarli con - o _), fino a un massimo di 24 caratteri.",
+    "trackCodePlaceholder": "ad es. VS6588"
   },
   "jobStatus": {
     "settingUp": "Configurazione",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Caricamento di {count} tracce",
     "uploadModalTracksDone": "{done} su {count} tracce inviate",
-    "uploadModalTracksFailed": "{count} non riuscite, puoi riprovare più tardi"
+    "uploadModalTracksFailed": "{count} non riuscite, puoi riprovare più tardi",
+    "trackCode": "Codice traccia (facoltativo)",
+    "trackCodeHint": "Il tuo codice di catalogo. Verrà inserito all'inizio del nome di ogni file generato, ad es. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Usa solo lettere e numeri (puoi collegarli con - o _), fino a un massimo di 24 caratteri.",
+    "trackCodePlaceholder": "ad es. VS6588"
   },
   "requests": {
     "convertBody": "Usa il Generator e crea subito il tuo video karaoke — il primo te lo offriamo noi.",

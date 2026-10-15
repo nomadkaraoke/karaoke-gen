@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Nire-render ang preview...",
     "translatedLyricsToggle": "Magdagdag ng isinaling lyrics",
     "translatedLyricsToggleHint": "Magpakita ng AI translation ng bawat linya sa mas maliit na text sa ilalim ng lyrics. Maganda para sa pag-aaral ng wika.",
-    "translatedLyricsPreviewRetry": "Subukan muli"
+    "translatedLyricsPreviewRetry": "Subukan muli",
+    "trackCode": "Track code (opsyonal)",
+    "trackCodeHint": "Ang sarili mong catalogue code. Ilalagay ito sa simula ng bawat pangalan ng output file, hal. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Gumamit lamang ng mga titik at numero (maaaring pag-ugnayin gamit ang - o _), hanggang 24 na character.",
+    "trackCodePlaceholder": "hal. VS6588"
   },
   "jobStatus": {
     "settingUp": "Sine-set up",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Ina-upload ang {count} na track",
     "uploadModalTracksDone": "{done} sa {count} na track ang naisumite",
-    "uploadModalTracksFailed": "{count} ang nabigo, maaari mong subukang muli pagkatapos"
+    "uploadModalTracksFailed": "{count} ang nabigo, maaari mong subukang muli pagkatapos",
+    "trackCode": "Track code (opsyonal)",
+    "trackCodeHint": "Ang sarili mong catalogue code. Ilalagay ito sa simula ng bawat pangalan ng output file, hal. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Gumamit lamang ng mga titik at numero (maaaring pag-ugnayin gamit ang - o _), hanggang 24 na character.",
+    "trackCodePlaceholder": "hal. VS6588"
   },
   "requests": {
     "convertBody": "Gamitin ang Generator at gumawa ng sarili mong karaoke video ngayon din — sagot namin ang una mo.",

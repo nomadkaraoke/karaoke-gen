@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "プレビューをレンダリング中...",
     "translatedLyricsToggle": "翻訳歌詞を追加",
     "translatedLyricsToggleHint": "歌詞の下に各行のAI翻訳を小さめの文字で表示します。語学学習にも最適です。",
-    "translatedLyricsPreviewRetry": "もう一度試す"
+    "translatedLyricsPreviewRetry": "もう一度試す",
+    "trackCode": "トラックコード（任意）",
+    "trackCodeHint": "管理用のカタログコードです。すべての出力ファイル名の先頭に追加されます（例: 「VS6588 - Artist - Title」）。",
+    "trackCodeInvalid": "半角英数字（「-」や「_」でつなぐことも可能）のみで、24文字以内で入力してください。",
+    "trackCodePlaceholder": "例: VS6588"
   },
   "jobStatus": {
     "settingUp": "セットアップ中",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "{count}曲をアップロード中",
     "uploadModalTracksDone": "{count}曲中{done}曲を送信しました",
-    "uploadModalTracksFailed": "{count}件が失敗しました。後で再試行できます"
+    "uploadModalTracksFailed": "{count}件が失敗しました。後で再試行できます",
+    "trackCode": "トラックコード（任意）",
+    "trackCodeHint": "管理用のカタログコードです。すべての出力ファイル名の先頭に追加されます（例: 「VS6588 - Artist - Title」）。",
+    "trackCodeInvalid": "半角英数字（「-」や「_」でつなぐことも可能）のみで、24文字以内で入力してください。",
+    "trackCodePlaceholder": "例: VS6588"
   },
   "requests": {
     "convertBody": "Generatorを使って、今すぐご自身でカラオケ動画を作成してみましょう。最初の1曲は無料です。",

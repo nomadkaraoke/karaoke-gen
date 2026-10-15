@@ -65,6 +65,12 @@ _CODED_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A leading tenant catalogue code, e.g. ``VS6588 Gerry and the Pacemakers - …`` or
+# ``VS6588 - Gerry …``: 1-4 capital letters then 3-8 digits, followed by a space.
+# Case-sensitive and digit-heavy so ordinary artist names ("UB40", "MC5", "ABBA")
+# are never mistaken for a code. Checked only after ``_CODED_RE`` (S-code slots).
+_TRACK_CODE_RE = re.compile(r"^(?P<track_code>[A-Z]{1,4}\d{3,8})(?:\s+-\s+|\s+)(?P<rest>.+)$")
+
 # A bracketed trailing label, e.g. ``Adele - Hello (Guide)`` / ``… [Instrumental]``.
 _BRACKETED_LABEL_RE = re.compile(
     rf"^(?P<body>.+?)\s*[\(\[]\s*(?P<label>{_LABEL_ALTERNATION})\s*[\)\]]\s*$",
@@ -91,6 +97,7 @@ class ProposedRow:
     instrumental_filename: str
     confidence: str = "high"  # "high" | "medium" | "low"
     warning: Optional[str] = None
+    track_code: Optional[str] = None  # tenant catalogue code parsed from the filename
 
     def to_dict(self) -> dict:
         return {
@@ -100,6 +107,7 @@ class ProposedRow:
             "instrumental_filename": self.instrumental_filename,
             "confidence": self.confidence,
             "warning": self.warning,
+            "track_code": self.track_code,
         }
 
 
@@ -156,6 +164,7 @@ class _Parsed:
     role: Optional[str]  # MIXED | INSTRUMENTAL | None (unknown)
     artist: str
     title: str
+    track_code: Optional[str] = None
 
 
 # generate(system_prompt, user_prompt) -> dict (parsed JSON matching RESPONSE_SCHEMA)
@@ -227,17 +236,33 @@ def _parse_one(filename: str) -> Optional[_Parsed]:
     # No S-code: only a strong/bracketed trailing label can classify it; a bare
     # weak trailing word can't be told apart from the title, so leave role unknown
     # (the file becomes a leftover for the LLM pass / warnings).
+    track_code, stem = split_track_code(stem)
     body, role = _peel_label(stem, None)
     if role is None:
         return None
     artist, title = _split_artist_title(body)
-    return _Parsed(filename, None, role, artist, title)
+    return _Parsed(filename, None, role, artist, title, track_code)
+
+
+def split_track_code(stem: str) -> tuple[Optional[str], str]:
+    """Split a leading tenant catalogue code off a filename stem.
+
+    ``"VS6588 Gerry and the Pacemakers - Ferry Cross The Mersey"`` →
+    ``("VS6588", "Gerry and the Pacemakers - Ferry Cross The Mersey")``.
+    Returns ``(None, stem)`` when there is no code.
+    """
+    m = _TRACK_CODE_RE.match(stem.strip())
+    if not m:
+        return None, stem
+    return m.group("track_code"), m.group("rest").strip()
 
 
 def _pair_key(p: _Parsed) -> str:
     """Group files that belong together. Prefer the S-code; else artist+title."""
     if p.code:
         return f"code:{p.code}"
+    if p.track_code:
+        return f"track:{p.track_code}"
     return f"song:{p.artist.lower()}|{p.title.lower()}"
 
 
@@ -273,6 +298,7 @@ def _regex_analyze(audio_filenames: list[str]) -> tuple[list[ProposedRow], list[
                     mixed_filename=m.filename,
                     instrumental_filename=i.filename,
                     confidence="high",
+                    track_code=m.track_code or i.track_code,
                 )
             )
         # Anything without a partner is left over for the LLM / warnings.
@@ -362,14 +388,25 @@ def _llm_analyze(
         confidence = str(raw.get("confidence") or "medium").lower()
         if confidence not in {"high", "medium", "low"}:
             confidence = "medium"
+        artist = str(raw.get("artist") or "").strip()
+        # The model sees raw filenames, so a leading catalogue code may end up in
+        # the artist; take it from the filename and keep the artist clean.
+        track_code, _ = split_track_code(Path(mixed).stem)
+        if track_code is None:
+            track_code, _ = split_track_code(Path(instrumental).stem)
+        if track_code:
+            code_prefix, artist_rest = split_track_code(artist)
+            if code_prefix == track_code:
+                artist = artist_rest
         rows.append(
             ProposedRow(
-                artist=str(raw.get("artist") or "").strip(),
+                artist=artist,
                 title=str(raw.get("title") or "").strip(),
                 mixed_filename=mixed,
                 instrumental_filename=instrumental,
                 confidence=confidence,
                 warning=(str(raw["warning"]).strip() if raw.get("warning") else None),
+                track_code=track_code,
             )
         )
 

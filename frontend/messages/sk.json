@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Generuje sa náhľad...",
     "translatedLyricsToggle": "Pridať preložený text",
     "translatedLyricsToggleHint": "Zobrazí AI preklad každého riadku menším písmom pod textom. Skvelé na učenie sa jazyka.",
-    "translatedLyricsPreviewRetry": "Skúsiť znova"
+    "translatedLyricsPreviewRetry": "Skúsiť znova",
+    "trackCode": "Kód skladby (voliteľné)",
+    "trackCodeHint": "Tvoj vlastný katalógový kód. Uvádza sa na začiatku každého názvu výstupného súboru, napr. „VS6588 - Artist - Title“.",
+    "trackCodeInvalid": "Použi iba písmená a čísla (môžeš ich spojiť pomocou - alebo _), maximálne 24 znakov.",
+    "trackCodePlaceholder": "napr. VS6588"
   },
   "jobStatus": {
     "settingUp": "Nastavuje sa",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Nahrávanie {count} skladieb",
     "uploadModalTracksDone": "{done} z {count} skladieb odoslaných",
-    "uploadModalTracksFailed": "{count} zlyhalo, potom to môžeš skúsiť znova"
+    "uploadModalTracksFailed": "{count} zlyhalo, potom to môžeš skúsiť znova",
+    "trackCode": "Kód skladby (voliteľné)",
+    "trackCodeHint": "Tvoj vlastný katalógový kód. Uvádza sa na začiatku každého názvu výstupného súboru, napr. „VS6588 - Artist - Title“.",
+    "trackCodeInvalid": "Použi iba písmená a čísla (môžeš ich spojiť pomocou - alebo _), maximálne 24 znakov.",
+    "trackCodePlaceholder": "napr. VS6588"
   },
   "requests": {
     "convertBody": "Použi Generator sám a vytvor si svoje karaoke video hneď teraz — prvé máš od nás zadarmo.",

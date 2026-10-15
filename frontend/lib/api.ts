@@ -457,6 +457,8 @@ export interface BulkProposedRow {
   instrumental_filename: string;
   confidence: 'high' | 'medium' | 'low' | string;
   warning: string | null;
+  /** Tenant catalogue code parsed from the filename (e.g. "VS6588"), if any. */
+  track_code?: string | null;
 }
 
 export interface BulkUnpairedFile {
@@ -1066,6 +1068,8 @@ export const api = {
       backing_preference?: string;
       /** UI locale code to show an AI translation of each lyric line beneath the lyrics. Omit = off. */
       translation_language?: string;
+      /** Tenant portals only: the tenant's own catalogue code, used to prefix every output file. */
+      track_code?: string;
     }
   ): Promise<CreateJobWithUploadUrlsResponse> {
     const body: Record<string, any> = { artist, title, files };
@@ -1077,6 +1081,7 @@ export const api = {
     if (options?.review_mode) body.review_mode = options.review_mode;
     if (options?.backing_preference) body.backing_preference = options.backing_preference;
     if (options?.translation_language) body.translation_language = options.translation_language;
+    if (options?.track_code) body.track_code = options.track_code;
 
     const response = await apiFetch(`${API_BASE_URL}/api/jobs/create-with-upload-urls`, {
       method: 'POST',
@@ -1179,6 +1184,8 @@ export const api = {
       backing_preference?: string;
       /** UI locale code to show an AI translation of each lyric line beneath the lyrics. Omit = off. */
       translation_language?: string;
+      /** Tenant portals only: the tenant's own catalogue code, used to prefix every output file. */
+      track_code?: string;
       instrumentalFile?: File | null;
     },
     onProgress?: (progress: UploadProgress) => void,

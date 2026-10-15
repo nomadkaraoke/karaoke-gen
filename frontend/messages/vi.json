@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Đang tạo bản xem trước...",
     "translatedLyricsToggle": "Thêm bản dịch lời bài hát",
     "translatedLyricsToggleHint": "Hiển thị bản dịch AI của từng dòng bằng chữ nhỏ hơn bên dưới lời bài hát. Rất thích hợp để học ngoại ngữ.",
-    "translatedLyricsPreviewRetry": "Thử lại"
+    "translatedLyricsPreviewRetry": "Thử lại",
+    "trackCode": "Mã bài hát (không bắt buộc)",
+    "trackCodeHint": "Mã danh mục riêng của bạn. Mã này sẽ nằm ở đầu tên mỗi tệp đầu ra, ví dụ: \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Chỉ sử dụng chữ cái và chữ số (bạn có thể nối bằng dấu - hoặc _), tối đa 24 ký tự.",
+    "trackCodePlaceholder": "ví dụ: VS6588"
   },
   "jobStatus": {
     "settingUp": "Đang thiết lập",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Đang tải lên {count} bài hát",
     "uploadModalTracksDone": "Đã gửi {done} trên {count} bài hát",
-    "uploadModalTracksFailed": "{count} bài thất bại, bạn có thể thử lại sau"
+    "uploadModalTracksFailed": "{count} bài thất bại, bạn có thể thử lại sau",
+    "trackCode": "Mã bài hát (không bắt buộc)",
+    "trackCodeHint": "Mã danh mục riêng của bạn. Mã này sẽ nằm ở đầu tên mỗi tệp đầu ra, ví dụ: \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Chỉ sử dụng chữ cái và chữ số (bạn có thể nối bằng dấu - hoặc _), tối đa 24 ký tự.",
+    "trackCodePlaceholder": "ví dụ: VS6588"
   },
   "requests": {
     "convertBody": "Hãy tự dùng Generator để tạo video karaoke ngay bây giờ — video đầu tiên hoàn toàn miễn phí.",

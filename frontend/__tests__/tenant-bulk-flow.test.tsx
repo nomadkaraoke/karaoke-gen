@@ -562,3 +562,28 @@ it('matchRepickedFile requires an exact size and disambiguates by mtime', () => 
 it('exports TenantBulkFlow as a named export', () => {
   expect(typeof TenantBulkFlow).toBe('function')
 })
+
+it('pre-fills a track code parsed from filenames and sends it with the job', async () => {
+  const resp = analysisResponse()
+  ;(resp.rows[0] as any).track_code = 'VS6588'
+  mockApi.analyzeBulk.mockResolvedValue(resp)
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+
+  const codeInputs = (await screen.findAllByLabelText('Track code (optional)')) as HTMLInputElement[]
+  expect(codeInputs.map(i => i.value)).toEqual(['VS6588', ''])
+  fireEvent.change(codeInputs[1], { target: { value: 'vs6589' } })
+
+  fireEvent.click(screen.getByRole('button', { name: /Submit 2 tracks/i }))
+  await waitFor(() => expect(mockApi.createJobWithUploadUrls).toHaveBeenCalledTimes(2))
+  const codes = mockApi.createJobWithUploadUrls.mock.calls.map(c => (c[3] as any).track_code).sort()
+  expect(codes).toEqual(['VS6588', 'VS6589'])
+})
+
+it('an invalid track code makes that row not submittable', async () => {
+  render(<TenantBulkFlow onJobsChanged={jest.fn()} />)
+  selectFiles()
+  const codeInputs = await screen.findAllByLabelText('Track code (optional)')
+  fireEvent.change(codeInputs[0], { target: { value: 'bad code!' } })
+  expect(screen.getByRole('button', { name: /Submit 1 tracks/i })).toBeInTheDocument()
+})

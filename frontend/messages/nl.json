@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Voorbeeld renderen...",
     "translatedLyricsToggle": "Vertaalde songtekst toevoegen",
     "translatedLyricsToggleHint": "Toon een AI-vertaling van elke regel in kleinere letters onder de songtekst. Ideaal om een taal te leren.",
-    "translatedLyricsPreviewRetry": "Probeer opnieuw"
+    "translatedLyricsPreviewRetry": "Probeer opnieuw",
+    "trackCode": "Trackcode (optioneel)",
+    "trackCodeHint": "Je eigen cataloguscode. Deze komt aan het begin van elke uitvoerbestandsnaam te staan, bijv. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Gebruik alleen letters en cijfers (eventueel verbonden met - of _), maximaal 24 tekens.",
+    "trackCodePlaceholder": "bijv. VS6588"
   },
   "jobStatus": {
     "settingUp": "Instellen",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "{count} tracks uploaden",
     "uploadModalTracksDone": "{done} van {count} tracks ingediend",
-    "uploadModalTracksFailed": "{count} mislukt, je kunt het hierna opnieuw proberen"
+    "uploadModalTracksFailed": "{count} mislukt, je kunt het hierna opnieuw proberen",
+    "trackCode": "Trackcode (optioneel)",
+    "trackCodeHint": "Je eigen cataloguscode. Deze komt aan het begin van elke uitvoerbestandsnaam te staan, bijv. \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Gebruik alleen letters en cijfers (eventueel verbonden met - of _), maximaal 24 tekens.",
+    "trackCodePlaceholder": "bijv. VS6588"
   },
   "requests": {
     "convertBody": "Gebruik de Generator zelf en maak nu meteen je karaokevideo — de eerste krijg je van ons.",

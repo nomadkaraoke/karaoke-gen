@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Genererer forhåndsvisning...",
     "translatedLyricsToggle": "Tilføj oversat sangtekst",
     "translatedLyricsToggleHint": "Vis en AI-oversættelse af hver linje med mindre skrift under sangteksten. Godt til at lære et sprog.",
-    "translatedLyricsPreviewRetry": "Prøv igen"
+    "translatedLyricsPreviewRetry": "Prøv igen",
+    "trackCode": "Sporkode (valgfrit)",
+    "trackCodeHint": "Din egen katalogkode. Den placeres i starten af hvert outputfilnavn, f.eks. \"VS6588 - Kunstner - Titel\".",
+    "trackCodeInvalid": "Brug kun bogstaver og tal (du kan forbinde dem med - eller _), maks. 24 tegn.",
+    "trackCodePlaceholder": "f.eks. VS6588"
   },
   "jobStatus": {
     "settingUp": "Sætter op",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Uploader {count} numre",
     "uploadModalTracksDone": "{done} af {count} numre indsendt",
-    "uploadModalTracksFailed": "{count} mislykkedes, du kan prøve igen bagefter"
+    "uploadModalTracksFailed": "{count} mislykkedes, du kan prøve igen bagefter",
+    "trackCode": "Sporkode (valgfrit)",
+    "trackCodeHint": "Din egen katalogkode. Den placeres i starten af hvert outputfilnavn, f.eks. \"VS6588 - Kunstner - Titel\".",
+    "trackCodeInvalid": "Brug kun bogstaver og tal (du kan forbinde dem med - eller _), maks. 24 tegn.",
+    "trackCodePlaceholder": "f.eks. VS6588"
   },
   "requests": {
     "convertBody": "Brug Generator selv og lav din karaokevideo lige nu — vi giver den første.",

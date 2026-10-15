@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "יוצר תצוגה מקדימה...",
     "translatedLyricsToggle": "הוספת מילים מתורגמות",
     "translatedLyricsToggleHint": "הצגת תרגום AI של כל שורה בטקסט קטן יותר מתחת למילות השיר. מעולה ללימוד שפות.",
-    "translatedLyricsPreviewRetry": "נסה שוב"
+    "translatedLyricsPreviewRetry": "נסה שוב",
+    "trackCode": "קוד רצועה (אופציונלי)",
+    "trackCodeHint": "קוד קטלוגי פנימי שלך. הוא יופיע בתחילת השם של כל קובץ שייווצר, למשל: \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "יש להשתמש באותיות ובמספרים בלבד (אפשר לחבר ביניהם באמצעות - או _), עד 24 תווים.",
+    "trackCodePlaceholder": "לדוגמה: VS6588"
   },
   "jobStatus": {
     "settingUp": "מגדיר",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "מעלה {count} רצועות",
     "uploadModalTracksDone": "{done} מתוך {count} רצועות נשלחו",
-    "uploadModalTracksFailed": "{count} נכשלו, אפשר לנסות שוב לאחר מכן"
+    "uploadModalTracksFailed": "{count} נכשלו, אפשר לנסות שוב לאחר מכן",
+    "trackCode": "קוד רצועה (אופציונלי)",
+    "trackCodeHint": "קוד קטלוגי פנימי שלך. הוא יופיע בתחילת השם של כל קובץ שייווצר, למשל: \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "יש להשתמש באותיות ובמספרים בלבד (אפשר לחבר ביניהם באמצעות - או _), עד 24 תווים.",
+    "trackCodePlaceholder": "לדוגמה: VS6588"
   },
   "requests": {
     "convertBody": "השתמשו ב-Generator בעצמכם והכינו סרטון קריוקי ממש עכשיו — הראשון עלינו.",

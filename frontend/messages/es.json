@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Renderizando vista previa...",
     "translatedLyricsToggle": "Agregar letras traducidas",
     "translatedLyricsToggleHint": "Muestra una traducción por IA de cada línea en un texto más pequeño debajo de las letras. Ideal para aprender un idioma.",
-    "translatedLyricsPreviewRetry": "Intentar de nuevo"
+    "translatedLyricsPreviewRetry": "Intentar de nuevo",
+    "trackCode": "Código de pista (opcional)",
+    "trackCodeHint": "Tu propio código de catálogo. Va al inicio del nombre de cada archivo de salida, ej. \"VS6588 - Artista - Título\".",
+    "trackCodeInvalid": "Usa solo letras y números (puedes unirlos con - o _), de hasta 24 caracteres.",
+    "trackCodePlaceholder": "ej. VS6588"
   },
   "jobStatus": {
     "settingUp": "Configurando",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Subiendo {count} pistas",
     "uploadModalTracksDone": "{done} de {count} pistas enviadas",
-    "uploadModalTracksFailed": "{count} fallaron, puedes volver a intentarlo después"
+    "uploadModalTracksFailed": "{count} fallaron, puedes volver a intentarlo después",
+    "trackCode": "Código de pista (opcional)",
+    "trackCodeHint": "Tu propio código de catálogo. Va al inicio del nombre de cada archivo de salida, ej. \"VS6588 - Artista - Título\".",
+    "trackCodeInvalid": "Usa solo letras y números (puedes unirlos con - o _), de hasta 24 caracteres.",
+    "trackCodePlaceholder": "ej. VS6588"
   },
   "requests": {
     "convertBody": "Usa el Generator tú mismo y haz tu video de karaoke ahora mismo — el primero va por nuestra cuenta.",

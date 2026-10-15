@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Створення попереднього перегляду...",
     "translatedLyricsToggle": "Додати переклад тексту пісні",
     "translatedLyricsToggleHint": "Показувати ШІ-переклад кожного рядка меншим шрифтом під текстом пісні. Чудово підходить для вивчення мови.",
-    "translatedLyricsPreviewRetry": "Спробувати ще раз"
+    "translatedLyricsPreviewRetry": "Спробувати ще раз",
+    "trackCode": "Код треку (необов'язково)",
+    "trackCodeHint": "Твій власний каталожний код. Він додається на початку назви кожного вихідного файлу, наприклад, \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Використовуй лише літери та цифри (можна розділяти їх через - або _), до 24 символів.",
+    "trackCodePlaceholder": "наприклад, VS6588"
   },
   "jobStatus": {
     "settingUp": "Налаштування",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} МБ/с",
     "uploadModalTitle": "Завантаження {count} треків",
     "uploadModalTracksDone": "Надіслано {done} з {count} треків",
-    "uploadModalTracksFailed": "{count} не вдалося, ти можеш повторити спробу пізніше"
+    "uploadModalTracksFailed": "{count} не вдалося, ти можеш повторити спробу пізніше",
+    "trackCode": "Код треку (необов'язково)",
+    "trackCodeHint": "Твій власний каталожний код. Він додається на початку назви кожного вихідного файлу, наприклад, \"VS6588 - Artist - Title\".",
+    "trackCodeInvalid": "Використовуй лише літери та цифри (можна розділяти їх через - або _), до 24 символів.",
+    "trackCodePlaceholder": "наприклад, VS6588"
   },
   "requests": {
     "convertBody": "Скористайся Generator і створи своє караоке-відео прямо зараз — перше за наш рахунок.",

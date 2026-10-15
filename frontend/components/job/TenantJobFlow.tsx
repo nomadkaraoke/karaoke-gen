@@ -8,6 +8,7 @@ import { useUploadTask } from "@/hooks/useUploadTask"
 import { UploadProgressModal } from "@/components/upload/UploadProgressModal"
 import { formatDuration } from "./OwnInstrumentalField"
 import { useTenant } from "@/lib/tenant"
+import { isValidTrackCode, normalizeTrackCode, TRACK_CODE_MAX_LEN } from "@/lib/track-code"
 import { CheckCircle2, Upload, Music, Loader2, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +35,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
   // Form fields
   const [artist, setArtist] = useState("")
   const [title, setTitle] = useState("")
+  const [trackCode, setTrackCode] = useState("")
   const [mixedFile, setMixedFile] = useState<File | null>(null)
   const [instrumentalFile, setInstrumentalFile] = useState<File | null>(null)
 
@@ -47,11 +49,13 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
   const mixedInputRef = useRef<HTMLInputElement>(null)
   const instrumentalInputRef = useRef<HTMLInputElement>(null)
 
-  const canSubmit = artist.trim() && title.trim() && mixedFile && instrumentalFile && phase === "idle"
+  const trackCodeValid = isValidTrackCode(trackCode)
+  const canSubmit = artist.trim() && title.trim() && trackCodeValid && mixedFile && instrumentalFile && phase === "idle"
 
   const resetFlow = useCallback(() => {
     setArtist("")
     setTitle("")
+    setTrackCode("")
     setMixedFile(null)
     setInstrumentalFile(null)
     setPhase("idle")
@@ -94,7 +98,7 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
 
       const response = await upload.run((report) => api.createJobFromUploadedAudio(
         mixedFile, artist.trim(), title.trim(),
-        { is_private: true, instrumentalFile },
+        { is_private: true, instrumentalFile, track_code: normalizeTrackCode(trackCode) },
         report,
       ))
       setJobId(response.job_id)
@@ -269,6 +273,24 @@ export function TenantJobFlow({ onJobCreated }: TenantJobFlowProps) {
           disabled={isSubmitting}
           style={{ borderColor: "var(--card-border)", color: "var(--text)", backgroundColor: "var(--input)" }}
         />
+      </div>
+
+      {/* Track code (optional): prefixes every output file, e.g. "VS6588 - Artist - Title" */}
+      <div className="space-y-1.5">
+        <Label htmlFor="tenant-track-code" style={{ color: "var(--text)" }}>{t('trackCode')}</Label>
+        <Input
+          id="tenant-track-code"
+          placeholder={t('trackCodePlaceholder')}
+          value={trackCode}
+          maxLength={TRACK_CODE_MAX_LEN}
+          onChange={e => setTrackCode(e.target.value)}
+          disabled={isSubmitting}
+          aria-invalid={!trackCodeValid}
+          style={{ borderColor: trackCodeValid ? "var(--card-border)" : "#ef4444", color: "var(--text)", backgroundColor: "var(--input)" }}
+        />
+        <p className="text-xs" style={{ color: trackCodeValid ? "var(--text-muted)" : "#ef4444" }}>
+          {trackCodeValid ? t('trackCodeHint') : t('trackCodeInvalid')}
+        </p>
       </div>
 
       {/* Mixed Audio */}

@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Renderitzant la previsualització...",
     "translatedLyricsToggle": "Afegeix la lletra traduïda",
     "translatedLyricsToggleHint": "Mostra una traducció amb IA de cada línia en un text més petit a sota de la lletra. Ideal per aprendre un idioma.",
-    "translatedLyricsPreviewRetry": "Torna-ho a provar"
+    "translatedLyricsPreviewRetry": "Torna-ho a provar",
+    "trackCode": "Codi de pista (opcional)",
+    "trackCodeHint": "El teu propi codi de catàleg. Va al principi del nom de cada fitxer de sortida, p. ex. \"VS6588 - Artista - Títol\".",
+    "trackCodeInvalid": "Fes servir només lletres i números (pots unir-los amb - o _), fins a 24 caràcters.",
+    "trackCodePlaceholder": "p. ex. VS6588"
   },
   "jobStatus": {
     "settingUp": "Configurant",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Pujant {count} pistes",
     "uploadModalTracksDone": "{done} de {count} pistes enviades",
-    "uploadModalTracksFailed": "{count} han fallat, pots tornar-ho a provar després"
+    "uploadModalTracksFailed": "{count} han fallat, pots tornar-ho a provar després",
+    "trackCode": "Codi de pista (opcional)",
+    "trackCodeHint": "El teu propi codi de catàleg. Va al principi del nom de cada fitxer de sortida, p. ex. \"VS6588 - Artista - Títol\".",
+    "trackCodeInvalid": "Fes servir només lletres i números (pots unir-los amb - o _), fins a 24 caràcters.",
+    "trackCodePlaceholder": "p. ex. VS6588"
   },
   "requests": {
     "convertBody": "Fes servir el Generator tu mateix i crea el teu vídeo de karaoke ara mateix — el primer va a càrrec nostre.",

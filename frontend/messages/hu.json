@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Előnézet renderelése...",
     "translatedLyricsToggle": "Lefordított dalszöveg hozzáadása",
     "translatedLyricsToggleHint": "Minden sor AI-fordítását kisebb szövegként jeleníti meg a dalszöveg alatt. Nagyszerű nyelvtanuláshoz.",
-    "translatedLyricsPreviewRetry": "Próbáld újra"
+    "translatedLyricsPreviewRetry": "Próbáld újra",
+    "trackCode": "Számkód (opcionális)",
+    "trackCodeHint": "A saját katalóguskódod. Ez jelenik meg minden kimeneti fájlnév elején, pl. „VS6588 - Előadó - Cím”.",
+    "trackCodeInvalid": "Csak betűket és számokat használj (összekötheted őket - vagy _ jellel), legfeljebb 24 karakter terjedelemben.",
+    "trackCodePlaceholder": "pl. VS6588"
   },
   "jobStatus": {
     "settingUp": "Beállítás",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "{count} szám feltöltése",
     "uploadModalTracksDone": "{done} / {count} szám beküldve",
-    "uploadModalTracksFailed": "{count} sikertelen, utána újrapróbálhatod"
+    "uploadModalTracksFailed": "{count} sikertelen, utána újrapróbálhatod",
+    "trackCode": "Számkód (opcionális)",
+    "trackCodeHint": "A saját katalóguskódod. Ez jelenik meg minden kimeneti fájlnév elején, pl. „VS6588 - Előadó - Cím”.",
+    "trackCodeInvalid": "Csak betűket és számokat használj (összekötheted őket - vagy _ jellel), legfeljebb 24 karakter terjedelemben.",
+    "trackCodePlaceholder": "pl. VS6588"
   },
   "requests": {
     "convertBody": "Használd a Generatort, és készítsd el a saját karaoke videódat most azonnal — az első a mi ajándékunk.",

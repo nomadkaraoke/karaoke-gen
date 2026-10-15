@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Renderar förhandsgranskning...",
     "translatedLyricsToggle": "Lägg till översatt låttext",
     "translatedLyricsToggleHint": "Visa en AI-översättning av varje rad i mindre stil under låttexten. Perfekt för att lära sig ett språk.",
-    "translatedLyricsPreviewRetry": "Försök igen"
+    "translatedLyricsPreviewRetry": "Försök igen",
+    "trackCode": "Spårkod (valfritt)",
+    "trackCodeHint": "Din egen katalogkod. Den placeras i början av varje filnamn, t.ex. \"VS6588 - Artist - Titel\".",
+    "trackCodeInvalid": "Använd endast bokstäver och siffror (du kan binda ihop dem med - eller _), max 24 tecken.",
+    "trackCodePlaceholder": "t.ex. VS6588"
   },
   "jobStatus": {
     "settingUp": "Ställer in",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Laddar upp {count} spår",
     "uploadModalTracksDone": "{done} av {count} spår har skickats in",
-    "uploadModalTracksFailed": "{count} misslyckades, du kan försöka igen efteråt"
+    "uploadModalTracksFailed": "{count} misslyckades, du kan försöka igen efteråt",
+    "trackCode": "Spårkod (valfritt)",
+    "trackCodeHint": "Din egen katalogkod. Den placeras i början av varje filnamn, t.ex. \"VS6588 - Artist - Titel\".",
+    "trackCodeInvalid": "Använd endast bokstäver och siffror (du kan binda ihop dem med - eller _), max 24 tecken.",
+    "trackCodePlaceholder": "t.ex. VS6588"
   },
   "requests": {
     "convertBody": "Använd Generator själv och gör din karaokevideo direkt — vi bjuder på din första.",
