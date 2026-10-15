@@ -246,6 +246,10 @@ refunded) with 400
   (`frontend/lib/resumable-upload.ts`).
 - `batch_id`: groups jobs created together in one bulk batch — stamped into
   `state_data.batch_id` with `created_from: "tenant-bulk"`.
+- `track_code` (tenant portals only; `400` elsewhere): the tenant's own catalogue code,
+  e.g. `"VS6588"`. Letters/digits optionally joined by `-`/`_`, max 24 chars, upper-cased.
+  Stored as the job's `keep_brand_code`, so the delivery folder and every output file are
+  named `VS6588 - Artist - Title …` instead of an allocated `<PREFIX>-NNNN` code.
 
 #### Get Job Status
 
@@ -1368,13 +1372,16 @@ Artist/Title. Pure analysis — filenames only, no uploads, no state written.
 - **Two passes:** deterministic regex for the `S<code>-<1|2> Artist - Title <Guide|BV|Instru>`
   convention, then a Gemini pass (`backend/services/tenant_bulk/analyze.py`) for
   whatever the regex couldn't confidently pair. Falls back to regex-only if the model errors.
+- **Track codes:** a leading catalogue code (`VS6588 Artist - Title Guide.mp3`: 1-4 capitals +
+  3-8 digits) is split off and returned as `track_code`; files are only paired when code AND
+  song match, and LLM pairs with two different codes are rejected.
 
 Response:
 ```json
 {
   "rows": [{"artist": "Eddy Grant", "title": "I Don't Wanna Dance",
              "mixed_filename": "…Guide.mp3", "instrumental_filename": "…BV.mp3",
-             "confidence": "high", "warning": null}],
+             "confidence": "high", "warning": null, "track_code": null}],
   "unpaired": [{"filename": "…", "reason": "no_instrumental", "artist": "…", "title": "…", "role": "mixed"}],
   "ignored": [{"filename": "cover.png", "reason": "non_audio"}]
 }
