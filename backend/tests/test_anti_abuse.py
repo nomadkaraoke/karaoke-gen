@@ -845,6 +845,8 @@ class TestCallerCalleeContracts:
                 tenant_id=None,
                 signup_ip="1.2.3.4",
                 device_fingerprint="fp-xyz",
+                signup_source=None,
+                signup_attribution=None,
             )
 
     @patch('backend.services.user_service.get_settings')

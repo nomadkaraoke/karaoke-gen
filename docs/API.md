@@ -1625,6 +1625,8 @@ The `device_fingerprint` field is optional. If provided, it's used alongside the
 
 The optional `purpose` field controls sign-in context. `purpose: "requests_board"` is used by the public voting board: it creates a passwordless identity **only** — no welcome credit is granted and the per-IP signup limit is skipped (so many voters on a shared venue WiFi can all sign in). The verify response for a board sign-in returns `redirect_path: "/requests"` so the frontend lands the user back on the board.
 
+The optional `attribution` object carries first-touch marketing data captured by the frontend (`frontend/lib/attribution.ts`): `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `referrer`, `landing_path`, `captured_at`. It is only used when the request **creates** the account. The backend whitelists and sanitises it (`backend/services/signup_attribution.py`), stores it as `signup_attribution`, and sets `signup_source` to the `utm_source`. If there is no `utm_source`, it uses the referrer's channel instead (`youtube`, `google`, `website`, `decide`, ...).
+
 ### Verify Magic Link
 
 ```http
@@ -2036,6 +2038,16 @@ Returns full user profile including:
 - Recent credit transactions (last 20)
 - Recent jobs (last 10, each with its `locale`)
 - Active sessions count
+- `signup_source`, `signup_venue`, `signup_attribution` (acquisition channel + first-touch UTM/referrer)
+
+### Attribution Summary (Admin)
+
+```http
+GET /api/users/admin/attribution-summary?days=90
+Authorization: Bearer ADMIN_TOKEN
+```
+
+Funnel by acquisition channel for consumer accounts created in the last `days` (test and tenant users excluded): `signups`, `verified`, `made_job`, `paid`, `revenue_cents` per `signup_source`. Accounts with no recorded source show as `"direct / unknown"`, as do all accounts created before attribution capture shipped (October 2026).
 
 ### Email History (Admin)
 

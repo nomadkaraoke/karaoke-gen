@@ -142,6 +142,17 @@ CREDIT_PACKAGES = {
 }
 ```
 
+## Legacy Payment Links (pre-gen)
+
+Two Stripe Payment Links predate gen. Neither is in code; they were shared by hand. Dashboard/API changes are recorded here because they leave no trace in code.
+
+| Link | Product | Status |
+|------|---------|--------|
+| `https://buy.stripe.com/dR67sx4wZcdt2DC9AA` (`plink_1PSsYyJqOK5vtxo4A1gBQUUO`) | "Custom Karaoke Video" $10 + optional $5 tip: the old nomadkaraoke.com "Buy Video" order form | **Deactivated 2026-10-14.** It now shows an `inactive_message` pointing to gen.nomadkaraoke.com (self-serve or Made For You). |
+| `https://buy.stripe.com/00geUZgfHdhx6TS001` (`plink_1R08pkJqOK5vtxo4qf1Sqq6v`) | "Custom Karaoke Service", customer-entered amount | **Active.** Used for tips: nomadkaraoke.com/tip, `pay.nomadkaraoke.com` (Cloudflare redirect), and the kjbox singer UI "Card / Apple Pay" tip button. |
+
+Why `dR67sx` was deactivated: the last sale on it was 2025-12-23. From 2025-12-31 to 2026-10-08 it opened about 30 checkout sessions, and none completed. Andrew had emailed the link to regulars as "my order form", so returning customers kept landing on a $10 manual order that is no longer fulfilled. To undo: `POST /v1/payment_links/plink_1PSsYyJqOK5vtxo4A1gBQUUO active=true`.
+
 ## Admin Features
 
 ### Issue Free Credits

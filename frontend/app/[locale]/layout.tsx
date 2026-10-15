@@ -5,6 +5,7 @@ import { hasLocale } from 'next-intl';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { ReferralCapture } from '@/components/ReferralCapture';
+import { AttributionCapture } from '@/components/AttributionCapture';
 import { BackendStatusBanner } from '@/components/backend-status-banner';
 
 export function generateStaticParams() {
@@ -37,6 +38,7 @@ export default async function LocaleLayout({
       />
       <Suspense fallback={null}>
         <ReferralCapture />
+        <AttributionCapture />
       </Suspense>
       <BackendStatusBanner />
       {children}
