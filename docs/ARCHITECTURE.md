@@ -89,6 +89,9 @@ Cloudflare account `4585249dcf5d2f9fb4e075c5382cd071` since 2026-10-14; previous
 in Andrew's personal account). Cut over 2026-07-20 after a vuln-scanner hammered the previously
 directly-exposed Cloud Run origin. Managed as IaC in
 `infrastructure/modules/edge_security.py` (`pulumi_cloudflare`).
+Everything else in that Cloudflare account (all zones' DNS, other rulesets, email routing,
+tunnels, Zero Trust Access, Pages/Worker domains) is the separate `nomad-cloudflare` Pulumi
+project in `infrastructure/cloudflare/`; its README lists which phases/records each stack owns.
 
 **Request path:** client → Cloudflare edge → Cloud Run. At the edge:
 - **WAF** (`http_request_firewall_custom`) blocks exploit/secret-exposure paths
