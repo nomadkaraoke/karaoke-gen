@@ -649,10 +649,16 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
                 aria-invalid={!isValidTrackCode(row.trackCode)}
                 title={isValidTrackCode(row.trackCode) ? t('trackCodeHint') : t('trackCodeInvalid')}
                 onChange={e => updateRow(row.id, { trackCode: e.target.value })}
+                aria-describedby={isValidTrackCode(row.trackCode) ? undefined : `${row.id}-track-code-error`}
                 style={{
                   borderColor: isValidTrackCode(row.trackCode) ? "var(--card-border)" : "#ef4444",
                   color: "var(--text)", backgroundColor: "var(--input)",
                 }} />
+              {!isValidTrackCode(row.trackCode) && (
+                <p id={`${row.id}-track-code-error`} className="text-xs" style={{ color: "#ef4444" }}>
+                  {t('trackCodeInvalid')}
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <label className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
                   <span>{t('mixed')}</span>

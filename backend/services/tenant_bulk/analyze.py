@@ -386,6 +386,12 @@ def _llm_analyze(
             continue
         if mixed == instrumental or mixed in used or instrumental in used:
             continue
+        # Never pair files carrying two DIFFERENT catalogue codes — that would put
+        # mismatched audio under one code. Leave both for the operator to review.
+        mixed_code, _ = split_track_code(Path(mixed).stem)
+        inst_code, _ = split_track_code(Path(instrumental).stem)
+        if mixed_code and inst_code and mixed_code != inst_code:
+            continue
         used.add(mixed)
         used.add(instrumental)
         confidence = str(raw.get("confidence") or "medium").lower()

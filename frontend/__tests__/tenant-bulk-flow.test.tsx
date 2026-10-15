@@ -590,5 +590,6 @@ it('an invalid track code makes that row not submittable', async () => {
   selectFiles()
   const codeInputs = await screen.findAllByLabelText('Track code (optional)')
   fireEvent.change(codeInputs[0], { target: { value: 'bad code!' } })
+  expect(screen.getByText(/Use letters and numbers only/)).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Submit 1 tracks/i })).toBeInTheDocument()
 })

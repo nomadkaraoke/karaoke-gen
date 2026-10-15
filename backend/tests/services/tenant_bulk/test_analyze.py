@@ -260,3 +260,14 @@ class TestTrackCodes:
             "VS6600 Adele - Hello Guide.mp3",
             "VS6600 Oasis - Wonderwall Instrumental.mp3",
         }
+
+    def test_llm_pair_with_conflicting_codes_is_rejected(self):
+        files = ["VS6588 Some Artist - Odd Name mix.mp3", "VS6589 Some Artist - Odd Name backing track.mp3"]
+
+        def fake_generate(_system, _user):
+            return {"rows": [{"artist": "Some Artist", "title": "Odd Name",
+                              "mixed_filename": files[0], "instrumental_filename": files[1]}]}
+
+        result = analyze_filenames(files, generate=fake_generate).to_dict()
+        assert result["rows"] == []
+        assert {u["filename"] for u in result["unpaired"]} == set(files)
