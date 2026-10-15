@@ -91,3 +91,24 @@ def test_duplicate_logical_names_get_suffixes(run):
     txt = sorted(n for n in names if n.startswith("dns-nomadkaraoke-com-apex-txt"))
     assert txt == ["dns-nomadkaraoke-com-apex-txt", "dns-nomadkaraoke-com-apex-txt-2"]
     assert len(names) == len({r["name"] for r in names.values()})
+
+
+def test_cf_follows_every_page(monkeypatch):
+    monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "tok")
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", ACCOUNT)
+    spec = importlib.util.spec_from_file_location("build_import_list_pages", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    calls = []
+
+    def fake_get(path):
+        calls.append(path)
+        page = int(path.rsplit("&page=", 1)[1]) if "&page=" in path else 1
+        return {"success": True, "result": [f"r{page}"], "result_info": {"page": page, "total_pages": 3}}
+
+    monkeypatch.setattr(mod, "_get", fake_get)
+    assert mod.cf("/zones/z/dns_records?per_page=500") == ["r1", "r2", "r3"]
+    assert calls[1:] == ["/zones/z/dns_records?per_page=500&page=2", "/zones/z/dns_records?per_page=500&page=3"]
+    # Non-list results (e.g. a single settings object) are returned as-is.
+    monkeypatch.setattr(mod, "_get", lambda path: {"success": True, "result": {"enabled": True}})
+    assert mod.cf("/zones/z/email/routing") == {"enabled": True}

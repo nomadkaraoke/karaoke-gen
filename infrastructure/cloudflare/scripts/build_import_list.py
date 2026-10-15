@@ -37,7 +37,7 @@ EXCLUDED_WORKER_ROUTES = {"decide.nomadkaraoke.com/api/*"}
 MANAGED_ZONE_SETTINGS = ["ssl"]
 
 
-def cf(path):
+def _get(path):
     req = urllib.request.Request(API + path, headers={"Authorization": f"Bearer {TOKEN}"})
     try:
         body = json.load(urllib.request.urlopen(req))
@@ -45,7 +45,20 @@ def cf(path):
         body = json.loads(e.read())
     if not body.get("success", True):
         sys.exit(f"{path}: {body.get('errors')}")
-    return body["result"]
+    return body
+
+
+def cf(path):
+    """GET a Cloudflare API path; list results are followed across every page."""
+    body = _get(path)
+    result = body["result"]
+    info = body.get("result_info") or {}
+    total_pages = info.get("total_pages") or 1
+    if isinstance(result, list) and total_pages > 1:
+        sep = "&" if "?" in path else "?"
+        for page in range(2, total_pages + 1):
+            result = result + _get(f"{path}{sep}page={page}")["result"]
+    return result
 
 
 def slug(*parts):
@@ -125,6 +138,8 @@ def main():
     for tok in cf(f"/accounts/{ACCOUNT}/access/service_tokens"):
         add("zeroTrustAccessServiceToken:ZeroTrustAccessServiceToken",
             f"access-service-token-{slug(tok['name'])}", f"accounts/{ACCOUNT}/{tok['id']}")
+    for pol in cf(f"/accounts/{ACCOUNT}/access/policies"):
+        add("zeroTrustAccessPolicy:ZeroTrustAccessPolicy", f"access-policy-{slug(pol['name'])}", f"{ACCOUNT}/{pol['id']}")
     for app in cf(f"/accounts/{ACCOUNT}/access/apps"):
         add("zeroTrustAccessApplication:ZeroTrustAccessApplication",
             f"access-app-{slug(app['domain'])}", f"accounts/{ACCOUNT}/{app['id']}")
