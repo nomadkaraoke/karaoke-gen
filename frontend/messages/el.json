@@ -2113,7 +2113,8 @@
       "wiperight": "Σάρωση προς τα δεξιά"
     },
     "previewCdgInstrumental": "Προεπισκόπηση ορχηστρικού διαλείμματος CD+G",
-    "previewCdgOutro": "Προεπισκόπηση τελικής οθόνης CD+G"
+    "previewCdgOutro": "Προεπισκόπηση τελικής οθόνης CD+G",
+    "cdgRevealUnset": "Επίλεξε πώς θα εμφανίζεται"
   },
   "stalledDownload": {
     "actionFailedDesc": "Δοκίμασε ξανά σε λίγο.",

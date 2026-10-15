@@ -2113,7 +2113,8 @@
       "wiperight": "Balayage vers la droite"
     },
     "previewCdgInstrumental": "Aperçu de la pause instrumentale CD+G",
-    "previewCdgOutro": "Aperçu de l'écran de fin CD+G"
+    "previewCdgOutro": "Aperçu de l'écran de fin CD+G",
+    "cdgRevealUnset": "Choisis comment ça s'affiche"
   },
   "stalledDownload": {
     "actionFailedDesc": "Réessaie dans un instant.",

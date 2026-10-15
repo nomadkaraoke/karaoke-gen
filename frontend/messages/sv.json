@@ -2113,7 +2113,8 @@
       "wiperight": "Svep åt höger"
     },
     "previewCdgInstrumental": "Förhandsgranskning av instrumentalt CD+G-parti",
-    "previewCdgOutro": "Förhandsgranskning av CD+G-slutskärm"
+    "previewCdgOutro": "Förhandsgranskning av CD+G-slutskärm",
+    "cdgRevealUnset": "Välj hur den ritas upp"
   },
   "stalledDownload": {
     "actionFailedDesc": "Försök igen om en stund.",

@@ -2113,7 +2113,8 @@
       "wiperight": "오른쪽으로 와이프"
     },
     "previewCdgInstrumental": "CD+G 간주 화면 미리보기",
-    "previewCdgOutro": "CD+G 엔딩 화면 미리보기"
+    "previewCdgOutro": "CD+G 엔딩 화면 미리보기",
+    "cdgRevealUnset": "표시 방식을 선택하세요"
   },
   "stalledDownload": {
     "actionFailedDesc": "잠시 후 다시 시도해 주세요.",

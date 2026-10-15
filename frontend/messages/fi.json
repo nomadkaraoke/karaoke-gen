@@ -2113,7 +2113,8 @@
       "wiperight": "Pyyhintä oikealle"
     },
     "previewCdgInstrumental": "CD+G-instrumentaaliosuuden esikatselu",
-    "previewCdgOutro": "CD+G-loppuruudun esikatselu"
+    "previewCdgOutro": "CD+G-loppuruudun esikatselu",
+    "cdgRevealUnset": "Valitse, miten se piirretään näkyviin"
   },
   "stalledDownload": {
     "actionFailedDesc": "Yritä hetken kuluttua uudelleen.",

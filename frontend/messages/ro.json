@@ -2113,7 +2113,8 @@
       "wiperight": "Tranziție spre dreapta"
     },
     "previewCdgInstrumental": "Previzualizare pauză instrumentală CD+G",
-    "previewCdgOutro": "Previzualizare ecran de final CD+G"
+    "previewCdgOutro": "Previzualizare ecran de final CD+G",
+    "cdgRevealUnset": "Alege cum să fie afișat"
   },
   "stalledDownload": {
     "actionFailedDesc": "Te rugăm să încerci din nou peste câteva momente.",

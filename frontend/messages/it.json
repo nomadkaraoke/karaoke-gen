@@ -2113,7 +2113,8 @@
       "wiperight": "Scorrimento a destra"
     },
     "previewCdgInstrumental": "Anteprima stacco strumentale CD+G",
-    "previewCdgOutro": "Anteprima schermata finale CD+G"
+    "previewCdgOutro": "Anteprima schermata finale CD+G",
+    "cdgRevealUnset": "Scegli come viene disegnato"
   },
   "stalledDownload": {
     "actionFailedDesc": "Riprova tra qualche istante.",

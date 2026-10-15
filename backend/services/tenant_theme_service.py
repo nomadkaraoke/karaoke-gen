@@ -259,7 +259,7 @@ def sanitize_style_params(
     transitions = set(cdg_transitions())
     for field in CDG_TRANSITION_FIELDS:
         value = styles["cdg"].get(field)
-        if value is not None and value not in transitions:
+        if value is not None and (not isinstance(value, str) or value not in transitions):
             raise TenantValidationError(f"cdg.{field} must be one of the built-in CD+G transitions.")
 
     for field, max_len in CDG_TEXT_FIELDS.items():

@@ -440,8 +440,9 @@ def test_cdg_transitions_must_be_built_in():
     )
     assert styles["cdg"]["outro_transition"] == "circleout"
     for field in ("title_screen_transition", "instrumental_transition", "outro_transition"):
-        with pytest.raises(TenantValidationError, match="transition"):
-            tts.sanitize_style_params(_cdg_style(**{field: "../../etc/passwd"}), available_assets=ASSETS)
+        for bad in ("../../etc/passwd", ["wipein"], 7):
+            with pytest.raises(TenantValidationError, match="transition"):
+                tts.sanitize_style_params(_cdg_style(**{field: bad}), available_assets=ASSETS)
 
 
 @pytest.mark.parametrize("value, ok", [(300, True), (1500, True), (12000, True), (100, False), (99999, False)])

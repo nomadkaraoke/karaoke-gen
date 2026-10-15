@@ -572,7 +572,8 @@ def render_cdg_previews(
     buffer = float(cdg_styles.get("first_syllable_buffer_seconds") or 0.0)
     start = intro + buffer + 1.0  # first sung syllable, after the up card
     line_gap = 2.0
-    lines = (list(lines) * 2)[:4] if len(lines) < 4 else list(lines[:4])
+    lines = [ln for ln in lines if ln] or DEFAULT_SAMPLE_LYRICS
+    lines = (list(lines) * 4)[:4]  # two lines, the gap, two more lines
     # Two lines, an instrumental break, then two more lines.
     line_starts = [start, start + line_gap]
     gap_start = line_starts[-1] + line_gap * 0.8

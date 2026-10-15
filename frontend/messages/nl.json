@@ -2113,7 +2113,8 @@
       "wiperight": "Wipe naar rechts"
     },
     "previewCdgInstrumental": "Voorbeeld CD+G instrumentale pauze",
-    "previewCdgOutro": "Voorbeeld CD+G-eindscherm"
+    "previewCdgOutro": "Voorbeeld CD+G-eindscherm",
+    "cdgRevealUnset": "Kies hoe het wordt opgebouwd"
   },
   "stalledDownload": {
     "actionFailedDesc": "Probeer het over een ogenblik opnieuw.",

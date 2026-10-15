@@ -2113,7 +2113,8 @@
       "wiperight": "Wipe pakanan"
     },
     "previewCdgInstrumental": "Preview ng CD+G instrumental break",
-    "previewCdgOutro": "Preview ng CD+G closing screen"
+    "previewCdgOutro": "Preview ng CD+G closing screen",
+    "cdgRevealUnset": "Piliin kung paano ito ipapakita"
   },
   "stalledDownload": {
     "actionFailedDesc": "Pakisubukang muli maya-maya.",

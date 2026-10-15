@@ -2113,7 +2113,8 @@
       "wiperight": "Вытеснение вправо"
     },
     "previewCdgInstrumental": "Предпросмотр инструментальной паузы CD+G",
-    "previewCdgOutro": "Предпросмотр финального экрана CD+G"
+    "previewCdgOutro": "Предпросмотр финального экрана CD+G",
+    "cdgRevealUnset": "Выбери способ отрисовки"
   },
   "stalledDownload": {
     "actionFailedDesc": "Пожалуйста, попробуй ещё раз чуть позже.",

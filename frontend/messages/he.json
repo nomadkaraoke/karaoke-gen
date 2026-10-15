@@ -2113,7 +2113,8 @@
       "wiperight": "ניגוב ימינה"
     },
     "previewCdgInstrumental": "תצוגה מקדימה של קטע אינסטרומנטלי ב-CD+G",
-    "previewCdgOutro": "תצוגה מקדימה של מסך סיום ב-CD+G"
+    "previewCdgOutro": "תצוגה מקדימה של מסך סיום ב-CD+G",
+    "cdgRevealUnset": "בחרו כיצד הטקסט ייחשף"
   },
   "stalledDownload": {
     "actionFailedDesc": "אנא נסו שוב בעוד רגע.",

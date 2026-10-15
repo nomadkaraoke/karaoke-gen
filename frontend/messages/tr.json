@@ -2113,7 +2113,8 @@
       "wiperight": "Sağa doğru kayarak açılma"
     },
     "previewCdgInstrumental": "CD+G enstrümantal ara önizlemesi",
-    "previewCdgOutro": "CD+G kapanış ekranı önizlemesi"
+    "previewCdgOutro": "CD+G kapanış ekranı önizlemesi",
+    "cdgRevealUnset": "Nasıl çizileceğini seç"
   },
   "stalledDownload": {
     "actionFailedDesc": "Lütfen birazdan tekrar dene.",

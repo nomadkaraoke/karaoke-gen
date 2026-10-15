@@ -2113,7 +2113,8 @@
       "wiperight": "Sapu ke kanan"
     },
     "previewCdgInstrumental": "Pratonton jeda instrumental CD+G",
-    "previewCdgOutro": "Pratonton skrin penutup CD+G"
+    "previewCdgOutro": "Pratonton skrin penutup CD+G",
+    "cdgRevealUnset": "Pilih cara ia dipaparkan"
   },
   "stalledDownload": {
     "actionFailedDesc": "Sila cuba sebentar lagi.",

@@ -2113,7 +2113,8 @@
       "wiperight": "Sveip mot høyre"
     },
     "previewCdgInstrumental": "Forhåndsvisning av instrumentalpause i CD+G",
-    "previewCdgOutro": "Forhåndsvisning av avslutningsskjerm i CD+G"
+    "previewCdgOutro": "Forhåndsvisning av avslutningsskjerm i CD+G",
+    "cdgRevealUnset": "Velg hvordan det tegnes inn"
   },
   "stalledDownload": {
     "actionFailedDesc": "Prøv igjen om et øyeblikk.",

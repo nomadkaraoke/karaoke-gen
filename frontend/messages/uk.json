@@ -2113,7 +2113,8 @@
       "wiperight": "Витирання вправо"
     },
     "previewCdgInstrumental": "Попередній перегляд інструментальної паузи CD+G",
-    "previewCdgOutro": "Попередній перегляд фінального екрана CD+G"
+    "previewCdgOutro": "Попередній перегляд фінального екрана CD+G",
+    "cdgRevealUnset": "Вибери спосіб появи"
   },
   "stalledDownload": {
     "actionFailedDesc": "Будь ласка, спробуй ще раз трохи згодом.",

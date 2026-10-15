@@ -2113,7 +2113,8 @@
       "wiperight": "مسح لليمين"
     },
     "previewCdgInstrumental": "معاينة الفاصل الموسيقي لـ CD+G",
-    "previewCdgOutro": "معاينة شاشة النهاية لـ CD+G"
+    "previewCdgOutro": "معاينة شاشة النهاية لـ CD+G",
+    "cdgRevealUnset": "اختر طريقة الرسم والظهور"
   },
   "stalledDownload": {
     "actionFailedDesc": "يُرجى المحاولة مرة أخرى بعد قليل.",

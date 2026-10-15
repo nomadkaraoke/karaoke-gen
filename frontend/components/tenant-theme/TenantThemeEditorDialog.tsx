@@ -480,6 +480,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
         <Label htmlFor={`cdg-${field}`} className="text-xs text-muted-foreground">{label}</Label>
         <select id={`cdg-${field}`} className={selectClass} value={value}
           onChange={(e) => update("cdg", field, e.target.value)}>
+          {!value && <option value="" disabled>{t("cdgRevealUnset")}</option>}
           {!cdgTransitions.includes(value) && value && <option value={value}>{value}</option>}
           {cdgTransitions.map((name) => (
             <option key={name} value={name}>{typeof t.has === "function" && t.has(`cdgTransitions.${name}`) ? t(`cdgTransitions.${name}`) : name}</option>
@@ -708,7 +709,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                     <Label>{t("cdgInstrumental")}</Label>
                     {cdgImageField("instrumental_background", t("cdgInstrumentalImage"))}
                     {cdgTransition("instrumental_transition", t("cdgReveal"))}
-                    <RangeInput id="cdg-instrumental_gap_threshold" label={t("cdgInstrumentalAfter")} min={3} max={60}
+                    <RangeInput id="cdg-instrumental_gap_threshold" label={t("cdgInstrumentalAfter")} min={3} max={120}
                       value={Math.round((getField<number>(draft!, "cdg", "instrumental_gap_threshold") ?? 1500) / 100)}
                       onChange={(n) => update("cdg", "instrumental_gap_threshold", n * 100)} />
                     <div className="grid grid-cols-2 gap-3">

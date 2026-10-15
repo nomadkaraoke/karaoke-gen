@@ -107,7 +107,9 @@ it("asks for and shows all four real CD+G screens (and no video screens) on its 
 it("picks how each CD+G screen is drawn in from the built-in transitions", async () => {
   await openCdgTab()
   const upCard = screen.getByLabelText("cdgReveal", { selector: "#cdg-title_screen_transition" }) as HTMLSelectElement
-  expect(Array.from(upCard.options).map((o) => o.value)).toEqual(["centertexttoplogobottomtext", "topleftmusicalnotes", "wipein"])
+  // Unset in this theme: a disabled placeholder, then the built-in transitions
+  expect(Array.from(upCard.options).map((o) => o.value)).toEqual(["", "centertexttoplogobottomtext", "topleftmusicalnotes", "wipein"])
+  expect(upCard.options[0].disabled).toBe(true)
   fireEvent.change(upCard, { target: { value: "wipein" } })
   fireEvent.change(screen.getByLabelText("cdgReveal", { selector: "#cdg-instrumental_transition" }), { target: { value: "topleftmusicalnotes" } })
   fireEvent.change(screen.getByLabelText("cdgReveal", { selector: "#cdg-outro_transition" }), { target: { value: "wipein" } })

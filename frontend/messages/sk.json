@@ -2113,7 +2113,8 @@
       "wiperight": "Zotretie doprava"
     },
     "previewCdgInstrumental": "Náhľad inštrumentálnej pauzy CD+G",
-    "previewCdgOutro": "Náhľad záverečnej obrazovky CD+G"
+    "previewCdgOutro": "Náhľad záverečnej obrazovky CD+G",
+    "cdgRevealUnset": "Vyber si spôsob vykresľovania"
   },
   "stalledDownload": {
     "actionFailedDesc": "Skús to, prosím, o chvíľu znova.",

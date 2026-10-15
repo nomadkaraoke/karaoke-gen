@@ -346,3 +346,11 @@ def test_kinds_limits_which_mp4_screens_render(cdg_cache):
 def test_cdg_transitions_are_the_built_in_masks():
     names = tps.cdg_transitions()
     assert {"centertexttoplogobottomtext", "topleftmusicalnotes", "wipein"} <= set(names)
+
+
+
+def test_a_one_line_sample_still_shows_the_instrumental_break(cdg_cache):
+    theme = _theme()
+    theme["cdg"] = _cdg_section(instrumental_font_color="#00ff00")
+    result = tps.render_theme_preview("t1", theme, lyrics=["Only one line here"], storage=cdg_cache, include_cdg=True)
+    assert (0, 255, 0) in _colours(_img(result.cdg_instrumental))

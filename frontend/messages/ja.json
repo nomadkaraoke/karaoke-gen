@@ -2113,7 +2113,8 @@
       "wiperight": "右ワイプ"
     },
     "previewCdgInstrumental": "CD+G間奏画面プレビュー",
-    "previewCdgOutro": "CD+G終了画面プレビュー"
+    "previewCdgOutro": "CD+G終了画面プレビュー",
+    "cdgRevealUnset": "描画方法を選択"
   },
   "stalledDownload": {
     "actionFailedDesc": "しばらくしてからもう一度お試しください。",

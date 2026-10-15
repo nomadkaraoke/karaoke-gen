@@ -2113,7 +2113,8 @@
       "wiperight": "वाइप राइट"
     },
     "previewCdgInstrumental": "CD+G इंस्ट्रुमेंटल ब्रेक प्रीव्यू",
-    "previewCdgOutro": "CD+G क्लोजिंग स्क्रीन प्रीव्यू"
+    "previewCdgOutro": "CD+G क्लोजिंग स्क्रीन प्रीव्यू",
+    "cdgRevealUnset": "चुनो कि यह स्क्रीन पर कैसे आएगा"
   },
   "stalledDownload": {
     "actionFailedDesc": "कृपया थोड़ी देर बाद फिर कोशिश करो।",

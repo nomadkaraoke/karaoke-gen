@@ -2113,7 +2113,8 @@
       "wiperight": "Przejście w prawo"
     },
     "previewCdgInstrumental": "Podgląd przerwy instrumentalnej CD+G",
-    "previewCdgOutro": "Podgląd ekranu końcowego CD+G"
+    "previewCdgOutro": "Podgląd ekranu końcowego CD+G",
+    "cdgRevealUnset": "Wybierz sposób rysowania"
   },
   "stalledDownload": {
     "actionFailedDesc": "Spróbuj ponownie za chwilę.",

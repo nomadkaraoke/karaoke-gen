@@ -2113,7 +2113,8 @@
       "wiperight": "Prekrivanje udesno"
     },
     "previewCdgInstrumental": "Pretpregled CD+G instrumentalne pauze",
-    "previewCdgOutro": "Pretpregled CD+G završnog zaslona"
+    "previewCdgOutro": "Pretpregled CD+G završnog zaslona",
+    "cdgRevealUnset": "Odaberi način iscrtavanja"
   },
   "stalledDownload": {
     "actionFailedDesc": "Pokušaj ponovno za trenutak.",

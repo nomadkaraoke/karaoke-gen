@@ -2034,6 +2034,7 @@
     "endScreenFontHint": "The end screen uses the same font as the title card (change it on the Title card tab).",
     "cdgIntro": "CD+G files are for karaoke machines: a 300×216 screen with up to 16 colours. Images you upload here are fitted to that size automatically, and colours are matched to what CD+G players can show.",
     "cdgReveal": "How it's drawn in",
+    "cdgRevealUnset": "Choose how it's drawn in",
     "cdgRevealHint": "CD+G players draw each screen in tile by tile. \"How it's drawn in\" picks the order (a built-in mask): it changes the animation, not the finished screen shown in the preview.",
     "cdgInstrumentalAfter": "Show for instrumental gaps longer than (seconds)",
     "cdgTransitions": {

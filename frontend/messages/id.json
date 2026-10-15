@@ -2113,7 +2113,8 @@
       "wiperight": "Usap ke kanan"
     },
     "previewCdgInstrumental": "Pratinjau jeda instrumental CD+G",
-    "previewCdgOutro": "Pratinjau layar penutup CD+G"
+    "previewCdgOutro": "Pratinjau layar penutup CD+G",
+    "cdgRevealUnset": "Pilih cara lirik dimunculkan"
   },
   "stalledDownload": {
     "actionFailedDesc": "Silakan coba beberapa saat lagi.",

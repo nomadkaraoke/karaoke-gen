@@ -2113,7 +2113,8 @@
       "wiperight": "Gạt sang phải"
     },
     "previewCdgInstrumental": "Bản xem trước đoạn dạo nhạc CD+G",
-    "previewCdgOutro": "Bản xem trước màn hình kết thúc CD+G"
+    "previewCdgOutro": "Bản xem trước màn hình kết thúc CD+G",
+    "cdgRevealUnset": "Chọn cách hiển thị chữ"
   },
   "stalledDownload": {
     "actionFailedDesc": "Vui lòng thử lại sau giây lát.",

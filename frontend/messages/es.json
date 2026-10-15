@@ -2113,7 +2113,8 @@
       "wiperight": "Barrido hacia la derecha"
     },
     "previewCdgInstrumental": "Vista previa de la pausa instrumental en CD+G",
-    "previewCdgOutro": "Vista previa de la pantalla final en CD+G"
+    "previewCdgOutro": "Vista previa de la pantalla final en CD+G",
+    "cdgRevealUnset": "Elige cómo se dibuja"
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, inténtalo de nuevo en un momento.",

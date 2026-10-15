@@ -2113,7 +2113,8 @@
       "wiperight": "Cortineta cap a la dreta"
     },
     "previewCdgInstrumental": "Previsualització de la pausa instrumental en CD+G",
-    "previewCdgOutro": "Previsualització de la pantalla final en CD+G"
+    "previewCdgOutro": "Previsualització de la pantalla final en CD+G",
+    "cdgRevealUnset": "Tria com es dibuixa"
   },
   "stalledDownload": {
     "actionFailedDesc": "Torna-ho a provar d'aquí a un moment.",

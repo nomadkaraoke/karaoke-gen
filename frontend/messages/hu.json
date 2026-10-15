@@ -2113,7 +2113,8 @@
       "wiperight": "Söprés jobbra"
     },
     "previewCdgInstrumental": "CD+G hangszeres szünet előnézete",
-    "previewCdgOutro": "CD+G záróképernyő előnézete"
+    "previewCdgOutro": "CD+G záróképernyő előnézete",
+    "cdgRevealUnset": "Válaszd ki a megjelenítés módját"
   },
   "stalledDownload": {
     "actionFailedDesc": "Kérlek, próbáld újra egy pillanat múlva.",

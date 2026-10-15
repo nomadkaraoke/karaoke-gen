@@ -2113,7 +2113,8 @@
       "wiperight": "Varredura para a direita"
     },
     "previewCdgInstrumental": "Pré-visualização do intervalo instrumental em CD+G",
-    "previewCdgOutro": "Pré-visualização da tela de encerramento em CD+G"
+    "previewCdgOutro": "Pré-visualização da tela de encerramento em CD+G",
+    "cdgRevealUnset": "Escolha como será desenhado"
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, tente novamente em instantes.",

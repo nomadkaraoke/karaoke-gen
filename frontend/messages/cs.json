@@ -2113,7 +2113,8 @@
       "wiperight": "Stírání doprava"
     },
     "previewCdgInstrumental": "Náhled instrumentální mezihry CD+G",
-    "previewCdgOutro": "Náhled závěrečné obrazovky CD+G"
+    "previewCdgOutro": "Náhled závěrečné obrazovky CD+G",
+    "cdgRevealUnset": "Vyber si, jak se má vykreslit"
   },
   "stalledDownload": {
     "actionFailedDesc": "Zkus to prosím za chvilku znovu.",

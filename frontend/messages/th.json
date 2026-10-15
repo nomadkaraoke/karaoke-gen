@@ -2113,7 +2113,8 @@
       "wiperight": "กวาดไปทางขวา"
     },
     "previewCdgInstrumental": "ตัวอย่างช่วงดนตรีคั่น CD+G",
-    "previewCdgOutro": "ตัวอย่างหน้าจอปิดท้าย CD+G"
+    "previewCdgOutro": "ตัวอย่างหน้าจอปิดท้าย CD+G",
+    "cdgRevealUnset": "เลือกรูปแบบการแสดงผลตัวอักษร"
   },
   "stalledDownload": {
     "actionFailedDesc": "โปรดลองใหม่อีกครั้งในอีกสักครู่",
