@@ -525,11 +525,14 @@ def render_cdg_previews(
 
     audio = os.path.join(workdir, "silence.mp3")
     duration = start + len(lines) * line_gap + 2.0
-    result = subprocess.run(
-        ["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-         "-t", f"{duration:.1f}", "-q:a", "9", audio],
-        capture_output=True, text=True, timeout=FFMPEG_TIMEOUT_S,
-    )
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+             "-t", f"{duration:.1f}", "-q:a", "9", audio],
+            capture_output=True, text=True, timeout=FFMPEG_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ThemePreviewError("CD+G preview audio timed out.") from exc
     if result.returncode != 0:
         raise ThemePreviewError(f"CD+G preview audio failed: {result.stderr.strip()[:200]}")
 

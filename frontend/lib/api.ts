@@ -2782,6 +2782,8 @@ export interface TenantThemeData {
   style_params: ThemeStyleParams
   images: string[]
   fonts: string[]
+  // Images that fit the 300x216 CD+G screen (offered on the CD+G tab)
+  cdg_images?: string[]
 }
 
 export interface TenantThemeSaveResult extends TenantThemeData {

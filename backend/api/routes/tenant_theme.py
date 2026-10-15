@@ -73,6 +73,8 @@ class ThemeResponse(BaseModel):
     style_params: Dict[str, Any]
     images: List[str]
     fonts: List[str]
+    # The images that fit the 300x216 CD+G screen (offered on the CD+G tab).
+    cdg_images: List[str] = Field(default_factory=list)
 
 
 class PreviewSample(BaseModel):

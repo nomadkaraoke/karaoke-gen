@@ -93,6 +93,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
   const [draft, setDraft] = useState<ThemeStyleParams | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [fonts, setFonts] = useState<string[]>([])
+  const [cdgImages, setCdgImages] = useState<string[]>([])
   const [tab, setTab] = useState<Tab>("titleCard")
   const [jsonText, setJsonText] = useState("")
   const [jsonError, setJsonError] = useState<string | null>(null)
@@ -126,6 +127,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
         setJsonText(JSON.stringify(data.style_params, null, 2))
         setImages(data.images)
         setFonts(data.fonts)
+        setCdgImages(data.cdg_images ?? [])
       })
       .catch((err: any) => !cancelled && setLoadError(err?.message || t("loadFailed")))
       .finally(() => !cancelled && setLoading(false))
@@ -210,6 +212,8 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
       const { name } = purpose ? await tenantThemeApi.uploadAsset(file, purpose) : await tenantThemeApi.uploadAsset(file)
       if (/\.(ttf|otf)$/i.test(name)) setFonts((f) => Array.from(new Set([...f, name])).sort())
       else setImages((imgs) => Array.from(new Set([...imgs, name])).sort())
+      // CD+G uploads are fitted to 300x216 by the server.
+      if (purpose === "cdg") setCdgImages((imgs) => Array.from(new Set([...imgs, name])).sort())
       apply(name)
     } catch (err: any) {
       toast({ title: t("uploadFailed"), description: err?.message, variant: "destructive" })
@@ -232,6 +236,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
       )
       setImages(data.images)
       setFonts(data.fonts)
+      setCdgImages(data.cdg_images ?? [])
       setSaveResult({ refreshed: data.refreshed_jobs ?? 0, outdated: data.outdated_job_ids ?? [] })
       setRerenderStarted(null)
       setOutdatedThemeJobs(data.outdated_job_ids ?? [])
@@ -428,8 +433,8 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
         <select id={key} className={selectClass} value={image}
           onChange={(e) => update("cdg", field, e.target.value || null)}>
           <option value="">{t("cdgNoImage")}</option>
-          {!images.includes(image) && image && <option value={image}>{image}</option>}
-          {images.map((img) => <option key={img} value={img}>{img}</option>)}
+          {!cdgImages.includes(image) && image && <option value={image}>{image}</option>}
+          {cdgImages.map((img) => <option key={img} value={img}>{img}</option>)}
         </select>
         <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
           {uploading === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}

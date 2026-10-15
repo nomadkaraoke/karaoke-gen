@@ -307,3 +307,17 @@ def test_pick_lyrics_frame_falls_back_to_the_busiest_frame():
     busy = blank.copy()
     busy.paste((255, 255, 0), (10, 10, 200, 40))
     assert tps._pick_lyrics_frame([blank, busy, blank], {"active_fill": "#006CF9", "inactive_fill": "#ffff00"}) is busy
+
+
+
+def test_cdg_audio_timeout_is_a_preview_error(cdg_cache, monkeypatch):
+    import subprocess
+
+    def boom(*a, **k):
+        raise subprocess.TimeoutExpired(cmd="ffmpeg", timeout=1)
+
+    monkeypatch.setattr(tps.subprocess, "run", boom)
+    theme = _theme()
+    theme["cdg"] = _cdg_section()
+    with pytest.raises(tps.ThemePreviewError, match="timed out"):
+        tps.render_cdg_previews(tps.resolve_assets(theme, "t1", cdg_cache, include_cdg=True), "A", "T", ["la la"], str(cdg_cache._card).rsplit("/", 1)[0])

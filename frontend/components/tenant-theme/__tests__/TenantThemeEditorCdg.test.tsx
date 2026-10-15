@@ -45,7 +45,7 @@ const THEME = {
   },
 }
 const DATA = {
-  theme_id: "vocalstar", style_params: THEME, images: ["card.gif", "bg.jpg"],
+  theme_id: "vocalstar", style_params: THEME, images: ["card.gif", "bg.jpg"], cdg_images: ["card.gif"],
   fonts: ["AvenirNext-Bold.ttf", "Oswald-SemiBold.ttf"],
 }
 const IMAGES = {
@@ -158,4 +158,11 @@ it("CD+G previews keep the 300x216 shape with hard pixels", async () => {
   const img = await screen.findByTestId("preview-cdg_lyrics")
   expect(img.style.imageRendering).toBe("pixelated")
   expect((img.parentElement as HTMLElement).style.aspectRatio).toBe("300 / 216")
+})
+
+
+it("CD+G image lists only offer images that fit the 300x216 screen", async () => {
+  await openCdgTab()
+  const options = Array.from((screen.getByLabelText("cdgOutroImage") as HTMLSelectElement).options).map((o) => o.value)
+  expect(options).toEqual(["", "card.gif"]) // bg.jpg (a 4K background) isn't offered
 })

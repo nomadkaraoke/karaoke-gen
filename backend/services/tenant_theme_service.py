@@ -340,7 +340,25 @@ def get_theme_for_editor(config, storage: Optional[StorageService] = None) -> Di
     assets = _theme_assets(storage, theme_id)
     fonts = sorted(set(bundled_fonts()) | {a for a in assets if a.lower().endswith((".ttf", ".otf"))})
     images = [a for a in assets if a.rsplit(".", 1)[-1].lower() in IMAGE_CONTENT_TYPES]
-    return {"theme_id": theme_id, "style_params": style_params, "images": images, "fonts": fonts}
+    return {
+        "theme_id": theme_id, "style_params": style_params, "images": images, "fonts": fonts,
+        "cdg_images": [name for name in images if _is_cdg_sized(storage, theme_id, name)],
+    }
+
+
+def _is_cdg_sized(storage: StorageService, theme_id: str, name: str) -> bool:
+    """True if the image is exactly 300x216 (reads only the file header)."""
+    from PIL import Image
+
+    try:
+        blob = storage.bucket.get_blob(f"{THEMES_PREFIX}/{theme_id}/assets/{name}")
+        if blob is None:
+            return False
+        head = blob.download_as_bytes(start=0, end=64 * 1024 - 1)
+        with Image.open(io.BytesIO(head)) as img:
+            return img.size == CDG_IMAGE_SIZE
+    except Exception:  # noqa: BLE001 - unreadable header = not offered for CD+G
+        return False
 
 
 def store_uploaded_asset(

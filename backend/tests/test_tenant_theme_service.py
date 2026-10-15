@@ -407,3 +407,26 @@ def test_save_accepts_cdg_background_of_the_right_size(monkeypatch):
     monkeypatch.setattr(tts, "update_tenant", lambda tenant_id, **kw: calls.update(kw))
     tts.save_tenant_theme(_config(), _cdg_style(title_screen_background="card.png", outro_background="card.png"), storage=storage)
     assert calls["style_params"]["cdg"]["title_screen_background"] == "card.png"
+
+
+
+def test_editor_lists_only_300x216_images_for_cdg():
+    storage = FakeStorage()
+    storage.blobs["themes/randy-vild/assets/card.png"] = _image_bytes((300, 216))
+    storage.blobs["themes/randy-vild/assets/big.png"] = _image_bytes((1920, 1080))
+
+    class _Blob:
+        def __init__(self, data):
+            self.data = data
+
+        def download_as_bytes(self, start=0, end=None):
+            return self.data[start:(end + 1) if end is not None else None]
+
+    class _Bucket:
+        def get_blob(self, path):
+            return _Blob(storage.blobs[path]) if path in storage.blobs else None
+
+    storage.bucket = _Bucket()
+    data = tts.get_theme_for_editor(_config(), storage=storage)
+    assert "big.png" in data["images"] and "card.png" in data["images"]
+    assert data["cdg_images"] == ["card.png"]  # bg.jpg isn't a real image here, big.png is 1920x1080
