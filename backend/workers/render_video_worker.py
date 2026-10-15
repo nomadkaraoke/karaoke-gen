@@ -40,6 +40,7 @@ from backend.exceptions import InvalidStateTransitionError
 from backend.utils.audio_filenames import local_audio_filename
 from backend.services.job_manager import JobManager
 from backend.services.input_persistence import ensure_job_inputs_persisted
+from backend.services.input_recovery import recover_missing_inputs
 from backend.services.storage_service import StorageService
 from backend.services.lyrics_translation import prepare_job_translations
 from karaoke_gen.lyrics_transcriber.output.translations import apply_translations
@@ -248,6 +249,10 @@ async def process_render_video(job_id: str) -> bool:
                         message="Rendering karaoke video on encoding worker"
                     )
                     translations_gcs = await prepare_translations()
+
+                    # Old jobs lost their uploaded mix (uploads/ expired): rebuild it first,
+                    # or the encoder 404s on input_media_gcs_path.
+                    await asyncio.to_thread(recover_missing_inputs, job, storage, job_manager)
 
                     # Build render config from job metadata (no downloads needed on Cloud Run!)
                     bucket_name = settings.gcs_bucket_name
@@ -550,7 +555,8 @@ async def process_render_video(job_id: str) -> bool:
                             logger.error(f"Job {job_id}: Render rejected — lyrics not synchronized: {timing_err}")
                             raise ValueError(str(timing_err)) from timing_err
 
-                        # 5. Download audio file
+                        # 5. Download audio file (rebuilt first if the upload expired)
+                        await asyncio.to_thread(recover_missing_inputs, job, storage, job_manager)
                         audio_gcs_path = job.input_media_gcs_path
                         audio_path = os.path.join(temp_dir, local_audio_filename(audio_gcs_path or "", "audio"))
 

@@ -19,6 +19,15 @@ from pathlib import Path
 from backend.models.job import Job, JobStatus
 
 
+@pytest.fixture(autouse=True)
+def _no_input_recovery(monkeypatch):
+    """Storage mocks here report every blob missing; input recovery has its own tests."""
+    monkeypatch.setattr(
+        "backend.workers.render_video_worker.recover_missing_inputs", lambda *a, **k: {}
+    )
+
+
+
 class TestRenderVideoWorkerImports:
     """Test that render_video_worker can import all its dependencies."""
 
