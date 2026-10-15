@@ -8,7 +8,7 @@ Added 2026-10 for BACKLOG Frog #2 ("plug the gen revenue leaks"). Funnel context
 | **E2** "Your N% off ends in N hours" | inside the last `CONVERSION_E2_HOURS_BEFORE_EXPIRY` (8h) of the offer, only if still unpaid | Postmark `broadcast` | `CONVERSION_EMAILS_ENABLED` |
 | **R2** "N hours left to finish your karaoke video" | 42h into lyrics review (expiry is 48h; the existing reminder fires at 24h) | `outbound` (transactional) | `REVIEW_LAST_CHANCE_ENABLED` |
 
-All of these are **off by default** and are switched on via Cloud Run env once Andrew approves the copy.
+All of these are **off by default** in code. Andrew approved the copy, 25%, the timings and the postal address on 2026-10-15, and they are switched **on in production** via the Cloud Run env in `.github/workflows/ci.yml` (v0.273.3).
 
 ## How it works
 - `backend/services/conversion_emails.py`:

@@ -2909,8 +2909,6 @@ If the user looks legitimate, grant them credits from their admin page.
     </p>
 
     <p style="color: #999; font-size: 14px;">{t(locale, "emails.creditDenied.costNote")}</p>
-
-    {self._get_email_signature()}
 """
 
         text_content = f"""{t(locale, "emails.creditDenied.greeting")}

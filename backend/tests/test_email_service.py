@@ -1064,3 +1064,71 @@ class TestMadeForYouAdminNotification:
         )
 
         assert result is False
+
+
+class TestEverySendHasOneSignature:
+    """Every customer email gets the signature exactly once, via the shared footer.
+
+    Regression: the credit-denied ("About your Nomad Karaoke free credits") email
+    appended the signature itself AND got it from _build_email_html, so it showed twice.
+    """
+
+    @staticmethod
+    def _sample(name, param):
+        import inspect
+
+        n = name.lower()
+        if param.annotation is int or any(k in n for k in ("credits", "count", "hours", "percent")):
+            return 3
+        if param.annotation is bool:
+            return False
+        if "email" in n:
+            return "user@example.com"
+        if "locale" in n:
+            return "en"
+        if "url" in n or "link" in n:
+            return "https://example.com/x"
+        if param.annotation is dict or "details" in n:
+            return {}
+        if param.annotation is list:
+            return []
+        assert param.default is inspect.Parameter.empty
+        return "Sample"
+
+    def _send_methods(self):
+        import inspect
+
+        return [
+            (name, fn)
+            for name, fn in inspect.getmembers(EmailService, inspect.isfunction)
+            if name.startswith("send_") and name != "send_email"
+        ]
+
+    def test_send_methods_discovered(self):
+        names = {n for n, _ in self._send_methods()}
+        assert {"send_credit_denied_email", "send_welcome_email", "send_job_completion"} <= names
+
+    def test_signature_appears_exactly_once(self):
+        import inspect
+
+        signature_marker = "+1 (803) 636-3267"
+        service = EmailService()
+        assert service._get_email_signature().count(signature_marker) == 1
+        failures = []
+        for name, fn in self._send_methods():
+            service.provider = Mock()
+            service.provider.send_email.return_value = True
+            kwargs = {
+                pn: self._sample(pn, p)
+                for pn, p in list(inspect.signature(fn).parameters.items())[1:]
+                if p.default is inspect.Parameter.empty
+            }
+            with patch.object(EmailService, "_record_sent_email"):
+                fn(service, **kwargs)
+            if not service.provider.send_email.called:
+                continue
+            html_content = service.provider.send_email.call_args.kwargs["html_content"]
+            count = html_content.count(signature_marker)
+            if count != 1:
+                failures.append(f"{name}: {count}")
+        assert not failures, f"signature count != 1 in: {failures}"
