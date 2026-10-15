@@ -400,6 +400,10 @@ class Settings(BaseSettings):
         "Brand Code: {brand_code}"
     )
 
+    # Offer an opt-in "tip the creator" optional item on gen Stripe Checkout pages
+    # (credits + Made For You). Kill switch: CHECKOUT_TIP_ENABLED=false.
+    checkout_tip_enabled: bool = os.getenv("CHECKOUT_TIP_ENABLED", "true").lower() in ("true", "1", "yes")
+
     # YouTube description back-catalogue rewrite (scheduled daily drain worker).
     # Rewrites existing channel videos to match `default_youtube_description`.
     # Reusable: whenever the template changes, the worker re-drains the channel.

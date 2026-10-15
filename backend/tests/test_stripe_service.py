@@ -12,6 +12,13 @@ from unittest.mock import Mock, patch, MagicMock
 import os
 
 
+@pytest.fixture(autouse=True)
+def _no_tip_lookup():
+    """Keep these URL/metadata tests offline: the tip Price lookup is covered in test_checkout_tip.py."""
+    with patch('backend.services.stripe_service.StripeService.get_tip_price_id', return_value=None):
+        yield
+
+
 class TestStripeServiceUrls:
     """Tests for checkout session URL generation."""
 

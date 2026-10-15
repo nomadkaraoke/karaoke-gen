@@ -48,6 +48,16 @@ CREDIT_PACKAGES = {
 }
 
 # Made-for-you service package (not a credit package - creates a job directly)
+# Optional "tip the creator" add-on offered on gen's Stripe Checkout pages as an
+# opt-in optional item (the customer taps "Add" and picks the amount). One Price at
+# $1/unit, found or created by lookup_key, so the tip is TIP_DEFAULT_UNITS dollars
+# by default and adjustable from $1 to $TIP_MAX_UNITS. Tips buy nothing: credits
+# come from session metadata and are unaffected.
+TIP_PRICE_LOOKUP_KEY = "gen_checkout_tip_usd_1"
+TIP_UNIT_CENTS = 100
+TIP_DEFAULT_UNITS = 5
+TIP_MAX_UNITS = 100
+
 MADE_FOR_YOU_PACKAGE = {
     "price_cents": 5000,  # $50.00
     "name": "Made For You Karaoke Video",
@@ -71,6 +81,7 @@ class StripeService:
         # Enables Google Pay, Apple Pay, Link, and other wallet methods
         # Get this from: Dashboard > Settings > Payment methods > [Your Config] > Copy ID
         self.payment_method_config = os.getenv("STRIPE_PAYMENT_METHOD_CONFIG")
+        self._tip_price_id: Optional[str] = None  # cached by get_tip_price_id()
 
         if self.secret_key:
             stripe.api_key = self.secret_key
@@ -152,6 +163,8 @@ class StripeService:
                 # Allow promotion codes
                 'allow_promotion_codes': True,
             }
+
+            self._add_tip_option(session_params)
 
             # If a referral coupon is applied, use discounts instead of allow_promotion_codes
             if coupon_id:
@@ -255,6 +268,7 @@ class StripeService:
                 'metadata': metadata,
                 'allow_promotion_codes': True,
             }
+            self._add_tip_option(session_params)
 
             # Add payment method configuration if set (enables Google Pay, Link, etc.)
             if self.payment_method_config:
@@ -364,6 +378,85 @@ class StripeService:
         except Exception as e:
             logger.error(f"Error retrieving session {session_id}: {e}")
             return None
+
+    def get_tip_price_id(self) -> Optional[str]:
+        """Stripe Price ID for the $1-per-unit checkout tip (found or created by lookup_key).
+
+        Returns None (no tip offered) if tips are disabled or Stripe errors, so a
+        tip problem can never block a purchase.
+        """
+        if not self.is_configured() or not get_settings().checkout_tip_enabled:
+            return None
+        if getattr(self, '_tip_price_id', None):
+            return self._tip_price_id
+        try:
+            existing = stripe.Price.list(lookup_keys=[TIP_PRICE_LOOKUP_KEY], active=True, limit=1)
+            if existing.data:
+                self._tip_price_id = existing.data[0].id
+            else:
+                price = stripe.Price.create(
+                    currency="usd",
+                    unit_amount=TIP_UNIT_CENTS,
+                    lookup_key=TIP_PRICE_LOOKUP_KEY,
+                    product_data={"name": "Tip the creator (optional)"},
+                    metadata={"purpose": "checkout_tip"},
+                )
+                self._tip_price_id = price.id
+                logger.info(f"Created Stripe tip price {price.id}")
+        except stripe.error.StripeError as e:
+            logger.warning(f"Checkout tip unavailable: {e}")
+            return None
+        return self._tip_price_id
+
+    def _add_tip_option(self, session_params: Dict[str, Any]) -> None:
+        """Offer the opt-in tip as a Checkout optional item (never pre-added to the cart)."""
+        price_id = self.get_tip_price_id()
+        if not price_id:
+            return
+        session_params['optional_items'] = [{
+            'price': price_id,
+            'quantity': TIP_DEFAULT_UNITS,
+            'adjustable_quantity': {'enabled': True, 'minimum': 1, 'maximum': TIP_MAX_UNITS},
+        }]
+
+    @staticmethod
+    def tip_cents_from_session(session: Dict[str, Any]) -> int:
+        """Total tip in a Checkout Session expanded with ``line_items`` (0 if none/unknown)."""
+        items = ((session.get('line_items') or {}).get('data')) or []
+        total = 0
+        for item in items:
+            price = item.get('price') or {}
+            if price.get('lookup_key') == TIP_PRICE_LOOKUP_KEY:
+                total += item.get('amount_total') or 0
+        return total
+
+    def get_tip_cents(self, session_id: str) -> Optional[int]:
+        """Tip amount for a completed session, fetched from Stripe.
+
+        Returns None (unknown) when Stripe can't be read, so callers can fall back
+        to a safe bound instead of silently treating the tip as zero.
+        """
+        if not session_id or not self.is_configured():
+            return None
+        try:
+            session = stripe.checkout.Session.retrieve(session_id, expand=["line_items"])
+            return self.tip_cents_from_session(dict(session) if not isinstance(session, dict) else session)
+        except Exception as e:
+            logger.warning(f"Could not read tip for session {session_id}: {e}")
+            return None
+
+    def referral_base_cents(self, session: Dict[str, Any]) -> int:
+        """Amount a referral earning is calculated on: the purchase without any tip.
+
+        If the tip can't be read from Stripe, cap at the package's list price
+        (a tip only ever adds on top of it), so a tip never inflates the earning.
+        """
+        amount_total = session.get('amount_total') or 0
+        tip = self.get_tip_cents(session.get('id'))
+        if tip is not None:
+            return max(0, amount_total - tip)
+        package = CREDIT_PACKAGES.get((session.get('metadata') or {}).get('package_id'), {})
+        return min(amount_total, package.get('price_cents', amount_total))
 
     def get_or_create_referral_coupon(self, discount_percent: int) -> Optional[str]:
         """Get or create a Stripe coupon for a referral discount percentage."""

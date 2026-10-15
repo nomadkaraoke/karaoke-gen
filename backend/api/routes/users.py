@@ -1545,7 +1545,8 @@ async def stripe_webhook(
                         try:
                             from backend.services.referral_service import get_referral_service
                             referral_svc = get_referral_service()
-                            amount_charged = session.get("amount_total", 0)
+                            # Referrers earn on the credit purchase, not on a tip
+                            amount_charged = stripe_service.referral_base_cents(session)
                             if amount_charged > 0:
                                 earning_result = referral_svc.record_earning(
                                     referred_email=user_email,
@@ -1580,7 +1581,7 @@ async def stripe_webhook(
                 import stripe as stripe_lib
                 expanded_session = stripe_lib.checkout.Session.retrieve(
                     session_id,
-                    expand=["payment_intent.latest_charge.balance_transaction"],
+                    expand=["payment_intent.latest_charge.balance_transaction", "line_items"],
                 )
                 admin_service.store_payment(dict(expanded_session))
             except Exception as store_err:

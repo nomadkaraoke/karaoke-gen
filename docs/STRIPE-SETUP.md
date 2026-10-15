@@ -153,6 +153,16 @@ Two Stripe Payment Links predate gen. Neither is in code; they were shared by ha
 
 Why `dR67sx` was deactivated: the last sale on it was 2025-12-23. From 2025-12-31 to 2026-10-08 it opened about 30 checkout sessions, and none completed. Andrew had emailed the link to regulars as "my order form", so returning customers kept landing on a $10 manual order that is no longer fulfilled. To undo: `POST /v1/payment_links/plink_1PSsYyJqOK5vtxo4A1gBQUUO active=true`.
 
+## Checkout Tip (optional add-on)
+
+Both gen checkouts (credit packs and Made For You) offer an **opt-in** tip as a Stripe Checkout `optional_items` entry. It appears under "Add to your order"; the customer taps **Add** and can change the quantity. The tip is never pre-added to the cart: pre-ticked paid extras are banned for UK/EU consumers. The old order form did pre-add a $5 tip, and 77% of buyers kept it.
+
+- **Price:** $1/unit, found by `lookup_key=gen_checkout_tip_usd_1` (created automatically if missing). Default quantity is 5 ($5), adjustable from 1 to 100. Live product: `prod_VRY9FhfNhiS0NN` "Tip the creator (optional)". Its description ("each unit is $1...") was set via the API on 2026-10-14; an auto-created replacement would have no description.
+- **Accounting:** the tip is included in `amount_total` and `users.total_spent`. `stripe_payments.tip_cents` records it separately. Referral earnings are calculated on `amount_total - tip`.
+- **Credits are unaffected**: they come from session metadata.
+- **Kill switch:** `CHECKOUT_TIP_ENABLED=false`. If Stripe errors, no tip is offered and checkout still works.
+- **Caveat:** a referral coupon (e.g. 50%) also discounts an added tip, because coupons apply to every line item.
+
 ## Admin Features
 
 ### Issue Free Credits
