@@ -2351,3 +2351,37 @@ character. All Cyrillic/CJK/Arabic/etc. songs normalized to `""`, so "Луна -
   and lookups return no match, so punctuation-only input can't collide either.
 - **Check a real index for oversized buckets.** One `'\x1f'` key with 166 tracks was
   the giveaway; the largest legitimate bucket has 5.
+
+
+## Moving Nomad to its own Cloudflare account, then adopting it into Pulumi (2026-10-14/15)
+
+All Nomad zones, Workers, Pages, tunnels and Access apps moved from Andrew's personal Cloudflare
+account to the "Nomad Karaoke" account with no downtime, then 130 resources were adopted into
+`infrastructure/cloudflare/` (#1147, #1148, #1150). Lessons:
+
+- **Cloudflare Registrar domains move with "Move to another account"**, approved in the new
+  account's Action Center. No zone settings carry over, so build the new (pending) zone first.
+  Cloudflare then switches nameservers itself, which took 1–5 min for .com/.cc. A registry
+  maintenance window can stall it for hours (kjtip.me, .me).
+- **Pre-validate the edge cert.** The new zone's cert packs give `_acme-challenge` TXT values. Add
+  them to the *old*, still-live zone and `*.nomadkaraoke.com` is issued before the flip, so there
+  is no TLS gap.
+- **A tunnel and an Access app can only serve hostnames in their own account.** Run a second
+  cloudflared connector for the new account's tunnel alongside the old one, so the flip is
+  seamless. Create Access apps **before** their tunnel DNS records, or the host is briefly open.
+  Access apps can't be created on a pending zone.
+- **`*.pages.dev` names are globally unique.** Recreated projects got suffixes
+  (`karaoke-gen-9k4`, `karaoke-gen-tenant-x0h`), so anything deriving the target from the
+  project name breaks. That's why `TENANT_PAGES_TARGET` exists.
+- **Zones added in the dashboard import "scanned" records** pointing at Cloudflare anycast IPs
+  (104.21.x / 172.67.x). Delete them or you get error 1000.
+- **Re-pointing a Pulumi stack to a new Cloudflare account:** `pulumi state delete` the old
+  resources *and the stale default provider*, then `pulumi import` from the new zone.
+  Otherwise the import reuses the old provider's credentials and gets 403s.
+- **pulumi-cloudflare 6.22.1 drops `false` values** in codegen and refresh. `set_config bic:false`
+  makes every refresh fail, so that ruleset stays dashboard-managed. Set `support_subaddress=False`
+  explicitly on `EmailRoutingSettings`, or every preview shows a no-op update. Post-import
+  "updates" with no property diff were one-time state settlements, verified as no-ops against
+  live snapshots.
+- **Reusable Access policies default to a 24h session.** Pin `session_duration` to the app's.
+
