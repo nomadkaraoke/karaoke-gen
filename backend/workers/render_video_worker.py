@@ -556,7 +556,7 @@ async def process_render_video(job_id: str) -> bool:
                             raise ValueError(str(timing_err)) from timing_err
 
                         # 5. Download audio file (rebuilt first if the upload expired)
-                        recover_missing_inputs(job, storage, job_manager)
+                        await asyncio.to_thread(recover_missing_inputs, job, storage, job_manager)
                         audio_gcs_path = job.input_media_gcs_path
                         audio_path = os.path.join(temp_dir, local_audio_filename(audio_gcs_path or "", "audio"))
 

@@ -29,6 +29,15 @@ from backend.exceptions import InvalidStateTransitionError
 from backend.workers.supersede import capture_generation, check_superseded
 
 
+@pytest.fixture(autouse=True)
+def _no_input_recovery(monkeypatch):
+    """Storage mocks here report every blob missing; input recovery has its own tests."""
+    monkeypatch.setattr(
+        "backend.workers.render_video_worker.recover_missing_inputs", lambda *a, **k: {}
+    )
+
+
+
 # ---------------------------------------------------------------------------
 # supersede helper unit tests
 # ---------------------------------------------------------------------------

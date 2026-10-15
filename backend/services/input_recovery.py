@@ -67,13 +67,25 @@ def _with_vocals_candidates(job) -> List[str]:
 
 
 def _countdown_padding_seconds(job) -> float:
+    """Seconds of countdown silence baked into the with-vocals render (0 if none).
+
+    The render worker records it in ``state_data.lyrics_metadata``
+    (``has_countdown_padding``) and ``processing_metadata.rendering``
+    (``countdown_padding_added``); older jobs may only have one of them.
+    """
     state = getattr(job, "state_data", None) or {}
-    if not (state.get("countdown_padding_added") or state.get("has_countdown_padding")):
-        return 0.0
-    try:
-        return max(0.0, float(state.get("countdown_padding_seconds") or 0.0))
-    except (TypeError, ValueError):
-        return 0.0
+    sources = [
+        (state.get("lyrics_metadata") or {}, "has_countdown_padding"),
+        (((getattr(job, "processing_metadata", None) or {}).get("rendering")) or {}, "countdown_padding_added"),
+        (state, "countdown_padding_added"),
+    ]
+    for meta, flag in sources:
+        if meta.get(flag):
+            try:
+                return max(0.0, float(meta.get("countdown_padding_seconds") or 0.0))
+            except (TypeError, ValueError):
+                return 0.0
+    return 0.0
 
 
 def _extract_mix(storage, video_path: str, padding_s: float, workdir: str) -> str:

@@ -46,7 +46,8 @@ def make_job(**overrides):
         input_media_gcs_path=MIX,
         existing_instrumental_gcs_path=INST,
         file_urls={"finals": {"with_vocals_mp4": f"jobs/{JOB_ID}/finals/with_vocals_mp4.mp4"}},
-        state_data={"countdown_padding_added": False, "countdown_padding_seconds": 0.0},
+        state_data={"lyrics_metadata": {"has_countdown_padding": False, "countdown_padding_seconds": 0.0}},
+        processing_metadata={},
     )
     for k, v in overrides.items():
         setattr(job, k, v)
@@ -112,12 +113,27 @@ def test_trims_countdown_padding_from_rebuilt_mix(tmp_path):
     make_video(video, 6.0, tone_start=3.0)  # 3s countdown silence baked into the render
     wv = f"jobs/{JOB_ID}/finals/with_vocals_mp4.mp4"
     storage = FakeStorage({wv: str(video), INST: None})
-    job = make_job(state_data={"countdown_padding_added": True, "countdown_padding_seconds": 3.0})
+    job = make_job(state_data={"lyrics_metadata": {"has_countdown_padding": True, "countdown_padding_seconds": 3.0}})
     recover_missing_inputs(job, storage, MagicMock())
 
     out = tmp_path / "out.flac"
     out.write_bytes(storage.uploaded[f"jobs/{JOB_ID}/input/{RECOVERED_MIX_NAME}"])
     assert duration(out) == pytest.approx(3.0, abs=0.1)
+
+
+@pytest.mark.parametrize(
+    "job_fields",
+    [
+        {"state_data": {"lyrics_metadata": {"has_countdown_padding": True, "countdown_padding_seconds": 3.0}}},
+        {"processing_metadata": {"rendering": {"countdown_padding_added": True, "countdown_padding_seconds": 3.0}}},
+        {"state_data": {"countdown_padding_added": True, "countdown_padding_seconds": 3.0}},
+    ],
+)
+def test_countdown_padding_read_from_every_known_location(job_fields):
+    from backend.services.input_recovery import _countdown_padding_seconds
+
+    assert _countdown_padding_seconds(make_job(**job_fields)) == 3.0
+    assert _countdown_padding_seconds(make_job()) == 0.0
 
 
 def test_reuses_a_previous_recovery_without_reextracting():
