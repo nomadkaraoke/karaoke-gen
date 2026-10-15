@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from "react"
 import { useTenant } from "@/lib/tenant"
+import { TENANT_PENDING_ATTR } from "@/lib/edge/tenantHtmlInjection"
 
 interface TenantProviderProps {
   children: ReactNode
@@ -32,6 +33,15 @@ export function TenantProvider({ children }: TenantProviderProps) {
       fetchTenantConfig()
     }
   }, [fetchTenantConfig, isInitialized])
+
+  // On tenant portals the edge hides the prerendered (default-branded) page until
+  // the tenant branding is applied. Parent effects run after the children's commit,
+  // so by now the tenant logo/landing page has replaced the default markup.
+  useEffect(() => {
+    if (isInitialized) {
+      document.documentElement.removeAttribute(TENANT_PENDING_ATTR)
+    }
+  }, [isInitialized])
 
   return <>{children}</>
 }
