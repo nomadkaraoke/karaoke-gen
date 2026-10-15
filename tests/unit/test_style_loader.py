@@ -88,7 +88,11 @@ class TestAssetKeyMappings:
     def test_font_mapping_is_list(self):
         """Test that font mapping is a list (maps to multiple sections)."""
         assert isinstance(ASSET_KEY_MAPPINGS["font"], list)
-        assert len(ASSET_KEY_MAPPINGS["font"]) == 4  # intro, karaoke, end, cdg
+        # intro, karaoke, end, cdg lyrics + cdg title card
+        assert ASSET_KEY_MAPPINGS["font"] == [
+            ("intro", "font"), ("karaoke", "font_path"), ("end", "font"),
+            ("cdg", "font_path"), ("cdg", "title_font_path"),
+        ]
 
     def test_cdg_mappings_exist(self):
         """Test that CDG-specific mappings exist."""
@@ -771,3 +775,25 @@ class TestScreenEnabled:
         # existing theme fail validation.
         assert "enabled" not in DEFAULT_INTRO_STYLE
         assert "enabled" not in DEFAULT_END_STYLE
+
+
+class TestCdgFontAssets:
+    """Per-section CDG fonts: main font feeds the CDG title card, cdg_font overrides lyrics."""
+
+    def _style(self):
+        return {"intro": {"font": None}, "karaoke": {"font_path": None}, "end": {"font": None}, "cdg": {"font_path": None}}
+
+    def test_main_font_also_sets_cdg_title_font(self):
+        style = self._style()
+        update_asset_paths(style, {"font": "/l/main.ttf"})
+        assert style["cdg"]["title_font_path"] == "/l/main.ttf"
+        assert style["cdg"]["font_path"] == "/l/main.ttf"
+
+    @pytest.mark.parametrize("order", [("font", "cdg_font"), ("cdg_font", "font")])
+    def test_cdg_font_wins_over_main_font_regardless_of_order(self, order):
+        paths = {"font": "/l/main.ttf", "cdg_font": "/l/condensed.ttf"}
+        style = self._style()
+        update_asset_paths(style, {k: paths[k] for k in order})
+        assert style["cdg"]["font_path"] == "/l/condensed.ttf"
+        assert style["cdg"]["title_font_path"] == "/l/main.ttf"
+        assert style["karaoke"]["font_path"] == "/l/main.ttf"

@@ -213,13 +213,18 @@ ASSET_KEY_MAPPINGS: Dict[str, Union[Tuple[str, str], List[Tuple[str, str]]]] = {
         ("karaoke", "font_path"),
         ("end", "font"),
         ("cdg", "font_path"),
+        ("cdg", "title_font_path"),  # CDG title card / outro use the theme's main font
     ],
     "style_font": [  # CLI upload key
         ("intro", "font"),
         ("karaoke", "font_path"),
         ("end", "font"),
         ("cdg", "font_path"),
+        ("cdg", "title_font_path"),
     ],
+    # Optional distinct CDG lyrics font (e.g. a condensed face that fits more of a
+    # lyric line on the 300x216 CDG screen). Applied after "font" so it wins.
+    "cdg_font": ("cdg", "font_path"),
     
     # CDG-specific backgrounds
     "cdg_instrumental_background": ("cdg", "instrumental_background"),
@@ -355,7 +360,9 @@ def update_asset_paths(
     log = logger or logging.getLogger(__name__)
     updates_made = False
     
-    for asset_key, local_path in local_assets.items():
+    # Shared keys first so section-specific overrides (e.g. "cdg_font") win.
+    shared_first = sorted(local_assets.items(), key=lambda kv: kv[0] not in ("font", "style_font"))
+    for asset_key, local_path in shared_first:
         if asset_key not in ASSET_KEY_MAPPINGS:
             continue
         

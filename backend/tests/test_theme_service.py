@@ -537,3 +537,27 @@ class TestThemeAPI:
             assert response.status_code == 200
             data = response.json()
             assert data["description"] == "Thank you for watching!"
+
+
+class TestDistinctCdgFont:
+    """A theme whose CDG lyrics font differs from its main font gets a cdg_font asset."""
+
+    def _style(self, cdg_font):
+        return {
+            "intro": {"font": "AvenirNext-Bold.ttf"},
+            "karaoke": {"font_path": "AvenirNext-Bold.ttf"},
+            "cdg": {"font_path": cdg_font},
+        }
+
+    def test_distinct_cdg_font_is_its_own_asset(self):
+        storage = Mock()
+        storage.file_exists.return_value = True
+        assets = ThemeService(storage=storage)._build_style_assets_mapping("vocalstar", self._style("Oswald-SemiBold.ttf"))
+        assert assets["font"] == "themes/vocalstar/assets/AvenirNext-Bold.ttf"
+        assert assets["cdg_font"] == "themes/vocalstar/assets/Oswald-SemiBold.ttf"
+
+    def test_same_cdg_font_adds_no_extra_asset(self):
+        storage = Mock()
+        storage.file_exists.return_value = True
+        assets = ThemeService(storage=storage)._build_style_assets_mapping("nomad", self._style("AvenirNext-Bold.ttf"))
+        assert "cdg_font" not in assets

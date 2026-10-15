@@ -276,3 +276,20 @@ def test_screen_enabled_flag_must_be_boolean(section):
     style[section]["enabled"] = "no"
     with pytest.raises(TenantValidationError, match=f"{section}.enabled"):
         tts.sanitize_style_params(style, available_assets=ASSETS)
+
+
+def test_sanitize_keeps_a_distinct_available_cdg_font():
+    style = _style()
+    style["cdg"]["font_path"] = "Oswald-SemiBold.ttf"  # bundled, condensed for CDG lyrics
+    styles, font = tts.sanitize_style_params(style, available_assets=ASSETS)
+    assert font == "AvenirNext-Bold.ttf"
+    assert styles["karaoke"]["font_path"] == "AvenirNext-Bold.ttf"
+    assert styles["cdg"]["font_path"] == "Oswald-SemiBold.ttf"
+
+
+@pytest.mark.parametrize("bad", ["/abs/Oswald-SemiBold.ttf", "NotAFont-zzz.ttf"])
+def test_sanitize_replaces_unsafe_or_unknown_cdg_font_with_main_font(bad):
+    style = _style()
+    style["cdg"]["font_path"] = bad
+    styles, _ = tts.sanitize_style_params(style, available_assets=ASSETS)
+    assert styles["cdg"]["font_path"] == "AvenirNext-Bold.ttf"
