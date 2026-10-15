@@ -404,6 +404,16 @@
       "intro": "Itt a kódod, amivel bejelentkezhetsz a karaoke est énekesi oldalán. Írd be arra az oldalra, amit éppen használsz:",
       "subject": "A Nomad Karaoke kódod: {code}"
     },
+    "loginCode": {
+      "expiry": "Ez a kód {minutes} perc múlva lejár, és csak egyszer használható.",
+      "greeting": "Szia,",
+      "ignoreNote": "Ha nem te kérted ezt az e-mailt, nyugodtan figyelmen kívül hagyhatod.",
+      "intro": "A folytatáshoz írd be ezt a kódot a bejelentkezési oldalon:",
+      "linkExpiry": "A bejelentkezési link 24 óráig érvényes, és csak egyszer használható.",
+      "orLink": "Vagy hagyd ki a kódot, és jelentkezz be egy kattintással:",
+      "signInButton": "Bejelentkezés",
+      "subject": "{brand_name} bejelentkezési kódod: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Inkább nem bajlódnál a dalszöveg ellenőrzésével? Válaszd a Made For You lehetőséget, és az egész videót elkészítem neked 24 órán belül:",
       "madeForYouLink": "Made For You",

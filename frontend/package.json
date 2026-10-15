@@ -21,6 +21,7 @@
     "test:e2e:ci": "playwright test --reporter=list",
     "test:e2e:record": "playwright test --config=playwright.record.config.ts",
     "test:e2e:prod": "playwright test --config=playwright.production.config.ts",
+    "test:e2e:local-stack": "playwright test --config=playwright.local-stack.config.ts",
     "test:e2e:prod:headed": "playwright test --config=playwright.production.config.ts --headed",
     "test:e2e:prod:debug": "playwright test --config=playwright.production.config.ts --debug",
     "test:e2e:demo": "playwright test --config=playwright.demo.config.ts",

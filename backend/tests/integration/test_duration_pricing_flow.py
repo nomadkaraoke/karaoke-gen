@@ -275,7 +275,7 @@ class TestReconcileUpEndToEnd:
         # "Resumed" job: what get_job returns AFTER confirm (post-transition)
         resumed_job = _make_job(
             job_id=job_id,
-            status=JobStatus.SEPARATING_STAGE1,
+            status=JobStatus.DOWNLOADING,
             credits_charged=4,
             user_email=user_email,
             extra_state_data={
@@ -448,10 +448,10 @@ class TestReconcileUpEndToEnd:
             "Expected pending_additional_credits=0 after confirm"
         )
 
-    def test_confirm_duration_transitions_to_separating_stage1(self, test_setup, mock_creds):
+    def test_confirm_duration_transitions_to_downloading(self, test_setup, mock_creds):
         """
         The job must be transitioned OUT of AWAITING_DURATION_CONFIRM to
-        SEPARATING_STAGE1 before workers are triggered.
+        DOWNLOADING before workers are triggered.
         """
         setup = test_setup
         patches = [
@@ -478,8 +478,8 @@ class TestReconcileUpEndToEnd:
             if (call_args.args and len(call_args.args) >= 2)
             else call_args.kwargs.get("new_status")
         )
-        assert new_status == JobStatus.SEPARATING_STAGE1, (
-            f"Expected transition to SEPARATING_STAGE1, got {new_status}"
+        assert new_status == JobStatus.DOWNLOADING, (
+            f"Expected transition to DOWNLOADING, got {new_status}"
         )
 
     def test_confirm_duration_wrong_acknowledged_credits_returns_409(self, test_setup, mock_creds):

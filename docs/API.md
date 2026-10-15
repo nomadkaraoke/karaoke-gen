@@ -1652,6 +1652,51 @@ Returns session token, user info, and `credits_granted` (number of welcome credi
 
 **Admin Login Token**: The same endpoint supports admin login tokens embedded in notification emails. When a made-for-you order is received, the admin notification email includes a link with `?admin_token=TOKEN` that auto-logs the admin into the app. The frontend detects this parameter and calls the verify endpoint to authenticate. Admin tokens expire after 24 hours.
 
+### Send Sign-In Code
+
+```http
+POST /api/users/auth/send-code
+Content-Type: application/json
+
+{"email": "user@example.com", "locale": "de", "device_fingerprint": "optional", "referral_code": "optional", "attribution": {}}
+```
+
+→ `202 {"status": "sent"}`. Emails a **6-digit code and a regular magic link** (either one signs in). Use it where
+a link can't bring the user back into the same session, for example the mobile app or another device. Only
+`email` is required. `locale` picks the email language; if it's missing, `Accept-Language` is used. The other fields
+work the same as on `POST /auth/magic-link`.
+
+- The code is stored only as an HMAC (pepper `LOGIN_CODE_PEPPER`; if that's unset, it's derived from the first
+  `ADMIN_TOKENS` entry). It expires after 10 minutes and works once. Collections: `login_codes`, `login_code_uses`.
+- Throttles per rolling hour: `LOGIN_CODES_PER_EMAIL_PER_HOUR` (default 5) and `LOGIN_CODES_PER_IP_PER_HOUR` (default
+  20; hashed IP, collection `login_code_ip_sends`). Both are checked in the same Firestore transaction as the code
+  write. Over either limit → `429 {"detail": "too_many_codes"}`.
+- The abuse checks match the magic-link endpoint. A disposable domain → `422`, unless the tenant allowlisted the address. These
+  pretend success (`202`, no email): a blocked email or IP, the new-user per-IP/fingerprint signup cap, or an email outside the
+  tenant's allowed domains. With no email provider in production, or no pepper in production → `503`.
+- The magic link in the email comes from the same `create_magic_link` machinery as `POST /auth/magic-link`. So, like
+  that endpoint, the **account is created at send time**, with `signup_ip`, fingerprint and attribution recorded.
+- New users get the welcome-credit AI evaluation precomputed in the background. It's stored on both the code record
+  and the magic-link doc. Test emails, users who already got the credit, and tenant portals skip it.
+
+### Verify Sign-In Code
+
+```http
+POST /api/users/auth/verify-code
+Content-Type: application/json
+
+{"email": "user@example.com", "code": "042917"}
+```
+
+→ `200` with the same body as `GET /auth/verify` (`VerifyMagicLinkResponse`: `status: "success"`, `session_token`,
+`user`, `message`, `credits_granted`, `credit_status`, `tenant_subdomain`). The post-verification steps are shared
+(`complete_verified_login`): welcome credit (not on tenant portals), referral attribution, locale persistence,
+the session (with the fingerprint recorded at send), and the first-login welcome email.
+
+Errors: `401 {"detail": "invalid_code"}` (wrong code), `401 {"detail": "expired"}` (no code, expired, superseded
+or already used), `429 {"detail": "too_many_attempts"}` (the 6th guess burns the code, even if it's right).
+Requesting a new code invalidates the previous one.
+
 ### Resend Magic Link From Token
 
 ```http

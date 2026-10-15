@@ -36,6 +36,8 @@ from karaoke_gen.audio_fetcher import (
 )
 
 from .flacfetch_client import get_flacfetch_client, FlacfetchServiceError
+from backend.config import get_settings
+from backend.services.fake_workers import fake_workers_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -854,5 +856,11 @@ def get_audio_search_service() -> AudioSearchService:
     """Get the singleton AudioSearchService instance."""
     global _audio_search_service
     if _audio_search_service is None:
-        _audio_search_service = AudioSearchService()
+        if fake_workers_enabled(get_settings()):
+            # Local stack: deterministic offline results (see fake_workers/search.py).
+            from backend.services.fake_workers.search import FakeAudioSearchService
+
+            _audio_search_service = FakeAudioSearchService()
+        else:
+            _audio_search_service = AudioSearchService()
     return _audio_search_service

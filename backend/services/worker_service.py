@@ -25,6 +25,7 @@ from google.api_core import exceptions as gcp_exceptions
 from google.protobuf import duration_pb2
 
 from backend.config import get_settings, is_production
+from backend.services.fake_workers import fake_workers_enabled
 from backend.services.tracing import inject_trace_context
 
 
@@ -379,6 +380,12 @@ class WorkerService:
             )
             return False
     
+    def _dispatch_fake(self, kind: str, job_id: str) -> bool:
+        """FAKE_WORKERS (local stack): run the in-process fake instead of the real worker."""
+        from backend.services.fake_workers import dispatch
+
+        return dispatch(kind, job_id)
+
     # Convenience methods for specific workers
     # These provide a cleaner API and better IDE autocomplete
 
@@ -396,6 +403,8 @@ class WorkerService:
         The execution timeout is overridden to fit the torrent stall budget
         (longer for a user's "Keep trying" retry) — see audio_download_limits.
         """
+        if fake_workers_enabled(self.settings):
+            return self._dispatch_fake("audio_download", job_id)
         from backend.services.audio_download_limits import task_timeout_seconds
 
         return await self._trigger_worker_cloud_run_job(
@@ -511,6 +520,8 @@ class WorkerService:
 
         Uses Cloud Run Jobs with L4 GPU in us-east4 for direct audio separation.
         """
+        if fake_workers_enabled(self.settings):
+            return self._dispatch_fake("audio", job_id)
         return await self._trigger_worker_cloud_run_job(
             job_id=job_id,
             cloud_run_job_name="audio-separation-job",
@@ -527,6 +538,8 @@ class WorkerService:
         terminate instances mid-processing (e.g., job c94cc9d6) when no HTTP requests
         were active, even though the worker was still processing.
         """
+        if fake_workers_enabled(self.settings):
+            return self._dispatch_fake("lyrics", job_id)
         return await self._trigger_worker_cloud_run_job(
             job_id=job_id,
             cloud_run_job_name="lyrics-transcription-job",
@@ -536,6 +549,8 @@ class WorkerService:
     
     async def trigger_screens_worker(self, job_id: str) -> bool:
         """Trigger screen generation worker."""
+        if fake_workers_enabled(self.settings):
+            return self._dispatch_fake("screens", job_id)
         return await self.trigger_worker("screens", job_id)
 
     async def trigger_auto_correct(self, job_id: str, timeout_seconds: int = 200) -> bool:
@@ -625,6 +640,8 @@ class WorkerService:
         uses Cloud Run Jobs for execution (supports >30 min encoding).
         Otherwise, uses Cloud Tasks or direct HTTP.
         """
+        if fake_workers_enabled(self.settings):
+            return self._dispatch_fake("video", job_id)
         await asyncio.to_thread(self._bump_worker_generation, job_id)  # Firestore write
         self._start_encoding_worker_warmup(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_video:
@@ -796,6 +813,8 @@ class WorkerService:
         rendering_video (incident 2026-09-13, job 41e06b90 — same class as
         incident 2026-03-08 which migrated the video worker to Cloud Run Jobs).
         """
+        if fake_workers_enabled(self.settings):
+            return self._dispatch_fake("render_video", job_id)
         await asyncio.to_thread(self._bump_worker_generation, job_id)  # Firestore write
         self._start_encoding_worker_warmup(job_id)
         if self._use_cloud_tasks and self.settings.use_cloud_run_jobs_for_render:

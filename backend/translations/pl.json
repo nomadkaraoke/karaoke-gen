@@ -404,6 +404,16 @@
       "intro": "Oto Twój kod do zalogowania się na stronie wokalisty wieczoru karaoke. Wpisz go na stronie, z której korzystasz:",
       "subject": "Twój kod Nomad Karaoke: {code}"
     },
+    "loginCode": {
+      "expiry": "Ten kod wygaśnie za {minutes} min i można go użyć tylko raz.",
+      "greeting": "Cześć,",
+      "ignoreNote": "Jeśli nie prosiłeś(-aś) o tę wiadomość, możesz ją bezpiecznie zignorować.",
+      "intro": "Wpisz ten kod na stronie logowania, aby kontynuować:",
+      "linkExpiry": "Link do logowania działa przez 24 godziny i można go użyć tylko raz.",
+      "orLink": "Albo pomiń kod i zaloguj się jednym kliknięciem:",
+      "signInButton": "Zaloguj się",
+      "subject": "Twój kod logowania do {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Wolisz nie sprawdzać tekstu samodzielnie? Wybierz Made For You, a przygotuję całe wideo za Ciebie – gotowe w ciągu 24 godzin:",
       "madeForYouLink": "Made For You",

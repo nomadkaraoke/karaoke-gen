@@ -225,6 +225,16 @@
       "expiry": "This code expires in {minutes} minutes and can only be used once.",
       "ignoreNote": "If you didn't request this code, you can safely ignore this email."
     },
+    "loginCode": {
+      "subject": "Your {brand_name} sign-in code: {code}",
+      "greeting": "Hi there,",
+      "intro": "Enter this code on the sign-in page to continue:",
+      "expiry": "This code expires in {minutes} minutes and can only be used once.",
+      "orLink": "Or skip the code and sign in with one click:",
+      "signInButton": "Sign In",
+      "linkExpiry": "The sign-in link works for 24 hours and can only be used once.",
+      "ignoreNote": "If you didn't request this email, you can safely ignore it."
+    },
     "welcome": {
       "subject": "Welcome to Nomad Karaoke!",
       "welcomeGreeting": "Welcome to Nomad Karaoke!",

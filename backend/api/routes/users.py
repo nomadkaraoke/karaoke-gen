@@ -194,13 +194,20 @@ class LogoutResponse(BaseModel):
 # =============================================================================
 
 
-def _precompute_credit_eval(token: str, email: str, collection: Optional[str] = None) -> None:
+def _precompute_credit_eval(
+    token: str,
+    email: str,
+    collection: Optional[str] = None,
+    also_store_on: Tuple[Tuple[str, str], ...] = (),
+) -> None:
     """Run credit evaluation in background and store result on the sign-in doc.
 
-    Called in a background thread after sending a magic link (or a kjbox emailed
+    Called in a background thread after sending a magic link (or an emailed
     code — pass ``collection`` + that doc's id as ``token``) for new users. If the
     user verifies before this finishes, verification falls back to inline
-    evaluation (same as before this optimization).
+    evaluation (same as before this optimization). ``also_store_on`` lists extra
+    (collection, doc_id) sign-in docs to receive the same result (the login-code
+    email carries both a code and a magic link; either may be used to sign in).
     """
     try:
         from backend.services.credit_evaluation_service import get_credit_evaluation_service
@@ -210,11 +217,13 @@ def _precompute_credit_eval(token: str, email: str, collection: Optional[str] = 
         evaluation = eval_service.evaluate(email, "welcome")
 
         user_service = get_user_service()
-        user_service.db.collection(collection or MAGIC_LINKS_COLLECTION).document(token).update({
+        result = {
             "credit_eval_decision": evaluation.decision,
             "credit_eval_reasoning": evaluation.reasoning,
             "credit_eval_error": evaluation.error,
-        })
+        }
+        for coll, doc_id in ((collection or MAGIC_LINKS_COLLECTION, token), *also_store_on):
+            user_service.db.collection(coll).document(doc_id).update(result)
         logger.info(f"Pre-computed credit eval for {_mask_email(email)}: {evaluation.decision}")
     except Exception:
         logger.exception(f"Background credit eval failed for {_mask_email(email)} — verify will compute inline")
@@ -951,7 +960,7 @@ def create_checkout(
     Returns a URL to redirect the user to Stripe's hosted checkout page.
     No authentication required - email is provided in the request.
     """
-    if not stripe_service.is_configured():
+    if not stripe_service.can_checkout():
         raise HTTPException(status_code=503, detail="Payment processing is not available")
 
     # Check for referral discount
@@ -1010,7 +1019,7 @@ def create_made_for_you_checkout(
     $15 with 24-hour delivery guarantee.
     No authentication required - customer email is provided in the request.
     """
-    if not stripe_service.is_configured():
+    if not stripe_service.can_checkout():
         raise HTTPException(status_code=503, detail="Payment processing is not available")
 
     success, checkout_url, message = stripe_service.create_made_for_you_checkout_session(

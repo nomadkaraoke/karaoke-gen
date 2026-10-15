@@ -404,6 +404,16 @@
       "intro": "Aqui está o seu código para entrar na página do cantor da noite de karaokê. Digite-o na página que você está usando:",
       "subject": "Seu código do Nomad Karaoke: {code}"
     },
+    "loginCode": {
+      "expiry": "Este código expira em {minutes} minutos e só pode ser usado uma vez.",
+      "greeting": "Olá,",
+      "ignoreNote": "Se você não solicitou este e-mail, pode ignorá-lo com segurança.",
+      "intro": "Digite este código na página de login para continuar:",
+      "linkExpiry": "O link de acesso funciona por 24 horas e só pode ser usado uma vez.",
+      "orLink": "Ou pule o código e entre com um clique:",
+      "signInButton": "Entrar",
+      "subject": "Seu código de acesso ao {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Prefere não revisar a letra você mesmo? Escolha o Feito Para Você e eu farei o vídeo inteiro para você, entregue em até 24 horas:",
       "madeForYouLink": "Feito Para Você",

@@ -28,6 +28,8 @@ from datetime import datetime, timedelta, timezone
 from backend.models.job import JobStatus
 from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
+from backend.config import get_settings
+from backend.services.fake_workers import fake_workers_enabled
 from backend.services.worker_service import get_worker_service
 from backend.services.flacfetch_client import (
     get_flacfetch_client,
@@ -452,6 +454,12 @@ async def _download_audio(
 
     Routes to the appropriate download handler based on source type.
     """
+    if fake_workers_enabled(get_settings()):
+        # Local stack: every provider "downloads" the canned fake song.
+        from backend.services.fake_workers.pipeline import fake_download_audio
+
+        return await fake_download_audio(job_id, selected, storage_service)
+
     if source_name == 'YouTube':
         return await _download_youtube(job_id, source_id, download_url, selected)
 

@@ -24,6 +24,7 @@ import httpx
 from google.cloud import firestore
 
 from backend.config import settings
+from backend.services.fake_workers import fake_workers_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -279,6 +280,11 @@ class EmailValidationService:
         # Without this, external APIs can override admin allowlist decisions
         # (e.g. inbox.testmail.app is a legitimate testing domain we allow).
         if domain in config.get("allowlisted_domains", set()):
+            return False
+
+        # Local stack (FAKE_WORKERS) is offline: the Firestore blocklist above is
+        # the whole check, never the external APIs below.
+        if fake_workers_enabled(settings):
             return False
 
         # Tier 2: Recently verified clean? Skip API calls

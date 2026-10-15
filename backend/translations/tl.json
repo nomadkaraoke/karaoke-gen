@@ -404,6 +404,16 @@
       "intro": "Narito ang iyong code para mag-sign in sa karaoke night singer page. I-type ito sa page na ginagamit mo:",
       "subject": "Ang iyong Nomad Karaoke code: {code}"
     },
+    "loginCode": {
+      "expiry": "Mag-e-expire ang code na ito sa loob ng {minutes} minuto at isang beses lang magagamit.",
+      "greeting": "Kumusta,",
+      "ignoreNote": "Kung hindi mo hiniling ang email na ito, puwede mo itong balewalain.",
+      "intro": "Ilagay ang code na ito sa sign-in page para magpatuloy:",
+      "linkExpiry": "Gumagana ang sign-in link nang 24 oras at isang beses lang magagamit.",
+      "orLink": "O laktawan ang code at mag-sign in sa isang click:",
+      "signInButton": "Mag-sign In",
+      "subject": "Ang iyong sign-in code sa {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Ayaw mo bang mag-review ng lyrics nang mag-isa? Piliin ang Made For You at ako na ang gagawa ng buong video para sa iyo, ihahatid sa loob ng 24 oras:",
       "madeForYouLink": "Made For You",

@@ -1,7 +1,7 @@
 # Makefile for karaoke-gen project
 # Run `make help` to see available commands
 
-.PHONY: help install install-backend install-frontend build-frontend dev-install test test-unit test-backend test-e2e test-frontend test-all lint clean emulators-start emulators-stop eval-custom-lyrics
+.PHONY: help install install-backend install-frontend build-frontend dev-install test test-unit test-backend test-e2e test-frontend test-all lint clean emulators-start emulators-stop local-stack-up local-stack-down test-local-stack eval-custom-lyrics
 
 # Per-stage timeout in seconds (default: 10 minutes)
 # Prevents hangs from stale dev servers, broken emulators, etc.
@@ -123,6 +123,17 @@ emulators-start:
 emulators-stop:
 	@echo "=== Stopping GCP emulators ==="
 	./scripts/stop-emulators.sh
+
+# Local E2E stack: real backend on emulators + fake workers (see docs/TESTING.md)
+local-stack-up:
+	./scripts/local-stack.sh up --frontend
+
+local-stack-down:
+	./scripts/local-stack.sh down
+
+# Full-journey Playwright suite against the local stack (starts it if needed)
+test-local-stack: install-frontend
+	cd frontend && timeout $(TEST_TIMEOUT) npm run test:e2e:local-stack
 
 # Clean up temporary files
 clean:

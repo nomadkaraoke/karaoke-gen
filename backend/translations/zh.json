@@ -404,6 +404,16 @@
       "intro": "这是您登录卡拉OK之夜歌手页面的验证码。请在您正在使用的页面中输入它：",
       "subject": "您的 Nomad Karaoke 验证码：{code}"
     },
+    "loginCode": {
+      "expiry": "此验证码将在 {minutes} 分钟后过期，且只能使用一次。",
+      "greeting": "你好，",
+      "ignoreNote": "如果你没有请求此邮件，可以放心忽略。",
+      "intro": "请在登录页面输入此验证码以继续：",
+      "linkExpiry": "登录链接 24 小时内有效，且只能使用一次。",
+      "orLink": "或者跳过验证码，一键登录：",
+      "signInButton": "登录",
+      "subject": "你的 {brand_name} 登录验证码：{code}"
+    },
     "conversion": {
       "madeForYouLine": "不想自己校对歌词？选择“为您定制”，我将为您制作整支视频，24小时内交付：",
       "madeForYouLink": "为您定制",

@@ -404,6 +404,16 @@
       "intro": "Tässä on koodisi karaokeillan laulajasivulle kirjautumista varten. Kirjoita se käyttämällesi sivulle:",
       "subject": "Nomad Karaoke -koodisi: {code}"
     },
+    "loginCode": {
+      "expiry": "Tämä koodi vanhenee {minutes} minuutissa, ja sitä voi käyttää vain kerran.",
+      "greeting": "Hei,",
+      "ignoreNote": "Jos et pyytänyt tätä sähköpostia, voit turvallisesti jättää sen huomiotta.",
+      "intro": "Jatka syöttämällä tämä koodi kirjautumissivulle:",
+      "linkExpiry": "Kirjautumislinkki toimii 24 tuntia, ja sitä voi käyttää vain kerran.",
+      "orLink": "Tai ohita koodi ja kirjaudu sisään yhdellä napsautuksella:",
+      "signInButton": "Kirjaudu sisään",
+      "subject": "{brand_name}-kirjautumiskoodisi: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Etkö halua tarkistaa sanoituksia itse? Valitse Made For You, niin teen koko videon puolestasi 24 tunnin kuluessa:",
       "madeForYouLink": "Made For You",

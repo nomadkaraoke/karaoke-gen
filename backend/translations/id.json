@@ -404,6 +404,16 @@
       "intro": "Berikut adalah kode Anda untuk masuk di halaman penyanyi malam karaoke. Masukkan kode ini ke halaman yang sedang Anda gunakan:",
       "subject": "Kode Nomad Karaoke Anda: {code}"
     },
+    "loginCode": {
+      "expiry": "Kode ini kedaluwarsa dalam {minutes} menit dan hanya dapat digunakan satu kali.",
+      "greeting": "Halo,",
+      "ignoreNote": "Jika Anda tidak meminta email ini, Anda dapat mengabaikannya dengan aman.",
+      "intro": "Masukkan kode ini di halaman masuk untuk melanjutkan:",
+      "linkExpiry": "Tautan masuk berlaku selama 24 jam dan hanya dapat digunakan satu kali.",
+      "orLink": "Atau lewati kode dan masuk dengan satu klik:",
+      "signInButton": "Masuk",
+      "subject": "Kode masuk {brand_name} Anda: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Tidak ingin memeriksa liriknya sendiri? Pilih Made For You dan saya akan membuatkan seluruh videonya untuk Anda, selesai dalam 24 jam:",
       "madeForYouLink": "Made For You",

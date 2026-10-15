@@ -128,6 +128,8 @@ STATE_TRANSITIONS = {
 
     # Duration cost confirmation (BLOCKING) - user confirms before heavy processing begins
     JobStatus.AWAITING_DURATION_CONFIRM: [
+        # DOWNLOADING = confirmed, back to the prep phase (see jobs.confirm_duration).
+        JobStatus.DOWNLOADING,
         JobStatus.SEPARATING_STAGE1, JobStatus.TRANSCRIBING,
         JobStatus.GENERATING_SCREENS, JobStatus.AWAITING_AUDIO_EDIT,
         JobStatus.FAILED, JobStatus.CANCELLED,

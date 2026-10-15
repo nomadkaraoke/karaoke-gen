@@ -1,5 +1,6 @@
 playwright-report-prod/
 playwright-report-demo/
+playwright-report-local-stack/
 
 # Demo video output and raw recordings (large files, not for git)
 demo-output/
