@@ -1776,7 +1776,8 @@ def delete_job_outputs(
     # Recycle brand code if Dropbox and GDrive cleanup both succeeded
     dropbox_success = results["dropbox"]["status"] in ("success", "skipped")
     gdrive_success = results["gdrive"]["status"] in ("success", "skipped")
-    if brand_code and dropbox_success and gdrive_success:
+    from backend.services.brand_code_service import is_preserved_brand_code
+    if brand_code and dropbox_success and gdrive_success and not is_preserved_brand_code(job, brand_code):
         try:
             from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
             prefix, number = BrandCodeService.parse_brand_code(brand_code)
@@ -1786,6 +1787,8 @@ def delete_job_outputs(
         except (ValueError, Exception) as e:
             logger.warning(f"Failed to recycle brand code {brand_code}: {e}")
             results["brand_code"] = {"status": "failed", "error": str(e)}
+    elif brand_code and is_preserved_brand_code(job, brand_code):
+        results["brand_code"] = {"status": "skipped", "reason": "Tenant-supplied code (not allocated)"}
     elif brand_code:
         logger.warning(f"Brand code {brand_code} NOT recycled: cleanup incomplete (dropbox={results['dropbox']['status']}, gdrive={results['gdrive']['status']})")
         results["brand_code"] = {"status": "skipped", "reason": "Dropbox/GDrive cleanup incomplete"}

@@ -48,6 +48,11 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
   });
 
   test.afterAll(async () => {
+    // E2E_KEEP_JOB=1 keeps the job + outputs for manual inspection (local runs only).
+    if (process.env.E2E_KEEP_JOB === '1') {
+      console.log(`[${TENANT_ID}] Keeping job ${createdJobId} (E2E_KEEP_JOB=1) — delete it when done`);
+      return;
+    }
     if (createdJobId && ADMIN_TOKEN) {
       // DELETE /api/jobs/{id} uses require_auth + ownership; admins bypass.
       await fetch(`${API_URL}/api/jobs/${createdJobId}`, {
@@ -140,8 +145,12 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     // Submit a track through the tenant portal form
     // =====================================================================
     const uniqueTitle = `E2E ${TENANT_ID} ${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    // Tenant catalogue code (e.g. Vocal Star's "VS6588"): must become the job's
+    // brand code, so the delivery folder + every file are prefixed with it.
+    const trackCode = `E2E${Date.now().toString().slice(-7)}`;
     await page.getByLabel('Artist').fill('Nomad E2E');
     await page.getByLabel('Title').fill(uniqueTitle);
+    await page.getByLabel('Track code (optional)').fill(trackCode);
     await page.locator('#tenant-mixed-audio').setInputFiles(MIXED_AUDIO);
     await page.locator('#tenant-instrumental-audio').setInputFiles(INSTRUMENTAL_AUDIO);
     await page.getByRole('button', { name: /submit track/i }).click();
@@ -275,6 +284,7 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     for (const f of ['lossy_4k_mp4', 'lossy_720p_mp4', 'with_vocals_mp4']) expect(finals).toContain(f);
     for (const p of ['cdg_zip', 'txt_zip']) expect(packages).toContain(p);
     expect(job.is_private, 'tenant job is private').toBeTruthy();
+    expect(sd.brand_code, 'tenant track code used as the brand code (output folder/file prefix)').toBe(trackCode);
 
     // Real-world tenant-scenario invariants (beyond "it completed"): these guard the
     // exact flow tenant operators rely on — they upload their own audio + instrumental,
@@ -283,6 +293,6 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
     expect(sd.instrumental_selection, 'uploaded instrumental used (custom), not a separated stem').toBe('custom');
     // 2. Lyrics were transcribed + corrected — the job did real work, not a short-circuit.
     expect(sd.lyrics_complete, 'lyrics transcription completed').toBeTruthy();
-    console.log(`[${TENANT_ID}] PASSED — complete, private, Dropbox present, no YouTube, uploaded instrumental used, downloads available`);
+    console.log(`[${TENANT_ID}] PASSED — complete, private, Dropbox present, no YouTube, uploaded instrumental used, track code ${trackCode} applied, downloads available`);
   });
 });

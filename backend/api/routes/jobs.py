@@ -370,7 +370,8 @@ def edit_completed_track(
     # Recycle brand code if Dropbox + GDrive cleanup both succeeded
     dropbox_ok = cleanup_results.get("dropbox", {}).get("status") in ("success", "skipped")
     gdrive_ok = cleanup_results.get("gdrive", {}).get("status") in ("success", "skipped")
-    if brand_code and dropbox_ok and gdrive_ok:
+    from backend.services.brand_code_service import is_preserved_brand_code
+    if brand_code and dropbox_ok and gdrive_ok and not is_preserved_brand_code(job, brand_code):
         try:
             from backend.services.brand_code_service import BrandCodeService, get_brand_code_service
             prefix, number = BrandCodeService.parse_brand_code(brand_code)
@@ -2687,7 +2688,8 @@ def _run_distribution_cleanup(job_id: str, job) -> dict:
     # Recycle the brand code so it can be reused — but only after GDrive is confirmed clean.
     # If we recycle before GDrive cleanup, a new job could claim the same brand code and
     # collide with leftover files on GDrive (duplicate brand code in public share).
-    if dropbox_cleaned and brand_code and gdrive_cleaned:
+    from backend.services.brand_code_service import is_preserved_brand_code
+    if dropbox_cleaned and brand_code and gdrive_cleaned and not is_preserved_brand_code(job, brand_code):
         try:
             from backend.services.brand_code_service import (
                 BrandCodeService, get_brand_code_service
