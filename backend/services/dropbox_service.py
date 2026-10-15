@@ -23,15 +23,24 @@ logger = logging.getLogger(__name__)
 
 
 def prefix_zip_entries(src_zip: str, dst_zip: str, prefix: str) -> None:
-    """Copy a zip, prepending ``prefix`` to every entry's file name (not its folders)."""
-    with zipfile.ZipFile(src_zip) as zin, zipfile.ZipFile(dst_zip, "w", zipfile.ZIP_DEFLATED) as zout:
+    """Copy a zip, prepending ``prefix`` to every entry's file name (not its folders).
+
+    Entries are streamed (never fully loaded into memory) and keep their original
+    timestamps/compression, so re-packing the same zip is deterministic.
+    """
+    import shutil
+
+    with zipfile.ZipFile(src_zip) as zin, zipfile.ZipFile(dst_zip, "w") as zout:
         for info in zin.infolist():
-            if info.is_dir():
+            folder, _, name = info.filename.rpartition("/")
+            if info.is_dir() or not name:
                 zout.writestr(info, b"")
                 continue
-            folder, _, name = info.filename.rpartition("/")
-            new_name = f"{folder}/{prefix}{name}" if folder else f"{prefix}{name}"
-            zout.writestr(new_name, zin.read(info.filename), compress_type=info.compress_type)
+            new_info = zipfile.ZipInfo(f"{folder}/{prefix}{name}" if folder else f"{prefix}{name}", info.date_time)
+            new_info.compress_type = info.compress_type
+            new_info.external_attr = info.external_attr
+            with zin.open(info) as src, zout.open(new_info, "w") as dst:
+                shutil.copyfileobj(src, dst, 1024 * 1024)
 
 
 _DROPBOX_HASH_BLOCK = 4 * 1024 * 1024
@@ -402,6 +411,10 @@ class DropboxService:
                     with tempfile.TemporaryDirectory() as tmp:
                         prefixed_zip = os.path.join(tmp, filename)
                         prefix_zip_entries(local_file, prefixed_zip, filename_prefix)
+                        remote_hash = remote_hashes.get(remote_file.lower())
+                        if remote_hash and remote_hash == dropbox_content_hash(prefixed_zip):
+                            unchanged_count += 1
+                            continue
                         self.upload_file(prefixed_zip, remote_file)
                     uploaded_count += 1
                     continue

@@ -831,3 +831,19 @@ class TestTenantFilenamePrefix:
         with patch.object(service, "upload_file") as mock_upload:
             service.upload_folder(str(tmp_path), "/T/NOMAD-1 - A - T")
         mock_upload.assert_called_once_with(str(tmp_path / "A - T (Karaoke).zip"), "/T/NOMAD-1 - A - T/A - T (Karaoke).zip")
+
+    def test_prefix_zip_entries_is_deterministic_and_streams(self, tmp_path):
+        import zipfile
+        from backend.services.dropbox_service import prefix_zip_entries, dropbox_content_hash
+
+        src = tmp_path / "src.zip"
+        with zipfile.ZipFile(src, "w", zipfile.ZIP_DEFLATED) as z:
+            z.writestr(zipfile.ZipInfo("A - T (Karaoke).cdg", (2026, 1, 1, 0, 0, 0)), b"x" * 100_000)
+            z.writestr(zipfile.ZipInfo("sub/A - T.txt", (2026, 1, 1, 0, 0, 0)), b"lyrics")
+        prefix_zip_entries(str(src), str(tmp_path / "a.zip"), "VS1 - ")
+        prefix_zip_entries(str(src), str(tmp_path / "b.zip"), "VS1 - ")
+        assert dropbox_content_hash(str(tmp_path / "a.zip")) == dropbox_content_hash(str(tmp_path / "b.zip"))
+        with zipfile.ZipFile(tmp_path / "a.zip") as z:
+            assert sorted(z.namelist()) == ["VS1 - A - T (Karaoke).cdg", "sub/VS1 - A - T.txt"]
+            assert z.read("VS1 - A - T (Karaoke).cdg") == b"x" * 100_000
+
