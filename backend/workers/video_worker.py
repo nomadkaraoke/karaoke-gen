@@ -38,6 +38,7 @@ from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.services.job_manager import JobManager
 from backend.services.input_persistence import ensure_job_inputs_persisted
+from backend.services.input_recovery import recover_missing_inputs
 from backend.services.storage_service import StorageService
 from backend.services.admin_rerender_service import (
     active_admin_rerender,
@@ -265,6 +266,11 @@ async def generate_video_orchestrated(job_id: str) -> bool:
 
     # Copy uploads/{job_id}/** into jobs/{job_id}/input/ (uploads/ expires) and repoint the job.
     await asyncio.to_thread(ensure_job_inputs_persisted, job, storage, job_manager, "video")
+    # Repoint an expired bring-your-own instrumental at its surviving staged copy.
+    try:
+        await asyncio.to_thread(recover_missing_inputs, job, storage, job_manager)
+    except Exception as e:  # noqa: BLE001 - the render stage already reported a missing mix
+        logger.error(f"[job:{job_id}] Input recovery failed in video worker: {e}")
 
     # Validate prerequisites
     if not _validate_prerequisites(job):

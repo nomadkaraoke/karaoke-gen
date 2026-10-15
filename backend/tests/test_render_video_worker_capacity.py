@@ -16,6 +16,15 @@ from backend.models.job import JobStatus
 from backend.services.encoding_errors import EncodingWorkerCapacityError
 
 
+@pytest.fixture(autouse=True)
+def _no_input_recovery(monkeypatch):
+    """Storage mocks here report every blob missing; input recovery has its own tests."""
+    monkeypatch.setattr(
+        "backend.workers.render_video_worker.recover_missing_inputs", lambda *a, **k: {}
+    )
+
+
+
 def _build_minimal_job():
     """Job mock that lets process_render_video reach the GCE call site."""
     job = MagicMock()
