@@ -340,6 +340,14 @@ class Settings(BaseSettings):
     # Max "free at the show" credits kjbox may grant one user per rolling 24h.
     kjbox_show_credits_per_user_per_24h: int = int(os.getenv("KJBOX_SHOW_CREDITS_PER_USER_PER_24H", "5"))
 
+    # gen email-code sign-in (/api/users/auth/send-code + verify-code).
+    # HMAC pepper for stored codes; when empty it's derived from the first admin
+    # token (see backend/api/routes/login_code.py:_resolve_pepper).
+    login_code_pepper: str = os.getenv("LOGIN_CODE_PEPPER", "")
+    # Max emailed sign-in codes per address / per client IP per rolling hour.
+    login_codes_per_email_per_hour: int = int(os.getenv("LOGIN_CODES_PER_EMAIL_PER_HOUR", "5"))
+    login_codes_per_ip_per_hour: int = int(os.getenv("LOGIN_CODES_PER_IP_PER_HOUR", "20"))
+
     # Private (non-published) track distribution settings
     default_private_dropbox_path: Optional[str] = os.getenv("DEFAULT_PRIVATE_DROPBOX_PATH")
     default_private_brand_prefix: Optional[str] = os.getenv("DEFAULT_PRIVATE_BRAND_PREFIX", "NOMADNP")
@@ -366,6 +374,12 @@ class Settings(BaseSettings):
     youtube_quota_safety_margin: int = int(os.getenv("YOUTUBE_QUOTA_SAFETY_MARGIN", "500"))
     # E2E test bypass key for rate limiting (set via secret in production)
     e2e_bypass_key: str = os.getenv("E2E_BYPASS_KEY", "")
+    # Local-stack E2E mode (scripts/local-stack.sh): workers are replaced by in-process
+    # fakes that walk jobs through their real states with canned media, the
+    # /api/test/* router is mounted, and external lookups (Secret Manager, DeBounce,
+    # ip-api, encoding VM) are skipped. Startup refuses it in production.
+    # See backend/services/fake_workers/ and docs/TESTING.md § Local stack.
+    fake_workers: bool = os.getenv("FAKE_WORKERS", "").lower() in ("1", "true", "yes")
     # Canonical YouTube description template. Placeholders ({title}, {artist},
     # {artist_hashtag}, {brand_code}) are filled by
     # backend.services.youtube_description.render_youtube_description, which is the
@@ -495,6 +509,10 @@ class Settings(BaseSettings):
             self._secret_cache[secret_id] = env_value
             return env_value
         
+        # Local stack runs offline on emulators: never reach for Secret Manager.
+        if self.fake_workers is True and not is_production():
+            return None
+
         # Try Secret Manager (production mode)
         if not self.google_cloud_project:
             logger.warning(f"Cannot fetch secret {secret_id}: No GCP project configured")
@@ -566,6 +584,11 @@ def validate_production_config() -> None:
     """
     if not is_production():
         return
+    if settings.fake_workers is True:
+        raise RuntimeError(
+            "FAKE_WORKERS is set in production. It replaces every worker with a fake "
+            "and mounts the unauthenticated /api/test/* router. Refusing to start."
+        )
     missing = [v for v in _REQUIRED_PRODUCTION_ENV_VARS if not (os.environ.get(v) or "").strip()]
     if missing:
         raise RuntimeError(

@@ -27,19 +27,31 @@ concurrent requests can't slip past them.
 from __future__ import annotations
 
 import hashlib
-import hmac
 import logging
-import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import datetime, timedelta
+from typing import Optional
 
-from google.api_core import exceptions as google_exceptions
-from google.cloud import firestore
-from google.cloud.firestore_v1 import FieldFilter, Increment
+from google.cloud import firestore  # noqa: F401  (tests patch kps.firestore.transactional)
+from google.cloud.firestore_v1 import FieldFilter
 
 from backend.models.user import CreditTransaction
+from backend.services.login_code_store import (  # noqa: F401  (re-exported for callers/tests)
+    CODE_EXPIRY_MINUTES,
+    CODE_LENGTH,
+    MAX_VERIFY_ATTEMPTS,
+    TRANSACTION_MAX_ATTEMPTS,
+    CodeThrottled,
+    IssuedCode,
+    LoginCodeStore,
+    TransactionContention,
+    VerifyOutcome,
+    _aware,
+    _now,
+    code_doc_id,
+    run_firestore_transaction,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,56 +61,13 @@ SIGNUPS_COLLECTION = "kjbox_signups"
 SHOW_CREDITS_COLLECTION = "kjbox_show_credits"
 SHOW_CREDIT_USERS_COLLECTION = "kjbox_show_credit_users"
 
-CODE_LENGTH = 6
-CODE_EXPIRY_MINUTES = 10
-MAX_VERIFY_ATTEMPTS = 5
 SHOW_CREDIT_REASON = "kjbox show credit"
 
-TRANSACTION_MAX_ATTEMPTS = 10
-
-_THROTTLE_WINDOW = timedelta(hours=1)
 _DAY = timedelta(hours=24)
-
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _aware(dt: Any) -> Optional[datetime]:
-    """Normalize Firestore/ISO timestamps to tz-aware UTC datetimes."""
-    if dt is None:
-        return None
-    if isinstance(dt, str):
-        try:
-            dt = datetime.fromisoformat(dt)
-        except ValueError:
-            return None
-    if not isinstance(dt, datetime):
-        return None
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def _sha256(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
-def code_doc_id(email: str) -> str:
-    return _sha256(email.strip().lower())
-
-
-@dataclass
-class IssuedCode:
-    code: str
-    doc_id: str
-    needs_credit_eval: bool
-
-
-class TransactionContention(Exception):
-    """A Firestore transaction gave up after repeated contention (nothing written)."""
-
-
-class CodeThrottled(Exception):
-    """Per-email code throttle hit (raised out of the issue transaction)."""
 
 
 class ShowCreditCapReached(Exception):
@@ -111,54 +80,47 @@ class ShowCreditResult:
     credits: int
 
 
-class VerifyOutcome:
-    OK = "ok"
-    EXPIRED = "expired"
-    INVALID = "invalid_code"
-    TOO_MANY_ATTEMPTS = "too_many_attempts"
-
-
 class KjboxPartnerService:
-    """Code issuance/verification, signup cap, and show-credit bookkeeping."""
+    """Code issuance/verification, signup cap, and show-credit bookkeeping.
+
+    Code issue/verify is delegated to :class:`LoginCodeStore` (shared with gen's
+    own email-code sign-in) over the kjbox-specific collections.
+    """
 
     def __init__(self, db, pepper: str, transaction_runner=None):
         self.db = db
-        # The partner secret doubles as the HMAC pepper: a Firestore read alone
-        # (backups, exports) can't brute-force the 10^6 code space offline.
-        self._pepper = pepper.encode("utf-8")
         # Injectable for unit tests (in-memory Firestore fake); production runs
         # ``fn(transaction)`` under @firestore.transactional (retried on contention).
         self._transaction_runner = transaction_runner
+        # The partner secret doubles as the HMAC pepper. The store routes its
+        # transactions through self._run_transaction (looked up per call, so a
+        # class-level patch in tests applies to code issuance too).
+        self._codes = LoginCodeStore(
+            db,
+            pepper,
+            LOGIN_CODES_COLLECTION,
+            LOGIN_CODE_USES_COLLECTION,
+            transaction_runner=lambda fn: self._run_transaction(fn),
+        )
 
     def _run_transaction(self, fn):
         if self._transaction_runner is not None:
             return self._transaction_runner(fn)
-        try:
-            return firestore.transactional(fn)(self.db.transaction(max_attempts=TRANSACTION_MAX_ATTEMPTS))
-        except ValueError as exc:
-            # google-cloud-firestore gives up with ValueError("Failed to commit
-            # transaction in N attempts.") under heavy contention. Nothing was
-            # written, so callers can safely treat it as "busy, retry".
-            if "Failed to commit transaction" in str(exc):
-                raise TransactionContention() from exc
-            raise
+        return run_firestore_transaction(self.db, fn)
 
     # ------------------------------------------------------------------ codes
 
     def _hash_code(self, code_id: str, code: str) -> str:
-        return hmac.new(self._pepper, f"{code_id}:{code}".encode("utf-8"), hashlib.sha256).hexdigest()
+        return self._codes.hash_code(code_id, code)
 
     def _code_ref(self, email: str):
-        return self.db.collection(LOGIN_CODES_COLLECTION).document(code_doc_id(email))
+        return self._codes.code_ref(email)
 
     def get_code_record(self, email: str) -> Optional[dict]:
-        snap = self._code_ref(email).get()
-        return snap.to_dict() if snap.exists else None
+        return self._codes.get_code_record(email)
 
     def recent_send_times(self, record: Optional[dict], now: Optional[datetime] = None) -> list:
-        now = now or _now()
-        times = [_aware(t) for t in (record or {}).get("send_times") or []]
-        return [t for t in times if t and now - t < _THROTTLE_WINDOW]
+        return self._codes.recent_send_times(record, now)
 
     def issue_code(
         self,
@@ -172,97 +134,27 @@ class KjboxPartnerService:
         ip_address: Optional[str],
         user_agent: Optional[str],
     ) -> IssuedCode:
-        """Mint a fresh code for ``email``, replacing (invalidating) any prior one.
+        """Mint a fresh code for ``email`` (see :meth:`LoginCodeStore.issue_code`).
 
-        The throttle check, the send_times append and the code write happen in ONE
-        transaction, so parallel requests can't exceed ``max_per_hour`` sends
-        (raises :class:`CodeThrottled`). Only an HMAC of the code is stored.
-        ``merge=True`` keeps any precomputed welcome-credit evaluation across
-        re-sends. Venue/locale are kept for attribution when the email verifies.
+        Venue/locale are kept on the record for attribution when the email verifies.
+        Raises :class:`CodeThrottled` past ``max_per_hour`` sends.
         """
-        email = email.strip().lower()
-        ref = self._code_ref(email)
-
-        def _txn(transaction):
-            now = _now()
-            snap = ref.get(transaction=transaction)
-            record = snap.to_dict() if snap.exists else None
-            recent = self.recent_send_times(record, now)
-            if len(recent) >= max_per_hour:
-                raise CodeThrottled()
-            code = f"{secrets.randbelow(10 ** CODE_LENGTH):0{CODE_LENGTH}d}"
-            code_id = secrets.token_urlsafe(16)
-            transaction.set(
-                ref,
-                {
-                    "email": email,
-                    "code_id": code_id,
-                    "code_hash": self._hash_code(code_id, code),
-                    "created_at": now,
-                    "expires_at": now + timedelta(minutes=CODE_EXPIRY_MINUTES),
-                    "attempts": 0,
-                    "send_times": recent + [now],
-                    "locale": locale,
-                    "ui_locale": ui_locale,
-                    "venue": venue,
-                    "ip_address": ip_address,
-                    "user_agent": user_agent,
-                },
-                merge=True,
-            )
-            has_eval = bool((record or {}).get("credit_eval_decision"))
-            return IssuedCode(
-                code=code,
-                doc_id=code_doc_id(email),
-                needs_credit_eval=needs_credit_eval and not has_eval,
-            )
-
-        return self._run_transaction(_txn)
+        return self._codes.issue_code(
+            email,
+            max_per_hour=max_per_hour,
+            needs_credit_eval=needs_credit_eval,
+            fields={
+                "locale": locale,
+                "ui_locale": ui_locale,
+                "venue": venue,
+                "ip_address": ip_address,
+                "user_agent": user_agent,
+            },
+        )
 
     def verify_code(self, email: str, code: str) -> tuple[str, Optional[dict]]:
-        """Check ``code`` for ``email``. Returns (outcome, code_record).
-
-        Attempts are counted with an atomic server-side increment BEFORE the
-        comparison, so parallel guesses can't exceed MAX_VERIFY_ATTEMPTS. A
-        success is claimed via a create()-only marker so a code works once.
-        """
-        email = email.strip().lower()
-        ref = self._code_ref(email)
-        snap = ref.get()
-        record = snap.to_dict() if snap.exists else None
-        if not record or not record.get("code_hash") or not record.get("code_id"):
-            return VerifyOutcome.EXPIRED, None
-
-        expires_at = _aware(record.get("expires_at"))
-        if not expires_at or _now() > expires_at:
-            ref.update({"code_hash": None})
-            return VerifyOutcome.EXPIRED, None
-
-        ref.update({"attempts": Increment(1)})
-        after = ref.get().to_dict() or {}
-        if after.get("code_id") != record["code_id"] or not after.get("code_hash"):
-            # Superseded or burned between our read and the increment.
-            return VerifyOutcome.EXPIRED, None
-        if int(after.get("attempts") or 0) > MAX_VERIFY_ATTEMPTS:
-            ref.update({"code_hash": None})
-            return VerifyOutcome.TOO_MANY_ATTEMPTS, None
-
-        candidate = (code or "").strip()
-        expected = record["code_hash"]
-        provided = self._hash_code(record["code_id"], candidate)
-        if not (candidate.isdigit() and len(candidate) == CODE_LENGTH
-                and hmac.compare_digest(provided, expected)):
-            return VerifyOutcome.INVALID, None
-
-        try:
-            self.db.collection(LOGIN_CODE_USES_COLLECTION).document(record["code_id"]).create(
-                {"email": email, "used_at": _now()}
-            )
-        except google_exceptions.AlreadyExists:
-            return VerifyOutcome.EXPIRED, None
-
-        ref.update({"code_hash": None, "used_at": _now()})
-        return VerifyOutcome.OK, after
+        """Check ``code`` for ``email``. Returns (outcome, code_record)."""
+        return self._codes.verify_code(email, code)
 
     # ----------------------------------------------------------- signup cap
 

@@ -404,6 +404,16 @@
       "intro": "Her er koden din for å logge inn på sanger-siden for karaokekvelden. Skriv den inn på siden du bruker:",
       "subject": "Din Nomad Karaoke-kode: {code}"
     },
+    "loginCode": {
+      "expiry": "Denne koden utløper om {minutes} minutter og kan bare brukes én gang.",
+      "greeting": "Hei,",
+      "ignoreNote": "Hvis du ikke ba om denne e-posten, kan du trygt se bort fra den.",
+      "intro": "Skriv inn denne koden på påloggingssiden for å fortsette:",
+      "linkExpiry": "Påloggingslenken virker i 24 timer og kan bare brukes én gang.",
+      "orLink": "Eller hopp over koden og logg på med ett klikk:",
+      "signInButton": "Logg på",
+      "subject": "Din påloggingskode for {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Vil du helst slippe å gå gjennom teksten selv? Velg Made For You, så lager jeg hele videoen for deg, levert innen 24 timer:",
       "madeForYouLink": "Made For You",

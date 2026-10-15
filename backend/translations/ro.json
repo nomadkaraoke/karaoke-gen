@@ -404,6 +404,16 @@
       "intro": "Iată codul tău pentru a te conecta pe pagina cântărețului din seara de karaoke. Introdu-l în pagina pe care o folosești:",
       "subject": "Codul tău Nomad Karaoke: {code}"
     },
+    "loginCode": {
+      "expiry": "Acest cod expiră în {minutes} minute și poate fi folosit o singură dată.",
+      "greeting": "Bună,",
+      "ignoreNote": "Dacă nu ai solicitat acest e-mail, îl poți ignora în siguranță.",
+      "intro": "Introdu acest cod pe pagina de conectare pentru a continua:",
+      "linkExpiry": "Linkul de conectare funcționează timp de 24 de ore și poate fi folosit o singură dată.",
+      "orLink": "Sau sari peste cod și conectează-te cu un singur clic:",
+      "signInButton": "Conectare",
+      "subject": "Codul tău de conectare la {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Preferi să nu verifici tu versurile? Alege Made For You și voi face eu întregul videoclip pentru tine, livrat în 24 de ore:",
       "madeForYouLink": "Made For You",

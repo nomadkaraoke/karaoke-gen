@@ -6,6 +6,13 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## A stateful fake backend finds bugs that static mocks can't (Oct 2026, v0.275.0)
+
+The first run of the local-stack suite (real API on the emulators, fake workers) found that every job confirmed at "This song is longer than expected" would stall forever. `confirm-duration` moved the job to `separating_stage1`, which can only move on to `separating_stage2`, and the lyrics worker only advances jobs from `PREP_PHASE_STATUSES`. No unit test could see it: each one checked its own half (the route asserted it set `SEPARATING_STAGE1`, and the screens gate tests asserted the prep statuses). Only walking a job across the boundary did. No production job had confirmed a duration yet.
+
+- **Lesson:** for any new job state or transition, add a scenario or journey to `frontend/e2e/local-stack/`. It costs seconds and runs the real routes and state machine.
+- **Gotcha for env-flag seams:** check flags with `is True` (see `fake_workers_enabled`). Hundreds of unit tests patch `settings` with a `MagicMock`, and a plain `if settings.fake_workers:` is truthy on a mock, which would silently swap real code for the fakes in those tests.
+
 ## User uploads sat under a 7-day-expiring prefix — inputs are irreplaceable (Oct 2026, v0.268.2)
 
 Every upload lands in `uploads/{job_id}/`, which had a bucket lifecycle **delete after 7 days**. Only

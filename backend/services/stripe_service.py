@@ -14,6 +14,7 @@ from typing import Optional, Dict, Any, Tuple
 import stripe
 
 from backend.config import get_settings
+from backend.services.fake_workers import fake_workers_enabled
 
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,18 @@ class StripeService:
         """Get available credit packages."""
         return CREDIT_PACKAGES
 
+    def can_checkout(self) -> bool:
+        """Checkout sessions can be created: real Stripe, or the local stack's fake checkout."""
+        return self.is_configured() or fake_workers_enabled()
+
+    def _create_checkout(self, session_params: Dict[str, Any]):
+        """Create the Stripe Checkout session, or a local fake one on the local stack."""
+        if not self.is_configured() and fake_workers_enabled():
+            from backend.services.fake_workers.checkout import create_fake_checkout
+
+            return create_fake_checkout(session_params)
+        return stripe.checkout.Session.create(**session_params)
+
     def create_checkout_session(
         self,
         package_id: str,
@@ -122,7 +135,7 @@ class StripeService:
         Returns:
             (success, checkout_url, message)
         """
-        if not self.is_configured():
+        if not self.can_checkout():
             return False, None, "Payment processing is not configured"
 
         package = CREDIT_PACKAGES.get(package_id)
@@ -176,7 +189,7 @@ class StripeService:
                 session_params['payment_method_configuration'] = self.payment_method_config
 
             # Create checkout session
-            session = stripe.checkout.Session.create(**session_params)
+            session = self._create_checkout(session_params)
 
             logger.info(f"Created checkout session {session.id} for {user_email}, package {package_id}")
             return True, session.url, "Checkout session created"
@@ -219,7 +232,7 @@ class StripeService:
         Returns:
             (success, checkout_url, message)
         """
-        if not self.is_configured():
+        if not self.can_checkout():
             return False, None, "Payment processing is not configured"
 
         try:
@@ -275,7 +288,7 @@ class StripeService:
                 session_params['payment_method_configuration'] = self.payment_method_config
 
             # Create checkout session
-            session = stripe.checkout.Session.create(**session_params)
+            session = self._create_checkout(session_params)
 
             logger.info(
                 f"Created made-for-you checkout session {session.id} for {customer_email}, "

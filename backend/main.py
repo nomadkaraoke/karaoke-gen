@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import settings, validate_production_config
+from backend.services.fake_workers import fake_workers_enabled
 from backend.api.routes import health, jobs, internal, file_upload, review, auth, audio_search, themes, users, admin, tenant, tenant_admin, tenant_bulk, tenant_theme, rate_limits, push, catalog, encoding_worker, client_errors, client_events, bulk, parse_titles
 from backend.services.tracing import setup_tracing, instrument_app, get_current_trace_id
 from backend.services.structured_logging import setup_structured_logging
@@ -132,6 +133,11 @@ def _run_background_warmup():
         preload_langfuse_handler()
     except Exception as e:
         logger.warning(f"Langfuse preload failed (will initialize lazily): {e}")
+
+    if fake_workers_enabled(settings):
+        # Local stack: no encoding VM and no OAuth credentials to validate.
+        logger.info(f"Background warmup complete in {time.time() - warmup_start:.2f}s (fake workers)")
+        return
 
     # 4. Encoding service singleton — its first construction imports
     # google.cloud.compute_v1 (~10s on a fresh instance). Build it here, off the
@@ -332,10 +338,16 @@ from backend.api.routes import karaokehunt
 app.include_router(karaokehunt.router, prefix="/api")  # Retired KaraokeHunt app request interceptor
 from backend.api.routes import kjbox
 app.include_router(kjbox.router, prefix="/api")  # kjbox partner API: singer email-code sign-in + show credits
+from backend.api.routes import login_code
+app.include_router(login_code.router, prefix="/api")  # gen email-code sign-in (/users/auth/send-code, verify-code)
 app.include_router(tenant.router)  # Tenant/white-label configuration (no /api prefix, router has it)
 app.include_router(tenant_admin.router)  # Admin tenant provisioning (router has /api prefix)
 app.include_router(tenant_bulk.router)  # Tenant bulk-upload filename analysis (router has /api prefix)
 app.include_router(tenant_theme.router)  # Tenant self-service theme editor (router has /api prefix)
+if fake_workers_enabled(settings):
+    # Local E2E stack only (startup refuses FAKE_WORKERS in production).
+    from backend.api.routes import test_support
+    app.include_router(test_support.router, prefix="/api")
 
 
 # Exception handlers

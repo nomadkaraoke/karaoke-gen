@@ -18,6 +18,7 @@ tests/outputs
 
 # Cloud Infra
 .emulator-logs
+.local-stack
 
 # Next.js / React Frontend (./frontend)
 node_modules/

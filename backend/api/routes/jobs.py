@@ -3345,14 +3345,15 @@ async def confirm_duration(
     #
     # This is the idempotency guard: if a duplicate confirm POST arrives (e.g. a
     # double-click) the status guard at step 2 will now 409 immediately, preventing
-    # a second pair of worker launches.  We transition to SEPARATING_STAGE1 —
-    # the normal next state for both the audio and lyrics parallel tracks — which is
-    # a valid transition from AWAITING_DURATION_CONFIRM per STATE_TRANSITIONS.
-    # The audio and lyrics workers update their own track states from here on, the
-    # same as the normal convergence path.
+    # a second pair of worker launches.  We go back to DOWNLOADING — the prep-phase
+    # status every other path runs the parallel audio + lyrics workers in. It must
+    # be a PREP_PHASE_STATUSES member: the lyrics worker only advances a job to
+    # screens/review from there. (This used to be SEPARATING_STAGE1, which can only
+    # move to SEPARATING_STAGE2/FAILED, so every confirmed job stalled before
+    # review. Found by the local-stack E2E, 2026-10-15.)
     job_manager.transition_to_state(
         job_id,
-        new_status=JobStatus.SEPARATING_STAGE1,
+        new_status=JobStatus.DOWNLOADING,
         progress=20,
         message="Cost confirmed, processing",
     )

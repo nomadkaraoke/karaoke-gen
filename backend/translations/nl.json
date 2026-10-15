@@ -404,6 +404,16 @@
       "intro": "Hier is je code om in te loggen op de zangerspagina van de karaoke-avond. Typ deze in op de pagina die je gebruikt:",
       "subject": "Je Nomad Karaoke code: {code}"
     },
+    "loginCode": {
+      "expiry": "Deze code verloopt over {minutes} minuten en kan maar één keer worden gebruikt.",
+      "greeting": "Hallo,",
+      "ignoreNote": "Als je deze e-mail niet hebt aangevraagd, kun je hem gerust negeren.",
+      "intro": "Voer deze code in op de inlogpagina om verder te gaan:",
+      "linkExpiry": "De inloglink werkt 24 uur en kan maar één keer worden gebruikt.",
+      "orLink": "Of sla de code over en log in met één klik:",
+      "signInButton": "Inloggen",
+      "subject": "Je {brand_name}-inlogcode: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Liever niet zelf de songtekst controleren? Kies Made For You en ik maak de hele video voor je, geleverd binnen 24 uur:",
       "madeForYouLink": "Made For You",

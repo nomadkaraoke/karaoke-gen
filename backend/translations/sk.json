@@ -404,6 +404,16 @@
       "intro": "Tu je tvoj kód na prihlásenie na stránke speváka pre karaoke večer. Zadaj ho na stránke, ktorú používaš:",
       "subject": "Tvoj kód pre Nomad Karaoke: {code}"
     },
+    "loginCode": {
+      "expiry": "Platnosť tohto kódu vyprší o {minutes} minút a možno ho použiť iba raz.",
+      "greeting": "Dobrý deň,",
+      "ignoreNote": "Ak ste o tento e-mail nežiadali, môžete ho pokojne ignorovať.",
+      "intro": "Ak chcete pokračovať, zadajte tento kód na prihlasovacej stránke:",
+      "linkExpiry": "Prihlasovací odkaz platí 24 hodín a možno ho použiť iba raz.",
+      "orLink": "Alebo kód preskočte a prihláste sa jedným kliknutím:",
+      "signInButton": "Prihlásiť sa",
+      "subject": "Váš prihlasovací kód pre {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Nechce sa ti kontrolovať text piesne? Vyber si možnosť Made For You a celé video ti vytvorím ja, s doručením do 24 hodín:",
       "madeForYouLink": "Made For You",

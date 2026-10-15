@@ -387,12 +387,12 @@ class TestConfirmDurationIdempotency:
         """A second confirm POST must 409 because the job is no longer AWAITING_DURATION_CONFIRM.
 
         After a successful confirm the endpoint calls transition_to_state →
-        SEPARATING_STAGE1.  The mock default returns True from transition_to_state;
+        DOWNLOADING.  The mock default returns True from transition_to_state;
         what matters is that the endpoint *issued* the transition so that a
         subsequent request (now seeing a different status) would be rejected.
 
         We verify this by asserting that transition_to_state was called with
-        new_status=SEPARATING_STAGE1 on the first confirm — the status guard at
+        new_status=DOWNLOADING on the first confirm — the status guard at
         step 2 would reject a second request once the real Firestore document
         reflects the new status.
         """
@@ -408,8 +408,8 @@ class TestConfirmDurationIdempotency:
         # so a duplicate confirm would hit the status guard (409).
         jm.transition_to_state.assert_called_once()
         call_kwargs = jm.transition_to_state.call_args[1]
-        assert call_kwargs.get("new_status") == JobStatus.SEPARATING_STAGE1, (
-            "confirm_duration must transition to SEPARATING_STAGE1 before triggering "
+        assert call_kwargs.get("new_status") == JobStatus.DOWNLOADING, (
+            "confirm_duration must transition to DOWNLOADING before triggering "
             "workers so a duplicate POST is rejected by the status guard"
         )
 
@@ -441,7 +441,7 @@ class TestConfirmDurationIdempotency:
         # Job must still be transitioned out of the pause state
         jm.transition_to_state.assert_called_once()
         call_kwargs = jm.transition_to_state.call_args[1]
-        assert call_kwargs.get("new_status") == JobStatus.SEPARATING_STAGE1
+        assert call_kwargs.get("new_status") == JobStatus.DOWNLOADING
 
 
 class TestConfirmDurationErrorCases:

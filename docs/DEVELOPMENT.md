@@ -62,6 +62,20 @@ upload** (URL jobs require the flacfetch cloud service). Set `MODEL_DIR` to
 enable local audio separation. See [CONTRIBUTING.md](../CONTRIBUTING.md) for
 the full walkthrough.
 
+### Local stack (full app, fake workers)
+
+```bash
+scripts/local-stack.sh up --frontend
+# API http://127.0.0.1:8010 (FAKE_WORKERS=1), web http://127.0.0.1:3010
+```
+
+The whole product runs offline: search, job creation, review, credits, fake
+Stripe checkout, emails (read them at `/api/test/emails`) and downloads. Jobs
+move through their real states in seconds via in-process fake workers, and
+`POST /api/test/scenario` seeds users and jobs in any state. This is what the
+`frontend/e2e/local-stack` Playwright suite and the mobile app's Maestro flows
+run against. See [TESTING.md § Local stack](TESTING.md#local-stack-real-backend-fake-workers).
+
 ### Frontend
 
 ```bash

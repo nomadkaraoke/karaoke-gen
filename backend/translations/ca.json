@@ -404,6 +404,16 @@
       "intro": "Aquí tens el teu codi per iniciar sessió a la pàgina de cantants de la nit de karaoke. Introdueix-lo a la pàgina que estàs utilitzant:",
       "subject": "El teu codi de Nomad Karaoke: {code}"
     },
+    "loginCode": {
+      "expiry": "Aquest codi caduca d'aquí a {minutes} minuts i només es pot fer servir una vegada.",
+      "greeting": "Hola,",
+      "ignoreNote": "Si no has sol·licitat aquest correu, el pots ignorar sense problemes.",
+      "intro": "Introdueix aquest codi a la pàgina d'inici de sessió per continuar:",
+      "linkExpiry": "L'enllaç d'inici de sessió funciona durant 24 hores i només es pot fer servir una vegada.",
+      "orLink": "O salta't el codi i inicia la sessió amb un clic:",
+      "signInButton": "Inicia la sessió",
+      "subject": "El teu codi d'inici de sessió de {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Prefereixes no haver de revisar la lletra? Tria «Made For You» i et prepararé tot el vídeo jo mateix, lliurat en 24 hores:",
       "madeForYouLink": "Made For You",

@@ -404,6 +404,16 @@
       "intro": "İşte karaoke gecesi şarkıcı sayfasına giriş yapmak için kodun. Bunu kullandığın sayfaya yaz:",
       "subject": "Nomad Karaoke kodun: {code}"
     },
+    "loginCode": {
+      "expiry": "Bu kodun süresi {minutes} dakika içinde dolar ve yalnızca bir kez kullanılabilir.",
+      "greeting": "Merhaba,",
+      "ignoreNote": "Bu e-postayı siz istemediyseniz, güvenle yok sayabilirsiniz.",
+      "intro": "Devam etmek için bu kodu giriş sayfasına girin:",
+      "linkExpiry": "Giriş bağlantısı 24 saat geçerlidir ve yalnızca bir kez kullanılabilir.",
+      "orLink": "Ya da kodu atlayıp tek tıkla giriş yapın:",
+      "signInButton": "Giriş Yap",
+      "subject": "{brand_name} giriş kodunuz: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Şarkı sözü incelemesini kendin yapmak istemiyor musun? Made For You'yu seç, tüm videoyu senin için hazırlayıp 24 saat içinde teslim edeyim:",
       "madeForYouLink": "Made For You",

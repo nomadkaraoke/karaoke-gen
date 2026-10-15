@@ -404,6 +404,16 @@
       "intro": "カラオケナイトのシンガーページにサインインするためのコードです。ご利用のページに入力してください：",
       "subject": "Nomad Karaokeのコード: {code}"
     },
+    "loginCode": {
+      "expiry": "このコードの有効期限は {minutes} 分で、1 回のみ使用できます。",
+      "greeting": "こんにちは。",
+      "ignoreNote": "このメールに心当たりがない場合は、無視していただいて問題ありません。",
+      "intro": "続行するには、サインインページでこのコードを入力してください:",
+      "linkExpiry": "サインインリンクの有効期間は 24 時間で、1 回のみ使用できます。",
+      "orLink": "または、コードを使わずにワンクリックでサインイン:",
+      "signInButton": "サインイン",
+      "subject": "{brand_name} のサインインコード: {code}"
+    },
     "conversion": {
       "madeForYouLine": "ご自身での歌詞チェックをお手軽に済ませたいですか？「Made For You」をお選びいただければ、動画をまるごと作成して24時間以内にお届けします：",
       "madeForYouLink": "Made For You",

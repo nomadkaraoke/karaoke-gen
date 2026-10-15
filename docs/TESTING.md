@@ -100,6 +100,7 @@ test('Delete outputs flow', async ({ page }) => {
 |----------|-----------|----------|
 | UI component behavior | Jest unit test | `components/__tests__/` |
 | UI flow with mocked API | Playwright regression | `e2e/regression/` |
+| Multi-step journey / job states, real backend, offline | Playwright local stack | `e2e/local-stack/` |
 | Full flow against real backend | Playwright production | `e2e/production/` |
 | API endpoint logic | pytest unit test | `backend/tests/` |
 | Database operations | Emulator test | `backend/tests/emulator/` |
@@ -277,6 +278,7 @@ make emulators-stop
 
 **Locations:**
 - `frontend/e2e/regression/` - Mocked API tests (CI-safe, fast)
+- `frontend/e2e/local-stack/` - Real backend on emulators with fake workers (CI-safe, ~1 min) — see [Local stack](#local-stack-real-backend-fake-workers)
 - `frontend/e2e/production/` - Real backend tests (comprehensive, slower)
 - `frontend/e2e/manual/` - Tests requiring manual setup (not in CI)
 
@@ -296,6 +298,70 @@ make emulators-stop
 **Manual tests** are NOT included in CI:
 - Require separate dev servers (e.g., LyricsTranscriber frontend on port 5173)
 - See `frontend/e2e/manual/README.md` for setup instructions
+
+## Local stack (real backend, fake workers)
+
+`scripts/local-stack.sh` runs the **real** FastAPI backend on the Firestore + GCS
+emulators with `FAKE_WORKERS=1`. Every API route, the review UI's data endpoints,
+credits, emails and downloads run for real. Only the workers are swapped out
+(`backend/services/fake_workers/`): they walk each job through its real states in
+seconds, writing small real media (ffmpeg tones, 320x180 video) and a
+schema-valid `corrections.json` built from the real `CorrectionResult` types.
+Web Playwright (`frontend/e2e/local-stack/`) and mobile Maestro flows run against
+it, so both clients hit the same endpoints.
+
+```bash
+scripts/local-stack.sh up --frontend   # emulators + API :8010 + Next dev :3010
+make test-local-stack                  # or: cd frontend && npm run test:e2e:local-stack
+scripts/local-stack.sh logs backend    # tail the API log
+scripts/local-stack.sh down
+```
+
+Requirements: Docker (fake-gcs-server), Java 21 + the gcloud Firestore emulator,
+ffmpeg, and the poetry env. The Playwright config starts the stack itself if it
+isn't running (`scripts/local-stack.sh serve` + `next dev`).
+
+**What is faked, and where.** Each fake lives at one seam, guarded by
+`fake_workers_enabled()`. That check is strict (`is True`), so a `MagicMock`
+settings object in a unit test never turns it on.
+
+| Real thing | Fake | Seam |
+|------------|------|------|
+| Cloud Run Jobs / Cloud Tasks workers | in-process threads (`fake_workers/pipeline.py`) | `WorkerService.trigger_*` |
+| flacfetch / YouTube search | 3 deterministic results (lossless "perfect match", Spotify, YouTube) | `get_audio_search_service()` |
+| audio download | canned tone song (then the REAL `process_audio_download` continues: duration reconcile etc.) | `audio_download_worker._download_audio` |
+| Stripe Checkout | `/api/test/fake-checkout/{id}` page; Pay runs the real webhook handler | `StripeService._create_checkout` |
+| Postmark | console provider + captured outbox | `ConsoleEmailProvider` |
+| Secret Manager, DeBounce, encoding VM | skipped | `get_secret`, `is_disposable_domain`, warmup |
+
+The audio worker reuses the real stem upload, OGG transcode and backing-vocals
+analysis. The review preview video is the real local ffmpeg render. Startup
+**refuses** `FAKE_WORKERS` in production (`validate_production_config`).
+
+**Test API** (`/api/test/*`, mounted only with `FAKE_WORKERS`, no auth):
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/test/status` | readiness, effective config, running fake workers, scenario names |
+| `POST /api/test/scenario {name, email?, credits?, artist?, title?}` | seed `user`, `job_awaiting_review`, `job_complete`, `job_failed`, `job_awaiting_duration_confirm` → `{email, session_token, credits, job_id?}`. Jobs are made through the real search + create-from-search routes. |
+| `GET/PUT /api/test/fake-config[?email=]` | knobs: `step_delay_seconds`, `auto_approve`, `fail_at`, `audio_duration_seconds`, `search_result_count`. With `?email=` the knobs apply only to that user's jobs, so tests that each use their own user can run in parallel. |
+| `GET /api/test/emails?to=` | captured outbound email, newest first, with extracted `links` and 6-digit `codes` |
+| `POST /api/test/reset` | wipe the emulator Firestore + bucket (keeps seeded themes) |
+
+**Sign-in in tests:** seed a user and put `session_token` in
+`localStorage.karaoke_access_token` (`signInAs` in `e2e/local-stack/stack.ts`).
+Alternatively, drive the real magic link or email code and read it from
+`/api/test/emails`.
+
+**Mobile (Maestro / dev builds):** run the stack, then point the app at
+`http://10.0.2.2:8010` (Android emulator) or `http://127.0.0.1:8010` (iOS
+simulator). Set `LOCAL_STACK_API_URL` to that address before `up`, so fake-checkout
+URLs open on the device. Seed state with `curl -X POST .../api/test/scenario`, and read
+sign-in codes from `/api/test/emails`.
+
+**Ports:** `LOCAL_STACK_API_PORT` (8010) and `LOCAL_STACK_WEB_PORT` (3010). The
+emulators use the fixed 8080 / 4443 that `start-emulators.sh` uses, so stop other
+emulator runs first.
 
 ## Playwright Usage
 
@@ -393,6 +459,7 @@ All PRs must pass these checks (path-filtered for efficiency):
 | `backend-lint` | Ruff linter | No errors |
 | `backend-unit-tests` | Backend tests (excludes emulator) | Must pass |
 | `backend-emulator-tests` | GCP emulator integration | Must pass |
+| `local-stack-e2e` | Playwright full journeys vs the local stack (backend or frontend changes) | Must pass |
 | `package-unit-tests` | CLI package tests | 69% coverage |
 | `package-integration-tests` | CLI integration tests | Must pass |
 | `frontend-lint` | ESLint (Rules of Hooks) | No errors |
@@ -413,8 +480,8 @@ CI intelligently runs only relevant tests based on changed files:
 
 | Changed Path | Tests Run |
 |--------------|-----------|
-| `frontend/` | Frontend lint, unit, E2E |
-| `backend/` | Backend lint, unit, emulator |
+| `frontend/` | Frontend lint, unit, E2E, local-stack E2E |
+| `backend/` | Backend lint, unit, emulator, local-stack E2E |
 | `karaoke_gen/` | Package unit, integration |
 | `tests/` | Package tests |
 | `infrastructure/` | Infrastructure validation |

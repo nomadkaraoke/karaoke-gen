@@ -25,6 +25,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from backend.config import get_settings, is_production
+from backend.services.fake_workers import fake_workers_enabled
 from backend.i18n import t, get_locale_prefix
 from karaoke_gen.utils import sanitize_filename
 
@@ -133,6 +134,12 @@ class ConsoleEmailProvider(EmailProvider):
         logger.info("-" * 60)
         logger.info(text_content or html_content)
         logger.info("=" * 60)
+        if fake_workers_enabled():
+            # Local stack: keep a copy so E2E tests can read magic links / codes
+            # (GET /api/test/emails).
+            from backend.services.fake_workers.outbox import record_email
+
+            record_email(to_email, subject, html_content, text_content)
         return True
 
 
@@ -663,6 +670,21 @@ class EmailService:
         else:
             collection.add(doc)
 
+    def build_magic_link_url(
+        self,
+        token: str,
+        locale: str = "en",
+        tenant_frontend_url: Optional[str] = None,
+        referral_code: Optional[str] = None,
+    ) -> str:
+        """Frontend URL that verifies a magic-link ``token`` (shared by the magic
+        link and login-code emails)."""
+        base_url = tenant_frontend_url or self.frontend_url
+        url = f"{base_url}{get_locale_prefix(locale)}/auth/verify?token={token}"
+        if referral_code:
+            url += f"&ref={referral_code}"
+        return url
+
     def send_magic_link(
         self,
         email: str,
@@ -686,10 +708,9 @@ class EmailService:
         Returns:
             True if email was sent successfully
         """
-        base_url = tenant_frontend_url or self.frontend_url
-        magic_link_url = f"{base_url}{get_locale_prefix(locale)}/auth/verify?token={token}"
-        if referral_code:
-            magic_link_url += f"&ref={referral_code}"
+        magic_link_url = self.build_magic_link_url(
+            token, locale=locale, tenant_frontend_url=tenant_frontend_url, referral_code=referral_code,
+        )
 
         brand_name = tenant_name or "Nomad Karaoke"
         subject = t(locale, "emails.magicLink.subject", brand_name=brand_name)
@@ -829,6 +850,98 @@ class EmailService:
 """
 
         return self._log_and_send(email, subject, html_content, text_content)
+
+    def send_login_code(
+        self,
+        email: str,
+        code: str,
+        magic_link_url: str,
+        expiry_minutes: int,
+        locale: str = "en",
+        sender_email: Optional[str] = None,
+        tenant_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Send a gen sign-in email carrying BOTH a 6-digit code and a magic link.
+
+        The code suits a user signing in on another device / inside an app (type
+        it in); the link is one-click sign-in on the device that reads the email.
+        Either works and both are single-use (the code expires after
+        ``expiry_minutes``; the link after 24 hours).
+
+        Returns:
+            True if email was sent successfully
+        """
+        brand_name = tenant_name or "Nomad Karaoke"
+        subject = t(locale, "emails.loginCode.subject", brand_name=brand_name, code=code)
+        safe_code = html.escape(code)
+        safe_url = html.escape(magic_link_url, quote=True)
+
+        extra_styles = f"""
+        .code-box {{
+            background-color: #fdf2f8;
+            border: 2px solid {self.BRAND_PRIMARY};
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin: 24px 0;
+        }}
+        .code {{
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: 10px;
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            color: #111827;
+        }}
+"""
+
+        content = f"""
+    <p>{t(locale, "emails.loginCode.greeting")}</p>
+
+    <p>{t(locale, "emails.loginCode.intro")}</p>
+
+    <div class="code-box">
+        <div class="code">{safe_code}</div>
+    </div>
+
+    <p>{t(locale, "emails.loginCode.expiry", minutes=expiry_minutes)}</p>
+
+    <p>{t(locale, "emails.loginCode.orLink")}</p>
+
+    <p style="text-align: center;">
+        <a href="{safe_url}" class="button">{t(locale, "emails.loginCode.signInButton")}</a>
+    </p>
+
+    <p style="font-size: 14px; color: #666;">{t(locale, "emails.loginCode.linkExpiry")}</p>
+
+    <p>{t(locale, "emails.loginCode.ignoreNote")}</p>
+"""
+
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
+
+        text_content = f"""
+{t(locale, "emails.loginCode.greeting")}
+
+{t(locale, "emails.loginCode.intro")}
+
+    {code}
+
+{t(locale, "emails.loginCode.expiry", minutes=expiry_minutes)}
+
+{t(locale, "emails.loginCode.orLink")}
+{magic_link_url}
+
+{t(locale, "emails.loginCode.linkExpiry")}
+
+{t(locale, "emails.loginCode.ignoreNote")}
+
+---
+© {self._get_year()} {brand_name}
+"""
+
+        return self._log_and_send(
+            email, subject, html_content, text_content, from_email_override=sender_email
+        )
 
     def send_credits_added(self, email: str, credits: int, total_credits: int, locale: str = "en") -> bool:
         """

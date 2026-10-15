@@ -404,6 +404,16 @@
       "intro": "Evo tvog koda za prijavu na stranicu pjevača za karaoke večer. Upiši ga na stranicu koju koristiš:",
       "subject": "Tvoj Nomad Karaoke kod: {code}"
     },
+    "loginCode": {
+      "expiry": "Ovaj kod istječe za {minutes} minuta i može se upotrijebiti samo jednom.",
+      "greeting": "Pozdrav,",
+      "ignoreNote": "Ako niste zatražili ovu e-poruku, možete je slobodno zanemariti.",
+      "intro": "Unesite ovaj kod na stranici za prijavu da biste nastavili:",
+      "linkExpiry": "Poveznica za prijavu vrijedi 24 sata i može se upotrijebiti samo jednom.",
+      "orLink": "Ili preskočite kod i prijavite se jednim klikom:",
+      "signInButton": "Prijava",
+      "subject": "Vaš kod za prijavu u {brand_name}: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Ne želiš samostalno pregledavati tekst? Odaberi Made For You i napravit ću cijeli video za tebe, uz isporuku unutar 24 sata:",
       "madeForYouLink": "Made For You",

@@ -586,7 +586,9 @@ class UserService:
     # =========================================================================
 
     # Maximum new signups allowed per IP address in the rate limit window
-    MAX_SIGNUPS_PER_IP = 2
+    # (Env-overridable only so the local E2E stack, where every browser signs up
+    # from 127.0.0.1, can raise it; production never sets it.)
+    MAX_SIGNUPS_PER_IP = _safe_positive_int_env("MAX_SIGNUPS_PER_IP", 2)
     SIGNUP_RATE_LIMIT_HOURS = 24
     # Higher cap for requests-board sign-ins: a shared venue WiFi can register many
     # voters, but we still keep a deterministic ceiling against scripted abuse (each

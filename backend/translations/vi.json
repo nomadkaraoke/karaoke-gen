@@ -404,6 +404,16 @@
       "intro": "Đây là mã của bạn để đăng nhập vào trang ca sĩ đêm karaoke. Hãy nhập mã này vào trang bạn đang sử dụng:",
       "subject": "Mã Nomad Karaoke của bạn: {code}"
     },
+    "loginCode": {
+      "expiry": "Mã này sẽ hết hạn sau {minutes} phút và chỉ dùng được một lần.",
+      "greeting": "Xin chào,",
+      "ignoreNote": "Nếu bạn không yêu cầu email này, bạn có thể yên tâm bỏ qua.",
+      "intro": "Nhập mã này trên trang đăng nhập để tiếp tục:",
+      "linkExpiry": "Liên kết đăng nhập có hiệu lực trong 24 giờ và chỉ dùng được một lần.",
+      "orLink": "Hoặc bỏ qua mã và đăng nhập chỉ với một lần nhấp:",
+      "signInButton": "Đăng nhập",
+      "subject": "Mã đăng nhập {brand_name} của bạn: {code}"
+    },
     "conversion": {
       "madeForYouLine": "Bạn không muốn tự mình kiểm tra lời bài hát? Hãy chọn Made For You và mình sẽ làm toàn bộ video cho bạn, bàn giao trong vòng 24 giờ:",
       "madeForYouLink": "Made For You",
