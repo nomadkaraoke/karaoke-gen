@@ -1,0 +1,4 @@
+config:
+  cloudflare:apiToken:
+    secure: AAABAJQoc2aprEO7/4n8Jc+tLlEH9FOc/r3QxCfq3qM3khE3kize3trhuWhFCELZFMQ4ZVZ2KsuAYr4Z9zveF9SQqsx8/jJn/zTIhFvFHyQFx8E3wQ==
+  nomad-cloudflare:accountId: 4585249dcf5d2f9fb4e075c5382cd071

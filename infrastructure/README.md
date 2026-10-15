@@ -1,6 +1,16 @@
 # Infrastructure as Code with Pulumi
 
-This directory contains Pulumi infrastructure code that manages all Google Cloud Platform resources for the karaoke generator backend.
+This directory is the home of Nomad Karaoke's **shared platform IaC**. It holds two Pulumi projects:
+
+| Project | Path | Stack | Manages |
+|---|---|---|---|
+| `karaoke-gen-infrastructure` | `infrastructure/` | `prod` | The `nomadkaraoke` GCP project: gen's backend plus shared services (runner manager, divebar, KN sync, error monitor, monitoring, backups, IAM, secrets), and gen's Cloudflare edge security on `api.nomadkaraoke.com` |
+| `nomad-cloudflare` | `infrastructure/cloudflare/` | `nomadkaraoke/prod` | The Nomad Karaoke Cloudflare account: zones, DNS, rulesets, email routing, tunnels, Zero Trust, Pages/Worker domains. See [cloudflare/README.md](cloudflare/README.md) |
+
+**Boundary rule:** infra that isn't specific to one app lives here. App repos keep only
+app-specific stacks (e.g. karaoke-decide's Cloud Run and its API-proxy Worker + route). Every
+Cloudflare zone ruleset phase has exactly one owner; see the exclusions table in `cloudflare/README.md`.
+CI never runs `pulumi up` for either project: apply locally, then merge.
 
 ## Directory Structure
 
