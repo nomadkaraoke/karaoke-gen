@@ -13,11 +13,34 @@ import json
 import logging
 import os
 import re
+import tempfile
+import zipfile
 from typing import Optional, Sequence, Tuple
 
 from google.cloud import secretmanager
 
 logger = logging.getLogger(__name__)
+
+
+def prefix_zip_entries(src_zip: str, dst_zip: str, prefix: str) -> None:
+    """Copy a zip, prepending ``prefix`` to every entry's file name (not its folders).
+
+    Entries are streamed (never fully loaded into memory) and keep their original
+    timestamps/compression, so re-packing the same zip is deterministic.
+    """
+    import shutil
+
+    with zipfile.ZipFile(src_zip) as zin, zipfile.ZipFile(dst_zip, "w") as zout:
+        for info in zin.infolist():
+            folder, _, name = info.filename.rpartition("/")
+            if info.is_dir() or not name:
+                zout.writestr(info, b"")
+                continue
+            new_info = zipfile.ZipInfo(f"{folder}/{prefix}{name}" if folder else f"{prefix}{name}", info.date_time)
+            new_info.compress_type = info.compress_type
+            new_info.external_attr = info.external_attr
+            with zin.open(info) as src, zout.open(new_info, "w") as dst:
+                shutil.copyfileobj(src, dst, 1024 * 1024)
 
 
 _DROPBOX_HASH_BLOCK = 4 * 1024 * 1024
@@ -341,6 +364,7 @@ class DropboxService:
         remote_path: str,
         exclude_suffixes: Sequence[str] = (),
         skip_unchanged: bool = False,
+        filename_prefix: str = "",
     ) -> None:
         """
         Recursively upload all files and subdirectories to Dropbox folder.
@@ -353,6 +377,9 @@ class DropboxService:
             skip_unchanged: Don't re-upload files already in the folder with the
                 same Dropbox content hash (one recursive listing up front). Used
                 when a second pass adds files to a folder that was just uploaded.
+            filename_prefix: Prepended to every uploaded file's name (e.g. a
+                tenant's "VS6588 - " catalogue code). Entries inside .zip packages
+                (CDG/TXT) are renamed too, so CDG+MP3 pairs keep matching names.
         """
         # Ensure remote path starts with /
         if not remote_path.startswith("/"):
@@ -379,7 +406,18 @@ class DropboxService:
                     skipped_count += 1
                     continue
                 local_file = os.path.join(root, filename)
-                remote_file = f"{current_remote}/{filename}"
+                remote_file = f"{current_remote}/{filename_prefix}{filename}"
+                if filename_prefix and filename.lower().endswith(".zip"):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        prefixed_zip = os.path.join(tmp, filename)
+                        prefix_zip_entries(local_file, prefixed_zip, filename_prefix)
+                        remote_hash = remote_hashes.get(remote_file.lower())
+                        if remote_hash and remote_hash == dropbox_content_hash(prefixed_zip):
+                            unchanged_count += 1
+                            continue
+                        self.upload_file(prefixed_zip, remote_file)
+                    uploaded_count += 1
+                    continue
                 remote_hash = remote_hashes.get(remote_file.lower())
                 if remote_hash and remote_hash == dropbox_content_hash(local_file):
                     unchanged_count += 1

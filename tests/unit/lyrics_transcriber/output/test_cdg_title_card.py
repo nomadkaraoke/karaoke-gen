@@ -153,3 +153,13 @@ class TestOutro:
         frame = decode_frame(cdg, data_len / CDG_FPS)
         rows = rows_with(frame, YELLOW)
         assert rows and min(rows) >= 60
+
+
+class TestUnbreakableWords:
+    def test_long_unbreakable_title_shrinks_to_fit_the_width(self, tmp_path):
+        cdg = render(tmp_path, "E2E vocalstar 2026-10-15T05-18-51-717Z", "Nomad E2E", title_font_size=28)
+        frame = decode_frame(cdg, 4.8)
+        cols = sorted({x for y in range(H) for x in range(W) if frame.getpixel((x, y)) == YELLOW})
+        # Text stays inside the visible area instead of being clipped at the edges.
+        assert cols and cols[0] > 6 and cols[-1] < W - 6
+
