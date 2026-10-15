@@ -777,3 +777,57 @@ class TestUploadFolderSkipUnchanged:
             service.upload_folder(str(tmp_path), "/f")
         service._client.files_list_folder.assert_not_called()
         up.assert_called_once()
+
+
+class TestTenantFilenamePrefix:
+    """Tenant track codes prefix every delivered file (and the entries inside zips)."""
+
+    @patch("backend.services.dropbox_service.secretmanager.SecretManagerServiceClient")
+    def test_upload_folder_prefixes_files_and_zip_entries(self, mock_sm_client_class, tmp_path):
+        import zipfile
+        from backend.services.dropbox_service import DropboxService
+
+        mock_response = Mock()
+        mock_response.payload.data = json.dumps({"access_token": "token"}).encode()
+        mock_sm_client_class.return_value.access_secret_version.return_value = mock_response
+
+        (tmp_path / "Gerry - Ferry (Final Karaoke Lossy 4k).mp4").write_text("v")
+        (tmp_path / "lyrics").mkdir()
+        (tmp_path / "lyrics" / "Gerry - Ferry (Karaoke).lrc").write_text("l")
+        with zipfile.ZipFile(tmp_path / "Gerry - Ferry (Final Karaoke CDG).zip", "w") as z:
+            z.writestr("Gerry - Ferry (Karaoke).cdg", b"cdg")
+            z.writestr("Gerry - Ferry (Karaoke).mp3", b"mp3")
+
+        service = DropboxService()
+        uploaded = {}
+
+        def capture(local, remote):
+            uploaded[remote] = local
+            if remote.endswith(".zip"):
+                with zipfile.ZipFile(local) as z:
+                    uploaded[remote + "#entries"] = sorted(z.namelist())
+
+        with patch.object(service, "upload_file", side_effect=capture):
+            service.upload_folder(str(tmp_path), "/T/VS6588 - Gerry - Ferry", filename_prefix="VS6588 - ")
+
+        assert "/T/VS6588 - Gerry - Ferry/VS6588 - Gerry - Ferry (Final Karaoke Lossy 4k).mp4" in uploaded
+        assert "/T/VS6588 - Gerry - Ferry/lyrics/VS6588 - Gerry - Ferry (Karaoke).lrc" in uploaded
+        zip_remote = "/T/VS6588 - Gerry - Ferry/VS6588 - Gerry - Ferry (Final Karaoke CDG).zip"
+        assert uploaded[zip_remote + "#entries"] == [
+            "VS6588 - Gerry - Ferry (Karaoke).cdg",
+            "VS6588 - Gerry - Ferry (Karaoke).mp3",
+        ]
+
+    @patch("backend.services.dropbox_service.secretmanager.SecretManagerServiceClient")
+    def test_no_prefix_keeps_names(self, mock_sm_client_class, tmp_path):
+        from backend.services.dropbox_service import DropboxService
+
+        mock_response = Mock()
+        mock_response.payload.data = json.dumps({"access_token": "token"}).encode()
+        mock_sm_client_class.return_value.access_secret_version.return_value = mock_response
+        (tmp_path / "A - T (Karaoke).zip").write_bytes(b"not even a zip")
+
+        service = DropboxService()
+        with patch.object(service, "upload_file") as mock_upload:
+            service.upload_folder(str(tmp_path), "/T/NOMAD-1 - A - T")
+        mock_upload.assert_called_once_with(str(tmp_path / "A - T (Karaoke).zip"), "/T/NOMAD-1 - A - T/A - T (Karaoke).zip")

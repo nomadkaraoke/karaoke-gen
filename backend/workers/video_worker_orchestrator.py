@@ -89,6 +89,9 @@ class OrchestratorConfig:
 
     # Keep existing brand code (for re-processing)
     keep_brand_code: Optional[str] = None
+    # Tenant track code prefix for delivered file names (e.g. "VS6588 - "), so a
+    # tenant's own catalogue code starts every file, not just the folder.
+    output_filename_prefix: str = ""
 
     # Whether this run may be announced (False for an admin re-render the admin
     # didn't opt into announcing). Gates the Discord "new video" post and the
@@ -985,7 +988,12 @@ class VideoWorkerOrchestrator:
             skip = dropbox_skip_suffixes_for(self.config.dropbox_path)
             if skip:
                 self.job_log.info(f"Excluding from Dropbox upload (kept in GCS): {list(skip)}")
-            dropbox.upload_folder(self.config.output_dir, remote_folder, exclude_suffixes=skip)
+            dropbox.upload_folder(
+                self.config.output_dir,
+                remote_folder,
+                exclude_suffixes=skip,
+                filename_prefix=self.config.output_filename_prefix,
+            )
 
             # Create sharing link
             try:
@@ -1193,6 +1201,18 @@ def _screen_ext(job, screen_type: str) -> str:
     return '.png'
 
 
+def tenant_track_code_prefix(job) -> str:
+    """"<CODE> - " for a tenant job that carries its own catalogue code, else "".
+
+    Only tenant jobs: keep_brand_code is also used by Nomad's finalise-only /
+    re-render flows, whose files must keep the plain "Artist - Title" names.
+    """
+    code = getattr(job, "keep_brand_code", None)
+    if code and getattr(job, "tenant_id", None):
+        return f"{code} - "
+    return ""
+
+
 def create_orchestrator_config_from_job(
     job,
     temp_dir: str,
@@ -1314,6 +1334,7 @@ def create_orchestrator_config_from_job(
 
         # Keep existing brand code
         keep_brand_code=getattr(job, 'keep_brand_code', None) or rerender_brand_code(job),
+        output_filename_prefix=tenant_track_code_prefix(job),
         notify_customer=not suppress_customer_notifications(job),
 
         # Instrumental selection (for GCE encoding)

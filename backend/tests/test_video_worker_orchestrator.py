@@ -2479,3 +2479,18 @@ class TestEncodePublishSeam:
             # which with still-malformed output raises the stale signal again.
             assert mock_service.encode_videos.call_count == 2
             assert orchestrator.result.final_video is None
+
+
+class TestTenantTrackCodePrefix:
+    def test_tenant_job_with_code_gets_prefix(self):
+        from types import SimpleNamespace
+        from backend.workers.video_worker_orchestrator import tenant_track_code_prefix
+
+        assert tenant_track_code_prefix(SimpleNamespace(keep_brand_code="VS6588", tenant_id="vocalstar")) == "VS6588 - "
+
+    def test_nomad_keep_brand_code_does_not_rename_files(self):
+        from types import SimpleNamespace
+        from backend.workers.video_worker_orchestrator import tenant_track_code_prefix
+
+        assert tenant_track_code_prefix(SimpleNamespace(keep_brand_code="NOMAD-1234", tenant_id="")) == ""
+        assert tenant_track_code_prefix(SimpleNamespace(keep_brand_code=None, tenant_id="vocalstar")) == ""

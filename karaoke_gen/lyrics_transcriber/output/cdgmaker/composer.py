@@ -1572,7 +1572,10 @@ class KaraokeComposer:
             bigfont = ImageFont.truetype(self._title_font_path(), bigfont_size)
             smallfont = ImageFont.truetype(self._title_font_path(), artist_font_size)
 
+            too_wide = False
+
             def draw_block(text: str, font, color_index: int, y: int) -> int:
+                nonlocal too_wide
                 for image in render_lines(
                     get_wrapped_text(
                         text,
@@ -1581,6 +1584,8 @@ class KaraokeComposer:
                     ).split("\n"),
                     font=font,
                 ):
+                    # A single word wider than the screen can't wrap — shrink instead.
+                    too_wide = too_wide or image.width > text_image.width
                     text_image.paste(
                         image.point(lambda v: v and color_index, "P"),
                         ((text_image.width - image.width) // 2, y),
@@ -1619,7 +1624,7 @@ class KaraokeComposer:
             # We'll crop to just the content area, without padding
             text_image = text_image.crop(bbox)
 
-            if text_image.height <= MAX_HEIGHT:
+            if text_image.height <= MAX_HEIGHT and not too_wide:
                 self.logger.debug("height just right")
                 break
             # If text box is not small enough, reduce the title font size first;
