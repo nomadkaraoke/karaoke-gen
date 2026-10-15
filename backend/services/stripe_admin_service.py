@@ -19,6 +19,7 @@ import stripe
 from google.cloud import firestore
 
 from backend.config import get_settings
+from backend.services.stripe_service import StripeService
 
 
 logger = logging.getLogger(__name__)
@@ -152,6 +153,8 @@ class StripeAdminService:
                 "is_test": is_test,
                 "promotion_code": promotion_code,
                 "discount_amount": discount_amount,
+                # Optional checkout tip (included in amount_total)
+                "tip_cents": StripeService.tip_cents_from_session(session),
             }
 
             doc_ref = self.db.collection(STRIPE_PAYMENTS_COLLECTION).document(session_id)
