@@ -1445,8 +1445,16 @@ re-checks membership (`require_tenant_member`): non-members/spoofed headers → 
   be basenames already in the theme's assets (no paths / `gs://`), numeric/colour/region bounds are
   checked, and the font is made consistent with the render pipeline — `intro.font` is applied to
   `karaoke.font_path`/`end.font`/`cdg.font_path`, `karaoke.font` is set to the TTF family name libass
-  matches, and a chosen bundled font is copied into the theme's assets. Tenants can't change their
-  config/allowlist through this API.
+  matches, and a chosen bundled font is copied into the theme's assets. The one exception is a
+  distinct, available `cdg.font_path` (e.g. a condensed face so lyric lines fit the 300x216 CDG
+  screen): it's kept and rendered via its own `cdg_font` style asset, while the CDG title card and
+  outro use the main font (`cdg.title_font_path`). Tenants can't change their config/allowlist
+  through this API.
+- **CDG title card ("up card") keys** (all optional; defaults reproduce the original layout):
+  `title_font_size` (30), `artist_font_size` (25), `title_max_height` (200),
+  `title_separator_text` (e.g. `"MADE FAMOUS BY"`) + `title_separator_color` +
+  `title_separator_font_size`, and `title_block_top` — center the title block (and the outro) in
+  the area below this y offset, for a logo baked into `title_screen_background`.
 
 UI: user menu → **Theme & style** on tenant portals (`components/tenant-theme/`). After a save, the
 editor says how many in-progress tracks were updated and offers **Re-render all N** for outdated
