@@ -403,6 +403,31 @@
       "ignoreNote": "Ha nem te kérted ezt a kódot, nyugodtan hagyd figyelmen kívül ezt az e-mailt.",
       "intro": "Itt a kódod, amivel bejelentkezhetsz a karaoke est énekesi oldalán. Írd be arra az oldalra, amit éppen használsz:",
       "subject": "A Nomad Karaoke kódod: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Inkább nem bajlódnál a dalszöveg ellenőrzésével? Válaszd a Made For You lehetőséget, és az egész videót elkészítem neked 24 órán belül:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Fizetéskor automatikusan érvényesül. Nem szükséges kuponkód.",
+      "offerButton": "Készítsd el a következő dalodat",
+      "offerIntro": "Az első karaoke videód, a(z) {song} elkészült. Remélem, szuperül szól!",
+      "offerIntroNoSong": "Az első karaoke videód elkészült. Remélem, szuperül szól!",
+      "offerLead": "Ha van még egy dal a fejedben, fogadd szeretettel ezt a kis kedvezményt, amiért kipróbáltad a Nomad Karaoke-t:",
+      "offerLine": "{percent}% kedvezmény bármely kreditcsomagra a következő {hours} órában",
+      "offerSubject": "Elkészült a karaoke videód. Mi legyen a következő?",
+      "reminderBody": "Gyors emlékeztető: a(z) {percent}%-os kedvezményed bármely kreditcsomagra körülbelül {hours} óra múlva lejár. Utána az árak visszaállnak az eredetire.",
+      "reminderButton": "Kérem a kedvezményemet",
+      "reminderNoPressure": "Semmi gond, ha most kihagyod, és köszönjük, hogy velünk készítettél videót.",
+      "reminderSubject": "A(z) {percent}%-os kedvezményed {hours} óra múlva lejár",
+      "whyReceiving": "Azért kaptad ezt a levelet, mert videót készítettél a gen.nomadkaraoke.com oldalon."
+    },
+    "reviewLastChance": {
+      "button": "Videóm befejezése",
+      "howLong": "A legtöbb ellenőrzés mindössze 2-3 perc: nézd át, hogy stimmel-e a szöveg, válaszd ki az alapot, és már készen is vagy.",
+      "intro": "A(z) {song} karaoke videód majdnem kész. Csak egy gyors átnézésre vár, és körülbelül {hours} óra múlva lejár a határidő.",
+      "introNoSong": "A karaoke videód majdnem kész. Csak egy gyors átnézésre vár, és körülbelül {hours} óra múlva lejár a határidő.",
+      "refundNote": "Ha lejárna, a kredited automatikusan visszajár.",
+      "subject": "Még {hours} órád van befejezni a karaoke videódat: {song}",
+      "subjectFallback": "Még {hours} órád van befejezni a karaoke videódat"
     }
   }
 }

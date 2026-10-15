@@ -403,7 +403,9 @@
     "savePct": "Bespaar {savings}%",
     "redirecting": "Doorverwijzen naar betaling...",
     "continuePayment": "Doorgaan naar betaling — {price}",
-    "selectPackage": "Selecteer een pakket"
+    "selectPackage": "Selecteer een pakket",
+    "promoBadge": "Je {percent}% korting wordt toegepast bij het afrekenen",
+    "promoExpires": "Aanbieding verloopt om {time}"
   },
   "feedback": {
     "thankYou": "Dank je wel!",

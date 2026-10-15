@@ -403,7 +403,9 @@
     "savePct": "Zaoszczędź {savings}%",
     "redirecting": "Przekierowywanie do płatności...",
     "continuePayment": "Przejdź do płatności — {price}",
-    "selectPackage": "Wybierz pakiet"
+    "selectPackage": "Wybierz pakiet",
+    "promoBadge": "Twoja zniżka {percent}% zostanie naliczona przy kasie",
+    "promoExpires": "Oferta kończy się: {time}"
   },
   "feedback": {
     "thankYou": "Dziękujemy!",

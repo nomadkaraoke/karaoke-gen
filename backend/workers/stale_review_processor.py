@@ -13,6 +13,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
 
+from backend.config import get_settings
+from backend.i18n import get_locale_prefix
 from backend.models.job import JobStatus
 from backend.services.email_service import get_email_service
 from backend.services.firestore_service import FirestoreService
@@ -25,6 +27,8 @@ logger = logging.getLogger(__name__)
 # Configurable thresholds (hours since blocking_state_entered_at)
 REVIEW_REMINDER_HOURS = 24
 REVIEW_EXPIRY_HOURS = 48
+# Final "N hours left" nudge for review states (REVIEW_LAST_CHANCE_ENABLED)
+REVIEW_LAST_CHANCE_HOURS = 42
 
 # Statuses treated as "review" states (1-credit refund via cancel_job)
 _REVIEW_STATUSES = {JobStatus.AWAITING_REVIEW, JobStatus.IN_REVIEW}
@@ -255,6 +259,46 @@ def process_stale_reviews_sync() -> Dict[str, Any]:
                                 )
                     else:
                         logger.warning(f"Job {job.job_id}: cancel_job returned False")
+
+            elif (
+                hours_elapsed >= REVIEW_LAST_CHANCE_HOURS
+                and not is_duration_confirm
+                and get_settings().review_last_chance_enabled
+                and not state_data.get('last_chance_reminder_sent')
+            ):
+                hours_left = max(1, round(REVIEW_EXPIRY_HOURS - hours_elapsed))
+                logger.info(f"Job {job.job_id}: {hours_left}h before expiry, sending last-chance reminder")
+                # Mark first (even if the send fails) so we never retry every hour
+                try:
+                    firestore.update_job(job.job_id, {
+                        'state_data.last_chance_reminder_sent': True,
+                        'state_data.last_chance_reminder_sent_at': datetime.now(timezone.utc).isoformat(),
+                    })
+                except Exception as update_err:
+                    logger.error(f"Job {job.job_id}: failed to mark last_chance_reminder_sent: {update_err}")
+                    continue
+                if send_emails:
+                    try:
+                        from backend.services.job_notification_service import review_login_url_for_job
+                        from backend.services.user_service import get_user_service
+                        user = get_user_service().get_user(job.user_email)
+                        user_locale = (user.locale if user and user.locale else "en")
+                        email_service.send_review_last_chance(
+                            to_email=job.user_email,
+                            artist=job.artist,
+                            title=job.title,
+                            review_url=(
+                                review_login_url_for_job(job, locale=user_locale)
+                                or f"{email_service.frontend_url}{get_locale_prefix(user_locale)}"
+                                f"/app/jobs?utm_source=email&utm_medium=email&utm_campaign=review_last_chance"
+                                f"#/{job.job_id}/review"
+                            ),
+                            hours_left=hours_left,
+                            locale=user_locale,
+                        )
+                    except Exception as email_err:
+                        logger.error(f"Job {job.job_id}: failed to send last-chance reminder: {email_err}")
+                reminders_sent += 1
 
             elif hours_elapsed >= REVIEW_REMINDER_HOURS:
                 # Check if expiry reminder was already sent

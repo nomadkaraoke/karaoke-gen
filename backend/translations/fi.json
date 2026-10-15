@@ -403,6 +403,31 @@
       "ignoreNote": "Jos et pyytänyt tätä koodia, voit turvallisesti jättää tämän sähköpostin huomiotta.",
       "intro": "Tässä on koodisi karaokeillan laulajasivulle kirjautumista varten. Kirjoita se käyttämällesi sivulle:",
       "subject": "Nomad Karaoke -koodisi: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Etkö halua tarkistaa sanoituksia itse? Valitse Made For You, niin teen koko videon puolestasi 24 tunnin kuluessa:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Alennus huomioidaan automaattisesti kassalla. Koodia ei tarvita.",
+      "offerButton": "Tee seuraava kappaleesi",
+      "offerIntro": "Ensimmäinen karaokevideosi kappaleesta {song} on valmis. Toivottavasti se kuulostaa mahtavalta!",
+      "offerIntroNoSong": "Ensimmäinen karaokevideosi on valmis. Toivottavasti se kuulostaa mahtavalta!",
+      "offerLead": "Jos sinulla on mielessäsi toinen kappale, tässä on pieni kiitos Nomad Karaoken kokeilemisesta:",
+      "offerLine": "{percent} %:n alennus mistä tahansa krediittipaketista seuraavien {hours} tunnin ajan",
+      "offerSubject": "Karaokevideosi on valmis. Mitä seuraavaksi?",
+      "reminderBody": "Pieni muistutus: {percent} %:n alennuksesi mistä tahansa krediittipaketista päättyy noin {hours} tunnin kuluttua. Sen jälkeen hinnat palaavat ennalleen.",
+      "reminderButton": "Käytä alennukseni",
+      "reminderNoPressure": "Ei paineita suuntaan tai toiseen, ja kiitos, että teit videon kanssamme.",
+      "reminderSubject": "{percent} %:n alennuksesi päättyy {hours} tunnin kuluttua",
+      "whyReceiving": "Saat tämän viestin, koska teit videon osoitteessa gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Viimeistele videoni",
+      "howLong": "Tarkistus vie useimmilta vain 2–3 minuuttia: tarkista, että sanat näyttävät oikeilta, valitse taustaraita ja video on valmis.",
+      "intro": "Karaokevideosi kappaleesta {song} on melkein valmis. Se vaatii vain pienen tarkistuksesi ja vanhenee noin {hours} tunnin kuluttua.",
+      "introNoSong": "Karaokevideosi on melkein valmis. Se vaatii vain pienen tarkistuksesi ja vanhenee noin {hours} tunnin kuluttua.",
+      "refundNote": "Jos se ehtii vanhentua, krediittisi palautetaan automaattisesti.",
+      "subject": "{hours} tuntia aikaa viimeistellä karaokevideosi: {song}",
+      "subjectFallback": "{hours} tuntia aikaa viimeistellä karaokevideosi"
     }
   }
 }

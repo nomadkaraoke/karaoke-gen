@@ -403,6 +403,31 @@
       "ignoreNote": "Ak si o tento kód nežiadal, môžeš tento e-mail pokojne ignorovať.",
       "intro": "Tu je tvoj kód na prihlásenie na stránke speváka pre karaoke večer. Zadaj ho na stránke, ktorú používaš:",
       "subject": "Tvoj kód pre Nomad Karaoke: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Nechce sa ti kontrolovať text piesne? Vyber si možnosť Made For You a celé video ti vytvorím ja, s doručením do 24 hodín:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Uplatní sa automaticky pri platbe. Nie je potrebný žiadny kód.",
+      "offerButton": "Vytvoriť ďalšiu skladbu",
+      "offerIntro": "Tvoje prvé karaoke video, {song}, je hotové. Dúfam, že znie skvele!",
+      "offerIntroNoSong": "Tvoje prvé karaoke video je hotové. Dúfam, že znie skvele!",
+      "offerLead": "Ak máš na mysli ďalšiu skladbu, tu je malé poďakovanie za vyskúšanie Nomad Karaoke:",
+      "offerLine": "Zľava {percent} % na akýkoľvek balík kreditov na nasledujúcich {hours} hodín",
+      "offerSubject": "Tvoje karaoke video je hotové. Čo bude ďalšie?",
+      "reminderBody": "Rýchla pripomienka: tvoja zľava {percent} % na akýkoľvek balík kreditov končí približne o {hours} hodín. Potom sa ceny vrátia na bežnú úroveň.",
+      "reminderButton": "Využiť moju zľavu",
+      "reminderNoPressure": "Rozhodnutie je samozrejme na tebe a ďakujeme, že s nami tvoríš videá.",
+      "reminderSubject": "Tvoja zľava {percent} % končí o {hours} hodín",
+      "whyReceiving": "Tento e-mail ti prišiel preto, že si si vytvoril video na gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Dokončiť moje video",
+      "howLong": "Väčšina kontrol trvá len 2 až 3 minúty: skontroluj, či text vyzerá správne, vyber si podmaz a máš hotovo.",
+      "intro": "Tvoje karaoke video pre skladbu {song} je takmer hotové. Stačí len tvoja rýchla kontrola, inak platnosť vyprší približne o {hours} hodín.",
+      "introNoSong": "Tvoje karaoke video je takmer hotové. Stačí len tvoja rýchla kontrola, inak platnosť vyprší približne o {hours} hodín.",
+      "refundNote": "Ak platnosť naozaj vyprší, tvoj kredit ti automaticky vrátime.",
+      "subject": "Zostáva ti {hours} hodín na dokončenie karaoke videa: {song}",
+      "subjectFallback": "Zostáva ti {hours} hodín na dokončenie karaoke videa"
     }
   }
 }

@@ -403,7 +403,9 @@
     "savePct": "Заощаджуй {savings}%",
     "redirecting": "Перенаправлення на оплату...",
     "continuePayment": "Перейти до оплати — {price}",
-    "selectPackage": "Вибрати пакет"
+    "selectPackage": "Вибрати пакет",
+    "promoBadge": "Твою знижку {percent}% буде застосовано під час оформлення",
+    "promoExpires": "Пропозиція діє до {time}"
   },
   "feedback": {
     "thankYou": "Дякуємо!",

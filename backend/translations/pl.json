@@ -403,6 +403,31 @@
       "ignoreNote": "Jeśli nie prosiłeś/aś o ten kod, możesz bezpiecznie zignorować tę wiadomość.",
       "intro": "Oto Twój kod do zalogowania się na stronie wokalisty wieczoru karaoke. Wpisz go na stronie, z której korzystasz:",
       "subject": "Twój kod Nomad Karaoke: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Wolisz nie sprawdzać tekstu samodzielnie? Wybierz Made For You, a przygotuję całe wideo za Ciebie – gotowe w ciągu 24 godzin:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Rabat nalicza się automatycznie przy kasie. Kod nie jest potrzebny.",
+      "offerButton": "Stwórz kolejną piosenkę",
+      "offerIntro": "Twoje pierwsze wideo karaoke, {song}, jest gotowe. Mam nadzieję, że brzmi świetnie!",
+      "offerIntroNoSong": "Twoje pierwsze wideo karaoke jest gotowe. Mam nadzieję, że brzmi świetnie!",
+      "offerLead": "Jeśli masz na myśli kolejną piosenkę, oto małe podziękowanie za wypróbowanie Nomad Karaoke:",
+      "offerLine": "{percent}% zniżki na dowolny pakiet kredytów przez najbliższe {hours} godz.",
+      "offerSubject": "Twoje wideo karaoke jest gotowe. Co robimy dalej?",
+      "reminderBody": "Krótkie przypomnienie: Twoja zniżka {percent}% na dowolny pakiet kredytów wygasa za około {hours} godz. Po tym czasie ceny wrócą do normy.",
+      "reminderButton": "Skorzystaj ze zniżki",
+      "reminderNoPressure": "Bez presji! Tak czy inaczej, dziękujemy za stworzenie wideo razem z nami.",
+      "reminderSubject": "Twoja zniżka {percent}% wygasa za {hours} godz.",
+      "whyReceiving": "Otrzymujesz tę wiadomość, ponieważ utworzyłeś wideo na gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Dokończ moje wideo",
+      "howLong": "Sprawdzenie tekstu zajmuje zwykle 2–3 minuty: upewnij się, że słowa się zgadzają, wybierz podkład i gotowe.",
+      "intro": "Twoje wideo karaoke do utworu {song} jest prawie gotowe. Wystarczy je szybko przejrzeć – projekt wygaśnie za około {hours} godz.",
+      "introNoSong": "Twoje wideo karaoke jest prawie gotowe. Wystarczy je szybko przejrzeć – projekt wygaśnie za około {hours} godz.",
+      "refundNote": "Jeśli wygaśnie, Twój kredyt zostanie automatycznie zwrócony.",
+      "subject": "Zostało {hours} godz. na dokończenie Twojego wideo karaoke: {song}",
+      "subjectFallback": "Zostało {hours} godz. na dokończenie Twojego wideo karaoke"
     }
   }
 }

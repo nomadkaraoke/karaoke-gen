@@ -403,7 +403,9 @@
     "savePct": "{savings}% オフ",
     "redirecting": "支払い画面にリダイレクトしています...",
     "continuePayment": "支払いに進む — {price}",
-    "selectPackage": "パッケージを選択"
+    "selectPackage": "パッケージを選択",
+    "promoBadge": "お会計時に{percent}%オフが適用されます",
+    "promoExpires": "期限：{time}まで"
   },
   "feedback": {
     "thankYou": "ありがとうございます！",

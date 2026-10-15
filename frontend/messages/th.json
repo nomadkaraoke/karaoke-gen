@@ -403,7 +403,9 @@
     "savePct": "ประหยัด {savings}%",
     "redirecting": "กำลังเปลี่ยนเส้นทางไปยังการชำระเงิน...",
     "continuePayment": "ดำเนินการชำระเงิน — {price}",
-    "selectPackage": "เลือกแพ็กเกจ"
+    "selectPackage": "เลือกแพ็กเกจ",
+    "promoBadge": "ส่วนลด {percent}% ของคุณจะถูกนำไปใช้ในขั้นตอนชำระเงิน",
+    "promoExpires": "ข้อเสนอนี้สิ้นสุด {time}"
   },
   "feedback": {
     "thankYou": "ขอบคุณ!",

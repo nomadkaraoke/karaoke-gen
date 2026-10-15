@@ -106,6 +106,8 @@ export const useAuth = create<AuthStore>()(
             has_active_referral_discount: response.user.has_active_referral_discount,
             referral_discount_percent: response.user.referral_discount_percent,
             referral_discount_expires_at: response.user.referral_discount_expires_at,
+            promo_discount_percent: response.user.promo_discount_percent,
+            promo_discount_expires_at: response.user.promo_discount_expires_at,
             referred_by_code: response.user.referred_by_code,
           }
 
@@ -143,6 +145,8 @@ export const useAuth = create<AuthStore>()(
             has_active_referral_discount: response.user.has_active_referral_discount,
             referral_discount_percent: response.user.referral_discount_percent,
             referral_discount_expires_at: response.user.referral_discount_expires_at,
+            promo_discount_percent: response.user.promo_discount_percent,
+            promo_discount_expires_at: response.user.promo_discount_expires_at,
             referred_by_code: response.user.referred_by_code,
           }
 
@@ -205,6 +209,8 @@ export const useAuth = create<AuthStore>()(
             has_active_referral_discount: response.user.has_active_referral_discount,
             referral_discount_percent: response.user.referral_discount_percent,
             referral_discount_expires_at: response.user.referral_discount_expires_at,
+            promo_discount_percent: response.user.promo_discount_percent,
+            promo_discount_expires_at: response.user.promo_discount_expires_at,
             referred_by_code: response.user.referred_by_code,
           }
 

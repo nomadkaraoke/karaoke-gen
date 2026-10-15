@@ -403,7 +403,9 @@
     "savePct": "Économise {savings}%",
     "redirecting": "Redirection vers le paiement...",
     "continuePayment": "Continuer vers le paiement — {price}",
-    "selectPackage": "Sélectionner un forfait"
+    "selectPackage": "Sélectionner un forfait",
+    "promoBadge": "Ta réduction de {percent} % est appliquée au moment du paiement",
+    "promoExpires": "L'offre expire {time}"
   },
   "feedback": {
     "thankYou": "Merci !",

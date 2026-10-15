@@ -403,6 +403,31 @@
       "ignoreNote": "Als je deze code niet hebt aangevraagd, kun je deze e-mail veilig negeren.",
       "intro": "Hier is je code om in te loggen op de zangerspagina van de karaoke-avond. Typ deze in op de pagina die je gebruikt:",
       "subject": "Je Nomad Karaoke code: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Liever niet zelf de songtekst controleren? Kies Made For You en ik maak de hele video voor je, geleverd binnen 24 uur:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Automatisch toegepast bij het afrekenen. Geen code nodig.",
+      "offerButton": "Maak je volgende nummer",
+      "offerIntro": "Je eerste karaokevideo, {song}, is klaar. Ik hoop dat hij geweldig klinkt!",
+      "offerIntroNoSong": "Je eerste karaokevideo is klaar. Ik hoop dat hij geweldig klinkt!",
+      "offerLead": "Als je al een volgend nummer in gedachten hebt, is hier een bedankje voor het uitproberen van Nomad Karaoke:",
+      "offerLine": "{percent}% korting op elk creditpakket voor de komende {hours} uur",
+      "offerSubject": "Je karaokevideo is klaar. Wat wordt het volgende nummer?",
+      "reminderBody": "Korte herinnering: je {percent}% korting op elk creditpakket verloopt over ongeveer {hours} uur. Daarna gelden weer de normale prijzen.",
+      "reminderButton": "Gebruik mijn korting",
+      "reminderNoPressure": "Even goede vrienden natuurlijk, en bedankt voor het maken van een video bij ons.",
+      "reminderSubject": "Je {percent}% korting verloopt over {hours} uur",
+      "whyReceiving": "Je ontvangt dit omdat je een video hebt gemaakt op gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Mijn video afronden",
+      "howLong": "De meeste controles duren 2 of 3 minuten: controleer of de songtekst klopt, kies je instrumentale versie en je bent klaar.",
+      "intro": "Je karaokevideo voor {song} is bijna klaar. Je hoeft hem alleen nog even te controleren, en hij verloopt over ongeveer {hours} uur.",
+      "introNoSong": "Je karaokevideo is bijna klaar. Je hoeft hem alleen nog even te controleren, en hij verloopt over ongeveer {hours} uur.",
+      "refundNote": "Als hij verloopt, wordt je credit automatisch teruggestort.",
+      "subject": "Nog {hours} uur om je karaokevideo af te ronden: {song}",
+      "subjectFallback": "Nog {hours} uur om je karaokevideo af te ronden"
     }
   }
 }

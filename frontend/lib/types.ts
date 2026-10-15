@@ -12,6 +12,8 @@ export interface User {
   has_active_referral_discount?: boolean
   referral_discount_percent?: number
   referral_discount_expires_at?: string
+  promo_discount_percent?: number | null
+  promo_discount_expires_at?: string | null
   referred_by_code?: string
 }
 
@@ -27,6 +29,8 @@ export interface UserPublic {
   has_active_referral_discount?: boolean
   referral_discount_percent?: number
   referral_discount_expires_at?: string
+  promo_discount_percent?: number | null
+  promo_discount_expires_at?: string | null
   referred_by_code?: string
 }
 

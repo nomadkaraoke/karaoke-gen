@@ -403,6 +403,31 @@
       "ignoreNote": "Om du inte begärde den här koden kan du bortse från det här e-postmeddelandet.",
       "intro": "Här är din kod för att logga in på karaokekvällens sångarsida. Skriv in den på sidan du använder:",
       "subject": "Din Nomad Karaoke-kod: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Föredrar du att slippa granska texten själv? Välj Made For You så skapar jag hela videon åt dig, med leverans inom 24 timmar:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Dras av automatiskt i kassan. Ingen kod behövs.",
+      "offerButton": "Skapa din nästa låt",
+      "offerIntro": "Din första karaokevideo, {song}, är klar. Hoppas den låter toppen!",
+      "offerIntroNoSong": "Din första karaokevideo är klar. Hoppas den låter toppen!",
+      "offerLead": "Om du har en till låt på gång får du här ett tack för att du testade Nomad Karaoke:",
+      "offerLine": "{percent} % rabatt på alla kreditpaket under de kommande {hours} timmarna",
+      "offerSubject": "Din karaokevideo är klar. Vad händer härnäst?",
+      "reminderBody": "En snabb påminnelse: din rabatt på {percent} % på alla kreditpaket går ut om cirka {hours} timmar. Därefter återgår priserna till det vanliga.",
+      "reminderButton": "Använd min rabatt",
+      "reminderNoPressure": "Inga sura miner oavsett, och tack för att du skapade en video hos oss.",
+      "reminderSubject": "Din rabatt på {percent} % går ut om {hours} timmar",
+      "whyReceiving": "Du får det här mailet eftersom du skapade en video på gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Slutför min video",
+      "howLong": "De flesta granskningar tar bara 2–3 minuter: kolla att texten stämmer, välj din instrumentalversion och sen är det klart.",
+      "intro": "Din karaokevideo för {song} är nästan klar. Den behöver bara en snabb granskning, och den upphör att gälla om cirka {hours} timmar.",
+      "introNoSong": "Din karaokevideo är nästan klar. Den behöver bara en snabb granskning, och den upphör att gälla om cirka {hours} timmar.",
+      "refundNote": "Om tiden går ut återbetalas din kredit automatiskt.",
+      "subject": "{hours} timmar kvar att slutföra din karaokevideo: {song}",
+      "subjectFallback": "{hours} timmar kvar att slutföra din karaokevideo"
     }
   }
 }

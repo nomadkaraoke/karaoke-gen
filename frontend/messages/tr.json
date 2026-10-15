@@ -403,7 +403,9 @@
     "savePct": "%{savings} Tasarruf Et",
     "redirecting": "Ödemeye yönlendiriliyor...",
     "continuePayment": "Ödemeye Devam Et — {price}",
-    "selectPackage": "Bir paket seç"
+    "selectPackage": "Bir paket seç",
+    "promoBadge": "%{percent} indirimin ödeme adımında uygulanır",
+    "promoExpires": "Fırsat {time} içinde sona eriyor"
   },
   "feedback": {
     "thankYou": "Teşekkürler!",

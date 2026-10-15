@@ -128,6 +128,17 @@ class User(BaseModel):
     # domain, landing path and when it was captured.
     signup_attribution: Optional[Dict[str, str]] = None
 
+    # Free-to-paid conversion emails (backend/services/conversion_emails.py)
+    conversion_e1_due_at: Optional[datetime] = None  # set when the first video completes unpaid
+    conversion_e1_sent_at: Optional[datetime] = None
+    conversion_e1_skipped: bool = False  # due but not sent (already paid / too late)
+    first_video_artist: Optional[str] = None  # named in the E1 email
+    first_video_title: Optional[str] = None
+    conversion_e2_sent_at: Optional[datetime] = None
+    # Time-limited discount granted by the E1 offer, applied automatically at checkout
+    promo_discount_percent: Optional[int] = None
+    promo_discount_expires_at: Optional[datetime] = None
+
     # Referral system
     referral_code: Optional[str] = None  # User's own referral code
     referred_by_code: Optional[str] = None  # Code used when this user signed up
@@ -263,6 +274,9 @@ class UserPublic(BaseModel):
     has_active_referral_discount: bool = False
     referral_discount_percent: Optional[int] = None
     referral_discount_expires_at: Optional[str] = None  # ISO string
+    # Active time-limited promo (conversion email offer), applied at checkout
+    promo_discount_percent: Optional[int] = None
+    promo_discount_expires_at: Optional[str] = None  # ISO string
     referred_by_code: Optional[str] = None
     created_at: Optional[str] = None
     last_login_at: Optional[str] = None

@@ -403,6 +403,31 @@
       "ignoreNote": "Wenn du diesen Code nicht angefordert hast, kannst du diese E-Mail einfach ignorieren.",
       "intro": "Hier ist dein Code zur Anmeldung auf der Sängerseite für den Karaoke-Abend. Gib ihn auf der Seite ein, die du gerade verwendest:",
       "subject": "Dein Nomad Karaoke Code: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Möchtest du die Textüberprüfung lieber nicht selbst machen? Wähle „Made For You“ und ich erstelle das komplette Video für dich – geliefert innerhalb von 24 Stunden:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Wird an der Kasse automatisch abgezogen. Kein Code erforderlich.",
+      "offerButton": "Nächsten Song erstellen",
+      "offerIntro": "Dein erstes Karaoke-Video, {song}, ist fertig. Ich hoffe, es klingt großartig!",
+      "offerIntroNoSong": "Dein erstes Karaoke-Video ist fertig. Ich hoffe, es klingt großartig!",
+      "offerLead": "Wenn du schon einen weiteren Song im Sinn hast: Hier ist ein kleines Dankeschön fürs Ausprobieren von Nomad Karaoke:",
+      "offerLine": "{percent} % Rabatt auf jedes Guthaben-Paket für die nächsten {hours} Stunden",
+      "offerSubject": "Dein Karaoke-Video ist fertig. Was kommt als Nächstes?",
+      "reminderBody": "Kurze Erinnerung: Dein Rabatt von {percent} % auf jedes Guthaben-Paket endet in etwa {hours} Stunden. Danach gelten wieder die normalen Preise.",
+      "reminderButton": "Meinen Rabatt nutzen",
+      "reminderNoPressure": "Kein Druck – und vielen Dank, dass du ein Video mit uns erstellt hast.",
+      "reminderSubject": "Dein Rabatt von {percent} % endet in {hours} Stunden",
+      "whyReceiving": "Du erhältst diese E-Mail, weil du ein Video auf gen.nomadkaraoke.com erstellt hast."
+    },
+    "reviewLastChance": {
+      "button": "Mein Video fertigstellen",
+      "howLong": "Die meisten Überprüfungen dauern nur 2 bis 3 Minuten: Prüfe, ob der Text stimmt, wähle dein Instrumental und schon bist du fertig.",
+      "intro": "Dein Karaoke-Video für {song} ist fast fertig. Es braucht nur noch eine kurze Überprüfung von dir – in etwa {hours} Stunden läuft der Link ab.",
+      "introNoSong": "Dein Karaoke-Video ist fast fertig. Es braucht nur noch eine kurze Überprüfung von dir – in etwa {hours} Stunden läuft der Link ab.",
+      "refundNote": "Sollte der Link ablaufen, wird dir dein Guthaben automatisch zurückerstattet.",
+      "subject": "Noch {hours} Stunden, um dein Karaoke-Video fertigzustellen: {song}",
+      "subjectFallback": "Noch {hours} Stunden, um dein Karaoke-Video fertigzustellen"
     }
   }
 }

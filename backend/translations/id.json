@@ -403,6 +403,31 @@
       "ignoreNote": "Jika Anda tidak meminta kode ini, Anda bisa mengabaikan email ini.",
       "intro": "Berikut adalah kode Anda untuk masuk di halaman penyanyi malam karaoke. Masukkan kode ini ke halaman yang sedang Anda gunakan:",
       "subject": "Kode Nomad Karaoke Anda: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Tidak ingin memeriksa liriknya sendiri? Pilih Made For You dan saya akan membuatkan seluruh videonya untuk Anda, selesai dalam 24 jam:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Diterapkan otomatis saat checkout. Tidak perlu kode promo.",
+      "offerButton": "Buat lagu berikutnya",
+      "offerIntro": "Video karaoke pertama Anda, {song}, sudah selesai. Semoga hasilnya memuaskan!",
+      "offerIntroNoSong": "Video karaoke pertama Anda sudah selesai. Semoga hasilnya memuaskan!",
+      "offerLead": "Jika Anda punya lagu lain yang ingin dibuat, ini hadiah terima kasih karena sudah mencoba Nomad Karaoke:",
+      "offerLine": "Diskon {percent}% untuk paket kredit apa pun selama {hours} jam ke depan",
+      "offerSubject": "Video karaoke Anda sudah selesai. Lagu apa berikutnya?",
+      "reminderBody": "Sekadar mengingatkan: diskon {percent}% untuk paket kredit apa pun akan berakhir dalam sekitar {hours} jam. Setelah itu, harga kembali normal.",
+      "reminderButton": "Gunakan diskon saya",
+      "reminderNoPressure": "Tidak masalah jika Anda belum berminat, dan terima kasih sudah membuat video bersama kami.",
+      "reminderSubject": "Diskon {percent}% Anda berakhir dalam {hours} jam",
+      "whyReceiving": "Anda menerima email ini karena Anda membuat video di gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Selesaikan video saya",
+      "howLong": "Sebagian besar peninjauan hanya butuh 2 atau 3 menit: pastikan liriknya sudah sesuai, pilih instrumental Anda, dan selesai.",
+      "intro": "Video karaoke Anda untuk {song} hampir selesai. Video ini hanya butuh tinjauan singkat dari Anda, dan sesi ini akan berakhir dalam sekitar {hours} jam.",
+      "introNoSong": "Video karaoke Anda hampir selesai. Video ini hanya butuh tinjauan singkat dari Anda, dan sesi ini akan berakhir dalam sekitar {hours} jam.",
+      "refundNote": "Jika masa berlakunya habis, kredit Anda akan dikembalikan secara otomatis.",
+      "subject": "Tersisa {hours} jam untuk menyelesaikan video karaoke Anda: {song}",
+      "subjectFallback": "Tersisa {hours} jam untuk menyelesaikan video karaoke Anda"
     }
   }
 }

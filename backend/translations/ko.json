@@ -403,6 +403,31 @@
       "ignoreNote": "이 코드를 요청하지 않으셨다면 이 이메일을 무시하셔도 됩니다.",
       "intro": "가라오케 나이트 가수 페이지에 로그인하기 위한 코드입니다. 사용 중인 페이지에 다음 코드를 입력해 주세요:",
       "subject": "Nomad Karaoke 코드: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "가사를 직접 검토하기 번거로우신가요? Made For You를 선택하시면 24시간 이내에 전체 비디오를 대신 제작해 전달해 드립니다:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "결제 시 자동으로 적용됩니다. 할인 코드는 필요 없습니다.",
+      "offerButton": "다음 노래 만들기",
+      "offerIntro": "첫 번째 노래방 비디오인 {song}이(가) 완성되었습니다. 마음에 쏙 드셨으면 좋겠네요!",
+      "offerIntroNoSong": "첫 번째 노래방 비디오가 완성되었습니다. 마음에 쏙 드셨으면 좋겠네요!",
+      "offerLead": "또 만들고 싶은 노래가 있으신가요? Nomad Karaoke를 이용해 주신 감사의 마음을 담아 혜택을 드립니다:",
+      "offerLine": "앞으로 {hours}시간 동안 모든 크레딧 팩 {percent}% 할인",
+      "offerSubject": "노래방 비디오가 완성되었습니다. 다음 곡은 무엇인가요?",
+      "reminderBody": "안내 말씀드립니다. 모든 크레딧 팩 {percent}% 할인이 약 {hours}시간 후 종료됩니다. 이후에는 정상 가격으로 돌아갑니다.",
+      "reminderButton": "할인받기",
+      "reminderNoPressure": "이용하지 않으셔도 전혀 괜찮으니 부담 갖지 마세요. 저희 서비스를 이용해 주셔서 진심으로 감사드립니다.",
+      "reminderSubject": "{percent}% 할인이 {hours}시간 후 종료됩니다",
+      "whyReceiving": "gen.nomadkaraoke.com에서 비디오를 제작하셨기 때문에 이 이메일이 발송되었습니다."
+    },
+    "reviewLastChance": {
+      "button": "내 비디오 완성하기",
+      "howLong": "검토는 보통 2~3분이면 충분합니다. 가사가 맞는지 확인하고 반주를 선택하기만 하면 끝납니다.",
+      "intro": "{song} 노래방 비디오가 거의 완성되었습니다. 간단한 검토만 진행해 주시면 되며, 약 {hours}시간 후 만료됩니다.",
+      "introNoSong": "노래방 비디오가 거의 완성되었습니다. 간단한 검토만 진행해 주시면 되며, 약 {hours}시간 후 만료됩니다.",
+      "refundNote": "만료될 경우 크레딧은 자동으로 환불됩니다.",
+      "subject": "노래방 비디오 완성까지 {hours}시간 남았습니다: {song}",
+      "subjectFallback": "노래방 비디오 완성까지 {hours}시간 남았습니다"
     }
   }
 }

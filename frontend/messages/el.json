@@ -403,7 +403,9 @@
     "savePct": "Εξοικονόμησε {savings}%",
     "redirecting": "Ανακατεύθυνση στην πληρωμή...",
     "continuePayment": "Συνέχεια στην Πληρωμή — {price}",
-    "selectPackage": "Επίλεξε ένα πακέτο"
+    "selectPackage": "Επίλεξε ένα πακέτο",
+    "promoBadge": "Η έκπτωση {percent}% εφαρμόζεται στο ταμείο",
+    "promoExpires": "Η προσφορά λήγει {time}"
   },
   "feedback": {
     "thankYou": "Ευχαριστούμε!",

@@ -403,6 +403,31 @@
       "ignoreNote": "Kung hindi mo ni-request ang code na ito, maaari mong balewalain ang email na ito.",
       "intro": "Narito ang iyong code para mag-sign in sa karaoke night singer page. I-type ito sa page na ginagamit mo:",
       "subject": "Ang iyong Nomad Karaoke code: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Ayaw mo bang mag-review ng lyrics nang mag-isa? Piliin ang Made For You at ako na ang gagawa ng buong video para sa iyo, ihahatid sa loob ng 24 oras:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Awtomatikong ia-apply sa checkout. Walang kailangang code.",
+      "offerButton": "Gawin ang susunod mong kanta",
+      "offerIntro": "Tapos na ang una mong karaoke video, ang {song}. Sana nagustuhan mo ang tunog nito!",
+      "offerIntroNoSong": "Tapos na ang una mong karaoke video. Sana nagustuhan mo ang tunog nito!",
+      "offerLead": "Kung may naiisip ka pang ibang kanta, narito ang aming pasasalamat sa pagsubok sa Nomad Karaoke:",
+      "offerLine": "{percent}% diskwento sa anumang credit pack sa susunod na {hours} oras",
+      "offerSubject": "Tapos na ang iyong karaoke video. Ano ang susunod?",
+      "reminderBody": "Mabilisang paalala: magtatapos ang iyong {percent}% diskwento sa anumang credit pack sa loob ng mga {hours} oras. Pagkatapos niyan, babalik na sa normal ang mga presyo.",
+      "reminderButton": "Gamitin ang aking diskwento",
+      "reminderNoPressure": "Ayos lang kahit ano man ang desisyon mo, at salamat sa paggawa ng video kasama namin.",
+      "reminderSubject": "Magtatapos na ang iyong {percent}% diskwento sa loob ng {hours} oras",
+      "whyReceiving": "Natanggap mo ito dahil gumawa ka ng video sa gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Tapusin ang aking video",
+      "howLong": "Kadalasan ay 2 hanggang 3 minuto lang ang pag-review: tingnan kung tama ang itsura ng lyrics, piliin ang iyong instrumental, at tapos ka na.",
+      "intro": "Halos tapos na ang iyong karaoke video para sa {song}. Kailangan na lang nito ng iyong mabilisang pag-review, at mag-e-expire ito sa loob ng mga {hours} oras.",
+      "introNoSong": "Halos tapos na ang iyong karaoke video. Kailangan na lang nito ng iyong mabilisang pag-review, at mag-e-expire ito sa loob ng mga {hours} oras.",
+      "refundNote": "Kung mag-expire man ito, awtomatikong ire-refund ang iyong credit.",
+      "subject": "{hours} oras na lang para tapusin ang iyong karaoke video: {song}",
+      "subjectFallback": "{hours} oras na lang para tapusin ang iyong karaoke video"
     }
   }
 }

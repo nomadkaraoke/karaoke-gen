@@ -403,7 +403,9 @@
     "savePct": "Spórolj {savings}%-ot",
     "redirecting": "Átirányítás a fizetéshez...",
     "continuePayment": "Tovább a fizetéshez — {price}",
-    "selectPackage": "Válassz egy csomagot"
+    "selectPackage": "Válassz egy csomagot",
+    "promoBadge": "A(z) {percent}% kedvezményed a fizetéskor kerül érvényesítésre",
+    "promoExpires": "Az ajánlat lejár: {time}"
   },
   "feedback": {
     "thankYou": "Köszönjük!",

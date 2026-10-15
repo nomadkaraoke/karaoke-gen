@@ -101,6 +101,10 @@ def _build_user_public(user, role_override=None, feedback_eligible=False):
         except Exception:
             discount_percent = 10  # default fallback
 
+    from backend.services.conversion_emails import active_promo
+
+    promo = active_promo(user)
+
     return UserPublic(
         email=user.email,
         role=role_override or user.role,
@@ -115,6 +119,8 @@ def _build_user_public(user, role_override=None, feedback_eligible=False):
         has_active_referral_discount=has_discount,
         referral_discount_percent=discount_percent,
         referral_discount_expires_at=discount_expires,
+        promo_discount_percent=promo[0] if promo else None,
+        promo_discount_expires_at=promo[1].isoformat() if promo else None,
         referred_by_code=user.referred_by_code,
     )
 from backend.services.youtube_download_service import (
@@ -950,14 +956,25 @@ def create_checkout(
 
     # Check for referral discount
     referral_coupon_id = None
+    referral_percent = 0
     try:
         from backend.services.referral_service import get_referral_service
         referral_svc = get_referral_service()
         discount_info = referral_svc.get_discount_for_checkout(request.email)
         if discount_info:
             referral_coupon_id = discount_info["coupon_id"]
+            referral_percent = discount_info.get("discount_percent") or 0
     except Exception as ref_err:
         logger.warning(f"Referral discount lookup failed: {ref_err}")
+
+    # A time-limited conversion-email offer wins when it's the bigger discount
+    try:
+        from backend.services.conversion_emails import promo_coupon_for_checkout
+        promo_coupon = promo_coupon_for_checkout(request.email, better_than_percent=referral_percent)
+        if promo_coupon:
+            referral_coupon_id = promo_coupon
+    except Exception as promo_err:
+        logger.warning(f"Promo discount lookup failed: {promo_err}")
 
     success, checkout_url, message = stripe_service.create_checkout_session(
         package_id=request.package_id,

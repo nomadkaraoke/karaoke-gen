@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from email.message import EmailMessage
 from email.utils import formataddr
 from datetime import datetime, timedelta, timezone
-from typing import NamedTuple, Optional, List
+from typing import NamedTuple, Optional, List, Tuple
 from zoneinfo import ZoneInfo
 
 import requests
@@ -271,6 +271,7 @@ class PostmarkEmailProvider(EmailProvider):
         cc_emails: Optional[List[str]] = None,
         bcc_emails: Optional[List[str]] = None,
         from_email_override: Optional[str] = None,
+        message_stream: Optional[str] = None,
     ) -> bool:
         return self.send_email_detailed(
             to_email=to_email,
@@ -280,6 +281,7 @@ class PostmarkEmailProvider(EmailProvider):
             cc_emails=cc_emails,
             bcc_emails=bcc_emails,
             from_email_override=from_email_override,
+            message_stream=message_stream,
         ).success
 
     def send_email_detailed(
@@ -291,8 +293,16 @@ class PostmarkEmailProvider(EmailProvider):
         cc_emails: Optional[List[str]] = None,
         bcc_emails: Optional[List[str]] = None,
         from_email_override: Optional[str] = None,
+        message_stream: Optional[str] = None,
     ) -> SendResult:
+        """Send via the Postmark API (SMTP fallback on edge blocks).
+
+        ``message_stream`` defaults to the transactional stream; promotional mail
+        passes "broadcast" (Postmark appends the unsubscribe link and suppresses
+        unsubscribed recipients on that stream).
+        """
         self.last_suppressed = False
+        stream = message_stream or self.MESSAGE_STREAM
         try:
             sender_email = from_email_override or self.from_email
             payload = {
@@ -300,7 +310,7 @@ class PostmarkEmailProvider(EmailProvider):
                 "To": to_email,
                 "Subject": subject,
                 "HtmlBody": html_content,
-                "MessageStream": "outbound",
+                "MessageStream": stream,
             }
             if text_content:
                 payload["TextBody"] = text_content
@@ -316,14 +326,14 @@ class PostmarkEmailProvider(EmailProvider):
                 # Never connected, so Postmark didn't accept it: safe to resend.
                 logger.warning("Postmark API connect timed out on every attempt; falling back to SMTP")
                 return self._send_via_smtp(to_email, subject, html_content, text_content,
-                                           cc_emails, bcc_emails, sender_email)
+                                           cc_emails, bcc_emails, sender_email, stream)
 
             if self._is_edge_block(response):
                 logger.warning(
                     f"Postmark API edge returned HTML 403 for {to_email}; falling back to SMTP"
                 )
                 return self._send_via_smtp(to_email, subject, html_content, text_content,
-                                           cc_emails, bcc_emails, sender_email)
+                                           cc_emails, bcc_emails, sender_email, stream)
 
             if 200 <= response.status_code < 300:
                 cc_info = f" (CC: {', '.join(cc_emails)})" if cc_emails else ""
@@ -375,6 +385,7 @@ class PostmarkEmailProvider(EmailProvider):
         cc_emails: Optional[List[str]],
         bcc_emails: Optional[List[str]],
         sender_email: str,
+        message_stream: Optional[str] = None,
     ) -> SendResult:
         """Send through Postmark's SMTP endpoint (used when the API is unreachable).
 
@@ -388,7 +399,7 @@ class PostmarkEmailProvider(EmailProvider):
             msg["From"] = formataddr((self.from_name, sender_email))
             msg["To"] = to_email
             msg["Subject"] = subject
-            msg["X-PM-Message-Stream"] = self.MESSAGE_STREAM
+            msg["X-PM-Message-Stream"] = message_stream or self.MESSAGE_STREAM
             if cc:
                 msg["Cc"] = ", ".join(cc)
             if text_content:
@@ -538,6 +549,7 @@ class EmailService:
         bcc_emails: Optional[List[str]] = None,
         from_email_override: Optional[str] = None,
         email_type: Optional[str] = None,
+        message_stream: Optional[str] = None,
     ) -> bool:
         """Single send chokepoint: dispatch via the provider, then persist a
         record of the send for the admin email-history view.
@@ -561,6 +573,12 @@ class EmailService:
         # callers/mocks that observe that method still see it. PostmarkEmailProvider
         # records the returned MessageID on ``last_message_id`` for us to link the
         # log entry.
+        # Only Postmark knows about message streams; dev providers ignore them.
+        stream_kwargs = (
+            {"message_stream": message_stream}
+            if message_stream and isinstance(self.provider, PostmarkEmailProvider)
+            else {}
+        )
         success = self.provider.send_email(
             to_email=to_email,
             subject=subject,
@@ -569,6 +587,7 @@ class EmailService:
             cc_emails=cc_emails,
             bcc_emails=bcc_emails,
             from_email_override=from_email_override,
+            **stream_kwargs,
         )
 
         # Mirror the provider's suppression flag so route handlers can tell a
@@ -591,6 +610,7 @@ class EmailService:
                     from_email=from_email_override or getattr(self.provider, "from_email", None),
                     email_type=email_type,
                     message_id=getattr(self.provider, "last_message_id", None),
+                    message_stream=message_stream or "outbound",
                 )
             except Exception:
                 logger.exception(
@@ -611,6 +631,7 @@ class EmailService:
         from_email: Optional[str],
         email_type: Optional[str],
         message_id: Optional[str],
+        message_stream: str = "outbound",
     ) -> None:
         """Write one Firestore ``email_log`` doc mirroring a sent email.
 
@@ -632,7 +653,7 @@ class EmailService:
             "html_content": _redact_sensitive_tokens(html_content),
             "text_content": _redact_sensitive_tokens(text_content),
             "email_type": email_type,
-            "message_stream": "outbound",
+            "message_stream": message_stream,
             "postmark_message_id": message_id,
             "created_at": datetime.now(timezone.utc),
         }
@@ -1251,7 +1272,7 @@ class EmailService:
         }}
 """
 
-    def _build_email_html(self, content: str, extra_styles: str = "", extra_header_content: str = "", locale: str = "en") -> str:
+    def _build_email_html(self, content: str, extra_styles: str = "", extra_header_content: str = "", locale: str = "en", trailing_content: str = "") -> str:
         """Build a complete HTML email with standard header, footer, and styles.
 
         Args:
@@ -1278,6 +1299,7 @@ class EmailService:
     {content}
 
     {self._get_email_footer(locale)}
+    {trailing_content}
 </body>
 </html>
 """
@@ -1750,6 +1772,165 @@ class EmailService:
             to_email=to_email,
             subject=subject,
             html_content=html_content,
+            text_content=text_content,
+        )
+
+    # ------------------------------------------------------------------
+    # Free-to-paid conversion emails (backend/services/conversion_emails.py)
+    # ------------------------------------------------------------------
+
+    _CONVERSION_STYLES = """
+        .offer {
+            background-color: #fdf2f8;
+            border: 1px solid #ff7acc;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 18px;
+        }
+        .cta-btn {
+            display: inline-block;
+            background-color: #ff7acc;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 16px 0;
+        }
+        .legal {
+            margin-top: 24px;
+            font-size: 12px;
+            color: #999;
+        }
+"""
+
+    def _commercial_footer(self, locale: str) -> Tuple[str, str]:
+        """(html, text) legal footer for promotional mail on the broadcast stream.
+
+        Postmark appends the unsubscribe link itself on the broadcast stream.
+        """
+        why = t(locale, "emails.conversion.whyReceiving")
+        address = self.settings.commercial_email_postal_address
+        return (
+            f'<p class="legal">{html.escape(why)}<br>{html.escape(address)}</p>',
+            f"{why}\n{address}",
+        )
+
+    def send_conversion_offer(
+        self,
+        to_email: str,
+        artist: Optional[str],
+        title: Optional[str],
+        percent: int,
+        offer_hours: int,
+        buy_url: str,
+        made_for_you_url: str,
+        locale: str = "en",
+    ) -> bool:
+        """E1: first free video is done, here's a time-limited discount on credits."""
+        subject = t(locale, "emails.conversion.offerSubject")
+        song = f"{artist} - {title}" if artist and title else ""
+        intro_key = "emails.conversion.offerIntro" if song else "emails.conversion.offerIntroNoSong"
+        intro_html = t(locale, intro_key, song=f"<strong>{html.escape(song)}</strong>")
+        intro_text = t(locale, intro_key, song=song)
+        offer = t(locale, "emails.conversion.offerLine", percent=percent, hours=offer_hours)
+        legal_html, legal_text = self._commercial_footer(locale)
+
+        content = f"""
+    <p>{intro_html}</p>
+    <p>{t(locale, "emails.conversion.offerLead")}</p>
+    <div class="offer"><strong>{html.escape(offer)}</strong><br>
+        <span style="font-size: 14px;">{t(locale, "emails.conversion.offerAutoApplied")}</span></div>
+    <p style="text-align: center;">
+        <a href="{html.escape(buy_url)}" class="cta-btn">{t(locale, "emails.conversion.offerButton")}</a>
+    </p>
+    <p>{t(locale, "emails.conversion.madeForYouLine")} <a href="{html.escape(made_for_you_url)}">{t(locale, "emails.conversion.madeForYouLink")}</a></p>
+"""
+        text_content = (
+            f"{intro_text}\n\n{t(locale, 'emails.conversion.offerLead')}\n\n"
+            f"{offer}\n{t(locale, 'emails.conversion.offerAutoApplied')}\n\n"
+            f"{t(locale, 'emails.conversion.offerButton')}: {buy_url}\n\n"
+            f"{t(locale, 'emails.conversion.madeForYouLine')} {made_for_you_url}\n\n{legal_text}"
+        )
+        return self._log_and_send(
+            to_email=to_email,
+            subject=subject,
+            html_content=self._build_email_html(
+                content, self._CONVERSION_STYLES, locale=locale, trailing_content=legal_html
+            ),
+            text_content=text_content,
+            message_stream="broadcast",
+        )
+
+    def send_conversion_offer_reminder(
+        self,
+        to_email: str,
+        percent: int,
+        hours_left: int,
+        buy_url: str,
+        locale: str = "en",
+    ) -> bool:
+        """E2: the E1 discount ends soon."""
+        subject = t(locale, "emails.conversion.reminderSubject", percent=percent, hours=hours_left)
+        body = t(locale, "emails.conversion.reminderBody", percent=percent, hours=hours_left)
+        legal_html, legal_text = self._commercial_footer(locale)
+        content = f"""
+    <p>{html.escape(body)}</p>
+    <p style="text-align: center;">
+        <a href="{html.escape(buy_url)}" class="cta-btn">{t(locale, "emails.conversion.reminderButton")}</a>
+    </p>
+    <p>{t(locale, "emails.conversion.reminderNoPressure")}</p>
+"""
+        text_content = (
+            f"{body}\n\n{t(locale, 'emails.conversion.reminderButton')}: {buy_url}\n\n"
+            f"{t(locale, 'emails.conversion.reminderNoPressure')}\n\n{legal_text}"
+        )
+        return self._log_and_send(
+            to_email=to_email,
+            subject=subject,
+            html_content=self._build_email_html(
+                content, self._CONVERSION_STYLES, locale=locale, trailing_content=legal_html
+            ),
+            text_content=text_content,
+            message_stream="broadcast",
+        )
+
+    def send_review_last_chance(
+        self,
+        to_email: str,
+        artist: Optional[str],
+        title: Optional[str],
+        review_url: str,
+        hours_left: int,
+        locale: str = "en",
+    ) -> bool:
+        """R2: final nudge a few hours before an unreviewed job auto-expires (transactional)."""
+        song = f"{artist} - {title}" if artist and title else ""
+        if song:
+            subject = t(locale, "emails.reviewLastChance.subject", hours=hours_left, song=song)
+            intro_html = t(locale, "emails.reviewLastChance.intro", hours=hours_left, song=f"<strong>{html.escape(song)}</strong>")
+            intro_text = t(locale, "emails.reviewLastChance.intro", hours=hours_left, song=song)
+        else:
+            subject = t(locale, "emails.reviewLastChance.subjectFallback", hours=hours_left)
+            intro_html = intro_text = t(locale, "emails.reviewLastChance.introNoSong", hours=hours_left)
+        content = f"""
+    <p>{intro_html}</p>
+    <p style="text-align: center;">
+        <a href="{html.escape(review_url)}" class="cta-btn">{t(locale, "emails.reviewLastChance.button")}</a>
+    </p>
+    <p>{t(locale, "emails.reviewLastChance.howLong")}</p>
+    <p>{t(locale, "emails.reviewLastChance.refundNote")}</p>
+"""
+        text_content = (
+            f"{intro_text}\n\n{t(locale, 'emails.reviewLastChance.button')}: {review_url}\n\n"
+            f"{t(locale, 'emails.reviewLastChance.howLong')}\n\n{t(locale, 'emails.reviewLastChance.refundNote')}"
+        )
+        return self._log_and_send(
+            to_email=to_email,
+            subject=subject,
+            html_content=self._build_email_html(content, self._CONVERSION_STYLES, locale=locale),
             text_content=text_content,
         )
 

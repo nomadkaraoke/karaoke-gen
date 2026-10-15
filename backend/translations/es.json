@@ -403,6 +403,31 @@
       "ignoreNote": "Si no solicitaste este código, puedes ignorar este correo electrónico de forma segura.",
       "intro": "Aquí tienes tu código para iniciar sesión en la página de cantantes de la noche de karaoke. Escríbelo en la página que estás usando:",
       "subject": "Tu código de Nomad Karaoke: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "¿Prefieres no hacer la revisión de letras por tu cuenta? Elige Made For You y crearé todo el video por ti, con entrega en menos de 24 horas:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Se aplica automáticamente al pagar. No necesitas código.",
+      "offerButton": "Crea tu próxima canción",
+      "offerIntro": "Tu primer video de karaoke, {song}, ya está listo. ¡Espero que suene genial!",
+      "offerIntroNoSong": "Tu primer video de karaoke ya está listo. ¡Espero que suene genial!",
+      "offerLead": "Si tienes otra canción en mente, aquí tienes un detalle de agradecimiento por probar Nomad Karaoke:",
+      "offerLine": "{percent}% de descuento en cualquier paquete de créditos durante las próximas {hours} horas",
+      "offerSubject": "Tu video de karaoke está listo. ¿Qué sigue?",
+      "reminderBody": "Recordatorio rápido: tu {percent}% de descuento en cualquier paquete de créditos termina en aproximadamente {hours} horas. Después de eso, los precios volverán a la normalidad.",
+      "reminderButton": "Usar mi descuento",
+      "reminderNoPressure": "Sin ningún compromiso, y gracias por crear un video con nosotros.",
+      "reminderSubject": "Tu {percent}% de descuento termina en {hours} horas",
+      "whyReceiving": "Recibes este correo porque creaste un video en gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Terminar mi video",
+      "howLong": "La mayoría de las revisiones toman 2 o 3 minutos: comprueba que la letra se vea bien, elige tu instrumental y listo.",
+      "intro": "Tu video de karaoke de {song} está casi listo. Solo necesita una rápida revisión de tu parte y vencerá en unas {hours} horas.",
+      "introNoSong": "Tu video de karaoke está casi listo. Solo necesita una rápida revisión de tu parte y vencerá en unas {hours} horas.",
+      "refundNote": "Si llega a vencer, tu crédito se reembolsará automáticamente.",
+      "subject": "Quedan {hours} horas para terminar tu video de karaoke: {song}",
+      "subjectFallback": "Quedan {hours} horas para terminar tu video de karaoke"
     }
   }
 }

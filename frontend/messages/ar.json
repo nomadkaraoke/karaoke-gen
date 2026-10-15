@@ -403,7 +403,9 @@
     "savePct": "وفر {savings}%",
     "redirecting": "جاري التوجيه للدفع...",
     "continuePayment": "المتابعة للدفع — {price}",
-    "selectPackage": "اختر باقة"
+    "selectPackage": "اختر باقة",
+    "promoBadge": "سيُطبّق خصمك بقيمة {percent}% عند إتمام الدفع",
+    "promoExpires": "ينتهي العرض خلال {time}"
   },
   "feedback": {
     "thankYou": "شكراً لك!",

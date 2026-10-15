@@ -403,6 +403,31 @@
       "ignoreNote": "Ako nisi zatražio ovaj kod, možeš slobodno zanemariti ovaj e-mail.",
       "intro": "Evo tvog koda za prijavu na stranicu pjevača za karaoke večer. Upiši ga na stranicu koju koristiš:",
       "subject": "Tvoj Nomad Karaoke kod: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Ne želiš samostalno pregledavati tekst? Odaberi Made For You i napravit ću cijeli video za tebe, uz isporuku unutar 24 sata:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Automatski primijenjeno pri plaćanju. Kod nije potreban.",
+      "offerButton": "Izradi sljedeću pjesmu",
+      "offerIntro": "Tvoj prvi karaoke video za pjesmu {song} je gotov. Nadam se da zvuči sjajno!",
+      "offerIntroNoSong": "Tvoj prvi karaoke video je gotov. Nadam se da zvuči sjajno!",
+      "offerLead": "Ako imaš još neku pjesmu na umu, evo malog znaka pažnje jer isprobavaš Nomad Karaoke:",
+      "offerLine": "{percent}% popusta na bilo koji paket kredita u sljedećih {hours} sati",
+      "offerSubject": "Tvoj karaoke video je gotov. Što je sljedeće?",
+      "reminderBody": "Kratki podsjetnik: tvojih {percent}% popusta na bilo koji paket kredita istječe za otprilike {hours} sati. Nakon toga cijene se vraćaju na uobičajene.",
+      "reminderButton": "Iskoristi popust",
+      "reminderNoPressure": "Nema nikakve zamjerke u svakom slučaju i hvala ti što stvaraš videozapise s nama.",
+      "reminderSubject": "Tvojih {percent}% popusta istječe za {hours} sati",
+      "whyReceiving": "Ovu poruku primaš jer si izradio video na gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Dovrši moj video",
+      "howLong": "Većina pregleda traje 2 do 3 minute: provjeri izgleda li tekst u redu, odaberi instrumentalnu verziju i to je to.",
+      "intro": "Tvoj karaoke video za pjesmu {song} je skoro gotov. Samo još treba tvoj brzi pregled, a rok istječe za otprilike {hours} sati.",
+      "introNoSong": "Tvoj karaoke video je skoro gotov. Samo još treba tvoj brzi pregled, a rok istječe za otprilike {hours} sati.",
+      "refundNote": "Ako istekne, tvoj kredit automatski se vraća.",
+      "subject": "Preostalo je još {hours} sati za dovršetak tvog karaoke videa: {song}",
+      "subjectFallback": "Preostalo je još {hours} sati za dovršetak tvog karaoke videa"
     }
   }
 }

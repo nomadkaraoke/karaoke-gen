@@ -403,7 +403,9 @@
     "savePct": "חסוך {savings}%",
     "redirecting": "מעביר לתשלום...",
     "continuePayment": "המשך לתשלום — {price}",
-    "selectPackage": "בחר חבילה"
+    "selectPackage": "בחר חבילה",
+    "promoBadge": "הנחת ה-{percent}% שלך תתעדכן בעת התשלום",
+    "promoExpires": "המבצע מסתיים ב-{time}"
   },
   "feedback": {
     "thankYou": "תודה רבה!",

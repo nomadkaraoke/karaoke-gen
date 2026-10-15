@@ -47,6 +47,18 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
     setMounted(true)
   }, [])
 
+  // ?buy=1 (conversion emails' "Make your next song" link) opens the buy dialog
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location?.search ?? '')
+    if (params.get('buy') !== '1') return
+    setShowBuyCreditsDialog(true)
+    params.delete('buy')
+    const query = params.toString()
+    const { pathname, hash } = window.location
+    window.history.replaceState(window.history.state, '', `${pathname}${query ? `?${query}` : ''}${hash ?? ''}`)
+  }, [user])
+
   const handleLogout = async () => {
     await logout()
     onAuthChange?.()

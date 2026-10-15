@@ -403,6 +403,31 @@
       "uninstallIntro": "You just made a song request through the KaraokeHunt app - but that app is retired and no longer supported, and this request was not processed.",
       "uninstallHeadline": "Please uninstall the KaraokeHunt app.",
       "uninstallDetail": "You've already received your one-time free conversion from us, so requests through the old app (like this one for {artist} - {title}) no longer do anything. To make karaoke tracks, sign in at gen.nomadkaraoke.com instead - same account, and it does far more than the old app ever did."
+    },
+    "conversion": {
+      "offerSubject": "Your karaoke video is done. What's next?",
+      "offerIntro": "Your first karaoke video, {song}, is finished. I hope it sounds great!",
+      "offerIntroNoSong": "Your first karaoke video is finished. I hope it sounds great!",
+      "offerLead": "If you have another song in mind, here's a thank-you for trying Nomad Karaoke:",
+      "offerLine": "{percent}% off any credit pack for the next {hours} hours",
+      "offerAutoApplied": "Applied automatically at checkout. No code needed.",
+      "offerButton": "Make your next song",
+      "madeForYouLine": "Prefer not to do the lyrics review yourself? Pick Made For You and I'll make the whole video for you, delivered within 24 hours:",
+      "madeForYouLink": "Made For You",
+      "reminderSubject": "Your {percent}% off ends in {hours} hours",
+      "reminderBody": "Quick reminder: your {percent}% off any credit pack ends in about {hours} hours. After that, prices go back to normal.",
+      "reminderButton": "Use my discount",
+      "reminderNoPressure": "No hard feelings either way, and thanks for making a video with us.",
+      "whyReceiving": "You're getting this because you made a video at gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "subject": "{hours} hours left to finish your karaoke video: {song}",
+      "subjectFallback": "{hours} hours left to finish your karaoke video",
+      "intro": "Your karaoke video for {song} is almost done. It just needs your quick review, and it will expire in about {hours} hours.",
+      "introNoSong": "Your karaoke video is almost done. It just needs your quick review, and it will expire in about {hours} hours.",
+      "button": "Finish my video",
+      "howLong": "Most reviews take 2 or 3 minutes: check that the lyrics look right, pick your instrumental, and you're done.",
+      "refundNote": "If it does expire, your credit is refunded automatically."
     }
   }
 }

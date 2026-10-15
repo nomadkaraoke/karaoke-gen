@@ -403,6 +403,31 @@
       "ignoreNote": "Se você não solicitou este código, pode ignorar este e-mail com segurança.",
       "intro": "Aqui está o seu código para entrar na página do cantor da noite de karaokê. Digite-o na página que você está usando:",
       "subject": "Seu código do Nomad Karaoke: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Prefere não revisar a letra você mesmo? Escolha o Feito Para Você e eu farei o vídeo inteiro para você, entregue em até 24 horas:",
+      "madeForYouLink": "Feito Para Você",
+      "offerAutoApplied": "Aplicado automaticamente no checkout. Não precisa de código.",
+      "offerButton": "Fazer sua próxima música",
+      "offerIntro": "Seu primeiro vídeo de karaokê, {song}, está pronto. Espero que tenha ficado ótimo!",
+      "offerIntroNoSong": "Seu primeiro vídeo de karaokê está pronto. Espero que tenha ficado ótimo!",
+      "offerLead": "Se você tem outra música em mente, aqui está um agradecimento por experimentar o Nomad Karaoke:",
+      "offerLine": "{percent}% de desconto em qualquer pacote de créditos pelas próximas {hours} horas",
+      "offerSubject": "Seu vídeo de karaokê está pronto. Qual é a próxima música?",
+      "reminderBody": "Lembrete rápido: seus {percent}% de desconto em qualquer pacote de créditos terminam em cerca de {hours} horas. Depois disso, os preços voltam ao normal.",
+      "reminderButton": "Usar meu desconto",
+      "reminderNoPressure": "Sem problemas se não quiser, e obrigado por fazer um vídeo com a gente.",
+      "reminderSubject": "Seu desconto de {percent}% termina em {hours} horas",
+      "whyReceiving": "Você está recebendo este e-mail porque fez um vídeo em gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Finalizar meu vídeo",
+      "howLong": "A maioria das revisões leva de 2 a 3 minutos: confira se a letra está certa, escolha seu instrumental e pronto.",
+      "intro": "Seu vídeo de karaokê de {song} está quase pronto. Só precisa de uma rápida revisão sua e irá expirar em cerca de {hours} horas.",
+      "introNoSong": "Seu vídeo de karaokê está quase pronto. Só precisa de uma rápida revisão sua e irá expirar em cerca de {hours} horas.",
+      "refundNote": "Se expirar, seu crédito será reembolsado automaticamente.",
+      "subject": "Restam {hours} horas para finalizar seu vídeo de karaokê: {song}",
+      "subjectFallback": "Restam {hours} horas para finalizar seu vídeo de karaokê"
     }
   }
 }

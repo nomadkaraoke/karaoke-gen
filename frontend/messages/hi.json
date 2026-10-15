@@ -403,7 +403,9 @@
     "savePct": "{savings}% बचाओ",
     "redirecting": "पेमेंट पर रीडायरेक्ट हो रहा है...",
     "continuePayment": "पेमेंट के लिए आगे बढ़ो — {price}",
-    "selectPackage": "एक पैकेज चुनो"
+    "selectPackage": "एक पैकेज चुनो",
+    "promoBadge": "तुम्हारी {percent}% की छूट चेकआउट पर लागू होगी",
+    "promoExpires": "ऑफ़र {time} को समाप्त होगा"
   },
   "feedback": {
     "thankYou": "धन्यवाद!",

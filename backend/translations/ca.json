@@ -403,6 +403,31 @@
       "ignoreNote": "Si no has sol·licitat aquest codi, pots ignorar aquest correu electrònic.",
       "intro": "Aquí tens el teu codi per iniciar sessió a la pàgina de cantants de la nit de karaoke. Introdueix-lo a la pàgina que estàs utilitzant:",
       "subject": "El teu codi de Nomad Karaoke: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Prefereixes no haver de revisar la lletra? Tria «Made For You» i et prepararé tot el vídeo jo mateix, lliurat en 24 hores:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "S'aplica automàticament en finalitzar la compra. No cal cap codi.",
+      "offerButton": "Crea la teva propera cançó",
+      "offerIntro": "El teu primer vídeo de karaoke, {song}, ja està llest. Espero que soni genial!",
+      "offerIntroNoSong": "El teu primer vídeo de karaoke ja està llest. Espero que soni genial!",
+      "offerLead": "Si tens una altra cançó en ment, aquí tens un detall per haver provat Nomad Karaoke:",
+      "offerLine": "{percent}% de descompte en qualsevol paquet de crèdits durant les properes {hours} hores",
+      "offerSubject": "El teu vídeo de karaoke està a punt. I ara què?",
+      "reminderBody": "Un recordatori ràpid: el teu {percent}% de descompte en qualsevol paquet de crèdits acaba d'aquí a unes {hours} hores. Després, els preus tornaran a la normalitat.",
+      "reminderButton": "Aprofita el meu descompte",
+      "reminderNoPressure": "Sense cap compromís, i gràcies per crear un vídeo amb nosaltres.",
+      "reminderSubject": "El teu {percent}% de descompte acaba d'aquí a {hours} hores",
+      "whyReceiving": "Reps aquest correu perquè has creat un vídeo a gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Acaba el meu vídeo",
+      "howLong": "La majoria de revisions duren només 2 o 3 minuts: comprova que la lletra es vegi bé, tria la pista instrumental i llestos.",
+      "intro": "El teu vídeo de karaoke de {song} està gairebé a punt. Només cal que li facis un cop d'ull ràpid, i caducarà d'aquí a unes {hours} hores.",
+      "introNoSong": "El teu vídeo de karaoke està gairebé a punt. Només cal que li facis un cop d'ull ràpid, i caducarà d'aquí a unes {hours} hores.",
+      "refundNote": "Si arriba a caducar, et reemborsarem el crèdit automàticament.",
+      "subject": "Queden {hours} hores per acabar el teu vídeo de karaoke: {song}",
+      "subjectFallback": "Queden {hours} hores per acabar el teu vídeo de karaoke"
     }
   }
 }

@@ -403,7 +403,9 @@
     "savePct": "Economisești {savings}%",
     "redirecting": "Te redirecționăm către plată...",
     "continuePayment": "Continuă la plată — {price}",
-    "selectPackage": "Selectează un pachet"
+    "selectPackage": "Selectează un pachet",
+    "promoBadge": "Reducerea ta de {percent}% se aplică la finalizarea comenzii",
+    "promoExpires": "Oferta expiră la {time}"
   },
   "feedback": {
     "thankYou": "Mulțumim!",
