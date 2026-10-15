@@ -18,6 +18,13 @@ tunnel_config_nomad_hf2 = cloudflare.ZeroTrustTunnelCloudflaredConfig("tunnel-co
     config={
         "ingresses": [
             {
+                # fiverrbot delivery approval page (aiohttp in the fiverrbot container);
+                # same Access app as the console. Must precede the catch-all host rule.
+                "hostname": "fiverrbot.nomadkaraoke.com",
+                "path": "^/approve",
+                "service": "http://fiverrbot:8088",
+            },
+            {
                 "hostname": "fiverrbot.nomadkaraoke.com",
                 "service": "http://fiverrbot:6080",
             },
