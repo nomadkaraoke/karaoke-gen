@@ -195,3 +195,115 @@ def test_omitted_screens_are_not_rendered():
     assert _img(result.karaoke_frame).size == (1280, 720)
     urls = result.as_data_urls()
     assert urls["title_card"] is None and urls["end_screen"] is None
+
+
+# --- CD+G previews ----------------------------------------------------------------
+
+CDG_YELLOW, CDG_BLUE, CDG_WHITE = (255, 255, 0), (0, 102, 255), (255, 255, 255)
+
+
+def _cdg_section(**overrides):
+    cdg = {
+        "title_color": "#ffff00", "artist_color": "#ffff00", "background_color": "#000000",
+        "border_color": "#000000", "font_path": "Oswald-SemiBold.ttf", "font_size": 18,
+        "stroke_width": 0, "stroke_style": "octagon", "active_fill": "#006CF9", "active_stroke": "#000000",
+        "inactive_fill": "#ffff00", "inactive_stroke": "#000000", "title_screen_background": "card.png",
+        "instrumental_background": "card.png", "instrumental_transition": "wipein",
+        "instrumental_font_color": "#ffff00", "title_screen_transition": "wipein", "row": 4,
+        "line_tile_height": 3, "lines_per_page": 4, "clear_mode": "eager", "sync_offset": 0,
+        "instrumental_gap_threshold": 99999, "instrumental_text": "INSTRUMENTAL",
+        "lead_in_threshold": 99999, "lead_in_symbols": [">"], "lead_in_duration": 30, "lead_in_total": 200,
+        "title_artist_gap": 8, "title_top_padding": 0, "intro_duration_seconds": 5.0,
+        "first_syllable_buffer_seconds": 0.5, "outro_background": "card.png", "outro_transition": "wipein",
+        "outro_text_line1": "$title", "outro_text_line2": "$artist", "outro_line1_color": "#ffff00",
+        "outro_line2_color": "#ffff00", "outro_line1_line2_gap": 10,
+        "title_separator_text": "MADE FAMOUS BY", "title_separator_color": "#ffffff",
+    }
+    cdg.update(overrides)
+    return cdg
+
+
+class _CdgAssets:
+    """Storage whose theme holds one 300x216 black CD+G card (other assets absent)."""
+
+    def __init__(self, tmp_path):
+        card = tmp_path / "card.png"
+        Image.new("RGB", (300, 216), (0, 0, 0)).save(card)
+        self._card = str(card)
+        outer = self
+
+        class _Blob:
+            generation = 1
+
+            def download_to_filename(self, path):
+                shutil.copy(outer._card, path)
+
+        class _Bucket:
+            def get_blob(self, path):
+                return _Blob() if path.endswith("/card.png") else None
+
+        self.bucket = _Bucket()
+
+
+@pytest.fixture
+def cdg_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(tps, "ASSET_CACHE_ROOT", str(tmp_path / "assets"))
+    tps._CACHE.clear()
+    return _CdgAssets(tmp_path)
+
+
+def _colours(img):
+    return {rgb for n, rgb in img.getcolors(300 * 216 * 9) if n > 40}
+
+
+def test_cdg_previews_only_when_requested(cdg_cache):
+    theme = _theme()
+    theme["cdg"] = _cdg_section()
+    result = tps.render_theme_preview("t1", theme, storage=cdg_cache)
+    assert result.cdg_title_card is None and result.cdg_lyrics is None
+
+
+def test_cdg_up_card_and_lyrics_page_render_from_the_real_cdg(cdg_cache):
+    theme = _theme()
+    theme["cdg"] = _cdg_section()
+    result = tps.render_theme_preview(
+        "t1", theme, artist="Lady Gaga", title="Abracadabra", storage=cdg_cache, include_cdg=True
+    )
+    card, lyrics = _img(result.cdg_title_card), _img(result.cdg_lyrics)
+    assert card.size == lyrics.size == (900, 648)  # 300x216 at 3x, hard pixels
+    assert {CDG_YELLOW, CDG_WHITE} <= _colours(card)  # title/artist + "MADE FAMOUS BY"
+    assert {CDG_YELLOW, CDG_BLUE} <= _colours(lyrics)  # part-sung first line
+    urls = result.as_data_urls()
+    assert urls["cdg_title_card"].startswith("data:image/png;base64,")
+
+
+def test_cdg_colour_changes_show_in_the_preview(cdg_cache):
+    theme = _theme()
+    theme["cdg"] = _cdg_section(active_fill="#ff0000")
+    lyrics = _img(tps.render_theme_preview("t1", theme, storage=cdg_cache, include_cdg=True).cdg_lyrics)
+    assert (255, 0, 0) in _colours(lyrics) and CDG_BLUE not in _colours(lyrics)
+
+
+def test_resolve_assets_keeps_a_distinct_cdg_font_and_titles_use_the_main_font(cdg_cache):
+    theme = _theme()
+    theme["cdg"] = _cdg_section()
+    styles = tps.resolve_assets(theme, "t1", cdg_cache, include_cdg=True)
+    assert styles["cdg"]["font_path"].endswith("Oswald-SemiBold.ttf")
+    assert styles["cdg"]["title_font_path"].endswith("AvenirNext-Bold.ttf")
+    assert styles["cdg"]["title_screen_background"].endswith("card.png")
+
+
+def test_missing_cdg_background_is_a_preview_error(cdg_cache):
+    theme = _theme()
+    theme["cdg"] = _cdg_section(title_screen_background="missing.png")
+    with pytest.raises(tps.ThemePreviewError, match="missing.png"):
+        tps.render_theme_preview("t1", theme, storage=cdg_cache, include_cdg=True)
+    # ... but the other previews don't need CD+G assets
+    tps.render_theme_preview("t1", theme, storage=cdg_cache)
+
+
+def test_pick_lyrics_frame_falls_back_to_the_busiest_frame():
+    blank = Image.new("RGB", (300, 216), (0, 0, 0))
+    busy = blank.copy()
+    busy.paste((255, 255, 0), (10, 10, 200, 40))
+    assert tps._pick_lyrics_frame([blank, busy, blank], {"active_fill": "#006CF9", "inactive_fill": "#ffff00"}) is busy

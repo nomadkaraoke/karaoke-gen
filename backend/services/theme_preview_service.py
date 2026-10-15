@@ -14,9 +14,15 @@ uses, fed the draft ``style_params`` exactly the way a render job would see them
   filter + background handling as ``lyrics_transcriber.output.video.VideoGenerator``,
   at a moment when the second line is part-way sung (sung = primary colour).
 
+- **CD+G** (on request): the real ``CDGGenerator`` composes a short CDG from the
+  theme's ``cdg`` section and sample lyrics; ``cdg_decoder`` renders the up card and a
+  lyrics page from the packets (300x216, shown upscaled with hard pixels).
+
 Theme assets are resolved like ``style_loader.update_asset_paths``: background images
 per section, and the single ``font`` asset (``intro.font``) applied to
-intro.font / karaoke.font_path / end.font / cdg.font_path.
+intro.font / karaoke.font_path / end.font / cdg.font_path (+ cdg.title_font_path) —
+except a distinct CDG lyrics font (``cdg.font_path``), which the render pipeline ships
+as its own ``cdg_font`` asset.
 """
 
 import base64
@@ -93,13 +99,19 @@ class PreviewImages:
     title_card: Optional[bytes]
     karaoke_frame: bytes
     end_screen: Optional[bytes] = None
+    # PNGs (CD+G frames, upscaled with hard pixels). Only rendered on request.
+    cdg_title_card: Optional[bytes] = None
+    cdg_lyrics: Optional[bytes] = None
 
     def as_data_urls(self) -> Dict[str, Optional[str]]:
         enc = lambda b: "data:image/jpeg;base64," + base64.b64encode(b).decode() if b else None  # noqa: E731
+        png = lambda b: "data:image/png;base64," + base64.b64encode(b).decode() if b else None  # noqa: E731
         return {
             "title_card": enc(self.title_card),
             "karaoke_frame": enc(self.karaoke_frame),
             "end_screen": enc(self.end_screen),
+            "cdg_title_card": png(self.cdg_title_card),
+            "cdg_lyrics": png(self.cdg_lyrics),
         }
 
 
@@ -108,6 +120,9 @@ class PreviewImages:
 # ---------------------------------------------------------------------------
 
 _BG_FIELDS = (("intro", "background_image"), ("karaoke", "background_image"), ("end", "background_image"))
+CDG_IMAGE_FIELDS = (
+    ("cdg", "title_screen_background"), ("cdg", "outro_background"), ("cdg", "instrumental_background"),
+)
 _FONT_TARGETS = (("intro", "font"), ("karaoke", "font_path"), ("end", "font"), ("cdg", "font_path"))
 
 _download_lock = threading.Lock()
@@ -172,8 +187,16 @@ def _local_theme_asset(storage: StorageService, theme_id: str, basename: str) ->
     return local
 
 
+def _resolve_font(storage: StorageService, theme_id: str, font: str) -> Optional[str]:
+    base = os.path.basename(font)
+    local = _local_theme_asset(storage, theme_id, base)
+    if not local and base in bundled_fonts():
+        local = os.path.join(BUNDLED_FONTS_DIR, base)
+    return local
+
+
 def resolve_assets(
-    style_params: Dict, theme_id: str, storage: Optional[StorageService] = None
+    style_params: Dict, theme_id: str, storage: Optional[StorageService] = None, *, include_cdg: bool = False
 ) -> Dict:
     """Return a deep copy of style_params with asset basenames replaced by local paths.
 
@@ -193,17 +216,33 @@ def resolve_assets(
             raise ThemePreviewError(f"Background image '{value}' ({section}) was not found in the theme's assets.")
         styles[section][field] = local
 
+    if include_cdg and isinstance(styles.get("cdg"), dict):
+        for section, field in CDG_IMAGE_FIELDS:
+            value = styles["cdg"].get(field)
+            if not value:
+                continue
+            local = _local_theme_asset(storage, theme_id, os.path.basename(value))
+            if not local:
+                raise ThemePreviewError(f"CD+G image '{value}' was not found in the theme's assets.")
+            styles["cdg"][field] = local
+
+    # A distinct CDG lyrics font travels as its own "cdg_font" asset in real renders.
+    cdg_font = (styles.get("cdg") or {}).get("font_path") if isinstance(styles.get("cdg"), dict) else None
     font = (styles.get("intro") or {}).get("font")
     if font:
-        base = os.path.basename(font)
-        local = _local_theme_asset(storage, theme_id, base)
-        if not local and base in bundled_fonts():
-            local = os.path.join(BUNDLED_FONTS_DIR, base)
+        local = _resolve_font(storage, theme_id, font)
         if not local:
             raise ThemePreviewError(f"Font '{font}' was not found in the theme's assets.")
         for section, field in _FONT_TARGETS:
             if isinstance(styles.get(section), dict):
                 styles[section][field] = local
+        if isinstance(styles.get("cdg"), dict):
+            styles["cdg"]["title_font_path"] = local
+            if include_cdg and cdg_font and os.path.basename(cdg_font) != os.path.basename(font):
+                cdg_local = _resolve_font(storage, theme_id, cdg_font)
+                if not cdg_local:
+                    raise ThemePreviewError(f"CD+G font '{cdg_font}' was not found in the theme's assets.")
+                styles["cdg"]["font_path"] = cdg_local
         # libass selects by family name — same value save_tenant_theme persists.
         if isinstance(styles.get("karaoke"), dict):
             try:
@@ -412,6 +451,109 @@ def render_karaoke_frame(
     return _to_jpeg(out_png)
 
 
+CDG_COLOR_LIMIT = 300 * 216
+CDG_PREVIEW_SCALE = 3  # 300x216 -> 900x648, nearest-neighbour (keeps the pixel look)
+CDG_TIMEOUT_S = 60
+
+
+def _cdg_png(frame: Image.Image) -> bytes:
+    big = frame.resize((frame.width * CDG_PREVIEW_SCALE, frame.height * CDG_PREVIEW_SCALE), Image.NEAREST)
+    buf = io.BytesIO()
+    big.save(buf, "PNG", optimize=True)
+    return buf.getvalue()
+
+
+def _lrc_timestamp(seconds: float) -> str:
+    minutes, secs = divmod(seconds, 60)
+    return f"[{int(minutes):02d}:{secs:06.3f}]"
+
+
+def _pick_lyrics_frame(frames: List[Image.Image], cdg_styles: Dict) -> Image.Image:
+    """The first frame showing both sung and unsung lyrics (else the busiest one)."""
+    from karaoke_gen.lyrics_transcriber.output.cdg_decoder import cdg_color
+
+    try:
+        sung = cdg_color(cdg_styles.get("active_fill") or "#000000")
+        unsung = cdg_color(cdg_styles.get("inactive_fill") or "#000000")
+    except (ValueError, TypeError):
+        sung = unsung = None
+    best, best_score = frames[-1], -1
+    for frame in frames:
+        counts = {rgb: n for n, rgb in (frame.getcolors(CDG_COLOR_LIMIT) or [])}
+        if sung and unsung and sung != unsung:
+            s, u = counts.get(sung, 0), counts.get(unsung, 0)
+            if s > 150 and u > 150:
+                return frame
+        background = _dominant(counts)
+        lit = sum(n for rgb, n in counts.items() if rgb != background)
+        if lit > best_score:
+            best, best_score = frame, lit
+    return best
+
+
+def _dominant(counts: Dict) -> tuple:
+    return max(counts, key=counts.get) if counts else (0, 0, 0)
+
+
+def render_cdg_previews(
+    styles: Dict, artist: str, title: str, lines: List[str], workdir: str
+) -> Tuple[bytes, bytes]:
+    """(up card, lyrics page) PNGs from a real CDG composed with the theme's cdg styles."""
+    from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
+    from karaoke_gen.lyrics_transcriber.output.cdg_decoder import decode_cdg_frames
+
+    cdg_styles = dict(styles.get("cdg") or {})
+    if not cdg_styles.get("font_path"):
+        raise ThemePreviewError("CD+G styles need a font.")
+
+    intro = float(cdg_styles.get("intro_duration_seconds") or 5.0)
+    buffer = float(cdg_styles.get("first_syllable_buffer_seconds") or 0.0)
+    start = intro + buffer + 1.0  # first sung syllable, after the up card
+    line_gap = 2.0
+
+    lrc_lines = []
+    for i, line in enumerate(lines):
+        t = start + i * line_gap
+        words = line.upper().split()
+        step = (line_gap * 0.8) / max(len(words), 1)
+        for j, word in enumerate(words):
+            prefix = "/" if j == 0 else ""
+            lrc_lines.append(f"{_lrc_timestamp(t + j * step)}1:{prefix}{word} ")
+    lrc = os.path.join(workdir, "preview.lrc")
+    with open(lrc, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lrc_lines) + "\n")
+
+    audio = os.path.join(workdir, "silence.mp3")
+    duration = start + len(lines) * line_gap + 2.0
+    result = subprocess.run(
+        ["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+         "-t", f"{duration:.1f}", "-q:a", "9", audio],
+        capture_output=True, text=True, timeout=FFMPEG_TIMEOUT_S,
+    )
+    if result.returncode != 0:
+        raise ThemePreviewError(f"CD+G preview audio failed: {result.stderr.strip()[:200]}")
+
+    out_dir = os.path.join(workdir, "cdg")
+    os.makedirs(out_dir, exist_ok=True)
+    try:
+        cdg_file, _mp3, _zip = CDGGenerator(output_dir=out_dir, logger=logger).generate_cdg_from_lrc(
+            lrc, audio, title, artist, cdg_styles
+        )
+    except Exception as exc:
+        raise ThemePreviewError(f"CD+G preview failed: {exc}") from exc
+
+    with open(cdg_file, "rb") as fh:
+        data = fh.read()
+    # The up card is fully drawn well before the intro ends. The lyrics page is the
+    # frame part-way through the first line (sung + unsung colours both visible);
+    # the composer offsets lyrics by the intro and lead-in, so search for it.
+    candidates = [start + intro + i * 0.25 for i in range(int(line_gap * 2 * 4))]
+    frames = decode_cdg_frames(data, [max(intro - 0.5, 1.0)] + candidates)
+    title_card, lyric_frames = frames[0], frames[1:]
+    lyrics = _pick_lyrics_frame(lyric_frames, cdg_styles)
+    return _cdg_png(title_card), _cdg_png(lyrics)
+
+
 # ---------------------------------------------------------------------------
 # Public entry point (+ small cache for identical drafts)
 # ---------------------------------------------------------------------------
@@ -429,10 +571,11 @@ def render_theme_preview(
     title: str = "Song Title",
     lyrics: Optional[List[str]] = None,
     storage: Optional[StorageService] = None,
+    include_cdg: bool = False,
 ) -> PreviewImages:
     lines = [ln.strip() for ln in (lyrics or DEFAULT_SAMPLE_LYRICS) if ln and ln.strip()][:4] or DEFAULT_SAMPLE_LYRICS
     key = hashlib.sha256(
-        repr((theme_id, sorted_repr(style_params), artist, title, lines)).encode()
+        repr((theme_id, sorted_repr(style_params), artist, title, lines, include_cdg)).encode()
     ).hexdigest()
     with _cache_lock:
         if key in _CACHE:
@@ -441,13 +584,15 @@ def render_theme_preview(
 
     from karaoke_gen.style_loader import screen_enabled
 
-    styles = resolve_assets(style_params, theme_id, storage)
+    styles = resolve_assets(style_params, theme_id, storage, include_cdg=include_cdg)
     with tempfile.TemporaryDirectory(prefix="theme-preview-") as workdir:
         result = PreviewImages(
             title_card=render_title_card(styles, artist, title, workdir) if screen_enabled(styles, "intro") else None,
             karaoke_frame=render_karaoke_frame(styles, lines, workdir),
             end_screen=render_end_screen(styles, artist, title, workdir) if screen_enabled(styles, "end") else None,
         )
+        if include_cdg:
+            result.cdg_title_card, result.cdg_lyrics = render_cdg_previews(styles, artist, title, lines, workdir)
     with _cache_lock:
         _CACHE[key] = result
         while len(_CACHE) > _CACHE_MAX:

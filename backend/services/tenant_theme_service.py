@@ -87,6 +87,15 @@ NUMERIC_BOUNDS = {
     ("karaoke", "max_line_length"): (10, 80),
     ("karaoke", "outline"): (0, 20),
     ("karaoke", "shadow"): (0, 20),
+    ("cdg", "font_size"): (8, 40),
+    ("cdg", "stroke_width"): (0, 4),
+    ("cdg", "title_font_size"): (8, 60),
+    ("cdg", "artist_font_size"): (8, 60),
+    ("cdg", "title_separator_font_size"): (6, 40),
+    ("cdg", "title_block_top"): (0, 180),
+    ("cdg", "title_max_height"): (30, 216),
+    ("cdg", "title_artist_gap"): (0, 80),
+    ("cdg", "outro_line1_line2_gap"): (0, 80),
     ("intro", "video_duration"): (1, 30),
     ("end", "video_duration"): (1, 30),
 }
@@ -98,6 +107,21 @@ HEX_COLOR_FIELDS = (
     ("end", "background_color"), ("end", "title_color"), ("end", "artist_color"), ("end", "extra_text_color"),
     ("karaoke", "background_color"),
 )
+# CD+G colours are plain hex; the screen is 300x216 with a 16-colour palette.
+CDG_HEX_COLOR_FIELDS = tuple(
+    ("cdg", f) for f in (
+        "background_color", "border_color", "title_color", "artist_color", "title_separator_color",
+        "active_fill", "active_stroke", "inactive_fill", "inactive_stroke", "instrumental_font_color",
+        "outro_line1_color", "outro_line2_color",
+    )
+)
+CDG_TEXT_FIELDS = {  # field: max length (rendered on the 300px-wide CDG screen)
+    "title_separator_text": 40,
+    "instrumental_text": 40,
+    "outro_text_line1": 80,
+    "outro_text_line2": 80,
+}
+CDG_IMAGE_SIZE = (300, 216)
 RGBA_COLOR_FIELDS = (
     ("karaoke", "primary_color"), ("karaoke", "secondary_color"),
     ("karaoke", "outline_color"), ("karaoke", "back_color"),
@@ -218,7 +242,7 @@ def sanitize_style_params(
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not lo <= value <= hi:
                 raise TenantValidationError(f"{section}.{field} must be a number between {lo} and {hi}.")
 
-    for section, field in HEX_COLOR_FIELDS:
+    for section, field in HEX_COLOR_FIELDS + CDG_HEX_COLOR_FIELDS:
         value = styles[section].get(field)
         if value is not None and not _HEX.match(str(value)):
             raise TenantValidationError(f"{section}.{field} must be a colour like #ff5bb8.")
@@ -230,7 +254,52 @@ def sanitize_style_params(
     for section, field in REGION_FIELDS:
         _check_region(styles[section].get(field), f"{section}.{field}")
 
+    for field, max_len in CDG_TEXT_FIELDS.items():
+        value = styles["cdg"].get(field)
+        if value is None:
+            continue
+        if not isinstance(value, str) or len(value) > max_len or any(c in value for c in "\r\n"):
+            raise TenantValidationError(f"cdg.{field} must be a single line of up to {max_len} characters.")
+
     return styles, font
+
+
+def check_cdg_image_sizes(styles: Dict, theme_id: str, storage: StorageService) -> None:
+    """CD+G backgrounds aren't resized by the CDG renderer: they must be 300x216."""
+    from PIL import Image
+
+    from backend.services.theme_preview_service import CDG_IMAGE_FIELDS
+
+    for section, field in CDG_IMAGE_FIELDS:
+        name = (styles.get(section) or {}).get(field)
+        if not name:
+            continue
+        try:
+            data = storage.download_bytes(f"{THEMES_PREFIX}/{theme_id}/assets/{name}")
+            with Image.open(io.BytesIO(data)) as img:
+                size = img.size
+        except Exception as exc:
+            raise TenantValidationError(f"CD+G image '{name}' couldn't be read.") from exc
+        if size != CDG_IMAGE_SIZE:
+            raise TenantValidationError(
+                f"CD+G image '{name}' is {size[0]}x{size[1]}; CD+G screens must be exactly 300x216 pixels. "
+                "Upload it from the CD+G tab and it will be fitted automatically."
+            )
+
+
+def fit_cdg_image(data: bytes) -> bytes:
+    """Fit an uploaded image to the 300x216 CD+G screen (letterboxed on black) as PNG."""
+    from PIL import Image, ImageOps
+
+    with Image.open(io.BytesIO(data)) as img:
+        img = img.convert("RGB")
+        if img.size == CDG_IMAGE_SIZE:
+            fitted = img
+        else:
+            fitted = ImageOps.pad(img, CDG_IMAGE_SIZE, method=Image.LANCZOS, color=(0, 0, 0))
+        buf = io.BytesIO()
+        fitted.save(buf, "PNG")
+        return buf.getvalue()
 
 
 def _font_local_path(storage: StorageService, theme_id: str, font: str, workdir: str) -> str:
@@ -275,9 +344,12 @@ def get_theme_for_editor(config, storage: Optional[StorageService] = None) -> Di
 
 
 def store_uploaded_asset(
-    config, filename: str, data: bytes, storage: Optional[StorageService] = None
+    config, filename: str, data: bytes, storage: Optional[StorageService] = None, *, purpose: Optional[str] = None
 ) -> str:
-    """Store an uploaded image/font content-addressed; return its basename."""
+    """Store an uploaded image/font content-addressed; return its basename.
+
+    ``purpose="cdg"``: an image is fitted to the 300x216 CD+G screen and stored as PNG.
+    """
     storage = storage or StorageService()
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in UPLOAD_EXTENSIONS:
@@ -303,6 +375,10 @@ def store_uploaded_asset(
             raise TenantValidationError(
                 f"That image is too large ({width}x{height}). Use up to {MAX_IMAGE_SIDE}x{MAX_IMAGE_SIDE} pixels."
             )
+        if purpose == "cdg":
+            data = fit_cdg_image(data)
+            ext = "png"
+            filename = f"{filename.rsplit('.', 1)[0]}-cdg.png"
 
     stem = _safe_asset_name(filename).rsplit(".", 1)[0][:60] or "asset"
     digest = hashlib.sha256(data).hexdigest()[:8]
@@ -322,6 +398,7 @@ def prepare_preview_styles(config, style_params: object, storage: Optional[Stora
     storage = storage or StorageService()
     theme_id = _editable_theme_id(config)
     styles, _font = sanitize_style_params(style_params, available_assets=_theme_assets(storage, theme_id))
+    check_cdg_image_sizes(styles, theme_id, storage)
     return styles
 
 
@@ -330,6 +407,7 @@ def save_tenant_theme(config, style_params: object, storage: Optional[StorageSer
     storage = storage or StorageService()
     theme_id = _editable_theme_id(config)
     styles, font = sanitize_style_params(style_params, available_assets=_theme_assets(storage, theme_id))
+    check_cdg_image_sizes(styles, theme_id, storage)
 
     assets: Dict[str, Tuple[bytes, str]] = {}
     with tempfile.TemporaryDirectory() as workdir:
