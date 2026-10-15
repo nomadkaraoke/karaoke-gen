@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Se randează previzualizarea...",
     "translatedLyricsToggle": "Adaugă versuri traduse",
     "translatedLyricsToggleHint": "Afișează o traducere generată de AI a fiecărui rând, cu caractere mai mici, sub versuri. Excelent pentru a învăța o limbă străină.",
-    "translatedLyricsPreviewRetry": "Încearcă din nou"
+    "translatedLyricsPreviewRetry": "Încearcă din nou",
+    "trackCode": "Cod piesă (opțional)",
+    "trackCodeHint": "Propriul tău cod de catalog. Va fi adăugat la începutul fiecărui nume de fișier generat, de ex. „VS6588 - Artist - Titlu”.",
+    "trackCodeInvalid": "Folosește doar litere și cifre (le poți separa cu - sau _), maximum 24 de caractere.",
+    "trackCodePlaceholder": "de ex. VS6588"
   },
   "jobStatus": {
     "settingUp": "Se configurează",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Se încarcă {count} piese",
     "uploadModalTracksDone": "{done} din {count} piese trimise",
-    "uploadModalTracksFailed": "{count} au eșuat, poți reîncerca mai târziu"
+    "uploadModalTracksFailed": "{count} au eșuat, poți reîncerca mai târziu",
+    "trackCode": "Cod piesă (opțional)",
+    "trackCodeHint": "Propriul tău cod de catalog. Va fi adăugat la începutul fiecărui nume de fișier generat, de ex. „VS6588 - Artist - Titlu”.",
+    "trackCodeInvalid": "Folosește doar litere și cifre (le poți separa cu - sau _), maximum 24 de caractere.",
+    "trackCodePlaceholder": "de ex. VS6588"
   },
   "requests": {
     "convertBody": "Folosește chiar tu Generator și creează-ți videoclipul de karaoke acum — primul este din partea noastră.",

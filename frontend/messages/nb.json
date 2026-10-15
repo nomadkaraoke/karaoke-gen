@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Genererer forhåndsvisning...",
     "translatedLyricsToggle": "Legg til oversatt sangtekst",
     "translatedLyricsToggleHint": "Vis en AI-oversettelse av hver linje med mindre skrift under sangteksten. Flott for å lære et språk.",
-    "translatedLyricsPreviewRetry": "Prøv igjen"
+    "translatedLyricsPreviewRetry": "Prøv igjen",
+    "trackCode": "Sporkode (valgfritt)",
+    "trackCodeHint": "Din egen katalogkode. Den legges til i starten av hvert filnavn som lages, f.eks. «VS6588 - Artist - Tittel».",
+    "trackCodeInvalid": "Bruk kun bokstaver og tall (du kan binde dem sammen med - eller _), opptil 24 tegn.",
+    "trackCodePlaceholder": "f.eks. VS6588"
   },
   "jobStatus": {
     "settingUp": "Setter opp",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Laster opp {count} spor",
     "uploadModalTracksDone": "{done} av {count} spor sendt inn",
-    "uploadModalTracksFailed": "{count} feilet, du kan prøve igjen etterpå"
+    "uploadModalTracksFailed": "{count} feilet, du kan prøve igjen etterpå",
+    "trackCode": "Sporkode (valgfritt)",
+    "trackCodeHint": "Din egen katalogkode. Den legges til i starten av hvert filnavn som lages, f.eks. «VS6588 - Artist - Tittel».",
+    "trackCodeInvalid": "Bruk kun bokstaver og tall (du kan binde dem sammen med - eller _), opptil 24 tegn.",
+    "trackCodePlaceholder": "f.eks. VS6588"
   },
   "requests": {
     "convertBody": "Bruk Generator selv og lag karaokevideoen din akkurat nå — den første spanderer vi.",

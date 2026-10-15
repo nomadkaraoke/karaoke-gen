@@ -200,3 +200,74 @@ class TestLLMPass:
         assert len(result["rows"]) == 5
         leftover = {u["filename"] for u in result["unpaired"]}
         assert "weird_unparseable_name.mp3" in leftover
+
+
+class TestTrackCodes:
+    """Leading tenant catalogue codes (Vocal Star "VS6588 …") become row track codes."""
+
+    def test_leading_code_is_split_off_and_returned(self):
+        result = analyze_filenames([
+            "VS6588 Gerry and the Pacemakers - Ferry Cross The Mersey Guide.mp3",
+            "VS6588 Gerry and the Pacemakers - Ferry Cross The Mersey Instrumental.mp3",
+        ]).to_dict()
+        assert len(result["rows"]) == 1
+        row = result["rows"][0]
+        assert row["track_code"] == "VS6588"
+        assert row["artist"] == "Gerry and the Pacemakers"
+        assert row["title"] == "Ferry Cross The Mersey"
+
+    def test_code_with_dash_separator(self):
+        result = analyze_filenames([
+            "VS6589 - Adele - Hello (Guide).mp3",
+            "VS6589 - Adele - Hello (Instrumental).mp3",
+        ]).to_dict()
+        row = result["rows"][0]
+        assert (row["track_code"], row["artist"], row["title"]) == ("VS6589", "Adele", "Hello")
+
+    def test_band_names_with_digits_are_not_codes(self):
+        result = analyze_filenames([
+            "UB40 - Red Red Wine Guide.mp3",
+            "UB40 - Red Red Wine Instrumental.mp3",
+        ]).to_dict()
+        row = result["rows"][0]
+        assert row["track_code"] is None
+        assert row["artist"] == "UB40"
+
+    def test_s_code_batches_have_no_track_code(self):
+        rows = analyze_filenames(BULK_BATCH_1).to_dict()["rows"]
+        assert all(r["track_code"] is None for r in rows)
+
+    def test_llm_rows_take_code_from_filename_and_clean_artist(self):
+        files = ["VS7001 Some Artist - Odd Name mix.mp3", "VS7001 Some Artist - Odd Name backing track.mp3"]
+
+        def fake_generate(_system, _user):
+            return {"rows": [{
+                "artist": "VS7001 Some Artist", "title": "Odd Name",
+                "mixed_filename": files[0], "instrumental_filename": files[1],
+            }]}
+
+        row = analyze_filenames(files, generate=fake_generate).to_dict()["rows"][0]
+        assert row["track_code"] == "VS7001"
+        assert row["artist"] == "Some Artist"
+
+    def test_same_code_on_different_songs_is_not_cross_paired(self):
+        result = analyze_filenames([
+            "VS6600 Adele - Hello Guide.mp3",
+            "VS6600 Oasis - Wonderwall Instrumental.mp3",
+        ]).to_dict()
+        assert result["rows"] == []
+        assert {u["filename"] for u in result["unpaired"]} == {
+            "VS6600 Adele - Hello Guide.mp3",
+            "VS6600 Oasis - Wonderwall Instrumental.mp3",
+        }
+
+    def test_llm_pair_with_conflicting_codes_is_rejected(self):
+        files = ["VS6588 Some Artist - Odd Name mix.mp3", "VS6589 Some Artist - Odd Name backing track.mp3"]
+
+        def fake_generate(_system, _user):
+            return {"rows": [{"artist": "Some Artist", "title": "Odd Name",
+                              "mixed_filename": files[0], "instrumental_filename": files[1]}]}
+
+        result = analyze_filenames(files, generate=fake_generate).to_dict()
+        assert result["rows"] == []
+        assert {u["filename"] for u in result["unpaired"]} == set(files)

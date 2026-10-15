@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Merender pratinjau...",
     "translatedLyricsToggle": "Tambahkan lirik terjemahan",
     "translatedLyricsToggleHint": "Tampilkan terjemahan AI untuk setiap baris dengan teks yang lebih kecil di bawah lirik. Sangat cocok untuk belajar bahasa.",
-    "translatedLyricsPreviewRetry": "Coba lagi"
+    "translatedLyricsPreviewRetry": "Coba lagi",
+    "trackCode": "Kode trek (opsional)",
+    "trackCodeHint": "Kode katalog Anda sendiri. Kode ini diletakkan di awal setiap nama file output, mis. \"VS6588 - Artis - Judul\".",
+    "trackCodeInvalid": "Gunakan huruf dan angka saja (dapat dihubungkan dengan - atau _), maksimal 24 karakter.",
+    "trackCodePlaceholder": "mis. VS6588"
   },
   "jobStatus": {
     "settingUp": "Menyiapkan",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Mengunggah {count} trek",
     "uploadModalTracksDone": "{done} dari {count} trek terkirim",
-    "uploadModalTracksFailed": "{count} gagal, Anda bisa mencoba lagi setelahnya"
+    "uploadModalTracksFailed": "{count} gagal, Anda bisa mencoba lagi setelahnya",
+    "trackCode": "Kode trek (opsional)",
+    "trackCodeHint": "Kode katalog Anda sendiri. Kode ini diletakkan di awal setiap nama file output, mis. \"VS6588 - Artis - Judul\".",
+    "trackCodeInvalid": "Gunakan huruf dan angka saja (dapat dihubungkan dengan - atau _), maksimal 24 karakter.",
+    "trackCodePlaceholder": "mis. VS6588"
   },
   "requests": {
     "convertBody": "Gunakan Generator dan buat sendiri video karaoke Anda sekarang juga — video pertama Anda gratis dari kami.",

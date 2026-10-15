@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Generiranje pretpregleda...",
     "translatedLyricsToggle": "Dodaj prevedeni tekst pjesme",
     "translatedLyricsToggleHint": "Prikaži AI prijevod svakog retka manjim slovima ispod teksta pjesme. Odlično za učenje jezika.",
-    "translatedLyricsPreviewRetry": "Pokušaj ponovno"
+    "translatedLyricsPreviewRetry": "Pokušaj ponovno",
+    "trackCode": "Kod pjesme (neobavezno)",
+    "trackCodeHint": "Tvoj vlastiti kataloški kod. Nalazi se na početku naziva svake izlazne datoteke, npr. \"VS6588 - Izvođač - Naziv pjesme\".",
+    "trackCodeInvalid": "Koristi samo slova i brojeve (možeš ih povezati znakovima - ili _), do najviše 24 znaka.",
+    "trackCodePlaceholder": "npr. VS6588"
   },
   "jobStatus": {
     "settingUp": "Postavljanje",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Učitavanje {count} pjesama",
     "uploadModalTracksDone": "{done} od {count} pjesama poslano",
-    "uploadModalTracksFailed": "{count} nije uspjelo, možeš pokušati ponovno kasnije"
+    "uploadModalTracksFailed": "{count} nije uspjelo, možeš pokušati ponovno kasnije",
+    "trackCode": "Kod pjesme (neobavezno)",
+    "trackCodeHint": "Tvoj vlastiti kataloški kod. Nalazi se na početku naziva svake izlazne datoteke, npr. \"VS6588 - Izvođač - Naziv pjesme\".",
+    "trackCodeInvalid": "Koristi samo slova i brojeve (možeš ih povezati znakovima - ili _), do najviše 24 znaka.",
+    "trackCodePlaceholder": "npr. VS6588"
   },
   "requests": {
     "convertBody": "Upotrijebi Generator i napravi svoj karaoke video odmah — prvi je na naš račun.",

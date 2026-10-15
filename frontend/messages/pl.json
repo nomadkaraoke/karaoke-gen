@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Renderowanie podglądu...",
     "translatedLyricsToggle": "Dodaj przetłumaczony tekst",
     "translatedLyricsToggleHint": "Pokaż tłumaczenie AI każdego wersu mniejszą czcionką pod tekstem utworu. Świetne do nauki języka.",
-    "translatedLyricsPreviewRetry": "Spróbuj ponownie"
+    "translatedLyricsPreviewRetry": "Spróbuj ponownie",
+    "trackCode": "Kod utworu (opcjonalnie)",
+    "trackCodeHint": "Twój własny kod katalogowy. Znajdzie się na początku nazwy każdego pliku wyjściowego, np. „VS6588 - Wykonawca - Tytuł”.",
+    "trackCodeInvalid": "Używaj tylko liter i cyfr (możesz łączyć je za pomocą - lub _), maksymalnie do 24 znaków.",
+    "trackCodePlaceholder": "np. VS6588"
   },
   "jobStatus": {
     "settingUp": "Konfigurowanie",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Przesyłanie {count} utworów",
     "uploadModalTracksDone": "Przesłano {done} z {count} utworów",
-    "uploadModalTracksFailed": "{count} nie powiodło się, możesz spróbować ponownie później"
+    "uploadModalTracksFailed": "{count} nie powiodło się, możesz spróbować ponownie później",
+    "trackCode": "Kod utworu (opcjonalnie)",
+    "trackCodeHint": "Twój własny kod katalogowy. Znajdzie się na początku nazwy każdego pliku wyjściowego, np. „VS6588 - Wykonawca - Tytuł”.",
+    "trackCodeInvalid": "Używaj tylko liter i cyfr (możesz łączyć je za pomocą - lub _), maksymalnie do 24 znaków.",
+    "trackCodePlaceholder": "np. VS6588"
   },
   "requests": {
     "convertBody": "Użyj Generatora i stwórz swoje wideo karaoke już teraz — pierwsze jest na nasz koszt.",

@@ -15,6 +15,7 @@ import json
 import logging
 import tempfile
 import os
+import re
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Request, Depends
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple, Literal
@@ -69,6 +70,29 @@ def _select_mixed_audio_files(files):
     vocals. Excluding it here ensures the mixed audio is selected as the transcription input.
     """
     return [f for f in files if not Path(f).name.startswith('existing_instrumental')]
+
+
+# A tenant track code is used verbatim as a folder/filename prefix, so it is kept
+# to a short, filesystem-safe token: letters and digits, optionally joined by "-"
+# or "_" (e.g. "VS6588", "VS-6588").
+_TRACK_CODE_RE = re.compile(r"^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$")
+_TRACK_CODE_MAX_LEN = 24
+
+
+def normalize_track_code(raw: Optional[str]) -> Optional[str]:
+    """Return a cleaned tenant track code, None when blank; 400 when unsafe."""
+    code = (raw or "").strip()
+    if not code:
+        return None
+    if len(code) > _TRACK_CODE_MAX_LEN or not _TRACK_CODE_RE.match(code):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Invalid track code '{code[:40]}': use letters and numbers only "
+                f"(optionally joined by - or _), up to {_TRACK_CODE_MAX_LEN} characters, e.g. VS6588"
+            ),
+        )
+    return code.upper()
 
 
 def _apply_tenant_overrides(
@@ -263,6 +287,12 @@ class CreateJobWithUploadUrlsRequest(BaseModel):
     # batch_id (stamped into state_data) so they can be grouped/filtered later.
     batch_id: Optional[str] = Field(None, description="Groups jobs created together in one tenant bulk batch")
     requires_audio_edit: bool = Field(False, description="Pause after upload for user to edit input audio")
+
+    # Tenant-supplied track code (e.g. Vocal Star's "VS6588"). Tenant portals only:
+    # it becomes the job's brand code, so the output folder and every delivered file
+    # are prefixed with the tenant's own catalogue code instead of an allocated
+    # "<PREFIX>-NNNN" number.
+    track_code: Optional[str] = Field(None, description="Tenant's own catalogue code for this track (tenant portals only)")
 
     # Upload mechanism. "signed_put" (default) returns single-shot signed PUT
     # URLs; "resumable" returns GCS resumable session URIs that support chunked
@@ -1291,6 +1321,10 @@ async def create_job_with_upload_urls(
                     detail=f"Invalid file extension '{ext}' for file_type '{file_info.file_type}'. Allowed: {allowed_extensions}"
                 )
 
+        track_code = normalize_track_code(body.track_code)
+        if track_code and not tenant_config:
+            raise HTTPException(status_code=400, detail="Track codes are only supported on tenant portals")
+
         # Apply default distribution settings from environment if not provided
         dist = get_effective_distribution_settings(
             dropbox_path=body.dropbox_path,
@@ -1400,6 +1434,7 @@ async def create_job_with_upload_urls(
             backing_preference=body.backing_preference,
             translation_language=body.translation_language,
             is_private=effective_is_private,
+            keep_brand_code=track_code,
             # Tenant scoping
             tenant_id=tenant_config.id if tenant_config else "",
             # UI language the job was submitted in (admin-only signal)

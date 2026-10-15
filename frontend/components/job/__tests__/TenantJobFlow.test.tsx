@@ -83,4 +83,25 @@ describe("TenantJobFlow", () => {
 
     expect(await screen.findByText(/Network error/)).toBeInTheDocument()
   })
+
+  it("sends an entered track code (normalised) so outputs are prefixed with it", async () => {
+    check.mockResolvedValue({ ok: true })
+    createJob.mockResolvedValue({ status: "success", job_id: "j", message: "ok" })
+    render(<TenantJobFlow onJobCreated={jest.fn()} />)
+    fillForm()
+    fireEvent.change(screen.getByLabelText("Track code (optional)"), { target: { value: " vs6588 " } })
+    fireEvent.click(screen.getByRole("button", { name: /Submit Track/ }))
+
+    await waitFor(() => expect(createJob).toHaveBeenCalled())
+    expect(createJob.mock.calls[0][3]).toEqual({ is_private: true, instrumentalFile: inst, track_code: "VS6588" })
+  })
+
+  it("blocks submit and explains when the track code has unsafe characters", () => {
+    render(<TenantJobFlow onJobCreated={jest.fn()} />)
+    fillForm()
+    fireEvent.change(screen.getByLabelText("Track code (optional)"), { target: { value: "VS 65/88" } })
+
+    expect(screen.getByText(/Use letters and numbers only/)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Submit Track/ })).toBeDisabled()
+  })
 })

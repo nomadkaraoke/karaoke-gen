@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Luodaan esikatselua...",
     "translatedLyricsToggle": "Lisää käännetyt sanoitukset",
     "translatedLyricsToggleHint": "Näytä jokaisen rivin tekoälykäännös pienemmällä tekstillä sanoitusten alla. Erinomainen kielen opetteluun.",
-    "translatedLyricsPreviewRetry": "Yritä uudelleen"
+    "translatedLyricsPreviewRetry": "Yritä uudelleen",
+    "trackCode": "Kappalekoodi (valinnainen)",
+    "trackCodeHint": "Oma luettelokoodisi. Se lisätään jokaisen tulostiedoston nimen alkuun, esim. \"VS6588 - Artisti - Kappale\".",
+    "trackCodeInvalid": "Käytä vain kirjaimia ja numeroita (voit erottaa ne merkeillä - tai _), enintään 24 merkkiä.",
+    "trackCodePlaceholder": "esim. VS6588"
   },
   "jobStatus": {
     "settingUp": "Asetetaan",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Ladataan {count} kappaletta",
     "uploadModalTracksDone": "{done} / {count} kappaletta lähetetty",
-    "uploadModalTracksFailed": "{count} epäonnistui, voit yrittää uudelleen jälkeenpäin"
+    "uploadModalTracksFailed": "{count} epäonnistui, voit yrittää uudelleen jälkeenpäin",
+    "trackCode": "Kappalekoodi (valinnainen)",
+    "trackCodeHint": "Oma luettelokoodisi. Se lisätään jokaisen tulostiedoston nimen alkuun, esim. \"VS6588 - Artisti - Kappale\".",
+    "trackCodeInvalid": "Käytä vain kirjaimia ja numeroita (voit erottaa ne merkeillä - tai _), enintään 24 merkkiä.",
+    "trackCodePlaceholder": "esim. VS6588"
   },
   "requests": {
     "convertBody": "Käytä Generatoria itse ja tee karaokevideosi heti — me tarjoamme ensimmäisen.",

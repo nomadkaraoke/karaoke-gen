@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "प्रीव्यू रेंडर किया जा रहा है...",
     "translatedLyricsToggle": "अनुवादित बोल जोड़ें",
     "translatedLyricsToggleHint": "बोल के नीचे छोटे टेक्स्ट में हर पंक्ति का AI अनुवाद दिखाएं। नई भाषा सीखने के लिए बहुत बढ़िया।",
-    "translatedLyricsPreviewRetry": "फिर से कोशिश करो"
+    "translatedLyricsPreviewRetry": "फिर से कोशिश करो",
+    "trackCode": "ट्रैक कोड (वैकल्पिक)",
+    "trackCodeHint": "तुम्हारा अपना कैटलॉग कोड। यह हर आउटपुट फ़ाइल नाम की शुरुआत में आता है, जैसे \"VS6588 - Artist - Title\"।",
+    "trackCodeInvalid": "केवल अक्षरों और नंबरों का इस्तेमाल करो (तुम इन्हें - या _ से जोड़ सकते हो), 24 वर्णों तक।",
+    "trackCodePlaceholder": "उदा. VS6588"
   },
   "jobStatus": {
     "settingUp": "सेटअप हो रहा है",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "{count} ट्रैक अपलोड हो रहे हैं",
     "uploadModalTracksDone": "{count} में से {done} ट्रैक सबमिट हो गए",
-    "uploadModalTracksFailed": "{count} विफल हो गए, तुम बाद में दोबारा कोशिश कर सकते हो"
+    "uploadModalTracksFailed": "{count} विफल हो गए, तुम बाद में दोबारा कोशिश कर सकते हो",
+    "trackCode": "ट्रैक कोड (वैकल्पिक)",
+    "trackCodeHint": "तुम्हारा अपना कैटलॉग कोड। यह हर आउटपुट फ़ाइल नाम की शुरुआत में आता है, जैसे \"VS6588 - Artist - Title\"।",
+    "trackCodeInvalid": "केवल अक्षरों और नंबरों का इस्तेमाल करो (तुम इन्हें - या _ से जोड़ सकते हो), 24 वर्णों तक।",
+    "trackCodePlaceholder": "उदा. VS6588"
   },
   "requests": {
     "convertBody": "खुद Generator का इस्तेमाल करो और अभी अपना कराओके वीडियो बनाओ — तुम्हारा पहला वीडियो हमारी तरफ से मुफ्त है।",

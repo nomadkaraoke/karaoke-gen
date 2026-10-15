@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Génération de l'aperçu...",
     "translatedLyricsToggle": "Ajouter les paroles traduites",
     "translatedLyricsToggleHint": "Affiche une traduction par IA de chaque ligne en plus petit sous les paroles. Idéal pour apprendre une langue.",
-    "translatedLyricsPreviewRetry": "Réessayer"
+    "translatedLyricsPreviewRetry": "Réessayer",
+    "trackCode": "Code de piste (facultatif)",
+    "trackCodeHint": "Ton propre code catalogue. Il apparaîtra au début du nom de chaque fichier généré, par ex. « VS6588 - Artiste - Titre ».",
+    "trackCodeInvalid": "Utilise uniquement des lettres et des chiffres (séparés éventuellement par - ou _), 24 caractères maximum.",
+    "trackCodePlaceholder": "par ex. VS6588"
   },
   "jobStatus": {
     "settingUp": "Configuration",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} Mo/s",
     "uploadModalTitle": "Téléversement de {count} pistes",
     "uploadModalTracksDone": "{done} sur {count} pistes envoyées",
-    "uploadModalTracksFailed": "{count} ont échoué, tu pourras réessayer ensuite"
+    "uploadModalTracksFailed": "{count} ont échoué, tu pourras réessayer ensuite",
+    "trackCode": "Code de piste (facultatif)",
+    "trackCodeHint": "Ton propre code catalogue. Il apparaîtra au début du nom de chaque fichier généré, par ex. « VS6588 - Artiste - Titre ».",
+    "trackCodeInvalid": "Utilise uniquement des lettres et des chiffres (séparés éventuellement par - ou _), 24 caractères maximum.",
+    "trackCodePlaceholder": "par ex. VS6588"
   },
   "requests": {
     "convertBody": "Utilise le Generator pour créer ta vidéo karaoké toi-même dès maintenant — la première est offerte.",

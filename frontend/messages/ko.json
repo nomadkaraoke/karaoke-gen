@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "미리보기 렌더링 중...",
     "translatedLyricsToggle": "번역 가사 추가",
     "translatedLyricsToggleHint": "가사 아래에 각 줄의 AI 번역을 작은 글씨로 표시합니다. 언어 학습에 아주 좋습니다.",
-    "translatedLyricsPreviewRetry": "다시 시도"
+    "translatedLyricsPreviewRetry": "다시 시도",
+    "trackCode": "트랙 코드 (선택 사항)",
+    "trackCodeHint": "나만의 카탈로그 코드입니다. 모든 출력 파일 이름의 시작 부분에 추가됩니다 (예: \"VS6588 - Artist - Title\").",
+    "trackCodeInvalid": "영문자와 숫자만 사용해 주세요 (- 또는 _로 연결 가능, 최대 24자).",
+    "trackCodePlaceholder": "예: VS6588"
   },
   "jobStatus": {
     "settingUp": "설정 중",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "{count}개 트랙 업로드 중",
     "uploadModalTracksDone": "{count}개 중 {done}개 트랙 제출 완료",
-    "uploadModalTracksFailed": "{count}개 실패, 나중에 다시 시도할 수 있습니다"
+    "uploadModalTracksFailed": "{count}개 실패, 나중에 다시 시도할 수 있습니다",
+    "trackCode": "트랙 코드 (선택 사항)",
+    "trackCodeHint": "나만의 카탈로그 코드입니다. 모든 출력 파일 이름의 시작 부분에 추가됩니다 (예: \"VS6588 - Artist - Title\").",
+    "trackCodeInvalid": "영문자와 숫자만 사용해 주세요 (- 또는 _로 연결 가능, 최대 24자).",
+    "trackCodePlaceholder": "예: VS6588"
   },
   "requests": {
     "convertBody": "직접 Generator를 사용해 지금 바로 가라오케 영상을 만들어 보세요 — 첫 번째는 무료입니다.",

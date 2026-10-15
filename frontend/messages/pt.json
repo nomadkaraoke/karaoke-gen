@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Renderizando prévia...",
     "translatedLyricsToggle": "Adicionar letra traduzida",
     "translatedLyricsToggleHint": "Exibe uma tradução por IA de cada linha em tamanho menor abaixo da letra. Ótimo para aprender um idioma.",
-    "translatedLyricsPreviewRetry": "Tentar novamente"
+    "translatedLyricsPreviewRetry": "Tentar novamente",
+    "trackCode": "Código da faixa (opcional)",
+    "trackCodeHint": "Seu próprio código de catálogo. Ele fica no início do nome de cada arquivo gerado, por ex.: \"VS6588 - Artista - Título\".",
+    "trackCodeInvalid": "Use apenas letras e números (você pode separá-los com - ou _), com até 24 caracteres.",
+    "trackCodePlaceholder": "ex.: VS6588"
   },
   "jobStatus": {
     "settingUp": "Configurando",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Enviando {count} faixas",
     "uploadModalTracksDone": "{done} de {count} faixas enviadas",
-    "uploadModalTracksFailed": "{count} falharam, você pode tentar novamente depois"
+    "uploadModalTracksFailed": "{count} falharam, você pode tentar novamente depois",
+    "trackCode": "Código da faixa (opcional)",
+    "trackCodeHint": "Seu próprio código de catálogo. Ele fica no início do nome de cada arquivo gerado, por ex.: \"VS6588 - Artista - Título\".",
+    "trackCodeInvalid": "Use apenas letras e números (você pode separá-los com - ou _), com até 24 caracteres.",
+    "trackCodePlaceholder": "ex.: VS6588"
   },
   "requests": {
     "convertBody": "Use o Generator e crie seu vídeo de karaokê agora mesmo — o primeiro é por nossa conta.",

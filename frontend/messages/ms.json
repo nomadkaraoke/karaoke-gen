@@ -594,7 +594,11 @@
     "translatedLyricsPreviewLoading": "Menjana pratonton...",
     "translatedLyricsToggle": "Tambah lirik terjemahan",
     "translatedLyricsToggleHint": "Paparkan terjemahan AI bagi setiap baris dalam teks yang lebih kecil di bawah lirik. Sangat sesuai untuk belajar bahasa.",
-    "translatedLyricsPreviewRetry": "Cuba lagi"
+    "translatedLyricsPreviewRetry": "Cuba lagi",
+    "trackCode": "Kod trek (pilihan)",
+    "trackCodeHint": "Kod katalog anda sendiri. Kod ini akan diletakkan pada awal setiap nama fail output, cth. \"VS6588 - Artis - Tajuk\".",
+    "trackCodeInvalid": "Gunakan huruf dan nombor sahaja (boleh disambung dengan - atau _), maksimum 24 aksara.",
+    "trackCodePlaceholder": "cth. VS6588"
   },
   "jobStatus": {
     "settingUp": "Menyediakan",
@@ -1894,7 +1898,11 @@
     "speedMBs": "{mb} MB/s",
     "uploadModalTitle": "Memuat naik {count} trek",
     "uploadModalTracksDone": "{done} daripada {count} trek dihantar",
-    "uploadModalTracksFailed": "{count} gagal, anda boleh mencuba lagi selepas ini"
+    "uploadModalTracksFailed": "{count} gagal, anda boleh mencuba lagi selepas ini",
+    "trackCode": "Kod trek (pilihan)",
+    "trackCodeHint": "Kod katalog anda sendiri. Kod ini akan diletakkan pada awal setiap nama fail output, cth. \"VS6588 - Artis - Tajuk\".",
+    "trackCodeInvalid": "Gunakan huruf dan nombor sahaja (boleh disambung dengan - atau _), maksimum 24 aksara.",
+    "trackCodePlaceholder": "cth. VS6588"
   },
   "requests": {
     "convertBody": "Gunakan Generator sendiri dan hasilkan video karaoke anda sekarang — video pertama anda adalah percuma daripada kami.",

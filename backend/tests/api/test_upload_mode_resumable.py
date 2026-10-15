@@ -139,3 +139,50 @@ async def test_unknown_theme_rejected_before_job_is_created(endpoint_mocks, auth
         await create_job_with_upload_urls(_request(), _body(theme_id="missing-theme"), auth)
     assert exc.value.status_code == 400
     endpoint_mocks["job_manager"].create_job.assert_not_called()
+
+
+class TestTenantTrackCode:
+    """Tenant track codes become the job's preserved brand code (output prefix)."""
+
+    @pytest.mark.asyncio
+    async def test_tenant_track_code_sets_keep_brand_code(self, endpoint_mocks, auth):
+        tenant = Mock()
+        tenant.id = "vocalstar"
+        tenant.features.file_upload = True
+        with patch("backend.api.routes.file_upload.get_tenant_config_from_request", return_value=tenant), \
+             patch("backend.api.routes.file_upload._apply_tenant_overrides",
+                   side_effect=lambda dist, *_a, **_k: (dist, None, True, False)):
+            await create_job_with_upload_urls(_request(), _body(track_code=" vs6588 "), auth)
+        job_create = endpoint_mocks["job_manager"].create_job.call_args.args[0]
+        assert job_create.keep_brand_code == "VS6588"
+        assert job_create.tenant_id == "vocalstar"
+
+    @pytest.mark.asyncio
+    async def test_no_track_code_leaves_brand_code_allocated(self, endpoint_mocks, auth):
+        await create_job_with_upload_urls(_request(), _body(), auth)
+        job_create = endpoint_mocks["job_manager"].create_job.call_args.args[0]
+        assert job_create.keep_brand_code is None
+
+    @pytest.mark.asyncio
+    async def test_track_code_rejected_outside_tenant_portals(self, endpoint_mocks, auth):
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc:
+            await create_job_with_upload_urls(_request(), _body(track_code="VS6588"), auth)
+        assert exc.value.status_code == 400
+        endpoint_mocks["job_manager"].create_job.assert_not_called()
+
+    @pytest.mark.parametrize("bad", ["VS 6588", "../etc", "VS6588/x", "A" * 25, "VS6588-", "-VS"])
+    def test_unsafe_track_codes_rejected(self, bad):
+        from fastapi import HTTPException
+        from backend.api.routes.file_upload import normalize_track_code
+
+        with pytest.raises(HTTPException):
+            normalize_track_code(bad)
+
+    @pytest.mark.parametrize("raw,expected", [(None, None), ("", None), ("  ", None),
+                                              ("VS6588", "VS6588"), ("vs-6588", "VS-6588")])
+    def test_track_code_normalization(self, raw, expected):
+        from backend.api.routes.file_upload import normalize_track_code
+
+        assert normalize_track_code(raw) == expected
