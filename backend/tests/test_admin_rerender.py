@@ -1331,6 +1331,28 @@ class TestLegacyDiscordAndBrandCode:
         assert result["brand_code"] == "NOMAD-1234"
 
 
+    @pytest.mark.asyncio
+    async def test_native_distribution_second_pass_keeps_tenant_prefix(self):
+        """The post-orchestrator Dropbox pass must use the same "<CODE> - " names, or
+        it adds an unprefixed copy of every file next to the prefixed ones."""
+        from backend.workers import video_worker
+
+        job = _job(review_token=None, state_data={})
+        job.keep_brand_code = "VS6588"
+        job.tenant_id = "vocalstar"
+        result = {"brand_code": None}
+        dist = SimpleNamespace(dropbox_path="/T/Tracks-VocalStar", brand_prefix="VSTAR", gdrive_folder_id=None,
+                               enable_youtube_upload=False)
+        dropbox = MagicMock(is_configured=True)
+        with patch("backend.services.job_defaults_service.get_effective_distribution_for_job", return_value=dist), \
+             patch("backend.services.dropbox_service.get_dropbox_service", return_value=dropbox):
+            await video_worker._handle_native_distribution(
+                job_id="job123", job=job, job_log=MagicMock(), job_manager=MagicMock(),
+                temp_dir="/tmp/x", result=result, storage=None,
+            )
+        assert dropbox.upload_folder.call_args.kwargs["filename_prefix"] == "VS6588 - "
+
+
 # --- R2#9: admin delete-outputs uses the shared helpers ---------------------------------
 
 class TestDeleteOutputsSharedHelpers:

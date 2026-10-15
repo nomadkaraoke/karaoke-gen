@@ -1308,10 +1308,15 @@ async def _handle_native_distribution(
                 # The orchestrator already uploaded this folder minus stems/ and
                 # lyrics/ (prepared just above) — only send what's new or changed
                 # instead of re-uploading every file a second time.
+                from backend.workers.video_worker_orchestrator import tenant_track_code_prefix
+
                 dropbox.upload_folder(
                     temp_dir, remote_folder,
                     exclude_suffixes=dropbox_skip_suffixes_for(dropbox_path),
                     skip_unchanged=True,
+                    # Same names as the orchestrator's pass (tenant "<CODE> - " prefix),
+                    # or this pass would add an unprefixed copy of every file.
+                    filename_prefix=tenant_track_code_prefix(job),
                 )
                 
                 # Create sharing link
