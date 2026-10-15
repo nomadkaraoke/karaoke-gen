@@ -115,14 +115,25 @@ def _recover_mix(job, storage) -> Optional[Dict[str, str]]:
     if storage.file_exists(recovered):
         return {"path": recovered, "source": "previous_recovery"}
 
+    padding = _countdown_padding_seconds(job)
+    failures: List[str] = []
     for video in _with_vocals_candidates(job):
         if not storage.file_exists(video):
             continue
-        padding = _countdown_padding_seconds(job)
-        with tempfile.TemporaryDirectory(prefix=f"recover-{job_id}-") as workdir:
-            local = _extract_mix(storage, video, padding, workdir)
-            storage.upload_file(local, recovered)
+        try:
+            with tempfile.TemporaryDirectory(prefix=f"recover-{job_id}-") as workdir:
+                local = _extract_mix(storage, video, padding, workdir)
+                storage.upload_file(local, recovered)
+        except InputMissingError as exc:
+            logger.warning(f"Job {job_id}: couldn't rebuild mix from {video}: {exc}")
+            failures.append(str(exc))
+            continue
         return {"path": recovered, "source": video, "trimmed_padding_s": str(padding)}
+    if failures:
+        raise InputMissingError(
+            "This track's original audio is no longer stored and couldn't be rebuilt from its video "
+            f"({'; '.join(failures)[:300]})."
+        )
     return None
 
 

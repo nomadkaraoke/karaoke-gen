@@ -176,3 +176,27 @@ def test_gs_uri_paths_are_handled():
     storage = FakeStorage({MIX: None, INST: None})
     job = make_job(input_media_gcs_path=f"gs://bucket/{MIX}")
     assert recover_missing_inputs(job, storage, MagicMock()) == {}
+
+
+@needs_ffmpeg
+def test_falls_through_to_next_video_when_one_is_unreadable(tmp_path):
+    broken = tmp_path / "broken.mp4"
+    broken.write_bytes(b"not a video")
+    good = tmp_path / "good.mkv"
+    make_video(good, 2.0)
+    storage = FakeStorage({
+        f"jobs/{JOB_ID}/finals/with_vocals_mp4.mp4": str(broken),
+        f"jobs/{JOB_ID}/videos/with_vocals.mkv": str(good),
+        INST: None,
+    })
+    updates = recover_missing_inputs(make_job(), storage, MagicMock())
+    assert updates["input_media_gcs_path"] == f"jobs/{JOB_ID}/input/{RECOVERED_MIX_NAME}"
+
+
+@needs_ffmpeg
+def test_all_videos_unreadable_raises_actionable_error(tmp_path):
+    broken = tmp_path / "broken.mp4"
+    broken.write_bytes(b"not a video")
+    storage = FakeStorage({f"jobs/{JOB_ID}/finals/with_vocals_mp4.mp4": str(broken), INST: None})
+    with pytest.raises(InputMissingError, match="couldn't be rebuilt"):
+        recover_missing_inputs(make_job(), storage, MagicMock())
