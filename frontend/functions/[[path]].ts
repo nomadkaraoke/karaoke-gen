@@ -5,28 +5,14 @@
  * 1. Detects tenant from hostname
  * 2. Fetches tenant config from backend API (with edge caching)
  * 3. Injects config as window.__TENANT_CONFIG__ so the frontend has it instantly
- * 4. Injects initial CSS variables for instant branding (no FOUC)
+ * 4. Injects initial CSS variables, logo preload and title, and hides the
+ *    prerendered default branding until the app applies the tenant's (no FOUC)
  *
  * Non-HTML requests (JS, CSS, images) pass through unmodified.
  */
 
 import { getTenantConfig } from "../lib/edge/tenantConfigCache"
-
-/**
- * Compute a contrasting foreground color (black or white) for a given hex color.
- * Uses WCAG relative luminance to determine which provides better contrast.
- */
-function getContrastColor(hexColor: string): string {
-  const hex = hexColor.replace("#", "")
-  const r = parseInt(hex.slice(0, 2), 16) / 255
-  const g = parseInt(hex.slice(2, 4), 16) / 255
-  const b = parseInt(hex.slice(4, 6), 16) / 255
-
-  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4))
-  const luminance = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
-
-  return luminance > 0.179 ? "#000000" : "#ffffff"
-}
+import { injectTenantIntoHtml } from "../lib/edge/tenantHtmlInjection"
 
 /**
  * Extract tenant ID from hostname.
@@ -46,17 +32,6 @@ function extractTenantFromHost(hostname: string): string | null {
   }
 
   return null
-}
-
-/**
- * Escape a string for safe injection into an HTML <script> tag.
- * Prevents XSS via </script> or <!-- injection.
- */
-function escapeForScript(json: string): string {
-  return json
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
 }
 
 export const onRequest: PagesFunction = async (context) => {
@@ -87,29 +62,9 @@ export const onRequest: PagesFunction = async (context) => {
     return response
   }
 
-  // Build injection: config script + CSS variables for instant branding
-  const configJson = escapeForScript(JSON.stringify(config))
-  const branding = config.tenant.branding
-  const cssVars = [
-    `--tenant-primary:${branding.primary_color}`,
-    `--tenant-secondary:${branding.secondary_color}`,
-    `--primary-foreground:${getContrastColor(branding.primary_color)}`,
-  ]
-  if (branding.accent_color) {
-    cssVars.push(`--tenant-accent:${branding.accent_color}`)
-  }
-  if (branding.background_color) {
-    cssVars.push(`--tenant-background:${branding.background_color}`)
-  }
-
-  const injection = [
-    `<script>window.__TENANT_CONFIG__=${configJson};</script>`,
-    `<style>:root{${cssVars.join(";")}}</style>`,
-  ].join("\n")
-
-  // Inject before </head>
-  const html = await response.text()
-  const modifiedHtml = html.replace("</head>", injection + "\n</head>")
+  // Inject config, CSS variables, logo preload, title, and hide the prerendered
+  // default branding until the app has applied the tenant's (no Nomad logo flash)
+  const modifiedHtml = injectTenantIntoHtml(await response.text(), config)
 
   // Return modified response preserving headers
   const newHeaders = new Headers(response.headers)

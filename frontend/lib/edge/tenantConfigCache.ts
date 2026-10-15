@@ -18,6 +18,7 @@ export interface TenantConfigResponse {
     subdomain: string
     is_active: boolean
     branding: {
+      logo_url?: string | null
       primary_color: string
       secondary_color: string
       accent_color: string | null
