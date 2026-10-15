@@ -25,7 +25,8 @@ interface TenantProviderProps {
  * ```
  */
 export function TenantProvider({ children }: TenantProviderProps) {
-  const { fetchTenantConfig, isInitialized } = useTenant()
+  const { fetchTenantConfig, isInitialized, isDefault, branding } = useTenant()
+  const tenantTitle = !isDefault ? branding.site_title : null
 
   useEffect(() => {
     // Fetch tenant config on mount if not already initialized
@@ -42,6 +43,19 @@ export function TenantProvider({ children }: TenantProviderProps) {
       document.documentElement.removeAttribute(TENANT_PENDING_ATTR)
     }
   }, [isInitialized])
+
+  // Next.js metadata rewrites <title> ("Nomad Karaoke: Generator") on hydration and
+  // on every route change, so keep the tenant's site title pinned.
+  useEffect(() => {
+    if (!tenantTitle) return
+    const pin = () => {
+      if (document.title !== tenantTitle) document.title = tenantTitle
+    }
+    pin()
+    const observer = new MutationObserver(pin)
+    observer.observe(document.head, { subtree: true, childList: true, characterData: true })
+    return () => observer.disconnect()
+  }, [tenantTitle])
 
   return <>{children}</>
 }
