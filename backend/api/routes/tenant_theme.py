@@ -12,7 +12,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, constr
 
@@ -73,6 +73,8 @@ class ThemeResponse(BaseModel):
     style_params: Dict[str, Any]
     images: List[str]
     fonts: List[str]
+    # The images that fit the 300x216 CD+G screen (offered on the CD+G tab).
+    cdg_images: List[str] = Field(default_factory=list)
 
 
 class PreviewSample(BaseModel):
@@ -84,6 +86,8 @@ class PreviewSample(BaseModel):
 class PreviewRequest(BaseModel):
     style_params: Dict[str, Any]
     sample: PreviewSample = Field(default_factory=PreviewSample)
+    # Also render the CD+G up card + a lyrics page (slower; the editor asks on its CD+G tab).
+    include_cdg: bool = False
 
 
 class PreviewResponse(BaseModel):
@@ -91,6 +95,9 @@ class PreviewResponse(BaseModel):
     title_card: Optional[str] = None
     karaoke_frame: str
     end_screen: Optional[str] = None
+    # data:image/png;base64,... — only when include_cdg was requested.
+    cdg_title_card: Optional[str] = None
+    cdg_lyrics: Optional[str] = None
 
 
 class SaveRequest(BaseModel):
@@ -110,7 +117,13 @@ def get_theme(config: TenantConfig = Depends(require_tenant_member)):
 
 
 @router.post("/assets", response_model=AssetResponse)
-async def upload_asset(file: UploadFile = File(...), config: TenantConfig = Depends(require_tenant_member)):
+async def upload_asset(
+    file: UploadFile = File(...),
+    purpose: Optional[str] = Form(None),
+    config: TenantConfig = Depends(require_tenant_member),
+):
+    if purpose not in (None, "", "cdg"):
+        raise HTTPException(status_code=400, detail="Unknown upload purpose.")
     # Read in chunks and stop as soon as the limit is exceeded, so an oversized
     # upload never gets materialised in memory in full.
     chunks, size = [], 0
@@ -126,7 +139,9 @@ async def upload_asset(file: UploadFile = File(...), config: TenantConfig = Depe
     if not data:
         raise HTTPException(status_code=400, detail="The file is empty.")
     try:
-        name = await run_in_threadpool(store_uploaded_asset, config, file.filename or "asset", data)
+        name = await run_in_threadpool(
+            lambda: store_uploaded_asset(config, file.filename or "asset", data, purpose=purpose or None)
+        )
     except TenantValidationError as exc:
         _raise_http(exc)
     return AssetResponse(name=name)
@@ -149,6 +164,7 @@ async def preview_theme(body: PreviewRequest, config: TenantConfig = Depends(req
             artist=body.sample.artist,
             title=body.sample.title,
             lyrics=body.sample.lyrics,
+            include_cdg=body.include_cdg,
         ),
     )
     # The slot is released only when the render really finishes — a timed-out

@@ -13,10 +13,10 @@ import pytest
 from PIL import Image
 
 from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
+from karaoke_gen.lyrics_transcriber.output.cdg_decoder import CDG_FPS, decode_frame
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg required to compose CDG audio")
 
-CDG_FPS = 300
 W, H = 300, 216
 YELLOW = (255, 255, 0)
 WHITE = (255, 255, 255)
@@ -26,39 +26,6 @@ def _font(name: str) -> str:
     import karaoke_gen.lyrics_transcriber.output as output_mod
 
     return os.path.join(os.path.dirname(output_mod.__file__), "fonts", name)
-
-
-def decode_frame(cdg_path: str, seconds: float) -> Image.Image:
-    """Decode a CD+G file up to `seconds` and return the screen as RGB."""
-    data = open(cdg_path, "rb").read()
-    px = bytearray(W * H)
-    pal = [(0, 0, 0)] * 16
-    for i in range(min(len(data) // 24, int(seconds * CDG_FPS))):
-        p = data[i * 24:(i + 1) * 24]
-        if p[0] & 0x3F != 9:
-            continue
-        ins, d = p[1] & 0x3F, p[4:20]
-        if ins == 1:  # memory preset
-            px[:] = bytes([d[0] & 0x0F]) * (W * H)
-        elif ins in (6, 38):  # tile block (normal / XOR)
-            c0, c1, row, col = d[0] & 0x0F, d[1] & 0x0F, d[2] & 0x1F, d[3] & 0x3F
-            for r in range(12):
-                for b in range(6):
-                    x, y = col * 6 + b, row * 12 + r
-                    if x < W and y < H:
-                        v = c1 if d[4 + r] & (0x20 >> b) else c0
-                        px[y * W + x] = v ^ px[y * W + x] if ins == 38 else v
-        elif ins in (30, 31):  # load color table lo / hi
-            for k in range(8):
-                hi, lo = d[2 * k] & 0x3F, d[2 * k + 1] & 0x3F
-                pal[(0 if ins == 30 else 8) + k] = (
-                    ((hi >> 2) & 0xF) * 17,
-                    (((hi & 3) << 2) | ((lo >> 4) & 3)) * 17,
-                    (lo & 0xF) * 17,
-                )
-    img = Image.new("RGB", (W, H))
-    img.putdata([pal[c] for c in px])
-    return img
 
 
 def rows_with(img: Image.Image, color) -> list:

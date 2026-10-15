@@ -5,6 +5,15 @@ from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _no_input_recovery(monkeypatch):
+    """Storage mocks here report every blob missing; input recovery has its own tests."""
+    monkeypatch.setattr(
+        "backend.workers.render_video_worker.recover_missing_inputs", lambda *a, **k: {}
+    )
+
+
+
 def _make_mock_job(
     job_id="test-job-123",
     artist="Test Artist",

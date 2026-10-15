@@ -123,6 +123,9 @@ class FakeStorage:
     def download_json(self, path):
         return json.loads(self.blobs[path])
 
+    def download_bytes(self, path):
+        return self.blobs[path]
+
     def download_file(self, path, local):
         with open(local, "wb") as fh:
             fh.write(self.blobs[path])
@@ -315,3 +318,115 @@ def test_sanitize_replaces_unsafe_or_unknown_cdg_font_with_main_font(bad):
     style["cdg"]["font_path"] = bad
     styles, _ = tts.sanitize_style_params(style, available_assets=ASSETS)
     assert styles["cdg"]["font_path"] == "AvenirNext-Bold.ttf"
+
+
+# --- CD+G styles ----------------------------------------------------------------
+
+
+def _image_bytes(size, fmt="PNG", color="blue"):
+    buf = io.BytesIO()
+    Image.new("RGB", size, color).save(buf, fmt)
+    return buf.getvalue()
+
+
+def _cdg_style(**cdg):
+    style = _style()
+    style["cdg"] = {
+        "font_path": "Oswald-SemiBold.ttf", "font_size": 18, "title_color": "#ffff00", "artist_color": "#ffff00",
+        "active_fill": "#006CF9", "inactive_fill": "#ffff00", "title_separator_text": "MADE FAMOUS BY",
+        "title_block_top": 56, **cdg,
+    }
+    return style
+
+
+def test_sanitize_accepts_cdg_settings():
+    styles, _ = tts.sanitize_style_params(_cdg_style(), available_assets=ASSETS)
+    assert styles["cdg"]["title_separator_text"] == "MADE FAMOUS BY"
+    assert styles["cdg"]["active_fill"] == "#006CF9"
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("active_fill", "blue"),
+        ("title_color", "#ff00"),
+        ("border_color", "rgb(0,0,0)"),
+        ("font_size", 200),
+        ("title_block_top", -1),
+        ("title_font_size", "28"),
+        ("stroke_width", 9),
+        ("title_separator_text", "X" * 41),
+        ("title_separator_text", "two\nlines"),
+        ("outro_text_line1", 5),
+    ],
+)
+def test_sanitize_rejects_bad_cdg_values(field, value):
+    with pytest.raises(TenantValidationError):
+        tts.sanitize_style_params(_cdg_style(**{field: value}), available_assets=ASSETS)
+
+
+def test_sanitize_rejects_unuploaded_cdg_background():
+    with pytest.raises(TenantValidationError, match="hasn't been uploaded"):
+        tts.sanitize_style_params(_cdg_style(title_screen_background="logo.png"), available_assets=ASSETS)
+
+
+def test_fit_cdg_image_letterboxes_to_the_cdg_screen():
+    fitted = Image.open(io.BytesIO(tts.fit_cdg_image(_image_bytes((1920, 1080), "JPEG"))))
+    assert fitted.size == (300, 216) and fitted.format == "PNG"
+    # 16:9 into 300x216 leaves black bars top and bottom
+    assert fitted.getpixel((150, 2)) == (0, 0, 0)
+    assert fitted.getpixel((150, 108))[2] > 200
+
+
+def test_cdg_upload_is_fitted_and_stored_as_png():
+    storage = FakeStorage()
+    name = tts.store_uploaded_asset(_config(), "Logo Card.jpg", _image_bytes((900, 648), "JPEG"), storage=storage, purpose="cdg")
+    assert name.startswith("Logo_Card-cdg-") and name.endswith(".png")
+    stored = Image.open(io.BytesIO(storage.blobs[f"themes/randy-vild/assets/{name}"]))
+    assert stored.size == (300, 216)
+
+
+def test_ordinary_upload_is_not_resized():
+    storage = FakeStorage()
+    name = tts.store_uploaded_asset(_config(), "bg.png", _image_bytes((900, 648)), storage=storage)
+    assert Image.open(io.BytesIO(storage.blobs[f"themes/randy-vild/assets/{name}"])).size == (900, 648)
+
+
+def test_save_rejects_cdg_background_of_the_wrong_size(monkeypatch):
+    storage = FakeStorage()
+    storage.blobs["themes/randy-vild/assets/big.png"] = _image_bytes((640, 480))
+    monkeypatch.setattr(tts, "update_tenant", lambda tenant_id, **kw: None)
+    with pytest.raises(TenantValidationError, match="300x216"):
+        tts.save_tenant_theme(_config(), _cdg_style(title_screen_background="big.png"), storage=storage)
+
+
+def test_save_accepts_cdg_background_of_the_right_size(monkeypatch):
+    storage = FakeStorage()
+    storage.blobs["themes/randy-vild/assets/card.png"] = _image_bytes((300, 216))
+    calls = {}
+    monkeypatch.setattr(tts, "update_tenant", lambda tenant_id, **kw: calls.update(kw))
+    tts.save_tenant_theme(_config(), _cdg_style(title_screen_background="card.png", outro_background="card.png"), storage=storage)
+    assert calls["style_params"]["cdg"]["title_screen_background"] == "card.png"
+
+
+
+def test_editor_lists_only_300x216_images_for_cdg():
+    storage = FakeStorage()
+    storage.blobs["themes/randy-vild/assets/card.png"] = _image_bytes((300, 216))
+    storage.blobs["themes/randy-vild/assets/big.png"] = _image_bytes((1920, 1080))
+
+    class _Blob:
+        def __init__(self, data):
+            self.data = data
+
+        def download_as_bytes(self, start=0, end=None):
+            return self.data[start:(end + 1) if end is not None else None]
+
+    class _Bucket:
+        def get_blob(self, path):
+            return _Blob(storage.blobs[path]) if path in storage.blobs else None
+
+    storage.bucket = _Bucket()
+    data = tts.get_theme_for_editor(_config(), storage=storage)
+    assert "big.png" in data["images"] and "card.png" in data["images"]
+    assert data["cdg_images"] == ["card.png"]  # bg.jpg isn't a real image here, big.png is 1920x1080

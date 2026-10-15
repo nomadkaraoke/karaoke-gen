@@ -31,7 +31,9 @@ interface Props {
   onClose: () => void
 }
 
-type Tab = "titleCard" | "karaoke" | "endScreen" | "advanced"
+type Tab = "titleCard" | "karaoke" | "endScreen" | "cdg" | "advanced"
+// CD+G screens are 300x216.
+const CDG_ASPECT = "300 / 216"
 
 // --- small field components ---------------------------------------------------
 
@@ -83,7 +85,7 @@ function RangeInput({ id, label, value, min, max, step = 1, onChange }: {
 export function TenantThemeEditorDialog({ open, onClose }: Props) {
   const t = useTranslations("tenantTheme")
   const { toast } = useToast()
-  const { tenant } = useTenant()
+  const { tenant, features } = useTenant()
 
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -91,6 +93,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
   const [draft, setDraft] = useState<ThemeStyleParams | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [fonts, setFonts] = useState<string[]>([])
+  const [cdgImages, setCdgImages] = useState<string[]>([])
   const [tab, setTab] = useState<Tab>("titleCard")
   const [jsonText, setJsonText] = useState("")
   const [jsonError, setJsonError] = useState<string | null>(null)
@@ -124,6 +127,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
         setJsonText(JSON.stringify(data.style_params, null, 2))
         setImages(data.images)
         setFonts(data.fonts)
+        setCdgImages(data.cdg_images ?? [])
       })
       .catch((err: any) => !cancelled && setLoadError(err?.message || t("loadFailed")))
       .finally(() => !cancelled && setLoading(false))
@@ -153,6 +157,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
           draft,
           { artist: sampleArtist || undefined, title: sampleTitle || undefined },
           controller.signal,
+          { includeCdg: tab === "cdg" },
         )
         if (!controller.signal.aborted) setPreview(result)
       } catch (err: any) {
@@ -164,7 +169,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
       }
     }, PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(handle)
-  }, [open, draft, sampleArtist, sampleTitle]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, draft, sampleArtist, sampleTitle, tab === "cdg"]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -201,12 +206,14 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
     }
   }
 
-  const uploadAsset = async (file: File, apply: (name: string) => void, key: string) => {
+  const uploadAsset = async (file: File, apply: (name: string) => void, key: string, purpose?: "cdg") => {
     setUploading(key)
     try {
-      const { name } = await tenantThemeApi.uploadAsset(file)
+      const { name } = purpose ? await tenantThemeApi.uploadAsset(file, purpose) : await tenantThemeApi.uploadAsset(file)
       if (/\.(ttf|otf)$/i.test(name)) setFonts((f) => Array.from(new Set([...f, name])).sort())
       else setImages((imgs) => Array.from(new Set([...imgs, name])).sort())
+      // CD+G uploads are fitted to 300x216 by the server.
+      if (purpose === "cdg") setCdgImages((imgs) => Array.from(new Set([...imgs, name])).sort())
       apply(name)
     } catch (err: any) {
       toast({ title: t("uploadFailed"), description: err?.message, variant: "destructive" })
@@ -229,6 +236,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
       )
       setImages(data.images)
       setFonts(data.fonts)
+      setCdgImages(data.cdg_images ?? [])
       setSaveResult({ refreshed: data.refreshed_jobs ?? 0, outdated: data.outdated_job_ids ?? [] })
       setRerenderStarted(null)
       setOutdatedThemeJobs(data.outdated_job_ids ?? [])
@@ -409,16 +417,73 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
     />
   )
 
-  const tabs: Tab[] = ["titleCard", "karaoke", "endScreen", "advanced"]
+  // --- CD+G helpers (the cdg section's colours are plain hex) ---------------------
+
+  const cdgColour = (field: string, label: string, fallback = "#ffffff") => (
+    <ColorInput id={`cdg-${field}`} label={label} value={getField<string>(draft!, "cdg", field) || fallback}
+      onChange={(v) => update("cdg", field, v)} />
+  )
+
+  const cdgImageField = (field: string, label: string) => {
+    const image = getField<string | null>(draft!, "cdg", field) || ""
+    const key = `cdg-${field}`
+    return (
+      <div className="space-y-1">
+        <Label htmlFor={key} className="text-xs text-muted-foreground">{label}</Label>
+        <select id={key} className={selectClass} value={image}
+          onChange={(e) => update("cdg", field, e.target.value || null)}>
+          <option value="">{t("cdgNoImage")}</option>
+          {!cdgImages.includes(image) && image && <option value={image}>{image}</option>}
+          {cdgImages.map((img) => <option key={img} value={img}>{img}</option>)}
+        </select>
+        <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+          {uploading === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {t("cdgUploadImage")}
+          <input
+            type="file"
+            className="sr-only"
+            aria-label={`${t("cdgUploadImage")} (${label})`}
+            accept=".png,.jpg,.jpeg,.gif,.webp"
+            disabled={!!uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) uploadAsset(file, (name) => update("cdg", field, name), key, "cdg")
+              e.target.value = ""
+            }}
+          />
+        </label>
+      </div>
+    )
+  }
+
+  const cdgRange = (field: string, label: string, min: number, max: number, fallback: number) => (
+    <RangeInput id={`cdg-${field}`} label={label} min={min} max={max}
+      value={getField<number>(draft!, "cdg", field) ?? fallback}
+      onChange={(n) => update("cdg", field, n)} />
+  )
+
+  const mainFont = getField<string>(draft!, "intro", "font") || ""
+  const cdgFont = getField<string>(draft!, "cdg", "font_path") || ""
+  const cdgOutline = getField<string>(draft!, "cdg", "active_stroke") || "#000000"
+
+  // Only portals that make CD+G files, with a CD+G section in their theme.
+  const hasCdg = !!features?.enable_cdg && Object.keys((draft as Record<string, any> | null)?.cdg || {}).length > 0
+  const tabs: Tab[] = hasCdg ? ["titleCard", "karaoke", "endScreen", "cdg", "advanced"] : ["titleCard", "karaoke", "endScreen", "advanced"]
 
   // The screen being edited, then the lyrics frame (Advanced shows all three).
-  type PreviewKind = "title_card" | "karaoke_frame" | "end_screen"
+  type PreviewKind = "title_card" | "karaoke_frame" | "end_screen" | "cdg_title_card" | "cdg_lyrics"
   const previewKinds: PreviewKind[] =
     tab === "endScreen" ? ["end_screen", "karaoke_frame"]
-      : tab === "advanced" ? ["title_card", "karaoke_frame", "end_screen"]
-        : ["title_card", "karaoke_frame"]
+      : tab === "cdg" ? ["cdg_title_card", "cdg_lyrics"]
+        : tab === "advanced" ? ["title_card", "karaoke_frame", "end_screen"]
+          : ["title_card", "karaoke_frame"]
   const previewLabel = (kind: PreviewKind) =>
-    kind === "title_card" ? t("previewTitleCard") : kind === "end_screen" ? t("previewEndScreen") : t("previewKaraoke")
+    kind === "title_card" ? t("previewTitleCard")
+      : kind === "end_screen" ? t("previewEndScreen")
+        : kind === "cdg_title_card" ? t("previewCdgTitleCard")
+          : kind === "cdg_lyrics" ? t("previewCdgLyrics")
+            : t("previewKaraoke")
+  const isCdgKind = (kind: PreviewKind) => kind === "cdg_title_card" || kind === "cdg_lyrics"
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
@@ -554,6 +619,85 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                 </div>
               )}
 
+              {tab === "cdg" && (
+                <div className="space-y-4" data-testid="cdg-tab">
+                  <p className="text-xs text-muted-foreground">{t("cdgIntro")}</p>
+
+                  <div className="space-y-3 rounded-md border p-3">
+                    <Label className="flex items-center gap-1.5"><ImageIcon className="h-3.5 w-3.5" /> {t("cdgUpCard")}</Label>
+                    {cdgImageField("title_screen_background", t("cdgUpCardImage"))}
+                    <div className="grid grid-cols-2 gap-3">
+                      {cdgColour("title_color", t("titleColour"), "#ffff00")}
+                      {cdgColour("artist_color", t("artistColour"), "#ffff00")}
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="cdg-separator" className="text-xs text-muted-foreground">{t("cdgSeparatorText")}</Label>
+                      <Input id="cdg-separator" maxLength={40} placeholder={t("cdgSeparatorPlaceholder")}
+                        value={getField<string>(draft!, "cdg", "title_separator_text") || ""}
+                        onChange={(e) => update("cdg", "title_separator_text", e.target.value || null)} />
+                    </div>
+                    {!!getField(draft!, "cdg", "title_separator_text") && cdgColour("title_separator_color", t("cdgSeparatorColour"))}
+                    <div className="grid grid-cols-2 gap-3">
+                      {cdgRange("title_font_size", t("cdgTitleSize"), 12, 48, 24)}
+                      {cdgRange("artist_font_size", t("cdgArtistSize"), 12, 48, 24)}
+                      {cdgRange("title_block_top", t("cdgTextTop"), 0, 150, 0)}
+                      {cdgRange("title_artist_gap", t("cdgTitleArtistGap"), 0, 40, 10)}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-md border p-3">
+                    <Label>{t("cdgLyrics")}</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {cdgColour("active_fill", t("sungColour"), "#006cf9")}
+                      {cdgColour("inactive_fill", t("unsungColour"), "#ffff00")}
+                      {cdgColour("background_color", t("cdgScreenColour"), "#000000")}
+                      {cdgColour("border_color", t("cdgBorderColour"), "#000000")}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {cdgRange("font_size", t("cdgLyricsSize"), 12, 30, 18)}
+                      {cdgRange("stroke_width", t("cdgOutlineWidth"), 0, 4, 0)}
+                    </div>
+                    {(getField<number>(draft!, "cdg", "stroke_width") ?? 0) > 0 && (
+                      <ColorInput id="cdg-outline" label={t("cdgOutlineColour")} value={cdgOutline}
+                        onChange={(v) => { update("cdg", "active_stroke", v); update("cdg", "inactive_stroke", v) }} />
+                    )}
+                    <div className="space-y-1">
+                      <Label htmlFor="cdg-font" className="text-xs text-muted-foreground">{t("cdgLyricsFont")}</Label>
+                      <select id="cdg-font" className={selectClass}
+                        value={cdgFont && cdgFont !== mainFont ? cdgFont : ""}
+                        onChange={(e) => update("cdg", "font_path", e.target.value || mainFont)}>
+                        <option value="">{t("cdgSameAsMainFont")}</option>
+                        {fonts.filter((f) => f !== mainFont).map((f) => <option key={f} value={f}>{f.replace(/\.(ttf|otf)$/i, "")}</option>)}
+                      </select>
+                      <p className="text-xs text-muted-foreground">{t("cdgLyricsFontHint")}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-md border p-3">
+                    <Label>{t("cdgInstrumental")}</Label>
+                    {cdgImageField("instrumental_background", t("cdgInstrumentalImage"))}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="cdg-instrumental-text" className="text-xs text-muted-foreground">{t("cdgInstrumentalText")}</Label>
+                        <Input id="cdg-instrumental-text" maxLength={40}
+                          value={getField<string>(draft!, "cdg", "instrumental_text") || ""}
+                          onChange={(e) => update("cdg", "instrumental_text", e.target.value)} />
+                      </div>
+                      {cdgColour("instrumental_font_color", t("cdgInstrumentalColour"), "#ffff00")}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 rounded-md border p-3">
+                    <Label>{t("cdgOutro")}</Label>
+                    {cdgImageField("outro_background", t("cdgOutroImage"))}
+                    <div className="grid grid-cols-2 gap-3">
+                      {cdgColour("outro_line1_color", t("cdgOutroLine1Colour"), "#ffff00")}
+                      {cdgColour("outro_line2_color", t("cdgOutroLine2Colour"), "#ffff00")}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {tab === "advanced" && (
                 <div className="space-y-2">
                   <textarea
@@ -585,12 +729,14 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
               {previewKinds.map((kind) => (
                 <figure key={kind} className="space-y-1">
                   <figcaption className="text-xs font-medium text-muted-foreground">{previewLabel(kind)}</figcaption>
-                  <div className="relative aspect-video overflow-hidden rounded-md border bg-black">
+                  <div className={`relative overflow-hidden rounded-md border bg-black ${isCdgKind(kind) ? "" : "aspect-video"}`}
+                    style={isCdgKind(kind) ? { aspectRatio: CDG_ASPECT } : undefined}>
                     {preview?.[kind] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={preview[kind]!} alt={previewLabel(kind)}
-                        data-testid={`preview-${kind}`} className="h-full w-full object-contain" />
-                    ) : preview && kind !== "karaoke_frame" && !previewing && (
+                        data-testid={`preview-${kind}`} className="h-full w-full object-contain"
+                        style={isCdgKind(kind) ? { imageRendering: "pixelated" } : undefined} />
+                    ) : preview && kind !== "karaoke_frame" && !isCdgKind(kind) && !previewing && (
                       <div className="flex h-full items-center justify-center text-sm text-muted-foreground" data-testid={`preview-${kind}-omitted`}>
                         {t("screenOmitted")}
                       </div>

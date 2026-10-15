@@ -194,3 +194,33 @@ def test_timed_out_render_keeps_its_slot_until_it_finishes(client_for, monkeypat
                 break
             time.sleep(0.02)
     assert tenant_theme._PREVIEW_SEMAPHORE._value == free_before
+
+
+def test_preview_cdg_frames_only_when_asked(client_for):
+    images = PreviewImages(b"t", b"k", None, cdg_title_card=b"c", cdg_lyrics=b"l")
+    with patch.object(tenant_theme, "prepare_preview_styles", return_value={"cdg": {}}), \
+         patch.object(tenant_theme, "render_theme_preview", return_value=images) as render:
+        resp = client_for().post("/api/tenant/theme/preview", json={"style_params": {"cdg": {}}, "include_cdg": True})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["cdg_title_card"].startswith("data:image/png;base64,")
+    assert body["cdg_lyrics"].startswith("data:image/png;base64,")
+    assert render.call_args.kwargs["include_cdg"] is True
+
+    with patch.object(tenant_theme, "prepare_preview_styles", return_value={}), \
+         patch.object(tenant_theme, "render_theme_preview", return_value=PreviewImages(b"t", b"k")) as render:
+        resp = client_for().post("/api/tenant/theme/preview", json={"style_params": {}})
+    assert render.call_args.kwargs["include_cdg"] is False
+    assert resp.json()["cdg_lyrics"] is None
+
+
+def test_cdg_upload_purpose_is_passed_through_and_validated(client_for):
+    client = client_for()
+    with patch.object(tenant_theme, "store_uploaded_asset", return_value="card-cdg-1234abcd.png") as store:
+        resp = client.post("/api/tenant/theme/assets", files={"file": ("card.jpg", b"jpg")}, data={"purpose": "cdg"})
+    assert resp.status_code == 200
+    assert store.call_args.kwargs["purpose"] == "cdg"
+    with patch.object(tenant_theme, "store_uploaded_asset") as store:
+        resp = client.post("/api/tenant/theme/assets", files={"file": ("x.png", b"png")}, data={"purpose": "evil"})
+    assert resp.status_code == 400
+    store.assert_not_called()

@@ -2782,6 +2782,8 @@ export interface TenantThemeData {
   style_params: ThemeStyleParams
   images: string[]
   fonts: string[]
+  // Images that fit the 300x216 CD+G screen (offered on the CD+G tab)
+  cdg_images?: string[]
 }
 
 export interface TenantThemeSaveResult extends TenantThemeData {
@@ -2800,6 +2802,9 @@ export interface ThemePreviewImages {
   title_card: string | null
   karaoke_frame: string
   end_screen: string | null
+  // data:image/png;base64,... — the CD+G up card + a lyrics page (only when requested)
+  cdg_title_card?: string | null
+  cdg_lyrics?: string | null
 }
 
 export const tenantThemeApi = {
@@ -2809,10 +2814,14 @@ export const tenantThemeApi = {
     return handleResponse<TenantThemeData>(response)
   },
 
-  /** Upload a background image or font; returns the stored asset name. */
-  async uploadAsset(file: File): Promise<{ name: string }> {
+  /**
+   * Upload a background image or font; returns the stored asset name.
+   * `purpose: 'cdg'` fits an image to the 300x216 CD+G screen.
+   */
+  async uploadAsset(file: File, purpose?: 'cdg'): Promise<{ name: string }> {
     const fd = new FormData()
     fd.append('file', file)
+    if (purpose) fd.append('purpose', purpose)
     const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/assets`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -2826,11 +2835,12 @@ export const tenantThemeApi = {
     styleParams: ThemeStyleParams,
     sample: ThemePreviewSample,
     signal?: AbortSignal,
+    options: { includeCdg?: boolean } = {},
   ): Promise<ThemePreviewImages> {
     const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/preview`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ style_params: styleParams, sample }),
+      body: JSON.stringify({ style_params: styleParams, sample, include_cdg: !!options.includeCdg }),
       signal,
     })
     return handleResponse<ThemePreviewImages>(response)
