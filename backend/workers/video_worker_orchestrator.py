@@ -1209,7 +1209,9 @@ def tenant_track_code_prefix(job) -> str:
     """
     code = getattr(job, "keep_brand_code", None)
     if code and getattr(job, "tenant_id", None):
-        return f"{code} - "
+        # Validated at job creation; sanitize again since it becomes a path segment.
+        safe_code = sanitize_filename(str(code)).replace("/", "").replace("\\", "").strip(" .")
+        return f"{safe_code} - " if safe_code else ""
     return ""
 
 

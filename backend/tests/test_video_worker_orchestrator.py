@@ -2494,3 +2494,11 @@ class TestTenantTrackCodePrefix:
 
         assert tenant_track_code_prefix(SimpleNamespace(keep_brand_code="NOMAD-1234", tenant_id="")) == ""
         assert tenant_track_code_prefix(SimpleNamespace(keep_brand_code=None, tenant_id="vocalstar")) == ""
+
+    def test_unsafe_code_is_sanitized(self):
+        from types import SimpleNamespace
+        from backend.workers.video_worker_orchestrator import tenant_track_code_prefix
+
+        prefix = tenant_track_code_prefix(SimpleNamespace(keep_brand_code="../VS/1", tenant_id="vocalstar"))
+        assert "/" not in prefix and not prefix.startswith(".")
+
