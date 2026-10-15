@@ -35,6 +35,8 @@ export interface PersistedRow {
   jobId: string
   artist: string
   title: string
+  /** Tenant track code the job was created with (display only on resume). */
+  trackCode?: string
   createdAt: number
   files: PersistedFile[]
 }

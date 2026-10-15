@@ -262,7 +262,10 @@ def _pair_key(p: _Parsed) -> str:
     if p.code:
         return f"code:{p.code}"
     if p.track_code:
-        return f"track:{p.track_code}"
+        # Include the song identity: a code reused across two different songs
+        # (operator typo) must never cross-pair one song's mix with the other's
+        # instrumental — conflicting files are left unpaired for review instead.
+        return f"track:{p.track_code}|{p.artist.lower()}|{p.title.lower()}"
     return f"song:{p.artist.lower()}|{p.title.lower()}"
 
 

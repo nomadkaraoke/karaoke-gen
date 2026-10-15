@@ -292,6 +292,7 @@ it('offers to resume an unfinished batch and resumes without re-creating jobs', 
         jobId: 'job-restored',
         artist: 'Eddy Grant',
         title: 'I Dont Wanna Dance',
+        trackCode: 'VS6588',
         createdAt: Date.now(),
         files: [
           { fileType: 'audio', identity: MIXED_1, name: MIXED_1, size: mixedFile.size, lastModified: 111, sessionUri: 'https://session/audio' },
@@ -313,6 +314,10 @@ it('offers to resume an unfinished batch and resumes without re-creating jobs', 
   expect(artistInputs).toHaveLength(1)
   expect(artistInputs[0].value).toBe('Eddy Grant')
   expect(mockApi.analyzeBulk).not.toHaveBeenCalled()
+  // The resumed job's code is shown but locked — a retry reuses the job, so edits would be ignored.
+  const codeInput = screen.getByLabelText('Track code (optional)') as HTMLInputElement
+  expect(codeInput.value).toBe('VS6588')
+  expect(codeInput).toBeDisabled()
 
   // Submitting resumes the existing job's sessions — no job creation.
   fireEvent.click(screen.getByRole('button', { name: /Submit 1 tracks/i }))

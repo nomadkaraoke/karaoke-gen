@@ -249,3 +249,14 @@ class TestTrackCodes:
         row = analyze_filenames(files, generate=fake_generate).to_dict()["rows"][0]
         assert row["track_code"] == "VS7001"
         assert row["artist"] == "Some Artist"
+
+    def test_same_code_on_different_songs_is_not_cross_paired(self):
+        result = analyze_filenames([
+            "VS6600 Adele - Hello Guide.mp3",
+            "VS6600 Oasis - Wonderwall Instrumental.mp3",
+        ]).to_dict()
+        assert result["rows"] == []
+        assert {u["filename"] for u in result["unpaired"]} == {
+            "VS6600 Adele - Hello Guide.mp3",
+            "VS6600 Oasis - Wonderwall Instrumental.mp3",
+        }

@@ -224,7 +224,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
         id: pr.rowId,
         artist: pr.artist,
         title: pr.title,
-        trackCode: "", // resumed rows already have their job (and code) created
+        trackCode: pr.trackCode ?? "", // the job (and its code) already exists — shown read-only
         mixedFilename: mixedFile ? identityOf(mixedFile) : (mixed?.identity ?? ""),
         instrumentalFilename: instrumentalFile ? identityOf(instrumentalFile) : (instrumental?.identity ?? ""),
         confidence: "high",
@@ -324,6 +324,7 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
             jobId,
             artist: row.artist.trim(),
             title: row.title.trim(),
+            trackCode: normalizeTrackCode(row.trackCode),
             createdAt: Date.now(),
             files: [
               persistFile(mixedFile, "audio", audioEntry.upload_url),
@@ -642,7 +643,9 @@ export function TenantBulkFlow({ onJobsChanged }: TenantBulkFlowProps) {
               </div>
               <Input aria-label={t('trackCode')} placeholder={t('trackCodePlaceholder')} value={row.trackCode}
                 maxLength={TRACK_CODE_MAX_LEN}
-                disabled={isSubmitting || row.status === "done"}
+                // Once a job exists its code is fixed (a retry reuses the job), so
+                // lock the field rather than accept an edit that would be ignored.
+                disabled={isSubmitting || row.status === "done" || Boolean(row.jobId)}
                 aria-invalid={!isValidTrackCode(row.trackCode)}
                 title={isValidTrackCode(row.trackCode) ? t('trackCodeHint') : t('trackCodeInvalid')}
                 onChange={e => updateRow(row.id, { trackCode: e.target.value })}
