@@ -71,6 +71,17 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
     }
   }
 
+  // Checkout applies the better of the referral discount and an active
+  // conversion-email promo; show prices (and only the banner) for that one.
+  const referralPct = user?.has_active_referral_discount ? (user.referral_discount_percent ?? 0) : 0
+  const promoPct =
+    user?.promo_discount_percent && user?.promo_discount_expires_at &&
+    parseServerDate(user.promo_discount_expires_at) > new Date()
+      ? user.promo_discount_percent
+      : 0
+  const promoWins = promoPct > referralPct
+  const discountPct = Math.max(referralPct, promoPct)
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="sm:max-w-md bg-card border-border">
@@ -85,7 +96,18 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          {user?.has_active_referral_discount && user?.referral_discount_percent && (
+          {promoWins && user?.promo_discount_expires_at && (
+            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center" data-testid="promo-discount-banner">
+              <p className="text-green-600 dark:text-green-400 text-sm font-medium">
+                {t('promoBadge', { percent: promoPct })}
+              </p>
+              <p className="text-green-600/70 dark:text-green-400/70 text-xs mt-1">
+                {t('promoExpires', { time: parseServerDate(user.promo_discount_expires_at).toLocaleString(locale, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })}
+              </p>
+            </div>
+          )}
+
+          {!promoWins && user?.has_active_referral_discount && user?.referral_discount_percent && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
               <p className="text-green-600 dark:text-green-400 text-sm font-medium">
                 {tRef('discountBadge', { percent: user.referral_discount_percent })}
@@ -119,7 +141,6 @@ export function BuyCreditsDialog({ open, onClose }: BuyCreditsDialogProps) {
           )}
 
           {!loading && !error && packages.length > 0 && (() => {
-            const discountPct = user?.has_active_referral_discount ? (user.referral_discount_percent ?? 0) : 0
             const applyDiscount = (cents: number) =>
               discountPct > 0 ? Math.round(cents * (1 - discountPct / 100)) : cents
 

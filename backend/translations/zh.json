@@ -403,6 +403,31 @@
       "ignoreNote": "如果您没有请求此验证码，请放心忽略此邮件。",
       "intro": "这是您登录卡拉OK之夜歌手页面的验证码。请在您正在使用的页面中输入它：",
       "subject": "您的 Nomad Karaoke 验证码：{code}"
+    },
+    "conversion": {
+      "madeForYouLine": "不想自己校对歌词？选择“为您定制”，我将为您制作整支视频，24小时内交付：",
+      "madeForYouLink": "为您定制",
+      "offerAutoApplied": "结账时自动应用，无需输入优惠码。",
+      "offerButton": "制作下一首歌曲",
+      "offerIntro": "您的第一支卡拉OK视频《{song}》已制作完成，希望效果令您满意！",
+      "offerIntroNoSong": "您的第一支卡拉OK视频已制作完成，希望效果令您满意！",
+      "offerLead": "如果您还想制作其他歌曲，这是为您体验 Nomad Karaoke 准备的一份谢礼：",
+      "offerLine": "未来 {hours} 小时内，购买任意点数包立享 {percent}% 优惠",
+      "offerSubject": "您的卡拉OK视频已做好，接下来想制作哪首？",
+      "reminderBody": "温馨提醒：任意点数包立享 {percent}% 优惠约在 {hours} 小时后截止。之后将恢复原价。",
+      "reminderButton": "使用我的优惠",
+      "reminderNoPressure": "买不买都完全没关系，再次感谢您使用我们的服务制作视频！",
+      "reminderSubject": "您的 {percent}% 优惠将在 {hours} 小时后截止",
+      "whyReceiving": "您收到这封邮件，是因为您曾在 gen.nomadkaraoke.com 制作过视频。"
+    },
+    "reviewLastChance": {
+      "button": "完成我的视频",
+      "howLong": "大多审核只需 2 到 3 分钟：确认歌词无误，选好伴奏，即可搞定。",
+      "intro": "您的卡拉OK视频《{song}》已接近完成，只需您快速审核确认。该任务将在约 {hours} 小时后过期。",
+      "introNoSong": "您的卡拉OK视频已接近完成，只需您快速审核确认。该任务将在约 {hours} 小时后过期。",
+      "refundNote": "如果确实过期，您的点数将自动退还。",
+      "subject": "还剩 {hours} 小时完成您的卡拉OK视频：《{song}》",
+      "subjectFallback": "还剩 {hours} 小时完成您的卡拉OK视频"
     }
   }
 }

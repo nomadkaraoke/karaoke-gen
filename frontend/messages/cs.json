@@ -403,7 +403,9 @@
     "savePct": "Ušetři {savings} %",
     "redirecting": "Přesměrování na platbu...",
     "continuePayment": "Pokračovat k platbě — {price}",
-    "selectPackage": "Vyber si balíček"
+    "selectPackage": "Vyber si balíček",
+    "promoBadge": "Tvoje sleva {percent} % se uplatní při placení",
+    "promoExpires": "Nabídka končí v {time}"
   },
   "feedback": {
     "thankYou": "Děkujeme!",

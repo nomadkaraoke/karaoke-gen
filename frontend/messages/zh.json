@@ -403,7 +403,9 @@
     "savePct": "节省 {savings}%",
     "redirecting": "正在重定向到付款页面...",
     "continuePayment": "继续付款 — {price}",
-    "selectPackage": "选择一个套餐"
+    "selectPackage": "选择一个套餐",
+    "promoBadge": "结账时将自动减免 {percent}%",
+    "promoExpires": "优惠截止时间：{time}"
   },
   "feedback": {
     "thankYou": "谢谢！",

@@ -403,7 +403,9 @@
     "savePct": "{savings}% 절약",
     "redirecting": "결제 페이지로 이동 중...",
     "continuePayment": "결제 진행하기 — {price}",
-    "selectPackage": "패키지 선택"
+    "selectPackage": "패키지 선택",
+    "promoBadge": "결제 시 {percent}% 할인이 적용됩니다",
+    "promoExpires": "혜택 마감: {time}"
   },
   "feedback": {
     "thankYou": "감사합니다!",

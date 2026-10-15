@@ -403,7 +403,9 @@
     "savePct": "Säästä {savings}%",
     "redirecting": "Ohjataan maksuun...",
     "continuePayment": "Jatka maksuun — {price}",
-    "selectPackage": "Valitse paketti"
+    "selectPackage": "Valitse paketti",
+    "promoBadge": "{percent} %:n alennus huomioidaan kassalla",
+    "promoExpires": "Tarjous päättyy {time}"
   },
   "feedback": {
     "thankYou": "Kiitos!",

@@ -403,7 +403,9 @@
     "savePct": "Spara {savings}%",
     "redirecting": "Omdirigerar till betalning...",
     "continuePayment": "Fortsätt till betalning — {price}",
-    "selectPackage": "Välj ett paket"
+    "selectPackage": "Välj ett paket",
+    "promoBadge": "Din rabatt på {percent} % dras av i kassan",
+    "promoExpires": "Erbjudandet gäller t.o.m. {time}"
   },
   "feedback": {
     "thankYou": "Tack!",

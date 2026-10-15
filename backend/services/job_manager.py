@@ -618,6 +618,11 @@ class JobManager:
                     from backend.services.user_service import get_user_service
                     user_service = get_user_service()
                     user_service.increment_jobs_completed(job.user_email)
+                    try:
+                        from backend.services.conversion_emails import on_job_completed
+                        on_job_completed(job, user_service)
+                    except Exception:
+                        logger.exception(f"Failed to schedule conversion email for job {job_id}")
             except Exception:
                 logger.exception(f"Failed to increment jobs_completed for job {job_id}")
 

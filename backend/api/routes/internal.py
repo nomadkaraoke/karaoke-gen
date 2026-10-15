@@ -641,6 +641,7 @@ def process_stale_reviews_endpoint(
     - Jobs in review for >= 48h are auto-cancelled with credit refund
     - Signed-URL upload jobs whose browser upload never finished (>= 2h) are
       auto-cancelled with credit refund
+    - Free-to-paid conversion emails (when CONVERSION_EMAILS_ENABLED)
     """
     from backend.workers.stale_review_processor import process_stale_reviews
     from backend.workers.stale_upload_processor import process_stale_uploads
@@ -661,6 +662,14 @@ def process_stale_reviews_endpoint(
             logger.info(f"STALE_UPLOAD_PROCESS complete: {upload_result}")
         except Exception as e:
             logger.exception(f"STALE_UPLOAD_PROCESS failed: {e}")
+        # Free-to-paid conversion emails ride on this hourly cron (no-op unless
+        # CONVERSION_EMAILS_ENABLED); see backend/services/conversion_emails.py
+        try:
+            from backend.services.conversion_emails import process_conversion_emails
+            conversion_result = await asyncio.to_thread(process_conversion_emails)
+            logger.info(f"CONVERSION_EMAILS complete: {conversion_result}")
+        except Exception as e:
+            logger.exception(f"CONVERSION_EMAILS failed: {e}")
 
     background_tasks.add_task(_process)
 

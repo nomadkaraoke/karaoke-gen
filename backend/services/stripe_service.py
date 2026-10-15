@@ -480,6 +480,28 @@ class StripeService:
                 logger.error(f"Failed to create coupon {coupon_id}: {e}")
                 return None
 
+    def get_or_create_promo_coupon(self, discount_percent: int) -> Optional[str]:
+        """Stripe coupon for the conversion-email offer (distinct id so redemptions are countable)."""
+        if not self.is_configured():
+            return None
+        coupon_id = f"conversion-offer-{discount_percent}pct"
+        try:
+            stripe.Coupon.retrieve(coupon_id)
+            return coupon_id
+        except stripe.error.InvalidRequestError:
+            try:
+                stripe.Coupon.create(
+                    id=coupon_id,
+                    percent_off=discount_percent,
+                    duration="once",
+                    name=f"Welcome offer {discount_percent}% off",
+                )
+                logger.info(f"Created Stripe coupon: {coupon_id}")
+                return coupon_id
+            except stripe.error.StripeError as e:
+                logger.error(f"Failed to create coupon {coupon_id}: {e}")
+                return None
+
     def create_connect_account(self, email: str) -> Tuple[Optional[str], Optional[str]]:
         """Create a Stripe Connect Express account. Returns (account_id, onboarding_url)."""
         if not self.is_configured():

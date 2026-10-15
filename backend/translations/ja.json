@@ -403,6 +403,31 @@
       "ignoreNote": "このコードをリクエストした覚えがない場合は、このメールを無視していただいて構いません。",
       "intro": "カラオケナイトのシンガーページにサインインするためのコードです。ご利用のページに入力してください：",
       "subject": "Nomad Karaokeのコード: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "ご自身での歌詞チェックをお手軽に済ませたいですか？「Made For You」をお選びいただければ、動画をまるごと作成して24時間以内にお届けします：",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "お会計時に自動で適用されます。コードの入力は不要です。",
+      "offerButton": "次の曲を作成する",
+      "offerIntro": "最初のカラオケ動画「{song}」が完成しました。気に入っていただけたら嬉しいです！",
+      "offerIntroNoSong": "最初のカラオケ動画が完成しました。気に入っていただけたら嬉しいです！",
+      "offerLead": "他にも作りたい曲がありましたら、Nomad Karaokeをお試しいただいたお礼としてこちらをどうぞ：",
+      "offerLine": "今後{hours}時間限定、すべてのクレジットパックが{percent}%オフ",
+      "offerSubject": "カラオケ動画が完成しました！次はどの曲を作りますか？",
+      "reminderBody": "リマインダーです。クレジットパックの{percent}%オフは残り約{hours}時間で終了し、その後は通常価格に戻ります。",
+      "reminderButton": "割引を利用する",
+      "reminderNoPressure": "もちろん無理にご利用いただかなくても大丈夫です。動画を作成していただきありがとうございました！",
+      "reminderSubject": "{percent}%オフの終了まであと{hours}時間です",
+      "whyReceiving": "このメールは、gen.nomadkaraoke.com で動画を作成された方にお送りしています。"
+    },
+    "reviewLastChance": {
+      "button": "動画を完成させる",
+      "howLong": "確認は2〜3分ほどで終わります。歌詞をチェックしてインスト音源を選ぶだけで完了です。",
+      "intro": "「{song}」のカラオケ動画がもうすぐ完成します。簡単な確認作業を行ってください（残り約{hours}時間で期限切れとなります）。",
+      "introNoSong": "カラオケ動画がもうすぐ完成します。簡単な確認作業を行ってください（残り約{hours}時間で期限切れとなります）。",
+      "refundNote": "期限切れとなった場合、クレジットは自動的に返金されます。",
+      "subject": "カラオケ動画を完成できるのはあと{hours}時間です: {song}",
+      "subjectFallback": "カラオケ動画を完成できるのはあと{hours}時間です"
     }
   }
 }

@@ -403,7 +403,9 @@
     "savePct": "Tiết kiệm {savings}%",
     "redirecting": "Đang chuyển hướng đến thanh toán...",
     "continuePayment": "Tiếp tục thanh toán — {price}",
-    "selectPackage": "Chọn một gói"
+    "selectPackage": "Chọn một gói",
+    "promoBadge": "Ưu đãi giảm {percent}% của bạn được áp dụng khi thanh toán",
+    "promoExpires": "Ưu đãi kết thúc vào {time}"
   },
   "feedback": {
     "thankYou": "Cảm ơn bạn!",

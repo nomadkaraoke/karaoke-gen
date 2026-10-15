@@ -416,7 +416,9 @@
     "savePct": "Save {savings}%",
     "redirecting": "Redirecting to payment...",
     "continuePayment": "Continue to Payment — {price}",
-    "selectPackage": "Select a package"
+    "selectPackage": "Select a package",
+    "promoBadge": "Your {percent}% off is applied at checkout",
+    "promoExpires": "Offer ends {time}"
   },
   "feedback": {
     "thankYou": "Thank You!",

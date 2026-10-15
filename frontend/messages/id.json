@@ -403,7 +403,9 @@
     "savePct": "Hemat {savings}%",
     "redirecting": "Mengalihkan ke pembayaran...",
     "continuePayment": "Lanjutkan ke Pembayaran — {price}",
-    "selectPackage": "Pilih paket"
+    "selectPackage": "Pilih paket",
+    "promoBadge": "Diskon {percent}% Anda diterapkan saat checkout",
+    "promoExpires": "Penawaran berakhir {time}"
   },
   "feedback": {
     "thankYou": "Terima Kasih!",

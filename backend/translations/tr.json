@@ -403,6 +403,31 @@
       "ignoreNote": "Eğer bu kodu sen istemediysen, bu e-postayı güvenle görmezden gelebilirsin.",
       "intro": "İşte karaoke gecesi şarkıcı sayfasına giriş yapmak için kodun. Bunu kullandığın sayfaya yaz:",
       "subject": "Nomad Karaoke kodun: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Şarkı sözü incelemesini kendin yapmak istemiyor musun? Made For You'yu seç, tüm videoyu senin için hazırlayıp 24 saat içinde teslim edeyim:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Ödeme sırasında otomatik olarak uygulanır. Koda gerek yok.",
+      "offerButton": "Sıradaki şarkını hazırla",
+      "offerIntro": "İlk karaoke videon, {song}, hazır. Umarım kulağa harika geliyordur!",
+      "offerIntroNoSong": "İlk karaoke videon hazır. Umarım kulağa harika geliyordur!",
+      "offerLead": "Aklında başka bir şarkı varsa, Nomad Karaoke'yi denediğin için teşekkür olarak küçük bir hediye:",
+      "offerLine": "Önümüzdeki {hours} saat boyunca tüm kredi paketlerinde %{percent} indirim",
+      "offerSubject": "Karaoke videon hazır. Sırada ne var?",
+      "reminderBody": "Kısa bir hatırlatma: Kredi paketlerindeki %{percent} indirimin yaklaşık {hours} saat içinde sona eriyor. Sonrasında fiyatlar normale dönecek.",
+      "reminderButton": "İndirimimi kullan",
+      "reminderNoPressure": "Kullanmasan da canın sağ olsun, bizimle video hazırladığın için teşekkürler.",
+      "reminderSubject": "%{percent} indirimin {hours} saat içinde sona eriyor",
+      "whyReceiving": "Bu e-postayı gen.nomadkaraoke.com adresinde bir video hazırladığın için alıyorsun."
+    },
+    "reviewLastChance": {
+      "button": "Videomu tamamla",
+      "howLong": "İncelemelerin çoğu 2-3 dakika sürer: Şarkı sözlerinin doğru göründüğünü kontrol et, enstrümantali seç ve hepsi bu.",
+      "intro": "{song} için karaoke videon neredeyse hazır. Sadece hızlıca bir göz atman gerekiyor; süresi yaklaşık {hours} saat içinde dolacak.",
+      "introNoSong": "Karaoke videon neredeyse hazır. Sadece hızlıca bir göz atman gerekiyor; süresi yaklaşık {hours} saat içinde dolacak.",
+      "refundNote": "Süresi dolarsa kredin otomatik olarak iade edilir.",
+      "subject": "Karaoke videonu tamamlamak için son {hours} saat: {song}",
+      "subjectFallback": "Karaoke videonu tamamlamak için son {hours} saat"
     }
   }
 }

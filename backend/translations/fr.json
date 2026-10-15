@@ -403,6 +403,31 @@
       "ignoreNote": "Si tu n'as pas demandé ce code, tu peux ignorer cet e-mail en toute sécurité.",
       "intro": "Voici ton code pour te connecter sur la page des chanteurs de la soirée karaoké. Tape-le sur la page que tu utilises :",
       "subject": "Ton code Nomad Karaoke : {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Tu préfères ne pas vérifier les paroles toi-même ? Choisis Made For You et je m'occupe de créer toute la vidéo pour toi, livrée sous 24 heures :",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Appliquée automatiquement lors du paiement. Aucun code nécessaire.",
+      "offerButton": "Créer ma prochaine chanson",
+      "offerIntro": "Ta première vidéo karaoké, {song}, est prête. J'espère que le résultat te plaît !",
+      "offerIntroNoSong": "Ta première vidéo karaoké est prête. J'espère que le résultat te plaît !",
+      "offerLead": "Si tu as une autre chanson en tête, voici un petit cadeau pour te remercier d'avoir essayé Nomad Karaoke :",
+      "offerLine": "{percent} % de réduction sur tous les packs de crédits pendant les prochaines {hours} heures",
+      "offerSubject": "Ta vidéo karaoké est prête. On passe à la suite ?",
+      "reminderBody": "Rappel : ta réduction de {percent} % sur tous les packs de crédits se termine dans environ {hours} heures. Ensuite, les prix reviendront à la normale.",
+      "reminderButton": "Profiter de ma réduction",
+      "reminderNoPressure": "Pas de souci dans tous les cas, et merci d'avoir créé une vidéo avec nous.",
+      "reminderSubject": "Tes {percent} % de réduction expirent dans {hours} heures",
+      "whyReceiving": "Tu reçois cet e-mail parce que tu as créé une vidéo sur gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Terminer ma vidéo",
+      "howLong": "La plupart des vérifications prennent 2 à 3 minutes : vérifie que les paroles sont correctes, choisis ta piste instrumentale, et le tour est joué.",
+      "intro": "Ta vidéo karaoké pour {song} est presque prête. Il ne reste plus qu'une rapide vérification, et elle expirera dans environ {hours} heures.",
+      "introNoSong": "Ta vidéo karaoké est presque prête. Il ne reste plus qu'une rapide vérification, et elle expirera dans environ {hours} heures.",
+      "refundNote": "Si elle expire, ton crédit te sera automatiquement remboursé.",
+      "subject": "Plus que {hours} heures pour finaliser ta vidéo karaoké : {song}",
+      "subjectFallback": "Plus que {hours} heures pour finaliser ta vidéo karaoké"
     }
   }
 }

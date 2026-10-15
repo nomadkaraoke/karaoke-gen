@@ -403,6 +403,31 @@
       "ignoreNote": "Dacă nu ai solicitat acest cod, poți ignora în siguranță acest e-mail.",
       "intro": "Iată codul tău pentru a te conecta pe pagina cântărețului din seara de karaoke. Introdu-l în pagina pe care o folosești:",
       "subject": "Codul tău Nomad Karaoke: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Preferi să nu verifici tu versurile? Alege Made For You și voi face eu întregul videoclip pentru tine, livrat în 24 de ore:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Se aplică automat la finalizarea comenzii. Nu e nevoie de cod.",
+      "offerButton": "Creează următoarea piesă",
+      "offerIntro": "Primul tău videoclip karaoke, {song}, este gata. Sper să sune excelent!",
+      "offerIntroNoSong": "Primul tău videoclip karaoke este gata. Sper să sune excelent!",
+      "offerLead": "Dacă mai ai o piesă în minte, iată o mică atenție pentru că ai încercat Nomad Karaoke:",
+      "offerLine": "{percent}% reducere la orice pachet de credite pentru următoarele {hours} ore",
+      "offerSubject": "Videoclipul tău karaoke este gata. Ce urmează?",
+      "reminderBody": "Scurt memento: reducerea ta de {percent}% la orice pachet de credite expiră în aproximativ {hours} ore. După aceea, prețurile revin la normal.",
+      "reminderButton": "Folosește reducerea mea",
+      "reminderNoPressure": "Nicio supărare indiferent de alegere și îți mulțumim că ai creat un videoclip cu noi.",
+      "reminderSubject": "Reducerea ta de {percent}% expiră în {hours} ore",
+      "whyReceiving": "Primești acest e-mail pentru că ai creat un videoclip pe gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Finalizează videoclipul meu",
+      "howLong": "Majoritatea verificărilor durează 2-3 minute: verifică dacă versurile arată bine, alege negativul și gata.",
+      "intro": "Videoclipul tău karaoke pentru {song} este aproape gata. Mai are nevoie doar de o scurtă verificare din partea ta și va expira în aproximativ {hours} ore.",
+      "introNoSong": "Videoclipul tău karaoke este aproape gata. Mai are nevoie doar de o scurtă verificare din partea ta și va expira în aproximativ {hours} ore.",
+      "refundNote": "Dacă expiră, creditul tău va fi rambursat automat.",
+      "subject": "Mai ai {hours} ore pentru a-ți finaliza videoclipul karaoke: {song}",
+      "subjectFallback": "Mai ai {hours} ore pentru a-ți finaliza videoclipul karaoke"
     }
   }
 }

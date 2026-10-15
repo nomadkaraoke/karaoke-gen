@@ -382,3 +382,60 @@ class TestProcessStaleReviews:
 
         assert result["jobs_expired"] == 1
         mock_job_manager.cancel_job.assert_called_once()
+
+
+@pytest.mark.asyncio
+class TestReviewLastChance:
+    """The 42h "N hours left" nudge (REVIEW_LAST_CHANCE_ENABLED)."""
+
+    # Borrow the fixtures/patch helper without re-collecting the parent's tests
+    mock_firestore = TestProcessStaleReviews.mock_firestore
+    mock_job_manager = TestProcessStaleReviews.mock_job_manager
+    mock_email_service = TestProcessStaleReviews.mock_email_service
+    mock_user_service = TestProcessStaleReviews.mock_user_service
+    _patch_all = TestProcessStaleReviews._patch_all
+
+    def _settings(self, enabled):
+        return patch('backend.workers.stale_review_processor.get_settings',
+                     return_value=Mock(review_last_chance_enabled=enabled))
+
+    async def test_sends_last_chance_at_43h_when_enabled(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        job = _make_job(hours_ago=43, expiry_reminder_sent=True)
+        job.request_metadata = {}
+        mock_firestore.list_jobs.side_effect = [[job], [], []]
+        mock_email_service.frontend_url = "https://gen.nomadkaraoke.com"
+        mock_user_service.get_user.return_value = Mock(locale="en")
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service), self._settings(True):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            result = await process_stale_reviews()
+
+        assert result["reminders_sent"] == 1
+        kwargs = mock_email_service.send_review_last_chance.call_args.kwargs
+        assert kwargs["hours_left"] == 5
+        assert kwargs["review_url"].endswith("#/job-123/review")
+        assert "utm_campaign=review_last_chance" in kwargs["review_url"]
+        assert mock_firestore.update_job.call_args[0][1]['state_data.last_chance_reminder_sent'] is True
+        mock_email_service.send_review_reminder.assert_not_called()
+
+    async def test_disabled_keeps_old_behaviour(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        job = _make_job(hours_ago=43, expiry_reminder_sent=True)
+        mock_firestore.list_jobs.side_effect = [[job], [], []]
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service), self._settings(False):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            result = await process_stale_reviews()
+
+        assert result["reminders_sent"] == 0
+        mock_email_service.send_review_last_chance.assert_not_called()
+
+    async def test_not_sent_twice(self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+        job = _make_job(hours_ago=44, expiry_reminder_sent=True)
+        job.state_data['last_chance_reminder_sent'] = True
+        mock_firestore.list_jobs.side_effect = [[job], [], []]
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service), self._settings(True):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            await process_stale_reviews()
+
+        mock_email_service.send_review_last_chance.assert_not_called()

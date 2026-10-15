@@ -403,6 +403,31 @@
       "ignoreNote": "Hvis du ikke har anmodet om denne kode, kan du trygt ignorere denne e-mail.",
       "intro": "Her er din kode til at logge ind på sangersiden til karaokenatten. Indtast den på den side, du bruger:",
       "subject": "Din Nomad Karaoke-kode: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Vil du helst slippe for selv at gennemgå teksten? Vælg Made For You, så laver jeg hele videoen for dig, leveret inden for 24 timer:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Fratrækkes automatisk ved betaling. Ingen kode nødvendig.",
+      "offerButton": "Lav din næste sang",
+      "offerIntro": "Din første karaokevideo, {song}, er færdig. Jeg håber, den lyder fantastisk!",
+      "offerIntroNoSong": "Din første karaokevideo er færdig. Jeg håber, den lyder fantastisk!",
+      "offerLead": "Hvis du har en anden sang i tankerne, får du her en lille tak, fordi du prøvede Nomad Karaoke:",
+      "offerLine": "{percent} % rabat på alle kreditpakker i de næste {hours} timer",
+      "offerSubject": "Din karaokevideo er færdig. Hvad er det næste?",
+      "reminderBody": "Hurtig påmindelse: Din rabat på {percent} % på alle kreditpakker udløber om cirka {hours} timer. Derefter vender priserne tilbage til normalen.",
+      "reminderButton": "Brug min rabat",
+      "reminderNoPressure": "Helt uden forpligtelser, og tak fordi du lavede en video hos os.",
+      "reminderSubject": "Din rabat på {percent} % udløber om {hours} timer",
+      "whyReceiving": "Du modtager denne e-mail, fordi du har lavet en video på gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Færdiggør min video",
+      "howLong": "Det tager som regel kun 2-3 minutter at gennemgå: Tjek, at teksten ser rigtig ud, vælg dit instrumentalspor, og så er du færdig.",
+      "intro": "Din karaokevideo til {song} er næsten færdig. Den mangler bare en hurtig gennemgang fra dig, og den udløber om cirka {hours} timer.",
+      "introNoSong": "Din karaokevideo er næsten færdig. Den mangler bare en hurtig gennemgang fra dig, og den udløber om cirka {hours} timer.",
+      "refundNote": "Hvis den udløber, bliver din kredit automatisk refunderet.",
+      "subject": "{hours} timer tilbage til at færdiggøre din karaokevideo: {song}",
+      "subjectFallback": "{hours} timer tilbage til at færdiggøre din karaokevideo"
     }
   }
 }

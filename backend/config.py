@@ -403,6 +403,21 @@ class Settings(BaseSettings):
     # Offer an opt-in "tip the creator" optional item on gen Stripe Checkout pages
     # (credits + Made For You). Kill switch: CHECKOUT_TIP_ENABLED=false.
     checkout_tip_enabled: bool = os.getenv("CHECKOUT_TIP_ENABLED", "true").lower() in ("true", "1", "yes")
+    # Free-to-paid conversion emails (backend/services/conversion_emails.py).
+    # OFF until Andrew approves the copy: CONVERSION_EMAILS_ENABLED=true sends E1
+    # ("your next song" + time-limited discount) and E2 (offer ending) on Postmark's
+    # broadcast stream; REVIEW_LAST_CHANCE_ENABLED=true adds the 42h review nudge.
+    conversion_emails_enabled: bool = os.getenv("CONVERSION_EMAILS_ENABLED", "false").lower() in ("true", "1", "yes")
+    review_last_chance_enabled: bool = os.getenv("REVIEW_LAST_CHANCE_ENABLED", "false").lower() in ("true", "1", "yes")
+    conversion_offer_percent: int = int(os.getenv("CONVERSION_OFFER_PERCENT", "25"))
+    conversion_offer_hours: int = int(os.getenv("CONVERSION_OFFER_HOURS", "48"))
+    conversion_e1_delay_hours: float = float(os.getenv("CONVERSION_E1_DELAY_HOURS", "2"))
+    conversion_e2_hours_before_expiry: float = float(os.getenv("CONVERSION_E2_HOURS_BEFORE_EXPIRY", "8"))
+    # CAN-SPAM: commercial email must carry a physical postal address.
+    # Default = the business address already published on nomadkaraoke.com.
+    commercial_email_postal_address: str = os.getenv(
+        "COMMERCIAL_EMAIL_POSTAL_ADDRESS", "Nomad Karaoke, 612 Joan St, Columbia, SC 29203, USA"
+    )
 
     # YouTube description back-catalogue rewrite (scheduled daily drain worker).
     # Rewrites existing channel videos to match `default_youtube_description`.

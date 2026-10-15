@@ -403,7 +403,9 @@
     "savePct": "Makatipid ng {savings}%",
     "redirecting": "Nire-redirect sa pagbabayad...",
     "continuePayment": "Magpatuloy sa Pagbabayad — {price}",
-    "selectPackage": "Pumili ng package"
+    "selectPackage": "Pumili ng package",
+    "promoBadge": "Awtomatikong mababawas ang iyong {percent}% diskwento sa checkout",
+    "promoExpires": "Magtatapos ang alok sa {time}"
   },
   "feedback": {
     "thankYou": "Salamat!",

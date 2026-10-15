@@ -403,6 +403,31 @@
       "ignoreNote": "Nếu bạn không yêu cầu mã này, bạn có thể an tâm bỏ qua email này.",
       "intro": "Đây là mã của bạn để đăng nhập vào trang ca sĩ đêm karaoke. Hãy nhập mã này vào trang bạn đang sử dụng:",
       "subject": "Mã Nomad Karaoke của bạn: {code}"
+    },
+    "conversion": {
+      "madeForYouLine": "Bạn không muốn tự mình kiểm tra lời bài hát? Hãy chọn Made For You và mình sẽ làm toàn bộ video cho bạn, bàn giao trong vòng 24 giờ:",
+      "madeForYouLink": "Made For You",
+      "offerAutoApplied": "Tự động áp dụng khi thanh toán. Không cần nhập mã.",
+      "offerButton": "Tạo bài hát tiếp theo",
+      "offerIntro": "Video karaoke đầu tiên của bạn, {song}, đã hoàn thành. Hy vọng bạn sẽ thích bài hát này!",
+      "offerIntroNoSong": "Video karaoke đầu tiên của bạn đã hoàn thành. Hy vọng bạn sẽ thích bài hát này!",
+      "offerLead": "Nếu bạn đang có sẵn một bài hát khác trong đầu, đây là món quà cảm ơn bạn đã dùng thử Nomad Karaoke:",
+      "offerLine": "Giảm {percent}% cho bất kỳ gói tín dụng nào trong {hours} giờ tới",
+      "offerSubject": "Video karaoke của bạn đã hoàn tất. Bạn muốn làm gì tiếp theo?",
+      "reminderBody": "Nhắc bạn một chút: ưu đãi giảm {percent}% cho bất kỳ gói tín dụng nào sẽ kết thúc sau khoảng {hours} giờ nữa. Sau thời gian đó, giá sẽ quay lại mức bình thường.",
+      "reminderButton": "Dùng ưu đãi của tôi",
+      "reminderNoPressure": "Dù chọn thế nào cũng không sao cả, và cảm ơn bạn đã tạo video cùng chúng tôi.",
+      "reminderSubject": "Ưu đãi giảm {percent}% của bạn sẽ kết thúc sau {hours} giờ nữa",
+      "whyReceiving": "Bạn nhận được email này vì bạn đã tạo một video tại gen.nomadkaraoke.com."
+    },
+    "reviewLastChance": {
+      "button": "Hoàn tất video của tôi",
+      "howLong": "Việc kiểm tra thường chỉ mất 2 đến 3 phút: xem lại lời bài hát, chọn bản nhạc nền và thế là xong.",
+      "intro": "Video karaoke {song} của bạn sắp hoàn thành rồi. Bạn chỉ cần kiểm tra nhanh lại một chút, và video sẽ hết hạn sau khoảng {hours} giờ nữa.",
+      "introNoSong": "Video karaoke của bạn sắp hoàn thành rồi. Bạn chỉ cần kiểm tra nhanh lại một chút, và video sẽ hết hạn sau khoảng {hours} giờ nữa.",
+      "refundNote": "Nếu hết hạn, tín dụng của bạn sẽ được tự động hoàn lại.",
+      "subject": "Còn {hours} giờ để hoàn tất video karaoke của bạn: {song}",
+      "subjectFallback": "Còn {hours} giờ để hoàn tất video karaoke của bạn"
     }
   }
 }

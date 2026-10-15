@@ -304,3 +304,20 @@ describe('AuthDialog', () => {
     })
   })
 })
+
+describe('AuthStatus ?buy=1 deep link', () => {
+  it('opens the buy-credits dialog for ?buy=1 (conversion email link) and strips the param', () => {
+    const replaceState = jest.spyOn(window.history, 'replaceState').mockImplementation(() => {})
+    ;(window as any).location = { reload: mockReload, search: '?buy=1&utm_source=email', pathname: '/en/app', hash: '' }
+    mockUseAuth.mockReturnValue({
+      user: { email: 'test@example.com', credits: 0, display_name: null },
+      logout: jest.fn(),
+    })
+    render(<AuthStatus />)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(replaceState).toHaveBeenCalledWith(null, '', '/en/app?utm_source=email')
+    replaceState.mockRestore()
+    ;(window as any).location = { reload: mockReload }
+  })
+})

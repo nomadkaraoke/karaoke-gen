@@ -403,7 +403,9 @@
     "savePct": "Uštedi {savings}%",
     "redirecting": "Preusmjeravanje na plaćanje...",
     "continuePayment": "Nastavi na plaćanje — {price}",
-    "selectPackage": "Odaberi paket"
+    "selectPackage": "Odaberi paket",
+    "promoBadge": "Tvoj popust od {percent}% primjenjuje se pri plaćanju",
+    "promoExpires": "Ponuda istječe {time}"
   },
   "feedback": {
     "thankYou": "Hvala ti!",
