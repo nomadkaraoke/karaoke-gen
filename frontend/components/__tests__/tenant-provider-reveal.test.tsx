@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react"
+import { cleanup, render, waitFor } from "@testing-library/react"
 import { TenantProvider } from "../tenant-provider"
 import { useTenant } from "@/lib/tenant"
 import { TENANT_PENDING_ATTR } from "@/lib/edge/tenantHtmlInjection"
@@ -35,6 +35,7 @@ function Probe() {
 
 describe("TenantProvider reveal", () => {
   afterEach(() => {
+    cleanup() // unmount before resetting the store, or the old provider refetches
     delete (window as unknown as Record<string, unknown>).__TENANT_CONFIG__
     document.documentElement.removeAttribute(TENANT_PENDING_ATTR)
     useTenant.setState({ tenant: null, isDefault: true, isInitialized: false, isLoading: false, error: null })
@@ -80,5 +81,48 @@ describe("TenantProvider reveal", () => {
       global.fetch = original
       errSpy.mockRestore()
     }
+  })
+})
+
+describe("TenantProvider title", () => {
+  afterEach(() => {
+    cleanup() // unmount before resetting the store, or the old provider refetches
+    delete (window as unknown as Record<string, unknown>).__TENANT_CONFIG__
+    useTenant.setState({ tenant: null, isDefault: true, isInitialized: false, isLoading: false, error: null })
+    document.title = ""
+  })
+
+  it("keeps the tenant site title when Next.js metadata rewrites <title>", async () => {
+    ;(window as unknown as Record<string, unknown>).__TENANT_CONFIG__ = VOCALSTAR
+    document.title = "Nomad Karaoke: Generator"
+    render(
+      <TenantProvider>
+        <Probe />
+      </TenantProvider>
+    )
+    await waitFor(() => expect(document.title).toBe("Vocal Star Karaoke Generator"))
+
+    // Simulate a route change rewriting the title element's text
+    document.querySelector("title")!.textContent = "Karaoke Generator"
+    await waitFor(() => expect(document.title).toBe("Vocal Star Karaoke Generator"))
+  })
+
+  it("leaves the title alone on the default (Nomad) site", async () => {
+    const original = global.fetch
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tenant: null, is_default: true }),
+    }) as unknown as typeof fetch
+    document.title = "Nomad Karaoke: Generator"
+    render(
+      <TenantProvider>
+        <Probe />
+      </TenantProvider>
+    )
+    await waitFor(() => expect(useTenant.getState().isInitialized).toBe(true))
+    document.title = "Karaoke Generator"
+    await new Promise((r) => setTimeout(r, 0))
+    expect(document.title).toBe("Karaoke Generator")
+    global.fetch = original
   })
 })
