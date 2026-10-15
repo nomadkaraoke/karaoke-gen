@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "CD+G giriş kartı önizlemesi",
     "cdgOutlineColour": "Şarkı sözü dış çizgi rengi",
     "cdgOutroLine1Colour": "Şarkı adı rengi",
-    "cdgOutroLine2Colour": "Sanatçı adı rengi"
+    "cdgOutroLine2Colour": "Sanatçı adı rengi",
+    "cdgInstrumentalAfter": "Bundan uzun enstrümantal aralar için göster (saniye)",
+    "cdgReveal": "Nasıl çizileceği",
+    "cdgRevealHint": "CD+G çalarlar her ekranı kare kare çizer. \"Nasıl çizileceği\" sırayı belirler (yerleşik bir maske): önizlemede gösterilen tamamlanmış ekranı değil, animasyonu değiştirir.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Ortadaki metin, ardından logo, ardından alt metin",
+      "circlein": "İçeri dairesel",
+      "circleout": "Dışarı dairesel",
+      "fizzle": "Karıncalanma (rastgele kareler)",
+      "largecentertexttoplogo": "Büyük orta metin, ardından logo",
+      "rectangle": "Dikdörtgen",
+      "spiral": "Sarmal",
+      "topleftmusicalnotes": "Sol üstten müzik notaları",
+      "wipein": "İçeri doğru kayarak açılma",
+      "wipeleft": "Sola doğru kayarak açılma",
+      "wipeout": "Dışarı doğru kayarak açılma",
+      "wiperight": "Sağa doğru kayarak açılma"
+    },
+    "previewCdgInstrumental": "CD+G enstrümantal ara önizlemesi",
+    "previewCdgOutro": "CD+G kapanış ekranı önizlemesi"
   },
   "stalledDownload": {
     "actionFailedDesc": "Lütfen birazdan tekrar dene.",

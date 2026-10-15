@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "CD+G-Titelkarten-Vorschau",
     "cdgOutlineColour": "Konturfarbe des Texts",
     "cdgOutroLine1Colour": "Farbe des Songtitels",
-    "cdgOutroLine2Colour": "Farbe des Künstlernamens"
+    "cdgOutroLine2Colour": "Farbe des Künstlernamens",
+    "cdgInstrumentalAfter": "Anzeigen bei Instrumental-Lücken länger als (Sekunden)",
+    "cdgReveal": "Aufbau-Animation",
+    "cdgRevealHint": "CD+G-Player bauen jeden Bildschirm Kachel für Kachel auf. „Aufbau-Animation“ bestimmt die Reihenfolge (eine integrierte Maske): Dies ändert die Animation, nicht den fertigen Bildschirm in der Vorschau.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Text zentriert, dann Logo, dann unten",
+      "circlein": "Kreis nach innen",
+      "circleout": "Kreis nach außen",
+      "fizzle": "Auflösen (zufällige Kacheln)",
+      "largecentertexttoplogo": "Großer Text zentriert, dann Logo",
+      "rectangle": "Rechteck",
+      "spiral": "Spirale",
+      "topleftmusicalnotes": "Musiknoten von oben links",
+      "wipein": "Wischen nach innen",
+      "wipeleft": "Wischen nach links",
+      "wipeout": "Wischen nach außen",
+      "wiperight": "Wischen nach rechts"
+    },
+    "previewCdgInstrumental": "Vorschau der CD+G-Instrumentalpause",
+    "previewCdgOutro": "Vorschau des CD+G-Endbildschirms"
   },
   "stalledDownload": {
     "actionFailedDesc": "Bitte versuche es gleich noch einmal.",

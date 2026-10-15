@@ -47,10 +47,12 @@ const THEME = {
 const DATA = {
   theme_id: "vocalstar", style_params: THEME, images: ["card.gif", "bg.jpg"], cdg_images: ["card.gif"],
   fonts: ["AvenirNext-Bold.ttf", "Oswald-SemiBold.ttf"],
+  cdg_transitions: ["centertexttoplogobottomtext", "topleftmusicalnotes", "wipein"],
 }
 const IMAGES = {
   title_card: "data:image/jpeg;base64,AAA", karaoke_frame: "data:image/jpeg;base64,BBB",
   cdg_title_card: "data:image/png;base64,CCC", cdg_lyrics: "data:image/png;base64,DDD",
+  cdg_instrumental: "data:image/png;base64,EEE", cdg_outro: "data:image/png;base64,FFF",
 }
 
 beforeEach(() => {
@@ -89,12 +91,42 @@ it("has no CD+G tab when the theme has no CD+G section", async () => {
   expect(screen.queryByRole("tab", { name: "tabs.cdg" })).toBeNull()
 })
 
-it("asks for and shows the real CD+G up card and lyrics previews on its tab", async () => {
+it("asks for and shows all four real CD+G screens (and no video screens) on its tab", async () => {
   await openCdgTab()
-  await waitFor(() => expect(lastPreviewCall()[3]).toEqual({ includeCdg: true }))
+  await waitFor(() => expect(lastPreviewCall()[3]).toEqual({ includeCdg: true, kinds: [] }))
   expect(await screen.findByTestId("preview-cdg_title_card")).toHaveAttribute("src", IMAGES.cdg_title_card)
   expect(screen.getByTestId("preview-cdg_lyrics")).toHaveAttribute("src", IMAGES.cdg_lyrics)
+  expect(screen.getByTestId("preview-cdg_instrumental")).toHaveAttribute("src", IMAGES.cdg_instrumental)
+  expect(screen.getByTestId("preview-cdg_outro")).toHaveAttribute("src", IMAGES.cdg_outro)
   expect(screen.queryByTestId("preview-karaoke_frame")).toBeNull()
+  expect(screen.queryByTestId("preview-title_card")).toBeNull()
+  // Low-res CD+G frames sit two to a row so all four fit in the sidebar
+  expect(screen.getByTestId("preview-list").className).toContain("grid-cols-2")
+})
+
+it("picks how each CD+G screen is drawn in from the built-in transitions", async () => {
+  await openCdgTab()
+  const upCard = screen.getByLabelText("cdgReveal", { selector: "#cdg-title_screen_transition" }) as HTMLSelectElement
+  expect(Array.from(upCard.options).map((o) => o.value)).toEqual(["centertexttoplogobottomtext", "topleftmusicalnotes", "wipein"])
+  fireEvent.change(upCard, { target: { value: "wipein" } })
+  fireEvent.change(screen.getByLabelText("cdgReveal", { selector: "#cdg-instrumental_transition" }), { target: { value: "topleftmusicalnotes" } })
+  fireEvent.change(screen.getByLabelText("cdgReveal", { selector: "#cdg-outro_transition" }), { target: { value: "wipein" } })
+  fireEvent.click(screen.getByRole("button", { name: "save" }))
+  await waitFor(() => expect(save).toHaveBeenCalled())
+  const cdg = save.mock.calls[0][0].cdg
+  expect(cdg.title_screen_transition).toBe("wipein")
+  expect(cdg.instrumental_transition).toBe("topleftmusicalnotes")
+  expect(cdg.outro_transition).toBe("wipein")
+})
+
+it("the instrumental gap slider is in seconds and stored in centiseconds", async () => {
+  await openCdgTab()
+  const slider = screen.getByLabelText("cdgInstrumentalAfter")
+  expect(slider).toHaveValue("15") // theme default 1500 cs
+  fireEvent.change(slider, { target: { value: "8" } })
+  fireEvent.click(screen.getByRole("tab", { name: "tabs.advanced" }))
+  const json = JSON.parse((screen.getByLabelText("advancedJson") as HTMLTextAreaElement).value)
+  expect(json.cdg.instrumental_gap_threshold).toBe(800)
 })
 
 it("other tabs don't request the slower CD+G previews", async () => {
@@ -102,7 +134,7 @@ it("other tabs don't request the slower CD+G previews", async () => {
   await screen.findByText("tabs.titleCard")
   await act(async () => { jest.advanceTimersByTime(800) })
   await waitFor(() => expect(preview).toHaveBeenCalled())
-  expect(lastPreviewCall()[3]).toEqual({ includeCdg: false })
+  expect(lastPreviewCall()[3]).toEqual({ includeCdg: false, kinds: ["title_card"] })
 })
 
 it("edits the cdg section: separator text, colours, sizes and position", async () => {

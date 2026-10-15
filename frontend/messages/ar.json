@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "معاينة شاشة بداية CD+G",
     "cdgOutlineColour": "لون إطار الكلمات",
     "cdgOutroLine1Colour": "لون عنوان الأغنية",
-    "cdgOutroLine2Colour": "لون اسم الفنان"
+    "cdgOutroLine2Colour": "لون اسم الفنان",
+    "cdgInstrumentalAfter": "يُعرض للفواصل الموسيقية الأطول من (بالثواني)",
+    "cdgReveal": "طريقة الرسم والظهور",
+    "cdgRevealHint": "ترسم مشغلات CD+G كل شاشة مربعاً تلو الآخر. تحدد \"طريقة الرسم والظهور\" ترتيب هذا الرسم (قناع مدمج): يغيّر هذا التأثير الحركي فقط، ولا يؤثر على شكل الشاشة النهائي المعروض في المعاينة.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "النص الأوسط، ثم الشعار، ثم النص السفلي",
+      "circlein": "دائرة للداخل",
+      "circleout": "دائرة للخارج",
+      "fizzle": "تلاشٍ عشوائي (مربعات عشوائية)",
+      "largecentertexttoplogo": "نص أوسط كبير، ثم الشعار",
+      "rectangle": "مستطيل",
+      "spiral": "حلزوني",
+      "topleftmusicalnotes": "نوتات موسيقية من أعلى اليسار",
+      "wipein": "مسح للداخل",
+      "wipeleft": "مسح لليسار",
+      "wipeout": "مسح للخارج",
+      "wiperight": "مسح لليمين"
+    },
+    "previewCdgInstrumental": "معاينة الفاصل الموسيقي لـ CD+G",
+    "previewCdgOutro": "معاينة شاشة النهاية لـ CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "يُرجى المحاولة مرة أخرى بعد قليل.",

@@ -36,7 +36,7 @@ from backend.services.tenant_admin_service import (
     _validate_style_params,
     update_tenant,
 )
-from backend.services.theme_preview_service import BUNDLED_FONTS_DIR, bundled_fonts, font_family_name
+from backend.services.theme_preview_service import BUNDLED_FONTS_DIR, bundled_fonts, cdg_transitions, font_family_name
 from backend.services.theme_service import THEMES_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -96,6 +96,7 @@ NUMERIC_BOUNDS = {
     ("cdg", "title_max_height"): (30, 216),
     ("cdg", "title_artist_gap"): (0, 80),
     ("cdg", "outro_line1_line2_gap"): (0, 80),
+    ("cdg", "instrumental_gap_threshold"): (300, 12000),  # centiseconds (3s-120s)
     ("intro", "video_duration"): (1, 30),
     ("end", "video_duration"): (1, 30),
 }
@@ -122,6 +123,7 @@ CDG_TEXT_FIELDS = {  # field: max length (rendered on the 300px-wide CDG screen)
     "outro_text_line2": 80,
 }
 CDG_IMAGE_SIZE = (300, 216)
+CDG_TRANSITION_FIELDS = ("title_screen_transition", "instrumental_transition", "outro_transition")
 RGBA_COLOR_FIELDS = (
     ("karaoke", "primary_color"), ("karaoke", "secondary_color"),
     ("karaoke", "outline_color"), ("karaoke", "back_color"),
@@ -254,6 +256,12 @@ def sanitize_style_params(
     for section, field in REGION_FIELDS:
         _check_region(styles[section].get(field), f"{section}.{field}")
 
+    transitions = set(cdg_transitions())
+    for field in CDG_TRANSITION_FIELDS:
+        value = styles["cdg"].get(field)
+        if value is not None and value not in transitions:
+            raise TenantValidationError(f"cdg.{field} must be one of the built-in CD+G transitions.")
+
     for field, max_len in CDG_TEXT_FIELDS.items():
         value = styles["cdg"].get(field)
         if value is None:
@@ -343,6 +351,7 @@ def get_theme_for_editor(config, storage: Optional[StorageService] = None) -> Di
     return {
         "theme_id": theme_id, "style_params": style_params, "images": images, "fonts": fonts,
         "cdg_images": [name for name in images if _is_cdg_sized(storage, theme_id, name)],
+        "cdg_transitions": cdg_transitions(),
     }
 
 

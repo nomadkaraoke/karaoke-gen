@@ -321,3 +321,28 @@ def test_cdg_audio_timeout_is_a_preview_error(cdg_cache, monkeypatch):
     theme["cdg"] = _cdg_section()
     with pytest.raises(tps.ThemePreviewError, match="timed out"):
         tps.render_cdg_previews(tps.resolve_assets(theme, "t1", cdg_cache, include_cdg=True), "A", "T", ["la la"], str(cdg_cache._card).rsplit("/", 1)[0])
+
+
+def test_cdg_instrumental_break_and_closing_screen_render(cdg_cache):
+    theme = _theme()
+    theme["cdg"] = _cdg_section(instrumental_font_color="#00ff00", instrumental_gap_threshold=1500)
+    result = tps.render_theme_preview(
+        "t1", theme, artist="Lady Gaga", title="Abracadabra", storage=cdg_cache, include_cdg=True
+    )
+    instrumental, outro = _img(result.cdg_instrumental), _img(result.cdg_outro)
+    assert (0, 255, 0) in _colours(instrumental)  # "INSTRUMENTAL / N seconds" in its own colour
+    assert CDG_BLUE not in _colours(instrumental)  # not a lyrics page
+    assert CDG_YELLOW in _colours(outro)  # title + artist on the closing screen
+    assert result.as_data_urls()["cdg_outro"].startswith("data:image/png;base64,")
+
+
+def test_kinds_limits_which_mp4_screens_render(cdg_cache):
+    result = tps.render_theme_preview("t1", _theme(), storage=cdg_cache, kinds=["karaoke_frame"])
+    assert result.karaoke_frame and result.title_card is None and result.end_screen is None
+    only_title = tps.render_theme_preview("t1", _theme(), storage=cdg_cache, kinds=["title_card"])
+    assert only_title.title_card and only_title.karaoke_frame is None
+
+
+def test_cdg_transitions_are_the_built_in_masks():
+    names = tps.cdg_transitions()
+    assert {"centertexttoplogobottomtext", "topleftmusicalnotes", "wipein"} <= set(names)

@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Vista previa de tarjeta de título en CD+G",
     "cdgOutlineColour": "Color del contorno de las letras",
     "cdgOutroLine1Colour": "Color del título de la canción",
-    "cdgOutroLine2Colour": "Color del nombre del artista"
+    "cdgOutroLine2Colour": "Color del nombre del artista",
+    "cdgInstrumentalAfter": "Mostrar para huecos instrumentales de más de (segundos)",
+    "cdgReveal": "Cómo se dibuja",
+    "cdgRevealHint": "Los reproductores de CD+G dibujan cada pantalla mosaico por mosaico. \"Cómo se dibuja\" elige el orden (una máscara integrada): cambia la animación, no la pantalla final que se muestra en la vista previa.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Texto centrado, luego logo, luego parte inferior",
+      "circlein": "Círculo hacia adentro",
+      "circleout": "Círculo hacia afuera",
+      "fizzle": "Chisporroteo (mosaicos aleatorios)",
+      "largecentertexttoplogo": "Texto centrado grande, luego logo",
+      "rectangle": "Rectángulo",
+      "spiral": "Espiral",
+      "topleftmusicalnotes": "Notas musicales desde arriba a la izquierda",
+      "wipein": "Barrido hacia adentro",
+      "wipeleft": "Barrido hacia la izquierda",
+      "wipeout": "Barrido hacia afuera",
+      "wiperight": "Barrido hacia la derecha"
+    },
+    "previewCdgInstrumental": "Vista previa de la pausa instrumental en CD+G",
+    "previewCdgOutro": "Vista previa de la pantalla final en CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, inténtalo de nuevo en un momento.",

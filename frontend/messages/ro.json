@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Previzualizare ecran introductiv CD+G",
     "cdgOutlineColour": "Culoare contur versuri",
     "cdgOutroLine1Colour": "Culoare titlu melodie",
-    "cdgOutroLine2Colour": "Culoare nume artist"
+    "cdgOutroLine2Colour": "Culoare nume artist",
+    "cdgInstrumentalAfter": "Afișează pentru pauzele instrumentale mai lungi de (secunde)",
+    "cdgReveal": "Mod de desenare",
+    "cdgRevealHint": "Playerele CD+G desenează fiecare ecran piesă cu piesă. „Mod de desenare” alege ordinea (o mască integrată): schimbă animația, nu ecranul final afișat în previzualizare.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Text central, apoi logo, apoi jos",
+      "circlein": "Cerc spre interior",
+      "circleout": "Cerc spre exterior",
+      "fizzle": "Dispersie (piese aleatorii)",
+      "largecentertexttoplogo": "Text central mare, apoi logo",
+      "rectangle": "Dreptunghi",
+      "spiral": "Spirală",
+      "topleftmusicalnotes": "Note muzicale din stânga sus",
+      "wipein": "Tranziție spre interior",
+      "wipeleft": "Tranziție spre stânga",
+      "wipeout": "Tranziție spre exterior",
+      "wiperight": "Tranziție spre dreapta"
+    },
+    "previewCdgInstrumental": "Previzualizare pauză instrumentală CD+G",
+    "previewCdgOutro": "Previzualizare ecran de final CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "Te rugăm să încerci din nou peste câteva momente.",

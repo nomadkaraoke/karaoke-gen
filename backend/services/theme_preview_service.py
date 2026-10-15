@@ -36,7 +36,7 @@ import tempfile
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from PIL import Image
 
@@ -60,6 +60,8 @@ BUNDLED_FONTS_DIR = os.path.join(
     "resources",
 )
 FONT_EXTENSIONS = (".ttf", ".otf")
+
+MP4_PREVIEW_KINDS = ("title_card", "karaoke_frame", "end_screen")
 
 DEFAULT_SAMPLE_LYRICS = [
     "Every night I sing along",
@@ -97,11 +99,13 @@ def font_family_name(font_file: str) -> str:
 class PreviewImages:
     # JPEGs. A screen the theme omits from videos (``enabled: false``) isn't rendered.
     title_card: Optional[bytes]
-    karaoke_frame: bytes
+    karaoke_frame: Optional[bytes]
     end_screen: Optional[bytes] = None
     # PNGs (CD+G frames, upscaled with hard pixels). Only rendered on request.
     cdg_title_card: Optional[bytes] = None
     cdg_lyrics: Optional[bytes] = None
+    cdg_instrumental: Optional[bytes] = None
+    cdg_outro: Optional[bytes] = None
 
     def as_data_urls(self) -> Dict[str, Optional[str]]:
         enc = lambda b: "data:image/jpeg;base64," + base64.b64encode(b).decode() if b else None  # noqa: E731
@@ -112,6 +116,8 @@ class PreviewImages:
             "end_screen": enc(self.end_screen),
             "cdg_title_card": png(self.cdg_title_card),
             "cdg_lyrics": png(self.cdg_lyrics),
+            "cdg_instrumental": png(self.cdg_instrumental),
+            "cdg_outro": png(self.cdg_outro),
         }
 
 
@@ -468,7 +474,7 @@ def _lrc_timestamp(seconds: float) -> str:
     return f"[{int(minutes):02d}:{secs:06.3f}]"
 
 
-def _pick_lyrics_frame(frames: List[Image.Image], cdg_styles: Dict) -> Image.Image:
+def _pick_lyrics_frame(frames: List[Image.Image], cdg_styles: Dict, with_index: bool = False):
     """The first frame showing both sung and unsung lyrics (else the busiest one)."""
     from karaoke_gen.lyrics_transcriber.output.cdg_decoder import cdg_color
 
@@ -477,45 +483,105 @@ def _pick_lyrics_frame(frames: List[Image.Image], cdg_styles: Dict) -> Image.Ima
         unsung = cdg_color(cdg_styles.get("inactive_fill") or "#000000")
     except (ValueError, TypeError):
         sung = unsung = None
-    best, best_score = frames[-1], -1
-    for frame in frames:
+    best, best_i, best_score = frames[-1], len(frames) - 1, -1
+    for i, frame in enumerate(frames):
         counts = {rgb: n for n, rgb in (frame.getcolors(CDG_COLOR_LIMIT) or [])}
         if sung and unsung and sung != unsung:
             s, u = counts.get(sung, 0), counts.get(unsung, 0)
             if s > 150 and u > 150:
-                return frame
+                return (frame, i) if with_index else frame
         background = _dominant(counts)
         lit = sum(n for rgb, n in counts.items() if rgb != background)
         if lit > best_score:
-            best, best_score = frame, lit
-    return best
+            best, best_i, best_score = frame, i, lit
+    return (best, best_i) if with_index else best
+
+
+def _pick_instrumental_frame(frames: List[Image.Image], cdg_styles: Dict) -> Image.Image:
+    """The fully drawn instrumental screen: most pixels that aren't lyrics or background
+    (its image + text), else the busiest frame without the sung colour."""
+    from karaoke_gen.lyrics_transcriber.output.cdg_decoder import cdg_color
+
+    def colour(key: str):
+        try:
+            return cdg_color(cdg_styles.get(key) or "#000000")
+        except (ValueError, TypeError):
+            return None
+
+    sung, unsung, screen = colour("active_fill"), colour("inactive_fill"), colour("background_color")
+    best, best_score, fallback, fallback_lit = None, 0, frames[len(frames) // 2], -1
+    for frame in frames:
+        counts = {rgb: n for n, rgb in (frame.getcolors(CDG_COLOR_LIMIT) or [])}
+        score = sum(n for rgb, n in counts.items() if rgb not in (sung, unsung, screen))
+        if score > best_score:
+            best, best_score = frame, score
+        if counts.get(sung, 0) == 0 or sung == unsung:
+            lit = sum(n for rgb, n in counts.items() if rgb != screen)
+            if lit > fallback_lit:
+                fallback, fallback_lit = frame, lit
+    return best if best is not None and best_score > 200 else fallback
 
 
 def _dominant(counts: Dict) -> tuple:
     return max(counts, key=counts.get) if counts else (0, 0, 0)
 
 
+CDG_TRANSITIONS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "karaoke_gen", "lyrics_transcriber", "output", "cdgmaker", "transitions",
+)
+# Preview-only: a short instrumental gap is enough to show the instrumental screen.
+PREVIEW_INSTRUMENTAL_THRESHOLD_CS = 600
+PREVIEW_INSTRUMENTAL_GAP_S = 15.0
+
+
+def cdg_transitions() -> List[str]:
+    """Names of the built-in CD+G reveal transitions (greyscale draw-order masks)."""
+    try:
+        return sorted(f[:-4] for f in os.listdir(CDG_TRANSITIONS_DIR) if f.endswith(".png"))
+    except OSError:
+        return []
+
+
+@dataclass
+class CdgPreviewFrames:
+    title_card: bytes
+    lyrics: bytes
+    instrumental: bytes
+    outro: bytes
+
+
 def render_cdg_previews(
     styles: Dict, artist: str, title: str, lines: List[str], workdir: str
-) -> Tuple[bytes, bytes]:
-    """(up card, lyrics page) PNGs from a real CDG composed with the theme's cdg styles."""
+) -> CdgPreviewFrames:
+    """Up card, lyrics page, instrumental break and closing screen (PNGs) from one
+    real CDG composed with the theme's cdg styles and sample lyrics."""
     from karaoke_gen.lyrics_transcriber.output.cdg import CDGGenerator
-    from karaoke_gen.lyrics_transcriber.output.cdg_decoder import decode_cdg_frames
+    from karaoke_gen.lyrics_transcriber.output.cdg_decoder import cdg_duration_seconds, decode_cdg_frames
 
     cdg_styles = dict(styles.get("cdg") or {})
     if not cdg_styles.get("font_path"):
         raise ThemePreviewError("CD+G styles need a font.")
+    threshold_cs = min(
+        int(cdg_styles.get("instrumental_gap_threshold") or PREVIEW_INSTRUMENTAL_THRESHOLD_CS),
+        PREVIEW_INSTRUMENTAL_THRESHOLD_CS,
+    )
+    cdg_styles["instrumental_gap_threshold"] = threshold_cs
 
     intro = float(cdg_styles.get("intro_duration_seconds") or 5.0)
     buffer = float(cdg_styles.get("first_syllable_buffer_seconds") or 0.0)
     start = intro + buffer + 1.0  # first sung syllable, after the up card
     line_gap = 2.0
+    lines = (list(lines) * 2)[:4] if len(lines) < 4 else list(lines[:4])
+    # Two lines, an instrumental break, then two more lines.
+    line_starts = [start, start + line_gap]
+    gap_start = line_starts[-1] + line_gap * 0.8
+    line_starts += [gap_start + PREVIEW_INSTRUMENTAL_GAP_S, gap_start + PREVIEW_INSTRUMENTAL_GAP_S + line_gap]
 
     lrc_lines = []
-    for i, line in enumerate(lines):
-        t = start + i * line_gap
-        words = line.upper().split()
-        step = (line_gap * 0.8) / max(len(words), 1)
+    for t, line in zip(line_starts, lines):
+        words = line.upper().split() or ["LA"]
+        step = (line_gap * 0.8) / len(words)
         for j, word in enumerate(words):
             prefix = "/" if j == 0 else ""
             lrc_lines.append(f"{_lrc_timestamp(t + j * step)}1:{prefix}{word} ")
@@ -524,7 +590,7 @@ def render_cdg_previews(
         fh.write("\n".join(lrc_lines) + "\n")
 
     audio = os.path.join(workdir, "silence.mp3")
-    duration = start + len(lines) * line_gap + 2.0
+    duration = line_starts[-1] + line_gap + 2.0
     try:
         result = subprocess.run(
             ["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
@@ -547,14 +613,28 @@ def render_cdg_previews(
 
     with open(cdg_file, "rb") as fh:
         data = fh.read()
-    # The up card is fully drawn well before the intro ends. The lyrics page is the
-    # frame part-way through the first line (sung + unsung colours both visible);
-    # the composer offsets lyrics by the intro and lead-in, so search for it.
-    candidates = [start + intro + i * 0.25 for i in range(int(line_gap * 2 * 4))]
+    total = cdg_duration_seconds(data)
+
+    # The up card is fully drawn well before the intro ends. The composer offsets
+    # lyrics by the intro and lead-in, so find the first part-sung frame and derive
+    # that offset to time the instrumental break.
+    step = 0.25
+    candidates = [start + intro + i * step for i in range(int(line_gap * 3 / step))]
     frames = decode_cdg_frames(data, [max(intro - 0.5, 1.0)] + candidates)
     title_card, lyric_frames = frames[0], frames[1:]
-    lyrics = _pick_lyrics_frame(lyric_frames, cdg_styles)
-    return _cdg_png(title_card), _cdg_png(lyrics)
+    lyrics, picked = _pick_lyrics_frame(lyric_frames, cdg_styles, with_index=True)
+    offset = candidates[picked] - start
+    # The instrumental screen appears a few seconds into the gap and is cleared
+    # ~3s before the next line: search the gap for its fully drawn frame.
+    gap_times = [offset + gap_start + i * 0.5 for i in range(int(PREVIEW_INSTRUMENTAL_GAP_S * 2))]
+    gap_times = [t for t in gap_times if t < total]
+    gap_frames = decode_cdg_frames(data, gap_times) if gap_times else [lyrics]
+    instrumental = _pick_instrumental_frame(gap_frames, cdg_styles)
+    outro = decode_cdg_frames(data, [max(total - 0.05, 0.0)])[0]
+    return CdgPreviewFrames(
+        title_card=_cdg_png(title_card), lyrics=_cdg_png(lyrics),
+        instrumental=_cdg_png(instrumental), outro=_cdg_png(outro),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -575,10 +655,15 @@ def render_theme_preview(
     lyrics: Optional[List[str]] = None,
     storage: Optional[StorageService] = None,
     include_cdg: bool = False,
+    kinds: Optional[Sequence[str]] = None,
 ) -> PreviewImages:
+    """Render the requested previews. ``kinds`` limits the MP4 screens rendered
+    (title_card / karaoke_frame / end_screen; default all); ``include_cdg`` adds
+    the four CD+G frames."""
+    wanted = set(MP4_PREVIEW_KINDS if kinds is None else kinds) & set(MP4_PREVIEW_KINDS)
     lines = [ln.strip() for ln in (lyrics or DEFAULT_SAMPLE_LYRICS) if ln and ln.strip()][:4] or DEFAULT_SAMPLE_LYRICS
     key = hashlib.sha256(
-        repr((theme_id, sorted_repr(style_params), artist, title, lines, include_cdg)).encode()
+        repr((theme_id, sorted_repr(style_params), artist, title, lines, include_cdg, sorted(wanted))).encode()
     ).hexdigest()
     with _cache_lock:
         if key in _CACHE:
@@ -590,12 +675,20 @@ def render_theme_preview(
     styles = resolve_assets(style_params, theme_id, storage, include_cdg=include_cdg)
     with tempfile.TemporaryDirectory(prefix="theme-preview-") as workdir:
         result = PreviewImages(
-            title_card=render_title_card(styles, artist, title, workdir) if screen_enabled(styles, "intro") else None,
-            karaoke_frame=render_karaoke_frame(styles, lines, workdir),
-            end_screen=render_end_screen(styles, artist, title, workdir) if screen_enabled(styles, "end") else None,
+            title_card=(
+                render_title_card(styles, artist, title, workdir)
+                if "title_card" in wanted and screen_enabled(styles, "intro") else None
+            ),
+            karaoke_frame=render_karaoke_frame(styles, lines, workdir) if "karaoke_frame" in wanted else None,
+            end_screen=(
+                render_end_screen(styles, artist, title, workdir)
+                if "end_screen" in wanted and screen_enabled(styles, "end") else None
+            ),
         )
         if include_cdg:
-            result.cdg_title_card, result.cdg_lyrics = render_cdg_previews(styles, artist, title, lines, workdir)
+            cdg = render_cdg_previews(styles, artist, title, lines, workdir)
+            result.cdg_title_card, result.cdg_lyrics = cdg.title_card, cdg.lyrics
+            result.cdg_instrumental, result.cdg_outro = cdg.instrumental, cdg.outro
     with _cache_lock:
         _CACHE[key] = result
         while len(_CACHE) > _CACHE_MAX:

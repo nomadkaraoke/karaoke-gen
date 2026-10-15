@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "תצוגה מקדימה של מסך פתיחה ב-CD+G",
     "cdgOutlineColour": "צבע קו מתאר של המילים",
     "cdgOutroLine1Colour": "צבע שם השיר",
-    "cdgOutroLine2Colour": "צבע שם האמן"
+    "cdgOutroLine2Colour": "צבע שם האמן",
+    "cdgInstrumentalAfter": "הצגה עבור קטעי מעבר אינסטרומנטליים ארוכים מ-(שניות)",
+    "cdgReveal": "אופן הציור של המסך",
+    "cdgRevealHint": "נגני CD+G מציירים כל מסך אריח אחר אריח. \"אופן הציור של המסך\" קובע את הסדר (מסכה מובנית): זה משנה את האנימציה, ולא את מראה המסך הסופי שמוצג בתצוגה המקדימה.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "טקסט מרכזי, אחר כך לוגו, אחר כך טקסט תחתון",
+      "circlein": "עיגול פנימה",
+      "circleout": "עיגול החוצה",
+      "fizzle": "התפוגגות (אריחים אקראיים)",
+      "largecentertexttoplogo": "טקסט מרכזי גדול, אחר כך לוגו",
+      "rectangle": "מלבן",
+      "spiral": "ספירלה",
+      "topleftmusicalnotes": "תווים מוזיקליים מהפינה השמאלית העליונה",
+      "wipein": "ניגוב פנימה",
+      "wipeleft": "ניגוב שמאלה",
+      "wipeout": "ניגוב החוצה",
+      "wiperight": "ניגוב ימינה"
+    },
+    "previewCdgInstrumental": "תצוגה מקדימה של קטע אינסטרומנטלי ב-CD+G",
+    "previewCdgOutro": "תצוגה מקדימה של מסך סיום ב-CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "אנא נסו שוב בעוד רגע.",

@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "CD+G タイトル画面プレビュー",
     "cdgOutlineColour": "歌詞の縁取り色",
     "cdgOutroLine1Colour": "曲名の色",
-    "cdgOutroLine2Colour": "アーティスト名の色"
+    "cdgOutroLine2Colour": "アーティスト名の色",
+    "cdgInstrumentalAfter": "次の秒数より長い間奏で表示（秒）",
+    "cdgReveal": "描画アニメーションのパターン",
+    "cdgRevealHint": "CD+Gプレーヤーは画面をタイル単位で描画します。「描画アニメーションのパターン」ではその順序（内蔵マスク）を選択できます。アニメーションが変わるだけで、プレビューに表示される完成後の画面には影響しません。",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "中央テキスト、ロゴ、下部テキストの順",
+      "circlein": "サークルイン",
+      "circleout": "サークルアウト",
+      "fizzle": "フィズル（ランダムタイル）",
+      "largecentertexttoplogo": "中央大テキスト、ロゴの順",
+      "rectangle": "レクタングル（長方形）",
+      "spiral": "スパイラル",
+      "topleftmusicalnotes": "左上から音符",
+      "wipein": "ワイプイン",
+      "wipeleft": "左ワイプ",
+      "wipeout": "ワイプアウト",
+      "wiperight": "右ワイプ"
+    },
+    "previewCdgInstrumental": "CD+G間奏画面プレビュー",
+    "previewCdgOutro": "CD+G終了画面プレビュー"
   },
   "stalledDownload": {
     "actionFailedDesc": "しばらくしてからもう一度お試しください。",

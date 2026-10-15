@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Pré-visualização do cartão de introdução em CD+G",
     "cdgOutlineColour": "Cor do contorno da letra",
     "cdgOutroLine1Colour": "Cor do título da música",
-    "cdgOutroLine2Colour": "Cor do nome do artista"
+    "cdgOutroLine2Colour": "Cor do nome do artista",
+    "cdgInstrumentalAfter": "Mostrar para intervalos instrumentais com mais de (segundos)",
+    "cdgReveal": "Como é desenhado na tela",
+    "cdgRevealHint": "Os aparelhos de CD+G desenham cada tela bloco por bloco. \"Como é desenhado na tela\" define a ordem (uma máscara integrada): isso altera a animação, não a tela final exibida na pré-visualização.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Texto central, depois logotipo, depois texto inferior",
+      "circlein": "Círculo para dentro",
+      "circleout": "Círculo para fora",
+      "fizzle": "Dissolver (blocos aleatórios)",
+      "largecentertexttoplogo": "Texto central grande, depois logotipo",
+      "rectangle": "Retângulo",
+      "spiral": "Espiral",
+      "topleftmusicalnotes": "Notas musicais a partir do canto superior esquerdo",
+      "wipein": "Varredura para dentro",
+      "wipeleft": "Varredura para a esquerda",
+      "wipeout": "Varredura para fora",
+      "wiperight": "Varredura para a direita"
+    },
+    "previewCdgInstrumental": "Pré-visualização do intervalo instrumental em CD+G",
+    "previewCdgOutro": "Pré-visualização da tela de encerramento em CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "Por favor, tente novamente em instantes.",

@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Pratinjau up card CD+G",
     "cdgOutlineColour": "Warna garis luar lirik",
     "cdgOutroLine1Colour": "Warna judul lagu",
-    "cdgOutroLine2Colour": "Warna nama artis"
+    "cdgOutroLine2Colour": "Warna nama artis",
+    "cdgInstrumentalAfter": "Tampilkan untuk jeda instrumental lebih dari (detik)",
+    "cdgReveal": "Cara gambar dimunculkan",
+    "cdgRevealHint": "Pemutar CD+G memunculkan setiap layar ubin demi ubin. \"Cara gambar dimunculkan\" menentukan urutannya (mask bawaan): opsi ini mengubah animasinya, bukan tampilan akhir layar pada pratinjau.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Teks tengah, lalu logo, lalu teks bawah",
+      "circlein": "Lingkaran ke dalam",
+      "circleout": "Lingkaran ke luar",
+      "fizzle": "Fizzle (ubin acak)",
+      "largecentertexttoplogo": "Teks tengah besar, lalu logo",
+      "rectangle": "Persegi panjang",
+      "spiral": "Spiral",
+      "topleftmusicalnotes": "Not balok dari kiri atas",
+      "wipein": "Usap ke dalam",
+      "wipeleft": "Usap ke kiri",
+      "wipeout": "Usap ke luar",
+      "wiperight": "Usap ke kanan"
+    },
+    "previewCdgInstrumental": "Pratinjau jeda instrumental CD+G",
+    "previewCdgOutro": "Pratinjau layar penutup CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "Silakan coba beberapa saat lagi.",

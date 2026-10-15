@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Pretpregled CD+G početne kartice",
     "cdgOutlineColour": "Boja obruba teksta pjesme",
     "cdgOutroLine1Colour": "Boja naslova pjesme",
-    "cdgOutroLine2Colour": "Boja imena izvođača"
+    "cdgOutroLine2Colour": "Boja imena izvođača",
+    "cdgInstrumentalAfter": "Prikaži za instrumentalne pauze dulje od (sekunde)",
+    "cdgReveal": "Način iscrtavanja",
+    "cdgRevealHint": "CD+G playeri iscrtavaju svaki zaslon pločicu po pločicu. \"Način iscrtavanja\" određuje redoslijed (ugrađenu masku): mijenja animaciju, a ne gotov zaslon prikazan u pretpregledu.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Središnji tekst, zatim logotip, pa tekst na dnu",
+      "circlein": "Krug prema unutra",
+      "circleout": "Krug prema van",
+      "fizzle": "Pucketanje (nasumične pločice)",
+      "largecentertexttoplogo": "Veliki središnji tekst, zatim logotip",
+      "rectangle": "Pravokutnik",
+      "spiral": "Spirala",
+      "topleftmusicalnotes": "Glazbene note s gornje lijeve strane",
+      "wipein": "Prekrivanje prema unutra",
+      "wipeleft": "Prekrivanje ulijevo",
+      "wipeout": "Prekrivanje prema van",
+      "wiperight": "Prekrivanje udesno"
+    },
+    "previewCdgInstrumental": "Pretpregled CD+G instrumentalne pauze",
+    "previewCdgOutro": "Pretpregled CD+G završnog zaslona"
   },
   "stalledDownload": {
     "actionFailedDesc": "Pokušaj ponovno za trenutak.",

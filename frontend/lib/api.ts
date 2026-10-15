@@ -2784,6 +2784,8 @@ export interface TenantThemeData {
   fonts: string[]
   // Images that fit the 300x216 CD+G screen (offered on the CD+G tab)
   cdg_images?: string[]
+  // Built-in CD+G reveal transitions (the order the screen's tiles are drawn in)
+  cdg_transitions?: string[]
 }
 
 export interface TenantThemeSaveResult extends TenantThemeData {
@@ -2800,11 +2802,13 @@ export interface ThemePreviewSample {
 export interface ThemePreviewImages {
   // data:image/jpeg;base64,... — null for a screen the theme leaves out of videos
   title_card: string | null
-  karaoke_frame: string
+  karaoke_frame: string | null
   end_screen: string | null
-  // data:image/png;base64,... — the CD+G up card + a lyrics page (only when requested)
+  // data:image/png;base64,... — CD+G screens (only when requested)
   cdg_title_card?: string | null
   cdg_lyrics?: string | null
+  cdg_instrumental?: string | null
+  cdg_outro?: string | null
 }
 
 export const tenantThemeApi = {
@@ -2835,12 +2839,15 @@ export const tenantThemeApi = {
     styleParams: ThemeStyleParams,
     sample: ThemePreviewSample,
     signal?: AbortSignal,
-    options: { includeCdg?: boolean } = {},
+    options: { includeCdg?: boolean; kinds?: Array<'title_card' | 'karaoke_frame' | 'end_screen'> } = {},
   ): Promise<ThemePreviewImages> {
     const response = await apiFetch(`${API_BASE_URL}/api/tenant/theme/preview`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ style_params: styleParams, sample, include_cdg: !!options.includeCdg }),
+      body: JSON.stringify({
+        style_params: styleParams, sample, include_cdg: !!options.includeCdg,
+        ...(options.kinds ? { kinds: options.kinds } : {}),
+      }),
       signal,
     })
     return handleResponse<ThemePreviewImages>(response)

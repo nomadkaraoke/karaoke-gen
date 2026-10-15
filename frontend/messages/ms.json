@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Pratonton kad tajuk CD+G",
     "cdgOutlineColour": "Warna garis luar lirik",
     "cdgOutroLine1Colour": "Warna tajuk lagu",
-    "cdgOutroLine2Colour": "Warna nama artis"
+    "cdgOutroLine2Colour": "Warna nama artis",
+    "cdgInstrumentalAfter": "Tunjukkan untuk jeda instrumental yang melebihi (saat)",
+    "cdgReveal": "Cara paparan dilukis",
+    "cdgRevealHint": "Pemain CD+G melukis setiap skrin jubin demi jubin. \"Cara paparan dilukis\" memilih susunan (topeng terbina dalam): ini mengubah animasinya, bukannya hasil akhir skrin yang ditunjukkan dalam pratonton.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Teks tengah, kemudian logo, kemudian bahagian bawah",
+      "circlein": "Bulatan ke dalam",
+      "circleout": "Bulatan ke luar",
+      "fizzle": "Fizzle (jubin rawak)",
+      "largecentertexttoplogo": "Teks tengah besar, kemudian logo",
+      "rectangle": "Segi empat tepat",
+      "spiral": "Pusaran",
+      "topleftmusicalnotes": "Nota muzik dari kiri atas",
+      "wipein": "Sapu ke dalam",
+      "wipeleft": "Sapu ke kiri",
+      "wipeout": "Sapu ke luar",
+      "wiperight": "Sapu ke kanan"
+    },
+    "previewCdgInstrumental": "Pratonton jeda instrumental CD+G",
+    "previewCdgOutro": "Pratonton skrin penutup CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "Sila cuba sebentar lagi.",

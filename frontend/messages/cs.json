@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Náhled úvodní karty CD+G",
     "cdgOutlineColour": "Barva obrysu textu",
     "cdgOutroLine1Colour": "Barva názvu skladby",
-    "cdgOutroLine2Colour": "Barva jména interpreta"
+    "cdgOutroLine2Colour": "Barva jména interpreta",
+    "cdgInstrumentalAfter": "Zobrazit u instrumentálních pauz delších než (sekundy)",
+    "cdgReveal": "Způsob vykreslení",
+    "cdgRevealHint": "CD+G přehrávače vykreslují každou obrazovku dlaždici po dlaždici. „Způsob vykreslení“ určuje pořadí (vestavěnou masku): mění animaci, nikoli výslednou obrazovku zobrazenou v náhledu.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Text uprostřed, pak logo, pak dole",
+      "circlein": "Kruh dovnitř",
+      "circleout": "Kruh ven",
+      "fizzle": "Rozpad (náhodné dlaždice)",
+      "largecentertexttoplogo": "Velký text uprostřed, pak logo",
+      "rectangle": "Obdélník",
+      "spiral": "Spirála",
+      "topleftmusicalnotes": "Noty z levého horního rohu",
+      "wipein": "Stírání dovnitř",
+      "wipeleft": "Stírání doleva",
+      "wipeout": "Stírání ven",
+      "wiperight": "Stírání doprava"
+    },
+    "previewCdgInstrumental": "Náhled instrumentální mezihry CD+G",
+    "previewCdgOutro": "Náhled závěrečné obrazovky CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "Zkus to prosím za chvilku znovu.",

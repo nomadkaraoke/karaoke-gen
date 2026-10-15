@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Náhľad CD+G úvodnej obrazovky",
     "cdgOutlineColour": "Farba obrysu textu piesne",
     "cdgOutroLine1Colour": "Farba názvu skladby",
-    "cdgOutroLine2Colour": "Farba mena interpreta"
+    "cdgOutroLine2Colour": "Farba mena interpreta",
+    "cdgInstrumentalAfter": "Zobraziť pri inštrumentálnych medzerách dlhších ako (sekundy)",
+    "cdgReveal": "Spôsob vykresľovania",
+    "cdgRevealHint": "Prehrávače CD+G vykresľujú každú obrazovku dlaždicu po dlaždici. Voľba „Spôsob vykresľovania“ určuje ich poradie (vstavanú masku): zmení animáciu, nie výslednú obrazovku zobrazenú v náhľade.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Text v strede, potom logo, potom dolná časť",
+      "circlein": "Kruh dovnútra",
+      "circleout": "Kruh von",
+      "fizzle": "Šumenie (náhodné dlaždice)",
+      "largecentertexttoplogo": "Veľký text v strede, potom logo",
+      "rectangle": "Obdĺžnik",
+      "spiral": "Špirála",
+      "topleftmusicalnotes": "Noty zľava zhora",
+      "wipein": "Zotretie dovnútra",
+      "wipeleft": "Zotretie doľava",
+      "wipeout": "Zotretie von",
+      "wiperight": "Zotretie doprava"
+    },
+    "previewCdgInstrumental": "Náhľad inštrumentálnej pauzy CD+G",
+    "previewCdgOutro": "Náhľad záverečnej obrazovky CD+G"
   },
   "stalledDownload": {
     "actionFailedDesc": "Skús to, prosím, o chvíľu znova.",

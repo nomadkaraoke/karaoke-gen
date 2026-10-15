@@ -2094,7 +2094,26 @@
     "previewCdgTitleCard": "Preview ng CD+G up card",
     "cdgOutlineColour": "Kulay ng outline ng lyrics",
     "cdgOutroLine1Colour": "Kulay ng pamagat ng kanta",
-    "cdgOutroLine2Colour": "Kulay ng pangalan ng artist"
+    "cdgOutroLine2Colour": "Kulay ng pangalan ng artist",
+    "cdgInstrumentalAfter": "Ipakita para sa mga instrumental break na mas mahaba kaysa sa (segundo)",
+    "cdgReveal": "Kung paano ito iginuguhit",
+    "cdgRevealHint": "Iginuguhit ng mga CD+G player ang bawat screen nang paisa-isang tile. Pinipili ng \"Kung paano ito iginuguhit\" ang pagkakasunod-sunod (isang built-in na mask): binabago nito ang animation, hindi ang mismong screen na ipinapakita sa preview.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Teksto sa gitna, logo, tapos sa ibaba",
+      "circlein": "Pabilog papasok",
+      "circleout": "Pabilog palabas",
+      "fizzle": "Fizzle (random na tiles)",
+      "largecentertexttoplogo": "Malaking teksto sa gitna, kasunod ang logo",
+      "rectangle": "Parihaba",
+      "spiral": "Spiral",
+      "topleftmusicalnotes": "Musical notes mula sa itaas sa kaliwa",
+      "wipein": "Wipe papasok",
+      "wipeleft": "Wipe pakaliwa",
+      "wipeout": "Wipe palabas",
+      "wiperight": "Wipe pakanan"
+    },
+    "previewCdgInstrumental": "Preview ng CD+G instrumental break",
+    "previewCdgOutro": "Preview ng CD+G closing screen"
   },
   "stalledDownload": {
     "actionFailedDesc": "Pakisubukang muli maya-maya.",
