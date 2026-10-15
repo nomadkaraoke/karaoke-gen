@@ -32,6 +32,15 @@ interface Props {
 }
 
 type Tab = "titleCard" | "karaoke" | "endScreen" | "cdg" | "advanced"
+type Mp4Kind = "title_card" | "karaoke_frame" | "end_screen"
+// The video screens each tab previews (the CD+G tab previews CD+G screens only).
+const TAB_KINDS: Record<Tab, Mp4Kind[]> = {
+  titleCard: ["title_card"],
+  karaoke: ["karaoke_frame"],
+  endScreen: ["end_screen"],
+  cdg: [],
+  advanced: ["title_card", "karaoke_frame", "end_screen"],
+}
 // CD+G screens are 300x216.
 const CDG_ASPECT = "300 / 216"
 
@@ -94,6 +103,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
   const [images, setImages] = useState<string[]>([])
   const [fonts, setFonts] = useState<string[]>([])
   const [cdgImages, setCdgImages] = useState<string[]>([])
+  const [cdgTransitions, setCdgTransitions] = useState<string[]>([])
   const [tab, setTab] = useState<Tab>("titleCard")
   const [jsonText, setJsonText] = useState("")
   const [jsonError, setJsonError] = useState<string | null>(null)
@@ -128,6 +138,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
         setImages(data.images)
         setFonts(data.fonts)
         setCdgImages(data.cdg_images ?? [])
+        setCdgTransitions(data.cdg_transitions ?? [])
       })
       .catch((err: any) => !cancelled && setLoadError(err?.message || t("loadFailed")))
       .finally(() => !cancelled && setLoading(false))
@@ -157,7 +168,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
           draft,
           { artist: sampleArtist || undefined, title: sampleTitle || undefined },
           controller.signal,
-          { includeCdg: tab === "cdg" },
+          { includeCdg: tab === "cdg", kinds: TAB_KINDS[tab] },
         )
         if (!controller.signal.aborted) setPreview(result)
       } catch (err: any) {
@@ -169,7 +180,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
       }
     }, PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(handle)
-  }, [open, draft, sampleArtist, sampleTitle, tab === "cdg"]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, draft, sampleArtist, sampleTitle, tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
@@ -462,6 +473,23 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
       onChange={(n) => update("cdg", field, n)} />
   )
 
+  const cdgTransition = (field: string, label: string) => {
+    const value = getField<string>(draft!, "cdg", field) || ""
+    return (
+      <div className="space-y-1">
+        <Label htmlFor={`cdg-${field}`} className="text-xs text-muted-foreground">{label}</Label>
+        <select id={`cdg-${field}`} className={selectClass} value={value}
+          onChange={(e) => update("cdg", field, e.target.value)}>
+          {!value && <option value="" disabled>{t("cdgRevealUnset")}</option>}
+          {!cdgTransitions.includes(value) && value && <option value={value}>{value}</option>}
+          {cdgTransitions.map((name) => (
+            <option key={name} value={name}>{typeof t.has === "function" && t.has(`cdgTransitions.${name}`) ? t(`cdgTransitions.${name}`) : name}</option>
+          ))}
+        </select>
+      </div>
+    )
+  }
+
   const mainFont = getField<string>(draft!, "intro", "font") || ""
   const cdgFont = getField<string>(draft!, "cdg", "font_path") || ""
   const cdgOutline = getField<string>(draft!, "cdg", "active_stroke") || "#000000"
@@ -471,23 +499,25 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
   const tabs: Tab[] = hasCdg ? ["titleCard", "karaoke", "endScreen", "cdg", "advanced"] : ["titleCard", "karaoke", "endScreen", "advanced"]
 
   // The screen being edited, then the lyrics frame (Advanced shows all three).
-  type PreviewKind = "title_card" | "karaoke_frame" | "end_screen" | "cdg_title_card" | "cdg_lyrics"
-  const previewKinds: PreviewKind[] =
-    tab === "endScreen" ? ["end_screen", "karaoke_frame"]
-      : tab === "cdg" ? ["cdg_title_card", "cdg_lyrics"]
-        : tab === "advanced" ? ["title_card", "karaoke_frame", "end_screen"]
-          : ["title_card", "karaoke_frame"]
-  const previewLabel = (kind: PreviewKind) =>
-    kind === "title_card" ? t("previewTitleCard")
-      : kind === "end_screen" ? t("previewEndScreen")
-        : kind === "cdg_title_card" ? t("previewCdgTitleCard")
-          : kind === "cdg_lyrics" ? t("previewCdgLyrics")
-            : t("previewKaraoke")
-  const isCdgKind = (kind: PreviewKind) => kind === "cdg_title_card" || kind === "cdg_lyrics"
+  type CdgKind = "cdg_title_card" | "cdg_lyrics" | "cdg_instrumental" | "cdg_outro"
+  type PreviewKind = Mp4Kind | CdgKind
+  const CDG_KINDS: CdgKind[] = ["cdg_title_card", "cdg_lyrics", "cdg_instrumental", "cdg_outro"]
+  const previewKinds: PreviewKind[] = tab === "cdg" ? CDG_KINDS : TAB_KINDS[tab]
+  const PREVIEW_LABELS: Record<PreviewKind, string> = {
+    title_card: "previewTitleCard",
+    karaoke_frame: "previewKaraoke",
+    end_screen: "previewEndScreen",
+    cdg_title_card: "previewCdgTitleCard",
+    cdg_lyrics: "previewCdgLyrics",
+    cdg_instrumental: "previewCdgInstrumental",
+    cdg_outro: "previewCdgOutro",
+  }
+  const previewLabel = (kind: PreviewKind) => t(PREVIEW_LABELS[kind])
+  const isCdgKind = (kind: PreviewKind) => kind.startsWith("cdg_")
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose() }}>
-      <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto" data-testid="tenant-theme-editor">
+      <DialogContent className="w-[96vw] max-w-[1800px] max-h-[94vh] overflow-y-auto" data-testid="tenant-theme-editor">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> {t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>
@@ -622,10 +652,12 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
               {tab === "cdg" && (
                 <div className="space-y-4" data-testid="cdg-tab">
                   <p className="text-xs text-muted-foreground">{t("cdgIntro")}</p>
+                  <p className="text-xs text-muted-foreground">{t("cdgRevealHint")}</p>
 
                   <div className="space-y-3 rounded-md border p-3">
                     <Label className="flex items-center gap-1.5"><ImageIcon className="h-3.5 w-3.5" /> {t("cdgUpCard")}</Label>
                     {cdgImageField("title_screen_background", t("cdgUpCardImage"))}
+                    {cdgTransition("title_screen_transition", t("cdgReveal"))}
                     <div className="grid grid-cols-2 gap-3">
                       {cdgColour("title_color", t("titleColour"), "#ffff00")}
                       {cdgColour("artist_color", t("artistColour"), "#ffff00")}
@@ -676,6 +708,10 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                   <div className="space-y-3 rounded-md border p-3">
                     <Label>{t("cdgInstrumental")}</Label>
                     {cdgImageField("instrumental_background", t("cdgInstrumentalImage"))}
+                    {cdgTransition("instrumental_transition", t("cdgReveal"))}
+                    <RangeInput id="cdg-instrumental_gap_threshold" label={t("cdgInstrumentalAfter")} min={3} max={120}
+                      value={Math.round((getField<number>(draft!, "cdg", "instrumental_gap_threshold") ?? 1500) / 100)}
+                      onChange={(n) => update("cdg", "instrumental_gap_threshold", n * 100)} />
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label htmlFor="cdg-instrumental-text" className="text-xs text-muted-foreground">{t("cdgInstrumentalText")}</Label>
@@ -690,6 +726,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                   <div className="space-y-3 rounded-md border p-3">
                     <Label>{t("cdgOutro")}</Label>
                     {cdgImageField("outro_background", t("cdgOutroImage"))}
+                    {cdgTransition("outro_transition", t("cdgReveal"))}
                     <div className="grid grid-cols-2 gap-3">
                       {cdgColour("outro_line1_color", t("cdgOutroLine1Colour"), "#ffff00")}
                       {cdgColour("outro_line2_color", t("cdgOutroLine2Colour"), "#ffff00")}
@@ -715,7 +752,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
             </div>
 
             {/* Previews */}
-            <div className="space-y-3 min-w-0">
+            <div className="space-y-3 min-w-0 lg:sticky lg:top-0 lg:self-start">
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label htmlFor="sample-artist" className="text-xs text-muted-foreground">{t("sampleArtist")}</Label>
@@ -726,6 +763,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                   <Input id="sample-title" value={sampleTitle} onChange={(e) => setSampleTitle(e.target.value)} />
                 </div>
               </div>
+              <div className={tab === "cdg" ? "grid grid-cols-2 gap-3" : "space-y-3"} data-testid="preview-list">
               {previewKinds.map((kind) => (
                 <figure key={kind} className="space-y-1">
                   <figcaption className="text-xs font-medium text-muted-foreground">{previewLabel(kind)}</figcaption>
@@ -736,7 +774,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                       <img src={preview[kind]!} alt={previewLabel(kind)}
                         data-testid={`preview-${kind}`} className="h-full w-full object-contain"
                         style={isCdgKind(kind) ? { imageRendering: "pixelated" } : undefined} />
-                    ) : preview && kind !== "karaoke_frame" && !isCdgKind(kind) && !previewing && (
+                    ) : preview && (kind === "title_card" || kind === "end_screen") && !previewing && (
                       <div className="flex h-full items-center justify-center text-sm text-muted-foreground" data-testid={`preview-${kind}-omitted`}>
                         {t("screenOmitted")}
                       </div>
@@ -749,6 +787,7 @@ export function TenantThemeEditorDialog({ open, onClose }: Props) {
                   </div>
                 </figure>
               ))}
+              </div>
               {previewError && (
                 <p className="flex items-start gap-1.5 text-xs text-destructive">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> {previewError}

@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "ตัวอย่างหน้าไตเติล CD+G",
     "cdgOutlineColour": "สีเส้นขอบเนื้อร้อง",
     "cdgOutroLine1Colour": "สีชื่อเพลง",
-    "cdgOutroLine2Colour": "สีชื่อศิลปิน"
+    "cdgOutroLine2Colour": "สีชื่อศิลปิน",
+    "cdgInstrumentalAfter": "แสดงสำหรับช่วงดนตรีคั่นที่นานกว่า (วินาที)",
+    "cdgReveal": "วิธีวาดแสดงผลหน้าจอ",
+    "cdgRevealHint": "เครื่องเล่น CD+G จะวาดหน้าจอทีละบล็อก (Tile) ส่วน \"วิธีวาดแสดงผลหน้าจอ\" จะกำหนดลำดับการวาด (Mask ในตัว) ซึ่งจะมีผลเฉพาะภาพเคลื่อนไหวตอนเปิดหน้าจอ ไม่ส่งผลต่อภาพหน้าจอสุดท้ายที่แสดงในตัวอย่าง",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "ข้อความตรงกลาง แล้วตามด้วยโลโก้ และข้อความด้านล่าง",
+      "circlein": "วงกลมขยายเข้า",
+      "circleout": "วงกลมขยายออก",
+      "fizzle": "กระจายสุ่มทีละบล็อก (Fizzle)",
+      "largecentertexttoplogo": "ข้อความขนาดใหญ่ตรงกลาง แล้วตามด้วยโลโก้",
+      "rectangle": "สี่เหลี่ยมผืนผ้า",
+      "spiral": "ก้นหอย",
+      "topleftmusicalnotes": "โน้ตดนตรีจากมุมซ้ายบน",
+      "wipein": "กวาดภาพเข้า",
+      "wipeleft": "กวาดไปทางซ้าย",
+      "wipeout": "กวาดภาพออก",
+      "wiperight": "กวาดไปทางขวา"
+    },
+    "previewCdgInstrumental": "ตัวอย่างช่วงดนตรีคั่น CD+G",
+    "previewCdgOutro": "ตัวอย่างหน้าจอปิดท้าย CD+G",
+    "cdgRevealUnset": "เลือกรูปแบบการแสดงผลตัวอักษร"
   },
   "stalledDownload": {
     "actionFailedDesc": "โปรดลองใหม่อีกครั้งในอีกสักครู่",

@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "CD+G अप कार्ड प्रिव्यू",
     "cdgOutlineColour": "लिरिक्स की आउटलाइन का रंग",
     "cdgOutroLine1Colour": "गाने के शीर्षक का रंग",
-    "cdgOutroLine2Colour": "कलाकार के नाम का रंग"
+    "cdgOutroLine2Colour": "कलाकार के नाम का रंग",
+    "cdgInstrumentalAfter": "इससे अधिक लंबे इंस्ट्रुमेंटल गैप (सेकंड) के लिए दिखाओ",
+    "cdgReveal": "यह स्क्रीन पर कैसे बनकर आता है",
+    "cdgRevealHint": "CD+G प्लेयर हर स्क्रीन को एक-एक टाइल करके ड्रॉ करते हैं। \"यह स्क्रीन पर कैसे बनकर आता है\" से इसका क्रम (एक इन-बिल्ट मास्क) चुना जाता है: इससे सिर्फ एनिमेशन बदलता है, प्रीव्यू में दिखने वाली फाइनल स्क्रीन नहीं।",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "बीच का टेक्स्ट, फिर लोगो, फिर नीचे का हिस्सा",
+      "circlein": "सर्कल इन",
+      "circleout": "सर्कल आउट",
+      "fizzle": "फ़िज़ल (रैंडम टाइलें)",
+      "largecentertexttoplogo": "बीच में बड़ा टेक्स्ट, फिर लोगो",
+      "rectangle": "रेक्टैंगल",
+      "spiral": "स्पाइरल",
+      "topleftmusicalnotes": "ऊपर बाईं ओर से म्यूजिकल नोट्स",
+      "wipein": "वाइप इन",
+      "wipeleft": "वाइप लेफ्ट",
+      "wipeout": "वाइप आउट",
+      "wiperight": "वाइप राइट"
+    },
+    "previewCdgInstrumental": "CD+G इंस्ट्रुमेंटल ब्रेक प्रीव्यू",
+    "previewCdgOutro": "CD+G क्लोजिंग स्क्रीन प्रीव्यू",
+    "cdgRevealUnset": "चुनो कि यह स्क्रीन पर कैसे आएगा"
   },
   "stalledDownload": {
     "actionFailedDesc": "कृपया थोड़ी देर बाद फिर कोशिश करो।",

@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "CD+G címkártya előnézete",
     "cdgOutlineColour": "Dalszöveg körvonalának színe",
     "cdgOutroLine1Colour": "Dalcím színe",
-    "cdgOutroLine2Colour": "Előadó nevének színe"
+    "cdgOutroLine2Colour": "Előadó nevének színe",
+    "cdgInstrumentalAfter": "Megjelenítés ennél hosszabb hangszeres részeknél (másodperc)",
+    "cdgReveal": "Kirajzolás módja",
+    "cdgRevealHint": "A CD+G lejátszók csempéről csempére rajzolják ki a képernyőt. A „Kirajzolás módja” határozza meg a sorrendet (egy beépített maszkot): ez az animációt változtatja meg, nem az előnézetben látható kész képernyőt.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Középső szöveg, majd logó, végül alsó szöveg",
+      "circlein": "Kör befelé",
+      "circleout": "Kör kifelé",
+      "fizzle": "Zizegés (véletlenszerű csempék)",
+      "largecentertexttoplogo": "Nagy középső szöveg, majd logó",
+      "rectangle": "Téglalap",
+      "spiral": "Spirál",
+      "topleftmusicalnotes": "Hangjegyek bal felülről",
+      "wipein": "Söprés befelé",
+      "wipeleft": "Söprés balra",
+      "wipeout": "Söprés kifelé",
+      "wiperight": "Söprés jobbra"
+    },
+    "previewCdgInstrumental": "CD+G hangszeres szünet előnézete",
+    "previewCdgOutro": "CD+G záróképernyő előnézete",
+    "cdgRevealUnset": "Válaszd ki a megjelenítés módját"
   },
   "stalledDownload": {
     "actionFailedDesc": "Kérlek, próbáld újra egy pillanat múlva.",

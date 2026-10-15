@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Podgląd karty tytułowej CD+G",
     "cdgOutlineColour": "Kolor obrysu tekstu",
     "cdgOutroLine1Colour": "Kolor tytułu piosenki",
-    "cdgOutroLine2Colour": "Kolor nazwy wykonawcy"
+    "cdgOutroLine2Colour": "Kolor nazwy wykonawcy",
+    "cdgInstrumentalAfter": "Pokaż przy przerwach instrumentalnych dłuższych niż (sekundy)",
+    "cdgReveal": "Sposób pojawiania się",
+    "cdgRevealHint": "Odtwarzacze CD+G rysują każdy ekran kafelek po kafelku. Opcja „Sposób pojawiania się” wybiera kolejność (wbudowaną maskę): zmienia to animację, a nie gotowy ekran widoczny na podglądzie.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Tekst na środku, potem logo, potem dół",
+      "circlein": "Koło do wewnątrz",
+      "circleout": "Koło na zewnątrz",
+      "fizzle": "Rozsypka (losowe kafelki)",
+      "largecentertexttoplogo": "Duży tekst na środku, potem logo",
+      "rectangle": "Prostokąt",
+      "spiral": "Spirala",
+      "topleftmusicalnotes": "Nuty od lewego górnego rogu",
+      "wipein": "Przejście do środka",
+      "wipeleft": "Przejście w lewo",
+      "wipeout": "Przejście na zewnątrz",
+      "wiperight": "Przejście w prawo"
+    },
+    "previewCdgInstrumental": "Podgląd przerwy instrumentalnej CD+G",
+    "previewCdgOutro": "Podgląd ekranu końcowego CD+G",
+    "cdgRevealUnset": "Wybierz sposób rysowania"
   },
   "stalledDownload": {
     "actionFailedDesc": "Spróbuj ponownie za chwilę.",

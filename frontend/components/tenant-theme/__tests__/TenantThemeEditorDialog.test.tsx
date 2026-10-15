@@ -74,7 +74,33 @@ it("loads the theme and renders the initial exact previews with the tenant's nam
   expect(styles).toEqual(THEME)
   expect(sample).toEqual({ artist: "Randy Vild", title: "sampleTitleDefault" })
   expect(await screen.findByTestId("preview-title_card")).toHaveAttribute("src", IMAGES.title_card)
-  expect(screen.getByTestId("preview-karaoke_frame")).toHaveAttribute("src", IMAGES.karaoke_frame)
+  // Each tab previews only its own screen (and only asks the server for it)
+  expect(screen.queryByTestId("preview-karaoke_frame")).toBeNull()
+  expect(preview.mock.calls[0][3]).toEqual({ includeCdg: false, kinds: ["title_card"] })
+})
+
+it("each tab shows and requests only its own preview; Advanced shows all video screens", async () => {
+  preview.mockResolvedValue({ ...IMAGES, end_screen: "data:image/jpeg;base64,CCC" })
+  await openEditor()
+  await flushPreview()
+  fireEvent.click(screen.getByRole("tab", { name: "tabs.karaoke" }))
+  await flushPreview()
+  await waitFor(() => expect(preview.mock.calls[preview.mock.calls.length - 1][3]).toEqual({ includeCdg: false, kinds: ["karaoke_frame"] }))
+  expect(screen.getByTestId("preview-karaoke_frame")).toBeInTheDocument()
+  expect(screen.queryByTestId("preview-title_card")).toBeNull()
+  expect(screen.queryByTestId("preview-end_screen")).toBeNull()
+
+  fireEvent.click(screen.getByRole("tab", { name: "tabs.advanced" }))
+  await flushPreview()
+  await waitFor(() => expect(preview.mock.calls[preview.mock.calls.length - 1][3].kinds).toEqual(["title_card", "karaoke_frame", "end_screen"]))
+  expect(await screen.findByTestId("preview-end_screen")).toBeInTheDocument()
+  expect(screen.getByTestId("preview-title_card")).toBeInTheDocument()
+  expect(screen.getByTestId("preview-karaoke_frame")).toBeInTheDocument()
+})
+
+it("uses most of the screen width", async () => {
+  await openEditor()
+  expect(screen.getByTestId("tenant-theme-editor").className).toContain("w-[96vw]")
 })
 
 it("editing the sung colour converts hex to the karaoke 'r, g, b, a' format and re-previews (debounced)", async () => {
@@ -254,7 +280,7 @@ describe("end screen", () => {
     await openEndTab()
     expect(await screen.findByTestId("preview-end_screen")).toHaveAttribute("src", END_IMAGES.end_screen)
     expect(screen.queryByTestId("preview-title_card")).toBeNull()
-    expect(screen.getByTestId("preview-karaoke_frame")).toBeInTheDocument()
+    expect(screen.queryByTestId("preview-karaoke_frame")).toBeNull()
   })
 
   it("copies the title card's layout onto the end screen (smaller text like the title card)", async () => {

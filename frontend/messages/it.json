@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Anteprima schermata iniziale CD+G",
     "cdgOutlineColour": "Colore contorno testo",
     "cdgOutroLine1Colour": "Colore titolo brano",
-    "cdgOutroLine2Colour": "Colore nome artista"
+    "cdgOutroLine2Colour": "Colore nome artista",
+    "cdgInstrumentalAfter": "Mostra per pause strumentali superiori a (secondi)",
+    "cdgReveal": "Modalità di comparsa",
+    "cdgRevealHint": "I lettori CD+G disegnano ogni schermata tassello per tassello. \"Modalità di comparsa\" seleziona l'ordine (una maschera integrata): modifica l'animazione, non la schermata finale mostrata nell'anteprima.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Testo al centro, poi logo, poi testo in basso",
+      "circlein": "Cerchio verso l'interno",
+      "circleout": "Cerchio verso l'esterno",
+      "fizzle": "Effetto disturbo (tasselli casuali)",
+      "largecentertexttoplogo": "Testo grande al centro, poi logo",
+      "rectangle": "Rettangolo",
+      "spiral": "Spirale",
+      "topleftmusicalnotes": "Note musicali dall'alto a sinistra",
+      "wipein": "A comparsa (wipe)",
+      "wipeleft": "Scorrimento a sinistra",
+      "wipeout": "A scomparsa (wipe)",
+      "wiperight": "Scorrimento a destra"
+    },
+    "previewCdgInstrumental": "Anteprima stacco strumentale CD+G",
+    "previewCdgOutro": "Anteprima schermata finale CD+G",
+    "cdgRevealUnset": "Scegli come viene disegnato"
   },
   "stalledDownload": {
     "actionFailedDesc": "Riprova tra qualche istante.",

@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Xem trước màn hình giới thiệu CD+G",
     "cdgOutlineColour": "Màu viền lời bài hát",
     "cdgOutroLine1Colour": "Màu tên bài hát",
-    "cdgOutroLine2Colour": "Màu tên nghệ sĩ"
+    "cdgOutroLine2Colour": "Màu tên nghệ sĩ",
+    "cdgInstrumentalAfter": "Hiển thị khi đoạn dạo nhạc dài hơn (giây)",
+    "cdgReveal": "Cách vẽ xuất hiện",
+    "cdgRevealHint": "Đầu phát CD+G vẽ từng màn hình theo từng ô một. \"Cách vẽ xuất hiện\" sẽ chọn thứ tự vẽ (một mặt nạ tích hợp sẵn): tùy chọn này thay đổi hiệu ứng chuyển cảnh chứ không làm thay đổi hình ảnh hoàn chỉnh hiển thị trong phần xem trước.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Chữ ở giữa, rồi đến logo, sau đó đến chữ bên dưới",
+      "circlein": "Hình tròn thu vào trong",
+      "circleout": "Hình tròn mở rộng ra ngoài",
+      "fizzle": "Nhiễu hạt (các ô ngẫu nhiên)",
+      "largecentertexttoplogo": "Chữ lớn ở giữa, rồi đến logo",
+      "rectangle": "Hình chữ nhật",
+      "spiral": "Hình xoắn ốc",
+      "topleftmusicalnotes": "Nốt nhạc từ góc trên bên trái",
+      "wipein": "Gạt vào trong",
+      "wipeleft": "Gạt sang trái",
+      "wipeout": "Gạt ra ngoài",
+      "wiperight": "Gạt sang phải"
+    },
+    "previewCdgInstrumental": "Bản xem trước đoạn dạo nhạc CD+G",
+    "previewCdgOutro": "Bản xem trước màn hình kết thúc CD+G",
+    "cdgRevealUnset": "Chọn cách hiển thị chữ"
   },
   "stalledDownload": {
     "actionFailedDesc": "Vui lòng thử lại sau giây lát.",

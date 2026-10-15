@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "CD+G-alkuruudun esikatselu",
     "cdgOutlineColour": "Sanoitusten ääriviivan väri",
     "cdgOutroLine1Colour": "Kappaleen nimen väri",
-    "cdgOutroLine2Colour": "Esittäjän nimen väri"
+    "cdgOutroLine2Colour": "Esittäjän nimen väri",
+    "cdgInstrumentalAfter": "Näytä, kun instrumentaaliosuus on pidempi kuin (sekuntia)",
+    "cdgReveal": "Piirtotapa",
+    "cdgRevealHint": "CD+G-soittimet piirtävät jokaisen kuvan ruutu ruudulta. \"Piirtotapa\" määrittää järjestyksen (sisäänrakennettu maski): se vaikuttaa animaatioon, ei esikatselussa näkyvään valmiiseen kuvaan.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Keskiteksti, sitten logo, sitten alateksti",
+      "circlein": "Ympyrä sisään",
+      "circleout": "Ympyrä ulos",
+      "fizzle": "Poreilu (satunnaiset ruudut)",
+      "largecentertexttoplogo": "Suuri keskiteksti, sitten logo",
+      "rectangle": "Suorakulmio",
+      "spiral": "Spiraali",
+      "topleftmusicalnotes": "Nuotit vasemmasta yläkulmasta",
+      "wipein": "Pyyhintä sisään",
+      "wipeleft": "Pyyhintä vasemmalle",
+      "wipeout": "Pyyhintä ulos",
+      "wiperight": "Pyyhintä oikealle"
+    },
+    "previewCdgInstrumental": "CD+G-instrumentaaliosuuden esikatselu",
+    "previewCdgOutro": "CD+G-loppuruudun esikatselu",
+    "cdgRevealUnset": "Valitse, miten se piirretään näkyviin"
   },
   "stalledDownload": {
     "actionFailedDesc": "Yritä hetken kuluttua uudelleen.",

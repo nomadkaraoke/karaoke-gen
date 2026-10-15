@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Voorbeeld CD+G-titelscherm",
     "cdgOutlineColour": "Omlijningskleur songtekst",
     "cdgOutroLine1Colour": "Kleur songtitel",
-    "cdgOutroLine2Colour": "Kleur artiestennaam"
+    "cdgOutroLine2Colour": "Kleur artiestennaam",
+    "cdgInstrumentalAfter": "Weergeven bij instrumentale pauzes langer dan (seconden)",
+    "cdgReveal": "Hoe het wordt opgebouwd",
+    "cdgRevealHint": "CD+G-spelers bouwen elk scherm tegel voor tegel op. \"Hoe het wordt opgebouwd\" bepaalt de volgorde (een ingebouwd masker): dit verandert de animatie, niet het uiteindelijke scherm dat in het voorbeeld wordt getoond.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Tekst midden, dan logo, dan onderkant",
+      "circlein": "Cirkel naar binnen",
+      "circleout": "Cirkel naar buiten",
+      "fizzle": "Ruis (willekeurige tegels)",
+      "largecentertexttoplogo": "Grote tekst midden, dan logo",
+      "rectangle": "Rechthoek",
+      "spiral": "Spiraal",
+      "topleftmusicalnotes": "Muzieknoten vanaf linksboven",
+      "wipein": "Wipe naar binnen",
+      "wipeleft": "Wipe naar links",
+      "wipeout": "Wipe naar buiten",
+      "wiperight": "Wipe naar rechts"
+    },
+    "previewCdgInstrumental": "Voorbeeld CD+G instrumentale pauze",
+    "previewCdgOutro": "Voorbeeld CD+G-eindscherm",
+    "cdgRevealUnset": "Kies hoe het wordt opgebouwd"
   },
   "stalledDownload": {
     "actionFailedDesc": "Probeer het over een ogenblik opnieuw.",

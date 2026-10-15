@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Vista prèvia de la pantalla de títol en CD+G",
     "cdgOutlineColour": "Color del contorn de la lletra",
     "cdgOutroLine1Colour": "Color del títol de la cançó",
-    "cdgOutroLine2Colour": "Color del nom de l'artista"
+    "cdgOutroLine2Colour": "Color del nom de l'artista",
+    "cdgInstrumentalAfter": "Mostra per a pauses instrumentals de més de (segons)",
+    "cdgReveal": "Com es dibuixa",
+    "cdgRevealHint": "Els reproductors CD+G dibuixen cada pantalla mosaic a mosaic. «Com es dibuixa» tria l'ordre (una màscara integrada): canvia l'animació, no la pantalla final que es mostra a la previsualització.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Text al centre, després logotip, després text inferior",
+      "circlein": "Cercle cap a dins",
+      "circleout": "Cercle cap a fora",
+      "fizzle": "Efervescència (mosaics aleatoris)",
+      "largecentertexttoplogo": "Text gran al centre, després logotip",
+      "rectangle": "Rectangle",
+      "spiral": "Espiral",
+      "topleftmusicalnotes": "Notes musicals des de dalt a l'esquerra",
+      "wipein": "Cortineta cap a dins",
+      "wipeleft": "Cortineta cap a l'esquerra",
+      "wipeout": "Cortineta cap a fora",
+      "wiperight": "Cortineta cap a la dreta"
+    },
+    "previewCdgInstrumental": "Previsualització de la pausa instrumental en CD+G",
+    "previewCdgOutro": "Previsualització de la pantalla final en CD+G",
+    "cdgRevealUnset": "Tria com es dibuixa"
   },
   "stalledDownload": {
     "actionFailedDesc": "Torna-ho a provar d'aquí a un moment.",

@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Förhandsgranskning av CD+G-titelkort",
     "cdgOutlineColour": "Konturfärg för låttext",
     "cdgOutroLine1Colour": "Färg på låttitel",
-    "cdgOutroLine2Colour": "Färg på artistnamn"
+    "cdgOutroLine2Colour": "Färg på artistnamn",
+    "cdgInstrumentalAfter": "Visa vid instrumentala pauser längre än (sekunder)",
+    "cdgReveal": "Hur den ritas upp",
+    "cdgRevealHint": "CD+G-spelare ritar upp varje skärm ruta för ruta. \"Hur den ritas upp\" väljer ordningen (en inbyggd mask): det ändrar animeringen, inte den färdiga skärmen som visas i förhandsgranskningen.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Centrerad text, sedan logotyp, sedan nederkant",
+      "circlein": "Cirkel inåt",
+      "circleout": "Cirkel utåt",
+      "fizzle": "Brus (slumpmässiga rutor)",
+      "largecentertexttoplogo": "Stor centrerad text, sedan logotyp",
+      "rectangle": "Rektangel",
+      "spiral": "Spiral",
+      "topleftmusicalnotes": "Musiknoter från övre vänstra hörnet",
+      "wipein": "Svep inåt",
+      "wipeleft": "Svep åt vänster",
+      "wipeout": "Svep utåt",
+      "wiperight": "Svep åt höger"
+    },
+    "previewCdgInstrumental": "Förhandsgranskning av instrumentalt CD+G-parti",
+    "previewCdgOutro": "Förhandsgranskning av CD+G-slutskärm",
+    "cdgRevealUnset": "Välj hur den ritas upp"
   },
   "stalledDownload": {
     "actionFailedDesc": "Försök igen om en stund.",

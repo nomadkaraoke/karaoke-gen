@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Aperçu de l'écran de titre CD+G",
     "cdgOutlineColour": "Couleur du contour des paroles",
     "cdgOutroLine1Colour": "Couleur du titre du morceau",
-    "cdgOutroLine2Colour": "Couleur du nom de l'artiste"
+    "cdgOutroLine2Colour": "Couleur du nom de l'artiste",
+    "cdgInstrumentalAfter": "Afficher pour les pauses instrumentales de plus de (secondes)",
+    "cdgReveal": "Mode d'apparition",
+    "cdgRevealHint": "Les lecteurs CD+G tracent chaque écran case par case. Le « Mode d'apparition » définit l'ordre (un masque intégré) : cela modifie l'animation, pas l'écran final affiché dans l'aperçu.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Texte au centre, puis logo, puis texte du bas",
+      "circlein": "Cercle vers l'intérieur",
+      "circleout": "Cercle vers l'extérieur",
+      "fizzle": "Pétillement (cases aléatoires)",
+      "largecentertexttoplogo": "Grand texte au centre, puis logo",
+      "rectangle": "Rectangle",
+      "spiral": "Spirale",
+      "topleftmusicalnotes": "Notes de musique depuis le coin supérieur gauche",
+      "wipein": "Balayage vers l'intérieur",
+      "wipeleft": "Balayage vers la gauche",
+      "wipeout": "Balayage vers l'extérieur",
+      "wiperight": "Balayage vers la droite"
+    },
+    "previewCdgInstrumental": "Aperçu de la pause instrumentale CD+G",
+    "previewCdgOutro": "Aperçu de l'écran de fin CD+G",
+    "cdgRevealUnset": "Choisis comment ça s'affiche"
   },
   "stalledDownload": {
     "actionFailedDesc": "Réessaie dans un instant.",

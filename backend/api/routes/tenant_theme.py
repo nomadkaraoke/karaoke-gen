@@ -10,7 +10,7 @@ tenant's allowlist (admins always pass) — a header alone grants nothing.
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -75,6 +75,8 @@ class ThemeResponse(BaseModel):
     fonts: List[str]
     # The images that fit the 300x216 CD+G screen (offered on the CD+G tab).
     cdg_images: List[str] = Field(default_factory=list)
+    # Built-in CD+G reveal transitions (greyscale draw-order masks).
+    cdg_transitions: List[str] = Field(default_factory=list)
 
 
 class PreviewSample(BaseModel):
@@ -88,16 +90,20 @@ class PreviewRequest(BaseModel):
     sample: PreviewSample = Field(default_factory=PreviewSample)
     # Also render the CD+G up card + a lyrics page (slower; the editor asks on its CD+G tab).
     include_cdg: bool = False
+    # MP4 screens to render (default all): the editor asks only for the tab's screen.
+    kinds: Optional[List[Literal["title_card", "karaoke_frame", "end_screen"]]] = None
 
 
 class PreviewResponse(BaseModel):
     # data:image/jpeg;base64,... — null for a screen the theme leaves out of videos.
     title_card: Optional[str] = None
-    karaoke_frame: str
+    karaoke_frame: Optional[str] = None
     end_screen: Optional[str] = None
     # data:image/png;base64,... — only when include_cdg was requested.
     cdg_title_card: Optional[str] = None
     cdg_lyrics: Optional[str] = None
+    cdg_instrumental: Optional[str] = None
+    cdg_outro: Optional[str] = None
 
 
 class SaveRequest(BaseModel):
@@ -165,6 +171,7 @@ async def preview_theme(body: PreviewRequest, config: TenantConfig = Depends(req
             title=body.sample.title,
             lyrics=body.sample.lyrics,
             include_cdg=body.include_cdg,
+            kinds=body.kinds,
         ),
     )
     # The slot is released only when the render really finishes — a timed-out

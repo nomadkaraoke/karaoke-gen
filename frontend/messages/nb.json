@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Forhåndsvisning av CD+G-tittelskjerm",
     "cdgOutlineColour": "Omrissfarge for sangtekst",
     "cdgOutroLine1Colour": "Farge på sangtittel",
-    "cdgOutroLine2Colour": "Farge på artistnavn"
+    "cdgOutroLine2Colour": "Farge på artistnavn",
+    "cdgInstrumentalAfter": "Vis for instrumentalpartier lengre enn (sekunder)",
+    "cdgReveal": "Hvordan det tegnes inn",
+    "cdgRevealHint": "CD+G-spillere tegner inn hvert skjermbilde rute for rute. «Hvordan det tegnes inn» velger rekkefølgen (en innebygd maske): det endrer animasjonen, ikke det ferdige skjermbildet som vises i forhåndsvisningen.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Sentrert tekst, så logo, så tekst nederst",
+      "circlein": "Sirkel inn",
+      "circleout": "Sirkel ut",
+      "fizzle": "Fizzle (tilfeldige ruter)",
+      "largecentertexttoplogo": "Stor sentrert tekst, så logo",
+      "rectangle": "Rektangel",
+      "spiral": "Spiral",
+      "topleftmusicalnotes": "Musikknoter fra øverst til venstre",
+      "wipein": "Sveip inn",
+      "wipeleft": "Sveip mot venstre",
+      "wipeout": "Sveip ut",
+      "wiperight": "Sveip mot høyre"
+    },
+    "previewCdgInstrumental": "Forhåndsvisning av instrumentalpause i CD+G",
+    "previewCdgOutro": "Forhåndsvisning av avslutningsskjerm i CD+G",
+    "cdgRevealUnset": "Velg hvordan det tegnes inn"
   },
   "stalledDownload": {
     "actionFailedDesc": "Prøv igjen om et øyeblikk.",

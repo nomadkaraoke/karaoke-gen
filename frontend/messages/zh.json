@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "CD+G 片头卡片预览",
     "cdgOutlineColour": "歌词描边颜色",
     "cdgOutroLine1Colour": "歌曲名颜色",
-    "cdgOutroLine2Colour": "歌手名颜色"
+    "cdgOutroLine2Colour": "歌手名颜色",
+    "cdgInstrumentalAfter": "间奏空白时长超过（秒）时显示",
+    "cdgReveal": "画面绘制方式",
+    "cdgRevealHint": "CD+G 播放器是逐块绘制每个画面的。“画面绘制方式”决定了绘制顺序（内置遮罩）：它只会改变动画效果，不会改变预览中显示的最终画面。",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "居中文字，然后 Logo，最后底部文字",
+      "circlein": "圆形内缩",
+      "circleout": "圆形外扩",
+      "fizzle": "颗粒消散（随机图块）",
+      "largecentertexttoplogo": "大号居中文字，然后 Logo",
+      "rectangle": "矩形",
+      "spiral": "螺旋",
+      "topleftmusicalnotes": "左上方音符飘入",
+      "wipein": "向内擦除",
+      "wipeleft": "向左擦除",
+      "wipeout": "向外擦除",
+      "wiperight": "向右擦除"
+    },
+    "previewCdgInstrumental": "CD+G 间奏效果预览",
+    "previewCdgOutro": "CD+G 结束画面预览",
+    "cdgRevealUnset": "选择绘制显示方式"
   },
   "stalledDownload": {
     "actionFailedDesc": "请稍后再试。",

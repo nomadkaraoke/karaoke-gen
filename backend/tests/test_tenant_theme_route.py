@@ -224,3 +224,20 @@ def test_cdg_upload_purpose_is_passed_through_and_validated(client_for):
         resp = client.post("/api/tenant/theme/assets", files={"file": ("x.png", b"png")}, data={"purpose": "evil"})
     assert resp.status_code == 400
     store.assert_not_called()
+
+
+def test_preview_kinds_and_new_cdg_frames(client_for):
+    images = PreviewImages(None, b"k", None, cdg_instrumental=b"i", cdg_outro=b"o")
+    with patch.object(tenant_theme, "prepare_preview_styles", return_value={}), \
+         patch.object(tenant_theme, "render_theme_preview", return_value=images) as render:
+        resp = client_for().post(
+            "/api/tenant/theme/preview", json={"style_params": {}, "kinds": ["karaoke_frame"], "include_cdg": True}
+        )
+    assert resp.status_code == 200
+    assert render.call_args.kwargs["kinds"] == ["karaoke_frame"]
+    body = resp.json()
+    assert body["title_card"] is None
+    assert body["cdg_instrumental"].startswith("data:image/png;base64,")
+    assert body["cdg_outro"].startswith("data:image/png;base64,")
+    bad = client_for().post("/api/tenant/theme/preview", json={"style_params": {}, "kinds": ["evil"]})
+    assert bad.status_code == 422

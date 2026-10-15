@@ -2094,7 +2094,27 @@
     "previewCdgTitleCard": "Предпросмотр заставки CD+G",
     "cdgOutlineColour": "Цвет обводки текста",
     "cdgOutroLine1Colour": "Цвет названия песни",
-    "cdgOutroLine2Colour": "Цвет имени исполнителя"
+    "cdgOutroLine2Colour": "Цвет имени исполнителя",
+    "cdgInstrumentalAfter": "Показывать при инструментальных паузах длиннее (секунд)",
+    "cdgReveal": "Эффект прорисовки",
+    "cdgRevealHint": "CD+G-плееры отрисовывают каждый экран плитка за плиткой. «Эффект прорисовки» задает порядок появления (встроенную маску): это меняет анимацию, а не финальный вид экрана в предпросмотре.",
+    "cdgTransitions": {
+      "centertexttoplogobottomtext": "Текст по центру, затем логотип, затем текст снизу",
+      "circlein": "Круг внутрь",
+      "circleout": "Круг наружу",
+      "fizzle": "Шум (случайные плитки)",
+      "largecentertexttoplogo": "Крупный текст по центру, затем логотип",
+      "rectangle": "Прямоугольник",
+      "spiral": "Спираль",
+      "topleftmusicalnotes": "Ноты из верхнего левого угла",
+      "wipein": "Вытеснение внутрь",
+      "wipeleft": "Вытеснение влево",
+      "wipeout": "Вытеснение наружу",
+      "wiperight": "Вытеснение вправо"
+    },
+    "previewCdgInstrumental": "Предпросмотр инструментальной паузы CD+G",
+    "previewCdgOutro": "Предпросмотр финального экрана CD+G",
+    "cdgRevealUnset": "Выбери способ отрисовки"
   },
   "stalledDownload": {
     "actionFailedDesc": "Пожалуйста, попробуй ещё раз чуть позже.",

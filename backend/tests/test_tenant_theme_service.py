@@ -430,3 +430,31 @@ def test_editor_lists_only_300x216_images_for_cdg():
     data = tts.get_theme_for_editor(_config(), storage=storage)
     assert "big.png" in data["images"] and "card.png" in data["images"]
     assert data["cdg_images"] == ["card.png"]  # bg.jpg isn't a real image here, big.png is 1920x1080
+
+
+def test_cdg_transitions_must_be_built_in():
+    styles, _ = tts.sanitize_style_params(
+        _cdg_style(title_screen_transition="wipein", instrumental_transition="topleftmusicalnotes",
+                   outro_transition="circleout"),
+        available_assets=ASSETS,
+    )
+    assert styles["cdg"]["outro_transition"] == "circleout"
+    for field in ("title_screen_transition", "instrumental_transition", "outro_transition"):
+        for bad in ("../../etc/passwd", ["wipein"], 7):
+            with pytest.raises(TenantValidationError, match="transition"):
+                tts.sanitize_style_params(_cdg_style(**{field: bad}), available_assets=ASSETS)
+
+
+@pytest.mark.parametrize("value, ok", [(300, True), (1500, True), (12000, True), (100, False), (99999, False)])
+def test_instrumental_gap_threshold_bounds(value, ok):
+    style = _cdg_style(instrumental_gap_threshold=value)
+    if ok:
+        tts.sanitize_style_params(style, available_assets=ASSETS)
+    else:
+        with pytest.raises(TenantValidationError):
+            tts.sanitize_style_params(style, available_assets=ASSETS)
+
+
+def test_editor_lists_cdg_transitions():
+    data = tts.get_theme_for_editor(_config(), storage=FakeStorage())
+    assert "centertexttoplogobottomtext" in data["cdg_transitions"]
