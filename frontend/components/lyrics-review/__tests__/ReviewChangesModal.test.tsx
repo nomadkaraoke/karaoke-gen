@@ -376,4 +376,54 @@ describe('ReviewChangesModal', () => {
     )
     expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   })
+
+  describe('stems still separating (review opened before audio separation finished)', () => {
+    const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
+
+    it('explains the wait with a spinner and holds the CTA', () => {
+      const onSubmit = jest.fn()
+      render(
+        <ReviewChangesModal
+          {...defaultProps}
+          onSubmit={onSubmit}
+          stemsStatus="waiting"
+          data={makeData({ corrected_segments: segments as any })}
+        />
+      )
+      expect(screen.getByTestId('stems-waiting')).toBeInTheDocument()
+      expect(screen.getByText(/still separating the music from the vocals/i)).toBeInTheDocument()
+      const cta = screen.getByRole('button', { name: /waiting for the instrumental/i })
+      expect(cta).toBeDisabled()
+      expect(screen.queryByRole('button', { name: /proceed to instrumental/i })).not.toBeInTheDocument()
+    })
+
+    it('shows the chooser from late-arriving stems passed via instrumentalOptions', () => {
+      render(
+        <ReviewChangesModal
+          {...defaultProps}
+          stemsStatus="ready"
+          completesReview
+          offerInlineChoice
+          recommendedSelection="with_backing"
+          instrumentalOptions={bothStems as any}
+          data={makeData({ corrected_segments: segments as any })}
+        />
+      )
+      expect(screen.queryByTestId('stems-waiting')).not.toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: /instrumental \+ backing vocals/i })).toBeChecked()
+      expect(screen.getByRole('button', { name: /complete track/i })).toBeEnabled()
+    })
+
+    it('falls back to the instrumental screen with a note when the poll gave up', () => {
+      render(
+        <ReviewChangesModal
+          {...defaultProps}
+          stemsStatus="gave_up"
+          data={makeData({ corrected_segments: segments as any })}
+        />
+      )
+      expect(screen.getByTestId('stems-gave-up')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /proceed to instrumental/i })).toBeEnabled()
+    })
+  })
 })

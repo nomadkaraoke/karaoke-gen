@@ -334,9 +334,20 @@ class TestInstrumentalUrlsRefresh:
         yield
         app.dependency_overrides.pop(require_review_auth, None)
 
+    @pytest.fixture(autouse=True)
+    def summary_patch(self):
+        # auto_approval_summary is exercised by its own tests; here we only check
+        # the endpoint passes its result through.
+        with patch(
+            "backend.services.auto_approval.instrumental.auto_approval_summary",
+            return_value={"backing": {"verdict": "keep", "confident": True, "resolved_selection": "with_backing"}},
+        ) as m:
+            yield m
+
     def test_returns_proxy_paths_for_both_stems(self, test_client):
         mock_job = MagicMock()
         mock_job.job_id = "job1"
+        mock_job.state_data = {}
         mock_job.file_urls = {
             "stems": {
                 "instrumental_clean": "jobs/job1/stems/instrumental_clean.flac",
@@ -359,6 +370,7 @@ class TestInstrumentalUrlsRefresh:
     def test_omits_stems_that_do_not_exist(self, test_client):
         mock_job = MagicMock()
         mock_job.job_id = "job1"
+        mock_job.state_data = {}
         mock_job.file_urls = {
             "stems": {"instrumental_clean": "jobs/job1/stems/instrumental_clean.flac"}
         }
@@ -378,6 +390,7 @@ class TestInstrumentalUrlsRefresh:
         (the IAM signBlob round-trip is what stalled and took gen down on 2026-09-17)."""
         mock_job = MagicMock()
         mock_job.job_id = "job1"
+        mock_job.state_data = {}
         mock_job.file_urls = {
             "stems": {
                 "instrumental_clean": "jobs/job1/stems/instrumental_clean.flac",
@@ -402,6 +415,61 @@ class TestInstrumentalUrlsRefresh:
             mock_jm.return_value.get_job.return_value = None
             response = test_client.get("/api/review/job1/instrumental-urls")
         assert response.status_code == 404
+
+    def _late_stems_job(self, *, audio_complete, stems, analysis=None):
+        from backend.models.job import JobStatus
+        mock_job = MagicMock()
+        mock_job.job_id = "job1"
+        mock_job.status = JobStatus.IN_REVIEW
+        mock_job.file_urls = {"stems": stems}
+        mock_job.state_data = {"audio_complete": audio_complete}
+        if analysis is not None:
+            mock_job.state_data["backing_vocals_analysis"] = analysis
+        return mock_job
+
+    def _get(self, test_client, mock_job):
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"), \
+                patch("backend.api.routes.review._dev_audio_proxy_enabled", return_value=False):
+            mock_jm.return_value.get_job.return_value = mock_job
+            return test_client.get("/api/review/job1/instrumental-urls")
+
+    def test_reports_separation_still_running(self, test_client):
+        """Review opens on lyrics completion, often before separation: the page polls
+        this endpoint and needs to know the stems aren't there YET."""
+        response = self._get(test_client, self._late_stems_job(audio_complete=False, stems={}))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["audio_complete"] is False
+        assert body["job_status"] == "in_review"
+        assert body["instrumental_options"] == []
+        assert body["backing_vocals_analysis"] == {}
+
+    def test_returns_late_analysis_and_fresh_auto_approval_once_audio_complete(
+        self, test_client, summary_patch
+    ):
+        analysis = {"recommended_selection": "with_backing", "has_audible_content": True}
+        mock_job = self._late_stems_job(
+            audio_complete=True,
+            stems={
+                "instrumental_clean": "jobs/job1/stems/instrumental_clean.flac",
+                "instrumental_with_backing": "jobs/job1/stems/instrumental_with_backing.flac",
+            },
+            analysis=analysis,
+        )
+
+        response = self._get(test_client, mock_job)
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["audio_complete"] is True
+        assert {o["id"] for o in body["instrumental_options"]} == {"clean", "with_backing"}
+        assert body["backing_vocals_analysis"] == analysis
+        assert body["auto_approval"]["backing"]["resolved_selection"] == "with_backing"
+        # Summary re-derived from the CURRENT job (self-corrects a verdict scored
+        # before the backing analysis existed).
+        assert summary_patch.call_args.args[0] is mock_job
 
 
 class TestInstrumentalAudioProxy:

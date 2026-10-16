@@ -416,6 +416,21 @@ Response includes:
   the path into an absolute, token-authenticated `<audio>` src.
 - `backing_vocals_analysis` - Analysis data to help with selection
 
+#### Instrumental Stems / Separation Status
+
+```http
+GET /api/review/{job_id}/instrumental-urls
+```
+
+Returns `{instrumental_options, audio_complete, job_status, backing_vocals_analysis, auto_approval}`.
+Review opens as soon as **lyrics** finish, while audio separation usually lands 2-3 minutes
+later, so `correction-data` fetched at page load often has no stems. The review page polls
+this every 15 s (max 10 min) while it loaded without stems, and once `audio_complete` is true
+overlays the fresh stems, backing analysis and auto-approval verdict so the finish modal's
+instrumental chooser appears without a reload (the modal shows a "still separating" spinner
+meanwhile). `audio_complete` is set only after stems, review OGGs and the backing analysis are
+all written. The preview modal also calls it on a stem `<audio>` load error.
+
 #### Complete Review
 
 ```http

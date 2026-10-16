@@ -8,6 +8,7 @@ import { CorrectionData, InstrumentalOption } from '@/lib/lyrics-review/types'
 import { AlertTriangle, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react'
 import PreviewVideoSection, { PreviewVideoHandle } from '../PreviewVideoSection'
 import BackingVocalsWaveform from '../BackingVocalsWaveform'
+import type { LateInstrumentalStatus } from '@/lib/lyrics-review/hooks/useLateInstrumentalStems'
 
 interface WaveformDataResult {
   amplitudes: number[]
@@ -34,6 +35,12 @@ interface ReviewChangesModalProps {
   open: boolean
   onClose: () => void
   data: CorrectionData
+  /** Instrumental stems to offer — overrides `data.instrumental_options` (the page
+   *  passes stems that arrived after load here, keeping `data` itself untouched). */
+  instrumentalOptions?: InstrumentalOption[]
+  /** Late-stems poll state: `waiting` = audio separation still running, so the
+   *  instrumental choice isn't available yet; `gave_up` = it didn't arrive in time. */
+  stemsStatus?: LateInstrumentalStatus
   onSubmit: () => void
   isSubmitting?: boolean
   apiClient?: ApiClient | null
@@ -67,6 +74,8 @@ export default function ReviewChangesModal({
   open,
   onClose,
   data,
+  instrumentalOptions: instrumentalOptionsProp,
+  stemsStatus = 'idle',
   onSubmit,
   isSubmitting = false,
   apiClient = null,
@@ -94,7 +103,12 @@ export default function ReviewChangesModal({
 
   const previewRef = useRef<PreviewVideoHandle>(null)
   const [previewTime, setPreviewTime] = useState(0)
-  const instrumentalOptions = data.instrumental_options
+  const instrumentalOptions = instrumentalOptionsProp ?? data.instrumental_options
+  // Separation still running: the choice (and the backing-vocals waveform) appears
+  // here automatically once the stems + analysis land. Hold the CTA meanwhile —
+  // proceeding now would only park the reviewer on an instrumental screen that has
+  // nothing to play yet. The poll gives up after 10 min, which re-enables it.
+  const waitingForStems = stemsStatus === 'waiting'
   const getWaveformData = apiClient?.getWaveformData
   const hasBackingStem = !!instrumentalOptions?.some(
     (o) => o.id === 'with_backing' && o.audio_url
@@ -139,7 +153,7 @@ export default function ReviewChangesModal({
   }
 
   const handleSubmit = () => {
-    if (isSubmitting) return
+    if (isSubmitting || waitingForStems) return
     onSubmit()
   }
 
@@ -193,6 +207,25 @@ export default function ReviewChangesModal({
             instrumental here; the full /instrumental screen is the "Advanced mode"
             opt-in. When the scorer was confident the recommended option carries a
             green ✓; otherwise it's a softer preselected "suggested" default. */}
+        {waitingForStems && (
+          <div
+            data-testid="stems-waiting"
+            className="flex items-start gap-3 rounded-lg border border-purple-500/40 bg-purple-500/5 p-3 text-sm"
+          >
+            <Loader2 className="h-4 w-4 mt-0.5 shrink-0 animate-spin text-purple-500" />
+            <div className="space-y-1">
+              <p className="font-medium">{t('stemsWaitingTitle')}</p>
+              <p className="text-muted-foreground">{t('stemsWaitingDesc')}</p>
+            </div>
+          </div>
+        )}
+
+        {stemsStatus === 'gave_up' && !showChoiceBlock && (
+          <p data-testid="stems-gave-up" className="text-sm text-muted-foreground">
+            {t('stemsGaveUp')}
+          </p>
+        )}
+
         {showChoiceBlock && (
           <div className="rounded-lg border border-purple-500/40 bg-purple-500/5 p-3 text-sm space-y-3">
             <p className="font-medium">🎬 {t('finalChoiceLabel')}</p>
@@ -277,13 +310,18 @@ export default function ReviewChangesModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || hasNoLyrics}
+            disabled={isSubmitting || hasNoLyrics || waitingForStems}
             className="bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 {t('saving')}
+              </>
+            ) : waitingForStems ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {t('waitingForStems')}
               </>
             ) : (
               <>
