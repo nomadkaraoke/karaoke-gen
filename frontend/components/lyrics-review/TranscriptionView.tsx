@@ -26,6 +26,13 @@ import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
 import type { SingerId } from '@/lib/lyrics-review/types'
 import { cn } from '@/lib/utils'
 
+// Duet row tint: a faint gradient in the singer's colour (1 = blue, 2 = pink, both = yellow).
+function singerTintClass(singer: SingerId): string {
+  if (singer === 1) return 'bg-gradient-to-r from-blue-500/10 to-transparent'
+  if (singer === 2) return 'bg-gradient-to-r from-pink-500/10 to-transparent'
+  return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+}
+
 export default function TranscriptionView({
   data,
   onElementClick,
@@ -254,6 +261,16 @@ export default function TranscriptionView({
                     ? (wordId) => onWordClick({ word_id: wordId, type: 'other' })
                     : undefined
                 }
+                {...(isDuet && {
+                  singer: resolveSegmentSinger(segment),
+                  hasSingerOverrides: hasWordOverrides(segment),
+                  onSingerChange: onSegmentSingerChange
+                    ? (next: SingerId) => onSegmentSingerChange(segmentIndex, next)
+                    : undefined,
+                  onFocus: onSegmentFocus ? () => onSegmentFocus(segmentIndex) : undefined,
+                  onBlur: onSegmentFocus ? () => onSegmentFocus(null) : undefined,
+                  className: singerTintClass(resolveSegmentSinger(segment)),
+                })}
               />
               </Fragment>
             ))}
@@ -307,11 +324,7 @@ export default function TranscriptionView({
               )
 
               const segmentSinger: SingerId = resolveSegmentSinger(segment)
-              const rowTintClass = isDuet
-                ? segmentSinger === 1 ? 'bg-gradient-to-r from-blue-500/10 to-transparent' :
-                  segmentSinger === 2 ? 'bg-gradient-to-r from-pink-500/10 to-transparent' :
-                  'bg-gradient-to-r from-yellow-500/10 to-transparent'
-                : ''
+              const rowTintClass = isDuet ? singerTintClass(segmentSinger) : ''
 
               return (
                 <Fragment key={segment.id}>

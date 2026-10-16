@@ -89,3 +89,43 @@ describe('WaveformSegmentRow Ctrl-click delete', () => {
     expect(props.onEditSegment).toHaveBeenCalledWith(0)
   })
 })
+
+describe('WaveformSegmentRow duet singer chip', () => {
+  it('omits the singer chip when no singer is passed (non-duet)', () => {
+    renderRow()
+    expect(screen.queryByText('●')).not.toBeInTheDocument()
+  })
+
+  it('renders the singer chip and cycles the singer on click', async () => {
+    const user = userEvent.setup()
+    const onSingerChange = jest.fn()
+    renderRow({ singer: 1, onSingerChange })
+    const chip = screen.getByText('●').closest('button')!
+    await user.click(chip)
+    expect(onSingerChange).toHaveBeenCalledWith(2)
+  })
+
+  it('reports focus/blur so singer shortcuts target this line', () => {
+    const onFocus = jest.fn()
+    const onBlur = jest.fn()
+    const { container } = render(
+      <WaveformSegmentRow
+        segment={timedSegment}
+        segmentIndex={0}
+        contextWords={[]}
+        wordDecorations={new Map()}
+        onCommit={jest.fn()}
+        onEditSegment={jest.fn()}
+        onDeleteSegment={jest.fn()}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      />
+    )
+    const row = container.firstChild as HTMLElement
+    expect(row).toHaveAttribute('tabindex', '0')
+    fireEvent.focus(row)
+    fireEvent.blur(row)
+    expect(onFocus).toHaveBeenCalled()
+    expect(onBlur).toHaveBeenCalled()
+  })
+})
