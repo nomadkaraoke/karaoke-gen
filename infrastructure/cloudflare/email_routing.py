@@ -19,6 +19,7 @@ email_catchall_karaokehunt_com = cloudflare.EmailRoutingCatchAll("email-catchall
     matchers=[{
         "type": "all",
     }],
+    name="",  # explicit, else every `pulumi refresh` plans a no-op update
     source="api",
     zone_id=ZONE_IDS["karaokehunt.com"])
 email_rule_google_karaokehunt_com = cloudflare.EmailRoutingRule("email-rule-google-karaokehunt-com",
@@ -47,6 +48,7 @@ email_catchall_nomadkaraoke_com = cloudflare.EmailRoutingCatchAll("email-catchal
     matchers=[{
         "type": "all",
     }],
+    name="",  # explicit, else every `pulumi refresh` plans a no-op update
     source="api",
     zone_id=ZONE_IDS["nomadkaraoke.com"])
 email_rule_google_nomadkaraoke_com = cloudflare.EmailRoutingRule("email-rule-google-nomadkaraoke-com",
@@ -75,6 +77,7 @@ email_catchall_nomadkaroke_com = cloudflare.EmailRoutingCatchAll("email-catchall
     matchers=[{
         "type": "all",
     }],
+    name="",  # explicit, else every `pulumi refresh` plans a no-op update
     source="api",
     zone_id=ZONE_IDS["nomadkaroke.com"])
 email_rule_google_nomadkaroke_com = cloudflare.EmailRoutingRule("email-rule-google-nomadkaroke-com",
