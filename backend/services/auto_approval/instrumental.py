@@ -111,6 +111,48 @@ def _backing_verdict_with_late_analysis(job, aa: Dict[str, Any]) -> Dict[str, An
     }
 
 
+def unified_backing_recommendation(analysis: Optional[Dict[str, Any]]) -> Optional[str]:
+    """The single instrumental recommendation for ``backing_vocals_analysis``.
+
+    The legacy ``AudioAnalyzer`` heuristic (>20% audible or a loud segment => keep)
+    disagreed with the 3-stem scorer on ~15% of jobs (0.5-20% audible, no loud
+    segments), so the finish modal and the instrumental screens recommended
+    different stems. Order: the scorer's confident verdict; ``clean`` when the
+    backing stem looks like the lead (keeping it re-inserts the lead vocal);
+    otherwise the heuristic as a soft hint. Failed/missing analyses keep
+    whatever was stored.
+    """
+    if not analysis:
+        return None
+    heuristic = analysis.get("heuristic_recommended_selection") or analysis.get("recommended_selection")
+    from backend.services.auto_approval.scorer import backing_is_lead, score_backing
+
+    result = score_backing(analysis)
+    if not result.signals.analysis_present:
+        return heuristic
+    if result.non_subjective:
+        return result.verdict.value
+    if backing_is_lead(result.signals):
+        return "clean"
+    return heuristic
+
+
+def with_unified_recommendation(analysis: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Copy of ``analysis`` with ``recommended_selection`` unified (see above) and
+    the heuristic's original value kept as ``heuristic_recommended_selection``.
+    Idempotent; applied when the analysis is written and when it is served (so
+    jobs analysed before this change are consistent too)."""
+    if not analysis:
+        return {}
+    out = dict(analysis)
+    if not out.get("analysis_error") and out.get("has_audible_content") is not None:
+        out.setdefault("heuristic_recommended_selection", out.get("recommended_selection"))
+    unified = unified_backing_recommendation(out)
+    if unified is not None:
+        out["recommended_selection"] = unified
+    return out
+
+
 def auto_approval_summary(job, settings) -> Dict[str, Any]:
     """Compact block for the ``/correction-data`` response (C1 per-screen skip).
 

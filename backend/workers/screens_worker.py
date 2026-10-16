@@ -745,6 +745,10 @@ async def _analyze_backing_vocals(
         }
         if stem_comparison is not None:
             analysis_data['stem_comparison'] = stem_comparison
+        # One recommendation everywhere: the 3-stem scorer's confident verdict
+        # overrides the analyzer heuristic (kept as heuristic_recommended_selection).
+        from backend.services.auto_approval.instrumental import with_unified_recommendation
+        analysis_data = with_unified_recommendation(analysis_data)
 
         job_manager.update_state_data(job_id, 'backing_vocals_analysis', analysis_data)
 
@@ -755,7 +759,8 @@ async def _analyze_backing_vocals(
             f"Backing vocals analysis complete: "
             f"has_audible={result.has_audible_content}, "
             f"segments={result.segment_count}, "
-            f"recommendation={result.recommended_selection.value}"
+            f"recommendation={analysis_data['recommended_selection']} "
+            f"(heuristic={result.recommended_selection.value})"
         )
 
         # Log segment details if there are any

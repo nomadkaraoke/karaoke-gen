@@ -307,3 +307,96 @@ def test_summary_timing_pending_ignored_when_gate_disabled():
     )
     s = auto_approval_summary(job, settings)
     assert s["lyrics"]["confident"] is True
+
+
+# --- unified backing recommendation (backing_vocals_analysis.recommended_selection) ---
+# The legacy AudioAnalyzer heuristic (>20% audible or a loud segment => keep) and
+# the 3-stem scorer used to disagree on ~15% of jobs (0.5-20% audible, no loud
+# segments), so the finish modal and the instrumental screens recommended
+# different stems for the same job. The scorer's confident verdict now wins.
+
+from backend.services.auto_approval.instrumental import (  # noqa: E402
+    unified_backing_recommendation,
+    with_unified_recommendation,
+)
+
+
+def _bva(pct=9.0, avg_db=-30.0, heuristic="clean", comparison=None, **extra):
+    """A backing_vocals_analysis shaped like job 58555663 (quiet, sparse, real)."""
+    data = {
+        "has_audible_content": True,
+        "audible_percentage": pct,
+        "audible_segments": [
+            {"start_seconds": 16.0, "end_seconds": 21.0, "duration_seconds": 5.0,
+             "avg_amplitude_db": avg_db, "peak_amplitude_db": avg_db + 6},
+        ],
+        "recommended_selection": heuristic,
+        "stem_comparison": comparison if comparison is not None else {
+            "backing_audible_fraction": 0.08, "lead_audible_fraction": 0.66,
+            "coverage_ratio": 0.11, "corr_backing_vocals": -0.02,
+            "corr_backing_lead": -0.25, "lead_overlap_fraction": 0.55,
+            "backing_median_db": -31.6, "backing_db_std": 4.4,
+            "flat_fraction": 0.0, "error": None,
+        },
+    }
+    data.update(extra)
+    return data
+
+
+def test_unified_scorer_keep_overrides_heuristic_clean():
+    # The 58555663 case: heuristic said clean, scorer confidently keeps.
+    assert unified_backing_recommendation(_bva()) == "with_backing"
+
+
+def test_unified_scorer_clean_for_near_silent_stem():
+    assert unified_backing_recommendation(_bva(pct=0.2, heuristic="clean")) == "clean"
+
+
+def test_unified_backing_is_lead_forces_clean_even_if_heuristic_keeps():
+    # Scorer says review because the backing stem IS the lead; recommending
+    # with_backing would re-insert the lead vocal into the karaoke track.
+    lead_like = {
+        "backing_audible_fraction": 0.7, "lead_audible_fraction": 0.3,
+        "coverage_ratio": 0.9, "corr_backing_vocals": 0.9, "corr_backing_lead": 0.1,
+        "lead_overlap_fraction": 0.4, "backing_median_db": -22.0,
+        "flat_fraction": 0.0, "error": None,
+    }
+    assert unified_backing_recommendation(
+        _bva(pct=60.0, avg_db=-15.0, heuristic="with_backing", comparison=lead_like)
+    ) == "clean"
+
+
+def test_unified_other_review_falls_back_to_heuristic():
+    # No 3-stem comparison -> scorer review -> keep the heuristic's soft hint.
+    data = _bva(pct=40.0, heuristic="with_backing")
+    del data["stem_comparison"]
+    assert unified_backing_recommendation(data) == "with_backing"
+
+
+def test_unified_review_prefers_stored_heuristic_over_rewritten_value():
+    # Re-applying to an already-unified dict must use the preserved heuristic.
+    data = _bva(pct=40.0, heuristic="clean", heuristic_recommended_selection="with_backing")
+    del data["stem_comparison"]
+    assert unified_backing_recommendation(data) == "with_backing"
+
+
+def test_unified_failed_or_missing_analysis_keeps_stored_value():
+    failed = {"has_audible_content": None, "analysis_error": "boom", "recommended_selection": "clean"}
+    assert unified_backing_recommendation(failed) == "clean"
+    assert unified_backing_recommendation({}) is None
+    assert unified_backing_recommendation(None) is None
+
+
+def test_with_unified_recommendation_rewrites_and_preserves_heuristic():
+    original = _bva()
+    out = with_unified_recommendation(original)
+    assert out["recommended_selection"] == "with_backing"
+    assert out["heuristic_recommended_selection"] == "clean"
+    assert original["recommended_selection"] == "clean"  # input not mutated
+    # Idempotent.
+    assert with_unified_recommendation(out) == out
+
+
+def test_with_unified_recommendation_passes_through_empty():
+    assert with_unified_recommendation({}) == {}
+    assert with_unified_recommendation(None) == {}
