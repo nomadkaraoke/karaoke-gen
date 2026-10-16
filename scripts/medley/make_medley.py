@@ -166,8 +166,11 @@ def measure_lufs(path: str, start: float, end: Optional[float]) -> float:
     if end is not None:
         args += ["-to", str(end)]
     args += ["-i", path, "-af", "ebur128", "-f", "null", "-"]
-    err = subprocess.run(args, capture_output=True, text=True).stderr
-    return float(re.findall(r"I:\s+(-?[\d.]+) LUFS", err)[-1])
+    res = subprocess.run(args, capture_output=True, text=True)
+    found = re.findall(r"I:\s+(-?[\d.]+) LUFS", res.stderr)
+    if res.returncode != 0 or not found:
+        raise RuntimeError(f"loudness measurement failed for {path}: {res.stderr.strip()[-300:]}")
+    return float(found[-1])
 
 
 def gcs_download(src: str, dst: str, required: bool = True) -> bool:
