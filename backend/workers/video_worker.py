@@ -366,6 +366,9 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                 storage=storage,
                 job_logger=job_log,
             )
+            # The native distribution pass below retries a failed Drive upload, so
+            # check publish completeness only after it (see check further down).
+            orchestrator.defer_publish_completeness_check = True
 
             with job_span("orchestrator-run", job_id):
                 result = await orchestrator.run()
@@ -378,6 +381,17 @@ async def generate_video_orchestrated(job_id: str) -> bool:
             if regenerate:
                 job_log.info("GCS-only regenerate: skipping native distribution")
             else:
+                native_result = {
+                    'brand_code': result.brand_code,
+                    'youtube_url': result.youtube_url,
+                    'final_video': result.final_video,
+                    'final_video_lossy': result.final_video_lossy,
+                    'final_video_720p': result.final_video_720p,
+                    'final_karaoke_cdg_zip': result.final_karaoke_cdg_zip,
+                    'original_vocals_guide': result.original_vocals_guide,
+                    'dropbox_link': result.dropbox_link,
+                    'gdrive_files': result.gdrive_files,
+                }
                 with job_span("distribution", job_id):
                     await _handle_native_distribution(
                         job_id=job_id,
@@ -385,18 +399,11 @@ async def generate_video_orchestrated(job_id: str) -> bool:
                         job_log=job_log,
                         job_manager=job_manager,
                         temp_dir=temp_dir,
-                        result={
-                            'brand_code': result.brand_code,
-                            'youtube_url': result.youtube_url,
-                            'final_video': result.final_video,
-                            'final_video_lossy': result.final_video_lossy,
-                            'final_video_720p': result.final_video_720p,
-                            'final_karaoke_cdg_zip': result.final_karaoke_cdg_zip,
-                            'dropbox_link': result.dropbox_link,
-                            'gdrive_files': result.gdrive_files,
-                        },
+                        result=native_result,
                         storage=storage,
                     )
+                _adopt_fallback_gdrive_upload(config, result, native_result, job_log)
+                orchestrator.check_publish_completeness()
 
             # Upload generated files to GCS
             # Note: State transition to PACKAGING is handled by the orchestrator in _run_distribution()
@@ -1224,6 +1231,31 @@ async def generate_video_legacy(job_id: str) -> bool:
             logger.debug(f"Cleaned up temp directory: {temp_dir}")
 
 
+def _adopt_fallback_gdrive_upload(config, result, native_result: Dict[str, Any], job_log) -> None:
+    """Carry a fallback Drive upload's file ids back onto the orchestrator result.
+
+    When the orchestrator's Drive upload fails, _handle_native_distribution()
+    retries it. Without this, the job's state_data.gdrive_files would be
+    overwritten with the orchestrator's empty result and its stale "Google Drive
+    upload failed" warning persisted and alerted on, even though the release
+    landed (NOMAD-1783).
+    """
+    from backend.services.publish_completeness import compute_publish_shortfall
+
+    recovered = native_result.get('gdrive_files')
+    if result.gdrive_files or not recovered:
+        return
+    result.gdrive_files = recovered
+    job_log.info(f"Google Drive upload recovered by fallback pass: {len(recovered)} files")
+    # Only a complete recovery clears the failure; a partial one keeps the warning
+    # (and the completeness check still alerts).
+    if not compute_publish_shortfall(config, result):
+        result.distribution_warnings = [
+            w for w in (result.distribution_warnings or [])
+            if not w.startswith("Google Drive upload failed")
+        ]
+
+
 async def _handle_native_distribution(
     job_id: str,
     job,
@@ -1368,6 +1400,8 @@ async def _handle_native_distribution(
                     'final_karaoke_lossy_720p_mp4': result.get('final_video_720p'),
                     'final_karaoke_cdg_zip': result.get('final_karaoke_cdg_zip'),
                 }
+                if result.get('original_vocals_guide'):
+                    output_files['original_vocals_guide'] = result['original_vocals_guide']
                 
                 uploaded = gdrive.upload_to_public_share(
                     root_folder_id=gdrive_folder_id,

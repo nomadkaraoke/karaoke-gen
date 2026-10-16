@@ -15,7 +15,7 @@ import os
 import ssl
 from typing import Any, Dict, Optional
 
-from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import Retrying, stop_after_attempt, wait_exponential, retry_if_exception
 
 from backend.config import get_settings
 from karaoke_gen.utils import sanitize_filename
@@ -24,6 +24,43 @@ logger = logging.getLogger(__name__)
 
 # Transient errors that indicate a stale HTTP connection (Cloud Run idle containers)
 TRANSIENT_ERRORS = (BrokenPipeError, ConnectionResetError, ConnectionError, ssl.SSLError)
+
+# Drive API statuses worth retrying: rate limiting and server-side faults. Drive
+# returns these intermittently (e.g. a 500 "internalError" on resumable-upload
+# init) and they succeed on a retry seconds later.
+TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
+# Drive reports per-user/project rate limiting as a 403 with one of these reasons;
+# Google documents them as retryable with backoff. Other 403s (permissions) aren't.
+RATE_LIMIT_REASONS = frozenset({"rateLimitExceeded", "userRateLimitExceeded"})
+
+
+def _http_error_reasons(exc) -> set:
+    """The ``error.errors[].reason`` values from a Drive HttpError's JSON body."""
+    try:
+        content = exc.content.decode("utf-8") if isinstance(exc.content, bytes) else exc.content
+        errors = json.loads(content).get("error", {}).get("errors", [])
+        return {e.get("reason") for e in errors if isinstance(e, dict)}
+    except Exception:  # noqa: BLE001 - unparseable body → no known reason
+        return set()
+
+
+def is_transient_error(exc: BaseException) -> bool:
+    """True for errors that a retry is likely to clear (stale connection or Drive 5xx/429)."""
+    if isinstance(exc, TRANSIENT_ERRORS):
+        return True
+    from googleapiclient.errors import HttpError
+
+    if isinstance(exc, HttpError):
+        status = getattr(getattr(exc, "resp", None), "status", None)
+        try:
+            status = int(status)
+        except (TypeError, ValueError):
+            return False
+        if status in TRANSIENT_HTTP_STATUSES:
+            return True
+        if status == 403:
+            return bool(_http_error_reasons(exc) & RATE_LIMIT_REASONS)
+    return False
 
 
 class GoogleDriveService:
@@ -138,8 +175,8 @@ class GoogleDriveService:
         """
         Get existing folder or create new one, return folder ID.
 
-        Retries on transient connection errors (BrokenPipeError, SSLError)
-        that occur when Cloud Run containers sit idle between jobs.
+        Retries on transient errors: stale connections (BrokenPipeError, SSLError)
+        from Cloud Run containers idling between jobs, and Drive 5xx/429 responses.
 
         Args:
             parent_id: Parent folder ID
@@ -151,7 +188,7 @@ class GoogleDriveService:
         for attempt in Retrying(
             stop=stop_after_attempt(3),
             wait=wait_exponential(multiplier=1, min=2, max=8),
-            retry=retry_if_exception_type(TRANSIENT_ERRORS),
+            retry=retry_if_exception(is_transient_error),
             before_sleep=lambda retry_state: self._reset_service(),
             reraise=True,
         ):
@@ -194,8 +231,8 @@ class GoogleDriveService:
         """
         Upload a file to a specific Drive folder.
 
-        Retries on transient connection errors (BrokenPipeError, SSLError)
-        that occur when Cloud Run containers sit idle between jobs.
+        Retries on transient errors: stale connections (BrokenPipeError, SSLError)
+        from Cloud Run containers idling between jobs, and Drive 5xx/429 responses.
 
         Args:
             local_path: Local file path
@@ -208,10 +245,17 @@ class GoogleDriveService:
         """
         from googleapiclient.http import MediaFileUpload
 
+        # Each attempt re-runs the same-name delete before creating, so a create
+        # that 5xx'd after Drive actually stored the file can't leave a duplicate.
+        # Without that cleanup, only retry errors that never reached Drive.
+        should_retry = (
+            is_transient_error if replace_existing
+            else (lambda exc: isinstance(exc, TRANSIENT_ERRORS))
+        )
         for attempt in Retrying(
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=1, min=2, max=8),
-            retry=retry_if_exception_type(TRANSIENT_ERRORS),
+            stop=stop_after_attempt(4),
+            wait=wait_exponential(multiplier=2, min=2, max=16),
+            retry=retry_if_exception(should_retry),
             before_sleep=lambda retry_state: self._reset_service(),
             reraise=True,
         ):
@@ -434,8 +478,8 @@ class GoogleDriveService:
         """
         Delete a file from Google Drive.
 
-        Retries on transient connection errors (BrokenPipeError, SSLError)
-        that occur when Cloud Run containers sit idle between jobs.
+        Retries on transient errors: stale connections (BrokenPipeError, SSLError)
+        from Cloud Run containers idling between jobs, and Drive 5xx/429 responses.
 
         Args:
             file_id: Google Drive file ID to delete
@@ -449,7 +493,7 @@ class GoogleDriveService:
             for attempt in Retrying(
                 stop=stop_after_attempt(3),
                 wait=wait_exponential(multiplier=1, min=2, max=8),
-                retry=retry_if_exception_type(TRANSIENT_ERRORS),
+                retry=retry_if_exception(is_transient_error),
                 before_sleep=lambda retry_state: self._reset_service(),
                 reraise=True,
             ):
@@ -534,7 +578,7 @@ class GoogleDriveService:
         for attempt in Retrying(
             stop=stop_after_attempt(3),
             wait=wait_exponential(multiplier=1, min=2, max=8),
-            retry=retry_if_exception_type(TRANSIENT_ERRORS),
+            retry=retry_if_exception(is_transient_error),
             before_sleep=lambda retry_state: self._reset_service(),
             reraise=True,
         ):

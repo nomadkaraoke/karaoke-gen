@@ -36,6 +36,7 @@ def _orchestrator_result(**overrides):
         title_mov=None,
         end_mov=None,
         portrait_video=None,
+        original_vocals_guide=None,
     )
     fields.update(overrides)
     return SimpleNamespace(**fields)
