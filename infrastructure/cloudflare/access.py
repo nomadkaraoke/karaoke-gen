@@ -18,6 +18,18 @@ access_idp_onetimepin = cloudflare.ZeroTrustAccessIdentityProvider("access-idp-o
     config={},
     name="One-time PIN",
     type="onetimepin")
+# Google login. OAuth web client "Cloudflare Access (nomadkaraoke.cloudflareaccess.com)" in GCP project
+# nomadkaraoke (created in the console 2026-10-16; redirect URI .../cdn-cgi/access/callback). Apps don't
+# set allowed_idps, so every IdP is offered on the login page; policies still gate by email.
+_config = pulumi.Config()
+access_idp_google = cloudflare.ZeroTrustAccessIdentityProvider("access-idp-google",
+    account_id=ACCOUNT_ID,
+    config={
+        "client_id": _config.require("googleOauthClientId"),
+        "client_secret": _config.require_secret("googleOauthClientSecret"),
+    },
+    name="Google",
+    type="google")
 access_service_token_claude_code_kjbox = cloudflare.ZeroTrustAccessServiceToken("access-service-token-claude-code-kjbox",
     account_id=ACCOUNT_ID,
     duration="forever",
