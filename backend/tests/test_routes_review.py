@@ -449,7 +449,12 @@ class TestInstrumentalUrlsRefresh:
     def test_returns_late_analysis_and_fresh_auto_approval_once_audio_complete(
         self, test_client, summary_patch
     ):
-        analysis = {"recommended_selection": "with_backing", "has_audible_content": True}
+        analysis = {
+            "recommended_selection": "with_backing",
+            "has_audible_content": True,
+            "audible_percentage": 35.0,
+            "audible_segments": [{"avg_amplitude_db": -15.0, "peak_amplitude_db": -9.0}],
+        }
         mock_job = self._late_stems_job(
             audio_complete=True,
             stems={
@@ -465,11 +470,36 @@ class TestInstrumentalUrlsRefresh:
         body = response.json()
         assert body["audio_complete"] is True
         assert {o["id"] for o in body["instrumental_options"]} == {"clean", "with_backing"}
-        assert body["backing_vocals_analysis"] == analysis
+        assert body["backing_vocals_analysis"]["recommended_selection"] == "with_backing"
+        assert body["backing_vocals_analysis"]["audible_percentage"] == 35.0
         assert body["auto_approval"]["backing"]["resolved_selection"] == "with_backing"
         # Summary re-derived from the CURRENT job (self-corrects a verdict scored
         # before the backing analysis existed).
         assert summary_patch.call_args.args[0] is mock_job
+
+
+    def test_analysis_recommendation_unified_with_scorer(self, test_client, summary_patch):
+        """Job 58555663: the analyzer heuristic said clean (9% audible, no loud
+        segment) while the 3-stem scorer confidently keeps — the served analysis
+        must recommend the scorer's stem so every screen agrees."""
+        analysis = {
+            "recommended_selection": "clean",
+            "has_audible_content": True,
+            "audible_percentage": 9.03,
+            "audible_segments": [{"avg_amplitude_db": -28.5, "peak_amplitude_db": -22.7}],
+            "stem_comparison": {
+                "backing_audible_fraction": 0.08, "lead_audible_fraction": 0.66,
+                "coverage_ratio": 0.11, "corr_backing_vocals": -0.02,
+                "lead_overlap_fraction": 0.55, "backing_median_db": -31.6,
+                "flat_fraction": 0.0, "error": None,
+            },
+        }
+        mock_job = self._late_stems_job(audio_complete=True, stems={}, analysis=analysis)
+
+        body = self._get(test_client, mock_job).json()
+
+        assert body["backing_vocals_analysis"]["recommended_selection"] == "with_backing"
+        assert body["backing_vocals_analysis"]["heuristic_recommended_selection"] == "clean"
 
 
 class TestInstrumentalAudioProxy:

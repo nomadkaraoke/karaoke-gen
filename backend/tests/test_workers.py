@@ -991,7 +991,54 @@ class TestBackingVocalsAnalysis:
         mock_job_manager.update_file_url.assert_called_once_with(
             "test123", "stems", "backing_vocals", "jobs/test123/stems/backing_vocals.flac"
         )
-    
+
+    @pytest.mark.asyncio
+    async def test_analyze_backing_vocals_stores_scorer_unified_recommendation(self):
+        """The stored recommended_selection follows the 3-stem scorer (sparse quiet
+        harmonies => keep) while the analyzer heuristic's 'clean' is preserved as
+        heuristic_recommended_selection (job 58555663 disagreement)."""
+        from karaoke_gen.instrumental_review.models import (
+            AnalysisResult, AudibleSegment, RecommendedSelection,
+        )
+
+        mock_job = MagicMock()
+        mock_job.file_urls = {"stems": {
+            "backing_vocals": "jobs/test123/stems/backing_vocals.flac",
+            "lead_vocals": "jobs/test123/stems/lead_vocals.flac",
+            "vocals_clean": "jobs/test123/stems/vocals_clean.flac",
+        }}
+        mock_job_manager = MagicMock()
+        mock_job_manager.get_job.return_value = mock_job
+
+        result = AnalysisResult(
+            has_audible_content=True,
+            total_duration_seconds=206.6,
+            audible_segments=[AudibleSegment(
+                start_seconds=16.15, end_seconds=21.3, duration_seconds=5.15,
+                avg_amplitude_db=-28.5, peak_amplitude_db=-22.7,
+            )],
+            recommended_selection=RecommendedSelection.CLEAN,
+            silence_threshold_db=-40.0,
+            total_audible_duration_seconds=18.65,
+            audible_percentage=9.03,
+        )
+        comparison = {
+            "backing_audible_fraction": 0.08, "lead_audible_fraction": 0.66,
+            "coverage_ratio": 0.11, "corr_backing_vocals": -0.02,
+            "lead_overlap_fraction": 0.55, "backing_median_db": -31.6,
+            "flat_fraction": 0.0, "error": None,
+        }
+        with patch("backend.services.audio_analysis_service.AudioAnalysisService") as MockSvc:
+            MockSvc.return_value.analyze_and_generate_waveform.return_value = (
+                result, "jobs/test123/analysis/backing_vocals_waveform.png", comparison,
+            )
+            from backend.workers.screens_worker import _analyze_backing_vocals
+            await _analyze_backing_vocals("test123", mock_job_manager, MagicMock(), MagicMock())
+
+        stored = mock_job_manager.update_state_data.call_args.args[2]
+        assert stored["recommended_selection"] == "with_backing"
+        assert stored["heuristic_recommended_selection"] == "clean"
+
     def test_analysis_service_can_be_instantiated(self):
         """Test that AudioAnalysisService can be instantiated."""
         from backend.services.audio_analysis_service import AudioAnalysisService

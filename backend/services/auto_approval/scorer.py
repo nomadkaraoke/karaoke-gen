@@ -576,6 +576,18 @@ def extract_backing_signals(backing_analysis: Optional[Dict[str, Any]]) -> Backi
     return signals
 
 
+def backing_is_lead(s: BackingSignals) -> bool:
+    """True when the 3-stem comparison says the backing stem IS the lead vocal
+    (separation misclassified a quiet/reverby lead). Shared with the unified
+    instrumental recommendation, which must never suggest keeping it."""
+    return (
+        s.comparison_present
+        and s.coverage_ratio >= BACKING_IS_LEAD_MIN_COVERAGE_RATIO
+        and s.corr_backing_vocals >= BACKING_IS_LEAD_MIN_CORR
+        and s.backing_audible_fraction > s.lead_audible_fraction
+    )
+
+
 def score_backing(backing_analysis: Optional[Dict[str, Any]]) -> BackingResult:
     """Decide whether the backing-vocals call is non-subjective (no audible backing)."""
     s = extract_backing_signals(backing_analysis)
@@ -610,11 +622,7 @@ def score_backing(backing_analysis: Optional[Dict[str, Any]]) -> BackingResult:
     # -- "pink but don't keep" mode 1: the backing stem IS the lead --
     # (separation misclassified a quiet/reverby lead; keeping it would put the
     # lead vocal back into the karaoke track — the worst possible output.)
-    if (
-        s.coverage_ratio >= BACKING_IS_LEAD_MIN_COVERAGE_RATIO
-        and s.corr_backing_vocals >= BACKING_IS_LEAD_MIN_CORR
-        and s.backing_audible_fraction > s.lead_audible_fraction
-    ):
+    if backing_is_lead(s):
         reasons.append(
             f"backing stem appears to BE the lead vocal: covers "
             f"{s.coverage_ratio:.0%} of the vocal line with envelope correlation "

@@ -415,6 +415,7 @@ Response includes:
   used to sign 2-3 URLs per load via IAM signBlob, which could stall). The frontend turns
   the path into an absolute, token-authenticated `<audio>` src.
 - `backing_vocals_analysis` - Analysis data to help with selection
+  - Its `recommended_selection` is the unified recommendation (`unified_backing_recommendation` in `backend/services/auto_approval/instrumental.py`): the 3-stem scorer's confident verdict, else `clean` when the backing stem looks like the lead, else the analyzer heuristic (kept as `heuristic_recommended_selection`). Every endpoint that serves the analysis applies it, so older jobs are consistent too.
 
 #### Instrumental Stems / Separation Status
 

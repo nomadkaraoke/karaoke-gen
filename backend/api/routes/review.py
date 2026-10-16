@@ -42,6 +42,7 @@ from backend.services.tempo_label import (
 )
 from backend.services.job_logging import job_log_context, JobLogger
 from backend.services.tracing import create_span, add_span_attribute, add_span_event
+from backend.services.auto_approval.instrumental import with_unified_recommendation
 from backend.services.encoding_service import get_encoding_service
 from backend.api.dependencies import require_auth, require_review_auth
 from backend.utils.stems import vocals_stem_path as _vocals_stem_path
@@ -898,7 +899,9 @@ async def get_correction_data(
         )
 
         # Get backing vocals analysis from state_data (populated by screens_worker)
-        backing_vocals_analysis = job.state_data.get('backing_vocals_analysis', {})
+        backing_vocals_analysis = with_unified_recommendation(
+            job.state_data.get('backing_vocals_analysis', {})
+        )
         corrections_data['backing_vocals_analysis'] = backing_vocals_analysis
 
         # Possible missing lyrics (auto-approval analysis): the review UI marks
@@ -2273,7 +2276,9 @@ async def get_instrumental_urls(
         "instrumental_options": instrumental_options,
         "audio_complete": bool(job.state_data.get("audio_complete", False)),
         "job_status": str(getattr(job.status, "value", job.status)),
-        "backing_vocals_analysis": job.state_data.get("backing_vocals_analysis", {}),
+        "backing_vocals_analysis": with_unified_recommendation(
+            job.state_data.get("backing_vocals_analysis", {})
+        ),
         "auto_approval": auto_approval_summary(job, _get_settings()),
     }
 
@@ -2300,7 +2305,7 @@ async def get_instrumental_analysis(
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     # Get backing vocals analysis from state_data
-    backing_analysis = job.state_data.get('backing_vocals_analysis', {})
+    backing_analysis = with_unified_recommendation(job.state_data.get('backing_vocals_analysis', {}))
 
     # Get stem URLs
     from backend.services.audio_transcoding_service import AudioTranscodingService

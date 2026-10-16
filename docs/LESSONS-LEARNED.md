@@ -2392,3 +2392,15 @@ account to the "Nomad Karaoke" account with no downtime, then 130 resources were
   live snapshots.
 - **Reusable Access policies default to a 24h session.** Pin `session_duration` to the app's.
 
+## Two "recommended" instrumentals disagreed on 15% of jobs (2026-10-16, v0.276.2)
+
+`backing_vocals_analysis.recommended_selection` came from the original `AudioAnalyzer` rule (keep
+only if >20% audible or a segment above −20 dB). The finish modal preferred the 3-stem scorer
+(`score_backing`), which keeps any audible backing that isn't lead bleed, noise, or the lead
+itself. For 0.5–20% audible with no loud segment they split: 59 of 389 jobs (Jul–Oct). Job
+58555663 showed "✓ recommended: with backing" in the modal while the instrumental screens said
+clean. Where they split, the admin/Andrew accounts kept backing 14 of 18 times (the scorer's call). Customer picks
+lean clean regardless (38% clean even when both signals say keep), so they're poor ground truth.
+The analyzer rule also said "keep" on 5 jobs where the scorer had flagged the backing stem as the lead.
+Fix: one `unified_backing_recommendation`, applied when written and when served. Lesson: when
+a new decider replaces a heuristic, re-point every consumer of the old field, not just the new UI.
