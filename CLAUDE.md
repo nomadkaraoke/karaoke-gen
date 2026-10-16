@@ -23,6 +23,7 @@
 | GDrive validator & gaps | `docs/GDRIVE-VALIDATOR.md` |
 | **Product communication** | `docs/PRODUCT-COMMUNICATION-GUIDE.md` |
 | Brand style guide | `docs/BRAND-STYLE-GUIDE.md` |
+| **Making medleys** (multi-song karaoke) | `docs/MEDLEYS.md` + `scripts/medley/make_medley.py` |
 
 ## Tech Stack
 

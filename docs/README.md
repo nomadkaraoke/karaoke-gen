@@ -11,6 +11,9 @@
       (MusicBrainz lookup + KaraokeNerds availability); auto-picks confident
       lossless audio, parks the rest in a review queue. See `docs/API.md` § Bulk Mode.
   - `/admin` - Admin dashboard (user management, job monitoring)
+- **Medleys** (agent-run, local): one gen job per original song, then
+  `scripts/medley/make_medley.py` cuts the audio and renders a synced karaoke video from the
+  reviewed lyrics. See [MEDLEYS.md](MEDLEYS.md).
 - **Backend API**: https://api.nomadkaraoke.com - FastAPI on Cloud Run
 - **CLI Tools**: `karaoke-gen` (local), `karaoke-gen-remote` (cloud)
 

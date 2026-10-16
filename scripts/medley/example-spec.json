@@ -1,0 +1,18 @@
+{
+  "title": "Classic Country Medley",
+  "artist": "George Jones, Kris Kristofferson, George Strait & Randy Travis",
+  "theme_job_id": "a70794e2",
+  "workdir": "work",
+  "outdir": "out",
+  "sections": [
+    {"label": "He Stopped Loving Her Today (verse 1)", "job_id": "a70794e2", "start": 0.0, "end": 54.0},
+    {"label": "Help Me Make It Through the Night (intro, verse 1, chorus)", "job_id": "0ac008b5", "start": 0.0, "end": 52.0,
+     "join": "crossfade", "join_duration": 2.0},
+    {"label": "Amarillo by Morning (fiddle intro, verse 1, chorus)", "job_id": "4c90a9a2", "start": 0.0, "end": 57.0,
+     "join": "crossfade", "join_duration": 2.0},
+    {"label": "On the Other Hand (verse 1, chorus, pot out on 'hand')", "job_id": "6a9ce5e2", "start": 0.0, "end": 82.0,
+     "join": "crossfade", "join_duration": 2.0, "fade_out_start": 80.7},
+    {"label": "He Stopped Loving Her Today (fiddle bridge to end)", "job_id": "a70794e2", "start": 132.2, "end": null,
+     "join": "gap", "join_duration": 0.7, "fade_in": 0.5}
+  ]
+}
