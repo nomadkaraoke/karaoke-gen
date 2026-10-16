@@ -1254,7 +1254,11 @@
         "recommended": "recommandé",
         "autoInstrumentalBacking": "Nous gardons les chœurs dans l'instrumental. Écoute bien : si tu entends la voix du chanteur principal, passe à « Instrumental propre » ci-dessus.",
         "advancedMode": "Mode avancé (modifier les chœurs ou importer ton propre instrumental)",
-        "chooseInstrumentalPrompt": "Écoute et choisis l'instrumental à utiliser pour ta vidéo."
+        "chooseInstrumentalPrompt": "Écoute et choisis l'instrumental à utiliser pour ta vidéo.",
+        "stemsGaveUp": "L'instrumentale n'est pas encore prête, tu pourras donc la choisir sur l'écran suivant.",
+        "stemsWaitingDesc": "Cela prend généralement une minute ou deux. Une fois terminé, tu pourras choisir ton instrumentale et écouter les chœurs directement ici. Tu n'as pas besoin de fermer cette fenêtre.",
+        "stemsWaitingTitle": "Séparation de la musique et de la voix toujours en cours…",
+        "waitingForStems": "En attente de l'instrumentale…"
       },
       "searchLyrics": {
         "artist": "Artiste",

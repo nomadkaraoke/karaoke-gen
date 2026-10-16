@@ -1254,7 +1254,11 @@
         "recommended": "추천",
         "autoInstrumentalBacking": "반주에 백보컬을 남겨두었습니다. 한번 들어보시고 메인 보컬의 목소리가 들린다면, 상단의 “Clean instrumental”로 변경해 주세요.",
         "advancedMode": "고급 모드 (백보컬 편집 또는 직접 반주 업로드)",
-        "chooseInstrumentalPrompt": "들어보시고 영상에 사용할 반주를 선택해 주세요."
+        "chooseInstrumentalPrompt": "들어보시고 영상에 사용할 반주를 선택해 주세요.",
+        "stemsGaveUp": "반주 트랙이 아직 준비되지 않아 다음 화면에서 선택하시게 됩니다.",
+        "stemsWaitingDesc": "보통 1~2분 정도 걸립니다. 완료되면 바로 여기에서 반주 트랙을 선택하고 코러스(백보컬)를 들어보실 수 있어요. 이 창을 닫지 않고 기다려 주세요.",
+        "stemsWaitingTitle": "음악과 보컬을 분리하고 있어요…",
+        "waitingForStems": "반주 트랙을 기다리는 중…"
       },
       "searchLyrics": {
         "artist": "아티스트",

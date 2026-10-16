@@ -1254,7 +1254,11 @@
         "recommended": "推荐",
         "autoInstrumentalBacking": "我们在伴奏中保留了伴唱。请试听一下——如果您能听到主唱的声音，请切换到上方的“纯净伴奏”。",
         "advancedMode": "高级模式（编辑伴唱或上传您自己的伴奏）",
-        "chooseInstrumentalPrompt": "试听一下，然后选择您的视频要使用的伴奏。"
+        "chooseInstrumentalPrompt": "试听一下，然后选择您的视频要使用的伴奏。",
+        "stemsGaveUp": "伴奏尚未就绪，您可以在下一个页面中进行选择。",
+        "stemsWaitingDesc": "这通常需要一两分钟。完成后，您就可以直接在这里选择伴奏并试听和声。无需关闭此窗口。",
+        "stemsWaitingTitle": "仍在分离音乐与人声…",
+        "waitingForStems": "正在等待伴奏…"
       },
       "searchLyrics": {
         "artist": "歌手",

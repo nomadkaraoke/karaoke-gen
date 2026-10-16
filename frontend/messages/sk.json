@@ -1254,7 +1254,11 @@
         "recommended": "odporúčané",
         "autoInstrumentalBacking": "V inštrumentálnej verzii nechávame sprievodné vokály. Vypočuj si to — ak počuješ prenikať hlas hlavného speváka, prepni vyššie na „Čistý inštrumentál“.",
         "advancedMode": "Pokročilý režim (uprav sprievodné vokály alebo nahraj vlastný inštrumentál)",
-        "chooseInstrumentalPrompt": "Vypočuj si to a vyber si, ktorý inštrumentál chceš vo svojom videu použiť."
+        "chooseInstrumentalPrompt": "Vypočuj si to a vyber si, ktorý inštrumentál chceš vo svojom videu použiť.",
+        "stemsGaveUp": "Inštrumentálka ešte nie je pripravená, takže si ju vyberieš na ďalšej obrazovke.",
+        "stemsWaitingDesc": "Zvyčajne to trvá minútu alebo dve. Keď to bude hotové, priamo tu si budeš môcť vybrať inštrumentálku a vypočuť si sprievodné vokály. Nemusíš zatvárať toto okno.",
+        "stemsWaitingTitle": "Stále oddeľujeme hudbu od vokálov…",
+        "waitingForStems": "Čaká sa na inštrumentálku…"
       },
       "searchLyrics": {
         "artist": "Interpret",

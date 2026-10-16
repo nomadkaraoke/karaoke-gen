@@ -1254,7 +1254,11 @@
         "recommended": "anbefales",
         "autoInstrumentalBacking": "Vi beholder baggrundsvokalerne i instrumentalen. Prøv at lytte — hvis du kan høre forsangerens stemme trænge igennem, så skift til “Ren instrumental” ovenfor.",
         "advancedMode": "Avanceret tilstand (rediger baggrundsvokaler eller upload dit eget instrumentalspor)",
-        "chooseInstrumentalPrompt": "Prøv at lytte, og vælg hvilket instrumentalspor din video skal bruge."
+        "chooseInstrumentalPrompt": "Prøv at lytte, og vælg hvilket instrumentalspor din video skal bruge.",
+        "stemsGaveUp": "Instrumentalversionen er ikke klar endnu, så du vælger den på næste skærm.",
+        "stemsWaitingDesc": "Det tager normalt et minut eller to. Når det er færdigt, kan du vælge din instrumentalversion og lytte til korstemmerne lige her. Du behøver ikke at lukke dette vindue.",
+        "stemsWaitingTitle": "Adskiller stadig musikken fra vokalen…",
+        "waitingForStems": "Venter på instrumentalversionen…"
       },
       "searchLyrics": {
         "artist": "Kunstner",

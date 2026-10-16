@@ -1254,7 +1254,11 @@
         "recommended": "zalecane",
         "autoInstrumentalBacking": "Zostawiamy chórki w podkładzie. Posłuchaj — jeśli słyszysz przebijający się głos głównego wokalisty, przełącz na „Czysty podkład” powyżej.",
         "advancedMode": "Tryb zaawansowany (edytuj chórki lub prześlij własny podkład)",
-        "chooseInstrumentalPrompt": "Posłuchaj i wybierz, którego podkładu chcesz użyć w swoim wideo."
+        "chooseInstrumentalPrompt": "Posłuchaj i wybierz, którego podkładu chcesz użyć w swoim wideo.",
+        "stemsGaveUp": "Wersja instrumentalna nie jest jeszcze gotowa, więc wybierzesz ją na następnym ekranie.",
+        "stemsWaitingDesc": "Zazwyczaj zajmuje to minutę lub dwie. Gdy wszystko będzie gotowe, wybierzesz wersję instrumentalną i odsłuchasz chórki bezpośrednio tutaj. Nie musisz zamykać tego okna.",
+        "stemsWaitingTitle": "Nadal trwa oddzielanie muzyki od wokalu…",
+        "waitingForStems": "Czekamy na wersję instrumentalną…"
       },
       "searchLyrics": {
         "artist": "Wykonawca",

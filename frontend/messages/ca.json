@@ -1254,7 +1254,11 @@
         "recommended": "recomanat",
         "autoInstrumentalBacking": "Mantenim els cors a l'instrumental. Escolta-ho — si sents la veu del cantant principal, canvia a «Instrumental net» més amunt.",
         "advancedMode": "Mode avançat (edita les veus de fons o puja la teva pròpia instrumental)",
-        "chooseInstrumentalPrompt": "Escolta-ho i tria quina instrumental vols fer servir al teu vídeo."
+        "chooseInstrumentalPrompt": "Escolta-ho i tria quina instrumental vols fer servir al teu vídeo.",
+        "stemsGaveUp": "La pista instrumental encara no està a punt, així que la triaràs a la pantalla següent.",
+        "stemsWaitingDesc": "Això sol trigar un parell de minuts. Quan hagi acabat, podràs triar la pista instrumental i escoltar les veus de fons aquí mateix. No cal que tanquis aquesta finestra.",
+        "stemsWaitingTitle": "Encara s'està separant la música de la veu…",
+        "waitingForStems": "Esperant la pista instrumental…"
       },
       "searchLyrics": {
         "artist": "Artista",

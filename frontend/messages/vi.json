@@ -1254,7 +1254,11 @@
         "recommended": "khuyên dùng",
         "autoInstrumentalBacking": "Chúng tôi đang giữ lại phần hát bè trong bản nhạc nền. Hãy nghe thử nhé — nếu bạn vẫn nghe thấy giọng ca sĩ chính, hãy chuyển sang “Nhạc nền sạch” ở bên trên.",
         "advancedMode": "Chế độ nâng cao (chỉnh sửa giọng bè hoặc tải lên nhạc nền của riêng bạn)",
-        "chooseInstrumentalPrompt": "Hãy nghe thử và chọn bản nhạc nền cho video của bạn."
+        "chooseInstrumentalPrompt": "Hãy nghe thử và chọn bản nhạc nền cho video của bạn.",
+        "stemsGaveUp": "Nhạc nền vẫn chưa sẵn sàng, bạn có thể chọn ở màn hình tiếp theo nhé.",
+        "stemsWaitingDesc": "Quá trình này thường mất khoảng một hoặc hai phút. Khi hoàn tất, bạn sẽ có thể chọn nhạc nền và nghe phần bè ngay tại đây. Bạn không cần phải đóng cửa sổ này.",
+        "stemsWaitingTitle": "Vẫn đang tách nhạc và giọng hát…",
+        "waitingForStems": "Đang đợi nhạc nền…"
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

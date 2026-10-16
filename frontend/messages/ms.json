@@ -1254,7 +1254,11 @@
         "recommended": "disyorkan",
         "autoInstrumentalBacking": "Kami mengekalkan vokal latar dalam instrumental. Cuba dengar — jika suara penyanyi utama masih kedengaran, tukar kepada “Instrumental bersih” di atas.",
         "advancedMode": "Mod lanjutan (sunting vokal latar atau muat naik instrumental anda sendiri)",
-        "chooseInstrumentalPrompt": "Dengarkan dan pilih instrumental mana yang patut digunakan untuk video anda."
+        "chooseInstrumentalPrompt": "Dengarkan dan pilih instrumental mana yang patut digunakan untuk video anda.",
+        "stemsGaveUp": "Muzik instrumental belum siap lagi, jadi anda boleh memilihnya di skrin seterusnya.",
+        "stemsWaitingDesc": "Ini biasanya mengambil masa satu atau dua minit. Setelah selesai, anda boleh memilih muzik instrumental dan mendengar vokal latar di sini. Anda tidak perlu menutup tetingkap ini.",
+        "stemsWaitingTitle": "Masih mengasingkan muzik daripada vokal…",
+        "waitingForStems": "Menunggu muzik instrumental…"
       },
       "searchLyrics": {
         "artist": "Artis",
