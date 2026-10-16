@@ -9,6 +9,9 @@ import TimelineEditor from './TimelineEditor'
 import { recomputeSegmentFromWords } from '@/lib/lyrics-review/utils/segmentTiming'
 import { WordDecoration } from '@/lib/lyrics-review/utils/wordDecorations'
 import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
+import { cn } from '@/lib/utils'
+import type { SingerId } from '@/lib/lyrics-review/types'
+import SingerChip from './SingerChip'
 
 interface WaveformSegmentRowProps {
   segment: LyricsSegment
@@ -30,6 +33,15 @@ interface WaveformSegmentRowProps {
   onDeleteSegment: (segmentIndex: number) => void
   /** Set while Ctrl/Cmd is held (delete-word mode): pressing a word deletes it. */
   onDeleteWord?: (wordId: string) => void
+  /** Duet mode: the line's singer chip (same control as the Simple/Advanced views). */
+  singer?: SingerId
+  hasSingerOverrides?: boolean
+  onSingerChange?: (next: SingerId) => void
+  /** Duet mode: focus tracking so the singer keyboard shortcuts target this line. */
+  onFocus?: () => void
+  onBlur?: () => void
+  /** Extra row classes (e.g. the duet singer tint). */
+  className?: string
 }
 
 /**
@@ -55,6 +67,12 @@ export default function WaveformSegmentRow({
   onEditSegment,
   onDeleteSegment,
   onDeleteWord,
+  singer,
+  hasSingerOverrides = false,
+  onSingerChange,
+  onFocus,
+  onBlur,
+  className,
 }: WaveformSegmentRowProps) {
   const t = useTranslations('lyricsReview.transcription')
   const tHeader = useTranslations('lyricsReview.header')
@@ -90,8 +108,12 @@ export default function WaveformSegmentRow({
   const hasTimedWords = words.some((w) => w.start_time !== null && w.end_time !== null)
 
   return (
-    <div className="flex items-start w-full gap-1">
-      {/* Left controls: index (opens modal), play, edit */}
+    <div
+      tabIndex={onFocus ? 0 : undefined}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      className={cn('flex items-start w-full gap-1', className)}
+    >
       {/* Left controls match the Advanced view: index, delete, play. */}
       <div className="flex items-center gap-0.5 pr-1 h-[20px]" style={{ minWidth: '2.5em' }}>
         <span
@@ -123,6 +145,16 @@ export default function WaveformSegmentRow({
           </Button>
         )}
       </div>
+
+      {/* Singer chip (duet mode only) */}
+      {singer !== undefined && onSingerChange && (
+        <SingerChip
+          singer={singer}
+          hasOverrides={hasSingerOverrides}
+          onChange={onSingerChange}
+          className="mr-1 flex-shrink-0"
+        />
+      )}
 
       {/* Inline timeline (waveform + resizable word bars), ruler hidden for compactness */}
       <div className="flex-1 min-w-0">
