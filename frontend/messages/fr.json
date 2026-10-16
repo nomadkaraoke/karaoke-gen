@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "L'instrumentale n'est pas encore prête, tu pourras donc la choisir sur l'écran suivant.",
         "stemsWaitingDesc": "Cela prend généralement une minute ou deux. Une fois terminé, tu pourras choisir ton instrumentale et écouter les chœurs directement ici. Tu n'as pas besoin de fermer cette fenêtre.",
         "stemsWaitingTitle": "Séparation de la musique et de la voix toujours en cours…",
-        "waitingForStems": "En attente de l'instrumentale…"
+        "stemsWaitingProceed": "Tu es pressé ? Tu peux passer directement à la vérification de l'instrumental complet dès maintenant."
       },
       "searchLyrics": {
         "artist": "Artiste",

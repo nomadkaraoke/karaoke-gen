@@ -1344,8 +1344,8 @@
         "advancedModeClean": "Advanced mode (review or upload a custom instrumental)",
         "stemsWaitingTitle": "Still separating the music from the vocals…",
         "stemsWaitingDesc": "This usually takes a minute or two. When it's done, you'll be able to choose your instrumental and listen to the backing vocals right here. You don't need to close this window.",
-        "waitingForStems": "Waiting for the instrumental…",
-        "stemsGaveUp": "The instrumental isn't ready yet, so you'll choose it on the next screen."
+        "stemsGaveUp": "The instrumental isn't ready yet, so you'll choose it on the next screen.",
+        "stemsWaitingProceed": "In a hurry? You can continue to the full instrumental review now instead."
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "La base strumentale non è ancora pronta, quindi la sceglierai nella schermata successiva.",
         "stemsWaitingDesc": "Di solito ci vogliono uno o due minuti. Al termine, potrai scegliere la base strumentale e ascoltare i cori proprio qui. Non devi chiudere questa finestra.",
         "stemsWaitingTitle": "Separazione della musica dalla voce ancora in corso…",
-        "waitingForStems": "In attesa della base strumentale…"
+        "stemsWaitingProceed": "Hai fretta? Puoi invece passare subito alla revisione completa della base strumentale."
       },
       "searchLyrics": {
         "artist": "Artista",

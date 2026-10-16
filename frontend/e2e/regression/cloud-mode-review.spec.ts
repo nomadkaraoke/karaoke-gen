@@ -731,9 +731,10 @@ test.describe('Cloud Mode - stems arriving after page load', () => {
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 10000 });
 
-    // While separating: explanation + spinner, CTA held.
+    // While separating: explanation + spinner; the reviewer can still skip ahead
+    // to the full instrumental review.
     await expect(dialog.getByTestId('stems-waiting')).toBeVisible();
-    await expect(dialog.getByRole('button', { name: /waiting for the instrumental/i })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: /proceed to instrumental/i })).toBeEnabled();
     separationDone = true;
 
     // Next poll (≤15s later) reports separation done → chooser replaces the spinner.

@@ -58,7 +58,13 @@ export function useLateInstrumentalStems({
         if (!getter) return
         const result = await getter()
         if (cancelled) return
-        if (result.audio_complete) {
+        // An older backend (frontend deploys first; Cloud Run can lag tens of
+        // minutes) omits `audio_complete` — fall back to "both stems are there".
+        const stemIds = new Set(result.instrumental_options?.map((o) => o.id) ?? [])
+        const complete =
+          result.audio_complete ??
+          (stemIds.has('clean') && stemIds.has('with_backing'))
+        if (complete) {
           setState(result)
           setStatus('ready')
           return

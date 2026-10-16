@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Instrumentalul nu este încă gata, așa că îl vei alege pe ecranul următor.",
         "stemsWaitingDesc": "De obicei, durează un minut sau două. Când este gata, vei putea să-ți alegi instrumentalul și să asculți vocile de fundal chiar aici. Nu este nevoie să închizi această fereastră.",
         "stemsWaitingTitle": "Încă separăm muzica de voce…",
-        "waitingForStems": "Se așteaptă instrumentalul…"
+        "stemsWaitingProceed": "Te grăbești? Poți trece direct la verificarea completă a părții instrumentale acum."
       },
       "searchLyrics": {
         "artist": "Artist",

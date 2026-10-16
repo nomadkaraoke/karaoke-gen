@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Enstrümantal henüz hazır değil, bu yüzden bir sonraki ekranda seçeceksin.",
         "stemsWaitingDesc": "Bu işlem genellikle bir iki dakika sürer. Tamamlandığında enstrümantalini seçebilecek ve geri vokalleri doğrudan buradan dinleyebileceksin. Bu pencereyi kapatmana gerek yok.",
         "stemsWaitingTitle": "Müzik hâlâ vokallerden ayrıştırılıyor…",
-        "waitingForStems": "Enstrümantal bekleniyor…"
+        "stemsWaitingProceed": "Acelen mi var? Beklemek yerine şimdi tam enstrümantal incelemesine devam edebilirsin."
       },
       "searchLyrics": {
         "artist": "Sanatçı",

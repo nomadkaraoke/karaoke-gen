@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Instrumentalen er ikke klar ennå, så du velger den på neste skjerm.",
         "stemsWaitingDesc": "Dette tar vanligvis et minutt eller to. Når det er ferdig, kan du velge instrumentalspor og lytte til koringen her. Du trenger ikke å lukke dette vinduet.",
         "stemsWaitingTitle": "Skiller fortsatt musikken fra vokalen…",
-        "waitingForStems": "Venter på instrumentalen…"
+        "stemsWaitingProceed": "Har du det travelt? Du kan fortsette til full gjennomgang av instrumentalen nå i stedet."
       },
       "searchLyrics": {
         "artist": "Artist",

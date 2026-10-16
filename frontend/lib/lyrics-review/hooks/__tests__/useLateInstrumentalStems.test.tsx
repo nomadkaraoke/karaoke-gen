@@ -93,4 +93,14 @@ describe('useLateInstrumentalStems', () => {
     expect(get).toHaveBeenCalledTimes(LATE_STEMS_MAX_POLLS)
     expect(result.current.status).toBe('gave_up')
   })
+
+  it('treats both stems present as ready when an older backend omits audio_complete', async () => {
+    const { audio_complete: _ac, ...legacyDone } = done
+    const get = jest.fn().mockResolvedValueOnce({ instrumental_options: [] }).mockResolvedValue(legacyDone)
+    const { result } = renderHook(() => useLateInstrumentalStems({ enabled: true, getInstrumentalState: get }))
+    await flush()
+    expect(result.current.status).toBe('waiting')
+    await act(async () => { jest.advanceTimersByTime(LATE_STEMS_POLL_MS) })
+    expect(result.current.status).toBe('ready')
+  })
 })

@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "La pista instrumental encara no està a punt, així que la triaràs a la pantalla següent.",
         "stemsWaitingDesc": "Això sol trigar un parell de minuts. Quan hagi acabat, podràs triar la pista instrumental i escoltar les veus de fons aquí mateix. No cal que tanquis aquesta finestra.",
         "stemsWaitingTitle": "Encara s'està separant la música de la veu…",
-        "waitingForStems": "Esperant la pista instrumental…"
+        "stemsWaitingProceed": "Tens pressa? Pots passar directament a la revisió instrumental completa."
       },
       "searchLyrics": {
         "artist": "Artista",

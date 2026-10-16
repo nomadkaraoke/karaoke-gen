@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Instrumental još nije spreman, pa ćeš ga odabrati na sljedećem zaslonu.",
         "stemsWaitingDesc": "Ovo obično traje minutu ili dvije. Kada završi, moći ćeš odabrati instrumental i preslušati prateće vokale upravo ovdje. Ne moraš zatvarati ovaj prozor.",
         "stemsWaitingTitle": "Glazba se još odvaja od vokala…",
-        "waitingForStems": "Čeka se instrumental…"
+        "stemsWaitingProceed": "U žurbi si? Umjesto toga možeš odmah nastaviti na pregled cjelovitog instrumentala."
       },
       "searchLyrics": {
         "artist": "Izvođač",

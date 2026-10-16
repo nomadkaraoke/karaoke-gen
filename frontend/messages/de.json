@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Das Instrumental ist noch nicht bereit, daher wählst du es auf dem nächsten Bildschirm aus.",
         "stemsWaitingDesc": "Das dauert normalerweise ein oder zwei Minuten. Sobald es fertig ist, kannst du direkt hier dein Instrumental auswählen und den Hintergrundgesang anhören. Du musst dieses Fenster nicht schließen.",
         "stemsWaitingTitle": "Die Musik wird noch vom Gesang getrennt…",
-        "waitingForStems": "Warten auf das Instrumental…"
+        "stemsWaitingProceed": "Hast du es eilig? Du kannst stattdessen jetzt direkt mit der Überprüfung des gesamten Instrumentals fortfahren."
       },
       "searchLyrics": {
         "artist": "Künstler",

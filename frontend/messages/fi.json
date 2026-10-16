@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Taustaraita ei ole vielä valmis, joten voit valita sen seuraavassa näkymässä.",
         "stemsWaitingDesc": "Tämä kestää yleensä minuutin tai kaksi. Kun se on valmis, voit valita taustaraidan ja kuunnella taustalauluja suoraan tässä. Tätä ikkunaa ei tarvitse sulkea.",
         "stemsWaitingTitle": "Musiikkia ja laulua erotellaan vielä toisistaan…",
-        "waitingForStems": "Odotetaan taustaraitaa…"
+        "stemsWaitingProceed": "Onko kiire? Voit jatkaa koko instrumentaalin tarkistukseen heti sen sijaan."
       },
       "searchLyrics": {
         "artist": "Esittäjä",

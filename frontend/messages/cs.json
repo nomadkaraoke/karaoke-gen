@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Instrumentálka ještě není připravená, takže si ji vybereš na další obrazovce.",
         "stemsWaitingDesc": "Obvykle to trvá minutu nebo dvě. Až to bude hotové, budeš si moct přímo tady vybrat instrumentálku a poslechnout si doprovodné vokály. Toto okno nemusíš zavírat.",
         "stemsWaitingTitle": "Stále oddělujeme hudbu od vokálů…",
-        "waitingForStems": "Čekáme na instrumentálku…"
+        "stemsWaitingProceed": "Spěcháš? Místo toho můžeš hned pokračovat ke kontrole celé instrumentální stopy."
       },
       "searchLyrics": {
         "artist": "Interpret",

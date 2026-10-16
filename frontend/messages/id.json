@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Musik instrumental belum siap, jadi Anda bisa memilihnya di layar berikutnya.",
         "stemsWaitingDesc": "Proses ini biasanya butuh satu atau dua menit. Setelah selesai, Anda bisa memilih musik instrumental dan mendengarkan vokal latar langsung di sini. Jendela ini tidak perlu ditutup.",
         "stemsWaitingTitle": "Masih memisahkan musik dari vokal…",
-        "waitingForStems": "Menunggu musik instrumental…"
+        "stemsWaitingProceed": "Sedang terburu-buru? Anda bisa langsung lanjut ke peninjauan instrumental lengkap sekarang."
       },
       "searchLyrics": {
         "artist": "Artis",

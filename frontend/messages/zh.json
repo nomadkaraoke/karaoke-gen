@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "伴奏尚未就绪，您可以在下一个页面中进行选择。",
         "stemsWaitingDesc": "这通常需要一两分钟。完成后，您就可以直接在这里选择伴奏并试听和声。无需关闭此窗口。",
         "stemsWaitingTitle": "仍在分离音乐与人声…",
-        "waitingForStems": "正在等待伴奏…"
+        "stemsWaitingProceed": "赶时间？您现在也可以直接前往完整伴奏审核。"
       },
       "searchLyrics": {
         "artist": "歌手",
