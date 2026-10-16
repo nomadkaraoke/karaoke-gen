@@ -2,3 +2,6 @@ config:
   cloudflare:apiToken:
     secure: AAABAJQoc2aprEO7/4n8Jc+tLlEH9FOc/r3QxCfq3qM3khE3kize3trhuWhFCELZFMQ4ZVZ2KsuAYr4Z9zveF9SQqsx8/jJn/zTIhFvFHyQFx8E3wQ==
   nomad-cloudflare:accountId: 4585249dcf5d2f9fb4e075c5382cd071
+  nomad-cloudflare:googleOauthClientSecret:
+    secure: AAABAF/ZOcl4fY4R+829/6axVvqqq5QeZou0BtO5BkszNcDUwMc1CEnkVlDMdUX9O3SXI2EfWGcdhx9S50uMHbxnZw==
+  nomad-cloudflare:googleOauthClientId: 718638054799-lqgmpmaauc23mc7mu822pspvq0s1tla3.apps.googleusercontent.com
