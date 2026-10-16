@@ -1254,7 +1254,11 @@
         "recommended": "preporučeno",
         "autoInstrumentalBacking": "Zadržavamo prateće vokale u instrumentalu. Poslušaj — ako čuješ glas glavnog pjevača, prebaci na „Čisti instrumental” iznad.",
         "advancedMode": "Napredni način rada (uredi prateće vokale ili prenesi vlastiti instrumental)",
-        "chooseInstrumentalPrompt": "Poslušaj i odaberi koji instrumental želiš koristiti u svom videu."
+        "chooseInstrumentalPrompt": "Poslušaj i odaberi koji instrumental želiš koristiti u svom videu.",
+        "stemsGaveUp": "Instrumental još nije spreman, pa ćeš ga odabrati na sljedećem zaslonu.",
+        "stemsWaitingDesc": "Ovo obično traje minutu ili dvije. Kada završi, moći ćeš odabrati instrumental i preslušati prateće vokale upravo ovdje. Ne moraš zatvarati ovaj prozor.",
+        "stemsWaitingTitle": "Glazba se još odvaja od vokala…",
+        "waitingForStems": "Čeka se instrumental…"
       },
       "searchLyrics": {
         "artist": "Izvođač",

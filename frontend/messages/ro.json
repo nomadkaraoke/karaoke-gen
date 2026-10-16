@@ -1254,7 +1254,11 @@
         "recommended": "recomandat",
         "autoInstrumentalBacking": "Păstrăm vocile de fundal în instrumental. Ascultă — dacă se aude vocea solistului principal, schimbă pe „Instrumental curat” mai sus.",
         "advancedMode": "Mod avansat (editează vocile de fundal sau încarcă propriul tău instrumental)",
-        "chooseInstrumentalPrompt": "Ascultă și alege ce instrumental să folosească videoclipul tău."
+        "chooseInstrumentalPrompt": "Ascultă și alege ce instrumental să folosească videoclipul tău.",
+        "stemsGaveUp": "Instrumentalul nu este încă gata, așa că îl vei alege pe ecranul următor.",
+        "stemsWaitingDesc": "De obicei, durează un minut sau două. Când este gata, vei putea să-ți alegi instrumentalul și să asculți vocile de fundal chiar aici. Nu este nevoie să închizi această fereastră.",
+        "stemsWaitingTitle": "Încă separăm muzica de voce…",
+        "waitingForStems": "Se așteaptă instrumentalul…"
       },
       "searchLyrics": {
         "artist": "Artist",

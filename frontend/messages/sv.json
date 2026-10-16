@@ -1254,7 +1254,11 @@
         "recommended": "rekommenderas",
         "autoInstrumentalBacking": "Vi behåller bakgrundssången i instrumentalversionen. Lyssna — om du hör huvudsångarens röst tränga igenom, byt till ”Ren instrumental” ovan.",
         "advancedMode": "Avancerat läge (redigera bakgrundssång eller ladda upp ditt eget instrumentalspår)",
-        "chooseInstrumentalPrompt": "Lyssna och välj vilken instrumentalversion din video ska använda."
+        "chooseInstrumentalPrompt": "Lyssna och välj vilken instrumentalversion din video ska använda.",
+        "stemsGaveUp": "Instrumentalspåret är inte klart än, så du får välja det på nästa skärm.",
+        "stemsWaitingDesc": "Det här tar vanligtvis en minut eller två. När det är klart kan du välja instrumentalspår och lyssna på bakgrundssången här. Du behöver inte stänga det här fönstret.",
+        "stemsWaitingTitle": "Separerar fortfarande musiken från sången…",
+        "waitingForStems": "Väntar på instrumentalspåret…"
       },
       "searchLyrics": {
         "artist": "Artist",

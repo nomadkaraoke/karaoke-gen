@@ -207,6 +207,16 @@ export interface InstrumentalOptionsResponse {
   title?: string;
 }
 
+/** GET /api/review/{jobId}/instrumental-urls — stems + separation status for the review page. */
+export interface InstrumentalState {
+  instrumental_options: InstrumentalOption[];
+  /** Separation finished (stems, review OGGs and backing analysis all written). */
+  audio_complete?: boolean;
+  job_status?: string;
+  backing_vocals_analysis?: CorrectionData['backing_vocals_analysis'];
+  auto_approval?: CorrectionData['auto_approval'];
+}
+
 // Instrumental Review Types
 export interface MuteRegion {
   start_seconds: number;
@@ -4242,6 +4252,7 @@ export interface LyricsReviewApiClient {
   getPreviewVideoUrl: (hash: string) => string
   getWaveformData: (numPoints?: number) => Promise<WaveformData>
   refreshInstrumentalUrls: () => Promise<InstrumentalOption[]>
+  getInstrumentalState?: () => Promise<InstrumentalState>
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods
   saveReviewSession: (data: CorrectionData, editCount: number, trigger: string, summary: ReviewSessionSummary) => Promise<{ status: string; session_id?: string; reason?: string }>
@@ -4470,6 +4481,23 @@ export function createLyricsReviewApiClient(jobId: string): LyricsReviewApiClien
       )
       const data = await handleResponse<{ instrumental_options?: InstrumentalOption[] }>(response)
       return resolveInstrumentalAudioUrls(jobId, data.instrumental_options ?? [])
+    },
+
+    /**
+     * Instrumental stems + backing analysis + separation status, for the review page's
+     * "stems arrived yet?" poll (review opens on lyrics completion, usually 2-3 minutes
+     * before audio separation finishes). Same endpoint as refreshInstrumentalUrls.
+     */
+    async getInstrumentalState(): Promise<InstrumentalState> {
+      const response = await apiFetch(
+        `${API_BASE_URL}/api/review/${jobId}/instrumental-urls`,
+        { headers: getAuthHeaders() }
+      )
+      const data = await handleResponse<InstrumentalState>(response)
+      return {
+        ...data,
+        instrumental_options: resolveInstrumentalAudioUrls(jobId, data.instrumental_options ?? []),
+      }
     },
 
     /**

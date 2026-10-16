@@ -2251,13 +2251,31 @@ async def get_instrumental_urls(
     audio load error (e.g. a transient network blip) to swap in a fresh URL, and it's a
     cheap, backwards-compatible way to do so. Returns the same shape as correction-data's
     ``instrumental_options``.
+
+    Also the review page's "are the stems ready yet?" poll: review opens as soon as
+    LYRICS finish, while audio separation typically lands 2-3 minutes later, so the
+    correction-data fetched at page load often has no stems / backing analysis. The
+    page polls this until ``audio_complete`` and then swaps in the fresh
+    ``backing_vocals_analysis`` + ``auto_approval`` (re-derived now that the analysis
+    exists), so the finish modal's instrumental chooser appears without a reload.
+    ``audio_complete`` is set only after stems, review OGGs and the backing analysis
+    are all written (audio_worker), so it's the right "everything is ready" signal.
     """
+    from backend.config import get_settings as _get_settings
+    from backend.services.auto_approval.instrumental import auto_approval_summary
+
     job = await asyncio.to_thread(JobManager().get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t("en", "review.jobNotFound"))
 
     instrumental_options = await _build_instrumental_options(job, request)
-    return {"instrumental_options": instrumental_options}
+    return {
+        "instrumental_options": instrumental_options,
+        "audio_complete": bool(job.state_data.get("audio_complete", False)),
+        "job_status": str(getattr(job.status, "value", job.status)),
+        "backing_vocals_analysis": job.state_data.get("backing_vocals_analysis", {}),
+        "auto_approval": auto_approval_summary(job, _get_settings()),
+    }
 
 
 @router.get("/{job_id}/instrumental-analysis")

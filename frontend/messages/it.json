@@ -1254,7 +1254,11 @@
         "recommended": "consigliato",
         "autoInstrumentalBacking": "Stiamo mantenendo i cori nella base strumentale. Ascolta — se riesci a sentire la voce del cantante principale, passa a “Strumentale pulita” qui sopra.",
         "advancedMode": "Modalità avanzata (modifica i cori o carica la tua base strumentale)",
-        "chooseInstrumentalPrompt": "Ascolta e scegli quale base musicale utilizzare per il tuo video."
+        "chooseInstrumentalPrompt": "Ascolta e scegli quale base musicale utilizzare per il tuo video.",
+        "stemsGaveUp": "La base strumentale non è ancora pronta, quindi la sceglierai nella schermata successiva.",
+        "stemsWaitingDesc": "Di solito ci vogliono uno o due minuti. Al termine, potrai scegliere la base strumentale e ascoltare i cori proprio qui. Non devi chiudere questa finestra.",
+        "stemsWaitingTitle": "Separazione della musica dalla voce ancora in corso…",
+        "waitingForStems": "In attesa della base strumentale…"
       },
       "searchLyrics": {
         "artist": "Artista",

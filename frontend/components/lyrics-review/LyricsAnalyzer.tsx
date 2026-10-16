@@ -6,6 +6,7 @@ import { useRouter } from '@/i18n/routing'
 import { Button } from '@/components/ui/button'
 import { Video, Check, CheckCircle2, PanelRightOpen } from 'lucide-react'
 import { useAudioReady } from '@/lib/lyrics-review/hooks/useAudioReady'
+import { useLateInstrumentalStems } from '@/lib/lyrics-review/hooks/useLateInstrumentalStems'
 import { useReferencePanelLayout, clampReferenceWidth, MAX_REFERENCE_WIDTH_FRACTION } from '@/lib/lyrics-review/hooks/useReferencePanelLayout'
 import { toast } from 'sonner'
 import {
@@ -114,6 +115,8 @@ interface ApiClient {
   }>
   getPreviewVideoUrl: (hash: string) => string
   getWaveformData?: (numPoints?: number) => Promise<{ amplitudes: number[]; duration_seconds?: number; duration?: number }>
+  // Optional: separation-status poll for stems that land after page load (cloud mode).
+  getInstrumentalState?: LyricsReviewApiClient['getInstrumentalState']
   completeReview: () => Promise<{ status: string; job_status: string; message: string }>
   // Review session methods (optional - available in cloud mode)
   saveReviewSession?: LyricsReviewApiClient['saveReviewSession']
@@ -319,6 +322,21 @@ export default function LyricsAnalyzer({
     preApplied,
   })
 
+  // Late stems: review opens as soon as LYRICS finish, but audio separation usually
+  // lands 2-3 minutes later — so the page-load data often has no instrumental stems
+  // or backing analysis. Poll until separation completes and overlay the fresh
+  // stems / analysis / auto-approval verdict, so the finish modal's instrumental
+  // chooser appears without a reload. Kept OUT of `data` (history/undo, saved
+  // sessions, and the preview render all key off it).
+  const pageLoadHasStems = (data.instrumental_options ?? []).length > 0
+  const lateStems = useLateInstrumentalStems({
+    enabled: !isReadOnly && !isLocalMode && Boolean(jobId) && !hasExistingInstrumental && !pageLoadHasStems,
+    getInstrumentalState: apiClient?.getInstrumentalState,
+  })
+  const lateState = lateStems.status === 'ready' ? lateStems.state : null
+  const effectiveAutoApproval = lateState?.auto_approval ?? data.auto_approval
+  const effectiveBackingAnalysis = lateState?.backing_vocals_analysis ?? data.backing_vocals_analysis
+
   // Per-screen skip (C1): when the backing decision is confidently auto-resolved
   // by the server, completing the lyrics review finishes the whole job (with the
   // server-resolved instrumental selection) and the instrumental screen is never
@@ -328,13 +346,13 @@ export default function LyricsAnalyzer({
     !isLocalMode &&
     Boolean(jobId) &&
     !hasExistingInstrumental &&
-    Boolean(data.auto_approval?.backing?.confident)
+    Boolean(effectiveAutoApproval?.backing?.confident)
 
   // Inline instrumental choice: offer the clean-vs-with-backing picker in the finish
   // modal whenever BOTH stems exist — even when the auto-scorer wasn't confident — so
   // the reviewer never has to visit the heavy /instrumental screen just to make the
   // basic choice. That screen becomes the "Advanced mode" opt-in.
-  const instrumentalStemOptions = data.instrumental_options ?? []
+  const instrumentalStemOptions = lateState?.instrumental_options ?? data.instrumental_options ?? []
   // Warm the browser cache with the instrumental stems once the main review audio has
   // loaded, so the finish modal's "click the waveform to hear backing vocals" plays
   // instantly instead of waiting on a multi-MB fetch (and, for older jobs, on the API's
@@ -356,8 +374,8 @@ export default function LyricsAnalyzer({
   const asStem = (v: unknown): 'clean' | 'with_backing' | undefined =>
     v === 'clean' || v === 'with_backing' ? v : undefined
   const rawRecommended =
-    asStem(data.auto_approval?.backing?.resolved_selection) ??
-    asStem(data.backing_vocals_analysis?.recommended_selection) ??
+    asStem(effectiveAutoApproval?.backing?.resolved_selection) ??
+    asStem(effectiveBackingAnalysis?.recommended_selection) ??
     (hasBackingStem ? 'with_backing' : 'clean')
   // Clamp to a stem that actually exists.
   const recommendedInstrumental: 'clean' | 'with_backing' =
@@ -1924,6 +1942,8 @@ export default function LyricsAnalyzer({
           open={isReviewModalOpen}
           onClose={() => setIsReviewModalOpen(false)}
           data={data}
+          instrumentalOptions={instrumentalStemOptions}
+          stemsStatus={lateStems.status}
           onSubmit={handleSubmitToServer}
           isSubmitting={isSubmitting}
           apiClient={apiClient}

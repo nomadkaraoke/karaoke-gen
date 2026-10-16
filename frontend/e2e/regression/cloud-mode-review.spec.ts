@@ -348,6 +348,10 @@ test.describe('Cloud Mode - Navigation Flow', () => {
     const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible({ timeout: 10000 });
 
+    // Both stems exist, so the modal offers the inline chooser; "Advanced mode" is
+    // the route to the full instrumental review screen.
+    await dialog.getByRole('radio', { name: /advanced mode/i }).check();
+
     // Click "Proceed to Instrumental Review" button
     const proceedBtn = dialog.getByRole('button', { name: /proceed to instrumental/i });
     await expect(proceedBtn).toBeVisible({ timeout: 5000 });
@@ -670,5 +674,72 @@ test.describe('Cloud Mode vs Local Mode', () => {
     const hash = await page.evaluate(() => window.location.hash);
     expect(hash).toContain(TEST_JOB_ID);
     expect(hash).toContain('review');
+  });
+});
+
+/**
+ * REGRESSION (2026-10-16): review opens as soon as LYRICS finish, but audio
+ * separation usually lands 2-3 minutes later — so the page-load correction-data has
+ * no instrumental stems. The finish modal used to silently drop the instrumental
+ * chooser and offer "Proceed to Instrumental Review". Now the page polls
+ * /instrumental-urls and the modal shows a "still separating" spinner until the
+ * stems + analysis arrive, then the chooser appears without a reload.
+ */
+test.describe('Cloud Mode - stems arriving after page load', () => {
+  test.beforeEach(async ({ page }) => {
+    await setAuthToken(page, 'test-token-123');
+    await setupCloudModeMocks(page);
+  });
+
+  test('preview modal waits for separation, then shows the instrumental chooser', async ({ page }) => {
+    test.setTimeout(60_000);
+
+    // Page-load data: separation not finished → no stems, no analysis.
+    const { instrumental_options: _stems, backing_vocals_analysis: _bva, ...withoutStems } = mockCorrectionData;
+    await page.route(`**/api/review/${TEST_JOB_ID}/correction-data*`, (route) =>
+      route.fulfill({ json: withoutStems })
+    );
+
+    // Flipped by the test once it has seen the waiting state (not a poll count:
+    // dev-mode StrictMode double-runs the polling effect).
+    let separationDone = false;
+    await page.route(`**/api/review/${TEST_JOB_ID}/instrumental-urls*`, (route) => {
+      const ready = separationDone;
+      return route.fulfill({
+        json: {
+          instrumental_options: ready
+            ? [
+                { id: 'clean', label: 'Clean Instrumental', audio_url: `/api/review/${TEST_JOB_ID}/instrumental-audio/clean` },
+                { id: 'with_backing', label: 'Instrumental with Backing Vocals', audio_url: `/api/review/${TEST_JOB_ID}/instrumental-audio/with_backing` },
+              ]
+            : [],
+          audio_complete: ready,
+          job_status: 'in_review',
+          backing_vocals_analysis: ready ? { recommended_selection: 'with_backing' } : {},
+          auto_approval: ready
+            ? { backing: { verdict: 'keep', confident: true, resolved_selection: 'with_backing' } }
+            : { backing: { verdict: null, confident: false, resolved_selection: null } },
+        },
+      });
+    });
+
+    await page.goto(`/app/jobs/#/${TEST_JOB_ID}/review`);
+    await expect(page.locator('h1')).toContainText('Lyrics Transcription Review', { timeout: 10000 });
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.getByRole('button', { name: /preview video/i }).click();
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+
+    // While separating: explanation + spinner, CTA held.
+    await expect(dialog.getByTestId('stems-waiting')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /waiting for the instrumental/i })).toBeDisabled();
+    separationDone = true;
+
+    // Next poll (≤15s later) reports separation done → chooser replaces the spinner.
+    await expect(dialog.getByRole('radio', { name: /instrumental \+ backing vocals/i })).toBeChecked({ timeout: 25_000 });
+    await expect(dialog.getByTestId('stems-waiting')).toHaveCount(0);
+    await expect(dialog.getByText('✓ recommended')).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /complete track/i })).toBeEnabled();
   });
 });
