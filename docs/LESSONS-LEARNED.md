@@ -2090,6 +2090,28 @@ gated to deployed envs, skips test/dev.
   shipped vs what did), and make the metadata backstop validate a just-published
   track's **own** completeness same-run, not only via global-max gap math (D2).
 
+## A shadow check must run after the last recovery step (NOMAD-1783, v0.276.3)
+
+**Context:** The publish-completeness SHADOW alert fired for NOMAD-1783 ("missing lossy
+4K MP4, 720p MP4, CDG zip") but the release was complete a minute later. Drive returned
+a one-off `HttpError 500 internalError` on resumable-upload init; `gdrive_service`
+only retried connection errors, so the orchestrator's whole Drive upload was dropped.
+The worker's second "native" Drive pass (`_handle_native_distribution`, which runs when
+`gdrive_files` is empty) re-uploaded all three, but: the shadow check had already run
+inside the orchestrator; the fallback pass didn't ship the original-vocals guide (kjbox
+"Original Vocals" slider); and the main path then wrote the orchestrator's empty
+`gdrive_files` + stale "Google Drive upload failed" warning over the recovered state.
+
+**Fix:** Drive 429/5xx are retried like connection errors (`is_transient_error`);
+`generate_video_orchestrated` defers the check (`defer_publish_completeness_check`)
+until after the fallback pass, adopts the fallback's ids and drops the stale warning
+(`_adopt_fallback_gdrive_upload`); the guide path rides on `OrchestratorResult` so the
+fallback ships it too.
+
+**Principles:** run a completeness/consistency check at the point where *no further
+recovery can happen*, not where the first attempt ends. When a fallback pass exists,
+its result must flow back into whatever is persisted, or the persisted state lies.
+
 ## BackgroundTasks Cannot Survive Deploys — And the Shutdown Hook That "Protects" Them Never Runs (Sep 2026, v0.224.0)
 
 **Context:** Tenant-E2E run #107 failed: job `41e06b90` froze at `rendering_video`

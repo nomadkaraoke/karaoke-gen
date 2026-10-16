@@ -628,7 +628,7 @@ def _orchestrator_result(**overrides):
         dropbox_link="https://db/new", gdrive_files={"mp4": "n1"}, distribution_warnings=[],
         final_video=None, final_video_mkv=None, final_video_lossy=None, final_video_720p=None,
         final_with_vocals_mp4=None, final_karaoke_cdg_zip=None, final_karaoke_txt_zip=None,
-        title_mov=None, end_mov=None, portrait_video=None,
+        title_mov=None, end_mov=None, portrait_video=None, original_vocals_guide=None,
     )
     fields.update(overrides)
     return SimpleNamespace(**fields)

@@ -180,6 +180,9 @@ class OrchestratorResult:
     youtube_upload_queued: bool = False  # True if upload was deferred due to quota
     dropbox_link: Optional[str] = None
     gdrive_files: Optional[Dict[str, str]] = field(default_factory=dict)
+    # Padded original-vocals guide built for public NOMAD releases (kept so the
+    # worker's fallback Drive pass can ship it too if this pass's upload fails).
+    original_vocals_guide: Optional[str] = None
 
     # Distribution warnings (non-fatal upload failures)
     distribution_warnings: List[str] = field(default_factory=list)
@@ -218,6 +221,10 @@ class VideoWorkerOrchestrator:
         self.job_manager = job_manager
         self.storage = storage
         self.job_log = job_logger or logging.getLogger(__name__)
+
+        # When True, _run_distribution() skips the publish-completeness check and
+        # the caller runs check_publish_completeness() after its own fallback pass.
+        self.defer_publish_completeness_check = False
 
         # Services (lazy-loaded)
         self._encoding_backend = None
@@ -771,9 +778,12 @@ class VideoWorkerOrchestrator:
         # None path and publishes a partial release without the encode() guard ever
         # tripping (exactly the NOMAD-1632 class). Shadow-first: log + alert only,
         # never fail the job, until a clean shadow window justifies enforcing.
-        self._check_publish_completeness()
+        # A caller with its own fallback Drive pass (generate_video_orchestrated)
+        # defers the check until after that pass, so a recovered upload doesn't alert.
+        if not self.defer_publish_completeness_check:
+            self.check_publish_completeness()
 
-    def _check_publish_completeness(self):
+    def check_publish_completeness(self):
         """SHADOW check that a public-share release shipped all expected outputs."""
         try:
             from backend.services.publish_completeness import compute_publish_shortfall
@@ -1038,6 +1048,7 @@ class VideoWorkerOrchestrator:
             guide_path = await self._emit_original_vocals_guide(brand_code)
             if guide_path:
                 output_files['original_vocals_guide'] = guide_path
+                self.result.original_vocals_guide = guide_path
 
             uploaded = gdrive.upload_to_public_share(
                 root_folder_id=self.config.gdrive_folder_id,
