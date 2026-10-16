@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Wersja instrumentalna nie jest jeszcze gotowa, więc wybierzesz ją na następnym ekranie.",
         "stemsWaitingDesc": "Zazwyczaj zajmuje to minutę lub dwie. Gdy wszystko będzie gotowe, wybierzesz wersję instrumentalną i odsłuchasz chórki bezpośrednio tutaj. Nie musisz zamykać tego okna.",
         "stemsWaitingTitle": "Nadal trwa oddzielanie muzyki od wokalu…",
-        "waitingForStems": "Czekamy na wersję instrumentalną…"
+        "stemsWaitingProceed": "Śpieszysz się? Zamiast tego możesz przejść teraz do pełnego przeglądu wersji instrumentalnej."
       },
       "searchLyrics": {
         "artist": "Wykonawca",

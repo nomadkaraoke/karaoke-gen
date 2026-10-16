@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Nhạc nền vẫn chưa sẵn sàng, bạn có thể chọn ở màn hình tiếp theo nhé.",
         "stemsWaitingDesc": "Quá trình này thường mất khoảng một hoặc hai phút. Khi hoàn tất, bạn sẽ có thể chọn nhạc nền và nghe phần bè ngay tại đây. Bạn không cần phải đóng cửa sổ này.",
         "stemsWaitingTitle": "Vẫn đang tách nhạc và giọng hát…",
-        "waitingForStems": "Đang đợi nhạc nền…"
+        "stemsWaitingProceed": "Bạn đang vội? Bạn có thể chuyển sang xem lại toàn bộ phần nhạc cụ ngay bây giờ."
       },
       "searchLyrics": {
         "artist": "Nghệ sĩ",

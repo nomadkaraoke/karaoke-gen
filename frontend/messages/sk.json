@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Inštrumentálka ešte nie je pripravená, takže si ju vyberieš na ďalšej obrazovke.",
         "stemsWaitingDesc": "Zvyčajne to trvá minútu alebo dve. Keď to bude hotové, priamo tu si budeš môcť vybrať inštrumentálku a vypočuť si sprievodné vokály. Nemusíš zatvárať toto okno.",
         "stemsWaitingTitle": "Stále oddeľujeme hudbu od vokálov…",
-        "waitingForStems": "Čaká sa na inštrumentálku…"
+        "stemsWaitingProceed": "Ponáhľaš sa? Namiesto toho môžeš hneď prejsť na kompletnú kontrolu inštrumentálnej stopy."
       },
       "searchLyrics": {
         "artist": "Interpret",

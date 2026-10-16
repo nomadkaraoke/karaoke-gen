@@ -380,7 +380,7 @@ describe('ReviewChangesModal', () => {
   describe('stems still separating (review opened before audio separation finished)', () => {
     const segments = [{ text: 'Hello', words: [], start_time: 0, end_time: 1 }]
 
-    it('explains the wait with a spinner and holds the CTA', () => {
+    it('explains the wait with a spinner but still lets the reviewer proceed to the full instrumental review', async () => {
       const onSubmit = jest.fn()
       render(
         <ReviewChangesModal
@@ -392,9 +392,11 @@ describe('ReviewChangesModal', () => {
       )
       expect(screen.getByTestId('stems-waiting')).toBeInTheDocument()
       expect(screen.getByText(/still separating the music from the vocals/i)).toBeInTheDocument()
-      const cta = screen.getByRole('button', { name: /waiting for the instrumental/i })
-      expect(cta).toBeDisabled()
-      expect(screen.queryByRole('button', { name: /proceed to instrumental/i })).not.toBeInTheDocument()
+      expect(screen.getByText(/continue to the full instrumental review now/i)).toBeInTheDocument()
+      const cta = screen.getByRole('button', { name: /proceed to instrumental/i })
+      expect(cta).toBeEnabled()
+      await userEvent.setup().click(cta)
+      expect(onSubmit).toHaveBeenCalled()
     })
 
     it('shows the chooser from late-arriving stems passed via instrumentalOptions', () => {

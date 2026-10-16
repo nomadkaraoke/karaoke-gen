@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Instrumentalversionen er ikke klar endnu, så du vælger den på næste skærm.",
         "stemsWaitingDesc": "Det tager normalt et minut eller to. Når det er færdigt, kan du vælge din instrumentalversion og lytte til korstemmerne lige her. Du behøver ikke at lukke dette vindue.",
         "stemsWaitingTitle": "Adskiller stadig musikken fra vokalen…",
-        "waitingForStems": "Venter på instrumentalversionen…"
+        "stemsWaitingProceed": "Har du travlt? Du kan fortsætte til den fulde gennemgang af instrumentalsporet nu i stedet."
       },
       "searchLyrics": {
         "artist": "Kunstner",

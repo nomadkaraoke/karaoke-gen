@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "Hindi pa handa ang instrumental, kaya pipiliin mo ito sa susunod na screen.",
         "stemsWaitingDesc": "Karaniwan itong tumatagal nang isa o dalawang minuto. Kapag tapos na, mapipili mo na ang iyong instrumental at maririnig ang backing vocals dito mismo. Hindi mo kailangang isara ang window na ito.",
         "stemsWaitingTitle": "Hinihiwalay pa ang musika mula sa boses…",
-        "waitingForStems": "Hinihintay ang instrumental…"
+        "stemsWaitingProceed": "Nagmamadali? Maaari ka nang tumuloy sa buong instrumental review ngayon."
       },
       "searchLyrics": {
         "artist": "Artist",

@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "De instrumentale versie is nog niet klaar, dus je kiest deze in het volgende scherm.",
         "stemsWaitingDesc": "Dit duurt meestal een minuut of twee. Zodra het klaar is, kun je hier je instrumentale versie kiezen en naar de achtergrondzang luisteren. Je hoeft dit venster niet te sluiten.",
         "stemsWaitingTitle": "De muziek wordt nog gescheiden van de zang…",
-        "waitingForStems": "Wachten op de instrumentale versie…"
+        "stemsWaitingProceed": "Heb je haast? Je kunt nu ook alvast doorgaan naar de volledige instrumentale controle."
       },
       "searchLyrics": {
         "artist": "Artiest",

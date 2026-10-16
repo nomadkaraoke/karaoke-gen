@@ -105,9 +105,9 @@ export default function ReviewChangesModal({
   const [previewTime, setPreviewTime] = useState(0)
   const instrumentalOptions = instrumentalOptionsProp ?? data.instrumental_options
   // Separation still running: the choice (and the backing-vocals waveform) appears
-  // here automatically once the stems + analysis land. Hold the CTA meanwhile —
-  // proceeding now would only park the reviewer on an instrumental screen that has
-  // nothing to play yet. The poll gives up after 10 min, which re-enables it.
+  // here automatically once the stems + analysis land. The CTA stays usable — it
+  // proceeds to the full instrumental review screen, which waits for the stems
+  // itself — so a reviewer in a hurry (e.g. happy with clean) needn't wait here.
   const waitingForStems = stemsStatus === 'waiting'
   const getWaveformData = apiClient?.getWaveformData
   const hasBackingStem = !!instrumentalOptions?.some(
@@ -153,7 +153,7 @@ export default function ReviewChangesModal({
   }
 
   const handleSubmit = () => {
-    if (isSubmitting || waitingForStems) return
+    if (isSubmitting) return
     onSubmit()
   }
 
@@ -216,6 +216,7 @@ export default function ReviewChangesModal({
             <div className="space-y-1">
               <p className="font-medium">{t('stemsWaitingTitle')}</p>
               <p className="text-muted-foreground">{t('stemsWaitingDesc')}</p>
+              <p className="text-muted-foreground">{t('stemsWaitingProceed')}</p>
             </div>
           </div>
         )}
@@ -310,18 +311,13 @@ export default function ReviewChangesModal({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || hasNoLyrics || waitingForStems}
+            disabled={isSubmitting || hasNoLyrics}
             className="bg-green-600 hover:bg-green-700"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 {t('saving')}
-              </>
-            ) : waitingForStems ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {t('waitingForStems')}
               </>
             ) : (
               <>

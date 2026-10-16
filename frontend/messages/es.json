@@ -1258,7 +1258,7 @@
         "stemsGaveUp": "El instrumental aún no está listo, así que lo elegirás en la siguiente pantalla.",
         "stemsWaitingDesc": "Esto suele tardar uno o dos minutos. Cuando termine, podrás elegir tu instrumental y escuchar los coros aquí mismo. No necesitas cerrar esta ventana.",
         "stemsWaitingTitle": "Aún estamos separando la música de las voces…",
-        "waitingForStems": "Esperando el instrumental…"
+        "stemsWaitingProceed": "¿Tienes prisa? Puedes pasar directamente a la revisión instrumental completa."
       },
       "searchLyrics": {
         "artist": "Artista",
