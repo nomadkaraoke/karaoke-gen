@@ -168,3 +168,16 @@ def test_chord_colour_comes_from_theme(tmp_path):
     ass = generate(tmp_path, segments, [ChordChange(5.5, 9, "C")], {"chord_color": "10, 20, 30"})
     style = next(line for line in ass.splitlines() if line.startswith("Style: Karaoke.Chord,"))
     assert "&H001E140A" in style  # secondary (upcoming) colour = theme chord_color (BGR)
+
+
+def test_clean_chords_keeps_capo_and_splits_on_capo_change():
+    chords = clean_chords([ChordChange(0, 2, "G", 0), ChordChange(2, 4, "G", 1), ChordChange(4, 6, "G", 1)])
+    assert [(c.label, c.capo, c.start, c.end) for c in chords] == [("G", 0, 0, 2), ("G", 1, 2, 6)]
+
+
+def test_chord_box_shows_capo(tmp_path):
+    segments = [seg("hello there world", 5.0, "a")]
+    ass = generate(tmp_path, segments, [ChordChange(0, 5.5, "G"), ChordChange(5.5, 9, "C", 2)])
+    box = dialogues(ass, "Karaoke.ChordBox")
+    assert "capo" not in box[0]  # capo 0 = nothing to say
+    assert box[1].endswith("capo 2")

@@ -1,4 +1,5 @@
 import copy
+import dataclasses
 import os
 import logging
 from typing import List, Optional, Tuple, Union
@@ -175,7 +176,7 @@ class SubtitlesGenerator:
         self.chords = clean_chords(chords or [])
         if self.chords and self.subtitle_offset_ms:
             off = self.subtitle_offset_ms / 1000.0
-            self.chords = [ChordChange(c.start + off, c.end + off, c.label) for c in self.chords]
+            self.chords = [dataclasses.replace(c, start=c.start + off, end=c.end + off) for c in self.chords]
         output_path = self._get_output_path(f"{output_prefix} (Karaoke)", "ass")
 
         try:
@@ -274,6 +275,8 @@ class SubtitlesGenerator:
             text = f"{{\\an9}}{{\\pos({x},{y})}}{{\\1c{now_colour}}}{chord.label}"
             if nxt:
                 text += f"\\N{{\\fs{next_size}}}{{\\1c{next_colour}}}next: {nxt.label}"
+            if chord.capo:
+                text += f"\\N{{\\fs{next_size}}}{{\\1c{next_colour}}}capo {chord.capo}"
             event.Text = text
             events.append(event)
         return events

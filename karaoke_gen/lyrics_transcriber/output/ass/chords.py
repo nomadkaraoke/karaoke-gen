@@ -8,7 +8,7 @@ chord at all times, which covers intros and instrumental breaks where there's no
 line to sit a chord above.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Dict, List, Optional, Sequence
 
 from karaoke_gen.lyrics_transcriber.types import LyricsSegment
@@ -25,6 +25,7 @@ class ChordChange:
     start: float
     end: float
     label: str
+    capo: int = 0  # fret the label's shape is played at (shown in the chord box when > 0)
 
 
 @dataclass(frozen=True)
@@ -40,10 +41,10 @@ def clean_chords(chords: Sequence[ChordChange]) -> List[ChordChange]:
     for c in sorted(chords, key=lambda c: c.start):
         if c.label.strip() in NO_CHORD_LABELS or c.end <= c.start:
             continue
-        if out and out[-1].label == c.label and c.start - out[-1].end < 0.05:
-            out[-1] = ChordChange(out[-1].start, c.end, c.label)
+        if out and out[-1].label == c.label.strip() and out[-1].capo == c.capo and c.start - out[-1].end < 0.05:
+            out[-1] = replace(out[-1], end=c.end)
         else:
-            out.append(ChordChange(c.start, c.end, c.label.strip()))
+            out.append(replace(c, label=c.label.strip()))
     return out
 
 
