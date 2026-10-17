@@ -1784,12 +1784,9 @@
     "loading": "Memuat pratinjau latar belakang"
   },
   "bulk": {
-    "albumModeHint": "Cari artis, pilih album, lalu pilih lagu mana yang ingin dibuat.",
     "artistSearchPlaceholder": "Cari artis…",
     "autoPickLossless": "Pilih otomatis audio terbaik (hanya lossless)",
     "autoPickLosslessHint": "Pilih audio secara otomatis saat kami menemukan kecocokan lossless/FLAC yang meyakinkan. Yang lainnya akan masuk ke antrean peninjauan.",
-    "backToAlbums": "Kembali ke album",
-    "backToArtists": "Kembali ke artis",
     "batchProgressTitle": "Batch {total} lagu",
     "batchSettings": "Pengaturan batch",
     "byAlbum": "Berdasarkan album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Menggunakan {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Rilis ulang"
+    "variantReissue": "Rilis ulang",
+    "albumsBy": "Album oleh {artist}",
+    "chooseAlbum": "Pilih album",
+    "chooseArtist": "Pilih artis",
+    "chooseArtistHint": "Cari artis yang albumnya ingin kamu jadikan karaoke.",
+    "chooseTracks": "Pilih lagu",
+    "selectAll": "Pilih semua",
+    "selectNone": "Batal pilih semua",
+    "stepAlbum": "Album",
+    "stepTracks": "Lagu",
+    "stepsLabel": "Tahapan album",
+    "tracksSelected": "{selected} dari {total} lagu dipilih",
+    "searchArtists": "Cari",
+    "stepArtist": "Artis"
   },
   "backendStatus": {
     "reconnecting": "Menghubungkan kembali…",

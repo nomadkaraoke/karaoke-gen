@@ -1784,12 +1784,9 @@
     "loading": "बैकग्राउंड प्रीव्यू लोड हो रहा है"
   },
   "bulk": {
-    "albumModeHint": "किसी आर्टिस्ट को खोजो, एक एल्बम चुनो, फिर तय करो कि कौन से ट्रैक बनाने हैं।",
     "artistSearchPlaceholder": "किसी आर्टिस्ट को खोजो…",
     "autoPickLossless": "अपने आप बेहतरीन ऑडियो चुनो (केवल lossless)",
     "autoPickLosslessHint": "जब हमें कोई पक्का lossless/FLAC मैच मिलता है, तो अपने आप ऑडियो चुन लिया जाएगा। बाकी रिव्यू कतार में चले जाएंगे।",
-    "backToAlbums": "वापस एल्बम पर जाओ",
-    "backToArtists": "वापस आर्टिस्ट्स पर जाओ",
     "batchProgressTitle": "{total} गानों का बैच",
     "batchSettings": "बैच सेटिंग्स",
     "byAlbum": "एल्बम के अनुसार",
@@ -1838,7 +1835,20 @@
     "usingRelease": "{label} · {year} · {tracks} का इस्तेमाल कर रहे हो",
     "variantBonus": "+{count} बोनस",
     "variantOriginal": "मूल",
-    "variantReissue": "रीइश्यू"
+    "variantReissue": "रीइश्यू",
+    "albumsBy": "{artist} के एल्बम",
+    "chooseAlbum": "एक एल्बम चुनो",
+    "chooseArtist": "एक कलाकार चुनो",
+    "chooseArtistHint": "उस कलाकार को खोजो जिसके एल्बम तुम कराओके में बदलना चाहते हो।",
+    "chooseTracks": "ट्रैक चुनो",
+    "selectAll": "सभी चुनो",
+    "selectNone": "कोई भी मत चुनो",
+    "stepAlbum": "एल्बम",
+    "stepTracks": "ट्रैक",
+    "stepsLabel": "एल्बम के चरण",
+    "tracksSelected": "{total} में से {selected} ट्रैक चुने गए",
+    "searchArtists": "खोजो",
+    "stepArtist": "कलाकार"
   },
   "backendStatus": {
     "reconnecting": "फिर से कनेक्ट हो रहा है…",

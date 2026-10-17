@@ -1784,12 +1784,9 @@
     "loading": "Carregando prévia do plano de fundo"
   },
   "bulk": {
-    "albumModeHint": "Pesquise um artista, escolha um álbum e, em seguida, escolha quais faixas criar.",
     "artistSearchPlaceholder": "Pesquisar um artista…",
     "autoPickLossless": "Escolher automaticamente o melhor áudio (apenas sem perdas)",
     "autoPickLosslessHint": "Escolha automaticamente o áudio quando encontrarmos uma correspondência confiável sem perdas/FLAC. Os outros vão para uma fila de revisão.",
-    "backToAlbums": "Voltar aos álbuns",
-    "backToArtists": "Voltar aos artistas",
     "batchProgressTitle": "Lote de {total} músicas",
     "batchSettings": "Configurações do lote",
     "byAlbum": "Por álbum",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Usando {label} · {year} · {tracks}",
     "variantBonus": "+{count} bônus",
     "variantOriginal": "Original",
-    "variantReissue": "Reedição"
+    "variantReissue": "Reedição",
+    "albumsBy": "Álbuns de {artist}",
+    "chooseAlbum": "Escolha um álbum",
+    "chooseArtist": "Escolha um artista",
+    "chooseArtistHint": "Pesquise o artista cujos álbuns você quer transformar em karaokê.",
+    "chooseTracks": "Escolha as faixas",
+    "selectAll": "Selecionar tudo",
+    "selectNone": "Desmarcar tudo",
+    "stepAlbum": "Álbum",
+    "stepTracks": "Faixas",
+    "stepsLabel": "Etapas do álbum",
+    "tracksSelected": "{selected} de {total} faixas selecionadas",
+    "searchArtists": "Buscar",
+    "stepArtist": "Artista"
   },
   "backendStatus": {
     "reconnecting": "Reconectando…",

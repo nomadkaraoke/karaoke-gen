@@ -1784,12 +1784,9 @@
     "loading": "Achtergrondvoorbeeld laden"
   },
   "bulk": {
-    "albumModeHint": "Zoek naar een artiest, kies een album en kies vervolgens welke nummers je wilt maken.",
     "artistSearchPlaceholder": "Zoek naar een artiest…",
     "autoPickLossless": "Kies automatisch de beste audio (alleen lossless)",
     "autoPickLosslessHint": "Kies automatisch de audio wanneer we een zekere lossless/FLAC-match vinden. Andere gaan naar een beoordelingswachtrij.",
-    "backToAlbums": "Terug naar albums",
-    "backToArtists": "Terug naar artiesten",
     "batchProgressTitle": "Batch van {total} nummers",
     "batchSettings": "Batch-instellingen",
     "byAlbum": "Op album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Gebruikt {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Origineel",
-    "variantReissue": "Heruitgave"
+    "variantReissue": "Heruitgave",
+    "albumsBy": "Albums van {artist}",
+    "chooseAlbum": "Kies een album",
+    "chooseArtist": "Kies een artiest",
+    "chooseArtistHint": "Zoek naar de artiest van wie je albums wilt omzetten naar karaoke.",
+    "chooseTracks": "Kies nummers",
+    "selectAll": "Alles selecteren",
+    "selectNone": "Niets selecteren",
+    "stepAlbum": "Album",
+    "stepTracks": "Nummers",
+    "stepsLabel": "Albumstappen",
+    "tracksSelected": "{selected} van {total} nummers geselecteerd",
+    "searchArtists": "Zoeken",
+    "stepArtist": "Artiest"
   },
   "backendStatus": {
     "reconnecting": "Opnieuw verbinden…",

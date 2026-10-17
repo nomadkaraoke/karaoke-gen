@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { api, BulkSettings } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Disc3, ListPlus } from "lucide-react"
 import { BulkTextMode } from "./BulkTextMode"
 import { BulkAlbumMode } from "./BulkAlbumMode"
 import { BulkBatchSettings } from "./BulkBatchSettings"
@@ -111,8 +112,8 @@ export function BulkMode({ onJobsChanged, onBuyCredits }: BulkModeProps) {
     <div className="space-y-4">
       <Tabs value={subMode} onValueChange={(v) => setSubMode(v as "text" | "album")}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="album">{t("byAlbum")}</TabsTrigger>
-          <TabsTrigger value="text">{t("byText")}</TabsTrigger>
+          <TabsTrigger value="album" className="gap-1.5"><Disc3 className="w-4 h-4" />{t("byAlbum")}</TabsTrigger>
+          <TabsTrigger value="text" className="gap-1.5"><ListPlus className="w-4 h-4" />{t("byText")}</TabsTrigger>
         </TabsList>
         <TabsContent value="album" className="mt-3">
           <BulkAlbumMode rows={albumRows} onChange={setAlbumRows} disabled={isSubmitting} />
@@ -122,19 +123,24 @@ export function BulkMode({ onJobsChanged, onBuyCredits }: BulkModeProps) {
         </TabsContent>
       </Tabs>
 
-      <BulkBatchSettings settings={settings} onChange={setSettings} disabled={isSubmitting} />
+      {/* Album mode has nothing to configure or submit until a tracklist is loaded. */}
+      {(subMode === "text" || albumRows.length > 0) && (
+        <>
+          <BulkBatchSettings settings={settings} onChange={setSettings} disabled={isSubmitting} />
 
-      {error && <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>}
+          {error && <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>}
 
-      <BulkSubmitBar
-        selectedCount={selectedRows.length}
-        credits={credits}
-        isAdmin={isAdmin}
-        isSubmitting={isSubmitting}
-        onSubmit={handleSubmit}
-        onBuyCredits={onBuyCredits}
-        maxSongs={MAX_SONGS}
-      />
+          <BulkSubmitBar
+            selectedCount={selectedRows.length}
+            credits={credits}
+            isAdmin={isAdmin}
+            isSubmitting={isSubmitting}
+            onSubmit={handleSubmit}
+            onBuyCredits={onBuyCredits}
+            maxSongs={MAX_SONGS}
+          />
+        </>
+      )}
     </div>
   )
 }

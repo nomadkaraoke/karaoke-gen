@@ -1784,12 +1784,9 @@
     "loading": "Memuatkan pratonton latar belakang"
   },
   "bulk": {
-    "albumModeHint": "Cari artis, pilih album, kemudian pilih trek yang ingin dibuat.",
     "artistSearchPlaceholder": "Cari artis…",
     "autoPickLossless": "Pilih automatik audio terbaik (lossless sahaja)",
     "autoPickLosslessHint": "Pilih audio secara automatik apabila kami menemui padanan lossless/FLAC yang meyakinkan. Yang lain akan dimasukkan ke baris gilir semakan.",
-    "backToAlbums": "Kembali ke album",
-    "backToArtists": "Kembali ke artis",
     "batchProgressTitle": "Kumpulan {total} lagu",
     "batchSettings": "Tetapan kumpulan",
     "byAlbum": "Mengikut album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Menggunakan {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Asal",
-    "variantReissue": "Keluaran semula"
+    "variantReissue": "Keluaran semula",
+    "albumsBy": "Album oleh {artist}",
+    "chooseAlbum": "Pilih album",
+    "chooseArtist": "Pilih artis",
+    "chooseArtistHint": "Cari artis yang albumnya ingin anda jadikan karaoke.",
+    "chooseTracks": "Pilih trek",
+    "selectAll": "Pilih semua",
+    "selectNone": "Nyahpilih semua",
+    "stepAlbum": "Album",
+    "stepTracks": "Trek",
+    "stepsLabel": "Langkah album",
+    "tracksSelected": "{selected} daripada {total} trek dipilih",
+    "searchArtists": "Cari",
+    "stepArtist": "Artis"
   },
   "backendStatus": {
     "reconnecting": "Menyambung semula…",

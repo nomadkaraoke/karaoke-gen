@@ -1784,12 +1784,9 @@
     "loading": "جارٍ تحميل معاينة الخلفية"
   },
   "bulk": {
-    "albumModeHint": "ابحث عن فنان، اختر ألبوماً، ثم حدد المقاطع التي تريد إنشاءها.",
     "artistSearchPlaceholder": "ابحث عن فنان...",
     "autoPickLossless": "اختيار أفضل صوت تلقائياً (بدون فقدان الجودة فقط)",
     "autoPickLosslessHint": "اختيار الصوت تلقائياً عندما نجد تطابقاً موثوقاً بدون فقدان الجودة/FLAC. يتم إرسال الباقي إلى قائمة المراجعة.",
-    "backToAlbums": "العودة إلى الألبومات",
-    "backToArtists": "العودة إلى الفنانين",
     "batchProgressTitle": "دفعة تتكون من {total} أغنية",
     "batchSettings": "إعدادات الدفعة",
     "byAlbum": "حسب الألبوم",
@@ -1838,7 +1835,20 @@
     "usingRelease": "استخدام {label} · {year} · {tracks}",
     "variantBonus": "+{count} إضافي",
     "variantOriginal": "أصلي",
-    "variantReissue": "إعادة إصدار"
+    "variantReissue": "إعادة إصدار",
+    "albumsBy": "ألبومات {artist}",
+    "chooseAlbum": "اختر ألبومًا",
+    "chooseArtist": "اختر فنانًا",
+    "chooseArtistHint": "ابحث عن الفنان الذي تريد تحويل ألبوماته إلى كاريوكي.",
+    "chooseTracks": "اختر المسارات",
+    "selectAll": "تحديد الكل",
+    "selectNone": "إلغاء تحديد الكل",
+    "stepAlbum": "الألبوم",
+    "stepTracks": "المسارات",
+    "stepsLabel": "خطوات الألبوم",
+    "tracksSelected": "تم تحديد {selected} من أصل {total} مسارًا",
+    "searchArtists": "بحث",
+    "stepArtist": "فنان"
   },
   "backendStatus": {
     "reconnecting": "جارٍ إعادة الاتصال…",

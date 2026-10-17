@@ -1784,12 +1784,9 @@
     "loading": "Загрузка предпросмотра фона"
   },
   "bulk": {
-    "albumModeHint": "Найди исполнителя, выбери альбом, а затем выбери, какие треки создать.",
     "artistSearchPlaceholder": "Поиск исполнителя…",
     "autoPickLossless": "Автовыбор лучшего аудио (только lossless)",
     "autoPickLosslessHint": "Автоматически выбирать аудио, когда мы находим точное совпадение в lossless/FLAC. Остальные отправляются в очередь на проверку.",
-    "backToAlbums": "Назад к альбомам",
-    "backToArtists": "Назад к исполнителям",
     "batchProgressTitle": "Пакет из {total} песен",
     "batchSettings": "Настройки пакета",
     "byAlbum": "По альбому",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Используется {label} · {year} · {tracks}",
     "variantBonus": "+{count} бонус",
     "variantOriginal": "Оригинал",
-    "variantReissue": "Переиздание"
+    "variantReissue": "Переиздание",
+    "albumsBy": "Альбомы исполнителя {artist}",
+    "chooseAlbum": "Выбери альбом",
+    "chooseArtist": "Выбери исполнителя",
+    "chooseArtistHint": "Найди исполнителя, чьи альбомы ты хочешь превратить в караоке.",
+    "chooseTracks": "Выбери треки",
+    "selectAll": "Выбрать все",
+    "selectNone": "Снять выделение",
+    "stepAlbum": "Альбом",
+    "stepTracks": "Треки",
+    "stepsLabel": "Этапы создания",
+    "tracksSelected": "Выбрано треков: {selected} из {total}",
+    "searchArtists": "Поиск",
+    "stepArtist": "Исполнитель"
   },
   "backendStatus": {
     "reconnecting": "Переподключение…",

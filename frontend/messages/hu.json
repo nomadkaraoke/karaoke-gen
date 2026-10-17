@@ -1784,12 +1784,9 @@
     "loading": "Háttér előnézetének betöltése"
   },
   "bulk": {
-    "albumModeHint": "Keress egy előadót, válassz egy albumot, majd döntsd el, melyik számokat szeretnéd elkészíteni.",
     "artistSearchPlaceholder": "Előadó keresése…",
     "autoPickLossless": "Legjobb hanganyag automatikus kiválasztása (csak veszteségmentes)",
     "autoPickLosslessHint": "Automatikusan kiválasztja a hanganyagot, ha biztos veszteségmentes/FLAC egyezést találunk. A többi az ellenőrzési várólistára kerül.",
-    "backToAlbums": "Vissza az albumokhoz",
-    "backToArtists": "Vissza az előadókhoz",
     "batchProgressTitle": "{total} dalból álló csomag",
     "batchSettings": "Csomag beállításai",
     "byAlbum": "Album szerint",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Használatban: {label} · {year} · {tracks}",
     "variantBonus": "+{count} bónusz",
     "variantOriginal": "Eredeti",
-    "variantReissue": "Újrakiadás"
+    "variantReissue": "Újrakiadás",
+    "albumsBy": "{artist} albumai",
+    "chooseAlbum": "Válassz egy albumot",
+    "chooseArtist": "Válassz egy előadót",
+    "chooseArtistHint": "Keress rá arra az előadóra, akinek az albumait karaokévé szeretnéd alakítani.",
+    "chooseTracks": "Válassz számokat",
+    "selectAll": "Összes kijelölése",
+    "selectNone": "Kijelölés törlése",
+    "stepAlbum": "Album",
+    "stepTracks": "Számok",
+    "stepsLabel": "Albumlépések",
+    "tracksSelected": "{selected} / {total} szám kiválasztva",
+    "searchArtists": "Keresés",
+    "stepArtist": "Előadó"
   },
   "backendStatus": {
     "reconnecting": "Újracsatlakozás…",

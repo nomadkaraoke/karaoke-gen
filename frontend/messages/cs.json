@@ -1784,12 +1784,9 @@
     "loading": "Načítání náhledu pozadí"
   },
   "bulk": {
-    "albumModeHint": "Vyhledej interpreta, vyber album a pak zvol, které skladby chceš vytvořit.",
     "artistSearchPlaceholder": "Hledat interpreta…",
     "autoPickLossless": "Automaticky vybrat nejlepší zvuk (pouze bezztrátový)",
     "autoPickLosslessHint": "Automaticky vybere zvuk, když najdeme spolehlivou bezztrátovou/FLAC shodu. Ostatní půjdou do fronty ke kontrole.",
-    "backToAlbums": "Zpět na alba",
-    "backToArtists": "Zpět na interprety",
     "batchProgressTitle": "Dávka {total} skladeb",
     "batchSettings": "Nastavení dávky",
     "byAlbum": "Podle alba",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Používá se {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Originál",
-    "variantReissue": "Reedice"
+    "variantReissue": "Reedice",
+    "albumsBy": "Alba od {artist}",
+    "chooseAlbum": "Vyber album",
+    "chooseArtist": "Vyber interpreta",
+    "chooseArtistHint": "Vyhledej interpreta, jehož alba chceš převést na karaoke.",
+    "chooseTracks": "Vyber skladby",
+    "selectAll": "Vybrat vše",
+    "selectNone": "Zrušit výběr",
+    "stepAlbum": "Album",
+    "stepTracks": "Skladby",
+    "stepsLabel": "Kroky pro album",
+    "tracksSelected": "Vybráno skladeb: {selected} z {total}",
+    "searchArtists": "Hledat",
+    "stepArtist": "Umělec"
   },
   "backendStatus": {
     "reconnecting": "Obnovování připojení…",

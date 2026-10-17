@@ -1784,12 +1784,9 @@
     "loading": "Đang tải bản xem trước hình nền"
   },
   "bulk": {
-    "albumModeHint": "Tìm kiếm nghệ sĩ, chọn một album, sau đó chọn các bài hát để tạo.",
     "artistSearchPlaceholder": "Tìm kiếm nghệ sĩ…",
     "autoPickLossless": "Tự động chọn âm thanh tốt nhất (chỉ lossless)",
     "autoPickLosslessHint": "Tự động chọn âm thanh khi chúng tôi tìm thấy kết quả khớp lossless/FLAC đáng tin cậy. Các bài khác sẽ được đưa vào hàng đợi xem xét.",
-    "backToAlbums": "Quay lại các album",
-    "backToArtists": "Quay lại các nghệ sĩ",
     "batchProgressTitle": "Lô gồm {total} bài hát",
     "batchSettings": "Cài đặt lô",
     "byAlbum": "Theo album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Đang sử dụng {label} · {year} · {tracks}",
     "variantBonus": "+{count} tặng kèm",
     "variantOriginal": "Bản gốc",
-    "variantReissue": "Tái bản"
+    "variantReissue": "Tái bản",
+    "albumsBy": "Album của {artist}",
+    "chooseAlbum": "Chọn một album",
+    "chooseArtist": "Chọn một nghệ sĩ",
+    "chooseArtistHint": "Tìm kiếm nghệ sĩ có các album mà bạn muốn chuyển đổi thành karaoke.",
+    "chooseTracks": "Chọn bài hát",
+    "selectAll": "Chọn tất cả",
+    "selectNone": "Bỏ chọn tất cả",
+    "stepAlbum": "Album",
+    "stepTracks": "Bài hát",
+    "stepsLabel": "Các bước chọn album",
+    "tracksSelected": "Đã chọn {selected}/{total} bài hát",
+    "searchArtists": "Tìm kiếm",
+    "stepArtist": "Nghệ sĩ"
   },
   "backendStatus": {
     "reconnecting": "Đang kết nối lại…",

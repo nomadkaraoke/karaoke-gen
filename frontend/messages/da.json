@@ -1784,12 +1784,9 @@
     "loading": "Indlæser forhåndsvisning af baggrund"
   },
   "bulk": {
-    "albumModeHint": "Søg efter en kunstner, vælg et album, og vælg derefter, hvilke numre du vil lave.",
     "artistSearchPlaceholder": "Søg efter en kunstner…",
     "autoPickLossless": "Vælg automatisk bedste lyd (kun lossless)",
     "autoPickLosslessHint": "Vælg automatisk lyden, når vi finder et sikkert lossless/FLAC-match. Andre går til en gennemgangskø.",
-    "backToAlbums": "Tilbage til album",
-    "backToArtists": "Tilbage til kunstnere",
     "batchProgressTitle": "Batch af {total} sange",
     "batchSettings": "Batch-indstillinger",
     "byAlbum": "Efter album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Bruger {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Genudgivelse"
+    "variantReissue": "Genudgivelse",
+    "albumsBy": "Albummer af {artist}",
+    "chooseAlbum": "Vælg et album",
+    "chooseArtist": "Vælg en kunstner",
+    "chooseArtistHint": "Søg efter den kunstner, hvis albummer du vil lave om til karaoke.",
+    "chooseTracks": "Vælg numre",
+    "selectAll": "Vælg alle",
+    "selectNone": "Fravælg alle",
+    "stepAlbum": "Album",
+    "stepTracks": "Numre",
+    "stepsLabel": "Albumtrin",
+    "tracksSelected": "{selected} af {total} numre valgt",
+    "searchArtists": "Søg",
+    "stepArtist": "Kunstner"
   },
   "backendStatus": {
     "reconnecting": "Genopretter forbindelse…",

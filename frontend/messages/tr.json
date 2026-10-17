@@ -1784,12 +1784,9 @@
     "loading": "Arka plan önizlemesi yükleniyor"
   },
   "bulk": {
-    "albumModeHint": "Bir sanatçı ara, bir albüm seç, ardından hangi parçaların yapılacağını seç.",
     "artistSearchPlaceholder": "Bir sanatçı ara…",
     "autoPickLossless": "En iyi sesi otomatik seç (sadece kayıpsız)",
     "autoPickLosslessHint": "Güvenilir bir kayıpsız/FLAC eşleşmesi bulduğumuzda sesi otomatik olarak seç. Diğerleri inceleme sırasına gider.",
-    "backToAlbums": "Albümlere dön",
-    "backToArtists": "Sanatçılara dön",
     "batchProgressTitle": "{total} şarkılık toplu işlem",
     "batchSettings": "Toplu işlem ayarları",
     "byAlbum": "Albüme göre",
@@ -1838,7 +1835,20 @@
     "usingRelease": "{label} · {year} · {tracks} kullanılıyor",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Orijinal",
-    "variantReissue": "Yeniden basım"
+    "variantReissue": "Yeniden basım",
+    "albumsBy": "{artist} albümleri",
+    "chooseAlbum": "Bir albüm seç",
+    "chooseArtist": "Bir sanatçı seç",
+    "chooseArtistHint": "Albümlerini karaokeye dönüştürmek istediğin sanatçıyı ara.",
+    "chooseTracks": "Parçaları seç",
+    "selectAll": "Tümünü seç",
+    "selectNone": "Hiçbirini seçme",
+    "stepAlbum": "Albüm",
+    "stepTracks": "Parçalar",
+    "stepsLabel": "Albüm adımları",
+    "tracksSelected": "{total} parçadan {selected} tanesi seçildi",
+    "searchArtists": "Ara",
+    "stepArtist": "Sanatçı"
   },
   "backendStatus": {
     "reconnecting": "Yeniden bağlanıyor…",

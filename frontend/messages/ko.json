@@ -1784,12 +1784,9 @@
     "loading": "배경 미리보기 불러오는 중"
   },
   "bulk": {
-    "albumModeHint": "아티스트를 검색하고 앨범을 선택한 다음, 제작할 트랙을 선택하세요.",
     "artistSearchPlaceholder": "아티스트 검색…",
     "autoPickLossless": "최고의 오디오 자동 선택 (무손실만)",
     "autoPickLosslessHint": "확실한 무손실/FLAC 일치 항목을 찾으면 오디오를 자동으로 선택합니다. 나머지는 검토 대기열로 이동합니다.",
-    "backToAlbums": "앨범으로 돌아가기",
-    "backToArtists": "아티스트로 돌아가기",
     "batchProgressTitle": "총 {total}곡 일괄 처리",
     "batchSettings": "일괄 처리 설정",
     "byAlbum": "앨범별",
@@ -1838,7 +1835,20 @@
     "usingRelease": "{label} · {year} · {tracks} 사용 중",
     "variantBonus": "+{count} 보너스",
     "variantOriginal": "오리지널",
-    "variantReissue": "재발매"
+    "variantReissue": "재발매",
+    "albumsBy": "{artist}의 앨범",
+    "chooseAlbum": "앨범 선택",
+    "chooseArtist": "아티스트 선택",
+    "chooseArtistHint": "노래방 곡으로 만들고 싶은 앨범의 아티스트를 검색해 보세요.",
+    "chooseTracks": "트랙 선택",
+    "selectAll": "전체 선택",
+    "selectNone": "전체 해제",
+    "stepAlbum": "앨범",
+    "stepTracks": "트랙",
+    "stepsLabel": "앨범 단계",
+    "tracksSelected": "{total}개 중 {selected}개 트랙 선택됨",
+    "searchArtists": "검색",
+    "stepArtist": "아티스트"
   },
   "backendStatus": {
     "reconnecting": "다시 연결하는 중…",

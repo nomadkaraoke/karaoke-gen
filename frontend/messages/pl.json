@@ -1784,12 +1784,9 @@
     "loading": "Ładowanie podglądu tła"
   },
   "bulk": {
-    "albumModeHint": "Wyszukaj wykonawcę, wybierz album, a następnie wybierz utwory do stworzenia.",
     "artistSearchPlaceholder": "Wyszukaj wykonawcę…",
     "autoPickLossless": "Automatycznie wybierz najlepsze audio (tylko bezstratne)",
     "autoPickLosslessHint": "Automatycznie wybierz audio, gdy znajdziemy pewne dopasowanie bezstratne/FLAC. Pozostałe trafiają do kolejki weryfikacji.",
-    "backToAlbums": "Wróć do albumów",
-    "backToArtists": "Wróć do wykonawców",
     "batchProgressTitle": "Partia {total} utworów",
     "batchSettings": "Ustawienia partii",
     "byAlbum": "Według albumu",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Używasz {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Oryginał",
-    "variantReissue": "Reedycja"
+    "variantReissue": "Reedycja",
+    "albumsBy": "Albumy wykonawcy {artist}",
+    "chooseAlbum": "Wybierz album",
+    "chooseArtist": "Wybierz wykonawcę",
+    "chooseArtistHint": "Wyszukaj wykonawcę, którego albumy chcesz zamienić na karaoke.",
+    "chooseTracks": "Wybierz utwory",
+    "selectAll": "Zaznacz wszystko",
+    "selectNone": "Odznacz wszystko",
+    "stepAlbum": "Album",
+    "stepTracks": "Utwory",
+    "stepsLabel": "Kroki dla albumu",
+    "tracksSelected": "Wybrano {selected} z {total} utworów",
+    "searchArtists": "Szukaj",
+    "stepArtist": "Wykonawca"
   },
   "backendStatus": {
     "reconnecting": "Ponowne łączenie…",

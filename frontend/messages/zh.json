@@ -1784,12 +1784,9 @@
     "loading": "正在加载背景预览"
   },
   "bulk": {
-    "albumModeHint": "搜索歌手，选择一张专辑，然后选择要制作的曲目。",
     "artistSearchPlaceholder": "搜索歌手…",
     "autoPickLossless": "自动选择最佳音频（仅限无损）",
     "autoPickLosslessHint": "当我们找到确定的无损/FLAC匹配时，自动选择该音频。其他音频将进入审核队列。",
-    "backToAlbums": "返回专辑",
-    "backToArtists": "返回歌手",
     "batchProgressTitle": "共 {total} 首歌的批处理",
     "batchSettings": "批量设置",
     "byAlbum": "按专辑",
@@ -1838,7 +1835,20 @@
     "usingRelease": "使用 {label} · {year} · {tracks}",
     "variantBonus": "+{count} 附加曲目",
     "variantOriginal": "原版",
-    "variantReissue": "再版"
+    "variantReissue": "再版",
+    "albumsBy": "{artist} 的专辑",
+    "chooseAlbum": "选择专辑",
+    "chooseArtist": "选择歌手",
+    "chooseArtistHint": "搜索想要将其专辑制作成卡拉OK伴奏的歌手。",
+    "chooseTracks": "选择曲目",
+    "selectAll": "全选",
+    "selectNone": "全不选",
+    "stepAlbum": "专辑",
+    "stepTracks": "曲目",
+    "stepsLabel": "专辑制作步骤",
+    "tracksSelected": "已选 {selected} / {total} 首曲目",
+    "searchArtists": "搜索",
+    "stepArtist": "歌手"
   },
   "backendStatus": {
     "reconnecting": "重新连接中…",

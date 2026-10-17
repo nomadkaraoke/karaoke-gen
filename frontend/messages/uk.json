@@ -1784,12 +1784,9 @@
     "loading": "Завантаження попереднього перегляду фону"
   },
   "bulk": {
-    "albumModeHint": "Шукай виконавця, вибирай альбом, а потім вибирай, які треки створити.",
     "artistSearchPlaceholder": "Пошук виконавця…",
     "autoPickLossless": "Автоматично вибирати найкраще аудіо (тільки lossless)",
     "autoPickLosslessHint": "Автоматично вибирати аудіо, коли ми знаходимо надійний збіг у форматі lossless/FLAC. Інші потрапляють у чергу на перевірку.",
-    "backToAlbums": "Назад до альбомів",
-    "backToArtists": "Назад до виконавців",
     "batchProgressTitle": "Пакет із {total} пісень",
     "batchSettings": "Налаштування пакета",
     "byAlbum": "За альбомом",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Використовується {label} · {year} · {tracks}",
     "variantBonus": "+{count} бонус",
     "variantOriginal": "Оригінал",
-    "variantReissue": "Перевидання"
+    "variantReissue": "Перевидання",
+    "albumsBy": "Альбоми {artist}",
+    "chooseAlbum": "Обери альбом",
+    "chooseArtist": "Обери виконавця",
+    "chooseArtistHint": "Шукай виконавця, альбоми якого ти хочеш перетворити на караоке.",
+    "chooseTracks": "Обери треки",
+    "selectAll": "Вибрати всі",
+    "selectNone": "Зняти виділення",
+    "stepAlbum": "Альбом",
+    "stepTracks": "Треки",
+    "stepsLabel": "Етапи вибору альбому",
+    "tracksSelected": "Вибрано {selected} із {total} треків",
+    "searchArtists": "Пошук",
+    "stepArtist": "Виконавець"
   },
   "backendStatus": {
     "reconnecting": "Відновлення з'єднання…",

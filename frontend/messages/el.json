@@ -1784,12 +1784,9 @@
     "loading": "Φόρτωση προεπισκόπησης φόντου"
   },
   "bulk": {
-    "albumModeHint": "Αναζήτησε έναν καλλιτέχνη, επίλεξε ένα άλμπουμ και μετά διάλεξε ποια κομμάτια θα φτιάξεις.",
     "artistSearchPlaceholder": "Αναζήτηση καλλιτέχνη…",
     "autoPickLossless": "Αυτόματη επιλογή καλύτερου ήχου (μόνο lossless)",
     "autoPickLosslessHint": "Αυτόματη επιλογή ήχου όταν βρίσκουμε μια σίγουρη αντιστοιχία lossless/FLAC. Τα υπόλοιπα πηγαίνουν σε ουρά ελέγχου.",
-    "backToAlbums": "Πίσω στα άλμπουμ",
-    "backToArtists": "Πίσω στους καλλιτέχνες",
     "batchProgressTitle": "Ομάδα {total} τραγουδιών",
     "batchSettings": "Ρυθμίσεις ομάδας",
     "byAlbum": "Ανά άλμπουμ",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Χρησιμοποιείς {label} · {year} · {tracks}",
     "variantBonus": "+{count} μπόνους",
     "variantOriginal": "Πρωτότυπο",
-    "variantReissue": "Επανέκδοση"
+    "variantReissue": "Επανέκδοση",
+    "albumsBy": "Άλμπουμ από {artist}",
+    "chooseAlbum": "Επίλεξε ένα άλμπουμ",
+    "chooseArtist": "Επίλεξε έναν καλλιτέχνη",
+    "chooseArtistHint": "Αναζήτησε τον καλλιτέχνη του οποίου τα άλμπουμ θέλεις να μετατρέψεις σε καραόκε.",
+    "chooseTracks": "Επίλεξε κομμάτια",
+    "selectAll": "Επιλογή όλων",
+    "selectNone": "Αποεπιλογή όλων",
+    "stepAlbum": "Άλμπουμ",
+    "stepTracks": "Κομμάτια",
+    "stepsLabel": "Βήματα άλμπουμ",
+    "tracksSelected": "{selected} από {total} κομμάτια επιλέχθηκαν",
+    "searchArtists": "Αναζήτηση",
+    "stepArtist": "Καλλιτέχνης"
   },
   "backendStatus": {
     "reconnecting": "Επανασύνδεση…",
