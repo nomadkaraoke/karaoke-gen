@@ -13,7 +13,7 @@
  */
 
 import React, { useState } from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { api } from '@/lib/api'
 import { BulkAlbumMode } from '@/components/job/bulk/BulkAlbumMode'
 import { BulkMode } from '@/components/job/bulk/BulkMode'
@@ -111,6 +111,23 @@ describe('BulkAlbumMode', () => {
     expect(latestRows).toHaveLength(2)
     fireEvent.click(screen.getByRole('button', { name: /2\. Album/ }))
     expect(await screen.findByText('Choose an album')).toBeInTheDocument()
+    expect(latestRows).toHaveLength(0)
+  })
+
+  it('a tracklist that resolves after navigating back is dropped', async () => {
+    let resolveTracklist: (v: unknown) => void = () => {}
+    mockApi.getAlbumTracklist.mockReturnValue(new Promise((r) => { resolveTracklist = r }) as any)
+    render(<Harness />)
+    fireEvent.change(screen.getByPlaceholderText('Search for an artist…'), { target: { value: 'Britney' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Britney Spears/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Oops!\.\.\.I Did It Again/ }))
+
+    fireEvent.click(screen.getByRole('button', { name: /1\. Artist/ }))
+    await act(async () => { resolveTracklist(TRACKLIST) })
+
+    expect(screen.getByText('Choose an artist')).toBeInTheDocument()
+    expect(screen.queryByText('Choose tracks')).toBeNull()
     expect(latestRows).toHaveLength(0)
   })
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { api, BulkArtist, BulkAlbum, BulkTracklist, BulkEditionVariant } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -180,30 +180,37 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   const [showVariants, setShowVariants] = useState(false)
   const [loading, setLoading] = useState<"" | "artists" | "albums" | "tracks">("")
   const [error, setError] = useState("")
+  // Bumped on every lookup and on step navigation; a response whose id is no
+  // longer current is stale (user moved on) and is dropped.
+  const requestId = useRef(0)
 
   function resetVariants() { setVariants([]); setShowVariants(false) }
 
   async function searchArtists() {
     if (query.trim().length < 2) return
+    const id = ++requestId.current
     setLoading("artists"); setError(""); setArtists([]); setArtist(null); setAlbums([]); setTracklist(null); resetVariants()
     try {
-      setArtists(await api.searchAlbumArtists(query.trim()))
+      const found = await api.searchAlbumArtists(query.trim())
+      if (id === requestId.current) setArtists(found)
     } catch {
-      setError(t("lookupFailed"))
+      if (id === requestId.current) setError(t("lookupFailed"))
     } finally {
-      setLoading("")
+      if (id === requestId.current) setLoading("")
     }
   }
 
   async function pickArtist(a: BulkArtist) {
     if (!a.mbid) return
+    const id = ++requestId.current
     setArtist(a); setLoading("albums"); setError(""); setAlbums([]); setTracklist(null); resetVariants()
     try {
-      setAlbums(await api.getAlbums(a.mbid))
+      const found = await api.getAlbums(a.mbid)
+      if (id === requestId.current) setAlbums(found)
     } catch {
-      setError(t("lookupFailed"))
+      if (id === requestId.current) setError(t("lookupFailed"))
     } finally {
-      setLoading("")
+      if (id === requestId.current) setLoading("")
     }
   }
 
@@ -226,35 +233,39 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
 
   async function pickAlbum(album: BulkAlbum) {
     if (!artist?.name) return
+    const id = ++requestId.current
     setLoading("tracks"); setError(""); resetVariants(); setAlbumMbid(album.release_group_mbid)
     try {
       const tl = await api.getAlbumTracklist({
         artist: artist.name, releaseGroupMbid: album.release_group_mbid, locale,
       })
+      if (id !== requestId.current) return
       setTracklist(tl)
       setVariants(tl.variants || [])
       onChange(buildRows(tl))
     } catch {
-      setError(t("lookupFailed"))
+      if (id === requestId.current) setError(t("lookupFailed"))
     } finally {
-      setLoading("")
+      if (id === requestId.current) setLoading("")
     }
   }
 
   async function switchEdition(releaseMbid: string) {
     if (!artist?.name) return
+    const id = ++requestId.current
     setLoading("tracks"); setError(""); setShowVariants(false)
     try {
       // Loading a specific variant returns no variant list — keep the existing one.
       const tl = await api.getAlbumTracklist({
         artist: artist.name, releaseMbid, releaseGroupMbid: albumMbid || undefined, locale,
       })
+      if (id !== requestId.current) return
       setTracklist(tl)
       onChange(buildRows(tl))
     } catch {
-      setError(t("lookupFailed"))
+      if (id === requestId.current) setError(t("lookupFailed"))
     } finally {
-      setLoading("")
+      if (id === requestId.current) setLoading("")
     }
   }
 
@@ -268,9 +279,11 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   const toggle = (key: string, checked: boolean) =>
     onChange(rows.map((r) => (r.key === key ? { ...r, selected: checked } : r)))
 
-  const goToArtists = () => { setArtist(null); setAlbums([]); setTracklist(null); resetVariants(); onChange([]) }
+  // Navigating invalidates any in-flight lookup so it can't restore stale rows.
+  const cancelPending = () => { requestId.current++; setLoading(""); setError("") }
+  const goToArtists = () => { cancelPending(); setArtist(null); setAlbums([]); setTracklist(null); resetVariants(); onChange([]) }
   // Leaving the tracklist drops its rows so a stale album can't be submitted.
-  const goToAlbums = () => { setTracklist(null); resetVariants(); onChange([]) }
+  const goToAlbums = () => { cancelPending(); setTracklist(null); resetVariants(); onChange([]) }
 
   const step: AlbumStep = tracklist && artist ? "tracks" : artist ? "album" : "artist"
   const stepper = (
