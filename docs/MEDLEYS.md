@@ -134,7 +134,7 @@ Give the customer the audio file they asked for (usually `medley_instrumental_wi
 or `.mp3`; offer `instrumental_clean` as an alternative) plus the karaoke video. The per-song
 gen jobs are a free extra: four full karaoke tracks.
 
-### Optional: guitar chords
+### Guitar chords (optional)
 
 The video can show guitar chords: each chord name sits above the word where it changes
 and lights up when played, and a "now / next" box in the top-right corner shows the
