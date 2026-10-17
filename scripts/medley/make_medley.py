@@ -15,6 +15,8 @@ Usage (from the repo root, in an env where karaoke_gen imports):
     python scripts/medley/make_medley.py video spec.json [--resolution 4k]  # karaoke + guide MP4s
     python scripts/medley/make_medley.py chords spec.json  # optional: detect guitar chords per song
                                                           # (needs MEDLEY_CHORDMINI; see docs)
+    python scripts/medley/make_medley.py chart spec.json [--wrap 56]  # optional: the customer's own
+                                                          # chord chart(s) instead (after `chords`)
 
 Requires Firestore read access (ADC; the claude-readonly SA is enough), the gcloud CLI for GCS
 downloads (set MEDLEY_GCLOUD_ACCOUNT to pick an account, e.g. the read-only SA when your user
@@ -27,6 +29,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -37,7 +40,7 @@ BUCKET = "karaoke-gen-storage-nomadkaraoke"
 DEFAULT_CROSSFADE = 2.0
 SEGMENT_TARGET_LUFS = -18.0
 FINAL_LUFS = -14.0
-FINAL_TRUE_PEAK = -1.0
+FINAL_PEAK_DB = -1.0
 # Audio variants built by `audio`: name -> stem file (None = the job's original input audio)
 VARIANTS = {
     "instrumental_with_backing": "instrumental_with_backing.flac",
@@ -136,7 +139,7 @@ def shift_chords(chords: list[dict], src_start: float, src_end: float, offset: f
     for c in chords:
         start, end = max(c["start"], lo), min(c["end"], hi)
         if end - start > 0.05:
-            out.append({"start": start + offset, "end": end + offset, "label": c["label"]})
+            out.append({**c, "start": start + offset, "end": end + offset})
     return out
 
 
@@ -153,7 +156,10 @@ def medley_chords(sections: list[Section], durations: list[float], offsets: list
 
 
 def build_filtergraph(sections: list[Section], durations: list[float], gains_db: list[float]) -> str:
-    """ffmpeg filter_complex joining inputs 0..n-1 (one per section, already trimmed) into [out]."""
+    """ffmpeg filter_complex joining inputs 0..n-1 (one per section, already trimmed) into [out].
+
+    Un-mastered: `master_filter` brings the result to FINAL_LUFS in a second pass.
+    """
     chains = []
     for i, (sec, dur, gain) in enumerate(zip(sections, durations, gains_db)):
         f = f"[{i}:a]aformat=sample_rates=44100:channel_layouts=stereo,volume={gain:.2f}dB"
@@ -174,8 +180,20 @@ def build_filtergraph(sections: list[Section], durations: list[float], gains_db:
         else:
             chains.append(f"[{cur}][s{i}]concat=n=2:v=0:a=1[{out}]")
         cur = out
-    chains.append(f"[{cur}]loudnorm=I={FINAL_LUFS}:TP={FINAL_TRUE_PEAK}:LRA=11,aresample=44100[out]")
+    chains.append(f"[{cur}]anull[out]")
     return ";".join(chains)
+
+
+def master_filter(measured_lufs: float) -> str:
+    """One static gain to FINAL_LUFS, then a peak limiter (4x oversampled ~ true peak).
+
+    Never single-pass loudnorm: its dynamic mode rides the gain on a 3s window, so a
+    near-silent stretch (an a cappella pickup, where the instrumental is just separation
+    residue) gets boosted ~50 dB into loud robotic artifacts.
+    """
+    limit = 10 ** (FINAL_PEAK_DB / 20)
+    return (f"volume={FINAL_LUFS - measured_lufs:.2f}dB,aresample=176400,"
+            f"alimiter=limit={limit:.4f}:attack=5:release=50:level=false:latency=true,aresample=44100")
 
 
 # --- I/O helpers ---------------------------------------------------------------------------
@@ -285,8 +303,12 @@ def cmd_audio(spec: dict, workdir: str, outdir: str):
             gains.append(SEGMENT_TARGET_LUFS - measure_lufs(p, sec.start, sec.end))
             inputs += ["-ss", str(sec.start)] + (["-to", str(sec.end)] if sec.end is not None else []) + ["-i", p]
         wav = os.path.join(outdir, f"medley_{variant}.wav")
+        raw = wav[:-4] + ".unmastered.wav"
         _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"] + inputs +
-             ["-filter_complex", build_filtergraph(sections, durations, gains), "-map", "[out]", "-c:a", "pcm_s24le", wav])
+             ["-filter_complex", build_filtergraph(sections, durations, gains), "-map", "[out]", "-c:a", "pcm_f32le", raw])
+        _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", raw,
+              "-af", master_filter(measure_lufs(raw, 0.0, None)), "-c:a", "pcm_s24le", wav])
+        os.remove(raw)
         _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", wav, "-c:a", "libmp3lame", "-b:a", "320k",
               wav[:-4] + ".mp3"])
         log.info("%s: %.1fs", wav, probe_duration(wav))
@@ -315,10 +337,37 @@ def cmd_chords(spec: dict, workdir: str):
         harm = _harmonic_stem(d, variant_path(workdir, job_id, GUIDE_VARIANT))
         if harm:
             inputs.append(f"harm={harm}")
-        args = [python, detect, "--chordmini", chordmini, "--out", os.path.join(d, "chords.json")]
+        args = [python, detect, "--chordmini", chordmini, "--out", os.path.join(d, "chords_detected.json")]
         for i in inputs:
             args += ["--input", i]
         _run(args)
+        shutil.copyfile(os.path.join(d, "chords_detected.json"), os.path.join(d, "chords.json"))
+
+
+def cmd_chart(spec: dict, workdir: str, wrap: Optional[int]):
+    """chords.json from the customer's chord chart (<job>/chart.txt or chart.docx), timed on the
+    reviewed lyrics; chords_detected.json (from `chords`) fills intros and breaks."""
+    import chord_chart
+    for job_id in dict.fromkeys(s["job_id"] for s in spec["sections"]):
+        d = job_dir(workdir, job_id)
+        chart = next((os.path.join(d, n) for n in ("chart.txt", "chart.docx") if os.path.exists(os.path.join(d, n))), None)
+        if chart is None:
+            log.info("%s: no chart, keeping its chords.json", job_id)
+            continue
+        detected = os.path.join(d, "chords_detected.json")
+        if not os.path.exists(detected):
+            if not os.path.exists(os.path.join(d, "chords.json")):
+                raise SystemExit(f"{job_id}: run the `chords` step first (breaks are filled from detected chords)")
+            shutil.copyfile(os.path.join(d, "chords.json"), detected)  # chords.json from before `chart` existed
+        with open(detected) as f:
+            detected_chords = json.load(f)
+        updated = os.path.join(d, "corrections_updated.json")
+        sung = chord_chart.sung_words(os.path.join(d, "corrections.json"), updated if os.path.exists(updated) else None)
+        chords = chord_chart.chart_to_chords(chord_chart.read_chart(chart, wrap), sung, detected_chords,
+                                             probe_duration(variant_path(workdir, job_id, GUIDE_VARIANT)))
+        with open(os.path.join(d, "chords.json"), "w") as f:
+            json.dump(chords, f, indent=1)
+        log.info("%s: %d chord changes from %s", job_id, len(chords), os.path.basename(chart))
 
 
 def _harmonic_stem(d: str, source: str) -> Optional[str]:
@@ -409,7 +458,7 @@ def cmd_video(spec: dict, workdir: str, outdir: str, resolution: str):
                 raise SystemExit(f"no chords for {job_id}: run the `chords` step first")
             with open(path) as f:
                 by_job[job_id] = json.load(f)
-        chords = [ChordChange(c["start"] + pad, c["end"] + pad, c["label"])
+        chords = [ChordChange(c["start"] + pad, c["end"] + pad, c["label"], c.get("capo", 0))
                   for c in medley_chords(sections, durations, offsets, by_job)]
         log.info("guitar chords: %d changes", len(chords))
 
@@ -452,9 +501,10 @@ def cmd_video(spec: dict, workdir: str, outdir: str, resolution: str):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("command", choices=["fetch", "audio", "video", "chords"])
+    p.add_argument("command", choices=["fetch", "audio", "video", "chords", "chart"])
     p.add_argument("spec")
     p.add_argument("--resolution", default="4k", choices=["4k", "1080p", "720p", "360p"])
+    p.add_argument("--wrap", type=int, help="chart: page width in columns (undoes Word's soft wrapping)")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     with open(args.spec) as f:
@@ -467,6 +517,8 @@ def main(argv=None):
         cmd_fetch(spec, workdir)
     elif args.command == "chords":
         cmd_chords(spec, workdir)
+    elif args.command == "chart":
+        cmd_chart(spec, workdir, args.wrap)
     elif args.command == "audio":
         cmd_audio(spec, workdir, outdir)
     else:

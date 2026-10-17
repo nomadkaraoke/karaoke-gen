@@ -106,7 +106,8 @@ class TestBuildFiltergraph:
         assert "apad=pad_dur=0.700" in graph            # silence before the gap join
         assert "afade=t=in:st=0:d=0.500" in graph       # pot in on the finale
         assert "[x3][s4]concat=n=2:v=0:a=1[x4]" in graph
-        assert graph.endswith("[x4]loudnorm=I=-14.0:TP=-1.0:LRA=11,aresample=44100[out]")
+        assert graph.endswith("[x4]anull[out]")
+        assert "loudnorm" not in graph
 
 
 class TestMedleyChords:
@@ -131,6 +132,10 @@ class TestMedleyChords:
         # the finale's chords start at the finale (source 132.2 -> medley 239.7)
         assert labels[4][0] == pytest.approx(239.7) and labels[4][2] == "Ab"
 
+    def test_shift_chords_keeps_capo(self):
+        out = medley.shift_chords([{"start": 0.0, "end": 5.0, "label": "C", "capo": 2}], 0.0, 10.0, 100.0)
+        assert out == [{"start": 100.0, "end": 105.0, "label": "C", "capo": 2}]
+
     def test_shift_chords_drops_slivers(self):
         out = medley.shift_chords([{"start": 0, "end": 10.02, "label": "G"}, {"start": 10.02, "end": 20, "label": "C"}],
                                   10.0, 20.0, 100.0)
@@ -143,6 +148,16 @@ class TestSingleSong:
         assert medley.compute_offsets(sections, [200.0]) == [0.0]
         graph = medley.build_filtergraph(sections, [200.0], [1.5])
         assert "acrossfade" not in graph and "concat" not in graph
-        assert graph.endswith("[s0]loudnorm=I=-14.0:TP=-1.0:LRA=11,aresample=44100[out]")
+        assert graph.endswith("[s0]anull[out]")
         chords = medley.medley_chords(sections, [200.0], [0.0], {"a": [{"start": 0, "end": 200, "label": "G"}]})
         assert chords == [{"start": 0.0, "end": 200.0, "label": "G"}]
+
+
+class TestMaster:
+    def test_static_gain_to_target_then_limiter(self):
+        f = medley.master_filter(-18.5)
+        assert f.startswith("volume=4.50dB,")
+        assert "alimiter=limit=0.8913" in f and "level=false" in f and "latency=true" in f
+        assert "loudnorm" not in f  # dynamic loudnorm boosted near-silent intros into artifacts
+        assert f.endswith("aresample=44100")
+

@@ -96,9 +96,15 @@ This writes `out/medley_{instrumental_with_backing,instrumental_clean,guide_with
 and `out/timeline.json` (each section's source and medley times).
 
 - Each section's gain is set so the section itself measures -18 LUFS. That's measured on the
-  section, not the whole song, which matters for quiet intros. The full medley is then run
-  through `loudnorm` to -14 LUFS with peaks no higher than -1 dBTP. In the example, all five
-  sections ended up within 1.6 LU of each other.
+  section, not the whole song, which matters for quiet intros. The full medley is then
+  measured and given **one static gain** to -14 LUFS, with a 4×-oversampled peak limiter at
+  -1 dB (`master_filter`). In the example, all five sections ended up within 1.6 LU of each
+  other.
+- **Never master with single-pass `loudnorm`.** Its dynamic mode rides the gain over a 3s
+  window. When a song opens a cappella, the instrumental is near-silent separation residue
+  (-70 dB), and `loudnorm` boosted it ~50 dB into a loud robotic warble. The customer heard
+  it at 0:08–0:12 of the v2 karaoke video (HSLHT opens with an unaccompanied line). Fixed
+  in v0.278.5 by the static-gain master above.
 - WAV is 24-bit / 44.1 kHz. MP3 is 320k.
 - **Listen to the guide (`guide_with_vocals`) first.** Bad transitions are much easier to hear
   with vocals in.
@@ -166,10 +172,51 @@ python scripts/medley/make_medley.py video  spec.json   # 4K final
   verse, one on an `INSTRUMENTAL` screen (the corner box should show chords there), one in a
   chorus.
 - **Fixing a chord.** Edit `work/<job_id>/chords.json` (list of
-  `{"start", "end", "label"}` in that song's own source seconds) and re-run `video`. If a
-  customer sends their own chord chart, enter it the same way: their chords replace the
-  detected ones, and nothing else changes.
-- **Deliver both versions** (with and without chords), and say the chords are auto-detected.
+  `{"start", "end", "label", "capo"}` in that song's own source seconds; `capo` optional)
+  and re-run `video`.
+- **Deliver both versions** (with and without chords), and say the chords are auto-detected
+  (unless they came from the customer's chart, below).
+
+#### The customer's own chord chart (`chart` step)
+
+When a customer sends a chart (chords written over lyrics, usually a Word doc), use it
+instead of detection: their chart says *which* chord and *where in the lyrics*, gen's
+reviewed word timings say *when*. First done in October 2026 for the country medley
+(customer chart in Courier New, capo shapes).
+
+```bash
+# after `chords` (detected chords still fill intros and breaks), per job:
+#   work/<job_id>/chart.txt  (or chart.docx)   - that song's part of the chart, in song order
+python scripts/medley/make_medley.py chart spec.json --wrap 56   # rewrites each chords.json
+python scripts/medley/make_medley.py video spec.json
+```
+
+- **Making `chart.txt`.** `scripts/medley/chord_chart.py` reads .docx directly
+  (`docx_text`). For a whole-medley doc, split it per song (a song used twice, like an opener
+  plus finale, gets one file with both parts in order). Wrap stray headings mid-file in
+  `[brackets]`. Titles and notes before the first chord/capo line, `[...]`/`(...)` lines and
+  section labels (`Chorus:`, `Verse 2`, `Instrumental`) are ignored.
+- **Format it understands.** A chord line (only chord symbols) puts each chord on the lyric
+  word under its first column (up to 2 blank lines between them are fine). Chords past the
+  end of the line, or a chord line with no lyric under it (`C Em F G C` after
+  "Instrumental"), are played in the break after the previous lyric: they're timed to the
+  matching detected changes there, else spaced evenly. `Capo 2`, `No Capo` and
+  `Key change Capo 1` lines set the capo from there on.
+- **`--wrap N` = page width in monospaced columns.** Word soft-wraps long paragraphs; a
+  chord line glued to the end of a lyric paragraph is really on the next row. For Courier
+  New 16pt on Letter with 0.5" margins it's 56 (7.5" × 72 / 9.6pt per char). Check one
+  known chord after a wrapped line.
+- **Spelling is kept exactly** ("G/Em" means G or Em in this customer's charts, not a slash
+  chord). Labels are capo **shapes**; the chord box shows "capo N" under the chord when
+  capo > 0. Gaps the chart doesn't cover (intros, breaks, outros, spoken verses) get the
+  detected chords transposed down by the capo into shapes (triads + dominant 7ths), using
+  whichever neighbouring capo the chord fits (so a key-change pivot reads in the new
+  capo). Fills that repeat the ringing chord, or anticipate the chart's next chord by up to
+  2.5s, are dropped.
+- **Check it.** Print each song as lyrics with inline `[chord]`s against the chart. Lyrics
+  are aligned word-by-word (`difflib`), so differences such as "nineteen-sixty-two" vs
+  "1962" or a missing word are fine. A chart heading read as lyrics shifts the alignment;
+  bracket it.
 
 #### A single song, not a medley
 
@@ -216,8 +263,8 @@ PyTorch's safe `weights_only=True`; the third bundled checkpoint
 #### How rendering works (in gen)
 
 `karaoke_gen/lyrics_transcriber/output/ass/chords.py`, used via
-`OutputGenerator.generate_outputs(chords=[ChordChange(start, end, label)])`. With no chords,
-output is byte-identical to before.
+`OutputGenerator.generate_outputs(chords=[ChordChange(start, end, label, capo=0)])`. With no
+chords, output is byte-identical to before.
 
 - **Layout.** Each lyric slot gets a chord row above the line: the slot grows by 1.05 ×
   the chord font size, and lines per screen are capped at 4. It's the same mechanism as
@@ -262,8 +309,10 @@ and a chord editor in review.
   or from a karaoke track. In the example, the brief asked for an "instrumental intro → verse 1
   → chorus 1" on a song whose original starts singing at 0.4s and has no chorus until the third
   verse. Measure, then confirm the interpretation with the customer.
-- **Gain-match per section, then normalise once.** Don't run `loudnorm` on each section
-  separately (it pumps); set static per-section gains, then process the whole medley once.
+- **Gain-match per section, then normalise once, statically.** Don't run `loudnorm` on each
+  section (it pumps) or on the whole medley in its default dynamic mode (it boosts
+  near-silent stretches, see step 4); set static per-section gains, then one static gain
+  plus a limiter for the whole medley.
 
 ## Gotchas
 
