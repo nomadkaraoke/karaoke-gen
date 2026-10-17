@@ -88,3 +88,22 @@ def preserve_billing_state(state_data: Optional[Dict[str, Any]]) -> Dict[str, An
     """Subset of ``state_data`` that must survive a state_data reset."""
     state = state_data or {}
     return {k: state[k] for k in BILLING_STATE_KEYS if k in state}
+
+
+def with_resolved_credits_charged(state_data: Optional[Dict[str, Any]], *, user_email=None,
+                                  tenant_id=None, creation_params=None) -> Dict[str, Any]:
+    """Copy of ``state_data`` whose ``credits_charged`` is always present (response-only).
+
+    Used by the job read endpoints so web and mobile clients display/acknowledge
+    exactly the figure the server will use, even for legacy jobs lacking the field.
+    Never persist the result.
+    """
+    from types import SimpleNamespace
+
+    resolved = dict(state_data or {})
+    if resolved.get("credits_charged") is None:
+        resolved["credits_charged"] = get_credits_charged(SimpleNamespace(
+            state_data=resolved, user_email=user_email,
+            tenant_id=tenant_id, creation_params=creation_params,
+        ))
+    return resolved

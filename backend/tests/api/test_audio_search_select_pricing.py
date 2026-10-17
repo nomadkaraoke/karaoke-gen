@@ -571,3 +571,55 @@ class TestSelectPricingIdempotencyGuard:
         assert all_payloads.get("state_data.select_charge_applied") is True, (
             f"Expected select_charge_applied=True in update_job payload; got: {all_payloads}"
         )
+
+
+class TestSelectNeverChargesBypassedJobs:
+    """Admin / made-for-you / tenant jobs are never billed consumer credits.
+
+    Now that create paths no longer wipe state_data, credits_charged=0 survives on
+    bypassed jobs — /select must not read that as "owes the full duration cost".
+    """
+
+    _LONG = [{
+        "title": "Long Song", "artist": "Artist", "provider": "RED", "quality": "FLAC",
+        "source_id": "abc999", "target_file": "long.flac", "url": "", "duration": 1500,
+    }]
+
+    def _assert_no_charge(self, client, jm, us, job):
+        jm.get_job.return_value = job
+        resp = _post_select(client)
+        assert resp.status_code == 200, resp.text
+        us.deduct_credits.assert_not_called()
+        update = next(c.args[1] for c in jm.update_job.call_args_list
+                      if "state_data.select_charge_applied" in c.args[1])
+        assert update["state_data.credits_charged"] == 0  # nothing to refund later
+        assert update["state_data.payment_bypassed"] is True
+        assert update["state_data.duration_estimate_seconds"] == 1500
+
+    def test_explicit_bypassed_job(self, patched_app):
+        client, jm, us, ws = patched_app
+        job = _awaiting_selection_job(search_results=self._LONG)
+        job.state_data.update({"credits_charged": 0, "payment_bypassed": True})
+        self._assert_no_charge(client, jm, us, job)
+
+    def test_legacy_tenant_job_missing_fields(self, patched_app):
+        client, jm, us, ws = patched_app
+        job = _awaiting_selection_job(search_results=self._LONG)
+        del job.state_data["credits_charged"]
+        job.tenant_id = "acme"
+        self._assert_no_charge(client, jm, us, job)
+
+    def test_legacy_admin_owned_made_for_you_job(self, patched_app):
+        from backend.api.dependencies import require_auth
+        from backend.main import app
+
+        async def admin_auth():
+            return AuthResult(is_valid=True, user_type=UserType.ADMIN, remaining_uses=999,
+                              message="admin", is_admin=True, user_email="admin@nomadkaraoke.com")
+
+        app.dependency_overrides[require_auth] = admin_auth
+        client, jm, us, ws = patched_app
+        job = _awaiting_selection_job(search_results=self._LONG, user_email="admin@nomadkaraoke.com")
+        del job.state_data["credits_charged"]
+        job.made_for_you = True
+        self._assert_no_charge(client, jm, us, job)

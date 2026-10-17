@@ -1085,8 +1085,8 @@ class JobManager:
             if job.edit_count:
                 logger.info(f"Job {job_id}: edited track was already delivered, skipping refund")
                 return False
-            from backend.services.job_credits import get_credits_charged
-            credits_charged = get_credits_charged(job)
+            from backend.services.job_credits import get_credits_charged, is_payment_bypassed
+            credits_charged = 0 if is_payment_bypassed(job) else get_credits_charged(job)
 
             if credits_charged == 0:
                 # Admin / payment-bypassed job — nothing to refund.
@@ -1360,17 +1360,22 @@ class JobManager:
         # per-tick cap (which would delay other stalled jobs), and lets it retry.
         return await get_worker_service().trigger_screens_worker(job_id)
 
-    def cancel_job(self, job_id: str, reason: Optional[str] = None) -> bool:
+    def cancel_job(self, job_id: str, reason: Optional[str] = None, refund: bool = True) -> bool:
         """
         Cancel a job.
         
         Only jobs in non-terminal states can be cancelled. Serialized per job
         within this instance so a double-clicked Cancel can't refund twice.
+
+        ``refund=False`` skips the built-in refund — for callers that have
+        already refunded the full charge themselves (duration over-limit,
+        duration-confirm expiry), so a failed ``credit_refunded`` write can't
+        lead to a second refund here.
         """
         with job_lock(job_id):
-            return self._cancel_job_unlocked(job_id, reason)
+            return self._cancel_job_unlocked(job_id, reason, refund=refund)
 
-    def _cancel_job_unlocked(self, job_id: str, reason: Optional[str]) -> bool:
+    def _cancel_job_unlocked(self, job_id: str, reason: Optional[str], refund: bool = True) -> bool:
         job = self.get_job(job_id)
         if not job:
             return False
@@ -1391,7 +1396,8 @@ class JobManager:
         logger.info(f"Job {job_id} cancelled")
 
         # Refund credit for cancelled job
-        self._refund_credit_for_job(job_id, job, reason="job_cancelled")
+        if refund:
+            self._refund_credit_for_job(job_id, job, reason="job_cancelled")
 
         return True
 

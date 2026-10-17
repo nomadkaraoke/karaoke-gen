@@ -2995,6 +2995,10 @@ def override_audio_source(
         "audio_search_count",
         "remote_search_id",
         "audio_selection",
+        # A pending duration confirm belongs to the OLD source's audio.
+        "duration_confirmed",
+        "duration_confirm_reason",
+        "pending_additional_credits",
     ]
 
     update_payload = {}

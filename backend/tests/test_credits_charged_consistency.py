@@ -72,7 +72,7 @@ class FakeJobManager:
         self.job.status = new_status
         return True
 
-    def cancel_job(self, job_id, reason=None):
+    def cancel_job(self, job_id, reason=None, refund=True):
         self.job.status = JobStatus.CANCELLED
         return True
 
@@ -378,3 +378,105 @@ class TestRetryKeepsBillingState:
         apply_firestore_update(job, {"state_data": preserve_billing_state(job.state_data)})
         assert job.state_data == {"credits_charged": 3, "select_charge_applied": True}
         assert get_credits_charged(job) == 3
+
+
+# ---------------------------------------------------------------------------
+# Job read endpoints expose the resolved figure (response-only, never persisted)
+# ---------------------------------------------------------------------------
+
+
+class TestResolvedCreditsChargedInResponses:
+    def _paused_legacy(self, **kw):
+        return _job({"duration_confirm_reason": "reconcile", "pending_additional_credits": 1},
+                    status=JobStatus.AWAITING_DURATION_CONFIRM, **kw)
+
+    def _get(self, job):
+        from backend.main import app
+
+        jm = MagicMock()
+        jm.get_job.return_value = job
+        with patch("backend.api.routes.jobs.job_manager", jm):
+            resp = TestClient(app).get(f"/api/jobs/{job.job_id}")
+        assert resp.status_code == 200, resp.text
+        jm.update_job.assert_not_called()  # response-only
+        return resp.json()["state_data"]
+
+    def test_get_job_fills_legacy_standard_job_with_1(self, owner_auth):
+        sd = self._get(self._paused_legacy())
+        assert sd["credits_charged"] == 1
+        # client acknowledges helper + pending == what confirm-duration expects
+        assert sd["credits_charged"] + sd["pending_additional_credits"] == 2
+
+    def test_get_job_fills_legacy_tenant_job_with_0(self, owner_auth):
+        assert self._get(self._paused_legacy(tenant_id="acme"))["credits_charged"] == 0
+
+    def test_get_job_keeps_explicit_value(self, owner_auth):
+        job = _job({"credits_charged": 3})
+        assert self._get(job)["credits_charged"] == 3
+
+    def test_summary_list_fills_and_strips_inputs(self, owner_auth):
+        from backend.main import app
+
+        rows = [
+            {"job_id": "a", "status": "awaiting_duration_confirm", "user_email": "owner@example.com",
+             "tenant_id": "", "state_data": {"pending_additional_credits": 1}},
+            {"job_id": "b", "status": "awaiting_duration_confirm", "user_email": "owner@example.com",
+             "tenant_id": "", "creation_params": {"is_admin": True},
+             "state_data": {"pending_additional_credits": 1}},
+            {"job_id": "c", "status": "pending", "user_email": "owner@example.com"},
+            {"job_id": "d", "status": "pending", "user_email": "owner@example.com",
+             "state_data": {"credits_charged": 2}},
+        ]
+        jm = MagicMock()
+        jm.list_jobs_summary.return_value = rows
+        with patch("backend.api.routes.jobs.job_manager", jm):
+            resp = TestClient(app).get("/api/jobs?fields=summary&exclude_test=false")
+        assert resp.status_code == 200, resp.text
+        by_id = {r["job_id"]: r for r in resp.json()}
+        assert by_id["a"]["state_data"]["credits_charged"] == 1
+        assert by_id["b"]["state_data"]["credits_charged"] == 0
+        assert by_id["c"]["state_data"]["credits_charged"] == 1
+        assert by_id["d"]["state_data"]["credits_charged"] == 2
+        assert all("tenant_id" not in r and "creation_params" not in r for r in by_id.values())
+
+    def test_full_list_fills(self, owner_auth):
+        from backend.main import app
+
+        jm = MagicMock()
+        jm.list_jobs.return_value = [self._paused_legacy()]
+        with patch("backend.api.routes.jobs.job_manager", jm):
+            resp = TestClient(app).get("/api/jobs?exclude_test=false")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()[0]["state_data"]["credits_charged"] == 1
+        jm.update_job.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Callers that refund in full must suppress cancel_job's own refund
+# ---------------------------------------------------------------------------
+
+
+class TestNoSecondRefundOnCancel:
+    def test_cancel_job_refund_false_skips_refund(self):
+        from backend.services.job_manager import JobManager
+
+        jm = JobManager.__new__(JobManager)
+        jm.firestore = MagicMock()
+        job = _job({"credits_charged": 2})
+        jm.get_job = MagicMock(return_value=job)
+        jm.update_job_status = MagicMock()
+        jm._refund_credit_for_job = MagicMock()
+        assert jm.cancel_job(job.job_id, reason="x", refund=False) is True
+        jm._refund_credit_for_job.assert_not_called()
+        assert jm.cancel_job(job.job_id, reason="x") is True
+        jm._refund_credit_for_job.assert_called_once()
+
+    def test_reconcile_over_limit_cancels_without_second_refund(self):
+        job = _job({"credits_charged": 2})
+        fjm = MagicMock(wraps=FakeJobManager(job))
+        us = MagicMock()
+        us.add_credits.return_value = (True, 5, "ok")
+        result = reconcile_duration(job.job_id, fjm, us, lambda _j: 4000.0)
+        assert result.action == "cancel"
+        assert us.add_credits.call_args.kwargs["amount"] == 2
+        assert fjm.cancel_job.call_args.kwargs["refund"] is False

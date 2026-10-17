@@ -176,3 +176,30 @@ async def test_auto_select_parks_when_delta_unaffordable(monkeypatch, patched):
 
     await worker.process_job("job1", jm, ass)
     assert JobStatus.AWAITING_AUDIO_SELECTION in transitions
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state_extra", [
+    {"credits_charged": 0, "payment_bypassed": True},
+    {"credits_charged": None},  # legacy, field wiped — resolved below via admin owner
+])
+async def test_auto_select_never_charges_bypassed_job(monkeypatch, patched, state_extra):
+    """Bypassed (admin/tenant) jobs: no deduction and credits_charged stays 0, so a
+    later cancel can't refund credits that were never debited."""
+    jm, ass, transitions = patched
+    job = _make_job(auto=True, state_extra=state_extra)
+    if state_extra.get("credits_charged") is None:
+        del job.state_data["credits_charged"]
+        job.user_email = "admin@nomadkaraoke.com"
+    us = MagicMock()
+    monkeypatch.setattr(worker, "get_user_service", lambda: us, raising=False)
+    monkeypatch.setattr("backend.api.routes.audio_search._validate_and_prepare_selection",
+                        lambda job_id, idx: {"ok": True})
+
+    ok = await worker._auto_select(job, 0, {"duration": 1500}, jm)
+
+    assert ok is True
+    us.deduct_credits.assert_not_called()
+    update = jm.update_job.call_args_list[-1][0][1]
+    assert update["state_data.credits_charged"] == 0
+    assert update["state_data.payment_bypassed"] is True

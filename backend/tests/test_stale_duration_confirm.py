@@ -169,6 +169,7 @@ class TestStaleDurationConfirm:
         mock_job_manager.cancel_job.assert_called_once_with(
             job.job_id,
             reason="Duration confirmation not completed within 48 hours",
+            refund=False,  # already refunded in full above — never refund twice
         )
 
         # Must send the duration-confirm expired email (NOT review expired)
@@ -193,6 +194,40 @@ class TestStaleDurationConfirm:
             job.user_email, amount=1, reason="duration_confirm_expired", job_id=job.job_id,
         )
         assert mock_email_service.send_duration_confirm_expired.call_args.kwargs["credits_refunded"] == 1
+
+    async def test_48h_flag_write_failure_still_no_second_refund(
+        self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service
+    ):
+        """add_credits succeeded but writing credit_refunded=True failed: cancel_job
+        must still be told not to refund again."""
+        job = _make_duration_confirm_job(hours_ago=50, credits_charged=2)
+        mock_firestore.list_jobs.side_effect = [[], [], [job]]
+
+        def _update(job_id, updates):
+            if updates.get('credit_refunded'):
+                raise RuntimeError("firestore down")
+        mock_firestore.update_job.side_effect = _update
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            await process_stale_reviews()
+
+        mock_user_service.add_credits.assert_called_once()
+        assert mock_job_manager.cancel_job.call_args.kwargs.get("refund") is False
+
+    async def test_48h_refund_failure_lets_cancel_refund(
+        self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service
+    ):
+        """If our refund failed, cancel_job keeps its own refund as the fallback."""
+        job = _make_duration_confirm_job(hours_ago=50, credits_charged=2)
+        mock_firestore.list_jobs.side_effect = [[], [], [job]]
+        mock_user_service.add_credits.return_value = (False, 0, "nope")
+
+        with self._patch_all(mock_firestore, mock_job_manager, mock_email_service, mock_user_service):
+            from backend.workers.stale_review_processor import process_stale_reviews
+            await process_stale_reviews()
+
+        assert "refund" not in mock_job_manager.cancel_job.call_args.kwargs
 
     async def test_48h_legacy_tenant_job_without_credits_charged_refunds_nothing(
         self, mock_firestore, mock_job_manager, mock_email_service, mock_user_service

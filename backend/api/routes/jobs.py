@@ -232,7 +232,35 @@ def get_job(
     if job.status == JobStatus.COMPLETE:
         job.download_urls = job_manager.get_output_urls(job_id)
 
+    _resolve_credits_charged_in_response(job)
     return job
+
+
+def _resolve_credits_charged_in_response(job: Job) -> Job:
+    """Fill state_data.credits_charged in a response for legacy jobs (never persisted)."""
+    from backend.services.job_credits import with_resolved_credits_charged
+
+    if (job.state_data or {}).get("credits_charged") is None:
+        job.state_data = with_resolved_credits_charged(
+            job.state_data, user_email=job.user_email,
+            tenant_id=job.tenant_id, creation_params=job.creation_params,
+        )
+    return job
+
+
+def _resolve_credits_charged_in_summary(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Summary-dict variant; drops the projection-only inputs it needed."""
+    from backend.services.job_credits import with_resolved_credits_charged
+
+    tenant_id = data.pop("tenant_id", None)
+    creation_params = data.pop("creation_params", None)
+    sd = data.get("state_data")
+    if not isinstance(sd, dict) or sd.get("credits_charged") is None:
+        data["state_data"] = with_resolved_credits_charged(
+            sd if isinstance(sd, dict) else {}, user_email=data.get("user_email"),
+            tenant_id=tenant_id, creation_params=creation_params,
+        )
+    return data
 
 
 def _check_job_ownership(job: Job, auth_result: AuthResult) -> bool:
@@ -553,6 +581,7 @@ _SUMMARY_STATE_DATA_KEYS = {
     'render_pending_capacity',
     'cloud_run_retry_pending',
     'credits_charged',
+    'payment_bypassed',
     'pending_additional_credits',
     'duration_actual_seconds',
     'duration_confirm_reason',
@@ -760,6 +789,7 @@ def list_jobs(
 
             # Safety-net pruning (in case Firestore returned extra nested keys)
             jobs_dicts = [_prune_file_urls(_prune_state_data(j)) for j in jobs_dicts]
+            jobs_dicts = [_resolve_credits_charged_in_summary(j) for j in jobs_dicts]
 
             logger.debug(f"Listed {len(jobs_dicts)} summary jobs for user={auth_result.user_email}")
             return jobs_dicts
@@ -786,6 +816,8 @@ def list_jobs(
                 or (own_email and (j.user_email or "").lower() == own_email)
             ]
 
+        for j in jobs:
+            _resolve_credits_charged_in_response(j)
         logger.debug(f"Listed {len(jobs)} jobs for user={auth_result.user_email}, admin={auth_result.is_admin}")
         return jobs
     except HTTPException:

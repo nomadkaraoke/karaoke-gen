@@ -107,10 +107,13 @@ async def _auto_select(job, selection_index: int, selected: dict,
                     logger.info("[bulk] job %s lacks credits for duration delta; parking", job_id)
                     return False
         update = {
-            "state_data.credits_charged": target_total,
+            # Bypassed jobs were never billed: keep 0 so no refund pays out.
+            "state_data.credits_charged": 0 if bypass else target_total,
             "state_data.select_charge_applied": True,
             "state_data.bulk_charge_pending": None,
         }
+        if bypass:
+            update["state_data.payment_bypassed"] = True
         if duration is not None:
             update["state_data.duration_estimate_seconds"] = duration
             update["state_data.duration_estimate_source"] = "search_metadata"
