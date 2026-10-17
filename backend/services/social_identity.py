@@ -3,8 +3,10 @@
 The app gets an ID token from the native Google / Apple SDK and exchanges it at
 ``POST /api/users/auth/google|apple`` for a gen session. Here we check the
 token's RS256 signature against the provider's JWKS, its issuer, audience and
-expiry, and that the email is verified. Every failure raises
-:class:`InvalidIdentityToken` (the route answers 401 ``invalid_token``).
+expiry, and that the email is verified. Every
+failure raises :class:`InvalidIdentityToken` (the route answers 401
+``invalid_token``), except a failed JWKS fetch, which raises
+:class:`IdentityProviderUnavailable` (503 ``identity_provider_unavailable``, retryable).
 
 JWKS fetches are blocking network calls: callers run this off the event loop
 (the sign-in routes are sync ``def`` routes, served from the threadpool).
@@ -38,6 +40,10 @@ Provider = Literal["google", "apple"]
 
 class InvalidIdentityToken(Exception):
     """The ID token is malformed, forged, expired, for another app, or unverified."""
+
+
+class IdentityProviderUnavailable(Exception):
+    """The provider's signing keys (JWKS) couldn't be fetched: retryable, not the token's fault."""
 
 
 @dataclass(frozen=True)
@@ -82,6 +88,8 @@ def _verify(
             leeway=_LEEWAY_SECONDS,
             options={"require": ["iss", "aud", "sub", "exp", "iat"]},
         )
+    except jwt.PyJWKClientConnectionError as e:  # network / timeout fetching the JWKS
+        raise IdentityProviderUnavailable(f"{provider} keys unavailable: {e}") from e
     except (jwt.PyJWTError, ValueError, TypeError) as e:
         raise InvalidIdentityToken(f"{provider} token rejected: {type(e).__name__}") from e
 

@@ -237,7 +237,7 @@ describe('VerifyMagicLinkPage — app handoff links (handoff=1)', () => {
 
   it('verifies on mount without the Complete Sign-In tap', async () => {
     extraParams = { handoff: '1' }
-    getStatusMock.mockResolvedValue({ status: 'valid' })
+    getStatusMock.mockResolvedValue({ status: 'valid', handoff: true })
 
     render(wrap(<VerifyMagicLinkPage />))
 
@@ -248,9 +248,33 @@ describe('VerifyMagicLinkPage — app handoff links (handoff=1)', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps the tap when the URL says handoff=1 but the server says the token is not a handoff token', async () => {
+    // e.g. someone appends handoff=1 to an emailed magic link
+    extraParams = { handoff: '1' }
+    getStatusMock.mockResolvedValue({ status: 'valid', handoff: false })
+
+    render(wrap(<VerifyMagicLinkPage />))
+
+    expect(
+      await screen.findByRole('button', { name: /Complete Sign-?In/i }),
+    ).toBeInTheDocument()
+    expect(verifyMagicLinkMock).not.toHaveBeenCalled()
+  })
+
+  it('keeps the tap for a server handoff token opened without handoff=1', async () => {
+    getStatusMock.mockResolvedValue({ status: 'valid', handoff: true })
+
+    render(wrap(<VerifyMagicLinkPage />))
+
+    expect(
+      await screen.findByRole('button', { name: /Complete Sign-?In/i }),
+    ).toBeInTheDocument()
+    expect(verifyMagicLinkMock).not.toHaveBeenCalled()
+  })
+
   it('shows the normal expired state (no verify) for a used or expired handoff link', async () => {
     extraParams = { handoff: '1' }
-    getStatusMock.mockResolvedValue({ status: 'used' })
+    getStatusMock.mockResolvedValue({ status: 'used', handoff: true })
 
     render(wrap(<VerifyMagicLinkPage />))
 

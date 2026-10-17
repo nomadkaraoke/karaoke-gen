@@ -1738,7 +1738,8 @@ the audience, and `email_verified` (Apple may send the string `"true"`).
 - Apple "Hide My Email" addresses (`@privaterelay.appleid.com`) are accepted as their own account and never count
   as disposable.
 - Errors: `401 {"detail": "invalid_token"}` (bad signature, issuer, audience, expiry, or unverified email; no user is
-  created), `503 {"detail": "google_not_configured"}` (no Google audience configured), `422` disposable domain (same
+  created), `503 {"detail": "google_not_configured"}` (no Google audience configured), `503 {"detail":
+"identity_provider_unavailable"}` (the provider's JWKS couldn't be fetched; retryable), `422` disposable domain (same
   message as `send-code`), `422 {"detail": "sign_in_not_allowed"}` (blocked email or IP, or outside a tenant's
   allowed domains), `429 {"detail": "signup_rate_limited"}` (the new-user per-IP/fingerprint cap). Unlike
   `send-code` there's no email to hide behind, so these refusals are explicit.
@@ -1759,9 +1760,12 @@ Content-Type: application/json
 A signed-in web link to the caller's own job review, for the mobile app's "Review on the web". `target` is an
 allowlist (only `job_review` today). The token is a `job_review:<id>` magic link (`create_admin_login_token` with
 `expiry_seconds=120`), single-use like every magic link; after verifying, `redirect_path` is
-`/app/jobs#/<id>/review`. `handoff=1` makes the verify page sign in at once, without the email-scanner "Complete
-Sign-In" tap (email links never carry it). A used or expired link shows the normal "link expired" state.
-`locale` falls back to `en` if it isn't one of the backend's locales.
+`/app/jobs#/<id>/review`. The token is stored with `handoff: true`, which `GET /api/users/auth/link-status` reports
+(`{"status": "valid", "handoff": true}`; every other token says `false`). The verify page signs in at once, without
+the email-scanner "Complete Sign-In" tap, only when the URL has `handoff=1` **and** the server says `handoff: true`;
+otherwise it shows the tap. A used or expired link shows the normal "link expired" state. `locale` may be any of the
+web app's 33 locales (`WEB_LOCALES` in `backend/i18n.py`, kept in sync with `frontend/i18n/routing.ts` by a test);
+anything else falls back to `en`.
 
 Errors: `401 {"detail": "invalid_session"}`, `404 {"detail": "not_found"}` (missing or not the caller's job: same
 answer), `409 {"detail": "not_in_review"}` (status isn't `awaiting_review` / `in_review`), `422` unknown target.

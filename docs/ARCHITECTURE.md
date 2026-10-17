@@ -330,6 +330,8 @@ web (`backend/api/routes/login_code.py`, see [API.md § User Authentication](API
 email code (`send-code` / `verify-code`), Google ID token (`/auth/google`) and Apple ID token (`/auth/apple`).
 It opens the web review with a 2-minute single-use handoff link (`/auth/handoff-token`) and returns from Stripe
 through the `/credits/app-return` bounce to the `nomadkaraoke://` scheme.
+A Google or Apple identity with a verified email links to the existing account with that email (same credits, no
+second welcome credit); an Apple "Hide My Email" relay address is its own account.
 
 Config (all public, non-secret; env vars override the defaults in `backend/config.py`):
 

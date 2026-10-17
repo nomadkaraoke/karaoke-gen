@@ -18,6 +18,15 @@ from typing import Any
 from starlette.requests import Request
 
 SUPPORTED_LOCALES = ("en", "es", "de")
+# Every locale the web app serves (frontend/i18n/routing.ts, frontend/messages/*.json;
+# a test keeps them in sync). Use for web URL prefixes; SUPPORTED_LOCALES is the
+# backend's own (email / API message) translations.
+WEB_LOCALES = (
+    "en", "es", "de", "pt", "fr", "ja", "ko", "zh", "it", "nl",
+    "pl", "tr", "ru", "th", "id", "vi", "tl", "hi", "ar", "sv",
+    "nb", "da", "fi", "cs", "ro", "hu", "el", "he", "ms", "uk",
+    "hr", "sk", "ca",
+)
 DEFAULT_LOCALE = "en"
 TRANSLATIONS_DIR = Path(__file__).parent / "translations"
 
@@ -121,6 +130,11 @@ def get_full_locale_from_request(request: Request) -> str | None:
             return lang
 
     return None
+
+
+def get_web_locale_prefix(locale: str) -> str:
+    """Web URL locale prefix for any of the web app's locales (fallback '/en')."""
+    return f"/{locale if locale in WEB_LOCALES else DEFAULT_LOCALE}"
 
 
 def get_locale_prefix(locale: str) -> str:

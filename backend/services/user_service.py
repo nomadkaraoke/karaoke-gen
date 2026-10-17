@@ -335,6 +335,7 @@ class UserService:
         expiry_hours: int = 24,
         purpose: Optional[str] = None,
         expiry_seconds: Optional[int] = None,
+        handoff: bool = False,
     ) -> MagicLinkToken:
         """
         Create an admin login token for email-embedded authentication links.
@@ -349,6 +350,8 @@ class UserService:
                 verify endpoint maps known purposes to a post-login redirect
             expiry_seconds: Short-lived override of ``expiry_hours`` (1-3600),
                 e.g. the mobile app's 2-minute web handoff links
+            handoff: Mark the token as an app → web handoff token (reported by
+                the read-only link status so the verify page can skip its gate)
 
         Returns:
             MagicLinkToken object containing the token
@@ -383,6 +386,7 @@ class UserService:
             created_at=now,
             expires_at=now + lifetime,
             purpose=purpose,
+            handoff=handoff,
         )
 
         # Save to Firestore (same collection as magic links for unified verification)
@@ -466,23 +470,28 @@ class UserService:
 
         Returns one of: "valid", "used", "expired", "invalid".
         """
+        return self.get_magic_link_state(token)[0]
+
+    def get_magic_link_state(self, token: str) -> Tuple[str, bool]:
+        """``get_magic_link_status`` plus whether the token is an app → web
+        handoff token (minted by POST /auth/handoff-token). Read-only."""
         try:
             if not token or not token.strip():
-                return "invalid"
+                return "invalid", False
 
             doc = self.db.collection(MAGIC_LINKS_COLLECTION).document(token).get()
             if not doc.exists:
-                return "invalid"
+                return "invalid", False
 
             magic_link = MagicLinkToken(**doc.to_dict())
             if magic_link.used:
-                return "used"
+                return "used", magic_link.handoff
             if datetime.utcnow() > magic_link.expires_at:
-                return "expired"
-            return "valid"
+                return "expired", magic_link.handoff
+            return "valid", magic_link.handoff
         except Exception:
             logger.exception("Error checking magic link status")
-            return "invalid"
+            return "invalid", False
 
     def grant_welcome_credits_if_eligible(
         self,

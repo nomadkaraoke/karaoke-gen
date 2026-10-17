@@ -678,6 +678,9 @@ def claim_welcome_credit(
 
 class MagicLinkStatusResponse(BaseModel):
     status: str  # "valid" | "used" | "expired" | "invalid"
+    # True only for app → web handoff tokens (POST /auth/handoff-token). The verify
+    # page skips the "Complete Sign-In" tap only when this AND the URL's handoff=1.
+    handoff: bool = False
 
 
 @router.get("/auth/link-status", response_model=MagicLinkStatusResponse)
@@ -699,7 +702,8 @@ def magic_link_status(
     """
     if not token or not token.strip():
         return MagicLinkStatusResponse(status="invalid")
-    return MagicLinkStatusResponse(status=user_service.get_magic_link_status(token))
+    status, handoff = user_service.get_magic_link_state(token)
+    return MagicLinkStatusResponse(status=status, handoff=handoff)
 
 
 @router.post("/auth/resend-from-token", response_model=ResendFromTokenResponse)

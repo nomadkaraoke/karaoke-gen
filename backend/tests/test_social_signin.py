@@ -152,6 +152,24 @@ class TestVerifyTokens:
         with pytest.raises(InvalidIdentityToken):
             verify_apple_id_token(_apple_token(iss="https://accounts.google.com"), [APPLE_AUD])
 
+    def test_jwks_connection_error_is_provider_unavailable(self, monkeypatch):
+        class DownJwksClient:
+            def get_signing_key_from_jwt(self, token):
+                raise jwt.PyJWKClientConnectionError("down")
+
+        monkeypatch.setattr(social_identity, "_jwks_client", lambda url: DownJwksClient())
+        with pytest.raises(social_identity.IdentityProviderUnavailable):
+            verify_google_id_token(_token(), [GOOGLE_AUD])
+
+    def test_unknown_kid_is_invalid_not_unavailable(self, monkeypatch):
+        class NoKeyJwksClient:
+            def get_signing_key_from_jwt(self, token):
+                raise jwt.PyJWKClientError('Unable to find a signing key that matches: "k9"')
+
+        monkeypatch.setattr(social_identity, "_jwks_client", lambda url: NoKeyJwksClient())
+        with pytest.raises(InvalidIdentityToken):
+            verify_google_id_token(_token(), [GOOGLE_AUD])
+
     def test_jwks_client_cached_per_url(self, monkeypatch):
         monkeypatch.undo()  # real _jwks_client (no network: PyJWKClient fetches lazily)
         monkeypatch.setattr(social_identity, "_JWKS_CLIENTS", {})
@@ -256,6 +274,18 @@ class TestGoogleSignIn:
         with pytest.raises(RuntimeError):
             _google(client, _token(), referral_code="FRIEND10")
         assert seen["referral_code"] == "FRIEND10" and seen["grant_welcome_credit"] is True
+
+
+    def test_jwks_fetch_failure_503_retryable(self, client, monkeypatch, user_service):
+        class DownJwksClient:
+            def get_signing_key_from_jwt(self, token):
+                raise jwt.PyJWKClientConnectionError("Fail to fetch data from the url, err: timed out")
+
+        monkeypatch.setattr(social_identity, "_jwks_client", lambda url: DownJwksClient())
+        for call, token in ((_google, _token()), (_apple, _apple_token())):
+            resp = call(client, token)
+            assert resp.status_code == 503 and resp.json()["detail"] == "identity_provider_unavailable"
+        assert user_service.get_user("signer@example.com") is None
 
 
 class TestAppleSignIn:

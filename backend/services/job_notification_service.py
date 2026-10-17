@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Optional, Dict, Any
 
-from backend.i18n import get_locale_prefix
+from backend.i18n import get_locale_prefix, get_web_locale_prefix
 from backend.services.email_service import get_email_service
 from backend.services.template_service import get_template_service
 from backend.services.user_service import get_user_service
@@ -75,8 +75,9 @@ def build_review_login_url(
             expiry_hours=KJBOX_REVIEW_LOGIN_LINK_EXPIRY_HOURS,
             purpose=f"job_review:{job_id}",
             expiry_seconds=handoff_seconds,
+            handoff=bool(handoff_seconds),
         )
-        url = f"{base}{get_locale_prefix(locale)}/auth/verify?token={token.token}"
+        url = f"{base}{get_web_locale_prefix(locale)}/auth/verify?token={token.token}"
         return f"{url}&handoff=1" if handoff_seconds else url
     except Exception:
         logger.exception(f"Failed to mint review login link for job {job_id}; using bare review URL")

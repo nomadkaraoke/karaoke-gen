@@ -52,7 +52,7 @@ from backend.api.routes.users import (
     complete_verified_login,
 )
 from backend.config import get_settings, is_production
-from backend.i18n import SUPPORTED_LOCALES, get_full_locale_from_request, get_locale_from_request, t
+from backend.i18n import WEB_LOCALES, get_full_locale_from_request, get_locale_from_request, t
 from backend.models.user import VerifyMagicLinkResponse
 from backend.services.email_service import EmailService, get_email_service
 from backend.services.email_validation_service import get_email_validation_service
@@ -476,7 +476,8 @@ def create_handoff_token(
     from backend.services.job_notification_service import build_review_login_url
 
     token = _bearer_token(authorization)
-    locale = body.locale if body.locale in SUPPORTED_LOCALES else "en"
+    # Any of the web app's 33 locales (a French app user lands on /fr/…/review).
+    locale = body.locale if body.locale in WEB_LOCALES else "en"
     # Sync route (threadpool): session check, job read and mint are blocking Firestore calls.
     job, _status = get_owned_review_job(user_service, token, body.job_id)
     url = build_review_login_url(
@@ -519,6 +520,9 @@ def _verify_identity(provider: str, id_token: str) -> "social_identity.VerifiedI
     except social_identity.InvalidIdentityToken as e:
         logger.warning(f"{provider}-signin: {e}")
         raise HTTPException(status_code=401, detail="invalid_token")
+    except social_identity.IdentityProviderUnavailable as e:
+        logger.error(f"{provider}-signin: {e}")
+        raise HTTPException(status_code=503, detail="identity_provider_unavailable")
 
 
 def _social_sign_in(
@@ -592,7 +596,8 @@ def google_sign_in(
 
     Audience = ``GOOGLE_OAUTH_CLIENT_IDS``. 401 ``invalid_token`` (bad signature,
     issuer, audience, expiry, or unverified email), 503 ``google_not_configured``,
-    422 disposable / blocked, 429 ``signup_rate_limited`` (new accounts only).
+    503 ``identity_provider_unavailable`` (couldn't fetch the provider's keys;
+    retryable), 422 disposable / blocked, 429 ``signup_rate_limited`` (new accounts only).
     """
     return _social_sign_in("google", body, http_request, user_service, email_service)
 

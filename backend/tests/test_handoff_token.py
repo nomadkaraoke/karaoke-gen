@@ -10,6 +10,7 @@ they're covered against the real emulator in
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
@@ -89,6 +90,7 @@ def test_handoff_returns_url_for_owned_review_job(client, user_service, jobs, db
     assert link["email"] == EMAIL
     assert link["purpose"] == "job_review:job1234"
     assert link["used"] is False
+    assert link["handoff"] is True
     ttl = (datetime.fromisoformat(link["expires_at"]) - datetime.fromisoformat(link["created_at"])).total_seconds()
     assert 0 < ttl <= 120
 
@@ -96,6 +98,28 @@ def test_handoff_returns_url_for_owned_review_job(client, user_service, jobs, db
 def test_handoff_in_review_also_allowed(client, user_service, jobs):
     jobs["job1234"] = _job("in_review")
     assert _handoff(client, _session(user_service)).status_code == 200
+
+
+@pytest.mark.parametrize("locale", ["fr", "ja", "tl", "ca"])
+def test_handoff_uses_any_web_locale(client, user_service, jobs, locale):
+    # The web app speaks 33 languages, not just the backend's email locales.
+    jobs["job1234"] = _job("awaiting_review")
+    url = _handoff(client, _session(user_service), locale=locale).json()["url"]
+    assert url.startswith(f"https://gen.test/{locale}/auth/verify?")
+
+
+def test_web_locales_match_frontend_routing_and_messages():
+    import os
+
+    from backend.i18n import WEB_LOCALES
+
+    root = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
+    with open(os.path.join(root, "i18n", "routing.ts")) as f:
+        routing = f.read()
+    block = routing.split("locales:", 1)[1].split("]", 1)[0]
+    assert set(WEB_LOCALES) == set(re.findall(r"'([a-z]{2,3})'", block))
+    messages = {n[:-5] for n in os.listdir(os.path.join(root, "messages")) if n.endswith(".json")}
+    assert set(WEB_LOCALES) == messages
 
 
 def test_handoff_unknown_locale_falls_back_to_en(client, user_service, jobs):
@@ -163,3 +187,40 @@ class TestAdminLoginTokenSeconds:
     def test_default_hours_unchanged(self, user_service):
         tok = user_service.create_admin_login_token(EMAIL)
         assert round((tok.expires_at - tok.created_at).total_seconds() / 3600) == 24
+
+
+class TestLinkStatusHandoffFlag:
+    """The verify page auto-signs-in only when the URL says handoff=1 AND the
+    server says the token really was minted by the handoff endpoint."""
+
+    @pytest.fixture
+    def status_client(self, user_service):
+        from backend.api.routes import users as users_routes
+
+        app = FastAPI()
+        app.include_router(users_routes.router, prefix="/api")
+        app.dependency_overrides[get_user_service] = lambda: user_service
+        return TestClient(app)
+
+    def _status(self, status_client, token):
+        return status_client.get("/api/users/auth/link-status", params={"token": token}).json()
+
+    def test_handoff_minted_token_reports_handoff(self, client, status_client, user_service, jobs):
+        jobs["job1234"] = _job("awaiting_review")
+        url = _handoff(client, _session(user_service)).json()["url"]
+        token = parse_qs(urlparse(url).query)["token"][0]
+        assert self._status(status_client, token) == {"status": "valid", "handoff": True}
+
+    def test_other_tokens_never_report_handoff(self, status_client, user_service, jobs):
+        from backend.services.job_notification_service import build_review_login_url
+
+        # kjbox's 72-hour review link (same purpose, emailed) and a plain magic link.
+        review = build_review_login_url("job1234", EMAIL)
+        assert "handoff" not in review
+        review_token = parse_qs(urlparse(review).query)["token"][0]
+        magic = user_service.create_magic_link(EMAIL).token
+        for token in (review_token, magic):
+            assert self._status(status_client, token) == {"status": "valid", "handoff": False}
+
+    def test_unknown_token_not_handoff(self, status_client):
+        assert self._status(status_client, "nope") == {"status": "invalid", "handoff": False}
