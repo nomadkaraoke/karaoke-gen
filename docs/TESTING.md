@@ -344,7 +344,7 @@ analysis. The review preview video is the real local ffmpeg render. Startup
 |----------|---------|
 | `GET /api/test/status` | readiness, effective config, running fake workers, scenario names |
 | `POST /api/test/scenario {name, email?, credits?, artist?, title?}` | seed `user`, `job_awaiting_review`, `job_complete`, `job_failed`, `job_awaiting_duration_confirm` → `{email, session_token, credits, job_id?}`. Jobs are made through the real search + create-from-search routes. |
-| `GET/PUT /api/test/fake-config[?email=]` | knobs: `step_delay_seconds`, `auto_approve`, `fail_at`, `audio_duration_seconds`, `search_result_count`. With `?email=` the knobs apply only to that user's jobs, so tests that each use their own user can run in parallel. |
+| `GET/PUT /api/test/fake-config[?email=]` | knobs: `step_delay_seconds`, `auto_approve`, `fail_at`, `audio_duration_seconds`, `search_result_count`, `search_confidence` (`perfect` / `recommended` / `unsure` → the UI's confidence tier 1 / 2 / 3), `youtube_url_enabled` (default `true`: the fake video step sets `state_data.youtube_url = https://youtu.be/dQw4w9WgXcQ` on non-private jobs). With `?email=` the knobs apply only to that user's jobs, so tests that each use their own user can run in parallel. Search runs before a job exists, so `search_result_count` and `search_confidence` only take effect globally. |
 | `GET /api/test/emails?to=` | captured outbound email, newest first, with extracted `links` and 6-digit `codes` |
 | `POST /api/test/reset` | wipe the emulator Firestore + bucket (keeps seeded themes) |
 
@@ -352,6 +352,26 @@ analysis. The review preview video is the real local ffmpeg render. Startup
 `localStorage.karaoke_access_token` (`signInAs` in `e2e/local-stack/stack.ts`).
 Alternatively, drive the real magic link or email code and read it from
 `/api/test/emails`.
+
+**Google / Apple sign-in:** `POST /api/users/auth/google|apple {"id_token": "fake:<email>"}`
+signs in as `<email>` with no network call, only in fake mode (outside it, 401). The
+mobile app's fake-social switch sends these.
+
+**Handoff to the web review:** with a session for a `job_awaiting_review` scenario,
+`POST /api/users/auth/handoff-token {"target": "job_review", "job_id": …}` returns a
+2-minute, single-use `…/auth/verify?token=…&handoff=1` URL (on `FRONTEND_URL`) that
+signs in without the "Complete Sign-In" tap and lands on the review.
+
+**Checkout back to the app:** `POST /api/users/credits/checkout` with
+`"return_to": "app"` makes the fake checkout's Pay / Cancel redirect to
+`$LOCAL_STACK_API_URL/api/users/credits/app-return?status=…`, which 302s to
+`nomadkaraoke://checkout?status=success|cancelled`. Cancel never runs the webhook.
+
+**Fake search tiers:** `fake_workers/search.py` builds the `search_confidence`
+shapes, and `frontend/lib/__tests__/fake-search-tiers.test.ts` feeds them to the real
+`getSearchConfidence` via `frontend/lib/__tests__/fixtures/fake-search-tiers.json`.
+A backend test fails if that fixture is stale; regenerate it with
+`poetry run python -m backend.services.fake_workers.search --write-fixture`.
 
 **Mobile (Maestro / dev builds):** run the stack, then point the app at
 `http://10.0.2.2:8010` (Android emulator) or `http://127.0.0.1:8010` (iOS

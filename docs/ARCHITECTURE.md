@@ -323,6 +323,30 @@ Three Cloud Functions manage the community karaoke data pipeline, running daily 
 
 **Source code:** `infrastructure/functions/{divebar_mirror,kn_data_sync,divebar_lookup}/`
 
+## Mobile app sign-in
+
+The Nomad Karaoke mobile app (nomad-mobile) signs in three ways, all ending in the same user/session code as the
+web (`backend/api/routes/login_code.py`, see [API.md § User Authentication](API.md#user-authentication)):
+email code (`send-code` / `verify-code`), Google ID token (`/auth/google`) and Apple ID token (`/auth/apple`).
+It opens the web review with a 2-minute single-use handoff link (`/auth/handoff-token`) and returns from Stripe
+through the `/credits/app-return` bounce to the `nomadkaraoke://` scheme.
+
+Config (all public, non-secret; env vars override the defaults in `backend/config.py`):
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `GOOGLE_OAUTH_CLIENT_IDS` | Web + iOS client IDs below | Accepted `aud` of Google ID tokens |
+| `APPLE_SIGNIN_AUDIENCES` | `com.nomadkaraoke.mobile` | Accepted `aud` of Apple ID tokens (bundle ID; add a Services ID for web/Android) |
+| `MOBILE_APP_SCHEME` | `nomadkaraoke` | Scheme the checkout bounce redirects to |
+
+Google OAuth clients (GCP project `nomadkaraoke`, Google Auth Platform, consent screen "Nomad Karaoke"):
+
+| Name / type | Client ID | Notes |
+|-------------|-----------|-------|
+| Web application | `718638054799-fush0smd1e4icq9pt0immp8n59jjlebh.apps.googleusercontent.com` | The audience: Android Credential Manager and iOS (with `serverClientId` / `webClientId`) issue tokens for it |
+| iOS | `718638054799-hre535n83p8i85tsqf6ai759nlubhd2o.apps.googleusercontent.com` | Also accepted as an audience (iOS SDK tokens can carry it) |
+| Android | `718638054799-q0f65m68a31du5nn9h5accsauad232ku.apps.googleusercontent.com` | Device-only, never an audience. Package `com.nomadkaraoke.mobile`, SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` (the RN/Expo template debug keystore); add the release key's SHA-1 before store builds |
+
 ## Firestore Collections
 
 karaoke-gen shares a GCP project (`nomadkaraoke`) with karaoke-decide, but uses separate Firestore collections:
