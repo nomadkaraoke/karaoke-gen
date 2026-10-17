@@ -34,6 +34,10 @@ FAKE_MODEL_NAMES = {
 }
 
 
+# Set as state_data.youtube_url on public jobs when FakeConfig.youtube_url_enabled.
+FAKE_YOUTUBE_URL = "https://youtu.be/dQw4w9WgXcQ"
+
+
 class FakeWorkerFailure(Exception):
     """Raised inside a fake worker when FakeConfig.fail_at targets it."""
 
@@ -309,6 +313,9 @@ async def run_video(job_id: str) -> bool:
         url = await asyncio.to_thread(storage.upload_file, local, f"jobs/{job_id}/{category}/{key}{ext}")
         job_manager.update_file_url(job_id, category, key, url)
 
+    if config.youtube_url_enabled and not getattr(job, "is_private", False):
+        # Real-looking link so the app's "ready" screen can show "Watch on YouTube".
+        job_manager.update_state_data(job_id, "youtube_url", FAKE_YOUTUBE_URL)
     job_manager.update_state_data(job_id, "video_progress", {"stage": "complete"})
     job_manager.update_processing_metadata(job_id, "timing.video_worker_seconds", round(time.time() - started, 1))
     job_manager.transition_to_state(

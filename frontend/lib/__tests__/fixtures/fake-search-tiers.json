@@ -1,0 +1,174 @@
+{
+  "artist": "Fake Artist",
+  "title": "Fake Song",
+  "shapes": {
+    "perfect": [
+      {
+        "title": "Fake Song",
+        "artist": "Fake Artist",
+        "url": null,
+        "provider": "RED",
+        "duration": 30,
+        "quality": "FLAC 16bit CD",
+        "source_id": "30871261464f73cc",
+        "index": 0,
+        "seeders": 120,
+        "target_file": "01 - Fake Song.flac",
+        "year": 2001,
+        "label": "Fake Records",
+        "release_type": "Album",
+        "match_score": 1.0,
+        "formatted_duration": "0:30",
+        "is_lossless": true,
+        "quality_str": "FLAC 16bit CD",
+        "quality_data": {
+          "format": "FLAC",
+          "bit_depth": 16,
+          "media": "CD"
+        }
+      },
+      {
+        "title": "Fake Song",
+        "artist": "Fake Artist",
+        "url": "https://open.spotify.com/track/7dfadc8d5934486b",
+        "provider": "Spotify",
+        "duration": 30,
+        "quality": "OGG 320kbps",
+        "source_id": "7dfadc8d5934486b",
+        "index": 1,
+        "seeders": null,
+        "target_file": null,
+        "match_score": 0.95,
+        "is_lossless": false,
+        "quality_str": "OGG 320kbps"
+      },
+      {
+        "title": "Fake Artist - Fake Song (Official Video)",
+        "artist": "Fake Artist",
+        "url": "https://www.youtube.com/watch?v=f5c918ac50d",
+        "provider": "YouTube",
+        "duration": 30,
+        "quality": "opus 160kbps",
+        "source_id": "f5c918ac50d",
+        "index": 2,
+        "seeders": null,
+        "target_file": null,
+        "channel": "Fake ArtistVEVO",
+        "view_count": 1000000,
+        "is_lossless": false
+      }
+    ],
+    "recommended": [
+      {
+        "title": "Fake Song",
+        "artist": "Fake Artist",
+        "url": null,
+        "provider": "RED",
+        "duration": 30,
+        "quality": "FLAC 16bit CD",
+        "source_id": "30871261464f73cc",
+        "index": 0,
+        "seeders": 20,
+        "target_file": "01 - Fake Song.flac",
+        "year": 2001,
+        "label": "Fake Records",
+        "release_type": "Album",
+        "match_score": 1.0,
+        "formatted_duration": "0:30",
+        "is_lossless": true,
+        "quality_str": "FLAC 16bit CD",
+        "quality_data": {
+          "format": "FLAC",
+          "bit_depth": 16,
+          "media": "CD"
+        }
+      },
+      {
+        "title": "Fake Song",
+        "artist": "Fake Artist",
+        "url": "https://open.spotify.com/track/7dfadc8d5934486b",
+        "provider": "Spotify",
+        "duration": 30,
+        "quality": "OGG 320kbps",
+        "source_id": "7dfadc8d5934486b",
+        "index": 1,
+        "seeders": null,
+        "target_file": null,
+        "match_score": 0.95,
+        "is_lossless": false,
+        "quality_str": "OGG 320kbps"
+      },
+      {
+        "title": "Fake Artist - Fake Song (Official Video)",
+        "artist": "Fake Artist",
+        "url": "https://www.youtube.com/watch?v=f5c918ac50d",
+        "provider": "YouTube",
+        "duration": 30,
+        "quality": "opus 160kbps",
+        "source_id": "f5c918ac50d",
+        "index": 2,
+        "seeders": null,
+        "target_file": null,
+        "channel": "Fake ArtistVEVO",
+        "view_count": 1000000,
+        "is_lossless": false
+      }
+    ],
+    "unsure": [
+      {
+        "title": "Completely Different Tune",
+        "artist": "Fake Artist",
+        "url": null,
+        "provider": "RED",
+        "duration": 30,
+        "quality": "FLAC 16bit CD",
+        "source_id": "30871261464f73cc",
+        "index": 0,
+        "seeders": 3,
+        "target_file": "01 - Completely Different Tune.flac",
+        "year": 2001,
+        "label": "Fake Records",
+        "release_type": "Album",
+        "match_score": 0.3,
+        "formatted_duration": "0:30",
+        "is_lossless": true,
+        "quality_str": "FLAC 16bit CD",
+        "quality_data": {
+          "format": "FLAC",
+          "bit_depth": 16,
+          "media": "CD"
+        }
+      },
+      {
+        "title": "Completely Different Tune",
+        "artist": "Fake Artist",
+        "url": "https://open.spotify.com/track/7dfadc8d5934486b",
+        "provider": "Spotify",
+        "duration": 30,
+        "quality": "OGG 320kbps",
+        "source_id": "7dfadc8d5934486b",
+        "index": 1,
+        "seeders": null,
+        "target_file": null,
+        "match_score": 0.3,
+        "is_lossless": false,
+        "quality_str": "OGG 320kbps"
+      },
+      {
+        "title": "Fake Artist - Completely Different Tune (Official Video)",
+        "artist": "Fake Artist",
+        "url": "https://www.youtube.com/watch?v=f5c918ac50d",
+        "provider": "YouTube",
+        "duration": 30,
+        "quality": "opus 160kbps",
+        "source_id": "f5c918ac50d",
+        "index": 2,
+        "seeders": null,
+        "target_file": null,
+        "channel": "Fake ArtistVEVO",
+        "view_count": 1000000,
+        "is_lossless": false
+      }
+    ]
+  }
+}

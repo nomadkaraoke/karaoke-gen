@@ -258,7 +258,7 @@ class FirestoreService:
         'error_details.stall_minutes', 'error_details.keep_trying', 'non_interactive', 'outputs_deleted_at', 'user_email', 'is_private',
         'renders_purged_at', 'stems_purged_at', 'finalise_only', 'prep_only',
         'state_data.regenerate', 'state_data.stems_restore', 'state_data.instrumental_selection',
-        'made_for_you', 'customer_email', 'locale',
+        'made_for_you', 'customer_email', 'locale', 'credit_refunded',
         'url', 'filename', 'existing_instrumental_gcs_path',
         'audio_search_artist', 'audio_search_title',
         'audio_source_type', 'source_name', 'source_id', 'target_file', 'download_url',
