@@ -53,6 +53,7 @@ def build_review_login_url(
     user_email: str,
     locale: str = "en",
     frontend_url: Optional[str] = None,
+    handoff_seconds: Optional[int] = None,
 ) -> Optional[str]:
     """One-click sign-in link that lands on the job's lyrics review.
 
@@ -61,6 +62,11 @@ def build_review_login_url(
     wall. The magic-link token's ``job_review:<id>`` purpose makes /auth/verify
     redirect straight to the review. Returns None on failure (callers fall back
     to the bare review URL).
+
+    ``handoff_seconds`` mints an app-to-web handoff link instead: the token lives
+    only that many seconds and the URL carries ``handoff=1``, which tells the
+    verify page to sign in at once (no email-scanner "Complete Sign-In" gate —
+    the link never travels through email).
     """
     base = frontend_url or os.getenv("FRONTEND_URL", "https://gen.nomadkaraoke.com")
     try:
@@ -68,8 +74,10 @@ def build_review_login_url(
             email=user_email,
             expiry_hours=KJBOX_REVIEW_LOGIN_LINK_EXPIRY_HOURS,
             purpose=f"job_review:{job_id}",
+            expiry_seconds=handoff_seconds,
         )
-        return f"{base}{get_locale_prefix(locale)}/auth/verify?token={token.token}"
+        url = f"{base}{get_locale_prefix(locale)}/auth/verify?token={token.token}"
+        return f"{url}&handoff=1" if handoff_seconds else url
     except Exception:
         logger.exception(f"Failed to mint review login link for job {job_id}; using bare review URL")
         return None

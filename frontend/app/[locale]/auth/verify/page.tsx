@@ -63,19 +63,31 @@ function VerifyMagicLinkContent() {
     // UI's one-click resend can use it without re-entering an email.
     setOriginalToken(token)
 
+    // App → web handoff links (handoff=1, minted by the mobile app for its own
+    // signed-in user, 2-minute single-use token) never travel through email, so
+    // no scanner can pre-render them: sign in at once instead of showing the gate.
+    // Email links never carry the parameter, so they keep the gate.
+    const isHandoff = searchParams.get("handoff") === "1"
+
     // Read-only probe: show the gate for a valid link, or the failure UI upfront
     // for an already-used/expired one. If the probe itself fails, fall back to
     // the gate so a transient error never blocks a user with a valid link.
     api.getMagicLinkStatus(token)
       .then(({ status }) => {
         if (status === "valid") {
-          setState("confirm")
+          if (isHandoff) {
+            void handleConfirm()
+          } else {
+            setState("confirm")
+          }
         } else {
           setState("error")
           setErrorMessage(t('linkExpiredOrUsed'))
         }
       })
       .catch(() => setState("confirm"))
+    // handleConfirm is stable in effect (refs + searchParams); this runs once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, t])
 
   const handleConfirm = async () => {

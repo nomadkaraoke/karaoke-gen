@@ -7,6 +7,9 @@ email carries BOTH a 6-digit code and a regular magic link; either signs in.
 - POST /api/users/auth/send-code   {email, locale?, device_fingerprint?,
                                     referral_code?, attribution?} → 202 {"status": "sent"}
 - POST /api/users/auth/verify-code {email, code} → VerifyMagicLinkResponse
+- POST /api/users/auth/handoff-token {target, job_id, locale?} (Bearer)
+                                   → {url, expires_in_seconds}: the mobile app's
+                                     2-minute, single-use signed-in web link
 
 Code mechanics come from :class:`LoginCodeStore` (shared with kjbox): HMAC-hashed
 at rest with a server pepper, 10-minute TTL, 5 verify attempts then 429,
@@ -32,12 +35,12 @@ import hashlib
 import logging
 import threading
 from datetime import datetime
-from typing import Annotated, Dict, Optional
+from typing import Annotated, Dict, Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field, StringConstraints
 
-from backend.api.routes.kjbox import _normalize_email, _split_locale
+from backend.api.routes.kjbox import _normalize_email, _split_locale, get_owned_review_job
 from backend.api.routes.users import (
     _build_user_public,
     _mask_email,
@@ -45,7 +48,7 @@ from backend.api.routes.users import (
     complete_verified_login,
 )
 from backend.config import get_settings, is_production
-from backend.i18n import get_full_locale_from_request, get_locale_from_request, t
+from backend.i18n import SUPPORTED_LOCALES, get_full_locale_from_request, get_locale_from_request, t
 from backend.models.user import VerifyMagicLinkResponse
 from backend.services.email_service import EmailService, get_email_service
 from backend.services.email_validation_service import get_email_validation_service
@@ -339,3 +342,60 @@ def verify_login_code(
         credits_granted=result.credits_granted,
         credit_status=result.credit_status,
     )
+
+
+# ------------------------------------------------------------- web handoff
+
+# App → web handoff links carry a real sign-in token in the URL, so they live
+# only long enough for the app to open the browser, and are single-use (the
+# magic-link verify transaction marks them used).
+HANDOFF_TOKEN_TTL_SECONDS = 120
+
+
+class HandoffTokenRequest(BaseModel):
+    # Allowlist of web destinations; Phase 1 needs only the job's lyrics review.
+    target: Literal["job_review"]
+    job_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    locale: Optional[str] = None
+
+
+class HandoffTokenResponse(BaseModel):
+    url: str
+    expires_in_seconds: int
+
+
+def _bearer_token(authorization: Optional[str]) -> str:
+    scheme, _, token = (authorization or "").partition(" ")
+    token = token.strip()
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="invalid_session")
+    return token
+
+
+@router.post("/auth/handoff-token", response_model=HandoffTokenResponse)
+def create_handoff_token(
+    body: HandoffTokenRequest,
+    user_service: UserService = Depends(get_user_service),
+    authorization: Optional[str] = Header(default=None),
+):
+    """Signed-in web link for the app's own job review (the mobile "Review on web").
+
+    The URL is ``{FRONTEND_URL}/{locale}/auth/verify?token=…&handoff=1``: a
+    ``job_review:<id>`` magic-link token valid for ``HANDOFF_TOKEN_TTL_SECONDS``
+    and usable once. ``handoff=1`` makes the verify page sign in without the
+    email-scanner "Complete Sign-In" tap; a used or expired link shows the
+    normal "link expired" state. 401 ``invalid_session``, 404 ``not_found``
+    (missing or not the caller's job), 409 ``not_in_review``.
+    """
+    from backend.services.job_notification_service import build_review_login_url
+
+    token = _bearer_token(authorization)
+    locale = body.locale if body.locale in SUPPORTED_LOCALES else "en"
+    # Sync route (threadpool): session check, job read and mint are blocking Firestore calls.
+    job, _status = get_owned_review_job(user_service, token, body.job_id)
+    url = build_review_login_url(
+        job.job_id, job.user_email, locale=locale, handoff_seconds=HANDOFF_TOKEN_TTL_SECONDS,
+    )
+    if not url:
+        raise HTTPException(status_code=502, detail="link_unavailable")
+    return HandoffTokenResponse(url=url, expires_in_seconds=HANDOFF_TOKEN_TTL_SECONDS)

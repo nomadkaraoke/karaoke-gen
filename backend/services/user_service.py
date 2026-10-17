@@ -313,6 +313,7 @@ class UserService:
         email: str,
         expiry_hours: int = 24,
         purpose: Optional[str] = None,
+        expiry_seconds: Optional[int] = None,
     ) -> MagicLinkToken:
         """
         Create an admin login token for email-embedded authentication links.
@@ -325,16 +326,26 @@ class UserService:
             expiry_hours: Hours until token expires (default: 24, max: 168)
             purpose: Optional purpose tag (e.g. "job_review:<job_id>") — the
                 verify endpoint maps known purposes to a post-login redirect
+            expiry_seconds: Short-lived override of ``expiry_hours`` (1-3600),
+                e.g. the mobile app's 2-minute web handoff links
 
         Returns:
             MagicLinkToken object containing the token
 
         Raises:
-            ValueError: If expiry_hours is out of valid range (1-168)
+            ValueError: If expiry_hours (1-168) or expiry_seconds (1-3600) is out of range
         """
-        # Validate expiry_hours (1 hour to 7 days)
-        if not 1 <= expiry_hours <= 168:
-            raise ValueError(f"expiry_hours must be between 1 and 168, got {expiry_hours}")
+        if expiry_seconds is not None:
+            if not 1 <= expiry_seconds <= 3600:
+                raise ValueError(f"expiry_seconds must be between 1 and 3600, got {expiry_seconds}")
+            lifetime = timedelta(seconds=expiry_seconds)
+            lifetime_label = f"{expiry_seconds}s"
+        else:
+            # Validate expiry_hours (1 hour to 7 days)
+            if not 1 <= expiry_hours <= 168:
+                raise ValueError(f"expiry_hours must be between 1 and 168, got {expiry_hours}")
+            lifetime = timedelta(hours=expiry_hours)
+            lifetime_label = f"{expiry_hours}h"
 
         email = email.lower()
 
@@ -344,10 +355,12 @@ class UserService:
         # Generate secure token
         token = secrets.token_urlsafe(32)
 
+        now = datetime.utcnow()
         admin_login = MagicLinkToken(
             token=token,
             email=email,
-            expires_at=datetime.utcnow() + timedelta(hours=expiry_hours),
+            created_at=now,
+            expires_at=now + lifetime,
             purpose=purpose,
         )
 
@@ -357,7 +370,7 @@ class UserService:
 
         # Log with redacted email (show only domain) for PII protection
         domain = email.split('@')[-1] if '@' in email else 'unknown'
-        logger.info(f"Created admin login token for ***@{domain} (expires in {expiry_hours}h)")
+        logger.info(f"Created admin login token for ***@{domain} (expires in {lifetime_label})")
         return admin_login
 
     def verify_magic_link(self, token: str) -> Tuple[bool, Optional[User], str]:

@@ -14,9 +14,11 @@ jest.mock('@/i18n/routing', () => ({
 }))
 
 const tokenParam = 'expired-original-token'
+// Extra query params per test (e.g. handoff=1 for app → web handoff links).
+let extraParams: Record<string, string> = {}
 jest.mock('next/navigation', () => ({
   useSearchParams: () => ({
-    get: (key: string) => (key === 'token' ? tokenParam : null),
+    get: (key: string) => (key === 'token' ? tokenParam : extraParams[key] ?? null),
   }),
 }))
 
@@ -219,5 +221,51 @@ describe('VerifyMagicLinkPage — resend recovery flow', () => {
         screen.getByText(/Something went wrong on our end/i),
       ).toBeInTheDocument()
     })
+  })
+})
+
+describe('VerifyMagicLinkPage — app handoff links (handoff=1)', () => {
+  beforeEach(() => {
+    pushMock.mockClear()
+    verifyMagicLinkMock.mockClear()
+    getStatusMock.mockReset()
+  })
+
+  afterEach(() => {
+    extraParams = {}
+  })
+
+  it('verifies on mount without the Complete Sign-In tap', async () => {
+    extraParams = { handoff: '1' }
+    getStatusMock.mockResolvedValue({ status: 'valid' })
+
+    render(wrap(<VerifyMagicLinkPage />))
+
+    await waitFor(() => expect(verifyMagicLinkMock).toHaveBeenCalledWith(tokenParam))
+    expect(verifyMagicLinkMock).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByRole('button', { name: /Complete Sign-?In/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the normal expired state (no verify) for a used or expired handoff link', async () => {
+    extraParams = { handoff: '1' }
+    getStatusMock.mockResolvedValue({ status: 'used' })
+
+    render(wrap(<VerifyMagicLinkPage />))
+
+    expect(await screen.findByText('Sign-in failed')).toBeInTheDocument()
+    expect(verifyMagicLinkMock).not.toHaveBeenCalled()
+  })
+
+  it('without handoff=1 it still waits for the tap', async () => {
+    getStatusMock.mockResolvedValue({ status: 'valid' })
+
+    render(wrap(<VerifyMagicLinkPage />))
+
+    expect(
+      await screen.findByRole('button', { name: /Complete Sign-?In/i }),
+    ).toBeInTheDocument()
+    expect(verifyMagicLinkMock).not.toHaveBeenCalled()
   })
 })
