@@ -380,6 +380,9 @@ class Settings(BaseSettings):
     # ip-api, encoding VM) are skipped. Startup refuses it in production.
     # See backend/services/fake_workers/ and docs/TESTING.md § Local stack.
     fake_workers: bool = os.getenv("FAKE_WORKERS", "").lower() in ("1", "true", "yes")
+    # URL scheme of the Nomad Karaoke mobile app. App checkouts return through
+    # GET /api/users/credits/app-return, which 302s to {scheme}://checkout?status=…
+    mobile_app_scheme: str = os.getenv("MOBILE_APP_SCHEME", "nomadkaraoke")
     # Canonical YouTube description template. Placeholders ({title}, {artist},
     # {artist_hashtag}, {brand_code}) are filled by
     # backend.services.youtube_description.render_youtube_description, which is the
