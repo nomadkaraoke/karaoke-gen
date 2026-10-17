@@ -564,8 +564,10 @@ async def check_idle_reminder(
 
         if success:
             # Mark reminder as sent (prevents duplicate sends)
+            # Dotted path: a read-modify-write of the whole map could clobber a
+            # concurrent billing update (e.g. confirm-duration's credits_charged).
             job_manager.firestore.update_job(job_id, {
-                'state_data': {**state_data, 'reminder_sent': True}
+                'state_data.reminder_sent': True,
             })
             logger.info(f"[job:{job_id}] Sent {action_type} reminder email to {job.user_email}")
             add_span_event("reminder_sent", {"action_type": action_type})

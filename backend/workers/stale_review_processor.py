@@ -155,7 +155,8 @@ def process_stale_reviews_sync() -> Dict[str, Any]:
                         f"(>={REVIEW_EXPIRY_HOURS}h), auto-expiring with credits_charged refund"
                     )
 
-                    credits_charged = state_data.get('credits_charged', 0) or 0
+                    from backend.services.job_credits import get_credits_charged
+                    credits_charged = get_credits_charged(job)
                     credits_refunded = 0
 
                     # Refund the full charged amount (not flat 1) BEFORE cancelling.
@@ -174,16 +175,28 @@ def process_stale_reviews_sync() -> Dict[str, Any]:
                             )
                             if ok:
                                 credits_refunded = credits_charged
-                                # Prevent cancel_job's internal 1-credit refund
-                                firestore.update_job(job.job_id, {'credit_refunded': True})
+                                # Prevent any other path's refund (cancel_job is also
+                                # told refund=False below).
+                                try:
+                                    firestore.update_job(job.job_id, {'credit_refunded': True})
+                                except Exception as flag_err:
+                                    logger.error(
+                                        f"Job {job.job_id}: refunded but failed to set credit_refunded: {flag_err}"
+                                    )
                         except Exception as refund_err:
                             logger.error(
                                 f"Job {job.job_id}: failed to refund {credits_charged} credits: {refund_err}"
                             )
 
+                    cancel_kwargs = {}
+                    if credits_refunded > 0:
+                        # Already refunded in full above — never let cancel_job
+                        # refund again (even if the credit_refunded write failed).
+                        cancel_kwargs["refund"] = False
                     cancelled = job_manager.cancel_job(
                         job.job_id,
                         reason="Duration confirmation not completed within 48 hours",
+                        **cancel_kwargs,
                     )
                     if cancelled:
                         jobs_expired += 1

@@ -11,6 +11,8 @@ import { api, type Job } from "@/lib/api"
 export interface DurationConfirmData {
   /** Total credits that will be on account after confirm (credits_charged + pending_additional_credits) */
   totalCredits: number
+  /** Credits still owed now (pending_additional_credits) — what the balance must cover */
+  additionalCredits: number
   /** The amount passed to api.confirmDuration (same as totalCredits; validated server-side) */
   acknowledgedCredits: number
   /** Measured duration in seconds (may be null if not yet known) */
@@ -22,7 +24,12 @@ export interface DurationConfirmData {
 export function getDurationConfirmData(job: Job): DurationConfirmData | null {
   if (job.status !== "awaiting_duration_confirm") return null
   const sd = job.state_data ?? {}
-  const creditsCharged = typeof sd.credits_charged === "number" ? sd.credits_charged : 0
+  // Mirrors the backend's job_credits.get_credits_charged default: a job lacking
+  // the field was charged the standard 1 credit at creation unless payment was
+  // bypassed. (Reconcile now persists credits_charged on pause, so this fallback
+  // only matters for jobs paused before that fix.)
+  const creditsCharged =
+    typeof sd.credits_charged === "number" ? sd.credits_charged : sd.payment_bypassed ? 0 : 1
   const pendingAdditional =
     typeof sd.pending_additional_credits === "number" ? sd.pending_additional_credits : 0
   const totalCredits = creditsCharged + pendingAdditional
@@ -32,6 +39,7 @@ export function getDurationConfirmData(job: Job): DurationConfirmData | null {
 
   return {
     totalCredits,
+    additionalCredits: pendingAdditional,
     acknowledgedCredits: totalCredits,
     durationSeconds,
     reconcile,

@@ -928,10 +928,11 @@ class TestCreateJobFromSearch:
         assert response.status_code == 200
         # Check that update_job was called with state_data containing remote_search_id
         update_calls = mock_job_manager_cfs.update_job.call_args_list
-        state_data_call = [c for c in update_calls if 'state_data' in c[0][1]]
+        # Dotted-path merge: replacing state_data would wipe create_job's credits_charged
+        assert not any('state_data' in c[0][1] for c in update_calls)
+        state_data_call = [c for c in update_calls if 'state_data.remote_search_id' in c[0][1]]
         assert len(state_data_call) >= 1
-        state_data = state_data_call[0][0][1]['state_data']
-        assert state_data['remote_search_id'] == "torrent-search-42"
+        assert state_data_call[0][0][1]['state_data.remote_search_id'] == "torrent-search-42"
 
     def test_concurrent_consume_second_request_returns_404(self, mock_job_manager_cfs, auth_headers):
         """Second concurrent request to same session gets 404 (session already consumed)."""

@@ -141,4 +141,20 @@ describe('DurationCostConfirm', () => {
     const buyBtn = screen.getByRole('button', { name: /buy credits/i })
     expect(buyBtn).toBeDisabled()
   })
+
+  it('checks affordability against creditsDue, not the total (reconcile top-up)', () => {
+    // 15-min job: 1 credit already charged, 1 more owed, total 2. A balance of 1
+    // covers it — the old total-based check showed "Buy credits" instead.
+    const onConfirm = jest.fn()
+    render(<DurationCostConfirm {...baseProps} credits={2} creditsDue={1} balance={1} onConfirm={onConfirm} />)
+    expect(screen.getByText(/2 credits/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /confirm & start/i }))
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('still asks to buy credits when the balance cannot cover creditsDue', () => {
+    render(<DurationCostConfirm {...baseProps} credits={3} creditsDue={2} balance={1} />)
+    expect(screen.queryByRole('button', { name: /confirm & start/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /buy credits/i })).toBeInTheDocument()
+  })
 })

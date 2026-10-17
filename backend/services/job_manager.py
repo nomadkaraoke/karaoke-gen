@@ -790,16 +790,15 @@ class JobManager:
             else:
                 action_type = "instrumental"
 
-            # Update state_data with blocking state info (handle None state_data)
-            existing_state_data = job.state_data or {}
-            state_data_update = {
-                'blocking_state_entered_at': blocking_entered_at,
-                'blocking_action_type': action_type,
-                'reminder_sent': False,  # Will be set to True after reminder is sent
-            }
-
+            # Update state_data with blocking state info. Dotted paths merge
+            # server-side — a read-modify-write of the whole map would clobber
+            # fields written since `job` was read (e.g. reconcile's
+            # pending_additional_credits / credits_charged just before this
+            # transition).
             self.firestore.update_job(job.job_id, {
-                'state_data': {**existing_state_data, **state_data_update}
+                'state_data.blocking_state_entered_at': blocking_entered_at,
+                'state_data.blocking_action_type': action_type,
+                'state_data.reminder_sent': False,  # Set True after reminder is sent
             })
 
             # Schedule the idle reminder check via worker service.
@@ -1045,8 +1044,8 @@ class JobManager:
         """
         Refund all credits charged for a job if eligible.
 
-        Reads ``state_data.credits_charged`` (defaulting to 1 for legacy jobs
-        that pre-date the field) and refunds that many credits in a single
+        Reads the charge via ``job_credits.get_credits_charged`` (legacy jobs
+        lacking the field: 1 if create_job charged them, else 0) and refunds that many credits in a single
         ``add_credits`` call.  Skips refund if: already refunded, no user
         email, admin-owned job, or credits_charged == 0 (payment_bypassed).
         Never raises — refund failure must not block the calling operation.
@@ -1069,10 +1068,10 @@ class JobManager:
                 return False
 
             # Determine how many credits to refund.  ``credits_charged`` is set
-            # at job creation (and updated on duration-confirm).  Legacy jobs
-            # that pre-date the field are guaranteed to be 1-credit jobs, so we
-            # default to 1.  payment_bypassed admin/no-email jobs have
-            # credits_charged=0 and must not be refunded.
+            # at job creation (and updated on duration-confirm).  Jobs lacking
+            # the field resolve via job_credits.get_credits_charged (1 if
+            # create_job charged them, 0 for admin/tenant/no-email).
+            # payment_bypassed jobs have credits_charged=0 and are not refunded.
             state_data = job.state_data or {}
             # A re-run of an already-delivered track (storage-retention
             # regenerate, admin/theme re-render) was paid for when it first
@@ -1086,7 +1085,8 @@ class JobManager:
             if job.edit_count:
                 logger.info(f"Job {job_id}: edited track was already delivered, skipping refund")
                 return False
-            credits_charged = int(state_data.get("credits_charged", 1))
+            from backend.services.job_credits import get_credits_charged, is_payment_bypassed
+            credits_charged = 0 if is_payment_bypassed(job) else get_credits_charged(job)
 
             if credits_charged == 0:
                 # Admin / payment-bypassed job — nothing to refund.
@@ -1360,17 +1360,22 @@ class JobManager:
         # per-tick cap (which would delay other stalled jobs), and lets it retry.
         return await get_worker_service().trigger_screens_worker(job_id)
 
-    def cancel_job(self, job_id: str, reason: Optional[str] = None) -> bool:
+    def cancel_job(self, job_id: str, reason: Optional[str] = None, refund: bool = True) -> bool:
         """
         Cancel a job.
         
         Only jobs in non-terminal states can be cancelled. Serialized per job
         within this instance so a double-clicked Cancel can't refund twice.
+
+        ``refund=False`` skips the built-in refund — for callers that have
+        already refunded the full charge themselves (duration over-limit,
+        duration-confirm expiry), so a failed ``credit_refunded`` write can't
+        lead to a second refund here.
         """
         with job_lock(job_id):
-            return self._cancel_job_unlocked(job_id, reason)
+            return self._cancel_job_unlocked(job_id, reason, refund=refund)
 
-    def _cancel_job_unlocked(self, job_id: str, reason: Optional[str]) -> bool:
+    def _cancel_job_unlocked(self, job_id: str, reason: Optional[str], refund: bool = True) -> bool:
         job = self.get_job(job_id)
         if not job:
             return False
@@ -1391,7 +1396,8 @@ class JobManager:
         logger.info(f"Job {job_id} cancelled")
 
         # Refund credit for cancelled job
-        self._refund_credit_for_job(job_id, job, reason="job_cancelled")
+        if refund:
+            self._refund_credit_for_job(job_id, job, reason="job_cancelled")
 
         return True
 

@@ -119,12 +119,42 @@ describe("getDurationConfirmData", () => {
     expect(data!.reconcile).toBe(false)
   })
 
-  it("handles missing state_data gracefully (zeros)", () => {
+  it("handles missing state_data gracefully (standard 1-credit charge, nothing pending)", () => {
     const job = makeJob({ state_data: undefined })
     const data = getDurationConfirmData(job)
     expect(data).not.toBeNull()
-    expect(data!.totalCredits).toBe(0)
+    expect(data!.totalCredits).toBe(1)
     expect(data!.durationSeconds).toBeNull()
+  })
+
+  it("legacy job lacking credits_charged: total = 1 (charged at creation) + pending", () => {
+    // create-from-search jobs used to lose credits_charged; a 15-min track pauses
+    // with pending=1 and really costs 2 in total (matches backend get_credits_charged).
+    const job = makeJob({
+      state_data: {
+        pending_additional_credits: 1,
+        duration_actual_seconds: 900,
+        duration_confirm_reason: "reconcile",
+      },
+    })
+    const data = getDurationConfirmData(job)
+    expect(data!.totalCredits).toBe(2)
+    expect(data!.acknowledgedCredits).toBe(2)
+    expect(data!.additionalCredits).toBe(1) // what the balance must cover now
+  })
+
+  it("payment-bypassed job lacking credits_charged counts 0 already charged", () => {
+    const job = makeJob({
+      state_data: { payment_bypassed: true, pending_additional_credits: 1 },
+    })
+    expect(getDurationConfirmData(job)!.totalCredits).toBe(1)
+  })
+
+  it("explicit credits_charged: 0 is respected", () => {
+    const job = makeJob({
+      state_data: { credits_charged: 0, pending_additional_credits: 2 },
+    })
+    expect(getDurationConfirmData(job)!.totalCredits).toBe(2)
   })
 })
 

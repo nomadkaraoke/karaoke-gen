@@ -197,6 +197,16 @@ If the actual duration exceeds 60 min all charged credits are refunded and the j
 If it costs less than charged an auto-refund is issued silently. Admin/made-for-you jobs bypass
 this state entirely. See `docs/archive/2026-06-04-long-duration-input-handling-design.md`.
 
+**`state_data.credits_charged`** is the authoritative running total of consumer credits debited
+for a job (written by `create_job`, updated by audio selection, reconcile and confirm-duration;
+`0` + `payment_bypassed=True` for admin/tenant/no-email jobs). Every reader — reconcile,
+confirm-duration, `/select`, bulk auto-select, `_refund_credit_for_job`, the 48h stale expiry —
+must use `backend/services/job_credits.get_credits_charged()`. For legacy jobs missing the field it
+returns what `create_job` actually debited: `0` for admin/tenant/no-email/bypassed jobs, else `1`.
+Never replace the whole `state_data` map after `create_job` (use dotted `state_data.<key>` updates;
+resets must keep `preserve_billing_state()`): before v0.278.2 create-from-search did, wiping the
+charge so reconcile (missing=1) and confirm-duration (missing=0) disagreed.
+
 **State Machine Robustness (Feb 2026)**: State transitions are enforced by `STATE_TRANSITIONS` in `models/job.py`. Invalid transitions raise `InvalidStateTransitionError` by default. Use `scripts/generate_state_diagram.py` to generate a Mermaid diagram of valid transitions. The `/health/job-consistency` endpoint detects jobs stuck in invalid states. See `docs/archive/2026-02-02-state-machine-robustness-plan.md` for implementation details.
 
 ## GCS File Structure

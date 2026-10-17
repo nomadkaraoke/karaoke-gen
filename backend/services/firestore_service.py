@@ -269,7 +269,11 @@ class FirestoreService:
         'state_data.render_pending_capacity',
         'state_data.cloud_run_retry_pending',
         'state_data.credits_charged',
+        'state_data.payment_bypassed',
         'state_data.pending_additional_credits',
+        # Inputs for resolving a missing credits_charged (job_credits); the list
+        # route strips tenant_id/creation_params from the response again.
+        'tenant_id', 'creation_params.is_admin',
         'state_data.duration_actual_seconds',
         'state_data.duration_confirm_reason',
         'state_data.batch_id',

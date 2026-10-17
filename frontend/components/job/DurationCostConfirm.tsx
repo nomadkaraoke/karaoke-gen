@@ -8,7 +8,13 @@ import { formatDurationCost } from '@/lib/pricing'
 interface Props {
   open: boolean
   durationSeconds: number | null
+  /** Total credits the job will cost (shown to the user and acknowledged). */
   credits: number
+  /**
+   * Credits still to be paid now (the total minus what was already charged).
+   * Affordability is checked against this, not the total. Defaults to `credits`.
+   */
+  creditsDue?: number
   balance: number
   estimated?: boolean
   reconcile?: boolean
@@ -21,6 +27,7 @@ export function DurationCostConfirm({
   open,
   durationSeconds,
   credits,
+  creditsDue,
   balance,
   estimated = false,
   reconcile = false,
@@ -31,7 +38,7 @@ export function DurationCostConfirm({
   const t = useTranslations('pricing')
 
   const minutes = durationSeconds != null ? formatDurationCost(durationSeconds).minutes : null
-  const canAfford = balance >= credits
+  const canAfford = balance >= (creditsDue ?? credits)
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>

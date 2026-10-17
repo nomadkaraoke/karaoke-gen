@@ -571,3 +571,132 @@ class TestSelectPricingIdempotencyGuard:
         assert all_payloads.get("state_data.select_charge_applied") is True, (
             f"Expected select_charge_applied=True in update_job payload; got: {all_payloads}"
         )
+
+
+class TestSelectNeverChargesBypassedJobs:
+    """Admin / made-for-you / tenant jobs are never billed consumer credits.
+
+    Now that create paths no longer wipe state_data, credits_charged=0 survives on
+    bypassed jobs — /select must not read that as "owes the full duration cost".
+    """
+
+    _LONG = [{
+        "title": "Long Song", "artist": "Artist", "provider": "RED", "quality": "FLAC",
+        "source_id": "abc999", "target_file": "long.flac", "url": "", "duration": 1500,
+    }]
+
+    def _assert_no_charge(self, client, jm, us, job):
+        jm.get_job.return_value = job
+        resp = _post_select(client)
+        assert resp.status_code == 200, resp.text
+        us.deduct_credits.assert_not_called()
+        update = next(c.args[1] for c in jm.update_job.call_args_list
+                      if "state_data.select_charge_applied" in c.args[1])
+        assert update["state_data.credits_charged"] == 0  # nothing to refund later
+        assert update["state_data.payment_bypassed"] is True
+        assert update["state_data.duration_estimate_seconds"] == 1500
+
+    def test_explicit_bypassed_job(self, patched_app):
+        client, jm, us, ws = patched_app
+        job = _awaiting_selection_job(search_results=self._LONG)
+        job.state_data.update({"credits_charged": 0, "payment_bypassed": True})
+        self._assert_no_charge(client, jm, us, job)
+
+    def test_legacy_tenant_job_missing_fields(self, patched_app):
+        client, jm, us, ws = patched_app
+        job = _awaiting_selection_job(search_results=self._LONG)
+        del job.state_data["credits_charged"]
+        job.tenant_id = "acme"
+        self._assert_no_charge(client, jm, us, job)
+
+    def test_legacy_admin_owned_made_for_you_job(self, patched_app):
+        from backend.api.dependencies import require_auth
+        from backend.main import app
+
+        async def admin_auth():
+            return AuthResult(is_valid=True, user_type=UserType.ADMIN, remaining_uses=999,
+                              message="admin", is_admin=True, user_email="admin@nomadkaraoke.com")
+
+        app.dependency_overrides[require_auth] = admin_auth
+        client, jm, us, ws = patched_app
+        job = _awaiting_selection_job(search_results=self._LONG, user_email="admin@nomadkaraoke.com")
+        del job.state_data["credits_charged"]
+        job.made_for_you = True
+        self._assert_no_charge(client, jm, us, job)
+
+
+class TestAdminOverrideThenSelect:
+    """Admin audio-source override clears the old source's duration/selection
+    markers but keeps credits_charged, so the next /select charges only the
+    difference for the new (longer) source."""
+
+    def _override(self, job: Job) -> None:
+        from google.cloud.firestore_v1 import DELETE_FIELD
+        from backend.api.routes import admin as admin_routes
+        from backend.api.routes.admin import OverrideAudioSourceRequest
+
+        payloads = []
+        jm = MagicMock()
+        jm.get_job.return_value = job
+        jm.firestore.db.collection.return_value.document.return_value.update.side_effect = payloads.append
+        result = MagicMock()
+        result.to_dict.return_value = {
+            "title": "Long Song", "artist": "Artist", "provider": "RED", "quality": "FLAC",
+            "source_id": "new1", "target_file": "long.flac", "url": "", "duration": 1500,
+        }
+        ass = MagicMock()
+        ass.search.return_value = [result]
+        ass.last_remote_search_id = None
+        admin = AuthResult(is_valid=True, user_type=UserType.ADMIN, remaining_uses=999,
+                           message="a", is_admin=True, user_email="admin@nomadkaraoke.com")
+        with patch.object(admin_routes, "JobManager", return_value=jm), \
+             patch.object(admin_routes, "get_audio_search_service", return_value=ass):
+            admin_routes.override_audio_source(
+                job.job_id, OverrideAudioSourceRequest(source_type="audio_search"), auth_data=admin)
+
+        # Apply the Firestore payloads to the job (dotted merge / DELETE_FIELD).
+        for payload in payloads:
+            for key, value in payload.items():
+                if key.startswith("state_data."):
+                    field = key.split(".", 1)[1]
+                    if value is DELETE_FIELD:
+                        job.state_data.pop(field, None)
+                    else:
+                        job.state_data[field] = value
+                elif key == "status":
+                    job.status = JobStatus(value)
+
+    def test_override_clears_markers_keeps_charge(self):
+        job = _awaiting_selection_job(credits_charged=2)
+        job.status = JobStatus.FAILED
+        job.state_data.update({
+            "select_charge_applied": True, "duration_estimate_seconds": 900,
+            "duration_estimate_source": "search_metadata", "duration_actual_seconds": 905.0,
+            "pending_additional_credits": 1, "duration_confirm_reason": "reconcile",
+            "duration_confirmed": True,
+        })
+        self._override(job)
+        for k in ("select_charge_applied", "duration_estimate_seconds", "duration_estimate_source",
+                  "duration_actual_seconds", "pending_additional_credits",
+                  "duration_confirm_reason", "duration_confirmed"):
+            assert k not in job.state_data, k
+        assert job.state_data["credits_charged"] == 2
+        assert job.status == JobStatus.AWAITING_AUDIO_SELECTION
+
+    def test_select_after_override_charges_only_the_difference(self, patched_app):
+        client, jm, us, ws = patched_app
+        # Previously selected a 15-min source: charged 2 in total.
+        job = _awaiting_selection_job(credits_charged=2)
+        job.status = JobStatus.FAILED
+        job.state_data.update({"select_charge_applied": True, "duration_estimate_seconds": 900})
+        self._override(job)
+
+        jm.get_job.return_value = job
+        resp = _post_select(client)  # new source is 25 min -> 3 credits total
+
+        assert resp.status_code == 200, resp.text
+        us.deduct_credits.assert_called_once()
+        assert us.deduct_credits.call_args.kwargs["amount"] == 1  # 3 - 2, not 3
+        update = next(c.args[1] for c in jm.update_job.call_args_list
+                      if "state_data.select_charge_applied" in c.args[1])
+        assert update["state_data.credits_charged"] == 3

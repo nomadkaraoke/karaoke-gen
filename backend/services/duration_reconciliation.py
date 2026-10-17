@@ -12,6 +12,7 @@ from typing import Callable, Optional
 import logging
 
 from backend.services.pricing import duration_to_credits, is_blocked
+from backend.services.job_credits import get_credits_charged, is_payment_bypassed
 from backend.models.job import JobStatus
 
 logger = logging.getLogger(__name__)
@@ -34,12 +35,14 @@ def reconcile_duration(
     job = job_manager.get_job(job_id)
     actual = probe_duration(job)
     state = dict(job.state_data or {})
-    credits_charged = int(state.get("credits_charged", 1))
+    # One helper for every reader (legacy jobs lacking the field included) so
+    # reconcile, confirm-duration and the refund paths agree on the charge.
+    credits_charged = get_credits_charged(job)
 
     # Short-circuit for admin / payment-bypassed jobs: measure duration for
     # observability but do NOT pause, charge, refund, or cancel regardless of
     # how long the audio turns out to be.
-    if state.get("payment_bypassed"):
+    if is_payment_bypassed(job):
         if actual is not None:
             job_manager.update_job(job_id, {"state_data.duration_actual_seconds": actual})
         logger.info("Job %s: payment_bypassed=True, skipping reconcile (actual=%s s)", job_id, actual)
@@ -56,7 +59,9 @@ def reconcile_duration(
             user_service.add_credits(job.user_email, amount=credits_charged,
                                      reason="duration_over_limit_refund", job_id=job_id)
             job_manager.update_job(job_id, {"credit_refunded": True})  # suppress cancel_job's built-in 1-credit refund (we already refunded the full charge)
-        job_manager.cancel_job(job_id, reason="Input audio exceeds the 60-minute limit")
+        # refund=False: the full charge was refunded above (skip cancel's own refund).
+        job_manager.cancel_job(job_id, reason="Input audio exceeds the 60-minute limit",
+                               refund=credits_charged == 0)
         if email_service:
             email_service.send_duration_confirm_expired(
                 to_email=job.user_email,
@@ -80,8 +85,12 @@ def reconcile_duration(
         return ReconcileResult(action="proceed", actual_seconds=actual)
 
     # delta > 0 : owe more credits — pause for explicit re-confirmation.
+    # Persist credits_charged alongside the delta so every client (web hook,
+    # mobile) sees the explicit figure and acknowledges the same total that
+    # confirm-duration expects, even for legacy jobs that lacked the field.
     job_manager.update_job(job_id, {
         "state_data.duration_confirm_reason": "reconcile",
+        "state_data.credits_charged": credits_charged,
         "state_data.pending_additional_credits": delta,
     })
     job_manager.transition_to_state(

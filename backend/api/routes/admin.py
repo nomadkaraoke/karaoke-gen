@@ -2995,6 +2995,16 @@ def override_audio_source(
         "audio_search_count",
         "remote_search_id",
         "audio_selection",
+        # A pending duration confirm / duration estimate belongs to the OLD source.
+        "duration_confirmed",
+        "duration_confirm_reason",
+        "pending_additional_credits",
+        "duration_estimate_seconds",
+        "duration_estimate_source",
+        "duration_actual_seconds",
+        # Re-arm the /select delta charge for the new source. credits_charged is
+        # KEPT, so /select charges only target - credits_charged (no double charge).
+        "select_charge_applied",
     ]
 
     update_payload = {}
@@ -3049,8 +3059,11 @@ def override_audio_source(
 
         # Transition to awaiting_audio_selection with results
         new_status = "awaiting_audio_selection"
+        # Dotted paths MERGE: replacing the whole map would wipe billing state
+        # (credits_charged / payment_bypassed) — the keys_to_clear list above is
+        # the intended reset.
         job_ref.update({
-            "state_data": state_data_update,
+            **{f"state_data.{k}": v for k, v in state_data_update.items()},
             "status": new_status,
             "message": f"Found {search_results_count} audio sources - select one",
             "progress": 10,

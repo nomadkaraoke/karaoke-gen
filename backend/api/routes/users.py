@@ -1453,13 +1453,15 @@ async def _handle_made_for_you_order(
             if search_results:
                 # Store search results in state_data for admin to review
                 results_dicts = [r.to_dict() for r in search_results]
+                # Dotted paths MERGE into state_data (keeps create_job's
+                # payment_bypassed flag so reconcile never bills an MFY job).
                 state_data_update = {
-                    'audio_search_results': results_dicts,
-                    'audio_search_count': len(results_dicts),
+                    'state_data.audio_search_results': results_dicts,
+                    'state_data.audio_search_count': len(results_dicts),
                 }
                 if audio_search_service.last_remote_search_id:
-                    state_data_update['remote_search_id'] = audio_search_service.last_remote_search_id
-                job_manager.update_job(job_id, {'state_data': state_data_update})
+                    state_data_update['state_data.remote_search_id'] = audio_search_service.last_remote_search_id
+                job_manager.update_job(job_id, state_data_update)
 
                 # Transition to AWAITING_AUDIO_SELECTION for admin to choose
                 # Do NOT auto-select or download - admin must review and select

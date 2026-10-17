@@ -111,7 +111,7 @@ class TestCheckIdleReminderDurationConfirm:
         # reminder_sent flag was written back
         update_calls = mock_job_manager.firestore.update_job.call_args_list
         assert any(
-            call_args[0][1].get("state_data", {}).get("reminder_sent") is True
+            call_args[0][1].get("state_data.reminder_sent") is True
             for call_args in update_calls
         )
 
@@ -253,10 +253,11 @@ class TestScheduleIdleReminderDurationConfirm:
             update_call = manager.firestore.update_job.call_args
             assert update_call is not None
             updated_data = update_call[0][1]
-            state_data = updated_data.get("state_data", {})
-            assert state_data.get("blocking_action_type") == "duration_confirm"
-            assert state_data.get("reminder_sent") is False
-            assert "blocking_state_entered_at" in state_data
+            # Dotted paths merge server-side (never replace the whole map).
+            assert "state_data" not in updated_data
+            assert updated_data.get("state_data.blocking_action_type") == "duration_confirm"
+            assert updated_data.get("state_data.reminder_sent") is False
+            assert "state_data.blocking_state_entered_at" in updated_data
 
     def test_schedules_900s_delay_not_default_delay(self):
         """
