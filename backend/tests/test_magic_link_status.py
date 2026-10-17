@@ -91,6 +91,20 @@ class TestGetMagicLinkStatus:
         assert service.get_magic_link_status('   ') == 'invalid'
 
 
+class TestGetMagicLinkState:
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_handoff_flag_from_doc(self, mock_fs, mock_settings):
+        service, _ = _service_with_doc(mock_fs, mock_settings, _link_dict(handoff=True))
+        assert service.get_magic_link_state('tok123') == ('valid', True)
+
+    @patch('backend.services.user_service.get_settings')
+    @patch('backend.services.user_service.firestore')
+    def test_legacy_doc_without_flag_is_not_handoff(self, mock_fs, mock_settings):
+        service, _ = _service_with_doc(mock_fs, mock_settings, _link_dict())
+        assert service.get_magic_link_state('tok123') == ('valid', False)
+
+
 class TestLinkStatusEndpoint:
     """GET /api/users/auth/link-status — thin, read-only wrapper over the service."""
 
@@ -98,7 +112,7 @@ class TestLinkStatusEndpoint:
         from backend.main import app
         from backend.services.user_service import get_user_service
         svc = MagicMock()
-        svc.get_magic_link_status.return_value = status_value
+        svc.get_magic_link_state.return_value = (status_value, False)
         app.dependency_overrides[get_user_service] = lambda: svc
         return TestClient(app), app, svc
 
@@ -108,7 +122,7 @@ class TestLinkStatusEndpoint:
             r = client.get("/api/users/auth/link-status", params={"token": "tok123"})
             assert r.status_code == 200
             assert r.json()["status"] == "valid"
-            svc.get_magic_link_status.assert_called_once_with("tok123")
+            svc.get_magic_link_state.assert_called_once_with("tok123")
         finally:
             app.dependency_overrides.clear()
 
@@ -127,6 +141,6 @@ class TestLinkStatusEndpoint:
             r = client.get("/api/users/auth/link-status", params={"token": "   "})
             assert r.status_code == 200
             assert r.json()["status"] == "invalid"
-            svc.get_magic_link_status.assert_not_called()
+            svc.get_magic_link_state.assert_not_called()
         finally:
             app.dependency_overrides.clear()

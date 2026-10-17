@@ -178,6 +178,10 @@ class MagicLinkToken(BaseModel):
     # vote), and route the user back to the board after verifying.
     purpose: Optional[str] = None
 
+    # True only for app → web handoff tokens (POST /auth/handoff-token): the
+    # verify page may then sign in without the email-scanner "Complete Sign-In" tap.
+    handoff: bool = False
+
     # Pre-computed credit evaluation (set asynchronously after magic link is sent)
     credit_eval_decision: Optional[str] = None  # "grant", "deny", "pending_review"
     credit_eval_reasoning: Optional[str] = None

@@ -14,7 +14,8 @@ import logging
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+import os
+from typing import Literal, Optional, Tuple
 
 
 def _mask_email(email: str) -> str:
@@ -34,10 +35,12 @@ def _mask_email(email: str) -> str:
     return f"{masked_local}@{masked_domain}"
 
 
-from fastapi import APIRouter, HTTPException, Depends, Request, Header
+from fastapi import APIRouter, HTTPException, Depends, Query, Request, Header
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 
-from backend.config import is_production
+from backend.config import get_settings, is_production
+from backend.services.fake_workers import fake_workers_enabled
 from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 from backend.services.email_validation_service import get_email_validation_service
 from backend.models.user import (
@@ -144,6 +147,10 @@ class CreateCheckoutRequest(BaseModel):
     """Request to create a Stripe checkout session."""
     package_id: str
     email: EmailStr
+    # "app": the mobile app's checkout — Stripe returns to gen's own https bounce
+    # (GET /credits/app-return), which hands off to the app's URL scheme. Clients
+    # never send a URL, so there is no open-redirect surface.
+    return_to: Optional[Literal["app"]] = None
 
 
 class CreateCheckoutResponse(BaseModel):
@@ -671,6 +678,9 @@ def claim_welcome_credit(
 
 class MagicLinkStatusResponse(BaseModel):
     status: str  # "valid" | "used" | "expired" | "invalid"
+    # True only for app → web handoff tokens (POST /auth/handoff-token). The verify
+    # page skips the "Complete Sign-In" tap only when this AND the URL's handoff=1.
+    handoff: bool = False
 
 
 @router.get("/auth/link-status", response_model=MagicLinkStatusResponse)
@@ -692,7 +702,8 @@ def magic_link_status(
     """
     if not token or not token.strip():
         return MagicLinkStatusResponse(status="invalid")
-    return MagicLinkStatusResponse(status=user_service.get_magic_link_status(token))
+    status, handoff = user_service.get_magic_link_state(token)
+    return MagicLinkStatusResponse(status=status, handoff=handoff)
 
 
 @router.post("/auth/resend-from-token", response_model=ResendFromTokenResponse)
@@ -949,6 +960,45 @@ def list_credit_packages():
     return CreditPackagesResponse(packages=packages)
 
 
+def public_api_base_url() -> str:
+    """Public base URL of this API, for absolute links back to it (no trailing slash).
+
+    ``BACKEND_URL`` (default https://api.nomadkaraoke.com); on the local stack the
+    address browsers / devices use (``LOCAL_STACK_API_URL``), like fake checkout.
+    """
+    if fake_workers_enabled():
+        from backend.services.fake_workers.checkout import public_api_url
+        return public_api_url()
+    return os.getenv("BACKEND_URL", "https://api.nomadkaraoke.com").rstrip("/")
+
+
+_APP_RETURN_STATUSES = ("success", "cancelled")
+
+_APP_RETURN_PAGE = """<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nomad Karaoke</title></head>
+<body style="font-family:system-ui,sans-serif;text-align:center;padding:48px 16px">
+<p><a href="{url}">Return to the app</a></p></body></html>"""
+
+
+@router.get("/credits/app-return", response_class=HTMLResponse, status_code=302)
+def checkout_app_return(status: Optional[str] = Query(default=None), session_id: Optional[str] = None):
+    """Stripe's https return URL for app checkouts → 302 to ``{scheme}://checkout?status=…``.
+
+    ``status`` is ``success`` or ``cancelled`` (anything else → ``cancelled``);
+    ``session_id`` is accepted but never forwarded. The tiny HTML body links back
+    to the app for browsers that block scheme redirects. Credits are granted by
+    the Stripe webhook, never by this bounce.
+    """
+    outcome = status if status in _APP_RETURN_STATUSES else "cancelled"
+    url = f"{get_settings().mobile_app_scheme}://checkout?status={outcome}"
+    return HTMLResponse(
+        _APP_RETURN_PAGE.format(url=html.escape(url, quote=True)),
+        status_code=302,
+        headers={"Location": url, "Cache-Control": "no-store"},
+    )
+
+
 @router.post("/credits/checkout", response_model=CreateCheckoutResponse)
 def create_checkout(
     request: CreateCheckoutRequest,
@@ -985,10 +1035,19 @@ def create_checkout(
     except Exception as promo_err:
         logger.warning(f"Promo discount lookup failed: {promo_err}")
 
+    return_urls = {}
+    if request.return_to == "app":
+        bounce = f"{public_api_base_url()}/api/users/credits/app-return"
+        return_urls = {
+            "success_url": f"{bounce}?status=success&session_id={{CHECKOUT_SESSION_ID}}",
+            "cancel_url": f"{bounce}?status=cancelled",
+        }
+
     success, checkout_url, message = stripe_service.create_checkout_session(
         package_id=request.package_id,
         user_email=request.email,
         coupon_id=referral_coupon_id,
+        **return_urls,
     )
 
     if not success or not checkout_url:

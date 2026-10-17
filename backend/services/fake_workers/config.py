@@ -16,6 +16,8 @@ CONFIG_DOC = "fake_config"
 
 # Worker kinds the fakes implement. ``fail_at`` must be one of these.
 WORKER_KINDS = ("audio_download", "audio", "lyrics", "screens", "render_video", "video")
+# Values of ``search_confidence`` (fake search shapes → UI tier 1 / 2 / 3).
+SEARCH_CONFIDENCES = ("perfect", "recommended", "unsure")
 
 
 @dataclass
@@ -34,6 +36,14 @@ class FakeConfig:
     audio_duration_seconds: int = 30
     # Number of results the fake audio search returns (0 = "no results").
     search_result_count: int = 3
+    # Shapes the fake audio search into the web UI's confidence tiers
+    # (frontend/lib/audio-search-utils.ts getSearchConfidence): "perfect" = tier 1
+    # (well-seeded lossless, right track), "recommended" = tier 2 (lossless, right
+    # track, few seeders), "unsure" = tier 3 (wrong track names, almost no seeders).
+    search_confidence: str = "perfect"
+    # True: the fake video worker sets state_data.youtube_url (FAKE_YOUTUBE_URL) for
+    # non-private jobs, like a real YouTube upload. False: tests the "no link" path.
+    youtube_url_enabled: bool = True
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "FakeConfig":
@@ -52,6 +62,8 @@ class FakeConfig:
             raise ValueError("audio_duration_seconds must be between 5 and 1800")
         if not 0 <= self.search_result_count <= 3:
             raise ValueError("search_result_count must be between 0 and 3")
+        if self.search_confidence not in SEARCH_CONFIDENCES:
+            raise ValueError(f"search_confidence must be one of {SEARCH_CONFIDENCES}")
 
 
 USER_CONFIG_COLLECTION = "local_stack_user_config"

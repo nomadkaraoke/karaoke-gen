@@ -399,3 +399,96 @@ class TestFakeMedia:
         assert abs(float(out.stdout) - 5) < 0.5
         for path in (media.vocals, media.backing_vocals, media.title_png, media.final_mp4, media.cdg_zip):
             assert open(path, "rb").read(4)
+
+
+# --------------------------------------------------------------------------- mobile-app knobs
+
+class TestSummaryRefundFlag:
+    def test_summary_includes_credit_refunded(self):
+        # Top-level Job field (set by job_manager / stale-review / duration refunds),
+        # so only the Firestore projection needs it. The mobile app shows "refunded"
+        # on failed jobs from the summary list.
+        from backend.services.firestore_service import FirestoreService
+
+        assert 'credit_refunded' in FirestoreService.SUMMARY_FIELD_PATHS
+
+
+class TestFakeVideoYoutubeUrl:
+    def _run(self, config, is_private=False):
+        from backend.services.fake_workers import pipeline
+
+        jm = MagicMock()
+        jm.get_job.return_value = SimpleNamespace(user_email="u@example.com", is_private=is_private)
+        media = SimpleNamespace(final_mp4="/tmp/x.mp4", final_mkv="/tmp/x.mkv",
+                                cdg_zip="/tmp/c.zip", txt_zip="/tmp/t.zip")
+        with patch.object(pipeline, "JobManager", return_value=jm), \
+                patch.object(pipeline, "StorageService"), \
+                patch.object(pipeline, "_media_for", return_value=media), \
+                patch.object(pipeline, "get_fake_config", return_value=config):
+            assert asyncio.run(pipeline.run("video", "job1")) is True
+        return {c.args[1]: c.args[2] for c in jm.update_state_data.call_args_list}
+
+    def test_fake_video_sets_youtube_url_when_public(self):
+        from backend.services.fake_workers.pipeline import FAKE_YOUTUBE_URL
+
+        state = self._run(FakeConfig(step_delay_seconds=0))
+        assert state["youtube_url"] == FAKE_YOUTUBE_URL == "https://youtu.be/dQw4w9WgXcQ"
+
+    def test_fake_video_no_youtube_url_when_private(self):
+        assert "youtube_url" not in self._run(FakeConfig(step_delay_seconds=0), is_private=True)
+
+    def test_fake_video_no_youtube_url_when_disabled(self):
+        assert "youtube_url" not in self._run(FakeConfig(step_delay_seconds=0, youtube_url_enabled=False))
+
+
+class TestFakeSearchConfidence:
+    """``search_confidence`` shapes the fake results into the web UI's tiers.
+
+    The frontend test ``lib/__tests__/fake-search-tiers.test.ts`` runs the real
+    ``getSearchConfidence`` over ``FRONTEND_FIXTURE`` (generated from these same
+    shapes), so the fake and the ranking can't drift apart.
+    """
+
+    def _search(self, confidence, count=3):
+        from backend.services.fake_workers.search import FakeAudioSearchService
+
+        with patch("backend.services.fake_workers.config.get_fake_config",
+                   return_value=FakeConfig(search_confidence=confidence, search_result_count=count)):
+            return [r.to_dict() for r in FakeAudioSearchService().search("Artist", "Song")]
+
+    def test_defaults(self):
+        c = FakeConfig()
+        assert c.search_confidence == "perfect" and c.youtube_url_enabled is True
+
+    def test_validate_rejects_unknown_confidence(self):
+        with pytest.raises(ValueError):
+            FakeConfig(search_confidence="maybe").validate()
+
+    def test_fake_search_confidence_shapes(self):
+        perfect = self._search("perfect")
+        assert perfect[0]["seeders"] >= 50 and perfect[0]["target_file"] == "01 - Song.flac"
+
+        recommended = self._search("recommended")
+        # Lossless and the right track, but not well seeded enough for "BEST CHOICE".
+        assert recommended[0]["is_lossless"] is True and 10 <= recommended[0]["seeders"] < 50
+        assert recommended[0]["target_file"] == "01 - Song.flac"
+
+        unsure = self._search("unsure")
+        # Wrong track names everywhere and almost no seeders.
+        assert unsure[0]["seeders"] < 10
+        assert all("Song" not in (r.get("target_file") or r["title"]) for r in unsure)
+        assert [r["provider"] for r in unsure] == ["RED", "Spotify", "YouTube"]
+
+    def test_result_count_still_applies(self):
+        assert len(self._search("unsure", count=1)) == 1
+
+    def test_frontend_fixture_is_current(self):
+        """Regenerate with:
+        poetry run python -m backend.services.fake_workers.search --write-fixture
+        """
+        import json
+
+        from backend.services.fake_workers.search import FRONTEND_FIXTURE, frontend_fixture
+
+        with open(FRONTEND_FIXTURE) as f:
+            assert json.load(f) == frontend_fixture()

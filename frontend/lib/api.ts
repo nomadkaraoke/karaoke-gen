@@ -2046,7 +2046,7 @@ export const api = {
    * "Complete Sign-In" gate for a valid link, or an already-used/expired
    * message for a dead one) without making the user click only to then fail.
    */
-  async getMagicLinkStatus(token: string): Promise<{ status: 'valid' | 'used' | 'expired' | 'invalid' }> {
+  async getMagicLinkStatus(token: string): Promise<{ status: 'valid' | 'used' | 'expired' | 'invalid'; handoff?: boolean }> {
     const response = await apiFetch(`${API_BASE_URL}/api/users/auth/link-status?token=${encodeURIComponent(token)}`, {
       method: 'GET',
     })

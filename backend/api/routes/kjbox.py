@@ -390,21 +390,33 @@ async def review_link(
     return ReviewLinkResponse(url=url, status=status, review_started_by=started_by)
 
 
-def _mint_review_link(user_service: UserService, token: str, job_id: str, locale: str):
-    """Blocking half of ``review_link`` → (url, status, review_started_by)."""
-    from backend.services.job_manager import JobManager
-    from backend.services.job_notification_service import build_review_login_url
+def get_owned_review_job(user_service: UserService, session_token: str, job_id: str):
+    """Blocking: the session owner's job, checked to be in review → (job, status).
 
-    valid, user, _msg = user_service.validate_session(token)
+    Shared by kjbox's review link and the mobile app's web handoff
+    (``POST /api/users/auth/handoff-token``). Raises 401 ``invalid_session``,
+    404 ``not_found`` (missing or not yours — same answer, so other users' job
+    ids aren't confirmed) or 409 ``not_in_review``.
+    """
+    from backend.services.job_manager import JobManager
+
+    valid, user, _msg = user_service.validate_session(session_token)
     if not valid or not user:
         raise HTTPException(status_code=401, detail="invalid_session")
     job = JobManager().get_job(job_id)
-    # Same 404 for "missing" and "not yours" — don't confirm other users' job ids.
     if not job or (job.user_email or "").lower() != user.email.lower():
         raise HTTPException(status_code=404, detail="not_found")
     status = str(getattr(job.status, "value", job.status))
     if status not in _REVIEW_LINK_STATUSES:
         raise HTTPException(status_code=409, detail="not_in_review")
+    return job, status
+
+
+def _mint_review_link(user_service: UserService, token: str, job_id: str, locale: str):
+    """Blocking half of ``review_link`` → (url, status, review_started_by)."""
+    from backend.services.job_notification_service import build_review_login_url
+
+    job, status = get_owned_review_job(user_service, token, job_id)
     url = build_review_login_url(job.job_id, job.user_email, locale=locale)
     if not url:
         raise HTTPException(status_code=502, detail="link_unavailable")

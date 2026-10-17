@@ -178,6 +178,36 @@ class UserService:
         logger.info(f"Created new user: {email} (tenant: {tenant_id or 'default'}) — credits pending verification")
         return user
 
+    def get_or_create_user_with_attribution(
+        self,
+        email: str,
+        tenant_id: Optional[str] = None,
+        signup_ip: Optional[str] = None,
+        device_fingerprint: Optional[str] = None,
+        attribution: Optional[Dict[str, object]] = None,
+    ) -> User:
+        """``get_or_create_user`` with raw client first-touch attribution.
+
+        ``attribution`` (UTM / referrer, as sent by the web or app) is cleaned and
+        recorded, with the derived signup source, only if this call creates the
+        user. Shared by magic-link / email-code sends and mobile social sign-in.
+        """
+        from backend.services.signup_attribution import clean_attribution, derive_signup_source
+
+        try:
+            signup_attribution = clean_attribution(attribution)
+        except Exception:  # attribution is best-effort and must never block sign-in
+            logger.warning("Ignoring unparseable signup attribution", exc_info=True)
+            signup_attribution = None
+        return self.get_or_create_user(
+            email,
+            tenant_id=tenant_id,
+            signup_ip=signup_ip,
+            device_fingerprint=device_fingerprint,
+            signup_source=derive_signup_source(signup_attribution),
+            signup_attribution=signup_attribution,
+        )
+
     def _save_user(self, user: User) -> None:
         """Save user to Firestore."""
         try:
@@ -265,25 +295,16 @@ class UserService:
             attribution: Raw client-supplied first-touch UTM/referrer data; cleaned
                 and stored only if this call creates the user
         """
-        from backend.services.signup_attribution import clean_attribution, derive_signup_source
-
         email = email.lower()
-
-        try:
-            signup_attribution = clean_attribution(attribution)
-        except Exception:  # attribution is best-effort and must never block sign-in
-            logger.warning("Ignoring unparseable signup attribution", exc_info=True)
-            signup_attribution = None
 
         # Ensure user exists (with tenant association, signup IP, fingerprint and
         # first-touch attribution — the latter two only matter on creation)
-        self.get_or_create_user(
+        self.get_or_create_user_with_attribution(
             email,
             tenant_id=tenant_id,
             signup_ip=ip_address,
             device_fingerprint=device_fingerprint,
-            signup_source=derive_signup_source(signup_attribution),
-            signup_attribution=signup_attribution,
+            attribution=attribution,
         )
 
         # Generate secure token
@@ -313,6 +334,8 @@ class UserService:
         email: str,
         expiry_hours: int = 24,
         purpose: Optional[str] = None,
+        expiry_seconds: Optional[int] = None,
+        handoff: bool = False,
     ) -> MagicLinkToken:
         """
         Create an admin login token for email-embedded authentication links.
@@ -325,16 +348,28 @@ class UserService:
             expiry_hours: Hours until token expires (default: 24, max: 168)
             purpose: Optional purpose tag (e.g. "job_review:<job_id>") — the
                 verify endpoint maps known purposes to a post-login redirect
+            expiry_seconds: Short-lived override of ``expiry_hours`` (1-3600),
+                e.g. the mobile app's 2-minute web handoff links
+            handoff: Mark the token as an app → web handoff token (reported by
+                the read-only link status so the verify page can skip its gate)
 
         Returns:
             MagicLinkToken object containing the token
 
         Raises:
-            ValueError: If expiry_hours is out of valid range (1-168)
+            ValueError: If expiry_hours (1-168) or expiry_seconds (1-3600) is out of range
         """
-        # Validate expiry_hours (1 hour to 7 days)
-        if not 1 <= expiry_hours <= 168:
-            raise ValueError(f"expiry_hours must be between 1 and 168, got {expiry_hours}")
+        if expiry_seconds is not None:
+            if not 1 <= expiry_seconds <= 3600:
+                raise ValueError(f"expiry_seconds must be between 1 and 3600, got {expiry_seconds}")
+            lifetime = timedelta(seconds=expiry_seconds)
+            lifetime_label = f"{expiry_seconds}s"
+        else:
+            # Validate expiry_hours (1 hour to 7 days)
+            if not 1 <= expiry_hours <= 168:
+                raise ValueError(f"expiry_hours must be between 1 and 168, got {expiry_hours}")
+            lifetime = timedelta(hours=expiry_hours)
+            lifetime_label = f"{expiry_hours}h"
 
         email = email.lower()
 
@@ -344,11 +379,14 @@ class UserService:
         # Generate secure token
         token = secrets.token_urlsafe(32)
 
+        now = datetime.utcnow()
         admin_login = MagicLinkToken(
             token=token,
             email=email,
-            expires_at=datetime.utcnow() + timedelta(hours=expiry_hours),
+            created_at=now,
+            expires_at=now + lifetime,
             purpose=purpose,
+            handoff=handoff,
         )
 
         # Save to Firestore (same collection as magic links for unified verification)
@@ -357,7 +395,7 @@ class UserService:
 
         # Log with redacted email (show only domain) for PII protection
         domain = email.split('@')[-1] if '@' in email else 'unknown'
-        logger.info(f"Created admin login token for ***@{domain} (expires in {expiry_hours}h)")
+        logger.info(f"Created admin login token for ***@{domain} (expires in {lifetime_label})")
         return admin_login
 
     def verify_magic_link(self, token: str) -> Tuple[bool, Optional[User], str]:
@@ -432,23 +470,28 @@ class UserService:
 
         Returns one of: "valid", "used", "expired", "invalid".
         """
+        return self.get_magic_link_state(token)[0]
+
+    def get_magic_link_state(self, token: str) -> Tuple[str, bool]:
+        """``get_magic_link_status`` plus whether the token is an app → web
+        handoff token (minted by POST /auth/handoff-token). Read-only."""
         try:
             if not token or not token.strip():
-                return "invalid"
+                return "invalid", False
 
             doc = self.db.collection(MAGIC_LINKS_COLLECTION).document(token).get()
             if not doc.exists:
-                return "invalid"
+                return "invalid", False
 
             magic_link = MagicLinkToken(**doc.to_dict())
             if magic_link.used:
-                return "used"
+                return "used", magic_link.handoff
             if datetime.utcnow() > magic_link.expires_at:
-                return "expired"
-            return "valid"
+                return "expired", magic_link.handoff
+            return "valid", magic_link.handoff
         except Exception:
             logger.exception("Error checking magic link status")
-            return "invalid"
+            return "invalid", False
 
     def grant_welcome_credits_if_eligible(
         self,

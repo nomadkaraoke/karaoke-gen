@@ -1713,6 +1713,64 @@ Errors: `401 {"detail": "invalid_code"}` (wrong code), `401 {"detail": "expired"
 or already used), `429 {"detail": "too_many_attempts"}` (the 6th guess burns the code, even if it's right).
 Requesting a new code invalidates the previous one.
 
+### Google / Apple Sign-In (mobile app)
+
+```http
+POST /api/users/auth/google
+POST /api/users/auth/apple
+Content-Type: application/json
+
+{"id_token": "<ID token from the native SDK>", "locale": "de", "device_fingerprint": "optional", "referral_code": "optional", "attribution": {}}
+```
+
+→ `200` with the same `VerifyMagicLinkResponse` as `verify-code`. Only `id_token` is required; the other fields work
+like `send-code`'s. `backend/services/social_identity.py` checks the RS256 signature against the provider's JWKS
+(`https://www.googleapis.com/oauth2/v3/certs` / `https://appleid.apple.com/auth/keys`, one cached `PyJWKClient`
+per URL), the issuer (`accounts.google.com` or `https://accounts.google.com` / `https://appleid.apple.com`), expiry,
+the audience, and `email_verified` (Apple may send the string `"true"`).
+
+- Audiences: `GOOGLE_OAUTH_CLIENT_IDS` (comma-separated; defaults to the Web and iOS clients, see
+  [ARCHITECTURE.md § Mobile app sign-in](ARCHITECTURE.md#mobile-app-sign-in)) and `APPLE_SIGNIN_AUDIENCES`
+  (default `com.nomadkaraoke.mobile`).
+- The user is found or created **by email**, through the same code as the email-code sign-in: the abuse checks
+  (`_sign_in_checks`) and the post-verification steps (`finish_verified_sign_in` → `complete_verified_login`). An
+  email that already signed up by magic link or code gets the same account and no second welcome credit.
+- Apple "Hide My Email" addresses (`@privaterelay.appleid.com`) are accepted as their own account and never count
+  as disposable.
+- Errors: `401 {"detail": "invalid_token"}` (bad signature, issuer, audience, expiry, or unverified email; no user is
+  created), `503 {"detail": "google_not_configured"}` (no Google audience configured), `503 {"detail":
+"identity_provider_unavailable"}` (the provider's JWKS couldn't be fetched; retryable), `422` disposable domain (same
+  message as `send-code`), `422 {"detail": "sign_in_not_allowed"}` (blocked email or IP, or outside a tenant's
+  allowed domains), `429 {"detail": "signup_rate_limited"}` (the new-user per-IP/fingerprint cap). Unlike
+  `send-code` there's no email to hide behind, so these refusals are explicit.
+- Local stack only (`FAKE_WORKERS`): `id_token: "fake:<email>"` signs in as `<email>` with no network call, on
+  either route, even with no audience configured. Outside fake mode it's `401 invalid_token`.
+
+### App → Web Handoff Link
+
+```http
+POST /api/users/auth/handoff-token
+Authorization: Bearer <session token>
+Content-Type: application/json
+
+{"target": "job_review", "job_id": "abc123", "locale": "es"}
+```
+
+→ `200 {"url": "https://gen.nomadkaraoke.com/es/auth/verify?token=…&handoff=1", "expires_in_seconds": 120}`.
+A signed-in web link to the caller's own job review, for the mobile app's "Review on the web". `target` is an
+allowlist (only `job_review` today). The token is a `job_review:<id>` magic link (`create_admin_login_token` with
+`expiry_seconds=120`), single-use like every magic link; after verifying, `redirect_path` is
+`/app/jobs#/<id>/review`. The token is stored with `handoff: true`, which `GET /api/users/auth/link-status` reports
+(`{"status": "valid", "handoff": true}`; every other token says `false`). The verify page signs in at once, without
+the email-scanner "Complete Sign-In" tap, only when the URL has `handoff=1` **and** the server says `handoff: true`;
+otherwise it shows the tap. A used or expired link shows the normal "link expired" state. `locale` may be any of the
+web app's 33 locales (`WEB_LOCALES` in `backend/i18n.py`, kept in sync with `frontend/i18n/routing.ts` by a test);
+anything else falls back to `en`.
+
+Errors: `401 {"detail": "invalid_session"}`, `404 {"detail": "not_found"}` (missing or not the caller's job: same
+answer), `409 {"detail": "not_in_review"}` (status isn't `awaiting_review` / `in_review`), `422` unknown target.
+The ownership/status check is shared with kjbox's review link (`get_owned_review_job`).
+
 ### Resend Magic Link From Token
 
 ```http
@@ -1878,10 +1936,27 @@ No auth required. Returns available packages and prices.
 POST /api/users/credits/checkout
 Content-Type: application/json
 
-{"package_id": "5_credits", "email": "user@example.com"}
+{"package_id": "5_credits", "email": "user@example.com", "return_to": "app"}
 ```
 
 Returns Stripe checkout URL. Supports Apple Pay, Google Pay, Link, and other payment methods based on customer device.
+
+`return_to` is optional and only accepts `"app"` (the mobile app; the client never sends a URL, so there's no
+open redirect). Live Stripe only takes `https` return URLs, so gen points them at its own bounce on the public API
+(`BACKEND_URL`, default `https://api.nomadkaraoke.com`; `LOCAL_STACK_API_URL` on the local stack):
+`success_url = …/api/users/credits/app-return?status=success&session_id={CHECKOUT_SESSION_ID}`,
+`cancel_url = …/api/users/credits/app-return?status=cancelled`. Without `return_to` the web defaults are unchanged.
+
+### App Checkout Return (bounce)
+
+```http
+GET /api/users/credits/app-return?status=success|cancelled[&session_id=…]
+```
+
+→ `302`, `Location: nomadkaraoke://checkout?status=success|cancelled` (scheme = `MOBILE_APP_SCHEME`). Any other
+`status` → `cancelled`; `session_id` is never forwarded. The body is a tiny HTML page with a "Return to the app"
+link for browsers that block scheme redirects. Credits come from the Stripe webhook, never from this bounce. The app
+opens checkout with `WebBrowser.openAuthSessionAsync(checkout_url, "nomadkaraoke://checkout")`.
 
 ### Create Checkout Session (Made For You)
 
