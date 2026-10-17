@@ -46,7 +46,7 @@ from backend.services.metrics import metrics
 from backend.i18n import t, get_locale_from_request, get_full_locale_from_request
 from backend.middleware.tenant import get_tenant_from_request
 from backend.utils.test_data import is_test_email
-from backend.exceptions import InsufficientCreditsError
+from backend.exceptions import InsufficientCreditsError, InvalidStateTransitionError
 from backend.services.firestore_service import FirestoreService, log_to_job
 from backend.models.requests import ChangeVisibilityRequest, ChangeVisibilityResponse
 from backend.services.user_service import get_user_service
@@ -1097,12 +1097,26 @@ def start_review(
     if not _check_job_ownership(job, auth_result):
         raise HTTPException(status_code=403, detail=t(locale, "jobs.noPermissionAccess"))
 
+    # Idempotent: concurrent/duplicate opens (React double-mount, double-tap, two
+    # tabs) must not fail with "in_review -> in_review". Already in review == success,
+    # and the one-time side effects (record_review_started) are not repeated.
+    if job.status == JobStatus.IN_REVIEW:
+        return {"status": "success", "job_status": "in_review"}
+
     was_awaiting = job.status == JobStatus.AWAITING_REVIEW
-    success = job_manager.transition_to_state(
-        job_id=job_id,
-        new_status=JobStatus.IN_REVIEW,
-        message="User started reviewing lyrics"
-    )
+    try:
+        success = job_manager.transition_to_state(
+            job_id=job_id,
+            new_status=JobStatus.IN_REVIEW,
+            message="User started reviewing lyrics"
+        )
+    except InvalidStateTransitionError:
+        # Lost a race with a concurrent start-review (e.g. another instance): the
+        # winner already transitioned and recorded review start. Re-read to confirm.
+        current = job_manager.get_job(job_id)
+        if current and current.status == JobStatus.IN_REVIEW:
+            return {"status": "success", "job_status": "in_review"}
+        raise
 
     if not success:
         raise HTTPException(status_code=400, detail=t(locale, "jobs.reviewCannotStart"))
@@ -1110,7 +1124,7 @@ def start_review(
         job_manager.record_review_started(
             job_id, getattr(job, "user_email", None), auth_result.user_email, auth_result.is_admin
         )
-    
+
     return {"status": "success", "job_status": "in_review"}
 
 
