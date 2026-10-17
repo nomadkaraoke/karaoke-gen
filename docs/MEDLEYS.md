@@ -136,50 +136,112 @@ gen jobs are a free extra: four full karaoke tracks.
 
 ### Guitar chords (optional)
 
-The video can show guitar chords: each chord name sits above the word where it changes
-and lights up when played, and a "now / next" box in the top-right corner shows the
-current chord all the time, including intros and instrumental breaks. Set
-`"chords": true` in the spec, run the `chords` step once, then `video` as usual:
+The video can show guitar chords. Each chord name sits above the word where the chord
+changes and lights up when played, and a "now / next" box in the top-right corner shows
+the current chord all the time, including intros and instrumental breaks. First delivered
+in October 2026 for the country medley (146 chord changes over 8 minutes). Detection and
+rendering together took about 15 minutes of machine time once set up.
+
+#### Checklist (from zero)
 
 ```bash
-export MEDLEY_CHORDMINI=~/ChordMini   # a ChordMini checkout with its own .venv (below)
-python scripts/medley/make_medley.py chords path/to/spec.json   # writes work/<job>/chords.json
-python scripts/medley/make_medley.py video path/to/spec.json
+# 1. One-time: ChordMini in its own venv (pinned: the commit we evaluated)
+git clone https://github.com/ptnghia-j/ChordMini ~/ChordMini
+git -C ~/ChordMini checkout aa6e3a8
+cd ~/ChordMini && uv venv -p 3.12 .venv && uv pip install -p .venv/bin/python -r requirements.txt
+
+# 2. Per medley (karaoke-gen checkout, env where karaoke_gen imports + audio-separator on PATH)
+export PYTHONPATH=$PWD MEDLEY_CHORDMINI=~/ChordMini
+export MEDLEY_GCLOUD_ACCOUNT=claude-readonly@nomadkaraoke.iam.gserviceaccount.com
+#    add  "chords": true  to the spec, then:
+python scripts/medley/make_medley.py fetch  spec.json   # if not already fetched
+python scripts/medley/make_medley.py chords spec.json   # ~1-2 min/song: stems + 6 model runs
+python scripts/medley/make_medley.py audio  spec.json   # if not already built
+python scripts/medley/make_medley.py video  spec.json --resolution 1080p   # check frames first
+python scripts/medley/make_medley.py video  spec.json   # 4K final
 ```
 
-**Detection** (`scripts/medley/detect_chords.py`): we compared the open models in
-October 2026, and [ChordMini](https://github.com/ptnghia-j/ChordMini) (MIT) had the best
-published accuracy with downloadable weights: its continual-learning BTC checkpoint scores
-about 80% majmin/MIREX on a 120-song test set (arXiv 2602.19778). The script:
+- **Check it before delivering.** Watch the `With Vocals` video for a verse or two of each
+  song (chords should change with the band), and grab a few frames to check layout: one in a
+  verse, one on an `INSTRUMENTAL` screen (the corner box should show chords there), one in a
+  chorus.
+- **Fixing a chord.** Edit `work/<job_id>/chords.json` (list of
+  `{"start", "end", "label"}` in that song's own source seconds) and re-run `video`. If a
+  customer sends their own chord chart, enter it the same way: their chords replace the
+  detected ones, and nothing else changes.
+- **Deliver both versions** (with and without chords), and say the chords are auto-detected.
 
-1. Runs **both** ChordMini checkpoints (BTC + 2E1D) on **three inputs**: the full mix,
-   gen's clean instrumental (vocals removed, weighted higher) and a "harmonic" mix of
-   htdemucs_6s guitar + piano + bass + other (drums removed too; made automatically
-   when the `audio-separator` CLI is on PATH).
-2. Takes a weighted frame-by-frame vote, after simplifying each label to a guitar chord
-   (major, m, 7, maj7, m7, sus2/4, dim, aug, m7b5, dim7; no inversions).
-3. Merges changes shorter than 0.6s and snaps the rest onto librosa beats within 0.2s.
-4. Spells roots for the local key (A♭ / D♭ / E♭7 in A-flat, F♯m in D; borrowed
-   ♭III / ♭VI / ♭VII stay flat).
+#### A single song, not a medley
 
-On the five country songs from the first medley, the models agreed with each other on
-91–99% of each song's major/minor chord labels, and the output was the I–IV–V
-progressions you'd expect. That agreement is a sanity check, not ground truth: tell the
-customer the chords are auto-detected and fix any they flag by editing `chords.json`
-(`start`/`end` in source seconds, `label`) and re-running `video`.
+The same pipeline adds chords to any one gen track: write a one-section spec
+(`{"job_id": "...", "start": 0, "end": null}`) and run `fetch`, `chords`, `audio`, `video`.
+The output is the job's normal karaoke video plus chords (re-rendered locally from its
+reviewed lyrics and theme).
 
-ChordMini setup (once): `git clone https://github.com/ptnghia-j/ChordMini`, then
-`uv venv -p 3.12 .venv && uv pip install -p .venv/bin/python -r requirements.txt`. Load
-only `btc_model_best.pth` and `2e1d_model_best.pth`. They load with PyTorch's safe
-`weights_only=True`; the third bundled checkpoint (`btc_model_large_voca.pt`) doesn't,
-and isn't used.
+#### How detection works (`scripts/medley/detect_chords.py`)
 
-**Rendering** lives in gen itself (`karaoke_gen/lyrics_transcriber/output/ass/chords.py`,
-`OutputGenerator.generate_outputs(chords=[ChordChange(...)])`). It reserves a chord row
-above every lyric line, the same way translated lyrics get a row below. Theme keys,
-all optional, in the `karaoke` block: `chord_color` (upcoming chord, default gold
-`255, 223, 107`; played chords turn the sung-lyric colour), `chord_font_size` or
-`chord_font_ratio` (default 0.55 × lyric size), `chord_max_visible_lines` (default 4).
+We compared the open chord-recognition models in October 2026.
+[ChordMini](https://github.com/ptnghia-j/ChordMini) (MIT) had the best published accuracy
+with downloadable weights: its continual-learning BTC checkpoint scores about 80%
+majmin/MIREX on a 120-song test set (arXiv 2602.19778, Table 3). ChordFormer
+(arXiv 2502.11840) reports similar numbers but has no released weights; autochord and
+Chordino are older and weaker (25-class / ~67%). The script:
+
+1. Runs **both** ChordMini checkpoints (BTC weight 1.1, 2E1D weight 1.0) on **three
+   inputs**: the full mix, gen's clean instrumental (vocals removed, weight × 1.2) and a
+   "harmonic" mix of htdemucs_6s guitar + piano + bass + other (drums removed too; cached
+   as `work/<job>/harmonic.flac`). Removing vocals before chord recognition is a known
+   accuracy win (APSIPA 2025).
+2. Simplifies every label to a guitar chord (major, m, 7, maj7, m7, sus2/4, dim, aug,
+   m7b5, dim7; no inversions), then takes a weighted vote on a 50ms frame grid.
+3. Merges changes shorter than 0.6s into their longer neighbour, and snaps the remaining
+   changes onto librosa beats when one is within 0.2s.
+4. Spells roots for the local key, estimated over a 20s window: A♭ / D♭ / E♭7 in A-flat,
+   F♯m in D, and borrowed ♭III / ♭VI / ♭VII stay flat in sharp keys.
+
+**Accuracy evidence.** Run on the five country songs, each pair of model/input runs agreed
+on 91–99% of major/minor labels (93–99% for the instrumental-vs-harmonic pairs), and the
+output was the expected progressions (G–C–D7 then A♭–D♭–E♭7 after the half-step key
+change; F–B♭–C with a II chord; D–F♯m7–G–A). That's a consistency check, not ground truth.
+
+**Re-evaluating (if a better model appears).** Run each candidate on the same inputs, write
+`.lab` files and compare pairwise with `mir_eval.chord` (`majmin` and `sevenths` weighted
+accuracy). Better still, compare against a hand-checked chart for one song. Add a model by
+extending `MODELS` in the script.
+
+**Safety.** Load only `btc_model_best.pth` and `2e1d_model_best.pth`. Both load with
+PyTorch's safe `weights_only=True`; the third bundled checkpoint
+(`btc_model_large_voca.pt`) needs unsafe unpickling and isn't used.
+
+#### How rendering works (in gen)
+
+`karaoke_gen/lyrics_transcriber/output/ass/chords.py`, used via
+`OutputGenerator.generate_outputs(chords=[ChordChange(start, end, label)])`. With no chords,
+output is byte-identical to before.
+
+- **Layout.** Each lyric slot gets a chord row above the line: the slot grows by 1.05 ×
+  the chord font size, and lines per screen are capped at 4. It's the same mechanism as
+  translated lyrics (which add a row below).
+- **Which line.** A change belongs to the line being sung, from 0.6s before its first
+  word to the end of its last word. The chord already ringing when a line starts is
+  repeated over its first word, so every line shows what to play. Changes between lines
+  appear only in the corner box.
+- **Which word.** A change sits over the word sung at that moment, or the next word if it
+  comes up to 0.25s early (a pickup strum). Quick changes on one word are pushed right so
+  they never overlap. Positions use the renderer's libass-matched text measurement.
+- **Highlight.** Each chord is a one-syllable karaoke event (`\k` wait, then `\kf`):
+  upcoming colour, then the sung-lyric colour once played.
+- **Medley handover.** In the medley script, each section's chords are clipped to the
+  section, handing over to the next song halfway through each crossfade, then shifted for
+  the 3s countdown.
+- **Theme keys** (optional, `karaoke` block):
+  - `chord_color`: upcoming chord colour, default gold `255, 223, 107`.
+  - `chord_font_size`, or `chord_font_ratio` (default 0.55 × lyric size).
+  - `chord_max_visible_lines` (default 4).
+
+There's no gen job/UI option for chords yet: it's agent-run through this script. A product
+version would need a job flag, detection in a worker (ChordMini is small and CPU-friendly),
+and a chord editor in review.
 
 ## Making it sound good
 

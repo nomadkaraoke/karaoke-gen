@@ -135,3 +135,14 @@ class TestMedleyChords:
         out = medley.shift_chords([{"start": 0, "end": 10.02, "label": "G"}, {"start": 10.02, "end": 20, "label": "C"}],
                                   10.0, 20.0, 100.0)
         assert [c["label"] for c in out] == ["C"]
+
+
+class TestSingleSong:
+    def test_one_section_spec_builds_a_plain_graph_and_full_chords(self):
+        sections = medley.parse_spec({"sections": [{"job_id": "a", "start": 0, "end": None}]})
+        assert medley.compute_offsets(sections, [200.0]) == [0.0]
+        graph = medley.build_filtergraph(sections, [200.0], [1.5])
+        assert "acrossfade" not in graph and "concat" not in graph
+        assert graph.endswith("[s0]loudnorm=I=-14.0:TP=-1.0:LRA=11,aresample=44100[out]")
+        chords = medley.medley_chords(sections, [200.0], [0.0], {"a": [{"start": 0, "end": 200, "label": "G"}]})
+        assert chords == [{"start": 0.0, "end": 200.0, "label": "G"}]
