@@ -13,12 +13,27 @@ from karaoke_gen.lyrics_transcriber.output.ass.style import Style
 from karaoke_gen.lyrics_transcriber.output.ass.constants import ALIGN_TOP_CENTER
 from karaoke_gen.lyrics_transcriber.output.ass import LyricsScreen
 from karaoke_gen.lyrics_transcriber.output.ass.section_detector import SectionDetector
-from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig, translation_layout
+from karaoke_gen.lyrics_transcriber.output.ass.config import ScreenConfig, chord_layout, translation_layout
+from karaoke_gen.lyrics_transcriber.output.ass.chords import ChordChange, assign_chords_to_segments, clean_chords
+from karaoke_gen.lyrics_transcriber.output.ass.event import Event
 
 
 # Translation rows render at this fraction of the lyric colour's opacity, so they read as
 # secondary to the sung line (Andrew: identical white made it unclear which to read).
 TRANSLATION_OPACITY = 0.7
+# Guitar chords: upcoming chord colour (warm gold) unless the theme sets chord_color
+DEFAULT_CHORD_COLOR = (255, 223, 107, 255)
+# "Now / next" chord box in the top-right corner, as fractions of the frame
+CHORD_BOX_RIGHT = 0.955
+CHORD_BOX_TOP = 0.045
+CHORD_BOX_SIZE_RATIO = 1.25  # box chord size / chord-row size
+CHORD_BOX_NEXT_RATIO = 0.55  # "next" chord size / current chord size
+
+
+def _ass_colour(color) -> str:
+    """(r, g, b[, a]) -> ASS inline colour &HBBGGRR&."""
+    r, g, b = color[:3]
+    return f"&H{b:02X}{g:02X}{r:02X}&"
 
 
 def _fade(color, opacity: float):
@@ -58,6 +73,7 @@ class SubtitlesGenerator:
         self.styles = styles
         self.is_duet = is_duet
         self.subtitle_offset_ms = subtitle_offset_ms
+        self.chords: List[ChordChange] = []
         
         # Create ScreenConfig with potential overrides from styles
         karaoke_styles = styles.get("karaoke", {})
@@ -143,8 +159,23 @@ class SubtitlesGenerator:
         order = [1, 2, 0]
         return [sid for sid in order if sid in found]
 
-    def generate_ass(self, segments: List[LyricsSegment], output_prefix: str, audio_filepath: Optional[str]) -> str:
+    def generate_ass(
+        self,
+        segments: List[LyricsSegment],
+        output_prefix: str,
+        audio_filepath: Optional[str],
+        chords: Optional[List[ChordChange]] = None,
+    ) -> str:
+        """Write the karaoke ASS file.
+
+        ``chords``: optional guitar chord changes for the whole song. When given, each
+        line gets a chord row above it and a "now / next" chord box is shown throughout.
+        """
         self.logger.info("Generating ASS format subtitles")
+        self.chords = clean_chords(chords or [])
+        if self.chords and self.subtitle_offset_ms:
+            off = self.subtitle_offset_ms / 1000.0
+            self.chords = [ChordChange(c.start + off, c.end + off, c.label) for c in self.chords]
         output_path = self._get_output_path(f"{output_prefix} (Karaoke)", "ass")
 
         try:
@@ -152,7 +183,9 @@ class SubtitlesGenerator:
             song_duration = self._get_audio_duration(audio_filepath, segments)
 
             base_config = self.config
-            if any(seg.translation for seg in segments):
+            if self.chords:
+                self.config = self._chord_config(base_config)
+            elif any(seg.translation for seg in segments):
                 self.config = self._translation_config(base_config)
             try:
                 screens = self._create_screens(segments, song_duration)
@@ -188,6 +221,62 @@ class SubtitlesGenerator:
             f"translation font {layout.translation_font_size}px x{layout.max_rows} rows"
         )
         return config
+
+    def _chord_config(self, base: ScreenConfig) -> ScreenConfig:
+        """Copy of ``base`` with taller line slots that fit a chord row above each line."""
+        layout = chord_layout(self.font_size, base.line_height, self.styles.get("karaoke", {}))
+        config = copy.copy(base)
+        config.line_height = layout.slot_height
+        config.lyric_line_height = layout.lyric_line_height
+        config.lyric_y_offset = layout.lyric_y_offset
+        config.chord_font_size = layout.chord_font_size
+        config.max_visible_lines = min(base.max_visible_lines, layout.max_visible_lines)
+        self.logger.info(
+            f"Guitar chords: {len(self.chords)} changes, {config.max_visible_lines} lines/screen, "
+            f"slot {layout.slot_height}px, chord font {layout.chord_font_size}px"
+        )
+        return config
+
+    def _build_chord_style(self, primary: Style, karaoke_styles: dict, name: str, size: int) -> Style:
+        """Chord symbols: upcoming = chord colour (gold), played = the sung lyric colour."""
+        style = copy.copy(primary)
+        style.Name = name
+        style.Fontsize = size
+        color = karaoke_styles.get("chord_color")
+        upcoming = tuple(int(x.strip()) for x in str(color).split(",")) if color else DEFAULT_CHORD_COLOR
+        if len(upcoming) == 3:
+            upcoming = (*upcoming, 255)
+        style.SecondaryColour = upcoming
+        style.PrimaryColour = primary.PrimaryColour
+        ratio = size / max(1, self.font_size)
+        if primary.Outline:
+            style.Outline = max(1, int(round(primary.Outline * ratio)))
+        style.Alignment = 7  # top-left: chords are positioned by their left edge
+        return style
+
+    def _chord_box_events(self, box_style: Style) -> List[Event]:
+        """Top-right "now / next" chord box for the whole song (covers intros and breaks)."""
+        width, height = self.video_resolution
+        x, y = int(width * CHORD_BOX_RIGHT), int(height * CHORD_BOX_TOP)
+        next_size = max(1, int(round(box_style.Fontsize * CHORD_BOX_NEXT_RATIO)))
+        now_colour = _ass_colour(box_style.SecondaryColour)
+        next_colour = _ass_colour(_fade(box_style.SecondaryColour, TRANSLATION_OPACITY))
+        events = []
+        for i, chord in enumerate(self.chords):
+            nxt = self.chords[i + 1] if i + 1 < len(self.chords) else None
+            event = Event()
+            event.type = "Dialogue"
+            event.Layer = 2
+            event.Style = box_style
+            event.Start = chord.start
+            # Hold the chord through short no-chord gaps so the box doesn't flicker
+            event.End = nxt.start if nxt and nxt.start - chord.end < 1.0 else chord.end
+            text = f"{{\\an9}}{{\\pos({x},{y})}}{{\\1c{now_colour}}}{chord.label}"
+            if nxt:
+                text += f"\\N{{\\fs{next_size}}}{{\\1c{next_colour}}}next: {nxt.label}"
+            event.Text = text
+            events.append(event)
+        return events
 
     def _build_translation_style(self, primary: Style, karaoke_styles: dict) -> Style:
         """Static style for translation rows: the unsung lyric colour, faded and smaller.
@@ -284,6 +373,7 @@ class SubtitlesGenerator:
         """Create regular lyric screens, handling instrumental boundaries."""
         screens: List[LyricsScreen] = []
         current_screen: Optional[LyricsScreen] = None
+        chords_by_segment = assign_chords_to_segments(segments, getattr(self, "chords", None) or [])
 
         for i, segment in enumerate(segments):
             self.logger.debug(f"Processing segment {i}: {segment.start_time:.2f}s - {segment.end_time:.2f}s")
@@ -306,7 +396,12 @@ class SubtitlesGenerator:
                 self.logger.debug("  Created new screen")
 
             # Add line to current screen
-            line = LyricsLine(logger=self.logger, segment=segment, screen_config=self.config)
+            line = LyricsLine(
+                logger=self.logger,
+                segment=segment,
+                screen_config=self.config,
+                chords=chords_by_segment.get(segment.id, []),
+            )
             current_screen.lines.append(line)
             self.logger.debug(f"  Added line to screen (now has {len(current_screen.lines)} lines)")
 
@@ -419,6 +514,16 @@ class SubtitlesGenerator:
             a.add_style(translation_style)
             self.config.translation_style = translation_style
 
+        if self.config.chord_font_size:
+            chord_style = self._build_chord_style(style_list[0], karaoke_styles, "Karaoke.Chord", self.config.chord_font_size)
+            a.add_style(chord_style)
+            self.config.chord_style = chord_style
+            box_size = int(round(self.config.chord_font_size * CHORD_BOX_SIZE_RATIO))
+            box_style = self._build_chord_style(style_list[0], karaoke_styles, "Karaoke.ChordBox", box_size)
+            box_style.Alignment = 9
+            a.add_style(box_style)
+            self._chord_box_style = box_style
+
         a.events_format = ["Layer", "Style", "Start", "End", "MarginV", "Text"]
         # Primary (fallback) style is the first one (singer 1 for duet, ass_name for solo)
         primary_style = style_list[0]
@@ -461,6 +566,10 @@ class SubtitlesGenerator:
                 previous_instrumental_end = None
 
             for event in events:
+                ass_file.add(event)
+
+        if getattr(self.config, "chord_style", None) is not None:
+            for event in self._chord_box_events(self._chord_box_style):
                 ass_file.add(event)
 
         return ass_file

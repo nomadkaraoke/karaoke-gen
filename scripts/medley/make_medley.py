@@ -13,6 +13,8 @@ Usage (from the repo root, in an env where karaoke_gen imports):
     python scripts/medley/make_medley.py fetch spec.json   # Firestore + GCS -> <workdir>/<job_id>/
     python scripts/medley/make_medley.py audio spec.json   # medley WAV/MP3 per audio variant
     python scripts/medley/make_medley.py video spec.json [--resolution 4k]  # karaoke + guide MP4s
+    python scripts/medley/make_medley.py chords spec.json  # optional: detect guitar chords per song
+                                                          # (needs MEDLEY_CHORDMINI; see docs)
 
 Requires Firestore read access (ADC; the claude-readonly SA is enough), the gcloud CLI for GCS
 downloads (set MEDLEY_GCLOUD_ACCOUNT to pick an account, e.g. the read-only SA when your user
@@ -119,6 +121,34 @@ def shift_segments(segments, start: float, end: Optional[float], offset: float, 
                                          end_time=w.end_time + offset) for w in seg.words]
             out.append(dataclasses.replace(seg, id=f"{prefix}_{seg.id}", words=words,
                                            start_time=seg.start_time + offset, end_time=seg.end_time + offset))
+    return out
+
+
+def shift_chords(chords: list[dict], src_start: float, src_end: float, offset: float,
+                 trim_in: float = 0.0, trim_out: float = 0.0) -> list[dict]:
+    """Chords of one section on the medley timeline.
+
+    Clipped to [src_start + trim_in, src_end - trim_out] (half of each crossfade, so the
+    outgoing song's chords hand over to the incoming song's mid-fade) and moved by offset.
+    """
+    lo, hi = src_start + trim_in, src_end - trim_out
+    out = []
+    for c in chords:
+        start, end = max(c["start"], lo), min(c["end"], hi)
+        if end - start > 0.05:
+            out.append({"start": start + offset, "end": end + offset, "label": c["label"]})
+    return out
+
+
+def medley_chords(sections: list[Section], durations: list[float], offsets: list[float],
+                  chords_by_job: dict) -> list[dict]:
+    out = []
+    for i, (sec, dur, off) in enumerate(zip(sections, durations, offsets)):
+        trim_in = sec.join_duration / 2 if i > 0 and sec.join == "crossfade" else 0.0
+        nxt = sections[i + 1] if i + 1 < len(sections) else None
+        trim_out = nxt.join_duration / 2 if nxt is not None and nxt.join == "crossfade" else 0.0
+        out += shift_chords(chords_by_job.get(sec.job_id, []), sec.start, sec.start + dur, off - sec.start,
+                            trim_in, trim_out)
     return out
 
 
@@ -266,6 +296,55 @@ def cmd_audio(spec: dict, workdir: str, outdir: str):
                     "medley_start": o, "medley_end": o + d} for s, d, o in zip(sections, durations, offsets)], f, indent=1)
 
 
+def cmd_chords(spec: dict, workdir: str):
+    """Detect chords for each job with scripts/medley/detect_chords.py (ChordMini ensemble).
+
+    MEDLEY_CHORDMINI = a ChordMini checkout with its own .venv (see docs/MEDLEYS.md).
+    Harmonic stems (guitar+piano+bass+other via htdemucs_6s) are added when the
+    audio-separator CLI is available; otherwise just the full mix + clean instrumental.
+    """
+    chordmini = os.environ.get("MEDLEY_CHORDMINI")
+    if not chordmini or not os.path.isdir(chordmini):
+        raise SystemExit("set MEDLEY_CHORDMINI to a ChordMini checkout (see docs/MEDLEYS.md § Guitar chords)")
+    python = os.path.join(chordmini, ".venv", "bin", "python")
+    detect = os.path.join(os.path.dirname(os.path.abspath(__file__)), "detect_chords.py")
+    for job_id in dict.fromkeys(s["job_id"] for s in spec["sections"]):
+        d = job_dir(workdir, job_id)
+        inputs = [f"mix={variant_path(workdir, job_id, GUIDE_VARIANT)}",
+                  f"inst={variant_path(workdir, job_id, 'instrumental_clean')}"]
+        harm = _harmonic_stem(d, variant_path(workdir, job_id, GUIDE_VARIANT))
+        if harm:
+            inputs.append(f"harm={harm}")
+        args = [python, detect, "--chordmini", chordmini, "--out", os.path.join(d, "chords.json")]
+        for i in inputs:
+            args += ["--input", i]
+        _run(args)
+
+
+def _harmonic_stem(d: str, source: str) -> Optional[str]:
+    """guitar+piano+bass+other from htdemucs_6s (drums and vocals removed), cached per job."""
+    out = os.path.join(d, "harmonic.flac")
+    if os.path.exists(out):
+        return out
+    if subprocess.run(["which", "audio-separator"], capture_output=True).returncode != 0:
+        log.info("audio-separator not on PATH: skipping harmonic stems")
+        return None
+    stems_dir = os.path.join(d, "stems6")
+    os.makedirs(stems_dir, exist_ok=True)
+    _run(["audio-separator", "-m", "htdemucs_6s.yaml", "--output_format", "FLAC", "--output_dir", stems_dir, source],
+         capture_output=True)
+    parts = [os.path.join(stems_dir, f) for f in sorted(os.listdir(stems_dir))
+             if any(f"({n})" in f for n in ("Guitar", "Piano", "Bass", "Other"))]
+    if len(parts) != 4:
+        log.warning("unexpected htdemucs_6s output in %s", stems_dir)
+        return None
+    args = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
+    for part in parts:
+        args += ["-i", part]
+    _run(args + ["-filter_complex", "amix=inputs=4:normalize=0", out])
+    return out
+
+
 def _load_reviewed_lyrics(workdir: str, job_id: str):
     from karaoke_gen.lyrics_transcriber.correction.operations import CorrectionOperations
     from karaoke_gen.lyrics_transcriber.types import CorrectionResult
@@ -320,6 +399,20 @@ def cmd_video(spec: dict, workdir: str, outdir: str, resolution: str):
     medley, audio, _, pad = CountdownProcessor(cache_dir=cache_dir, logger=log).process(
         correction_result=medley, audio_filepath=karaoke_wav)
 
+    chords = None
+    if spec.get("chords"):
+        from karaoke_gen.lyrics_transcriber.output.ass.chords import ChordChange
+        by_job = {}
+        for job_id in dict.fromkeys(s.job_id for s in sections):
+            path = os.path.join(job_dir(workdir, job_id), "chords.json")
+            if not os.path.exists(path):
+                raise SystemExit(f"no chords for {job_id}: run the `chords` step first")
+            with open(path) as f:
+                by_job[job_id] = json.load(f)
+        chords = [ChordChange(c["start"] + pad, c["end"] + pad, c["label"])
+                  for c in medley_chords(sections, durations, offsets, by_job)]
+        log.info("guitar chords: %d changes", len(chords))
+
     artist, title = spec["artist"], spec["title"]
     vg = VideoGenerator(logger=log, ffmpeg_base_command="ffmpeg -hide_banner -loglevel error -nostats -y",
                         render_bounding_boxes=False, output_png=True, output_jpg=False)
@@ -333,7 +426,7 @@ def cmd_video(spec: dict, workdir: str, outdir: str, resolution: str):
                        generate_cdg=False, generate_plain_text=True, generate_lrc=True, video_resolution=resolution)
     outputs = OutputGenerator(cfg, log).generate_outputs(
         transcription_corrected=medley, lyrics_results={}, output_prefix=title, audio_filepath=audio,
-        artist=artist, title=title)
+        artist=artist, title=title, chords=chords)
 
     w, h = {"4k": (3840, 2160), "1080p": (1920, 1080), "720p": (1280, 720), "360p": (640, 360)}[resolution]
     intro_s, end_s = style["intro"]["video_duration"], style["end"]["video_duration"]
@@ -359,7 +452,7 @@ def cmd_video(spec: dict, workdir: str, outdir: str, resolution: str):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("command", choices=["fetch", "audio", "video"])
+    p.add_argument("command", choices=["fetch", "audio", "video", "chords"])
     p.add_argument("spec")
     p.add_argument("--resolution", default="4k", choices=["4k", "1080p", "720p", "360p"])
     args = p.parse_args(argv)
@@ -372,6 +465,8 @@ def main(argv=None):
     outdir = os.path.join(base, spec.get("outdir", "out"))
     if args.command == "fetch":
         cmd_fetch(spec, workdir)
+    elif args.command == "chords":
+        cmd_chords(spec, workdir)
     elif args.command == "audio":
         cmd_audio(spec, workdir, outdir)
     else:
