@@ -1784,12 +1784,9 @@
     "loading": "Ladataan taustan esikatselua"
   },
   "bulk": {
-    "albumModeHint": "Etsi artistia, valitse albumi ja valitse sitten, mitkä kappaleet haluat tehdä.",
     "artistSearchPlaceholder": "Etsi artistia…",
     "autoPickLossless": "Valitse paras ääni automaattisesti (vain häviötön)",
     "autoPickLosslessHint": "Valitse ääni automaattisesti, kun löydämme varman häviöttömän/FLAC-osuman. Muut menevät tarkistusjonoon.",
-    "backToAlbums": "Takaisin albumeihin",
-    "backToArtists": "Takaisin artisteihin",
     "batchProgressTitle": "{total} kappaleen erä",
     "batchSettings": "Erän asetukset",
     "byAlbum": "Albumin mukaan",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Käytössä {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonusta",
     "variantOriginal": "Alkuperäinen",
-    "variantReissue": "Uudelleenjulkaisu"
+    "variantReissue": "Uudelleenjulkaisu",
+    "albumsBy": "Artistin {artist} albumit",
+    "chooseAlbum": "Valitse albumi",
+    "chooseArtist": "Valitse artisti",
+    "chooseArtistHint": "Etsi artisti, jonka albumit haluat muuttaa karaokeksi.",
+    "chooseTracks": "Valitse kappaleet",
+    "selectAll": "Valitse kaikki",
+    "selectNone": "Poista valinnat",
+    "stepAlbum": "Albumi",
+    "stepTracks": "Kappaleet",
+    "stepsLabel": "Albumin vaiheet",
+    "tracksSelected": "{selected} / {total} kappaletta valittu",
+    "searchArtists": "Hae",
+    "stepArtist": "Artisti"
   },
   "backendStatus": {
     "reconnecting": "Yhdistetään uudelleen…",

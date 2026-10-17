@@ -1784,12 +1784,9 @@
     "loading": "Učitavanje pregleda pozadine"
   },
   "bulk": {
-    "albumModeHint": "Pretraži izvođača, odaberi album, a zatim odaberi koje pjesme želiš napraviti.",
     "artistSearchPlaceholder": "Pretraži izvođača…",
     "autoPickLossless": "Automatski odaberi najbolji zvuk (samo bez gubitaka)",
     "autoPickLosslessHint": "Automatski odaberi zvuk kada pronađemo pouzdano podudaranje bez gubitaka/FLAC. Ostali idu u red za pregled.",
-    "backToAlbums": "Natrag na albume",
-    "backToArtists": "Natrag na izvođače",
     "batchProgressTitle": "Serija od {total} pjesama",
     "batchSettings": "Postavke serije",
     "byAlbum": "Po albumu",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Koristiš {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Reizdanje"
+    "variantReissue": "Reizdanje",
+    "albumsBy": "Albumi izvođača {artist}",
+    "chooseAlbum": "Odaberi album",
+    "chooseArtist": "Odaberi izvođača",
+    "chooseArtistHint": "Pretraži izvođača čije albume želiš pretvoriti u karaoke.",
+    "chooseTracks": "Odaberi pjesme",
+    "selectAll": "Odaberi sve",
+    "selectNone": "Poništi odabir",
+    "stepAlbum": "Album",
+    "stepTracks": "Pjesme",
+    "stepsLabel": "Koraci za album",
+    "tracksSelected": "Odabrano: {selected} od {total} pjesama",
+    "searchArtists": "Pretraži",
+    "stepArtist": "Izvođač"
   },
   "backendStatus": {
     "reconnecting": "Ponovno povezivanje…",

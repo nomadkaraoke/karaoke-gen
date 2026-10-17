@@ -1784,12 +1784,9 @@
     "loading": "Načítava sa náhľad pozadia"
   },
   "bulk": {
-    "albumModeHint": "Vyhľadaj interpreta, vyber album a potom zvoľ, ktoré skladby chceš vytvoriť.",
     "artistSearchPlaceholder": "Hľadať interpreta…",
     "autoPickLossless": "Automaticky vybrať najlepšie audio (iba bezstratové)",
     "autoPickLosslessHint": "Automaticky vyberie audio, keď nájdeme spoľahlivú bezstratovú/FLAC zhodu. Ostatné pôjdu do radu na kontrolu.",
-    "backToAlbums": "Späť na albumy",
-    "backToArtists": "Späť na interpretov",
     "batchProgressTitle": "Dávka {total} skladieb",
     "batchSettings": "Nastavenia dávky",
     "byAlbum": "Podľa albumu",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Používa sa {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Originál",
-    "variantReissue": "Reedícia"
+    "variantReissue": "Reedícia",
+    "albumsBy": "Albumy od {artist}",
+    "chooseAlbum": "Vyber si album",
+    "chooseArtist": "Vyber si interpreta",
+    "chooseArtistHint": "Vyhľadaj interpreta, ktorého albumy chceš premeniť na karaoke.",
+    "chooseTracks": "Vyber si skladby",
+    "selectAll": "Vybrať všetko",
+    "selectNone": "Zrušiť celý výber",
+    "stepAlbum": "Album",
+    "stepTracks": "Skladby",
+    "stepsLabel": "Kroky albumu",
+    "tracksSelected": "Vybratých {selected} z {total} skladieb",
+    "searchArtists": "Hľadať",
+    "stepArtist": "Interpret"
   },
   "backendStatus": {
     "reconnecting": "Obnovuje sa pripojenie…",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useTranslations, useLocale } from "next-intl"
 import { api, BulkArtist, BulkAlbum, BulkTracklist, BulkEditionVariant } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Search, ChevronLeft } from "lucide-react"
+import { Loader2, Search, ChevronRight, Mic2, Disc3, ListMusic, Check, type LucideIcon } from "lucide-react"
 import { CommunityVersions } from "./CommunityVersions"
 import { BulkSongRow, newRow, shouldSelectTrack } from "./types"
 
@@ -24,6 +24,143 @@ function fmtLen(ms?: number | null): string {
   if (!ms) return ""
   const s = Math.round(ms / 1000)
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`
+}
+
+type AlbumStep = "artist" | "album" | "tracks"
+
+const STEPS: { key: AlbumStep; icon: LucideIcon; label: "stepArtist" | "stepAlbum" | "stepTracks" }[] = [
+  { key: "artist", icon: Mic2, label: "stepArtist" },
+  { key: "album", icon: Disc3, label: "stepAlbum" },
+  { key: "tracks", icon: ListMusic, label: "stepTracks" },
+]
+
+/**
+ * Artist → Album → Tracks progress strip. Completed steps show what was picked
+ * and are clickable to jump back, so it doubles as the breadcrumb.
+ */
+function AlbumSteps({ current, artistName, albumTitle, onArtist, onAlbum, disabled }: {
+  current: AlbumStep
+  artistName?: string
+  albumTitle?: string
+  onArtist: () => void
+  onAlbum: () => void
+  disabled?: boolean
+}) {
+  const t = useTranslations("bulk")
+  const currentIdx = STEPS.findIndex((s) => s.key === current)
+  const picked: Record<AlbumStep, string | undefined> = { artist: artistName, album: albumTitle, tracks: undefined }
+  const goBack: Partial<Record<AlbumStep, () => void>> = { artist: onArtist, album: onAlbum }
+
+  return (
+    <ol className="flex items-stretch gap-1" aria-label={t("stepsLabel")}>
+      {STEPS.map((s, i) => {
+        const done = i < currentIdx
+        const active = i === currentIdx
+        const Icon = done ? Check : s.icon
+        const content = (
+          <>
+            <span
+              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+              style={
+                active
+                  ? { backgroundColor: "var(--brand-pink)", color: "#fff" }
+                  : done
+                    ? { backgroundColor: "rgba(255,122,204,0.15)", color: "var(--brand-pink)" }
+                    : { backgroundColor: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }
+              }
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </span>
+            <span className="min-w-0 text-start">
+              <span
+                className="block text-xs font-medium truncate"
+                style={{ color: active || done ? "var(--text)" : "var(--text-muted)" }}
+              >
+                {i + 1}. {t(s.label)}
+              </span>
+              {done && picked[s.key] && (
+                <span className="block text-[11px] truncate" style={{ color: "var(--text-muted)" }}>
+                  {picked[s.key]}
+                </span>
+              )}
+            </span>
+          </>
+        )
+        return (
+          <li key={s.key} className="flex-1 min-w-0 flex items-center gap-1">
+            {done ? (
+              <button
+                type="button"
+                onClick={goBack[s.key]}
+                disabled={disabled}
+                className="flex-1 min-w-0 flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-white/5"
+              >
+                {content}
+              </button>
+            ) : (
+              <div
+                className="flex-1 min-w-0 flex items-center gap-2 px-1.5 py-1"
+                aria-current={active ? "step" : undefined}
+              >
+                {content}
+              </div>
+            )}
+            {i < STEPS.length - 1 && (
+              <ChevronRight className="w-4 h-4 shrink-0 rtl:rotate-180" style={{ color: "var(--text-muted)" }} />
+            )}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function StepHeading({ icon: Icon, title, subtitle }: { icon: LucideIcon; title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Icon className="w-4 h-4 shrink-0" style={{ color: "var(--brand-pink)" }} />
+      <div className="min-w-0">
+        <p className="text-sm font-medium" style={{ color: "var(--text)" }}>{title}</p>
+        {subtitle && <p className="text-xs truncate" style={{ color: "var(--text-muted)" }}>{subtitle}</p>}
+      </div>
+    </div>
+  )
+}
+
+/** A bordered, obviously-clickable result row (artist or album) with a trailing chevron. */
+function PickRow({ icon: Icon, title, subtitle, meta, onClick, disabled }: {
+  icon: LucideIcon
+  title: string
+  subtitle?: string
+  meta?: ReactNode
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full text-start rounded-md border px-2.5 py-2 flex items-center gap-3 transition-colors hover:bg-white/5 hover:border-pink-400/50 disabled:opacity-50 disabled:pointer-events-none"
+      style={{ borderColor: "var(--card-border)" }}
+    >
+      <span
+        className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+        style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}
+      >
+        <Icon className="w-4 h-4" />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm truncate" style={{ color: "var(--text)" }}>{title}</span>
+        {subtitle && <span className="block text-xs truncate" style={{ color: "var(--text-muted)" }}>{subtitle}</span>}
+      </span>
+      {meta}
+      <ChevronRight
+        className="w-4 h-4 shrink-0 rtl:rotate-180"
+        style={{ color: "var(--text-muted)" }}
+      />
+    </button>
+  )
 }
 
 export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) {
@@ -131,22 +268,49 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   const toggle = (key: string, checked: boolean) =>
     onChange(rows.map((r) => (r.key === key ? { ...r, selected: checked } : r)))
 
+  const goToArtists = () => { setArtist(null); setAlbums([]); setTracklist(null); resetVariants(); onChange([]) }
+  // Leaving the tracklist drops its rows so a stale album can't be submitted.
+  const goToAlbums = () => { setTracklist(null); resetVariants(); onChange([]) }
+
+  const step: AlbumStep = tracklist && artist ? "tracks" : artist ? "album" : "artist"
+  const stepper = (
+    <AlbumSteps
+      current={step}
+      artistName={artist?.name}
+      albumTitle={tracklist?.title ?? undefined}
+      onArtist={goToArtists}
+      onAlbum={goToAlbums}
+      disabled={disabled}
+    />
+  )
+
   // --- Render: tracklist view ---
   if (tracklist && artist) {
     const currentMbid = tracklist.selected_variant_mbid || tracklist.release_mbid
       || tracklist.canonical_release_mbid || ""
     const selectedVariant = variants.find((v) => v.representative_release_mbid === currentMbid)
+    const selectedCount = rows.filter((r) => r.selected).length
+    const allSelected = rows.length > 0 && selectedCount === rows.length
     return (
       <div className="space-y-3">
+        {stepper}
+        <StepHeading icon={ListMusic} title={t("chooseTracks")} subtitle={`${artist.name} — ${tracklist.title}`} />
+
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { setTracklist(null); resetVariants() }}
-            disabled={disabled}
-          >
-            <ChevronLeft className="w-4 h-4 me-1" />{t("backToAlbums")}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => onChange(rows.map((r) => ({ ...r, selected: !allSelected })))}
+              disabled={disabled || rows.length === 0}
+            >
+              {allSelected ? t("selectNone") : t("selectAll")}
+            </Button>
+            <span className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>
+              {t("tracksSelected", { selected: selectedCount, total: rows.length })}
+            </span>
+          </div>
           {/* Single confident default; full variant list only on "Change". */}
           {variants.length > 0 && selectedVariant && (
             showVariants && variants.length > 1 ? (
@@ -187,10 +351,6 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
             )
           )}
         </div>
-
-        <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
-          {artist.name} — {tracklist.title}
-        </p>
         <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("tracklistHint")}</p>
 
         <div className="space-y-1 max-h-[420px] overflow-y-auto pe-1">
@@ -225,6 +385,7 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
             </div>
           ))}
         </div>
+        {error && <p className="text-xs" style={{ color: "#ef4444" }}>{error}</p>}
       </div>
     )
   }
@@ -233,29 +394,30 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   if (artist) {
     return (
       <div className="space-y-3">
-        <Button variant="ghost" size="sm" onClick={() => { setArtist(null); setAlbums([]) }} disabled={disabled}>
-          <ChevronLeft className="w-4 h-4 me-1" />{t("backToArtists")}
-        </Button>
-        <p className="text-sm font-medium" style={{ color: "var(--text)" }}>{artist.name}</p>
-        {loading === "albums" ? (
+        {stepper}
+        <StepHeading icon={Disc3} title={t("chooseAlbum")} subtitle={t("albumsBy", { artist: artist.name })} />
+        {loading === "albums" || loading === "tracks" ? (
           <Loader2 className="w-5 h-5 animate-spin" style={{ color: "var(--text-muted)" }} />
         ) : (
-          <div className="space-y-1 max-h-[420px] overflow-y-auto pe-1">
+          <div className="space-y-1.5 max-h-[420px] overflow-y-auto pe-1">
             {albums.map((a) => (
-              <button
+              <PickRow
                 key={a.release_group_mbid}
+                icon={Disc3}
                 onClick={() => pickAlbum(a)}
                 disabled={disabled}
-                className="w-full text-start rounded-md px-2 py-1.5 hover:bg-white/5 flex items-center gap-2"
-              >
-                <span className="flex-1 min-w-0 text-sm truncate" style={{ color: "var(--text)" }}>{a.title}</span>
-                {!a.is_studio && a.secondary_types[0] && (
-                  <Badge variant="outline" className="text-xs">{a.secondary_types[0]}</Badge>
-                )}
-                <span className="text-xs shrink-0" style={{ color: "var(--text-muted)" }}>
-                  {a.first_release_date?.slice(0, 4)}
-                </span>
-              </button>
+                title={a.title}
+                meta={
+                  <>
+                    {!a.is_studio && a.secondary_types[0] && (
+                      <Badge variant="outline" className="text-xs">{a.secondary_types[0]}</Badge>
+                    )}
+                    <span className="text-xs shrink-0 tabular-nums" style={{ color: "var(--text-muted)" }}>
+                      {a.first_release_date?.slice(0, 4)}
+                    </span>
+                  </>
+                }
+              />
             ))}
             {albums.length === 0 && <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("noAlbums")}</p>}
           </div>
@@ -268,7 +430,8 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   // --- Render: artist search view ---
   return (
     <div className="space-y-3">
-      <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("albumModeHint")}</p>
+      {stepper}
+      <StepHeading icon={Mic2} title={t("chooseArtist")} subtitle={t("chooseArtistHint")} />
       <div className="flex items-center gap-2">
         <Input
           placeholder={t("artistSearchPlaceholder")}
@@ -278,22 +441,22 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
           onKeyDown={(e) => e.key === "Enter" && searchArtists()}
         />
         <Button onClick={searchArtists} disabled={disabled || query.trim().length < 2}>
-          {loading === "artists" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+          {loading === "artists"
+            ? <Loader2 className="w-4 h-4 me-1 animate-spin" />
+            : <Search className="w-4 h-4 me-1" />}
+          {t("searchArtists")}
         </Button>
       </div>
-      <div className="space-y-1 max-h-[420px] overflow-y-auto pe-1">
+      <div className="space-y-1.5 max-h-[420px] overflow-y-auto pe-1">
         {artists.map((a) => (
-          <button
+          <PickRow
             key={a.mbid || a.name}
+            icon={Mic2}
             onClick={() => pickArtist(a)}
             disabled={disabled || !a.mbid}
-            className="w-full text-start rounded-md px-2 py-1.5 hover:bg-white/5 flex items-center gap-2"
-          >
-            <span className="text-sm" style={{ color: "var(--text)" }}>{a.name}</span>
-            {a.disambiguation && (
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>({a.disambiguation})</span>
-            )}
-          </button>
+            title={a.name}
+            subtitle={a.disambiguation}
+          />
         ))}
       </div>
       {error && <p className="text-xs" style={{ color: "#ef4444" }}>{error}</p>}

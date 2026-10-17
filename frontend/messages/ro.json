@@ -1784,12 +1784,9 @@
     "loading": "Se încarcă previzualizarea fundalului"
   },
   "bulk": {
-    "albumModeHint": "Caută un artist, alege un album, apoi selectează ce piese vrei să creezi.",
     "artistSearchPlaceholder": "Caută un artist…",
     "autoPickLossless": "Alege automat cel mai bun audio (doar lossless)",
     "autoPickLosslessHint": "Alege automat fișierul audio când găsim o potrivire sigură lossless/FLAC. Celelalte merg într-o listă de așteptare pentru revizuire.",
-    "backToAlbums": "Înapoi la albume",
-    "backToArtists": "Înapoi la artiști",
     "batchProgressTitle": "Lot de {total} melodii",
     "batchSettings": "Setări lot",
     "byAlbum": "După album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Folosind {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Reeditare"
+    "variantReissue": "Reeditare",
+    "albumsBy": "Albume de {artist}",
+    "chooseAlbum": "Alege un album",
+    "chooseArtist": "Alege un artist",
+    "chooseArtistHint": "Caută artistul ale cărui albume vrei să le transformi în karaoke.",
+    "chooseTracks": "Alege piesele",
+    "selectAll": "Selectează tot",
+    "selectNone": "Deselectează tot",
+    "stepAlbum": "Album",
+    "stepTracks": "Piese",
+    "stepsLabel": "Etape album",
+    "tracksSelected": "{selected} din {total} piese selectate",
+    "searchArtists": "Caută",
+    "stepArtist": "Artist"
   },
   "backendStatus": {
     "reconnecting": "Se reconectează…",

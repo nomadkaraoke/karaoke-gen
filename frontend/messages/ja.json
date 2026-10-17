@@ -1784,12 +1784,9 @@
     "loading": "背景プレビューを読み込んでいます"
   },
   "bulk": {
-    "albumModeHint": "アーティストを検索してアルバムを選び、作成するトラックを選択してください。",
     "artistSearchPlaceholder": "アーティストを検索…",
     "autoPickLossless": "最適な音源を自動選択（ロスレスのみ）",
     "autoPickLosslessHint": "確実なロスレス/FLAC音源が見つかった場合は自動的に選択します。それ以外はレビューキューに送られます。",
-    "backToAlbums": "アルバムに戻る",
-    "backToArtists": "アーティストに戻る",
     "batchProgressTitle": "全{total}曲のバッチ",
     "batchSettings": "バッチ設定",
     "byAlbum": "アルバム別",
@@ -1838,7 +1835,20 @@
     "usingRelease": "{label} · {year} · {tracks} を使用",
     "variantBonus": "+{count} ボーナス",
     "variantOriginal": "オリジナル",
-    "variantReissue": "リイシュー"
+    "variantReissue": "リイシュー",
+    "albumsBy": "{artist}のアルバム",
+    "chooseAlbum": "アルバムを選択",
+    "chooseArtist": "アーティストを選択",
+    "chooseArtistHint": "カラオケを作成したいアルバムのアーティストを検索してください。",
+    "chooseTracks": "トラックを選択",
+    "selectAll": "すべて選択",
+    "selectNone": "すべて解除",
+    "stepAlbum": "アルバム",
+    "stepTracks": "トラック",
+    "stepsLabel": "アルバム作成手順",
+    "tracksSelected": "{total}曲中{selected}曲を選択中",
+    "searchArtists": "検索",
+    "stepArtist": "アーティスト"
   },
   "backendStatus": {
     "reconnecting": "再接続中…",

@@ -1784,12 +1784,9 @@
     "loading": "Nilo-load ang preview ng background"
   },
   "bulk": {
-    "albumModeHint": "Maghanap ng artist, pumili ng album, pagkatapos ay piliin kung aling mga track ang gagawin.",
     "artistSearchPlaceholder": "Maghanap ng artist…",
     "autoPickLossless": "Awtomatikong piliin ang pinakamagandang audio (lossless lang)",
     "autoPickLosslessHint": "Awtomatikong piliin ang audio kapag nakahanap kami ng siguradong lossless/FLAC na tugma. Ang iba ay mapupunta sa review queue.",
-    "backToAlbums": "Bumalik sa mga album",
-    "backToArtists": "Bumalik sa mga artist",
     "batchProgressTitle": "Batch ng {total} na kanta",
     "batchSettings": "Mga setting ng batch",
     "byAlbum": "Ayon sa album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Ginagamit ang {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Orihinal",
-    "variantReissue": "Muling inilabas"
+    "variantReissue": "Muling inilabas",
+    "albumsBy": "Mga album ni {artist}",
+    "chooseAlbum": "Pumili ng album",
+    "chooseArtist": "Pumili ng artist",
+    "chooseArtistHint": "Maghanap ng artist na ang mga album ay gusto mong gawing karaoke.",
+    "chooseTracks": "Pumili ng mga track",
+    "selectAll": "Piliin ang lahat",
+    "selectNone": "Walang piliin",
+    "stepAlbum": "Album",
+    "stepTracks": "Mga Track",
+    "stepsLabel": "Mga hakbang para sa album",
+    "tracksSelected": "{selected} sa {total} na track ang napili",
+    "searchArtists": "Maghanap",
+    "stepArtist": "Artist"
   },
   "backendStatus": {
     "reconnecting": "Kumokonekta muli…",

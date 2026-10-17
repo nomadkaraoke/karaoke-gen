@@ -1784,12 +1784,9 @@
     "loading": "Carregant la previsualització del fons"
   },
   "bulk": {
-    "albumModeHint": "Cerca un artista, tria un àlbum i després escull quines pistes vols crear.",
     "artistSearchPlaceholder": "Cerca un artista…",
     "autoPickLossless": "Tria automàticament el millor àudio (només sense pèrdua)",
     "autoPickLosslessHint": "Tria automàticament l'àudio quan trobem una coincidència segura sense pèrdua/FLAC. La resta van a una cua de revisió.",
-    "backToAlbums": "Torna als àlbums",
-    "backToArtists": "Torna als artistes",
     "batchProgressTitle": "Lot de {total} cançons",
     "batchSettings": "Configuració del lot",
     "byAlbum": "Per àlbum",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Utilitzant {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Reedició"
+    "variantReissue": "Reedició",
+    "albumsBy": "Àlbums de {artist}",
+    "chooseAlbum": "Tria un àlbum",
+    "chooseArtist": "Tria un artista",
+    "chooseArtistHint": "Cerca l'artista dels àlbums del qual vols crear karaokes.",
+    "chooseTracks": "Tria les cançons",
+    "selectAll": "Selecciona-ho tot",
+    "selectNone": "Deselecciona-ho tot",
+    "stepAlbum": "Àlbum",
+    "stepTracks": "Cançons",
+    "stepsLabel": "Passos de l'àlbum",
+    "tracksSelected": "{selected} de {total} cançons seleccionades",
+    "searchArtists": "Cerca",
+    "stepArtist": "Artista"
   },
   "backendStatus": {
     "reconnecting": "Reconnectant…",

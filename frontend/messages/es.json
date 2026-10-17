@@ -1784,12 +1784,9 @@
     "loading": "Cargando vista previa del fondo"
   },
   "bulk": {
-    "albumModeHint": "Busca un artista, elige un álbum, luego elige qué pistas crear.",
     "artistSearchPlaceholder": "Busca un artista…",
     "autoPickLossless": "Elegir automáticamente el mejor audio (solo sin pérdida)",
     "autoPickLosslessHint": "Elige automáticamente el audio cuando encontremos una coincidencia segura sin pérdida/FLAC. Los demás van a una cola de revisión.",
-    "backToAlbums": "Volver a los álbumes",
-    "backToArtists": "Volver a los artistas",
     "batchProgressTitle": "Lote de {total} canciones",
     "batchSettings": "Configuración del lote",
     "byAlbum": "Por álbum",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Usando {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Reedición"
+    "variantReissue": "Reedición",
+    "albumsBy": "Álbumes de {artist}",
+    "chooseAlbum": "Elige un álbum",
+    "chooseArtist": "Elige un artista",
+    "chooseArtistHint": "Busca al artista cuyos álbumes quieras convertir en karaoke.",
+    "chooseTracks": "Elige las pistas",
+    "selectAll": "Seleccionar todo",
+    "selectNone": "Deseleccionar todo",
+    "stepAlbum": "Álbum",
+    "stepTracks": "Pistas",
+    "stepsLabel": "Pasos del álbum",
+    "tracksSelected": "{selected} de {total} pistas seleccionadas",
+    "searchArtists": "Buscar",
+    "stepArtist": "Artista"
   },
   "backendStatus": {
     "reconnecting": "Reconectando…",

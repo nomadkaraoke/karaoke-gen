@@ -1784,12 +1784,9 @@
     "loading": "กำลังโหลดตัวอย่างพื้นหลัง"
   },
   "bulk": {
-    "albumModeHint": "ค้นหาศิลปิน เลือกอัลบั้ม แล้วเลือกเพลงที่ต้องการสร้าง",
     "artistSearchPlaceholder": "ค้นหาศิลปิน…",
     "autoPickLossless": "เลือกเสียงที่ดีที่สุดอัตโนมัติ (เฉพาะ lossless เท่านั้น)",
     "autoPickLosslessHint": "เลือกเสียงอัตโนมัติเมื่อเราพบไฟล์ lossless/FLAC ที่ตรงกันอย่างมั่นใจ ส่วนไฟล์อื่นๆ จะถูกส่งไปยังคิวรอตรวจสอบ",
-    "backToAlbums": "กลับไปที่อัลบั้ม",
-    "backToArtists": "กลับไปที่ศิลปิน",
     "batchProgressTitle": "ชุดเพลงจำนวน {total} เพลง",
     "batchSettings": "การตั้งค่าแบบชุด",
     "byAlbum": "ตามอัลบั้ม",
@@ -1838,7 +1835,20 @@
     "usingRelease": "กำลังใช้ {label} · {year} · {tracks}",
     "variantBonus": "+{count} โบนัส",
     "variantOriginal": "ต้นฉบับ",
-    "variantReissue": "วางจำหน่ายใหม่"
+    "variantReissue": "วางจำหน่ายใหม่",
+    "albumsBy": "อัลบั้มของ {artist}",
+    "chooseAlbum": "เลือกอัลบั้ม",
+    "chooseArtist": "เลือกศิลปิน",
+    "chooseArtistHint": "ค้นหาศิลปินที่คุณต้องการนำอัลบั้มมาทำเป็นคาราโอเกะ",
+    "chooseTracks": "เลือกแทร็ก",
+    "selectAll": "เลือกทั้งหมด",
+    "selectNone": "ไม่เลือกเลย",
+    "stepAlbum": "อัลบั้ม",
+    "stepTracks": "แทร็ก",
+    "stepsLabel": "ขั้นตอนอัลบั้ม",
+    "tracksSelected": "เลือกแล้ว {selected} จาก {total} แทร็ก",
+    "searchArtists": "ค้นหา",
+    "stepArtist": "ศิลปิน"
   },
   "backendStatus": {
     "reconnecting": "กำลังเชื่อมต่อใหม่…",

@@ -1784,12 +1784,9 @@
     "loading": "Laster inn forhåndsvisning av bakgrunn"
   },
   "bulk": {
-    "albumModeHint": "Søk etter en artist, velg et album, og velg deretter hvilke spor du vil lage.",
     "artistSearchPlaceholder": "Søk etter en artist…",
     "autoPickLossless": "Velg beste lyd automatisk (kun tapsfri)",
     "autoPickLosslessHint": "Velg lyden automatisk når vi finner et sikkert tapsfritt/FLAC-treff. Andre går til en gjennomgangskø.",
-    "backToAlbums": "Tilbake til album",
-    "backToArtists": "Tilbake til artister",
     "batchProgressTitle": "Parti med {total} sanger",
     "batchSettings": "Partiinnstillinger",
     "byAlbum": "Etter album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Bruker {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Nyutgivelse"
+    "variantReissue": "Nyutgivelse",
+    "albumsBy": "Album av {artist}",
+    "chooseAlbum": "Velg et album",
+    "chooseArtist": "Velg en artist",
+    "chooseArtistHint": "Søk etter artisten du vil gjøre om albumene til til karaoke.",
+    "chooseTracks": "Velg spor",
+    "selectAll": "Velg alle",
+    "selectNone": "Fjern alle",
+    "stepAlbum": "Album",
+    "stepTracks": "Spor",
+    "stepsLabel": "Albumtrinn",
+    "tracksSelected": "{selected} av {total} spor er valgt",
+    "searchArtists": "Søk",
+    "stepArtist": "Artist"
   },
   "backendStatus": {
     "reconnecting": "Kobler til på nytt…",

@@ -1784,12 +1784,9 @@
     "loading": "טעינת תצוגה מקדימה של הרקע"
   },
   "bulk": {
-    "albumModeHint": "חפש אמן, בחר אלבום, ואז בחר אילו רצועות להכין.",
     "artistSearchPlaceholder": "חפש אמן…",
     "autoPickLossless": "בחר אוטומטית את האודיו הטוב ביותר (lossless בלבד)",
     "autoPickLosslessHint": "בחר אוטומטית את האודיו כאשר אנו מוצאים התאמה ודאית של lossless/FLAC. השאר יעברו לתור בדיקה.",
-    "backToAlbums": "חזרה לאלבומים",
-    "backToArtists": "חזרה לאמנים",
     "batchProgressTitle": "מקבץ של {total} שירים",
     "batchSettings": "הגדרות מקבץ",
     "byAlbum": "לפי אלבום",
@@ -1838,7 +1835,20 @@
     "usingRelease": "שימוש ב-{label} · {year} · {tracks}",
     "variantBonus": "+{count} בונוס",
     "variantOriginal": "מקורי",
-    "variantReissue": "הוצאה מחודשת"
+    "variantReissue": "הוצאה מחודשת",
+    "albumsBy": "אלבומים מאת {artist}",
+    "chooseAlbum": "בחירת אלבום",
+    "chooseArtist": "בחירת אמן",
+    "chooseArtistHint": "חפשו את האמן שאת האלבומים שלו תרצו להפוך לקריוקי.",
+    "chooseTracks": "בחירת שירים",
+    "selectAll": "בחר הכל",
+    "selectNone": "נקה בחירה",
+    "stepAlbum": "אלבום",
+    "stepTracks": "שירים",
+    "stepsLabel": "שלבי האלבום",
+    "tracksSelected": "{selected} מתוך {total} שירים נבחרו",
+    "searchArtists": "חיפוש",
+    "stepArtist": "אומן"
   },
   "backendStatus": {
     "reconnecting": "מתחבר מחדש…",

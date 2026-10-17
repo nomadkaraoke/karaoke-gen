@@ -1784,12 +1784,9 @@
     "loading": "Laddar förhandsgranskning av bakgrund"
   },
   "bulk": {
-    "albumModeHint": "Sök efter en artist, välj ett album och välj sedan vilka spår du vill skapa.",
     "artistSearchPlaceholder": "Sök efter en artist…",
     "autoPickLossless": "Välj bästa ljud automatiskt (endast förlustfritt)",
     "autoPickLosslessHint": "Välj ljudet automatiskt när vi hittar en säker förlustfri/FLAC-matchning. Övriga hamnar i en granskningskö.",
-    "backToAlbums": "Tillbaka till album",
-    "backToArtists": "Tillbaka till artister",
     "batchProgressTitle": "Batch med {total} låtar",
     "batchSettings": "Batchinställningar",
     "byAlbum": "Efter album",
@@ -1838,7 +1835,20 @@
     "usingRelease": "Använder {label} · {year} · {tracks}",
     "variantBonus": "+{count} bonus",
     "variantOriginal": "Original",
-    "variantReissue": "Nyutgåva"
+    "variantReissue": "Nyutgåva",
+    "albumsBy": "Album av {artist}",
+    "chooseAlbum": "Välj ett album",
+    "chooseArtist": "Välj en artist",
+    "chooseArtistHint": "Sök efter artisten vars album du vill förvandla till karaoke.",
+    "chooseTracks": "Välj låtar",
+    "selectAll": "Markera alla",
+    "selectNone": "Avmarkera alla",
+    "stepAlbum": "Album",
+    "stepTracks": "Låtar",
+    "stepsLabel": "Albumsteg",
+    "tracksSelected": "{selected} av {total} låtar valda",
+    "searchArtists": "Sök",
+    "stepArtist": "Artist"
   },
   "backendStatus": {
     "reconnecting": "Återansluter…",
