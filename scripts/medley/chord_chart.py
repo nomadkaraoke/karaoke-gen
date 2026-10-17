@@ -258,11 +258,16 @@ def _time_free_group(group, chords, sung, mapping, detected, duration):
     after = group[0].after
     w = mapping.get(after) if after is not None and after >= 0 else None
     t0 = sung[w][2] if w is not None else 0.0
+    # Earlier groups after the same word (chords past the line end, then a chords-only
+    # break line) are played first: start after them
+    prior = [c.time for c in chords if c.word is None and c.after == after and c.time is not None]
+    if prior:
+        t0 = max(prior)
     nxt_word = sung[w + 1][1] if w is not None and w + 1 < len(sung) else (sung[0][1] if w is None else duration)
     later = [c.time for c in chords if c.time is not None and c.time > t0]
     t1 = min([nxt_word] + later)
     window = [d for d in detected if t0 - 0.3 <= d["start"] < t1 - 0.3]
-    cursor = t0 - 0.3
+    cursor = t0 if prior else t0 - 0.3
     for c in group:
         hit = next((d for d in window if d["start"] > cursor and
                     root_pitches(to_shape(d["label"], c.capo)) & root_pitches(c.label)), None)

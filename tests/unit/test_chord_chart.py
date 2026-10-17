@@ -150,3 +150,13 @@ Again
     assert c_at == 12.0  # matched to the detected change
     assert 12.0 < d_at <= 14.0  # spread after it
     assert g2_at == 20.0
+
+
+def test_break_line_after_trailing_chords_keeps_chart_order():
+    chart = cc.parse_chart(CHART)
+    sung = sung_line("Amarillo by mornin'", 10.0) + sung_line("Remember when.", 14.0) \
+        + sung_line("He stopped loving her", 40.0)
+    chords = cc.chart_to_chords(chart, sung, [], duration=45.0)
+    labels = [c["label"] for c in chords]
+    assert labels == ["C", "Em", "G/Em", "C", "D", "C", "Em", "F", "G"]
+    assert all(a["start"] < b["start"] for a, b in zip(chords, chords[1:]))
