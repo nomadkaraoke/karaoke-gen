@@ -398,6 +398,8 @@ class JobManager:
         finals = (job.file_urls or {}).get("finals")
         if isinstance(finals, dict):
             for key, gcs_path in finals.items():
+                if not isinstance(key, str) or not isinstance(gcs_path, str):
+                    continue
                 if not key.endswith("_mp4") or key in urls or not gcs_path:
                     continue
                 try:

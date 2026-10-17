@@ -1171,3 +1171,13 @@ class TestGetOutputUrls:
         assert job_manager.get_output_urls("j") == {}
         # Fail fast: a stalled signer is not retried for every remaining final
         assert signer.generate_signed_url.call_count == 1
+
+    def test_malformed_final_entry_skipped_not_fatal(self, job_manager, signer):
+        self._job(job_manager, file_urls={"finals": {
+            "bad_none_mp4": None,
+            "bad_dict_mp4": {"x": 1},
+            "lossy_720p_mp4": "jobs/j/finals/720.mp4",
+        }})
+        urls = job_manager.get_output_urls("j")
+        assert urls == {"lossy_720p_mp4": "signed://jobs/j/finals/720.mp4?exp=120"}
+        assert signer.generate_signed_url.call_count == 1
