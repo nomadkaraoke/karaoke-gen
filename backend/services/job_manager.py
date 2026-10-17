@@ -376,20 +376,43 @@ class JobManager:
         logger.error(f"Job {job_id} marked as error: {error_message}")
     
     def get_output_urls(self, job_id: str) -> Dict[str, str]:
-        """Generate signed URLs for job output files."""
+        """Generate signed URLs (120 min) for a job's downloadable outputs.
+
+        Signs legacy ``job.output_files`` plus the final MP4 videos in
+        ``file_urls['finals']`` (keys ending ``_mp4``, e.g. ``lossy_720p_mp4``) -
+        current workers only populate the latter. ``output_files`` wins on key
+        collision. Signed URLs support HTTP Range, so clients can stream them.
+        Blobs are not existence-checked (a purged final yields a URL that 404s).
+        """
         job = self.get_job(job_id)
-        if not job or not job.output_files:
+        if not job:
             return {}
-        
-        urls = {}
-        for file_type, gcs_path in job.output_files.items():
+
+        urls: Dict[str, str] = {}
+        for file_type, gcs_path in (job.output_files or {}).items():
             try:
                 urls[file_type] = self.storage.generate_signed_url(gcs_path, expiration_minutes=120)
             except Exception as e:
                 logger.error(f"Error generating URL for {file_type}: {e}")
-        
+
+        finals = (job.file_urls or {}).get("finals")
+        if isinstance(finals, dict):
+            for key, gcs_path in finals.items():
+                if not isinstance(key, str) or not isinstance(gcs_path, str):
+                    continue
+                if not key.endswith("_mp4") or key in urls or not gcs_path:
+                    continue
+                try:
+                    urls[key] = self.storage.generate_signed_url(gcs_path, expiration_minutes=120)
+                except Exception as e:
+                    # Signing is bounded per call (SIGNED_URL_TIMEOUT_S); if it
+                    # failed, IAM is likely stalled - don't stack more timeouts
+                    # onto this request.
+                    logger.error(f"Error generating URL for final {key}: {e}")
+                    break
+
         return urls
-    
+
     def delete_job(self, job_id: str, delete_files: bool = True) -> None:
         """Delete a job, its files, and its logs subcollection."""
         job = self.get_job(job_id)
