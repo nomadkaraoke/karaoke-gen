@@ -1117,3 +1117,57 @@ class TestAtomicNestedUpdates:
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 
+
+
+class TestGetOutputUrls:
+    """get_output_urls signs output_files plus the final MP4s in file_urls['finals']."""
+
+    @pytest.fixture
+    def signer(self, job_manager):
+        job_manager.storage = Mock()
+        job_manager.storage.generate_signed_url.side_effect = lambda path, expiration_minutes=60: f"signed://{path}?exp={expiration_minutes}"
+        return job_manager.storage
+
+    def _job(self, job_manager, **kwargs):
+        job = Mock(output_files=kwargs.get("output_files", {}), file_urls=kwargs.get("file_urls", {}))
+        job_manager.get_job = Mock(return_value=job)
+
+    def test_signs_only_mp4_finals(self, job_manager, signer):
+        self._job(job_manager, file_urls={"finals": {
+            "lossy_720p_mp4": "jobs/j/finals/720.mp4",
+            "lossy_4k_mp4": "jobs/j/finals/4k.mp4",
+            "lossless_4k_mkv": "jobs/j/finals/4k.mkv",
+            "cdg_zip": "jobs/j/finals/x.zip",
+        }})
+        urls = job_manager.get_output_urls("j")
+        assert set(urls) == {"lossy_720p_mp4", "lossy_4k_mp4"}
+        assert urls["lossy_720p_mp4"] == "signed://jobs/j/finals/720.mp4?exp=120"
+
+    def test_output_files_win_on_collision(self, job_manager, signer):
+        self._job(
+            job_manager,
+            output_files={"lossy_720p_mp4": "legacy/720.mp4", "other": "legacy/o.bin"},
+            file_urls={"finals": {"lossy_720p_mp4": "jobs/j/finals/720.mp4"}},
+        )
+        urls = job_manager.get_output_urls("j")
+        assert urls["lossy_720p_mp4"] == "signed://legacy/720.mp4?exp=120"
+        assert urls["other"] == "signed://legacy/o.bin?exp=120"
+        assert signer.generate_signed_url.call_count == 2
+
+    def test_empty_when_nothing_to_sign(self, job_manager, signer):
+        self._job(job_manager)
+        assert job_manager.get_output_urls("j") == {}
+        self._job(job_manager, file_urls={"finals": None, "videos": {"a_mp4": "x"}})
+        assert job_manager.get_output_urls("j") == {}
+        signer.generate_signed_url.assert_not_called()
+
+    def test_missing_job(self, job_manager, signer):
+        job_manager.get_job = Mock(return_value=None)
+        assert job_manager.get_output_urls("j") == {}
+
+    def test_signing_failure_skips_entry_without_raising(self, job_manager, signer):
+        signer.generate_signed_url.side_effect = TimeoutError("iam stalled")
+        self._job(job_manager, file_urls={"finals": {"lossy_720p_mp4": "p", "lossy_4k_mp4": "q"}})
+        assert job_manager.get_output_urls("j") == {}
+        # Fail fast: a stalled signer is not retried for every remaining final
+        assert signer.generate_signed_url.call_count == 1

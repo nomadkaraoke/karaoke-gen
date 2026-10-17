@@ -259,7 +259,8 @@ GET /api/jobs/{job_id}
 
 Response includes:
 - `status` - Current job state
-- `file_urls` - Signed URLs for outputs (when ready)
+- `file_urls` - GCS paths of outputs (when ready)
+- `download_urls` - (complete jobs only) short-lived (120 min) signed GCS URLs, keyed by output name. Includes the final MP4s from `file_urls.finals` keyed by finals key (e.g. `lossy_720p_mp4`, `lossy_4k_mp4`, `with_vocals_mp4`); non-MP4 finals (mkv, zips) are not included. Signed URLs support HTTP Range (streaming/progress) unlike the `/download/...` proxy. Purged outputs still get a URL that returns 404
 - `state_data` - Worker progress details
 - `timeline` - Processing history
 
