@@ -11,6 +11,8 @@ import { api, type Job } from "@/lib/api"
 export interface DurationConfirmData {
   /** Total credits that will be on account after confirm (credits_charged + pending_additional_credits) */
   totalCredits: number
+  /** Credits still owed now (pending_additional_credits) — what the balance must cover */
+  additionalCredits: number
   /** The amount passed to api.confirmDuration (same as totalCredits; validated server-side) */
   acknowledgedCredits: number
   /** Measured duration in seconds (may be null if not yet known) */
@@ -37,6 +39,7 @@ export function getDurationConfirmData(job: Job): DurationConfirmData | null {
 
   return {
     totalCredits,
+    additionalCredits: pendingAdditional,
     acknowledgedCredits: totalCredits,
     durationSeconds,
     reconcile,

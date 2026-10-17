@@ -140,6 +140,7 @@ describe("getDurationConfirmData", () => {
     const data = getDurationConfirmData(job)
     expect(data!.totalCredits).toBe(2)
     expect(data!.acknowledgedCredits).toBe(2)
+    expect(data!.additionalCredits).toBe(1) // what the balance must cover now
   })
 
   it("payment-bypassed job lacking credits_charged counts 0 already charged", () => {

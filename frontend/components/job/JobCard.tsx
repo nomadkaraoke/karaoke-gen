@@ -313,6 +313,7 @@ export function JobCard({ job, onRefresh, showAdminControls }: JobCardProps) {
           open={true}
           durationSeconds={modalState.data.durationSeconds}
           credits={modalState.data.totalCredits}
+          creditsDue={modalState.data.additionalCredits}
           balance={user?.credits ?? 0}
           reconcile={modalState.data.reconcile}
           onConfirm={handleConfirm}
