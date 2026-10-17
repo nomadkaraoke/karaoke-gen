@@ -80,6 +80,22 @@ def grant_backend_permissions(
         member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
     )
 
+    # BigQuery read + query: Bulk album mode reads our MusicBrainz mirror
+    # (karaoke_decide.mb_*) instead of the live MusicBrainz API. Project-level
+    # dataViewer because karaoke-decide's Pulumi owns that dataset's ACL.
+    bindings["bigquery_viewer"] = gcp.projects.IAMMember(
+        "karaoke-backend-bigquery-viewer",
+        project=PROJECT_ID,
+        role="roles/bigquery.dataViewer",
+        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+    bindings["bigquery_job_user"] = gcp.projects.IAMMember(
+        "karaoke-backend-bigquery-job-user",
+        project=PROJECT_ID,
+        role="roles/bigquery.jobUser",
+        member=service_account.email.apply(lambda email: f"serviceAccount:{email}"),
+    )
+
     # No Vertex AI role: Gemini is called via the Gemini Developer API with the
     # `gemini-api-key` secret (read via the project-level secretAccessor role
     # above), and aiplatform.googleapis.com is disabled in this project.

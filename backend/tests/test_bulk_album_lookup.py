@@ -109,6 +109,22 @@ class TestAlbumTracklistRoute:
         assert data["tracks"][1]["is_extra"] is True
         assert data["tracks"][1]["available"] is False
 
+    def test_unknown_release_is_404_and_release_group_is_passed_through(self, client, monkeypatch):
+        from backend.services import musicbrainz_service as mbs
+
+        seen = {}
+
+        class FakeMB:
+            async def get_release_tracklist(self, release_mbid, release_group_mbid=None):
+                seen["args"] = (release_mbid, release_group_mbid)
+                raise LookupError(release_mbid)
+
+        monkeypatch.setattr(mbs, "get_musicbrainz_service", lambda: FakeMB())
+        resp = client.get("/api/bulk/album/tracklist",
+                          params={"artist": "X", "release_mbid": "rel-x", "release_group_mbid": "rg-x"})
+        assert resp.status_code == 404
+        assert seen["args"] == ("rel-x", "rg-x")
+
     def test_tracklist_requires_an_id(self, client):
         resp = client.get("/api/bulk/album/tracklist", params={"artist": "X"})
         assert resp.status_code == 422
