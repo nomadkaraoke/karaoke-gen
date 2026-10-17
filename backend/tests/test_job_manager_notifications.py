@@ -217,12 +217,13 @@ class TestScheduleIdleReminder:
             update_call = manager.firestore.update_job.call_args
             assert update_call is not None
             updated_data = update_call[0][1]  # Second positional arg
-            state_data = updated_data.get('state_data', {})
 
-            assert state_data.get('blocking_action_type') == 'lyrics'
-            assert state_data.get('reminder_sent') is False
-            assert 'blocking_state_entered_at' in state_data
-            assert state_data.get('existing_key') == 'value'  # Preserved
+            assert updated_data.get('state_data.blocking_action_type') == 'lyrics'
+            assert updated_data.get('state_data.reminder_sent') is False
+            assert 'state_data.blocking_state_entered_at' in updated_data
+            # Other keys (existing_key, credits_charged…) are preserved because the
+            # update merges via dotted paths instead of replacing the whole map.
+            assert 'state_data' not in updated_data
 
     def test_updates_state_data_for_instrumental_selection(self):
         """Test that state_data is updated with blocking state info for instrumental."""
@@ -247,9 +248,8 @@ class TestScheduleIdleReminder:
             # Verify state_data was updated
             update_call = manager.firestore.update_job.call_args
             updated_data = update_call[0][1]
-            state_data = updated_data.get('state_data', {})
 
-            assert state_data.get('blocking_action_type') == 'instrumental'
+            assert updated_data.get('state_data.blocking_action_type') == 'instrumental'
 
     def test_handles_none_state_data(self):
         """Test that None state_data is handled gracefully."""

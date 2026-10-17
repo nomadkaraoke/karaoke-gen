@@ -155,7 +155,8 @@ def process_stale_reviews_sync() -> Dict[str, Any]:
                         f"(>={REVIEW_EXPIRY_HOURS}h), auto-expiring with credits_charged refund"
                     )
 
-                    credits_charged = state_data.get('credits_charged', 0) or 0
+                    from backend.services.job_credits import get_credits_charged
+                    credits_charged = get_credits_charged(job)
                     credits_refunded = 0
 
                     # Refund the full charged amount (not flat 1) BEFORE cancelling.

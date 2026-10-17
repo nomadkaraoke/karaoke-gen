@@ -3049,8 +3049,11 @@ def override_audio_source(
 
         # Transition to awaiting_audio_selection with results
         new_status = "awaiting_audio_selection"
+        # Dotted paths MERGE: replacing the whole map would wipe billing state
+        # (credits_charged / payment_bypassed) — the keys_to_clear list above is
+        # the intended reset.
         job_ref.update({
-            "state_data": state_data_update,
+            **{f"state_data.{k}": v for k, v in state_data_update.items()},
             "status": new_status,
             "message": f"Found {search_results_count} audio sources - select one",
             "progress": 10,

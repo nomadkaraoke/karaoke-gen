@@ -152,6 +152,10 @@ Called when a job is paused in `AWAITING_DURATION_CONFIRM` state. Two scenarios:
   `acknowledged_credits` must equal the full cost (`pending_additional_credits` in `state_data`).
 - **`reconcile`** — post-download: actual duration costs more than was already charged.
   `acknowledged_credits` must equal the new total (`credits_charged + pending_additional_credits`).
+  Reconcile writes `credits_charged` alongside `pending_additional_credits` when it pauses. For
+  jobs paused before v0.278.2 that lack `credits_charged`, treat it as `1` (`0` if
+  `payment_bypassed`) — the server uses the same default (`job_credits.get_credits_charged`).
+  On success `credits_charged` becomes the new total, which is what a later cancel/expiry refunds.
 
 On success, deducts the owed credits and resumes by triggering both audio and lyrics workers.
 Returns the updated job.

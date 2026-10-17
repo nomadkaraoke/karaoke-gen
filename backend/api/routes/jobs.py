@@ -2343,10 +2343,14 @@ async def retry_job(
             logger.info(f"Job {job_id}: Has input audio in GCS, restarting from beginning")
 
             # Clear error state and any partial progress
+            # Clear parallel worker progress, but keep billing state: wiping
+            # credits_charged would make a re-run reconcile re-charge (or a later
+            # refund under-refund) a job that was already paid for.
+            from backend.services.job_credits import preserve_billing_state
             job_manager.update_job(job_id, {
                 'error_message': None,
                 'error_details': None,
-                'state_data': {},  # Clear parallel worker progress
+                'state_data': preserve_billing_state(job.state_data),
             })
 
             # Reset to DOWNLOADING and trigger audio worker
@@ -2989,16 +2993,19 @@ def _create_job_from_search_sync(
                 logger.warning(f"Failed to prepare theme '{effective_theme_id}' for job {job_id}: {e}")
 
         # Store search results and remote_search_id in job state_data
-        # (required by _download_audio_and_trigger_workers)
+        # (required by _download_audio_and_trigger_workers).
+        # Dotted paths MERGE into state_data — never write the whole map here:
+        # create_job already recorded credits_charged / payment_bypassed, and
+        # wiping them made reconcile and confirm-duration disagree on the charge.
         state_data_update: Dict[str, Any] = {
-            'audio_search_results': search_results,
-            'audio_search_count': len(search_results),
+            'state_data.audio_search_results': search_results,
+            'state_data.audio_search_count': len(search_results),
         }
         if session.get('remote_search_id'):
-            state_data_update['remote_search_id'] = session['remote_search_id']
+            state_data_update['state_data.remote_search_id'] = session['remote_search_id']
         if body.requires_audio_edit:
-            state_data_update['requires_audio_edit'] = True
-        job_manager.update_job(job_id, {'state_data': state_data_update})
+            state_data_update['state_data.requires_audio_edit'] = True
+        job_manager.update_job(job_id, state_data_update)
 
         # Transition to DOWNLOADING_AUDIO (skips AWAITING_AUDIO_SELECTION entirely)
         _validate_and_prepare_selection(
@@ -3287,7 +3294,8 @@ async def confirm_duration(
     # confirm_duration never needs to call duration_to_credits.
     state_data = job.state_data or {}
     reason = state_data.get("duration_confirm_reason", "reconcile")
-    credits_charged = int(state_data.get("credits_charged", 0))
+    from backend.services.job_credits import get_credits_charged
+    credits_charged = get_credits_charged(job)  # same default as reconcile/refunds
     owed = int(state_data.get("pending_additional_credits", 0))
     expected_total = credits_charged + owed
 
@@ -3332,10 +3340,12 @@ async def confirm_duration(
             },
         )
     else:
-        # owed == 0: nothing to charge, just mark confirmed.
+        # owed == 0: nothing to charge, just mark confirmed (and persist the
+        # resolved charge so legacy jobs carry the explicit field from now on).
         job_manager.update_job(
             job_id,
             {
+                "state_data.credits_charged": credits_charged,
                 "state_data.duration_confirmed": True,
                 "state_data.pending_additional_credits": 0,
             },

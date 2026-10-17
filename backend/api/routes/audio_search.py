@@ -942,16 +942,16 @@ async def search_audio(
         
         # Store results in job state_data, including remote_search_id if available
         results_dicts = [r.to_dict() for r in search_results]
+        # Dotted paths MERGE into state_data (keeps create_job's credits_charged /
+        # payment_bypassed — never replace the whole map after create_job).
         state_data_update = {
-            'audio_search_results': results_dicts,
-            'audio_search_count': len(results_dicts),
+            'state_data.audio_search_results': results_dicts,
+            'state_data.audio_search_count': len(results_dicts),
         }
         # Store remote_search_id for use during download (important for concurrent requests)
         if audio_search_service.last_remote_search_id:
-            state_data_update['remote_search_id'] = audio_search_service.last_remote_search_id
-        job_manager.update_job(job_id, {
-            'state_data': state_data_update
-        })
+            state_data_update['state_data.remote_search_id'] = audio_search_service.last_remote_search_id
+        job_manager.update_job(job_id, state_data_update)
         
         # If auto_download, select best and start processing
         if body.auto_download:
@@ -1602,7 +1602,8 @@ async def select_audio_source(
 
     # Compute how many credits this job should total after selecting this result.
     # If duration is unknown, keep target_total == credits_charged so owed = 0.
-    credits_charged = int((job.state_data or {}).get('credits_charged', 1))
+    from backend.services.job_credits import get_credits_charged
+    credits_charged = get_credits_charged(job)
     target_total = duration_to_credits(duration) if duration is not None else credits_charged
     owed = max(0, target_total - credits_charged)
 

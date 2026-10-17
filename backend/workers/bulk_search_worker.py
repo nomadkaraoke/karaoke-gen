@@ -79,10 +79,11 @@ async def _auto_select(job, selection_index: int, selected: dict,
         return False
 
     if not sd.get("select_charge_applied"):
-        credits_charged = int(sd.get("credits_charged", 1))
+        from backend.services.job_credits import get_credits_charged, is_payment_bypassed
+        credits_charged = get_credits_charged(job)
         target_total = duration_to_credits(duration) if duration is not None else credits_charged
         owed = max(0, target_total - credits_charged)
-        bypass = bool(sd.get("payment_bypassed", False))
+        bypass = is_payment_bypassed(job)
         if owed > 0 and not bypass:
             user_email = job.user_email
             if not user_email:

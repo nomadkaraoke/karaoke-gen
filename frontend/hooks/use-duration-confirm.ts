@@ -22,7 +22,12 @@ export interface DurationConfirmData {
 export function getDurationConfirmData(job: Job): DurationConfirmData | null {
   if (job.status !== "awaiting_duration_confirm") return null
   const sd = job.state_data ?? {}
-  const creditsCharged = typeof sd.credits_charged === "number" ? sd.credits_charged : 0
+  // Mirrors the backend's job_credits.get_credits_charged default: a job lacking
+  // the field was charged the standard 1 credit at creation unless payment was
+  // bypassed. (Reconcile now persists credits_charged on pause, so this fallback
+  // only matters for jobs paused before that fix.)
+  const creditsCharged =
+    typeof sd.credits_charged === "number" ? sd.credits_charged : sd.payment_bypassed ? 0 : 1
   const pendingAdditional =
     typeof sd.pending_additional_credits === "number" ? sd.pending_additional_credits : 0
   const totalCredits = creditsCharged + pendingAdditional
