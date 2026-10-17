@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import functools
 from typing import Optional, Tuple, List
 import logging
@@ -10,6 +10,7 @@ from karaoke_gen.lyrics_transcriber.types import LyricsSegment
 from karaoke_gen.lyrics_transcriber.output.ass.event import Event
 from karaoke_gen.lyrics_transcriber.output.ass.style import Style
 from karaoke_gen.lyrics_transcriber.output.ass.config import LineState, ScreenConfig
+from karaoke_gen.lyrics_transcriber.output.ass.chords import ChordChange, place_chords
 from karaoke_gen.lyrics_transcriber.output.ass.text_direction import is_rtl_text, rtl_karaoke_fill_tags
 from karaoke_gen.lyrics_transcriber.output.segment_resizer import (
     display_width,
@@ -37,6 +38,8 @@ class LyricsLine:
     screen_config: ScreenConfig
     logger: Optional[logging.Logger] = None
     previous_end_time: Optional[float] = None
+    # Chord changes drawn above this line (only used when the screen config has a chord row)
+    chords: List[ChordChange] = field(default_factory=list)
 
     def __post_init__(self):
         """Ensure logger is initialized"""
@@ -173,7 +176,7 @@ class LyricsLine:
             start_x_position = 0
         # Apply vertical offset if configured
         vertical_offset = int(self.screen_config.video_height * (config.lead_in_vert_offset_percent / 100))
-        final_y_position = state.y_position + main_height + vertical_offset
+        final_y_position = state.y_position + config.lyric_y_offset + main_height + vertical_offset
         
         self.logger.debug(f"Position calculations:")
         self.logger.debug(f"  Video dimensions: {self.screen_config.video_width}x{self.screen_config.video_height}")
@@ -271,7 +274,7 @@ class LyricsLine:
 
         # Main lyrics text with positioning and fade
         text = (
-            f"{{\\an8}}{{\\pos({x_pos},{state.y_position})}}"
+            f"{{\\an8}}{{\\pos({x_pos},{state.y_position + config.lyric_y_offset})}}"
             f"{{\\fad({config.fade_in_ms},{config.fade_out_ms})}}"
         )
         rtl_tags = rtl_karaoke_fill_tags(line_style.Angle) if is_rtl_text(self.segment.text) else ""
@@ -291,6 +294,48 @@ class LyricsLine:
         if translation_event:
             events.append(translation_event)
 
+        events.extend(self._create_chord_events(state, line_style, config))
+
+        return events
+
+    def _create_chord_events(self, state: LineState, line_style: Style, config: ScreenConfig) -> List[Event]:
+        """Chord symbols above the words they land on, lighting up when played.
+
+        Each chord is one karaoke syllable: upcoming colour until the chord's time,
+        then the played colour (same \\k mechanism as the lyric highlight).
+        """
+        chord_style = getattr(config, "chord_style", None)
+        if chord_style is None or not self.chords or not self.segment.words:
+            return []
+        word_texts = [self._apply_case_transform(w.text.replace("\n", "").strip()) for w in self.segment.words]
+        line_text = " ".join(word_texts)
+        line_width = self._measure_text(line_text, line_style)[0]
+        line_left = config.video_width // 2 - line_width // 2
+        placed = place_chords(
+            self.segment,
+            self.chords,
+            word_texts,
+            line_left,
+            measure=lambda text: self._measure_text(text, line_style)[0],
+            chord_measure=lambda text: self._measure_text(text, chord_style)[0],
+            min_spacing=max(1, chord_style.Fontsize // 3),
+        )
+        events = []
+        start = state.timing.fade_in_time
+        for p in placed:
+            wait_cs = max(0, int(round((p.chord.start - start) * 100)))
+            event = Event()
+            event.type = "Dialogue"
+            event.Layer = 1
+            event.Style = chord_style
+            event.Start = start
+            event.End = state.timing.end_time
+            event.Text = (
+                f"{{\\an7}}{{\\pos({p.x},{state.y_position})}}"
+                f"{{\\fad({config.fade_in_ms},{config.fade_out_ms})}}"
+                f"{{\\k{wait_cs}}}{{\\kf15}}{p.chord.label}"
+            )
+            events.append(event)
         return events
 
     # Fraction of the frame width a translation may use before it's wrapped / scaled
@@ -361,7 +406,7 @@ class LyricsLine:
         if widest > max_width:
             scale = max(1, int(max_width / widest * 100))
 
-        y = state.y_position + config.lyric_line_height + config.translation_gap
+        y = state.y_position + config.lyric_y_offset + config.lyric_line_height + config.translation_gap
         tags = (
             f"{{\\an8}}{{\\pos({config.video_width // 2},{y})}}"
             f"{{\\fad({config.fade_in_ms},{config.fade_out_ms})}}"

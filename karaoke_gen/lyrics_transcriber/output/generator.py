@@ -155,6 +155,7 @@ class OutputGenerator:
         artist: Optional[str] = None,
         title: Optional[str] = None,
         ass_only: bool = False,
+        chords: Optional[list] = None,
     ) -> OutputPaths:
         """Generate all requested output formats.
 
@@ -165,6 +166,8 @@ class OutputGenerator:
             audio_filepath: Path to audio file
             artist: Optional artist name
             title: Optional title
+            chords: Optional guitar chord changes (``ChordChange`` list) to draw above the
+                    lyrics in the ASS/video (no effect on other formats)
             ass_only: If True (only in preview_mode), generate only ASS subtitles
                       without video encoding. Useful when video encoding is offloaded
                       to an external service.
@@ -188,7 +191,7 @@ class OutputGenerator:
                 # For preview, we only need to generate ASS and video
                 if self.preview_mode:
                     # Generate ASS subtitles for preview
-                    outputs.ass = self.subtitle.generate_ass(transcription_corrected.resized_segments, output_prefix, audio_filepath)
+                    outputs.ass = self.subtitle.generate_ass(transcription_corrected.resized_segments, output_prefix, audio_filepath, chords=chords)
 
                     # Generate preview video (unless ass_only mode for GCE encoding)
                     if not ass_only:
@@ -225,7 +228,7 @@ class OutputGenerator:
                 # Generate video if requested
                 if self.config.render_video:
                     # Generate ASS subtitles
-                    outputs.ass = self.subtitle.generate_ass(resized_segments, output_prefix, audio_filepath)
+                    outputs.ass = self.subtitle.generate_ass(resized_segments, output_prefix, audio_filepath, chords=chords)
                     outputs.video = self.video.generate_video(outputs.ass, audio_filepath, output_prefix)
 
             return outputs

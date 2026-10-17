@@ -107,3 +107,42 @@ class TestBuildFiltergraph:
         assert "afade=t=in:st=0:d=0.500" in graph       # pot in on the finale
         assert "[x3][s4]concat=n=2:v=0:a=1[x4]" in graph
         assert graph.endswith("[x4]loudnorm=I=-14.0:TP=-1.0:LRA=11,aresample=44100[out]")
+
+
+class TestMedleyChords:
+    def test_chords_follow_their_section_and_hand_over_mid_crossfade(self):
+        sections = medley.parse_spec(EXAMPLE)
+        durations = [54.0, 52.0, 57.0, 82.0, 66.9]
+        offsets = medley.compute_offsets(sections, durations)
+        by_job = {
+            "a": [{"start": 0.0, "end": 60.0, "label": "G"}, {"start": 130.0, "end": 200.0, "label": "Ab"}],
+            "b": [{"start": 0.0, "end": 52.0, "label": "C"}],
+            "c": [{"start": 0.0, "end": 57.0, "label": "D"}],
+            "d": [{"start": 0.0, "end": 82.0, "label": "F"}],
+        }
+        out = medley.medley_chords(sections, durations, offsets, by_job)
+        labels = [(round(c["start"], 2), round(c["end"], 2), c["label"]) for c in out]
+        # opener G cut where the 2s crossfade is half done (54 - 1), C starts there
+        assert labels[0] == (0.0, 53.0, "G")
+        assert labels[1] == (53.0, 103.0, "C")
+        assert labels[2] == (103.0, 158.0, "D")
+        # F runs to the end of its section (the finale joins with a gap, not a crossfade)
+        assert labels[3] == (158.0, 239.0, "F")
+        # the finale's chords start at the finale (source 132.2 -> medley 239.7)
+        assert labels[4][0] == pytest.approx(239.7) and labels[4][2] == "Ab"
+
+    def test_shift_chords_drops_slivers(self):
+        out = medley.shift_chords([{"start": 0, "end": 10.02, "label": "G"}, {"start": 10.02, "end": 20, "label": "C"}],
+                                  10.0, 20.0, 100.0)
+        assert [c["label"] for c in out] == ["C"]
+
+
+class TestSingleSong:
+    def test_one_section_spec_builds_a_plain_graph_and_full_chords(self):
+        sections = medley.parse_spec({"sections": [{"job_id": "a", "start": 0, "end": None}]})
+        assert medley.compute_offsets(sections, [200.0]) == [0.0]
+        graph = medley.build_filtergraph(sections, [200.0], [1.5])
+        assert "acrossfade" not in graph and "concat" not in graph
+        assert graph.endswith("[s0]loudnorm=I=-14.0:TP=-1.0:LRA=11,aresample=44100[out]")
+        chords = medley.medley_chords(sections, [200.0], [0.0], {"a": [{"start": 0, "end": 200, "label": "G"}]})
+        assert chords == [{"start": 0.0, "end": 200.0, "label": "G"}]

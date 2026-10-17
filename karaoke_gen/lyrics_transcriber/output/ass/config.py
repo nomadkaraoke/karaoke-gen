@@ -8,6 +8,12 @@ DEFAULT_TRANSLATION_MAX_VISIBLE_LINES = 3  # lyric lines per screen when transla
 TRANSLATION_GAP_RATIO = 0.12  # gap between a lyric line and its translation / lyric font size
 TRANSLATION_ROW_RATIO = 1.15  # translation row height / translation font size
 
+# Guitar-chord layout defaults (see chord_layout)
+DEFAULT_CHORD_FONT_RATIO = 0.55  # chord symbol font size / lyric font size
+DEFAULT_CHORD_MAX_VISIBLE_LINES = 4  # lyric lines per screen when showing chords
+CHORD_GAP_RATIO = 0.0  # gap between the chord row and its lyric line / lyric font size
+CHORD_ROW_RATIO = 1.05  # chord row height / chord font size
+
 
 class ScreenConfig:
     """Configuration for screen timing and layout.
@@ -97,6 +103,12 @@ class ScreenConfig:
         self.translation_max_rows: int = DEFAULT_TRANSLATION_MAX_ROWS
         # Height of the lyric line itself within its (taller) slot
         self.lyric_line_height: int = line_height
+        # Guitar-chord layout: set by SubtitlesGenerator when chords are supplied.
+        # The chord row sits at the top of each slot and the lyric line is pushed
+        # down by lyric_y_offset. None = no chord row (classic layout).
+        self.chord_style = None
+        self.chord_font_size: int = 0
+        self.lyric_y_offset: int = 0
 
     def get_lead_in_color_ass_format(self) -> str:
         """Convert RGB lead-in color to ASS format.
@@ -210,6 +222,36 @@ def translation_layout(font_size: float, line_height: int, karaoke_styles: Optio
         gap=gap,
         max_rows=max_rows,
         max_visible_lines=max_visible,
+    )
+
+
+@dataclass
+class ChordLayout:
+    """Geometry of a lyric slot with a chord-symbol row above the line."""
+
+    slot_height: int  # chord row + gap + lyric line (the new line_height)
+    lyric_line_height: int
+    chord_font_size: int
+    lyric_y_offset: int  # chord row + gap: where the lyric line starts within the slot
+    max_visible_lines: int
+
+
+def chord_layout(font_size: float, line_height: int, karaoke_styles: Optional[dict] = None) -> ChordLayout:
+    """Slot geometry for guitar chords.
+
+    Theme keys (all optional, in the ``karaoke`` block): ``chord_font_size`` (absolute)
+    or ``chord_font_ratio``, ``chord_max_visible_lines``.
+    """
+    k = karaoke_styles or {}
+    c_size = k.get("chord_font_size") or font_size * float(k.get("chord_font_ratio", DEFAULT_CHORD_FONT_RATIO))
+    c_size = max(1, int(round(c_size)))
+    offset = int(round(c_size * CHORD_ROW_RATIO + font_size * CHORD_GAP_RATIO))
+    return ChordLayout(
+        slot_height=line_height + offset,
+        lyric_line_height=line_height,
+        chord_font_size=c_size,
+        lyric_y_offset=offset,
+        max_visible_lines=int(k.get("chord_max_visible_lines", DEFAULT_CHORD_MAX_VISIBLE_LINES)),
     )
 
 
