@@ -112,6 +112,14 @@ class TestBuildVariants:
         variants = MusicBrainzService.build_variants(editions, preferred_countries=["JP"])
         assert variants[0]["representative_release_mbid"] == "jp76"
 
+    def test_multi_country_release_ranks_by_best_country(self):
+        # Mirror editions carry every release-event country; the best-ranked one counts.
+        editions = [
+            {"release_mbid": "de", "status": "Official", "date": "1976", "countries": ["DE"], "track_count": 10},
+            {"release_mbid": "multi", "status": "Official", "date": "1976", "countries": ["DE", "GB"], "track_count": 10},
+        ]
+        assert MusicBrainzService.pick_canonical_edition(editions, ["GB"])["release_mbid"] == "multi"
+
 
 class TestLocaleCountryPrefs:
     def test_english_locale_prefers_anglophone_countries(self):
@@ -134,84 +142,121 @@ class TestLocaleCountryPrefs:
         assert country_prefs_for_locale("") == default
 
 
+def _rows_response(fields, rows):
+    """Build a BigQuery jobs.query REST response (f/v row encoding)."""
+    def cell(v):
+        if isinstance(v, list):
+            return {"v": [{"v": x} for x in v]}
+        return {"v": None if v is None else str(v)}
+    return {
+        "jobComplete": True,
+        "schema": {"fields": fields},
+        "rows": [{"f": [cell(r.get(f["name"])) for f in fields]} for r in rows],
+    }
+
+
+class TestNormalizeAndDecode:
+    def test_normalize_matches_decide_norm(self):
+        from backend.services.musicbrainz_service import normalize_name
+        assert normalize_name("AC/DC") == "ac dc"
+        assert normalize_name("  Britney   Spears ") == "britney spears"
+        # Not accent-folded, like mb_artists.name_normalized.
+        assert normalize_name("Beyoncé") == "beyonc"
+        assert normalize_name("!!!") == ""
+
+    def test_decode_rows_types(self):
+        from backend.services.musicbrainz_service import _decode_rows
+        fields = [
+            {"name": "s", "type": "STRING", "mode": "NULLABLE"},
+            {"name": "n", "type": "INTEGER", "mode": "NULLABLE"},
+            {"name": "arr", "type": "STRING", "mode": "REPEATED"},
+            {"name": "missing", "type": "INTEGER", "mode": "NULLABLE"},
+        ]
+        resp = _rows_response(fields, [{"s": "x", "n": 7, "arr": ["A", "B"], "missing": None}])
+        assert _decode_rows(resp["schema"], resp["rows"]) == [{"s": "x", "n": 7, "arr": ["A", "B"], "missing": None}]
+
+
 @pytest.mark.asyncio
 class TestServiceCalls:
-    async def _svc_with(self, monkeypatch, responses):
-        """Return a service whose _get returns canned responses keyed by path prefix."""
+    def _svc_with(self, monkeypatch, handler):
+        """Service whose _query is answered by handler(sql, params) -> rows; records calls."""
         svc = MusicBrainzService()
+        calls = []
 
-        async def fake_get(path, params):
-            for key, val in responses.items():
-                if path.startswith(key):
-                    return val
-            raise AssertionError(f"unexpected path {path}")
+        async def fake_query(sql, params):
+            calls.append((sql, params))
+            return handler(sql, params)
 
-        monkeypatch.setattr(svc, "_get", fake_get)
-        return svc
+        monkeypatch.setattr(svc, "_query", fake_query)
+        return svc, calls
 
-    async def test_search_artists_parses(self, monkeypatch):
-        svc = await self._svc_with(
-            monkeypatch,
-            {
-                "artist": {
-                    "artists": [
-                        {"id": "abc", "name": "Daft Punk", "disambiguation": "", "type": "Group", "country": "FR", "score": 100}
-                    ]
-                }
-            },
-        )
-        out = await svc.search_artists("Daft Punk")
-        assert out[0]["mbid"] == "abc"
-        assert out[0]["name"] == "Daft Punk"
+    async def test_search_artists_normalizes_and_ranks(self, monkeypatch):
+        svc, calls = self._svc_with(monkeypatch, lambda sql, p: [
+            {"artist_mbid": "abc", "artist_name": "AC/DC", "disambiguation": None,
+             "artist_type": "Group", "area_name": "Australia", "match_rank": 0},
+            {"artist_mbid": "def", "artist_name": "AC/DC Jam", "disambiguation": "",
+             "artist_type": None, "area_name": None, "match_rank": 1},
+        ])
+        out = await svc.search_artists("AC/DC")
+        assert calls[0][1] == {"q": "ac dc"}
+        assert "mb_artists_normalized" in calls[0][0]
+        assert out[0] == {"mbid": "abc", "name": "AC/DC", "disambiguation": "", "type": "Group",
+                          "country": "Australia", "score": 100}
+        assert out[1]["score"] == 90
+
+    async def test_search_artists_blank_query_skips_bigquery(self, monkeypatch):
+        svc, calls = self._svc_with(monkeypatch, lambda sql, p: [])
+        assert await svc.search_artists("  ?! ") == []
+        assert calls == []
+
+    async def test_get_albums_studio_first(self, monkeypatch):
+        svc, calls = self._svc_with(monkeypatch, lambda sql, p: [
+            {"release_group_mbid": "live", "title": "Alive", "primary_type": "Album",
+             "secondary_types": ["Live"], "first_release_date": "1997"},
+            {"release_group_mbid": "studio", "title": "Discovery", "primary_type": "Album",
+             "secondary_types": [], "first_release_date": "2001-03-12"},
+        ])
+        out = await svc.get_albums("artist-1")
+        assert calls[0][1] == {"artist_mbid": "artist-1"}
+        assert [g["release_group_mbid"] for g in out] == ["studio", "live"]
+        assert out[0]["is_studio"] is True and out[1]["is_studio"] is False
 
     async def test_album_tracklist_resolves_canonical_and_flags_extras(self, monkeypatch):
-        editions = {
-            "release": {
-                "releases": [
-                    {"id": "rel-std", "title": "Discovery", "status": "Official", "date": "2001-03-12", "country": "XE", "media": [{"track-count": 3}]},
-                    {"id": "rel-deluxe", "title": "Discovery (Deluxe)", "status": "Official", "date": "2021", "country": "US", "media": [{"track-count": 5}]},
-                ]
-            }
-        }
-        tracklist = {
-            "release/rel-std": {
-                "id": "rel-std",
-                "title": "Discovery",
-                "date": "2001-03-12",
-                "country": "XE",
-                "media": [
-                    {
-                        "format": "CD",
-                        "track-count": 3,
-                        "tracks": [
-                            {"position": 1, "title": "One More Time", "length": 320840, "recording": {"id": "r1", "title": "One More Time", "disambiguation": "", "length": 320840}},
-                            {"position": 2, "title": "Aerodynamic", "length": 207533, "recording": {"id": "r2", "title": "Aerodynamic", "disambiguation": "", "length": 207533}},
-                            {"position": 3, "title": "Aerodynamic (Live)", "length": 210000, "recording": {"id": "r3", "title": "Aerodynamic", "disambiguation": "live", "length": 210000}},
-                        ],
-                    }
-                ],
-            }
-        }
-        # _list_editions calls _get("release", {release-group...}); tracklist calls _get("release/<id>", ...)
-        # Order matters: "release/rel-std" must match before "release".
-        svc = MusicBrainzService()
+        editions = [
+            {"release_mbid": "rel-std", "title": "Discovery", "status": "Official", "release_date": "2001-03-12",
+             "countries": ["XE"], "packaging": None, "disambiguation": None, "track_count": 3},
+            {"release_mbid": "rel-deluxe", "title": "Discovery (Deluxe)", "status": "Official", "release_date": "2021",
+             "countries": ["US"], "packaging": None, "disambiguation": None, "track_count": 5},
+        ]
+        tracks = [
+            {"medium_position": 1, "track_position": 1, "title": "One More Time", "recording_mbid": "r1",
+             "recording_disambiguation": "", "length_ms": 320840},
+            {"medium_position": 1, "track_position": 2, "title": "Aerodynamic", "recording_mbid": "r2",
+             "recording_disambiguation": None, "length_ms": 207533},
+            {"medium_position": 1, "track_position": 3, "title": "Aerodynamic", "recording_mbid": "r3",
+             "recording_disambiguation": "live", "length_ms": 210000},
+        ]
 
-        async def fake_get(path, params):
-            if path.startswith("release/"):
-                return tracklist[path]
-            if path == "release":
-                return editions["release"]
-            raise AssertionError(path)
+        def handler(sql, params):
+            if "mb_release_tracks" in sql:
+                assert params == {"rg": "rg-discovery", "r": "rel-std"}
+                return tracks
+            if "release_mbid = @r" in sql:
+                return [{"release_mbid": "rel-std", "title": "Discovery", "release_date": "2001-03-12", "countries": ["XE"]}]
+            if "mb_releases" in sql:
+                return editions
+            raise AssertionError(sql)
 
-        monkeypatch.setattr(svc, "_get", fake_get)
-
+        svc, calls = self._svc_with(monkeypatch, handler)
         result = await svc.get_album_tracklist("rg-discovery")
         assert result["canonical_release_mbid"] == "rel-std"  # modal 3-track studio edition
+        assert result["country"] == "XE"
         assert len(result["tracks"]) == 3
         assert result["tracks"][0]["is_extra"] is False
-        assert result["tracks"][2]["is_extra"] is True  # the (Live) track
+        assert result["tracks"][2]["is_extra"] is True  # recording disambiguation "live"
         assert len(result["editions"]) == 2
-        # Variants: 3-track original + 5-track reissue; selected = canonical.
+        # No release-group lookup query: the album's MBID was passed through.
+        assert not any("SELECT release_group_mbid FROM" in sql for sql, _ in calls)
         variants = result["variants"]
         assert len(variants) == 2
         assert variants[0]["label"] == "Original"
@@ -220,59 +265,76 @@ class TestServiceCalls:
         assert variants[1]["delta_vs_original"] == 2
         assert result["selected_variant_mbid"] == result["canonical_release_mbid"]
 
+    async def test_release_tracklist_without_release_group_looks_it_up(self, monkeypatch):
+        def handler(sql, params):
+            if "SELECT release_group_mbid FROM" in sql:
+                return [{"release_group_mbid": "rg-x"}]
+            if "mb_release_tracks" in sql:
+                assert params["rg"] == "rg-x"
+                return []
+            return [{"release_mbid": "rel-x", "title": "X", "release_date": None, "countries": []}]
 
-import httpx as _httpx
+        svc, _ = self._svc_with(monkeypatch, handler)
+        out = await svc.get_release_tracklist("rel-x")
+        assert out["release_mbid"] == "rel-x" and out["country"] is None and out["date"] == ""
+
+    async def test_unknown_release_raises(self, monkeypatch):
+        svc, _ = self._svc_with(monkeypatch, lambda sql, p: [])
+        with pytest.raises(LookupError):
+            await svc.get_release_tracklist("nope")
 
 
 class _FakeResp:
-    def __init__(self, status, json_data=None):
+    def __init__(self, status, json_data=None, text=""):
         self.status_code = status
         self._json = json_data
-        self.request = _httpx.Request("GET", "https://musicbrainz.org/ws/2/artist")
-
-    def raise_for_status(self):
-        if self.status_code >= 400:
-            raise _httpx.HTTPStatusError(
-                f"{self.status_code}", request=self.request, response=self
-            )
+        self.text = text
 
     def json(self):
         return self._json
 
 
-def _patch_http(monkeypatch, mbs, svc, responses):
-    """Make AsyncClient.get return queued _FakeResp objects; disable throttle/backoff."""
-    async def _noop():
-        return None
-    monkeypatch.setattr(svc, "_throttle", _noop)
-    monkeypatch.setattr(mbs, "_RETRY_BACKOFF_S", 0)
-    calls = {"n": 0}
-
-    async def fake_get(self, url, **kwargs):
-        r = responses[min(calls["n"], len(responses) - 1)]
-        calls["n"] += 1
-        return r
-
-    monkeypatch.setattr(_httpx.AsyncClient, "get", fake_get)
-    return calls
-
-
 @pytest.mark.asyncio
-class TestRetry:
-    async def test_retries_503_then_succeeds(self, monkeypatch):
-        from backend.services import musicbrainz_service as mbs
-        svc = mbs.MusicBrainzService()
-        calls = _patch_http(monkeypatch, mbs, svc, [
-            _FakeResp(503),
-            _FakeResp(200, {"artists": [{"id": "x", "name": "Queen"}]}),
-        ])
-        out = await svc.search_artists("Queen")
-        assert out[0]["mbid"] == "x"
-        assert calls["n"] == 2  # one 503 retry, then success
+class TestBigQueryTransport:
+    def _patch(self, monkeypatch, svc, responses):
+        import httpx
+        monkeypatch.setattr(svc, "_access_token", lambda: "tok")
+        sent = []
 
-    async def test_exhausts_retries_raises(self, monkeypatch):
-        from backend.services import musicbrainz_service as mbs
-        svc = mbs.MusicBrainzService()
-        _patch_http(monkeypatch, mbs, svc, [_FakeResp(503)])
-        with pytest.raises(_httpx.HTTPStatusError):
-            await svc.search_artists("Queen")
+        async def fake_post(self, url, json=None, headers=None):
+            sent.append({"url": url, "json": json, "headers": headers})
+            return responses[min(len(sent) - 1, len(responses) - 1)]
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+        return sent
+
+    async def test_posts_parameterized_capped_query_and_caches(self, monkeypatch):
+        svc = MusicBrainzService()
+        fields = [{"name": "artist_mbid", "type": "STRING", "mode": "NULLABLE"}]
+        sent = self._patch(monkeypatch, svc, [_FakeResp(200, _rows_response(fields, [{"artist_mbid": "x"}]))])
+        rows = await svc._query("SELECT 1", {"q": "queen", "ids": ["a", "b"]})
+        assert rows == [{"artist_mbid": "x"}]
+        body = sent[0]["json"]
+        assert "bigquery.googleapis.com" in sent[0]["url"]
+        assert "musicbrainz.org" not in sent[0]["url"]
+        assert sent[0]["headers"]["Authorization"] == "Bearer tok"
+        assert body["useLegacySql"] is False and body["parameterMode"] == "NAMED"
+        assert int(body["maximumBytesBilled"]) <= 2 * 1024**3
+        params = {p["name"]: p for p in body["queryParameters"]}
+        assert params["q"]["parameterValue"] == {"value": "queen"}
+        assert params["ids"]["parameterType"]["type"] == "ARRAY"
+        # Second identical query is served from the in-memory cache.
+        await svc._query("SELECT 1", {"q": "queen", "ids": ["a", "b"]})
+        assert len(sent) == 1
+
+    async def test_http_error_raises(self, monkeypatch):
+        svc = MusicBrainzService()
+        self._patch(monkeypatch, svc, [_FakeResp(403, text="Access Denied")])
+        with pytest.raises(RuntimeError, match="403"):
+            await svc._query("SELECT 1", {})
+
+    async def test_incomplete_job_raises(self, monkeypatch):
+        svc = MusicBrainzService()
+        self._patch(monkeypatch, svc, [_FakeResp(200, {"jobComplete": False})])
+        with pytest.raises(RuntimeError, match="timed out"):
+            await svc._query("SELECT 1", {})

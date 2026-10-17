@@ -187,7 +187,7 @@ async def album_tracklist(
     try:
         if release_mbid:
             # Loading a specific variant — variants already known to the client.
-            tracklist = await mb.get_release_tracklist(release_mbid)
+            tracklist = await mb.get_release_tracklist(release_mbid, release_group_mbid)
             tracklist.setdefault("editions", [])
             tracklist.setdefault("canonical_release_mbid", release_mbid)
             tracklist.setdefault("variants", [])
@@ -196,6 +196,9 @@ async def album_tracklist(
             tracklist = await mb.get_album_tracklist(
                 release_group_mbid, preferred_countries=country_prefs_for_locale(locale)
             )
+    except LookupError:
+        # Not in our mirror (or not part of that album) — retrying won't help.
+        raise HTTPException(status_code=404, detail="Release not found")
     except Exception as e:  # noqa: BLE001
         logger.warning("MusicBrainz tracklist failed: %r", e, exc_info=True)
         raise HTTPException(status_code=502, detail="Tracklist lookup is temporarily unavailable")

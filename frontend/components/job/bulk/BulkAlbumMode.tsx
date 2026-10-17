@@ -34,6 +34,9 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   const [artist, setArtist] = useState<BulkArtist | null>(null)
   const [albums, setAlbums] = useState<BulkAlbum[]>([])
   const [tracklist, setTracklist] = useState<BulkTracklist | null>(null)
+  // Release group of the loaded album; edition switches pass it so the backend's
+  // mirror lookup stays pruned to this album.
+  const [albumMbid, setAlbumMbid] = useState("")
   // Distinct tracklist variants for the loaded album. Held separately from
   // `tracklist` because switching to a specific edition returns no variant list.
   const [variants, setVariants] = useState<BulkEditionVariant[]>([])
@@ -86,7 +89,7 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
 
   async function pickAlbum(album: BulkAlbum) {
     if (!artist?.name) return
-    setLoading("tracks"); setError(""); resetVariants()
+    setLoading("tracks"); setError(""); resetVariants(); setAlbumMbid(album.release_group_mbid)
     try {
       const tl = await api.getAlbumTracklist({
         artist: artist.name, releaseGroupMbid: album.release_group_mbid, locale,
@@ -106,7 +109,9 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
     setLoading("tracks"); setError(""); setShowVariants(false)
     try {
       // Loading a specific variant returns no variant list — keep the existing one.
-      const tl = await api.getAlbumTracklist({ artist: artist.name, releaseMbid, locale })
+      const tl = await api.getAlbumTracklist({
+        artist: artist.name, releaseMbid, releaseGroupMbid: albumMbid || undefined, locale,
+      })
       setTracklist(tl)
       onChange(buildRows(tl))
     } catch {
