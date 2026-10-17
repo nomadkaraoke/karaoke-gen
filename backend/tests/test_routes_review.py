@@ -2490,3 +2490,71 @@ class TestVocalsPeaksEndpoint:
         with pytest.raises(HTTPException) as exc_info:
             self._run(stems={}, audio_complete=True)
         assert exc_info.value.status_code == 404
+
+
+class TestCorrectionDataReviewTransitionIdempotent:
+    """GET correction-data opens review; concurrent opens (iOS) must not 500."""
+
+    def _run(self, status, transition_side_effect=None, transition_return=True, reread_status=None):
+        from backend.exceptions import InvalidStateTransitionError  # noqa: F401
+        helper = TestReplayCorrectionData()
+        client = helper._client_with_auth("full")
+        try:
+            with patch("backend.api.routes.review.JobManager") as jm, \
+                 patch("backend.api.routes.review.StorageService") as storage_cls, \
+                 patch("backend.api.routes.review._get_audio_hash", return_value="h1"):
+                job = helper._completed_job()
+                job.status = status
+                job.user_email = "u@example.com"
+                if reread_status is None:
+                    jm.return_value.get_job.return_value = job
+                else:
+                    reread = MagicMock()
+                    reread.status = reread_status
+                    jm.return_value.get_job.side_effect = [job, reread]
+                jm.return_value.transition_to_state.side_effect = transition_side_effect
+                jm.return_value.transition_to_state.return_value = transition_return
+                storage = storage_cls.return_value
+                storage.file_exists.return_value = True
+                storage.download_json.side_effect = lambda p: {"corrected_segments": [], "metadata": {}}
+                resp = client.get("/api/review/job1/correction-data")
+                return resp, jm.return_value
+        finally:
+            helper._teardown()
+
+    def test_already_in_review_does_not_transition(self):
+        from backend.models.job import JobStatus
+        resp, jm = self._run(JobStatus.IN_REVIEW)
+        assert resp.status_code == 200
+        jm.transition_to_state.assert_not_called()
+        jm.record_review_started.assert_not_called()
+
+    def test_awaiting_review_transitions_and_records_once(self):
+        from backend.models.job import JobStatus
+        resp, jm = self._run(JobStatus.AWAITING_REVIEW)
+        assert resp.status_code == 200
+        jm.transition_to_state.assert_called_once()
+        jm.record_review_started.assert_called_once()
+
+    def test_lost_race_returns_data_without_side_effects(self):
+        from backend.exceptions import InvalidStateTransitionError
+        from backend.models.job import JobStatus
+        resp, jm = self._run(
+            JobStatus.AWAITING_REVIEW,
+            transition_side_effect=InvalidStateTransitionError(
+                message="Invalid state transition in_review -> in_review"),
+            reread_status=JobStatus.IN_REVIEW,
+        )
+        assert resp.status_code == 200
+        jm.record_review_started.assert_not_called()
+
+    def test_other_invalid_transition_still_errors(self):
+        from backend.exceptions import InvalidStateTransitionError
+        from backend.models.job import JobStatus
+        resp, jm = self._run(
+            JobStatus.AWAITING_REVIEW,
+            transition_side_effect=InvalidStateTransitionError(message="nope"),
+            reread_status=JobStatus.CANCELLED,
+        )
+        assert resp.status_code == 500
+        jm.record_review_started.assert_not_called()

@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from google.cloud.exceptions import NotFound
 from backend.utils.loop_bridge import run_in_body_thread, run_on_loop
 from backend.utils.request_helpers import get_client_ip
+from backend.services.review_state import ensure_in_review
 from backend.models.job import Job, JobCreate, JobResponse, JobStatus
 from backend.models.requests import (
     URLSubmissionRequest,
@@ -1100,27 +1101,13 @@ def start_review(
     # Idempotent: concurrent/duplicate opens (React double-mount, double-tap, two
     # tabs) must not fail with "in_review -> in_review". Already in review == success,
     # and the one-time side effects (record_review_started) are not repeated.
-    if job.status == JobStatus.IN_REVIEW:
-        return {"status": "success", "job_status": "in_review"}
-
     was_awaiting = job.status == JobStatus.AWAITING_REVIEW
-    try:
-        success = job_manager.transition_to_state(
-            job_id=job_id,
-            new_status=JobStatus.IN_REVIEW,
-            message="User started reviewing lyrics"
-        )
-    except InvalidStateTransitionError:
-        # Lost a race with a concurrent start-review (e.g. another instance): the
-        # winner already transitioned and recorded review start. Re-read to confirm.
-        current = job_manager.get_job(job_id)
-        if current and current.status == JobStatus.IN_REVIEW:
-            return {"status": "success", "job_status": "in_review"}
-        raise
-
-    if not success:
+    result = ensure_in_review(
+        job_manager, job_id, job.status, "User started reviewing lyrics"
+    )
+    if result == "refused":
         raise HTTPException(status_code=400, detail=t(locale, "jobs.reviewCannotStart"))
-    if was_awaiting:
+    if result == "started" and was_awaiting:
         job_manager.record_review_started(
             job_id, getattr(job, "user_email", None), auth_result.user_email, auth_result.is_admin
         )

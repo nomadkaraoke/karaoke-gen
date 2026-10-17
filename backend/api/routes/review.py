@@ -32,6 +32,7 @@ from google.cloud.firestore_v1.field_path import FieldPath
 from backend.models.job import JobStatus
 from backend.models.review_session import ReviewSession, ReviewSessionSummary
 from backend.services.job_manager import JobManager
+from backend.services.review_state import ensure_in_review
 from backend.services.firestore_service import FirestoreService
 from backend.services.storage_service import StorageService
 from backend.services.tempo_label import (
@@ -925,11 +926,14 @@ async def get_correction_data(
 
         # Transition to IN_REVIEW if not already (never in replay — read-only)
         if not replay and job.status == JobStatus.AWAITING_REVIEW:
-            started = await asyncio.to_thread(
-                job_manager.transition_to_state,
-                job_id=job_id,
-                new_status=JobStatus.IN_REVIEW,
-                message="User opened combined review interface",
+            # Idempotent: iOS/in-app browsers fire two concurrent loads; the loser
+            # must not 500 on "in_review -> in_review" nor repeat one-time side effects.
+            started = "started" == await asyncio.to_thread(
+                ensure_in_review,
+                job_manager,
+                job_id,
+                job.status,
+                "User opened combined review interface",
             )
             if started:
                 # Set by require_review_auth (absent for review-token links).
