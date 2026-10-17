@@ -413,9 +413,46 @@ class TestStartReview:
 
     def test_start_review_endpoint_exists(self, client, mock_job_manager, mock_job, auth_headers):
         """Test start review endpoint exists."""
-        response = client.post("/api/jobs/test123/start-review", headers=auth_headers)
+        response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
         # Should not be 404 or 405
         assert response.status_code not in [404, 405]
+
+    def test_start_review_already_in_review_is_idempotent(self, client, mock_job_manager, mock_job, auth_headers):
+        """A duplicate/concurrent open on an in_review job succeeds with no repeated side effects."""
+        mock_job.status = JobStatus.IN_REVIEW
+        response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json() == {"status": "success", "job_status": "in_review"}
+        mock_job_manager.transition_to_state.assert_not_called()
+        mock_job_manager.record_review_started.assert_not_called()
+
+    def test_start_review_lost_race_is_success(self, client, mock_job_manager, mock_job, auth_headers):
+        """Both requests saw awaiting_review; the loser's transition raises but job is in_review."""
+        from backend.exceptions import InvalidStateTransitionError
+        mock_job.status = JobStatus.AWAITING_REVIEW
+        in_review = mock_job.model_copy(update={"status": JobStatus.IN_REVIEW})
+        mock_job_manager.get_job.side_effect = [mock_job, in_review]
+        mock_job_manager.transition_to_state.side_effect = InvalidStateTransitionError(
+            message="Invalid state transition in_review -> in_review"
+        )
+        response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json() == {"status": "success", "job_status": "in_review"}
+        mock_job_manager.record_review_started.assert_not_called()
+
+    def test_start_review_invalid_transition_otherwise_still_errors(self, client, mock_job_manager, mock_job, auth_headers):
+        from backend.exceptions import InvalidStateTransitionError
+        mock_job.status = JobStatus.AWAITING_REVIEW
+        mock_job_manager.transition_to_state.side_effect = InvalidStateTransitionError(message="nope")
+        with pytest.raises(InvalidStateTransitionError):
+            client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+
+    def test_start_review_from_awaiting_records_once(self, client, mock_job_manager, mock_job, auth_headers):
+        mock_job.status = JobStatus.AWAITING_REVIEW
+        mock_job_manager.transition_to_state.return_value = True
+        response = client.post("/api/jobs/test123/start-review", json={}, headers=auth_headers)
+        assert response.status_code == 200
+        mock_job_manager.record_review_started.assert_called_once()
 
 
 class TestSubmitEditLog:
