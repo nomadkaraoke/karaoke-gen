@@ -2995,10 +2995,16 @@ def override_audio_source(
         "audio_search_count",
         "remote_search_id",
         "audio_selection",
-        # A pending duration confirm belongs to the OLD source's audio.
+        # A pending duration confirm / duration estimate belongs to the OLD source.
         "duration_confirmed",
         "duration_confirm_reason",
         "pending_additional_credits",
+        "duration_estimate_seconds",
+        "duration_estimate_source",
+        "duration_actual_seconds",
+        # Re-arm the /select delta charge for the new source. credits_charged is
+        # KEPT, so /select charges only target - credits_charged (no double charge).
+        "select_charge_applied",
     ]
 
     update_payload = {}
