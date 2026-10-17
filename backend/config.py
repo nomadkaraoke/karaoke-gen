@@ -383,6 +383,20 @@ class Settings(BaseSettings):
     # URL scheme of the Nomad Karaoke mobile app. App checkouts return through
     # GET /api/users/credits/app-return, which 302s to {scheme}://checkout?status=…
     mobile_app_scheme: str = os.getenv("MOBILE_APP_SCHEME", "nomadkaraoke")
+    # Accepted `aud` values for Google ID tokens (POST /api/users/auth/google),
+    # comma-separated. OAuth client IDs are public, not secrets. Defaults: the
+    # "Nomad Karaoke Web" client (the audience of tokens from Android Credential
+    # Manager / iOS with serverClientId) and the iOS client (iOS SDK tokens can
+    # carry it). The Android client is device-only and never an audience. See
+    # docs/ARCHITECTURE.md § Mobile app sign-in. Empty → the endpoint returns 503.
+    google_oauth_client_ids: str = os.getenv(
+        "GOOGLE_OAUTH_CLIENT_IDS",
+        "718638054799-fush0smd1e4icq9pt0immp8n59jjlebh.apps.googleusercontent.com,"
+        "718638054799-hre535n83p8i85tsqf6ai759nlubhd2o.apps.googleusercontent.com",
+    )
+    # Accepted `aud` values for Apple ID tokens (POST /api/users/auth/apple):
+    # the app's bundle ID (native iOS), plus any Services ID used for web/Android.
+    apple_signin_audiences: str = os.getenv("APPLE_SIGNIN_AUDIENCES", "com.nomadkaraoke.mobile")
     # Canonical YouTube description template. Placeholders ({title}, {artist},
     # {artist_hashtag}, {brand_code}) are filled by
     # backend.services.youtube_description.render_youtube_description, which is the

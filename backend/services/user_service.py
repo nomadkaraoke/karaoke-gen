@@ -178,6 +178,36 @@ class UserService:
         logger.info(f"Created new user: {email} (tenant: {tenant_id or 'default'}) — credits pending verification")
         return user
 
+    def get_or_create_user_with_attribution(
+        self,
+        email: str,
+        tenant_id: Optional[str] = None,
+        signup_ip: Optional[str] = None,
+        device_fingerprint: Optional[str] = None,
+        attribution: Optional[Dict[str, object]] = None,
+    ) -> User:
+        """``get_or_create_user`` with raw client first-touch attribution.
+
+        ``attribution`` (UTM / referrer, as sent by the web or app) is cleaned and
+        recorded, with the derived signup source, only if this call creates the
+        user. Shared by magic-link / email-code sends and mobile social sign-in.
+        """
+        from backend.services.signup_attribution import clean_attribution, derive_signup_source
+
+        try:
+            signup_attribution = clean_attribution(attribution)
+        except Exception:  # attribution is best-effort and must never block sign-in
+            logger.warning("Ignoring unparseable signup attribution", exc_info=True)
+            signup_attribution = None
+        return self.get_or_create_user(
+            email,
+            tenant_id=tenant_id,
+            signup_ip=signup_ip,
+            device_fingerprint=device_fingerprint,
+            signup_source=derive_signup_source(signup_attribution),
+            signup_attribution=signup_attribution,
+        )
+
     def _save_user(self, user: User) -> None:
         """Save user to Firestore."""
         try:
@@ -265,25 +295,16 @@ class UserService:
             attribution: Raw client-supplied first-touch UTM/referrer data; cleaned
                 and stored only if this call creates the user
         """
-        from backend.services.signup_attribution import clean_attribution, derive_signup_source
-
         email = email.lower()
-
-        try:
-            signup_attribution = clean_attribution(attribution)
-        except Exception:  # attribution is best-effort and must never block sign-in
-            logger.warning("Ignoring unparseable signup attribution", exc_info=True)
-            signup_attribution = None
 
         # Ensure user exists (with tenant association, signup IP, fingerprint and
         # first-touch attribution — the latter two only matter on creation)
-        self.get_or_create_user(
+        self.get_or_create_user_with_attribution(
             email,
             tenant_id=tenant_id,
             signup_ip=ip_address,
             device_fingerprint=device_fingerprint,
-            signup_source=derive_signup_source(signup_attribution),
-            signup_attribution=signup_attribution,
+            attribution=attribution,
         )
 
         # Generate secure token

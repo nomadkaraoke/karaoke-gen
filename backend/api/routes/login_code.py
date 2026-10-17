@@ -1,4 +1,5 @@
-"""gen email-code sign-in: ``POST /api/users/auth/send-code`` + ``verify-code``.
+"""gen app sign-in: email code (``send-code`` + ``verify-code``), Google / Apple
+ID tokens, and the app → web handoff link.
 
 An alternative to the magic link for clients that can't follow an emailed link
 back into the same session (the mobile app, a second device, local E2E). The
@@ -7,6 +8,8 @@ email carries BOTH a 6-digit code and a regular magic link; either signs in.
 - POST /api/users/auth/send-code   {email, locale?, device_fingerprint?,
                                     referral_code?, attribution?} → 202 {"status": "sent"}
 - POST /api/users/auth/verify-code {email, code} → VerifyMagicLinkResponse
+- POST /api/users/auth/google | apple {id_token, locale?, device_fingerprint?,
+                                    referral_code?, attribution?} → VerifyMagicLinkResponse
 - POST /api/users/auth/handoff-token {target, job_id, locale?} (Bearer)
                                    → {url, expires_in_seconds}: the mobile app's
                                      2-minute, single-use signed-in web link
@@ -34,6 +37,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Dict, Literal, Optional
 
@@ -52,6 +56,8 @@ from backend.i18n import SUPPORTED_LOCALES, get_full_locale_from_request, get_lo
 from backend.models.user import VerifyMagicLinkResponse
 from backend.services.email_service import EmailService, get_email_service
 from backend.services.email_validation_service import get_email_validation_service
+from backend.services.fake_workers import fake_workers_enabled
+from backend.services import social_identity
 from backend.services.login_code_store import (
     CODE_EXPIRY_MINUTES,
     CodeThrottled,
@@ -159,35 +165,25 @@ def send_login_code(
 
     tenant_id = get_tenant_from_request(http_request)
     tenant_config = get_tenant_config_from_request(http_request)
-    tenant_vouched = bool(tenant_config and tenant_config.is_explicitly_allowlisted(email))
-
-    email_validation = get_email_validation_service()
-    if not tenant_vouched and email_validation.is_disposable_domain(email):
-        logger.warning(f"login-code: blocked disposable email {_mask_email(email)}")
-        raise HTTPException(status_code=422, detail=t(locale, "users.disposableEmailBlocked"))
-    if email_validation.is_email_blocked(email):
-        logger.warning(f"login-code: blocked email {_mask_email(email)} — pretending success")
-        return _sent()
     ip_address = get_client_ip(http_request)
-    if ip_address and email_validation.is_ip_blocked(ip_address):
-        logger.warning(f"login-code: blocked IP {ip_address} — pretending success")
-        return _sent()
-
     device_fingerprint = body.device_fingerprint
-    existing_user = user_service.get_user(email)
-    if existing_user is None and user_service.is_signup_rate_limited(
-        ip_address=ip_address, device_fingerprint=device_fingerprint,
-    ):
-        logger.warning(f"login-code: signup rate limit hit: IP={ip_address} for {_mask_email(email)}")
+
+    check = _sign_in_checks(
+        email, http_request, user_service,
+        device_fingerprint=device_fingerprint, tenant_config=tenant_config, log_prefix="login-code",
+    )
+    if check.refusal == "disposable":
+        raise HTTPException(status_code=422, detail=t(locale, "users.disposableEmailBlocked"))
+    if check.refusal == "tenant_disallowed":
+        logger.warning(f"login-code: email not allowed for tenant {tenant_id}: {_mask_email(email)}")
         return _sent()
+    if check.refusal:  # blocked email / IP, new-user signup cap: indistinguishable from a send
+        return _sent()
+    existing_user = check.existing_user
 
     if not email_service.is_configured() and is_production():
         logger.error("login-code: email service not configured - cannot send codes")
         raise HTTPException(status_code=503, detail=t(locale, "users.emailServiceNotConfigured"))
-
-    if tenant_config and not tenant_config.is_email_allowed(email):
-        logger.warning(f"login-code: email not allowed for tenant {tenant_id}: {_mask_email(email)}")
-        return _sent()
 
     user_agent = http_request.headers.get("user-agent")
     try:
@@ -292,21 +288,112 @@ def verify_login_code(
             signup_ip=record.get("ip_address"),
             device_fingerprint=record.get("device_fingerprint"),
         )
-    # Same first-login definition as magic-link verify (checked before last_login_at is set).
-    is_first_login = user.total_jobs_created == 0 and not user.last_login_at
-    user = user_service.update_user(
-        email, email_verified=True, last_login_at=datetime.utcnow(),
-    ) or user
-
     precomputed_eval = {
         k: record.get(k)
         for k in ("credit_eval_decision", "credit_eval_reasoning", "credit_eval_error")
         if record.get(k) is not None
     } or None
     persist_locale = record.get("locale")
-    email_locale = persist_locale or record.get("email_locale") or user.locale or "en"
+    return finish_verified_sign_in(
+        user,
+        http_request,
+        user_service=user_service,
+        email_service=email_service,
+        tenant_id=tenant_id,
+        precomputed_eval=precomputed_eval,
+        referral_code=http_request.headers.get("x-referral-code") or record.get("referral_code"),
+        persist_locale=persist_locale,
+        ui_locale=record.get("ui_locale"),
+        email_locale=persist_locale or record.get("email_locale"),
+        device_fingerprint=record.get("device_fingerprint"),
+        log_prefix="login-code",
+    )
 
-    # Tenant portal sign-ins never touch consumer credits (as in magic-link verify).
+
+# ------------------------------------------------------- shared sign-in steps
+
+@dataclass
+class SignInCheck:
+    """Outcome of :func:`_sign_in_checks`; ``refusal`` is None when sign-in may go ahead."""
+    refusal: Optional[str]  # disposable | blocked_email | blocked_ip | signup_limited | tenant_disallowed
+    existing_user: object = None
+
+
+APPLE_RELAY_DOMAIN = "privaterelay.appleid.com"
+
+
+def _sign_in_checks(
+    email: str,
+    http_request: Request,
+    user_service: UserService,
+    *,
+    device_fingerprint: Optional[str],
+    tenant_config,
+    log_prefix: str,
+    allow_apple_relay: bool = False,
+) -> SignInCheck:
+    """Abuse / eligibility checks shared by every sign-in that can create an account
+    (email code, Google, Apple), mirroring ``POST /auth/magic-link``: disposable
+    domain (unless a tenant explicitly allowlisted the address, or it's an Apple
+    "Hide My Email" relay on the Apple route), blocked email, blocked IP, new-user
+    per-IP/fingerprint signup cap, tenant email-domain restriction. Blocking
+    Firestore / DeBounce calls: run from sync routes only.
+    """
+    email_validation = get_email_validation_service()
+    vouched = bool(tenant_config and tenant_config.is_explicitly_allowlisted(email))
+    if allow_apple_relay and email.rsplit("@", 1)[-1] == APPLE_RELAY_DOMAIN:
+        vouched = True  # Apple-issued forwarding address tied to a real Apple ID
+    if not vouched and email_validation.is_disposable_domain(email):
+        logger.warning(f"{log_prefix}: blocked disposable email {_mask_email(email)}")
+        return SignInCheck("disposable")
+    if email_validation.is_email_blocked(email):
+        logger.warning(f"{log_prefix}: blocked email {_mask_email(email)}")
+        return SignInCheck("blocked_email")
+    ip_address = get_client_ip(http_request)
+    if ip_address and email_validation.is_ip_blocked(ip_address):
+        logger.warning(f"{log_prefix}: blocked IP {ip_address}")
+        return SignInCheck("blocked_ip")
+    existing_user = user_service.get_user(email)
+    if existing_user is None and user_service.is_signup_rate_limited(
+        ip_address=ip_address, device_fingerprint=device_fingerprint,
+    ):
+        logger.warning(f"{log_prefix}: signup rate limit hit: IP={ip_address} for {_mask_email(email)}")
+        return SignInCheck("signup_limited")
+    if tenant_config and not tenant_config.is_email_allowed(email):
+        return SignInCheck("tenant_disallowed")
+    return SignInCheck(None, existing_user)
+
+
+def finish_verified_sign_in(
+    user,
+    http_request: Request,
+    *,
+    user_service: UserService,
+    email_service: EmailService,
+    tenant_id: Optional[str],
+    precomputed_eval: Optional[dict],
+    referral_code: Optional[str],
+    persist_locale: Optional[str],
+    ui_locale: Optional[str],
+    email_locale: Optional[str],
+    device_fingerprint: Optional[str],
+    log_prefix: str,
+) -> VerifyMagicLinkResponse:
+    """After an identity proof (email code, Google or Apple ID token): mark the
+    user verified, then the shared ``complete_verified_login`` (welcome credit,
+    referral, locale, session, welcome email) and the ``VerifyMagicLinkResponse``.
+
+    ``user`` must already exist. Tenant portal sign-ins never touch consumer
+    credits (as in magic-link verify).
+    """
+    email = user.email
+    # Same first-login definition as magic-link verify (checked before last_login_at is set).
+    is_first_login = user.total_jobs_created == 0 and not user.last_login_at
+    user = user_service.update_user(
+        email, email_verified=True, last_login_at=datetime.utcnow(),
+    ) or user
+    email_locale = email_locale or user.locale or "en"
+
     result = complete_verified_login(
         user,
         user_service=user_service,
@@ -314,17 +401,16 @@ def verify_login_code(
         is_first_login=is_first_login,
         precomputed_eval=precomputed_eval,
         grant_welcome_credit=not tenant_id,
-        referral_code=(http_request.headers.get("x-referral-code") or record.get("referral_code"))
-        if not tenant_id else None,
+        referral_code=referral_code if not tenant_id else None,
         locale=persist_locale,
-        ui_locale=record.get("ui_locale"),
+        ui_locale=ui_locale,
         ip_address=get_client_ip(http_request),
         user_agent=http_request.headers.get("user-agent"),
         tenant_id=tenant_id,
-        device_fingerprint=record.get("device_fingerprint"),
+        device_fingerprint=device_fingerprint,
         email_locale=email_locale,
     )
-    logger.info(f"login-code: verified {_mask_email(email)} (credit_status={result.credit_status})")
+    logger.info(f"{log_prefix}: verified {_mask_email(email)} (credit_status={result.credit_status})")
 
     tenant_subdomain = None
     if tenant_id:
@@ -399,3 +485,129 @@ def create_handoff_token(
     if not url:
         raise HTTPException(status_code=502, detail="link_unavailable")
     return HandoffTokenResponse(url=url, expires_in_seconds=HANDOFF_TOKEN_TTL_SECONDS)
+
+
+# ------------------------------------------------------- Google / Apple sign-in
+
+class SocialSignInRequest(BaseModel):
+    # The ID token from the native Google / Apple SDK (or ``fake:<email>`` on the local stack).
+    id_token: str = Field(min_length=1, max_length=8192)
+    locale: Optional[str] = None
+    device_fingerprint: Optional[str] = Field(default=None, max_length=256)
+    referral_code: Optional[str] = Field(default=None, max_length=64)
+    attribution: Optional[
+        Dict[Annotated[str, StringConstraints(max_length=32)], Optional[Annotated[str, StringConstraints(max_length=500)]]]
+    ] = Field(default=None, max_length=16)
+
+
+def _verify_identity(provider: str, id_token: str) -> "social_identity.VerifiedIdentity":
+    """ID token → verified identity, or 401 ``invalid_token`` / 503 ``google_not_configured``."""
+    settings = get_settings()
+    try:
+        if id_token.startswith(social_identity.FAKE_TOKEN_PREFIX):
+            # Local stack only (FAKE_WORKERS, refused in production); never a network call.
+            if not fake_workers_enabled():
+                raise social_identity.InvalidIdentityToken("fake token outside fake mode")
+            return social_identity.fake_identity(id_token, provider)
+        if provider == "google":
+            audiences = social_identity.parse_audiences(getattr(settings, "google_oauth_client_ids", ""))
+            if not audiences:
+                raise HTTPException(status_code=503, detail="google_not_configured")
+            return social_identity.verify_google_id_token(id_token, audiences)
+        audiences = social_identity.parse_audiences(getattr(settings, "apple_signin_audiences", ""))
+        return social_identity.verify_apple_id_token(id_token, audiences)
+    except social_identity.InvalidIdentityToken as e:
+        logger.warning(f"{provider}-signin: {e}")
+        raise HTTPException(status_code=401, detail="invalid_token")
+
+
+def _social_sign_in(
+    provider: str,
+    body: SocialSignInRequest,
+    http_request: Request,
+    user_service: UserService,
+    email_service: EmailService,
+) -> VerifyMagicLinkResponse:
+    """Verify the ID token, apply the same abuse checks as send-code, find or
+    create the user BY EMAIL, then the same session path as verify-code."""
+    from backend.middleware.tenant import get_tenant_config_from_request, get_tenant_from_request
+
+    log_prefix = f"{provider}-signin"
+    identity = _verify_identity(provider, body.id_token)
+    email = identity.email
+
+    email_locale, ui_locale = _split_locale(body.locale)
+    request_locale = get_locale_from_request(http_request)
+    has_accept_language = bool(http_request.headers.get("accept-language"))
+    persist_locale = email_locale or (request_locale if has_accept_language else None)
+    ui_locale = ui_locale or get_full_locale_from_request(http_request)
+    message_locale = email_locale or request_locale
+
+    tenant_id = get_tenant_from_request(http_request)
+    tenant_config = get_tenant_config_from_request(http_request)
+    check = _sign_in_checks(
+        email, http_request, user_service,
+        device_fingerprint=body.device_fingerprint, tenant_config=tenant_config,
+        log_prefix=log_prefix, allow_apple_relay=provider == "apple",
+    )
+    # Unlike send-code there's no email to hide behind, so refusals are explicit.
+    if check.refusal == "disposable":
+        raise HTTPException(status_code=422, detail=t(message_locale, "users.disposableEmailBlocked"))
+    if check.refusal == "signup_limited":
+        raise HTTPException(status_code=429, detail="signup_rate_limited")
+    if check.refusal:  # blocked email / IP, tenant email restriction
+        raise HTTPException(status_code=422, detail="sign_in_not_allowed")
+
+    user = check.existing_user or user_service.get_or_create_user_with_attribution(
+        email,
+        tenant_id=tenant_id,
+        signup_ip=get_client_ip(http_request),
+        device_fingerprint=body.device_fingerprint,
+        attribution=body.attribution,
+    )
+    return finish_verified_sign_in(
+        user,
+        http_request,
+        user_service=user_service,
+        email_service=email_service,
+        tenant_id=tenant_id,
+        precomputed_eval=None,
+        referral_code=http_request.headers.get("x-referral-code") or body.referral_code,
+        persist_locale=persist_locale,
+        ui_locale=ui_locale,
+        email_locale=persist_locale,
+        device_fingerprint=body.device_fingerprint,
+        log_prefix=log_prefix,
+    )
+
+
+@router.post("/auth/google", response_model=VerifyMagicLinkResponse)
+def google_sign_in(
+    body: SocialSignInRequest,
+    http_request: Request,
+    user_service: UserService = Depends(get_user_service),
+    email_service: EmailService = Depends(get_email_service),
+):
+    """Exchange a Google ID token for a gen session (same response as verify-code).
+
+    Audience = ``GOOGLE_OAUTH_CLIENT_IDS``. 401 ``invalid_token`` (bad signature,
+    issuer, audience, expiry, or unverified email), 503 ``google_not_configured``,
+    422 disposable / blocked, 429 ``signup_rate_limited`` (new accounts only).
+    """
+    return _social_sign_in("google", body, http_request, user_service, email_service)
+
+
+@router.post("/auth/apple", response_model=VerifyMagicLinkResponse)
+def apple_sign_in(
+    body: SocialSignInRequest,
+    http_request: Request,
+    user_service: UserService = Depends(get_user_service),
+    email_service: EmailService = Depends(get_email_service),
+):
+    """Exchange an Apple ID token for a gen session (same response as verify-code).
+
+    Audience = ``APPLE_SIGNIN_AUDIENCES``. "Hide My Email" relay addresses
+    (``@privaterelay.appleid.com``) are accepted as their own account. Errors as
+    for ``/auth/google`` (no 503: the Apple audience has a default).
+    """
+    return _social_sign_in("apple", body, http_request, user_service, email_service)
