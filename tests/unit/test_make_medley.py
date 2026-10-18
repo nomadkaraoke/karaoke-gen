@@ -161,3 +161,24 @@ class TestMaster:
         assert "loudnorm" not in f  # dynamic loudnorm boosted near-silent intros into artifacts
         assert f.endswith("aresample=44100")
 
+
+class TestBackingVocals:
+    def test_parsed_per_section(self):
+        spec = {"sections": [{"job_id": "a", "end": 10.0}, {"job_id": "b", "end": 9.0, "backing_vocals_db": -14}]}
+        assert [s.backing_vocals_db for s in medley.parse_spec(spec)] == [None, -14.0]
+
+    def test_mix_is_clean_plus_quieter_backing(self):
+        args = medley.backing_mix_args("clean.flac", "bv.flac", -14.0, "out.flac")
+        graph = args[args.index("-filter_complex") + 1]
+        assert graph == "[1:a]volume=-14.0dB[b];[0:a][b]amix=inputs=2:normalize=0[out]"
+        assert args[args.index("-i") + 1] == "clean.flac" and args[-1] == "out.flac"
+
+    def test_only_the_karaoke_track_changes(self, tmp_path, monkeypatch):
+        sec = medley.parse_spec({"sections": [{"job_id": "b", "end": 9.0, "backing_vocals_db": -14}]})[0]
+        monkeypatch.setattr(medley, "variant_path", lambda w, j, v: f"{v}.flac")
+        calls = []
+        monkeypatch.setattr(medley, "_run", lambda args, **kw: calls.append(args))
+        assert medley.section_audio(str(tmp_path), sec, "instrumental_clean") == "instrumental_clean.flac"
+        out = medley.section_audio(str(tmp_path), sec, medley.KARAOKE_VARIANT)
+        assert out.endswith("stems/instrumental_backing_-14.0dB.flac") and len(calls) == 1
+

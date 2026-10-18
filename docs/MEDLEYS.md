@@ -57,6 +57,7 @@ section:
 | `join: "gap"` + `join_duration` | Insert this much silence instead |
 | `fade_out_start` | "Pot out": fader drops from this source second to the section `end` |
 | `fade_in` | "Pot in": fade-in length at the start of the section |
+| `backing_vocals_db` | Karaoke track only: rebuild this section from the clean instrumental + backing vocals at this level, e.g. `-14` = a faint background (a customer found the backing singers in two songs pulled them off pitch). The clean and guide tracks are unchanged |
 | `theme_job_id` (top level) | Whose theme to render with (default: the first section's job) |
 
 ```bash
