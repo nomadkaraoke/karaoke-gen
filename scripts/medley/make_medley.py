@@ -66,6 +66,8 @@ class Section:
     fade_in: float = 0.0            # "pot in": fade-in length at the start of this section
     fade_out_start: Optional[float] = None  # "pot out": source second the fader starts dropping
     label: str = ""
+    # Karaoke track only: backing vocals at this level (dB) instead of as mixed, e.g. -14 = faint
+    backing_vocals_db: Optional[float] = None
 
 
 def parse_spec(spec: dict) -> list[Section]:
@@ -82,6 +84,7 @@ def parse_spec(spec: dict) -> list[Section]:
             fade_in=float(s.get("fade_in", 0.0)),
             fade_out_start=None if s.get("fade_out_start") is None else float(s["fade_out_start"]),
             label=s.get("label", ""),
+            backing_vocals_db=None if s.get("backing_vocals_db") is None else float(s["backing_vocals_db"]),
         )
         if sec.end is not None and sec.end <= sec.start:
             raise ValueError(f"section {i}: end must be after start")
@@ -252,6 +255,30 @@ def variant_path(workdir: str, job_id: str, variant: str) -> str:
     return os.path.join(d, "stems", stem)
 
 
+def backing_mix_args(clean: str, backing: str, gain_db: float, out: str) -> list[str]:
+    """ffmpeg args: clean instrumental + backing vocals at gain_db (sample-aligned stems)."""
+    return ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", clean, "-i", backing,
+            "-filter_complex", f"[1:a]volume={gain_db:.1f}dB[b];[0:a][b]amix=inputs=2:normalize=0[out]",
+            "-map", "[out]", "-c:a", "flac", out]
+
+
+def section_audio(workdir: str, sec: Section, variant: str) -> str:
+    """Audio file for one section of one variant (the karaoke track can have its backing
+    vocals turned down per section, built once from the clean + backing stems)."""
+    if variant != KARAOKE_VARIANT or sec.backing_vocals_db is None:
+        return variant_path(workdir, sec.job_id, variant)
+    stems = os.path.join(job_dir(workdir, sec.job_id), "stems")
+    out = os.path.join(stems, f"instrumental_backing_{sec.backing_vocals_db:+.1f}dB.flac")
+    if not os.path.exists(out):
+        backing = os.path.join(stems, "backing_vocals.flac")
+        if not os.path.exists(backing):
+            raise SystemExit(f"{sec.job_id}: backing_vocals_db needs stems/backing_vocals.flac (not in this job)")
+        partial = out[:-len(".flac")] + ".partial.flac"  # never leave a truncated mix to be reused
+        _run(backing_mix_args(os.path.join(stems, "instrumental_clean.flac"), backing, sec.backing_vocals_db, partial))
+        os.replace(partial, out)
+    return out
+
+
 def section_durations(sections: list[Section], workdir: str) -> list[float]:
     durs = []
     for sec in sections:
@@ -299,7 +326,7 @@ def cmd_audio(spec: dict, workdir: str, outdir: str):
     for variant in VARIANTS:
         inputs, gains = [], []
         for sec in sections:
-            p = variant_path(workdir, sec.job_id, variant)
+            p = section_audio(workdir, sec, variant)
             gains.append(SEGMENT_TARGET_LUFS - measure_lufs(p, sec.start, sec.end))
             inputs += ["-ss", str(sec.start)] + (["-to", str(sec.end)] if sec.end is not None else []) + ["-i", p]
         wav = os.path.join(outdir, f"medley_{variant}.wav")
