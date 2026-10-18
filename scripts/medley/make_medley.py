@@ -270,8 +270,12 @@ def section_audio(workdir: str, sec: Section, variant: str) -> str:
     stems = os.path.join(job_dir(workdir, sec.job_id), "stems")
     out = os.path.join(stems, f"instrumental_backing_{sec.backing_vocals_db:+.1f}dB.flac")
     if not os.path.exists(out):
-        _run(backing_mix_args(os.path.join(stems, "instrumental_clean.flac"),
-                              os.path.join(stems, "backing_vocals.flac"), sec.backing_vocals_db, out))
+        backing = os.path.join(stems, "backing_vocals.flac")
+        if not os.path.exists(backing):
+            raise SystemExit(f"{sec.job_id}: backing_vocals_db needs stems/backing_vocals.flac (not in this job)")
+        partial = out[:-len(".flac")] + ".partial.flac"  # never leave a truncated mix to be reused
+        _run(backing_mix_args(os.path.join(stems, "instrumental_clean.flac"), backing, sec.backing_vocals_db, partial))
+        os.replace(partial, out)
     return out
 
 

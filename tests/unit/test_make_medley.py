@@ -4,6 +4,7 @@ The script isn't part of the installed package, so we load it by path.
 """
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -176,9 +177,22 @@ class TestBackingVocals:
     def test_only_the_karaoke_track_changes(self, tmp_path, monkeypatch):
         sec = medley.parse_spec({"sections": [{"job_id": "b", "end": 9.0, "backing_vocals_db": -14}]})[0]
         monkeypatch.setattr(medley, "variant_path", lambda w, j, v: f"{v}.flac")
+        stems = tmp_path / "b" / "stems"
+        stems.mkdir(parents=True)
+        with pytest.raises(SystemExit):  # no backing stem for this job
+            medley.section_audio(str(tmp_path), sec, medley.KARAOKE_VARIANT)
+        (stems / "backing_vocals.flac").write_bytes(b"")
         calls = []
-        monkeypatch.setattr(medley, "_run", lambda args, **kw: calls.append(args))
+
+        def fake_run(args, **kw):
+            calls.append(args)
+            open(args[-1], "w").close()
+
+        monkeypatch.setattr(medley, "_run", fake_run)
         assert medley.section_audio(str(tmp_path), sec, "instrumental_clean") == "instrumental_clean.flac"
         out = medley.section_audio(str(tmp_path), sec, medley.KARAOKE_VARIANT)
-        assert out.endswith("stems/instrumental_backing_-14.0dB.flac") and len(calls) == 1
+        assert out.endswith("stems/instrumental_backing_-14.0dB.flac") and os.path.exists(out)
+        assert calls[0][-1].endswith(".partial.flac")  # written aside, then renamed
+        medley.section_audio(str(tmp_path), sec, medley.KARAOKE_VARIANT)
+        assert len(calls) == 1  # cached
 
