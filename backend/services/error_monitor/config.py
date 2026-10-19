@@ -37,6 +37,8 @@ MAX_LOG_ENTRIES: int = 2000
 MONITORED_CLOUD_RUN_SERVICES: list[str] = [
     "karaoke-backend",
     "karaoke-decide",
+    # karaoke-decide search service (offline song index + search API)
+    "karaoke-decide-search",
     "audio-separator",
     # Gen2 Cloud Functions appear as Cloud Run services in logs
     "gdrive-validator",
@@ -57,6 +59,8 @@ MONITORED_CLOUD_RUN_JOBS: list[str] = [
     "mb-refresh",
     # karaoke-decide ListenBrainz statistics dump -> BigQuery refresh
     "lb-refresh",
+    # karaoke-decide song search index build (eval-gated)
+    "song-index-build",
 ]
 
 # Gen2 Cloud Functions log as cloud_run_revision, not cloud_function.
