@@ -102,7 +102,13 @@ _NORMALIZERS: list[tuple[re.Pattern, str]] = [
         re.compile(r"\b(?=[a-fA-F0-9]*[a-fA-F][a-fA-F0-9]*\d|[a-fA-F0-9]*\d[a-fA-F0-9]*[a-fA-F])[a-fA-F0-9]{8,}\b"),
         "<ID>",
     ),
-    # 12. Large numbers (4+ digits)  — must come after epoch/IP/UUID replacements
+    # 12. Request counts in loop-stall lines (EVENT_LOOP_STALL ... requests_affected=29):
+    #     small numbers that would otherwise make every stall a "new" pattern.
+    (
+        re.compile(r"\brequests_affected=\d+"),
+        "requests_affected=<N>",
+    ),
+    # 13. Large numbers (4+ digits)  — must come after epoch/IP/UUID replacements
     (
         re.compile(r"\b\d{4,}\b"),
         "<NUM>",
