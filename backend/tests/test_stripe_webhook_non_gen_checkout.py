@@ -79,6 +79,10 @@ async def test_payment_link_checkout_logs_info_and_stores_payment(caplog):
     # Never treated as a credit purchase
     stripe_service.handle_checkout_completed.assert_not_called()
     user_service.add_credits.assert_not_called()
+    # Session marked processed so a redelivered event is skipped
+    user_service._mark_stripe_session_processed.assert_called_once_with(
+        stripe_session_id="cs_live_plink_test", email="friend@example.com", amount=0,
+    )
     # Still recorded for revenue reporting
     admin_service.store_payment.assert_called_once()
     # Logged at INFO, nothing at ERROR

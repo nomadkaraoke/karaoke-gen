@@ -178,6 +178,28 @@ class TestResearch:
         for c in mock_job_manager.update_job.call_args_list:
             assert "status" not in c.args[1]
 
+    def test_research_discards_results_if_selection_landed_mid_search(self, mock_job_manager):
+        """A selection made during the search must keep the results it indexed into."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        selected = _parked_job(status=JobStatus.DOWNLOADING_AUDIO)
+        mock_job_manager.get_job.side_effect = [_parked_job(), selected]
+
+        search = MagicMock()
+        search.search_async = AsyncMock(return_value=[_result(0)])
+        search.last_remote_search_id = None
+
+        p1, p2 = self._patched(mock_job_manager, search)
+        with p1, p2:
+            client = TestClient(app)
+            resp = client.post("/api/audio-search/park-1/research", json={})
+
+        assert resp.status_code == 409
+        cached = [c for c in mock_job_manager.update_job.call_args_list
+                  if "state_data.audio_search_results" in c.args[1]]
+        assert not cached
+
     def test_research_search_error_makes_no_status_writes(self, mock_job_manager):
         from fastapi.testclient import TestClient
         from backend.main import app

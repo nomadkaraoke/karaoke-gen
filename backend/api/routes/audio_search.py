@@ -1204,7 +1204,7 @@ async def research_audio(
     # re-search. (It used to transition -> SEARCHING_AUDIO and back, which isn't
     # a valid transition, so every re-search logged two "Invalid state
     # transition" ERRORs. Not writing status also means a crashed request can't
-    # strand the job, and a concurrent selection can't be reverted.)
+    # strand the job in SEARCHING_AUDIO.)
     logger.info(f"[job:{job_id}] Re-searching audio: {artist} - {title}")
 
     audio_search_service = get_audio_search_service()
@@ -1216,6 +1216,20 @@ async def research_audio(
         # Job is still awaiting selection (never left it); surface the error.
         logger.warning(f"[job:{job_id}] Re-search failed: {e}")
         raise HTTPException(status_code=502, detail=f"Search failed: {e}")
+
+    # The search can take seconds; a selection may have landed meanwhile. Don't
+    # swap the cached results out from under it (the download worker indexes
+    # them by selected_audio_index).
+    latest = job_manager.get_job(job_id)
+    if not latest or latest.status != JobStatus.AWAITING_AUDIO_SELECTION:
+        logger.info(
+            f"[job:{job_id}] Job left awaiting_audio_selection during re-search "
+            f"(status={latest.status if latest else 'missing'}); discarding results"
+        )
+        raise HTTPException(
+            status_code=409,
+            detail="Job is no longer awaiting audio selection",
+        )
 
     # Replace cached results (empty is fine — the UI offers the manual fallback).
     results_dicts = [r.to_dict() for r in search_results]

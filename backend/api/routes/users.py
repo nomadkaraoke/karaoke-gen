@@ -1613,6 +1613,13 @@ async def stripe_webhook(
                     f"session {session_id}: ${(session.get('amount_total') or 0) / 100:.2f}; "
                     f"recording payment only, no credits granted"
                 )
+                # Record the session so a redelivered event is skipped by the
+                # idempotency check (otherwise total_spent below double-counts).
+                user_service._mark_stripe_session_processed(
+                    stripe_session_id=session_id,
+                    email=customer_email,
+                    amount=0,
+                )
             elif metadata.get("order_type") == "made_for_you":
                 # Handle made-for-you order - create a job
                 await _handle_made_for_you_order(
