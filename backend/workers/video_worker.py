@@ -47,7 +47,7 @@ from backend.services.admin_rerender_service import (
 )
 from backend.services.regenerate_service import active_regenerate
 from backend.utils.existing_instrumental import resolve_existing_instrumental
-from backend.services.job_health_service import validate_worker_can_run
+from backend.services.job_health_service import selected_stem_pending, validate_worker_can_run
 from backend.services.rclone_service import get_rclone_service
 from backend.services.youtube_service import get_youtube_service
 from backend.services.youtube_description import translated_language_name
@@ -271,6 +271,12 @@ async def generate_video_orchestrated(job_id: str) -> bool:
         await asyncio.to_thread(recover_missing_inputs, job, storage, job_manager)
     except Exception as e:  # noqa: BLE001 - the render stage already reported a missing mix
         logger.error(f"[job:{job_id}] Input recovery failed in video worker: {e}")
+
+    # Review can finish before stem separation does: wait for the stems instead
+    # of failing prerequisites (which used to strand the job forever).
+    parked, job = _park_until_stems_ready(job_id, job, job_manager, job_log)
+    if parked:
+        return True
 
     # Validate prerequisites
     if not _validate_prerequisites(job):
@@ -868,6 +874,12 @@ async def generate_video_legacy(job_id: str) -> bool:
         logger.error(f"[job:{job_id}] Job not found")
         return False
     
+    # Review can finish before stem separation does: wait for the stems instead
+    # of failing prerequisites (which used to strand the job forever).
+    parked, job = _park_until_stems_ready(job_id, job, job_manager, job_log)
+    if parked:
+        return True
+
     # Validate prerequisites
     if not _validate_prerequisites(job):
         logger.error(f"[job:{job_id}] Prerequisites not met for video generation")
@@ -1534,6 +1546,34 @@ def _store_video_processing_metadata(
 
     except Exception as e:
         logger.warning(f"Job {job_id}: Failed to store video processing metadata (non-fatal): {e}")
+
+
+def _park_until_stems_ready(job_id: str, job, job_manager: JobManager, job_log):
+    """Park the job if its selected stem is still being separated.
+
+    Returns ``(parked, job)``. When ``parked`` is True the worker should exit
+    successfully: the audio worker re-triggers it once separation completes.
+    When False, carry on with the returned (possibly refreshed) job.
+
+    Race with the audio worker: we set the flag, then re-read. If separation
+    finished in between, exactly one of us wins the atomic claim on the flag —
+    we continue in-process, or the audio worker has already dispatched a fresh
+    run and we exit.
+    """
+    if not selected_stem_pending(job):
+        return False, job
+    job_manager.park_video_for_stems(job_id)
+    refreshed = job_manager.get_job(job_id) or job
+    if selected_stem_pending(refreshed):
+        msg = "Stem separation still running — final encode parked; it resumes automatically when stems are ready"
+        logger.info(f"[job:{job_id}] {msg}")
+        job_log.info(msg)
+        return True, refreshed
+    if job_manager.claim_video_stems_wait(job_id):
+        logger.info(f"[job:{job_id}] Stems landed while parking — continuing")
+        return False, refreshed
+    logger.info(f"[job:{job_id}] Stems landed while parking; audio worker already resumed the encode")
+    return True, refreshed
 
 
 def _validate_prerequisites(job) -> bool:

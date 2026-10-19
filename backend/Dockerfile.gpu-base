@@ -102,9 +102,17 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # have NVIDIA driver 570 which only supports up to CUDA 12.8. PyTorch cu130
 # fails with "NVIDIA driver is too old". PyTorch cu126 works with 12.8 drivers.
 # Installing torch first means audio-separator[gpu] sees it as already satisfied.
+#
+# PINNED to an exact version: an unpinned install silently picked up 0.47.0 on the
+# 2026-10-17 rebuild, and on L4 its mel-band RoFormer karaoke models run 3-5x slower
+# than 0.44.2 (gabox_v2 ~26s -> 149s, becruily ~27s -> 157s for a ~3-min track;
+# YAML overlap/batch are unchanged, so it is in the 0.45-0.47 inference changes).
+# Total separation went from ~5 to ~10-16 min and the daily E2E started failing.
+# Only bump this after timing a real job on the new version (see BACKLOG).
+ARG AUDIO_SEPARATOR_VERSION=0.44.2
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install torch==2.6.0+cu126 torchvision==0.21.0+cu126 --index-url https://download.pytorch.org/whl/cu126 && \
-    pip install "audio-separator[gpu]"
+    pip install "audio-separator[gpu]==${AUDIO_SEPARATOR_VERSION}"
 
 # Now copy actual source code (AFTER deps installed, so code changes don't
 # invalidate the expensive pip install layer in registry cache)
