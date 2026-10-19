@@ -7,6 +7,7 @@ Increment attempt counter, create()-only single-use / idempotency markers,
 set(merge=True) preserving the precomputed eval, and the FieldFilter queries
 behind the signup / show-credit caps. Run with: scripts/run-emulator-tests.sh
 """
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -156,10 +157,17 @@ class TestShowCredit:
         prefix = uuid.uuid4().hex
 
         def attempt(i):
-            try:
-                return _grant(svc, ref, email, f"{prefix}-{i}", max_per_24h=3).granted
-            except (kps.ShowCreditCapReached, kps.TransactionContention):
-                return False
+            # Retry on contention like a real caller would. Treating contention
+            # as "not granted" let all 8 lose on the emulator (granted == 0), a
+            # flake that blocked unrelated PRs (#1191, #1192 on 2026-10-19).
+            for _ in range(20):
+                try:
+                    return _grant(svc, ref, email, f"{prefix}-{i}", max_per_24h=3).granted
+                except kps.ShowCreditCapReached:
+                    return False
+                except kps.TransactionContention:
+                    time.sleep(0.05)
+            return False
 
         with ThreadPoolExecutor(max_workers=8) as pool:
             results = list(pool.map(attempt, range(8)))
