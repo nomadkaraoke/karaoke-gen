@@ -13,6 +13,7 @@ The middleware is non-blocking - if no tenant is detected, the request
 proceeds as a default Nomad Karaoke request (tenant_id = None).
 """
 
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -66,7 +67,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
         tenant_config: Optional[TenantConfig] = None
         if tenant_id:
             tenant_service = get_tenant_service()
-            tenant_config = tenant_service.get_tenant_config(tenant_id)
+            # get_tenant_config can hit GCS on a cache miss: keep it off the event loop.
+            tenant_config = await asyncio.to_thread(tenant_service.get_tenant_config, tenant_id)
 
             if tenant_config and not tenant_config.is_active:
                 # Tenant exists but is inactive - treat as default

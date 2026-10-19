@@ -209,6 +209,14 @@ BLOCKING_CALLS = {
     "upload_json",  # GCS upload (complete_review: up to 21s)
     "_prepare_theme_for_job",  # GCS reads/writes (job creation)
     "generate",  # CustomLyricsService.generate → sync Gemini call (151s, 32 requests)
+    # 2026-10-19 watchdog culprits (7 days of EVENT_LOOP_STALL stacks): sync Firestore /
+    # GCS reads in the auth dependencies, tenant middleware and routes.
+    "validate_token_full",  # require_auth: every authenticated request (up to 1.9s)
+    "validate_token",
+    "validate_session",
+    "get_tenant_config",  # GCS read on a cache miss (tenant middleware, up to 1.2s)
+    "append_log_to_subcollection",  # job-log write; on the loop it is offloaded, see log_write_offload
+    "append_worker_log",
 }
 _BLOCKING_MODULE_CALLS = {("requests", "get"), ("requests", "post"), ("requests", "put"),
                           ("requests", "delete"), ("requests", "request"), ("time", "sleep")}
@@ -226,13 +234,14 @@ def _blocking_call_name(call: ast.Call) -> str | None:
     return None
 
 
-def find_blocking_calls_in_async_routes(source: str) -> list[str]:
-    """`async def` routes that directly call a known-blocking function (excluding
-    nested sync helpers, which are presumably run via to_thread)."""
+def find_blocking_calls_in_async_routes(source: str, routes_only: bool = True) -> list[str]:
+    """`async def` routes (or, with routes_only=False, any `async def`) that directly
+    call a known-blocking function (excluding nested sync helpers, which are presumably
+    run via to_thread)."""
     tree = ast.parse(source)
     hits = []
     for fn in ast.walk(tree):
-        if not (isinstance(fn, ast.AsyncFunctionDef) and _is_route(fn)):
+        if not (isinstance(fn, ast.AsyncFunctionDef) and (_is_route(fn) or not routes_only)):
             continue
         stack = list(fn.body)
         while stack:
@@ -283,3 +292,33 @@ async def helper_ok():
     hits = find_blocking_calls_in_async_routes(src)
     assert sorted(h.split(" line")[0] for h in hits) == [
         "bad: check_dropbox_credentials()", "bad: requests.post()"]
+
+
+# Auth dependencies and middleware run on the event loop for (nearly) every request, so
+# every `async def` in them is held to the same rule as a route, not just decorated ones.
+ALWAYS_ON_LOOP_FILES = [BACKEND / "api" / "dependencies.py"] + sorted((BACKEND / "middleware").glob("*.py"))
+
+
+def test_no_known_blocking_calls_in_async_dependencies_or_middleware():
+    offenders = []
+    for path in ALWAYS_ON_LOOP_FILES:
+        for hit in find_blocking_calls_in_async_routes(path.read_text(), routes_only=False):
+            offenders.append(f"{path.relative_to(BACKEND.parent)}::{hit}")
+    assert not offenders, (
+        "These `async def` dependencies/middleware call known-blocking functions on the "
+        "event loop, which stalls every request. Use `await asyncio.to_thread(fn, ...)`:\n  "
+        + "\n  ".join(sorted(offenders))
+    )
+
+
+def test_blocking_call_detector_scans_non_route_async_functions():
+    src = '''
+async def require_auth(request):
+    return auth_service.validate_token_full(token)
+
+async def fixed(request):
+    return await asyncio.to_thread(auth_service.validate_token_full, token)
+'''
+    assert find_blocking_calls_in_async_routes(src) == []
+    hits = find_blocking_calls_in_async_routes(src, routes_only=False)
+    assert [h.split(" line")[0] for h in hits] == ["require_auth: validate_token_full()"]
