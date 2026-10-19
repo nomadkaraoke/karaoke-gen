@@ -15,12 +15,17 @@ The public voting board is a static route in the gen Next.js build
 
 The Worker:
 
-- `/` → fetches gen `/en/requests/` and returns it (query string kept, e.g. `utm_*`).
+- `/` → fetches gen `/{locale}/requests/` and returns it (query string kept, e.g. `utm_*`).
+  Locale = the `nk_requests_locale` cookie (set by the board's language switcher on this host),
+  else the browser's `Accept-Language` (same primary-subtag matching as gen's `LocaleRedirect`),
+  else `en`. Response carries `Vary: Accept-Language, Cookie`.
+- `/{locale}` or `/{locale}/` (e.g. `/es/`) → that language's board, for explicit links.
 - paths with a file extension (`/_next/*`, fonts, icons, `sw.js`, RSC `.txt`) → proxied from gen.
 - any other page path → 302 to the same path on gen, so the app never runs on this origin.
 
 The frontend treats `requests` as a non-tenant subdomain (`frontend/lib/edge/nonTenantSubdomains.ts`,
-`backend/middleware/tenant.py`), and the board's "Make it yourself" button leaves for
+`backend/middleware/tenant.py`), the board header's language switcher sets the cookie and reloads `/` on this host (so the
+shareable URL stays bare), and the board's "Make it yourself" button leaves for
 `gen.nomadkaraoke.com/app` when on this host. Board sign-in magic links still land on gen
 (`/en/auth/verify` → `/requests`), so a user who signs in ends up on the gen copy of the board.
 

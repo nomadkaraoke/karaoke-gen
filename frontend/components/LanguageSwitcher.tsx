@@ -40,7 +40,14 @@ const LOCALE_INFO: { code: string; native: string; english: string; flag: string
   { code: 'ca', native: 'Catal\u00e0', english: 'Catalan', flag: '\u{1F3F4}' },
 ];
 
-export default function LanguageSwitcher({ showLabel }: { showLabel?: boolean } = {}) {
+export default function LanguageSwitcher({
+  showLabel,
+  onSelectLocale,
+}: {
+  showLabel?: boolean;
+  /** Replaces the default in-app locale navigation (e.g. on hosts that serve a single page). */
+  onSelectLocale?: (code: string) => void;
+} = {}) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -75,6 +82,10 @@ export default function LanguageSwitcher({ showLabel }: { showLabel?: boolean } 
   function handleSelect(code: string) {
     setOpen(false);
     try { localStorage.setItem('locale', code); } catch {}
+    if (onSelectLocale) {
+      onSelectLocale(code);
+      return;
+    }
     router.replace(pathname, { locale: code });
   }
 
