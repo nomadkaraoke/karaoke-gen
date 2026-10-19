@@ -231,15 +231,48 @@ class BaseLyricsProvider(ABC):
         return self.__class__.__name__.replace("Provider", "")
 
     def _log_request_exception(self, exc: requests.exceptions.RequestException, label: str) -> None:
-        # 5xx / connection / timeout are upstream transient — not actionable for us.
+        """Log a failed provider request at a level matching how actionable it is.
+
+        ERROR pages a human (the error monitor turns new ERROR patterns into
+        #alerts messages), so it is reserved for failures that mean our side is
+        broken (auth/config 4xx, unknown request errors). Everything expected
+        is logged lower:
+        - 404 = "no lyrics for this track": INFO.
+        - 429 / 5xx / connection / timeout = upstream transient: WARNING.
+        The orchestrator already falls back to other providers in all cases.
+        """
         response = getattr(exc, "response", None)
         status = getattr(response, "status_code", None)
+        is_http = isinstance(exc, requests.exceptions.HTTPError) and status is not None
+        msg = f"{label} request failed: {exc}"
+
+        if is_http and status == 404:
+            self.logger.info(f"{label}: no lyrics found (404): {exc}")
+            self._note_not_found(label)
+            return
+
         transient = (
             isinstance(exc, (requests.exceptions.ConnectionError, requests.exceptions.Timeout))
-            or (isinstance(exc, requests.exceptions.HTTPError) and status is not None and status >= 500)
+            or (is_http and (status == 429 or status >= 500))
         )
-        msg = f"{label} request failed: {exc}"
         if transient:
             self.logger.warning(msg)
         else:
             self.logger.error(msg)
+
+    # A provider that 404s on every request is probably dead (endpoint moved or
+    # API retired) rather than just missing a track. Warn once per process so it
+    # is visible in logs without paging. TODO: the Musixmatch RapidAPI endpoint
+    # is in exactly this state; tracked as BACKLOG.md "Musixmatch lyrics provider
+    # dead for 30+ days".
+    DEAD_PROVIDER_404_THRESHOLD = 5
+    _not_found_counts: Dict[str, int] = {}
+
+    def _note_not_found(self, label: str) -> None:
+        counts = BaseLyricsProvider._not_found_counts
+        counts[label] = counts.get(label, 0) + 1
+        if counts[label] == self.DEAD_PROVIDER_404_THRESHOLD:
+            self.logger.warning(
+                f"{label} has returned 404 for {counts[label]} requests in this process; "
+                f"the provider may be dead (endpoint changed or API retired)"
+            )

@@ -1581,11 +1581,14 @@ async def stripe_webhook(
         if event_type == "checkout.session.completed":
             session = event["data"]["object"]
             session_id = session.get("id")
-            metadata = session.get("metadata", {})
+            metadata = session.get("metadata") or {}
             customer_email = (
                 metadata.get("user_email")
                 or metadata.get("customer_email")
-                or session.get("customer_email", "")
+                or session.get("customer_email")
+                # Payment Link checkouts only carry the email here
+                or (session.get("customer_details") or {}).get("email")
+                or ""
             )
 
             # Idempotency check: Skip if this session was already processed
@@ -1602,7 +1605,22 @@ async def stripe_webhook(
                 return {"status": "received", "type": event_type, "note": "already_processed"}
 
             # Check if this is a made-for-you order
-            if metadata.get("order_type") == "made_for_you":
+            if not StripeService.is_gen_checkout(session):
+                # Not created by gen (e.g. a Stripe Payment Link tip): nothing to
+                # fulfil, but the payment is still stored below for revenue.
+                logger.info(
+                    f"non-gen checkout (payment link {session.get('payment_link') or 'none'}) "
+                    f"session {session_id}: ${(session.get('amount_total') or 0) / 100:.2f}; "
+                    f"recording payment only, no credits granted"
+                )
+                # Record the session so a redelivered event is skipped by the
+                # idempotency check (otherwise total_spent below double-counts).
+                user_service._mark_stripe_session_processed(
+                    stripe_session_id=session_id,
+                    email=customer_email,
+                    amount=0,
+                )
+            elif metadata.get("order_type") == "made_for_you":
                 # Handle made-for-you order - create a job
                 await _handle_made_for_you_order(
                     session_id=session_id,
@@ -1651,7 +1669,7 @@ async def stripe_webhook(
                         logger.error(f"Failed to add credits: {credit_msg}")
 
             # Update user's cached total_spent (non-blocking)
-            amount_total = session.get("amount_total", 0)
+            amount_total = session.get("amount_total") or 0
             if amount_total > 0 and customer_email:
                 try:
                     from google.cloud.firestore_v1 import Increment

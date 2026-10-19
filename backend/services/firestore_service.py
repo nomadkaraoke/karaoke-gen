@@ -4,6 +4,8 @@ Firestore database operations for job management.
 import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
+from google.api_core import exceptions as core_exceptions
+from google.api_core import retry as api_retry
 from google.cloud import firestore
 from google.cloud.firestore_v1 import FieldFilter
 
@@ -15,6 +17,28 @@ from backend.models.audio_edit_session import AudioEditSession
 
 
 logger = logging.getLogger(__name__)
+
+# Job-list queries back user-facing endpoints (GET /api/jobs). The client's
+# default RunQuery retry/timeout is 300s, so a stalled stream used to hold a
+# threadpool thread for 5 minutes before failing ("Timeout of 300.0s exceeded").
+# Bound them so they fail fast; the frontend just polls again.
+LIST_QUERY_TIMEOUT_SECONDS = 30.0
+LIST_QUERY_RETRY = api_retry.Retry(
+    initial=0.1,
+    maximum=5.0,
+    multiplier=1.3,
+    predicate=api_retry.if_exception_type(
+        core_exceptions.DeadlineExceeded,
+        core_exceptions.InternalServerError,
+        core_exceptions.ServiceUnavailable,
+    ),
+    timeout=LIST_QUERY_TIMEOUT_SECONDS,
+)
+
+
+def _bounded_stream(query):
+    """query.stream() with the job-list retry/timeout bounds."""
+    return query.stream(retry=LIST_QUERY_RETRY, timeout=LIST_QUERY_TIMEOUT_SECONDS)
 
 
 class FirestoreService:
@@ -227,7 +251,7 @@ class FirestoreService:
 
             query = query.order_by('created_at', direction=firestore.Query.DESCENDING).limit(limit)
 
-            docs = query.stream()
+            docs = _bounded_stream(query)
             jobs = [Job(**doc.to_dict()) for doc in docs]
 
             return jobs
@@ -246,7 +270,7 @@ class FirestoreService:
                 .where(filter=FieldFilter('state_data.batch_id', '==', batch_id))
                 .limit(limit)
             )
-            return [Job(**doc.to_dict()) for doc in query.stream()]
+            return [Job(**doc.to_dict()) for doc in _bounded_stream(query)]
         except Exception as e:
             logger.error(f"Error listing jobs for batch {batch_id}: {e}")
             raise
@@ -337,7 +361,7 @@ class FirestoreService:
             query = query.order_by('created_at', direction=firestore.Query.DESCENDING).limit(limit)
             query = query.select(self.SUMMARY_FIELD_PATHS)
 
-            docs = query.stream()
+            docs = _bounded_stream(query)
             results = [doc.to_dict() for doc in docs]
 
             # Apply exclude_statuses filter in Python (see note above)

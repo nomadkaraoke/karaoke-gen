@@ -151,6 +151,71 @@ class TestResearch:
                    if c.args[1].get("title") == "The View from the Afternoon"]
         assert applied, "expected edited title applied to job"
 
+    def test_research_makes_no_status_writes(self, mock_job_manager):
+        """A re-search must not attempt status transitions or status writes.
+
+        Regression: research_audio called transition_to_state(SEARCHING_AUDIO)
+        and back, but AWAITING_AUDIO_SELECTION -> SEARCHING_AUDIO isn't a valid
+        transition, so every admin re-search logged two "Invalid state
+        transition" ERRORs (each an #alerts page). The job simply stays in
+        AWAITING_AUDIO_SELECTION while its cached results are replaced.
+        """
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        search = MagicMock()
+        search.search_async = AsyncMock(return_value=[_result(0)])
+        search.last_remote_search_id = None
+
+        p1, p2 = self._patched(mock_job_manager, search)
+        with p1, p2:
+            client = TestClient(app)
+            resp = client.post("/api/audio-search/park-1/research", json={})
+
+        assert resp.status_code == 200, resp.text
+        mock_job_manager.transition_to_state.assert_not_called()
+        mock_job_manager.update_job_status.assert_not_called()
+        for c in mock_job_manager.update_job.call_args_list:
+            assert "status" not in c.args[1]
+
+    def test_research_discards_results_if_selection_landed_mid_search(self, mock_job_manager):
+        """A selection made during the search must keep the results it indexed into."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        selected = _parked_job(status=JobStatus.DOWNLOADING_AUDIO)
+        mock_job_manager.get_job.side_effect = [_parked_job(), selected]
+
+        search = MagicMock()
+        search.search_async = AsyncMock(return_value=[_result(0)])
+        search.last_remote_search_id = None
+
+        p1, p2 = self._patched(mock_job_manager, search)
+        with p1, p2:
+            client = TestClient(app)
+            resp = client.post("/api/audio-search/park-1/research", json={})
+
+        assert resp.status_code == 409
+        cached = [c for c in mock_job_manager.update_job.call_args_list
+                  if "state_data.audio_search_results" in c.args[1]]
+        assert not cached
+
+    def test_research_search_error_makes_no_status_writes(self, mock_job_manager):
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        search = MagicMock()
+        search.search_async = AsyncMock(side_effect=AudioSearchError("boom"))
+
+        p1, p2 = self._patched(mock_job_manager, search)
+        with p1, p2:
+            client = TestClient(app)
+            resp = client.post("/api/audio-search/park-1/research", json={})
+
+        assert resp.status_code == 502
+        mock_job_manager.transition_to_state.assert_not_called()
+        mock_job_manager.update_job_status.assert_not_called()
+
     def test_research_502_on_search_error(self, mock_job_manager):
         from fastapi.testclient import TestClient
         from backend.main import app

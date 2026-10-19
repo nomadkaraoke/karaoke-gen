@@ -42,6 +42,16 @@ class StripeAdminService:
     # Payment Storage
     # =========================================================================
 
+    @staticmethod
+    def _first_line_item_description(session: Dict[str, Any]) -> str:
+        """Description of the first expanded line item, or "" if unavailable."""
+        line_items = session.get("line_items") or {}
+        data = line_items.get("data") if isinstance(line_items, dict) else None
+        if data:
+            first = data[0] or {}
+            return first.get("description") or ""
+        return ""
+
     def store_payment(self, session: Dict[str, Any]) -> bool:
         """
         Store enriched payment data from a completed Checkout Session.
@@ -55,10 +65,13 @@ class StripeAdminService:
         """
         try:
             session_id = session.get("id", "")
-            metadata = session.get("metadata", {})
+            # Stripe sends explicit nulls, so `or {}` rather than a .get default.
+            metadata = session.get("metadata") or {}
+            customer_details = session.get("customer_details") or {}
+            payment_link_id = session.get("payment_link") or None
 
             # Extract payment intent and charge details
-            payment_intent = session.get("payment_intent", {})
+            payment_intent = session.get("payment_intent") or {}
             if isinstance(payment_intent, str):
                 # Not expanded - just store the ID
                 payment_intent_id = payment_intent
@@ -76,12 +89,18 @@ class StripeAdminService:
                     balance_txn = bt if isinstance(bt, dict) else {}
 
             # Extract payment method details
-            payment_method_details = charge_data.get("payment_method_details", {})
+            payment_method_details = charge_data.get("payment_method_details") or {}
             pm_type = payment_method_details.get("type", "unknown")
-            card_info = payment_method_details.get("card", {})
+            card_info = payment_method_details.get("card") or {}
 
-            # Determine order type
-            order_type = metadata.get("order_type", "credit_purchase")
+            # Determine order type. A checkout without gen metadata that came from
+            # a Stripe Payment Link isn't a credit purchase (no credits granted).
+            default_order_type = (
+                "payment_link"
+                if payment_link_id and not (metadata.get("credits") or metadata.get("user_email"))
+                else "credit_purchase"
+            )
+            order_type = metadata.get("order_type") or default_order_type
             package_id = metadata.get("package_id")
             credits = 0
             try:
@@ -94,13 +113,15 @@ class StripeAdminService:
                 artist = metadata.get("artist", "")
                 title = metadata.get("title", "")
                 product_description = f"Made For You: {artist} - {title}"
+            elif order_type == "payment_link":
+                product_description = self._first_line_item_description(session) or "Payment Link"
             else:
                 from backend.services.stripe_service import CREDIT_PACKAGES
                 pkg = CREDIT_PACKAGES.get(package_id, {})
                 product_description = pkg.get("name", f"{credits} Credits")
 
             # Extract discount info
-            total_details = session.get("total_details", {})
+            total_details = session.get("total_details") or {}
             discount_amount = 0
             promotion_code = None
             if total_details:
@@ -123,10 +144,13 @@ class StripeAdminService:
                 "customer_email": (
                     metadata.get("user_email")
                     or metadata.get("customer_email")
-                    or session.get("customer_email", "")
+                    or session.get("customer_email")
+                    or customer_details.get("email")
+                    or ""
                 ).lower().strip(),
-                "customer_name": session.get("customer_details", {}).get("name", ""),
-                "stripe_customer_id": session.get("customer", ""),
+                "customer_name": customer_details.get("name") or "",
+                "stripe_customer_id": session.get("customer") or "",
+                "payment_link_id": payment_link_id,
                 # Payment method
                 "payment_method_type": pm_type,
                 "card_brand": card_info.get("brand", ""),

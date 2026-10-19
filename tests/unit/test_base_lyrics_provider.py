@@ -104,12 +104,49 @@ class TestLogRequestException:
         records = [r for r in caplog.records if "LRCLIB" in r.message]
         assert records[0].levelno == logging.WARNING
 
-    def test_404_logs_error(self, caplog):
+    def test_404_logs_info_not_error(self, caplog):
+        """404 = "no lyrics for this track" — an expected outcome, never an alert."""
         provider = self._make_provider()
         with caplog.at_level(logging.DEBUG):
             provider._log_request_exception(self._http_error(404), "Genius RapidAPI")
         records = [r for r in caplog.records if "Genius RapidAPI" in r.message]
+        assert len(records) == 1
+        assert records[0].levelno == logging.INFO
+
+    def test_429_logs_warning(self, caplog):
+        provider = self._make_provider()
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(self._http_error(429), "Spotify RapidAPI")
+        records = [r for r in caplog.records if "Spotify RapidAPI" in r.message]
+        assert records[0].levelno == logging.WARNING
+
+    def test_401_still_logs_error(self, caplog):
+        """Auth failures mean our key/config is broken — that IS actionable."""
+        provider = self._make_provider()
+        with caplog.at_level(logging.DEBUG):
+            provider._log_request_exception(self._http_error(401), "Genius RapidAPI")
+        records = [r for r in caplog.records if "Genius RapidAPI" in r.message]
         assert records[0].levelno == logging.ERROR
+
+    def test_repeated_404s_warn_once_that_provider_may_be_dead(self, caplog, monkeypatch):
+        monkeypatch.setattr(BaseLyricsProvider, "_not_found_counts", {})
+        provider = self._make_provider()
+        threshold = BaseLyricsProvider.DEAD_PROVIDER_404_THRESHOLD
+        with caplog.at_level(logging.DEBUG):
+            for _ in range(threshold * 2):
+                provider._log_request_exception(self._http_error(404), "Musixmatch API")
+        dead = [r for r in caplog.records if "may be dead" in r.message]
+        assert len(dead) == 1
+        assert dead[0].levelno == logging.WARNING
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+    def test_404s_below_threshold_do_not_warn(self, caplog, monkeypatch):
+        monkeypatch.setattr(BaseLyricsProvider, "_not_found_counts", {})
+        provider = self._make_provider()
+        with caplog.at_level(logging.DEBUG):
+            for _ in range(BaseLyricsProvider.DEAD_PROVIDER_404_THRESHOLD - 1):
+                provider._log_request_exception(self._http_error(404), "Musixmatch API")
+        assert not [r for r in caplog.records if "may be dead" in r.message]
 
     def test_timeout_logs_warning(self, caplog):
         provider = self._make_provider()
