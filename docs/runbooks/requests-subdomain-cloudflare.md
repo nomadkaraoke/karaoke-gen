@@ -1,47 +1,59 @@
-# Wiring `requests.nomadkaraoke.com` → the voting board (Cloudflare)
+# `requests.nomadkaraoke.com` → the voting board (Cloudflare)
 
-The public voting board is a route in the gen Next.js app: it deploys automatically with
-the `karaoke-gen` Cloudflare Pages project and is reachable at
-`https://gen.nomadkaraoke.com/en/requests` the moment this PR merges.
+The public voting board is a static route in the gen Next.js build
+(`https://gen.nomadkaraoke.com/en/requests/`). Since 2026-10-19 it is **served on**
+`requests.nomadkaraoke.com` itself, not redirected, so the short URL stays in the address bar
+(Andrew copies it from his phone into YouTube comment replies).
 
-To make the vanity URL `requests.nomadkaraoke.com` (the thing we link from every YouTube
-description) resolve to the board, add a Cloudflare **redirect** — the same pattern the
-referral interstitial uses (`nomadkaraoke.com/r/CODE` → gen). This is **not** in Pulumi;
-`nomadkaraoke.com` DNS + rules are managed directly via the Cloudflare API/dashboard.
+## How it works
 
-**Do this at SHIP time (after the PR is merged and Pages has deployed the `/requests`
-route)** — otherwise the redirect points at a 404 until the deploy lands.
+| Piece | Where |
+|---|---|
+| `requests` CNAME → `gen.nomadkaraoke.com`, proxied | Pulumi, `infrastructure/cloudflare/dns.py` |
+| Worker route `requests.nomadkaraoke.com/*` → `requests-host` | Pulumi, `infrastructure/cloudflare/pages_workers.py` |
+| Worker script `requests-host` | `infrastructure/cloudflare/requests-host/worker.js`, deployed by `deploy.sh` |
 
-## Steps (dashboard — simplest, ~2 min)
+The Worker:
 
-1. **DNS**: Cloudflare → `nomadkaraoke.com` → DNS → add a **proxied** (orange-cloud) record
-   so the hostname exists at the edge and rules can match it:
-   - Type `CNAME`, Name `requests`, Target `gen.nomadkaraoke.com`, Proxy **ON**.
-2. **Redirect Rule**: Rules → Redirect Rules → Create:
-   - When incoming requests match: `Hostname` `equals` `requests.nomadkaraoke.com`
-   - Then: Static redirect, URL `https://gen.nomadkaraoke.com/en/requests`, status **302**,
-     preserve query string OFF.
+- `/` → fetches gen `/en/requests/` and returns it (query string kept, e.g. `utm_*`).
+- paths with a file extension (`/_next/*`, fonts, icons, `sw.js`, RSC `.txt`) → proxied from gen.
+- any other page path → 302 to the same path on gen, so the app never runs on this origin.
 
-That's it — `requests.nomadkaraoke.com` now lands users on the board. (302 not 301 so we can
-later swap to a true custom-domain host without a cached permanent redirect fighting us.)
+The frontend treats `requests` as a non-tenant subdomain (`frontend/lib/edge/nonTenantSubdomains.ts`,
+`backend/middleware/tenant.py`), and the board's "Make it yourself" button leaves for
+`gen.nomadkaraoke.com/app` when on this host. Board sign-in magic links still land on gen
+(`/en/auth/verify` → `/requests`), so a user who signs in ends up on the gen copy of the board.
+
+## Changing it
+
+```bash
+cd infrastructure/cloudflare/requests-host
+node --test .                       # unit tests
+set -a; source ../../../../.envrc; set +a   # workspace .envrc (Nomad CF account)
+./deploy.sh                         # upload script
+```
+
+Route/DNS changes go through `pulumi up` in `infrastructure/cloudflare/`.
 
 ## Verify
 
+From the repo root:
+
 ```bash
-curl -sI https://requests.nomadkaraoke.com | grep -i "location\|HTTP/"
-# expect: 302 + location: https://gen.nomadkaraoke.com/en/requests
+curl -sI https://requests.nomadkaraoke.com/          # 200, text/html, no location header
+curl -sI https://requests.nomadkaraoke.com/en/app/   # 302 → https://gen.nomadkaraoke.com/en/app/
+cd frontend && npx playwright test requests-vanity-host.spec.ts --config=playwright.production.config.ts
 ```
 
-Then open it in a browser and confirm the board renders and a magic-link sign-in works.
+## Don't: Pages custom domain + rewrite rule
 
-## Later upgrade (optional, keeps the vanity host in the address bar)
+Tried 2026-10-19: attaching `requests.nomadkaraoke.com` as a custom domain on the `karaoke-gen`
+Pages project made Cloudflare serve the gen **homepage** there, ignoring the zone redirect rule.
+(The Pulumi token also lacks Transform Rules permission.) Rolled back within ~3 minutes.
+The Worker avoids both problems.
 
-Attach `requests.nomadkaraoke.com` as a **custom domain** on the `karaoke-gen` Pages project
-and add a host-aware root rewrite (`/` on that host → `/en/requests`). `requests` is already in
-the `nonTenantSubdomains` allow-list in `frontend/functions/[[path]].ts`, so it will not be
-mistaken for a white-label tenant. Not needed for Phase 1 — the redirect above is sufficient.
+## Rollback
 
-## Record
-
-Log any DNS/rule change made here (and in the workspace infra notes) per the standing rule that
-Cloudflare API/dashboard changes leave no trace in code.
+Restore the old redirect: remove the Worker route in `pages_workers.py` and re-add a
+`http_request_dynamic_redirect` rule `(http.host eq "requests.nomadkaraoke.com")` → 302
+`https://gen.nomadkaraoke.com/en/requests` in `rulesets.py`, then `pulumi up`.

@@ -13,6 +13,7 @@
 
 import { getTenantConfig } from "../lib/edge/tenantConfigCache"
 import { injectTenantIntoHtml } from "../lib/edge/tenantHtmlInjection"
+import { NON_TENANT_SUBDOMAINS } from "../lib/edge/nonTenantSubdomains"
 
 /**
  * Extract tenant ID from hostname.
@@ -20,14 +21,13 @@ import { injectTenantIntoHtml } from "../lib/edge/tenantHtmlInjection"
  */
 function extractTenantFromHost(hostname: string): string | null {
   const parts = hostname.toLowerCase().split(".")
-  const nonTenantSubdomains = ["gen", "api", "www", "buy", "admin", "app", "beta", "requests"]
 
   // Accept exactly 3 parts (tenant.nomadkaraoke.com)
   // or exactly 4 parts where second is "gen" (tenant.gen.nomadkaraoke.com)
   const isThreePart = parts.length === 3 && parts[1] === "nomadkaraoke" && parts[2] === "com"
   const isFourPart = parts.length === 4 && parts[1] === "gen" && parts[2] === "nomadkaraoke" && parts[3] === "com"
 
-  if ((isThreePart || isFourPart) && !nonTenantSubdomains.includes(parts[0])) {
+  if ((isThreePart || isFourPart) && !NON_TENANT_SUBDOMAINS.includes(parts[0])) {
     return parts[0]
   }
 

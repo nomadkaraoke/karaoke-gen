@@ -29,7 +29,8 @@ into paying [gen.nomadkaraoke.com](https://gen.nomadkaraoke.com) customers over 
 ## Where it lives
 
 - **Public URL to share / link:** **https://requests.nomadkaraoke.com**
-  (redirects to the board; this is the clean vanity link to put in YouTube descriptions, socials, etc.)
+  (serves the board on that host, so the short URL stays in the address bar and can be copied
+  on mobile; put it in YouTube descriptions/replies, socials, etc.)
 - Also directly reachable at `https://gen.nomadkaraoke.com/en/requests` (any of the 33 locales:
   `/es/requests`, `/de/requests`, …).
 
@@ -94,7 +95,7 @@ the same KaraokeNerds check the normal job-submission flow uses runs at two poin
 ## How it works (technical, brief)
 
 - **Frontend:** a route in the gen Next.js app (`frontend/app/[locale]/requests/`), fully translated
-  to 33 locales. `requests.nomadkaraoke.com` is a Cloudflare redirect to it (see
+  to 33 locales. `requests.nomadkaraoke.com` serves it via the `requests-host` Worker (see
   `docs/runbooks/requests-subdomain-cloudflare.md`).
 - **Auth:** reuses gen's passwordless magic-link system. Board sign-in sends
   `purpose="requests_board"`, which creates an identity **without** granting a welcome credit and

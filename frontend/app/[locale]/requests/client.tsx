@@ -21,6 +21,7 @@ import { CommunityVersionBanner } from '@/components/job/CommunityVersionBanner'
 import type { BoardResponse, SongRequestPublic } from '@/lib/types';
 
 const BOARD_PURPOSE = 'requests_board';
+const REQUESTS_HOST = 'requests.nomadkaraoke.com';
 
 export function RequestsBoardClient() {
   const t = useTranslations('requests');
@@ -167,6 +168,12 @@ export function RequestsBoardClient() {
       } catch {
         /* non-blocking — the create flow still works, credit can be claimed later */
       }
+    }
+    // requests.nomadkaraoke.com serves only the board (edge rules send every other path
+    // to gen), so leave the vanity host instead of client-routing the app onto it.
+    if (window.location.hostname === REQUESTS_HOST) {
+      window.location.href = 'https://gen.nomadkaraoke.com/app';
+      return;
     }
     router.push('/app');
   };
