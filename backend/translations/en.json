@@ -81,7 +81,8 @@
     "waveformGenerationError": "Error generating waveform data: {error}",
     "waveformNoAudio": "No audio available for waveform",
     "sessionSaveError": "Correction data is required",
-    "invalidIsDuetFlag": "is_duet must be a boolean (true or false)"
+    "invalidIsDuetFlag": "is_duet must be a boolean (true or false)",
+    "previewMissingTimings": "The line \"{line}\" has a word with no timing. Sync that line, then try the preview again."
   },
   "audioSearch": {
     "notEnabled": "Audio search is not enabled for this tenant",

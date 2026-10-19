@@ -1955,6 +1955,17 @@ async def generate_preview_video(
             detail=t("en", "review.reviewNotReady", status=job.status)
         )
 
+    # An in-browser edit can send words/lines without timings (JSON drops undefined),
+    # which crashed the preview with KeyError 'end_time'. Fill what we can, as review
+    # submit does, and name the line we can't instead of returning a 500.
+    from backend.services.timing_sanitizer import find_missing_timings, sanitize_corrections
+    _, timing_fixes = sanitize_corrections(updated_data)
+    if timing_fixes:
+        logger.info(f"Job {job_id}: preview payload had {timing_fixes} missing/out-of-range timings; filled")
+    untimed_line = find_missing_timings(updated_data)
+    if untimed_line is not None:
+        raise HTTPException(status_code=422, detail=t("en", "review.previewMissingTimings", line=untimed_line[:80]))
+
     # Check if GCE preview encoding is enabled
     use_gce_preview = encoding_service.is_preview_enabled
 
