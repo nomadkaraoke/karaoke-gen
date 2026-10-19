@@ -1058,6 +1058,8 @@ class TestAudioSearchThemePreparation:
         has_theme_preparation_call = (
             # Check for import or call of theme preparation function
             '_prepare_theme_for_job(' in audio_search_code or
+            # called off the event loop: asyncio.to_thread(_prepare_theme_for_job, ...)
+            '_prepare_theme_for_job,' in audio_search_code or
             'prepare_job_style(' in audio_search_code
         )
 

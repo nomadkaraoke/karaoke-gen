@@ -205,6 +205,10 @@ BLOCKING_CALLS = {
     "check_gdrive_credentials",
     "check_all_credentials",
     "trigger_gdrive_validation",
+    # 2026-10-18 #alerts triage: watchdog culprits in async routes
+    "upload_json",  # GCS upload (complete_review: up to 21s)
+    "_prepare_theme_for_job",  # GCS reads/writes (job creation)
+    "generate",  # CustomLyricsService.generate → sync Gemini call (151s, 32 requests)
 }
 _BLOCKING_MODULE_CALLS = {("requests", "get"), ("requests", "post"), ("requests", "put"),
                           ("requests", "delete"), ("requests", "request"), ("time", "sleep")}

@@ -1525,7 +1525,10 @@ async def generate_custom_lyrics(
     target_segments = await _load_target_segments_for_custom_lyrics(job_id, parsed_lines)
 
     try:
-        result = service.generate(
+        # Off the event loop: generate() makes a synchronous Gemini call that can take
+        # minutes; on the loop it froze the whole instance for 151s (2026-10-17).
+        result = await asyncio.to_thread(
+            service.generate,
             job_id=job_id,
             target_lines=parsed_lines,
             target_segments=target_segments,
@@ -3352,7 +3355,7 @@ async def submit_audio_edit(
     edit_log = body.get("edit_log")
     if edit_log:
         edit_log_path = f"jobs/{job_id}/audio_edit/edit_log.json"
-        storage.upload_json(edit_log_path, edit_log)
+        await asyncio.to_thread(storage.upload_json, edit_log_path, edit_log)
         logger.info(f"Job {job_id}: Saved audio edit log to {edit_log_path}")
 
     if edit_stack:
