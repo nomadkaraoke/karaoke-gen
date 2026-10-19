@@ -10,6 +10,8 @@ from karaoke_gen.lyrics_transcriber.lyrics import lrclib_client
 @pytest.fixture(autouse=True)
 def _reset(monkeypatch):
     monkeypatch.setattr(lrclib_client, "_credentials_rejected", False)
+    monkeypatch.setattr(lrclib_client, "_cooldown_until", 0.0)
+    monkeypatch.setattr(lrclib_client, "_cooldown_response", None)
     monkeypatch.setenv("LRCLIB_APP_ID", "app-1")
     monkeypatch.setenv("LRCLIB_SECRET_KEY", "secret-1")
     sleeps = []
@@ -52,9 +54,22 @@ def test_honours_retry_after_with_jitter_on_429(_reset):
     assert 4.0 <= _reset[0] <= 4.0 * 1.3
 
 
-def test_retry_after_is_capped(_reset):
-    _get(_resp(429, {"Retry-After": "600"}), _resp(200))
-    assert _reset == [lrclib_client.MAX_RETRY_AFTER_S]
+def test_long_retry_after_is_not_shortened_and_blocks_further_calls(_reset):
+    """Never retry before Retry-After: a 600s wait returns the 429 and the cooldown holds."""
+    response, session = _get(_resp(429, {"Retry-After": "600"}))
+    assert response.status_code == 429 and session.get.call_count == 1 and _reset == []
+    # e.g. the provider's /search fallback right after a rate-limited /get: nothing is sent
+    later, later_session = _get(_resp(200))
+    assert later.status_code == 429 and later_session.get.call_count == 0
+
+
+def test_no_retry_mode_respects_cooldown_without_waiting(_reset):
+    session = MagicMock()
+    session.get.side_effect = [_resp(429, {"Retry-After": "5"})]
+    r = lrclib_client.get("https://lrclib.net/api/get", {}, session=session, retry=False)
+    assert r.status_code == 429 and _reset == []
+    r2 = lrclib_client.get("https://lrclib.net/api/search", {}, session=session, retry=False)
+    assert r2.status_code == 429 and session.get.call_count == 1
 
 
 def test_second_429_is_returned_not_retried_forever():

@@ -121,14 +121,12 @@ def fetch_lrclib_lyrics(
     """Exact ``/get`` (with duration when known), then ``/search`` preferring synced."""
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
-    # Registered-app credentials (higher LRCLIB allowance); no retries on this fast path.
-    session.headers.update(lrclib_client.auth_headers())
 
     params = {"artist_name": artist, "track_name": title}
     if duration:
         params["duration"] = int(round(duration))
     try:
-        r = session.get(f"{LRCLIB_BASE}/get", params=params, timeout=timeout)
+        r = lrclib_client.get(f"{LRCLIB_BASE}/get", params, user_agent=USER_AGENT, timeout=timeout, session=session, retry=False)
         if r.status_code == 200:
             got = lyrics_from_lrclib_payload(r.json())
             if got and got.kind == "synced":
@@ -141,7 +139,7 @@ def fetch_lrclib_lyrics(
         exact_plain = None
 
     try:
-        r = session.get(f"{LRCLIB_BASE}/search", params={"q": f"{artist} {title}"}, timeout=timeout)
+        r = lrclib_client.get(f"{LRCLIB_BASE}/search", {"q": f"{artist} {title}"}, user_agent=USER_AGENT, timeout=timeout, session=session, retry=False)
         if r.status_code == 200:
             hits = r.json() or []
             for hit in sorted(hits, key=lambda h: 0 if h.get("syncedLyrics") else 1):
