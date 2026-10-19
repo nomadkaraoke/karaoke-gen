@@ -81,7 +81,8 @@
     "waveformGenerationError": "Fejl ved generering af bølgeformsdata: {error}",
     "waveformNoAudio": "Ingen lyd tilgængelig til bølgeform",
     "sessionSaveError": "Rettelsesdata er påkrævet",
-    "invalidIsDuetFlag": "is_duet skal være en boolsk værdi (sand eller falsk)"
+    "invalidIsDuetFlag": "is_duet skal være en boolsk værdi (sand eller falsk)",
+    "previewMissingTimings": "Linjen \"{line}\" har et ord uden timing. Synkroniser den linje, og prøv derefter forhåndsvisningen igen."
   },
   "audioSearch": {
     "notEnabled": "Lydsøgning er ikke aktiveret for denne lejer",

@@ -81,7 +81,8 @@
     "waveformGenerationError": "خطأ في إنشاء بيانات الشكل الموجي: {error}",
     "waveformNoAudio": "لا يوجد صوت متاح للشكل الموجي",
     "sessionSaveError": "بيانات التصحيح مطلوبة",
-    "invalidIsDuetFlag": "يجب أن يكون is_duet قيمة منطقية (true أو false)"
+    "invalidIsDuetFlag": "يجب أن يكون is_duet قيمة منطقية (true أو false)",
+    "previewMissingTimings": "يحتوي السطر \"{line}\" على كلمة بلا توقيت. قم بمزامنة هذا السطر، ثم حاول المعاينة مرة أخرى."
   },
   "audioSearch": {
     "notEnabled": "البحث الصوتي غير مفعل لهذا المستأجر",

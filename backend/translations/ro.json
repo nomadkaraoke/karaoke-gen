@@ -81,7 +81,8 @@
     "waveformGenerationError": "Eroare la generarea datelor formei de undă: {error}",
     "waveformNoAudio": "Niciun fișier audio disponibil pentru forma de undă",
     "sessionSaveError": "Datele de corecție sunt obligatorii",
-    "invalidIsDuetFlag": "is_duet trebuie să fie un boolean (true sau false)"
+    "invalidIsDuetFlag": "is_duet trebuie să fie un boolean (true sau false)",
+    "previewMissingTimings": "Rândul „{line}” conține un cuvânt fără sincronizare. Sincronizează acel rând, apoi încearcă din nou previzualizarea."
   },
   "audioSearch": {
     "notEnabled": "Căutarea audio nu este activată pentru acest tenant",

@@ -81,7 +81,8 @@
     "waveformGenerationError": "Lỗi khi tạo dữ liệu dạng sóng: {error}",
     "waveformNoAudio": "Không có âm thanh cho dạng sóng",
     "sessionSaveError": "Yêu cầu dữ liệu chỉnh sửa",
-    "invalidIsDuetFlag": "is_duet phải là kiểu boolean (true hoặc false)"
+    "invalidIsDuetFlag": "is_duet phải là kiểu boolean (true hoặc false)",
+    "previewMissingTimings": "Dòng \"{line}\" có một từ chưa được căn thời gian. Hãy đồng bộ dòng đó rồi thử xem trước lại."
   },
   "audioSearch": {
     "notEnabled": "Tìm kiếm âm thanh không được bật cho tenant này",
