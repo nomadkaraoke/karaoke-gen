@@ -15,6 +15,7 @@ degrades to anonymous access instead of losing LRCLIB entirely.
 import logging
 import os
 import random
+import threading
 import time
 from typing import Any, Dict, Optional
 
@@ -27,6 +28,7 @@ SERVER_ERROR_BACKOFF_S = (1.0, 2.0)
 _credentials_rejected = False
 _cooldown_until = 0.0  # time.monotonic() before which we must not call LRCLIB (Retry-After)
 _cooldown_response: Optional[requests.Response] = None
+_cooldown_lock = threading.Lock()
 
 
 def auth_headers() -> Dict[str, str]:
@@ -90,14 +92,20 @@ def get(
             continue
         if status == 429:
             delay = _retry_after_seconds(response)
-            _cooldown_until = time.monotonic() + delay
-            _cooldown_response = response
+            with _cooldown_lock:  # overlapping 429s: keep the latest expiry, never shorten it
+                if time.monotonic() + delay > _cooldown_until:
+                    _cooldown_until = time.monotonic() + delay
+                    _cooldown_response = response
             log.info(f"LRCLIB rate limited (429); cooling down {delay:.1f}s")
             if rate_limit_retried or delay > MAX_WAIT_S:
                 return response
             continue  # the cooldown check at the top of the loop waits, then retries once
         if status >= 500 and server_error_retries:
             delay = server_error_retries.pop(0)
+            if "Retry-After" in response.headers:  # an overloaded 503 may say how long to wait
+                delay = max(delay, _retry_after_seconds(response))
+                if delay > MAX_WAIT_S:
+                    return response
             log.info(f"LRCLIB returned {status}; retrying in {delay:.0f}s")
             time.sleep(delay)
             continue

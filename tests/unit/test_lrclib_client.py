@@ -115,3 +115,25 @@ def test_provider_requests_go_through_the_client():
         result = LRCLIBProvider(LyricsProviderConfig(), logger=logging.getLogger("t"))._fetch_from_search("Dar Williams", "Iowa")
     assert result["trackName"] == "Iowa"
     assert req.get.call_args.kwargs["headers"]["Lrclib-Api-Key"] == "secret-1"
+
+
+def test_shorter_overlapping_429_does_not_shorten_the_cooldown():
+    def in_flight(*a, **k):
+        # a concurrent request got Retry-After: 600 while this one was in flight
+        lrclib_client._cooldown_until = lrclib_client.time.monotonic() + 600
+        return _resp(429, {"Retry-After": "1"})
+
+    session = MagicMock()
+    session.get.side_effect = in_flight
+    lrclib_client.get("https://lrclib.net/api/get", {}, session=session, retry=False)
+    assert lrclib_client._cooldown_until - lrclib_client.time.monotonic() > 590
+
+
+def test_503_retry_after_is_honoured(_reset):
+    response, session = _get(_resp(503, {"Retry-After": "7"}), _resp(200))
+    assert response.status_code == 200 and 7.0 <= _reset[0] <= 7.0 * 1.3
+
+
+def test_503_with_long_retry_after_is_returned_without_retry():
+    response, session = _get(_resp(503, {"Retry-After": "120"}))
+    assert response.status_code == 503 and session.get.call_count == 1
