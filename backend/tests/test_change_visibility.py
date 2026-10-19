@@ -356,6 +356,61 @@ class TestChangeToPublicClaim:
         assert list(released) == ["state_data.visibility_change_in_progress"]
 
 
+    @pytest.mark.asyncio
+    async def test_trigger_exception_rolls_back_like_a_failed_trigger(self):
+        mock_job_manager = MagicMock()
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
+             patch("backend.services.visibility_change_service.StorageService"), \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("p", {}, None)), \
+             patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
+            mock_worker_svc.return_value.trigger_screens_worker = AsyncMock(side_effect=ConnectionError("tasks down"))
+            with pytest.raises(RuntimeError, match="Failed to trigger screens worker"):
+                await service.change_to_public("test-123", job, "user@example.com")
+        rollback = mock_job_ref.update.call_args_list[-1].args[0]
+        assert rollback["status"] == "complete"
+        assert "state_data.visibility_change_in_progress" in rollback
+
+
+class TestChangeToPrivateClaim:
+    @pytest.mark.asyncio
+    async def test_lost_claim_touches_nothing(self):
+        from backend.services.visibility_change_service import VisibilityChangeInProgress
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.firestore.try_set_job_state_flag.return_value = False
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=False, state_data={"brand_code": "NOMAD-0001"})
+
+        redist = AsyncMock(return_value=True)
+        with patch("backend.workers.video_worker.redistribute_video", redist):
+            with pytest.raises(VisibilityChangeInProgress):
+                await service.change_to_private("test-123", job, "user@example.com")
+        redist.assert_not_awaited()
+        mock_job_ref.update.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_chained_continuation_keeps_its_existing_claim(self):
+        mock_job_manager = MagicMock()
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=False, state_data={"brand_code": "NOMAD-0001", "visibility_change_in_progress": True})
+
+        with patch("backend.workers.video_worker.redistribute_video", AsyncMock(return_value=True)), \
+             patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs"):
+            result = await service.change_to_private(
+                "test-123", job, "user@example.com", regenerate_if_missing=False, holds_claim=True)
+        assert result["status"] == "success"
+        mock_job_manager.firestore.try_set_job_state_flag.assert_not_called()
+
+
 class TestChangeToPrivateErrors:
     """Test error handling in public -> private flow."""
 

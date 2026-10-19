@@ -58,7 +58,9 @@ class VisibilityChangeService:
 
         return None
 
-    async def change_to_private(self, job_id: str, job, user_email: str, regenerate_if_missing: bool = True) -> dict:
+    async def change_to_private(
+        self, job_id: str, job, user_email: str, regenerate_if_missing: bool = True, holds_claim: bool = False,
+    ) -> dict:
         """
         Change a public job to private (fast path).
 
@@ -72,6 +74,9 @@ class VisibilityChangeService:
         public may be destroyed until the private archive exists. If redistribution
         fails, the job is reverted to public and left fully intact (no partial
         deletion, no leaked NOMADNP code — see redistribute_video's failure path).
+
+        ``holds_claim``: the caller already owns ``visibility_change_in_progress``
+        (the regenerate-then-private continuation, whose regenerate set it).
         """
         logger.info(f"[job:{job_id}] Starting visibility change: public -> private (by {user_email})")
 
@@ -112,6 +117,14 @@ class VisibilityChangeService:
         # destination. Public outputs remain live until the private archive exists.
         # No "changed to private" timeline event yet — it is only recorded once the
         # move actually succeeds (this is reverted if redistribution fails).
+        # Claim atomically: two requests that both read the job before either wrote
+        # the flag must not both redistribute and delete the public outputs.
+        if not holds_claim:
+            claimed = await asyncio.to_thread(
+                self.job_manager.firestore.try_set_job_state_flag, job_id, "visibility_change_in_progress"
+            )
+            if not claimed:
+                raise VisibilityChangeInProgress("A visibility change is already in progress for this job")
         job_ref.update({
             "state_data.visibility_change_in_progress": True,
             "is_private": True,
@@ -197,7 +210,11 @@ class VisibilityChangeService:
         # Step 6: Trigger screens worker
         from backend.services.worker_service import get_worker_service
         worker_service = get_worker_service()
-        triggered = await worker_service.trigger_screens_worker(job_id)
+        try:
+            triggered = await worker_service.trigger_screens_worker(job_id)
+        except Exception as e:
+            logger.warning(f"[job:{job_id}] Screens worker trigger raised during visibility change: {e}")
+            triggered = False
 
         if not triggered:
             logger.error(f"[job:{job_id}] Failed to trigger screens worker for visibility change")
