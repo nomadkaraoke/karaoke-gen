@@ -610,7 +610,7 @@ async def _run_chained_change_to_private(job_id: str, job_manager: JobManager, r
     try:
         fresh = job_manager.get_job(job_id)
         await VisibilityChangeService(job_manager).change_to_private(
-            job_id, fresh, requested_by, regenerate_if_missing=False,
+            job_id, fresh, requested_by, regenerate_if_missing=False, holds_claim=True,
         )
         job_log.info("Regenerated finals redistributed: visibility changed to private")
     except Exception as e:  # noqa: BLE001 - the regenerate itself succeeded

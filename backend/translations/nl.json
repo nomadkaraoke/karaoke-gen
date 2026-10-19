@@ -81,7 +81,8 @@
     "waveformGenerationError": "Fout bij het genereren van golfvormgegevens: {error}",
     "waveformNoAudio": "Geen audio beschikbaar voor golfvorm",
     "sessionSaveError": "Correctiegegevens zijn vereist",
-    "invalidIsDuetFlag": "is_duet moet een boolean (true of false) zijn"
+    "invalidIsDuetFlag": "is_duet moet een boolean (true of false) zijn",
+    "previewMissingTimings": "De regel \"{line}\" bevat een woord zonder timing. Synchroniseer die regel en probeer de preview opnieuw."
   },
   "audioSearch": {
     "notEnabled": "Audio zoeken is niet ingeschakeld voor deze tenant",

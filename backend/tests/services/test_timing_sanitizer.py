@@ -1,7 +1,7 @@
 """Tests for backend.services.timing_sanitizer."""
 import pytest
 
-from backend.services.timing_sanitizer import sanitize_corrections
+from backend.services.timing_sanitizer import find_missing_timings, sanitize_corrections
 
 
 def _sample_corrections():
@@ -57,14 +57,52 @@ def test_missing_segments_key_is_noop():
     assert cleaned == {"foo": "bar"}
 
 
-def test_non_finite_segment_bounds_left_untouched():
+def test_missing_segment_bounds_come_from_its_words():
     payload = {"corrected_segments": [
-        {"id": "s", "start_time": None, "end_time": None, "text": "x",
-         "words": [{"id": "w", "text": "x", "start_time": 3, "end_time": 5}]}
+        {"id": "s", "start_time": None, "end_time": None, "text": "x y",
+         "words": [{"id": "w", "text": "x", "start_time": 3, "end_time": 5},
+                   {"id": "v", "text": "y", "start_time": 5.5, "end_time": 6}]}
     ]}
     cleaned, count = sanitize_corrections(payload)
-    assert count == 0
-    assert cleaned["corrected_segments"][0]["words"][0]["start_time"] == 3
+    seg = cleaned["corrected_segments"][0]
+    assert (seg["start_time"], seg["end_time"]) == (3, 6)
+    assert count == 2
+    assert seg["words"][0]["start_time"] == 3
+
+
+def test_segment_without_end_time_key_is_filled():
+    """JSON.stringify drops undefined, so the key itself can be missing (job 16792df7)."""
+    payload = {"corrected_segments": [
+        {"id": "s", "start_time": 1.0, "text": "x",
+         "words": [{"id": "w", "text": "x", "start_time": 1.0, "end_time": 1.4}]}
+    ]}
+    cleaned, _ = sanitize_corrections(payload)
+    assert cleaned["corrected_segments"][0]["end_time"] == 1.4
+    assert find_missing_timings(cleaned) is None
+
+
+def test_untimed_segment_takes_its_neighbours_gap_and_words_get_filled():
+    payload = {"corrected_segments": [
+        {"id": "a", "start_time": 0.0, "end_time": 2.0, "text": "a",
+         "words": [{"id": "a1", "text": "a", "start_time": 0.0, "end_time": 2.0}]},
+        {"id": "b", "text": "new line",
+         "words": [{"id": "b1", "text": "new"}, {"id": "b2", "text": "line"}]},
+        {"id": "c", "start_time": 5.0, "end_time": 6.0, "text": "c",
+         "words": [{"id": "c1", "text": "c", "start_time": 5.0, "end_time": 6.0}]},
+    ]}
+    cleaned, _ = sanitize_corrections(payload)
+    seg = cleaned["corrected_segments"][1]
+    assert (seg["start_time"], seg["end_time"]) == (2.0, 5.0)
+    assert all(2.0 <= w["start_time"] <= w["end_time"] <= 5.0 for w in seg["words"])
+    assert find_missing_timings(cleaned) is None
+
+
+def test_line_with_no_timing_anywhere_is_reported():
+    payload = {"corrected_segments": [
+        {"id": "b", "text": "lonely line", "words": [{"id": "b1", "text": "lonely"}]},
+    ]}
+    cleaned, _ = sanitize_corrections(payload)
+    assert find_missing_timings(cleaned) == "lonely line"
 
 
 def test_start_past_segment_end_uses_prev_end():

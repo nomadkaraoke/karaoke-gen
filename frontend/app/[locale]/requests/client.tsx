@@ -18,9 +18,19 @@ import { api, getAccessToken } from '@/lib/api';
 import type { CommunityCheckResponse } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CommunityVersionBanner } from '@/components/job/CommunityVersionBanner';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import type { BoardResponse, SongRequestPublic } from '@/lib/types';
 
 const BOARD_PURPOSE = 'requests_board';
+const REQUESTS_HOST = 'requests.nomadkaraoke.com';
+// Read by the requests-host Worker (infrastructure/cloudflare/requests-host) to pick the
+// board language at "/", so the shareable URL stays bare after switching language.
+const REQUESTS_LOCALE_COOKIE = 'nk_requests_locale';
+
+function selectLocaleOnRequestsHost(code: string) {
+  document.cookie = `${REQUESTS_LOCALE_COOKIE}=${code}; path=/; max-age=31536000; secure; samesite=lax`;
+  window.location.assign('/');
+}
 
 export function RequestsBoardClient() {
   const t = useTranslations('requests');
@@ -48,6 +58,10 @@ export function RequestsBoardClient() {
   const [pendingVoteId, setPendingVoteId] = useState<string | null>(null);
 
   const isSignedIn = !!user;
+  const [onRequestsHost, setOnRequestsHost] = useState(false);
+  useEffect(() => {
+    setOnRequestsHost(window.location.hostname === REQUESTS_HOST);
+  }, []);
 
   // Guards against an older refresh resolving after a newer one and clobbering state
   // (refresh can fire concurrently from hydration + submit + vote).
@@ -168,6 +182,12 @@ export function RequestsBoardClient() {
         /* non-blocking — the create flow still works, credit can be claimed later */
       }
     }
+    // requests.nomadkaraoke.com serves only the board (edge rules send every other path
+    // to gen), so leave the vanity host instead of client-routing the app onto it.
+    if (window.location.hostname === REQUESTS_HOST) {
+      window.location.href = 'https://gen.nomadkaraoke.com/app';
+      return;
+    }
     router.push('/app');
   };
 
@@ -175,7 +195,10 @@ export function RequestsBoardClient() {
     <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
         {/* Header */}
-        <header className="text-center space-y-3">
+        <header className="relative text-center space-y-3">
+          <div className="absolute end-0 top-0">
+            <LanguageSwitcher onSelectLocale={onRequestsHost ? selectLocaleOnRequestsHost : undefined} />
+          </div>
           <div className="flex justify-center">
             <div className="p-3 rounded-full" style={{ backgroundColor: 'rgba(168, 85, 247, 0.1)' }}>
               <Music className="w-8 h-8" style={{ color: 'var(--accent)' }} />

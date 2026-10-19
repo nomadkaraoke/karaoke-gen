@@ -81,7 +81,8 @@
     "waveformGenerationError": "Chyba pri generovaní údajov o zvukovej vlne: {error}",
     "waveformNoAudio": "Nie je k dispozícii žiadny zvuk pre zvukovú vlnu",
     "sessionSaveError": "Vyžadujú sa údaje o opravách",
-    "invalidIsDuetFlag": "is_duet musí byť boolean (true alebo false)"
+    "invalidIsDuetFlag": "is_duet musí byť boolean (true alebo false)",
+    "previewMissingTimings": "Riadok „{line}“ obsahuje slovo bez časovania. Synchronizuj tento riadok a skús náhľad znova."
   },
   "audioSearch": {
     "notEnabled": "Vyhľadávanie zvuku nie je pre tohto nájomcu povolené",

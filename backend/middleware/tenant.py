@@ -13,6 +13,7 @@ The middleware is non-blocking - if no tenant is detected, the request
 proceeds as a default Nomad Karaoke request (tenant_id = None).
 """
 
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -36,8 +37,9 @@ IS_PRODUCTION = os.environ.get("ENV", "").lower() == "production" or \
                 bool(os.environ.get("K_SERVICE"))
 
 
-# Known non-tenant subdomains that should be treated as default Nomad Karaoke
-NON_TENANT_SUBDOMAINS = {"gen", "api", "www", "buy", "admin", "app", "beta"}
+# Known non-tenant subdomains that should be treated as default Nomad Karaoke.
+# Mirror of frontend/lib/edge/nonTenantSubdomains.ts ("requests" = voting-board host).
+NON_TENANT_SUBDOMAINS = {"gen", "api", "www", "buy", "admin", "app", "beta", "requests"}
 
 
 class TenantMiddleware(BaseHTTPMiddleware):
@@ -65,7 +67,8 @@ class TenantMiddleware(BaseHTTPMiddleware):
         tenant_config: Optional[TenantConfig] = None
         if tenant_id:
             tenant_service = get_tenant_service()
-            tenant_config = tenant_service.get_tenant_config(tenant_id)
+            # get_tenant_config can hit GCS on a cache miss: keep it off the event loop.
+            tenant_config = await asyncio.to_thread(tenant_service.get_tenant_config, tenant_id)
 
             if tenant_config and not tenant_config.is_active:
                 # Tenant exists but is inactive - treat as default

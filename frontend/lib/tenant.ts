@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 import { API_BASE_URL } from "./api"
+import { NON_TENANT_SUBDOMAINS } from "./edge/nonTenantSubdomains"
 
 // Types for tenant configuration
 export interface TenantBranding {
@@ -142,8 +143,6 @@ function detectTenantFromUrl(): string | null {
   // - {tenant}.gen.nomadkaraoke.com (4 parts with "gen" as second)
   if (hostname.includes("nomadkaraoke.com")) {
     const parts = hostname.split(".")
-    // Skip known non-tenant subdomains
-    const nonTenantSubdomains = ["gen", "api", "www", "buy", "admin", "app", "beta"]
 
     // Accept exactly 3 parts (tenant.nomadkaraoke.com)
     // or exactly 4 parts where second is "gen" (tenant.gen.nomadkaraoke.com)
@@ -151,7 +150,7 @@ function detectTenantFromUrl(): string | null {
       parts.length === 3 ||
       (parts.length === 4 && parts[1] === "gen")
 
-    if (isValidPattern && !nonTenantSubdomains.includes(parts[0])) {
+    if (isValidPattern && !NON_TENANT_SUBDOMAINS.includes(parts[0])) {
       return parts[0]
     }
   }

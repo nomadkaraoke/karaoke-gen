@@ -5,6 +5,7 @@ Handles changing a job's visibility between public and private:
 - Public -> Private: redistribute existing finals to private destination (fast, ~1-2 min)
 - Private -> Public: reset styles, regenerate screens, re-render, re-encode (slow, ~15-30 min)
 """
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -16,6 +17,10 @@ from backend.services.job_manager import JobManager
 from backend.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
+
+
+class VisibilityChangeInProgress(Exception):
+    """Another visibility change for this job claimed it first."""
 
 
 class VisibilityChangeService:
@@ -53,7 +58,9 @@ class VisibilityChangeService:
 
         return None
 
-    async def change_to_private(self, job_id: str, job, user_email: str, regenerate_if_missing: bool = True) -> dict:
+    async def change_to_private(
+        self, job_id: str, job, user_email: str, regenerate_if_missing: bool = True, holds_claim: bool = False,
+    ) -> dict:
         """
         Change a public job to private (fast path).
 
@@ -67,6 +74,9 @@ class VisibilityChangeService:
         public may be destroyed until the private archive exists. If redistribution
         fails, the job is reverted to public and left fully intact (no partial
         deletion, no leaked NOMADNP code — see redistribute_video's failure path).
+
+        ``holds_claim``: the caller already owns ``visibility_change_in_progress``
+        (the regenerate-then-private continuation, whose regenerate set it).
         """
         logger.info(f"[job:{job_id}] Starting visibility change: public -> private (by {user_email})")
 
@@ -107,6 +117,14 @@ class VisibilityChangeService:
         # destination. Public outputs remain live until the private archive exists.
         # No "changed to private" timeline event yet — it is only recorded once the
         # move actually succeeds (this is reverted if redistribution fails).
+        # Claim atomically: two requests that both read the job before either wrote
+        # the flag must not both redistribute and delete the public outputs.
+        if not holds_claim:
+            claimed = await asyncio.to_thread(
+                self.job_manager.firestore.try_set_job_state_flag, job_id, "visibility_change_in_progress"
+            )
+            if not claimed:
+                raise VisibilityChangeInProgress("A visibility change is already in progress for this job")
         job_ref.update({
             "state_data.visibility_change_in_progress": True,
             "is_private": True,
@@ -141,7 +159,8 @@ class VisibilityChangeService:
         # the public outputs + recycling the public NOMAD number is best-effort
         # (each failure is logged inside the helper, never raised), so a stray
         # orphaned public artifact cannot undo the successful private move.
-        await self._delete_public_outputs(job_id, public_outputs)
+        # Sync YouTube/Dropbox/GDrive/GCS deletes: keep them off the API event loop.
+        await asyncio.to_thread(self._delete_public_outputs, job_id, public_outputs)
 
         # Record the completed move and clear the guard flag. redistribute_video
         # already updated state_data with the new private brand_code etc.
@@ -171,12 +190,61 @@ class VisibilityChangeService:
         """
         logger.info(f"[job:{job_id}] Starting visibility change: private -> public (by {user_email})")
 
+        # Claim the job before any deletes: two concurrent requests that both passed
+        # validate_change must not both recycle the brand code and re-process.
+        claimed = await asyncio.to_thread(
+            self.job_manager.firestore.try_set_job_state_flag, job_id, "visibility_change_in_progress"
+        )
+        if not claimed:
+            raise VisibilityChangeInProgress("A visibility change is already in progress for this job")
+
         db = self.job_manager.firestore.db
         job_ref = db.collection("jobs").document(job_id)
+        try:
+            # Steps 1-5 are sync YouTube/Dropbox/GDrive/GCS/Firestore I/O: off the event loop.
+            await asyncio.to_thread(self._reset_job_for_public, job_id, job, user_email, job_ref)
+        except Exception:
+            try:
+                job_ref.update({"state_data.visibility_change_in_progress": DELETE_FIELD})
+            except Exception:
+                # The job now refuses every visibility change until the flag is cleared.
+                logger.exception(f"[job:{job_id}] Failed to release visibility_change_in_progress after a failed reset")
+            raise
+
+        # Step 6: Trigger screens worker
+        from backend.services.worker_service import get_worker_service
+        worker_service = get_worker_service()
+        try:
+            triggered = await worker_service.trigger_screens_worker(job_id)
+        except Exception as e:
+            logger.warning(f"[job:{job_id}] Screens worker trigger raised during visibility change: {e}")
+            triggered = False
+
+        if not triggered:
+            logger.error(f"[job:{job_id}] Failed to trigger screens worker for visibility change")
+            # Restore to complete status on failure
+            job_ref.update({
+                "status": "complete",
+                "is_private": True,
+                "state_data.visibility_change_in_progress": DELETE_FIELD,
+                "state_data.regen_restore_status": DELETE_FIELD,
+            })
+            raise RuntimeError("Failed to trigger screens worker")
+
+        logger.info(f"[job:{job_id}] Visibility change to public initiated, screens worker triggered")
+        return {
+            "status": "processing",
+            "message": "Visibility change to public started. The video will be re-rendered "
+                       "with default branding and published publicly. This takes ~15-30 minutes.",
+            "reprocessing_required": True,
+        }
+
+    def _reset_job_for_public(self, job_id: str, job, user_email: str, job_ref) -> None:
+        """Steps 1-5 of change_to_public (all sync I/O; run via asyncio.to_thread)."""
         storage = StorageService()
 
         # Step 1: Delete distributed outputs + GCS finals
-        await self._delete_distributed_outputs(job_id, job, keep_gcs_finals=False)
+        self._delete_distributed_outputs(job_id, job, keep_gcs_finals=False)
 
         # Step 2: Delete screens and rendered video from GCS
         for path in [
@@ -252,31 +320,7 @@ class VisibilityChangeService:
         }
         job_ref.update(update_payload)
 
-        # Step 6: Trigger screens worker
-        from backend.services.worker_service import get_worker_service
-        worker_service = get_worker_service()
-        triggered = await worker_service.trigger_screens_worker(job_id)
-
-        if not triggered:
-            logger.error(f"[job:{job_id}] Failed to trigger screens worker for visibility change")
-            # Restore to complete status on failure
-            job_ref.update({
-                "status": "complete",
-                "is_private": True,
-                "state_data.visibility_change_in_progress": DELETE_FIELD,
-                "state_data.regen_restore_status": DELETE_FIELD,
-            })
-            raise RuntimeError("Failed to trigger screens worker")
-
-        logger.info(f"[job:{job_id}] Visibility change to public initiated, screens worker triggered")
-        return {
-            "status": "processing",
-            "message": "Visibility change to public started. The video will be re-rendered "
-                       "with default branding and published publicly. This takes ~15-30 minutes.",
-            "reprocessing_required": True,
-        }
-
-    async def _delete_public_outputs(self, job_id: str, public_outputs: dict):
+    def _delete_public_outputs(self, job_id: str, public_outputs: dict):
         """Delete the captured PUBLIC outputs and recycle the public NOMAD number.
 
         Used by change_to_private AFTER a successful private redistribution. Operates
@@ -373,7 +417,7 @@ class VisibilityChangeService:
                 f"public cleanup incomplete (youtube={youtube_ok}, dropbox={dropbox_ok}, gdrive={gdrive_ok})"
             )
 
-    async def _delete_distributed_outputs(self, job_id: str, job, keep_gcs_finals: bool = False):
+    def _delete_distributed_outputs(self, job_id: str, job, keep_gcs_finals: bool = False):
         """Delete distributed outputs (YouTube, Dropbox, GDrive) and recycle brand code."""
         import re
 

@@ -81,7 +81,8 @@
     "waveformGenerationError": "Помилка генерації даних хвильової форми: {error}",
     "waveformNoAudio": "Немає аудіо для хвильової форми",
     "sessionSaveError": "Потрібні дані виправлень",
-    "invalidIsDuetFlag": "is_duet має бути булевим значенням (true або false)"
+    "invalidIsDuetFlag": "is_duet має бути булевим значенням (true або false)",
+    "previewMissingTimings": "У рядку «{line}» є слово без таймінгу. Синхронізуй цей рядок і спробуй попередній перегляд ще раз."
   },
   "audioSearch": {
     "notEnabled": "Пошук аудіо не ввімкнено для цього орендаря",

@@ -81,7 +81,8 @@
     "waveformGenerationError": "Ошибка при генерации данных осциллограммы: {error}",
     "waveformNoAudio": "Нет аудио для осциллограммы",
     "sessionSaveError": "Требуются данные исправлений",
-    "invalidIsDuetFlag": "is_duet должно быть булевым значением (true или false)"
+    "invalidIsDuetFlag": "is_duet должно быть булевым значением (true или false)",
+    "previewMissingTimings": "В строке «{line}» есть слово без тайминга. Синхронизируй эту строку и попробуй предпросмотр ещё раз."
   },
   "audioSearch": {
     "notEnabled": "Поиск аудио не включен для этого аккаунта",

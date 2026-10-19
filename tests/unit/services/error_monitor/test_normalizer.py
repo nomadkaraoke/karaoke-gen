@@ -442,3 +442,13 @@ class TestComputePatternHash:
         result = compute_pattern_hash("", "")
         assert isinstance(result, str)
         assert len(result) == 64
+
+
+def test_loop_stall_request_counts_collapse_to_one_pattern():
+    """Each distinct requests_affected count used to create a new alert pattern."""
+    from backend.services.error_monitor.normalizer import normalize_message
+
+    a = normalize_message("EVENT_LOOP_STALL ended duration_ms=52484 culprit=x.py:539 in f requests_affected=29")
+    b = normalize_message("EVENT_LOOP_STALL ended duration_ms=81183 culprit=x.py:539 in f requests_affected=3")
+    assert a == b
+    assert "requests_affected=<N>" in a

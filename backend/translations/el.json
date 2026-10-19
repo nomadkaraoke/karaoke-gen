@@ -81,7 +81,8 @@
     "waveformGenerationError": "Σφάλμα κατά τη δημιουργία δεδομένων κυματομορφής: {error}",
     "waveformNoAudio": "Δεν υπάρχει διαθέσιμος ήχος για την κυματομορφή",
     "sessionSaveError": "Απαιτούνται δεδομένα διόρθωσης",
-    "invalidIsDuetFlag": "Το is_duet πρέπει να είναι boolean (true ή false)"
+    "invalidIsDuetFlag": "Το is_duet πρέπει να είναι boolean (true ή false)",
+    "previewMissingTimings": "Η γραμμή «{line}» περιέχει μια λέξη χωρίς συγχρονισμό. Συγχρόνισε αυτή τη γραμμή και δοκίμασε ξανά την προεπισκόπηση."
   },
   "audioSearch": {
     "notEnabled": "Η αναζήτηση ήχου δεν είναι ενεργοποιημένη για αυτόν τον μισθωτή",

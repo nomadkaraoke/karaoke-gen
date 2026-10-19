@@ -81,7 +81,8 @@
     "waveformGenerationError": "Dalga formu verisi oluşturma hatası: {error}",
     "waveformNoAudio": "Dalga formu için ses mevcut değil",
     "sessionSaveError": "Düzeltme verisi gereklidir",
-    "invalidIsDuetFlag": "is_duet bir boolean (true veya false) olmalı"
+    "invalidIsDuetFlag": "is_duet bir boolean (true veya false) olmalı",
+    "previewMissingTimings": "\"{line}\" satırında zamanlaması olmayan bir kelime var. O satırı senkronize et, ardından önizlemeyi tekrar dene."
   },
   "audioSearch": {
     "notEnabled": "Bu kiracı için ses arama etkin değil",

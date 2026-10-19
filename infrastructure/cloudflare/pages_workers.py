@@ -12,6 +12,11 @@ worker_route_create_karaokehunt_com = cloudflare.WorkersRoute("worker-route-crea
     pattern="create.karaokehunt.com/*",
     script="karaokehunt-interceptor",
     zone_id=ZONE_IDS["karaokehunt.com"])
+# Serves the voting board on requests.nomadkaraoke.com itself (script: requests-host/, deploy.sh).
+worker_route_requests_nomadkaraoke_com = cloudflare.WorkersRoute("worker-route-requests-nomadkaraoke-com",
+    pattern="requests.nomadkaraoke.com/*",
+    script="requests-host",
+    zone_id=ZONE_IDS["nomadkaraoke.com"])
 pages_karaoke_gen_tenant = cloudflare.PagesProject("pages-karaoke-gen-tenant",
     account_id=ACCOUNT_ID,
     build_config={

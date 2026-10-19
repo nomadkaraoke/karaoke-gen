@@ -2558,3 +2558,52 @@ class TestCorrectionDataReviewTransitionIdempotent:
         )
         assert resp.status_code == 500
         jm.record_review_started.assert_not_called()
+
+
+class TestPreviewVideoMissingTimings:
+    """POST /preview-video with an untimed in-browser edit: fill it, or 422 naming the line (was a 500 KeyError)."""
+
+    @pytest.fixture(autouse=True)
+    def auth_overrides(self):
+        from backend.main import app
+        from backend.api.dependencies import require_review_auth
+
+        async def mock_require_review_auth(job_id: str = "test123"):
+            return (job_id, "full")
+
+        app.dependency_overrides[require_review_auth] = mock_require_review_auth
+        yield
+        app.dependency_overrides.pop(require_review_auth, None)
+
+    def _post(self, test_client, payload):
+        from backend.models.job import JobStatus
+
+        mock_job = MagicMock()
+        mock_job.status = JobStatus.IN_REVIEW
+        encoding = MagicMock()
+        encoding.is_preview_enabled = False  # local render path
+        render = AsyncMock(return_value="hash123")
+        with patch("backend.api.routes.review.JobManager") as mock_jm, \
+                patch("backend.api.routes.review.StorageService"), \
+                patch("backend.api.routes.review.get_encoding_service", return_value=encoding), \
+                patch("backend.api.routes.review._render_preview_locally", render):
+            mock_jm.return_value.get_job.return_value = mock_job
+            resp = test_client.post("/api/review/test123/preview-video", json=payload)
+        return resp, render
+
+    def test_unrecoverable_line_is_a_422_naming_it(self, test_client):
+        payload = {"corrections": [], "corrected_segments": [
+            {"id": "s", "text": "lonely line", "words": [{"id": "w", "text": "lonely"}]}]}
+        resp, render = self._post(test_client, payload)
+        assert resp.status_code == 422, resp.text
+        assert "lonely line" in resp.json()["detail"]
+        render.assert_not_awaited()
+
+    def test_fillable_gaps_reach_the_renderer_filled(self, test_client):
+        payload = {"corrections": [], "corrected_segments": [
+            {"id": "s", "text": "x", "start_time": 1.0,
+             "words": [{"id": "w", "text": "x", "start_time": 1.0, "end_time": 1.5}]}]}
+        resp, render = self._post(test_client, payload)
+        assert resp.status_code == 200, resp.text
+        sent = render.await_args.args[1]
+        assert sent["corrected_segments"][0]["end_time"] == 1.5

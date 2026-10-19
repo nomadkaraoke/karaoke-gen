@@ -81,7 +81,8 @@
     "waveformGenerationError": "Błąd podczas generowania danych fali dźwiękowej: {error}",
     "waveformNoAudio": "Brak dostępnego dźwięku dla fali dźwiękowej",
     "sessionSaveError": "Dane poprawek są wymagane",
-    "invalidIsDuetFlag": "is_duet musi być wartością logiczną (true lub false)"
+    "invalidIsDuetFlag": "is_duet musi być wartością logiczną (true lub false)",
+    "previewMissingTimings": "Wiersz „{line}” zawiera słowo bez synchronizacji. Zsynchronizuj ten wiersz, a następnie spróbuj ponownie wyświetlić podgląd."
   },
   "audioSearch": {
     "notEnabled": "Wyszukiwanie audio nie jest włączone dla tego konta",

@@ -119,7 +119,7 @@ class TestChangeToPrivate:
 
         call_order = []
         mock_redist = AsyncMock(return_value=True, side_effect=lambda *a, **k: call_order.append("redist") or True)
-        mock_delete = AsyncMock(side_effect=lambda *a, **k: call_order.append("delete"))
+        mock_delete = MagicMock(side_effect=lambda *a, **k: call_order.append("delete"))
 
         with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", mock_delete), \
              patch("backend.workers.video_worker.redistribute_video", mock_redist):
@@ -146,7 +146,7 @@ class TestChangeToPrivate:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=False, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs"), \
              patch("backend.workers.video_worker.redistribute_video", new_callable=AsyncMock, return_value=True):
 
             await service.change_to_private("test-123", job, "user@example.com")
@@ -175,7 +175,7 @@ class TestChangeToPublic:
             "dropbox_link": "https://dropbox.com/test",
         })
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)) as mock_theme, \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -205,7 +205,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -233,7 +233,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -277,7 +277,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("p.json", {}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -301,7 +301,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -319,6 +319,96 @@ class TestChangeToPublic:
             payload = rollback_call.args[0]
             assert payload["status"] == "complete"
             assert payload["is_private"] is True
+
+
+class TestChangeToPublicClaim:
+    """change_to_public claims visibility_change_in_progress atomically before deleting anything."""
+
+    @pytest.mark.asyncio
+    async def test_lost_claim_deletes_nothing(self):
+        from backend.services.visibility_change_service import VisibilityChangeInProgress
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.firestore.try_set_job_state_flag.return_value = False
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs") as mock_delete:
+            with pytest.raises(VisibilityChangeInProgress):
+                await service.change_to_public("test-123", job, "user@example.com")
+        mock_delete.assert_not_called()
+        mock_job_manager.firestore.try_set_job_state_flag.assert_called_once_with("test-123", "visibility_change_in_progress")
+
+    @pytest.mark.asyncio
+    async def test_failed_reset_releases_the_claim(self):
+        mock_job_manager = MagicMock()
+        mock_job_manager.firestore.try_set_job_state_flag.return_value = True
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs",
+                   side_effect=RuntimeError("dropbox down")):
+            with pytest.raises(RuntimeError, match="dropbox down"):
+                await service.change_to_public("test-123", job, "user@example.com")
+        released = mock_job_ref.update.call_args_list[-1].args[0]
+        assert list(released) == ["state_data.visibility_change_in_progress"]
+
+
+    @pytest.mark.asyncio
+    async def test_trigger_exception_rolls_back_like_a_failed_trigger(self):
+        mock_job_manager = MagicMock()
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
+             patch("backend.services.visibility_change_service.StorageService"), \
+             patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("p", {}, None)), \
+             patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
+            mock_worker_svc.return_value.trigger_screens_worker = AsyncMock(side_effect=ConnectionError("tasks down"))
+            with pytest.raises(RuntimeError, match="Failed to trigger screens worker"):
+                await service.change_to_public("test-123", job, "user@example.com")
+        rollback = mock_job_ref.update.call_args_list[-1].args[0]
+        assert rollback["status"] == "complete"
+        assert "state_data.visibility_change_in_progress" in rollback
+
+
+class TestChangeToPrivateClaim:
+    @pytest.mark.asyncio
+    async def test_lost_claim_touches_nothing(self):
+        from backend.services.visibility_change_service import VisibilityChangeInProgress
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.firestore.try_set_job_state_flag.return_value = False
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=False, state_data={"brand_code": "NOMAD-0001"})
+
+        redist = AsyncMock(return_value=True)
+        with patch("backend.workers.video_worker.redistribute_video", redist):
+            with pytest.raises(VisibilityChangeInProgress):
+                await service.change_to_private("test-123", job, "user@example.com")
+        redist.assert_not_awaited()
+        mock_job_ref.update.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_chained_continuation_keeps_its_existing_claim(self):
+        mock_job_manager = MagicMock()
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=False, state_data={"brand_code": "NOMAD-0001", "visibility_change_in_progress": True})
+
+        with patch("backend.workers.video_worker.redistribute_video", AsyncMock(return_value=True)), \
+             patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs"):
+            result = await service.change_to_private(
+                "test-123", job, "user@example.com", regenerate_if_missing=False, holds_claim=True)
+        assert result["status"] == "success"
+        mock_job_manager.firestore.try_set_job_state_flag.assert_not_called()
 
 
 class TestChangeToPrivateErrors:
@@ -339,7 +429,7 @@ class TestChangeToPrivateErrors:
             "gdrive_files": {"mp4": "id1"},
         })
 
-        mock_delete = AsyncMock()
+        mock_delete = MagicMock()
         with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", mock_delete), \
              patch("backend.workers.video_worker.redistribute_video", new_callable=AsyncMock, return_value=False):
 
@@ -373,7 +463,7 @@ class TestDeleteDistributedOutputs:
             mock_brand_svc = MagicMock()
             mock_bcs.return_value = mock_brand_svc
 
-            await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
+            service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
 
             mock_brand_svc.recycle_brand_code.assert_called_once_with("NOMAD", 42)
 
@@ -398,7 +488,7 @@ class TestDeleteDistributedOutputs:
             mock_brand_svc = MagicMock()
             mock_bcs.return_value = mock_brand_svc
 
-            await service._delete_public_outputs("test-123", public_outputs)
+            service._delete_public_outputs("test-123", public_outputs)
 
             # No public YouTube/Dropbox/GDrive present → all deletions "succeed" →
             # the public number is recycled and the mirror is cleaned.
@@ -432,7 +522,7 @@ class TestDeleteDistributedOutputs:
             mock_brand_svc = MagicMock()
             mock_bcs.return_value = mock_brand_svc
 
-            await service._delete_public_outputs("test-123", public_outputs)
+            service._delete_public_outputs("test-123", public_outputs)
 
             mock_brand_svc.recycle_brand_code.assert_not_called()
 
@@ -459,7 +549,7 @@ class TestDeleteDistributedOutputs:
                 mock_yt.return_value = MagicMock(is_configured=False)
                 mock_dbx.return_value = MagicMock(is_configured=False)
 
-                await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
+                service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
 
                 update_call = mock_job_ref.update.call_args
                 payload = update_call.args[0]
@@ -482,7 +572,7 @@ class TestDeleteDistributedOutputs:
             mock_storage.delete_folder.return_value = 3
             mock_storage_cls.return_value = mock_storage
 
-            await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=False)
+            service._delete_distributed_outputs("test-123", job, keep_gcs_finals=False)
 
             mock_storage.delete_folder.assert_called_once_with("jobs/test-123/finals/")
 
@@ -499,7 +589,7 @@ class TestDeleteDistributedOutputs:
             mock_storage = MagicMock()
             mock_storage_cls.return_value = mock_storage
 
-            await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
+            service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
 
             mock_storage.delete_folder.assert_not_called()
 
@@ -511,3 +601,31 @@ class TestStateTransitions:
         from backend.models.job import STATE_TRANSITIONS, JobStatus
         allowed = STATE_TRANSITIONS[JobStatus.COMPLETE]
         assert JobStatus.LYRICS_COMPLETE in allowed
+
+
+def test_route_maps_lost_visibility_claim_to_409():
+    from fastapi.testclient import TestClient
+
+    from backend.api.dependencies import require_auth
+    from backend.main import app
+    from backend.services.auth_service import AuthResult, UserType
+    from backend.services.visibility_change_service import VisibilityChangeInProgress
+
+    async def override():
+        return AuthResult(is_valid=True, user_type=UserType.UNLIMITED, remaining_uses=-1, message="Valid",
+                          user_email="user@example.com", is_admin=False)
+
+    app.dependency_overrides[require_auth] = override
+    try:
+        job = _make_job(is_private=True, state_data={})
+        job.user_email = "user@example.com"
+        job_manager = MagicMock()
+        job_manager.get_job.return_value = job
+        with patch("backend.api.routes.jobs.JobManager", return_value=job_manager), \
+             patch.object(VisibilityChangeService, "change_to_public",
+                          AsyncMock(side_effect=VisibilityChangeInProgress("A visibility change is already in progress for this job"))):
+            resp = TestClient(app).post(f"/api/jobs/{job.job_id}/change-visibility", json={"target_visibility": "public"})
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 409, resp.text
+    assert "already in progress" in resp.json()["detail"]

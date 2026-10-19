@@ -229,7 +229,7 @@ async def _run_suggest(job_id: str, data: dict, segments: list, reference_lyrics
     from backend.services.auto_correct.settings import AutoCorrectSettings
     from backend.services.job_manager import JobManager
 
-    job = JobManager().get_job(job_id)
+    job = await asyncio.to_thread(JobManager().get_job, job_id)
     service = get_auto_correct_service()
     result = await asyncio.wait_for(
         asyncio.to_thread(

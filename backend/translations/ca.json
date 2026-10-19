@@ -81,7 +81,8 @@
     "waveformGenerationError": "Error en generar les dades de la forma d'ona: {error}",
     "waveformNoAudio": "No hi ha àudio disponible per a la forma d'ona",
     "sessionSaveError": "Es requereixen dades de correcció",
-    "invalidIsDuetFlag": "is_duet ha de ser un booleà (cert o fals)"
+    "invalidIsDuetFlag": "is_duet ha de ser un booleà (cert o fals)",
+    "previewMissingTimings": "La línia \"{line}\" té una paraula sense temporització. Sincronitza aquesta línia i torna a provar la previsualització."
   },
   "audioSearch": {
     "notEnabled": "La cerca d'àudio no està activada per a aquest tenant",
