@@ -287,3 +287,21 @@ def validate_worker_can_run(worker_name: str, job: Job) -> Optional[str]:
         )
 
     return None
+
+
+def selected_stem_pending(job) -> bool:
+    """True when the selected instrumental stem hasn't been produced yet but
+    stem separation is still running, i.e. the job should wait, not fail.
+
+    Review can finish before separation does (audio separation is decoupled from
+    the lyrics review path), so this is a normal ordering, not an error.
+    """
+    if validate_worker_can_run("video_worker", job):
+        return False  # wrong status (duplicate/late trigger): never park, let the normal checks reject it
+    selection = (job.state_data or {}).get('instrumental_selection')
+    if selection not in ('clean', 'with_backing'):
+        return False  # 'custom' uses an uploaded file / mute-region stem
+    stem_key = 'instrumental_clean' if selection == 'clean' else 'instrumental_with_backing'
+    if (job.file_urls or {}).get('stems', {}).get(stem_key):
+        return False
+    return not (job.state_data or {}).get('audio_complete', False)

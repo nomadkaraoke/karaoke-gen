@@ -1305,6 +1305,41 @@ class JobManager:
         self.update_state_data(job_id, 'audio_complete', True)
         logger.info(f"Job {job_id}: Audio processing complete (separation finished)")
 
+    # Set by the video worker when review finished before stem separation did
+    # (the selected instrumental stem doesn't exist yet). The audio worker
+    # resumes the encode when separation completes; recover_stuck_jobs is the
+    # backstop. Before this, the video worker just failed its prerequisites 3x
+    # and the job sat at instrumental_selected forever (2026-10-17/18).
+    VIDEO_WAITING_FOR_STEMS_KEY = 'video_waiting_for_stems'
+
+    def park_video_for_stems(self, job_id: str) -> None:
+        """Record that the final encode is waiting for stem separation."""
+        self.update_job(job_id, {
+            f'state_data.{self.VIDEO_WAITING_FOR_STEMS_KEY}': True,
+            'message': 'Waiting for audio separation to finish; the final video starts automatically',
+        })
+
+    def claim_video_stems_wait(self, job_id: str) -> bool:
+        """Atomically clear the waiting flag; True for exactly one claimant."""
+        return self.firestore.claim_job_state_flag(job_id, self.VIDEO_WAITING_FOR_STEMS_KEY)
+
+    async def resume_video_if_waiting_for_stems(self, job_id: str) -> bool:
+        """Re-trigger the video worker for a job parked waiting on stems.
+
+        Called by the audio worker right after ``mark_audio_complete``. No-op
+        unless the video worker parked the job (flag set) and it's still in a
+        state the video worker accepts. Returns True iff a dispatch was issued.
+        """
+        if not self.claim_video_stems_wait(job_id):
+            return False
+        job = self.get_job(job_id)
+        if not job or job.status not in (JobStatus.INSTRUMENTAL_SELECTED, JobStatus.REVIEW_COMPLETE):
+            logger.info(f"Job {job_id}: stems ready but job is {getattr(job, 'status', None)}; not resuming video")
+            return False
+        from backend.services.worker_service import get_worker_service
+        logger.info(f"Job {job_id}: stems ready — resuming parked video worker")
+        return await get_worker_service().trigger_video_worker(job_id)
+
     def mark_lyrics_complete(self, job_id: str) -> None:
         """
         Mark lyrics processing as complete.
