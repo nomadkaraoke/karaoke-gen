@@ -68,6 +68,22 @@ def test_match_judge_content_uses_per_user_config(monkeypatch, client, db):
     real.assert_not_called()
 
 
+def test_match_judge_fast_pass_defers_ai_kinds_like_the_real_judge(monkeypatch, client, db):
+    """The real fast pass is catalog-only: it settles cosmetic/none, else answers needs_ai (clients then call full)."""
+    _fake(monkeypatch, True)
+    fast = lambda: client.post("/api/catalog/match-judge",  # noqa: E731
+                               json={"artist": "abba", "title": "danceing queen", "stage": "fast"}).json()
+    for kind in ("content", "ambiguous"):
+        set_fake_config({"judge_kind": kind}, db=db, email=EMAIL)
+        data = fast()
+        assert data["needs_ai"] is True and data["kind"] == "none" and data["confident"] is False
+        assert _judge(client).json()["kind"] == kind    # the full pass carries the verdict
+    set_fake_config({"judge_kind": "cosmetic", "judge_canonical_artist": "ABBA",
+                     "judge_canonical_title": "Dancing Queen"}, db=db, email=EMAIL)
+    data = fast()
+    assert data["kind"] == "cosmetic" and data["needs_ai"] is False
+
+
 def test_match_judge_none_default(monkeypatch, client, db):
     _fake(monkeypatch, True)
     assert _judge(client).json()["kind"] == "none"

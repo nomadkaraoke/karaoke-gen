@@ -34,9 +34,17 @@ def verdict_for(cfg: FakeConfig, artist: str, title: str) -> MatchVerdict:
     )
 
 
-def fake_match_verdict(artist: str, title: str, email: Optional[str] = None) -> MatchVerdict:
-    """Fake ``judge_match`` verdict from ``email``'s (else global) fake config."""
-    return verdict_for(get_fake_config(email=email), artist, title)
+def fake_match_verdict(artist: str, title: str, email: Optional[str] = None, stage: str = "full") -> MatchVerdict:
+    """Fake ``judge_match`` verdict from ``email``'s (else global) fake config.
+
+    Like the real judge, the ``fast`` (catalog-only) pass only ever settles a tidy (``cosmetic``) or "already
+    right" (``none``); a ``content`` or ``ambiguous`` verdict is an AI answer, so ``fast`` returns the
+    ``needs_ai`` marker and the client makes the ``full`` call that carries it.
+    """
+    cfg = get_fake_config(email=email)
+    if stage == "fast" and cfg.judge_kind not in (KIND_NONE, "cosmetic"):
+        return MatchVerdict(KIND_NONE, False, artist, title, engine="catalog", reason="fake: needs ai", needs_ai=True)
+    return verdict_for(cfg, artist, title)
 
 
 def fake_resolve(query: str) -> dict:
