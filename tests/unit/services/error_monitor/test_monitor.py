@@ -558,6 +558,7 @@ class TestRunDailyDigest:
         m.firestore_adapter = MagicMock()
         m.discord = MagicMock()
         m.discord.messages_sent = 0
+        m.discord.noise_messages_sent = 0
         m.logger = MagicMock()
         return m
 
@@ -569,12 +570,12 @@ class TestRunDailyDigest:
             {"service": "video-worker", "total_count": 5, "status": "acknowledged"},
         ]
         monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
-        monitor.discord.send_message.return_value = True
+        monitor.discord.send_noise_message.return_value = True
 
         monitor._run_daily_digest()
 
-        assert monitor.discord.send_message.call_count == 1
-        sent_content = monitor.discord.send_message.call_args[0][0]
+        assert monitor.discord.send_noise_message.call_count == 1
+        sent_content = monitor.discord.send_noise_message.call_args[0][0]
         assert "📊" in sent_content
 
     @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
@@ -586,11 +587,11 @@ class TestRunDailyDigest:
             {"service": "svc-beta", "total_count": 2, "status": "new"},
         ]
         monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
-        monitor.discord.send_message.return_value = True
+        monitor.discord.send_noise_message.return_value = True
 
         monitor._run_daily_digest()
 
-        sent_content = monitor.discord.send_message.call_args[0][0]
+        sent_content = monitor.discord.send_noise_message.call_args[0][0]
         # Both services should be mentioned in the digest
         assert "svc-alpha" in sent_content
         assert "svc-beta" in sent_content
@@ -600,13 +601,27 @@ class TestRunDailyDigest:
         """_run_daily_digest should still send a digest even when there are no patterns."""
         monitor.firestore_adapter.get_active_patterns.return_value = []
         monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
-        monitor.discord.send_message.return_value = True
+        monitor.discord.send_noise_message.return_value = True
 
         monitor._run_daily_digest()
 
-        assert monitor.discord.send_message.call_count == 1
-        sent_content = monitor.discord.send_message.call_args[0][0]
+        assert monitor.discord.send_noise_message.call_count == 1
+        sent_content = monitor.discord.send_noise_message.call_args[0][0]
         assert "📊" in sent_content
+
+
+# ---------------------------------------------------------------------------
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    def test_digest_goes_to_noise_not_alerts(self, mock_llm, monitor):
+        """The digest is informational: it must never land in #alerts."""
+        monitor.firestore_adapter.get_active_patterns.return_value = []
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+
+        monitor._run_daily_digest()
+
+        monitor.discord.send_message.assert_not_called()
+        monitor.discord.send_noise_message.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -911,7 +926,7 @@ class TestAutoResolveAlert:
         }
         monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = [pattern]
         monitor.firestore_adapter.check_auto_resolve.return_value = 25.5  # hours silent
-        monitor.discord.send_message.return_value = True
+        monitor.discord.send_noise_message.return_value = True
 
         monitor._check_auto_resolve()
 
@@ -921,8 +936,8 @@ class TestAutoResolveAlert:
         )
 
         # A Discord message must have been sent
-        assert monitor.discord.send_message.call_count == 1
-        sent_content = monitor.discord.send_message.call_args[0][0]
+        assert monitor.discord.send_noise_message.call_count == 1
+        sent_content = monitor.discord.send_noise_message.call_args[0][0]
         assert "✅" in sent_content
 
     def test_auto_resolve_no_alert_when_no_patterns_qualify(self, monitor):
@@ -941,6 +956,7 @@ class TestAutoResolveAlert:
 
         monitor.firestore_adapter.auto_resolve_pattern.assert_not_called()
         monitor.discord.send_message.assert_not_called()
+        monitor.discord.send_noise_message.assert_not_called()
 
     def test_auto_resolve_via_monitor_cycle(self, monitor):
         """_run_monitor_cycle with no errors should still trigger the auto-resolve check."""
@@ -958,10 +974,88 @@ class TestAutoResolveAlert:
             monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = [pattern]
             monitor.firestore_adapter.check_auto_resolve.return_value = 12.0
             monitor.firestore_adapter.get_active_patterns.return_value = []
-            monitor.discord.send_message.return_value = True
+            monitor.discord.send_noise_message.return_value = True
 
             monitor._run_monitor_cycle()
 
             monitor.firestore_adapter.auto_resolve_pattern.assert_called_once()
-            sent_content = monitor.discord.send_message.call_args[0][0]
+            sent_content = monitor.discord.send_noise_message.call_args[0][0]
             assert "✅" in sent_content
+
+
+# ---------------------------------------------------------------------------
+# Tests: #alerts vs #noise routing
+# ---------------------------------------------------------------------------
+
+
+class TestAutoResolveRoutesToNoise:
+    def test_auto_resolved_summary_goes_to_noise(self):
+        monitor = _make_monitor_with_mocks()
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = [
+            {"pattern_id": "p1", "service": "karaoke-backend", "normalized_message": "boom"}
+        ]
+        monitor.firestore_adapter.check_auto_resolve.return_value = 48.0
+
+        monitor._check_auto_resolve()
+
+        monitor.discord.send_message.assert_not_called()
+        monitor.discord.send_noise_message.assert_called_once()
+        assert "Auto-Resolved" in monitor.discord.send_noise_message.call_args[0][0]
+
+    def test_nothing_resolved_sends_nothing(self):
+        monitor = _make_monitor_with_mocks()
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+
+        monitor._check_auto_resolve()
+
+        monitor.discord.send_message.assert_not_called()
+        monitor.discord.send_noise_message.assert_not_called()
+
+
+class TestNoiseWebhookResolution:
+    ALERT = "https://discord.com/api/webhooks/1/alert"
+    NOISE = "https://discord.com/api/webhooks/2/noise"
+
+    def _monitor(self):
+        ErrorMonitor = _import_error_monitor_class()
+        return ErrorMonitor.__new__(ErrorMonitor)
+
+    def test_env_var_wins(self, monkeypatch):
+        monkeypatch.setenv("DISCORD_NOISE_WEBHOOK_URL", self.NOISE)
+        with patch("backend.services.error_monitor.monitor.secretmanager") as sm:
+            assert self._monitor()._get_discord_noise_webhook(self.ALERT) == self.NOISE
+        sm.SecretManagerServiceClient.assert_not_called()
+
+    def test_reads_noise_secret_from_secret_manager(self, monkeypatch):
+        monkeypatch.delenv("DISCORD_NOISE_WEBHOOK_URL", raising=False)
+        monkeypatch.delenv("DISCORD_NOISE_WEBHOOK_SECRET_NAME", raising=False)
+        with patch("backend.services.error_monitor.monitor.secretmanager") as sm:
+            client = sm.SecretManagerServiceClient.return_value
+            client.access_secret_version.return_value.payload.data = (self.NOISE + "\n").encode()
+            assert self._monitor()._get_discord_noise_webhook(self.ALERT) == self.NOISE
+        name = client.access_secret_version.call_args.kwargs["name"]
+        assert name.endswith("/secrets/discord-noise-webhook/versions/latest")
+
+    def test_falls_back_to_alert_webhook_when_secret_unavailable(self, monkeypatch):
+        monkeypatch.delenv("DISCORD_NOISE_WEBHOOK_URL", raising=False)
+        with patch("backend.services.error_monitor.monitor.secretmanager") as sm:
+            sm.SecretManagerServiceClient.return_value.access_secret_version.side_effect = (
+                RuntimeError("403 permission denied")
+            )
+            assert self._monitor()._get_discord_noise_webhook(self.ALERT) == self.ALERT
+
+    def test_falls_back_to_alert_webhook_when_secret_empty(self, monkeypatch):
+        monkeypatch.delenv("DISCORD_NOISE_WEBHOOK_URL", raising=False)
+        with patch("backend.services.error_monitor.monitor.secretmanager") as sm:
+            client = sm.SecretManagerServiceClient.return_value
+            client.access_secret_version.return_value.payload.data = b"  "
+            assert self._monitor()._get_discord_noise_webhook(self.ALERT) == self.ALERT
+
+    def test_init_wires_both_webhooks(self, monkeypatch):
+        monkeypatch.setenv("DISCORD_WEBHOOK_URL", self.ALERT)
+        monkeypatch.setenv("DISCORD_NOISE_WEBHOOK_URL", self.NOISE)
+        m = _import_monitor_module()
+        with patch.object(m.cloud_logging, "Client"), patch.object(m, "ErrorPatternsAdapter"):
+            monitor = m.ErrorMonitor()
+        assert monitor.discord.webhook_url == self.ALERT
+        assert monitor.discord.noise_webhook_url == self.NOISE

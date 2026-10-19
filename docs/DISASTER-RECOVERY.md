@@ -482,7 +482,7 @@ This monitor runs in GitHub, not GCP, so it survives a complete GCP project loss
 **Required GitHub secrets** (set via `gh secret set`):
 - `AWS_BACKUP_READONLY_ACCESS_KEY_ID` — IAM user with `s3:ListBucket` + `s3:GetObject` only on `nomadkaraoke-backup`
 - `AWS_BACKUP_READONLY_SECRET_ACCESS_KEY`
-- `DR_MONITOR_DISCORD_WEBHOOK` — Discord webhook URL (separate channel from the nightly success/failure alert is fine)
+- `DR_MONITOR_DISCORD_WEBHOOK` — Discord webhook URL (this monitor only posts on stale/failed, so #alerts is right). The nightly function itself posts a clean run's "Nightly Backup Report" to #noise (secret `discord-noise-webhook`, read at runtime) and a failed/partial run as "🚨 Nightly Backup FAILED" to #alerts — see ARCHITECTURE.md § Discord channels
 
 **Manual setup (one-time, in AWS Console):**
 1. Create IAM user `nomadkaraoke-backup-monitor` (no console access, programmatic only)

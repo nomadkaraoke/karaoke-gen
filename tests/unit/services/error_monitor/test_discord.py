@@ -617,3 +617,71 @@ class TestErrorMonitorDiscordSendMessage:
             client.send_message("Skipped")
             # Counter should not go beyond limit when rate-limited
             assert client.messages_sent == MAX_DISCORD_MESSAGES_PER_RUN
+
+
+class TestErrorMonitorDiscordNoiseChannel:
+    """#alerts = signal only; informational posts go to the #noise webhook."""
+
+    ALERT = "https://discord.com/api/webhooks/1/alert"
+    NOISE = "https://discord.com/api/webhooks/2/noise"
+
+    def _ok(self):
+        resp = mock.MagicMock()
+        resp.raise_for_status.return_value = None
+        return resp
+
+    def test_send_noise_message_posts_to_noise_webhook(self):
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        client = ErrorMonitorDiscord(webhook_url=self.ALERT, noise_webhook_url=self.NOISE)
+        with mock.patch("requests.post", return_value=self._ok()) as mock_post:
+            assert client.send_noise_message("fyi") is True
+        mock_post.assert_called_once_with(self.NOISE, json={"content": "fyi"}, timeout=30)
+
+    def test_send_message_still_posts_to_alert_webhook(self):
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        client = ErrorMonitorDiscord(webhook_url=self.ALERT, noise_webhook_url=self.NOISE)
+        with mock.patch("requests.post", return_value=self._ok()) as mock_post:
+            assert client.send_message("problem") is True
+        mock_post.assert_called_once_with(self.ALERT, json={"content": "problem"}, timeout=30)
+
+    def test_noise_without_noise_webhook_falls_back_to_alert_webhook(self):
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        client = ErrorMonitorDiscord(webhook_url=self.ALERT)
+        with mock.patch("requests.post", return_value=self._ok()) as mock_post:
+            assert client.send_noise_message("fyi") is True
+        mock_post.assert_called_once_with(self.ALERT, json={"content": "fyi"}, timeout=30)
+
+    def test_noise_delivery_failure_retries_on_alert_webhook(self):
+        """A broken noise webhook must never silently drop the message."""
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        bad = mock.MagicMock()
+        bad.raise_for_status.side_effect = requests.HTTPError("404 Unknown Webhook")
+        client = ErrorMonitorDiscord(webhook_url=self.ALERT, noise_webhook_url=self.NOISE)
+        with mock.patch("requests.post", side_effect=[bad, self._ok()]) as mock_post:
+            assert client.send_noise_message("fyi") is True
+        assert [c.args[0] for c in mock_post.call_args_list] == [self.NOISE, self.ALERT]
+
+    def test_noise_messages_do_not_consume_alert_budget(self):
+        from backend.services.error_monitor.config import MAX_DISCORD_MESSAGES_PER_RUN
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        client = ErrorMonitorDiscord(webhook_url=self.ALERT, noise_webhook_url=self.NOISE)
+        with mock.patch("requests.post", return_value=self._ok()):
+            for _ in range(MAX_DISCORD_MESSAGES_PER_RUN):
+                client.send_noise_message("fyi")
+            assert client.messages_sent == 0
+            assert client.send_message("problem") is True
+
+    def test_noise_messages_are_rate_limited_separately(self):
+        from backend.services.error_monitor.config import MAX_DISCORD_MESSAGES_PER_RUN
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        client = ErrorMonitorDiscord(webhook_url=self.ALERT, noise_webhook_url=self.NOISE)
+        client.noise_messages_sent = MAX_DISCORD_MESSAGES_PER_RUN
+        with mock.patch("requests.post") as mock_post:
+            assert client.send_noise_message("fyi") is False
+            mock_post.assert_not_called()

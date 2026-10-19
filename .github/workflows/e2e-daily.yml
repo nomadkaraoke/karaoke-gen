@@ -411,22 +411,31 @@ jobs:
         if: always() && steps.pr.outputs.unchanged != 'true'
         run: |
           PR="${{ steps.pr.outputs.pr_url }}"
+          # #alerts = needs a human; #noise = informational (auto-merge handles it).
+          # Noise falls back to the alert webhook if its secret is unset.
+          ALERT_WEBHOOK="${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}"
+          NOISE_WEBHOOK="${{ secrets.DISCORD_NOISE_WEBHOOK_URL || secrets.DISCORD_ALERT_WEBHOOK_URL }}"
           if [ -n "$PR" ] && [ "${{ steps.pr.outputs.ci_needs_approval }}" = "true" ]; then
             TITLE="🩹 E2E self-healed Stripe — PR needs a CI approval click"
             DESC="LLM fallback healed a Stripe Checkout change. The auto-merge PR's CI run awaits approval (open the PR → Checks → Approve and run): $PR"
             COLOR=16776960
+            WEBHOOK="$ALERT_WEBHOOK"
           elif [ -n "$PR" ]; then
             TITLE="🩹 E2E self-healed a Stripe Checkout change"
             DESC="Stripe changed its checkout page; the LLM fallback got through and the purchase was verified. Auto-merge PR: $PR"
             COLOR=16776960
+            WEBHOOK="$NOISE_WEBHOOK"
           else
             TITLE="⚠️ E2E self-heal PR could not be opened"
             DESC="The LLM fallback healed a Stripe step but opening the PR failed — see the run."
             COLOR=15105570
+            WEBHOOK="$ALERT_WEBHOOK"
           fi
-          curl -s -H "Content-Type: application/json" \
-            -d "{\"embeds\": [{\"title\": \"$TITLE\", \"description\": \"$DESC\n\n**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\", \"color\": $COLOR}]}" \
-            "${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}"
+          PAYLOAD="{\"embeds\": [{\"title\": \"$TITLE\", \"description\": \"$DESC\n\n**Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\", \"color\": $COLOR}]}"
+          # A failed #noise post retries on #alerts so it is never silently lost.
+          curl -fsS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK" \
+            || { [ "$WEBHOOK" != "$ALERT_WEBHOOK" ] && curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$ALERT_WEBHOOK"; } \
+            || true
 
   # =========================================================================
   # Stage 2: Happy Path (uses credit from Stage 1)
@@ -600,12 +609,17 @@ jobs:
 
     steps:
       - name: Discord notification (success)
+        # Passes are not signal: they go to #noise (fallback: #alerts if the
+        # noise secret is unset, so nothing is ever silently dropped).
         if: needs.e2e-happy-path.result == 'success'
         run: |
           STAGE1="${{ needs.e2e-credit-purchase.result || 'skipped' }}"
-          curl -s -H "Content-Type: application/json" \
-            -d "{\"embeds\": [{\"title\": \"✅ E2E Daily Test PASSED\", \"description\": \"Payment: ${STAGE1} | Happy Path: success\n\n**Run:** #${{ github.run_number }}\", \"color\": 3066993}]}" \
-            "${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}"
+          ALERT_WEBHOOK="${{ secrets.DISCORD_ALERT_WEBHOOK_URL }}"
+          NOISE_WEBHOOK="${{ secrets.DISCORD_NOISE_WEBHOOK_URL || secrets.DISCORD_ALERT_WEBHOOK_URL }}"
+          PAYLOAD="{\"embeds\": [{\"title\": \"✅ E2E Daily Test PASSED\", \"description\": \"Payment: ${STAGE1} | Happy Path: success\n\n**Run:** #${{ github.run_number }}\", \"color\": 3066993}]}"
+          curl -fsS -H "Content-Type: application/json" -d "$PAYLOAD" "$NOISE_WEBHOOK" \
+            || { [ "$NOISE_WEBHOOK" != "$ALERT_WEBHOOK" ] && curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$ALERT_WEBHOOK"; } \
+            || true
 
       - name: Send email notification
         if: github.event_name == 'schedule'

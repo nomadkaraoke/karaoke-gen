@@ -14,9 +14,12 @@ Usage:
         format_daily_digest,
     )
 
-    discord = ErrorMonitorDiscord(webhook_url="https://discord.com/api/webhooks/...")
-    msg = format_new_pattern_alert(...)
-    discord.send_message(msg)
+    discord = ErrorMonitorDiscord(
+        webhook_url="https://discord.com/api/webhooks/...",        # #alerts
+        noise_webhook_url="https://discord.com/api/webhooks/...",  # #noise
+    )
+    discord.send_message(format_new_pattern_alert(...))        # a real problem
+    discord.send_noise_message(format_auto_resolved_alert(...))  # informational
 """
 
 import logging
@@ -272,22 +275,46 @@ def format_daily_digest(
 
 
 class ErrorMonitorDiscord:
-    """Webhook client for sending error monitor alerts to Discord.
+    """Webhook client for sending error monitor messages to Discord.
 
-    Enforces a per-run rate limit of MAX_DISCORD_MESSAGES_PER_RUN to avoid
-    flooding the channel during high-volume incident windows.
+    Two channels:
+
+    * **#alerts** (``webhook_url``, :meth:`send_message`) — signal only: real
+      problems someone should look at (new patterns, spikes, incidents).
+    * **#noise** (``noise_webhook_url``, :meth:`send_noise_message`) —
+      informational posts (auto-resolved summaries, daily digest). If no noise
+      webhook is configured, or a noise post fails, the message falls back to
+      the alert webhook so it is never silently dropped.
+
+    Each channel has its own per-run rate limit of MAX_DISCORD_MESSAGES_PER_RUN,
+    so noise can never eat the alert budget during an incident window.
 
     Attributes:
-        webhook_url: The Discord incoming webhook URL.
-        messages_sent: Counter of messages attempted this run (success or failure).
+        webhook_url: The #alerts Discord incoming webhook URL.
+        noise_webhook_url: The #noise webhook URL (None → use webhook_url).
+        messages_sent: #alerts messages attempted this run (success or failure).
+        noise_messages_sent: #noise messages attempted this run.
     """
 
-    def __init__(self, webhook_url: str) -> None:
+    def __init__(self, webhook_url: str, noise_webhook_url: str | None = None) -> None:
         self.webhook_url = webhook_url
+        self.noise_webhook_url = noise_webhook_url
         self.messages_sent: int = 0
+        self.noise_messages_sent: int = 0
+
+    @staticmethod
+    def _post(url: str, content: str) -> bool:
+        try:
+            response = requests.post(url, json={"content": content}, timeout=30)
+            response.raise_for_status()
+            logger.debug("Discord message sent successfully.")
+            return True
+        except Exception as exc:
+            logger.error("Failed to send Discord message: %s", exc)
+            return False
 
     def send_message(self, content: str) -> bool:
-        """Send a message to the configured Discord webhook.
+        """Send a message to the #alerts webhook (real problems only).
 
         Rate-limits: if messages_sent >= MAX_DISCORD_MESSAGES_PER_RUN, the
         message is silently skipped and False is returned without incrementing
@@ -308,16 +335,33 @@ class ErrorMonitorDiscord:
             return False
 
         try:
-            response = requests.post(
-                self.webhook_url,
-                json={"content": content},
-                timeout=30,
-            )
-            response.raise_for_status()
-            logger.debug("Discord message sent successfully.")
-            return True
-        except Exception as exc:
-            logger.error("Failed to send Discord message: %s", exc)
-            return False
+            return self._post(self.webhook_url, content)
         finally:
             self.messages_sent += 1
+
+    def send_noise_message(self, content: str) -> bool:
+        """Send an informational message to the #noise webhook.
+
+        Falls back to the #alerts webhook if no noise webhook is configured or
+        the noise post fails. Rate-limited separately from :meth:`send_message`.
+
+        Returns:
+            True if the message was delivered to either channel.
+        """
+        if self.noise_messages_sent >= MAX_DISCORD_MESSAGES_PER_RUN:
+            logger.warning(
+                "Discord noise rate limit reached (%d messages sent this run); skipping message.",
+                self.noise_messages_sent,
+            )
+            return False
+
+        try:
+            noise_url = self.noise_webhook_url or self.webhook_url
+            if self._post(noise_url, content):
+                return True
+            if noise_url != self.webhook_url:
+                logger.warning("Noise webhook post failed; falling back to the alert webhook.")
+                return self._post(self.webhook_url, content)
+            return False
+        finally:
+            self.noise_messages_sent += 1

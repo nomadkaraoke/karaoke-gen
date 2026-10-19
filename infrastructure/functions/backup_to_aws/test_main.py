@@ -25,7 +25,8 @@ def _run(today):
          patch("main.export_secrets", return_value="sec"), \
          patch("main._run_git_repos_backup", return_value="git") as git, \
          patch("main.upload_staging_to_s3", return_value="s3") as upload, \
-         patch("main.send_alert"):
+         patch("main.send_alert"), \
+         patch("main.send_noise"):
         main.backup_to_aws(request)
     return git, upload
 
@@ -73,9 +74,55 @@ def test_job_files_bucket_is_not_synced_off_site():
          patch("main.export_secrets", return_value="sec") as secrets, \
          patch("main._run_git_repos_backup", return_value="git"), \
          patch("main.upload_staging_to_s3", return_value="s3"), \
-         patch("main.send_alert"):
+         patch("main.send_alert"), \
+         patch("main.send_noise"):
         main.backup_to_aws(request)
     sources = [c.kwargs["source_bucket"] for c in sync.call_args_list]
     assert sources == ["nomadkaraoke-kn-data"]
     assert all(c.kwargs["staging_prefix"] != "gcs/job-files/" for c in sync.call_args_list)
     secrets.assert_called_once()
+
+
+# --- #alerts vs #noise routing of the nightly report --------------------------
+
+ALERT = "https://discord.com/api/webhooks/1/alert"
+NOISE = "https://discord.com/api/webhooks/2/noise"
+
+
+def _run_report(fail_s3=False):
+    _FakeDate.today_value = datetime.date(2026, 9, 29)
+    request = MagicMock()
+    request.args = {}
+    upload_kwargs = {"side_effect": RuntimeError("boom")} if fail_s3 else {"return_value": "s3"}
+    with patch("main.datetime.date", _FakeDate), \
+         patch("main.DISCORD_WEBHOOK_URL", ALERT), \
+         patch("main.get_noise_webhook_url", return_value=NOISE), \
+         patch("main.export_firestore", return_value="fs"), \
+         patch("main.export_bigquery_tables", return_value={}), \
+         patch("main.sync_gcs_to_staging", return_value="gcs"), \
+         patch("main.export_secrets", return_value="sec"), \
+         patch("main.upload_staging_to_s3", **upload_kwargs), \
+         patch("main.send_alert") as alert, \
+         patch("main.send_noise") as noise:
+        _, status = main.backup_to_aws(request)
+    return status, alert, noise
+
+
+def test_successful_report_goes_to_noise():
+    status, alert, noise = _run_report()
+    assert status == 200
+    alert.assert_not_called()
+    noise.assert_called_once()
+    assert noise.call_args.kwargs["noise_url"] == NOISE
+    assert noise.call_args.kwargs["alert_url"] == ALERT
+    assert noise.call_args.kwargs["title"] == "Nightly Backup Report"
+
+
+def test_failed_report_goes_to_alerts():
+    status, alert, noise = _run_report(fail_s3=True)
+    assert status == 500
+    noise.assert_not_called()
+    alert.assert_called_once()
+    assert alert.call_args.kwargs["webhook_url"] == ALERT
+    assert alert.call_args.kwargs["success"] is False
+    assert "FAILED" in alert.call_args.kwargs["title"]
