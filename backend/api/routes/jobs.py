@@ -3093,7 +3093,7 @@ async def change_visibility(
     """
     locale = get_locale_from_request(http_request)
     job_manager = JobManager()
-    job = job_manager.get_job(job_id)
+    job = await asyncio.to_thread(job_manager.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail=t(locale, "jobs.notFound"))
 
@@ -3248,7 +3248,7 @@ async def rerender_with_current_theme(
     if reason:
         raise HTTPException(status_code=400, detail=reason)
 
-    tenant = get_tenant_service().get_tenant_config(job.tenant_id)
+    tenant = await asyncio.to_thread(get_tenant_service().get_tenant_config, job.tenant_id)
     if tenant is None or not tenant.is_active:
         raise HTTPException(status_code=400, detail="This track's portal is no longer active.")
     # Re-rendering is free work, so (like tenant billing) require the caller to

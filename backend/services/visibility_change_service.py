@@ -5,6 +5,7 @@ Handles changing a job's visibility between public and private:
 - Public -> Private: redistribute existing finals to private destination (fast, ~1-2 min)
 - Private -> Public: reset styles, regenerate screens, re-render, re-encode (slow, ~15-30 min)
 """
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -141,7 +142,8 @@ class VisibilityChangeService:
         # the public outputs + recycling the public NOMAD number is best-effort
         # (each failure is logged inside the helper, never raised), so a stray
         # orphaned public artifact cannot undo the successful private move.
-        await self._delete_public_outputs(job_id, public_outputs)
+        # Sync YouTube/Dropbox/GDrive/GCS deletes: keep them off the API event loop.
+        await asyncio.to_thread(self._delete_public_outputs, job_id, public_outputs)
 
         # Record the completed move and clear the guard flag. redistribute_video
         # already updated state_data with the new private brand_code etc.
@@ -176,7 +178,7 @@ class VisibilityChangeService:
         storage = StorageService()
 
         # Step 1: Delete distributed outputs + GCS finals
-        await self._delete_distributed_outputs(job_id, job, keep_gcs_finals=False)
+        await asyncio.to_thread(self._delete_distributed_outputs, job_id, job, keep_gcs_finals=False)
 
         # Step 2: Delete screens and rendered video from GCS
         for path in [
@@ -276,7 +278,7 @@ class VisibilityChangeService:
             "reprocessing_required": True,
         }
 
-    async def _delete_public_outputs(self, job_id: str, public_outputs: dict):
+    def _delete_public_outputs(self, job_id: str, public_outputs: dict):
         """Delete the captured PUBLIC outputs and recycle the public NOMAD number.
 
         Used by change_to_private AFTER a successful private redistribution. Operates
@@ -373,7 +375,7 @@ class VisibilityChangeService:
                 f"public cleanup incomplete (youtube={youtube_ok}, dropbox={dropbox_ok}, gdrive={gdrive_ok})"
             )
 
-    async def _delete_distributed_outputs(self, job_id: str, job, keep_gcs_finals: bool = False):
+    def _delete_distributed_outputs(self, job_id: str, job, keep_gcs_finals: bool = False):
         """Delete distributed outputs (YouTube, Dropbox, GDrive) and recycle brand code."""
         import re
 

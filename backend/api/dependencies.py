@@ -1,6 +1,7 @@
 """
 FastAPI dependencies for authentication and authorization.
 """
+import asyncio
 import logging
 import secrets
 from datetime import datetime, timedelta, UTC
@@ -89,7 +90,8 @@ async def require_auth(
         )
 
     # Validate token using the full method
-    auth_result = auth_service.validate_token_full(token_str)
+    # Sync Firestore reads: run off the event loop (every authed request passes here).
+    auth_result = await asyncio.to_thread(auth_service.validate_token_full, token_str)
 
     # Get request_id from middleware for correlation
     request_id = getattr(request.state, "request_id", None)
@@ -122,7 +124,7 @@ async def require_auth(
         if not getattr(request.state, "tenant_config", None):
             from backend.services.tenant_service import get_tenant_service
             tenant_service = get_tenant_service()
-            tenant_config = tenant_service.get_tenant_config(auth_result.tenant_id)
+            tenant_config = await asyncio.to_thread(tenant_service.get_tenant_config, auth_result.tenant_id)
             if tenant_config and tenant_config.is_active:
                 request.state.tenant_config = tenant_config
 
@@ -165,7 +167,7 @@ async def require_auth_legacy(
             detail="Authentication required. Provide token via Authorization header or ?token= parameter"
         )
 
-    is_valid, user_type, remaining_uses, message = auth_service.validate_token(token_str)
+    is_valid, user_type, remaining_uses, message = await asyncio.to_thread(auth_service.validate_token, token_str)
 
     if not is_valid:
         raise HTTPException(
@@ -284,10 +286,10 @@ def require_review_auth_factory(job_id_param: str = "job_id"):
             full_token = token
 
         if full_token:
-            auth_result = auth_service.validate_token_full(full_token)
+            auth_result = await asyncio.to_thread(auth_service.validate_token_full, full_token)
             if auth_result.is_valid:
                 # For full auth, also verify job ownership
-                job = job_manager.get_job(job_id)
+                job = await asyncio.to_thread(job_manager.get_job, job_id)
                 if not job:
                     raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
@@ -319,7 +321,7 @@ def require_review_auth_factory(job_id_param: str = "job_id"):
 
         # Try review token
         if review_token:
-            job = job_manager.get_job(job_id)
+            job = await asyncio.to_thread(job_manager.get_job, job_id)
 
             if not job:
                 raise HTTPException(status_code=404, detail=f"Job {job_id} not found")

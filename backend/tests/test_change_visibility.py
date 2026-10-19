@@ -119,7 +119,7 @@ class TestChangeToPrivate:
 
         call_order = []
         mock_redist = AsyncMock(return_value=True, side_effect=lambda *a, **k: call_order.append("redist") or True)
-        mock_delete = AsyncMock(side_effect=lambda *a, **k: call_order.append("delete"))
+        mock_delete = MagicMock(side_effect=lambda *a, **k: call_order.append("delete"))
 
         with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", mock_delete), \
              patch("backend.workers.video_worker.redistribute_video", mock_redist):
@@ -146,7 +146,7 @@ class TestChangeToPrivate:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=False, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs"), \
              patch("backend.workers.video_worker.redistribute_video", new_callable=AsyncMock, return_value=True):
 
             await service.change_to_private("test-123", job, "user@example.com")
@@ -175,7 +175,7 @@ class TestChangeToPublic:
             "dropbox_link": "https://dropbox.com/test",
         })
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)) as mock_theme, \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -205,7 +205,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -233,7 +233,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {"bg": "bg.png"}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -277,7 +277,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("p.json", {}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -301,7 +301,7 @@ class TestChangeToPublic:
         service = VisibilityChangeService(job_manager=mock_job_manager)
         job = _make_job(is_private=True, state_data={})
 
-        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs", new_callable=AsyncMock), \
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs"), \
              patch("backend.services.visibility_change_service.StorageService") as mock_storage_cls, \
              patch("backend.api.routes.file_upload._prepare_theme_for_job", return_value=("jobs/test-123/style/style_params.json", {}, None)), \
              patch("backend.services.worker_service.get_worker_service") as mock_worker_svc:
@@ -339,7 +339,7 @@ class TestChangeToPrivateErrors:
             "gdrive_files": {"mp4": "id1"},
         })
 
-        mock_delete = AsyncMock()
+        mock_delete = MagicMock()
         with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_public_outputs", mock_delete), \
              patch("backend.workers.video_worker.redistribute_video", new_callable=AsyncMock, return_value=False):
 
@@ -373,7 +373,7 @@ class TestDeleteDistributedOutputs:
             mock_brand_svc = MagicMock()
             mock_bcs.return_value = mock_brand_svc
 
-            await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
+            service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
 
             mock_brand_svc.recycle_brand_code.assert_called_once_with("NOMAD", 42)
 
@@ -398,7 +398,7 @@ class TestDeleteDistributedOutputs:
             mock_brand_svc = MagicMock()
             mock_bcs.return_value = mock_brand_svc
 
-            await service._delete_public_outputs("test-123", public_outputs)
+            service._delete_public_outputs("test-123", public_outputs)
 
             # No public YouTube/Dropbox/GDrive present → all deletions "succeed" →
             # the public number is recycled and the mirror is cleaned.
@@ -432,7 +432,7 @@ class TestDeleteDistributedOutputs:
             mock_brand_svc = MagicMock()
             mock_bcs.return_value = mock_brand_svc
 
-            await service._delete_public_outputs("test-123", public_outputs)
+            service._delete_public_outputs("test-123", public_outputs)
 
             mock_brand_svc.recycle_brand_code.assert_not_called()
 
@@ -459,7 +459,7 @@ class TestDeleteDistributedOutputs:
                 mock_yt.return_value = MagicMock(is_configured=False)
                 mock_dbx.return_value = MagicMock(is_configured=False)
 
-                await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
+                service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
 
                 update_call = mock_job_ref.update.call_args
                 payload = update_call.args[0]
@@ -482,7 +482,7 @@ class TestDeleteDistributedOutputs:
             mock_storage.delete_folder.return_value = 3
             mock_storage_cls.return_value = mock_storage
 
-            await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=False)
+            service._delete_distributed_outputs("test-123", job, keep_gcs_finals=False)
 
             mock_storage.delete_folder.assert_called_once_with("jobs/test-123/finals/")
 
@@ -499,7 +499,7 @@ class TestDeleteDistributedOutputs:
             mock_storage = MagicMock()
             mock_storage_cls.return_value = mock_storage
 
-            await service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
+            service._delete_distributed_outputs("test-123", job, keep_gcs_finals=True)
 
             mock_storage.delete_folder.assert_not_called()
 

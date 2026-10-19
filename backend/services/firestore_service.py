@@ -12,6 +12,7 @@ from google.cloud.firestore_v1 import FieldFilter
 from backend.config import settings
 from backend.models.job import Job, JobStatus, TimelineEvent
 from backend.models.worker_log import WorkerLogEntry
+from backend.services.log_write_offload import submit_or_run
 from backend.models.review_session import ReviewSession
 from backend.models.audio_edit_session import AudioEditSession
 
@@ -534,9 +535,19 @@ class FirestoreService:
             # Get subcollection reference
             logs_ref = self.db.collection(self.collection).document(job_id).collection("logs")
 
-            # Add document with auto-generated ID or use log_entry.id
+            # Add document with auto-generated ID or use log_entry.id.
+            # On the API event loop this hands off to a background thread
+            # (a sync Firestore write there freezes every request on the instance).
             doc_ref = logs_ref.document(log_entry.id)
-            doc_ref.set(log_entry.to_dict())
+            data = log_entry.to_dict()
+
+            def _write():
+                try:
+                    doc_ref.set(data)
+                except Exception as e:
+                    logger.debug(f"Error appending log to subcollection for job {job_id}: {e}")
+
+            submit_or_run(_write)
 
             # Don't log every append - too spammy
         except Exception as e:
