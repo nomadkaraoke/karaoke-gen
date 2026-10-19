@@ -5,6 +5,7 @@ import requests
 from karaoke_gen.lyrics_transcriber.types import LyricsData, LyricsMetadata, LyricsSegment, Word
 from karaoke_gen.lyrics_transcriber.lyrics.base_lyrics_provider import BaseLyricsProvider, LyricsProviderConfig
 from karaoke_gen.lyrics_transcriber.utils.word_utils import WordUtils
+from karaoke_gen.lyrics_transcriber.lyrics import lrclib_client
 
 
 class LRCLIBProvider(BaseLyricsProvider):
@@ -66,12 +67,8 @@ class LRCLIBProvider(BaseLyricsProvider):
                 "duration": duration
             }
             
-            headers = {
-                "User-Agent": self.USER_AGENT
-            }
-            
             self.logger.debug(f"Making LRCLIB request with duration {duration}s")
-            response = requests.get(url, headers=headers, params=params, timeout=15)
+            response = lrclib_client.get(url, params, user_agent=self.USER_AGENT, logger=self.logger)
             
             if response.status_code == 404:
                 self.logger.debug("Track not found with exact duration")
@@ -99,12 +96,8 @@ class LRCLIBProvider(BaseLyricsProvider):
                 "artist_name": artist
             }
             
-            headers = {
-                "User-Agent": self.USER_AGENT
-            }
-            
-            self.logger.debug(f"Making LRCLIB search request")
-            response = requests.get(url, headers=headers, params=params, timeout=15)
+            self.logger.debug("Making LRCLIB search request")
+            response = lrclib_client.get(url, params, user_agent=self.USER_AGENT, logger=self.logger)
             response.raise_for_status()
             
             results = response.json()
