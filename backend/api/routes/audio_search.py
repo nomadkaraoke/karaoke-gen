@@ -838,8 +838,8 @@ async def search_audio(
         if effective_theme_id and not body.style_files:
             from backend.api.routes.file_upload import _prepare_theme_for_job
             try:
-                style_params_path, theme_style_assets, youtube_desc = _prepare_theme_for_job(
-                    job_id, effective_theme_id, body.color_overrides
+                style_params_path, theme_style_assets, youtube_desc = await asyncio.to_thread(
+                    _prepare_theme_for_job, job_id, effective_theme_id, body.color_overrides
                 )
                 theme_update = {
                     'style_params_gcs_path': style_params_path,

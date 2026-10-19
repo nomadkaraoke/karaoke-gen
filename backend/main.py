@@ -79,6 +79,11 @@ def validate_credentials_on_startup():
 # readiness — a background thread alone would still race the first request.
 _LAZY_ROUTE_IMPORTS = (
     "httpx",
+    # Imported lazily by httpx / worker_service on first use; still froze the loop
+    # after the list above existed (httpcore ~1s; google.cloud.run_v2 14.9s with
+    # 7 requests in flight, 2026-10-16).
+    "httpcore",
+    "google.cloud.run_v2",
     "backend.services.worker_service",
     "backend.services.flacfetch_client",
     "backend.services.catalog_proxy_service",

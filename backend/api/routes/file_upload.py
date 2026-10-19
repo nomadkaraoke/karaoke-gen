@@ -794,7 +794,8 @@ async def upload_and_create_job(
         theme_youtube_desc = None
         if effective_theme_id and not has_custom_style_files:
             try:
-                theme_style_params_path, theme_style_assets, theme_youtube_desc = _prepare_theme_for_job(
+                theme_style_params_path, theme_style_assets, theme_youtube_desc = await asyncio.to_thread(
+                    _prepare_theme_for_job,
                     job_id, effective_theme_id, parsed_color_overrides or None, locale=locale
                 )
                 logger.info(f"Applied theme '{effective_theme_id}' to job {job_id}")
@@ -1472,7 +1473,8 @@ async def create_job_with_upload_urls(
 
         # If theme is set and no style_params uploaded, prepare theme style now
         if effective_theme_id and not has_style_params_upload:
-            style_params_path, style_assets, youtube_desc = _prepare_theme_for_job(
+            style_params_path, style_assets, youtube_desc = await asyncio.to_thread(
+                _prepare_theme_for_job,
                 job_id, effective_theme_id, body.color_overrides, locale=locale
             )
             # Update job with theme style data
@@ -2175,7 +2177,8 @@ async def create_job_from_url(
 
         # If theme is set, prepare theme style now
         if effective_theme_id:
-            style_params_path, style_assets, youtube_desc = _prepare_theme_for_job(
+            style_params_path, style_assets, youtube_desc = await asyncio.to_thread(
+                _prepare_theme_for_job,
                 job_id, effective_theme_id, body.color_overrides, locale=locale
             )
             # Update job with theme style data
