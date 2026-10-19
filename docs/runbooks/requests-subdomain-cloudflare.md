@@ -37,6 +37,8 @@ Route/DNS changes go through `pulumi up` in `infrastructure/cloudflare/`.
 
 ## Verify
 
+From the repo root:
+
 ```bash
 curl -sI https://requests.nomadkaraoke.com/          # 200, text/html, no location header
 curl -sI https://requests.nomadkaraoke.com/en/app/   # 302 → https://gen.nomadkaraoke.com/en/app/
