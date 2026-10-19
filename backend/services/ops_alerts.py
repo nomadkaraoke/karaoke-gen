@@ -111,7 +111,9 @@ def send_ops_alert(message: str) -> bool:
         from backend.services.discord_service import get_discord_notification_service
 
         service = get_discord_notification_service(webhook_url=webhook)
-        return service.post_message(message, webhook_url=webhook)
+        # suppress_embeds: alert text carries error strings with URLs (GCP docs,
+        # job links) that Discord would otherwise unfurl into big preview cards.
+        return service.post_message(message, webhook_url=webhook, suppress_embeds=True)
     except Exception as exc:  # noqa: BLE001 - alerting must never raise
         logger.warning("ops_alerts: failed to send alert: %s", exc)
         return False

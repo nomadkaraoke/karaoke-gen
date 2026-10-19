@@ -427,7 +427,10 @@ class TestRequestAwareSeverity:
         assert len(progress) == 3  # 1s, 5s, 15s samples
         assert all(r.levelno == logging.WARNING for r in progress)
 
-    def test_in_flight_in_progress_sample_at_15s_is_error(self, caplog):
+    def test_in_flight_in_progress_samples_stay_warning(self, caplog):
+        """A freeze used to log ERROR twice (the 15s "in progress" sample AND the
+        "ended" line), so the error monitor raised two alert patterns per freeze.
+        "in progress" is now always WARNING; "ended" alone carries the ERROR."""
         caplog.set_level(logging.WARNING)
         wd, clock, tracker, recorded = self._wd()
         wd._loop_thread_id = 12345
@@ -438,7 +441,11 @@ class TestRequestAwareSeverity:
              patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
             self._stall(wd, clock, 16.0)
         progress = [r for r in caplog.records if "in progress" in r.getMessage()]
-        assert [r.levelno for r in progress] == [logging.WARNING, logging.WARNING, logging.ERROR]
+        assert [r.levelno for r in progress] == [logging.WARNING, logging.WARNING, logging.WARNING]
+        ended = self._ended(caplog)
+        assert len(ended) == 1 and ended[0].levelno == logging.ERROR
+        errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+        assert len(errors) == 1  # one freeze -> one ERROR line -> one alert pattern
 
     def test_in_flight_request_makes_it_error(self, caplog):
         caplog.set_level(logging.WARNING)

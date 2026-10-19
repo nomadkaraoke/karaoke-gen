@@ -516,3 +516,33 @@ class TestCaseInsensitiveMatching:
 
         result = should_ignore("karaoke-backend", "Container Called EXIT(0)")
         assert result is not None
+
+
+class TestRunnerManagerNoAvailableInstance:
+    """github-runner-manager's Cloud Run 'no available instance' abort is a burst
+    during runner scale-up; the runners still dispatch (seen 09-20, 09-23, 09-27,
+    10-08), so it must not page."""
+
+    MSG = (
+        "The request was aborted because there was no available instance. "
+        "Additional troubleshooting documentation can be found at: "
+        "https://cloud.google.com/run/docs/troubleshooting#abort-request"
+    )
+
+    def test_ignored_for_runner_manager(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        result = should_ignore("github-runner-manager", self.MSG)
+        assert result is not None
+        assert result.pattern_name == "runner_manager_no_available_instance"
+
+    def test_still_alerts_for_other_services(self):
+        # On the customer-facing backend the same abort means dropped requests.
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        assert should_ignore("karaoke-backend", self.MSG) is None
+
+    def test_other_runner_manager_errors_still_alert(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        assert should_ignore("github-runner-manager", "Failed to create runner VM: quota exceeded") is None

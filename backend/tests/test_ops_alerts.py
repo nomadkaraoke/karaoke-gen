@@ -106,6 +106,24 @@ def test_send_ops_alert_no_webhook_returns_false(monkeypatch):
     assert ops_alerts.send_ops_alert("hi") is False
 
 
+def test_send_ops_alert_suppresses_link_embeds(monkeypatch):
+    """Ops alerts carry error text with URLs; Discord must not unfurl them."""
+    import backend.services.discord_service as discord_service
+
+    calls = []
+
+    class FakeService:
+        def post_message(self, message, webhook_url=None, suppress_embeds=False):
+            calls.append((message, webhook_url, suppress_embeds))
+            return True
+
+    monkeypatch.setattr(ops_alerts, "_is_enabled", lambda: True)
+    monkeypatch.setattr(ops_alerts, "_get_webhook_url", lambda: "https://discord.com/api/webhooks/1/a")
+    monkeypatch.setattr(discord_service, "get_discord_notification_service", lambda **kw: FakeService())
+    assert ops_alerts.send_ops_alert("boom https://cloud.google.com/x") is True
+    assert calls == [("boom https://cloud.google.com/x", "https://discord.com/api/webhooks/1/a", True)]
+
+
 # ---------------------------------------------------------------------------
 # notify_job_failed
 # ---------------------------------------------------------------------------

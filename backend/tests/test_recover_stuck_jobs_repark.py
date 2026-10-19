@@ -56,7 +56,7 @@ def _job(job_id, status, *, minutes_stale=0, source_name=None, download_retry=No
 
 
 def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=None,
-             downloading_prep=None, jobs=None):
+             downloading_prep=None, instrumental_selected=None, jobs=None):
     """Wire a JobManager mock for the endpoint's 4 status queries.
 
     downloading/rendering/review_complete use .where().stream(); pending uses
@@ -69,11 +69,13 @@ def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=
     where.stream.side_effect = [
         iter(downloading or []), iter(rendering or []), iter(review_complete or []),
     ]
-    # Three .limit().stream() calls in order: download_pending_retry, then downloading
+    # Four .limit().stream() calls in order: download_pending_retry, then downloading
     # (lost-screens-trigger sweep, bounded by SCREENS_RECOVERY_SCAN_LIMIT), then
-    # lyrics_complete (stalled storage-retention stems restore)
+    # lyrics_complete (stalled storage-retention stems restore), then
+    # instrumental_selected (final encode parked on stems / lost video trigger)
     where.limit.return_value.stream.side_effect = [
         iter(pending or []), iter(downloading_prep or []), iter([]),
+        iter(instrumental_selected or []),
     ]
     mock_jm.get_job.side_effect = lambda jid: (jobs or {}).get(jid)
     mock_jm.transition_to_state.return_value = True
@@ -284,3 +286,72 @@ def test_fresh_review_complete_is_left_alone(client):
     assert resp.status_code == 200
     assert resp.json()["render_retriggered_jobs"] == []
     mock_ws.trigger_render_video_worker.assert_not_awaited()
+
+
+def _is_job(job_id, *, minutes_stale, audio_complete, stem_ready, selection="clean"):
+    job = _job(job_id, JobStatus.INSTRUMENTAL_SELECTED, minutes_stale=minutes_stale)
+    job.state_data.update({"instrumental_selection": selection, "audio_complete": audio_complete})
+    if stem_ready:
+        job.file_urls = {"stems": {"instrumental_clean": "gs://b/clean.flac",
+                                   "instrumental_with_backing": "gs://b/backing.flac"}}
+    return job
+
+
+def _run_is(client, job):
+    mock_jm = _mock_jm(
+        instrumental_selected=[_doc(job.job_id, JobStatus.INSTRUMENTAL_SELECTED)],
+        jobs={job.job_id: job},
+    )
+    mock_ws = MagicMock()
+    mock_ws.trigger_video_worker = AsyncMock(return_value=True)
+    with patch("backend.api.routes.internal.JobManager", return_value=mock_jm), \
+         patch("backend.services.worker_service.get_worker_service", return_value=mock_ws):
+        resp = client.post("/api/internal/recover-stuck-jobs")
+    assert resp.status_code == 200
+    return resp.json(), mock_jm, mock_ws
+
+
+def test_instrumental_selected_with_stems_ready_retriggers_video(client):
+    """Parked/lost video trigger: stems landed but no encode started -> re-trigger."""
+    body, mock_jm, mock_ws = _run_is(
+        client, _is_job("is1", minutes_stale=15, audio_complete=True, stem_ready=True))
+    assert body["video_retriggered_jobs"] == ["is1"]
+    mock_ws.trigger_video_worker.assert_awaited_once_with("is1")
+    mock_jm.claim_video_stems_wait.assert_called_once_with("is1")
+
+
+def test_instrumental_selected_fresh_is_left_alone(client):
+    body, _, mock_ws = _run_is(
+        client, _is_job("is2", minutes_stale=2, audio_complete=True, stem_ready=True))
+    assert body["video_retriggered_jobs"] == []
+    mock_ws.trigger_video_worker.assert_not_awaited()
+
+
+def test_instrumental_selected_still_separating_waits(client):
+    """Separation still running (<60 min): neither re-trigger nor fail."""
+    body, mock_jm, mock_ws = _run_is(
+        client, _is_job("is3", minutes_stale=30, audio_complete=False, stem_ready=False))
+    assert body["video_retriggered_jobs"] == []
+    assert body["stems_wait_failed_jobs"] == []
+    mock_ws.trigger_video_worker.assert_not_awaited()
+    mock_jm.mark_job_failed.assert_not_called()
+
+
+def test_instrumental_selected_stems_never_ready_fails_loudly(client):
+    """Separation never finished (>60 min): fail so the job isn't stuck silently."""
+    body, mock_jm, mock_ws = _run_is(
+        client, _is_job("is4", minutes_stale=90, audio_complete=False, stem_ready=False))
+    assert body["stems_wait_failed_jobs"] == ["is4"]
+    mock_jm.mark_job_failed.assert_called_once()
+    assert mock_jm.mark_job_failed.call_args.kwargs["error_details"]["stage"] == "video_waiting_for_stems"
+    mock_ws.trigger_video_worker.assert_not_awaited()
+
+
+def test_instrumental_selected_older_than_24h_is_never_revived(client):
+    body, mock_jm, mock_ws = _run_is(
+        client, _is_job("is5", minutes_stale=25 * 60, audio_complete=True, stem_ready=True))
+    assert body["video_retriggered_jobs"] == []
+    assert body["stems_wait_failed_jobs"] == []
+    mock_ws.trigger_video_worker.assert_not_awaited()
+    mock_jm.mark_job_failed.assert_not_called()
+

@@ -29,7 +29,9 @@ from zoneinfo import ZoneInfo
 import requests
 
 from backend.services.error_monitor.config import (
+    BURST_TOP_PATTERNS,
     DISCORD_MAX_MESSAGE_LENGTH,
+    DISCORD_SUPPRESS_EMBEDS_FLAG,
     MAX_DISCORD_MESSAGES_PER_RUN,
 )
 
@@ -105,6 +107,47 @@ def format_new_pattern_alert(
         f"**Alerted at:** {_now_eastern()}",
         f"",
         f"To investigate: `/prod-investigate {service} \"{normalized_message}\"`",
+    ]
+    return _truncate("\n".join(lines))
+
+
+def format_pattern_burst_alert(service: str, patterns: list[dict]) -> str:
+    """Format ONE Discord alert for a burst of new patterns from one service.
+
+    One root cause (a bad run, a schema change) often produces dozens of
+    distinct messages, e.g. one per table. Listing them one message each buried
+    #alerts, so they collapse into a summary with the top patterns by count and
+    a pointer to the full list.
+
+    Args:
+        service: The service all the patterns came from.
+        patterns: Dicts with keys normalized_message, count, first_seen, last_seen.
+
+    Returns:
+        Formatted Discord message string, truncated to 2000 chars.
+    """
+    ranked = sorted(patterns, key=lambda p: p.get("count") or 0, reverse=True)
+    total = sum(int(p.get("count") or 0) for p in patterns)
+    first = min((p["first_seen"] for p in patterns if p.get("first_seen")), default="?")
+    last = max((p["last_seen"] for p in patterns if p.get("last_seen")), default="?")
+    lines = [
+        f"🔴 **{len(patterns)} new error patterns from {service}** (one burst, {total} occurrences)",
+        "",
+        f"**Service:** {service}",
+        f"**First seen:** {first}",
+        f"**Last seen:** {last}",
+        f"**Alerted at:** {_now_eastern()}",
+        "",
+        f"**Top {min(BURST_TOP_PATTERNS, len(ranked))} by count:**",
+    ]
+    for p in ranked[:BURST_TOP_PATTERNS]:
+        msg = (p.get("normalized_message") or "").splitlines()[0][:150] if p.get("normalized_message") else ""
+        lines.append(f"• `{msg}` ×{p.get('count', 0)}")
+    if len(ranked) > BURST_TOP_PATTERNS:
+        lines.append(f"…and {len(ranked) - BURST_TOP_PATTERNS} more")
+    lines += [
+        "",
+        f"All patterns: `python scripts/query-error-patterns.py --service {service} --status new`",
     ]
     return _truncate("\n".join(lines))
 
@@ -305,7 +348,11 @@ class ErrorMonitorDiscord:
     @staticmethod
     def _post(url: str, content: str) -> bool:
         try:
-            response = requests.post(url, json={"content": content}, timeout=30)
+            response = requests.post(
+                url,
+                json={"content": content, "flags": DISCORD_SUPPRESS_EMBEDS_FLAG},
+                timeout=30,
+            )
             response.raise_for_status()
             logger.debug("Discord message sent successfully.")
             return True

@@ -1362,6 +1362,47 @@ def _recover_stuck_jobs_sync(http_request: Request, loop: asyncio.AbstractEventL
         )
         stems_restore_failed.append(job_id)
 
+    # --- INSTRUMENTAL_SELECTED with no encode running ---
+    # The video worker moves to GENERATING_VIDEO as soon as it starts, so a job
+    # still here after 10 min has no encode underway. Either it's parked waiting
+    # for stem separation (the audio worker resumes it; this catches a lost
+    # resume) or its video dispatch was lost. Re-trigger once the stems exist;
+    # if separation never finishes, fail loudly so the job doesn't sit silently
+    # (the 2026-10-17/18 stuck "Starting final encode" jobs). Bounded to 24h so
+    # ancient abandoned jobs are never revived.
+    from backend.services.job_health_service import selected_stem_pending
+    video_retriggered = []
+    stems_wait_failed = []
+    is_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.INSTRUMENTAL_SELECTED.value)
+    ).limit(SCREENS_RECOVERY_SCAN_LIMIT).stream()
+    for doc in is_query:
+        if len(video_retriggered) >= RENDER_RETRIGGERS_PER_TICK:
+            break
+        job_id = (doc.to_dict() or {}).get("job_id", doc.id)
+        job = job_manager.get_job(job_id)
+        age = _job_updated_age_seconds(job) if job else None
+        if age is None or not (INSTRUMENTAL_SELECTED_STALL_SECONDS < age < INSTRUMENTAL_SELECTED_MAX_AGE_SECONDS):
+            continue
+        if selected_stem_pending(job):
+            if age > STEMS_WAIT_FAIL_SECONDS:
+                logger.error(f"[job:{job_id}] Final encode waited >60 min for stem separation that never finished — failing")
+                job_manager.mark_job_failed(
+                    job_id=job_id,
+                    error_message="Audio separation didn't finish, so the final video couldn't be made. Retry the job to try again.",
+                    error_details={"stage": "video_waiting_for_stems", "reason": "stems_never_ready"},
+                )
+                stems_wait_failed.append(job_id)
+            continue
+        logger.warning(f"[job:{job_id}] INSTRUMENTAL_SELECTED stalled >10 min with stems ready — re-triggering video worker")
+        try:
+            # Clear a parked flag first so a late audio-worker resume can't double-trigger.
+            job_manager.claim_video_stems_wait(job_id)
+            if run_on_loop(loop, worker_service.trigger_video_worker(job_id)):
+                video_retriggered.append(job_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[job:{job_id}] video re-trigger failed: {e}")
+
     logger.info(
         f"RECOVER_STUCK_JOBS complete: recovered={len(recovered)} "
         f"download_parked={len(download_parked)} download_retried={len(download_retried)} "
@@ -1392,6 +1433,8 @@ def _recover_stuck_jobs_sync(http_request: Request, loop: asyncio.AbstractEventL
         "screens_retriggered_count": len(screens_retriggered),
         "stems_restore_failed_jobs": stems_restore_failed,
         "regen_screens_retriggered_jobs": regen_screens_retriggered,
+        "video_retriggered_jobs": video_retriggered,
+        "stems_wait_failed_jobs": stems_wait_failed,
     }
 
 
@@ -1400,6 +1443,9 @@ RENDER_RETRIGGERS_PER_TICK = 10          # bound the blast radius per 5-min tick
 PREP_SCREENS_STALL_SECONDS = 10 * 60     # screens normally start within seconds of lyrics done
 SCREENS_RETRIGGERS_PER_TICK = 10         # bound the blast radius per 5-min tick
 SCREENS_RECOVERY_SCAN_LIMIT = 500        # cap DOWNLOADING docs scanned per tick (transient state)
+INSTRUMENTAL_SELECTED_STALL_SECONDS = 10 * 60      # video worker leaves this state within seconds
+STEMS_WAIT_FAIL_SECONDS = 60 * 60                  # separation normally lands within ~15 min of review
+INSTRUMENTAL_SELECTED_MAX_AGE_SECONDS = 24 * 3600  # never revive ancient abandoned jobs
 
 
 def _job_updated_age_seconds(job):

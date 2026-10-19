@@ -536,7 +536,7 @@ class TestErrorMonitorDiscordSendMessage:
             assert result is True
             mock_post.assert_called_once_with(
                 "https://discord.com/api/webhooks/123/abc",
-                json={"content": "Hello Discord!"},
+                json={"content": "Hello Discord!", "flags": 4},
                 timeout=30,
             )
 
@@ -636,7 +636,7 @@ class TestErrorMonitorDiscordNoiseChannel:
         client = ErrorMonitorDiscord(webhook_url=self.ALERT, noise_webhook_url=self.NOISE)
         with mock.patch("requests.post", return_value=self._ok()) as mock_post:
             assert client.send_noise_message("fyi") is True
-        mock_post.assert_called_once_with(self.NOISE, json={"content": "fyi"}, timeout=30)
+        mock_post.assert_called_once_with(self.NOISE, json={"content": "fyi", "flags": 4}, timeout=30)
 
     def test_send_message_still_posts_to_alert_webhook(self):
         from backend.services.error_monitor.discord import ErrorMonitorDiscord
@@ -644,7 +644,7 @@ class TestErrorMonitorDiscordNoiseChannel:
         client = ErrorMonitorDiscord(webhook_url=self.ALERT, noise_webhook_url=self.NOISE)
         with mock.patch("requests.post", return_value=self._ok()) as mock_post:
             assert client.send_message("problem") is True
-        mock_post.assert_called_once_with(self.ALERT, json={"content": "problem"}, timeout=30)
+        mock_post.assert_called_once_with(self.ALERT, json={"content": "problem", "flags": 4}, timeout=30)
 
     def test_noise_without_noise_webhook_falls_back_to_alert_webhook(self):
         from backend.services.error_monitor.discord import ErrorMonitorDiscord
@@ -652,7 +652,7 @@ class TestErrorMonitorDiscordNoiseChannel:
         client = ErrorMonitorDiscord(webhook_url=self.ALERT)
         with mock.patch("requests.post", return_value=self._ok()) as mock_post:
             assert client.send_noise_message("fyi") is True
-        mock_post.assert_called_once_with(self.ALERT, json={"content": "fyi"}, timeout=30)
+        mock_post.assert_called_once_with(self.ALERT, json={"content": "fyi", "flags": 4}, timeout=30)
 
     def test_noise_delivery_failure_retries_on_alert_webhook(self):
         """A broken noise webhook must never silently drop the message."""
@@ -685,3 +685,70 @@ class TestErrorMonitorDiscordNoiseChannel:
         with mock.patch("requests.post") as mock_post:
             assert client.send_noise_message("fyi") is False
             mock_post.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Link-preview suppression
+# ---------------------------------------------------------------------------
+
+
+class TestSuppressEmbeds:
+    """Every error-monitor post sets flags=4 (SUPPRESS_EMBEDS): alerts quote GCP
+    docs URLs that Discord unfurled into big "AI and Cloud Computing Services"
+    cards, burying the alert text."""
+
+    def test_alert_and_noise_posts_suppress_embeds(self):
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        client = ErrorMonitorDiscord(
+            webhook_url="https://discord.com/api/webhooks/1/a",
+            noise_webhook_url="https://discord.com/api/webhooks/2/n",
+        )
+        with mock.patch("requests.post") as mock_post:
+            client.send_message("see https://cloud.google.com/run/docs")
+            client.send_noise_message("fyi https://cloud.google.com/run/docs")
+        assert [c.kwargs["json"]["flags"] for c in mock_post.call_args_list] == [4, 4]
+
+
+# ---------------------------------------------------------------------------
+# Burst alert formatting
+# ---------------------------------------------------------------------------
+
+
+class TestFormatPatternBurstAlert:
+    def _patterns(self, n):
+        return [
+            {
+                "normalized_message": f"MusicBrainz mirror: kept previous musicbrainz.table_{i} (raw table not loaded)",
+                "count": i + 1,
+                "first_seen": f"2026-10-07T0{i % 10}:00:00+00:00",
+                "last_seen": f"2026-10-08T0{i % 10}:30:00+00:00",
+            }
+            for i in range(n)
+        ]
+
+    def test_summarises_burst_in_one_message(self):
+        from backend.services.error_monitor.discord import format_pattern_burst_alert
+
+        msg = format_pattern_burst_alert("mb-refresh", self._patterns(73))
+        assert "73 new error patterns" in msg
+        assert "mb-refresh" in msg
+        assert "scripts/query-error-patterns.py --service mb-refresh" in msg
+        assert "2026-10-07T00:00:00+00:00" in msg  # earliest first_seen
+        assert "2026-10-08T09:30:00+00:00" in msg  # latest last_seen
+        assert len(msg) <= 2000
+
+    def test_shows_top_five_by_count(self):
+        from backend.services.error_monitor.discord import format_pattern_burst_alert
+
+        msg = format_pattern_burst_alert("mb-refresh", self._patterns(73))
+        shown = [line for line in msg.splitlines() if "table_" in line]
+        assert len(shown) == 5
+        assert "table_72 " in shown[0]  # highest count first
+        assert "…and 68 more" in msg
+
+    def test_total_occurrences(self):
+        from backend.services.error_monitor.discord import format_pattern_burst_alert
+
+        msg = format_pattern_burst_alert("svc", self._patterns(4))
+        assert "10 occurrences" in msg  # 1+2+3+4

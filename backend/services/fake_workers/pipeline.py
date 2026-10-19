@@ -134,6 +134,8 @@ async def run_audio(job_id: str) -> bool:
 
     job_manager.mark_audio_complete(job_id)
     await job_manager.advance_to_screens_if_ready(job_id)
+    # Same as the real audio worker: resume a final encode parked on these stems.
+    await job_manager.resume_video_if_waiting_for_stems(job_id)
     return True
 
 

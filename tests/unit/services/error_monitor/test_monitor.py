@@ -1059,3 +1059,155 @@ class TestNoiseWebhookResolution:
             monitor = m.ErrorMonitor()
         assert monitor.discord.webhook_url == self.ALERT
         assert monitor.discord.noise_webhook_url == self.NOISE
+
+
+# ---------------------------------------------------------------------------
+# Tests: burst collapse + alert gating (2026-10-18 #alerts noise work)
+# ---------------------------------------------------------------------------
+
+
+class TestBurstCollapse:
+    """>3 new patterns from one service in a run -> ONE #alerts message.
+
+    2026-10-07/08: one bad mb-refresh run produced 73 distinct "New Error
+    Pattern" messages that dripped into #alerts 10 an hour (the per-run cap)."""
+
+    NOW = "2026-10-08T03:00:00+00:00"
+
+    def _pattern(self, pid, service, i=0):
+        return {
+            "pattern_id": pid,
+            "service": service,
+            "resource_type": "cloud_run_job",
+            "normalized_message": f"{service} failure {pid}",
+            "sample_message": f"sample {pid}",
+            "total_count": i + 1,
+            "status": "new",
+            "alerted_at": None,
+            "first_seen": "2026-10-07T02:00:00+00:00",
+            "last_seen": "2026-10-08T02:30:00+00:00",
+            "rolling_counts": [],
+        }
+
+    def _monitor(self, patterns, real_discord=False):
+        from backend.services.error_monitor.discord import ErrorMonitorDiscord
+
+        monitor = _make_monitor_with_mocks()
+        monitor.logging_client.list_entries.return_value = iter([])
+        by_id = {p["pattern_id"]: p for p in patterns}
+        monitor.firestore_adapter.get_unalerted_new_patterns.return_value = patterns
+        monitor.firestore_adapter.get_pattern.side_effect = lambda pid: by_id.get(pid)
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        if real_discord:
+            monitor.discord = ErrorMonitorDiscord(webhook_url="https://discord.com/api/webhooks/1/a")
+        else:
+            monitor.discord.send_message.return_value = True
+        return monitor
+
+    def _alerted_ids(self, monitor):
+        return [c.args[0] for c in monitor.firestore_adapter.update_pattern_alerted.call_args_list]
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_73_patterns_one_service_send_one_message(self, *_):
+        patterns = [self._pattern(f"mb{i}", "mb-refresh", i) for i in range(73)]
+        patterns += [self._pattern("be1", "karaoke-backend"), self._pattern("be2", "karaoke-backend")]
+        monitor = self._monitor(patterns)
+
+        monitor._run_monitor_cycle()
+
+        msgs = [c.args[0] for c in monitor.discord.send_message.call_args_list]
+        burst = [m for m in msgs if "mb-refresh" in m]
+        assert len(burst) == 1
+        assert "73 new error patterns" in burst[0]
+        assert "scripts/query-error-patterns.py --service mb-refresh" in burst[0]
+        # karaoke-backend had only 2 -> still individual alerts
+        assert sum("New Error Pattern" in m for m in msgs) == 2
+        assert len(msgs) == 3
+        assert sorted(self._alerted_ids(monitor)) == sorted(p["pattern_id"] for p in patterns)
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_exactly_three_patterns_stay_individual(self, *_):
+        patterns = [self._pattern(f"p{i}", "svc", i) for i in range(3)]
+        monitor = self._monitor(patterns)
+
+        monitor._run_monitor_cycle()
+
+        msgs = [c.args[0] for c in monitor.discord.send_message.call_args_list]
+        assert len(msgs) == 3
+        assert all("New Error Pattern" in m for m in msgs)
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_failed_burst_send_marks_nothing_alerted(self, *_):
+        patterns = [self._pattern(f"p{i}", "svc", i) for i in range(5)]
+        monitor = self._monitor(patterns)
+        monitor.discord.send_message.return_value = False
+
+        monitor._run_monitor_cycle()
+
+        monitor.firestore_adapter.update_pattern_alerted.assert_not_called()
+
+    @patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False)
+    @patch("backend.services.error_monitor.monitor.get_digest_mode", return_value=False)
+    def test_per_run_cap_still_holds(self, *_):
+        """15 services x 1 pattern + a burst: at most 10 posts; unsent stay unalerted."""
+        from backend.services.error_monitor.config import MAX_DISCORD_MESSAGES_PER_RUN
+
+        patterns = [self._pattern(f"s{i}", f"svc-{i}") for i in range(15)]
+        patterns += [self._pattern(f"b{i}", "burst-svc", i) for i in range(20)]
+        monitor = self._monitor(patterns, real_discord=True)
+
+        with patch("requests.post") as mock_post:
+            monitor._run_monitor_cycle()
+
+        assert mock_post.call_count == MAX_DISCORD_MESSAGES_PER_RUN
+        assert len(self._alerted_ids(monitor)) < len(patterns)
+
+
+class TestAlertGate:
+    """Patterns carrying alert_min_hourly_count (frontend chunk-load failures)
+    alert only once more than that many land within an hour."""
+
+    def _chunk_pattern(self, recent):
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(tz=timezone.utc)
+        return {
+            "pattern_id": "chunk-build-x",
+            "service": "frontend",
+            "resource_type": "browser",
+            "normalized_message": "Failed to load JS chunk on build x",
+            "sample_message": "Error: Failed to load chunk …",
+            "total_count": recent,
+            "status": "new",
+            "alerted_at": None,
+            "first_seen": now.isoformat(),
+            "last_seen": now.isoformat(),
+            "alert_min_hourly_count": 10,
+            "rolling_counts": [
+                {"ts": (now - timedelta(minutes=i)).isoformat(), "count": 1} for i in range(recent)
+            ],
+        }
+
+    def _run(self, pattern):
+        monitor = _make_monitor_with_mocks()
+        monitor.logging_client.list_entries.return_value = iter([])
+        monitor.firestore_adapter.get_unalerted_new_patterns.return_value = [pattern]
+        monitor.firestore_adapter.get_pattern.return_value = pattern
+        monitor.firestore_adapter.get_patterns_for_auto_resolve.return_value = []
+        monitor.discord.send_message.return_value = True
+        with patch("backend.services.error_monitor.monitor.get_llm_enabled", return_value=False):
+            monitor._run_monitor_cycle()
+        return monitor
+
+    def test_single_chunk_error_does_not_alert(self):
+        monitor = self._run(self._chunk_pattern(1))
+        monitor.discord.send_message.assert_not_called()
+        monitor.firestore_adapter.update_pattern_alerted.assert_not_called()
+
+    def test_chunk_burst_over_threshold_alerts(self):
+        monitor = self._run(self._chunk_pattern(11))
+        assert monitor.discord.send_message.call_count == 1
+        monitor.firestore_adapter.update_pattern_alerted.assert_called_once_with("chunk-build-x")

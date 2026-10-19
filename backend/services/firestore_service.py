@@ -131,6 +131,27 @@ class FirestoreService:
             logger.error(f"Error updating job {job_id}: {e}")
             raise
     
+    def claim_job_state_flag(self, job_id: str, key: str) -> bool:
+        """Atomically test-and-clear ``state_data.<key>``.
+
+        Returns True for exactly one caller while the flag is truthy (it is set
+        to False in the same transaction), so two workers racing to act on the
+        same flag can't both proceed.
+        """
+        doc_ref = self.db.collection(self.collection).document(job_id)
+
+        @firestore.transactional
+        def _claim(transaction, ref) -> bool:
+            snapshot = ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return False
+            if not ((snapshot.to_dict() or {}).get("state_data") or {}).get(key):
+                return False
+            transaction.update(ref, {f"state_data.{key}": False, "updated_at": datetime.utcnow()})
+            return True
+
+        return _claim(self.db.transaction(), doc_ref)
+
     def update_job_status(
         self,
         job_id: str,

@@ -412,6 +412,15 @@ async def process_audio_separation(job_id: str) -> bool:
                 # normal run never double-triggers.
                 await job_manager.advance_to_screens_if_ready(job_id)
 
+                # If review already finished and the video worker parked the job
+                # waiting for these stems, resume the final encode now.
+                try:
+                    if await job_manager.resume_video_if_waiting_for_stems(job_id):
+                        job_log.info("Stems ready: resumed the parked final encode")
+                except Exception as e:
+                    # recover_stuck_jobs re-triggers a parked job within ~10 min
+                    logger.error(f"[job:{job_id}] Failed to resume parked video worker: {e}")
+
                 # Auto-approval second chance: when lyrics/screens finished BEFORE
                 # audio, the job is already parked in AWAITING_REVIEW and the
                 # screens-worker scoring ran without backing analysis. Now that

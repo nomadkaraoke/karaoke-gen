@@ -276,6 +276,23 @@ curl -X POST "https://api.nomadkaraoke.com/api/internal/workers/screens" \
   -d '{"job_id": "<job_id>"}'
 ```
 
+## Job at `instrumental_selected` "Waiting for audio separation to finish"
+
+This is normal when review finishes before stem separation does. The video worker
+parks the job (`state_data.video_waiting_for_stems=true`) and exits cleanly. The
+audio worker resumes the final encode as soon as the stems land
+(`resume_video_if_waiting_for_stems`). Backstop: `recover_stuck_jobs` re-triggers
+the video worker once a job has sat in `instrumental_selected` for 10+ min with its
+stem present. If separation never finishes, it fails the job after 60 min
+(`error_details.stage = "video_waiting_for_stems"`), so it never stays stuck silently.
+
+Before 2026-10-19 (v0.278.11) the video worker failed its prerequisites instead
+("Missing instrumental: instrumental_clean") and the job stayed at "Starting final
+encode" forever. That got much more likely when the GPU image picked up
+audio-separator 0.47.0 (karaoke models 3–5× slower on L4). The version is now pinned
+in `backend/Dockerfile.gpu-base` (`AUDIO_SEPARATOR_VERSION`). Time a real job before
+bumping it.
+
 ## Job stuck at `encoding` status
 
 **Cause:** A Cloud Run deployment killed the poller mid-encoding. The GCE worker finished but nobody received the result. The health service will flag this as `encoding_stuck` after 50 minutes.
