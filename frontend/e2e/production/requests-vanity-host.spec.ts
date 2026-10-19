@@ -45,6 +45,32 @@ test.describe('requests.nomadkaraoke.com vanity host', () => {
     expect(tenantHeaders).toEqual([]);
   });
 
+  test('picks the board language from the browser', async ({ browser }) => {
+    const context = await browser.newContext({ locale: 'es-ES' });
+    const page = await context.newPage();
+    await page.goto(`${REQUESTS_ORIGIN}/`);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Vota', { timeout: 30_000 });
+    expect(new URL(page.url()).pathname).toBe('/');
+    await context.close();
+  });
+
+  test('language switcher keeps the bare URL and remembers the choice', async ({ browser }) => {
+    const context = await browser.newContext({ locale: 'en-US' });
+    const page = await context.newPage();
+    await page.goto(`${REQUESTS_ORIGIN}/`);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Vote', { timeout: 30_000 });
+
+    await page.getByRole('button', { expanded: false }).filter({ hasText: 'English' }).first().click();
+    await page.getByRole('button', { name: /Deutsch/ }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Stimme', { timeout: 30_000 });
+    expect(new URL(page.url()).pathname).toBe('/');
+
+    // A fresh visit to the bare URL stays German (cookie read by the requests-host Worker).
+    await page.goto(`${REQUESTS_ORIGIN}/`);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Stimme', { timeout: 30_000 });
+    await context.close();
+  });
+
   test('other page paths redirect to gen', async ({ request }) => {
     const response = await request.get(`${REQUESTS_ORIGIN}/en/app/`, { maxRedirects: 0 });
     expect([301, 302]).toContain(response.status());

@@ -81,7 +81,8 @@
     "waveformGenerationError": "Virhe luotaessa aaltomuotodataa: {error}",
     "waveformNoAudio": "Ääntä ei ole saatavilla aaltomuotoa varten",
     "sessionSaveError": "Korjaustiedot vaaditaan",
-    "invalidIsDuetFlag": "is_duet täytyy olla totuusarvo (true tai false)"
+    "invalidIsDuetFlag": "is_duet täytyy olla totuusarvo (true tai false)",
+    "previewMissingTimings": "Rivillä \"{line}\" on sana, jolla ei ole ajoitusta. Synkronoi kyseinen rivi ja yritä esikatselua uudelleen."
   },
   "audioSearch": {
     "notEnabled": "Äänihaku ei ole käytössä tälle asiakkaalle",

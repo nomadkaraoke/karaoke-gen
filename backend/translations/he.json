@@ -81,7 +81,8 @@
     "waveformGenerationError": "שגיאה ביצירת נתוני גל הקול: {error}",
     "waveformNoAudio": "אין אודיו זמין עבור גל הקול",
     "sessionSaveError": "נדרשים נתוני תיקון",
-    "invalidIsDuetFlag": "is_duet חייב להיות ערך בוליאני (true או false)"
+    "invalidIsDuetFlag": "is_duet חייב להיות ערך בוליאני (true או false)",
+    "previewMissingTimings": "בשורה \"{line}\" יש מילה ללא תזמון. סנכרנו את השורה הזו ונסו שוב את התצוגה המקדימה."
   },
   "audioSearch": {
     "notEnabled": "חיפוש אודיו אינו מופעל עבור חשבון זה",

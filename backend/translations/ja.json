@@ -81,7 +81,8 @@
     "waveformGenerationError": "波形データの生成中にエラーが発生しました: {error}",
     "waveformNoAudio": "波形用のオーディオがありません",
     "sessionSaveError": "修正データが必要です",
-    "invalidIsDuetFlag": "is_duet はブール値 (true または false) である必要があります"
+    "invalidIsDuetFlag": "is_duet はブール値 (true または false) である必要があります",
+    "previewMissingTimings": "「{line}」の行にタイミングが設定されていない単語があります。その行を同期してから、もう一度プレビューしてください。"
   },
   "audioSearch": {
     "notEnabled": "このテナントではオーディオ検索が有効になっていません",

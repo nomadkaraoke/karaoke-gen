@@ -81,7 +81,8 @@
     "waveformGenerationError": "Error sa paggawa ng waveform data: {error}",
     "waveformNoAudio": "Walang available na audio para sa waveform",
     "sessionSaveError": "Kailangan ng correction data",
-    "invalidIsDuetFlag": "Ang is_duet ay dapat isang boolean (true o false)"
+    "invalidIsDuetFlag": "Ang is_duet ay dapat isang boolean (true o false)",
+    "previewMissingTimings": "Ang linyang \"{line}\" ay may salitang walang timing. I-sync ang linyang iyon, saka subukang muli ang preview."
   },
   "audioSearch": {
     "notEnabled": "Hindi naka-enable ang audio search para sa tenant na ito",

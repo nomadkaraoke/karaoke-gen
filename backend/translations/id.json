@@ -81,7 +81,8 @@
     "waveformGenerationError": "Kesalahan saat membuat data bentuk gelombang: {error}",
     "waveformNoAudio": "Tidak ada audio yang tersedia untuk bentuk gelombang",
     "sessionSaveError": "Data koreksi diperlukan",
-    "invalidIsDuetFlag": "is_duet harus berupa boolean (true atau false)"
+    "invalidIsDuetFlag": "is_duet harus berupa boolean (true atau false)",
+    "previewMissingTimings": "Baris \"{line}\" memiliki kata tanpa waktu. Sinkronkan baris tersebut, lalu coba pratinjau lagi."
   },
   "audioSearch": {
     "notEnabled": "Pencarian audio tidak diaktifkan untuk tenant ini",

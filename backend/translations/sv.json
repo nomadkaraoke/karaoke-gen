@@ -81,7 +81,8 @@
     "waveformGenerationError": "Fel vid generering av vågformsdata: {error}",
     "waveformNoAudio": "Inget ljud tillgängligt för vågform",
     "sessionSaveError": "Korrigeringsdata krävs",
-    "invalidIsDuetFlag": "is_duet måste vara ett booleskt värde (true eller false)"
+    "invalidIsDuetFlag": "is_duet måste vara ett booleskt värde (true eller false)",
+    "previewMissingTimings": "Raden \"{line}\" har ett ord utan timing. Synka den raden och försök sedan förhandsgranska igen."
   },
   "audioSearch": {
     "notEnabled": "Ljudsökning är inte aktiverad för denna klient",

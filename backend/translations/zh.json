@@ -81,7 +81,8 @@
     "waveformGenerationError": "生成波形数据时出错：{error}",
     "waveformNoAudio": "没有可生成波形的音频",
     "sessionSaveError": "需要校对数据",
-    "invalidIsDuetFlag": "is_duet 必须是布尔值（true 或 false）"
+    "invalidIsDuetFlag": "is_duet 必须是布尔值（true 或 false）",
+    "previewMissingTimings": "“{line}”这一行有一个没有时间轴的单词。请先同步该行，然后再次尝试预览。"
   },
   "audioSearch": {
     "notEnabled": "此租户未启用音频搜索",

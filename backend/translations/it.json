@@ -81,7 +81,8 @@
     "waveformGenerationError": "Errore durante la generazione dei dati della forma d'onda: {error}",
     "waveformNoAudio": "Nessun audio disponibile per la forma d'onda",
     "sessionSaveError": "I dati di correzione sono richiesti",
-    "invalidIsDuetFlag": "is_duet deve essere un booleano (true o false)"
+    "invalidIsDuetFlag": "is_duet deve essere un booleano (true o false)",
+    "previewMissingTimings": "La riga \"{line}\" contiene una parola senza tempo. Sincronizza quella riga, poi riprova l'anteprima."
   },
   "audioSearch": {
     "notEnabled": "La ricerca audio non è abilitata per questo tenant",

@@ -81,7 +81,8 @@
     "waveformGenerationError": "Hiba a hullámforma adatok generálásakor: {error}",
     "waveformNoAudio": "Nincs elérhető hang a hullámformához",
     "sessionSaveError": "Javítási adatok szükségesek",
-    "invalidIsDuetFlag": "Az is_duet értékének logikai (boolean) típusúnak kell lennie (true vagy false)"
+    "invalidIsDuetFlag": "Az is_duet értékének logikai (boolean) típusúnak kell lennie (true vagy false)",
+    "previewMissingTimings": "A(z) „{line}” sorban van egy időzítés nélküli szó. Szinkronizáld azt a sort, majd próbáld újra az előnézetet."
   },
   "audioSearch": {
     "notEnabled": "A hangkeresés nincs engedélyezve ehhez a bérlőhöz",
