@@ -178,6 +178,15 @@ def get_discord_webhook_secret_name() -> str:
     return os.environ.get("DISCORD_WEBHOOK_SECRET_NAME", "error-monitor-discord-webhook")
 
 
+def get_discord_noise_webhook_secret_name() -> str:
+    """Return the Secret Manager secret name for the #noise Discord webhook.
+
+    #alerts is reserved for real problems (new patterns, spikes, incidents);
+    informational posts (auto-resolved summaries, the daily digest) go to #noise.
+    """
+    return os.environ.get("DISCORD_NOISE_WEBHOOK_SECRET_NAME", "discord-noise-webhook")
+
+
 def get_digest_mode() -> bool:
     """Return True if the monitor should run in digest mode (batch alerts instead of immediate).
 

@@ -274,3 +274,17 @@ class TestHelperFunctions:
             from backend.services.error_monitor import config as cfg
             importlib.reload(cfg)
             assert cfg.get_digest_mode() is True
+
+
+class TestNoiseWebhookSecretName:
+    def test_default_noise_secret_name(self, monkeypatch):
+        from backend.services.error_monitor import config
+
+        monkeypatch.delenv("DISCORD_NOISE_WEBHOOK_SECRET_NAME", raising=False)
+        assert config.get_discord_noise_webhook_secret_name() == "discord-noise-webhook"
+
+    def test_noise_secret_name_env_override(self, monkeypatch):
+        from backend.services.error_monitor import config
+
+        monkeypatch.setenv("DISCORD_NOISE_WEBHOOK_SECRET_NAME", "other-noise")
+        assert config.get_discord_noise_webhook_secret_name() == "other-noise"

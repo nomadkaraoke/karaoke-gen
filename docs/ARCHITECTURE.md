@@ -56,7 +56,8 @@ Frontend clients ───────────────→ POST /api/clie
                                     │
                                     ├─ Normalize & deduplicate
                                     ├─ LLM incident grouping (Gemini Flash)
-                                    ├─ Discord alerts (new patterns, spikes, daily digest)
+                                    ├─ Discord #alerts (new patterns, spikes, incidents)
+                                    ├─ Discord #noise (auto-resolved summary, daily digest)
                                     ├─ Firestore: error_patterns, error_incidents
                                     └─ Auto-resolve silent patterns
 
@@ -64,6 +65,40 @@ Entry point: python -m backend.services.error_monitor.monitor
 Design spec: docs/archive/2026-04-12-error-monitor-design.md
 Frontend crash reporting: docs/archive/2026-04-19-frontend-crash-reporting-plan.md
 ```
+
+#### Discord channels: #alerts = signal, #noise = everything else
+
+`#alerts` is reserved for **actual problems someone should look at**. Anything
+routine/informational goes to `#noise`. When adding a new Discord post, pick the
+channel by asking "does this need a human?" — if not, it's noise.
+
+| Message | Channel | Source |
+|---------|---------|--------|
+| 🔴 New Error Pattern / ⚠️ Spike / incident | #alerts | error monitor `send_message` |
+| ✅ Patterns Auto-Resolved, 📊 Daily Error Digest | #noise | error monitor `send_noise_message` |
+| 🔴 Job failed, 🟠 Audio download stalled, 🟠 Publish completeness SHADOW, 🟠 Gemini unavailable | #alerts | `backend/services/ops_alerts.py` |
+| OAuth credential invalid/expired (startup check, `/test-alert`) | #alerts | `backend/main.py`, `auth.py` |
+| Nightly Backup Report (clean run) | #noise | `infrastructure/functions/backup_to_aws` |
+| 🚨 Nightly Backup FAILED (any step errored) | #alerts | same |
+| 📋 Quarterly DR restore drill due | #alerts | same (`?mode=drill_reminder`, actionable) |
+| 🚨 DR backup is stale / monitor failed | `DR_MONITOR_DISCORD_WEBHOOK` | `.github/workflows/dr-backup-freshness.yml` (failures only) |
+| ✅ E2E Daily Test PASSED, 🩹 E2E self-healed (auto-merge PR opened) | #noise | `.github/workflows/e2e-daily.yml` |
+| 🚨 E2E Daily FAILED, 🩹 self-heal PR needs a CI approval click / could not open, ❌ Tenant E2E FAILED | #alerts | `e2e-daily.yml`, `e2e-tenant-daily.yml` |
+| GitHub PR opened/closed (org webhook) | #noise | GitHub org settings |
+| New YouTube video | #releases | `DEFAULT_DISCORD_WEBHOOK_URL` ← `discord-releases-webhook` |
+
+How the webhooks resolve:
+
+- **#alerts**: Secret Manager `discord-alert-webhook` (error monitor gets it as
+  `DISCORD_WEBHOOK_URL` from Pulumi; the backup function likewise; GitHub Actions
+  secret `DISCORD_ALERT_WEBHOOK_URL`).
+- **#noise**: Secret Manager `discord-noise-webhook`, read **at runtime** (env
+  `DISCORD_NOISE_WEBHOOK_URL` overrides; secret name overridable with
+  `DISCORD_NOISE_WEBHOOK_SECRET_NAME`) — no Pulumi env wiring needed. GitHub
+  Actions secret `DISCORD_NOISE_WEBHOOK_URL`.
+- **Never silently dropped**: if the noise webhook can't be resolved, or a post
+  to it fails, the message falls back to #alerts. The error monitor rate-limits
+  each channel separately (10/run each), so noise can't consume the alert budget.
 
 Frontend crashes are captured via `window.onerror`, `unhandledrejection`, Next.js
 `error.tsx`, and a `CrashReportBoundary` around the review UIs. They POST to

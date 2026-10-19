@@ -14,7 +14,7 @@ Nightly backup pipeline:
     bundle last reached S3; full re-bundle on the first Sunday of each month;
     survives loss of GitHub access, e.g. an account ban)
 5. Upload staging files to S3 (Firestore export held back except Sundays)
-6. Discord alert
+6. Discord report (success → #noise, failure → #alerts)
 
 Triggered by Cloud Scheduler at 1:00 AM ET daily.
 
@@ -30,7 +30,7 @@ import os
 
 import functions_framework
 
-from discord_alert import send_alert
+from discord_alert import get_noise_webhook_url, send_alert, send_noise
 from firestore_export import export_firestore
 from bigquery_export import export_bigquery_tables
 from gcs_sync import sync_gcs_to_staging
@@ -239,12 +239,21 @@ def backup_to_aws(request):
         if isinstance(value, str):
             fields.append({"name": key, "value": value, "inline": True})
 
-    if DISCORD_WEBHOOK_URL:
-        send_alert(
-            webhook_url=DISCORD_WEBHOOK_URL,
+    # #alerts is signal only: a clean run is routine → #noise; any failure or
+    # partial run stays in #alerts.
+    if success:
+        send_noise(
+            noise_url=get_noise_webhook_url(GCP_PROJECT, DISCORD_WEBHOOK_URL),
+            alert_url=DISCORD_WEBHOOK_URL,
             title="Nightly Backup Report",
             fields=fields,
-            success=success,
+        )
+    elif DISCORD_WEBHOOK_URL:
+        send_alert(
+            webhook_url=DISCORD_WEBHOOK_URL,
+            title="🚨 Nightly Backup FAILED",
+            fields=fields,
+            success=False,
         )
 
     status_code = 200 if success else 500

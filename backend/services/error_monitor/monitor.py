@@ -33,6 +33,7 @@ from backend.services.error_monitor.config import (
     SPIKE_MIN_COUNT,
     SPIKE_MULTIPLIER,
     get_digest_mode,
+    get_discord_noise_webhook_secret_name,
     get_discord_webhook_secret_name,
     get_llm_enabled,
 )
@@ -279,7 +280,11 @@ class ErrorMonitor:
     def __init__(self) -> None:
         self.logging_client = cloud_logging.Client(project=GCP_PROJECT)
         self.firestore_adapter = ErrorPatternsAdapter()
-        self.discord = ErrorMonitorDiscord(webhook_url=self._get_discord_webhook())
+        alert_webhook = self._get_discord_webhook()
+        self.discord = ErrorMonitorDiscord(
+            webhook_url=alert_webhook,
+            noise_webhook_url=self._get_discord_noise_webhook(alert_webhook),
+        )
 
     def _get_discord_webhook(self) -> str:
         """Retrieve the Discord webhook URL.
@@ -299,6 +304,33 @@ class ErrorMonitor:
         secret_path = f"projects/{GCP_PROJECT}/secrets/{secret_name}/versions/latest"
         response = client.access_secret_version(name=secret_path)
         return response.payload.data.decode("utf-8").strip()
+
+    def _get_discord_noise_webhook(self, alert_webhook: str) -> str:
+        """Retrieve the #noise Discord webhook URL (informational posts).
+
+        ``DISCORD_NOISE_WEBHOOK_URL`` env var first, then the Secret Manager
+        secret ``discord-noise-webhook`` (override the name with
+        ``DISCORD_NOISE_WEBHOOK_SECRET_NAME``). If neither yields a URL, falls
+        back to ``alert_webhook`` so informational posts are never dropped.
+        """
+        url = (os.environ.get("DISCORD_NOISE_WEBHOOK_URL") or "").strip()
+        if url:
+            return url
+
+        secret_name = get_discord_noise_webhook_secret_name()
+        try:
+            client = secretmanager.SecretManagerServiceClient()
+            secret_path = f"projects/{GCP_PROJECT}/secrets/{secret_name}/versions/latest"
+            response = client.access_secret_version(name=secret_path)
+            url = response.payload.data.decode("utf-8").strip()
+        except Exception as exc:  # noqa: BLE001 - noise channel is optional
+            logger.warning(
+                "Could not read %s (%s); informational posts will go to the alert webhook",
+                secret_name,
+                exc,
+            )
+            return alert_webhook
+        return url or alert_webhook
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -601,8 +633,9 @@ class ErrorMonitor:
                 )
 
         if resolved:
+            # Good news, not a problem → #noise (keeps #alerts pure signal).
             msg = format_auto_resolved_alert(resolved)
-            self.discord.send_message(msg)
+            self.discord.send_noise_message(msg)
 
     # ------------------------------------------------------------------
     # Daily digest
@@ -659,7 +692,8 @@ class ErrorMonitor:
             active_patterns=len(active_patterns),
             per_service_counts=per_service_counts,
         )
-        self.discord.send_message(msg)
+        # Informational summary → #noise.
+        self.discord.send_noise_message(msg)
 
 
 # ---------------------------------------------------------------------------
