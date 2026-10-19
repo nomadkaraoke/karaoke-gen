@@ -32,6 +32,11 @@ DIVEBAR_FOLDER_ID = "1zxnSZcE03gzy0YVGOdnTrEIi8It_3Wu8"
 BIGQUERY_DATASET = "karaoke_decide"
 
 
+# Cloud Scheduler HTTP attempt deadline for the divebar-mirror jobs. Must exceed
+# the function's timeout_seconds (540) or a slow run gets retried mid-sync.
+SCHEDULER_ATTEMPT_DEADLINE = "600s"
+
+
 def create_divebar_mirror_resources(all_secrets: dict) -> dict:
     """Create all Divebar mirror infrastructure resources."""
     resources = {}
@@ -229,6 +234,10 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
                 service_account_email=sa.email,
             ),
         ),
+        # Default deadline is 180s but a run takes 360-525s: the scheduler retried
+        # still-running syncs, the retries queued behind them (max 1 instance) and
+        # the third overlapping run OOMed. Outlast the 540s function timeout.
+        attempt_deadline=SCHEDULER_ATTEMPT_DEADLINE,
         retry_config=cloudscheduler.JobRetryConfigArgs(
             retry_count=2,
             min_backoff_duration="60s",
@@ -260,6 +269,10 @@ def create_divebar_mirror_resources(all_secrets: dict) -> dict:
                 service_account_email=sa.email,
             ),
         ),
+        # Default deadline is 180s but a run takes 360-525s: the scheduler retried
+        # still-running syncs, the retries queued behind them (max 1 instance) and
+        # the third overlapping run OOMed. Outlast the 540s function timeout.
+        attempt_deadline=SCHEDULER_ATTEMPT_DEADLINE,
         retry_config=cloudscheduler.JobRetryConfigArgs(
             retry_count=2,
             min_backoff_duration="60s",

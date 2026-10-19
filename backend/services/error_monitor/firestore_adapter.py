@@ -38,6 +38,9 @@ class PatternData:
     sample_message: str
     count: int
     timestamp: datetime
+    # Hold the alert until more than this many occurrences land within one hour
+    # (see is_below_alert_threshold). None = alert on first sight, as usual.
+    alert_min_hourly_count: int | None = None
 
 
 @dataclass
@@ -70,6 +73,33 @@ _AUTO_RESOLVE_ELIGIBLE = {"new", "acknowledged"}
 def _utcnow() -> datetime:
     """Return current UTC datetime."""
     return datetime.now(tz=timezone.utc)
+
+
+def is_below_alert_threshold(pattern: dict, now: datetime | None = None) -> bool:
+    """True if a gated pattern hasn't (yet) earned an alert.
+
+    A pattern with ``alert_min_hourly_count`` (frontend chunk-load failures)
+    alerts only once MORE than that many occurrences land within the last hour,
+    counted from ``rolling_counts``. Until then it stays ``new`` with
+    ``alerted_at=None`` so a later burst can still fire. Ungated patterns are
+    never held.
+    """
+    threshold = pattern.get("alert_min_hourly_count")
+    if threshold is None:
+        return False
+    now = now or _utcnow()
+    cutoff = now - timedelta(hours=1)
+    recent = 0
+    for entry in pattern.get("rolling_counts") or []:
+        try:
+            ts = datetime.fromisoformat(entry["ts"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if ts >= cutoff:
+            recent += int(entry.get("count") or 0)
+    return recent <= threshold
 
 
 def _iso(dt: datetime) -> str:
@@ -181,24 +211,25 @@ class ErrorPatternsAdapter:
 
         if not snap.exists:
             # ── brand new pattern ──────────────────────────────────────────
-            doc_ref.set(
-                {
-                    "pattern_id": data.pattern_id,
-                    "service": data.service,
-                    "resource_type": data.resource_type,
-                    "normalized_message": data.normalized_message,
-                    "sample_message": data.sample_message,
-                    "status": "new",
-                    "severity": "P3",
-                    "total_count": data.count,
-                    "rolling_counts": [new_rolling_entry],
-                    "first_seen": ts_iso,
-                    "last_seen": ts_iso,
-                    "alerted_at": None,
-                    "created_at": ts_iso,
-                    "updated_at": ts_iso,
-                }
-            )
+            doc = {
+                "pattern_id": data.pattern_id,
+                "service": data.service,
+                "resource_type": data.resource_type,
+                "normalized_message": data.normalized_message,
+                "sample_message": data.sample_message,
+                "status": "new",
+                "severity": "P3",
+                "total_count": data.count,
+                "rolling_counts": [new_rolling_entry],
+                "first_seen": ts_iso,
+                "last_seen": ts_iso,
+                "alerted_at": None,
+                "created_at": ts_iso,
+                "updated_at": ts_iso,
+            }
+            if data.alert_min_hourly_count is not None:
+                doc["alert_min_hourly_count"] = data.alert_min_hourly_count
+            doc_ref.set(doc)
             return UpsertResult(pattern_id=data.pattern_id, is_new=True)
 
         # ── existing pattern ───────────────────────────────────────────────
@@ -216,6 +247,8 @@ class ErrorPatternsAdapter:
             "sample_message": data.sample_message,
             "updated_at": ts_iso,
         }
+        if data.alert_min_hourly_count is not None:
+            update["alert_min_hourly_count"] = data.alert_min_hourly_count
 
         # Reactivation: pattern was considered resolved/fixed but error recurred
         is_new = False

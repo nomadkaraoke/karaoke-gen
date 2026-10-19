@@ -150,6 +150,18 @@ MAX_DISCORD_MESSAGES_PER_RUN: int = 10
 #: Discord API hard limit on message length.
 DISCORD_MAX_MESSAGE_LENGTH: int = 2000
 
+#: Discord message flag SUPPRESS_EMBEDS (1 << 2). Set on every error-monitor
+#: post so quoted URLs (GCP docs links) don't unfurl into large preview cards.
+DISCORD_SUPPRESS_EMBEDS_FLAG: int = 4
+
+#: When one run has MORE than this many new patterns for one service, send a
+#: single burst summary instead of one message each (2026-10-07/08: one bad
+#: mb-refresh run produced 73 "New Error Pattern" messages, 10 an hour).
+BURST_COLLAPSE_MIN_PATTERNS: int = 3
+
+#: Number of patterns listed in a burst summary.
+BURST_TOP_PATTERNS: int = 5
+
 # ---------------------------------------------------------------------------
 # Pattern tracking settings
 # ---------------------------------------------------------------------------

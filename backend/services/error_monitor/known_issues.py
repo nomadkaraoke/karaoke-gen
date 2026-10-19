@@ -109,11 +109,28 @@ _IGNORE_PATTERNS: list[tuple[str, re.Pattern, str]] = [
 ]
 
 
+# Patterns that are noise only for specific services: the same message from a
+# customer-facing service is a real problem. (pattern_name, services, regex, reason)
+_SERVICE_IGNORE_PATTERNS: list[tuple[str, frozenset[str], re.Pattern, str]] = [
+    (
+        "runner_manager_no_available_instance",
+        frozenset({"github-runner-manager"}),
+        re.compile(
+            r"request was aborted because there was no available instance",
+            re.IGNORECASE,
+        ),
+        "github-runner-manager scale-up burst: Cloud Run aborts webhook requests "
+        "while instances start, GitHub redelivers and the runners still dispatch "
+        "(seen 2026-09-20, 09-23, 09-27, 10-08)",
+    ),
+]
+
+
 def should_ignore(service: str, message: str) -> IgnoreReason | None:
     """Check whether a log entry matches a known infrastructure noise pattern.
 
-    The check is purely message-based; ``service`` is accepted for API symmetry
-    and future service-specific overrides but does not gate any pattern today.
+    ``_IGNORE_PATTERNS`` match on the message alone; ``_SERVICE_IGNORE_PATTERNS``
+    also require ``service`` to be one of the listed services.
 
     Args:
         service: The originating service name (e.g. ``"karaoke-backend"``).
@@ -128,6 +145,10 @@ def should_ignore(service: str, message: str) -> IgnoreReason | None:
 
     for pattern_name, pattern, reason in _IGNORE_PATTERNS:
         if pattern.search(message):
+            return IgnoreReason(pattern_name=pattern_name, reason=reason)
+
+    for pattern_name, services, pattern, reason in _SERVICE_IGNORE_PATTERNS:
+        if service in services and pattern.search(message):
             return IgnoreReason(pattern_name=pattern_name, reason=reason)
 
     return None

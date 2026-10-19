@@ -22,6 +22,7 @@ from google.cloud import logging as cloud_logging
 from google.cloud import secretmanager
 
 from backend.services.error_monitor.config import (
+    BURST_COLLAPSE_MIN_PATTERNS,
     GCP_PROJECT,
     LEGACY_ROLLING_WINDOW_MINUTES,
     LOOKBACK_MINUTES,
@@ -43,12 +44,14 @@ from backend.services.error_monitor.discord import (
     format_daily_digest,
     format_incident_alert,
     format_new_pattern_alert,
+    format_pattern_burst_alert,
     format_spike_alert,
 )
 from backend.services.error_monitor.firestore_adapter import (
     ErrorPatternsAdapter,
     PatternData,
     UpsertResult,
+    is_below_alert_threshold,
 )
 from backend.services.error_monitor.known_issues import should_ignore
 from backend.services.error_monitor.llm_analysis import analyze_patterns, find_duplicate_patterns
@@ -446,6 +449,11 @@ class ErrorMonitor:
             pid = pattern.get("pattern_id")
             if not pid or pid in groups:
                 continue
+            if is_below_alert_threshold(pattern, now):
+                # Gated pattern (e.g. frontend chunk-load failures, which the
+                # client auto-reloads) that hasn't hit its hourly threshold yet.
+                # Left unalerted so a later burst still fires.
+                continue
             groups[pid] = {
                 "service": pattern.get("service", "unknown"),
                 "resource_type": pattern.get("resource_type", "unknown"),
@@ -568,31 +576,25 @@ class ErrorMonitor:
 
                     incident_pattern_ids.update(incident_pids)
 
-        # ── Step 6: Individual alerts for new patterns not in incidents ────
+        # ── Step 6: Alerts for new patterns not in incidents ───────────────
+        # One root cause often emits many distinct messages (one per table,
+        # file, step). More than BURST_COLLAPSE_MIN_PATTERNS from one service
+        # in a run → ONE burst summary; otherwise one alert per pattern. Every
+        # send still goes through the per-run cap in ErrorMonitorDiscord;
+        # unsent patterns stay unalerted and are picked up again (and collapse
+        # with that service's other leftovers) next run.
+        by_service: dict[str, list[str]] = {}
         for pattern_id in new_pattern_ids:
-            if pattern_id in incident_pattern_ids:
+            if pattern_id in incident_pattern_ids or pattern_id not in groups:
                 continue
-            if pattern_id not in groups:
-                continue
-            group = groups[pattern_id]
+            by_service.setdefault(groups[pattern_id]["service"], []).append(pattern_id)
 
-            # Fetch fresh copy to get first_seen timestamp
-            existing = self.firestore_adapter.get_pattern(pattern_id)
-            first_seen = existing.get("first_seen", now_iso) if existing else now_iso
-
-            msg = format_new_pattern_alert(
-                service=group["service"],
-                resource_type=group["resource_type"],
-                normalized_message=group["normalized"],
-                sample_message=group["sample_message"],
-                count=group["count"],
-                first_seen=first_seen,
-            )
-            if self.discord.send_message(msg):
-                try:
-                    self.firestore_adapter.update_pattern_alerted(pattern_id)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Could not update alerted_at for %s: %s", pattern_id, exc)
+        for service, pids in by_service.items():
+            if len(pids) > BURST_COLLAPSE_MIN_PATTERNS:
+                self._send_burst_alert(service, pids, groups, now_iso)
+            else:
+                for pattern_id in pids:
+                    self._send_new_pattern_alert(pattern_id, groups[pattern_id], now_iso)
 
         # ── Step 7: Spike alerts ───────────────────────────────────────────
         for spike in spike_patterns:
@@ -606,6 +608,51 @@ class ErrorMonitor:
 
         # ── Step 8: Auto-resolve check ─────────────────────────────────────
         self._check_auto_resolve()
+
+    # ------------------------------------------------------------------
+    # New-pattern alert helpers
+    # ------------------------------------------------------------------
+
+    def _mark_alerted(self, pattern_ids: list[str]) -> None:
+        for pid in pattern_ids:
+            try:
+                self.firestore_adapter.update_pattern_alerted(pid)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Could not update alerted_at for %s: %s", pid, exc)
+
+    def _send_new_pattern_alert(self, pattern_id: str, group: dict, now_iso: str) -> None:
+        # Fetch fresh copy to get first_seen timestamp
+        existing = self.firestore_adapter.get_pattern(pattern_id)
+        first_seen = existing.get("first_seen", now_iso) if existing else now_iso
+
+        msg = format_new_pattern_alert(
+            service=group["service"],
+            resource_type=group["resource_type"],
+            normalized_message=group["normalized"],
+            sample_message=group["sample_message"],
+            count=group["count"],
+            first_seen=first_seen,
+        )
+        if self.discord.send_message(msg):
+            self._mark_alerted([pattern_id])
+
+    def _send_burst_alert(
+        self, service: str, pattern_ids: list[str], groups: dict, now_iso: str
+    ) -> None:
+        patterns = []
+        for pid in pattern_ids:
+            existing = self.firestore_adapter.get_pattern(pid) or {}
+            patterns.append(
+                {
+                    "normalized_message": groups[pid]["normalized"],
+                    "count": groups[pid]["count"],
+                    "first_seen": existing.get("first_seen", now_iso),
+                    "last_seen": existing.get("last_seen", now_iso),
+                }
+            )
+        logger.info("Collapsing %d new %s patterns into one burst alert", len(pattern_ids), service)
+        if self.discord.send_message(format_pattern_burst_alert(service, patterns)):
+            self._mark_alerted(pattern_ids)
 
     # ------------------------------------------------------------------
     # Auto-resolve helper

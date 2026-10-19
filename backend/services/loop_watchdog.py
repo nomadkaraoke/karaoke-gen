@@ -13,7 +13,8 @@ This module makes such freezes self-diagnosing:
 * a daemon thread notices when the stamp goes stale (> ``stall_threshold_s``)
   and captures the *event-loop thread's* Python stack via
   ``sys._current_frames()`` — i.e. the exact line that is blocking — resampling
-  at ``sample_at_s`` so a long freeze shows where it actually spent its time;
+  at ``sample_at_s`` so a long freeze shows where it actually spent its time
+  (``EVENT_LOOP_STALL in progress`` lines, always WARNING);
 * when the loop resumes it logs ``EVENT_LOOP_STALL ended duration_ms=…``
   (WARNING, or ERROR at ``error_threshold_s`` — the alerting log metric keys on
   that), and for stalls ≥ ``record_threshold_s`` hands a summary to
@@ -248,19 +249,11 @@ class LoopWatchdog:
         if self._samples and self._samples[-1]["stack"] == stack:
             return  # identical to the previous sample — nothing new to learn
         self._samples.append({"at_s": round(age, 1), "culprit": culprit, "stack": stack, "idle": False})
-        # Same impact rule as _finish: an idle instance's stall never logs ERROR.
-        # (Requests still queued in the socket are invisible until the loop
-        # resumes, so this can under-call mid-stall; the ended line decides.)
-        no_impact = self.request_tracker is not None and self._requests_affected() == 0
-        # Judge severity on blocked time only: frozen (throttled) time is discounted
-        # from the final duration too, so a post-thaw sample mustn't claim ERROR
-        # for a block that ends up below the threshold.
-        blocked = max(0.0, age - self._stall_frozen_s)
-        level = (
-            logging.ERROR
-            if blocked >= self.error_threshold_s and not no_impact
-            else logging.WARNING
-        )
+        # Always WARNING. The "ended" line is the one ERROR per freeze (>=10s
+        # blocked with a request affected): it's what the backend/event_loop_stalls
+        # metric counts, and the error monitor turns each ERROR line shape into its
+        # own #alerts pattern, so an ERROR here too meant two alerts per freeze.
+        level = logging.WARNING
         logger.log(
             level,
             "EVENT_LOOP_STALL in progress age_ms=%d culprit=%s\n%s",
