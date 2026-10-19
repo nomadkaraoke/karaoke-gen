@@ -12,120 +12,69 @@ class MusixmatchProvider(BaseLyricsProvider):
         super().__init__(config, logger)
         self.rapidapi_key = config.rapidapi_key
 
+    API_HOST = "musixmatch-song-lyrics-api.p.rapidapi.com"
+
     def _fetch_data_from_source(self, artist: str, title: str) -> Optional[Dict[str, Any]]:
-        """Fetch raw song data from Musixmatch via RapidAPI."""
+        """Fetch raw song data from Musixmatch via RapidAPI.
+
+        The API moved to ``GET /lyrics?artist=&title=`` (the old
+        ``/lyrics/{artist}/{title}/`` path 404s for every song since ~2026-09).
+        It reports a miss as HTTP 200 with ``data.error`` set, not as a 404.
+        """
         if not self.rapidapi_key:
             self.logger.warning("No RapidAPI key provided for Musixmatch")
             return None
 
         self.logger.info(f"Fetching lyrics from Musixmatch for {artist} - {title}")
-        
+
         try:
-            # Construct the API URL with artist and title
-            url = f"https://musixmatch-song-lyrics-api.p.rapidapi.com/lyrics/{artist}/{title}/"
-            
-            headers = {
-                "x-rapidapi-key": self.rapidapi_key,
-                "x-rapidapi-host": "musixmatch-song-lyrics-api.p.rapidapi.com"
-            }
-            
-            self.logger.debug(f"Making Musixmatch API request to: {url}")
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(
+                f"https://{self.API_HOST}/lyrics",
+                params={"artist": artist, "title": title},
+                headers={"x-rapidapi-key": self.rapidapi_key, "x-rapidapi-host": self.API_HOST},
+                timeout=10,
+            )
             response.raise_for_status()
-            
-            data = response.json()
-            
-            # Check if we got a valid response
-            if not data.get("message", {}).get("body", {}).get("macro_calls"):
-                self.logger.warning("Invalid response structure from Musixmatch API")
+            data = (response.json() or {}).get("data") or {}
+
+            if data.get("error") or not str(data.get("lyrics") or "").strip():
+                self.logger.info(f"No lyrics found on Musixmatch for {artist} - {title}")
                 return None
-                
-            # Check if lyrics are available
-            lyrics_data = data.get("message", {}).get("body", {}).get("macro_calls", {}).get("track.lyrics.get", {})
-            if not lyrics_data.get("message", {}).get("body", {}).get("lyrics"):
-                self.logger.warning("No lyrics found in Musixmatch response")
-                return None
-                
+
             self.logger.info("Successfully fetched lyrics from Musixmatch")
             return data
-            
+
         except requests.exceptions.RequestException as e:
             self._log_request_exception(e, "Musixmatch API")
             return None
-        except Exception as e:
-            self.logger.error(f"Error fetching from Musixmatch: {str(e)}")
+        except ValueError as e:  # non-JSON body
+            self.logger.warning(f"Unreadable Musixmatch response: {e}")
             return None
 
     def _convert_result_format(self, raw_data: Dict[str, Any]) -> LyricsData:
-        """Convert Musixmatch's raw API response to standardized format."""
-        try:
-            # Extract macro calls from the nested response
-            macro_calls = raw_data.get("message", {}).get("body", {}).get("macro_calls", {})
-            
-            # Extract track information
-            track_data = macro_calls.get("matcher.track.get", {}).get("message", {}).get("body", {}).get("track", {})
-            
-            # Extract lyrics information
-            lyrics_data = macro_calls.get("track.lyrics.get", {}).get("message", {}).get("body", {}).get("lyrics", {})
-            
-            # Get the actual lyrics text
-            lyrics_text = lyrics_data.get("lyrics_body", "")
-            
-            # Clean the lyrics
-            lyrics_text = self._clean_lyrics(lyrics_text)
-            
-            # Create metadata object
-            metadata = LyricsMetadata(
-                source="musixmatch",
-                track_name=track_data.get("track_name", ""),
-                artist_names=track_data.get("artist_name", ""),
-                album_name=track_data.get("album_name", ""),
-                duration_ms=track_data.get("track_length", 0) * 1000 if track_data.get("track_length") else None,
-                explicit=bool(track_data.get("explicit", 0)),
-                language=lyrics_data.get("lyrics_language", ""),
-                is_synced=False,  # Musixmatch API doesn't provide sync data in this format
-                lyrics_provider="musixmatch",
-                lyrics_provider_id=str(lyrics_data.get("lyrics_id", "")),
-                provider_metadata={
-                    "musixmatch_track_id": track_data.get("track_id"),
-                    "musixmatch_lyrics_id": lyrics_data.get("lyrics_id"),
-                    "album_id": track_data.get("album_id"),
-                    "artist_id": track_data.get("artist_id"),
-                    "track_share_url": track_data.get("track_share_url"),
-                    "track_edit_url": track_data.get("track_edit_url"),
-                    "lyrics_language": lyrics_data.get("lyrics_language"),
-                    "lyrics_language_description": lyrics_data.get("lyrics_language_description"),
-                    "lyrics_copyright": lyrics_data.get("lyrics_copyright"),
-                    "track_rating": track_data.get("track_rating"),
-                    "num_favourite": track_data.get("num_favourite"),
-                    "first_release_date": track_data.get("first_release_date"),
-                    "spotify_id": track_data.get("track_spotify_id"),
-                    "isrc": track_data.get("track_isrc"),
-                    "api_source": "rapidapi_musixmatch",
-                },
-            )
-
-            # Create segments with words from lyrics
-            segments = self._create_segments_with_words(lyrics_text, is_synced=False)
-
-            # Create result object with segments
-            return LyricsData(source="musixmatch", segments=segments, metadata=metadata)
-            
-        except Exception as e:
-            self.logger.error(f"Error converting Musixmatch response format: {str(e)}")
-            # Return empty lyrics data if conversion fails
-            return LyricsData(
-                source="musixmatch",
-                segments=[],
-                metadata=LyricsMetadata(
-                    source="musixmatch",
-                    track_name="",
-                    artist_names="",
-                    lyrics_provider="musixmatch",
-                    is_synced=False,
-                    provider_metadata={"api_source": "rapidapi_musixmatch", "conversion_error": str(e)},
-                )
-            )
+        """Convert Musixmatch's ``data`` object (trackName, artistName, trackId, lyrics) to LyricsData."""
+        if "message" in raw_data:  # raw response cached from the old macro_calls API
+            calls = raw_data["message"].get("body", {}).get("macro_calls", {})
+            track = calls.get("matcher.track.get", {}).get("message", {}).get("body", {}).get("track", {})
+            lyrics = calls.get("track.lyrics.get", {}).get("message", {}).get("body", {}).get("lyrics", {})
+            raw_data = {"trackName": track.get("track_name", ""), "artistName": track.get("artist_name", ""),
+                        "trackId": track.get("track_id"), "lyrics": lyrics.get("lyrics_body", "")}
+        lyrics_text = self._clean_lyrics(raw_data.get("lyrics", ""))
+        metadata = LyricsMetadata(
+            source="musixmatch",
+            track_name=raw_data.get("trackName", ""),
+            artist_names=raw_data.get("artistName", ""),
+            lyrics_provider="musixmatch",
+            lyrics_provider_id=str(raw_data.get("trackId", "")),
+            is_synced=False,
+            provider_metadata={
+                "musixmatch_track_id": raw_data.get("trackId"),
+                "artwork_url": raw_data.get("artworkUrl"),
+                "api_source": "rapidapi_musixmatch",
+            },
+        )
+        segments = self._create_segments_with_words(lyrics_text, is_synced=False)
+        return LyricsData(source="musixmatch", segments=segments, metadata=metadata)
 
     def _clean_lyrics(self, lyrics: str) -> str:
         """Clean and process lyrics from Musixmatch to remove unwanted content."""
