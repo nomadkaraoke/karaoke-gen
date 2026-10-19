@@ -19,6 +19,10 @@ from backend.services.storage_service import StorageService
 logger = logging.getLogger(__name__)
 
 
+class VisibilityChangeInProgress(Exception):
+    """Another visibility change for this job claimed it first."""
+
+
 class VisibilityChangeService:
     """Service for changing job visibility after completion."""
 
@@ -173,12 +177,53 @@ class VisibilityChangeService:
         """
         logger.info(f"[job:{job_id}] Starting visibility change: private -> public (by {user_email})")
 
+        # Claim the job before any deletes: two concurrent requests that both passed
+        # validate_change must not both recycle the brand code and re-process.
+        claimed = await asyncio.to_thread(
+            self.job_manager.firestore.try_set_job_state_flag, job_id, "visibility_change_in_progress"
+        )
+        if not claimed:
+            raise VisibilityChangeInProgress("A visibility change is already in progress for this job")
+
         db = self.job_manager.firestore.db
         job_ref = db.collection("jobs").document(job_id)
+        try:
+            # Steps 1-5 are sync YouTube/Dropbox/GDrive/GCS/Firestore I/O: off the event loop.
+            await asyncio.to_thread(self._reset_job_for_public, job_id, job, user_email, job_ref)
+        except Exception:
+            job_ref.update({"state_data.visibility_change_in_progress": DELETE_FIELD})
+            raise
+
+        # Step 6: Trigger screens worker
+        from backend.services.worker_service import get_worker_service
+        worker_service = get_worker_service()
+        triggered = await worker_service.trigger_screens_worker(job_id)
+
+        if not triggered:
+            logger.error(f"[job:{job_id}] Failed to trigger screens worker for visibility change")
+            # Restore to complete status on failure
+            job_ref.update({
+                "status": "complete",
+                "is_private": True,
+                "state_data.visibility_change_in_progress": DELETE_FIELD,
+                "state_data.regen_restore_status": DELETE_FIELD,
+            })
+            raise RuntimeError("Failed to trigger screens worker")
+
+        logger.info(f"[job:{job_id}] Visibility change to public initiated, screens worker triggered")
+        return {
+            "status": "processing",
+            "message": "Visibility change to public started. The video will be re-rendered "
+                       "with default branding and published publicly. This takes ~15-30 minutes.",
+            "reprocessing_required": True,
+        }
+
+    def _reset_job_for_public(self, job_id: str, job, user_email: str, job_ref) -> None:
+        """Steps 1-5 of change_to_public (all sync I/O; run via asyncio.to_thread)."""
         storage = StorageService()
 
         # Step 1: Delete distributed outputs + GCS finals
-        await asyncio.to_thread(self._delete_distributed_outputs, job_id, job, keep_gcs_finals=False)
+        self._delete_distributed_outputs(job_id, job, keep_gcs_finals=False)
 
         # Step 2: Delete screens and rendered video from GCS
         for path in [
@@ -253,30 +298,6 @@ class VisibilityChangeService:
             }]),
         }
         job_ref.update(update_payload)
-
-        # Step 6: Trigger screens worker
-        from backend.services.worker_service import get_worker_service
-        worker_service = get_worker_service()
-        triggered = await worker_service.trigger_screens_worker(job_id)
-
-        if not triggered:
-            logger.error(f"[job:{job_id}] Failed to trigger screens worker for visibility change")
-            # Restore to complete status on failure
-            job_ref.update({
-                "status": "complete",
-                "is_private": True,
-                "state_data.visibility_change_in_progress": DELETE_FIELD,
-                "state_data.regen_restore_status": DELETE_FIELD,
-            })
-            raise RuntimeError("Failed to trigger screens worker")
-
-        logger.info(f"[job:{job_id}] Visibility change to public initiated, screens worker triggered")
-        return {
-            "status": "processing",
-            "message": "Visibility change to public started. The video will be re-rendered "
-                       "with default branding and published publicly. This takes ~15-30 minutes.",
-            "reprocessing_required": True,
-        }
 
     def _delete_public_outputs(self, job_id: str, public_outputs: dict):
         """Delete the captured PUBLIC outputs and recycle the public NOMAD number.

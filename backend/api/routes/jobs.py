@@ -3100,7 +3100,7 @@ async def change_visibility(
     user_email = auth_result.user_email or "unknown"
     is_admin = auth_result.is_admin
 
-    from backend.services.visibility_change_service import VisibilityChangeService
+    from backend.services.visibility_change_service import VisibilityChangeInProgress, VisibilityChangeService
     service = VisibilityChangeService(job_manager)
 
     # Validate (skip job-exists check since we already handled it)
@@ -3130,6 +3130,8 @@ async def change_visibility(
     except RerenderError as e:
         # Old track whose finals were archived and can't be regenerated right now.
         raise HTTPException(status_code=e.status_code, detail=str(e))
+    except VisibilityChangeInProgress as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         logger.error(f"Error changing visibility for job {job_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to change visibility: {str(e)}")

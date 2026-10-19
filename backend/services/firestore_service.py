@@ -153,6 +153,26 @@ class FirestoreService:
 
         return _claim(self.db.transaction(), doc_ref)
 
+    def try_set_job_state_flag(self, job_id: str, key: str) -> bool:
+        """Atomically set ``state_data.<key>`` to True if it isn't already truthy.
+
+        The inverse of ``claim_job_state_flag``: returns True for exactly one of
+        several concurrent callers (a guard flag such as visibility_change_in_progress).
+        """
+        doc_ref = self.db.collection(self.collection).document(job_id)
+
+        @firestore.transactional
+        def _set(transaction, ref) -> bool:
+            snapshot = ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return False
+            if ((snapshot.to_dict() or {}).get("state_data") or {}).get(key):
+                return False
+            transaction.update(ref, {f"state_data.{key}": True, "updated_at": datetime.utcnow()})
+            return True
+
+        return _set(self.db.transaction(), doc_ref)
+
     def update_job_status(
         self,
         job_id: str,

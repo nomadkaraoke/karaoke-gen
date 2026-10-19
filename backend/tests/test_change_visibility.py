@@ -321,6 +321,41 @@ class TestChangeToPublic:
             assert payload["is_private"] is True
 
 
+class TestChangeToPublicClaim:
+    """change_to_public claims visibility_change_in_progress atomically before deleting anything."""
+
+    @pytest.mark.asyncio
+    async def test_lost_claim_deletes_nothing(self):
+        from backend.services.visibility_change_service import VisibilityChangeInProgress
+
+        mock_job_manager = MagicMock()
+        mock_job_manager.firestore.try_set_job_state_flag.return_value = False
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs") as mock_delete:
+            with pytest.raises(VisibilityChangeInProgress):
+                await service.change_to_public("test-123", job, "user@example.com")
+        mock_delete.assert_not_called()
+        mock_job_manager.firestore.try_set_job_state_flag.assert_called_once_with("test-123", "visibility_change_in_progress")
+
+    @pytest.mark.asyncio
+    async def test_failed_reset_releases_the_claim(self):
+        mock_job_manager = MagicMock()
+        mock_job_manager.firestore.try_set_job_state_flag.return_value = True
+        mock_job_ref = MagicMock()
+        mock_job_manager.firestore.db.collection.return_value.document.return_value = mock_job_ref
+        service = VisibilityChangeService(job_manager=mock_job_manager)
+        job = _make_job(is_private=True, state_data={})
+
+        with patch("backend.services.visibility_change_service.VisibilityChangeService._delete_distributed_outputs",
+                   side_effect=RuntimeError("dropbox down")):
+            with pytest.raises(RuntimeError, match="dropbox down"):
+                await service.change_to_public("test-123", job, "user@example.com")
+        released = mock_job_ref.update.call_args_list[-1].args[0]
+        assert list(released) == ["state_data.visibility_change_in_progress"]
+
+
 class TestChangeToPrivateErrors:
     """Test error handling in public -> private flow."""
 
@@ -511,3 +546,31 @@ class TestStateTransitions:
         from backend.models.job import STATE_TRANSITIONS, JobStatus
         allowed = STATE_TRANSITIONS[JobStatus.COMPLETE]
         assert JobStatus.LYRICS_COMPLETE in allowed
+
+
+def test_route_maps_lost_visibility_claim_to_409():
+    from fastapi.testclient import TestClient
+
+    from backend.api.dependencies import require_auth
+    from backend.main import app
+    from backend.services.auth_service import AuthResult, UserType
+    from backend.services.visibility_change_service import VisibilityChangeInProgress
+
+    async def override():
+        return AuthResult(is_valid=True, user_type=UserType.UNLIMITED, remaining_uses=-1, message="Valid",
+                          user_email="user@example.com", is_admin=False)
+
+    app.dependency_overrides[require_auth] = override
+    try:
+        job = _make_job(is_private=True, state_data={})
+        job.user_email = "user@example.com"
+        job_manager = MagicMock()
+        job_manager.get_job.return_value = job
+        with patch("backend.api.routes.jobs.JobManager", return_value=job_manager), \
+             patch.object(VisibilityChangeService, "change_to_public",
+                          AsyncMock(side_effect=VisibilityChangeInProgress("A visibility change is already in progress for this job"))):
+            resp = TestClient(app).post(f"/api/jobs/{job.job_id}/change-visibility", json={"target_visibility": "public"})
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 409, resp.text
+    assert "already in progress" in resp.json()["detail"]
