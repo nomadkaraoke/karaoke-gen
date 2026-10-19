@@ -22,6 +22,33 @@ from datetime import datetime
 
 _UNSET = object()
 
+# audio-separator >= 0.47 defaults RoFormer `overlap` to each model YAML's num_overlap,
+# counted in windows. The karaoke models set 4-8, which is 4-6x the forward passes we ran
+# on 0.44 (gabox_v2 ~26s -> 149s per track on an L4). Two windows keeps chunk seams smooth
+# at ~1.5x the 0.44 cost; the instrumental models' YAMLs already use 2.
+# Before 0.47 `overlap` meant a step in seconds (2 = 4x slower), so only pass it on >= 0.47.
+SEPARATOR_MDXC_PARAMS = {
+    "segment_size": 256,
+    "override_model_segment_size": False,
+    "batch_size": None,
+    "overlap": 2,
+    "pitch_shift": 0,
+}
+WINDOW_OVERLAP_MIN_VERSION = (0, 47)
+
+
+def _separator_kwargs():
+    """Extra Separator kwargs for the installed audio-separator version."""
+    try:
+        from importlib.metadata import version
+
+        installed = tuple(int(part) for part in version("audio-separator").split(".")[:2])
+    except Exception:
+        return {}
+    if installed < WINDOW_OVERLAP_MIN_VERSION:
+        return {}
+    return {"mdxc_params": dict(SEPARATOR_MDXC_PARAMS)}
+
 
 def _import_remote_client_cls():
     try:
@@ -183,6 +210,7 @@ class AudioProcessor:
             log_formatter=self.log_formatter,
             model_file_dir=self.model_file_dir,
             output_format=self.lossless_output_format,
+            **_separator_kwargs(),
         )
 
         separator.load_model(model_filename=model_name)
@@ -357,6 +385,7 @@ class AudioProcessor:
                     log_formatter=self.log_formatter,
                     model_file_dir=self.model_file_dir,
                     output_format=self.lossless_output_format,
+                    **_separator_kwargs(),
                     output_dir=stems_dir,
                     ensemble_preset=instrumental_preset,
                 )
@@ -395,6 +424,7 @@ class AudioProcessor:
                     log_formatter=self.log_formatter,
                     model_file_dir=self.model_file_dir,
                     output_format=self.lossless_output_format,
+                    **_separator_kwargs(),
                 )
                 result["clean_instrumental"] = self._separate_clean_instrumental(
                     separator, audio_file, artist_title, track_output_dir, stems_dir
@@ -425,6 +455,7 @@ class AudioProcessor:
                         log_formatter=self.log_formatter,
                         model_file_dir=self.model_file_dir,
                         output_format=self.lossless_output_format,
+                        **_separator_kwargs(),
                         output_dir=stems_dir,
                         ensemble_preset=karaoke_preset,
                     )

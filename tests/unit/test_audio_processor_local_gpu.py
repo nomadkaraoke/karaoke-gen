@@ -267,6 +267,40 @@ class TestLocalSeparationWithPresets:
         stage2_kwargs = mock_separator_cls.call_args_list[1][1]
         assert stage2_kwargs.get("ensemble_preset") == "karaoke"
 
+    @patch.dict(os.environ, {}, clear=False)
+    @patch("importlib.metadata.version", return_value="0.47.1")
+    @patch("karaoke_gen.audio_processor.shutil")
+    @patch("karaoke_gen.audio_processor.Separator")
+    def test_both_stages_pass_overlap_two_on_window_overlap_separator(self, mock_separator_cls, mock_shutil, _mock_version):
+        """Stage 1 and the karaoke ensemble (num_overlap 4-8 in YAML) both run with overlap=2."""
+        os.environ.pop("AUDIO_SEPARATOR_API_URL", None)
+
+        stems_dir = "/tmp/stems"
+        mock_sep1 = MagicMock()
+        mock_sep1.separate.return_value = [
+            f"{stems_dir}/Song_(Vocals)_preset_instrumental_clean.flac",
+            f"{stems_dir}/Song_(Instrumental)_preset_instrumental_clean.flac",
+        ]
+        mock_sep2 = MagicMock()
+        mock_sep2.separate.return_value = [
+            f"{stems_dir}/Artist - Title (Vocals)_(Vocals)_preset_karaoke.flac",
+            f"{stems_dir}/Artist - Title (Vocals)_(No Vocal)_preset_karaoke.flac",
+        ]
+        mock_separator_cls.side_effect = [mock_sep1, mock_sep2]
+        mock_shutil.move.side_effect = lambda src, dst: dst
+        mock_shutil.copy2 = MagicMock()
+
+        with patch.object(self.processor, '_create_stems_directory', return_value=stems_dir):
+            with patch.object(self.processor, '_normalize_audio_files'):
+                with patch.object(self.processor, '_generate_combined_instrumentals', return_value={}):
+                    self.processor.process_audio_separation(
+                        "/tmp/test.wav", "Artist - Title", "/tmp/output"
+                    )
+
+        assert mock_separator_cls.call_count == 2
+        for call in mock_separator_cls.call_args_list:
+            assert call[1]["mdxc_params"]["overlap"] == 2
+
 
 class TestEnsembleStemTagParsing:
     """Tests for stem tag extraction from ensemble preset output filenames.
@@ -465,3 +499,35 @@ class TestEnsembleStemTagParsing:
         # Should not have classified anything
         assert result["clean_instrumental"].get("vocals") is None
         assert result["clean_instrumental"].get("instrumental") is None
+
+
+class TestSeparatorOverlapParams:
+    """audio-separator >= 0.47 counts RoFormer overlap in windows; gen pins 2 to keep karaoke models fast."""
+
+    def _kwargs_for_version(self, installed):
+        from karaoke_gen import audio_processor
+
+        with patch("importlib.metadata.version", return_value=installed):
+            return audio_processor._separator_kwargs()
+
+    def test_window_overlap_versions_get_overlap_two(self):
+        for installed in ("0.47.0", "0.47.1", "0.48.2", "1.0.0"):
+            kwargs = self._kwargs_for_version(installed)
+            assert kwargs["mdxc_params"]["overlap"] == 2, installed
+            assert kwargs["mdxc_params"]["batch_size"] is None
+
+    def test_seconds_overlap_versions_keep_library_defaults(self):
+        # Before 0.47 overlap=2 meant a 2 s step: 4x the passes of the 8 s default.
+        for installed in ("0.44.1", "0.44.2", "0.46.0"):
+            assert self._kwargs_for_version(installed) == {}, installed
+
+    def test_unknown_version_keeps_library_defaults(self):
+        from karaoke_gen import audio_processor
+
+        with patch("importlib.metadata.version", side_effect=Exception("not installed")):
+            assert audio_processor._separator_kwargs() == {}
+
+    def test_returns_a_fresh_copy(self):
+        kwargs = self._kwargs_for_version("0.47.1")
+        kwargs["mdxc_params"]["overlap"] = 8
+        assert self._kwargs_for_version("0.47.1")["mdxc_params"]["overlap"] == 2
