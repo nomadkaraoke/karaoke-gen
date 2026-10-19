@@ -31,6 +31,8 @@ from typing import List, Optional, Tuple
 
 import requests
 
+from karaoke_gen.lyrics_transcriber.lyrics import lrclib_client
+
 logger = logging.getLogger(__name__)
 
 LRCLIB_BASE = "https://lrclib.net/api"
@@ -124,7 +126,7 @@ def fetch_lrclib_lyrics(
     if duration:
         params["duration"] = int(round(duration))
     try:
-        r = session.get(f"{LRCLIB_BASE}/get", params=params, timeout=timeout)
+        r = lrclib_client.get(f"{LRCLIB_BASE}/get", params, user_agent=USER_AGENT, timeout=timeout, session=session, retry=False)
         if r.status_code == 200:
             got = lyrics_from_lrclib_payload(r.json())
             if got and got.kind == "synced":
@@ -137,7 +139,7 @@ def fetch_lrclib_lyrics(
         exact_plain = None
 
     try:
-        r = session.get(f"{LRCLIB_BASE}/search", params={"q": f"{artist} {title}"}, timeout=timeout)
+        r = lrclib_client.get(f"{LRCLIB_BASE}/search", {"q": f"{artist} {title}"}, user_agent=USER_AGENT, timeout=timeout, session=session, retry=False)
         if r.status_code == 200:
             hits = r.json() or []
             for hit in sorted(hits, key=lambda h: 0 if h.get("syncedLyrics") else 1):
