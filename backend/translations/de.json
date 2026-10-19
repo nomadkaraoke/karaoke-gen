@@ -81,7 +81,8 @@
     "waveformGenerationError": "Fehler beim Generieren der Wellenform-Daten: {error}",
     "waveformNoAudio": "Kein Audio für Wellenform verfügbar",
     "sessionSaveError": "Korrekturdaten sind erforderlich",
-    "invalidIsDuetFlag": "is_duet muss ein Boolean sein (true oder false)"
+    "invalidIsDuetFlag": "is_duet muss ein Boolean sein (true oder false)",
+    "previewMissingTimings": "Die Zeile \"{line}\" enthält ein Wort ohne Timing. Synchronisiere diese Zeile und versuche die Vorschau dann erneut."
   },
   "audioSearch": {
     "notEnabled": "Die Audiosuche ist für diesen Mandanten nicht aktiviert",
