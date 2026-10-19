@@ -283,17 +283,20 @@ def test_preview_renders_sample_with_translations():
     theme_service.get_theme_style_params.return_value = {"karaoke": {}}
     with patch.object(tp, "get_theme_service", return_value=theme_service), \
          patch.object(tp, "resolve_assets", side_effect=lambda s, t: s), \
+         patch.object(tp, "_gcs_get", return_value=None), \
+         patch.object(tp, "_gcs_put") as put, \
          patch.object(tp, "render_karaoke_frame", return_value=b"jpeg") as render:
         url = tp.render_translation_preview("fr")
         tp.render_translation_preview("fr")  # cached
     assert url.startswith("data:image/jpeg;base64,")
     render.assert_called_once()
     assert render.call_args.kwargs["translations"] == tp.SAMPLES["fr"]["translations"]
+    put.assert_called_once()
+    assert put.call_args.args[0].startswith("themes/_translation_previews/nomad/fr-")
 
 
 def test_concurrent_cold_previews_render_once():
     import threading
-    import time as _time
 
     from backend.services import translation_preview as tp
 
@@ -303,11 +306,13 @@ def test_concurrent_cold_previews_render_once():
     theme_service.get_theme_style_params.return_value = {"karaoke": {}}
 
     def slow_render(*a, **k):
-        _time.sleep(0.2)
+        threading.Event().wait(0.2)  # not time.sleep: the module's no_sleep fixture stubs it
         return b"jpeg"
 
     with patch.object(tp, "get_theme_service", return_value=theme_service), \
          patch.object(tp, "resolve_assets", side_effect=lambda s, t: s), \
+         patch.object(tp, "_gcs_get", return_value=None), \
+         patch.object(tp, "_gcs_put"), \
          patch.object(tp, "render_karaoke_frame", side_effect=slow_render) as render:
         threads = [threading.Thread(target=tp.render_translation_preview, args=("de",)) for _ in range(5)]
         for t in threads:
@@ -315,3 +320,65 @@ def test_concurrent_cold_previews_render_once():
         for t in threads:
             t.join()
     assert render.call_count == 1
+
+
+def _preview_theme_service(style_params=None):
+    theme_service = MagicMock()
+    theme_service.get_default_theme_id.return_value = "nomad"
+    theme_service.get_theme_style_params.return_value = style_params or {"karaoke": {}}
+    return theme_service
+
+
+def test_preview_served_from_gcs_without_rendering():
+    from backend.services import translation_preview as tp
+
+    tp._CACHE.clear()
+    with patch.object(tp, "get_theme_service", return_value=_preview_theme_service()), \
+         patch.object(tp, "_gcs_get", return_value=b"cached") as get, \
+         patch.object(tp, "render_karaoke_frame") as render:
+        url = tp.render_translation_preview("it")
+    render.assert_not_called()
+    assert url == "data:image/jpeg;base64,Y2FjaGVk"
+    assert get.call_args.args[0].startswith("themes/_translation_previews/nomad/it-")
+
+
+def test_theme_change_gets_a_new_gcs_key():
+    from backend.services import translation_preview as tp
+
+    a = tp._gcs_path("nomad", "it", {"karaoke": {"font": "A"}})
+    b = tp._gcs_path("nomad", "it", {"karaoke": {"font": "B"}})
+    assert a != b and a == tp._gcs_path("nomad", "it", {"karaoke": {"font": "A"}})
+
+
+def test_different_languages_never_render_concurrently():
+    """Two concurrent 4K renders OOM-killed the API instance (10-09, 10-16)."""
+    import threading
+
+    from backend.services import translation_preview as tp
+
+    tp._CACHE.clear()
+    active, peak = [0], [0]
+    guard = threading.Lock()
+
+    def render(*a, **k):
+        with guard:
+            active[0] += 1
+            peak[0] = max(peak[0], active[0])
+        threading.Event().wait(0.05)  # not time.sleep: the module's no_sleep fixture stubs it
+        with guard:
+            active[0] -= 1
+        return b"jpeg"
+
+    with patch.object(tp, "get_theme_service", return_value=_preview_theme_service()), \
+         patch.object(tp, "resolve_assets", side_effect=lambda s, t: s), \
+         patch.object(tp, "_gcs_get", return_value=None), \
+         patch.object(tp, "_gcs_put"), \
+         patch.object(tp, "render_karaoke_frame", side_effect=render) as mock_render:
+        threads = [threading.Thread(target=tp.render_translation_preview, args=(code,))
+                   for code in ("de", "fr", "es", "it")]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    assert mock_render.call_count == 4
+    assert peak[0] == 1
