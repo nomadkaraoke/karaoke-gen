@@ -19,6 +19,10 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+# Discord message flag SUPPRESS_EMBEDS (1 << 2): no link-preview cards.
+SUPPRESS_EMBEDS_FLAG = 4
+
+
 class DiscordNotificationService:
     """
     Service for sending Discord webhook notifications.
@@ -75,6 +79,7 @@ class DiscordNotificationService:
         self,
         message: str,
         webhook_url: Optional[str] = None,
+        suppress_embeds: bool = False,
     ) -> bool:
         """
         Post a message to a Discord channel via webhook.
@@ -82,6 +87,8 @@ class DiscordNotificationService:
         Args:
             message: The message content to post
             webhook_url: Optional webhook URL (uses instance URL if not provided)
+            suppress_embeds: Send Discord's SUPPRESS_EMBEDS flag so URLs in the
+                text don't unfurl into link-preview cards (alerts)
 
         Returns:
             True if message was posted successfully, False otherwise
@@ -109,6 +116,8 @@ class DiscordNotificationService:
         # trigger a Discord ping. (CWE-74 — output injection into a downstream
         # component.)
         data = {"content": message, "allowed_mentions": {"parse": []}}
+        if suppress_embeds:
+            data["flags"] = SUPPRESS_EMBEDS_FLAG
         response = requests.post(url, json=data, timeout=30)
         response.raise_for_status()
         self.logger.info("Message posted to Discord successfully")

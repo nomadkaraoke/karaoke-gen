@@ -121,6 +121,27 @@ class TestDiscordNotificationServicePostMessage:
             timeout=30
         )
 
+    @patch("backend.services.discord_service.requests.post")
+    def test_post_message_suppress_embeds_sets_flag(self, mock_post):
+        """suppress_embeds sends flags=4 (SUPPRESS_EMBEDS) so URLs don't unfurl."""
+        mock_post.return_value = MagicMock()
+        url = "https://discord.com/api/webhooks/123456789/abcdef"
+        service = DiscordNotificationService(webhook_url=url)
+
+        assert service.post_message("see https://cloud.google.com/run", suppress_embeds=True) is True
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["flags"] == 4
+        assert payload["allowed_mentions"] == {"parse": []}
+
+    @patch("backend.services.discord_service.requests.post")
+    def test_video_notification_keeps_embed(self, mock_post):
+        """The YouTube 'New upload' post wants its video preview card."""
+        mock_post.return_value = MagicMock()
+        service = DiscordNotificationService(webhook_url="https://discord.com/api/webhooks/1/a")
+
+        service.post_video_notification("https://youtu.be/abc")
+        assert "flags" not in mock_post.call_args.kwargs["json"]
+
     def test_post_message_no_webhook_raises(self):
         """Test that posting without webhook URL raises ValueError."""
         service = DiscordNotificationService()

@@ -74,6 +74,23 @@ def is_opaque_script_error(message: str | None, source: str | None = None, extra
     return not extra.get("filename") and not extra.get("lineno")
 
 
+# A chunk-load failure is a tab running an old build after a deploy: the client
+# auto-reloads (frontend/lib/version-check.ts), so one report is not actionable.
+# Mirrors isChunkLoadError() there. Reports collapse into one pattern per build
+# that alerts only above CHUNK_LOAD_ALERT_PER_HOUR in an hour (a broken deploy).
+_CHUNK_LOAD_RE = re.compile(
+    r"ChunkLoadError|Loading chunk [\w-]+ failed|Failed to load chunk"
+    r"|Failed to fetch dynamically imported module|Importing a module script failed",
+    re.IGNORECASE,
+)
+CHUNK_LOAD_ALERT_PER_HOUR = 10
+
+
+def is_chunk_load_error(message: str | None) -> bool:
+    """True for the bundler's "couldn't load a JS chunk" errors."""
+    return bool(message) and bool(_CHUNK_LOAD_RE.search(message))
+
+
 @dataclass
 class FrontendErrorReport:
     """In-memory representation of an inbound crash report."""
@@ -118,6 +135,13 @@ def _stack_for_hashing(report: FrontendErrorReport) -> str:
     Error object, e.g. Firefox "out of memory") hash on message + location.
     """
     if report.stack:
+        # Safari/Firefox stacks are bare frames ("@https://…:1:5749") with no
+        # "Name: message" header, so without the message every error thrown from
+        # one frame shares a pattern named after the URL. Chrome stacks already
+        # start with the message (their hash is unchanged).
+        message = (report.message or "").strip()
+        if message and not report.stack.lstrip().startswith(message):
+            return f"{message}\n{report.stack}"
         return report.stack
     location = _error_location(report.extra)
     if location:
@@ -153,8 +177,16 @@ def build_pattern_data(
     if now is None:
         now = datetime.now(tz=timezone.utc)
 
-    raw = _stack_for_hashing(report)
-    normalized = normalize_message(raw)
+    chunk_load = is_chunk_load_error(report.message)
+    if chunk_load:
+        # One pattern per build: chunk names, module ids and stacks vary per
+        # report but share one cause (that build's chunks are gone or broken).
+        normalized = (
+            f"Failed to load JS chunk on build {report.release or 'unknown'} "
+            f"(client auto-reloads; alerts above {CHUNK_LOAD_ALERT_PER_HOUR}/hour)"
+        )
+    else:
+        normalized = normalize_message(_stack_for_hashing(report))
     pattern_id = compute_pattern_hash("frontend", normalized)
 
     # sample_message is human-readable context. Keep the error message plus a
@@ -192,6 +224,7 @@ def build_pattern_data(
         sample_message=sample_message,
         count=1,
         timestamp=now,
+        alert_min_hourly_count=CHUNK_LOAD_ALERT_PER_HOUR if chunk_load else None,
     )
 
 

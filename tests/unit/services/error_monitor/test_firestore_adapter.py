@@ -1185,3 +1185,57 @@ class TestGetUnalertedNewPatterns:
         results = adapter.get_unalerted_new_patterns()
 
         assert results == []
+
+
+# ---------------------------------------------------------------------------
+# Tests: alert gating (alert_min_hourly_count)
+# ---------------------------------------------------------------------------
+
+
+class TestAlertThresholdGate:
+    NOW = datetime(2026, 10, 18, 22, 0, 0, tzinfo=timezone.utc)
+
+    def _new_doc_for(self, **kw):
+        db = _make_db()
+        doc_ref = MagicMock()
+        doc_ref.get.return_value = _make_doc_snapshot(exists=False)
+        db.collection.return_value.document.return_value = doc_ref
+        PatternData = _import_pattern_data()
+        data = PatternData(
+            pattern_id="p", service="frontend", resource_type="browser",
+            normalized_message="m", sample_message="s", count=1, timestamp=self.NOW, **kw,
+        )
+        _import_adapter()(db=db).upsert_pattern(data)
+        return doc_ref.set.call_args[0][0]
+
+    def test_new_pattern_stores_threshold(self):
+        assert self._new_doc_for(alert_min_hourly_count=10)["alert_min_hourly_count"] == 10
+
+    def test_ungated_pattern_has_no_threshold_field(self):
+        assert "alert_min_hourly_count" not in self._new_doc_for()
+
+    def _pattern(self, threshold, minutes_ago):
+        return {
+            "alert_min_hourly_count": threshold,
+            "rolling_counts": [
+                {"ts": (self.NOW - timedelta(minutes=m)).isoformat(), "count": 1} for m in minutes_ago
+            ],
+        }
+
+    def test_below_threshold_is_held(self):
+        from backend.services.error_monitor.firestore_adapter import is_below_alert_threshold
+
+        # 10 in the last hour is "not more than 10"; an old burst doesn't count.
+        p = self._pattern(10, list(range(0, 50, 5)) + [61, 70, 90])
+        assert is_below_alert_threshold(p, now=self.NOW) is True
+
+    def test_burst_over_threshold_alerts(self):
+        from backend.services.error_monitor.firestore_adapter import is_below_alert_threshold
+
+        p = self._pattern(10, list(range(0, 55, 5)))  # 11 within the hour
+        assert is_below_alert_threshold(p, now=self.NOW) is False
+
+    def test_ungated_pattern_never_held(self):
+        from backend.services.error_monitor.firestore_adapter import is_below_alert_threshold
+
+        assert is_below_alert_threshold({"rolling_counts": []}, now=self.NOW) is False

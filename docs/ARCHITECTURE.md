@@ -100,13 +100,38 @@ How the webhooks resolve:
   to it fails, the message falls back to #alerts. The error monitor rate-limits
   each channel separately (10/run each), so noise can't consume the alert budget.
 
+Keeping #alerts readable (one root cause → one message):
+
+- **Burst collapse**: when a run has more than 3 new patterns for one service
+  (counting leftover un-alerted ones), the monitor sends ONE "N new error patterns
+  from <service>" message with the top 5 by count, first/last seen and a
+  `scripts/query-error-patterns.py --service <svc>` pointer, and marks them all
+  alerted (`BURST_COLLAPSE_MIN_PATTERNS` in `error_monitor/config.py`). It's
+  deterministic; LLM grouping is off in prod. The 10/run cap still applies.
+- **No link previews**: every error-monitor and `ops_alerts` post sets Discord
+  `flags: 4` (SUPPRESS_EMBEDS), so quoted GCP docs URLs don't unfurl into cards.
+- **Gated patterns**: a pattern with `alert_min_hourly_count` stays un-alerted
+  until more than that many occurrences land within an hour
+  (`firestore_adapter.is_below_alert_threshold`). Used for frontend chunk-load errors.
+- **Watchdog**: `EVENT_LOOP_STALL in progress` samples are WARNING. Only the
+  `ended` line is ERROR (≥10s blocked with a request affected), so one freeze is
+  one pattern. The `backend/event_loop_stalls` metric keys on that line too.
+- **Known noise** (`known_issues.py`) can be service-scoped, e.g.
+  github-runner-manager's scale-up "no available instance" aborts.
+
 Frontend crashes are captured via `window.onerror`, `unhandledrejection`, Next.js
 `error.tsx`, and a `CrashReportBoundary` around the review UIs. They POST to
 `/api/client-errors`, which normalises and upserts into the same `error_patterns`
 collection with `service="frontend"` so they flow through the existing
 Discord-alerting pipeline. `ChunkLoadError` after deploy triggers an automatic
 hard reload; the `CrashReport` card also checks `/version.json` and shows an
-"Update now" CTA when the running bundle is stale.
+"Update now" CTA when the running bundle is stale. Because the client recovers,
+chunk-load reports (`is_chunk_load_error`, mirrors `isChunkLoadError` in
+`frontend/lib/version-check.ts`) collapse into one pattern **per build** that
+alerts only above 10 in an hour, which means a broken deploy. Safari/Firefox
+stacks have no `Name: message` header, so ingestion prepends the message before
+hashing. Otherwise every error from one frame shared a pattern named
+`@https://gen.nomadkaraoke.com`.
 
 Noise is dropped before alerting: benign messages (media `AbortError`, ResizeObserver
 loop) and opaque cross-origin `Script error.` events (no error object — thrown by

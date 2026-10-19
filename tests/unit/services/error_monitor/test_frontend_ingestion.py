@@ -174,3 +174,101 @@ def test_is_opaque_script_error_false_for_other_messages(message):
 )
 def test_is_opaque_script_error_false_when_error_is_located(source, extra):
     assert is_opaque_script_error("Error: Script error.", source, extra) is False
+
+
+# ---------------------------------------------------------------------------
+# Safari/Firefox stacks don't start with the message
+# ---------------------------------------------------------------------------
+
+def _report(message, stack, release="9d6aa3df"):
+    return FrontendErrorReport(
+        message=message, stack=stack, url="https://gen.nomadkaraoke.com/",
+        user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Safari/604.1",
+        release=release, user_email=None, viewport=None, locale="en", extra=None,
+    )
+
+
+SAFARI_STACK = "@https://gen.nomadkaraoke.com/_next/static/chunks/turbopack-7c45166c9b701384.js:1:5749"
+
+
+def test_safari_stack_without_message_gets_message_prepended():
+    """2026-10-18: a Safari pattern was named "@https://gen.nomadkaraoke.com"
+    because its stack has no "Name: message" header, so every Safari error
+    thrown from that bundle frame collapsed into one meaningless pattern."""
+    data = build_pattern_data(_report("TypeError: undefined is not an object", SAFARI_STACK))
+    assert data.normalized_message.startswith("TypeError: undefined is not an object")
+
+
+def test_safari_errors_from_same_frame_get_distinct_patterns():
+    a = build_pattern_data(_report("TypeError: undefined is not an object", SAFARI_STACK))
+    b = build_pattern_data(_report("RangeError: Maximum call stack size exceeded", SAFARI_STACK))
+    assert a.pattern_id != b.pattern_id
+
+
+def test_chrome_stack_hash_unchanged():
+    """Chrome stacks already start with the message: same hash as before."""
+    from backend.services.error_monitor.normalizer import compute_pattern_hash, normalize_message
+
+    stack = "TypeError: x is null\n    at foo (https://gen.nomadkaraoke.com/a.js:1:2)"
+    data = build_pattern_data(_report("TypeError: x is null", stack))
+    assert data.pattern_id == compute_pattern_hash("frontend", normalize_message(stack))
+
+
+# ---------------------------------------------------------------------------
+# Chunk-load errors: alert only on a per-build burst
+# ---------------------------------------------------------------------------
+
+from backend.services.error_monitor.frontend_ingestion import (  # noqa: E402
+    CHUNK_LOAD_ALERT_PER_HOUR,
+    is_chunk_load_error,
+)
+
+
+@pytest.mark.parametrize("message", [
+    "Error: Failed to load chunk /_next/static/chunks/b87534e20efd1895.js from module 64893",
+    "ChunkLoadError: Loading chunk 123 failed.",
+    "Error: Loading chunk app-pages failed",
+    "TypeError: Failed to fetch dynamically imported module: https://x/y.js",
+    "TypeError: Importing a module script failed.",
+])
+def test_is_chunk_load_error_true(message):
+    assert is_chunk_load_error(message) is True
+
+
+@pytest.mark.parametrize("message", [
+    "TypeError: Cannot read properties of null",
+    "Error: chunk size too large for upload",
+    "",
+    None,
+])
+def test_is_chunk_load_error_false(message):
+    assert is_chunk_load_error(message) is False
+
+
+def test_chunk_errors_collapse_into_one_pattern_per_build():
+    a = build_pattern_data(_report(
+        "Error: Failed to load chunk /_next/static/chunks/b87534e20efd1895.js from module 64893",
+        "Error: Failed to load chunk …\n    at https://gen.nomadkaraoke.com/_next/static/chunks/turbopack-1.js:1:5744",
+    ))
+    b = build_pattern_data(_report(
+        "Error: Failed to load chunk /_next/static/chunks/8226dd5ce61ba9e5.js from module 1234", SAFARI_STACK,
+    ))
+    other_build = build_pattern_data(_report(
+        "Error: Failed to load chunk /_next/static/chunks/8226dd5ce61ba9e5.js from module 1234",
+        SAFARI_STACK, release="0000abcd",
+    ))
+    assert a.pattern_id == b.pattern_id
+    assert a.pattern_id != other_build.pattern_id
+    assert "9d6aa3df" in a.normalized_message
+    # The sample keeps the real error for whoever investigates.
+    assert "8226dd5ce61ba9e5.js" in b.sample_message
+
+
+def test_chunk_errors_are_gated_by_hourly_threshold():
+    data = build_pattern_data(_report("ChunkLoadError: Loading chunk 9 failed.", None))
+    assert data.alert_min_hourly_count == CHUNK_LOAD_ALERT_PER_HOUR == 10
+
+
+def test_ordinary_errors_are_not_gated():
+    data = build_pattern_data(_report("TypeError: x is null", "TypeError: x is null\n  at f (a.js:1:1)"))
+    assert data.alert_min_hourly_count is None
