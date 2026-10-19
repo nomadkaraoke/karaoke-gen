@@ -408,7 +408,7 @@ class LoopWatchdog:
                     "requests_affected": affected if tracked else None,
                 })
             except Exception:
-                logger.exception("Failed to record loop stall (non-fatal)")
+                logger.warning("Failed to record loop stall (non-fatal)", exc_info=True)
 
 
 # ----- production recorder ---------------------------------------------------

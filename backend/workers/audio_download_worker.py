@@ -170,6 +170,24 @@ def _fail_stalled_download(job_manager: JobManager, job_id: str, keep_trying: bo
     )
 
 
+def _log_job_deleted(job_id: str, when: str) -> bool:
+    """The job doc is gone (user deleted it): expected, not an error.
+
+    Returns True so the caller reports success and main() exits 0: a Cloud Run
+    retry can't help, and nothing more should be written for a deleted job.
+    """
+    logger.info(f"[job:{job_id}] Job not found {when} (deleted?); stopping without retry")
+    return True
+
+
+def _job_is_gone(job_manager: JobManager, job_id: str) -> bool:
+    """True only if a fresh read confirms the job doc no longer exists."""
+    try:
+        return job_manager.get_job(job_id) is None
+    except Exception:
+        return False
+
+
 def _extract_gcs_path(filepath: str) -> str:
     """Extract relative GCS path from a full gs:// URL or path."""
     bucket_prefix = "gs://karaoke-gen-storage-nomadkaraoke/"
@@ -205,8 +223,7 @@ async def process_audio_download(job_id: str) -> bool:
     try:
         job = job_manager.get_job(job_id)
         if not job:
-            logger.error(f"[job:{job_id}] Job not found")
-            return False
+            return _log_job_deleted(job_id, "at start")
 
         # Idempotency guard: if the download is already done (status is past
         # DOWNLOADING_AUDIO), return success without re-running. This handles
@@ -296,7 +313,9 @@ async def process_audio_download(job_id: str) -> bool:
         # downloading -> downloading), and don't re-trigger downstream workers.
         # The winning run owns all of that.
         latest = job_manager.get_job(job_id)
-        if latest and latest.status in DOWNLOAD_ALREADY_DONE_STATUSES:
+        if latest is None:
+            return _log_job_deleted(job_id, "after download")
+        if latest.status in DOWNLOAD_ALREADY_DONE_STATUSES:
             logger.info(
                 f"[job:{job_id}] Another run already advanced the job "
                 f"(status={latest.status}); skipping duplicate transition/triggers"
@@ -371,14 +390,15 @@ async def process_audio_download(job_id: str) -> bool:
         logger.warning(f"[job:{job_id}] Torrent stalled; asking the user to keep trying or re-pick: {e}")
         _fail_stalled_download(job_manager, job_id, keep_trying, e)
         return False
-    except (DownloadError, FlacfetchServiceError) as e:
-        logger.error(f"[job:{job_id}] Download failed: {e}")
-        _mark_retry_pending_if_attempts_remain(job_manager, job_id)
-        job_manager.fail_job(job_id, f"Audio download failed: {e}",
-                             error_details={'stage': 'audio_download'})
-        return False
     except Exception as e:
-        logger.error(f"[job:{job_id}] Download failed: {e}", exc_info=True)
+        # e.g. a Firestore NotFound because the user deleted the job mid-run.
+        # Confirm with a fresh read: a GCS NotFound on a live job is a real error.
+        if _job_is_gone(job_manager, job_id):
+            return _log_job_deleted(job_id, f"during download ({type(e).__name__})")
+        if not isinstance(e, (DownloadError, FlacfetchServiceError)):
+            logger.error(f"[job:{job_id}] Download failed: {e}", exc_info=True)
+        else:
+            logger.error(f"[job:{job_id}] Download failed: {e}")
         _mark_retry_pending_if_attempts_remain(job_manager, job_id)
         job_manager.fail_job(job_id, f"Audio download failed: {e}",
                              error_details={'stage': 'audio_download'})

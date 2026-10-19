@@ -513,3 +513,29 @@ class TestRequestTrackingMiddleware:
         classes = [m.cls for m in app.user_middleware]
         # add_middleware inserts at index 0 → outermost is first.
         assert classes[0] is RequestTrackingMiddleware
+
+
+class TestRecorderFailureIsBestEffort:
+    """A failed stall-record write is best-effort: WARNING, never ERROR (ERROR pages #alerts)."""
+
+    def test_recorder_failure_logs_warning(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        clock = FakeClock()
+
+        def failing_recorder(_record):
+            raise RuntimeError("firestore unavailable")
+
+        wd = LoopWatchdog(clock=clock, cpu_clock=clock, recorder=failing_recorder)
+        wd._loop_thread_id = None
+        wd._last_tick = clock.t
+        for step in (1.0, 5.0, 12.0):
+            clock.t = 1000.0 + step
+            wd.check()
+        clock.t = 1000.0 + 12.25
+        wd._last_tick = clock.t
+        wd.check()  # must not raise
+
+        failed = [r for r in caplog.records if "Failed to record loop stall" in r.getMessage()]
+        assert len(failed) == 1
+        assert failed[0].levelno == logging.WARNING
+        assert failed[0].exc_info is not None

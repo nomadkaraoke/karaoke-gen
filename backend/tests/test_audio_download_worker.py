@@ -100,15 +100,76 @@ class TestProcessAudioDownload:
     """Tests for the main process_audio_download function."""
 
     @pytest.mark.asyncio
-    async def test_returns_false_when_job_not_found(self):
+    async def test_deleted_job_at_start_exits_cleanly(self, caplog):
+        """Job doc gone (user deleted it) -> INFO + success, so main() exits 0 (no retry)."""
+        import logging
         with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
-             patch("backend.workers.audio_download_worker.StorageService"):
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             caplog.at_level(logging.DEBUG):
             mock_jm = MagicMock()
             mock_jm.get_job.return_value = None
             mock_jm_cls.return_value = mock_jm
 
             result = await process_audio_download("nonexistent-job")
-            assert result is False
+
+        assert result is True
+        mock_dl.assert_not_awaited()
+        mock_jm.fail_job.assert_not_called()
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+        assert any("deleted" in r.message and r.levelno == logging.INFO for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_job_deleted_mid_download_stops_without_writes(self, caplog):
+        """Job 6ffe88ad (2026-10-14): the user deleted the job while the download ran.
+
+        After the download, the job doc is gone: no further writes, no fail_job,
+        no worker triggers, nothing at ERROR, and success so Cloud Run won't retry.
+        """
+        import logging
+        job = _make_job()
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             caplog.at_level(logging.DEBUG):
+            mock_jm = MagicMock()
+            mock_jm.get_job.side_effect = [job, None, None, None]
+            mock_jm_cls.return_value = mock_jm
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+
+            result = await process_audio_download("test-job-123")
+
+        assert result is True
+        mock_jm.update_job.assert_not_called()
+        mock_jm.update_file_url.assert_not_called()
+        mock_jm.transition_to_state.assert_not_called()
+        mock_jm.fail_job.assert_not_called()
+        mock_ws_factory.assert_not_called()
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_notfound_on_write_after_delete_exits_cleanly(self, caplog):
+        """A Firestore NotFound from a write (job deleted between read and write) is not an error."""
+        import logging
+        from google.api_core.exceptions import NotFound
+        job = _make_job()
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             caplog.at_level(logging.DEBUG):
+            mock_jm = MagicMock()
+            # entry read + post-download re-read see the job; it's gone by the write
+            mock_jm.get_job.side_effect = [job, job, None]
+            mock_jm.update_job.side_effect = NotFound("No document to update")
+            mock_jm_cls.return_value = mock_jm
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+
+            result = await process_audio_download("test-job-123")
+
+        assert result is True
+        mock_jm.fail_job.assert_not_called()
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
 
     @pytest.mark.asyncio
     async def test_returns_false_when_no_download_params(self):

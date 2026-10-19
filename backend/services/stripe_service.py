@@ -333,6 +333,22 @@ class StripeService:
             logger.error(f"Error verifying webhook: {e}")
             return False, None, str(e)
 
+    @staticmethod
+    def is_gen_checkout(session: Dict) -> bool:
+        """True if this checkout was created by gen (credit purchase or made-for-you).
+
+        Gen always sets metadata (user_email/credits for credits, order_type for
+        made-for-you). A session without it came from elsewhere on the Stripe
+        account, e.g. a Stripe Payment Link (``session.payment_link`` set): it's a
+        real payment to record, not a credit purchase to fulfil.
+        """
+        metadata = session.get('metadata') or {}
+        return bool(
+            metadata.get('order_type')
+            or metadata.get('user_email')
+            or metadata.get('credits')
+        )
+
     def handle_checkout_completed(self, session: Dict) -> Tuple[bool, Optional[str], int, str]:
         """
         Handle a completed checkout session.

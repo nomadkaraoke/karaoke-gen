@@ -1200,13 +1200,12 @@ async def research_audio(
         })
         logger.info(f"[job:{job_id}] Re-search with edited terms: {artist} - {title}")
 
-    job_manager.transition_to_state(
-        job_id=job_id,
-        new_status=JobStatus.SEARCHING_AUDIO,
-        progress=5,
-        message=f"Searching for: {artist} - {title}",
-        raise_on_invalid=False,
-    )
+    # No status writes: the job stays in AWAITING_AUDIO_SELECTION for the whole
+    # re-search. (It used to transition -> SEARCHING_AUDIO and back, which isn't
+    # a valid transition, so every re-search logged two "Invalid state
+    # transition" ERRORs. Not writing status also means a crashed request can't
+    # strand the job, and a concurrent selection can't be reverted.)
+    logger.info(f"[job:{job_id}] Re-searching audio: {artist} - {title}")
 
     audio_search_service = get_audio_search_service()
     try:
@@ -1214,14 +1213,8 @@ async def research_audio(
     except NoResultsError:
         search_results = []
     except AudioSearchError as e:
-        # Restore the awaiting state so the job isn't stranded, then surface the error.
-        job_manager.transition_to_state(
-            job_id=job_id,
-            new_status=JobStatus.AWAITING_AUDIO_SELECTION,
-            progress=10,
-            message="Search failed. Please try again or provide your own audio.",
-            raise_on_invalid=False,
-        )
+        # Job is still awaiting selection (never left it); surface the error.
+        logger.warning(f"[job:{job_id}] Re-search failed: {e}")
         raise HTTPException(status_code=502, detail=f"Search failed: {e}")
 
     # Replace cached results (empty is fine — the UI offers the manual fallback).
@@ -1234,17 +1227,7 @@ async def research_audio(
         'state_data.remote_search_id': remote_id,
     })
 
-    job_manager.transition_to_state(
-        job_id=job_id,
-        new_status=JobStatus.AWAITING_AUDIO_SELECTION,
-        progress=10,
-        message=(
-            f"Found {len(results_dicts)} audio sources. Waiting for selection."
-            if results_dicts else
-            "No audio sources found. Edit the details and search again, or provide your own audio."
-        ),
-        raise_on_invalid=False,
-    )
+    logger.info(f"[job:{job_id}] Re-search found {len(results_dicts)} audio sources")
 
     return AudioSearchResponse(
         status="awaiting_selection",

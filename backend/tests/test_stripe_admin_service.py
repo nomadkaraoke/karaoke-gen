@@ -162,6 +162,50 @@ class TestStorePayment:
         assert stored["currency"] == "usd"
         assert stored["customer_email"] == ""
 
+    def test_payment_link_session_with_null_customer_email(self, service):
+        """A Stripe Payment Link checkout has no gen metadata and customer_email=None.
+
+        Regression: 2026-10-13 a $36 Payment Link tip crashed store_payment on
+        ``None.lower()`` so it never reached stripe_payments / revenue numbers.
+        """
+        session = {
+            "id": "cs_live_paymentlink",
+            "amount_total": 3600,
+            "currency": "usd",
+            "livemode": True,
+            "metadata": {},
+            "customer_email": None,
+            "customer_details": {"email": "Friend@Example.com ", "name": "A Friend"},
+            "payment_link": "plink_123",
+            "payment_intent": "pi_123",
+            "line_items": {"data": [{"description": "Custom Karaoke Service"}]},
+        }
+
+        assert service.store_payment(session) is True
+
+        stored = service.db.collection.return_value.document.return_value.set.call_args[0][0]
+        assert stored["customer_email"] == "friend@example.com"
+        assert stored["customer_name"] == "A Friend"
+        assert stored["order_type"] == "payment_link"
+        assert stored["payment_link_id"] == "plink_123"
+        assert stored["product_description"] == "Custom Karaoke Service"
+        assert stored["credits_granted"] == 0
+        assert stored["amount_total"] == 3600
+
+    def test_none_valued_fields_do_not_crash(self, service):
+        """Stripe sends explicit nulls (metadata/customer_details/total_details)."""
+        session = {
+            "id": "cs_nulls",
+            "amount_total": 500,
+            "metadata": None,
+            "customer_email": None,
+            "customer_details": None,
+            "total_details": None,
+        }
+        assert service.store_payment(session) is True
+        stored = service.db.collection.return_value.document.return_value.set.call_args[0][0]
+        assert stored["customer_email"] == ""
+
     def test_returns_false_on_firestore_error(self, service):
         """Test that Firestore errors are caught and return False."""
         service.db.collection.side_effect = Exception("Firestore down")
