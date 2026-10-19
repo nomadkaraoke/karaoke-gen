@@ -210,6 +210,12 @@ async def match_judge(
     locale = get_locale_from_request(request)
     _check_rate_limit(auth_result.user_email or auth_result.token_id or "unknown", locale)
 
+    from backend.services.fake_workers import fake_workers_enabled
+    if fake_workers_enabled():
+        # Local E2E stack: scripted verdict (per-user fake config), no catalog/Gemini.
+        from backend.services.fake_workers.judge import fake_match_verdict
+        return fake_match_verdict(body.artist, body.title, auth_result.user_email, stage=body.stage).to_dict()
+
     from backend.services.match_judge.service import judge_match
     verdict = await judge_match(
         body.artist, body.title,

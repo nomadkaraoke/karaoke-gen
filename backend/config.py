@@ -342,6 +342,9 @@ class Settings(BaseSettings):
     # for the karaoke-night "make it" flow. Every endpoint 503s while the secret is
     # empty, so deploys are dark until it's wired (Secret Manager: kjbox-partner-secret).
     kjbox_partner_secret: str = os.getenv("KJBOX_PARTNER_SECRET", "")
+    # karaoke-decide's own secret (header X-Partner-Secret) for POST /api/kjbox/catalog/resolve
+    # only (Secret Manager: decide-gen-partner-secret). Empty = decide is not accepted.
+    decide_partner_secret: str = os.getenv("DECIDE_GEN_PARTNER_SECRET", "")
     # Partner-wide cap on NEW gen accounts created via kjbox per rolling 24h (a venue
     # shares one IP, so gen's per-IP signup cap is bypassed for kjbox; this bounds it).
     kjbox_signup_cap_per_24h: int = int(os.getenv("KJBOX_SIGNUP_CAP_PER_24H", "100"))

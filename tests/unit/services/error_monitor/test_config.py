@@ -26,7 +26,7 @@ class TestMonitoredServiceLists:
     def test_cloud_run_jobs_count(self):
         from backend.services.error_monitor import config
 
-        assert len(config.MONITORED_CLOUD_RUN_JOBS) == 6
+        assert len(config.MONITORED_CLOUD_RUN_JOBS) == 7
 
     def test_cloud_run_jobs_contains_expected(self):
         from backend.services.error_monitor import config
