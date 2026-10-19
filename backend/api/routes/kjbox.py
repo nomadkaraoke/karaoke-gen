@@ -74,6 +74,27 @@ def require_kjbox_partner(x_kjbox_secret: Optional[str] = Header(default=None)) 
     return secret
 
 
+def require_resolve_partner(
+    x_kjbox_secret: Optional[str] = Header(default=None),
+    x_partner_secret: Optional[str] = Header(default=None),
+) -> str:
+    """Gate for ``catalog/resolve``: kjbox (``X-Kjbox-Secret``) or karaoke-decide
+    (``X-Partner-Secret``). Returns the partner name ("kjbox" / "decide"), which
+    picks the rate-budget bucket. 503 when neither secret is configured."""
+    settings = get_settings()
+    kjbox_secret = settings.kjbox_partner_secret
+    decide_secret = getattr(settings, "decide_partner_secret", "")
+    if not kjbox_secret and not decide_secret:
+        raise HTTPException(status_code=503, detail="not configured")
+    if kjbox_secret and x_kjbox_secret and hmac.compare_digest(
+            x_kjbox_secret.encode(), kjbox_secret.encode()):
+        return "kjbox"
+    if decide_secret and x_partner_secret and hmac.compare_digest(
+            x_partner_secret.encode(), decide_secret.encode()):
+        return "decide"
+    raise HTTPException(status_code=403, detail="forbidden")
+
+
 def get_kjbox_service(
     secret: str = Depends(require_kjbox_partner),
     user_service: UserService = Depends(get_user_service),
@@ -433,25 +454,31 @@ class ResolveRequest(BaseModel):
 _RESOLVE_CACHE_MAX = 2000
 _RESOLVE_PER_MINUTE = 120
 _resolve_cache: "dict[str, dict]" = {}
+_RESOLVE_DECIDE_PER_MINUTE = 60   # karaoke-decide's own bucket, so kjbox nights are never starved
 _resolve_calls: "list[float]" = []
+_resolve_calls_decide: "list[float]" = []
 _resolve_lock = threading.Lock()
 
 
-def _resolve_budget_ok() -> bool:
-    """Partner-wide in-process cap on AI calls (cache hits are free)."""
+def _resolve_budget_ok(partner: str = "kjbox") -> bool:
+    """Per-partner in-process cap on AI calls (cache hits are free)."""
     import time
     now = time.monotonic()
+    if partner == "decide":
+        calls, limit = _resolve_calls_decide, _RESOLVE_DECIDE_PER_MINUTE
+    else:
+        calls, limit = _resolve_calls, _RESOLVE_PER_MINUTE
     with _resolve_lock:
-        while _resolve_calls and _resolve_calls[0] < now - 60:
-            _resolve_calls.pop(0)
-        if len(_resolve_calls) >= _RESOLVE_PER_MINUTE:
+        while calls and calls[0] < now - 60:
+            calls.pop(0)
+        if len(calls) >= limit:
             return False
-        _resolve_calls.append(now)
+        calls.append(now)
         return True
 
 
 @router.post("/catalog/resolve")
-async def catalog_resolve(body: ResolveRequest, _secret: str = Depends(require_kjbox_partner)):
+async def catalog_resolve(body: ResolveRequest, partner: str = Depends(require_resolve_partner)):
     """Split + auto-correct a singer's free-text song search.
 
     kjbox calls this only when its own catalogue search found nothing, then
@@ -467,7 +494,12 @@ async def catalog_resolve(body: ResolveRequest, _secret: str = Depends(require_k
     query = " ".join(body.query.split())
     if not query:
         raise HTTPException(status_code=422, detail="empty_query")
-    key = query.casefold()
+    from backend.services.fake_workers import fake_workers_enabled
+    if fake_workers_enabled(get_settings()):
+        # Local E2E stack: scripted verdict, no Gemini, no cache/budget (tests change the knobs).
+        from backend.services.fake_workers.judge import fake_resolve
+        return fake_resolve(query)
+    key = query.casefold()   # shared by both partners: same query -> same verdict
     with _resolve_lock:
         hit = _resolve_cache.get(key)
     if hit is not None:
@@ -476,7 +508,7 @@ async def catalog_resolve(body: ResolveRequest, _secret: str = Depends(require_k
         if not hit.get("typed_artist"):
             hit = {**hit, "typed_title": query}
         return hit
-    if not _resolve_budget_ok():
+    if not _resolve_budget_ok(partner):
         raise HTTPException(status_code=429, detail="rate_limited")
     verdict = await resolve_and_tidy(query)
     if verdict.get("reason") != "unavailable":   # don't cache transient failures

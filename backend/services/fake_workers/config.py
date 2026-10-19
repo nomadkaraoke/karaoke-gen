@@ -18,6 +18,8 @@ CONFIG_DOC = "fake_config"
 WORKER_KINDS = ("audio_download", "audio", "lyrics", "screens", "render_video", "video")
 # Values of ``search_confidence`` (fake search shapes → UI tier 1 / 2 / 3).
 SEARCH_CONFIDENCES = ("perfect", "recommended", "unsure")
+# Values of ``judge_kind`` (the fake match judge / free-text resolve verdict kind).
+JUDGE_KINDS = ("none", "cosmetic", "content", "ambiguous")
 
 
 @dataclass
@@ -44,6 +46,12 @@ class FakeConfig:
     # True: the fake video worker sets state_data.youtube_url (FAKE_YOUTUBE_URL) for
     # non-private jobs, like a real YouTube upload. False: tests the "no link" path.
     youtube_url_enabled: bool = True
+    # Fake match judge (POST /api/catalog/match-judge, per-user config) and fake free-text
+    # resolve (POST /api/kjbox/catalog/resolve, global config: partners have no user).
+    # judge_kind picks the verdict kind; the canonical values fill it in (defaults if empty).
+    judge_kind: str = "none"
+    judge_canonical_artist: str = ""
+    judge_canonical_title: str = ""
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "FakeConfig":
@@ -64,6 +72,10 @@ class FakeConfig:
             raise ValueError("search_result_count must be between 0 and 3")
         if self.search_confidence not in SEARCH_CONFIDENCES:
             raise ValueError(f"search_confidence must be one of {SEARCH_CONFIDENCES}")
+        if self.judge_kind not in JUDGE_KINDS:
+            raise ValueError(f"judge_kind must be one of {JUDGE_KINDS}")
+        if not isinstance(self.judge_canonical_artist, str) or not isinstance(self.judge_canonical_title, str):
+            raise ValueError("judge_canonical_artist and judge_canonical_title must be strings")
 
 
 USER_CONFIG_COLLECTION = "local_stack_user_config"

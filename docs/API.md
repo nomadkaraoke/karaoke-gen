@@ -3246,6 +3246,14 @@ env `KJBOX_PARTNER_SECRET`, Secret Manager `kjbox-partner-secret`):
 `503 {"detail": "not configured"}` while unset (deploys dark), `403` if wrong.
 Code: `backend/api/routes/kjbox.py` + `backend/services/kjbox_partner_service.py`.
 
+**`POST /api/kjbox/catalog/resolve` also accepts karaoke-decide** (the mobile app's search): header
+`X-Partner-Secret` (setting `decide_partner_secret`, env `DECIDE_GEN_PARTNER_SECRET`, Secret Manager
+`decide-gen-partner-secret`). Either secret works there (each only in its own header; `403` otherwise,
+`503` when neither is configured); every other kjbox endpoint stays `X-Kjbox-Secret` only. Both
+partners share the in-process verdict cache (same query, same verdict) but have separate AI-call budgets:
+kjbox 120/min, decide 60/min (`429 rate_limited` when exhausted; cache hits are free). Under
+`FAKE_WORKERS` the verdict is scripted from the global fake config (see TESTING.md § Local stack).
+
 **Quick version:** kjbox jobs also get a draft scrolling-lyrics video a few minutes after the audio
 downloads (see ARCHITECTURE.md § "Quick version"). No new endpoint: poll `GET /api/jobs/{job_id}`
 for `state_data.quick_version.status == "ready"`, then download

@@ -94,6 +94,11 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # Pages Read/Write (account) + DNS Read/Write (nomadkaraoke.com zone
         # only). Value added manually. See services/tenant_domain_service.py.
         "cloudflare-tenant-domains-token",
+        # karaoke-decide's partner secret for POST /api/kjbox/catalog/resolve
+        # (header X-Partner-Secret; mounted as DECIDE_GEN_PARTNER_SECRET by the
+        # CI deploy step). Value added manually; the same value is mounted into
+        # the decide services.
+        "decide-gen-partner-secret",
     ]
 
     secrets = {}
