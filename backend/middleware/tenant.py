@@ -36,8 +36,9 @@ IS_PRODUCTION = os.environ.get("ENV", "").lower() == "production" or \
                 bool(os.environ.get("K_SERVICE"))
 
 
-# Known non-tenant subdomains that should be treated as default Nomad Karaoke
-NON_TENANT_SUBDOMAINS = {"gen", "api", "www", "buy", "admin", "app", "beta"}
+# Known non-tenant subdomains that should be treated as default Nomad Karaoke.
+# Mirror of frontend/lib/edge/nonTenantSubdomains.ts ("requests" = voting-board host).
+NON_TENANT_SUBDOMAINS = {"gen", "api", "www", "buy", "admin", "app", "beta", "requests"}
 
 
 class TenantMiddleware(BaseHTTPMiddleware):

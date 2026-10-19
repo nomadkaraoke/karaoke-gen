@@ -18,7 +18,7 @@ only app-specific stacks (e.g. karaoke-decide's Cloud Run + its API-proxy Worker
 | `email_routing.py` | Gmail destination address; Email Routing enablement (**protected**), catch-all and `google@` rules for nomadkaraoke.com, nomadkaroke.com, karaokehunt.com |
 | `tunnels.py` | `nomad-kjbox` (NomadPC: sing, kjbox, kjssh, kjvnc) and `nomad-hf2` (fiverrbot) tunnels (**protected**) + ingress |
 | `access.py` | Zero Trust org (**protected**), one-time-PIN + Google IdPs (Google OAuth client in GCP `nomadkaraoke`, secret in Pulumi config `googleOauthClientSecret`), `claude-code-kjbox` service token, reusable policies and the KJ Controller / FiverrBot noVNC apps |
-| `pages_workers.py` | Pages projects `karaoke-gen` + `karaoke-gen-tenant`, `gen.nomadkaraoke.com` Pages domain, nomadkaraoke.com/www Worker custom domains, `create.karaokehunt.com/*` route |
+| `pages_workers.py` | Pages projects `karaoke-gen` + `karaoke-gen-tenant`, `gen.nomadkaraoke.com` Pages domain, nomadkaraoke.com/www Worker custom domains, `create.karaokehunt.com/*` and `requests.nomadkaraoke.com/*` routes |
 
 All resource IDs (`ids.py`) are non-secret. Removing a non-protected resource from code deletes it
 on the next `pulumi up`, and `pulumi preview` always shows that first.
@@ -30,7 +30,7 @@ on the next `pulumi up`, and `pulumi preview` always shows that first.
 | `api` / `api-edge-test` DNS, nomadkaraoke.com `http_request_firewall_custom` / `http_ratelimit` / `http_request_late_transform` phases, `security_level` | GCP platform project, `infrastructure/modules/edge_security.py` |
 | Tenant portal CNAMEs (`<tenant>.nomadkaraoke.com`) and `karaoke-gen-tenant` custom domains | Created at runtime by `backend/services/tenant_domain_service.py` |
 | `decide.nomadkaraoke.com/api/*` route + `karaoke-decide-api-proxy` Worker | karaoke-decide's Pulumi stack |
-| Worker/Pages **code** deploys | gen CI (`wrangler pages deploy`), public-website Workers Builds, `karaokehunt-interceptor/deploy.sh` (its route + DNS "ensure" steps match what's declared here) |
+| Worker/Pages **code** deploys | gen CI (`wrangler pages deploy`), public-website Workers Builds, `karaokehunt-interceptor/deploy.sh` (its route + DNS "ensure" steps match what's declared here), `requests-host/deploy.sh` (script only) |
 | Read-only DNS records (Email Routing MX/DKIM, Worker custom-domain AAAAs) | Owned by Email Routing / Workers custom domains |
 | karaokehunt.com `http_config_settings` ("SSL for create.karaokehunt.com", "Disable challenge for create API") | Dashboard. pulumi-cloudflare 6.22.1 drops `set_config bic:false`, so every refresh fails |
 | Tunnel connector tokens / cloudflared processes | NomadPC systemd `cloudflared-nomad`, hf2 `~/nomad-tunnel` compose |

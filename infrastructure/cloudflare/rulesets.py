@@ -170,22 +170,6 @@ ruleset_nomadkaraoke_com_request_dynamic_redirect = cloudflare.Ruleset("ruleset-
             "expression": "(http.host eq \"pay.nomadkaraoke.com\")",
             "ref": "763ba6175ef94a2faae1c1840eaf5145",
         },
-        {
-            "action": "redirect",
-            "action_parameters": {
-                "from_value": {
-                    "preserve_query_string": True,
-                    "status_code": 302,
-                    "target_url": {
-                        "value": "https://gen.nomadkaraoke.com/en/requests",
-                    },
-                },
-            },
-            "description": "Requests Voting Board Redirect",
-            "enabled": True,
-            "expression": "(http.host eq \"requests.nomadkaraoke.com\")",
-            "ref": "69cb3e389b064f3792d79765a1dc1a41",
-        },
     ],
     zone_id=ZONE_IDS["nomadkaraoke.com"])
 ruleset_nomadkaraoke_com_config_settings = cloudflare.Ruleset("ruleset-nomadkaraoke-com-config-settings",
