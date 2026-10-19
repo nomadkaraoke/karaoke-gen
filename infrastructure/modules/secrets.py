@@ -21,6 +21,9 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # Audio processing
         "audioshake-api-key",
         "genius-api-key",
+        # LRCLIB registered server-side app (higher rate limits; lrclib.net developer portal)
+        "lrclib-app-id",
+        "lrclib-api-key",
         "audio-separator-api-url",
 
         # Payment and email

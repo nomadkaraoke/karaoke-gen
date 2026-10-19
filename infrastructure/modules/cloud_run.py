@@ -178,6 +178,25 @@ def create_lyrics_transcription_job(
                                 name="GOOGLE_CLOUD_PROJECT",
                                 value=PROJECT_ID,
                             ),
+                            # LRCLIB registered-app credentials (lrclib_client.py)
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="LRCLIB_APP_ID",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/lrclib-app-id",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                                name="LRCLIB_SECRET_KEY",
+                                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                                        secret=f"projects/{PROJECT_ID}/secrets/lrclib-api-key",
+                                        version="latest",
+                                    ),
+                                ),
+                            ),
                             # RapidAPI key (for Musixmatch lyrics)
                             cloudrunv2.JobTemplateTemplateContainerEnvArgs(
                                 name="RAPIDAPI_KEY",

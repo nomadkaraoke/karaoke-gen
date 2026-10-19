@@ -31,6 +31,8 @@ from typing import List, Optional, Tuple
 
 import requests
 
+from karaoke_gen.lyrics_transcriber.lyrics import lrclib_client
+
 logger = logging.getLogger(__name__)
 
 LRCLIB_BASE = "https://lrclib.net/api"
@@ -119,6 +121,8 @@ def fetch_lrclib_lyrics(
     """Exact ``/get`` (with duration when known), then ``/search`` preferring synced."""
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
+    # Registered-app credentials (higher LRCLIB allowance); no retries on this fast path.
+    session.headers.update(lrclib_client.auth_headers())
 
     params = {"artist_name": artist, "track_name": title}
     if duration:
