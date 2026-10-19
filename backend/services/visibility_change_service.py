@@ -204,7 +204,11 @@ class VisibilityChangeService:
             # Steps 1-5 are sync YouTube/Dropbox/GDrive/GCS/Firestore I/O: off the event loop.
             await asyncio.to_thread(self._reset_job_for_public, job_id, job, user_email, job_ref)
         except Exception:
-            job_ref.update({"state_data.visibility_change_in_progress": DELETE_FIELD})
+            try:
+                job_ref.update({"state_data.visibility_change_in_progress": DELETE_FIELD})
+            except Exception:
+                # The job now refuses every visibility change until the flag is cleared.
+                logger.exception(f"[job:{job_id}] Failed to release visibility_change_in_progress after a failed reset")
             raise
 
         # Step 6: Trigger screens worker
