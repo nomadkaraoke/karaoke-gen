@@ -147,3 +147,74 @@ def test_description_resolved_to_a_song_is_content():
     v, seen = _tidy("that song from titanic", ai, hit)
     assert seen == [("Céline Dion", "My Heart Will Go On")]
     assert v["kind"] == "content" and v["canonical_title"] == "My Heart Will Go On"
+
+
+# ---- latency budget: a describe query must answer inside decide's resolve timeout
+
+_TITANIC_AI = {"kind": "content", "confident": True, "typed_artist": "", "typed_title": "song from titanic",
+               "canonical_artist": "Céline Dion", "canonical_title": "My Heart Will Go On"}
+
+
+def test_gemini_timeout_is_retried_once(monkeypatch):
+    import backend.services.match_judge.free_text as ft
+    monkeypatch.setattr(ft, "GEMINI_ATTEMPT_TIMEOUT_S", 0.05)
+    calls = []
+
+    async def gen(model, system_prompt, user_prompt):
+        calls.append(1)
+        if len(calls) == 1:
+            await asyncio.sleep(5)   # the stalled first call (prod: 504 DEADLINE_EXCEEDED at ~10 s)
+        return _TITANIC_AI
+    v = asyncio.run(resolve_free_text("song from titanic", generate=gen, model="m"))
+    assert len(calls) == 2
+    assert v["kind"] == "content" and v["canonical_title"] == "My Heart Will Go On"
+
+
+def test_transient_error_is_retried_then_gives_up():
+    calls = []
+
+    async def gen(model, system_prompt, user_prompt):
+        calls.append(1)
+        raise RuntimeError("504 DEADLINE_EXCEEDED")
+    v = asyncio.run(resolve_free_text("q", generate=gen, model="m"))
+    assert len(calls) == 2 and v["reason"] == "unavailable"
+
+
+def test_quota_error_is_not_retried(monkeypatch):
+    import backend.services.gemini_client as gc
+    monkeypatch.setattr(gc, "_maybe_alert", lambda caller, exc: None)
+    calls = []
+
+    async def gen(model, system_prompt, user_prompt):
+        calls.append(1)
+        raise RuntimeError("429 RESOURCE_EXHAUSTED: exceeded your current quota")
+    v = asyncio.run(resolve_free_text("q", generate=gen, model="m"))
+    assert len(calls) == 1 and v["reason"] == "unavailable"
+
+
+def test_slow_catalog_tidy_answers_with_ai_verdict_and_keeps_searching(monkeypatch):
+    """Prod 2026-10-20: decide's catalog API cold-started (35-45 s), the tidy waited 10 s,
+    and decide's resolve gave up with {} although Gemini had answered in ~2 s."""
+    import backend.services.match_judge.free_text as ft
+    monkeypatch.setattr(ft, "CATALOG_TIDY_TIMEOUT_S", 0.05)
+    finished = []
+
+    async def gen(model, system_prompt, user_prompt):
+        return _TITANIC_AI
+
+    async def judge(artist, title):
+        await asyncio.sleep(0.2)
+        finished.append((artist, title))
+        return MatchVerdict("cosmetic", True, "Céline Dion", "My Heart Will Go On", engine="catalog")
+
+    async def main():
+        v = await resolve_and_tidy("song from titanic", generate=gen, judge=judge, model="m")
+        assert finished == []                 # answered before the catalog search finished
+        await asyncio.sleep(0.3)              # ...which kept running in the background
+        return v
+    v = asyncio.run(main())
+    assert v["kind"] == "content" and v["confident"] is True
+    assert (v["canonical_artist"], v["canonical_title"]) == ("Céline Dion", "My Heart Will Go On")
+    assert v["engine"] == "ai" and v["reason"] == "unavailable"   # not cached: a later ask gets the tidy
+    assert finished == [("Céline Dion", "My Heart Will Go On")]
+    assert ft._background == set()
