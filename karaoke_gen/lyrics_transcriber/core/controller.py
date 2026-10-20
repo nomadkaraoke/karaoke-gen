@@ -563,6 +563,7 @@ class LyricsTranscriber:
             from karaoke_gen.lyrics_transcriber.correction.relevance import filter_irrelevant_sources
             filtered_lyrics, rejected_sources = filter_irrelevant_sources(
                 self.results.lyrics_results, anchor_sequences, logger=self.logger,
+                transcribed_text=transcribed_text,
             )
             if len(filtered_lyrics) < len(self.results.lyrics_results):
                 self.logger.info(

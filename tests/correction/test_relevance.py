@@ -255,3 +255,110 @@ class TestCorrectorRelevanceIntegration:
         assert result.corrections_made == 0
         # Original segments should be preserved
         assert len(result.original_segments) == 1
+
+
+# --- n-gram rescue (repetitive songs) -------------------------------------------------
+# Invented lyrics with the same shape as the production failure: two lines repeated many
+# times, transcribed with a few consistent mishearings.
+
+_CHORUS = [
+    ["hello", "neighbour", "will", "you", "wave", "at", "me"],
+    ["i", "am", "the", "one", "who", "painted", "the", "garden", "gate"],
+]
+_VERSE = [
+    ["morning", "comes", "slowly", "over", "the", "hill"],
+    ["coffee", "goes", "cold", "while", "the", "radio", "plays"],
+]
+
+
+def _song_lines() -> list[list[str]]:
+    return _CHORUS * 4 + _VERSE + _CHORUS * 4 + _VERSE + _CHORUS * 2
+
+
+def _misheard(lines: list[list[str]]) -> str:
+    swaps = {"neighbour": "nathan", "who": "that", "garden": "guarded", "gate": "grape"}
+    return " ".join(swaps.get(w, w) for line in lines for w in line)
+
+
+def _repetitive_case():
+    lines = _song_lines()
+    lyrics = _make_lyrics_data(lines, "lrclib")
+    # Anchors that only credit the first occurrence of each phrase in the reference,
+    # the undercount that rejected correct lyrics for repetitive songs in production.
+    first_ids = [w.id for seg in lyrics.segments[:2] for w in seg.words]
+    anchor = _make_anchor(["t1"], {"lrclib": first_ids})
+    return lyrics, anchor, _misheard(lines)
+
+
+def test_repetitive_correct_song_is_rescued_by_ngrams():
+    from karaoke_gen.lyrics_transcriber.correction.relevance import compute_ngram_relevance
+
+    lyrics, anchor, transcription = _repetitive_case()
+    assert compute_source_relevance("lrclib", lyrics, [anchor]).relevance < 0.30
+    score, matched, total, distinct = compute_ngram_relevance(lyrics, transcription)
+    assert score >= 0.25 and matched >= 10 and total >= 20 and distinct >= 15
+
+    kept, rejected = filter_irrelevant_sources({"lrclib": lyrics}, [anchor], transcribed_text=transcription)
+    assert "lrclib" in kept and not rejected
+
+
+def test_without_transcribed_text_behaviour_is_unchanged():
+    lyrics, anchor, _ = _repetitive_case()
+    kept, rejected = filter_irrelevant_sources({"lrclib": lyrics}, [anchor])
+    assert not kept and "lrclib" in rejected
+    assert rejected["lrclib"].ngram_relevance is None
+
+
+def test_wrong_song_is_still_rejected():
+    lyrics, anchor, _ = _repetitive_case()
+    other = "rain falls on the quiet harbour and the boats drift out past the lighthouse " * 6
+    kept, rejected = filter_irrelevant_sources({"lrclib": lyrics}, [anchor], transcribed_text=other)
+    assert not kept
+    assert rejected["lrclib"].ngram_relevance < 0.25
+
+
+def test_filler_repetition_does_not_count():
+    """Shared "na na na" / "oh oh oh" stretches must not make a wrong song look relevant."""
+    from karaoke_gen.lyrics_transcriber.correction.relevance import compute_ngram_relevance
+
+    filler = [["na"] * 8, ["oh", "oh", "oh", "yeah"]] * 10 + [["dance", "with", "me", "tonight"]]
+    lyrics = _make_lyrics_data(filler, "genius")
+    transcription = "na na na na na na oh oh oh yeah " * 12 + "different words entirely here"
+    score, matched, total, _ = compute_ngram_relevance(lyrics, transcription)
+    assert total < 20  # only distinct-word trigrams count, so filler can't reach the size guard
+    kept, _ = filter_irrelevant_sources({"genius": lyrics}, [], transcribed_text=transcription)
+    assert not kept
+
+
+def test_tiny_reference_is_not_rescued():
+    lyrics = _make_lyrics_data([["one", "two", "three", "four"]], "spotify")
+    kept, rejected = filter_irrelevant_sources(
+        {"spotify": lyrics}, [], transcribed_text="one two three four"
+    )
+    assert not kept and rejected["spotify"].ngram_relevance == 1.0
+
+
+def test_sources_passing_anchor_filter_are_never_rejected_by_rescue():
+    lyrics, anchor, _ = _repetitive_case()
+    all_ids = [w.id for seg in lyrics.segments for w in seg.words]
+    full_anchor = _make_anchor(["t1"], {"lrclib": all_ids})
+    kept, rejected = filter_irrelevant_sources(
+        {"lrclib": lyrics}, [full_anchor], transcribed_text="nothing in common at all here"
+    )
+    assert "lrclib" in kept and not rejected
+
+
+def test_shared_refrain_alone_cannot_rescue():
+    """A wrong song sharing only a long repeated three-word refrain stays rejected."""
+    refrain = [["na", "hey", "oh"]] * 30 + [["walking", "down", "the", "avenue", "tonight"]]
+    lyrics = _make_lyrics_data(refrain, "genius")
+    transcription = "na hey oh " * 40 + "something else about the sea and sky"
+    kept, rejected = filter_irrelevant_sources({"genius": lyrics}, [], transcribed_text=transcription)
+    assert not kept and rejected["genius"].ngram_relevance >= 0.25  # high score, but too few distinct trigrams
+
+
+def test_combining_marks_are_kept_in_words():
+    from karaoke_gen.lyrics_transcriber.correction.relevance import _words
+
+    assert _words("कला बाला रामा") != _words("कली बाली रामी")
+    assert _words("Don’t stop") == ["don't", "stop"]
