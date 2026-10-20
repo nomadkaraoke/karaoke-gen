@@ -156,7 +156,7 @@ class LyricsCorrector:
 
                 # Filter irrelevant reference sources based on anchor match quality
                 filtered_lyrics, rejected_sources = filter_irrelevant_sources(
-                    lyrics_results, anchor_sequences, logger=self.logger,
+                    lyrics_results, anchor_sequences, logger=self.logger, transcribed_text=transcribed_text,
                 )
 
                 # If sources were filtered, re-run anchor finding with only valid sources
