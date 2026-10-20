@@ -29,6 +29,29 @@ Judge = Callable[[str, str], Awaitable[MatchVerdict]]
 
 _VALID_KINDS = {"cosmetic", "content", "ambiguous"}
 
+# Latency budget. A singer (kjbox) or the mobile app's "Describe the song" (via
+# decide's /api/search/resolve, which waits 25 s) is waiting on this, so every step
+# is bounded and the worst case stays ~20 s:
+#   Gemini: 2 attempts x 7 s. A low-thinking Flash call answers in ~2 s; the odd
+#     one stalls until a 504 DEADLINE_EXCEEDED (~10 s), and a fresh attempt is fast.
+#   Catalog tidy: 4 s. It searches decide's catalog API, whose cold start takes
+#     35-45 s; waiting on it (gen's catalog proxy gives up after 10 s) pushed a
+#     ready AI answer past decide's timeout, so the first ask of a description
+#     came back empty while gen finished and cached it for the second ask.
+GEMINI_ATTEMPT_TIMEOUT_S = 7.0
+GEMINI_ATTEMPTS = 2
+CATALOG_TIDY_TIMEOUT_S = 4.0
+
+# Catalog searches left running after the tidy gave up on them (they warm decide and
+# the catalog proxy's cache for the next ask). Strong refs so they aren't GC'd mid-flight.
+_background: set[asyncio.Task] = set()
+
+
+def _drop_background(task: asyncio.Task) -> None:
+    _background.discard(task)
+    if not task.cancelled() and task.exception() is not None:
+        logger.info(f"background catalog tidy failed: {task.exception()!r}")
+
 _SYSTEM_PROMPT = (
     "You resolve a karaoke singer's free-text song search. The query is one line "
     "holding an artist and/or a song title in any order, often lazily typed or "
@@ -136,17 +159,27 @@ def _verdict_from_response(data: object, query: str) -> dict:
 
 async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
                             model: Optional[str] = None) -> dict:
-    """Split + correct a free-text song query. Never raises: failures → kind 'none'."""
-    try:
-        data = await (generate or _default_generate)(
-            model or _model(), _SYSTEM_PROMPT, f'Singer typed: "{query}"')
-    except Exception as e:
-        from backend.services.gemini_client import note_gemini_failure
+    """Split + correct a free-text song query. Never raises: failures → kind 'none'.
 
-        note_gemini_failure("match_judge_free_text", e)
-        logger.warning(f"resolve_free_text failed: {e}")
-        return _none(query, "unavailable")
-    return verdict_from_response(data, query)
+    Each Gemini attempt is bounded by GEMINI_ATTEMPT_TIMEOUT_S; a transient failure
+    (timeout, 5xx) is retried once. Quota/billing/key errors are not retried.
+    """
+    from backend.services.gemini_client import note_gemini_failure
+
+    gen = generate or _default_generate
+    for attempt in range(1, GEMINI_ATTEMPTS + 1):
+        try:
+            data = await asyncio.wait_for(
+                gen(model or _model(), _SYSTEM_PROMPT, f'Singer typed: "{query}"'),
+                GEMINI_ATTEMPT_TIMEOUT_S)
+        except Exception as e:
+            reason = f"timed out after {GEMINI_ATTEMPT_TIMEOUT_S:g}s" if isinstance(e, asyncio.TimeoutError) else str(e)
+            logger.warning(f"resolve_free_text attempt {attempt}/{GEMINI_ATTEMPTS} failed: {reason}")
+            if note_gemini_failure("match_judge_free_text", e) or attempt == GEMINI_ATTEMPTS:
+                return _none(query, "unavailable")
+            continue
+        return verdict_from_response(data, query)
+    return _none(query, "unavailable")  # pragma: no cover - loop always returns
 
 
 async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
@@ -168,8 +201,18 @@ async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
         artist, title = verdict["typed_artist"], verdict["typed_title"]
     else:
         return verdict
+    task = asyncio.ensure_future((judge or _default_judge)(artist, title))
     try:
-        cat = await (judge or _default_judge)(artist, title)
+        # shield: on timeout the search keeps running (warming decide + the catalog
+        # proxy cache) instead of being cancelled mid-request.
+        cat = await asyncio.wait_for(asyncio.shield(task), CATALOG_TIDY_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        _background.add(task)
+        task.add_done_callback(_drop_background)
+        logger.warning(f"resolve_and_tidy catalog pass timed out after {CATALOG_TIDY_TIMEOUT_S:g}s; "
+                       "answering with the AI verdict")
+        # Transient: the route doesn't cache "unavailable", so a later ask gets the tidy.
+        return {**verdict, "reason": "unavailable"}
     except Exception as e:
         logger.warning(f"resolve_and_tidy catalog pass failed: {e}")
         # Still answer with the AI verdict, but as a transient result: the
@@ -209,7 +252,8 @@ def _blocking_generate(model: str, system_prompt: str, user_prompt: str) -> dict
 
     from backend.services.gemini_client import get_genai_client
 
-    client = get_genai_client(timeout_ms=int(getattr(settings, "match_judge_timeout_ms", 12000)))
+    timeout_ms = min(int(getattr(settings, "match_judge_timeout_ms", 12000)), int(GEMINI_ATTEMPT_TIMEOUT_S * 1000))
+    client = get_genai_client(timeout_ms=timeout_ms)
     response = client.models.generate_content(
         model=model,
         contents=[user_prompt],
