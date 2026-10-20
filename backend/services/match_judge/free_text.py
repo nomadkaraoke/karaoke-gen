@@ -32,13 +32,17 @@ _VALID_KINDS = {"cosmetic", "content", "ambiguous"}
 # Latency budget. A singer (kjbox) or the mobile app's "Describe the song" (via
 # decide's /api/search/resolve, which waits 25 s) is waiting on this, so every step
 # is bounded and the worst case stays ~20 s:
-#   Gemini: 2 attempts x 7 s. A low-thinking Flash call answers in ~2 s; the odd
+#   Gemini: 2 attempts x 8 s. A low-thinking Flash call answers in ~2 s; the odd
 #     one stalls until a 504 DEADLINE_EXCEEDED (~10 s), and a fresh attempt is fast.
+#     The 8 s cap is client-side (asyncio.wait_for): the API rejects request
+#     deadlines under 10 s with 400 INVALID_ARGUMENT, so the SDK timeout stays at
+#     match_judge_timeout_ms (>= GEMINI_MIN_DEADLINE_MS).
 #   Catalog tidy: 4 s. It searches decide's catalog API, whose cold start takes
 #     35-45 s; waiting on it (gen's catalog proxy gives up after 10 s) pushed a
 #     ready AI answer past decide's timeout, so the first ask of a description
 #     came back empty while gen finished and cached it for the second ask.
-GEMINI_ATTEMPT_TIMEOUT_S = 7.0
+GEMINI_ATTEMPT_TIMEOUT_S = 8.0
+GEMINI_MIN_DEADLINE_MS = 10000  # the API's minimum request deadline
 GEMINI_ATTEMPTS = 2
 CATALOG_TIDY_TIMEOUT_S = 4.0
 
@@ -157,6 +161,12 @@ def _verdict_from_response(data: object, query: str) -> dict:
     }
 
 
+def _retryable(exc: BaseException) -> bool:
+    """Timeouts, 5xx and 429 may pass; any other 4xx (bad request/config) won't."""
+    code = getattr(exc, "code", None)
+    return not (isinstance(code, int) and 400 <= code < 500 and code != 429)
+
+
 async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
                             model: Optional[str] = None) -> dict:
     """Split + correct a free-text song query. Never raises: failures → kind 'none'.
@@ -175,7 +185,7 @@ async def resolve_free_text(query: str, *, generate: Optional[Generate] = None,
         except Exception as e:
             reason = f"timed out after {GEMINI_ATTEMPT_TIMEOUT_S:g}s" if isinstance(e, asyncio.TimeoutError) else str(e)
             logger.warning(f"resolve_free_text attempt {attempt}/{GEMINI_ATTEMPTS} failed: {reason}")
-            if note_gemini_failure("match_judge_free_text", e) or attempt == GEMINI_ATTEMPTS:
+            if note_gemini_failure("match_judge_free_text", e) or attempt == GEMINI_ATTEMPTS or not _retryable(e):
                 return _none(query, "unavailable")
             continue
         return verdict_from_response(data, query)
@@ -253,7 +263,7 @@ def _blocking_generate(model: str, system_prompt: str, user_prompt: str) -> dict
 
     from backend.services.gemini_client import get_genai_client
 
-    timeout_ms = min(int(getattr(settings, "match_judge_timeout_ms", 12000)), int(GEMINI_ATTEMPT_TIMEOUT_S * 1000))
+    timeout_ms = max(int(getattr(settings, "match_judge_timeout_ms", 12000)), GEMINI_MIN_DEADLINE_MS)
     client = get_genai_client(timeout_ms=timeout_ms)
     response = client.models.generate_content(
         model=model,
