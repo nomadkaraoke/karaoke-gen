@@ -42,15 +42,15 @@ GEMINI_ATTEMPT_TIMEOUT_S = 7.0
 GEMINI_ATTEMPTS = 2
 CATALOG_TIDY_TIMEOUT_S = 4.0
 
-# Catalog searches left running after the tidy gave up on them (they warm decide and
-# the catalog proxy's cache for the next ask). Strong refs so they aren't GC'd mid-flight.
+# In-flight catalog searches. One the tidy gave up on keeps running (warming decide and
+# the catalog proxy's cache for the next ask); strong refs so it isn't GC'd mid-flight.
 _background: set[asyncio.Task] = set()
 
 
 def _drop_background(task: asyncio.Task) -> None:
     _background.discard(task)
     if not task.cancelled() and task.exception() is not None:
-        logger.info(f"background catalog tidy failed: {task.exception()!r}")
+        logger.debug(f"catalog tidy task failed: {task.exception()!r}")
 
 _SYSTEM_PROMPT = (
     "You resolve a karaoke singer's free-text song search. The query is one line "
@@ -202,13 +202,14 @@ async def resolve_and_tidy(query: str, *, generate: Optional[Generate] = None,
     else:
         return verdict
     task = asyncio.ensure_future((judge or _default_judge)(artist, title))
+    # Held until done even if this request times out or is cancelled (client gone).
+    _background.add(task)
+    task.add_done_callback(_drop_background)
     try:
         # shield: on timeout the search keeps running (warming decide + the catalog
         # proxy cache) instead of being cancelled mid-request.
         cat = await asyncio.wait_for(asyncio.shield(task), CATALOG_TIDY_TIMEOUT_S)
     except asyncio.TimeoutError:
-        _background.add(task)
-        task.add_done_callback(_drop_background)
         logger.warning(f"resolve_and_tidy catalog pass timed out after {CATALOG_TIDY_TIMEOUT_S:g}s; "
                        "answering with the AI verdict")
         # Transient: the route doesn't cache "unavailable", so a later ask gets the tidy.
