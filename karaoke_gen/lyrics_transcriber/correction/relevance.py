@@ -9,11 +9,11 @@ Wolfmother "Apple Tree", Deacon Blue, UB40 "Wedding Day" etc. scored 25-30% and 
 dropped. A source the anchor filter rejects is therefore rescued when its word-trigram
 overlap with the transcription (repeats counted, filler like "na na na" excluded) is high.
 Calibrated on 459 production jobs (2026-10-19): wrong-song pairs max 9.4% (p99.99 5.5%,
-491k cross-job pairs), the 23 sources it rescues were all the correct song (26-88%).
+491k cross-job pairs), the 22 sources it rescues were all the correct song (26-88%).
 The rescue can only add sources; it never rejects one the anchor filter keeps.
 """
 import logging
-import re
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -28,8 +28,8 @@ MIN_REFERENCE_RELEVANCE = 0.30  # Empirical: wrong-song max 3.5%, correct-song m
 MIN_NGRAM_RELEVANCE = 0.25
 MIN_NGRAM_REFERENCE = 20  # distinct-word trigrams in the reference; tiny references score by chance
 MIN_NGRAM_MATCHES = 10
+MIN_NGRAM_DISTINCT_MATCHES = 15  # distinct matched trigrams: a shared refrain alone can't pass (rescues had 22+, bar one 8-phrase D&B track left rejected)
 _NGRAM = 3
-_WORD = re.compile(r"[^\W_]+(?:'[^\W_]+)*")
 
 
 @dataclass
@@ -86,26 +86,48 @@ def compute_source_relevance(
     )
 
 
+def _is_word_char(ch: str) -> bool:
+    # Letters/digits plus combining marks (Devanagari vowel signs etc.), which \w drops.
+    return ch.isalnum() or ch == "'" or unicodedata.category(ch).startswith("M")
+
+
+def _words(text: str) -> list:
+    text = unicodedata.normalize("NFC", text.lower().replace("\u2019", "'"))
+    words, current = [], []
+    for ch in text:
+        if _is_word_char(ch):
+            current.append(ch)
+        elif current:
+            words.append("".join(current).strip("'"))
+            current = []
+    if current:
+        words.append("".join(current).strip("'"))
+    return [w for w in words if w]
+
+
 def _trigrams(text: str) -> Counter:
     """Word trigrams with three distinct words (so "na na na" / "oh oh oh" don't count)."""
-    words = _WORD.findall(text.lower().replace("\u2019", "'"))
+    words = _words(text)
     grams = (tuple(words[i:i + _NGRAM]) for i in range(len(words) - _NGRAM + 1))
     return Counter(g for g in grams if len(set(g)) == _NGRAM)
 
 
-def compute_ngram_relevance(lyrics_data: LyricsData, transcribed_text: str) -> Tuple[float, int, int]:
-    """(score, matched, total): share of the reference's trigrams, repeats included, found in the transcription."""
+def compute_ngram_relevance(lyrics_data: LyricsData, transcribed_text: str) -> Tuple[float, int, int, int]:
+    """(score, matched, total, distinct_matched): share of the reference's trigrams, repeats
+    included, found in the transcription, and how many different trigrams that match covers."""
     reference_text = " ".join(w.text for seg in lyrics_data.segments for w in seg.words)
     ref = _trigrams(reference_text)
     total = sum(ref.values())
     if not total:
-        return 0.0, 0, 0
-    matched = sum((ref & _trigrams(transcribed_text)).values())
-    return matched / total, matched, total
+        return 0.0, 0, 0, 0
+    common = ref & _trigrams(transcribed_text)
+    matched = sum(common.values())
+    return matched / total, matched, total, len(common)
 
 
-def _ngram_rescues(score: float, matched: int, total: int) -> bool:
-    return score >= MIN_NGRAM_RELEVANCE and total >= MIN_NGRAM_REFERENCE and matched >= MIN_NGRAM_MATCHES
+def _ngram_rescues(score: float, matched: int, total: int, distinct_matched: int) -> bool:
+    return (score >= MIN_NGRAM_RELEVANCE and total >= MIN_NGRAM_REFERENCE
+            and matched >= MIN_NGRAM_MATCHES and distinct_matched >= MIN_NGRAM_DISTINCT_MATCHES)
 
 
 def filter_irrelevant_sources(
@@ -147,9 +169,9 @@ def filter_irrelevant_sources(
             )
         else:
             if transcribed_text:
-                score, matched, total = compute_ngram_relevance(lyrics_data, transcribed_text)
+                score, matched, total, distinct = compute_ngram_relevance(lyrics_data, transcribed_text)
                 result.ngram_relevance = score
-                if _ngram_rescues(score, matched, total):
+                if _ngram_rescues(score, matched, total, distinct):
                     filtered[source_name] = lyrics_data
                     logger.info(
                         f"Source '{source_name}' kept by n-gram rescue: anchor relevance "

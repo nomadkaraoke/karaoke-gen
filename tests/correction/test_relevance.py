@@ -295,8 +295,8 @@ def test_repetitive_correct_song_is_rescued_by_ngrams():
 
     lyrics, anchor, transcription = _repetitive_case()
     assert compute_source_relevance("lrclib", lyrics, [anchor]).relevance < 0.30
-    score, matched, total = compute_ngram_relevance(lyrics, transcription)
-    assert score >= 0.25 and matched >= 10 and total >= 20
+    score, matched, total, distinct = compute_ngram_relevance(lyrics, transcription)
+    assert score >= 0.25 and matched >= 10 and total >= 20 and distinct >= 15
 
     kept, rejected = filter_irrelevant_sources({"lrclib": lyrics}, [anchor], transcribed_text=transcription)
     assert "lrclib" in kept and not rejected
@@ -324,7 +324,7 @@ def test_filler_repetition_does_not_count():
     filler = [["na"] * 8, ["oh", "oh", "oh", "yeah"]] * 10 + [["dance", "with", "me", "tonight"]]
     lyrics = _make_lyrics_data(filler, "genius")
     transcription = "na na na na na na oh oh oh yeah " * 12 + "different words entirely here"
-    score, matched, total = compute_ngram_relevance(lyrics, transcription)
+    score, matched, total, _ = compute_ngram_relevance(lyrics, transcription)
     assert total < 20  # only distinct-word trigrams count, so filler can't reach the size guard
     kept, _ = filter_irrelevant_sources({"genius": lyrics}, [], transcribed_text=transcription)
     assert not kept
@@ -346,3 +346,19 @@ def test_sources_passing_anchor_filter_are_never_rejected_by_rescue():
         {"lrclib": lyrics}, [full_anchor], transcribed_text="nothing in common at all here"
     )
     assert "lrclib" in kept and not rejected
+
+
+def test_shared_refrain_alone_cannot_rescue():
+    """A wrong song sharing only a long repeated three-word refrain stays rejected."""
+    refrain = [["na", "hey", "oh"]] * 30 + [["walking", "down", "the", "avenue", "tonight"]]
+    lyrics = _make_lyrics_data(refrain, "genius")
+    transcription = "na hey oh " * 40 + "something else about the sea and sky"
+    kept, rejected = filter_irrelevant_sources({"genius": lyrics}, [], transcribed_text=transcription)
+    assert not kept and rejected["genius"].ngram_relevance >= 0.25  # high score, but too few distinct trigrams
+
+
+def test_combining_marks_are_kept_in_words():
+    from karaoke_gen.lyrics_transcriber.correction.relevance import _words
+
+    assert _words("कला बाला रामा") != _words("कली बाली रामी")
+    assert _words("Don’t stop") == ["don't", "stop"]
