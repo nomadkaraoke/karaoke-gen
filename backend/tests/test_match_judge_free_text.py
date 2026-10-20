@@ -218,3 +218,39 @@ def test_slow_catalog_tidy_answers_with_ai_verdict_and_keeps_searching(monkeypat
     assert v["engine"] == "ai" and v["reason"] == "unavailable"   # not cached: a later ask gets the tidy
     assert finished == [("Céline Dion", "My Heart Will Go On")]
     assert ft._background == set()
+
+
+def test_client_error_is_not_retried():
+    class ClientError(Exception):
+        code = 400
+    calls = []
+
+    async def gen(model, system_prompt, user_prompt):
+        calls.append(1)
+        raise ClientError("400 INVALID_ARGUMENT")
+    v = asyncio.run(resolve_free_text("q", generate=gen, model="m"))
+    assert len(calls) == 1 and v["reason"] == "unavailable"
+
+
+def test_sdk_deadline_respects_the_api_minimum(monkeypatch):
+    """Prod 2026-10-20 (v0.279.6): a 7 s SDK timeout was rejected with 400 'Minimum allowed
+    deadline is 10s', so every uncached resolve failed. The per-attempt cap is client-side."""
+    import types
+
+    import backend.services.gemini_client as gc
+    import backend.services.match_judge.free_text as ft
+    from backend.config import settings
+
+    seen = {}
+
+    class FakeModels:
+        def generate_content(self, **kw):
+            return types.SimpleNamespace(text='{"kind": "none", "confident": false}')
+
+    def fake_client(timeout_ms=None):
+        seen["timeout_ms"] = timeout_ms
+        return types.SimpleNamespace(models=FakeModels())
+    monkeypatch.setattr(gc, "get_genai_client", fake_client)
+    monkeypatch.setattr(settings, "match_judge_timeout_ms", 5000, raising=False)
+    ft._blocking_generate("m", "sys", "user")
+    assert seen["timeout_ms"] >= ft.GEMINI_MIN_DEADLINE_MS
