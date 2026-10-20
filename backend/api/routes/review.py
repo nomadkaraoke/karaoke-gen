@@ -1069,6 +1069,9 @@ async def _stream_audio(job_id: str, request: Optional[Request] = None, stem: Li
             # 302-redirecting to a signed URL. Prod (flag unset) is unchanged.
             audio_bytes, content_type = await transcoding.get_review_audio_bytes_async(audio_gcs_path)
             logger.info(f"Job {job_id}: [dev-proxy] streaming {len(audio_bytes)}B input audio")
+            if request is not None:
+                # Range support so native players (iOS AVPlayer) can seek the song source.
+                return _ranged_response(request, audio_bytes, content_type)
             return Response(content=audio_bytes, media_type=content_type)
 
         signed_url = await transcoding.get_review_audio_url_async(audio_gcs_path, expiration_minutes=120)
@@ -1289,6 +1292,11 @@ async def complete_review(
     After saving, triggers the render video worker which will use the
     pre-selected instrumental (no separate instrumental selection step).
     """
+    # Local stack only (FAKE_WORKERS=1): a one-shot 503 for the finish-failure flows.
+    from backend.services.fake_workers import fake_workers_enabled
+    if fake_workers_enabled():
+        await asyncio.to_thread(_fake_complete_failure_hook, job_id)
+
     # Validation + GCS/Firestore writes are all sync (the corrections upload alone
     # took 21s on 2026-10-08, freezing every request on the instance) — run them
     # in a worker thread; only the render dispatch below runs on the loop.
@@ -1317,6 +1325,15 @@ async def complete_review(
         "status": "success",
         "instrumental_selection": instrumental_selection,
     }
+
+
+def _fake_complete_failure_hook(job_id: str) -> None:
+    """Raise a 503 once when the job's user set ``review_complete_fail_once`` (fake workers only)."""
+    from backend.services.fake_workers.config import consume_review_complete_failure
+
+    job = JobManager().get_job(job_id)
+    if job and consume_review_complete_failure(getattr(job, "user_email", None)):
+        raise HTTPException(status_code=503, detail="Fake review-complete failure (review_complete_fail_once)")
 
 
 def _save_review_completion(job_id: str, updated_data: Dict[str, Any]) -> str:

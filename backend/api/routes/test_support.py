@@ -98,6 +98,42 @@ def scenario(body: ScenarioRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=422, detail=str(e))
 
 
+@router.get("/jobs/{job_id}/review-result")
+def review_result(job_id: str) -> Dict[str, Any]:
+    """What the review submitted: the saved corrected lines plus the instrumental / duet choice.
+
+    Lets Maestro assert on a review without going through the review auth.
+    ``lines`` is empty until a review was completed (corrections_updated.json exists).
+    """
+    from backend.services.job_manager import JobManager
+    from backend.services.storage_service import StorageService
+
+    job = JobManager().get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="unknown job")
+    state = job.state_data or {}
+    path = ((job.file_urls or {}).get("lyrics") or {}).get("corrections_updated") \
+        or f"jobs/{job_id}/lyrics/corrections_updated.json"
+    storage = StorageService()
+    lines = []
+    if storage.file_exists(path):
+        for seg in storage.download_json(path).get("corrected_segments") or []:
+            lines.append({
+                "text": seg.get("text"),
+                "singer": seg.get("singer"),
+                "words": [
+                    {"text": w.get("text"), "start_time": w.get("start_time"), "end_time": w.get("end_time")}
+                    for w in seg.get("words") or []
+                ],
+            })
+    return {
+        "status": getattr(job.status, "value", job.status),
+        "instrumental_selection": state.get("instrumental_selection"),
+        "is_duet": bool(state.get("is_duet", False)),
+        "lines": lines,
+    }
+
+
 @router.get("/emails")
 def emails(to: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
     return {"emails": list_emails(to, limit=limit)}
