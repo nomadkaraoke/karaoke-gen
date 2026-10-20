@@ -17,7 +17,7 @@ import httpx
 
 from backend.models.job import JobStatus
 from backend.services.fake_workers.checkout import public_api_url
-from backend.services.fake_workers.config import set_fake_config
+from backend.services.fake_workers.config import get_fake_config, set_fake_config
 
 # target -> (per-user fake config overrides, status the job must reach)
 JOB_TARGETS: Dict[str, tuple] = {
@@ -76,6 +76,9 @@ def create_job(user: Dict[str, Any], target: str, artist: str = DEFAULT_ARTIST, 
         raise ScenarioError(f"Unknown job target {target!r}; one of {sorted(JOB_TARGETS)}")
     overrides, wanted = JOB_TARGETS[target]
     set_fake_config(overrides, email=user["email"])
+    # The awaiting_review job honours the user's review_mode knob (default always_review),
+    # so a flow can seed "auto" to reach the confident / skipped-step states.
+    review_mode = get_fake_config(email=user["email"]).review_mode if target == "awaiting_review" else "auto"
 
     with _api(user["session_token"]) as api:
         search = api.post("/api/audio-search/search-standalone", json={"artist": artist, "title": title})
@@ -86,7 +89,7 @@ def create_job(user: Dict[str, Any], target: str, artist: str = DEFAULT_ARTIST, 
             "selection_index": 0,
             "artist": artist,
             "title": title,
-            "review_mode": "always_review" if target == "awaiting_review" else "auto",
+            "review_mode": review_mode,
         })
         if created.status_code != 200:
             raise ScenarioError(f"create-from-search failed: {created.status_code} {created.text}")

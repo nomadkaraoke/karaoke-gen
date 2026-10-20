@@ -15,7 +15,7 @@ import tempfile
 import threading
 import zipfile
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ SAMPLE_RATE = 22050
 VIDEO_SIZE = "320x180"
 
 _lock = threading.Lock()
-_cache: Dict[int, "MediaSet"] = {}
+_cache: Dict[Tuple[int, str], "MediaSet"] = {}
 _root = tempfile.mkdtemp(prefix="fake_worker_media_")
 
 
@@ -52,10 +52,29 @@ def _ffmpeg(*args: str) -> None:
     subprocess.run(cmd, check=True, capture_output=True, timeout=300)
 
 
-def _tone(path: str, freq: int, duration: int, volume: float = 0.3) -> None:
+# Amplitude shaping so review waveforms aren't solid blocks: a sung-like burst pattern
+# (volume swells to full and dips to 30% every second) on the vocal stem, and a slow
+# tremolo on the instrumental / full mix.
+VOCAL_ENVELOPE = "volume='0.3+0.7*abs(sin(t*PI/2))':eval=frame"
+MIX_TREMOLO = "tremolo=f=2:d=0.6"
+# Window (seconds) in which the "audible" backing stem sings.
+BACKING_WINDOW = (10, 20)
+
+
+def _tone(path: str, freq: int, duration: int, volume: float = 0.3, shape: str = "") -> None:
+    chain = f"volume={volume}" + (f",{shape}" if shape else "")
     _ffmpeg(
         "-f", "lavfi", "-i", f"sine=frequency={freq}:sample_rate={SAMPLE_RATE}:duration={duration}",
-        "-af", f"volume={volume}", "-ac", "1", path,
+        "-af", chain, "-ac", "1", path,
+    )
+
+
+def _gated_tone(path: str, freq: int, duration: int, window: Tuple[float, float], volume: float = 0.3) -> None:
+    """A tone that only sounds inside ``window`` (silent elsewhere)."""
+    start, end = window
+    _ffmpeg(
+        "-f", "lavfi", "-i", f"sine=frequency={freq}:sample_rate={SAMPLE_RATE}:duration={duration}",
+        "-af", f"volume='if(between(t,{start},{end}),{volume},0)':eval=frame", "-ac", "1", path,
     )
 
 
@@ -95,16 +114,21 @@ def _zip(path: str, members: Dict[str, bytes]) -> None:
             zf.writestr(name, data)
 
 
-def _build(duration: int) -> MediaSet:
-    d = os.path.join(_root, str(duration))
+def _build(duration: int, backing_vocals: str = "silent") -> MediaSet:
+    d = os.path.join(_root, f"{duration}-{backing_vocals}")
     os.makedirs(d, exist_ok=True)
     p = lambda name: os.path.join(d, name)  # noqa: E731
 
-    # "Instrumental" = low tone, "lead vocals" = high tone, backing vocals = silence,
-    # so the real backing-vocals analysis recommends the clean instrumental.
-    _tone(p("instrumental_clean.flac"), 220, duration)
-    _tone(p("lead_vocals.flac"), 660, duration, volume=0.2)
-    _silence(p("backing_vocals.flac"), duration)
+    # "Instrumental" = low tone, "lead vocals" = high tone. Backing vocals = silence
+    # (the real backing-vocals analysis recommends the clean instrumental) or, for
+    # backing_vocals="audible", a tone in BACKING_WINDOW (it recommends keeping them).
+    _tone(p("instrumental_clean.flac"), 220, duration, shape=MIX_TREMOLO)
+    _tone(p("lead_vocals.flac"), 660, duration, volume=0.2, shape=VOCAL_ENVELOPE)
+    if backing_vocals == "audible":
+        window = (min(BACKING_WINDOW[0], duration / 3), min(BACKING_WINDOW[1], duration * 2 / 3))
+        _gated_tone(p("backing_vocals.flac"), 440, duration, window)
+    else:
+        _silence(p("backing_vocals.flac"), duration)
     _mix(p("vocals_clean.flac"), p("lead_vocals.flac"), p("backing_vocals.flac"))
     _mix(p("instrumental_with_backing.flac"), p("instrumental_clean.flac"), p("backing_vocals.flac"))
     _mix(p("input.flac"), p("instrumental_clean.flac"), p("vocals_clean.flac"))
@@ -139,12 +163,13 @@ def _build(duration: int) -> MediaSet:
     )
 
 
-def get_media(duration: int) -> MediaSet:
+def get_media(duration: int, backing_vocals: str = "silent") -> MediaSet:
     """Return (building once) the media set for a song of ``duration`` seconds."""
+    key = (duration, backing_vocals)
     with _lock:
-        media = _cache.get(duration)
+        media = _cache.get(key)
         if media is None:
-            logger.info(f"fake_workers: generating {duration}s media set in {_root}")
-            media = _build(duration)
-            _cache[duration] = media
+            logger.info(f"fake_workers: generating {duration}s ({backing_vocals} backing) media set in {_root}")
+            media = _build(duration, backing_vocals)
+            _cache[key] = media
         return media

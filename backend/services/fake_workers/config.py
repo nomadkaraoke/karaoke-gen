@@ -20,6 +20,16 @@ WORKER_KINDS = ("audio_download", "audio", "lyrics", "screens", "render_video", 
 SEARCH_CONFIDENCES = ("perfect", "recommended", "unsure")
 # Values of ``judge_kind`` (the fake match judge / free-text resolve verdict kind).
 JUDGE_KINDS = ("none", "cosmetic", "content", "ambiguous")
+LARGE_FIXTURE_MIN_SECONDS = 305
+
+# Values of ``review_fixture`` (the shape of the fake lyrics the review UI opens on).
+REVIEW_FIXTURES = ("default", "corrections", "duet", "rtl", "large")
+# Values of ``backing_vocals`` (silent stem vs one with an audible 10-20 s window).
+BACKING_VOCALS = ("silent", "audible")
+# Values of ``review_mode`` (what the seeded job asks for) and ``auto_approval``
+# (which stored auto-approval verdict the fake screens worker writes).
+REVIEW_MODES = ("always_review", "auto")
+AUTO_APPROVALS = ("none", "lyrics_confident", "backing_confident", "both_unsure")
 
 
 @dataclass
@@ -52,6 +62,24 @@ class FakeConfig:
     judge_kind: str = "none"
     judge_canonical_artist: str = ""
     judge_canonical_title: str = ""
+    # Review-UI fixtures (per-user, for the mobile review Maestro flows). Defaults keep
+    # today's behaviour. See docs/TESTING.md § Local stack.
+    # Shape of the fake lyrics: default | corrections | duet | rtl | large.
+    review_fixture: str = "default"
+    # silent: the backing stem is silence (analysis recommends clean). audible: a tone in
+    # the 10-20 s window, so the analysis recommends with_backing / review.
+    backing_vocals: str = "silent"
+    # The fake audio worker uploads its stems this many seconds after it starts, so the
+    # job reaches awaiting_review first (instrumental-urls audio_complete is false until then).
+    stems_delay_seconds: float = 0
+    # What the job scenario asks for: always_review (every screen) or auto (a confident
+    # stored verdict lets the UI skip a screen).
+    review_mode: str = "always_review"
+    # Stored processing_metadata.auto_approval verdict written when the job parks at
+    # awaiting_review: none | lyrics_confident | backing_confident | both_unsure.
+    auto_approval: str = "none"
+    # True: the next POST /api/review/{id}/complete answers 503 once, then this resets to False.
+    review_complete_fail_once: bool = False
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "FakeConfig":
@@ -76,6 +104,25 @@ class FakeConfig:
             raise ValueError(f"judge_kind must be one of {JUDGE_KINDS}")
         if not isinstance(self.judge_canonical_artist, str) or not isinstance(self.judge_canonical_title, str):
             raise ValueError("judge_canonical_artist and judge_canonical_title must be strings")
+        if self.review_fixture not in REVIEW_FIXTURES:
+            raise ValueError(f"review_fixture must be one of {REVIEW_FIXTURES}")
+        if self.review_fixture == "large" and self.audio_duration_seconds < LARGE_FIXTURE_MIN_SECONDS:
+            # 300 lines at >= 1 s each: shorter audio leaves most lyrics past the end of the song.
+            raise ValueError(f"review_fixture 'large' needs audio_duration_seconds >= {LARGE_FIXTURE_MIN_SECONDS}")
+        if self.backing_vocals not in BACKING_VOCALS:
+            raise ValueError(f"backing_vocals must be one of {BACKING_VOCALS}")
+        if (
+            isinstance(self.stems_delay_seconds, bool)
+            or not isinstance(self.stems_delay_seconds, (int, float))
+            or not 0 <= self.stems_delay_seconds <= 600
+        ):
+            raise ValueError("stems_delay_seconds must be a number between 0 and 600")
+        if self.review_mode not in REVIEW_MODES:
+            raise ValueError(f"review_mode must be one of {REVIEW_MODES}")
+        if self.auto_approval not in AUTO_APPROVALS:
+            raise ValueError(f"auto_approval must be one of {AUTO_APPROVALS}")
+        if not isinstance(self.review_complete_fail_once, bool):
+            raise ValueError("review_complete_fail_once must be a boolean")
 
 
 USER_CONFIG_COLLECTION = "local_stack_user_config"
@@ -136,3 +183,15 @@ def clear_fake_config(db=None) -> None:
     _doc(db).delete()
     for snap in db.collection(USER_CONFIG_COLLECTION).stream():
         snap.reference.delete()
+
+
+def consume_review_complete_failure(email: Optional[str] = None, db=None) -> bool:
+    """True once when ``review_complete_fail_once`` is set for ``email``, then clear it.
+
+    Backs the one-shot 503 on ``POST /api/review/{id}/complete`` (finish-step failure/retry flows).
+    """
+    db = db or _default_db()
+    if not get_fake_config(db, email=email).review_complete_fail_once:
+        return False
+    set_fake_config({"review_complete_fail_once": False}, db=db, email=email)
+    return True

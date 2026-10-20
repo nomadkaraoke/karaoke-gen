@@ -373,6 +373,24 @@ shapes, and `frontend/lib/__tests__/fake-search-tiers.test.ts` feeds them to the
 A backend test fails if that fixture is stale; regenerate it with
 `poetry run python -m backend.services.fake_workers.search --write-fixture`.
 
+**Review-flow knobs (per user, for the mobile review Maestro flows):** set with
+`PUT /api/test/fake-config?email=<user>` *before* `POST /api/test/scenario` with `job_awaiting_review`
+for that email. Defaults keep the plain 6-line, silent-backing behaviour.
+
+| Knob | Values | Effect |
+|---|---|---|
+| `review_fixture` | `default` / `corrections` / `duet` / `rtl` / `large` | Shape of the fake lyrics. `corrections`: two AI-applied corrections (words with `ai_corrected` / `original_text`, one `timing_estimated` split) with matching `metadata.auto_approval.undo_info`, one untimed word, one word held > 2 s and one evidenced vocal gap with synced reference lines (needs `audio_duration_seconds` >= 30). `duet`: `is_duet` true, per-line singers 1 / 2 / 0. `rtl`: Hebrew lines, one also with Arabic. `large`: 300 lines, 2,100 words (~1.3 MB JSON; needs `audio_duration_seconds` >= 305, or the lyrics run past the end of the audio). |
+| `backing_vocals` | `silent` / `audible` | `audible`: a 440 Hz tone in the 10-20 s window, so the real analysis recommends `with_backing`. |
+| `stems_delay_seconds` | 0-600 | The fake audio worker uploads stems this long after it starts, so the job reaches `awaiting_review` with `instrumental-urls` `audio_complete: false` until then. |
+| `review_mode` | `always_review` / `auto` | `review_mode` of the seeded `job_awaiting_review` job. `auto` lets a stored confident verdict skip a screen. |
+| `auto_approval` | `none` / `lyrics_confident` / `backing_confident` / `both_unsure` | Writes `processing_metadata.auto_approval` when the job parks at review (only has an effect with `review_mode: auto`; `correction-data` `auto_approval` then reports `lyrics.confident` / `backing.confident`). |
+| `review_complete_fail_once` | bool | The next `POST /api/review/{id}/complete` for this user's job answers 503, then the knob resets to false. Inert unless `FAKE_WORKERS=1`. |
+
+`GET /api/test/jobs/{job_id}/review-result` (no auth, test API only) returns
+`{status, instrumental_selection, is_duet, lines: [{text, singer, words: [{text, start_time, end_time}]}]}`
+from the saved `corrections_updated.json` (`lines` is empty until a review completed), so Maestro can
+assert on what the app submitted.
+
 **Mobile (Maestro / dev builds):** run the stack, then point the app at
 `http://10.0.2.2:8010` (Android emulator) or `http://127.0.0.1:8010` (iOS
 simulator). Set `LOCAL_STACK_API_URL` to that address before `up`, so fake-checkout

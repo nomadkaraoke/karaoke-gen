@@ -65,7 +65,32 @@ async def _begin(kind: str, job_id: str) -> FakeConfig:
 
 
 def _media_for(config: FakeConfig) -> MediaSet:
-    return get_media(int(config.audio_duration_seconds))
+    return get_media(int(config.audio_duration_seconds), config.backing_vocals)
+
+
+# Stored processing_metadata.auto_approval verdicts per FakeConfig.auto_approval value:
+# (lyrics verdict, backing verdict, backing non_subjective). The shapes
+# auto_approval_summary() reads, so the review UI sees confident / unsure halves.
+_AUTO_APPROVAL_VERDICTS = {
+    "lyrics_confident": ("auto", "review", False),
+    "backing_confident": ("review", "clean", True),
+    "both_unsure": ("review", "review", False),
+}
+
+
+def auto_approval_payload(kind: str):
+    """The ``processing_metadata.auto_approval`` verdict for ``kind``, or None for "none"."""
+    verdicts = _AUTO_APPROVAL_VERDICTS.get(kind)
+    if not verdicts:
+        return None
+    lyrics, backing, non_subjective = verdicts
+    return {
+        "outcome": "review",
+        "source": "fake_workers",
+        "lyrics": {"verdict": lyrics},
+        "backing": {"verdict": backing, "non_subjective": non_subjective},
+        "backing_analysis_available": True,
+    }
 
 
 # ---------------------------------------------------------------- audio download
@@ -117,6 +142,11 @@ async def run_audio(job_id: str) -> bool:
         "combined_instrumentals": {"fake_backing_model.ckpt": media.instrumental_with_backing},
     }
     job_manager.update_state_data(job_id, "model_names", FAKE_MODEL_NAMES)
+    if config.stems_delay_seconds:
+        # Late stems: this worker is its own thread/loop, so lyrics -> screens -> awaiting_review
+        # proceed meanwhile and the review opens with audio_complete still false.
+        logger.info(f"[job:{job_id}] fake audio: holding stems for {config.stems_delay_seconds}s")
+        await asyncio.sleep(config.stems_delay_seconds)
     await upload_separation_results(job_id, separation_result, storage, job_manager)
     await _transcode_review_stems(job_id, job_manager, storage, job_log)
     job_manager.update_processing_metadata(job_id, "separation", {
@@ -149,7 +179,9 @@ async def run_lyrics(job_id: str) -> bool:
         return False
 
     corrections = build_corrections(job.artist or "Fake Artist", job.title or "Fake Title",
-                                    float(config.audio_duration_seconds))
+                                    float(config.audio_duration_seconds), config.review_fixture)
+    # Not part of corrections.json: gen keeps the vocal-gap analysis in state_data.
+    vocal_gaps = corrections.pop("vocal_gaps", None)
     with tempfile.TemporaryDirectory(prefix=f"fake_lyrics_{job_id}_") as tmp:
         corrections_path = os.path.join(tmp, "corrections.json")
         with open(corrections_path, "w") as f:
@@ -162,6 +194,8 @@ async def run_lyrics(job_id: str) -> bool:
         url = await asyncio.to_thread(storage.upload_file, lrc_path, f"jobs/{job_id}/lyrics/karaoke.lrc")
         job_manager.update_file_url(job_id, "lyrics", "lrc", url)
 
+    if vocal_gaps:
+        job_manager.update_state_data(job_id, "vocal_gaps", vocal_gaps)
     job_manager.update_state_data(job_id, "lyrics_metadata", {
         "segment_count": len(corrections["corrected_segments"]),
         "has_corrections": True,
@@ -228,6 +262,9 @@ async def run_screens(job_id: str) -> bool:
 
         await get_worker_service().trigger_render_video_worker(job_id)
     else:
+        verdict = auto_approval_payload(config.auto_approval)
+        if verdict:
+            job_manager.update_processing_metadata(job_id, "auto_approval", verdict)
         job_manager.transition_to_state(
             job_id=job_id, new_status=JobStatus.AWAITING_REVIEW, progress=55,
             message="Ready for review. Please review lyrics and select your instrumental.",
