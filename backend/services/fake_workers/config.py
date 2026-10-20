@@ -20,6 +20,8 @@ WORKER_KINDS = ("audio_download", "audio", "lyrics", "screens", "render_video", 
 SEARCH_CONFIDENCES = ("perfect", "recommended", "unsure")
 # Values of ``judge_kind`` (the fake match judge / free-text resolve verdict kind).
 JUDGE_KINDS = ("none", "cosmetic", "content", "ambiguous")
+LARGE_FIXTURE_MIN_SECONDS = 305
+
 # Values of ``review_fixture`` (the shape of the fake lyrics the review UI opens on).
 REVIEW_FIXTURES = ("default", "corrections", "duet", "rtl", "large")
 # Values of ``backing_vocals`` (silent stem vs one with an audible 10-20 s window).
@@ -104,6 +106,9 @@ class FakeConfig:
             raise ValueError("judge_canonical_artist and judge_canonical_title must be strings")
         if self.review_fixture not in REVIEW_FIXTURES:
             raise ValueError(f"review_fixture must be one of {REVIEW_FIXTURES}")
+        if self.review_fixture == "large" and self.audio_duration_seconds < LARGE_FIXTURE_MIN_SECONDS:
+            # 300 lines at >= 1 s each: shorter audio leaves most lyrics past the end of the song.
+            raise ValueError(f"review_fixture 'large' needs audio_duration_seconds >= {LARGE_FIXTURE_MIN_SECONDS}")
         if self.backing_vocals not in BACKING_VOCALS:
             raise ValueError(f"backing_vocals must be one of {BACKING_VOCALS}")
         if (

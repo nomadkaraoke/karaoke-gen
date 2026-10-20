@@ -90,10 +90,14 @@ class TestKnobs:
         {"review_fixture": "nope"}, {"backing_vocals": "loud"}, {"stems_delay_seconds": -1},
         {"stems_delay_seconds": 601}, {"stems_delay_seconds": "2"}, {"review_mode": "manual"},
         {"auto_approval": "yes"}, {"review_complete_fail_once": "true"},
+        {"review_fixture": "large", "audio_duration_seconds": 30},
     ])
     def test_validate_rejects(self, bad):
         with pytest.raises(ValueError):
             set_fake_config(bad, db=FakeDB(), email="u@example.com")
+
+    def test_large_fixture_accepts_long_audio(self):
+        set_fake_config({"review_fixture": "large", "audio_duration_seconds": 305}, db=FakeDB(), email="u@example.com")
 
     def test_consume_review_complete_failure_is_one_shot_per_user(self):
         db = FakeDB()
