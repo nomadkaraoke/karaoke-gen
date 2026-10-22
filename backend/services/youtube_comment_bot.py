@@ -191,6 +191,17 @@ CLASSIFIER_RESPONSE_SCHEMA = {
 Generate = Callable[[str, str, Optional[Dict]], Dict]
 
 
+MAX_NAME_LEN = 100
+# Artist/title come from the model reading untrusted comment text and end up in a
+# public reply posted as the channel + on the public board: never let a link, an
+# @mention, markup or a multi-line blob through.
+_UNSAFE_NAME_RE = re.compile(r"https?://|www\.|\.(com|net|org|io|ly|gg|xyz)\b|[@<>\r\n]", re.IGNORECASE)
+
+
+def _unsafe_name(value: str) -> bool:
+    return len(value) > MAX_NAME_LEN or bool(_UNSAFE_NAME_RE.search(value))
+
+
 def parse_classification(data: Dict) -> Classification:
     """Validate the model's JSON; anything malformed becomes a non-request."""
     if not isinstance(data, dict):
@@ -201,7 +212,7 @@ def parse_classification(data: Dict) -> Classification:
             continue
         artist = str(s.get("artist") or "").strip()
         title = str(s.get("title") or "").strip()
-        if artist and title:
+        if artist and title and not _unsafe_name(artist) and not _unsafe_name(title):
             songs.append(SongAsk(artist, title))
     try:
         confidence = float(data.get("confidence") or 0.0)

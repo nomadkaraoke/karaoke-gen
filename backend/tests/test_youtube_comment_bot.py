@@ -219,6 +219,26 @@ class TestParseClassification:
         assert c.confidence == 1.0 and [s.title for s in c.songs] == ["B"]
 
 
+class TestUnsafeNames:
+    @pytest.mark.parametrize("title", [
+        "Win free stuff at http://evil.example", "visit www.spam.test", "free-gift.com",
+        "dm @scammer", "<b>x</b>", "line one\nline two", "x" * 101,
+    ])
+    def test_unsafe_song_names_are_dropped(self, title):
+        c = bot.parse_classification({**REQUEST, "songs": [{"artist": "The Lanterns", "title": title}]})
+        assert c.songs == [] and not c.is_song_request
+
+    def test_unsafe_artist_dropped_but_safe_song_kept(self):
+        c = bot.parse_classification({**REQUEST, "songs": [
+            {"artist": "spam.xyz", "title": "Paper Moons"}, {"artist": "Glass Harbor", "title": "Tin Sky"}]})
+        assert [s.title for s in c.songs] == ["Tin Sky"]
+
+    def test_normal_punctuation_survives(self):
+        c = bot.parse_classification({**REQUEST, "songs": [{"artist": "fun.", "title": "Walking the Dog II"},
+                                                           {"artist": "Los Campesinos!", "title": "kms"}]})
+        assert len(c.songs) == 2
+
+
 class TestChannelIndex:
     def test_from_entries_high_confidence_non_translated_only(self):
         idx = bot.ChannelIndex.from_entries([
