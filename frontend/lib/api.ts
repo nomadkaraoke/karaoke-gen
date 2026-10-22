@@ -819,6 +819,14 @@ export interface BulkTrack {
   versions: CommunityVersion[];
 }
 
+/** The album an album-mode batch came from; the backend searches it once for the whole batch. */
+export interface BulkAlbumRef {
+  artist: string;
+  title: string;
+  release_group_mbid?: string | null;
+  release_mbid?: string | null;
+}
+
 export interface BulkTracklist {
   release_mbid: string | null;
   canonical_release_mbid: string | null;
@@ -1759,8 +1767,11 @@ export const api = {
   },
 
   async bulkSubmit(params: {
-    songs: Array<{ artist: string; title: string; display_artist?: string; display_title?: string }>;
+    songs: Array<{
+      artist: string; title: string; display_artist?: string; display_title?: string; position?: number | null
+    }>;
     settings: BulkSettings;
+    album?: BulkAlbumRef;
   }): Promise<BulkSubmitResponse> {
     const response = await apiFetch(`${API_BASE_URL}/api/bulk/submit`, {
       method: 'POST',

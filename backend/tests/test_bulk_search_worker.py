@@ -203,3 +203,171 @@ async def test_auto_select_never_charges_bypassed_job(monkeypatch, patched, stat
     update = jm.update_job.call_args_list[-1][0][1]
     assert update["state_data.credits_charged"] == 0
     assert update["state_data.payment_bypassed"] is True
+
+
+# ---------------------------------------------------------------------------
+# Album path: one flacfetch album search for an album-mode batch
+# ---------------------------------------------------------------------------
+
+ALBUM = {"artist": "Daft Punk", "title": "Discovery", "release_group_mbid": "rg-1"}
+
+
+def _album_job(job_id, title, position):
+    job = _make_job(job_id, state_extra={"bulk_album": ALBUM, "bulk_track_position": position})
+    job.title = job.audio_search_title = title
+    return job
+
+
+def _torrent(source_id, track_files, seeders=31, media="CD", release_type="Album"):
+    return {
+        "title": "Discovery", "artist": "Daft Punk", "provider": "RED", "source_id": source_id,
+        "quality": "FLAC 16bit CD", "quality_data": {"format": "FLAC", "bit_depth": 16, "media": media},
+        "is_lossless": True, "seeders": seeders, "release_type": release_type,
+        "matched_count": len(track_files),
+        "track_files": {k: {"target_file": f, "target_file_size": 1, "match_score": 1.0}
+                        for k, f in track_files.items()},
+    }
+
+
+class FakeAlbumClient:
+    def __init__(self, response=None, error=None):
+        self.response, self.error, self.calls = response, error, []
+
+    async def search_album(self, artist, album, tracks):
+        self.calls.append((artist, album, tracks))
+        if self.error:
+            raise self.error
+        return self.response
+
+
+@pytest.fixture
+def album_env(monkeypatch, patched):
+    jm, _ass, transitions = patched
+    monkeypatch.setattr("backend.api.routes.audio_search._validate_and_prepare_selection",
+                        lambda job_id, idx: {"ok": True})
+    stored = {}
+    jm.update_job.side_effect = lambda job_id, updates: stored.setdefault(job_id, {}).update(updates)
+
+    def use(client):
+        monkeypatch.setattr(worker, "_album_search_client", lambda: client)
+        return client
+    return jm, transitions, stored, use
+
+
+@pytest.mark.asyncio
+async def test_album_batch_makes_one_search_and_auto_selects_every_track(album_env):
+    jm, transitions, stored, use = album_env
+    jobs = [_album_job("j1", "One More Time", 1), _album_job("j2", "Aerodynamic", 2)]
+    client = use(FakeAlbumClient({"results": [
+        _torrent("cd-31", {"j1": "01 One More Time.flac", "j2": "02 Aerodynamic.flac"}, seeders=31),
+        _torrent("web-15", {"j1": "1-01 One More Time.flac", "j2": "1-02 Aerodynamic.flac"},
+                 seeders=15, media="WEB"),
+    ]}))
+
+    fallback = await worker.process_album_jobs(ALBUM, jobs, jm)
+
+    assert fallback == []
+    assert len(client.calls) == 1
+    artist, album, tracks = client.calls[0]
+    assert (artist, album) == ("Daft Punk", "Discovery")
+    assert tracks == [{"key": "j1", "title": "One More Time", "position": 1},
+                      {"key": "j2", "title": "Aerodynamic", "position": 2}]
+    for job_id, expected in (("j1", "01 One More Time.flac"), ("j2", "02 Aerodynamic.flac")):
+        results = stored[job_id]["state_data.audio_search_results"]
+        # Batch torrent first, the other edition kept as an alternative.
+        assert [r["source_id"] for r in results] == ["cd-31", "web-15"]
+        assert results[0]["target_file"] == expected
+        assert stored[job_id]["state_data.bulk_auto_selected"] is True
+    assert JobStatus.AWAITING_AUDIO_SELECTION not in transitions
+
+
+@pytest.mark.asyncio
+async def test_uncovered_tracks_fall_back_to_per_track_search(album_env):
+    jm, _t, stored, use = album_env
+    jobs = [_album_job("j1", "One More Time", 1), _album_job("j2", "Bonus Thing", 15)]
+    use(FakeAlbumClient({"results": [_torrent("cd", {"j1": "01 One More Time.flac"})]}))
+
+    fallback = await worker.process_album_jobs(ALBUM, jobs, jm)
+
+    assert [j.job_id for j in fallback] == ["j2"]
+    assert "j2" not in stored
+
+
+@pytest.mark.asyncio
+async def test_album_search_failure_falls_back_for_all(album_env):
+    from backend.services.flacfetch_client import FlacfetchServiceError
+    jm, _t, stored, use = album_env
+    jobs = [_album_job("j1", "One More Time", 1)]
+    use(FakeAlbumClient(error=FlacfetchServiceError("timed out")))
+    assert await worker.process_album_jobs(ALBUM, jobs, jm) == jobs
+    assert stored == {}
+
+
+@pytest.mark.asyncio
+async def test_no_album_client_falls_back(album_env):
+    jm, _t, _s, use = album_env
+    use(None)
+    jobs = [_album_job("j1", "One More Time", 1)]
+    assert await worker.process_album_jobs(ALBUM, jobs, jm) == jobs
+
+
+@pytest.mark.asyncio
+async def test_poorly_seeded_album_parks_with_album_options(album_env):
+    jm, transitions, stored, use = album_env
+    use(FakeAlbumClient({"results": [_torrent("cd-5", {"j1": "01 One More Time.flac"}, seeders=5)]}))
+    await worker.process_album_jobs(ALBUM, [_album_job("j1", "One More Time", 1)], jm)
+    assert JobStatus.AWAITING_AUDIO_SELECTION in transitions
+    assert stored["j1"]["state_data.audio_search_results"][0]["source_id"] == "cd-5"
+    assert stored["j1"]["state_data.bulk_pending_search"] is False
+
+
+@pytest.mark.asyncio
+async def test_auto_select_disabled_parks_album_jobs(album_env):
+    jm, transitions, _s, use = album_env
+    job = _album_job("j1", "One More Time", 1)
+    job.state_data["bulk_settings"]["auto_select_if_lossless"] = False
+    use(FakeAlbumClient({"results": [_torrent("cd", {"j1": "01 One More Time.flac"})]}))
+    await worker.process_album_jobs(ALBUM, [job], jm)
+    assert JobStatus.AWAITING_AUDIO_SELECTION in transitions
+
+
+@pytest.mark.asyncio
+async def test_process_batch_routes_album_jobs_then_searches_rest_one_at_a_time(monkeypatch):
+    album_jobs = [_album_job("a1", "One More Time", 1), _album_job("a2", "Bonus Thing", 15)]
+    text_job = _make_job("t1")
+    jm = MagicMock()
+    jm.list_jobs_by_batch_id.return_value = album_jobs + [text_job]
+    monkeypatch.setattr(worker, "JobManager", lambda: jm)
+
+    seen_album = []
+
+    async def fake_album(album, jobs, job_manager):
+        seen_album.append([j.job_id for j in jobs])
+        return [j for j in jobs if j.job_id == "a2"]  # uncovered track
+
+    in_flight = max_in_flight = 0
+    searched = []
+
+    async def fake_process_job(job_id, job_manager, ass):
+        nonlocal in_flight, max_in_flight
+        in_flight += 1
+        max_in_flight = max(max_in_flight, in_flight)
+        import asyncio
+        await asyncio.sleep(0.01)
+        searched.append(job_id)
+        in_flight -= 1
+
+    monkeypatch.setattr(worker, "process_album_jobs", fake_album)
+    monkeypatch.setattr(worker, "process_job", fake_process_job)
+    monkeypatch.setattr(worker, "AudioSearchService", MagicMock)
+
+    count = await worker.process_batch("b1")
+
+    assert count == 3
+    assert seen_album == [["a1", "a2"]]
+    assert sorted(searched) == ["a2", "t1"]
+    assert max_in_flight == 1  # never more than one flacfetch search at a time
+
+
+def test_search_concurrency_is_one():
+    assert worker.SEARCH_CONCURRENCY == 1

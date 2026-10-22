@@ -87,6 +87,36 @@ def frontend_fixture() -> Dict[str, Any]:
     }
 
 
+def build_album_response(artist: str, album: str, tracks: List[Dict[str, Any]], confidence: str = "perfect") -> Dict[str, Any]:
+    """Fake flacfetch ``/search/album`` response: one lossless CD torrent of the
+    album with a file for every requested track, seeded per ``confidence``
+    (``unsure`` names every file after a different song, so nothing auto-picks)."""
+    seeders = {"perfect": 120, "recommended": 5, "unsure": 3}[confidence]
+    track_files = {}
+    for i, t in enumerate(tracks, start=1):
+        name = _MISMATCHED_TITLE if confidence == "unsure" else t["title"]
+        track_files[t["key"]] = {
+            "target_file": f"{t.get('position') or i:02d} - {name}.flac",
+            "target_file_size": 30_000_000,
+            "match_score": 1.0 if confidence != "unsure" else 0.3,
+        }
+    return {
+        "artist": artist,
+        "album": album,
+        "tracks_requested": len(tracks),
+        "results_count": 1,
+        "results": [{
+            "title": album, "artist": artist, "provider": "RED",
+            "source_id": _source_id("RED", artist, album),
+            "quality": "FLAC 16bit CD",
+            "quality_data": {"format": "FLAC", "bit_depth": 16, "media": "CD"},
+            "is_lossless": True, "seeders": seeders, "size_bytes": 400_000_000,
+            "formatted_size": "381.5 MB", "year": 2001, "label": "Fake Records",
+            "release_type": "Album", "matched_count": len(track_files), "track_files": track_files,
+        }],
+    }
+
+
 class FakeAudioSearchService:
     """Drop-in for ``AudioSearchService`` (the methods the API routes call)."""
 
@@ -110,6 +140,15 @@ class FakeAudioSearchService:
 
     def select_best(self, results: List[AudioSearchResult]) -> int:
         return 0
+
+
+class FakeAlbumSearchClient:
+    """Drop-in for ``FlacfetchClient.search_album`` on the local stack."""
+
+    async def search_album(self, artist: str, album: str, tracks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        from backend.services.fake_workers.config import get_fake_config
+
+        return build_album_response(artist, album, tracks, get_fake_config().search_confidence)
 
 
 if __name__ == "__main__":  # python -m backend.services.fake_workers.search --write-fixture

@@ -474,7 +474,7 @@ async def _search_and_start(job_id: str, artist: str, title: str) -> bool:
         store["state_data.remote_search_id"] = remote_id
     job_manager.update_job(job_id, store)
 
-    best_index = pick_auto_selection(results_dicts, search_title=title)
+    best_index = pick_auto_selection(results_dicts, search_title=title, search_artist=artist)
     if best_index is None:
         logger.info("karaokehunt: no confident auto-pick for job %s; parking", job_id)
         return park("Please choose an audio source.")

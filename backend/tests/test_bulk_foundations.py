@@ -123,3 +123,32 @@ def test_best_choice_min_seeders_matches_frontend():
     m = re.search(r"export const BEST_CHOICE_MIN_SEEDERS = (\d+)", ts)
     assert m, "BEST_CHOICE_MIN_SEEDERS not found in frontend/lib/audio-search-utils.ts"
     assert int(m.group(1)) == BEST_CHOICE_MIN_SEEDERS
+
+
+class TestArtistMatch:
+    """Port of isArtistMatch (frontend tier 1 requires the right artist)."""
+
+    def _m(self, want, have):
+        from backend.services.audio_search_service import is_artist_match
+        return is_artist_match(want, {"artist": have})
+
+    def test_exact_and_the_prefix(self):
+        assert self._m("The Killers", "Killers")
+        assert self._m("Chase & Status", "Chase & Status")
+
+    def test_featured_credit_contains(self):
+        assert self._m("Chase & Status", "Chase & Status, Delilah")
+
+    def test_small_typo(self):
+        assert self._m("Radiohead", "Radiohed")
+
+    def test_different_artist(self):
+        assert not self._m("Daft Punk", "Tribute Band Collective")
+        assert not self._m("ABBA", "ABBX")  # short names: no typo tolerance
+
+    def test_pick_auto_selection_rejects_wrong_artist(self):
+        from backend.services.audio_search_service import pick_auto_selection
+        r = _lossless_best(0, seeders=80, title="Bohemian Rhapsody")
+        r["artist"] = "Tribute Band Collective"
+        assert pick_auto_selection([r], "Bohemian Rhapsody", "Queen") is None
+        assert pick_auto_selection([r], "Bohemian Rhapsody") == 0  # no artist given: not checked

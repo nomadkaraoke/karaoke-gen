@@ -150,6 +150,22 @@ describe('BulkMode (album sub-mode)', () => {
     await waitFor(() => expect(screen.getByText('Batch settings')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Create 2 karaoke videos' })).toBeInTheDocument()
   })
+
+  it('submits the album and each track position so the backend searches the album once', async () => {
+    mockApi.bulkSubmit.mockResolvedValue({ batch_id: 'b1', job_ids: ['j1', 'j2'], total: 2 } as any)
+    render(<BulkMode />)
+    await walkToTracklist()
+    fireEvent.click(await screen.findByRole('button', { name: 'Create 2 karaoke videos' }))
+    await waitFor(() => expect(mockApi.bulkSubmit).toHaveBeenCalled())
+
+    const payload = mockApi.bulkSubmit.mock.calls[0][0]
+    expect(payload.album).toEqual({
+      artist: 'Britney Spears', title: 'Oops!...I Did It Again', release_group_mbid: 'rg-1', release_mbid: null,
+    })
+    expect(payload.songs.map((s: any) => [s.title, s.position])).toEqual([
+      ['Oops!...I Did It Again', 1], ['Stronger', 2],
+    ])
+  })
 })
 
 describe('BulkAlbumMode cover art', () => {

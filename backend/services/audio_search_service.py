@@ -175,13 +175,49 @@ def _check_filename_mismatch(search_title: str, result: Dict[str, Any]) -> bool:
     return not matches
 
 
-def pick_auto_selection(results: List[Dict[str, Any]], search_title: str = "") -> Optional[int]:
+def _edit_distance(a: str, b: str) -> int:
+    prev = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        cur = [i]
+        for j in range(1, len(b) + 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1])))
+        prev = cur
+    return prev[len(b)]
+
+
+def is_artist_match(search_artist: str, result: Dict[str, Any]) -> bool:
+    """Port of isArtistMatch() — the result's artist is the one searched for.
+
+    "The Killers" vs "Killers" and "X, Someone" vs "X" match; small typos are
+    tolerated for names of 5+ characters.
+    """
+    def norm(x: str) -> str:
+        x = re.sub(r"^the\s+", "", (x or "").lower())
+        x = re.sub(r"[^a-z0-9\s]", " ", x)
+        return re.sub(r"\s+", " ", x).strip()
+
+    want = norm(search_artist)
+    have = norm(result.get("artist") or "")
+    if len(want) < 2 or not have:
+        return False
+    if have == want or f" {want} " in f" {have} " or f" {have} " in f" {want} ":
+        return True
+    if len(want) < 5:
+        return False
+    return _edit_distance(want, have) <= len(want) // 5
+
+
+def pick_auto_selection(
+    results: List[Dict[str, Any]], search_title: str = "", search_artist: str = ""
+) -> Optional[int]:
     """Return the index to auto-select, or None if no confident lossless pick.
 
     Tier-1 rule (mirrors getSearchConfidence): the best result must be in the
-    BEST CHOICE category (lossless, BEST_CHOICE_MIN_SEEDERS+ seeders, non-vinyl) AND its filename
-    must match ``search_title`` (the song the user searched for). Otherwise we
-    defer to human selection.
+    BEST CHOICE category (lossless, BEST_CHOICE_MIN_SEEDERS+ seeders, non-vinyl),
+    its filename must match ``search_title`` (the song the user searched for),
+    and, when ``search_artist`` is given, its artist must match too (a
+    well-seeded cover or tribute isn't a perfect match). Otherwise we defer to
+    human selection.
     """
     if not results:
         return None
@@ -192,11 +228,20 @@ def pick_auto_selection(results: List[Dict[str, Any]], search_title: str = "") -
     best = _get_best_result(results)
     if best is None:
         return None
-    if _categorize_result(best) != "BEST CHOICE":
-        return None
-    if _check_filename_mismatch(search_title, best):
+    if not _is_confident_pick(best, search_title, search_artist):
         return None
     return best.get("index")
+
+
+def _is_confident_pick(result: Dict[str, Any], search_title: str, search_artist: str = "") -> bool:
+    """BEST CHOICE category, filename names the track, and (if given) the right artist."""
+    if _categorize_result(result) != "BEST CHOICE":
+        return False
+    if _check_filename_mismatch(search_title, result):
+        return False
+    if search_artist and not is_artist_match(search_artist, result):
+        return False
+    return True
 
 
 class AudioSearchService:

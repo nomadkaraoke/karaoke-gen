@@ -444,7 +444,7 @@ class TestSearchAndStart:
         search = MagicMock()
         search.search_async = AsyncMock(return_value=[MagicMock()])
         monkeypatch.setattr(khc, "AudioSearchService", lambda: search)
-        monkeypatch.setattr(khc, "pick_auto_selection", lambda results, search_title: None)
+        monkeypatch.setattr(khc, "pick_auto_selection", lambda results, search_title, search_artist="": None)
         with patch("backend.workers.bulk_search_worker._prepare_theme"):
             started = await khc._search_and_start("j1", "A", "T")
 
@@ -473,7 +473,7 @@ class TestSearchAndStart:
         search.search_async = AsyncMock(return_value=[MagicMock()])
         search.last_remote_search_id = "rs1"
         monkeypatch.setattr(khc, "AudioSearchService", lambda: search)
-        monkeypatch.setattr(khc, "pick_auto_selection", lambda results, search_title: 0)
+        monkeypatch.setattr(khc, "pick_auto_selection", lambda results, search_title, search_artist="": 0)
         worker = MagicMock()
         worker.trigger_audio_download_worker = AsyncMock(return_value=True)
         monkeypatch.setattr(khc, "get_worker_service", lambda: worker)

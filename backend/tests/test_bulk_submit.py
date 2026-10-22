@@ -148,3 +148,32 @@ def test_partial_failure_returns_created_jobs(client, monkeypatch):
     })
     assert resp.status_code == 200
     assert resp.json()["total"] == 2
+
+
+def test_album_batch_stamps_album_and_track_positions(client, monkeypatch):
+    app.dependency_overrides[require_auth] = _auth()
+    _patch_user_service(monkeypatch, credits=10)
+    jm = _patch_job_manager(monkeypatch)
+
+    resp = client.post("/api/bulk/submit", json={
+        "songs": [{"artist": "Daft Punk", "title": "One More Time", "position": 1},
+                  {"artist": "Daft Punk", "title": "Aerodynamic", "position": 2}],
+        "settings": {},
+        "album": {"artist": "Daft Punk", "title": "Discovery", "release_group_mbid": "rg-1"},
+    })
+    assert resp.status_code == 200, resp.text
+    stamps = [c[0][1] for c in jm.update_job.call_args_list]
+    assert [s["state_data.bulk_track_position"] for s in stamps] == [1, 2]
+    assert stamps[0]["state_data.bulk_album"] == {
+        "artist": "Daft Punk", "title": "Discovery", "release_group_mbid": "rg-1", "release_mbid": None,
+    }
+
+
+def test_text_batch_has_no_album_state(client, monkeypatch):
+    app.dependency_overrides[require_auth] = _auth()
+    _patch_user_service(monkeypatch, credits=10)
+    jm = _patch_job_manager(monkeypatch)
+    client.post("/api/bulk/submit", json={"songs": [{"artist": "Daft Punk", "title": "One More Time"}]})
+    stamped = jm.update_job.call_args[0][1]
+    assert "state_data.bulk_album" not in stamped
+    assert "state_data.bulk_track_position" not in stamped
