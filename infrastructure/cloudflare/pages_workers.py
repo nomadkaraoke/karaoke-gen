@@ -7,6 +7,7 @@ import pulumi
 import pulumi_cloudflare as cloudflare
 
 from ids import ACCOUNT_ID, ZONE_IDS
+from well_known import ROUTE_PATTERNS, build_worker_script
 
 worker_route_create_karaokehunt_com = cloudflare.WorkersRoute("worker-route-create-karaokehunt-com",
     pattern="create.karaokehunt.com/*",
@@ -75,3 +76,20 @@ worker_domain_www_nomadkaraoke_com = cloudflare.WorkersCustomDomain("worker-doma
     service="nomadkaraoke-com-static",
     zone_id=ZONE_IDS["nomadkaraoke.com"],
     zone_name="nomadkaraoke.com")
+
+# kjbox.cc/.well-known/*: Android App Links (assetlinks.json) + iOS universal links (AASA) for the
+# Nomad Karaoke app, so the venue QR (kjbox.cc/<code>) can open the app. The script is deployed by
+# Pulumi (fingerprints come from config `kjboxcc_android_sha256_fingerprints`, empty by default);
+# the kjbox.cc/<code> redirect rule in rulesets.py excludes /.well-known/ so this route answers.
+_kjbox_fingerprints = pulumi.Config().get_object("kjboxcc_android_sha256_fingerprints") or []
+worker_script_kjbox_cc_well_known = cloudflare.WorkersScript("worker-script-kjbox-cc-well-known",
+    account_id=ACCOUNT_ID,
+    script_name="kjbox-cc-well-known",
+    content=build_worker_script(_kjbox_fingerprints),
+    main_module="worker.js",
+    compatibility_date="2026-09-01")
+for _name, _pattern in ROUTE_PATTERNS.items():
+    cloudflare.WorkersRoute(f"worker-route-{_name}-well-known",
+        pattern=_pattern,
+        script=worker_script_kjbox_cc_well_known.script_name,
+        zone_id=ZONE_IDS["kjbox.cc"])
