@@ -2280,6 +2280,20 @@ jobs:
             --project ${{ env.PROJECT_ID }} \
             --quiet
 
+          # Voice-pool separate-only job (GPU, us-east4) — same GPU image. Created by
+          # Pulumi; tolerate it not existing yet (pre `pulumi up`).
+          if gcloud run jobs describe voice-pool-separate-job \
+            --region us-east4 \
+            --project ${{ env.PROJECT_ID }} >/dev/null 2>&1; then
+            gcloud run jobs update voice-pool-separate-job \
+              --image "$GPU_IMAGE" \
+              --region us-east4 \
+              --project ${{ env.PROJECT_ID }} \
+              --quiet
+          else
+            echo "::warning::voice-pool-separate-job not found in us-east4 (run pulumi up); skipping image update"
+          fi
+
           echo "✅ Cloud Run Jobs updated"
 
       - name: Verify deployment and version

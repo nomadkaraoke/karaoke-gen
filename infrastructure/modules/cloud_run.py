@@ -329,6 +329,62 @@ def create_audio_separation_job(
     return audio_separation_job
 
 
+def create_voice_pool_separate_job(
+    bucket: gcp.storage.Bucket,
+    service_account: gcp.serviceaccount.Account,
+) -> cloudrunv2.Job:
+    """
+    Create the Cloud Run Job that separates vocals for the karaoke-decide voice pool.
+
+    Reads a JSONL manifest of original-audio objects (voice-pool/ prefix), runs the
+    instrumental_clean ensemble on an L4 GPU and writes vocals stems + per-task
+    results back to GCS. No Firestore and no gen job state. decide overrides
+    task_count per run; one Separator is loaded per task and reused per song.
+
+    Args:
+        bucket: The GCS bucket holding voice-pool/ objects.
+        service_account: The service account to run the job (audio worker SA).
+    """
+    return cloudrunv2.Job(
+        "voice-pool-separate-job",
+        name="voice-pool-separate-job",
+        location=AUDIO_WORKER_GPU_REGION,
+        deletion_protection=False,
+        template=cloudrunv2.JobTemplateArgs(
+            task_count=1,  # overridden per execution by the decide fetch job
+            parallelism=1,  # one L4 at a time so customer audio-separation-job keeps GPU capacity
+            template=cloudrunv2.JobTemplateTemplateArgs(
+                containers=[
+                    cloudrunv2.JobTemplateTemplateContainerArgs(
+                        image=f"{AUDIO_WORKER_GPU_REGION}-docker.pkg.dev/{PROJECT_ID}/karaoke-backend-gpu/karaoke-backend:latest",
+                        args=["python", "-m", "backend.workers.voice_pool_separate_worker"],
+                        resources=cloudrunv2.JobTemplateTemplateContainerResourcesArgs(
+                            limits={
+                                "cpu": "4",
+                                "memory": "16Gi",
+                                "nvidia.com/gpu": "1",
+                            },
+                        ),
+                        envs=[
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="MODEL_DIR", value="/models"),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="ENVIRONMENT", value="production"),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="GCS_BUCKET_NAME", value=bucket.name),
+                            cloudrunv2.JobTemplateTemplateContainerEnvArgs(name="GOOGLE_CLOUD_PROJECT", value=PROJECT_ID),
+                        ],
+                    )
+                ],
+                node_selector=cloudrunv2.JobTemplateTemplateNodeSelectorArgs(
+                    accelerator="nvidia-l4",
+                ),
+                gpu_zonal_redundancy_disabled=True,  # Required for GPU Jobs (capacity limitation)
+                service_account=service_account.email,
+                timeout="3600s",  # Cloud Run caps GPU task timeouts at 1h; size shards (task count) so each finishes in <1h
+                max_retries=0,  # decide re-runs; finished songs are skipped via existing stems
+            ),
+        ),
+    )
+
+
 def create_audio_download_job(
     bucket: gcp.storage.Bucket,
     service_account: gcp.serviceaccount.Account,
