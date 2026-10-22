@@ -644,6 +644,7 @@ def process_stale_reviews_endpoint(
     - Signed-URL upload jobs whose browser upload never finished (>= 2h) are
       auto-cancelled with credit refund
     - Free-to-paid conversion emails (when CONVERSION_EMAILS_ENABLED)
+    - Dropbox space-usage check (one #alerts message when >= 95% full)
     """
     from backend.workers.stale_review_processor import process_stale_reviews
     from backend.workers.stale_upload_processor import process_stale_uploads
@@ -672,6 +673,14 @@ def process_stale_reviews_endpoint(
             logger.info(f"CONVERSION_EMAILS complete: {conversion_result}")
         except Exception as e:
             logger.exception(f"CONVERSION_EMAILS failed: {e}")
+        # Proactive Dropbox quota check (alerts #alerts once at >=95% used) —
+        # a full Dropbox silently breaks customer delivery (NOMAD-1800).
+        try:
+            from backend.services.delivery_guard import check_dropbox_space_usage
+            quota_result = await asyncio.to_thread(check_dropbox_space_usage)
+            logger.info(f"DROPBOX_QUOTA_CHECK complete: {quota_result}")
+        except Exception as e:
+            logger.warning(f"DROPBOX_QUOTA_CHECK failed: {e}")
 
     background_tasks.add_task(_process)
 

@@ -799,6 +799,9 @@ class SendCompletionEmailRequest(BaseModel):
     """Request to send a completion email."""
     to_email: str
     cc_admin: bool = True
+    # Send even though a job meant for Dropbox delivery has no Dropbox link
+    # (the Dropbox section is then left out of the email, never a placeholder).
+    allow_missing_dropbox_link: bool = False
 
 
 class SendCompletionEmailResponse(BaseModel):
@@ -2097,6 +2100,19 @@ def send_job_completion_email(
     dropbox_url = state_data.get('dropbox_link')
     brand_code = state_data.get('brand_code')
 
+    # Refuse to send a delivery email with no files link unless explicitly overridden.
+    from backend.services.delivery_guard import completion_email_hold_reason
+    hold = completion_email_hold_reason(job)
+    if hold and not request.allow_missing_dropbox_link:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Job {job_id} was meant to deliver to Dropbox but has no Dropbox link "
+                f"({hold['reason']}). Fix the Dropbox upload and set state_data.dropbox_link "
+                "first, or resend with allow_missing_dropbox_link=true to send without it."
+            ),
+        )
+
     # Render the completion message
     notification_service = get_job_notification_service()
     message = notification_service.get_completion_message(
@@ -2122,6 +2138,12 @@ def send_job_completion_email(
 
     if success:
         logger.info(f"Admin sent completion email for job {job_id} to {request.to_email}")
+        if state_data.get('completion_email_held'):
+            try:
+                from google.cloud.firestore_v1 import DELETE_FIELD
+                job_manager.update_job(job_id, {'state_data.completion_email_held': DELETE_FIELD})
+            except Exception as e:
+                logger.warning(f"Failed to clear completion_email_held for job {job_id}: {e}")
         return SendCompletionEmailResponse(
             success=True,
             job_id=job_id,

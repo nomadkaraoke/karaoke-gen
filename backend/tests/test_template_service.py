@@ -112,8 +112,65 @@ class TestJobCompletionTemplate:
             result = service.render_job_completion()
 
         assert "there" in result  # Default name
-        assert "[YouTube URL not available]" in result
-        assert "[Dropbox URL not available]" in result
+        # Missing links never render as placeholders (NOMAD-1800) — the whole
+        # section is dropped instead.
+        assert "not available" not in result
+        assert "dropbox folder" not in result
+        assert "published to YouTube" not in result
+        assert "{" not in result
+
+    def test_render_job_completion_missing_dropbox_drops_section_only(self):
+        """No Dropbox link: the Dropbox paragraph (incl. file list) goes, YouTube stays."""
+        service = TemplateService()
+
+        with patch.object(service, "_fetch_template_from_gcs", return_value=None):
+            result = service.render_job_completion(
+                youtube_url="https://youtube.com/watch?v=1",
+                feedback_url="https://example.com/feedback",
+            )
+
+        assert "https://youtube.com/watch?v=1" in result
+        assert "dropbox folder" not in result
+        assert "(Final Karaoke Lossless).mkv" not in result
+        assert "[Dropbox URL not available]" not in result
+        assert "https://example.com/feedback" in result
+        assert "Let me know if anything isn't perfect" in result
+
+    def test_render_job_completion_missing_youtube_keeps_dropbox(self):
+        """Public job with no YouTube link and nothing queued: YouTube paragraph goes."""
+        service = TemplateService()
+
+        with patch.object(service, "_fetch_template_from_gcs", return_value=None):
+            result = service.render_job_completion(dropbox_url="https://dropbox.com/folder/abc")
+
+        assert "https://dropbox.com/folder/abc" in result
+        assert "dropbox folder" in result
+        assert "published to YouTube" not in result
+        assert "[YouTube URL not available]" not in result
+
+    def test_render_job_completion_missing_dropbox_localized(self):
+        """Localized default template also drops the Dropbox section."""
+        service = TemplateService()
+
+        with patch.object(service, "_fetch_template_from_gcs", return_value=None):
+            result = service.render_job_completion(
+                youtube_url="https://youtube.com/watch?v=1", locale="de"
+            )
+
+        assert "https://youtube.com/watch?v=1" in result
+        assert "Dropbox" not in result
+        assert "{" not in result
+
+    def test_render_job_completion_missing_dropbox_unknown_template(self):
+        """A custom (GCS) template with unknown wording drops just the placeholder line."""
+        service = TemplateService()
+        custom = "Hi {name}\n\nFiles:\n{dropbox_url}\n\nVideo: {youtube_url}\nBye"
+
+        with patch.object(service, "_fetch_template_from_gcs", return_value=custom):
+            result = service.render_job_completion(youtube_url="https://yt/1")
+
+        assert "not available" not in result
+        assert "Video: https://yt/1" in result
 
     def test_render_job_completion_no_feedback_url(self):
         """Test rendering job completion without feedback URL removes section."""

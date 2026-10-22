@@ -1016,7 +1016,9 @@ class VideoWorkerOrchestrator:
             self.job_log.info(f"Dropbox upload complete: {remote_folder}")
 
         except Exception as e:
-            self.job_log.error(f"Dropbox upload failed: {e}")
+            # WARNING, not ERROR: the customer-impacting outcome (held completion
+            # email) gets its own actionable #alerts message from delivery_guard.
+            self.job_log.warning(f"Dropbox upload failed: {e}")
             self.result.distribution_warnings.append(f"Dropbox upload failed: {e}")
             # Don't fail the pipeline - Dropbox is optional
 

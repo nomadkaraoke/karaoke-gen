@@ -357,16 +357,61 @@ class TemplateService:
                     queued_msg
                 )
 
+        elif not youtube_url:
+            # No video link and none pending: drop the YouTube section rather than
+            # rendering a "[... not available]" placeholder to the customer.
+            template = self._remove_link_section(
+                template,
+                intros=[
+                    "Here's the link for the karaoke video published to YouTube:",
+                    t(locale, "emails.templates.jobCompletion.youtubeLink"),
+                ],
+                placeholder="{youtube_url}",
+            )
+
+        if not dropbox_url:
+            # Never show a placeholder Dropbox link (NOMAD-1800). Jobs meant for
+            # Dropbox delivery have their email HELD upstream (delivery_guard); this
+            # covers jobs with no Dropbox delivery at all (and admin overrides).
+            template = self._remove_link_section(
+                template,
+                intros=[
+                    "Here's the dropbox folder",
+                    t(locale, "emails.templates.jobCompletion.dropboxIntro"),
+                ],
+                placeholder="{dropbox_url}",
+            )
+
         variables = {
             "name": name or "there",
-            "youtube_url": youtube_url or "[YouTube URL not available]",
-            "dropbox_url": dropbox_url or "[Dropbox URL not available]",
+            "youtube_url": youtube_url or "",
+            "dropbox_url": dropbox_url or "",
             "artist": artist or "Unknown Artist",
             "title": title or "Unknown Title",
             "job_id": job_id or "",
             "feedback_url": feedback_url,
         }
         return self.render_template(template, variables)
+
+    @staticmethod
+    def _remove_link_section(template: str, intros: list, placeholder: str) -> str:
+        """Remove the paragraph from an intro line through its link placeholder.
+
+        Tries each intro text (English GCS/default wording, then the localized
+        one). If none matches, only the placeholder line is dropped, so a missing
+        link renders as nothing rather than a placeholder.
+        """
+        for intro in intros:
+            if not intro or intro.startswith("emails."):  # untranslated key
+                continue
+            # Match from the intro line's start through the placeholder line.
+            pattern = r"\n*[^\n]*" + re.escape(intro.rstrip(":").rstrip()[:40]) + r".*?" + re.escape(placeholder) + r"[^\n]*\n*"
+            match = re.search(pattern, template, flags=re.DOTALL)
+            # Don't swallow a neighbouring section: the span may only contain
+            # its own placeholder.
+            if match and not (set(re.findall(r"\{[a-z_]+\}", match.group(0))) - {placeholder}):
+                return template[:match.start()] + "\n\n" + template[match.end():]
+        return re.sub(r"\n*[^\n]*" + re.escape(placeholder) + r"[^\n]*\n*", "\n\n", template, count=1)
 
     def render_action_needed_lyrics(
         self,

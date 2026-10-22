@@ -732,6 +732,18 @@ class JobManager:
                 except Exception as e:
                     logger.error(f"Failed to transfer ownership for job {job.job_id}: {e}")
 
+            # Never send a delivery email without its files link (NOMAD-1800: Dropbox
+            # full -> customer got "[Dropbox URL not available]"). Hold it, flag the
+            # job, and post one actionable #alerts message instead.
+            from backend.services.delivery_guard import (
+                completion_email_hold_reason,
+                hold_completion_email,
+            )
+            hold = completion_email_hold_reason(job)
+            if hold:
+                hold_completion_email(self, job, hold, recipient_email)
+                return
+
             # Create async task (fire-and-forget)
             async def send_email():
                 await notification_service.send_job_completion_email(

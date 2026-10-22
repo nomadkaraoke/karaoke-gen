@@ -1382,7 +1382,9 @@ async def _handle_native_distribution(
         except ImportError as e:
             job_log.warning(f"Dropbox SDK not installed: {e}")
         except Exception as e:
-            job_log.error(f"Native Dropbox upload failed: {e}", exc_info=True)
+            # WARNING, not ERROR: delivery_guard posts the actionable alert
+            # (held completion email) — one per job, not one per pass.
+            job_log.warning(f"Native Dropbox upload failed: {e}", exc_info=True)
             result.setdefault('distribution_warnings', []).append(f"Dropbox upload failed: {e}")
             # Don't fail the job - distribution is optional
     

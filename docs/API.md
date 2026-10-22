@@ -2479,6 +2479,12 @@ Content-Type: application/json
 
 Sends the job completion email to the specified address. When `cc_admin` is true (default), CCs gen@nomadkaraoke.com.
 
+Returns **409** if the job was meant to deliver to Dropbox but has no `state_data.dropbox_link`
+(e.g. the Dropbox was full). Fix the Dropbox upload first, or pass
+`"allow_missing_dropbox_link": true` to send anyway (the Dropbox section is then left out of the
+email; a placeholder link is never rendered). A successful send clears
+`state_data.completion_email_held`.
+
 Response:
 ```json
 {
