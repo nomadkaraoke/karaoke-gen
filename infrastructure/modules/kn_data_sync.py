@@ -160,9 +160,11 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
             ),
         ),
         service_config=cloudfunctionsv2.FunctionServiceConfigArgs(
-            # 512M OOMed on the full sync (2026-10-22); 1Gi also raises gen2 CPU,
-            # which keeps the run well under the scheduler's attempt deadline.
+            # 512M OOMed on the full sync (2026-10-22). The CPU has to be set with it:
+            # the function was pinned at 0.333 vCPU, which caps memory at 512Mi.
+            # A full vCPU also keeps the run well under the scheduler's attempt deadline.
             available_memory="1Gi",
+            available_cpu="1",
             timeout_seconds=300,  # 5 minutes
             min_instance_count=0,
             max_instance_count=1,
