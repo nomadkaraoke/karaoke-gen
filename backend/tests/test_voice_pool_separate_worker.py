@@ -113,3 +113,48 @@ def test_sharded_task_only_processes_its_share(tmp_path):
     storage = FakeStorage([str(i) for i in range(6)])
     w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)), MANIFEST, 1, 3)
     assert [r["id"] for r in _results(storage, 1)] == ["1", "4"]
+
+
+def test_separator_load_failure_fails_fast(tmp_path):
+    import pytest
+
+    storage = FakeStorage(["a", "b"])
+    calls = []
+
+    def factory():
+        calls.append(1)
+        raise RuntimeError("no gpu")
+
+    with pytest.raises(w.SeparatorLoadError):
+        w.run_manifest(storage, factory, MANIFEST, 0, 1)
+    assert len(calls) == 1  # no per-song retry of the model load
+
+
+def _patch_main(monkeypatch, run):
+    import backend.services.storage_service as ss
+
+    monkeypatch.setattr(ss, "StorageService", lambda: object())
+    monkeypatch.setattr(w, "run_manifest", run)
+
+
+def test_main_all_failed_logs_one_error_and_exits_nonzero(monkeypatch, caplog):
+    fail = {"id": "a", "ok": False, "vocals": None, "seconds": 0, "error": "oom"}
+    _patch_main(monkeypatch, lambda *a, **k: [fail, dict(fail, id="b")])
+    assert w.main(["--manifest", MANIFEST]) == 1
+    assert len([r for r in caplog.records if r.levelname == "ERROR"]) == 1
+
+
+def test_main_partial_failure_exits_zero_without_error(monkeypatch, caplog):
+    ok = {"id": "a", "ok": True, "vocals": "v", "seconds": 1, "error": None}
+    _patch_main(monkeypatch, lambda *a, **k: [ok, dict(ok, id="b", ok=False, error="x")])
+    assert w.main(["--manifest", MANIFEST]) == 0
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+def test_main_load_failure_exits_nonzero_with_one_error(monkeypatch, caplog):
+    def boom(*a, **k):
+        raise w.SeparatorLoadError("x")
+
+    _patch_main(monkeypatch, boom)
+    assert w.main(["--manifest", MANIFEST]) == 1
+    assert len([r for r in caplog.records if r.levelname == "ERROR"]) == 1

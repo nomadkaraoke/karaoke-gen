@@ -31,6 +31,10 @@ STEMS_PREFIX = "voice-pool/stems"
 RESULTS_FLUSH_EVERY = 10
 
 
+class SeparatorLoadError(RuntimeError):
+    """Model load failed: systemic, so the task fails fast instead of retrying per song."""
+
+
 def shard(lines: List[dict], index: int, count: int) -> List[dict]:
     """Lines owned by task ``index`` of ``count`` (round-robin over manifest order)."""
     return [line for i, line in enumerate(lines) if i % count == index]
@@ -95,7 +99,10 @@ def run_manifest(
                 results.append({"id": pool_id, "ok": True, "vocals": vocals_blob, "seconds": 0, "error": None})
                 continue
             if separator is None:
-                separator = separator_factory()
+                try:
+                    separator = separator_factory()
+                except Exception as e:
+                    raise SeparatorLoadError(f"separator failed to load: {e}") from e
             local = os.path.join(tmp, "original.flac")
             storage.download_file(_blob_path(line["audio"]), local)
             outputs = separator.separate(local)
@@ -115,6 +122,9 @@ def run_manifest(
                 "id": pool_id, "ok": True, "vocals": vocals_blob,
                 "seconds": round(time.time() - started, 1), "error": None,
             })
+        except SeparatorLoadError:
+            _write_results(storage, manifest_uri, index, results)
+            raise
         except Exception as e:  # per-song failure must not abort the task
             logger.warning(f"voice-pool separate failed for {pool_id}: {e}")
             results.append({
@@ -163,9 +173,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_dir = tempfile.mkdtemp(prefix="voicepool_out_")
     try:
         results = run_manifest(StorageService(), make_separator_factory(out_dir), args.manifest, index, count)
+    except SeparatorLoadError as e:
+        logger.error(f"Task {index}/{count} aborted: {e}")
+        return 1
     finally:
         shutil.rmtree(out_dir, ignore_errors=True)
     failed = sum(1 for r in results if not r["ok"])
+    if results and failed == len(results):
+        logger.error(f"Task {index}/{count}: all {failed} songs failed (first error: {results[0]['error']})")
+        return 1
     logger.info(f"Task {index}/{count} done: {len(results) - failed} ok, {failed} failed")
     return 0
 

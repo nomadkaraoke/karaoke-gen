@@ -757,7 +757,7 @@ voice session. decide writes a JSONL manifest (`voice-pool/manifests/<run>.jsonl
 `task_count`. Each task (`CLOUD_RUN_TASK_INDEX`/`COUNT`, round-robin over manifest order) loads one
 `instrumental_clean` Separator, writes `voice-pool/stems/<id>/vocals.flac` (skipped if present) and
 `<manifest>.results/part-<task>.jsonl` (`{id, ok, vocals, seconds, error}`, flushed every 10 songs).
-No Firestore or gen job state. Code: `backend/workers/voice_pool_separate_worker.py`.
+No Firestore or gen job state. gen's Pulumi only creates the job; decide's Pulumi creates the `voice-pool` SA and grants it `roles/run.jobsExecutorWithOverrides` on it. A model-load failure or an all-songs-failed task exits non-zero with one ERROR. Code: `backend/workers/voice_pool_separate_worker.py`.
 
 ### Quick version (kjbox make-it jobs)
 
