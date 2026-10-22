@@ -27,6 +27,7 @@ from backend.workers.video_worker import generate_video
 from backend.workers.render_video_worker import process_render_video
 from backend.api.dependencies import require_admin
 from backend.services.auth_service import AuthResult, UserType
+from backend.services.conversion_emails import process_conversion_emails
 from backend.services.job_manager import JobManager, PREP_PHASE_STATUSES
 from backend.utils.loop_bridge import run_in_body_thread, run_on_loop
 from backend.services.tracing import (
@@ -668,7 +669,6 @@ def process_stale_reviews_endpoint(
         # Free-to-paid conversion emails ride on this hourly cron (no-op unless
         # CONVERSION_EMAILS_ENABLED); see backend/services/conversion_emails.py
         try:
-            from backend.services.conversion_emails import process_conversion_emails
             conversion_result = await asyncio.to_thread(process_conversion_emails)
             logger.info(f"CONVERSION_EMAILS complete: {conversion_result}")
         except Exception as e:

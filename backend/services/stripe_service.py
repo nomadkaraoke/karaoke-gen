@@ -19,6 +19,9 @@ from backend.services.fake_workers import fake_workers_enabled
 
 logger = logging.getLogger(__name__)
 
+# Stripe's SignatureVerificationError message when the header isn't "t=...,v1=..." at all.
+UNPARSEABLE_SIGNATURE_HEADER = "Unable to extract timestamp and signatures from header"
+
 
 # Credit packages available for purchase
 CREDIT_PACKAGES = {
@@ -327,7 +330,13 @@ class StripeService:
             event_dict = json.loads(str(event))
             return True, event_dict, "Webhook verified"
         except stripe.error.SignatureVerificationError as e:
-            logger.error(f"Invalid webhook signature: {e}")
+            if UNPARSEABLE_SIGNATURE_HEADER in str(e):
+                # Scanners/link-preview bots POST garbage headers; Stripe never sends one.
+                logger.warning(f"Invalid webhook signature: {e}")
+            else:
+                # A well-formed header that doesn't match means a wrong webhook secret or a
+                # tampered payload: every real delivery would fail, so keep it page-worthy.
+                logger.error(f"Invalid webhook signature: {e}")
             return False, None, "Invalid signature"
         except Exception as e:
             logger.error(f"Error verifying webhook: {e}")

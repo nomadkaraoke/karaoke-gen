@@ -36,6 +36,10 @@ RUN if [ -n "$MODEL_DIR" ]; then \
       pip install --no-cache-dir -e .; \
     fi
 
+# Precompile bytecode so lazy imports never write .pyc at runtime: a cold
+# import that compiles + writes on the event loop has stalled requests 10-15s.
+RUN python -m compileall -q /app/backend /app/karaoke_gen
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080

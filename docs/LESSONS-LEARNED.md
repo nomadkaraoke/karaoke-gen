@@ -6,6 +6,14 @@ Key insights for future AI agents working on this codebase.
 
 ---
 
+## A lazy import on the loop can stall it for 15s: the image had no precompiled bytecode (Oct 2026, v0.282.1)
+
+The hourly `process-stale-reviews` cron stalled the API loop 10–15s, 4 times in 2 days. The culprit was `internal.py:670`: a lazy `from backend.services.conversion_emails import ...` inside an `async def`. The stall stack ended in `importlib … _write_atomic`. The backend Dockerfile never ran `compileall`, so the first import on each instance compiled the module and wrote a `.pyc` on the event loop, on a CPU-throttled instance.
+
+**Fix:** import at module top, and `RUN python -m compileall` over `/app/backend` and `/app/karaoke_gen` in `backend/Dockerfile`. decide had the same lesson for its cold start (decide #167).
+
+**Also in this round:** the audio-editor routes ran ffmpeg and GCS transfers on the loop (10s per edit). `BLOCKING_CALLS` in `test_no_blocking_async_routes.py` now includes `apply_edit`, `get_metadata_from_gcs`, `upload_file` and `download_file`.
+
 ## A stateful fake backend finds bugs that static mocks can't (Oct 2026, v0.275.0)
 
 The first run of the local-stack suite (real API on the emulators, fake workers) found that every job confirmed at "This song is longer than expected" would stall forever. `confirm-duration` moved the job to `separating_stage1`, which can only move on to `separating_stage2`, and the lyrics worker only advances jobs from `PREP_PHASE_STATUSES`. No unit test could see it: each one checked its own half (the route asserted it set `SEPARATING_STAGE1`, and the screens gate tests asserted the prep statuses). Only walking a job across the boundary did. No production job had confirmed a duration yet.
