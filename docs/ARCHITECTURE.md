@@ -757,7 +757,7 @@ voice session. decide writes a JSONL manifest (`voice-pool/manifests/<run>.jsonl
 `task_count`. Each task (`CLOUD_RUN_TASK_INDEX`/`COUNT`, round-robin over manifest order) loads one
 `instrumental_clean` Separator, writes `voice-pool/stems/<id>/vocals.flac` (skipped if present) and
 `<manifest>.results/part-<task>.jsonl` (`{id, ok, vocals, seconds, error}`, flushed every 10 songs).
-No Firestore or gen job state. gen's Pulumi only creates the job; decide's Pulumi creates the `voice-pool` SA and grants it `roles/run.jobsExecutorWithOverrides` on it. Task timeout is 3600s (Cloud Run's GPU maximum), so decide must size the shard count to keep each task under 1h; re-runs skip finished songs. A model-load failure or an all-songs-failed task exits non-zero with one ERROR. Code: `backend/workers/voice_pool_separate_worker.py`.
+No Firestore or gen job state. gen's Pulumi only creates the job; decide's Pulumi creates the `voice-pool` SA and grants it `roles/run.jobsExecutorWithOverrides` on it. The job has `parallelism=1` (decide cannot override it), so tasks run one after another and a pool run never uses more than one L4, leaving GPU capacity to customers' `audio-separation-job`. Task timeout is 3600s (Cloud Run's GPU maximum), so each task must finish in under 1h: decide chunks manifests accordingly and treats a timed-out execution as "re-run" (re-runs skip finished songs). URIs outside the gen bucket fail as `wrong_bucket`. A model-load failure or an all-songs-failed task exits non-zero with one ERROR. Code: `backend/workers/voice_pool_separate_worker.py`.
 
 ### Quick version (kjbox make-it jobs)
 

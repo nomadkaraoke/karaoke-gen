@@ -4,13 +4,14 @@ import os
 
 from backend.workers import voice_pool_separate_worker as w
 
+BUCKET = "karaoke-gen-storage-nomadkaraoke"
 MANIFEST = "gs://karaoke-gen-storage-nomadkaraoke/voice-pool/manifests/run1.jsonl"
 
 
 class FakeStorage:
     def __init__(self, ids, existing=()):
         lines = "".join(
-            json.dumps({"id": i, "audio": f"gs://b/voice-pool/audio/{i}/original.flac"}) + "\n" for i in ids
+            json.dumps({"id": i, "audio": f"gs://{BUCKET}/voice-pool/audio/{i}/original.flac"}) + "\n" for i in ids
         )
         self.blobs = {"voice-pool/manifests/run1.jsonl": lines.encode()}
         for i in existing:
@@ -86,7 +87,7 @@ def test_run_manifest_skips_existing_and_records_failures(tmp_path):
         built.append(1)
         return sep
 
-    results = w.run_manifest(storage, factory, MANIFEST, 0, 1)
+    results = w.run_manifest(storage, factory, MANIFEST, 0, 1, bucket=BUCKET)
     by_id = {r["id"]: r for r in results}
     assert by_id["a"]["ok"] and by_id["a"]["seconds"] == 0
     assert not by_id["b"]["ok"] and "boom" in by_id["b"]["error"]
@@ -105,13 +106,13 @@ def test_results_written_every_10(tmp_path, monkeypatch):
     writes = []
     orig = w._write_results
     monkeypatch.setattr(w, "_write_results", lambda s, m, i, r: (writes.append(len(r)), orig(s, m, i, r)))
-    w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)), MANIFEST, 0, 1)
+    w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)), MANIFEST, 0, 1, bucket=BUCKET)
     assert writes == [10, 12]
 
 
 def test_sharded_task_only_processes_its_share(tmp_path):
     storage = FakeStorage([str(i) for i in range(6)])
-    w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)), MANIFEST, 1, 3)
+    w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)), MANIFEST, 1, 3, bucket=BUCKET)
     assert [r["id"] for r in _results(storage, 1)] == ["1", "4"]
 
 
@@ -126,7 +127,7 @@ def test_separator_load_failure_fails_fast(tmp_path):
         raise RuntimeError("no gpu")
 
     with pytest.raises(w.SeparatorLoadError):
-        w.run_manifest(storage, factory, MANIFEST, 0, 1)
+        w.run_manifest(storage, factory, MANIFEST, 0, 1, bucket=BUCKET)
     assert len(calls) == 1  # no per-song retry of the model load
 
 
@@ -158,3 +159,51 @@ def test_main_load_failure_exits_nonzero_with_one_error(monkeypatch, caplog):
     _patch_main(monkeypatch, boom)
     assert w.main(["--manifest", MANIFEST]) == 1
     assert len([r for r in caplog.records if r.levelname == "ERROR"]) == 1
+
+
+def test_periodic_flush_failure_is_tolerated_final_is_strict(tmp_path, monkeypatch):
+    import pytest
+
+    storage = FakeStorage([str(i) for i in range(11)])
+    orig = w._write_results
+    n = []
+
+    def flaky(s, m, i, r):
+        n.append(len(r))
+        if len(n) == 1:
+            raise OSError("transient gcs")
+        return orig(s, m, i, r)
+
+    monkeypatch.setattr(w, "_write_results", flaky)
+    results = w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)), MANIFEST, 0, 1, bucket=BUCKET)
+    assert len(results) == 11 and n == [10, 11]
+
+    monkeypatch.setattr(w, "_write_results", lambda *a: (_ for _ in ()).throw(OSError("down")))
+    with pytest.raises(OSError):
+        w.run_manifest(FakeStorage(["a"]), lambda: FakeSeparator(str(tmp_path)), MANIFEST, 0, 1, bucket=BUCKET)
+
+
+def test_wrong_bucket_song_recorded_and_manifest_fails(tmp_path):
+    import pytest
+
+    storage = FakeStorage(["a", "b"])
+    storage.blobs["voice-pool/manifests/run1.jsonl"] = (
+        json.dumps({"id": "a", "audio": "gs://other-bucket/voice-pool/audio/a/original.flac"}) + "\n"
+        + json.dumps({"id": "b", "audio": f"gs://{BUCKET}/voice-pool/audio/b/original.flac"}) + "\n"
+    ).encode()
+    results = w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)), MANIFEST, 0, 1, bucket=BUCKET)
+    assert results[0]["ok"] is False and results[0]["error"] == "wrong_bucket"
+    assert results[1]["ok"] is True
+
+    with pytest.raises(w.SystemicTaskError):
+        w.run_manifest(storage, lambda: FakeSeparator(str(tmp_path)),
+                       "gs://other-bucket/voice-pool/manifests/run1.jsonl", 0, 1, bucket=BUCKET)
+
+
+def test_systemic_error_messages_are_task_independent(monkeypatch, caplog):
+    fail = {"id": "a", "ok": False, "vocals": None, "seconds": 0, "error": "oom"}
+    _patch_main(monkeypatch, lambda *a, **k: [fail])
+    monkeypatch.setenv("CLOUD_RUN_TASK_INDEX", "3")
+    w.main(["--manifest", MANIFEST])
+    errs = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert len(errs) == 1 and "3" not in errs[0].getMessage().split("(first")[0]

@@ -352,6 +352,7 @@ def create_voice_pool_separate_job(
         deletion_protection=False,
         template=cloudrunv2.JobTemplateArgs(
             task_count=1,  # overridden per execution by the decide fetch job
+            parallelism=1,  # one L4 at a time so customer audio-separation-job keeps GPU capacity
             template=cloudrunv2.JobTemplateTemplateArgs(
                 containers=[
                     cloudrunv2.JobTemplateTemplateContainerArgs(

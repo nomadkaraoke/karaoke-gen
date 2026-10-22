@@ -31,8 +31,16 @@ STEMS_PREFIX = "voice-pool/stems"
 RESULTS_FLUSH_EVERY = 10
 
 
-class SeparatorLoadError(RuntimeError):
+class SystemicTaskError(RuntimeError):
+    """Failure that affects every song: the task fails fast with one ERROR."""
+
+
+class SeparatorLoadError(SystemicTaskError):
     """Model load failed: systemic, so the task fails fast instead of retrying per song."""
+
+
+class WrongBucketError(ValueError):
+    """A gs:// URI points outside the gen bucket."""
 
 
 def shard(lines: List[dict], index: int, count: int) -> List[dict]:
@@ -52,10 +60,16 @@ def vocals_path_from_outputs(paths: List[str]) -> Optional[str]:
     return None
 
 
-def _blob_path(uri: str) -> str:
-    """``gs://bucket/path`` -> ``path`` (StorageService is bound to the gen bucket)."""
+def _blob_path(uri: str, bucket: Optional[str] = None) -> str:
+    """``gs://bucket/path`` -> ``path`` (StorageService is bound to the gen bucket).
+
+    Raises WrongBucketError when ``bucket`` is given and the URI names another bucket.
+    """
     if uri.startswith("gs://"):
-        return uri[5:].split("/", 1)[1]
+        uri_bucket, _, path = uri[5:].partition("/")
+        if bucket is not None and uri_bucket != bucket:
+            raise WrongBucketError("wrong_bucket")
+        return path
     return uri
 
 
@@ -71,8 +85,8 @@ def _write_results(storage, manifest_uri: str, index: int, results: List[dict]) 
     storage.upload_text(_results_path(manifest_uri, index), body, content_type="application/x-ndjson")
 
 
-def _read_manifest(storage, manifest_uri: str) -> List[dict]:
-    raw = storage.download_bytes(_blob_path(manifest_uri)).decode("utf-8")
+def _read_manifest(storage, manifest_uri: str, bucket: Optional[str] = None) -> List[dict]:
+    raw = storage.download_bytes(_blob_path(manifest_uri, bucket)).decode("utf-8")
     return [json.loads(line) for line in raw.splitlines() if line.strip()]
 
 
@@ -82,9 +96,18 @@ def run_manifest(
     manifest_uri: str,
     index: int,
     count: int,
+    bucket: Optional[str] = None,
 ) -> List[dict]:
     """Separate this task's share of the manifest; never aborts on a per-song failure."""
-    lines = shard(_read_manifest(storage, manifest_uri), index, count)
+    if bucket is None:
+        from backend.config import get_settings
+
+        bucket = get_settings().gcs_bucket_name
+    try:
+        manifest = _read_manifest(storage, manifest_uri, bucket)
+    except WrongBucketError:
+        raise SystemicTaskError(f"manifest bucket is not {bucket} (wrong_bucket)")
+    lines = shard(manifest, index, count)
     logger.info(f"Task {index}/{count}: {len(lines)} songs")
     results: List[dict] = []
     separator = None  # built lazily so an all-skipped shard never loads models
@@ -104,7 +127,7 @@ def run_manifest(
                 except Exception as e:
                     raise SeparatorLoadError(f"separator failed to load: {e}") from e
             local = os.path.join(tmp, "original.flac")
-            storage.download_file(_blob_path(line["audio"]), local)
+            storage.download_file(_blob_path(line["audio"], bucket), local)
             outputs = separator.separate(local)
             # Separator may return bare filenames relative to its output_dir
             out_dir = getattr(separator, "output_dir", None)
@@ -122,7 +145,7 @@ def run_manifest(
                 "id": pool_id, "ok": True, "vocals": vocals_blob,
                 "seconds": round(time.time() - started, 1), "error": None,
             })
-        except SeparatorLoadError:
+        except SystemicTaskError:
             _write_results(storage, manifest_uri, index, results)
             raise
         except Exception as e:  # per-song failure must not abort the task
@@ -134,7 +157,10 @@ def run_manifest(
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
             if n % RESULTS_FLUSH_EVERY == 0:
-                _write_results(storage, manifest_uri, index, results)
+                try:  # periodic flush is best-effort; the final write stays strict
+                    _write_results(storage, manifest_uri, index, results)
+                except Exception as e:
+                    logger.warning(f"periodic results flush failed (will retry): {e}")
 
     _write_results(storage, manifest_uri, index, results)
     return results
@@ -173,14 +199,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_dir = tempfile.mkdtemp(prefix="voicepool_out_")
     try:
         results = run_manifest(StorageService(), make_separator_factory(out_dir), args.manifest, index, count)
-    except SeparatorLoadError as e:
-        logger.error(f"Task {index}/{count} aborted: {e}")
+    except SystemicTaskError as e:
+        # task-independent text so every failing task groups as one alert pattern
+        logger.info(f"Task {index}/{count} aborting")
+        logger.error(f"voice-pool separate task aborted: {e}", extra={"task_index": index})
         return 1
     finally:
         shutil.rmtree(out_dir, ignore_errors=True)
     failed = sum(1 for r in results if not r["ok"])
     if results and failed == len(results):
-        logger.error(f"Task {index}/{count}: all {failed} songs failed (first error: {results[0]['error']})")
+        logger.info(f"Task {index}/{count}: all {failed} songs failed")
+        logger.error(
+            f"voice-pool separate task failed: every song failed (first error: {results[0]['error']})",
+            extra={"task_index": index, "failed": failed},
+        )
         return 1
     logger.info(f"Task {index}/{count} done: {len(results) - failed} ok, {failed} failed")
     return 0
