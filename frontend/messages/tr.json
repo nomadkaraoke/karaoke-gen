@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "E-postanı gir",
     "errorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene.",
     "submitting": "Gönderiliyor…",
-    "communityExistsNote": "Yine de istekte bulunabilirsin veya aşağıdan mevcut bir versiyonu izleyebilirsin:"
+    "communityExistsNote": "Yine de istekte bulunabilirsin veya aşağıdan mevcut bir versiyonu izleyebilirsin:",
+    "deepLinkSignIn": "{artist} sanatçısının \"{title}\" şarkısını mı istemiştin? Oy vermek için aşağıdan e-postanla giriş yap, hazır olduğunda sana e-posta gönderelim.",
+    "deepLinkSignedIn": "{artist} sanatçısının \"{title}\" şarkısına aşağıdan oy ver, hazır olduğunda sana e-posta gönderelim.",
+    "deepLinkUpvoted": "{artist} sanatçısının \"{title}\" şarkısına oy verdin 🎉 Hazır olduğunda sana e-posta göndereceğiz."
   },
   "karaokehuntLetter": {
     "apology": "Bir süre önce eski KaraokeHunt uygulaması üzerinden bir şarkı istedin ve bu istek çok uzun süre sonuçsuz kaldı. Bunun için özür dilerim.",

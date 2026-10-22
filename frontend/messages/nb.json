@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Skriv inn e-posten din",
     "errorGeneric": "Noe gikk galt. Vennligst prøv igjen.",
     "submitting": "Sender inn…",
-    "communityExistsNote": "Du kan fortsatt be om den, eller bare se en eksisterende versjon nedenfor:"
+    "communityExistsNote": "Du kan fortsatt be om den, eller bare se en eksisterende versjon nedenfor:",
+    "deepLinkSignIn": "Har du ønsket deg «{title}» av {artist}? Logg inn med e-postadressen din nedenfor for å stemme på den, så sender vi deg en e-post når den er klar.",
+    "deepLinkSignedIn": "Stem på «{title}» av {artist} nedenfor, så sender vi deg en e-post når den er klar.",
+    "deepLinkUpvoted": "Du har stemt på «{title}» av {artist} 🎉 Vi sender deg en e-post når den er klar."
   },
   "karaokehuntLetter": {
     "apology": "For en stund siden ba du om en sang gjennom den gamle KaraokeHunt-appen, og altfor lenge skjedde det ingenting med den forespørselen. Det beklager jeg.",

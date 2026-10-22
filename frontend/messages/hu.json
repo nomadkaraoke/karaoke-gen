@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Add meg az e-mail címed",
     "errorGeneric": "Valami hiba történt. Kérlek, próbáld újra.",
     "submitting": "Beküldés…",
-    "communityExistsNote": "Továbbra is kérheted, vagy csak nézz meg egy meglévő verziót lent:"
+    "communityExistsNote": "Továbbra is kérheted, vagy csak nézz meg egy meglévő verziót lent:",
+    "deepLinkSignIn": "Te kérted a(z) \"{title}\" című dalt ({artist})? Jelentkezz be az e-mail-címeddel alább, hogy szavazz rá, és e-mailt küldünk, amint elkészül.",
+    "deepLinkSignedIn": "Szavazz a(z) \"{title}\" című dalra ({artist}) alább, és e-mailt küldünk, amint elkészül.",
+    "deepLinkUpvoted": "Szavaztál a(z) \"{title}\" című dalra ({artist}) 🎉 E-mailt küldünk, amint elkészül."
   },
   "karaokehuntLetter": {
     "apology": "Korábban kértél egy dalt a régi KaraokeHunt alkalmazáson keresztül, és ez a kérés túl sokáig válasz nélkül maradt. Ezt nagyon sajnálom.",

@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Syötä sähköpostisi",
     "errorGeneric": "Jotain meni pieleen. Yritä uudelleen.",
     "submitting": "Lähetetään…",
-    "communityExistsNote": "Voit silti pyytää sitä tai vain katsoa olemassa olevan version alta:"
+    "communityExistsNote": "Voit silti pyytää sitä tai vain katsoa olemassa olevan version alta:",
+    "deepLinkSignIn": "Toivoitko kappaletta ”{title}” artistilta {artist}? Kirjaudu sisään sähköpostillasi alta äänestääksesi sitä, niin ilmoitamme sinulle sähköpostitse, kun se on valmis.",
+    "deepLinkSignedIn": "Äänestä alta kappaletta ”{title}” artistilta {artist}, niin ilmoitamme sinulle sähköpostitse, kun se on valmis.",
+    "deepLinkUpvoted": "Olet äänestänyt kappaletta ”{title}” artistilta {artist} 🎉 Ilmoitamme sinulle sähköpostitse, kun se on valmis."
   },
   "karaokehuntLetter": {
     "apology": "Jokin aika sitten pyysit kappaletta vanhan KaraokeHunt-sovelluksen kautta, ja tuo pyyntö jäi toteuttamatta aivan liian pitkäksi aikaa. Olen pahoillani siitä.",

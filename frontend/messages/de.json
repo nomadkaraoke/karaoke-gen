@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Gib deine E-Mail ein",
     "errorGeneric": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "submitting": "Wird eingereicht…",
-    "communityExistsNote": "Du kannst es trotzdem anfragen oder dir einfach unten eine bereits vorhandene Version ansehen:"
+    "communityExistsNote": "Du kannst es trotzdem anfragen oder dir einfach unten eine bereits vorhandene Version ansehen:",
+    "deepLinkSignIn": "Du hast dir „{title}“ von {artist} gewünscht? Melde dich unten mit deiner E-Mail-Adresse an, um dafür abzustimmen, und wir benachrichtigen dich per E-Mail, sobald es fertig ist.",
+    "deepLinkSignedIn": "Stimme unten für „{title}“ von {artist} ab und wir benachrichtigen dich per E-Mail, sobald es fertig ist.",
+    "deepLinkUpvoted": "Du hast für „{title}“ von {artist} abgestimmt 🎉 Wir benachrichtigen dich per E-Mail, sobald es fertig ist."
   },
   "karaokehuntLetter": {
     "apology": "Vor einiger Zeit hast du über die alte KaraokeHunt-App ein Lied angefragt, und mit dieser Anfrage ist viel zu lange nichts passiert. Das tut mir leid.",

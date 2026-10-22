@@ -298,3 +298,82 @@ async def test_snooze_clear_and_reject(service):
     r = service.get_request(a.id)
     assert r.status == "rejected" and r.review_state is None
     assert a.id not in [x.id for x in service.list_active()]
+
+
+# ---------------------------------------------------------------------------
+# YouTube comment bot: bot-added requests + claim on first real upvote
+# ---------------------------------------------------------------------------
+
+
+def _bot_add(service, artist="Glass Harbor", title="Tin Sky", comment_id="c1"):
+    return service.add_from_youtube_comment(artist, title, comment_id=comment_id, video_id="v1", author="Viewer")
+
+
+def test_bot_add_creates_unclaimed_request_without_vote(service):
+    from backend.models.song_request import YOUTUBE_COMMENT_SUBMITTER
+
+    req = _bot_add(service)
+    stored = service.get_request(req.id)
+    assert stored.source == "youtube_comment"
+    assert stored.submitted_by == YOUTUBE_COMMENT_SUBMITTER
+    assert stored.vote_count == 0 and stored.youtube_comment_id == "c1"
+
+
+def test_bot_add_returns_existing_open_request(service):
+    a = _bot_add(service, comment_id="c1")
+    b = _bot_add(service, artist="glass harbor", title="tin sky", comment_id="c2")
+    assert a.id == b.id
+
+
+@pytest.mark.asyncio
+async def test_bot_add_returns_existing_human_request(service):
+    human, _, _, _ = await _submit(service, "u1@x.com", "Glass Harbor", "Tin Sky")
+    assert _bot_add(service).id == human.id
+
+
+def test_first_upvote_claims_and_second_does_not_steal(service):
+    req = _bot_add(service)
+    service.cast_vote("first@x.com", req.id, "up")
+    service.cast_vote("second@x.com", req.id, "up")
+    stored = service.get_request(req.id)
+    assert stored.submitted_by == "first@x.com" and stored.claimed_at is not None
+    assert stored.vote_count == 2
+
+
+def test_downvote_does_not_claim(service):
+    from backend.models.song_request import YOUTUBE_COMMENT_SUBMITTER
+
+    req = _bot_add(service)
+    service.cast_vote("hater@x.com", req.id, "down")
+    assert service.get_request(req.id).submitted_by == YOUTUBE_COMMENT_SUBMITTER
+
+
+def test_unclaimed_bot_request_is_not_pickable_until_claimed(service):
+    req = _bot_add(service)
+    assert req.id not in [r.id for r in service.list_pick_candidates()]
+    service.cast_vote("fan@x.com", req.id, "up")
+    assert req.id in [r.id for r in service.list_pick_candidates()]
+
+
+@pytest.mark.asyncio
+async def test_human_resubmit_of_bot_request_claims_it(service):
+    req = _bot_add(service)
+    again, existed, _, _ = await _submit(service, "fan@x.com", "Glass Harbor", "Tin Sky")
+    assert existed and again.id == req.id
+    assert service.get_request(req.id).submitted_by == "fan@x.com"
+
+
+def test_find_published_by_key(service):
+    req = _bot_add(service)
+    service.db.collection(srs.REQUESTS_COLLECTION).document(req.id).update(
+        {"status": "published", "youtube_url": "https://youtu.be/x"})
+    found = service.find_published_by_key(req.dedupe_key)
+    assert found and found.id == req.id
+
+
+def test_bot_add_dedupes_against_request_being_made(service):
+    req = _bot_add(service, comment_id="c1")
+    service.transition_status(req.id, "open", "queued")
+    again = _bot_add(service, comment_id="c2")
+    assert again.id == req.id and again.status == "queued"
+    assert service.find_active_by_key(req.dedupe_key).id == req.id

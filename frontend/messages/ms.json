@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Masukkan e-mel anda",
     "errorGeneric": "Sesuatu yang tidak kena berlaku. Sila cuba lagi.",
     "submitting": "Menghantar…",
-    "communityExistsNote": "Anda masih boleh memintanya, atau tonton sahaja versi sedia ada di bawah:"
+    "communityExistsNote": "Anda masih boleh memintanya, atau tonton sahaja versi sedia ada di bawah:",
+    "deepLinkSignIn": "Mencari lagu \"{title}\" oleh {artist}? Log masuk dengan e-mel anda di bawah untuk mengundinya, dan kami akan menghantar e-mel kepada anda sebaik sahaja ia siap.",
+    "deepLinkSignedIn": "Undi \"{title}\" oleh {artist} di bawah dan kami akan menghantar e-mel kepada anda sebaik sahaja ia siap.",
+    "deepLinkUpvoted": "Anda telah mengundi \"{title}\" oleh {artist} 🎉 Kami akan menghantar e-mel kepada anda sebaik sahaja ia siap."
   },
   "karaokehuntLetter": {
     "apology": "Beberapa ketika dahulu anda ada membuat permintaan lagu melalui aplikasi KaraokeHunt yang lama, dan permintaan tersebut terbiar untuk masa yang agak lama. Saya memohon maaf atas perkara ini.",

@@ -11,6 +11,7 @@ Handles:
 import hashlib
 import html
 import logging
+import re
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -294,7 +295,7 @@ def send_magic_link(
     # Board sign-in ("requests_board") is passwordless identity only: no welcome credit,
     # and a HIGHER per-IP signup cap (BOARD_MAX_SIGNUPS_PER_IP) so a whole venue on shared
     # WiFi can sign in to vote — but still a deterministic ceiling, not an open door.
-    is_board_signin = request.purpose == "requests_board"
+    is_board_signin = _is_board_purpose(request.purpose)
 
     # Per-IP and per-fingerprint signup rate limit (only for new users)
     device_fingerprint = request.device_fingerprint
@@ -404,15 +405,32 @@ def send_magic_link(
     )
 
 
+_BOARD_REQUEST_ID_RE = re.compile(r"[A-Za-z0-9_-]{4,64}")
+
+
+def _is_board_purpose(purpose) -> bool:
+    """"requests_board", or "requests_board:<request_id>" (sign-in from a link to one
+    request, e.g. the YouTube comment bot's reply) — both are board identity-only."""
+    return isinstance(purpose, str) and (
+        purpose == "requests_board" or purpose.startswith("requests_board:")
+    )
+
+
 def _magic_link_redirect_path(purpose) -> "Optional[str]":
     """Map a magic-link purpose to a post-login redirect path.
 
-    "requests_board" -> the voting board; "job_review:<job_id>" -> straight to
-    that job's lyrics review (used by outreach one-click links). Unknown or
-    malformed purposes fall through to None (frontend default: /app).
+    "requests_board" -> the voting board; "requests_board:<request_id>" -> the board
+    focused on that request, upvoting it on arrival; "job_review:<job_id>" ->
+    straight to that job's lyrics review (used by outreach one-click links).
+    Unknown or malformed purposes fall through to None (frontend default: /app).
     """
     import re as _re
     if purpose == "requests_board":
+        return "/requests"
+    if isinstance(purpose, str) and purpose.startswith("requests_board:"):
+        request_id = purpose.split(":", 1)[1]
+        if _BOARD_REQUEST_ID_RE.fullmatch(request_id):
+            return f"/requests?request={request_id}&upvote=1"
         return "/requests"
     if isinstance(purpose, str) and purpose.startswith("job_review:"):
         job_id = purpose.split(":", 1)[1]
@@ -604,7 +622,7 @@ def verify_magic_link(
         email_service=email_service,
         is_first_login=is_first_login,
         precomputed_eval=precomputed_eval,
-        grant_welcome_credit=magic_link_purpose != "requests_board" and not magic_link_tenant_id,
+        grant_welcome_credit=not _is_board_purpose(magic_link_purpose) and not magic_link_tenant_id,
         referral_code=referral_code if not magic_link_tenant_id else None,
         locale=locale if has_accept_language else None,
         ui_locale=get_full_locale_from_request(http_request),

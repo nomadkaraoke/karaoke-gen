@@ -102,6 +102,11 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # CI deploy step). Value added manually; the same value is mounted into
         # the decide services.
         "decide-gen-partner-secret",
+        # OAuth token (youtube + youtube.force-ssl) for the YouTube comment
+        # auto-reply bot, separate from the upload token. Minted with the
+        # "youtube-comment-bot" Desktop OAuth client; value added manually (see
+        # docs/REQUESTS-BOARD.md § YouTube comment auto-reply).
+        "youtube-comment-bot-credentials",
     ]
 
     secrets = {}

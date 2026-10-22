@@ -123,6 +123,80 @@ the same KaraokeNerds check the normal job-submission flow uses runs at two poin
 - **Conversion:** the board itself nudges impatient users into the paid generator ("Make it yourself
   now"), so linking the board also feeds gen signups.
 
+## YouTube comment auto-reply (song requests → board)
+
+**Status:** built 2026-10-22 (backlog Frog #6). Andrew signed off the behaviour on a
+6-month local replay before go-live.
+
+Viewers often comment "could you make <song>?" on our videos. Every hour a bot reads new
+top-level comments on the channel and, for a clear song request:
+
+- **Song already on the channel:** replies with that video's link ("Already made "X" by Y 🥳 <link>").
+- **Otherwise:** adds the song to the board, or finds the existing request, and replies with a
+  link straight to it: `https://requests.nomadkaraoke.com/?request=<id>&utm_source=youtube&utm_medium=comment_reply&utm_campaign=song_request`.
+- **Vague asks** ("more Johnnie please") get a generic board link.
+- **Non-English comments** get a translated reply. If a URL doesn't survive the translation,
+  the reply falls back to English.
+
+The reply promotes only the board, not gen (Andrew's call). The goal is getting an
+anonymous YouTuber to sign in with an email; follow-up emails do the gen conversion.
+
+**Skipped:**
+- the channel's own comments;
+- threads the channel already replied to (Andrew answering by hand);
+- comments from before go-live;
+- anything the Gemini Flash classifier isn't confident about (< 0.8).
+
+**Bot-added requests:**
+- `source="youtube_comment"` and `submitted_by="youtube-comment@nomadkaraoke.com"`, with no votes.
+- The **first real up-voter claims the request**, which sets `submitted_by` to them. Until
+  then the daily picker skips it, so a free credit never goes to the placeholder address.
+- The deep link highlights the request. Signing in from it uses purpose
+  `requests_board:<id>`, so the magic link returns to `/requests?request=<id>&upvote=1`
+  and casts the upvote on arrival. That's normally how the commenter claims it.
+
+**Pieces:**
+- Decision core: `backend/services/youtube_comment_bot.py`, shared by the replay and the worker.
+- Worker: `backend/workers/youtube_comment_bot_worker.py`, called through
+  `POST /api/internal/youtube-comments/run` (`?dry_run=true` logs what it would post and writes nothing).
+- Scheduler: Cloud Scheduler `youtube-comment-autoreply-hourly` (:17 past each hour).
+- Idempotency: one Firestore doc per comment in `youtube_comment_bot_actions/{comment_id}`,
+  created before posting, so nothing can get a double reply. State is in
+  `youtube_comment_bot/state` (`go_live_at`, `high_water`) and the channel index is cached in
+  `youtube_comment_bot/channel_index`.
+- Config:
+  - `YOUTUBE_COMMENT_AUTOREPLY_ENABLED`: kill switch.
+  - `YOUTUBE_COMMENT_AUTOREPLY_START`: ISO date, used on the first run only. It enabled a
+    one-time backfill of unanswered requests.
+  - `..._MAX_REPLIES` (20 per run) and `..._MIN_CONFIDENCE` (0.8).
+- Notifications: each reply posts a one-liner to Discord **#noise**. Missing credentials,
+  missing scope, YouTube errors and failed replies go to **#alerts**, throttled to 6h.
+- Quota: `commentThreads.list` costs 1 unit per page and each reply costs 50, recorded through
+  `YouTubeQuotaService` as `comment-reply:<comment_id>`.
+
+**OAuth (separate from the upload token):**
+- Listing a channel's comments and posting replies both need the `youtube.force-ssl` scope.
+  Google refuses that scope in the device flow that the upload token uses
+  (`invalid_scope: Invalid device flow scope`).
+- So the bot has its own **Desktop** OAuth client, `youtube-comment-bot` (Google Auth
+  Platform → Clients, project nomadkaraoke).
+- Its token is in Secret Manager `youtube-comment-bot-credentials`, as JSON with
+  `token, refresh_token, token_uri, client_id, client_secret, scopes`.
+- To re-mint it:
+  1. Run an `InstalledAppFlow` (`google_auth_oauthlib`) with that client's JSON and the scopes
+     `youtube` + `youtube.force-ssl`.
+  2. Approve as the **Nomad Karaoke Youtube** brand account. Our app shows the expected
+     "unverified app" warning: Advanced → Go to Nomad Karaoke.
+  3. Add a new secret version.
+
+**Replay (go-live gate / tuning):**
+```bash
+python scripts/youtube-comments/replay.py --since 2026-04-22 --credentials-file creds.json --out replay.html
+```
+Read-only. The report has one row per comment: the decision, parsed songs, exact reply, and
+the channel's own reply if there was one. On 2026-10-22 it covered 265 threads with 33
+requests. The bot caught all 29 that Andrew had answered by hand, with no false positives.
+
 ## Related docs
 - Product/build plan: `docs/archive/2026-09-02-requests-voting-board-plan.md`
 - **Phase 2 handoff (start here to build the automation):**

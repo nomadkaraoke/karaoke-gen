@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Insira seu e-mail",
     "errorGeneric": "Algo deu errado. Tente novamente.",
     "submitting": "Enviando…",
-    "communityExistsNote": "Você ainda pode solicitar, ou simplesmente assistir a uma versão existente abaixo:"
+    "communityExistsNote": "Você ainda pode solicitar, ou simplesmente assistir a uma versão existente abaixo:",
+    "deepLinkSignIn": "Pediu \"{title}\" de {artist}? Entre com seu e-mail abaixo para votar nela e avisaremos por e-mail quando estiver pronta.",
+    "deepLinkSignedIn": "Vote em \"{title}\" de {artist} abaixo e avisaremos por e-mail quando estiver pronta.",
+    "deepLinkUpvoted": "Você votou em \"{title}\" de {artist} 🎉 Avisaremos por e-mail quando estiver pronta."
   },
   "karaokehuntLetter": {
     "apology": "Há algum tempo, você pediu uma música pelo antigo aplicativo KaraokeHunt, e por muito tempo esse pedido não deu em nada. Peço desculpas por isso.",

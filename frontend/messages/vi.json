@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Nhập email của bạn",
     "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại.",
     "submitting": "Đang gửi…",
-    "communityExistsNote": "Bạn vẫn có thể gửi yêu cầu, hoặc xem phiên bản có sẵn dưới đây:"
+    "communityExistsNote": "Bạn vẫn có thể gửi yêu cầu, hoặc xem phiên bản có sẵn dưới đây:",
+    "deepLinkSignIn": "Bạn muốn yêu cầu bài \"{title}\" của {artist}? Hãy đăng nhập bằng email bên dưới để bình chọn và chúng tôi sẽ gửi email cho bạn khi video làm xong.",
+    "deepLinkSignedIn": "Bình chọn cho bài \"{title}\" của {artist} bên dưới và chúng tôi sẽ gửi email cho bạn khi video làm xong.",
+    "deepLinkUpvoted": "Bạn đã bình chọn cho bài \"{title}\" của {artist} 🎉 Chúng tôi sẽ gửi email cho bạn khi video làm xong."
   },
   "karaokehuntLetter": {
     "apology": "Trước đây bạn đã yêu cầu một bài hát qua ứng dụng KaraokeHunt cũ, và yêu cầu đó đã bị bỏ ngỏ trong một thời gian quá dài. Tôi rất xin lỗi về điều này.",

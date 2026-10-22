@@ -1581,6 +1581,7 @@ POST /api/internal/jobs/{job_id}/trigger-video
 
 ```http
 POST /api/internal/jobs/{job_id}/vocal-gaps[?dry_run=true]
+POST /api/internal/youtube-comments/run[?dry_run=true&max_replies=N]   # hourly YouTube comment auto-reply (docs/REQUESTS-BOARD.md)
 ```
 
 Finds sung stretches with no transcribed words — transcription can silently drop whole

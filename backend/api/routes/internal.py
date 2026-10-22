@@ -719,6 +719,38 @@ def youtube_backfill_run_endpoint(
     }
 
 
+@router.post("/youtube-comments/run")
+def youtube_comments_run_endpoint(
+    http_request: Request,
+    background_tasks: BackgroundTasks,
+    dry_run: bool = False,
+    max_replies: Optional[int] = None,
+    auth_data: Tuple[str, UserType, int] = Depends(require_admin),
+):
+    """
+    Reply to song requests in new YouTube channel comments (requests-board links).
+
+    Called by Cloud Scheduler (hourly). Does nothing unless
+    YOUTUBE_COMMENT_AUTOREPLY_ENABLED is true, except ``?dry_run=true``, which logs
+    every reply it would post (YOUTUBE_COMMENT_BOT) and writes nothing.
+    """
+    from backend.config import get_settings
+    from backend.workers.youtube_comment_bot_worker import run_comment_bot_sync
+
+    if not get_settings().youtube_comment_autoreply_enabled and not dry_run:
+        return {"status": "disabled", "message": "YOUTUBE_COMMENT_AUTOREPLY_ENABLED is false"}
+
+    async def _process():
+        try:
+            result = await asyncio.to_thread(run_comment_bot_sync, dry_run, max_replies)
+            logger.info(f"YOUTUBE_COMMENT_BOT complete: {result}")
+        except Exception as e:
+            logger.exception(f"YOUTUBE_COMMENT_BOT failed: {e}")
+
+    background_tasks.add_task(_process)
+    return {"status": "started", "dry_run": dry_run}
+
+
 @router.post("/storage-retention/run")
 async def storage_retention_run_endpoint(
     dry_run: Optional[bool] = None,

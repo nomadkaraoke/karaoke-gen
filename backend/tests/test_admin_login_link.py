@@ -65,3 +65,17 @@ class TestMagicLinkRedirectPath:
     def test_none_and_unknown(self):
         assert _magic_link_redirect_path(None) is None
         assert _magic_link_redirect_path("something_else") is None
+
+
+class TestBoardDeepLinkPurpose:
+    def test_request_purpose_redirects_with_upvote(self):
+        assert _magic_link_redirect_path("requests_board:abc12345") == "/requests?request=abc12345&upvote=1"
+
+    def test_malformed_request_id_falls_back_to_board(self):
+        assert _magic_link_redirect_path("requests_board:../x?y") == "/requests"
+
+    def test_is_board_purpose(self):
+        from backend.api.routes.users import _is_board_purpose
+
+        assert _is_board_purpose("requests_board") and _is_board_purpose("requests_board:abc12345")
+        assert not _is_board_purpose(None) and not _is_board_purpose("job_review:abc12345")
