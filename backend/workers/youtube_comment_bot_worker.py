@@ -192,8 +192,9 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
     except Exception as exc:  # noqa: BLE001
         incomplete = True
         logger.warning("YOUTUBE_COMMENT_BOT: comment fetch failed after %d threads: %s", len(items), exc)
-        if not items:
-            _alert("fetch", f"YouTube comment bot: couldn't read channel comments ({exc}). No replies this run.")
+        _alert("fetch", f"YouTube comment bot: reading channel comments failed after {len(items)} threads "
+                        f"({exc}). {'Processing those; older' if items else 'No replies this run;'} "
+                        "comments are retried next run (high-water not advanced).")
     for item in items:
         thread = bot.load_thread(youtube, item)
         summary["threads"] += 1

@@ -246,6 +246,7 @@ def test_failed_later_page_still_processes_fetched_threads(env, monkeypatch):
     summary = w.run_comment_bot_sync()
     assert summary["replied"] == 1
     assert env.db.store[(w.STATE_COLLECTION, w.STATE_DOC)]["incomplete"] is True
+    w._alert.assert_called_once()
 
 
 def test_poster_build_failure_leaves_comment_unclaimed(env, monkeypatch):
