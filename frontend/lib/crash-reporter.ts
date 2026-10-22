@@ -121,12 +121,27 @@ const BENIGN_MESSAGE_PATTERNS = [
   /resizeobserver loop/i,
 ]
 
+/**
+ * Browser page translation (Chrome/Edge "Translate this page") rewrites the text
+ * nodes React owns, so React's next commit throws NotFoundError from removeChild /
+ * insertBefore. The crash is caused by the translator, not our code, and only
+ * counts as benign while the page is actually translated (Chrome marks <html>
+ * with a `translated-ltr` / `translated-rtl` class).
+ */
+const TRANSLATE_DOM_CONFLICT = /Failed to execute '(removeChild|insertBefore)' on 'Node'/
+
+function isPageMachineTranslated(): boolean {
+  if (typeof document === 'undefined') return false
+  return /\btranslated-(ltr|rtl)\b/.test(document.documentElement.className)
+}
+
 export function isBenignError(e: unknown): boolean {
   if (e instanceof DOMException && e.name === 'AbortError') return true
   // Some browsers surface the same media abort as a plain Error.
   if (e instanceof Error && e.name === 'AbortError') return true
   const message =
     e instanceof Error ? e.message : typeof e === 'string' ? e : ''
+  if (TRANSLATE_DOM_CONFLICT.test(message) && isPageMachineTranslated()) return true
   return BENIGN_MESSAGE_PATTERNS.some((re) => re.test(message))
 }
 

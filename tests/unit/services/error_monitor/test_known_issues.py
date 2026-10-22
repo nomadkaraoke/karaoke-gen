@@ -43,6 +43,18 @@ class TestStartupProbePattern:
         assert result is not None
         assert result.pattern_name == "startup_probe"
 
+    def test_default_startup_tcp_probe(self):
+        """Cloud Run's own wording names the probe type (seen 2026-10-20)."""
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        msg = (
+            'Default STARTUP TCP probe failed 1 time consecutively for container '
+            '"karaoke-backend-1" on port 8080. The instance was not started.'
+        )
+        result = should_ignore("karaoke-backend", msg)
+        assert result is not None
+        assert result.pattern_name == "startup_probe"
+
     def test_startup_probe_uppercase(self):
         from backend.services.error_monitor.known_issues import should_ignore
 

@@ -38,7 +38,7 @@ class IgnoreReason:
 _IGNORE_PATTERNS: list[tuple[str, re.Pattern, str]] = [
     (
         "startup_probe",
-        re.compile(r"startup probe failed", re.IGNORECASE),
+        re.compile(r"startup (?:tcp |http |grpc )?probe failed", re.IGNORECASE),
         "Cloud Run cold start — startup probe failure is transient and expected",
     ),
     (

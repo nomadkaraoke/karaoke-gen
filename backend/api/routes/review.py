@@ -2053,7 +2053,7 @@ async def generate_preview_video(
                             # Upload ASS to GCS
                             with create_span("upload-ass-to-gcs") as upload_ass_span:
                                 ass_gcs_path = f"jobs/{job_id}/previews/{preview_hash}.ass"
-                                storage.upload_file(ass_path, ass_gcs_path)
+                                await asyncio.to_thread(storage.upload_file, ass_path, ass_gcs_path)
                                 upload_ass_span.set_attribute("ass_gcs_path", ass_gcs_path)
 
                             # A stale error marker from an earlier failed attempt at
@@ -3074,13 +3074,14 @@ async def apply_audio_edit(
         if existing_stack:
             duration_before = existing_stack[-1].get('duration_seconds', 0)
         else:
-            before_metadata = edit_service.get_metadata_from_gcs(current_gcs_path)
+            before_metadata = await asyncio.to_thread(edit_service.get_metadata_from_gcs, current_gcs_path)
             duration_before = before_metadata.duration_seconds
 
         output_gcs_path = f"jobs/{job_id}/audio_edit/edit_{edit_id}.flac"
 
-        # Apply the edit
-        metadata, result_path = edit_service.apply_edit(
+        # Apply the edit (ffmpeg + GCS download/upload: off the event loop)
+        metadata, result_path = await asyncio.to_thread(
+            edit_service.apply_edit,
             input_gcs_path=current_gcs_path,
             operation=operation,
             params=params,
@@ -3285,7 +3286,7 @@ async def upload_audio_for_join(
             tmp_path = tmp.name
 
         try:
-            storage.upload_file(tmp_path, gcs_path)
+            await asyncio.to_thread(storage.upload_file, tmp_path, gcs_path)
 
             # Get metadata
             metadata = edit_service.get_metadata(tmp_path)
@@ -3394,8 +3395,8 @@ async def submit_audio_edit(
         # Download and re-upload to canonical path
         with tempfile.TemporaryDirectory() as temp_dir:
             local_path = os.path.join(temp_dir, "edited.flac")
-            storage.download_file(current_edited_path, local_path)
-            storage.upload_file(local_path, edited_input_path)
+            await asyncio.to_thread(storage.download_file, current_edited_path, local_path)
+            await asyncio.to_thread(storage.upload_file, local_path, edited_input_path)
 
         # Update job to use edited audio as input
         job_manager.update_job(job_id, {

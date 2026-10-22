@@ -327,7 +327,9 @@ class StripeService:
             event_dict = json.loads(str(event))
             return True, event_dict, "Webhook verified"
         except stripe.error.SignatureVerificationError as e:
-            logger.error(f"Invalid webhook signature: {e}")
+            # Expected: scanners/link-preview bots POST here without a valid
+            # Stripe-Signature header. Real Stripe deliveries never hit this.
+            logger.warning(f"Invalid webhook signature: {e}")
             return False, None, "Invalid signature"
         except Exception as e:
             logger.error(f"Error verifying webhook: {e}")

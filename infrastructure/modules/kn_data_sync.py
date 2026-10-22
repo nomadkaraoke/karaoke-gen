@@ -160,7 +160,9 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
             ),
         ),
         service_config=cloudfunctionsv2.FunctionServiceConfigArgs(
-            available_memory="512M",
+            # 512M OOMed on the full sync (2026-10-22); 1Gi also raises gen2 CPU,
+            # which keeps the run well under the scheduler's attempt deadline.
+            available_memory="1Gi",
             timeout_seconds=300,  # 5 minutes
             min_instance_count=0,
             max_instance_count=1,
@@ -211,6 +213,8 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
         region=REGION,
         schedule="30 4 * * *",
         time_zone="America/New_York",
+        # Default 180s gave up on (and retried) full syncs that were still running.
+        attempt_deadline="320s",
         http_target=cloudscheduler.JobHttpTargetArgs(
             uri=function.url,
             http_method="POST",
@@ -237,6 +241,8 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
         region=REGION,
         schedule="5 3 * * *",
         time_zone="America/New_York",
+        # Default 180s gave up on (and retried) full syncs that were still running.
+        attempt_deadline="320s",
         http_target=cloudscheduler.JobHttpTargetArgs(
             uri=function.url,
             http_method="POST",

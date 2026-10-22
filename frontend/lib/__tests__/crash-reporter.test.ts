@@ -22,6 +22,33 @@ describe('isBenignError', () => {
     expect(isBenignError(abort)).toBe(true)
   })
 
+  describe('translate-induced DOM conflicts', () => {
+    const removeChild = new Error(
+      "Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node."
+    )
+    removeChild.name = 'NotFoundError'
+    const insertBefore = new Error(
+      "Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node."
+    )
+    insertBefore.name = 'NotFoundError'
+    afterEach(() => {
+      document.documentElement.className = ''
+    })
+
+    it('is benign while the page is machine-translated', () => {
+      document.documentElement.className = 'translated-ltr'
+      expect(isBenignError(removeChild)).toBe(true)
+      expect(isBenignError(insertBefore)).toBe(true)
+      document.documentElement.className = 'dark translated-rtl'
+      expect(isBenignError(removeChild)).toBe(true)
+    })
+
+    it('is still reported when the page is not translated', () => {
+      expect(isBenignError(removeChild)).toBe(false)
+      expect(isBenignError(insertBefore)).toBe(false)
+    })
+  })
+
   it('does not suppress real errors', () => {
     expect(isBenignError(new Error('Cannot read properties of undefined'))).toBe(false)
     expect(
