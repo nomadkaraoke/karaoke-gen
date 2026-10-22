@@ -492,3 +492,43 @@ class TestFakeSearchConfidence:
 
         with open(FRONTEND_FIXTURE) as f:
             assert json.load(f) == frontend_fixture()
+
+
+# --------------------------------------------------------------------------- kjbox quick version
+
+class TestKjboxQuickVersion:
+    def _run_audio(self, request_metadata):
+        from backend.services.fake_workers import pipeline
+
+        jm = MagicMock()
+        jm.get_job.return_value = SimpleNamespace(
+            job_id="job1", user_email="u@example.com", artist="A", title="T",
+            request_metadata=request_metadata, state_data={},
+        )
+        jm.advance_to_screens_if_ready = AsyncMock()
+        jm.resume_video_if_waiting_for_stems = AsyncMock()
+        storage = MagicMock()
+        media = MagicMock(final_mp4=__file__, duration=30)
+        with patch.object(pipeline, "JobManager", return_value=jm), \
+                patch.object(pipeline, "StorageService", return_value=storage), \
+                patch.object(pipeline, "_media_for", return_value=media), \
+                patch.object(pipeline, "get_fake_config", return_value=FakeConfig(step_delay_seconds=0)), \
+                patch("backend.workers.audio_worker.upload_separation_results", AsyncMock()), \
+                patch("backend.workers.audio_worker._transcode_review_stems", AsyncMock()), \
+                patch("backend.workers.screens_worker._analyze_backing_vocals", AsyncMock()), \
+                patch("backend.workers.worker_logging.create_job_logger"):
+            assert asyncio.run(pipeline.run("audio", "job1")) is True
+        return jm, storage
+
+    def test_fake_workers_emit_quick_version_for_kjbox_jobs(self):
+        jm, storage = self._run_audio({"client_id": "kjbox"})
+        jm.update_file_url.assert_called_once_with("job1", "quick", "video_mp4", "jobs/job1/quick/quick.mp4")
+        storage.upload_file.assert_called_once()
+        statuses = [c.args[2]["status"] for c in jm.update_state_data.call_args_list
+                    if c.args[1] == "quick_version"]
+        assert statuses == ["separating", "rendering", "ready"]
+
+    def test_non_kjbox_jobs_get_no_quick_version(self):
+        jm, storage = self._run_audio({"client_id": "web"})
+        jm.update_file_url.assert_not_called()
+        assert not [c for c in jm.update_state_data.call_args_list if c.args[1] == "quick_version"]
