@@ -181,7 +181,10 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
     # advance the high-water mark, or older unprocessed threads would fall out of the
     # next run's window. Re-reading is cheap: handled comments have an action doc.
     incomplete = False
-    for item in bot.iter_comment_threads(youtube, stop_before=stop_before):
+    # Fetch every page up front (a few quick reads) rather than lazily between slow
+    # per-thread work, which idles the connection until Google drops it.
+    items = list(bot.iter_comment_threads(youtube, stop_before=stop_before))
+    for item in items:
         thread = bot.load_thread(youtube, item)
         summary["threads"] += 1
         if thread.published and thread.published > newest:
@@ -223,7 +226,9 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
         if not _create(action_ref, {**record, "action": "replying"}):
             continue
         try:
-            reply_id = bot.post_reply(youtube, thread.comment_id, decision.reply_text)
+            # Fresh client per post: the shared connection may have idled out, and a
+            # post must never be retried (double-reply risk).
+            reply_id = bot.post_reply(ytb.build_youtube(creds), thread.comment_id, decision.reply_text)
             quota.record_upload(f"comment-reply:{thread.comment_id}", units=REPLY_COST)
             action_ref.update({"action": "replied", "reply_id": reply_id, "replied_at": datetime.now(timezone.utc)})
             summary["replied"] += 1

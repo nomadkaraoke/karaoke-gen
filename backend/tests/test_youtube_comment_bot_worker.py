@@ -71,7 +71,7 @@ class FakeYouTube:
         self._kw = {"insert": True}
         return self
 
-    def execute(self):
+    def execute(self, num_retries=0):
         if self._kw.get("insert"):
             return {"id": f"reply{len(self.inserted)}"}
         return {"items": self.items}

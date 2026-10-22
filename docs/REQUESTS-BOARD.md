@@ -171,6 +171,10 @@ anonymous YouTuber to sign in with an email; follow-up emails do the gen convers
   - `..._MAX_REPLIES` (20 per run) and `..._MIN_CONFIDENCE` (0.8).
 - Notifications: each reply posts a one-liner to Discord **#noise**. Missing credentials,
   missing scope, YouTube errors and failed replies go to **#alerts**, throttled to 6h.
+- Long runs: all comment pages are fetched up front and reads retry (`num_retries`).
+  Each post uses a freshly built client and is never retried. Without this, the slow
+  Gemini work between calls (background tasks are CPU-throttled) idled the shared
+  connection until Google dropped it (`BrokenPipeError`, first prod run 2026-10-22).
 - Quota: `commentThreads.list` costs 1 unit per page and each reply costs 50, recorded through
   `YouTubeQuotaService` as `comment-reply:<comment_id>`.
 

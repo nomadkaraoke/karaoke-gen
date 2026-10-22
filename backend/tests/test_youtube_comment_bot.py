@@ -261,6 +261,7 @@ class FakeYouTube:
         self.pages = pages
         self.reply_pages = reply_pages or []
         self.inserted = []
+        self.retries = []
 
     def commentThreads(self):
         return self
@@ -277,7 +278,8 @@ class FakeYouTube:
         self._kw = {"insert": True}
         return self
 
-    def execute(self):
+    def execute(self, num_retries=0):
+        self.retries.append((("insert" if self._kw.get("insert") else "list"), num_retries))
         if self._kw.get("insert"):
             return {"id": "reply1"}
         if "parentId" in self._kw:
@@ -305,3 +307,11 @@ class TestApiHelpers:
         yt = FakeYouTube([])
         assert bot.post_reply(yt, "c1", "hi") == "reply1"
         assert yt.inserted[0]["body"]["snippet"] == {"parentId": "c1", "textOriginal": "hi"}
+
+
+    def test_reads_retry_but_posts_never_do(self):
+        yt = FakeYouTube([{"items": [_item()]}], reply_pages=[{"items": []}])
+        list(bot.iter_comment_threads(yt))
+        bot.load_thread(yt, _item(replies=[("UCa", "x")], total_replies=7))
+        bot.post_reply(yt, "c1", "hi")
+        assert yt.retries == [("list", bot.READ_RETRIES), ("list", bot.READ_RETRIES), ("insert", 0)]
