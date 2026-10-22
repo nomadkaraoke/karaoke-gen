@@ -1027,6 +1027,43 @@ class TestHandleMadeForYouOrder:
                 "Job must be created with made_for_you=True for made-for-you orders"
 
     @pytest.mark.asyncio
+    async def test_session_marked_processed_before_theme_prep(
+        self, mock_job_manager, mock_email_service, mock_user_service,
+        mock_theme_service, order_metadata
+    ):
+        """The session must be marked processed before the first await after create_job.
+        If the webhook task is cancelled while theme prep runs, Stripe's retry then finds
+        the session handled instead of creating a second job for the same order."""
+        from backend.api.routes.users import _handle_made_for_you_order
+
+        marked_before_theme = []
+
+        def _prepare(*args, **kwargs):
+            marked_before_theme.append(mock_user_service._mark_stripe_session_processed.called)
+            return ("style.json", {}, None)
+
+        with patch('backend.services.job_manager.JobManager', return_value=mock_job_manager), \
+             patch('backend.services.worker_service.get_worker_service'), \
+             patch('backend.services.audio_search_service.get_audio_search_service') as mock_get_audio, \
+             patch('backend.services.storage_service.StorageService'), \
+             patch('backend.api.routes.users.get_theme_service', return_value=mock_theme_service), \
+             patch('backend.api.routes.users._prepare_theme_for_job', side_effect=_prepare):
+            from backend.services.audio_search_service import NoResultsError
+            mock_audio_service = MagicMock()
+            mock_audio_service.search.side_effect = NoResultsError("No results")
+            mock_get_audio.return_value = mock_audio_service
+
+            await _handle_made_for_you_order(
+                session_id="sess_123",
+                metadata=order_metadata,
+                user_service=mock_user_service,
+                email_service=mock_email_service,
+            )
+
+        assert marked_before_theme == [True]
+        mock_user_service._mark_stripe_session_processed.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_job_owned_by_admin_during_processing(
         self, mock_job_manager, mock_email_service, mock_user_service,
         mock_theme_service, order_metadata

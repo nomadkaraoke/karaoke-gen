@@ -177,3 +177,48 @@ def test_text_batch_has_no_album_state(client, monkeypatch):
     stamped = jm.update_job.call_args[0][1]
     assert "state_data.bulk_album" not in stamped
     assert "state_data.bulk_track_position" not in stamped
+
+
+@pytest.mark.asyncio
+async def test_cancelled_request_still_dispatches_created_batch(monkeypatch):
+    """A client disconnect mid-creation must not strand created (and charged) jobs:
+    the create+dispatch step is shielded, so dispatch still runs after cancellation."""
+    import asyncio
+    import threading
+    import backend.api.routes.bulk as bulk
+    from starlette.requests import Request
+
+    _patch_user_service(monkeypatch, credits=10)
+    jm = _patch_job_manager(monkeypatch)
+    started, release = threading.Event(), threading.Event()
+    inner_create = jm.create_job.side_effect
+
+    def _slow_create(job_create, is_admin=False):
+        started.set()
+        release.wait(5)
+        return inner_create(job_create, is_admin=is_admin)
+
+    jm.create_job.side_effect = _slow_create
+    dispatched = []
+
+    async def _trigger(batch_id):
+        dispatched.append(batch_id)
+        return True
+
+    worker = MagicMock()
+    worker.trigger_bulk_search_worker = _trigger
+    monkeypatch.setattr("backend.services.worker_service.get_worker_service", lambda: worker)
+
+    request = Request({"type": "http", "method": "POST", "path": "/api/bulk/submit", "headers": []})
+    body = bulk.BulkSubmitRequest(songs=[{"artist": "A", "title": "B"}], settings={})
+    route = asyncio.create_task(bulk.bulk_submit(request, body, _auth()()))
+    await asyncio.to_thread(started.wait, 5)
+    route.cancel()
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await route
+    for _ in range(100):  # let the shielded task finish
+        if dispatched:
+            break
+        await asyncio.sleep(0.01)
+    assert len(dispatched) == 1

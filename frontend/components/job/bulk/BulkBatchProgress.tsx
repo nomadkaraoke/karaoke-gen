@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { api, BulkBatch, BulkBatchJob } from "@/lib/api"
+import { ApiError } from "@/lib/api-error"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Music2, CheckCircle2, AlertCircle } from "lucide-react"
@@ -19,11 +20,23 @@ export function BulkBatchProgress({ batchId, onStartAnother, onJobsChanged }: Bu
   const [batch, setBatch] = useState<BulkBatch | null>(null)
   const [error, setError] = useState("")
   const [selectingJob, setSelectingJob] = useState<BulkBatchJob | null>(null)
+  // Latest callback without restarting the polling effect (the parent's is
+  // recreated every render).
+  const onStartAnotherRef = useRef(onStartAnother)
+  onStartAnotherRef.current = onStartAnother
 
   const load = useCallback(async () => {
     try {
       setBatch(await api.getBulkBatch(batchId))
-    } catch {
+      setError("")
+    } catch (e) {
+      // The remembered batch no longer exists (its jobs were deleted, or it was
+      // made under another account): forget it and go back to the form rather
+      // than showing an error with no way out.
+      if (e instanceof ApiError && e.status === 404) {
+        onStartAnotherRef.current()
+        return
+      }
       setError(t("progressError"))
     }
   }, [batchId, t])
@@ -34,7 +47,14 @@ export function BulkBatchProgress({ batchId, onStartAnother, onJobsChanged }: Bu
     return () => clearInterval(interval)
   }, [load])
 
-  if (error) return <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>
+  if (error && !batch) {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm" style={{ color: "#ef4444" }}>{error}</p>
+        <Button variant="outline" size="sm" onClick={onStartAnother}>{t("startAnother")}</Button>
+      </div>
+    )
+  }
   if (!batch) {
     return (
       <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-muted)" }}>
