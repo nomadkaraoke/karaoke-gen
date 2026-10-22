@@ -229,3 +229,10 @@ def test_configured_start_parsing():
     assert w._configured_start(s) == datetime(2026, 4, 22, tzinfo=timezone.utc)
     assert w._configured_start(SimpleNamespace(youtube_comment_autoreply_start="")) is None
     assert w._configured_start(SimpleNamespace(youtube_comment_autoreply_start="nope")) is None
+
+
+def test_post_noise_disables_discord_mentions(monkeypatch):
+    sent = []
+    monkeypatch.setattr(w.requests, "post", lambda url, json, timeout: sent.append(json) or SimpleNamespace(ok=True))
+    w._post_noise(SimpleNamespace(get_secret=lambda name: "https://discord.test/hook"), "@everyone hi")
+    assert sent[0]["allowed_mentions"] == {"parse": []}

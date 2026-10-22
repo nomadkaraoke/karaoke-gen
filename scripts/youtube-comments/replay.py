@@ -201,6 +201,8 @@ def main():
         def cached_generate(system_prompt, user_prompt, schema, _c=cached):
             if schema is bot.CLASSIFIER_RESPONSE_SCHEMA and _c["cls"] is not None:
                 c = _c["cls"]
+                if c.error:  # same path as prod: decide() reports classifier_error
+                    raise RuntimeError("classifier call failed during pre-classification")
                 return {"is_song_request": c.is_song_request, "is_vague_request": c.is_vague_request,
                         "songs": [s.__dict__ for s in c.songs],
                         "language": c.language, "confidence": c.confidence, "reason": c.reason}

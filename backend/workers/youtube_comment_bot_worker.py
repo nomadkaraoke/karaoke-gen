@@ -97,7 +97,9 @@ def _post_noise(settings, content: str) -> None:
     for secret in ("discord-noise-webhook", "discord-alert-webhook"):
         try:
             url = settings.get_secret(secret)
-            if url and requests.post(url, json={"content": content[:1900]}, timeout=10).ok:
+            # Display names are commenter-controlled: never let "@everyone" ping the channel.
+            payload = {"content": content[:1900], "allowed_mentions": {"parse": []}}
+            if url and requests.post(url, json=payload, timeout=10).ok:
                 return
         except Exception:  # noqa: BLE001
             logger.warning("YOUTUBE_COMMENT_BOT: Discord post via %s failed", secret, exc_info=True)
