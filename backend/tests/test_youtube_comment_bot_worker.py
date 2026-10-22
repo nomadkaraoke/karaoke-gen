@@ -71,7 +71,7 @@ class FakeYouTube:
         self._kw = {"insert": True}
         return self
 
-    def execute(self):
+    def execute(self, num_retries=0):
         if self._kw.get("insert"):
             return {"id": f"reply{len(self.inserted)}"}
         return {"items": self.items}
@@ -236,3 +236,28 @@ def test_post_noise_disables_discord_mentions(monkeypatch):
     monkeypatch.setattr(w.requests, "post", lambda url, json, timeout: sent.append(json) or SimpleNamespace(ok=True))
     w._post_noise(SimpleNamespace(get_secret=lambda name: "https://discord.test/hook"), "@everyone hi")
     assert sent[0]["allowed_mentions"] == {"parse": []}
+
+
+def test_failed_later_page_still_processes_fetched_threads(env, monkeypatch):
+    def pages(youtube, stop_before=None):
+        yield _item("c1")
+        raise BrokenPipeError(32, "Broken pipe")
+    monkeypatch.setattr(w.bot, "iter_comment_threads", pages)
+    summary = w.run_comment_bot_sync()
+    assert summary["replied"] == 1
+    assert env.db.store[(w.STATE_COLLECTION, w.STATE_DOC)]["incomplete"] is True
+    w._alert.assert_called_once()
+
+
+def test_poster_build_failure_leaves_comment_unclaimed(env, monkeypatch):
+    calls = {"n": 0}
+    yt = env.yt
+
+    def build(creds):
+        calls["n"] += 1
+        if calls["n"] > 1:  # first call is the reading client
+            raise RuntimeError("token refresh failed")
+        return yt
+    monkeypatch.setattr(w.ytb, "build_youtube", build)
+    summary = w.run_comment_bot_sync()
+    assert summary["errors"] == 1 and "c1" not in _actions(env.db) and yt.inserted == []

@@ -174,14 +174,28 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
     generate = bot.gemini_generate()
     quota = get_youtube_quota_service()
 
+    # A run that stops early (reply cap, quota, a transient classifier error, a failed
+    # page fetch) must not advance the high-water mark, or older unprocessed threads
+    # would fall out of the next run's window. Re-reading is cheap: handled comments
+    # have an action doc.
+    incomplete = False
     summary = {"status": "ok", "dry_run": dry_run, "threads": 0, "replied": 0, "skipped": {},
                "errors": 0, "actions": []}
     newest = high_water
-    # A run that stops early (reply cap, quota, a transient classifier error) must not
-    # advance the high-water mark, or older unprocessed threads would fall out of the
-    # next run's window. Re-reading is cheap: handled comments have an action doc.
-    incomplete = False
-    for item in bot.iter_comment_threads(youtube, stop_before=stop_before):
+    # Fetch every page up front (a few quick reads) rather than lazily between slow
+    # per-thread work, which idles the connection until Google drops it. If a page
+    # still fails after retries, process what we have and retry the rest next run.
+    items = []
+    try:
+        for item in bot.iter_comment_threads(youtube, stop_before=stop_before):
+            items.append(item)
+    except Exception as exc:  # noqa: BLE001
+        incomplete = True
+        logger.warning("YOUTUBE_COMMENT_BOT: comment fetch failed after %d threads: %s", len(items), exc)
+        _alert("fetch", f"YouTube comment bot: reading channel comments failed after {len(items)} threads "
+                        f"({exc}). {'Processing those; older' if items else 'No replies this run;'} "
+                        "comments are retried next run (high-water not advanced).")
+    for item in items:
         thread = bot.load_thread(youtube, item)
         summary["threads"] += 1
         if thread.published and thread.published > newest:
@@ -219,11 +233,21 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
             logger.warning("YOUTUBE_COMMENT_BOT: quota low (%s left); stopping", remaining)
             incomplete = True
             break
+        # Fresh client per post: the shared connection may have idled out, and a post
+        # must never be retried (double-reply risk). Built before claiming, so a
+        # failure here leaves the comment unclaimed for the next run.
+        try:
+            poster = ytb.build_youtube(creds)
+        except Exception as exc:  # noqa: BLE001
+            incomplete = True
+            summary["errors"] += 1
+            logger.warning("YOUTUBE_COMMENT_BOT: couldn't build posting client: %s", exc)
+            break
         # Claim the comment BEFORE posting so a concurrent run can't double-reply.
         if not _create(action_ref, {**record, "action": "replying"}):
             continue
         try:
-            reply_id = bot.post_reply(youtube, thread.comment_id, decision.reply_text)
+            reply_id = bot.post_reply(poster, thread.comment_id, decision.reply_text)
             quota.record_upload(f"comment-reply:{thread.comment_id}", units=REPLY_COST)
             action_ref.update({"action": "replied", "reply_id": reply_id, "replied_at": datetime.now(timezone.utc)})
             summary["replied"] += 1

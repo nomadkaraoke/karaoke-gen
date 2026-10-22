@@ -469,6 +469,11 @@ def decide(
 # ---------------------------------------------------------------------------
 # YouTube API helpers (shared by the replay script and the worker)
 # ---------------------------------------------------------------------------
+# Reads are idempotent, so retry them: a long run idles the shared HTTP connection
+# between calls (Gemini work in between) and Google drops it ("Broken pipe").
+# Writes (post_reply) are NOT retried: a lost response could mean a double reply.
+READ_RETRIES = 3
+
 def iter_comment_threads(youtube, channel_id: str = NOMAD_CHANNEL_ID,
                          stop_before: Optional[datetime] = None, max_pages: int = 500):
     """Yield ``commentThreads.list`` items for the whole channel, newest first.
@@ -482,7 +487,7 @@ def iter_comment_threads(youtube, channel_id: str = NOMAD_CHANNEL_ID,
             youtube.commentThreads()
             .list(part="snippet,replies", allThreadsRelatedToChannelId=channel_id,
                   order="time", maxResults=100, textFormat="plainText", pageToken=token)
-            .execute()
+            .execute(num_retries=READ_RETRIES)
         )
         items = resp.get("items", [])
         reached_end = False
@@ -507,7 +512,7 @@ def fetch_owner_replies(youtube, parent_id: str, channel_id: str = NOMAD_CHANNEL
             youtube.comments()
             .list(part="snippet", parentId=parent_id, maxResults=100,
                   textFormat="plainText", pageToken=token)
-            .execute()
+            .execute(num_retries=READ_RETRIES)
         )
         for c in resp.get("items", []):
             s = c.get("snippet", {})
@@ -528,7 +533,9 @@ def load_thread(youtube, item: Dict, channel_id: str = NOMAD_CHANNEL_ID) -> Comm
 
 
 def post_reply(youtube, parent_comment_id: str, text: str) -> str:
-    """Post a reply as the channel (needs the youtube.force-ssl scope; 50 units)."""
+    """Post a reply as the channel (needs the youtube.force-ssl scope; 50 units).
+
+    Pass a freshly built client in long runs (see READ_RETRIES): never retried."""
     resp = (
         youtube.comments()
         .insert(part="snippet", body={"snippet": {"parentId": parent_comment_id, "textOriginal": text}})
