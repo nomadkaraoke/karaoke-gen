@@ -527,7 +527,13 @@ and `docs/archive/2026-07-20-edge-security-*.md`.
   (`getSearchConfidence`) and `backend/services/audio_search_service.py`
   (`pick_auto_selection`). The backend port drives the `bulk_search_worker`
   auto-select decision. If you change the rule, change BOTH — the parity is guarded
-  by `backend/tests/test_bulk_foundations.py`.
+  by `backend/tests/test_bulk_foundations.py`. The seeder bar for BEST CHOICE is the
+  `BEST_CHOICE_MIN_SEEDERS` constant on both sides (10 since Oct 2026; it was 50, which
+  parked well-matched lossless album torrents with 15-31 seeders for manual choice).
+- **Album cover thumbnails** in the By-album picker load straight from the Cover Art
+  Archive in the browser (`coverartarchive.org/release-group/{mbid}/front-250`), with the
+  disc icon as fallback when there's no cover. This isn't the live MusicBrainz API, and no
+  request goes through our backend.
 - **The duration-delta charge is replicated** in `bulk_search_worker._auto_select`
   using the same primitives/state keys (`credits_charged`/`select_charge_applied`)
   as `audio_search.select_audio_source`, rather than refactoring the proven money
