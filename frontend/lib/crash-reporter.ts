@@ -132,7 +132,10 @@ const TRANSLATE_DOM_CONFLICT = /Failed to execute '(removeChild|insertBefore)' o
 
 function isPageMachineTranslated(): boolean {
   if (typeof document === 'undefined') return false
-  return /\btranslated-(ltr|rtl)\b/.test(document.documentElement.className)
+  if (/\btranslated-(ltr|rtl)\b/.test(document.documentElement.className)) return true
+  // Translators that don't mark <html> (e.g. Edge) still wrap the text they rewrite in
+  // <font style="vertical-align: inherit">, which our app never renders.
+  return document.querySelector('font[style*="vertical-align: inherit"]') !== null
 }
 
 export function isBenignError(e: unknown): boolean {

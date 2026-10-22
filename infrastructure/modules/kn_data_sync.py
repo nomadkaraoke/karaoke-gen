@@ -165,7 +165,7 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
             # A full vCPU also keeps the run well under the scheduler's attempt deadline.
             available_memory="1Gi",
             available_cpu="1",
-            timeout_seconds=300,  # 5 minutes
+            timeout_seconds=540,  # 9 minutes; the full sync took up to ~185s at 0.33 vCPU
             min_instance_count=0,
             max_instance_count=1,
             service_account_email=sa.email,
@@ -215,8 +215,9 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
         region=REGION,
         schedule="30 4 * * *",
         time_zone="America/New_York",
-        # Default 180s gave up on (and retried) full syncs that were still running.
-        attempt_deadline="320s",
+        # Above the function's 540s timeout, so the scheduler never gives up on
+        # (and retries) a sync that is still running; the 180s default did.
+        attempt_deadline="600s",
         http_target=cloudscheduler.JobHttpTargetArgs(
             uri=function.url,
             http_method="POST",
@@ -243,8 +244,9 @@ def create_kn_data_sync_resources(all_secrets: dict) -> dict:
         region=REGION,
         schedule="5 3 * * *",
         time_zone="America/New_York",
-        # Default 180s gave up on (and retried) full syncs that were still running.
-        attempt_deadline="320s",
+        # Above the function's 540s timeout, so the scheduler never gives up on
+        # (and retries) a sync that is still running; the 180s default did.
+        attempt_deadline="600s",
         http_target=cloudscheduler.JobHttpTargetArgs(
             uri=function.url,
             http_method="POST",

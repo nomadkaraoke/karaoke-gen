@@ -43,6 +43,17 @@ describe('isBenignError', () => {
       expect(isBenignError(removeChild)).toBe(true)
     })
 
+    it('is benign when translator markup is present without the <html> class', () => {
+      const font = document.createElement('font')
+      font.setAttribute('style', 'vertical-align: inherit;')
+      document.body.appendChild(font)
+      try {
+        expect(isBenignError(removeChild)).toBe(true)
+      } finally {
+        font.remove()
+      }
+    })
+
     it('is still reported when the page is not translated', () => {
       expect(isBenignError(removeChild)).toBe(false)
       expect(isBenignError(insertBefore)).toBe(false)
