@@ -1944,7 +1944,10 @@
     "convertHeading": "Don't want to wait?",
     "convertBody": "Use the generator yourself and make your karaoke video right now — your first one is on us.",
     "convertButton": "Make it yourself now",
-    "errorGeneric": "Something went wrong. Please try again."
+    "errorGeneric": "Something went wrong. Please try again.",
+    "deepLinkSignIn": "Requested \"{title}\" by {artist}? Sign in with your email below to upvote it, and we'll email you when it's made.",
+    "deepLinkSignedIn": "Upvote \"{title}\" by {artist} below and we'll email you when it's made.",
+    "deepLinkUpvoted": "You upvoted \"{title}\" by {artist} 🎉 We'll email you when it's made."
   },
   "karaokehuntLetter": {
     "title": "A note for KaraokeHunt users",

@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Wpisz swój e-mail",
     "errorGeneric": "Coś poszło nie tak. Spróbuj ponownie.",
     "submitting": "Przesyłanie…",
-    "communityExistsNote": "Nadal możesz o to poprosić lub po prostu obejrzeć dostępną wersję poniżej:"
+    "communityExistsNote": "Nadal możesz o to poprosić lub po prostu obejrzeć dostępną wersję poniżej:",
+    "deepLinkSignIn": "To Twoja prośba o utwór „{title}” wykonawcy {artist}? Zaloguj się poniżej za pomocą swojego e-maila, aby na niego zagłosować, a powiadomimy Cię mailowo, gdy będzie gotowy.",
+    "deepLinkSignedIn": "Zagłosuj poniżej na utwór „{title}” wykonawcy {artist}, a powiadomimy Cię mailowo, gdy będzie gotowy.",
+    "deepLinkUpvoted": "Twój głos na utwór „{title}” wykonawcy {artist} został oddany 🎉 Powiadomimy Cię mailowo, gdy będzie gotowy."
   },
   "karaokehuntLetter": {
     "apology": "Jakiś czas temu poprosiłeś/aś o piosenkę przez starą aplikację KaraokeHunt i przez zbyt długi czas nic się z tym nie działo. Przepraszam za to.",

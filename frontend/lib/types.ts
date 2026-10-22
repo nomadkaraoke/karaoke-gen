@@ -57,7 +57,7 @@ export interface SongRequestPublic {
   artist: string
   title: string
   status: "open" | "queued" | "in_progress" | "published" | "rejected"
-  source: "human" | "trending_agent"
+  source: "human" | "trending_agent" | "youtube_comment"
   vote_count: number
   created_at: string
   youtube_url?: string | null

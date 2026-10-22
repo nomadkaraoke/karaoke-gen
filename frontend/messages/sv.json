@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Ange din e-post",
     "errorGeneric": "Något gick fel. Försök igen.",
     "submitting": "Skickar in…",
-    "communityExistsNote": "Du kan fortfarande önska den, eller bara se en befintlig version nedan:"
+    "communityExistsNote": "Du kan fortfarande önska den, eller bara se en befintlig version nedan:",
+    "deepLinkSignIn": "Har du önskat \"{title}\" av {artist}? Logga in med din e-postadress nedan för att rösta på den, så mejlar vi dig när den är klar.",
+    "deepLinkSignedIn": "Rösta på \"{title}\" av {artist} nedan så mejlar vi dig när den är klar.",
+    "deepLinkUpvoted": "Du har röstat på \"{title}\" av {artist} 🎉 Vi mejlar dig när den är klar."
   },
   "karaokehuntLetter": {
     "apology": "För ett tag sedan önskade du en låt via den gamla KaraokeHunt-appen, och under alldeles för lång tid hände det ingenting med den önskningen. Det ber jag om ursäkt för.",

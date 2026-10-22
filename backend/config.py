@@ -484,6 +484,9 @@ class Settings(BaseSettings):
     youtube_comment_autoreply_enabled: bool = os.getenv("YOUTUBE_COMMENT_AUTOREPLY_ENABLED", "false").lower() in ("true", "1", "yes")
     youtube_comment_autoreply_max_replies: int = int(os.getenv("YOUTUBE_COMMENT_AUTOREPLY_MAX_REPLIES", "20"))
     youtube_comment_autoreply_min_confidence: float = float(os.getenv("YOUTUBE_COMMENT_AUTOREPLY_MIN_CONFIDENCE", "0.8"))
+    # ISO date/time: on the FIRST run, comments since this are eligible (a one-time
+    # backfill of requests nobody answered). Empty = only comments after go-live.
+    youtube_comment_autoreply_start: str = os.getenv("YOUTUBE_COMMENT_AUTOREPLY_START", "")
 
     # Storage retention (backend/services/storage_retention.py): a daily job purges
     # regenerable files (big finals, rendered videos, stems, ...) from jobs

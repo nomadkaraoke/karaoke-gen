@@ -201,7 +201,8 @@ def main():
         def cached_generate(system_prompt, user_prompt, schema, _c=cached):
             if schema is bot.CLASSIFIER_RESPONSE_SCHEMA and _c["cls"] is not None:
                 c = _c["cls"]
-                return {"is_song_request": c.is_song_request, "songs": [s.__dict__ for s in c.songs],
+                return {"is_song_request": c.is_song_request, "is_vague_request": c.is_vague_request,
+                        "songs": [s.__dict__ for s in c.songs],
                         "language": c.language, "confidence": c.confidence, "reason": c.reason}
             return generate(system_prompt, user_prompt, schema)
 
@@ -210,7 +211,8 @@ def main():
         classification = d.classification or ans_cls
         reason = d.reason
         if reason == "already_replied" and ans_cls is not None:
-            reason = "already_replied_request" if ans_cls.is_song_request else "already_replied"
+            reason = ("already_replied_request" if ans_cls.is_song_request
+                      else "already_replied_vague" if ans_cls.is_vague_request else "already_replied")
         counts[f"{d.action}:{reason}"] += 1
         rows.append({
             "video_id": thread.video_id, "video_title": index.titles.get(thread.video_id, ""),
@@ -218,7 +220,8 @@ def main():
             "published_at": thread.published_at, "owner_replies": thread.owner_replies,
             "action": d.action, "reason": reason,
             "classification": None if classification is None else {
-                "is_song_request": classification.is_song_request, "confidence": classification.confidence,
+                "is_song_request": classification.is_song_request,
+                "is_vague_request": classification.is_vague_request, "confidence": classification.confidence,
                 "language": classification.language, "reason": classification.reason,
                 "songs": [s.__dict__ for s in classification.songs]},
             "songs": [s.__dict__ for s in d.songs],

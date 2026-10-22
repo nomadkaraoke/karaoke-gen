@@ -27,6 +27,23 @@ const REQUESTS_HOST = 'requests.nomadkaraoke.com';
 // board language at "/", so the shareable URL stays bare after switching language.
 const REQUESTS_LOCALE_COOKIE = 'nk_requests_locale';
 
+// Deep link to one request (?request=<id>), e.g. from the YouTube comment bot's
+// reply. After board sign-in the magic link returns with &upvote=1 so the
+// commenter's upvote is cast on arrival (which also claims a bot-added request).
+const REQUEST_ID_RE = /^[A-Za-z0-9_-]{4,64}$/;
+
+function readDeepLink(): { requestId: string | null; upvote: boolean } {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('request');
+  return { requestId: id && REQUEST_ID_RE.test(id) ? id : null, upvote: params.get('upvote') === '1' };
+}
+
+function dropUpvoteParam() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('upvote');
+  window.history.replaceState(window.history.state, '', url.toString());
+}
+
 function selectLocaleOnRequestsHost(code: string) {
   document.cookie = `${REQUESTS_LOCALE_COOKIE}=${code}; path=/; max-age=31536000; secure; samesite=lax`;
   window.location.assign('/');
@@ -59,9 +76,16 @@ export function RequestsBoardClient() {
 
   const isSignedIn = !!user;
   const [onRequestsHost, setOnRequestsHost] = useState(false);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [autoUpvote, setAutoUpvote] = useState(false);
+  const [deepLinkVoted, setDeepLinkVoted] = useState(false);
   useEffect(() => {
     setOnRequestsHost(window.location.hostname === REQUESTS_HOST);
+    const link = readDeepLink();
+    setFocusId(link.requestId);
+    setAutoUpvote(link.upvote && !!link.requestId);
   }, []);
+  const focusReq = focusId ? board?.requests.find((r) => r.id === focusId) ?? null : null;
 
   // Guards against an older refresh resolving after a newer one and clobbering state
   // (refresh can fire concurrently from hydration + submit + vote).
@@ -85,6 +109,33 @@ export function RequestsBoardClient() {
     }
     refresh();
   }, [refresh, fetchUser, user]);
+
+  // Scroll the deep-linked request into view once the board has loaded.
+  const scrolledToFocus = useRef(false);
+  useEffect(() => {
+    if (!focusReq || scrolledToFocus.current) return;
+    scrolledToFocus.current = true;
+    document.getElementById(`request-${focusReq.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusReq]);
+
+  // Back from the magic link with &upvote=1: cast the upvote once (unless they
+  // already upvoted it today), then drop the param so a reload can't toggle it off.
+  useEffect(() => {
+    if (!autoUpvote || !isSignedIn || !focusReq) return;
+    setAutoUpvote(false);
+    dropUpvoteParam();
+    if (focusReq.your_vote === 1) {
+      setDeepLinkVoted(true);
+      return;
+    }
+    api
+      .voteSongRequest(focusReq.id, 'up')
+      .then(() => {
+        setDeepLinkVoted(true);
+        return refresh();
+      })
+      .catch(() => setError(t('errorGeneric')));
+  }, [autoUpvote, isSignedIn, focusReq, refresh, t]);
 
   // Debounced KaraokeNerds check as the user types artist/title (signed-in only —
   // the check endpoint requires auth). Soft/non-blocking: we just surface existing
@@ -125,7 +176,7 @@ export function RequestsBoardClient() {
     }
     setSendingLink(true);
     try {
-      const ok = await sendMagicLink(trimmed, BOARD_PURPOSE);
+      const ok = await sendMagicLink(trimmed, focusReq ? `${BOARD_PURPOSE}:${focusReq.id}` : BOARD_PURPOSE);
       setLinkSent(ok);
       if (!ok) setError(t('errorGeneric'));
     } catch {
@@ -207,6 +258,21 @@ export function RequestsBoardClient() {
           <h1 className="text-3xl font-bold">{t('title')}</h1>
           <p className="text-base" style={{ color: 'var(--text-muted)' }}>{t('subtitle')}</p>
         </header>
+
+        {/* Deep-linked request (e.g. from a YouTube comment reply) */}
+        {focusReq && (
+          <p
+            data-testid="deep-link-banner"
+            className="text-sm rounded-xl px-4 py-3 text-center"
+            style={{ backgroundColor: 'rgba(168, 85, 247, 0.08)', color: 'var(--accent)' }}
+          >
+            {deepLinkVoted || (isSignedIn && focusReq.your_vote === 1)
+              ? t('deepLinkUpvoted', { title: focusReq.title, artist: focusReq.artist })
+              : isSignedIn
+                ? t('deepLinkSignedIn', { title: focusReq.title, artist: focusReq.artist })
+                : t('deepLinkSignIn', { title: focusReq.title, artist: focusReq.artist })}
+          </p>
+        )}
 
         {/* Submit / sign-in card */}
         <section
@@ -305,6 +371,7 @@ export function RequestsBoardClient() {
                 key={req.id}
                 rank={idx + 1}
                 req={req}
+                highlighted={req.id === focusId}
                 canVote={isSignedIn}
                 pending={pendingVoteId === req.id}
                 onVote={handleVote}
@@ -375,6 +442,7 @@ export function RequestsBoardClient() {
 function RequestRow({
   rank,
   req,
+  highlighted,
   canVote,
   pending,
   onVote,
@@ -383,6 +451,7 @@ function RequestRow({
 }: {
   rank: number;
   req: SongRequestPublic;
+  highlighted?: boolean;
   canVote: boolean;
   pending: boolean;
   onVote: (req: SongRequestPublic, direction: 'up' | 'down') => void;
@@ -393,8 +462,13 @@ function RequestRow({
   const down = req.your_vote === -1;
   return (
     <div
+      id={`request-${req.id}`}
+      data-highlighted={highlighted ? 'true' : undefined}
       className="flex items-center gap-3 rounded-xl px-4 py-3"
-      style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)' }}
+      style={{
+        backgroundColor: 'var(--card)',
+        border: highlighted ? '2px solid var(--accent)' : '1px solid var(--card-border)',
+      }}
     >
       {/* Vote controls */}
       <div className="flex flex-col items-center w-10 shrink-0">

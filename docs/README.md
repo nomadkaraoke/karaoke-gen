@@ -27,6 +27,7 @@
 | **AI auto-correct suggestions (opt-in)** | Working ("AI Suggest" button in lyrics review — whole-song LLM call, per-suggestion accept/reject) |
 | Combined review (lyrics + instrumental) | Working |
 | **Auto-approval (fully-auto review)** | Live (default `review_mode="auto"`): when the scorer is fully confident (synced-reference lyrics with all gaps AI-covered + no audible backing vocals), the review screens are skipped and the job renders straight through; every other job falls back to human review. Verdict on every job in `processing_metadata.auto_approval`. Kill switch `AUTO_APPROVAL_ENFORCE_ENABLED=false`; per-job `review_mode="always_review"` (admin-editable). See `docs/archive/2026-08-25-full-auto-review-design.md` |
+| **YouTube comment auto-reply** | Live (2026-10-22): hourly bot replies to song requests in channel comments with a requests-board link, pre-adding the song (`YOUTUBE_COMMENT_AUTOREPLY_ENABLED`). See [REQUESTS-BOARD.md](REQUESTS-BOARD.md#youtube-comment-auto-reply-song-requests--board) |
 | **Review replay tool (admin)** | Working (`?replay=1` read-only replay of completed jobs — see `docs/REPLAY.md`) |
 | Preview video generation | Working |
 | Multi-format encoding | Working |

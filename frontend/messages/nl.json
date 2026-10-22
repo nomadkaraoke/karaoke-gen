@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Vul je e-mailadres in",
     "errorGeneric": "Er is iets misgegaan. Probeer het opnieuw.",
     "submitting": "Indienen…",
-    "communityExistsNote": "Je kunt het nog steeds aanvragen, of hieronder gewoon een bestaande versie bekijken:"
+    "communityExistsNote": "Je kunt het nog steeds aanvragen, of hieronder gewoon een bestaande versie bekijken:",
+    "deepLinkSignIn": "Heb je \"{title}\" van {artist} aangevraagd? Meld je hieronder aan met je e-mailadres om erop te stemmen, en we sturen je een e-mail zodra het klaar is.",
+    "deepLinkSignedIn": "Stem hieronder op \"{title}\" van {artist} en we sturen je een e-mail zodra het klaar is.",
+    "deepLinkUpvoted": "Je hebt gestemd op \"{title}\" van {artist} 🎉 We sturen je een e-mail zodra het klaar is."
   },
   "karaokehuntLetter": {
     "apology": "Een tijdje geleden heb je een nummer aangevraagd via de oude KaraokeHunt-app, en die aanvraag heeft veel te lang stilgelegen. Mijn excuses daarvoor.",

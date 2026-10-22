@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Unesi svoju e-poštu",
     "errorGeneric": "Nešto je pošlo po zlu. Pokušaj ponovno.",
     "submitting": "Šaljem…",
-    "communityExistsNote": "Svejedno ga možeš zatražiti ili jednostavno pogledati postojeću verziju u nastavku:"
+    "communityExistsNote": "Svejedno ga možeš zatražiti ili jednostavno pogledati postojeću verziju u nastavku:",
+    "deepLinkSignIn": "Tražiš pjesmu \"{title}\" izvođača {artist}? Prijavi se svojom e-poštom u nastavku kako bi glasao za nju, a mi ćemo ti javiti e-poštom čim bude napravljena.",
+    "deepLinkSignedIn": "Glasaj za pjesmu \"{title}\" izvođača {artist} u nastavku i javit ćemo ti e-poštom čim bude napravljena.",
+    "deepLinkUpvoted": "Tvoj glas za pjesmu \"{title}\" izvođača {artist} je zabilježen 🎉 Javit ćemo ti e-poštom čim bude napravljena."
   },
   "karaokehuntLetter": {
     "apology": "Prije nekog vremena zatražio/la si pjesmu putem stare aplikacije KaraokeHunt, i predugo se ništa nije dogodilo s tim zahtjevom. Žao mi je zbog toga.",

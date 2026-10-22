@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Ilagay ang iyong email",
     "errorGeneric": "May nangyaring mali. Pakisubukan muli.",
     "submitting": "Isinusumite…",
-    "communityExistsNote": "Puwede mo pa rin itong i-request, o panoorin na lang ang nagawa nang bersyon sa ibaba:"
+    "communityExistsNote": "Puwede mo pa rin itong i-request, o panoorin na lang ang nagawa nang bersyon sa ibaba:",
+    "deepLinkSignIn": "Nirequest mo ba ang \"{title}\" ni {artist}? Mag-sign in gamit ang iyong email sa ibaba para i-upvote ito, at mag-e-email kami sa iyo kapag nagawa na.",
+    "deepLinkSignedIn": "I-upvote ang \"{title}\" ni {artist} sa ibaba at mag-e-email kami sa iyo kapag nagawa na.",
+    "deepLinkUpvoted": "Na-upvote mo na ang \"{title}\" ni {artist} 🎉 Mag-e-email kami sa iyo kapag nagawa na."
   },
   "karaokehuntLetter": {
     "apology": "Noong nakaraan, nag-request ka ng kanta gamit ang lumang KaraokeHunt app, at sa napakatagal na panahon ay hindi naasikaso ang hiling na iyon. Pasensya na talaga tungkol doon.",

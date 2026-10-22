@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Zadaj svoj e-mail",
     "errorGeneric": "Niečo sa pokazilo. Skús to znova.",
     "submitting": "Odosiela sa…",
-    "communityExistsNote": "Stále o to môžeš požiadať, alebo si jednoducho pozrieť existujúcu verziu nižšie:"
+    "communityExistsNote": "Stále o to môžeš požiadať, alebo si jednoducho pozrieť existujúcu verziu nižšie:",
+    "deepLinkSignIn": "Máš záujem o skladbu „{title}“ od interpreta {artist}? Prihlás sa nižšie pomocou svojho e-mailu, zahlasuj za ňu a my ti dáme vedieť e-mailom, keď bude hotová.",
+    "deepLinkSignedIn": "Zahlasuj nižšie za skladbu „{title}“ od interpreta {artist} a my ti pošleme e-mail, keď bude hotová.",
+    "deepLinkUpvoted": "Zahlasoval si za skladbu „{title}“ od interpreta {artist} 🎉 Keď bude hotová, pošleme ti e-mail."
   },
   "karaokehuntLetter": {
     "apology": "Pred časom si požiadal o pieseň cez starú aplikáciu KaraokeHunt a táto žiadosť zostala príliš dlho nevybavená. Ospravedlňujem sa za to.",

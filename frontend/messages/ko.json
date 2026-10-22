@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "이메일 입력",
     "errorGeneric": "문제가 발생했습니다. 다시 시도해 주세요.",
     "submitting": "제출 중…",
-    "communityExistsNote": "그래도 요청을 진행하시거나, 아래에서 기존 버전을 감상해 보세요:"
+    "communityExistsNote": "그래도 요청을 진행하시거나, 아래에서 기존 버전을 감상해 보세요:",
+    "deepLinkSignIn": "{artist}의 \"{title}\"을(를) 신청하셨나요? 아래에서 이메일로 로그인해 추천해 주시면, 곡이 완성되었을 때 이메일로 알려드릴게요.",
+    "deepLinkSignedIn": "아래에서 {artist}의 \"{title}\"을(를) 추천해 주시면, 곡이 완성되었을 때 이메일로 알려드릴게요.",
+    "deepLinkUpvoted": "{artist}의 \"{title}\"을(를) 추천하셨습니다 🎉 곡이 완성되면 이메일로 알려드릴게요."
   },
   "karaokehuntLetter": {
     "apology": "오래 전 KaraokeHunt 앱을 통해 노래를 신청해 주셨는데, 너무 오랫동안 요청이 처리되지 못했습니다. 진심으로 사과드립니다.",

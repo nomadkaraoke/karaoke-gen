@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "输入您的邮箱",
     "errorGeneric": "出了点问题，请重试。",
     "submitting": "正在提交…",
-    "communityExistsNote": "您仍然可以提交请求，或者直接观看下方已有的版本："
+    "communityExistsNote": "您仍然可以提交请求，或者直接观看下方已有的版本：",
+    "deepLinkSignIn": "想点播 {artist} 的《{title}》？在下方通过邮箱登录即可为它投票，制作完成后我们会邮件通知您。",
+    "deepLinkSignedIn": "在下方为 {artist} 的《{title}》投票，制作完成后我们会邮件通知您。",
+    "deepLinkUpvoted": "您已为 {artist} 的《{title}》投票 🎉 制作完成后我们会邮件通知您。"
   },
   "karaokehuntLetter": {
     "apology": "之前您通过旧版 KaraokeHunt 应用点了一首歌，但很长一段时间以来，这个请求一直没有进展。对此我感到非常抱歉。",

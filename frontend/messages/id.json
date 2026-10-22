@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Masukkan email Anda",
     "errorGeneric": "Terjadi kesalahan. Silakan coba lagi.",
     "submitting": "Mengirim…",
-    "communityExistsNote": "Anda masih bisa memintanya, atau tonton saja versi yang sudah ada di bawah ini:"
+    "communityExistsNote": "Anda masih bisa memintanya, atau tonton saja versi yang sudah ada di bawah ini:",
+    "deepLinkSignIn": "Ingin meminta lagu \"{title}\" dari {artist}? Masuk dengan email Anda di bawah ini untuk mendukungnya (upvote), dan kami akan mengirim email saat lagunya sudah selesai dibuat.",
+    "deepLinkSignedIn": "Berikan dukungan (upvote) untuk \"{title}\" dari {artist} di bawah ini dan kami akan mengirim email saat lagunya sudah selesai dibuat.",
+    "deepLinkUpvoted": "Anda telah mendukung (upvote) \"{title}\" dari {artist} 🎉 Kami akan mengirim email saat lagunya sudah selesai dibuat."
   },
   "karaokehuntLetter": {
     "apology": "Beberapa waktu lalu Anda meminta sebuah lagu melalui aplikasi KaraokeHunt yang lama, dan sudah terlalu lama permintaan tersebut tidak ada kelanjutannya. Saya mohon maaf atas hal tersebut.",

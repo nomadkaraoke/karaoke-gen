@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Introdueix el teu correu electrònic",
     "errorGeneric": "Alguna cosa ha anat malament. Torna-ho a provar.",
     "submitting": "S'està enviant…",
-    "communityExistsNote": "Encara pots demanar-la, o simplement veure una versió existent a continuació:"
+    "communityExistsNote": "Encara pots demanar-la, o simplement veure una versió existent a continuació:",
+    "deepLinkSignIn": "Has demanat \"{title}\" de {artist}? Inicia sessió amb el teu correu electrònic a continuació per votar-la, i t'enviarem un correu quan estigui feta.",
+    "deepLinkSignedIn": "Vota \"{title}\" de {artist} a continuació i t'enviarem un correu quan estigui feta.",
+    "deepLinkUpvoted": "Has votat \"{title}\" de {artist} 🎉 T'enviarem un correu quan estigui feta."
   },
   "karaokehuntLetter": {
     "apology": "Fa un temps vas demanar una cançó a través de l'antiga aplicació KaraokeHunt, i durant massa temps aquesta petició no va arribar enlloc. Em sap greu.",

@@ -152,8 +152,9 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
     snap = state_ref.get()
     state = snap.to_dict() if snap.exists else {}
     now = datetime.now(timezone.utc)
-    # Go-live time: only comments after the first real run are ever replied to.
-    go_live = state.get("go_live_at") or now
+    # Go-live time: only comments after it are ever replied to. Fixed on the first
+    # real run: YOUTUBE_COMMENT_AUTOREPLY_START (one-time backfill) or "now".
+    go_live = state.get("go_live_at") or _configured_start(settings) or now
     high_water = state.get("high_water") or go_live
     stop_before = max(go_live, high_water - OVERLAP)
 
@@ -195,6 +196,11 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
         }
         if decision.action != "reply":
             summary["skipped"][decision.reason] = summary["skipped"].get(decision.reason, 0) + 1
+            if decision.reason == "classifier_error":
+                # Transient: no action doc, and keep the high-water below it so the
+                # next run classifies it again.
+                newest = min(newest, thread.published or newest)
+                continue
             if not dry_run and decision.reason not in ("own_comment", "too_old"):
                 _create(action_ref, record)
             continue
@@ -238,6 +244,18 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
                       merge=True)
     logger.info("YOUTUBE_COMMENT_BOT run complete: %s", {k: v for k, v in summary.items() if k != "actions"})
     return summary
+
+
+def _configured_start(settings) -> Optional[datetime]:
+    raw = (settings.youtube_comment_autoreply_start or "").strip()
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        logger.warning("YOUTUBE_COMMENT_BOT: bad YOUTUBE_COMMENT_AUTOREPLY_START %r; ignoring", raw)
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def _create(ref, data: Dict) -> bool:

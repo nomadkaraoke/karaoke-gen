@@ -112,7 +112,7 @@ class TestSkips:
         def boom(*a):
             raise RuntimeError("quota")
         d = _decide(bot.thread_from_api(_item()), boom)
-        assert (d.action, d.reason) == ("skip", "not_a_request")
+        assert (d.action, d.reason) == ("skip", "classifier_error")
 
     def test_request_flag_without_songs_is_not_request(self):
         d = _decide(bot.thread_from_api(_item()), gen_returning({**REQUEST, "songs": []}))
@@ -142,7 +142,7 @@ class TestRouting:
                                                "https://youtu.be/pub1")})
         d = _decide(bot.thread_from_api(_item()), gen_returning(REQUEST), board=board)
         assert d.songs[0].kind == "board_published"
-        assert "already made" in d.reply_text and "https://youtu.be/pub1" in d.reply_text
+        assert "Already made" in d.reply_text and "https://youtu.be/pub1" in d.reply_text
 
     def test_existing_channel_video_wins(self):
         index = bot.ChannelIndex({bot.song_key("The Lanterns", "Paper Moons"): "vidX"})
@@ -158,12 +158,32 @@ class TestRouting:
         index = bot.ChannelIndex({bot.song_key("Glass Harbor", "Tin Sky"): "vidG"})
         d = _decide(bot.thread_from_api(_item()), gen_returning(data), index=index)
         assert [s.kind for s in d.songs] == ["board_new", "existing_video"]
-        assert d.reply_text.index("already made") < d.reply_text.index("requests board")
+        assert d.reply_text.index("Already made") < d.reply_text.index("requests board")
 
     def test_caps_songs(self):
         data = {**REQUEST, "songs": [{"artist": f"A{i}", "title": f"T{i}"} for i in range(6)]}
         d = _decide(bot.thread_from_api(_item()), gen_returning(data))
         assert len(d.songs) == bot.MAX_SONGS_PER_COMMENT
+
+
+class TestVagueRequest:
+    VAGUE = {"is_song_request": False, "is_vague_request": True, "songs": [], "language": "en",
+             "confidence": 0.9}
+
+    def test_vague_ask_gets_generic_board_link_and_no_board_write(self):
+        board = FakeBoard()
+        d = _decide(bot.thread_from_api(_item(text="more johnnie please")), gen_returning(self.VAGUE), board=board)
+        assert (d.action, d.reason) == ("reply", "vague_request")
+        assert board.added == [] and d.songs == []
+        assert "request=" not in d.reply_text and "utm_medium=comment_reply" in d.reply_text
+
+    def test_low_confidence_vague_skips(self):
+        d = _decide(bot.thread_from_api(_item(text="more?")), gen_returning({**self.VAGUE, "confidence": 0.5}))
+        assert d.reason == "low_confidence"
+
+    def test_vague_flag_ignored_when_songs_named(self):
+        c = bot.parse_classification({**REQUEST, "is_vague_request": True})
+        assert c.is_song_request and not c.is_vague_request
 
 
 class TestTranslation:

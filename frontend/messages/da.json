@@ -1944,7 +1944,10 @@
     "emailPlaceholder": "Indtast din e-mail",
     "errorGeneric": "Noget gik galt. Prøv venligst igen.",
     "submitting": "Indsender…",
-    "communityExistsNote": "Du kan stadig anmode om den, eller bare se en eksisterende version nedenfor:"
+    "communityExistsNote": "Du kan stadig anmode om den, eller bare se en eksisterende version nedenfor:",
+    "deepLinkSignIn": "Har du ønsket \"{title}\" af {artist}? Log ind med din e-mail herunder for at stemme på den, så sender vi dig en e-mail, når den er klar.",
+    "deepLinkSignedIn": "Stem på \"{title}\" af {artist} herunder, så sender vi dig en e-mail, når den er klar.",
+    "deepLinkUpvoted": "Du har stemt på \"{title}\" af {artist} 🎉 Vi sender dig en e-mail, når den er klar."
   },
   "karaokehuntLetter": {
     "apology": "For et stykke tid siden efterspurgte du en sang via den gamle KaraokeHunt-app, og i alt for lang tid skete der ikke noget med den anmodning. Det beklager jeg.",

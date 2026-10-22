@@ -509,6 +509,29 @@ youtube_description_backfill_scheduler = cloudscheduler.Job(
     ),
 )
 
+# Hourly YouTube comment auto-reply: replies to song requests in new channel
+# comments with a requests-board link. The backend no-ops unless
+# YOUTUBE_COMMENT_AUTOREPLY_ENABLED is set. See
+# backend/workers/youtube_comment_bot_worker.py.
+youtube_comment_autoreply_scheduler = cloudscheduler.Job(
+    "youtube-comment-autoreply-scheduler",
+    name="youtube-comment-autoreply-hourly",
+    description="Hourly reply to song requests in YouTube comments (requests board links)",
+    region=REGION,
+    schedule="17 * * * *",
+    time_zone="UTC",
+    http_target=cloudscheduler.JobHttpTargetArgs(
+        uri="https://api.nomadkaraoke.com/api/internal/youtube-comments/run",
+        http_method="POST",
+        oidc_token=cloudscheduler.JobHttpTargetOidcTokenArgs(
+            service_account_email=backend_service_account.email,
+        ),
+    ),
+    retry_config=cloudscheduler.JobRetryConfigArgs(
+        retry_count=0,
+    ),
+)
+
 # ==================== Storage Retention ====================
 
 # Daily purge of regenerable files (big finals, rendered videos, stems, ...) from

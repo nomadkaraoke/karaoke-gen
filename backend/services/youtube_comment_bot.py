@@ -47,8 +47,9 @@ def song_key(artist: str, title: str) -> str:
     return f"{normalize_for_match(artist)}|{normalize_for_match(title)}"
 
 
-def board_link(request_id: str) -> str:
-    return f"{BOARD_URL}?{urlencode({'request': request_id, **BOARD_UTM})}"
+def board_link(request_id: Optional[str] = None) -> str:
+    params = {"request": request_id} if request_id else {}
+    return f"{BOARD_URL}?{urlencode({**params, **BOARD_UTM})}"
 
 
 def video_link(video_id: str) -> str:
@@ -124,6 +125,9 @@ class Classification:
     language: str  # ISO 639-1, "en" when unsure
     confidence: float
     reason: str = ""
+    is_vague_request: bool = False
+    # The classifier call itself failed (timeout, 5xx, quota): retry later.
+    error: bool = False
 
 
 CLASSIFIER_SYSTEM_PROMPT = """\
@@ -137,6 +141,10 @@ Counts as a song request:
 - A request where the artist is implied but the song title is clear
   (e.g. "can you do Yellow next" on a Coldplay video) - fill in the artist when you are sure.
 
+A bare song name with no ask at all ("<song> karaoke 🎤") is a weak signal: count it
+only when it clearly relates to the video (same artist, e.g. "<artist> <other song>
+karaoke songs" on that artist's video); on an unrelated video give it confidence 0.5.
+
 Does NOT count:
 - Praise, thanks, singing reports, jokes, lyric corrections, timing complaints.
 - Questions about how the videos are made, software, pricing or downloads.
@@ -144,7 +152,15 @@ Does NOT count:
 - Mentions of songs without asking for them to be made.
 - Vague asks with no identifiable song ("do more 80s songs", "anything by Queen").
 
-Return JSON only. confidence is 0..1 that this is a genuine request for the listed songs.
+Vague asks get their own flag: set is_vague_request=true (and is_song_request=false,
+songs=[]) when the comment asks the channel to make MORE songs without naming a
+specific song: "more Johnnie please", "do more from this album", "can you do more
+Taylor Swift". Plain praise like "love your channel, keep it up" is NOT vague_request.
+If ANY specific song title is identifiable (even lowercase, abbreviated or with the
+artist run in, e.g. "playa fly n god we trust karaoke"), it is a song request, not vague.
+
+Return JSON only. confidence is 0..1 that your classification (request, vague
+request, or neither) is right.
 Give the artist and title as properly capitalised canonical names. List at most 3 songs.
 language is the ISO 639-1 code of the comment's language ("en" if unsure)."""
 
@@ -152,6 +168,7 @@ CLASSIFIER_RESPONSE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
         "is_song_request": {"type": "BOOLEAN"},
+        "is_vague_request": {"type": "BOOLEAN"},
         "songs": {
             "type": "ARRAY",
             "items": {
@@ -191,12 +208,14 @@ def parse_classification(data: Dict) -> Classification:
     except (TypeError, ValueError):
         confidence = 0.0
     language = str(data.get("language") or "en").strip().lower()[:5] or "en"
+    is_request = bool(data.get("is_song_request")) and bool(songs)
     return Classification(
-        is_song_request=bool(data.get("is_song_request")) and bool(songs),
+        is_song_request=is_request,
         songs=songs[:MAX_SONGS_PER_COMMENT],
         language=language,
         confidence=max(0.0, min(1.0, confidence)),
         reason=str(data.get("reason") or ""),
+        is_vague_request=bool(data.get("is_vague_request")) and not is_request,
     )
 
 
@@ -206,7 +225,7 @@ def classify_comment(text: str, video_title: str, generate: Generate) -> Classif
         data = generate(CLASSIFIER_SYSTEM_PROMPT, user_prompt, CLASSIFIER_RESPONSE_SCHEMA)
     except Exception:  # noqa: BLE001 - a classifier failure must never post anything
         logger.warning("youtube-comment-bot: classifier call failed", exc_info=True)
-        return Classification(False, [], "en", 0.0, "classifier error")
+        return Classification(False, [], "en", 0.0, "classifier error", error=True)
     return parse_classification(data)
 
 
@@ -316,30 +335,26 @@ def _quote(s: SongAction) -> str:
 
 
 def render_reply_en(songs: Sequence[SongAction]) -> str:
-    """Short, friendly, board-only English reply. One paragraph per kind."""
+    """Short, casual, board-only English reply (Andrew's style: brief + emoji)."""
     made = [s for s in songs if s.kind in ("existing_video", "board_published")]
     board = [s for s in songs if s.kind in ("board_existing", "board_new")]
     parts: List[str] = []
-    if made:
-        lines = [f"{_quote(s)}: {s.url}" for s in made]
-        if len(made) == 1:
-            parts.append(f"Good news, we've already made {_quote(made[0])}! {made[0].url}")
-        else:
-            parts.append("Good news, we've already made these:\n" + "\n".join(lines))
-    if board:
-        if len(board) == 1:
-            s = board[0]
-            parts.append(
-                f"Thanks for the request! {_quote(s)} is on our requests board. "
-                f"Upvote it here and we'll email you when it's made: {s.url}"
-            )
-        else:
-            lines = [f"{_quote(s)}: {s.url}" for s in board]
-            parts.append(
-                "Thanks for the requests! They're on our requests board. "
-                "Upvote them and we'll email you when they're made:\n" + "\n".join(lines)
-            )
+    if len(made) == 1:
+        parts.append(f"Already made {_quote(made[0])} 🥳 {made[0].url}")
+    elif made:
+        parts.append("Already made these 🥳\n" + "\n".join(f"{_quote(s)}: {s.url}" for s in made))
+    if len(board) == 1:
+        s = board[0]
+        parts.append(f"Added {_quote(s)} to our requests board 🥳 upvote it here and we'll "
+                     f"email you when it's made: {s.url}")
+    elif board:
+        parts.append("Added these to our requests board 🥳 upvote them and we'll email you "
+                     "when they're made:\n" + "\n".join(f"{_quote(s)}: {s.url}" for s in board))
     return "\n\n".join(parts)
+
+
+def render_vague_reply_en() -> str:
+    return f"Request any song you'd like on our requests board 🥳 {board_link()}"
 
 
 TRANSLATE_SYSTEM_PROMPT = """\
@@ -394,6 +409,14 @@ def decide(
         return Decision("skip", "empty")
 
     classification = classify_comment(thread.text, video_title, generate)
+    if classification.error:
+        return Decision("skip", "classifier_error", classification)
+    if classification.is_vague_request:
+        if classification.confidence < min_confidence:
+            return Decision("skip", "low_confidence", classification)
+        reply_en = render_vague_reply_en()
+        reply = translate_reply(reply_en, classification.language, generate)
+        return Decision("reply", "vague_request", classification, [], reply, reply_en)
     if not classification.is_song_request:
         return Decision("skip", "not_a_request", classification)
     if classification.confidence < min_confidence:
