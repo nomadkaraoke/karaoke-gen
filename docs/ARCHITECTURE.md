@@ -749,6 +749,16 @@ is still defined in Pulumi behind the `audioSeparatorServiceEnabled` flag — se
 [GCP-COST-OPTIMIZATION.md](GCP-COST-OPTIMIZATION.md#audio-separator-service-shut-down-on-demand-redeploy)
 to bring it back on demand.
 
+### Voice-pool separate-only job
+
+`voice-pool-separate-job` (Cloud Run Job, L4 GPU, us-east4, same GPU image) serves karaoke-decide's
+voice session. decide writes a JSONL manifest (`voice-pool/manifests/<run>.jsonl`, lines
+`{"id", "audio": "gs://…/voice-pool/audio/<id>/original.flac"}`) and starts the job with a per-run
+`task_count`. Each task (`CLOUD_RUN_TASK_INDEX`/`COUNT`, round-robin over manifest order) loads one
+`instrumental_clean` Separator, writes `voice-pool/stems/<id>/vocals.flac` (skipped if present) and
+`<manifest>.results/part-<task>.jsonl` (`{id, ok, vocals, seconds, error}`, flushed every 10 songs).
+No Firestore or gen job state. Code: `backend/workers/voice_pool_separate_worker.py`.
+
 ### Quick version (kjbox make-it jobs)
 
 For jobs created by kjbox on behalf of a singer (`request_metadata.client_id` starts with

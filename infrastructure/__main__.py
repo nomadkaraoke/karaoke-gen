@@ -187,6 +187,17 @@ edge_resources = edge_security.configure_edge_security()
 # These use Cloud Run Jobs instead of Cloud Tasks to avoid instance termination
 # during long-running processing (the BackgroundTasks issue)
 audio_separation_job = cloud_run.create_audio_separation_job(bucket, backend_service_account)
+# Voice-pool separate-only GPU job (started by karaoke-decide's fetch job). The
+# voice-pool SA is created by decide's Pulumi; this only grants it run access.
+voice_pool_separate_job = cloud_run.create_voice_pool_separate_job(bucket, backend_service_account)
+voice_pool_separate_job_invoker = cloudrunv2.JobIamMember(
+    "voice-pool-separate-job-invoker",
+    project=PROJECT_ID,
+    location=cloud_run.AUDIO_WORKER_GPU_REGION,
+    name=voice_pool_separate_job.name,
+    role="roles/run.invoker",
+    member="serviceAccount:voice-pool@nomadkaraoke.iam.gserviceaccount.com",
+)
 # Latency-critical CPU jobs run in CPU_JOBS_REGION (us-east4): us-central1 Cloud
 # Run Jobs queue 2-5 min before starting. The legacy us-central1 copies were
 # removed after the us-east4 jobs were verified in prod (2026-09-30). To roll
@@ -828,6 +839,7 @@ pulumi.export("video_worker_queue", queues["video-worker-queue"].name)
 pulumi.export("video_encoding_job", video_encoding_job.name)
 pulumi.export("lyrics_transcription_job", lyrics_transcription_job.name)
 pulumi.export("audio_separation_job", audio_separation_job.name)
+pulumi.export("voice_pool_separate_job", voice_pool_separate_job.name)
 pulumi.export("audio_download_job", audio_download_job.name)
 pulumi.export("bulk_search_job", bulk_search_job.name)
 pulumi.export("backend_url", "https://api.nomadkaraoke.com")
