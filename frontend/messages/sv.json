@@ -1848,7 +1848,11 @@
     "stepsLabel": "Albumsteg",
     "tracksSelected": "{selected} av {total} låtar valda",
     "searchArtists": "Sök",
-    "stepArtist": "Artist"
+    "stepArtist": "Artist",
+    "artistAlsoKnownAs": "Även känd som {alias}",
+    "noArtistsFound": "Inga artister matchar ”{query}”.",
+    "noArtistsFoundHint": "Kontrollera stavningen eller prova med färre ord – accenter och andra alfabet fungerar lika bra. Om artisten inte finns i MusicBrainz ännu kan du lägga till låtarna via namn istället.",
+    "noArtistsUseText": "Lägg till låtar via namn"
   },
   "backendStatus": {
     "reconnecting": "Återansluter…",

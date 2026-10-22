@@ -1848,7 +1848,11 @@
     "stepsLabel": "Етапи вибору альбому",
     "tracksSelected": "Вибрано {selected} із {total} треків",
     "searchArtists": "Пошук",
-    "stepArtist": "Виконавець"
+    "stepArtist": "Виконавець",
+    "artistAlsoKnownAs": "Також відомий(-а) як {alias}",
+    "noArtistsFound": "Не знайдено жодного виконавця за запитом «{query}».",
+    "noArtistsFoundHint": "Перевір правопис або спробуй використати менше слів; діакритика та інші алфавіти теж підходять. Якщо виконавця ще немає в MusicBrainz, натомість додай пісні за назвою.",
+    "noArtistsUseText": "Додати пісні за назвою"
   },
   "backendStatus": {
     "reconnecting": "Відновлення з'єднання…",

@@ -1848,7 +1848,11 @@
     "stepsLabel": "एल्बम के चरण",
     "tracksSelected": "{total} में से {selected} ट्रैक चुने गए",
     "searchArtists": "खोजो",
-    "stepArtist": "कलाकार"
+    "stepArtist": "कलाकार",
+    "artistAlsoKnownAs": "{alias} के नाम से भी जाने जाते हैं",
+    "noArtistsFound": "“{query}” से कोई आर्टिस्ट मेल नहीं खाता।",
+    "noArtistsFoundHint": "स्पेलिंग चेक करो या कम शब्द लिखकर देखो; मात्राएँ (accents) या दूसरी वर्णमालाएँ भी चलेंगी। अगर आर्टिस्ट अभी MusicBrainz में नहीं है, तो इसके बजाय नाम से गाने जोड़ो।",
+    "noArtistsUseText": "नाम से गाने जोड़ो"
   },
   "backendStatus": {
     "reconnecting": "फिर से कनेक्ट हो रहा है…",

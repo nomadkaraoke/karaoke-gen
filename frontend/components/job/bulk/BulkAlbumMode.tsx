@@ -17,6 +17,8 @@ import { BulkSongRow, newRow, shouldSelectTrack } from "./types"
 interface BulkAlbumModeProps {
   rows: BulkSongRow[]
   onChange: (rows: BulkSongRow[]) => void
+  /** Switch Bulk Mode to "By song name" (offered when no artist matches). */
+  onSwitchToText?: () => void
   disabled?: boolean
 }
 
@@ -203,7 +205,7 @@ function PickRow({ icon: Icon, artMbid, title, subtitle, meta, onClick, disabled
   )
 }
 
-export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) {
+export function BulkAlbumMode({ rows, onChange, onSwitchToText, disabled }: BulkAlbumModeProps) {
   const t = useTranslations("bulk")
   const locale = useLocale()
   const [query, setQuery] = useState("")
@@ -223,6 +225,8 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   const [showVariants, setShowVariants] = useState(false)
   const [loading, setLoading] = useState<"" | "artists" | "albums" | "tracks">("")
   const [error, setError] = useState("")
+  // The query whose artist search last finished without error (drives the no-results state).
+  const [searchedQuery, setSearchedQuery] = useState("")
   // Bumped on every lookup and on step navigation; a response whose id is no
   // longer current is stale (user moved on) and is dropped.
   const requestId = useRef(0)
@@ -232,10 +236,10 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   async function searchArtists() {
     if (query.trim().length < 2) return
     const id = ++requestId.current
-    setLoading("artists"); setError(""); setArtists([]); setArtist(null); setAlbums([]); setTracklist(null); resetVariants()
+    setLoading("artists"); setError(""); setSearchedQuery(""); setArtists([]); setArtist(null); setAlbums([]); setTracklist(null); resetVariants()
     try {
       const found = await api.searchAlbumArtists(query.trim())
-      if (id === requestId.current) setArtists(found)
+      if (id === requestId.current) { setArtists(found); setSearchedQuery(query.trim()) }
     } catch {
       if (id === requestId.current) setError(t("lookupFailed"))
     } finally {
@@ -523,10 +527,25 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
             onClick={() => pickArtist(a)}
             disabled={disabled || !a.mbid}
             title={a.name}
-            subtitle={a.disambiguation}
+            subtitle={[a.alias && t("artistAlsoKnownAs", { alias: a.alias }), a.disambiguation].filter(Boolean).join(" · ")}
           />
         ))}
       </div>
+      {searchedQuery && artists.length === 0 && !loading && (
+        <div
+          className="rounded-md border border-dashed px-3 py-3 space-y-2"
+          style={{ borderColor: "var(--card-border)" }}
+          data-testid="bulk-artist-no-results"
+        >
+          <p className="text-sm" style={{ color: "var(--text)" }}>{t("noArtistsFound", { query: searchedQuery })}</p>
+          <p className="text-xs" style={{ color: "var(--text-muted)" }}>{t("noArtistsFoundHint")}</p>
+          {onSwitchToText && (
+            <Button variant="outline" size="sm" onClick={onSwitchToText} disabled={disabled}>
+              {t("noArtistsUseText")}
+            </Button>
+          )}
+        </div>
+      )}
       {error && <p className="text-xs" style={{ color: "#ef4444" }}>{error}</p>}
     </div>
   )

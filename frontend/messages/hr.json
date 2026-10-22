@@ -1848,7 +1848,11 @@
     "stepsLabel": "Koraci za album",
     "tracksSelected": "Odabrano: {selected} od {total} pjesama",
     "searchArtists": "Pretraži",
-    "stepArtist": "Izvođač"
+    "stepArtist": "Izvođač",
+    "artistAlsoKnownAs": "Poznat i kao {alias}",
+    "noArtistsFound": "Nijedan izvođač ne odgovara upitu „{query}”.",
+    "noArtistsFoundHint": "Provjeri pravopis ili pokušaj s manje riječi; kvačice i druga pisma funkcioniraju u svakom slučaju. Ako izvođač još nije u bazi MusicBrainz, umjesto toga dodaj pjesme po nazivu.",
+    "noArtistsUseText": "Dodaj pjesme po nazivu"
   },
   "backendStatus": {
     "reconnecting": "Ponovno povezivanje…",

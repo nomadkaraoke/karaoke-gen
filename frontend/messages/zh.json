@@ -1848,7 +1848,11 @@
     "stepsLabel": "专辑制作步骤",
     "tracksSelected": "已选 {selected} / {total} 首曲目",
     "searchArtists": "搜索",
-    "stepArtist": "歌手"
+    "stepArtist": "歌手",
+    "artistAlsoKnownAs": "又名 {alias}",
+    "noArtistsFound": "未找到与“{query}”匹配的艺人。",
+    "noArtistsFoundHint": "请检查拼写或尝试减少关键词；无论是否带变音符号或使用其他语言字符均可。如果该艺人尚未收录于 MusicBrainz，请改为直接输入歌名添加。",
+    "noArtistsUseText": "按歌名添加"
   },
   "backendStatus": {
     "reconnecting": "重新连接中…",

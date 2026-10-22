@@ -13,7 +13,8 @@ our cloud egress has no business hammering it (see
 Queries go through the BigQuery REST ``jobs.query`` endpoint (httpx + ADC) so
 the backend doesn't need the BigQuery client library. Every table read is
 clustered on the column we filter by, so lookups bill MB, not GB:
-- artists:  ``mb_artists_normalized`` (~0.3 GB — small, unclustered)
+- artists:  ``mb_artists_normalized`` + ``musicbrainz.artist_alias`` (~0.4 GB, full
+  scan: matching folds accents per row, so there is no column to cluster on)
 - albums:   ``mb_artist_credit_artists`` (artist_mbid) → ``mb_release_groups``
 - editions: ``mb_releases`` (release_group_mbid)
 - tracks:   ``mb_release_tracks`` (release_group_mbid, release_mbid)
@@ -25,6 +26,7 @@ import asyncio
 import logging
 import re
 import time
+import unicodedata
 from collections import Counter
 from typing import Any, Dict, List, Optional
 
@@ -34,6 +36,8 @@ logger = logging.getLogger(__name__)
 
 BQ_PROJECT = "nomadkaraoke"
 MB_DATASET = f"{BQ_PROJECT}.karaoke_decide"
+# Full MusicBrainz table mirror (same weekly refresh); used for artist aliases.
+MB_RAW_DATASET = f"{BQ_PROJECT}.musicbrainz"
 _BQ_QUERY_URL = f"https://bigquery.googleapis.com/bigquery/v2/projects/{BQ_PROJECT}/queries"
 _BQ_SCOPES = ["https://www.googleapis.com/auth/bigquery.readonly"]
 _CACHE_TTL_S = 600  # 10 min — album metadata is effectively static
@@ -118,11 +122,35 @@ def classify_extra(title: str, disambiguation: str = "") -> tuple[bool, str]:
     return False, ""
 
 
-def normalize_name(s: str) -> str:
-    """Python twin of karaoke-decide's ``norm()`` SQL (``mb_artists*.name_normalized``):
-    lowercase, every char outside ``[a-z0-9 ]`` → space, spaces collapsed, trimmed.
-    Not accent-folded, matching those columns."""
-    return re.sub(r" +", " ", re.sub(r"[^a-z0-9 ]", " ", (s or "").lower())).strip()
+# Accent- and script-aware search key: NFKD, drop combining marks, lowercase,
+# fold the Latin letters NFKD leaves alone (ø ł đ ı ß æ œ þ), then everything
+# that isn't a letter or digit in any script -> space, collapsed. "Maxïmo Park"
+# and "maximo park" share a key, and "Мумий Тролль" / "宇多田ヒカル" keep theirs
+# (decide's ``norm()`` / ``name_normalized`` maps those to "max mo park" and "").
+# SEARCH_KEY_SQL is the matching function; search_key only screens blank queries.
+_FOLD_MULTI = (("ß", "ss"), ("æ", "ae"), ("œ", "oe"), ("þ", "th"))
+_FOLD_SINGLE = str.maketrans("øłđı", "oldi")
+
+SEARCH_KEY_SQL = r"""
+CREATE TEMP FUNCTION search_key(s STRING) AS (
+  TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+    REPLACE(REPLACE(REPLACE(REPLACE(
+      TRANSLATE(LOWER(REGEXP_REPLACE(NORMALIZE(s, NFKD), r'\pM', '')), 'øłđı', 'oldi'),
+      'ß', 'ss'), 'æ', 'ae'), 'œ', 'oe'), 'þ', 'th'),
+    r'[^\p{L}\p{N} ]', ' '), r' +', ' '))
+);
+"""
+
+
+def search_key(s: str) -> str:
+    """Python twin of ``SEARCH_KEY_SQL``."""
+    decomposed = unicodedata.normalize("NFKD", s or "")
+    t = "".join(ch for ch in decomposed if not unicodedata.category(ch).startswith("M"))
+    t = t.lower().translate(_FOLD_SINGLE)
+    for src, dst in _FOLD_MULTI:
+        t = t.replace(src, dst)
+    t = "".join(ch if ch == " " or unicodedata.category(ch)[0] in "LN" else " " for ch in t)
+    return re.sub(r" +", " ", t).strip()
 
 
 def _decode_value(field: Dict[str, Any], value: Any) -> Any:
@@ -208,28 +236,50 @@ class MusicBrainzService:
     # -- Public API --------------------------------------------------------
 
     async def search_artists(self, name: str, limit: int = 8) -> List[Dict[str, Any]]:
-        """Search artists by name: exact (incl. a leading "The") → prefix → substring,
-        then by popularity (Spotify, 50 when unmapped)."""
-        q = normalize_name(name)
-        if not q:
+        """Search artists by name or MusicBrainz alias, accent- and script-insensitive.
+
+        Ranks exact (incl. a leading "The") → prefix → substring, a primary-name
+        hit before an alias hit, then popularity (Spotify, 50 when unmapped).
+        ``alias`` is set when only an alias matched (e.g. "Hikaru Utada" for
+        宇多田ヒカル), so the UI can say why the row is there.
+        """
+        if not search_key(name):
             return []
         rows = await self._query(
-            f"""
-            SELECT artist_mbid, artist_name, disambiguation, artist_type, area_name, match_rank
-            FROM (
-              SELECT *,
+            SEARCH_KEY_SQL
+            + f"""
+            WITH names AS (
+              SELECT artist_mbid, search_key(artist_name) AS key, CAST(NULL AS STRING) AS alias
+              FROM `{MB_DATASET}.mb_artists_normalized`
+              UNION ALL
+              SELECT ar.gid, search_key(al.name), al.name
+              FROM `{MB_RAW_DATASET}.artist_alias` al
+              JOIN `{MB_RAW_DATASET}.artist` ar ON ar.id = al.artist
+            ),
+            hits AS (
+              SELECT artist_mbid, alias,
                 CASE
-                  WHEN name_normalized = @q OR name_normalized = CONCAT('the ', @q) THEN 0
-                  WHEN STARTS_WITH(name_normalized, @q) THEN 1
+                  WHEN key = search_key(@q) OR key = CONCAT('the ', search_key(@q)) THEN 0
+                  WHEN STARTS_WITH(key, search_key(@q)) THEN 1
                   ELSE 2
                 END AS match_rank
-              FROM `{MB_DATASET}.mb_artists_normalized`
-              WHERE STRPOS(name_normalized, @q) > 0
+              FROM names
+              WHERE STRPOS(key, search_key(@q)) > 0
+            ),
+            best AS (
+              SELECT artist_mbid,
+                ARRAY_AGG(STRUCT(match_rank, alias) ORDER BY match_rank, alias IS NOT NULL LIMIT 1)[OFFSET(0)] AS b
+              FROM hits
+              GROUP BY artist_mbid
             )
-            ORDER BY match_rank, popularity DESC, artist_name
+            SELECT a.artist_mbid, a.artist_name, a.disambiguation, a.artist_type, a.area_name,
+              best.b.match_rank AS match_rank, best.b.alias AS alias
+            FROM best
+            JOIN `{MB_DATASET}.mb_artists_normalized` a USING (artist_mbid)
+            ORDER BY match_rank, a.popularity DESC, a.artist_name
             LIMIT {int(limit)}
             """,
-            {"q": q},
+            {"q": name.strip()},
         )
         return [
             {
@@ -238,6 +288,7 @@ class MusicBrainzService:
                 "disambiguation": r.get("disambiguation") or "",
                 "type": r.get("artist_type"),
                 "country": r.get("area_name"),
+                "alias": r.get("alias"),
                 "score": 100 - 10 * r["match_rank"],
             }
             for r in rows

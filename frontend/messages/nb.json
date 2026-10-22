@@ -1848,7 +1848,11 @@
     "stepsLabel": "Albumtrinn",
     "tracksSelected": "{selected} av {total} spor er valgt",
     "searchArtists": "Søk",
-    "stepArtist": "Artist"
+    "stepArtist": "Artist",
+    "artistAlsoKnownAs": "Også kjent som {alias}",
+    "noArtistsFound": "Ingen artister matcher «{query}».",
+    "noArtistsFoundHint": "Sjekk stavemåten eller prøv med færre ord; aksenter og andre alfabeter går helt fint. Hvis artisten ikke finnes i MusicBrainz ennå, kan du legge til sangene etter tittel i stedet.",
+    "noArtistsUseText": "Legg til sanger etter tittel"
   },
   "backendStatus": {
     "reconnecting": "Kobler til på nytt…",

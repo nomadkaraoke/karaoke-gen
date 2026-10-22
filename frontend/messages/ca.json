@@ -1848,7 +1848,11 @@
     "stepsLabel": "Passos de l'àlbum",
     "tracksSelected": "{selected} de {total} cançons seleccionades",
     "searchArtists": "Cerca",
-    "stepArtist": "Artista"
+    "stepArtist": "Artista",
+    "artistAlsoKnownAs": "També conegut com a {alias}",
+    "noArtistsFound": "Cap artista coincideix amb «{query}».",
+    "noArtistsFoundHint": "Revisa l'ortografia o prova amb menys paraules; els accents i altres alfabets funcionen igualment bé. Si l'artista encara no és a MusicBrainz, afegeix les cançons pel seu nom.",
+    "noArtistsUseText": "Afegeix cançons pel nom"
   },
   "backendStatus": {
     "reconnecting": "Reconnectant…",

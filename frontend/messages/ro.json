@@ -1848,7 +1848,11 @@
     "stepsLabel": "Etape album",
     "tracksSelected": "{selected} din {total} piese selectate",
     "searchArtists": "Caută",
-    "stepArtist": "Artist"
+    "stepArtist": "Artist",
+    "artistAlsoKnownAs": "Cunoscut și ca {alias}",
+    "noArtistsFound": "Niciun artist nu se potrivește cu „{query}”.",
+    "noArtistsFoundHint": "Verifică ortografia sau încearcă mai puține cuvinte; accentele și alte alfabete funcționează oricum. Dacă artistul nu este încă în MusicBrainz, adaugă melodiile după nume în schimb.",
+    "noArtistsUseText": "Adaugă melodii după nume"
   },
   "backendStatus": {
     "reconnecting": "Se reconectează…",

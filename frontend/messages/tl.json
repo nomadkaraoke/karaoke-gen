@@ -1848,7 +1848,11 @@
     "stepsLabel": "Mga hakbang para sa album",
     "tracksSelected": "{selected} sa {total} na track ang napili",
     "searchArtists": "Maghanap",
-    "stepArtist": "Artist"
+    "stepArtist": "Artist",
+    "artistAlsoKnownAs": "Kilala rin bilang {alias}",
+    "noArtistsFound": "Walang artist na tumutugma sa “{query}”.",
+    "noArtistsFoundHint": "Suriin ang baybay o subukan ang mas kakaunting salita; ayos lang kahit may accent o ibang alpabeto. Kung wala pa ang artist sa MusicBrainz, idagdag na lang ang mga kanta ayon sa pamagat.",
+    "noArtistsUseText": "Idagdag ang mga kanta ayon sa pamagat"
   },
   "backendStatus": {
     "reconnecting": "Kumokonekta muli…",

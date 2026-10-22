@@ -1848,7 +1848,11 @@
     "stepsLabel": "Kroky albumu",
     "tracksSelected": "Vybratých {selected} z {total} skladieb",
     "searchArtists": "Hľadať",
-    "stepArtist": "Interpret"
+    "stepArtist": "Interpret",
+    "artistAlsoKnownAs": "Známy/-a aj ako {alias}",
+    "noArtistsFound": "Výrazu „{query}“ nezodpovedajú žiadni interpreti.",
+    "noArtistsFoundHint": "Skontroluj pravopis alebo skús menej slov; na diakritike a iných abecedách nezáleží. Ak interpret ešte nie je v službe MusicBrainz, pridaj skladby radšej podľa názvu.",
+    "noArtistsUseText": "Pridať skladby podľa názvu"
   },
   "backendStatus": {
     "reconnecting": "Obnovuje sa pripojenie…",

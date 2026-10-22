@@ -1848,7 +1848,11 @@
     "stepsLabel": "Albumlépések",
     "tracksSelected": "{selected} / {total} szám kiválasztva",
     "searchArtists": "Keresés",
-    "stepArtist": "Előadó"
+    "stepArtist": "Előadó",
+    "artistAlsoKnownAs": "Más néven: {alias}",
+    "noArtistsFound": "Nincs találat a következőre: „{query}”.",
+    "noArtistsFoundHint": "Ellenőrizd a helyesírást, vagy próbálkozz kevesebb szóval; az ékezetek és más ábécék karakterei is használhatók. Ha az előadó még nem szerepel a MusicBrainzen, add hozzá a dalokat inkább név szerint.",
+    "noArtistsUseText": "Dalok hozzáadása név szerint"
   },
   "backendStatus": {
     "reconnecting": "Újracsatlakozás…",

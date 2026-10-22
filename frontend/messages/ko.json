@@ -1848,7 +1848,11 @@
     "stepsLabel": "앨범 단계",
     "tracksSelected": "{total}개 중 {selected}개 트랙 선택됨",
     "searchArtists": "검색",
-    "stepArtist": "아티스트"
+    "stepArtist": "아티스트",
+    "artistAlsoKnownAs": "다른 이름: {alias}",
+    "noArtistsFound": "“{query}”와(과) 일치하는 아티스트가 없습니다.",
+    "noArtistsFoundHint": "맞춤법을 확인하거나 검색 단어 수를 줄여 보세요. 악센트 기호나 외국어 알파벳을 사용하셔도 괜찮습니다. 아티스트가 아직 MusicBrainz에 등록되지 않았다면, 곡 제목을 직접 입력해 추가해 보세요.",
+    "noArtistsUseText": "곡 제목으로 추가하기"
   },
   "backendStatus": {
     "reconnecting": "다시 연결하는 중…",

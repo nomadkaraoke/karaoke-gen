@@ -121,7 +121,7 @@ export function BulkMode({ onJobsChanged, onBuyCredits }: BulkModeProps) {
           <TabsTrigger value="text" className="gap-1.5"><ListPlus className="w-4 h-4" />{t("byText")}</TabsTrigger>
         </TabsList>
         <TabsContent value="album" className="mt-3">
-          <BulkAlbumMode rows={albumRows} onChange={setAlbumRows} disabled={isSubmitting} />
+          <BulkAlbumMode rows={albumRows} onChange={setAlbumRows} onSwitchToText={() => setSubMode("text")} disabled={isSubmitting} />
         </TabsContent>
         <TabsContent value="text" className="mt-3">
           <BulkTextMode rows={textRows} onChange={setTextRows} maxSongs={MAX_SONGS} disabled={isSubmitting} />

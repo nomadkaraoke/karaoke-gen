@@ -1848,7 +1848,11 @@
     "stepsLabel": "Album-Schritte",
     "tracksSelected": "{selected} von {total} Titeln ausgewählt",
     "searchArtists": "Suchen",
-    "stepArtist": "Künstler"
+    "stepArtist": "Künstler",
+    "artistAlsoKnownAs": "Auch bekannt als {alias}",
+    "noArtistsFound": "Keine Künstler entsprechen „{query}“.",
+    "noArtistsFoundHint": "Überprüfe die Schreibweise oder versuche es mit weniger Wörtern; Akzente und andere Schriftzeichen funktionieren problemlos. Wenn der Künstler noch nicht bei MusicBrainz vorhanden ist, füge die Songs stattdessen direkt über den Titel hinzu.",
+    "noArtistsUseText": "Songs nach Titel hinzufügen"
   },
   "backendStatus": {
     "reconnecting": "Verbindung wird wiederhergestellt…",
