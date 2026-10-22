@@ -9,7 +9,7 @@ every provider "works".
 (``getSearchConfidence`` in frontend/lib/audio-search-utils.ts):
 
 - ``perfect`` (tier 1): well-seeded lossless torrent of the right track ("BEST CHOICE").
-- ``recommended`` (tier 2): the right track, lossless, but only 20 seeders.
+- ``recommended`` (tier 2): the right track, lossless, but only 5 seeders.
 - ``unsure`` (tier 3): every result names a different track; 3 seeders.
 
 ``frontend_fixture()`` writes these shapes to ``FRONTEND_FIXTURE``, which the
@@ -39,7 +39,7 @@ def _source_id(provider: str, artist: str, title: str) -> str:
 
 def build_results(artist: str, title: str, duration: int, confidence: str = "perfect") -> List[AudioSearchResult]:
     """The three fake results for ``artist`` / ``title`` in ``confidence``'s shape."""
-    seeders = {"perfect": 120, "recommended": 20, "unsure": 3}[confidence]
+    seeders = {"perfect": 120, "recommended": 5, "unsure": 3}[confidence]
     track = _MISMATCHED_TITLE if confidence == "unsure" else title
     results = [
         AudioSearchResult(

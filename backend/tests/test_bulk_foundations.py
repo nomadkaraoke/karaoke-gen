@@ -72,9 +72,14 @@ class TestPickAutoSelection:
         assert pick_auto_selection([_lossy(0), _lossy(1)], "Bohemian Rhapsody") is None
 
     def test_lossless_but_low_seeders_returns_none(self):
-        # seeders < 50 -> STUDIO ALBUMS, not BEST CHOICE -> tier 2, no auto-pick
+        # seeders < 10 -> STUDIO ALBUMS, not BEST CHOICE -> tier 2, no auto-pick
         from backend.services.audio_search_service import pick_auto_selection
-        assert pick_auto_selection([_lossless_best(0, seeders=10)], "Bohemian Rhapsody") is None
+        assert pick_auto_selection([_lossless_best(0, seeders=9)], "Bohemian Rhapsody") is None
+
+    def test_lossless_with_ten_seeders_is_auto_picked(self):
+        # A modestly-seeded lossless album torrent (e.g. 15-31 seeders) is still the right pick.
+        from backend.services.audio_search_service import pick_auto_selection
+        assert pick_auto_selection([_lossy(0), _lossless_best(1, seeders=10)], "Bohemian Rhapsody") == 1
 
     def test_filename_mismatch_returns_none(self):
         # best is lossless+well-seeded but the file is clearly a different track
