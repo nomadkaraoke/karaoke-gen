@@ -334,6 +334,14 @@ settings object in a unit test never turns it on.
 | Postmark | console provider + captured outbox | `ConsoleEmailProvider` |
 | Secret Manager, DeBounce, encoding VM | skipped | `get_secret`, `is_disposable_domain`, warmup |
 
+**kjbox partner calls.** The stack exports `KJBOX_PARTNER_SECRET=local-stack-secret`
+(and `DECIDE_GEN_PARTNER_SECRET`, same value) so a local kjbox stack can call
+`/api/kjbox/*` with `X-Kjbox-Secret: local-stack-secret`. For jobs created with
+`X-Client-Id: kjbox…` the fake audio worker also writes the real "quick version"
+outputs (`state_data.quick_version` separating -> rendering -> ready, and
+`file_urls.quick.video_mp4` from the fixture mp4), so `/api/jobs/{id}/download-urls`
+lists `quick/video_mp4` and `/download/quick/video_mp4` streams it, like prod.
+
 The audio worker reuses the real stem upload, OGG transcode and backing-vocals
 analysis. The review preview video is the real local ffmpeg render. Startup
 **refuses** `FAKE_WORKERS` in production (`validate_production_config`).

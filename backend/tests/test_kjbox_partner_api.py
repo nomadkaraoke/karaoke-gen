@@ -774,3 +774,23 @@ class TestCatalogResolve:
         assert client.post("/api/kjbox/catalog/resolve", json={"query": "x"}).status_code == 403
         assert self._post(client, "").status_code == 422
         assert self._post(client, "   ").status_code == 422
+
+
+def test_kjbox_routes_accept_local_secret(monkeypatch):
+    """scripts/local-stack.sh exports KJBOX_PARTNER_SECRET=local-stack-secret; the
+    partner gate must accept exactly that value (kjbox's local stack sends it)."""
+    import subprocess
+    from pathlib import Path
+    from fastapi import HTTPException
+
+    script = Path(__file__).resolve().parents[2] / "scripts" / "local-stack.sh"
+    env_lines = subprocess.run([str(script), "env"], capture_output=True, text=True, check=True).stdout
+    env = dict(line.split("=", 1) for line in env_lines.splitlines() if "=" in line)
+    local_secret = env["KJBOX_PARTNER_SECRET"]
+    assert local_secret == "local-stack-secret"
+
+    monkeypatch.setattr(kjbox, "get_settings", lambda: SimpleNamespace(kjbox_partner_secret=local_secret))
+    assert kjbox.require_kjbox_partner(local_secret) == local_secret
+    with pytest.raises(HTTPException) as exc:
+        kjbox.require_kjbox_partner("wrong")
+    assert exc.value.status_code == 403

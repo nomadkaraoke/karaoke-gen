@@ -23,6 +23,7 @@ from backend.services.fake_workers.config import FakeConfig, get_fake_config
 from backend.services.fake_workers.lyrics import build_corrections, build_lrc
 from backend.services.fake_workers.media import MediaSet, get_media
 from backend.services.job_manager import JobManager
+from backend.services.quick_version import service as quick
 from backend.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
@@ -116,6 +117,27 @@ async def run_audio_download(job_id: str) -> bool:
 
 # ---------------------------------------------------------------- audio separation
 
+async def _emit_quick_version(job, job_manager: JobManager, storage: StorageService, media: MediaSet) -> None:
+    """kjbox make-it jobs: write the same ``state_data.quick_version`` +
+    ``file_urls.quick.video_mp4`` the real audio worker's quick-version thread does
+    (``services/quick_version``), using the tiny fixture mp4. Same gate as prod
+    (``should_build_quick_version``), so non-kjbox jobs are untouched."""
+    if not quick.should_build_quick_version(job):
+        return
+    job_id = job.job_id
+    quick.set_quick_state(job_manager, job_id, quick.STATUS_SEPARATING, started_at=quick._now_iso())
+    quick.set_quick_state(job_manager, job_id, quick.STATUS_RENDERING)
+    gcs_path = f"jobs/{job_id}/quick/quick.mp4"
+    await asyncio.to_thread(storage.upload_file, media.final_mp4, gcs_path)
+    job_manager.update_file_url(job_id, quick.FILE_CATEGORY, quick.FILE_KEY, gcs_path)
+    quick.set_quick_state(
+        job_manager, job_id, quick.STATUS_READY,
+        lyrics_tier="fake_workers", line_count=0,
+        duration_seconds=float(media.duration),
+        size_bytes=os.path.getsize(media.final_mp4), ready_at=quick._now_iso(),
+    )
+
+
 async def run_audio(job_id: str) -> bool:
     config = await _begin("audio", job_id)
     from backend.workers.audio_worker import _transcode_review_stems, upload_separation_results
@@ -123,10 +145,17 @@ async def run_audio(job_id: str) -> bool:
     from backend.workers.worker_logging import create_job_logger
 
     job_manager, storage = JobManager(), StorageService()
-    if not _job_or_none(job_manager, job_id):
+    job = _job_or_none(job_manager, job_id)
+    if not job:
         return False
     job_log = create_job_logger(job_id, "audio")
     media = await asyncio.to_thread(_media_for, config)
+
+    try:
+        await _emit_quick_version(job, job_manager, storage, media)
+    except Exception as e:  # non-fatal, same as the real worker
+        logger.warning(f"[job:{job_id}] fake audio: quick version failed: {e}")
+        quick.set_quick_state(job_manager, job_id, quick.STATUS_FAILED, error=str(e)[:500])
 
     job_manager.update_state_data(job_id, "audio_progress", {
         "stage": "separating", "progress": 30, "message": "Separating audio (fake)",
