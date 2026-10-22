@@ -20,7 +20,12 @@ from google.cloud.firestore_v1 import FieldFilter
 from google.api_core import exceptions as gcloud_exceptions
 
 from backend.config import get_settings
-from backend.models.song_request import DailyCommunityPick, SongRequest, Vote
+from backend.models.song_request import (
+    YOUTUBE_COMMENT_SUBMITTER,
+    DailyCommunityPick,
+    SongRequest,
+    Vote,
+)
 from backend.services.match_judge.classifier import normalize_for_match
 
 logger = logging.getLogger(__name__)
@@ -119,6 +124,51 @@ class SongRequestService:
         # The submitter's endorsement counts as their vote for today.
         self.cast_vote(email, request.id, "up")
         return self.get_request(request.id) or request, False, canonical_artist, canonical_title
+
+    def add_from_youtube_comment(
+        self, artist: str, title: str, *, comment_id: str, video_id: str, author: str
+    ) -> SongRequest:
+        """Add a song asked for in a YouTube comment (artist/title already canonical).
+
+        Returns the existing open/published request for the same song instead of a
+        duplicate. A new request belongs to ``YOUTUBE_COMMENT_SUBMITTER`` with no
+        vote until a real user up-votes (and so claims) it; no daily submission cap.
+        """
+        key = _dedupe_key(artist, title)
+        existing = self._find_open_by_key(key) or self.find_published_by_key(key)
+        if existing is not None:
+            return existing
+        request = SongRequest(
+            id=str(uuid.uuid4()),
+            artist=artist,
+            title=title,
+            artist_raw=artist,
+            title_raw=title,
+            dedupe_key=key,
+            submitted_by=YOUTUBE_COMMENT_SUBMITTER,
+            source="youtube_comment",
+            status="open",
+            vote_count=0,
+            youtube_comment_id=comment_id,
+            youtube_video_id=video_id,
+            youtube_author=author[:100],
+        )
+        self.db.collection(REQUESTS_COLLECTION).document(request.id).set(
+            request.model_dump(mode="json")
+        )
+        logger.info("song request created id=%s from youtube comment=%s key=%s",
+                    request.id, comment_id, key)
+        return request
+
+    def find_published_by_key(self, key: str) -> Optional[SongRequest]:
+        query = self.db.collection(REQUESTS_COLLECTION).where(
+            filter=FieldFilter("dedupe_key", "==", key)
+        ).limit(10)
+        for doc in query.stream():
+            data = doc.to_dict()
+            if data.get("status") == "published":
+                return SongRequest(**data)
+        return None
 
     async def _canonicalize(self, artist: str, title: str) -> Tuple[str, str]:
         """Best-effort artist/title tidy via match_judge; never blocks submission."""
@@ -286,6 +336,8 @@ class SongRequestService:
         for req in self.list_active():  # already ranked -vote_count, created_at asc
             if req.vote_count < 0:
                 continue
+            if req.submitted_by == YOUTUBE_COMMENT_SUBMITTER:
+                continue  # added by the YouTube comment bot, not yet claimed by a real voter
             if req.review_state == "pending":
                 continue
             if req.review_state == "snoozed":
@@ -574,10 +626,14 @@ def _cast_vote_txn(transaction, service, vote_ref, target_ref, request_id, email
             continue  # request gone (e.g. old vote pointed at a closed request)
         ref = service.db.collection(REQUESTS_COLLECTION).document(rid)
         current = int(snap.to_dict().get("vote_count", 0))
-        transaction.update(ref, {
-            "vote_count": current + delta,
-            "updated_at": now.isoformat(),
-        })
+        fields = {"vote_count": current + delta, "updated_at": now.isoformat()}
+        # The first real up-voter claims a request the YouTube comment bot added
+        # (usually the commenter, arriving from the bot's reply link).
+        if (rid == request_id and vote is not None and value > 0
+                and snap.to_dict().get("submitted_by") == YOUTUBE_COMMENT_SUBMITTER):
+            fields["submitted_by"] = email
+            fields["claimed_at"] = now.isoformat()
+        transaction.update(ref, fields)
 
     return vote
 

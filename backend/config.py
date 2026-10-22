@@ -417,9 +417,10 @@ class Settings(BaseSettings):
     # (scripts/youtube-descriptions). Keep those two in sync when editing this.
     default_youtube_description: str = os.getenv(
         "DEFAULT_YOUTUBE_DESCRIPTION",
-        '🎤 Sing along to "{title}" by {artist} — a high-quality karaoke version '
-        "using the original song audio with the lead vocals removed and scrolling "
-        "lyrics hand-synced to the music.\n\n"
+        '🎤 Karaoke version of "{title}" by {artist}: original audio, lead vocals '
+        "removed, hand-synced lyrics.\n"
+        "▶️ Make a karaoke video of ANY song: "
+        "https://nomadkaraoke.com/r/youtube?utm_source=youtube&utm_medium=description&utm_campaign=make_cta_top\n\n"
         "⬆️ REQUEST THE NEXT NOMAD RELEASE\n"
         "Vote for the songs you want us to make next — the most-upvoted requests get "
         "made into karaoke videos and published free, right here on this channel. "
@@ -475,6 +476,14 @@ class Settings(BaseSettings):
     youtube_backfill_enrich_tags: bool = os.getenv("YOUTUBE_BACKFILL_ENRICH_TAGS", "true").lower() in ("true", "1", "yes")
     # Where the daily progress + completion emails are sent.
     youtube_backfill_report_email: str = os.getenv("YOUTUBE_BACKFILL_REPORT_EMAIL", "andrew@nomadkaraoke.com")
+
+    # YouTube comment auto-reply (backend/workers/youtube_comment_bot_worker.py):
+    # replies to song requests in channel comments with a requests-board link.
+    # OFF by default; go-live only after Andrew signs off a local replay
+    # (scripts/youtube-comments/replay.py). Dry runs work while off.
+    youtube_comment_autoreply_enabled: bool = os.getenv("YOUTUBE_COMMENT_AUTOREPLY_ENABLED", "false").lower() in ("true", "1", "yes")
+    youtube_comment_autoreply_max_replies: int = int(os.getenv("YOUTUBE_COMMENT_AUTOREPLY_MAX_REPLIES", "20"))
+    youtube_comment_autoreply_min_confidence: float = float(os.getenv("YOUTUBE_COMMENT_AUTOREPLY_MIN_CONFIDENCE", "0.8"))
 
     # Storage retention (backend/services/storage_retention.py): a daily job purges
     # regenerable files (big finals, rendered videos, stems, ...) from jobs

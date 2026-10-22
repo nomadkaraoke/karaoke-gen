@@ -24,8 +24,15 @@ RequestStatus = Literal[
 ]
 
 # Where a request came from. Phase 2's trending-karaoke agent submits with
-# source="trending_agent"; everything a human submits is "human".
-RequestSource = Literal["human", "trending_agent"]
+# source="trending_agent"; everything a human submits is "human"; the YouTube
+# comment bot (backend/services/youtube_comment_bot.py) adds "youtube_comment".
+RequestSource = Literal["human", "trending_agent", "youtube_comment"]
+
+# submitted_by placeholder for requests the YouTube comment bot adds on a
+# commenter's behalf (no email yet). The first real up-voter claims the request
+# (becomes submitted_by); until then the daily picker skips it, so a free credit
+# can never be granted to this address.
+YOUTUBE_COMMENT_SUBMITTER = "youtube-comment@nomadkaraoke.com"
 
 # Existing-community-version review state (set when the daily picker's KaraokeNerds
 # check finds an existing community karaoke version for a would-be pick):
@@ -58,6 +65,13 @@ class SongRequest(BaseModel):
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # YouTube comment bot provenance (source="youtube_comment"): the comment that
+    # asked for the song, and the commenter's display name (audit only).
+    youtube_comment_id: Optional[str] = None
+    youtube_video_id: Optional[str] = None
+    youtube_author: Optional[str] = None
+    claimed_at: Optional[datetime] = None
 
     # Phase-2 fields (never set in Phase 1).
     job_id: Optional[str] = None
