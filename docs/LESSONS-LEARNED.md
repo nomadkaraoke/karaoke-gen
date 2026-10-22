@@ -529,7 +529,10 @@ and `docs/archive/2026-07-20-edge-security-*.md`.
   auto-select decision. If you change the rule, change BOTH — the parity is guarded
   by `backend/tests/test_bulk_foundations.py`. The seeder bar for BEST CHOICE is the
   `BEST_CHOICE_MIN_SEEDERS` constant on both sides (10 since Oct 2026; it was 50, which
-  parked well-matched lossless album torrents with 15-31 seeders for manual choice).
+  parked well-matched lossless album torrents with 15-31 seeders for manual choice). A
+  test asserts the two values match. The bar also applies to unattended KaraokeHunt
+  conversions (`karaokehunt_conversion.py` calls `pick_auto_selection`), where the
+  title/filename check is the guard against wrong picks.
 - **Album cover thumbnails** in the By-album picker load straight from the Cover Art
   Archive in the browser (`coverartarchive.org/release-group/{mbid}/front-250`), with the
   disc icon as fallback when there's no cover. This isn't the live MusicBrainz API, and no

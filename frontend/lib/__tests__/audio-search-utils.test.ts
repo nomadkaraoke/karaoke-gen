@@ -41,7 +41,7 @@ describe('categorizeResult', () => {
     expect(categorizeResult(makeResult({ is_lossless: true, seeders: 9, release_type: 'Album' }))).toBe('STUDIO ALBUMS')
   })
 
-  it('categorizes lossless with 50+ seeders as BEST CHOICE', () => {
+  it('categorizes well-seeded lossless (100) as BEST CHOICE', () => {
     const result = makeResult({ index: 0, is_lossless: true, seeders: 55 })
     expect(categorizeResult(result)).toBe('BEST CHOICE')
   })

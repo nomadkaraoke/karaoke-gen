@@ -111,3 +111,15 @@ class TestPickAutoSelection:
         from backend.services.audio_search_service import pick_auto_selection
         r = _lossless_best(0, seeders=80, title="Someone", target_file="04 - Someone.flac")
         assert pick_auto_selection([r], "One") is None
+
+
+def test_best_choice_min_seeders_matches_frontend():
+    """The tier-1 seeder bar is duplicated in the frontend; keep the two in lockstep."""
+    import re
+    from pathlib import Path
+    from backend.services.audio_search_service import BEST_CHOICE_MIN_SEEDERS
+
+    ts = (Path(__file__).resolve().parents[2] / "frontend" / "lib" / "audio-search-utils.ts").read_text()
+    m = re.search(r"export const BEST_CHOICE_MIN_SEEDERS = (\d+)", ts)
+    assert m, "BEST_CHOICE_MIN_SEEDERS not found in frontend/lib/audio-search-utils.ts"
+    assert int(m.group(1)) == BEST_CHOICE_MIN_SEEDERS
