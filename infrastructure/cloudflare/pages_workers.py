@@ -7,7 +7,7 @@ import pulumi
 import pulumi_cloudflare as cloudflare
 
 from ids import ACCOUNT_ID, ZONE_IDS
-from well_known import ROUTE_PATTERN, build_worker_script
+from well_known import ROUTE_PATTERNS, build_worker_script
 
 worker_route_create_karaokehunt_com = cloudflare.WorkersRoute("worker-route-create-karaokehunt-com",
     pattern="create.karaokehunt.com/*",
@@ -88,7 +88,8 @@ worker_script_kjbox_cc_well_known = cloudflare.WorkersScript("worker-script-kjbo
     content=build_worker_script(_kjbox_fingerprints),
     main_module="worker.js",
     compatibility_date="2026-09-01")
-worker_route_kjbox_cc_well_known = cloudflare.WorkersRoute("worker-route-kjbox-cc-well-known",
-    pattern=ROUTE_PATTERN,
-    script=worker_script_kjbox_cc_well_known.script_name,
-    zone_id=ZONE_IDS["kjbox.cc"])
+for _name, _pattern in ROUTE_PATTERNS.items():
+    cloudflare.WorkersRoute(f"worker-route-{_name}-well-known",
+        pattern=_pattern,
+        script=worker_script_kjbox_cc_well_known.script_name,
+        zone_id=ZONE_IDS["kjbox.cc"])

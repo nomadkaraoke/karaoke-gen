@@ -60,3 +60,10 @@ class TestWorker:
     def test_unknown_path_404_and_post_405(self):
         assert _run_worker([], "/.well-known/other")["status"] == 404
         assert _run_worker([], "/.well-known/assetlinks.json", "POST")["status"] == 405
+
+
+def test_routes_cover_apex_and_www():
+    # The redirect exclusion matches both hosts, so both need the Worker route.
+    assert sorted(well_known.ROUTE_PATTERNS.values()) == ["kjbox.cc/.well-known/*", "www.kjbox.cc/.well-known/*"]
+    src = (ROOT / "pages_workers.py").read_text()
+    assert "for _name, _pattern in ROUTE_PATTERNS.items()" in src

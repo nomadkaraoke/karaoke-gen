@@ -4,7 +4,7 @@ import pathlib
 
 WORKER_JS = pathlib.Path(__file__).parent / "kjbox-cc-well-known" / "worker.js"
 PLACEHOLDER = "/*FINGERPRINTS*/[]/*END*/"
-ROUTE_PATTERN = "kjbox.cc/.well-known/*"
+ROUTE_PATTERNS = {"kjbox-cc": "kjbox.cc/.well-known/*", "www-kjbox-cc": "www.kjbox.cc/.well-known/*"}
 
 # Appended to the kjbox.cc/<code> redirect rule so the Worker route (not the redirect) answers.
 WELL_KNOWN_EXCLUSION = ' and not starts_with(http.request.uri.path, "/.well-known/")'

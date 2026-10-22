@@ -39,7 +39,7 @@ on the next `pulumi up`, and `pulumi preview` always shows that first.
 ## kjbox.cc app-link files
 
 `kjbox.cc/.well-known/assetlinks.json` (Android App Links) and `apple-app-site-association` (iOS universal
-links) are served by the `kjbox-cc-well-known` Worker, route `kjbox.cc/.well-known/*` (scheme-agnostic, so
+links) are served by the `kjbox-cc-well-known` Worker, routes `kjbox.cc/.well-known/*` and `www.kjbox.cc/.well-known/*` (scheme-agnostic, so
 http and https). The JSON mirrors what the kjbox box serves on `sing.nomadkaraoke.com`. The
 `kjbox.cc/<code>` redirect rule excludes `/.well-known/` so the Worker answers instead of redirecting.
 Android SHA-256 cert fingerprints come from Pulumi config, baked into the script at deploy time
