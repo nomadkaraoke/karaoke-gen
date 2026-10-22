@@ -369,3 +369,11 @@ def test_find_published_by_key(service):
         {"status": "published", "youtube_url": "https://youtu.be/x"})
     found = service.find_published_by_key(req.dedupe_key)
     assert found and found.id == req.id
+
+
+def test_bot_add_dedupes_against_request_being_made(service):
+    req = _bot_add(service, comment_id="c1")
+    service.transition_status(req.id, "open", "queued")
+    again = _bot_add(service, comment_id="c2")
+    assert again.id == req.id and again.status == "queued"
+    assert service.find_active_by_key(req.dedupe_key).id == req.id

@@ -183,6 +183,12 @@ def test_max_replies_cap_leaves_rest_for_next_run(env):
     env.yt.items = [_item("c1"), _item("c3", published="2026-10-21T11:00:00Z")]
     summary = w.run_comment_bot_sync(max_replies=1)
     assert summary["replied"] == 1 and "c3" not in _actions(env.db)
+    assert env.boards[-1].added == ["c1"]  # nothing classified/added past the cap
+    state = env.db.store[(w.STATE_COLLECTION, w.STATE_DOC)]
+    assert state["incomplete"] and state["high_water"] == datetime(2026, 10, 1, tzinfo=timezone.utc)
+    summary = w.run_comment_bot_sync(max_replies=1)  # next run picks up the rest
+    assert summary["replied"] == 1 and _actions(env.db)["c3"]["action"] == "replied"
+    assert not env.db.store[(w.STATE_COLLECTION, w.STATE_DOC)]["incomplete"]
 
 
 def test_quota_exhausted_stops_without_posting(env):

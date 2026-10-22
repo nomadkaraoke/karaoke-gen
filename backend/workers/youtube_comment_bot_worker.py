@@ -60,8 +60,7 @@ class ServiceBoard:
         return asyncio.run(self.service._canonicalize(artist, title))
 
     def find_open_or_published(self, artist: str, title: str) -> Optional[bot.BoardMatch]:
-        key = bot.song_key(artist, title)
-        req = self.service._find_open_by_key(key) or self.service.find_published_by_key(key)
+        req = self.service.find_active_by_key(bot.song_key(artist, title))
         if req is None:
             return None
         return bot.BoardMatch(req.id, req.artist, req.title, req.status, req.youtube_url)
@@ -176,6 +175,10 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
     summary = {"status": "ok", "dry_run": dry_run, "threads": 0, "replied": 0, "skipped": {},
                "errors": 0, "actions": []}
     newest = high_water
+    # A run that stops early (reply cap, quota, a transient classifier error) must not
+    # advance the high-water mark, or older unprocessed threads would fall out of the
+    # next run's window. Re-reading is cheap: handled comments have an action doc.
+    incomplete = False
     for item in bot.iter_comment_threads(youtube, stop_before=stop_before):
         thread = bot.load_thread(youtube, item)
         summary["threads"] += 1
@@ -184,6 +187,9 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
         action_ref = db.collection(ACTIONS_COLLECTION).document(thread.comment_id)
         if action_ref.get().exists:
             continue
+        if not dry_run and summary["replied"] >= max_replies:
+            incomplete = True
+            break
         decision = bot.decide(thread, video_title=index.titles.get(thread.video_id, ""), index=index,
                               board=board, generate=generate, not_before=go_live,
                               min_confidence=settings.youtube_comment_autoreply_min_confidence)
@@ -197,9 +203,7 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
         if decision.action != "reply":
             summary["skipped"][decision.reason] = summary["skipped"].get(decision.reason, 0) + 1
             if decision.reason == "classifier_error":
-                # Transient: no action doc, and keep the high-water below it so the
-                # next run classifies it again.
-                newest = min(newest, thread.published or newest)
+                incomplete = True  # transient: no action doc, classify again next run
                 continue
             if not dry_run and decision.reason not in ("own_comment", "too_old"):
                 _create(action_ref, record)
@@ -208,14 +212,10 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
         if dry_run:
             logger.info("YOUTUBE_COMMENT_BOT dry-run would reply to %s: %s", thread.comment_id, decision.reply_text)
             continue
-        if summary["replied"] >= max_replies:
-            # Leave no action doc: the next run picks it up (high-water stays below it).
-            newest = min(newest, thread.published or newest)
-            continue
         ok, remaining, _ = quota.check_quota_available(REPLY_COST)
         if not ok:
             logger.warning("YOUTUBE_COMMENT_BOT: quota low (%s left); stopping", remaining)
-            newest = min(newest, thread.published or newest)
+            incomplete = True
             break
         # Claim the comment BEFORE posting so a concurrent run can't double-reply.
         if not _create(action_ref, {**record, "action": "replying"}):
@@ -239,7 +239,8 @@ def run_comment_bot_sync(dry_run: bool = False, max_replies: Optional[int] = Non
                                f"YOUTUBE_COMMENT_BOT).")
 
     if not dry_run:
-        state_ref.set({"go_live_at": go_live, "high_water": newest, "last_run_at": now,
+        state_ref.set({"go_live_at": go_live, "high_water": high_water if incomplete else newest,
+                       "last_run_at": now, "incomplete": incomplete,
                        "last_summary": {k: summary[k] for k in ("threads", "replied", "skipped", "errors")}},
                       merge=True)
     logger.info("YOUTUBE_COMMENT_BOT run complete: %s", {k: v for k, v in summary.items() if k != "actions"})

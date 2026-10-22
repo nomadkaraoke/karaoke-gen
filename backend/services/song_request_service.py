@@ -135,7 +135,7 @@ class SongRequestService:
         vote until a real user up-votes (and so claims) it; no daily submission cap.
         """
         key = _dedupe_key(artist, title)
-        existing = self._find_open_by_key(key) or self.find_published_by_key(key)
+        existing = self.find_active_by_key(key)
         if existing is not None:
             return existing
         request = SongRequest(
@@ -159,6 +159,21 @@ class SongRequestService:
         logger.info("song request created id=%s from youtube comment=%s key=%s",
                     request.id, comment_id, key)
         return request
+
+    def find_active_by_key(self, key: str) -> Optional[SongRequest]:
+        """The live request for a song: a votable open one first, then one being made
+        (queued/in_progress), then a published one. None if only rejected/stalled."""
+        found: dict = {}
+        query = self.db.collection(REQUESTS_COLLECTION).where(
+            filter=FieldFilter("dedupe_key", "==", key)
+        )
+        for doc in query.stream():
+            req = SongRequest(**doc.to_dict())
+            found.setdefault(req.status, req)
+        for status in ("open", "queued", "in_progress", "published"):
+            if status in found:
+                return found[status]
+        return None
 
     def find_published_by_key(self, key: str) -> Optional[SongRequest]:
         query = self.db.collection(REQUESTS_COLLECTION).where(
