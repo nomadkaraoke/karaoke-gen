@@ -223,6 +223,10 @@ BLOCKING_CALLS = {
     "get_metadata_from_gcs",
     "upload_file",
     "download_file",
+    # 2026-10-22 watchdog culprits: the Stripe webhook's made-for-you order emails
+    # (Postmark retries + SMTP fallback, 22s, 11 requests).
+    "send_made_for_you_order_confirmation",
+    "send_made_for_you_admin_notification",
 }
 _BLOCKING_MODULE_CALLS = {("requests", "get"), ("requests", "post"), ("requests", "put"),
                           ("requests", "delete"), ("requests", "request"), ("time", "sleep")}
@@ -328,3 +332,43 @@ async def fixed(request):
     assert find_blocking_calls_in_async_routes(src) == []
     hits = find_blocking_calls_in_async_routes(src, routes_only=False)
     assert [h.split(" line")[0] for h in hits] == ["require_auth: validate_token_full()"]
+
+
+# Async helpers that a route awaits run on the loop too, but they aren't decorated so the
+# route-only scan above skips them.
+AWAITED_ROUTE_HELPERS = {
+    BACKEND / "api" / "routes" / "users.py": {"_handle_made_for_you_order"},
+}
+
+
+def test_no_known_blocking_calls_in_awaited_route_helpers():
+    offenders = []
+    for path, helpers in AWAITED_ROUTE_HELPERS.items():
+        for hit in find_blocking_calls_in_async_routes(path.read_text(), routes_only=False):
+            if hit.split(":")[0] in helpers:
+                offenders.append(f"{path.relative_to(BACKEND.parent)}::{hit}")
+    assert not offenders, (
+        "These async route helpers call known-blocking functions on the event loop. "
+        "Use `await asyncio.to_thread(fn, ...)`:\n  " + "\n  ".join(sorted(offenders))
+    )
+
+
+def test_bulk_submit_creates_jobs_off_the_loop():
+    """bulk_submit's per-song create_job/update_job loop stalled the loop 26s
+    (2026-10-22, an album batch). It must stay inside the to_thread helper."""
+    import ast
+
+    tree = ast.parse((BACKEND / "api" / "routes" / "bulk.py").read_text())
+    route = next(n for n in ast.walk(tree)
+                 if isinstance(n, ast.AsyncFunctionDef) and n.name == "bulk_submit")
+    direct = []
+    stack = list(route.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.Lambda, ast.ClassDef)):
+            continue
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr in {"create_job", "update_job", "check_credits", "get_default_theme_id"}):
+            direct.append(f"{node.func.attr}() line {node.lineno}")
+        stack.extend(ast.iter_child_nodes(node))
+    assert not direct, f"bulk_submit calls sync Firestore/GCS on the loop: {direct}"
