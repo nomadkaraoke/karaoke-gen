@@ -18,7 +18,7 @@ only app-specific stacks (e.g. karaoke-decide's Cloud Run + its API-proxy Worker
 | `email_routing.py` | Gmail destination address; Email Routing enablement (**protected**), catch-all and `google@` rules for nomadkaraoke.com, nomadkaroke.com, karaokehunt.com |
 | `tunnels.py` | `nomad-kjbox` (NomadPC: sing, kjbox, kjssh, kjvnc) and `nomad-hf2` (fiverrbot) tunnels (**protected**) + ingress |
 | `access.py` | Zero Trust org (**protected**), one-time-PIN + Google IdPs (Google OAuth client in GCP `nomadkaraoke`, secret in Pulumi config `googleOauthClientSecret`), `claude-code-kjbox` service token, reusable policies and the KJ Controller / FiverrBot noVNC apps |
-| `pages_workers.py` | Pages projects `karaoke-gen` + `karaoke-gen-tenant`, `gen.nomadkaraoke.com` Pages domain, nomadkaraoke.com/www Worker custom domains, `create.karaokehunt.com/*` and `requests.nomadkaraoke.com/*` routes |
+| `pages_workers.py` | Pages projects `karaoke-gen` + `karaoke-gen-tenant`, `gen.nomadkaraoke.com` Pages domain, nomadkaraoke.com/www Worker custom domains, `create.karaokehunt.com/*` and `requests.nomadkaraoke.com/*` routes, plus the `kjbox-cc-well-known` Worker script (`kjbox-cc-well-known/worker.js`, built by `well_known.py`) and its `kjbox.cc/.well-known/*` route |
 
 All resource IDs (`ids.py`) are non-secret. Removing a non-protected resource from code deletes it
 on the next `pulumi up`, and `pulumi preview` always shows that first.
@@ -36,6 +36,19 @@ on the next `pulumi up`, and `pulumi preview` always shows that first.
 | Tunnel connector tokens / cloudflared processes | NomadPC systemd `cloudflared-nomad`, hf2 `~/nomad-tunnel` compose |
 | Registrar, billing, API tokens, account members | Dashboard (admin@nomadkaraoke.com) |
 
+## kjbox.cc app-link files
+
+`kjbox.cc/.well-known/assetlinks.json` (Android App Links) and `apple-app-site-association` (iOS universal
+links) are served by the `kjbox-cc-well-known` Worker, route `kjbox.cc/.well-known/*` (scheme-agnostic, so
+http and https). The JSON mirrors what the kjbox box serves on `sing.nomadkaraoke.com`. The
+`kjbox.cc/<code>` redirect rule excludes `/.well-known/` so the Worker answers instead of redirecting.
+Android SHA-256 cert fingerprints come from Pulumi config, baked into the script at deploy time
+(empty list = `assetlinks.json` is `[]`):
+
+```bash
+pulumi config set --path 'kjboxcc_android_sha256_fingerprints[0]' 'AA:BB:...'   # then pulumi up
+```
+
 ## Usage
 
 ```bash
@@ -47,7 +60,7 @@ pulumi preview      # must be clean (0 changes) before you start
 pulumi up
 ```
 
-Unit tests for the import-list builder: `venv/bin/pip install pytest && venv/bin/python -m pytest tests -c /dev/null`
+Unit tests (import-list builder, kjbox.cc well-known Worker; the Worker tests need `node`): `venv/bin/pip install pytest && venv/bin/python -m pytest tests -c /dev/null`
 (`-c /dev/null` skips the repo-root pytest config, which needs the backend's plugins).
 
 As with the GCP project, **CI does not run Pulumi**. Apply locally, then merge the PR.

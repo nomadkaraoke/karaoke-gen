@@ -11,6 +11,7 @@ import pulumi
 import pulumi_cloudflare as cloudflare
 
 from ids import ACCOUNT_ID, ZONE_IDS
+from well_known import WELL_KNOWN_EXCLUSION
 
 ruleset_karaokehunt_com_request_dynamic_redirect = cloudflare.Ruleset("ruleset-karaokehunt-com-request-dynamic-redirect",
     kind="zone",
@@ -95,7 +96,7 @@ ruleset_kjbox_cc_request_dynamic_redirect = cloudflare.Ruleset("ruleset-kjbox-cc
             },
             "description": "kjbox.cc/<code> -> sing.nomadkaraoke.com/?t=<code>",
             "enabled": True,
-            "expression": "(http.host in {\"kjbox.cc\" \"www.kjbox.cc\"} and http.request.uri.path ne \"/\")",
+            "expression": "(http.host in {\"kjbox.cc\" \"www.kjbox.cc\"} and http.request.uri.path ne \"/\"" + WELL_KNOWN_EXCLUSION + ")",
             "ref": "1f2e8fb05f844449ae29e7c1237ffc5c",
         },
     ],
