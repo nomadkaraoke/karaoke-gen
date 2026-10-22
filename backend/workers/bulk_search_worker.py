@@ -18,6 +18,7 @@ Usage:
 
 import asyncio
 import logging
+import time
 
 from backend.models.job import JobStatus
 from backend.services.audio_search_service import (
@@ -37,6 +38,11 @@ logger = logging.getLogger(__name__)
 # a single worker, so more than one just queues there and the queued ones run out
 # their 95s budget and fail (4/12 of a 12-track album did, 2026-10-22).
 SEARCH_CONCURRENCY = 1
+
+# Searching one track at a time, a big batch can outlast the Cloud Run Job's
+# 3600s task timeout, which would strand the rest with bulk_pending_search set.
+# Past this many seconds, remaining jobs are parked for a manual pick instead.
+BATCH_SEARCH_DEADLINE_SECONDS = 3000
 
 
 def _prepare_theme(job, job_manager: JobManager) -> None:
@@ -303,9 +309,12 @@ async def process_album_jobs(album: dict, jobs: list, job_manager: JobManager) -
     return fallback
 
 
-def _park_after_crash(job_id: str, job_manager: JobManager) -> None:
+def _park_after_crash(
+    job_id: str, job_manager: JobManager, message: str = "Search error. Please choose a source."
+) -> None:
+    """Best-effort park (never raises): the job must not be left mid-search."""
     try:
-        _park(job_id, job_manager, "Search error. Please choose a source.")
+        _park(job_id, job_manager, message)
     except Exception:  # noqa: BLE001
         pass
 
@@ -340,9 +349,14 @@ async def process_batch(batch_id: str) -> int:
             per_track.extend(j for j in album_jobs if _still_pending(j.job_id, job_manager))
 
     sem = asyncio.Semaphore(SEARCH_CONCURRENCY)
+    deadline = time.monotonic() + BATCH_SEARCH_DEADLINE_SECONDS
 
     async def _guarded(job_id: str) -> None:
         async with sem:
+            if time.monotonic() > deadline:
+                logger.warning("[batch:%s] search deadline passed; parking %s for selection", batch_id, job_id)
+                _park_after_crash(job_id, job_manager, "Please choose an audio source.")
+                return
             # Fresh service per task: last_remote_search_id is instance state and
             # would be cross-contaminated if shared across concurrent searches.
             audio_search_service = AudioSearchService()

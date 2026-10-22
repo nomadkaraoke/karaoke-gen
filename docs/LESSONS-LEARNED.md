@@ -542,7 +542,12 @@ and `docs/archive/2026-07-20-edge-security-*.md`.
   per-track fallback with `SEARCH_CONCURRENCY = 1`. Don't raise that without raising
   flacfetch's executor.
 - **Auto-pick checks the artist on the backend too** (`is_artist_match`, port of the frontend
-  `isArtistMatch`), so a 10+-seeder cover or tribute torrent isn't auto-picked.
+  `isArtistMatch`, but Unicode-aware so CJK/Cyrillic names and "&"/"and" compare), so a
+  10+-seeder cover or tribute torrent isn't auto-picked. Side effect: "Various Artists"
+  compilation results no longer auto-pick on the per-track and KaraokeHunt paths; they park.
+- **Bulk batches have a search deadline** (`BATCH_SEARCH_DEADLINE_SECONDS`, 3000s): with one
+  search at a time a 100-song text batch could outlast the 3600s Cloud Run Job, so jobs
+  still waiting at the deadline are parked for a manual pick instead of stranded.
 - **Album cover thumbnails** in the By-album picker load straight from the Cover Art
   Archive in the browser (`coverartarchive.org/release-group/{mbid}/front-250`), with the
   disc icon as fallback when there's no cover. This isn't the live MusicBrainz API, and no

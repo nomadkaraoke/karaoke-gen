@@ -19,6 +19,7 @@ import asyncio
 import logging
 import os
 import re
+import unicodedata
 from typing import Any, Dict, List, Optional
 
 import nest_asyncio
@@ -185,19 +186,32 @@ def _edit_distance(a: str, b: str) -> int:
     return prev[len(b)]
 
 
+def _norm_artist(x: str) -> str:
+    """Lowercase, accents folded, "&"/"+" as "and", punctuation dropped, a leading
+    "the" removed. Unicode-aware: CJK/Cyrillic names survive (unlike [a-z0-9])."""
+    x = unicodedata.normalize("NFKD", (x or "").casefold())
+    x = "".join(ch for ch in x if not unicodedata.combining(ch))
+    x = re.sub(r"\s*[&+]\s*", " and ", x)
+    x = re.sub(r"[^\w\s]|_", " ", x)
+    x = re.sub(r"\s+", " ", x).strip()
+    return re.sub(r"^the\s+", "", x)
+
+
 def is_artist_match(search_artist: str, result: Dict[str, Any]) -> bool:
     """Port of isArtistMatch() — the result's artist is the one searched for.
 
-    "The Killers" vs "Killers" and "X, Someone" vs "X" match; small typos are
-    tolerated for names of 5+ characters.
+    "The Killers" vs "Killers", "X, Someone" vs "X" and "Simon & Garfunkel" vs
+    "Simon and Garfunkel" match; small typos are tolerated for names of 5+
+    characters. A searched name that normalizes to nothing can't be compared, so
+    it isn't held against the result (mirrors _check_filename_mismatch).
     """
-    def norm(x: str) -> str:
-        x = re.sub(r"^the\s+", "", (x or "").lower())
-        x = re.sub(r"[^a-z0-9\s]", " ", x)
-        return re.sub(r"\s+", " ", x).strip()
-
-    want = norm(search_artist)
-    have = norm(result.get("artist") or "")
+    raw_have = result.get("artist") or ""
+    if search_artist and search_artist.strip().casefold() == raw_have.strip().casefold():
+        return True
+    want = _norm_artist(search_artist)
+    have = _norm_artist(raw_have)
+    if not want:
+        return True
     if len(want) < 2 or not have:
         return False
     if have == want or f" {want} " in f" {have} " or f" {have} " in f" {want} ":

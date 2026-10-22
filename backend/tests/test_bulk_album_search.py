@@ -69,12 +69,19 @@ class TestPickAlbumAutoSelection:
         results = build_track_results([batch], "j1", batch)
         assert pick_album_auto_selection(results, batch, "One More Time", "Daft Punk") is None
 
-    def test_track_only_in_another_torrent_is_not_auto_picked(self):
+    def test_track_only_in_another_torrent_gets_the_per_track_pick(self):
         batch = _torrent("batch", {"j2": "02 Aerodynamic.flac"})
         other = _torrent("other", {"j1": "01 One More Time.flac"}, seeders=200)
         results = build_track_results([batch, other], "j1", batch)
+        assert results[0]["source_id"] == "other"
+        assert pick_album_auto_selection(results, batch, "One More Time", "Daft Punk") == 0
+
+    def test_track_only_in_a_weak_torrent_parks(self):
+        batch = _torrent("batch", {"j2": "02 Aerodynamic.flac"})
+        weak = _torrent("weak", {"j1": "01 One More Time.flac"}, seeders=2)
+        results = build_track_results([batch, weak], "j1", batch)
         assert pick_album_auto_selection(results, batch, "One More Time", "Daft Punk") is None
 
-    def test_no_batch_torrent(self):
-        results, _ = self._results()
+    def test_no_batch_torrent_uses_per_track_rules(self):
+        results, _ = self._results(seeders=5)
         assert pick_album_auto_selection(results, None, "One More Time", "Daft Punk") is None

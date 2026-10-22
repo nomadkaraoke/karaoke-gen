@@ -10,7 +10,11 @@ decides which torrent the batch should use.
 
 from typing import Any, Dict, List, Optional
 
-from backend.services.audio_search_service import _categorize_result, _is_confident_pick
+from backend.services.audio_search_service import (
+    _categorize_result,
+    _is_confident_pick,
+    pick_auto_selection,
+)
 
 
 def _result_for_track(torrent: Dict[str, Any], track_file: Dict[str, Any], index: int) -> Dict[str, Any]:
@@ -83,18 +87,19 @@ def pick_album_auto_selection(
 ) -> Optional[int]:
     """Auto-select this track's file in the batch torrent, if it's a confident pick.
 
-    Unlike per-track ``pick_auto_selection`` (which takes the best-seeded BEST
-    CHOICE result), album mode sticks to the batch torrent so the whole album
-    downloads once. The same tier-1 checks apply to it: BEST CHOICE, the file
-    names the track, the artist matches.
+    Album mode sticks to the batch torrent so the whole album downloads once; the
+    same tier-1 checks apply to it (BEST CHOICE, the file names the track, the
+    artist matches). A track the batch torrent doesn't cover (or a batch with no
+    BEST CHOICE torrent) gets the normal per-track pick among the album torrents
+    that do cover it: one extra torrent for that track beats parking it.
     """
-    if batch_torrent is None or not results:
+    if not results:
         return None
     if len((search_title or "").strip()) < 3:
         return None
     first = results[0]
-    if _torrent_id(first) != _torrent_id(batch_torrent):
-        return None  # the batch torrent has no file for this track
+    if batch_torrent is None or _torrent_id(first) != _torrent_id(batch_torrent):
+        return pick_auto_selection(results, search_title, search_artist)
     if not _is_confident_pick(first, search_title, search_artist):
         return None
     return first.get("index")

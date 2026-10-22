@@ -371,3 +371,26 @@ async def test_process_batch_routes_album_jobs_then_searches_rest_one_at_a_time(
 
 def test_search_concurrency_is_one():
     assert worker.SEARCH_CONCURRENCY == 1
+
+
+@pytest.mark.asyncio
+async def test_jobs_past_the_batch_deadline_are_parked_not_searched(monkeypatch):
+    jobs = [_make_job("t1"), _make_job("t2")]
+    jm = MagicMock()
+    jm.list_jobs_by_batch_id.return_value = jobs
+    parked = []
+    jm.transition_to_state.side_effect = lambda **kw: parked.append((kw["job_id"], kw["new_status"]))
+    monkeypatch.setattr(worker, "JobManager", lambda: jm)
+    monkeypatch.setattr(worker, "BATCH_SEARCH_DEADLINE_SECONDS", -1)  # already past
+    searched = []
+
+    async def fake_process_job(job_id, job_manager, ass):
+        searched.append(job_id)
+
+    monkeypatch.setattr(worker, "process_job", fake_process_job)
+    monkeypatch.setattr(worker, "AudioSearchService", MagicMock)
+
+    await worker.process_batch("b1")
+
+    assert searched == []
+    assert sorted(parked) == [("t1", JobStatus.AWAITING_AUDIO_SELECTION), ("t2", JobStatus.AWAITING_AUDIO_SELECTION)]
