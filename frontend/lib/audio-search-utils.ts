@@ -27,6 +27,12 @@ export interface CategoryConfig {
   borderColor: string
 }
 
+/**
+ * Seeders a lossless torrent needs to count as BEST CHOICE (and tier 1 / auto-pick).
+ * Keep in sync with BEST_CHOICE_MIN_SEEDERS in backend/services/audio_search_service.py.
+ */
+export const BEST_CHOICE_MIN_SEEDERS = 10
+
 export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   'BEST CHOICE': { name: 'BEST CHOICE', maxDisplay: 3, color: 'text-amber-400', borderColor: 'border-amber-500/30' },
   'HI-RES 24-BIT': { name: 'HI-RES 24-BIT', maxDisplay: 3, color: 'text-purple-400', borderColor: 'border-purple-500/30' },
@@ -78,8 +84,8 @@ export function categorizeResult(result: ExtendedAudioSearchResult): string {
     return 'VINYL RIPS'
   }
 
-  // Best choice (50+ seeders, lossless, non-vinyl)
-  if (isLossless && seeders >= 50) {
+  // Best choice (lossless, non-vinyl, enough seeders to download reliably)
+  if (isLossless && seeders >= BEST_CHOICE_MIN_SEEDERS) {
     return 'BEST CHOICE'
   }
 

@@ -465,12 +465,14 @@ class TestFakeSearchConfidence:
             FakeConfig(search_confidence="maybe").validate()
 
     def test_fake_search_confidence_shapes(self):
+        from backend.services.audio_search_service import BEST_CHOICE_MIN_SEEDERS
+
         perfect = self._search("perfect")
         assert perfect[0]["seeders"] >= 50 and perfect[0]["target_file"] == "01 - Song.flac"
 
         recommended = self._search("recommended")
         # Lossless and the right track, but not well seeded enough for "BEST CHOICE".
-        assert recommended[0]["is_lossless"] is True and 10 <= recommended[0]["seeders"] < 50
+        assert recommended[0]["is_lossless"] is True and 0 < recommended[0]["seeders"] < BEST_CHOICE_MIN_SEEDERS
         assert recommended[0]["target_file"] == "01 - Song.flac"
 
         unsure = self._search("unsure")

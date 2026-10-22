@@ -63,6 +63,10 @@ AudioDownloadResult = AudioFetchResult
 # parity tests in backend/tests/test_bulk_foundations.py guard the behaviour.
 # ---------------------------------------------------------------------------
 
+# Seeders a lossless torrent needs to count as "BEST CHOICE" (and so be auto-picked).
+# A lossless torrent with even ~10 seeders is almost always the right source.
+BEST_CHOICE_MIN_SEEDERS = 10
+
 _BEST_RESULT_PRIORITY = [
     "BEST CHOICE",
     "STUDIO ALBUMS",
@@ -92,7 +96,7 @@ def _categorize_result(result: Dict[str, Any]) -> str:
     # Vinyl rips checked before BEST CHOICE (surface noise -> poor for karaoke)
     if is_lossless and media == "vinyl":
         return "VINYL RIPS"
-    if is_lossless and seeders >= 50:
+    if is_lossless and seeders >= BEST_CHOICE_MIN_SEEDERS:
         return "BEST CHOICE"
     if is_lossless and is_24bit:
         return "HI-RES 24-BIT"
@@ -175,7 +179,7 @@ def pick_auto_selection(results: List[Dict[str, Any]], search_title: str = "") -
     """Return the index to auto-select, or None if no confident lossless pick.
 
     Tier-1 rule (mirrors getSearchConfidence): the best result must be in the
-    BEST CHOICE category (lossless, 50+ seeders, non-vinyl) AND its filename
+    BEST CHOICE category (lossless, BEST_CHOICE_MIN_SEEDERS+ seeders, non-vinyl) AND its filename
     must match ``search_title`` (the song the user searched for). Otherwise we
     defer to human selection.
     """

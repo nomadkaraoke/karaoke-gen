@@ -127,9 +127,45 @@ function StepHeading({ icon: Icon, title, subtitle }: { icon: LucideIcon; title:
   )
 }
 
+/** Cover Art Archive front-cover thumbnail for a release group (free, keyed by MBID). */
+export function coverArtUrl(releaseGroupMbid: string, size: 250 | 500 = 250): string {
+  return `https://coverartarchive.org/release-group/${encodeURIComponent(releaseGroupMbid)}/front-${size}`
+}
+
+/**
+ * Album cover with the icon tile as placeholder: the image is only revealed once
+ * it loads, and albums with no cover in the archive (404) keep the icon.
+ */
+function AlbumArt({ mbid, icon: Icon, className }: { mbid?: string | null; icon: LucideIcon; className: string }) {
+  const [state, setState] = useState<"loading" | "loaded" | "failed">("loading")
+  return (
+    <span
+      className={`${className} relative rounded-md overflow-hidden flex items-center justify-center shrink-0`}
+      style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}
+    >
+      {state !== "loaded" && <Icon className="w-4 h-4" />}
+      {mbid && state !== "failed" && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={coverArtUrl(mbid)}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onLoad={() => setState("loaded")}
+          onError={() => setState("failed")}
+          className={`absolute inset-0 w-full h-full object-cover ${state === "loaded" ? "" : "invisible"}`}
+        />
+      )}
+    </span>
+  )
+}
+
 /** A bordered, obviously-clickable result row (artist or album) with a trailing chevron. */
-function PickRow({ icon: Icon, title, subtitle, meta, onClick, disabled }: {
+function PickRow({ icon: Icon, artMbid, title, subtitle, meta, onClick, disabled }: {
   icon: LucideIcon
+  /** Release-group MBID → show its cover art in place of the icon (album rows). */
+  artMbid?: string
   title: string
   subtitle?: string
   meta?: ReactNode
@@ -144,12 +180,16 @@ function PickRow({ icon: Icon, title, subtitle, meta, onClick, disabled }: {
       className="w-full text-start rounded-md border px-2.5 py-2 flex items-center gap-3 transition-colors hover:bg-white/5 hover:border-pink-400/50 disabled:opacity-50 disabled:pointer-events-none"
       style={{ borderColor: "var(--card-border)" }}
     >
-      <span
-        className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}
-      >
-        <Icon className="w-4 h-4" />
-      </span>
+      {artMbid ? (
+        <AlbumArt mbid={artMbid} icon={Icon} className="w-10 h-10" />
+      ) : (
+        <span
+          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+          style={{ backgroundColor: "rgba(255,255,255,0.06)", color: "var(--text-muted)" }}
+        >
+          <Icon className="w-4 h-4" />
+        </span>
+      )}
       <span className="flex-1 min-w-0">
         <span className="block text-sm truncate" style={{ color: "var(--text)" }}>{title}</span>
         {subtitle && <span className="block text-xs truncate" style={{ color: "var(--text-muted)" }}>{subtitle}</span>}
@@ -307,7 +347,10 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
     return (
       <div className="space-y-3">
         {stepper}
-        <StepHeading icon={ListMusic} title={t("chooseTracks")} subtitle={`${artist.name} — ${tracklist.title}`} />
+        <div className="flex items-center gap-3">
+          {albumMbid && <AlbumArt key={albumMbid} mbid={albumMbid} icon={Disc3} className="w-12 h-12" />}
+          <StepHeading icon={ListMusic} title={t("chooseTracks")} subtitle={`${artist.name} — ${tracklist.title}`} />
+        </div>
 
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
@@ -417,6 +460,7 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
               <PickRow
                 key={a.release_group_mbid}
                 icon={Disc3}
+                artMbid={a.release_group_mbid}
                 onClick={() => pickAlbum(a)}
                 disabled={disabled}
                 title={a.title}

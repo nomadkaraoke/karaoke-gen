@@ -22,6 +22,7 @@
 import { test as base, expect, chromium, type Page, type BrowserContext } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { BEST_CHOICE_MIN_SEEDERS } from '../../lib/audio-search-utils';
 
 // --- Persistent Chrome profile (bookmarks bar enabled) ---
 
@@ -100,14 +101,14 @@ function computeTier(fixture: Fixture): 1 | 2 | 3 {
   for (const r of fixture.results) {
     if (r.is_lossless && r.quality_data?.media?.toLowerCase() === 'vinyl') continue;
     if (!best) { best = r; continue; }
-    const isBestChoice = r.is_lossless && (r.seeders ?? 0) >= 50 && r.quality_data?.media?.toLowerCase() !== 'vinyl';
-    const currentIsBest = best.is_lossless && (best.seeders ?? 0) >= 50 && best.quality_data?.media?.toLowerCase() !== 'vinyl';
+    const isBestChoice = r.is_lossless && (r.seeders ?? 0) >= BEST_CHOICE_MIN_SEEDERS && r.quality_data?.media?.toLowerCase() !== 'vinyl';
+    const currentIsBest = best.is_lossless && (best.seeders ?? 0) >= BEST_CHOICE_MIN_SEEDERS && best.quality_data?.media?.toLowerCase() !== 'vinyl';
     if (isBestChoice && !currentIsBest) best = r;
     else if (isBestChoice && currentIsBest && (r.seeders ?? 0) > (best.seeders ?? 0)) best = r;
   }
   if (!best) best = fixture.results[0];
 
-  const isBestChoice = best.is_lossless && (best.seeders ?? 0) >= 50 && best.quality_data?.media?.toLowerCase() !== 'vinyl';
+  const isBestChoice = best.is_lossless && (best.seeders ?? 0) >= BEST_CHOICE_MIN_SEEDERS && best.quality_data?.media?.toLowerCase() !== 'vinyl';
   const hasLossless = fixture.results.some(
     (r: any) => r.is_lossless && r.provider?.toLowerCase() !== 'youtube' && r.quality_data?.media?.toLowerCase() !== 'vinyl'
   );

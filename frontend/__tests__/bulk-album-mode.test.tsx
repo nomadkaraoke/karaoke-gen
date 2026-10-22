@@ -151,3 +151,43 @@ describe('BulkMode (album sub-mode)', () => {
     expect(screen.getByRole('button', { name: 'Create 2 karaoke videos' })).toBeInTheDocument()
   })
 })
+
+describe('BulkAlbumMode cover art', () => {
+  async function walkToAlbums() {
+    fireEvent.change(screen.getByPlaceholderText('Search for an artist…'), { target: { value: 'Britney' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Britney Spears/ }))
+    await screen.findByText('Choose an album')
+  }
+
+  const coverImg = (container: HTMLElement) =>
+    container.querySelector('img[src^="https://coverartarchive.org/"]') as HTMLImageElement | null
+
+  it('requests the release-group front cover for each album row, hidden until loaded', async () => {
+    const { container } = render(<Harness />)
+    await walkToAlbums()
+    const img = coverImg(container)!
+    expect(img.getAttribute('src')).toBe('https://coverartarchive.org/release-group/rg-1/front-250')
+    expect(img).toHaveAttribute('loading', 'lazy')
+    expect(img.className).toContain('invisible')
+    fireEvent.load(img)
+    expect(img.className).not.toContain('invisible')
+  })
+
+  it('falls back to the disc icon when the album has no cover art', async () => {
+    const { container } = render(<Harness />)
+    await walkToAlbums()
+    fireEvent.error(coverImg(container)!)
+    expect(coverImg(container)).toBeNull()
+    // The album row is still there and clickable.
+    expect(screen.getByRole('button', { name: /Oops!\.\.\.I Did It Again/ })).toBeEnabled()
+  })
+
+  it('shows the picked album cover on the tracklist step', async () => {
+    const { container } = render(<Harness />)
+    await walkToTracklist()
+    expect(coverImg(container)?.getAttribute('src')).toBe(
+      'https://coverartarchive.org/release-group/rg-1/front-250',
+    )
+  })
+})

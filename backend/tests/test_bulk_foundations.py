@@ -72,9 +72,14 @@ class TestPickAutoSelection:
         assert pick_auto_selection([_lossy(0), _lossy(1)], "Bohemian Rhapsody") is None
 
     def test_lossless_but_low_seeders_returns_none(self):
-        # seeders < 50 -> STUDIO ALBUMS, not BEST CHOICE -> tier 2, no auto-pick
+        # seeders < 10 -> STUDIO ALBUMS, not BEST CHOICE -> tier 2, no auto-pick
         from backend.services.audio_search_service import pick_auto_selection
-        assert pick_auto_selection([_lossless_best(0, seeders=10)], "Bohemian Rhapsody") is None
+        assert pick_auto_selection([_lossless_best(0, seeders=9)], "Bohemian Rhapsody") is None
+
+    def test_lossless_with_ten_seeders_is_auto_picked(self):
+        # A modestly-seeded lossless album torrent (e.g. 15-31 seeders) is still the right pick.
+        from backend.services.audio_search_service import pick_auto_selection
+        assert pick_auto_selection([_lossy(0), _lossless_best(1, seeders=10)], "Bohemian Rhapsody") == 1
 
     def test_filename_mismatch_returns_none(self):
         # best is lossless+well-seeded but the file is clearly a different track
@@ -106,3 +111,15 @@ class TestPickAutoSelection:
         from backend.services.audio_search_service import pick_auto_selection
         r = _lossless_best(0, seeders=80, title="Someone", target_file="04 - Someone.flac")
         assert pick_auto_selection([r], "One") is None
+
+
+def test_best_choice_min_seeders_matches_frontend():
+    """The tier-1 seeder bar is duplicated in the frontend; keep the two in lockstep."""
+    import re
+    from pathlib import Path
+    from backend.services.audio_search_service import BEST_CHOICE_MIN_SEEDERS
+
+    ts = (Path(__file__).resolve().parents[2] / "frontend" / "lib" / "audio-search-utils.ts").read_text()
+    m = re.search(r"export const BEST_CHOICE_MIN_SEEDERS = (\d+)", ts)
+    assert m, "BEST_CHOICE_MIN_SEEDERS not found in frontend/lib/audio-search-utils.ts"
+    assert int(m.group(1)) == BEST_CHOICE_MIN_SEEDERS

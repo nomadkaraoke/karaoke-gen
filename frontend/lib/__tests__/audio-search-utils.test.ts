@@ -36,7 +36,12 @@ describe('categorizeResult', () => {
     expect(categorizeResult(result)).toBe('YOUTUBE')
   })
 
-  it('categorizes lossless with 50+ seeders as BEST CHOICE', () => {
+  it('categorizes lossless with 10 seeders as BEST CHOICE', () => {
+    expect(categorizeResult(makeResult({ is_lossless: true, seeders: 10, release_type: 'Album' }))).toBe('BEST CHOICE')
+    expect(categorizeResult(makeResult({ is_lossless: true, seeders: 9, release_type: 'Album' }))).toBe('STUDIO ALBUMS')
+  })
+
+  it('categorizes well-seeded lossless (100) as BEST CHOICE', () => {
     const result = makeResult({ index: 0, is_lossless: true, seeders: 55 })
     expect(categorizeResult(result)).toBe('BEST CHOICE')
   })
@@ -164,7 +169,7 @@ describe('groupResults', () => {
   it('groups results by category', () => {
     const results = [
       makeResult({ index: 0, is_lossless: true, seeders: 100 }), // BEST CHOICE
-      makeResult({ index: 1, is_lossless: true, seeders: 10, release_type: 'Album' }), // STUDIO ALBUMS
+      makeResult({ index: 1, is_lossless: true, seeders: 5, release_type: 'Album' }), // STUDIO ALBUMS
       makeResult({ index: 2, is_lossless: true, seeders: 60 }), // BEST CHOICE
     ]
     const groups = groupResults(results)
@@ -446,9 +451,9 @@ describe('getSearchConfidence', () => {
     expect(confidence.warnings.some(w => w.includes('Spies'))).toBe(true)
   })
 
-  it('returns tier 2 for studio album with moderate seeders', () => {
+  it('returns tier 2 for studio album with few seeders', () => {
     const results = [
-      makeResult({ index: 0, is_lossless: true, seeders: 20, release_type: 'Album', target_file: '01 - Yellow.flac' }),
+      makeResult({ index: 0, is_lossless: true, seeders: 9, release_type: 'Album', target_file: '01 - Yellow.flac' }),
     ]
     const confidence = getSearchConfidence(results, 'Yellow')
     expect(confidence.tier).toBe(2)
