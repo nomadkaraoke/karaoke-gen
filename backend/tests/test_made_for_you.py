@@ -2672,3 +2672,92 @@ class TestJobManagerCompletionEmail:
 
         # No ownership transfer without customer_email
         job_manager.firestore.update_job.assert_not_called()
+
+
+class TestCompletionEmailDeliveryGuard:
+    """NOMAD-1800: a job meant for Dropbox delivery with no Dropbox link must not
+    send the customer a completion email with a placeholder link."""
+
+    @pytest.fixture
+    def job_manager(self):
+        with patch('backend.services.job_manager.FirestoreService'), \
+             patch('backend.services.job_manager.StorageService'):
+            from backend.services.job_manager import JobManager
+            manager = JobManager()
+            manager.firestore = MagicMock()
+            return manager
+
+    def _job(self, **overrides):
+        base = dict(
+            job_id="dd892383",
+            status=JobStatus.COMPLETE,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+            user_email="madeforyou@nomadkaraoke.com",
+            artist="Test Artist",
+            title="Test Song",
+            made_for_you=True,
+            customer_email="customer@example.com",
+            dropbox_path="/Karaoke/Tracks-Organized",
+            brand_prefix="NOMAD",
+            state_data={
+                'youtube_url': 'https://youtube.com/watch?v=1',
+                'brand_code': 'NOMAD-1800',
+                'distribution_warnings': [
+                    "Dropbox upload failed: UploadWriteFailed(reason=WriteError('insufficient_space'))"
+                ],
+            },
+        )
+        base.update(overrides)
+        return Job(**base)
+
+    def test_holds_email_when_dropbox_link_missing(self, job_manager):
+        job = self._job()
+        mock_ns = MagicMock()
+        with patch('backend.services.job_notification_service.get_job_notification_service', return_value=mock_ns), \
+             patch('backend.services.ops_alerts.send_throttled_ops_alert', return_value=True) as alert:
+            job_manager._schedule_completion_email(job)
+            import time
+            time.sleep(0.1)
+
+        mock_ns.send_job_completion_email.assert_not_called()
+        updates = [c[0][1] for c in job_manager.firestore.update_job.call_args_list]
+        # Ownership still transfers (customer can see the job in their account)
+        assert {'user_email': 'customer@example.com'} in updates
+        held = [u for u in updates if 'state_data.completion_email_held' in u]
+        assert len(held) == 1
+        marker = held[0]['state_data.completion_email_held']
+        assert marker['reason_code'] == 'dropbox_full'
+        assert marker['recipient'] == 'customer@example.com'
+        alert.assert_called_once()
+        assert "Dropbox is FULL" in alert.call_args[0][1]
+
+    def test_sends_email_when_dropbox_link_present(self, job_manager):
+        job = self._job(state_data={'dropbox_link': 'https://dropbox.com/x', 'brand_code': 'NOMAD-1800'})
+        mock_ns = MagicMock()
+        mock_ns.send_job_completion_email = AsyncMock(return_value=True)
+        with patch('backend.services.job_notification_service.get_job_notification_service', return_value=mock_ns), \
+             patch('backend.services.ops_alerts.send_throttled_ops_alert') as alert:
+            job_manager._schedule_completion_email(job)
+            import time
+            time.sleep(0.2)
+
+        mock_ns.send_job_completion_email.assert_called_once()
+        assert mock_ns.send_job_completion_email.call_args.kwargs['dropbox_url'] == 'https://dropbox.com/x'
+        alert.assert_not_called()
+
+    def test_sends_email_for_job_without_dropbox_delivery(self, job_manager):
+        """Tenant / no-Dropbox jobs have no link by design and still get their email."""
+        job = self._job(dropbox_path=None, brand_prefix=None, made_for_you=False,
+                        customer_email=None, tenant_id="acme", state_data={})
+        mock_ns = MagicMock()
+        mock_ns.send_job_completion_email = AsyncMock(return_value=True)
+        with patch('backend.services.job_notification_service.get_job_notification_service', return_value=mock_ns), \
+             patch('backend.services.ops_alerts.send_throttled_ops_alert') as alert:
+            job_manager._schedule_completion_email(job)
+            import time
+            time.sleep(0.2)
+
+        mock_ns.send_job_completion_email.assert_called_once()
+        alert.assert_not_called()
+        job_manager.firestore.update_job.assert_not_called()

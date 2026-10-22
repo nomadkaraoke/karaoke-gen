@@ -436,6 +436,32 @@ Do **not** reset to `instrumental_selected` — that triggers the final video wo
 
 ---
 
+## Held completion email (Dropbox delivery failed)
+
+**Signal:** #alerts "🔴 Customer delivery HELD — Dropbox upload failed" (from
+`backend/services/delivery_guard.py`), or "🔴 Dropbox almost FULL" from the hourly quota check
+(rides on `/api/internal/process-stale-reviews`; fires once at ≥95% used and re-arms after usage
+drops back below).
+
+**What happened:** the job was meant to deliver to Dropbox (`dropbox_path` + `brand_prefix` on its
+effective distribution settings) but finished with no `state_data.dropbox_link`. Instead of emailing
+the customer a delivery email with no files link (NOMAD-1800), the job went COMPLETE, the email
+was held, and `state_data.completion_email_held = {reason_code, reason, recipient, at}` was set.
+For made-for-you orders ownership still transfers to the customer. `reason_code` is
+`dropbox_full` (`insufficient_space`), `dropbox_upload_failed`, or `dropbox_link_missing`.
+
+**Recovery (manual):**
+1. If `dropbox_full`: free space in the business Dropbox (`rclone about` shows usage) or raise
+   the quota.
+2. Upload the job's outputs (GCS `jobs/{job_id}/finals/`, `stems/`, `lyrics/`) to its Dropbox
+   folder `{dropbox_path}/{brand_code} - {Artist} - {Title}`, create a share link, and set
+   `state_data.dropbox_link` on the job. (An admin re-render also re-uploads to Dropbox, but it
+   deletes and re-uploads the YouTube video too, so the YouTube URL changes: only use it for
+   private jobs.)
+3. `POST /api/admin/jobs/{job_id}/send-completion-email` with the recipient from
+   `completion_email_held.recipient`. It returns 409 while the link is still missing
+   (`allow_missing_dropbox_link: true` overrides). A successful send clears the held marker.
+
 ## Google Drive uploads missing (gdrive_files empty)
 
 **Symptoms:** Jobs complete successfully but `state_data.gdrive_files` is empty `{}`. Cloud Run logs show `BrokenPipeError` or `SSL: UNEXPECTED_EOF_WHILE_READING`.

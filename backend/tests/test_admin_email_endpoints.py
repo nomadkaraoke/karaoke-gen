@@ -46,6 +46,11 @@ def mock_job():
     job.audio_hash = "hash123"
     job.review_token = "review123"
     job.instrumental_token = "inst123"
+    # Distribution settings (Mock(spec=Job) attrs would otherwise be truthy Mocks)
+    job.is_private = False
+    job.tenant_id = None
+    job.dropbox_path = None
+    job.brand_prefix = None
     job.state_data = {
         "youtube_url": "https://youtube.com/watch?v=test123",
         "dropbox_link": "https://dropbox.com/folder/test",
@@ -328,6 +333,75 @@ class TestSendCompletionEmail:
             mock_es.send_job_completion.assert_called_once()
             call_kwargs = mock_es.send_job_completion.call_args.kwargs
             assert call_kwargs["to_email"] == "invalid-email"
+
+
+class TestSendCompletionEmailDeliveryGuard:
+    """NOMAD-1800: refuse to send a delivery email without its Dropbox link."""
+
+    def _patches(self, mock_job):
+        mock_jm = Mock()
+        mock_jm.get_job.return_value = mock_job
+        mock_ns = Mock()
+        mock_ns.get_completion_message.return_value = "Message"
+        mock_es = Mock()
+        mock_es.send_job_completion.return_value = True
+        return mock_jm, mock_ns, mock_es
+
+    def _post(self, client, mock_job, body):
+        mock_jm, mock_ns, mock_es = self._patches(mock_job)
+        with patch('backend.api.routes.admin.JobManager', return_value=mock_jm), \
+             patch('backend.services.job_notification_service.get_job_notification_service', return_value=mock_ns), \
+             patch('backend.services.email_service.get_email_service', return_value=mock_es):
+            response = client.post(
+                "/api/admin/jobs/test-job-123/send-completion-email",
+                json=body,
+                headers={"Authorization": "Bearer admin-token"},
+            )
+        return response, mock_jm, mock_es
+
+    def _dropbox_job(self, mock_job, **state):
+        mock_job.dropbox_path = "/Karaoke/Tracks-Organized"
+        mock_job.brand_prefix = "NOMAD"
+        mock_job.state_data = {"brand_code": "NOMAD-1800", **state}
+        return mock_job
+
+    def test_refuses_when_dropbox_link_missing(self, client, mock_job):
+        self._dropbox_job(mock_job, distribution_warnings=[
+            "Dropbox upload failed: WriteError('insufficient_space')"
+        ])
+        response, _, mock_es = self._post(client, mock_job, {"to_email": "c@example.com"})
+
+        assert response.status_code == 409
+        assert "Dropbox is FULL" in response.json()["detail"]
+        mock_es.send_job_completion.assert_not_called()
+
+    def test_override_sends_and_clears_held_marker(self, client, mock_job):
+        self._dropbox_job(mock_job, completion_email_held={"reason_code": "dropbox_full"})
+        response, mock_jm, mock_es = self._post(
+            client, mock_job, {"to_email": "c@example.com", "allow_missing_dropbox_link": True}
+        )
+
+        assert response.status_code == 200
+        mock_es.send_job_completion.assert_called_once()
+        mock_jm.update_job.assert_called_once()
+        assert "state_data.completion_email_held" in mock_jm.update_job.call_args[0][1]
+
+    def test_sends_and_clears_marker_once_link_is_fixed(self, client, mock_job):
+        self._dropbox_job(mock_job, dropbox_link="https://dropbox.com/fixed",
+                          completion_email_held={"reason_code": "dropbox_full"})
+        response, mock_jm, mock_es = self._post(client, mock_job, {"to_email": "c@example.com"})
+
+        assert response.status_code == 200
+        mock_es.send_job_completion.assert_called_once()
+        assert "state_data.completion_email_held" in mock_jm.update_job.call_args[0][1]
+
+    def test_job_without_dropbox_delivery_sends_normally(self, client, mock_job):
+        mock_job.state_data = {"brand_code": "TEN-0001"}
+        response, mock_jm, mock_es = self._post(client, mock_job, {"to_email": "c@example.com"})
+
+        assert response.status_code == 200
+        mock_es.send_job_completion.assert_called_once()
+        mock_jm.update_job.assert_not_called()
 
 
 class TestIdleReminderEndpoint:
