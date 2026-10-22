@@ -217,6 +217,12 @@ BLOCKING_CALLS = {
     "get_tenant_config",  # GCS read on a cache miss (tenant middleware, up to 1.2s)
     "append_log_to_subcollection",  # job-log write; on the loop it is offloaded, see log_write_offload
     "append_worker_log",
+    # 2026-10-22 #alerts triage: audio-editor routes ran ffmpeg + GCS transfers on the loop
+    # (storage_service.upload_file stalled 10.3s per edit).
+    "apply_edit",
+    "get_metadata_from_gcs",
+    "upload_file",
+    "download_file",
 }
 _BLOCKING_MODULE_CALLS = {("requests", "get"), ("requests", "post"), ("requests", "put"),
                           ("requests", "delete"), ("requests", "request"), ("time", "sleep")}

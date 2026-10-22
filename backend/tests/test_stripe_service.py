@@ -210,3 +210,30 @@ class TestStripeServiceMetadata:
             metadata = call_kwargs['metadata']
 
             assert len(metadata['notes']) == 500
+
+
+class TestWebhookSignatureLogLevels:
+    """Scanner garbage logs WARNING; a well-formed but wrong signature stays ERROR (pages)."""
+
+    @pytest.fixture
+    def stripe_service(self):
+        with patch.dict(os.environ, {
+            'STRIPE_SECRET_KEY': 'sk_test_fake',
+            'STRIPE_WEBHOOK_SECRET': 'whsec_test_fake',
+        }):
+            from backend.services.stripe_service import StripeService
+            return StripeService()
+
+    def test_unparseable_header_logs_warning(self, stripe_service, caplog):
+        with caplog.at_level('WARNING', logger='backend.services.stripe_service'):
+            ok, event, _ = stripe_service.verify_webhook_signature(b'{}', 'garbage')
+        assert not ok and event is None
+        levels = [r.levelname for r in caplog.records if 'Invalid webhook signature' in r.getMessage()]
+        assert levels == ['WARNING']
+
+    def test_wrong_signature_logs_error(self, stripe_service, caplog):
+        with caplog.at_level('WARNING', logger='backend.services.stripe_service'):
+            ok, event, _ = stripe_service.verify_webhook_signature(b'{}', 't=1700000000,v1=deadbeef')
+        assert not ok and event is None
+        levels = [r.levelname for r in caplog.records if 'Invalid webhook signature' in r.getMessage()]
+        assert levels == ['ERROR']
