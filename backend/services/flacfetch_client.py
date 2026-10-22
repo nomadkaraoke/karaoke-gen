@@ -296,6 +296,66 @@ class FlacfetchClient:
             resp.raise_for_status()
             return resp.json()
 
+    async def search_album(
+        self,
+        artist: str,
+        album: str,
+        tracks: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Find lossless torrents of one album, with each requested track mapped to a file.
+
+        ``tracks`` is ``[{"key", "title", "position"?}]``. Returns flacfetch's album
+        search response: ``results`` (torrents, best coverage first) each with
+        ``track_files`` ``{key: {target_file, target_file_size, match_score}}``.
+        A 404 (no torrent covers any track, or a flacfetch without the endpoint)
+        returns empty ``results`` so callers fall back to per-track search.
+
+        Shares the per-track search's retry policy and total time budget.
+
+        Raises:
+            FlacfetchServiceError: On failure after retries, or timeout.
+        """
+        settings = get_settings()
+        total_timeout = settings.flacfetch_search_total_timeout
+        try:
+            return await asyncio.wait_for(
+                with_retry(
+                    self._search_album_impl,
+                    artist,
+                    album,
+                    tracks,
+                    retry_max_attempts=settings.flacfetch_search_retry_max_attempts,
+                    retry_min_wait=settings.flacfetch_search_retry_wait,
+                    retry_max_wait=settings.flacfetch_search_retry_wait,
+                ),
+                timeout=total_timeout,
+            )
+        except asyncio.TimeoutError:
+            raise FlacfetchServiceError(
+                f"Album search timed out after {total_timeout:.0f}s total (including retries)"
+            )
+        except httpx.RequestError as e:
+            raise FlacfetchServiceError(f"Album search request failed: {_format_httpx_error(e)}")
+        except httpx.HTTPStatusError as e:
+            raise FlacfetchServiceError(f"Album search failed: {e.response.status_code} - {e.response.text}")
+
+    async def _search_album_impl(
+        self, artist: str, album: str, tracks: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Album search without error wrapping - lets httpx exceptions bubble up."""
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{self.base_url}/search/album",
+                headers=self._headers(),
+                json={"artist": artist, "album": album, "tracks": tracks},
+                timeout=self.timeout,
+            )
+            if resp.status_code == 404:
+                return {"artist": artist, "album": album, "results": [], "results_count": 0}
+            resp.raise_for_status()
+            return resp.json()
+
     async def download(
         self,
         search_id: str,

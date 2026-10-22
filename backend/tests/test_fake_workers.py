@@ -534,3 +534,17 @@ class TestKjboxQuickVersion:
         jm, storage = self._run_audio({"client_id": "web"})
         jm.update_file_url.assert_not_called()
         assert not [c for c in jm.update_state_data.call_args_list if c.args[1] == "quick_version"]
+
+
+class TestFakeAlbumSearch:
+    def test_covers_every_track_in_confidence_shape(self):
+        from backend.services.fake_workers.search import build_album_response
+        from backend.services.bulk_album_search import choose_batch_torrent
+
+        tracks = [{"key": "j1", "title": "Song A", "position": 1}, {"key": "j2", "title": "Song B", "position": 2}]
+        perfect = build_album_response("Fake Artist", "Fake Album", tracks, "perfect")
+        torrent = perfect["results"][0]
+        assert torrent["track_files"]["j2"]["target_file"] == "02 - Song B.flac"
+        assert choose_batch_torrent(perfect["results"]) is torrent
+        recommended = build_album_response("Fake Artist", "Fake Album", tracks, "recommended")
+        assert choose_batch_torrent(recommended["results"]) is None

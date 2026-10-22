@@ -242,6 +242,56 @@ class TestFlacfetchClientSearch:
         assert result["search_id"] is None
 
 
+class TestFlacfetchClientSearchAlbum:
+    """search_album(): one album search for an album-mode bulk batch."""
+
+    def _mock_http(self, mock_client_class, response):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client_class.return_value = mock_client
+        return mock_client
+
+    @pytest.mark.asyncio
+    async def test_posts_album_and_tracks(self):
+        client = FlacfetchClient(base_url="http://localhost:8080", api_key="test-key")
+        resp = Mock(status_code=200)
+        resp.json.return_value = {"results": [{"source_id": "1", "track_files": {}}], "results_count": 1}
+        resp.raise_for_status = Mock()
+        tracks = [{"key": "j1", "title": "Waterloo", "position": 1}]
+        with patch("httpx.AsyncClient") as cls:
+            http = self._mock_http(cls, resp)
+            result = await client.search_album("ABBA", "Waterloo", tracks)
+        assert result["results"][0]["source_id"] == "1"
+        assert http.post.call_args.args[0] == "http://localhost:8080/search/album"
+        assert http.post.call_args.kwargs["json"] == {"artist": "ABBA", "album": "Waterloo", "tracks": tracks}
+
+    @pytest.mark.asyncio
+    async def test_404_is_empty_results(self):
+        """No torrent, or an older flacfetch without the endpoint: caller falls back."""
+        client = FlacfetchClient(base_url="http://localhost:8080", api_key="test-key")
+        with patch("httpx.AsyncClient") as cls:
+            self._mock_http(cls, Mock(status_code=404))
+            result = await client.search_album("ABBA", "Waterloo", [{"key": "j1", "title": "Waterloo"}])
+        assert result["results"] == []
+
+    @pytest.mark.asyncio
+    async def test_server_error_raises_service_error(self):
+        import httpx
+        client = FlacfetchClient(base_url="http://localhost:8080", api_key="test-key")
+        resp = Mock(status_code=502, text="all trackers failed")
+        resp.raise_for_status = Mock(side_effect=httpx.HTTPStatusError(
+            "bad gateway", request=Mock(), response=resp))
+        with patch("httpx.AsyncClient") as cls, \
+             patch("backend.services.flacfetch_client.get_settings") as gs:
+            gs.return_value = Mock(flacfetch_search_total_timeout=5.0, flacfetch_search_retry_max_attempts=1,
+                                   flacfetch_search_retry_wait=0)
+            self._mock_http(cls, resp)
+            with pytest.raises(FlacfetchServiceError):
+                await client.search_album("ABBA", "Waterloo", [{"key": "j1", "title": "Waterloo"}])
+
+
 class TestFlacfetchClientDownload:
     """Test download() method."""
     

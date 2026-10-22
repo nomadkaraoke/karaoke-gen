@@ -541,6 +541,21 @@ and `docs/archive/2026-07-20-edge-security-*.md`.
   test asserts the two values match. The bar also applies to unattended KaraokeHunt
   conversions (`karaokehunt_conversion.py` calls `pick_auto_selection`), where the
   title/filename check is the guard against wrong picks.
+- **Album batches search the album once (Oct 2026).** Searching each track separately made 12
+  searches for a 12-track album. flacfetch runs searches on ONE worker
+  (`flacfetch/api/routes/search.py` `_search_executor`), so 4 concurrent requests just queued
+  there and the queued ones ran out their 95s budget (4/12 failed). A title-only file search
+  also missed the album for a common title ("Time"). Now `bulk_search_worker` sends one
+  flacfetch `/search/album` per album (`backend/services/bulk_album_search.py`) and runs any
+  per-track fallback with `SEARCH_CONCURRENCY = 1`. Don't raise that without raising
+  flacfetch's executor.
+- **Auto-pick checks the artist on the backend too** (`is_artist_match`, port of the frontend
+  `isArtistMatch`, but Unicode-aware so CJK/Cyrillic names and "&"/"and" compare), so a
+  10+-seeder cover or tribute torrent isn't auto-picked. Side effect: "Various Artists"
+  compilation results no longer auto-pick on the per-track and KaraokeHunt paths; they park.
+- **Bulk batches have a search deadline** (`BATCH_SEARCH_DEADLINE_SECONDS`, 3000s): with one
+  search at a time a 100-song text batch could outlast the 3600s Cloud Run Job, so jobs
+  still waiting at the deadline are parked for a manual pick instead of stranded.
 - **Album cover thumbnails** in the By-album picker load straight from the Cover Art
   Archive in the browser (`coverartarchive.org/release-group/{mbid}/front-250`), with the
   disc icon as fallback when there's no cover. This isn't the live MusicBrainz API, and no

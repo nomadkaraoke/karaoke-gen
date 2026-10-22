@@ -258,6 +258,17 @@ class BulkSong(BaseModel):
     title: str = Field(..., min_length=1)
     display_artist: Optional[str] = None
     display_title: Optional[str] = None
+    # Album mode: the track's number on its disc (album-search tie-break).
+    position: Optional[int] = None
+
+
+class BulkAlbumRef(BaseModel):
+    """The album an album-mode batch was picked from. Lets the search worker find
+    the album's torrent once instead of searching every track separately."""
+    artist: str = Field(..., min_length=1)
+    title: str = Field(..., min_length=1)
+    release_group_mbid: Optional[str] = None
+    release_mbid: Optional[str] = None
 
 
 class BulkSettings(BaseModel):
@@ -274,6 +285,7 @@ class BulkSettings(BaseModel):
 class BulkSubmitRequest(BaseModel):
     songs: list[BulkSong]
     settings: BulkSettings = Field(default_factory=BulkSettings)
+    album: Optional[BulkAlbumRef] = None
 
 
 class BulkSubmitResponse(BaseModel):
@@ -337,6 +349,7 @@ async def bulk_submit(
 
         batch_id = uuid.uuid4().hex[:12]
         bulk_settings = body.settings.model_dump()
+        bulk_album = body.album.model_dump() if body.album else None
         job_manager = JobManager()
         job_ids: list[str] = []
 
@@ -379,14 +392,15 @@ async def bulk_submit(
                 logger.warning("[batch:%s] ran out of credits after %d/%d jobs", batch_id, len(job_ids), n)
                 break
 
-            job_manager.update_job(
-                job.job_id,
-                {
-                    "state_data.batch_id": batch_id,
-                    "state_data.bulk_settings": bulk_settings,
-                    "state_data.bulk_pending_search": True,
-                },
-            )
+            bulk_state = {
+                "state_data.batch_id": batch_id,
+                "state_data.bulk_settings": bulk_settings,
+                "state_data.bulk_pending_search": True,
+            }
+            if bulk_album is not None:
+                bulk_state["state_data.bulk_album"] = bulk_album
+                bulk_state["state_data.bulk_track_position"] = song.position
+            job_manager.update_job(job.job_id, bulk_state)
             job_ids.append(job.job_id)
         return batch_id, job_ids
 

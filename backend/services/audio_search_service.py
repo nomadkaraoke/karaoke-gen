@@ -19,6 +19,7 @@ import asyncio
 import logging
 import os
 import re
+import unicodedata
 from typing import Any, Dict, List, Optional
 
 import nest_asyncio
@@ -175,13 +176,62 @@ def _check_filename_mismatch(search_title: str, result: Dict[str, Any]) -> bool:
     return not matches
 
 
-def pick_auto_selection(results: List[Dict[str, Any]], search_title: str = "") -> Optional[int]:
+def _edit_distance(a: str, b: str) -> int:
+    prev = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        cur = [i]
+        for j in range(1, len(b) + 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1])))
+        prev = cur
+    return prev[len(b)]
+
+
+def _norm_artist(x: str) -> str:
+    """Lowercase, accents folded, "&"/"+" as "and", punctuation dropped, a leading
+    "the" removed. Unicode-aware: CJK/Cyrillic names survive (unlike [a-z0-9])."""
+    x = unicodedata.normalize("NFKD", (x or "").casefold())
+    x = "".join(ch for ch in x if not unicodedata.combining(ch))
+    x = re.sub(r"\s*[&+]\s*", " and ", x)
+    x = re.sub(r"[^\w\s]|_", " ", x)
+    x = re.sub(r"\s+", " ", x).strip()
+    return re.sub(r"^the\s+", "", x)
+
+
+def is_artist_match(search_artist: str, result: Dict[str, Any]) -> bool:
+    """Port of isArtistMatch() — the result's artist is the one searched for.
+
+    "The Killers" vs "Killers", "X, Someone" vs "X" and "Simon & Garfunkel" vs
+    "Simon and Garfunkel" match; small typos are tolerated for names of 5+
+    characters. A searched name that normalizes to nothing can't be compared, so
+    it isn't held against the result (mirrors _check_filename_mismatch).
+    """
+    raw_have = result.get("artist") or ""
+    if search_artist and search_artist.strip().casefold() == raw_have.strip().casefold():
+        return True
+    want = _norm_artist(search_artist)
+    have = _norm_artist(raw_have)
+    if not want:
+        return True
+    if len(want) < 2 or not have:
+        return False
+    if have == want or f" {want} " in f" {have} " or f" {have} " in f" {want} ":
+        return True
+    if len(want) < 5:
+        return False
+    return _edit_distance(want, have) <= len(want) // 5
+
+
+def pick_auto_selection(
+    results: List[Dict[str, Any]], search_title: str = "", search_artist: str = ""
+) -> Optional[int]:
     """Return the index to auto-select, or None if no confident lossless pick.
 
     Tier-1 rule (mirrors getSearchConfidence): the best result must be in the
-    BEST CHOICE category (lossless, BEST_CHOICE_MIN_SEEDERS+ seeders, non-vinyl) AND its filename
-    must match ``search_title`` (the song the user searched for). Otherwise we
-    defer to human selection.
+    BEST CHOICE category (lossless, BEST_CHOICE_MIN_SEEDERS+ seeders, non-vinyl),
+    its filename must match ``search_title`` (the song the user searched for),
+    and, when ``search_artist`` is given, its artist must match too (a
+    well-seeded cover or tribute isn't a perfect match). Otherwise we defer to
+    human selection.
     """
     if not results:
         return None
@@ -192,11 +242,20 @@ def pick_auto_selection(results: List[Dict[str, Any]], search_title: str = "") -
     best = _get_best_result(results)
     if best is None:
         return None
-    if _categorize_result(best) != "BEST CHOICE":
-        return None
-    if _check_filename_mismatch(search_title, best):
+    if not _is_confident_pick(best, search_title, search_artist):
         return None
     return best.get("index")
+
+
+def _is_confident_pick(result: Dict[str, Any], search_title: str, search_artist: str = "") -> bool:
+    """BEST CHOICE category, filename names the track, and (if given) the right artist."""
+    if _categorize_result(result) != "BEST CHOICE":
+        return False
+    if _check_filename_mismatch(search_title, result):
+        return False
+    if search_artist and not is_artist_match(search_artist, result):
+        return False
+    return True
 
 
 class AudioSearchService:

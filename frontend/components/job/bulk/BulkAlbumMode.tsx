@@ -214,6 +214,9 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
   // Release group of the loaded album; edition switches pass it so the backend's
   // mirror lookup stays pruned to this album.
   const [albumMbid, setAlbumMbid] = useState("")
+  // Release-group title of the loaded album: what trackers name the album (the
+  // tracklist's title comes from a locale-picked pressing and may be translated).
+  const [albumTitle, setAlbumTitle] = useState("")
   // Distinct tracklist variants for the loaded album. Held separately from
   // `tracklist` because switching to a specific edition returns no variant list.
   const [variants, setVariants] = useState<BulkEditionVariant[]>([])
@@ -254,7 +257,13 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
     }
   }
 
-  function buildRows(tl: BulkTracklist): BulkSongRow[] {
+  function buildRows(tl: BulkTracklist, releaseGroupMbid: string, releaseGroupTitle: string): BulkSongRow[] {
+    const album = {
+      artist: artist?.name || "",
+      title: releaseGroupTitle || tl.title || "",
+      release_group_mbid: releaseGroupMbid || null,
+      release_mbid: tl.selected_variant_mbid || tl.release_mbid || tl.canonical_release_mbid || null,
+    }
     return tl.tracks.map((tr) =>
       newRow({
         artist: artist?.name || "",
@@ -267,6 +276,7 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
         is_extra: tr.is_extra,
         length_ms: tr.length_ms,
         position: tr.position,
+        album: album.title ? album : undefined,
       })
     )
   }
@@ -275,6 +285,7 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
     if (!artist?.name) return
     const id = ++requestId.current
     setLoading("tracks"); setError(""); resetVariants(); setAlbumMbid(album.release_group_mbid)
+    setAlbumTitle(album.title)
     try {
       const tl = await api.getAlbumTracklist({
         artist: artist.name, releaseGroupMbid: album.release_group_mbid, locale,
@@ -282,7 +293,7 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
       if (id !== requestId.current) return
       setTracklist(tl)
       setVariants(tl.variants || [])
-      onChange(buildRows(tl))
+      onChange(buildRows(tl, album.release_group_mbid, album.title))
     } catch {
       if (id === requestId.current) setError(t("lookupFailed"))
     } finally {
@@ -301,7 +312,7 @@ export function BulkAlbumMode({ rows, onChange, disabled }: BulkAlbumModeProps) 
       })
       if (id !== requestId.current) return
       setTracklist(tl)
-      onChange(buildRows(tl))
+      onChange(buildRows(tl, albumMbid, albumTitle))
     } catch {
       if (id === requestId.current) setError(t("lookupFailed"))
     } finally {

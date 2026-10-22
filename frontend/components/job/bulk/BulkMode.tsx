@@ -60,14 +60,19 @@ export function BulkMode({ onJobsChanged, onBuyCredits }: BulkModeProps) {
     setIsSubmitting(true)
     setError("")
     try {
+      // Album mode: rows share the album they were picked from, so the backend
+      // can find the album's torrent once instead of searching every track.
+      const album = subMode === "album" ? selectedRows.find((r) => r.album)?.album : undefined
       const resp = await api.bulkSubmit({
         songs: selectedRows.map((r) => ({
           artist: r.artist.trim(),
           title: r.title.trim(),
           display_artist: r.display_artist?.trim() || undefined,
           display_title: r.display_title?.trim() || undefined,
+          position: album ? r.position ?? null : undefined,
         })),
         settings,
+        album,
       })
       setBatchId(resp.batch_id)
       if (typeof window !== "undefined") {

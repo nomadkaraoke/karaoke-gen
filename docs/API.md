@@ -3141,9 +3141,10 @@ means the BigQuery lookup failed.
 
 ### Submit
 
-- `POST /api/bulk/submit` body `{songs:[{artist,title,display_artist?,display_title?}],settings:{auto_select_if_lossless,is_private,skip_audio_edit,skip_customization}}` → `{batch_id,job_ids,total}`.
+- `POST /api/bulk/submit` body `{songs:[{artist,title,display_artist?,display_title?,position?}],settings:{auto_select_if_lossless,is_private,skip_audio_edit,skip_customization},album?:{artist,title,release_group_mbid?,release_mbid?}}` → `{batch_id,job_ids,total}`. Album mode sends `album` + each track's `position`.
   - Credit gate: requires `credits >= len(songs)` (1/song minimum) before any job is created; admins bypass. Returns `402` with `{credits_available,credits_required}` if short (no jobs created). `422` for 0 or >100 songs.
-  - Creates one parked job per song (`auto_download=False`), stamps `state_data.batch_id` + `bulk_settings`, and dispatches the `bulk-search-job` Cloud Run Job which runs each search and either auto-selects a confident lossless match or parks the job in `AWAITING_AUDIO_SELECTION`.
+  - Creates one parked job per song (`auto_download=False`), stamps `state_data.batch_id` + `bulk_settings` (plus `bulk_album` + `bulk_track_position` for an album batch), and dispatches the `bulk-search-job` Cloud Run Job which runs the searches and either auto-selects a confident lossless match or parks the job in `AWAITING_AUDIO_SELECTION`.
+  - Album batches make **one** flacfetch `POST /search/album` call: each track's file is resolved inside the album's torrents, the whole album is taken from one torrent (the first BEST CHOICE torrent, i.e. lossless, non-vinyl, ≥10 seeders), and each track is auto-selected when that torrent's file names it and the artist matches. Tracks no torrent covers, text batches, and album batches whose album search fails fall back to per-track search, **one search at a time** (flacfetch serializes searches on one worker; parallel requests only time out in its queue).
 
 ### Progress
 

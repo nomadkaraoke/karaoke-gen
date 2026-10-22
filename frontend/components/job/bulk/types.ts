@@ -1,4 +1,4 @@
-import type { CommunityVersion } from "@/lib/api"
+import type { BulkAlbumRef, CommunityVersion } from "@/lib/api"
 
 export interface BulkSongRow {
   key: string
@@ -13,6 +13,8 @@ export interface BulkSongRow {
   is_extra?: boolean
   length_ms?: number | null
   position?: number | null
+  /** Album mode: the album the track was picked from (one album search per batch). */
+  album?: BulkAlbumRef
 }
 
 /**
