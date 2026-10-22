@@ -5,3 +5,5 @@ config:
   nomad-cloudflare:googleOauthClientSecret:
     secure: AAABAF/ZOcl4fY4R+829/6axVvqqq5QeZou0BtO5BkszNcDUwMc1CEnkVlDMdUX9O3SXI2EfWGcdhx9S50uMHbxnZw==
   nomad-cloudflare:googleOauthClientId: 718638054799-lqgmpmaauc23mc7mu822pspvq0s1tla3.apps.googleusercontent.com
+  nomad-cloudflare:kjboxcc_android_sha256_fingerprints:
+    - FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C
