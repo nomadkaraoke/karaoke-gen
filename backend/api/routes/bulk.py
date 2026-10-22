@@ -23,6 +23,9 @@ from backend.services.auth_service import AuthResult
 
 logger = logging.getLogger(__name__)
 
+# Strong refs to shielded tasks so they aren't garbage-collected if the request is cancelled.
+_BACKGROUND_TASKS: set = set()
+
 router = APIRouter(prefix="/bulk", tags=["bulk"])
 
 MAX_BULK_SONGS = 100
@@ -387,19 +390,30 @@ async def bulk_submit(
             job_ids.append(job.job_id)
         return batch_id, job_ids
 
-    batch_id, job_ids = await asyncio.to_thread(_create_batch_jobs)
-
-    if not job_ids:
-        raise HTTPException(status_code=402, detail="No jobs could be created")
-
     # Dispatch the batch search worker. Retry once on transient failure. If it
     # still fails the jobs exist (and are charged) but won't process, so surface
     # an explicit error with the batch_id — and tell the user NOT to resubmit
     # (that would create+charge a second batch); the batch can be re-dispatched.
     worker_service = get_worker_service()
-    triggered = await worker_service.trigger_bulk_search_worker(batch_id)
-    if not triggered:
+
+    async def _create_and_dispatch() -> tuple[str, list[str], bool]:
+        batch_id, job_ids = await asyncio.to_thread(_create_batch_jobs)
+        if not job_ids:
+            return batch_id, job_ids, False
         triggered = await worker_service.trigger_bulk_search_worker(batch_id)
+        if not triggered:
+            triggered = await worker_service.trigger_bulk_search_worker(batch_id)
+        return batch_id, job_ids, triggered
+
+    # Shielded: if the request is cancelled (client disconnect) mid-way, the jobs
+    # being created and charged in the thread still get dispatched.
+    task = asyncio.create_task(_create_and_dispatch())
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
+    batch_id, job_ids, triggered = await asyncio.shield(task)
+
+    if not job_ids:
+        raise HTTPException(status_code=402, detail="No jobs could be created")
     if not triggered:
         logger.critical(
             "[batch:%s] created %d jobs but FAILED to dispatch bulk-search worker",

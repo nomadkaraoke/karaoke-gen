@@ -1305,6 +1305,16 @@ async def _handle_made_for_you_order(
 
         logger.info(f"Created made-for-you job {job_id} for {_mask_email(customer_email)} (owned by {_mask_email(ADMIN_EMAIL)})")
 
+        # Mark the session processed straight after creating the job, before any await:
+        # if this task is cancelled at an await below, Stripe's retry must find the
+        # session already handled rather than create a second job for the same order.
+        # Note: Using internal method since this isn't a credit transaction
+        user_service._mark_stripe_session_processed(
+            stripe_session_id=session_id,
+            email=customer_email,
+            amount=0  # No credits, just tracking the session
+        )
+
         # Prepare theme style assets for the job (same as audio_search endpoint)
         if effective_theme_id:
             try:
@@ -1322,14 +1332,6 @@ async def _handle_made_for_you_order(
                 logger.info(f"Applied theme '{effective_theme_id}' to made-for-you job {job_id}")
             except Exception as e:
                 logger.warning(f"Failed to prepare theme for made-for-you job {job_id}: {e}")
-
-        # Mark session as processed for idempotency
-        # Note: Using internal method since this isn't a credit transaction
-        user_service._mark_stripe_session_processed(
-            stripe_session_id=session_id,
-            email=customer_email,
-            amount=0  # No credits, just tracking the session
-        )
 
         # Initialize search_results for later use in email notification
         search_results = None
