@@ -377,7 +377,7 @@ def create_voice_pool_separate_job(
                 ),
                 gpu_zonal_redundancy_disabled=True,  # Required for GPU Jobs (capacity limitation)
                 service_account=service_account.email,
-                timeout="21600s",  # 6 hours per task (25-100 songs at ~1-3 min each)
+                timeout="3600s",  # Cloud Run caps GPU task timeouts at 1h; size shards (task count) so each finishes in <1h
                 max_retries=0,  # decide re-runs; finished songs are skipped via existing stems
             ),
         ),
