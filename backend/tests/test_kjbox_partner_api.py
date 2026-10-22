@@ -776,21 +776,37 @@ class TestCatalogResolve:
         assert self._post(client, "   ").status_code == 422
 
 
-def test_kjbox_routes_accept_local_secret(monkeypatch):
-    """scripts/local-stack.sh exports KJBOX_PARTNER_SECRET=local-stack-secret; the
-    partner gate must accept exactly that value (kjbox's local stack sends it)."""
+def _local_stack_env(monkeypatch, **overrides):
+    import os
     import subprocess
     from pathlib import Path
-    from fastapi import HTTPException
 
     script = Path(__file__).resolve().parents[2] / "scripts" / "local-stack.sh"
-    env_lines = subprocess.run([str(script), "env"], capture_output=True, text=True, check=True).stdout
-    env = dict(line.split("=", 1) for line in env_lines.splitlines() if "=" in line)
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("KJBOX_PARTNER_SECRET", "DECIDE_GEN_PARTNER_SECRET")}
+    env.update(overrides)
+    out = subprocess.run([str(script), "env"], capture_output=True, text=True, check=True, env=env).stdout
+    return dict(line.split("=", 1) for line in out.splitlines() if "=" in line)
+
+
+def test_kjbox_routes_accept_local_secret(monkeypatch):
+    """With nothing set externally, local-stack.sh defaults KJBOX_PARTNER_SECRET to
+    local-stack-secret and the partner gate accepts exactly that value."""
+    from fastapi import HTTPException
+
+    env = _local_stack_env(monkeypatch)
     local_secret = env["KJBOX_PARTNER_SECRET"]
     assert local_secret == "local-stack-secret"
+    assert env["DECIDE_GEN_PARTNER_SECRET"] == "local-stack-secret"
 
     monkeypatch.setattr(kjbox, "get_settings", lambda: SimpleNamespace(kjbox_partner_secret=local_secret))
     assert kjbox.require_kjbox_partner(local_secret) == local_secret
     with pytest.raises(HTTPException) as exc:
         kjbox.require_kjbox_partner("wrong")
     assert exc.value.status_code == 403
+
+
+def test_local_stack_honours_external_partner_secrets(monkeypatch):
+    env = _local_stack_env(monkeypatch, KJBOX_PARTNER_SECRET="ext-kjbox", DECIDE_GEN_PARTNER_SECRET="ext-decide")
+    assert env["KJBOX_PARTNER_SECRET"] == "ext-kjbox"
+    assert env["DECIDE_GEN_PARTNER_SECRET"] == "ext-decide"
