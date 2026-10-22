@@ -156,13 +156,20 @@ def _rows_response(fields, rows):
 
 
 class TestNormalizeAndDecode:
-    def test_normalize_matches_decide_norm(self):
-        from backend.services.musicbrainz_service import normalize_name
-        assert normalize_name("AC/DC") == "ac dc"
-        assert normalize_name("  Britney   Spears ") == "britney spears"
-        # Not accent-folded, like mb_artists.name_normalized.
-        assert normalize_name("Beyoncé") == "beyonc"
-        assert normalize_name("!!!") == ""
+    def test_search_key_folds_accents_and_keeps_other_scripts(self):
+        from backend.services.musicbrainz_service import search_key
+        assert search_key("Maxïmo Park") == search_key("maximo park") == "maximo park"
+        assert search_key("Beyoncé") == "beyonce"
+        assert search_key("Motörhead") == "motorhead"
+        assert search_key("Røyksopp") == "royksopp"
+        assert search_key("Ægis Straße") == "aegis strasse"
+        assert search_key("AC/DC") == "ac dc"
+        assert search_key("  Britney   Spears ") == "britney spears"
+        # Non-Latin names keep their letters (decide's norm() blanks them).
+        # (й loses its breve like any other combining mark; both sides fold the same.)
+        assert search_key("Мумий Тролль") == search_key("мумии тролль") == "мумии тролль"
+        assert search_key("宇多田ヒカル") == "宇多田ヒカル"
+        assert search_key("!!!") == ""
 
     def test_decode_rows_types(self):
         from backend.services.musicbrainz_service import _decode_rows
@@ -190,19 +197,29 @@ class TestServiceCalls:
         monkeypatch.setattr(svc, "_query", fake_query)
         return svc, calls
 
-    async def test_search_artists_normalizes_and_ranks(self, monkeypatch):
+    async def test_search_artists_matches_folded_names_and_aliases(self, monkeypatch):
         svc, calls = self._svc_with(monkeypatch, lambda sql, p: [
             {"artist_mbid": "abc", "artist_name": "AC/DC", "disambiguation": None,
-             "artist_type": "Group", "area_name": "Australia", "match_rank": 0},
+             "artist_type": "Group", "area_name": "Australia", "match_rank": 0, "alias": None},
             {"artist_mbid": "def", "artist_name": "AC/DC Jam", "disambiguation": "",
-             "artist_type": None, "area_name": None, "match_rank": 1},
+             "artist_type": None, "area_name": None, "match_rank": 1, "alias": "ACDC Jam"},
         ])
-        out = await svc.search_artists("AC/DC")
-        assert calls[0][1] == {"q": "ac dc"}
-        assert "mb_artists_normalized" in calls[0][0]
+        out = await svc.search_artists("  AC/DC ")
+        sql, params = calls[0]
+        # Raw query goes to BigQuery; search_key() folds both sides there.
+        assert params == {"q": "AC/DC"}
+        assert "CREATE TEMP FUNCTION search_key" in sql
+        assert "search_key(artist_name)" in sql and "search_key(@q)" in sql
+        assert "mb_artists_normalized" in sql and "artist_alias" in sql
         assert out[0] == {"mbid": "abc", "name": "AC/DC", "disambiguation": "", "type": "Group",
-                          "country": "Australia", "score": 100}
+                          "country": "Australia", "alias": None, "score": 100}
         assert out[1]["score"] == 90
+        assert out[1]["alias"] == "ACDC Jam"
+
+    async def test_search_artists_non_latin_query_hits_bigquery(self, monkeypatch):
+        svc, calls = self._svc_with(monkeypatch, lambda sql, p: [])
+        assert await svc.search_artists("宇多田") == []
+        assert calls[0][1] == {"q": "宇多田"}
 
     async def test_search_artists_blank_query_skips_bigquery(self, monkeypatch):
         svc, calls = self._svc_with(monkeypatch, lambda sql, p: [])

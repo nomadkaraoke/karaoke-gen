@@ -40,6 +40,8 @@ class BulkArtist(BaseModel):
     disambiguation: str = ""
     type: Optional[str] = None
     country: Optional[str] = None
+    # Set when only a MusicBrainz alias matched the query (e.g. "Hikaru Utada").
+    alias: Optional[str] = None
 
 
 class BulkAlbum(BaseModel):

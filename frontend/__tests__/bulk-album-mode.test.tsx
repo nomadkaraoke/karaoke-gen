@@ -207,3 +207,60 @@ describe('BulkAlbumMode cover art', () => {
     )
   })
 })
+
+describe('BulkAlbumMode artist search results', () => {
+  async function search(q: string) {
+    fireEvent.change(screen.getByPlaceholderText('Search for an artist…'), { target: { value: q } })
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }))
+  }
+
+  it('shows a no-results message (not a blank list) when nothing matches', async () => {
+    mockApi.searchAlbumArtists.mockResolvedValue([] as any)
+    render(<Harness />)
+    await search('Zzyzx Nobody')
+    const empty = await screen.findByTestId('bulk-artist-no-results')
+    expect(empty).toHaveTextContent('No artists match “Zzyzx Nobody”.')
+    // No switch button without a handler.
+    expect(screen.queryByRole('button', { name: 'Add songs by name' })).toBeNull()
+  })
+
+  it('hides the no-results message while a new search is loading and when results arrive', async () => {
+    mockApi.searchAlbumArtists.mockResolvedValueOnce([] as any)
+    render(<Harness />)
+    await search('Nobody')
+    await screen.findByTestId('bulk-artist-no-results')
+    let resolve: (v: any) => void = () => {}
+    mockApi.searchAlbumArtists.mockReturnValueOnce(new Promise((r) => { resolve = r }) as any)
+    await search('Britney')
+    expect(screen.queryByTestId('bulk-artist-no-results')).toBeNull()
+    await act(async () => resolve([ARTIST]))
+    expect(await screen.findByRole('button', { name: /Britney Spears/ })).toBeInTheDocument()
+    expect(screen.queryByTestId('bulk-artist-no-results')).toBeNull()
+  })
+
+  it('does not show the no-results message when the lookup fails', async () => {
+    mockApi.searchAlbumArtists.mockRejectedValue(new Error('502'))
+    render(<Harness />)
+    await search('Britney')
+    expect(await screen.findByText('Lookup failed. Please try again.')).toBeInTheDocument()
+    expect(screen.queryByTestId('bulk-artist-no-results')).toBeNull()
+  })
+
+  it('explains alias matches in the row subtitle', async () => {
+    mockApi.searchAlbumArtists.mockResolvedValue([
+      { mbid: 'a-2', name: '宇多田ヒカル', disambiguation: 'Japanese-American singer-songwriter', alias: 'Hikaru Utada' },
+    ] as any)
+    render(<Harness />)
+    await search('hikaru utada')
+    expect(await screen.findByText('Also known as Hikaru Utada · Japanese-American singer-songwriter')).toBeInTheDocument()
+  })
+
+  it('in BulkMode, the no-results state offers a switch to By text', async () => {
+    mockApi.searchAlbumArtists.mockResolvedValue([] as any)
+    localStorage.clear() // an earlier submit test remembers its batch, which opens batch progress
+    render(<BulkMode />)
+    await search('Zzyzx Nobody')
+    fireEvent.click(await screen.findByRole('button', { name: 'Add songs by name' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: /By text/ })).toHaveAttribute('data-state', 'active'))
+  })
+})

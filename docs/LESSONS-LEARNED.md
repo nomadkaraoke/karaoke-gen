@@ -553,6 +553,13 @@ and `docs/archive/2026-07-20-edge-security-*.md`.
   `isArtistMatch`, but Unicode-aware so CJK/Cyrillic names and "&"/"and" compare), so a
   10+-seeder cover or tribute torrent isn't auto-picked. Side effect: "Various Artists"
   compilation results no longer auto-pick on the per-track and KaraokeHunt paths; they park.
+- **Artist search must fold accents on BOTH sides (Oct 2026).** decide's `name_normalized`
+  maps every char outside `[a-z0-9 ]` to a space, so "Maxïmo Park" is stored as `max mo park`
+  and "maximo park" never matched; ~179k artists (Cyrillic, CJK, …) normalize to `""` and
+  were unfindable. `search_artists` now applies `SEARCH_KEY_SQL` (NFKD, drop marks, fold
+  ø/ß/æ…, keep letters of any script) to the name, every `musicbrainz.artist_alias`, and the
+  query, in BigQuery. Don't search `name_normalized` for user-typed names. decide's
+  `/api/catalog/artists` has the same flaw ("bjork" doesn't find Björk).
 - **Bulk batches have a search deadline** (`BATCH_SEARCH_DEADLINE_SECONDS`, 3000s): with one
   search at a time a 100-song text batch could outlast the 3600s Cloud Run Job, so jobs
   still waiting at the deadline are parked for a manual pick instead of stranded.

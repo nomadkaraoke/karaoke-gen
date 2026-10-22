@@ -771,6 +771,8 @@ export interface BulkArtist {
   disambiguation: string;
   type?: string | null;
   country?: string | null;
+  /** Set when only a MusicBrainz alias matched the query (e.g. "Hikaru Utada"). */
+  alias?: string | null;
 }
 
 export interface BulkAlbum {
