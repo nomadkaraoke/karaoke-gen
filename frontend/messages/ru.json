@@ -1848,7 +1848,11 @@
     "stepsLabel": "Этапы создания",
     "tracksSelected": "Выбрано треков: {selected} из {total}",
     "searchArtists": "Поиск",
-    "stepArtist": "Исполнитель"
+    "stepArtist": "Исполнитель",
+    "artistAlsoKnownAs": "Также известен как {alias}",
+    "noArtistsFound": "По запросу «{query}» исполнители не найдены.",
+    "noArtistsFoundHint": "Проверь написание или попробуй ввести меньше слов; диакритические знаки и другие алфавиты тоже подойдут. Если исполнителя ещё нет в MusicBrainz, добавь песни вручную по названию.",
+    "noArtistsUseText": "Добавить песни по названию"
   },
   "backendStatus": {
     "reconnecting": "Переподключение…",

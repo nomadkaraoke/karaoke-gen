@@ -1848,7 +1848,11 @@
     "stepsLabel": "アルバム作成手順",
     "tracksSelected": "{total}曲中{selected}曲を選択中",
     "searchArtists": "検索",
-    "stepArtist": "アーティスト"
+    "stepArtist": "アーティスト",
+    "artistAlsoKnownAs": "別名: {alias}",
+    "noArtistsFound": "「{query}」に一致するアーティストは見つかりませんでした。",
+    "noArtistsFoundHint": "スペルを確認するか、単語数を減らしてお試しください（アクセント記号や外国語アルファベットの有無はどちらでも検索できます）。アーティストがまだMusicBrainzに登録されていない場合は、代わりに曲名で追加してください。",
+    "noArtistsUseText": "曲名で追加"
   },
   "backendStatus": {
     "reconnecting": "再接続中…",

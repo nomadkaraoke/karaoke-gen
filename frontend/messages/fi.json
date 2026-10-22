@@ -1848,7 +1848,11 @@
     "stepsLabel": "Albumin vaiheet",
     "tracksSelected": "{selected} / {total} kappaletta valittu",
     "searchArtists": "Hae",
-    "stepArtist": "Artisti"
+    "stepArtist": "Artisti",
+    "artistAlsoKnownAs": "Tunnetaan myös nimellä {alias}",
+    "noArtistsFound": "Hakua ”{query}” vastaavia artisteja ei löytynyt.",
+    "noArtistsFoundHint": "Tarkista kirjoitusasu tai kokeile käyttää vähemmän sanoja. Tarkkeet ja eri aakkostot toimivat kyllä. Jos artistia ei vielä löydy MusicBrainzistä, lisää kappaleet sen sijaan nimellä.",
+    "noArtistsUseText": "Lisää kappaleet nimellä"
   },
   "backendStatus": {
     "reconnecting": "Yhdistetään uudelleen…",

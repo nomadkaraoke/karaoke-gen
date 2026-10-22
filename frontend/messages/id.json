@@ -1848,7 +1848,11 @@
     "stepsLabel": "Tahapan album",
     "tracksSelected": "{selected} dari {total} lagu dipilih",
     "searchArtists": "Cari",
-    "stepArtist": "Artis"
+    "stepArtist": "Artis",
+    "artistAlsoKnownAs": "Juga dikenal sebagai {alias}",
+    "noArtistsFound": "Tidak ada artis yang cocok dengan “{query}”.",
+    "noArtistsFoundHint": "Periksa ejaan atau coba gunakan lebih sedikit kata; tanda aksen maupun alfabet lain tetap dapat digunakan. Jika artis belum terdaftar di MusicBrainz, tambahkan lagu berdasarkan judulnya saja.",
+    "noArtistsUseText": "Tambahkan lagu berdasarkan judul"
   },
   "backendStatus": {
     "reconnecting": "Menghubungkan kembali…",

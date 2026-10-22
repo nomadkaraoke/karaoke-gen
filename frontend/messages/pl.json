@@ -1848,7 +1848,11 @@
     "stepsLabel": "Kroki dla albumu",
     "tracksSelected": "Wybrano {selected} z {total} utworów",
     "searchArtists": "Szukaj",
-    "stepArtist": "Wykonawca"
+    "stepArtist": "Wykonawca",
+    "artistAlsoKnownAs": "Inaczej: {alias}",
+    "noArtistsFound": "Żaden wykonawca nie pasuje do „{query}”.",
+    "noArtistsFoundHint": "Sprawdź pisownię lub wpisz mniej słów. Znaki diakrytyczne i inne alfabety nie mają znaczenia. Jeśli wykonawcy nie ma jeszcze w MusicBrainz, dodaj utwory po tytule.",
+    "noArtistsUseText": "Dodaj utwory po tytule"
   },
   "backendStatus": {
     "reconnecting": "Ponowne łączenie…",

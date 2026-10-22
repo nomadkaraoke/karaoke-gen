@@ -1848,7 +1848,11 @@
     "stepsLabel": "Kroky pro album",
     "tracksSelected": "Vybráno skladeb: {selected} z {total}",
     "searchArtists": "Hledat",
-    "stepArtist": "Umělec"
+    "stepArtist": "Umělec",
+    "artistAlsoKnownAs": "Také známý/á jako {alias}",
+    "noArtistsFound": "Dotazu „{query}“ neodpovídá žádný interpret.",
+    "noArtistsFoundHint": "Zkontroluj pravopis nebo zkus méně slov; diakritika i jiné abecedy fungují bez problémů. Pokud interpret ještě není na MusicBrainz, přidej písně raději podle názvu.",
+    "noArtistsUseText": "Přidat písně podle názvu"
   },
   "backendStatus": {
     "reconnecting": "Obnovování připojení…",

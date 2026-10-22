@@ -1848,7 +1848,11 @@
     "stepsLabel": "Albumstappen",
     "tracksSelected": "{selected} van {total} nummers geselecteerd",
     "searchArtists": "Zoeken",
-    "stepArtist": "Artiest"
+    "stepArtist": "Artiest",
+    "artistAlsoKnownAs": "Ook bekend als {alias}",
+    "noArtistsFound": "Geen artiesten gevonden voor “{query}”.",
+    "noArtistsFoundHint": "Controleer de spelling of probeer minder woorden; accenten en andere alfabetten maken niet uit. Als de artiest nog niet in MusicBrainz staat, voeg de nummers dan toe op naam.",
+    "noArtistsUseText": "Nummers toevoegen op naam"
   },
   "backendStatus": {
     "reconnecting": "Opnieuw verbinden…",

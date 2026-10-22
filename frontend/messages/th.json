@@ -1848,7 +1848,11 @@
     "stepsLabel": "ขั้นตอนอัลบั้ม",
     "tracksSelected": "เลือกแล้ว {selected} จาก {total} แทร็ก",
     "searchArtists": "ค้นหา",
-    "stepArtist": "ศิลปิน"
+    "stepArtist": "ศิลปิน",
+    "artistAlsoKnownAs": "หรือเป็นที่รู้จักในชื่อ {alias}",
+    "noArtistsFound": "ไม่พบศิลปินที่ตรงกับ “{query}”",
+    "noArtistsFoundHint": "ลองตรวจสอบตัวสะกดหรือใช้คำค้นหาที่สั้นลง สามารถใส่เครื่องหมายวรรณยุกต์/กำกับเสียง หรือภาษาอื่น ๆ ได้ตามปกติ หากยังไม่มีศิลปินนี้ใน MusicBrainz ให้ลองเพิ่มเพลงโดยพิมพ์ชื่อเพลงแทนได้เลย",
+    "noArtistsUseText": "เพิ่มเพลงด้วยชื่อเพลง"
   },
   "backendStatus": {
     "reconnecting": "กำลังเชื่อมต่อใหม่…",

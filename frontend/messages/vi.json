@@ -1848,7 +1848,11 @@
     "stepsLabel": "Các bước chọn album",
     "tracksSelected": "Đã chọn {selected}/{total} bài hát",
     "searchArtists": "Tìm kiếm",
-    "stepArtist": "Nghệ sĩ"
+    "stepArtist": "Nghệ sĩ",
+    "artistAlsoKnownAs": "Còn được biết đến là {alias}",
+    "noArtistsFound": "Không tìm thấy nghệ sĩ nào khớp với “{query}”.",
+    "noArtistsFoundHint": "Kiểm tra lại chính tả hoặc thử bớt từ xem sao; bạn có dùng dấu hay bảng chữ cái khác đều được. Nếu nghệ sĩ chưa có trên MusicBrainz, bạn hãy thêm bài hát theo tên nhé.",
+    "noArtistsUseText": "Thêm bài hát theo tên"
   },
   "backendStatus": {
     "reconnecting": "Đang kết nối lại…",

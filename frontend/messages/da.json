@@ -1848,7 +1848,11 @@
     "stepsLabel": "Albumtrin",
     "tracksSelected": "{selected} af {total} numre valgt",
     "searchArtists": "Søg",
-    "stepArtist": "Kunstner"
+    "stepArtist": "Kunstner",
+    "artistAlsoKnownAs": "Også kendt som {alias}",
+    "noArtistsFound": "Ingen kunstnere matcher “{query}”.",
+    "noArtistsFoundHint": "Tjek stavningen, eller prøv med færre ord. Accenter og andre alfabeter fungerer fint uanset hvad. Hvis kunstneren ikke er på MusicBrainz endnu, kan du tilføje sangene ved hjælp af navn i stedet.",
+    "noArtistsUseText": "Tilføj sange ved navn"
   },
   "backendStatus": {
     "reconnecting": "Genopretter forbindelse…",

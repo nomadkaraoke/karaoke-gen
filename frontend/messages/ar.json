@@ -1848,7 +1848,11 @@
     "stepsLabel": "خطوات الألبوم",
     "tracksSelected": "تم تحديد {selected} من أصل {total} مسارًا",
     "searchArtists": "بحث",
-    "stepArtist": "فنان"
+    "stepArtist": "فنان",
+    "artistAlsoKnownAs": "معروف أيضاً باسم {alias}",
+    "noArtistsFound": "لم يتم العثور على أي فنان يطابق \"{query}\".",
+    "noArtistsFoundHint": "تحقق من صحة الكتابة أو جرب استخدام كلمات أقل؛ علامات التشكيل والحروف الأبجدية الأخرى مقبولة ولا تؤثر على البحث. إذا لم يكن الفنان مسجلاً في MusicBrainz بعد، يمكنك إضافة الأغاني بالاسم بدلاً من ذلك.",
+    "noArtistsUseText": "إضافة الأغاني بالاسم"
   },
   "backendStatus": {
     "reconnecting": "جارٍ إعادة الاتصال…",

@@ -1848,7 +1848,11 @@
     "stepsLabel": "שלבי האלבום",
     "tracksSelected": "{selected} מתוך {total} שירים נבחרו",
     "searchArtists": "חיפוש",
-    "stepArtist": "אומן"
+    "stepArtist": "אומן",
+    "artistAlsoKnownAs": "מוכר גם בשם {alias}",
+    "noArtistsFound": "לא נמצאו אמנים התואמים ל-\"{query}\".",
+    "noArtistsFoundHint": "כדאי לבדוק את האיות או לנסות לחפש פחות מילים; אפשר להשתמש בסימני הטעמה ובשפות שונות. אם האמן עדיין לא מופיע ב-MusicBrainz, אפשר להוסיף את השירים לפי שם במקום זאת.",
+    "noArtistsUseText": "הוספת שירים לפי שם"
   },
   "backendStatus": {
     "reconnecting": "מתחבר מחדש…",

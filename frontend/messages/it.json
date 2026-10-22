@@ -1848,7 +1848,11 @@
     "stepsLabel": "Passaggi dell'album",
     "tracksSelected": "{selected} su {total} tracce selezionate",
     "searchArtists": "Cerca",
-    "stepArtist": "Artista"
+    "stepArtist": "Artista",
+    "artistAlsoKnownAs": "Noto anche come {alias}",
+    "noArtistsFound": "Nessun artista corrisponde a “{query}”.",
+    "noArtistsFoundHint": "Controlla l'ortografia o prova con meno parole; accenti e altri alfabeti vanno bene in ogni caso. Se l'artista non è ancora su MusicBrainz, aggiungi le canzoni direttamente per titolo.",
+    "noArtistsUseText": "Aggiungi canzoni per titolo"
   },
   "backendStatus": {
     "reconnecting": "Riconnessione…",

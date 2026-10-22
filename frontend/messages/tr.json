@@ -1848,7 +1848,11 @@
     "stepsLabel": "Albüm adımları",
     "tracksSelected": "{total} parçadan {selected} tanesi seçildi",
     "searchArtists": "Ara",
-    "stepArtist": "Sanatçı"
+    "stepArtist": "Sanatçı",
+    "artistAlsoKnownAs": "Diğer adıyla {alias}",
+    "noArtistsFound": "“{query}” ile eşleşen sanatçı bulunamadı.",
+    "noArtistsFoundHint": "Yazımı kontrol et veya daha az sözcük dene; aksanlı harfler veya farklı alfabeler sorun oluşturmaz. Sanatçı henüz MusicBrainz'de yoksa şarkıları ismiyle de ekleyebilirsin.",
+    "noArtistsUseText": "Şarkıları ismiyle ekle"
   },
   "backendStatus": {
     "reconnecting": "Yeniden bağlanıyor…",
