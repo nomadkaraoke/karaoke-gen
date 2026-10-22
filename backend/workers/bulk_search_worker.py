@@ -305,18 +305,28 @@ async def process_album_jobs(album: dict, jobs: list, job_manager: JobManager) -
             await _finish_with_results(job, results, selection_index, job_manager)
         except Exception as e:  # noqa: BLE001  (one job must not kill the batch)
             logger.error("[bulk] album job %s crashed: %s", job.job_id, e, exc_info=True)
-            _park_after_crash(job.job_id, job_manager)
+            try:
+                _park_after_crash(job.job_id, job_manager)
+            except BatchParkingError:
+                fallback.append(job)  # still pending: try it per track
     return fallback
+
+
+class BatchParkingError(RuntimeError):
+    """A job couldn't be parked after a crash: it's still pending, so the batch
+    task must fail and let Cloud Run retry it (the retry only sees pending jobs)."""
 
 
 def _park_after_crash(
     job_id: str, job_manager: JobManager, message: str = "Search error. Please choose a source."
 ) -> None:
-    """Best-effort park (never raises): the job must not be left mid-search."""
+    """Park a job that can't be searched. Raises BatchParkingError if even that
+    fails, so the caller can fail the batch instead of stranding the job."""
     try:
         _park(job_id, job_manager, message)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.error("[bulk] could not park job %s: %s", job_id, e, exc_info=True)
+        raise BatchParkingError(job_id) from e
 
 
 async def process_batch(batch_id: str) -> int:
@@ -366,7 +376,12 @@ async def process_batch(batch_id: str) -> int:
                 logger.error("[batch:%s] job %s crashed: %s", batch_id, job_id, e, exc_info=True)
                 _park_after_crash(job_id, job_manager)
 
-    await asyncio.gather(*[_guarded(j.job_id) for j in per_track])
+    # Every job gets its turn; a job that couldn't even be parked fails the batch
+    # afterwards so Cloud Run retries it (max_retries) instead of stranding it.
+    outcomes = await asyncio.gather(*[_guarded(j.job_id) for j in per_track], return_exceptions=True)
+    stranded = [o for o in outcomes if isinstance(o, BaseException)]
+    if stranded:
+        raise BatchParkingError(f"{len(stranded)} job(s) could not be parked: {stranded}")
     return len(pending)
 
 

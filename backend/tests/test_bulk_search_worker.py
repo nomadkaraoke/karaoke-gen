@@ -394,3 +394,29 @@ async def test_jobs_past_the_batch_deadline_are_parked_not_searched(monkeypatch)
 
     assert searched == []
     assert sorted(parked) == [("t1", JobStatus.AWAITING_AUDIO_SELECTION), ("t2", JobStatus.AWAITING_AUDIO_SELECTION)]
+
+
+@pytest.mark.asyncio
+async def test_unparkable_job_fails_the_batch_after_the_others_finish(monkeypatch):
+    jobs = [_make_job("bad"), _make_job("good")]
+    jm = MagicMock()
+    jm.list_jobs_by_batch_id.return_value = jobs
+
+    def transition(**kw):
+        if kw["job_id"] == "bad":
+            raise RuntimeError("firestore down")
+    jm.transition_to_state.side_effect = transition
+    monkeypatch.setattr(worker, "JobManager", lambda: jm)
+    searched = []
+
+    async def fake_process_job(job_id, job_manager, ass):
+        if job_id == "bad":
+            raise RuntimeError("search crashed")
+        searched.append(job_id)
+
+    monkeypatch.setattr(worker, "process_job", fake_process_job)
+    monkeypatch.setattr(worker, "AudioSearchService", MagicMock)
+
+    with pytest.raises(worker.BatchParkingError):
+        await worker.process_batch("b1")
+    assert searched == ["good"]  # the independent job still ran

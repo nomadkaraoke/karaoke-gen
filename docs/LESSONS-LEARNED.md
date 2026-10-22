@@ -536,7 +536,7 @@ and `docs/archive/2026-07-20-edge-security-*.md`.
 - **Album batches search the album once (Oct 2026).** Searching each track separately made 12
   searches for a 12-track album. flacfetch runs searches on ONE worker
   (`flacfetch/api/routes/search.py` `_search_executor`), so 4 concurrent requests just queued
-  there and the queued ones ran out gen's 95s budget (4/12 failed). A title-only file search
+  there and the queued ones ran out their 95s budget (4/12 failed). A title-only file search
   also missed the album for a common title ("Time"). Now `bulk_search_worker` sends one
   flacfetch `/search/album` per album (`backend/services/bulk_album_search.py`) and runs any
   per-track fallback with `SEARCH_CONCURRENCY = 1`. Don't raise that without raising
