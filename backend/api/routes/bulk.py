@@ -9,6 +9,7 @@ Submission (POST /bulk/submit) and progress (GET /bulk/{batch_id}) live here too
 (added in later phases).
 """
 
+import asyncio
 import logging
 import uuid
 from typing import Literal, Optional
@@ -304,80 +305,89 @@ async def bulk_submit(
     user_email = auth_result.user_email
     is_admin = bool(auth_result.is_admin)
 
-    # Upfront credit gate (1 credit/song minimum). Admins bypass.
-    if not is_admin and user_email:
-        from backend.services.user_service import get_user_service
+    locale = get_full_locale_from_request(request)
 
-        available = get_user_service().check_credits(user_email)
-        if available < n:
-            raise HTTPException(
-                status_code=402,
-                detail={
-                    "error": "insufficient_credits",
-                    "message": "You don't have enough credits for this batch.",
-                    "credits_available": available,
-                    "credits_required": n,
+    # Everything up to dispatch is sync Firestore/GCS work (credit check, default
+    # theme, one create_job + update_job per song). Run it off the event loop: a
+    # 2026-10-22 album batch stalled the loop 26s and 9 other requests with it.
+    def _create_batch_jobs() -> tuple[str, list[str]]:
+        # Upfront credit gate (1 credit/song minimum). Admins bypass.
+        if not is_admin and user_email:
+            from backend.services.user_service import get_user_service
+
+            available = get_user_service().check_credits(user_email)
+            if available < n:
+                raise HTTPException(
+                    status_code=402,
+                    detail={
+                        "error": "insufficient_credits",
+                        "message": "You don't have enough credits for this batch.",
+                        "credits_available": available,
+                        "credits_required": n,
+                    },
+                )
+
+        settings = get_settings()
+        theme_service = get_theme_service()
+        theme_id = theme_service.get_default_theme_id()
+        resolved_cdg, resolved_txt = resolve_cdg_txt_defaults(theme_id, None, None)
+
+        batch_id = uuid.uuid4().hex[:12]
+        bulk_settings = body.settings.model_dump()
+        job_manager = JobManager()
+        job_ids: list[str] = []
+
+        for song in body.songs:
+            display_artist = (song.display_artist or song.artist).strip()
+            display_title = (song.display_title or song.title).strip()
+            request_metadata = {
+                "created_from": "bulk",
+                "batch_id": batch_id,
+                "user_email": user_email,
+            }
+            job_create = JobCreate(
+                artist=display_artist,
+                title=display_title,
+                theme_id=theme_id,
+                enable_cdg=resolved_cdg,
+                enable_txt=resolved_txt,
+                user_email=user_email,
+                audio_search_artist=song.artist.strip(),
+                audio_search_title=song.title.strip(),
+                auto_download=False,
+                is_private=body.settings.is_private,
+                review_mode=body.settings.review_mode,
+                backing_preference=body.settings.backing_preference,
+                translation_language=body.settings.translation_language,
+                brand_prefix=settings.default_brand_prefix,
+                enable_youtube_upload=settings.default_enable_youtube_upload,
+                youtube_description=settings.default_youtube_description,
+                discord_webhook_url=settings.default_discord_webhook_url,
+                dropbox_path=settings.default_dropbox_path,
+                gdrive_folder_id=settings.default_gdrive_folder_id,
+                request_metadata=request_metadata,
+                locale=locale,
+            )
+            try:
+                job = job_manager.create_job(job_create, is_admin=is_admin)
+            except InsufficientCreditsError:
+                # Ran out mid-batch (e.g. concurrent spend after the gate). Stop here;
+                # already-created jobs are valid and will proceed.
+                logger.warning("[batch:%s] ran out of credits after %d/%d jobs", batch_id, len(job_ids), n)
+                break
+
+            job_manager.update_job(
+                job.job_id,
+                {
+                    "state_data.batch_id": batch_id,
+                    "state_data.bulk_settings": bulk_settings,
+                    "state_data.bulk_pending_search": True,
                 },
             )
+            job_ids.append(job.job_id)
+        return batch_id, job_ids
 
-    settings = get_settings()
-    theme_service = get_theme_service()
-    theme_id = theme_service.get_default_theme_id()
-    resolved_cdg, resolved_txt = resolve_cdg_txt_defaults(theme_id, None, None)
-
-    batch_id = uuid.uuid4().hex[:12]
-    bulk_settings = body.settings.model_dump()
-    job_manager = JobManager()
-    job_ids: list[str] = []
-
-    for song in body.songs:
-        display_artist = (song.display_artist or song.artist).strip()
-        display_title = (song.display_title or song.title).strip()
-        request_metadata = {
-            "created_from": "bulk",
-            "batch_id": batch_id,
-            "user_email": user_email,
-        }
-        job_create = JobCreate(
-            artist=display_artist,
-            title=display_title,
-            theme_id=theme_id,
-            enable_cdg=resolved_cdg,
-            enable_txt=resolved_txt,
-            user_email=user_email,
-            audio_search_artist=song.artist.strip(),
-            audio_search_title=song.title.strip(),
-            auto_download=False,
-            is_private=body.settings.is_private,
-            review_mode=body.settings.review_mode,
-            backing_preference=body.settings.backing_preference,
-            translation_language=body.settings.translation_language,
-            brand_prefix=settings.default_brand_prefix,
-            enable_youtube_upload=settings.default_enable_youtube_upload,
-            youtube_description=settings.default_youtube_description,
-            discord_webhook_url=settings.default_discord_webhook_url,
-            dropbox_path=settings.default_dropbox_path,
-            gdrive_folder_id=settings.default_gdrive_folder_id,
-            request_metadata=request_metadata,
-            locale=get_full_locale_from_request(request),
-        )
-        try:
-            job = job_manager.create_job(job_create, is_admin=is_admin)
-        except InsufficientCreditsError:
-            # Ran out mid-batch (e.g. concurrent spend after the gate). Stop here;
-            # already-created jobs are valid and will proceed.
-            logger.warning("[batch:%s] ran out of credits after %d/%d jobs", batch_id, len(job_ids), n)
-            break
-
-        job_manager.update_job(
-            job.job_id,
-            {
-                "state_data.batch_id": batch_id,
-                "state_data.bulk_settings": bulk_settings,
-                "state_data.bulk_pending_search": True,
-            },
-        )
-        job_ids.append(job.job_id)
+    batch_id, job_ids = await asyncio.to_thread(_create_batch_jobs)
 
     if not job_ids:
         raise HTTPException(status_code=402, detail="No jobs could be created")

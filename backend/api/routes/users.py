@@ -8,6 +8,7 @@ Handles:
 - Stripe checkout and webhooks
 - Admin user management
 """
+import asyncio
 import hashlib
 import html
 import logging
@@ -1307,7 +1308,8 @@ async def _handle_made_for_you_order(
         # Prepare theme style assets for the job (same as audio_search endpoint)
         if effective_theme_id:
             try:
-                style_params_path, theme_style_assets, youtube_desc = _prepare_theme_for_job(
+                style_params_path, theme_style_assets, youtube_desc = await asyncio.to_thread(
+                    _prepare_theme_for_job,
                     job_id, effective_theme_id, None  # No color overrides for made-for-you
                 )
                 theme_update = {
@@ -1341,7 +1343,10 @@ async def _handle_made_for_you_order(
         try:
             # Providers return False (not an exception) when the send is rejected, so
             # check the result rather than assuming success.
-            confirmation_ok = bool(email_service.send_made_for_you_order_confirmation(
+            # Off the event loop: a slow Postmark send (retries + SMTP fallback)
+            # stalled every request on the instance for 22s on 2026-10-22.
+            confirmation_ok = bool(await asyncio.to_thread(
+                email_service.send_made_for_you_order_confirmation,
                 to_email=customer_email,
                 artist=artist,
                 title=title,
@@ -1507,7 +1512,8 @@ async def _handle_made_for_you_order(
                 email=ADMIN_EMAIL,
                 expiry_hours=24,
             )
-            admin_notified = bool(email_service.send_made_for_you_admin_notification(
+            admin_notified = bool(await asyncio.to_thread(
+                email_service.send_made_for_you_admin_notification,
                 to_email=ADMIN_EMAIL,
                 customer_email=customer_email,
                 artist=artist,
