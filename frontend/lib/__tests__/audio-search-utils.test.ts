@@ -640,6 +640,17 @@ describe('title-matched best result', () => {
     expect(isArtistMatch('U2', r('UB40'))).toBe(false)
   })
 
+  it('isArtistMatch folds accents and keeps non-Latin names (backend _norm_artist parity)', () => {
+    const r = (artist: string) => ({ artist } as any)
+    expect(isArtistMatch('Maxïmo Park', r('Maximo Park'))).toBe(true)
+    expect(isArtistMatch('Björk', r('Bjork'))).toBe(true)
+    expect(isArtistMatch('Simon & Garfunkel', r('Simon and Garfunkel'))).toBe(true)
+    expect(isArtistMatch('宇多田ヒカル', r('宇多田ヒカル'))).toBe(true)
+    expect(isArtistMatch('Мумий Тролль', r('Мумий Тролль, Someone'))).toBe(true)
+    expect(isArtistMatch('宇多田ヒカル', r('椎名林檎'))).toBe(false)
+    expect(isArtistMatch('Мумий Тролль', r('Сплин'))).toBe(false)
+  })
+
   it('never promotes YouTube via a title match over a torrent', () => {
     const results = [
       makeResult({ index: 0, is_lossless: true, seeders: 120, release_type: 'Album', target_file: '03 - Prescription.flac' }),

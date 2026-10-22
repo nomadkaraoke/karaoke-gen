@@ -310,10 +310,23 @@ function titleCore(s: string): string {
  * Whether the result's artist is the requested artist. Lenient on purpose:
  * "Braxton Keith, Someone" / "The Killers" vs "Killers" still match.
  */
+/** Twin of the backend's _norm_artist: accents folded, "&"/"+" as "and", punctuation
+ *  dropped, a leading "the" removed. Unicode-aware, so CJK/Cyrillic names survive. */
+function normArtist(x: string): string {
+  return x.toLowerCase().normalize('NFKD').replace(/\p{M}/gu, '')
+    .replace(/\s*[&+]\s*/g, ' and ')
+    .replace(/[^\p{L}\p{N}\s]|_/gu, ' ')
+    .replace(/\s+/g, ' ').trim()
+    .replace(/^the\s+/, '')
+}
+
 export function isArtistMatch(searchArtist: string, result: ExtendedAudioSearchResult): boolean {
-  const norm = (x: string) => x.toLowerCase().replace(/^the\s+/, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
-  const want = norm(searchArtist)
-  const have = norm(result.artist || '')
+  const rawHave = result.artist || ''
+  if (searchArtist && searchArtist.trim().toLowerCase() === rawHave.trim().toLowerCase()) return true
+  const want = normArtist(searchArtist)
+  const have = normArtist(rawHave)
+  // A name that normalizes to nothing can't be compared, so don't hold it against the result.
+  if (!want) return true
   if (want.length < 2 || !have) return false
   if (have === want || ` ${have} `.includes(` ${want} `) || ` ${want} `.includes(` ${have} `)) return true
   // Small typos the singer's tidy didn't fix ("radiohed")
