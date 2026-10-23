@@ -61,6 +61,15 @@ MONITORED_CLOUD_RUN_JOBS: list[str] = [
     "lb-refresh",
     # karaoke-decide song search index build (eval-gated)
     "song-index-build",
+    # karaoke-decide Phase 3d voice pool (us-central1): select -> fetch -> analyse
+    "voice-pool-select",
+    "voice-pool-fetch",
+    "voice-pool-analyse",
+    # karaoke-decide vocal-range generation (us-central1); logs one ERROR from task 0
+    # only when every attempted job fails
+    "vocal-range-gen",
+    # gen GPU separation job for the voice pool (us-east4; no region filter in the log query)
+    "voice-pool-separate-job",
 ]
 
 # Gen2 Cloud Functions log as cloud_run_revision, not cloud_function.

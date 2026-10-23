@@ -26,7 +26,7 @@ class TestMonitoredServiceLists:
     def test_cloud_run_jobs_count(self):
         from backend.services.error_monitor import config
 
-        assert len(config.MONITORED_CLOUD_RUN_JOBS) == 7
+        assert len(config.MONITORED_CLOUD_RUN_JOBS) == 12
 
     def test_cloud_run_jobs_contains_expected(self):
         from backend.services.error_monitor import config
@@ -37,6 +37,14 @@ class TestMonitoredServiceLists:
         assert "audio-download-job" in config.MONITORED_CLOUD_RUN_JOBS
         assert "mb-refresh" in config.MONITORED_CLOUD_RUN_JOBS
         assert "lb-refresh" in config.MONITORED_CLOUD_RUN_JOBS
+        for job in (
+            "voice-pool-select",
+            "voice-pool-fetch",
+            "voice-pool-analyse",
+            "voice-pool-separate-job",
+            "vocal-range-gen",
+        ):
+            assert job in config.MONITORED_CLOUD_RUN_JOBS
 
     def test_gen2_cloud_functions_monitored_as_cloud_run_services(self):
         # Gen2 Cloud Functions log under resource.type=cloud_run_revision,
