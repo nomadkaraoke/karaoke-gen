@@ -82,7 +82,7 @@
     "waveformNoAudio": "Ingen lyd tilgjengelig for bølgeform",
     "sessionSaveError": "Korreksjonsdata er påkrevd",
     "invalidIsDuetFlag": "is_duet må være en boolean (true eller false)",
-    "previewMissingTimings": "Linjen «{line}» har et ord uten timing. Synkroniser den linjen, og prøv forhåndsvisningen på nytt."
+    "previewMissingTimings": "Linjen «{line}» har et ord uten timing. Synkroniser linjen, og prøv forhåndsvisningen på nytt."
   },
   "audioSearch": {
     "notEnabled": "Lydsøk er ikke aktivert for denne kontoen",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Karaokevideoen din for \"{title}\" av {artist} er klar for nedlasting",
     "confirmDurationTitle": "Bekreft jobbkostnad",
     "confirmDurationBody": "\"{title}\" av {artist} trenger en kostnadsbekreftelse for å fortsette",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Velg lydfil",
+    "selectAudioBody": "Du må velge en lydkilde for «{title}» av {artist}",
+    "jobProblemTitle": "Det er et problem med videoen din",
+    "jobProblemBody": "Det oppsto et problem med «{title}» av {artist}. Åpne appen for å se hva som skjedde",
+    "jobStalledBody": "Nedlastingen av lyd for «{title}» av {artist} har stoppet opp. Vi kan fortsette å prøve hvis du åpner appen"
   },
   "admin": {
     "invalidDomainFormat": "Ugyldig domeneformat",
@@ -413,12 +413,12 @@
     "loginCode": {
       "expiry": "Denne koden utløper om {minutes} minutter og kan bare brukes én gang.",
       "greeting": "Hei,",
-      "ignoreNote": "Hvis du ikke ba om denne e-posten, kan du trygt se bort fra den.",
-      "intro": "Skriv inn denne koden på påloggingssiden for å fortsette:",
-      "linkExpiry": "Påloggingslenken virker i 24 timer og kan bare brukes én gang.",
-      "orLink": "Eller hopp over koden og logg på med ett klikk:",
-      "signInButton": "Logg på",
-      "subject": "Din påloggingskode for {brand_name}: {code}"
+      "ignoreNote": "Hvis du ikke ba om denne e-posten, kan du trygt ignorere den.",
+      "intro": "Skriv inn denne koden på innloggingssiden for å fortsette:",
+      "linkExpiry": "Innloggingslenken er gyldig i 24 timer og kan bare brukes én gang.",
+      "orLink": "Eller hopp over koden og logg inn med ett klikk:",
+      "signInButton": "Logg inn",
+      "subject": "Din innloggingskode for {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "Vil du helst slippe å gå gjennom teksten selv? Velg Made For You, så lager jeg hele videoen for deg, levert innen 24 timer:",

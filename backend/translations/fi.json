@@ -82,7 +82,7 @@
     "waveformNoAudio": "Ääntä ei ole saatavilla aaltomuotoa varten",
     "sessionSaveError": "Korjaustiedot vaaditaan",
     "invalidIsDuetFlag": "is_duet täytyy olla totuusarvo (true tai false)",
-    "previewMissingTimings": "Rivillä \"{line}\" on sana, jolla ei ole ajoitusta. Synkronoi kyseinen rivi ja yritä esikatselua uudelleen."
+    "previewMissingTimings": "Rivillä \"{line}\" on sana, jolta puuttuu ajoitus. Synkronoi kyseinen rivi ja kokeile esikatselua uudelleen."
   },
   "audioSearch": {
     "notEnabled": "Äänihaku ei ole käytössä tälle asiakkaalle",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Karaokevideosi kappaleelle \"{title}\" esittäjältä {artist} on valmis ladattavaksi",
     "confirmDurationTitle": "Vahvista työn hinta",
     "confirmDurationBody": "\"{title}\" esittäjältä {artist} vaatii hinnan vahvistuksen jatkamista varten",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Valitse äänilähde",
+    "selectAudioBody": "Valitse äänilähde kappaleelle \"{title}\" ({artist})",
+    "jobProblemTitle": "Videossasi on ongelma",
+    "jobProblemBody": "Kappaleen \"{title}\" ({artist}) kohdalla ilmeni ongelma. Avaa sovellus nähdäksesi, mitä tapahtui",
+    "jobStalledBody": "Kappaleen \"{title}\" ({artist}) äänitiedoston lataus on jumissa. Voimme jatkaa yrittämistä, jos avaat sovelluksen"
   },
   "admin": {
     "invalidDomainFormat": "Virheellinen verkkotunnuksen muoto",
@@ -411,12 +411,12 @@
       "subject": "Nomad Karaoke -koodisi: {code}"
     },
     "loginCode": {
-      "expiry": "Tämä koodi vanhenee {minutes} minuutissa, ja sitä voi käyttää vain kerran.",
-      "greeting": "Hei,",
+      "expiry": "Tämä koodi vanhenee {minutes} minuutissa ja sen voi käyttää vain kerran.",
+      "greeting": "Moi!",
       "ignoreNote": "Jos et pyytänyt tätä sähköpostia, voit turvallisesti jättää sen huomiotta.",
       "intro": "Jatka syöttämällä tämä koodi kirjautumissivulle:",
-      "linkExpiry": "Kirjautumislinkki toimii 24 tuntia, ja sitä voi käyttää vain kerran.",
-      "orLink": "Tai ohita koodi ja kirjaudu sisään yhdellä napsautuksella:",
+      "linkExpiry": "Kirjautumislinkki on voimassa 24 tuntia ja sen voi käyttää vain kerran.",
+      "orLink": "Tai ohita koodi ja kirjaudu sisään yhdellä klikkauksella:",
       "signInButton": "Kirjaudu sisään",
       "subject": "{brand_name}-kirjautumiskoodisi: {code}"
     },

@@ -82,7 +82,7 @@
     "waveformNoAudio": "Δεν υπάρχει διαθέσιμος ήχος για την κυματομορφή",
     "sessionSaveError": "Απαιτούνται δεδομένα διόρθωσης",
     "invalidIsDuetFlag": "Το is_duet πρέπει να είναι boolean (true ή false)",
-    "previewMissingTimings": "Η γραμμή «{line}» περιέχει μια λέξη χωρίς συγχρονισμό. Συγχρόνισε αυτή τη γραμμή και δοκίμασε ξανά την προεπισκόπηση."
+    "previewMissingTimings": "Ο στίχος \"{line}\" έχει μια λέξη χωρίς χρονισμό. Συγχρόνισε αυτόν τον στίχο και μετά δοκίμασε ξανά την προεπισκόπηση."
   },
   "audioSearch": {
     "notEnabled": "Η αναζήτηση ήχου δεν είναι ενεργοποιημένη για αυτόν τον μισθωτή",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Το καραόκε βίντεό σου για το \"{title}\" από {artist} είναι έτοιμο για λήψη",
     "confirmDurationTitle": "Επιβεβαίωσε το κόστος εργασίας",
     "confirmDurationBody": "Το \"{title}\" από {artist} χρειάζεται επιβεβαίωση κόστους για να συνεχίσει",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Επίλεξε τον ήχο",
+    "selectAudioBody": "Για το \"{title}\" από {artist} πρέπει να επιλέξεις μια πηγή ήχου",
+    "jobProblemTitle": "Υπάρχει πρόβλημα με το βίντεό σου",
+    "jobProblemBody": "Παρουσιάστηκε πρόβλημα με το \"{title}\" από {artist}. Άνοιξε την εφαρμογή για να δεις τι συνέβη",
+    "jobStalledBody": "Η λήψη ήχου για το \"{title}\" από {artist} έχει κολλήσει. Μπορούμε να συνεχίσουμε την προσπάθεια αν ανοίξεις την εφαρμογή"
   },
   "admin": {
     "invalidDomainFormat": "Μη έγκυρη μορφή τομέα",
@@ -412,13 +412,13 @@
     },
     "loginCode": {
       "expiry": "Αυτός ο κωδικός λήγει σε {minutes} λεπτά και μπορεί να χρησιμοποιηθεί μόνο μία φορά.",
-      "greeting": "Γεια σας,",
-      "ignoreNote": "Αν δεν ζητήσατε αυτό το email, μπορείτε να το αγνοήσετε με ασφάλεια.",
-      "intro": "Εισαγάγετε αυτόν τον κωδικό στη σελίδα σύνδεσης για να συνεχίσετε:",
+      "greeting": "Γεια σου,",
+      "ignoreNote": "Αν δεν ζήτησες αυτό το email, μπορείς απλά να το αγνοήσεις.",
+      "intro": "Καταχώρισε αυτόν τον κωδικό στη σελίδα σύνδεσης για να συνεχίσεις:",
       "linkExpiry": "Ο σύνδεσμος σύνδεσης ισχύει για 24 ώρες και μπορεί να χρησιμοποιηθεί μόνο μία φορά.",
-      "orLink": "Ή παραλείψτε τον κωδικό και συνδεθείτε με ένα κλικ:",
+      "orLink": "Ή παράκαμψε τον κωδικό και συνδέσου με ένα κλικ:",
       "signInButton": "Σύνδεση",
-      "subject": "Ο κωδικός σύνδεσής σας στο {brand_name}: {code}"
+      "subject": "Ο κωδικός σύνδεσής σου στο {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "Προτιμάς να μην κάνεις εσύ τον έλεγχο των στίχων; Επίλεξε το Made For You και θα σου ετοιμάσω ολόκληρο το βίντεο, με παράδοση εντός 24 ωρών:",

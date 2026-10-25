@@ -328,7 +328,8 @@
       "discountActive": "discount active",
       "discountActiveHint": "Click to show discount banner",
       "signOut": "Sign Out",
-      "login": "Login"
+      "login": "Login",
+      "deleteAccount": "Delete account"
     }
   },
   "payment": {
@@ -2147,5 +2148,39 @@
     "keepTryingStartedDesc": "We'll keep waiting for up to an hour. You can close this page; your job carries on.",
     "actionFailed": "Something went wrong",
     "actionFailedDesc": "Please try again in a moment."
+  },
+  "accountDelete": {
+    "title": "Delete your account",
+    "backHome": "Back to Nomad Karaoke",
+    "loading": "Loading...",
+    "signInPrompt": "Sign in to delete your Nomad Karaoke account.",
+    "signInButton": "Sign in",
+    "intro": "Deleting your account is permanent and cannot be undone.",
+    "deletedHeading": "What we delete",
+    "deletedPersonal": "Your personal details (name, email, sign-in sessions)",
+    "deletedUploads": "Audio and files you uploaded",
+    "deletedMusicData": "Your music and voice data in our song-discovery service",
+    "deletedNightLinks": "Your Nomad night links",
+    "keptHeading": "What we keep",
+    "keptRecords": "Job and payment records, kept for accounting",
+    "keptYoutube": "Karaoke videos already published on YouTube",
+    "creditsLost": "{count, plural, one {{count} credit will be lost} other {{count} credits will be lost}}",
+    "jobsCancelled": "{count, plural, one {{count} video in progress will be cancelled} other {{count} videos in progress will be cancelled}}",
+    "deleteButton": "Delete my account",
+    "confirmTitle": "Are you sure?",
+    "confirmBody": "This permanently deletes your account. You will be signed out and cannot sign back in to this account.",
+    "confirmButton": "Yes, permanently delete",
+    "cancelButton": "Cancel",
+    "deleting": "Deleting your account...",
+    "deletedTitle": "Your account has been deleted",
+    "deletedBody": "Your account and personal data have been deleted. You have been signed out. Thank you for singing with us.",
+    "blockedAdmin": "Administrator accounts cannot be deleted here.",
+    "blockedReferralBalance": "Your account has a referral balance that needs to be settled first.",
+    "blockedConnectAccount": "Your account has a linked payout account that needs to be closed first.",
+    "blockedOrderInProgress": "You have an order in progress that needs to finish first.",
+    "blockedContact": "We cannot delete your account automatically. Please contact support at {email} and we will help.",
+    "retryable": "Something went wrong while deleting your account. Nothing was lost, so please try again.",
+    "genericError": "We could not load or delete your account. Please try again, or contact support at {email}.",
+    "retryButton": "Try again"
   }
 }

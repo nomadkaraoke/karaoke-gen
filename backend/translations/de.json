@@ -82,7 +82,7 @@
     "waveformNoAudio": "Kein Audio für Wellenform verfügbar",
     "sessionSaveError": "Korrekturdaten sind erforderlich",
     "invalidIsDuetFlag": "is_duet muss ein Boolean sein (true oder false)",
-    "previewMissingTimings": "Die Zeile \"{line}\" enthält ein Wort ohne Timing. Synchronisiere diese Zeile und versuche die Vorschau dann erneut."
+    "previewMissingTimings": "Die Zeile „{line}“ enthält ein Wort ohne Timing. Synchronisiere diese Zeile und versuche die Vorschau dann erneut."
   },
   "audioSearch": {
     "notEnabled": "Die Audiosuche ist für diesen Mandanten nicht aktiviert",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Dein Karaoke-Video für \"{title}\" von {artist} ist bereit zum Herunterladen",
     "confirmDurationTitle": "Auftragskosten bestätigen",
     "confirmDurationBody": "\"{title}\" von {artist} benötigt eine Kostenbestätigung, um fortzufahren",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Wähle das Audio aus",
+    "selectAudioBody": "Für „{title}“ von {artist} musst du eine Audioquelle auswählen",
+    "jobProblemTitle": "Es gibt ein Problem mit deinem Video",
+    "jobProblemBody": "Bei „{title}“ von {artist} ist ein Problem aufgetreten. Öffne die App, um zu sehen, was passiert ist",
+    "jobStalledBody": "Der Audio-Download für „{title}“ von {artist} hängt fest. Wir können es weiter versuchen, wenn du die App öffnest"
   },
   "admin": {
     "invalidDomainFormat": "Ungültiges Domain-Format",
@@ -415,10 +415,10 @@
       "greeting": "Hallo,",
       "ignoreNote": "Wenn du diese E-Mail nicht angefordert hast, kannst du sie einfach ignorieren.",
       "intro": "Gib diesen Code auf der Anmeldeseite ein, um fortzufahren:",
-      "linkExpiry": "Der Anmeldelink ist 24 Stunden gültig und kann nur einmal verwendet werden.",
+      "linkExpiry": "Der Anmeldelink ist 24 Stunden lang gültig und kann nur einmal verwendet werden.",
       "orLink": "Oder überspringe den Code und melde dich mit einem Klick an:",
       "signInButton": "Anmelden",
-      "subject": "Dein {brand_name} Anmeldecode: {code}"
+      "subject": "Dein {brand_name}-Anmeldecode: {code}"
     },
     "conversion": {
       "madeForYouLine": "Möchtest du die Textüberprüfung lieber nicht selbst machen? Wähle „Made For You“ und ich erstelle das komplette Video für dich – geliefert innerhalb von 24 Stunden:",

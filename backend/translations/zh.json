@@ -82,7 +82,7 @@
     "waveformNoAudio": "没有可生成波形的音频",
     "sessionSaveError": "需要校对数据",
     "invalidIsDuetFlag": "is_duet 必须是布尔值（true 或 false）",
-    "previewMissingTimings": "“{line}”这一行有一个没有时间轴的单词。请先同步该行，然后再次尝试预览。"
+    "previewMissingTimings": "“{line}”这一行有未设置时间轴的字词。请先同步该行时间轴，然后再尝试预览。"
   },
   "audioSearch": {
     "notEnabled": "此租户未启用音频搜索",
@@ -179,11 +179,11 @@
     "videoReadyBody": "您制作的卡拉OK视频（{artist} - {title}）已准备好下载",
     "confirmDurationTitle": "确认任务费用",
     "confirmDurationBody": "{artist} 的 \"{title}\" 需要确认费用后才能继续",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "选择音频",
+    "selectAudioBody": "{artist} 的《{title}》需要您选择音频源",
+    "jobProblemTitle": "您的视频制作遇到问题",
+    "jobProblemBody": "{artist} 的《{title}》遇到问题。打开 App 查看具体情况",
+    "jobStalledBody": "{artist} 的《{title}》音频下载已卡住。打开 App 即可继续尝试"
   },
   "admin": {
     "invalidDomainFormat": "无效的域名格式",
@@ -413,12 +413,12 @@
     "loginCode": {
       "expiry": "此验证码将在 {minutes} 分钟后过期，且只能使用一次。",
       "greeting": "你好，",
-      "ignoreNote": "如果你没有请求此邮件，可以放心忽略。",
-      "intro": "请在登录页面输入此验证码以继续：",
-      "linkExpiry": "登录链接 24 小时内有效，且只能使用一次。",
+      "ignoreNote": "如果您没有请求此邮件，请放心忽略。",
+      "intro": "在登录页面输入此验证码以继续：",
+      "linkExpiry": "登录链接有效期为 24 小时，且只能使用一次。",
       "orLink": "或者跳过验证码，一键登录：",
       "signInButton": "登录",
-      "subject": "你的 {brand_name} 登录验证码：{code}"
+      "subject": "您的 {brand_name} 登录验证码：{code}"
     },
     "conversion": {
       "madeForYouLine": "不想自己校对歌词？选择“为您定制”，我将为您制作整支视频，24小时内交付：",

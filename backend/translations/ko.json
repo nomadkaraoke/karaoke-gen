@@ -82,7 +82,7 @@
     "waveformNoAudio": "파형에 사용할 오디오가 없습니다",
     "sessionSaveError": "수정 데이터가 필요합니다",
     "invalidIsDuetFlag": "is_duet은 불리언(true 또는 false)이어야 합니다.",
-    "previewMissingTimings": "\"{line}\" 줄에 타이밍이 없는 단어가 있습니다. 해당 줄을 동기화한 후 미리보기를 다시 시도해 주세요."
+    "previewMissingTimings": "\"{line}\" 소절에 타이밍이 지정되지 않은 단어가 있습니다. 해당 소절의 싱크를 맞춘 후 다시 미리보기를 시도해 주세요."
   },
   "audioSearch": {
     "notEnabled": "이 테넌트에서는 오디오 검색이 활성화되어 있지 않습니다",
@@ -179,11 +179,11 @@
     "videoReadyBody": "{artist}의 \"{title}\" 노래방 비디오를 다운로드할 준비가 되었습니다",
     "confirmDurationTitle": "작업 비용 확인",
     "confirmDurationBody": "{artist}의 \"{title}\" 작업을 계속 진행하려면 비용 확인이 필요합니다",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "오디오 선택",
+    "selectAudioBody": "{artist}의 \"{title}\" 작업에 사용할 오디오 소스를 선택해 주세요",
+    "jobProblemTitle": "동영상에 문제가 발생했습니다",
+    "jobProblemBody": "{artist}의 \"{title}\" 작업 중 문제가 발생했습니다. 앱을 열어 확인해 보세요",
+    "jobStalledBody": "{artist}의 \"{title}\" 오디오 다운로드가 지연되고 있습니다. 앱을 열어 계속 진행해 보세요"
   },
   "admin": {
     "invalidDomainFormat": "잘못된 도메인 형식",
@@ -414,11 +414,11 @@
       "expiry": "이 코드는 {minutes}분 후에 만료되며 한 번만 사용할 수 있습니다.",
       "greeting": "안녕하세요,",
       "ignoreNote": "이 이메일을 요청하지 않으셨다면 무시하셔도 됩니다.",
-      "intro": "계속하려면 로그인 페이지에 이 코드를 입력하세요:",
+      "intro": "로그인 페이지에 아래 코드를 입력하여 계속 진행해 주세요:",
       "linkExpiry": "로그인 링크는 24시간 동안 유효하며 한 번만 사용할 수 있습니다.",
-      "orLink": "또는 코드 없이 클릭 한 번으로 로그인하세요:",
+      "orLink": "또는 코드 입력 없이 클릭 한 번으로 로그인하세요:",
       "signInButton": "로그인",
-      "subject": "{brand_name} 로그인 코드: {code}"
+      "subject": "[{brand_name}] 로그인 코드: {code}"
     },
     "conversion": {
       "madeForYouLine": "가사를 직접 검토하기 번거로우신가요? Made For You를 선택하시면 24시간 이내에 전체 비디오를 대신 제작해 전달해 드립니다:",

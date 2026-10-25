@@ -82,7 +82,7 @@
     "waveformNoAudio": "No hi ha àudio disponible per a la forma d'ona",
     "sessionSaveError": "Es requereixen dades de correcció",
     "invalidIsDuetFlag": "is_duet ha de ser un booleà (cert o fals)",
-    "previewMissingTimings": "La línia \"{line}\" té una paraula sense temporització. Sincronitza aquesta línia i torna a provar la previsualització."
+    "previewMissingTimings": "La línia \"{line}\" té una paraula sense temporització. Sincronitza aquesta línia i torna a provar la vista prèvia."
   },
   "audioSearch": {
     "notEnabled": "La cerca d'àudio no està activada per a aquest tenant",
@@ -179,11 +179,11 @@
     "videoReadyBody": "El teu vídeo de karaoke per a \"{title}\" de {artist} està llest per descarregar",
     "confirmDurationTitle": "Confirma el cost de la tasca",
     "confirmDurationBody": "\"{title}\" de {artist} necessita una confirmació de cost per continuar",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Tria l'àudio",
+    "selectAudioBody": "\"{title}\" de {artist} necessita que triïs una font d'àudio",
+    "jobProblemTitle": "Hi ha un problema amb el teu vídeo",
+    "jobProblemBody": "Hi ha hagut un problema amb \"{title}\" de {artist}. Obre l'aplicació per veure què ha passat",
+    "jobStalledBody": "La descàrrega de l'àudio de \"{title}\" de {artist} s'ha encallat. Podem continuar intentant-ho si obres l'aplicació"
   },
   "admin": {
     "invalidDomainFormat": "Format de domini no vàlid",
@@ -411,13 +411,13 @@
       "subject": "El teu codi de Nomad Karaoke: {code}"
     },
     "loginCode": {
-      "expiry": "Aquest codi caduca d'aquí a {minutes} minuts i només es pot fer servir una vegada.",
+      "expiry": "Aquest codi caduca en {minutes} minuts i només es pot utilitzar una vegada.",
       "greeting": "Hola,",
-      "ignoreNote": "Si no has sol·licitat aquest correu, el pots ignorar sense problemes.",
+      "ignoreNote": "Si no has demanat aquest correu, pots ignorar-lo tranquil·lament.",
       "intro": "Introdueix aquest codi a la pàgina d'inici de sessió per continuar:",
-      "linkExpiry": "L'enllaç d'inici de sessió funciona durant 24 hores i només es pot fer servir una vegada.",
-      "orLink": "O salta't el codi i inicia la sessió amb un clic:",
-      "signInButton": "Inicia la sessió",
+      "linkExpiry": "L'enllaç d'inici de sessió és vàlid durant 24 hores i només es pot fer servir una vegada.",
+      "orLink": "O salta't el codi i inicia sessió amb un sol clic:",
+      "signInButton": "Inicia sessió",
       "subject": "El teu codi d'inici de sessió de {brand_name}: {code}"
     },
     "conversion": {

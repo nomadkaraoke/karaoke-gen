@@ -82,7 +82,7 @@
     "waveformNoAudio": "Nincs elérhető hang a hullámformához",
     "sessionSaveError": "Javítási adatok szükségesek",
     "invalidIsDuetFlag": "Az is_duet értékének logikai (boolean) típusúnak kell lennie (true vagy false)",
-    "previewMissingTimings": "A(z) „{line}” sorban van egy időzítés nélküli szó. Szinkronizáld azt a sort, majd próbáld újra az előnézetet."
+    "previewMissingTimings": "A(z) \"{line}\" sorban van egy időzítés nélküli szó. Szinkronizáld a sort, majd próbáld meg újra az előnézetet."
   },
   "audioSearch": {
     "notEnabled": "A hangkeresés nincs engedélyezve ehhez a bérlőhöz",
@@ -179,11 +179,11 @@
     "videoReadyBody": "A(z) \"{title}\" ({artist}) karaoke videód készen áll a letöltésre",
     "confirmDurationTitle": "Feladat költségének jóváhagyása",
     "confirmDurationBody": "{artist} \"{title}\" című számának folytatásához jóvá kell hagynod a költségeket.",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Válassz hangforrást",
+    "selectAudioBody": "A(z) \"{title}\" számhoz ({artist}) ki kell választanod a hangforrást",
+    "jobProblemTitle": "Probléma történt a videóddal",
+    "jobProblemBody": "Probléma történt a(z) \"{title}\" számmal ({artist}). Nyisd meg az alkalmazást, és nézd meg, mi történt",
+    "jobStalledBody": "A(z) \"{title}\" ({artist}) hangsávjának letöltése elakadt. Ha megnyitod az alkalmazást, újra megpróbáljuk"
   },
   "admin": {
     "invalidDomainFormat": "Érvénytelen domain formátum",
@@ -411,14 +411,14 @@
       "subject": "A Nomad Karaoke kódod: {code}"
     },
     "loginCode": {
-      "expiry": "Ez a kód {minutes} perc múlva lejár, és csak egyszer használható.",
+      "expiry": "Ez a kód {minutes} perc múlva lejár, és csak egyszer használható fel.",
       "greeting": "Szia,",
-      "ignoreNote": "Ha nem te kérted ezt az e-mailt, nyugodtan figyelmen kívül hagyhatod.",
-      "intro": "A folytatáshoz írd be ezt a kódot a bejelentkezési oldalon:",
-      "linkExpiry": "A bejelentkezési link 24 óráig érvényes, és csak egyszer használható.",
-      "orLink": "Vagy hagyd ki a kódot, és jelentkezz be egy kattintással:",
+      "ignoreNote": "Ha nem te kérted ezt az e-mailt, nyugodtan hagyd figyelmen kívül.",
+      "intro": "A folytatáshoz add meg ezt a kódot a bejelentkezési oldalon:",
+      "linkExpiry": "A bejelentkezési link 24 órán át érvényes, és csak egyszer használható fel.",
+      "orLink": "Vagy hagyd ki a kódot, és jelentkezz be egyetlen kattintással:",
       "signInButton": "Bejelentkezés",
-      "subject": "{brand_name} bejelentkezési kódod: {code}"
+      "subject": "A(z) {brand_name} bejelentkezési kódod: {code}"
     },
     "conversion": {
       "madeForYouLine": "Inkább nem bajlódnál a dalszöveg ellenőrzésével? Válaszd a Made For You lehetőséget, és az egész videót elkészítem neked 24 órán belül:",

@@ -82,7 +82,7 @@
     "waveformNoAudio": "Nessun audio disponibile per la forma d'onda",
     "sessionSaveError": "I dati di correzione sono richiesti",
     "invalidIsDuetFlag": "is_duet deve essere un booleano (true o false)",
-    "previewMissingTimings": "La riga \"{line}\" contiene una parola senza tempo. Sincronizza quella riga, poi riprova l'anteprima."
+    "previewMissingTimings": "Il verso \"{line}\" contiene una parola non sincronizzata. Sincronizza questo verso e riprova l'anteprima."
   },
   "audioSearch": {
     "notEnabled": "La ricerca audio non è abilitata per questo tenant",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Il tuo video karaoke per \"{title}\" di {artist} è pronto per il download",
     "confirmDurationTitle": "Conferma il costo del lavoro",
     "confirmDurationBody": "\"{title}\" di {artist} richiede una conferma del costo per continuare",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Scegli l'audio",
+    "selectAudioBody": "Devi scegliere una traccia audio per \"{title}\" di {artist}",
+    "jobProblemTitle": "C'è un problema con il tuo video",
+    "jobProblemBody": "Si è verificato un problema con \"{title}\" di {artist}. Apri l'app per vedere cosa è successo",
+    "jobStalledBody": "Il download dell'audio di \"{title}\" di {artist} è bloccato. Apri l'app per permetterci di riprovare"
   },
   "admin": {
     "invalidDomainFormat": "Formato del dominio non valido",
@@ -411,11 +411,11 @@
       "subject": "Il tuo codice Nomad Karaoke: {code}"
     },
     "loginCode": {
-      "expiry": "Questo codice scade tra {minutes} minuti e può essere usato una sola volta.",
+      "expiry": "Questo codice scade in {minutes} minuti e può essere utilizzato una sola volta.",
       "greeting": "Ciao,",
-      "ignoreNote": "Se non hai richiesto questa email, puoi ignorarla tranquillamente.",
+      "ignoreNote": "Se non hai richiesto questa email, puoi tranquillamente ignorarla.",
       "intro": "Inserisci questo codice nella pagina di accesso per continuare:",
-      "linkExpiry": "Il link di accesso è valido per 24 ore e può essere usato una sola volta.",
+      "linkExpiry": "Il link di accesso è valido per 24 ore e può essere utilizzato una sola volta.",
       "orLink": "Oppure salta il codice e accedi con un clic:",
       "signInButton": "Accedi",
       "subject": "Il tuo codice di accesso a {brand_name}: {code}"

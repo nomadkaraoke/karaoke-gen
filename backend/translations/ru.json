@@ -82,7 +82,7 @@
     "waveformNoAudio": "Нет аудио для осциллограммы",
     "sessionSaveError": "Требуются данные исправлений",
     "invalidIsDuetFlag": "is_duet должно быть булевым значением (true или false)",
-    "previewMissingTimings": "В строке «{line}» есть слово без тайминга. Синхронизируй эту строку и попробуй предпросмотр ещё раз."
+    "previewMissingTimings": "В строке «{line}» есть слово без тайминга. Синхронизируй эту строку и попробуй снова включить предпросмотр."
   },
   "audioSearch": {
     "notEnabled": "Поиск аудио не включен для этого аккаунта",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Твое караоке-видео для \"{title}\" от {artist} готово к скачиванию",
     "confirmDurationTitle": "Подтверди стоимость работы",
     "confirmDurationBody": "Для продолжения работы над \"{title}\" исполнителя {artist} необходимо подтвердить стоимость",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Выбери аудио",
+    "selectAudioBody": "Для трека «{title}» ({artist}) нужно выбрать источник аудио",
+    "jobProblemTitle": "С твоим видео возникла проблема",
+    "jobProblemBody": "С треком «{title}» ({artist}) возникла проблема. Открой приложение, чтобы узнать, что случилось",
+    "jobStalledBody": "Скачивание аудио для «{title}» ({artist}) зависло. Мы можем продолжить попытки, если ты откроешь приложение"
   },
   "admin": {
     "invalidDomainFormat": "Неверный формат домена",
@@ -411,14 +411,14 @@
       "subject": "Твой код Nomad Karaoke: {code}"
     },
     "loginCode": {
-      "expiry": "Срок действия кода истекает через {minutes} мин., и его можно использовать только один раз.",
-      "greeting": "Здравствуйте!",
-      "ignoreNote": "Если вы не запрашивали это письмо, просто проигнорируйте его.",
-      "intro": "Введите этот код на странице входа, чтобы продолжить:",
-      "linkExpiry": "Ссылка для входа действует 24 часа, и её можно использовать только один раз.",
-      "orLink": "Или пропустите ввод кода и войдите одним нажатием:",
+      "expiry": "Срок действия этого кода истекает через {minutes} минут, и его можно использовать только один раз.",
+      "greeting": "Привет,",
+      "ignoreNote": "Если ты не запрашивал это письмо, можешь смело его проигнорировать.",
+      "intro": "Введи этот код на странице входа, чтобы продолжить:",
+      "linkExpiry": "Ссылка для входа действует 24 часа и может быть использована только один раз.",
+      "orLink": "Или пропусти ввод кода и войди в один клик:",
       "signInButton": "Войти",
-      "subject": "Ваш код для входа в {brand_name}: {code}"
+      "subject": "Твой код для входа в {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "Не хочешь проверять текст самостоятельно? Выбери Made For You, и я сделаю всё видео за тебя и пришлю в течение 24 часов:",

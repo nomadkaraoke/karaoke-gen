@@ -82,7 +82,7 @@
     "waveformNoAudio": "No hay audio disponible para la forma de onda",
     "sessionSaveError": "Se requieren datos de corrección",
     "invalidIsDuetFlag": "is_duet debe ser un booleano (true o false)",
-    "previewMissingTimings": "La línea \"{line}\" tiene una palabra sin sincronizar. Sincroniza esa línea y vuelve a intentar la vista previa."
+    "previewMissingTimings": "La línea \"{line}\" tiene una palabra sin sincronización. Sincroniza esa línea y luego vuelve a probar la vista previa."
   },
   "audioSearch": {
     "notEnabled": "La búsqueda de audio no está habilitada para este inquilino",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Tu video de karaoke para \"{title}\" de {artist} está listo para descargar",
     "confirmDurationTitle": "Confirmar costo del trabajo",
     "confirmDurationBody": "\"{title}\" de {artist} necesita una confirmación de costo para continuar",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Elige el audio",
+    "selectAudioBody": "\"{title}\" de {artist} necesita que elijas una fuente de audio",
+    "jobProblemTitle": "Hay un problema con tu video",
+    "jobProblemBody": "\"{title}\" de {artist} tuvo un problema. Abre la aplicación para ver qué ocurrió",
+    "jobStalledBody": "La descarga de audio de \"{title}\" de {artist} está atascada. Podemos seguir intentándolo si abres la aplicación"
   },
   "admin": {
     "invalidDomainFormat": "Formato de dominio inválido",
@@ -413,10 +413,10 @@
     "loginCode": {
       "expiry": "Este código caduca en {minutes} minutos y solo se puede usar una vez.",
       "greeting": "Hola,",
-      "ignoreNote": "Si no solicitaste este correo electrónico, puedes ignorarlo de forma segura.",
+      "ignoreNote": "Si no solicitaste este correo, puedes ignorarlo sin problema.",
       "intro": "Introduce este código en la página de inicio de sesión para continuar:",
       "linkExpiry": "El enlace de inicio de sesión funciona durante 24 horas y solo se puede usar una vez.",
-      "orLink": "O sáltate el código e inicia sesión con un clic:",
+      "orLink": "O sáltate el código e inicia sesión con un solo clic:",
       "signInButton": "Iniciar sesión",
       "subject": "Tu código de inicio de sesión de {brand_name}: {code}"
     },

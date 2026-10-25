@@ -82,7 +82,7 @@
     "waveformNoAudio": "لا يوجد صوت متاح للشكل الموجي",
     "sessionSaveError": "بيانات التصحيح مطلوبة",
     "invalidIsDuetFlag": "يجب أن يكون is_duet قيمة منطقية (true أو false)",
-    "previewMissingTimings": "يحتوي السطر \"{line}\" على كلمة بلا توقيت. قم بمزامنة هذا السطر، ثم حاول المعاينة مرة أخرى."
+    "previewMissingTimings": "يتضمن السطر \"{line}\" كلمة بدون توقيت. اضبط توقيت هذا السطر، ثم جرب المعاينة مرة أخرى."
   },
   "audioSearch": {
     "notEnabled": "البحث الصوتي غير مفعل لهذا المستأجر",
@@ -179,11 +179,11 @@
     "videoReadyBody": "فيديو الكاريوكي الخاص بك لأغنية \"{title}\" للفنان {artist} جاهز للتنزيل",
     "confirmDurationTitle": "تأكيد تكلفة المهمة",
     "confirmDurationBody": "تحتاج \"{title}\" للفنان {artist} إلى تأكيد التكلفة للمتابعة",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "اختر الصوت",
+    "selectAudioBody": "يرجى اختيار مصدر الصوت لأغنية \"{title}\" للفنان {artist}",
+    "jobProblemTitle": "توجد مشكلة في الفيديو الخاص بك",
+    "jobProblemBody": "واجهت أغنية \"{title}\" لـ {artist} مشكلة. افتح التطبيق لمعرفة ما حدث",
+    "jobStalledBody": "تنزيل الملف الصوتي لأغنية \"{title}\" لـ {artist} متوقف. يمكننا متابعة المحاولة إذا فتحت التطبيق"
   },
   "admin": {
     "invalidDomainFormat": "تنسيق النطاق غير صالح",
@@ -411,14 +411,14 @@
       "subject": "رمز Nomad Karaoke الخاص بك: {code}"
     },
     "loginCode": {
-      "expiry": "تنتهي صلاحية هذا الرمز خلال {minutes} دقائق ولا يمكن استخدامه إلا مرة واحدة.",
-      "greeting": "مرحبًا،",
+      "expiry": "تنتهي صلاحية هذا الرمز خلال {minutes} دقيقة ويمكن استخدامه مرة واحدة فقط.",
+      "greeting": "مرحباً،",
       "ignoreNote": "إذا لم تطلب هذا البريد الإلكتروني، يمكنك تجاهله بأمان.",
       "intro": "أدخل هذا الرمز في صفحة تسجيل الدخول للمتابعة:",
-      "linkExpiry": "يعمل رابط تسجيل الدخول لمدة 24 ساعة ولا يمكن استخدامه إلا مرة واحدة.",
+      "linkExpiry": "يعمل رابط تسجيل الدخول لمدة 24 ساعة ويمكن استخدامه مرة واحدة فقط.",
       "orLink": "أو تخطَّ الرمز وسجّل الدخول بنقرة واحدة:",
       "signInButton": "تسجيل الدخول",
-      "subject": "رمز تسجيل الدخول إلى {brand_name}: {code}"
+      "subject": "رمز تسجيل الدخول الخاص بك في {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "تفضّل ألا تراجع الكلمات بنفسك؟ اختر Made For You وسأصنع الفيديو كاملاً من أجلك، ليكون جاهزاً خلال 24 ساعة:",

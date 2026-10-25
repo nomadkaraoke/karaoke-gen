@@ -82,7 +82,7 @@
     "waveformNoAudio": "Nie je k dispozícii žiadny zvuk pre zvukovú vlnu",
     "sessionSaveError": "Vyžadujú sa údaje o opravách",
     "invalidIsDuetFlag": "is_duet musí byť boolean (true alebo false)",
-    "previewMissingTimings": "Riadok „{line}“ obsahuje slovo bez časovania. Synchronizuj tento riadok a skús náhľad znova."
+    "previewMissingTimings": "Riadok „{line}“ obsahuje slovo bez časovania. Synchronizuj tento riadok a potom skús náhľad znova."
   },
   "audioSearch": {
     "notEnabled": "Vyhľadávanie zvuku nie je pre tohto nájomcu povolené",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Tvoje karaoke video pre \"{title}\" od {artist} je pripravené na stiahnutie",
     "confirmDurationTitle": "Potvrď cenu úlohy",
     "confirmDurationBody": "\"{title}\" od {artist} vyžaduje potvrdenie ceny pre pokračovanie",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Vyber zvuk",
+    "selectAudioBody": "Pri skladbe „{title}“ od {artist} musíš vybrať zdroj zvuku",
+    "jobProblemTitle": "Nastal problém s tvojím videom",
+    "jobProblemBody": "Pri skladbe „{title}“ od {artist} sa vyskytol problém. Otvor aplikáciu a zisti, čo sa stalo",
+    "jobStalledBody": "Sťahovanie zvuku pre skladbu „{title}“ od {artist} sa zaseklo. Ak otvoríš aplikáciu, môžeme to skúšať ďalej"
   },
   "admin": {
     "invalidDomainFormat": "Neplatný formát domény",
@@ -411,14 +411,14 @@
       "subject": "Tvoj kód pre Nomad Karaoke: {code}"
     },
     "loginCode": {
-      "expiry": "Platnosť tohto kódu vyprší o {minutes} minút a možno ho použiť iba raz.",
-      "greeting": "Dobrý deň,",
-      "ignoreNote": "Ak ste o tento e-mail nežiadali, môžete ho pokojne ignorovať.",
-      "intro": "Ak chcete pokračovať, zadajte tento kód na prihlasovacej stránke:",
-      "linkExpiry": "Prihlasovací odkaz platí 24 hodín a možno ho použiť iba raz.",
-      "orLink": "Alebo kód preskočte a prihláste sa jedným kliknutím:",
+      "expiry": "Tento kód vyprší o {minutes} minút a dá sa použiť len raz.",
+      "greeting": "Ahoj,",
+      "ignoreNote": "Ak si tento email nevyžiadal, môžeš ho bezpečne ignorovať.",
+      "intro": "Ak chceš pokračovať, zadaj tento kód na prihlasovacej stránke:",
+      "linkExpiry": "Prihlasovací odkaz je platný 24 hodín a možno ho použiť len raz.",
+      "orLink": "Alebo preskoč kód a prihlás sa jedným kliknutím:",
       "signInButton": "Prihlásiť sa",
-      "subject": "Váš prihlasovací kód pre {brand_name}: {code}"
+      "subject": "Tvoj prihlasovací kód pre {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "Nechce sa ti kontrolovať text piesne? Vyber si možnosť Made For You a celé video ti vytvorím ja, s doručením do 24 hodín:",

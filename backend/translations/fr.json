@@ -82,7 +82,7 @@
     "waveformNoAudio": "Aucun audio disponible pour la forme d'onde",
     "sessionSaveError": "Les données de correction sont requises",
     "invalidIsDuetFlag": "is_duet doit être un booléen (true ou false)",
-    "previewMissingTimings": "La ligne « {line} » contient un mot sans synchronisation. Synchronise cette ligne, puis réessaie l'aperçu."
+    "previewMissingTimings": "La ligne \"{line}\" contient un mot sans timing. Synchronise cette ligne, puis réessaie l'aperçu."
   },
   "audioSearch": {
     "notEnabled": "La recherche audio n'est pas activée pour ce compte",
@@ -179,11 +179,11 @@
     "videoReadyBody": "Ta vidéo karaoké pour \"{title}\" de {artist} est prête à être téléchargée",
     "confirmDurationTitle": "Confirme le coût de la tâche",
     "confirmDurationBody": "\"{title}\" de {artist} nécessite une confirmation de coût pour continuer",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
-    "jobProblemTitle": "There's a problem with your video",
-    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
-    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
+    "selectAudioTitle": "Choisis l'audio",
+    "selectAudioBody": "Choisis une source audio pour \"{title}\" de {artist}",
+    "jobProblemTitle": "Il y a un problème avec ta vidéo",
+    "jobProblemBody": "\"{title}\" de {artist} a rencontré un problème. Ouvre l'application pour voir ce qui s'est passé",
+    "jobStalledBody": "Le téléchargement audio pour \"{title}\" de {artist} est bloqué. Nous pouvons réessayer si tu ouvres l'application"
   },
   "admin": {
     "invalidDomainFormat": "Format de domaine invalide",
@@ -412,13 +412,13 @@
     },
     "loginCode": {
       "expiry": "Ce code expire dans {minutes} minutes et ne peut être utilisé qu'une seule fois.",
-      "greeting": "Bonjour,",
-      "ignoreNote": "Si vous n'avez pas demandé cet e-mail, vous pouvez l'ignorer en toute sécurité.",
-      "intro": "Saisissez ce code sur la page de connexion pour continuer :",
-      "linkExpiry": "Le lien de connexion est valable 24 heures et ne peut être utilisé qu'une seule fois.",
-      "orLink": "Ou passez le code et connectez-vous en un clic :",
+      "greeting": "Salut,",
+      "ignoreNote": "Si tu n'as pas demandé cet email, tu peux l'ignorer en toute sécurité.",
+      "intro": "Saisis ce code sur la page de connexion pour continuer :",
+      "linkExpiry": "Le lien de connexion est valide pendant 24 heures et ne peut être utilisé qu'une seule fois.",
+      "orLink": "Ou ignore le code et connecte-toi en un clic :",
       "signInButton": "Se connecter",
-      "subject": "Votre code de connexion {brand_name} : {code}"
+      "subject": "Ton code de connexion {brand_name} : {code}"
     },
     "conversion": {
       "madeForYouLine": "Tu préfères ne pas vérifier les paroles toi-même ? Choisis Made For You et je m'occupe de créer toute la vidéo pour toi, livrée sous 24 heures :",
