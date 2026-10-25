@@ -23,7 +23,7 @@ import tempfile
 import time
 from typing import Optional, Dict, Any
 
-from backend.services.job_manager import JobManager
+from backend.services.job_manager import JobManager, with_notification_drain
 from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import DownloadError
@@ -811,7 +811,9 @@ def main():
 
     # Run the async worker function
     try:
-        success = asyncio.run(process_audio_separation(job_id))
+        # Drain: push/email sends scheduled by the job's last state change must
+        # finish before asyncio.run cancels pending tasks on exit.
+        success = asyncio.run(with_notification_drain(process_audio_separation(job_id)))
         if success:
             logger.info(f"Audio separation completed successfully for job {job_id}")
             sys.exit(0)

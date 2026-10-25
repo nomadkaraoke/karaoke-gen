@@ -27,7 +27,7 @@ from backend.services.audio_search_service import (
     NoResultsError,
     pick_auto_selection,
 )
-from backend.services.job_manager import JobManager
+from backend.services.job_manager import JobManager, with_notification_drain
 from backend.services.pricing import duration_to_credits, is_blocked
 from backend.services.user_service import get_user_service
 from backend.services.worker_service import get_worker_service
@@ -404,7 +404,9 @@ def main():
     )
     logger.info("Starting bulk search worker for batch %s", args.batch_id)
     try:
-        count = asyncio.run(process_batch(args.batch_id))
+        # Drain: push/email sends scheduled by the job's last state change must
+        # finish before asyncio.run cancels pending tasks on exit.
+        count = asyncio.run(with_notification_drain(process_batch(args.batch_id)))
         logger.info("Bulk search worker finished batch %s (%d jobs)", args.batch_id, count)
         sys.exit(0)
     except Exception as e:  # noqa: BLE001

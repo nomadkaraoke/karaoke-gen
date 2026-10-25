@@ -8,10 +8,12 @@ This module handles the complete job lifecycle including:
 - Progress tracking and timeline events
 - Error handling and retries
 """
+import asyncio
 import logging
+import threading
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Awaitable, Callable, Optional, Dict, Any, List, TypeVar
 
 from backend.config import settings
 from backend.exceptions import InvalidStateTransitionError, InsufficientCreditsError
@@ -39,6 +41,140 @@ PREP_PHASE_STATUSES = frozenset({
 
 # state_data flag: this run's failure push was sent (see _failure_already_notified).
 FAILURE_PUSH_SENT_KEY = 'failure_push_sent'
+
+
+# ---------------------------------------------------------------- notification delivery
+#
+# Emails, pushes and idle-reminder scheduling are fire-and-forget: a state change
+# never waits for them. In the API server that is a task on the server's loop,
+# which lives on. A Cloud Run Job worker, though, runs its whole job inside
+# ``asyncio.run(...)``, which cancels every pending task when the job coroutine
+# returns, so a push scheduled by its last fail_job / transition never went out
+# (silently: CancelledError is not an Exception). Every send is tracked here and
+# worker entry points run their job through ``with_notification_drain`` (or await
+# ``drain_notifications``) so the sends finish, within a bounded wait, before the
+# loop closes. Module-level, not per instance: one worker builds several JobManagers.
+
+# How long a worker's drain waits for its notification tasks before giving up.
+# This bounds the coroutine wait only: a provider call already running in a
+# thread (asyncio.to_thread) can't be cancelled, and on Python 3.11 (prod)
+# asyncio.run's default-executor shutdown, and interpreter exit, wait for it
+# without limit. Exit time is really bounded by each call's own timeout (Web
+# Push WEBPUSH_TIMEOUT_S, Expo's httpx timeout, the Firestore/Postmark clients'
+# deadlines), so every provider call must keep one.
+NOTIFICATION_DRAIN_TIMEOUT_S = 10.0
+
+_pending_notification_tasks: "set[asyncio.Task]" = set()
+_pending_notification_threads: "set[threading.Thread]" = set()
+_pending_threads_lock = threading.Lock()
+# Job ids whose failure push is scheduled but not yet sent (see _failure_already_notified).
+_failure_push_in_flight: "set[str]" = set()
+
+T = TypeVar("T")
+
+
+def _schedule_notification(
+    make_coro: Callable[[], Awaitable[Any]],
+    label: str,
+    on_done: Optional[Callable[[], None]] = None,
+) -> None:
+    """Run ``make_coro()`` in the background and track it until it finishes.
+
+    Inside a running loop (API request, worker job) it becomes a task on that loop;
+    with no loop (sync code, e.g. a worker's ``asyncio.to_thread`` helper) it runs on
+    its own daemon thread. Never blocks the caller, never raises from the send.
+    ``on_done`` runs once the send has finished, failed or been cancelled (even a
+    task cancelled before its first step, whose coroutine body never runs).
+    """
+    async def guarded():
+        try:
+            await make_coro()
+        except Exception as e:
+            logger.error(f"Notification send failed ({label}): {e}")
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is not None:
+        task = loop.create_task(guarded(), name=f"notification: {label}")
+        _pending_notification_tasks.add(task)
+        task.add_done_callback(_pending_notification_tasks.discard)
+        if on_done is not None:
+            task.add_done_callback(lambda _task: on_done())
+        return
+
+    def run_in_thread():
+        try:
+            asyncio.run(guarded())
+        finally:
+            if on_done is not None:
+                on_done()
+            with _pending_threads_lock:
+                _pending_notification_threads.discard(threading.current_thread())
+
+    thread = threading.Thread(target=run_in_thread, daemon=True, name=f"notification: {label}")
+    with _pending_threads_lock:
+        _pending_notification_threads.add(thread)
+    thread.start()
+
+
+async def drain_notifications(timeout_s: Optional[float] = None) -> bool:
+    """Wait for this process's pending notification sends, at most ``timeout_s``.
+
+    Call before a worker's event loop closes. Returns True when everything was sent
+    (or failed and was logged); on timeout logs a WARNING, cancels what is left and
+    returns False. Never raises from a send. Cancelling a task doesn't stop a
+    provider call already running in a thread (see NOTIFICATION_DRAIN_TIMEOUT_S).
+    """
+    if timeout_s is None:
+        timeout_s = NOTIFICATION_DRAIN_TIMEOUT_S
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
+    me = asyncio.current_task()
+    while True:
+        # A send may schedule another, so re-check until nothing is left.
+        tasks = [t for t in list(_pending_notification_tasks)
+                 if t.get_loop() is loop and not t.done() and t is not me]
+        with _pending_threads_lock:
+            threads = [th for th in _pending_notification_threads if th.is_alive()]
+        if not tasks and not threads:
+            return True
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            break
+        if tasks:
+            await asyncio.wait(tasks, timeout=remaining)
+        else:
+            await asyncio.sleep(min(0.05, remaining))
+
+    logger.warning(
+        f"Gave up waiting for {len(tasks)} notification send(s) and {len(threads)} "
+        f"notification thread(s) after {timeout_s:.0f}s; exiting without them: "
+        f"{[t.get_name() for t in tasks] + [th.name for th in threads]}"
+    )
+    for t in tasks:
+        t.cancel()
+    return False
+
+
+async def with_notification_drain(job: Awaitable[T]) -> T:
+    """Await a worker's job coroutine, then drain its notifications (also on error).
+
+    Use as ``asyncio.run(with_notification_drain(process_x(job_id)))`` in a Cloud
+    Run Job entry point. The drain never raises and its wait is capped at
+    NOTIFICATION_DRAIN_TIMEOUT_S, so it can't change the job's result. A provider
+    call already running in a thread still finishes before the process exits;
+    its own timeout bounds that (see NOTIFICATION_DRAIN_TIMEOUT_S).
+    """
+    try:
+        return await job
+    finally:
+        try:
+            await drain_notifications()
+        except Exception as e:
+            logger.warning(f"Notification drain failed: {e}")
 
 
 def _cloud_run_retry_pending(state_data: Optional[Dict[str, Any]]) -> bool:
@@ -685,8 +821,6 @@ class JobManager:
             job_id: Job ID
             new_status: New job status
         """
-        import asyncio
-
         try:
             # Get the job to access user info
             job = self.get_job(job_id)
@@ -723,9 +857,14 @@ class JobManager:
                 if suppress_customer_notifications(job):
                     logger.info(f"Job {job_id}: failure push suppressed (quiet re-render)")
                     return
-                self._send_push_notification(job, "failed")
-                # Lets a second worker failing the same run skip a duplicate push.
-                self.firestore.update_job(job_id, {f'state_data.{FAILURE_PUSH_SENT_KEY}': True})
+                # The run's marker (lets a second worker failing the same run skip a
+                # duplicate push) is written once the push was attempted, not when it
+                # is scheduled, so a send that never ran can't hide a later failure.
+                self._send_push_notification(
+                    job, "failed",
+                    after_send=lambda: self.firestore.update_job(
+                        job_id, {f'state_data.{FAILURE_PUSH_SENT_KEY}': True}),
+                )
 
         except Exception as e:
             # Never let notification failures affect job processing
@@ -736,11 +875,8 @@ class JobManager:
         Schedule sending a job completion email.
 
         For made-for-you orders, also transfers ownership from admin to customer.
-        Uses asyncio to fire-and-forget the email sending.
+        Fire-and-forget (see _schedule_notification).
         """
-        import asyncio
-        import threading
-
         try:
             from backend.services.job_notification_service import get_job_notification_service
 
@@ -791,19 +927,7 @@ class JobManager:
                     youtube_queued=youtube_queued,
                 )
 
-            # Try to get existing event loop, create new one if none exists
-            try:
-                loop = asyncio.get_running_loop()
-                # If we're in an async context, create a task
-                loop.create_task(send_email())
-            except RuntimeError:
-                # No event loop - we're likely in a sync context
-                # Use daemon thread to avoid blocking job completion
-                def run_in_thread():
-                    asyncio.run(send_email())
-                thread = threading.Thread(target=run_in_thread, daemon=True)
-                thread.start()
-
+            _schedule_notification(send_email, f"completion email {job.job_id}")
             logger.info(f"Scheduled completion email for job {job.job_id}")
 
         except Exception as e:
@@ -818,9 +942,6 @@ class JobManager:
         - AWAITING_DURATION_CONFIRM: 15 minutes (900s) — user needs to confirm extra cost
         - All other blocking states: default delay (IDLE_REMINDER_DELAY_SECONDS)
         """
-        import asyncio
-        import threading
-
         try:
             # Record when we entered blocking state (for idle detection)
             blocking_entered_at = datetime.utcnow().isoformat()
@@ -859,17 +980,7 @@ class JobManager:
                 else:
                     await worker_service.schedule_idle_reminder(job.job_id)
 
-            # Try to get existing event loop, create new one if none exists
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(schedule_reminder())
-            except RuntimeError:
-                # No event loop - we're in a sync context
-                # Use daemon thread to avoid blocking job processing
-                def run_in_thread():
-                    asyncio.run(schedule_reminder())
-                thread = threading.Thread(target=run_in_thread, daemon=True)
-                thread.start()
+            _schedule_notification(schedule_reminder, f"idle reminder {job.job_id}")
 
             logger.info(f"Scheduled idle reminder for job {job.job_id} ({action_type})")
 
@@ -903,7 +1014,9 @@ class JobManager:
             path.format(id=job.job_id),
         )
 
-    def _send_push_notification(self, job: Job, action_type: str) -> None:
+    def _send_push_notification(
+        self, job: Job, action_type: str, after_send: Optional[Callable[[], None]] = None,
+    ) -> None:
         """
         Send push notifications (Web Push and mobile Expo push) for job state changes.
 
@@ -913,10 +1026,9 @@ class JobManager:
             job: Job object
             action_type: "complete", "lyrics", "instrumental", "audio_edit",
                 "duration_confirm" or "failed"
+            after_send: Optional blocking callback, run (in a worker thread) once
+                both channels were attempted.
         """
-        import asyncio
-        import threading
-
         try:
             from backend.services.push_notification_service import get_push_notification_service
 
@@ -936,6 +1048,14 @@ class JobManager:
             }
 
             async def send_notification():
+                await send_channels()
+                if after_send is not None:
+                    try:
+                        await asyncio.to_thread(after_send)
+                    except Exception as e:  # best-effort bookkeeping
+                        logger.warning(f"Post-push update failed for job {job.job_id}: {e}")
+
+            async def send_channels():
                 # Each channel is isolated so one failing cannot stop the other.
                 if web_enabled:
                     try:
@@ -956,17 +1076,17 @@ class JobManager:
                 except Exception as e:
                     logger.error(f"Expo push failed for job {job.job_id}: {e}")
 
-            # Try to get existing event loop, create new one if none exists
+            on_done = None
+            if action_type == "failed":
+                # Until the send finishes (and its marker is written), this process
+                # treats the run's failure as notified: see _failure_already_notified.
+                _failure_push_in_flight.add(job.job_id)
+                on_done = lambda: _failure_push_in_flight.discard(job.job_id)  # noqa: E731
             try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(send_notification())
-            except RuntimeError:
-                # No event loop - we're in a sync context
-                def run_in_thread():
-                    asyncio.run(send_notification())
-                thread = threading.Thread(target=run_in_thread, daemon=True)
-                thread.start()
-
+                _schedule_notification(send_notification, f"{action_type} push {job.job_id}", on_done)
+            except Exception:
+                _failure_push_in_flight.discard(job.job_id)
+                raise
             logger.debug(f"Scheduled push notification for job {job.job_id} ({action_type})")
 
         except Exception as e:
@@ -1564,8 +1684,12 @@ class JobManager:
         is FAILED without the marker (e.g. a Cloud Run auto-retry attempt, which
         runs while the job is still FAILED and whose first failure skipped the
         push) still pushes. A manual retry moves the job out of FAILED, so a later
-        failure pushes again. Best-effort: a read error counts as "not notified".
+        failure pushes again. While this process's failure push for the job is still
+        being sent (the marker is written only after it), it also counts as notified.
+        Best-effort: a read error counts as "not notified".
         """
+        if job_id in _failure_push_in_flight:
+            return True  # this process is sending the run's failure push right now
         try:
             job = self.get_job(job_id)
             return bool(

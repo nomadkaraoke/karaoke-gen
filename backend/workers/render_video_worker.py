@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
 from backend.utils.audio_filenames import local_audio_filename
-from backend.services.job_manager import JobManager
+from backend.services.job_manager import JobManager, with_notification_drain
 from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.input_recovery import recover_missing_inputs
 from backend.services.storage_service import StorageService
@@ -1017,7 +1017,9 @@ def main():
     logger.info(f"Starting render video worker CLI for job {job_id}")
 
     try:
-        success = asyncio.run(process_render_video(job_id))
+        # Drain: push/email sends scheduled by the job's last state change must
+        # finish before asyncio.run cancels pending tasks on exit.
+        success = asyncio.run(with_notification_drain(process_render_video(job_id)))
         if success:
             logger.info(f"Render video completed successfully for job {job_id}")
         else:

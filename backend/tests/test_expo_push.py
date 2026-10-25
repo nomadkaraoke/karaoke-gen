@@ -180,7 +180,7 @@ class TestSend:
         url, msgs = calls[0]
         assert url == "https://exp.host/--/api/v2/push/send"
         assert msgs == [{"to": TOKEN, "title": "T", "body": "B", "sound": "default",
-                         "data": {"url": "/job/1", "kind": "ready"}}]
+                         "channelId": "jobs", "data": {"url": "/job/1", "kind": "ready"}}]
 
     def test_device_not_registered_removes_token(self, db, user_service):
         _seed_tokens(db, A, [TOKEN, TOKEN2])
@@ -203,12 +203,16 @@ class TestSend:
         _seed_tokens(db, A, tokens)
         sizes = []
 
+        channels = set()
+
         def post(url, json, **kw):
             sizes.append(len(json))
+            channels.update(m.get("channelId") for m in json)
             return _Resp([{"status": "ok"}] * len(json))
 
         assert _service(db, user_service, post).send(A, "ready", "T", "B", "/x") == 250
         assert sizes == [100, 100, 50]
+        assert channels == {"jobs"}  # every message, every batch, on the app's "jobs" channel
 
     def test_http_failure_never_raises(self, db, user_service):
         _seed_tokens(db, A, [TOKEN])

@@ -19,6 +19,9 @@ from backend.i18n import t
 
 logger = logging.getLogger(__name__)
 
+# Per-request timeout for a Web Push send (seconds).
+WEBPUSH_TIMEOUT_S = 10
+
 
 class SubscriptionGoneError(Exception):
     """Raised when a push subscription is no longer valid (410 Gone)."""
@@ -201,7 +204,10 @@ class PushNotificationService:
                     vapid_private_key=self.vapid_private_key,
                     vapid_claims={
                         "sub": self.settings.vapid_subject
-                    }
+                    },
+                    # Bounded, so a hung push service can't hold a worker
+                    # thread (and a Cloud Run Job's exit) indefinitely.
+                    timeout=WEBPUSH_TIMEOUT_S,
                 )
                 success_count += 1
                 logger.debug(f"Push sent to {sub.get('device_name', 'unknown device')}")
