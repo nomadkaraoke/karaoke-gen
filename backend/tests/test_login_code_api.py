@@ -54,6 +54,8 @@ def settings():
         admin_tokens="",
         login_codes_per_email_per_hour=5,
         login_codes_per_ip_per_hour=20,
+        app_review_demo_email="",
+        app_review_demo_code="",
     )
 
 

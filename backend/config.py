@@ -401,6 +401,8 @@ class Settings(BaseSettings):
     account_deletion_enabled: bool = os.getenv("ACCOUNT_DELETION_ENABLED", "").lower() in ("1", "true", "yes")
     # App Review demo login: inert unless this AND the app-review-demo-code secret are set.
     app_review_demo_email: str = os.getenv("APP_REVIEW_DEMO_EMAIL", "")
+    # Secret Manager: app-review-demo-code, mounted as APP_REVIEW_DEMO_CODE.
+    app_review_demo_code: str = os.getenv("APP_REVIEW_DEMO_CODE", "")
     # RevenueCat (mobile in-app credit packs). The webhook (POST
     # /api/users/webhooks/revenuecat) compares the Authorization header to this
     # value and 503s while it is empty (Secret Manager: revenuecat-webhook-auth).
