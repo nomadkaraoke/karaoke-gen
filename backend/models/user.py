@@ -49,6 +49,15 @@ class PushSubscription(BaseModel):
     last_used_at: Optional[datetime] = None  # Last time a notification was sent
 
 
+PUSH_PREF_KINDS = ("ready", "review", "problems")
+
+
+def effective_push_prefs(stored: Optional[Dict[str, bool]]) -> Dict[str, bool]:
+    """Per-type mobile push preferences with defaults applied (all on unless stored False)."""
+    stored = stored or {}
+    return {kind: bool(stored.get(kind, True)) for kind in PUSH_PREF_KINDS}
+
+
 class ExpoPushToken(BaseModel):
     """Expo push token for one device of the Nomad Karaoke mobile app."""
     token: str

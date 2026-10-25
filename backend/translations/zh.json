@@ -178,7 +178,12 @@
     "videoReadyTitle": "视频已就绪！",
     "videoReadyBody": "您制作的卡拉OK视频（{artist} - {title}）已准备好下载",
     "confirmDurationTitle": "确认任务费用",
-    "confirmDurationBody": "{artist} 的 \"{title}\" 需要确认费用后才能继续"
+    "confirmDurationBody": "{artist} 的 \"{title}\" 需要确认费用后才能继续",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "无效的域名格式",

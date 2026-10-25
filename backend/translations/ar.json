@@ -178,7 +178,12 @@
     "videoReadyTitle": "الفيديو جاهز!",
     "videoReadyBody": "فيديو الكاريوكي الخاص بك لأغنية \"{title}\" للفنان {artist} جاهز للتنزيل",
     "confirmDurationTitle": "تأكيد تكلفة المهمة",
-    "confirmDurationBody": "تحتاج \"{title}\" للفنان {artist} إلى تأكيد التكلفة للمتابعة"
+    "confirmDurationBody": "تحتاج \"{title}\" للفنان {artist} إلى تأكيد التكلفة للمتابعة",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "تنسيق النطاق غير صالح",

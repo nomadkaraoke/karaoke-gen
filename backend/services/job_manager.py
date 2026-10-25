@@ -695,6 +695,12 @@ class JobManager:
                     action_type = "instrumental"
                 self._send_push_notification(job, action_type)
 
+            # Problem states: push only (no email / idle reminder)
+            elif new_status == JobStatus.AWAITING_AUDIO_SELECTION:
+                self._send_push_notification(job, "audio_selection")
+            elif new_status == JobStatus.FAILED:
+                self._send_push_notification(job, "failed")
+
         except Exception as e:
             # Never let notification failures affect job processing
             logger.error(f"Error triggering notifications for job {job_id}: {e}")
@@ -844,15 +850,44 @@ class JobManager:
         except Exception as e:
             logger.error(f"Failed to schedule idle reminder for job {job.job_id}: {e}")
 
+    # action_type -> (Expo kind, mobile deep-link path, i18n key prefix under pushNotifications)
+    _EXPO_ROUTES = {
+        "complete": ("ready", "/job/{id}", ("videoReadyTitle", "videoReadyBody")),
+        "lyrics": ("review", "/review/{id}", ("reviewLyricsTitle", "reviewLyricsBody")),
+        "duration_confirm": ("review", "/job/duration/{id}", ("confirmDurationTitle", "confirmDurationBody")),
+        "audio_edit": ("review", "/job/{id}", ("reviewLyricsTitle", "reviewLyricsBody")),
+        "instrumental": ("review", "/job/{id}", ("selectInstrumentalTitle", "selectInstrumentalBody")),
+        "audio_selection": ("problems", "/job/{id}", ("selectAudioTitle", "selectAudioBody")),
+        "failed": ("problems", "/job/{id}", ("jobProblemTitle", "jobProblemBody")),
+    }
+
+    def _send_expo_push(self, job: Job, action_type: str, stalled_download: bool = False) -> None:
+        """Send the mobile-app (Expo) push for a job event. Blocking; call from a worker thread."""
+        from backend.i18n import t
+        from backend.services.expo_push_service import get_expo_push_service
+
+        kind, path, (title_key, body_key) = self._EXPO_ROUTES[action_type]
+        if stalled_download:
+            body_key = "jobStalledBody"
+        locale = "en"  # like Web Push: job.locale is an admin signal, not a notification preference
+        get_expo_push_service().send(
+            job.user_email,
+            kind,
+            t(locale, f"pushNotifications.{title_key}"),
+            t(locale, f"pushNotifications.{body_key}", title=job.title or "", artist=job.artist or ""),
+            path.format(id=job.job_id),
+        )
+
     def _send_push_notification(self, job: Job, action_type: str) -> None:
         """
-        Send a push notification for job state changes.
+        Send push notifications (Web Push and mobile Expo push) for job state changes.
 
         Fire-and-forget - failures don't affect job processing.
 
         Args:
             job: Job object
-            action_type: Type of notification ("lyrics", "instrumental", or "complete")
+            action_type: "complete", "lyrics", "instrumental", "audio_edit",
+                "duration_confirm", "audio_selection" or "failed"
         """
         import asyncio
         import threading
@@ -861,11 +896,9 @@ class JobManager:
             from backend.services.push_notification_service import get_push_notification_service
 
             push_service = get_push_notification_service()
+            web_enabled = push_service.is_enabled()
 
-            # Skip if push notifications not enabled
-            if not push_service.is_enabled():
-                logger.debug("Push notifications not enabled, skipping")
-                return
+            stalled = bool((job.error_details or {}).get("code") == "audio_download_stalled")
 
             # Build job dict for notification service
             job_dict = {
@@ -874,13 +907,25 @@ class JobManager:
                 "artist": job.artist,
                 "title": job.title,
                 "tenant_id": job.tenant_id or None,
+                "stalled_download": stalled,
             }
 
             async def send_notification():
-                if action_type == "complete":
-                    await push_service.send_completion_notification(job_dict)
-                else:
-                    await push_service.send_blocking_notification(job_dict, action_type)
+                # Each channel is isolated so one failing cannot stop the other.
+                if web_enabled:
+                    try:
+                        if action_type == "complete":
+                            await push_service.send_completion_notification(job_dict)
+                        elif action_type in ("audio_selection", "failed"):
+                            await push_service.send_problem_notification(job_dict, action_type)
+                        else:
+                            await push_service.send_blocking_notification(job_dict, action_type)
+                    except Exception as e:
+                        logger.error(f"Web push failed for job {job.job_id}: {e}")
+                try:
+                    await asyncio.to_thread(self._send_expo_push, job, action_type, stalled)
+                except Exception as e:
+                    logger.error(f"Expo push failed for job {job.job_id}: {e}")
 
             # Try to get existing event loop, create new one if none exists
             try:

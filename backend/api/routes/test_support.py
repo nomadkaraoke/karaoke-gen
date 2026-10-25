@@ -22,7 +22,7 @@ from backend.config import get_settings
 from backend.services import fake_workers
 from backend.services.fake_workers import checkout as fake_checkout
 from backend.services.fake_workers.config import clear_fake_config, get_fake_config, set_fake_config
-from backend.services.fake_workers.outbox import list_emails
+from backend.services.fake_workers.outbox import clear_pushes, list_emails, list_pushes
 from backend.services.fake_workers.scenarios import SCENARIOS, ScenarioError, run_scenario
 
 logger = logging.getLogger(__name__)
@@ -73,6 +73,7 @@ def reset() -> Dict[str, Any]:
             blob.delete()
             deleted += 1
     clear_fake_config()
+    clear_pushes()
     return {"status": "reset", "blobs_deleted": deleted}
 
 
@@ -137,6 +138,18 @@ def review_result(job_id: str) -> Dict[str, Any]:
 @router.get("/emails")
 def emails(to: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
     return {"emails": list_emails(to, limit=limit)}
+
+
+@router.get("/push-outbox")
+def push_outbox(to: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    """Expo pushes captured instead of sent (newest first)."""
+    return {"pushes": list_pushes(to, limit=limit)}
+
+
+@router.delete("/push-outbox")
+def clear_push_outbox() -> Dict[str, Any]:
+    clear_pushes()
+    return {"status": "cleared"}
 
 
 # ------------------------------------------------------------------ fake Stripe

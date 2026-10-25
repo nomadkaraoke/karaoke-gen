@@ -115,7 +115,7 @@ class TestSendPush:
             result = await push_service.send_push("a@b.com", "T", "B", "/x", "tag", "singa")
         assert result == 3
         assert seen["thread"] != loop_thread
-        m.assert_called_once_with("a@b.com", "T", "B", "/x", "tag", "singa")
+        m.assert_called_once_with("a@b.com", "T", "B", "/x", "tag", "singa", None)
 
     @pytest.mark.asyncio
     async def test_send_push_no_user(self, push_service):

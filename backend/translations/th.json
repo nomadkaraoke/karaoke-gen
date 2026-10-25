@@ -178,7 +178,12 @@
     "videoReadyTitle": "วิดีโอพร้อมแล้ว!",
     "videoReadyBody": "วิดีโอคาราโอเกะเพลง \"{title}\" โดย {artist} พร้อมให้ดาวน์โหลดแล้ว",
     "confirmDurationTitle": "ยืนยันค่าใช้จ่ายของงาน",
-    "confirmDurationBody": "\"{title}\" โดย {artist} ต้องการการยืนยันค่าใช้จ่ายเพื่อดำเนินการต่อ"
+    "confirmDurationBody": "\"{title}\" โดย {artist} ต้องการการยืนยันค่าใช้จ่ายเพื่อดำเนินการต่อ",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "รูปแบบโดเมนไม่ถูกต้อง",

@@ -178,7 +178,12 @@
     "videoReadyTitle": "動画の準備ができました！",
     "videoReadyBody": "{artist} の「{title}」のカラオケ動画がダウンロード可能になりました",
     "confirmDurationTitle": "料金の確認",
-    "confirmDurationBody": "{artist}の「{title}」の処理を続けるには、料金の確認が必要です"
+    "confirmDurationBody": "{artist}の「{title}」の処理を続けるには、料金の確認が必要です",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "無効なドメイン形式です",

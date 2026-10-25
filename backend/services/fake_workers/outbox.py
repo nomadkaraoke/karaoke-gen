@@ -8,6 +8,7 @@ from __future__ import annotations
 import html
 import logging
 import re
+import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -64,3 +65,31 @@ def list_emails(to_email: Optional[str] = None, limit: int = 20) -> List[Dict[st
         if isinstance(d.get("created_at"), datetime):
             d["created_at"] = d["created_at"].isoformat()
     return docs[:limit]
+
+
+# ------------------------------------------------------------------ Expo push sink
+# In-memory (fake workers run in the API process, so no Firestore round-trip is needed).
+_push_outbox: List[Dict[str, Any]] = []
+_push_lock = threading.Lock()
+
+
+def record_push(email: str, kind: str, title: str, body: str, url: str) -> None:
+    with _push_lock:
+        _push_outbox.append({
+            "to": (email or "").strip().lower(), "kind": kind, "title": title, "body": body, "url": url,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+
+def list_pushes(email: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """Newest first."""
+    with _push_lock:
+        rows = list(_push_outbox)
+    if email:
+        rows = [r for r in rows if r["to"] == email.strip().lower()]
+    return list(reversed(rows))[:limit]
+
+
+def clear_pushes() -> None:
+    with _push_lock:
+        _push_outbox.clear()

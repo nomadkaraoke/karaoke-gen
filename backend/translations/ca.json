@@ -178,7 +178,12 @@
     "videoReadyTitle": "Vídeo llest!",
     "videoReadyBody": "El teu vídeo de karaoke per a \"{title}\" de {artist} està llest per descarregar",
     "confirmDurationTitle": "Confirma el cost de la tasca",
-    "confirmDurationBody": "\"{title}\" de {artist} necessita una confirmació de cost per continuar"
+    "confirmDurationBody": "\"{title}\" de {artist} necessita una confirmació de cost per continuar",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "Format de domini no vàlid",

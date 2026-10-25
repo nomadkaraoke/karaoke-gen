@@ -178,7 +178,12 @@
     "videoReadyTitle": "Το Βίντεο Είναι Έτοιμο!",
     "videoReadyBody": "Το καραόκε βίντεό σου για το \"{title}\" από {artist} είναι έτοιμο για λήψη",
     "confirmDurationTitle": "Επιβεβαίωσε το κόστος εργασίας",
-    "confirmDurationBody": "Το \"{title}\" από {artist} χρειάζεται επιβεβαίωση κόστους για να συνεχίσει"
+    "confirmDurationBody": "Το \"{title}\" από {artist} χρειάζεται επιβεβαίωση κόστους για να συνεχίσει",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "Μη έγκυρη μορφή τομέα",

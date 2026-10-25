@@ -5,19 +5,22 @@ Provides endpoints for managing Web Push notification subscriptions:
 - GET /api/push/vapid-public-key: Get VAPID public key for client-side subscription
 - POST /api/push/subscribe: Register a push subscription
 - POST /api/push/unsubscribe: Remove a push subscription
+- POST/DELETE /api/push/expo-token: Register/remove an Expo push token (mobile app)
 - GET /api/push/subscriptions: List user's subscriptions
 - POST /api/push/test: Send a test notification (admin only)
 """
 import logging
-from typing import Optional, Dict, List
+import asyncio
+from typing import Literal, Optional, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 
 from backend.config import get_settings
 from backend.api.dependencies import require_auth, require_admin
 from backend.services.auth_service import AuthResult
 from backend.services.push_notification_service import get_push_notification_service
+from backend.services.expo_push_service import get_expo_push_service
 from backend.i18n import t, get_locale_from_request
 
 
@@ -83,6 +86,17 @@ class TestNotificationResponse(BaseModel):
     status: str
     sent_count: int
     message: str
+
+
+class ExpoTokenRequest(BaseModel):
+    """Register an Expo push token for one device of the mobile app."""
+    token: str = Field(pattern=r"^Expo(nent)?PushToken\[[^\]\s]+\]$")
+    platform: Literal["ios", "android"]
+    device_id: str = Field(min_length=1, max_length=200)
+
+
+class ExpoTokenDeleteRequest(BaseModel):
+    token: str
 
 
 # Routes
@@ -199,6 +213,33 @@ async def unsubscribe_push(
         status="success",
         message=t(locale, "push.subscriptionRemoved")
     )
+
+
+@router.post("/expo-token", status_code=204)
+async def register_expo_token(
+    body: ExpoTokenRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """Register this device's Expo token. Moves it off any other account that held it."""
+    if not auth_result.user_email:
+        raise HTTPException(status_code=401, detail="User email not available")
+    await asyncio.to_thread(
+        get_expo_push_service().register_token,
+        auth_result.user_email, body.token, body.platform, body.device_id,
+    )
+    return Response(status_code=204)
+
+
+@router.delete("/expo-token", status_code=204)
+async def delete_expo_token(
+    body: ExpoTokenDeleteRequest,
+    auth_result: AuthResult = Depends(require_auth),
+):
+    """Remove one of the caller's Expo tokens (the app calls this before sign-out)."""
+    if not auth_result.user_email:
+        raise HTTPException(status_code=401, detail="User email not available")
+    await asyncio.to_thread(get_expo_push_service().remove_tokens, auth_result.user_email, [body.token])
+    return Response(status_code=204)
 
 
 @router.get("/subscriptions", response_model=SubscriptionsListResponse)

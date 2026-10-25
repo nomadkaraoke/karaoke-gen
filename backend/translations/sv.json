@@ -178,7 +178,12 @@
     "videoReadyTitle": "Videon är klar!",
     "videoReadyBody": "Din karaokevideo för \"{title}\" av {artist} är redo att laddas ner",
     "confirmDurationTitle": "Bekräfta jobbkostnad",
-    "confirmDurationBody": "\"{title}\" av {artist} kräver att du bekräftar kostnaden för att fortsätta"
+    "confirmDurationBody": "\"{title}\" av {artist} kräver att du bekräftar kostnaden för att fortsätta",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "Ogiltigt domänformat",

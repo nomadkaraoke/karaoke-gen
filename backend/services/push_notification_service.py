@@ -13,7 +13,7 @@ from google.cloud.firestore_v1 import ArrayRemove
 from pywebpush import webpush, WebPushException
 
 from backend.config import get_settings
-from backend.models.user import User, PushSubscription
+from backend.models.user import User, PushSubscription, effective_push_prefs
 from backend.i18n import t
 
 
@@ -89,7 +89,8 @@ class PushNotificationService:
         body: str,
         url: str = "/app/",
         tag: Optional[str] = None,
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        kind: Optional[str] = None,
     ) -> int:
         """Async entry point: runs ``send_push_sync`` in a worker thread.
 
@@ -99,7 +100,7 @@ class PushNotificationService:
         ``push_notification_service.py:166 in send_push`` with a request waiting).
         """
         return await asyncio.to_thread(
-            self.send_push_sync, user_email, title, body, url, tag, tenant_id
+            self.send_push_sync, user_email, title, body, url, tag, tenant_id, kind
         )
 
     def send_push_sync(
@@ -109,7 +110,8 @@ class PushNotificationService:
         body: str,
         url: str = "/app/",
         tag: Optional[str] = None,
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        kind: Optional[str] = None,
     ) -> int:
         """
         Send a push notification to a user's subscribed devices for a specific tenant.
@@ -125,6 +127,8 @@ class PushNotificationService:
             tag: Optional tag for notification grouping (replaces notifications with same tag)
             tenant_id: Tenant scope - only send to subscriptions for this tenant
                        (None or "" = consumer/default portal)
+            kind: Notification type ("ready", "review" or "problems"). When the user
+                  turned that type off (``push_prefs``), nothing is sent.
 
         Returns:
             Number of notifications successfully sent
@@ -140,6 +144,9 @@ class PushNotificationService:
             return 0
 
         user_data = user_doc.to_dict()
+        if kind and not effective_push_prefs(user_data.get("push_prefs")).get(kind, True):
+            logger.debug(f"Web push '{kind}' suppressed by preference for {user_email}")
+            return 0
         all_subscriptions = user_data.get("push_subscriptions", [])
 
         # Filter subscriptions to only those matching the target tenant
@@ -290,6 +297,42 @@ class PushNotificationService:
             url=url,
             tag=tag,
             tenant_id=tenant_id,
+            kind="review",
+        )
+
+    async def send_problem_notification(
+        self,
+        job: dict,
+        action_type: str,  # "failed" or "audio_selection"
+    ) -> int:
+        """Send notification when a job failed or needs the user to pick audio."""
+        user_email = job.get("user_email")
+        if not user_email:
+            return 0
+
+        job_id = job.get("job_id", "unknown")
+        artist = job.get("artist", "Unknown Artist")
+        title = job.get("title", "Unknown Title")
+        locale = job.get("locale") or "en"
+
+        if action_type == "audio_selection":
+            notif_title = t(locale, "pushNotifications.selectAudioTitle")
+            notif_body = t(locale, "pushNotifications.selectAudioBody", title=title, artist=artist)
+        elif job.get("stalled_download"):
+            notif_title = t(locale, "pushNotifications.jobProblemTitle")
+            notif_body = t(locale, "pushNotifications.jobStalledBody", title=title, artist=artist)
+        else:
+            notif_title = t(locale, "pushNotifications.jobProblemTitle")
+            notif_body = t(locale, "pushNotifications.jobProblemBody", title=title, artist=artist)
+
+        return await self.send_push(
+            user_email=user_email,
+            title=notif_title,
+            body=notif_body,
+            url=f"/app/jobs#/{job_id}",
+            tag=f"problem-{job_id}",
+            tenant_id=job.get("tenant_id") or None,
+            kind="problems",
         )
 
     async def send_completion_notification(self, job: dict) -> int:
@@ -319,6 +362,7 @@ class PushNotificationService:
             url=f"/app/?job={job_id}",
             tag=f"complete-{job_id}",
             tenant_id=tenant_id,
+            kind="ready",
         )
 
     async def add_subscription(

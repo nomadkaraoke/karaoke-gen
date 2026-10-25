@@ -178,7 +178,12 @@
     "videoReadyTitle": "Video je připraveno!",
     "videoReadyBody": "Tvoje karaoke video pro \"{title}\" od {artist} je připraveno ke stažení",
     "confirmDurationTitle": "Potvrď cenu úlohy",
-    "confirmDurationBody": "\"{title}\" od {artist} vyžaduje potvrzení ceny pro pokračování"
+    "confirmDurationBody": "\"{title}\" od {artist} vyžaduje potvrzení ceny pro pokračování",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "Neplatný formát domény",

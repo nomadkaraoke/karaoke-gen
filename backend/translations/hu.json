@@ -178,7 +178,12 @@
     "videoReadyTitle": "A videó kész!",
     "videoReadyBody": "A(z) \"{title}\" ({artist}) karaoke videód készen áll a letöltésre",
     "confirmDurationTitle": "Feladat költségének jóváhagyása",
-    "confirmDurationBody": "{artist} \"{title}\" című számának folytatásához jóvá kell hagynod a költségeket."
+    "confirmDurationBody": "{artist} \"{title}\" című számának folytatásához jóvá kell hagynod a költségeket.",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "Érvénytelen domain formátum",

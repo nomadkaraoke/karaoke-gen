@@ -63,6 +63,7 @@ from backend.models.user import (
     UserFeedbackRequest,
     UserFeedbackResponse,
     FeedbackEligibilityResponse,
+    effective_push_prefs,
 )
 from backend.services.user_service import get_user_service, UserService, USERS_COLLECTION
 from backend.services.email_service import get_email_service, EmailService
@@ -216,6 +217,13 @@ class PushPrefs(BaseModel):
     ready: bool = True
     review: bool = True
     problems: bool = True
+
+
+class PushPrefsUpdate(BaseModel):
+    """Partial update of mobile push categories; omitted keys are unchanged."""
+    ready: Optional[bool] = None
+    review: Optional[bool] = None
+    problems: Optional[bool] = None
 
 
 class UserProfileResponse(BaseModel):
@@ -944,8 +952,25 @@ def _profile_response(user, user_public, user_service) -> UserProfileResponse:
         has_session=True,
         app_user_id=user_service.ensure_app_user_id(user.email),
         capabilities=UserCapabilities(account_deletion=get_settings().account_deletion_enabled),
-        push_prefs=PushPrefs(**{k: bool(v) for k, v in stored.items() if k in PushPrefs.model_fields}),
+        push_prefs=PushPrefs(**effective_push_prefs(stored)),
     )
+
+
+@router.patch("/me/push-prefs", response_model=PushPrefs)
+def update_push_prefs(
+    update: PushPrefsUpdate,
+    auth_result: AuthResult = Depends(require_auth),
+    user_service: UserService = Depends(get_user_service),
+):
+    """Set per-type push preferences (gen Expo and Web Push both honour them)."""
+    if not auth_result.user_email:
+        raise HTTPException(status_code=401, detail="User email not available")
+    user = user_service.get_or_create_user(auth_result.user_email)
+    merged = effective_push_prefs(getattr(user, "push_prefs", None))
+    merged.update(update.model_dump(exclude_none=True))
+    if user_service.update_user(auth_result.user_email, push_prefs=merged) is None:
+        raise HTTPException(status_code=500, detail="Could not save push preferences")
+    return PushPrefs(**merged)
 
 
 @router.get("/me", response_model=UserProfileResponse)

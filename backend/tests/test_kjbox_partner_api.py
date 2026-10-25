@@ -92,7 +92,7 @@ class FakeQuery:
     def limit(self, n):
         return FakeQuery(self.coll, self.filters, n)
 
-    def stream(self):
+    def stream(self, transaction=None):
         out = []
         for doc_id, data in list(self.coll.docs.items()):
             if all(self._match(data, f) for f in self.filters):
@@ -104,6 +104,8 @@ class FakeQuery:
         value = data.get(f.field_path)
         if f.op_string == "==":
             return value == f.value
+        if f.op_string == "array_contains":
+            return isinstance(value, list) and f.value in value
         if f.op_string == ">=":
             return value is not None and value >= f.value
         raise NotImplementedError(f.op_string)

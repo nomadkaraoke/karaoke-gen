@@ -178,7 +178,12 @@
     "videoReadyTitle": "Видео готово!",
     "videoReadyBody": "Твое караоке-видео для \"{title}\" от {artist} готово к скачиванию",
     "confirmDurationTitle": "Подтверди стоимость работы",
-    "confirmDurationBody": "Для продолжения работы над \"{title}\" исполнителя {artist} необходимо подтвердить стоимость"
+    "confirmDurationBody": "Для продолжения работы над \"{title}\" исполнителя {artist} необходимо подтвердить стоимость",
+    "selectAudioTitle": "Choose the audio",
+    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
+    "jobProblemTitle": "There's a problem with your video",
+    "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
+    "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"
   },
   "admin": {
     "invalidDomainFormat": "Неверный формат домена",
