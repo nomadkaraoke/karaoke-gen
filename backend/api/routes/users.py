@@ -39,7 +39,7 @@ def _mask_email(email: str) -> str:
 
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request, Header
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, EmailStr
 
 from backend.config import get_settings, is_production
@@ -69,6 +69,13 @@ from backend.services.user_service import get_user_service, UserService, USERS_C
 from backend.services.email_service import get_email_service, EmailService
 from backend.services.stripe_service import get_stripe_service, StripeService, CREDIT_PACKAGES
 from backend.services.iap_service import IapService, get_iap_service
+from backend.services.account_deletion_service import (
+    AccountDeletionRefused,
+    AccountDeletionService,
+    AccountDeletionStepFailed,
+    AccountNotFound,
+    get_account_deletion_service,
+)
 from backend.services.login_code_store import TransactionContention
 from backend.services.theme_service import get_theme_service
 from backend.services.job_defaults_service import (
@@ -971,6 +978,52 @@ def update_push_prefs(
     if user_service.update_user(auth_result.user_email, push_prefs=merged) is None:
         raise HTTPException(status_code=500, detail="Could not save push preferences")
     return PushPrefs(**merged)
+
+
+class DeleteAccountRequest(BaseModel):
+    # iOS: a fresh Sign in with Apple authorization code, so gen can revoke the token
+    apple_authorization_code: Optional[str] = None
+
+
+def _require_account_deletion(auth_result: AuthResult) -> str:
+    if not get_settings().account_deletion_enabled:
+        raise HTTPException(status_code=404, detail="Not Found")
+    if not auth_result.user_email:
+        raise HTTPException(status_code=401, detail="User email not available")
+    return auth_result.user_email
+
+
+@router.get("/me/deletion-preview")
+def account_deletion_preview(
+    auth_result: AuthResult = Depends(require_auth),
+    deletion: AccountDeletionService = Depends(get_account_deletion_service),
+):
+    """What deleting the account would cost: credits lost, videos cancelled, or a 409 reason."""
+    email = _require_account_deletion(auth_result)
+    try:
+        return deletion.preview(email, is_admin=auth_result.is_admin)
+    except AccountNotFound:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.delete("/me")
+def delete_my_account(
+    body: Optional[DeleteAccountRequest] = None,
+    auth_result: AuthResult = Depends(require_auth),
+    deletion: AccountDeletionService = Depends(get_account_deletion_service),
+):
+    """Self-serve account deletion (App Store 5.1.1(v), Google Play). 503 = retry."""
+    email = _require_account_deletion(auth_result)
+    apple_code = body.apple_authorization_code if body else None
+    try:
+        summary = deletion.delete(email, apple_code=apple_code, is_admin=auth_result.is_admin)
+    except AccountNotFound:
+        raise HTTPException(status_code=404, detail="User not found")
+    except AccountDeletionRefused as e:
+        return JSONResponse(status_code=409, content={"code": e.code})
+    except AccountDeletionStepFailed as e:
+        return JSONResponse(status_code=503, content={"step": e.step})
+    return {"deleted": True, "summary": summary}
 
 
 @router.get("/me", response_model=UserProfileResponse)

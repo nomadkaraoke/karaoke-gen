@@ -565,6 +565,14 @@ class UserService:
                 if txn.reason == "welcome_credit":
                     return False, "already_granted"
 
+            # A self-deleted account's email signing up again gets no second
+            # welcome credit (deleted_users keeps only sha256(email)).
+            from backend.services.account_deletion_service import is_deleted_email
+            if is_deleted_email(self.db, email):
+                self.update_user(email, welcome_credits_granted=True)
+                logger.info("Welcome credit not granted: email belonged to a deleted account")
+                return False, "already_granted"
+
             # Skip AI evaluation for test emails (e.g. E2E test accounts)
             # to avoid wasting LLM credits and sending unnecessary denial emails
             from backend.utils.test_data import is_test_email

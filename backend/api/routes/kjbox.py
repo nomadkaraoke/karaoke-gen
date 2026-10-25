@@ -28,7 +28,7 @@ import threading
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from backend.api.routes.users import (
@@ -39,6 +39,10 @@ from backend.api.routes.users import (
 )
 from backend.config import get_settings, is_production
 from backend.i18n import SUPPORTED_LOCALES, t
+from backend.services.account_deletion_service import (
+    AccountDeletionService,
+    get_account_deletion_service,
+)
 from backend.services.email_service import EmailService, get_email_service
 from backend.services.email_validation_service import get_email_validation_service
 from backend.services.kjbox_partner_service import (
@@ -382,6 +386,34 @@ class ReviewLinkResponse(BaseModel):
 
 
 _REVIEW_LINK_STATUSES = ("awaiting_review", "in_review")
+
+
+# ------------------------------------------------- account deletion queue
+
+@router.get("/account-deletions")
+def list_account_deletions(
+    since: Optional[datetime] = Query(default=None),
+    _secret: str = Depends(require_kjbox_partner),
+    deletion: AccountDeletionService = Depends(get_account_deletion_service),
+):
+    """Deleted gen accounts the box still has to erase (it pulls: it may be offline).
+
+    Only the sha256 of the email is sent; the box hashes the ``gen_email`` values
+    it stores to match. Lists entries still pending for kjbox, created after ``since``.
+    """
+    return {"deletions": deletion.list_kjbox_pending(since)}
+
+
+@router.post("/account-deletions/{entry_id}/ack", status_code=204)
+def ack_account_deletion(
+    entry_id: str,
+    _secret: str = Depends(require_kjbox_partner),
+    deletion: AccountDeletionService = Depends(get_account_deletion_service),
+):
+    """The box erased this account's data; stop listing it. ``entry_id`` = sha256(email)."""
+    if not deletion.ack_kjbox(entry_id):
+        raise HTTPException(status_code=404, detail="not_found")
+    return Response(status_code=204)
 
 
 @router.post("/jobs/{job_id}/review-link", response_model=ReviewLinkResponse)

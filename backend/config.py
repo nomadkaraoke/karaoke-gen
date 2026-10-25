@@ -270,7 +270,8 @@ class Settings(BaseSettings):
     # Requires use_gce_encoding to be enabled and the GCE worker to support /encode-preview endpoint.
     use_gce_preview_encoding: bool = os.getenv("USE_GCE_PREVIEW_ENCODING", "false").lower() in ("true", "1", "yes")
     
-    # Karaoke-Decide catalog API (for song/artist autocomplete)
+    # Karaoke-Decide main API: catalog autocomplete, and the partner call that
+    # erases a deleted account's decide data (DELETE /api/partner/gen/users)
     karaoke_decide_api_url: str = os.getenv("KARAOKE_DECIDE_API_URL", "https://decide.nomadkaraoke.com")
 
     # Storage paths
@@ -342,8 +343,10 @@ class Settings(BaseSettings):
     # for the karaoke-night "make it" flow. Every endpoint 503s while the secret is
     # empty, so deploys are dark until it's wired (Secret Manager: kjbox-partner-secret).
     kjbox_partner_secret: str = os.getenv("KJBOX_PARTNER_SECRET", "")
-    # karaoke-decide's own secret (header X-Partner-Secret) for POST /api/kjbox/catalog/resolve
-    # only (Secret Manager: decide-gen-partner-secret). Empty = decide is not accepted.
+    # karaoke-decide's shared secret (header X-Partner-Secret, Secret Manager:
+    # decide-gen-partner-secret): decide sends it to POST /api/kjbox/catalog/resolve, and
+    # gen sends it to decide's DELETE /api/partner/gen/users on account deletion.
+    # Empty = decide is not accepted, and account deletion 503s at the decide step.
     decide_partner_secret: str = os.getenv("DECIDE_GEN_PARTNER_SECRET", "")
     # Partner-wide cap on NEW gen accounts created via kjbox per rolling 24h (a venue
     # shares one IP, so gen's per-IP signup cap is bypassed for kjbox; this bounds it).
