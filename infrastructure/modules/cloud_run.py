@@ -42,6 +42,42 @@ def _job_resource_name(base: str, region: str) -> str:
     return base if region == REGION else f"{base}-{region}"
 
 
+# Cloud Run Jobs whose workers change job state and so send the user's push
+# notifications (fail_job / mark_job_failed, AWAITING_* and COMPLETE transitions)
+# get the API service's push config, which CI sets on `gcloud run deploy`
+# (ci.yml: ENABLE_PUSH_NOTIFICATIONS=true in --set-env-vars;
+# VAPID_PUBLIC_KEY=vapid-public-key:latest, VAPID_PRIVATE_KEY=vapid-private-key:latest
+# in --set-secrets). Without it PushNotificationService.is_enabled() is False in
+# the job and every worker-sent Web Push is silently skipped. The backend SA's
+# project-level secretAccessor covers both secrets.
+PUSH_NOTIFICATION_SECRETS = {
+    "VAPID_PUBLIC_KEY": "vapid-public-key",
+    "VAPID_PRIVATE_KEY": "vapid-private-key",
+}
+
+
+def _push_notification_envs() -> list:
+    """Env vars a worker job needs to send Web Push like the API service does."""
+    return [
+        cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+            name="ENABLE_PUSH_NOTIFICATIONS",
+            value="true",
+        ),
+        *[
+            cloudrunv2.JobTemplateTemplateContainerEnvArgs(
+                name=env_name,
+                value_source=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceArgs(
+                    secret_key_ref=cloudrunv2.JobTemplateTemplateContainerEnvValueSourceSecretKeyRefArgs(
+                        secret=f"projects/{PROJECT_ID}/secrets/{secret_id}",
+                        version="latest",
+                    ),
+                ),
+            )
+            for env_name, secret_id in PUSH_NOTIFICATION_SECRETS.items()
+        ],
+    ]
+
+
 def create_domain_mapping() -> cloudrun.DomainMapping:
     """
     Create the Cloud Run domain mapping for api.nomadkaraoke.com.
@@ -217,6 +253,8 @@ def create_lyrics_transcription_job(
                                     ),
                                 ),
                             ),
+                            # Web Push from this worker (see _push_notification_envs).
+                            *_push_notification_envs(),
                         ],
                     )
                 ],
@@ -312,6 +350,8 @@ def create_audio_separation_job(
                                 name="GOOGLE_CLOUD_PROJECT",
                                 value=PROJECT_ID,
                             ),
+                            # Web Push from this worker (see _push_notification_envs).
+                            *_push_notification_envs(),
                         ],
                     )
                 ],
@@ -496,6 +536,8 @@ def create_audio_download_job(
                                     ),
                                 ),
                             ),
+                            # Web Push from this worker (see _push_notification_envs).
+                            *_push_notification_envs(),
                         ],
                     )
                 ],
@@ -600,6 +642,8 @@ def create_bulk_search_job(
                                 name="GOOGLE_CLOUD_PROJECT",
                                 value=PROJECT_ID,
                             ),
+                            # Web Push from this worker (see _push_notification_envs).
+                            *_push_notification_envs(),
                         ],
                     )
                 ],
@@ -841,6 +885,8 @@ def create_video_encoding_job(
                                 name="USE_CLOUD_RUN_JOBS_FOR_RENDER",
                                 value="true",
                             ),
+                            # Web Push from this worker (see _push_notification_envs).
+                            *_push_notification_envs(),
                         ],
                     )
                 ],
