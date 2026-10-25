@@ -421,6 +421,13 @@ class Settings(BaseSettings):
     # Accepted `aud` values for Apple ID tokens (POST /api/users/auth/apple):
     # the app's bundle ID (native iOS), plus any Services ID used for web/Android.
     apple_signin_audiences: str = os.getenv("APPLE_SIGNIN_AUDIENCES", "com.nomadkaraoke.mobile")
+
+    # Sign in with Apple token revocation (account deletion). The .p8 PEM text
+    # and key id come from Secret Manager; unset => revocation is skipped.
+    apple_siwa_key_p8: Optional[str] = os.getenv("APPLE_SIWA_KEY_P8")
+    apple_siwa_key_id: Optional[str] = os.getenv("APPLE_SIWA_KEY_ID")
+    apple_team_id: str = os.getenv("APPLE_TEAM_ID", "55B76HN73D")
+    apple_client_id: str = os.getenv("APPLE_CLIENT_ID", "com.nomadkaraoke.mobile")
     # Canonical YouTube description template. Placeholders ({title}, {artist},
     # {artist_hashtag}, {brand_code}) are filled by
     # backend.services.youtube_description.render_youtube_description, which is the
