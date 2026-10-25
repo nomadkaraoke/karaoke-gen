@@ -114,3 +114,18 @@ def test_ensure_app_user_id_sets_when_absent_and_keeps_when_present():
         svc, ref, txn = _service({"email": EMAIL, "app_user_id": "existing-id"})
         assert svc.ensure_app_user_id(EMAIL) == "existing-id"
         txn.set.assert_not_called()
+
+
+def test_me_skips_minting_when_user_already_has_app_user_id(client, user):
+    user.app_user_id = "stored-id"
+    with patch.object(FakeUserService, "ensure_app_user_id", side_effect=AssertionError("no txn")):
+        assert _me(client)["app_user_id"] == "stored-id"
+
+
+def test_me_returns_null_app_user_id_when_minting_fails(client, caplog):
+    with patch.object(FakeUserService, "ensure_app_user_id", side_effect=RuntimeError("contention")):
+        with caplog.at_level("WARNING", logger="backend.api.routes.users"):
+            body = _me(client)
+    assert body["app_user_id"] is None
+    assert body["user"]["email"] == EMAIL
+    assert any("app_user_id" in r.message and r.levelname == "WARNING" for r in caplog.records)

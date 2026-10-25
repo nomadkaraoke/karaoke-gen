@@ -951,13 +951,25 @@ def logout(
 # User Profile
 # =============================================================================
 
+def _app_user_id(user, user_service) -> Optional[str]:
+    """The stored mobile-app id, else mint one. A minting failure never fails /me."""
+    existing = getattr(user, "app_user_id", None)
+    if existing:
+        return existing
+    try:
+        return user_service.ensure_app_user_id(user.email)
+    except Exception as e:
+        logger.warning(f"Could not mint app_user_id for {_mask_email(user.email)}: {e}")
+        return None
+
+
 def _profile_response(user, user_public, user_service) -> UserProfileResponse:
     """Wrap UserPublic with the mobile-app fields (app_user_id, capabilities, push_prefs)."""
     stored = getattr(user, "push_prefs", None) or {}
     return UserProfileResponse(
         user=user_public,
         has_session=True,
-        app_user_id=getattr(user, "app_user_id", None) or user_service.ensure_app_user_id(user.email),
+        app_user_id=_app_user_id(user, user_service),
         capabilities=UserCapabilities(account_deletion=get_settings().account_deletion_enabled),
         push_prefs=PushPrefs(**effective_push_prefs(stored)),
     )
