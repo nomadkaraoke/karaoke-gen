@@ -396,7 +396,7 @@ class Settings(BaseSettings):
     # ip-api, encoding VM) are skipped. Startup refuses it in production.
     # See backend/services/fake_workers/ and docs/TESTING.md § Local stack.
     fake_workers: bool = os.getenv("FAKE_WORKERS", "").lower() in ("1", "true", "yes")
-    # Mobile app account deletion (POST /api/users/me/delete). Off in prod until
+    # Mobile app account deletion (DELETE /api/users/me). Off in prod until
     # Andrew's manual pass; on in the local stack.
     account_deletion_enabled: bool = os.getenv("ACCOUNT_DELETION_ENABLED", "").lower() in ("1", "true", "yes")
     # App Review demo login: inert unless this AND the app-review-demo-code secret are set.
@@ -409,6 +409,8 @@ class Settings(BaseSettings):
     revenuecat_webhook_auth: str = os.getenv("REVENUECAT_WEBHOOK_AUTH", "")
     # RevenueCat secret REST API key (Secret Manager: revenuecat-secret-api-key).
     revenuecat_secret_api_key: str = os.getenv("REVENUECAT_SECRET_API_KEY", "")
+    # RevenueCat project the v2 key belongs to (account deletion's customer delete).
+    revenuecat_project_id: str = os.getenv("REVENUECAT_PROJECT_ID", "9ea947ce")
     # URL scheme of the Nomad Karaoke mobile app. App checkouts return through
     # GET /api/users/credits/app-return, which 302s to {scheme}://checkout?status=…
     mobile_app_scheme: str = os.getenv("MOBILE_APP_SCHEME", "nomadkaraoke")

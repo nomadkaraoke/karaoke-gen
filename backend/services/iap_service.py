@@ -288,6 +288,12 @@ class IapService:
                 return IapResult("ignored")
             purchase = purchase_snap.to_dict()
             email = purchase["email"]
+            if str(email).startswith("deleted:"):
+                # The buyer deleted their account (marker anonymised): never debit
+                # whoever holds that email now.
+                transaction.create(refund_ref, {**marker, "email": email, "debited": False,
+                                                "unmatched": True, "reason": "account_deleted"})
+                return IapResult("ignored", email=email)
             credits = int(purchase["credits"])
             user_ref = self.user_service.get_user_doc_ref(email)
             snap = user_ref.get(transaction=transaction) if user_ref is not None else None

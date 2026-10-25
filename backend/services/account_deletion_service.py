@@ -8,7 +8,7 @@ retries (503 with the step name):
    (a Firestore failure here is a 503 ``preconditions``)
 2. cancel the user's active jobs (no refund: unused credits are forfeited)
 3. decide: erase the user's decide data (partner API)
-4. RevenueCat: delete the subscriber for ``app_user_id`` (skipped without a key)
+4. RevenueCat: delete the v2 customer ``app_user_id`` (skipped without a key)
 5. Apple: revoke Sign in with Apple when the app sent an authorization code
    (best-effort: a failed revoke is a WARNING, never a 503)
 6. kjbox: enqueue ``account_deletions/{sha256(email)}`` for the box to pull
@@ -18,9 +18,11 @@ retries (503 with the step name):
    Published outputs (stems, renders, MP4s, the Dropbox folder, YouTube) are
    NEVER deleted.
 8. gen records: ``deleted_users/{uuid}`` (no email/name, only ``email_sha256``),
-   delete magic links, login codes and email_log entries; anonymise records kept
-   for accounting/history (kjbox show credits, the referral link (disabled),
-   vanity requests, credit evaluations, song requests and votes); delete
+   delete magic links, login codes and email_log entries sent to the user (and
+   drop the address from other entries' cc/bcc); anonymise records kept for
+   accounting/history (kjbox show credits, the referral link (disabled), vanity
+   requests, referral earnings, credit evaluations (signup IP/fingerprint
+   removed), IAP purchase/refund markers, song requests and votes); delete
    sessions, then ``gen_users/{email}``
 
 Sessions go last so a run that fails part-way leaves the user signed in to retry.
@@ -37,6 +39,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
+from urllib.parse import quote
 
 import httpx
 from google.api_core import exceptions as google_exceptions
@@ -72,8 +75,10 @@ CREDIT_EVALUATIONS_COLLECTION = "credit_evaluations"  # credit_evaluation_servic
 SONG_REQUESTS_COLLECTION = "song_requests"  # song_request_service.REQUESTS_COLLECTION
 SONG_REQUEST_VOTES_COLLECTION = "song_request_votes"  # song_request_service.VOTES_COLLECTION
 EMAIL_LOG_COLLECTION = "email_log"  # postmark_admin_service / email_service
+PROCESSED_IAP_TRANSACTIONS_COLLECTION = "processed_revenuecat_transactions"  # iap_service
 
-REVENUECAT_SUBSCRIBERS_URL = "https://api.revenuecat.com/v1/subscribers/{app_user_id}"
+# API v2 (the stored key is a project-scoped v2 secret key). Deletion is queued by RevenueCat.
+REVENUECAT_CUSTOMER_URL = "https://api.revenuecat.com/v2/projects/{project_id}/customers/{customer_id}"
 _HTTP_TIMEOUT_SECONDS = 20
 
 # Job statuses that are finished; everything else counts as "in progress".
@@ -387,7 +392,9 @@ class AccountDeletionService:
             return "skipped"
         if not app_user_id:
             return "no_app_user"
-        url = REVENUECAT_SUBSCRIBERS_URL.format(app_user_id=app_user_id)
+        project_id = getattr(self.settings, "revenuecat_project_id", "") or "9ea947ce"
+        url = REVENUECAT_CUSTOMER_URL.format(
+            project_id=quote(project_id, safe=""), customer_id=quote(app_user_id, safe=""))
         headers = {"Authorization": f"Bearer {key}"}
         if self._http_client is not None:
             resp = self._http_client.request("DELETE", url, headers=headers)
@@ -553,6 +560,7 @@ class AccountDeletionService:
         summary["login_codes"] = login_codes
         summary["anonymised"] = self._anonymise_kept_records(email, deletion_id)
         summary["email_log"] = self._delete_where(EMAIL_LOG_COLLECTION, "recipient", email)
+        summary["email_log_copies"] = self._remove_from_email_log_copies(email)
         # Sessions, then the user doc, last: a failure before here leaves the
         # user signed in so the app can retry. (Web Push subscriptions and Expo
         # push tokens live on the user doc and go with it.)
@@ -563,6 +571,18 @@ class AccountDeletionService:
         summary["sessions"] = self._delete_where(SESSIONS_COLLECTION, "user_email", email)
         user_ref.delete()
         return summary
+
+    def _remove_from_email_log_copies(self, email: str) -> int:
+        """Drop the address from cc/bcc of mail sent to someone else (that log entry is theirs)."""
+        touched = set()
+        for field in ("cc", "bcc"):
+            for snap in self.db.collection(EMAIL_LOG_COLLECTION).where(
+                    filter=FieldFilter(field, "array_contains", email)).stream():
+                kept = [a for a in (snap.to_dict() or {}).get(field) or []
+                        if not isinstance(a, str) or a.strip().lower() != email]
+                snap.reference.update({field: kept})
+                touched.add(snap.id)
+        return len(touched)
 
     def _anonymise_where(self, collection: str, field: str, email: str, tomb: str, extra=None) -> int:
         """Replace ``field == email`` with the tombstone (plus ``extra`` updates) on every match."""
@@ -609,12 +629,33 @@ class AccountDeletionService:
             moved += 1
         out["referral_vanity_requests"] = moved
 
-        def _scrub_reasoning(d):
+        # Referral earnings stay for payout accounting; the emails go.
+        out["referral_earnings"] = sum(
+            self._anonymise_where(REFERRAL_EARNINGS_COLLECTION, field, email, tomb)
+            for field in ("referred_email", "referrer_email")
+        )
+
+        def _scrub_evaluation(d):
+            updates = {}
             reasoning = d.get("reasoning")
-            return {"reasoning": reasoning.replace(email, tomb)} if isinstance(reasoning, str) and email in reasoning else {}
+            if isinstance(reasoning, str) and email in reasoning:
+                updates["reasoning"] = reasoning.replace(email, tomb)
+            # The signup IP and device fingerprint are personal data; the match counts are not.
+            snapshot = d.get("signals_snapshot")
+            if isinstance(snapshot, dict):
+                for key in ("user_ip", "user_fingerprint"):
+                    if key in snapshot:
+                        updates[f"signals_snapshot.{key}"] = DELETE_FIELD
+            return updates
 
         out["credit_evaluations"] = self._anonymise_where(
-            CREDIT_EVALUATIONS_COLLECTION, "email", email, tomb, extra=_scrub_reasoning)
+            CREDIT_EVALUATIONS_COLLECTION, "email", email, tomb, extra=_scrub_evaluation)
+
+        # IAP purchase/refund markers keep the owner for refund matching; a refund
+        # whose purchase owner is ``deleted:…`` is ignored, never debited from a
+        # new account that later signs up with the same email.
+        out["iap_transactions"] = self._anonymise_where(
+            PROCESSED_IAP_TRANSACTIONS_COLLECTION, "email", email, tomb)
 
         # Song requests: submitter, current owner and the handoff history.
         requests = self.db.collection(SONG_REQUESTS_COLLECTION)

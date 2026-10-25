@@ -1898,6 +1898,7 @@ Mounted only when fake workers are enabled (never in production): `POST /api/tes
 | Env | Purpose |
 |-----|---------|
 | `REVENUECAT_WEBHOOK_AUTH` / `REVENUECAT_SECRET_API_KEY` | Webhook auth header / RevenueCat REST key (Secret Manager `revenuecat-webhook-auth`, `revenuecat-secret-api-key`) |
+| `REVENUECAT_PROJECT_ID` | RevenueCat project for the v2 customer delete on account deletion (default `9ea947ce`) |
 | `ACCOUNT_DELETION_ENABLED` | Enables the account-deletion endpoints and `capabilities.account_deletion`; unset in prod until release |
 | `APP_REVIEW_DEMO_EMAIL` / `APP_REVIEW_DEMO_CODE` | App Review demo sign-in: that email accepts the fixed code (`app-review-demo-code`); leave `APP_REVIEW_DEMO_EMAIL` unset in prod except during review |
 | `APPLE_SIWA_KEY_P8` / `APPLE_SIWA_KEY_ID` | Sign in with Apple key, used to revoke tokens on account deletion (not yet provisioned) |

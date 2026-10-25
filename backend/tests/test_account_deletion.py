@@ -174,6 +174,7 @@ def settings():
     return SimpleNamespace(
         account_deletion_enabled=True,
         revenuecat_secret_api_key="rc-secret",
+        revenuecat_project_id="projtest",
         firestore_collection="jobs",
         kjbox_partner_secret=KJBOX_SECRET,
     )
@@ -450,7 +451,7 @@ def test_happy_path_order(client, db, rec, user_service, bucket, rc_http, decide
     # decide → revenuecat → kjbox enqueue → files → records, then decide again (R10)
     assert rec.calls == ["decide", "revenuecat", "kjbox", "files", "records", "decide"]
     method, url, kwargs = rc_http.requests[0]
-    assert (method, url) == ("DELETE", f"https://api.revenuecat.com/v1/subscribers/{APP_USER_ID}")
+    assert (method, url) == ("DELETE", f"https://api.revenuecat.com/v2/projects/projtest/customers/{APP_USER_ID}")
     assert kwargs["headers"]["Authorization"] == "Bearer rc-secret"
     method, url, kwargs = decide_http.requests[0]
     assert (method, url) == ("DELETE", "https://decide.test/api/partner/gen/users")
@@ -496,6 +497,40 @@ def test_revenuecat_404_counts_as_deleted(client, db, rc_http):
     _seed_user(db)
     rc_http.status = 404
     assert _delete(client).status_code == 200
+
+
+@pytest.mark.parametrize("status,result", [(200, "deleted"), (404, "absent")])
+def test_revenuecat_v2_customer_delete_over_httpx(db, settings, status, result):
+    """The real httpx client against a mock transport: v2 path, Bearer v2 secret key."""
+    import httpx
+
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(status, json={"object": "customer", "id": APP_USER_ID, "deleted_at": 1})
+
+    settings.revenuecat_project_id = "9ea947ce"
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http:
+        service = AccountDeletionService(db, settings=settings, http_client=http)
+        assert service._delete_revenuecat(APP_USER_ID) == result
+    assert seen[0].method == "DELETE"
+    assert str(seen[0].url) == f"https://api.revenuecat.com/v2/projects/9ea947ce/customers/{APP_USER_ID}"
+    assert seen[0].headers["Authorization"] == "Bearer rc-secret"
+
+
+def test_revenuecat_v2_error_raises_retryable(db, settings):
+    import httpx
+
+    with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(423))) as http:
+        service = AccountDeletionService(db, settings=settings, http_client=http)
+        with pytest.raises(ads.RevenueCatError):
+            service._delete_revenuecat(APP_USER_ID)
+
+
+def test_revenuecat_project_id_default():
+    from backend.config import Settings
+    assert Settings().revenuecat_project_id == "9ea947ce"
 
 
 def test_revenuecat_failure_503(client, db, rc_http):
@@ -876,6 +911,71 @@ def test_kept_records_anonymised_and_email_log_deleted(client, db, svc):
     assert {name: {k: dict(v) for k, v in c.docs.items()} for name, c in db.collections.items()} == snapshot
 
 
+def test_privacy_leftovers_scrubbed(client, db, svc):
+    _seed_user(db)
+    earnings = db.collection("referral_earnings").docs
+    earnings["e1"] = {"referrer_email": OTHER, "referred_email": EMAIL, "status": "pending", "earning_amount_cents": 100}
+    earnings["e2"] = {"referrer_email": EMAIL, "referred_email": OTHER, "status": "paid", "earning_amount_cents": 50}
+    earnings["e3"] = {"referrer_email": OTHER, "referred_email": "third@example.com", "status": "paid"}
+    db.collection("credit_evaluations").docs["ce1"] = {
+        "id": "ce1", "email": EMAIL, "decision": "grant", "reasoning": "ok",
+        "signals_snapshot": {"ip_match_count": 2, "user_ip": "203.0.113.9", "user_fingerprint": "fp-abc"}}
+    log = db.collection("email_log").docs
+    log["m1"] = {"recipient": EMAIL, "cc": [], "bcc": []}
+    log["m2"] = {"recipient": OTHER, "cc": [EMAIL, "third@example.com"], "bcc": []}
+    log["m3"] = {"recipient": OTHER, "cc": [], "bcc": [EMAIL]}
+    log["m4"] = {"recipient": OTHER, "cc": ["third@example.com"], "bcc": []}
+    markers = db.collection("processed_revenuecat_transactions").docs
+    markers["APP_STORE:1"] = {"kind": "purchase", "email": EMAIL, "credits": 3}
+    markers["APP_STORE:1:refund"] = {"kind": "refund", "email": EMAIL, "debited": True}
+    markers["APP_STORE:2"] = {"kind": "purchase", "email": OTHER, "credits": 3}
+
+    resp = _delete(client)
+    assert resp.status_code == 200, resp.text
+    tomb = f"deleted:{resp.json()['summary']['deletion_id']}"
+
+    assert earnings["e1"]["referred_email"] == tomb and earnings["e1"]["referrer_email"] == OTHER
+    assert earnings["e2"]["referrer_email"] == tomb and earnings["e2"]["referred_email"] == OTHER
+    assert earnings["e3"] == {"referrer_email": OTHER, "referred_email": "third@example.com", "status": "paid"}
+    assert db.collection("credit_evaluations").docs["ce1"]["signals_snapshot"] == {"ip_match_count": 2}
+    assert set(log) == {"m2", "m3", "m4"}
+    assert log["m2"]["cc"] == ["third@example.com"] and log["m3"]["bcc"] == []
+    assert log["m4"]["cc"] == ["third@example.com"]
+    assert markers["APP_STORE:1"]["email"] == tomb and markers["APP_STORE:1:refund"]["email"] == tomb
+    assert markers["APP_STORE:2"]["email"] == OTHER
+    assert EMAIL not in repr({n: c.docs for n, c in db.collections.items()})
+
+    # Idempotent: a second pass over the same email changes nothing.
+    snapshot = {name: {k: dict(v) for k, v in c.docs.items()} for name, c in db.collections.items()}
+    assert all(v == 0 for v in svc._anonymise_kept_records(EMAIL, "x").values())
+    assert svc._remove_from_email_log_copies(EMAIL) == 0
+    assert {name: {k: dict(v) for k, v in c.docs.items()} for name, c in db.collections.items()} == snapshot
+
+
+def test_refund_after_deletion_never_debits_a_new_same_email_account(client, db, user_service, caplog):
+    from backend.services.iap_service import IapService
+
+    _seed_user(db, app_user_id=APP_USER_ID)
+    iap = IapService(db, user_service, referral_service=MagicMock(),
+                     transaction_runner=lambda fn: fn(FakeTransaction(db.txn_writes)))
+    event = {"type": "NON_RENEWING_PURCHASE", "app_user_id": APP_USER_ID, "product_id": "nomad_credits_3",
+             "transaction_id": "900", "store": "APP_STORE", "price": 23.99, "environment": "PRODUCTION"}
+    assert iap.handle_event(event).action == "granted"
+
+    assert _delete(client).status_code == 200
+    # The same person (or whoever owns the address now) signs up again.
+    _seed_user(db, credits=5, credit_transactions=[], app_user_id="new-app-id")
+
+    with caplog.at_level("WARNING"):
+        result = iap.handle_event({**event, "type": "CANCELLATION", "price": -23.99})
+    assert result.action == "ignored"
+    assert db.collection("gen_users").docs[EMAIL]["credits"] == 5
+    refund = db.collection("processed_revenuecat_transactions").docs["APP_STORE:900:refund"]
+    assert refund["debited"] is False and refund["unmatched"] is True
+    assert refund["reason"] == "account_deleted" and refund["email"].startswith("deleted:")
+    assert any("nothing debited" in r.message for r in caplog.records)
+
+
 def test_collection_names_match_their_owning_services():
     from backend.services import credit_evaluation_service, postmark_admin_service, song_request_service
 
@@ -883,6 +983,8 @@ def test_collection_names_match_their_owning_services():
     assert ads.SONG_REQUESTS_COLLECTION == song_request_service.REQUESTS_COLLECTION
     assert ads.SONG_REQUEST_VOTES_COLLECTION == song_request_service.VOTES_COLLECTION
     assert ads.EMAIL_LOG_COLLECTION == postmark_admin_service.EMAIL_LOG_COLLECTION
+    from backend.services import iap_service
+    assert ads.PROCESSED_IAP_TRANSACTIONS_COLLECTION == iap_service.PROCESSED_TRANSACTIONS_COLLECTION
 
 
 def test_preconditions_firestore_failure_503(client, db, svc):
