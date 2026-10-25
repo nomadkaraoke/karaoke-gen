@@ -170,6 +170,38 @@ class TestFailurePushSentFlag:
 
         triggers(JobStatus.DOWNLOADING_AUDIO, action=action)
 
+    def test_send_cancelled_before_its_first_step_clears_in_flight(self, triggers):
+        """A task cancelled before it ever ran (its body never starts, so no finally
+        inside it runs) must not leave the job marked in flight in this process,
+        or every later failure push for the job would be skipped."""
+        def action(mgr):
+            async def worker():
+                mgr.fail_job("job1", "first", {"stage": "x"})
+                assert "job1" in jm_module._failure_push_in_flight
+                for task in list(jm_module._pending_notification_tasks):
+                    task.cancel()  # before the loop gave it a first step
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+                assert "job1" not in jm_module._failure_push_in_flight
+                assert not mgr.get_job("job1").state_data.get("failure_push_sent")
+                # The next failure of this (still unnotified) run pushes.
+                mgr.fail_job("job1", "second", {"stage": "x"})
+                await drain_notifications()
+            asyncio.run(worker())
+
+        pushes, webpush = triggers(JobStatus.DOWNLOADING_AUDIO, action=action)
+        assert len(pushes) == 1
+        webpush.assert_called_once()
+        assert "job1" not in jm_module._failure_push_in_flight
+
+    def test_thread_path_clears_in_flight(self, triggers):
+        """No running loop (sync worker helper): the send runs on a thread, which
+        clears the in-flight mark when it ends."""
+        pushes, _ = triggers(JobStatus.DOWNLOADING_AUDIO,
+                             action=lambda mgr: mgr.fail_job("job1", "boom", {"stage": "x"}))
+        assert len(pushes) == 1
+        assert "job1" not in jm_module._failure_push_in_flight
+
     def test_two_failures_in_one_worker_push_once_even_before_the_send(self, triggers):
         def action(mgr):
             async def worker():

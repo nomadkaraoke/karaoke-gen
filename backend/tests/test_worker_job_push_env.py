@@ -45,11 +45,18 @@ def _push_secrets() -> dict:
     raise AssertionError("PUSH_NOTIFICATION_SECRETS not found in cloud_run.py")
 
 
+def _api_deploy_step() -> str:
+    """ci.yml text of the `gcloud run deploy karaoke-backend` command's step."""
+    start = CI.find("gcloud run deploy karaoke-backend")
+    assert start != -1, "could not find `gcloud run deploy karaoke-backend` in ci.yml"
+    end = CI.find("\n      - name:", start)
+    return CI[start:end if end != -1 else len(CI)]
+
+
 def _ci_flag_list(flag: str) -> set:
-    # The API service deploy is the longest such list (comments quote short ones).
-    found = [m.group(1) for m in re.finditer(rf'{flag} "([^"]+)"', CI)]
-    assert found, f"could not find the API deploy's {flag} in ci.yml"
-    return set(max(found, key=len).split(","))
+    m = re.search(rf'{flag} "([^"]+)"', _api_deploy_step())
+    assert m, f"could not find {flag} in the karaoke-backend deploy step of ci.yml"
+    return set(m.group(1).split(","))
 
 
 @pytest.mark.parametrize("job_fn,worker", sorted(NOTIFYING_JOBS.items()))
@@ -72,3 +79,36 @@ def test_job_push_config_matches_the_api_service_deploy():
     api_secrets = _ci_flag_list("--set-secrets")
     for env_name, secret_id in _push_secrets().items():
         assert f"{env_name}={secret_id}:latest" in api_secrets
+
+
+def _job_function_for(job_name: str) -> str:
+    tree = ast.parse(CLOUD_RUN)
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name.startswith("create_"):
+            src = ast.get_source_segment(CLOUD_RUN, node)
+            if f'name="{job_name}"' in src:
+                return src
+    raise AssertionError(f"no cloud_run.py job function creates {job_name}")
+
+
+CI_IMAGE_PINNED_JOBS = sorted(set(re.findall(r"gcloud run jobs update ([a-z0-9-]+)", CI)))
+
+
+def test_ci_pins_the_expected_jobs():
+    assert CI_IMAGE_PINNED_JOBS == [
+        "audio-separation-job", "lyrics-transcription-job", "storage-retention-job",
+        "video-encoding-job", "voice-pool-separate-job",
+    ]
+
+
+@pytest.mark.parametrize("job_name", CI_IMAGE_PINNED_JOBS)
+def test_ci_pinned_job_ignores_image_changes(job_name):
+    """CI pins these jobs to a SHA image after each deploy; a pulumi up (e.g. a
+    targeted one for the push env) must not roll them back to `:latest`."""
+    assert "opts=_ci_pinned_image_opts()" in _job_function_for(job_name)
+
+
+def test_ci_pinned_image_path_is_the_job_container_image():
+    assert re.search(
+        r'^CI_PINNED_IMAGE_PATH = "template\.template\.containers\[0\]\.image"$', CLOUD_RUN, re.MULTILINE)
+    assert "ignore_changes=[CI_PINNED_IMAGE_PATH]" in _function_source("_ci_pinned_image_opts")

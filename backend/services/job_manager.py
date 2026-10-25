@@ -55,7 +55,13 @@ FAILURE_PUSH_SENT_KEY = 'failure_push_sent'
 # ``drain_notifications``) so the sends finish, within a bounded wait, before the
 # loop closes. Module-level, not per instance: one worker builds several JobManagers.
 
-# Upper bound a worker waits for its notifications before exiting.
+# How long a worker's drain waits for its notification tasks before giving up.
+# This bounds the coroutine wait only: a provider call already running in a
+# thread (asyncio.to_thread) can't be cancelled, and on Python 3.11 (prod)
+# asyncio.run's default-executor shutdown, and interpreter exit, wait for it
+# without limit. Exit time is really bounded by each call's own timeout (Web
+# Push WEBPUSH_TIMEOUT_S, Expo's httpx timeout, the Firestore/Postmark clients'
+# deadlines), so every provider call must keep one.
 NOTIFICATION_DRAIN_TIMEOUT_S = 10.0
 
 _pending_notification_tasks: "set[asyncio.Task]" = set()
@@ -67,12 +73,18 @@ _failure_push_in_flight: "set[str]" = set()
 T = TypeVar("T")
 
 
-def _schedule_notification(make_coro: Callable[[], Awaitable[Any]], label: str) -> None:
+def _schedule_notification(
+    make_coro: Callable[[], Awaitable[Any]],
+    label: str,
+    on_done: Optional[Callable[[], None]] = None,
+) -> None:
     """Run ``make_coro()`` in the background and track it until it finishes.
 
     Inside a running loop (API request, worker job) it becomes a task on that loop;
     with no loop (sync code, e.g. a worker's ``asyncio.to_thread`` helper) it runs on
     its own daemon thread. Never blocks the caller, never raises from the send.
+    ``on_done`` runs once the send has finished, failed or been cancelled (even a
+    task cancelled before its first step, whose coroutine body never runs).
     """
     async def guarded():
         try:
@@ -89,12 +101,16 @@ def _schedule_notification(make_coro: Callable[[], Awaitable[Any]], label: str) 
         task = loop.create_task(guarded(), name=f"notification: {label}")
         _pending_notification_tasks.add(task)
         task.add_done_callback(_pending_notification_tasks.discard)
+        if on_done is not None:
+            task.add_done_callback(lambda _task: on_done())
         return
 
     def run_in_thread():
         try:
             asyncio.run(guarded())
         finally:
+            if on_done is not None:
+                on_done()
             with _pending_threads_lock:
                 _pending_notification_threads.discard(threading.current_thread())
 
@@ -109,7 +125,8 @@ async def drain_notifications(timeout_s: Optional[float] = None) -> bool:
 
     Call before a worker's event loop closes. Returns True when everything was sent
     (or failed and was logged); on timeout logs a WARNING, cancels what is left and
-    returns False. Never raises from a send.
+    returns False. Never raises from a send. Cancelling a task doesn't stop a
+    provider call already running in a thread (see NOTIFICATION_DRAIN_TIMEOUT_S).
     """
     if timeout_s is None:
         timeout_s = NOTIFICATION_DRAIN_TIMEOUT_S
@@ -146,9 +163,10 @@ async def with_notification_drain(job: Awaitable[T]) -> T:
     """Await a worker's job coroutine, then drain its notifications (also on error).
 
     Use as ``asyncio.run(with_notification_drain(process_x(job_id)))`` in a Cloud
-    Run Job entry point. The drain never raises and is bounded by
-    NOTIFICATION_DRAIN_TIMEOUT_S, so it can't change the job's result or keep a
-    hung push provider's job alive.
+    Run Job entry point. The drain never raises and its wait is capped at
+    NOTIFICATION_DRAIN_TIMEOUT_S, so it can't change the job's result. A provider
+    call already running in a thread still finishes before the process exits;
+    its own timeout bounds that (see NOTIFICATION_DRAIN_TIMEOUT_S).
     """
     try:
         return await job
@@ -1030,16 +1048,12 @@ class JobManager:
             }
 
             async def send_notification():
-                try:
-                    await send_channels()
-                    if after_send is not None:
-                        try:
-                            await asyncio.to_thread(after_send)
-                        except Exception as e:  # best-effort bookkeeping
-                            logger.warning(f"Post-push update failed for job {job.job_id}: {e}")
-                finally:
-                    if action_type == "failed":
-                        _failure_push_in_flight.discard(job.job_id)
+                await send_channels()
+                if after_send is not None:
+                    try:
+                        await asyncio.to_thread(after_send)
+                    except Exception as e:  # best-effort bookkeeping
+                        logger.warning(f"Post-push update failed for job {job.job_id}: {e}")
 
             async def send_channels():
                 # Each channel is isolated so one failing cannot stop the other.
@@ -1062,12 +1076,14 @@ class JobManager:
                 except Exception as e:
                     logger.error(f"Expo push failed for job {job.job_id}: {e}")
 
+            on_done = None
             if action_type == "failed":
                 # Until the send finishes (and its marker is written), this process
                 # treats the run's failure as notified: see _failure_already_notified.
                 _failure_push_in_flight.add(job.job_id)
+                on_done = lambda: _failure_push_in_flight.discard(job.job_id)  # noqa: E731
             try:
-                _schedule_notification(send_notification, f"{action_type} push {job.job_id}")
+                _schedule_notification(send_notification, f"{action_type} push {job.job_id}", on_done)
             except Exception:
                 _failure_push_in_flight.discard(job.job_id)
                 raise

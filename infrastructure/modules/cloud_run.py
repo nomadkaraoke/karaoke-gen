@@ -42,6 +42,19 @@ def _job_resource_name(base: str, region: str) -> str:
     return base if region == REGION else f"{base}-{region}"
 
 
+# CI owns these jobs' container image: after each deploy it runs
+# `gcloud run jobs update <job> --image <registry>/...:<git sha>` (ci.yml,
+# "Update Cloud Run Jobs with new image"). The image here (`:latest`) only
+# matters on create; ignoring it keeps a `pulumi up` (even a targeted one for an
+# env change) from rolling a job back from CI's SHA pin to `:latest`.
+CI_PINNED_IMAGE_PATH = "template.template.containers[0].image"
+
+
+def _ci_pinned_image_opts() -> pulumi.ResourceOptions:
+    """Resource options for a job whose image CI pins (fresh object per resource)."""
+    return pulumi.ResourceOptions(ignore_changes=[CI_PINNED_IMAGE_PATH])
+
+
 # Cloud Run Jobs whose workers change job state and so send the user's push
 # notifications (fail_job / mark_job_failed, AWAITING_* and COMPLETE transitions)
 # get the API service's push config, which CI sets on `gcloud run deploy`
@@ -263,6 +276,7 @@ def create_lyrics_transcription_job(
                 max_retries=2,
             ),
         ),
+        opts=_ci_pinned_image_opts(),  # CI owns the image (see CI_PINNED_IMAGE_PATH)
     )
 
     return lyrics_transcription_job
@@ -364,6 +378,7 @@ def create_audio_separation_job(
                 max_retries=2,
             ),
         ),
+        opts=_ci_pinned_image_opts(),  # CI owns the image (see CI_PINNED_IMAGE_PATH)
     )
 
     return audio_separation_job
@@ -422,6 +437,7 @@ def create_voice_pool_separate_job(
                 max_retries=0,  # decide re-runs; finished songs are skipped via existing stems
             ),
         ),
+        opts=_ci_pinned_image_opts(),  # CI owns the image (see CI_PINNED_IMAGE_PATH)
     )
 
 
@@ -697,6 +713,7 @@ def create_storage_retention_job(
                 max_retries=0,
             ),
         ),
+        opts=_ci_pinned_image_opts(),  # CI owns the image (see CI_PINNED_IMAGE_PATH)
     )
 
 
@@ -895,6 +912,7 @@ def create_video_encoding_job(
                 max_retries=2,
             ),
         ),
+        opts=_ci_pinned_image_opts(),  # CI owns the image (see CI_PINNED_IMAGE_PATH)
     )
 
     return video_encoding_job
