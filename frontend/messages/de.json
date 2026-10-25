@@ -2175,12 +2175,13 @@
     "keptHeading": "Was wir behalten",
     "keptRecords": "Auftrags- und Zahlungsbelege, die für die Buchhaltung aufbewahrt werden",
     "keptYoutube": "Bereits auf YouTube veröffentlichte Karaoke-Videos",
-    "retryable": "Beim Löschen deines Kontos ist etwas schiefgelaufen. Es ist nichts verloren gegangen, bitte versuche es noch einmal.",
     "signInPrompt": "Melde dich an, um dein Nomad-Karaoke-Konto zu löschen.",
     "title": "Konto löschen",
     "cancelButton": "Abbrechen",
     "loading": "Laden...",
     "retryButton": "Erneut versuchen",
-    "signInButton": "Anmelden"
+    "signInButton": "Anmelden",
+    "retryPartway": "Mittendrin ist etwas schiefgelaufen. Bitte versuche es erneut – die Löschung wird dort fortgesetzt, wo sie unterbrochen wurde.",
+    "signedOutMaybeDeleted": "Du wurdest abgemeldet. Wenn du dein Konto gerade gelöscht hast, ist es jetzt weg. Andernfalls melde dich an und versuche es erneut."
   }
 }

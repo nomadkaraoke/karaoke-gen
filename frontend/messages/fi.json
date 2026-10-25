@@ -2175,12 +2175,13 @@
     "keptHeading": "Mitä säilytämme",
     "keptRecords": "Työ- ja maksutapahtumatiedot, jotka säilytetään kirjanpitoa varten",
     "keptYoutube": "YouTubessa jo julkaistut karaokevideot",
-    "retryable": "Jokin meni pieleen tiliäsi poistettaessa. Mitään tietoja ei menetetty, joten yritä uudelleen.",
     "signInPrompt": "Kirjaudu sisään poistaaksesi Nomad Karaoke -tilisi.",
     "title": "Poista tilisi",
     "cancelButton": "Peruuta",
     "loading": "Ladataan...",
     "retryButton": "Yritä uudelleen",
-    "signInButton": "Kirjaudu sisään"
+    "signInButton": "Kirjaudu sisään",
+    "retryPartway": "Jokin meni vikaan kesken kaiken. Yritä uudelleen – poisto jatkuu siitä, mihin se jäi.",
+    "signedOutMaybeDeleted": "Sinut on kirjattu ulos. Jos juuri poistit tilisi, se on nyt poistettu. Muussa tapauksessa kirjaudu sisään ja yritä uudelleen."
   }
 }

@@ -2175,12 +2175,13 @@
     "keptHeading": "Ce que nous conservons",
     "keptRecords": "L'historique des tâches et des paiements, conservé pour la comptabilité",
     "keptYoutube": "Les vidéos de karaoké déjà publiées sur YouTube",
-    "retryable": "Une erreur est survenue lors de la suppression de ton compte. Rien n'a été perdu, tu peux réessayer.",
     "signInPrompt": "Connecte-toi pour supprimer ton compte Nomad Karaoke.",
     "title": "Supprimer ton compte",
     "cancelButton": "Annuler",
     "loading": "Chargement...",
     "retryButton": "Réessayer",
-    "signInButton": "Se connecter"
+    "signInButton": "Se connecter",
+    "retryPartway": "Un problème est survenu en cours de route. Réessaie — la suppression reprendra là où elle s'est arrêtée.",
+    "signedOutMaybeDeleted": "Tu as été déconnecté. Si tu viens de supprimer ton compte, il n'existe plus. Sinon, reconnecte-toi et réessaie."
   }
 }

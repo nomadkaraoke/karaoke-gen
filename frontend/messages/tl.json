@@ -2175,12 +2175,13 @@
     "keptHeading": "Ang mga pananatilihin namin",
     "keptRecords": "Mga talaan ng job at pagbabayad na itinatago para sa accounting",
     "keptYoutube": "Mga karaoke video na na-publish na sa YouTube",
-    "retryable": "Nagkaproblema habang dine-delete ang iyong account. Walang nawala, kaya pakisubukan muli.",
     "signInPrompt": "Mag-sign in upang i-delete ang iyong Nomad Karaoke account.",
     "title": "I-delete ang iyong account",
     "cancelButton": "Kanselahin",
     "loading": "Nagloload...",
     "retryButton": "Subukan muli",
-    "signInButton": "Mag-sign in"
+    "signInButton": "Mag-sign in",
+    "retryPartway": "May nagkaproblema habang pinoproseso ito. Pakisubukang muli — magpapatuloy ang pagbura kung saan ito natigil.",
+    "signedOutMaybeDeleted": "Naka-sign out ka na. Kung kabubura mo lang ng iyong account, tuluyan na itong nabura. Kung hindi naman, mag-sign in at subukang muli."
   }
 }

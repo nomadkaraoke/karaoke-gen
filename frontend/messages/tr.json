@@ -2175,12 +2175,13 @@
     "keptHeading": "Sakladığımız veriler",
     "keptRecords": "Muhasebe amacıyla saklanan işlem ve ödeme kayıtları",
     "keptYoutube": "YouTube'da halihazırda yayınlanmış olan karaoke videoları",
-    "retryable": "Hesabın silinirken bir sorun oluştu. Hiçbir veri kaybolmadı, lütfen tekrar dene.",
     "signInPrompt": "Nomad Karaoke hesabını silmek için giriş yap.",
     "title": "Hesabını sil",
     "cancelButton": "İptal",
     "loading": "Yükleniyor...",
     "retryButton": "Tekrar dene",
-    "signInButton": "Giriş yap"
+    "signInButton": "Giriş yap",
+    "retryPartway": "İşlem sırasında bir sorun oluştu. Lütfen tekrar dene — silme işlemi kaldığı yerden devam edecektir.",
+    "signedOutMaybeDeleted": "Oturumun kapatıldı. Hesabını az önce sildiysen tamamen kaldırılmıştır. Değilse tekrar giriş yapıp dene."
   }
 }

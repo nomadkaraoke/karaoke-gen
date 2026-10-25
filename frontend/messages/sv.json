@@ -2175,12 +2175,13 @@
     "keptHeading": "Vad vi behåller",
     "keptRecords": "Jobb- och betalningshistorik, sparas för bokföring",
     "keptYoutube": "Karaokevideor som redan har publicerats på YouTube",
-    "retryable": "Något gick fel när ditt konto skulle raderas. Inget har gått förlorat, så försök gärna igen.",
     "signInPrompt": "Logga in för att radera ditt Nomad Karaoke-konto.",
     "title": "Radera ditt konto",
     "cancelButton": "Avbryt",
     "loading": "Laddar...",
     "retryButton": "Försök igen",
-    "signInButton": "Logga in"
+    "signInButton": "Logga in",
+    "retryPartway": "Något gick fel halvvägs. Försök igen – borttagningen fortsätter där den avbröts.",
+    "signedOutMaybeDeleted": "Du har loggats ut. Om du nyss tog bort ditt konto är det borta. Logga annars in och försök igen."
   }
 }

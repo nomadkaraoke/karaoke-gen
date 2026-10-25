@@ -2175,12 +2175,13 @@
     "keptHeading": "Những gì chúng tôi sẽ giữ lại",
     "keptRecords": "Hồ sơ công việc và thanh toán, được lưu lại phục vụ mục đích kế toán",
     "keptYoutube": "Các video karaoke đã xuất bản trên YouTube",
-    "retryable": "Đã xảy ra lỗi khi xóa tài khoản của bạn. Chưa có dữ liệu nào bị mất, bạn vui lòng thử lại nhé.",
     "signInPrompt": "Đăng nhập để xóa tài khoản Nomad Karaoke của bạn.",
     "title": "Xóa tài khoản của bạn",
     "cancelButton": "Hủy",
     "loading": "Đang tải...",
     "retryButton": "Thử lại",
-    "signInButton": "Đăng nhập"
+    "signInButton": "Đăng nhập",
+    "retryPartway": "Đã xảy ra lỗi giữa chừng. Vui lòng thử lại — quá trình xóa sẽ tiếp tục từ điểm bị gián đoạn.",
+    "signedOutMaybeDeleted": "Bạn đã được đăng xuất. Nếu bạn vừa xóa tài khoản thì tài khoản đã được xóa hoàn tất. Nếu không, vui lòng đăng nhập lại và thử lại."
   }
 }

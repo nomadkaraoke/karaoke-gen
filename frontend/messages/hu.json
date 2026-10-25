@@ -2175,12 +2175,13 @@
     "keptHeading": "Amit megőrzünk",
     "keptRecords": "Feladat- és fizetési előzmények, amelyeket könyvelési okokból megőrzünk",
     "keptYoutube": "A YouTube-on már közzétett karaokevideók",
-    "retryable": "Hiba történt a fiókod törlése közben. Semmi sem veszett el, úgyhogy próbáld újra bátran.",
     "signInPrompt": "Jelentkezz be a Nomad Karaoke fiókod törléséhez.",
     "title": "Fiók törlése",
     "cancelButton": "Mégse",
     "loading": "Betöltés...",
     "retryButton": "Próbáld újra",
-    "signInButton": "Bejelentkezés"
+    "signInButton": "Bejelentkezés",
+    "retryPartway": "Hiba történt a folyamat közben. Kérjük, próbáld újra — a törlés onnan folytatódik, ahol abbamaradt.",
+    "signedOutMaybeDeleted": "Kijelentkeztél. Ha épp az imént törölted a fiókodat, az már meg is szűnt. Ellenkező esetben jelentkezz be, és próbáld újra."
   }
 }

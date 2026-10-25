@@ -2175,12 +2175,13 @@
     "keptHeading": "O que nós mantemos",
     "keptRecords": "Registros de processamento e pagamentos, mantidos para fins contábeis",
     "keptYoutube": "Vídeos de karaokê já publicados no YouTube",
-    "retryable": "Algo deu errado ao excluir sua conta. Nada foi perdido, por favor, tente novamente.",
     "signInPrompt": "Entre na sua conta para excluir seu cadastro no Nomad Karaoke.",
     "title": "Excluir sua conta",
     "cancelButton": "Cancelar",
     "loading": "Carregando...",
     "retryButton": "Tentar novamente",
-    "signInButton": "Entrar"
+    "signInButton": "Entrar",
+    "retryPartway": "Algo deu errado no meio do caminho. Por favor, tente novamente — a exclusão continuará de onde parou.",
+    "signedOutMaybeDeleted": "Você foi desconectado. Se você acabou de excluir sua conta, ela foi removida. Caso contrário, faça login e tente novamente."
   }
 }

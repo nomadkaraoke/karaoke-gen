@@ -2175,12 +2175,13 @@
     "keptHeading": "Ce păstrăm",
     "keptRecords": "Evidența comenzilor și a plăților, păstrată pentru contabilitate",
     "keptYoutube": "Videoclipurile de karaoke deja publicate pe YouTube",
-    "retryable": "A apărut o problemă la ștergerea contului tău. Nu s-a pierdut nimic, așa că te rugăm să încerci din nou.",
     "signInPrompt": "Conectează-te pentru a-ți șterge contul Nomad Karaoke.",
     "title": "Șterge-ți contul",
     "cancelButton": "Anulează",
     "loading": "Se încarcă...",
     "retryButton": "Încearcă din nou",
-    "signInButton": "Conectează-te"
+    "signInButton": "Conectează-te",
+    "retryPartway": "Ceva nu a funcționat pe parcurs. Te rugăm să încerci din nou — ștergerea va continua de unde a rămas.",
+    "signedOutMaybeDeleted": "Ai fost deconectat. Dacă tocmai ți-ai șters contul, acesta nu mai există. Altfel, conectează-te și încearcă din nou."
   }
 }

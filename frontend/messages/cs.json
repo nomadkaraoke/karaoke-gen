@@ -2175,12 +2175,13 @@
     "keptHeading": "Co si ponecháváme",
     "keptRecords": "Záznamy o úlohách a platbách uchovávané pro účetní účely",
     "keptYoutube": "Karaoke videa již publikovaná na YouTube",
-    "retryable": "Při mazání tvého účtu došlo k chybě. O nic jsi nepřišel/a, zkus to prosím znovu.",
     "signInPrompt": "Pro smazání účtu Nomad Karaoke se přihlas.",
     "title": "Smazat účet",
     "cancelButton": "Zrušit",
     "loading": "Načítám...",
     "retryButton": "Zkusit znovu",
-    "signInButton": "Přihlásit se"
+    "signInButton": "Přihlásit se",
+    "retryPartway": "Během procesu se něco pokazilo. Zkus to prosím znovu – mazání bude pokračovat tam, kde skončilo.",
+    "signedOutMaybeDeleted": "Byl jsi odhlášen. Pokud jsi právě smazal svůj účet, je pryč. V opačném případě se přihlas a zkus to znovu."
   }
 }

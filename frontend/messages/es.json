@@ -2175,12 +2175,13 @@
     "keptHeading": "Lo que conservamos",
     "keptRecords": "Registros de trabajos y pagos, conservados por motivos contables",
     "keptYoutube": "Videos de karaoke ya publicados en YouTube",
-    "retryable": "Ocurrió un error al eliminar tu cuenta. No se perdió nada, así que por favor inténtalo de nuevo.",
     "signInPrompt": "Inicia sesión para eliminar tu cuenta de Nomad Karaoke.",
     "title": "Eliminar tu cuenta",
     "cancelButton": "Cancelar",
     "loading": "Cargando...",
     "retryButton": "Intentar de nuevo",
-    "signInButton": "Iniciar sesión"
+    "signInButton": "Iniciar sesión",
+    "retryPartway": "Algo salió mal a mitad del proceso. Por favor, inténtalo de nuevo; la eliminación continuará donde se quedó.",
+    "signedOutMaybeDeleted": "Se ha cerrado tu sesión. Si acabas de eliminar tu cuenta, ya no existe. De lo contrario, inicia sesión e inténtalo de nuevo."
   }
 }

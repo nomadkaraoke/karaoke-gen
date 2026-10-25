@@ -2175,12 +2175,13 @@
     "keptHeading": "Hva vi beholder",
     "keptRecords": "Oppdrags- og betalingshistorikk, beholdt av hensyn til regnskap",
     "keptYoutube": "Karaokevideoer som allerede er publisert på YouTube",
-    "retryable": "Noe gikk galt under slettingen av kontoen din. Ingenting gikk tapt, så prøv gjerne igjen.",
     "signInPrompt": "Logg inn for å slette Nomad Karaoke-kontoen din.",
     "title": "Slett kontoen din",
     "cancelButton": "Avbryt",
     "loading": "Laster...",
     "retryButton": "Prøv igjen",
-    "signInButton": "Logg inn"
+    "signInButton": "Logg inn",
+    "retryPartway": "Noe gikk galt underveis. Prøv igjen – slettingen fortsetter der den slapp.",
+    "signedOutMaybeDeleted": "Du har blitt logget ut. Hvis du nettopp slettet kontoen din, er den borte. Ellers kan du logge inn og prøve igjen."
   }
 }

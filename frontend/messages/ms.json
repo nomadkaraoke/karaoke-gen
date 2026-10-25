@@ -2175,12 +2175,13 @@
     "keptHeading": "Perkara yang kami simpan",
     "keptRecords": "Rekod tugasan dan pembayaran, disimpan untuk tujuan perakaunan",
     "keptYoutube": "Video karaoke yang telah diterbitkan di YouTube",
-    "retryable": "Masalah berlaku semasa memadamkan akaun anda. Tiada apa-apa yang hilang, jadi sila cuba lagi.",
     "signInPrompt": "Log masuk untuk memadamkan akaun Nomad Karaoke anda.",
     "title": "Padam akaun anda",
     "cancelButton": "Batal",
     "loading": "Memuatkan...",
     "retryButton": "Cuba lagi",
-    "signInButton": "Log masuk"
+    "signInButton": "Log masuk",
+    "retryPartway": "Terdapat masalah di pertengahan proses. Sila cuba lagi — proses pemadaman akan bersambung dari tempat ia terhenti.",
+    "signedOutMaybeDeleted": "Anda telah dilog keluar. Jika anda baru sahaja memadamkan akaun anda, akaun tersebut telah tiada. Jika tidak, sila log masuk dan cuba lagi."
   }
 }

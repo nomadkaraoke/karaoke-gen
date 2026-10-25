@@ -2175,12 +2175,13 @@
     "keptHeading": "Čo si ponecháme",
     "keptRecords": "Záznamy o úlohách a platbách uchovávané na účtovné účely",
     "keptYoutube": "Karaoke videá, ktoré už boli zverejnené na YouTube",
-    "retryable": "Pri odstraňovaní tvojho účtu sa niečo pokazilo. Nič sa nestratilo, skús to prosím znova.",
     "signInPrompt": "Ak chceš odstrániť svoj účet Nomad Karaoke, najskôr sa prihlás.",
     "title": "Odstránenie účtu",
     "cancelButton": "Zrušiť",
     "loading": "Načítava sa...",
     "retryButton": "Skúsiť znova",
-    "signInButton": "Prihlásiť sa"
+    "signInButton": "Prihlásiť sa",
+    "retryPartway": "Niečo sa pokazilo v priebehu procesu. Skús to znova – odstraňovanie bude pokračovať tam, kde skončilo.",
+    "signedOutMaybeDeleted": "Tvoje konto bolo odhlásené. Ak si práve zmazal svoj účet, bol úspešne odstránený. V opačnom prípade sa prihlás a skús to znova."
   }
 }

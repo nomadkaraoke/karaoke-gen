@@ -2175,12 +2175,13 @@
     "keptHeading": "保持されるデータ",
     "keptRecords": "会計目的で保管される処理およびお支払いの記録",
     "keptYoutube": "YouTubeで公開済みのカラオケ動画",
-    "retryable": "アカウントの削除中に問題が発生しました。データは失われていませんので、もう一度お試しください。",
     "signInPrompt": "Nomad Karaokeのアカウントを削除するにはサインインしてください。",
     "title": "アカウントの削除",
     "cancelButton": "キャンセル",
     "loading": "読み込み中...",
     "retryButton": "もう一度試す",
-    "signInButton": "サインイン"
+    "signInButton": "サインイン",
+    "retryPartway": "途中で問題が発生しました。もう一度お試しください。削除は中断したところから再開されます。",
+    "signedOutMaybeDeleted": "サインアウトされました。直前にアカウント削除を行った場合は、すでに削除が完了しています。そうでない場合は、サインインしてもう一度お試しください。"
   }
 }

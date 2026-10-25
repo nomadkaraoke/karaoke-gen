@@ -4,7 +4,7 @@
  * Web account deletion page (Google Play web deletion path).
  */
 import React from 'react'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { DeleteAccountClient } from '@/app/[locale]/account/delete/client'
 
 const mockNotFound = jest.fn()
@@ -40,7 +40,9 @@ const apiError = (status: number, data?: unknown) => Object.assign(new Error('x'
 async function startDeletion() {
   await screen.findByTestId('delete-account-start')
   fireEvent.click(screen.getByTestId('delete-account-start'))
-  fireEvent.click(screen.getByTestId('delete-account-confirm'))
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('delete-account-confirm'))
+  })
 }
 
 describe('DeleteAccountClient', () => {
@@ -78,12 +80,34 @@ describe('DeleteAccountClient', () => {
     expect(screen.getByTestId('delete-account-start')).toBeInTheDocument()
   })
 
-  it('treats 401 on confirm as already deleted', async () => {
+  it('on 401 at confirm signs out and shows neutral copy (deleted, or just signed out)', async () => {
     deleteAccount.mockRejectedValue(apiError(401))
     render(<DeleteAccountClient />)
     await startDeletion()
-    expect(await screen.findByTestId('delete-account-deleted')).toBeInTheDocument()
+    const msg = await screen.findByTestId('delete-account-signed-out-after-delete')
+    expect(msg).toHaveTextContent(
+      "You've been signed out. If you just deleted your account, it's gone. Otherwise sign in and try again.",
+    )
+    expect(screen.getByTestId('delete-account-sign-in')).toBeInTheDocument()
+    expect(screen.queryByTestId('delete-account-deleted')).not.toBeInTheDocument()
     expect(mockLogout).toHaveBeenCalled()
+  })
+
+  it('shows generic support copy for an unknown 409 code without crashing', async () => {
+    deleteAccount.mockRejectedValue(apiError(409, { code: 'brand_new_reason' }))
+    render(<DeleteAccountClient />)
+    await startDeletion()
+    const blocked = await screen.findByTestId('delete-account-blocked')
+    expect(blocked).toHaveTextContent(/cannot delete your account automatically/i)
+    expect(blocked).toHaveTextContent('support@nomadkaraoke.com')
+    expect(mockLogout).not.toHaveBeenCalled()
+  })
+
+  it('shows generic support copy for an unknown preview block code', async () => {
+    getDeletionPreview.mockResolvedValue({ credits: 0, jobs_in_progress: 0, blocked: 'brand_new_reason' })
+    render(<DeleteAccountClient />)
+    const blocked = await screen.findByTestId('delete-account-blocked')
+    expect(blocked).toHaveTextContent(/cannot delete your account automatically/i)
   })
 
   it('shows support copy on 409', async () => {
@@ -109,6 +133,10 @@ describe('DeleteAccountClient', () => {
     render(<DeleteAccountClient />)
     await startDeletion()
     const retry = await screen.findByTestId('delete-account-retry')
+    expect(screen.getByTestId('delete-account-error')).toHaveTextContent(
+      'Something went wrong part-way. Please try again — deletion picks up where it left off.',
+    )
+    expect(screen.getByTestId('delete-account-error')).not.toHaveTextContent(/nothing was lost/i)
     expect(mockLogout).not.toHaveBeenCalled()
     deleteAccount.mockResolvedValue({ deleted: true })
     fireEvent.click(retry)

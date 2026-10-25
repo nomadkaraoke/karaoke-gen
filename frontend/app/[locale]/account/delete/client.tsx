@@ -16,7 +16,7 @@ const SUPPORT_EMAIL = 'support@nomadkaraoke.com';
 
 type Phase =
   | { kind: 'loading' }
-  | { kind: 'signedOut' }
+  | { kind: 'signedOut'; afterDelete?: boolean }
   | { kind: 'hidden' }
   | { kind: 'ready'; preview: DeletionPreview }
   | { kind: 'confirming'; preview: DeletionPreview }
@@ -31,6 +31,13 @@ const BLOCKED_KEYS: Record<DeletionBlockedCode, string> = {
   connect_account: 'blockedConnectAccount',
   order_in_progress: 'blockedOrderInProgress',
 };
+
+function blockedCode(code: unknown): DeletionBlockedCode | null {
+  // An unknown code (a newer backend) falls back to the generic support copy.
+  return typeof code === 'string' && Object.prototype.hasOwnProperty.call(BLOCKED_KEYS, code)
+    ? (code as DeletionBlockedCode)
+    : null;
+}
 
 function statusOf(err: unknown): number | undefined {
   return err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : undefined;
@@ -54,7 +61,7 @@ export function DeleteAccountClient() {
         return;
       }
       const preview = await api.getDeletionPreview();
-      setPhase(preview.blocked ? { kind: 'blocked', code: preview.blocked } : { kind: 'ready', preview });
+      setPhase(preview.blocked ? { kind: 'blocked', code: blockedCode(preview.blocked) } : { kind: 'ready', preview });
     } catch (err) {
       const status = statusOf(err);
       if (status === 401) setPhase({ kind: 'signedOut' });
@@ -83,14 +90,15 @@ export function DeleteAccountClient() {
       } catch (err) {
         const status = statusOf(err);
         if (status === 401) {
-          // A retry after a lost 200: the session is already gone, so we are deleted.
-          await finishDeleted();
+          // The session is gone: either a retry after a lost 200 (deleted) or the
+          // session simply expired. We can't tell, so sign out and say both.
+          await useAuth.getState().logout();
+          setPhase({ kind: 'signedOut', afterDelete: true });
         } else if (status === 409) {
-          const code = (err as { data?: { code?: DeletionBlockedCode } }).data?.code ?? null;
-          setPhase({ kind: 'blocked', code });
+          setPhase({ kind: 'blocked', code: blockedCode((err as { data?: { code?: unknown } }).data?.code) });
         } else {
           // 503 {step} is retryable; anything else (network, 5xx) is treated the same:
-          // nothing was lost locally and the backend deletion is safe to retry.
+          // each backend step is idempotent, so a retry resumes the deletion.
           setPhase({ kind: 'error', retryable: true, preview });
         }
       }
@@ -127,7 +135,9 @@ export function DeleteAccountClient() {
 
         {phase.kind === 'signedOut' && (
           <div className="space-y-4" data-testid="delete-account-signed-out">
-            <p>{t('signInPrompt')}</p>
+            <p data-testid={phase.afterDelete ? 'delete-account-signed-out-after-delete' : undefined}>
+              {phase.afterDelete ? t('signedOutMaybeDeleted') : t('signInPrompt')}
+            </p>
             <Button onClick={() => setShowAuth(true)} data-testid="delete-account-sign-in">
               {t('signInButton')}
             </Button>
@@ -164,7 +174,7 @@ export function DeleteAccountClient() {
 
         {phase.kind === 'error' && (
           <div className="space-y-3" role="alert" data-testid="delete-account-error">
-            <p>{phase.retryable ? t('retryable') : t('genericError', { email: SUPPORT_EMAIL })}</p>
+            <p>{phase.retryable ? t('retryPartway') : t('genericError', { email: SUPPORT_EMAIL })}</p>
             <Button
               onClick={() => (phase.preview ? confirmDelete(phase.preview) : load())}
               data-testid="delete-account-retry"

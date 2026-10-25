@@ -2155,6 +2155,7 @@
     "loading": "Loading...",
     "signInPrompt": "Sign in to delete your Nomad Karaoke account.",
     "signInButton": "Sign in",
+    "signedOutMaybeDeleted": "You've been signed out. If you just deleted your account, it's gone. Otherwise sign in and try again.",
     "intro": "Deleting your account is permanent and cannot be undone.",
     "deletedHeading": "What we delete",
     "deletedPersonal": "Your personal details (name, email, sign-in sessions)",
@@ -2179,7 +2180,7 @@
     "blockedConnectAccount": "Your account has a linked payout account that needs to be closed first.",
     "blockedOrderInProgress": "You have an order in progress that needs to finish first.",
     "blockedContact": "We cannot delete your account automatically. Please contact support at {email} and we will help.",
-    "retryable": "Something went wrong while deleting your account. Nothing was lost, so please try again.",
+    "retryPartway": "Something went wrong part-way. Please try again — deletion picks up where it left off.",
     "genericError": "We could not load or delete your account. Please try again, or contact support at {email}.",
     "retryButton": "Try again"
   }

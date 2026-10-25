@@ -2175,12 +2175,13 @@
     "keptHeading": "我们将保留的内容",
     "keptRecords": "任务和付款记录（保留用于财务记账）",
     "keptYoutube": "已发布到 YouTube 上的卡拉OK视频",
-    "retryable": "注销账户时出现问题。您的数据完好无损，请重试。",
     "signInPrompt": "请先登录以注销您的 Nomad Karaoke 账户。",
     "title": "注销您的账户",
     "cancelButton": "取消",
     "loading": "加载中...",
     "retryButton": "重试",
-    "signInButton": "登录"
+    "signInButton": "登录",
+    "retryPartway": "处理过程中出了点问题。请重试——删除流程将从中断处继续。",
+    "signedOutMaybeDeleted": "您已退出登录。如果您刚刚注销了账户，该账户已被成功删除。否则，请重新登录并重试。"
   }
 }

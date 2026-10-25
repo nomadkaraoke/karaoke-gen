@@ -2175,12 +2175,13 @@
     "keptHeading": "Data yang kami simpan",
     "keptRecords": "Riwayat pemrosesan dan pembayaran, disimpan untuk keperluan akuntansi",
     "keptYoutube": "Video karaoke yang sudah dipublikasikan di YouTube",
-    "retryable": "Terjadi kesalahan saat menghapus akun Anda. Tidak ada data yang hilang, silakan coba lagi.",
     "signInPrompt": "Masuk untuk menghapus akun Nomad Karaoke Anda.",
     "title": "Hapus akun Anda",
     "cancelButton": "Batal",
     "loading": "Memuat...",
     "retryButton": "Coba lagi",
-    "signInButton": "Masuk"
+    "signInButton": "Masuk",
+    "retryPartway": "Terjadi kendala di tengah proses. Silakan coba lagi — penghapusan akan dilanjutkan dari bagian terakhir.",
+    "signedOutMaybeDeleted": "Anda telah keluar. Jika Anda baru saja menghapus akun, akun tersebut sudah terhapus. Jika tidak, silakan masuk kembali dan coba lagi."
   }
 }
