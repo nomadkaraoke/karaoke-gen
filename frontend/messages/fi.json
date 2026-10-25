@@ -2159,7 +2159,7 @@
     "confirmBody": "Tämä poistaa tilisi pysyvästi. Sinut kirjataan ulos, etkä voi enää kirjautua takaisin tälle tilille.",
     "confirmButton": "Kyllä, poista pysyvästi",
     "confirmTitle": "Oletko varma?",
-    "creditsLost": "{count, plural, one {Menetät {count} kreditiin} other {Menetät {count} kredittiä}}",
+    "creditsLost": "{count, plural, one {Menetät {count} krediitin} other {Menetät {count} krediittiä}}",
     "deleteButton": "Poista tilini",
     "deletedBody": "Tilisi ja henkilötietosi on poistettu. Sinut on kirjattu ulos. Kiitos, että lauloit kanssamme.",
     "deletedHeading": "Mitä poistamme",

@@ -2159,7 +2159,7 @@
     "confirmBody": "此操作将永久注销您的账户。您将被退出登录，且无法再次登录此账户。",
     "confirmButton": "确认，永久注销",
     "confirmTitle": "您确定要注销吗？",
-    "creditsLost": "{count, plural, one {将失去 {count} 点点数} other {将失去 {count} 点点数}}",
+    "creditsLost": "{count, plural, one {将失去 {count} 积分} other {将失去 {count} 积分}}",
     "deleteButton": "注销我的账户",
     "deletedBody": "您的账户及个人数据已删除。您已退出登录。感谢您与我们一同欢唱！",
     "deletedHeading": "我们将删除的内容",

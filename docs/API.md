@@ -1854,7 +1854,7 @@ Returns the merged `{ready, review, problems}`. Read the current values from `pu
 ### Expo Push Token
 
 ```http
-POST   /api/push/expo-token   {"token": "ExponentPushToken[...]", "device_id": "..."}   -> 204
+POST   /api/push/expo-token   {"token": "ExponentPushToken[...]", "platform": "ios|android", "device_id": "..."}   -> 204
 DELETE /api/push/expo-token   {"token": "ExponentPushToken[...]"}                        -> 204
 ```
 
@@ -1869,7 +1869,7 @@ GET    /api/users/me/deletion-preview   -> credits lost, videos cancelled; 409 {
 DELETE /api/users/me                    {"apple_authorization_code": "..."}  (body optional)
 ```
 
-`DELETE` erases the account (Stripe, Dropbox, GCS/Firestore data, Apple Sign-In revoke when `apple_authorization_code` is given) and returns `{"deleted": true, "summary": {...}}`. `409 {"code"}` = refused (e.g. active job), `503 {"step"}` = a step failed; safe to retry. Deletions are queued for kjbox to erase its copy (below). The web equivalent is the `/account/delete` page.
+`DELETE` cancels active jobs, erases decide and RevenueCat data, revokes Sign in with Apple (best-effort, when `apple_authorization_code` is given), deletes user-supplied inputs in GCS, revokes Dropbox share links (published outputs are kept), anonymises kept records and deletes the user doc. It returns `{"deleted": true, "summary": {...}}`. `409 {"code"}` = refused (`admin`, `referral_balance`, `connect_account`, `order_in_progress`), `503 {"step"}` = a step failed; safe to retry. Deletions are queued for kjbox to erase its copy (below). The web equivalent is the `/account/delete` page.
 
 ### RevenueCat Webhook
 

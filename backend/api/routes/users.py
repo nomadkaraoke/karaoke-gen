@@ -957,7 +957,7 @@ def _profile_response(user, user_public, user_service) -> UserProfileResponse:
     return UserProfileResponse(
         user=user_public,
         has_session=True,
-        app_user_id=user_service.ensure_app_user_id(user.email),
+        app_user_id=getattr(user, "app_user_id", None) or user_service.ensure_app_user_id(user.email),
         capabilities=UserCapabilities(account_deletion=get_settings().account_deletion_enabled),
         push_prefs=PushPrefs(**effective_push_prefs(stored)),
     )
