@@ -28,6 +28,9 @@ from backend.services.user_service import USERS_COLLECTION, UserService, get_use
 logger = logging.getLogger(__name__)
 
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+# Android notification channel the app creates for gen's job pushes (kjbox uses
+# "tonight"). Without it Android files them under Expo's default channel.
+ANDROID_CHANNEL_ID = "jobs"
 EXPO_BATCH_SIZE = 100
 TOKENS_FIELD = "expo_push_tokens"
 VALUES_FIELD = "expo_push_token_values"
@@ -154,7 +157,8 @@ class ExpoPushService:
         for i in range(0, len(tokens), EXPO_BATCH_SIZE):
             batch = tokens[i:i + EXPO_BATCH_SIZE]
             messages = [
-                {"to": tok, "title": title, "body": body, "sound": "default", "data": {"url": url, "kind": kind}}
+                {"to": tok, "title": title, "body": body, "sound": "default",
+                 "channelId": ANDROID_CHANNEL_ID, "data": {"url": url, "kind": kind}}
                 for tok in batch
             ]
             try:
