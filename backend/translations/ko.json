@@ -179,8 +179,6 @@
     "videoReadyBody": "{artist}의 \"{title}\" 노래방 비디오를 다운로드할 준비가 되었습니다",
     "confirmDurationTitle": "작업 비용 확인",
     "confirmDurationBody": "{artist}의 \"{title}\" 작업을 계속 진행하려면 비용 확인이 필요합니다",
-    "selectAudioTitle": "오디오 선택",
-    "selectAudioBody": "{artist}의 \"{title}\" 작업에 사용할 오디오 소스를 선택해 주세요",
     "jobProblemTitle": "동영상에 문제가 발생했습니다",
     "jobProblemBody": "{artist}의 \"{title}\" 작업 중 문제가 발생했습니다. 앱을 열어 확인해 보세요",
     "jobStalledBody": "{artist}의 \"{title}\" 오디오 다운로드가 지연되고 있습니다. 앱을 열어 계속 진행해 보세요"

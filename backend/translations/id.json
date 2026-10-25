@@ -179,8 +179,6 @@
     "videoReadyBody": "Video karaoke Anda untuk \"{title}\" oleh {artist} siap diunduh",
     "confirmDurationTitle": "Konfirmasi biaya pekerjaan",
     "confirmDurationBody": "\"{title}\" oleh {artist} memerlukan konfirmasi biaya untuk melanjutkan",
-    "selectAudioTitle": "Pilih audio",
-    "selectAudioBody": "Silakan pilih sumber audio untuk lagu \"{title}\" oleh {artist}",
     "jobProblemTitle": "Ada masalah dengan video Anda",
     "jobProblemBody": "\"{title}\" oleh {artist} mengalami masalah. Buka aplikasi untuk melihat apa yang terjadi",
     "jobStalledBody": "Pengunduhan audio untuk \"{title}\" oleh {artist} terhenti. Kami bisa terus mencoba jika Anda membuka aplikasi"

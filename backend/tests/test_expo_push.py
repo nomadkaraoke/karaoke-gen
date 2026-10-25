@@ -285,12 +285,29 @@ def triggers(db, user_service, monkeypatch):
     webpush = MagicMock()
     monkeypatch.setattr("backend.services.push_notification_service.webpush", webpush)
 
-    def run(status, **job_kw):
+    def run(status, action=None, **job_kw):
+        """Fire notifications for ``status`` — or run ``action(mgr)`` (e.g. the real fail_job)."""
         job = _job(status, **job_kw)
         mgr = JobManager.__new__(JobManager)
         mgr.get_job = lambda job_id: job
         mgr._schedule_completion_email = lambda j: None
         mgr._schedule_idle_reminder = lambda j, s: None
+        mgr._refund_credit_for_job = MagicMock()
+        mgr.firestore = MagicMock()
+
+        def write_status(job_id, status, **kw):
+            job.status = status
+            if "error_details" in kw:
+                job.error_details = kw["error_details"]
+        mgr.firestore.update_job_status.side_effect = write_status
+
+        def write_fields(job_id, updates):
+            for key, value in updates.items():
+                if key.startswith("state_data."):
+                    job.state_data[key.split(".", 1)[1]] = value
+                else:
+                    setattr(job, key, value)
+        mgr.firestore.update_job.side_effect = write_fields
         threads = []
         real_thread = threading.Thread
 
@@ -303,7 +320,10 @@ def triggers(db, user_service, monkeypatch):
         with patch("backend.services.expo_push_service.get_expo_push_service", return_value=expo), \
              patch("backend.services.push_notification_service.get_push_notification_service", return_value=web), \
              patch("threading.Thread", Rec):
-            mgr._trigger_state_notifications("job1", status)
+            if action is None:
+                mgr._trigger_state_notifications("job1", status)
+            else:
+                action(mgr)
             for th in threads:
                 th.join(timeout=10)
         return outbox.list_pushes(A), webpush
@@ -319,7 +339,6 @@ class TestJobTriggers:
         (JobStatus.AWAITING_DURATION_CONFIRM, "review", "/job/duration/job1"),
         (JobStatus.AWAITING_AUDIO_EDIT, "review", "/job/job1"),
         (JobStatus.AWAITING_INSTRUMENTAL_SELECTION, "review", "/job/job1"),
-        (JobStatus.AWAITING_AUDIO_SELECTION, "problems", "/job/job1"),
         (JobStatus.FAILED, "problems", "/job/job1"),
     ])
     def test_status_maps_to_kind_and_url(self, triggers, status, kind, url):
@@ -339,9 +358,11 @@ class TestJobTriggers:
         webpush.assert_called_once()
         assert "problem" in json.loads(webpush.call_args.kwargs["data"])["title"].lower()
 
-    def test_audio_selection_sends_webpush_too(self, triggers):
-        _, webpush = triggers(JobStatus.AWAITING_AUDIO_SELECTION)
-        webpush.assert_called_once()
+    def test_audio_selection_is_not_a_problem_push(self, triggers):
+        # The normal interactive search step; stalled downloads end FAILED instead.
+        pushes, webpush = triggers(JobStatus.AWAITING_AUDIO_SELECTION)
+        assert pushes == []
+        webpush.assert_not_called()
 
     def test_stalled_download_body_offers_to_keep_trying(self, triggers):
         pushes, _ = triggers(JobStatus.FAILED, error_details={"code": "audio_download_stalled"})
@@ -369,3 +390,97 @@ class TestJobTriggers:
             pushes, webpush = triggers(JobStatus.COMPLETE)
         assert len(pushes) == 1
         webpush.assert_not_called()
+
+
+def _fail(mgr):
+    assert mgr.fail_job("job1", "Audio download failed: boom", {"stage": "audio_download"}) is True
+
+
+def _mark_failed(mgr):
+    mgr.mark_job_failed("job1", "Render crashed", {"stage": "render"})
+
+
+def _pending(minutes):
+    from datetime import timedelta, timezone
+    expires = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    return {"cloud_run_retry_pending": {"expires_at": expires.isoformat(), "expected_attempt": 1}}
+
+
+class TestWorkerFailurePaths:
+    """Workers fail jobs via fail_job / mark_job_failed, not transition_to_state."""
+
+    @pytest.mark.parametrize("action", [_fail, _mark_failed])
+    def test_worker_failure_pushes_once(self, triggers, action):
+        pushes, webpush = triggers(JobStatus.DOWNLOADING_AUDIO, action=action)
+        assert [(p["kind"], p["url"]) for p in pushes] == [("problems", "/job/job1")]
+        webpush.assert_called_once()
+
+    def test_fail_job_stalled_download_uses_keep_trying_body(self, triggers):
+        def fail_stalled(mgr):
+            mgr.fail_job("job1", "stalled", {"code": "audio_download_stalled"})
+        pushes, _ = triggers(JobStatus.DOWNLOADING_AUDIO, action=fail_stalled)
+        assert "keep trying" in pushes[0]["body"]
+
+    @pytest.mark.parametrize("action", [_fail, _mark_failed])
+    def test_second_worker_failing_the_same_run_does_not_push_again(self, triggers, action):
+        def fail_twice(mgr):
+            action(mgr)
+            action(mgr)
+        pushes, webpush = triggers(JobStatus.DOWNLOADING_AUDIO, action=fail_twice)
+        assert len(pushes) == 1
+        webpush.assert_called_once()
+
+    def test_already_notified_failure_does_not_push_again(self, triggers):
+        pushes, webpush = triggers(JobStatus.FAILED, action=_fail, state_data={"failure_push_sent": True})
+        assert pushes == []
+        webpush.assert_not_called()
+
+    def test_cloud_run_retry_then_final_failure_pushes_once(self, triggers):
+        """Attempt 1 fails with a retry coming (no push); attempt 2 runs while the job
+        is still FAILED, clears the marker and fails for good: that one pushes."""
+        def two_attempts(mgr):
+            mgr.fail_job("job1", "attempt 1", {"stage": "audio_download"})
+            mgr.get_job("job1").state_data["cloud_run_retry_pending"] = None
+            mgr.fail_job("job1", "attempt 2", {"stage": "audio_download"})
+        pushes, webpush = triggers(JobStatus.DOWNLOADING_AUDIO, action=two_attempts, state_data=_pending(10))
+        assert len(pushes) == 1
+        webpush.assert_called_once()
+
+    def test_no_push_while_cloud_run_auto_retry_pending(self, triggers):
+        pushes, webpush = triggers(JobStatus.DOWNLOADING_AUDIO, action=_fail, state_data=_pending(10))
+        assert pushes == []
+        webpush.assert_not_called()
+
+    def test_expired_retry_marker_still_pushes(self, triggers):
+        pushes, _ = triggers(JobStatus.DOWNLOADING_AUDIO, action=_fail, state_data=_pending(-10))
+        assert len(pushes) == 1
+
+    @pytest.mark.parametrize("notify_customer,expected", [(False, 0), (True, 1)])
+    def test_admin_rerender_failure_respects_notify_customer(self, triggers, notify_customer, expected):
+        pushes, _ = triggers(
+            JobStatus.RENDERING_VIDEO,
+            action=_fail, state_data={"admin_rerender": {"notify_customer": notify_customer}},
+        )
+        assert len(pushes) == expected
+
+    def test_push_failure_never_breaks_fail_job(self, triggers, monkeypatch):
+        monkeypatch.setattr(JobManager, "_send_push_notification", MagicMock(side_effect=RuntimeError("boom")))
+        triggers(JobStatus.DOWNLOADING_AUDIO, action=_fail)  # _fail asserts fail_job returned True
+
+    def test_transition_to_failed_with_notify_false_stays_silent(self, triggers):
+        def transition(mgr):
+            mgr.validate_state_transition = lambda *a, **k: True
+            mgr.transition_to_state("job1", JobStatus.FAILED, notify=False)
+        pushes, webpush = triggers(JobStatus.DOWNLOADING_AUDIO, action=transition)
+        assert pushes == []
+        webpush.assert_not_called()
+
+
+class TestTenantJobs:
+    def test_tenant_job_skips_expo_push(self, triggers):
+        pushes, _ = triggers(JobStatus.COMPLETE, tenant_id="acme")
+        assert pushes == []
+
+    def test_tenant_job_failure_skips_expo_push(self, triggers):
+        pushes, _ = triggers(JobStatus.DOWNLOADING_AUDIO, action=_fail, tenant_id="acme")
+        assert pushes == []

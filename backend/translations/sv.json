@@ -179,8 +179,6 @@
     "videoReadyBody": "Din karaokevideo för \"{title}\" av {artist} är redo att laddas ner",
     "confirmDurationTitle": "Bekräfta jobbkostnad",
     "confirmDurationBody": "\"{title}\" av {artist} kräver att du bekräftar kostnaden för att fortsätta",
-    "selectAudioTitle": "Välj ljudkälla",
-    "selectAudioBody": "Du behöver välja en ljudkälla för \"{title}\" av {artist}",
     "jobProblemTitle": "Det har uppstått ett problem med din video",
     "jobProblemBody": "Det uppstod ett problem med \"{title}\" av {artist}. Öppna appen för att se vad som hände",
     "jobStalledBody": "Nedladdningen av ljudet för \"{title}\" av {artist} har fastnat. Vi kan fortsätta försöka om du öppnar appen"

@@ -179,8 +179,6 @@
     "videoReadyBody": "Din karaokevideo til \"{title}\" af {artist} er klar til download",
     "confirmDurationTitle": "Bekræft opgavepris",
     "confirmDurationBody": "\"{title}\" af {artist} kræver en prisbekræftelse for at fortsætte",
-    "selectAudioTitle": "Vælg lydkilde",
-    "selectAudioBody": "Du skal vælge en lydkilde til \"{title}\" af {artist}",
     "jobProblemTitle": "Der er et problem med din video",
     "jobProblemBody": "Der opstod et problem med \"{title}\" af {artist}. Åbn appen for at se, hvad der skete",
     "jobStalledBody": "Downloadingen af lyd til \"{title}\" af {artist} er gået i stå. Vi kan prøve igen, hvis du åbner appen"

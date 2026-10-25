@@ -179,8 +179,6 @@
     "videoReadyBody": "סרטון הקריוקי שלכם עבור \"{title}\" מאת {artist} מוכן להורדה",
     "confirmDurationTitle": "אישור עלות המשימה",
     "confirmDurationBody": "\"{title}\" של {artist} דורש אישור עלות כדי להמשיך",
-    "selectAudioTitle": "בחירת מקור שמע",
-    "selectAudioBody": "יש לבחור מקור שמע עבור \"{title}\" מאת {artist}",
     "jobProblemTitle": "יש בעיה בסרטון שלך",
     "jobProblemBody": "נתקלנו בבעיה עם \"{title}\" מאת {artist}. יש לפתוח את האפליקציה כדי לראות מה קרה",
     "jobStalledBody": "הורדת השמע עבור \"{title}\" מאת {artist} נתקעה. נוכל להמשיך לנסות אם ייפתח היישום"

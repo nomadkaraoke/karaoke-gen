@@ -179,8 +179,6 @@
     "videoReadyBody": "Dein Karaoke-Video für \"{title}\" von {artist} ist bereit zum Herunterladen",
     "confirmDurationTitle": "Auftragskosten bestätigen",
     "confirmDurationBody": "\"{title}\" von {artist} benötigt eine Kostenbestätigung, um fortzufahren",
-    "selectAudioTitle": "Wähle das Audio aus",
-    "selectAudioBody": "Für „{title}“ von {artist} musst du eine Audioquelle auswählen",
     "jobProblemTitle": "Es gibt ein Problem mit deinem Video",
     "jobProblemBody": "Bei „{title}“ von {artist} ist ein Problem aufgetreten. Öffne die App, um zu sehen, was passiert ist",
     "jobStalledBody": "Der Audio-Download für „{title}“ von {artist} hängt fest. Wir können es weiter versuchen, wenn du die App öffnest"

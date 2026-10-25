@@ -179,8 +179,6 @@
     "videoReadyBody": "วิดีโอคาราโอเกะเพลง \"{title}\" โดย {artist} พร้อมให้ดาวน์โหลดแล้ว",
     "confirmDurationTitle": "ยืนยันค่าใช้จ่ายของงาน",
     "confirmDurationBody": "\"{title}\" โดย {artist} ต้องการการยืนยันค่าใช้จ่ายเพื่อดำเนินการต่อ",
-    "selectAudioTitle": "เลือกเสียง",
-    "selectAudioBody": "โปรดเลือกแหล่งเสียงสำหรับเพลง \"{title}\" ของ {artist}",
     "jobProblemTitle": "เกิดปัญหากับวิดีโอของคุณ",
     "jobProblemBody": "เกิดปัญหากับเพลง \"{title}\" ของ {artist} เปิดแอปเพื่อดูรายละเอียด",
     "jobStalledBody": "การดาวน์โหลดเสียงสำหรับเพลง \"{title}\" ของ {artist} ค้างอยู่ เปิดแอปเพื่อให้ระบบดำเนินการต่อได้เลย"

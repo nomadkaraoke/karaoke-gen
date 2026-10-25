@@ -179,8 +179,6 @@
     "videoReadyBody": "Handa nang i-download ang iyong karaoke video para sa \"{title}\" ni {artist}",
     "confirmDurationTitle": "Kumpirmahin ang gastos ng gawain",
     "confirmDurationBody": "Kailangan ng kumpirmasyon sa gastos ng \"{title}\" ni {artist} para makapagpatuloy",
-    "selectAudioTitle": "Piliin ang audio",
-    "selectAudioBody": "Kailangan mong pumili ng audio source para sa \"{title}\" ni {artist}",
     "jobProblemTitle": "May problema sa iyong video",
     "jobProblemBody": "Nagkaproblema ang \"{title}\" ni {artist}. Buksan ang app para makita ang nangyari",
     "jobStalledBody": "Na-stuck ang pag-download ng audio para sa \"{title}\" ni {artist}. Puwede naming ituloy ang pagsubok kung bubuksan mo ang app"

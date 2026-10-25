@@ -179,8 +179,6 @@
     "videoReadyBody": "{artist} का तुम्हारा कराओके वीडियो \"{title}\" डाउनलोड के लिए तैयार है",
     "confirmDurationTitle": "जॉब की लागत की पुष्टि करो",
     "confirmDurationBody": "जारी रखने के लिए {artist} के \"{title}\" को लागत की पुष्टि की ज़रूरत है",
-    "selectAudioTitle": "ऑडियो चुनो",
-    "selectAudioBody": "\"{title}\" ({artist}) के लिए तुम्हें एक ऑडियो सोर्स चुनना होगा",
     "jobProblemTitle": "तुम्हारे वीडियो में एक समस्या आई है",
     "jobProblemBody": "{artist} का \"{title}\" प्रोसेस करने में समस्या आई। क्या हुआ, यह देखने के लिए ऐप खोलो",
     "jobStalledBody": "{artist} के \"{title}\" का ऑडियो डाउनलोड अटक गया है। अगर तुम ऐप खोलो, तो हम कोशिश जारी रख सकते हैं"

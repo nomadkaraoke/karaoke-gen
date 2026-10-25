@@ -179,8 +179,6 @@
     "videoReadyBody": "A(z) \"{title}\" ({artist}) karaoke videód készen áll a letöltésre",
     "confirmDurationTitle": "Feladat költségének jóváhagyása",
     "confirmDurationBody": "{artist} \"{title}\" című számának folytatásához jóvá kell hagynod a költségeket.",
-    "selectAudioTitle": "Válassz hangforrást",
-    "selectAudioBody": "A(z) \"{title}\" számhoz ({artist}) ki kell választanod a hangforrást",
     "jobProblemTitle": "Probléma történt a videóddal",
     "jobProblemBody": "Probléma történt a(z) \"{title}\" számmal ({artist}). Nyisd meg az alkalmazást, és nézd meg, mi történt",
     "jobStalledBody": "A(z) \"{title}\" ({artist}) hangsávjának letöltése elakadt. Ha megnyitod az alkalmazást, újra megpróbáljuk"

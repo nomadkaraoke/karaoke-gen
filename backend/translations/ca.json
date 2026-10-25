@@ -179,8 +179,6 @@
     "videoReadyBody": "El teu vídeo de karaoke per a \"{title}\" de {artist} està llest per descarregar",
     "confirmDurationTitle": "Confirma el cost de la tasca",
     "confirmDurationBody": "\"{title}\" de {artist} necessita una confirmació de cost per continuar",
-    "selectAudioTitle": "Tria l'àudio",
-    "selectAudioBody": "\"{title}\" de {artist} necessita que triïs una font d'àudio",
     "jobProblemTitle": "Hi ha un problema amb el teu vídeo",
     "jobProblemBody": "Hi ha hagut un problema amb \"{title}\" de {artist}. Obre l'aplicació per veure què ha passat",
     "jobStalledBody": "La descàrrega de l'àudio de \"{title}\" de {artist} s'ha encallat. Podem continuar intentant-ho si obres l'aplicació"

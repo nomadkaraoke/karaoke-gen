@@ -179,8 +179,6 @@
     "videoReadyBody": "Video karaoke của bạn cho bài hát \"{title}\" của {artist} đã sẵn sàng để tải xuống",
     "confirmDurationTitle": "Xác nhận chi phí công việc",
     "confirmDurationBody": "\"{title}\" của {artist} cần xác nhận chi phí để tiếp tục",
-    "selectAudioTitle": "Chọn nguồn âm thanh",
-    "selectAudioBody": "\"{title}\" của {artist} cần bạn chọn nguồn âm thanh",
     "jobProblemTitle": "Đã xảy ra sự cố với video của bạn",
     "jobProblemBody": "\"{title}\" của {artist} đã gặp sự cố. Mở ứng dụng để xem chi tiết nhé",
     "jobStalledBody": "Quá trình tải âm thanh cho \"{title}\" của {artist} đang bị kẹt. Chúng tôi có thể tiếp tục thử lại nếu bạn mở ứng dụng"

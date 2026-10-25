@@ -179,8 +179,6 @@
     "videoReadyBody": "Video karaoke anda untuk \"{title}\" oleh {artist} sedia untuk dimuat turun",
     "confirmDurationTitle": "Sahkan kos kerja",
     "confirmDurationBody": "\"{title}\" oleh {artist} memerlukan pengesahan kos untuk diteruskan",
-    "selectAudioTitle": "Pilih audio",
-    "selectAudioBody": "\"{title}\" oleh {artist} memerlukan anda memilih sumber audio",
     "jobProblemTitle": "Terdapat masalah dengan video anda",
     "jobProblemBody": "\"{title}\" oleh {artist} menghadapi masalah. Buka aplikasi untuk melihat apa yang berlaku",
     "jobStalledBody": "Muat turun audio untuk \"{title}\" oleh {artist} tersekat. Kami boleh terus mencuba jika anda membuka aplikasi"

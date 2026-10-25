@@ -179,8 +179,6 @@
     "videoReadyBody": "Tvoj karaoke video za \"{title}\" od {artist} je spreman za preuzimanje",
     "confirmDurationTitle": "Potvrdi trošak posla",
     "confirmDurationBody": "\"{title}\" od {artist} zahtijeva potvrdu troška za nastavak",
-    "selectAudioTitle": "Odaberi zvuk",
-    "selectAudioBody": "Za pjesmu \"{title}\" izvođača {artist} potrebno je odabrati izvor zvuka",
     "jobProblemTitle": "Došlo je do problema s tvojim videom",
     "jobProblemBody": "Došlo je do problema s pjesmom \"{title}\" izvođača {artist}. Otvori aplikaciju da vidiš što se dogodilo",
     "jobStalledBody": "Preuzimanje zvuka za pjesmu \"{title}\" izvođača {artist} je zapelo. Možemo nastaviti s pokušajima ako otvoriš aplikaciju"

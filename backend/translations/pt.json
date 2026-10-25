@@ -179,8 +179,6 @@
     "videoReadyBody": "Seu vídeo de karaokê para \"{title}\" de {artist} está pronto para baixar",
     "confirmDurationTitle": "Confirmar custo do serviço",
     "confirmDurationBody": "\"{title}\" de {artist} precisa de uma confirmação de custo para continuar",
-    "selectAudioTitle": "Escolha o áudio",
-    "selectAudioBody": "\"{title}\", de {artist}, precisa que você escolha uma fonte de áudio",
     "jobProblemTitle": "Houve um problema com o seu vídeo",
     "jobProblemBody": "Houve um problema com \"{title}\", de {artist}. Abra o app para ver o que aconteceu",
     "jobStalledBody": "O download do áudio de \"{title}\", de {artist}, travou. Abra o app para continuarmos tentando"

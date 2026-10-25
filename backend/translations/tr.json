@@ -179,8 +179,6 @@
     "videoReadyBody": "{artist} - \"{title}\" karaoke videon indirilmeye hazır",
     "confirmDurationTitle": "İş maliyetini onayla",
     "confirmDurationBody": "Devam etmek için {artist} - \"{title}\" şarkısının maliyetini onaylaman gerekiyor",
-    "selectAudioTitle": "Ses kaynağını seç",
-    "selectAudioBody": "{artist} - \"{title}\" parçası için bir ses kaynağı seçmen gerekiyor",
     "jobProblemTitle": "Videonda bir sorun var",
     "jobProblemBody": "{artist} - \"{title}\" parçasında bir sorun oluştu. Ne olduğunu görmek için uygulamayı aç",
     "jobStalledBody": "{artist} - \"{title}\" parçasının ses indirmesi takıldı. Uygulamayı açarsan denemeye devam edebiliriz"

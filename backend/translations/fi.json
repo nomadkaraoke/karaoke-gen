@@ -179,8 +179,6 @@
     "videoReadyBody": "Karaokevideosi kappaleelle \"{title}\" esittäjältä {artist} on valmis ladattavaksi",
     "confirmDurationTitle": "Vahvista työn hinta",
     "confirmDurationBody": "\"{title}\" esittäjältä {artist} vaatii hinnan vahvistuksen jatkamista varten",
-    "selectAudioTitle": "Valitse äänilähde",
-    "selectAudioBody": "Valitse äänilähde kappaleelle \"{title}\" ({artist})",
     "jobProblemTitle": "Videossasi on ongelma",
     "jobProblemBody": "Kappaleen \"{title}\" ({artist}) kohdalla ilmeni ongelma. Avaa sovellus nähdäksesi, mitä tapahtui",
     "jobStalledBody": "Kappaleen \"{title}\" ({artist}) äänitiedoston lataus on jumissa. Voimme jatkaa yrittämistä, jos avaat sovelluksen"

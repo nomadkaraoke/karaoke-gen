@@ -179,8 +179,6 @@
     "videoReadyBody": "فيديو الكاريوكي الخاص بك لأغنية \"{title}\" للفنان {artist} جاهز للتنزيل",
     "confirmDurationTitle": "تأكيد تكلفة المهمة",
     "confirmDurationBody": "تحتاج \"{title}\" للفنان {artist} إلى تأكيد التكلفة للمتابعة",
-    "selectAudioTitle": "اختر الصوت",
-    "selectAudioBody": "يرجى اختيار مصدر الصوت لأغنية \"{title}\" للفنان {artist}",
     "jobProblemTitle": "توجد مشكلة في الفيديو الخاص بك",
     "jobProblemBody": "واجهت أغنية \"{title}\" لـ {artist} مشكلة. افتح التطبيق لمعرفة ما حدث",
     "jobStalledBody": "تنزيل الملف الصوتي لأغنية \"{title}\" لـ {artist} متوقف. يمكننا متابعة المحاولة إذا فتحت التطبيق"

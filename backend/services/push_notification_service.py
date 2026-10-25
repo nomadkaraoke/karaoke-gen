@@ -300,12 +300,8 @@ class PushNotificationService:
             kind="review",
         )
 
-    async def send_problem_notification(
-        self,
-        job: dict,
-        action_type: str,  # "failed" or "audio_selection"
-    ) -> int:
-        """Send notification when a job failed or needs the user to pick audio."""
+    async def send_problem_notification(self, job: dict) -> int:
+        """Send notification when a job failed."""
         user_email = job.get("user_email")
         if not user_email:
             return 0
@@ -315,10 +311,7 @@ class PushNotificationService:
         title = job.get("title", "Unknown Title")
         locale = job.get("locale") or "en"
 
-        if action_type == "audio_selection":
-            notif_title = t(locale, "pushNotifications.selectAudioTitle")
-            notif_body = t(locale, "pushNotifications.selectAudioBody", title=title, artist=artist)
-        elif job.get("stalled_download"):
+        if job.get("stalled_download"):
             notif_title = t(locale, "pushNotifications.jobProblemTitle")
             notif_body = t(locale, "pushNotifications.jobStalledBody", title=title, artist=artist)
         else:

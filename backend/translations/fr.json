@@ -179,8 +179,6 @@
     "videoReadyBody": "Ta vidéo karaoké pour \"{title}\" de {artist} est prête à être téléchargée",
     "confirmDurationTitle": "Confirme le coût de la tâche",
     "confirmDurationBody": "\"{title}\" de {artist} nécessite une confirmation de coût pour continuer",
-    "selectAudioTitle": "Choisis l'audio",
-    "selectAudioBody": "Choisis une source audio pour \"{title}\" de {artist}",
     "jobProblemTitle": "Il y a un problème avec ta vidéo",
     "jobProblemBody": "\"{title}\" de {artist} a rencontré un problème. Ouvre l'application pour voir ce qui s'est passé",
     "jobStalledBody": "Le téléchargement audio pour \"{title}\" de {artist} est bloqué. Nous pouvons réessayer si tu ouvres l'application"

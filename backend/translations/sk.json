@@ -179,8 +179,6 @@
     "videoReadyBody": "Tvoje karaoke video pre \"{title}\" od {artist} je pripravené na stiahnutie",
     "confirmDurationTitle": "Potvrď cenu úlohy",
     "confirmDurationBody": "\"{title}\" od {artist} vyžaduje potvrdenie ceny pre pokračovanie",
-    "selectAudioTitle": "Vyber zvuk",
-    "selectAudioBody": "Pri skladbe „{title}“ od {artist} musíš vybrať zdroj zvuku",
     "jobProblemTitle": "Nastal problém s tvojím videom",
     "jobProblemBody": "Pri skladbe „{title}“ od {artist} sa vyskytol problém. Otvor aplikáciu a zisti, čo sa stalo",
     "jobStalledBody": "Sťahovanie zvuku pre skladbu „{title}“ od {artist} sa zaseklo. Ak otvoríš aplikáciu, môžeme to skúšať ďalej"

@@ -179,8 +179,6 @@
     "videoReadyBody": "Your karaoke video for \"{title}\" by {artist} is ready to download",
     "confirmDurationTitle": "Confirm job cost",
     "confirmDurationBody": "\"{title}\" by {artist} needs a cost confirmation to continue",
-    "selectAudioTitle": "Choose the audio",
-    "selectAudioBody": "\"{title}\" by {artist} needs you to choose an audio source",
     "jobProblemTitle": "There's a problem with your video",
     "jobProblemBody": "\"{title}\" by {artist} hit a problem. Open the app to see what happened",
     "jobStalledBody": "The audio download for \"{title}\" by {artist} is stuck. We can keep trying if you open the app"

@@ -179,8 +179,6 @@
     "videoReadyBody": "{artist} の「{title}」のカラオケ動画がダウンロード可能になりました",
     "confirmDurationTitle": "料金の確認",
     "confirmDurationBody": "{artist}の「{title}」の処理を続けるには、料金の確認が必要です",
-    "selectAudioTitle": "音源を選択してください",
-    "selectAudioBody": "{artist}の「{title}」の音源を選択してください",
     "jobProblemTitle": "動画の処理中に問題が発生しました",
     "jobProblemBody": "{artist}の「{title}」で問題が発生しました。アプリを開いて状況をご確認ください",
     "jobStalledBody": "{artist}の「{title}」の音声ダウンロードが途中で止まっています。アプリを開くと再試行できます"

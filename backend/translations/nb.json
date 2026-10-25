@@ -179,8 +179,6 @@
     "videoReadyBody": "Karaokevideoen din for \"{title}\" av {artist} er klar for nedlasting",
     "confirmDurationTitle": "Bekreft jobbkostnad",
     "confirmDurationBody": "\"{title}\" av {artist} trenger en kostnadsbekreftelse for å fortsette",
-    "selectAudioTitle": "Velg lydfil",
-    "selectAudioBody": "Du må velge en lydkilde for «{title}» av {artist}",
     "jobProblemTitle": "Det er et problem med videoen din",
     "jobProblemBody": "Det oppsto et problem med «{title}» av {artist}. Åpne appen for å se hva som skjedde",
     "jobStalledBody": "Nedlastingen av lyd for «{title}» av {artist} har stoppet opp. Vi kan fortsette å prøve hvis du åpner appen"

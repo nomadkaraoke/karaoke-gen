@@ -179,8 +179,6 @@
     "videoReadyBody": "Videoclipul tău de karaoke pentru \"{title}\" de {artist} este gata de descărcare",
     "confirmDurationTitle": "Confirmă costul lucrării",
     "confirmDurationBody": "\"{title}\" de {artist} necesită o confirmare a costului pentru a continua",
-    "selectAudioTitle": "Alege sursa audio",
-    "selectAudioBody": "Pentru piesa „{title}” de {artist} trebuie să alegi o sursă audio",
     "jobProblemTitle": "Există o problemă cu videoclipul tău",
     "jobProblemBody": "A apărut o problemă cu piesa „{title}” de {artist}. Deschide aplicația pentru a vedea ce s-a întâmplat",
     "jobStalledBody": "Descărcarea audio pentru piesa „{title}” de {artist} s-a blocat. Putem încerca în continuare dacă deschizi aplicația"

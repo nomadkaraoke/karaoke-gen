@@ -37,6 +37,24 @@ PREP_PHASE_STATUSES = frozenset({
 })
 
 
+# state_data flag: this run's failure push was sent (see _failure_already_notified).
+FAILURE_PUSH_SENT_KEY = 'failure_push_sent'
+
+
+def _cloud_run_retry_pending(state_data: Optional[Dict[str, Any]]) -> bool:
+    """True if the audio-download worker recorded an unexpired Cloud Run auto-retry marker."""
+    pending = (state_data or {}).get('cloud_run_retry_pending')
+    if not isinstance(pending, dict) or not pending.get('expires_at'):
+        return False
+    try:
+        expires_at = datetime.fromisoformat(str(pending['expires_at']).replace('Z', '+00:00'))
+    except (ValueError, TypeError):
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at > datetime.now(timezone.utc)
+
+
 def _mask_email(email: str) -> str:
     """Mask email for logging to protect PII. Shows first char + domain."""
     if not email or "@" not in email:
@@ -695,11 +713,19 @@ class JobManager:
                     action_type = "instrumental"
                 self._send_push_notification(job, action_type)
 
-            # Problem states: push only (no email / idle reminder)
-            elif new_status == JobStatus.AWAITING_AUDIO_SELECTION:
-                self._send_push_notification(job, "audio_selection")
+            # Failure: push only (no email / idle reminder). AWAITING_AUDIO_SELECTION
+            # is the normal interactive search step, not a problem, so it never pushes.
             elif new_status == JobStatus.FAILED:
+                if _cloud_run_retry_pending(job.state_data):
+                    logger.info(f"Job {job_id}: failure push skipped, Cloud Run auto-retry pending")
+                    return
+                from backend.services.admin_rerender_service import suppress_customer_notifications
+                if suppress_customer_notifications(job):
+                    logger.info(f"Job {job_id}: failure push suppressed (quiet re-render)")
+                    return
                 self._send_push_notification(job, "failed")
+                # Lets a second worker failing the same run skip a duplicate push.
+                self.firestore.update_job(job_id, {f'state_data.{FAILURE_PUSH_SENT_KEY}': True})
 
         except Exception as e:
             # Never let notification failures affect job processing
@@ -857,7 +883,6 @@ class JobManager:
         "duration_confirm": ("review", "/job/duration/{id}", ("confirmDurationTitle", "confirmDurationBody")),
         "audio_edit": ("review", "/job/{id}", ("reviewLyricsTitle", "reviewLyricsBody")),
         "instrumental": ("review", "/job/{id}", ("selectInstrumentalTitle", "selectInstrumentalBody")),
-        "audio_selection": ("problems", "/job/{id}", ("selectAudioTitle", "selectAudioBody")),
         "failed": ("problems", "/job/{id}", ("jobProblemTitle", "jobProblemBody")),
     }
 
@@ -887,7 +912,7 @@ class JobManager:
         Args:
             job: Job object
             action_type: "complete", "lyrics", "instrumental", "audio_edit",
-                "duration_confirm", "audio_selection" or "failed"
+                "duration_confirm" or "failed"
         """
         import asyncio
         import threading
@@ -916,12 +941,16 @@ class JobManager:
                     try:
                         if action_type == "complete":
                             await push_service.send_completion_notification(job_dict)
-                        elif action_type in ("audio_selection", "failed"):
-                            await push_service.send_problem_notification(job_dict, action_type)
+                        elif action_type == "failed":
+                            await push_service.send_problem_notification(job_dict)
                         else:
                             await push_service.send_blocking_notification(job_dict, action_type)
                     except Exception as e:
                         logger.error(f"Web push failed for job {job.job_id}: {e}")
+                # The mobile app is Nomad-only: a white-label tenant's job never
+                # reaches it (Web Push above is already tenant-scoped).
+                if job.tenant_id:
+                    return
                 try:
                     await asyncio.to_thread(self._send_expo_push, job, action_type, stalled)
                 except Exception as e:
@@ -1182,6 +1211,8 @@ class JobManager:
             True if successful
         """
         try:
+            already_notified = self._failure_already_notified(job_id)
+
             # Update error fields
             self.update_job(job_id, {
                 'error_message': error_message,
@@ -1201,6 +1232,9 @@ class JobManager:
             job = self.get_job(job_id)
             if job:
                 self._refund_credit_for_job(job_id, job, reason="job_failed")
+
+            if not already_notified:
+                self._trigger_state_notifications(job_id, JobStatus.FAILED)
 
             return True
         except Exception as e:
@@ -1511,6 +1545,7 @@ class JobManager:
         if error_details:
             updates['error_details'] = error_details
         
+        already_notified = self._failure_already_notified(job_id)
         self.firestore.update_job_status(
             job_id=job_id,
             status=JobStatus.FAILED,
@@ -1519,6 +1554,26 @@ class JobManager:
             **updates
         )
         logger.error(f"Job {job_id} failed: {error_message}")
+        if not already_notified:
+            self._trigger_state_notifications(job_id, JobStatus.FAILED)
+
+    def _failure_already_notified(self, job_id: str) -> bool:
+        """True if this run already failed AND its failure push went out.
+
+        Then a second worker failing the same job must not push again. A job that
+        is FAILED without the marker (e.g. a Cloud Run auto-retry attempt, which
+        runs while the job is still FAILED and whose first failure skipped the
+        push) still pushes. A manual retry moves the job out of FAILED, so a later
+        failure pushes again. Best-effort: a read error counts as "not notified".
+        """
+        try:
+            job = self.get_job(job_id)
+            return bool(
+                job and job.status == JobStatus.FAILED
+                and (job.state_data or {}).get(FAILURE_PUSH_SENT_KEY)
+            )
+        except Exception:
+            return False
     
     def increment_retry_count(self, job_id: str) -> int:
         """
