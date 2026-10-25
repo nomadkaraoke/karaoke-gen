@@ -203,3 +203,100 @@ def checkout_cancel(session_id: str):
     record = _checkout_or_404(session_id)
     fake_checkout.mark_checkout(session_id, "cancelled")
     return RedirectResponse(fake_checkout.resolve_url(record.get("cancel_url"), session_id), status_code=303)
+
+
+# ------------------------------------------------------------------ fake in-app purchases
+
+
+class FakeIapPurchaseRequest(BaseModel):
+    """A store purchase, as RevenueCat would report it. Give ``email`` or ``app_user_id``."""
+    product_id: str
+    email: Optional[str] = None
+    app_user_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    store: str = "APP_STORE"
+    price: Optional[float] = None
+    takehome_percentage: Optional[float] = None
+    country_code: str = "US"
+
+
+class FakeIapRefundRequest(BaseModel):
+    """Refunds debit the account the purchase granted, so no user is needed."""
+    transaction_id: str
+    product_id: str
+    store: str = "APP_STORE"
+
+
+def _fake_app_user_id(email: Optional[str], app_user_id: Optional[str]) -> str:
+    from backend.services.user_service import get_user_service
+
+    if app_user_id:
+        return app_user_id
+    if not email:
+        raise HTTPException(status_code=422, detail="email or app_user_id is required")
+    user_service = get_user_service()
+    user_service.get_or_create_user(email)
+    return user_service.ensure_app_user_id(email)
+
+
+def _fake_iap_result(event: Dict[str, Any]) -> Dict[str, Any]:
+    from backend.services.iap_service import get_iap_service
+
+    result = get_iap_service().handle_event(event)
+    return {
+        "action": result.action,
+        "credits": result.credits,
+        "store": event["store"],
+        "transaction_id": event["transaction_id"],
+    }
+
+
+# US store prices of the credit packs (spec: $9.99 / $23.99 / $34.99 / $59.99).
+_FAKE_IAP_PRICES = {
+    "nomad_credits_1": 9.99,
+    "nomad_credits_3": 23.99,
+    "nomad_credits_5": 34.99,
+    "nomad_credits_10": 59.99,
+}
+
+
+@router.post("/fake-iap/purchase")
+def fake_iap_purchase(body: FakeIapPurchaseRequest) -> Dict[str, Any]:
+    """Grant a store credit pack through the same IapService as the RevenueCat webhook."""
+    import uuid
+
+    price = body.price if body.price is not None else _FAKE_IAP_PRICES.get(body.product_id, 0.0)
+    event: Dict[str, Any] = {
+        "type": "NON_RENEWING_PURCHASE",
+        "app_user_id": _fake_app_user_id(body.email, body.app_user_id),
+        "product_id": body.product_id,
+        "transaction_id": body.transaction_id or f"fake-{uuid.uuid4().hex}",
+        "store": body.store,
+        "price": price,
+        "price_in_purchased_currency": price,
+        "currency": "USD",
+        "country_code": body.country_code,
+        "environment": "SANDBOX",
+    }
+    if body.takehome_percentage is not None:
+        event["takehome_percentage"] = body.takehome_percentage
+    return _fake_iap_result(event)
+
+
+@router.post("/fake-iap/refund")
+def fake_iap_refund(body: FakeIapRefundRequest) -> Dict[str, Any]:
+    """Refund a fake store purchase (RevenueCat CANCELLATION / CUSTOMER_SUPPORT)."""
+    price = -_FAKE_IAP_PRICES.get(body.product_id, 0.0)
+    event: Dict[str, Any] = {
+        "type": "CANCELLATION",
+        "cancel_reason": "CUSTOMER_SUPPORT",
+        "app_user_id": "",
+        "product_id": body.product_id,
+        "transaction_id": body.transaction_id,
+        "store": body.store,
+        "price": price,
+        "price_in_purchased_currency": price,
+        "currency": "USD",
+        "environment": "SANDBOX",
+    }
+    return _fake_iap_result(event)

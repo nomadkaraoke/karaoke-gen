@@ -8,7 +8,7 @@ Supports:
 - API request/response shapes for referral endpoints
 """
 from datetime import datetime
-from typing import Optional, List
+from typing import Literal, Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -79,13 +79,16 @@ class ReferralEarning(BaseModel):
     """
     Record of a single earning from a referred purchase.
 
-    Created when a referred user completes a Stripe checkout.
+    Created when a referred user completes a Stripe checkout or an in-app
+    (App Store / Play Store) credit purchase.
     """
     id: str
     referrer_email: str
     referred_email: str
     referral_code: str
-    stripe_session_id: str
+    source: Literal["stripe", "app_store", "play_store"] = "stripe"
+    stripe_session_id: Optional[str] = None  # Stripe rows
+    store_transaction_id: Optional[str] = None  # store rows: "{STORE}:{transaction_id}"
     purchase_amount_cents: int
     earning_amount_cents: int
     status: str = "pending"  # pending, paid, cancelled

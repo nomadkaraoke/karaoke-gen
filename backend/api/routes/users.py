@@ -10,6 +10,7 @@ Handles:
 """
 import asyncio
 import hashlib
+import hmac
 import html
 import logging
 import re
@@ -66,6 +67,8 @@ from backend.models.user import (
 from backend.services.user_service import get_user_service, UserService, USERS_COLLECTION
 from backend.services.email_service import get_email_service, EmailService
 from backend.services.stripe_service import get_stripe_service, StripeService, CREDIT_PACKAGES
+from backend.services.iap_service import IapService, get_iap_service
+from backend.services.login_code_store import TransactionContention
 from backend.services.theme_service import get_theme_service
 from backend.services.job_defaults_service import (
     get_effective_distribution_settings,
@@ -179,11 +182,28 @@ class CreditPackage(BaseModel):
     price_cents: int
     name: str
     description: str
+    store_product_id: Optional[str] = None  # App Store / Play Store product id
+
+
+class WebLinkShowFor(BaseModel):
+    """Store countries (App Store / Play storefront codes) where the app may link to web checkout."""
+    ios: list[str]
+    android: list[str]
+
+
+class WebLink(BaseModel):
+    """Where the mobile app shows the "buy on the web" link, and its copy (app i18n key)."""
+    show_for: WebLinkShowFor
+    copy_key: str
+
+
+DEFAULT_WEB_LINK = {"show_for": {"ios": ["USA"], "android": []}, "copy_key": "credits.webLink.default"}
 
 
 class CreditPackagesResponse(BaseModel):
     """Response listing available credit packages."""
     packages: list[CreditPackage]
+    web_link: WebLink = WebLink(**DEFAULT_WEB_LINK)
 
 
 class UserCapabilities(BaseModel):
@@ -999,11 +1019,12 @@ def list_credit_packages():
             price_cents=pkg["price_cents"],
             name=pkg["name"],
             description=pkg["description"],
+            store_product_id=pkg.get("store_product_id"),
         )
         for pkg_id, pkg in CREDIT_PACKAGES.items()
     ]
 
-    return CreditPackagesResponse(packages=packages)
+    return CreditPackagesResponse(packages=packages, web_link=WebLink(**DEFAULT_WEB_LINK))
 
 
 def public_api_base_url() -> str:
@@ -1708,7 +1729,7 @@ async def stripe_webhook(
                             if amount_charged > 0:
                                 earning_result = referral_svc.record_earning(
                                     referred_email=user_email,
-                                    stripe_session_id=session_id,
+                                    source_key=session_id,
                                     purchase_amount_cents=amount_charged,
                                 )
                                 if earning_result:
@@ -1854,6 +1875,43 @@ async def stripe_webhook(
 
     # Return 200 to acknowledge receipt (Stripe will retry on non-2xx)
     return {"status": "received", "type": event_type}
+
+
+@router.post("/webhooks/revenuecat")
+async def revenuecat_webhook(
+    request: Request,
+    authorization: Optional[str] = Header(default=None),
+    iap: IapService = Depends(get_iap_service),
+):
+    """RevenueCat events for mobile in-app credit packs (see backend/services/iap_service.py).
+
+    Authenticated by the Authorization header configured in the RevenueCat
+    dashboard (REVENUECAT_WEBHOOK_AUTH; 503 while unset). Every handled outcome,
+    including duplicates and unmatched users, is a 200 so RevenueCat stops
+    retrying; a Firestore failure is a 5xx so it retries.
+    """
+    secret = get_settings().revenuecat_webhook_auth
+    if not secret:
+        raise HTTPException(status_code=503, detail="not configured")
+    if not hmac.compare_digest((authorization or "").encode(), secret.encode()):
+        raise HTTPException(status_code=401, detail="unauthorized")
+    try:
+        body = await request.json()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid JSON")
+    event = body.get("event") if isinstance(body, dict) else None
+    if not isinstance(event, dict):
+        raise HTTPException(status_code=400, detail="missing event")
+
+    try:
+        result = await asyncio.to_thread(iap.handle_event, event)
+    except TransactionContention:
+        raise HTTPException(status_code=503, detail="busy, retry")
+    logger.info(
+        f"RevenueCat webhook {event.get('type')} {event.get('store')}:{event.get('transaction_id')} "
+        f"-> {result.action}"
+    )
+    return {"status": "received", "action": result.action}
 
 
 # =============================================================================

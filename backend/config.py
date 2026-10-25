@@ -398,6 +398,12 @@ class Settings(BaseSettings):
     account_deletion_enabled: bool = os.getenv("ACCOUNT_DELETION_ENABLED", "").lower() in ("1", "true", "yes")
     # App Review demo login: inert unless this AND the app-review-demo-code secret are set.
     app_review_demo_email: str = os.getenv("APP_REVIEW_DEMO_EMAIL", "")
+    # RevenueCat (mobile in-app credit packs). The webhook (POST
+    # /api/users/webhooks/revenuecat) compares the Authorization header to this
+    # value and 503s while it is empty (Secret Manager: revenuecat-webhook-auth).
+    revenuecat_webhook_auth: str = os.getenv("REVENUECAT_WEBHOOK_AUTH", "")
+    # RevenueCat secret REST API key (Secret Manager: revenuecat-secret-api-key).
+    revenuecat_secret_api_key: str = os.getenv("REVENUECAT_SECRET_API_KEY", "")
     # URL scheme of the Nomad Karaoke mobile app. App checkouts return through
     # GET /api/users/credits/app-return, which 302s to {scheme}://checkout?status=…
     mobile_app_scheme: str = os.getenv("MOBILE_APP_SCHEME", "nomadkaraoke")

@@ -145,6 +145,16 @@ class UserService:
 
         return mint(self.db.transaction())
 
+    def find_by_app_user_id(self, app_user_id: str) -> Optional[User]:
+        """The user whose mobile-app id (RevenueCat app_user_id) is ``app_user_id``."""
+        if not app_user_id:
+            return None
+        query = self.db.collection(USERS_COLLECTION).where(
+            filter=FieldFilter("app_user_id", "==", app_user_id)
+        ).limit(1)
+        results = list(query.stream())
+        return User(**results[0].to_dict()) if results else None
+
     def get_or_create_user(
         self,
         email: str,

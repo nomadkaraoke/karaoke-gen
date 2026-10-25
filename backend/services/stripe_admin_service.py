@@ -17,6 +17,7 @@ from typing import Optional, Dict, Any, List, Tuple
 
 import stripe
 from google.cloud import firestore
+from google.cloud.firestore_v1 import FieldFilter
 
 from backend.config import get_settings
 from backend.services.stripe_service import StripeService
@@ -25,6 +26,10 @@ from backend.services.stripe_service import StripeService
 logger = logging.getLogger(__name__)
 
 STRIPE_PAYMENTS_COLLECTION = "stripe_payments"
+# In-app (App Store / Play Store) purchases, written by IapService. Same amount
+# fields as stripe_payments (store_fee in place of stripe_fee) so revenue sums both.
+STORE_PAYMENTS_COLLECTION = "store_payments"
+REVENUE_COLLECTIONS = (STRIPE_PAYMENTS_COLLECTION, STORE_PAYMENTS_COLLECTION)
 STRIPE_WEBHOOK_EVENTS_COLLECTION = "stripe_webhook_events"
 
 
@@ -217,6 +222,15 @@ class StripeAdminService:
     # Revenue Analytics
     # =========================================================================
 
+    def _revenue_docs(self, cutoff: Optional[datetime]):
+        """Payment dicts from Stripe and the app stores, optionally created since ``cutoff``."""
+        for name in REVENUE_COLLECTIONS:
+            query = self.db.collection(name)
+            if cutoff is not None:
+                query = query.where(filter=FieldFilter("created_at", ">=", cutoff))
+            for doc in query.stream():
+                yield doc.to_dict()
+
     def get_revenue_summary(
         self, days: int = 30, exclude_test: bool = True
     ) -> Dict[str, Any]:
@@ -236,12 +250,7 @@ class StripeAdminService:
             return self._revenue_cache
 
         try:
-            collection = self.db.collection(STRIPE_PAYMENTS_COLLECTION)
-            query = collection
-
-            if days > 0:
-                cutoff = datetime.utcnow() - timedelta(days=days)
-                query = query.where("created_at", ">=", cutoff)
+            cutoff = datetime.utcnow() - timedelta(days=days) if days > 0 else None
 
             total_gross = 0
             total_fees = 0
@@ -250,14 +259,13 @@ class StripeAdminService:
             count = 0
             by_type: Dict[str, int] = {}
 
-            for doc in query.stream():
-                data = doc.to_dict()
+            for data in self._revenue_docs(cutoff):
                 if exclude_test and data.get("is_test"):
                     continue
 
                 amount = data.get("amount_total", 0)
                 total_gross += amount
-                total_fees += data.get("stripe_fee", 0)
+                total_fees += _fee(data)
                 total_net += data.get("net_amount", 0)
                 total_refunds += data.get("refund_amount", 0)
                 count += 1
@@ -312,14 +320,11 @@ class StripeAdminService:
             List of {date, gross, net, fees, count} dicts
         """
         try:
-            collection = self.db.collection(STRIPE_PAYMENTS_COLLECTION)
             cutoff = datetime.utcnow() - timedelta(days=days)
-            query = collection.where("created_at", ">=", cutoff)
 
             buckets: Dict[str, Dict[str, Any]] = {}
 
-            for doc in query.stream():
-                data = doc.to_dict()
+            for data in self._revenue_docs(cutoff):
                 if exclude_test and data.get("is_test"):
                     continue
 
@@ -346,7 +351,7 @@ class StripeAdminService:
 
                 buckets[key]["gross"] += data.get("amount_total", 0)
                 buckets[key]["net"] += data.get("net_amount", 0)
-                buckets[key]["fees"] += data.get("stripe_fee", 0)
+                buckets[key]["fees"] += _fee(data)
                 buckets[key]["count"] += 1
 
             result = sorted(buckets.values(), key=lambda x: x["date"])
@@ -776,6 +781,11 @@ class StripeAdminService:
 
 # Global instance
 _stripe_admin_service = None
+
+
+def _fee(payment: Dict[str, Any]) -> int:
+    """Processor fee in cents: Stripe's fee, or the app store's commission."""
+    return payment.get("stripe_fee", payment.get("store_fee", 0)) or 0
 
 
 def get_stripe_admin_service() -> StripeAdminService:

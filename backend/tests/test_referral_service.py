@@ -355,7 +355,7 @@ class TestRecordEarning:
 
         result = service.record_earning(
             referred_email="referred@example.com",
-            stripe_session_id="cs_test_123",
+            source_key="cs_test_123",
             purchase_amount_cents=1575,
         )
         assert result is not None
@@ -399,7 +399,7 @@ class TestRecordEarning:
 
         result = service.record_earning(
             referred_email="referred@example.com",
-            stripe_session_id="cs_test_456",
+            source_key="cs_test_456",
             purchase_amount_cents=1575,
         )
         assert result is None
@@ -414,7 +414,7 @@ class TestRecordEarning:
 
         result = service.record_earning(
             referred_email="user@example.com",
-            stripe_session_id="cs_test_789",
+            source_key="cs_test_789",
             purchase_amount_cents=1750,
         )
         assert result is None
@@ -459,7 +459,7 @@ class TestRecordEarning:
 
         result = service.record_earning(
             referred_email="referred@example.com",
-            stripe_session_id="cs_test_tz",
+            source_key="cs_test_tz",
             purchase_amount_cents=2800,
         )
         assert result is not None
@@ -504,7 +504,7 @@ class TestRecordEarning:
 
         result = service.record_earning(
             referred_email="referred@example.com",
-            stripe_session_id="cs_test_tz_expired",
+            source_key="cs_test_tz_expired",
             purchase_amount_cents=2800,
         )
         assert result is None
@@ -894,7 +894,7 @@ class TestEarningCalculationEdgeCases:
         # 1999 * 20 / 100 = 399.8 -> should truncate to 399
         result = service.record_earning(
             referred_email="referred@example.com",
-            stripe_session_id="cs_edge_1",
+            source_key="cs_edge_1",
             purchase_amount_cents=1999,
         )
         assert result is not None
@@ -938,7 +938,7 @@ class TestEarningCalculationEdgeCases:
 
         result = service.record_earning(
             referred_email="referred@example.com",
-            stripe_session_id="cs_edge_2",
+            source_key="cs_edge_2",
             purchase_amount_cents=0,
         )
         assert result is None
