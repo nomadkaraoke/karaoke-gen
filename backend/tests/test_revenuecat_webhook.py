@@ -172,11 +172,38 @@ class TestGrant:
         assert db.collection("store_payments").docs == {}
 
     def test_sandbox_grants_but_is_test_and_no_referral(self, client, db, referral):
-        _seed_user(db)
+        _seed_user(db, total_spent=500)
         _post(client, _event(environment="SANDBOX"))
         assert _user(db)["credits"] == 3
+        assert _user(db)["total_spent"] == 500  # sandbox is not real spend
         assert db.collection("store_payments").docs["APP_STORE:2000000123456789"]["is_test"] is True
         referral.record_earning.assert_not_called()
+
+    def test_total_spent_up_on_purchase_down_on_refund(self, client, db):
+        _seed_user(db, total_spent=500)
+        _post(client, _event())
+        assert _user(db)["total_spent"] == 500 + 2399
+        _post(client, _event(type="CANCELLATION", cancel_reason="CUSTOMER_SUPPORT", price=-23.99))
+        assert _user(db)["total_spent"] == 500
+
+    def test_user_deleted_mid_transaction_is_unknown_user(self, service, db, user_service, caplog):
+        """The doc vanishes between lookup and transaction: 200 unknown_user, unmatched, ERROR."""
+        _seed_user(db)
+        ref = user_service.get_user_doc_ref(EMAIL)
+        service.user_service = MagicMock(wraps=user_service)
+        service.user_service.find_by_app_user_id.side_effect = user_service.find_by_app_user_id
+
+        def lookup_then_delete(email):
+            db.collection("gen_users").document(EMAIL).delete()
+            return ref
+
+        service.user_service.get_user_doc_ref.side_effect = lookup_then_delete
+        with caplog.at_level(logging.ERROR, logger="backend.services.iap_service"):
+            result = service.handle_event(_event()["event"])
+        assert result.action == "unknown_user"
+        assert db.collection("store_payments").docs["APP_STORE:2000000123456789"]["unmatched"] is True
+        assert "APP_STORE:2000000123456789" not in db.collection("processed_revenuecat_transactions").docs
+        assert any(r.levelno == logging.ERROR for r in caplog.records)
 
     def test_anonymous_app_user_id_falls_back_to_alias(self, client, db):
         _seed_user(db)
@@ -219,6 +246,47 @@ class TestRefund:
         resp = _post(client, _event(type="CANCELLATION", price=-23.99))
         assert resp.status_code == 200 and resp.json()["action"] == "ignored"
         assert _user(db)["credits"] == 2
+        # No payment on record: none is invented.
+        assert db.collection("store_payments").docs == {}
+
+    def test_refund_before_purchase_blocks_the_late_grant(self, client, db):
+        _seed_user(db)
+        refund = _event(type="CANCELLATION", cancel_reason="CUSTOMER_SUPPORT", price=-23.99)
+        assert _post(client, refund).json()["action"] == "ignored"
+        assert _post(client, refund).json()["action"] == "duplicate"
+        late = _post(client, _event())
+        assert late.status_code == 200 and late.json()["action"] == "ignored"
+        assert _user(db)["credits"] == 0
+        assert _user(db)["credit_transactions"] == []
+
+    def test_purchase_then_refund_order_still_debits(self, client, db):
+        _seed_user(db)
+        assert _post(client, _event()).json()["action"] == "granted"
+        refund = _event(type="CANCELLATION", cancel_reason="CUSTOMER_SUPPORT", price=-23.99)
+        assert _post(client, refund).json()["action"] == "debited"
+        assert _post(client, _event()).json()["action"] == "duplicate"
+        assert _user(db)["credits"] == 0
+
+    def test_non_refund_cancellation_changes_nothing(self, client, db, caplog):
+        _seed_user(db)
+        _post(client, _event())
+        with caplog.at_level(logging.WARNING, logger="backend.services.iap_service"):
+            resp = _post(client, _event(type="CANCELLATION", cancel_reason="BILLING_ERROR", price=23.99))
+        assert resp.status_code == 200 and resp.json()["action"] == "ignored"
+        assert _user(db)["credits"] == 3
+        assert db.collection("store_payments").docs["APP_STORE:2000000123456789"]["status"] == "succeeded"
+        assert "APP_STORE:2000000123456789:refund" not in db.collection("processed_revenuecat_transactions").docs
+        assert any("BILLING_ERROR" in r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
+        # A real refund afterwards still works.
+        refund = _event(type="CANCELLATION", cancel_reason="CUSTOMER_SUPPORT", price=-23.99)
+        assert _post(client, refund).json()["action"] == "debited"
+
+    def test_refund_detection(self):
+        assert iap.is_refund({"type": "REFUND"})
+        assert iap.is_refund({"type": "CANCELLATION", "price": -9.99})
+        assert iap.is_refund({"type": "CANCELLATION", "cancel_reason": "CUSTOMER_SUPPORT", "price": 9.99})
+        assert not iap.is_refund({"type": "CANCELLATION", "cancel_reason": "UNSUBSCRIBE", "price": 9.99})
+        assert not iap.is_refund({"type": "CANCELLATION"})
 
     def test_refund_after_account_deleted_is_200_noop(self, client, db):
         _seed_user(db)
@@ -244,7 +312,9 @@ class TestUnmatched:
             resp = _post(client, _event(app_user_id="not-a-known-id"))
         assert resp.status_code == 200 and resp.json()["action"] == "unknown_user"
         assert _user(db)["credits"] == 0
-        assert any(r.levelno == logging.WARNING and "unknown app_user_id" in r.getMessage() for r in caplog.records)
+        errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+        assert len(errors) == 1
+        assert "not-a-known-id" in errors[0] and "APP_STORE" in errors[0] and "2000000123456789" in errors[0]
         payment = db.collection("store_payments").docs["APP_STORE:2000000123456789"]
         assert payment["unmatched"] is True
         assert payment["credits_granted"] == 0

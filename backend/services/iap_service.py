@@ -17,7 +17,11 @@ harmless, and the earning is recorded only by the delivery that granted.
 
 A refund debits the credits the purchase granted, from the account that
 received them, even when that takes the balance below zero (credits already
-spent). Job creation refuses a negative balance with 402.
+spent). Job creation refuses a negative balance with 402. A CANCELLATION that
+is not a refund (positive price, another cancel_reason) changes nothing. A
+refund with no grant on record still writes its ``…:refund`` marker as a
+tombstone, so a purchase delivered after its own refund never grants.
+Sandbox purchases grant but never count toward ``total_spent``.
 """
 from __future__ import annotations
 
@@ -72,6 +76,19 @@ def package_for_product(product_id: Optional[str]) -> Optional[tuple]:
         if product_id and pkg.get("store_product_id") == product_id:
             return pkg_id, pkg
     return None
+
+
+def is_refund(event: dict) -> bool:
+    """A refund: ``REFUND`` (fake-iap alias), or a CANCELLATION with a negative
+    price or cancel_reason CUSTOMER_SUPPORT (how RevenueCat reports refunds)."""
+    if event.get("type") == "REFUND":
+        return True
+    price = _decimal(event.get("price"))
+    return (price is not None and price < 0) or event.get("cancel_reason") == "CUSTOMER_SUPPORT"
+
+
+def _is_sandbox(event: dict) -> bool:
+    return (event.get("environment") or "PRODUCTION").upper() == "SANDBOX"
 
 
 def _decimal(value) -> Optional[Decimal]:
@@ -149,6 +166,12 @@ class IapService:
         key = f"{event.get('store')}:{transaction_id}"
         if event_type in PURCHASE_EVENT_TYPES:
             return self._grant(event, key, source, *found)
+        if not is_refund(event):
+            logger.warning(
+                f"RevenueCat {event_type} {key} is not a refund "
+                f"(cancel_reason={event.get('cancel_reason')!r}, price={event.get('price')!r}): no credits changed"
+            )
+            return IapResult("ignored")
         return self._refund(event, key, source)
 
     # ------------------------------------------------------------------ grant
@@ -168,32 +191,27 @@ class IapService:
 
     def _grant(self, event: dict, key: str, source: str, package_id: str, package: dict) -> IapResult:
         user = self._find_user(event)
-        if not user:
-            logger.warning(
-                f"RevenueCat purchase {key} ({event.get('product_id')}) for unknown "
-                f"app_user_id {event.get('app_user_id')!r}: recorded as unmatched, no credits granted"
-            )
-            self._write_payment(key, event, source, package_id, package, email=None, unmatched=True)
-            return IapResult("unknown_user")
+        user_ref = self.user_service.get_user_doc_ref(user.email.lower()) if user else None
+        if user_ref is None:
+            return self._unmatched_purchase(event, key, source, package_id, package)
 
         email = user.email.lower()
-        user_ref = self.user_service.get_user_doc_ref(email)
-        if user_ref is None:
-            logger.warning(f"RevenueCat purchase {key}: user doc for {email} vanished; recorded as unmatched")
-            self._write_payment(key, event, source, package_id, package, email=None, unmatched=True)
-            return IapResult("unknown_user")
-
         credits = int(package["credits"])
-        amount_cents = price_cents(event)
+        # Sandbox (TestFlight / Play test) purchases grant but are not real spend.
+        spent_cents = 0 if _is_sandbox(event) else price_cents(event)
         marker_ref = self._marker_ref(key)
+        refund_ref = self._marker_ref(f"{key}:refund")
 
         def _txn(transaction):
             if marker_ref.get(transaction=transaction).exists:
                 return IapResult("duplicate", email=email)
+            if refund_ref.get(transaction=transaction).exists:
+                # The refund arrived first (out-of-order delivery): never grant.
+                return IapResult("ignored", email=email)
             snap = user_ref.get(transaction=transaction)
             data = snap.to_dict() if snap.exists else None
             if data is None:
-                raise LookupError(f"user {email} not found")
+                return IapResult("unknown_user", email=email)  # deleted since lookup; nothing written
             balance = int(data.get("credits") or 0) + credits
             entry = CreditTransaction(
                 id=str(uuid.uuid4()), amount=credits, reason=PURCHASE_REASON,
@@ -206,6 +224,7 @@ class IapService:
                 "product_id": event.get("product_id"),
                 "package_id": package_id,
                 "credits": credits,
+                "total_spent_cents": spent_cents,
                 "email": email,
                 "app_user_id": event.get("app_user_id"),
                 "created_at": datetime.utcnow(),
@@ -213,12 +232,17 @@ class IapService:
             transaction.update(user_ref, {
                 "credits": balance,
                 "credit_transactions": history,
-                "total_spent": int(data.get("total_spent") or 0) + amount_cents,
+                "total_spent": int(data.get("total_spent") or 0) + spent_cents,
                 "updated_at": datetime.utcnow(),
             })
             return IapResult("granted", credits=balance, email=email)
 
         result = self._run_transaction_once(_txn, email)
+        if result.action == "unknown_user":
+            return self._unmatched_purchase(event, key, source, package_id, package)
+        if result.action == "ignored":
+            logger.warning(f"RevenueCat purchase {key} for {email} was already refunded: no credits granted")
+            return result
         if result.action != "granted":
             logger.info(f"RevenueCat purchase {key} already processed (duplicate delivery)")
             return result
@@ -227,6 +251,18 @@ class IapService:
         self._write_payment(key, event, source, package_id, package, email=email, unmatched=False)
         self._record_referral_earning(event, key, source, email)
         return result
+
+    def _unmatched_purchase(self, event, key, source, package_id, package) -> IapResult:
+        # A customer paid and got nothing: actionable (ERROR alerts). Match the
+        # account by hand, grant the credits, and fix the app's RevenueCat login.
+        logger.error(
+            f"IAP purchase not credited: no gen account for app_user_id {event.get('app_user_id')!r} "
+            f"(store {event.get('store')}, transaction {event.get('transaction_id')}, "
+            f"product {event.get('product_id')}). Recorded as unmatched in store_payments/{key}; "
+            f"grant the credits manually once the account is found."
+        )
+        self._write_payment(key, event, source, package_id, package, email=None, unmatched=True)
+        return IapResult("unknown_user")
 
     # ----------------------------------------------------------------- refund
 
@@ -237,8 +273,18 @@ class IapService:
         def _txn(transaction):
             if refund_ref.get(transaction=transaction).exists:
                 return IapResult("duplicate")
+            marker = {
+                "kind": "refund",
+                "store": event.get("store"),
+                "transaction_id": event.get("transaction_id"),
+                "product_id": event.get("product_id"),
+                "created_at": datetime.utcnow(),
+            }
             purchase_snap = purchase_ref.get(transaction=transaction)
             if not purchase_snap.exists:
+                # Refund before (or without) a grant: leave a tombstone so a late
+                # purchase delivery never grants.
+                transaction.create(refund_ref, {**marker, "debited": False, "reason": "no_grant"})
                 return IapResult("ignored")
             purchase = purchase_snap.to_dict()
             email = purchase["email"]
@@ -249,24 +295,20 @@ class IapService:
             if data is None:
                 # Account deleted since the purchase: nothing to debit (and an
                 # error here would make RevenueCat retry forever).
+                transaction.create(refund_ref, {**marker, "email": email, "debited": False,
+                                                "reason": "account_deleted"})
                 return IapResult("ignored", email=email)
             balance = int(data.get("credits") or 0) - credits  # may go negative
             entry = CreditTransaction(
                 id=str(uuid.uuid4()), amount=-credits, reason=REFUND_REASON,
             ).model_dump(mode="json")
             history = list(data.get("credit_transactions") or [])[-(MAX_CREDIT_TRANSACTIONS - 1):] + [entry]
-            transaction.create(refund_ref, {
-                "kind": "refund",
-                "store": event.get("store"),
-                "transaction_id": event.get("transaction_id"),
-                "product_id": event.get("product_id"),
-                "credits": credits,
-                "email": email,
-                "created_at": datetime.utcnow(),
-            })
+            transaction.create(refund_ref, {**marker, "credits": credits, "email": email, "debited": True})
+            spent = int(purchase.get("total_spent_cents") or 0)
             transaction.update(user_ref, {
                 "credits": balance,
                 "credit_transactions": history,
+                "total_spent": max(0, int(data.get("total_spent") or 0) - spent),
                 "updated_at": datetime.utcnow(),
             })
             return IapResult("debited", credits=balance, email=email)
@@ -322,7 +364,7 @@ class IapService:
                 "status": "succeeded",
                 "refund_amount": 0,
                 "refunded_at": None,
-                "is_test": (event.get("environment") or "PRODUCTION").upper() == "SANDBOX",
+                "is_test": _is_sandbox(event),
                 "created_at": _event_time(event),
                 "processed_at": datetime.utcnow(),
             })
@@ -333,7 +375,9 @@ class IapService:
         try:
             ref = self._payment_ref(key)
             snap = ref.get()
-            refund = (snap.to_dict() or {}).get("amount_total") if snap.exists else None
+            if not snap.exists:
+                return  # no payment on record: never create a phantom one
+            refund = (snap.to_dict() or {}).get("amount_total")
             ref.set({
                 "status": "refunded",
                 "refund_amount": refund if refund is not None else price_cents(event),
@@ -343,7 +387,7 @@ class IapService:
             logger.warning(f"Failed to mark store_payments/{key} refunded", exc_info=True)
 
     def _record_referral_earning(self, event, key, source, email) -> None:
-        if (event.get("environment") or "PRODUCTION").upper() == "SANDBOX":
+        if _is_sandbox(event):
             return
         amount = net_cents(event)
         if amount <= 0:
