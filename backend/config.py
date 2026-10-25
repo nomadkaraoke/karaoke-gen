@@ -270,7 +270,8 @@ class Settings(BaseSettings):
     # Requires use_gce_encoding to be enabled and the GCE worker to support /encode-preview endpoint.
     use_gce_preview_encoding: bool = os.getenv("USE_GCE_PREVIEW_ENCODING", "false").lower() in ("true", "1", "yes")
     
-    # Karaoke-Decide catalog API (for song/artist autocomplete)
+    # Karaoke-Decide main API: catalog autocomplete, and the partner call that
+    # erases a deleted account's decide data (DELETE /api/partner/gen/users)
     karaoke_decide_api_url: str = os.getenv("KARAOKE_DECIDE_API_URL", "https://decide.nomadkaraoke.com")
 
     # Storage paths
@@ -342,8 +343,10 @@ class Settings(BaseSettings):
     # for the karaoke-night "make it" flow. Every endpoint 503s while the secret is
     # empty, so deploys are dark until it's wired (Secret Manager: kjbox-partner-secret).
     kjbox_partner_secret: str = os.getenv("KJBOX_PARTNER_SECRET", "")
-    # karaoke-decide's own secret (header X-Partner-Secret) for POST /api/kjbox/catalog/resolve
-    # only (Secret Manager: decide-gen-partner-secret). Empty = decide is not accepted.
+    # karaoke-decide's shared secret (header X-Partner-Secret, Secret Manager:
+    # decide-gen-partner-secret): decide sends it to POST /api/kjbox/catalog/resolve, and
+    # gen sends it to decide's DELETE /api/partner/gen/users on account deletion.
+    # Empty = decide is not accepted, and account deletion 503s at the decide step.
     decide_partner_secret: str = os.getenv("DECIDE_GEN_PARTNER_SECRET", "")
     # Partner-wide cap on NEW gen accounts created via kjbox per rolling 24h (a venue
     # shares one IP, so gen's per-IP signup cap is bypassed for kjbox; this bounds it).
@@ -393,6 +396,21 @@ class Settings(BaseSettings):
     # ip-api, encoding VM) are skipped. Startup refuses it in production.
     # See backend/services/fake_workers/ and docs/TESTING.md § Local stack.
     fake_workers: bool = os.getenv("FAKE_WORKERS", "").lower() in ("1", "true", "yes")
+    # Mobile app account deletion (DELETE /api/users/me). Off in prod until
+    # Andrew's manual pass; on in the local stack.
+    account_deletion_enabled: bool = os.getenv("ACCOUNT_DELETION_ENABLED", "").lower() in ("1", "true", "yes")
+    # App Review demo login: inert unless this AND the app-review-demo-code secret are set.
+    app_review_demo_email: str = os.getenv("APP_REVIEW_DEMO_EMAIL", "")
+    # Secret Manager: app-review-demo-code, mounted as APP_REVIEW_DEMO_CODE.
+    app_review_demo_code: str = os.getenv("APP_REVIEW_DEMO_CODE", "")
+    # RevenueCat (mobile in-app credit packs). The webhook (POST
+    # /api/users/webhooks/revenuecat) compares the Authorization header to this
+    # value and 503s while it is empty (Secret Manager: revenuecat-webhook-auth).
+    revenuecat_webhook_auth: str = os.getenv("REVENUECAT_WEBHOOK_AUTH", "")
+    # RevenueCat secret REST API key (Secret Manager: revenuecat-secret-api-key).
+    revenuecat_secret_api_key: str = os.getenv("REVENUECAT_SECRET_API_KEY", "")
+    # RevenueCat project the v2 key belongs to (account deletion's customer delete).
+    revenuecat_project_id: str = os.getenv("REVENUECAT_PROJECT_ID", "9ea947ce")
     # URL scheme of the Nomad Karaoke mobile app. App checkouts return through
     # GET /api/users/credits/app-return, which 302s to {scheme}://checkout?status=…
     mobile_app_scheme: str = os.getenv("MOBILE_APP_SCHEME", "nomadkaraoke")
@@ -410,6 +428,13 @@ class Settings(BaseSettings):
     # Accepted `aud` values for Apple ID tokens (POST /api/users/auth/apple):
     # the app's bundle ID (native iOS), plus any Services ID used for web/Android.
     apple_signin_audiences: str = os.getenv("APPLE_SIGNIN_AUDIENCES", "com.nomadkaraoke.mobile")
+
+    # Sign in with Apple token revocation (account deletion). The .p8 PEM text
+    # and key id come from Secret Manager; unset => revocation is skipped.
+    apple_siwa_key_p8: Optional[str] = os.getenv("APPLE_SIWA_KEY_P8")
+    apple_siwa_key_id: Optional[str] = os.getenv("APPLE_SIWA_KEY_ID")
+    apple_team_id: str = os.getenv("APPLE_TEAM_ID", "55B76HN73D")
+    apple_client_id: str = os.getenv("APPLE_CLIENT_ID", "com.nomadkaraoke.mobile")
     # Canonical YouTube description template. Placeholders ({title}, {artist},
     # {artist_hashtag}, {brand_code}) are filled by
     # backend.services.youtube_description.render_youtube_description, which is the

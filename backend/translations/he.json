@@ -82,7 +82,7 @@
     "waveformNoAudio": "אין אודיו זמין עבור גל הקול",
     "sessionSaveError": "נדרשים נתוני תיקון",
     "invalidIsDuetFlag": "is_duet חייב להיות ערך בוליאני (true או false)",
-    "previewMissingTimings": "בשורה \"{line}\" יש מילה ללא תזמון. סנכרנו את השורה הזו ונסו שוב את התצוגה המקדימה."
+    "previewMissingTimings": "בשורה \"{line}\" יש מילה ללא תזמון. יש לסנכרן את השורה הזו ואז להפעיל שוב את התצוגה המקדימה."
   },
   "audioSearch": {
     "notEnabled": "חיפוש אודיו אינו מופעל עבור חשבון זה",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "הווידאו מוכן!",
     "videoReadyBody": "סרטון הקריוקי שלכם עבור \"{title}\" מאת {artist} מוכן להורדה",
     "confirmDurationTitle": "אישור עלות המשימה",
-    "confirmDurationBody": "\"{title}\" של {artist} דורש אישור עלות כדי להמשיך"
+    "confirmDurationBody": "\"{title}\" של {artist} דורש אישור עלות כדי להמשיך",
+    "jobProblemTitle": "יש בעיה בסרטון שלך",
+    "jobProblemBody": "נתקלנו בבעיה עם \"{title}\" מאת {artist}. יש לפתוח את האפליקציה כדי לראות מה קרה",
+    "jobStalledBody": "הורדת השמע עבור \"{title}\" מאת {artist} נתקעה. נוכל להמשיך לנסות אם ייפתח היישום"
   },
   "admin": {
     "invalidDomainFormat": "פורמט דומיין לא חוקי",
@@ -406,14 +409,14 @@
       "subject": "קוד ה-Nomad Karaoke שלך: {code}"
     },
     "loginCode": {
-      "expiry": "תוקף הקוד יפוג בעוד {minutes} דקות, וניתן להשתמש בו פעם אחת בלבד.",
-      "greeting": "שלום,",
-      "ignoreNote": "אם לא ביקשת את המייל הזה, אפשר פשוט להתעלם ממנו.",
-      "intro": "הזינו את הקוד הזה בדף הכניסה כדי להמשיך:",
-      "linkExpiry": "קישור הכניסה תקף למשך 24 שעות, וניתן להשתמש בו פעם אחת בלבד.",
-      "orLink": "או דלגו על הקוד והיכנסו בלחיצה אחת:",
-      "signInButton": "כניסה",
-      "subject": "קוד הכניסה שלך ל-{brand_name}: {code}"
+      "expiry": "הקוד יפוג בעוד {minutes} דקות וניתן להשתמש בו פעם אחת בלבד.",
+      "greeting": "היי,",
+      "ignoreNote": "אם לא ביקשת את האימייל הזה, אתה יכול להתעלם ממנו בבטחה.",
+      "intro": "יש להזין את הקוד הזה בעמוד ההתחברות כדי להמשיך:",
+      "linkExpiry": "קישור ההתחברות תקף ל-24 שעות וניתן להשתמש בו פעם אחת בלבד.",
+      "orLink": "או לדלג על הקוד ולהתחבר בלחיצה אחת:",
+      "signInButton": "התחבר",
+      "subject": "קוד ההתחברות שלך ל-{brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "מעדיפים לא לעבור על המילים בעצמכם? בחרו ב-Made For You ואני אכין את כל הסרטון עבורכם, מוכן תוך 24 שעות:",

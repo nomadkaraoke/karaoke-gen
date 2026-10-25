@@ -446,8 +446,20 @@ class ReferralService:
     # Earnings
     # ========================================================================
 
-    def record_earning(self, referred_email: str, stripe_session_id: str, purchase_amount_cents: int) -> Optional[dict]:
-        """Record a referral earning after a credit purchase."""
+    def record_earning(
+        self,
+        referred_email: str,
+        source_key: str,
+        purchase_amount_cents: int,
+        source: str = "stripe",
+    ) -> Optional[dict]:
+        """Record a referral earning after a credit purchase.
+
+        ``source`` is "stripe" (``source_key`` = Stripe checkout session id, stored
+        as ``stripe_session_id``) or "app_store" / "play_store" (``source_key`` =
+        the store payment key, stored as ``store_transaction_id``). Store purchases
+        pass the amount net of the store's commission.
+        """
         referred_email = referred_email.lower()
 
         # Look up the referred user
@@ -489,7 +501,9 @@ class ReferralService:
             referrer_email=link.owner_email,
             referred_email=referred_email,
             referral_code=referral_code,
-            stripe_session_id=stripe_session_id,
+            source=source,
+            stripe_session_id=source_key if source == "stripe" else None,
+            store_transaction_id=None if source == "stripe" else source_key,
             purchase_amount_cents=purchase_amount_cents,
             earning_amount_cents=earning_amount,
         )

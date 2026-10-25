@@ -269,7 +269,17 @@ def verify_login_code(
     """Exchange an emailed code for a session (same response as GET /auth/verify)."""
     email = _normalize_email(body.email)
 
-    outcome, record = store.verify_code(email, body.code)
+    settings = get_settings()
+    demo_email = (settings.app_review_demo_email or "").strip().lower()
+    demo_code = settings.app_review_demo_code or ""
+    if demo_email and demo_code and email == demo_email:
+        # App Review demo account: reviewers can't receive email, so this one
+        # address signs in with the fixed code. Attempt limits still apply.
+        outcome, record = store.verify_fixed_code(email, body.code, demo_code)
+        if outcome == VerifyOutcome.OK:
+            logger.info("app review demo login")
+    else:
+        outcome, record = store.verify_code(email, body.code)
     if outcome == VerifyOutcome.TOO_MANY_ATTEMPTS:
         raise HTTPException(status_code=429, detail="too_many_attempts")
     if outcome == VerifyOutcome.INVALID:

@@ -82,7 +82,7 @@
     "waveformNoAudio": "Niciun fișier audio disponibil pentru forma de undă",
     "sessionSaveError": "Datele de corecție sunt obligatorii",
     "invalidIsDuetFlag": "is_duet trebuie să fie un boolean (true sau false)",
-    "previewMissingTimings": "Rândul „{line}” conține un cuvânt fără sincronizare. Sincronizează acel rând, apoi încearcă din nou previzualizarea."
+    "previewMissingTimings": "Versul „{line}” conține un cuvânt fără sincronizare. Sincronizează acel vers, apoi încearcă din nou previzualizarea."
   },
   "audioSearch": {
     "notEnabled": "Căutarea audio nu este activată pentru acest tenant",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Videoclipul este gata!",
     "videoReadyBody": "Videoclipul tău de karaoke pentru \"{title}\" de {artist} este gata de descărcare",
     "confirmDurationTitle": "Confirmă costul lucrării",
-    "confirmDurationBody": "\"{title}\" de {artist} necesită o confirmare a costului pentru a continua"
+    "confirmDurationBody": "\"{title}\" de {artist} necesită o confirmare a costului pentru a continua",
+    "jobProblemTitle": "Există o problemă cu videoclipul tău",
+    "jobProblemBody": "A apărut o problemă cu piesa „{title}” de {artist}. Deschide aplicația pentru a vedea ce s-a întâmplat",
+    "jobStalledBody": "Descărcarea audio pentru piesa „{title}” de {artist} s-a blocat. Putem încerca în continuare dacă deschizi aplicația"
   },
   "admin": {
     "invalidDomainFormat": "Format de domeniu invalid",
@@ -407,13 +410,13 @@
     },
     "loginCode": {
       "expiry": "Acest cod expiră în {minutes} minute și poate fi folosit o singură dată.",
-      "greeting": "Bună,",
-      "ignoreNote": "Dacă nu ai solicitat acest e-mail, îl poți ignora în siguranță.",
+      "greeting": "Salut,",
+      "ignoreNote": "Dacă nu ai solicitat acest email, îl poți ignora în siguranță.",
       "intro": "Introdu acest cod pe pagina de conectare pentru a continua:",
-      "linkExpiry": "Linkul de conectare funcționează timp de 24 de ore și poate fi folosit o singură dată.",
+      "linkExpiry": "Linkul de conectare este valabil timp de 24 de ore și poate fi folosit o singură dată.",
       "orLink": "Sau sari peste cod și conectează-te cu un singur clic:",
-      "signInButton": "Conectare",
-      "subject": "Codul tău de conectare la {brand_name}: {code}"
+      "signInButton": "Conectează-te",
+      "subject": "Codul tău de conectare {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "Preferi să nu verifici tu versurile? Alege Made For You și voi face eu întregul videoclip pentru tine, livrat în 24 de ore:",

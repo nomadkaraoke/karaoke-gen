@@ -466,6 +466,34 @@ class DropboxService:
                     return links.links[0].url
             raise
 
+    def revoke_shared_link(self, url: str) -> bool:
+        """Revoke a shared link (the folder and its files stay). Idempotent.
+
+        Returns True when revoked or already gone. A link Dropbox can't revoke
+        (malformed, or a link type that has no revoke) is nothing to revoke:
+        WARNING and False, so it never blocks account deletion. Any other
+        failure (network, auth, rate limit, access denied) raises.
+        """
+        from dropbox.exceptions import ApiError
+
+        try:
+            self.client.sharing_revoke_shared_link(url)
+            logger.info("Revoked Dropbox shared link")
+            return True
+        except ApiError as e:
+            err = getattr(e, "error", None)
+
+            def _is(name: str) -> bool:
+                return bool(err is not None and getattr(err, name, lambda: False)())
+
+            if _is("is_shared_link_not_found"):
+                logger.info("Dropbox shared link already gone")
+                return True
+            if _is("is_shared_link_malformed") or _is("is_unsupported_link_type"):
+                logger.warning("Dropbox shared link can't be revoked (%s); nothing to revoke", err)
+                return False
+            raise
+
     def delete_folder(self, path: str) -> bool:
         """
         Delete a folder and all its contents from Dropbox.

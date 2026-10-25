@@ -82,7 +82,7 @@
     "waveformNoAudio": "Tidak ada audio yang tersedia untuk bentuk gelombang",
     "sessionSaveError": "Data koreksi diperlukan",
     "invalidIsDuetFlag": "is_duet harus berupa boolean (true atau false)",
-    "previewMissingTimings": "Baris \"{line}\" memiliki kata tanpa waktu. Sinkronkan baris tersebut, lalu coba pratinjau lagi."
+    "previewMissingTimings": "Baris \"{line}\" memiliki kata yang belum diatur waktunya. Sinkronkan baris tersebut, lalu coba pratinjau lagi."
   },
   "audioSearch": {
     "notEnabled": "Pencarian audio tidak diaktifkan untuk tenant ini",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Video Siap!",
     "videoReadyBody": "Video karaoke Anda untuk \"{title}\" oleh {artist} siap diunduh",
     "confirmDurationTitle": "Konfirmasi biaya pekerjaan",
-    "confirmDurationBody": "\"{title}\" oleh {artist} memerlukan konfirmasi biaya untuk melanjutkan"
+    "confirmDurationBody": "\"{title}\" oleh {artist} memerlukan konfirmasi biaya untuk melanjutkan",
+    "jobProblemTitle": "Ada masalah dengan video Anda",
+    "jobProblemBody": "\"{title}\" oleh {artist} mengalami masalah. Buka aplikasi untuk melihat apa yang terjadi",
+    "jobStalledBody": "Pengunduhan audio untuk \"{title}\" oleh {artist} terhenti. Kami bisa terus mencoba jika Anda membuka aplikasi"
   },
   "admin": {
     "invalidDomainFormat": "Format domain tidak valid",
@@ -406,12 +409,12 @@
       "subject": "Kode Nomad Karaoke Anda: {code}"
     },
     "loginCode": {
-      "expiry": "Kode ini kedaluwarsa dalam {minutes} menit dan hanya dapat digunakan satu kali.",
+      "expiry": "Kode ini akan kedaluwarsa dalam {minutes} menit dan hanya dapat digunakan satu kali.",
       "greeting": "Halo,",
-      "ignoreNote": "Jika Anda tidak meminta email ini, Anda dapat mengabaikannya dengan aman.",
+      "ignoreNote": "Jika Anda tidak meminta email ini, Anda dapat mengabaikannya.",
       "intro": "Masukkan kode ini di halaman masuk untuk melanjutkan:",
       "linkExpiry": "Tautan masuk berlaku selama 24 jam dan hanya dapat digunakan satu kali.",
-      "orLink": "Atau lewati kode dan masuk dengan satu klik:",
+      "orLink": "Atau lewati kode dan masuk cukup dengan sekali klik:",
       "signInButton": "Masuk",
       "subject": "Kode masuk {brand_name} Anda: {code}"
     },

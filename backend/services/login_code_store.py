@@ -271,3 +271,26 @@ class LoginCodeStore:
 
         ref.update({"code_hash": None, "used_at": _now()})
         return VerifyOutcome.OK, after
+
+    def verify_fixed_code(self, email: str, code: str, fixed_code: str) -> tuple[str, Optional[dict]]:
+        """Verify ``code`` against a fixed, operator-configured code (App Review demo).
+
+        Same attempt accounting as :meth:`verify_code` (atomic increment BEFORE the
+        comparison, lockout above MAX_VERIFY_ATTEMPTS) on the same per-email record,
+        but the code is reusable (reviewers sign in repeatedly): a success resets the
+        counter. A locked-out record stays locked until a new code is issued
+        (``issue_code`` resets attempts). Returns (outcome, record-or-{}).
+        """
+        email = email.strip().lower()
+        ref = self.code_ref(email)
+        if not ref.get().exists:
+            ref.set({"email": email, "attempts": 0}, merge=True)
+        ref.update({"attempts": Increment(1)})
+        after = ref.get().to_dict() or {}
+        if int(after.get("attempts") or 0) > MAX_VERIFY_ATTEMPTS:
+            return VerifyOutcome.TOO_MANY_ATTEMPTS, None
+        candidate = (code or "").strip()
+        if not (fixed_code and hmac.compare_digest(candidate.encode("utf-8"), fixed_code.encode("utf-8"))):
+            return VerifyOutcome.INVALID, None
+        ref.update({"attempts": 0})
+        return VerifyOutcome.OK, after

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag, Palette, Music } from "lucide-react"
+import { User, LogOut, CreditCard, Coins, KeyRound, Shield, FlaskConical, Gift, Tag, Palette, Music, Trash2 } from "lucide-react"
 import NextLink from "next/link"
+import { Link as LocaleLink } from "@/i18n/routing"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -203,6 +204,17 @@ export function AuthStatus({ onAuthChange }: AuthStatusProps) {
                   onCheckedChange={setShowAwaitingAudioJobs}
                   className="ml-2"
                 />
+              </DropdownMenuItem>
+            </>
+          )}
+          {user.account_deletion && (
+            <>
+              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuItem asChild className="text-muted-foreground focus:text-foreground focus:bg-secondary">
+                <LocaleLink href="/account/delete" data-testid="delete-account-link">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  <span>{t('deleteAccount')}</span>
+                </LocaleLink>
               </DropdownMenuItem>
             </>
           )}

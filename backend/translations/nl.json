@@ -82,7 +82,7 @@
     "waveformNoAudio": "Geen audio beschikbaar voor golfvorm",
     "sessionSaveError": "Correctiegegevens zijn vereist",
     "invalidIsDuetFlag": "is_duet moet een boolean (true of false) zijn",
-    "previewMissingTimings": "De regel \"{line}\" bevat een woord zonder timing. Synchroniseer die regel en probeer de preview opnieuw."
+    "previewMissingTimings": "De regel \"{line}\" bevat een woord zonder timing. Synchroniseer die regel en bekijk het voorbeeld opnieuw."
   },
   "audioSearch": {
     "notEnabled": "Audio zoeken is niet ingeschakeld voor deze tenant",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Video klaar!",
     "videoReadyBody": "Je karaokevideo voor \"{title}\" van {artist} is klaar om te downloaden",
     "confirmDurationTitle": "Bevestig kosten",
-    "confirmDurationBody": "Voor \"{title}\" van {artist} moet je de kosten bevestigen om door te gaan"
+    "confirmDurationBody": "Voor \"{title}\" van {artist} moet je de kosten bevestigen om door te gaan",
+    "jobProblemTitle": "Er is een probleem met je video",
+    "jobProblemBody": "Er is een probleem opgetreden bij \"{title}\" van {artist}. Open de app om te zien wat er aan de hand is",
+    "jobStalledBody": "Het downloaden van de audio voor \"{title}\" van {artist} is vastgelopen. We kunnen het blijven proberen als je de app opent"
   },
   "admin": {
     "invalidDomainFormat": "Ongeldig domeinformaat",
@@ -406,11 +409,11 @@
       "subject": "Je Nomad Karaoke code: {code}"
     },
     "loginCode": {
-      "expiry": "Deze code verloopt over {minutes} minuten en kan maar één keer worden gebruikt.",
+      "expiry": "Deze code verloopt over {minutes} minuten en kan slechts één keer worden gebruikt.",
       "greeting": "Hallo,",
-      "ignoreNote": "Als je deze e-mail niet hebt aangevraagd, kun je hem gerust negeren.",
-      "intro": "Voer deze code in op de inlogpagina om verder te gaan:",
-      "linkExpiry": "De inloglink werkt 24 uur en kan maar één keer worden gebruikt.",
+      "ignoreNote": "Als je deze e-mail niet hebt aangevraagd, kun je deze veilig negeren.",
+      "intro": "Voer deze code in op de inlogpagina om door te gaan:",
+      "linkExpiry": "De inloglink is 24 uur geldig en kan maar één keer worden gebruikt.",
       "orLink": "Of sla de code over en log in met één klik:",
       "signInButton": "Inloggen",
       "subject": "Je {brand_name}-inlogcode: {code}"

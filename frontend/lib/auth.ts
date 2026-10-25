@@ -148,6 +148,7 @@ export const useAuth = create<AuthStore>()(
             promo_discount_percent: response.user.promo_discount_percent,
             promo_discount_expires_at: response.user.promo_discount_expires_at,
             referred_by_code: response.user.referred_by_code,
+            account_deletion: response.capabilities?.account_deletion === true,
           }
 
           set({ user, isLoading: false })

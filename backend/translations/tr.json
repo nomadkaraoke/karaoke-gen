@@ -82,7 +82,7 @@
     "waveformNoAudio": "Dalga formu için ses mevcut değil",
     "sessionSaveError": "Düzeltme verisi gereklidir",
     "invalidIsDuetFlag": "is_duet bir boolean (true veya false) olmalı",
-    "previewMissingTimings": "\"{line}\" satırında zamanlaması olmayan bir kelime var. O satırı senkronize et, ardından önizlemeyi tekrar dene."
+    "previewMissingTimings": "\"{line}\" satırında zamanlaması eksik bir kelime var. Bu satırı senkronize et, ardından önizlemeyi tekrar dene."
   },
   "audioSearch": {
     "notEnabled": "Bu kiracı için ses arama etkin değil",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Video Hazır!",
     "videoReadyBody": "{artist} - \"{title}\" karaoke videon indirilmeye hazır",
     "confirmDurationTitle": "İş maliyetini onayla",
-    "confirmDurationBody": "Devam etmek için {artist} - \"{title}\" şarkısının maliyetini onaylaman gerekiyor"
+    "confirmDurationBody": "Devam etmek için {artist} - \"{title}\" şarkısının maliyetini onaylaman gerekiyor",
+    "jobProblemTitle": "Videonda bir sorun var",
+    "jobProblemBody": "{artist} - \"{title}\" parçasında bir sorun oluştu. Ne olduğunu görmek için uygulamayı aç",
+    "jobStalledBody": "{artist} - \"{title}\" parçasının ses indirmesi takıldı. Uygulamayı açarsan denemeye devam edebiliriz"
   },
   "admin": {
     "invalidDomainFormat": "Geçersiz alan adı formatı",
@@ -406,14 +409,14 @@
       "subject": "Nomad Karaoke kodun: {code}"
     },
     "loginCode": {
-      "expiry": "Bu kodun süresi {minutes} dakika içinde dolar ve yalnızca bir kez kullanılabilir.",
+      "expiry": "Bu kod {minutes} dakika içinde sona erer ve sadece bir kez kullanılabilir.",
       "greeting": "Merhaba,",
-      "ignoreNote": "Bu e-postayı siz istemediyseniz, güvenle yok sayabilirsiniz.",
-      "intro": "Devam etmek için bu kodu giriş sayfasına girin:",
+      "ignoreNote": "Bu e-postayı sen talep etmediysen, güvenle görmezden gelebilirsin.",
+      "intro": "Devam etmek için bu kodu giriş sayfasına gir:",
       "linkExpiry": "Giriş bağlantısı 24 saat geçerlidir ve yalnızca bir kez kullanılabilir.",
-      "orLink": "Ya da kodu atlayıp tek tıkla giriş yapın:",
+      "orLink": "Veya kodu atlayıp tek tıkla giriş yap:",
       "signInButton": "Giriş Yap",
-      "subject": "{brand_name} giriş kodunuz: {code}"
+      "subject": "{brand_name} giriş kodun: {code}"
     },
     "conversion": {
       "madeForYouLine": "Şarkı sözü incelemesini kendin yapmak istemiyor musun? Made For You'yu seç, tüm videoyu senin için hazırlayıp 24 saat içinde teslim edeyim:",

@@ -82,7 +82,7 @@
     "waveformNoAudio": "Brak dostępnego dźwięku dla fali dźwiękowej",
     "sessionSaveError": "Dane poprawek są wymagane",
     "invalidIsDuetFlag": "is_duet musi być wartością logiczną (true lub false)",
-    "previewMissingTimings": "Wiersz „{line}” zawiera słowo bez synchronizacji. Zsynchronizuj ten wiersz, a następnie spróbuj ponownie wyświetlić podgląd."
+    "previewMissingTimings": "W wersie „{line}” brakuje synchronizacji dla jednego ze słów. Zsynchronizuj ten wers i spróbuj ponownie włączyć podgląd."
   },
   "audioSearch": {
     "notEnabled": "Wyszukiwanie audio nie jest włączone dla tego konta",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Wideo gotowe!",
     "videoReadyBody": "Twoje wideo karaoke dla \"{title}\" wykonawcy {artist} jest gotowe do pobrania",
     "confirmDurationTitle": "Potwierdź koszt zadania",
-    "confirmDurationBody": "\"{title}\" wykonawcy {artist} wymaga potwierdzenia kosztów, aby kontynuować"
+    "confirmDurationBody": "\"{title}\" wykonawcy {artist} wymaga potwierdzenia kosztów, aby kontynuować",
+    "jobProblemTitle": "Problem z Twoim wideo",
+    "jobProblemBody": "Wystąpił problem z utworem „{title}” wykonawcy {artist}. Otwórz aplikację, aby zobaczyć szczegóły",
+    "jobStalledBody": "Pobieranie dźwięku dla utworu „{title}” ({artist}) utknęło. Możemy próbować dalej, jeśli otworzysz aplikację"
   },
   "admin": {
     "invalidDomainFormat": "Nieprawidłowy format domeny",
@@ -406,14 +409,14 @@
       "subject": "Twój kod Nomad Karaoke: {code}"
     },
     "loginCode": {
-      "expiry": "Ten kod wygaśnie za {minutes} min i można go użyć tylko raz.",
+      "expiry": "Ten kod wygasa za {minutes} minut i może zostać użyty tylko raz.",
       "greeting": "Cześć,",
-      "ignoreNote": "Jeśli nie prosiłeś(-aś) o tę wiadomość, możesz ją bezpiecznie zignorować.",
+      "ignoreNote": "Jeśli nie prosiłeś o ten email, możesz go bezpiecznie zignorować.",
       "intro": "Wpisz ten kod na stronie logowania, aby kontynuować:",
-      "linkExpiry": "Link do logowania działa przez 24 godziny i można go użyć tylko raz.",
-      "orLink": "Albo pomiń kod i zaloguj się jednym kliknięciem:",
+      "linkExpiry": "Link do logowania jest ważny przez 24 godziny i można go użyć tylko raz.",
+      "orLink": "Możesz też pominąć kod i zalogować się jednym kliknięciem:",
       "signInButton": "Zaloguj się",
-      "subject": "Twój kod logowania do {brand_name}: {code}"
+      "subject": "Twój kod do logowania w {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "Wolisz nie sprawdzać tekstu samodzielnie? Wybierz Made For You, a przygotuję całe wideo za Ciebie – gotowe w ciągu 24 godzin:",

@@ -82,7 +82,7 @@
     "waveformNoAudio": "Nenhum áudio disponível para a forma de onda",
     "sessionSaveError": "Dados de correção são obrigatórios",
     "invalidIsDuetFlag": "is_duet deve ser um booleano (verdadeiro ou falso)",
-    "previewMissingTimings": "A linha \"{line}\" tem uma palavra sem tempo definido. Sincronize essa linha e tente a pré-visualização novamente."
+    "previewMissingTimings": "O verso \"{line}\" tem uma palavra sem sincronização. Sincronize essa linha e tente ver a prévia novamente."
   },
   "audioSearch": {
     "notEnabled": "A pesquisa de áudio não está ativada para este locatário",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Vídeo Pronto!",
     "videoReadyBody": "Seu vídeo de karaokê para \"{title}\" de {artist} está pronto para baixar",
     "confirmDurationTitle": "Confirmar custo do serviço",
-    "confirmDurationBody": "\"{title}\" de {artist} precisa de uma confirmação de custo para continuar"
+    "confirmDurationBody": "\"{title}\" de {artist} precisa de uma confirmação de custo para continuar",
+    "jobProblemTitle": "Houve um problema com o seu vídeo",
+    "jobProblemBody": "Houve um problema com \"{title}\", de {artist}. Abra o app para ver o que aconteceu",
+    "jobStalledBody": "O download do áudio de \"{title}\", de {artist}, travou. Abra o app para continuarmos tentando"
   },
   "admin": {
     "invalidDomainFormat": "Formato de domínio inválido",
@@ -410,10 +413,10 @@
       "greeting": "Olá,",
       "ignoreNote": "Se você não solicitou este e-mail, pode ignorá-lo com segurança.",
       "intro": "Digite este código na página de login para continuar:",
-      "linkExpiry": "O link de acesso funciona por 24 horas e só pode ser usado uma vez.",
-      "orLink": "Ou pule o código e entre com um clique:",
+      "linkExpiry": "O link de login é válido por 24 horas e só pode ser usado uma vez.",
+      "orLink": "Ou pule o código e faça login com apenas um clique:",
       "signInButton": "Entrar",
-      "subject": "Seu código de acesso ao {brand_name}: {code}"
+      "subject": "Seu código de login do {brand_name}: {code}"
     },
     "conversion": {
       "madeForYouLine": "Prefere não revisar a letra você mesmo? Escolha o Feito Para Você e eu farei o vídeo inteiro para você, entregue em até 24 horas:",

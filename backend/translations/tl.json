@@ -82,7 +82,7 @@
     "waveformNoAudio": "Walang available na audio para sa waveform",
     "sessionSaveError": "Kailangan ng correction data",
     "invalidIsDuetFlag": "Ang is_duet ay dapat isang boolean (true o false)",
-    "previewMissingTimings": "Ang linyang \"{line}\" ay may salitang walang timing. I-sync ang linyang iyon, saka subukang muli ang preview."
+    "previewMissingTimings": "May salitang walang timing sa linyang \"{line}\". I-sync ang linyang iyon, tapos subukan ulit ang preview."
   },
   "audioSearch": {
     "notEnabled": "Hindi naka-enable ang audio search para sa tenant na ito",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Handa na ang Video!",
     "videoReadyBody": "Handa nang i-download ang iyong karaoke video para sa \"{title}\" ni {artist}",
     "confirmDurationTitle": "Kumpirmahin ang gastos ng gawain",
-    "confirmDurationBody": "Kailangan ng kumpirmasyon sa gastos ng \"{title}\" ni {artist} para makapagpatuloy"
+    "confirmDurationBody": "Kailangan ng kumpirmasyon sa gastos ng \"{title}\" ni {artist} para makapagpatuloy",
+    "jobProblemTitle": "May problema sa iyong video",
+    "jobProblemBody": "Nagkaproblema ang \"{title}\" ni {artist}. Buksan ang app para makita ang nangyari",
+    "jobStalledBody": "Na-stuck ang pag-download ng audio para sa \"{title}\" ni {artist}. Puwede naming ituloy ang pagsubok kung bubuksan mo ang app"
   },
   "admin": {
     "invalidDomainFormat": "Mali ang format ng domain",
@@ -406,14 +409,14 @@
       "subject": "Ang iyong Nomad Karaoke code: {code}"
     },
     "loginCode": {
-      "expiry": "Mag-e-expire ang code na ito sa loob ng {minutes} minuto at isang beses lang magagamit.",
+      "expiry": "Mage-expire ang code na ito sa loob ng {minutes} minuto at isang beses lang pwedeng gamitin.",
       "greeting": "Kumusta,",
-      "ignoreNote": "Kung hindi mo hiniling ang email na ito, puwede mo itong balewalain.",
+      "ignoreNote": "Kung hindi mo ni-request ang email na ito, maaari mo itong balewalain.",
       "intro": "Ilagay ang code na ito sa sign-in page para magpatuloy:",
-      "linkExpiry": "Gumagana ang sign-in link nang 24 oras at isang beses lang magagamit.",
-      "orLink": "O laktawan ang code at mag-sign in sa isang click:",
+      "linkExpiry": "Gagana ang sign-in link sa loob ng 24 na oras at maaari lamang itong gamitin nang isang beses.",
+      "orLink": "O laktawan ang code at mag-sign in sa isang click lang:",
       "signInButton": "Mag-sign In",
-      "subject": "Ang iyong sign-in code sa {brand_name}: {code}"
+      "subject": "Ang iyong {brand_name} sign-in code: {code}"
     },
     "conversion": {
       "madeForYouLine": "Ayaw mo bang mag-review ng lyrics nang mag-isa? Piliin ang Made For You at ako na ang gagawa ng buong video para sa iyo, ihahatid sa loob ng 24 oras:",

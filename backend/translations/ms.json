@@ -82,7 +82,7 @@
     "waveformNoAudio": "Tiada audio tersedia untuk bentuk gelombang",
     "sessionSaveError": "Data pembetulan diperlukan",
     "invalidIsDuetFlag": "is_duet mestilah boolean (benar atau salah)",
-    "previewMissingTimings": "Baris \"{line}\" mempunyai perkataan tanpa pemasaan. Segerakkan baris itu, kemudian cuba pratonton semula."
+    "previewMissingTimings": "Baris \"{line}\" mempunyai perkataan tanpa pemasaan. Segerakkan baris tersebut, kemudian cuba pratonton sekali lagi."
   },
   "audioSearch": {
     "notEnabled": "Carian audio tidak didayakan untuk penyewa ini",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Video Sedia!",
     "videoReadyBody": "Video karaoke anda untuk \"{title}\" oleh {artist} sedia untuk dimuat turun",
     "confirmDurationTitle": "Sahkan kos kerja",
-    "confirmDurationBody": "\"{title}\" oleh {artist} memerlukan pengesahan kos untuk diteruskan"
+    "confirmDurationBody": "\"{title}\" oleh {artist} memerlukan pengesahan kos untuk diteruskan",
+    "jobProblemTitle": "Terdapat masalah dengan video anda",
+    "jobProblemBody": "\"{title}\" oleh {artist} menghadapi masalah. Buka aplikasi untuk melihat apa yang berlaku",
+    "jobStalledBody": "Muat turun audio untuk \"{title}\" oleh {artist} tersekat. Kami boleh terus mencuba jika anda membuka aplikasi"
   },
   "admin": {
     "invalidDomainFormat": "Format domain tidak sah",
@@ -406,12 +409,12 @@
       "subject": "Kod Nomad Karaoke anda: {code}"
     },
     "loginCode": {
-      "expiry": "Kod ini tamat tempoh dalam {minutes} minit dan hanya boleh digunakan sekali.",
+      "expiry": "Kod ini akan tamat tempoh dalam masa {minutes} minit dan hanya boleh digunakan sekali.",
       "greeting": "Hai,",
       "ignoreNote": "Jika anda tidak meminta e-mel ini, anda boleh mengabaikannya dengan selamat.",
       "intro": "Masukkan kod ini di halaman log masuk untuk meneruskan:",
-      "linkExpiry": "Pautan log masuk berfungsi selama 24 jam dan hanya boleh digunakan sekali.",
-      "orLink": "Atau langkau kod dan log masuk dengan satu klik:",
+      "linkExpiry": "Pautan log masuk ini sah selama 24 jam dan hanya boleh digunakan sekali sahaja.",
+      "orLink": "Atau langkau kod ini dan log masuk dengan satu klik:",
       "signInButton": "Log Masuk",
       "subject": "Kod log masuk {brand_name} anda: {code}"
     },

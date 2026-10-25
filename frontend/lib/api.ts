@@ -3,7 +3,7 @@
  */
 
 import type { VideoThemeSummary, VideoThemeDetail, ThemesListResponse, ThemeDetailResponse, ColorOverrides } from './video-themes';
-import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest, BoardResponse, SubmitRequestResponse, SongRequestPublic, DailyVoteStatus, ClaimWelcomeCreditResponse } from './types';
+import type { MagicLinkResponse, VerifyMagicLinkResponse, UserProfileResponse, ReferralInterstitial, ReferralDashboard, ReferralLink, VanityRequest, BoardResponse, SubmitRequestResponse, SongRequestPublic, DailyVoteStatus, ClaimWelcomeCreditResponse, DeletionPreview } from './types';
 import type { CorrectionData, CorrectionAnnotation, EditLog, SearchLyricsResponse, AddLyricsResult } from './lyrics-review/types';
 import {
   beginRequest,
@@ -2169,6 +2169,25 @@ export const api = {
   async logout(): Promise<{ status: string; message: string }> {
     const response = await apiFetch(`${API_BASE_URL}/api/users/auth/logout`, {
       method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Account deletion (Google Play web deletion path). Preview what will be lost
+   * and whether deletion is blocked; the DELETE itself is irreversible.
+   */
+  async getDeletionPreview(): Promise<DeletionPreview> {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/me/deletion-preview`, {
+      headers: getAuthHeaders()
+    });
+    return handleResponse(response);
+  },
+
+  async deleteAccount(): Promise<{ deleted: boolean; summary?: unknown }> {
+    const response = await apiFetch(`${API_BASE_URL}/api/users/me`, {
+      method: 'DELETE',
       headers: getAuthHeaders()
     });
     return handleResponse(response);

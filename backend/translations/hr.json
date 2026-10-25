@@ -82,7 +82,7 @@
     "waveformNoAudio": "Nema dostupnog zvuka za valni oblik",
     "sessionSaveError": "Podaci o ispravcima su obavezni",
     "invalidIsDuetFlag": "is_duet mora biti boolean (true ili false)",
-    "previewMissingTimings": "Redak \"{line}\" sadrži riječ bez vremenskog označavanja. Sinkroniziraj taj redak, a zatim ponovno pokušaj pregled."
+    "previewMissingTimings": "U retku \"{line}\" nalazi se riječ bez vremenske oznake. Sinkroniziraj taj redak, a zatim ponovno pokreni pretpregled."
   },
   "audioSearch": {
     "notEnabled": "Pretraživanje zvuka nije omogućeno za ovog zakupca",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Video je spreman!",
     "videoReadyBody": "Tvoj karaoke video za \"{title}\" od {artist} je spreman za preuzimanje",
     "confirmDurationTitle": "Potvrdi trošak posla",
-    "confirmDurationBody": "\"{title}\" od {artist} zahtijeva potvrdu troška za nastavak"
+    "confirmDurationBody": "\"{title}\" od {artist} zahtijeva potvrdu troška za nastavak",
+    "jobProblemTitle": "Došlo je do problema s tvojim videom",
+    "jobProblemBody": "Došlo je do problema s pjesmom \"{title}\" izvođača {artist}. Otvori aplikaciju da vidiš što se dogodilo",
+    "jobStalledBody": "Preuzimanje zvuka za pjesmu \"{title}\" izvođača {artist} je zapelo. Možemo nastaviti s pokušajima ako otvoriš aplikaciju"
   },
   "admin": {
     "invalidDomainFormat": "Nevažeći format domene",
@@ -406,14 +409,14 @@
       "subject": "Tvoj Nomad Karaoke kod: {code}"
     },
     "loginCode": {
-      "expiry": "Ovaj kod istječe za {minutes} minuta i može se upotrijebiti samo jednom.",
+      "expiry": "Ovaj kod istječe za {minutes} minuta i može se iskoristiti samo jednom.",
       "greeting": "Pozdrav,",
-      "ignoreNote": "Ako niste zatražili ovu e-poruku, možete je slobodno zanemariti.",
-      "intro": "Unesite ovaj kod na stranici za prijavu da biste nastavili:",
-      "linkExpiry": "Poveznica za prijavu vrijedi 24 sata i može se upotrijebiti samo jednom.",
-      "orLink": "Ili preskočite kod i prijavite se jednim klikom:",
-      "signInButton": "Prijava",
-      "subject": "Vaš kod za prijavu u {brand_name}: {code}"
+      "ignoreNote": "Ako nisi zatražio ovaj e-mail, možeš ga slobodno zanemariti.",
+      "intro": "Unesi ovaj kôd na stranici za prijavu za nastavak:",
+      "linkExpiry": "Poveznica za prijavu vrijedi 24 sata i može se iskoristiti samo jednom.",
+      "orLink": "Ili preskoči kôd i prijavi se jednim klikom:",
+      "signInButton": "Prijavi se",
+      "subject": "Tvoj {brand_name} kôd za prijavu: {code}"
     },
     "conversion": {
       "madeForYouLine": "Ne želiš samostalno pregledavati tekst? Odaberi Made For You i napravit ću cijeli video za tebe, uz isporuku unutar 24 sata:",

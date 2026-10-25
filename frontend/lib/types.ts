@@ -2,6 +2,8 @@ export type UserRole = "user" | "admin"
 
 export interface User {
   token: string
+  /** Backend capability flag: self-serve account deletion is enabled. */
+  account_deletion?: boolean
   role: UserRole
   credits: number
   email: string
@@ -95,6 +97,8 @@ export interface ClaimWelcomeCreditResponse {
 export interface UserProfileResponse {
   user: UserPublic
   has_session: boolean
+  /** Feature flags the backend exposes to the signed-in user. */
+  capabilities?: { account_deletion?: boolean }
 }
 
 export type JobStatus = "queued" | "processing" | "awaiting_review" | "awaiting_instrumental" | "completed" | "failed"
@@ -195,4 +199,16 @@ export interface ReferralInterstitial {
   discount_percent: number;
   discount_duration_days: number;
   valid: boolean;
+}
+
+export type DeletionBlockedCode =
+  | "admin"
+  | "referral_balance"
+  | "connect_account"
+  | "order_in_progress"
+
+export interface DeletionPreview {
+  credits: number
+  jobs_in_progress: number
+  blocked: DeletionBlockedCode | null
 }

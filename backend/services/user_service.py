@@ -123,6 +123,38 @@ class UserService:
             logger.exception(f"Error getting user {email}")
             return None
 
+    def ensure_app_user_id(self, email: str) -> str:
+        """Return the user's mobile-app id, minting a UUID4 once.
+
+        Read-then-set-if-absent inside a Firestore transaction, so concurrent
+        callers all end up with the same id.
+        """
+        import uuid
+
+        doc_ref = self.get_user_doc_ref(email) or self.db.collection(USERS_COLLECTION).document(email.lower())
+
+        @firestore.transactional
+        def mint(transaction):
+            snap = doc_ref.get(transaction=transaction)
+            existing = (snap.to_dict() or {}).get("app_user_id") if snap.exists else None
+            if existing:
+                return existing
+            new_id = str(uuid.uuid4())
+            transaction.set(doc_ref, {"app_user_id": new_id}, merge=True)
+            return new_id
+
+        return mint(self.db.transaction())
+
+    def find_by_app_user_id(self, app_user_id: str) -> Optional[User]:
+        """The user whose mobile-app id (RevenueCat app_user_id) is ``app_user_id``."""
+        if not app_user_id:
+            return None
+        query = self.db.collection(USERS_COLLECTION).where(
+            filter=FieldFilter("app_user_id", "==", app_user_id)
+        ).limit(1)
+        results = list(query.stream())
+        return User(**results[0].to_dict()) if results else None
+
     def get_or_create_user(
         self,
         email: str,
@@ -532,6 +564,14 @@ class UserService:
             for txn in user.credit_transactions:
                 if txn.reason == "welcome_credit":
                     return False, "already_granted"
+
+            # A self-deleted account's email signing up again gets no second
+            # welcome credit (deleted_users keeps only sha256(email)).
+            from backend.services.account_deletion_service import is_deleted_email
+            if is_deleted_email(self.db, email):
+                self.update_user(email, welcome_credits_granted=True)
+                logger.info("Welcome credit not granted: email belonged to a deleted account")
+                return False, "already_granted"
 
             # Skip AI evaluation for test emails (e.g. E2E test accounts)
             # to avoid wasting LLM credits and sending unnecessary denial emails

@@ -82,7 +82,7 @@
     "waveformNoAudio": "Không có âm thanh cho dạng sóng",
     "sessionSaveError": "Yêu cầu dữ liệu chỉnh sửa",
     "invalidIsDuetFlag": "is_duet phải là kiểu boolean (true hoặc false)",
-    "previewMissingTimings": "Dòng \"{line}\" có một từ chưa được căn thời gian. Hãy đồng bộ dòng đó rồi thử xem trước lại."
+    "previewMissingTimings": "Dòng \"{line}\" có từ chưa khớp thời gian. Hãy đồng bộ dòng đó rồi thử xem trước lại nhé."
   },
   "audioSearch": {
     "notEnabled": "Tìm kiếm âm thanh không được bật cho tenant này",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Video đã sẵn sàng!",
     "videoReadyBody": "Video karaoke của bạn cho bài hát \"{title}\" của {artist} đã sẵn sàng để tải xuống",
     "confirmDurationTitle": "Xác nhận chi phí công việc",
-    "confirmDurationBody": "\"{title}\" của {artist} cần xác nhận chi phí để tiếp tục"
+    "confirmDurationBody": "\"{title}\" của {artist} cần xác nhận chi phí để tiếp tục",
+    "jobProblemTitle": "Đã xảy ra sự cố với video của bạn",
+    "jobProblemBody": "\"{title}\" của {artist} đã gặp sự cố. Mở ứng dụng để xem chi tiết nhé",
+    "jobStalledBody": "Quá trình tải âm thanh cho \"{title}\" của {artist} đang bị kẹt. Chúng tôi có thể tiếp tục thử lại nếu bạn mở ứng dụng"
   },
   "admin": {
     "invalidDomainFormat": "Định dạng tên miền không hợp lệ",
@@ -406,12 +409,12 @@
       "subject": "Mã Nomad Karaoke của bạn: {code}"
     },
     "loginCode": {
-      "expiry": "Mã này sẽ hết hạn sau {minutes} phút và chỉ dùng được một lần.",
-      "greeting": "Xin chào,",
-      "ignoreNote": "Nếu bạn không yêu cầu email này, bạn có thể yên tâm bỏ qua.",
+      "expiry": "Mã này sẽ hết hạn trong {minutes} phút và chỉ có thể sử dụng một lần.",
+      "greeting": "Chào bạn,",
+      "ignoreNote": "Nếu bạn không yêu cầu email này, bạn có thể bỏ qua nó một cách an toàn.",
       "intro": "Nhập mã này trên trang đăng nhập để tiếp tục:",
-      "linkExpiry": "Liên kết đăng nhập có hiệu lực trong 24 giờ và chỉ dùng được một lần.",
-      "orLink": "Hoặc bỏ qua mã và đăng nhập chỉ với một lần nhấp:",
+      "linkExpiry": "Liên kết đăng nhập có hiệu lực trong 24 giờ và chỉ có thể sử dụng một lần.",
+      "orLink": "Hoặc bỏ qua mã và đăng nhập chỉ với một cú nhấp chuột:",
       "signInButton": "Đăng nhập",
       "subject": "Mã đăng nhập {brand_name} của bạn: {code}"
     },

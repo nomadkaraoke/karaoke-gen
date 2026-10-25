@@ -82,7 +82,7 @@
     "waveformNoAudio": "波形用のオーディオがありません",
     "sessionSaveError": "修正データが必要です",
     "invalidIsDuetFlag": "is_duet はブール値 (true または false) である必要があります",
-    "previewMissingTimings": "「{line}」の行にタイミングが設定されていない単語があります。その行を同期してから、もう一度プレビューしてください。"
+    "previewMissingTimings": "「{line}」の行にタイミングが設定されていない単語があります。その行のタイミングを同期してから、もう一度プレビューをお試しください。"
   },
   "audioSearch": {
     "notEnabled": "このテナントではオーディオ検索が有効になっていません",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "動画の準備ができました！",
     "videoReadyBody": "{artist} の「{title}」のカラオケ動画がダウンロード可能になりました",
     "confirmDurationTitle": "料金の確認",
-    "confirmDurationBody": "{artist}の「{title}」の処理を続けるには、料金の確認が必要です"
+    "confirmDurationBody": "{artist}の「{title}」の処理を続けるには、料金の確認が必要です",
+    "jobProblemTitle": "動画の処理中に問題が発生しました",
+    "jobProblemBody": "{artist}の「{title}」で問題が発生しました。アプリを開いて状況をご確認ください",
+    "jobStalledBody": "{artist}の「{title}」の音声ダウンロードが途中で止まっています。アプリを開くと再試行できます"
   },
   "admin": {
     "invalidDomainFormat": "無効なドメイン形式です",
@@ -406,14 +409,14 @@
       "subject": "Nomad Karaokeのコード: {code}"
     },
     "loginCode": {
-      "expiry": "このコードの有効期限は {minutes} 分で、1 回のみ使用できます。",
-      "greeting": "こんにちは。",
-      "ignoreNote": "このメールに心当たりがない場合は、無視していただいて問題ありません。",
-      "intro": "続行するには、サインインページでこのコードを入力してください:",
-      "linkExpiry": "サインインリンクの有効期間は 24 時間で、1 回のみ使用できます。",
-      "orLink": "または、コードを使わずにワンクリックでサインイン:",
+      "expiry": "このコードの有効期限は{minutes}分で、1回のみ使用可能です。",
+      "greeting": "こんにちは、",
+      "ignoreNote": "このメールに心当たりがない場合は、そのまま無視していただいて構いません。",
+      "intro": "サインインページでこのコードを入力して続行してください：",
+      "linkExpiry": "サインインリンクの有効期限は24時間で、1回のみ使用できます。",
+      "orLink": "または、コードを入力せずにワンクリックでサインイン：",
       "signInButton": "サインイン",
-      "subject": "{brand_name} のサインインコード: {code}"
+      "subject": "【{brand_name}】サインインコード：{code}"
     },
     "conversion": {
       "madeForYouLine": "ご自身での歌詞チェックをお手軽に済ませたいですか？「Made For You」をお選びいただければ、動画をまるごと作成して24時間以内にお届けします：",

@@ -82,7 +82,7 @@
     "waveformNoAudio": "Ingen lyd tilgængelig til bølgeform",
     "sessionSaveError": "Rettelsesdata er påkrævet",
     "invalidIsDuetFlag": "is_duet skal være en boolsk værdi (sand eller falsk)",
-    "previewMissingTimings": "Linjen \"{line}\" har et ord uden timing. Synkroniser den linje, og prøv derefter forhåndsvisningen igen."
+    "previewMissingTimings": "Linjen \"{line}\" indeholder et ord uden timing. Synkronisér linjen, og prøv forhåndsvisningen igen."
   },
   "audioSearch": {
     "notEnabled": "Lydsøgning er ikke aktiveret for denne lejer",
@@ -178,7 +178,10 @@
     "videoReadyTitle": "Videoen er klar!",
     "videoReadyBody": "Din karaokevideo til \"{title}\" af {artist} er klar til download",
     "confirmDurationTitle": "Bekræft opgavepris",
-    "confirmDurationBody": "\"{title}\" af {artist} kræver en prisbekræftelse for at fortsætte"
+    "confirmDurationBody": "\"{title}\" af {artist} kræver en prisbekræftelse for at fortsætte",
+    "jobProblemTitle": "Der er et problem med din video",
+    "jobProblemBody": "Der opstod et problem med \"{title}\" af {artist}. Åbn appen for at se, hvad der skete",
+    "jobStalledBody": "Downloadingen af lyd til \"{title}\" af {artist} er gået i stå. Vi kan prøve igen, hvis du åbner appen"
   },
   "admin": {
     "invalidDomainFormat": "Ugyldigt domæneformat",
@@ -408,12 +411,12 @@
     "loginCode": {
       "expiry": "Denne kode udløber om {minutes} minutter og kan kun bruges én gang.",
       "greeting": "Hej,",
-      "ignoreNote": "Hvis du ikke har anmodet om denne e-mail, kan du roligt ignorere den.",
+      "ignoreNote": "Hvis du ikke har anmodet om denne e-mail, kan du bare ignorere den.",
       "intro": "Indtast denne kode på login-siden for at fortsætte:",
-      "linkExpiry": "Login-linket virker i 24 timer og kan kun bruges én gang.",
-      "orLink": "Eller spring koden over og log ind med ét klik:",
+      "linkExpiry": "Login-linket er gyldigt i 24 timer og kan kun bruges én gang.",
+      "orLink": "Eller spring koden over og log ind med et enkelt klik:",
       "signInButton": "Log ind",
-      "subject": "Din login-kode til {brand_name}: {code}"
+      "subject": "Din {brand_name}-loginkode: {code}"
     },
     "conversion": {
       "madeForYouLine": "Vil du helst slippe for selv at gennemgå teksten? Vælg Made For You, så laver jeg hele videoen for dig, leveret inden for 24 timer:",
