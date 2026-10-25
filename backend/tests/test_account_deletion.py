@@ -91,9 +91,17 @@ class DotQuery(FakeQuery):
         out = [
             DotSnap(DotRef(self.coll, doc_id), dict(data))
             for doc_id, data in list(self.coll.docs.items())
-            if all(_get_path(data, f.field_path) == f.value for f in self.filters)
+            if all(self._dot_match(data, f) for f in self.filters)
         ]
         return out[: self._limit] if self._limit else out
+
+
+    @staticmethod
+    def _dot_match(data, f):
+        value = _get_path(data, f.field_path)
+        if f.op_string == "array_contains":
+            return isinstance(value, list) and f.value in value
+        return value == f.value
 
 
 class DotCollection(FakeCollection):
@@ -383,16 +391,6 @@ class TestRefusals:
         _seed_user(db, stripe_connect_account_id="acct_123")
         self._assert_refused(client, db, rec, "connect_account")
 
-    def test_kjbox_show_credit_counter(self, client, db, rec):
-        _seed_user(db)
-        db.collection("kjbox_show_credit_users").docs[SHA] = {"email": EMAIL, "grant_times": []}
-        self._assert_refused(client, db, rec, "kj_partner")
-
-    def test_kjbox_show_credit_grant(self, client, db, rec):
-        _seed_user(db)
-        db.collection("kjbox_show_credits").docs["k1"] = {"email": EMAIL, "idempotency_key": "x"}
-        self._assert_refused(client, db, rec, "kj_partner")
-
     def test_made_for_you_order_in_progress(self, client, db, rec):
         _seed_user(db)
         _seed_job(db, "mfy1", status="awaiting_review", email="admin@nomadkaraoke.com",
@@ -610,8 +608,16 @@ def test_outputs_never_deleted(client, db, bucket, dropbox, rec):
         "uploads/j1/lyrics/user_lyrics.txt",
         "jobs/j1/input/audio/mix.flac",
         "jobs/j1/input/audio/existing_instrumental.flac",
+        "jobs/j1/uploads/custom_instrumental_source.wav",
+        "jobs/j1/audio_edit/upload_1234.wav",
+        "jobs/j1/audio_edit/edit_5678.flac",
+        "jobs/j1/style/karaoke_background.png",
+        "jobs/j1/style/font.ttf",
+        "jobs/j1/custom_instrumental.wav",
+        "jobs/j1/existing_instrumental.mp3",
     }
     outputs = {
+        "jobs/j1/stems/custom_instrumental.flac",
         "jobs/j1/finals/lossy_720p.mp4",
         "jobs/j1/finals/lossless_4k.mkv",
         "jobs/j1/stems/instrumental_clean.flac",
@@ -807,3 +813,162 @@ class TestDecidePartnerClient:
         from backend.config import get_settings
 
         assert DecidePartnerClient().base_url == get_settings().karaoke_decide_api_url.rstrip("/")
+
+
+# ------------------------------------------------- review round 1 additions
+
+def test_singer_with_show_credits_can_delete_and_records_anonymised(client, db):
+    _seed_user(db)
+    db.collection("kjbox_show_credit_users").docs[SHA] = {"email": EMAIL, "grant_times": ["t"]}
+    db.collection("kjbox_show_credits").docs["k1"] = {"email": EMAIL, "idempotency_key": "x", "venue": "Bar"}
+    db.collection("kjbox_show_credits").docs["k2"] = {"email": OTHER, "idempotency_key": "y"}
+    assert client.get("/api/users/me/deletion-preview").json()["blocked"] is None
+
+    resp = _delete(client)
+    assert resp.status_code == 200, resp.text
+    tomb = f"deleted:{resp.json()['summary']['deletion_id']}"
+    assert db.collection("kjbox_show_credit_users").docs[SHA] == {"email": tomb, "grant_times": ["t"]}
+    assert db.collection("kjbox_show_credits").docs["k1"]["email"] == tomb
+    assert db.collection("kjbox_show_credits").docs["k1"]["venue"] == "Bar"
+    assert db.collection("kjbox_show_credits").docs["k2"]["email"] == OTHER
+
+
+def test_kept_records_anonymised_and_email_log_deleted(client, db, svc):
+    _seed_user(db)
+    db.collection("referral_links").docs["sam-sings"] = {
+        "code": "sam-sings", "owner_email": EMAIL, "display_name": "Sam", "custom_message": "Hi from Sam", "enabled": True}
+    db.collection("referral_links").docs["other"] = {"code": "other", "owner_email": OTHER, "enabled": True}
+    db.collection("referral_vanity_requests").docs[EMAIL] = {
+        "id": EMAIL, "owner_email": EMAIL, "current_code": "abc", "desired_code": "sam", "status": "pending"}
+    db.collection("credit_evaluations").docs["ce1"] = {
+        "id": "ce1", "email": EMAIL, "decision": "grant", "reasoning": f"Evaluation error: {EMAIL}"}
+    db.collection("song_requests").docs["r1"] = {
+        "submitted_by": EMAIL, "owner_email": OTHER, "attempted_owners": [EMAIL, OTHER]}
+    db.collection("song_requests").docs["r2"] = {
+        "submitted_by": OTHER, "owner_email": EMAIL, "attempted_owners": [OTHER, EMAIL]}
+    db.collection("song_request_votes").docs[f"{EMAIL}__2026-10-20"] = {
+        "voter_email": EMAIL, "voted_date": "2026-10-20", "request_id": "r1", "value": 1}
+    db.collection("email_log").docs["m1"] = {"recipient": EMAIL, "subject": "Your video is ready"}
+    db.collection("email_log").docs["m2"] = {"recipient": OTHER, "subject": "Hi"}
+
+    resp = _delete(client)
+    assert resp.status_code == 200, resp.text
+    tomb = f"deleted:{resp.json()['summary']['deletion_id']}"
+
+    link = db.collection("referral_links").docs["sam-sings"]
+    assert link["owner_email"] == tomb and link["enabled"] is False
+    assert link["display_name"] is None and link["custom_message"] is None
+    assert db.collection("referral_links").docs["other"]["owner_email"] == OTHER
+    vanity = db.collection("referral_vanity_requests").docs
+    assert EMAIL not in vanity and vanity[tomb]["owner_email"] == tomb and vanity[tomb]["desired_code"] == "sam"
+    ce = db.collection("credit_evaluations").docs["ce1"]
+    assert ce["email"] == tomb and EMAIL not in ce["reasoning"]
+    r1, r2 = (db.collection("song_requests").docs[k] for k in ("r1", "r2"))
+    assert r1 == {"submitted_by": tomb, "owner_email": OTHER, "attempted_owners": [tomb, OTHER]}
+    assert r2 == {"submitted_by": OTHER, "owner_email": tomb, "attempted_owners": [OTHER, tomb]}
+    votes = db.collection("song_request_votes").docs
+    assert list(votes) == [f"{tomb}__2026-10-20"] and votes[f"{tomb}__2026-10-20"]["voter_email"] == tomb
+    assert set(db.collection("email_log").docs) == {"m2"}
+
+    # Idempotent: a second pass over the same email changes nothing.
+    snapshot = {name: {k: dict(v) for k, v in c.docs.items()} for name, c in db.collections.items()}
+    assert all(v == 0 for v in svc._anonymise_kept_records(EMAIL, "x").values())
+    assert {name: {k: dict(v) for k, v in c.docs.items()} for name, c in db.collections.items()} == snapshot
+
+
+def test_collection_names_match_their_owning_services():
+    from backend.services import credit_evaluation_service, postmark_admin_service, song_request_service
+
+    assert ads.CREDIT_EVALUATIONS_COLLECTION == credit_evaluation_service.CREDIT_EVALUATIONS_COLLECTION
+    assert ads.SONG_REQUESTS_COLLECTION == song_request_service.REQUESTS_COLLECTION
+    assert ads.SONG_REQUEST_VOTES_COLLECTION == song_request_service.VOTES_COLLECTION
+    assert ads.EMAIL_LOG_COLLECTION == postmark_admin_service.EMAIL_LOG_COLLECTION
+
+
+def test_preconditions_firestore_failure_503(client, db, svc):
+    _seed_user(db)
+
+    def boom(email):
+        raise google_exceptions.ServiceUnavailable("firestore blip")
+
+    svc._load_user = boom
+    resp = _delete(client)
+    assert resp.status_code == 503 and resp.json() == {"step": "preconditions"}
+
+
+def test_deletion_id_failure_503_preconditions(client, db, svc):
+    _seed_user(db)
+    svc._transaction_runner = lambda fn: (_ for _ in ()).throw(google_exceptions.Aborted("contention"))
+    resp = _delete(client)
+    assert resp.status_code == 503 and resp.json() == {"step": "preconditions"}
+
+
+def test_unrevocable_dropbox_link_does_not_block(client, db, dropbox):
+    _seed_user(db)
+    _seed_job(db, "j1", state_data={"dropbox_link": "https://www.dropbox.com/weird"})
+    dropbox.revoke_shared_link.side_effect = lambda url: False
+    resp = _delete(client)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["summary"]["files"]["dropbox_links_revoked"] == 0
+    assert "dropbox_link" not in _job(db, "j1")["state_data"]
+
+
+class TestDropboxRevoke:
+    def _service(self, error):
+        from dropbox.exceptions import ApiError
+
+        from backend.services.dropbox_service import DropboxService
+
+        svc = DropboxService()
+        svc._client = MagicMock()
+        if error is not None:
+            svc._client.sharing_revoke_shared_link.side_effect = ApiError("req", error, None, None)
+        return svc
+
+    def test_revoked(self):
+        assert self._service(None).revoke_shared_link("https://x") is True
+
+    def test_not_found_counts_as_revoked(self):
+        from dropbox.sharing import RevokeSharedLinkError
+
+        assert self._service(RevokeSharedLinkError.shared_link_not_found).revoke_shared_link("https://x") is True
+
+    @pytest.mark.parametrize("tag", ["shared_link_malformed", "unsupported_link_type"])
+    def test_unrevocable_is_warning_not_failure(self, tag, caplog):
+        from dropbox.sharing import RevokeSharedLinkError
+
+        with caplog.at_level("WARNING"):
+            assert self._service(getattr(RevokeSharedLinkError, tag)).revoke_shared_link("https://x") is False
+        assert any(r.levelname == "WARNING" for r in caplog.records)
+
+    def test_access_denied_raises(self):
+        from dropbox.exceptions import ApiError
+        from dropbox.sharing import RevokeSharedLinkError
+
+        with pytest.raises(ApiError):
+            self._service(RevokeSharedLinkError.shared_link_access_denied).revoke_shared_link("https://x")
+
+
+class TestFailureLogLevels:
+    def _levels(self, caplog):
+        return [r.levelname for r in caplog.records if r.name == ads.logger.name and "step" in r.getMessage()]
+
+    def test_retryable_http_failure_is_warning(self, client, db, decide_http, caplog):
+        _seed_user(db)
+        decide_http.status = 502
+        with caplog.at_level("INFO", logger=ads.logger.name):
+            assert _delete(client).status_code == 503
+        assert self._levels(caplog) == ["WARNING"]
+
+    def test_unexpected_failure_is_error(self, client, db, cancelled, svc, caplog):
+        _seed_user(db)
+        _seed_job(db, "j1", status="awaiting_review")
+
+        def broken(job_id):
+            raise KeyError("bug")
+
+        svc._cancel_job = broken
+        with caplog.at_level("INFO", logger=ads.logger.name):
+            resp = _delete(client)
+        assert resp.status_code == 503 and resp.json() == {"step": "jobs"}
+        assert self._levels(caplog) == ["ERROR"]

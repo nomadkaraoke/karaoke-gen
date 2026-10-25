@@ -5,6 +5,7 @@ a fixed order, each idempotent, and any failure stops the run so the client
 retries (503 with the step name):
 
 1. preconditions: refuse (409) admins and accounts that carry money or work
+   (a Firestore failure here is a 503 ``preconditions``)
 2. cancel the user's active jobs (no refund: unused credits are forfeited)
 3. decide: erase the user's decide data (partner API)
 4. RevenueCat: delete the subscriber for ``app_user_id`` (skipped without a key)
@@ -17,7 +18,10 @@ retries (503 with the step name):
    Published outputs (stems, renders, MP4s, the Dropbox folder, YouTube) are
    NEVER deleted.
 8. gen records: ``deleted_users/{uuid}`` (no email/name, only ``email_sha256``),
-   delete magic links and login codes, delete sessions, then ``gen_users/{email}``
+   delete magic links, login codes and email_log entries; anonymise records kept
+   for accounting/history (kjbox show credits, the referral link (disabled),
+   vanity requests, credit evaluations, song requests and votes); delete
+   sessions, then ``gen_users/{email}``
 
 Sessions go last so a run that fails part-way leaves the user signed in to retry.
 The ``deletion_id`` (UUID4) is minted on the first attempt and stored on the user
@@ -39,15 +43,19 @@ from google.api_core import exceptions as google_exceptions
 from google.cloud.firestore_v1 import DELETE_FIELD, FieldFilter
 
 from backend.config import get_settings
-from backend.services.decide_partner_client import DecidePartnerClient
+from backend.services.decide_partner_client import DecidePartnerClient, DecidePartnerError
 from backend.services.kjbox_partner_service import (
     LOGIN_CODES_COLLECTION as KJBOX_LOGIN_CODES_COLLECTION,
     SHOW_CREDIT_USERS_COLLECTION,
     SHOW_CREDITS_COLLECTION,
     SIGNUPS_COLLECTION as KJBOX_SIGNUPS_COLLECTION,
 )
-from backend.services.login_code_store import code_doc_id, run_firestore_transaction
-from backend.services.referral_service import REFERRAL_EARNINGS_COLLECTION
+from backend.services.login_code_store import TransactionContention, code_doc_id, run_firestore_transaction
+from backend.services.referral_service import (
+    REFERRAL_EARNINGS_COLLECTION,
+    REFERRAL_LINKS_COLLECTION,
+    REFERRAL_VANITY_REQUESTS_COLLECTION,
+)
 from backend.services.user_service import (
     MAGIC_LINKS_COLLECTION,
     SESSIONS_COLLECTION,
@@ -59,17 +67,38 @@ logger = logging.getLogger(__name__)
 ACCOUNT_DELETIONS_COLLECTION = "account_deletions"
 DELETED_USERS_COLLECTION = "deleted_users"
 GEN_LOGIN_CODES_COLLECTION = "login_codes"  # backend/api/routes/login_code.py
+# Owned by modules too heavy to import here (tests guard these against drift):
+CREDIT_EVALUATIONS_COLLECTION = "credit_evaluations"  # credit_evaluation_service
+SONG_REQUESTS_COLLECTION = "song_requests"  # song_request_service.REQUESTS_COLLECTION
+SONG_REQUEST_VOTES_COLLECTION = "song_request_votes"  # song_request_service.VOTES_COLLECTION
+EMAIL_LOG_COLLECTION = "email_log"  # postmark_admin_service / email_service
 
 REVENUECAT_SUBSCRIBERS_URL = "https://api.revenuecat.com/v1/subscribers/{app_user_id}"
 _HTTP_TIMEOUT_SECONDS = 20
 
 # Job statuses that are finished; everything else counts as "in progress".
 TERMINAL_STATUSES = frozenset({"complete", "prep_complete", "failed", "cancelled", "error"})
+# GCS prefixes that hold only what the user supplied (or edits of it), never outputs:
+# - uploads/{id}/          signed-URL / multipart uploads, downloaded source audio, lyrics files
+# - jobs/{id}/input/       the persisted copy of uploads/ (backend/services/input_persistence.py)
+# - jobs/{id}/uploads/     a custom instrumental uploaded in review (routes/jobs.py
+#                          _instrumental_source_prefix); its output stems/custom_instrumental.flac stays
+# - jobs/{id}/audio_edit/  audio-edit uploads (upload_*), edited input mixes (edit_*), edit log, waveform
+# - jobs/{id}/style/       style params and the user's uploaded backgrounds / font
+INPUT_PREFIXES = (
+    "uploads/{job_id}/",
+    "jobs/{job_id}/input/",
+    "jobs/{job_id}/uploads/",
+    "jobs/{job_id}/audio_edit/",
+    "jobs/{job_id}/style/",
+)
+# Job-root copies of the user's own instrumental (backend/utils/existing_instrumental.py).
+STAGED_INSTRUMENTAL_STEMS = ("custom_instrumental", "existing_instrumental")
 # Personal keys inside a job's state_data (names, emails, notification addresses).
 PERSONAL_STATE_KEYS = ("customer_email", "customer_name", "notification_email", "display_name")
 
 # 409 reason codes (the app and web show "Contact support to close this account").
-REFUSAL_CODES = ("admin", "referral_balance", "connect_account", "kj_partner", "order_in_progress")
+REFUSAL_CODES = ("admin", "referral_balance", "connect_account", "order_in_progress")
 
 
 def email_sha256(email: str) -> str:
@@ -94,6 +123,36 @@ class AccountDeletionStepFailed(Exception):
     def __init__(self, step: str):
         super().__init__(step)
         self.step = step
+
+
+class RevenueCatError(RuntimeError):
+    """RevenueCat answered non-2xx (other than 404)."""
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    """A transient remote/platform failure the client's retry is expected to clear."""
+    if isinstance(exc, (DecidePartnerError, RevenueCatError, httpx.HTTPError, TransactionContention)):
+        return True
+    if isinstance(exc, (
+        google_exceptions.ServerError,  # 5xx incl. ServiceUnavailable, DeadlineExceeded
+        google_exceptions.TooManyRequests,
+        google_exceptions.Aborted,
+    )):
+        return True
+    # Dropbox SDK transient errors (imported lazily: the SDK is optional at import time)
+    return type(exc).__name__ in ("InternalServerError", "RateLimitError") and type(exc).__module__.startswith("dropbox")
+
+
+def _log_step_failure(deletion_id: str, step: str, exc: BaseException) -> None:
+    """#alerts rule: a retryable failure is a WARNING (the client retries on 503);
+    anything unexpected is an ERROR, once per request, naming the step."""
+    if _is_retryable(exc):
+        logger.warning(
+            "Account deletion %s: step %s failed (%s: %s); client will retry",
+            deletion_id, step, type(exc).__name__, exc,
+        )
+    else:
+        logger.exception("Account deletion %s failed at step %s; client will retry", deletion_id, step)
 
 
 def _now() -> datetime:
@@ -226,10 +285,6 @@ class AccountDeletionService:
             return "referral_balance"
         if user.get("stripe_connect_account_id"):
             return "connect_account"
-        if self.db.collection(SHOW_CREDIT_USERS_COLLECTION).document(email_sha256(email)).get().exists:
-            return "kj_partner"
-        if self._any(self.db.collection(SHOW_CREDITS_COLLECTION).where(filter=FieldFilter("email", "==", email))):
-            return "kj_partner"
         if any(self._is_active(snap.to_dict() or {}) for snap in self._customer_jobs(email)):
             return "order_in_progress"
         return None
@@ -263,13 +318,19 @@ class AccountDeletionService:
         """Run every deletion step. Raises AccountNotFound / AccountDeletionRefused /
         AccountDeletionStepFailed; returns a per-step summary on success."""
         email = email.strip().lower()
-        user = self._load_user(email)
-        code = self.refusal_code(email, user, is_admin=is_admin)
-        if code:
-            logger.info("Account deletion refused (%s)", code)
-            raise AccountDeletionRefused(code)
+        try:
+            user = self._load_user(email)
+            code = self.refusal_code(email, user, is_admin=is_admin)
+            if code:
+                logger.info("Account deletion refused (%s)", code)
+                raise AccountDeletionRefused(code)
+            deletion_id = self._ensure_deletion_id(email)
+        except (AccountNotFound, AccountDeletionRefused):
+            raise
+        except Exception as e:
+            _log_step_failure("-", "preconditions", e)
+            raise AccountDeletionStepFailed("preconditions")
 
-        deletion_id = self._ensure_deletion_id(email)
         summary: Dict[str, Any] = {"deletion_id": deletion_id}
         steps = (
             ("jobs", lambda: self._cancel_active_jobs(email)),
@@ -283,8 +344,8 @@ class AccountDeletionService:
         for step, run in steps:
             try:
                 summary[step] = run()
-            except Exception:
-                logger.exception("Account deletion %s failed at step %s; client will retry", deletion_id, step)
+            except Exception as e:
+                _log_step_failure(deletion_id, step, e)
                 raise AccountDeletionStepFailed(step)
 
         # A token that was still valid mid-run could have recreated a decide profile.
@@ -336,7 +397,7 @@ class AccountDeletionService:
         if resp.status_code == 404:
             return "absent"
         if not 200 <= resp.status_code < 300:
-            raise RuntimeError(f"RevenueCat delete returned HTTP {resp.status_code}")
+            raise RevenueCatError(f"RevenueCat delete returned HTTP {resp.status_code}")
         return "deleted"
 
     # Step 5
@@ -397,6 +458,23 @@ class AccountDeletionService:
                 pass
         return deleted
 
+    def _delete_staged_instrumentals(self, job_id: str) -> int:
+        """The user's own instrumental, copied to the job root (``jobs/{id}/custom_instrumental.<ext>``,
+        ``jobs/{id}/existing_instrumental.<ext>``; see backend/utils/existing_instrumental.py).
+        Only direct children of the job root: ``stems/custom_instrumental.flac`` is an output."""
+        root = f"jobs/{job_id}/"
+        deleted = 0
+        for blob in self.bucket.list_blobs(prefix=root):
+            rel = blob.name[len(root):]
+            if "/" in rel or rel.rsplit(".", 1)[0] not in STAGED_INSTRUMENTAL_STEMS:
+                continue
+            try:
+                blob.delete()
+                deleted += 1
+            except google_exceptions.NotFound:
+                pass
+        return deleted
+
     def _scrub_job(self, snap, email: str, deletion_id: str) -> dict:
         """Delete one job's inputs, revoke its share link, then anonymise the doc.
 
@@ -407,12 +485,12 @@ class AccountDeletionService:
         data = snap.to_dict() or {}
         state = data.get("state_data") or {}
 
-        deleted = self._delete_prefix(f"uploads/{job_id}/") + self._delete_prefix(f"jobs/{job_id}/input/")
+        deleted = sum(self._delete_prefix(prefix.format(job_id=job_id)) for prefix in INPUT_PREFIXES)
+        deleted += self._delete_staged_instrumentals(job_id)
 
         link = state.get("dropbox_link")
         revoked = 0
-        if link:
-            self.dropbox.revoke_shared_link(link)
+        if link and self.dropbox.revoke_shared_link(link) is not False:
             revoked = 1
 
         tomb = deleted_owner(deletion_id)
@@ -473,12 +551,93 @@ class AccountDeletionService:
                 ref.delete()
                 login_codes += 1
         summary["login_codes"] = login_codes
+        summary["anonymised"] = self._anonymise_kept_records(email, deletion_id)
+        summary["email_log"] = self._delete_where(EMAIL_LOG_COLLECTION, "recipient", email)
         # Sessions, then the user doc, last: a failure before here leaves the
         # user signed in so the app can retry. (Web Push subscriptions and Expo
         # push tokens live on the user doc and go with it.)
+        # Narrow window: if the user-doc delete below fails after the sessions are
+        # gone, the app can't retry with its old token, but the gen_users doc (with
+        # its deletion_id) is still there, so the user can sign in again and retry,
+        # and the retry reuses the same deletion_id.
         summary["sessions"] = self._delete_where(SESSIONS_COLLECTION, "user_email", email)
         user_ref.delete()
         return summary
+
+    def _anonymise_where(self, collection: str, field: str, email: str, tomb: str, extra=None) -> int:
+        """Replace ``field == email`` with the tombstone (plus ``extra`` updates) on every match."""
+        count = 0
+        for snap in self.db.collection(collection).where(filter=FieldFilter(field, "==", email)).stream():
+            snap.reference.update({field: tomb, **(extra(snap.to_dict() or {}) if extra else {})})
+            count += 1
+        return count
+
+    def _move_doc(self, collection: str, snap, new_id: str, updates: dict) -> None:
+        """Re-key a doc whose id contains the email (create the new doc first, then delete)."""
+        data = snap.to_dict() or {}
+        data.update(updates)
+        self.db.collection(collection).document(new_id).set(data)
+        snap.reference.delete()
+
+    def _anonymise_kept_records(self, email: str, deletion_id: str) -> dict:
+        """Records kept for accounting or history, with the email replaced by ``deleted:{id}``.
+
+        Idempotent: every lookup is by the email, which a finished pass has removed.
+        """
+        tomb = deleted_owner(deletion_id)
+        out: Dict[str, int] = {}
+
+        # kjbox show-credit grants: per-singer free-credit accounting (doc ids are hashes).
+        out["kjbox_show_credits"] = self._anonymise_where(SHOW_CREDITS_COLLECTION, "email", email, tomb)
+        counter = self.db.collection(SHOW_CREDIT_USERS_COLLECTION).document(email_sha256(email))
+        snap = counter.get()
+        if snap.exists and (snap.to_dict() or {}).get("email") == email:
+            counter.update({"email": tomb})
+            out["kjbox_show_credit_users"] = 1
+
+        # The user's own referral link: disabled (ReferralLink.enabled) and anonymised.
+        out["referral_links"] = self._anonymise_where(
+            REFERRAL_LINKS_COLLECTION, "owner_email", email, tomb,
+            extra=lambda d: {"enabled": False, "display_name": None, "custom_message": None},
+        )
+
+        # Vanity requests are keyed by the owner's email: re-key them.
+        moved = 0
+        vanity = self.db.collection(REFERRAL_VANITY_REQUESTS_COLLECTION)
+        for snap in vanity.where(filter=FieldFilter("owner_email", "==", email)).stream():
+            self._move_doc(REFERRAL_VANITY_REQUESTS_COLLECTION, snap, tomb, {"id": tomb, "owner_email": tomb})
+            moved += 1
+        out["referral_vanity_requests"] = moved
+
+        def _scrub_reasoning(d):
+            reasoning = d.get("reasoning")
+            return {"reasoning": reasoning.replace(email, tomb)} if isinstance(reasoning, str) and email in reasoning else {}
+
+        out["credit_evaluations"] = self._anonymise_where(
+            CREDIT_EVALUATIONS_COLLECTION, "email", email, tomb, extra=_scrub_reasoning)
+
+        # Song requests: submitter, current owner and the handoff history.
+        requests = self.db.collection(SONG_REQUESTS_COLLECTION)
+        touched = set()
+        for field in ("submitted_by", "owner_email"):
+            for snap in requests.where(filter=FieldFilter(field, "==", email)).stream():
+                snap.reference.update({field: tomb})
+                touched.add(snap.id)
+        for snap in requests.where(filter=FieldFilter("attempted_owners", "array_contains", email)).stream():
+            owners = [tomb if o == email else o for o in (snap.to_dict() or {}).get("attempted_owners") or []]
+            snap.reference.update({"attempted_owners": owners})
+            touched.add(snap.id)
+        out["song_requests"] = len(touched)
+
+        # Votes are keyed "{email}__{date}": re-key them so the vote totals stay explainable.
+        votes = 0
+        for snap in self.db.collection(SONG_REQUEST_VOTES_COLLECTION).where(
+                filter=FieldFilter("voter_email", "==", email)).stream():
+            day = (snap.to_dict() or {}).get("voted_date") or snap.id.rsplit("__", 1)[-1]
+            self._move_doc(SONG_REQUEST_VOTES_COLLECTION, snap, f"{tomb}__{day}", {"voter_email": tomb})
+            votes += 1
+        out["song_request_votes"] = votes
+        return out
 
     # ------------------------------------------------------------ kjbox queue
 

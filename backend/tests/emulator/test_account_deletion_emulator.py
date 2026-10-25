@@ -88,7 +88,9 @@ def _seed(db, bucket):
         "made_for_you": True, "customer_email": email, "customer_notes": "invented note", "state_data": {},
     })
     for name in (f"uploads/{job_id}/audio/mix.flac", f"jobs/{job_id}/input/audio/mix.flac",
-                 f"jobs/{job_id}/finals/out.mp4", f"jobs/{job_id}/stems/vocals.flac"):
+                 f"jobs/{job_id}/uploads/custom_instrumental_source.wav", f"jobs/{job_id}/custom_instrumental.wav",
+                 f"jobs/{job_id}/finals/out.mp4", f"jobs/{job_id}/stems/vocals.flac",
+                 f"jobs/{job_id}/stems/custom_instrumental.flac"):
         bucket.blob(name).upload_from_string(b"x")
     return email, job_id, mfy_id
 
@@ -101,6 +103,12 @@ def test_full_deletion_against_emulators(db, bucket):
     cancelled = []
     svc = _service(db, bucket, cancelled)
     email, job_id, mfy_id = _seed(db, bucket)
+    req_id = f"req-{uuid.uuid4().hex[:8]}"
+    db.collection("song_requests").document(req_id).set(
+        {"submitted_by": "x@example.com", "owner_email": "x@example.com", "attempted_owners": ["x@example.com", email]})
+    db.collection("kjbox_show_credit_users").document(email_sha256(email)).set({"email": email, "grant_times": []})
+    log_id = f"log-{uuid.uuid4().hex[:8]}"
+    db.collection("email_log").document(log_id).set({"recipient": email, "subject": "s"})
     session_id = f"sess-{uuid.uuid4().hex}"
     db.collection("sessions").document(session_id).set({"user_email": email, "is_active": True})
 
@@ -124,7 +132,15 @@ def test_full_deletion_against_emulators(db, bucket):
 
     assert _names(bucket, f"uploads/{job_id}/") == set()
     assert _names(bucket, f"jobs/{job_id}/input/") == set()
-    assert _names(bucket, f"jobs/{job_id}/") == {f"jobs/{job_id}/finals/out.mp4", f"jobs/{job_id}/stems/vocals.flac"}
+    assert _names(bucket, f"jobs/{job_id}/") == {
+        f"jobs/{job_id}/finals/out.mp4", f"jobs/{job_id}/stems/vocals.flac",
+        f"jobs/{job_id}/stems/custom_instrumental.flac"}
+
+    assert db.collection("song_requests").document(req_id).get().to_dict()["attempted_owners"] == [
+        "x@example.com", f"deleted:{deletion_id}"]
+    assert db.collection("kjbox_show_credit_users").document(email_sha256(email)).get().to_dict()["email"] == \
+        f"deleted:{deletion_id}"
+    assert not db.collection("email_log").document(log_id).get().exists
 
     tomb = db.collection("deleted_users").document(deletion_id).get().to_dict()
     assert tomb["email_sha256"] == email_sha256(email) and email not in repr(tomb)
