@@ -393,6 +393,11 @@ class Settings(BaseSettings):
     # ip-api, encoding VM) are skipped. Startup refuses it in production.
     # See backend/services/fake_workers/ and docs/TESTING.md § Local stack.
     fake_workers: bool = os.getenv("FAKE_WORKERS", "").lower() in ("1", "true", "yes")
+    # Mobile app account deletion (POST /api/users/me/delete). Off in prod until
+    # Andrew's manual pass; on in the local stack.
+    account_deletion_enabled: bool = os.getenv("ACCOUNT_DELETION_ENABLED", "").lower() in ("1", "true", "yes")
+    # App Review demo login: inert unless this AND the app-review-demo-code secret are set.
+    app_review_demo_email: str = os.getenv("APP_REVIEW_DEMO_EMAIL", "")
     # URL scheme of the Nomad Karaoke mobile app. App checkouts return through
     # GET /api/users/credits/app-return, which 302s to {scheme}://checkout?status=…
     mobile_app_scheme: str = os.getenv("MOBILE_APP_SCHEME", "nomadkaraoke")

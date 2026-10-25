@@ -123,6 +123,28 @@ class UserService:
             logger.exception(f"Error getting user {email}")
             return None
 
+    def ensure_app_user_id(self, email: str) -> str:
+        """Return the user's mobile-app id, minting a UUID4 once.
+
+        Read-then-set-if-absent inside a Firestore transaction, so concurrent
+        callers all end up with the same id.
+        """
+        import uuid
+
+        doc_ref = self.get_user_doc_ref(email) or self.db.collection(USERS_COLLECTION).document(email.lower())
+
+        @firestore.transactional
+        def mint(transaction):
+            snap = doc_ref.get(transaction=transaction)
+            existing = (snap.to_dict() or {}).get("app_user_id") if snap.exists else None
+            if existing:
+                return existing
+            new_id = str(uuid.uuid4())
+            transaction.set(doc_ref, {"app_user_id": new_id}, merge=True)
+            return new_id
+
+        return mint(self.db.transaction())
+
     def get_or_create_user(
         self,
         email: str,

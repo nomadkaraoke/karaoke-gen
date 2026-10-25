@@ -186,10 +186,25 @@ class CreditPackagesResponse(BaseModel):
     packages: list[CreditPackage]
 
 
+class UserCapabilities(BaseModel):
+    """Server-side feature switches the mobile app reads from /me."""
+    account_deletion: bool = False
+
+
+class PushPrefs(BaseModel):
+    """Mobile push categories; all default on."""
+    ready: bool = True
+    review: bool = True
+    problems: bool = True
+
+
 class UserProfileResponse(BaseModel):
     """Response with user profile."""
     user: UserPublic
     has_session: bool
+    app_user_id: Optional[str] = None
+    capabilities: UserCapabilities = UserCapabilities()
+    push_prefs: PushPrefs = PushPrefs()
 
 
 class LogoutResponse(BaseModel):
@@ -901,6 +916,18 @@ def logout(
 # User Profile
 # =============================================================================
 
+def _profile_response(user, user_public, user_service) -> UserProfileResponse:
+    """Wrap UserPublic with the mobile-app fields (app_user_id, capabilities, push_prefs)."""
+    stored = getattr(user, "push_prefs", None) or {}
+    return UserProfileResponse(
+        user=user_public,
+        has_session=True,
+        app_user_id=user_service.ensure_app_user_id(user.email),
+        capabilities=UserCapabilities(account_deletion=get_settings().account_deletion_enabled),
+        push_prefs=PushPrefs(**{k: bool(v) for k, v in stored.items() if k in PushPrefs.model_fields}),
+    )
+
+
 @router.get("/me", response_model=UserProfileResponse)
 def get_current_user(
     request: Request,
@@ -937,7 +964,7 @@ def get_current_user(
             role_override=UserRole.ADMIN if auth_result.is_admin else None,
             feedback_eligible=feedback_eligible,
         )
-        return UserProfileResponse(user=user_public, has_session=True)
+        return _profile_response(user, user_public, user_service)
 
     # Fall back to session validation (for magic link sessions)
     valid, user, message = user_service.validate_session(token)
@@ -951,7 +978,7 @@ def get_current_user(
     )
     user_public = _build_user_public(user, feedback_eligible=feedback_eligible)
 
-    return UserProfileResponse(user=user_public, has_session=True)
+    return _profile_response(user, user_public, user_service)
 
 
 # =============================================================================

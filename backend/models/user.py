@@ -9,7 +9,7 @@ Supports:
 """
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Annotated, Optional, List, Dict
+from typing import Annotated, Literal, Optional, List, Dict
 from pydantic import BaseModel, EmailStr, Field, StringConstraints
 
 
@@ -47,6 +47,15 @@ class PushSubscription(BaseModel):
     tenant_id: Optional[str] = None  # Tenant scope (None = consumer/default portal)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_used_at: Optional[datetime] = None  # Last time a notification was sent
+
+
+class ExpoPushToken(BaseModel):
+    """Expo push token for one device of the Nomad Karaoke mobile app."""
+    token: str
+    platform: Literal["ios", "android"]
+    device_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_used_at: Optional[datetime] = None
 
 
 class User(BaseModel):
@@ -104,6 +113,14 @@ class User(BaseModel):
     # Push notification subscriptions (Web Push API)
     # Users can subscribe from multiple devices/browsers
     push_subscriptions: List[PushSubscription] = Field(default_factory=list)
+
+    # Mobile app: opaque UUID4 sent to RevenueCat (never the email), minted once
+    # by UserService.ensure_app_user_id
+    app_user_id: Optional[str] = None
+    # Mobile push categories ("ready", "review", "problems"); missing key = on
+    push_prefs: Dict[str, bool] = Field(default_factory=dict)
+    # Expo push tokens, one per signed-in device (a token belongs to one user)
+    expo_push_tokens: List[ExpoPushToken] = Field(default_factory=list)
 
     # Feedback-for-credits program
     has_submitted_feedback: bool = False
