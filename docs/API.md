@@ -1821,6 +1821,8 @@ Authorization: Bearer SESSION_TOKEN
 
 Response includes `feedback_eligible: bool` indicating whether the user can earn credits by submitting feedback (requires 2+ completed jobs and no prior feedback submission).
 
+Mobile-app fields: `app_user_id` (stable RevenueCat app user id; links IAP purchases to the account), `capabilities.account_deletion` (true only when `ACCOUNT_DELETION_ENABLED` is set), and `push_prefs` (`{ready, review, problems}` booleans, default all true).
+
 ### Logout
 
 ```http
@@ -1836,6 +1838,69 @@ Authorization: Bearer SESSION_TOKEN
 ```
 
 Grants the standard one-time welcome credit to a signed-in user (idempotent — once per account, with the usual abuse evaluation). Powers the voting board's "Make it yourself now" conversion: board sign-in grants no credit, so this claims it before sending the user into the generator. Returns `{status, credits, credits_granted}`.
+
+## Mobile App Endpoints
+
+### Push Preferences
+
+```http
+PATCH /api/users/me/push-prefs
+Authorization: Bearer SESSION_TOKEN
+{"ready": true, "review": false, "problems": true}   # any subset
+```
+
+Returns the merged `{ready, review, problems}`. Read the current values from `push_prefs` on `GET /api/users/me`. Both Expo and Web Push honour them.
+
+### Expo Push Token
+
+```http
+POST   /api/push/expo-token   {"token": "ExponentPushToken[...]", "device_id": "..."}   -> 204
+DELETE /api/push/expo-token   {"token": "ExponentPushToken[...]"}                        -> 204
+```
+
+Registers/removes the signed-in user's device for native push (sent via the Expo push service).
+
+### Account Deletion (App Store 5.1.1(v) / Google Play)
+
+All three return `404` unless `ACCOUNT_DELETION_ENABLED` is set (keep unset in prod until the app release ships).
+
+```http
+GET    /api/users/me/deletion-preview   -> credits lost, videos cancelled; 409 {"code"} if deletion is refused
+DELETE /api/users/me                    {"apple_authorization_code": "..."}  (body optional)
+```
+
+`DELETE` erases the account (Stripe, Dropbox, GCS/Firestore data, Apple Sign-In revoke when `apple_authorization_code` is given) and returns `{"deleted": true, "summary": {...}}`. `409 {"code"}` = refused (e.g. active job), `503 {"step"}` = a step failed; safe to retry. Deletions are queued for kjbox to erase its copy (below). The web equivalent is the `/account/delete` page.
+
+### RevenueCat Webhook
+
+```http
+POST /api/users/webhooks/revenuecat
+Authorization: <REVENUECAT_WEBHOOK_AUTH value>
+```
+
+Credits in-app credit-pack purchases (and reverses refunds). `503` while `REVENUECAT_WEBHOOK_AUTH` is unset, `401` on mismatch, `400` on malformed body. Handled outcomes (including duplicates and unmatched users) return 200; a Firestore failure returns 5xx so RevenueCat retries. Code: `backend/services/iap_service.py`.
+
+### kjbox Account Deletions (partner, `X-Kjbox-Secret`)
+
+```http
+GET  /api/kjbox/account-deletions?since=ISO8601   -> {"deletions": [{id, email_hash, created_at}]}
+POST /api/kjbox/account-deletions/{id}/ack        -> 204 (404 if unknown)
+```
+
+kjbox pulls pending deletions (only the sha256 of the email), erases matching data, then acks.
+
+### Test-Support Routes (local E2E stack only)
+
+Mounted only when fake workers are enabled (never in production): `POST /api/test/fake-iap/purchase` and `/refund` simulate RevenueCat events (`product_id`, `email` or `app_user_id`, optional `transaction_id`); `GET`/`DELETE /api/test/push-outbox?to=` inspect/clear captured pushes.
+
+### Mobile App Config (env)
+
+| Env | Purpose |
+|-----|---------|
+| `REVENUECAT_WEBHOOK_AUTH` / `REVENUECAT_SECRET_API_KEY` | Webhook auth header / RevenueCat REST key (Secret Manager `revenuecat-webhook-auth`, `revenuecat-secret-api-key`) |
+| `ACCOUNT_DELETION_ENABLED` | Enables the account-deletion endpoints and `capabilities.account_deletion`; unset in prod until release |
+| `APP_REVIEW_DEMO_EMAIL` / `APP_REVIEW_DEMO_CODE` | App Review demo sign-in: that email accepts the fixed code (`app-review-demo-code`); leave `APP_REVIEW_DEMO_EMAIL` unset in prod except during review |
+| `APPLE_SIWA_KEY_P8` / `APPLE_SIWA_KEY_ID` | Sign in with Apple key, used to revoke tokens on account deletion (not yet provisioned) |
 
 ## Requests Voting Board
 
