@@ -36,7 +36,7 @@ from google.cloud.firestore_v1 import DELETE_FIELD
 
 from backend.models.job import JobStatus
 from backend.exceptions import InvalidStateTransitionError
-from backend.services.job_manager import JobManager
+from backend.services.job_manager import JobManager, with_notification_drain
 from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.input_recovery import recover_missing_inputs
 from backend.services.storage_service import StorageService
@@ -2003,7 +2003,9 @@ def main():
     
     # Run the async worker function
     try:
-        success = asyncio.run(generate_video(job_id))
+        # Drain: push/email sends scheduled by the job's last state change must
+        # finish before asyncio.run cancels pending tasks on exit.
+        success = asyncio.run(with_notification_drain(generate_video(job_id)))
         if success:
             logger.info(f"Video generation completed successfully for job {job_id}")
             sys.exit(0)

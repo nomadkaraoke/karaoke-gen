@@ -29,7 +29,7 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from backend.models.job import JobStatus
-from backend.services.job_manager import JobManager
+from backend.services.job_manager import JobManager, with_notification_drain
 from backend.services.input_persistence import ensure_job_inputs_persisted
 from backend.services.storage_service import StorageService
 from backend.services.audio_search_service import DownloadError
@@ -1033,7 +1033,9 @@ def main():
 
     # Run the async worker function
     try:
-        success = asyncio.run(process_lyrics_transcription(job_id))
+        # Drain: push/email sends scheduled by the job's last state change must
+        # finish before asyncio.run cancels pending tasks on exit.
+        success = asyncio.run(with_notification_drain(process_lyrics_transcription(job_id)))
         if success:
             logger.info(f"Lyrics transcription completed successfully for job {job_id}")
             sys.exit(0)

@@ -26,7 +26,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from backend.models.job import JobStatus
-from backend.services.job_manager import JobManager
+from backend.services.job_manager import JobManager, with_notification_drain
 from backend.services.storage_service import StorageService
 from backend.config import get_settings
 from backend.services.fake_workers import fake_workers_enabled
@@ -711,7 +711,9 @@ def main():
     logger.info(f"Starting audio download worker for job {job_id}")
 
     try:
-        success = asyncio.run(process_audio_download(job_id))
+        # Drain: push/email sends scheduled by the job's last state change must
+        # finish before asyncio.run cancels pending tasks on exit.
+        success = asyncio.run(with_notification_drain(process_audio_download(job_id)))
         if success:
             logger.info(f"Audio download completed successfully for job {job_id}")
             sys.exit(0)
