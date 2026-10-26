@@ -442,6 +442,14 @@
       "refundNote": "Kung mag-expire man ito, awtomatikong ire-refund ang iyong credit.",
       "subject": "{hours} oras na lang para tapusin ang iyong karaoke video: {song}",
       "subjectFallback": "{hours} oras na lang para tapusin ang iyong karaoke video"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Kailangan ng mabilisang pagpili para sa iyong libreng track mula sa requests board",
+      "help": "Kung wala sa mga opsyon ang tama, maaari kang mag-paste ng link o mag-upload ng file sa halip. Mag-reply lang sa email na ito kung kailangan mo ng tulong.",
+      "intro": "Sinuportahan mo ang \"{artist} - {title}\" sa aming requests board at napili itong gawin ngayon. Hindi kami makahanap ng malinaw na tamang audio source, kaya pakipili ang tama para sa iyo (sandali lang ito).",
+      "subject": "Pakipili ang audio para sa {artist} - {title}",
+      "button": "Piliin ang audio"
+    },
+    "communityPickNote": "Nagmula ang kantang ito sa Nomad Karaoke requests board: sinuportahan mo ito, at napili ito bilang libreng track ngayong araw. Pakisuri ang lyrics sa ibaba at ipa-publish na ito para sa lahat.\n\n"
   }
 }

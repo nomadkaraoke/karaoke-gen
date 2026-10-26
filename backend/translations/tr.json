@@ -442,6 +442,14 @@
       "refundNote": "Süresi dolarsa kredin otomatik olarak iade edilir.",
       "subject": "Karaoke videonu tamamlamak için son {hours} saat: {song}",
       "subjectFallback": "Karaoke videonu tamamlamak için son {hours} saat"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "İstek panosundaki ücretsiz parçan için hızlı bir seçim yapman gerekiyor",
+      "help": "Seçeneklerden hiçbiri doğru değilse bunun yerine bir bağlantı yapıştırabilir veya bir dosya yükleyebilirsin. Takıldığın bir yer olursa bu e-postayı yanıtlaman yeterli.",
+      "intro": "İstek panomuzda \"{artist} - {title}\" parçasını desteklemiştin ve şarkı bugün hazırlanmak üzere seçildi. Kesin olarak doğru tek bir ses kaynağı bulamadığımız için doğru olanı lütfen kendin seç (yalnızca birkaç saniye sürer).",
+      "subject": "Lütfen {artist} - {title} için ses kaynağını seç",
+      "button": "Ses kaynağını seç"
+    },
+    "communityPickNote": "Bu şarkı Nomad Karaoke istek panosundan geldi: şarkıyı sen destekledin ve bugünün ücretsiz parçası olarak seçildi. Lütfen aşağıdaki şarkı sözlerini incele; sonrasında herkes için yayınlanacak.\n\n"
   }
 }

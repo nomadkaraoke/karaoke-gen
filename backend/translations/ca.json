@@ -442,6 +442,14 @@
       "refundNote": "Si arriba a caducar, et reemborsarem el crèdit automàticament.",
       "subject": "Queden {hours} hores per acabar el teu vídeo de karaoke: {song}",
       "subjectFallback": "Queden {hours} hores per acabar el teu vídeo de karaoke"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "La teva pista gratuïta del tauler de peticions necessita una decisió ràpida",
+      "help": "Si cap de les opcions és correcta, pots enganxar un enllaç o pujar un fitxer. Només cal que responguis a aquest correu si et cal ajuda.",
+      "intro": "Vas donar suport a «{artist} - {title}» al nostre tauler de peticions i ha estat seleccionada per crear-se avui. No hem pogut trobar una font d'àudio clarament correcta, així que tria tu mateix la bona (només són uns segons).",
+      "subject": "Tria l'àudio per a {artist} - {title}",
+      "button": "Tria l'àudio"
+    },
+    "communityPickNote": "Aquesta cançó prové del tauler de peticions de Nomad Karaoke: li vas donar suport i ha estat triada com la pista gratuïta d'avui. Revisa la lletra de sota i es publicarà per a tothom.\n\n"
   }
 }

@@ -25,13 +25,15 @@ RequestStatus = Literal[
 
 # Where a request came from. Phase 2's trending-karaoke agent submits with
 # source="trending_agent"; everything a human submits is "human"; the YouTube
-# comment bot (backend/services/youtube_comment_bot.py) adds "youtube_comment".
+# comment bot (backend/services/youtube_comment_bot.py) USED to add "youtube_comment"
+# (legacy rows only: the bot now just replies with a link to the board).
 RequestSource = Literal["human", "trending_agent", "youtube_comment"]
 
-# submitted_by placeholder for requests the YouTube comment bot adds on a
-# commenter's behalf (no email yet). The first real up-voter claims the request
-# (becomes submitted_by); until then the daily picker skips it, so a free credit
-# can never be granted to this address.
+# LEGACY submitted_by placeholder from the retired "bot adds the request on the
+# commenter's behalf" flow (before 2026-10-26). Nothing creates requests with it any
+# more: every board request must be linked to a real user email (see
+# SongRequestService.require_real_email). Kept only so legacy rows are recognisable and
+# are never shown, picked or granted a credit.
 YOUTUBE_COMMENT_SUBMITTER = "youtube-comment@nomadkaraoke.com"
 
 # Existing-community-version review state (set when the daily picker's KaraokeNerds
@@ -161,6 +163,10 @@ class SubmitRequestBody(BaseModel):
 
 class VoteBody(BaseModel):
     direction: Literal["up", "down"]
+    # Set after the user has confirmed that removing their (last) up-vote deletes the
+    # request from the board. Without it such a vote is refused with 409
+    # `would_delete_request` so the UI can show the warning first.
+    confirm_delete: bool = False
 
 
 class SongRequestPublic(BaseModel):
@@ -178,6 +184,9 @@ class SongRequestPublic(BaseModel):
     was_corrected: bool = False
     # Per-viewer annotation (only set when the caller is authenticated).
     your_vote: Optional[int] = None  # +1 / -1 / None
+    # Only ever True on a vote response: the vote removed the request's last up-vote, so
+    # the request was deleted from the board.
+    request_deleted: bool = False
 
 
 class SubmitResponse(BaseModel):

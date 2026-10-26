@@ -65,26 +65,9 @@ class ServiceBoard:
             return None
         return bot.BoardMatch(req.id, req.artist, req.title, req.status, req.youtube_url)
 
-    def add_from_comment(self, artist: str, title: str, thread: bot.CommentThread) -> bot.BoardMatch:
-        req = self.service.add_from_youtube_comment(
-            artist, title, comment_id=thread.comment_id, video_id=thread.video_id, author=thread.author)
-        return bot.BoardMatch(req.id, req.artist, req.title, req.status, req.youtube_url)
-
 
 class DryRunBoard(ServiceBoard):
-    """Reads the real board, simulates adds (dry runs write nothing)."""
-
-    def __init__(self, service):
-        super().__init__(service)
-        self.simulated: Dict[str, bot.BoardMatch] = {}
-
-    def find_open_or_published(self, artist, title):
-        return self.simulated.get(bot.song_key(artist, title)) or super().find_open_or_published(artist, title)
-
-    def add_from_comment(self, artist, title, thread):
-        match = bot.BoardMatch(f"dry-run-{thread.comment_id}", artist, title, "open")
-        self.simulated[bot.song_key(artist, title)] = match
-        return match
+    """Same read-only board access; kept as a distinct type for the dry-run path."""
 
 
 def _load_credentials(settings) -> Optional[Dict]:

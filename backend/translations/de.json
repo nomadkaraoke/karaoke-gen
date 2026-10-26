@@ -442,6 +442,14 @@
       "refundNote": "Sollte der Link ablaufen, wird dir dein Guthaben automatisch zurückerstattet.",
       "subject": "Noch {hours} Stunden, um dein Karaoke-Video fertigzustellen: {song}",
       "subjectFallback": "Noch {hours} Stunden, um dein Karaoke-Video fertigzustellen"
-    }
+    },
+    "communityAudioSelection": {
+      "subject": "Bitte wähle die Audiodatei für {artist} - {title}",
+      "heading": "Dein kostenloser Wunschlisten-Track erfordert eine kurze Entscheidung",
+      "intro": "Du hast „{artist} - {title}“ auf unserer Wunschliste unterstützt, und der Song wurde ausgewählt, um heute erstellt zu werden. Wir konnten keine eindeutig richtige Audioquelle finden. Bitte wähle daher selbst die passende aus (es dauert nur wenige Sekunden).",
+      "button": "Wähle das Audio aus",
+      "help": "Wenn keine der Optionen passt, kannst du stattdessen einen Link einfügen oder eine Datei hochladen. Antworte einfach auf diese E-Mail, wenn du nicht weiterkommst."
+    },
+    "communityPickNote": "Dieser Song stammt von der Nomad Karaoke-Wunschliste: Du hast ihn unterstützt, und er wurde als heutiger kostenloser Track ausgewählt. Bitte überprüfe den Songtext unten, damit er für alle veröffentlicht werden kann.\n\n"
   }
 }

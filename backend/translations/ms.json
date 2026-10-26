@@ -442,6 +442,14 @@
       "refundNote": "Jika tempohnya tamat, kredit anda akan dikembalikan secara automatik.",
       "subject": "Tinggal {hours} jam lagi untuk siapkan video karaoke anda: {song}",
       "subjectFallback": "Tinggal {hours} jam lagi untuk siapkan video karaoke anda"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Trek percuma papan permintaan anda memerlukan satu pilihan pantas",
+      "help": "Jika tiada pilihan yang betul, anda boleh menampal pautan atau memuat naik fail. Balas sahaja e-mel ini jika anda memerlukan bantuan.",
+      "intro": "Anda telah menyokong \"{artist} - {title}\" di papan permintaan kami dan lagu ini telah terpilih untuk dihasilkan hari ini. Kami tidak dapat mencari sumber audio yang tepat secara pasti, jadi sila pilih audio yang betul sendiri (hanya mengambil masa beberapa saat).",
+      "subject": "Sila pilih audio untuk {artist} - {title}",
+      "button": "Pilih audio"
+    },
+    "communityPickNote": "Lagu ini berasal daripada papan permintaan Nomad Karaoke: anda telah menyokongnya, dan lagu ini telah terpilih sebagai trek percuma hari ini. Sila semak lirik di bawah sebelum ia diterbitkan untuk tatapan semua orang.\n\n"
   }
 }

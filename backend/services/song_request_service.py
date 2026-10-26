@@ -34,9 +34,14 @@ REQUESTS_COLLECTION = "song_requests"
 VOTES_COLLECTION = "song_request_votes"
 # Per-UTC-day lock/ledger for the daily free-track picker (Phase 2).
 DAILY_PICK_COLLECTION = "daily_community_pick"
+# One create-only marker per {email}__{UTC day}: enforces the per-day submission cap even
+# after a request is deleted (deleting it must not hand back the day's submission).
+SUBMISSIONS_COLLECTION = "song_request_submissions"
 
-# Soft anti-spam cap on how many distinct requests one person can submit per day.
-MAX_SUBMISSIONS_PER_DAY = 15
+# One new request per person per day. Submitting also spends the day's single vote (the
+# submitter's endorsement), so free users get at most one thing made per day and anyone
+# who wants more / faster is nudged to buy a credit pack (Andrew, 2026-10-26).
+MAX_SUBMISSIONS_PER_DAY = 1
 # How many published tracks to surface in the "already made" section.
 PUBLISHED_LIMIT = 20
 # Hard ceiling on active requests fetched for ranking (board is small; sort in Python).
@@ -51,12 +56,50 @@ class RequestNotFound(Exception):
     """Raised when voting on a non-existent or non-votable request."""
 
 
+class VoteAlreadyUsed(Exception):
+    """Raised when submitting a request (which spends the daily vote) after today's vote
+    was already spent on another request. Undo that vote first."""
+
+
+class WouldDeleteRequest(Exception):
+    """Raised when a vote change would remove a request's last up-vote (which deletes the
+    request) and the caller hasn't confirmed it."""
+
+    def __init__(self, request_id: str):
+        super().__init__(request_id)
+        self.request_id = request_id
+
+
+class InvalidSubmitter(ValueError):
+    """Raised when a request would not be linked to a real user email."""
+
+
 def _utc_today() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def _dedupe_key(artist: str, title: str) -> str:
     return f"{normalize_for_match(artist)}|{normalize_for_match(title)}"
+
+
+def require_real_email(email: Optional[str]) -> str:
+    """Every board request must belong to a real user: lowercased, plausible address, and
+    never the retired YouTube-comment placeholder. Raises InvalidSubmitter otherwise."""
+    value = (email or "").strip().lower()
+    if not value or "@" not in value or value == YOUTUBE_COMMENT_SUBMITTER:
+        raise InvalidSubmitter(f"not a real user email: {email!r}")
+    local, _, domain = value.partition("@")
+    if not local or "." not in domain:
+        raise InvalidSubmitter(f"not a real user email: {email!r}")
+    return value
+
+
+def is_linked_to_real_user(req: SongRequest) -> bool:
+    try:
+        require_real_email(req.submitted_by)
+        return True
+    except InvalidSubmitter:
+        return False
 
 
 class SongRequestService:
@@ -79,7 +122,7 @@ class SongRequestService:
         Auto-corrects artist/title via match_judge; a re-submission of the same song
         (by dedupe key) counts as an up-vote for the existing open request.
         """
-        email = user_email.lower()
+        email = require_real_email(user_email)
         artist = artist.strip()
         title = title.strip()
 
@@ -88,20 +131,30 @@ class SongRequestService:
 
         key = _dedupe_key(canonical_artist, canonical_title)
 
+        # Submitting (or re-submitting a song already on the board) spends today's single
+        # vote, so it's refused if that vote is already on a different request.
+        current = self.get_daily_vote(email)
+
         existing = self._find_open_by_key(key)
         if existing is not None:
             # Same song already requested — treat this as an up-vote and resurface it.
-            # Idempotent: cast_vote toggles OFF a matching same-request/same-direction
-            # vote, so re-submitting a song you already up-voted today would REMOVE the
-            # vote. Only cast when the user isn't already up-voting this request today.
-            current = self.get_daily_vote(email)
-            if not (current and current.request_id == existing.id and current.value == 1):
-                self.cast_vote(email, existing.id, "up")
+            if current and current.request_id == existing.id and current.value == 1:
+                return existing, True, canonical_artist, canonical_title  # already backing it
+            if current:
+                raise VoteAlreadyUsed(current.request_id)
+            self.cast_vote(email, existing.id, "up")
             refreshed = self.get_request(existing.id) or existing
             return refreshed, True, canonical_artist, canonical_title
 
-        # Enforce the per-day submission cap (cheap: equality query + in-Python day filter).
-        if self._submissions_today(email) >= MAX_SUBMISSIONS_PER_DAY:
+        if current:
+            raise VoteAlreadyUsed(current.request_id)
+
+        # Enforce the per-day submission cap with a create-only marker that survives the
+        # request being deleted (and has no check-then-create race).
+        marker = self.db.collection(SUBMISSIONS_COLLECTION).document(f"{email}__{_utc_today()}")
+        try:
+            marker.create({"email": email, "created_at": _now_iso()})
+        except gcloud_exceptions.AlreadyExists:
             raise SubmissionRateLimited()
 
         request = SongRequest(
@@ -121,44 +174,15 @@ class SongRequestService:
         )
         logger.info("song request created id=%s by=%s key=%s", request.id, email, key)
 
-        # The submitter's endorsement counts as their vote for today.
-        self.cast_vote(email, request.id, "up")
+        # The submitter's endorsement counts as their vote for today. A request is never
+        # left on the board without a vote: if the vote can't be recorded, remove it.
+        try:
+            self.cast_vote(email, request.id, "up")
+        except Exception:
+            self.db.collection(REQUESTS_COLLECTION).document(request.id).delete()
+            marker.delete()  # the submission didn't happen, so it doesn't count
+            raise
         return self.get_request(request.id) or request, False, canonical_artist, canonical_title
-
-    def add_from_youtube_comment(
-        self, artist: str, title: str, *, comment_id: str, video_id: str, author: str
-    ) -> SongRequest:
-        """Add a song asked for in a YouTube comment (artist/title already canonical).
-
-        Returns the existing open/published request for the same song instead of a
-        duplicate. A new request belongs to ``YOUTUBE_COMMENT_SUBMITTER`` with no
-        vote until a real user up-votes (and so claims) it; no daily submission cap.
-        """
-        key = _dedupe_key(artist, title)
-        existing = self.find_active_by_key(key)
-        if existing is not None:
-            return existing
-        request = SongRequest(
-            id=str(uuid.uuid4()),
-            artist=artist,
-            title=title,
-            artist_raw=artist,
-            title_raw=title,
-            dedupe_key=key,
-            submitted_by=YOUTUBE_COMMENT_SUBMITTER,
-            source="youtube_comment",
-            status="open",
-            vote_count=0,
-            youtube_comment_id=comment_id,
-            youtube_video_id=video_id,
-            youtube_author=author[:100],
-        )
-        self.db.collection(REQUESTS_COLLECTION).document(request.id).set(
-            request.model_dump(mode="json")
-        )
-        logger.info("song request created id=%s from youtube comment=%s key=%s",
-                    request.id, comment_id, key)
-        return request
 
     def find_active_by_key(self, key: str) -> Optional[SongRequest]:
         """The live request for a song: a votable open one first, then one being made
@@ -214,17 +238,6 @@ class SongRequestService:
                 return req
         return None
 
-    def _submissions_today(self, email: str) -> int:
-        today = _utc_today()
-        query = self.db.collection(REQUESTS_COLLECTION).where(
-            filter=FieldFilter("submitted_by", "==", email)
-        )
-        return sum(
-            1
-            for doc in query.stream()
-            if str(doc.to_dict().get("created_at", "")).startswith(today)
-        )
-
     # -------------------------------------------------------------------------
     # Read
     # -------------------------------------------------------------------------
@@ -249,7 +262,10 @@ class SongRequestService:
         query = self.db.collection(REQUESTS_COLLECTION).where(
             filter=FieldFilter("status", "==", "open")
         ).limit(ACTIVE_FETCH_LIMIT)
-        items = [SongRequest(**doc.to_dict()) for doc in query.stream()]
+        items = [
+            r for r in (SongRequest(**doc.to_dict()) for doc in query.stream())
+            if is_linked_to_real_user(r)
+        ]
         items.sort(key=lambda r: (-r.vote_count, r.created_at))
         return items
 
@@ -280,7 +296,9 @@ class SongRequestService:
     def _vote_doc_id(email: str, day: str) -> str:
         return f"{email}__{day}"
 
-    def cast_vote(self, user_email: str, request_id: str, direction: str) -> Optional[Vote]:
+    def cast_vote(
+        self, user_email: str, request_id: str, direction: str, confirm_delete: bool = False
+    ) -> Optional[Vote]:
         """Cast/move/undo the caller's single daily vote.
 
         Rules (one vote total per person per UTC day):
@@ -288,17 +306,23 @@ class SongRequestService:
           - Same request+dir   -> toggle it OFF (frees today's vote).
           - Different request or direction -> move it (reverse old, apply new).
 
+        Removing a request's LAST up-vote (toggling it off, moving it elsewhere, or
+        switching it to a down-vote) deletes the request from the board, so that raises
+        WouldDeleteRequest unless ``confirm_delete`` is set.
+
         Returns the resulting Vote, or None if it was toggled off. Runs in a
         Firestore transaction so the vote doc and denormalized counts never drift.
         """
-        email = user_email.lower()
+        email = require_real_email(user_email)
         value = 1 if direction == "up" else -1
         day = _utc_today()
         vote_ref = self.db.collection(VOTES_COLLECTION).document(self._vote_doc_id(email, day))
         target_ref = self.db.collection(REQUESTS_COLLECTION).document(request_id)
 
         transaction = self.db.transaction()
-        return _cast_vote_txn(transaction, self, vote_ref, target_ref, request_id, email, day, value)
+        return _cast_vote_txn(
+            transaction, self, vote_ref, target_ref, request_id, email, day, value, confirm_delete
+        )
 
     # -------------------------------------------------------------------------
     # Phase 2 — daily picker, ownership handoff, publish fan-out
@@ -342,25 +366,67 @@ class SongRequestService:
         return candidates[0] if candidates else None
 
     def list_pick_candidates(self) -> list[SongRequest]:
-        """Ranked auto-make candidates: open, net votes >= 0, oldest-first, EXCLUDING
-        requests currently held for existing-community-version review (pending, or
-        snoozed and not yet past their cooldown). The daily picker walks these in
-        order, community-checks each, and makes the first with no existing version."""
+        """Ranked auto-make candidates: open, at least one live up-vote and an eligible
+        owner, oldest-first, EXCLUDING requests currently held for existing-community-
+        version review (pending, or snoozed and not yet past their cooldown). The daily
+        picker walks these in order, community-checks each, and makes the first with no
+        existing version."""
         now = datetime.now(timezone.utc)
         out: list[SongRequest] = []
-        for req in self.list_active():  # already ranked -vote_count, created_at asc
-            if req.vote_count < 0:
-                continue
-            if req.submitted_by == YOUTUBE_COMMENT_SUBMITTER:
-                continue  # added by the YouTube comment bot, not yet claimed by a real voter
+        for req in self.list_active():  # already ranked -vote_count, created_at asc; real users only
+            if req.vote_count < 1:
+                continue  # nobody is actually backing it
             if req.review_state == "pending":
                 continue
             if req.review_state == "snoozed":
                 until = _as_aware(req.review_snoozed_until)
                 if until and until > now:
                     continue  # still in its keep-cooldown
+            if self.pick_owner(req) is None:
+                continue  # no up-voter left who could review it
             out.append(req)
         return out
+
+    def pick_owner(self, req: SongRequest) -> Optional[str]:
+        """Who should own (review) this request's job: someone who still up-votes it and
+        hasn't already been its owner (a person who deleted/abandoned the job isn't asked
+        again). The submitter goes first when they still back it, else the oldest vote."""
+        tried = {e.lower() for e in (req.attempted_owners or [])}
+        upvoters = [e for e in self.list_upvoters(req.id) if e not in tried]
+        submitter = (req.submitted_by or "").lower()
+        if submitter in upvoters:
+            return submitter
+        for email in upvoters:
+            try:
+                return require_real_email(email)
+            except InvalidSubmitter:
+                continue
+        return None
+
+    def reopen_after_job_deleted(self, job_id: str) -> Optional[str]:
+        """A community job was deleted by its owner (credit refunded). Put its request back
+        on the board (owner excluded from re-picks via attempted_owners) or, if nobody is
+        left backing it, delete it. Returns the request id acted on, or None."""
+        req = self.get_by_job_id(job_id)
+        if req is None or req.status not in ("queued", "in_progress", "stalled"):
+            return None
+        ref = self.db.collection(REQUESTS_COLLECTION).document(req.id)
+        if self.pick_owner(req) is None:
+            # Free everyone's daily vote too (a vote left pointing at a deleted request
+            # can't be undone or moved).
+            for vdoc in self.db.collection(VOTES_COLLECTION).where(
+                filter=FieldFilter("request_id", "==", req.id)
+            ).stream():
+                vdoc.reference.delete()
+            ref.delete()
+            logger.info("requests-board: deleted request %s (job %s deleted, no backers left)", req.id, job_id)
+            return req.id
+        ref.update({
+            "status": "open", "job_id": None, "owner_email": None, "owner_assigned_at": None,
+            "community_credit_granted": False, "updated_at": _now_iso(),
+        })
+        logger.info("requests-board: reopened request %s (job %s deleted)", req.id, job_id)
+        return req.id
 
     def set_review_pending(self, request_id: str, versions: dict) -> bool:
         """Flag a request as needing existing-version review. Transactional and
@@ -584,7 +650,9 @@ def _assign_owner_txn(transaction, ref, email, expected_owner):
 
 
 @firestore.transactional
-def _cast_vote_txn(transaction, service, vote_ref, target_ref, request_id, email, day, value):
+def _cast_vote_txn(
+    transaction, service, vote_ref, target_ref, request_id, email, day, value, confirm_delete=False
+):
     """Transactional body for cast_vote.
 
     Module-level (not a method) because @firestore.transactional returns a plain
@@ -611,17 +679,23 @@ def _cast_vote_txn(transaction, service, vote_ref, target_ref, request_id, email
 
     # --- accumulate net vote-count deltas per request, then write once each ---
     deltas: dict[str, int] = {}
+    # Request whose up-vote from THIS user is being withdrawn (toggle off / move away /
+    # up -> down on the same request). If nobody else up-votes it, it gets deleted.
+    withdrawn_from: Optional[str] = None
     toggling_off = (
         existing is not None and old_request_id == request_id and old_value == value
     )
     if toggling_off:
         # Remove today's vote and undo its effect — frees the daily vote.
-        transaction.delete(vote_ref)
         deltas[request_id] = -value
         vote = None
+        if value > 0:
+            withdrawn_from = request_id
     else:
         if existing is not None:
             deltas[old_request_id] = deltas.get(old_request_id, 0) - old_value
+            if old_value > 0:
+                withdrawn_from = old_request_id
         deltas[request_id] = deltas.get(request_id, 0) + value
         vote = Vote(
             voter_email=email,
@@ -631,24 +705,50 @@ def _cast_vote_txn(transaction, service, vote_ref, target_ref, request_id, email
             created_at=(existing.get("created_at") if existing else now) or now,
             updated_at=now,
         )
+
+    # Is that the request's last up-vote? (still reads: must precede all writes)
+    delete_rid: Optional[str] = None
+    orphan_vote_refs: list = []
+    if withdrawn_from is not None:
+        snap = snaps.get(withdrawn_from)
+        if snap is not None and snap.exists and snap.to_dict().get("status") == "open":
+            others_up = 0
+            for vdoc in service.db.collection(VOTES_COLLECTION).where(
+                filter=FieldFilter("request_id", "==", withdrawn_from)
+            ).get(transaction=transaction):
+                if vdoc.id == vote_ref.id:
+                    continue
+                if int((vdoc.to_dict() or {}).get("value", 0)) > 0:
+                    others_up += 1
+                else:
+                    orphan_vote_refs.append(vdoc.reference)
+            if others_up == 0:
+                if not confirm_delete:
+                    raise WouldDeleteRequest(withdrawn_from)
+                delete_rid = withdrawn_from
+
+    # --- writes ---
+    if toggling_off or delete_rid == request_id:
+        # (also when flipping the last up-vote to a down-vote: the request is deleted, so the
+        # voter's own vote must not be left pointing at it)
+        transaction.delete(vote_ref)
+    else:
         transaction.set(vote_ref, vote.model_dump(mode="json"))
 
     for rid, delta in deltas.items():
-        if delta == 0:
-            continue
         snap = snaps.get(rid)
         if snap is None or not snap.exists:
             continue  # request gone (e.g. old vote pointed at a closed request)
         ref = service.db.collection(REQUESTS_COLLECTION).document(rid)
+        if rid == delete_rid:
+            transaction.delete(ref)
+            for orphan in orphan_vote_refs:
+                transaction.delete(orphan)  # frees remaining down-voters' daily votes
+            continue
+        if delta == 0:
+            continue
         current = int(snap.to_dict().get("vote_count", 0))
-        fields = {"vote_count": current + delta, "updated_at": now.isoformat()}
-        # The first real up-voter claims a request the YouTube comment bot added
-        # (usually the commenter, arriving from the bot's reply link).
-        if (rid == request_id and vote is not None and value > 0
-                and snap.to_dict().get("submitted_by") == YOUTUBE_COMMENT_SUBMITTER):
-            fields["submitted_by"] = email
-            fields["claimed_at"] = now.isoformat()
-        transaction.update(ref, fields)
+        transaction.update(ref, {"vote_count": current + delta, "updated_at": now.isoformat()})
 
     return vote
 

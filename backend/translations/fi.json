@@ -442,6 +442,14 @@
       "refundNote": "Jos se ehtii vanhentua, krediittisi palautetaan automaattisesti.",
       "subject": "{hours} tuntia aikaa viimeistellä karaokevideosi: {song}",
       "subjectFallback": "{hours} tuntia aikaa viimeistellä karaokevideosi"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Toivetaululta valittu ilmaisversiosi vaatii vielä yhden nopean valinnan",
+      "help": "Jos mikään vaihtoehdoista ei ole oikea, voit sen sijaan liittää linkin tai ladata tiedoston. Jos tarvitset apua, vastaa vain tähän sähköpostiin.",
+      "intro": "Kannatit kappaletta \"{artist} - {title}\" toivetaulullamme, ja se valittiin toteutettavaksi tänään. Emme löytäneet yhtä selkeästi oikeaa ääniraitaa, joten valitsisitko oikean itse (se vie vain muutaman sekunnin).",
+      "subject": "Valitse ääniraita kappaleelle {artist} - {title}",
+      "button": "Valitse äänilähde"
+    },
+    "communityPickNote": "Tämä kappale on peräisin Nomad Karaoken toivetaululta: kannatit sitä, ja se valittiin tämän päivän ilmaiskappaleeksi. Tarkista alla olevat sanat, niin kappale julkaistaan kaikkien saataville.\n\n"
   }
 }

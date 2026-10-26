@@ -37,6 +37,7 @@ def _make_service(candidates=None, lock=None, claimed_new=True, registry=None):
     svc.list_pick_candidates.return_value = candidates
     svc.get_request.side_effect = lambda rid: reg.get(rid)
     svc.set_review_pending.return_value = True  # newly flagged
+    svc.pick_owner.side_effect = lambda r: r.submitted_by  # submitter still backs it
     return svc
 
 
@@ -200,3 +201,78 @@ async def test_credit_grant_failure_aborts_before_job():
         result = await _exec(stack)
     assert result["status"] == "error" and result["step"] == "grant_credit"
     mk.assert_not_called()
+
+
+# --- unattended audio choice (requests-board overhaul, 2026-10-26) -----------------------
+
+
+def _search_env(results, job_status=None):
+    """Patches for _search_and_download: a job manager, a search service returning `results`
+    (as AudioSearchResult-like objects with to_dict) and the download trigger."""
+    from backend.models.job import JobStatus
+
+    job = SimpleNamespace(status=job_status or JobStatus.PENDING, user_email="owner@x.com")
+    jm = MagicMock()
+    jm.get_job.return_value = job
+    items = []
+    for r in results:
+        m = MagicMock()
+        m.to_dict.return_value = r
+        items.append(m)
+    search = MagicMock()
+    search.search_async = AsyncMock(return_value=items)
+    search.last_remote_search_id = None
+    emails = MagicMock()
+    worker = MagicMock()
+    worker.trigger_audio_download_worker = AsyncMock(return_value=True)
+    return jm, search, emails, worker
+
+
+async def _run_search(results, validate=None):
+    from backend.models.job import JobStatus  # noqa: F401
+
+    jm, search, emails, worker = _search_env(results)
+    req = SongRequest(
+        id="req1", artist="Raynes", title="Lemon Drop - Orchestral Version", artist_raw="Raynes",
+        title_raw="Lemon Drop", dedupe_key="a|t", submitted_by="owner@x.com", vote_count=1,
+    )
+    user = MagicMock()
+    user.get_user.return_value = None
+    with patch.object(cdp, "JobManager", return_value=jm), \
+         patch.object(cdp, "AudioSearchService", return_value=search), \
+         patch.object(cdp, "get_email_service", return_value=emails), \
+         patch.object(cdp, "get_user_service", return_value=user), \
+         patch.object(cdp, "get_worker_service", return_value=worker), \
+         patch("backend.workers.bulk_search_worker._prepare_theme"), \
+         patch("backend.api.routes.audio_search._validate_and_prepare_selection",
+               validate or MagicMock()) as prep:
+        ok = await cdp._search_and_download("job123", req)
+    return ok, jm, emails, worker, prep
+
+
+@pytest.mark.asyncio
+async def test_confident_match_is_selected_and_downloaded():
+    results = [
+        dict(index=0, provider="Spotify", artist="Other", target_file="Something Else", duration=100),
+        dict(index=1, provider="Spotify", artist="Raynes", target_file="Lemon Drop - Orchestral Version", duration=210),
+    ]
+    ok, jm, emails, worker, prep = await _run_search(results)
+    assert ok is True
+    assert prep.call_args.kwargs["selection_index"] == 1  # NOT result #0
+    worker.trigger_audio_download_worker.assert_awaited_once_with("job123")
+    emails.send_community_audio_selection_needed.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_no_confident_match_parks_job_and_emails_owner():
+    from backend.models.job import JobStatus
+
+    results = [dict(index=0, provider="Spotify", artist="Raynes", target_file="Lemon Drop", duration=200)]
+    ok, jm, emails, worker, prep = await _run_search(results)
+    assert ok is False
+    prep.assert_not_called()
+    worker.trigger_audio_download_worker.assert_not_called()
+    statuses = [c.kwargs.get("new_status") for c in jm.transition_to_state.call_args_list]
+    assert statuses[-1] == JobStatus.AWAITING_AUDIO_SELECTION
+    emails.send_community_audio_selection_needed.assert_called_once()
+    assert emails.send_community_audio_selection_needed.call_args.kwargs["to_email"] == "owner@x.com"

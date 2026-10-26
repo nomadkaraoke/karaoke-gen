@@ -442,6 +442,14 @@
       "refundNote": "Si elle expire, ton crédit te sera automatiquement remboursé.",
       "subject": "Plus que {hours} heures pour finaliser ta vidéo karaoké : {song}",
       "subjectFallback": "Plus que {hours} heures pour finaliser ta vidéo karaoké"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Un petit choix est nécessaire pour ton morceau gratuit du tableau des demandes",
+      "help": "Si aucune des options ne convient, tu peux coller un lien ou téléverser un fichier à la place. Réponds simplement à cet e-mail si tu es bloqué.",
+      "intro": "Tu as soutenu « {artist} - {title} » sur notre tableau des demandes et ce morceau a été sélectionné pour être créé aujourd'hui. Nous n'avons pas trouvé de source audio évidente, alors choisis toi-même la bonne version (cela ne prend que quelques secondes).",
+      "subject": "Choisis l'audio pour {artist} - {title}",
+      "button": "Choisis l'audio"
+    },
+    "communityPickNote": "Cette chanson provient du tableau des demandes de Nomad Karaoke : tu l'as soutenue, et elle a été sélectionnée comme morceau gratuit du jour. Vérifie les paroles ci-dessous et elle sera publiée pour tout le monde.\n\n"
   }
 }

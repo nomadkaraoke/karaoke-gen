@@ -442,6 +442,14 @@
       "refundNote": "Als hij verloopt, wordt je credit automatisch teruggestort.",
       "subject": "Nog {hours} uur om je karaokevideo af te ronden: {song}",
       "subjectFallback": "Nog {hours} uur om je karaokevideo af te ronden"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Voor je gratis nummer van het verzoekjesbord is nog één snelle keuze nodig",
+      "help": "Als geen van de opties klopt, kun je in plaats daarvan een link plakken of een bestand uploaden. Reageer gerust op deze e-mail als je vastloopt.",
+      "intro": "Je hebt \"{artist} - {title}\" gesteund op ons verzoekjesbord en het nummer is gekozen om vandaag gemaakt te worden. We konden geen overduidelijk juiste audiobron vinden, dus kies alsjeblieft zelf de juiste (dit kost maar een paar seconden).",
+      "subject": "Kies alsjeblieft de audio voor {artist} - {title}",
+      "button": "Kies de audio"
+    },
+    "communityPickNote": "Dit nummer komt van het Nomad Karaoke-verzoekjesbord: jij hebt het gesteund en het is gekozen als het gratis nummer van vandaag. Controleer de songtekst hieronder, dan wordt het nummer voor iedereen gepubliceerd.\n\n"
   }
 }

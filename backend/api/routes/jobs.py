@@ -889,6 +889,14 @@ def delete_job(
 
         job_manager.delete_job(job_id, delete_files=delete_files)
 
+        # A requests-board pick whose owner deleted the job goes back on the board (or is
+        # removed if nobody backs it) instead of staying "in progress" on a dead job.
+        try:
+            from backend.services.song_request_service import get_song_request_service
+            get_song_request_service().reopen_after_job_deleted(job_id)
+        except Exception:
+            logger.warning("requests-board: could not reopen request for deleted job %s", job_id, exc_info=True)
+
         response = {"status": "success", "message": f"Job {job_id} deleted"}
         if distribution_cleanup is not None:
             response["distribution_cleanup"] = distribution_cleanup

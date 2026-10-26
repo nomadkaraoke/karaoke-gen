@@ -2473,3 +2473,18 @@ lean clean regardless (38% clean even when both signals say keep), so they're po
 The analyzer rule also said "keep" on 5 jobs where the scorer had flagged the backing stem as the lead.
 Fix: one `unified_backing_recommendation`, applied when written and when served. Lesson: when
 a new decider replaces a heuristic, re-point every consumer of the old field, not just the new UI.
+
+## Requests board: claims outlived votes, and "auto-select" silently meant result #0 (2026-10-26, v0.285.0)
+
+A user got two community picks they didn't ask for / that had the wrong
+audio. Root causes: (1) the YouTube bot added requests with a placeholder submitter that the first
+up-voter "claimed", but the claim was never released when the single daily vote moved elsewhere,
+so a 0-vote request with a stale owner stayed pickable (`vote_count >= 0`); (2) the daily pick
+called `select_best`, which with remote flacfetch results raised ("'dict' object has no attribute
+'quality'") and fell back to result #0 — logged only as a WARNING on 7 days since 10 Oct.
+Fixes: every request must belong to a real user email (bot no longer creates requests),
+last-up-vote removal deletes the request after a confirmation, the picker needs a live backer,
+and unattended audio is chosen only on an exact artist+title match else the owner chooses.
+Lessons: a "fallback to first item" in an unattended path hides a broken ranker — fail to a
+human instead; and a denormalised claim (who owns this) needs releasing wherever the thing that
+justified it (the vote) can change.

@@ -442,6 +442,14 @@
       "refundNote": "Si llega a vencer, tu crédito se reembolsará automáticamente.",
       "subject": "Quedan {hours} horas para terminar tu video de karaoke: {song}",
       "subjectFallback": "Quedan {hours} horas para terminar tu video de karaoke"
-    }
+    },
+    "communityAudioSelection": {
+      "subject": "Por favor, elige el audio para {artist} - {title}",
+      "heading": "Tu pista gratuita del tablero de peticiones requiere una elección rápida",
+      "intro": "Apoyaste \"{artist} - {title}\" en nuestro tablero de peticiones y fue seleccionada para crearse hoy. No logramos encontrar una fuente de audio que fuera claramente la correcta, así que por favor elige tú la adecuada (solo te tomará unos segundos).",
+      "button": "Elige el audio",
+      "help": "Si ninguna de las opciones es la correcta, puedes pegar un enlace o subir un archivo. Si te trabas con algo, solo responde a este correo."
+    },
+    "communityPickNote": "Esta canción viene del tablero de peticiones de Nomad Karaoke: la apoyaste y fue elegida como la pista gratuita de hoy. Por favor, revisa la letra a continuación y se publicará para todo el mundo.\n\n"
   }
 }

@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Optional, Dict, Any
 
-from backend.i18n import get_locale_prefix, get_web_locale_prefix
+from backend.i18n import get_locale_prefix, get_web_locale_prefix, t
 from backend.services.email_service import get_email_service
 from backend.services.template_service import get_template_service
 from backend.services.user_service import get_user_service
@@ -338,6 +338,18 @@ class JobNotificationService:
             logger.exception(f"Error sending community-existing-version email to {_mask_email(to_email)}: {e}")
             return False
 
+    @staticmethod
+    def _community_pick_note(job_id: str, locale: str) -> str:
+        """For a requests-board pick, a short intro saying where the song came from (the
+        owner didn't place this order themselves). Empty for ordinary jobs."""
+        try:
+            from backend.services.song_request_service import get_song_request_service
+            if get_song_request_service().get_by_job_id(job_id) is not None:
+                return t(locale, "emails.communityPickNote")
+        except Exception:
+            logger.warning("community pick note lookup failed for job %s", job_id, exc_info=True)
+        return ""
+
     async def send_action_reminder_email(
         self,
         job_id: str,
@@ -399,6 +411,7 @@ class JobNotificationService:
                     review_url=review_url,
                     locale=user_locale,
                 )
+                message_content = self._community_pick_note(job_id, user_locale) + message_content
             elif action_type == "instrumental":
                 instrumental_url = self._build_instrumental_url(job_id, instrumental_token, locale=user_locale)
                 message_content = self.template_service.render_action_needed_instrumental(

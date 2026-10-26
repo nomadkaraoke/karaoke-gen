@@ -442,6 +442,14 @@
       "refundNote": "Ako istekne, tvoj kredit automatski se vraća.",
       "subject": "Preostalo je još {hours} sati za dovršetak tvog karaoke videa: {song}",
       "subjectFallback": "Preostalo je još {hours} sati za dovršetak tvog karaoke videa"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Tvoja besplatna pjesma s ploče sa željama traži još samo jedan kratak odabir",
+      "help": "Ako nijedna od opcija nije odgovarajuća, možeš umjesto toga zalijepiti poveznicu ili prenijeti datoteku. Samo odgovori na ovaj e-mail ako zapneš.",
+      "intro": "Podržao/la si „{artist} - {title}” na našoj ploči sa željama i odabrana je za današnju izradu. Nismo uspjeli pronaći jedan nedvojbeno točan izvor zvuka, pa te molimo da sam/a odabereš onaj pravi (traje samo nekoliko sekundi).",
+      "subject": "Molimo te, odaberi audio za {artist} - {title}",
+      "button": "Odaberi zvuk"
+    },
+    "communityPickNote": "Ova pjesma dolazi s ploče sa željama Nomad Karaoke: podržao/la si je i odabrana je kao današnja besplatna pjesma. Pregledaj tekst u nastavku nakon čega će biti objavljena za sve.\n\n"
   }
 }

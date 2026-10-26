@@ -1924,7 +1924,7 @@ Authorization: Bearer SESSION_TOKEN
 {"artist": "beatles", "title": "hey jude"}
 ```
 
-Auto-corrects artist/title via the same `match_judge` used in job submission, dedupes against existing open requests (a re-submission counts as an up-vote), and records the submitter's endorsement as their daily vote. Returns `{status: "created"|"already_exists", request, canonical_artist, canonical_title, was_corrected}`. `429` if the per-day submission cap is exceeded.
+Auto-corrects artist/title via the same `match_judge` used in job submission, dedupes against existing open requests (a re-submission counts as an up-vote), and records the submitter's endorsement as their daily vote. Returns `{status: "created"|"already_exists", request, canonical_artist, canonical_title, was_corrected}`. One request per person per day: `429 {detail: {code: "submission_limit"}}`. Submitting spends the day's single vote, so `409 {detail: {code: "vote_already_used"}}` if it's already on another request.
 
 ### Vote
 
@@ -1932,10 +1932,10 @@ Auto-corrects artist/title via the same `match_judge` used in job submission, de
 POST /api/requests-board/requests/{request_id}/vote
 Authorization: Bearer SESSION_TOKEN
 
-{"direction": "up"}
+{"direction": "up", "confirm_delete": false}
 ```
 
-Casts/moves/undoes the caller's single daily vote (one total per person per UTC day). Voting the same request+direction again toggles the vote off (frees the day's vote); voting a different request or direction moves it. Returns the updated request. `404` if the request no longer exists.
+Casts/moves/undoes the caller's single daily vote (one total per person per UTC day). Voting the same request+direction again toggles the vote off (frees the day's vote); voting a different request or direction moves it. Removing a request's **last up-vote** (toggle off, move away, or flip to a down-vote) deletes the request: without `confirm_delete: true` that is refused with `409 {detail: {code: "would_delete_request"}}`; with it the vote is applied and the response has `request_deleted: true`. Returns the updated request. `404` if the request no longer exists.
 
 ### My Daily Vote Status
 

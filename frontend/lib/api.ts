@@ -2121,12 +2121,20 @@ export const api = {
     return handleResponse(response);
   },
 
-  /** Cast/move/undo the caller's single daily vote (auth required). */
-  async voteSongRequest(requestId: string, direction: 'up' | 'down'): Promise<SongRequestPublic> {
+  /**
+   * Cast/move/undo the caller's single daily vote (auth required). Removing a request's
+   * last up-vote deletes it, which the server refuses with 409 `would_delete_request`
+   * until the user confirms and the call is repeated with `confirmDelete`.
+   */
+  async voteSongRequest(
+    requestId: string,
+    direction: 'up' | 'down',
+    confirmDelete = false,
+  ): Promise<SongRequestPublic> {
     const response = await apiFetch(`${API_BASE_URL}/api/requests-board/requests/${encodeURIComponent(requestId)}/vote`, {
       method: 'POST',
       headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ direction }),
+      body: JSON.stringify({ direction, confirm_delete: confirmDelete }),
     });
     return handleResponse(response);
   },

@@ -442,6 +442,14 @@
       "refundNote": "Jeśli wygaśnie, Twój kredyt zostanie automatycznie zwrócony.",
       "subject": "Zostało {hours} godz. na dokończenie Twojego wideo karaoke: {song}",
       "subjectFallback": "Zostało {hours} godz. na dokończenie Twojego wideo karaoke"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Twój darmowy utwór z tablicy propozycji wymaga jednej szybkiej decyzji",
+      "help": "Jeśli żadna z opcji nie jest odpowiednia, możesz zamiast tego wkleić link lub przesłać plik. W razie jakichkolwiek problemów po prostu odpowiedz na tego maila.",
+      "intro": "Piosenka „{artist} - {title}”, na którą oddano Twój głos na naszej tablicy propozycji, została wybrana do realizacji na dzisiaj. Nie udało nam się znaleźć jednego jednoznacznie dobrego źródła audio, dlatego prosimy o wybranie właściwego (zajmie to tylko kilka sekund).",
+      "subject": "Wybierz wersję audio dla: {artist} - {title}",
+      "button": "Wybierz źródło dźwięku"
+    },
+    "communityPickNote": "Ta piosenka pochodzi z tablicy propozycji Nomad Karaoke: masz w niej swój udział, a utwór został wybrany jako dzisiejszy darmowy numer. Sprawdź poniższy tekst, a piosenka zostanie opublikowana dla wszystkich.\n\n"
   }
 }

@@ -442,6 +442,14 @@
       "refundNote": "Dacă expiră, creditul tău va fi rambursat automat.",
       "subject": "Mai ai {hours} ore pentru a-ți finaliza videoclipul karaoke: {song}",
       "subjectFallback": "Mai ai {hours} ore pentru a-ți finaliza videoclipul karaoke"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Piesa ta gratuită de pe panoul de cereri are nevoie de o alegere rapidă",
+      "help": "Dacă niciuna dintre opțiuni nu este cea potrivită, poți insera un link sau poți încărca un fișier. Răspunde direct la acest e-mail dacă te blochezi.",
+      "intro": "Ai susținut „{artist} - {title}” pe panoul nostru de cereri și a fost aleasă pentru a fi creată astăzi. Nu am putut identifica o sursă audio clar corectă, așa că te rugăm să o alegi chiar tu pe cea potrivită (durează doar câteva secunde).",
+      "subject": "Te rugăm să alegi sursa audio pentru {artist} - {title}",
+      "button": "Alege sursa audio"
+    },
+    "communityPickNote": "Această piesă provine de pe panoul de cereri Nomad Karaoke: ai susținut-o și a fost aleasă drept piesa gratuită de astăzi. Te rugăm să verifici versurile de mai jos, iar piesa va fi publicată pentru toată lumea.\n\n"
   }
 }

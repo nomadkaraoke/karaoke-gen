@@ -27,8 +27,11 @@ from backend.models.song_request import (
     VoteBody,
 )
 from backend.services.song_request_service import (
+    InvalidSubmitter,
     RequestNotFound,
     SubmissionRateLimited,
+    VoteAlreadyUsed,
+    WouldDeleteRequest,
     get_song_request_service,
 )
 
@@ -119,8 +122,22 @@ async def submit_request(
     except SubmissionRateLimited:
         raise HTTPException(
             status_code=429,
-            detail="You've submitted a lot today — please come back tomorrow.",
+            detail={
+                "code": "submission_limit",
+                "message": "You can request one song per day — please come back tomorrow.",
+            },
         )
+    except VoteAlreadyUsed:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "vote_already_used",
+                "message": "Requesting a song uses your one vote for today, and you've already "
+                           "voted on another request. Remove that vote first, or come back tomorrow.",
+            },
+        )
+    except InvalidSubmitter:
+        raise HTTPException(status_code=403, detail="A signed-in email is required to submit.")
 
     daily = service.get_daily_vote(auth_result.user_email)
     your_vote = daily.value if daily and daily.request_id == request.id else None
@@ -145,13 +162,33 @@ def vote(
 
     service = get_song_request_service()
     try:
-        service.cast_vote(auth_result.user_email, request_id, body.direction)
+        service.cast_vote(
+            auth_result.user_email, request_id, body.direction, confirm_delete=body.confirm_delete
+        )
     except RequestNotFound:
         raise HTTPException(status_code=404, detail="That request no longer exists.")
+    except WouldDeleteRequest as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "would_delete_request",
+                # The request that would be deleted (not necessarily the one being voted on:
+                # moving your only up-vote away deletes the OLD request).
+                "request_id": exc.request_id,
+                "message": "Removing your vote will delete this request from the board "
+                           "(nobody else is backing it). Continue?",
+            },
+        )
+    except InvalidSubmitter:
+        raise HTTPException(status_code=403, detail="A signed-in email is required to vote.")
 
     updated = service.get_request(request_id)
     if not updated:
-        raise HTTPException(status_code=404, detail="That request no longer exists.")
+        # Its last up-vote was withdrawn (confirmed), so the request was deleted.
+        return SongRequestPublic(
+            id=request_id, artist="", title="", status="open", source="human",
+            vote_count=0, created_at="", request_deleted=True,
+        )
     daily = service.get_daily_vote(auth_result.user_email)
     your_vote = daily.value if daily and daily.request_id == request_id else None
     return _to_public(updated, your_vote=your_vote)

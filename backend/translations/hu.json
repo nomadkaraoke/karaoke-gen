@@ -442,6 +442,14 @@
       "refundNote": "Ha lejárna, a kredited automatikusan visszajár.",
       "subject": "Még {hours} órád van befejezni a karaoke videódat: {song}",
       "subjectFallback": "Még {hours} órád van befejezni a karaoke videódat"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Az ingyenes, kívánságlistás számodhoz még egy gyors döntésre van szükség",
+      "help": "Ha egyik lehetőség sem megfelelő, beilleszthetsz egy linket, vagy feltölthetsz egy fájlt is helyette. Ha elakadnál, csak válaszolj erre az e-mailre.",
+      "intro": "Támogattad a(z) „{artist} - {title}” számot a kívánságlistánkon, és ma ezt választottuk ki elkészítésre. Nem találtunk egyértelműen helyes hangforrást, ezért kérünk, válaszd ki te a megfelelőt (csak néhány másodperc az egész).",
+      "subject": "Kérjük, válaszd ki a hangforrást ehhez a számhoz: {artist} - {title}",
+      "button": "Válassz hangforrást"
+    },
+    "communityPickNote": "Ez a szám a Nomad Karaoke kívánságlistájáról származik: támogattad, és a mai nap ingyenes száma lett. Kérjük, ellenőrizd az alábbi dalszöveget, és már közzé is tesszük mindenki számára.\n\n"
   }
 }
