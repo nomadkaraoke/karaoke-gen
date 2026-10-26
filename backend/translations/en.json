@@ -442,6 +442,14 @@
       "button": "Finish my video",
       "howLong": "Most reviews take 2 or 3 minutes: check that the lyrics look right, pick your instrumental, and you're done.",
       "refundNote": "If it does expire, your credit is refunded automatically."
-    }
+    },
+    "communityAudioSelection": {
+      "subject": "Please choose the audio for {artist} - {title}",
+      "heading": "Your free requests-board track needs one quick choice",
+      "intro": "You backed \"{artist} - {title}\" on our requests board and it was picked to be made today. We couldn't find one clearly correct audio source, so please choose the right one yourself (it takes a few seconds).",
+      "button": "Choose the audio",
+      "help": "If none of the options is right you can paste a link or upload a file instead. Just reply to this email if you get stuck."
+    },
+    "communityPickNote": "This song came from the Nomad Karaoke requests board: you backed it, and it was picked as today's free track. Please review the lyrics below and it will be published for everyone.\n\n"
   }
 }

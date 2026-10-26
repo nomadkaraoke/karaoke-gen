@@ -9,7 +9,9 @@ from backend.api.routes import requests_board
 from backend.api.routes.requests_board import optional_user_email
 from backend.models.song_request import SongRequest, Vote
 from backend.services.auth_service import AuthResult, UserType
-from backend.services.song_request_service import RequestNotFound, SubmissionRateLimited
+from backend.services.song_request_service import (
+    RequestNotFound, SubmissionRateLimited, VoteAlreadyUsed, WouldDeleteRequest,
+)
 
 
 @pytest.fixture
@@ -113,6 +115,39 @@ def test_submit_rate_limited(client, auth_headers, fake_service):
         headers=auth_headers,
     )
     assert resp.status_code == 429
+    assert resp.json()["detail"]["code"] == "submission_limit"
+
+
+def test_submit_refused_when_daily_vote_already_spent(client, auth_headers, fake_service):
+    fake_service.submit_request = AsyncMock(side_effect=VoteAlreadyUsed("other"))
+    resp = client.post(
+        "/api/requests-board/requests",
+        json={"artist": "a", "title": "b"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["code"] == "vote_already_used"
+
+
+def test_vote_needing_delete_confirmation_is_409(client, auth_headers, fake_service):
+    fake_service.cast_vote.side_effect = WouldDeleteRequest("r1")
+    resp = client.post("/api/requests-board/requests/r1/vote", json={"direction": "up"}, headers=auth_headers)
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["code"] == "would_delete_request"
+    assert fake_service.cast_vote.call_args.kwargs["confirm_delete"] is False
+
+
+def test_confirmed_last_vote_removal_reports_request_deleted(client, auth_headers, fake_service):
+    fake_service.cast_vote.return_value = None
+    fake_service.get_request.return_value = None  # the request was deleted by the vote
+    resp = client.post(
+        "/api/requests-board/requests/r1/vote",
+        json={"direction": "up", "confirm_delete": True},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["request_deleted"] is True
+    assert fake_service.cast_vote.call_args.kwargs["confirm_delete"] is True
 
 
 def test_vote_ok(client, auth_headers, fake_service):

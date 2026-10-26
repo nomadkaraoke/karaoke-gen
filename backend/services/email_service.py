@@ -2189,6 +2189,46 @@ class EmailService:
             text_content=text_content,
         )
 
+    def send_community_audio_selection_needed(
+        self,
+        to_email: str,
+        artist: str,
+        title: str,
+        job_id: str,
+        locale: str = "en",
+    ) -> bool:
+        """Ask the owner of a requests-board pick to choose its audio source.
+
+        Sent when the daily pick couldn't find one unmistakably correct source, so the job
+        waits in AWAITING_AUDIO_SELECTION for the owner to choose it in the gen UI.
+        """
+        subject = t(locale, "emails.communityAudioSelection.subject", artist=artist, title=title)
+        url = f"{self.frontend_url}{get_locale_prefix(locale)}/app/jobs#/{job_id}"
+        extra_styles = """
+        .alert { background-color: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px;
+                 padding: 16px; margin: 20px 0; text-align: center; }
+        .action-btn { display: inline-block; background-color: #ff7acc; color: #ffffff !important;
+                      text-decoration: none; padding: 12px 24px; border-radius: 8px;
+                      font-weight: bold; margin: 16px 0; }
+"""
+        intro = t(locale, "emails.communityAudioSelection.intro", artist=artist, title=title)
+        content = f"""
+    <div class="alert">{html.escape(t(locale, "emails.communityAudioSelection.heading"))}</div>
+    <p>{html.escape(intro)}</p>
+    <p style="text-align: center;">
+        <a href="{html.escape(url)}" class="action-btn">{html.escape(t(locale, "emails.communityAudioSelection.button"))}</a>
+    </p>
+    <p>{html.escape(t(locale, "emails.communityAudioSelection.help"))}</p>
+"""
+        html_content = self._build_email_html(content, extra_styles, locale=locale)
+        text_content = f"{intro}\n\n{url}\n\n{t(locale, 'emails.communityAudioSelection.help')}"
+        return self._log_and_send(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+
     def send_review_expired(
         self,
         to_email: str,

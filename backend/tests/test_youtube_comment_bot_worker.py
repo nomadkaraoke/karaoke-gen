@@ -79,17 +79,14 @@ class FakeYouTube:
 
 class FakeBoard:
     def __init__(self, *a):
-        self.added = []
+        self.looked_up = []
 
     def canonicalize(self, artist, title):
         return artist, title
 
     def find_open_or_published(self, artist, title):
+        self.looked_up.append((artist, title))
         return None
-
-    def add_from_comment(self, artist, title, thread):
-        self.added.append(thread.comment_id)
-        return bot.BoardMatch(f"r-{thread.comment_id}", artist, title, "open")
 
 
 @pytest.fixture
@@ -144,7 +141,7 @@ def test_replies_once_and_records_actions(env):
     summary = w.run_comment_bot_sync()
     assert summary["replied"] == 1 and summary["skipped"] == {"not_a_request": 1}
     assert len(env.yt.inserted) == 1 and env.yt.inserted[0]["parentId"] == "c1"
-    assert "request=r-c1" in env.yt.inserted[0]["textOriginal"]
+    assert "requests board" in env.yt.inserted[0]["textOriginal"] and "request=" not in env.yt.inserted[0]["textOriginal"]
     acts = _actions(env.db)
     assert acts["c1"]["action"] == "replied" and acts["c1"]["reply_id"] == "reply1"
     assert acts["c2"]["action"] == "skip"
@@ -183,7 +180,7 @@ def test_max_replies_cap_leaves_rest_for_next_run(env):
     env.yt.items = [_item("c1"), _item("c3", published="2026-10-21T11:00:00Z")]
     summary = w.run_comment_bot_sync(max_replies=1)
     assert summary["replied"] == 1 and "c3" not in _actions(env.db)
-    assert env.boards[-1].added == ["c1"]  # nothing classified/added past the cap
+    assert len(env.boards[-1].looked_up) == 1  # nothing classified past the cap
     state = env.db.store[(w.STATE_COLLECTION, w.STATE_DOC)]
     assert state["incomplete"] and state["high_water"] == datetime(2026, 10, 1, tzinfo=timezone.utc)
     summary = w.run_comment_bot_sync(max_replies=1)  # next run picks up the rest

@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { api, getAccessToken } from '@/lib/api';
+import { ApiError } from '@/lib/api-error';
 import type { CommunityCheckResponse } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { CommunityVersionBanner } from '@/components/job/CommunityVersionBanner';
@@ -43,6 +44,13 @@ function dropUpvoteParam() {
   url.searchParams.delete('upvote');
   window.history.replaceState(window.history.state, '', url.toString());
 }
+
+// What the confirmation dialog is asking about. Votes are scarce (one a day) and removing
+// a request's last up-vote deletes it, so both get an explicit "are you sure".
+type PendingConfirm =
+  | { kind: 'spend'; req: SongRequestPublic; direction: 'up' | 'down'; moving: boolean }
+  | { kind: 'delete'; req: SongRequestPublic; direction: 'up' | 'down' }
+  | { kind: 'submit' };
 
 function selectLocaleOnRequestsHost(code: string) {
   document.cookie = `${REQUESTS_LOCALE_COOKIE}=${code}; path=/; max-age=31536000; secure; samesite=lax`;
@@ -73,6 +81,10 @@ export function RequestsBoardClient() {
   const [linkSent, setLinkSent] = useState(false);
 
   const [pendingVoteId, setPendingVoteId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<PendingConfirm | null>(null);
+  // Warm thank-you (with the credit-pack pitch) shown after a request or an up-vote.
+  const [thanks, setThanks] = useState<'submitted' | 'voted' | null>(null);
+  const [notice, setNotice] = useState('');
 
   const isSignedIn = !!user;
   const [onRequestsHost, setOnRequestsHost] = useState(false);
@@ -102,6 +114,20 @@ export function RequestsBoardClient() {
     }
   }, [t]);
 
+  const errorCode = (e: unknown): string | undefined =>
+    e instanceof ApiError ? (e.data?.detail?.code as string | undefined) : undefined;
+
+  const errorMessage = (e: unknown): string => {
+    switch (errorCode(e)) {
+      case 'submission_limit':
+        return t('limitSubmission');
+      case 'vote_already_used':
+        return t('voteSpentCannotSubmit');
+      default:
+        return t('errorGeneric');
+    }
+  };
+
   useEffect(() => {
     // Hydrate the user if we have a stored session token but no user yet.
     if (!user && getAccessToken()) {
@@ -128,14 +154,21 @@ export function RequestsBoardClient() {
       setDeepLinkVoted(true);
       return;
     }
+    if (board?.voted_today) {
+      // Today's single vote is already on another request: don't silently move it.
+      setError(t('voteSpentCannotSubmit'));
+      return;
+    }
     api
       .voteSongRequest(focusReq.id, 'up')
       .then(() => {
         setDeepLinkVoted(true);
+        setThanks('voted');
         return refresh();
       })
-      .catch(() => setError(t('errorGeneric')));
-  }, [autoUpvote, isSignedIn, focusReq, refresh, t]);
+      .catch((e) => setError(errorMessage(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoUpvote, isSignedIn, focusReq, refresh, t, board?.voted_today]);
 
   // Debounced KaraokeNerds check as the user types artist/title (signed-in only —
   // the check endpoint requires auth). Soft/non-blocking: we just surface existing
@@ -186,11 +219,20 @@ export function RequestsBoardClient() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Submitting spends today's single vote, so ask first (the daily vote can't be wasted by
+  // accident). The form is disabled outright when today's vote is already spent.
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!artist.trim() || !title.trim()) return;
+    setError('');
+    setNotice('');
+    setConfirm({ kind: 'submit' });
+  };
+
+  const doSubmit = async () => {
+    setConfirm(null);
     setError('');
     setCorrectionNote('');
-    if (!artist.trim() || !title.trim()) return;
     setSubmitting(true);
     try {
       const res = await api.submitSongRequest(artist.trim(), title.trim());
@@ -200,26 +242,57 @@ export function RequestsBoardClient() {
       setArtist('');
       setTitle('');
       setCommunityData(null);
+      setThanks('submitted');
       await refresh();
-    } catch {
-      setError(t('errorGeneric'));
+    } catch (e) {
+      setError(errorMessage(e));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleVote = async (req: SongRequestPublic, direction: 'up' | 'down') => {
-    if (!isSignedIn) return;
+  const castVote = async (req: SongRequestPublic, direction: 'up' | 'down', confirmDelete = false) => {
+    setConfirm(null);
     setError('');
+    setNotice('');
     setPendingVoteId(req.id);
     try {
-      await api.voteSongRequest(req.id, direction);
+      const res = await api.voteSongRequest(req.id, direction, confirmDelete);
+      if (res.request_deleted) {
+        setNotice(t('requestRemoved'));
+      } else if (direction === 'up' && res.your_vote === 1) {
+        setThanks('voted');
+      }
       await refresh();
-    } catch {
-      setError(t('errorGeneric'));
+    } catch (e) {
+      if (errorCode(e) === 'would_delete_request') {
+        setConfirm({ kind: 'delete', req, direction });
+      } else {
+        setError(errorMessage(e));
+      }
     } finally {
       setPendingVoteId(null);
     }
+  };
+
+  const handleVote = (req: SongRequestPublic, direction: 'up' | 'down') => {
+    if (!isSignedIn) return;
+    const mine = direction === 'up' ? 1 : -1;
+    if (req.your_vote === mine) {
+      // Undo: frees today's vote (the server asks to confirm if that deletes the request).
+      void castVote(req, direction);
+      return;
+    }
+    setConfirm({ kind: 'spend', req, direction, moving: !!board?.voted_today });
+  };
+
+  const handleBuyCredits = () => {
+    // Same hand-off as "make it yourself", but straight to the buy-credits dialog.
+    if (window.location.hostname === REQUESTS_HOST) {
+      window.location.href = 'https://gen.nomadkaraoke.com/app?buy=1';
+      return;
+    }
+    router.push('/app?buy=1');
   };
 
   const handleMakeItYourself = async () => {
@@ -280,11 +353,18 @@ export function RequestsBoardClient() {
           style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)' }}
         >
           <h2 className="font-semibold text-lg">{t('submitHeading')}</h2>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('dailyLimitsNote')}</p>
 
           {isSignedIn ? (
             <form onSubmit={handleSubmit} className="space-y-3">
+              {board?.voted_today && (
+                <p data-testid="vote-spent-note" className="text-sm rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(168, 85, 247, 0.08)', color: 'var(--accent)' }}>
+                  {t('voteSpentCannotSubmit')}
+                </p>
+              )}
               <input
                 type="text"
+                disabled={!!board?.voted_today}
                 value={artist}
                 onChange={(e) => setArtist(e.target.value)}
                 placeholder={t('artistPlaceholder')}
@@ -293,6 +373,7 @@ export function RequestsBoardClient() {
               />
               <input
                 type="text"
+                disabled={!!board?.voted_today}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={t('titlePlaceholder')}
@@ -301,7 +382,7 @@ export function RequestsBoardClient() {
               />
               <button
                 type="submit"
-                disabled={submitting || !artist.trim() || !title.trim()}
+                disabled={submitting || !!board?.voted_today || !artist.trim() || !title.trim()}
                 className="w-full py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100"
                 style={{ backgroundColor: 'var(--accent)', color: 'white' }}
               >
@@ -352,7 +433,44 @@ export function RequestsBoardClient() {
             </p>
           )}
           {error && <p className="text-sm text-red-400">{error}</p>}
+          {notice && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{notice}</p>}
         </section>
+
+        {/* Thank-you + gentle nudge towards making tracks directly with credits */}
+        {thanks && (
+          <section
+            data-testid="thanks-panel"
+            className="rounded-2xl p-6 text-center space-y-3"
+            style={{ backgroundColor: 'rgba(168, 85, 247, 0.08)', border: '1px solid var(--accent)' }}
+          >
+            <div className="flex justify-center">
+              <CheckCircle className="w-6 h-6" style={{ color: 'var(--accent)' }} />
+            </div>
+            <h2 className="font-semibold text-lg">
+              {thanks === 'submitted' ? t('thanksSubmittedHeading') : t('thanksVotedHeading')}
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{t('thanksBody')}</p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                type="button"
+                onClick={handleBuyCredits}
+                className="inline-flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-semibold"
+                style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+              >
+                {t('thanksBuyButton')}
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setThanks(null)}
+                className="py-3 px-6 rounded-xl font-medium"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {t('thanksDismiss')}
+              </button>
+            </div>
+          </section>
+        )}
 
         {/* Daily-vote hint */}
         {isSignedIn && board?.voted_today && (
@@ -434,6 +552,88 @@ export function RequestsBoardClient() {
             ))}
           </section>
         )}
+      </div>
+
+      {confirm && (
+        <ConfirmDialog
+          title={
+            confirm.kind === 'delete'
+              ? t('deleteTitle')
+              : confirm.kind === 'submit'
+                ? t('submitConfirmTitle')
+                : confirm.moving
+                  ? t('moveVoteTitle')
+                  : t('spendVoteTitle')
+          }
+          body={
+            confirm.kind === 'delete'
+              ? t('deleteBody', { title: confirm.req.title, artist: confirm.req.artist })
+              : confirm.kind === 'submit'
+                ? t('submitConfirmBody', { artist: artist.trim(), title: title.trim() })
+                : confirm.moving
+                  ? t('moveVoteBody', { title: confirm.req.title, artist: confirm.req.artist })
+                  : t('spendVoteBody', { title: confirm.req.title, artist: confirm.req.artist })
+          }
+          confirmLabel={confirm.kind === 'delete' ? t('deleteConfirm') : t('confirm')}
+          cancelLabel={t('cancel')}
+          destructive={confirm.kind === 'delete'}
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => {
+            if (confirm.kind === 'submit') void doSubmit();
+            else void castVote(confirm.req, confirm.direction, confirm.kind === 'delete');
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  cancelLabel,
+  destructive,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+      onClick={onCancel}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="max-w-md w-full rounded-2xl p-6 space-y-4"
+        style={{ backgroundColor: 'var(--card)', border: '1px solid var(--card-border)', color: 'var(--text)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-semibold text-lg">{title}</h2>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{body}</p>
+        <div className="flex gap-2 justify-end">
+          <button type="button" onClick={onCancel} className="py-2 px-4 rounded-xl font-medium" style={{ color: 'var(--text-muted)' }}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="py-2 px-4 rounded-xl font-semibold"
+            style={{ backgroundColor: destructive ? '#dc2626' : 'var(--accent)', color: 'white' }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );

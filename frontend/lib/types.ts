@@ -65,6 +65,8 @@ export interface SongRequestPublic {
   youtube_url?: string | null
   was_corrected: boolean
   your_vote?: number | null
+  /** Only on a vote response: removing the last up-vote deleted the request. */
+  request_deleted?: boolean
 }
 
 export interface BoardResponse {

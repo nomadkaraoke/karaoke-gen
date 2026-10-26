@@ -301,79 +301,174 @@ async def test_snooze_clear_and_reject(service):
 
 
 # ---------------------------------------------------------------------------
-# YouTube comment bot: bot-added requests + claim on first real upvote
+# Requests-board overhaul (2026-10-26): real users only, 1 submission + 1 vote per day,
+# last up-vote deletes the request, picker needs a live backer.
 # ---------------------------------------------------------------------------
 
 
-def _bot_add(service, artist="Glass Harbor", title="Tin Sky", comment_id="c1"):
-    return service.add_from_youtube_comment(artist, title, comment_id=comment_id, video_id="v1", author="Viewer")
-
-
-def test_bot_add_creates_unclaimed_request_without_vote(service):
+def test_require_real_email_rejects_placeholder_and_junk():
     from backend.models.song_request import YOUTUBE_COMMENT_SUBMITTER
+    from backend.services.song_request_service import InvalidSubmitter, require_real_email
 
-    req = _bot_add(service)
-    stored = service.get_request(req.id)
-    assert stored.source == "youtube_comment"
-    assert stored.submitted_by == YOUTUBE_COMMENT_SUBMITTER
-    assert stored.vote_count == 0 and stored.youtube_comment_id == "c1"
-
-
-def test_bot_add_returns_existing_open_request(service):
-    a = _bot_add(service, comment_id="c1")
-    b = _bot_add(service, artist="glass harbor", title="tin sky", comment_id="c2")
-    assert a.id == b.id
+    assert require_real_email("  Fan@Example.COM ") == "fan@example.com"
+    for bad in ("", None, "nobody", "a@b", "@x.com", YOUTUBE_COMMENT_SUBMITTER):
+        with pytest.raises(InvalidSubmitter):
+            require_real_email(bad)
 
 
 @pytest.mark.asyncio
-async def test_bot_add_returns_existing_human_request(service):
-    human, _, _, _ = await _submit(service, "u1@x.com", "Glass Harbor", "Tin Sky")
-    assert _bot_add(service).id == human.id
+async def test_submit_requires_real_email(service):
+    from backend.services.song_request_service import InvalidSubmitter
 
-
-def test_first_upvote_claims_and_second_does_not_steal(service):
-    req = _bot_add(service)
-    service.cast_vote("first@x.com", req.id, "up")
-    service.cast_vote("second@x.com", req.id, "up")
-    stored = service.get_request(req.id)
-    assert stored.submitted_by == "first@x.com" and stored.claimed_at is not None
-    assert stored.vote_count == 2
-
-
-def test_downvote_does_not_claim(service):
-    from backend.models.song_request import YOUTUBE_COMMENT_SUBMITTER
-
-    req = _bot_add(service)
-    service.cast_vote("hater@x.com", req.id, "down")
-    assert service.get_request(req.id).submitted_by == YOUTUBE_COMMENT_SUBMITTER
-
-
-def test_unclaimed_bot_request_is_not_pickable_until_claimed(service):
-    req = _bot_add(service)
-    assert req.id not in [r.id for r in service.list_pick_candidates()]
-    service.cast_vote("fan@x.com", req.id, "up")
-    assert req.id in [r.id for r in service.list_pick_candidates()]
+    with pytest.raises(InvalidSubmitter):
+        await _submit(service, "youtube-comment@nomadkaraoke.com", "A", "B")
+    assert service.list_all() == []
 
 
 @pytest.mark.asyncio
-async def test_human_resubmit_of_bot_request_claims_it(service):
-    req = _bot_add(service)
-    again, existed, _, _ = await _submit(service, "fan@x.com", "Glass Harbor", "Tin Sky")
-    assert existed and again.id == req.id
-    assert service.get_request(req.id).submitted_by == "fan@x.com"
+async def test_second_submission_same_day_is_refused_when_vote_spent(service):
+    from backend.services.song_request_service import VoteAlreadyUsed
+
+    await _submit(service, "u1@x.com", "Artist A", "Song A")
+    with pytest.raises(VoteAlreadyUsed):
+        await _submit(service, "u1@x.com", "Artist B", "Song B")
+    assert len(service.list_all()) == 1  # nothing half-created
+
+
+@pytest.mark.asyncio
+async def test_submission_cap_after_vote_is_freed(service):
+    from backend.services.song_request_service import SubmissionRateLimited
+
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    service.cast_vote("u2@x.com", a.id, "up")  # a second backer, so u1 may un-vote freely
+    service.cast_vote("u1@x.com", a.id, "up")  # toggle off -> vote freed
+    with pytest.raises(SubmissionRateLimited):  # ...but still only one submission a day
+        await _submit(service, "u1@x.com", "Artist B", "Song B")
+
+
+@pytest.mark.asyncio
+async def test_resubmit_existing_song_with_spent_vote_elsewhere_is_refused(service):
+    from backend.services.song_request_service import VoteAlreadyUsed
+
+    await _submit(service, "u1@x.com", "Artist A", "Song A")
+    await _submit(service, "u2@x.com", "Artist B", "Song B")
+    with pytest.raises(VoteAlreadyUsed):
+        await _submit(service, "u1@x.com", "Artist B", "Song B")
+
+
+@pytest.mark.asyncio
+async def test_removing_last_upvote_needs_confirmation_then_deletes(service):
+    from backend.services.song_request_service import WouldDeleteRequest
+
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    with pytest.raises(WouldDeleteRequest):
+        service.cast_vote("u1@x.com", a.id, "up")  # toggle off the only backer
+    assert service.get_request(a.id) is not None and service.get_daily_vote("u1@x.com") is not None
+
+    service.cast_vote("u1@x.com", a.id, "up", confirm_delete=True)
+    assert service.get_request(a.id) is None
+    assert service.get_daily_vote("u1@x.com") is None  # vote freed too
+
+
+@pytest.mark.asyncio
+async def test_moving_last_upvote_away_deletes_old_request(service):
+    from backend.services.song_request_service import WouldDeleteRequest
+
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    b, _, _, _ = await _submit(service, "u2@x.com", "Artist B", "Song B")
+    with pytest.raises(WouldDeleteRequest):
+        service.cast_vote("u1@x.com", b.id, "up")
+    service.cast_vote("u1@x.com", b.id, "up", confirm_delete=True)
+    assert service.get_request(a.id) is None
+    assert service.get_request(b.id).vote_count == 2
+    assert service.get_daily_vote("u1@x.com").request_id == b.id
+
+
+@pytest.mark.asyncio
+async def test_flipping_last_upvote_to_downvote_deletes(service):
+    from backend.services.song_request_service import WouldDeleteRequest
+
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    with pytest.raises(WouldDeleteRequest):
+        service.cast_vote("u1@x.com", a.id, "down")
+
+
+@pytest.mark.asyncio
+async def test_not_last_upvote_needs_no_confirmation_and_keeps_request(service):
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    service.cast_vote("u2@x.com", a.id, "up")
+    service.cast_vote("u1@x.com", a.id, "up")  # u1 leaves; u2 still backs it
+    assert service.get_request(a.id).vote_count == 1
+
+
+@pytest.mark.asyncio
+async def test_deleting_request_frees_remaining_downvoters(service):
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    service.cast_vote("hater@x.com", a.id, "down")
+    service.cast_vote("u1@x.com", a.id, "up", confirm_delete=True)
+    assert service.get_request(a.id) is None
+    assert service.get_daily_vote("hater@x.com") is None
+
+
+@pytest.mark.asyncio
+async def test_pick_needs_a_live_upvote_and_an_eligible_owner(service):
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    assert [r.id for r in service.list_pick_candidates()] == [a.id]
+    # Net zero (1 up + 1 down) is not enough: nobody net-backs it.
+    service.cast_vote("hater@x.com", a.id, "down")
+    assert service.list_pick_candidates() == []
+    # Legacy unattached rows are never listed or picked.
+    legacy = SongRequest(
+        id="legacy", artist="L", title="T", artist_raw="L", title_raw="T", dedupe_key="l|t",
+        submitted_by="youtube-comment@nomadkaraoke.com", source="youtube_comment", vote_count=3,
+    )
+    service.db.collection(srs.REQUESTS_COLLECTION).document("legacy").set(legacy.model_dump(mode="json"))
+    assert "legacy" not in [r.id for r in service.list_active()]
+    assert "legacy" not in [r.id for r in service.list_pick_candidates()]
+
+
+@pytest.mark.asyncio
+async def test_pick_owner_prefers_submitter_and_skips_attempted(service):
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    service.cast_vote("u2@x.com", a.id, "up")
+    assert service.pick_owner(service.get_request(a.id)) == "u1@x.com"
+    service.assign_owner(a.id, "u1@x.com")  # u1 already tried it
+    assert service.pick_owner(service.get_request(a.id)) == "u2@x.com"
+    service.assign_owner(a.id, "u2@x.com")
+    assert service.pick_owner(service.get_request(a.id)) is None
+    assert service.list_pick_candidates() == []
+
+
+@pytest.mark.asyncio
+async def test_reopen_after_job_deleted_returns_request_and_excludes_owner(service):
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    service.cast_vote("u2@x.com", a.id, "up")
+    service.transition_status(a.id, "open", "in_progress", job_id="job1")
+    service.assign_owner(a.id, "u1@x.com")
+
+    assert service.reopen_after_job_deleted("job1") == a.id
+    again = service.get_request(a.id)
+    assert again.status == "open" and again.job_id is None and again.owner_email is None
+    assert service.pick_owner(again) == "u2@x.com"  # the deleter is not asked again
+    assert service.reopen_after_job_deleted("job1") is None  # nothing left linked to it
+
+
+@pytest.mark.asyncio
+async def test_reopen_after_job_deleted_removes_request_nobody_else_backs(service):
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    service.transition_status(a.id, "open", "in_progress", job_id="job1")
+    service.assign_owner(a.id, "u1@x.com")
+    assert service.reopen_after_job_deleted("job1") == a.id
+    assert service.get_request(a.id) is None
 
 
 def test_find_published_by_key(service):
-    req = _bot_add(service)
+    req = SongRequest(
+        id="p1", artist="Glass Harbor", title="Tin Sky", artist_raw="Glass Harbor",
+        title_raw="Tin Sky", dedupe_key="glass harbor|tin sky", submitted_by="u1@x.com",
+    )
+    service.db.collection(srs.REQUESTS_COLLECTION).document(req.id).set(req.model_dump(mode="json"))
     service.db.collection(srs.REQUESTS_COLLECTION).document(req.id).update(
         {"status": "published", "youtube_url": "https://youtu.be/x"})
     found = service.find_published_by_key(req.dedupe_key)
     assert found and found.id == req.id
-
-
-def test_bot_add_dedupes_against_request_being_made(service):
-    req = _bot_add(service, comment_id="c1")
-    service.transition_status(req.id, "open", "queued")
-    again = _bot_add(service, comment_id="c2")
-    assert again.id == req.id and again.status == "queued"
-    assert service.find_active_by_key(req.dedupe_key).id == req.id

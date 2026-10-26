@@ -43,11 +43,6 @@ class FakeBoard:
     def find_open_or_published(self, artist, title):
         return self.existing.get(bot.song_key(artist, title))
 
-    def add_from_comment(self, artist, title, thread):
-        m = bot.BoardMatch(f"new{len(self.added)}", artist, title, "open")
-        self.added.append((artist, title, thread.comment_id))
-        self.existing[bot.song_key(artist, title)] = m
-        return m
 
 
 def gen_returning(data, translation=None):
@@ -124,10 +119,18 @@ class TestRouting:
         board = FakeBoard()
         d = _decide(bot.thread_from_api(_item()), gen_returning(REQUEST), board=board)
         assert d.action == "reply"
-        assert [s.kind for s in d.songs] == ["board_new"]
-        assert board.added == [("The Lanterns", "Paper Moons", "c1")]
-        assert "request=new0" in d.reply_text and "utm_medium=comment_reply" in d.reply_text
+        # The bot never creates a request: it only tells the commenter how to request it.
+        assert [s.kind for s in d.songs] == ["request_on_board"]
+        assert board.added == [] and not hasattr(board, "add_from_comment")
+        assert "request=" not in d.reply_text and "utm_medium=comment_reply" in d.reply_text
         assert '"Paper Moons" by The Lanterns' in d.reply_text
+        assert "request it on our requests board" in d.reply_text and "sign in" in d.reply_text
+
+    def test_song_being_made_says_so(self):
+        key = bot.song_key("The Lanterns", "Paper Moons")
+        board = FakeBoard({key: bot.BoardMatch("r9", "The Lanterns", "Paper Moons", "in_progress")})
+        d = _decide(bot.thread_from_api(_item()), gen_returning(REQUEST), board=board)
+        assert d.songs[0].kind == "board_making" and "already being made" in d.reply_text
 
     def test_existing_board_request_is_linked_not_duplicated(self):
         key = bot.song_key("The Lanterns", "Paper Moons")
@@ -157,7 +160,7 @@ class TestRouting:
                                      {"artist": "Glass Harbor", "title": "Tin Sky"}]}
         index = bot.ChannelIndex({bot.song_key("Glass Harbor", "Tin Sky"): "vidG"})
         d = _decide(bot.thread_from_api(_item()), gen_returning(data), index=index)
-        assert [s.kind for s in d.songs] == ["board_new", "existing_video"]
+        assert [s.kind for s in d.songs] == ["request_on_board", "existing_video"]
         assert d.reply_text.index("Already made") < d.reply_text.index("requests board")
 
     def test_caps_songs(self):

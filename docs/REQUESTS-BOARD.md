@@ -45,9 +45,16 @@ into paying [gen.nomadkaraoke.com](https://gen.nomadkaraoke.com) customers over 
    show them "we tidied that to …", and add it to the board. If someone already requested that same
    song, their submission just up-votes the existing entry instead of creating a duplicate.
 4. **Vote — once per day.** Each person gets **one vote per calendar day** (up or down, on a single
-   song). They can move it to a different song later that day, or come back tomorrow for a fresh
-   vote. This keeps the signal strong and hard to game. Submitting a song counts as that day's vote
-   for it.
+   song) **and one request per day**. They can undo the vote or move it to a different song later
+   that day, or come back tomorrow for a fresh one. Submitting a song counts as that day's vote for
+   it, so a request is refused (`409 vote_already_used`) once the day's vote is spent elsewhere. The
+   UI asks "use today's vote on X?" before spending it, and after a request/vote it thanks the user
+   and points them at a credit pack for more tracks or faster delivery. The limits are deliberate:
+   free users get little, so people who want more are nudged to buy credits.
+   **A request is always linked to a real user email** (enforced in `SongRequestService`), and
+   removing a request's **last up-vote deletes the request** (the server answers `409
+   would_delete_request` until the client re-sends with `confirm_delete=true`, and the UI shows a
+   warning first).
 5. **See the ranking.** The board is sorted by net votes — the top song is what's next in line.
 6. **"Don't want to wait? Make it yourself now →"** A prominent call-to-action lets an impatient
    user jump straight into the full generator and make their video immediately — and *that* path
@@ -66,9 +73,18 @@ source** (auto-submit a candidate when the board is empty), deliberately deferre
 **How the automation works:**
 - **Daily picker** (`community_daily_pick.py`, Scheduler noon US Eastern) claims the UTC day with a
   create-only lock (`daily_community_pick/{YYYY-MM-DD}` → **one free track/day, total**), picks the
-  top open request with net votes ≥ 0 (source-agnostic; skips community-rejected), grants the
-  requester a free credit, and submits the job **as that user** (so it's owned by them and the credit
-  is consumed) via the same search → auto-select → download path the web flow uses.
+  top open request with net votes ≥ 1 and a live backer (skips community-review holds), grants
+  that owner (the submitter if they still up-vote it, else the oldest up-voter who hasn't already
+  owned it) a free credit, and submits the job **as that user** (so it's owned by them and the credit
+  is consumed). Audio is chosen unattended **only when confident**
+  (`community_audio_pick.py`: exact artist + exact track title, version suffix included, on a
+  lossless source — a torrent with ≥3 seeders, else Spotify — and no ambiguity between different
+  recordings). Otherwise the job parks in `AWAITING_AUDIO_SELECTION` and the owner is emailed to
+  choose the audio in the gen UI. (Before 2026-10-26 it called `select_best`, which silently fell
+  back to result #0 for remote results — wrong tracks.) The "review your lyrics" email for a
+  community job opens with a note that the song came from the requests board.
+- **Deleting the job** (the owner declines it) refunds the credit and puts the request back on the
+  board with that owner excluded from re-picks, or deletes it if nobody else backs it.
 - **24h hand-off** (`community_handoff.py`, hourly) reassigns a track to the next up-voter if the
   owner hasn't completed their review within 24h — up to 5 voters, then it parks the track
   (`stalled`). Community jobs are excluded from the normal stale-review auto-cancel.
@@ -132,8 +148,12 @@ Viewers often comment "could you make <song>?" on our videos. Every hour a bot r
 top-level comments on the channel and, for a clear song request:
 
 - **Song already on the channel:** replies with that video's link ("Already made "X" by Y 🥳 <link>").
-- **Otherwise:** adds the song to the board, or finds the existing request, and replies with a
-  link straight to it: `https://requests.nomadkaraoke.com/?request=<id>&utm_source=youtube&utm_medium=comment_reply&utm_campaign=song_request`.
+- **Already on the board:** links the existing request to upvote, or says it's being made.
+- **Otherwise:** replies with a short note that the song can be requested on the board (free, sign
+  in with an email) plus the board link
+  `https://requests.nomadkaraoke.com/?utm_source=youtube&utm_medium=comment_reply&utm_campaign=song_request`.
+  **The bot never creates a request** (Andrew, 2026-10-26): a request is only worth having if its
+  asker will make an account, so every board request is linked to a real user email.
 - **Vague asks** ("more Johnnie please") get a generic board link.
 - **Non-English comments** get a translated reply. If a URL doesn't survive the translation,
   the reply falls back to English.
@@ -147,13 +167,11 @@ anonymous YouTuber to sign in with an email; follow-up emails do the gen convers
 - comments from before go-live;
 - anything the Gemini Flash classifier isn't confident about (< 0.8).
 
-**Bot-added requests:**
-- `source="youtube_comment"` and `submitted_by="youtube-comment@nomadkaraoke.com"`, with no votes.
-- The **first real up-voter claims the request**, which sets `submitted_by` to them. Until
-  then the daily picker skips it, so a free credit never goes to the placeholder address.
-- The deep link highlights the request. Signing in from it uses purpose
-  `requests_board:<id>`, so the magic link returns to `/requests?request=<id>&upvote=1`
-  and casts the upvote on arrival. That's normally how the commenter claims it.
+**Legacy:** until 2026-10-26 the bot added requests itself (`source="youtube_comment"`,
+`submitted_by="youtube-comment@nomadkaraoke.com"`, claimed by the first up-voter). That caused
+claims that outlived the vote (job 8695c32e). Such rows are never listed, picked or credited
+(`is_linked_to_real_user`). Deep links (`?request=<id>`, magic-link purpose `requests_board:<id>`,
+`&upvote=1` on return) still work for requests that exist.
 
 **Pieces:**
 - Decision core: `backend/services/youtube_comment_bot.py`, shared by the replay and the worker.

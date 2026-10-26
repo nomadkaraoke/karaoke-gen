@@ -31,6 +31,8 @@ from backend.services.audio_search_service import (
     AudioSearchService,
     NoResultsError,
 )
+from backend.services.community_audio_pick import pick_confident_audio
+from backend.services.email_service import get_email_service
 from backend.services.job_manager import JobManager
 from backend.services.song_request_service import get_song_request_service
 from backend.services.theme_service import get_theme_service
@@ -208,7 +210,7 @@ def _email_admin_flagged(flagged) -> None:
 async def _make_request(service, settings, date: str, request: SongRequest) -> Dict[str, Any]:
     """Drive a chosen request to in_progress idempotently, threading the per-day
     lock's phase markers. Safe to re-enter (resume)."""
-    owner = (request.owner_email or request.submitted_by).lower()
+    owner = (request.owner_email or service.pick_owner(request) or request.submitted_by).lower()
 
     def phase_cb(p, **kw):
         service.update_lock(date, phase=p, **kw)
@@ -318,11 +320,12 @@ def _create_community_job(request: SongRequest, owner: str, settings) -> str:
 
 
 async def _search_and_download(job_id: str, request: SongRequest) -> bool:
-    """Run audio search, auto-select the best source, and trigger the download.
+    """Run audio search, auto-select a CONFIDENT source, and trigger the download.
 
-    Returns True if the download was triggered. On no-results/search failure the
-    job is parked in AWAITING_AUDIO_SELECTION so the owner can pick a source
-    manually during their review — the handoff clock still runs.
+    Returns True if the download was triggered. When the search fails/finds nothing, or no
+    result is unmistakably the requested track (see community_audio_pick), the job is
+    parked in AWAITING_AUDIO_SELECTION and its owner is emailed to choose the source in the
+    gen UI — the handoff clock still runs.
     """
     job_manager = JobManager()
 
@@ -354,6 +357,7 @@ async def _search_and_download(job_id: str, request: SongRequest) -> bool:
             message="No automatic audio sources found. Please choose a source.",
             raise_on_invalid=False,
         )
+        _notify_audio_selection_needed(job_id, request)
         return False
 
     results_dicts = [r.to_dict() for r in results]
@@ -364,7 +368,18 @@ async def _search_and_download(job_id: str, request: SongRequest) -> bool:
         store["state_data.remote_search_id"] = remote_id
     job_manager.update_job(job_id, store)
 
-    best_index = audio_search_service.select_best(results)
+    best_index = pick_confident_audio(results_dicts, request.artist, request.title)
+    if best_index is None:
+        logger.info(
+            "daily-pick: no confident audio source for job %s (%s - %s); parking for owner choice",
+            job_id, request.artist, request.title,
+        )
+        job_manager.transition_to_state(
+            job_id=job_id, new_status=JobStatus.AWAITING_AUDIO_SELECTION, progress=10,
+            message="Please choose an audio source.", raise_on_invalid=False,
+        )
+        _notify_audio_selection_needed(job_id, request)
+        return False
     from backend.api.routes.audio_search import _validate_and_prepare_selection
     try:
         _validate_and_prepare_selection(job_id=job_id, selection_index=best_index)
@@ -374,6 +389,23 @@ async def _search_and_download(job_id: str, request: SongRequest) -> bool:
             job_id=job_id, new_status=JobStatus.AWAITING_AUDIO_SELECTION, progress=10,
             message="Please choose an audio source.", raise_on_invalid=False,
         )
+        _notify_audio_selection_needed(job_id, request)
         return False
 
     return await get_worker_service().trigger_audio_download_worker(job_id)
+
+
+def _notify_audio_selection_needed(job_id: str, request: SongRequest) -> None:
+    """Tell the job's owner their community pick needs them to choose the audio (best effort)."""
+    try:
+        job = JobManager().get_job(job_id)
+        if not job or not job.user_email:
+            return
+        user_locale = get_user_service().get_user(job.user_email)
+        locale = (user_locale.locale if user_locale and user_locale.locale else "en")
+        get_email_service().send_community_audio_selection_needed(
+            to_email=job.user_email, artist=request.artist, title=request.title,
+            job_id=job_id, locale=locale,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("daily-pick: audio-selection email failed for job %s", job_id)

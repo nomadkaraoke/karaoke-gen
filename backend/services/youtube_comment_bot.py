@@ -4,12 +4,14 @@ Viewers often comment "could you make <song>?" on Nomad Karaoke videos. This mod
 decides, for one top-level comment thread, whether to reply and with what:
 
 - an already-published Nomad video of that song -> link to it;
-- otherwise -> add the song to the requests board (or find the existing request)
-  and link straight to it, so the commenter can sign in with an email and upvote it.
+- a request already on the board -> link to it (upvote) / say it's being made;
+- otherwise -> a short note on how to request it on the board (sign in, submit it).
 
-The reply is board-only on purpose (Andrew, 2026-10-22): the goal is turning an
-anonymous YouTuber into a requests-board user with a real email address; the
-board UI and follow-up emails do the gen conversion later.
+The bot never creates requests (Andrew, 2026-10-26): a request is only worth having if its
+asker is willing to make an account, so every board request is linked to a real user email
+and the reply just tells the commenter what to do. The goal is turning an anonymous
+YouTuber into a requests-board user; the board UI and follow-up emails do the gen
+conversion later.
 
 Everything here is pure decision logic behind small injectable ports (classifier,
 translator, board, channel index), shared by the local replay script
@@ -315,8 +317,6 @@ class BoardPort(Protocol):
 
     def find_open_or_published(self, artist: str, title: str) -> Optional[BoardMatch]: ...
 
-    def add_from_comment(self, artist: str, title: str, thread: CommentThread) -> BoardMatch: ...
-
 
 # ---------------------------------------------------------------------------
 # Decision
@@ -325,7 +325,7 @@ class BoardPort(Protocol):
 class SongAction:
     artist: str
     title: str
-    kind: str  # existing_video | board_published | board_existing | board_new
+    kind: str  # existing_video | board_published | board_existing | board_making | request_on_board
     url: str
     request_id: Optional[str] = None
     video_id: Optional[str] = None
@@ -346,21 +346,36 @@ def _quote(s: SongAction) -> str:
 
 
 def render_reply_en(songs: Sequence[SongAction]) -> str:
-    """Short, casual, board-only English reply (Andrew's style: brief + emoji)."""
+    """Short, casual, board-only English reply (Andrew's style: brief + emoji).
+
+    The bot never creates requests: a song that isn't made or on the board yet just gets
+    told how to request it (sign in on the board, submit it, up to one a day), because a
+    request only gets made if its asker is willing to make an account (Andrew, 2026-10-26).
+    """
     made = [s for s in songs if s.kind in ("existing_video", "board_published")]
-    board = [s for s in songs if s.kind in ("board_existing", "board_new")]
+    making = [s for s in songs if s.kind == "board_making"]
+    board = [s for s in songs if s.kind == "board_existing"]
+    new = [s for s in songs if s.kind == "request_on_board"]
     parts: List[str] = []
     if len(made) == 1:
         parts.append(f"Already made {_quote(made[0])} 🥳 {made[0].url}")
     elif made:
         parts.append("Already made these 🥳\n" + "\n".join(f"{_quote(s)}: {s.url}" for s in made))
+    if len(making) == 1:
+        parts.append(f"{_quote(making[0])} is already being made 🥳 {making[0].url}")
+    elif making:
+        parts.append("These are already being made 🥳\n" + "\n".join(f"{_quote(s)}: {s.url}" for s in making))
     if len(board) == 1:
         s = board[0]
-        parts.append(f"Added {_quote(s)} to our requests board 🥳 upvote it here and we'll "
+        parts.append(f"{_quote(s)} is already on our requests board 🥳 upvote it here and we'll "
                      f"email you when it's made: {s.url}")
     elif board:
-        parts.append("Added these to our requests board 🥳 upvote them and we'll email you "
+        parts.append("These are already on our requests board 🥳 upvote them and we'll email you "
                      "when they're made:\n" + "\n".join(f"{_quote(s)}: {s.url}" for s in board))
+    if new:
+        what = _quote(new[0]) if len(new) == 1 else "those songs"
+        parts.append(f"To get {what} made, request it on our requests board (free, just sign in "
+                     f"with your email) and we'll email you when it's ready: {new[0].url}")
     return "\n\n".join(parts)
 
 
@@ -405,8 +420,7 @@ def decide(
 ) -> Decision:
     """Decide what (if anything) to reply to one top-level comment thread.
 
-    ``board.add_from_comment`` is only called for a confident request, so the
-    replay's simulated board and the prod board see exactly the same calls.
+    The board is only ever read here: the bot never creates a request on anyone's behalf.
     """
     if thread.author_channel_id == channel_id:
         return Decision("skip", "own_comment")
@@ -450,13 +464,16 @@ def decide(
             actions.append(SongAction(match.artist, match.title, "board_published",
                                       match.youtube_url, request_id=match.request_id))
             continue
-        if match:
+        if match and match.status in ("queued", "in_progress"):
+            actions.append(SongAction(match.artist, match.title, "board_making",
+                                      board_link(), request_id=match.request_id))
+            continue
+        if match and match.status == "open":
             actions.append(SongAction(match.artist, match.title, "board_existing",
                                       board_link(match.request_id), request_id=match.request_id))
             continue
-        created = board.add_from_comment(artist, title, thread)
-        actions.append(SongAction(created.artist, created.title, "board_new",
-                                  board_link(created.request_id), request_id=created.request_id))
+        # Not made, not on the board: tell them how to request it (no request is created).
+        actions.append(SongAction(artist, title, "request_on_board", board_link()))
 
     if not actions:
         return Decision("skip", "no_songs", classification)
