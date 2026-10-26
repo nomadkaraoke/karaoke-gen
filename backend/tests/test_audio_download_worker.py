@@ -228,6 +228,38 @@ class TestProcessAudioDownload:
             mock_ws.trigger_lyrics_worker.assert_awaited_once_with("test-job-123")
 
     @pytest.mark.asyncio
+    async def test_provide_url_job_without_source_id_downloads_from_url(self):
+        """A job parked then given a pasted YouTube URL has download_url but no
+        source_id (provide-url shape); the worker must still download it."""
+        job = _make_job(
+            source_name="YouTube",
+            source_id=None,
+            download_url="https://www.youtube.com/watch?v=icW5d_fYJaI",
+            state_data={"audio_search_results": [{"provider": "Spotify"}]},
+        )
+
+        with patch("backend.workers.audio_download_worker.JobManager") as mock_jm_cls, \
+             patch("backend.workers.audio_download_worker.StorageService"), \
+             patch("backend.workers.audio_download_worker._download_audio", new_callable=AsyncMock) as mock_dl, \
+             patch("backend.workers.audio_download_worker.get_worker_service") as mock_ws_factory, \
+             patch("backend.workers.audio_download_worker.reconcile_and_maybe_pause",
+                   new_callable=AsyncMock, return_value=False):
+
+            mock_jm = MagicMock()
+            mock_jm.get_job.return_value = job
+            mock_jm.transition_to_state.return_value = True
+            mock_jm_cls.return_value = mock_jm
+            mock_dl.return_value = ("uploads/test-job-123/audio/song.mp3", "song.mp3")
+            mock_ws_factory.return_value = AsyncMock()
+
+            result = await process_audio_download("test-job-123")
+
+            assert result is True
+            kwargs = mock_dl.call_args.kwargs
+            assert kwargs["source_name"] == "YouTube"
+            assert kwargs["download_url"] == "https://www.youtube.com/watch?v=icW5d_fYJaI"
+
+    @pytest.mark.asyncio
     async def test_download_error_fails_job(self):
         """DownloadError should fail the job and return False."""
         job = _make_job()

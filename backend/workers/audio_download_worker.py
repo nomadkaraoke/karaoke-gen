@@ -258,7 +258,7 @@ async def process_audio_download(job_id: str) -> bool:
                 f"[job:{job_id}] Unexpected status {job.status}, expected DOWNLOADING_AUDIO"
             )
             # Still proceed if there's download params - this handles retry cases
-            if not (job.source_name and job.source_id):
+            if not (job.source_name and (job.source_id or job.download_url)):
                 logger.error(f"[job:{job_id}] No download params available, aborting")
                 return False
 
@@ -275,8 +275,9 @@ async def process_audio_download(job_id: str) -> bool:
             source_id = selected.get('source_id')
             target_file = selected.get('target_file')
             download_url = selected.get('url')
-        elif job.source_name and job.source_id:
-            # Fallback to job-level params (set by _validate_and_prepare_selection)
+        elif job.source_name and (job.source_id or job.download_url):
+            # Fallback to job-level params (set by _validate_and_prepare_selection,
+            # or by provide-url which only knows the pasted URL, not a source_id)
             source_name = job.source_name
             source_id = job.source_id
             target_file = job.target_file

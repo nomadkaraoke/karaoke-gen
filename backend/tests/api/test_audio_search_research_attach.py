@@ -273,6 +273,7 @@ class TestProvideUrl:
         yt = MagicMock()
         yt.check_availability = AsyncMock(return_value={"available": True})
         yt.download = AsyncMock()
+        yt._extract_video_id = MagicMock(return_value="abcdefghijk")
         ws = MagicMock()
         ws.trigger_audio_download_worker = AsyncMock(return_value=True)
 
@@ -292,6 +293,8 @@ class TestProvideUrl:
         srcd = [c for c in mock_job_manager.update_job.call_args_list
                 if c.args[1].get("source_name") == "YouTube" and c.args[1].get("download_url")]
         assert srcd
+        # the worker's job-level fallback needs source_id too
+        assert srcd[0].args[1].get("source_id") == "abcdefghijk"
 
     def test_youtube_worker_trigger_failure_requeues(self, mock_job_manager):
         from fastapi.testclient import TestClient

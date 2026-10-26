@@ -1374,6 +1374,7 @@ async def provide_url_for_job(
         'audio_source_type': 'url',
         'url': url,
         'source_name': 'YouTube' if is_youtube else 'url',
+        'source_id': youtube_service._extract_video_id(url) if is_youtube else None,
         'download_url': url,
     })
     job_manager.transition_to_state(
