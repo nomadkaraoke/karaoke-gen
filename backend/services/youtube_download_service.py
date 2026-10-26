@@ -185,7 +185,7 @@ class YouTubeDownloadService:
             # Shorts URL
             r'youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
             # Embed URL
-            r'youtube\.com/embed/([a-zA-Z0-9_-]{11})',
+            r'youtube(?:-nocookie)?\.com/embed/([a-zA-Z0-9_-]{11})',
             # Old-style URL
             r'youtube\.com/v/([a-zA-Z0-9_-]{11})',
         ]
