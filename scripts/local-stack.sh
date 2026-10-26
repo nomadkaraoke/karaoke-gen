@@ -13,6 +13,11 @@
 #   scripts/local-stack.sh env               print the backend env (for running uvicorn yourself)
 #
 # Ports (override via env): LOCAL_STACK_API_PORT (8010), LOCAL_STACK_WEB_PORT (3010).
+# Several stacks on one machine (the mobile app's parallel E2E lanes) share the Firestore and GCS emulators but each
+# needs its own ports, LOCAL_STACK_PROJECT (the Firestore project, default test-project: fake-config and data are
+# per project, so one stack's global knobs don't leak into another), LOCAL_STACK_GCS_BUCKET (default test-bucket:
+# the test reset empties the bucket, so each stack needs its own) and LOCAL_STACK_STATE_DIR (pids and logs,
+# default .local-stack). `down` with LOCAL_STACK_KEEP_EMULATORS=1 leaves the shared emulators running.
 # The backend binds 0.0.0.0 so the Android emulator (10.0.2.2) and iOS simulator
 # can reach it; set LOCAL_STACK_API_URL to the address devices should use.
 # See docs/TESTING.md § "Local stack".
@@ -21,7 +26,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-STATE_DIR="$PROJECT_ROOT/.local-stack"
+STATE_DIR="${LOCAL_STACK_STATE_DIR:-$PROJECT_ROOT/.local-stack}"
 mkdir -p "$STATE_DIR"
 
 API_PORT="${LOCAL_STACK_API_PORT:-8010}"
@@ -36,8 +41,8 @@ FAKE_WORKERS=1
 ENVIRONMENT=development
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 STORAGE_EMULATOR_HOST=http://127.0.0.1:4443
-GOOGLE_CLOUD_PROJECT=test-project
-GCS_BUCKET_NAME=test-bucket
+GOOGLE_CLOUD_PROJECT=${LOCAL_STACK_PROJECT:-test-project}
+GCS_BUCKET_NAME=${LOCAL_STACK_GCS_BUCKET:-test-bucket}
 FIRESTORE_COLLECTION=jobs
 ADMIN_TOKENS=$ADMIN_TOKEN
 FRONTEND_URL=$WEB_URL
@@ -148,14 +153,14 @@ case "$cmd" in
     down)
         stop_pid frontend
         stop_pid backend
-        "$SCRIPT_DIR/stop-emulators.sh" || true
+        [[ "${LOCAL_STACK_KEEP_EMULATORS:-}" == 1 ]] || "$SCRIPT_DIR/stop-emulators.sh" || true
         ;;
     serve)
         "$SCRIPT_DIR/start-emulators.sh"
         export_backend_env
         (cd "$PROJECT_ROOT" && poetry run python "$SCRIPT_DIR/seed-local-data.py")
         cd "$PROJECT_ROOT"
-        echo "🌐 Backend on :$API_PORT (FAKE_WORKERS=1), logging to .local-stack/backend.log"
+        echo "🌐 Backend on :$API_PORT (FAKE_WORKERS=1), logging to $STATE_DIR/backend.log"
         exec poetry run uvicorn backend.main:app --host 0.0.0.0 --port "$API_PORT" \
             > "$STATE_DIR/backend.log" 2>&1
         ;;
