@@ -321,6 +321,14 @@ Requirements: Docker (fake-gcs-server), Java 21 + the gcloud Firestore emulator,
 ffmpeg, and the poetry env. The Playwright config starts the stack itself if it
 isn't running (`scripts/local-stack.sh serve` + `next dev`).
 
+**Several stacks on one machine** (the mobile app's parallel E2E lanes) share the
+emulators. Give each its own `LOCAL_STACK_API_PORT` / `LOCAL_STACK_WEB_PORT`,
+`LOCAL_STACK_PROJECT` (the Firestore project, default `test-project`; fake-config,
+including the global search knobs, lives in Firestore per project) and
+`LOCAL_STACK_STATE_DIR` (pids and logs, default `.local-stack`). Stop one with
+`LOCAL_STACK_KEEP_EMULATORS=1 scripts/local-stack.sh down`, or the others lose
+their emulators.
+
 **What is faked, and where.** Each fake lives at one seam, guarded by
 `fake_workers_enabled()`. That check is strict (`is True`), so a `MagicMock`
 settings object in a unit test never turns it on.
