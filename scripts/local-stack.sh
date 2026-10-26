@@ -15,7 +15,8 @@
 # Ports (override via env): LOCAL_STACK_API_PORT (8010), LOCAL_STACK_WEB_PORT (3010).
 # Several stacks on one machine (the mobile app's parallel E2E lanes) share the Firestore and GCS emulators but each
 # needs its own ports, LOCAL_STACK_PROJECT (the Firestore project, default test-project: fake-config and data are
-# per project, so one stack's global knobs don't leak into another) and LOCAL_STACK_STATE_DIR (pids and logs,
+# per project, so one stack's global knobs don't leak into another), LOCAL_STACK_GCS_BUCKET (default test-bucket:
+# the test reset empties the bucket, so each stack needs its own) and LOCAL_STACK_STATE_DIR (pids and logs,
 # default .local-stack). `down` with LOCAL_STACK_KEEP_EMULATORS=1 leaves the shared emulators running.
 # The backend binds 0.0.0.0 so the Android emulator (10.0.2.2) and iOS simulator
 # can reach it; set LOCAL_STACK_API_URL to the address devices should use.
@@ -41,7 +42,7 @@ ENVIRONMENT=development
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
 STORAGE_EMULATOR_HOST=http://127.0.0.1:4443
 GOOGLE_CLOUD_PROJECT=${LOCAL_STACK_PROJECT:-test-project}
-GCS_BUCKET_NAME=test-bucket
+GCS_BUCKET_NAME=${LOCAL_STACK_GCS_BUCKET:-test-bucket}
 FIRESTORE_COLLECTION=jobs
 ADMIN_TOKENS=$ADMIN_TOKEN
 FRONTEND_URL=$WEB_URL
