@@ -49,7 +49,9 @@ function dropUpvoteParam() {
 // a request's last up-vote deletes it, so both get an explicit "are you sure".
 type PendingConfirm =
   | { kind: 'spend'; req: SongRequestPublic; direction: 'up' | 'down'; moving: boolean }
-  | { kind: 'delete'; req: SongRequestPublic; direction: 'up' | 'down' }
+  // `req` is the request that would be deleted, `target` the one the vote was aimed at
+  // (they differ when moving your only up-vote away from `req`).
+  | { kind: 'delete'; req: SongRequestPublic; direction: 'up' | 'down'; target: SongRequestPublic }
   | { kind: 'submit' };
 
 function selectLocaleOnRequestsHost(code: string) {
@@ -266,7 +268,9 @@ export function RequestsBoardClient() {
       await refresh();
     } catch (e) {
       if (errorCode(e) === 'would_delete_request') {
-        setConfirm({ kind: 'delete', req, direction });
+        const doomedId = (e as ApiError).data?.detail?.request_id as string | undefined;
+        const doomed = board?.requests.find((r) => r.id === doomedId) ?? req;
+        setConfirm({ kind: 'delete', req: doomed, direction, target: req });
       } else {
         setError(errorMessage(e));
       }
@@ -580,7 +584,8 @@ export function RequestsBoardClient() {
           onCancel={() => setConfirm(null)}
           onConfirm={() => {
             if (confirm.kind === 'submit') void doSubmit();
-            else void castVote(confirm.req, confirm.direction, confirm.kind === 'delete');
+            else if (confirm.kind === 'delete') void castVote(confirm.target, confirm.direction, true);
+            else void castVote(confirm.req, confirm.direction);
           }}
         />
       )}

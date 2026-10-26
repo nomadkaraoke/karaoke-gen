@@ -1,6 +1,6 @@
 # Requests board overhaul (2026-10-26)
 
-Trigger: job 8695c32e / 94c83a7e investigation (user scottrcopeland@yahoo.co.uk). Findings: a
+Trigger: job 8695c32e / 94c83a7e investigation (a user). Findings: a
 vote moved between requests left a stale YouTube-comment "claim"; the daily pick took result 0
 because `select_best` failed on remote (dict) results; 0-vote requests were pickable.
 

@@ -130,10 +130,12 @@ def test_submit_refused_when_daily_vote_already_spent(client, auth_headers, fake
 
 
 def test_vote_needing_delete_confirmation_is_409(client, auth_headers, fake_service):
-    fake_service.cast_vote.side_effect = WouldDeleteRequest("r1")
+    fake_service.cast_vote.side_effect = WouldDeleteRequest("old-request")
     resp = client.post("/api/requests-board/requests/r1/vote", json={"direction": "up"}, headers=auth_headers)
     assert resp.status_code == 409
     assert resp.json()["detail"]["code"] == "would_delete_request"
+    # names the request that would be deleted (moving a vote away deletes the OLD one)
+    assert resp.json()["detail"]["request_id"] == "old-request"
     assert fake_service.cast_vote.call_args.kwargs["confirm_delete"] is False
 
 

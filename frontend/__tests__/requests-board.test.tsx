@@ -92,6 +92,33 @@ describe('RequestsBoardClient', () => {
     expect(await screen.findByText(/request was deleted/i)).toBeInTheDocument()
   })
 
+  it('names the request that would be deleted when moving your only up-vote away from it', async () => {
+    mockApi.getRequestsBoard.mockResolvedValue(
+      board({
+        requests: [
+          req({ id: 'old', title: 'Old Song', your_vote: 1 }),
+          req({ id: 'new', title: 'New Song', vote_count: 3 }),
+        ],
+        voted_today: true,
+        your_vote_request_id: 'old',
+      }),
+    )
+    mockApi.voteSongRequest
+      .mockRejectedValueOnce(new ApiError('x', 409, { detail: { code: 'would_delete_request', request_id: 'old' } }))
+      .mockResolvedValueOnce(req({ id: 'new', your_vote: 1 }))
+    render(<RequestsBoardClient />)
+
+    const upvotes = await screen.findAllByLabelText('upvote')
+    fireEvent.click(upvotes[1])  // aim the vote at "New Song"
+    fireEvent.click(screen.getByRole('button', { name: /yes, do it/i }))
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Old Song')  // the doomed request, not New Song
+    expect(dialog).not.toHaveTextContent('New Song')
+
+    fireEvent.click(screen.getByRole('button', { name: /delete request/i }))
+    await waitFor(() => expect(mockApi.voteSongRequest).toHaveBeenLastCalledWith('new', 'up', true))
+  })
+
   it('blocks submitting once today\'s vote is spent', async () => {
     mockApi.getRequestsBoard.mockResolvedValue(board({ voted_today: true, your_vote_request_id: 'r1' }))
     render(<RequestsBoardClient />)

@@ -34,6 +34,9 @@ REQUESTS_COLLECTION = "song_requests"
 VOTES_COLLECTION = "song_request_votes"
 # Per-UTC-day lock/ledger for the daily free-track picker (Phase 2).
 DAILY_PICK_COLLECTION = "daily_community_pick"
+# One create-only marker per {email}__{UTC day}: enforces the per-day submission cap even
+# after a request is deleted (deleting it must not hand back the day's submission).
+SUBMISSIONS_COLLECTION = "song_request_submissions"
 
 # One new request per person per day. Submitting also spends the day's single vote (the
 # submitter's endorsement), so free users get at most one thing made per day and anyone
@@ -146,8 +149,12 @@ class SongRequestService:
         if current:
             raise VoteAlreadyUsed(current.request_id)
 
-        # Enforce the per-day submission cap (cheap: equality query + in-Python day filter).
-        if self._submissions_today(email) >= MAX_SUBMISSIONS_PER_DAY:
+        # Enforce the per-day submission cap with a create-only marker that survives the
+        # request being deleted (and has no check-then-create race).
+        marker = self.db.collection(SUBMISSIONS_COLLECTION).document(f"{email}__{_utc_today()}")
+        try:
+            marker.create({"email": email, "created_at": _now_iso()})
+        except gcloud_exceptions.AlreadyExists:
             raise SubmissionRateLimited()
 
         request = SongRequest(
@@ -173,6 +180,7 @@ class SongRequestService:
             self.cast_vote(email, request.id, "up")
         except Exception:
             self.db.collection(REQUESTS_COLLECTION).document(request.id).delete()
+            marker.delete()  # the submission didn't happen, so it doesn't count
             raise
         return self.get_request(request.id) or request, False, canonical_artist, canonical_title
 
@@ -229,17 +237,6 @@ class SongRequestService:
             if req.status == "open":
                 return req
         return None
-
-    def _submissions_today(self, email: str) -> int:
-        today = _utc_today()
-        query = self.db.collection(REQUESTS_COLLECTION).where(
-            filter=FieldFilter("submitted_by", "==", email)
-        )
-        return sum(
-            1
-            for doc in query.stream()
-            if str(doc.to_dict().get("created_at", "")).startswith(today)
-        )
 
     # -------------------------------------------------------------------------
     # Read
@@ -415,6 +412,12 @@ class SongRequestService:
             return None
         ref = self.db.collection(REQUESTS_COLLECTION).document(req.id)
         if self.pick_owner(req) is None:
+            # Free everyone's daily vote too (a vote left pointing at a deleted request
+            # can't be undone or moved).
+            for vdoc in self.db.collection(VOTES_COLLECTION).where(
+                filter=FieldFilter("request_id", "==", req.id)
+            ).stream():
+                vdoc.reference.delete()
             ref.delete()
             logger.info("requests-board: deleted request %s (job %s deleted, no backers left)", req.id, job_id)
             return req.id
@@ -725,7 +728,9 @@ def _cast_vote_txn(
                 delete_rid = withdrawn_from
 
     # --- writes ---
-    if toggling_off:
+    if toggling_off or delete_rid == request_id:
+        # (also when flipping the last up-vote to a down-vote: the request is deleted, so the
+        # voter's own vote must not be left pointing at it)
         transaction.delete(vote_ref)
     else:
         transaction.set(vote_ref, vote.model_dump(mode="json"))

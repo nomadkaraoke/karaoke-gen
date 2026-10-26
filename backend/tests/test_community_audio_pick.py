@@ -60,3 +60,10 @@ def test_youtube_and_no_results_are_never_auto_picked():
     results = [dict(index=0, provider="YouTube", artist="Raynes", title="Lemon Drop", target_file=None)]
     assert pick_confident_audio(results, "Raynes", "Lemon Drop") is None
     assert pick_confident_audio([], "Raynes", "Lemon Drop") is None
+
+
+def test_titles_that_start_with_a_number_still_match():
+    results = [_r(0, "Spotify", "Ariana Grande", "7 rings", duration=178),
+               _r(1, "RED", "Ariana Grande", "05 - 7 rings.flac", seeders=5)]
+    assert pick_confident_audio(results, "Ariana Grande", "7 Rings") == 1  # torrent, number-stripped
+    assert pick_confident_audio(results[:1], "Ariana Grande", "7 Rings") == 0

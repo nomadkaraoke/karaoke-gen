@@ -22,6 +22,7 @@ def service(monkeypatch):
     monkeypatch.setattr(srs, "REQUESTS_COLLECTION", f"test_song_requests_{suffix}")
     monkeypatch.setattr(srs, "VOTES_COLLECTION", f"test_song_request_votes_{suffix}")
     monkeypatch.setattr(srs, "DAILY_PICK_COLLECTION", f"test_daily_pick_{suffix}")
+    monkeypatch.setattr(srs, "SUBMISSIONS_COLLECTION", f"test_song_request_submissions_{suffix}")
     return SongRequestService()
 
 
@@ -347,6 +348,29 @@ async def test_submission_cap_after_vote_is_freed(service):
 
 
 @pytest.mark.asyncio
+async def test_deleting_your_request_does_not_hand_back_the_days_submission(service):
+    from backend.services.song_request_service import SubmissionRateLimited
+
+    a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
+    service.cast_vote("u1@x.com", a.id, "up", confirm_delete=True)  # last backer leaves: deleted
+    assert service.get_request(a.id) is None
+    with pytest.raises(SubmissionRateLimited):  # ...but today's one submission is still spent
+        await _submit(service, "u1@x.com", "Artist B", "Song B")
+
+
+@pytest.mark.asyncio
+async def test_failed_vote_after_create_gives_the_submission_back(service):
+    from unittest.mock import patch as _patch
+
+    with _patch.object(service, "cast_vote", side_effect=RuntimeError("boom")):
+        with pytest.raises(RuntimeError):
+            await _submit(service, "u1@x.com", "Artist A", "Song A")
+    assert service.list_all() == []
+    req, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")  # not rate limited
+    assert req.vote_count == 1
+
+
+@pytest.mark.asyncio
 async def test_resubmit_existing_song_with_spent_vote_elsewhere_is_refused(service):
     from backend.services.song_request_service import VoteAlreadyUsed
 
@@ -385,12 +409,15 @@ async def test_moving_last_upvote_away_deletes_old_request(service):
 
 
 @pytest.mark.asyncio
-async def test_flipping_last_upvote_to_downvote_deletes(service):
+async def test_flipping_last_upvote_to_downvote_deletes_and_frees_the_vote(service):
     from backend.services.song_request_service import WouldDeleteRequest
 
     a, _, _, _ = await _submit(service, "u1@x.com", "Artist A", "Song A")
     with pytest.raises(WouldDeleteRequest):
         service.cast_vote("u1@x.com", a.id, "down")
+    service.cast_vote("u1@x.com", a.id, "down", confirm_delete=True)
+    assert service.get_request(a.id) is None
+    assert service.get_daily_vote("u1@x.com") is None  # not left pointing at a deleted request
 
 
 @pytest.mark.asyncio
@@ -460,6 +487,7 @@ async def test_reopen_after_job_deleted_removes_request_nobody_else_backs(servic
     service.assign_owner(a.id, "u1@x.com")
     assert service.reopen_after_job_deleted("job1") == a.id
     assert service.get_request(a.id) is None
+    assert service.get_daily_vote("u1@x.com") is None  # votes pointing at it are freed too
 
 
 def test_find_published_by_key(service):

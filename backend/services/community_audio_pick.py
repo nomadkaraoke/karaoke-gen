@@ -48,9 +48,13 @@ def _artist_matches(want: str, have: str) -> bool:
 def _is_exact_match(result: Dict[str, Any], artist: str, title: str) -> bool:
     if not _artist_matches(artist, result.get("artist") or ""):
         return False
-    track = _track_title(result)
     want = normalize_for_match(title)
-    return bool(want) and normalize_for_match(track) == want
+    if not want:
+        return False
+    # Compare with and without the track-number strip so titles that start with a number
+    # ("7 Rings", "21 Guns") still match their own bare track name.
+    raw = _AUDIO_EXT.sub("", (result.get("target_file") or "").split("/")[-1]).strip()
+    return want in {normalize_for_match(raw), normalize_for_match(_track_title(result))}
 
 
 def pick_confident_audio(results: List[Dict[str, Any]], artist: str, title: str) -> Optional[int]:

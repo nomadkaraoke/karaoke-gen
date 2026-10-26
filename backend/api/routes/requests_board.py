@@ -167,11 +167,14 @@ def vote(
         )
     except RequestNotFound:
         raise HTTPException(status_code=404, detail="That request no longer exists.")
-    except WouldDeleteRequest:
+    except WouldDeleteRequest as exc:
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "would_delete_request",
+                # The request that would be deleted (not necessarily the one being voted on:
+                # moving your only up-vote away deletes the OLD request).
+                "request_id": exc.request_id,
                 "message": "Removing your vote will delete this request from the board "
                            "(nobody else is backing it). Continue?",
             },

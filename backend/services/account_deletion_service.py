@@ -74,6 +74,7 @@ GEN_LOGIN_CODES_COLLECTION = "login_codes"  # backend/api/routes/login_code.py
 CREDIT_EVALUATIONS_COLLECTION = "credit_evaluations"  # credit_evaluation_service
 SONG_REQUESTS_COLLECTION = "song_requests"  # song_request_service.REQUESTS_COLLECTION
 SONG_REQUEST_VOTES_COLLECTION = "song_request_votes"  # song_request_service.VOTES_COLLECTION
+SONG_REQUEST_SUBMISSIONS_COLLECTION = "song_request_submissions"  # song_request_service.SUBMISSIONS_COLLECTION
 EMAIL_LOG_COLLECTION = "email_log"  # postmark_admin_service / email_service
 PROCESSED_IAP_TRANSACTIONS_COLLECTION = "processed_revenuecat_transactions"  # iap_service
 
@@ -678,6 +679,14 @@ class AccountDeletionService:
             self._move_doc(SONG_REQUEST_VOTES_COLLECTION, snap, f"{tomb}__{day}", {"voter_email": tomb})
             votes += 1
         out["song_request_votes"] = votes
+
+        # Per-day submission-cap markers hold nothing but the email: just delete them.
+        markers = 0
+        for snap in self.db.collection(SONG_REQUEST_SUBMISSIONS_COLLECTION).where(
+                filter=FieldFilter("email", "==", email)).stream():
+            snap.reference.delete()
+            markers += 1
+        out["song_request_submissions"] = markers
         return out
 
     # ------------------------------------------------------------ kjbox queue

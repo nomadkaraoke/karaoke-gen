@@ -2476,7 +2476,7 @@ a new decider replaces a heuristic, re-point every consumer of the old field, no
 
 ## Requests board: claims outlived votes, and "auto-select" silently meant result #0 (2026-10-26, v0.285.0)
 
-Scott (scottrcopeland@yahoo.co.uk) got two community picks he didn't ask for / that had the wrong
+A user got two community picks they didn't ask for / that had the wrong
 audio. Root causes: (1) the YouTube bot added requests with a placeholder submitter that the first
 up-voter "claimed", but the claim was never released when the single daily vote moved elsewhere,
 so a 0-vote request with a stale owner stayed pickable (`vote_count >= 0`); (2) the daily pick
