@@ -442,6 +442,14 @@
       "refundNote": "如果确实过期，您的点数将自动退还。",
       "subject": "还剩 {hours} 小时完成您的卡拉OK视频：《{song}》",
       "subjectFallback": "还剩 {hours} 小时完成您的卡拉OK视频"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "您在点歌板上支持的免费曲目需要您做个快速选择",
+      "help": "如果这些选项都不合适，您可以直接粘贴链接或上传文件。如果遇到任何问题，回复这封邮件即可。",
+      "intro": "您在我们的点歌板上支持了《{artist} - {title}》，它已被选定于今天制作！由于我们未能完全确定最合适的音频源，请您亲自挑选正确的版本（只需几秒钟）。",
+      "subject": "请为《{artist} - {title}》选择音频",
+      "button": "选择音频"
+    },
+    "communityPickNote": "这首歌来自 Nomad Karaoke 点歌板：由于您的支持，它被选为今天的免费曲目。请查看并确认下方歌词，之后就会公开发布供所有人使用。\n\n"
   }
 }

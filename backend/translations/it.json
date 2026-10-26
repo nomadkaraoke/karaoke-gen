@@ -442,6 +442,14 @@
       "refundNote": "Se dovesse scadere, il tuo credito ti verrà rimborsato automaticamente.",
       "subject": "Hai ancora {hours} ore per completare il tuo video karaoke: {song}",
       "subjectFallback": "Hai ancora {hours} ore per completare il tuo video karaoke"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Il tuo brano gratuito dalla bacheca delle richieste richiede una rapida scelta",
+      "help": "Se nessuna delle opzioni è corretta, puoi incollare un link o caricare direttamente un file. Rispondi pure a questa email se hai bisogno di aiuto.",
+      "intro": "Hai supportato \"{artist} - {title}\" sulla nostra bacheca delle richieste ed è stato scelto per essere creato oggi. Non siamo riusciti a trovare con certezza la traccia audio corretta, quindi ti chiediamo di selezionare tu quella giusta (ci vorranno solo pochi secondi).",
+      "subject": "Scegli l'audio per {artist} - {title}",
+      "button": "Scegli l'audio"
+    },
+    "communityPickNote": "Questa canzone arriva dalla bacheca delle richieste di Nomad Karaoke: l'hai supportata ed è stata selezionata come brano gratuito di oggi. Controlla il testo qui sotto e verrà pubblicata per tutti.\n\n"
   }
 }

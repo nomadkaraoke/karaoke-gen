@@ -442,6 +442,14 @@
       "refundNote": "Pokud platnost vyprší, kredit ti automaticky vrátíme.",
       "subject": "Na dokončení karaoke videa ke skladbě {song} zbývá {hours} hodin",
       "subjectFallback": "Na dokončení tvého karaoke videa zbývá {hours} hodin"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Tvůj bezplatný song z nástěnky přání potřebuje jedno rychlé rozhodnutí",
+      "help": "Pokud se žádná z možností nehodí, můžeš místo toho vložit odkaz nebo nahrát vlastní soubor. Pokud si nebudeš vědět rady, stačí odpovědět na tento e-mail.",
+      "intro": "Na naší nástěnce přání jsi podpořil/a skladbu „{artist} - {title}“ a dnes přišla řada na její zpracování. Nepodařilo se nám ale najít jeden jednoznačně správný zdroj audia, proto tě prosíme o rychlý výběr té správné verze (zabere to jen pár sekund).",
+      "subject": "Vyber prosím audio pro {artist} - {title}",
+      "button": "Vyber zdroj zvuku"
+    },
+    "communityPickNote": "Tato skladba pochází z nástěnky přání Nomad Karaoke: podpořil/a jsi ji a byla vybrána jako dnešní bezplatná skladba. Zkontroluj prosím text níže a my ji pak zveřejníme pro všechny.\n\n"
   }
 }

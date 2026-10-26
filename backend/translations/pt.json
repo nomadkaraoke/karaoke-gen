@@ -442,6 +442,14 @@
       "refundNote": "Se expirar, seu crédito será reembolsado automaticamente.",
       "subject": "Restam {hours} horas para finalizar seu vídeo de karaokê: {song}",
       "subjectFallback": "Restam {hours} horas para finalizar seu vídeo de karaokê"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Sua faixa gratuita do quadro de pedidos precisa de uma escolha rápida",
+      "help": "Se nenhuma das opções estiver certa, você pode colar um link ou enviar um arquivo. Basta responder a este e-mail se tiver qualquer dúvida.",
+      "intro": "Você apoiou \"{artist} - {title}\" no nosso quadro de pedidos e ela foi escolhida para ser produzida hoje. Não conseguimos encontrar uma fonte de áudio com certeza, então escolha a opção certa (leva apenas alguns segundos).",
+      "subject": "Por favor, escolha o áudio de {artist} - {title}",
+      "button": "Escolha o áudio"
+    },
+    "communityPickNote": "Esta música veio do quadro de pedidos do Nomad Karaoke: você a apoiou e ela foi escolhida como a faixa gratuita de hoje. Revise a letra abaixo para que ela seja publicada para todos.\n\n"
   }
 }

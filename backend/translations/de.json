@@ -444,12 +444,12 @@
       "subjectFallback": "Noch {hours} Stunden, um dein Karaoke-Video fertigzustellen"
     },
     "communityAudioSelection": {
-      "subject": "Bitte wähle das Audio für {artist} - {title}",
-      "heading": "Dein kostenloser Titel vom Wunschbrett braucht eine kurze Auswahl",
-      "intro": "Du hast \"{artist} - {title}\" auf unserem Wunschbrett unterstützt und der Titel wurde heute zur Erstellung ausgewählt. Wir haben keine eindeutig richtige Audioquelle gefunden, bitte wähle die passende selbst aus (dauert nur Sekunden).",
-      "button": "Audio auswählen",
-      "help": "Wenn keine Option passt, kannst du einen Link einfügen oder eine Datei hochladen. Antworte einfach auf diese E-Mail, wenn du nicht weiterkommst."
+      "subject": "Bitte wähle die Audiodatei für {artist} - {title}",
+      "heading": "Dein kostenloser Wunschlisten-Track erfordert eine kurze Entscheidung",
+      "intro": "Du hast „{artist} - {title}“ auf unserer Wunschliste unterstützt, und der Song wurde ausgewählt, um heute erstellt zu werden. Wir konnten keine eindeutig richtige Audioquelle finden. Bitte wähle daher selbst die passende aus (es dauert nur wenige Sekunden).",
+      "button": "Wähle das Audio aus",
+      "help": "Wenn keine der Optionen passt, kannst du stattdessen einen Link einfügen oder eine Datei hochladen. Antworte einfach auf diese E-Mail, wenn du nicht weiterkommst."
     },
-    "communityPickNote": "Dieser Song stammt vom Wunschbrett von Nomad Karaoke: Du hast ihn unterstützt und er wurde als heutiger kostenloser Titel ausgewählt. Bitte prüfe den Text, danach wird er für alle veröffentlicht.\n\n"
+    "communityPickNote": "Dieser Song stammt von der Nomad Karaoke-Wunschliste: Du hast ihn unterstützt, und er wurde als heutiger kostenloser Track ausgewählt. Bitte überprüfe den Songtext unten, damit er für alle veröffentlicht werden kann.\n\n"
   }
 }

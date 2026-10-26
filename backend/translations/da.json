@@ -442,6 +442,14 @@
       "refundNote": "Hvis den udløber, bliver din kredit automatisk refunderet.",
       "subject": "{hours} timer tilbage til at færdiggøre din karaokevideo: {song}",
       "subjectFallback": "{hours} timer tilbage til at færdiggøre din karaokevideo"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Dit gratis nummer fra ønsketavlen kræver et hurtigt valg",
+      "help": "Hvis ingen af valgmulighederne er rigtige, kan du indsætte et link eller uploade en fil i stedet. Du svarer bare på denne e-mail, hvis du får brug for hjælp.",
+      "intro": "Du støttede \"{artist} - {title}\" på vores ønsketavle, og sangen blev udvalgt til at blive lavet i dag. Vi kunne ikke finde én entydigt rigtig lydkilde, så vælg venligst selv den rette version (det tager kun et øjeblik).",
+      "subject": "Vælg venligst lydfilen til {artist} - {title}",
+      "button": "Vælg lydkilde"
+    },
+    "communityPickNote": "Denne sang kommer fra Nomad Karaoke-ønsketavlen: Du har bakket op om den, og den blev udvalgt som dagens gratis sang. Tjek gerne teksten igennem nedenfor, så bliver den udgivet for alle.\n\n"
   }
 }

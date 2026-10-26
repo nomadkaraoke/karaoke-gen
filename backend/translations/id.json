@@ -442,6 +442,14 @@
       "refundNote": "Jika masa berlakunya habis, kredit Anda akan dikembalikan secara otomatis.",
       "subject": "Tersisa {hours} jam untuk menyelesaikan video karaoke Anda: {song}",
       "subjectFallback": "Tersisa {hours} jam untuk menyelesaikan video karaoke Anda"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Lagu gratis pilihan Anda dari papan permintaan membutuhkan satu konfirmasi singkat",
+      "help": "Jika tidak ada opsi yang cocok, Anda bisa menempelkan tautan atau mengunggah file. Cukup balas email ini jika Anda mengalami kendala.",
+      "intro": "Anda mendukung \"{artist} - {title}\" di papan permintaan kami dan lagu tersebut terpilih untuk dibuat hari ini. Kami belum menemukan satu sumber audio yang benar-benar pas, jadi silakan pilih sendiri yang tepat (hanya perlu beberapa detik).",
+      "subject": "Silakan pilih audio untuk {artist} - {title}",
+      "button": "Pilih audio"
+    },
+    "communityPickNote": "Lagu ini berasal dari papan permintaan Nomad Karaoke: Anda telah mendukungnya, dan lagu ini terpilih sebagai trek gratis hari ini. Silakan periksa lirik di bawah ini, dan lagunya akan segera dipublikasikan untuk semua orang.\n\n"
   }
 }

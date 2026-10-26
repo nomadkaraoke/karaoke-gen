@@ -442,6 +442,14 @@
       "refundNote": "Nếu hết hạn, tín dụng của bạn sẽ được tự động hoàn lại.",
       "subject": "Còn {hours} giờ để hoàn tất video karaoke của bạn: {song}",
       "subjectFallback": "Còn {hours} giờ để hoàn tất video karaoke của bạn"
-    }
+    },
+    "communityAudioSelection": {
+      "heading": "Bài hát miễn phí của bạn từ bảng yêu cầu cần một lựa chọn nhanh",
+      "help": "Nếu không có lựa chọn nào phù hợp, bạn có thể dán đường dẫn hoặc tải tệp lên thay thế. Cứ phản hồi lại email này nếu bạn gặp khó khăn nhé.",
+      "intro": "Bạn đã bình chọn cho \"{artist} - {title}\" trên bảng yêu cầu của chúng tôi và bài hát đã được chọn để thực hiện hôm nay. Chúng tôi chưa tìm thấy bản audio nào thực sự chuẩn xác, vì vậy phiền bạn tự chọn bản chuẩn giúp chúng tôi nhé (chỉ mất vài giây thôi).",
+      "subject": "Vui lòng chọn bản audio cho {artist} - {title}",
+      "button": "Chọn nguồn âm thanh"
+    },
+    "communityPickNote": "Bài hát này đến từ bảng yêu cầu của Nomad Karaoke: bạn đã bình chọn và bài hát đã được chọn làm bài miễn phí của ngày hôm nay. Vui lòng duyệt lại lời bài hát bên dưới và video sẽ được phát hành cho mọi người cùng thưởng thức.\n\n"
   }
 }
