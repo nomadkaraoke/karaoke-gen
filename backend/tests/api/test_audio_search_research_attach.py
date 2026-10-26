@@ -295,6 +295,9 @@ class TestProvideUrl:
         assert srcd
         # the worker's job-level fallback needs source_id too
         assert srcd[0].args[1].get("source_id") == "abcdefghijk"
+        # a stale earlier selection must not override the pasted URL
+        assert srcd[0].args[1].get("state_data.selected_audio_index") is None
+        assert "state_data.selected_audio_index" in srcd[0].args[1]
 
     def test_youtube_worker_trigger_failure_requeues(self, mock_job_manager):
         from fastapi.testclient import TestClient
