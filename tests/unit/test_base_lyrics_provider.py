@@ -45,7 +45,7 @@ class TestCreateSegmentsWithWords:
     def test_long_text_truncated(self):
         provider = self._make_provider()
         # Create text well over the limit (simulating a screenplay)
-        lines = [f"Line number {i} of the screenplay" for i in range(500)]
+        lines = [f"Line number {i} of the screenplay" for i in range(2000)]
         text = "\n".join(lines)
         assert len(text) > BaseLyricsProvider.MAX_LYRICS_LENGTH
 
@@ -54,9 +54,26 @@ class TestCreateSegmentsWithWords:
         total_text = "\n".join(s.text for s in segments)
         assert len(total_text) <= BaseLyricsProvider.MAX_LYRICS_LENGTH
 
+    def test_double_spaced_song_not_truncated(self):
+        """Regression: Genius RapidAPI doubles every newline; a real ~4k-char song lost its last verse."""
+        provider = self._make_provider()
+        lines = [f"This is lyric line number {i} of a real song" for i in range(70)]
+        text = "\n\n".join(lines)
+        assert len(text) > 3000
+        segments = provider._create_segments_with_words(text)
+        assert len(segments) == 70
+        assert segments[-1].text == lines[-1]
+
+    def test_long_rap_song_not_truncated(self):
+        provider = self._make_provider()
+        lines = [f"Verse line {i} with some rap words in it ok" for i in range(200)]
+        text = "\n".join(lines)
+        assert 8000 < len(text) < BaseLyricsProvider.MAX_LYRICS_LENGTH
+        assert len(provider._create_segments_with_words(text)) == 200
+
     def test_truncation_preserves_complete_lines(self):
         provider = self._make_provider()
-        lines = [f"Line {i}: some lyrics text here" for i in range(200)]
+        lines = [f"Line {i}: some lyrics text here" for i in range(1000)]
         text = "\n".join(lines)
 
         segments = provider._create_segments_with_words(text)
@@ -66,7 +83,7 @@ class TestCreateSegmentsWithWords:
 
     def test_truncation_logs_warning(self, caplog):
         provider = self._make_provider()
-        text = "x\n" * 5000  # Way over limit
+        text = "x\n" * 20000  # Way over limit
         with caplog.at_level(logging.WARNING):
             provider._create_segments_with_words(text)
         assert "truncating" in caplog.text.lower()
