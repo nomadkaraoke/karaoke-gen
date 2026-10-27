@@ -2488,3 +2488,15 @@ and unattended audio is chosen only on an exact artist+title match else the owne
 Lessons: a "fallback to first item" in an unattended path hides a broken ranker — fail to a
 human instead; and a denormalised claim (who owns this) needs releasing wherever the thing that
 justified it (the vote) can change.
+
+## Reference-lyrics length cap counted blank lines (2026-10-27, v0.285.2)
+
+`BaseLyricsProvider.MAX_LYRICS_LENGTH` (3000, a guard against screenplays/articles) was measured on
+raw text. The Genius RapidAPI path turns every `<br>\n` into `\n\n`, so an ordinary ~4-minute song
+measured ~4,300 chars and was silently cut after the second verse (job 258ba59b; Lrclib/Musixmatch
+were cut the same way at 2,975 bytes). The only symptom was a WARNING log and a review screen with no
+reference for the last verse, so auto-correction quietly did nothing there. Fix: blank lines no longer
+count and the cap is 15,000. Lesson: a safety cap must be measured on the same representation as the
+threat it guards against, and a cap that truncates silently should be generous or fail loudly. Never
+repair an affected in-progress job with `add-lyrics`/`search-lyrics`: the frontend replaces its whole
+working data with the server's pre-edit rerun, discarding the reviewer's edits.
