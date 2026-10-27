@@ -51,6 +51,12 @@ class TestYouTubeDownloadService:
         url = "https://www.youtube.com/embed/dQw4w9WgXcQ"
         assert service._extract_video_id(url) == "dQw4w9WgXcQ"
 
+    def test_extract_video_id_nocookie_embed_url(self):
+        """Privacy-enhanced embed URLs pass _is_youtube_url, so they must yield an ID."""
+        service = YouTubeDownloadService()
+        url = "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+        assert service._extract_video_id(url) == "dQw4w9WgXcQ"
+
     def test_extract_video_id_with_extra_params(self):
         """Should extract video ID when URL has extra parameters."""
         service = YouTubeDownloadService()
