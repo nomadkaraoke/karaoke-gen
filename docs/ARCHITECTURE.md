@@ -408,16 +408,37 @@ Config (all public, non-secret; env vars override the defaults in `backend/confi
 | Setting | Default | Purpose |
 |---------|---------|---------|
 | `GOOGLE_OAUTH_CLIENT_IDS` | Web + iOS client IDs below | Accepted `aud` of Google ID tokens |
-| `APPLE_SIGNIN_AUDIENCES` | `com.nomadkaraoke.mobile` | Accepted `aud` of Apple ID tokens (bundle ID; add a Services ID for web/Android) |
+| `APPLE_SIGNIN_AUDIENCES` | `com.nomadkaraoke.mobile,com.nomadkaraoke.sing` | Accepted `aud` of Apple ID tokens: the app's bundle ID + the kjbox singer page's web Services ID |
 | `MOBILE_APP_SCHEME` | `nomadkaraoke` | Scheme the checkout bounce redirects to |
 
 Google OAuth clients (GCP project `nomadkaraoke`, Google Auth Platform, consent screen "Nomad Karaoke"):
 
 | Name / type | Client ID | Notes |
 |-------------|-----------|-------|
-| Web application | `718638054799-fush0smd1e4icq9pt0immp8n59jjlebh.apps.googleusercontent.com` | The audience: Android Credential Manager and iOS (with `serverClientId` / `webClientId`) issue tokens for it |
+| Web application ("Nomad Karaoke Mobile App (server audience)") | `718638054799-fush0smd1e4icq9pt0immp8n59jjlebh.apps.googleusercontent.com` | The audience: Android Credential Manager and iOS (with `serverClientId` / `webClientId`) issue tokens for it. Authorized JavaScript origins: `https://decide.nomadkaraoke.com`, `https://sing.nomadkaraoke.com` (added 2026-10-28 for the kjbox singer page's Sign in with Google button) |
 | iOS | `718638054799-hre535n83p8i85tsqf6ai759nlubhd2o.apps.googleusercontent.com` | Also accepted as an audience (iOS SDK tokens can carry it) |
 | Android | `718638054799-q0f65m68a31du5nn9h5accsauad232ku.apps.googleusercontent.com` | Device-only, never an audience. Package `com.nomadkaraoke.mobile`, SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` (the RN/Expo template debug keystore); add the release key's SHA-1 before store builds |
+
+### kjbox singer page (sing.nomadkaraoke.com)
+
+The kjbox singer page signs singers in to their gen account for make-its through the partner endpoints
+`POST /api/kjbox/auth/google|apple` ([API.md](API.md)), with the same token checks as above. Console setup,
+done 2026-10-28 (no IaC covers these):
+
+- **Google:** `https://sing.nomadkaraoke.com` added as an Authorized JavaScript origin on the Web application client above
+  (Google Identity Services button, ID token straight to JS).
+- **Apple** (developer team 55B76HN73D, Andrew's Apple ID):
+  - Services ID **`com.nomadkaraoke.sing`** ("Nomad Karaoke Singer Web"), with Sign in with Apple enabled.
+    Its primary App ID is `com.nomadkaraoke.mobile`, its domain `sing.nomadkaraoke.com` and its return URL
+    `https://sing.nomadkaraoke.com/`. Sign in with Apple JS runs in popup mode.
+  - **Private email relay:** the domain `nomadkaraoke.com` is registered as an email source (SPF ✓). Without it,
+    Apple drops mail from gen to any `@privaterelay.appleid.com` user, which affects the mobile app's Apple sign-ins too.
+
+## Session lifetime
+
+`SESSION_EXPIRY_DAYS = 30` (inactivity) and `SESSION_ABSOLUTE_EXPIRY_DAYS = 365` (from sign-in) in
+`backend/services/user_service.py`. Both changed on 2026-10-28: they were 7 and 30, which signed out singers who come
+to weekly shows between visits.
 
 ## Firestore Collections
 
