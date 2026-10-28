@@ -10,6 +10,8 @@ is configured — deploys dark; 403 if wrong). Contract:
 - POST /api/kjbox/auth/send-code    {email, locale?, venue?} → {"status": "sent"}
 - POST /api/kjbox/auth/verify-code  {email, code} → {session_token, user,
                                      credits_granted, credit_status}
+- POST /api/kjbox/auth/google | apple {id_token, locale?, venue?} → same as
+                                     verify-code (one-tap sign-in in the singer page)
 - POST /api/kjbox/credits/show-credit (+ Authorization: Bearer <session>)
                                      {idempotency_key, venue?, only_if_empty?}
                                      → {granted, credits}
@@ -121,6 +123,14 @@ class SendCodeResponse(BaseModel):
 class VerifyCodeRequest(BaseModel):
     email: str
     code: str = Field(max_length=32)
+
+
+class SocialSignInRequest(BaseModel):
+    # Google Identity Services / Sign in with Apple JS ID token from the singer page
+    # (or ``fake:<email>`` on the local stack).
+    id_token: str = Field(min_length=1, max_length=8192)
+    locale: Optional[str] = None
+    venue: Optional[str] = Field(default=None, max_length=_MAX_VENUE_LEN)
 
 
 class VerifyCodeResponse(BaseModel):
@@ -272,27 +282,35 @@ def verify_code(
     if outcome != VerifyOutcome.OK or record is None:
         raise HTTPException(status_code=401, detail="expired")
 
-    user = user_service.get_user(email)
-    if user is None:
-        # No signup_ip: the caller is the kjbox box, whose IP is the whole
-        # venue's — recording it would trip gen's per-IP cap for everyone there.
-        user = user_service.get_or_create_user(
-            email, signup_source=SIGNUP_SOURCE, signup_venue=record.get("venue"),
-        )
-        svc.record_signup(email, record.get("venue"))
-        logger.info(f"kjbox: created verified gen user {_mask_email(email)} (venue={record.get('venue')!r})")
-    # Same first-login definition as magic-link verify (checked before last_login_at is set).
-    is_first_login = user.total_jobs_created == 0 and not user.last_login_at
-    user = user_service.update_user(
-        email, email_verified=True, last_login_at=datetime.utcnow(),
-    ) or user
-
     precomputed_eval = {
         k: record.get(k)
         for k in ("credit_eval_decision", "credit_eval_reasoning", "credit_eval_error")
         if record.get(k) is not None
     } or None
-    email_locale = record.get("locale")
+    return _finish_sign_in(
+        email, http_request, svc=svc, user_service=user_service, email_service=email_service,
+        venue=record.get("venue"), email_locale=record.get("locale"),
+        ui_locale=record.get("ui_locale"), precomputed_eval=precomputed_eval, how="verified",
+    )
+
+
+def _finish_sign_in(email, http_request, *, svc, user_service, email_service, venue,
+                    email_locale, ui_locale, precomputed_eval, how):
+    """A proven email (code, or a Google/Apple ID token) → the singer's gen session."""
+    user = user_service.get_user(email)
+    if user is None:
+        # No signup_ip: the caller is the kjbox box, whose IP is the whole
+        # venue's — recording it would trip gen's per-IP cap for everyone there.
+        user = user_service.get_or_create_user(
+            email, signup_source=SIGNUP_SOURCE, signup_venue=venue,
+        )
+        svc.record_signup(email, venue)
+        logger.info(f"kjbox: created verified gen user {_mask_email(email)} (venue={venue!r}, via {how})")
+    # Same first-login definition as magic-link verify (checked before last_login_at is set).
+    is_first_login = user.total_jobs_created == 0 and not user.last_login_at
+    user = user_service.update_user(
+        email, email_verified=True, last_login_at=datetime.utcnow(),
+    ) or user
 
     result = complete_verified_login(
         user,
@@ -303,14 +321,14 @@ def verify_code(
         grant_welcome_credit=True,
         referral_code=None,
         locale=email_locale,
-        ui_locale=record.get("ui_locale"),
+        ui_locale=ui_locale,
         ip_address=get_client_ip(http_request),
         user_agent=http_request.headers.get("user-agent"),
         tenant_id=None,
         device_fingerprint=None,
         email_locale=email_locale or user.locale or "en",
     )
-    logger.info(f"kjbox: verified {_mask_email(email)} (credit_status={result.credit_status})")
+    logger.info(f"kjbox: {how} {_mask_email(email)} (credit_status={result.credit_status})")
 
     return VerifyCodeResponse(
         session_token=result.session.token,
@@ -318,6 +336,62 @@ def verify_code(
         credits_granted=result.credits_granted,
         credit_status=result.credit_status,
     )
+
+
+def _social_sign_in(provider, body, http_request, svc, user_service, email_service):
+    """Google / Apple one-tap: the provider has proven the email, so no code.
+    Same venue rules as verify-code: no per-IP signup cap, the partner-wide 24h
+    cap on new accounts instead. Apple "Hide My Email" relays are their own account."""
+    from backend.api.routes.login_code import APPLE_RELAY_DOMAIN, _verify_identity
+
+    identity = _verify_identity(provider, body.id_token)   # 401 invalid_token / 503
+    email = _normalize_email(identity.email)
+    email_locale, ui_locale = _split_locale(body.locale)
+
+    # The same eligibility checks as send-code. There's no email to hide a
+    # refusal behind, so (like the app's social sign-in) refusals are explicit.
+    email_validation = get_email_validation_service()
+    is_relay = provider == "apple" and email.endswith("@" + APPLE_RELAY_DOMAIN)
+    if not is_relay and email_validation.is_disposable_domain(email):
+        logger.warning(f"kjbox: {provider} sign-in refused, disposable email {_mask_email(email)}")
+        raise HTTPException(status_code=422, detail=t(email_locale or "en", "users.disposableEmailBlocked"))
+    ip_address = get_client_ip(http_request)
+    if email_validation.is_email_blocked(email) or (ip_address and email_validation.is_ip_blocked(ip_address)):
+        logger.warning(f"kjbox: {provider} sign-in refused, blocked email/IP {_mask_email(email)}")
+        raise HTTPException(status_code=422, detail="sign_in_not_allowed")
+    if user_service.get_user(email) is None and \
+            svc.count_recent_signups() >= get_settings().kjbox_signup_cap_per_24h:
+        logger.warning("kjbox: partner-wide verified-signup cap reached")
+        raise HTTPException(status_code=429, detail="signup_cap")
+    return _finish_sign_in(
+        email, http_request, svc=svc, user_service=user_service, email_service=email_service,
+        venue=(body.venue or None), email_locale=email_locale, ui_locale=ui_locale,
+        precomputed_eval=None, how=f"{provider} sign-in",
+    )
+
+
+@router.post("/auth/google", response_model=VerifyCodeResponse)
+def google_sign_in(
+    body: SocialSignInRequest,
+    http_request: Request,
+    svc: KjboxPartnerService = Depends(get_kjbox_service),
+    user_service: UserService = Depends(get_user_service),
+    email_service: EmailService = Depends(get_email_service),
+):
+    """Google ID token (audience ``GOOGLE_OAUTH_CLIENT_IDS``) → singer session."""
+    return _social_sign_in("google", body, http_request, svc, user_service, email_service)
+
+
+@router.post("/auth/apple", response_model=VerifyCodeResponse)
+def apple_sign_in(
+    body: SocialSignInRequest,
+    http_request: Request,
+    svc: KjboxPartnerService = Depends(get_kjbox_service),
+    user_service: UserService = Depends(get_user_service),
+    email_service: EmailService = Depends(get_email_service),
+):
+    """Apple ID token (audience ``APPLE_SIGNIN_AUDIENCES``, incl. the web Services ID) → singer session."""
+    return _social_sign_in("apple", body, http_request, svc, user_service, email_service)
 
 
 @router.post("/credits/show-credit", response_model=ShowCreditResponse)

@@ -426,8 +426,10 @@ class Settings(BaseSettings):
         "718638054799-hre535n83p8i85tsqf6ai759nlubhd2o.apps.googleusercontent.com",
     )
     # Accepted `aud` values for Apple ID tokens (POST /api/users/auth/apple):
-    # the app's bundle ID (native iOS), plus any Services ID used for web/Android.
-    apple_signin_audiences: str = os.getenv("APPLE_SIGNIN_AUDIENCES", "com.nomadkaraoke.mobile")
+    # the app's bundle ID (native iOS), plus any Services ID used for web/Android:
+    # com.nomadkaraoke.sing = Sign in with Apple JS on the kjbox singer page
+    # (sing.nomadkaraoke.com → POST /api/kjbox/auth/apple).
+    apple_signin_audiences: str = os.getenv("APPLE_SIGNIN_AUDIENCES", "com.nomadkaraoke.mobile,com.nomadkaraoke.sing")
 
     # Sign in with Apple token revocation (account deletion). The .p8 PEM text
     # and key id come from Secret Manager; unset => revocation is skipped.

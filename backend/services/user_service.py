@@ -55,8 +55,12 @@ PROCESSED_STRIPE_SESSIONS_COLLECTION = "processed_stripe_sessions"
 
 # Token/session configuration
 MAGIC_LINK_EXPIRY_MINUTES = 24 * 60  # 24h — buffer for slow email delivery (Yahoo can defer for hours)
-SESSION_EXPIRY_DAYS = 7
-SESSION_ABSOLUTE_EXPIRY_DAYS = 30
+# Inactivity window. Was 7 days: kjbox singers at weekly shows were always signed
+# out by the next show (2026-10-22), so Andrew set it to 30 days for everyone.
+SESSION_EXPIRY_DAYS = 30
+# Hard cap from sign-in, however active. Was 30: a weekly regular was still signed
+# out once a month (Andrew, 2026-10-28: 365 days).
+SESSION_ABSOLUTE_EXPIRY_DAYS = 365
 MAX_CREDIT_TRANSACTIONS = 100  # Keep last N transactions
 
 
@@ -1050,7 +1054,7 @@ class UserService:
                 logger.warning(f"Session expired for {token_prefix}... (user: {session.user_email}, expired_at: {expires_at}, now: {now})")
                 return False, None, "Session has expired"
 
-            # Check inactivity (7 days)
+            # Check inactivity (SESSION_EXPIRY_DAYS)
             inactivity_limit = now - timedelta(days=SESSION_EXPIRY_DAYS)
             if last_activity < inactivity_limit:
                 logger.warning(f"Session inactive for {token_prefix}... (user: {session.user_email}, last_activity: {last_activity}, limit: {inactivity_limit})")

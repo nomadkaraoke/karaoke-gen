@@ -293,6 +293,7 @@ class TestSecretGate:
         from backend.main import app
         paths = {getattr(r, "path", "") for r in app.routes}
         assert {"/api/kjbox/auth/send-code", "/api/kjbox/auth/verify-code",
+                "/api/kjbox/auth/google", "/api/kjbox/auth/apple",
                 "/api/kjbox/credits/show-credit"} <= paths
 
 
@@ -514,6 +515,130 @@ class TestVerifyCode:
 
 
 # --------------------------------------------------------------- show-credit
+
+# ------------------------------------------------- Google / Apple one-tap
+
+@pytest.fixture
+def identities(monkeypatch):
+    """ID token → verified identity (the provider's signature check is login_code's,
+    tested there); "bad" tokens raise the same 401 login_code raises."""
+    from fastapi import HTTPException
+
+    from backend.api.routes import login_code
+    from backend.services.social_identity import VerifiedIdentity
+
+    def verify(provider, id_token):
+        if id_token == "bad":
+            raise HTTPException(status_code=401, detail="invalid_token")
+        return VerifiedIdentity(email=id_token.lower(), provider=provider, subject="sub-1")
+
+    monkeypatch.setattr(login_code, "_verify_identity", verify)
+
+
+def _social(client, provider, id_token=EMAIL, **extra):
+    return client.post(f"/api/kjbox/auth/{provider}", json={"id_token": id_token, **extra}, headers=H)
+
+
+class TestSocialSignIn:
+    @pytest.mark.parametrize("provider", ["google", "apple"])
+    def test_new_singer_gets_a_session_without_a_code(
+            self, client, db, user_service, email_service, identities, provider):
+        resp = _social(client, provider, locale="es", venue="The Dive Bar")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert set(body) == {"session_token", "user", "credits_granted", "credit_status"}
+        assert body["credits_granted"] == 1 and body["user"]["email"] == EMAIL
+        created = user_service.get_user(EMAIL)
+        assert created.signup_source == "kjbox" and created.signup_venue == "The Dive Bar"
+        assert created.signup_ip is None            # venue IP never recorded
+        assert [d["email"] for d in db.collection(kps.SIGNUPS_COLLECTION).docs.values()] == [EMAIL]
+        valid, user, _ = user_service.validate_session(body["session_token"])
+        assert valid and user.email_verified and user.locale == "es"
+        email_service.send_kjbox_login_code.assert_not_called()
+
+    def test_apple_relay_address_is_its_own_account(self, client, user_service, identities):
+        relay = "abc123@privaterelay.appleid.com"
+        assert _social(client, "apple", id_token=relay).status_code == 200
+        assert user_service.get_user(relay) is not None
+
+    def test_returning_code_user_signs_in_with_google(self, client, user_service, email_service, identities):
+        _send(client)
+        assert _verify(client, _sent_code(email_service)).status_code == 200
+        body = _social(client, "google").json()
+        assert body["credits_granted"] == 0 and body["credit_status"] == "already_granted"
+
+    def test_signup_cap_applies_to_new_accounts_only(self, client, settings, user_service, identities):
+        settings.kjbox_signup_cap_per_24h = 1
+        assert _social(client, "google", id_token="a@example.com").status_code == 200
+        resp = _social(client, "google", id_token="b@example.com")
+        assert resp.status_code == 429 and resp.json() == {"detail": "signup_cap"}
+        assert user_service.get_user("b@example.com") is None
+        settings.kjbox_signup_cap_per_24h = 0
+        assert _social(client, "google", id_token="a@example.com").status_code == 200
+
+    def test_disposable_email_refused(self, client, validation, user_service, identities):
+        validation.is_disposable_domain.return_value = True
+        resp = _social(client, "google", id_token="x@mailinator.com")
+        assert resp.status_code == 422
+        assert user_service.get_user("x@mailinator.com") is None
+
+    def test_apple_relay_is_never_treated_as_disposable(self, client, validation, user_service, identities):
+        validation.is_disposable_domain.return_value = True
+        relay = "abc123@privaterelay.appleid.com"
+        assert _social(client, "apple", id_token=relay).status_code == 200
+
+    @pytest.mark.parametrize("blocked", ["email", "ip"])
+    def test_blocked_email_or_ip_refused(self, client, validation, user_service, identities, blocked):
+        getattr(validation, f"is_{blocked}_blocked").return_value = True
+        resp = _social(client, "google")
+        assert resp.status_code == 422 and resp.json() == {"detail": "sign_in_not_allowed"}
+        assert user_service.get_user(EMAIL) is None
+
+    def test_invalid_token_is_401(self, client, user_service, identities):
+        resp = _social(client, "google", id_token="bad")
+        assert resp.status_code == 401 and resp.json() == {"detail": "invalid_token"}
+
+    @pytest.mark.parametrize("provider", ["google", "apple"])
+    def test_needs_the_partner_secret(self, client, identities, provider):
+        resp = client.post(f"/api/kjbox/auth/{provider}", json={"id_token": EMAIL})
+        assert resp.status_code == 403
+
+
+class TestSessionInactivity:
+    def test_weekly_regular_stays_signed_in_but_a_month_idle_expires(self, client, db, user_service, identities):
+        # Was 7 days: a singer at weekly shows was always signed out by the next one.
+        from backend.services.user_service import SESSIONS_COLLECTION
+        token = _social(client, "google").json()["session_token"]
+        sessions = db.collection(SESSIONS_COLLECTION).docs
+        now = datetime.now(timezone.utc)
+        sessions[token]["last_activity_at"] = now - timedelta(days=20)
+        assert user_service.validate_session(token)[0] is True
+        sessions[token]["last_activity_at"] = now - timedelta(days=31)
+        valid, _, reason = user_service.validate_session(token)
+        assert valid is False and "inactivity" in reason
+
+
+class TestSessionLifetime:
+    def test_new_session_lasts_a_year_from_sign_in(self, client, db, identities):
+        from backend.services.user_service import SESSIONS_COLLECTION
+        token = _social(client, "google").json()["session_token"]
+        expires = db.collection(SESSIONS_COLLECTION).docs[token]["expires_at"]
+        if isinstance(expires, str):
+            expires = datetime.fromisoformat(expires)
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        days = (expires - datetime.now(timezone.utc)).days
+        assert 363 <= days <= 365
+
+    def test_weekly_regular_still_signed_in_after_two_months(self, client, db, user_service, identities):
+        from backend.services.user_service import SESSIONS_COLLECTION
+        token = _social(client, "google").json()["session_token"]
+        doc = db.collection(SESSIONS_COLLECTION).docs[token]
+        now = datetime.now(timezone.utc)
+        doc["created_at"] = now - timedelta(days=60)
+        doc["last_activity_at"] = now - timedelta(days=6)
+        assert user_service.validate_session(token)[0] is True
+
 
 def _session(client, email_service, email=EMAIL):
     _send(client, email=email)
