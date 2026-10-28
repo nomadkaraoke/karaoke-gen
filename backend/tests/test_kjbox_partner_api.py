@@ -618,6 +618,28 @@ class TestSessionInactivity:
         assert valid is False and "inactivity" in reason
 
 
+class TestSessionLifetime:
+    def test_new_session_lasts_a_year_from_sign_in(self, client, db, identities):
+        from backend.services.user_service import SESSIONS_COLLECTION
+        token = _social(client, "google").json()["session_token"]
+        expires = db.collection(SESSIONS_COLLECTION).docs[token]["expires_at"]
+        if isinstance(expires, str):
+            expires = datetime.fromisoformat(expires)
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        days = (expires - datetime.now(timezone.utc)).days
+        assert 363 <= days <= 365
+
+    def test_weekly_regular_still_signed_in_after_two_months(self, client, db, user_service, identities):
+        from backend.services.user_service import SESSIONS_COLLECTION
+        token = _social(client, "google").json()["session_token"]
+        doc = db.collection(SESSIONS_COLLECTION).docs[token]
+        now = datetime.now(timezone.utc)
+        doc["created_at"] = now - timedelta(days=60)
+        doc["last_activity_at"] = now - timedelta(days=6)
+        assert user_service.validate_session(token)[0] is True
+
+
 def _session(client, email_service, email=EMAIL):
     _send(client, email=email)
     return _verify(client, _sent_code(email_service), email=email).json()["session_token"]

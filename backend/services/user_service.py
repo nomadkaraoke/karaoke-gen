@@ -58,7 +58,9 @@ MAGIC_LINK_EXPIRY_MINUTES = 24 * 60  # 24h — buffer for slow email delivery (Y
 # Inactivity window. Was 7 days: kjbox singers at weekly shows were always signed
 # out by the next show (2026-10-22), so Andrew set it to 30 days for everyone.
 SESSION_EXPIRY_DAYS = 30
-SESSION_ABSOLUTE_EXPIRY_DAYS = 30
+# Hard cap from sign-in, however active. Was 30: a weekly regular was still signed
+# out once a month (Andrew, 2026-10-28: 365 days).
+SESSION_ABSOLUTE_EXPIRY_DAYS = 365
 MAX_CREDIT_TRANSACTIONS = 100  # Keep last N transactions
 
 
