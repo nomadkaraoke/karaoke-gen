@@ -3382,6 +3382,24 @@ missing/expired/already-used → `401 {"detail": "expired"}`; more than 5 attemp
 atomic increment before a constant-time compare; single use is enforced by a
 create()-only marker in `kjbox_login_code_uses`.
 
+### Google / Apple sign-in (one tap)
+
+```http
+POST /api/kjbox/auth/google      (or /api/kjbox/auth/apple)
+{"id_token": "<Google Identity Services / Sign in with Apple JS ID token>", "locale": "es", "venue": "The Dive Bar"}
+```
+
+→ the same `200` body as verify-code, with no code: the provider has proven the
+email. The token is checked by the same `_verify_identity` as
+`POST /api/users/auth/google|apple` (audiences `GOOGLE_OAUTH_CLIENT_IDS` /
+`APPLE_SIGNIN_AUDIENCES`, which must include the web Services ID used on
+sing.nomadkaraoke.com; `fake:<email>` tokens on the local stack only). The
+venue rules match verify-code: no per-IP signup cap, `KJBOX_SIGNUP_CAP_PER_24H`
+on new accounts (`429 {"detail": "signup_cap"}`), `signup_source="kjbox"` +
+`signup_venue`, no `signup_ip`. Apple "Hide My Email" relay addresses are
+their own account. Errors: `401 {"detail": "invalid_token"}`,
+`503 google_not_configured` / `identity_provider_unavailable`.
+
 ### Show credit ("free at the show")
 
 ```http
