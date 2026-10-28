@@ -576,6 +576,24 @@ class TestSocialSignIn:
         settings.kjbox_signup_cap_per_24h = 0
         assert _social(client, "google", id_token="a@example.com").status_code == 200
 
+    def test_disposable_email_refused(self, client, validation, user_service, identities):
+        validation.is_disposable_domain.return_value = True
+        resp = _social(client, "google", id_token="x@mailinator.com")
+        assert resp.status_code == 422
+        assert user_service.get_user("x@mailinator.com") is None
+
+    def test_apple_relay_is_never_treated_as_disposable(self, client, validation, user_service, identities):
+        validation.is_disposable_domain.return_value = True
+        relay = "abc123@privaterelay.appleid.com"
+        assert _social(client, "apple", id_token=relay).status_code == 200
+
+    @pytest.mark.parametrize("blocked", ["email", "ip"])
+    def test_blocked_email_or_ip_refused(self, client, validation, user_service, identities, blocked):
+        getattr(validation, f"is_{blocked}_blocked").return_value = True
+        resp = _social(client, "google")
+        assert resp.status_code == 422 and resp.json() == {"detail": "sign_in_not_allowed"}
+        assert user_service.get_user(EMAIL) is None
+
     def test_invalid_token_is_401(self, client, user_service, identities):
         resp = _social(client, "google", id_token="bad")
         assert resp.status_code == 401 and resp.json() == {"detail": "invalid_token"}

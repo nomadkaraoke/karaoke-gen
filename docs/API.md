@@ -3397,7 +3397,9 @@ sing.nomadkaraoke.com; `fake:<email>` tokens on the local stack only). The
 venue rules match verify-code: no per-IP signup cap, `KJBOX_SIGNUP_CAP_PER_24H`
 on new accounts (`429 {"detail": "signup_cap"}`), `signup_source="kjbox"` +
 `signup_venue`, no `signup_ip`. Apple "Hide My Email" relay addresses are
-their own account. Errors: `401 {"detail": "invalid_token"}`,
+their own account (and never count as disposable). The send-code eligibility
+checks apply, explicitly: disposable domain → `422` (magic-link detail);
+blocked email or IP → `422 {"detail": "sign_in_not_allowed"}`. Errors: `401 {"detail": "invalid_token"}`,
 `503 google_not_configured` / `identity_provider_unavailable`.
 
 ### Show credit ("free at the show")

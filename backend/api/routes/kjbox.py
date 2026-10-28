@@ -342,15 +342,27 @@ def _social_sign_in(provider, body, http_request, svc, user_service, email_servi
     """Google / Apple one-tap: the provider has proven the email, so no code.
     Same venue rules as verify-code: no per-IP signup cap, the partner-wide 24h
     cap on new accounts instead. Apple "Hide My Email" relays are their own account."""
-    from backend.api.routes.login_code import _verify_identity
+    from backend.api.routes.login_code import APPLE_RELAY_DOMAIN, _verify_identity
 
     identity = _verify_identity(provider, body.id_token)   # 401 invalid_token / 503
     email = _normalize_email(identity.email)
+    email_locale, ui_locale = _split_locale(body.locale)
+
+    # The same eligibility checks as send-code. There's no email to hide a
+    # refusal behind, so (like the app's social sign-in) refusals are explicit.
+    email_validation = get_email_validation_service()
+    is_relay = provider == "apple" and email.endswith("@" + APPLE_RELAY_DOMAIN)
+    if not is_relay and email_validation.is_disposable_domain(email):
+        logger.warning(f"kjbox: {provider} sign-in refused, disposable email {_mask_email(email)}")
+        raise HTTPException(status_code=422, detail=t(email_locale or "en", "users.disposableEmailBlocked"))
+    ip_address = get_client_ip(http_request)
+    if email_validation.is_email_blocked(email) or (ip_address and email_validation.is_ip_blocked(ip_address)):
+        logger.warning(f"kjbox: {provider} sign-in refused, blocked email/IP {_mask_email(email)}")
+        raise HTTPException(status_code=422, detail="sign_in_not_allowed")
     if user_service.get_user(email) is None and \
             svc.count_recent_signups() >= get_settings().kjbox_signup_cap_per_24h:
         logger.warning("kjbox: partner-wide verified-signup cap reached")
         raise HTTPException(status_code=429, detail="signup_cap")
-    email_locale, ui_locale = _split_locale(body.locale)
     return _finish_sign_in(
         email, http_request, svc=svc, user_service=user_service, email_service=email_service,
         venue=(body.venue or None), email_locale=email_locale, ui_locale=ui_locale,
