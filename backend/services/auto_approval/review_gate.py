@@ -87,7 +87,7 @@ async def route_after_scoring(
     # claimed the hold; the claim decides who re-scores.
     if job_manager.claim_auto_review_hold(job_id):
         logger.info(f"[job:{job_id}] Stems landed while holding review — re-scoring now")
-        return await _rescore_and_route(job_id, job_log, job_manager)
+        return await _route_claimed(job_id, job_log, job_manager)
     return "released_elsewhere"
 
 
@@ -99,10 +99,32 @@ async def release_audio_hold(job_id: str, reason: str) -> Optional[str]:
     """
     from backend.services.job_manager import JobManager
 
-    if not JobManager().claim_auto_review_hold(job_id):
+    job_manager = JobManager()
+    if not job_manager.claim_auto_review_hold(job_id):
         return None
     logger.info(f"[job:{job_id}] Releasing auto-review hold ({reason})")
-    return await _rescore_and_route(job_id)
+    return await _route_claimed(job_id, None, job_manager)
+
+
+async def _route_claimed(job_id: str, job_log, job_manager) -> str:
+    """Route a job whose hold we just claimed. The claim already cleared the
+    marker, so on failure fall back to human review, and if even that fails put
+    the marker back so the recover_stuck_jobs sweep retries (never strand it)."""
+    try:
+        return await _rescore_and_route(job_id, job_log, job_manager)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[job:{job_id}] Re-score after hold release failed: {e}; opening review",
+                     exc_info=True)
+    try:
+        job = job_manager.get_job(job_id)
+        if job and job.status == JobStatus.GENERATING_SCREENS:
+            await enter_human_review(job_id, job_log, job_manager)
+        return "review"
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[job:{job_id}] Opening review after hold release failed: {e}; re-holding",
+                     exc_info=True)
+        job_manager.park_review_for_auto_check(job_id)
+        return "error"
 
 
 async def _rescore_and_route(

@@ -135,3 +135,24 @@ def test_audio_hold_expiry() -> None:
     assert review_gate.audio_hold_expired(_job(), now) is False
     assert review_gate.audio_hold_expired(_job(**{HOLD_KEY: False}), now) is False
     assert review_gate.audio_hold_expired(_job(**{HOLD_KEY: "garbage"}), now) is True
+
+
+@pytest.mark.asyncio
+async def test_rescore_crash_after_claim_falls_back_to_review() -> None:
+    jm = _jm(_job(), _job())
+    p1, p2, p3 = _patches(jm)
+    with p1, patch("backend.services.auto_approval.executor.maybe_auto_complete_review",
+                   AsyncMock(side_effect=RuntimeError("boom"))), p3:
+        out = await review_gate.release_audio_hold("j1", reason="audio_worker")
+    assert out == "review"
+    assert jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.AWAITING_REVIEW
+
+
+@pytest.mark.asyncio
+async def test_review_fallback_crash_restores_hold_for_sweep() -> None:
+    jm = _jm(_job(), _job())
+    jm.transition_to_state.side_effect = RuntimeError("firestore down")
+    out, _, _ = await _call(review_gate.release_audio_hold, jm, "j1", reason="audio_worker",
+                            auto_result={"outcome": "review"})
+    assert out == "error"
+    jm.park_review_for_auto_check.assert_called_once_with("j1")
