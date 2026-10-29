@@ -905,3 +905,75 @@ class TestSchedulerAuthGate:
         fn.assert_called_once()
         # response shape: (body, status, headers)
         assert result[1] == 200
+
+
+MAC_LABELS = ["self-hosted", "macOS", "nomad-mbp"]
+
+
+class TestCanServe:
+    """Only dispatch jobs our runners can actually take (2026-10-27 incident:
+    nomad-mobile's macOS E2E jobs spawned 238 Linux VMs nobody could use)."""
+
+    def test_macos_job_is_not_ours(self):
+        ep = _fresh_module()
+        assert ep.can_serve(MAC_LABELS) is False
+
+    def test_unknown_custom_label_is_not_ours(self):
+        ep = _fresh_module()
+        assert ep.can_serve(["self-hosted", "linux", "arm64"]) is False
+
+    def test_our_families_are_served(self):
+        ep = _fresh_module()
+        assert ep.can_serve(["self-hosted"]) is True
+        assert ep.can_serve(BUILD_LABELS) is True
+        assert ep.can_serve(["self-hosted", "linux", "gpu"]) is True
+        assert ep.can_serve(["self-hosted", "Linux", "X64", "large-disk"]) is True
+        assert ep.can_serve(["self-hosted", "windows", "gpu"]) is True
+
+    def test_redispatch_skips_jobs_we_cannot_serve(self):
+        ep = _fresh_module()
+        jobs = [_queued_job(1, MAC_LABELS, age_minutes=12)]
+        with patch.object(ep, "list_queued_self_hosted_jobs", return_value=jobs), patch.object(
+            ep, "create_ephemeral_runner"
+        ) as create:
+            result = ep.redispatch_stalled_jobs("ghp_test", [], {})
+        create.assert_not_called()
+        assert result["dispatched"] == []
+
+    def test_queued_scan_excludes_jobs_we_cannot_serve(self):
+        ep = _fresh_module()
+
+        def fake_request(method, path, pat, body=None):
+            if path.startswith("/orgs/test-org/repos"):
+                return [{"name": "nomad-mobile"}]
+            if "/actions/runs?status=" in path:
+                return {"workflow_runs": [{"id": 7}]}
+            if "/runs/7/jobs" in path:
+                return {
+                    "jobs": [
+                        {"id": 1, "status": "queued", "labels": MAC_LABELS},
+                        {"id": 2, "status": "queued", "labels": BUILD_LABELS},
+                    ]
+                }
+            return {}
+
+        with patch.object(ep, "_github_request", side_effect=fake_request):
+            jobs = ep.list_queued_self_hosted_jobs("ghp_test")
+        assert [j["id"] for j in jobs] == [2]
+
+
+class TestWebhookSkipsForeignSelfHostedJobs:
+    def test_macos_job_webhook_does_not_create_vm(self):
+        for mod in ("main", "ephemeral"):
+            sys.modules.pop(mod, None)
+        with patch.dict(os.environ, {"GCP_PROJECT": "p", "GITHUB_ORG": "test-org"}, clear=False):
+            import main
+        main.verify_webhook_signature = lambda request: True
+        req = MagicMock()
+        req.args = MagicMock(get=lambda key, default=None: default)
+        req.headers = MagicMock(get=lambda key, default=None: {"X-GitHub-Event": "workflow_job"}.get(key, default))
+        req.get_json = lambda: {"action": "queued", "workflow_job": {"labels": MAC_LABELS}}
+        with patch.object(main, "_handle_workflow_job_queued") as queued:
+            body, status = main.handle_request(req)
+        queued.assert_not_called()
+        assert status == 200

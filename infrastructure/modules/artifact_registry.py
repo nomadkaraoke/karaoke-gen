@@ -11,9 +11,11 @@ from pulumi_gcp import artifactregistry
 from config import PROJECT_ID, REGION
 
 # True = AR only *logs* what the cleanup policies would delete (Cloud Audit
-# Logs) instead of deleting. Applied in dry-run first on 2026-10-01; flip to
-# False (+ targeted pulumi up on both repos) once the dry-run logs are reviewed.
-CLEANUP_POLICY_DRY_RUN = True
+# Logs) instead of deleting. Dry-run from 2026-10-01; enforced 2026-10-29 after
+# simulating the policy against every Cloud Run service template, serving
+# revision and job image in both regions: none would lose its image (only
+# superseded rollback revisions beyond the 20 most recent per package).
+CLEANUP_POLICY_DRY_RUN = False
 
 # Tags that must never be auto-deleted regardless of age:
 #   latest   — what jobs/services pinned to :latest pull
