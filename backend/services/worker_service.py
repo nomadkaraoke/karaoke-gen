@@ -624,7 +624,7 @@ class WorkerService:
                 compute_client=compute_client,
                 project_id=self.settings.google_cloud_project,
             )
-            result = manager.ensure_primary_running()
+            result = manager.ensure_preferred_running()
             if result["started"]:
                 logger.info(f"[job:{job_id}] Encoding worker warmup: started VM {result['vm_name']}")
             else:

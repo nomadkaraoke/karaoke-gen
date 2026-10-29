@@ -1351,12 +1351,19 @@ class TestBuildWorkerCandidates:
         cfg.primary_ip = "10.0.0.1"
         cfg.primary_machine_type = None  # → defaults to c4d
         cfg.capacity_state = capacity_state or {}
+        cfg.speed_rank_overrides = {}
         return cfg
 
     def _service_with_fallbacks(self, encoding_service, fallbacks_json, capacity_state=None):
-        mgr = MagicMock()
-        mgr._zone = "us-central1-c"
-        mgr.get_config.return_value = self._config(capacity_state)
+        # Ranking lives in EncodingWorkerManager.ranked_candidates (shared with the
+        # warmups), so use a real manager with a mocked config read.
+        from backend.services.encoding_worker_manager import EncodingWorkerManager
+
+        mgr = EncodingWorkerManager(
+            db=MagicMock(), compute_client=MagicMock(), zone="us-central1-c",
+            fallback_vms_raw=fallbacks_json,
+        )
+        mgr.get_config = MagicMock(return_value=self._config(capacity_state))
         encoding_service._worker_manager = mgr
         encoding_service.settings.encoding_worker_fallback_vms = fallbacks_json
         return encoding_service

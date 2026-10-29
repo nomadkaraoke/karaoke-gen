@@ -505,6 +505,18 @@ class TestParseFallbackVms:
         monkeypatch.setenv("ENCODING_WORKER_FALLBACK_VMS", "not json")
         assert main._parse_fallback_vms() == []
 
+    def test_skips_aws_worker(self, monkeypatch):
+        # The AWS encoding worker isn't a GCE VM; it idle-stops itself.
+        monkeypatch.setenv(
+            "ENCODING_WORKER_FALLBACK_VMS",
+            json.dumps([
+                {"vm": "fb-a", "zone": "us-central1-a", "ip": "1.1.1.1"},
+                {"vm": "aws-encoding-worker-1", "zone": "us-east-2b", "ip": "3.3.3.3",
+                 "provider": "aws", "instance_id": "i-0abc", "region": "us-east-2"},
+            ]),
+        )
+        assert main._parse_fallback_vms() == [("fb-a", "us-central1-a")]
+
     def test_returns_tuples_of_vm_zone(self, monkeypatch):
         monkeypatch.setenv(
             "ENCODING_WORKER_FALLBACK_VMS",

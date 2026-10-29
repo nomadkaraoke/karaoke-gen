@@ -51,7 +51,7 @@ async def warmup_encoding_worker(
     _auth: Tuple[str, str] = Depends(require_review_auth),
     manager=Depends(get_worker_manager),
 ):
-    """Start the primary encoding worker VM if it's stopped.
+    """Start the preferred encoding worker if it's stopped (normally the GCE primary).
 
     Called on lyrics-review page load so the VM is warm by the time the
     reviewer previews a render. ``job_id`` scopes auth to the job under review.
@@ -63,7 +63,7 @@ async def warmup_encoding_worker(
         # WHOLE instance for ~11s on every review-page open with a cold VM,
         # stalling that same page's audio/lyrics requests behind it
         # (2026-09-19, follow-up to the concurrent-load investigation).
-        result = await asyncio.to_thread(manager.ensure_primary_running)
+        result = await asyncio.to_thread(manager.ensure_preferred_running)
         if result["started"]:
             logger.info(f"Started encoding worker VM: {result['vm_name']}")
         return result

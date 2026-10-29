@@ -733,3 +733,17 @@ class TestVerifyWheelImports:
 
         monkeypatch.setattr(main.subprocess, "run", _timeout)
         assert main.verify_wheel_imports() is False
+
+
+class TestGcsCli:
+    """The AWS worker (WIF auth) can't use gsutil; GCE workers keep it."""
+
+    def test_gce_worker_uses_gsutil(self, monkeypatch):
+        from backend.services.gce_encoding import main as worker
+        monkeypatch.delenv("ENCODING_WORKER_PROVIDER", raising=False)
+        assert worker._gcs_cli() == ["gsutil"]
+
+    def test_aws_worker_uses_gcloud_storage(self, monkeypatch):
+        from backend.services.gce_encoding import main as worker
+        monkeypatch.setenv("ENCODING_WORKER_PROVIDER", "aws")
+        assert worker._gcs_cli() == ["gcloud", "storage"]

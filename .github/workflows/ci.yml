@@ -87,7 +87,7 @@ jobs:
   # ============================================
 
   runner-manager-tests:
-    name: "Infra - runner_manager function tests"
+    name: "Infra - Cloud Function tests"
     runs-on: ubuntu-latest
     needs: changes
     if: github.ref != 'refs/heads/main' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.deps == 'true')
@@ -100,6 +100,9 @@ jobs:
       # google.cloud namespace package is genuinely installed.
       - run: pip install pytest -r infrastructure/functions/runner_manager/requirements.txt
       - run: pytest infrastructure/functions/runner_manager -q -p no:cacheprovider -o addopts=""
+      - run: pip install -r infrastructure/functions/encoding_worker_idle/requirements.txt
+      # Separate invocation: both functions have a top-level `main` module.
+      - run: pytest infrastructure/functions/encoding_worker_idle -q -p no:cacheprovider -o addopts=""
 
   frontend-lint:
     name: "Frontend - Lint (Rules of Hooks)"
@@ -1399,6 +1402,11 @@ jobs:
           echo "Uploading startup.sh..."
           gsutil cp infrastructure/encoding-worker/startup.sh \
                     "${BUCKET}/encoding-worker/startup.sh"
+          # AWS encoding worker (EC2): its startup + idle self-stop, fetched on boot
+          gsutil cp infrastructure/encoding-worker/aws/startup-aws.sh \
+                    "${BUCKET}/encoding-worker/startup-aws.sh"
+          gsutil cp infrastructure/encoding-worker/aws/idle-watchdog.py \
+                    "${BUCKET}/encoding-worker/idle-watchdog.py"
 
           # 4. Write version manifest for verification
           echo "Writing version manifest..."
@@ -1425,6 +1433,15 @@ jobs:
               print("::error::Encoding worker config not found in Firestore")
               raise SystemExit(1)
           data = doc.to_dict()
+          if (data.get("active_override_provider") or "").lower() == "aws":
+              # The AWS encoding worker (EC2) is serving by preference. This
+              # GCE blue-green flow can't gcloud-start/stop it and must not
+              # clear its override; it picks up the new wheel on its next job.
+              # Treat it as "no GCE override" so every step below ignores it.
+              print(f"AWS worker {data.get('active_override_vm')} is the serving override; "
+                    "leaving it untouched by the GCE blue-green deploy")
+              for key in ("active_override_vm", "active_override_ip", "active_override_zone"):
+                  data[key] = None
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               for key in ["primary_vm", "primary_ip", "primary_version",
                           "secondary_vm", "secondary_ip",

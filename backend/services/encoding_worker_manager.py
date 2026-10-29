@@ -112,6 +112,9 @@ class EncodingWorkerConfig:
     # shared preference logic to demote recently-exhausted types. See
     # backend/services/encoding_worker_preference.py.
     capacity_state: dict = field(default_factory=dict)
+    # {machine_family: rank} replacing SPEED_RANK at runtime, e.g. {"c7a": 5}
+    # makes the AWS worker preferred. Absent/empty ⇒ the built-in ranking.
+    speed_rank_overrides: dict = field(default_factory=dict)
 
     @property
     def primary_url(self) -> str:
@@ -155,6 +158,8 @@ class EncodingWorkerCandidate:
     # the preference logic may rank a fallback ahead of a stocked-out primary, so
     # "first candidate" is no longer synonymous with "primary".
     is_primary: bool = False
+    # "aws" for the EC2 worker (routed to AwsComputeAdapter); None ⇒ GCE.
+    provider: Optional[str] = None
 
     @property
     def url(self) -> str:
@@ -165,14 +170,148 @@ class EncodingWorkerCandidate:
         return {"vm": self.vm_name, "zone": self.zone, "machine_type": self.machine_type}
 
 
+def parse_fallback_vms(raw: Optional[str]) -> list:
+    """Parse ENCODING_WORKER_FALLBACK_VMS into candidate dicts. Never raises.
+
+    Schema: '[{"vm","zone","ip","machine_type"?}, ...]'. AWS workers add
+    ``"provider": "aws", "instance_id", "region"`` (passed through so the
+    manager can route them to the EC2 adapter). machine_type is optional
+    (inferred from the VM name for legacy entries). Malformed input degrades to
+    fewer/no fallbacks — this runs during connection recovery.
+    """
+    import json as _json
+
+    if not raw:
+        return []
+    try:
+        parsed = _json.loads(raw)
+    except (ValueError, TypeError) as e:
+        logger.warning("Invalid ENCODING_WORKER_FALLBACK_VMS JSON: %s", e)
+        return []
+    if not isinstance(parsed, list):
+        logger.warning("ENCODING_WORKER_FALLBACK_VMS must be a JSON list; ignoring")
+        return []
+    entries = []
+    for item in parsed:
+        try:
+            entry = {
+                "vm": item["vm"],
+                "zone": item["zone"],
+                "ip": item["ip"],
+                "machine_type": item.get("machine_type"),
+                "kind": "fallback",
+            }
+            for key in ("provider", "instance_id", "region"):
+                if item.get(key):
+                    entry[key] = item[key]
+            entries.append(entry)
+        except (KeyError, TypeError) as e:
+            logger.warning("Skipping malformed fallback candidate %s: %s", item, e)
+            continue
+    return entries
+
+
 class EncodingWorkerManager:
     """Manages blue-green encoding worker VMs via Firestore config and Compute API."""
 
-    def __init__(self, db, compute_client=None, project_id="nomadkaraoke", zone="us-central1-c"):
+    def __init__(
+        self,
+        db,
+        compute_client=None,
+        project_id="nomadkaraoke",
+        zone="us-central1-c",
+        fallback_vms_raw: Optional[str] = None,
+        aws_compute=None,
+    ):
         self._db = db
         self._compute = compute_client
         self._project_id = project_id
         self._zone = zone
+        # Raw ENCODING_WORKER_FALLBACK_VMS JSON; None → read from settings lazily.
+        self._fallback_vms_raw = fallback_vms_raw
+        self._aws_compute = aws_compute  # injectable for tests; built lazily otherwise
+
+    def fallback_entries(self) -> list:
+        """The configured capacity-fallback candidates (GCE and AWS), never raising."""
+        raw = self._fallback_vms_raw
+        if raw is None:
+            try:
+                from backend.config import get_settings
+
+                raw = get_settings().encoding_worker_fallback_vms
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Could not read ENCODING_WORKER_FALLBACK_VMS: %s", e)
+                raw = None
+        return parse_fallback_vms(raw)
+
+    def _compute_for(self, vm_name: str):
+        """The compute client for a VM: the EC2 adapter for AWS workers, else GCE."""
+        if self._aws_compute is None:
+            from backend.services.aws_encoding_compute import AwsComputeAdapter, aws_vms_from_pool
+
+            self._aws_compute = AwsComputeAdapter(
+                aws_vms_from_pool(self.fallback_entries()), project_id=self._project_id
+            )
+        if self._aws_compute.handles(vm_name):
+            return self._aws_compute
+        return self._compute
+
+    def ranked_candidates(self, config: Optional["EncodingWorkerConfig"] = None) -> list:
+        """Primary + fallbacks ranked by the shared preference logic.
+
+        Fastest-first (SPEED_RANK, overridable per family via
+        ``config/encoding-worker.speed_rank_overrides``), demoting types that
+        recently stocked out. Shared by the encode path and the warmups so they
+        always start the worker that requests will actually be routed to.
+        """
+        from backend.services.encoding_worker_preference import (
+            PRIMARY_MACHINE_TYPE,
+            ordered_candidates,
+        )
+
+        config = config or self.get_config()
+        primary_mt = getattr(config, "primary_machine_type", None) or PRIMARY_MACHINE_TYPE
+        pool = [{
+            "vm": config.primary_vm,
+            "zone": self._zone,
+            "ip": config.primary_ip,
+            "machine_type": primary_mt,
+            "kind": "primary",
+            "is_primary": True,
+        }]
+        pool.extend(self.fallback_entries())
+        ranked = ordered_candidates(
+            pool,
+            capacity_state=config.capacity_state,
+            rank_overrides=getattr(config, "speed_rank_overrides", None),
+        )
+        return [
+            EncodingWorkerCandidate(
+                vm_name=c["vm"],
+                zone=c["zone"],
+                ip=c["ip"],
+                machine_type=c.get("machine_type"),
+                is_primary=c.get("is_primary", False),
+                provider=c.get("provider"),
+            )
+            for c in ranked
+        ]
+
+    def ensure_preferred_running(self) -> dict:
+        """Warm the worker requests will be routed to (ranked, with failover).
+
+        When the GCE primary ranks first (the normal case) this is exactly
+        ``ensure_primary_running`` — unchanged behaviour. When something else
+        ranks first (a ``speed_rank_overrides`` preferring the AWS worker, or the
+        primary's type in stockout cooldown) it runs the same ranked
+        ``ensure_any_running`` the encode path uses, so the worker that requests
+        will be routed to is the one warmed, and the active override points at it.
+        """
+        config = self.get_config()
+        candidates = self.ranked_candidates(config)
+        if not candidates or candidates[0].is_primary:
+            return self.ensure_primary_running()
+        return self.ensure_any_running(candidates)
 
     def _doc_ref(self):
         """Return a reference to the config/encoding-worker document."""
@@ -209,6 +348,7 @@ class EncodingWorkerManager:
             active_override_zone=data.get("active_override_zone"),
             active_override_set_at=data.get("active_override_set_at"),
             capacity_state=data.get("capacity_state") or {},
+            speed_rank_overrides=data.get("speed_rank_overrides") or {},
         )
 
     def update_activity(self) -> None:
@@ -271,7 +411,7 @@ class EncodingWorkerManager:
 
         Pass `zone` for fallback VMs that live in alternate zones.
         """
-        instance = self._compute.get(
+        instance = self._compute_for(vm_name).get(
             project=self._project_id,
             zone=zone or self._zone,
             instance=vm_name,
@@ -303,7 +443,7 @@ class EncodingWorkerManager:
             logger.info("VM %s is already %s, skipping start", vm_name, status)
             return
         logger.info("Starting VM %s in zone %s (current status: %s)", vm_name, target_zone, status)
-        operation = self._compute.start(
+        operation = self._compute_for(vm_name).start(
             project=self._project_id,
             zone=target_zone,
             instance=vm_name,
@@ -318,7 +458,7 @@ class EncodingWorkerManager:
             logger.info("VM %s is already %s, skipping stop", vm_name, status)
             return
         logger.info("Stopping VM %s in zone %s (current status: %s)", vm_name, target_zone, status)
-        self._compute.stop(
+        self._compute_for(vm_name).stop(
             project=self._project_id,
             zone=target_zone,
             instance=vm_name,
@@ -459,6 +599,22 @@ class EncodingWorkerManager:
                         zone=candidate.zone,
                         code="NOT_FOUND",
                     ) from nf
+                except EncodingWorkerStartError:
+                    raise
+                except Exception as err:  # noqa: BLE001
+                    if getattr(candidate, "provider", None) != "aws":
+                        raise  # GCE: unchanged behaviour
+                    # An AWS control-plane fault (bad/missing controller creds,
+                    # throttling, botocore error) must fail over to the GCE
+                    # candidates, not abort selection — when the AWS worker is
+                    # preferred it ranks first, so escaping here would block all
+                    # encoding.
+                    raise EncodingWorkerStartError(
+                        f"VM {candidate.vm_name} status check failed in {candidate.zone}: {err}",
+                        vm_name=candidate.vm_name,
+                        zone=candidate.zone,
+                        code="STATUS_CHECK_FAILED",
+                    ) from err
                 started = False
                 if status not in ("RUNNING", "STAGING"):
                     logger.info(
@@ -575,6 +731,10 @@ class EncodingWorkerManager:
             "active_override_ip": candidate.ip,
             "active_override_zone": candidate.zone,
             "active_override_set_at": now,
+            # "aws" for the EC2 worker; the CI blue-green deploy leaves an AWS
+            # override serving (it can't gcloud-stop it, and it hot-updates its
+            # wheel per job). None for GCE.
+            "active_override_provider": getattr(candidate, "provider", None),
         })
         logger.info(
             "Set active_override to %s in %s (capacity fallback)",
@@ -597,6 +757,7 @@ class EncodingWorkerManager:
             "active_override_ip": None,
             "active_override_zone": None,
             "active_override_set_at": None,
+            "active_override_provider": None,
         })
         logger.info("Cleared active_override (primary is healthy again)")
 

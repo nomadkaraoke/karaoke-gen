@@ -171,6 +171,12 @@ gcloud compute ssh encoding-worker-a --zone=us-central1-c --project=nomadkaraoke
 
 For job stuck at `encoding` status, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
+**AWS encoding worker** (`aws-encoding-worker-1`, EC2 c7a.8xlarge Spot, us-east-2) is a pool
+candidate too (`provider: aws` in `encoding-worker-fallback-vms`): last resort by default,
+preferred when Firestore `config/encoding-worker.speed_rank_overrides = {"c7a": 5}`. Not
+blue-green deployed, idle-stops itself, shell via SSM, logs are on the box (journald). See
+`infrastructure/aws/README.md`.
+
 ### What Doesn't Work
 - `gcloud auth print-identity-token` - Wrong token type for internal endpoints
 - Cloud Tasks without proper service account - Gets 401 from Cloud Run
