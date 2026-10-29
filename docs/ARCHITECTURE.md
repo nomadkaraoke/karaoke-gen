@@ -310,7 +310,7 @@ jobs completed (newest `complete` timeline entry) more than `STORAGE_RETENTION_M
 
 - **Kept forever:** `input/*` (incl. `edited.flac`), `lyrics/`, `style/`, `review_sessions/`,
   `audio_edit*/`, `uploads/`, `packages/`, `analysis/`, `screens/*.png|jpg`, the 720p final (both the
-  descriptive and `lossy_720p_mp4.mp4` copies), `stems/custom_instrumental.*`, `stems/vocals_derived.*`
+  descriptive and `lossy_720p_mp4.mp4` copies), `stems/custom_instrumental.*`, `stems/vocals_derived.*`, `stems/lead_vocals.*` (word-timing training data, since v0.287.1)
   and the job-root `custom_instrumental.*` / `existing_instrumental.*`. Unknown files are kept.
 - **Purged:** other `finals/*`, `videos/*`, `previews/*`, `encoded/*`, `quick/*.mp4`, `screens/*.mov`,
   `review-audio/*`, and separated `stems/*` (only when the input audio is in `jobs/{id}/input/`).

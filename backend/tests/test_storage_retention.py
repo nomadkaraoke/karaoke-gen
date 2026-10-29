@@ -54,6 +54,7 @@ class TestClassifyFile:
         "stems/custom_instrumental.flac",
         "stems/custom_instrumental.mp3",
         "stems/vocals_derived.flac",
+        "stems/lead_vocals.flac",
         "custom_instrumental.mp3",
         "custom_instrumental.wav",
         "existing_instrumental.flac",
@@ -88,7 +89,6 @@ class TestClassifyFile:
         ("stems/instrumental_clean.flac", "stems"),
         ("stems/instrumental_with_backing.flac", "stems"),
         ("stems/vocals_clean.flac", "stems"),
-        ("stems/lead_vocals.flac", "stems"),
         ("stems/backing_vocals.flac", "stems"),
     ])
     def test_purged(self, rel, category):
@@ -890,3 +890,10 @@ class TestDeletionLogFlushFailure:
         report = svc.purge_orphans(dry_run=False, now=NOW)
         assert storage.deleted == ["jobs/g1/finals/a.mp4"]
         assert "deletion log not persisted" in report["errors"][0]["error"]
+
+
+def test_lead_vocals_kept_as_training_data():
+    # Word-timing training/eval data (full-auto v2): never purged, even when
+    # the other separated stems are.
+    assert classify_file("stems/lead_vocals.flac") == (KEEP, "training_lead_vocals")
+    assert classify_file("stems/instrumental_clean.flac") == (PURGE, "stems")

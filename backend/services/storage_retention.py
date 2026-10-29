@@ -15,6 +15,10 @@ KEEP forever
     — they hold user mute edits / uploads, which aren't stored anywhere else
   - ``stems/vocals_derived.*`` (cheap waveform helper of bring-your-own-
     instrumental jobs; separation doesn't recreate it)
+  - ``stems/lead_vocals.*`` (~15 MB): paired with the human-reviewed
+    ``lyrics/corrections_updated.json`` it is the training/eval data for word
+    timing (full-auto v2, 2026-10-29). Re-separating to recover it costs GPU
+    time per job, keeping it costs pennies.
   - anything not explicitly on the purge list (unknown files are kept)
 
 PURGE (regenerated on demand by backend/services/regenerate_service.py)
@@ -82,7 +86,7 @@ _KEEP_PREFIXES = (
     "input/", "lyrics/", "style/", "review_sessions/", "audio_edit", "uploads/",
     "packages/", "analysis/",
 )
-_KEPT_STEM_STEMS = ("custom_instrumental", "vocals_derived")
+_KEPT_STEM_STEMS = ("custom_instrumental", "vocals_derived", "lead_vocals")
 _ROOT_INSTRUMENTAL_STEMS = ("custom_instrumental", "existing_instrumental")
 
 
@@ -128,7 +132,11 @@ def classify_file(rel_path: str, finalise_only: bool = False, stems_purgeable: b
         return KEEP, "screens_image"
     if top == "stems":
         if stem.startswith(_KEPT_STEM_STEMS):
-            return KEEP, "user_instrumental" if stem.startswith("custom_instrumental") else "stems_kept"
+            if stem.startswith("custom_instrumental"):
+                return KEEP, "user_instrumental"
+            if stem.startswith("lead_vocals"):
+                return KEEP, "training_lead_vocals"
+            return KEEP, "stems_kept"
         if finalise_only:
             return KEEP, "source_stem"
         if not stems_purgeable:
