@@ -86,7 +86,7 @@ _KEEP_PREFIXES = (
     "input/", "lyrics/", "style/", "review_sessions/", "audio_edit", "uploads/",
     "packages/", "analysis/",
 )
-_KEPT_STEM_STEMS = ("custom_instrumental", "vocals_derived", "lead_vocals")
+_KEPT_STEM_STEMS = ("custom_instrumental", "vocals_derived")
 _ROOT_INSTRUMENTAL_STEMS = ("custom_instrumental", "existing_instrumental")
 
 
@@ -131,12 +131,10 @@ def classify_file(rel_path: str, finalise_only: bool = False, stems_purgeable: b
             return (KEEP, "source_screen") if finalise_only else (PURGE, "screens_mov")
         return KEEP, "screens_image"
     if top == "stems":
+        if stem == "lead_vocals":
+            return KEEP, "training_lead_vocals"
         if stem.startswith(_KEPT_STEM_STEMS):
-            if stem.startswith("custom_instrumental"):
-                return KEEP, "user_instrumental"
-            if stem.startswith("lead_vocals"):
-                return KEEP, "training_lead_vocals"
-            return KEEP, "stems_kept"
+            return KEEP, "user_instrumental" if stem.startswith("custom_instrumental") else "stems_kept"
         if finalise_only:
             return KEEP, "source_stem"
         if not stems_purgeable:

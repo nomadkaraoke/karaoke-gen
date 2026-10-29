@@ -897,3 +897,4 @@ def test_lead_vocals_kept_as_training_data():
     # the other separated stems are.
     assert classify_file("stems/lead_vocals.flac") == (KEEP, "training_lead_vocals")
     assert classify_file("stems/instrumental_clean.flac") == (PURGE, "stems")
+    assert classify_file("stems/lead_vocals_backup.flac") == (PURGE, "stems")
