@@ -227,6 +227,13 @@ BLOCKING_CALLS = {
     # (Postmark retries + SMTP fallback, 22s, 11 requests).
     "send_made_for_you_order_confirmation",
     "send_made_for_you_admin_notification",
+    # 2026-10-29 #alerts triage: change-visibility awaited redistribute_video on the loop
+    # (async, but sync GCS + ~400 MB of Dropbox uploads inside: 39s, 13 requests).
+    # Use asyncio.to_thread(redistribute_video_off_loop, job_id).
+    "redistribute_video",
+    # audio_search's auto_download path: select_best can lazily import flacfetch/yt_dlp
+    # (~11s on a fresh instance).
+    "select_best",
 }
 _BLOCKING_MODULE_CALLS = {("requests", "get"), ("requests", "post"), ("requests", "put"),
                           ("requests", "delete"), ("requests", "request"), ("time", "sleep")}
@@ -338,6 +345,8 @@ async def fixed(request):
 # route-only scan above skips them.
 AWAITED_ROUTE_HELPERS = {
     BACKEND / "api" / "routes" / "users.py": {"_handle_made_for_you_order"},
+    # change_visibility awaits these on the loop.
+    BACKEND / "services" / "visibility_change_service.py": {"change_to_private", "change_to_public"},
 }
 
 

@@ -90,6 +90,11 @@ _LAZY_ROUTE_IMPORTS = (
     "backend.services.ip_geolocation_service",
     "backend.services.email_validation_service",
     "backend.services.musicbrainz_service",
+    # audio_search's auto_download path: select_best -> flacfetch.core.manager ->
+    # yt_dlp import froze the loop ~11-12s on fresh instances (2026-10-23, 10-26).
+    "flacfetch.core.manager",
+    "flacfetch.downloaders.youtube",
+    "yt_dlp",
 )
 
 
@@ -104,6 +109,43 @@ def _import_lazy_route_modules() -> None:
             importlib.import_module(module)
         except Exception as e:
             logger.warning(f"Startup import of {module} failed (will import lazily): {e}")
+
+
+def _warm_route_contexts(application: FastAPI) -> int:
+    """Build FastAPI's per-route contexts (path regexes, pydantic schemas) up front.
+
+    Newer FastAPI builds them lazily on the first request, and the OpenTelemetry
+    FastAPI instrumentation walks every route (``_get_route_details`` ->
+    ``iter_route_contexts``) for each request's span name. On a fresh instance that
+    first walk compiled hundreds of route regexes ON the event loop (2026-10-23: 11s,
+    3 requests; 5.1s on 10-22). The results are cached (by routes version, under a
+    lock), so one walk here, before readiness, covers every later request.
+    Best-effort: a FastAPI version without these internals just skips it.
+    Returns the number of route contexts built (0 if unsupported).
+    """
+    try:
+        from fastapi.routing import iter_route_contexts
+    except ImportError:  # older FastAPI compiles routes eagerly at include time
+        return 0
+    count = 0
+    for _ in iter_route_contexts(application.routes):
+        count += 1
+    for route in application.routes:
+        low_priority = getattr(route, "effective_low_priority_routes", None)
+        if callable(low_priority):
+            count += len(low_priority())
+    return count
+
+
+def _warm_route_contexts_safely(application: FastAPI) -> None:
+    start = time.time()
+    try:
+        built = _warm_route_contexts(application)
+    except Exception as e:  # noqa: BLE001 - warmup must never block startup
+        logger.warning(f"Route-context warmup failed (routes build lazily): {e}")
+        return
+    if built:
+        logger.info(f"Warmed {built} route contexts in {time.time() - start:.2f}s")
 
 
 def _run_background_warmup():
@@ -188,6 +230,17 @@ async def lifespan(app: FastAPI):
         logger.error(
             f"Startup import of lazy route modules exceeded {LAZY_ROUTE_IMPORT_TIMEOUT_S}s; "
             "continuing startup (first requests may import them on the event loop)"
+        )
+
+    # Same reason: build the route contexts in a thread, before the first request
+    # (and the OTel route walk) would build them on the loop.
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_warm_route_contexts_safely, app), timeout=LAZY_ROUTE_IMPORT_TIMEOUT_S
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            f"Route-context warmup exceeded {LAZY_ROUTE_IMPORT_TIMEOUT_S}s; continuing startup"
         )
 
     # NLP model / credential warmup runs in the background so it doesn't gate

@@ -111,3 +111,73 @@ def test_slow_lazy_route_import_does_not_block_startup(caplog):
         with TestClient(main_module.app):
             pass
     assert "exceeded 0.05s; continuing startup" in caplog.text
+
+
+def test_lazy_route_imports_include_flacfetch_and_yt_dlp():
+    """select_best's lazy flacfetch -> yt_dlp import froze the loop ~11s (2026-10-23/26)."""
+    for module in ("flacfetch.core.manager", "flacfetch.downloaders.youtube", "yt_dlp"):
+        assert module in main_module._LAZY_ROUTE_IMPORTS
+
+
+class _FakeIncludedRouter:
+    def __init__(self, low_priority):
+        self._low_priority = low_priority
+        self.low_priority_calls = 0
+
+    def effective_low_priority_routes(self):
+        self.low_priority_calls += 1
+        return self._low_priority
+
+
+def test_warm_route_contexts_walks_every_route_context(monkeypatch):
+    """Newer FastAPI builds route contexts (regexes, schemas) lazily on the first
+    request, which the OTel route walk did ON the loop (2026-10-23: 11s stall)."""
+    import fastapi.routing
+    from types import SimpleNamespace
+
+    included = _FakeIncludedRouter(low_priority=["lp1"])
+    walked = []
+
+    def fake_iter_route_contexts(routes):
+        walked.append(list(routes))
+        yield from ("ctx1", "ctx2", "ctx3")
+
+    monkeypatch.setattr(fastapi.routing, "iter_route_contexts", fake_iter_route_contexts, raising=False)
+    app = SimpleNamespace(routes=[included, object()])
+
+    assert main_module._warm_route_contexts(app) == 4
+    assert walked == [app.routes]
+    assert included.low_priority_calls == 1
+
+
+def test_warm_route_contexts_noop_on_fastapi_without_lazy_contexts(monkeypatch):
+    import fastapi.routing
+    from types import SimpleNamespace
+
+    monkeypatch.delattr(fastapi.routing, "iter_route_contexts", raising=False)
+    assert main_module._warm_route_contexts(SimpleNamespace(routes=[])) == 0
+
+
+def test_route_context_warmup_failure_is_non_fatal(caplog):
+    import logging
+
+    caplog.set_level(logging.WARNING)
+    with patch.object(main_module, "_warm_route_contexts", side_effect=RuntimeError("internals moved")):
+        main_module._warm_route_contexts_safely(main_module.app)  # logs, doesn't raise
+    assert "Route-context warmup failed" in caplog.text
+
+
+def test_lifespan_warms_route_contexts_off_loop_before_readiness():
+    seen = []
+
+    def record(application):
+        seen.append((application, threading.current_thread().name))
+        return 0
+
+    with patch.object(main_module, "_run_background_warmup"), \
+         patch.object(main_module, "_warm_route_contexts", side_effect=record):
+        with TestClient(main_module.app):
+            assert seen  # done before startup returned
+
+    assert seen[0][0] is main_module.app
+    assert seen[0][1].startswith("asyncio_"), seen

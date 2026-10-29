@@ -622,6 +622,71 @@ async def _run_chained_change_to_private(job_id: str, job_manager: JobManager, r
             pass
 
 
+# GCS finals/ can hold each output twice: under the short canonical key written by
+# _upload_results (``lossy_4k_mp4.mp4``, the job's file_urls) and under the readable
+# name the encoder produced (``Artist - Title (Final Karaoke Lossy 4k).mp4``).
+# Redistribution downloads the whole folder, so without this it uploaded every final
+# to Dropbox twice (2026-10-25: 17 files / ~400 MB for one track), and the short-named
+# lossless 4K MP4 slipped past the " (Final Karaoke Lossless 4k).mp4" Dropbox
+# exclusion. Readable suffixes match the original Dropbox naming (KaraokeFinalise).
+_REDISTRIBUTION_READABLE_SUFFIXES = {
+    "lossless_4k_mp4.mp4": " (Final Karaoke Lossless 4k).mp4",
+    "lossless_4k_mkv.mkv": " (Final Karaoke Lossless 4k).mkv",
+    "lossy_4k_mp4.mp4": " (Final Karaoke Lossy 4k).mp4",
+    "lossy_720p_mp4.mp4": " (Final Karaoke Lossy 720p).mp4",
+    "portrait_1080x1920.mp4": " (Final Karaoke Portrait 1080x1920).mp4",
+    "with_vocals_mp4.mp4": " (With Vocals).mp4",
+    "title_mov.mov": " (Title).mov",
+    "end_mov.mov": " (End).mov",
+    "cdg_zip.zip": " (Final Karaoke CDG).zip",
+    "txt_zip.zip": " (Final Karaoke TXT).zip",
+}
+
+
+def _dedupe_redistribution_files(downloaded: Dict[str, str], base_name: str) -> Dict[str, str]:
+    """Keep one copy of each final, under its readable name.
+
+    A short-named file whose readable twin was also downloaded is deleted; a
+    short-named file with no twin is renamed to the readable name, so the Dropbox
+    folder looks like the original upload and suffix-based exclusions apply.
+    Unrecognised files pass through untouched.
+    """
+    result = dict(downloaded)
+    for filename, path in downloaded.items():
+        suffix = _REDISTRIBUTION_READABLE_SUFFIXES.get(filename)
+        if not suffix:
+            continue
+        readable = f"{base_name}{suffix}"
+        del result[filename]
+        # Twin match on the suffix, not the exact name: the encoder may have spelt
+        # the artist/title slightly differently from sanitize_filename.
+        if any(name.endswith(suffix) for name in result):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            continue
+        readable_path = os.path.join(os.path.dirname(path), readable)
+        os.replace(path, readable_path)
+        result[readable] = readable_path
+    return result
+
+
+def redistribute_video_off_loop(job_id: str) -> bool:
+    """Run ``redistribute_video`` to completion on the CALLING thread's own event loop.
+
+    For ``await asyncio.to_thread(redistribute_video_off_loop, job_id)`` from the API.
+    ``redistribute_video`` is async but every step inside it is sync (GCS downloads,
+    Firestore, ~400 MB of Dropbox uploads), so awaiting it on the API loop froze every
+    request on the instance (2026-10-25: 39s, 13 requests incl. /api/health). Nothing
+    it touches is bound to the API loop: it builds its own JobManager/StorageService,
+    the Dropbox/YouTube/GDrive clients are sync, and job-log writes go through
+    log_write_offload's thread. Notification tasks it schedules land on this private
+    loop, so drain them before the loop closes (with_notification_drain).
+    """
+    return asyncio.run(with_notification_drain(redistribute_video(job_id)))
+
+
 async def redistribute_video(job_id: str) -> bool:
     """
     Redistribute existing finals for a completed job (no re-encoding).
@@ -686,6 +751,10 @@ async def redistribute_video(job_id: str) -> bool:
 
         if not downloaded_files:
             raise RuntimeError("No finals files found in GCS for redistribution")
+
+        downloaded_files = _dedupe_redistribution_files(
+            downloaded_files, f"{safe_artist} - {safe_title}"
+        )
 
         # Get effective distribution settings for the (now-updated) job
         # Re-read job since is_private was just toggled

@@ -955,7 +955,9 @@ async def search_audio(
         
         # If auto_download, select best and start processing
         if body.auto_download:
-            best_index = audio_search_service.select_best(search_results)
+            # select_best can lazily import flacfetch.core.manager -> yt_dlp (~11s on
+            # a fresh instance): keep it off the loop.
+            best_index = await asyncio.to_thread(audio_search_service.select_best, search_results)
 
             logger.info(f"Auto-download enabled, selecting result {best_index}")
 

@@ -464,6 +464,42 @@ class TestRequestAwareSeverity:
         assert len(ended) == 1
         assert ended[0].levelno == logging.ERROR
 
+    def test_unsampled_stall_with_only_late_arrivals_is_warning(self, caplog):
+        """2026-10-23 03:15: a 20.7s freeze on an idle, CPU-throttled instance took
+        no sample (empty culprit); its one "affected" request arrived 0.3s before
+        the loop resumed. Nothing was blocked in our code and nothing was waiting
+        when it began, so it must not page."""
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        wd.sample_at_s = ()  # the freeze consumed the whole sampling schedule
+        self._stall(wd, clock, 21.0, during=tracker.begin)
+        ended = self._ended(caplog)
+        assert len(ended) == 1
+        assert ended[0].levelno == logging.WARNING
+        assert "culprit= " in ended[0].getMessage()
+        assert "requests_affected=1" in ended[0].getMessage()
+        assert recorded and recorded[0]["requests_affected"] == 1  # still recorded
+
+    def test_unsampled_stall_with_request_in_flight_at_start_is_error(self, caplog):
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        wd.sample_at_s = ()
+        tracker.begin()
+        self._stall(wd, clock, 12.0)
+        assert self._ended(caplog)[0].levelno == logging.ERROR
+
+    def test_sampled_stall_with_late_arrival_is_still_error(self, caplog):
+        """A culprit was caught blocking: a request queued behind it is real impact."""
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        wd._loop_thread_id = 12345
+        with patch("backend.services.loop_watchdog._is_idle_frame", return_value=False), \
+             patch("backend.services.loop_watchdog._format_stack",
+                   return_value=("stack", "backend/x.py:1 in f")), \
+             patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
+            self._stall(wd, clock, 12.0, during=tracker.begin)
+        assert self._ended(caplog)[0].levelno == logging.ERROR
+
     def test_request_finished_mid_stall_still_counts(self, caplog):
         caplog.set_level(logging.WARNING)
         wd, clock, tracker, recorded = self._wd()

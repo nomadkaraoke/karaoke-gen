@@ -125,7 +125,7 @@ class VisibilityChangeService:
             )
             if not claimed:
                 raise VisibilityChangeInProgress("A visibility change is already in progress for this job")
-        job_ref.update({
+        await asyncio.to_thread(job_ref.update, {
             "state_data.visibility_change_in_progress": True,
             "is_private": True,
             "updated_at": datetime.now(timezone.utc),
@@ -137,8 +137,11 @@ class VisibilityChangeService:
         # the archive actually materialized and recycles any NOMADNP code it
         # allocated on failure, so a False return means "no-op, still public".
         try:
-            from backend.workers.video_worker import redistribute_video
-            success = await redistribute_video(job_id)
+            # redistribute_video is async but entirely sync inside (GCS, Firestore,
+            # ~400 MB of Dropbox uploads): run it on a worker thread's own loop so
+            # it can't freeze the API (2026-10-25: 39s stall, 13 requests).
+            from backend.workers.video_worker import redistribute_video_off_loop
+            success = await asyncio.to_thread(redistribute_video_off_loop, job_id)
         except Exception as e:
             logger.error(f"[job:{job_id}] Redistribution raised during visibility change: {e}", exc_info=True)
             success = False
@@ -147,7 +150,7 @@ class VisibilityChangeService:
             # Roll back to public: no public outputs were deleted, so restoring
             # is_private=False leaves the job fully intact and public.
             logger.error(f"[job:{job_id}] Visibility change to private failed: redistribution did not succeed")
-            job_ref.update({
+            await asyncio.to_thread(job_ref.update, {
                 "is_private": False,
                 "state_data.visibility_change_in_progress": DELETE_FIELD,
                 "updated_at": datetime.now(timezone.utc),
@@ -164,7 +167,7 @@ class VisibilityChangeService:
 
         # Record the completed move and clear the guard flag. redistribute_video
         # already updated state_data with the new private brand_code etc.
-        job_ref.update({
+        await asyncio.to_thread(job_ref.update, {
             "state_data.visibility_change_in_progress": DELETE_FIELD,
             "updated_at": datetime.now(timezone.utc),
             "timeline": ArrayUnion([{

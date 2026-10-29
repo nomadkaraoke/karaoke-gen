@@ -106,6 +106,12 @@ _IGNORE_PATTERNS: list[tuple[str, re.Pattern, str]] = [
         re.compile(r"container called exit\(0\)", re.IGNORECASE),
         "Container clean exit — exit code 0 indicates a graceful, expected shutdown",
     ),
+    (
+        "cloud_trace_export",
+        re.compile(r"error while writing to cloud trace", re.IGNORECASE),
+        "OpenTelemetry Cloud Trace exporter got a transient gRPC error from Google "
+        "(e.g. StatusCode.INTERNAL) — best-effort telemetry, spans are just dropped",
+    ),
 ]
 
 

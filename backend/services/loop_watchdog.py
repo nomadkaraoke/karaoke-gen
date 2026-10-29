@@ -351,6 +351,7 @@ class LoopWatchdog:
         frozen_s = self._stall_frozen_s
         affected = self._requests_affected()
         tracked = self.request_tracker is not None
+        in_flight_at_start = self._stall_in_flight
         self._resumed_at = None
         self._in_stall = False
         self._samples = []
@@ -375,9 +376,15 @@ class LoopWatchdog:
         # No request waited on it (idle, typically CPU-throttled instance) → never
         # ERROR: the alert counts ERROR lines and nobody saw this freeze.
         no_impact = tracked and affected == 0
+        # No non-idle sample means the stall was never seen blocking in code — the
+        # freeze (CPU throttling of an idle instance) swallowed the whole sampling
+        # schedule. If nothing was in flight when it began, every "affected" request
+        # merely arrived while the instance was thawing (2026-10-23: 20.7s, empty
+        # culprit, its one request arrived 0.3s before the end). Not actionable.
+        unattributed_late_only = tracked and not samples and in_flight_at_start == 0
         level = (
             logging.ERROR
-            if duration >= self.error_threshold_s and not no_impact
+            if duration >= self.error_threshold_s and not no_impact and not unattributed_late_only
             else logging.WARNING
         )
         logger.log(
