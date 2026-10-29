@@ -108,7 +108,10 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
 
         # Only act on the two known launch points; a human already in the
         # editor (IN_REVIEW) or any other state is out of scope.
-        if trigger == "screens_worker":
+        # "audio_hold" = re-score of a job the screens worker held out of
+        # review while stems separated (review_gate.release_audio_hold); the
+        # job is still GENERATING_SCREENS, exactly as on the first pass.
+        if trigger in ("screens_worker", "audio_hold"):
             expected_statuses = (JobStatus.GENERATING_SCREENS,)
         else:
             expected_statuses = (JobStatus.AWAITING_REVIEW,)
@@ -245,10 +248,20 @@ async def maybe_auto_complete_review(job_id: str, trigger: str) -> Dict[str, Any
         logger.info(f"[job:{job_id}] {summary}")
 
         if not eligible or blockers:
+            # Worth holding review for the stems: the text verdict is AUTO and
+            # the ONLY thing missing is separated audio (backing analysis,
+            # timing + vocal-gap checks). The re-score then decides for real.
+            hold_for_audio = (
+                lyrics_auto
+                and blockers == ["audio_incomplete"]
+                and (custom_instrumental or backing_preference != "review")
+                and getattr(settings, "auto_approval_audio_hold_enabled", True)
+            )
             payload["outcome"] = "review"
+            payload["hold_for_audio"] = hold_for_audio
             job_manager.update_processing_metadata(job_id, "auto_approval", payload)
             return {"outcome": "review", "overall_auto": verdict.overall_auto,
-                    "blockers": blockers}
+                    "blockers": blockers, "hold_for_audio": hold_for_audio}
 
         # ---- ENFORCE: complete the review exactly like a human would ----
         # The status gate above used a snapshot read. Re-read now so a human who

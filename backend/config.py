@@ -177,6 +177,14 @@ class Settings(BaseSettings):
         "AUTO_APPROVAL_TIMING_GATE_ENABLED", "true"
     ).lower() in ("true", "1", "yes")
 
+    # Review hold: when the lyrics would auto-ship but stems are still
+    # separating, keep the job out of review until the audio-worker re-score
+    # (backend/services/auto_approval/review_gate.py). Code-level default for
+    # the same two-environment reason as above. Kill switch: false.
+    auto_approval_audio_hold_enabled: bool = os.getenv(
+        "AUTO_APPROVAL_AUDIO_HOLD_ENABLED", "true"
+    ).lower() in ("true", "1", "yes")
+
     # Match judge — artist/title formatting + match-acceptance for the job
     # submission flow. Deterministic + catalog layers always run; the light AI
     # layer (Vertex Gemini Flash) fires only when those aren't confident.

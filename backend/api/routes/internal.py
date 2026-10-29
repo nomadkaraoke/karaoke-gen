@@ -1319,6 +1319,35 @@ def _recover_stuck_jobs_sync(http_request: Request, loop: asyncio.AbstractEventL
         except Exception as e:
             logger.warning(f"[job:{job_id}] render re-trigger failed: {e}")
 
+    # --- GENERATING_SCREENS held for the auto-approval re-score, never released ---
+    # The screens worker holds lyrics-confident jobs out of review until stems
+    # land (review_gate.py); the audio worker releases them. If that release is
+    # lost (audio worker crash after mark_audio_complete, lost dispatch), release
+    # here after the timeout: re-score, then auto-complete or open review.
+    from backend.services.auto_approval.review_gate import audio_hold_expired, release_audio_hold
+    from backend.services.job_manager import JobManager as _JobManagerCls
+    hold_key = _JobManagerCls.AUTO_REVIEW_HOLD_KEY
+    hold_released = []
+    gs_query = jobs_ref.where(
+        filter=FieldFilter("status", "==", JobStatus.GENERATING_SCREENS.value)
+    ).stream()
+    for doc in gs_query:
+        if len(hold_released) >= RENDER_RETRIGGERS_PER_TICK:
+            break
+        data = doc.to_dict() or {}
+        job_id = data.get("job_id", doc.id)
+        if not (data.get("state_data") or {}).get(hold_key):
+            continue
+        job = job_manager.get_job(job_id)
+        if not job or not audio_hold_expired(job):
+            continue
+        logger.warning(f"[job:{job_id}] auto-review hold expired with no stems release — releasing")
+        try:
+            if run_on_loop(loop, release_audio_hold(job_id, reason="hold_timeout")):
+                hold_released.append(job_id)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"[job:{job_id}] auto-review hold release failed: {e}")
+
     # --- Prep phase with lyrics done but screens never triggered: lost screens trigger ---
     # The lyrics worker triggers screen generation once transcription completes
     # (audio separation is decoupled). If that dispatch is lost — historically a
@@ -1476,6 +1505,7 @@ def _recover_stuck_jobs_sync(http_request: Request, loop: asyncio.AbstractEventL
         "regen_screens_retriggered_jobs": regen_screens_retriggered,
         "video_retriggered_jobs": video_retriggered,
         "stems_wait_failed_jobs": stems_wait_failed,
+        "auto_review_hold_released_jobs": hold_released,
     }
 
 

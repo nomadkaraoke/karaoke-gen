@@ -297,29 +297,14 @@ async def generate_screens(job_id: str) -> bool:
                         job_log.info("Auto-approved: review screens skipped, render triggered")
                         logger.info(f"[job:{job_id}] Auto-approved — review skipped")
                     else:
-                        # Server-side pre-apply: apply the AI corrections + heuristic
-                        # fixes BEFORE the review-ready notification fires, so the
-                        # review screen loads one final state (no in-browser auto-apply
-                        # race). Best-effort + bounded: on any miss the UI falls back to
-                        # its client-side on-load apply.
-                        from backend.services.auto_approval.pre_apply import ensure_and_pre_apply
-                        with job_span("pre-apply-corrections", job_id):
-                            pre_apply_result = await ensure_and_pre_apply(job_id)
-                        if pre_apply_result.get("outcome") == "pre_applied":
-                            job_log.info(
-                                f"Pre-applied {pre_apply_result.get('applied', 0)} AI corrections "
-                                "server-side before review notification"
-                            )
+                        # Lyrics-confident jobs whose stems are still separating
+                        # are held out of review for the audio-worker re-score;
+                        # everything else opens review now (with server-side
+                        # pre-applied AI corrections). See review_gate.py.
+                        from backend.services.auto_approval.review_gate import route_after_scoring
+                        with job_span("review-gate", job_id):
+                            await route_after_scoring(job_id, auto_result, job_log, job_manager)
 
-                        # Normal flow: transition to combined review
-                        logger.info(f"[job:{job_id}] Screens generated, awaiting combined review")
-                        job_manager.transition_to_state(
-                            job_id=job_id,
-                            new_status=JobStatus.AWAITING_REVIEW,
-                            progress=55,
-                            message="Ready for review. Please review lyrics and select your instrumental."
-                        )
-                
                 duration = time.time() - start_time
                 # Store worker-level timing
                 job_manager.update_processing_metadata(job_id, "timing.screens_worker_seconds", round(duration, 1))
