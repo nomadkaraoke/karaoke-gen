@@ -426,11 +426,19 @@ async def process_audio_separation(job_id: str) -> bool:
                 # screens-worker scoring ran without backing analysis. Now that
                 # stems + analysis exist, re-score and auto-complete the review if
                 # fully confident. No-op (fail-safe) in every other state.
+                # A job the screens worker held out of review (lyrics confident,
+                # stems pending) is released here: re-scored, then auto-completed
+                # or opened for review (review_gate.py).
                 try:
                     from backend.services.auto_approval.executor import maybe_auto_complete_review
-                    auto_result = await maybe_auto_complete_review(job_id, trigger="audio_worker")
-                    if auto_result.get("outcome") == "auto_completed":
+                    from backend.services.auto_approval.review_gate import release_audio_hold
+                    released = await release_audio_hold(job_id, reason="audio_worker")
+                    if released == "auto_completed":
                         job_log.info("Auto-approved after audio completion: review skipped")
+                    elif released is None:
+                        auto_result = await maybe_auto_complete_review(job_id, trigger="audio_worker")
+                        if auto_result.get("outcome") == "auto_completed":
+                            job_log.info("Auto-approved after audio completion: review skipped")
                 except Exception as e:
                     logger.warning(f"[job:{job_id}] auto-approval attempt failed (non-fatal): {e}")
 

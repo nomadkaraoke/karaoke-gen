@@ -56,7 +56,8 @@ def _job(job_id, status, *, minutes_stale=0, source_name=None, download_retry=No
 
 
 def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=None,
-             downloading_prep=None, instrumental_selected=None, jobs=None):
+             downloading_prep=None, instrumental_selected=None, generating_screens=None,
+             jobs=None):
     """Wire a JobManager mock for the endpoint's 4 status queries.
 
     downloading/rendering/review_complete use .where().stream(); pending uses
@@ -65,9 +66,11 @@ def _mock_jm(*, downloading=None, pending=None, rendering=None, review_complete=
     mock_jm = MagicMock()
     where = mock_jm.firestore.db.collection.return_value.where.return_value
     # Non-limited .stream() calls in order: downloading_audio, rendering_video,
-    # review_complete (lost-render-trigger sweep)
+    # review_complete (lost-render-trigger sweep), generating_screens (expired
+    # auto-review holds)
     where.stream.side_effect = [
         iter(downloading or []), iter(rendering or []), iter(review_complete or []),
+        iter(generating_screens or []),
     ]
     # Four .limit().stream() calls in order: download_pending_retry, then downloading
     # (lost-screens-trigger sweep, bounded by SCREENS_RECOVERY_SCAN_LIMIT), then
@@ -355,3 +358,61 @@ def test_instrumental_selected_older_than_24h_is_never_revived(client):
     mock_ws.trigger_video_worker.assert_not_awaited()
     mock_jm.mark_job_failed.assert_not_called()
 
+
+
+# --- GENERATING_SCREENS auto-review hold never released (review_gate.py) ---
+
+HOLD_KEY = "auto_review_waiting_for_stems"
+
+
+def _held_job(job_id, *, minutes_held):
+    since = (datetime.utcnow() - timedelta(minutes=minutes_held)).isoformat()
+    job = _job(job_id, JobStatus.GENERATING_SCREENS)
+    job.state_data[HOLD_KEY] = since
+    return job, since
+
+
+def _gs_doc(job_id, since):
+    doc = MagicMock()
+    doc.id = job_id
+    doc.to_dict.return_value = {"job_id": job_id, "status": JobStatus.GENERATING_SCREENS.value,
+                                "state_data": {HOLD_KEY: since}}
+    return doc
+
+
+def _run_hold(client, job, since, release_result="review"):
+    mock_jm = _mock_jm(generating_screens=[_gs_doc(job.job_id, since)], jobs={job.job_id: job})
+    release = AsyncMock(return_value=release_result)
+    with patch("backend.api.routes.internal.JobManager", return_value=mock_jm), \
+         patch("backend.services.worker_service.get_worker_service", return_value=MagicMock()), \
+         patch("backend.services.auto_approval.review_gate.release_audio_hold", release):
+        resp = client.post("/api/internal/recover-stuck-jobs")
+    assert resp.status_code == 200
+    return resp.json(), release
+
+
+def test_expired_auto_review_hold_is_released(client):
+    job, since = _held_job("gs1", minutes_held=25)
+    body, release = _run_hold(client, job, since)
+    assert body["auto_review_hold_released_jobs"] == ["gs1"]
+    release.assert_awaited_once_with("gs1", reason="hold_timeout")
+
+
+def test_fresh_auto_review_hold_is_left_alone(client):
+    job, since = _held_job("gs2", minutes_held=3)
+    body, release = _run_hold(client, job, since)
+    assert body["auto_review_hold_released_jobs"] == []
+    release.assert_not_awaited()
+
+
+def test_generating_screens_without_hold_is_ignored(client):
+    job = _job("gs3", JobStatus.GENERATING_SCREENS)
+    doc = _doc("gs3", JobStatus.GENERATING_SCREENS)
+    mock_jm = _mock_jm(generating_screens=[doc], jobs={"gs3": job})
+    release = AsyncMock()
+    with patch("backend.api.routes.internal.JobManager", return_value=mock_jm), \
+         patch("backend.services.worker_service.get_worker_service", return_value=MagicMock()), \
+         patch("backend.services.auto_approval.review_gate.release_audio_hold", release):
+        body = client.post("/api/internal/recover-stuck-jobs").json()
+    assert body["auto_review_hold_released_jobs"] == []
+    release.assert_not_awaited()

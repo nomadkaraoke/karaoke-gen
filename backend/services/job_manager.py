@@ -1534,6 +1534,26 @@ class JobManager:
         """Atomically clear the waiting flag; True for exactly one claimant."""
         return self.firestore.claim_job_state_flag(job_id, self.VIDEO_WAITING_FOR_STEMS_KEY)
 
+    # Set by the screens worker when the lyrics would auto-ship but stems aren't
+    # separated yet. The job stays in GENERATING_SCREENS (no review link, no
+    # notification) so nobody opens the editor before the audio-worker re-score
+    # can auto-complete it. Before this, users opened review seconds after
+    # AWAITING_REVIEW and the re-score hit IN_REVIEW (wrong_status): ~1/3 of jobs
+    # never got a backing verdict and auto-eligible jobs went to a human
+    # (2026-10-29 re-evaluation). The value is the ISO time the hold started.
+    AUTO_REVIEW_HOLD_KEY = 'auto_review_waiting_for_stems'
+
+    def park_review_for_auto_check(self, job_id: str) -> None:
+        """Record that review is held until stems land for the auto-approval re-score."""
+        self.update_job(job_id, {
+            f'state_data.{self.AUTO_REVIEW_HOLD_KEY}': datetime.utcnow().isoformat(),
+            'message': 'Lyrics look good: finishing automatic checks once audio separation is done',
+        })
+
+    def claim_auto_review_hold(self, job_id: str) -> bool:
+        """Atomically clear the review hold; True for exactly one claimant."""
+        return self.firestore.claim_job_state_flag(job_id, self.AUTO_REVIEW_HOLD_KEY)
+
     async def resume_video_if_waiting_for_stems(self, job_id: str) -> bool:
         """Re-trigger the video worker for a job parked waiting on stems.
 

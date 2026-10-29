@@ -74,7 +74,7 @@ def _settings(enforce: bool = True) -> SimpleNamespace:
     return SimpleNamespace(auto_approval_enforce_enabled=enforce)
 
 
-async def _run(job, *, corrections=None, suggestions=None, settings=None):
+async def _run(job, *, corrections=None, suggestions=None, settings=None, trigger="screens_worker"):
     """Drive maybe_auto_complete_review with everything mocked; returns
     (result, job_manager_mock, storage_mock, worker_service_mock)."""
     job_manager = MagicMock()
@@ -99,7 +99,7 @@ async def _run(job, *, corrections=None, suggestions=None, settings=None):
          patch("backend.services.storage_service.StorageService", return_value=storage), \
          patch("backend.config.get_settings", return_value=settings or _settings()), \
          patch("backend.services.worker_service.get_worker_service", return_value=worker_service):
-        result = await maybe_auto_complete_review("j1", trigger="screens_worker")
+        result = await maybe_auto_complete_review("j1", trigger=trigger)
     return result, job_manager, storage, worker_service
 
 
@@ -189,6 +189,52 @@ async def test_incomplete_audio_blocks_enforcement() -> None:
     assert result["outcome"] == "review"
     assert "audio_incomplete" in result["blockers"]
     jm.transition_to_state.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_confident_lyrics_waiting_on_audio_asks_for_hold() -> None:
+    # Lyrics would auto-ship; only the stems are missing -> hold review for the
+    # audio-worker re-score instead of opening the editor (review_gate.py).
+    result, jm, _, _ = await _run(_job(audio_complete=False, backing=None))
+    assert result["outcome"] == "review"
+    assert result["blockers"] == ["audio_incomplete"]
+    assert result["hold_for_audio"] is True
+    assert jm.update_processing_metadata.call_args.args[2]["hold_for_audio"] is True
+
+
+@pytest.mark.asyncio
+async def test_unconfident_lyrics_never_hold() -> None:
+    corrections = _confident_corrections()
+    corrections["reference_lyrics"] = {}  # no references -> lyrics review
+    result, _, _, _ = await _run(_job(audio_complete=False, backing=None), corrections=corrections)
+    assert result["hold_for_audio"] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("job_kwargs, settings", [
+    ({"review_mode": "always_review"}, None),
+    ({"made_for_you": True}, None),
+    ({}, SimpleNamespace(auto_approval_enforce_enabled=True, auto_approval_audio_hold_enabled=False)),
+])
+async def test_other_blockers_or_kill_switch_never_hold(job_kwargs, settings) -> None:
+    result, _, _, _ = await _run(_job(audio_complete=False, backing=None, **job_kwargs), settings=settings)
+    assert result["outcome"] == "review"
+    assert result["hold_for_audio"] is False
+
+
+@pytest.mark.asyncio
+async def test_backing_preference_review_never_holds() -> None:
+    job = _job(audio_complete=False, backing=None)
+    job.backing_preference = "review"
+    result, _, _, _ = await _run(job)
+    assert result["hold_for_audio"] is False
+
+
+@pytest.mark.asyncio
+async def test_audio_hold_trigger_rescores_generating_screens_job() -> None:
+    result, jm, _, _ = await _run(_job(backing=_clean_backing()), trigger="audio_hold")
+    assert result["outcome"] == "auto_completed"
+    assert jm.transition_to_state.call_args.kwargs["new_status"] == JobStatus.REVIEW_COMPLETE
 
 
 @pytest.mark.asyncio

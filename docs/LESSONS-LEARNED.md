@@ -2500,3 +2500,26 @@ count and the cap is 15,000. Lesson: a safety cap must be measured on the same r
 threat it guards against, and a cap that truncates silently should be generous or fail loudly. Never
 repair an affected in-progress job with `add-lyrics`/`search-lyrics`: the frontend replaces its whole
 working data with the server's pre-edit rerun, discarding the reviewer's edits.
+
+## The auto-approval "second chance" almost never ran: users opened review first (2026-10-29, v0.287.0)
+
+Lyrics finish ~2-3 min before stem separation, so the screens worker usually
+scores a job before its stems exist. The design was: open review anyway, and
+let the audio worker re-score and auto-complete once stems land. In prod
+(2026-08-31..10-29) that re-score hit `wrong_status` on about a third of
+jobs, because people opened the review link within 15-40 s of AWAITING_REVIEW
+(IN_REVIEW). Those jobs never got a backing verdict, and 7 lyrics-auto jobs
+went to a human anyway.
+
+Fix (`backend/services/auto_approval/review_gate.py`): when the text verdict
+is AUTO and the only blocker is `audio_incomplete`, the screens worker keeps
+the job in GENERATING_SCREENS with `state_data.auto_review_waiting_for_stems`
+(no review link, no notification). The flag is claimed atomically, by the
+audio worker after stems land, by the screens worker itself if stems landed
+while it was parking, or by recover_stuck_jobs after 20 min. The claimant
+re-scores (`trigger="audio_hold"`) and either auto-completes or opens review
+exactly like the old path. Kill switch: `AUTO_APPROVAL_AUDIO_HOLD_ENABLED`.
+
+Lesson: an async "second chance" that only runs when no human has touched the
+job will lose that race to a fast human. Hold the human-facing state until the
+automatic decision is final, rather than racing it.
