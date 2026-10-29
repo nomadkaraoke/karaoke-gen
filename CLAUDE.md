@@ -92,9 +92,9 @@ See `docs/TESTING.md` § "Ad-Hoc Production Debugging" for full details.
 - Skip for docs-only changes
 
 ### Infrastructure
-- **All GCP changes via Pulumi PRs** - changes in `infrastructure/` deploy automatically on merge to main
+- **All GCP changes via Pulumi PRs** - but CI does **not** run Pulumi (see the note in `.github/workflows/ci.yml`): a merged `infrastructure/` change is not live until someone runs `pulumi up` locally. Claude sessions have read-only ADC, so they need Andrew's `/gcp-admin` grant to apply. Ask for it early, and vet with a targeted `pulumi preview --diff` first
 - **`infrastructure/` is the shared platform IaC home**: the GCP project (`infrastructure/`) and the Nomad Karaoke Cloudflare account (`infrastructure/cloudflare/`, own Pulumi project + stack, see its README). Never hand-edit Cloudflare config that stack manages; app repos keep only app-specific stacks
-- **Always run `pulumi up` locally BEFORE merging PRs** - CI deploys run on spot VMs that can be preempted mid-apply, causing partial state. Apply locally first, then merge (CI re-runs as no-op)
+- **Run `pulumi up` locally BEFORE merging infra PRs** - CI only validates; it never applies. If you merge first, main and the live state drift until someone applies
 - Never modify GCP resources directly via console or `gcloud` CLI
 - `gcloud` CLI for reading/debugging only (e.g., checking logs, SSH to VMs)
 - Stop and notify user on auth issues
