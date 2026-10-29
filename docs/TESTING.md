@@ -685,6 +685,25 @@ override), the credit-purchase spec disables trace/video/auto-screenshots, and t
 own screenshots mask every input. When adding a new secret to a production E2E job, add its env
 var to `SECRET_ENV_VARS` in the scrubber and to the job's scrub step.
 
+### Debugging CI failures without a trace: `page-activity.log`
+
+Since CI has no traces, the tenant happy-path spec records a public-safe stand-in with
+`e2e/helpers/page-activity.ts` (`recordPageActivity(page)` in `beforeEach`,
+`writeOnFailure(testInfo)` in `afterEach`). On failure it writes `page-activity.log` to the
+test's `test-results/` dir (uploaded in the artifact) and prints the requests still in flight
+to the job log as `[page-activity] …` lines. It holds main-frame navigations, each request's
+method + origin/path (query strings dropped: magic-link tokens and signed-URL signatures) with
+status and duration or failure reason, console errors/warnings, and uncaught page errors. It
+holds no headers or bodies. It is plain text, so the scrubber still checks it. Use the same
+two hooks in any other production spec that needs it. Offline tests:
+`e2e/self-healing/page-activity.spec.ts`.
+
+Added after tenant E2E run #155 (2026-10-28). The singa portal sat on `/en/app/`'s initial
+spinner for 30s and never redirected to the Sign In landing. The backend served tenant config in
+168ms, 8 live re-runs were fine, and it didn't recur. The suspected cause, a JS chunk stalled on
+Cloudflare Pages, was unconfirmable without network detail. If it happens again, the log's
+`IN FLIGHT AT FAILURE` section shows what hung. Until then, treat it as a one-off flake.
+
 ## Concurrent-Load Regression Test (review pages)
 
 `scripts/load-test-review.py` replays the 2026-09-18 "10 tabs melt the backend"

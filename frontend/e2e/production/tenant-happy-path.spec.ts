@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { createEmailHelper, isEmailTestingAvailable, EmailHelper } from '../helpers/email-testing';
 import { clickCompleteSignInGate } from '../helpers/auth';
+import { recordPageActivity, PageActivityRecorder } from '../helpers/page-activity';
 
 // Real test audio (mixed + instrumental), gitignored under e2e/fixtures.
 // Populate with scripts/e2e/fetch_test_audio.sh (CI + local).
@@ -43,8 +44,20 @@ test.describe(`Tenant Portal Happy Path — ${TENANT_ID}`, () => {
   let emailHelper: EmailHelper | null = null;
   let createdJobId: string | null = null;
 
+  let activity: PageActivityRecorder | null = null;
+
   test.beforeAll(async () => {
     if (isEmailTestingAvailable()) emailHelper = await createEmailHelper();
+  });
+
+  // Traces are off on CI (public artifacts), so on failure leave a sanitized
+  // request/console log showing what the page was waiting on (page-activity.ts).
+  test.beforeEach(({ page }) => {
+    activity = recordPageActivity(page);
+  });
+
+  test.afterEach(async ({}, testInfo) => {
+    await activity?.writeOnFailure(testInfo);
   });
 
   test.afterAll(async () => {
