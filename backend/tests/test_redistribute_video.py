@@ -194,3 +194,38 @@ class TestChangeToPrivateOffLoop:
         assert result["status"] == "success"
         assert where["thread"] != loop_thread
         assert where["loop"] is not api_loop
+
+    @pytest.mark.asyncio
+    async def test_cancelled_request_still_deletes_public_outputs(self):
+        """Cancelling the caller mid-redistribution must not leave a committed private
+        archive with the public outputs still live: redistribute + cleanup + commit
+        run as one (uncancellable) worker-thread call."""
+        from backend.services.visibility_change_service import VisibilityChangeService
+
+        job_manager = MagicMock()
+        job_ref = MagicMock()
+        job_manager.firestore.db.collection.return_value.document.return_value = job_ref
+        job = SimpleNamespace(
+            job_id="job1", state_data={"youtube_url": "https://youtu.be/x"}, dropbox_path=None,
+            artist="A", title="T", renders_purged_at=None,
+        )
+        started, release, deleted = threading.Event(), threading.Event(), threading.Event()
+
+        async def slow_redistribute(job_id):
+            started.set()
+            await asyncio.to_thread(release.wait, 5)
+            return True
+
+        with patch("backend.workers.video_worker.redistribute_video", side_effect=slow_redistribute), \
+             patch.object(VisibilityChangeService, "_delete_public_outputs",
+                          side_effect=lambda *a: deleted.set()) as delete:
+            task = asyncio.ensure_future(
+                VisibilityChangeService(job_manager).change_to_private("job1", job, "u@example.com"))
+            assert await asyncio.to_thread(started.wait, 5)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            release.set()
+            assert await asyncio.to_thread(deleted.wait, 5)
+
+        assert delete.call_args.args[1]["youtube_url"] == "https://youtu.be/x"
