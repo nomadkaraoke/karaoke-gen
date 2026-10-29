@@ -11,7 +11,8 @@ import * as fs from 'fs';
  * on but a screenshot. This records only what's needed to see what the page was
  * waiting on — main-frame navigations, each request's method, origin+path (query
  * strings dropped: magic-link tokens, signed-URL signatures), status, duration or
- * failure, plus console errors/warnings and uncaught page errors — and on failure
+ * failure, plus console errors/warnings and uncaught page errors (URLs/tokens in
+ * their text redacted the same way) — and on failure
  * writes it to `page-activity.log` in the test's output dir and prints the
  * requests still in flight.
  */
@@ -30,8 +31,16 @@ export function sanitizeUrl(raw: string): string {
   }
 }
 
+/** Console/page-error text can embed signed URLs or tokens: strip query strings and token params. */
+export function redactText(text: string): string {
+  return text
+    .replace(/[a-z][a-z0-9+.-]*:\/\/[^\s"'<>()]+/gi, (url) => sanitizeUrl(url))
+    .replace(/\b((?:access_|id_|refresh_|magic_)?token|key|signature|sig|code|secret|password)(["']?\s*[=:]\s*["']?)[^\s"'&,;]+/gi, '$1$2[redacted]')
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/g, 'Bearer [redacted]');
+}
+
 function clip(text: string): string {
-  const oneLine = text.replace(/\s+/g, ' ').trim();
+  const oneLine = redactText(text).replace(/\s+/g, ' ').trim();
   return oneLine.length > MAX_TEXT ? `${oneLine.slice(0, MAX_TEXT)}…` : oneLine;
 }
 
