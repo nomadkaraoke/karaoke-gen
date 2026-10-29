@@ -464,6 +464,75 @@ class TestRequestAwareSeverity:
         assert len(ended) == 1
         assert ended[0].levelno == logging.ERROR
 
+    def _unsampled_stall(self, freeze_s, request_in_flight=False, request_arrives=True, sample_at_s=None):
+        """A freeze of ``freeze_s`` (process idle, no CPU) skips the sample points,
+        then the watchdog is starved until the loop has already resumed, so no
+        sample is ever taken. Returns the ended records' levels."""
+        from backend.services.loop_watchdog import RequestTracker
+
+        clock, cpu = FakeClock(), FakeClock()
+        tracker = RequestTracker()
+        kw = {} if sample_at_s is None else {"sample_at_s": sample_at_s}
+        wd = LoopWatchdog(clock=clock, cpu_clock=cpu, request_tracker=tracker, **kw)
+        wd._loop_thread_id = None
+        if request_in_flight:
+            tracker.begin()
+        wd._last_tick = clock.t
+        wd.check()                       # baseline
+        clock.t += 3.0
+        if not freeze_s:
+            cpu.t += 2.9                 # process ran: not a freeze
+        wd.check()                       # stall noticed (after a freeze, samples skipped)
+        clock.t += 12.0
+        cpu.t += 11.9                    # busy, not frozen
+        if request_arrives:
+            tracker.begin()              # arrived while the instance was stuck
+        wd._last_tick = clock.t          # loop already resumed when we wake
+        wd.check()
+        for _ in range(3):
+            clock.t += 0.25
+            cpu.t += 0.25
+            wd._last_tick = clock.t
+            wd.check()
+        return wd
+
+    def test_unsampled_frozen_stall_with_only_late_arrivals_is_warning(self, caplog):
+        """2026-10-23 03:15: a 20.7s stall on an idle, CPU-throttled instance took
+        no sample (empty culprit); its one "affected" request arrived 0.3s before
+        the loop resumed. Nothing was waiting when it began, so it must not page."""
+        caplog.set_level(logging.WARNING)
+        self._unsampled_stall(freeze_s=3.0)
+        ended = self._ended(caplog)
+        assert len(ended) == 1
+        assert "culprit= " in ended[0].getMessage()
+        assert "requests_affected=1" in ended[0].getMessage()
+        assert ended[0].levelno == logging.WARNING
+
+    def test_unsampled_frozen_stall_with_request_in_flight_at_start_is_error(self, caplog):
+        caplog.set_level(logging.WARNING)
+        self._unsampled_stall(freeze_s=3.0, request_in_flight=True, request_arrives=False)
+        assert self._ended(caplog)[0].levelno == logging.ERROR
+
+    def test_unsampled_stall_without_observed_freeze_is_error(self, caplog):
+        """No sample but no freeze seen either: no positive evidence it was harmless."""
+        caplog.set_level(logging.WARNING)
+        self._unsampled_stall(freeze_s=0, sample_at_s=())
+        ended = self._ended(caplog)
+        assert "culprit= " in ended[0].getMessage()
+        assert ended[0].levelno == logging.ERROR
+
+    def test_sampled_stall_with_late_arrival_is_still_error(self, caplog):
+        """A culprit was caught blocking: a request queued behind it is real impact."""
+        caplog.set_level(logging.WARNING)
+        wd, clock, tracker, recorded = self._wd()
+        wd._loop_thread_id = 12345
+        with patch("backend.services.loop_watchdog._is_idle_frame", return_value=False), \
+             patch("backend.services.loop_watchdog._format_stack",
+                   return_value=("stack", "backend/x.py:1 in f")), \
+             patch("backend.services.loop_watchdog.sys._current_frames", return_value={12345: None}):
+            self._stall(wd, clock, 12.0, during=tracker.begin)
+        assert self._ended(caplog)[0].levelno == logging.ERROR
+
     def test_request_finished_mid_stall_still_counts(self, caplog):
         caplog.set_level(logging.WARNING)
         wd, clock, tracker, recorded = self._wd()

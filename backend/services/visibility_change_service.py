@@ -119,10 +119,26 @@ class VisibilityChangeService:
         # move actually succeeds (this is reverted if redistribution fails).
         # Claim atomically: two requests that both read the job before either wrote
         # the flag must not both redistribute and delete the public outputs.
+        #
+        # Claim through commit run as ONE worker-thread call. redistribute_video is
+        # async but entirely sync inside (GCS, Firestore, ~400 MB of Dropbox
+        # uploads): on the API loop it froze every request (2026-10-25: 39s stall,
+        # 13 requests). And a thread can't be cancelled, so a cancelled request
+        # can't stop part-way (claimed but never redistributed, or a committed
+        # private archive whose public outputs were never deleted).
+        return await asyncio.to_thread(
+            self._redistribute_and_commit_private, job_id, job_ref, public_outputs, user_email, holds_claim
+        )
+
+    def _redistribute_and_commit_private(
+        self, job_id: str, job_ref, public_outputs: dict, user_email: str, holds_claim: bool,
+    ) -> dict:
+        """Claim, redistribute to private, delete the public outputs, record the move.
+
+        Sync and run via asyncio.to_thread by change_to_private (see there).
+        """
         if not holds_claim:
-            claimed = await asyncio.to_thread(
-                self.job_manager.firestore.try_set_job_state_flag, job_id, "visibility_change_in_progress"
-            )
+            claimed = self.job_manager.firestore.try_set_job_state_flag(job_id, "visibility_change_in_progress")
             if not claimed:
                 raise VisibilityChangeInProgress("A visibility change is already in progress for this job")
         job_ref.update({
@@ -137,8 +153,9 @@ class VisibilityChangeService:
         # the archive actually materialized and recycles any NOMADNP code it
         # allocated on failure, so a False return means "no-op, still public".
         try:
-            from backend.workers.video_worker import redistribute_video
-            success = await redistribute_video(job_id)
+            # Its own event loop on this worker thread (see redistribute_video_off_loop).
+            from backend.workers.video_worker import redistribute_video_off_loop
+            success = redistribute_video_off_loop(job_id)
         except Exception as e:
             logger.error(f"[job:{job_id}] Redistribution raised during visibility change: {e}", exc_info=True)
             success = False
@@ -159,8 +176,7 @@ class VisibilityChangeService:
         # the public outputs + recycling the public NOMAD number is best-effort
         # (each failure is logged inside the helper, never raised), so a stray
         # orphaned public artifact cannot undo the successful private move.
-        # Sync YouTube/Dropbox/GDrive/GCS deletes: keep them off the API event loop.
-        await asyncio.to_thread(self._delete_public_outputs, job_id, public_outputs)
+        self._delete_public_outputs(job_id, public_outputs)
 
         # Record the completed move and clear the guard flag. redistribute_video
         # already updated state_data with the new private brand_code etc.

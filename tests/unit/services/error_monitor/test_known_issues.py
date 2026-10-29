@@ -342,6 +342,33 @@ class TestContainerShutdownPattern:
         assert result is None
 
 
+class TestCloudTraceExportPattern:
+    """OTel Cloud Trace exporter failures are best-effort telemetry noise (2026-10-23)."""
+
+    def test_cloud_trace_export_error(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        result = should_ignore("karaoke-backend", "Error while writing to Cloud Trace")
+        assert result is not None
+        assert result.pattern_name == "cloud_trace_export"
+
+    def test_cloud_trace_export_error_with_grpc_detail(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        msg = (
+            "Error while writing to Cloud Trace\ngoogle.api_core.exceptions."
+            "InternalServerError: 500 Internal error encountered."
+        )
+        result = should_ignore("karaoke-backend", msg)
+        assert result is not None
+        assert result.pattern_name == "cloud_trace_export"
+
+    def test_other_trace_errors_not_ignored(self):
+        from backend.services.error_monitor.known_issues import should_ignore
+
+        assert should_ignore("karaoke-backend", "Failed to write job trace to Firestore") is None
+
+
 class TestRealErrorsNotIgnored:
     """Real errors should never be silently ignored."""
 
