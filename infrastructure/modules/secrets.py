@@ -50,6 +50,10 @@ def create_secrets() -> dict[str, secretmanager.Secret]:
         # comma-delimited and the JSON value contains commas; the value itself is
         # non-secret (just public IPs of fallback VMs).
         "encoding-worker-fallback-vms",
+        # AWS encoding worker: IAM user keys ({"access_key_id","secret_access_key"})
+        # the backend uses to start/stop/describe the EC2 worker
+        # (backend/services/aws_encoding_compute.py). Version added by hand.
+        "aws-encoding-controller-credentials",
 
         # Notifications
         "pushbullet-api-key",

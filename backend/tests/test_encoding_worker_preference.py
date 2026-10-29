@@ -170,3 +170,56 @@ def test_cooldown_key_shape():
     assert cooldown_key(_c("x", "us-central1-c", "c4d-highcpu-16")) == "c4d-highcpu-16@us-central1-c"
     assert cooldown_key(_c("x", None, "n2-highcpu-16")) == "n2-highcpu-16"
     assert cooldown_key(_c("no-token", "z")) is None
+
+
+# --- AWS encoding worker (c7a) + runtime rank overrides -----------------------
+
+AWS = dict(provider="aws", instance_id="i-0abc", region="us-east-2")
+
+
+def test_aws_worker_is_last_resort_by_default():
+    pool = [
+        _c("aws-encoding-worker-1", "us-east-2b", "c7a-8xlarge", **AWS),
+        _c("encoding-worker-fallback-c2df", "us-central1-f", "c2d-highcpu-16"),
+        _c("encoding-worker-a", "us-central1-c", "c4d-highcpu-16"),
+    ]
+    ranked = ordered_candidates(pool, now=NOW)
+    assert [c["vm"] for c in ranked] == [
+        "encoding-worker-a", "encoding-worker-fallback-c2df", "aws-encoding-worker-1",
+    ]
+
+
+def test_rank_override_prefers_aws_worker():
+    pool = [
+        _c("encoding-worker-a", "us-central1-c", "c4d-highcpu-16"),
+        _c("encoding-worker-fallback-c2df", "us-central1-f", "c2d-highcpu-16"),
+        _c("aws-encoding-worker-1", "us-east-2b", "c7a-8xlarge", **AWS),
+    ]
+    ranked = ordered_candidates(pool, now=NOW, rank_overrides={"c7a": 5})
+    assert ranked[0]["vm"] == "aws-encoding-worker-1"
+    # The rest keep the built-in order behind it.
+    assert [c["vm"] for c in ranked[1:]] == ["encoding-worker-a", "encoding-worker-fallback-c2df"]
+
+
+def test_stocked_out_aws_worker_still_demoted_despite_override():
+    aws = _c("aws-encoding-worker-1", "us-east-2b", "c7a-8xlarge", **AWS)
+    pool = [aws, _c("encoding-worker-a", "us-central1-c", "c4d-highcpu-16")]
+    state = {cooldown_key(aws): (NOW - timedelta(seconds=60)).isoformat()}
+    ranked = ordered_candidates(pool, capacity_state=state, now=NOW, rank_overrides={"c7a": 5})
+    assert ranked[-1]["vm"] == "aws-encoding-worker-1"
+
+
+def test_malformed_rank_override_falls_back_to_builtin_rank():
+    pool = [
+        _c("aws-encoding-worker-1", "us-east-2b", "c7a-8xlarge", **AWS),
+        _c("encoding-worker-a", "us-central1-c", "c4d-highcpu-16"),
+    ]
+    ranked = ordered_candidates(pool, now=NOW, rank_overrides={"c7a": "first please"})
+    assert ranked[0]["vm"] == "encoding-worker-a"
+
+
+def test_aws_cooldown_key_is_firestore_safe():
+    key = cooldown_key(_c("aws-encoding-worker-1", "us-east-2b", "c7a-8xlarge", **AWS))
+    assert key == "c7a-8xlarge@us-east-2b"
+    assert "." not in key
+    assert SPEED_RANK["c7a"] > SPEED_RANK["c2d"]

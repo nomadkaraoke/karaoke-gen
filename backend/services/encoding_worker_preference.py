@@ -51,6 +51,11 @@ SPEED_RANK: Dict[str, int] = {
     "c2d": 50,
     "n2d": 60,
     "n2": 70,
+    # AWS EC2 c7a (AMD Genoa, us-east-2) — the AWS encoding worker
+    # (provider "aws"; machine_type "c7a-8xlarge", "." → "-" for Firestore-safe
+    # cooldown keys). Last resort by default; make it preferred at runtime with
+    # config/encoding-worker.speed_rank_overrides = {"c7a": 5}.
+    "c7a": 90,
 }
 
 # Rank for a candidate whose machine type is unknown and cannot be inferred:
@@ -106,8 +111,14 @@ def infer_machine_type(candidate: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _speed_rank(candidate: Dict[str, Any]) -> int:
-    return SPEED_RANK.get(machine_family(infer_machine_type(candidate)), UNKNOWN_RANK)
+def _speed_rank(candidate: Dict[str, Any], rank_overrides: Optional[Dict[str, Any]] = None) -> int:
+    family = machine_family(infer_machine_type(candidate))
+    if rank_overrides and family in rank_overrides:
+        try:
+            return int(rank_overrides[family])
+        except (TypeError, ValueError):
+            pass  # a malformed override must never break worker selection
+    return SPEED_RANK.get(family, UNKNOWN_RANK)
 
 
 def cooldown_key(candidate: Dict[str, Any]) -> Optional[str]:
@@ -164,6 +175,7 @@ def ordered_candidates(
     capacity_state: Optional[Dict[str, Any]] = None,
     now: Optional[datetime] = None,
     cooldown_seconds: float = COOLDOWN_SECONDS,
+    rank_overrides: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     """Rank ``pool`` fastest-first, demoting recently-stocked-out types to the back.
 
@@ -175,6 +187,9 @@ def ordered_candidates(
             Absent/empty ⇒ pure fastest-first order (today's behaviour).
         now: current UTC time (injectable for tests); defaults to ``datetime.now(UTC)``.
         cooldown_seconds: demotion window; defaults to ``COOLDOWN_SECONDS``.
+        rank_overrides: ``{family: rank}`` from Firestore
+            ``config/encoding-worker.speed_rank_overrides``; replaces SPEED_RANK
+            for those families (e.g. ``{"c7a": 5}`` prefers the AWS worker).
 
     The speed sort is STABLE, so equal-rank candidates keep their input order —
     callers express a secondary preference (e.g. zone spread) purely via input
@@ -182,7 +197,7 @@ def ordered_candidates(
     """
     if now is None:
         now = datetime.now(timezone.utc)
-    ranked = sorted(pool, key=_speed_rank)  # stable: fastest first
+    ranked = sorted(pool, key=lambda c: _speed_rank(c, rank_overrides))  # stable: fastest first
     hot = [c for c in ranked if not _recently_stocked_out(c, capacity_state, now, cooldown_seconds)]
     cold = [c for c in ranked if _recently_stocked_out(c, capacity_state, now, cooldown_seconds)]
     return hot + cold

@@ -144,6 +144,10 @@ def _parse_fallback_vms():
     fallbacks = []
     for item in parsed:
         try:
+            if (item.get("provider") or "").lower() == "aws":
+                # The AWS worker is not a GCE VM; it idle-stops itself
+                # (infrastructure/encoding-worker/aws/idle-watchdog.py).
+                continue
             fallbacks.append((item["vm"], item["zone"]))
         except (KeyError, TypeError) as exc:
             logger.warning(f"Skipping malformed fallback entry {item}: {exc}")

@@ -1,0 +1,6 @@
+name: nomad-aws
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: Nomad Karaoke AWS account (790139457751) — the EC2 encoding worker. See README.md.

@@ -476,6 +476,23 @@ and raised as `EncodingJobLostError`, which `run_with_lost_job_resubmit` resubmi
 — the resubmit's connection failure then starts the Spot VM again, or the
 on-demand fallback if Spot capacity is gone.
 
+### AWS encoding worker (EC2, provider "aws")
+
+**`aws-encoding-worker-1`** is a c7a.8xlarge persistent Spot instance in us-east-2. It runs the same `gce_encoding` service and is one more entry in the `encoding-worker-fallback-vms` pool (`"provider": "aws"`, plus `instance_id` and `region`). It is paid for by AWS Activate credits. IaC lives in `infrastructure/aws/` (its own Pulumi stack; see its README).
+
+- **Control:**
+  - The manager routes AWS VMs to `backend/services/aws_encoding_compute.py`, an EC2 adapter that mimics the compute client. EC2 states map to GCE statuses, and EC2 capacity errors join `CAPACITY_ERROR_CODES`.
+  - So failover, overrides, lost-job detection and stockout cooldowns apply unchanged.
+  - The override records `active_override_provider: "aws"`. The CI blue-green deploy and the idle Cloud Function both ignore the AWS worker.
+- **Ranking:**
+  - It is a last resort by default (`SPEED_RANK["c7a"] = 90`).
+  - Firestore `config/encoding-worker.speed_rank_overrides = {"c7a": 5}` makes it preferred with no deploy.
+  - Both warmups (`ensure_preferred_running`) follow the same ranking, so they warm the worker requests are routed to.
+- **Auth and lifecycle:**
+  - GCP access is Workload Identity Federation as `encoding-worker@`: no keys.
+  - It stops itself when idle (`infrastructure/encoding-worker/aws/idle-watchdog.py`).
+  - It gets new code at boot and per job, with no blue-green deploy.
+
 ### Architecture
 
 ```text

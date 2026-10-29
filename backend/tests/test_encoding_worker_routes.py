@@ -23,12 +23,12 @@ class TestWarmupHandler:
 
     def test_success_passthrough(self):
         manager = MagicMock()
-        manager.ensure_primary_running.return_value = {"started": True, "vm_name": "encoding-worker-a"}
+        manager.ensure_preferred_running.return_value = {"started": True, "vm_name": "encoding-worker-a"}
         assert self._run(manager)["started"] is True
 
     def test_start_error_is_soft(self):
         manager = MagicMock()
-        manager.ensure_primary_running.side_effect = EncodingWorkerStartError("zone exhausted")
+        manager.ensure_preferred_running.side_effect = EncodingWorkerStartError("zone exhausted")
         result = self._run(manager)
         assert result["started"] is False
         assert "zone exhausted" in result["error"]
@@ -41,7 +41,7 @@ class TestWarmupHandler:
             time.sleep(0.5)
             return {"started": False}
 
-        manager.ensure_primary_running.side_effect = slow_warmup
+        manager.ensure_preferred_running.side_effect = slow_warmup
 
         async def scenario():
             ticks = 0

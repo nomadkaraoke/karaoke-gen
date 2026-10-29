@@ -12,6 +12,12 @@ CAPACITY_ERROR_CODES: FrozenSet[str] = frozenset({
     "ZONE_RESOURCE_POOL_EXHAUSTED_WITH_DETAILS",
     "STOCKOUT",
     "QUOTA_EXCEEDED",
+    # AWS EC2 (the AWS encoding worker; see aws_encoding_compute.py)
+    "InsufficientInstanceCapacity",
+    "InsufficientHostCapacity",
+    "InsufficientCapacity",
+    "VcpuLimitExceeded",
+    "MaxSpotInstanceCountExceeded",
 })
 
 

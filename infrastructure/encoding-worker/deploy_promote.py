@@ -85,9 +85,13 @@ def select_green_candidates(
     # Only complete entries are usable — a fallback missing vm/zone/ip would
     # produce an unstartable candidate (e.g. `gcloud ... --zone=None`) and
     # silently drop capacity from the selection path.
+    # AWS workers (provider "aws") are excluded: this workflow starts/stops
+    # greens with `gcloud compute`, and the AWS worker hot-updates its wheel per
+    # job instead of being blue-green deployed.
     usable = [
         f for f in (fallback_vms or [])
         if f.get("vm") and f.get("zone") and f.get("ip") and f.get("vm") != override_vm
+        and (f.get("provider") or "").lower() != "aws"
     ]
     for f in usable:
         pool.append({
@@ -99,6 +103,10 @@ def select_green_candidates(
         })
 
     return ordered_candidates(pool, capacity_state=config.get("capacity_state"))
+
+
+def _is_aws_override(config: Dict[str, Any]) -> bool:
+    return (config.get("active_override_provider") or "").lower() == "aws"
 
 
 def promote_plan(
@@ -152,8 +160,10 @@ def promote_plan(
                 "ip": config.get("primary_ip"),
                 "zone": config.get("primary_zone") or DEFAULT_C4D_ZONE,
             })
-        # A stale override must be cleared so active_url follows the fresh primary.
-        if config.get("active_override_vm"):
+        # A stale override must be cleared so active_url follows the fresh primary —
+        # except an AWS override, which is serving by preference (rank override),
+        # can't be gcloud-stopped, and picks up the new wheel on its next job.
+        if config.get("active_override_vm") and not _is_aws_override(config):
             updates.update({
                 "active_override_vm": None,
                 "active_override_ip": None,
@@ -179,7 +189,7 @@ def promote_plan(
         "deploy_in_progress_since": None,
     }
     old_override = config.get("active_override_vm")
-    if old_override and old_override != green["vm"]:
+    if old_override and old_override != green["vm"] and not _is_aws_override(config):
         drain.append({
             "vm": old_override,
             "ip": config.get("active_override_ip"),

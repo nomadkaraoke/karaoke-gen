@@ -707,6 +707,18 @@ def verify_wheel_imports():
     return True
 
 
+def _gcs_cli() -> list:
+    """The GCS CLI for wheel listing/copying on this worker.
+
+    GCE workers use ``gsutil`` (unchanged). The AWS worker authenticates to GCP
+    via Workload Identity Federation, which ``gsutil`` doesn't support, so it
+    uses ``gcloud storage`` (same ``ls``/``cp`` syntax).
+    """
+    if os.environ.get("ENCODING_WORKER_PROVIDER", "").lower() == "aws":
+        return ["gcloud", "storage"]
+    return ["gsutil"]
+
+
 def ensure_latest_wheel():
     '''Ensure the latest karaoke-gen wheel is installed & verified (thread-safe).
 
@@ -748,7 +760,7 @@ def _ensure_latest_wheel_locked():
         # job and blow the timeout on fresh workers — the historical cause of
         # "no wheel found" / partial installs. Listing + single copy is ~2s.
         ls_result = subprocess.run(
-            ["gsutil", "ls", "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl"],
+            [*_gcs_cli(), "ls", "gs://karaoke-gen-storage-nomadkaraoke/wheels/karaoke_gen-*.whl"],
             capture_output=True, text=True, timeout=60
         )
         # Filter out karaoke_gen-current.whl (not a valid PEP 427 wheel name)
@@ -787,7 +799,7 @@ def _ensure_latest_wheel_locked():
             )
 
         cp_result = subprocess.run(
-            ["gsutil", "cp", latest_uri, wheel_path],
+            [*_gcs_cli(), "cp", latest_uri, wheel_path],
             capture_output=True, text=True, timeout=120
         )
         if cp_result.returncode != 0:

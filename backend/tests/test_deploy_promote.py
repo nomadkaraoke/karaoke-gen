@@ -219,3 +219,37 @@ class TestSelectGreenRankingSharedWithRuntime:
         cands = select_green_candidates(_config(active_override_vm=None), self.POOL)
         c4 = next(c for c in cands if c["vm"] == "encoding-worker-fallback-c4a")
         assert c4["machine_type"] == "c4-highcpu-16"
+
+
+# --- AWS encoding worker: never touched by the GCE blue-green deploy ----------
+
+_AWS = {"vm": "aws-encoding-worker-1", "zone": "us-east-2b", "ip": "3.3.3.3",
+        "machine_type": "c7a-8xlarge", "provider": "aws", "instance_id": "i-0abc", "region": "us-east-2"}
+
+
+def test_aws_worker_is_never_a_green_candidate():
+    config = {"secondary_vm": "encoding-worker-b", "secondary_ip": "1.1.1.2"}
+    fallbacks = [{"vm": "encoding-worker-fallback-c2df", "zone": "us-central1-f", "ip": "2.2.2.2"}, _AWS]
+    names = [c["vm"] for c in deploy_promote.select_green_candidates(config, fallbacks)]
+    assert "aws-encoding-worker-1" not in names
+    assert names == ["encoding-worker-b", "encoding-worker-fallback-c2df"]
+
+
+def test_secondary_promotion_leaves_aws_override_serving():
+    config = {
+        "primary_vm": "encoding-worker-a", "primary_ip": "1.1.1.1", "primary_version": "1.0",
+        "active_override_vm": "aws-encoding-worker-1", "active_override_ip": "3.3.3.3",
+        "active_override_zone": "us-east-2b", "active_override_provider": "aws",
+    }
+    green = {"vm": "encoding-worker-b", "ip": "1.1.1.2", "zone": "us-central1-c", "kind": "secondary"}
+    plan = deploy_promote.promote_plan(green, config, now="2026-10-29T00:00:00Z", version="2.0")
+    assert "active_override_vm" not in plan["firestore_updates"]
+    assert [d["vm"] for d in plan["drain_and_stop"]] == ["encoding-worker-a"]
+
+
+def test_fallback_promotion_does_not_drain_aws_override():
+    config = {"active_override_vm": "aws-encoding-worker-1", "active_override_zone": "us-east-2b",
+              "active_override_provider": "aws"}
+    green = {"vm": "encoding-worker-fallback-c2df", "ip": "2.2.2.2", "zone": "us-central1-f", "kind": "fallback"}
+    plan = deploy_promote.promote_plan(green, config, now="2026-10-29T00:00:00Z", version="2.0")
+    assert plan["drain_and_stop"] == []
