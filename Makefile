@@ -49,6 +49,10 @@ build-frontend: install-frontend
 	rm -rf karaoke_gen/nextjs_frontend/out
 	mkdir -p karaoke_gen/nextjs_frontend/out
 	cp -r frontend/out/* karaoke_gen/nextjs_frontend/out/
+	@# Drop Next.js RSC payloads (*.txt, ~66 MB across 33 locales): the CLI review
+	@# server never serves them (only HTML entrypoints, /_next and /static), and they
+	@# pushed the wheel past PyPI's 100 MiB per-file limit (2026-10-27..29).
+	find karaoke_gen/nextjs_frontend/out -name '*.txt' -type f -delete
 	@echo "✅ Frontend built and copied to karaoke_gen/nextjs_frontend/out/"
 
 # Build frontend + install package in editable mode for local CLI testing
