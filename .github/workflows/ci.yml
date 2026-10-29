@@ -90,7 +90,7 @@ jobs:
     name: "Infra - runner_manager function tests"
     runs-on: ubuntu-latest
     needs: changes
-    if: github.ref != 'refs/heads/main' && needs.changes.outputs.infra == 'true'
+    if: github.ref != 'refs/heads/main' && (needs.changes.outputs.infra == 'true' || needs.changes.outputs.deps == 'true')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
