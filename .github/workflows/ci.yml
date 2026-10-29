@@ -430,6 +430,11 @@ jobs:
         run: |
           poetry run pytest tests/unit/ -v --cov=karaoke_gen --cov-report=xml --cov-report=term-missing --cov-fail-under=69
 
+      - name: Run runner_manager Cloud Function tests
+        # Self-contained (cloud SDKs stubbed); its own dir so its `main`
+        # module doesn't collide with other functions'.
+        run: poetry run pytest infrastructure/functions/runner_manager -q -p no:cacheprovider -o addopts=""
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v5
         with:

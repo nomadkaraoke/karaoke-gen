@@ -211,6 +211,22 @@ def runner_labels_for(family: FamilySpec) -> list[str]:
     return ["self-hosted", family.os_label, *family.extra_runner_labels]
 
 
+def can_serve(labels: Iterable[str]) -> bool:
+    """True if a runner we'd launch for these labels could actually take the job.
+
+    GitHub only assigns a job to a runner advertising *every* label the job
+    requests, so a job is ours only when its labels are a subset of the
+    resolved family's. Other self-hosted pools in the org (e.g. nomad-mobile's
+    ``[self-hosted, macOS, nomad-mbp]`` lanes on the utility MacBook) must be
+    ignored: launching a Linux VM for them just burns an idle VM until the
+    lifetime reaper — and re-dispatch launched another every tick (238 VMs,
+    ~$67 on 2026-10-27).
+    """
+    wanted = {label.lower() for label in labels}
+    offered = {label.lower() for label in runner_labels_for(resolve_family(wanted))}
+    return wanted <= offered
+
+
 # ---------------------------------------------------------------------------
 # GitHub API helpers
 # ---------------------------------------------------------------------------
@@ -761,7 +777,8 @@ def list_queued_self_hosted_jobs(pat: str) -> list[dict]:
                 if not isinstance(run_jobs, dict):
                     continue
                 for job in run_jobs.get("jobs", []):
-                    if job.get("status") == "queued" and "self-hosted" in job.get("labels", []):
+                    labels = job.get("labels", [])
+                    if job.get("status") == "queued" and "self-hosted" in labels and can_serve(labels):
                         jobs.append({**job, "repo": repo})
         except Exception as exc:  # noqa: BLE001
             print(f"Skipping {repo} in stalled-job scan: {exc!r}")
@@ -824,6 +841,8 @@ def redispatch_stalled_jobs(
     demand: dict[str, int] = {}
     stalled: dict[str, list[dict]] = {}
     for job in queued:
+        if not can_serve(job["labels"]):
+            continue
         family = resolve_family(job["labels"]).name
         created = job.get("created_at")
         age = (now - _parse_github_time(created)).total_seconds() / 60 if created else 0

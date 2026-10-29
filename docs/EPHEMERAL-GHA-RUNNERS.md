@@ -238,6 +238,22 @@ below) can't become a VM-launch loop. Env knobs on the function:
 response JSON includes a `redispatch` object (`stalled_jobs`, `given_up`,
 `dispatched`, `dispatch_failed`); log lines start `Re-dispatch`.
 
+### Only jobs our runners can serve (2026-10-29)
+
+The org has another self-hosted pool: nomad-mobile's E2E lanes on the utility
+MacBook (`[self-hosted, macOS, nomad-mbp]`). The dispatcher used to react to
+**any** `self-hosted` job, so each queued macOS job got a Linux `gha-general`
+VM that could never take it. While the job waited for an MBP lane, re-dispatch
+launched another VM every 5 min for up to 60 min. Each VM then idled until the
+2 h reaper deleted it. On 2026-10-27 that came to 238 VMs, ~$67.
+
+`can_serve(labels)` now gates the webhook, the queued-job scan and re-dispatch.
+GitHub assigns a job only to a runner that advertises **every** requested label,
+so a job is ours only if its labels are a subset of the resolved family's
+`runner_labels_for()`. When adding a new label to a workflow's self-hosted
+`runs-on`, add it to the family's `extra_runner_labels`, or the job will never
+get a VM.
+
 ## Modes
 
 Controlled by Pulumi config `karaoke-gen-infrastructure:runnerMode`:

@@ -193,6 +193,12 @@ def handle_request(request: Request):
         print("Job doesn't require self-hosted runners, ignoring")
         return "OK - not for self-hosted runners", 200
 
+    from ephemeral import can_serve
+
+    if not can_serve(labels):
+        print("Job needs labels our GCP runners don't offer (another self-hosted pool), ignoring")
+        return "OK - not for our runners", 200
+
     if action == "queued":
         return _handle_workflow_job_queued(labels)
 
