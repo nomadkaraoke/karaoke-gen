@@ -599,6 +599,22 @@ class EncodingWorkerManager:
                         zone=candidate.zone,
                         code="NOT_FOUND",
                     ) from nf
+                except EncodingWorkerStartError:
+                    raise
+                except Exception as err:  # noqa: BLE001
+                    if getattr(candidate, "provider", None) != "aws":
+                        raise  # GCE: unchanged behaviour
+                    # An AWS control-plane fault (bad/missing controller creds,
+                    # throttling, botocore error) must fail over to the GCE
+                    # candidates, not abort selection — when the AWS worker is
+                    # preferred it ranks first, so escaping here would block all
+                    # encoding.
+                    raise EncodingWorkerStartError(
+                        f"VM {candidate.vm_name} status check failed in {candidate.zone}: {err}",
+                        vm_name=candidate.vm_name,
+                        zone=candidate.zone,
+                        code="STATUS_CHECK_FAILED",
+                    ) from err
                 started = False
                 if status not in ("RUNNING", "STAGING"):
                     logger.info(

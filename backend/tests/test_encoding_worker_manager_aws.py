@@ -130,3 +130,17 @@ def test_active_override_records_provider():
     m2, _, _ = _manager(db2)
     m2._clear_active_override()
     assert doc2.update.call_args[0][0]["active_override_provider"] is None
+
+
+def test_aws_control_plane_fault_fails_over_to_gce():
+    db, _ = _db(speed_rank_overrides={"c7a": 5})
+    m, gce, aws = _manager(db, entries=(AWS_ENTRY,))
+    aws.get.side_effect = RuntimeError("could not load aws-encoding-controller-credentials")
+    gce.get.return_value = MagicMock(status="RUNNING")
+    m.update_activity = MagicMock()
+    m._clear_active_override = MagicMock()
+    m._clear_stockout = MagicMock()
+
+    result = m.ensure_any_running(m.ranked_candidates())
+
+    assert result["vm_name"] == "encoding-worker-a"

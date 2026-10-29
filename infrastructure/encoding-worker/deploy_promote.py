@@ -170,6 +170,7 @@ def promote_plan(
                 "active_override_zone": None,
                 "active_override_set_at": None,
                 "active_override_version": None,
+                "active_override_provider": None,
             })
             drain.append({
                 "vm": config["active_override_vm"],
@@ -185,6 +186,9 @@ def promote_plan(
         "active_override_zone": green["zone"],
         "active_override_set_at": now,
         "active_override_version": version,
+        # The green is a GCE VM: never leave a stale "aws" tag on it (CI hides
+        # an AWS override from this flow, so it may be the override replaced).
+        "active_override_provider": None,
         "deploy_in_progress": False,
         "deploy_in_progress_since": None,
     }

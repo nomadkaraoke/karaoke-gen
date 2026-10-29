@@ -253,3 +253,9 @@ def test_fallback_promotion_does_not_drain_aws_override():
     green = {"vm": "encoding-worker-fallback-c2df", "ip": "2.2.2.2", "zone": "us-central1-f", "kind": "fallback"}
     plan = deploy_promote.promote_plan(green, config, now="2026-10-29T00:00:00Z", version="2.0")
     assert plan["drain_and_stop"] == []
+
+
+def test_fallback_promotion_clears_provider_tag():
+    green = {"vm": "encoding-worker-fallback-c2df", "ip": "2.2.2.2", "zone": "us-central1-f", "kind": "fallback"}
+    plan = deploy_promote.promote_plan(green, {}, now="2026-10-29T00:00:00Z", version="2.0")
+    assert plan["firestore_updates"]["active_override_provider"] is None
