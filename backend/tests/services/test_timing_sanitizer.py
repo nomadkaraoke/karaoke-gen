@@ -184,3 +184,17 @@ def test_in_order_words_log_nothing(caplog):
         _, count = sanitize_corrections(payload)
     assert count == 0
     assert not caplog.records
+
+
+def test_small_overlap_with_previous_word_is_left_untouched(caplog):
+    """AI transcriptions often start a word a few ms before the previous one ends: not out of order."""
+    payload = {"corrected_segments": [{
+        "id": "s", "text": "a b", "start_time": 1.0, "end_time": 3.0,
+        "words": [{"id": "a", "text": "a", "start_time": 1.0, "end_time": 2.0},
+                  {"id": "b", "text": "b", "start_time": 1.98, "end_time": 3.0}],
+    }]}
+    with caplog.at_level("WARNING", logger="backend.services.timing_sanitizer"):
+        cleaned, count = sanitize_corrections(payload)
+    assert count == 0
+    assert cleaned["corrected_segments"][0]["words"][1]["start_time"] == 1.98
+    assert not caplog.records

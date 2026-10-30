@@ -105,4 +105,17 @@ describe('sanitizeSegmentTimings', () => {
     expect(segment.words[2].end_time).toBe(20.1)
     expect(changes.map((c) => c.wordText)).toEqual(['transcribed', 'transcribed'])
   })
+
+  it('leaves a small overlap with the previous word untouched (common in AI transcriptions)', () => {
+    const seg: LyricsSegment = {
+      id: 's', text: 'a b', start_time: 1, end_time: 3,
+      words: [
+        { id: 'w0', text: 'a', start_time: 1, end_time: 2 },
+        { id: 'w1', text: 'b', start_time: 1.98, end_time: 3 },
+      ],
+    }
+    const { segment, changes } = sanitizeSegmentTimings(seg)
+    expect(changes).toEqual([])
+    expect(segment).toBe(seg)
+  })
 })
