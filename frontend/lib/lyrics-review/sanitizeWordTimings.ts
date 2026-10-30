@@ -18,14 +18,16 @@ export interface TimingChange {
  *     segment bounds are a separate concern.)
  *   - Each word's `start_time` and `end_time` are clamped into
  *     `[segment.start_time, segment.end_time]`.
- *   - Words whose `start_time` is missing or non-finite are placed at the previous
- *     word's (repaired) end time, keeping repaired words in order within the window.
+ *   - Words whose `start_time` is missing, non-finite, or before the previous word's
+ *     (repaired) end (out of order, e.g. a stale untapped word left behind a partial Tap
+ *     To Sync pass) are placed at that previous end, keeping words in order in the window.
  *   - `word.end_time` is forced `>= word.start_time` (after clamping).
  *   - Already-valid in-bounds word timings are left as-is; only out-of-window or
  *     missing values are corrected.
  *
- * These semantics intentionally mirror the shipped backend
- * `SegmentResizer._sanitize_segment_timings`. Returns a NEW segment object plus the
+ * These semantics intentionally mirror the backend `services/timing_sanitizer.py`
+ * (`sanitize_corrections`), which runs on every submitted correction. The render-time
+ * `SegmentResizer._sanitize_segment_timings` shares the window clamping but not the ordering rule. Returns a NEW segment object plus the
  * list of clamps applied so callers can warn. A clean segment returns the same word
  * objects and `changes: []`.
  */
@@ -51,8 +53,9 @@ export function sanitizeSegmentTimings(segment: LyricsSegment): {
     const start = isFiniteNumber(w.start_time) ? (w.start_time as number) : null
     const end   = isFiniteNumber(w.end_time)   ? (w.end_time   as number) : null
 
-    // Invalid start = non-finite OR outside the segment window -> place at previous word's end.
-    const newStart = start !== null && start >= segStart && start <= segEnd
+    // Invalid start = non-finite, outside the segment window, OR before the previous word's end
+    // (out of order) -> place at previous word's end.
+    const newStart = start !== null && start >= segStart && start <= segEnd && start >= prevEnd
       ? start
       : clamp(Math.max(prevEnd, segStart))
     // Invalid end = non-finite, before start, or past segment end.

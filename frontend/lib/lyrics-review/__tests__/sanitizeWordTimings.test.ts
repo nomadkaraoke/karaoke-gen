@@ -86,4 +86,23 @@ describe('sanitizeSegmentTimings', () => {
     expect(out.words[1].start_time).toBe(4)
     expect(out.words[1].end_time).toBe(5)
   })
+
+  it('moves a word that starts before the previous word ends to after it (mirrors timing_sanitizer.py)', () => {
+    // A Tap To Sync pass that stopped before the last word: "ever" re-tapped at 19.6, but
+    // "transcribed" kept its stale 18.74 start, so it would highlight out of order.
+    const seg: LyricsSegment = {
+      id: 's', text: 'was ever transcribed', start_time: 18.4, end_time: 20.1,
+      words: [
+        { id: 'w2', text: 'was', start_time: 18.4, end_time: 19.3 },
+        { id: 'w3', text: 'ever', start_time: 19.6, end_time: 20.1 },
+        { id: 'w4', text: 'transcribed', start_time: 18.74, end_time: 19.5 },
+      ],
+    }
+    const { segment, changes } = sanitizeSegmentTimings(seg)
+    expect(segment.words[0]).toBe(seg.words[0])
+    expect(segment.words[1]).toBe(seg.words[1])
+    expect(segment.words[2].start_time).toBe(20.1)
+    expect(segment.words[2].end_time).toBe(20.1)
+    expect(changes.map((c) => c.wordText)).toEqual(['transcribed', 'transcribed'])
+  })
 })

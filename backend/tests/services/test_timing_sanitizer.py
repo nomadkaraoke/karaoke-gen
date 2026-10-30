@@ -138,3 +138,49 @@ def test_non_finite_word_timing_is_clamped(bad_value):
     w = cleaned["corrected_segments"][0]["words"][0]
     assert 10.0 <= w["start_time"] <= 12.0
     assert w["end_time"] >= w["start_time"]
+
+
+def _partial_pass_line():
+    """gen's fake-fixture line after a Tap To Sync pass that stopped before the last word:
+    "ever" was re-tapped at 19.6 but "transcribed" kept its stale 18.74-19.5."""
+    return {"corrected_segments": [{
+        "id": "s", "text": "Nothing here was ever transcribed", "start_time": 16.0, "end_time": 20.1,
+        "words": [
+            {"id": "w0", "text": "Nothing", "start_time": 16.0, "end_time": 16.9},
+            {"id": "w1", "text": "here", "start_time": 17.2, "end_time": 18.1},
+            {"id": "w2", "text": "was", "start_time": 18.4, "end_time": 19.3},
+            {"id": "w3", "text": "ever", "start_time": 19.6, "end_time": 20.1},
+            {"id": "w4", "text": "transcribed", "start_time": 18.74, "end_time": 19.5},
+        ],
+    }]}
+
+
+def test_word_starting_before_previous_word_end_is_moved_after_it(caplog):
+    with caplog.at_level("WARNING", logger="backend.services.timing_sanitizer"):
+        cleaned, count = sanitize_corrections(_partial_pass_line())
+    words = cleaned["corrected_segments"][0]["words"]
+    assert count >= 1
+    # Untouched in-order words keep their timings.
+    assert [w["start_time"] for w in words[:4]] == [16.0, 17.2, 18.4, 19.6]
+    # "transcribed" now follows "ever" (placed at its end, like any other bad start) inside the line.
+    transcribed = words[4]
+    assert transcribed["start_time"] == 20.1
+    assert transcribed["start_time"] <= transcribed["end_time"] <= 20.1
+    for prev, cur in zip(words, words[1:]):
+        assert cur["start_time"] >= prev["end_time"]
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1  # one aggregated warning per call, not one per word
+    assert "transcribed" in warnings[0].getMessage()
+    assert not [r for r in caplog.records if r.levelno >= 40]  # expected condition: never ERROR
+
+
+def test_in_order_words_log_nothing(caplog):
+    payload = {"corrected_segments": [{
+        "id": "s", "text": "a b", "start_time": 1.0, "end_time": 3.0,
+        "words": [{"id": "a", "text": "a", "start_time": 1.0, "end_time": 2.0},
+                  {"id": "b", "text": "b", "start_time": 2.0, "end_time": 3.0}],
+    }]}
+    with caplog.at_level("WARNING", logger="backend.services.timing_sanitizer"):
+        _, count = sanitize_corrections(payload)
+    assert count == 0
+    assert not caplog.records

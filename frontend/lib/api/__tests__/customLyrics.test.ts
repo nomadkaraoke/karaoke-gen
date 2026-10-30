@@ -137,13 +137,16 @@ describe('generateCustomLyrics', () => {
       }), { status: 200 })
     }) as unknown as typeof fetch
 
+    // On a local host (jsdom is localhost) the URL is relative, so apiFetch manages it and wraps
+    // the caller's signal in its own controller: assert the caller's abort reaches fetch.
     const ac = new AbortController()
+    ac.abort()
     await generateCustomLyrics(
       'job-1',
       { existingLines: ['a'], customText: 'x', settings: DEFAULT_GENERATION_SETTINGS },
       ac.signal,
       'tok',
     )
-    expect(captured.init!.signal).toBe(ac.signal)
+    expect((captured.init!.signal as AbortSignal).aborted).toBe(true)
   })
 })

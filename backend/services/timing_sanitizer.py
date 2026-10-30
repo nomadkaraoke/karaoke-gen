@@ -3,15 +3,20 @@
 Mirrors the frontend sanitizeWordTimings.ts and the render-time
 SegmentResizer._sanitize_segment_timings. Operates on the raw corrections dict the
 frontend POSTs (Dict[str, Any]); clamps any word whose start/end falls outside its
-segment window or is inverted. A segment whose own bounds are missing/non-finite
+segment window or is inverted, or that starts before the previous word in its line
+has ended (out of order: a Tap To Sync pass that stopped mid-line can leave a stale
+untapped word behind the last tapped one). A segment whose own bounds are missing/non-finite
 (JSON.stringify drops `undefined`, so an in-browser edit can arrive without them)
 gets them from its words' timings, else from its neighbours; one with no usable
 timing anywhere is left untouched (see find_missing_timings). Mutates and returns
 the same dict for caller convenience, plus the number of fields changed."""
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def _finite(v: Any) -> bool:
@@ -59,6 +64,7 @@ def sanitize_corrections(corrections: Dict[str, Any]) -> Tuple[Dict[str, Any], i
         return corrections, 0
 
     changes = _fill_segment_bounds(segments)
+    out_of_order: List[str] = []
     for seg in segments:
         if not isinstance(seg, dict):
             continue
@@ -76,10 +82,17 @@ def sanitize_corrections(corrections: Dict[str, Any]) -> Tuple[Dict[str, Any], i
             start = w.get("start_time")
             end = w.get("end_time")
 
-            # Invalid start = missing/non-finite OR outside the segment window.
-            if _finite(start) and seg_start <= start <= seg_end:
+            # Invalid start = missing/non-finite, outside the segment window, OR before the
+            # previous word's end (out of order). All of them are repaired the same way: placed
+            # at the previous word's end. Moving rather than clearing, because a cleared word
+            # would be refilled at prev_end on the next sanitize anyway, and nulls crash the
+            # render (find_missing_timings only guards the preview).
+            in_window = _finite(start) and seg_start <= start <= seg_end
+            if in_window and start >= prev_end:
                 new_start = start
             else:
+                if in_window:
+                    out_of_order.append(str(w.get("text", "")))
                 new_start = min(max(prev_end, seg_start), seg_end)
 
             # Invalid end = missing/non-finite, before start, or past segment end.
@@ -98,6 +111,13 @@ def sanitize_corrections(corrections: Dict[str, Any]) -> Tuple[Dict[str, Any], i
                 changes += 1
             prev_end = new_end
 
+    if out_of_order:
+        # Expected after a partial Tap To Sync pass, and repaired here: WARNING, not ERROR.
+        # One aggregated line per submission (alert rules: one root cause, one message).
+        logger.warning(
+            "timing_sanitizer: moved %d out-of-order word(s) after the previous word's end: %s",
+            len(out_of_order), ", ".join(repr(t) for t in out_of_order[:10]),
+        )
     return corrections, changes
 
 

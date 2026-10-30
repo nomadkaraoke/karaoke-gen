@@ -330,4 +330,111 @@ describe('useManualSync — tap-to-sync end times', () => {
     // …and the segment end grew to include it (no hard cut at 3.00).
     expect(segment.end_time).toBeGreaterThanOrEqual(lastWord.end_time as number)
   })
+
+  describe('a pass that stops before the last word', () => {
+    // gen's fake fixture line (backend/services/fake_workers/lyrics.py): five words with OLD
+    // timings 15.5..19.5; the next line starts at 20.0. Tapping only the first four words, later
+    // than their old starts, leaves "transcribed" at a stale 18.74 BEFORE "ever" (19.6).
+    const fixtureLine = () =>
+      makeSegment([
+        w('w0', 'Nothing', 15.5, 16.26),
+        w('w1', 'here', 16.31, 17.07),
+        w('w2', 'was', 17.12, 17.88),
+        w('w3', 'ever', 17.93, 18.69),
+        w('w4', 'transcribed', 18.74, 19.5),
+      ])
+
+    function tapFourWords() {
+      let segment = fixtureLine()
+      let currentTime = 15.0
+      const { result, rerender } = renderHook(
+        ({ seg, time }) =>
+          useManualSync({
+            editedSegment: seg,
+            currentTime: time,
+            onPlaySegment: () => {},
+            updateSegment: (newWords: Word[]) => {
+              segment = recompute(segment, newWords)
+            },
+          }),
+        { initialProps: { seg: segment, time: currentTime } }
+      )
+      act(() => result.current.startManualSync())
+      ;[16.0, 17.2, 18.4, 19.6].forEach((t) => {
+        currentTime = t
+        rerender({ seg: segment, time: currentTime })
+        tap(result)
+        rerender({ seg: segment, time: currentTime })
+      })
+      return {
+        result,
+        get segment() {
+          return segment
+        },
+        // A fresh segment object re-runs the auto-stop effect, which checks immediately.
+        rerender: (time: number) => rerender({ seg: { ...segment }, time }),
+      }
+    }
+
+    function expectInOrderWithTranscribedUntimed(words: Word[]) {
+      const transcribed = words[4]
+      expect(transcribed.start_time).toBeNull()
+      expect(transcribed.end_time).toBeNull()
+      const timed = words.filter((x) => x.start_time !== null)
+      expect(timed.map((x) => x.text)).toEqual(['Nothing', 'here', 'was', 'ever'])
+      for (let i = 1; i < timed.length; i++) {
+        expect(timed[i].start_time as number).toBeGreaterThanOrEqual(timed[i - 1].end_time as number)
+      }
+      expect(words[3].start_time).toBeCloseTo(19.6, 5)
+    }
+
+    it('clears the stale untapped word on auto-stop instead of leaving it out of order', () => {
+      const h = tapFourWords()
+      expect(h.result.current.isManualSyncing).toBe(true)
+      // Playback runs on a full lead-out past the (grown) segment end, then auto-stops.
+      window.isAudioPlaying = true
+      h.rerender((h.segment.end_time as number) + 3.5)
+      expect(h.result.current.isManualSyncing).toBe(false)
+      expectInOrderWithTranscribedUntimed(h.segment.words)
+    })
+
+    it('clears the stale untapped word when the user stops the pass', () => {
+      const h = tapFourWords()
+      act(() => h.result.current.startManualSync()) // the Stop button toggles the pass off
+      expect(h.result.current.isManualSyncing).toBe(false)
+      expectInOrderWithTranscribedUntimed(h.segment.words)
+    })
+
+    it('keeps untapped words that still start after the last tapped word, capping the tapped end', () => {
+      // Taps land EARLIER than the old timings: "transcribed" (18.74) is still after "ever" (18.3),
+      // so it keeps its timing, and "ever" must end before it.
+      let segment = fixtureLine()
+      let currentTime = 15.0
+      const { result, rerender } = renderHook(
+        ({ seg, time }) =>
+          useManualSync({
+            editedSegment: seg,
+            currentTime: time,
+            onPlaySegment: () => {},
+            updateSegment: (newWords: Word[]) => {
+              segment = recompute(segment, newWords)
+            },
+          }),
+        { initialProps: { seg: segment, time: currentTime } }
+      )
+      act(() => result.current.startManualSync())
+      ;[15.4, 16.2, 17.0, 18.3].forEach((t) => {
+        currentTime = t
+        rerender({ seg: segment, time: currentTime })
+        tap(result)
+        rerender({ seg: segment, time: currentTime })
+      })
+      act(() => result.current.startManualSync())
+      const [, , , ever, transcribed] = segment.words
+      expect(transcribed.start_time).toBeCloseTo(18.74, 5)
+      expect(transcribed.end_time).toBeCloseTo(19.5, 5)
+      expect(ever.end_time as number).toBeLessThan(18.74)
+      expect(ever.end_time as number).toBeGreaterThanOrEqual(ever.start_time as number)
+    })
+  })
 })
