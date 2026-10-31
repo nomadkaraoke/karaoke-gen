@@ -24,7 +24,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 ENV_VAR = "LOCAL_ENCODED_OUTPUTS_DIR"
-MAX_AGE_SECONDS = 24 * 3600
+MAX_AGE_SECONDS = 6 * 3600  # a take happens minutes after the stash
 
 
 def _root() -> Optional[Path]:

@@ -94,7 +94,7 @@ The video worker (packaging, encode, Dropbox/YouTube/Drive uploads, notification
 **Same-box handoff** (`backend/services/local_encoded_outputs.py`)
 - Without it, the video worker would download every final back out of GCS: ~400 MB/job of out-of-pocket egress, which costs more than the move saves.
 - The encoder stashes each output under `LOCAL_ENCODED_OUTPUTS_DIR`, keyed by its GCS blob path, and the video worker takes it from there.
-- It is a no-op wherever the env var is unset (GCE, Cloud Run). Stale stashes are purged at worker boot.
+- The video worker asks for it per encode (`stash_local_outputs`, set only where the env var exists), so GCE and Cloud Run are unaffected. Copies not taken within 6 h are purged on every stash and at worker boot.
 
 **`POST /run-worker`** (worker)
 - Spawns `python -m backend.workers.video_worker --job-id …` with the box's video-worker env.

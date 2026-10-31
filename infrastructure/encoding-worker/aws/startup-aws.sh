@@ -50,10 +50,12 @@ gcloud storage cp "${BUCKET}/encoding-worker/video-worker-env.py" "${WORKER_DIR}
 # Video worker on this box (/run-worker) runs as karaoke-backend@, the Cloud Run
 # job's identity, via the same WIF provider. Its env mirrors the live job.
 if [ ! -s "${WORKER_DIR}/gcp-wif-backend.json" ]; then
-    WIF_PROVIDER=$(python3 -c "import json;print(json.load(open('${WORKER_DIR}/gcp-wif.json'))['audience'].split('//iam.googleapis.com/')[1])")
-    gcloud iam workload-identity-pools create-cred-config "${WIF_PROVIDER}" \
-        --service-account=karaoke-backend@nomadkaraoke.iam.gserviceaccount.com --aws --enable-imdsv2 \
-        --output-file="${WORKER_DIR}/gcp-wif-backend.json" || true
+    WIF_PROVIDER=$(python3 -c "import json;print(json.load(open('${WORKER_DIR}/gcp-wif.json'))['audience'].split('//iam.googleapis.com/')[1])" 2>/dev/null) || WIF_PROVIDER=""
+    if [ -n "${WIF_PROVIDER}" ]; then
+        gcloud iam workload-identity-pools create-cred-config "${WIF_PROVIDER}" \
+            --service-account=karaoke-backend@nomadkaraoke.iam.gserviceaccount.com --aws --enable-imdsv2 \
+            --output-file="${WORKER_DIR}/gcp-wif-backend.json" || true
+    fi
 fi
 if [ -f "${WORKER_DIR}/video-worker-env.py" ]; then
     "${VENV}/bin/python" "${WORKER_DIR}/video-worker-env.py" || true

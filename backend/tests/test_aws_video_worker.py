@@ -253,3 +253,52 @@ def test_aws_dispatch_falls_back_on_refusal(service, status, body):
 def test_aws_dispatch_falls_back_on_error(service):
     ok, _ = _run(service, _manager(), post_exc=ConnectionError("boom"))
     assert ok is False
+
+
+def test_start_failure_never_leaves_run_stuck(worker):
+    main, env_file = worker
+    run_id = main.run_worker_id("video_worker", "abc123")
+    main.jobs[run_id] = {"status": "running"}
+    with patch.object(main, "_start_worker_run", side_effect=OSError("disk full")):
+        main._start_worker_run_safe(run_id, _req(main), {})
+    assert main.jobs[run_id]["status"] == "failed"
+    assert "disk full" in main.jobs[run_id]["error"]
+
+
+@pytest.mark.parametrize("bad", ["../../tmp/x", "-h", "", "a b", "x" * 80])
+def test_run_worker_rejects_unsafe_job_ids(bad):
+    from pydantic import ValidationError
+    from backend.services.gce_encoding import main
+    with pytest.raises(ValidationError):
+        main.RunWorkerRequest(job_id=bad)
+
+
+def test_gce_backend_requests_stash_only_on_the_box(monkeypatch):
+    """The encode payload asks for local copies only where the video worker
+    shares the box with the encoder (LOCAL_ENCODED_OUTPUTS_DIR set)."""
+    from backend.services.encoding_interface import EncodingInput, GCEEncodingBackend
+
+    async def capture(env_value):
+        if env_value:
+            monkeypatch.setenv("LOCAL_ENCODED_OUTPUTS_DIR", env_value)
+        else:
+            monkeypatch.delenv("LOCAL_ENCODED_OUTPUTS_DIR", raising=False)
+        svc = MagicMock()
+        svc.encode_videos = AsyncMock(return_value={"status": "complete", "output_files": []})
+        backend = GCEEncodingBackend()
+        backend._service = svc
+        with patch.object(GCEEncodingBackend, "_get_service", return_value=svc):
+            await backend.encode(EncodingInput(
+                title_video_path="t", karaoke_video_path="k", instrumental_audio_path="i",
+                artist="A", title="T", output_dir="/tmp",
+                options={"job_id": "abc123_g1", "input_gcs_path": "gs://b/jobs/abc123/",
+                         "output_gcs_path": "gs://b/jobs/abc123/finals/"},
+            ))
+        return svc.encode_videos.call_args
+
+    on = asyncio.run(capture("/var/lib/encoding-worker/outputs"))
+    off = asyncio.run(capture(None))
+    on_cfg = on.kwargs.get("encoding_config") or on.args[-1]
+    off_cfg = off.kwargs.get("encoding_config") or off.args[-1]
+    assert on_cfg.get("stash_local_outputs") is True
+    assert "stash_local_outputs" not in off_cfg

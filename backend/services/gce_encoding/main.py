@@ -27,7 +27,7 @@ os.environ.setdefault("GCE_METADATA_MTLS_MODE", "none")
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Header, Depends
 from google.cloud import storage
 from packaging.version import Version
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import self_heal
 from .persistence import JobStatePersister
@@ -1349,10 +1349,18 @@ async def process_job(job_id: str, request: EncodeRequest):
 
             # On the AWS box the video worker runs here too: keep local copies
             # (keyed by blob path) so it needn't download them back out of GCS.
-            # No-op unless LOCAL_ENCODED_OUTPUTS_DIR is set.
-            from backend.services import local_encoded_outputs
-            for local_path, blob_path in zip(local_output_files, blob_paths):
-                local_encoded_outputs.stash(Path(local_path), blob_path)
+            # Only when that co-located video worker asked (stash_local_outputs),
+            # and only where LOCAL_ENCODED_OUTPUTS_DIR is set. Off the event loop:
+            # it copies ~400 MB.
+            if (request.encoding_config or {}).get("stash_local_outputs"):
+                from backend.services import local_encoded_outputs
+
+                def _stash_all():
+                    local_encoded_outputs.purge_stale()
+                    for local_path, blob_path in zip(local_output_files, blob_paths):
+                        local_encoded_outputs.stash(Path(local_path), blob_path)
+
+                await asyncio.to_thread(_stash_all)
 
             jobs[job_id]["status"] = "complete"
             jobs[job_id]["progress"] = 100
@@ -1521,7 +1529,8 @@ _RUN_WORKER_MODULES = frozenset({"video_worker"})
 
 
 class RunWorkerRequest(BaseModel):
-    job_id: str
+    # Used in a log file name and as a CLI argument: gen job ids only.
+    job_id: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
     module: str = "video_worker"
 
 
@@ -1584,6 +1593,17 @@ def _start_worker_run(run_id: str, request: RunWorkerRequest, env: dict) -> None
     threading.Thread(target=_watch_worker_run, args=(run_id, proc, log_path), daemon=True).start()
 
 
+def _start_worker_run_safe(run_id: str, request: RunWorkerRequest, env: dict) -> None:
+    """Never leave a run stuck "running": that would hold the box up (idle
+    watchdog) and lose the job (the backend got "accepted", so no fallback)."""
+    try:
+        _start_worker_run(run_id, request, env)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Failed to start worker run %s", run_id)
+        jobs[run_id].update(status="failed", error=f"failed to start worker: {exc}")
+        _persist(run_id)
+
+
 @app.post("/run-worker")
 async def submit_worker_run(request: RunWorkerRequest, _auth: bool = Depends(verify_api_key)):
     if request.module not in _RUN_WORKER_MODULES:
@@ -1603,7 +1623,7 @@ async def submit_worker_run(request: RunWorkerRequest, _auth: bool = Depends(ver
     }
     _persist(run_id)
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(light_executor, _start_worker_run, run_id, request, env)
+    loop.run_in_executor(light_executor, _start_worker_run_safe, run_id, request, env)
     return {"status": "accepted", "job_id": run_id}
 
 
