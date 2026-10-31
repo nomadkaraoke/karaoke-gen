@@ -120,6 +120,12 @@ async def lifespan(app: FastAPI):
         logger.critical("Encoding worker booted unhealthy, exiting for systemd restart: %s", problem)
         raise RuntimeError(f"Encoding worker booted unhealthy: {problem}")
 
+    # AWS box only (no-op elsewhere): drop local finals no video worker took.
+    from backend.services import local_encoded_outputs
+    removed = await asyncio.to_thread(local_encoded_outputs.purge_stale)
+    if removed:
+        logger.info("Purged %d stale locally-stashed encoded outputs", removed)
+
     # Startup: read back any in-progress jobs from Firestore. They were
     # interrupted by the restart that brought us here — their work_dir is
     # gone, so mark them failed with the restart code so polls return a
@@ -1341,6 +1347,13 @@ async def process_job(job_id: str, request: EncodeRequest):
             jobs[job_id]["output_files"] = blob_paths
             logger.info(f"Output files (blob paths): {blob_paths}")
 
+            # On the AWS box the video worker runs here too: keep local copies
+            # (keyed by blob path) so it needn't download them back out of GCS.
+            # No-op unless LOCAL_ENCODED_OUTPUTS_DIR is set.
+            from backend.services import local_encoded_outputs
+            for local_path, blob_path in zip(local_output_files, blob_paths):
+                local_encoded_outputs.stash(Path(local_path), blob_path)
+
             jobs[job_id]["status"] = "complete"
             jobs[job_id]["progress"] = 100
             _persist(job_id)
@@ -1492,6 +1505,106 @@ async def submit_render_video_job(request: RenderVideoRequest, background_tasks:
     background_tasks.add_task(process_render_video_job, job_id, request)
 
     return {"status": "accepted", "job_id": job_id}
+
+
+# ---------------------------------------------------------------------------
+# /run-worker — run a backend worker (the video worker) on this box
+# ---------------------------------------------------------------------------
+# AWS box only: there the video worker (packaging + encode + Dropbox/YouTube/Drive
+# distribution) runs next to the encoder, so the big uploads leave from AWS
+# (credits) instead of GCP, and finals are handed over locally
+# (local_encoded_outputs). Enabled only where the environment file written by
+# startup-aws.sh exists; the backend falls back to the Cloud Run job otherwise.
+RUN_WORKER_ENV_FILE = os.environ.get("RUN_WORKER_ENV_FILE", "/opt/encoding-worker/video-worker-env.json")
+RUN_WORKER_LOG_DIR = Path(os.environ.get("RUN_WORKER_LOG_DIR", "/var/log/encoding-worker-runs"))
+_RUN_WORKER_MODULES = frozenset({"video_worker"})
+
+
+class RunWorkerRequest(BaseModel):
+    job_id: str
+    module: str = "video_worker"
+
+
+def run_worker_id(module: str, job_id: str) -> str:
+    return f"run-{module}-{job_id}"
+
+
+def _run_worker_env() -> Optional[dict]:
+    """Env for the worker subprocess: ours + the video-worker env file, or None if absent."""
+    try:
+        with open(RUN_WORKER_ENV_FILE) as f:
+            extra = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(extra, dict):
+        return None
+    env = dict(os.environ)
+    env.pop("ENCODING_API_KEY", None)  # the worker's own key isn't the subprocess's business
+    env.update({str(k): str(v) for k, v in extra.items()})
+    return env
+
+
+def _watch_worker_run(run_id: str, proc: subprocess.Popen, log_path: Path) -> None:
+    rc = proc.wait()
+    state = jobs.get(run_id)
+    if state is None:
+        return
+    if rc == 0:
+        state["status"] = "complete"
+        state["progress"] = 100
+    else:
+        tail = ""
+        try:
+            tail = log_path.read_text(errors="replace")[-1500:]
+        except OSError:
+            pass
+        state["status"] = "failed"
+        state["error"] = f"{state.get('module')} exited {rc}: {tail}"
+    state["returncode"] = rc
+    _persist(run_id)
+    logger.info("Worker run %s finished rc=%s (log %s)", run_id, rc, log_path)
+
+
+def _start_worker_run(run_id: str, request: RunWorkerRequest, env: dict) -> None:
+    # The subprocess imports the installed wheel: make sure it's the latest.
+    if not ensure_latest_wheel():
+        jobs[run_id].update(status="failed", error="karaoke-gen wheel not ready on this worker")
+        _persist(run_id)
+        return
+    RUN_WORKER_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = RUN_WORKER_LOG_DIR / f"{request.job_id}-{uuid.uuid4().hex[:8]}.log"
+    with open(log_path, "ab") as log:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", f"backend.workers.{request.module}", "--job-id", request.job_id],
+            env=env, stdout=log, stderr=subprocess.STDOUT, cwd="/tmp",
+        )
+    jobs[run_id].update(status="running", pid=proc.pid, log=str(log_path))
+    _persist(run_id)
+    logger.info("Started %s for job %s (pid %s, log %s)", request.module, request.job_id, proc.pid, log_path)
+    threading.Thread(target=_watch_worker_run, args=(run_id, proc, log_path), daemon=True).start()
+
+
+@app.post("/run-worker")
+async def submit_worker_run(request: RunWorkerRequest, _auth: bool = Depends(verify_api_key)):
+    if request.module not in _RUN_WORKER_MODULES:
+        raise HTTPException(status_code=400, detail=f"module {request.module!r} not allowed")
+    env = _run_worker_env()
+    if env is None:
+        raise HTTPException(status_code=503, detail="worker runs are not enabled on this worker")
+    run_id = run_worker_id(request.module, request.job_id)
+    existing = jobs.get(run_id)
+    if existing and existing.get("status") == "running":
+        return {"status": "in_progress", "job_id": run_id}
+    # "running" from the start: /health counts only running jobs, and the
+    # idle watchdog must not stop the box while the wheel check precedes spawn.
+    jobs[run_id] = {
+        "job_id": run_id, "status": "running", "progress": 0, "error": None,
+        "output_files": None, "kind": "worker_run", "module": request.module,
+    }
+    _persist(run_id)
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(light_executor, _start_worker_run, run_id, request, env)
+    return {"status": "accepted", "job_id": run_id}
 
 
 @app.post("/encode")

@@ -38,11 +38,26 @@ ENCODING_API_KEY=${ENCODING_API_KEY}
 ENCODING_WORKER_VM_NAME=${VM_NAME}
 ENCODING_WORKER_PROVIDER=aws
 GOOGLE_APPLICATION_CREDENTIALS=${WORKER_DIR}/gcp-wif.json
+LOCAL_ENCODED_OUTPUTS_DIR=/var/lib/encoding-worker/outputs
 ENV
 chmod 600 "${WORKER_DIR}/env"
+mkdir -p /var/lib/encoding-worker/outputs
 
-# Keep the idle watchdog current with the deployed code (best effort).
+# Keep the idle watchdog + video-worker env helper current (best effort).
 gcloud storage cp "${BUCKET}/encoding-worker/idle-watchdog.py" "${WORKER_DIR}/idle-watchdog.py" || true
+gcloud storage cp "${BUCKET}/encoding-worker/video-worker-env.py" "${WORKER_DIR}/video-worker-env.py" || true
+
+# Video worker on this box (/run-worker) runs as karaoke-backend@, the Cloud Run
+# job's identity, via the same WIF provider. Its env mirrors the live job.
+if [ ! -s "${WORKER_DIR}/gcp-wif-backend.json" ]; then
+    WIF_PROVIDER=$(python3 -c "import json;print(json.load(open('${WORKER_DIR}/gcp-wif.json'))['audience'].split('//iam.googleapis.com/')[1])")
+    gcloud iam workload-identity-pools create-cred-config "${WIF_PROVIDER}" \
+        --service-account=karaoke-backend@nomadkaraoke.iam.gserviceaccount.com --aws --enable-imdsv2 \
+        --output-file="${WORKER_DIR}/gcp-wif-backend.json" || true
+fi
+if [ -f "${WORKER_DIR}/video-worker-env.py" ]; then
+    "${VENV}/bin/python" "${WORKER_DIR}/video-worker-env.py" || true
+fi
 
 echo "[2/5] Downloading version manifest..."
 EXPECTED_VERSION=$(gcloud storage cat "${BUCKET}/encoding-worker/version.txt" 2>/dev/null | tr -d '[:space:]' || echo "")

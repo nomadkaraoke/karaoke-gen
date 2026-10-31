@@ -18,7 +18,10 @@ POOL_ID = "aws-encoding"
 PROVIDER_ID = f"aws-{AWS_ACCOUNT_ID}"
 
 
-def create_aws_encoding_wif(encoding_worker_sa: gcp.serviceaccount.Account) -> dict:
+def create_aws_encoding_wif(
+    encoding_worker_sa: gcp.serviceaccount.Account,
+    backend_sa: gcp.serviceaccount.Account,
+) -> dict:
     pool = gcp.iam.WorkloadIdentityPool(
         "aws-encoding-wif-pool",
         workload_identity_pool_id=POOL_ID,
@@ -55,5 +58,19 @@ def create_aws_encoding_wif(encoding_worker_sa: gcp.serviceaccount.Account) -> d
             )
         ),
     )
+    # The video worker can also run on the box (/run-worker): it uses the Cloud
+    # Run video-encoding-job's identity, karaoke-backend@, for exact permission
+    # parity (see infrastructure/encoding-worker/aws/video-worker-env.py).
+    backend_binding = gcp.serviceaccount.IAMMember(
+        "aws-encoding-worker-wif-backend-user",
+        service_account_id=backend_sa.name,
+        role="roles/iam.workloadIdentityUser",
+        member=pool.name.apply(
+            lambda name: (
+                f"principalSet://iam.googleapis.com/{name}/attribute.aws_role/"
+                f"arn:aws:sts::{AWS_ACCOUNT_ID}:assumed-role/{AWS_WORKER_ROLE}"
+            )
+        ),
+    )
     pulumi.export("aws_encoding_wif_provider", provider.name)
-    return {"pool": pool, "provider": provider, "binding": binding}
+    return {"pool": pool, "provider": provider, "binding": binding, "backend_binding": backend_binding}

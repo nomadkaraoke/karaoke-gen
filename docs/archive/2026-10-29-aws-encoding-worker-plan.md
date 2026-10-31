@@ -83,19 +83,44 @@ The box runs the **unchanged worker HTTP service** (`backend.services.gce_encodi
   - Extend the existing test files listed in the GCE-coupling map.
 - **Integration (prod, supervised):** stage B runs real jobs through the AWS worker. The prod daily E2E (payment + happy path) is the end-to-end check.
 
-## Phase 2: distribution from AWS (next PR set, after Phase 1 is verified)
+## Phase 2: distribution from AWS (implemented 2026-10-31, off by default)
 
-The video worker (`backend.workers.video_worker`) runs **on the box** with local encoding (`LocalEncodingBackend`):
-- Inputs come from GCS once (~300 MB).
-- Finals are encoded locally, uploaded to Dropbox/YouTube/Drive from AWS, and pushed to GCS `finals/` (AWS egress, on credits).
-- This removes the ~$18/mo of Cloud Run internet egress and the video-encoding-job CPU (~$11/mo).
+The video worker (packaging, encode, Dropbox/YouTube/Drive uploads, notifications) can run **on the AWS box** instead of in the Cloud Run job `video-encoding-job`. The large uploads then leave from AWS (credits) instead of GCP (the ~$18/mo of Cloud Run internet egress), and the job's Cloud Run CPU (~$11/mo) goes away.
 
-Needs:
-- a `/run-worker` endpoint and env/secrets on the box (the video-encoding-job env list);
-- a trigger branch in `WorkerService.trigger_video_worker`, with Cloud Run as the fallback;
-- the box's WIF identity mapped to the backend SA's permissions;
-- **Spot-interruption recovery for in-flight runs.** Today nothing recovers a video worker that dies after `GENERATING_VIDEO`; build a supervised re-dispatch first;
-- the deferred YouTube queue processor runs on the API, so it still egresses from GCP (low volume).
+**Encoding path unchanged (output parity)**
+- The video worker on the box still encodes through the worker HTTP API, so the deliverables (portrait included) are identical.
+- `LocalEncodingBackend` was rejected: it lacks the worker's portrait render.
+
+**Same-box handoff** (`backend/services/local_encoded_outputs.py`)
+- Without it, the video worker would download every final back out of GCS: ~400 MB/job of out-of-pocket egress, which costs more than the move saves.
+- The encoder stashes each output under `LOCAL_ENCODED_OUTPUTS_DIR`, keyed by its GCS blob path, and the video worker takes it from there.
+- It is a no-op wherever the env var is unset (GCE, Cloud Run). Stale stashes are purged at worker boot.
+
+**`POST /run-worker`** (worker)
+- Spawns `python -m backend.workers.video_worker --job-id …` with the box's video-worker env.
+- Status is reported through the usual `/status/{id}`. A run counts in `/health` `active_jobs`, so the idle watchdog won't stop the box mid-run.
+- It answers 503 unless `/opt/encoding-worker/video-worker-env.json` exists.
+
+**Env and identity**
+- At boot, `video-worker-env.py` reads the **live** `video-encoding-job` definition and resolves its secret refs, so nothing is hand-copied and nothing drifts.
+- It adds `LOCAL_ENCODED_OUTPUTS_DIR` and `CLOUD_RUN_JOB`.
+- The run uses the job's own identity, `karaoke-backend@`, via a second WIF binding (`aws-encoding-worker-wif-backend-user`).
+
+**Trigger** (`WorkerService._trigger_video_worker_on_aws`)
+- It applies only when Firestore `config/encoding-worker.aws_video_worker` is true **and** the AWS worker ranks first.
+- It then ensures the box is running, waits for `/health`, and POSTs `/run-worker`.
+- **Any** doubt or failure returns False, and the caller starts the Cloud Run job as today.
+
+**Not covered**
+- Deferred YouTube uploads (the hourly queue processor on the API) still leave from GCP; volume is low.
+- Video-worker stdout stays on the box at `/var/log/encoding-worker-runs/`. The job's Firestore worker logs are unaffected, but the error monitor doesn't see the box's stderr.
+- With the box on-demand (see the amendment above), Spot-interruption recovery is moot. A systemd restart of the worker during a run would still kill it; the existing `encoding_stuck` flag at 50 min surfaces that.
+
+**Enable (after stage B, needs `/gcp-admin` for the IAM binding)**
+1. Apply the GCP WIF backend binding.
+2. Reboot the box once (`stop`/`start`) so `startup-aws.sh` writes the backend credentials and the env.
+3. Set `aws_video_worker: true`.
+4. Roll back by setting it to false.
 
 ## Stage A status (2026-10-29/31)
 
