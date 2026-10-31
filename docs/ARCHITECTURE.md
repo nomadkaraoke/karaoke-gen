@@ -478,7 +478,7 @@ on-demand fallback if Spot capacity is gone.
 
 ### AWS encoding worker (EC2, provider "aws")
 
-**`aws-encoding-worker-1`** is a c7a.8xlarge persistent Spot instance in us-east-2. It runs the same `gce_encoding` service and is one more entry in the `encoding-worker-fallback-vms` pool (`"provider": "aws"`, plus `instance_id` and `region`). It is paid for by AWS Activate credits. IaC lives in `infrastructure/aws/` (its own Pulumi stack; see its README).
+**`aws-encoding-worker-1`** is a c7a.4xlarge on-demand instance in us-east-2. It runs the same `gce_encoding` service and is one more entry in the `encoding-worker-fallback-vms` pool (`"provider": "aws"`, plus `instance_id` and `region`). It is paid for by AWS Activate credits. IaC lives in `infrastructure/aws/` (its own Pulumi stack; see its README).
 
 - **Control:**
   - The manager routes AWS VMs to `backend/services/aws_encoding_compute.py`, an EC2 adapter that mimics the compute client. EC2 states map to GCE statuses, and EC2 capacity errors join `CAPACITY_ERROR_CODES`.

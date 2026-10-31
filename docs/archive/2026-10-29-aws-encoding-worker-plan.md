@@ -6,6 +6,13 @@ Evidence: workspace `docs/archive/2026-10-29-aws-encoding-worker-migration-plan.
 
 ## Phase 1: AWS box as an encoding-worker candidate (this PR set)
 
+> **Amended 2026-10-29 (after the first `pulumi up`): on-demand c7a.4xlarge, not Spot c7a.8xlarge.**
+> - Creating the Spot c7a.8xlarge failed with `InsufficientInstanceCapacity`.
+> - Spot placement scores were 1–3/10 for c7a/c7i/c6a/c8a 4–8xlarge across us-east-1 and us-east-2.
+> - A worker that stops and starts on demand has to win capacity on every start, and a Spot interruption mid-job is costly, especially for Phase 2's video-worker runs.
+> - On-demand c7a.4xlarge costs ~$0.82/h × ~100 h ≈ $82/mo of the ~$212/mo of credits. It matched or beat GCE in the benchmark.
+> - The design below otherwise stands; read "Spot"/"8xlarge" in it as superseded.
+
 The box runs the **unchanged worker HTTP service** (`backend.services.gce_encoding.main`). It joins the existing candidate pool, so failover, overrides, lost-job detection and cooldowns all apply unchanged.
 
 ### Design
@@ -28,7 +35,7 @@ The box runs the **unchanged worker HTTP service** (`backend.services.gce_encodi
 
 **Registry**
 - The box is an entry in the existing `encoding-worker-fallback-vms` secret:
-  `{"vm":"aws-encoding-worker-1","zone":"us-east-2b","ip":<EIP>,"machine_type":"c7a-8xlarge","provider":"aws","instance_id":"i-…","region":"us-east-2"}`
+  `{"vm":"aws-encoding-worker-1","zone":"us-east-2b","ip":<EIP>,"machine_type":"c7a-4xlarge","provider":"aws","instance_id":"i-…","region":"us-east-2"}`
 - The `.` in the AWS type becomes `-`, so Firestore cooldown keys stay valid.
 
 **Manager**
@@ -89,3 +96,18 @@ Needs:
 - the box's WIF identity mapped to the backend SA's permissions;
 - **Spot-interruption recovery for in-flight runs.** Today nothing recovers a video worker that dies after `GENERATING_VIDEO`; build a supervised re-dispatch first;
 - the deferred YouTube queue processor runs on the API, so it still egresses from GCP (low volume).
+
+## Stage A status (2026-10-29/31)
+
+**Live:**
+- `aws-encoding-worker-1`: `i-0c21505d7017356bb`, c7a.4xlarge on-demand, us-east-2b, EIP `3.128.70.236`.
+- Provisioned from v0.288.0. WIF auth works for both reads and writes, and the API key, wheel and static ffmpeg all fetched fine.
+- Controller key stored as `aws-encoding-controller-credentials` v1. Verified: `AwsComputeAdapter` with that key reads the box's state.
+
+**Live test through the worker's real HTTP API** (job 4b611a81, outputs written to `gs://…/bench/aws-live/`, no prod paths):
+- render-video completed in 117s.
+- The encode wrote all 9 deliverables; 8 of 9 are byte-identical in size to prod's GCE finals.
+- **Portrait parity:** same duration, SSIM 0.993, and identical lyrics. The only difference is sub-pixel anti-aliasing of the header/footer text (title, artist, brand), from the newer `fonts-noto` on Ubuntu 24.04. Visually indistinguishable, so it doesn't block stage C.
+- A status poll timed out once while the worker downloaded inputs. `process_job` downloads synchronously on the event loop; that is pre-existing and the same on GCE, and the backend's poller tolerates it.
+
+**Remaining for stage A (needs `/gcp-admin`):** append `pulumi stack output fallback_vms_entry` to the `encoding-worker-fallback-vms` secret. Stage B then begins by setting `speed_rank_overrides`.

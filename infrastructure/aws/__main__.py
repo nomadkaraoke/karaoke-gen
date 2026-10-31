@@ -5,8 +5,9 @@ The worker runs the same ``gce_encoding`` HTTP service as the GCE encoding VMs
 and is one more candidate in the backend's encoding-worker pool (provider
 "aws"). Plan: karaoke-gen docs/archive/2026-10-29-aws-encoding-worker-plan.md.
 
-- Persistent Spot instance, ``stop`` on interruption and on OS shutdown (the idle
-  watchdog), so the EBS root (venv, caches) survives like a GCE boot disk.
+- On-demand instance (Spot capacity was too thin — see INSTANCE_TYPE), ``stop``
+  on OS shutdown (the idle watchdog), so the EBS root (venv, caches) survives
+  like a GCE boot disk.
 - Elastic IP + port 8080 (API-key auth, same as the GCE firewall).
 - GCP access via Workload Identity Federation as encoding-worker@ (the
   ``nomad-encoding-worker`` role is the federated identity; see
@@ -24,7 +25,13 @@ import pulumi_aws as aws
 
 PROJECT_TAG = {"Project": "nomad-encoding"}
 VM_NAME = "aws-encoding-worker-1"
-INSTANCE_TYPE = "c7a.8xlarge"  # 32 vCPU / 64 GB — see the plan doc for sizing
+# On-demand, not Spot: Spot placement scores for c7a/c7i/c6a/c8a 4–8xlarge were
+# 1-3/10 across us-east-1/2 on 2026-10-29 (first create failed with
+# InsufficientInstanceCapacity). A stop/start-on-demand worker must win
+# capacity on every start, and an interruption mid-job is costly, so we pay
+# on-demand from credits: ~$0.82/h x ~100 h/mo ≈ $82/mo of the ~$212/mo.
+# 16 vCPU / 32 GB matched or beat GCE c4d-highcpu-16 in the replay benchmark.
+INSTANCE_TYPE = "c7a.4xlarge"
 AZ = "us-east-2b"
 WIF_PROVIDER = (
     "projects/718638054799/locations/global/workloadIdentityPools/"
@@ -102,13 +109,6 @@ instance = aws.ec2.Instance(
     iam_instance_profile=profile.name,
     user_data=user_data,
     instance_initiated_shutdown_behavior="stop",
-    instance_market_options=aws.ec2.InstanceInstanceMarketOptionsArgs(
-        market_type="spot",
-        spot_options=aws.ec2.InstanceInstanceMarketOptionsSpotOptionsArgs(
-            spot_instance_type="persistent",
-            instance_interruption_behavior="stop",
-        ),
-    ),
     metadata_options=aws.ec2.InstanceMetadataOptionsArgs(http_tokens="required", http_put_response_hop_limit=2),
     root_block_device=aws.ec2.InstanceRootBlockDeviceArgs(
         volume_size=100, volume_type="gp3", iops=6000, throughput=400, delete_on_termination=True,

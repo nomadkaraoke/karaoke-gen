@@ -52,7 +52,7 @@ SPEED_RANK: Dict[str, int] = {
     "n2d": 60,
     "n2": 70,
     # AWS EC2 c7a (AMD Genoa, us-east-2) — the AWS encoding worker
-    # (provider "aws"; machine_type "c7a-8xlarge", "." → "-" for Firestore-safe
+    # (provider "aws"; machine_type "c7a-4xlarge", "." → "-" for Firestore-safe
     # cooldown keys). Last resort by default; make it preferred at runtime with
     # config/encoding-worker.speed_rank_overrides = {"c7a": 5}.
     "c7a": 90,
